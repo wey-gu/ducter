@@ -85,7 +85,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       headless only), and check an ad-hoc build's helper loses its quarantine flag after
       Open Anyway. Trigger: the first friend install.
 - [ ] The partner's real first words: the greeting is the client's empty state today, not a
-      Log message, and the partner doesn't read `firstrun.json` ("I found 14 repos …").
+      Log message, and the partner knows no repos at first run (D204: no scan, no `firstrun.json`).
 - [ ] Rename the partner from the desktop (today the name is asked once, in the terminal or
       the app).
 
@@ -521,9 +521,17 @@ computer part; 我要合电脑了; the parcel's Lands / Waits / Moves. Still ope
 - [ ] **D202: the switch sheet (换谁来做) picks a model and effort** the same way (today it keeps
       its rows per model and drops the effort on a switch). Trigger: the first ask to switch to a
       deeper effort mid-task.
-- [ ] **D203: live check** on hel + the Mac (a worker on this build answers `repos` and `browse`;
-      an older one reports none and Find a folder… says to update it), and whether 20 repos and the
-      REPO_ROOTS cover the author's checkouts. Trigger: the author's next run with the Mac switched on.
+- [ ] **D203, D204: live check** on hel + the Mac (a worker on this build answers `repos`, `browse`
+      and `clone`; an older one shows "needs an update" on both cards), and a real clone from the
+      phone onto the Mac (a private GitHub repo over https with the Mac's keychain, and over ssh with
+      its agent): only faked git so far. Trigger: the author's next run with the Mac switched on.
+- [ ] **D204: the Ducter folder in Settings** (a field beside where it lives; today only
+      `DUCTER_FOLDER`). Trigger: the first person who wants it somewhere else and doesn't use a shell.
+- [ ] **D204: clone progress** (git's own percentage in the field, from `--progress` on stderr,
+      relayed by the worker). Today: a spinner and "a big repository takes a few minutes".
+      Trigger: a clone that someone abandons because it looked stuck.
+- [ ] **D204: plain folders in `~/ducter/projects`** (not git repos) are not listed; list them as
+      folder places. Trigger: the first person who puts one there and expects it.
 
 ## Wide screens: the whole screen (D184)
 

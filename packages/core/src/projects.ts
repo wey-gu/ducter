@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import type { Place, ProjectView } from "@ducter/protocol";
 import { folderInfo, type FolderInfo, type GitRun, realGit } from "@ducter/protocol/src/folder-info.ts";
 
-export type ProjectAddResult = { ok: true; project: ProjectView; info: FolderInfo } | { ok: false; reason: "not_found" | "offline" | "failed"; message: string };
+export type ProjectAddResult = { ok: true; project: ProjectView; info: FolderInfo } | { ok: false; reason: "not_found" | "offline" | "old" | "failed"; message: string };
 
 export interface Projects {
   list(): ProjectView[];
@@ -65,7 +65,8 @@ export function createProjects(opts: {
           if (r === "offline") return { ok: false, reason: "offline", message: "That computer can't be reached right now." };
           info = r;
         } catch (err) {
-          return { ok: false, reason: "failed", message: (err as Error).message };
+          // D204: a worker whose Ducter is too old to read its folders: the clients say to update it.
+          return { ok: false, reason: (err as { old?: boolean }).old ? "old" : "failed", message: (err as Error).message };
         }
       }
       if (!info?.exists || !info.root) return { ok: false, reason: "not_found", message: `There's no folder at ${raw}.` };

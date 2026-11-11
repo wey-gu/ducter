@@ -1,31 +1,28 @@
-// The git repos on this computer, and its folders one level at a time (D203). One scan for
-// `ducter up`'s first-run hints (cli/src/firstrun.ts), the home's own New task places and a
-// worker's `repos` op (runner/src/worker-host.ts), so a home on a server knows which repos the
-// user's Mac has; and one listing for the card's 找一个文件夹… / Find a folder… (the worker's
-// `browse` op, and the home's own). Read-only, and only under the user's home folder.
+// The projects in this computer's Ducter folder, and its folders one level at a time. D204: a
+// computer says which projects it has by listing `<Ducter folder>/projects/*` (the ones Ducter
+// cloned there, and anything the user put there), never by guessing where people keep code; the
+// home lists its own and a worker answers the home's `repos` op (runner/src/worker-host.ts). And
+// one listing for the card's 找一个文件夹… / Find a folder… (D203: the worker's `browse` op, and the
+// home's own). Read-only, and only under the user's home folder.
 //
-// Privacy: the scan reads folder names and timestamps (stat of .git/HEAD, .git/index,
-// .git/logs/HEAD); with `details` it also reads .git/config, .git/HEAD and the origin's HEAD to
-// say a repo's origin and default branch. It never runs git, never reads another tool's own
-// folders (hidden folders are skipped) and sends nothing by itself.
+// Privacy: the listing reads folder names and timestamps (stat of .git/HEAD, .git/index,
+// .git/logs/HEAD) and, for each project, .git/config, .git/HEAD and the origin's HEAD to say its
+// origin and default branch. It never runs git and sends nothing by itself.
 import { readdirSync, readFileSync, realpathSync, statSync, lstatSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { normalizeRemote } from "./folder-info.ts";
 
-/** Where people keep code, in the order people usually mean them. */
-export const REPO_ROOTS = ["dev", "code", "src", "Projects", "projects", "work", "repos", "git"];
-
-/** D203: how many repos a computer reports for the New task card (most recently touched first). */
-export const REPOS_REPORTED = 20;
+/** D204: how many projects a computer reports for the New task card (most recently touched first). */
+export const REPOS_REPORTED = 50;
 
 export interface RepoHint {
   name: string; // folder name, e.g. "hawdb"
-  path: string; // "~/dev/hawdb" (absolute with `absolute`)
+  path: string; // absolute, e.g. "/Users/ana/ducter/projects/hawdb"
   touchedAt: string; // ISO time of the newest of HEAD / index / logs/HEAD
-  /** D203 (details): the origin, normalized (host/owner/repo). */
+  /** D203: the origin, normalized (host/owner/repo). */
   remote?: string;
-  /** D203 (details): what a task starts from unless picked: origin's HEAD, else main or master, else the checkout's. */
+  /** D203: what a task starts from unless picked: origin's HEAD, else main or master, else the checkout's. */
   defaultBranch?: string;
 }
 
@@ -36,7 +33,7 @@ export interface FsLike {
   mtime(p: string): number;
   /** The path with links resolved (and, on a case-insensitive disk, its real case). */
   real(p: string): string;
-  /** D203: a small file's text, or undefined (details only). */
+  /** D203: a small file's text, or undefined. */
   readText?(p: string): string | undefined;
   /** D203: the path is a symbolic link (browse resolves it before it trusts it). */
   isLink?(p: string): boolean;
@@ -98,9 +95,6 @@ export const realFs: FsLike = {
   },
 };
 
-const SKIP = new Set(["node_modules", "vendor", "target", "dist", "build", "Library"]);
-const MAX_PER_ROOT = 600; // entries looked at per root, so a huge folder can't stall a scan
-
 /** D203: the origin's URL in `.git/config`, normalized; undefined without one. */
 export function originOf(config: string | undefined): string | undefined {
   if (!config) return undefined;
@@ -127,51 +121,31 @@ export function defaultBranchOf(git: string, fs: FsLike): string | undefined {
 }
 
 /**
- * Real git checkouts (a `.git` folder; worktrees and submodules have a `.git` file) up to depth 2
- * under REPO_ROOTS, most recently touched first. details (D203): each one's origin and default
- * branch too; absolute: paths as they are, not ~/….
+ * D204: the git repos directly inside `dir` (a computer's `<Ducter folder>/projects`), most
+ * recently touched first, at most `limit`, each with its origin and default branch read from its
+ * files. Absolute paths. A missing folder has none.
  */
-export function findRepos(home = homedir(), fs: FsLike = realFs, limit = 3, opts: { details?: boolean; absolute?: boolean } = {}): { count: number; repos: RepoHint[] } {
-  const found = new Map<string, { name: string; path: string; t: number }>();
-  const seenRoots = new Set<string>();
-  const visit = (dir: string, depth: number, budget: { n: number }) => {
-    for (const name of fs.readdir(dir)) {
-      if (budget.n-- <= 0) return;
-      if (name.startsWith(".") || SKIP.has(name)) continue;
-      const p = join(dir, name);
-      if (!fs.isDir(p)) continue;
-      const git = join(p, ".git");
-      if (fs.isDir(git)) {
-        const t = Math.max(fs.mtime(join(git, "HEAD")), fs.mtime(join(git, "index")), fs.mtime(join(git, "logs", "HEAD")));
-        found.set(p, { name, path: p, t });
-      } else if (depth < 2) visit(p, depth + 1, budget);
-    }
-  };
-  for (const r of REPO_ROOTS) {
-    const root = join(home, r);
-    if (!fs.isDir(root)) continue;
-    // On a case-insensitive disk ~/projects and ~/Projects are one folder; a link may alias another.
-    const key = fs.real(root);
-    if (seenRoots.has(key)) continue;
-    seenRoots.add(key);
-    visit(root, 1, { n: MAX_PER_ROOT });
+export function projectRepos(dir: string, fs: FsLike = realFs, limit = REPOS_REPORTED): RepoHint[] {
+  const found: { name: string; path: string; t: number }[] = [];
+  for (const name of fs.readdir(dir)) {
+    if (name.startsWith(".")) continue;
+    const p = join(dir, name);
+    const git = join(p, ".git");
+    if (!fs.isDir(p) || !fs.isDir(git)) continue;
+    found.push({ name, path: p, t: Math.max(fs.mtime(join(git, "HEAD")), fs.mtime(join(git, "index")), fs.mtime(join(git, "logs", "HEAD"))) });
   }
-  const all = [...found.values()].sort((a, b) => b.t - a.t);
-  const tilde = (p: string) => (!opts.absolute && p.startsWith(home + "/") ? "~" + p.slice(home.length) : p);
-  return {
-    count: all.length,
-    repos: all.slice(0, limit).map((r) => {
-      const hint: RepoHint = { name: r.name, path: tilde(r.path), touchedAt: new Date(r.t || 0).toISOString() };
-      if (opts.details) {
-        const git = join(r.path, ".git");
-        const remote = originOf(fs.readText?.(join(git, "config")));
-        const def = defaultBranchOf(git, fs);
-        if (remote) hint.remote = remote;
-        if (def) hint.defaultBranch = def;
-      }
+  return found
+    .sort((a, b) => b.t - a.t)
+    .slice(0, limit)
+    .map((r) => {
+      const git = join(r.path, ".git");
+      const hint: RepoHint = { name: r.name, path: r.path, touchedAt: new Date(r.t || 0).toISOString() };
+      const remote = originOf(fs.readText?.(join(git, "config")));
+      const def = defaultBranchOf(git, fs);
+      if (remote) hint.remote = remote;
+      if (def) hint.defaultBranch = def;
       return hint;
-    }),
-  };
+    });
 }
 
 /** D203: at most this many folders in one listing (the rest: `more`). */

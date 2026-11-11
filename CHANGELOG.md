@@ -3,20 +3,28 @@
 ## Unreleased
 
 <!-- whats-new
-zh: 每台电脑上的代码仓库直接出现在新建的文件夹列表里
-en: Each computer's repositories are already in New task's folder list
-zh: 在手机上也能找别的电脑上的文件夹
-en: Find a folder on any of your computers, from your phone too
+zh: 新建时贴一个 Git 地址，就能在任意一台电脑上克隆
+en: Paste a Git address in New task to clone it onto any of your computers
+zh: Ducter 的东西都放在 ~/ducter 里，一眼就找到
+en: What Ducter makes on a computer now lives in one folder you can see, ~/ducter
 -->
 
-**New task: folders on every computer**
-- The folder list shows the repositories already on each of your computers (the most recently
-  touched first), after the folders you used. When your Ducter lives on a server and you pick
-  Claude Code on your Mac, it switches to your Mac's copy of the same project by itself.
-- **Find a folder…** at the bottom of the list looks through any of your computers' folders, one
-  level at a time from the home folder, repositories first, on the phone and in the browser too;
-  **Use this folder** adds it as a project there. When a computer has no folders listed yet, the
-  list says so and offers it, instead of only **No folder**.
+**New task: one Ducter folder, and projects from a Git address**
+- Each computer has one folder of Ducter's own, `~/ducter`: the projects it cloned for you in
+  `~/ducter/projects`, and new tasks' working copies in `~/ducter/worktrees` (tasks already
+  running keep theirs). If a `~/ducter` is already yours, Ducter leaves it alone and uses
+  `~/ducter-work`; set `DUCTER_FOLDER` to choose another place.
+- **Add from a Git address…** in the folder list clones a repository (`https://…`,
+  `git@host:owner/repo` or `owner/repo` for GitHub) onto the computer you choose, from the phone
+  too, with that computer's own git sign-in. It says where it goes, shows **Cloning…**, and says
+  plainly when the repository isn't there, that computer has no access, or it can't reach it.
+- **Find a folder…** looks through any of your computers' folders, one level at a time, from the
+  phone and the browser too; **Use this folder** adds it as a project there.
+- The folder list no longer guesses which folders hold code: it lists the folders you used and
+  added and the projects in each computer's Ducter folder. With nothing there yet it offers the
+  ways to get one, never only **No folder**; a computer whose Ducter is older says to update it.
+- `ducter uninstall --all` removes tasks' working copies in both places and never the projects
+  Ducter cloned for you (its listing says so).
 
 ## 0.0.17
 

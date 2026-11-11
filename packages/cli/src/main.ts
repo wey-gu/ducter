@@ -7,7 +7,7 @@ import pkg from "../package.json" with { type: "json" };
 import { parseArgs, type Args } from "./args.ts";
 import { launchDesktop, planDesktop, sourceRepoRoot, type Launched } from "./desktop.ts";
 import { ansiStyle, formatBlocked, formatReport, formatSummary, realHost, runDoctor, width, type DoctorReport, type Host, type Style } from "./doctor.ts";
-import { buildHints, cleanName, readPersonaFile, writeHints, writePersonaFile } from "./firstrun.ts";
+import { cleanName, readPersonaFile, removeOldHints, writePersonaFile } from "./firstrun.ts";
 import { commandsFor, commandWith, detectLocale, translator, type T } from "./i18n.ts";
 import { cmdAnswer, cmdOpenTask, cmdSay, cmdTail, cmdTask, notReached, type TalkCtx } from "./talk.ts";
 import { commandClass, homeJson, resolveTarget, type Target } from "./home.ts";
@@ -370,10 +370,8 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
     }
   }
 
-  // What the desktop's empty conversation can say about this Mac (names only; see firstrun.ts).
-  try {
-    writeHints(ctx.dataDir, buildHints());
-  } catch {}
+  // D204: no first-run repo scan any more; the old hints file goes.
+  removeOldHints(ctx.dataDir);
   await nameOnFirstRun(ctx, firstReport);
 
   // A server's logs belong in its journal; in front of a person they go to ducter.log.

@@ -25,7 +25,8 @@ const repos: Record<string, { main: string; branches: string[] }> = {
   hawdb: { main: "main", branches: ["ducter/compaction-fix", "ducter/wal-bench"] },
   tinycart: { main: "master", branches: [] },
 };
-const root = join(dataDir, "repos");
+// D204: the projects in the home's Ducter folder (a data folder of its own keeps it at <data>/ducter).
+const root = join(dataDir, "ducter", "projects");
 for (const [name, r] of Object.entries(repos)) {
   const dir = join(root, name);
   mkdirSync(dir, { recursive: true });
@@ -36,10 +37,6 @@ for (const [name, r] of Object.entries(repos)) {
   for (const b of r.branches) git(dir, "branch", b);
 }
 const at = (name: string) => join(root, name);
-writeFileSync(
-  join(dataDir, "firstrun.json"),
-  JSON.stringify({ version: 1, generatedAt: new Date().toISOString(), repoCount: 3, repos: Object.keys(repos).map((n, i) => ({ name: n, path: at(n), touchedAt: new Date(Date.now() - i * 3600_000).toISOString() })) }),
-);
 
 const harnesses: DeviceHarness[] = [
   { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan", allowance: { left: 0.64, resetsAt: new Date(Date.now() + 18 * 3600_000).toISOString() }, models: [{ id: "opus", label: "Opus" }, { id: "sonnet", label: "Sonnet" }] },

@@ -43,7 +43,22 @@ beforeEach(() => {
 afterEach(() => rmSync(home, { recursive: true, force: true }));
 
 const plan = (all: boolean, extra: Partial<Parameters<typeof planUninstall>[0]> = {}) =>
-  planUninstall({ home, dataDir, platform: "darwin", agentLabel: label, execPath: "/usr/local/bin/ducter", all, t, ...extra });
+  planUninstall({ home, dataDir, platform: "darwin", agentLabel: label, execPath: "/usr/local/bin/ducter", all, t, env: {}, ...extra });
+
+/** D204: the Ducter folder (~/ducter) as Ducter leaves it: marked, a task's worktree, maybe projects. */
+function ducterFolderWith(o: { projects?: string[]; unsaved?: boolean } = {}) {
+  const folder = join(home, "ducter");
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(join(folder, ".ducter-folder"), "Ducter's\n");
+  const wt = join(folder, "worktrees", "app", "add-search");
+  git(repo, "worktree", "add", "-q", "-b", "ducter/add-search", wt);
+  if (o.unsaved) writeFileSync(join(wt, "wip.txt"), "unsaved");
+  for (const n of o.projects ?? []) {
+    mkdirSync(join(folder, "projects", n, ".git"), { recursive: true });
+    writeFileSync(join(folder, "projects", n, "mine.txt"), "the user's");
+  }
+  return { folder, wt };
+}
 
 function fakeRunner(healthy = false) {
   const calls: string[][] = [];
@@ -89,6 +104,31 @@ describe("planUninstall", () => {
     const p = plan(true);
     expect(p.warnings.filter((w) => w.id === "unsaved-worktree").map((w) => w.path).sort()).toEqual([join(dataDir, "worktrees", "app", "fix-login"), join(dataDir, "worktrees", "t1")].sort());
     expect(p.remove.find((x) => x.kind === "data")!.what).toContain("2");
+  });
+
+  test("D204: the Ducter folder's worktrees go (counted, an unsaved one warned); the projects Ducter cloned stay, and the listing says so", () => {
+    const { folder, wt } = ducterFolderWith({ projects: ["ducter", "con"], unsaved: true });
+    const p = plan(true);
+    expect(p.remove.find((x) => x.path === join(folder, "worktrees"))).toMatchObject({ kind: "worktree", what: t("uninstall.item.worktrees", { n: 1 }) });
+    expect(p.remove.some((x) => x.path === folder || x.path.startsWith(join(folder, "projects")))).toBe(false);
+    expect(p.warnings.filter((w) => w.id === "unsaved-worktree").map((w) => w.path)).toContain(wt);
+    expect(p.keep).toContainEqual({ what: t("uninstall.keep.projects", { n: 2 }), detail: t("uninstall.keep.projects.detail", { dir: join(folder, "projects") }) });
+    const text = formatPlan(p, t, home);
+    expect(text).toContain("~/ducter/worktrees");
+    expect(text).toContain("The 2 projects Ducter cloned for you: ~/ducter/projects, yours: uninstall never removes them");
+    expect(p.repos?.some((r) => r.endsWith("/dev/app"))).toBe(true);
+  });
+
+  test("D204: with no projects in it, the whole Ducter folder goes; someone else's ~/ducter is never listed", () => {
+    const { folder } = ducterFolderWith();
+    expect(plan(true).remove.find((x) => x.path === folder)).toMatchObject({ kind: "folder", what: t("uninstall.item.folder", { n: 1 }) });
+    // Without --all nothing of it is listed.
+    expect(plan(false).remove.some((x) => x.path.startsWith(folder))).toBe(false);
+    // A ~/ducter Ducter didn't mark (a clone of the ducter repo): untouched, and the fallback is empty.
+    rmSync(join(folder, ".ducter-folder"));
+    writeFileSync(join(folder, "README.md"), "theirs");
+    const p = plan(true);
+    expect(p.remove.some((x) => x.path.startsWith(folder))).toBe(false);
   });
 
   test("the keep lines name only the AI agents found, as they are; none found, none named", () => {
@@ -180,6 +220,29 @@ describe("planUninstall", () => {
 });
 
 describe("executeUninstall", () => {
+  test("D204: the worktrees in the Ducter folder go; the projects stay, even in a data folder that goes", async () => {
+    const { folder } = ducterFolderWith({ projects: ["ducter"] });
+    const { r } = fakeRunner();
+    const res = await executeUninstall(plan(true), { runner: r, port: 1, label, t });
+    expect(res.failed).toEqual([]);
+    expect(existsSync(join(folder, "worktrees"))).toBe(false);
+    expect(readFileSync(join(folder, "projects", "ducter", "mine.txt"), "utf8")).toBe("the user's");
+    expect(git(repo, "worktree", "list")).not.toContain("add-search");
+    // A Ducter with a data folder of its own keeps its Ducter folder inside it: the data goes, the projects stay.
+    const own = join(home, "own-data");
+    mkdirSync(join(own, "ducter", "projects", "api"), { recursive: true });
+    writeFileSync(join(own, "ducter", ".ducter-folder"), "x");
+    writeFileSync(join(own, "ducter", "projects", "api", "a.txt"), "keep");
+    mkdirSync(join(own, "ducter", "worktrees", "api", "x"), { recursive: true });
+    writeFileSync(join(own, "ducter.db"), "log");
+    const p2 = plan(true, { dataDir: own });
+    expect(p2.spare).toEqual([join(own, "ducter", "projects")]);
+    await executeUninstall(p2, { runner: r, port: 1, label, t });
+    expect(readFileSync(join(own, "ducter", "projects", "api", "a.txt"), "utf8")).toBe("keep");
+    expect(existsSync(join(own, "ducter.db"))).toBe(false);
+    expect(existsSync(join(own, "ducter", "worktrees"))).toBe(false);
+  });
+
   test("--all removes only Ducter's paths; the repo and its branch stay; worktree pruned", async () => {
     const p = plan(true);
     const { r, calls } = fakeRunner();

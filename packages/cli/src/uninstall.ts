@@ -2,7 +2,9 @@
 //
 //   (no --all)  the background item only: the LaunchAgent (macOS) or the systemd user unit (Linux).
 //               Data stays; the app or `ducter up` brings it back.
-//   --all       also the data folder (the Log, worktrees, browser profiles, scratch), the
+//   --all       also the data folder (the Log, browser profiles, scratch, tasks' worktrees from
+//               before D204), the tasks' working copies in the Ducter folder (D204: ~/ducter/worktrees;
+//               the whole folder when nothing else is in it), the
 //               ~/.local/bin/ducter link Ducter.app made (or this very binary, copied there by
 //               install.sh), the /usr/local/bin/ducter link the installer made, the PATH lines it
 //               added to a shell profile, Ducter's site in Caddy's Caddyfile (Caddy stays), and
@@ -13,17 +15,19 @@
 // per user (the app's folders, the ducter link) goes only with the Ducter the background item
 // runs, or ~/.ducter when there is none. The plan names what stays and whose it is.
 //
-// Nothing outside that list is ever touched: repos and their ducter/* branches, harness logins,
-// Nowledge Mem and cua-driver stay. Ducter.app itself is moved to the Trash by the app, last.
+// Nothing outside that list is ever touched: repos and their ducter/* branches, the projects
+// Ducter cloned (D204: <Ducter folder>/projects, the user's own, even inside a data folder that
+// goes), harness logins, Nowledge Mem and cua-driver stay. Ducter.app itself is moved to the Trash by the app, last.
 import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { T } from "./i18n.ts";
 import { stripDucterBlocks } from "./domain.ts";
 import { UNIT_NAME, unitPath } from "./remote.ts";
+import { ducterFolder, FOLDER_MARKER } from "@ducter/protocol/src/ducter-folder.ts";
 
 export const DEFAULT_BUNDLE_ID = "co.nowledge.ducter";
 
-export type ItemKind = "agent" | "service" | "data" | "worktree" | "link" | "appdata" | "rc" | "caddy";
+export type ItemKind = "agent" | "service" | "data" | "worktree" | "folder" | "link" | "appdata" | "rc" | "caddy";
 export interface Item {
   path: string;
   what: string;
@@ -46,6 +50,8 @@ export interface Plan {
   warnings: Warning[];
   /** Repos whose worktrees live in the data folder: `git worktree prune` after it is gone. */
   repos?: string[];
+  /** D204: paths that stay even inside an item that goes (the projects Ducter cloned). */
+  spare?: string[];
 }
 
 export interface PlanInput {
@@ -68,6 +74,8 @@ export interface PlanInput {
   caddyfile?: { path: string; text: string };
   /** Where the installer links `ducter` for every PATH (root, or a writable /usr/local/bin). */
   globalBin?: string;
+  /** D204: the environment the Ducter folder is resolved with (DUCTER_FOLDER). Default process.env. */
+  env?: Record<string, string | undefined>;
 }
 
 /** The lines install.sh adds to a shell profile when ~/.local/bin isn't on PATH. */
@@ -150,8 +158,9 @@ export function dataDirIsOurs(dataDir: string, home: string): boolean {
 }
 
 /**
- * The worktrees in <dataDir>/worktrees: <taskId> before D198, <repo>/<branch slug> since. A
- * folder with a `.git` is one; any other folder is a repo's, and its folders are looked at.
+ * The worktrees in a worktrees folder (<dataDir>/worktrees before D204, <Ducter folder>/worktrees
+ * since): <taskId> before D198, <repo>/<branch slug> since. A folder with a `.git` is one; any
+ * other folder is a repo's, and its folders are looked at.
  */
 export function ducterWorktrees(root: string): string[] {
   const dirs = (d: string) => readdirSync(d).map((n) => join(d, n)).filter((p) => statSync(p).isDirectory());
@@ -259,6 +268,21 @@ export function planUninstall(i: PlanInput): Plan {
   const keep: Keep[] = [];
   const warnings: Warning[] = [];
   const repos: string[] = [];
+  const spare: string[] = [];
+  // D204: the tasks' working copies there: their repos are pruned after, an unsaved one warned.
+  const countWorktrees = (root: string) => {
+    let wts: string[] = [];
+    try {
+      wts = ducterWorktrees(root);
+    } catch {}
+    for (const wt of wts) {
+      const repo = worktreeRepo(wt);
+      if (repo && !repos.includes(repo)) repos.push(repo);
+      const st = git(wt, ["status", "--porcelain"]);
+      if (st && st.trim()) warnings.push({ id: "unsaved-worktree", detail: t("uninstall.warn.unsaved", { name: basename(wt), repo: repo ?? "?" }), path: wt });
+    }
+    return wts.length;
+  };
 
   // The background item, when it runs this data folder; another Ducter's stays.
   const defaultDir = join(home, ".ducter");
@@ -278,18 +302,34 @@ export function planUninstall(i: PlanInput): Plan {
       if (!dataDirIsOurs(i.dataDir, home)) {
         warnings.push({ id: "unsafe-data-dir", detail: t("uninstall.warn.unsafe", { dir: i.dataDir }), path: i.dataDir });
       } else {
-        const wtRoot = join(i.dataDir, "worktrees");
-        let wts: string[] = [];
+        const n = countWorktrees(join(i.dataDir, "worktrees"));
+        remove.push({ path: i.dataDir, what: t("uninstall.item.data", { n }), kind: "data", bytes: sizeOf(i.dataDir) });
+      }
+    }
+    // D204: the Ducter folder: its worktrees go; the projects Ducter cloned are the user's and stay
+    // (said in the listing); the folder itself goes only when nothing but Ducter's is in it.
+    const folder = ducterFolder({ home, dataDir: i.dataDir, ...(i.env ? { env: i.env } : {}) }).path;
+    if (exists(join(folder, FOLDER_MARKER))) {
+      const projects = join(folder, "projects");
+      let mine: string[] = [];
+      try {
+        mine = readdirSync(projects).filter((n) => !n.startsWith("."));
+      } catch {}
+      const others = (() => {
         try {
-          wts = ducterWorktrees(wtRoot);
-        } catch {}
-        for (const wt of wts) {
-          const repo = worktreeRepo(wt);
-          if (repo && !repos.includes(repo)) repos.push(repo);
-          const st = git(wt, ["status", "--porcelain"]);
-          if (st && st.trim()) warnings.push({ id: "unsaved-worktree", detail: t("uninstall.warn.unsaved", { name: basename(wt), repo: repo ?? "?" }), path: wt });
+          return readdirSync(folder).filter((n) => n !== FOLDER_MARKER && n !== "worktrees" && n !== "projects" && n !== ".DS_Store");
+        } catch {
+          return [];
         }
-        remove.push({ path: i.dataDir, what: t("uninstall.item.data", { n: wts.length }), kind: "data", bytes: sizeOf(i.dataDir) });
+      })();
+      const insideData = folder.startsWith(resolve(i.dataDir) + "/");
+      const wtRoot = join(folder, "worktrees");
+      const n = exists(wtRoot) ? countWorktrees(wtRoot) : 0;
+      if (!mine.length && !others.length && !insideData) remove.push({ path: folder, what: t("uninstall.item.folder", { n }), kind: "folder", bytes: sizeOf(folder) });
+      else if (exists(wtRoot) && !insideData) remove.push({ path: wtRoot, what: t("uninstall.item.worktrees", { n }), kind: "worktree", bytes: sizeOf(wtRoot) });
+      if (mine.length) {
+        spare.push(projects);
+        keep.push({ what: t("uninstall.keep.projects", { n: mine.length }), detail: t("uninstall.keep.projects.detail", { dir: projects }) });
       }
     }
     const link = join(home, ".local", "bin", "ducter");
@@ -346,7 +386,15 @@ export function planUninstall(i: PlanInput): Plan {
     { what: "cua-driver", detail: t("uninstall.keep.cua.detail") },
   );
   if (i.platform === "darwin" && ownsGlobal) keep.push({ what: "Ducter.app", detail: t(i.fromApp ? "uninstall.keep.app.fromApp" : "uninstall.keep.app") });
-  return { remove, keep, warnings, repos };
+  return { remove, keep, warnings, repos, ...(spare.length ? { spare } : {}) };
+}
+
+/** D204: `p` removed, except whatever lies on the way to a spared path (that stays whole). */
+function rmExcept(p: string, spare: string[]) {
+  const on = spare.filter((s) => s.startsWith(p + "/"));
+  if (spare.includes(p)) return;
+  if (!on.length) return rmSync(p, { recursive: true, force: true });
+  for (const n of readdirSync(p)) rmExcept(join(p, n), on);
 }
 
 export interface Runner {
@@ -370,7 +418,7 @@ export async function executeUninstall(plan: Plan, o: { runner: Runner; port: nu
   const res: Result = { removed: [], failed: [], warnings: [...plan.warnings] };
   const rm = (p: string) => {
     try {
-      rmSync(p, { recursive: true, force: true });
+      rmExcept(p, plan.spare ?? []);
       res.removed.push(p);
     } catch (e) {
       res.failed.push({ path: p, error: e instanceof Error ? e.message : String(e) });

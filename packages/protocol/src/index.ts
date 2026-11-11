@@ -769,6 +769,10 @@ export type ClientFrame =
   // that computer (absent or "local": the home's own; else a worker, read there). Answered with
   // folder_browse_result. Only under that computer's home folder; folders only, never files.
   | { t: "folder_browse"; device?: string; path?: string; clientId?: string }
+  // D204: 从 Git 地址加… / Add from a Git address…: that computer (absent or "local": the home;
+  // else a worker) clones `address` into its Ducter folder (<folder>/projects/<repo>) with its own
+  // git sign-in, then adds it as a project. Answered with project_clone_result (it can take minutes).
+  | { t: "project_clone"; address: string; device?: string; clientId?: string }
   // open_task: show this task in the apps (`ducter open <task>`): pushed to every connected app
   // as an open_task frame; the sender gets open_result with how many apps were told.
   | { t: "open_task"; taskId: string }
@@ -848,8 +852,23 @@ export interface PlaceChoice {
   added?: boolean; // D186: a project the user added by hand (listed even with no task yet)
   computer?: string; // D197: the computer it is on, only when the places span more than one
   remote?: string; // D202: a repo's origin URL, normalized (host/owner/repo), so its copy on another computer is found
-  found?: true; // D203: a repo that computer reported (no task there yet, not added); its branches come when it is asked for as `place`
+  found?: true; // D203, D204: a project in that computer's Ducter folder (no task there yet, not added); its branches come when it is asked for as `place`
 }
+
+/**
+ * D204: a computer's Ducter folder as the New task card says it: where projects cloned there go
+ * (`path`, absolute, the real one: ~/ducter, or the fallback when ~/ducter is someone else's), or
+ * `old`: that worker runs a Ducter too old to list, look through or clone there (update it).
+ * device: "local" for the home, else the worker's id. A worker away is left out.
+ */
+export interface DucterFolderView {
+  device: string;
+  path?: string;
+  old?: true;
+}
+
+/** D204: why a clone didn't happen, in a word the clients put in their own language. */
+export type CloneReason = "invalid" | "not_found" | "no_access" | "network" | "timeout" | "offline" | "old" | "failed";
 
 /**
  * D202: one model an AI agent offers on one computer, as the New task card lists it: its own
@@ -914,13 +933,16 @@ export type ServerFrame =
   // after each welcome, null when the turn ends. Never logged: it is presence, not history.
   | { t: "activity"; activity: PartnerActivity | null }
   // D128: New task. card: the task as On hand will show it; message: a reason in words (English).
-  | { t: "task_new_options"; places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[] }
+  | { t: "task_new_options"; places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[]; ducterFolders?: DucterFolderView[] }
   | { t: "close_result"; device: string; ok: boolean; none?: boolean; decisionId?: string; message?: string }
   | { t: "task_new_result"; ok: boolean; clientId?: string; taskId?: string; card?: TaskCard; routineId?: string; routine?: RoutineView; reason?: NewTaskReason; message?: string }
-  | { t: "project_add_result"; ok: boolean; clientId?: string; place?: PlaceChoice; reason?: "not_found" | "offline" | "failed"; message?: string }
+  | { t: "project_add_result"; ok: boolean; clientId?: string; place?: PlaceChoice; reason?: "not_found" | "offline" | "old" | "failed"; message?: string }
+  // D204: the clone asked for: the project it made (or the one already there with that origin:
+  // existed), as the card's place; or why not.
+  | { t: "project_clone_result"; ok: boolean; clientId?: string; device?: string; place?: PlaceChoice; existed?: true; reason?: CloneReason; message?: string }
   // D203: path is the folder listed (real, absolute), home that computer's home folder, parent the
   // folder above (absent at home); folders repos first (at most 200; more: there were more).
-  | { t: "folder_browse_result"; ok: boolean; clientId?: string; device?: string; path?: string; home?: string; parent?: string; folders?: BrowseFolder[]; more?: true; reason?: "outside" | "not_found" | "offline" | "failed"; message?: string }
+  | { t: "folder_browse_result"; ok: boolean; clientId?: string; device?: string; path?: string; home?: string; parent?: string; folders?: BrowseFolder[]; more?: true; reason?: "outside" | "not_found" | "offline" | "old" | "failed"; message?: string }
   // Show this task (the app opens it, Esc returns). open_result answers the sender: apps = how many apps were told.
   | { t: "open_task"; taskId: string }
   | { t: "open_result"; taskId: string; ok: boolean; apps: number; message?: string }

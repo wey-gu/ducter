@@ -43,7 +43,7 @@ func SupportDir(bundleID string) string {
 type UninstallItem struct {
 	Path  string `json:"path"`
 	What  string `json:"what"`            // in the person's language
-	Kind  string `json:"kind"`            // agent | service | data | link | appdata
+	Kind  string `json:"kind"`            // agent | service | data | worktree | folder | link | appdata | rc | caddy
 	Bytes int64  `json:"bytes,omitempty"` // its size, when known
 }
 

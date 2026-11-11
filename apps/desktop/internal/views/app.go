@@ -669,12 +669,9 @@ func (a *App) readWhenSeen(c *ui.Context) {
 func (a *App) Welcomed() {
 	a.Failed = false
 	a.readSent = 0
-	// The app opens before the Ducter it starts writes firstrun.json:
-	// read the hints again once it answers.
-	if a.Backend != nil && a.Local != nil && a.Local.Hints == nil && a.Local.Dir != "" {
-		a.Local.Reload()
-	}
 	a.Status = client.Connected // a welcome means the socket is up
+	// D204: a clone in flight asks again on the new socket (the same clone, by its id).
+	a.resendClone()
 	// What the old socket left unanswered: messages go again (deduped by
 	// the server), actions are settled from the Log after the replay.
 	if len(a.actSent) > 0 {

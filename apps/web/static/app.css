@@ -3757,6 +3757,17 @@ ol.tries b {
   background: var(--surface);
   box-shadow: 0 -1px 0 var(--line-soft);
 }
+/* D204: Add from a Git address…: the address field in the list, and the cloning line with its spinner. */
+.nt-clone > .nt-field {
+  margin: 4px 6px 0;
+  font-family: var(--mono);
+  font-size: var(--sm);
+}
+.nt-cloning {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
 /* D202: under the chosen agent, its Model and Effort rows: short rows of chips that wrap. */
 .nt-agent {
   display: flex;

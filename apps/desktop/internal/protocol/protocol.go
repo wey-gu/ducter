@@ -1383,11 +1383,16 @@ type ServerFrame struct {
 	// D128 New task. task_new_options: Places and Candidates; task_new_result:
 	// OK, ClientID, TaskID, Card, Reason, Message; open_task: TaskID (show it);
 	// open_result: TaskID, OK, Apps.
-	Places   []PlaceChoice `json:"places,omitempty"`
-	Models   []AgentModels `json:"models,omitempty"` // D202: each agent's models, for the card
-	ClientID string        `json:"clientId,omitempty"`
-	Card     *TaskCard     `json:"card,omitempty"`
-	Apps     int           `json:"apps,omitempty"`
+	Places []PlaceChoice `json:"places,omitempty"`
+	Models []AgentModels `json:"models,omitempty"` // D202: each agent's models, for the card
+	// D204: each computer's Ducter folder (where a clone there goes) or that
+	// it is too old to say (task_new_options).
+	DucterFolders []DucterFolderView `json:"ducterFolders,omitempty"`
+	// D204: project_clone_result: the project was already there (same origin).
+	Existed  bool      `json:"existed,omitempty"`
+	ClientID string    `json:"clientId,omitempty"`
+	Card     *TaskCard `json:"card,omitempty"`
+	Apps     int       `json:"apps,omitempty"`
 	// D185: task_new_result for a start later or on a schedule: the
 	// routine it made (no TaskID). D186: project_add_result: the Place
 	// the card then offers.
@@ -1625,7 +1630,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
-		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "folder_browse_result",
+		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "browser_sites", "browser_check", "connection_reads", "saved",
 		"connection_signin", "phone_voice_result":
 	default:
@@ -1723,6 +1728,26 @@ type NewTaskWhen struct {
 	Days      []int  `json:"days,omitempty"`
 	Hours     int    `json:"hours,omitempty"`
 	Condition string `json:"condition,omitempty"`
+}
+
+// DucterFolderView is a computer's Ducter folder as the New task card
+// says it (D204): Device "local" (the home) or a worker's id; Path the
+// real folder (~/ducter, or the fallback); Old: that worker's Ducter is
+// too old to list, look through or clone there.
+type DucterFolderView struct {
+	Device string `json:"device"`
+	Path   string `json:"path,omitempty"`
+	Old    bool   `json:"old,omitempty"`
+}
+
+// ProjectClone clones a Git address on that computer into its Ducter
+// folder and adds it as a project (D204, 从 Git 地址加…): Device "" is
+// the home's own. Answered with project_clone_result.
+type ProjectClone struct {
+	T        string `json:"t"` // "project_clone"
+	Address  string `json:"address"`
+	Device   string `json:"device,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
 }
 
 // ProjectAdd adds a folder on the home's computer as a project (D186);

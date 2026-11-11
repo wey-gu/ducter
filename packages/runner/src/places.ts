@@ -1,6 +1,7 @@
 // Environment port (system.md): resolve a task's Place into a working directory.
-//   repo   -> git worktree at <dataDir>/worktrees/<repo>/<slug> on branch ducter/<slug> (D198;
-//             tasks from before it keep <dataDir>/worktrees/<taskId>, their stored path)
+//   repo   -> git worktree at <Ducter folder>/worktrees/<repo>/<slug> on branch ducter/<slug>
+//             (D204, the visible ~/ducter: protocol/src/ducter-folder.ts; D198's naming). Tasks
+//             from before keep their stored path (<dataDir>/worktrees/<repo>/<slug> or <taskId>)
 //   folder -> the folder as given
 //   none   -> scratch dir <dataDir>/scratch/<taskId>
 //   browser-> scratch dir too; the browser is a cua-driver MCP sidecar (browser.ts)
@@ -9,6 +10,7 @@ import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import type { Place } from "@ducter/protocol";
 import { gitEnv } from "@ducter/protocol/src/tool-env.ts";
+import { ducterFolder, markDucterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 
 export function expandHome(p: string): string {
   if (p === "~") return homedir();
@@ -61,6 +63,8 @@ export interface ResolvedPlace {
   cwd: string;
   /** D157: a task moved here from another computer: its branch comes from origin. */
   fetch?: boolean;
+  /** D204: the Ducter folder the new worktree goes in (made and marked when it is provisioned). */
+  folder?: string;
 }
 
 /** Decide paths and names without touching the disk (used for task_open). */
@@ -86,13 +90,14 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
         const taken = await git(repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]);
         if (taken.ok) branch = `${branch}-${taskId}`;
       }
-      const worktree = worktreeFor(dataDir, repoPath, branch);
+      const folder = ducterFolder({ dataDir }).path;
+      const worktree = worktreeFor(dataDir, repoPath, branch, folder);
       let baseBranch = p.baseBranch;
       if (!baseBranch && existsSync(repoPath)) {
         const head = await git(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"]);
         baseBranch = head.ok && head.out !== "HEAD" ? head.out : undefined;
       }
-      return { place: { ...p, repoPath, worktree, branch, baseBranch, ...hasRemote }, cwd: worktree };
+      return { place: { ...p, repoPath, worktree, branch, baseBranch, ...hasRemote }, cwd: worktree, folder };
     }
     case "browser":
       // The browser itself is a sidecar (browser.ts); the task also gets a scratch dir.
@@ -124,13 +129,13 @@ function taken(dir: string, name: string): boolean {
 }
 
 /**
- * D198: a new task's worktree is <dataDir>/worktrees/<repo name>/<branch slug>, so an editor's
- * recent list or Finder says which task it is. The slug is the branch's part after `ducter/`;
- * a path already there (on disk or planned) gets `-2`, `-3`. Still under <dataDir>/worktrees,
- * where archiveWorktree removes only what Ducter made.
+ * D198, D204: a new task's worktree is <Ducter folder>/worktrees/<repo name>/<branch slug>, so an
+ * editor's recent list or Finder says which task it is. The slug is the branch's part after
+ * `ducter/`; a path already there (on disk or planned) gets `-2`, `-3`. archiveWorktree removes
+ * only what Ducter made (worktreesRootOf). `folder` defaults to this computer's Ducter folder.
  */
-export function worktreeFor(dataDir: string, repoPath: string, branch: string): string {
-  const dir = join(dataDir, "worktrees", segment(basename(repoPath)));
+export function worktreeFor(dataDir: string, repoPath: string, branch: string, folder = ducterFolder({ dataDir }).path): string {
+  const dir = join(folder, "worktrees", segment(basename(repoPath)));
   const base = segment(branch.replace(/^ducter\//, ""));
   let name = base;
   for (let n = 2; taken(dir, name); n++) name = `${base}-${n}`;
@@ -167,6 +172,7 @@ export async function provisionPlace(r: ResolvedPlace): Promise<void> {
     if (existsSync(r.cwd)) return; // explicit or already-created worktree
     const top = await git(p.repoPath, ["rev-parse", "--show-toplevel"]);
     if (!top.ok) throw new Error(`not a git repository: ${p.repoPath}`);
+    if (r.folder && r.cwd.startsWith(r.folder + "/")) markDucterFolder(r.folder);
     mkdirSync(join(r.cwd, ".."), { recursive: true });
     // D157: moved here from another computer: the pushed branch is the work (E3).
     if (r.fetch && p.branch) {

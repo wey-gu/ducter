@@ -152,8 +152,12 @@ export function NewTaskSheet() {
   const all = only ? places.filter((p) => p.place.kind !== "none" && A.placeComputer(p.place) === only) : places;
   const room = Math.max(0, 12 - all.filter((p) => !p.found && p.place.kind !== "none").length);
   const shown = only ? all : all.filter((p) => !p.found || placeKey(p.place) === placeKey(chosen.place) || (room > 0 && all.filter((x) => x.found).indexOf(p) < room));
+  // D204: the computers that can look and clone there; an older one says it needs an update instead.
   const finders = only ? A.ntBrowsable().filter((d) => d.id === only) : A.ntBrowsable();
+  const olds = only ? A.ntBrowsable(true).filter((d) => d.id === only) : A.ntBrowsable(true);
+  const named = finders.length + olds.length > 1 || !!only || manyComputers();
   const onlyName = only ? (computerOf(only)?.name ?? "") : "";
+  const folders = shown.filter((p) => p.place.kind !== "none");
   const awayLine = (c: Candidate) => {
     if (chosen.place.kind === "none") return candReason({ ...c, blocked: undefined });
     const name = c.deviceName ?? computerOf(c.device ?? "")?.name ?? "";
@@ -224,26 +228,45 @@ export function NewTaskSheet() {
         {nt.list === "place" && (
           <div class="nt-list" role="radiogroup" aria-label={t("newtask.where")}>
             <small>{only ? t("newtask.agent.needsfolder", onlyName) : t("newtask.where")}</small>
-            {shown.map((p) => (
+            {folders.map((p) => (
               <MenuRow key={placeKey(p.place)} label={placeName(p) ?? ""} on={placeKey(p.place) === placeKey(chosen.place)} onClick={() => A.pickPlace(p)}>
-                <Folder faint={p.place.kind === "none"} />
+                <Folder />
                 <span class="mr-t">
                   <b>{placeName(p)}</b>
                   {placeLine(p) && <code>{placeLine(p)}</code>}
                 </span>
               </MenuRow>
             ))}
-            {only && !shown.length && <div class="nt-empty small sub">{t("newtask.find.empty", onlyName)}</div>}
+            {/* D203, D204: nothing there yet (a first run): say so, and offer the ways to get one, never No folder alone. */}
+            {!folders.length && <div class="nt-empty small sub">{only ? t("newtask.find.empty", onlyName) : t("newtask.empty")}</div>}
             {finders.map((d) => (
-              <MenuRow key={`find:${d.id}`} label={finders.length > 1 || only ? `${t("newtask.find")} · ${d.name}` : t("newtask.find")} on={false} onClick={() => A.ntBrowse(d.id)}>
+              <MenuRow key={`find:${d.id}`} label={named ? `${t("newtask.find")} · ${d.name}` : t("newtask.find")} on={false} onClick={() => A.ntBrowse(d.id)}>
                 <Plus />
                 <span class="mr-t">
                   <b>{t("newtask.find")}</b>
-                  {(finders.length > 1 || manyComputers()) && <small>{t("newtask.find.on", d.name)}</small>}
+                  {named && <small>{t("newtask.find.on", d.name)}</small>}
                 </span>
               </MenuRow>
             ))}
-            {only && (
+            {finders.map((d) => (
+              <MenuRow key={`clone:${d.id}`} label={named ? `${t("newtask.clone")} · ${d.name}` : t("newtask.clone")} on={false} onClick={() => A.ntCloneOpen(d.id)}>
+                <Plus />
+                <span class="mr-t">
+                  <b>{t("newtask.clone")}</b>
+                  {named && <small>{t("newtask.find.on", d.name)}</small>}
+                </span>
+              </MenuRow>
+            ))}
+            {olds.map((d) => (
+              <MenuRow key={`old:${d.id}`} label={t("newtask.old.row", d.name)} on={false} off why={t("newtask.old.why")} onClick={() => {}}>
+                <Plus />
+                <span class="mr-t">
+                  <b>{t("newtask.old.row", d.name)}</b>
+                  <small>{t("newtask.old.why")}</small>
+                </span>
+              </MenuRow>
+            ))}
+            {only ? (
               <MenuRow key="none" label={`${t("newtask.nowhere")} · ${onlyName}`} on={false} onClick={() => A.pickPlace({ place: { kind: "none" }, name: "" })}>
                 <Folder faint />
                 <span class="mr-t">
@@ -251,10 +274,18 @@ export function NewTaskSheet() {
                   <small>{t("newtask.agent.elsewhere", onlyName)}</small>
                 </span>
               </MenuRow>
+            ) : (
+              <MenuRow key="none" label={t("newtask.nowhere")} on={chosen.place.kind === "none"} onClick={() => A.pickPlace({ place: { kind: "none" }, name: "" })}>
+                <Folder faint />
+                <span class="mr-t">
+                  <b>{t("newtask.nowhere")}</b>
+                </span>
+              </MenuRow>
             )}
           </div>
         )}
         {nt.list === "browse" && nt.browse && <FolderBrowser />}
+        {nt.list === "clone" && nt.clone && <CloneField />}
         {nt.branchOpen && chosen.branches && (
           <div class="nt-list" role="radiogroup" aria-label={t("newtask.branch.title")}>
             <small>{t("newtask.branch.title")}</small>
@@ -387,7 +418,7 @@ function FolderBrowser() {
   const name = A.ntBrowseName();
   const home = r?.home ?? "";
   const shownPath = (p: string) => (home && (p === home || p.startsWith(home + "/")) ? "~" + p.slice(home.length) : tilde(p));
-  const err = r && !r.ok ? (r.reason === "offline" ? t("newtask.find.offline", name) : r.reason === "outside" ? t("newtask.find.outside") : r.reason === "not_found" ? t("newtask.find.missing") : r.message || t("newtask.err.unknown")) : "";
+  const err = r && !r.ok ? (r.reason === "offline" ? t("newtask.find.offline", name) : r.reason === "old" ? t("newtask.old", name) : r.reason === "outside" ? t("newtask.find.outside") : r.reason === "not_found" ? t("newtask.find.missing") : r.message || t("newtask.err.unknown")) : "";
   const atHome = !!r?.ok && r.path === home;
   return (
     <div class="nt-list nt-browse" role="group" aria-label={t("newtask.find.title", name)}>
@@ -419,6 +450,57 @@ function FolderBrowser() {
       <div class="nt-browse-foot">
         <Btn kind="text" size="sm" label={t("newtask.find.back")} onClick={() => A.ntBrowseBack()} />
         <Btn kind="primary" size="sm" label={nt.adding ? t("newtask.find.adding") : t("newtask.find.use")} disabled={!r?.ok || atHome || !!nt.adding} onClick={() => A.ntBrowseUse()} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * D204: 从 Git 地址加… / Add from a Git address…: the address, where it goes on that computer (its
+ * Ducter folder's real path) and with whose git; 克隆 / Clone; while it clones, 在克隆…; a failure
+ * in one line. Done, it is the card's place.
+ */
+function CloneField() {
+  const k = A.nt.clone!;
+  const name = A.ntComputerName(k.device);
+  const folder = A.ntFolder(k.device)?.path;
+  const into = folder ? tilde(folder.replace(/\/+$/, "") + "/projects") : "~/ducter/projects";
+  const busy = !!k.cid;
+  return (
+    <div class="nt-list nt-browse nt-clone" role="group" aria-label={t("newtask.clone.title", name)}>
+      <div class="nt-browse-head">
+        <small>{t("newtask.clone.title", name)}</small>
+      </div>
+      <input
+        class="nt-field"
+        type="url"
+        inputMode="url"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck={false}
+        aria-label={t("newtask.clone.title", name)}
+        placeholder={t("newtask.clone.placeholder")}
+        value={k.address}
+        disabled={busy}
+        ref={(el) => void (el && !busy && !k.address && !coarse() && el.focus())}
+        onInput={(e) => A.ntCloneInput((e.target as HTMLInputElement).value)}
+        onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && (e.preventDefault(), A.ntCloneGo())}
+      />
+      <div class="nt-empty small sub">{t("newtask.clone.where", into, name)}</div>
+      {busy && (
+        <div class="nt-empty small sub nt-cloning" role="status">
+          <span class="spin" aria-hidden="true" />
+          {t("newtask.clone.busy")}
+        </div>
+      )}
+      {k.err && (
+        <div class="nt-empty nt-err-line small" role="status">
+          {k.err}
+        </div>
+      )}
+      <div class="nt-browse-foot">
+        <Btn kind="text" size="sm" label={t("newtask.find.back")} disabled={busy} onClick={() => A.ntBrowseBack()} />
+        <Btn kind="primary" size="sm" label={busy ? t("newtask.clone.going") : t("newtask.clone.go")} disabled={busy || !k.address.trim()} onClick={() => A.ntCloneGo()} />
       </div>
     </div>
   );

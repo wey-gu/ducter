@@ -26,7 +26,8 @@
 | a level taking the whole screen on a wide screen (D184) | the header's button, arrows out **铺满 / Full screen**, arrows in **放回对话旁边 / Back beside the conversation** (its label and tooltip; the button shows only the arrows) | Wide, On hand or an opened task stands beside the conversation by default; this takes it to the whole screen as the Mac shows it, and back. ⌘2 does the same for On hand |
 | attention states | 等你 / Needs you · 在做 / Working · 在等 / Waiting · 做完了 / Done · 没成 / Didn't work · 放下了 / Dropped | `done?` shows as "做完了 · 在检查 / Done · checking" only while a check runs, else as Done (D68); `queued` shows as "还没开始 / Not started yet" |
 | decision actions | **好 / Go** · **先等等 / Hold** · **回复… / Reply…** · **看细节 / Details** | The Go button may name the action: en says the action alone in sentence case ("Rebase"), zh keeps 好 in front ("好，rebase") (D73). An ask's small heading is the asking task's title; the count is said once, "2 件等你 / 2 need you" |
-| Project | **项目 / Project**; no project = **其他 / Other**; making one (D186): **加一个文件夹 / Add a folder** (the picker: **选一个文件夹，它会成为一个项目 / Choose a folder; it becomes a project**, **加进来 / Add**; not there: **那儿没有这个文件夹。/ There's no folder there.**; for a home elsewhere when this Mac doesn't do tasks for it (D197), greyed with **在设置 › 住在哪儿打开「让这台 Mac 也替 {home} 做事」，就能加这台 Mac 上的文件夹。/ To add a folder on this Mac, turn on "Let this Mac do tasks for {home}" in Settings › Where it lives.**; places on two computers end their path line in **· {computer}**; on any computer of the home, from the phone too (D203): **找一个文件夹… / Find a folder…** (**在 {computer} 上 / on {computer}**), its browser **{computer} 上的文件夹 / Folders on {computer}** · **上一层 / Up one level** · **用这个文件夹 / Use this folder** · **返回 / Back** · **这里面没有文件夹。/ No folders in here.** · **只列出了前 {n} 个。/ Showing the first {n}.** · **只能选主文件夹（~）里面的。/ Only folders inside the home folder (~).** · **这个文件夹不在了。/ That folder isn't there anymore.** · **{computer} 现在连不上。/ Can't reach {computer} right now.** · **在加… / Adding…**; a computer with none listed yet **还没有 {computer} 上的文件夹。/ No folders on {computer} yet.**); an added one with nothing yet: **还没有事。/ Nothing here yet.** | An editable grouping label; its everyday form is one folder you work in, named after it (D186) |
+| Project | **项目 / Project**; no project = **其他 / Other**; making one (D186): **加一个文件夹 / Add a folder** (the picker: **选一个文件夹，它会成为一个项目 / Choose a folder; it becomes a project**, **加进来 / Add**; not there: **那儿没有这个文件夹。/ There's no folder there.**; for a home elsewhere when this Mac doesn't do tasks for it (D197), greyed with **在设置 › 住在哪儿打开「让这台 Mac 也替 {home} 做事」，就能加这台 Mac 上的文件夹。/ To add a folder on this Mac, turn on "Let this Mac do tasks for {home}" in Settings › Where it lives.**; places on two computers end their path line in **· {computer}**; on any computer of the home, from the phone too (D203): **找一个文件夹… / Find a folder…** (**在 {computer} 上 / on {computer}**), its browser **{computer} 上的文件夹 / Folders on {computer}** · **上一层 / Up one level** · **用这个文件夹 / Use this folder** · **返回 / Back** · **这里面没有文件夹。/ No folders in here.** · **只列出了前 {n} 个。/ Showing the first {n}.** · **只能选主文件夹（~）里面的。/ Only folders inside the home folder (~).** · **这个文件夹不在了。/ That folder isn't there anymore.** · **{computer} 现在连不上。/ Can't reach {computer} right now.** · **在加… / Adding…**; a computer with none listed yet **还没有 {computer} 上的文件夹。/ No folders on {computer} yet.**; none anywhere **还没有文件夹。/ No folders yet.**; D204: **从 Git 地址加… / Add from a Git address…**, its field **从 Git 地址加到 {computer} / Add from a Git address on {computer}** · **https://…、git@…:主人/仓库，或 主人/仓库 / https://…, git@…:owner/repo, or owner/repo** · **会放在 {path}，用 {computer} 自己的 git 登录克隆。/ It goes in {path}, cloned with {computer}'s own git sign-in.** · **克隆 / Clone** · **在克隆… / Cloning…** · **在克隆…大的仓库要几分钟。/ Cloning… A big repository takes a few minutes.**; its failures **这不像 Git 地址。试试 https://…、git@…:主人/仓库 或 主人/仓库。/ That doesn't look like a Git address. Try https://…, git@…:owner/repo or owner/repo.** · **找不到这个仓库，或者 {computer} 没有它的权限。/ That repository wasn't found, or {computer} has no access to it.** · **{computer} 没有这个仓库的权限：先在 {computer} 上登录 git，再试一次。/ {computer} has no access to it: sign in to git on {computer}, then try again.** · **{computer} 连不上那个地址。/ {computer} can't reach that address.** · **克隆超过 10 分钟，停下了。/ Cloning took over 10 minutes and was stopped.** · **没能克隆：{why} / Couldn't clone it: {why}**; a computer too old for it **{computer} 上的 Ducter 需要更新 / Ducter on {computer} needs an update** · **到「设备」里更新它，就能在那儿找文件夹、从 Git 地址加。/ Update it in Devices to find folders or add from a Git address there.** · **{computer} 上的 Ducter 需要更新，才能这样做。/ Ducter on {computer} needs an update for this.**); an added one with nothing yet: **还没有事。/ Nothing here yet.** | An editable grouping label; its everyday form is one folder you work in, named after it (D186) |
+| Ducter folder | **Ducter 文件夹 / Ducter folder** (D204): `~/ducter` on each computer, shown as its real path (`~/ducter-work` when a `~/ducter` is someone else's); `projects/` the projects Ducter cloned, `worktrees/` the tasks' working copies; uninstall: **Ducter 文件夹里 {n} 个任务的工作副本 / the working copies of {n} tasks in the Ducter folder**, **Ducter 替你克隆的 {n} 个项目 / The {n} projects Ducter cloned for you** with **{path}，是你的：卸载从不删它们 / {path}, yours: uninstall never removes them** | One visible folder per computer for what Ducter makes there; never scanned for, never someone else's |
 | Place | **在哪儿做 / Where** | Where a task works |
 | Device (machine, runner) | **设备 / Devices** | |
 | harness (Claude Code, Codex, pi, DeepSeek Harness, …) | each by its own product name; as a category **AI agent / AI agent** (D88) | The AI tools Ducter hands work to. Not "coding agent": people use them for much more than code |
@@ -201,8 +202,10 @@ Every task shows two editable things on its card and header.
   Mac does tasks for it; it becomes a project with the folder's name, shown on On hand
   By project before any task, and every task in that folder belongs to it. From any client,
   phone included (D203), **找一个文件夹… / Find a folder…** looks through any computer of the
-  home one folder at a time and adds the one used there; and every computer's own repos are
-  already listed on New task, after the folders tasks used.
+  home one folder at a time and adds the one used there, and (D204) **从 Git 地址加… / Add from
+  a Git address…** clones a repo onto any computer into its **Ducter 文件夹 / Ducter folder**;
+  the projects there are listed on New task, after the folders tasks used. Nothing guesses where
+  people keep code.
 
 **Controllable always:**
 - **Projects:** rename one inline (every task carrying it follows), move a task to another
@@ -222,14 +225,20 @@ Every task shows two editable things on its card and header.
 
 **Repos and worktrees**
 
-*Discovery and cloning*
-- A runner discovers the checkouts on its device.
-- A repo can be cloned onto another device using that device's own git login. Ducter asks
-  once per repo.
+*The Ducter folder, and cloning (D204)*
+- Each computer has one visible **Ducter 文件夹 / Ducter folder**, `~/ducter` (the real path is
+  always the one shown: `~/ducter-work` when a `~/ducter` is someone else's; `DUCTER_FOLDER` sets
+  another): `projects/` holds the projects Ducter cloned there (the user's own; uninstall never
+  removes them), `worktrees/` the tasks' working copies. Ducter never scans the disk for repos:
+  a computer's projects are the folders tasks used, the ones the user added, and those in its
+  `projects/`.
+- A repo is cloned onto a computer with **从 Git 地址加… / Add from a Git address…**, by that
+  computer, with its own git sign-in.
 
 *Worktrees*
 - A task whose brief says it will **write** gets a worktree **at start**, at
-  `~/.ducter/worktrees/<repo>/<slug>`, named like its branch `ducter/<slug>` (D198), so Finder
+  `~/ducter/worktrees/<repo>/<slug>` in the Ducter folder (D204; tasks from before keep
+  `~/.ducter/worktrees/…`), named like its branch `ducter/<slug>` (D198), so Finder
   and an editor's recent list say which task it is. The slug is the title's own words in their
   own script (D201: `修复登录页的闪退`, `fix-the-flaky-test`). On the Mac, the opened task shows the path
   and **打开 / Open** takes the user there by hand.

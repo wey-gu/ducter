@@ -44,7 +44,8 @@ func newWelcome(t *testing.T, lang i18n.Lang, dir string, reduce bool) *harness 
 func hintsDir(t *testing.T, body string) string {
 	dir := t.TempDir()
 	if body != "" {
-		if err := os.WriteFile(filepath.Join(dir, hints.HintsFile), []byte(body), 0o644); err != nil {
+		// D204: the old first-run hints file; nothing reads it any more (it must not matter).
+		if err := os.WriteFile(filepath.Join(dir, "firstrun.json"), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}

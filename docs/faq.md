@@ -72,8 +72,9 @@ write to it directly while it works.
 ### Can I edit a task's code myself?
 
 Yes. Each coding task works in its own copy of your project, a folder named after the project and
-its branch, in the words you used for the task (such as `~/.ducter/worktrees/hawdb/fix-flaky-test`,
+its branch, in the words you used for the task (such as `~/ducter/worktrees/hawdb/fix-flaky-test`,
 or `…/hawdb/修复登录页` for a task written in Chinese); the opened task on the Mac shows the path.
+Tasks started before this version keep theirs in `~/.ducter/worktrees`.
 On the Mac, **Open** at the task's top right shows it in Finder, opens it in Cursor, Visual
 Studio Code or Zed, or opens it in Terminal, iTerm2, Ghostty or Warp, whichever you have, the one
 you used last first. It shows when that copy is on the Mac you're using.
@@ -109,12 +110,32 @@ this works once your Mac does tasks for it (Settings › Where it lives › **Le
 for …**): the folder stays on your Mac and tasks there run on your Mac. When your folders are on
 more than one computer, the list says which computer each one is on.
 
-The folder list also shows the repositories already on each of your computers (the ones you
-touched most recently), so you rarely need to add one. For any other folder, choose **Find a
-folder…** at the bottom of the list, on your phone or in the browser too: it shows that
-computer's folders one level at a time, starting from its home folder (repositories first); go
-in, then **Use this folder**. It becomes a project there, like **Add a folder**. Only folders
-inside that computer's home folder are shown, never the files in them.
+Ducter doesn't go looking for your code: the list shows the folders you used and added, and the
+projects in each computer's Ducter folder (`~/ducter/projects`). To bring in a folder you already
+have, choose **Find a folder…** at the bottom of the list, on your phone or in the browser too: it
+shows that computer's folders one level at a time, starting from its home folder (repositories
+first); go in, then **Use this folder**. It becomes a project there, like **Add a folder**. Only
+folders inside that computer's home folder are shown, never the files in them.
+
+### Can I start from a repository I don't have yet?
+
+Yes. In the folder list choose **Add from a Git address…** on the computer you want it on, from
+your phone too, and paste its address: `https://github.com/owner/repo`, `git@github.com:owner/repo`
+or just `owner/repo` for GitHub. That computer clones it into `~/ducter/projects`, using its own
+git sign-in (so a private repository works where you're signed in to git), and the card starts
+there. It shows **Cloning…** while it works (a big repository takes a few minutes, at most ten),
+and says plainly if the repository isn't there, that computer has no access to it, or it can't
+reach the address. If the same repository is already in `~/ducter/projects`, it simply uses it.
+
+If a computer says **Ducter on … needs an update**, update it in Devices first: an older Ducter
+can't look through folders or clone there.
+
+### What does uninstalling remove?
+
+`ducter uninstall --all` (or **Remove everything** in the Mac app) removes Ducter's data and the
+tasks' working copies, in `~/ducter/worktrees` and in `~/.ducter`. It never removes
+`~/ducter/projects`: the projects Ducter cloned are yours, and the list it shows before removing
+anything says so.
 
 ### Does it remember me?
 

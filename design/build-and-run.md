@@ -114,8 +114,12 @@ Send it any way you like (AirDrop, a zip, a USB stick).
 | ~2:00 | The task comes back done (46–52 s after sending, for "fix the failing tests" in a small repo). The first time ever, a single line with the clay character: "Your first task is done. Everything I finish comes back to you like this, with proof." Then the partner's own short result with evidence (about a minute), and Merge / Draft PR / See changes |
 
 To start over as a brand-new user, `ducter uninstall --all` (or use a fresh `--data-dir`). Ducter's files there: `ducter.db` (the Log), `ducter.log` (its own log lines),
-`persona.json` (the name they chose), `firstrun.json` (recent repo names, for New task),
-`desktop.json` (whether the first result was celebrated).
+`persona.json` (the name they chose), `desktop.json` (whether the first result was celebrated).
+`ducter up` no longer writes `firstrun.json` and removes an old one (D204). What Ducter makes for
+the user to see lives in the Ducter folder, `~/ducter` (D204): `projects/` (cloned with 从 Git
+地址加…) and `worktrees/` (tasks' working copies); `DUCTER_FOLDER` sets another place, and a
+Ducter run with its own `--data-dir` keeps it in `<data-dir>/ducter`, so a scratch run never
+touches the real `~/ducter`. `ducter uninstall --all` removes its `worktrees/`, never `projects/`.
 
 | Command | What it does |
 |---|---|

@@ -1,7 +1,8 @@
-// D203: the home lists the repos each computer reports on New task (after the used and added
-// ones, with their origin, so the Mac's copy of a hel repo is found), reads a reported repo's
-// branches only when it is asked about, keeps each computer's list a while, and looks through a
-// computer's folders for 找一个文件夹… / Find a folder…; a folder found that way is added there.
+// D203, D204: the home lists the projects in each computer's Ducter folder on New task (after the
+// used and added ones, with their origin, so the Mac's copy of a hel repo is found), reads a
+// reported repo's branches only when it is asked about, keeps each computer's list a while, says
+// where each Ducter folder is (or that a worker is too old), looks through a computer's folders
+// for 找一个文件夹… / Find a folder…, and clones a Git address there (从 Git 地址加…).
 import { afterEach, expect, test } from "bun:test";
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -38,14 +39,14 @@ function repo(dir: string, name: string, origin?: string): string {
 }
 
 /** The author's Mac as hel's worker: the repos it reports, a folder read there, its folders. */
-function fakeMac(state: { online: boolean; reposAsked: number; slowRepos?: boolean; asked: string[] }) {
+function fakeMac(state: { online: boolean; reposAsked: number; slowRepos?: boolean; asked: string[]; old?: boolean; cloned?: string[] }) {
   const reported: RepoHint[] = [
-    { name: "ducter", path: "/Users/weyl/dev/ducter", touchedAt: "2026-11-10T09:00:00.000Z", remote: "github.com/wey-gu/ducter", defaultBranch: "main" },
-    { name: "mem", path: "/Users/weyl/dev/mem", touchedAt: "2026-11-09T09:00:00.000Z", remote: "github.com/nowledge-co/mem", defaultBranch: "main" },
-    { name: "notes", path: "/Users/weyl/notes-repo", touchedAt: "2026-11-01T09:00:00.000Z", defaultBranch: "master" },
+    { name: "ducter", path: "/Users/weyl/ducter/projects/ducter", touchedAt: "2026-11-10T09:00:00.000Z", remote: "github.com/wey-gu/ducter", defaultBranch: "main" },
+    { name: "mem", path: "/Users/weyl/ducter/projects/mem", touchedAt: "2026-11-09T09:00:00.000Z", remote: "github.com/nowledge-co/mem", defaultBranch: "main" },
+    { name: "notes", path: "/Users/weyl/ducter/projects/notes", touchedAt: "2026-11-01T09:00:00.000Z", defaultBranch: "master" },
   ];
   const folders: Record<string, FolderInfo> = {
-    "/Users/weyl/dev/ducter": { exists: true, kind: "repo", root: "/Users/weyl/dev/ducter", name: "ducter", defaultBranch: "main", branches: ["main", "next", "worktree-x"], remote: "github.com/wey-gu/ducter" },
+    "/Users/weyl/ducter/projects/ducter": { exists: true, kind: "repo", root: "/Users/weyl/ducter/projects/ducter", name: "ducter", defaultBranch: "main", branches: ["main", "next", "worktree-x"], remote: "github.com/wey-gu/ducter" },
     "/Users/weyl/Sites/blog": { exists: true, kind: "repo", root: "/Users/weyl/Sites/blog", name: "blog", defaultBranch: "main", branches: ["main"] },
   };
   const tree: Record<string, BrowseResult> = {
@@ -64,12 +65,25 @@ function fakeMac(state: { online: boolean; reposAsked: number; slowRepos?: boole
     async repos(dev: string) {
       state.reposAsked++;
       if (dev !== "wmac" || !state.online) return "offline" as const;
+      if (state.old) return "old" as const;
       if (state.slowRepos) await Bun.sleep(4_000);
-      return reported;
+      return { folder: "/Users/weyl/ducter", repos: reported };
     },
     async browse(dev: string, path: string | undefined) {
       if (dev !== "wmac" || !state.online) return "offline" as const;
+      if (state.old) return "old" as const;
       return tree[path ?? ""] ?? ({ ok: false, reason: "outside", message: "Only folders inside the home folder can be listed." } as const);
+    },
+    // D204: the Mac clones into its own Ducter folder; the home then reads the folder there.
+    async clone(dev: string, address: string) {
+      if (dev !== "wmac" || !state.online) return "offline" as const;
+      if (state.old) return "old" as const;
+      (state.cloned ??= []).push(address);
+      if (address === "acme/private") return { ok: false as const, reason: "no_access" as const, message: "could not read Username for 'https://github.com': terminal prompts disabled" };
+      const name = address.split("/").pop()!;
+      const path = `/Users/weyl/ducter/projects/${name}`;
+      folders[path] = { exists: true, kind: "repo", root: path, name, defaultBranch: "main", branches: ["main"], remote: `github.com/${address}` };
+      return { ok: true as const, path, name, remote: `github.com/${address}`, defaultBranch: "main" };
     },
   };
 }
@@ -144,13 +158,13 @@ test("D203: hel's ducter, and the Mac's copy of it among the repos the Mac repor
   ]);
   // Both copies say the same origin: the phone's 谁来做 switches to the Mac's one for Claude Code.
   expect(o.places[0]).toMatchObject({ remote: "github.com/wey-gu/ducter", defaultBranch: "main", branches: ["main"] });
-  expect(o.places[1]).toMatchObject({ place: { kind: "repo", device: "wmac", repoPath: "/Users/weyl/dev/ducter" }, remote: "github.com/wey-gu/ducter", defaultBranch: "main" });
+  expect(o.places[1]).toMatchObject({ place: { kind: "repo", device: "wmac", repoPath: "/Users/weyl/ducter/projects/ducter" }, remote: "github.com/wey-gu/ducter", defaultBranch: "main" });
   // A reported repo's branches are read only when it is the one asked about.
   expect(o.places[1]!.branches).toBeUndefined();
   expect(mac.asked).toEqual([]);
-  const o2 = await c.ask({ t: "task_new_options", place: { kind: "repo", device: "wmac", repoPath: "/Users/weyl/dev/ducter" } }, "task_new_options");
+  const o2 = await c.ask({ t: "task_new_options", place: { kind: "repo", device: "wmac", repoPath: "/Users/weyl/ducter/projects/ducter" } }, "task_new_options");
   expect(o2.places.find((p) => p.name === "ducter" && p.computer === "Macbook Pro M3")).toMatchObject({ found: true, branches: ["main", "next", "worktree-x"] });
-  expect(mac.asked).toEqual(["/Users/weyl/dev/ducter"]);
+  expect(mac.asked).toEqual(["/Users/weyl/ducter/projects/ducter"]);
   // Kept a while: the Mac was asked for its repos once for three cards.
   expect(mac.reposAsked).toBe(1);
 });
@@ -160,7 +174,7 @@ test("D203: a task on a reported repo makes it a used place (listed once, no lon
   const { core } = boot({ newTaskComputers: fakeMac(mac) });
   fakeRunner(core);
   const c = await client(core);
-  expect(await c.ask({ t: "task_new", words: "Look at mem.", place: { kind: "repo", device: "wmac", repoPath: "/Users/weyl/dev/mem" }, clientId: "m" }, "task_new_result")).toMatchObject({ ok: true });
+  expect(await c.ask({ t: "task_new", words: "Look at mem.", place: { kind: "repo", device: "wmac", repoPath: "/Users/weyl/ducter/projects/mem" }, clientId: "m" }, "task_new_result")).toMatchObject({ ok: true });
   const o = await c.ask({ t: "task_new_options" }, "task_new_options");
   expect(o.places.filter((p) => p.name === "mem").map((p) => p.found ?? false)).toEqual([false]);
   mac.online = false;
@@ -231,14 +245,60 @@ test("D203: Find a folder… on the home's own computer: confined to its home fo
   expect(await c.ask({ t: "folder_browse", path: "/", clientId: "h3" }, "folder_browse_result")).toMatchObject({ ok: false, reason: "outside" });
 });
 
-test("D203: the home's own repos (a scan) come after the used ones, deduped against the firstrun hints", async () => {
-  const { core, dir } = boot({ homeRepos: () => [] });
-  const a = repo(dir, "alpha", "git@github.com:a/alpha.git");
-  const b = repo(dir, "beta");
-  writeFileSync(join(dir, "firstrun.json"), JSON.stringify({ version: 1, repos: [{ name: "alpha", path: a, touchedAt: "2026-11-01T00:00:00.000Z" }] }));
-  core.stop();
-  const { core: core2 } = boot({ dataDir: dir, homeRepos: () => [{ name: "alpha", path: a, touchedAt: "2026-11-02T00:00:00.000Z", remote: "github.com/a/alpha" }, { name: "beta", path: b, touchedAt: "2026-11-01T00:00:00.000Z", defaultBranch: "main" }] } as any);
-  const c = await client(core2);
+test("D204: the home's own projects are its Ducter folder's (here <data>/ducter/projects), after the used ones; the card says where that folder is", async () => {
+  const { core, dir } = boot();
+  fakeRunner(core);
+  const a = repo(join(dir, "ducter", "projects"), "alpha", "git@github.com:a/alpha.git");
+  repo(join(dir, "ducter", "projects"), "beta");
+  repo(dir, "elsewhere"); // a repo outside the Ducter folder: never listed by itself
+  const c = await client(core);
+  expect(await c.ask({ t: "task_new", words: "x", place: { kind: "repo", device: "local", repoPath: a }, clientId: "a" }, "task_new_result")).toMatchObject({ ok: true });
   const o = await c.ask({ t: "task_new_options" }, "task_new_options");
   expect(o.places.map((p) => [p.name, p.found ?? false])).toEqual([["alpha", false], ["beta", true], ["", false]]);
+  expect(o.ducterFolders).toEqual([{ device: "local", path: join(dir, "ducter") }]);
+});
+
+test("D204: an older Mac says so: the card hears it is old, and Find, Add a folder and the clone say to update it", async () => {
+  const mac = { online: true, reposAsked: 0, asked: [] as string[], old: true };
+  const comps = fakeMac(mac);
+  const { core } = boot({ newTaskComputers: { ...comps, folderInfo: async () => { throw Object.assign(new Error("Macbook Pro M3 runs an older Ducter that can't read its folders for this home yet; update it first."), { old: true }); } } });
+  const c = await client(core);
+  const o = await c.ask({ t: "task_new_options" }, "task_new_options");
+  expect(o.ducterFolders).toEqual([{ device: "local", path: expect.stringContaining("ducter") }, { device: "wmac", old: true }]);
+  expect(await c.ask({ t: "folder_browse", device: "wmac", clientId: "b" }, "folder_browse_result")).toMatchObject({ ok: false, reason: "old" });
+  expect(await c.ask({ t: "project_add", path: "/Users/weyl/x", device: "wmac", clientId: "p" }, "project_add_result")).toMatchObject({ ok: false, reason: "old" });
+  expect(await c.ask({ t: "project_clone", address: "wey-gu/ducter", device: "wmac", clientId: "k" }, "project_clone_result")).toMatchObject({ ok: false, reason: "old", device: "wmac" });
+});
+
+test("D204: Add from a Git address on the Mac, from the phone: cloned there, added there, the card's place; failures say why; away says so", async () => {
+  const mac = { online: true, reposAsked: 0, asked: [] as string[], cloned: [] as string[] };
+  const { core } = boot({ newTaskComputers: fakeMac(mac) });
+  const c = await client(core);
+  const r = await c.ask({ t: "project_clone", address: "nowledge-co/con", device: "wmac", clientId: "k1" }, "project_clone_result");
+  expect(r).toMatchObject({ ok: true, clientId: "k1", device: "wmac", place: { name: "con", added: true, place: { kind: "repo", device: "wmac", repoPath: "/Users/weyl/ducter/projects/con" }, defaultBranch: "main" } });
+  expect(mac.cloned).toEqual(["nowledge-co/con"]);
+  // A resend with the same id (the phone's socket came back) waits for the same clone.
+  expect(await c.ask({ t: "project_clone", address: "nowledge-co/con", device: "wmac", clientId: "k1" }, "project_clone_result")).toMatchObject({ ok: true });
+  expect(mac.cloned).toHaveLength(1);
+  expect(await c.ask({ t: "project_clone", address: "acme/private", device: "wmac", clientId: "k2" }, "project_clone_result")).toMatchObject({ ok: false, reason: "no_access" });
+  mac.online = false;
+  expect(await c.ask({ t: "project_clone", address: "a/b", device: "wmac", clientId: "k3" }, "project_clone_result")).toMatchObject({ ok: false, reason: "offline" });
+});
+
+test("D204: Add from a Git address on the home itself: the home clones (its own git), refuses a bad address before git", async () => {
+  const asked: string[] = [];
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const target = repo(join(t.dir, "ducter", "projects"), "tinycart", "https://github.com/acme/tinycart.git");
+  const { core } = boot({
+    cloneHome: async (address) => {
+      asked.push(address);
+      return address === "acme/tinycart" ? { ok: true, path: target, name: "tinycart", remote: "github.com/acme/tinycart", defaultBranch: "main" } : { ok: false, reason: "invalid", message: "That doesn't look like a Git address." };
+    },
+  });
+  const c = await client(core);
+  const r = await c.ask({ t: "project_clone", address: "acme/tinycart", clientId: "h1" }, "project_clone_result");
+  expect(r).toMatchObject({ ok: true, place: { name: "tinycart", added: true, place: { kind: "repo", device: "local", repoPath: target } } });
+  expect(r.device).toBeUndefined();
+  expect(await c.ask({ t: "project_clone", address: "file:///etc", clientId: "h2" }, "project_clone_result")).toMatchObject({ ok: false, reason: "invalid" });
 });

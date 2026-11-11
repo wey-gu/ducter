@@ -2,9 +2,10 @@
 // checkout (local, reversible with git) and open a draft PR (push + gh: an outside effect).
 // Never forces anything; every refusal says what to do in plain words.
 import { existsSync, readdirSync, rmdirSync } from "node:fs";
-import { dirname, resolve, sep } from "node:path";
+import { dirname, resolve } from "node:path";
 import type { BranchChanges, Place } from "@ducter/protocol";
 import { ghEnv } from "@ducter/protocol/src/tool-env.ts";
+import { worktreesRootOf } from "@ducter/protocol/src/ducter-folder.ts";
 import { git } from "./places.ts";
 
 export interface ActionResult {
@@ -165,14 +166,16 @@ export async function openDraftPr(place: Place, opts: { gh?: string } = {}): Pro
 /**
  * After a merge the task is archived (product-model "Archive and disk"): its worktree is removed
  * and its branch kept, so a follow-up adds the worktree back from the branch. Only a worktree
- * Ducter made (under <dataDir>/worktrees, at any depth: D198's <repo>/<slug> too) is removed, never with --force: uncommitted or
+ * Ducter made (D204: under <Ducter folder>/worktrees, or <dataDir>/worktrees for tasks from
+ * before; at any depth, D198's <repo>/<slug> too) is removed, never with --force: uncommitted or
  * untracked files keep it, and the message says so. ok with removed false: nothing to remove.
  */
 export async function archiveWorktree(place: Place, dataDir: string): Promise<ActionResult & { removed: boolean }> {
   const p = repoOf(place);
   if (!p) return { ok: true, removed: false, message: "No worktree to remove." };
   const wt = resolve(p.worktree!);
-  if (!wt.startsWith(resolve(dataDir, "worktrees") + sep)) return { ok: true, removed: false, message: `Kept ${wt}: Ducter didn't make that worktree.` };
+  const root = worktreesRootOf(wt, dataDir);
+  if (!root) return { ok: true, removed: false, message: `Kept ${wt}: Ducter didn't make that worktree.` };
   if (!existsSync(wt)) return { ok: true, removed: false, message: "The worktree was already gone." };
   const status = await git(wt, ["status", "--porcelain"]);
   if (!status.ok) return { ok: false, removed: false, message: `Kept the worktree ${wt}: git couldn't read it (${status.err.split("\n")[0]}).` };
@@ -184,7 +187,7 @@ export async function archiveWorktree(place: Place, dataDir: string): Promise<Ac
   if (!removed.ok) return { ok: false, removed: false, message: `Kept the worktree ${wt}: ${removed.err.split("\n")[0]}` };
   // D198: <worktrees>/<repo>/<slug>: the repo's folder goes once it holds nothing.
   const parent = dirname(wt);
-  if (parent !== resolve(dataDir, "worktrees")) {
+  if (parent !== root) {
     try {
       if (readdirSync(parent).length === 0) rmdirSync(parent);
     } catch {}

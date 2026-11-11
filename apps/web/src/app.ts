@@ -1,5 +1,5 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
-import type { AgentModels, AgentReason, MemPluginReason, BrainNow, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
 import { TUWA_MCP, WATCH_LIVE } from "@ducter/protocol";
 import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
@@ -82,6 +82,9 @@ export interface NewTaskDraft {
   // wantBranch: the branch to keep once the copy picked on another computer says its branches.
   browse?: { device: string; cid: string; path?: string; res?: Extract<ServerFrame, { t: "folder_browse_result" }> };
   adding?: string;
+  // D204: 从 Git 地址加… / Add from a Git address… (list "clone"): the computer it clones on (a
+  // device id), the address typed, the clientId of the clone in flight (busy), and why it failed.
+  clone?: { device: string; address: string; cid?: string; err?: string };
   wantBranch?: string;
 }
 
@@ -232,7 +235,7 @@ class AppState {
   memAnswer?: { device: string; harness: string; reason: MemPluginReason };
   candidates = new Map<string, Candidate[]>();
   /** New task (D128): what the sheet offers (places, who could), as last sent; the draft. */
-  newTaskOptions?: { places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[] };
+  newTaskOptions?: { places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[]; ducterFolders?: DucterFolderView[] };
   nt: NewTaskDraft = freshDraft();
   switchFor = "";
   switching = "";
@@ -394,7 +397,7 @@ class AppState {
     if (f.t === "disconnect_result" || f.t === "rename_result") return void ((this.deviceAnswer = f.ok ? undefined : { device: f.device, reason: f.reason === "name_taken" ? "name_taken" : "failed" }), this.changed());
     if (f.t === "candidates") return void (this.candidates.set(f.taskId, f.candidates), this.changed());
     if (f.t === "task_new_options") {
-      this.newTaskOptions = { places: f.places, candidates: f.candidates, ...(f.models ? { models: f.models } : {}) };
+      this.newTaskOptions = { places: f.places, candidates: f.candidates, ...(f.models ? { models: f.models } : {}), ...(f.ducterFolders ? { ducterFolders: f.ducterFolders } : {}) };
       // D203: the copy picked on another computer says its branches now: keep the branch it has.
       const want = this.nt.wantBranch;
       const ch = want ? this.chosenPlace() : undefined;
@@ -410,6 +413,7 @@ class AppState {
       return;
     }
     if (f.t === "project_add_result") return this.folderAdded(f);
+    if (f.t === "project_clone_result") return this.cloneDone(f);
     if (f.t === "task_new_result") return this.newTaskResult(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
@@ -463,6 +467,12 @@ class AppState {
       if (this.actSent.size) this.inDoubt = new Map([...(this.inDoubt ?? []), ...this.actSent]);
       this.actSent.clear();
       for (const r of this.S.resends(this.pending)) this.send(r);
+      // D204: a clone in flight goes again with its id: the home answers the same clone, not a second.
+      const k = this.nt.clone;
+      if (k?.cid) {
+        const dev = this.ntDeviceArg(k.device);
+        this.send({ t: "project_clone", address: k.address, clientId: k.cid, ...(dev ? { device: dev } : {}) });
+      }
       if (this.route.name === "task") this.history(this.route.id, true);
       // Settings are pushed only to sockets that asked: ask again on a new one.
       if (this.settings || this.sheet?.kind === "settings") this.askLoadout();
@@ -632,10 +642,87 @@ class AppState {
     return this.newTaskPlaces().find((p) => this.placeComputer(p.place) === device && sameRepo(p, chosen));
   }
 
-  /** D203: the computers whose folders can be looked through from here: the home and each worker that is reachable. */
-  ntBrowsable(): DeviceView[] {
+  /** D203: the computers of the home (and each worker that is reachable); D204: only those that can look and clone (not old). */
+  ntBrowsable(old = false): DeviceView[] {
     const cs = (this.devices ?? []).filter((d) => d.kind !== "phone" && (d.home || d.state !== "unreachable"));
-    return cs.length ? cs : [{ id: "local", name: this.homeName ?? "", kind: "server", home: true, state: "awake", harnesses: [], abilities: [] }];
+    const all = cs.length ? cs : [{ id: "local", name: this.homeName ?? "", kind: "server" as const, home: true, state: "awake" as const, harnesses: [], abilities: [] }];
+    return all.filter((d) => this.ntFolder(d.id)?.old === (old || undefined));
+  }
+
+  /** D204: what that computer (a device id) said of its Ducter folder on the last options: its path, or that it is old. */
+  ntFolder(device: string): DucterFolderView | undefined {
+    const dev = this.ntDeviceArg(device) ?? "local";
+    return (this.newTaskOptions?.ducterFolders ?? []).find((f) => f.device === dev);
+  }
+
+  /** D204: 从 Git 地址加… / Add from a Git address… on that computer: the field in place of the list. */
+  ntCloneOpen(device: string) {
+    const nt = this.nt;
+    nt.clone = { device, address: nt.clone?.address ?? "" };
+    nt.list = "clone";
+    nt.branchOpen = nt.computerOpen = false;
+    nt.err = "";
+    this.changed();
+  }
+
+  ntCloneInput(v: string) {
+    if (!this.nt.clone || this.nt.clone.cid) return;
+    this.nt.clone.address = v;
+    this.nt.clone.err = "";
+    this.changed();
+  }
+
+  /** D204: the computer clones the address into its Ducter folder (minutes for a big repo); the field says so meanwhile. */
+  ntCloneGo() {
+    const k = this.nt.clone;
+    if (!k || k.cid || !k.address.trim()) return;
+    if (this.status !== "connected" || !this.S.welcomed) return (k.err = this.L.t("newtask.err.conn")), this.changed();
+    this.nextClient++;
+    k.cid = `k${Date.now()}-${this.nextClient}`;
+    k.err = "";
+    const dev = this.ntDeviceArg(k.device);
+    this.send({ t: "project_clone", address: k.address.trim(), clientId: k.cid, ...(dev ? { device: dev } : {}) });
+    this.changed();
+  }
+
+  /** D204: why a clone or a look on that computer didn't happen, in the user's words. */
+  cloneWhy(reason: string | undefined, message: string | undefined, name: string): string {
+    switch (reason) {
+      case "invalid":
+      case "timeout":
+        return this.L.t(`newtask.clone.err.${reason}`);
+      case "not_found":
+      case "no_access":
+      case "network":
+        return this.L.t(`newtask.clone.err.${reason}`, name);
+      case "offline":
+        return this.L.t("newtask.find.offline", name);
+      case "old":
+        return this.L.t("newtask.old", name);
+    }
+    return this.L.t("newtask.clone.err.failed", (message || "").replace(/[.。]\s*$/, ""));
+  }
+
+  /** D204: the clone landed: it is the card's place (and picks the agent that waited for a folder there). */
+  cloneDone(f: Extract<ServerFrame, { t: "project_clone_result" }>) {
+    const nt = this.nt;
+    const k = nt.clone;
+    if (!k?.cid || f.clientId !== k.cid) return;
+    k.cid = undefined;
+    if (!f.ok || !f.place) {
+      k.err = this.cloneWhy(f.reason, f.message, this.ntComputerName(k.device));
+      return this.changed();
+    }
+    const p = f.place;
+    nt.clone = undefined;
+    this.pickPlace(p);
+    if (p.place.kind === "repo" || p.place.kind === "folder") nt.prefill = p.place;
+  }
+
+  /** D204: a computer's name by its device id ("local" or the home's id: the home's). */
+  ntComputerName(device: string): string {
+    const d = (this.devices ?? []).find((x) => x.id === device || x.name === device);
+    return d?.name ?? (device === "local" || !device ? (this.homeName ?? "") : device);
   }
 
   /** D203: 找一个文件夹… / Find a folder… on that computer (a device id): its folders, from `path` (absent: ~). */
@@ -673,7 +760,7 @@ class AppState {
   }
 
   /** The device a frame names for that computer: none for the home, else its id. */
-  private ntDeviceArg(device: string): string | undefined {
+  ntDeviceArg(device: string): string | undefined {
     const d = (this.devices ?? []).find((x) => x.id === device || x.name === device);
     return !device || device === "local" || d?.home ? undefined : (d?.id ?? device);
   }
@@ -684,7 +771,7 @@ class AppState {
     if (!nt.adding || f.clientId !== nt.adding) return;
     nt.adding = "";
     if (!f.ok || !f.place) {
-      nt.err = f.reason === "offline" ? this.L.t("newtask.find.offline", this.ntBrowseName()) : this.L.t("newtask.err.failed", f.message || "");
+      nt.err = f.reason === "offline" ? this.L.t("newtask.find.offline", this.ntBrowseName()) : f.reason === "old" ? this.L.t("newtask.old", this.ntBrowseName()) : this.L.t("newtask.err.failed", f.message || "");
       return this.changed();
     }
     const p = f.place;
@@ -696,9 +783,7 @@ class AppState {
 
   /** D203: the name of the computer being looked through. */
   ntBrowseName(): string {
-    const dev = this.nt.browse?.device ?? "";
-    const d = (this.devices ?? []).find((x) => x.id === dev || x.name === dev);
-    return d?.name ?? (dev === "local" || !dev ? (this.homeName ?? "") : dev);
+    return this.ntComputerName(this.nt.browse?.device ?? "");
   }
 
   /** D202: the Model and Effort rows of an agent: its models, which is chosen, and the effort. */
@@ -770,7 +855,7 @@ class AppState {
   /** D202: the folder list closes (or opens): an agent waiting for a folder stops waiting. */
   togglePlaces() {
     const nt = this.nt;
-    nt.list = nt.list === "place" || nt.list === "browse" ? "" : "place";
+    nt.list = nt.list === "place" || nt.list === "browse" || nt.list === "clone" ? "" : "place";
     nt.pending = nt.placeOnly = undefined;
     nt.branchOpen = nt.computerOpen = false;
     this.changed();

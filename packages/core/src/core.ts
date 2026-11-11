@@ -39,8 +39,10 @@ import { providerOf } from "./phone-provider.ts";
 import { registerConnectionTools } from "./connection-tools.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { createModelCatalog, type ModelCatalog } from "./models.ts";
-import { browseFolders, createFoundRepos, newTaskOptions, openYourTask, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
-import type { BrowseResult, RepoHint } from "@ducter/protocol/src/repos.ts";
+import { browseFolders, cloneProject, createFoundRepos, isOldOp, newTaskOptions, openYourTask, type FolderProjects, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
+import { projectRepos, realFs, type BrowseResult } from "@ducter/protocol/src/repos.ts";
+import { cloneRepo, type CloneResult } from "@ducter/protocol/src/clone.ts";
+import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { createProjects } from "./projects.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
@@ -90,8 +92,10 @@ export interface CoreOptions {
   git?: GitRun;
   /** D197 test seam: the workers as New task and projects see them (names, a folder read there). */
   newTaskComputers?: NewTaskComputers;
-  /** D203: the repos on the home's own computer for New task (main.ts scans the home folder; absent: none). */
-  homeRepos?: () => RepoHint[];
+  /** D204 test seam: the home's own Ducter folder and its projects (default: <Ducter folder>/projects here). */
+  homeRepos?: () => FolderProjects;
+  /** D204 test seam: clone into the home's own Ducter folder (default: git, with this computer's sign-in). */
+  cloneHome?: (address: string) => Promise<CloneResult>;
   /** D203 test seam: the home's own subfolders for 找一个文件夹… (default: this computer's home folder). */
   browseHome?: (path: string | undefined) => BrowseResult;
   /** D202 test seam: each agent's models on each computer (else read from the agents themselves). */
@@ -302,7 +306,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         return await link.call<import("@ducter/protocol/src/folder-info.ts").FolderInfo>("folderInfo", { path }, ms);
       } catch (err) {
         if ((err as { offline?: boolean }).offline) return "offline";
-        if (/unknown op/.test((err as Error).message)) throw new Error(`${link.name} runs an older Ducter that can't read its folders for this home yet; update it first.`);
+        if (isOldOp(err)) throw Object.assign(new Error(`${link.name} runs an older Ducter that can't read its folders for this home yet; update it first.`), { old: true });
         throw err;
       }
     },
@@ -312,9 +316,10 @@ export function startCore(opts: CoreOptions = {}): Core {
       const link = workersRef?.link(dev);
       if (!link?.online()) return "offline";
       try {
-        return await link.call<RepoHint[]>("repos", {}, ms);
-      } catch {
-        return "offline"; // away, slow, or an older Ducter without the op: it reports none
+        return await link.call<FolderProjects>("repos", {}, ms);
+      } catch (err) {
+        // D204: an older Ducter without the op says so (the card asks to update it); away or slow: none.
+        return isOldOp(err) ? "old" : "offline";
       }
     },
     async browse(dev, path, ms) {
@@ -324,7 +329,19 @@ export function startCore(opts: CoreOptions = {}): Core {
         return await link.call<BrowseResult>("browse", path ? { path } : {}, ms);
       } catch (err) {
         if ((err as { offline?: boolean }).offline) return "offline";
-        if (/unknown op/.test((err as Error).message)) throw new Error(`${link.name} runs an older Ducter that can't look through its folders yet; update it first.`);
+        if (isOldOp(err)) return "old";
+        throw err;
+      }
+    },
+    // D204: 从 Git 地址加… on that worker: it clones into its own Ducter folder, with its own git.
+    async clone(dev, address, ms) {
+      const link = workersRef?.link(dev);
+      if (!link?.online()) return "offline";
+      try {
+        return await link.call<CloneResult>("clone", { address }, ms);
+      } catch (err) {
+        if ((err as { offline?: boolean }).offline) return "offline";
+        if (isOldOp(err)) return "old";
         throw err;
       }
     },
@@ -409,8 +426,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     return e.why ? { harness: e.harness } : undefined;
   };
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
-  const found = createFoundRepos({ computers, ...(opts.homeRepos ? { home: opts.homeRepos } : {}) });
-  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, ...(opts.browseHome ? { browseHome: opts.browseHome } : {}), ...(opts.git ? { git: opts.git } : {}) };
+  // D204: the home's own Ducter folder (~/ducter, or <dataDir>/ducter for a Ducter with a data
+  // folder of its own) and the projects in it; clones go there with this computer's own git.
+  const homeFolder = () => ducterFolder({ dataDir }).path;
+  const found = createFoundRepos({ computers, home: opts.homeRepos ?? (() => ({ folder: homeFolder(), repos: projectRepos(realFs.real(join(homeFolder(), "projects"))) })) });
+  const cloneHome = opts.cloneHome ?? ((address: string) => cloneRepo(address, { dataDir }));
+  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, cloneHome, ...(opts.browseHome ? { browseHome: opts.browseHome } : {}), ...(opts.git ? { git: opts.git } : {}) };
   const newTask = {
     open: (i: NewTaskInput) => openYourTask(newTaskDeps, i),
     options: (p?: Place) => newTaskOptions(newTaskDeps, p),
@@ -425,6 +446,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     // D203: 找一个文件夹… / Find a folder…, on the home's computer or a worker's.
     browse: (device: string | undefined, path: string | undefined) => browseFolders(newTaskDeps, device, path),
+    // D204: 从 Git 地址加… / Add from a Git address…, cloned on that computer, then added there.
+    clone: (device: string | undefined, address: string) => cloneProject(newTaskDeps, device, address, (path, dev) => newTask.addProject(path, dev)),
   };
   const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;

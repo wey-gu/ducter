@@ -61,13 +61,13 @@ test("D201: at most 40 characters, never a split surrogate pair or grapheme, nev
 test("D201: the folder is the branch's slug in its own script; an NFD twin of a folder is taken", () => {
   const data = join(dir, "data");
   const repo = "/Users/me/code/我的仓库";
-  expect(worktreeFor(data, repo, "ducter/修复登录")).toBe(join(data, "worktrees", "我的仓库", "修复登录"));
+  expect(worktreeFor(data, repo, "ducter/修复登录")).toBe(join(data, "ducter", "worktrees", "我的仓库", "修复登录"));
   // A folder already there under the decomposed spelling counts as the same name (ext4 keeps both).
-  mkdirSync(join(data, "worktrees", "我的仓库", "café".normalize("NFD")), { recursive: true });
-  expect(worktreeFor(data, repo, "ducter/café")).toBe(join(data, "worktrees", "我的仓库", "café-2"));
-  expect(worktreeFor(data, repo, "ducter/café".normalize("NFD"))).toBe(join(data, "worktrees", "我的仓库", "café-3"));
+  mkdirSync(join(data, "ducter", "worktrees", "我的仓库", "café".normalize("NFD")), { recursive: true });
+  expect(worktreeFor(data, repo, "ducter/café")).toBe(join(data, "ducter", "worktrees", "我的仓库", "café-2"));
+  expect(worktreeFor(data, repo, "ducter/café".normalize("NFD"))).toBe(join(data, "ducter", "worktrees", "我的仓库", "café-3"));
   // A branch named another way keeps its own case and dots.
-  expect(worktreeFor(data, repo, "feature/Ünïcode v1.2")).toBe(join(data, "worktrees", "我的仓库", "feature-Ünïcode-v1.2"));
+  expect(worktreeFor(data, repo, "feature/Ünïcode v1.2")).toBe(join(data, "ducter", "worktrees", "我的仓库", "feature-Ünïcode-v1.2"));
 });
 
 test("D201: a Chinese task gets a Chinese branch and folder that git really makes", async () => {
@@ -76,7 +76,7 @@ test("D201: a Chinese task gets a Chinese branch and folder that git really make
   Bun.spawnSync(["git", "-C", repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init"]);
   const data = join(dir, "data");
   const r = await planPlace({ kind: "repo", device: "local", repoPath: repo }, "t1", "修复登录页的闪退", data);
-  expect(r.place).toMatchObject({ branch: "ducter/修复登录页的闪退", worktree: join(data, "worktrees", "repo", "修复登录页的闪退") });
+  expect(r.place).toMatchObject({ branch: "ducter/修复登录页的闪退", worktree: join(data, "ducter", "worktrees", "repo", "修复登录页的闪退") });
   await provisionPlace(r);
   expect(existsSync(r.cwd)).toBe(true);
   expect((await git(r.cwd, ["rev-parse", "--abbrev-ref", "HEAD"])).out).toBe("ducter/修复登录页的闪退");

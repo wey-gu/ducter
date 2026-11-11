@@ -40,6 +40,9 @@ func (a *App) findComputers(only string) []protocol.DeviceView {
 		if !d.Home && d.State == "unreachable" {
 			continue
 		}
+		if a.isOld(d.ID) {
+			continue // D204: it says it needs an update instead (oldRows)
+		}
 		out = append(out, d)
 	}
 	return out
@@ -105,8 +108,9 @@ func browsePath(p, home string) string {
 }
 
 // findRows are 找一个文件夹… rows at the foot of the place list, one per
-// computer it can look through (with its name when there are two).
-func (a *App) findRows(c *ui.Context, only string) {
+// computer it can look through (with its name when there are two); it
+// says whether rows here name their computer.
+func (a *App) findRows(c *ui.Context, only string) bool {
 	t := a.T
 	cs := a.findComputers(only)
 	named := len(cs) > 1 || only != "" || a.manyComputers()
@@ -128,6 +132,7 @@ func (a *App) findRows(c *ui.Context, only string) {
 			a.startBrowse(d.ID, "")
 		}
 	}
+	return named
 }
 
 // browseName is the name of the computer being looked through.
@@ -162,6 +167,8 @@ func (a *App) folderBrowser(c *ui.Context) {
 			why = a.L.T("newtask.find.outside")
 		case "not_found":
 			why = a.L.T("newtask.find.missing")
+		case "old":
+			why = a.L.T("newtask.old", a.browseName())
 		}
 		line("nt-find-err", why, t.Failed.Ink)
 	}

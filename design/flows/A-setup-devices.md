@@ -45,15 +45,16 @@
    - *Skip* (top-right, always visible) jumps to step 3 with detection already done or in flight.
 2. **Cartoon, scenes 1–7** (`onboarding.md`). While it plays, Ducter detects:
    - this device: model name, OS, free disk;
-   - repos: git checkouts under `~/dev`, `~/code`, `~/src`, `~/Projects`, `~/work`, `~` depth 2;
+   - repos: none (D204: Ducter never scans for repos; New task offers 找一个文件夹… and
+     从 Git 地址加…, and lists the projects in `~/ducter/projects`);
    - harnesses: `claude`, `codex`, `pi` binaries and their login state;
    - Nowledge Mem: local server on `127.0.0.1:14242`, or `nmem` config;
    - Tailscale (`tailscale status`), language, time zone.
 3. **Scene 8 becomes the live setup screen** (artboard `ASetupChecklist`). Pebbles settle into
    three rows; each row's result pops in as its check finishes.
-   1. **This device** · "MacBook Pro · 在 ~/dev 找到 14 个代码库".
+   1. **This device** · "MacBook Pro" (D204: no repo count).
       - Fails only if the runner can't start (corrupt install) → "重新打开 Ducter" + "看日志".
-      - 0 repos found → row still ✓: "没找到代码库，也没关系" (consumer users).
+      - (D204: no repo line, so nothing to say for a consumer with no code.)
       - macOS folder access: Ducter does **not** ask for Documents/Desktop access up front. It
         asks the first time a task needs a protected folder (C-group).
    2. **Your AI** (required, at least one).

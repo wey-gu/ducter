@@ -1,31 +1,13 @@
-// First-run hints: what the desktop's empty conversation can say about *this* machine, and the
-// partner's chosen name. Both live as small JSON files in the data folder, written by `ducter up`
-// and read by the client (apps/desktop/internal/hints).
-//
-// Privacy: repo detection is local and reads folder names and file timestamps only (stat of
-// .git/HEAD, .git/index, .git/logs/HEAD). It never opens a file, runs git, or sends anything.
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { findRepos, realFs, type FsLike, type RepoHint } from "@ducter/protocol/src/repos.ts";
-import { homedir } from "node:os";
+// The partner's chosen name, kept as a small JSON file in the data folder, written by `ducter up`
+// and read by the client (apps/desktop/internal/hints). D204: `ducter up` no longer writes
+// first-run repo hints (firstrun.json, a scan of ~/dev, ~/code, …): a computer's projects are the
+// ones in its Ducter folder, added or cloned by the user; a stale firstrun.json is removed.
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const HINTS_FILE = "firstrun.json";
+/** D204: the old first-run hints file, removed by `ducter up` (nothing reads it). */
+export const OLD_HINTS_FILE = "firstrun.json";
 export const PERSONA_FILE = "persona.json";
-
-// D203: the scan is shared with the home's New task places and a worker's `repos` op.
-export { findRepos, realFs, REPO_ROOTS, type FsLike, type RepoHint } from "@ducter/protocol/src/repos.ts";
-
-export interface Hints {
-  version: 1;
-  generatedAt: string;
-  repoCount: number;
-  repos: RepoHint[]; // most recently touched first, at most `limit`
-}
-
-export function buildHints(home = homedir(), fs: FsLike = realFs, now = new Date()): Hints {
-  const { count, repos } = findRepos(home, fs);
-  return { version: 1, generatedAt: now.toISOString(), repoCount: count, repos };
-}
 
 /** Writes atomically, so a client reading at the same moment never sees half a file. */
 function writeJson(path: string, v: unknown) {
@@ -34,8 +16,11 @@ function writeJson(path: string, v: unknown) {
   renameSync(tmp, path);
 }
 
-export function writeHints(dataDir: string, hints: Hints) {
-  writeJson(join(dataDir, HINTS_FILE), hints);
+/** D204: the first-run hints a Ducter before D204 wrote, gone. */
+export function removeOldHints(dataDir: string) {
+  try {
+    rmSync(join(dataDir, OLD_HINTS_FILE), { force: true });
+  } catch {}
 }
 
 // ---------- The partner's name ----------

@@ -161,9 +161,8 @@ test("task_new_options: the repos tasks used, recent first, with their default b
   fakeRunner(core);
   const a = repo(dir, "hawdb");
   const b = repo(dir, "tinycart");
-  // A repo `ducter up` noticed, never used for a task yet.
-  const c3 = repo(dir, "notes");
-  writeFileSync(join(dir, "firstrun.json"), JSON.stringify({ version: 1, repos: [{ name: "notes", path: c3, touchedAt: "2026-11-01T00:00:00.000Z" }] }));
+  // D204: a project in the home's Ducter folder (here, with a data folder of its own: <data>/ducter), never used for a task yet.
+  repo(join(dir, "ducter", "projects"), "notes");
   const c = await client(core);
   for (const [p, i] of [[a, 1], [b, 2]] as const) {
     c.send({ t: "task_new", words: `task ${i}`, place: { kind: "repo", device: "local", repoPath: p }, clientId: `o${i}` });
@@ -339,8 +338,7 @@ test("D197: a folder on this Mac, for a home elsewhere: read on the Mac, kept wi
   const mac = { online: true, asked: [] as string[] };
   const { core, dir } = boot({ newTaskComputers: fakeMac(mac) });
   const { opened } = fakeRunner(core);
-  const here = repo(dir, "hawdb"); // a repo on the home itself
-  writeFileSync(join(dir, "firstrun.json"), JSON.stringify({ version: 1, repos: [{ name: "hawdb", path: here, touchedAt: "2026-11-01T00:00:00.000Z" }] }));
+  repo(join(dir, "ducter", "projects"), "hawdb"); // a project in the home's own Ducter folder
   const c = await client(core);
   // A folder inside a repo on the Mac adds the repo, on the Mac.
   c.send({ t: "project_add", path: "/Users/weyl/dev/ducter/apps", device: "wmac", clientId: "m1" });

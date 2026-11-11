@@ -1,7 +1,7 @@
 // merge / open_pr / undrop over real git (no model calls), and the "no done with an open
 // question" rule against the real core.
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Place } from "@ducter/protocol";
@@ -283,6 +283,28 @@ test("D198: archiveWorktree removes a nested <repo>/<slug> worktree, its empty r
   expect(existsSync(twin) && existsSync(p.worktree!)).toBe(true);
 });
 
+test("D204: a new task's worktree in the Ducter folder archives, and so does a task from before in <data>/worktrees; an unmarked look-alike doesn't", async () => {
+  const p = repoWithTaskBranch();
+  const data = join(dir, "data");
+  // A Ducter folder elsewhere (DUCTER_FOLDER), marked as Ducter's when its first worktree was made.
+  const folder = join(dir, "home", "ducter");
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(join(folder, ".ducter-folder"), "x\n");
+  const fresh = join(folder, "worktrees", "repo", "new-one");
+  sh(p.repoPath, "worktree", "add", "-q", fresh, "-b", "ducter/new-one", "main");
+  const old = join(data, "worktrees", "repo", "old-one");
+  sh(p.repoPath, "worktree", "add", "-q", old, "-b", "ducter/old-one", "main");
+  expect(await archiveWorktree({ ...p, worktree: fresh, branch: "ducter/new-one" }, data)).toMatchObject({ ok: true, removed: true });
+  expect(existsSync(join(folder, "worktrees", "repo"))).toBe(false); // its emptied repo folder too
+  expect(existsSync(join(folder, "worktrees"))).toBe(true);
+  expect(await archiveWorktree({ ...p, worktree: old, branch: "ducter/old-one" }, data)).toMatchObject({ ok: true, removed: true });
+  // Someone's own folder named worktrees, with no marker beside it: never Ducter's.
+  const theirs = join(dir, "home", "mine", "worktrees", "repo", "z");
+  sh(p.repoPath, "worktree", "add", "-q", theirs, "-b", "ducter/theirs", "main");
+  expect(await archiveWorktree({ ...p, worktree: theirs, branch: "ducter/theirs" }, data)).toMatchObject({ removed: false, message: expect.stringContaining("didn't make") });
+  expect(existsSync(theirs)).toBe(true);
+});
+
 // Fresh-user QA: worktrees were never removed after a merge (product-model "Archive and disk").
 test("merge archives a done task: session closed, worktree removed, branch kept; a follow-up adds it back", async () => {
   const repo = join(dir, "repo");
@@ -294,7 +316,8 @@ test("merge archives a done task: session closed, worktree removed, branch kept;
   sh(repo, "commit", "-qm", "init");
   const { core, runner, taskId } = await bootWithTask({ kind: "repo", device: "local", repoPath: repo });
   const place = core.tasks.get(taskId)!.place as Extract<Place, { kind: "repo" }>;
-  expect(place.worktree).toBe(join(dir, "data", "worktrees", "repo", place.branch!.replace("ducter/", "")));
+  // D204: a new task's worktree is in the Ducter folder (with a data folder of its own: <data>/ducter).
+  expect(place.worktree).toBe(join(dir, "data", "ducter", "worktrees", "repo", place.branch!.replace("ducter/", "")));
   writeFileSync(join(place.worktree!, "b.txt"), "b\n");
   sh(place.worktree!, "add", ".");
   sh(place.worktree!, "commit", "-qm", "b");

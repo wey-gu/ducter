@@ -1,69 +1,29 @@
-// First-run hints and the first-run screens of `ducter up`, against a fake disk and machine.
+// The partner's name file and the first-run screens of `ducter up`, against a fake disk and machine.
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { formatBlocked, formatSummary, runDoctor, tildePath, type Host } from "../src/doctor.ts";
-import { buildHints, cleanName, findRepos, readPersonaFile, writeHints, writePersonaFile, type FsLike } from "../src/firstrun.ts";
+import { cleanName, readPersonaFile, removeOldHints, writePersonaFile } from "../src/firstrun.ts";
 import { translator } from "../src/i18n.ts";
 
-/** A fake disk: paths that exist, as dirs (ending in /) or files with an mtime. */
-function disk(entries: Record<string, number | "dir">): FsLike & { opened: string[] } {
-  const opened: string[] = [];
-  const has = (p: string) => p in entries || Object.keys(entries).some((k) => k.startsWith(p + "/"));
-  return {
-    opened,
-    readdir: (d) => [...new Set(Object.keys(entries).filter((k) => k.startsWith(d + "/")).map((k) => k.slice(d.length + 1).split("/")[0]!))],
-    isDir: (p) => entries[p] === "dir" || (has(p) && !(p in entries)),
-    mtime: (p) => (typeof entries[p] === "number" ? (entries[p] as number) : 0),
-    real: (p) => p.toLowerCase(), // a case-insensitive disk
-  };
-}
-
-const H = "/Users/friend";
-
-describe("findRepos", () => {
-  test("finds checkouts under the usual folders, newest first, names and ~ paths only", () => {
-    const fs = disk({
-      [`${H}/dev/hawdb/.git/HEAD`]: 3_000,
-      [`${H}/dev/hawdb/.git/index`]: 9_000,
-      [`${H}/dev/old/.git/HEAD`]: 1_000,
-      [`${H}/code/org/api/.git/logs/HEAD`]: 5_000, // depth 2
-      [`${H}/Projects/notes/README.md`]: 1, // not a repo
-      [`${H}/dev/.hidden/.git/HEAD`]: 99_000, // hidden folders are skipped
-      [`${H}/dev/app/node_modules/x/.git/HEAD`]: 99_000,
-      [`${H}/Documents/secret/.git/HEAD`]: 99_000, // not a code folder: never looked at
-    });
-    const r = findRepos(H, fs);
-    expect(r.count).toBe(3);
-    expect(r.repos.map((x) => [x.name, x.path])).toEqual([
-      ["hawdb", "~/dev/hawdb"],
-      ["api", "~/code/org/api"],
-      ["old", "~/dev/old"],
-    ]);
-  });
-
-  test("worktrees and submodules (a .git file) don't count twice", () => {
-    const fs = disk({ [`${H}/dev/a/.git/HEAD`]: 2, [`${H}/dev/a-wt/.git`]: 5 });
-    expect(findRepos(H, fs).repos.map((r) => r.name)).toEqual(["a"]);
-  });
-
-  test("~/projects and ~/Projects on one disk are one folder", () => {
-    const fs = disk({ [`${H}/Projects/x/.git/HEAD`]: 2, [`${H}/projects`]: "dir" });
-    expect(findRepos(H, fs).count).toBe(1);
-  });
-
-  test("a consumer Mac with no code folders: no repos, and that's fine", () => {
-    const h = buildHints(H, disk({}), new Date("2026-11-09T00:00:00Z"));
-    expect(h).toEqual({ version: 1, generatedAt: "2026-11-09T00:00:00.000Z", repoCount: 0, repos: [] });
+// D204: `ducter up` no longer scans for repos (that list is the Ducter folder's projects now,
+// protocol/src/repos.ts projectRepos); it removes the old hints file.
+describe("no first-run repo scan", () => {
+  test("`ducter up` removes a stale firstrun.json and nothing else", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ducter-firstrun-"));
+    writeFileSync(join(dir, "firstrun.json"), JSON.stringify({ version: 1, repos: [{ name: "a", path: "~/dev/a" }] }));
+    writePersonaFile(dir, { name: "小鸭" });
+    removeOldHints(dir);
+    removeOldHints(dir); // and again, with nothing there
+    expect(existsSync(join(dir, "firstrun.json"))).toBe(false);
+    expect(readPersonaFile(dir)?.name).toBe("小鸭");
   });
 });
 
 describe("files in the data folder", () => {
-  test("hints and the name round-trip as JSON", () => {
+  test("the name round-trips as JSON", () => {
     const dir = mkdtempSync(join(tmpdir(), "ducter-firstrun-"));
-    writeHints(dir, { version: 1, generatedAt: "x", repoCount: 1, repos: [{ name: "a", path: "~/dev/a", touchedAt: "y" }] });
-    expect(JSON.parse(readFileSync(join(dir, "firstrun.json"), "utf8")).repos[0].name).toBe("a");
     expect(readPersonaFile(dir)).toBeUndefined();
     writePersonaFile(dir, { name: "小鸭", askedAt: "z" });
     expect(readPersonaFile(dir)?.name).toBe("小鸭");

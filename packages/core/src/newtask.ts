@@ -3,9 +3,9 @@
 // are, as its brief (no partner rewrite); the title is their first sentence, short; the Log
 // records task_open with origin "you". Nothing is said in the conversation: the partner reads a
 // hidden note ("the user opened this themselves") and reports the result like any task (D124).
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import type { AgentModels, Candidate, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
+import type { AgentModels, Candidate, CloneReason, DucterFolderView, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
 import { expandHome, type FolderInfo, type GitRun, realGit, repoBranches, repoRemote, repoTop } from "@ducter/protocol/src/folder-info.ts";
 import type { LogStore, Runner, SettingsApi, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { BODY_NOTE_PREFIX, type Loadout } from "./loadout.ts";
@@ -14,6 +14,7 @@ import type { Routines } from "./routines.ts";
 import type { Untils } from "./until.ts";
 import { agentModels, agentsOf, MODELS_WAIT_MS, type ModelCatalog } from "./models.ts";
 import { listFolders, type BrowseResult, type RepoHint as FoundRepo } from "@ducter/protocol/src/repos.ts";
+import type { CloneResult } from "@ducter/protocol/src/clone.ts";
 
 // D197: the git reads are shared with a worker's folderInfo op (protocol/src/folder-info.ts).
 export { realGit, repoBranches, repoTop, type GitRun };
@@ -28,49 +29,68 @@ export interface NewTaskComputers {
   folderInfo(device: string, path: string, timeoutMs: number): Promise<FolderInfo | "offline">;
   /** D203: this home's workers, by id (an away one is listed, not online). */
   workers?(): { id: string; name: string; online: boolean }[];
-  /** D203: the repos on that worker, read there (absolute paths, origin and default branch);
-   *  "offline" when it is away or too old to say. */
-  repos?(device: string, timeoutMs: number): Promise<FoundRepo[] | "offline">;
-  /** D203: a folder's subfolders on that worker (找一个文件夹… / Find a folder…). */
-  browse?(device: string, path: string | undefined, timeoutMs: number): Promise<BrowseResult | "offline">;
+  /** D203, D204: that worker's Ducter folder and the projects in it, read there (absolute paths,
+   *  origin and default branch); "offline" when it is away, "old" when its Ducter can't say. */
+  repos?(device: string, timeoutMs: number): Promise<FolderProjects | "offline" | "old">;
+  /** D203: a folder's subfolders on that worker (找一个文件夹… / Find a folder…); "old": too old to. */
+  browse?(device: string, path: string | undefined, timeoutMs: number): Promise<BrowseResult | "offline" | "old">;
+  /** D204: clone a Git address into that worker's Ducter folder, there; "old": too old to. */
+  clone?(device: string, address: string, timeoutMs: number): Promise<CloneResult | "offline" | "old">;
 }
 
 /** D203: how long a computer's reported repos are kept before they are asked again. */
 export const REPOS_KEEP_MS = 10 * 60_000;
 
+/** D204: a computer's Ducter folder and the projects in it. */
+export interface FolderProjects {
+  folder: string;
+  repos: FoundRepo[];
+}
+
 /**
- * D203: each computer's repos, kept REPOS_KEEP_MS: the home's own from `home` (a scan of its
- * disk), a worker's from its `repos` op. A read that takes longer than the card waits still lands
- * here for the next card; an away or old worker has none.
+ * D203, D204: each computer's projects (those in its Ducter folder), kept REPOS_KEEP_MS: the
+ * home's own from `home`, a worker's from its `repos` op. A read that takes longer than the card
+ * waits still lands here for the next card; an away worker has none, an old one says it is old.
  */
 export interface FoundRepos {
   get(device: string, waitMs: number): Promise<FoundRepo[]>;
+  /** D204: what that computer last said of its Ducter folder (absent: not heard from yet, or away). */
+  folder(device: string): { path?: string; old?: true } | undefined;
+  /** D204: forget what that computer said (a clone there just added a project). */
+  forget(device: string): void;
 }
 
-export function createFoundRepos(o: { computers?: NewTaskComputers; home?: () => FoundRepo[]; now?: () => number; keepMs?: number }): FoundRepos {
+export function createFoundRepos(o: { computers?: NewTaskComputers; home?: () => FolderProjects; now?: () => number; keepMs?: number }): FoundRepos {
   const now = o.now ?? Date.now;
   const keep = o.keepMs ?? REPOS_KEEP_MS;
-  const kept = new Map<string, { at: number; repos: FoundRepo[] }>();
+  const kept = new Map<string, { at: number; repos: FoundRepo[]; folder?: string; old?: true }>();
   const asking = new Map<string, Promise<FoundRepo[]>>();
   const ask = (device: string): Promise<FoundRepo[]> => {
     const had = asking.get(device);
     if (had) return had;
     const p = (async () => {
-      let repos: FoundRepo[] = [];
+      let got: { repos: FoundRepo[]; folder?: string; old?: true } = { repos: [] };
       try {
-        if (isLocal(device)) repos = o.home?.() ?? [];
-        else {
+        if (isLocal(device)) {
+          const h = o.home?.();
+          if (h) got = { repos: h.repos, folder: h.folder };
+        } else {
           const r = await o.computers?.repos?.(device, 15_000);
-          if (r === "offline" || !Array.isArray(r)) return [];
-          repos = r.filter((x) => x && typeof x.path === "string" && x.path.startsWith("/"));
+          if (r === "offline" || !r) return [];
+          if (r === "old") got = { repos: [], old: true };
+          else {
+            // D203's answer was the list itself; D204's says the folder too.
+            const list = Array.isArray(r) ? r : Array.isArray(r.repos) ? r.repos : [];
+            got = { repos: list.filter((x) => x && typeof x.path === "string" && x.path.startsWith("/")), ...(!Array.isArray(r) && typeof r.folder === "string" ? { folder: r.folder } : {}) };
+          }
         }
       } catch {
         return [];
       } finally {
         asking.delete(device);
       }
-      kept.set(device, { at: now(), repos });
-      return repos;
+      kept.set(device, { at: now(), ...got });
+      return got.repos;
     })();
     asking.set(device, p);
     return p;
@@ -87,8 +107,18 @@ export function createFoundRepos(o: { computers?: NewTaskComputers; home?: () =>
         clearTimeout(timer);
       }
     },
+    folder(device) {
+      const k = kept.get(device);
+      return k ? { ...(k.folder ? { path: k.folder } : {}), ...(k.old ? { old: true as const } : {}) } : undefined;
+    },
+    forget(device) {
+      kept.delete(device);
+    },
   };
 }
+
+/** D204: what a worker says when it doesn't know an op: its Ducter is older than this home's. */
+export const isOldOp = (err: unknown) => /unknown op/.test(String((err as Error)?.message ?? err));
 
 /** D203: a folder's subfolders on a computer of this home: the home's own, or a worker's (read there). */
 export async function browseFolders(
@@ -96,13 +126,14 @@ export async function browseFolders(
   device: string | undefined,
   path: string | undefined,
   ms = 10_000,
-): Promise<BrowseResult | { ok: false; reason: "offline" | "failed"; message: string }> {
+): Promise<BrowseResult | { ok: false; reason: "offline" | "old" | "failed"; message: string }> {
   if (isLocal(device)) return (d.browseHome ?? ((p) => listFolders(p)))(path);
   const c = d.computers;
   if (!c?.browse || !c.nameOf(device!)) return { ok: false, reason: "failed", message: "That computer isn't one of this home's." };
   try {
     const r = await c.browse(device!, path, ms);
     if (r === "offline") return { ok: false, reason: "offline", message: "That computer can't be reached right now." };
+    if (r === "old") return { ok: false, reason: "old", message: `${c.nameOf(device!)} runs an older Ducter that can't look through its folders yet; update it first.` };
     return r;
   } catch (err) {
     return { ok: false, reason: "failed", message: (err as Error).message };
@@ -131,6 +162,45 @@ export interface NewTaskDeps {
   found?: FoundRepos;
   /** D203: the home's own subfolders for 找一个文件夹… (default: this computer's home folder). */
   browseHome?: (path: string | undefined) => BrowseResult;
+  /** D204: clone into the home's own Ducter folder (default: none, the card offers no clone here). */
+  cloneHome?: (address: string) => Promise<CloneResult>;
+}
+
+/** D204: how long a clone may take on a worker before the home stops waiting (its own limit is 10 minutes). */
+export const CLONE_WAIT_MS = 11 * 60_000;
+
+/**
+ * D204: 从 Git 地址加… / Add from a Git address…: clone on that computer (the home's own, or a
+ * worker's, there), then add it as a project there (D186, D197) and answer the place the card
+ * then offers. The same origin already there is that project (existed).
+ */
+export async function cloneProject(
+  d: Pick<NewTaskDeps, "computers" | "cloneHome" | "found">,
+  device: string | undefined,
+  address: string,
+  add: (path: string, device?: string) => Promise<{ ok: true; place: PlaceChoice } | { ok: false; reason?: string; message?: string }>,
+): Promise<{ ok: true; place: PlaceChoice; existed?: true } | { ok: false; reason: CloneReason; message: string }> {
+  let r: CloneResult | "offline" | "old";
+  const name = isLocal(device) ? (d.computers?.homeName() ?? "") : (d.computers?.nameOf(device!) ?? device!);
+  try {
+    if (isLocal(device)) {
+      if (!d.cloneHome) return { ok: false, reason: "failed", message: "Projects can't be cloned here." };
+      r = await d.cloneHome(address);
+    } else {
+      const c = d.computers;
+      if (!c?.clone || !c.nameOf(device!)) return { ok: false, reason: "failed", message: "That computer isn't one of this home's." };
+      r = await c.clone(device!, address, CLONE_WAIT_MS);
+    }
+  } catch (err) {
+    return { ok: false, reason: "failed", message: (err as Error).message };
+  }
+  if (r === "offline") return { ok: false, reason: "offline", message: `${name} can't be reached right now.` };
+  if (r === "old") return { ok: false, reason: "old", message: `${name} runs an older Ducter that can't clone yet; update it first.` };
+  if (!r.ok) return { ok: false, reason: r.reason, message: r.message };
+  d.found?.forget(isLocal(device) ? "local" : device!);
+  const added = await add(r.path, isLocal(device) ? undefined : device);
+  if (!added.ok) return { ok: false, reason: added.reason === "offline" ? "offline" : "failed", message: added.message ?? "The clone is there, but it couldn't be added." };
+  return { ok: true, place: added.place, ...(r.existed ? { existed: true as const } : {}) };
 }
 
 /** D197: how long the card waits for a worker's branches before it shows the list without them. */
@@ -336,30 +406,13 @@ export async function workerFolder(c: NewTaskComputers | undefined, device: stri
   }
 }
 
-interface RepoHint {
-  name: string;
-  path: string;
-  touchedAt: string;
-}
-
-/** Repos `ducter up` noticed on this Mac (<dataDir>/firstrun.json), most recently touched first. */
-function hintRepos(dataDir: string): RepoHint[] {
-  try {
-    const p = join(dataDir, "firstrun.json");
-    if (!existsSync(p)) return [];
-    const j = JSON.parse(readFileSync(p, "utf8")) as { repos?: RepoHint[] };
-    return Array.isArray(j.repos) ? j.repos.filter((r) => r && typeof r.path === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
 /**
- * What the New task card offers: the repos tasks used, most recent first, then the ones `ducter
- * up` noticed; each on this machine with its default branch and branches. 不用特定的地方 / No
+ * What the New task card offers: the folders tasks used and the projects added, most recent
+ * first, then (D204) the projects in each computer's Ducter folder; each with its default branch
+ * and branches. 不用特定的地方 / No
  * particular place is always last. Who could do it: the candidates at `place` (or this machine).
  */
-export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Promise<{ places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[] }> {
+export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Promise<{ places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[]; ducterFolders?: DucterFolderView[] }> {
   const git = d.git ?? realGit;
   const seen = new Map<string, PlaceChoice>();
   const key = (device: string, path: string) => `${device} ${resolve(expandHome(path))}`;
@@ -389,14 +442,6 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
     } else seen.set(k, { place: pr.place, name: pr.name, usedAt: pr.addedAt, added: true });
   }
   const used = [...seen.values()].sort((a, b) => (b.usedAt ?? "").localeCompare(a.usedAt ?? ""));
-  for (const r of hintRepos(d.dataDir)) {
-    const k = key("local", r.path);
-    if (!seen.has(k)) {
-      const c: PlaceChoice = { place: { kind: "repo", device: "local", repoPath: resolve(expandHome(r.path)) }, name: r.name || basename(r.path), usedAt: r.touchedAt };
-      seen.set(k, c);
-      used.push(c);
-    }
-  }
   const places = used.slice(0, limit);
   // D202: who could do it (every agent on every computer) and their models, read alongside the branches.
   const who = (async () => {
@@ -404,8 +449,8 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
     const models = d.models ? await newTaskModels(d.models, candidates).catch(() => undefined) : undefined;
     return { candidates, models };
   })();
-  // D203: the repos each computer has (the home's own scan, each worker's report), after the ones
-  // used or added, most recently touched first; a worker away or slow adds none. Their branches
+  // D203, D204: the projects in each computer's Ducter folder (the home's own, each worker's
+  // report), after the ones used or added, most recently touched first; a worker away or slow adds none. Their branches
   // are read only for the one asked about (`at`): a card lists them, a pick reads them.
   const found = d.found ?? foundOf(d);
   const comps = ["local", ...(d.computers?.workers?.() ?? []).filter((w) => w.online).map((w) => w.id)];
@@ -456,10 +501,16 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
       if (name) c.computer = name;
     }
   places.push({ place: { kind: "none" }, name: "" });
+  // D204: where each computer's Ducter folder is (the real path), or that it is too old to say.
+  const folders: DucterFolderView[] = [];
+  for (const dev of comps) {
+    const f = found.folder(dev);
+    if (f?.path || f?.old) folders.push({ device: dev, ...(f.path ? { path: f.path } : {}), ...(f.old ? { old: true as const } : {}) });
+  }
   // D202: who could do it, every agent on every computer (one on another computer than the
   // folder's is offered there, with its own copy of the repo); and each one's models.
   const { candidates, models } = await who;
-  return { places, candidates, ...(models?.length ? { models } : {}) };
+  return { places, candidates, ...(models?.length ? { models } : {}), ...(folders.length ? { ducterFolders: folders } : {}) };
 }
 
 // D203: deps without their own FoundRepos keep one made from their computers (no home scan).

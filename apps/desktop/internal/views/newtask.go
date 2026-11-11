@@ -78,6 +78,10 @@ type newTaskState struct {
 	// once the copy picked on another computer says its branches.
 	browse     *ntBrowse
 	wantBranch string
+	// D204: clone is 从 Git 地址加… taking an address (the place list
+	// shows its field instead of the places); a clone in flight outlives
+	// the list closing, and its place is picked when it lands.
+	clone *ntClone
 	// sending is the clientId of the task_new in flight; err the line under
 	// Start when it didn't open.
 	sending string
@@ -392,6 +396,10 @@ func (a *App) drainNewTask() {
 	res := a.S.NewTaskResults
 	a.S.NewTaskResults = nil
 	for _, r := range res {
+		if r.T == "project_clone_result" {
+			a.cloneDone(r)
+			continue
+		}
 		if r.T == "project_add_result" {
 			if r.ClientID == "" || r.ClientID != nt.adding {
 				continue
@@ -409,6 +417,14 @@ func (a *App) drainNewTask() {
 				nt.placeKey, nt.branch, nt.prefill, nt.wantBranch = placeKey(r.Place.Place), "", nil, ""
 				pl := r.Place.Place
 				a.send(protocol.TaskNewOptions{T: "task_new_options", Place: &pl})
+				continue
+			}
+			if r.Reason == "old" {
+				dev := ""
+				if nt.browse != nil {
+					dev = nt.browse.device
+				}
+				nt.err, nt.errEmpty = a.L.T("newtask.old", a.computerName(firstNonEmpty(dev, nt.placeOnly))), false
 				continue
 			}
 			nt.err, nt.errEmpty = a.newTaskError(r.Reason, r.Message), false
@@ -625,12 +641,18 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 	if line := placeLine(chosen); line != "" {
 		e.Tooltip(line)
 	}
+	dropIdle := func() {
+		nt.pending, nt.placeOnly, nt.browse = "", "", nil
+		if nt.clone != nil && nt.clone.cid == "" {
+			nt.clone = nil
+		}
+	}
 	if click {
 		nt.shut("place")
-		nt.pending, nt.placeOnly, nt.browse = "", "", nil
+		dropIdle()
 	}
 	if !nt.placeOpen {
-		nt.pending, nt.placeOnly, nt.browse = "", "", nil
+		dropIdle()
 		return
 	}
 	ck := placeKey(chosen.Place)
@@ -647,6 +669,9 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 	if nt.browse != nil {
 		title = a.L.T("newtask.find.title", a.browseName())
 	}
+	if nt.clone != nil {
+		title = a.L.T("newtask.clone.title", a.computerName(nt.clone.device))
+	}
 	// D203: the repos computers reported fill the list after the used and
 	// added ones, up to 12 rows (all of one computer's while an agent
 	// waits there); 找一个文件夹… finds any other.
@@ -657,11 +682,18 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 		}
 	}
 	a.listPanel(c, e, &nt.placeOpen, title, 360, func() {
+		if nt.clone != nil {
+			a.cloneField(c)
+			return
+		}
 		if nt.browse != nil {
 			a.folderBrowser(c)
 			return
 		}
 		for _, p := range places {
+			if p.Place.Kind == "none" {
+				continue // last, after the ways to get a folder
+			}
 			if only == "" && p.Found && placeKey(p.Place) != ck {
 				if room <= 0 {
 					continue
@@ -669,17 +701,13 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 				room--
 			}
 			p := p
-			if only != "" && (p.Place.Kind == "none" || a.placeComputer(p.Place) != only) {
+			if only != "" && a.placeComputer(p.Place) != only {
 				continue
 			}
 			k := placeKey(p.Place)
 			name := a.placeName(p)
 			if a.menuRow(c, "nt-place:"+k, name, k == ck, false, func() {
-				if p.Place.Kind == "none" {
-					a.glyph(c, 16, drawFolder(t.Faint))
-				} else {
-					a.glyph(c, 16, drawFolder(t.InkMuted))
-				}
+				a.glyph(c, 16, drawFolder(t.InkMuted))
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
 					ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
 					if line := placeLine(p); line != "" {
@@ -689,15 +717,35 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 			}) {
 				a.pickPlace(p) // the chosen one again just closes the list
 			}
-			if p.Place.Kind != "none" {
-				shownN++
+			shownN++
+		}
+		if shownN == 0 {
+			// D203, D204: nothing there yet (a first run): say so, and offer the ways
+			// to get one (this Mac's picker, Find a folder…, Add from a Git address…),
+			// never a bare No folder.
+			empty := a.L.T("newtask.empty")
+			if only != "" {
+				empty = a.L.T("newtask.find.empty", onlyName)
+			}
+			ui.Text(c.Key("nt-place-empty"), empty).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
+		}
+		mode, dev := a.folderAdd()
+		// Adding a folder there: only where the folder picked would be on that computer.
+		if only != "" && !((mode == "worker" && dev == only) || (mode == "here" && a.computerOf(only) != nil && a.computerOf(only).Home)) {
+			mode = ""
+		}
+		ui.Box(c.Key("nt-add-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
+		if mode == "here" || mode == "worker" {
+			if a.menuRow(c, "nt-add-folder", a.L.T("newtask.addfolder"), false, false, func() {
+				a.glyph(c, 16, drawPlus(t.InkSoft))
+				ui.Text(c, a.L.T("newtask.addfolder")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+			}) {
+				a.addFolder()
 			}
 		}
-		if only != "" && shownN == 0 {
-			// D203: nothing there yet: say so, and offer to find one, never a bare No folder.
-			ui.Text(c.Key("nt-place-empty"), a.L.T("newtask.find.empty", onlyName)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
-		}
-		a.findRows(c, only)
+		named := a.findRows(c, only)
+		a.cloneRows(c, only, named || len(a.reachable(only, false)) > 1)
+		a.oldRows(c, only)
 		if only != "" {
 			// No folder on that computer works for the agent too.
 			if a.menuRow(c, "nt-place:none-on", a.L.T("newtask.nowhere")+" · "+onlyName, false, false, func() {
@@ -709,26 +757,22 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 			}) {
 				a.pickPlace(protocol.PlaceChoice{Place: protocol.Place{Kind: "none"}})
 			}
-		}
-		mode, dev := a.folderAdd()
-		// Adding a folder there: only where the folder picked would be on that computer.
-		if only != "" && !((mode == "worker" && dev == only) || (mode == "here" && a.computerOf(only) != nil && a.computerOf(only).Home)) {
-			mode = ""
+		} else {
+			none := protocol.PlaceChoice{Place: protocol.Place{Kind: "none"}}
+			k := placeKey(none.Place)
+			if a.menuRow(c, "nt-place:"+k, a.placeName(none), k == ck, false, func() {
+				a.glyph(c, 16, drawFolder(t.Faint))
+				ui.Text(c, a.placeName(none)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+			}) {
+				a.pickPlace(none)
+			}
 		}
 		switch mode {
-		case "here", "worker":
-			ui.Box(c.Key("nt-add-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
-			if a.menuRow(c, "nt-add-folder", a.L.T("newtask.addfolder"), false, false, func() {
-				a.glyph(c, 16, drawPlus(t.InkSoft))
-				ui.Text(c, a.L.T("newtask.addfolder")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
-			}) {
-				a.addFolder()
-			}
 		case "off":
 			// D197: the home is elsewhere and this Mac doesn't do tasks for it, so the
 			// folders here aren't reachable from it yet. Greyed, with the one step.
 			why := a.L.T("newtask.addfolder.off", a.workHome())
-			ui.Box(c.Key("nt-add-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
+			ui.Box(c.Key("nt-off-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
 			a.menuRow(c, "nt-add-folder", a.L.T("newtask.addfolder")+" · "+why, false, true, func() {
 				a.glyph(c, 16, drawPlus(t.InkSoft))
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {

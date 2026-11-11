@@ -77,8 +77,10 @@ a fresh data folder, and port 7795.
    starter fills the composer; it never sends. Where Ducter lives is the header's 设备 /
    Devices, not a second link here. *Verified* (unit tests; headless renderer and headless
    Chrome at 390 pt: `.shots/first-screen/`). The repo scan in `firstrun.json` no longer
-   feeds the starters (a home on a server would name the wrong machine's repos).
-   The scan of the author's ~90 repos took under 0.2 s.
+   feeds the starters (a home on a server would name the wrong machine's repos), and since D204
+   there is no scan at all: `ducter up` writes no repo hints. New task's first folder list says
+   **还没有文件夹。/ No folders yet.** and offers the ways to get one (this Mac's picker, 找一个文件夹…,
+   从 Git 地址加…), never a guess at where the user keeps code.
 6. The first result: the first task ever to come back done (live, not a replay, and no other
    finished task in the Log) shows one line with the clay *done* character above the
    composer for 14 s or until Got it, and the header's character shows *done*. Remembered in
@@ -109,8 +111,8 @@ from the test harness signalling its own wrapper shell, not from Ducter.
   partner; it isn't in the Log, so the partner doesn't know it "said" it. Proposed persona text
   for the partner's real first words is in the first-run report (packages/partner is owned
   elsewhere right now).
-- The partner doesn't read `firstrun.json`, so "I found 14 repos; the most active is …" (the
-  target in A1 step 6) is only shown, not said.
+- The partner doesn't know the user's repos at first run (D204: no scan; `firstrun.json` is gone),
+  so "I found 14 repos; the most active is …" (the target in A1 step 6) is neither shown nor said.
 - ~~There is no rename in the desktop yet~~: the partner is renamed in place on Partner (D71).
 - ~~A double-clickable app doesn't exist~~: see the app path below.
 
@@ -391,7 +393,7 @@ row's detection result animates in.
      setup page with relayed AI logins (Q17) is next; the exact login commands it relays are in
      `research/29`.
 2. **Cartoon**, then the **live checklist**, auto-detected:
-   1. **This device**: ✓ ("MacBook Pro · 14 repos found under ~/dev").
+   1. **This device**: ✓ ("MacBook Pro"; D204: no repo count, Ducter doesn't scan for repos).
    2. **Your AI**: lists the logged-in harnesses (Claude Code ✓, Codex ✓/✗). A missing one
       gets a **Connect** button that runs its official login in a sheet. At least one is
       required. An API key is the fallback path.

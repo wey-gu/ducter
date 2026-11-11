@@ -95,6 +95,8 @@ export interface NewTaskFrames {
   addProject?(path: string, device?: string): Promise<Omit<Extract<ServerFrame, { t: "project_add_result" }>, "t" | "clientId">>;
   /** D203: a folder's subfolders on that computer (the home's own without device). */
   browse?(device: string | undefined, path: string | undefined): Promise<Omit<Extract<ServerFrame, { t: "folder_browse_result" }>, "t" | "clientId" | "device">>;
+  /** D204: clone a Git address on that computer (the home's own without device) and add it as a project. */
+  clone?(device: string | undefined, address: string): Promise<Omit<Extract<ServerFrame, { t: "project_clone_result" }>, "t" | "clientId" | "device">>;
 }
 
 /** What the client frames for work over time do (core.ts wires them to waiters, untils, routines). */
@@ -230,6 +232,8 @@ export function createWsHandler(deps: WsDeps) {
     remember((e.body as Bodies["user_msg"]).clientId, e.seq);
   // task_new results by clientId (D128): a resend opens nothing twice. In memory, recent only.
   const newTaskSeen = new Map<string, Promise<NewTaskResult>>();
+  // D204: a clone in flight by clientId: a resend (the socket came back) waits for the same one.
+  const cloneSeen = new Map<string, Promise<Omit<Extract<ServerFrame, { t: "project_clone_result" }>, "t" | "clientId" | "device">>>();
   // task_send ids being delivered right now (the runner logs them after it awaits the session).
   const taskSending = new Map<string, Promise<Delivery>>();
   /** The task_event a task_send with this clientId already logged, if any (recent window). */
@@ -770,6 +774,23 @@ export function createWsHandler(deps: WsDeps) {
         if (!deps.newTask?.addProject) return send(ws, { t: "project_add_result", ok: false, ...cid, reason: "failed", message: "Projects can't be added here." });
         const device = typeof f.device === "string" && f.device && f.device !== "local" ? f.device : undefined;
         send(ws, { t: "project_add_result", ...cid, ...(await deps.newTask.addProject(String(f.path ?? ""), device)) });
+        return;
+      }
+      case "project_clone": {
+        const id = typeof f.clientId === "string" && f.clientId ? f.clientId : "";
+        const cid = id ? { clientId: id } : {};
+        const device = typeof f.device === "string" && f.device && f.device !== "local" ? f.device : undefined;
+        const dev = device ? { device } : {};
+        if (!deps.newTask?.clone) return send(ws, { t: "project_clone_result", ok: false, ...cid, ...dev, reason: "failed", message: "Projects can't be cloned here." });
+        let pending = id ? cloneSeen.get(id) : undefined;
+        if (!pending) {
+          pending = deps.newTask.clone(device, typeof f.address === "string" ? f.address : "");
+          if (id) {
+            cloneSeen.set(id, pending);
+            if (cloneSeen.size > 50) cloneSeen.delete(cloneSeen.keys().next().value!);
+          }
+        }
+        send(ws, { t: "project_clone_result", ...cid, ...dev, ...(await pending) });
         return;
       }
       case "folder_browse": {

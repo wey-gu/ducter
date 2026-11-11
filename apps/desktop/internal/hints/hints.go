@@ -1,9 +1,10 @@
-// Package hints is what the client knows about the Mac it runs on, from
-// files in Ducter's data folder: the first-run hints `ducter up` writes
-// (packages/cli/src/firstrun.ts: recent repo names, never their contents)
-// and the client's own first-run memory (whether the first result was
-// celebrated). Everything here is optional: a missing or unreadable file
-// means generic starters and an in-memory flag.
+// Package hints is what the client keeps about the Mac it runs on, in
+// Ducter's data folder: the partner's chosen name (persona.json, which
+// `ducter up` also writes) and the client's own first-run memory (whether
+// the first result was celebrated, its settings). Everything here is
+// optional: a missing or unreadable file means defaults and an in-memory
+// flag. D204: no first-run repo hints any more (firstrun.json, a scan of
+// ~/dev, ~/code, …): a computer's projects are its Ducter folder's.
 package hints
 
 import (
@@ -15,27 +16,8 @@ import (
 	"unicode"
 )
 
-const (
-	// HintsFile is written by `ducter up`.
-	HintsFile = "firstrun.json"
-	// StateFile is the client's own.
-	StateFile = "desktop.json"
-)
-
-// Repo is one recently touched git checkout.
-type Repo struct {
-	Name      string `json:"name"`
-	Path      string `json:"path"` // "~/dev/hawdb"
-	TouchedAt string `json:"touchedAt"`
-}
-
-// Hints is firstrun.json.
-type Hints struct {
-	Version     int    `json:"version"`
-	GeneratedAt string `json:"generatedAt"`
-	RepoCount   int    `json:"repoCount"`
-	Repos       []Repo `json:"repos"`
-}
+// StateFile is the client's own.
+const StateFile = "desktop.json"
 
 type state struct {
 	FirstResultSeenAt string `json:"firstResultSeenAt,omitempty"`
@@ -78,9 +60,8 @@ type Ask struct {
 // Local is the data folder as the client sees it. Its zero value (no
 // folder) works in memory only.
 type Local struct {
-	Dir   string
-	Hints *Hints
-	st    state
+	Dir string
+	st  state
 }
 
 // DataDir is where Ducter keeps its data: $DUCTER_DATA_DIR, else ~/.ducter
@@ -103,41 +84,10 @@ func Open(dir string) *Local {
 	if dir == "" {
 		return l
 	}
-	if b, err := os.ReadFile(filepath.Join(dir, HintsFile)); err == nil {
-		var h Hints
-		if json.Unmarshal(b, &h) == nil && h.Version == 1 {
-			l.Hints = &h
-		}
-	}
 	if b, err := os.ReadFile(filepath.Join(dir, StateFile)); err == nil {
 		_ = json.Unmarshal(b, &l.st)
 	}
 	return l
-}
-
-// Reload reads firstrun.json again (the client may open before `ducter
-// up` wrote it), keeping the client's own state.
-func (l *Local) Reload() {
-	if l == nil || l.Dir == "" {
-		return
-	}
-	l.Hints = Open(l.Dir).Hints
-}
-
-// Repos are the recent repos, newest first (nil without hints).
-func (l *Local) Repos() []Repo {
-	if l == nil || l.Hints == nil {
-		return nil
-	}
-	return l.Hints.Repos
-}
-
-// RepoCount is how many repos were found.
-func (l *Local) RepoCount() int {
-	if l == nil || l.Hints == nil {
-		return 0
-	}
-	return l.Hints.RepoCount
 }
 
 // FirstResultSeen reports whether the first finished task was already

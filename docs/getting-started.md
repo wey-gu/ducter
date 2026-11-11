@@ -61,8 +61,13 @@ press Return. Or write anything of your own:
 
 Coding tasks work in their own copy of your project, on their own branch (named
 `ducter/…`), so your own checkout is left alone. The copy is a folder named after the project
-and the branch, such as `~/.ducter/worktrees/hawdb/fix-flaky-test`; on the Mac, an opened task
-shows its path over its changes.
+and the branch, in the Ducter folder: such as `~/ducter/worktrees/hawdb/fix-flaky-test`; on the
+Mac, an opened task shows its path over its changes.
+
+Each computer has one **Ducter folder**, `~/ducter`, that holds what Ducter makes there for you:
+`projects` (repositories it cloned for you) and `worktrees` (tasks' copies). If you already have a
+`~/ducter` of your own, Ducter leaves it alone and uses `~/ducter-work`. To use another place, set
+`DUCTER_FOLDER` before starting Ducter.
 
 To work on it by hand, open the task on the Mac and choose **Open** at its top right: **Show in
 Finder**, **Open in** Cursor, Visual Studio Code or Zed, or **Open in** Terminal, iTerm2, Ghostty

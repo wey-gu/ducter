@@ -1,19 +1,13 @@
 package hints
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 )
 
-func TestOpenReadsHintsAndRemembersTheFirstResult(t *testing.T) {
+func TestOpenRemembersTheFirstResult(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, HintsFile), []byte(`{"version":1,"repoCount":14,"repos":[{"name":"hawdb","path":"~/dev/hawdb","touchedAt":"2026-11-08T00:00:00Z"}]}`), 0o644)
 	l := Open(dir)
-	if l.RepoCount() != 14 || len(l.Repos()) != 1 || l.Repos()[0].Path != "~/dev/hawdb" {
-		t.Fatalf("hints %+v", l.Hints)
-	}
 	if l.FirstResultSeen() {
 		t.Fatal("seen before anything happened")
 	}
@@ -23,14 +17,9 @@ func TestOpenReadsHintsAndRemembersTheFirstResult(t *testing.T) {
 	}
 }
 
-func TestMissingOrBadFilesMeanNoHints(t *testing.T) {
-	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, HintsFile), []byte(`{"version":2}`), 0o644)
-	if l := Open(dir); l.Hints != nil || l.Repos() != nil {
-		t.Fatalf("unknown version accepted: %+v", l.Hints)
-	}
+func TestMissingFilesMeanDefaults(t *testing.T) {
 	var none *Local
-	if none.Repos() != nil || none.FirstResultSeen() {
+	if none.FirstResultSeen() {
 		t.Fatal("nil Local")
 	}
 	mem := Open("")

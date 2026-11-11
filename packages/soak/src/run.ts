@@ -644,7 +644,9 @@ for (const r of REPOS) {
   if (prunable) find("worktree.prunable", `${r}: ${prunable} worktrees git calls prunable`);
 }
 // Worktrees are kept by design (no archiving yet): every repo task that started has one.
-// D198: a task's worktree is its stored path (<repo>/<slug>, or <taskId> before it).
+// D198, D204: a task's worktree is its stored path: <Ducter folder>/worktrees/<repo>/<slug> (here,
+// with data folders of their own, <data>/ducter/worktrees/…; on a real computer ~/ducter), or
+// <data>/worktrees/… for tasks from before D204.
 const repoTasks = [...rebuilt.list()].filter((c) => c.place.kind === "repo");
 const startedRepo = repoTasks.filter((c) => c.residency !== "archived");
 const missingWt = startedRepo.filter((c) => {

@@ -458,6 +458,7 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 		{Role: mygo.RoleEditMenu},
 		{Label: l.T("menu.view"), Submenu: []*mygo.MenuItem{
 			{Label: l.T("newtask.menu"), Accelerator: "CmdOrCtrl+N", Click: show(app.NewTaskShortcut)},
+			{Label: l.T("switch.menu"), Accelerator: "CmdOrCtrl+O", Click: show(app.OpenSwitcher)},
 			mygo.Separator(),
 			{Label: l.T("menu.view.conversation"), Accelerator: "CmdOrCtrl+1", Click: show(func() { app.Route = views.RouteConversation })},
 			{Label: l.T("menu.view.onhand"), Accelerator: "CmdOrCtrl+2", Click: show(func() { app.Route = views.RouteOnHand })},

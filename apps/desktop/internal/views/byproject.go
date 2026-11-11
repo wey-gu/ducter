@@ -156,16 +156,17 @@ func (a *App) projectGroup(c *ui.Context, g projectGroup) {
 				a.OpenNewTask(&p)
 			}
 		})
-		ui.Column(c).Padding(t.S1, t.S4).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
+		ui.Column(c).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
 			Dividers(1, t.LineSoft).Children(func() {
 			for _, task := range g.tasks {
-				a.projectRow(c.Key(task.ID), task)
+				a.oh.order = append(a.oh.order, task.ID)
+				a.taskRow(c.Key(task.ID), task, true)
 			}
 			for i := range g.routines {
 				a.projectRoutineRow(c.Key("rt:"+g.routines[i].RoutineID), &g.routines[i])
 			}
 			if len(g.tasks) == 0 && len(g.routines) == 0 {
-				ui.Row(c.Key("empty")).Height(56).AlignItems(ui.Center).Children(func() {
+				ui.Row(c.Key("empty")).Height(56).Padding(0, t.S4+2).AlignItems(ui.Center).Children(func() {
 					ui.Text(c, a.L.T("onhand.project.empty")).FontSize(t.SM).TextColor(t.InkMuted)
 				})
 			}
@@ -235,7 +236,7 @@ func (a *App) projectRow(c *ui.Context, task *store.Task) {
 func (a *App) projectRoutineRow(c *ui.Context, r *protocol.Routine) {
 	t := a.T
 	paused := r.State == "paused"
-	ui.Row(c).Gap(t.S3).Padding(t.S3, 0).AlignItems(ui.Center).Label(r.Name).Children(func() {
+	ui.Row(c).Gap(t.S3).Padding(t.S3, t.S4+2).AlignItems(ui.Center).Label(r.Name).Children(func() {
 		ui.Box(c.Key("face")).Size(32, 36).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 			a.calendarBadge(c, r, 30)
 		})

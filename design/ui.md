@@ -409,19 +409,34 @@ end of the side pane's header a 44-point button with two arrows out (**铺满 / 
 the level shown to the whole screen; there the same button with the arrows in (**放回对话旁边 /
 Back beside the conversation**) brings it back, and so do ⌘2 (a toggle for On hand), the crumb
 **对话** and Esc (one level up: a whole-screen task goes to the whole-screen On hand). On hand at
-the whole screen is the Mac's On hand, part for part (`apps/web/src/board.tsx` mirrors
-`onhand.go` and `byproject.go`): a 60-high header on the chrome's hairline with the crumbs (15/600
-muted, `/` faint, the title 18/800, the counts 12 muted), then **按状态 · 按项目** (`Seg`) and
-**开一件事** (`Btn` text); **接下来** in 13 muted (the side pane shows the same one line above its sections, D192); the lanes as flex columns with the Mac's grow and
-basis (Needs you 2/400, Working 1/240, Waiting 1/220, Done today 1/260, each at most 2.2× its basis),
-their names at 20/800 with the count muted; working and waiting cards white on the card's base
-(title 15/800, where it stands 13 soft, the rest 12 muted), Done today one card of rows; by
-project, groups at most 960. An opened task at the whole screen keeps its page on the 720 measure
-under the crumbs **对话 / 手头的事 / {task}**; **暂停 / 取消任务** are in its foot (D210, D213, D212). The move between
-the two is one view transition (`level` and `conv`, 320 ms, `--ease`; none under reduced motion).
-On a book fold the whole-screen On hand puts Needs you on the first half and the other lanes on
-the second; a task stays in its half; a tabletop offers neither. Screens:
-`.shots/onhand-wide/` (Mac vs iPad sheets, `sheet-*.png`).
+the whole screen is the Mac's On hand: a 60-high header on the chrome's hairline with the crumbs
+(15/600 muted, `/` faint, the title 18/800, the counts 12 muted) and **新建** (`Btn` text), then
+the one list (D216, below) on a 960 measure. An opened task at the whole screen keeps its page on
+the 720 measure under the crumbs **对话 / 手头的事 / {task}**; **暂停 / 取消任务** are in its foot
+(D210, D213, D212); from 1360 CSS px (1720 with its workbench open, D214) On hand stands beside it as a
+340-wide rail. The move between the two is one view transition (`level` and `conv`, 320 ms,
+`--ease`; none under reduced motion). On a book fold a task stays in its half and the rail is not
+shown; a tabletop offers neither. Screens: `.shots/onhand-wide/` (D184), `.shots/onhand-redesign/`
+(D216).
+
+**On hand is one list (D216).** The phone, the pane beside the conversation, the whole screen and
+the rail draw the same rows (`apps/web/src/onhand.tsx`, `apps/desktop/internal/views/onhandlist.go`).
+Sections at 13/700 muted with the count; what needs you is its decision card, answered in place
+(in the rail, a row); every other section's tasks are **one clay card of rows** (white, the card's
+base, radius 24) parted by a 1pt `line-soft`. A row is two lines, 13/18 padding: the title 15/700
+(finished: ink-soft, 600), then on the right `+a −d` (mono 12, the done and failed inks), **草稿 PR
+/ 已合并** (12/700 soft), the state word only by project (12/700, needs and failed inks), the time
+(12 muted, tabular); line two 13 soft: the step's drawn mark (14, the transcript's) and the step
+in words, the command in mono 12 muted, then on wide the branch (mono 12, at most a third) and the
+computer · agent (12 muted). Waiting rows lead with their wait bubble and carry the groove; a
+keep-going loop its lights. Hover (pointer) puts the one next step in the time's place on a
+`surface-raised` fade. The row the keys are on: `surface-raised` with a 4pt accent bar inside its
+left edge; selected: `working-surface`; the task open beside the rail: `sunken` with a 4pt ink bar.
+Find is a 40-high `sunken` field (radius 12, a drawn lens) beside **按状态 · 按项目** (`Seg`). The
+bulk bar is a raised white card (radius 24, `floating` + base) stuck to the list's foot, rising
+8pt in 200 ms. The switcher (⌘O) is a white card (radius 28) 10vh from the top, at most 640 wide:
+a 18 field, then rows (15/700 title, the project · branch in mono 12, the state word), the chosen
+one on `sunken`.
 
 **At a foldable's fold (D182).** A fold in view splits the panes at the fold, at any width: held
 like a book (the fold top to bottom, flat or half-open, each side ≥ 320 CSS px) the conversation
@@ -447,14 +462,15 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    never leaves this view.
 2. **手头的事 / On hand** (overview for decisions, all personas).
    - The top is one quiet line, **接下来 / Next**, only when more than one thing is coming
-     (defaults taking effect, waits coming due; D127). The lanes' headers carry the counts.
-   - Below it are four lanes: **等你 / Needs you** (wide decision cards read at one glance,
+     (defaults taking effect, waits coming due; D127). The sections' names carry the counts.
+   - Below it is one list (D216): **等你 / Needs you** (wide decision cards read at one glance,
      D127: the task's short title with the drawn chevron (no coin, D213), one question, the default as a small
-     timer and one caption, Reply… · Hold · a short Go), **在做 / Working**, **在等 / Waiting**
-     (dashed, showing what it waits for), and **做完了 / Done** (with "在检查 / checking"
-     for `done?`).
-   - Lanes can be grouped by state, time, device, project, or persona. "Go on all defaults"
-     is a text button at the end of the Needs you lane's header.
+     timer and one caption, Reply… · Hold · a short Go), then **在做 / Working**, **在等 / Waiting**
+     and **今天做完 / Done today**, each one card of two-line rows saying what the task is doing
+     now, its question, what it waits for, or its result.
+   - By state, or by project from two projects. Find from ten tasks; keys, hover actions,
+     selection and the rail where there is a keyboard, a pointer and room. "Go on all defaults"
+     is a text button at the end of the Needs you section's name.
    - On mobile, decisions are a swipeable stack: swipe left takes the default, swipe right
      means later.
    - Routines appear as one card each, with the next firing time.

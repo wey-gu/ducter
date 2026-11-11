@@ -3,7 +3,34 @@ import type { Attention, Bodies, LogEvent, OnHand, Residency, TaskCard } from "@
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 
-export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run"] as const;
+export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status"] as const;
+
+/** D216: a step or the agent's words, the kind On hand's latest line is made from. */
+export const isStepEvent = (b: Bodies["task_event"]) => b.role === "tool" || (b.role === "assistant" && (!!b.text?.trim() || !!b.thinking?.length));
+
+const cut = (s: string | undefined, n: number) => (s && s.length > n ? s.slice(0, n) : s);
+
+/** A task_event small enough to ride on every On hand card: long strings cut, media and usage left out. */
+export function slimStep(e: LogEvent): LogEvent<"task_event"> {
+  const b = e.body as Bodies["task_event"];
+  const input = b.tool?.input;
+  let slimIn: unknown = input;
+  if (typeof input === "string") slimIn = cut(input, 400);
+  else if (input && typeof input === "object" && !Array.isArray(input)) {
+    const o: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+      if (typeof v === "string") o[k] = cut(v, 400);
+      else if (typeof v === "number" || typeof v === "boolean") o[k] = v;
+    }
+    slimIn = o;
+  }
+  const body: Bodies["task_event"] = { taskId: b.taskId, role: b.role };
+  if (b.from) body.from = b.from;
+  if (b.text) body.text = cut(b.text, 400);
+  if (b.thinking?.length) body.thinking = b.thinking.slice(-2);
+  if (b.tool) body.tool = { name: b.tool.name, ...(slimIn !== undefined ? { input: slimIn } : {}), ...(b.tool.output ? { output: cut(b.tool.output, 300) } : {}), ...(b.tool.ok !== undefined ? { ok: b.tool.ok } : {}) };
+  return { seq: e.seq, ts: e.ts, persona: e.persona, stream: e.stream, origin: e.origin, kind: "task_event", body };
+}
 
 const ACTIVE: Attention[] = ["queued", "working", "needs_you", "blocked", "done_claimed"];
 const ORDER: Attention[] = ["needs_you", "blocked", "working", "queued", "done_claimed", "done", "failed", "dropped", "superseded"];
@@ -29,10 +56,25 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
   const waiters = new Map<string, Bodies["waiter"]>(); // armed only
   const routineNames = new Map<string, string>();
   const runOf = new Map<string, { routineId: string; name: string }>(); // a routine's run task
+  // D216: each task's latest step, kept live; a card not looked up since boot reads its stream once.
+  const latest = new Map<string, LogEvent<"task_event">>();
+  const lookedUp = new Set<string>();
   let decorate: (o: OnHand) => OnHand = (o) => o;
 
   const apply = (e: LogEvent) => {
     switch (e.kind) {
+      case "task_event": {
+        const b = e.body as Bodies["task_event"];
+        if (b.taskId && isStepEvent(b)) latest.set(b.taskId, slimStep(e)), lookedUp.add(b.taskId);
+        break;
+      }
+      case "job_status": {
+        // D216: the user merged the branch or opened a draft PR from Ducter.
+        const b = e.body as Bodies["job_status"];
+        const c = b.taskId ? cards.get(b.taskId) : undefined;
+        if (c && b.act && b.state === "done") c.integrated = { act: b.act, ...(b.ref ? { ref: b.ref } : {}), at: e.ts };
+        break;
+      }
       case "task_open": {
         const b = e.body as Bodies["task_open"];
         const prev = cards.get(b.taskId);
@@ -166,6 +208,14 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
   log.subscribe(apply);
 
   const copy = (c: TaskCard): TaskCard => structuredClone(c);
+  const latestOf = (taskId: string): LogEvent<"task_event"> | undefined => {
+    if (!lookedUp.has(taskId)) {
+      lookedUp.add(taskId);
+      const ev = log.read({ stream: taskStream(taskId), kinds: ["task_event"], limit: 12 }).findLast((e) => isStepEvent(e.body as Bodies["task_event"]));
+      if (ev && !latest.has(taskId)) latest.set(taskId, slimStep(ev));
+    }
+    return latest.get(taskId);
+  };
 
   return {
     get: (id) => {
@@ -186,7 +236,12 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
         else if (c.attention === "blocked") counts.waiting++;
         else if (c.attention === "working" || c.attention === "queued" || c.attention === "done_claimed") counts.working++;
         else if (c.attention === "done" && new Date(c.updatedAt).toDateString() === today) counts.done_today++;
-        if (isActive(c.attention) || age < DAY_MS) tasks.push(copy(c));
+        if (isActive(c.attention) || age < DAY_MS) {
+          const card = copy(c);
+          const l = latestOf(c.taskId);
+          if (l) card.latest = structuredClone(l);
+          tasks.push(card);
+        }
       }
       tasks.sort(
         (a, b) => ORDER.indexOf(a.attention) - ORDER.indexOf(b.attention) || b.updatedAt.localeCompare(a.updatedAt),

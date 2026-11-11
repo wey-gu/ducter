@@ -5599,6 +5599,482 @@ dl.call-summary dd { margin: 0; }
   }
 }
 
+/* ---------- On hand as a workspace (D216): one list in every room ---------- */
+.onhand-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.onhand-list .tools {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.onhand-list .find {
+  flex: 1 1 220px;
+  min-width: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  color: var(--ink-muted);
+}
+.onhand-list .find:focus-within {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.onhand-list .find input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--md);
+  color: var(--ink);
+}
+.onhand-list .find input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.onhand-list .none,
+.switcher .none {
+  margin: 0;
+  padding: 8px 4px;
+  color: var(--ink-muted);
+  font-size: var(--md);
+}
+.tsec {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tsec h3 {
+  margin: 0 2px;
+  min-height: 32px;
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--ink-muted);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.tsec h3 .n {
+  font-variant-numeric: tabular-nums;
+}
+.tsec h3 .end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+.tsec .calm-line {
+  margin: 0 2px;
+  font-size: var(--md);
+  line-height: var(--lh-read);
+  color: var(--ink-soft);
+}
+/* A section's tasks are one clay card of rows: one shadow, rows parted by a soft line. */
+.trows {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--base);
+  overflow: hidden;
+}
+.trow {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  /* Hundreds of rows stay smooth: rows off screen are not laid out or painted. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 66px;
+}
+.trows > .trow + .trow,
+.tsec > .trow.loose + .trow.loose {
+  border-top: 1px solid var(--line-soft);
+}
+.tsec > .trow.loose {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--base);
+}
+.trow .tmain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 18px;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+}
+.trow .tmain.static {
+  cursor: default;
+}
+.trow .l1,
+.trow .l2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.trow .l1 .t {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--md);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trow .stat {
+  display: flex;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: var(--xs);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.trow .stat i {
+  font-style: normal;
+}
+.trow .stat .add {
+  color: var(--done-ink);
+}
+.trow .stat .del {
+  color: var(--failed-ink);
+}
+.trow .pr {
+  flex: none;
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.trow .st {
+  flex: none;
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.trow .st.needs {
+  color: var(--needs-ink);
+}
+.trow .st.failed {
+  color: var(--failed-ink);
+}
+.trow .time {
+  flex: none;
+  min-width: 3.2em;
+  text-align: right;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.trow .l2 {
+  font-size: var(--sm);
+  color: var(--ink-soft);
+}
+.trow .l2 > .g {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ink-muted);
+}
+.trow .l2 .w {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trow .l2 .c,
+.trow .l2 .br {
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trow .l2 .c {
+  flex: 0 3 auto;
+}
+.trow .l2 .br {
+  flex: 0 2 auto;
+  margin-left: auto;
+  max-width: 34%;
+}
+.trow .l2 .meta {
+  flex: none;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.trow .l2 .br + .meta {
+  margin-left: 0;
+}
+.trow .l2 .w + .meta,
+.trow .l2 .c + .meta {
+  margin-left: auto;
+}
+.trow .l2.needs {
+  color: var(--needs-ink);
+}
+.trow .l2.failed {
+  color: var(--failed-ink);
+}
+.trow .l2.failed > .g {
+  color: var(--failed-ink);
+}
+/* Finished work recedes a little; what needs you never does. */
+.trow.a-done .l1 .t,
+.trow.a-done_claimed .l1 .t {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.trow .groove-track,
+.trow .goal {
+  margin-top: 4px;
+}
+/* The one next step on hover (pointer, wide), over the row's right end. */
+.trow .tacts {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding-left: 24px;
+  background: linear-gradient(to right, transparent, var(--surface-raised) 24px);
+}
+.trow .tacts.on {
+  display: flex;
+  position: static;
+  align-self: center;
+  padding: 0 12px 0 0;
+  background: none;
+}
+.trow .tacts .busy {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  padding: 0 8px;
+}
+@media (hover: hover) {
+  .trow:hover {
+    background: var(--surface-raised);
+  }
+  .trow:hover .tacts,
+  .trow:focus-within .tacts {
+    display: flex;
+  }
+}
+/* Where the keys are, what is selected, what is open beside the list. */
+.trow.kfocus {
+  background: var(--surface-raised);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+.trow.sel {
+  background: var(--working-surface);
+}
+.trow.sel .tacts {
+  background: linear-gradient(to right, transparent, var(--working-surface) 24px);
+}
+.trow.opened {
+  background: var(--sunken);
+  box-shadow: inset 4px 0 0 var(--ink);
+}
+/* Many at once: one raised bar at the foot of the list, while something is selected. */
+.onhand-list .bulk {
+  position: sticky;
+  bottom: calc(var(--safe-bottom) + 16px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 8px 10px 8px 20px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--floating), var(--base);
+  animation: rise 200ms var(--ease);
+}
+.onhand-list .bulk > b {
+  font-size: var(--md);
+  margin-right: 8px;
+}
+.onhand-list .bulk .ask {
+  font-size: var(--md);
+  color: var(--ink-soft);
+  margin-right: 8px;
+}
+.onhand-list .bulk .grow {
+  flex: 1;
+}
+@keyframes rise {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+/* The whole screen: the list on a wide measure. */
+.board-col {
+  width: min(960px, 100%);
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+/* A task at the whole screen with the list beside it as a rail (ROOMY in wide.ts). */
+.with-rail {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+}
+.rail {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  background: var(--bg-deep);
+}
+.rail-head {
+  min-height: 60px;
+  padding: calc(var(--safe-top) + 8px) 20px 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.rail-head .crumb {
+  font-size: var(--lg);
+  font-weight: 800;
+  font-family: var(--head);
+}
+.rail-head .sum {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rail-list {
+  padding: 16px 12px calc(var(--safe-bottom) + 24px);
+}
+.room-rail .trow .tmain {
+  padding: 11px 14px;
+}
+.room-rail .tsec h3 {
+  min-height: 24px;
+}
+.beside-rail {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.beside-rail > .task-page,
+.beside-rail > .ask-dock,
+.beside-rail > .composer-wrap,
+.beside-rail > .task-foot {
+  padding-left: max(24px, calc((100% - 720px) / 2));
+  padding-right: max(24px, calc((100% - 720px) / 2));
+}
+.beside-rail > .task-page {
+  padding-top: 24px;
+}
+/* 打开一件事 / Open a task (⌘O): one field and the tasks under it, over everything. */
+.switcher {
+  position: fixed;
+  z-index: 21;
+  top: max(10vh, calc(var(--safe-top) + 24px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(640px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--floating), var(--base);
+  overflow: hidden;
+  animation: rise 160ms var(--ease);
+}
+.switcher .sw-in {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--lg);
+  color: var(--ink);
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.switcher .sw-list {
+  max-height: min(60vh, 520px);
+  overflow: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.switcher .sw-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--r-md);
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  min-width: 0;
+}
+.switcher .sw-row.on {
+  background: var(--sunken);
+}
+.switcher .sw-row .t {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--md);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switcher .sw-row .m {
+  flex: 0 2 auto;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switcher .sw-row .st {
+  flex: none;
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.switcher .sw-row .st.needs {
+  color: var(--needs-ink);
+}
+.switcher .sw-row .st.failed {
+  color: var(--failed-ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .onhand-list .bulk,
+  .switcher {
+    animation: none;
+  }
+}
 /* ---------- D214: 工作台 / Workbench, beside the opened task ---------- */
 :root {
   --bench-w: clamp(380px, 42vw, 760px);

@@ -32,6 +32,7 @@
 "menu.devices" = "你的设备";
 "menu.partner" = "伙伴";
 "menu.composer" = "跟 %@ 说";
+"menu.switch" = "打开一件事…";
 /* D200: the home runs an older Ducter than this app. */
 "home.older" = "%1$@ 上的 Ducter 还是 %2$@，比这个 App 旧，有些新东西要等它更新。";
 "home.older.unknown" = "%@ 上的 Ducter 比这个 App 旧，有些新东西要等它更新。";

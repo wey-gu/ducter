@@ -11,7 +11,8 @@ import { inApp, tellApp } from "./native.ts";
 import { startAutospace } from "./autospace.ts";
 import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
 import { LiveView } from "./live.tsx";
-import { Board } from "./board.tsx";
+import { Board, Rail } from "./board.tsx";
+import { openKey, ROOMY, ROOMY_BENCH, useRoomy } from "./wide.ts";
 import { escUp, useFill, useSplit, useWide } from "./wide.ts";
 import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
 import { liveInBench } from "./live.tsx";
@@ -53,11 +54,29 @@ function App() {
   const benchTask = r.name === "task" ? A.S.tasks.get(r.id) : undefined;
   const benched = benchOpen(benchTask) && (fill || !wide);
   liveInBench.taskId = benchShown.taskId = benched && benchTask ? benchTask.id : "";
+  // D216: a task at the whole screen keeps On hand beside it as a rail when there is room (more
+  // room when its workbench is open beside it too).
+  const roomy = useRoomy(ROOMY);
+  const roomyBench = useRoomy(ROOMY_BENCH);
+  const rail = r.name === "task" && !split && (benched ? roomyBench : roomy);
   return (
     <>
       {fill ? (
         <div class={`${split ? `full ${split.kind}` : "full"}${benched ? " benched" : ""}`}>
-          {r.name === "task" ? <TaskView key={r.id} id={r.id} full /> : <Board />}
+          {r.name === "task" ? (
+            rail ? (
+              <div class="with-rail">
+                <Rail />
+                <div class="beside-rail">
+                  <TaskView key={r.id} id={r.id} full />
+                </div>
+              </div>
+            ) : (
+              <TaskView key={r.id} id={r.id} full />
+            )
+          ) : (
+            <Board />
+          )}
           {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} />}
         </div>
       ) : wide ? (
@@ -208,6 +227,7 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   (globalThis as { ducterCommand?: (c: string) => void }).ducterCommand = (c) => A.command(c);
   addEventListener("keydown", (e) => void benchKey(e));
   addEventListener("keydown", escUp);
+  addEventListener("keydown", openKey);
   addEventListener("popstate", () => A.fromHash());
   addEventListener("hashchange", () => A.fromHash());
   navigator.serviceWorker?.addEventListener("message", (e: MessageEvent) => {

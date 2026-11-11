@@ -704,6 +704,18 @@ type TaskCard struct {
 	Changes         *DiffStat        `json:"changes,omitempty"`     // D128: repo tasks, once counted
 	Folder          *FolderSummary   `json:"folder,omitempty"`      // D142: non-git folder tasks
 	Browsing        *Browsing        `json:"browsing,omitempty"`    // D190: holds Ducter's browser there
+	// D216: its latest step or words (a task_event, long fields cut), and a
+	// merge or a draft PR the user made from Ducter.
+	Latest     *LogEvent   `json:"latest,omitempty"`
+	Integrated *Integrated `json:"integrated,omitempty"`
+}
+
+// Integrated is what the user did with a task's branch from Ducter (D216):
+// Act "merge" (Ref: the commit) or "open_pr" (Ref: the PR's address).
+type Integrated struct {
+	Act string `json:"act"`
+	Ref string `json:"ref,omitempty"`
+	At  string `json:"at"`
 }
 
 // Browsing says a task holds Ducter's own browser on a computer ("local" or

@@ -180,7 +180,12 @@ func TestNewTaskCard(t *testing.T) {
 			t.Fatalf("%s: the agents' list: %q", lang, tt.Texts())
 		}
 		newTaskShot(t, tt, "card-who-"+string(lang))
+		// On hand behind the card names agents on its rows too (D216): click the card's.
+		app.Route = RouteConversation
+		tt.Frame()
 		click(t, tt, "Codex")
+		app.Route = RouteOnHand
+		tt.Frame()
 		if app.nt.pick == "" || app.nt.whoOpen || app.Local.NewTaskWho() != app.nt.pick {
 			t.Errorf("%s: picking Codex: pick %q open %v remembered %q", lang, app.nt.pick, app.nt.whoOpen, app.Local.NewTaskWho())
 		}

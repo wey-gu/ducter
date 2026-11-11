@@ -927,3 +927,12 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## Ducter's data folder and the opened task (D207)
 
 - [ ] **A place-less task's scratch folder outside the data folder** (`<Ducter folder>/scratch/<taskId>`): today it is `<dataDir>/scratch/<taskId>`, Ducter-made and empty, the one way into the data folder. Trigger: a task seen reaching up out of its scratch into the data folder, or the Ducter folder gaining a third kind of thing.
+
+## On hand as a workspace, next phases (D216, research/61)
+
+- [ ] **CI on the row**: a repo task's PR checks (passing, failing, running) next to **草稿 PR**. Needs a PR watcher per open PR (T3 Code polls every 2 min and wakes the agent on a failed check; Ducter's `wait_ci` check is the start). Trigger: the first time the author merges from On hand without opening the PR.
+- [ ] **The Mac: the rail beside an opened task, and many at once.** The web has both; the Mac app has the list, Find, keys, hover actions and ⌘O. Trigger: the author's review of the web's rail.
+- [ ] **Done only while unread**: a read mark per task (synced like the conversation's), so a finished task the user already saw recedes further and an unseen failure stands out (T3 Code's watermark). Trigger: Done today holds more than ten.
+- [ ] **Cost on the row**: a task's tokens or money, quietly, for the heavy developer (the until loop already counts tokens). Trigger: a cost question from the author.
+- [ ] **Search past today**: the switcher sees every task the client holds; older finished tasks need a server search (the Log's FTS). Trigger: "where was that task from last week" (scenario I4).
+- [ ] **Live checks**: against a real home (hel) with 20+ real tasks; the iPad simulator with a keyboard (j/k, ⌘O from the menu); an Android phone.

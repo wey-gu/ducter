@@ -28,6 +28,7 @@ import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, PayBody } from "./autofill.tsx";
 import { FillButton, forecast, FullTop } from "./board.tsx";
+import { OnHandList, Switcher } from "./onhand.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
 import { safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
 import {
@@ -1428,55 +1429,17 @@ export function waitReason(task: Task): string {
   return (r && (deviceWait(r) ?? r)) || metaLine(task);
 }
 
-/** A working row's line: a keep-going loop's try, or a routine's run, else where and who. */
-function workLine(task: Task): string {
-  const u = A.S.untilOf(task);
-  if (u) return untilLine(u);
-  const from = task.card?.fromRoutine;
-  return [from ? t("routine.from", from.name) : "", metaLine(task)].filter(Boolean).join(" · ");
-}
-
-function Row({ task, meta }: { task: Task; meta: string }) {
-  const w = attention(task) === "blocked" ? A.S.waiterFor(task.id) : undefined;
-  const u = A.S.untilOf(task);
-  // Its wait just came true (D115): the bubble pops and the card springs into Working.
-  const arrived = attention(task) !== "blocked" && A.S.justArrived(task.id);
-  return (
-    <button class={`row${arrived ? " arrived" : ""}`} onClick={() => A.go({ name: "task", id: task.id })}>
-      {arrived && <span class="pop-bub" aria-hidden="true" />}
-      {w && <WaitBubble w={w} />}
-      <span class="main">
-        <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
-        {u && !finished(task) && <Goal u={u} />}
-        {w && <Groove w={w} />}
-        <span class="m">{meta}</span>
-      </span>
-      <span class="chev" aria-hidden="true">
-        <Chev />
-      </span>
-    </button>
-  );
-}
 
 export function OnHand() {
   const b = A.S.board();
-  const needs = b.lanes[LANE.needs]!;
-  const partnerDs = A.S.partnerDecisions();
-  const working = b.lanes[LANE.working]!;
-  const waiting = b.lanes[LANE.waiting]!;
-  const done = b.lanes[LANE.done]!;
   const loose = A.S.armedWaiters().filter((w) => !w.taskId);
-  const missed = A.S.missedToday();
   const routines = A.S.routines().filter((r) => r.state === "active" || r.state === "paused");
-  // D193: calls on the line (or waiting for their hour) work; ended ones are done today.
   const calls = A.S.onHand?.calls ?? [];
-  const liveCalls = calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state));
-  const endedCalls = calls.filter((c) => callEnded(c.state) && c.state !== "held");
-  const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length && !missed.length && !routines.length && !liveCalls.length && !endedCalls.length;
-  const openCount = A.defaultable().length;
+  const nothing = b.lanes.slice(0, 4).every((l) => !l.length) && !A.S.partnerDecisions().length && !loose.length && !A.S.missedToday().length && !routines.length && !calls.length;
   const wide = useWide();
   // Beside the conversation, 接下来 as the Mac shows it: one quiet grey line, only when more than one thing is coming (D184).
   const next = wide && !nothing ? forecast() : "";
+  // D216: the one list, as the phone or beside the conversation.
   return (
     <>
       <Top back={t("nav.back")} plus level={t("onhand.title")} />
@@ -1492,89 +1455,7 @@ export function OnHand() {
                 {next}
               </p>
             )}
-            <section class="section">
-              <h3>
-                {t("lane.needs_you")} <span class="n">{needs.length + partnerDs.length || ""}</span>
-                {openCount >= 2 && (
-                  <span style={{ marginLeft: "auto" }}>
-                    <Btn kind="text" size="sm" label={t("decision.goall", openCount)} onClick={() => A.goOnAllDefaults()} />
-                  </span>
-                )}
-              </h3>
-              {!needs.length && !partnerDs.length && (
-                <div class="calm">{working.length ? t("onhand.calm.working", A.S.personaName, working.length) : t("onhand.calm")}</div>
-              )}
-              {partnerDs.map((d) => (
-                <DecisionCard key={d.decisionId} d={d} />
-              ))}
-              {needs.map((task) => {
-                const d = A.S.pendingDecision(task.id);
-                return d ? <DecisionCard key={task.id} d={d} taskId={task.id} /> : <Row key={task.id} task={task} meta={metaLine(task)} />;
-              })}
-            </section>
-            {working.length + liveCalls.length > 0 && (
-              <section class="section">
-                <h3>
-                  {t("lane.working")} <span class="n">{working.length + liveCalls.length}</span>
-                </h3>
-                {liveCalls.map((c) => (
-                  <CallRow key={c.callId} c={c} />
-                ))}
-                {working.map((task) => (
-                  <Row key={task.id} task={task} meta={workLine(task)} />
-                ))}
-              </section>
-            )}
-            {(waiting.length > 0 || loose.length > 0) && (
-              <section class="section">
-                <h3>
-                  {t("lane.waiting")} <span class="n">{waiting.length + loose.length}</span>
-                </h3>
-                {waiting.map((task) => (
-                  <Row key={task.id} task={task} meta={waitReason(task)} />
-                ))}
-                {loose.map((w) => (
-                  <div class="row" key={w.waiterId}>
-                    {w.check || w.event ? <WaitBubble w={w} /> : <Clock />}
-                    <span class="main">
-                      <span class="t">{w.check || w.event ? waitLine(w.reason) : w.reason}</span>
-                      {(w.check || w.event) && <Groove w={w} />}
-                      {waitCaption(w) && <span class="m">{waitCaption(w)}</span>}
-                    </span>
-                    {(w.check || w.event) && <Btn kind="text" size="sm" label={t("wait.cancel")} about={w.reason} onClick={() => A.waiterAction(w.waiterId, "cancel")} />}
-                  </div>
-                ))}
-              </section>
-            )}
-            {(done.length > 0 || missed.length > 0 || endedCalls.length > 0) && (
-              <section class="section">
-                <h3>
-                  {t("lane.done")} <span class="n">{done.length + missed.length + endedCalls.length}</span>
-                </h3>
-                {endedCalls.map((c) => (
-                  <CallRow key={c.callId} c={c} />
-                ))}
-                {missed.map((w) => (
-                  <div class="row" key={w.waiterId}>
-                    <WaitBubble w={w} />
-                    <span class="main">
-                      <span class="t">{w.reason}</span>
-                      <span class="m">{t("wait.missed", w.unmet ?? t("wait.missed.ranout"))}</span>
-                    </span>
-                    <Btn kind="text" size="sm" label={t("wait.rearm")} about={w.reason} onClick={() => A.waiterAction(w.waiterId, "rearm")} />
-                  </div>
-                ))}
-                {done.map((task) => {
-                  const r = reportOf(task);
-                  const ev = headlineEvidence(task.evidence.length ? task.evidence : (r?.evidence ?? []));
-                  // The lane says Done; only the exception (Didn't work) is said, in words.
-                  const failed = attention(task) === "failed";
-                  // D154: the task's own words only when they are in the reader's language.
-                  const meta = (!failed && ev && proofLabel(ev, A.L.lang)) || (sayable(r?.summary.split("\n")[0], A.L.lang) ?? "");
-                  return <Row key={task.id} task={task} meta={[failed ? stateLabel("failed") : "", meta].filter(Boolean).join(" · ")} />;
-                })}
-              </section>
-            )}
+            <OnHandList room={wide ? "side" : "phone"} />
             <RoutineShelf />
           </>
         )}
@@ -2788,6 +2669,7 @@ export function Sheets() {
   if (A.viewer) return <Viewer />;
   if (!A.sheet) return null;
   if (A.sheet.kind === "newtask") return <NewTaskSheet />;
+  if (A.sheet.kind === "switch") return <Switcher />;
   return A.sheet.kind === "decision" ? <DecisionSheet id={A.sheet.id} /> : <SettingsSheet />;
 }
 

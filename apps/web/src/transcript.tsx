@@ -131,6 +131,9 @@ const GLYPHS: Record<string, () => JSX.Element> = {
   chev: () => <G><path d="M6 3.5 10.5 8 6 12.5" /></G>,
 };
 
+/** A step's drawn mark by its kind (D216: On hand's latest line uses the transcript's marks). */
+export const StepMark = ({ k }: { k: string }) => (GLYPHS[k] ?? GLYPHS.other)!();
+
 /** An ask's default as a small kitchen timer: a rim, and the time still left as a wedge. */
 export function TimerPie({ frac }: { frac: number }) {
   const f = Math.max(0, Math.min(1, frac));

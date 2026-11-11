@@ -403,7 +403,7 @@ describe("New task (D128)", () => {
     expect(A.newTaskError()).toBe("");
     A.receive(options);
     A.nt.words = "  把结算按钮藏起来  ";
-    A.nt.pick = "codex/";
+    A.nt.pick = "codex";
     A.nt.branch = "release/0.0.1";
     expect(A.startNewTask()).toBe(true);
     const f = sent.at(-1);

@@ -75,6 +75,7 @@ type WhereWhy struct {
 type TaskBody struct {
 	Harness string  `json:"harness"`
 	Model   string  `json:"model,omitempty"`
+	Effort  string  `json:"effort,omitempty"` // D202
 	Why     BodyWhy `json:"why"`
 }
 
@@ -83,6 +84,7 @@ type BodySelected struct {
 	TaskID  string  `json:"taskId"`
 	Harness string  `json:"harness"`
 	Model   string  `json:"model,omitempty"`
+	Effort  string  `json:"effort,omitempty"` // D202
 	Why     BodyWhy `json:"why"`
 }
 

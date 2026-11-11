@@ -7,7 +7,7 @@ import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
-import { A, candKey, placeKey, type SettingsPage } from "./app.ts";
+import { A, candKey, effortWord, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
 import { closingWords, computerApart, computerName, computerOf, computers, computerState, deviceWait, manyComputers, whereAsk, whereCandReason } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
@@ -42,6 +42,7 @@ import {
   latestByLabel,
   machineChecked,
   modelOf,
+  effortOf,
   outsideActs,
   placeOf,
   canIntegrate,
@@ -1575,7 +1576,8 @@ function whoSentence(task: Task): string {
 /** Who does a task, in words ("Codex · gpt-5"), and why when it isn't Ducter's plain pick (D89). */
 function whoLine(task: Task): [string, string] {
   const m = modelOf(task);
-  const who = [harnessName(harnessOf(task)), m && modelName(m)].filter(Boolean).join(" · ");
+  const e = effortOf(task);
+  const who = [harnessName(harnessOf(task)), m && modelName(m), e && effortWord(A.L, e)].filter(Boolean).join(" · ");
   const w = whoOf(task)?.why;
   if (!w) return [who, ""];
   if (w.kind === "rule" && w.text) return [who, t("who.why.rule", w.text)];

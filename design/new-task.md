@@ -1,4 +1,4 @@
-# New task: opening a task yourself (D128, D185, D186, D197)
+# New task: opening a task yourself (D128, D185, D186, D197, D202)
 
 The power path: the user opens a task with their own words, picks where and (optionally) who,
 and the task starts at once. Never required: saying it to the partner still works and stays
@@ -18,7 +18,10 @@ shot against `apps/web/demo-newtask.ts`). D185/D186 built 2026-11-11: core
 `.shots/newtask/web/`, phone and wide, light and dark, zh/en). D197 built 2026-11-11: core
 (`new-task.test.ts`, a fake worker), runner (`worker.test.ts`, `folderInfo`), desktop
 (`newtask_test.go`, a home elsewhere with and without this Mac's worker), web (`newtask.test.ts`).
-Not yet reviewed by the user.
+D202 built 2026-11-11: core (`packages/core/test/tune.test.ts`), runner (`runner.test.ts`,
+`harnesses.test.ts`, `worker.test.ts`), CLI (`talk.test.ts`), desktop (`newtasktune_test.go`, shots
+in `.shots/d202/mac/`), web (`apps/web/test/tune.test.ts`, shots in `.shots/d202/web/`, phone, light
+and dark). Not yet reviewed by the user.
 
 ## Who and how it starts
 
@@ -46,7 +49,7 @@ bottom:
 | folder (在哪儿做 / Where) | the most recently used | the folders tasks used and the projects added (D186), most recent first, each with its path as ~/… (and **· {computer}** when the places span two computers, D197); then the repos `ducter up` noticed; 不用文件夹 / No folder; on the Mac, 加一个文件夹… / Add a folder… (see below) |
 | branch (repos only; a worker's repo too, D197) | the repo's default branch | 从哪个分支开始 / Start from which branch: its 30 most recently committed, the default marked 默认 / default |
 | computer (only when real, D157) | the suggested one | 在哪台电脑上做 / On which computer |
-| 谁来做 / Who does it | the top candidate, tagged 推荐 / Suggested (why on hover); else the one the user last picked on this client | every agent at that place, best first, its one reason under it; a blocked one greyed with why |
+| 谁来做 / Who does it | the top candidate at the place's computer, tagged 推荐 / Suggested (why on hover); else the one the user last picked on this client; the pill reads **{agent} · {model} · {effort}** (D202) | every agent on every computer, one row each (D202): those that can here, best first, its one reason under it; then each that can only on another computer, **在 {computer} 上** (see below); a blocked one greyed with why. Under the chosen one, **模型 / Model** and **思考深度 / Effort** |
 | 什么时候开始 / When it starts | 现在 / Now | 现在 · 定个时间 · 定期做 · 等某件事发生 · 一直做到…, each with one line of what it means |
 
 3. **When it doesn't start now**, one line under the pills: At a time: 今天 / 明天 / 后天 and a
@@ -72,6 +75,24 @@ What each when does underneath (no new scheduler):
 | On a schedule | a routine of the user's own (`by: "you"`), active at once, no proposal card; each run gets the words and one line on which run it is, the agent picked, effect `local_writes`, reports every run; D114's pauses and review hold |
 | When something happens | the task opens now with **先等到：{X}\n然后：{words}** and a line asking it to wait with `wait_for` and a check; it rests on Waiting (D112 (4)) |
 | Keep going until | the task opens with the words verbatim, then `until` with the condition (D113) |
+
+**An agent on another computer (D202).** For a folder on hel, Claude Code on the Mac is still a
+row: **Claude Code 在 Macbook Pro M3 上**. Its second line says what picking it does: **会换到
+Macbook Pro M3 上的 ducter / Switches to ducter on Macbook Pro M3** when the places list that repo
+on the Mac (same origin, `PlaceChoice.remote`; when neither place knows an origin, the exact folder
+name), and the card then moves to that copy (the same branch when it has one); else **文件夹要在
+Macbook Pro M3 上 / The folder must be on Macbook Pro M3**, and picking it opens the folder list on
+the Mac's places only (with **不用文件夹** there and, where this client can, **加一个文件夹…**); a
+folder there picks the agent. For No folder it moves the computer, as D157.
+
+**Model and effort (D202).** Under the chosen agent in Who, two short rows of choices that wrap:
+**模型 / Model**, the account's own models on that computer (read from the agent itself, token-free:
+OAR `listModels`; Claude Code's named models, not its pinned versions), Ducter's suggestion tagged
+**推荐**; and **思考深度 / Effort**, that model's own levels (**低 · 中 · 高 · 很高 · 最高**, Codex's
+also **极限**), its own default tagged **默认 / Default** (a model that names none starts the row
+with **默认**, which sends nothing); no row when the model takes none. Unread in 3 s (a worker away,
+an old worker): the tier table's models, no effort row. The last model and effort are remembered
+per agent on this client.
 
 **Adding a folder (D186, D197).** 加一个文件夹… opens macOS's folder picker. Where the window's
 Ducter runs on this Mac, the folder is the home's own. Where it runs elsewhere (a server) and this
@@ -118,8 +139,8 @@ from the same `changes`.
 
 | Frame | Answer | Notes |
 |---|---|---|
-| `{t:"task_new_options", place?}` | `{t:"task_new_options", places: PlaceChoice[], candidates: Candidate[]}` | Candidates at `place` (default this machine). `PlaceChoice` = place (repo, folder or none), name, usedAt, defaultBranch, branches (a worker's repo: asked of it, at most 3 s, D197), added (D186), computer (D197: only when the places span two computers) |
-| `{t:"task_new", words, place?, harness?, model?, clientId?, when?}` | `{t:"task_new_result", ok, clientId, taskId, card}`; for a time or a schedule `{ok, clientId, routineId, routine}`; or `{ok:false, reason, message}` | `reason`: empty, no_agent, not_repo, offline, past, no_condition, failed. `when` (D185): `{kind:"now"}`, `{kind:"at", date, time, tz}`, `{kind:"every", every: day\|weekday\|week\|hours, days?, hours?, time, tz}`, `{kind:"when"\|"until", condition}`. A resend with the same clientId opens nothing twice. Send `harness` only when the user picked someone other than the top candidate |
+| `{t:"task_new_options", place?}` | `{t:"task_new_options", places: PlaceChoice[], candidates: Candidate[], models?: AgentModels[]}` | Candidates at `place` (default this machine), every agent on every computer (D202). `PlaceChoice` = place (repo, folder or none), name, usedAt, defaultBranch, branches (a worker's repo: asked of it, at most 3 s, D197), added (D186), computer (D197: only when the places span two computers), remote (D202: the origin as host/owner/repo). `AgentModels` = harness, device (with two computers), from (`live` or `tiers`), models: `ModelChoice` = id, label, suggested, default, efforts, defaultEffort (read alongside, at most 3 s) |
+| `{t:"task_new", words, place?, harness?, model?, effort?, clientId?, when?}` | `{t:"task_new_result", ok, clientId, taskId, card}`; for a time or a schedule `{ok, clientId, routineId, routine}`; or `{ok:false, reason, message}` | `reason`: empty, no_agent, not_repo, offline, past, no_condition, failed. `when` (D185): `{kind:"now"}`, `{kind:"at", date, time, tz}`, `{kind:"every", every: day\|weekday\|week\|hours, days?, hours?, time, tz}`, `{kind:"when"\|"until", condition}`. A resend with the same clientId opens nothing twice. Send `harness` only when the user picked someone other than the top candidate; `model` and `effort` (D202) only when they differ from the suggestion and the model's own default, and then `harness` too. An effort the chosen model on its computer doesn't offer, or that can't be checked, is dropped with a line in the task, never sent |
 | `{t:"project_add", path, device?, clientId?}` (D186, D197) | `{t:"project_add_result", ok, clientId, place: PlaceChoice}` or `{ok:false, reason: not_found\|offline\|failed, message}` | A folder on the home's computer, or with `device` on that worker, read there by its `folderInfo` op (`{exists, kind, root, name, defaultBranch?, branches?}`); a folder inside a repo adds the repo. `OnHand.projects` lists the added ones |
 | `{t:"open_task", taskId}` | the sender: `{t:"open_result", taskId, ok, apps}`; every other live app socket: `{t:"open_task", taskId}` | Apps should say `hello.client` ("desktop", "web"); a `cli` socket is never told. An app that gets `open_task` opens that task as if tapped, and focuses its window |
 
@@ -144,8 +165,8 @@ stat `{files, adds, dels, at}`.
 ## Not yet
 
 - The computer (D157, `design/where.md` §6.3): a computer part on a Where chip, shown
-  only when a repo is on two computers or for No folder with two or more; an agent that lives
-  only on another computer in Who, picking it moves the computer part too.
+  only when a repo is on two computers (No folder's is built).
+- D202: Claude Code's pinned model versions (claude-opus-4-8, …) in the Model row (todo).
 
 - Attachments on the card (todo, trigger: the first brief that needs a screenshot).
 - By project on the phone (todo).

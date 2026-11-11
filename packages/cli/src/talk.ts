@@ -24,6 +24,7 @@ export interface TalkCtx {
   rest: string[];
   repo?: string;
   agent?: string;
+  effort?: string;
   base?: string;
   timeoutS?: number;
   cwd?: string;
@@ -62,9 +63,9 @@ async function conn(c: TalkCtx, cursor?: number): Promise<Conn | undefined> {
   return k;
 }
 
-/** "Claude Code · haiku" */
-export function agentLabel(h: { harness: string; model?: string }): string {
-  return `${harnessName(h.harness)}${h.model ? ` · ${h.model}` : ""}`;
+/** "Claude Code · haiku", and its effort when one was picked ("Claude Code · opus · high", D202). */
+export function agentLabel(h: { harness: string; model?: string; effort?: string }): string {
+  return `${harnessName(h.harness)}${h.model ? ` · ${h.model}` : ""}${h.effort ? ` · ${h.effort}` : ""}`;
 }
 
 /**
@@ -119,7 +120,7 @@ export async function cmdTask(c: TalkCtx): Promise<number> {
       }
     }
     const clientId = newClientId();
-    k.send({ t: "task_new", words, place, clientId, ...(pick ? { harness: pick.harness, ...(pick.model ? { model: pick.model } : {}) } : {}) });
+    k.send({ t: "task_new", words, place, clientId, ...(pick ? { harness: pick.harness, ...(pick.model ? { model: pick.model } : {}) } : {}), ...(c.effort ? { effort: c.effort } : {}) });
     const r = await k.next((f): f is Extract<ServerFrame, { t: "task_new_result" }> => f.t === "task_new_result" && f.clientId === clientId, 60_000);
     if (!r) return p(t("task.noAnswer")), 1;
     if (c.json) return p(JSON.stringify(withHome(c, r), null, 2)), r.ok ? 0 : 1;
@@ -127,8 +128,9 @@ export async function cmdTask(c: TalkCtx): Promise<number> {
     const card = r.card;
     const where = card.place.kind === "repo" ? `${basename(card.place.repoPath)}${card.place.baseBranch ? ` (${card.place.baseBranch})` : ""}` : t("task.noPlace");
     const body = card.body ?? { harness: card.harness, ...(card.model ? { model: card.model } : {}), why: { kind: "default" as const } };
-    const who = agentLabel(body) + (body.why.kind === "you" ? t("task.yourPick") : "");
+    const who = agentLabel({ ...body, ...(card.effort ? { effort: card.effort } : {}) }) + (body.why.kind === "you" ? t("task.yourPick") : "");
     p(t("task.opened", { title: card.title, where, who }));
+    if (c.effort && card.effort !== c.effort) p(st(c).dim(t("task.effortLeft", { effort: c.effort, model: agentLabel(body) })));
     p(st(c).dim(t("task.next", { tail: c.cmd(`tail ${card.taskId}`), open: c.cmd(`open ${card.taskId}`) })));
     return 0;
   } finally {

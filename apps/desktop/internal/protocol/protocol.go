@@ -279,6 +279,7 @@ type TaskOpen struct {
 	Place      Place  `json:"place"`
 	Harness    string `json:"harness"`
 	Model      string `json:"model,omitempty"`
+	Effort     string `json:"effort,omitempty"` // D202
 	Brief      string `json:"brief"`
 	BodyReason string `json:"bodyReason,omitempty"`
 	Language   string `json:"language,omitempty"` // "zh" | "en": the language the user reads its reports in
@@ -675,6 +676,7 @@ type TaskCard struct {
 	Place             Place     `json:"place"`
 	Harness           string    `json:"harness"`
 	Model             string    `json:"model,omitempty"`
+	Effort            string    `json:"effort,omitempty"` // D202: picked by the user, else the model's own
 	BodyReason        string    `json:"bodyReason,omitempty"`
 	Body              *TaskBody `json:"body,omitempty"` // who does it now and why (D89)
 	Attention         Attention `json:"attention"`
@@ -1382,6 +1384,7 @@ type ServerFrame struct {
 	// OK, ClientID, TaskID, Card, Reason, Message; open_task: TaskID (show it);
 	// open_result: TaskID, OK, Apps.
 	Places   []PlaceChoice `json:"places,omitempty"`
+	Models   []AgentModels `json:"models,omitempty"` // D202: each agent's models, for the card
 	ClientID string        `json:"clientId,omitempty"`
 	Card     *TaskCard     `json:"card,omitempty"`
 	Apps     int           `json:"apps,omitempty"`
@@ -1649,6 +1652,32 @@ type PlaceChoice struct {
 	// Computer: the computer it is on, only when the places span more
 	// than one (D197).
 	Computer string `json:"computer,omitempty"`
+	// Remote: a repo's origin, normalized (host/owner/repo), so its copy
+	// on another computer is found (D202).
+	Remote string `json:"remote,omitempty"`
+}
+
+// ModelChoice is one model an AI agent offers on one computer, as the New
+// task card lists it (D202): Suggested is Ducter's pick (推荐), Default
+// what the agent runs when no model is named; Efforts its reasoning
+// levels (none: no effort row), DefaultEffort its own default (默认).
+type ModelChoice struct {
+	ID            string   `json:"id"`
+	Label         string   `json:"label"`
+	Suggested     bool     `json:"suggested,omitempty"`
+	Default       bool     `json:"default,omitempty"`
+	Efforts       []string `json:"efforts,omitempty"`
+	DefaultEffort string   `json:"defaultEffort,omitempty"`
+}
+
+// AgentModels is one AI agent's models on one computer (Device: its id,
+// only with two or more computers). From "live": the account's own list;
+// "tiers": Ducter's table (the list couldn't be read).
+type AgentModels struct {
+	Harness string        `json:"harness"`
+	Device  string        `json:"device,omitempty"`
+	Models  []ModelChoice `json:"models"`
+	From    string        `json:"from"`
 }
 
 // NewTaskWhen is when a task the user opens by hand starts (D185): "now"
@@ -1693,11 +1722,14 @@ type TaskNewOptions struct {
 // Harness/Model only when the user picked someone other than the top
 // candidate. Answered with task_new_result.
 type TaskNew struct {
-	T        string       `json:"t"` // "task_new"
-	Words    string       `json:"words"`
-	Place    *Place       `json:"place,omitempty"`
-	Harness  string       `json:"harness,omitempty"`
-	Model    string       `json:"model,omitempty"`
+	T       string `json:"t"` // "task_new"
+	Words   string `json:"words"`
+	Place   *Place `json:"place,omitempty"`
+	Harness string `json:"harness,omitempty"`
+	Model   string `json:"model,omitempty"`
+	// Effort (D202): one of the model's own levels, only when it isn't the
+	// model's default; one it doesn't list is dropped, never sent.
+	Effort   string       `json:"effort,omitempty"`
 	ClientID string       `json:"clientId,omitempty"`
 	When     *NewTaskWhen `json:"when,omitempty"`
 }

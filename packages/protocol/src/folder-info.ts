@@ -36,6 +36,27 @@ export async function repoBranches(repoPath: string, run: GitRun = realGit): Pro
   return { ...(def ? { defaultBranch: def } : {}), branches: all.slice(0, 30) };
 }
 
+/**
+ * D202: a git remote URL in one form, so two clones of one repo on two computers match:
+ * host/owner/repo, lowercased, without scheme, user, port, `.git` or trailing slash
+ * (git@github.com:a/b.git, https://github.com/a/b and ssh://git@github.com:22/a/b are one).
+ */
+export function normalizeRemote(url: string): string {
+  let u = url.trim();
+  if (!u) return "";
+  const scp = /^([^@/\s]+@)?([^:/\s]+):(?!\/\/)(.+)$/.exec(u); // git@host:owner/repo
+  if (scp && !/^[a-z]+:\/\//i.test(u)) u = `${scp[2]}/${scp[3]}`;
+  else u = u.replace(/^[a-z+]+:\/\//i, "").replace(/^[^@/]+@/, "").replace(/^([^/:]+):\d+(?=\/)/, "$1");
+  return u.replace(/\/+$/, "").replace(/\.git$/i, "").replace(/\/+$/, "").toLowerCase();
+}
+
+/** D202: the repo's origin, normalized (normalizeRemote); undefined without one. */
+export async function repoRemote(repoPath: string, run: GitRun = realGit): Promise<string | undefined> {
+  const r = await run(repoPath, ["remote", "get-url", "origin"]);
+  const n = r.ok ? normalizeRemote(r.out.split("\n")[0] ?? "") : "";
+  return n || undefined;
+}
+
 /** The top of the git checkout that holds `dir`, or undefined when it isn't in one. */
 export async function repoTop(dir: string, git: GitRun = realGit): Promise<string | undefined> {
   const r = await git(resolve(expandHome(dir)), ["rev-parse", "--show-toplevel"]);
@@ -51,6 +72,8 @@ export interface FolderInfo {
   name?: string;
   defaultBranch?: string;
   branches?: string[];
+  /** D202: the repo's origin, normalized. */
+  remote?: string;
 }
 
 /** What the folder at `path` is here: missing, a plain folder, or a repo with its branches. */
@@ -65,6 +88,6 @@ export async function folderInfo(path: string, git: GitRun = realGit): Promise<F
   }
   const top = await repoTop(dir, git);
   if (!top) return { exists: true, kind: "folder", root: dir, name: basename(dir) };
-  const b = await repoBranches(top, git);
-  return { exists: true, kind: "repo", root: top, name: basename(top), ...(b.defaultBranch ? { defaultBranch: b.defaultBranch } : {}), ...(b.branches.length ? { branches: b.branches } : {}) };
+  const [b, remote] = await Promise.all([repoBranches(top, git), repoRemote(top, git)]);
+  return { exists: true, kind: "repo", root: top, name: basename(top), ...(b.defaultBranch ? { defaultBranch: b.defaultBranch } : {}), ...(b.branches.length ? { branches: b.branches } : {}), ...(remote ? { remote } : {}) };
 }

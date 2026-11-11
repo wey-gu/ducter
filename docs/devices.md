@@ -269,8 +269,10 @@ going when MacBook closes*, *Needs your signed-in taobao.com*, *Only MacBook has
   MacBook**: the task carries on there from its last saved progress; a repo's branch is pushed
   first, and changes that aren't committed stay where they are. A folder can't move.
 - **New task**: with two computers, **No folder** names a computer (**No folder · hel**); tap it
-  to choose another. An AI agent that's only on another computer shows *on MacBook*; picking it
-  brings that computer along.
+  to choose another. An AI agent you can only use on another computer shows *on MacBook*; picking
+  it brings that computer along. For a folder on hel, that means the same project on the MacBook
+  (the same repository, with its branch), or, when the MacBook has no copy, a folder you pick
+  there.
 - **About to close your laptop?** Say *"I'm closing my laptop"*, or choose **Move before closing**
   on its card in Devices. One card says what moves to a computer that stays awake and what can
   only run on the laptop; **Move them** is what happens if you don't answer, after a minute.

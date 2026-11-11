@@ -93,6 +93,8 @@ export interface CandidateInput {
   rules: RuleView[];
   /** Who does it now (the switch sheet marks it), and on which computer. */
   current?: { harness: string; model?: string; device?: string; uses?: "chrome" | "ducter" };
+  /** D202: the New task card: every agent on every computer, an agent on another computer than the folder's included (one row each). */
+  every?: true;
 }
 
 /** Why this agent can't take a task now, if it can't. */
@@ -226,10 +228,10 @@ export function fwCandidates(inp: CandidateInput): Candidate[] {
   const isCur = (c: Row) => same(c, inp.current) && (!multi || !inp.current?.device || isComputer(c.comp, inp.current.device));
   const cur = all.find(isCur);
   const perComp = new Map<string, number>();
-  const free = all.filter((c) => !c.blocked && c !== cur && (perComp.set(c.comp.id, (perComp.get(c.comp.id) ?? 0) + 1).get(c.comp.id)! <= 3)).slice(0, multi ? 9 : 3);
+  const free = inp.every ? all.filter((c) => !c.blocked && c !== cur) : all.filter((c) => !c.blocked && c !== cur && (perComp.set(c.comp.id, (perComp.get(c.comp.id) ?? 0) + 1).get(c.comp.id)! <= 3)).slice(0, multi ? 9 : 3);
   // A row whose only difference is a model of an agent already listed as blocked says nothing new.
   const seenBlocked = new Set<string>();
-  const blocked = all.filter((c) => c.blocked && c !== cur && !seenBlocked.has(c.comp.id + c.harness) && seenBlocked.add(c.comp.id + c.harness)).slice(0, multi ? 6 : 3);
+  const blocked = all.filter((c) => c.blocked && c !== cur && !seenBlocked.has(c.comp.id + c.harness) && seenBlocked.add(c.comp.id + c.harness)).slice(0, inp.every ? undefined : multi ? 6 : 3);
   return [...(cur ? [{ ...strip(cur), current: true, reason: { kind: "current" as const } }] : []), ...free.map(strip), ...blocked.map(strip)];
 }
 

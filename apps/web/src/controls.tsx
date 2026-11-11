@@ -252,6 +252,15 @@ export function Pill(p: { label: string; about: string; open: boolean; onClick: 
   );
 }
 
+/** D202: one short choice in a row of them (a model, an effort): the chosen one raised. The Mac's `choice`. */
+export function Choice(p: { label: string; on: boolean; onClick: () => void; children: ComponentChildren }) {
+  return (
+    <button class={`nt-chip${p.on ? " on" : ""}`} role="radio" aria-checked={p.on} aria-label={p.label} onClick={() => !p.on && p.onClick()}>
+      {p.children}
+    </button>
+  );
+}
+
 /** D185: one choice in the list a Pill opens: the chosen one sunken with a check, off greyed. The Mac's `menuRow`. */
 export function MenuRow(p: { label: string; on: boolean; off?: boolean; why?: string; onClick: () => void; children: ComponentChildren }) {
   return (

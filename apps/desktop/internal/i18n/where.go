@@ -62,6 +62,8 @@ var zhWhere = Table{
 	"newtask.computer.asleep":    "睡着了 · 醒了就开始",
 	"newtask.computer.away":      "连不上",
 	"newtask.agent.elsewhere":    "在 %s 上",
+	"newtask.agent.copy":         "会换到 %[1]s 上的 %[2]s",
+	"newtask.agent.needsfolder":  "文件夹要在 %s 上",
 
 	"move.closing.button": "合上之前搬走",
 	"move.closing.line":   "合上之前：%[1]s搬到 %[2]s 上接着做；%[3]s只能在 %[4]s 上做，醒了接着。",
@@ -130,6 +132,8 @@ var enWhere = Table{
 	"newtask.computer.asleep":    "Asleep · starts when it wakes",
 	"newtask.computer.away":      "Can't reach",
 	"newtask.agent.elsewhere":    "on %s",
+	"newtask.agent.copy":         "Switches to %[2]s on %[1]s",
+	"newtask.agent.needsfolder":  "The folder must be on %s",
 
 	"move.closing.button": "Move before closing",
 	"move.closing.line":   "Before you close it: %[1]s move to %[2]s and carry on; %[3]s can only run on %[4]s and continue when it wakes.",

@@ -7,7 +7,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { startCore } from "@ducter/core";
 import type { Bodies, BranchChanges, DeviceHarness, Place, TaskCard } from "@ducter/protocol";
-import type { Runner } from "@ducter/protocol/src/internal.ts";
+import type { ListedModel, Runner } from "@ducter/protocol/src/internal.ts";
+import { createModelCatalog } from "../../packages/core/src/models.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const fail = process.env.DEMO_FAIL;
@@ -47,8 +48,27 @@ const harnesses: DeviceHarness[] = [
   { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: false, billing: "usage" },
 ];
 
+// D202: each agent's own model list, as Claude Code 2.1.322 and Codex 0.167.1 gave it (trimmed).
+const E = ["low", "medium", "high", "xhigh", "max"];
+const lists: Record<string, ListedModel[]> = {
+  "claude-code": [
+    { id: "default", label: "Default (recommended)", efforts: E },
+    { id: "opus", label: "Opus 5.5", efforts: E },
+    { id: "fable", label: "Fable 5.2", efforts: E },
+    { id: "sonnet", label: "Sonnet 5.5", efforts: E },
+    { id: "haiku", label: "Haiku 5.5", efforts: E },
+    { id: "claude-opus-4-8", label: "Opus 4.8", efforts: E },
+  ],
+  codex: [
+    { id: "gpt-6.1-sol", label: "GPT-6.1-Sol", efforts: [...E, "ultra"], defaultEffort: "low" },
+    { id: "gpt-6.1-terra", label: "GPT-6.1 Terra", efforts: [...E, "ultra"], defaultEffort: "low", default: true },
+    { id: "gpt-6-luna", label: "GPT-6-Luna", efforts: E, defaultEffort: "medium" },
+  ],
+};
+
 const core = startCore({
   persona: { id: "default", name: "Ducter", identity: "" },
+  models: createModelCatalog({ read: async (_device, harness) => lists[harness] }),
   hostname: process.env.DUCTER_HOST || "127.0.0.1",
   deviceProbes: { cua: async () => ({ missing: "demo" }), harnesses: async () => harnesses, kind: async () => "laptop" },
 });

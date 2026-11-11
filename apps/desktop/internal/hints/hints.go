@@ -62,6 +62,9 @@ type state struct {
 	// NewTaskWho is the agent last picked on the New task card (D185), a
 	// candidate key; empty: the suggested one.
 	NewTaskWho string `json:"newTaskWho,omitempty"`
+	// NewTaskTune is the model and effort last picked for each AI agent
+	// (D202), by harness.
+	NewTaskTune map[string]Tune `json:"newTaskTune,omitempty"`
 }
 
 // Ask is one answer to a gentle offer: "yes", "no", or "later" (asked
@@ -258,6 +261,33 @@ func (l *Local) SetNewTaskWho(key string) {
 		return
 	}
 	l.st.NewTaskWho = key
+	l.save()
+}
+
+// Tune is a model and an effort picked on the New task card (D202);
+// "" for the suggestion and the model's own default.
+type Tune struct {
+	Model  string `json:"model,omitempty"`
+	Effort string `json:"effort,omitempty"`
+}
+
+// NewTaskTune is the model and effort last picked for this agent.
+func (l *Local) NewTaskTune(harness string) Tune {
+	if l == nil {
+		return Tune{}
+	}
+	return l.st.NewTaskTune[harness]
+}
+
+// SetNewTaskTune remembers the model and effort picked for this agent.
+func (l *Local) SetNewTaskTune(harness string, t Tune) {
+	if l == nil || l.st.NewTaskTune[harness] == t {
+		return
+	}
+	if l.st.NewTaskTune == nil {
+		l.st.NewTaskTune = map[string]Tune{}
+	}
+	l.st.NewTaskTune[harness] = t
 	l.save()
 }
 

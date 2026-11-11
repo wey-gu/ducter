@@ -746,6 +746,7 @@ export function createWsHandler(deps: WsDeps) {
             ...(f.place ? { place: f.place } : {}),
             ...(typeof f.harness === "string" && f.harness ? { harness: f.harness } : {}),
             ...(typeof f.model === "string" && f.model ? { model: f.model } : {}),
+            ...(typeof f.effort === "string" && f.effort ? { effort: f.effort } : {}),
             ...(f.when && typeof f.when === "object" && typeof f.when.kind === "string" ? { when: f.when } : {}),
           });
         if (id && !prior) {

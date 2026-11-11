@@ -93,6 +93,7 @@ export interface BodyWhy {
 export interface TaskBody {
   harness: string;
   model?: string;
+  effort?: string;
   why: BodyWhy;
 }
 

@@ -11,8 +11,8 @@ import (
 // is a real choice: No folder with two or more computers, or a repo that is
 // on two. It is a part of the Where chip ("不用文件夹 · hel ▾"), opening 在哪台
 // 电脑上做 / On which computer. Who lists the agents on that computer, then
-// the ones that live only on another, tagged 在 {device} 上; picking one
-// moves the computer part with it.
+// the ones that can only on another, tagged 在 {device} 上; picking one
+// moves the computer (or, for a folder, the folder: D202) with it.
 
 // ntSuggested is the computer the ranking puts first for this place: where
 // the best agent that can start now is; else the home.
@@ -30,32 +30,55 @@ func (a *App) ntSuggested(cands []protocol.Candidate) string {
 	return ""
 }
 
-// ntComputer is the computer the card starts the task on (a device id).
+// ntComputer is the computer the card starts the task on (a device id): a
+// folder's own (D202); else the user's pick, else the suggested one.
 func (a *App) ntComputer(cands []protocol.Candidate) string {
+	if p := a.chosenPlace(a.newTaskPlaces()).Place; p.Kind == "repo" || p.Kind == "folder" {
+		if id := a.placeComputer(p); id != "" {
+			return id
+		}
+	}
 	if a.nt.computer != "" && a.computerOf(a.nt.computer) != nil {
 		return a.nt.computer
 	}
 	return a.ntSuggested(cands)
 }
 
-// ntWho is who the card offers on the chosen computer, then an agent that
-// lives only on another computer (its best row), with the computer it is on.
+// ntWho is who the card offers, one row per agent: those that can on the
+// chosen computer, then each agent that can't there but can on another
+// (elsewhere: its best row there, with the computer it is on; for a folder
+// that row comes "elsewhere"-blocked from core, D202), then the ones that
+// can't anywhere, greyed with why.
 func ntWho(cands []protocol.Candidate, comp string) (rows []protocol.Candidate, elsewhere map[string]bool) {
 	elsewhere = map[string]bool{}
-	here := map[string]bool{}
-	for _, cd := range cands {
-		if cd.Device == comp {
-			rows = append(rows, cd)
-			here[cd.Harness] = true
-		}
-	}
-	for _, cd := range cands {
-		if cd.Device == comp || here[cd.Harness] || cd.Blocked != "" {
+	firsts := firstPerAgent(cands)
+	can := map[string]bool{}
+	var here, blocked, away []protocol.Candidate
+	for _, cd := range firsts {
+		if cd.Device != comp {
 			continue
 		}
-		here[cd.Harness] = true
-		rows = append(rows, cd)
-		elsewhere[candKeyOn(cd)] = true
+		if cd.Blocked == "" {
+			here = append(here, cd)
+			can[cd.Harness] = true
+		} else {
+			blocked = append(blocked, cd)
+		}
+	}
+	moved := map[string]bool{}
+	for _, cd := range firsts {
+		if cd.Device == comp || can[cd.Harness] || moved[cd.Harness] || (cd.Blocked != "" && cd.Blocked != "elsewhere") {
+			continue
+		}
+		moved[cd.Harness] = true
+		away = append(away, cd)
+		elsewhere[ntKey(cd)] = true
+	}
+	rows = append(here, away...)
+	for _, cd := range blocked {
+		if !moved[cd.Harness] {
+			rows = append(rows, cd)
+		}
 	}
 	return rows, elsewhere
 }

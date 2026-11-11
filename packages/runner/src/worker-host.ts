@@ -165,6 +165,9 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     // D197: what a folder here is (missing, a folder, or a repo with its branches), so a home
     // elsewhere can add it as a project and offer its branches. Read-only.
     folderInfo: (a: { path?: unknown }) => folderInfo(String(a.path ?? ""), o.git ?? realGit),
+    // D202: the models an AI agent's account offers here, with their effort levels, for the home's
+    // New task card (token-free; null when it can't say). Read-only.
+    models: async (a: { harness?: unknown }) => (await o.harness.models?.(String(a.harness ?? "")).catch(() => undefined)) ?? null,
     // D157: a browser place on this computer, with this computer's browsers and sign-ins.
     async browser(a: { input?: Omit<SidecarInput, "dataDir"> }) {
       const input = { ...(a.input as SidecarInput), dataDir: o.dataDir };

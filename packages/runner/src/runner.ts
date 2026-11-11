@@ -828,6 +828,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       preCompactNote: PRECOMPACT_NOTE,
     };
     if (open.model) spec.model = open.model;
+    // D202: the effort the user picked, on open and on every resume (Claude Code keeps none).
+    if (open.effort) spec.effort = open.effort;
     // D141 (system.md): the user's own nmem (a skill, a hook) runs as the persona's identity.
     // Only these two, set explicitly; every other NMEM_* the host has stays out (child-env.ts).
     const mem = core.persona.mem;
@@ -925,7 +927,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // A worker's cwd is on the worker; it was planned there and recorded in the place.
     const cwd = ops.device ? remoteCwd(open.place) : cwdOf(open.place, open.taskId, core.dataDir);
     // After a switch (D89) the card holds who does it now, not who it opened with.
-    const now = card.body ? { ...open, harness: card.body.harness, model: card.body.model } : open;
+    const now = card.body ? { ...open, harness: card.body.harness, model: card.body.model, effort: card.body.effort } : open;
+    if (!now.effort) delete now.effort;
     const t = newRt(open.taskId, e.persona, card, specFor(open.taskId, now, cwd), ops);
     if (open.language) t.lang = open.language;
     let asked = false; // D142: it asked before changing a folder it couldn't copy
@@ -987,9 +990,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // Who does it (D89): the person's rules, the limits and Use it for tasks, through core's
     // chooser; a pick this runner can't run (or no device info) keeps the old default.
     const you = input.origin === "you"; // D128: the user opened it; a harness given is their pick
-    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(you ? { by: "you" as const } : {}), ...(input.needs ? { needs: input.needs } : {}) });
+    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(input.effort ? { effort: input.effort } : {}), ...(you ? { by: "you" as const } : {}), ...(input.needs ? { needs: input.needs } : {}) });
     if (picked && "none" in picked) throw new Error(picked.none);
     const pick = picked && HARNESSES.includes(picked.harness as HarnessId) ? picked : undefined;
+    // D202: an effort is sent only when the chosen model on its computer offers it (core checks
+    // it against the agent's own list); else it is left out, with one line in the task.
+    const effort = input.effort ? (pick ? pick.effort : undefined) : undefined;
+    const effortDropped = input.effort && !effort ? (pick?.effortDropped ?? `effort ${input.effort} was left out: couldn't check which efforts the model offers here`) : undefined;
     // D157: the computer goes with who: the pick's computer becomes the place's (a repo or a
     // folder stays where it is; browsing work gets a browser place there).
     if (pick?.device) input = { ...input, place: placeOn(input.place, pick.device, input.needs) };
@@ -1035,9 +1042,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const fixed = h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined;
     const model = (ranked && fixed) || input.model || fixed;
     const later = typeof briefIn !== "string";
-    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: later ? "" : briefIn, ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}) };
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
-    core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), why: pick?.why ?? { kind: input.harness ? (you ? "you" : "partner") : "default" } } });
+    core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), ...(effort ? { effort } : {}), why: pick?.why ?? { kind: input.harness ? (you ? "you" : "partner") : "default" } } });
     const card: TaskCard = {
       taskId: id,
       persona,
@@ -1046,6 +1053,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       place: resolved.place,
       harness: h,
       model,
+      ...(effort ? { effort } : {}),
       attention: "queued",
       residency: "provisioning",
       openedAt: opened.ts,
@@ -1056,6 +1064,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.spec = withBrowser(t.base, sidecar, partnerName);
     if (input.language) t.lang = input.language;
     tasks.set(id, t);
+    if (effortDropped) {
+      console.warn(`[runner] ${id}: ${effortDropped}`);
+      logEvent(t, { role: "system", from: "runner", text: effortDropped, raw: { effortDropped: input.effort } });
+    }
     const start: StartCtx = { body, later, briefIn, title, persona, partnerName };
     if (away) {
       // D157: 在等 · MacBook 睡着了. It starts there when the computer is back (no push, A3).
@@ -1237,13 +1249,15 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const place = placeOn(c.body.place.kind === "none" || c.body.place.kind === "browser" ? c.body.place : undefined, now.device, c.body.needs) as Place;
     const kept = c.body.place.kind === "repo" || c.body.place.kind === "folder" ? c.body.place : place;
     t.ops = opsFor(kept);
+    const keepsEffort = now.harness === t.base.harness && (now.model ?? "") === (t.base.model ?? "");
     t.base = { ...t.base, harness: now.harness as HarnessId, ...(now.model ? { model: now.model } : {}) };
     if (!now.model) delete t.base.model;
+    if (!keepsEffort) delete t.base.effort, delete c.body.effort;
     t.card = { ...t.card, place: kept, harness: now.harness, ...(now.model ? { model: now.model } : {}) };
     c.body = { ...c.body, place: kept, harness: now.harness, ...(now.model ? { model: now.model } : {}) };
     core.log.append({ persona: t.persona, stream: stream(t.id), origin: "system", kind: "task_open", body: c.body });
     const name = now.name;
-    core.log.append({ persona: t.persona, stream: stream(t.id), origin: "user", kind: "body_selected", body: { taskId: t.id, harness: now.harness, ...(now.model ? { model: now.model } : {}), why: { kind: "you", where: { device: name, kind: "you" } } } });
+    core.log.append({ persona: t.persona, stream: stream(t.id), origin: "user", kind: "body_selected", body: { taskId: t.id, harness: now.harness, ...(now.model ? { model: now.model } : {}), ...(c.body.effort ? { effort: c.body.effort } : {}), why: { kind: "you", where: { device: name, kind: "you" } } } });
     logEvent(t, { role: "system", from: "runner", text: `moved from ${from} to ${name} before it started (the user chose now)`, raw: { device: now.deviceId, moved: { from, to: name } } });
     if (t.ops.device && !t.ops.device.online()) return waitThere(t, c);
     t.waiting = c;
@@ -1461,8 +1475,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const open = core.log.read({ stream: stream(taskId), kinds: ["task_open"], limit: 1000 }).at(-1)?.body as Bodies["task_open"] | undefined;
       const body: Bodies["task_open"] = { ...(open ?? { taskId, title: t.card.title, project: t.card.project, brief: "" }), place: resolved.place, harness: h, ...(model ? { model } : {}) } as Bodies["task_open"];
       if (!model) delete body.model;
+      // D202: the effort moves with the same agent and model; another one runs at its own default.
+      if (h !== fromHarness || (model ?? "") !== (t.card.model ?? "")) delete body.effort;
       core.log.append({ persona: t.persona, stream: stream(taskId), origin: "user", kind: "task_open", body });
-      core.log.append({ persona: t.persona, stream: stream(taskId), origin: "user", kind: "body_selected", body: { taskId, harness: h, ...(model ? { model } : {}), why: { kind: "you", where: { device: to.name, kind: "you" } } } });
+      core.log.append({ persona: t.persona, stream: stream(taskId), origin: "user", kind: "body_selected", body: { taskId, harness: h, ...(model ? { model } : {}), ...(body.effort ? { effort: body.effort } : {}), why: { kind: "you", where: { device: to.name, kind: "you" } } } });
       t.card = { ...t.card, place: resolved.place, harness: h, ...(model ? { model } : {}) };
       t.base = { ...specFor(taskId, body, resolved.cwd, true), harness: h };
       t.movedFrom = { from: here === "local" ? (to.homeName ?? "the home") : here, to: to.name, repo: place.kind === "repo" };
@@ -1513,6 +1529,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.base = { ...t.base, harness: harness as HarnessId };
       if (model) t.base.model = model;
       else delete t.base.model;
+      delete t.base.effort; // D202: another agent or model runs at its own default effort
       t.spec = withBrowser(t.base, t.sidecarInput?.harness === harness ? t.sidecar : undefined, partnerNameOf());
       // raw.switched: recovery ignores the session ids logged before it (the old agent's).
       logEvent(t, { role: "system", from: "runner", text: `moved from ${from} to ${harness}${model ? ` (${model})` : ""}`, raw: { switched: { from, to: harness } } });

@@ -234,6 +234,8 @@ export interface Bodies {
     place: Place;
     harness: string; // a HarnessId (harnesses.ts)
     model?: string;
+    // D202: the reasoning effort the user picked (one of the model's own levels), kept so a resume keeps it.
+    effort?: string;
     brief: string;
     bodyReason?: string; // why this harness/model
     language?: "zh" | "en"; // the language the user reads its reports in (the brief says so)
@@ -246,7 +248,7 @@ export interface Bodies {
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
   // Who does the task and why (D89, focus-window.md "Choosing a body"): appended when it opens
   // and on every switch. The card shows the latest one.
-  body_selected: { taskId: string; harness: string; model?: string; why: BodyWhy };
+  body_selected: { taskId: string; harness: string; model?: string; effort?: string; why: BodyWhy };
   // role "user" + from "user" = text the user sent straight into the task (logged by the runner).
   task_event: {
     taskId: string;
@@ -455,6 +457,8 @@ export interface TaskCard {
   place: Place;
   harness: string;
   model?: string;
+  /** D202: the reasoning effort it runs at, when the user picked one (else the model's own default). */
+  effort?: string;
   bodyReason?: string;
   /** Who does it now and why (the latest body_selected); absent on tasks from before D89. */
   body?: TaskBody;
@@ -589,6 +593,7 @@ export interface RoutineBody {
   by?: "you";
   harness?: string;
   model?: string;
+  effort?: string; // D202: the effort picked on the New task card
   project?: string;
 }
 
@@ -753,7 +758,9 @@ export type ClientFrame =
   | { t: "task_new_options"; place?: Place }
   // when (D185): absent or now opens it at once; at / every make a routine of the user's own
   // (task_new_result carries routineId, no taskId); when / until open it now with its wait or loop.
-  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; clientId?: string; when?: NewTaskWhen }
+  // D202: model and effort only when the user picked other than the defaults (an effort the model
+  // doesn't list is dropped, with a line in the task, never sent).
+  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen }
   // D186: add a folder on the home's computer as a project (a repo or not). Answered with
   // project_add_result; On hand's projects and the card's places then include it. device (D197):
   // the folder is on that worker (the Mac app's own, when the home is elsewhere), read there.
@@ -829,6 +836,33 @@ export interface PlaceChoice {
   branches?: string[]; // local branches, most recently committed first (at most 30)
   added?: boolean; // D186: a project the user added by hand (listed even with no task yet)
   computer?: string; // D197: the computer it is on, only when the places span more than one
+  remote?: string; // D202: a repo's origin URL, normalized (host/owner/repo), so its copy on another computer is found
+}
+
+/**
+ * D202: one model an AI agent offers on one computer, as the New task card lists it: its own
+ * id and name (the live list of that account), Ducter's suggestion, the agent's own default, and
+ * its reasoning effort levels (absent: it takes none, so the card shows no effort row).
+ */
+export interface ModelChoice {
+  id: string;
+  label: string;
+  /** Ducter's suggestion for this agent (the tier table's ranking): 推荐 / Suggested. */
+  suggested?: true;
+  /** What the agent runs when no model is named, where it says so. */
+  default?: true;
+  efforts?: string[];
+  /** The model's own default effort, where it says (默认 / Default). */
+  defaultEffort?: string;
+}
+
+/** D202: the models of one AI agent on one computer (device: its id, only with two or more computers). */
+export interface AgentModels {
+  harness: string;
+  device?: string;
+  models: ModelChoice[];
+  /** live: the account's own list; tiers: Ducter's table (the list couldn't be read), no effort levels. */
+  from: "live" | "tiers";
 }
 
 /** Why a New task didn't open: empty words, nothing can do it, not a repo, its device is away, a time already past or a wait with nothing to wait for (D185), or anything else (message). */
@@ -868,7 +902,7 @@ export type ServerFrame =
   // after each welcome, null when the turn ends. Never logged: it is presence, not history.
   | { t: "activity"; activity: PartnerActivity | null }
   // D128: New task. card: the task as On hand will show it; message: a reason in words (English).
-  | { t: "task_new_options"; places: PlaceChoice[]; candidates: Candidate[] }
+  | { t: "task_new_options"; places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[] }
   | { t: "close_result"; device: string; ok: boolean; none?: boolean; decisionId?: string; message?: string }
   | { t: "task_new_result"; ok: boolean; clientId?: string; taskId?: string; card?: TaskCard; routineId?: string; routine?: RoutineView; reason?: NewTaskReason; message?: string }
   | { t: "project_add_result"; ok: boolean; clientId?: string; place?: PlaceChoice; reason?: "not_found" | "offline" | "failed"; message?: string }

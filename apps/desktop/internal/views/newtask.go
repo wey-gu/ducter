@@ -41,6 +41,13 @@ type newTaskState struct {
 	// It is remembered for the next card (D185).
 	pick    string
 	whoOpen bool
+	// D202: the model and effort picked for the chosen agent ("" = the
+	// remembered one, else the suggestion and the model's own default;
+	// effort "default" = the model's own over a remembered level);
+	// pending is an agent on another computer waiting for a folder there,
+	// placeOnly that computer's id (the folder list shows only its places).
+	model, effort      string
+	pending, placeOnly string
 	// computer is the computer the user chose (a device id; "" = the
 	// suggested one), and computerOpen shows the list (D157).
 	computer     string
@@ -124,7 +131,7 @@ func (a *App) OpenNewTask(at *protocol.Place) {
 	}
 	words := nt.words
 	*nt = newTaskState{open: true, words: words, focus: true, seq: nt.seq, atDay: 1, atTime: "9:00", weekday: 1, hours: 1}
-	nt.pick = a.Local.NewTaskWho()
+	nt.pick = asAgentKey(a.Local.NewTaskWho())
 	var ask *protocol.Place
 	if at != nil && at.Kind == "none" {
 		nt.placeKey = noneKey
@@ -211,19 +218,21 @@ func topCandidate(cands []protocol.Candidate) *protocol.Candidate {
 	return nil
 }
 
-// ntKey is a candidate's key on the card (with its computer when there are two).
+// ntKey is an agent's key on the card (with its computer when there are
+// two); D202: one row per agent, its model picked under it.
 func ntKey(cd protocol.Candidate) string {
 	if cd.Device != "" {
-		return candKeyOn(cd)
+		return cd.Device + "|" + cd.Harness
 	}
-	return candKey(cd)
+	return cd.Harness
 }
 
-// ntCands is who the card offers: with two or more computers, the agents
-// on the chosen one, then those that live only on another (D157).
+// ntCands is who the card offers, one row per agent: with two or more
+// computers, the agents on the chosen one, then those that can only on
+// another (D157, D202).
 func (a *App) ntCands(cands []protocol.Candidate) (rows []protocol.Candidate, elsewhere map[string]bool) {
 	if !whereRows(cands) {
-		return cands, nil
+		return firstPerAgent(cands), nil
 	}
 	return ntWho(cands, a.ntComputer(cands))
 }
@@ -335,8 +344,15 @@ func (a *App) StartNewTask(again ...bool) bool {
 		cands = o.Candidates
 	}
 	// An agent picked on another computer is the user's pick even when it is that computer's best.
-	if cd, picked := a.chosenCandidate(cands); cd != nil && (picked || (nt.pick != "" && nt.computer != "")) {
-		f.Harness, f.Model = cd.Harness, cd.Model
+	// D202: the model and effort go only when they differ from the suggestion and the model's default.
+	if cd, picked := a.chosenCandidate(cands); cd != nil {
+		model, effort, listed := a.ntSendTune(cd)
+		if picked || (nt.pick != "" && nt.computer != "") || model != "" || effort != "" {
+			f.Harness, f.Model, f.Effort = cd.Harness, model, effort
+			if !listed {
+				f.Model = cd.Model
+			}
+		}
 	}
 	// D157: No folder with two or more computers: the computer chosen (or suggested) goes with it.
 	if place.Place.Kind == "none" && whereRows(cands) {
@@ -588,14 +604,29 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 	}
 	if click {
 		nt.shut("place")
+		nt.pending, nt.placeOnly = "", ""
 	}
 	if !nt.placeOpen {
+		nt.pending, nt.placeOnly = "", ""
 		return
 	}
 	ck := placeKey(chosen.Place)
-	a.listPanel(c, e, &nt.placeOpen, a.L.T("newtask.where"), 360, func() {
+	// D202: an agent on another computer waits for a folder there: only that computer's places.
+	only := nt.placeOnly
+	title := a.L.T("newtask.where")
+	onlyName := ""
+	if only != "" {
+		if d := a.computerOf(only); d != nil {
+			onlyName = d.Name
+		}
+		title = a.L.T("newtask.agent.needsfolder", onlyName)
+	}
+	a.listPanel(c, e, &nt.placeOpen, title, 360, func() {
 		for _, p := range places {
 			p := p
+			if only != "" && (p.Place.Kind == "none" || a.placeComputer(p.Place) != only) {
+				continue
+			}
 			k := placeKey(p.Place)
 			name := a.placeName(p)
 			if a.menuRow(c, "nt-place:"+k, name, k == ck, false, func() {
@@ -614,7 +645,24 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 				a.pickPlace(p) // the chosen one again just closes the list
 			}
 		}
-		switch mode, _ := a.folderAdd(); mode {
+		if only != "" {
+			// No folder on that computer works for the agent too.
+			if a.menuRow(c, "nt-place:none-on", a.L.T("newtask.nowhere")+" · "+onlyName, false, false, func() {
+				a.glyph(c, 16, drawFolder(t.Faint))
+				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
+					ui.Text(c, a.L.T("newtask.nowhere")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+					ui.Text(c, a.L.T("newtask.agent.elsewhere", onlyName)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				})
+			}) {
+				a.pickPlace(protocol.PlaceChoice{Place: protocol.Place{Kind: "none"}})
+			}
+		}
+		mode, dev := a.folderAdd()
+		// Adding a folder there: only where the folder picked would be on that computer.
+		if only != "" && !((mode == "worker" && dev == only) || (mode == "here" && a.computerOf(only) != nil && a.computerOf(only).Home)) {
+			mode = ""
+		}
+		switch mode {
 		case "here", "worker":
 			ui.Box(c.Key("nt-add-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
 			if a.menuRow(c, "nt-add-folder", a.L.T("newtask.addfolder"), false, false, func() {
@@ -640,9 +688,20 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 }
 
 // pickPlace makes p the card's place and asks who could do it there.
+// D202: an agent that waited for a folder on its computer is picked with it.
 func (a *App) pickPlace(p protocol.PlaceChoice) {
 	nt := &a.nt
 	nt.placeOpen = false
+	if nt.pending != "" {
+		if p.Place.Kind == "none" && nt.placeOnly != "" {
+			nt.computer = nt.placeOnly
+		}
+		if p.Place.Kind == "none" || a.placeComputer(p.Place) == nt.placeOnly {
+			nt.pick = nt.pending
+			a.Local.SetNewTaskWho(nt.pick)
+		}
+	}
+	nt.pending, nt.placeOnly = "", ""
 	if placeKey(p.Place) == placeKey(a.chosenPlace(a.newTaskPlaces()).Place) {
 		return
 	}
@@ -720,9 +779,11 @@ func (a *App) computerPill(c *ui.Context, place protocol.PlaceChoice) {
 	}
 }
 
-// whoPill is 谁来做 / Who does it: the chosen agent's coin and name, the
-// best fit tagged 推荐 / Suggested (why on hover); its list has every agent
-// at that place, best first, one that can't greyed with why.
+// whoPill is 谁来做 / Who does it: the chosen agent's coin, its name, model
+// and effort, the best fit tagged 推荐 / Suggested (why on hover); its list
+// has every agent, one row each, best first: those at that place, then
+// those on another computer (在 {computer} 上, D202), then those that can't,
+// greyed with why. Under the chosen one, its Model and Effort rows.
 func (a *App) whoPill(c *ui.Context) {
 	t := a.T
 	nt := &a.nt
@@ -734,31 +795,35 @@ func (a *App) whoPill(c *ui.Context) {
 		return
 	}
 	chosen, picked := a.chosenCandidate(o.Candidates)
-	if chosen == nil {
+	cands, elsewhere := a.ntCands(o.Candidates)
+	if chosen == nil && len(elsewhere) == 0 {
 		ui.Row(c.Key("nt-who-none")).Height(t.ControlSM).Padding(0, t.S3).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, a.L.T("newtask.nobody")).FontSize(t.SM).TextColor(t.InkSoft)
 		})
 		return
 	}
-	cands, elsewhere := a.ntCands(o.Candidates)
 	top := topCandidate(cands)
-	name := a.candName(*chosen)
+	name := a.L.T("newtask.pickwho")
+	if chosen != nil {
+		name = a.whoLabel(*chosen)
+	}
 	e, click := a.pill(c, "nt-who", a.L.T("newtask.who")+" · "+name, nt.whoOpen, func() {
-		if bmp := theme.Clay(coinArt(chosen.Harness, false)); bmp != nil {
-			ui.Image(c, bmp).Size(22, 22).Shrink(0).AccessHidden(true)
+		if chosen != nil {
+			if bmp := theme.Clay(coinArt(chosen.Harness, false)); bmp != nil {
+				ui.Image(c, bmp).Size(22, 22).Shrink(0).AccessHidden(true)
+			}
 		}
 		ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
-		if elsewhere[ntKey(*chosen)] {
-			ui.Text(c, a.L.T("newtask.agent.elsewhere", chosen.DeviceName)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
-		}
-		if !picked {
+		if chosen != nil && !picked && a.tuneIsDefault(*chosen) {
 			a.suggestedTag(c)
 		}
 	})
-	if picked {
+	if chosen != nil && picked {
 		e.Tooltip(a.L.T("newtask.picked", name))
-	} else if why := a.candReason(*chosen); why != "" {
-		e.Tooltip(why)
+	} else if chosen != nil {
+		if why := a.candReason(*chosen); why != "" {
+			e.Tooltip(why)
+		}
 	}
 	if click {
 		nt.shut("who")
@@ -766,15 +831,21 @@ func (a *App) whoPill(c *ui.Context) {
 	if !nt.whoOpen {
 		return
 	}
-	a.listPanel(c, e, &nt.whoOpen, a.L.T("newtask.who"), 360, func() {
+	place := a.chosenPlace(a.newTaskPlaces())
+	a.listPanel(c, e, &nt.whoOpen, a.L.T("newtask.who"), 440, func() {
 		for i := range cands {
 			cd := cands[i]
 			k := ntKey(cd)
-			off := cd.Blocked != ""
+			away := elsewhere[k] // D157, D202: it can only on another computer
+			off := cd.Blocked != "" && !away
 			best := top != nil && k == ntKey(*top)
-			away := elsewhere[k] // D157: lives only on another computer
-			cname := a.candName(cd)
-			if a.menuRow(c, "nt-cand:"+k, cname, !off && k == ntKey(*chosen), off, func() {
+			on := !off && chosen != nil && k == ntKey(*chosen)
+			cname := harnessName(cd.Harness)
+			why := a.candReason(cd)
+			if away {
+				why = a.awayLine(cd, place)
+			}
+			if a.menuRow(c, "nt-cand:"+k, cname, on, off, func() {
 				if bmp := theme.Clay(coinArt(cd.Harness, off)); bmp != nil {
 					img := ui.Image(c, bmp).Size(28, 28).Shrink(0)
 					if off && !coinKnown(cd.Harness) {
@@ -791,24 +862,32 @@ func (a *App) whoPill(c *ui.Context) {
 							a.suggestedTag(c)
 						}
 					})
-					if why := a.candReason(cd); why != "" {
+					if why != "" {
 						ui.Text(c, why).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 					}
 				})
 			}) {
-				nt.pick, nt.whoOpen = k, false
-				if best {
-					nt.pick = ""
-				}
-				// One combined pick: an agent on another computer brings that computer along.
-				if away {
-					nt.computer = cd.Device
-					nt.pick = ntKey(cd)
-				}
-				a.Local.SetNewTaskWho(nt.pick)
+				a.pickAgent(cd, top, away)
+			}
+			if on {
+				a.tuneRows(c, cd)
 			}
 		}
 	})
+}
+
+// awayLine is the helper line of an agent on another computer (D202): for
+// No folder, its own reason; for a folder, the copy it switches to there,
+// or that the folder must be on that computer.
+func (a *App) awayLine(cd protocol.Candidate, place protocol.PlaceChoice) string {
+	if place.Place.Kind == "none" {
+		cd.Blocked = ""
+		return a.candReason(cd)
+	}
+	if cp := a.ntCopyOn(cd.Device, place); cp != nil {
+		return a.L.T("newtask.agent.copy", cd.DeviceName, a.placeName(*cp))
+	}
+	return a.L.T("newtask.agent.needsfolder", cd.DeviceName)
 }
 
 // suggestedTag is 推荐 / Suggested on the best fit.

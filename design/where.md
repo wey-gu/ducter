@@ -205,10 +205,14 @@ picture (`server_awake`, `laptop_asleep`…), its name, what sets it apart in a 
 (the ranking for "no particular need": can start now, doesn't sleep, the home first). A computer
 that can't be reached is greyed.
 
-The Who row lists the agents on the chosen computer, then agents that live **only on another
-computer**, their coins quieter, tagged **在 MacBook 上 / on MacBook**. Picking one moves the
-computer part with it (the chip's text slides to **MacBook**): one combined pick. If that
-computer is asleep, the chip says **睡着了 · 醒了就开始** and Start still works (the task waits).
+The Who row lists the agents that can on the chosen computer, then each agent that can't there
+but can **on another computer**, tagged **在 MacBook 上 / on MacBook** (D202: also when the folder is
+on the chosen computer; an agent greyed here because it isn't installed gives way to the same agent
+there). Picking one moves the computer part with it (the chip's text slides to **MacBook**): one
+combined pick. For a folder (D202) it moves the folder: to the same repo's copy on that computer
+(same origin; neither knowing one, the exact folder name), else the folder list on that computer's
+places. If that computer is asleep, the chip says **睡着了 · 醒了就开始** and Start still works (the
+task waits).
 
 New task never parses the words for needs (it is the power path, words unchanged, D128); the
 user who wants their Chrome picks the MacBook.
@@ -261,6 +265,8 @@ its pushed branch; uncommitted work never moves. What this note adds:
 | `newtask.computer.chrome_apps` | 有你的 Chrome 和 Mac 应用 | Has your Chrome and Mac apps |
 | `newtask.computer.asleep` | 睡着了 · 醒了就开始 | Asleep · starts when it wakes |
 | `newtask.agent.elsewhere` | 在 {device} 上 | on {device} |
+| `newtask.agent.copy` (D202) | 会换到 {device} 上的 {folder} | Switches to {folder} on {device} |
+| `newtask.agent.needsfolder` (D202) | 文件夹要在 {device} 上 | The folder must be on {device} |
 | `switch.computer.head` | {device} · {state} | {device} · {state} |
 | `switch.cant.chrome` | 要用你的 Chrome，{device} 上没有 | Needs your Chrome; not on {device} |
 | `switch.cant.app` | 要用 {app}，这台没有 | Needs {app}; not on this one |

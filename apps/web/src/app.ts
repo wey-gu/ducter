@@ -1,4 +1,5 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
+import { onWbFrame } from "./workbench-ask.ts";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/protocol";
 import { prepare, upload, type Pic, type ViewerState } from "./media-up.ts";
@@ -558,6 +559,8 @@ class AppState {
     // `ducter open <task>` (D128): show it as if tapped; back returns.
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
     if (f.t === "open_result") return;
+    // D214: a workbench answer (workbench.tsx asked for it).
+    if (f.t === "wb") return onWbFrame(f as Parameters<typeof onWbFrame>[0]);
     if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), this.changed();
     if (f.t === "connection_reads") return void (this.connReads.set(f.id, f.reads), this.changed());
     // D193: the device sign-in: the code and link, then done (a toast) or why not.

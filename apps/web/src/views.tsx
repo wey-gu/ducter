@@ -22,6 +22,7 @@ import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
+import { BenchToggle } from "./workbench.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
@@ -1104,7 +1105,7 @@ const Plus = () => (
   </svg>
 );
 
-function Top({ back, face = true, plus, level }: { back?: string; face?: boolean; plus?: boolean; level?: string }) {
+function Top({ back, face = true, plus, level, extra }: { back?: string; face?: boolean; plus?: boolean; level?: string; extra?: preact.ComponentChildren }) {
   // D176: side by side, the conversation's own header carries the face, and On hand is already
   // in view: its pane's header names it instead of going back to a conversation that is there.
   const wide = useWide();
@@ -1127,6 +1128,7 @@ function Top({ back, face = true, plus, level }: { back?: string; face?: boolean
             <Plus />
           </button>
         )}
+        {extra}
         {face && !wide && <Avatar size={40} />}
         {/* D184: wide, the level can take the whole screen; the same button brings it back. */}
         {wide && <FillButton level={level ? "onhand" : "task"} />}
@@ -1900,9 +1902,11 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
         // Drop at the header's end.
         <FullTop task={task}>
           {!finished(task) && !["dropped", "superseded", "done"].includes(a) && <Btn kind="text" size="sm" label={t("task.action.drop")} onClick={() => A.drop(id)} />}
+          {/* D214: the workbench, beside the task. */}
+          <BenchToggle task={task} />
         </FullTop>
       ) : (
-        <Top back={t("nav.back")} face={false} />
+        <Top back={t("nav.back")} face={false} extra={<BenchToggle task={task} />} />
       )}
       <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); }}>
         <div class="task-head">

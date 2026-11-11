@@ -27,12 +27,25 @@ import (
 // none by default); then a quiet Details disclosure. The composer to talk
 // to the task stays at the bottom, as in the conversation.
 func (a *App) task(c *ui.Context) {
-	t := a.T
 	task := a.S.Task(a.TaskID)
 	if task == nil {
 		task = &store.Task{ID: a.TaskID}
 	}
 	a.taskHeader(c, task)
+	// D214: the workbench stands at the right; the task keeps the rest.
+	if a.benchShown(task) {
+		ui.Row(c.Key("benchrow")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
+			ui.Column(c.Key("taskcol")).Grow(1).MinWidth(0).MinHeight(0).Children(func() { a.taskBody(c, task) })
+			a.workbench(c, task)
+		})
+		return
+	}
+	a.taskBody(c, task)
+}
+
+// taskBody is the task's page under its header: the transcript, its foot and its composer.
+func (a *App) taskBody(c *ui.Context, task *store.Task) {
+	t := a.T
 	if a.taskScroll == nil {
 		a.taskScroll = map[string]*ui.ScrollState{}
 	}
@@ -143,6 +156,16 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	t := a.T
 	// D198: its working copy in Finder, a Terminal or an editor, whatever its state.
 	a.openIn(c, task)
+	// D214: the workbench, beside the task (⌥⌘B).
+	if len(a.benchTabs(task)) > 0 {
+		kind := btnText
+		if a.benchShown(task) {
+			kind = btnSecondary
+		}
+		if a.button(c, a.L.T("wb.toggle"), kind, t.ControlSM, t.Chrome) {
+			a.ToggleBench()
+		}
+	}
 	att := task.Attention()
 	switch att {
 	case protocol.Failed, protocol.Dropped, protocol.Done, protocol.DoneClaimed, protocol.Superseded:

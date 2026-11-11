@@ -83,6 +83,8 @@ export interface WsDeps {
   memPlugins?: () => import("./mem-plugins.ts").MemPlugins | undefined;
   /** D151: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
   browser?: DucterBrowser;
+  /** D214: the opened task's workbench (workbench.ts); absent in tests that don't need it. */
+  workbench?: import("./workbench.ts").WbFrames;
   /** D191: 自动填充 / Autofill; absent in tests that don't need it. */
   autofill?: import("./saved/index.ts").Autofill;
   /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
@@ -849,6 +851,13 @@ export function createWsHandler(deps: WsDeps) {
         const stream = taskStream(f.taskId);
         const events = log.read({ stream, beforeSeq: f.beforeSeq, limit: Math.min(f.limit ?? 200, 2000) });
         send(ws, { t: "task_history", taskId: f.taskId, events });
+        return;
+      }
+      case "wb": {
+        // D214: one workbench op; a CLI never opens one.
+        const id = typeof f.id === "string" ? f.id.slice(0, 64) : "";
+        const answer = deps.workbench && ws.data.client !== "cli" ? await deps.workbench.handle(String(f.taskId ?? ""), f.req) : { ok: false as const, error: "unsupported" as const };
+        send(ws, { t: "wb", id, taskId: String(f.taskId ?? ""), ...answer });
         return;
       }
       case "folder_changes": {

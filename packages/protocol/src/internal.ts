@@ -473,6 +473,14 @@ export interface Runner {
   holdCritical?(why: string | undefined): void;
   // Optional (D156): while an AI agent's updater runs on this machine, a session on it waits to start.
   holdHarness?(harness: string, on: boolean): void;
+  // Optional (D214): the opened task's workbench, on the computer that holds its working copy.
+  // A refusal rejects with { code: WbError }. said: ports the task's own output named (the home
+  // reads the Log); exclude: ports never offered (Ducter's own). A write or a revert is the
+  // user's own change: the task hears of it with its next turn.
+  workbench?(taskId: string, req: import("./workbench.ts").WbRequest, o?: { said?: number[]; exclude?: number[] }): Promise<import("./workbench.ts").WbAnswer>;
+  // Optional (D214): where a task's page is reached from the home: "here" (this machine's
+  // loopback), or a fetch that carries the request to its worker. undefined: no such task.
+  pageRoute?(taskId: string): { here: true } | { here: false; fetch(a: { port: number; method: string; path: string; headers: [string, string][]; body?: string }): Promise<{ status: number; headers: [string, string][]; body: string }> } | undefined;
 }
 
 export function createRunnerSignature(_core: CoreApi): Runner {

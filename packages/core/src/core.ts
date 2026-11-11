@@ -1,4 +1,6 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
+import { createPreviews, loopbackOf } from "./preview.ts";
+import { createWbFrames } from "./workbench.ts";
 import { effectiveBrain } from "./brain.ts";
 import { createMediaStore } from "./media.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -476,7 +478,13 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D204: 从 Git 地址加… / Add from a Git address…, cloned on that computer, then added there.
     clone: (device: string | undefined, address: string) => cloneProject(newTaskDeps, device, address, (path, dev) => newTask.addProject(path, dev)),
   };
-  const ws = createWsHandler({ core: api, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}) });
+  // D214: the workbench, and the previews of the pages tasks serve (each on a port of its own,
+  // on the interface the home listens on).
+  const hostname = opts.hostname ?? (process.env.DUCTER_HOST || "127.0.0.1");
+  const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
+  const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
+  const previewsPorts = () => previews.list().map((p) => p.previewPort);
+  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -694,7 +702,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   registerProactiveTools(mcp, rules);
 
   const server = Bun.serve<WsData | WorkerSocketData>({
-    hostname: opts.hostname ?? (process.env.DUCTER_HOST || "127.0.0.1"),
+    hostname,
     port: opts.port ?? Number(process.env.DUCTER_PORT || 7777),
     idleTimeout: 120,
     async fetch(req, srv) {
@@ -795,6 +803,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     async stop() {
       ws.stop();
+      previews.close();
       await browser?.stop().catch(() => {});
       autofill.stop();
       devicesView?.stop();

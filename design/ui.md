@@ -501,6 +501,14 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    open folders; a separator between the groups, the one used last first in each) in every state while its working copy is on this Mac, and
    **不做了 / Cancel task** until it finishes (D207); **暂停 / Pause** is in the foot (D210). Over its changes, the working copy's path,
    `~/…`, mono, small and selectable (D198).
+   **工作台 / Workbench** (D214, `design/workbench.md`): a drawn panel mark in the header (⌥⌘B),
+   only when the task has something to show; wide, a column at the right (`--bench-w`, 42%,
+   380–760 px, resizable) on `--bg-deep` with a hairline, its strip of pages on the sunken track
+   with the one shown raised (the Seg look); on a phone a sheet over the task whose pages swipe.
+   Code reads in a well of `--code-bg` with `--tk-*` token colours and `--code-add` / `--code-del`
+   lines, numbers in the faint ink, ligatures off. Screens a task drives (browser, phone,
+   computer) share one frame: a chip of who is driving (working tint for it, waiting tint for
+   you, a clay bead), then the screen on a raised surface.
 
 ## Prototype canvases
 

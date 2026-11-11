@@ -13,6 +13,8 @@ import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, localFolderOps, r
 import { createFolderStore, type CantKeep } from "./folder.ts";
 import { join } from "node:path";
 import { readShown } from "./shown.ts";
+import { wbHost, WbFail } from "./workbench.ts";
+import { userEditsNote } from "./brief.ts";
 import { MEM_PLUGIN_IDS } from "@ducter/protocol/src/mem-plugins.ts";
 
 /** task_state reason for a task whose worker dropped; clients render it as "<device> 连不上 / Can't reach <device>". */
@@ -247,6 +249,16 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     }
   };
   sweepFolders();
+  // D214: the workbench for the tasks on this machine; what the user changed in each task's files
+  // since its last turn, said to it with the next one.
+  const bench = wbHost({ dataDir: core.dataDir, folders: { changes: (id, o) => folders.changes(id, o), undo: (id, o) => folders.undo(id, o) } });
+  const userEdits = new Map<string, Map<string, "edited" | "reverted">>();
+  const takeEdits = (taskId: string, text: string): string => {
+    const e = userEdits.get(taskId);
+    if (!e?.size) return text;
+    userEdits.delete(taskId);
+    return `${userEditsNote([...e].map(([path, how]) => ({ path, how })))}\n\n${text}`;
+  };
   const folderTimer = setInterval(sweepFolders, 60 * 60_000);
   (folderTimer as { unref?: () => void }).unref?.();
   const localOps: PlaceOps = {
@@ -260,6 +272,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     archive: (place) => archiveWorktree(place, core.dataDir),
     folder: localFolderOps(folders),
     shown: async (a) => readShown(a, { dataDir: core.dataDir }),
+    wb: (a) => bench.op(a),
   };
   /** D157: a browser place's browser, on the computer the place is on (a worker builds its own). */
   const sidecarFor = async (ops: PlaceOps, input: SidecarInput): Promise<BrowserSidecar | undefined> =>
@@ -1440,24 +1453,26 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
           throw err;
         }
         setState(t, "working", "hot");
-        await sendTurn(t, seed ? seedThen(seed, text) : text, from, true, media);
+        await sendTurn(t, seed ? seedThen(seed, takeEdits(taskId, text)) : takeEdits(taskId, text), from, true, media);
         return { delivered: "prompted" };
       }
       if (isBusy(t)) {
         if (mode !== "queue" && t.session!.canSteer) {
           logInput(t, text, from, "steer", clientId, media);
-          await deliver(t, text, "steer", from, true, media);
+          await deliver(t, takeEdits(taskId, text), "steer", from, true, media);
           return { delivered: "steered" };
         }
         logInput(t, text, from, "queue", clientId, media);
-        await deliver(t, text, "queue", from, true, media);
+        await deliver(t, takeEdits(taskId, text), "queue", from, true, media);
         return { delivered: "queued" };
       }
       // Idle: the text becomes the next turn. A finished or held task goes back to work.
       const a = currentAttention(t);
       if (a !== "working") setState(t, "working", "hot");
-      if (clientId) logInput(t, text, from, "turn", clientId, media);
-      await sendTurn(t, text, from, !!clientId, media);
+      // D214: what the user changed in its files goes to the agent, never into their own words in the Log.
+      const out = takeEdits(taskId, text);
+      if (clientId || out !== text) logInput(t, text, from, "turn", clientId, media);
+      await sendTurn(t, out, from, !!clientId || out !== text, media);
       return { delivered: "prompted" };
     },
 
@@ -1689,6 +1704,38 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const t = tasks.get(taskId);
       if (!t || !folderOf(t)) return undefined;
       return t.ops.folder.changes(taskId, o).catch(() => undefined);
+    },
+
+    // ---------- D214: the workbench ----------
+    async workbench(taskId, req, o = {}) {
+      const t = tasks.get(taskId);
+      const place = core.tasks.get(taskId)?.place ?? t?.card.place;
+      if (!place) throw new WbFail("missing");
+      const ops = t?.ops ?? opsFor(place);
+      const cwd = t?.spec.cwd ?? (ops.device ? remoteCwd(place) : cwdOf(place, taskId, core.dataDir));
+      if (ops.device && !ops.device.online()) throw new WbFail("offline");
+      const answer = await ops.wb({ taskId, cwd, place, req, ...(o.said ? { said: o.said } : {}), ...(o.exclude ? { exclude: o.exclude } : {}) });
+      if (answer.op === "write" || answer.op === "revert") {
+        // The user's own change to the task's files: the task hears of it with its next turn,
+        // and the Log keeps it (never drawn in the transcript: it has no note, D207).
+        const how = answer.op === "write" ? "edited" : "reverted";
+        const e = userEdits.get(taskId) ?? new Map<string, "edited" | "reverted">();
+        e.set(answer.path, how);
+        userEdits.set(taskId, e);
+        if (t) logEvent(t, { role: "system", from: "user", raw: { effect: "user_edit", path: answer.path, how } });
+      }
+      return answer;
+    },
+
+    pageRoute(taskId) {
+      const t = tasks.get(taskId);
+      const place = core.tasks.get(taskId)?.place ?? t?.card.place;
+      if (!place) return undefined;
+      const ops = t?.ops ?? opsFor(place);
+      if (!ops.device) return { here: true };
+      const fetch = ops.wbFetch;
+      if (!fetch) return undefined;
+      return { here: false, fetch: (a) => fetch({ taskId, ...a }) };
     },
 
     async folderReport(taskId) {

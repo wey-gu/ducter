@@ -13,6 +13,8 @@ import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.
 import { LiveView } from "./live.tsx";
 import { Board } from "./board.tsx";
 import { escUp, useFill, useSplit, useWide } from "./wide.ts";
+import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
+import { liveInBench } from "./live.tsx";
 
 const base = baseUrl();
 const token = () => storage.get()?.token;
@@ -47,11 +49,16 @@ function App() {
   // D184: On hand, or an opened task, can take the whole screen as the Mac shows it; the two
   // panes stay the default and come back in one move (⌘2, the header's button, Esc).
   const fill = useFill();
+  // D214: the opened task's workbench: wide, a column at the whole screen's right; else a sheet.
+  const benchTask = r.name === "task" ? A.S.tasks.get(r.id) : undefined;
+  const benched = benchOpen(benchTask) && (fill || !wide);
+  liveInBench.taskId = benchShown.taskId = benched && benchTask ? benchTask.id : "";
   return (
     <>
       {fill ? (
-        <div class={split ? `full ${split.kind}` : "full"}>
+        <div class={`${split ? `full ${split.kind}` : "full"}${benched ? " benched" : ""}`}>
           {r.name === "task" ? <TaskView key={r.id} id={r.id} full /> : <Board />}
+          {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} />}
         </div>
       ) : wide ? (
         <div class={split ? `panes ${split.kind}` : "panes"}>
@@ -67,6 +74,7 @@ function App() {
           {r.name === "conv" && <Conversation />}
           {r.name === "onhand" && <OnHand />}
           {r.name === "task" && <TaskView id={r.id} />}
+          {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} sheet />}
         </>
       )}
       <Sheets />
@@ -198,6 +206,7 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   A.fromHash();
   // The app's menus and hardware-keyboard shortcuts (⌘N, ⌘1…⌘4, ⌘, and ⌘K, as on the Mac; D176).
   (globalThis as { ducterCommand?: (c: string) => void }).ducterCommand = (c) => A.command(c);
+  addEventListener("keydown", (e) => void benchKey(e));
   addEventListener("keydown", escUp);
   addEventListener("popstate", () => A.fromHash());
   addEventListener("hashchange", () => A.fromHash());

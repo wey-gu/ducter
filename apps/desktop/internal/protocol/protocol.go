@@ -1377,6 +1377,9 @@ type ServerFrame struct {
 	Confirm *UndoConfirm `json:"confirm,omitempty"`
 	// folder_changes (D142): the list behind a folder task's Changes.
 	FolderChanges *FolderChanges `json:"changes,omitempty"`
+	// wb (D214): a workbench answer (ID, OK, Answer) or its refusal (WbError).
+	Answer  *WbAnswer `json:"answer,omitempty"`
+	WbError string    `json:"error,omitempty"`
 	// devices: Your devices and abilities.
 	Devices []DeviceView `json:"devices,omitempty"`
 	Reach   *Reach       `json:"reach,omitempty"`
@@ -1673,7 +1676,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "browser_sites", "browser_check", "connection_reads", "saved",
-		"connection_signin", "phone_voice_result":
+		"connection_signin", "phone_voice_result", "wb":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

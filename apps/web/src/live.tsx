@@ -84,8 +84,12 @@ const hostOf = (url: string | undefined, fallback: string) => {
   }
 };
 
-export function LiveView() {
+/** D214: the workbench's Browser page holds a watch of the task it shows (that view draws it, not the overlay). */
+export const liveInBench = { taskId: "" };
+
+export function LiveView({ embedded }: { embedded?: boolean } = {}) {
   const lv = A.live;
+  const benched = !!lv?.watch && !!lv.taskId && liveInBench.taskId === lv.taskId;
   const img = useRef<HTMLImageElement>(null);
   const keys = useRef<HTMLInputElement>(null);
   const addr = useRef<HTMLInputElement>(null);
@@ -153,7 +157,7 @@ export function LiveView() {
     el.addEventListener("compositionend", end);
     return () => (el.removeEventListener("compositionstart", start), el.removeEventListener("compositionend", end));
   }, [!!lv]);
-  if (!lv) return null;
+  if (!lv || benched !== !!embedded) return null;
 
   const mine = lv.turn === "you" ? lv.here !== false : !lv.watch; // a sign-in or Try it is the user's from the start
   const yours = lv.turn === "you" || !lv.watch;
@@ -215,7 +219,7 @@ export function LiveView() {
   })();
 
   return (
-    <div class={`live${yours && lv.watch && !elsewhere ? " yours" : ""}`} role="dialog" aria-modal="true" aria-label={label}>
+    <div class={`live${yours && lv.watch && !elsewhere ? " yours" : ""}${embedded ? " in-bench" : ""}`} role={embedded ? "region" : "dialog"} aria-modal={embedded ? undefined : true} aria-label={label}>
       <div class="live-top">
         {mine ? (
           <span class="live-nav">

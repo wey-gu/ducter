@@ -156,6 +156,16 @@ test("a resend opens nothing twice; empty words, a folder that isn't a repo and 
   expect(picked.card?.place).toMatchObject({ baseBranch: "feature/x" });
 });
 
+test("D207: a folder in Ducter's own data folder is refused with its own reason", async () => {
+  const { core, dir } = boot();
+  const { DucterDataError } = await import("../../runner/src/places.ts");
+  core.setRunner({ openTask: async () => Promise.reject(new DucterDataError(join(dir, "partner"))) } as unknown as Runner);
+  const c = await client(core);
+  c.send({ t: "task_new", words: "看看这里", place: { kind: "folder", device: "local", path: join(dir, "partner") } });
+  const res = await c.until<Extract<ServerFrame, { t: "task_new_result" }>>((f) => f.t === "task_new_result");
+  expect(res).toMatchObject({ ok: false, reason: "ducter_data" });
+});
+
 test("task_new_options: the repos tasks used, recent first, with their default branch and branches; no particular place last", async () => {
   const { core, dir } = boot();
   fakeRunner(core);

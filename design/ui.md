@@ -400,7 +400,7 @@ basis (Needs you 2/400, Working 1/240, Waiting 1/220, Done today 1/260, each at 
 their names at 20/800 with the count muted; working and waiting cards white on the card's base
 (title 15/800, where it stands 13 soft, the rest 12 muted), Done today one card of rows; by
 project, groups at most 960. An opened task at the whole screen keeps its page on the 720 measure
-under the crumbs **对话 / 手头的事 / {task}**, with **先停 / 放下** in the header. The move between
+under the crumbs **对话 / 手头的事 / {task}**, with **暂停 / 不做了** in the header (D207). The move between
 the two is one view transition (`level` and `conv`, 320 ms, `--ease`; none under reduced motion).
 On a book fold the whole-screen On hand puts Needs you on the first half and the other lanes on
 the second; a task stays in its half; a tabletop offers neither. Screens:
@@ -484,8 +484,8 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    page's end follows the newest step. Header actions: **打开 / Open** (D198: a menu, Show in
    Finder; then Open in each of Cursor / Visual Studio Code / Zed installed; then, D201, Open
    in each terminal installed, Terminal / iTerm2 / Ghostty / Warp, and Rex or con once they
-   open folders; a separator between the groups, the one used last first in each) in every state while its working copy is on this Mac, **先停 / Pause**
-   while it works, **放下 / Drop** until it finishes. Over its changes, the working copy's path,
+   open folders; a separator between the groups, the one used last first in each) in every state while its working copy is on this Mac, **暂停 / Pause**
+   while it works, **不做了 / Cancel task** until it finishes (D207). Over its changes, the working copy's path,
    `~/…`, mono, small and selectable (D198).
 
 ## Prototype canvases

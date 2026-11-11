@@ -50,22 +50,97 @@ type Block struct {
 	Live  bool      `json:"live,omitempty"`
 	Go    *string   `json:"go,omitempty"`    // you: their Go relayed, its label
 	State string    `json:"state,omitempty"` // report
-	Bad   bool      `json:"bad,omitempty"`   // note: a turn or delivery that failed
+	Bad   bool      `json:"bad,omitempty"`   // note: something failed
+	// Say is what a note says, worded from note.<say> (D207); Name fills it in.
+	Say  string `json:"say,omitempty"`
+	Name string `json:"name,omitempty"`
 	// Media (D206): you: the pictures sent with it; report: what it showed.
 	Media []protocol.MediaRef `json:"media,omitempty"`
 }
 
 var (
-	quietSystemRe  = regexp.MustCompile(`(?i)^(session started|turn completed|turn complete|turn ended|turn aborted|looking at |compaction )`)
-	failedSystemRe = regexp.MustCompile(`(?i)^(turn failed|delivery failed|failed to|event stream error)`)
-	spaceRe        = regexp.MustCompile(`\s+`)
+	spaceRe       = regexp.MustCompile(`\s+`)
+	disconnectRe  = regexp.MustCompile(`^(.+?) disconnected`)
+	isBackRe      = regexp.MustCompile(`^(.+?) is back`)
+	waitingForRe  = regexp.MustCompile(`^waiting for (.+?):`)
+	deliveryRe    = regexp.MustCompile(`(?i)^delivery failed`)
+	startFailRe   = regexp.MustCompile(`(?i)^failed to start`)
+	resumeFailRe  = regexp.MustCompile(`(?i)^(failed to resume|could not switch|Claude in Chrome isn't connected, and)`)
+	sessionFailRe = regexp.MustCompile(`(?i)^(turn failed|event stream error|nudge failed|failed to)`)
 )
+
+// noteOf is a system line as a note, or ok=false when it says nothing to a
+// person (D207): the runner's own lines are worded by the clients from
+// note.<say>, never shown in the English they were logged in. The port of
+// noteOf in packages/protocol/src/transcript.ts.
+func noteOf(text string, raw json.RawMessage) (Block, bool) {
+	var r map[string]any
+	_ = json.Unmarshal(raw, &r)
+	obj := func(k string) map[string]any { m, _ := r[k].(map[string]any); return m }
+	str := func(v any) string { s, _ := v.(string); return strings.TrimSpace(s) }
+	from := func(re *regexp.Regexp) string {
+		if m := re.FindStringSubmatch(text); m != nil {
+			return strings.TrimSpace(m[1])
+		}
+		return ""
+	}
+	truthy := func(v any) bool { return v != nil && v != false && v != "" && v != 0.0 }
+	or := func(a, b string) string {
+		if a != "" {
+			return a
+		}
+		return b
+	}
+	_, hasDevice := r["device"]
+	switch {
+	case truthy(r["stall"]):
+		return Block{Say: "stalled"}, true
+	case truthy(r["fresh"]):
+		return Block{Say: "fresh"}, true
+	case truthy(r["effortDropped"]):
+		return Block{Say: "effort_dropped", Name: str(r["effortDropped"])}, true
+	case obj("browser") != nil && truthy(obj("browser")["guard"]):
+		return Block{Say: "guard"}, true
+	case obj("browser") != nil && obj("browser")["driver"] == "cua":
+		return Block{Say: "to_own_browser"}, true
+	case obj("switched") != nil || obj("moved") != nil:
+		to := ""
+		if sw := obj("switched"); sw != nil && str(sw["to"]) != "" {
+			to = harnessName(str(sw["to"]))
+		} else if mv := obj("moved"); mv != nil {
+			to = str(mv["to"])
+		}
+		return Block{Say: "moved", Name: to}, true
+	case hasDevice && r["offline"] == true:
+		return Block{Say: "offline", Name: or(str(r["name"]), from(disconnectRe))}, true
+	case hasDevice && r["offline"] == false:
+		return Block{Say: "back", Name: or(str(r["name"]), from(isBackRe))}, true
+	case r["waits"] == "asleep" || r["waits"] == "unreachable":
+		return Block{Say: "waiting_device", Name: or(str(r["name"]), from(waitingForRe))}, true
+	case deliveryRe.MatchString(text):
+		return Block{Say: "error_delivery", Bad: true}, true
+	case startFailRe.MatchString(text):
+		return Block{Say: "error_start", Bad: true}, true
+	case resumeFailRe.MatchString(text):
+		return Block{Say: "error_resume", Bad: true}, true
+	case sessionFailRe.MatchString(text):
+		return Block{Say: "error", Bad: true}, true
+	}
+	return Block{}, false
+}
 
 func normSpace(s string) string { return strings.TrimSpace(spaceRe.ReplaceAllString(s, " ")) }
 
 // looks: a step that only looks (reading, searching, a probe, a request).
 func looks(s *Step) bool {
 	return s.Kind == "read" || s.Kind == "searched" || s.Probe || s.Kind == "browsed" && (s.Act == "request" || s.Act == "fetch")
+}
+
+// inBrowser: a step in a browser or on the computer's screen. A request
+// or a fetch is a command that reads a page, not a browser (D207: curl
+// and pwd folded as 在浏览器里操作).
+func inBrowser(s *Step) bool {
+	return s.Kind == "computer" || s.Kind == "browsed" && s.Act != "request" && s.Act != "fetch"
 }
 
 func shellCommand(raw json.RawMessage) string {
@@ -131,7 +206,7 @@ func gistOf(rows []StepRow) *Gist {
 		if !looks(r.Step) {
 			look = false
 		}
-		if r.Step.Kind == "browsed" || r.Step.Kind == "computer" {
+		if inBrowser(r.Step) {
 			browse = true
 		}
 	}
@@ -251,10 +326,10 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 			text := strings.TrimSpace(b.Text)
 			switch {
 			case b.Role == "system":
-				if text == "" || quietSystemRe.MatchString(text) {
-					continue
+				if n, ok := noteOf(text, b.Raw); ok {
+					n.K, n.Seq, n.Text = "note", ev.Seq, redact.Text(text)
+					out = append(out, n)
 				}
-				out = append(out, Block{K: "note", Seq: ev.Seq, Text: redact.Text(text), Bad: failedSystemRe.MatchString(text)})
 			case text == "" && len(b.Media) == 0:
 			case b.Role == "user":
 				if b.From == "runner" || b.From == "" && (strings.HasPrefix(text, `Start the task "`) || strings.HasPrefix(text, "<brief>")) {

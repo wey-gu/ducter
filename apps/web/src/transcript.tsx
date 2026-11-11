@@ -264,6 +264,13 @@ function Stretch({ b }: { b: Extract<Block, { k: "steps" }> }) {
   );
 }
 
+/** What fills a note's %s (D207): a computer, an agent, an effort; a computer it didn't name is said plainly. */
+function noteName(b: Extract<Block, { k: "note" }>): string {
+  if (b.say === "effort_dropped") return b.name ? effortWord(A.L, b.name) : "";
+  if (b.say === "offline" || b.say === "back" || b.say === "waiting_device") return b.name || t("note.computer");
+  return b.name ?? "";
+}
+
 function BlockView({ task, b }: { task: Task; b: Block }) {
   switch (b.k) {
     case "voice":
@@ -286,7 +293,7 @@ function BlockView({ task, b }: { task: Task; b: Block }) {
         <div class="tx you">
           {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
           {b.go !== undefined ? shortGo(b.go) : b.text}
-          {sd?.delivered && <small>{t(`delivery.${sd.delivered}`)}</small>}
+          {sd?.delivered === "queued" && <small>{t("delivery.queued")}</small>}
         </div>
       );
     }
@@ -308,16 +315,19 @@ function BlockView({ task, b }: { task: Task; b: Block }) {
         </div>
       );
     }
-    case "note":
+    case "note": {
+      // D207: the runner's lines in the user's words; the line as logged only on hover, for an error.
+      const line = t(`note.${b.say}`, noteName(b));
       return (
         <div class={`step note${b.bad ? " bad" : ""}`}>
           {b.bad ? GLYPHS.error!() : GLYPHS.other!()}
           {b.bad && <b>{t("step.label.error")}</b>}
-          <span class="sum" title={b.text}>
-            {b.text}
+          <span class="sum" title={b.bad ? b.text : line}>
+            {line}
           </span>
         </div>
       );
+    }
   }
   return null;
 }
@@ -326,21 +336,27 @@ function BlockView({ task, b }: { task: Task; b: Block }) {
 export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
   if (!task.historyLoaded && !task.events.length) return <div class="small">{t("task.loading")}</div>;
   const items = blocks.filter((b) => b.k !== "brief").slice(-80).map((b) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} />);
-  for (const sd of task.sends.filter((s) => !s.seq))
+  // D207: a receipt only when it says something: sending, it waits its turn, or it failed. Steered
+  // in or started at once, the live line above already shows it at work.
+  for (const sd of task.sends.filter((s) => !s.seq)) {
+    const receipt = sd.failed ? t("delivery.failed", sd.failed) : sd.delivered ? (sd.delivered === "queued" ? t("delivery.queued") : "") : t("delivery.sending");
     items.push(
       <div key={`s${sd.at}`} class="tx you">
         {sd.pics?.length ? <MediaBlock pics={sd.pics} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
         {sd.text}
-        <small>
-          {sd.failed ? t("delivery.failed", sd.failed) : sd.delivered ? t(`delivery.${sd.delivered}`) : t("delivery.sending")}
-          {sd.failed && sd.retry && (
-            <button type="button" class="btn text sm" onClick={sd.retry}>
-              {t("media.retry")}
-            </button>
-          )}
-        </small>
+        {(receipt || (sd.failed && sd.retry)) && (
+          <small>
+            {receipt}
+            {sd.failed && sd.retry && (
+              <button type="button" class="btn text sm" onClick={sd.retry}>
+                {t("media.retry")}
+              </button>
+            )}
+          </small>
+        )}
       </div>,
     );
+  }
   return <div class="tx-list">{items}</div>;
 }
 

@@ -139,6 +139,9 @@ func (a *App) waitReason(task *store.Task) string {
 	if d, ok := strings.CutPrefix(r, "device:asleep:"); ok {
 		return a.L.T("where.waiting", d)
 	}
+	if r == "browser:native_missing" { // D207
+		return a.L.T("wait.native_missing")
+	}
 	if strings.HasPrefix(r, "report:") || strings.HasSuffix(r, "by user") {
 		return ""
 	}

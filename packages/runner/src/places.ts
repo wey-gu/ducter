@@ -10,7 +10,7 @@ import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import type { Place } from "@ducter/protocol";
 import { gitEnv } from "@ducter/protocol/src/tool-env.ts";
-import { ducterFolder, markDucterFolder } from "@ducter/protocol/src/ducter-folder.ts";
+import { ducterDataRefusal, ducterFolder, isDucterData, markDucterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 
 export function expandHome(p: string): string {
   if (p === "~") return homedir();
@@ -67,6 +67,14 @@ export interface ResolvedPlace {
   folder?: string;
 }
 
+/** D207: a place in Ducter's own data folder, refused before the task exists. */
+export class DucterDataError extends Error {
+  override name = "DucterDataError";
+  constructor(readonly path: string) {
+    super(ducterDataRefusal(path));
+  }
+}
+
 /** Decide paths and names without touching the disk (used for task_open). */
 export async function planPlace(place: Place | undefined, taskId: string, title: string, dataDir: string): Promise<ResolvedPlace> {
   const p = place ?? { kind: "none" };
@@ -75,14 +83,17 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
       return { place: p, cwd: join(dataDir, "scratch", taskId) };
     case "folder": {
       const path = resolve(expandHome(p.path));
+      if (isDucterData(path, dataDir)) throw new DucterDataError(path);
       return { place: { ...p, path }, cwd: path };
     }
     case "repo": {
       const repoPath = resolve(expandHome(p.repoPath));
+      if (isDucterData(repoPath, dataDir)) throw new DucterDataError(repoPath);
       // Whether Open draft PR can work at all (fresh-user QA: offered on a repo with no origin).
       const hasRemote = existsSync(repoPath) ? { hasRemote: (await git(repoPath, ["remote", "get-url", "origin"])).ok } : {};
       if (p.worktree) {
         const wt = resolve(expandHome(p.worktree));
+        if (isDucterData(wt, dataDir)) throw new DucterDataError(wt);
         return { place: { ...p, repoPath, worktree: wt, ...hasRemote }, cwd: wt };
       }
       let branch = p.branch ?? `ducter/${slugify(title)}`;

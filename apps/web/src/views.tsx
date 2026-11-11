@@ -1170,7 +1170,9 @@ function Composer({ taskId }: { taskId?: string }) {
     A.changed();
   };
   const submit = () => {
-    const ok = taskId ? A.sendToTask(taskId, value) : A.sendMessage(value);
+    // What is typed now, not this render's copy (Enter can come before the next render).
+    const now = taskId ? (A.taskDrafts.get(taskId) ?? "") : A.draft;
+    const ok = taskId ? A.sendToTask(taskId, now) : A.sendMessage(now);
     if (ok) set("");
   };
   const label = taskId ? t("composer.task") : t("composer.label", A.S.personaName);

@@ -66,6 +66,27 @@ export const cases = [
       [64, "task_event", "task", { role: "system", text: "turn failed: stream disconnected" }],
     ]),
   },
+  {
+    // D207: the hel run. Commands that read a page are not a browser; the runner's own lines are
+    // said in the user's words or not at all.
+    name: "codex on a server: shell steps, the runner's notes",
+    harness: "codex",
+    working: false,
+    events: stream("hel1", [
+      [0, "task_open", "partner", { taskId: "hel1", title: "排查电话只播放开场白的问题", project: "", place: { kind: "none", device: "hel" }, harness: "codex", brief: "看看为什么电话只播开场白" }],
+      [1, "task_event", "runner", { role: "system", from: "runner", text: "recalled 2 from memory for the brief", raw: { memory: "recall", ids: ["m1", "m2"], titles: ["a", "b"] } }],
+      [2, "task_event", "runner", { role: "system", from: "runner", text: "session started", raw: { sessionId: "s1" } }],
+      [5, "task_event", "task", sh("pwd", "/root", false)],
+      [6, "task_event", "task", sh("curl -fsS http://127.0.0.1:7777/health", '{"ok":true}')],
+      [7, "task_event", "task", sh("journalctl -u ducter -n 50", "…")],
+      [9, "task_event", "runner", { role: "system", from: "runner", text: "hel disconnected; the task carries on when it is back", raw: { device: "d-hel", offline: true } }],
+      [12, "task_event", "runner", { role: "system", from: "runner", text: "hel is back; resuming the session", raw: { device: "d-hel", name: "hel", offline: false } }],
+      [14, "task_event", "runner", { role: "system", from: "runner", text: "moved from claude-code to codex", raw: { switched: { from: "claude-code", to: "codex" } } }],
+      [15, "task_event", "task", { role: "system", text: "harness exited (code 0)", raw: { kind: "exited" } }],
+      [16, "task_event", "runner", { role: "system", from: "runner", text: "delivery failed: socket closed" }],
+      [20, "task_event", "task", { role: "system", text: "no report after one nudge; leaving the task idle (stall rule)", raw: { stall: true } }],
+    ]),
+  },
 ];
 
 if (import.meta.main) {

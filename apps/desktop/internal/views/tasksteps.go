@@ -168,9 +168,39 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 			} else {
 				a.glyph(c, 16, drawDot(t.Faint))
 			}
-			ui.Text(c, b.Text).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1).Tooltip(b.Text)
+			// D207: the runner's lines in the user's words; the line as
+			// logged only on hover, for an error.
+			line, tip := a.noteLine(b), ""
+			if b.Bad {
+				tip = b.Text
+			}
+			tx := ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
+			if tip != "" {
+				tx.Tooltip(tip)
+			}
 		})
 	}
+}
+
+// noteLine is a note in words: note.<say>, its name filled in (a
+// computer it didn't name is said plainly; an effort in its own word).
+func (a *App) noteLine(b *Block) string {
+	name := b.Name
+	switch b.Say {
+	case "effort_dropped":
+		if name != "" {
+			name = a.effortWord(name)
+		}
+	case "offline", "back", "waiting_device":
+		if name == "" {
+			name = a.L.T("note.computer")
+		}
+	}
+	key := "note." + b.Say
+	if !strings.Contains(a.L.T(key), "%") {
+		return a.L.T(key)
+	}
+	return a.L.T(key, name)
 }
 
 // tsOf is when the event with seq happened.

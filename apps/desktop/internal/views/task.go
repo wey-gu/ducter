@@ -410,6 +410,10 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 						if k.Key == ui.KeyEnter && k.Mods == 0 {
 							if a.SendToTask(task.ID, k.Text()) {
 								k.SetText("")
+								// D207: the key runs after this frame's draft was
+								// stored; empty the stored one too, or the next
+								// frame puts the sent words back.
+								a.taskDrafts[task.ID] = ""
 							}
 							return true
 						}
@@ -439,8 +443,11 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, media ...pr
 		switch {
 		case sd.Failed != "":
 			note, failed = a.L.T("delivery.failed", sd.Failed), true
+		case sd.Delivered == "queued":
+			// D207: said only when it waits its turn; steered in or
+			// started at once, the live line shows it at work.
+			note = a.L.T("delivery.queued")
 		case sd.Delivered != "":
-			note = a.L.T("delivery." + string(sd.Delivered))
 		case sd.Seq == 0 && a.Now().Sub(sd.At) < 4*time.Second:
 			// No ack yet. A server without "sent" acks never says; after a
 			// few seconds the label just goes.

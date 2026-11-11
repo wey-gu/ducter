@@ -547,7 +547,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.resumeOnBack = t.resumeOnBack || midTurn || was === "working" || was === "queued";
     setState(t, was, "offline");
     // Only work in flight is said out loud; an idle task just shows its machine as away.
-    if (t.resumeOnBack) logEvent(t, { role: "system", from: "runner", text: `${d.name} disconnected; the task carries on when it is back`, raw: { device: d.id, offline: true } });
+    if (t.resumeOnBack) logEvent(t, { role: "system", from: "runner", text: `${d.name} disconnected; the task carries on when it is back`, raw: { device: d.id, name: d.name, offline: true } });
     clearTimeout(t.offlineTimer);
     // Short blips stay silent (D52); past the grace, working tasks show as waiting on the device.
     if (t.resumeOnBack)
@@ -568,7 +568,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const d = t.ops.device!;
     if (!t.resumeOnBack) return setState(t, currentAttention(t), "parked");
     t.resumeOnBack = false;
-    logEvent(t, { role: "system", from: "runner", text: `${d.name} is back; resuming the session`, raw: { device: d.id, offline: false } });
+    logEvent(t, { role: "system", from: "runner", text: `${d.name} is back; resuming the session`, raw: { device: d.id, name: d.name, offline: false } });
     try {
       if (t.sessionId || t.handedFrom) {
         const seed = await resumeOrSeed(t);
@@ -693,7 +693,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     await old.close().catch(() => {});
     if (!cua) {
       t.running = false;
-      setState(t, "blocked", "parked", "Claude in Chrome isn't connected");
+      setState(t, "blocked", "parked", "browser:native_missing"); // the clients word it (D207)
       return;
     }
     // The same task on cua-driver: startSession rebuilds the spec from base with it.
@@ -1098,7 +1098,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // D157: 在等 · MacBook 睡着了. It starts there when the computer is back (no push, A3).
       const asleep = pick?.waits === "asleep" || !!core.workers?.list().find((w) => w.id === away.id || w.name === away.name)?.asleep;
       core.tasks.setState(id, "blocked", "offline", (asleep ? asleepReason : unreachableReason)(away.name));
-      logEvent(t, { role: "system", from: "runner", text: `waiting for ${away.name}: it starts there when it's back`, raw: { device: away.id, waits: asleep ? "asleep" : "unreachable" } });
+      logEvent(t, { role: "system", from: "runner", text: `waiting for ${away.name}: it starts there when it's back`, raw: { device: away.id, name: away.name, waits: asleep ? "asleep" : "unreachable" } });
       waitThere(t, start);
       // The best computer sleeps and another could do it now, visibly differently: one line, wait by default.
       if (pick?.waits && pick.now) askWhere(t, pick, you);

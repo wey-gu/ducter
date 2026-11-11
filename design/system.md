@@ -684,7 +684,14 @@ Phone and call tasks are on the roadmap, not in v1. These seams keep them from f
 redesign later:
 
 - **Environment port** in the runner, beside `HarnessPort`: worktree, folder, and browser
-  now; phone (ADB / WebDriverAgent MCP) and call later. A new task's worktree is
+  now; phone (ADB / WebDriverAgent MCP) and call later. **No place is ever in Ducter's data
+  folder (D207):** `planPlace` refuses a folder, repo or worktree that is the data folder or in
+  it (`isDucterData`, symlinks resolved; the Ducter folder when it lives there and the old
+  `<dataDir>/worktrees` are not data), on every computer, before the task exists; the partner's
+  `task_open` refuses it first with a line that points to `{"kind":"none"}`, and a path there in
+  the user's words is never taken as the place. A task with no place gets
+  `<dataDir>/scratch/<taskId>` from the runner, the one way into the data folder. The folder
+  copy (D142) is never kept for such a folder, and Undo never puts its files back. A new task's worktree is
   `<Ducter folder>/worktrees/<repo name>/<branch slug>` (D204: the visible `~/ducter` of that
   computer, `protocol/src/ducter-folder.ts`), `-2`, `-3` when taken (D198; taken compared NFC).
   The slug keeps letters, marks and digits of any script, NFC, ≤ 40 characters cut by grapheme,

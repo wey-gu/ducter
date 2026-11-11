@@ -503,7 +503,7 @@ func (a *App) openFromElsewhere(id string) {
 
 func (a *App) newTaskError(reason, message string) string {
 	switch reason {
-	case "empty", "no_agent", "not_repo", "offline", "past", "no_condition", "not_found":
+	case "empty", "no_agent", "not_repo", "offline", "past", "no_condition", "not_found", "ducter_data":
 		return a.L.T("newtask.err." + reason)
 	}
 	if message == "" {

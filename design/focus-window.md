@@ -181,7 +181,18 @@ What the window writes is what the user reads when they open the task, in one co
   (`packages/protocol/src/transcript.ts`), each call one sentence (the agent's own words for
   it, else a verb and a short summary, the same kinds on every harness:
   `packages/protocol/src/steps.ts`), thinking as its headings, a probe that found nothing in
-  neutral words, a real failure one Error line with its raw text on a click;
+  neutral words, a real failure one Error line with its raw text on a click; a stretch is
+  在浏览器里操作 / Worked in the browser only when a step was in a browser or on the screen (a
+  `curl` or a fetch reads a page and is a command, D207);
+- the **runner's own lines** (D207) are said in the user's words from a key (`note.<say>`,
+  `noteOf` in `transcript.ts` and its Go port): the stall (**它停下了，没交回结果 / It stopped
+  without reporting back**), a computer going and coming back, a fresh session, a switch, an
+  effort left out, the browser guard and fallback, and four kinds of failure under **出错 /
+  Error** with the line as logged on hover; every other line the runner logs (session started,
+  memory recalled, a retry, archiving, a restart) says nothing;
+- a **message the user sends** carries a receipt only when it says something: **在发… /
+  Sending…**, queued **它忙完手上的就看 / It'll read this once it's done with what it's doing**,
+  or **没送到 / Didn't get through**; steered in or started at once, the live line shows it (D207);
 - **checkpoints** are the window's words said once, marked saved (D152);
 - **keys** in the brief, a command or its output never leave the home: the projection hides
   them in every frame and push it sends; the Log keeps them for the task (D152);

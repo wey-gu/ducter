@@ -9,6 +9,7 @@ import type { Bodies, LogEvent } from "./index.ts";
 import type { MediaRef } from "./media.ts";
 import { redact } from "./redact.ts";
 import { stepOf, type Step } from "./steps.ts";
+import { harnessName } from "./harnesses.ts";
 
 /** How a step came out: done, a real failure, or a look that found nothing (a probe's non-zero exit). */
 export type Outcome = "ok" | "error" | "missing";
@@ -50,12 +51,44 @@ export type Block =
   | { k: "partner"; seq: number; text: string; media?: MediaRef[] }
   /** An earlier report to the partner (the latest is the outcome, said above the transcript). */
   | { k: "report"; seq: number; state: Bodies["report"]["state"]; text: string; media?: MediaRef[] }
-  /** A harness's note that says something to a person; `bad` = a turn or delivery that failed. */
-  | { k: "note"; seq: number; text: string; bad?: boolean };
+  /**
+   * A runner's or harness's note that says something to a person (D207): `say` is what the clients
+   * word in their i18n (`note.<say>`, `name` filled in), never the English it was logged in; `text`
+   * is that line as logged, keys hidden, shown only on a tap for an error; `bad` = something failed.
+   */
+  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean };
 
-const QUIET_SYSTEM = /^(session started|turn completed|turn complete|turn ended|turn aborted|looking at |compaction )/i;
-const FAILED_SYSTEM = /^(turn failed|delivery failed|failed to|event stream error)/i;
+/** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
+export type NoteSay = "stalled" | "offline" | "back" | "waiting_device" | "fresh" | "moved" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
+
 const KICKOFF = /^(<brief>|Start the task ")/;
+
+/** A system line as a note, or undefined when it says nothing to a person (D207). Shared by the Go port. */
+export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: string; bad?: boolean } | undefined {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const o = (k: string) => (r[k] && typeof r[k] === "object" ? (r[k] as Record<string, unknown>) : undefined);
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  const from = (re: RegExp) => re.exec(text)?.[1]?.trim() || undefined;
+  if (r.stall) return { say: "stalled" };
+  if (r.fresh) return { say: "fresh" };
+  if (r.effortDropped) return { say: "effort_dropped", ...(str(r.effortDropped) ? { name: str(r.effortDropped) } : {}) };
+  if (o("browser")?.guard) return { say: "guard" };
+  if (o("browser")?.driver === "cua") return { say: "to_own_browser" };
+  const sw = o("switched");
+  const mv = o("moved");
+  if (sw || mv) {
+    const to = str(sw?.to) ? harnessName(String(sw!.to)) : str(mv?.to);
+    return { say: "moved", ...(to ? { name: to } : {}) };
+  }
+  if (r.device !== undefined && r.offline === true) return { say: "offline", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^(.+?) disconnected/)) };
+  if (r.device !== undefined && r.offline === false) return { say: "back", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^(.+?) is back/)) };
+  if (r.waits === "asleep" || r.waits === "unreachable") return { say: "waiting_device", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^waiting for (.+?):/)) };
+  if (/^delivery failed/i.test(text)) return { say: "error_delivery", bad: true };
+  if (/^failed to start/i.test(text)) return { say: "error_start", bad: true };
+  if (/^(failed to resume|could not switch|Claude in Chrome isn't connected, and)/i.test(text)) return { say: "error_resume", bad: true };
+  if (/^(turn failed|event stream error|nudge failed|failed to)/i.test(text)) return { say: "error", bad: true };
+  return undefined;
+}
 
 /** The user's Go as Ducter relays it to the task ("User says Go: …."), or undefined. */
 export function goRelay(text: string): string | undefined {
@@ -64,6 +97,8 @@ export function goRelay(text: string): string | undefined {
 
 /** A step that only looks: reading, searching, a probe, a request or a fetch that reads a page. */
 const looks = (s: Step) => s.kind === "read" || s.kind === "searched" || !!s.probe || (s.kind === "browsed" && (s.act === "request" || s.act === "fetch"));
+/** A step in a browser or on the screen; a request or a fetch is a command that reads a page, not a browser (D207). */
+const inBrowser = (s: Step) => s.kind === "computer" || (s.kind === "browsed" && s.act !== "request" && s.act !== "fetch");
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 const clipLines = (s: string, n: number) => s.split("\n").slice(0, n).join("\n");
 
@@ -88,7 +123,7 @@ function gistOf(rows: StepRow[]): Gist {
   if (!steps.length) kind = "think";
   else if (files > 0) kind = "edit";
   else if (steps.every((r) => looks(r.step!))) kind = "look";
-  else if (steps.some((r) => r.step!.kind === "browsed" || r.step!.kind === "computer")) kind = "browse";
+  else if (steps.some((r) => inBrowser(r.step!))) kind = "browse";
   return { kind, steps: n, files, ...(app ? { app } : {}), errors };
 }
 
@@ -161,8 +196,8 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
         }
         const text = (b.text ?? "").trim();
         if (b.role === "system") {
-          if (!text || QUIET_SYSTEM.test(text)) break;
-          out.push({ k: "note", seq: ev.seq, text: redact(text), ...(FAILED_SYSTEM.test(text) ? { bad: true } : {}) });
+          const n = noteOf(text, b.raw);
+          if (n) out.push({ k: "note", seq: ev.seq, ...n, text: redact(text) });
           break;
         }
         if (!text && !b.media?.length) break;

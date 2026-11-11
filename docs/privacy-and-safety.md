@@ -17,6 +17,9 @@ exactly what it will and won't do. This page lists it.
   says so under **Sent out**.
 - **It never works in your own checkout.** Each coding task works in its own copy of the project,
   on its own branch (`ducter/…`). Your checkout changes only when you choose **Merge into main**.
+- **It never works in Ducter's own data.** The hidden folder where Ducter keeps its history and
+  settings (`~/.ducter`) is never a task's place, on any computer: a task that needs no folder of
+  its own gets an empty one of its own instead.
 - **A folder it changes can be put back.** A task in an ordinary folder (Documents, Downloads,
   a folder of invoices) changes the files right there, so you see the result at once. Before
   it changes anything, Ducter quietly keeps a copy of the folder (on a Mac this takes almost no

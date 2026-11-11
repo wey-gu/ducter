@@ -59,6 +59,7 @@ import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet
 import { createNmemClient, noMemory, type MemoryClient } from "./memory.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
+import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
 import { isChinese, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
 import { inTongue } from "../../protocol/src/say.ts";
 import { isConnectCode, redactWith } from "../../protocol/src/redact.ts";
@@ -368,7 +369,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return { harness, ...(model ? { model } : {}) };
   };
   const turnTimeoutMs = opts.turnTimeoutMs ?? 10 * 60 * 1000;
-  const fs = opts.fs ?? realFs;
+  const fsIn = opts.fs ?? realFs;
+  // D207: a path in Ducter's own data folder is never where a task works (live: the partner gave
+  // its own working directory, `<dataDir>/partner`, and the task rewrote state.json there).
+  const fs: PlaceFs = { ...fsIn, isDucterData: fsIn.isDucterData ?? ((p) => isDucterData(p, core.dataDir)) };
+  /** D207: the refusal for a place on this computer in Ducter's data folder, or undefined. */
+  const dataPlace = (p: Place): string | undefined => {
+    if (p.device && p.device !== "local") return undefined; // that computer's runner refuses its own
+    const path = p.kind === "folder" ? p.path : p.kind === "repo" ? p.repoPath : undefined;
+    return path && fs.isDucterData!(path) ? ducterDataRefusal(path) : undefined;
+  };
   const persist = opts.persistState ?? true;
   const ackWaitMs = opts.ackWaitMs ?? 250;
   const settleMs = opts.settleMs ?? 1500;
@@ -781,6 +791,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (!given || typeof given !== "object" || typeof given.kind !== "string") return;
       place = resolvePlace(given, [title, ...t.userTexts], core.tasks.list(), fs);
     }
+    if (dataPlace(place)) return; // the call itself is refused (D207)
     const prev = t.early.find((e) => !e.used && e.callId === callId);
     if (prev && samePlace(prev.place, place) && JSON.stringify(prev.who) === JSON.stringify(who)) return;
     if (prev) {
@@ -1331,6 +1342,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       let jobId: string;
       const userTexts = t?.userTexts ?? [];
       const place = resolvePlace(args.place, [args.brief, args.title, ...userTexts], core.tasks.list(), fs);
+      // D207: refused before anything is said or opened, so the partner opens it again elsewhere.
+      const refused = dataPlace(place);
+      if (refused) return { ok: false, error: refused };
       const brief = redactSecrets(withVerbatim(args.brief, userTexts), userTexts);
       // D206: the pictures it hands on (the ones the user sent this turn when it names none but the
       // brief is about them: an agent would otherwise get "this screenshot" without the screenshot).

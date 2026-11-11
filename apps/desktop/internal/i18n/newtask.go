@@ -7,7 +7,7 @@ package i18n
 
 var zhNewTask = Table{
 	"newtask.button":         "新建",
-	"task.brief.you":         "你交代的",
+	"task.brief.you":         "你交给它的",
 	"newtask.menu":           "新建…",
 	"newtask.title":          "新建",
 	"newtask.where":          "在哪儿做",
@@ -42,14 +42,17 @@ var zhNewTask = Table{
 	"newtask.err.conn":       "还没连上 Ducter，连上了再新建。",
 	"newtask.err.no_agent":   "现在没有 AI agent 能接这件事。",
 	"newtask.err.not_repo":   "这个文件夹不是 git 仓库。",
-	"newtask.err.offline":    "那台设备现在连不上。",
-	"newtask.err.failed":     "没能开始：%s",
-	"newtask.err.unknown":    "没能开始，再试一次？",
-	"onhand.by.state":        "按状态",
-	"onhand.by.project":      "按项目",
-	"onhand.by":              "怎么排",
-	"onhand.other":           "其他",
-	"onhand.newhere":         "在这儿新建",
+
+	"newtask.err.ducter_data": "这是 Ducter 自己放数据的文件夹，任务不在这里做。换一个文件夹，或者选「不用文件夹」。", // D207
+
+	"newtask.err.offline": "那台设备现在连不上。",
+	"newtask.err.failed":  "没能开始：%s",
+	"newtask.err.unknown": "没能开始，再试一次？",
+	"onhand.by.state":     "按状态",
+	"onhand.by.project":   "按项目",
+	"onhand.by":           "怎么排",
+	"onhand.other":        "其他",
+	"onhand.newhere":      "在这儿新建",
 }
 
 var enNewTask = Table{
@@ -88,14 +91,17 @@ var enNewTask = Table{
 	"newtask.err.conn":       "Not connected to Ducter yet. Try again once it is.",
 	"newtask.err.no_agent":   "No AI agent can take this right now.",
 	"newtask.err.not_repo":   "That folder isn't a git repository.",
-	"newtask.err.offline":    "That device can't be reached right now.",
-	"newtask.err.failed":     "It didn't start: %s",
-	"newtask.err.unknown":    "It didn't start. Try again?",
-	"onhand.by.state":        "By state",
-	"onhand.by.project":      "By project",
-	"onhand.by":              "Group by",
-	"onhand.other":           "Other",
-	"onhand.newhere":         "New task here",
+
+	"newtask.err.ducter_data": "That is where Ducter keeps its own data, so no task works there. Pick another folder, or No folder.", // D207
+
+	"newtask.err.offline": "That device can't be reached right now.",
+	"newtask.err.failed":  "It didn't start: %s",
+	"newtask.err.unknown": "It didn't start. Try again?",
+	"onhand.by.state":     "By state",
+	"onhand.by.project":   "By project",
+	"onhand.by":           "Group by",
+	"onhand.other":        "Other",
+	"onhand.newhere":      "New task here",
 }
 
 func init() {

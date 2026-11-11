@@ -13,7 +13,7 @@
 //      `projects/` and `worktrees/` (empty counts). A ~/ducter that is someone else's (a clone of
 //      the ducter repo, say: anything else in it, no marker) is never touched.
 // Resolving reads only; `ensureDucterFolder` makes it and writes the marker on first use.
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
 
@@ -113,4 +113,45 @@ export function worktreesRootOf(worktree: string, dataDir: string, exists: (p: s
   for (let d = dirname(wt); d !== dirname(d); d = dirname(d))
     if (basename(d) === "worktrees" && inside(d, wt) && exists(join(dirname(d), FOLDER_MARKER))) return d;
   return undefined;
+}
+
+/** `p` with symlinks resolved as far as it exists (macOS: /var → /private/var), the rest as given. */
+function realish(p: string): string {
+  let cur = resolve(p);
+  const rest: string[] = [];
+  for (let i = 0; i < 64; i++) {
+    try {
+      return join(realpathSync(cur), ...rest.reverse());
+    } catch {
+      const up = dirname(cur);
+      if (up === cur) break;
+      rest.push(basename(cur));
+      cur = up;
+    }
+  }
+  return resolve(p);
+}
+
+/**
+ * D207: whether `path` is Ducter's own data (the data folder itself or anything in it: the Log,
+ * the partner's state, settings), where no task ever works or writes. Inside it, only what
+ * Ducter keeps there for the user's work is not data: the Ducter folder when it lives in the data
+ * folder (a test's or a second Ducter's, `<dataDir>/ducter`) and the working copies of tasks from
+ * before D204 (`<dataDir>/worktrees`). A task with no place of its own gets `<dataDir>/scratch/<id>`
+ * from the runner, never through a folder place.
+ */
+export function isDucterData(path: string, dataDir: string, o: Omit<DucterFolderOpts, "dataDir" | "fs"> = {}): boolean {
+  const p = realish(path);
+  const d = realish(dataDir);
+  if (p !== d && !inside(d, p)) return false;
+  for (const ok of [ducterFolder({ ...o, dataDir }).path, join(dataDir, "worktrees")]) {
+    const r = realish(ok);
+    if (r !== d && (p === r || inside(r, p))) return false;
+  }
+  return true;
+}
+
+/** D207: the one line a task_open or New task gets for a place in Ducter's data folder. */
+export function ducterDataRefusal(path: string): string {
+  return `${path} is Ducter's own data folder, so no task works there. For work with no folder of its own use {"kind":"none"}: the task gets an empty scratch folder of its own.`;
 }

@@ -1039,7 +1039,7 @@ class AppState {
     }
     const r = f.reason;
     this.nt.err =
-      r === "empty" || r === "no_agent" || r === "not_repo" || r === "offline" || r === "past" || r === "no_condition"
+      r === "empty" || r === "no_agent" || r === "not_repo" || r === "offline" || r === "past" || r === "no_condition" || r === "ducter_data"
         ? this.L.t(`newtask.err.${r}`)
         : f.message
           ? this.L.t("newtask.err.failed", f.message.replace(/[.\s]+$/, ""))

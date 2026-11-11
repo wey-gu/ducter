@@ -1291,8 +1291,328 @@
    {
     "k": "note",
     "seq": 109,
-    "text": "turn failed: stream disconnected",
-    "bad": true
+    "say": "error",
+    "bad": true,
+    "text": "turn failed: stream disconnected"
+   }
+  ]
+ },
+ {
+  "name": "codex on a server: shell steps, the runner's notes",
+  "harness": "codex",
+  "working": false,
+  "events": [
+   {
+    "seq": 100,
+    "ts": "2026-11-10T06:58:00.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "partner",
+    "kind": "task_open",
+    "body": {
+     "taskId": "hel1",
+     "title": "排查电话只播放开场白的问题",
+     "project": "",
+     "place": {
+      "kind": "none",
+      "device": "hel"
+     },
+     "harness": "codex",
+     "brief": "看看为什么电话只播开场白"
+    }
+   },
+   {
+    "seq": 101,
+    "ts": "2026-11-10T06:58:01.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "from": "runner",
+     "text": "recalled 2 from memory for the brief",
+     "raw": {
+      "memory": "recall",
+      "ids": [
+       "m1",
+       "m2"
+      ],
+      "titles": [
+       "a",
+       "b"
+      ]
+     }
+    }
+   },
+   {
+    "seq": 102,
+    "ts": "2026-11-10T06:58:02.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "from": "runner",
+     "text": "session started",
+     "raw": {
+      "sessionId": "s1"
+     }
+    }
+   },
+   {
+    "seq": 103,
+    "ts": "2026-11-10T06:58:05.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "tool",
+     "tool": {
+      "name": "exec_command",
+      "input": {
+       "cmd": "/bin/bash -lc 'pwd'"
+      },
+      "output": "/root",
+      "ok": false
+     }
+    }
+   },
+   {
+    "seq": 104,
+    "ts": "2026-11-10T06:58:06.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "tool",
+     "tool": {
+      "name": "exec_command",
+      "input": {
+       "cmd": "/bin/bash -lc 'curl -fsS http://127.0.0.1:7777/health'"
+      },
+      "output": "{\"ok\":true}",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 105,
+    "ts": "2026-11-10T06:58:07.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "tool",
+     "tool": {
+      "name": "exec_command",
+      "input": {
+       "cmd": "/bin/bash -lc 'journalctl -u ducter -n 50'"
+      },
+      "output": "…",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 106,
+    "ts": "2026-11-10T06:58:09.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "from": "runner",
+     "text": "hel disconnected; the task carries on when it is back",
+     "raw": {
+      "device": "d-hel",
+      "offline": true
+     }
+    }
+   },
+   {
+    "seq": 107,
+    "ts": "2026-11-10T06:58:12.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "from": "runner",
+     "text": "hel is back; resuming the session",
+     "raw": {
+      "device": "d-hel",
+      "name": "hel",
+      "offline": false
+     }
+    }
+   },
+   {
+    "seq": 108,
+    "ts": "2026-11-10T06:58:14.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "from": "runner",
+     "text": "moved from claude-code to codex",
+     "raw": {
+      "switched": {
+       "from": "claude-code",
+       "to": "codex"
+      }
+     }
+    }
+   },
+   {
+    "seq": 109,
+    "ts": "2026-11-10T06:58:15.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "text": "harness exited (code 0)",
+     "raw": {
+      "kind": "exited"
+     }
+    }
+   },
+   {
+    "seq": 110,
+    "ts": "2026-11-10T06:58:16.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "from": "runner",
+     "text": "delivery failed: socket closed"
+    }
+   },
+   {
+    "seq": 111,
+    "ts": "2026-11-10T06:58:20.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "text": "no report after one nudge; leaving the task idle (stall rule)",
+     "raw": {
+      "stall": true
+     }
+    }
+   }
+  ],
+  "want": [
+   {
+    "k": "brief",
+    "seq": 100,
+    "text": "看看为什么电话只播开场白",
+    "by": "partner"
+   },
+   {
+    "k": "steps",
+    "seq": 103,
+    "rows": [
+     {
+      "seq": 103,
+      "step": {
+       "kind": "ran",
+       "target": "pwd"
+      },
+      "n": 1,
+      "outcome": "error",
+      "command": "/bin/bash -lc 'pwd'",
+      "output": "/root"
+     },
+     {
+      "seq": 104,
+      "step": {
+       "kind": "browsed",
+       "act": "request",
+       "target": "127.0.0.1:7777"
+      },
+      "n": 1,
+      "outcome": "ok",
+      "command": "/bin/bash -lc 'curl -fsS http://127.0.0.1:7777/health'",
+      "output": "{\"ok\":true}"
+     },
+     {
+      "seq": 105,
+      "step": {
+       "kind": "ran",
+       "target": "journalctl"
+      },
+      "n": 1,
+      "outcome": "ok",
+      "command": "/bin/bash -lc 'journalctl -u ducter -n 50'",
+      "output": "…"
+     }
+    ],
+    "gist": {
+     "kind": "run",
+     "steps": 3,
+     "files": 0,
+     "errors": 1
+    }
+   },
+   {
+    "k": "note",
+    "seq": 106,
+    "say": "offline",
+    "name": "hel",
+    "text": "hel disconnected; the task carries on when it is back"
+   },
+   {
+    "k": "note",
+    "seq": 107,
+    "say": "back",
+    "name": "hel",
+    "text": "hel is back; resuming the session"
+   },
+   {
+    "k": "note",
+    "seq": 108,
+    "say": "moved",
+    "name": "Codex",
+    "text": "moved from claude-code to codex"
+   },
+   {
+    "k": "note",
+    "seq": 110,
+    "say": "error_delivery",
+    "bad": true,
+    "text": "delivery failed: socket closed"
+   },
+   {
+    "k": "note",
+    "seq": 111,
+    "say": "stalled",
+    "text": "no report after one nudge; leaving the task idle (stall rule)"
    }
   ]
  }

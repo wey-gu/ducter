@@ -10,6 +10,8 @@ export interface PlaceFs {
   isDir(p: string): boolean;
   isRepo(p: string): boolean;
   home: string;
+  /** D207: Ducter's own data (its data folder): never a place, so a path there in the words is passed over. */
+  isDucterData?(p: string): boolean;
 }
 
 export const realFs: PlaceFs = {
@@ -44,6 +46,7 @@ export function findPaths(text: string): string[] {
 
 function placeForPath(raw: string, fs: PlaceFs): Place | null {
   const p = expandHome(raw, fs.home);
+  if (fs.isDucterData?.(resolve(p))) return null;
   // Walk up: "~/dev/foo/src/x.test.ts" → repo root ~/dev/foo.
   let cur = p;
   for (let i = 0; i < 8 && cur.length > 1; i++) {

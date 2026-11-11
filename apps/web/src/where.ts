@@ -112,6 +112,7 @@ export function deviceWait(reason: string): string | undefined {
   if (asleep) return t("where.waiting", asleep[1]);
   const away = /^device:unreachable:(.+)$/.exec(reason);
   if (away) return t("device.unreachable", away[1]);
+  if (reason === "browser:native_missing") return t("wait.native_missing"); // D207
   return undefined;
 }
 

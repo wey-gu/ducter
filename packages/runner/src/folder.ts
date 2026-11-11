@@ -15,6 +15,7 @@ import { copyFileSync, constants, existsSync, lstatSync, mkdirSync, readFileSync
 import { basename, dirname, join } from "node:path";
 import { homedir } from "node:os";
 import type { FolderChange, FolderChanges, FolderSummary, UndoConfirm } from "@ducter/protocol";
+import { isDucterData } from "@ducter/protocol/src/ducter-folder.ts";
 
 export const KEEP_DAYS = 7;
 const DAY = 24 * 60 * 60 * 1000;
@@ -281,9 +282,10 @@ export function assess(folder: string, root: string, o: AssessOptions = {}): Ass
   if (!real || !safe(() => statSync(real).isDirectory())) return { ok: false, why: "missing" };
   const cloud = cloudOf(real, o);
   if (cloud) return { ok: false, why: "cloud", detail: cloud };
-  // The folder holds Ducter's own data folder (a home folder): a copy would copy itself.
+  // The folder holds Ducter's own data folder (a home folder): a copy would copy itself. D207: or
+  // it is in it (no task is opened there any more; one from before never gets a copy to undo with).
   const rootReal = safe(() => realpathSync(dirname(root))) ?? dirname(root);
-  if ((rootReal + "/").startsWith(real + "/")) return { ok: false, why: "holds_ducter" };
+  if ((rootReal + "/").startsWith(real + "/") || isDucterData(real, dirname(root))) return { ok: false, why: "holds_ducter" };
   const platform = o.platform ?? process.platform;
   const mounts = o.mounts ?? readMounts(platform);
   const m = mountOf(real, mounts);
@@ -433,6 +435,8 @@ export function createFolderStore(o: { root: string; now?: () => number; assess?
       if (m.state === "undone") return { ok: true, message: "Already undone: the folder is as it was before." };
       if (m.state === "expired" || !existsSync(copyPath(taskId))) return { ok: false, message: "The copy from before is gone (it was kept for 7 days), so this can't be undone any more." };
       if (!existsSync(m.folder)) return { ok: false, message: `The folder isn't there any more (${basename(m.folder)}).` };
+      // D207: never put Ducter's own files back (a task from before the guard ran in its data folder).
+      if (isDucterData(m.folder, dirname(o.root))) return { ok: false, message: "This folder is Ducter's own data, so undo leaves it as it is." };
       if (opts.path) return restoreOne(m, copyPath(taskId), opts.path);
       if (!opts.force) {
         const c = sinceEnd(taskId, m.folder);

@@ -89,7 +89,7 @@ func TestOpenedTaskMem(t *testing.T) {
 // even folded.
 func TestOpenedTaskMemStretches(t *testing.T) {
 	want := map[i18n.Lang][]string{
-		i18n.ZH: {"查看了一圈", "5 步", "没找到 nmem", "没全找到：python3 pip3 uv", "还没有 .nowledge-mem/config.json", "请求 cloud.nowledge.co", "隐藏了一段密钥", "你交代的事"},
+		i18n.ZH: {"查看了一圈", "5 步", "没找到 nmem", "没全找到：python3 pip3 uv", "还没有 .nowledge-mem/config.json", "请求 cloud.nowledge.co", "隐藏了一段密钥", "你交给它的事"},
 		i18n.EN: {"Looked around", "5 steps", "No nmem here", "Not all found: python3 pip3 uv", "No .nowledge-mem/config.json yet", "Requested cloud.nowledge.co", "A key is hidden", "What you asked"},
 	}
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {

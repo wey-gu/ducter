@@ -585,16 +585,6 @@ a {
   opacity: 0;
 }
 
-.conn {
-  margin: 0 16px 6px;
-  padding: 8px 12px;
-  border-radius: var(--r-md);
-  background: var(--waiting-surface);
-  color: var(--waiting-ink);
-  font-size: var(--sm);
-  font-weight: 700;
-}
-
 /* ---------- conversation ---------- */
 .scroll {
   flex: 1;
@@ -877,6 +867,20 @@ a {
 .btn.icon {
   width: 44px;
   padding: 0;
+}
+/* A text button that opens something in place: a drawn chevron, turned down while open (D211). */
+.btn .btn-chev {
+  flex: none;
+  margin-left: -4px;
+  transition: transform 160ms ease;
+}
+.btn[aria-expanded="true"] .btn-chev {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn .btn-chev {
+    transition: none;
+  }
 }
 .btn.text {
   height: 44px;
@@ -1757,6 +1761,9 @@ a {
 }
 .standing .when {
   font-variant-numeric: tabular-nums;
+}
+.standing .who > .sep:has(+ .coin-art) {
+  display: none;
 }
 .standing .coin-art {
   flex: none;
@@ -3705,8 +3712,7 @@ ol.tries b {
 /* D78 line breaking for titles that wrap: Latin words and short Chinese words stay whole, breaks
    prefer spaces and punctuation, and two-line titles are balanced. */
 .task-head h1,
-.task-head .waitline,
-.decision .q {
+.task-head .waitline {
   word-break: keep-all;
   overflow-wrap: anywhere;
   line-break: strict;
@@ -3827,15 +3833,12 @@ ol.tries b {
 .nt-wait {
   padding: 0 4px;
 }
-/* 推荐 / Suggested: the best fit's small tag. */
+/* 推荐 / Suggested: the best fit's small word in the highlight's ink, never a capsule (D73, D211). */
 .sheet.newtask .suggested {
   display: inline-block;
   font-size: var(--xs);
   font-weight: 700;
   line-height: 1;
-  padding: 3px 6px;
-  border-radius: 6px;
-  background: var(--highlight);
   color: var(--highlight-ink);
   white-space: nowrap;
   vertical-align: 1px;
@@ -4085,6 +4088,9 @@ ol.tries b {
   font-size: var(--sm);
   font-weight: 600;
   min-width: 0;
+}
+.nt-started > svg {
+  flex: none;
 }
 .nt-started > span {
   overflow: hidden;
@@ -4953,10 +4959,11 @@ button.bcard:active {
   font-weight: 800;
   color: var(--ink-soft);
 }
+/* Add: a drawn ＋ in the row's ink, never a glyph on a tile (D73, D211). */
 .af-plus {
-  background: var(--needs-surface);
-  box-shadow: 0 var(--ledge) 0 var(--needs-ledge);
-  color: var(--needs-ink);
+  background: none;
+  box-shadow: none;
+  color: var(--ink-soft);
 }
 .af-dots {
   flex: none;

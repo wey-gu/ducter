@@ -130,7 +130,7 @@ function GoCard({ d }: { d: DecisionState }) {
       {p?.note && <div class="small warn">{p.note}</div>}
       {p?.summary && (
         <>
-          <Btn kind="text" size="sm" expanded={fold} label={`${t("call.summary", p.provider)} ${fold ? "‹" : "›"}`} onClick={() => setFold(!fold)} />
+          <Btn kind="text" size="sm" expanded={fold} chev label={t("call.summary", p.provider)} onClick={() => setFold(!fold)} />
           {fold && <Summary p={p} />}
         </>
       )}
@@ -279,7 +279,7 @@ function Result({ c }: { c: CallView }) {
       )}
       {!!c.transcript?.length && (
         <>
-          <Btn kind="text" size="sm" expanded={lines} label={`${t("call.transcript")} ${lines ? "‹" : "›"}`} onClick={() => setLines(!lines)} />
+          <Btn kind="text" size="sm" expanded={lines} chev label={t("call.transcript")} onClick={() => setLines(!lines)} />
           {lines && (
             <div class="call-lines small">
               {c.transcript.map((l, i) => (

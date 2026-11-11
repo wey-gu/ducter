@@ -226,7 +226,7 @@ func TestNewTaskCard(t *testing.T) {
 		}
 		newTaskShot(t, tt, "card-error-"+string(lang))
 
-		// ⇧⌘↩: it starts, and the card stays for the next one, saying what started.
+		// ⇧⌘⏎: it starts, and the card stays for the next one, saying what started.
 		app.StartNewTask(true)
 		f2, _ := lastFrame[protocol.TaskNew](sent)
 		title := map[i18n.Lang]string{i18n.ZH: "On hand 里加一个「按项目」的分组", i18n.EN: "Add a By project grouping to On hand"}[lang]

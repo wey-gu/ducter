@@ -273,7 +273,7 @@ export function SourceCard({ c }: { c: ConnectionView }) {
         {reads && <ReadsList c={c} />}
         {!stopping ? (
           <div class="src-acts">
-            <Btn kind="text" size="sm" class={reads ? "open" : "chev"} label={t("card.read_list")} expanded={reads} onClick={() => (setReads(!reads), !reads && A.askReads(c.id))} />
+            <Btn kind="text" size="sm" chev label={t("card.read_list")} expanded={reads} onClick={() => (setReads(!reads), !reads && A.askReads(c.id))} />
             <DangerButton label={t("card.stop", name)} onClick={() => setStopping(true)} />
           </div>
         ) : (

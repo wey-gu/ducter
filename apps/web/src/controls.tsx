@@ -8,8 +8,10 @@ import { Coin } from "./coin.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
-/** One clay button family (D76): primary last in a row, at most one per group. */
-export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm" | "lg"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string; expanded?: boolean }) {
+/** One clay button family (D76): primary last in a row, at most one per group. chev: a text button
+ *  that opens something in place ends in a drawn chevron, turned down while open (never a font's
+ *  arrow: iOS draws some of those as an emoji or a missing glyph; D211). */
+export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm" | "lg"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string; expanded?: boolean; chev?: boolean }) {
   return (
     <button
       class={`btn ${p.kind}${p.size ? ` ${p.size}` : ""}${p.grow ? " grow" : ""}${p.class ? ` ${p.class}` : ""}`}
@@ -20,6 +22,11 @@ export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size
       aria-expanded={p.expanded}
     >
       <span class="lbl">{p.label}</span>
+      {p.chev && (
+        <svg class="btn-chev" width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      )}
     </button>
   );
 }

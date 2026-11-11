@@ -166,6 +166,11 @@ lives in Details. On hand needs no state chip: the lane is the state.
   check not met, ↗ went out), in muted ink (or the state's ink for an exception), never on a
   colored tile, never a colored dot. "!" is never a state's mark (it reads as an alarm); it is
   only the glyph of an alert notice (a held message).
+- **No emoji, and no symbol the phone can't draw as text (D211).** iOS takes a symbol no text
+  font in the stack has from the emoji font, so ↩, ⌄, ⓘ, ✔ and their kind are never UI text, and
+  U+FE0E doesn't rescue them (on iOS it draws a box). A mark is a drawn glyph; an "opens more"
+  text button ends in the drawn chevron (`Btn chev`); keys use ⌘ ⇧ ⌥ ⌃ ⏎. Only symbols seen drawn
+  as text on iOS may appear in words; `scripts/check-glyphs.ts` (in `bun test`) holds the list.
 - A small action at the end of a line ("How I know") is a text button like every other one:
   flat, no underline.
 - A one-time highlight (a decision found from a notification) deepens the card's own tint;

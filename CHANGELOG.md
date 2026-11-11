@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.0.17
+
+<!-- whats-new
+zh: 从手机更新 Mac 不再卡住
+en: Updating your Mac from your phone no longer stalls
+zh: 手机上的自动填写和「以后」能力图标回来了
+en: Autofill and the coming-later abilities show their pictures on the phone
+-->
+
+**Fixes**
+- **Update** on a Mac, asked from your phone, no longer stalls: the copy already checked when it
+  was downloaded is not sent to macOS's Gatekeeper a second time just before the restart (that
+  check could hang for two minutes, and the update was then dropped).
+- The phone shows the Autofill tab's keyring and the **Use a computer** and **Use a phone** chips
+  again, when your Ducter runs from the installed binary (a server).
+
 ## 0.0.16
 
 <!-- whats-new

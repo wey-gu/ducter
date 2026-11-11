@@ -354,6 +354,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   };
   const projects = createProjects({ dataDir, ...(opts.git ? { git: opts.git } : {}), onChange: () => onHandChanged(), remote: (dev, path) => computers.folderInfo(dev, path, 15_000) });
   // D193: phone calls (the partner drafts; the owner's Go places; Ducter polls and keeps the rails).
+  let autofillRef: Autofill | undefined;
   const phone = openPhone({
     dataDir,
     log,
@@ -362,6 +363,15 @@ export function startCore(opts: CoreOptions = {}): Core {
     quiet: () => push.settings().quiet,
     zone: () => settings.get().quiet?.tz ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
     partnerName: () => persona.name,
+    // D208: the owner's saved phone (Your details) is their own number: no callee hours for it.
+    ownNumbers: () => {
+      try {
+        const n = autofillRef?.store.secret("me.phone");
+        return n ? [n] : [];
+      } catch {
+        return [];
+      }
+    },
     onChange: () => onHandChanged(),
     onCalling: () => devicesView?.changed(), // D199: the home's 打电话
   });
@@ -390,6 +400,7 @@ export function startCore(opts: CoreOptions = {}): Core {
 
   // D191: 自动填充 / Autofill: saved sign-ins, cards and details, filled by reference in Ducter's browser.
   const autofill = createAutofill({ dataDir, persona: persona.id, mcp, log, tasks: tasks as never, ...(opts.platform ? { platform: opts.platform } : {}) });
+  autofillRef = autofill;
   // D151: Ducter's own browser (a server's 上网): its tools are listed only for tasks attached to it.
   const browser =
     opts.browser === false

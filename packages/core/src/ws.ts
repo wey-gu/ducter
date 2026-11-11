@@ -688,6 +688,13 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, connectionsFrame());
         return;
       }
+      case "call_now": {
+        if (!deps.phone) throw new Error("calls are not available");
+        const r = deps.phone.callNow(String(f.callId ?? ""));
+        if (!r.ok) throw new Error(r.error);
+        send(ws, { t: "on_hand", onHand: tasks.onHand() });
+        return;
+      }
       case "call_cancel": {
         if (!deps.phone) throw new Error("calls are not available");
         await deps.phone.cancel(String(f.callId ?? ""), "owner");

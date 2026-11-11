@@ -42,6 +42,12 @@ You then see one card: **Call Sushi Saito?** with the number, what the call is f
 from, about how long and how much, and when. Tap **Call**, or **Not now**, or **Reply…** to change
 something. Nothing is dialed before you tap **Call**, and there is never a "don't ask next time".
 
+If it's too early or too late where they are, the card says so in their time ("It's 20:03 where
+they are, so I set it for 9:00 their time"), the button reads **Call then**, and **Call now** sits
+beside it when you asked for the call yourself. After 21:00 or before 8:00 their time it waits
+whatever you say. Calls to your own number (one you say is yours, or the phone in Your details)
+aren't held for anyone's hours.
+
 Every call starts by saying it is an AI assistant calling for you. It never claims to be you.
 
 ## While it's on the line
@@ -55,14 +61,23 @@ about 90 seconds, the call says you'll call back.
 
 ## When it's done
 
-Your partner tells you the outcome in one line, exactly as Tuwa reported it. If Tuwa couldn't
+Your partner tells you the outcome in one line, from what Tuwa reported. If Tuwa couldn't
 confirm the result, it says so. On hand keeps the call for the day: tap it for the summary, what was
 agreed, what was said (when Tuwa has it), how long it took and what it cost.
 
+- **Got an automated message**: the call connected, but voicemail or a recording answered. If the
+  number uses Google Voice's call screening, you'll see how to let calls through: answer and press
+  1, or turn off **Screen calls** in Google Voice's settings.
+- **No answer**: nobody picked up.
+- **Didn't connect**: it was dialed but the line failed; Tuwa's own words follow when it gave any.
+- **Didn't go through**: it was never placed (a card to save, no minutes left, today's limit, or
+  Tuwa refused it).
+
 ## What it never does
 
-- Call in your quiet hours, or outside 9:00 to 20:00 where the other side is. A call asked for then
-  goes on the card with its time, and is made then, once you've said **Call**.
+- Call while you're in your quiet hours unless you just asked for it yourself, or call someone
+  before 8:00 or after 21:00 their time. Between 9:00 and 20:00 their time is the usual window; you
+  can choose **Call now** outside it, up to 21:00.
 - Call emergency numbers. Call them yourself.
 - Call countries Tuwa doesn't call. Tuwa's numbers reach the US, Canada, Japan, Korea, the UK,
   Germany, France, India, Brazil, Australia, New Zealand, Thailand, the Philippines, Singapore,

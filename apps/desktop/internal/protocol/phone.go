@@ -18,6 +18,7 @@ const (
 	CallAsking    = "question"
 	CallDone      = "done"
 	CallUncertain = "uncertain"
+	CallAutomated = "automated" // D208: it got through, but only a machine answered
 	CallNoAnswer  = "no_answer"
 	CallFailed    = "failed"
 	CallCancelled = "cancelled"
@@ -35,7 +36,7 @@ func CallLive(state string) bool {
 // CallEnded reports whether a call is over (or never dialed).
 func CallEnded(state string) bool {
 	switch state {
-	case CallDone, CallUncertain, CallNoAnswer, CallFailed, CallCancelled, CallHeld:
+	case CallDone, CallUncertain, CallAutomated, CallNoAnswer, CallFailed, CallCancelled, CallHeld:
 		return true
 	}
 	return false
@@ -43,22 +44,36 @@ func CallEnded(state string) bool {
 
 // CallPlan is everything the Go card shows (D189 (4)).
 type CallPlan struct {
-	To         string   `json:"to"`
-	Name       string   `json:"name"`
-	Goal       string   `json:"goal"`
-	Say        []string `json:"say"`
-	Keep       string   `json:"keep,omitempty"`
-	MustNot    []string `json:"mustNot"`
-	Voice      string   `json:"voice"` // ducter | owner
-	From       string   `json:"from"`  // provider
-	Provider   string   `json:"provider"`
-	Minutes    float64  `json:"minutes"`
-	CostUSD    float64  `json:"costUsd"`
-	PerMinUSD  float64  `json:"perMinUsd"`
-	CalleeZone string   `json:"calleeZone"`
-	At         string   `json:"at,omitempty"`
-	Summary    string   `json:"summary,omitempty"`
-	Note       string   `json:"note,omitempty"`
+	To         string    `json:"to"`
+	Name       string    `json:"name"`
+	Goal       string    `json:"goal"`
+	Say        []string  `json:"say"`
+	Keep       string    `json:"keep,omitempty"`
+	MustNot    []string  `json:"mustNot"`
+	Voice      string    `json:"voice"` // ducter | owner
+	From       string    `json:"from"`  // provider
+	Provider   string    `json:"provider"`
+	Minutes    float64   `json:"minutes"`
+	CostUSD    float64   `json:"costUsd"`
+	PerMinUSD  float64   `json:"perMinUsd"`
+	CalleeZone string    `json:"calleeZone"`
+	At         string    `json:"at,omitempty"`
+	Wait       *CallWait `json:"wait,omitempty"`   // D208: why it isn't now, when At is set
+	CanNow     bool      `json:"canNow,omitempty"` // D208: 现在就打 / Call now is offered
+	Own        bool      `json:"own,omitempty"`    // D208: the owner's own number
+	Summary    string    `json:"summary,omitempty"`
+	Note       string    `json:"note,omitempty"`
+}
+
+// CallWait says why a call waits (D208): callee (outside 9:00–20:00 where
+// they are), late (outside 8:00–21:00 there: not even Call now), quiet (the
+// owner's quiet hours). Their is their clock now, Then when it dials, both
+// "HH:MM" in Zone.
+type CallWait struct {
+	Why   string `json:"why"`
+	Zone  string `json:"zone"`
+	Their string `json:"their"`
+	Then  string `json:"then"`
 }
 
 // CallQuestion is a question from the line, waiting on the owner.
@@ -97,7 +112,9 @@ type CallBody struct {
 	DurationSec   *float64      `json:"durationSec,omitempty"`
 	CostUSD       *float64      `json:"costUsd,omitempty"`
 	Error         string        `json:"error,omitempty"`
-	Reason        string        `json:"reason,omitempty"` // payment | balance | cap | provider | unreachable | signed_out | too_long
+	Reason        string        `json:"reason,omitempty"` // payment | balance | cap | provider | call_failed | lost | unreachable | signed_out | too_long
+	Hint          string        `json:"hint,omitempty"`   // D208: screening (Google Voice's call screening answered)
+	CallNow       bool          `json:"callNow,omitempty"`
 	PayURL        string        `json:"payUrl,omitempty"`
 	By            string        `json:"by,omitempty"` // owner | ducter
 	UpdatedAt     string        `json:"updatedAt,omitempty"`
@@ -168,6 +185,13 @@ type PhoneVoice struct {
 // CallCancel hangs up a live call, or withdraws one waiting for its hour.
 type CallCancel struct {
 	T      string `json:"t"` // "call_cancel"
+	CallID string `json:"callId"`
+}
+
+// CallNow is 现在就打 / Call now on a Go card that waits for the callee's
+// courtesy hours (D208): the Go, now.
+type CallNow struct {
+	T      string `json:"t"` // "call_now"
 	CallID string `json:"callId"`
 }
 

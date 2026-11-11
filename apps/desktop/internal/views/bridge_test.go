@@ -39,15 +39,21 @@ func TestBridgeRow(t *testing.T) {
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connecting")} },
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"connected", protocol.BridgeView{State: "connected", Identity: "ducter", Space: space},
-			func(L *i18n.Strings) []string { return []string{L.T("bridge.connected", "ducter", "Only me"), L.T("bridge.undo")} },
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.connected", "ducter", "Only me"), L.T("bridge.undo")}
+			},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"no-space", protocol.BridgeView{State: "no_space", Identity: "ducter"},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.no_space")} },
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("bridge.retry")} }},
 		{"failed", protocol.BridgeView{State: "failed", Identity: "ducter", Space: space, Detail: "timed out"},
-			func(L *i18n.Strings) []string { return []string{L.T("bridge.failed", "timed out"), L.T("bridge.retry")} }, nil},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.failed", "timed out"), L.T("bridge.retry")}
+			}, nil},
 		{"unconfirmed", protocol.BridgeView{State: "unconfirmed", Identity: "ducter", Space: space},
-			func(L *i18n.Strings) []string { return []string{L.T("bridge.unconfirmed", "ducter"), L.T("bridge.retry"), L.T("bridge.undo")} }, nil},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.unconfirmed", "ducter"), L.T("bridge.retry"), L.T("bridge.undo")}
+			}, nil},
 	}
 	for _, r := range []string{"authority_missing", "custody_birth_missing", "lifetime_inactive", "attachment_mismatch", "control_denied", "revoked", "conflict"} {
 		r := r
@@ -57,7 +63,9 @@ func TestBridgeRow(t *testing.T) {
 			want func(L *i18n.Strings) []string
 			not  func(L *i18n.Strings) []string
 		}{"refused-" + r, protocol.BridgeView{State: "refused", Reason: r, Identity: "ducter", Space: space},
-			func(L *i18n.Strings) []string { return []string{L.T("bridge.refused."+r, "ducter"), L.T("bridge.retry")} }, nil})
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.refused."+r, "ducter"), L.T("bridge.retry")}
+			}, nil})
 	}
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		for _, s := range states {

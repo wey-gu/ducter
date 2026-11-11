@@ -229,7 +229,8 @@ export interface Bodies {
     // in quiet hours; its choices are buttons that answer with option "reply" and that text.
     call?: { callId: string; kind: "go" | "question"; plan?: CallPlan; choices?: string[]; yesNo?: boolean };
   };
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
+  // now (D208): a call's Go given as 现在就打 / Call now, over the callee's courtesy hours.
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean };
   read_receipt: { upToSeq: number };
   task_open: {
     taskId: string;
@@ -752,6 +753,8 @@ export type ClientFrame =
   | { t: "phone_voice"; action: "record" | "on" | "off" | "delete" | "refresh" }
   // D193: hang up a live call or withdraw one waiting for its hour (a fresh On hand follows).
   | { t: "call_cancel"; callId: string }
+  // D208: 现在就打 / Call now on a call's Go card that waits for the callee's hours (the Go, now).
+  | { t: "call_now"; callId: string }
   // D193, the phone card: Ducter's daily cap for calls (it sets the provider's own too; raising is the owner's tap).
   | { t: "phone_cap"; usd: number }
   // D165: the person's answer in a note: a reaction to a find, or an ask (first_look, keep_note).

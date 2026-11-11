@@ -43,6 +43,12 @@ export interface FakeTuwa {
   askOnDraft(qs: string[]): void;
   /** confirm answers this gate instead of dialing. */
   gate(g: "payment_method_required" | "prepaid_balance_low" | undefined): void;
+  /**
+   * D208: the next confirm answers an error. placed: it dialed anyway (the error came after);
+   * stale: it didn't (the confirmation expired; the draft still awaits its yes). blind: status
+   * answers errors too, so nobody can tell.
+   */
+  failConfirm(how: "placed" | "stale" | "blind" | undefined): void;
   /** Drive a task (the line). */
   set(taskId: string, patch: Partial<FakeTask>): void;
   last(): FakeTask | undefined;
@@ -61,6 +67,8 @@ export function fakeTuwa(opts: { pendingPolls?: number; registration?: "needs_re
   let refresh = "rt_1";
   let ask: string[] | undefined;
   let gate: string | undefined;
+  let failConfirm: "placed" | "stale" | "blind" | undefined;
+  let blind = false;
   let origin = "";
   const text = (o: unknown) => ({ content: [{ type: "text", text: JSON.stringify(o) }], structuredContent: o as Record<string, unknown> });
 
@@ -83,9 +91,30 @@ export function fakeTuwa(opts: { pendingPolls?: number; registration?: "needs_re
         if (!t) return { status: "error", error: "unknown task" };
         t.status = "awaiting_confirmation";
         t.confirmationId = `C${t.taskId}`;
-        return { status: "confirm_in_chat", confirmationId: t.confirmationId, summary: `Call ${String(t.args.recipientName)} at ${String(t.args.to)} from a Tuwa number${t.args.scheduledAt ? ` at ${String(t.args.scheduledAt)}` : " right after approval"}. May share: ${((t.args.shareable as string[]) ?? []).join(", ") || "nothing"}. Private: ${String(t.args.privateGuidance ?? "nothing")}.` };
+        // Shaped like the summary Tuwa showed the author on 2026-11-11 (one "Label: value" a line).
+        return {
+          status: "confirm_in_chat",
+          confirmationId: t.confirmationId,
+          summary: [
+            `To: ${String(t.args.recipientName)} (${String(t.args.to)})`,
+            `Goal: ${String(t.args.goal)}`,
+            `May tell them: ${((t.args.shareable as string[]) ?? []).join(", ") || "nothing"}`,
+            `Scope: this call only; private guidance ${t.args.privateGuidance ? "given" : "none"}`,
+            `Must not: ${((t.args.mustNot as string[]) ?? []).length} rules`,
+            `When in UTC: ${t.args.scheduledAt ? String(t.args.scheduledAt) : "right after approval"}`,
+            "Calling from: a Tuwa number",
+          ].join("\n"),
+        };
       case "tuwa_confirm": {
         const task = [...tasks.values()].find((x) => x.confirmationId === a.confirmationId);
+        if (task && failConfirm) {
+          const how = failConfirm;
+          failConfirm = undefined;
+          if (how === "placed") (task.personReply = String(a.personReply)), (task.status = task.args.scheduledAt ? "scheduled" : "executing");
+          if (how === "stale") task.confirmationId = `${task.confirmationId}x`;
+          if (how === "blind") blind = true;
+          return { status: "error", error: "upstream timeout" };
+        }
         if (task) {
           if (gate) return { status: gate, ...(gate === "payment_method_required" ? { setupUrl: "https://checkout.stripe.com/fake" } : {}) };
           if (a.decision !== "approve") return (task.status = "canceled"), { status: "declined" };
@@ -98,6 +127,7 @@ export function fakeTuwa(opts: { pendingPolls?: number; registration?: "needs_re
         return { status: "error", error: "unknown confirmation" };
       }
       case "tuwa_call_status":
+        if (blind) return { status: "error", error: "upstream timeout" };
         if (!t) return { status: "error", error: "unknown task" };
         return { taskId: t.taskId, status: t.status, finished: ["succeeded", "partial", "failed", "canceled", "uncertain"].includes(t.status), ...(t.durationSec ? { durationSec: t.durationSec } : {}), ...(t.pending ? { pendingQuestion: t.pending } : {}) };
       case "tuwa_call_reply":
@@ -206,6 +236,7 @@ export function fakeTuwa(opts: { pendingPolls?: number; registration?: "needs_re
     refresh: () => refresh,
     askOnDraft: (qs) => void (ask = qs),
     gate: (g) => void (gate = g),
+    failConfirm: (how) => void (failConfirm = how),
     set: (id, patch) => void Object.assign(tasks.get(id)!, patch),
     last: () => [...tasks.values()].at(-1),
     stop: () => void server.stop(true),

@@ -33,12 +33,24 @@ func TestPhoneFrames(t *testing.T) {
 	if v, err := ev.Typed(); err != nil || *v.(*CallBody).DurationSec != 190 {
 		t.Fatalf("phone_call: %v %+v", err, v)
 	}
+	// D208: the wait, Call now, an automated end with its hint.
+	ev = LogEvent{Kind: KindPhoneCall, Body: json.RawMessage(`{"callId":"call_2","connectionId":"c1","state":"automated","hint":"screening","callNow":true,"reason":"call_failed","plan":{"to":"+12025550147","name":"x","goal":"y","say":[],"mustNot":[],"voice":"ducter","from":"provider","provider":"Tuwa","minutes":2,"costUsd":0.6,"perMinUsd":0.3,"calleeZone":"Asia/Tokyo","at":"2026-11-12T00:00:00.000Z","wait":{"why":"callee","zone":"Asia/Tokyo","their":"20:03","then":"09:00"},"canNow":true,"own":true}}`)}
+	if v, err := ev.Typed(); err != nil {
+		t.Fatal(err)
+	} else if c := v.(*CallBody); c.State != CallAutomated || !CallEnded(c.State) || c.Hint != "screening" || !c.CallNow || c.Plan.Wait == nil || c.Plan.Wait.Their != "20:03" || !c.Plan.CanNow || !c.Plan.Own {
+		t.Fatalf("D208 call: %+v", c)
+	}
+	ev = LogEvent{Kind: KindDecisionResolved, Body: json.RawMessage(`{"decisionId":"d1","option":"go","by":"user","now":true}`)}
+	if v, err := ev.Typed(); err != nil || !v.(*DecisionResolved).Now {
+		t.Fatalf("decision_resolved now: %v %+v", err, v)
+	}
 	for want, v := range map[string]any{
 		`{"t":"connection_signin_cancel"}`:               ConnectionSignInCancel{T: "connection_signin_cancel"},
 		`{"t":"connection_reauth","id":"c1"}`:            ConnectionReauth{T: "connection_reauth", ID: "c1"},
 		`{"t":"phone_voice","action":"record"}`:          PhoneVoice{T: "phone_voice", Action: "record"},
 		`{"t":"call_cancel","callId":"call_1"}`:          CallCancel{T: "call_cancel", CallID: "call_1"},
 		`{"t":"phone_cap","usd":20}`:                     PhoneCap{T: "phone_cap", USD: 20},
+		`{"t":"call_now","callId":"call_1"}`:             CallNow{T: "call_now", CallID: "call_1"},
 		`{"t":"connection_add","url":"` + TuwaMCP + `"}`: ConnectionAdd{T: "connection_add", URL: TuwaMCP},
 	} {
 		got, _ := json.Marshal(v)

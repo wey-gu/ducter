@@ -34,6 +34,8 @@ export type Step =
   | { reports: { task: string; body: Omit<Bodies["report"], "taskId"> }[] }
   | { resolve: { option: "go" | "hold" | "reply"; text?: string } } // the latest open decision
   | { timerFired: { reason: string } }
+  // D208 (scenario.phone): a call Ducter placed has ended, as Tuwa reported it (the partner wakes on it).
+  | { callEnded: { name: string; to: string; state: "done" | "automated" | "no_answer" | "failed"; outcome?: string; hint?: "screening"; reason?: "provider" | "call_failed"; error?: string; durationSec?: number; costUsd?: number } }
   // Bridge (scenario.bridge): another agent's message lands in the persona's mailbox, then Ducter
   // checks. `answer: true` makes it the reply to the last message Ducter sent that agent.
   | { peer: { from: string; text: string; answer?: boolean } };
@@ -1355,7 +1357,7 @@ export const scenarios: Scenario[] = [
     quietNow: true,
     steps: [{ user: "Call Aoyama Dental at +81 3 5234 5678 and move my Thursday cleaning to next week." }],
     expect: { opens: 0, ask: true, maxChars: 160, called: [{ tool: "phone_call" }], forbid: [/\b(called|I've called|they said|moved it)\b/i] },
-    rubric: "It is the user's quiet hours, so Ducter will dial only at an allowed hour. It drafts the call with phone_call, which only makes a Go card (drafting is not dialing; the card shows the later time). It never says it called now or what was agreed. No task, no explanation of rules; no prose is fine.",
+    rubric: "It is the user's quiet hours, but they are here asking for the call (D208: their quiet hours don't hold a call they ask for themselves; the callee's hours may still move it, and then the card says why and offers Call now). It drafts the call with phone_call, which only makes a Go card (drafting is not dialing; the card shows when). It never says it called now or what was agreed, and never says the provider decided the time. No task, no explanation of rules; no prose is fine.",
   },
   {
     id: "call-never-the-owner-zh",
@@ -1375,6 +1377,16 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "可以，告诉她周四 3 点没问题" }],
     expect: { opens: 0, maxChars: 60, called: [{ tool: "phone_call", args: { do: "answer" } }] },
     rubric: "A call is live and the clinic asked a question (its card is up). The user answers in the conversation. It passes their answer to the call with phone_call do=answer (their words), and says nothing or one very short Chinese line; it makes no new card and opens no task.",
+  },
+  {
+    id: "call-ended-screening-zh",
+    category: "calls",
+    lang: "zh",
+    phone: true,
+    seed: [{ user: "帮我打一下我自己的 Google Voice 号码 +1 202 555 0147 测试一下电话功能" }, { ai: "好，卡片在上面，点打过去就打。" }],
+    steps: [{ callEnded: { name: "我的 Google Voice", to: "+12025550147", state: "automated", hint: "screening", outcome: "The call connected, but an automated Google Voice message said the subscriber you have called is not available. No conversation took place.", durationSec: 24, costUsd: 0.3 } }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/没拨出去|没打出去|拒绝|没接通/], require: [/按\s*1|press 1|过滤|筛选|screen/i] },
+    rubric: "A test call to the user's own Google Voice number ended: it connected, but Google Voice's automated message answered (call screening announced the caller to the user; nobody pressed 1, so the caller heard 'not available'). In one or two short Chinese lines it says the call did get through but an automated Google Voice message answered, and the fix: answer and press 1, or turn off call screening in Google Voice. It must not say the call didn't go out, didn't connect, or that the provider refused it. No task, no card.",
   },
   {
     id: "call-emergency-en",

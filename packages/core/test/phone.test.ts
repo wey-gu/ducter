@@ -8,8 +8,9 @@ import type { Bodies, LogEvent } from "@ducter/protocol";
 import { e164 } from "@ducter/protocol";
 import { FakeClock } from "../src/clock.ts";
 import { startCore, triggersPartner, type Core } from "../src/core.ts";
-import { calleeZones, neverCall, nextAllowed, surcharge, CALLBACK_REPLY } from "../src/phone.ts";
-import { argsFor } from "../src/phone-provider.ts";
+import { renderCallEnded } from "@ducter/protocol";
+import { calleeZones, neverCall, nextAllowed, surcharge, whyWaits, CALLBACK_REPLY } from "../src/phone.ts";
+import { argsFor, tuwa as tuwaProvider } from "../src/phone-provider.ts";
 import { fakeTuwa, type FakeTuwa } from "./fake-tuwa.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -50,6 +51,67 @@ describe("the rails, as pure functions", () => {
     // The US: noon Eastern is 9:00 Pacific, the first moment every continental zone is in hours.
     expect(new Date(nextAllowed(Date.parse("2026-11-11T14:00:00Z"), null, calleeZones("+14155550100")!)!).toISOString()).toBe("2026-11-11T17:00:00.000Z");
     expect(calleeZones("+14155550100", "America/Los_Angeles")).toEqual(["America/Los_Angeles"]);
+  });
+  test("D208: a +1 number's area code is its zone (a DC number isn't held for California's morning)", () => {
+    expect(calleeZones("+12025550147")).toEqual(["America/New_York"]);
+    expect(calleeZones("+14155550100")).toEqual(["America/Los_Angeles"]);
+    expect(calleeZones("+13125550100")).toEqual(["America/Chicago"]);
+    expect(calleeZones("+16025550100")).toEqual(["America/Phoenix"]);
+    expect(calleeZones("+14165550100")).toEqual(["America/Toronto"]);
+    expect(calleeZones("+18505550100")).toEqual(["America/New_York", "America/Chicago"]); // the panhandle: both
+    expect(calleeZones("+18005550100")).toHaveLength(4); // toll-free: every continental zone
+    // Where they are now beats the number (the user's own US number, carried at an expo in Japan).
+    expect(calleeZones("+12025550147", "Asia/Tokyo")).toEqual(["Asia/Tokyo"]);
+  });
+  test("D208: the owner's quiet hours don't hold a call they ask for now; a later time Ducter picks still respects them", () => {
+    const q = { start: "23:00", end: "08:00", tz: "Asia/Tokyo" };
+    const midnightTokyo = Date.parse("2026-11-11T15:00:00Z"); // 10:00 in Washington
+    const dc = calleeZones("+12025550147")!;
+    // The partner (or a task) starts it: it waits for the owner's 08:00 (18:00 in Washington).
+    expect(new Date(nextAllowed(midnightTokyo, q, dc)!).toISOString()).toBe("2026-11-11T23:00:00.000Z");
+    expect(whyWaits(midnightTokyo, Date.parse("2026-11-11T23:00:00Z"), q, dc)).toEqual({ why: "quiet", zone: "America/New_York", their: "10:00", then: "18:00" });
+    // The owner asked just now: they're awake, it's 10:00 there: now.
+    expect(nextAllowed(midnightTokyo, q, dc, { present: true })).toBe(midnightTokyo);
+  });
+  test("D208: the callee's 9:00–20:00 is a courtesy the owner's Call now may pass; 8:00–21:00 is not", () => {
+    const tokyo = ["Asia/Tokyo"];
+    const at2003 = Date.parse("2026-11-11T11:03:00Z"); // 20:03 in Tokyo
+    expect(new Date(nextAllowed(at2003, null, tokyo, { present: true })!).toISOString()).toBe("2026-11-12T00:00:00.000Z");
+    expect(whyWaits(at2003, Date.parse("2026-11-12T00:00:00Z"), null, tokyo, { present: true })).toEqual({ why: "callee", zone: "Asia/Tokyo", their: "20:03", then: "9:00" });
+    expect(nextAllowed(at2003, null, tokyo, { present: true, courtesy: false })).toBe(at2003);
+    const at2130 = Date.parse("2026-11-11T12:30:00Z"); // 21:30: too late even on Call now
+    expect(new Date(nextAllowed(at2130, null, tokyo, { present: true, courtesy: false })!).toISOString()).toBe("2026-11-11T23:00:00.000Z");
+    expect(whyWaits(at2130, Date.parse("2026-11-12T00:00:00Z"), null, tokyo, { present: true }).why).toBe("late");
+    // The owner's own number: no callee hours at all.
+    const at3amDc = Date.parse("2026-11-11T08:00:00Z");
+    expect(nextAllowed(at3amDc, null, calleeZones("+12025550147")!, { present: true, own: true })).toBe(at3amDc);
+  });
+  test("D208: outcomes from realistic tuwa_call_result answers: a machine that answered is not a refusal", async () => {
+    const io = (data: unknown, isError = false) => ({ call: async () => ({ isError, data }), schema: () => undefined });
+    const gv = await tuwaProvider.result(io({ taskId: "T1", status: "failed", outcome: "not_reached", outcomeSummary: "The call connected, but an automated Google Voice message said the subscriber you have called is not available. No conversation took place.", durationSec: 24, costUsd: 0.3, transcript: [{ speaker: "agent", text: "Hi, this is Ducter, Weyl's AI assistant." }, { speaker: "callee", text: "The Google subscriber you have called is not available." }] }), "T1");
+    expect(gv).toMatchObject({ state: "automated", hint: "screening", durationSec: 24, costUsd: 0.3 });
+    expect(gv.outcome).toContain("Google Voice");
+    expect(await tuwaProvider.result(io({ status: "partial", outcomeSummary: "Left a voicemail asking them to call back on Weyl's number." }), "T1")).toMatchObject({ state: "automated" });
+    expect((await tuwaProvider.result(io({ status: "partial", outcomeSummary: "Left a voicemail asking them to call back." }), "T1")).hint).toBeUndefined();
+    expect(await tuwaProvider.result(io({ status: "failed", outcome: "no_answer", outcomeSummary: "Nobody answered; the call rang out after 30 seconds." }), "T1")).toMatchObject({ state: "no_answer" });
+    expect(await tuwaProvider.result(io({ status: "failed", error: { code: "carrier_rejected", message: "The carrier rejected the call (403)." } }), "T1")).toMatchObject({ state: "failed", detail: "The carrier rejected the call (403)." });
+    expect((await tuwaProvider.result(io({ status: "failed" }), "T1")).detail).toBeUndefined();
+    expect(await tuwaProvider.result(io({ status: "succeeded", outcome: "succeeded", outcomeSummary: "Two counter seats tomorrow at 19:30, under Weyl." }), "T1")).toMatchObject({ state: "done" });
+    // A real conversation where someone "is not available" is still a conversation.
+    expect(await tuwaProvider.result(io({ status: "partial", outcomeSummary: "They can do Friday, but the manager is not available to confirm the price." }), "T1")).toMatchObject({ state: "done" });
+    expect(await tuwaProvider.result(io({ status: "canceled" }), "T1")).toMatchObject({ state: "failed", detail: "cancelled at the provider" });
+    expect(await tuwaProvider.result(io("upstream error", true), "T1")).toMatchObject({ state: "uncertain" });
+  });
+  test("D208: the partner's line says what happened: got through to a machine, or a line that failed; never 'refused' unless it was", () => {
+    const plan = { to: "+12025550147", name: "Google Voice", goal: "test", say: [], mustNot: [], voice: "ducter" as const, from: "provider" as const, provider: "Tuwa", minutes: 2, costUsd: 0.6, perMinUsd: 0.3, calleeZone: "America/New_York" };
+    const auto = renderCallEnded({ callId: "c", connectionId: "x", plan, state: "automated", hint: "screening", outcome: "An automated Google Voice message said the subscriber is not available." });
+    expect(auto).toContain("got through");
+    expect(auto).toContain("press 1");
+    expect(auto).not.toMatch(/refused it/);
+    const line = renderCallEnded({ callId: "c", connectionId: "x", plan, state: "failed", reason: "call_failed", error: "the provider gave no reason" });
+    expect(line).toContain("dialed but didn't connect");
+    expect(line).not.toMatch(/refused/);
+    expect(renderCallEnded({ callId: "c", connectionId: "x", plan, state: "failed", reason: "provider", error: "number not allowed" })).toContain("the provider refused it: number not allowed");
   });
   test("arguments follow the tool's own schema", () => {
     const schema = { properties: { taskId: {}, decision: {} } };
@@ -237,6 +299,8 @@ describe("a calling connection, through a fake Tuwa", () => {
     core.decisions.decide(b.card.decisionId, "go");
     const task = tuwa.last()!;
     await until(() => task.status === "executing");
+    // The poll is armed once Ducter has the confirm's answer (it lands after Tuwa's own state).
+    await until(() => core.phone.calls().some((c) => c.plan.name === "Clinic" && c.state === "calling"));
     tuwa.set(task.taskId, { status: "uncertain", result: { outcome: "uncertain", outcomeSummary: "The line dropped before they confirmed." } });
     clock.advance(16_000);
     await until(() => core.phone.calls()[0]!.state === "uncertain");
@@ -282,6 +346,110 @@ describe("a calling connection, through a fake Tuwa", () => {
     expect(await core.phone.draft({ to: "+81312345678", name: "Saito", goal: "book", voice: "owner" }, { lang: "en" })).toMatchObject({ ok: false, reason: "voice" });
     expect(await core.phone.voice("on", "yes")).toMatchObject({ ok: false, reason: "no_voice" });
     expect(await core.phone.voice("record", "yes")).toMatchObject({ ok: true, url: "https://tuwa.ai/record/fake" });
+  });
+
+  test("D208: asked for now at 20:03 where they are: the card says why and offers Call now; Call now dials at once", async () => {
+    await connect();
+    clock.advance(8 * 3600_000 + 3 * 60_000); // 20:03 in Tokyo, the owner awake and asking
+    const r = await draftAndGo({ present: true });
+    expect(r.plan).toMatchObject({ at: "2026-11-12T00:00:00.000Z", canNow: true, wait: { why: "callee", zone: "Asia/Tokyo", their: "20:03", then: "9:00" } });
+    expect(r.card.goLabel).toBe("到点再打");
+    // Ducter holds the time (so Call now can dial now): no scheduledAt at the provider.
+    const draft = tuwa.last()!;
+    expect(draft.args.scheduledAt).toBeUndefined();
+    expect(core.phone.callNow(r.callId)).toEqual({ ok: true });
+    await until(() => draft.status === "executing");
+    expect(draft.personReply).toBe("现在就打");
+    await until(() => core.phone.calls()[0]!.state === "calling");
+    expect(core.phone.calls()[0]!.callNow).toBe(true);
+  });
+
+  test("D208: Go on that card waits in Ducter for 9:00 there, then dials", async () => {
+    await connect();
+    clock.advance(8 * 3600_000 + 3 * 60_000);
+    const r = await draftAndGo({ present: true });
+    core.decisions.decide(r.card.decisionId, "go");
+    await until(() => core.phone.calls()[0]!.state === "waiting");
+    expect(tuwa.calls.some((x) => x.name === "tuwa_confirm")).toBe(false);
+    clock.advance(13 * 3600_000); // 09:03 the next morning in Tokyo
+    await until(() => tuwa.last()!.status === "executing");
+    expect(tuwa.last()!.personReply).toBe("到点再打");
+  });
+
+  test("D208: at 21:30 there it is too late even on Call now; a call the partner starts waits for the owner's quiet hours to end", async () => {
+    await connect();
+    clock.advance(9 * 3600_000 + 30 * 60_000); // 21:30 in Tokyo
+    const late = await draftAndGo({ present: true });
+    expect(late.plan.canNow).toBeUndefined();
+    expect(late.plan.wait?.why).toBe("late");
+    expect(tuwa.last()!.args.scheduledAt).toBe("2026-11-12T00:00:00.000+00:00");
+    expect(core.phone.callNow(late.callId)).toMatchObject({ ok: false });
+    // 00:00 in Tokyo, 10:00 in Washington: the owner asking now calls now; a task's call waits for 08:00.
+    clock.advance(2 * 3600_000 + 30 * 60_000);
+    const asked = await draftAndGo({ to: "+1 202 555 0147", name: "Google Voice", present: true });
+    expect(asked.plan.at).toBeUndefined();
+    const later = await draftAndGo({ to: "+1 202 555 0148", name: "Front desk" });
+    expect(later.plan).toMatchObject({ at: "2026-11-11T23:00:00.000Z", wait: { why: "quiet" } });
+  });
+
+  test("D208: the owner's own number (said so, or their saved phone) has no callee hours", async () => {
+    await connect();
+    clock.advance(8 * 3600_000 + 3 * 60_000); // 20:03 Tokyo, 06:03 in Washington
+    expect((await draftAndGo({ to: "+1 202 555 0147", name: "Google Voice", present: true, own: true })).plan).toMatchObject({ own: true });
+    expect((await draftAndGo({ to: "+1 202 555 0147", name: "Google Voice", present: true, own: true })).plan.at).toBeUndefined();
+    core.autofill.store.put({ kind: "detail", values: { phone: "+1 202 555 0199" } });
+    const saved = await draftAndGo({ to: "+12025550199", name: "My phone", present: true });
+    expect(saved.plan).toMatchObject({ own: true });
+    expect(saved.plan.at).toBeUndefined();
+  });
+
+  test("D208: a confirm that errors after placing the call: its status says so, and it is never confirmed twice", async () => {
+    await connect();
+    const r = await draftAndGo();
+    tuwa.failConfirm("placed");
+    core.decisions.decide(r.card.decisionId, "go");
+    await until(() => core.phone.calls()[0]!.state === "calling");
+    expect(tuwa.calls.filter((x) => x.name === "tuwa_confirm")).toHaveLength(1);
+    expect(tuwa.calls.filter((x) => x.name === "tuwa_call_request_approval")).toHaveLength(1);
+  });
+
+  test("D208: a confirm that errors and didn't place it (expired): asked again, confirmed once more; status unreadable: failed as lost, never re-confirmed", async () => {
+    await connect();
+    const a = await draftAndGo();
+    tuwa.failConfirm("stale");
+    core.decisions.decide(a.card.decisionId, "go");
+    await until(() => tuwa.last()!.status === "executing");
+    expect(tuwa.calls.filter((x) => x.name === "tuwa_confirm")).toHaveLength(2);
+
+    const b = await draftAndGo({ name: "Clinic", to: "+81 3-1234-5679" });
+    tuwa.failConfirm("blind");
+    core.decisions.decide(b.card.decisionId, "go");
+    await until(() => core.phone.calls().some((c) => c.state === "failed"));
+    expect(core.phone.calls().find((c) => c.state === "failed")).toMatchObject({ reason: "lost" });
+    expect(tuwa.calls.filter((x) => x.name === "tuwa_confirm")).toHaveLength(3);
+  });
+
+  test("D208: Google Voice's screening answered: got an automated message, with the fix; a line that failed says the provider's words", async () => {
+    await connect();
+    const r = await draftAndGo({ to: "+1 202 555 0147", name: "Google Voice", calleeZone: "Asia/Tokyo" });
+    core.decisions.decide(r.card.decisionId, "go");
+    const task = tuwa.last()!;
+    await until(() => task.status === "executing");
+    await until(() => core.phone.calls().some((c) => c.plan.name === "Google Voice" && c.state === "calling"));
+    tuwa.set(task.taskId, { status: "failed", result: { outcome: "not_reached", outcomeSummary: "The call connected, but an automated Google Voice message said the subscriber you have called is not available.", durationSec: 24, costUsd: 0.3 } });
+    clock.advance(16_000);
+    await until(() => core.phone.calls()[0]!.state === "automated");
+    expect(core.phone.calls()[0]).toMatchObject({ hint: "screening", costUsd: 0.3 });
+
+    const b = await draftAndGo({ name: "Clinic", to: "+81 3-1234-5679" });
+    core.decisions.decide(b.card.decisionId, "go");
+    const t2 = tuwa.last()!;
+    await until(() => t2.status === "executing");
+    await until(() => core.phone.calls().some((c) => c.plan.name === "Clinic" && c.state === "calling"));
+    tuwa.set(t2.taskId, { status: "failed" });
+    clock.advance(16_000);
+    await until(() => core.phone.calls().some((c) => c.state === "failed"));
+    expect(core.phone.calls().find((c) => c.state === "failed")).toMatchObject({ reason: "call_failed", error: "the provider gave no reason" });
   });
 
   test("needs_input: the provider's questions go to the owner; their answers continue the same draft", async () => {

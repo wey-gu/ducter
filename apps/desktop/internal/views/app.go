@@ -42,6 +42,9 @@ type Updater interface{ Update(func()) }
 
 type pendingMsg struct {
 	clientID, text string
+	// atts (D206): the pictures going with it; sent once they're all up.
+	atts []*attach
+	sent bool
 }
 
 // App is the window's state.
@@ -60,6 +63,10 @@ type App struct {
 	Local *hints.Local
 
 	Status client.Status
+	// Media is the app's hands for pictures (D206): the picker, the
+	// pasteboard, the home's address; nil hides adding pictures.
+	Media MediaHands
+	media mediaState
 	// devicesAsked: the where line (D157) asked for devices once on its own.
 	devicesAsked bool
 	// bridgeConfirm: 断开 was tapped once and asks before it runs (D205).
@@ -323,14 +330,19 @@ func (a *App) resendUnechoed() {
 		}
 	}
 	for _, p := range a.pending {
-		if !echoed[p.clientID] {
-			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID})
+		// A message whose pictures are still going up goes when they land.
+		if !echoed[p.clientID] && (len(p.atts) == 0 || allReady(p.atts)) {
+			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts)})
 		}
 	}
 	for _, t := range a.S.Tasks {
 		for _, sd := range t.Sends {
 			if sd.Delivered == "" && sd.Failed == "" && sd.ClientID != "" {
-				a.send(protocol.TaskSend{T: "task_send", TaskID: t.ID, Text: sd.Text, ClientID: sd.ClientID})
+				var ids []string
+				for _, m := range sd.Media {
+					ids = append(ids, m.ID)
+				}
+				a.send(protocol.TaskSend{T: "task_send", TaskID: t.ID, Text: sd.Text, ClientID: sd.ClientID, Media: ids})
 			}
 		}
 	}
@@ -415,6 +427,7 @@ func (a *App) View(c *ui.Context) {
 		a.newTaskCard(c)
 		a.liveView(c)
 	}
+	a.viewer(c) // D206: a picture, over everything
 }
 
 // shortcuts: Esc goes up one level, Cmd+1 the conversation, Cmd+2 On
@@ -513,7 +526,7 @@ type heldSend struct {
 // keeps it, until the user says Send anyway or Don't send.
 func (a *App) SendMessage(text string) bool {
 	text = strings.TrimSpace(text)
-	if text == "" {
+	if text == "" && len(a.med().trays["conv"]) == 0 {
 		return false
 	}
 	if LooksSecret(text) {
@@ -528,10 +541,15 @@ func (a *App) SendMessage(text string) bool {
 func (a *App) sendMessage(text string) {
 	a.nextClient++
 	id := fmt.Sprintf("c%d-%d", a.Now().UnixMilli(), a.nextClient)
-	a.pending = append(a.pending, pendingMsg{clientID: id, text: text})
+	// D206: the pictures in the tray go with it; until they're all up it waits, shown.
+	atts := a.takeTray("conv")
+	ready := allReady(atts)
+	a.pending = append(a.pending, pendingMsg{clientID: id, text: text, atts: atts, sent: ready})
 	a.thinkingSince = a.Now()
 	a.markRead()
-	a.send(protocol.Send{T: "send", Text: text, ClientID: id})
+	if ready {
+		a.send(protocol.Send{T: "send", Text: text, ClientID: id, Media: idsOf(atts)})
+	}
 	a.list.ScrollToEnd()
 }
 
@@ -559,7 +577,7 @@ func (a *App) OpenTask(id string) {
 // once, then how it was delivered.
 func (a *App) SendToTask(id, text string) bool {
 	text = strings.TrimSpace(text)
-	if text == "" {
+	if text == "" && len(a.med().trays["task:"+id]) == 0 {
 		return false
 	}
 	if LooksSecret(text) {
@@ -574,8 +592,14 @@ func (a *App) SendToTask(id, text string) bool {
 func (a *App) sendToTask(id, text string) {
 	a.nextClient++
 	cid := fmt.Sprintf("t%d-%d", a.Now().UnixMilli(), a.nextClient)
-	a.S.AddSend(id, text, cid).At = a.Now()
-	a.send(protocol.TaskSend{T: "task_send", TaskID: id, Text: text, ClientID: cid})
+	// D206: pictures still going up hold the message (shown) until they land.
+	atts := a.takeTray("task:" + id)
+	if !allReady(atts) {
+		m := a.med()
+		m.taskWait = append(m.taskWait, &taskWait{taskID: id, text: text, clientID: cid, atts: atts, at: a.Now()})
+		return
+	}
+	a.sendToTaskWith(id, text, cid, atts)
 }
 
 // SendHeld sends the held message after all, and empties its composer.

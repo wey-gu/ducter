@@ -1,5 +1,6 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
 import { effectiveBrain } from "./brain.ts";
+import { createMediaStore } from "./media.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir, hostname as osHostname } from "node:os";
 import { join } from "node:path";
@@ -432,7 +433,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(opts.bridgeLink ?? {}),
   });
   bridgeLink.onChange(() => settings.bridgeChanged());
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, spine: log.spine, bridgeLink, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  // D206: pictures and files, content-addressed on the home (media.ts).
+  const media = createMediaStore(dataDir);
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, spine: log.spine, bridgeLink, media, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D150: the one helper (brain.ts) the runner and the settings frame share.
   api.partnerFallback = () => {
     const e = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow());
@@ -688,12 +691,15 @@ export function startCore(opts: CoreOptions = {}): Core {
       // The phone/web client's own files are public (web.ts); everything it talks to is not.
       const page = await webStatic(req);
       if (page) return page;
+      // D206: a picture's bytes, by its key (an <img> sends no token); everything else about it is behind the gate.
+      const pic = await media.serve(req);
+      if (pic) return pic;
       // Off-machine callers need a paired device token (auth.ts); /pair is answered here.
       const g = await gate.check(req, srv.requestIP(req)?.address);
       if (!g.pass) return g.response;
       const d = deviceRoutes(req, g, srv, workers);
       if (d) return d === "upgraded" ? undefined : d;
-      const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name, version });
+      const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name, version, media });
       if (api) return api;
       if (url.pathname === "/ws") {
         // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin

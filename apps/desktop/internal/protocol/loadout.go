@@ -109,9 +109,11 @@ type Candidate struct {
 	// D157, with two or more computers: which one, whether it would wait
 	// (asleep | unreachable), what it would use (chrome | ducter), whether
 	// the user would sign in there first, and whether it widens access.
-	Device      string `json:"device,omitempty"`
-	DeviceName  string `json:"deviceName,omitempty"`
-	Waits       string `json:"waits,omitempty"`
+	Device     string `json:"device,omitempty"`
+	DeviceName string `json:"deviceName,omitempty"`
+	Waits      string `json:"waits,omitempty"`
+	// NoImages (D206): it can't see pictures (看不了图片 / Can't see images).
+	NoImages    bool   `json:"noImages,omitempty"`
 	Uses        string `json:"uses,omitempty"`
 	NeedsSignIn bool   `json:"needsSignIn,omitempty"`
 	Widens      bool   `json:"widens,omitempty"`

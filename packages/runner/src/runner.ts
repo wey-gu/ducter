@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
-import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
+import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, type MediaRef, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
+import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief } from "./brief.ts";
 import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
@@ -12,6 +12,7 @@ import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, pushForMo
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, localFolderOps, remoteOps, type PlaceOps } from "./remote.ts";
 import { createFolderStore, type CantKeep } from "./folder.ts";
 import { join } from "node:path";
+import { readShown } from "./shown.ts";
 import { MEM_PLUGIN_IDS } from "@ducter/protocol/src/mem-plugins.ts";
 
 /** task_state reason for a task whose worker dropped; clients render it as "<device> 连不上 / Can't reach <device>". */
@@ -54,6 +55,8 @@ export interface RunnerOptions {
 
 /** Runner plus test/ops helpers that are not part of the contract. */
 export interface RunnerExt extends Runner {
+  /** D206: copies the files a report shows into the home's media (report_to_main `show`). */
+  shown(taskId: string, paths: string[]): Promise<{ media: MediaRef[]; refused: string[] }>;
   /** Resolves when the task's session is started and its first turn sent (or provisioning failed). */
   whenStarted(taskId: string): Promise<void>;
   /** Native session id of a task (for resume), if started. */
@@ -89,6 +92,8 @@ interface StartCtx {
   body: Bodies["task_open"];
   later: boolean;
   briefIn: string | Promise<string>;
+  /** D206: the pictures an early brief carries, settled with it. */
+  mediaIn?: Promise<MediaRef[]>;
   title: string;
   persona: string;
   partnerName: string;
@@ -254,6 +259,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     changes: (place) => branchChanges(place),
     archive: (place) => archiveWorktree(place, core.dataDir),
     folder: localFolderOps(folders),
+    shown: async (a) => readShown(a, { dataDir: core.dataDir }),
   };
   /** D157: a browser place's browser, on the computer the place is on (a worker builds its own). */
   const sidecarFor = async (ops: PlaceOps, input: SidecarInput): Promise<BrowserSidecar | undefined> =>
@@ -366,28 +372,45 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   /** Returns false when the turn was held for the folder question (askFirst). */
-  async function sendTurn(t: TaskRt, text: string, from: From, logged = false): Promise<boolean> {
+  async function sendTurn(t: TaskRt, text: string, from: From, logged = false, media?: MediaRef[]): Promise<boolean> {
     clearTimeout(t.parkTimer);
     if (folderOf(t) && !t.gated) {
       const cant = await keepCopy(t);
       if (cant) {
-        if (!logged && from !== "runner") logInput(t, text, from, "turn");
+        if (!logged && from !== "runner") logInput(t, text, from, "turn", undefined, media);
         askFirst(t, cant, text);
         return false;
       }
     }
     t.running = true;
     setState(t, "working", "hot");
-    await deliver(t, text, "turn", from, logged);
+    await deliver(t, text, "turn", from, logged, media);
     return true;
   }
 
   // clientId: the client's id for a user's task_send, so core can tell a resend from a new message.
-  const logInput = (t: TaskRt, text: string, from: From, mode: string, clientId?: string) =>
-    logEvent(t, { role: "user", from, text: preview(text, 16 * 1024), ...(clientId ? { clientId } : {}), raw: { delivered: mode } });
+  const logInput = (t: TaskRt, text: string, from: From, mode: string, clientId?: string, media?: MediaRef[]) =>
+    logEvent(t, { role: "user", from, text: preview(text, 16 * 1024), ...(clientId ? { clientId } : {}), ...(media?.length ? { media } : {}), raw: { delivered: mode } });
+
+  /**
+   * D206: the pictures for the agent, as files on the home (a worker's session ships their bytes),
+   * and a line for an agent that can't see them, so it never answers as if it had.
+   */
+  function picturesFor(t: TaskRt, media: MediaRef[] | undefined): { images: SendImage[]; note?: string } {
+    const pics = (media ?? []).filter(isImage);
+    if (!pics.length) return { images: [] };
+    const h = t.spec.harness as HarnessId;
+    if (HARNESS_INFO[h] && !HARNESS_INFO[h].images)
+      return { images: [], note: `(${pics.length === 1 ? "A picture came" : `${pics.length} pictures came`} with this message, but ${harnessName(h)} can't see pictures. Say so in your report if the work needs them.)` };
+    const images = pics.flatMap((m) => {
+      const path = core.media?.path(m.id);
+      return path ? [{ path, mediaType: m.type }] : [];
+    });
+    return { images };
+  }
 
   /** Logs the text first (the Log is the record even if delivery fails), then delivers it. */
-  async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue", from: From, logged = false) {
+  async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue", from: From, logged = false, media?: MediaRef[]) {
     // D135: what waits for the next turn (the save ask; the brief and progress after a
     // compaction) goes first, logged as the runner's own words.
     let sent = text;
@@ -396,9 +419,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       logInput(t, pre, "runner", "prefix");
       sent = `${pre}\n\n---\n\n${text}`;
     }
-    if (!logged) logInput(t, text, from, mode);
+    if (!logged) logInput(t, text, from, mode, undefined, media);
+    const pics = picturesFor(t, media);
+    if (pics.note) sent = `${sent}\n\n${pics.note}`;
     try {
-      await t.session!.send(sent, mode);
+      await t.session!.send(sent, mode, pics.images.length ? pics.images : undefined);
     } catch (err) {
       if (mode === "turn") t.running = false;
       logEvent(t, { role: "system", from: "runner", text: `delivery failed: ${preview(String(err), 500)}` });
@@ -985,7 +1010,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   /** Opens a task; `brief` still being written (a promise) starts the session before it arrives (D120). */
-  async function open(input: Parameters<Runner["openTask"]>[0], briefIn: string | Promise<string>): Promise<TaskCard> {
+  async function open(input: Parameters<Runner["openTask"]>[0], briefIn: string | Promise<string>, mediaIn?: Promise<MediaRef[]>): Promise<TaskCard> {
     const id = newId();
     // Who does it (D89): the person's rules, the limits and Use it for tasks, through core's
     // chooser; a pick this runner can't run (or no device info) keeps the old default.
@@ -1042,7 +1067,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const fixed = h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined;
     const model = (ranked && fixed) || input.model || fixed;
     const later = typeof briefIn !== "string";
-    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}) };
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(!later && input.media?.length ? { media: input.media } : {}), ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
     core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), ...(effort ? { effort } : {}), why: pick?.why ?? { kind: input.harness ? (you ? "you" : "partner") : "default" } } });
     const card: TaskCard = {
@@ -1068,7 +1093,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       console.warn(`[runner] ${id}: ${effortDropped}`);
       logEvent(t, { role: "system", from: "runner", text: effortDropped, raw: { effortDropped: input.effort } });
     }
-    const start: StartCtx = { body, later, briefIn, title, persona, partnerName };
+    const start: StartCtx = { body, later, briefIn, ...(mediaIn ? { mediaIn } : {}), title, persona, partnerName };
     if (away) {
       // D157: 在等 · MacBook 睡着了. It starts there when the computer is back (no push, A3).
       const asleep = pick?.waits === "asleep" || !!core.workers?.list().find((w) => w.id === away.id || w.name === away.name)?.asleep;
@@ -1094,6 +1119,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       await startSession(t, false);
       let first = kickoff(c.title);
       let briefText = c.body.brief;
+      let media = c.body.media;
       if (c.later) {
         // The session is up (or coming up) while the partner finishes the brief.
         let text: string;
@@ -1111,8 +1137,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
           return;
         }
         if (t.dropped) return;
+        media = c.mediaIn ? await c.mediaIn.catch(() => []) : undefined;
         // The briefed task_open is the one the registry, recovery and hand-offs read.
-        const full = { ...c.body, place: resolved.place, brief: text };
+        const full = { ...c.body, place: resolved.place, brief: text, ...(media?.length ? { media } : {}) };
         core.log.append({ persona: c.persona, stream: stream(id), origin: "system", kind: "task_open", body: full });
         t.base = { ...specFor(id, full, resolved.cwd, true), cwd: t.base.cwd };
         t.spec = withBrowser(t.base, t.sidecar, c.partnerName);
@@ -1122,7 +1149,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if (t.dropped) return;
       first = await withKnown(t, first, briefText);
       if (t.dropped) return;
-      await sendTurn(t, first, "runner");
+      await sendTurn(t, first, "runner", false, media?.length ? media : undefined);
     } catch (err) {
       if (isOffline(err)) return deviceLost(t, true);
       const reason = preview(err instanceof Error ? err.message : String(err), 500);
@@ -1339,6 +1366,25 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
     sweepArchive,
 
+    // D206: report_to_main `show`: each file read where the task runs (only from its own folders)
+    // and copied into the home's media; a file that can't be shown is a line back to the task.
+    async shown(taskId: string, paths: string[]) {
+      const t = tasks.get(taskId);
+      const media: MediaRef[] = [];
+      const refused: string[] = [];
+      if (!t || !core.media) return { media, refused: paths.length ? ["pictures can't be shown here"] : [] };
+      for (const path of paths) {
+        try {
+          const f = await t.ops.shown({ path, cwd: t.spec.cwd ?? "", taskId });
+          const ref = core.media.put(f.bytes, { name: f.name, from: { taskId }, files: true });
+          if (!media.some((m) => m.id === ref.id)) media.push(ref);
+        } catch (err) {
+          refused.push(preview(err instanceof Error ? err.message : String(err), 200) ?? "couldn't show it");
+        }
+      }
+      return { media, refused };
+    },
+
     async checkEvidence(taskId, evidence) {
       const t = tasks.get(taskId);
       // A worker's place lives on that machine: its refs stay the task's word for now.
@@ -1348,11 +1394,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
     openTask: (input) => open(input, input.brief),
     // D120: the card, the place and the session start while the partner still writes the brief.
-    openTaskEarly: (input, brief) => open({ ...input, brief: "" }, brief),
+    openTaskEarly: (input, brief, media) => open({ ...input, brief: "" }, brief, media),
 
-    async send(taskId, text, mode, from = "partner", clientId) {
+    async send(taskId, text, mode, from = "partner", clientId, media) {
       const t = get(taskId);
-      if (typeof text !== "string" || !text.trim()) throw new Error("send needs non-empty text");
+      if (typeof text !== "string" || (!text.trim() && !media?.length)) throw new Error("send needs non-empty text");
       if (t.dropped) throw new Error(`task ${taskId} was dropped`);
       await t.started.catch(() => {});
       t.nudged = false;
@@ -1363,10 +1409,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         const held = t.gated.text;
         t.gated = undefined;
         t.direct = true;
-        logInput(t, text, from, "turn", clientId);
+        logInput(t, text, from, "turn", clientId, media);
         logEvent(t, { role: "system", from: "runner", raw: { folder: { direct: true } } });
         if (!t.session) await startSession(t, !!t.sessionId);
-        await sendTurn(t, `${held}\n\n${noCopyAnswer(text)}`, "runner");
+        await sendTurn(t, `${held}\n\n${noCopyAnswer(text)}`, "runner", false, media);
         return { delivered: "prompted" };
       }
       if (!t.session) {
@@ -1376,7 +1422,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         // another agent) or a rejected resume, a new session from the brief + saved progress.
         // Resuming takes seconds (measured ~10 s for Claude Code): log the text now so the
         // transcript shows it at once; a resumed session is idle, so it becomes the next turn.
-        logInput(t, text, from, "turn", clientId);
+        logInput(t, text, from, "turn", clientId, media);
         const archived = t.residency === "archived";
         setState(t, currentAttention(t), "provisioning");
         let seed: string;
@@ -1390,24 +1436,24 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
           throw err;
         }
         setState(t, "working", "hot");
-        await sendTurn(t, seed ? seedThen(seed, text) : text, from, true);
+        await sendTurn(t, seed ? seedThen(seed, text) : text, from, true, media);
         return { delivered: "prompted" };
       }
       if (isBusy(t)) {
         if (mode !== "queue" && t.session!.canSteer) {
-          logInput(t, text, from, "steer", clientId);
-          await deliver(t, text, "steer", from, true);
+          logInput(t, text, from, "steer", clientId, media);
+          await deliver(t, text, "steer", from, true, media);
           return { delivered: "steered" };
         }
-        logInput(t, text, from, "queue", clientId);
-        await deliver(t, text, "queue", from, true);
+        logInput(t, text, from, "queue", clientId, media);
+        await deliver(t, text, "queue", from, true, media);
         return { delivered: "queued" };
       }
       // Idle: the text becomes the next turn. A finished or held task goes back to work.
       const a = currentAttention(t);
       if (a !== "working") setState(t, "working", "hot");
-      if (clientId) logInput(t, text, from, "turn", clientId);
-      await sendTurn(t, text, from, !!clientId);
+      if (clientId) logInput(t, text, from, "turn", clientId, media);
+      await sendTurn(t, text, from, !!clientId, media);
       return { delivered: "prompted" };
     },
 

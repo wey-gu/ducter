@@ -61,6 +61,8 @@ class MainActivity : ComponentActivity() {
     private var token: String? = null
     private var homeLine: String? = null // the key of the line shown, else null
     private lateinit var scanner: ActivityResultLauncher<ScanOptions>
+    /** D206: the page's 加图片 / Add images and the viewer's Save. */
+    private lateinit var pictures: Pictures
 
     private var loaded: String? = null
     private var phase = "loading" // loading · ready · unreachable
@@ -82,6 +84,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         store = Store(this)
         scanner = registerForActivityResult(ScanContract()) { r -> r.contents?.let { connect?.take(it) } }
+        pictures = Pictures(this)
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
         web = makeWebView()
@@ -154,6 +157,8 @@ class MainActivity : ComponentActivity() {
         settings.userAgentString = "${settings.userAgentString} DucterApp/${BuildConfig.VERSION_NAME}"
         overScrollMode = View.OVER_SCROLL_NEVER
         webViewClient = Client()
+        webChromeClient = pictures.chrome
+        setDownloadListener { url, _, contentDisposition, mime, _ -> pictures.download(url, contentDisposition, mime) }
         alpha = 0f
     }
 

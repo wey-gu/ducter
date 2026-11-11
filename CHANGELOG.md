@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+<!-- whats-new
+zh: 能给伙伴发图片了，事情做出来的图也直接出现在对话里
+en: Send screenshots and photos; what a task makes shows up in the conversation
+zh: 说「画一张…」就画给你，点开大图左右滑着看
+en: Ask it to draw something; tap a picture to see it big and swipe through
+-->
+
+**Pictures, both ways**
+- Send your partner a screenshot or a photo: the picture button, paste, or drag and drop, up to
+  10 at a time, in the conversation, in a task or with a New task. On your phone they're made
+  smaller and anything stored inside them (where a photo was taken, too) is removed before they
+  leave. If one doesn't go up, your words and the picture wait with **Retry**.
+- What a task makes worth seeing (a screenshot that shows it works, a picture it drew, a file)
+  appears under your partner's words. Say "draw…" and a task on Codex draws it.
+- Tap a picture to open it: pinch or double-tap to zoom, swipe through every picture, swipe down
+  to close; **Save**, **Share**, **Copy**, and **From** the task that made it. On the Mac, Space,
+  the arrow keys, ⌘C and drag to Finder.
+- An AI agent that can't see pictures says so when you start a task with some.
+
 **Your other AI agents: connect with one tap (needs Nowledge Mem 0.10.118 on the computer Ducter
 lives on)**
 - Settings › Partner › Your other AI agents now has **Connect**: Ducter uses your own Nowledge Mem

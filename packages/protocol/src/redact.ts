@@ -114,6 +114,8 @@ export function redactDeep<T>(v: T): T {
 }
 
 function walk(v: unknown, key: string): unknown {
+  // D206: media refs hold ids, keys and a data: preview, never words; a preview's base64 can look like a key.
+  if (key === "media" || key === "preview") return v;
   if (typeof v === "string") return SECRET_KEY.test(key) && v.length >= 8 ? HIDDEN : redact(v);
   if (Array.isArray(v)) {
     let changed = false;

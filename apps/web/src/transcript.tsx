@@ -15,6 +15,7 @@ import { A, effortWord } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { duration, harnessName, modelName } from "./format.ts";
 import { markdown } from "./markdown.ts";
+import { MediaBlock } from "./media.tsx";
 import { attention, effortOf, finished, harnessOf, modelOf, placeOf, type Task } from "./store.ts";
 import { manyComputers, taskWhere } from "./where.ts";
 
@@ -180,6 +181,7 @@ export function BriefCard({ task, blocks }: { task: Task; blocks: Block[] }) {
     <section class={`brief${open ? " open" : ""}`} aria-label={b.by === "you" ? t("task.asked.you") : t("task.asked", A.S.personaName)}>
       <small>{b.by === "you" ? t("task.asked.you") : t("task.asked", A.S.personaName)}</small>
       <div class="brief-text">{b.text}</div>
+      {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
       {(hidden || long) && (
         <div class="brief-foot">
           {hidden && (
@@ -282,6 +284,7 @@ function BlockView({ task, b }: { task: Task; b: Block }) {
       const sd = task.sends.find((s) => s.seq === b.seq);
       return (
         <div class="tx you">
+          {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
           {b.go !== undefined ? shortGo(b.go) : b.text}
           {sd?.delivered && <small>{t(`delivery.${sd.delivered}`)}</small>}
         </div>
@@ -292,6 +295,7 @@ function BlockView({ task, b }: { task: Task; b: Block }) {
         <div class="tx said">
           <small>{t("task.from.partner", A.S.personaName)}</small>
           {b.text}
+          {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
         </div>
       );
     case "report": {
@@ -300,6 +304,7 @@ function BlockView({ task, b }: { task: Task; b: Block }) {
         <div class="tx said">
           <small>{t(k, A.S.personaName)}</small>
           {b.text}
+          {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
         </div>
       );
     }
@@ -324,8 +329,16 @@ export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
   for (const sd of task.sends.filter((s) => !s.seq))
     items.push(
       <div key={`s${sd.at}`} class="tx you">
+        {sd.pics?.length ? <MediaBlock pics={sd.pics} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
         {sd.text}
-        <small>{sd.failed ? t("delivery.failed", sd.failed) : sd.delivered ? t(`delivery.${sd.delivered}`) : t("delivery.sending")}</small>
+        <small>
+          {sd.failed ? t("delivery.failed", sd.failed) : sd.delivered ? t(`delivery.${sd.delivered}`) : t("delivery.sending")}
+          {sd.failed && sd.retry && (
+            <button type="button" class="btn text sm" onClick={sd.retry}>
+              {t("media.retry")}
+            </button>
+          )}
+        </small>
       </div>,
     );
   return <div class="tx-list">{items}</div>;

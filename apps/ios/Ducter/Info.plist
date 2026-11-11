@@ -41,7 +41,13 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>To scan the QR code from ducter pair.</string>
+	<string>To scan the QR code from ducter pair, and to take a photo you send to Ducter.</string>
+	<!-- D206: the conversation's 加图片 / Add images (the page's file input: library, camera) and
+	     Save in the picture viewer (the share sheet's Save Image). -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>To send photos from your library to Ducter.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>To save a picture from the conversation to your Photos.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>To reach your Ducter when it runs on a computer at home.</string>
 	<key>UIAppFonts</key>

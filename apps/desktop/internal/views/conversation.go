@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -157,7 +158,7 @@ func (a *App) conversation(c *ui.Context) {
 		ui.Row(c).Justify(ui.Center).Padding(top, 0, 0, 0).Children(func() {
 			ui.Column(c).Grow(1).MaxWidth(convWidth).Children(func() {
 				if p := rows[i].pending; p != nil {
-					a.userBubble(c, p.text, true)
+					a.pendingRow(c, p)
 					return
 				}
 				if rows[i].presence {
@@ -344,8 +345,11 @@ func (a *App) summary(b store.Board) string {
 // thinking reports whether the partner owes an answer: the user's last
 // message has no ack or reply after it yet.
 func (a *App) thinking() bool {
-	if len(a.pending) > 0 {
-		return true
+	for _, p := range a.pending {
+		// D206: one whose picture didn't go up isn't with the partner yet.
+		if !anyFailed(p.atts) {
+			return true
+		}
 	}
 	for i := len(a.S.Channel) - 1; i >= 0; i-- {
 		e := a.S.Channel[i]
@@ -393,6 +397,33 @@ func (a *App) onHandButton(c *ui.Context, b store.Board) {
 	}
 }
 
+// pendingRow is a message not echoed yet: its pictures (with the ring while
+// they go up) and words; when a picture didn't go, one line with Retry, and
+// nothing is lost.
+func (a *App) pendingRow(c *ui.Context, p *pendingMsg) {
+	t := a.T
+	if len(p.atts) == 0 {
+		a.userBubble(c, p.text, true)
+		return
+	}
+	join := a.takeJoin()
+	ui.Column(c).Gap(t.S1).AlignItems(ui.End).Children(func() {
+		a.messageMedia(c, "p"+p.clientID, nil, p.atts, true, "conv")
+		if p.text != "" {
+			a.join = join
+			a.userBubble(c, p.text, true)
+		}
+		if anyFailed(p.atts) {
+			ui.Row(c.Key("pfail:" + p.clientID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, a.L.T("media.failed")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink)
+				if a.button(c, a.L.T("media.retry"), btnText, t.ControlSM, t.Bg) {
+					a.retryPictures(p.atts)
+				}
+			})
+		}
+	})
+}
+
 func (a *App) userBubble(c *ui.Context, text string, pending bool) {
 	t := a.T
 	join := a.takeJoin()
@@ -416,6 +447,18 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	t := a.T
 	switch {
 	case e.User != nil:
+		if len(e.User.Media) > 0 {
+			// D206: the pictures first, then the words, on the user's side.
+			join := a.takeJoin()
+			ui.Column(c).Gap(t.S1).Children(func() {
+				a.messageMedia(c, fmt.Sprint("u", e.FirstSeq), e.User.Media, nil, true, "conv")
+				if strings.TrimSpace(e.User.Text) != "" {
+					a.join = join
+					a.userBubble(c, e.User.Text, false)
+				}
+			})
+			return
+		}
 		a.userBubble(c, e.User.Text, false)
 	case e.AI != nil:
 		// The partner's words get the CJK-Latin gap at display time; a
@@ -424,6 +467,8 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			a.partnerBubble(c, a.takeJoin(), func() {
 				markdown.View(c, autospace(e.AI.Text), &a.md)
 			})
+			// D206: what a task showed, under the partner's words about it.
+			a.messageMedia(c, fmt.Sprint("a", e.FirstSeq), e.AI.Media, nil, false, "conv")
 			a.quiet(c, "m"+itoa(e.FirstSeq), a.replyTasks(e), "", a.notedFor(e))
 		})
 	case e.Job != nil:
@@ -687,30 +732,41 @@ func (a *App) composer(c *ui.Context) {
 		a.aboveComposer(c, func() { a.heldLine(c) })
 	}
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
-		box := ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S5).
+		box := ui.Column(c.Key("composer-box")).Grow(1).MaxWidth(convWidth).Padding(t.S2, t.S2, t.S2, t.S3).
 			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+		over := a.takeDrops(box, "conv") // D206: pictures dropped on the composer
 		box.Children(func() {
-			ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(a.L.T("composer.placeholder", a.S.PersonaName)).
-				Label(a.L.T("composer.label", a.S.PersonaName)).AutoFocus().
-				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
-				OnTextKey(func(k ui.TextKey) bool {
-					if k.Key == ui.KeyEnter && k.Mods == 0 {
-						if a.SendMessage(k.Text()) {
-							k.SetText("")
+			if over {
+				a.dropHint(c)
+			}
+			a.picTray(c, "conv")
+			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				a.addPicturesButton(c, "conv")
+				ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(a.L.T("composer.placeholder", a.S.PersonaName)).
+					Label(a.L.T("composer.label", a.S.PersonaName)).AutoFocus().
+					Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
+					OnTextKey(func(k ui.TextKey) bool {
+						if a.pictureKeys("conv", k) {
+							return true
 						}
-						return true
-					}
-					return false // Shift+Enter breaks the line
-				})
-			if a.focusComposer {
-				ta.Focus()
-				a.focusComposer = false
-			}
-			if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
-				if a.SendMessage(a.draft) {
-					a.draft = ""
+						if k.Key == ui.KeyEnter && k.Mods == 0 {
+							if a.SendMessage(k.Text()) {
+								k.SetText("")
+							}
+							return true
+						}
+						return false // Shift+Enter breaks the line
+					})
+				if a.focusComposer {
+					ta.Focus()
+					a.focusComposer = false
 				}
-			}
+				if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
+					if a.SendMessage(a.draft) {
+						a.draft = ""
+					}
+				}
+			})
 		})
 	})
 }

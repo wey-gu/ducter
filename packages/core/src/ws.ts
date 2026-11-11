@@ -3,7 +3,7 @@ import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { brainNow } from "./brain.ts";
 import { harnessName, isHarnessId, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
-import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
+import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, MediaRef, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
@@ -118,6 +118,12 @@ export function dropSuperseded(events: LogEvent[]): LogEvent[] {
 
 export function createWsHandler(deps: WsDeps) {
   const { core, decisions } = deps;
+  /** D206: the refs for the ids a client sent (throws on one the home doesn't hold). */
+  const mediaOf = (ids: unknown): MediaRef[] => {
+    if (ids === undefined || ids === null || (Array.isArray(ids) && !ids.length)) return [];
+    if (!core.media) throw new Error("Pictures can't be sent here.");
+    return (core.media as unknown as { refs(ids: unknown): MediaRef[] }).refs(ids);
+  };
   const { log, tasks } = core;
   const sockets = new Set<ServerWebSocket<WsData>>();
   const batchMs = deps.batchMs ?? 50;
@@ -332,14 +338,16 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "send": {
-        if (!f.text?.trim()) throw new Error("empty message");
         const dup = f.clientId ? seen.get(f.clientId) : undefined;
         if (dup != null) {
           // A resend (the client never saw its echo): don't append again, echo the original.
           send(ws, { t: "events", events: log.read({ fromSeq: dup, limit: 1 }) });
           return;
         }
-        log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: f.text, clientId: f.clientId } });
+        // D206: pictures come as ids the upload answered; words may be empty then.
+        const media = mediaOf(f.media);
+        if (!f.text?.trim() && !media.length) throw new Error("empty message");
+        log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: f.text ?? "", clientId: f.clientId, ...(media.length ? { media } : {}) } });
         return; // the partner is triggered by core's user_msg subscription
       }
       case "decide": {
@@ -374,7 +382,8 @@ export function createWsHandler(deps: WsDeps) {
       case "task_send": {
         const r = deps.runner();
         if (!r) throw new Error("runner is not available");
-        if (!f.text?.trim()) throw new Error("empty message");
+        const media = mediaOf(f.media);
+        if (!f.text?.trim() && !media.length) throw new Error("empty message");
         const target = tasks.get(f.taskId);
         if (!target) throw new Error(`unknown task ${f.taskId}`);
         // Before answeredByMessage: a dropped task's question must not be answered by a message
@@ -394,8 +403,8 @@ export function createWsHandler(deps: WsDeps) {
           if (inFlight) return void send(ws, { t: "sent", taskId: f.taskId, delivered: await inFlight });
         }
         // Answering the task directly answers its open question too (no later Go re-wakes it).
-        decisions.answeredByMessage(f.taskId, f.text, "user");
-        const delivering = r.send(f.taskId, f.text, undefined, "user", f.clientId).then((x) => x.delivered);
+        decisions.answeredByMessage(f.taskId, f.text ?? "", "user");
+        const delivering = r.send(f.taskId, f.text ?? "", undefined, "user", f.clientId, media.length ? media : undefined).then((x) => x.delivered);
         if (key) taskSending.set(key, delivering);
         try {
           send(ws, { t: "sent", taskId: f.taskId, delivered: await delivering });
@@ -767,6 +776,7 @@ export function createWsHandler(deps: WsDeps) {
             ...(typeof f.model === "string" && f.model ? { model: f.model } : {}),
             ...(typeof f.effort === "string" && f.effort ? { effort: f.effort } : {}),
             ...(f.when && typeof f.when === "object" && typeof f.when.kind === "string" ? { when: f.when } : {}),
+            ...(f.media?.length ? { media: mediaOf(f.media) } : {}),
           });
         if (id && !prior) {
           newTaskSeen.set(id, pending);

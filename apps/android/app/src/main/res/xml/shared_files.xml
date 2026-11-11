@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D206: a photo the camera takes for the conversation, in the app's cache (Pictures.kt). -->
+<paths>
+    <cache-path name="shots" path="shots/" />
+</paths>

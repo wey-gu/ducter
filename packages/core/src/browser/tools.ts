@@ -314,7 +314,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
 
   reg(
     "browser_screenshot",
-    "Save a picture of the current page as evidence (PNG in your evidence folder); returns its path to attach as {kind:\"file\"}.",
+    "Save a picture of the current page (PNG in your evidence folder); returns its path. To let the user see it, put the path in your report's `show`.",
     { type: "object", properties: { name: { type: "string" } } },
     async (args, taskId) => {
       const t = host.task(taskId)!;

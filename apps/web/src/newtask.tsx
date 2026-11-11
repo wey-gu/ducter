@@ -10,6 +10,7 @@ import { A, agentKey, effortWord, EVERY_HOURS, parseClock, placeKey, placeLine, 
 import { Coin } from "./coin.tsx";
 import { Btn, Choice, MenuRow, Pill, Seg } from "./controls.tsx";
 import { candName, candReason, coarse } from "./views.tsx";
+import { AddPictures, DropHint, Tray, useDropPaste } from "./media.tsx";
 import { harnessName } from "./format.ts";
 import { computerApart, computerOf, computers, manyComputers } from "./where.ts";
 
@@ -114,6 +115,10 @@ export function NewTaskSheet() {
   const close = () => ((A.sheet = null), A.changed());
   const ref = useRef<HTMLTextAreaElement>(null);
   const condRef = useRef<HTMLInputElement>(null);
+  // D206: a picture dropped or pasted on the What row goes to the task with the words.
+  const what = useRef<HTMLDivElement>(null);
+  const dropping = useDropPaste(what, "new");
+  const withPics = (A.picks.get("new") ?? []).length > 0;
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (e.key === "Escape") return nt.list ? ((nt.list = ""), A.changed()) : close();
@@ -177,7 +182,8 @@ export function NewTaskSheet() {
       <div class="sheet newtask" role="dialog" aria-modal="true" aria-label={t("newtask.title")}>
         <div class="grab" />
         <h2>{t("newtask.title")}</h2>
-        <div class="nt-what">
+        <div class="nt-what" ref={what}>
+          <DropHint on={dropping} />
           <textarea
             ref={ref}
             id="nt-words"
@@ -187,7 +193,11 @@ export function NewTaskSheet() {
             placeholder={t("newtask.placeholder")}
             onInput={(e) => ((nt.words = (e.target as HTMLTextAreaElement).value), (nt.err = ""), (nt.started = ""), A.changed())}
           />
-          <div class="small sub">{t("newtask.verbatim")}</div>
+          <Tray where="new" />
+          <div class="nt-what-foot">
+            <div class="small sub">{t("newtask.verbatim")}</div>
+            <AddPictures where="new" />
+          </div>
         </div>
         <div class="nt-pills">
           <Pill label={placeName() ?? ""} about={t("newtask.where")} open={nt.list === "place"} onClick={() => A.togglePlaces()}>
@@ -321,7 +331,8 @@ export function NewTaskSheet() {
               const off = !!c.blocked && !away;
               const best = !!top && agentKey(top) === k;
               const on = !off && !!who && k === agentKey(who);
-              const line = away ? awayLine(c) : candReason(c);
+              // D206: with pictures on the card, an agent that can't see them says so.
+              const line = withPics && c.noImages && !off ? t("media.noImages") : away ? awayLine(c) : candReason(c);
               const name = harnessName(c.harness);
               return (
                 <div key={k} class="nt-agent">

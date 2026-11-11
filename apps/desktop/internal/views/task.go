@@ -315,6 +315,10 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 				ui.Text(c, autospace(rest)).FontSize(t.PartnerSize).LineHeight(leadingFor(rest, 1.65)).TextColor(t.InkSoft).MaxWidth(readMeasure)
 			}
 		}
+		// D206: what it showed: its pictures and files, under the outcome.
+		if rep != nil && len(rep.Media) > 0 {
+			a.messageMedia(c, "outcome", rep.Media, nil, false, "task:"+task.ID)
+		}
 		evs := task.Evidence
 		if rep != nil && len(rep.Evidence) > 0 {
 			evs = rep.Evidence
@@ -384,30 +388,43 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 		a.aboveComposer(c, func() { a.decisionCard(c, d, task.ID) })
 	}
 	draft := a.taskDrafts[task.ID]
+	tray := "task:" + task.ID
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
-		ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S5).
-			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
-			ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task")).
-				Label(a.L.T("composer.task")).
-				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
-				OnTextKey(func(k ui.TextKey) bool {
-					if k.Key == ui.KeyEnter && k.Mods == 0 {
-						if a.SendToTask(task.ID, k.Text()) {
-							k.SetText("")
+		box := ui.Column(c.Key("taskcomposer-box")).Grow(1).MaxWidth(convWidth).Padding(t.S2, t.S2, t.S2, t.S3).
+			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+		over := a.takeDrops(box, tray) // D206
+		box.Children(func() {
+			if over {
+				a.dropHint(c)
+			}
+			a.picTray(c, tray)
+			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				a.addPicturesButton(c, tray)
+				ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task")).
+					Label(a.L.T("composer.task")).
+					Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
+					OnTextKey(func(k ui.TextKey) bool {
+						if a.pictureKeys(tray, k) {
+							return true
 						}
-						return true
-					}
-					return false
-				})
-			if a.focusComposer {
-				ta.Focus()
-				a.focusComposer = false
-			}
-			if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
-				if a.SendToTask(task.ID, draft) {
-					draft = ""
+						if k.Key == ui.KeyEnter && k.Mods == 0 {
+							if a.SendToTask(task.ID, k.Text()) {
+								k.SetText("")
+							}
+							return true
+						}
+						return false
+					})
+				if a.focusComposer {
+					ta.Focus()
+					a.focusComposer = false
 				}
-			}
+				if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
+					if a.SendToTask(task.ID, draft) {
+						draft = ""
+					}
+				}
+			})
 		})
 	})
 	a.taskDrafts[task.ID] = draft
@@ -415,7 +432,7 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 
 // sentBubble is what the user said straight into the task, with how it
 // was delivered: steered into this turn, as the next turn, or queued.
-func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send) {
+func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, media ...protocol.MediaRef) {
 	t := a.T
 	note, failed, waiting := "", false, false
 	if sd != nil {
@@ -431,13 +448,29 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send) {
 			c.After(4*time.Second - a.Now().Sub(sd.At))
 		}
 	}
+	if len(media) == 0 && sd != nil {
+		media = sd.Media
+	}
 	ui.Column(c).Gap(t.S1).AlignItems(ui.End).Children(func() {
-		r := t.BubbleRadius
-		b := ui.Text(c, text).FontSize(t.MD).LineHeight(1.5).TextColor(t.OnUserBubble).Background(t.UserBubble).
-			Padding(9, t.S3).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80).Selectable()
-		if waiting {
-			b.Opacity(0.7)
+		if len(media) > 0 {
+			key := "s"
+			if sd != nil {
+				key += sd.ClientID
+			}
+			a.messageMedia(c, key, media, nil, true, "task:"+a.TaskID)
 		}
+		if text == "" {
+			goto note
+		}
+		{
+			r := t.BubbleRadius
+			b := ui.Text(c, text).FontSize(t.MD).LineHeight(1.5).TextColor(t.OnUserBubble).Background(t.UserBubble).
+				Padding(9, t.S3).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80).Selectable()
+			if waiting {
+				b.Opacity(0.7)
+			}
+		}
+	note:
 		if note == "" {
 			return
 		}

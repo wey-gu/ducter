@@ -111,6 +111,16 @@ button and a text Cancel (`disconnectConfirm` in `views/devupdate.go`, `.dev-cut
 Used by 断开 / Disconnect and by an agent's Nowledge Mem line in its coin detail (D169, `views/memplugin.go`,
 `MemAction` in `apps/web/src/devcard.tsx`), drawn through the coin detail's `coinLines` (its line) and `coinActions` (its action) slots; a new action of that kind uses it, not a new control.
 
+**Pictures (D206, `media.md`).** A message's pictures sit in one rounded box (`--r-pics`, the 18
+of the radius scale), tiles `--pic-gap` (2) apart, laid out by `gridLayout` (one at its own shape,
+2–4 in a grid, "+n" on a `--pic-dim` veil). One picture fits `--pics-w` (~70% of the column) and
+`--pics-h` (~a third of the screen). Space is kept from the picture's size; its blurred preview
+(else `sunken`) fades to it over `t-med`. The user's stand above their bubble, a task's under the
+partner's. A file is a white card on the clay base, one line. The upload ring is white on
+`--ring-back`. The viewer lies on the theme's paper (`--viewer-scrim`: Pebble's paper at 97%, the
+dark ground at 96%), its controls text buttons in ink; it grows out of the tile and shrinks back,
+and only fades under reduced motion. Mac: `Lightbox`, `LightboxInk`, `MediaGap`.
+
 **Task lines.** A task line says its title once, then where it stands: the job's status line
 when it adds something, else the state (a status line that only repeats the title falls back to
 the state). A finished task reads 做完了 / Done: `done?` shows as Done until something actually

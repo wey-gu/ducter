@@ -75,6 +75,8 @@ type Send struct {
 	Failed string
 	// At is when the user sent it (set by the app).
 	At time.Time
+	// Media are the pictures sent with it (D206), shown until its echo.
+	Media []protocol.MediaRef
 }
 
 // CheckpointAt is a checkpoint with its time.

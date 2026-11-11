@@ -693,7 +693,7 @@ Never accept terms, solve CAPTCHAs, submit a form that sends, posts, books, or b
 
 - Attach every page you relied on as {kind:"url", label:"<page title>", ref:"<url>"}.
 - Links the user asked for (results, articles, products) also go in evidence, one {kind:"url"} each, labelled with their title. The summary is cut at 600 characters, so never rely on it to carry URLs.
-- A screenshot is welcome when the look of the page matters: \`browser_screenshot\`, then attach {kind:"file", label:"screenshot", ref:"<the path it returned>"} (it saves under ${b.evidenceDir}/).
+- A screenshot is welcome when the look of the page matters: \`browser_screenshot\`, then put the path it returned in your report's \`show\` (it saves under ${b.evidenceDir}/), so the user sees it.
 `;
 }
 
@@ -753,7 +753,7 @@ When the answer arrives, read the page again before you report: never report wha
 
 - Attach every page you relied on as {kind:"url", label:"<page title>", ref:"<url>"}.
 - Links the user asked for (results, articles, products) also go in evidence, one {kind:"url"} each, labelled with their title. The summary is cut at 600 characters, so never rely on it to carry URLs.
-- A screenshot is welcome when the look of the page matters: save it under ${b.evidenceDir}/ and attach {kind:"file", label:"screenshot", ref:"<path>"}. If you cannot, URLs are enough.
+- A screenshot is welcome when the look of the page matters: save it under ${b.evidenceDir}/ and put its path in your report's \`show\`. If you cannot, URLs are enough.
 `;
 }
 
@@ -801,7 +801,7 @@ When the answer arrives, the browser may have closed while you waited (it closes
 - Links the user asked for (results, articles, products) also go in evidence, one {kind:"url"} each, labelled with their title. The summary is cut at 600 characters, so never rely on it to carry URLs.
 - A screenshot is welcome when the look of the page matters. Take it from your shell (needs the pid and window_id from step 2):
   \`${b.bin} call get_window_state '{"pid":<pid>,"window_id":<id>}' --socket ${b.socket} --screenshot-out-file ${b.evidenceDir}/<name>.png > /dev/null\`
-  then attach {kind:"file", label:"screenshot", ref:"${b.evidenceDir}/<name>.png"}. If it fails, URLs are enough.
+  then put "${b.evidenceDir}/<name>.png" in your report's \`show\`. If it fails, URLs are enough.
 `;
 }
 

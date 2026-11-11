@@ -1,6 +1,8 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
-import { TUWA_MCP, WATCH_LIVE } from "@ducter/protocol";
+import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/protocol";
+import { prepare, upload, type Pic, type ViewerState } from "./media-up.ts";
+import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
@@ -293,7 +295,12 @@ class AppState {
   api!: Api;
   conn?: Connection;
   base!: URL;
-  pending: { clientId: string; text: string }[] = [];
+  /** Messages sent and not yet echoed. pics (D206): pictures still going up; failed: one didn't, Retry sends. */
+  pending: { clientId: string; text: string; pics?: Pic[]; failed?: boolean }[] = [];
+  /** D206: pictures picked for a message not sent yet: "" the conversation, a task id, "new" the New task card. */
+  picks = new Map<string, Pic[]>();
+  /** D206: the picture viewer, when open. */
+  viewer?: ViewerState;
   draft = "";
   taskDrafts = new Map<string, string>();
   replyOpen = new Set<string>();
@@ -494,7 +501,8 @@ class AppState {
       // messages go again, in order (core dedupes them, so none shows or lands twice).
       if (this.actSent.size) this.inDoubt = new Map([...(this.inDoubt ?? []), ...this.actSent]);
       this.actSent.clear();
-      for (const r of this.S.resends(this.pending)) this.send(r);
+      // A message whose pictures are still going up goes when they are (afterUpload).
+      for (const r of this.S.resends(this.pending.filter((p) => !p.pics || p.pics.every((x) => x.ref)).map((p) => ({ ...p, media: p.pics?.map((x) => x.ref!.id) })))) this.send(r);
       // D204: a clone in flight goes again with its id: the home answers the same clone, not a second.
       const k = this.nt.clone;
       if (k?.cid) {
@@ -998,9 +1006,14 @@ class AppState {
     const { model, effort, listed } = this.ntSendTune(c);
     const sendModel = model ?? (listed ? undefined : c?.model);
     const who = c && (picked || (nt.pick && nt.computer) || model || effort) ? { harness: c.harness, ...(sendModel ? { model: sendModel } : {}), ...(effort ? { effort } : {}) } : {};
-    nt.sending = `n${Date.now()}-${++this.nextClient}`;
+    const sending = (nt.sending = `n${Date.now()}-${++this.nextClient}`);
     nt.err = "";
-    this.send({ t: "task_new", words, ...(place ? { place } : {}), ...who, clientId: nt.sending, ...(when ? { when } : {}) });
+    // D206: the pictures on the What row go with the words, once they are up.
+    this.afterUpload(
+      this.picks.get("new") ?? [],
+      (media) => nt.sending === sending && this.send({ t: "task_new", words, ...(place ? { place } : {}), ...who, clientId: sending, ...(when ? { when } : {}), ...(media.length ? { media } : {}) }),
+      () => nt.sending === sending && ((nt.sending = ""), (nt.err = this.L.t("media.failed")), this.changed()),
+    );
     this.changed();
     return true;
   }
@@ -1013,11 +1026,13 @@ class AppState {
       if (nt.again) {
         // ⇧⌘↩ (D185): the sheet stays, empty, with the same place, who and when, saying what started.
         nt.words = nt.condition = nt.err = "";
+        this.picks.delete("new");
         if (f.routine) nt.started = this.L.t("newtask.scheduled", f.routine.triggerWords, f.routine.name);
         else (nt.started = this.L.t("newtask.opened", f.card?.title ?? "")), (nt.startedTask = f.taskId ?? "");
         return this.changed();
       }
       this.nt = freshDraft();
+      this.picks.delete("new");
       this.sheet = null;
       // A start later or on a schedule lives on On hand (its routine card).
       return f.taskId ? this.go({ name: "task", id: f.taskId }) : this.go({ name: "onhand" });
@@ -1360,34 +1375,137 @@ class AppState {
 
   sendMessage(text: string, force = false): boolean {
     text = text.trim();
-    if (!text) return false;
-    if (!force && looksSecret(text)) {
+    const pics = this.picks.get("") ?? [];
+    if (!text && !pics.length) return false;
+    if (text && !force && looksSecret(text)) {
       this.held = { text };
       this.changed();
       return false;
     }
     this.held = undefined;
     const clientId = `p${Date.now()}-${++this.nextClient}`;
-    this.pending.push({ clientId, text });
+    const p: AppState["pending"][number] = { clientId, text, ...(pics.length ? { pics } : {}) };
+    this.picks.delete("");
+    this.pending.push(p);
     this.thinkingSince = Date.now();
     this.markRead();
-    this.send({ t: "send", text, clientId });
+    // D206: the pictures went up when they were picked; one still going holds the message (with its words).
+    this.afterUpload(pics, (media) => this.send({ t: "send", text, clientId, ...(media.length ? { media } : {}) }), () => ((p.failed = true), this.changed()));
     this.changed();
     return true;
   }
 
+  // ---------- pictures (D206) ----------
+
+  /** Pictures picked, pasted or dropped: made ready on this phone and sent up at once. */
+  addFiles(where: string, files: File[]) {
+    const { pics, other } = picturesIn(files);
+    if (other && !pics.length) return this.toast(this.L.t("media.notImage"));
+    const list = this.picks.get(where) ?? [];
+    const room = MEDIA_LIMITS.perMessage - list.length;
+    if (pics.length > room) this.toast(this.L.t("media.tooMany", MEDIA_LIMITS.perMessage));
+    for (const file of pics.slice(0, Math.max(0, room))) {
+      const pic: Pic = { key: `m${Date.now()}-${++this.nextClient}`, name: file.name || "image.jpg", local: URL.createObjectURL(file), w: 4, h: 3, state: "preparing", progress: 0, file };
+      list.push(pic);
+      void this.lift(pic);
+    }
+    this.picks.set(where, list);
+    haptic("light");
+    this.changed();
+  }
+
+  private async lift(pic: Pic) {
+    pic.state = "preparing";
+    pic.error = undefined;
+    this.changed();
+    try {
+      pic.prepared ??= await prepare(pic.file);
+      pic.w = pic.prepared.w;
+      pic.h = pic.prepared.h;
+      pic.state = "uploading";
+      this.changed();
+      const name = pic.name.replace(/\.(heic|heif)$/i, ".jpg");
+      pic.ref = await upload(pic.prepared, name, (f) => ((pic.progress = f), this.changed()));
+      pic.progress = 1;
+      pic.state = "done";
+    } catch (err) {
+      pic.state = "failed";
+      pic.error = (err as Error).message;
+    }
+    this.changed();
+    for (const fn of this.lifted.splice(0)) fn();
+  }
+  private lifted: (() => void)[] = [];
+
+  /** Runs `then` with the ids once every picture is up; `fail` once one didn't make it (Retry tries again). */
+  afterUpload(pics: Pic[], then: (media: string[]) => void, fail: () => void) {
+    const check = () => {
+      if (pics.every((p) => p.state === "done" && p.ref)) return then(pics.map((p) => p.ref!.id)), true;
+      if (pics.some((p) => p.state === "failed")) return fail(), true;
+      return false;
+    };
+    if (check()) return;
+    const wait = () => {
+      if (!check()) this.lifted.push(wait);
+    };
+    this.lifted.push(wait);
+  }
+
+  removePic(where: string, key: string) {
+    const list = (this.picks.get(where) ?? []).filter((p) => {
+      if (p.key === key) URL.revokeObjectURL(p.local);
+      return p.key !== key;
+    });
+    if (list.length) this.picks.set(where, list);
+    else this.picks.delete(where);
+    this.changed();
+  }
+
+  retryPic(where: string, key: string) {
+    const p = this.picks.get(where)?.find((x) => x.key === key);
+    if (p) void this.lift(p);
+  }
+
+  /** A message held for a picture that didn't go up: try that picture again, then send it all. */
+  retryPending(clientId: string) {
+    const p = this.pending.find((x) => x.clientId === clientId);
+    if (!p?.pics) return;
+    p.failed = false;
+    for (const x of p.pics) if (x.state === "failed") void this.lift(x);
+    this.afterUpload(p.pics, (media) => this.send({ t: "send", text: p.text, clientId, ...(media.length ? { media } : {}) }), () => ((p.failed = true), this.changed()));
+    this.changed();
+  }
+
+  /** The New task card's pictures, once up (D206: they go to the task with the words). */
+  newTaskMedia(): { ready: boolean; ids: string[] } {
+    const pics = this.picks.get("new") ?? [];
+    return { ready: pics.every((p) => p.state === "done" && p.ref), ids: pics.flatMap((p) => (p.ref ? [p.ref.id] : [])) };
+  }
+
   sendToTask(id: string, text: string, force = false): boolean {
     text = text.trim();
-    if (!text) return false;
-    if (!force && looksSecret(text)) {
+    const pics = this.picks.get(id) ?? [];
+    if (!text && !pics.length) return false;
+    if (text && !force && looksSecret(text)) {
       this.held = { taskId: id, text };
       this.changed();
       return false;
     }
     this.held = undefined;
     const clientId = `t${Date.now()}-${++this.nextClient}`;
-    this.S.addSend(id, text, Date.now(), clientId);
-    this.send({ t: "task_send", taskId: id, text, clientId });
+    const sd = this.S.addSend(id, text, Date.now(), clientId);
+    if (pics.length) (sd.pics = pics), this.picks.delete(id);
+    const go = () =>
+      this.afterUpload(
+        pics,
+        (media) => {
+          sd.failed = undefined;
+          if (media.length) sd.media = media;
+          this.send({ t: "task_send", taskId: id, text, clientId, ...(media.length ? { media } : {}) });
+        },
+        () => ((sd.failed = this.L.t("media.failed")), (sd.retry = () => (pics.forEach((p) => p.state === "failed" && void this.lift(p)), (sd.failed = undefined), go(), this.changed())), this.changed()),
+      );
+    go();
     this.changed();
     return true;
   }
@@ -1587,7 +1705,8 @@ class AppState {
 
   /** The partner owes an answer: the user's last message has no ack or reply after it. */
   thinking(): boolean {
-    if (this.pending.length) return true;
+    // A message held for a picture that didn't go up isn't with the partner yet (D206).
+    if (this.pending.some((p) => !p.failed)) return true;
     for (let i = this.S.channel.length - 1; i >= 0; i--) {
       const e = this.S.channel[i]!;
       // A turn that ended after the message without a word (an ask, or nothing to say) answered it.

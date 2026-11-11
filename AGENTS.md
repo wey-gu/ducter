@@ -71,6 +71,7 @@ Design notes:
 - `ui.md`: themes, tokens, zoom levels, canvases.
 - `bridge.md`: Nowledge Bridge, agents Ducter didn't start (draft).
 - `where.md`: which computer a task runs on, said and changed with who (D157).
+- `media.md`: pictures and files both ways, the viewer, drawing (D206).
 - `autofill.md`: saved sign-ins, cards and details, filled by reference; the Pay card (D191).
 - `android.md`: the Android app, its self-update and foldable layout (D178–D182).
 - `product-model.md`: see above.

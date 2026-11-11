@@ -115,8 +115,10 @@ export function codexCleanArgs(config: CodexConfig | undefined, keep: string[] =
   const names = Object.keys(config?.mcp_servers ?? {}).filter((n) => !keepServers.includes(n));
   const key = (n: string) => (/^[A-Za-z0-9_-]+$/.test(n) ? n : JSON.stringify(n));
   const native = ["computer_use", "browser_use"];
+  // D206: a task keeps Codex's image generation (画一张… / Draw…: the picture comes back in its
+  // report); the partner never draws itself, it opens a task for that.
   const off = ["hooks", "codex_hooks", "plugin_hooks", "plugins", "apps", "memories", "js_repl", "goals", "multi_agent", "image_generation", ...native].filter(
-    (f) => !(o.nativeTools && (f === "plugins" || f === "plugin_hooks" || native.includes(f))),
+    (f) => !(o.nativeTools && (f === "plugins" || f === "plugin_hooks" || f === "image_generation" || native.includes(f))),
   );
   // Plugin ids that a dotted -c path can name (an id with a dot can't be addressed bare).
   const plugins = o.nativeTools
@@ -650,15 +652,20 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId): Harnes
       const st = s.status().value;
       return st.kind === "running" || st.pendingPrompt != null;
     },
-    async send(text, mode = "turn") {
+    async send(text, mode = "turn", pics) {
       const input = framed(text);
+      // D206: the runtime's own image input; a runtime that takes none gets the words only (the
+      // runner already told an agent that can't see them, so this is the last guard).
+      const images = pics?.length && s.capabilities?.images !== false ? pics.map((p) => ({ path: p.path, mediaType: p.mediaType })) : undefined;
+      const o = { origin: { kind: "user" as const, source: "ducter" }, ...(images ? { images } : {}) };
       if (mode === "turn") {
-        reject("prompt", await s.prompt(input, { origin: { kind: "user", source: "ducter" } }));
+        reject("prompt", await s.prompt(input, o));
       } else if (mode === "steer") {
-        const r = await s.steerOrQueue(input, { origin: { kind: "user", source: "ducter" } });
+        // A steer at a cursor takes no images: they go with the next turn instead (OAR rejects them there).
+        const r = await s.steerOrQueue(input, o);
         if (r.landed === "rejected") throw new Error(`steer rejected: ${r.reason}`);
       } else {
-        reject("queue", await s.queue(input, { origin: { kind: "user", source: "ducter" } }));
+        reject("queue", await s.queue(input, o));
       }
     },
     async interrupt() {

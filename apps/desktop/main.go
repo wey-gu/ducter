@@ -352,6 +352,7 @@ func main() {
 			},
 		})
 		app.Send = c.Send
+		app.Media = mediaHands{win: win, c: c} // D206: pictures
 		app.URL = c.URL()
 		app.RetryNow = c.RetryNow
 		app.NextAttempt = c.NextAttempt

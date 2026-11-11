@@ -9,6 +9,8 @@ export * from "./proactive.ts";
 export * from "./saved.ts";
 import type { FillAsk, PayAsk, SavedFrame, SavedInput } from "./saved.ts";
 export * from "./phone.ts";
+export * from "./media.ts";
+import type { MediaRef } from "./media.ts";
 import type { CallBody, CallPlan, CallView, PhoneView, SignInView } from "./phone.ts";
 import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveMode, ReadLine, SourceLook } from "./proactive.ts";
 import type { BodyWhy, Candidate, RuleView, TaskBody, TaskNeeds } from "./loadout.ts";
@@ -193,10 +195,12 @@ export interface SignInAsk {
 }
 
 export interface Bodies {
-  user_msg: { text: string; clientId?: string };
+  // D206: media = the pictures the user sent with it (text may be empty then).
+  user_msg: { text: string; clientId?: string; media?: MediaRef[] };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
-  ai_msg: { text: string; replyTo?: number; decisionId?: string };
+  // media (D206): what a task showed, relayed with the partner's words about it.
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[] };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string };
   living_msg: { items: LivingItem[] }; // supersedes the previous living_msg while unread
@@ -239,6 +243,8 @@ export interface Bodies {
     brief: string;
     bodyReason?: string; // why this harness/model
     language?: "zh" | "en"; // the language the user reads its reports in (the brief says so)
+    // D206: the pictures the brief carries (the user's, handed on); the first turn gives them to the agent.
+    media?: MediaRef[];
     // D128: "you" = the user opened it themselves (开一件事 / New task, `ducter task`); the brief
     // is their words as they are. Absent = the partner opened it.
     origin?: "you";
@@ -256,6 +262,7 @@ export interface Bodies {
     from?: "user" | "partner" | "runner";
     text?: string;
     clientId?: string; // a user's task_send carries the client's id (resends are deduped by it)
+    media?: MediaRef[]; // D206: pictures sent into the task with the text
     tool?: { name: string; input?: unknown; output?: string; ok?: boolean };
     thinking?: string[]; // a stretch of the model's thinking: its headings only, never its text (D127)
     usage?: Usage; // present on turn ends
@@ -276,6 +283,9 @@ export interface Bodies {
     /** D168: what the task thinks is worth remembering about the user (at most 3). A task never
      *  writes to Mem itself: the partner distills these and writes with the task's provenance. */
     remember?: RememberNote[];
+    /** D206: what the task chose to show the user (screenshots, generated images, files it
+     *  made), copied into the home's media store by Ducter. */
+    media?: MediaRef[];
   };
   checkpoint: { taskId: string; text: string; gitRef?: string };
   // A waiter is a cheap wait that wakes the partner (wait_until). Shown on On hand as a compact row.
@@ -644,12 +654,13 @@ export type ClientFrame =
   // version: the Ducter version the client runs (the Mac app's); newer than the home's latest
   // release makes the home read GitHub again (its answer is stale).
   | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string }
-  | { t: "send"; text: string; clientId: string }
+  // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
+  | { t: "send"; text: string; clientId: string; media?: string[] }
   // cvc (D191): a pay card's security code when none is kept; held in memory for that one
   // payment's fill, never logged.
   | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
-  | { t: "task_send"; taskId: string; text: string; clientId?: string }
+  | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[] }
   // merge: integrate the task branch into its base branch (local, reversible by revert);
   // open_pr: push the branch and open a draft PR (an intent: external effect, see G-safety).
   // The server acks every task_action with {t:"action_result"}.
@@ -764,7 +775,7 @@ export type ClientFrame =
   // (task_new_result carries routineId, no taskId); when / until open it now with its wait or loop.
   // D202: model and effort only when the user picked other than the defaults (an effort the model
   // doesn't list is dropped, with a line in the task, never sent).
-  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen }
+  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen; media?: string[] }
   // D186: add a folder on the home's computer as a project (a repo or not). Answered with
   // project_add_result; On hand's projects and the card's places then include it. device (D197):
   // the folder is on that worker (the Mac app's own, when the home is elsewhere), read there.

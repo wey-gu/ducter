@@ -140,8 +140,13 @@ type Tokens struct {
 	Raised, Floating                          Elevation
 	// Scrim dims the page under a dialog (the New task card), in warm
 	// dark; the phone's sheet scrim (--scrim) is lighter still.
-	Scrim             ui.Color
-	Drop, DropPressed Elevation
+	Scrim ui.Color
+	// Lightbox dims the page under the picture viewer (D206): the paper
+	// gives way to warm dark so the picture is what you see; LightboxInk is
+	// the bar's words and marks on it, MediaGap the hairline between tiles.
+	Lightbox, LightboxInk ui.Color
+	MediaGap              float32
+	Drop, DropPressed     Elevation
 
 	// motion: Snappy for hover and lift, PressDur for a press, EnterDur
 	// for a screen or a notice coming in, Bouncy for the living message
@@ -256,6 +261,9 @@ func Pebble() *Tokens {
 		Raised:         Elevation{Y: 4, Blur: 0, Color: hex("#E8D9C4")},
 		Floating:       Elevation{Y: 10, Blur: 32, Color: hex("#2B2118").Alpha(0.14)},
 		Scrim:          hex("#3C2814").Alpha(0.14),
+		Lightbox:       hex("#1A130D").Alpha(0.92),
+		LightboxInk:    hex("#FFF6EA"),
+		MediaGap:       3,
 		Drop:           Elevation{Y: 7, Blur: 12, Color: hex("#2B2118").Alpha(0.28)},
 		DropPressed:    Elevation{Y: 1, Blur: 3, Color: hex("#2B2118").Alpha(0.22)},
 

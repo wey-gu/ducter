@@ -1,6 +1,6 @@
 // Task-role Ducter MCP tools: report_to_main and checkpoint. Core serves them at /mcp; this
 // registers the handlers. Call once at wiring time (main.ts) unless core registers its own.
-import type { Attention, Bodies, BranchChanges, EvidenceRef, FolderSummary, Question, RememberNote } from "@ducter/protocol";
+import { MEDIA_LIMITS, type Attention, type Bodies, type BranchChanges, type EvidenceRef, type FolderSummary, type MediaRef, type Question, type RememberNote } from "@ducter/protocol";
 import type { CoreApi } from "@ducter/protocol/src/internal.ts";
 
 const SUMMARY_MAX = 600;
@@ -45,6 +45,13 @@ export const reportToMainSchema = {
         },
         required: ["kind", "label", "ref"],
       },
+    },
+    show: {
+      type: "array",
+      maxItems: MEDIA_LIMITS.perReport,
+      description:
+        "Files the user should see with this report, as paths: a screenshot that shows the result, a picture you generated or drew, a file you made for them. They appear in the conversation. Only what shows the outcome or what they asked to see, never everything you read or tried. Paths in your working folder, your evidence folder, or where your image tool saved a picture.",
+      items: { type: "string" },
     },
     remember: {
       type: "array",
@@ -119,7 +126,17 @@ export function normalizeReport(taskId: string, args: any): Bodies["report"] {
   return { taskId, state, summary, questions, evidence, ...(remember.length ? { remember } : {}) };
 }
 
+/** D206: the paths a report shows, cut to the limit; empty ones dropped. */
+export function normalizeShow(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  const paths = v.map((x) => (typeof x === "string" ? x : typeof x?.path === "string" ? x.path : "").trim()).filter((p) => p && p.length <= 1024);
+  return [...new Set(paths)].slice(0, MEDIA_LIMITS.perReport);
+}
+
 export interface TaskToolOptions {
+  /** D206: copies the files a report shows into the home's media store (the runner's shown):
+   *  what could be shown, and a line for each that couldn't. */
+  shown?(taskId: string, paths: string[]): Promise<{ media: MediaRef[]; refused: string[] } | undefined>;
   /** What the task's branch holds that its base doesn't, checked when a done or failed report
    *  lands (the runner's branchChanges). Clients offer Merge / Open draft PR only when it has some. */
   branchChanges?(taskId: string): Promise<BranchChanges | undefined>;
@@ -172,6 +189,14 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
         const folder = opts.folderChanges ? await inTime(opts.folderChanges(ctx.taskId)) : undefined;
         if (folder) body.folder = folder;
       }
+      // D206: what the task shows the user, copied in before the report is logged (the Log keeps refs).
+      const show = normalizeShow(args?.show);
+      let refused: string[] = [];
+      if (show.length && opts.shown) {
+        const r = await opts.shown(ctx.taskId, show).catch((err) => ({ media: [] as MediaRef[], refused: [String((err as Error)?.message ?? err)] }));
+        if (r?.media.length) body.media = r.media;
+        refused = r?.refused ?? [];
+      }
       // The mechanical check of done? -> done; a check that can't finish in time leaves refs unchecked.
       if (body.state === "done" && body.evidence.length && opts.checkEvidence) {
         const checked = await inTime(opts.checkEvidence(ctx.taskId, body.evidence));
@@ -181,9 +206,10 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
       const card = core.tasks.get(ctx.taskId);
       // No reason text: task_state.reason is user-facing copy (decisions.ts sets blocked/failed ones).
       core.tasks.setState(ctx.taskId, ATTENTION[body.state], card?.residency ?? "hot");
+      const notShown = refused.length ? ` Not shown: ${refused.join("; ")}.` : "";
       return body.state === "progress"
-        ? "Reported. Keep working."
-        : "Reported. End your turn now; any answer will arrive as a new message.";
+        ? `Reported.${notShown} Keep working.`
+        : `Reported.${notShown} End your turn now; any answer will arrive as a new message.`;
     },
   );
   core.mcp.register("task", "checkpoint", "Record where the work stands after a meaningful step.", checkpointSchema, async (args, ctx) => {

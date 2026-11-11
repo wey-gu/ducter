@@ -64,6 +64,9 @@ one tap away · 惊喜 the partner visibly working the moment you send.
    - Work under way and waits are not said: the header line ("2 件等你 · 在做 1 件") and On hand
      carry them. The count of asks shows only in the header.
 5. **Time lines** like a messaging app: before the first message and wherever 15 minutes passed.
+   **Pictures (D206):** the user's stand above their words; what a task showed stands under the
+   partner's words about it, a file as one line on a card. They are the message, not machine
+   output, so they are never folded into Details (`media.md`).
 6. **The waiting line** (below).
 
 Nothing is deleted: On hand, the opened task (D74) and the menu bar extra are unchanged, and

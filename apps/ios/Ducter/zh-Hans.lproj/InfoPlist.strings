@@ -1,2 +1,4 @@
-"NSCameraUsageDescription" = "用来扫 ducter pair 给的二维码。";
+"NSCameraUsageDescription" = "用来扫 ducter pair 给的二维码，也用来拍照发给 Ducter。";
+"NSPhotoLibraryUsageDescription" = "用来把相册里的照片发给 Ducter。";
+"NSPhotoLibraryAddUsageDescription" = "用来把对话里的图片存到你的相册。";
 "NSLocalNetworkUsageDescription" = "你的 Ducter 在家里的电脑上运行时，用来连上它。";

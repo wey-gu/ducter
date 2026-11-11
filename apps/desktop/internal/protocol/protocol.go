@@ -114,6 +114,8 @@ const (
 type UserMsg struct {
 	Text     string `json:"text"`
 	ClientID string `json:"clientId,omitempty"`
+	// Media (D206): the pictures the user sent with it (Text may be empty then).
+	Media []MediaRef `json:"media,omitempty"`
 }
 
 type AIMsg struct {
@@ -122,6 +124,8 @@ type AIMsg struct {
 	// DecisionID: a task's question in the partner's own words (D129); it
 	// shows as that decision's question, not as a message of its own.
 	DecisionID string `json:"decisionId,omitempty"`
+	// Media (D206): what a task showed, relayed with the partner's words about it.
+	Media []MediaRef `json:"media,omitempty"`
 }
 
 type Ack struct {
@@ -286,6 +290,8 @@ type TaskOpen struct {
 	// Origin "you" (D128): the user opened it themselves (New task, `ducter task`);
 	// empty: the partner did.
 	Origin string `json:"origin,omitempty"`
+	// Media (D206): the pictures the brief carries.
+	Media []MediaRef `json:"media,omitempty"`
 }
 
 type TaskState struct {
@@ -311,8 +317,9 @@ type TaskEvent struct {
 	From   string `json:"from,omitempty"` // user | partner | runner
 	Text   string `json:"text,omitempty"`
 	// ClientID is the client's id for a user's task_send (resends are deduped by it).
-	ClientID string    `json:"clientId,omitempty"`
-	Tool     *ToolCall `json:"tool,omitempty"`
+	ClientID string     `json:"clientId,omitempty"`
+	Media    []MediaRef `json:"media,omitempty"` // D206: pictures sent into the task with the text
+	Tool     *ToolCall  `json:"tool,omitempty"`
 	// Thinking is a stretch of the model's thinking, its headings only (D127).
 	Thinking []string        `json:"thinking,omitempty"`
 	Usage    *Usage          `json:"usage,omitempty"` // present on turn ends
@@ -539,6 +546,8 @@ type Report struct {
 	// Folder is set by Ducter on a done or failed report of a non-git
 	// folder task (D142).
 	Folder *FolderSummary `json:"folder,omitempty"`
+	// Media (D206): what the task chose to show the user.
+	Media []MediaRef `json:"media,omitempty"`
 }
 
 // BranchChanges is a task branch against its base: commits only it has,
@@ -765,6 +774,8 @@ type Send struct {
 	T        string `json:"t"` // "send"
 	Text     string `json:"text"`
 	ClientID string `json:"clientId"`
+	// Media (D206): ids from POST /api/media; Text may be empty then.
+	Media []string `json:"media,omitempty"`
 }
 
 type Decide struct {
@@ -779,7 +790,8 @@ type TaskSend struct {
 	TaskID string `json:"taskId"`
 	Text   string `json:"text"`
 	// ClientID makes a resend safe: the server delivers it once.
-	ClientID string `json:"clientId,omitempty"`
+	ClientID string   `json:"clientId,omitempty"`
+	Media    []string `json:"media,omitempty"` // D206
 }
 
 type TaskAction struct {
@@ -1816,6 +1828,7 @@ type TaskNew struct {
 	Effort   string       `json:"effort,omitempty"`
 	ClientID string       `json:"clientId,omitempty"`
 	When     *NewTaskWhen `json:"when,omitempty"`
+	Media    []string     `json:"media,omitempty"` // D206: pictures dropped on the What row
 }
 
 // OpenTask asks the apps to show a task (`ducter open <task>`).

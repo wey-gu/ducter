@@ -40,6 +40,8 @@ export interface TaskNeeds {
   site?: string;
   app?: string;
   long?: boolean;
+  /** D206: it makes a picture (画一张… / Draw…): only an agent that generates images takes it. */
+  draw?: boolean;
 }
 
 /**
@@ -108,9 +110,10 @@ export type CandidateBlock = "not_installed" | "signed_out" | "off" | "reserve" 
  * D157: why a computer can't take a task (the switch sheet greys its rows with this). no_browser:
  * it can't browse (上网 isn't on there); no_chrome: it needs the user's Chrome and that computer
  * has none; no_app: it needs a Mac app and that computer isn't a Mac; elsewhere: the folder or
- * repo is on another computer (place).
+ * repo is on another computer (place); no_draw (D206): the task makes a picture and this agent
+ * can't (only Codex generates images).
  */
-export type WhereBlock = "no_browser" | "no_chrome" | "no_app" | "elsewhere";
+export type WhereBlock = "no_browser" | "no_chrome" | "no_app" | "elsewhere" | "no_draw";
 
 /** One AI agent (and model) that could do a task, best first, with why in words the client builds. */
 export interface Candidate {
@@ -138,4 +141,6 @@ export interface Candidate {
   needsSignIn?: boolean;
   /** D157: picking it would give the task more access than it has now (the user's Chrome). */
   widens?: boolean;
+  /** D206: it can't see pictures (看不了图片 / Can't see images, shown when the card holds some). */
+  noImages?: true;
 }

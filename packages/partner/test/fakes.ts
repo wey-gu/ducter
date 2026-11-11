@@ -8,6 +8,7 @@ import type {
   HarnessPort,
   HarnessSession,
   Runner,
+  SendImage,
   SessionSpec,
   ToolHandler,
 } from "../../protocol/src/internal.ts";
@@ -115,6 +116,8 @@ export type Script = (input: string, s: FakeSession, turnIndex: number) => Promi
 export class FakeSession implements HarnessSession {
   q = new AsyncQueue<HarnessEvent>();
   inputs: string[] = [];
+  /** D206: the pictures each input carried (undefined: none). */
+  images: (SendImage[] | undefined)[] = [];
   readonly canSteer = true;
   busy() {
     return false;
@@ -135,8 +138,9 @@ export class FakeSession implements HarnessSession {
   end() {
     this.emit({ role: "system", turnEnd: true });
   }
-  async send(text: string) {
+  async send(text: string, _mode?: string, images?: SendImage[]) {
     this.inputs.push(text);
+    this.images.push(images);
     await this.script(text, this, this.counter.n++);
   }
   async interrupt() {}
@@ -153,7 +157,7 @@ export class FakeSession implements HarnessSession {
 export function fakeRunner(script: Script) {
   const sessions: FakeSession[] = [];
   const opened: Parameters<Runner["openTask"]>[0][] = [];
-  const sent: { taskId: string; text: string; mode?: string }[] = [];
+  const sent: { taskId: string; text: string; mode?: string; media?: import("../../protocol/src/index.ts").MediaRef[] }[] = [];
   const counter = { n: 0 };
   let cardsRef: Map<string, TaskCard> | null = null;
   const harness: HarnessPort = {
@@ -183,8 +187,8 @@ export function fakeRunner(script: Script) {
       cardsRef?.set(card.taskId, card);
       return card;
     },
-    async send(taskId, text, mode) {
-      sent.push({ taskId, text, mode });
+    async send(taskId, text, mode, _from, _clientId, media) {
+      sent.push({ taskId, text, mode, ...(media ? { media } : {}) });
       return { delivered: "steered" };
     },
     async interrupt() {},

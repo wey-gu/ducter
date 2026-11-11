@@ -90,7 +90,7 @@ function teePort(real: HarnessPort, onEvent: (e: HarnessEvent, sessionIdx: numbe
           return s.canSteer;
         },
         busy: () => s.busy(),
-        send: (t, m) => s.send(t, m),
+        send: (t, m, i) => s.send(t, m, i),
         interrupt: () => s.interrupt(),
         close: () => s.close(),
         events() {
@@ -450,7 +450,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
 
 function describeStep(st: Step): string {
-  if ("user" in st) return `user says: ${st.user}`;
+  if ("user" in st) return `user says: ${st.user}${st.images?.length ? ` (with ${st.images.length === 1 ? "a picture" : `${st.images.length} pictures`}: ${st.images.map((p) => p.split("/").pop()).join(", ")})` : ""}`;
   if ("report" in st) return `task "${st.report.task}" reports ${st.report.body.state}: ${st.report.body.summary}${st.report.body.questions.length ? ` | its question (already shown to the user with Go / Hold / Reply buttons): ${st.report.body.questions.map((q) => q.text).join(" / ")}` : ""}${st.report.body.evidence.length ? "" : " | (no evidence attached)"}`;
   if ("reports" in st) return st.reports.map((r) => `task "${r.task}" reports ${r.body.state}: ${r.body.summary}`).join(" || ") + " (both within the same second)";
   if ("peer" in st) return `${st.peer.from} (${st.peer.from === "alex-reviewer" ? "a teammate's agent" : "the user's own Claude Code in a terminal"}) sends a Bridge message${st.peer.answer ? " answering the one Ducter sent it" : ""}: ${st.peer.text}`;
@@ -464,7 +464,11 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
     const taskId = tid(r.task);
     core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, ...r.body } });
   };
-  if ("user" in st) core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: st.user } });
+  if ("user" in st) {
+    // D206: the pictures go through the home's media store, as an upload would.
+    const media = (st.images ?? []).map((p) => core.media.putFile(join(import.meta.dir, "..", "..", "..", p)));
+    core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: st.user, ...(media.length ? { media } : {}) } });
+  }
   else if ("report" in st) report(st.report);
   else if ("reports" in st) st.reports.forEach(report);
   else if ("resolve" in st) {

@@ -27,7 +27,8 @@ export type Seed =
   | { userAction: { task: string; text: string } };
 
 export type Step =
-  | { user: string }
+  // images (D206): pictures sent with the words, as repo-relative paths (the app's own art: no fixture binaries).
+  | { user: string; images?: string[] }
   | { report: { task: string; body: Omit<Bodies["report"], "taskId"> } }
   // Several reports landing within the same second (two tasks finishing together).
   | { reports: { task: string; body: Omit<Bodies["report"], "taskId"> }[] }
@@ -94,7 +95,7 @@ export interface Expect {
   /** Regexes the partner's own lines (messages and acks, not card text) may not match. */
   proseForbid?: RegExp[];
   /** D157: some opened task's needs has each of these (a string matches case-insensitively as a part; false = absent or false). */
-  needs?: { browse?: boolean; signedIn?: boolean; site?: string; app?: string; long?: boolean };
+  needs?: { browse?: boolean; signedIn?: boolean; site?: string; app?: string; long?: boolean; draw?: boolean };
   /** Some opened task names this agent (harness). */
   harness?: string;
   /** Some opened task's place has this kind. */
@@ -1307,6 +1308,25 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Check bun.sh and tell me the latest Bun version." }],
     expect: { opens: [0, 1], maxChars: 140, forbid: [/\b1\.\d+\.\d+\b(?![\s\S]*\?)/] },
     rubric: "A look-up on a public page. Either it opens one browsing task with a one-line English ack naming the look-up (needs.browse, Ducter's own browser), or answers that it will check; it must NOT state a version number it hasn't seen (no guessing from training data), and claims no result yet.",
+  },
+  // ---------- pictures (D206) ----------
+  {
+    id: "picture-question-zh",
+    category: "pictures",
+    lang: "zh",
+    floor: true,
+    steps: [{ user: "图里这是什么？适合放在空状态里吗？", images: ["apps/web/static/art/dev_laptop_awake.webp"] }],
+    expect: { opens: 0, msgs: [1, 2], maxChars: 180, require: [/电脑|笔记本/], forbid: [/看不到|看不了|无法查看|没法看|发不了|收不到|打不开/] },
+    rubric: "The user sent a picture (a clay laptop, its screen on) and asks what it is and whether it fits an empty state. It answers from the picture itself, in this turn, in short Chinese (a laptop / 笔记本电脑, clay or toy-like), with a plain opinion; it opens no task and never says it can't see or open the picture.",
+  },
+  {
+    id: "draw-zh",
+    category: "pictures",
+    lang: "zh",
+    floor: true,
+    steps: [{ user: "帮我画一张橘猫在窗边打盹的图" }],
+    expect: { opens: 1, ackFirst: true, needs: { draw: true }, placeKind: "none", maxChars: 80, forbid: [/画好了[。！:：]|已经画好|画完了[。！]/] },
+    rubric: "The user asks for a picture to be drawn. It opens one task whose needs say draw (needs.draw true, place none), the brief keeps the user's words and asks to show the picture with the report. Before it, one short Chinese ack naming the action (我去画…, 画好了给你看); it never claims the picture is done, never draws with text or describes the picture it will make.",
   },
   {
     id: "notice-rule-zh",

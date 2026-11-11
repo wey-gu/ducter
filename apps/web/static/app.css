@@ -3705,6 +3705,10 @@ ol.tries b {
   max-height: 300px;
   overflow-y: auto;
 }
+/* A long list scrolls; its rows keep their height (a column flexbox under max-height would squeeze them). */
+.nt-list > * {
+  flex-shrink: 0;
+}
 .nt-list > small {
   font-size: var(--xs);
   font-weight: 700;

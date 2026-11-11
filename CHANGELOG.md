@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.18
 
 <!-- whats-new
 zh: 新建时贴一个 Git 地址，就能在任意一台电脑上克隆
@@ -25,6 +25,16 @@ en: What Ducter makes on a computer now lives in one folder you can see, ~/ducte
   ways to get one, never only **No folder**; a computer whose Ducter is older says to update it.
 - `ducter uninstall --all` removes tasks' working copies in both places and never the projects
   Ducter cloned for you (its listing says so).
+- With your home on a server and Claude Code only on your Mac, picking Claude Code for a project
+  on the server switches to the same project on the Mac when it's there (matched by its Git
+  address), or asks you to pick or clone one there.
+
+**Autofill on real sites**
+- Tried end to end on real pages for the first time (a sign-in, a details form, a test-mode
+  checkout); several things that broke there are fixed: a task naming something saved now always
+  gets Ducter's own browser, one OK per sign-in instead of two, a value is never typed into a field
+  the page swapped under it, payment buttons drawn by the page are found, and dropdowns can be
+  chosen.
 
 ## 0.0.17
 

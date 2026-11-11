@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.24
+
+<!-- whats-new
+zh: 在文件夹里做事的 Codex 任务又能交回结果了
+en: Codex tasks working in a folder can report back again
+zh: 停下没交回结果的任务会等你，不再一直显示在做
+en: A task that stops without reporting waits for you, not "Working" for hours
+-->
+
+**Fixes**
+- A task on Codex that works in a folder can report back again: everything it tried to tell your
+  partner was refused, so it ran on without a word.
+- A task that stops without reporting, even after a nudge, now waits for you instead of reading
+  **Working** for hours.
+
 ## 0.0.23
 
 <!-- whats-new

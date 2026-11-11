@@ -180,9 +180,3 @@ func drawRing(rim, left ui.Color, frac float32) func(p *ui.Painter, r ui.Rect) {
 		p.FillPath(&w, left)
 	}
 }
-
-// coin is an AI agent's clay coin, small: who is doing it, moving as its
-// task does (a light over the rim while it works, a bob while it waits on you).
-func (a *App) coin(c *ui.Context, harness string, size float32, m coinMotion) {
-	a.coinBox(c, "who", harness, size, false, m)
-}

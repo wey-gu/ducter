@@ -24,7 +24,7 @@ describe("only shared controls (D161)", () => {
   test("controls.tsx is the registry: each control is exported once", () => {
     const reg = src("controls.tsx");
     const names = [...reg.matchAll(/^export function (\w+)/gm)].map((m) => m[1]);
-    expect(names).toEqual(["Btn", "Toggle", "DangerButton", "MoreButton", "RenameTitle", "CoinButton", "SocketButton", "Chip", "ListRow", "BackRow", "Seg", "AppTile", "Pill", "Choice", "MenuRow"]);
+    expect(names).toEqual(["Btn", "Chev", "Toggle", "DangerButton", "MoreButton", "RenameTitle", "CoinButton", "SocketButton", "Chip", "ListRow", "BackRow", "Seg", "AppTile", "Pill", "Choice", "MenuRow"]);
     // design/ui.md lists the same set.
     const ui = readFileSync(new URL("../../../design/ui.md", import.meta.url), "utf8");
     for (const n of names) expect(ui).toContain(`\`${n}\``);

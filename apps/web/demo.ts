@@ -2,10 +2,11 @@
 // living message, auth, web), stub partner and runner, seeded with work like the author's.
 //   DUCTER_PORT=7797 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo.ts
 import { startCore, stubRunner } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 import type { Bodies, Place } from "@ducter/protocol";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
-const core = startCore({ persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
+const core = startCore({ ooSource: noOo, persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
 core.setRunner(stubRunner(core));
 // A quiet partner: the seed below writes its words, so a live reply would only be noise.
 core.setPartner({ onTrigger() {} });

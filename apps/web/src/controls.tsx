@@ -22,12 +22,20 @@ export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size
       aria-expanded={p.expanded}
     >
       <span class="lbl">{p.label}</span>
-      {p.chev && (
-        <svg class="btn-chev" width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
-          <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      )}
+      {p.chev && <Chev cls="btn-chev" />}
     </button>
+  );
+}
+
+/** The one drawn chevron (D211, D213): every text link, button or row that opens more ends in it,
+ *  in its text's ink; it turns down while what it opens is open (open, or an aria-expanded parent);
+ *  back points the way back. Never a font's › ‹ ⌄: iOS draws some of those as an emoji or a
+ *  missing glyph, and each font draws them at its own size and weight. */
+export function Chev(p: { open?: boolean; back?: boolean; cls?: string }) {
+  return (
+    <svg class={`chev-g${p.open ? " open" : ""}${p.back ? " back" : ""}${p.cls ? ` ${p.cls}` : ""}`} width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+      <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
   );
 }
 
@@ -157,17 +165,17 @@ export function Chip(p: { label: string; art?: string; look: "on" | "off" | "add
 }
 
 /** One line in a list of devices: clay, name, one word of state; never wraps. */
-export function ListRow(p: { art: string; name: string; word: string; tone?: string; dot?: boolean; onClick: () => void; children?: ComponentChildren }) {
+export function ListRow(p: { art: string; name: string; word: string; tone?: string; update?: string; onClick: () => void; children?: ComponentChildren }) {
   return (
-    <button class="li-row" aria-label={`${p.name} · ${p.word}`} onClick={p.onClick}>
+    <button class="li-row" aria-label={[p.name, p.word, p.update].filter(Boolean).join(" · ")} onClick={p.onClick}>
       <img src={p.art} alt="" />
       <span class="t">
         <b>{p.name}</b>
-        {p.dot && <i class="dot" aria-hidden="true" />}
         <small class={p.tone ?? ""}>· {p.word}</small>
+        {p.update && <small class="update">· {p.update}</small>}
       </span>
       <span class="chev" aria-hidden="true">
-        ›
+        <Chev />
       </span>
     </button>
   );
@@ -178,7 +186,7 @@ export function BackRow(p: { label: string; onClick: () => void }) {
   return (
     <button class="set-back" onClick={p.onClick}>
       <span class="back-chev" aria-hidden="true">
-        ‹
+        <Chev back />
       </span>
       {p.label}
     </button>

@@ -4,6 +4,7 @@
 //   DUCTER_CHROME=<Chrome for Testing> DUCTER_PORT=7796 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-signin.ts
 // The test site answers as console.example.com (Chrome maps the name to it; nothing leaves this machine).
 import { startCore, stubRunner } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const SITE = "console.example.com";
@@ -36,7 +37,7 @@ const site = Bun.serve({
 process.env.DUCTER_CHROME_FLAGS = `--host-resolver-rules=MAP ${SITE} 127.0.0.1`;
 const ORIGIN = `http://${SITE}:${site.port}`;
 
-const core = startCore({ persona: { id: "default", name: "Ducter", identity: "" }, hostname: "127.0.0.1", push: false, browser: { idleMs: 60 * 60_000 } });
+const core = startCore({ ooSource: noOo, persona: { id: "default", name: "Ducter", identity: "" }, hostname: "127.0.0.1", push: false, browser: { idleMs: 60 * 60_000 } });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 const log = core.log;

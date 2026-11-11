@@ -327,7 +327,7 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 	}
 	ui.Column(c.Key("ask:" + d.DecisionID)).Gap(t.S2).Children(func() {
 		if d.Asker != nil {
-			a.peerAskerRow(c, d.Asker, openAsk(d)) // X1: who asks, before the question
+			a.peerAskerRow(c, d.Asker) // X1: who asks, before the question
 		}
 		a.partnerWords(c, words)
 		// A routine's proposal card (D29, D114): what it would do, before one Go.

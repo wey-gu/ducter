@@ -882,6 +882,28 @@ a {
     transition: none;
   }
 }
+/* The one drawn chevron everywhere else (D213): links, rows, the way back. Same stroke and size as
+   the button's; it sits on the text's baseline in the text's ink, and turns down while open. */
+.chev-g {
+  flex: none;
+  display: inline-block;
+  vertical-align: -0.06em;
+  margin-inline-start: 3px;
+  transition: transform 160ms ease;
+}
+.chev-g.open,
+[aria-expanded="true"] > .chev-g {
+  transform: rotate(90deg);
+}
+.chev-g.back {
+  margin-inline: 0 3px;
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chev-g {
+    transition: none;
+  }
+}
 .btn.text {
   height: 44px;
   padding: 0 12px;
@@ -1000,9 +1022,8 @@ a {
   text-align: left;
   min-height: 24px;
 }
-.decision .asker .coin-art {
-  flex: none;
-  border-radius: 50%;
+.decision .asker .chev-g {
+  margin-inline-start: -5px;
 }
 .decision .asker span {
   min-width: 0;
@@ -1762,15 +1783,29 @@ a {
 .standing .when {
   font-variant-numeric: tabular-nums;
 }
-.standing .who > .sep:has(+ .coin-art) {
-  display: none;
+/* A group's leading dot sits in the gap before it, outside the group: when the group wraps to the
+   start of a line its dot falls past the line's left edge and is clipped, so no line starts with
+   "·" (D211, D213: no coin there to start the group any more). */
+.standing {
+  column-gap: 10px;
+  clip-path: inset(-12px -12px -12px 0);
 }
-.standing .coin-art {
-  flex: none;
-  border-radius: 50%;
+.standing .who {
+  position: relative;
+}
+.standing > :first-child + b {
+  margin-inline-start: -4px;
+}
+.standing .who > .sep:first-child {
+  position: absolute;
+  right: 100%;
+  margin-right: 3px;
 }
 .standing .inline-link {
   font-size: var(--sm);
+}
+.standing .inline-link .chev-g {
+  color: inherit;
 }
 /* D157: which computer it runs on; a tap (or a hover) says why there. */
 .standing .where-on {
@@ -2458,9 +2493,11 @@ a {
   color: var(--ink-soft);
 }
 .set-back .back-chev {
-  font-size: 24px;
-  line-height: 1;
-  margin-top: -2px;
+  display: inline-flex;
+}
+.set-back .back-chev .chev-g {
+  width: 13px;
+  height: 13px;
 }
 .set-back:active {
   background: var(--surface-sunken);
@@ -4128,6 +4165,14 @@ ol.tries b {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
 }
+/* A coin with a dark-theme rendition (D213) shows it only on the dark ground. */
+.coin-art img.dk { position: absolute; inset: 0; visibility: hidden; }
+:root[data-theme="dark"] .coin-art.has-dark img:not(.dk) { visibility: hidden; }
+:root[data-theme="dark"] .coin-art.has-dark img.dk { visibility: visible; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .coin-art.has-dark img:not(.dk) { visibility: hidden; }
+  :root:not([data-theme="light"]) .coin-art.has-dark img.dk { visibility: visible; }
+}
 /* In the dark an unavailable coin's grey clay would read as lit: it sits back a little. */
 :root[data-theme="dark"] .coin-art.off img { opacity: 0.6; }
 @media (prefers-color-scheme: dark) {
@@ -4290,8 +4335,10 @@ button.dev-name {
 .li-row .t small.working { color: var(--working-ink); }
 .li-row .t small.asleep { color: var(--dusk-ink); }
 .li-row .t small.away { color: var(--failed-ink); }
-.li-row .t .dot { flex: none; align-self: center; width: 8px; height: 8px; border-radius: 4px; background: var(--accent); }
-.li-row .chev { flex: none; color: var(--faint); font-weight: 800; }
+/* D213: an update is said in words in the highlight's ink, never a dot (D69). */
+.li-row .t small.update { color: var(--highlight-ink); font-weight: 700; }
+.li-row .chev { flex: none; display: inline-flex; color: var(--faint); }
+.li-row .chev .chev-g { width: 12px; height: 12px; }
 
 .dc { display: flex; flex-direction: column; padding: 4px 18px 16px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--base); }
 .dc-hero { position: relative; height: 146px; display: flex; justify-content: center; align-items: flex-end; }

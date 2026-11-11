@@ -157,7 +157,7 @@ func (a *App) taskLine(c *ui.Context, t *store.Task, detail string) {
 		if detail != "" {
 			ui.Text(c, "· "+detail).FontSize(th.SM).TextColor(th.InkMuted).AccessHidden(true)
 		}
-		ui.Text(c, "›").FontSize(th.SM).FontWeight(700).TextColor(th.InkMuted).AccessHidden(true)
+		a.glyph(c, 12, drawChevron(th.InkMuted, false))
 	})
 	if row.Clicked() {
 		a.OpenTask(t.ID)
@@ -182,15 +182,25 @@ func stateMark(att protocol.Attention) func(ui.Color) func(*ui.Painter, ui.Rect)
 }
 
 // quietLink is a quiet text link in a line of proof: its words in soft
-// ink, then "›"; the words underline on hover. It wraps, never truncates.
+// ink, then the drawn chevron (D213, never a font's ›); the words underline
+// on hover. It wraps, never truncates.
 func (a *App) quietLink(c *ui.Context, key, text, name string) bool {
 	t := a.T
-	l := ui.Text(c.Key("link:"+key), text+" ›").FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).
-		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(name).Focusable().MinWidth(0)
-	if l.Hovered() || l.Pressed() {
-		l.TextColor(t.Ink).Underline()
-	}
-	return l.Clicked()
+	row := ui.Row(c.Key("link:" + key)).Gap(2).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).
+		Label(name).Focusable().MinWidth(0).Shrink(1)
+	hover := row.Hovered() || row.Pressed()
+	row.Children(func() {
+		col := t.InkSoft
+		if hover {
+			col = t.Ink
+		}
+		l := ui.Text(c, text).FontSize(t.SM).FontWeight(700).TextColor(col).MinWidth(0).Shrink(1).AccessHidden(true)
+		if hover {
+			l.Underline()
+		}
+		a.glyph(c, 12, drawChevron(col, false))
+	})
+	return row.Clicked()
 }
 
 // mark is a drawn glyph and plain words in one color: a line of proof

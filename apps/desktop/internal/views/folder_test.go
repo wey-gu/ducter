@@ -66,7 +66,7 @@ func TestFolderChanges(t *testing.T) {
 		app, tt, sent := folderTask(t, lang)
 		all := texts(tt)
 		want := map[i18n.Lang][]string{
-			i18n.ZH: {"改动", "把 42 个文件整理进 6 个新文件夹，改了 3 个文件名", "随时能改回去，留到 11 月 16 日", "改回去", "就这样", "看看改了哪些"},
+			i18n.ZH: {"改动", "把 42 个文件整理进 6 个新文件夹，重命名了 3 个文件", "11 月 16 日前都能还原", "全部还原", "保留改动", "查看改动"},
 			i18n.EN: {"Changes", "Moved 42 files into 6 new folders, renamed 3", "You can undo this until Nov 16", "Undo all changes", "Keep the changes", "See what changed"},
 		}[lang]
 		for _, w := range want {
@@ -82,7 +82,7 @@ func TestFolderChanges(t *testing.T) {
 		}
 		folderShot(t, tt, "desktop-"+string(lang))
 		// The list on request.
-		if err := tt.Click(map[i18n.Lang]string{i18n.ZH: "看看改了哪些", i18n.EN: "See what changed"}[lang]); err != nil {
+		if err := tt.Click(map[i18n.Lang]string{i18n.ZH: "查看改动", i18n.EN: "See what changed"}[lang]); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()
@@ -93,7 +93,7 @@ func TestFolderChanges(t *testing.T) {
 		folderShot(t, tt, "desktop-list-"+string(lang))
 		// Undo all changes sends the action; a folder changed since asks in place.
 		*sent = nil
-		if err := tt.Click(map[i18n.Lang]string{i18n.ZH: "改回去", i18n.EN: "Undo all changes"}[lang]); err != nil {
+		if err := tt.Click(map[i18n.Lang]string{i18n.ZH: "全部还原", i18n.EN: "Undo all changes"}[lang]); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()

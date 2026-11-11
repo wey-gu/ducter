@@ -5,7 +5,7 @@ package i18n
 var zhOpenIn = Table{
 	"task.open":          "打开",
 	"task.open.about":    "打开它的工作副本",
-	"task.open.finder":   "在 Finder 中显示",
+	"task.open.finder":   "在访达中显示",
 	"task.open.terminal": "在终端里打开",
 	"task.open.in":       "在 %s 里打开",
 	"task.open.editor":   "用 %s 打开",

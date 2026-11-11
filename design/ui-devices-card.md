@@ -166,7 +166,7 @@ Which chips a device gets:
 a calling connection is connected (`ab_call`); a tap opens Settings › 账号 at the phone card. Off,
 the dashed **+ 打电话** opens 账号 and starts the offer's own Tuwa sign-in (never a second flow;
 the core refuses an `ability` request for it). Its sign-in gone (D193), the failed tint with **需要重新登录
-/ Sign in again**, and a tap goes to the card that signs in again. ⓘ: **替你打电话，走 Tuwa 的线路。每一通都先给你看要说什么，你点了打过去才打；Tuwa
+/ Sign in again**, and a tap goes to the card that signs in again. ⓘ: **替你打电话，走 Tuwa 的线路。每一通都先给你看要说什么，你点了拨打才打；Tuwa
 按分钟收费。** and **在设置 › 账号里连上和管理。**
 
 **Ghosts (D199):** on the home's sheet only, after the live chips, each ability still to come
@@ -246,7 +246,7 @@ covers: **换谁，也可以换一台电脑 / Someone else, or another computer*
 | Autonomy by default | the task's one line; the reason on tap |
 | Words ("在 MacBook 上做", "用我的 Chrome") | the partner's ack restates the pin |
 | Tap to switch | 换谁来做 with **只这件 / 以后这类都用** |
-| Learned rules (two moves the same way propose one) | Settings › 伙伴 › **你的规则** lists them, each with the computer's or agent's coin and **不要这条** |
+| Learned rules (two moves the same way propose one) | Settings › 伙伴 › **你的规则** lists them, each with the computer's or agent's coin and **删除** |
 | Per-agent toggle | the coin popover's **用它做事** |
 | Per-computer toggle | the card's **替 hel 做事** chip |
 
@@ -382,8 +382,8 @@ D75): Mac `mac-*-{zh,en}.png` at 1100×720 and 1280×860, phone `phone-*-{zh,en}
 **The shared-controls rule** came with the approval (the author: "这种事情要杜绝"): every control on
 a card or a settings page is one of the set in `design/ui.md` "Shared controls"; a test on each
 client fails otherwise. Settings › About's version rows (D167, built on main the same day) are
-shared pieces too: 现在检查 sits in the home's row there. On the phone, with the card's version
-line gone when current, **已经是最新的 · {t}查过 · 现在检查** stands once under the device list.
+shared pieces too: 检查更新 sits in the home's row there. On the phone, with the card's version
+line gone when current, **已经是最新的 · {t}检查过 · 检查更新** stands once under the device list.
 
 What differs from the prototype, and why:
 

@@ -254,7 +254,7 @@ test("远程打开: a pairing code from the app; a device that pairs turns it on
   expect(f.reach.clients[0]).toMatchObject({ name: "iPhone", platform: "ios", connected: false });
 });
 
-test("D83: the app's 连上手机或另一台电脑 code connects another computer (it was 403 before)", async () => {
+test("D83: the app's 连接手机或另一台电脑 code connects another computer (it was 403 before)", async () => {
   const core = boot();
   const c = await client(core.url);
   c.send({ t: "devices" });

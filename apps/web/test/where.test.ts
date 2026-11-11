@@ -45,7 +45,7 @@ describe("where a task runs (D157)", () => {
     const a = whereAsk({ kind: "asleep", device: "MacBook", state: "asleep", other: "hel", site: "taobao.com", here: "chrome", uses: "ducter", signIn: true });
     expect(a.question).toBe("MacBook 睡着了。等它醒了用你的 Chrome 做，还是现在在 hel 上做？");
     expect([a.hold, a.go]).toEqual(["等它醒", "现在在 hel 上做"]);
-    expect(a.lines.map((l) => l.text)).toEqual(["hel 那边没登录 taobao.com，得你登一下。", "不回的话就等它醒，什么都不会丢"]);
+    expect(a.lines.map((l) => l.text)).toEqual(["hel 那边没登录 taobao.com，需要你登录一下。", "不回的话就等它醒，什么都不会丢"]);
     const w = whereAsk({ kind: "asleep", device: "MacBook", state: "asleep", other: "Mac mini", uses: "chrome", widens: true });
     expect(w.lines.find((l) => l.widen)?.text).toBe("会用你的 Chrome，你登录着的网站它都能用。");
     expect(deviceWait("device:asleep:MacBook")).toBe("MacBook 睡着了");

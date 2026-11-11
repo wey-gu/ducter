@@ -281,7 +281,7 @@ const COPY = {
     failed: (s: string) => `没成：${s}`,
     many: (n: number) => `${n} 件等你`,
     morning: (n: number) => `早上好。${n} 件等你。`,
-    test: "通知通了。需要你的时候，我会这样叫你。",
+    test: "通知设好了。需要你的时候，我会这样告诉你。",
     hold: "先等等",
   },
   en: {

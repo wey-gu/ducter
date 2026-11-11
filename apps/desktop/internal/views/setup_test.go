@@ -118,7 +118,7 @@ func TestStopDucterAndWakeIt(t *testing.T) {
 	if f.rested != 1 || !h.app.Resting() {
 		t.Fatalf("rested %d", f.rested)
 	}
-	h.has("Ducter 歇着了", "开机也不会", "叫醒 Ducter")
+	h.has("Ducter 在休息", "开机也不会", "叫醒 Ducter")
 	h.shot("app-resting-zh")
 	h.click("叫醒 Ducter")
 	if f.started != 1 || h.app.Resting() {
@@ -204,7 +204,7 @@ func TestSetupBlockedShowsOnlyWhatBlocks(t *testing.T) {
 	if len(f.ran) != 1 || f.ran[0] != "claude auth login" {
 		t.Fatalf("ran %q", f.ran)
 	}
-	h.has("终端开好了")
+	h.has("已打开终端")
 	// Back from Terminal: check again; ready now, so the name comes next.
 	h.click("再检查一次")
 	h.has("你好，我是 Ducter。", "想叫我什么？", "就叫这个", "就叫 Ducter")

@@ -206,7 +206,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	})
 	h.until("its answer", func() bool { return h.tt.HasText("收到，按你说的来。") })
 	// D210: queued only until it answers; then the receipt goes.
-	if h.tt.HasText("它忙完手上的就看") {
+	if h.tt.HasText("它忙完手上的事就会看到") {
 		t.Errorf("the queued receipt stayed after the answer: %q", h.tt.Texts())
 	}
 	h.shot("task-sent")

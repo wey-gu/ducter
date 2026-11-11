@@ -18,9 +18,9 @@ func TestUpToDateSaysWhenItChecked(t *testing.T) {
 		ago       time.Duration
 		line, btn string
 	}{
-		{i18n.ZH, 3 * time.Hour, "已经是最新的 · 3 小时前查过", "现在检查"},
+		{i18n.ZH, 3 * time.Hour, "已经是最新的 · 3 小时前检查过", "检查更新"},
 		{i18n.EN, 3 * time.Hour, "Up to date · checked 3 h ago", "Check now"},
-		{i18n.ZH, 20 * time.Second, "已经是最新的 · 刚查过", "现在检查"},
+		{i18n.ZH, 20 * time.Second, "已经是最新的 · 刚检查过", "检查更新"},
 	} {
 		app, sent := iaApp(t, tc.lang)
 		at := time.Now().Add(-tc.ago).UTC().Format(time.RFC3339)

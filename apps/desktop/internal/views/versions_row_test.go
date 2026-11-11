@@ -33,16 +33,16 @@ func TestCheckingSitsInTheHomesRow(t *testing.T) {
 		protocol.DeviceView{ID: "w1", Name: "Siweis-MacBook-Pro", Kind: "laptop", State: protocol.DeviceAwake, Version: "0.0.7",
 			Update: &protocol.DeviceUpdate{Current: "0.0.7", Latest: "0.0.7", How: "app", CheckedAt: at}},
 	)
-	if err := tt.Click("现在检查"); err != nil {
+	if err := tt.Click("检查更新"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if tt.HasText("现在检查") {
+	if tt.HasText("检查更新") {
 		t.Error("Check now stays while it asks")
 	}
-	checking, ok := tt.Find("在查…")
+	checking, ok := tt.Find("正在检查…")
 	if !ok {
-		t.Fatalf("no 在查… in %q", tt.Texts())
+		t.Fatalf("no 正在检查… in %q", tt.Texts())
 	}
 	name, _ := tt.Find("hel")
 	mac, _ := tt.Find("Siweis-MacBook-Pro")
@@ -64,12 +64,12 @@ func TestFailedSaysWhyOnTapAndNeverOnTheTarget(t *testing.T) {
 				Phase: "failed", From: "0.0.6", To: "0.0.7", Reason: "health", RolledBack: true, Detail: "0.0.7 didn't answer within 180 s"}}
 	}
 	_, tt, _ := versionsApp(t, failed("0.0.7"))
-	if tt.HasText("没更新成") || tt.HasText("没更新成，已经换回 0.0.6") {
+	if tt.HasText("没能更新") || tt.HasText("没能更新，已经换回 0.0.6") {
 		t.Fatalf("on 0.0.7, it says it didn't update: %q", tt.Texts())
 	}
 
 	_, tt, sent := versionsApp(t, failed("0.0.6"))
-	line := "没更新成，已经换回 0.0.6"
+	line := "没能更新，已经换回 0.0.6"
 	if !tt.HasText(line) {
 		t.Fatalf("no %q in %q", line, tt.Texts())
 	}

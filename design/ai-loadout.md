@@ -280,7 +280,7 @@ stage, the tray in front; two cards beside it; the four D71 cards below).
    limit left." Tapping a token opens its line: limit, where it's signed in, the reserve, **按用量
    付费 / Pay per use** for API-billed harnesses, and a switch **用它做事 / Use it for tasks**
    (off = a hard filter in `fw_candidates`). Then **你的规则 / Your rules**, one sentence each,
-   **不要这条 / Remove**, and **跟 Ducter 说一条规则… / Tell Ducter a rule…** which opens the
+   **删除 / Remove**, and **跟 Ducter 说一条规则… / Tell Ducter a rule…** which opens the
    conversation (rules stay conversation-first, `focus-window.md`). With one account the card is
    one line: "做事也用 Claude Code。再登录一个 AI 账号，Ducter 就能按事情挑。" and a link to Devices.
 3. **States on the tray:** signed in (ring), installed with no model (pi: dashed ring, "先选模型 /
@@ -302,7 +302,7 @@ with · 想事情用 / Thinks with · 换一个 / Switch · 挑一个放进去 /
 记得的事和你们的对话都还在 / Switching keeps its name, what it remembers and your conversation ·
 从你的下一句话开始用 / Takes over from your next message · 最聪明 / Smartest · 回得更快 / Answers
 faster · 谁来做事 / Who does the tasks · 其中 n% 给 {name} 留着 / n% of it is kept for {name} · 按用量
-付费 / Pay per use · 用它做事 / Use it for tasks · 你的规则 / Your rules · 不要这条 / Remove · 跟
+付费 / Pay per use · 用它做事 / Use it for tasks · 你的规则 / Your rules · 删除 / Remove · 跟
 {name} 说一条规则… / Tell {name} a rule… · 换谁来做 / Switch who does it · 先选模型 / Pick a model
 first. Reused: 规则, 额度, 装上, 换到 X 接着做, 谁在做, 好 / 先等等, and **AI agent** as the category (D88): the tray is labelled "这台 Mac 上的 AI agent / AI agents on this Mac" (the raters saw "AI accounts on this Mac"; D88 landed after the test, and the tray holds pi and DeepSeek, which have no account yet).
 

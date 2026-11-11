@@ -218,10 +218,10 @@ Why the others wait:
 - **How it starts.** After the user said 好 to requests from the same own agent twice within 14 days, the partner
   asks once, beside the next such request:
   **以后你的 terminal-claude 发来的活，直接接？ / Take work from your terminal-claude without asking from now on?**
-  · **直接接 / Take it directly** · **还是先问我 / Keep asking me** (default). Declined: never offered again for
+  · **直接接 / Take it directly** · **仍然先问我 / Keep asking me** (default). Declined: never offered again for
   that agent.
 - **The rule** shows where D161's learned rules are (Settings › 伙伴): **你的 terminal-claude 发来的活直接接 · 你接过两次以后定的
-  / Work from your terminal-claude starts without asking · set after you took it twice**, with **不再直接接 / Stop**.
+  / Work from your terminal-claude starts without asking · set after you took it twice**, with **改回先问我 / Stop**.
 - **Limits, in code:** the user's own agents only, never a teammate's; tasks in folders and on computers the user
   already uses (a new repo, a push to main or a message out still asks, as any task would, principle 18); at most
   5 a day per agent, then it asks again. The claim and the result go back exactly as in J2.
@@ -239,7 +239,7 @@ Why the others wait:
   one switch covers every Space the persona has a mailbox in, which today is only Only me (D171).
 - **Trust, per sender, in code:**
   - a teammate's agent may ask questions. It can't open a task (a work request becomes a question to the user with
-    the default **先不接 / Not now**), can't make the partner contact anyone (S2's rule), and gets D107's fixed
+    the default **暂不接下 / Not now**), can't make the partner contact anyone (S2's rule), and gets D107's fixed
     outcome lines;
   - the partner answers only from what that Space already shares (Mem search scoped to it) or with the user's
     approved words; anything else is a decision card first (J3's v1 rule);

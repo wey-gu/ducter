@@ -19,7 +19,7 @@ import (
 )
 
 // D151: a sign-in card opens the live view of Ducter's browser; frames are
-// shown and acked one at a time, clicks and keys go in, 好了 / Done answers
+// shown and acked one at a time, clicks and keys go in, 完成 / Done answers
 // the card. DUCTER_SIGNIN_SHOTS=1 writes the card and the live view (zh,
 // en) to shotsDir; DUCTER_LIVE_FRAME=<a JPEG> paints a real page into it.
 
@@ -113,7 +113,7 @@ func TestSignInCardAndLiveView(t *testing.T) {
 		tt.SetScale(2)
 		tt.Frame()
 		tt.Frame()
-		for _, want := range []string{pick("你自己登录。登录的时候它看不见这个页面，也碰不到你的密码。", "You sign in yourself. While you do, it can't see the page or your password."), pick("去登录", "Sign in"), pick("先不用", "Not now")} {
+		for _, want := range []string{pick("你自己登录。登录的时候它看不见这个页面，也碰不到你的密码。", "You sign in yourself. While you do, it can't see the page or your password."), pick("去登录", "Sign in"), pick("暂不登录", "Not now")} {
 			if !tt.HasText(want) {
 				t.Fatalf("%s: no %q in %q", lang, want, tt.Texts())
 			}
@@ -180,7 +180,7 @@ func TestSignInCardAndLiveView(t *testing.T) {
 			t.Errorf("%s: Tab didn't go in: %#v", lang, keys)
 		}
 
-		if err := tt.Click(pick("好了", "Done")); err != nil {
+		if err := tt.Click(pick("完成", "Done")); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()

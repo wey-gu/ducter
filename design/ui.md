@@ -297,11 +297,11 @@ A new control is added to the set (and to this table) before it is used.
 | Control | Mac (`apps/desktop/internal/views`) | Phone (`apps/web/src/controls.tsx`) |
 |---|---|---|
 | The button family: primary, secondary, accent, text (D76) | `button`, `buttonFor` (`components.go`); `iconButton`, `navButton` | `Btn` |
-| Quiet text button and link (现在检查, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
+| Quiet text button and link (检查更新, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
 | Switch | `switchControl` (`shared.go`), inside `switchRow`, `toggleRow` | `Toggle` |
 | Segmented choice | `choices` (`partner.go`) | `Seg` |
 | Choice row (a theme, Remove's plan) | `selectRow` (`shared.go`) | — |
-| A value row's side link (现在检查 and its 在查…, 没更新成 ›; D167) | `sideLink` inside `valueRow` (`settings.go`) | the `Versions` line under the device list (`Btn` kind `text`) |
+| A value row's side link (检查更新 and its 正在检查…, 没能更新 ›; D167) | `sideLink` inside `valueRow` (`settings.go`) | the `Versions` line under the device list (`Btn` kind `text`) |
 | Disclosure row (素材与致谢) and link row | `disclosureRow` (`shared.go`), `linkRow` (`settings.go`) | — |
 | Settings rail tab | `railTab` (`settings.go`) | the pushed-page list |
 | Destructive text button (断开这台 MacBook, a connection's 断开) | `dangerText` (`shared.go`) | `DangerButton` |
@@ -364,7 +364,7 @@ One vocabulary on every tab:
   you first (two lists side by side in one card). Single column; the faces strip is gone.
 - **Look and sound** opens on a preview stage: the partner, one message of yours and its answer
   in this window's language, and Details folded or shown as set. The partner smiles (its done
-  face, cross-faded) for 1.6 s after any choice there, and while **听一下 / Play** plays the
+  face, cross-faded) for 1.6 s after any choice there, and while **试听 / Play** plays the
   intro's sound (stopped after 5 s). Reduced motion: the face still changes, nothing moves.
 - **The phone** shows the same sections as a list (a card of rows: the clay thing at 40, the
   name, a helper, ›) under a partner card; a tap pushes the section (a 24pt slide from the right,
@@ -417,7 +417,7 @@ basis (Needs you 2/400, Working 1/240, Waiting 1/220, Done today 1/260, each at 
 their names at 20/800 with the count muted; working and waiting cards white on the card's base
 (title 15/800, where it stands 13 soft, the rest 12 muted), Done today one card of rows; by
 project, groups at most 960. An opened task at the whole screen keeps its page on the 720 measure
-under the crumbs **对话 / 手头的事 / {task}**; **暂停 / 不做了** are in its foot (D210, D213). The move between
+under the crumbs **对话 / 手头的事 / {task}**; **暂停 / 取消任务** are in its foot (D210, D213, D212). The move between
 the two is one view transition (`level` and `conv`, 320 ms, `--ease`; none under reduced motion).
 On a book fold the whole-screen On hand puts Needs you on the first half and the other lanes on
 the second; a task stays in its half; a tabletop offers neither. Screens:
@@ -493,7 +493,7 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
       XS, 12 lines then **还有 n 行 / n more lines**), an edit its diff on Sunken: put-in lines
       on the done surface in the done ink, taken-out lines on the failed surface in the failed
       ink, context plain, "@@ path" headers bold muted, ⋯ between hunks. Your words while it
-      is busy are lighter with **排队中 · 它忙完手上的就看**. Past 240 lines the older turns wait
+      is busy are lighter with **排队中 · 它忙完手上的事就会看到**. Past 240 lines the older turns wait
       behind **显示更早的 n 步 / Show n earlier steps**.
    6. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff
       in place, full width, under a quiet header. No diff shows by default; a task in no repo,
@@ -507,10 +507,10 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    The box to talk to the task stays at the bottom of the window, as the conversation's
    composer does; a pending ask sits over it (D152). Over it, **the foot** (D210): while the task
    works, a spinner (the only thing that moves), **在做 / Working** in the working ink, the clock
-   in tabular figures, its latest step in InkSoft, and **不做了 / Cancel task** then **暂停 / Pause**
-   at the end (Esc twice: the first turns it into **再按一次 Esc 就暂停** with **接着做** and
-   **暂停**); over to you, **该你了** in the needs ink and the hint muted, **不做了** at the end;
-   otherwise, until it finishes, the foot holds only **不做了** at its end (D213); gone once it
+   in tabular figures, its latest step in InkSoft, and **取消任务 / Cancel task** then **暂停 / Pause**
+   at the end (Esc twice: the first turns it into **再按一次 Esc 就暂停** with **继续** and
+   **暂停**); over to you, **等你回复** in the needs ink and the hint muted, **取消任务** at the end;
+   otherwise, until it finishes, the foot holds only **取消任务** at its end (D213); gone once it
    finishes. A task that works or waits on you opens
    at its latest, a finished one at its head; while it works a reader at the end follows the
    newest step, one who scrolled up gets **回到最新 / Jump to latest**, a 40 pt round raised
@@ -518,7 +518,7 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    Finder; then Open in each of Cursor / Visual Studio Code / Zed installed; then, D201, Open
    in each terminal installed, Terminal / iTerm2 / Ghostty / Warp, and Rex or con once they
    open folders; a separator between the groups, the one used last first in each) in every state while its working copy is on this Mac;
-   **暂停 / Pause** (D210) and **不做了 / Cancel task** (D213) are in the foot. Over its changes, the working copy's path,
+   **暂停 / Pause** (D210) and **取消任务 / Cancel task** (D213) are in the foot. Over its changes, the working copy's path,
    `~/…`, mono, small and selectable (D198).
    **工作台 / Workbench** (D214, `design/workbench.md`): a drawn panel mark in the header (⌥⌘B),
    only when the task has something to show; wide, a column at the right (`--bench-w`, 42%,

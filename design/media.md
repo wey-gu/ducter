@@ -24,9 +24,9 @@ only what a task chose to show comes back · 惊喜 "画一张…" gives you the
 ## Sending
 
 - **Where:** the conversation's composer, an opened task's composer, and the New task card's What
-  row. **加图片 / Add images** opens the phone's own sheet (library, camera, files), the Mac's open
+  row. **添加图片 / Add images** opens the phone's own sheet (library, camera, files), the Mac's open
   panel; paste (⌘V, long-press Paste) and drag and drop work on the same three places
-  (**松手就加上 / Drop to add** while a drag is over). Up to 10 per message (**一次最多 10 张 / Up to
+  (**松开即可添加 / Drop to add** while a drag is over). Up to 10 per message (**一次最多 10 张 / Up to
   10 at a time**); anything but a picture is refused for now (**现在只能发图片 / Only images can be
   sent for now**, phase 2 brings files).
 - **Made ready on the device, never on the home.** Scaled to 2048 px on the long edge and

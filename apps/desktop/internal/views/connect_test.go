@@ -41,7 +41,7 @@ func TestConnectToRemoteDucter(t *testing.T) {
 	}
 	h.until("a failed attempt", func() bool { return h.app.Failed })
 	h.click("我的 Ducter 在另一台电脑上")
-	for _, want := range []string{"连接到你的 Ducter", PairCommand, "地址", "连接码", "连上"} {
+	for _, want := range []string{"连接到你的 Ducter", PairCommand, "地址", "连接码", "连接"} {
 		if !h.tt.HasText(want) {
 			t.Errorf("connect card lacks %q: %q", want, h.tt.Texts())
 		}
@@ -50,7 +50,7 @@ func TestConnectToRemoteDucter(t *testing.T) {
 
 	h.app.conn.address = "https://ducter.example.com"
 	h.app.conn.code = "AAAA-AAAA"
-	h.click("连上")
+	h.click("连接")
 	if !h.tt.HasText("这个码不对，或者已经过期了。在那台电脑上再运行一次 ducter pair。") {
 		t.Errorf("no bad-code line: %q", h.tt.Texts())
 	}
@@ -59,7 +59,7 @@ func TestConnectToRemoteDucter(t *testing.T) {
 	// The whole link `ducter pair` prints carries the code; the code field may be empty.
 	h.app.conn.address = "https://ducter.example.com/pair#c=k7qm4xpa"
 	h.app.conn.code = ""
-	h.click("连上")
+	h.click("连接")
 	h.until("welcome from the paired server", func() bool { return h.app.S.Welcomed && h.app.S.OnHand != nil })
 	if want := []string{"https://ducter.example.com AAAA-AAAA", "https://ducter.example.com K7QM-4XPA"}; strings.Join(tries, "|") != strings.Join(want, "|") {
 		t.Errorf("tries %q", tries)

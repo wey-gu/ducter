@@ -10,7 +10,7 @@ import (
 // D203: the repos a computer reports are places (Found), so Claude Code
 // on the Mac for hel's ducter switches to the Mac's copy (keeping the
 // branch once that copy says its branches); with no folder there, the
-// list says so and offers 找一个文件夹…, which looks through the Mac's
+// list says so and offers 选择文件夹…, which looks through the Mac's
 // folders and adds the one used there, picking the agent that waited.
 
 var tuneMacFound = protocol.PlaceChoice{Place: protocol.Place{Kind: "repo", Device: "dev_mac", RepoPath: "/Users/weyl/dev/ducter"}, Name: "ducter", DefaultBranch: "main", Remote: "github.com/wey-gu/ducter", Found: true, Computer: "Macbook Pro M3"}

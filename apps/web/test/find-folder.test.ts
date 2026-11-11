@@ -1,6 +1,6 @@
 // D203 on the phone: the repos the Mac reports are places (found), so picking Claude Code on the
 // Mac for hel's ducter switches to the Mac's copy (and keeps the branch once that copy says its
-// branches); with no copy, the Mac's list shows its reported repos and 找一个文件夹… / Find a
+// branches); with no copy, the Mac's list shows its reported repos and 选择文件夹… / Find a
 // folder…; the browser asks folder_browse, and using a folder adds it there and picks the agent.
 import { afterAll, describe, expect, test } from "bun:test";
 import { strings } from "../src/i18n.ts";
@@ -64,7 +64,7 @@ describe("Folders a computer reported (D203)", () => {
     const mine = A.newTaskPlaces().filter((p) => p.place.kind !== "none" && A.placeComputer(p.place) === "dev_mac");
     expect(mine.map((p) => p.name)).toEqual(["mem"]);
     expect(A.ntBrowsable().map((d) => d.id)).toEqual(["local", "dev_mac"]);
-    expect(A.L.t("newtask.find")).toBe("找一个文件夹…");
+    expect(A.L.t("newtask.find")).toBe("选择文件夹…");
     expect(A.L.t("newtask.find.empty", "Macbook Pro M3")).toBe("还没有 Macbook Pro M3 上的文件夹。");
     A.sheet = null;
   });

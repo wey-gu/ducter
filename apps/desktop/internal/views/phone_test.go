@@ -90,7 +90,7 @@ func TestPhoneFlow(t *testing.T) {
 	app.openTab(TabAccounts)
 	tt := ui.NewTesterWith(app.View, 1280, 1000, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if err := tt.Click("连上 Tuwa"); err != nil {
+	if err := tt.Click("连接 Tuwa"); err != nil {
 		t.Fatalf("the offer: %v; %q", err, tt.Texts())
 	}
 	tt.Frame()
@@ -121,10 +121,10 @@ func TestPhoneFlow(t *testing.T) {
 	// The Go card: Call sends Go, Not now sends Hold.
 	app.Route = RouteConversation
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
-		protocol.NewEvent(1, time.Now().UTC().Format(time.RFC3339), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: "打给 Sushi Saito？", GoLabel: "打过去", DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: sushiPlan(true, "")}}),
+		protocol.NewEvent(1, time.Now().UTC().Format(time.RFC3339), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: "打给 Sushi Saito？", GoLabel: "拨打", DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: sushiPlan(true, "")}}),
 	}})
 	tt.Frame()
-	for _, w := range []string{"+81 3 1234 5678", "可以说", "不说", "Ducter 的声音", "Tuwa 的号码", "4 分钟 · 约 $1.60", "先不打"} {
+	for _, w := range []string{"+81 3 1234 5678", "可以说", "不透露", "Ducter 的声音", "Tuwa 的号码", "4 分钟 · 约 $1.60", "暂不拨打"} {
 		if !tt.HasText(w) {
 			t.Errorf("the Go card lacks %q: %q", w, tt.Texts())
 		}
@@ -132,7 +132,7 @@ func TestPhoneFlow(t *testing.T) {
 	if tt.HasText("不再问") || tt.HasText("后你没回") {
 		t.Errorf("a call's card has a default or a don't-ask-again: %q", tt.Texts())
 	}
-	if err := tt.Click("打过去"); err != nil {
+	if err := tt.Click("拨打"); err != nil {
 		t.Fatal(err)
 	}
 	if d, ok := (*sent)[len(*sent)-1].(protocol.Decide); !ok || d.Option != "go" || d.DecisionID != "d1" {
@@ -196,10 +196,10 @@ func TestCallD208(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1100, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	app.Route = RouteConversation
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
-		protocol.NewEvent(1, time.Now().UTC().Format(time.RFC3339), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: "打给 Aya？", GoLabel: "到点再打", DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: waitPlan(true, "callee", true)}}),
+		protocol.NewEvent(1, time.Now().UTC().Format(time.RFC3339), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: "打给 Aya？", GoLabel: "到时拨打", DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: waitPlan(true, "callee", true)}}),
 	}})
 	tt.Frame()
-	for _, w := range []string{"对方那边现在 20:03，我排到了对方的 09:00。", "现在就打", "到点再打", "不能做", "别说酒店名字", "Tuwa 的原话（英文）"} {
+	for _, w := range []string{"对方那边现在 20:03，我排到了对方的 09:00。", "立即拨打", "到时拨打", "不能做", "别说酒店名字", "Tuwa 的原话（英文）"} {
 		if !tt.HasText(w) {
 			t.Errorf("the waiting Go card lacks %q: %q", w, tt.Texts())
 		}
@@ -213,7 +213,7 @@ func TestCallD208(t *testing.T) {
 			t.Errorf("Tuwa's wording lacks %q: %q", w, tt.Texts())
 		}
 	}
-	if err := tt.Click("现在就打"); err != nil {
+	if err := tt.Click("立即拨打"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
@@ -229,10 +229,10 @@ func TestCallD208(t *testing.T) {
 	tt2 := ui.NewTesterWith(app2.View, 1280, 1100, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	app2.Route = RouteConversation
 	app2.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
-		protocol.NewEvent(1, time.Now().UTC().Format(time.RFC3339), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: "打给 Aya？", GoLabel: "到点再打", DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: waitPlan(true, "late", false)}}),
+		protocol.NewEvent(1, time.Now().UTC().Format(time.RFC3339), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: "打给 Aya？", GoLabel: "到时拨打", DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: waitPlan(true, "late", false)}}),
 	}})
 	tt2.Frame()
-	if !tt2.HasText("对方那边现在 21:30，太晚了，排到了对方的 09:00。") || tt2.HasText("现在就打") {
+	if !tt2.HasText("对方那边现在 21:30，太晚了，排到了对方的 09:00。") || tt2.HasText("立即拨打") {
 		t.Errorf("too late: %q", tt2.Texts())
 	}
 
@@ -245,7 +245,7 @@ func TestCallD208(t *testing.T) {
 	}}})
 	app.Route = RouteOnHand
 	tt.Frame()
-	for _, w := range []string{"转到了自动语音 · Sushi Saito", "是 Google Voice 的来电过滤", "没打通 · Sushi Saito", "Tuwa 没说原因", "没打出去 · Sushi Saito", "Tuwa 拒绝了：number not allowed"} {
+	for _, w := range []string{"接通的是自动语音 · Sushi Saito", "是 Google Voice 的来电过滤", "没打通 · Sushi Saito", "Tuwa 没说原因", "没打出去 · Sushi Saito", "Tuwa 拒绝了：number not allowed"} {
 		found := false
 		for _, s := range tt.Texts() {
 			if strings.Contains(s, w) {
@@ -334,7 +334,7 @@ func TestPhoneShots(t *testing.T) {
 			app := base()
 			app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
 				protocol.NewEvent(1, iso(-2*time.Minute), "default", "channel", "user", protocol.KindUserMsg, protocol.UserMsg{Text: pick("帮我给 Sushi Saito 打个电话，订明天晚上 7 点两位，名字写 Weyl", "Call Sushi Saito and book two for tomorrow at 7 pm under Weyl")}),
-				protocol.NewEvent(2, iso(-time.Minute), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: pick("打给 Sushi Saito？", "Call Sushi Saito?"), GoLabel: pick("打过去", "Call"), DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: sushiPlan(zh, at)}}),
+				protocol.NewEvent(2, iso(-time.Minute), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: pick("打给 Sushi Saito？", "Call Sushi Saito?"), GoLabel: pick("拨打", "Call"), DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: sushiPlan(zh, at)}}),
 			}})
 			return app
 		}
@@ -347,7 +347,7 @@ func TestPhoneShots(t *testing.T) {
 			app := base()
 			app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
 				protocol.NewEvent(1, iso(-2*time.Minute), "default", "channel", "user", protocol.KindUserMsg, protocol.UserMsg{Text: pick("现在就给 Aya 打个电话（+81 90-1111-2222），问她今晚有没有空，别说酒店名字", "Call Aya now (+81 90-1111-2222) and ask if she's free tonight; don't mention the hotel")}),
-				protocol.NewEvent(2, iso(-time.Minute), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: pick("打给 Aya？", "Call Aya?"), GoLabel: pick("到点再打", "Call then"), DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: waitPlan(zh, why, canNow)}}),
+				protocol.NewEvent(2, iso(-time.Minute), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: pick("打给 Aya？", "Call Aya?"), GoLabel: pick("到时拨打", "Call then"), DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: waitPlan(zh, why, canNow)}}),
 			}})
 			app.ph().summary["d1"] = true
 			return app
@@ -360,7 +360,7 @@ func TestPhoneShots(t *testing.T) {
 		app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Calls: []protocol.CallBody{{CallID: "call_1", State: "question", Plan: *sushiPlan(zh, ""), TalkingSince: iso(-70 * time.Second), Question: &protocol.CallQuestion{Text: pick("对方问：7 点没有了，7 点半可以吗？", "They ask: 7 is full, is 7:30 all right?"), YesNo: true, DecisionID: "d2"}}}}})
 		app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
 			protocol.NewEvent(1, iso(-3*time.Minute), "default", "channel", "user", protocol.KindUserMsg, protocol.UserMsg{Text: pick("帮我给 Sushi Saito 打个电话，订明天晚上 7 点两位", "Call Sushi Saito and book two for tomorrow at 7 pm")}),
-			protocol.NewEvent(2, iso(-2*time.Minute), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: pick("打给 Sushi Saito？", "Call Sushi Saito?"), GoLabel: pick("打过去", "Call"), DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: sushiPlan(zh, "")}}),
+			protocol.NewEvent(2, iso(-2*time.Minute), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: pick("打给 Sushi Saito？", "Call Sushi Saito?"), GoLabel: pick("拨打", "Call"), DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: sushiPlan(zh, "")}}),
 			protocol.NewEvent(3, iso(-2*time.Minute), "default", "channel", "user", protocol.KindDecisionResolved, protocol.DecisionResolved{DecisionID: "d1", Option: "go", By: "user"}),
 			protocol.NewEvent(4, iso(-10*time.Second), "default", "channel", "system", protocol.KindDecision, protocol.Decision{DecisionID: "d2", Question: pick("对方问：7 点没有了，7 点半可以吗？", "They ask: 7 is full, is 7:30 all right?"), GoLabel: "yes", DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "question", YesNo: true}}),
 		}})

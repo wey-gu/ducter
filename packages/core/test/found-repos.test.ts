@@ -2,7 +2,7 @@
 // used and added ones, with their origin, so the Mac's copy of a hel repo is found), reads a
 // reported repo's branches only when it is asked about, keeps each computer's list a while, says
 // where each Ducter folder is (or that a worker is too old), looks through a computer's folders
-// for 找一个文件夹… / Find a folder…, and clones a Git address there (从 Git 地址加…).
+// for 选择文件夹… / Find a folder…, and clones a Git address there (从 Git 地址加…).
 import { afterEach, expect, test } from "bun:test";
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

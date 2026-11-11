@@ -59,7 +59,7 @@
         asks the first time a task needs a protected folder (C-group).
    2. **Your AI** (required, at least one).
       - Each detected harness shows ✓ with its account plan if readable ("Claude Code · Max").
-      - A detected but signed-out harness shows **连上 / Connect** → its official login in a
+      - A detected but signed-out harness shows **连接 / Connect** → its official login in a
         sheet (A4 flow H-1). Optional if another one is ✓.
       - None installed → three choices, in this order:
         1. **装上 Claude Code / Install Claude Code** (Ducter runs the official installer, then
@@ -68,7 +68,7 @@
         3. **用 API key / Use an API key** (paste; validated live; stored in the vault).
       - The *Start talking* button stays disabled with the reason "先连上一个 AI" until one
         row is ✓. This is the only blocking step in A1.
-   3. **Your memory (optional)** · Mem detected → **连上 / Connect** (default highlighted) or
+   3. **Your memory (optional)** · Mem detected → **连接 / Connect** (default highlighted) or
       "先不用 / Not now". Not detected → row reads "以后也可以加 / You can add this later",
       collapsed, no button pressure.
 4. **Name and look (inline, optional).** Below the rows: the partner's face, name field
@@ -319,7 +319,7 @@ with what it can do.**
 1. Fresh app launch on Mac #2. Before the cartoon, Ducter looks for an existing Ducter: mDNS on
    the LAN, and a "Ducter is on another device" deep link if the user came from one.
    - Found on LAN: "在这个网络上找到了你的 Ducter（MacBook Pro）。连上它？/ Found your Ducter on this
-     network (MacBook Pro). Join it?" **连上 / Join** · "新建一个 / Start a new one".
+     network (MacBook Pro). Join it?" **连接 / Join** · "新建一个 / Start a new one".
    - Not found: the cartoon plays, and the checklist's first row has a quiet link "我已经有 Ducter
      了 / I already have Ducter" → scan a QR shown on the existing client or enter its code.
 2. Join = pair as a client (passkey/Touch ID) **and** offer "也让这台 Mac 干活 / Let this Mac do

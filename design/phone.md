@@ -20,7 +20,7 @@ same card later.
 | **Before** | Annoyed: a call is a context switch and 10 minutes of hold music | Anxious: a foreign language, a stranger, a booking that might go wrong | Doubtful it can, a little uneasy about a robot speaking for them |
 | **After** | The task never stopped; one card, one tap, an outcome line | Relief and a small delight: "two counter seats tomorrow at 7:30", in their own language | Trust: they saw exactly what would be said before it was said, and heard how it went |
 | **Emotional value** | Attention saved (principle 7) | 惊喜 + 放心 | 放心: nothing happens in their name without their yes |
-| **How it starts, zero setup** | Settings › Accounts › **打电话 / Make calls** › **连上 Tuwa / Connect Tuwa**: a code and a QR, approved on the phone; or **+ 打电话** on the home's card in 你的设备 (D199), which opens the same place and starts the same sign-in | The same, from the phone: the sign-in page opens on the same phone | Asking for a call before connecting: the partner says in one line where to connect; browsing the home's card, the 打电话 chip shows the ability exists |
+| **How it starts, zero setup** | Settings › Accounts › **打电话 / Make calls** › **连接 Tuwa / Connect Tuwa**: a code and a QR, approved on the phone; or **+ 打电话** on the home's card in 你的设备 (D199), which opens the same place and starts the same sign-in | The same, from the phone: the sign-in page opens on the same phone | Asking for a call before connecting: the partner says in one line where to connect; browsing the home's card, the 打电话 chip shows the ability exists |
 
 North star (D36): 好用, one card per call; 顺滑, the call lives in On hand like a task; 赏心悦目, the
 clay phone (`ab_call`, grey `ab_call_locked` until connected); 放心, the card shows who, what will
@@ -54,15 +54,15 @@ be said, what stays private, the voice, the cost, when, and the line always says
    Voice · 从 / From (a Tuwa number) · 大约 / About (n min · about $) · 什么时候 / When, and **不能做 /
    Won't do** when the owner gave don'ts; the opening line; **Tuwa 的原话（英文） / Tuwa's own wording**
    behind a fold (label / value lines, the labels in the owner's words, the values as Tuwa wrote
-   them). **打过去 / Call** · **先不打 / Not now** · Reply… (a change: the partner drafts again; the
+   them). **拨打 / Call** · **暂不拨打 / Not now** · Reply… (a change: the partner drafts again; the
    old card is withdrawn). When it waits (D208): under When, why in plain words (**对方那边现在
-   20:03，我排到了对方的 9:00。**), Go reads **到点再打 / Call then**, and **现在就打 / Call now** sits
+   20:03，我排到了对方的 9:00。**), Go reads **到时拨打 / Call then**, and **立即拨打 / Call now** sits
    beside the reason when only the callee's courtesy hours moved a call the owner just asked for.
 3. **Go.** Ducter confirms with Tuwa (`tuwa_confirm`, the owner's button words, plus any words they
    added, as `personReply`). Tuwa dials at once or at `scheduledAt`; a Go given after that hour
    waits in Ducter for the next allowed one.
 4. **On the line.** On hand, working lane: **在打给 X… / Calling X…**, **通话中 · X 2:14 / On the call ·
-   X 2:14** with **挂断 / Hang up**; a waiting one **9:00 打给 X / Calls X at 9:00** with **不打了 /
+   X 2:14** with **挂断 / Hang up**; a waiting one **9:00 打给 X / Calls X at 9:00** with **取消通话 /
    Cancel call**. Status is polled every 15 s, 5 s while someone is on the line.
 5. **A question from the line** (`pendingQuestion`): a `decision` with `call.kind = question`, first in
    Needs you, pushed at once even in quiet hours: **对方在问 / They're asking**, the question, **可以 /
@@ -70,7 +70,7 @@ be said, what stays private, the voice, the cost, when, and the line always says
    what to say**. Foot: **电话那头在等；90 秒没回，就说回头再打。** After 90 s Ducter sends the fixed
    call-back line. An answer said in the conversation goes through `phone_call do=answer`.
 6. **After.** Done today: **打完了 · X / Called X** with the outcome line as reported, **没能确认 · X /
-   Couldn't confirm · X**, **转到了自动语音 · X / Got an automated message · X** (it connected, but
+   Couldn't confirm · X**, **接通的是自动语音 · X / Got an automated message · X** (it connected, but
    voicemail, a screening service or "not available" answered; D208), **没人接 · X / No answer · X**,
    **没打通 · X / Didn't connect · X** (dialed; the line failed, with Tuwa's words or "Tuwa 没说原因"),
    **没打出去 · X / Didn't go through · X** (never placed: a card to save, no minutes, today's limit,
@@ -105,7 +105,7 @@ approved 3 times in 14 days.
 | Ask every call | the card; `decisions.ts` resolves, `phone.ts` confirms only on Go |
 | Disclosure | Ducter's context and `mustNot` on every draft |
 | The owner's quiet hours | `nextAllowed`: only for a call nobody just asked for (a task's call, a time Ducter picks); a call the owner asks for while here may start now (D208) |
-| The callee's 9:00–20:00 (a courtesy) | the card says why and offers **现在就打 / Call now** for a call the owner just asked for; then Ducter holds the hour (no `scheduledAt`), else `scheduledAt` (D208) |
+| The callee's 9:00–20:00 (a courtesy) | the card says why and offers **立即拨打 / Call now** for a call the owner just asked for; then Ducter holds the hour (no `scheduledAt`), else `scheduledAt` (D208) |
 | 8:00–21:00 where they are (never crossed) | `nextAllowed` with `courtesy: false`; Call now can't pass it; none of these for the owner's own number (they said so, or their saved phone) |
 | The callee's zone | where they are now when the partner knows it; a +1 number's area code (`nanp.ts`); else every zone of the country |
 | A confirm that errored | the call's status read first: placed → go on, waiting for its yes → asked again, unreadable → failed as lost (never a second yes) |

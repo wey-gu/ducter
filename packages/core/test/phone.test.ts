@@ -233,7 +233,7 @@ describe("a calling connection, through a fake Tuwa", () => {
   test("one call end to end: the card, Go with the owner's words, a question from the line, the outcome as reported", async () => {
     await connect();
     const r = await draftAndGo();
-    expect(r.card).toMatchObject({ question: "打给 Sushi Saito？", goLabel: "打过去", defaultOption: "hold", reversible: false });
+    expect(r.card).toMatchObject({ question: "打给 Sushi Saito？", goLabel: "拨打", defaultOption: "hold", reversible: false });
     expect(r.plan).toMatchObject({ to: "+81312345678", minutes: 4, perMinUsd: 0.4, costUsd: 1.6, voice: "ducter", provider: "Tuwa" });
     expect(r.plan.summary).toContain("Sushi Saito");
     const draft = tuwa.last()!;
@@ -248,7 +248,7 @@ describe("a calling connection, through a fake Tuwa", () => {
 
     core.decisions.decide(r.card.decisionId, "go");
     await until(() => draft.status === "executing");
-    expect(draft.personReply).toBe("打过去");
+    expect(draft.personReply).toBe("拨打");
     await until(() => core.phone.calls()[0]!.state === "calling");
 
     tuwa.set(draft.taskId, { durationSec: 20, pending: { question: "7 点半可以吗？", token: "QABCDE", kind: "yes_no" } });
@@ -353,13 +353,13 @@ describe("a calling connection, through a fake Tuwa", () => {
     clock.advance(8 * 3600_000 + 3 * 60_000); // 20:03 in Tokyo, the owner awake and asking
     const r = await draftAndGo({ present: true });
     expect(r.plan).toMatchObject({ at: "2026-11-12T00:00:00.000Z", canNow: true, wait: { why: "callee", zone: "Asia/Tokyo", their: "20:03", then: "9:00" } });
-    expect(r.card.goLabel).toBe("到点再打");
+    expect(r.card.goLabel).toBe("到时拨打");
     // Ducter holds the time (so Call now can dial now): no scheduledAt at the provider.
     const draft = tuwa.last()!;
     expect(draft.args.scheduledAt).toBeUndefined();
     expect(core.phone.callNow(r.callId)).toEqual({ ok: true });
     await until(() => draft.status === "executing");
-    expect(draft.personReply).toBe("现在就打");
+    expect(draft.personReply).toBe("立即拨打");
     await until(() => core.phone.calls()[0]!.state === "calling");
     expect(core.phone.calls()[0]!.callNow).toBe(true);
   });
@@ -373,7 +373,7 @@ describe("a calling connection, through a fake Tuwa", () => {
     expect(tuwa.calls.some((x) => x.name === "tuwa_confirm")).toBe(false);
     clock.advance(13 * 3600_000); // 09:03 the next morning in Tokyo
     await until(() => tuwa.last()!.status === "executing");
-    expect(tuwa.last()!.personReply).toBe("到点再打");
+    expect(tuwa.last()!.personReply).toBe("到时拨打");
   });
 
   test("D208: at 21:30 there it is too late even on Call now; a call the partner starts waits for the owner's quiet hours to end", async () => {

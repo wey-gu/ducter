@@ -55,21 +55,21 @@ func TestTryItOnTheBrowserBlock(t *testing.T) {
 		for _, want := range []string{
 			"example.com",
 			pick("Ducter 自己的浏览器 · 在 hetzner-1 上 · Chrome for Testing 157", "Ducter's own browser · on hetzner-1 · Chrome for Testing 157"),
-			pick("这是 hetzner-1 上的浏览器看到的网页，不是你的 Chrome。点点看、滚一滚都行。", "This is the page as the browser on hetzner-1 sees it, not your Chrome. Click and scroll as you like."),
-			pick("好了", "Done"),
+			pick("这是 hetzner-1 上的浏览器看到的网页，不是你的 Chrome。可以点一点、滚动看看。", "This is the page as the browser on hetzner-1 sees it, not your Chrome. Click and scroll as you like."),
+			pick("完成", "Done"),
 		} {
 			if !tt.HasText(want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
-		if tt.HasText(pick("先不登了", "Not now")) {
+		if tt.HasText(pick("暂不登录", "Not now")) {
 			t.Errorf("%s: Try it has nothing to put off", lang)
 		}
 		if ack, ok := lastSent[protocol.LiveAckReq](*sent); !ok || ack.Seq != 1 {
 			t.Errorf("%s: frame not acked: %#v", lang, ack)
 		}
 		shoot(t, tt, "desktop-try-view-"+string(lang)+".png")
-		if err := tt.Click(pick("好了", "Done")); err != nil {
+		if err := tt.Click(pick("完成", "Done")); err != nil {
 			t.Fatal(err)
 		}
 		if c, ok := lastSent[protocol.LiveCloseReq](*sent); !ok || c.ID != "lv1" || !c.Done {

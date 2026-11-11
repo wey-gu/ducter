@@ -35,12 +35,12 @@ func TestOoOfferIsTheDefault(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 2200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"你在 oo 里的账号", "Gmail", "wei@work.example · wei@home.example", "Slack", "用这些账号", "你的邮件和登录凭据会经过 OOMOL 的服务器。", "用地址和钥匙加一个"} {
+	for _, want := range []string{"你在 oo 里的账号", "Gmail", "wei@work.example · wei@home.example", "Slack", "用这些账号", "你的邮件和登录凭据会经过 OOMOL 的服务器。", "用地址和密钥添加"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q", want)
 		}
 	}
-	if tt.HasText("加一个") && !tt.HasText("用地址和钥匙加一个") {
+	if tt.HasText("添加") && !tt.HasText("用地址和密钥添加") {
 		t.Errorf("the address-and-key form should step back behind a quiet link")
 	}
 	n := len(*sent)
@@ -52,7 +52,7 @@ func TestOoOfferIsTheDefault(t *testing.T) {
 	if f, ok := (*sent)[n].(protocol.ConnectionOo); !ok || f.T != "connection_oo" {
 		t.Errorf("the tap sends connection_oo, got %#v", (*sent)[n])
 	}
-	tt.Click("正在加上…")
+	tt.Click("正在添加…")
 	tt.Frame()
 	if len(*sent) != n+1 {
 		t.Errorf("a second tap while adding sends nothing")
@@ -64,7 +64,7 @@ func TestOoOfferIsTheDefault(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	// D166: a character sheet: the name, its tiles, where mail passes, and 加一个 stepped back.
-	for _, want := range []string{"oo 里的账号", "Gmail", "Slack", "Discord bot", "经过 oo · 邮件和消息会经过 OOMOL 的服务器", "加一个"} {
+	for _, want := range []string{"oo 里的账号", "Gmail", "Slack", "Discord bot", "经过 oo · 邮件和消息会经过 OOMOL 的服务器", "添加"} {
 		if !tt.HasText(want) {
 			t.Errorf("after adding: no %q", want)
 		}
@@ -162,17 +162,17 @@ func TestAccountRemoveAsksFirst(t *testing.T) {
 	if len(*sent) != n {
 		t.Fatalf("the first tap sends nothing, sent %d", len(*sent)-n)
 	}
-	if !tt.HasText("不用了以后它就看不到这些账号；记下的事还在「记得什么」里，可以忘掉。") || !tt.HasText("算了") {
+	if !tt.HasText("停用以后，它就看不到这些账号了；记下的事还在「记得什么」里，可以忘掉。") || !tt.HasText("取消") {
 		t.Fatalf("the card asks first; texts: %v", tt.Texts())
 	}
-	tt.Click("算了 · oo 里的账号")
+	tt.Click("取消 · oo 里的账号")
 	tt.Frame()
-	if tt.HasText("不用了以后它就看不到这些账号") || len(*sent) != n {
+	if tt.HasText("停用以后，它就看不到这些账号") || len(*sent) != n {
 		t.Fatalf("Keep it closes the ask and sends nothing")
 	}
 	tt.Click(stop)
 	tt.Frame()
-	tt.Click("不用了 · oo 里的账号")
+	tt.Click("停用 · oo 里的账号")
 	tt.Frame()
 	if len(*sent) != n+1 {
 		t.Fatalf("the second Remove sends one frame, got %d", len(*sent)-n)

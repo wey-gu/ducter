@@ -179,7 +179,7 @@ The existing escalation (principle 7: badge → message → push → call) with 
 
 **Quiet hours** (D59, built) hold everything. The only way through at night is a **per-kind
 exception the person said** ("航班改了，夜里也叫我"), kept as a Rule in 你的规则 (D89's list,
-"不要这条" removes it). Ducter never proposes one.
+"删除" removes it). Ducter never proposes one.
 
 **The proactive switch: one chip row** (single choice), on Settings › 账号 above the cards and
 mirrored in Settings › 通知 (什么时候找你):
@@ -215,7 +215,7 @@ phone screen with a next step each. INFERRED, to be tuned by the triage eval (§
   through D159's encrypted path; previews follow the phone's own "显示预览" setting (no new
   Ducter setting). Tapping opens the note.
 - **Held over:** a find not acted on stays as a decision on 手头的事 until its date passes, then
-  quietly becomes **过了 / Passed** (never "done" on its own); it is not said again unless
+  quietly becomes **已跳过 / Passed** (never "done" on its own); it is not said again unless
   something changed.
 
 ## 7. Following through: a find becomes a task only on Go
@@ -236,13 +236,13 @@ Asks raised by background work **expire into Passed** with the find's date (the 
 
 - Under each find, two quiet text buttons: **有用 / Useful** and **这类不用告诉我 / Don't tell
   me this kind**. The second becomes a Rule in **你的规则** worded in the kind and the sender
-  ("Cloudflare 的续费提醒不用告诉我"), removable with **不要这条**. One tap, said back once:
+  ("Cloudflare 的续费提醒不用告诉我"), removable with **删除**. One tap, said back once:
   **好，这类以后不说了。** No settings page for kinds.
 - Implicit signals, per kind and per sender: Go and 有用 raise; Hold, ignored and "这类不用告诉我"
   lower. Three ignored finds of a kind in 14 days raise that kind's bar (it needs a higher
   cost-if-missed to be said).
 - **3 unread morning notes in a row** → the notes pause and the next time the person writes,
-  one line asks **早上那条还要吗？/ Keep the morning note?** with **要 / Keep** (default) and
+  one line asks **早上那条还要吗？/ Keep the morning note?** with **保留 / Keep** (default) and
   **不用了** (= the chip **只说急的**). The routine rule (D114), reused.
 - People: who the person answers fast, who reviews whose PRs, what money they watch, goes to Mem
   as distilled facts only when the partner is sure (§9).
@@ -290,10 +290,10 @@ says so once. "Only when I ask" costs nothing.
 
 ## 11. The first account: one moment, one question
 
-1. The person taps **用这些账号** (oo) or **检查并加上** (a key). The card lands (§12), and
+1. The person taps **用这些账号** (oo) or **检查并添加** (a key). The card lands (§12), and
    **the partner speaks in the conversation**, not a toast:
    **已经能看你的 Gmail、日历、Discord 和 GitHub 了。要不要我现在看一眼过去 3 天，有没有在等你回的？**
-   · **好，看一眼 / Take a look** (the default) · **先不用 / Not now**.
+   · **好，看一眼 / Take a look** (the default) · **以后再说 / Not now**.
 2. Go: a read-only look (stages 1–3 over 3 days), said within about a minute:
    **有 1 件在等你回：Lina 周一问你 #2141 什么时候能 review，今天又问了一次。**
    (with its next step), or **没有在等你回的。** Never how much it read (D173). Meanwhile, silently, the
@@ -325,7 +325,7 @@ existing parts; the app tile is literal (an app's rounded square), not a metapho
      (D173: the plain state, never a read count; counts are under ⋯ 看了哪些);
    - only when asked: **你问起来才去看 / Reads only when you ask**;
    - signed out of oo: **oo 退出登录了 · 在终端里运行 oo login** (failed ink);
-   - refused key: **钥匙失效了 · 换一把** with **去拿钥匙** (failed ink, D158);
+   - refused key: **密钥失效了 · 换一个** with **获取密钥** (failed ink, D158);
    - nothing connected there: **OOMOL 里还没连账号 · 去连一个** (D158).
 3. **What it can read: a tray of app tiles.** Each connected account as a small clay tile
    (rounded square, 48; phone 52) with the app's printed mark (official marks where their
@@ -334,7 +334,7 @@ existing parts; the app tile is literal (an app's rounded square), not a metapho
    whose it is in a few letters (**weyl.gu** at a mail provider, **nowledge-labs** at a company; the
    whole address when two would read the same). A tile not watched sits flat and a little faded; a
    tile oo or OOMOL can't reach is grey; a tile the person said not to read says **不看**. A
-   dashed tile at the end, **在 oo 里再连一个 / Connect another in oo**, opens oo's or OOMOL's
+   dashed tile at the end, **在 oo 里再连接一个 / Connect another in oo**, opens oo's or OOMOL's
    page (accounts are connected there, not in Ducter).
 4. **Tap a tile → its detail in place** (never a floating layer), in three bands (D192): the app's
    mark, **Gmail**, **wey@nowledge.co · 最后看过：2 分钟前** (nothing when it never looked); then
@@ -350,11 +350,11 @@ existing parts; the app tile is literal (an app's rounded square), not a metapho
    one line each, and the honest line about the AI account) at the start and the foot's stop at the end.
 7. **Foot:** one destructive text button, **不用 oo 里的账号了 / Stop using the accounts in oo**,
    confirmed inline: **不用了以后它就看不到这些账号；记下的事还在「记得什么」里，可以忘掉。** ·
-   **算了** · **不用了**.
+   **取消** · **停用**.
 8. **Default text: five lines** (name, status, tile labels, the connection line, the foot).
    Everything else is one tap away.
 9. **Phone:** the same sheet in one column; tiles wrap four to a row; the detail opens in place.
-10. **Add one:** **加一个 / Add one** steps back to a quiet text button under the cards (adding
+10. **Add one:** **添加 / Add one** steps back to a quiet text button under the cards (adding
     a second source is rare; the primary button no longer invites it).
 11. **Motion** (ui.md tokens; reduced motion: none): the card lands with the mailbox's equip
     snap (D65) on the first add; the lid lifts 3 pt for 600 ms when a look runs (at most once a
@@ -402,7 +402,7 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 | ★ `find.passed` | 过了 | Passed |
 | ★ `kind.*` | 两件事对不上 · 在等你回 · 你在等别人回 · 你答应过的 · 快到期 · 要花钱 · 计划变了 · 开会前 | Two things don't match · Waiting on you · You're waiting on someone · Something you promised · Deadlines and money · A plan changed · Before a meeting |
 | ★ `first.offer` | 已经能看你的 {apps} 了。要不要我现在看一眼过去 3 天，有没有在等你回的？ | I can read your {apps} now. Want me to look through the last 3 days for anything waiting on you? |
-| ★ `first.go` · `first.no` | 好，看一眼 · 先不用 | Take a look · Not now |
+| ★ `first.go` · `first.no` | 好，看一眼 · 以后再说 | Take a look · Not now |
 | ★ `first.ask` | 以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？ | From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK? |
 | ★ `note.pause` | 早上那条还要吗？ | Keep the morning note? |
 | ★ `card.status.watching` · `card.status.paused` | 在留意 · 已暂停 | Keeping an eye out · Paused |
@@ -705,43 +705,42 @@ question). A live test against a self-hosted OpenConnector is still owed (§22).
 ## 20. The Accounts page as built (D122, D158)
 
 - **The oo offer (D122).** With oo signed in, the card leads with a sunken panel: a
-  mailbox, **你在 oo 里的账号 / Your accounts in oo**, "不用配钥匙：Ducter 通过 oo 去看，登录留在 oo
+  mailbox, **你在 oo 里的账号 / Your accounts in oo**, "不用配密钥：Ducter 通过 oo 去看，登录留在 oo
   里。/ No key to set up: Ducter reads through oo, and oo's sign-in stays in oo.", a white list of
   each service and its accounts' labels, the honest line "你的邮件和登录凭据会经过 OOMOL 的服务器。/
   Your mail and sign-ins pass through OOMOL's servers.", and the one primary button **用这些账号 /
   Use these accounts**. Before oo answers: "正在看 oo 里有哪些账号… / Looking at what's in oo…";
   with none: "oo 里还没有账号… / No accounts in oo yet…". The form below steps back to a quiet
-  link, **用地址和钥匙加一个 / Add one with an address and key**. Added, the row reads **oo 里的账号
+  link, **用地址和密钥添加 / Add one with an address and key**. Added, the row reads **oo 里的账号
   / Accounts in oo**, "Gmail (2) · Slack · …", "经过 oo · 邮件和登录经过 OOMOL 的服务器 / Through oo ·
   your mail and sign-ins pass through OOMOL's servers". Screenshots: `.shots/oo-connect/`.
-- **Equip.** In Settings › 账号 / Accounts, **加一个 / Add one** → where (OOMOL 托管 /
-  Hosted by OOMOL · 自己部署的 / Self-hosted · 其他服务 / Something else) → **检查并加上 / Check
+- **Equip.** In Settings › 账号 / Accounts, **添加 / Add one** → where (OOMOL 托管 /
+  Hosted by OOMOL · 自己部署的 / Self-hosted · 其他服务 / Something else) → **检查并添加 / Check
   and add** (Return checks too).
   - **Hosted by OOMOL (D158)** has no address field. Three plain steps, each with its page:
     1. **在 OOMOL 登录，把 Gmail、Discord 这些账号连上。** · **去 OOMOL 连账号 / Connect
        accounts in OOMOL** (`console.oomol.com/app-connections`);
-    2. **在 OOMOL 控制台新建一把钥匙。** · **去拿钥匙 / Get a key** (a button,
+    2. **在 OOMOL 控制台新建一个密钥。** · **获取密钥 / Get a key** (a button,
        `console.oomol.com/api-key`);
-    3. **把钥匙粘贴到下面，再点“检查并加上”。**
+    3. **把密钥粘贴到下面，再点“检查并添加”。**
 
-    Then 钥匙 / Key, masked, with **显示 / Show**. Checked empty, the field says **先把钥匙填上。**
+    Then 密钥 / Key, masked, with **显示 / Show**. Checked empty, the field says **先把密钥填上。**
     in the failed ink and nothing is sent.
-  - Self-hosted and Something else: 地址 / Address, 钥匙 / Key; their setup steps
+  - Self-hosted and Something else: 地址 / Address, 密钥 / Key; their setup steps
     (OpenConnector's Access page, Create Token, an MCP server's token) sit behind a quiet **怎么连
     / How to connect** fold.
   - **The answer, in its own look (D158).** Added: **加上了 OOMOL，现在能看：Gmail、Discord** (done
     look); added with nothing connected there: **加上了 OOMOL，不过那里还没有能看的账号。** (info
     look) and on the row **连上了，但 OOMOL 里还没连任何账号。** · **去 OOMOL 连账号**; when it
     didn't say: "Ducter 现在能看 {name} 里的账号了". A refusal shows in the open form as an alert
-    (failed tokens, **!**): **钥匙不对或已失效，换一把新的。** (with **去拿钥匙** for OOMOL) ·
+    (failed tokens, **!**): **密钥不对或已失效，换一个新的。** (with **获取密钥** for OOMOL) ·
     **连不上这个地址。看看网络，过一会儿再试。** · **这个地址上没有 Ducter 能用的账号服务，看看地址对不对。**
     Never in the done look. On the phone the same, in the card; the toast carries only an add.
   - 连上 / connect for an account here is OOMOL's own word for what the person does in OOMOL's
-    console (D158); Ducter's own action stays 加上 / add.
-  - 钥匙 / Key is OpenConnector's own word on its Access page. It is proposed for the
-    glossary, as the one place a person handles one.
+    console (D158); Ducter's own action stays 添加 / add (D212).
+  - 密钥 / Key, as every zh product says for an API key (D212; it was 钥匙, which reads as a door key).
   - Never 授权 / authorize, 接入, or "connector" in UI.
-  - 连上 / Connect stays reserved for devices (D54).
+  - 连接 / Connect stays reserved for devices (D54; 连上 until D212).
 - **Owed:** the human comprehension test (with the D65 test), and art for the mailboxes (the
   prototype draws them in SVG).
 

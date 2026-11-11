@@ -102,7 +102,7 @@ test("every signed-in agent without it gets one card, Go 装上 recommended and 
     { device: "w1", deviceName: "mini", harness: "claude-code" },
     { device: "w1", deviceName: "mini", harness: "codex" },
   ]);
-  expect(d[0]).toMatchObject({ goLabel: "装上", defaultOption: "go", reversible: true });
+  expect(d[0]).toMatchObject({ goLabel: "安装", defaultOption: "go", reversible: true });
   expect(d[0]!.defaultAt).toBeUndefined(); // never applied by itself: it changes the agent's own settings
   expect(d[0]!.question).toBe("mini 上的 Claude Code 还没装 Nowledge Mem。装上以后，我在那儿做事和你自己用 Claude Code 时都记得你；会改 Claude Code 自己的设置。");
   // Checked again (a day later, after a restart): never again.
@@ -155,7 +155,7 @@ test("装上 opens one task there with that agent and Mem's own guide; the check
   const s = setup({ devs });
   const r = await s.mp.install("w1", "codex");
   expect(r).toEqual({ ok: true, taskId: "tsk1" });
-  expect(s.opened[0]).toMatchObject({ harness: "codex", place: { kind: "none", device: "w1" }, origin: "you", language: "zh", title: "给 mini 上的 Codex 装上 Nowledge Mem" });
+  expect(s.opened[0]).toMatchObject({ harness: "codex", place: { kind: "none", device: "w1" }, origin: "you", language: "zh", title: "为 mini 上的 Codex 安装 Nowledge Mem" });
   expect(s.opened[0].brief).toContain("https://mem.nowledge.co/SKILL.md");
   expect(s.opened[0].brief).toContain('nmem --json plugins inspect --host codex-cli');
   // Twice: refused while the first is open; the card says a task is on it.

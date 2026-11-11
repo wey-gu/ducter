@@ -524,9 +524,9 @@ not a separate task.
 3. Done → the report carries what changed; the partner's result says it in a line and adds
    **随时能改回去，留到 11 月 16 日 / You can undo this until Nov 16**.
 4. The opened task's **改动 / Changes**: one sentence (**把 42 个文件整理进 6 个新文件夹，改了 3 个文件名**),
-   the quiet until-line, **改回去 / Undo all changes** and **就这样 / Keep the changes**; **看看改了哪些 /
+   the quiet until-line, **全部还原 / Undo all changes** and **保留改动 / Keep the changes**; **看看改了哪些 /
    See what changed** opens the list (moves as *from → to*, new, changed, deleted), each with
-   **改回这个 / Undo this** on hover.
+   **还原这项 / Undo this** on hover.
 5. Undo all → the folder is exactly as before (checked by hash); the section says
    **改回去了，文件夹和它动手之前一模一样**. If the folder changed after the task finished, the undo asks
    first and names what would be lost.

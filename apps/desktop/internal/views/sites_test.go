@@ -35,7 +35,7 @@ func devicesApp(t *testing.T, lang i18n.Lang, web protocol.DeviceAbility) (*App,
 func TestServerBrowseTheWeb(t *testing.T) {
 	// Getting ready: one line, no "can't add here".
 	_, _, tt := devicesApp(t, i18n.ZH, protocol.DeviceAbility{ID: "web", State: "on", Where: "ducter", Setup: "installing"})
-	if !tt.HasText("正在装浏览器……第一次要下载一会儿") || tt.HasText("这台还装不了") {
+	if !tt.HasText("正在安装浏览器……第一次要下载一会儿") || tt.HasText("这台还装不了") {
 		t.Errorf("installing: %q", tt.Texts())
 	}
 
@@ -67,7 +67,7 @@ func TestServerBrowseTheWeb(t *testing.T) {
 		{Site: "appstoreconnect.apple.com", SignedInAt: "2026-11-09T08:00:00Z", Cookies: 0},
 	}})
 	tt.Frame()
-	for _, want := range []string{"已登录的网站", "github.com", "网站那边已经退出了", "全部清掉", "让这台电脑用 Ducter 自己的浏览器替你上网：查资料、看网页、整理找到的东西。它和你自己的 Chrome 分开。要登录的网站由你自己登录，提交和付款都留给你。"} {
+	for _, want := range []string{"已登录的网站", "github.com", "网站那边已经退出了", "全部清除", "让这台电脑用 Ducter 自己的浏览器替你上网：查资料、看网页、整理找到的东西。它和你自己的 Chrome 分开。要登录的网站由你自己登录，提交和付款都留给你。"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -81,14 +81,14 @@ func TestServerBrowseTheWeb(t *testing.T) {
 	if req, ok := lastSent[protocol.BrowserSitesReq](*sent); !ok || req.T != "browser_site_signout" || req.Site != "github.com" {
 		t.Errorf("退出 sent %#v", *sent)
 	}
-	if err := tt.Click("全部清掉"); err != nil {
+	if err := tt.Click("全部清除"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !tt.HasText("清掉以后，这些网站都要你重新登录。") {
+	if !tt.HasText("清除以后，这些网站都要你重新登录。") {
 		t.Fatalf("Clear all doesn't ask first: %q", tt.Texts())
 	}
-	if err := tt.Click("清掉"); err != nil {
+	if err := tt.Click("清除"); err != nil {
 		t.Fatal(err)
 	}
 	if req, ok := lastSent[protocol.BrowserSitesReq](*sent); !ok || req.T != "browser_sites_clear" {

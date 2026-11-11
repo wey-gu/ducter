@@ -258,7 +258,7 @@ func TestFirstRunUntilDucterIsUp(t *testing.T) {
 	l.Close() // nothing listens there yet
 	h := dial(t, "ws://"+addr+"/ws", i18n.ZH)
 	h.until("a failed attempt", func() bool { return h.app.Failed })
-	for _, want := range []string{"Ducter 还没启动", StartCommand, "现在就连"} {
+	for _, want := range []string{"Ducter 还没启动", StartCommand, "立即连接"} {
 		if !h.tt.HasText(want) {
 			t.Errorf("first run lacks %q: %q", want, h.tt.Texts())
 		}
@@ -280,7 +280,7 @@ func TestFirstRunUntilDucterIsUp(t *testing.T) {
 	srv := &http.Server{Handler: mux}
 	go srv.Serve(ln)
 	t.Cleanup(func() { srv.Close() })
-	h.click("现在就连")
+	h.click("立即连接")
 	h.until("welcome", func() bool { return h.app.S.Welcomed && h.app.S.OnHand != nil })
 	if h.tt.HasText("Ducter 还没启动") || !h.tt.HasText("手头") {
 		t.Errorf("still on first run: %q", h.tt.Texts())

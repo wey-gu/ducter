@@ -55,19 +55,19 @@ bottom:
 
 | Pill | Default | Its list |
 |---|---|---|
-| folder (在哪儿做 / Where) | the most recently used | the folders tasks used and the projects added (D186), most recent first, each with its path as ~/… (and **· {computer}** when the places span two computers, D197); then the projects in each computer's Ducter folder (D204), most recently touched first, up to 12 rows in all; with none, **还没有文件夹。/ No folders yet.**; then the ways to get one: on the Mac, 加一个文件夹… / Add a folder… for this Mac; **找一个文件夹… / Find a folder…** and **从 Git 地址加… / Add from a Git address…** for each computer that can (see below); a computer too old for them says so; 不用文件夹 / No folder last |
+| folder (在哪儿做 / Where) | the most recently used | the folders tasks used and the projects added (D186), most recent first, each with its path as ~/… (and **· {computer}** when the places span two computers, D197); then the projects in each computer's Ducter folder (D204), most recently touched first, up to 12 rows in all; with none, **还没有文件夹。/ No folders yet.**; then the ways to get one: on the Mac, 添加文件夹… / Add a folder… for this Mac; **选择文件夹… / Find a folder…** and **从 Git 地址添加… / Add from a Git address…** for each computer that can (see below); a computer too old for them says so; 不用文件夹 / No folder last |
 | branch (repos only; a worker's repo too, D197) | the repo's default branch | 从哪个分支开始 / Start from which branch: its 30 most recently committed, the default marked 默认 / default |
 | computer (only when real, D157) | the suggested one | 在哪台电脑上做 / On which computer |
 | 谁来做 / Who does it | the top candidate at the place's computer, tagged 推荐 / Suggested (why on hover); else the one the user last picked on this client; the pill reads **{agent} · {model} · {effort}** (D202) | every agent on every computer, one row each (D202): those that can here, best first, its one reason under it; then each that can only on another computer, **在 {computer} 上** (see below); a blocked one greyed with why. Under the chosen one, **模型 / Model** and **思考深度 / Effort** |
-| 什么时候开始 / When it starts | 现在 / Now | 现在 · 定个时间 · 定期做 · 等某件事发生 · 一直做到…, each with one line of what it means |
+| 什么时候开始 / When it starts | 现在 / Now | 现在 · 定时 · 定期 · 等条件满足 · 一直做到…, each with one line of what it means |
 
 3. **When it doesn't start now**, one line under the pills: At a time: 今天 / 明天 / 后天 and a
    typed time (9, 9:00, 21:30, 9.30); On a schedule: 每天 / 工作日 / 每周 (and a day) / 每隔几小时
    (1, 2, 4 or 8, round the clock) and the time; When something happens: **等到** and what it
    waits for; Keep going until: **做到** and what must hold (Return starts).
 4. **The foot:** one line on the left (what didn't work, in the failed ink; or **开始了：「X」** with
-   **打开 / Open** after ⇧⌘⏎; or the keys **⌘⏎ 开始 · ⇧⌘⏎ 开始并接着新建**), then **取消 /
-   Cancel** and **开始 / Start** (**定好 / Schedule** for a time or a schedule) at one height.
+   **打开 / Open** after ⇧⌘⏎; or the keys **⌘⏎ 开始 · ⇧⌘⏎ 开始并新建下一件**), then **取消 /
+   Cancel** and **开始 / Start** (**安排 / Schedule** for a time or a schedule) at one height.
 
 **⌘⏎** (anywhere in the card) starts: `task_new`, then on `task_new_result` ok it opens that task
 (Esc returns to where the user was); a time or a schedule instead closes the card on On hand.
@@ -80,7 +80,7 @@ What each when does underneath (no new scheduler):
 | When | Underneath |
 |---|---|
 | Now | the task opens (D128) |
-| At a time | a routine of the user's own with one firing (`every: "once"`, `date`, `time`, in the client's zone); it opens the task with the words verbatim at that time, then ends. On hand: its calendar with the date, **到时候开始 / Starts then**, **不做了 / Don't do it** |
+| At a time | a routine of the user's own with one firing (`every: "once"`, `date`, `time`, in the client's zone); it opens the task with the words verbatim at that time, then ends. On hand: its calendar with the date, **到时候开始 / Starts then**, **取消 / Don't do it** |
 | On a schedule | a routine of the user's own (`by: "you"`), active at once, no proposal card; each run gets the words and one line on which run it is, the agent picked, effect `local_writes`, reports every run; D114's pauses and review hold |
 | When something happens | the task opens now with **先等到：{X}\n然后：{words}** and a line asking it to wait with `wait_for` and a check; it rests on Waiting (D112 (4)) |
 | Keep going until | the task opens with the words verbatim, then `until` with the condition (D113) |
@@ -92,8 +92,8 @@ on the Mac (same origin, `PlaceChoice.remote`; when neither place knows an origi
 the Mac, and the card then moves to that copy (the same branch when it has one; for a repo the Mac
 reported, once its branches arrive, D203); else **文件夹要在
 Macbook Pro M3 上 / The folder must be on Macbook Pro M3**, and picking it opens the folder list on
-the Mac's places only: the projects in the Mac's Ducter folder, on the Mac itself **加一个文件夹…**,
-**找一个文件夹…**, **从 Git 地址加…** and **不用文件夹** there; with none listed it says **还没有 Macbook
+the Mac's places only: the projects in the Mac's Ducter folder, on the Mac itself **添加文件夹…**,
+**选择文件夹…**, **从 Git 地址添加…** and **不用文件夹** there; with none listed it says **还没有 Macbook
 Pro M3 上的文件夹。/ No folders on Macbook Pro M3 yet.** first (D203). A folder there (picked,
 found or cloned) picks the agent. For No folder it moves the computer, as D157.
 
@@ -112,9 +112,9 @@ files (origin, default branch; no git process). A worker answers the home's `rep
 none. They are listed after the folders tasks used and the projects added, as `found`; a found
 repo's branches are read when it is picked.
 
-**Adding from a Git address (D204).** **从 Git 地址加… / Add from a Git address…**, one row per
+**Adding from a Git address (D204).** **从 Git 地址添加… / Add from a Git address…**, one row per
 computer that can (the home and each reachable worker; on the Mac this Mac too), opens a field in
-place of the list: **从 Git 地址加到 {computer} / Add from a Git address on {computer}**, the address
+place of the list: **从 Git 地址添加到 {computer} / Add from a Git address on {computer}**, the address
 (**https://…、git@…:主人/仓库，或 主人/仓库 / https://…, git@…:owner/repo, or owner/repo**), where it
 goes and with whose sign-in (**会放在 ~/ducter/projects，用 {computer} 自己的 git 登录克隆。**, the real
 path from that computer), **返回 / Back** and **克隆 / Clone**. That computer runs `git clone` into its
@@ -127,11 +127,11 @@ git's own line. The address is checked strictly before git sees it (https, ssh, 
 user, `host/owner/repo`, GitHub `owner/repo`; never an option, `ext::`, `file://`, a local path or
 credentials), passed after `--`, https and ssh only (`clone.ts`).
 
-**Finding a folder (D203).** **找一个文件夹… / Find a folder…** looks through a computer's folders
+**Finding a folder (D203).** **选择文件夹… / Find a folder…** looks through a computer's folders
 one level at a time, from its home folder (~): the head **{computer} 上的文件夹 / Folders on
 {computer}** and the path, **上一层 / Up one level**, the subfolders with repos first (the branch
 glyph) then by name; tap one to go in. **用这个文件夹 / Use this folder** (not at ~ itself) adds it
-there as a project, as 加一个文件夹 does, so it is listed next time, and makes it the card's place
+there as a project, as 添加文件夹 does, so it is listed next time, and makes it the card's place
 (picking the agent that waited for a folder there); **返回 / Back** returns to the list. The phone and
 the browser offer it for the home and each reachable worker; the Mac for every computer but this Mac,
 which keeps macOS's own picker. Listing is confined to that computer's home folder: the path and each
@@ -147,15 +147,15 @@ with **默认**, which sends nothing); no row when the model takes none. Unread 
 an old worker): the tier table's models, no effort row. The last model and effort are remembered
 per agent on this client.
 
-**Adding a folder (D186, D197).** 加一个文件夹… opens macOS's folder picker. Where the window's
+**Adding a folder (D186, D197).** 添加文件夹… opens macOS's folder picker. Where the window's
 Ducter runs on this Mac, the folder is the home's own. Where it runs elsewhere (a server) and this
 Mac does tasks for it (Settings › 住在哪儿 › 让这台 Mac 也替 {home} 做事), the folder is this Mac's:
 `project_add` carries this Mac's worker id and the home reads the folder through the worker
 (`folderInfo`). Where it runs elsewhere and this Mac doesn't, the row is greyed with one line:
 **在设置 › 住在哪儿打开「让这台 Mac 也替 {home} 做事」，就能加这台 Mac 上的文件夹。/ To add a folder on
 this Mac, turn on "Let this Mac do tasks for {home}" in Settings › Where it lives.** The phone and
-the browser (and the Mac, for another computer) add one with 找一个文件夹… (D203), or clone one
-with 从 Git 地址加… (D204).
+the browser (and the Mac, for another computer) add one with 选择文件夹… (D203), or clone one
+with 从 Git 地址添加… (D204).
 
 **Which computer (D197).** Only when the listed places span more than one computer does each row's
 second line end in **· {computer}**; the list keeps one order, most recent first. **~** is the home
@@ -177,7 +177,7 @@ only; remembered per client (local storage), not a setting. By project:
 - Groups by the card's `project` (an added project's name, D186, else a folder's name), else
   the folder's name, else 其他 / Other; then the projects added by hand with nothing yet
   (**还没有事。/ Nothing here yet.**). The header has the group's path as ~/… and "+"
-  (在这儿开一件 / New task here). At the foot, on the Mac whose Ducter runs here or that does tasks for it (D197), **＋ 加一个文件夹 /
+  (在这儿开一件 / New task here). At the foot, on the Mac whose Ducter runs here or that does tasks for it (D197), **＋ 添加文件夹 /
   Add a folder** (D186).
 - A row is `title · kind · branch · +adds −dels · state`: kind is what it waits for (**等 …**) or
   which try of a loop it is (**第 n 次**), else nothing; `place.branch`, `changes.adds` /
@@ -244,4 +244,4 @@ Walked 2026-11-11 against the code (both cards; web `apps/web/test/clone-folder.
 | First run, no folders anywhere | Web: No folder first, then Find a folder…; Mac: No folder alone plus Add a folder… at the foot | **还没有文件夹。/ No folders yet.** first, then the ways to get one (the Mac's Add a folder…, Find a folder…, Add from a Git address…), **No folder** last (fixed: the same order on both, never No folder alone) |
 | A clone in flight when the socket drops | (no clone) | The client asks again with the same clientId; the home answers the same clone |
 - Recurring on a condition ("every time X happens") from the card: still said to the partner
-  (a condition routine needs its check compiled by a model); the card's 等某件事发生 is one-shot.
+  (a condition routine needs its check compiled by a model); the card's 等条件满足 is one-shot.

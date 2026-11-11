@@ -435,7 +435,7 @@ func describePredicate(p protocol.Predicate) string {
 	return strings.Join(parts, ", ")
 }
 
-// pausedWhy is why a routine is paused, in words: "停着：连着 3 次你没看".
+// pausedWhy is why a routine is paused, in words: "已暂停：连着 3 次你没看".
 func (a *App) pausedWhy(r *protocol.Routine) string {
 	switch {
 	case r.PauseReason != "" && r.PauseReason != "asked":

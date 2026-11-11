@@ -1,6 +1,6 @@
 // D203, D204: a worker says which projects its Ducter folder has (the home lists them on New task,
 // and finds this computer's copy of a repo by its origin), clones a Git address into it, and lists
-// a folder's subfolders for 找一个文件夹… / Find a folder…, confined to its home folder. Against a
+// a folder's subfolders for 选择文件夹… / Find a folder…, confined to its home folder. Against a
 // real scratch disk (links included); git is faked for the clone (no network in tests).
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";

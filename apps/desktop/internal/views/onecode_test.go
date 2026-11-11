@@ -10,7 +10,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D83: one code, both ways to use it, on the card 连上手机或另一台电脑
+// D83: one code, both ways to use it, on the card 连接手机或另一台电脑
 // opens; a computer that joins with it closes the card and is shown.
 func TestPairCardBothWays(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {

@@ -12,7 +12,7 @@ var zhTurns = Table{
 	"step.lines.more":     "还有 %d 行",
 	"turn.earlier":        "显示更早的 %d 步",
 	"foot.esc":            "再按一次 Esc 就暂停",
-	"foot.keep":           "接着做",
+	"foot.keep":           "继续",
 	"jump.latest":         "回到最新",
 	"delivery.queued.tag": "排队中",
 }

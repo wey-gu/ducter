@@ -15,7 +15,7 @@ var zhSettings = Table{
 
 	"settings.lede.notify":   "有事要你定的时候它怎么找你，什么时候别打扰你。",
 	"settings.lede.accounts": "你让它能看的邮件、日历和别的账号。",
-	"settings.lede.look":     "这扇窗口长什么样、用什么语言、出不出声。只影响这台 Mac。",
+	"settings.lede.look":     "这个窗口的外观、语言和声音。只影响这台 Mac。",
 	"settings.lede.run":      "Ducter 住在哪台电脑上，关掉窗口以后它怎样。",
 
 	"partner.header":           "住在 %s 上 · 用 %s 想事情",
@@ -30,10 +30,10 @@ var zhSettings = Table{
 
 	"settings.look.group":    "外观",
 	"settings.lang.group":    "语言和对话",
-	"settings.lang.help":     "只改这扇窗口。它跟你说话用什么语言，在「伙伴」里改。",
+	"settings.lang.help":     "只改这个窗口。它跟你说话用什么语言，在「伙伴」里改。",
 	"settings.sound.row":     "开场的声音",
-	"settings.sound.play":    "听一下",
-	"settings.sound.stop":    "停",
+	"settings.sound.play":    "试听",
+	"settings.sound.stop":    "停止",
 	"settings.preview":       "预览",
 	"settings.preview.user":  "明天早上提醒我看 PR",
 	"settings.preview.reply": "好，明天 9:00 叫你。",
@@ -41,9 +41,9 @@ var zhSettings = Table{
 
 	"settings.where.group":          "住在哪儿",
 	"settings.where.here":           "这台 Mac",
-	"settings.where.elsewhere.help": "比如装在服务器上的 Ducter，用一次性的配对码连上。",
+	"settings.where.elsewhere.help": "比如装在服务器上的 Ducter，用一次性的连接码连上。",
 	"settings.where.useHere.help":   "忘掉这个连接，回到这台 Mac 上自己的 Ducter。",
-	"settings.rest.go":              "歇着",
+	"settings.rest.go":              "休息",
 	"settings.data.folder.row":      "数据文件夹",
 	"settings.data.logs.row":        "记录",
 	"settings.data.logs.help":       "Ducter 做过的每一步。报告问题时会用到。",
@@ -52,7 +52,7 @@ var zhSettings = Table{
 	"settings.data.open":            "打开",
 	"settings.data.run":             "检查",
 	"settings.devices.link":         "你的设备和 AI 账号",
-	"settings.devices.link.help":    "在「设备」里登录、安装，连上手机或另一台电脑",
+	"settings.devices.link.help":    "在「设备」里登录、安装，连接手机或另一台电脑",
 
 	"settings.help.group":       "帮助",
 	"settings.credits":          "素材与致谢",

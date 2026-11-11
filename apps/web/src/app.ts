@@ -639,7 +639,7 @@ class AppState {
     if (f.t === "events") for (const ev of f.events) if (ev.stream === "channel") this.kept.set(ev.seq, ev);
     if (f.t === "on_hand") (this.fromGlance = false), void this.checkBuild();
     if (f.t === "events" || f.t === "on_hand" || f.t === "first_screen" || f.t === "welcome") this.keepGlance();
-    if (f.t === "events") for (const ev of f.events) if (!this.livingAway.has(ev.seq) && ev.kind === "living_msg") this.livingAway.set(ev.seq, (ev.seq <= this.S.headSeq && ev.seq > this.S.readUpTo) || document.hidden);
+    if (f.t === "events") for (const ev of f.events) if (!this.livingAway.has(ev.seq) && ev.kind === "living_msg") this.livingAway.set(ev.seq, (ev.seq <= this.S.headSeq && ev.seq > this.S.readUpTo) || (typeof document === "object" && document.hidden));
     this.followUserLanguage();
     this.drainActionResults();
     this.changed();
@@ -1443,7 +1443,7 @@ class AppState {
   /** The conversation, in front and visible, counts as read after READ_AFTER_MS. */
   private scheduleRead() {
     if (this.readTimer) return;
-    const want = () => this.status === "connected" && this.route.name === "conv" && !this.sheet && document.visibilityState === "visible" && this.S.channelSeq > Math.max(this.S.readUpTo, this.readSent);
+    const want = () => this.status === "connected" && this.route.name === "conv" && !this.sheet && typeof document === "object" && document.visibilityState === "visible" && this.S.channelSeq > Math.max(this.S.readUpTo, this.readSent);
     if (!want()) return;
     this.readTimer = setTimeout(() => {
       this.readTimer = undefined;

@@ -9,7 +9,9 @@
     "skipLibCheck": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
   },
   "include": ["packages/*/src/**/*.ts", "apps/site/api/**/*.ts"]
 }

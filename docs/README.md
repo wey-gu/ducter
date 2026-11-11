@@ -27,6 +27,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 
 ## Using Ducter
 
+- **[On hand](on-hand.md):** every task at a glance, what each one is doing now, finding one
+  fast, and acting on several at once.
 - **[Your devices](devices.md):** which computers Ducter works on, what each one can do, how it
   keeps working when you close the window, and watching Ducter's browser or using it yourself.
 - **[Your partner and settings](settings.md):** rename your partner, choose what it thinks with

@@ -64,7 +64,7 @@ var zhDeviceCard = Table{
 	"ability.call.about":           "替你打电话，走 Tuwa 的线路。每一通都先给你看要说什么，你点了打过去才打；Tuwa 按分钟收费。",
 	"ability.call.where":           "在设置 › 账号里连上和管理。",
 	"ability.call.signed_out":      "Tuwa 的登录过期了。到账号里重新登录，就能接着打。",
-	"ability.phone.about":          "Ducter 自己的一台安卓手机，放在这台 Mac 上。你在上面装 app、自己登录；之后它能替你在这些 app 里办事。发送、发布、付款、安装和删除，每一下都先问你。",
+	"ability.phone.about":          "Ducter 自己的安卓手机，在这台 Mac 上。你在上面安装 app 并自己登录，之后它就能替你在这些 app 里办事。发送、发布、付款、安装和删除，每一步都会先问你。",
 	"list.state.home":              "住这儿",
 	"list.state.tasks":             "在做 %d 件",
 	"list.state.does":              "替 %s 做事",

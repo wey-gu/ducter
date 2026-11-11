@@ -39,10 +39,10 @@ with while an agent works, hidden until asked for.
 
 | Page | Shows | Acts |
 |---|---|---|
-| 改动 / Changes | Files changed, against the base branch (repo) or the copy kept before it wrote (folder, D142): status, +adds −dels; a file opens its diff (both line numbers, colour per side) | 改回去 / Undo one file, asked first (repo: back to the merge base, a new file removed; folder: D142's per-file undo); 看整个文件 / See the whole file. Not while it works |
-| 文件 / Files | The working copy as a tree, listed a folder at a time, windowed (thousands of rows draw only what is in view), changed files in their status ink, dependency folders muted and listed only when opened | A file opens with its colours; 改 / Edit, 存 / Save (⌘S). Pictures show; binary and files over 1 MB say so |
-| 预览 / Preview | The page the task serves: its title, its computer and port, the page itself in a frame; 手机 / 平板 / 铺满 widths (wide only) | 刷新 / Reload, 在浏览器里打开 / Open in browser; when this device can't reach the page directly, 用 Ducter 的浏览器看 / View in Ducter's browser |
-| 浏览器 / Browser | Ducter's own browser while the task uses it: the D190 live view, inside the workbench | 换我来 / My turn, 还给它 / Hand it back, as in D190 |
+| 改动 / Changes | Files changed, against the base branch (repo) or the copy kept before it wrote (folder, D142): status, +adds −dels; a file opens its diff (both line numbers, colour per side) | 还原 / Undo one file, asked first (repo: back to the merge base, a new file removed; folder: D142's per-file undo); 查看完整文件 / See the whole file. Not while it works |
+| 文件 / Files | The working copy as a tree, listed a folder at a time, windowed (thousands of rows draw only what is in view), changed files in their status ink, dependency folders muted and listed only when opened | A file opens with its colours; 编辑 / Edit, 保存 / Save (⌘S). Pictures show; binary and files over 1 MB say so |
+| 预览 / Preview | The page the task serves: its title, its computer and port, the page itself in a frame; 手机 / 平板 / 全宽 widths (wide only) | 刷新 / Reload, 在浏览器中打开 / Open in browser; when this device can't reach the page directly, 在 Ducter 的浏览器中查看 / View in Ducter's browser |
+| 浏览器 / Browser | Ducter's own browser while the task uses it: the D190 live view, inside the workbench | 接手 / My turn, 还给它 / Hand it back, as in D190 |
 | 手机 / Phone | The phone the task uses (the phone-use view registers itself, `workbench-screens.ts`) | Its own turns |
 | 成果 / Results | Pictures it showed (D206) and the links of its result | Open them; a file opens in Files |
 
@@ -60,9 +60,9 @@ harness reports one Ducter can show faithfully yet), comments on diff lines sent
 
 - A save names the version the file was opened at (a content hash). If the agent (or anyone)
   wrote the file since, the save is refused and the workbench says **你打开以后，它又改了这个
-  文件。 / It changed this file after you opened it.** with **看它的版本 / See its version** and
-  **用我的覆盖 / Keep mine** (which reads again and writes over what is there now). While the
-  task works, editing shows **它正在做，改之前想一想：它可能也在改这个文件。** once.
+  文件。 / It changed this file after you opened it.** with **查看它的版本 / See its version** and
+  **用我的版本覆盖 / Keep mine** (which reads again and writes over what is there now). While the
+  task works, editing shows **它还在做，可能也在改这个文件。** once.
 - Writes are atomic (a temporary file renamed over), keep the file's mode, and are capped at
   1 MB of text.
 - **The agent hears it with its next turn**: the runner keeps, per task, the files the user

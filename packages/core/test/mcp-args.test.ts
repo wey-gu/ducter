@@ -43,8 +43,8 @@ test("every listed tool carries Claude Code's always-load key", async () => {
 });
 
 // Principle 6: a Codex partner runs in its read-only sandbox, which declines MCP calls not marked
-// read-only. Only a partner session that says it is sandboxed gets the mark.
-test("the partner's tools are marked read-only only for a sandboxed session", async () => {
+// read-only. A session that says it is sandboxed (the partner, or a read-only task) gets the mark.
+test("Ducter's tools are marked read-only only for a sandboxed session", async () => {
   const hub = createMcpHub({ secret: "s" });
   hub.register("partner", "task_open", "o", { type: "object" }, async () => "ok");
   hub.register("task", "checkpoint", "c", { type: "object" }, async () => "ok");
@@ -60,5 +60,7 @@ test("the partner's tools are marked read-only only for a sandboxed session", as
   };
   expect(await list("partner", "?sandbox=read-only")).toEqual({ readOnlyHint: true });
   expect(await list("partner", "")).toBeUndefined();
-  expect(await list({ taskId: "t1" }, "?sandbox=read-only")).toBeUndefined();
+  // 2026-11-11: a read-only Codex task had report_to_main declined ("approval policy is never").
+  expect(await list({ taskId: "t1" }, "?sandbox=read-only")).toEqual({ readOnlyHint: true });
+  expect(await list({ taskId: "t1" }, "")).toBeUndefined();
 });

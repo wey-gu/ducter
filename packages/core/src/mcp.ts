@@ -99,8 +99,10 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
       // declines any MCP call not marked read-only, having no one to ask. Ducter's tools leave
       // the partner's environment alone (their effects go through Ducter's own cards), so for a
       // session that says it is sandboxed (?sandbox=read-only) they say so. Not otherwise:
-      // Claude Code would run read-only tools in parallel.
-      const hint = ctx.role === "partner" && sandboxed ? { annotations: { readOnlyHint: true } } : {};
+      // Claude Code would run read-only tools in parallel. A read-only task too (2026-11-11: a
+      // Codex task asked to diagnose, read-only, had report_to_main, checkpoint and log_search all
+      // declined, "approval policy is never", and could never report).
+      const hint = sandboxed ? { annotations: { readOnlyHint: true } } : {};
       return {
         tools: [...registry[ctx.role]]
           .filter(([, t]) => !t.visible || t.visible(ctx))

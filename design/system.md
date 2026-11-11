@@ -616,6 +616,28 @@ line until the next check), and skips its stale-LaunchAgent restart (the swap al
 fetch, a fixture tarball, fake systemctl and `/health`, a fake worker socket); the end-to-end on
 Linux waits for the 0.0.4 release.
 
+## Opening the phone client fast (D209, research/57)
+
+The phone, iPad and Android apps host the page the home serves; a home can be a server abroad. The
+rule: **the first frame never waits on the home.**
+
+- **The last screen, kept** (`apps/web/src/glance.ts`): the channel's newest 400 events, On hand,
+  the empty conversation's words and who the device is, in localStorage per device, saved a moment
+  after each change and when the page hides (≤ 1.5 MB). The page paints from it, then says hello with
+  the cursor it holds; the home replays only what's newer. A replay of 5000 (the most it sends) means
+  too old: start over fresh. A 401, or a Log that started over, forgets it.
+- **In parallel:** the socket opens and `/api/me` is asked at once; nothing awaits the other.
+- **Content-named assets:** the page names `app.js?v=<hash>` and `app.css?v=<hash>`, served
+  `immutable`; the page itself is `no-cache` with an ETag. A stale name gets today's file, uncached.
+- **Cache-first in the apps:** iOS loads the page with `returnCacheDataElseLoad`, Android with
+  `LOAD_CACHE_ELSE_NETWORK` for that load, once this home's page has named its code by content (the
+  app remembers it per home); otherwise from the network. Caught up, the page fetches the page again
+  and reloads under the stale rule when it names other code (`checkBuild`, with D200's version
+  reload). The page posts `reach {ok}` so the app's can't-reach screen still shows for a home that
+  never answers; Try again loads from the network.
+- **Layout changes** (D184's morph) never wait on a frame inside a view transition: WebKit holds
+  frames there until a 4 s timeout.
+
 ## Updating the AI agents (D156, draft, built 2026-11-10)
 
 **Who and when.** The same VPS owner, a week later: Codex shipped a new version, a task on the

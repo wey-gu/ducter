@@ -47,18 +47,31 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         #endif
     }
 
-    func load(_ url: URL) {
+    /// D209: the page opens from the web view's cache when it has one (no round trip to the home
+    /// before the first frame; its code and styles are named by content, so they come from the
+    /// cache too), and paints the last screen it kept. Once caught up it asks the home for the page
+    /// again and loads the newer one if it changed (app.ts checkBuild); a home it can't reach says
+    /// so through the bridge ("reach"), and Try again goes to the network.
+    func load(_ url: URL, fresh: Bool = false) {
         guard url != loaded else { return }
         loaded = url
         phase = .loading
-        web.load(URLRequest(url: url))
+        welcomed = false
+        cacheFirst = !fresh && UserDefaults.standard.bool(forKey: Shell.namedKey(url))
+        web.load(URLRequest(url: url, cachePolicy: cacheFirst ? .returnCacheDataElseLoad : .useProtocolCachePolicy))
     }
+
+    /// The page in this load came from the cache first (D209).
+    private var cacheFirst = false
 
     func retry() {
         let u = loaded
         loaded = nil
-        if let u { load(u) }
+        if let u { load(u, fresh: true) }
     }
+
+    /// The page has heard from its home since it loaded (the reach message).
+    private var welcomed = false
 
     /// A notification was tapped: go there (same document, so it's a hash change and no reload).
     func open(_ path: String) {
@@ -109,8 +122,46 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // D209: only a page that names its code by content (?v=) checks itself against the home, so
+        // only such a home's page opens from the cache next time. A cached page that doesn't (from
+        // before, or an older home) is loaded again from the network now.
+        let fromCache = cacheFirst
+        webView.evaluateJavaScript("!!document.querySelector('script[src*=\"app.js?v=\"]')") { [weak self] r, _ in
+            guard let self, let url = self.loaded else { return }
+            let named = (r as? Bool) ?? false
+            UserDefaults.standard.set(named, forKey: Shell.namedKey(url))
+            if fromCache && !named {
+                self.loaded = nil
+                self.load(url, fresh: true)
+            }
+        }
+        // A page from the cache is laid out before WebKit hands it the safe-area insets: its first
+        // frame would draw under the status bar and jump a moment later. Show it once the page's
+        // env(safe-area-inset-top) has caught up with the view's (a few frames at most).
+        if fromCache { revealWhenInset(tries: 20) } else { show() }
+    }
+
+    private func show() {
+        guard phase == .loading else { return }
         withAnimation(.easeOut(duration: 0.25)) { phase = .ready }
     }
+
+    private func revealWhenInset(tries: Int) {
+        let want = web.safeAreaInsets.top
+        guard tries > 0, want > 0 else { return show() }
+        let probe = "(()=>{const d=document.createElement('div');d.style.cssText='position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top)';document.documentElement.appendChild(d);const v=parseFloat(getComputedStyle(d).paddingTop)||0;d.remove();return v})()"
+        web.evaluateJavaScript(probe) { [weak self] r, _ in
+            guard let self else { return }
+            // Caught up: one more frame, so what's painted is laid out with them too.
+            if let v = r as? Double, v >= Double(want) - 0.5 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { self.show() }
+                return
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.016) { self.revealWhenInset(tries: tries - 1) }
+        }
+    }
+
+    private static func namedKey(_ url: URL) -> String { "pageNamed:\(url.scheme ?? "")://\(url.host ?? ""):\(url.port ?? 0)" }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         if (error as NSError).code == NSURLErrorCancelled { return }
@@ -138,6 +189,14 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
             // D200: the page is up and paired; is its home older than this app?
             Task { await HomeCheck.shared.check() }
             return (["ok": true], nil)
+        case "reach":
+            // D209: a page opened from the cache whose home never answered: the can't-reach screen,
+            // as when the page itself couldn't load. Once it has answered, the page says offline itself.
+            let ok = m["ok"] as? Bool ?? true
+            if ok { welcomed = true } else if !welcomed, phase == .ready {
+                withAnimation(.easeOut(duration: 0.25)) { phase = .unreachable }
+            }
+            return (nil, nil)
         case "log":
             NSLog("[ducter page] %@: %@", m["k"] as? String ?? "", m["m"] as? String ?? "")
             return (nil, nil)

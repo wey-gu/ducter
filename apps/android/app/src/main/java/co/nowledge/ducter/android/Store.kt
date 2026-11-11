@@ -52,6 +52,11 @@ class Store(context: Context) {
         get() = p.getString("homeOlder.dismissed", null)
         set(v) = p.edit().putString("homeOlder.dismissed", v).apply()
 
+    /** D209: this home's page names its code by content (?v=), so it may open from the cache. */
+    var pageNamed: Boolean
+        get() = p.getBoolean("pageNamed:${base ?: ""}", false)
+        set(v) = p.edit().putBoolean("pageNamed:${base ?: ""}", v).apply()
+
     var laterAt: Long
         get() = p.getLong("update.laterAt", 0)
         set(v) = p.edit().putLong("update.laterAt", v).apply()

@@ -40,7 +40,23 @@ describe("the phone/web client", () => {
       expect(r.status).toBe(200);
       expect(r.headers.get("content-type")).toContain("text/html");
       expect(r.headers.get("content-security-policy")).toContain("default-src 'self'");
-      expect(await r.text()).toContain('src="app/app.js"');
+      // D209: code and styles named by content, so a launch never revalidates them.
+      const html = await r.text();
+      expect(html).toMatch(/src="app\/app\.js\?v=[0-9a-z]+"/);
+      expect(html).toMatch(/href="app\/app\.css\?v=[0-9a-z]+"/);
+    }
+    {
+      const html = await (await fetch(base + "/app", { headers: REMOTE })).text();
+      const js = /src="(app\/app\.js\?v=[0-9a-z]+)"/.exec(html)![1]!;
+      const named = await fetch(`${base}/${js}`, { headers: REMOTE });
+      expect(named.headers.get("cache-control")).toContain("immutable");
+      // A name from before an update is today's file, never kept under the old name.
+      const old = await fetch(`${base}/app/app.js?v=old`, { headers: REMOTE });
+      expect(old.headers.get("cache-control")).toBe("no-cache");
+      expect((await fetch(`${base}/app/app.js`, { headers: REMOTE })).headers.get("cache-control")).toBe("no-cache");
+      // The page itself always revalidates, and answers 304 when it hasn't changed.
+      const again = await fetch(base + "/app", { headers: { ...REMOTE, "if-none-match": (await fetch(base + "/app", { headers: REMOTE })).headers.get("etag")! } });
+      expect(again.status).toBe(304);
     }
     for (const [path, type] of [
       ["/app/app.js", "javascript"],

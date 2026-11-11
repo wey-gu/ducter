@@ -36,5 +36,10 @@ export const haptic = (kind: "light" | "success" | "warning") => void nativeCall
 /** Hands the app what its notification buttons need (the token goes to the Keychain). */
 export const tellApp = (d: { token?: string; base: string; locale: "zh" | "en"; personaName?: string }) => void nativeCall({ t: "hello", ...d });
 
+/** D209: whether the home answered. The apps open the page from their cache, so a home they can't
+ *  reach no longer fails the page's load: the page says so, and the app shows its can't-reach screen
+ *  until the home has answered once. */
+export const tellReach = (ok: boolean) => void nativeCall({ t: "reach", ok });
+
 /** Why this phone gets no notifications, when it can't: a browser, the Android app (not yet), the iPhone app. */
 export const unsupportedKey = () => (!inApp() ? "notify.unsupported" : nativeInfo()?.platform === "android" ? "notify.android.later" : "notify.app.unavailable");

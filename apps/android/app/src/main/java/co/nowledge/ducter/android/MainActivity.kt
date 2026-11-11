@@ -15,6 +15,7 @@ import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
@@ -176,6 +177,16 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun onPageFinished(view: WebView, url: String?) {
+            view.settings.cacheMode = WebSettings.LOAD_DEFAULT
+            // D209: only a page that names its code by content checks itself against the home, so
+            // only such a home's page opens from the cache next time; a cached one that doesn't
+            // is loaded again from the network now.
+            val fromCache = cacheFirst
+            view.evaluateJavascript("!!document.querySelector('script[src*=\"app.js?v=\"]')") { r ->
+                val named = r == "true"
+                store.pageNamed = named
+                if (fromCache && !named) loaded?.let { u -> loaded = null; load(u, fresh = true) }
+            }
             if (phase == "unreachable") return
             phase = "ready"
             pushInsets()
@@ -190,10 +201,7 @@ class MainActivity : ComponentActivity() {
         override fun onReceivedError(view: WebView, req: WebResourceRequest, err: WebResourceError) {
             if (!req.isForMainFrame) return
             android.util.Log.w("ducter", "page failed to load: ${err.errorCode} ${err.description}")
-            phase = "unreachable"
-            web.alpha = 0f
-            val host = store.base?.let { Uri.parse(it).host } ?: ""
-            setOverlay(unreachableView(this@MainActivity, host, retry = ::retry, other = ::forget))
+            unreachable()
         }
 
         override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
@@ -222,20 +230,42 @@ class MainActivity : ComponentActivity() {
         } catch (_: ActivityNotFoundException) {}
     }
 
-    private fun load(url: String) {
+    /**
+     * D209: the page opens from the WebView's cache when it has one (its code and styles are named
+     * by content, so they come from the cache too) and paints the last screen it kept; once caught
+     * up it asks the home for the page again and loads a newer one (app.ts checkBuild). The cache
+     * goes back to normal once the page has loaded. A home it can't reach says so ("reach").
+     */
+    private fun load(url: String, fresh: Boolean = false) {
         if (url == loaded) return
         loaded = url
         phase = "loading"
+        reached = false
         web.alpha = 0f
         setOverlay(loadingView(this))
         bridge()
+        cacheFirst = !fresh && store.pageNamed
+        web.settings.cacheMode = if (cacheFirst) WebSettings.LOAD_CACHE_ELSE_NETWORK else WebSettings.LOAD_DEFAULT
         web.loadUrl(url)
     }
+
+    /** The page in this load came from the cache first (D209). */
+    private var cacheFirst = false
 
     private fun retry() {
         val u = loaded
         loaded = null
-        u?.let { load(it) }
+        u?.let { load(it, fresh = true) }
+    }
+
+    /** The page has heard from its home since it loaded. */
+    private var reached = false
+
+    private fun unreachable() {
+        phase = "unreachable"
+        web.alpha = 0f
+        val host = store.base?.let { Uri.parse(it).host } ?: ""
+        setOverlay(unreachableView(this, host, retry = ::retry, other = ::forget))
     }
 
     /** Back to the connect screen (another Ducter, or this one was unreachable). */
@@ -336,6 +366,12 @@ window.ducterNative=Object.freeze($info);})();"""
             "push.disable" -> answer(JSONObject())
             "update.check" -> { checkNow(); answer(null) }
             "log" -> answer(null)
+            // D209: a page opened from the cache whose home never answered: the can't-reach screen.
+            "reach" -> {
+                if (m.optBoolean("ok", true)) reached = true
+                else if (!reached && phase == "ready") unreachable()
+                answer(null)
+            }
             else -> reply.postMessage(JSONObject().put("id", id).put("error", "unknown").toString())
         }
     }

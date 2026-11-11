@@ -156,13 +156,47 @@ async function serveFile(req: Request, path: string, type: string, cache: string
   return new Response(f, { headers });
 }
 
+/** A short content hash of a file, kept per size and mtime (a rebuilt bundle gets a new one). */
+const hashes = new Map<string, string>();
+async function contentHash(path: string): Promise<string> {
+  const f = Bun.file(path);
+  const key = `${path}:${f.size}:${f.lastModified}`;
+  let h = hashes.get(key);
+  if (!h) {
+    h = Bun.hash(await f.arrayBuffer()).toString(36).slice(0, 10);
+    hashes.set(key, h);
+  }
+  return h;
+}
+
+/**
+ * D209: the page names its code and styles by content (app/app.js?v=<hash>), so they are cached
+ * for good and a launch never waits on revalidating them; only the page itself is asked for again.
+ * The apps open that page from their cache first and the page checks it in the background
+ * (apps/web/src/app.ts checkBuild).
+ */
+export async function indexPage(): Promise<string> {
+  const [js, css] = await Promise.all([contentHash(appJs), contentHash(appCss)]);
+  const html = await Bun.file(INDEX).text();
+  return html.replace('src="app/app.js"', `src="app/app.js?v=${js}"`).replace('href="app/app.css"', `href="app/app.css?v=${css}"`);
+}
+
+async function serveIndex(req: Request): Promise<Response> {
+  const html = await indexPage();
+  const tag = `"${Bun.hash(html).toString(36)}"`;
+  const headers: Record<string, string> = { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", etag: tag, "x-content-type-options": "nosniff" };
+  if (req.headers.get("if-none-match") === tag) return new Response(null, { status: 304, headers });
+  return new Response(req.method === "HEAD" ? null : html, { headers });
+}
+
 /** The public half: the app's files. Returns undefined for anything else. */
 export async function webStatic(req: Request): Promise<Response | undefined> {
   if (req.method !== "GET" && req.method !== "HEAD") return;
-  const path = new URL(req.url).pathname;
+  const url = new URL(req.url);
+  const path = url.pathname;
   if (path === "/") return new Response(null, { status: 302, headers: { location: "app" } });
   if (path === "/app" || path === "/app/" || path === "/pair") {
-    const res = await serveFile(req, INDEX, "text/html; charset=utf-8", "no-cache");
+    const res = await serveIndex(req);
     res.headers.set("content-security-policy", CSP);
     res.headers.set("referrer-policy", "no-referrer");
     return res;
@@ -175,8 +209,12 @@ export async function webStatic(req: Request): Promise<Response | undefined> {
   if (path.startsWith("/app/")) {
     const a = ASSETS[path.slice(5)];
     if (!a) return new Response("not found", { status: 404 });
-    // Code and styles revalidate (an update shows on the next open); art and fonts are stable.
-    const cache = /\.(js|css|webmanifest)$/.test(path) ? "no-cache" : "public, max-age=86400";
+    // Code and styles named by their content (?v=, D209) are kept for good; asked for by name
+    // alone (an older page) they revalidate, so an update shows on the next open. Art and fonts
+    // are stable.
+    // (A name from before an update gets today's file, never kept under the old name.)
+    const named = /\.(js|css)$/.test(path) && url.searchParams.get("v") === (await contentHash(a[0]));
+    const cache = named ? "public, max-age=31536000, immutable" : /\.(js|css|webmanifest)$/.test(path) ? "no-cache" : "public, max-age=86400";
     return serveFile(req, a[0], a[1], cache);
   }
 }

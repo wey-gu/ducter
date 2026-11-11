@@ -31,12 +31,12 @@ apps out of reach), 惊喜 (a whole phone on the Mac).
 
 ## 3. Adding it
 
-The install sheet (web `PhoneInstallSheet`, Mac `phoneInstallSheet`): the clay, **给 {device} 加上
-「用手机」**, one paragraph of what it is, four facts (download, space, what, when it's on), Google's
-two licenses by name with **读全文** opening the full text, the switch **我读过，也同意这些许可协议**,
-then **先不 · 加上**. The texts come from Google's repository XML when the sheet opens; the home
+The install sheet (web `PhoneInstallSheet`, Mac `phoneInstallSheet`): the clay, **将「用手机」安装到
+{device}**, one paragraph of what it is, four facts (download, space, what, when it's on), Google's
+two licenses by name with **查看全文** opening the full text, the switch **我已阅读并同意这些许可协议**,
+then **以后再说 · 安装**. The texts come from Google's repository XML when the sheet opens; the home
 installs only when the accepted SHA-256s match the texts as they read then. Progress on the card:
-a bar and **正在下载手机 n%**, **正在解开…**, **手机快好了…**. Failures in plain words (space, a
+a bar and **正在下载手机 n%**, **正在解压…**, **正在设置手机…**. Failures in plain words (space, a
 download that didn't match, offline) with **再试一次**.
 
 ## 4. Running
@@ -61,24 +61,24 @@ snapshot). Animations off. One phone per home.
 | A tap whose words pay, buy, send, post, delete, install, call, confirm, sign out | the user's Go | `phone_ask_go` card; the Go covers one tap on that button in that app for 15 min, re-checked on screen |
 | Banks, wallets, payment apps, password managers, authenticators | nobody | invisible and untouchable (`gate.ts`) |
 | Password fields | the user | never read or typed |
-| Signing in, codes, CAPTCHAs | the user | `phone_ask_user` card → live view in the user's turn → **好了** |
-| Watching | anyone of the user's windows | the task's turn; **换我来** makes it the user's, every task blind until **还给它** |
+| Signing in, codes, CAPTCHAs | the user | `phone_ask_user` card → live view in the user's turn → **完成** |
+| Watching | anyone of the user's windows | the task's turn; **接手** makes it the user's, every task blind until **还给它** |
 
 The partner doesn't ask before a send on the phone (persona rule 9): the phone asks at the tap.
 
 ## 7. The live view
 
 D190's view for the phone: the same top bar (**Ducter 的手机**, whose task or which computer),
-the band in the user's turn, the calm step line, **换我来 / 还给它 / 关掉**. The screen in its
+the band in the user's turn, the calm step line, **接手 / 还给它 / 关闭**. The screen in its
 phone shape (rounded) on the sunken page; under it, in the user's turn, Android's three keys drawn
-(返回 · 主屏幕 · 最近用过). Taps, drags as swipes, the wheel as a swipe, keys (Enter, Backspace,
+(返回 · 主屏幕 · 最近使用). Taps, drags as swipes, the wheel as a swipe, keys (Enter, Backspace,
 Esc as back) and text. Frames: the device's own JPEG, one in flight until acked, ≤ 6/s, none while
 still; out of sight, none.
 
 It is one component with a small interface (computer, task or none, mode `watch | takeover |
 signin`; out: the turn changing, closing): web `PhoneLivePanel` (mounted full screen by
 `PhoneLiveSheet`; `embedded` for a side panel), Mac `phoneView`. The opened task has a minimal
-mount (**看它用手机**) until its side panel takes the component.
+mount (**查看手机**) until its side panel takes the component.
 
 ## 8. Its data
 

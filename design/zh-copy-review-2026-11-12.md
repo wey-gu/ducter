@@ -421,3 +421,112 @@
 | iOS `connect.go` · `conn.connecting` · `connect.app.or` · `notify.action.failed` | 连上 · 正在连上… · 或者手动填 · 没发出去。打开 Ducter 在那里回一下。 | 连接 · 正在连接… · 或者手动填写 · 没能发送。打开 Ducter 在那里回复。 | ios |
 | Android `connect_go` · `conn_connecting` · `connect_or` | 连上 · 正在连上… · 或者手动填 | 连接 · 正在连接… · 或者手动填写 | android |
 | Android `update_*` | 在下载 · 在核对 · 在安装 · 回来了，现在是 X · 在查… · 去打开 · 没更新成 · 这次新的 | 正在下载 · 正在核对 · 正在安装 · 已更新到 X · 正在检查… · 前往设置 · 没能更新 · 更新内容 | android |
+
+## Addendum: the words added after D212 (D218)
+
+The workbench (D214), On hand as one list (D216) and Ducter's phone (D217) were written in the
+looser style D212 retired; D218 applies D212's rules to them. The call sheet (D215) was already
+written in D212's words and is unchanged. 98 rows; web = `apps/web/src/i18n-{workbench,onhand,phoneuse}.ts`
+and `i18n.ts`, mac = `apps/desktop/internal/i18n/{workbench,onhand,phoneuse,devicecard}.go`; a key
+on both keeps one value (`switch.cant.phone` is web only).
+
+| Key | Old | New | Where |
+|---|---|---|---|
+| `wb.tabs` | 工作台的几页 | 工作台页面 | i18n-workbench.ts, workbench.go |
+| `wb.changes.base` | 和 %s 比 | 与 %s 对比 | i18n-workbench.ts, workbench.go |
+| `wb.changes.folder` | 和它动手前比 | 与改动前对比 | i18n-workbench.ts, workbench.go |
+| `wb.changes.more` | 还有 %d 个没列出来 | 另有 %d 个未列出 | i18n-workbench.ts, workbench.go |
+| `wb.status.deleted` | 删掉了 | 已删除 | i18n-workbench.ts, workbench.go |
+| `wb.status.renamed` | 从 %s 改名 | 由 %s 重命名 | i18n-workbench.ts, workbench.go |
+| `wb.revert` | 改回去 | 还原 | i18n-workbench.ts, workbench.go |
+| `wb.revert.ask` | 把 %s 改回它动手前的样子？ | 把 %s 还原到改动前的样子？ | i18n-workbench.ts, workbench.go |
+| `wb.revert.go` | 改回去 | 还原 | i18n-workbench.ts, workbench.go |
+| `wb.revert.done` | %s 改回去了。它下次做事时会知道。 | 已还原 %s。它下次做事时会知道。 | i18n-workbench.ts, workbench.go |
+| `wb.diff.binary` | 这是二进制文件，没法逐行看。 | 这是二进制文件，无法逐行显示。 | i18n-workbench.ts, workbench.go |
+| `wb.diff.cut` | 太长了，只显示了前面一部分。 | 内容太长，只显示了前一部分。 | i18n-workbench.ts, workbench.go |
+| `wb.open.file` | 看整个文件 | 查看完整文件 | i18n-workbench.ts, workbench.go |
+| `wb.files.more` | 还有 %d 个没列出来 | 另有 %d 个未列出 | i18n-workbench.ts, workbench.go |
+| `wb.files.heavy` | 依赖，点开才列 | 依赖项，展开后列出 | i18n-workbench.ts, workbench.go |
+| `wb.file.binary` | 这个文件不是文本，没法在这儿看。 | 这个文件不是文本，无法在这里显示。 | i18n-workbench.ts, workbench.go |
+| `wb.file.big` | 这个文件有 %s，太大了，没在这儿打开。 | 这个文件有 %s，太大，无法在这里打开。 | i18n-workbench.ts, workbench.go |
+| `wb.edit` | 改 | 编辑 | i18n-workbench.ts, workbench.go |
+| `wb.save` | 存 | 保存 | i18n-workbench.ts, workbench.go |
+| `wb.saving` | 在存… | 正在保存… | i18n-workbench.ts, workbench.go |
+| `wb.cancel` | 算了 | 取消 | i18n-workbench.ts, workbench.go |
+| `wb.saved` | 存好了。它下次做事时会知道你改了。 | 已保存。它下次做事时会知道你的改动。 | i18n-workbench.ts, workbench.go |
+| `wb.unsaved` | 没存 | 未保存 | i18n-workbench.ts, workbench.go |
+| `wb.conflict.theirs` | 看它的版本 | 查看它的版本 | i18n-workbench.ts, workbench.go |
+| `wb.conflict.mine` | 用我的覆盖 | 用我的版本覆盖 | i18n-workbench.ts, workbench.go |
+| `wb.working` | 它正在做，改之前想一想：它可能也在改这个文件。 | 它还在做，可能也在改这个文件。 | i18n-workbench.ts, workbench.go |
+| `wb.preview.open` | 在浏览器里打开 | 在浏览器中打开 | i18n-workbench.ts, workbench.go |
+| `wb.preview.w.fill` | 铺满 | 全宽 | i18n-workbench.ts, workbench.go |
+| `wb.preview.far` | 这台设备直接连不到它的网页。 | 这台设备无法直接打开它的网页。 | i18n-workbench.ts, workbench.go |
+| `wb.preview.via` | 用 Ducter 的浏览器看 | 在 Ducter 的浏览器中查看 | i18n-workbench.ts, workbench.go |
+| `wb.browser.watch` | 看它上网 | 查看浏览器 | i18n-workbench.ts, workbench.go |
+| `wb.err.offline` | 那台电脑现在没连着。 | 那台电脑目前未连接。 | i18n-workbench.ts, workbench.go |
+| `wb.err.outside` | 这个不在它的工作区里。 | 这不在它的工作区内。 | i18n-workbench.ts, workbench.go |
+| `wb.err.too_big` | 太大了，存不了。 | 文件太大，无法保存。 | i18n-workbench.ts, workbench.go |
+| `wb.err.unsupported` | 那台电脑上的 Ducter 还做不到这个，更新一下就行。 | 那台电脑上的 Ducter 还不支持这项操作，更新后即可使用。 | i18n-workbench.ts, workbench.go |
+| `wb.err.failed` | 没成功：%s | 没能完成：%s | i18n-workbench.ts, workbench.go |
+| `wb.err.generic` | 没成功，再试一次。 | 没能完成，再试一次。 | i18n-workbench.ts, workbench.go |
+| `onhand.find.placeholder` | 找一件事… | 搜索… | i18n-onhand.ts, onhand.go |
+| `onhand.find.none` | 没有对得上的。 | 没有匹配的结果。 | i18n-onhand.ts, onhand.go |
+| `onhand.sel.n` | 选了 %d 件 | 已选 %d 件 | i18n-onhand.ts, onhand.go |
+| `onhand.sel.pr` | 开 %d 个草稿 PR | 创建 %d 个草稿 PR | i18n-onhand.ts, onhand.go |
+| `onhand.sel.drop` | %d 件不做了… | 取消 %d 件… | i18n-onhand.ts, onhand.go |
+| `onhand.sel.drop.ask` | 这 %d 件都不做了？ | 取消这 %d 件事？ | i18n-onhand.ts, onhand.go |
+| `onhand.sel.drop.yes` | 都不做了 | 全部取消 | i18n-onhand.ts, onhand.go |
+| `onhand.sel.drop.no` | 再想想 | 保留 | i18n-onhand.ts, onhand.go |
+| `onhand.sel.clear` | 不选了 | 取消选择 | i18n-onhand.ts, onhand.go |
+| `switch.placeholder` | 打开哪件事？打几个字… | 打开哪件事？输入几个字… | i18n-onhand.ts, onhand.go |
+| `ability.phone.later` | Ducter 自己的一台安卓手机。这一版只能放在 Apple 芯片的 Mac 上，这台以后会有。 | Ducter 自己的安卓手机。目前只支持 Apple 芯片的 Mac，这台电脑以后会支持。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.watch` | 看它用手机 | 查看手机 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.blind` | 它这会儿看不见 | 它现在看不见 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.starting` | 手机正在开机。第一次要一分钟左右，以后几秒就好。 | 手机正在开机。首次约需一分钟，之后只要几秒。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.idle` | 没有事在用它。 | 现在没有任务在用它。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.notnow` | 先不 | 以后再说 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.signin.note` | 在手机上做完，点「好了」。你做的时候，它看不见。 | 在手机上操作完，点「完成」。你操作时，它看不见。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.key.recents` | 最近用过 | 最近使用 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.live.failed` | 手机没打开：%s | 没能打开手机：%s | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.doing.look` | 正在看屏幕 | 正在查看屏幕 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.doing.tap` | 正在点「%s」 | 正在点击「%s」 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.doing.tap.0` | 正在点屏幕 | 正在点击屏幕 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.doing.type` | 正在往「%s」里打字 | 正在「%s」中输入 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.doing.type.0` | 正在打字 | 正在输入 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.doing.waiting` | 等你用完 | 等你操作完 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.running` | Ducter 的手机开着。没事的时候它会自己关上。 | Ducter 的手机已开机，不用时会自动关机。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.asleep` | Ducter 的手机关着，要用的时候自己会开。 | Ducter 的手机已关机，需要时会自动开机。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.where` | 手机在 %s 上，和你自己的手机分开。装的 app、登录和数据都只在这台手机里。 | 手机在 %s 上，和你自己的手机相互独立。安装的 app、登录信息和数据都只在这台手机里。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.erase.ask` | 手机上的 app、登录和数据都会删掉，之后是一台新手机。 | 手机上的 app、登录信息和数据都会被删除，之后它是一台新手机。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.erase.keep` | 留着 | 取消 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.failed` | 手机没装好：%s | 没能装好手机：%s | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.installing.unpack` | 正在解开… | 正在解压… | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.installing.phone` | 手机快好了… | 正在设置手机… | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.installing.away` | 可以先去做别的，装好了这里会变。 | 你可以先做别的，安装完成后这里会更新。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.title` | 给 %s 加上「用手机」 | 将「用手机」安装到 %s | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.lede` | Ducter 会在这台 Mac 上放一台自己的安卓手机。你在上面装 app、自己登录；之后它能替你在这些 app 里办事。它和你自己的手机分开。 | Ducter 会在这台 Mac 上安装一台自己的安卓手机。你在上面安装 app 并自己登录，之后它就能替你在这些 app 里办事。它和你自己的手机相互独立。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.what` | 装什么 | 安装内容 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.runs` | 什么时候开着 | 何时运行 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.runs.when` | 有事要做、或者你打开它的时候；没事了自己关上 | 有事要做或你打开它时运行，用完自动关机 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.licenses` | 这些来自 Google，按 Google 的许可协议使用： | 以下内容来自 Google，须遵守 Google 的许可协议： | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.agree` | 我读过，也同意这些许可协议 | 我已阅读并同意这些许可协议 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.go` | 加上 | 安装 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.what.v` | 安卓 16（带 Google Play）、安卓模拟器和它的连接工具 | 安卓 16（带 Google Play）、安卓模拟器及其连接工具 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.read` | 读全文 | 查看全文 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.unsupported` | 这一版的手机只能放在 Apple 芯片的 Mac 上。 | 目前手机只支持 Apple 芯片的 Mac。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.offline` | 没连上 Google 的下载服务：%s | 没能连接 Google 的下载服务：%s | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.space` | 空间不够：%s | 空间不足：%s | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.license` | 需要先同意许可协议。 | 请先同意许可协议。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.install.failed` | 没装好：%s | 没能安装：%s | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.user.why` | 你在手机上做的时候，它看不见。 | 你在手机上操作时，它看不见。 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.user.open` | 去手机上 | 打开手机 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.user.done` | 好了，它接着做 | 已完成，它会继续 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.go.what` | 会在%[2]s里点「%[1]s」 | 会在%[2]s里点击「%[1]s」 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.go.what.0` | 会点「%s」 | 会点击「%s」 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.go.look` | 看看手机 | 查看手机 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.go.hold` | 先别 | 暂不点击 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.go.go` | 点吧 | 点击 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.go.done` | 点了 | 已点击 | i18n-phoneuse.ts, phoneuse.go |
+| `phoneuse.go.held` | 先没点 | 未点击 | i18n-phoneuse.ts, phoneuse.go |
+| `switch.cant.phone` | 要用手机，%s 上没加 | 需要手机，%s 上未安装「用手机」 | i18n-phoneuse.ts |
+| `ability.phone.about` | Ducter 自己的一台安卓手机，放在这台 Mac 上。你在上面装 app、自己登录；之后它能替你在这些 app 里办事。发送、发布、付款、安装和删除，每一下都先问你。 | Ducter 自己的安卓手机，在这台 Mac 上。你在上面安装 app 并自己登录，之后它就能替你在这些 app 里办事。发送、发布、付款、安装和删除，每一步都会先问你。 | devicecard.go, i18n.ts |

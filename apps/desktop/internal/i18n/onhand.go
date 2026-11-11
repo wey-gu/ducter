@@ -5,22 +5,22 @@ package i18n
 // (apps/web/src/i18n-onhand.ts); a test keeps them equal.
 
 var zhOnhand = Table{
-	"onhand.find.placeholder": "找一件事…",
-	"onhand.find.none":        "没有对得上的。",
+	"onhand.find.placeholder": "搜索…",
+	"onhand.find.none":        "没有匹配的结果。",
 	"onhand.pr.draft":         "草稿 PR",
 	"onhand.pr.merged":        "已合并",
-	"onhand.sel.n":            "选了 %d 件",
+	"onhand.sel.n":            "已选 %d 件",
 	"onhand.sel.merge":        "合并 %d 件",
-	"onhand.sel.pr":           "开 %d 个草稿 PR",
+	"onhand.sel.pr":           "创建 %d 个草稿 PR",
 	"onhand.sel.pause":        "暂停 %d 件",
-	"onhand.sel.drop":         "%d 件不做了…",
-	"onhand.sel.drop.ask":     "这 %d 件都不做了？",
-	"onhand.sel.drop.yes":     "都不做了",
-	"onhand.sel.drop.no":      "再想想",
-	"onhand.sel.clear":        "不选了",
+	"onhand.sel.drop":         "取消 %d 件…",
+	"onhand.sel.drop.ask":     "取消这 %d 件事？",
+	"onhand.sel.drop.yes":     "全部取消",
+	"onhand.sel.drop.no":      "保留",
+	"onhand.sel.clear":        "取消选择",
 	"switch.label":            "打开一件事",
 	"switch.menu":             "打开一件事…",
-	"switch.placeholder":      "打开哪件事？打几个字…",
+	"switch.placeholder":      "打开哪件事？输入几个字…",
 	"switch.new":              "新建：「%s」",
 }
 

@@ -1060,6 +1060,32 @@ type MemView struct {
 	KeptUnder string `json:"keptUnder,omitempty"`
 }
 
+// BridgeView is Settings › 伙伴's row for the persona's own connection with
+// the user's other AI agents (D205). State: update_mem (Home's Mem needs
+// updating), ready, no_space, connecting, connected, disconnecting, refused
+// (Reason), failed (Detail), unconfirmed. Pinned: DUCTER_BRIDGE=1 on the home.
+type BridgeView struct {
+	State    string       `json:"state"`
+	Identity string       `json:"identity"`
+	Space    *BridgeSpace `json:"space,omitempty"`
+	Home     string       `json:"home,omitempty"`
+	Reason   string       `json:"reason,omitempty"`
+	Detail   string       `json:"detail,omitempty"`
+	Pinned   bool         `json:"pinned,omitempty"`
+}
+
+// BridgeSpace is the user's own place in Mem ("Only me"): label and exact id.
+type BridgeSpace struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+// BridgeAction is 连上 / Connect or 断开 / Disconnect (D205): T is
+// "bridge_connect" or "bridge_disconnect"; fresh settings frames answer.
+type BridgeAction struct {
+	T string `json:"t"`
+}
+
 // BrainNow is the brain in use, and why when it isn't the one set.
 type BrainNow struct {
 	Brain
@@ -1364,6 +1390,8 @@ type ServerFrame struct {
 	// unless core runs it on a signed-in agent instead (Why "only_codex", "only_signed_in").
 	BrainNow *BrainNow `json:"brainNow,omitempty"`
 	Forgot   *Forgot   `json:"forgot,omitempty"`
+	// Bridge is the persona's own connection row (D205); nil: nothing to show.
+	Bridge *BridgeView `json:"bridge,omitempty"`
 	// rules: Your rules. candidates: who could do TaskID, best first.
 	Rules      []RuleView  `json:"rules,omitempty"`
 	Candidates []Candidate `json:"candidates,omitempty"`

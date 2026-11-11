@@ -11,7 +11,7 @@ import { CLAUDE_SWITCHES } from "@ducter/protocol/src/harness-facts.ts";
 type Role = "partner" | "task";
 interface Tool {
   description: string;
-  inputSchema: object;
+  inputSchema: object | (() => object);
   handler: ToolHandler;
   /** Listed only when this says so (checked on each tools/list); calls are checked by the handler. */
   visible?: (ctx: Ctx) => boolean;
@@ -27,7 +27,7 @@ export interface CoreMcpHub extends McpHub {
   verify(token: string): Ctx | undefined;
   tools(role: Role): string[];
   /** A tool listed only while `visible` holds for the caller (e.g. connection tools for tasks). */
-  registerWhen(role: Role, name: string, description: string, inputSchema: object, handler: ToolHandler, visible: (ctx: Ctx) => boolean): void;
+  registerWhen(role: Role, name: string, description: string, inputSchema: object | (() => object), handler: ToolHandler, visible: (ctx: Ctx) => boolean): void;
   /** Calls a tool in-process, exactly as an MCP client would (tests, stubs). */
   call(ctx: Ctx, name: string, args: unknown): Promise<unknown>;
 }
@@ -51,6 +51,9 @@ export function checkArgs(tool: string, schema: object, args: unknown) {
   const got = Object.keys(a);
   throw new Error(`${tool}: missing or empty ${bad.join(", ")}. Expected arguments: ${expected.join(", ")}; got: ${got.join(", ") || "none"}.`);
 }
+
+/** A tool's schema now (D205: one that is a function is read on every list and call). */
+const schemaOf = (t: Tool): object => (typeof t.inputSchema === "function" ? t.inputSchema() : t.inputSchema);
 
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
 
@@ -85,7 +88,7 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
   const call = async (ctx: Ctx, name: string, args: unknown) => {
     const tool = registry[ctx.role].get(name);
     if (!tool) throw new Error(`tool ${name} is not available to role ${ctx.role}`);
-    checkArgs(name, tool.inputSchema, args ?? {});
+    checkArgs(name, schemaOf(tool), args ?? {});
     return tool.handler(args ?? {}, ctx);
   };
 
@@ -101,7 +104,7 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
       return {
         tools: [...registry[ctx.role]]
           .filter(([, t]) => !t.visible || t.visible(ctx))
-          .map(([name, t]) => ({ name, description: t.description, inputSchema: t.inputSchema as any, _meta: ALWAYS_LOAD, ...hint })),
+          .map(([name, t]) => ({ name, description: t.description, inputSchema: schemaOf(t) as any, _meta: ALWAYS_LOAD, ...hint })),
       };
     });
     server.setRequestHandler(CallToolRequestSchema, async (req) => {

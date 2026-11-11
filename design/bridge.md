@@ -1,17 +1,41 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-10 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-11 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space; binding waits on Mem); still open: J-Q1–3, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), private `31` and `10`.
 >
-> Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. All of it is in `main`
-> behind `DUCTER_BRIDGE=1`: receive, ask and reply, the linked result reply (J2, D107), outbound messages
-> through a card (J4, D105), the outgoing ledger and recovery (D106) and follow-through (S3, D110). It is
-> proven with real models over a fake Bridge (research/37 §3, §3.2). On 2026-11-10 Mem's backend answers in every
-> Space and the real discovery and setup shapes are in the code (research/37 §6, D162); the live trial still waits
-> on two choices only the author can make (the persona's context, a terminal-side identity), and Bridge stays
-> behind `DUCTER_BRIDGE=1` until `bun run bridge:live -- --real` passes (roadmap).
+> Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. All of it is in `main`:
+> receive, ask and reply, the linked result reply (J2, D107), outbound messages through a card (J4, D105), the
+> outgoing ledger and recovery (D106) and follow-through (S3, D110). It is proven with real models over a fake
+> Bridge (research/37 §3, §3.2). It is on once the user connects the persona in Settings › 伙伴 (D205, with nmem
+> 0.10.118+ on the home; "Connecting the persona" below), or forced with `DUCTER_BRIDGE=1`. It is not on by
+> default until `bun run bridge:live -- --connected --real` passes (D170 (9), roadmap).
+
+## Connecting the persona (D205)
+
+Mem 0.10.118 (PR nowledge-co/mem#9996) lets the user's ordinary Mem login represent an existing identity it
+holds, so the persona's context no longer needs a key or hand-made commands (D171's refusal).
+
+- **Who and when.** The heavy multi-agent developer, in Settings › 伙伴 › 你的其他 AI, once Mem is connected on
+  the home. A user without Mem never meets it; with an older Mem, one line says to update it on the home.
+- **What Ducter finds by itself** (read-only): that the home's nmem has `bridge connections` (`--version`
+  ≥ 0.10.118, else the subcommand's `--help`, cached per version); the one place with `kind: "personal"`
+  ("Only me") among passive `bridge setup`'s candidates (no context, no Space, never `--enable`), by its exact
+  id; the persona's identity (D141). None or two personal places: nothing is offered.
+- **What one tap runs:** `nmem --json bridge connections connect --space-id <that id> --agent-id ducter --context
+  ducter`, then passive `nmem --json --agent-context ducter bridge setup`; Bridge is on only when that says the
+  same identity. The connection is kept in `<dataDir>/bridge-connection.json`; once per start, `bridge
+  connections list` drops one revoked elsewhere. 断开 / Disconnect asks once, then `bridge connections revoke <id>`.
+- **Mem says no:** each registered code is one plain line with the step the user takes in Mem
+  (`role_authority_missing`, `role_custody_birth_missing`, `role_lifetime_inactive`, `role_attachment_mismatch`,
+  and `role_control_denied`, `connection_revoked`, `binding_conflict`), plus 再试一次. Nothing else is tried: no
+  other identity, place, key, `select-cloud` or `--enable`.
+- **Two levels, both always in Settings › 伙伴:** 断开 ends it all (no checks, nothing sent, the tools gone).
+  谁能找到 {name} › 谁都不行 keeps it connected but no other agent reaches the partner; what the user asks it to
+  send on a card still goes, and its answer comes back (checks run only while one waits, at most 7 days).
+- **No restart:** the partner's Bridge tools are listed only while it is on, and a change starts a fresh partner
+  session at the next turn.
 
 ## Chosen scenarios (dogfood, 2026-11-09)
 
@@ -475,13 +499,14 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
 ## Safety
 
 - **Ducter never sets anything up.**
-  - It never calls `bridge setup --enable`, `bridge session prepare`, `agents enroll` or `keys create`.
+  - It never calls `bridge setup --enable`, `bridge session prepare`, `agents enroll` or `keys create`. The one
+    write it makes is D205's `bridge connections connect` (and `revoke`), on the user's own tap in Settings.
   - `contacts` (read-only) is called only when the user names an agent. `send` is called only by Ducter's
     code, after the user tapped 发送 on a card that names the recipient (D105).
   - Passive `bridge setup` (never `--enable`) is called once, to learn the user's own member (D108), unless
     `DUCTER_BRIDGE_MEMBER` names it.
-  - It never passes `--space` or an agent id. Off unless both `DUCTER_BRIDGE=1` and `DUCTER_BRIDGE_CONTEXT` are
-    set.
+  - The partner never passes `--space` or an agent id. Off unless the user connected the persona (D205) or both
+    `DUCTER_BRIDGE=1` and `DUCTER_BRIDGE_CONTEXT` are set.
   - Refusals and missing setup are typed results; Ducter never falls back to another identity or Space.
 - **A message is a request, never permission.** No task opens from it until the user says go: this is enforced
   in code, not only in the prompt. The frame can't be closed early by the sender. Secret-shaped text is
@@ -511,6 +536,21 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
   - Nothing Ducter sends wakes the other side.
 
 ## Try it live (the author runs this)
+
+**Status 2026-11-11 (D205).** The path is now Mem's existing-role connection. Built and tested over the fake
+nmem; never run against Mem (nmem 0.10.118 isn't public yet; the Cloud side is deployed). On the home, once
+0.10.118 is installed:
+
+```sh
+nmem --version                                   # 0.10.118 or later
+# In Ducter: Settings › 伙伴 › 你的其他 AI › 连上. Or by hand, the same command Ducter runs:
+nmem bridge connections connect --space-id <Only me id> --agent-id ducter --context ducter
+bun run bridge:live -- --connected               # dry: read-only preflight, prints what --real would run
+bun run bridge:live -- --connected --real        # S1, S2, S3, X1; the peer is a native Claude Code session
+# Undo: Settings › 断开, or nmem bridge connections revoke <connection id>
+```
+
+The status notes below are history (D171's path, superseded by D205).
 
 **Status 2026-11-10, later (research/37 §8, D171).** The persona's mailbox belongs in **Only me** (the largest
 and most-used Space, Mem's write default, one reader). Binding it was tried once, at the author's request:

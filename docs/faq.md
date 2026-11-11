@@ -159,10 +159,13 @@ your **Go**. See [Accounts your partner can read](accounts.md).
 
 ### Can it work with the AI agent in my terminal?
 
-Not yet; it's coming soon. With Nowledge Bridge, part of
-[Nowledge Mem](https://mem.nowledge.co), the Claude Code or Codex session you have open in a
-terminal will be able to hand your partner a job, and your partner will be able to ask that
-session what it knows. Either way, your partner checks with you first.
+Coming soon: it needs [Nowledge Mem](https://mem.nowledge.co) 0.10.118 or later on the computer
+Ducter lives on. Then **Partner › Your other AI agents › Connect** lets the Claude Code or Codex
+session you have open in a terminal hand your partner a job or ask for your call, and lets your
+partner ask that session what it knows. Either way, your partner checks with you first.
+**Disconnect** turns it all off; **Who can reach it › Nobody** keeps other agents out while what
+you ask your partner to send still gets its answer. With an older Mem, that section says to
+update it first.
 
 ### Can it use my other apps, my phone, or make calls?
 

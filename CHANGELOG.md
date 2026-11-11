@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+**Your other AI agents: connect with one tap (needs Nowledge Mem 0.10.118 on the computer Ducter
+lives on)**
+- Settings › Partner › Your other AI agents now has **Connect**: Ducter uses your own Nowledge Mem
+  sign-in to let your terminal Claude Code or Codex reach it, as its own identity and only in your
+  "Only me" place, and says exactly that before you tap. **Disconnect** turns it all off. If Mem
+  says no, you see why and what to do in Mem; Ducter never tries another identity or key. With an
+  older Mem, the section says to update it first.
+- **Who can reach it › Nobody** now still brings back the answer to a message you asked it to send.
+
 ## 0.0.19
 
 <!-- whats-new

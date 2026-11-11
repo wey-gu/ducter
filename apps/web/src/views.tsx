@@ -2095,26 +2095,82 @@ function TrustSettings() {
 }
 
 /**
+ * D205: the persona's own connection with the user's other AI agents (Nowledge Bridge underneath,
+ * never named): what 连上 will do, each step, Mem's refusal with the step the user takes in Mem,
+ * and 断开. With an older Mem on the home, the one line that says to update it.
+ */
+function BridgeRow() {
+  const b = A.bridge;
+  const s = A.settings;
+  if (!b || !s) return null;
+  const name = s.name;
+  const space = b.space?.label ?? "Only me";
+  if (b.state === "update_mem")
+    return (
+      <div class="set-item">
+        <small class="bridge-only">{t("bridge.update", b.home ?? "")}</small>
+      </div>
+    );
+  const note =
+    b.state === "ready" ? t("bridge.ready", b.identity, space)
+    : b.state === "connecting" ? t("bridge.connecting")
+    : b.state === "disconnecting" ? t("bridge.disconnecting")
+    : b.state === "connected" ? (b.pinned ? t("bridge.pinned") : t("bridge.connected", b.identity, space))
+    : b.state === "no_space" ? t("bridge.no_space")
+    : b.state === "refused" ? t(`bridge.refused.${b.reason ?? "control_denied"}`, b.identity)
+    : b.state === "unconfirmed" ? t("bridge.unconfirmed", b.identity)
+    : t("bridge.failed", b.detail ?? "");
+  const busy = b.state === "connecting" || b.state === "disconnecting";
+  const canUndo = (b.state === "connected" && !b.pinned) || b.state === "unconfirmed";
+  const canTry = b.state === "ready" || b.state === "refused" || b.state === "failed" || b.state === "unconfirmed";
+  return (
+    <div class="set-item">
+      <b>{t("bridge.title", name)}</b>
+      <small>{note}</small>
+      {b.space && (b.state === "ready" || b.state === "connected") && <small class="bridge-id">{`${b.identity} · ${space} · ${b.space.id}`}</small>}
+      {b.state === "connected" && b.detail && <small>{t("bridge.undo.failed", b.detail)}</small>}
+      {canUndo && A.bridgeConfirm && <small>{t("bridge.undo.ask")}</small>}
+      {(canTry || canUndo || busy) && (
+        <div class="set-go bridge-acts">
+          {canUndo && A.bridgeConfirm && <Btn kind="text" size="sm" label={t("bridge.undo.keep")} onClick={() => ((A.bridgeConfirm = false), A.changed())} />}
+          {canUndo && <Btn kind="secondary" size="sm" label={t("bridge.undo")} about={b.identity} onClick={() => A.disconnectBridge()} />}
+          {canTry && <Btn kind={b.state === "ready" ? "primary" : "secondary"} size="sm" label={b.state === "ready" ? t("bridge.connect") : t("bridge.retry")} about={b.identity} onClick={() => A.connectBridge()} />}
+          {busy && <Btn kind="secondary" size="sm" disabled label={b.state === "connecting" ? t("bridge.connecting") : t("bridge.disconnecting")} onClick={() => {}} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * D170: who of the user's other AI agents may reach the partner, what it learned about them, and
- * whom the user stopped listening to. Shown only once another agent has written (J6: a fresh user
- * never meets it).
+ * whom the user stopped listening to. D205: always findable once the home's Mem can connect them
+ * (or needs updating to); before that, only once another agent has written (J6: a fresh user
+ * never meets it). Two levels: 断开 ends it all (no checks, nothing sent); 谁都不行 lets no
+ * other agent reach the partner, while what the user sends on a card still goes.
  */
 function PeerSettings() {
   const s = A.settings;
   const p = s?.peers;
   const seen = A.S.channel.some((e) => e.peer);
-  if (!s || !p || (!seen && !p.trusted.length && !p.muted.length)) return null;
+  const b = A.bridge;
+  if (!s || !p || (!b && !seen && !p.trusted.length && !p.muted.length)) return null;
   const name = s.name;
   const set = (patch: Partial<typeof p>) => A.setSettings({ peers: { ...p, ...patch } });
+  // An older Mem with nothing ever written: the one update line, nothing else.
+  const reachShown = seen || !!p.trusted.length || !!p.muted.length || (!!b && b.state !== "update_mem");
   return (
     <section class="set">
       <h3>{t("peers.title", name)}</h3>
       <div class="set-card">
-        <div class="set-item">
-          <b>{t("peers.reach", name)}</b>
-          <small>{t("peers.reach.note")}</small>
-          <Seg label={t("peers.reach", name)} value={p.reach} options={(["own", "team", "off"] as const).map((v) => ({ v, label: t(`peers.reach.${v}`) }))} onPick={(reach) => set({ reach })} />
-        </div>
+        <BridgeRow />
+        {reachShown && (
+          <div class="set-item">
+            <b>{t("peers.reach", name)}</b>
+            <small>{p.reach === "off" ? t("peers.reach.off.note", name) : t("peers.reach.note")}</small>
+            <Seg label={t("peers.reach", name)} value={p.reach} options={(["own", "team", "off"] as const).map((v) => ({ v, label: t(`peers.reach.${v}`) }))} onPick={(reach) => set({ reach })} />
+          </div>
+        )}
       </div>
       {p.trusted.map((a) => (
         <div class="noted-row" key={`t-${a}`}>

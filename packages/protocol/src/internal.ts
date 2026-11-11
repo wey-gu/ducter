@@ -71,7 +71,11 @@ export type ToolHandler = (args: any, ctx: { role: string; taskId?: string }) =>
 
 export interface McpHub {
   // Registers a tool for a role ("partner" or "task"). Core serves them at /mcp.
-  register(role: "partner" | "task", name: string, description: string, inputSchema: object, handler: ToolHandler): void;
+  // inputSchema may be a function, read on every tools/list (a property that exists only while
+  // something is on, e.g. Bridge's forMessage, D205).
+  register(role: "partner" | "task", name: string, description: string, inputSchema: object | (() => object), handler: ToolHandler): void;
+  // Listed only while `visible` holds (checked on each tools/list); D205: Bridge's tools while it is on.
+  registerWhen?(role: "partner" | "task", name: string, description: string, inputSchema: object | (() => object), handler: ToolHandler, visible: (ctx: { role: "partner" | "task"; taskId?: string }) => boolean): void;
   // MCP server config to inject into a harness session for this role.
   configFor(role: "partner" | { taskId: string }): { name: string; url: string; headers: Record<string, string> };
 }
@@ -126,6 +130,19 @@ export interface CoreApi {
   phone?: PhonePort;
   /** D168: the user's Nowledge Mem plugin for this agent is on that device in any form but absent (by id or name; undefined = the home), as Mem's own check last said (research/48 M1). */
   memPluginIn?(device: string | undefined, harness: string): boolean;
+  /** D205: the persona's own Bridge connection, made from Settings › 伙伴 (core/src/bridge-link.ts); absent in tests and stubs. */
+  bridgeLink?: BridgeLinkApi;
+}
+
+/**
+ * D205: the Agent Context the persona's Bridge connection saved (`nmem bridge connections connect
+ * --context <name>`), once the user connected it in Settings › 伙伴 and Mem confirmed it; undefined
+ * when not connected. onChange fires on connect and disconnect, so the partner turns Bridge on or
+ * off without a restart.
+ */
+export interface BridgeLinkApi {
+  context(): string | undefined;
+  onChange(fn: () => void): () => void;
 }
 
 /** One memory as a task sees it: its id (to look closer), title, a clipped content, when. */

@@ -816,3 +816,64 @@ describe("X1 / D164, D170: the user's own agents ask the user through the partne
     expect(ids).toBe(1);
   });
 });
+
+describe("D205: connected in Settings › 伙伴, and 谁都不行", () => {
+  test("the user's connection turns Bridge on without DUCTER_BRIDGE, and Disconnect turns it off, without a restart", async () => {
+    const dir = tmp();
+    const bin = join(dir, "nmem");
+    writeFileSync(bin, `#!/bin/sh\nexec bun ${resolve(import.meta.dir, "../eval/fake-bridge-nmem.ts")} "$@"\n`);
+    chmodSync(bin, 0o755);
+    const state = join(dir, "state.json");
+    const ident = (agent: string) => ({ agent, member: "Weyl", member_id: "m-weyl", description: agent });
+    writeFileSync(state, JSON.stringify({ seq: 1, identities: { ducter: ident("ducter"), "terminal-claude": ident("terminal-claude") }, messages: [{ id: "msg-001", op: "op-1", from: "terminal-claude", to: "ducter", body: "要我定的：先推还是等 CI？", created_at: new Date().toISOString() }] }));
+    const saved = { ...process.env };
+    Object.assign(process.env, { NMEM_CLI_PATH: bin, NMEM_FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl" });
+    delete process.env.DUCTER_BRIDGE;
+    delete process.env.DUCTER_BRIDGE_CONTEXT;
+    try {
+      const clock = new FakeClock();
+      const fc = fakeCore(clock, tmp());
+      let context: string | undefined;
+      const fns = new Set<() => void>();
+      (fc.core as { bridgeLink?: unknown }).bridgeLink = { context: () => context, onChange: (fn: () => void) => (fns.add(fn), () => fns.delete(fn)) };
+      const fr = fakeRunner(async (_i, s) => s.end());
+      const { bridge: _none, ...opts } = partnerOpts(clock, null as never);
+      const partner = createPartner(fc.core, fr.runner, { ...opts, bridgeStartMark: false });
+      expect(await partner.checkBridge()).toBe(0); // not connected: off
+      expect(fc.tools.has("partner:bridge_reply")).toBe(false);
+      context = "ducter";
+      fns.forEach((fn) => fn());
+      expect(fc.tools.has("partner:bridge_reply")).toBe(true);
+      expect(await partner.checkBridge()).toBe(1);
+      const inn = fc.events.find((e) => e.kind === "bridge_msg")!.body as Bodies["bridge_msg"];
+      expect(inn).toMatchObject({ direction: "in", messageId: "msg-001", agent: "terminal-claude", mine: true });
+      context = undefined;
+      fns.forEach((fn) => fn());
+      expect(await partner.checkBridge()).toBe(0);
+      expect(((await fc.callTool("bridge_reply", { messageId: "msg-001", text: "x" })) as { ok: boolean }).ok).toBe(false);
+      await partner.close();
+    } finally {
+      for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k];
+      Object.assign(process.env, saved);
+    }
+  });
+
+  test("谁都不行: no other agent reaches the partner, but the answer to what the user sent comes through", async () => {
+    const peers = { reach: "off" as const, trusted: [] as string[], muted: [] as string[] };
+    const w = world([REQUEST]);
+    let checks = 0;
+    const check = w.bridge.check;
+    w.bridge.check = (k) => (checks++, check(k));
+    const t = setup(async (_i, s) => s.end(), w);
+    (t.fc.core as { settings?: unknown }).settings = { get: () => ({ peers }), setForgetter() {}, setMemState() {} };
+    await t.partner.checkBridge();
+    expect(checks).toBe(0); // nothing outstanding: no check at all
+    t.fc.core.log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", opId: "bo-1", messageId: "bm-o1", to: "codex-mem (Weyl)", agent: "codex-mem", mine: true, text: "bridge 那块写到哪了？", decisionId: "d-1", state: "sent" } });
+    w.deliver({ messageId: "bm-a", from: "codex-mem (Weyl)", agent: "codex-mem", mine: true, text: "写完了，今晚能提 PR。", inReplyTo: "bm-o1" });
+    await t.partner.checkBridge();
+    await t.partner.idle();
+    expect(checks).toBe(1);
+    const ins = t.fc.events.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).direction === "in").map((e) => e.body as Bodies["bridge_msg"]);
+    expect(ins.map((b) => [b.messageId, b.state ?? "read"])).toEqual([["bm-1", "muted"], ["bm-a", "read"]]);
+  });
+});

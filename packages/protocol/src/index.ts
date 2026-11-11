@@ -690,6 +690,10 @@ export type ClientFrame =
   // there that follows Mem's own setup guide (the user tapped it, so it is their Go). Answered with
   // mem_plugin_result; the card then reads the check again when the task finishes.
   | { t: "mem_plugin_install"; device: string; harness: string }
+  // D205: Settings › 伙伴's 接上 / Connect and 断开 / Disconnect for the persona's own Bridge
+  // connection, run by the home's nmem on the user's tap. Answered by fresh settings frames (bridge).
+  | { t: "bridge_connect" }
+  | { t: "bridge_disconnect" }
   // The partner's and the app's settings (D71): "settings" answers with a settings frame and
   // keeps the socket subscribed (every change goes to every subscriber). "settings_set" changes
   // some of them. "memory_forget" forgets one 记下了 / Noted line: in Nowledge Mem when it has the
@@ -919,7 +923,7 @@ export type ServerFrame =
   | { t: "update_result"; device: string; ok: boolean; reason?: UpdateReason; detail?: string; update?: DeviceUpdate }
   | { t: "agent_update_result"; device: string; harness: string; ok: boolean; reason?: AgentReason; detail?: string }
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
-  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" } }
+  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; bridge?: BridgeView }
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
   | { t: "connections"; connections: ConnectionView[]; oo: OoDetect }
@@ -1431,6 +1435,39 @@ export interface MemView {
   noted: { seq: number; title: string; at: string; memoryId?: string }[];
   /** The name its memories are kept under in Mem (D141): the persona's AI Identity, once bound. */
   keptUnder?: string;
+}
+
+/**
+ * D205: what Mem said when it refused to connect the persona (its registered refusal codes, each
+ * with a step the user takes in Mem). Ducter never tries another identity, place or key instead.
+ * authority_missing: this sign-in has no current authority for the identity; custody_birth_missing:
+ * the identity lacks its original registration; lifetime_inactive: the identity is retired;
+ * attachment_mismatch: where it receives no longer matches it; control_denied: this sign-in doesn't
+ * hold it; revoked: this connection was disconnected before; conflict: already bound to another.
+ */
+export type BridgeRefusal = "authority_missing" | "custody_birth_missing" | "lifetime_inactive" | "attachment_mismatch" | "control_denied" | "revoked" | "conflict";
+
+/**
+ * D205: Settings › 伙伴's row for the persona's own Bridge connection (the frame carries it only
+ * when the persona has its Mem identity). update_mem: this nmem has no `bridge connections` (one
+ * line: update Mem on `home`); ready: what 接上 will do (identity, the "Only me" place by its exact
+ * id); no_space: Mem listed no single personal place, so nothing is offered; refused: Mem refused
+ * (reason); failed: it didn't answer as expected (detail); unconfirmed: connected, but the passive
+ * check after it didn't say it acts as the identity, so Bridge stays off (try again, or disconnect);
+ * pinned: DUCTER_BRIDGE=1 on the home (no disconnect here).
+ */
+export interface BridgeView {
+  state: "update_mem" | "ready" | "no_space" | "connecting" | "connected" | "disconnecting" | "refused" | "failed" | "unconfirmed";
+  /** The persona's identity in Mem, as connect names it (--agent-id). */
+  identity: string;
+  /** The user's own place in Mem, "Only me": its label and exact id. */
+  space?: { id: string; label: string };
+  /** update_mem: the computer whose Nowledge Mem needs updating (the home). */
+  home?: string;
+  reason?: BridgeRefusal;
+  /** failed, or a disconnect that didn't go through: what Mem said, clipped. */
+  detail?: string;
+  pinned?: boolean;
 }
 
 /** The choices offered for defaultAfterMin, in minutes. */

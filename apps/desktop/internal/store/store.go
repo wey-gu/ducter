@@ -394,6 +394,8 @@ type Store struct {
 	// outcome, until the view shows it.
 	Settings *protocol.Settings
 	Mem      *protocol.MemView
+	// Bridge is the persona's own connection row (D205), as last sent.
+	Bridge *protocol.BridgeView
 	// BrainNow is what the partner thinks with right now (D150).
 	BrainNow *protocol.BrainNow
 	// Connections (D96), once asked for; nil means not yet. Oo is what the
@@ -525,6 +527,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 			s.Mem = f.Mem
 		}
 		s.BrainNow = f.BrainNow
+		s.Bridge = f.Bridge
 		if f.Forgot != nil {
 			s.Forgot = f.Forgot
 		}

@@ -1,5 +1,5 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
-import type { AgentModels, AgentReason, MemPluginReason, BrainNow, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
 import { TUWA_MCP, WATCH_LIVE } from "@ducter/protocol";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
@@ -211,6 +211,10 @@ class AppState {
   /** The partner's settings (D71), once the server sent them; mem is what it remembers. */
   settings?: Settings;
   mem?: MemView;
+  /** D205: the persona's own Bridge connection, when the home's nmem can make one (or needs updating). */
+  bridge?: BridgeView;
+  /** D205: 断开 asks once more before it runs (a disconnected connection may need Mem to make again). */
+  bridgeConfirm = false;
   /** What the partner thinks with right now (D150), and the computer Ducter lives on. */
   brainNow?: BrainNow;
   homeName?: string;
@@ -515,6 +519,8 @@ class AppState {
   applySettings(f: Extract<ServerFrame, { t: "settings" }>) {
     this.settings = f.settings;
     this.mem = f.mem;
+    this.bridge = f.bridge;
+    if (f.bridge?.state !== "connected") this.bridgeConfirm = false;
     this.brainNow = f.brainNow;
     if (f.settings.name) this.S.personaName = f.settings.name;
     if (f.forgot) {
@@ -1113,6 +1119,23 @@ class AppState {
   checkUpdates(device: string) {
     this.checkingUpdates = true;
     this.send({ t: "device_update", device, check: true });
+    this.changed();
+  }
+  /** D205: 接上 / Connect: the home's nmem connects the persona (the frame shows each step). */
+  connectBridge() {
+    if (this.bridge) this.bridge = { ...this.bridge, state: "connecting" };
+    this.send({ t: "bridge_connect" });
+    this.changed();
+  }
+  /** D205: 断开 / Disconnect: the first tap asks, the second runs it. */
+  disconnectBridge() {
+    if (!this.bridgeConfirm) {
+      this.bridgeConfirm = true;
+      return this.changed();
+    }
+    this.bridgeConfirm = false;
+    if (this.bridge) this.bridge = { ...this.bridge, state: "disconnecting" };
+    this.send({ t: "bridge_disconnect" });
     this.changed();
   }
   /** D169: one task on that device puts Nowledge Mem into that agent, following Mem's own guide. */

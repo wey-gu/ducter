@@ -1,12 +1,13 @@
 // The partner's Bridge port: requests from the user's other agents through Nowledge Bridge
-// (design/bridge.md). Off unless DUCTER_BRIDGE=1 and DUCTER_BRIDGE_CONTEXT names an Agent
-// Context the user already approved with nmem.
+// (design/bridge.md). On once the user connected the persona in Settings › 伙伴 (D205, core's
+// bridge-link.ts runs that one `bridge connections connect` on their tap), or forced with
+// DUCTER_BRIDGE=1 and DUCTER_BRIDGE_CONTEXT naming an Agent Context the user approved with nmem.
 //
 // Boundary
 //   - The persona is the addressee (principle 17): Ducter uses the persona's Agent mailbox
 //     (`nmem bridge inbox/open/reply`), never a native-session mailbox. Harness sessions are
 //     caches (principle 1); an address bound to one would die at the next re-cut.
-//   - Ducter never sets anything up. It never calls `bridge setup --enable`, `session prepare`,
+//   - The partner never sets anything up. It never calls `bridge setup --enable`, `session prepare`,
 //     `agents enroll` or `keys create`. It reads the persona's inbox and replies to a message that
 //     is already in the Log. It may also run `contacts` (read-only) and `send`, but `send` runs only
 //     after the user tapped Go on a card naming the recipient (D105), and passive `setup` once to
@@ -375,10 +376,27 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   };
 }
 
-/** The Bridge client from the environment, or null when Bridge is off (the default). */
+/**
+ * The Agent Context Bridge runs with, or undefined when it is off (D205). `connected`: the context
+ * the user's connection in Settings › 伙伴 saved (core's bridge link), which turns Bridge on by
+ * itself. DUCTER_BRIDGE=1 forces it on (tests, the fake, a context made by hand) and needs
+ * DUCTER_BRIDGE_CONTEXT; DUCTER_BRIDGE=0 forces it off; DUCTER_BRIDGE_CONTEXT overrides the name.
+ * Never a guessed identity or Space: with neither, it is off.
+ */
+export function bridgeContextFor(env: Record<string, string | undefined>, connected?: string): string | undefined {
+  if (env.DUCTER_BRIDGE === "0") return undefined;
+  const named = env.DUCTER_BRIDGE_CONTEXT?.trim() || undefined;
+  if (env.DUCTER_BRIDGE === "1") return named;
+  return connected?.trim() ? (named ?? connected.trim()) : undefined;
+}
+
+/** The Bridge client for the environment and the user's connection, or null when Bridge is off. */
+export function bridgeFor(env: Record<string, string | undefined>, connected?: string): BridgeClient | null {
+  const context = bridgeContextFor(env, connected);
+  return context ? createNmemBridge({ context, env }) : null;
+}
+
+/** The Bridge client from the environment alone (DUCTER_BRIDGE=1 + DUCTER_BRIDGE_CONTEXT), or null. */
 export function bridgeFromEnv(env: Record<string, string | undefined> = process.env): BridgeClient | null {
-  if (env.DUCTER_BRIDGE !== "1") return null;
-  const context = env.DUCTER_BRIDGE_CONTEXT?.trim();
-  if (!context) return null; // never guess an identity or a Space
-  return createNmemBridge({ context, env });
+  return env.DUCTER_BRIDGE === "1" ? bridgeFor(env) : null;
 }

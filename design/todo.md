@@ -225,9 +225,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Re-run `mem-live.ts --real` with a key that may create Spaces and Agent profiles, to check
       the `ducter-scratch` Space and the rename (`nmem agents set`) live. Trigger: an owner key
       or a local Mem.
-- [ ] The Bridge's named Agent Context names the persona's identity (D141 (7)): at bind time,
-      adopt the context's identity, or say when they differ. Trigger: Bridge on by default. (The live
-      trial's preflight already checks it, D162.)
+- [x] The Bridge's named Agent Context names the persona's identity (D141 (7)): D205's connect names it
+      (`--agent-id`) and the passive setup afterwards must say the same identity, or Bridge stays off.
 - [ ] Outbox with idempotency keys when Mem is down (research/private/10 §"Mem down ≠ Ducter
       down"). Today a save while Mem is down is dropped and nothing is shown.
 - [ ] Search before writing, to supersede instead of duplicating (`nmem m supersede`).
@@ -739,14 +738,15 @@ Codex first, once OAR is near 1.0. See `research/17`.
   open branch merged.
 
 
-## Nowledge Bridge (D105–D111, D162–D164, D170–D171, `design/bridge.md`)
+## Nowledge Bridge (D105–D111, D162–D164, D170–D171, D205, `design/bridge.md`)
 
-- [ ] Bind the persona's mailbox in Only me (D171): Mem grants this connection authority to act as `ducter` (B15),
-      then `nmem agents context select-cloud --name ducter --agent-id ducter --space-id <Only me>`,
-      `nmem --agent-context ducter bridge setup` and `--enable`. Trigger: Mem's answer on B15.
-- [ ] Run `bun run bridge:live -- --real --context ducter --peer-context <the other side>` and record it in
-      research/37: S1, S2, S3 and an X1 round trip (a real terminal session that waits on a finite budget for the
-      answer). Trigger: the binding above and an identity with its own key for the other side.
+- [ ] Connect the persona in Only me (D205): on the home, Settings › 伙伴 › 你的其他 AI › 连上 (it runs
+      `nmem bridge connections connect --space-id <Only me> --agent-id ducter --context ducter`). Built and tested
+      over the fake; never run against Mem. Trigger: nmem 0.10.118 public and installed on the home (hel).
+- [ ] Run `bun run bridge:live -- --connected` (dry), then `-- --connected --real` and record it in research/37:
+      S1, S2, S3 and an X1 round trip with a native Claude Code session as the other side. Check that the native
+      binding's own context works for logical `contacts/send/inbox/reply` (INFERRED) and replace the fake's
+      `connections`/`session prepare` shapes with the raw ones. Trigger: the connection above.
 - [x] A start mark for the persona's mailbox (B14, D170): what was in the inbox at the first check is never a
       request.
 - [x] X1 · "有事问 Ducter" (D164, D170): the asker card on both clients, the reply by code, "not yet" after 30 min,
@@ -770,8 +770,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
       (D111's channel was not reachable from the session that found them).
 - [ ] Replace the tolerant JSON parsing (`inbox`, `open`, `outbox`, `inspect`, send/reply results) with the real
       shapes from the live run's `raw-<time>/` folder. Trigger: the live run.
-- [ ] Turn Bridge on by default by D170 (9)'s criteria: Ducter finds the persona's context itself; Settings ›
-      伙伴's 谁都不行 is the off. Trigger: the live run passes.
+- [ ] Turn Bridge on by default by D170 (9)'s criteria (the first is met by D205: Ducter finds the persona's
+      context itself; 断开 and 谁都不行 are the offs). Trigger: the live run passes.
 - [x] Clients render the quiet lines (发来请求 / 已发给 / 已回复, and a sender set aside) (D170).
 - [ ] Follow-through by a time the user named ("今晚前告诉我"). Trigger: a user asks for it; `wait_until`
       covers it today.

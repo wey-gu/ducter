@@ -62,7 +62,9 @@ type App struct {
 	Status client.Status
 	// devicesAsked: the where line (D157) asked for devices once on its own.
 	devicesAsked bool
-	StatusErr    string
+	// bridgeConfirm: 断开 was tapped once and asks before it runs (D205).
+	bridgeConfirm bool
+	StatusErr     string
 	// Failed is set once a connection attempt failed, and cleared by a
 	// welcome: until the first welcome it shows the first-run screen.
 	Failed bool

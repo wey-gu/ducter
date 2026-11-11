@@ -2291,6 +2291,19 @@ a {
 .set-item .set-go {
   align-self: flex-end;
 }
+/* D205: the persona's connection: the exact identity, place and id it uses, said literally. */
+.set-item small.bridge-id {
+  margin-top: -4px;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: var(--xs, 12px);
+  overflow-wrap: anywhere;
+}
+.set-item .bridge-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  justify-content: flex-end;
+}
 .set-back {
   align-self: flex-start;
   display: flex;

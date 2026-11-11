@@ -31,6 +31,7 @@ import { createRelayClient, relayUrl, type RelayFetch } from "./push-relay.ts";
 import { webApi, webStatic } from "./web.ts";
 import { callAbility, createDevicesView, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
+import { createBridgeLink, type NmemCall } from "./bridge-link.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
@@ -101,6 +102,8 @@ export interface CoreOptions {
   /** D202 test seam: each agent's models on each computer (else read from the agents themselves). */
   models?: ModelCatalog;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
+  /** D205: the persona's Bridge connection (bridge-link.ts): tests pass a fake nmem. */
+  bridgeLink?: { run?: NmemCall; env?: Record<string, string | undefined> };
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
   /** D156 test seams: the channels' feed, the agents' updaters, this machine's copies. */
   agents?: { fetch?: ReleaseFetch; sys?: UpdateSys; which?: (c: string) => string | null; detect?: AgentUpdatesDeps["detect"]; loggedIn?: AgentUpdatesDeps["loggedIn"]; exists?: (p: string) => boolean; settleMs?: number; autoEveryMs?: number };
@@ -133,6 +136,8 @@ export interface Core extends CoreApi {
   pusher: Pusher;
   /** The partner's settings (D71). */
   settings: SettingsStore;
+  /** D205: the persona's Bridge connection (bridge-link.ts). */
+  bridgeLink: import("./bridge-link.ts").BridgeLink;
   /** 你的规则 / Your rules and who does the tasks (D89). */
   rules: RulesStore;
   loadout: Loadout;
@@ -419,7 +424,15 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
   const closing = createClosing({ log, tasks, loadout, runner: () => runner });
   registerClosingTool(mcp, closing, () => settings.get().language === "zh");
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, spine: log.spine, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  // D205: Settings › 伙伴's one-tap Bridge connection for the persona, run by the home's nmem.
+  const bridgeLink = createBridgeLink({
+    dataDir,
+    identity: () => (settings.memMissing() ? undefined : persona.mem?.agentId),
+    home: () => computers.homeName(),
+    ...(opts.bridgeLink ?? {}),
+  });
+  bridgeLink.onChange(() => settings.bridgeChanged());
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, spine: log.spine, bridgeLink, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D150: the one helper (brain.ts) the runner and the settings frame share.
   api.partnerFallback = () => {
     const e = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow());
@@ -449,7 +462,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D204: 从 Git 地址加… / Add from a Git address…, cloned on that computer, then added there.
     clone: (device: string | undefined, address: string) => cloneProject(newTaskDeps, device, address, (path, dev) => newTask.addProject(path, dev)),
   };
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}) });
+  const ws = createWsHandler({ core: api, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -724,6 +737,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     push,
     pusher,
     settings,
+    bridgeLink,
     rules,
     loadout,
     connections,

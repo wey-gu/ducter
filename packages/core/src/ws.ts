@@ -58,6 +58,8 @@ export interface WsDeps {
   runner: () => Runner | undefined;
   /** Your devices and abilities (devices.ts); absent in tests that don't need it. */
   devices?: () => DevicesView | undefined;
+  /** D205: the persona's Bridge connection (bridge-link.ts); absent in tests that don't need it. */
+  bridgeLink?: import("./bridge-link.ts").BridgeLink;
   /** The partner's settings (settings.ts); absent in tests that don't need it. */
   settings?: SettingsStore;
   /** Your rules and who does the tasks (D89); absent in tests that don't need them. */
@@ -169,7 +171,8 @@ export function createWsHandler(deps: WsDeps) {
     // the home doesn't have.
     const home = devicesView() ? (await devicesView()!.frame()).devices.find((d) => d.home)?.harnesses : undefined;
     const now = brainNow(v.settings.brain, deps.settings!.brainChosen(), home);
-    return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}) };
+    const bridge = await deps.bridgeLink?.view().catch(() => undefined);
+    return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}), ...(bridge ? { bridge } : {}) };
   };
   const offSettings = deps.settings?.onChange(() => {
     const subs = [...sockets].filter((ws) => ws.data.settings);
@@ -554,6 +557,15 @@ export function createWsHandler(deps: WsDeps) {
         watchDevices();
         const r = await mp.install(device, harness);
         return send(ws, r.ok ? { t: "mem_plugin_result", device, harness, ok: true, taskId: r.taskId } : { t: "mem_plugin_result", device, harness, ok: false, reason: r.reason });
+      }
+      case "bridge_connect":
+      case "bridge_disconnect": {
+        // D205: the user's tap on 接上 / 断开 in Settings › 伙伴 is their Go for this one call.
+        if (!deps.settings || !deps.bridgeLink) throw new Error("settings are not available");
+        ws.data.settings = true;
+        // Each step pushes a fresh settings frame (connecting…, then connected or Mem's refusal).
+        await (f.t === "bridge_connect" ? deps.bridgeLink.connect() : deps.bridgeLink.disconnect());
+        return;
       }
       case "settings": {
         if (!deps.settings) throw new Error("settings are not available");

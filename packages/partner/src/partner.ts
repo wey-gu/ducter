@@ -54,7 +54,7 @@ import { join } from "node:path";
 import { callWakes, HARNESSES, HARNESS_IDS, isHarnessId, type ActivityStep, type Bodies, type Brain, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
-import { bridgeFromEnv, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
+import { bridgeContextFor, bridgeFor, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
 import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, zhJoin, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, type MemoryClient } from "./memory.ts";
 import { buildSystemPrompt } from "./persona.ts";
@@ -384,7 +384,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (r.ok) core.settings.setMemState("connected");
     else if (r.reason === "not_configured") core.settings.setMemState("missing");
   };
-  const bridge = opts.bridge === undefined ? bridgeFromEnv() : opts.bridge;
+  // D205: with no client given, Bridge is on when the user connected the persona in Settings ›
+  // 伙伴 (core.bridgeLink) or DUCTER_BRIDGE=1 forces it; it turns on and off without a restart.
+  const bridgeAuto = opts.bridge === undefined;
+  let bridge: BridgeClient | null = bridgeAuto ? bridgeFor(process.env, core.bridgeLink?.context()) : (opts.bridge ?? null);
 
   const cwd = join(core.dataDir, "partner");
   const stateFile = join(cwd, "state.json");
@@ -418,7 +421,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const canResume = () => !!lastSessionId && lastPromptHash === promptHash();
   // The model the live session was started with (a model switch on the same harness restarts too).
   let liveModel: string | undefined;
-  const runKey = () => (partnerRun().model === liveModel ? "" : "!");
+  // D205: Bridge turned on or off while a session is live: the next turn starts a fresh one, so
+  // its tools (listed only while it is on) are the ones the session sees.
+  let liveBridge = !!bridge;
+  const runKey = () => (partnerRun().model === liveModel ? "" : "!") + (!!bridge === liveBridge ? "" : "b");
   let handledSeq: number | undefined; // highest trigger seq covered by a finished turn
   // The turn in flight: its trigger seqs and the Log head when it started (state.json). A turn
   // cut off by a restart is run again with all of its triggers, and what it already did is
@@ -834,6 +840,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (!resumeSessionId) contextTokens = 0;
     lastPromptHash = promptHash();
     liveModel = run.model;
+    liveBridge = !!bridge;
     lastSessionId = s.id || resumeSessionId;
     stats.sessionId = lastSessionId;
   }
@@ -1192,7 +1199,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       'Choose place {"kind":"browser"} when the work happens on the web: looking something up, checking or reading a page or site, comparing products, filling a form. Codex and Claude Code tasks work in the user\'s own Chrome with their own browser tools (signed in as the user, in a window of their own) and never sign in, submit, post or pay without the user\'s Go; otherwise the task uses Ducter\'s own browser, which keeps its sign-ins between tasks. Any Codex task can also operate apps on this Mac with its Computer Use; say so when a task will. ' +
       "A browser task never signs in, submits, posts, buys, or pays by itself: it stops and asks the user with a question, so put that in the brief's out of scope. " +
       "Returns at once; the task reports back on its own. Never wait on it.",
-    {
+    () => ({
       type: "object",
       properties: {
         title: { type: "string", description: "Short title in the user's language" },
@@ -1233,7 +1240,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         brief: { type: "string", description: "Last, after title and place: the user's verbatim words, decisions, done-criteria, out of scope, place" },
       },
       required: ["title", "brief"],
-    },
+    }),
     async (raw: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown }) => {
       // Validate before any channel side effect (live: a call without `title` crashed after
       // "On it: undefined" and a failed job_status were already on the channel).
@@ -1445,7 +1452,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     "partner",
     "ask",
     "Ask the user to choose, BEFORE any task exists (e.g. \"ask me before changing the public API\"). The user sees the question with Go / Hold / Reply buttons; never ask a choice in prose and never tell the user to type Go. Returns at once; end your turn. The answer arrives as a [your question answered: …] line, and then you act on it (e.g. open the task). Only refer to a choice the user can see if you created it with this tool.",
-    {
+    () => ({
       type: "object",
       properties: {
         question: { type: "string", description: "One question in the user's language" },
@@ -1470,7 +1477,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           : {}),
       },
       required: ["question", "goLabel"],
-    },
+    }),
     async (args: { question: string; goLabel: string; default?: "go" | "hold"; reversible?: boolean; defaultInMinutes?: number; forMessage?: unknown; suggests?: unknown; other?: unknown; where?: unknown }) => {
       await Bun.sleep(5); // let the streamed text land first
       flushPending(); // a line before the question stays a message, never an ack
@@ -2223,13 +2230,21 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   let lastCheck = 0;
   let bridgeChecking: Promise<number> | null = null;
   let bridgeTimer: ReturnType<typeof setInterval> | null = null;
+  /** A message the user sent on a card (not a reply) in the last 7 days that got no answer yet. */
+  function awaitingAnswer(t: number): boolean {
+    const evs = loggedBridge();
+    const answered = new Set(evs.filter((e) => e.body.direction === "in" && e.body.inReplyTo).map((e) => e.body.inReplyTo!));
+    return evs.some((e) => e.body.direction === "out" && !!e.body.decisionId && !e.body.inReplyTo && !!e.body.messageId && !answered.has(e.body.messageId) && t - Date.parse(e.ts) < 7 * DAY_MS);
+  }
   async function checkBridge(): Promise<number> {
     if (!bridge || closed) return 0;
     if (bridgeChecking) return bridgeChecking; // one check at a time
     bridgeChecking = (async () => {
       lastCheck = now();
       const peers = core.settings?.get().peers;
-      if (peers?.reach === "off") return 0; // Settings › 伙伴: nobody may reach the partner
+      // Settings › 伙伴 谁都不行 (D205): no other agent reaches the partner, but what the user
+      // sent through a card still gets its answer. So it checks only while one is outstanding.
+      if (peers?.reach === "off" && !awaitingAnswer(now())) return 0;
       await recoverOutbox().catch(onError);
       const start = await startMark();
       if (!start || closed) return 0;
@@ -2247,7 +2262,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         // reach the partner, is logged and never wakes it. An answer to what the user sent always
         // comes through.
         const answersOurs = !!m.inReplyTo && loggedBridge().some((e) => e.body.direction === "out" && e.body.messageId === m.inReplyTo);
-        if (peers && !answersOurs && (peers.muted.includes(m.agent ?? m.from) || (peers.reach === "own" && !m.mine))) {
+        if (peers && !answersOurs && (peers.reach === "off" || peers.muted.includes(m.agent ?? m.from) || (peers.reach === "own" && !m.mine))) {
           core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.mine ? { mine: true } : {}), text: "", state: "muted" } });
           continue;
         }
@@ -2278,9 +2293,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return bridgeChecking;
   }
 
-  if (bridge) {
-    core.mcp.register(
-      "partner",
+  // D205: Bridge's tools are listed only while it is on (Settings › 伙伴 can connect or disconnect
+  // it while Ducter runs); its checks start the first time it is on and skip while it is off.
+  const bridgeTool = (name: string, description: string, schema: object, handler: (args: any) => Promise<unknown>) =>
+    core.mcp.registerWhen ? core.mcp.registerWhen("partner", name, description, schema, handler, () => !!bridge) : core.mcp.register("partner", name, description, schema, handler);
+  let bridgeStarted = false;
+  function startBridge(b0: BridgeClient) {
+    if (bridgeStarted) return;
+    bridgeStarted = true;
+    bridgeTool(
       "bridge_reply",
       "Reply to a message another agent sent you through Nowledge Bridge ([message from … message <id>] lines). The reply goes back to that sender only: answer its question, say whether the user agreed, or report the result of the task you opened for it. Short and self-contained; no secrets, no private details the user hasn't shared with that sender. Don't tell the user you replied: the app shows it.",
       {
@@ -2314,8 +2335,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         return { ok: false, sent: false, note: "Not sent: Bridge refused it. Ducter has told the user." };
       },
     );
-    core.mcp.register(
-      "partner",
+    bridgeTool(
       "peer_rule",
       "Change how one of the user's other agents (one that wrote through Bridge) reaches you, only when the user says so in this turn: \"不再听 X 的\" / \"stop listening to X\" = mute; \"听 X 的\" = unmute; \"X 的活还是先问我\" = stop_trust (its work asks the user again). Ducter keeps it and shows it in Settings › 伙伴. Then confirm in one short line.",
       {
@@ -2341,16 +2361,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         return { ok: true, note: "Done. Say so in one short line, in the user's words." };
       },
     );
-    if (bridge.contacts && bridge.send) {
-      core.mcp.register(
-        "partner",
-        "bridge_contacts",
+    if (b0.contacts && b0.send) {
+      bridgeTool(
+      "bridge_contacts",
         "Find another agent the user named (\"问问我终端里那个 Claude\", \"ask my Codex\", \"Alex's reviewer\") so you can message it: the user's own sessions and teammates' agents that you didn't start. When the user asks you to ask, tell or check with such an agent, do it now: bridge_contacts, then bridge_send. Don't offer first or ask permission in prose; bridge_send's card is the user's confirmation. Read-only: it sends nothing. Query with a few distinctive words from what the user said.",
         { type: "object", properties: { query: { type: "string", description: "A few words: the agent's or person's name, the project" } }, required: ["query"] },
         async (args: { query?: unknown }) => {
           const query = typeof args?.query === "string" ? args.query.trim() : "";
           if (!query) return { ok: false, error: "bridge_contacts needs `query`." };
-          const r = await bridge.contacts!(query);
+          const r = bridge?.contacts ? await bridge.contacts(query) : undefined;
+          if (!r) return { ok: false, note: "Can't reach other agents right now. Tell the user in one short line if they asked you to message one." };
           if (!r.ok) return { ok: false, note: "Can't reach other agents right now. Tell the user in one short line if they asked you to message one." };
           for (const c of r.contacts) seenContacts.set(c.contact, c);
           return {
@@ -2362,9 +2382,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           };
         },
       );
-      core.mcp.register(
-        "partner",
-        "bridge_send",
+      bridgeTool(
+      "bridge_send",
         "Message another agent the user asked you to contact (found with bridge_contacts). Nothing goes out yet: the user sees a card naming the recipient and your message, and it is sent only if they tap go. Write what the user wants to know or say, in plain sentences, plus the background the recipient needs. No numbered or bulleted sub-questions, nothing the user didn't ask for. Never secrets, paths, or private details the user didn't ask you to share. Returns at once; end your turn, and never say it was sent: it waits for the user's tap. Its answer arrives later as a [reply from …] line.",
         {
           type: "object",
@@ -2419,6 +2438,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (t - lastCheck >= gap - 50) void checkBridge().catch(onError);
       }, Math.min(every, LIVE_CHECK_MS));
   }
+  if (bridge) startBridge(bridge);
+  // The connection the user made (or undid) in Settings › 伙伴 takes effect now, not at a restart.
+  let bridgeKey = bridgeAuto ? bridgeContextFor(process.env, core.bridgeLink?.context()) : undefined;
+  const offBridgeLink = bridgeAuto
+    ? core.bridgeLink?.onChange(() => {
+        const key = bridgeContextFor(process.env, core.bridgeLink?.context());
+        if (key === bridgeKey || closed) return;
+        bridgeKey = key;
+        bridge = bridgeFor(process.env, core.bridgeLink?.context());
+        if (bridge) startBridge(bridge);
+      })
+    : undefined;
 
   // ---------- public ----------
   const api: PartnerHandle = {
@@ -2471,6 +2502,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     async close() {
       closed = true;
+      offBridgeLink?.();
       if (bridgeTimer) clearInterval(bridgeTimer);
       if (recoverTimer) clearTimeout(recoverTimer);
       if (spineTimer) clearInterval(spineTimer);

@@ -55,6 +55,8 @@ export interface SettingsStore extends SettingsApi {
   onChange(fn: () => void): () => void;
   /** The persona's Mem identity was bound (D141): clients show whose name its memories are under. */
   memIdentityChanged(): void;
+  /** D205: the persona's Bridge connection changed (bridge-link.ts): every settings frame again. */
+  bridgeChanged(): void;
   /** Mem answered "not installed or not connected" the last time it was asked (D169: then nothing about its plugin shows). */
   memMissing(): boolean;
   /** A reversible decision's wait, from the setting. */
@@ -259,6 +261,7 @@ export function openSettings(opts: {
       return how;
     },
     memIdentityChanged: changed,
+    bridgeChanged: changed,
     onChange(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);

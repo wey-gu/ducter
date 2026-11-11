@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.23
+
+<!-- whats-new
+zh: 任务页像编程助手一样一步一行：命令、改动、出错都看得见
+en: A task reads like a coding agent: every command, edit and error, one line each
+zh: 按两下 Esc 暂停，排队的话看得出来，长任务也顺滑
+en: Esc twice pauses; queued messages show as queued; long tasks stay smooth
+-->
+
+**The opened task, like a coding agent**
+- Every step is its own line: what the agent said it was doing, the command, an edit's +n −n.
+  Looking at files folds into one line ("Read 3 files, 2 searches").
+- Edits show their diff inline, and a failed step shows the line that names the error, where it
+  happened. A command's output opens in place, first 12 lines and the rest on request.
+- At the bottom, over the box: **Working**, the clock, the latest step and **Pause** while it
+  works; **Over to you** when it waits for you. Esc twice pauses.
+- What you send while it's busy shows as queued until it reads it. Scroll up and **Jump to latest**
+  takes you back; very long tasks show older steps on request.
+
 ## 0.0.22
 
 <!-- whats-new

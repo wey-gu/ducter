@@ -337,6 +337,8 @@ class AppState {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   }
+  /** D217: set by phone-use.tsx; takes every phone_* frame. */
+  onPhoneFrame?: (f: import("@ducter/protocol").PhoneServerFrame) => void;
   changed() {
     for (const fn of this.listeners) fn();
     this.scheduleRead();
@@ -513,6 +515,8 @@ class AppState {
       this.conn?.rehello();
     }
     if (f.t === "live" || f.t === "live_frame" || f.t === "live_turn" || f.t === "live_doing") return this.liveFrame(f);
+    // D217: Ducter's phone (phone-use.tsx keeps its own state).
+    if (f.t.startsWith("phone_")) return void this.onPhoneFrame?.(f as import("@ducter/protocol").PhoneServerFrame);
     if (f.t === "browser_sites") {
       if (f.ok === false && f.message) this.toast(f.message);
       return void ((this.sites = f), this.changed());

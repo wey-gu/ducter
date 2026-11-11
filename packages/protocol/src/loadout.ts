@@ -42,6 +42,8 @@ export interface TaskNeeds {
   long?: boolean;
   /** D206: it makes a picture (画一张… / Draw…): only an agent that generates images takes it. */
   draw?: boolean;
+  /** D217: it uses Ducter's phone (an app on a phone): only a computer with 用手机 takes it. */
+  phone?: boolean;
 }
 
 /**
@@ -63,7 +65,7 @@ export interface WhereWhy {
   kind: "always_on" | "signed_in" | "only_here" | "awake" | "changes_here" | "agent_here" | "no_signin" | "moved" | "you" | "home";
   other?: string;
   site?: string;
-  thing?: "chrome" | "browser" | "app" | "agent";
+  thing?: "chrome" | "browser" | "app" | "agent" | "phone";
   app?: string;
   agent?: string;
   ruleId?: string;
@@ -111,9 +113,9 @@ export type CandidateBlock = "not_installed" | "signed_out" | "off" | "reserve" 
  * it can't browse (上网 isn't on there); no_chrome: it needs the user's Chrome and that computer
  * has none; no_app: it needs a Mac app and that computer isn't a Mac; elsewhere: the folder or
  * repo is on another computer (place); no_draw (D206): the task makes a picture and this agent
- * can't (only Codex generates images).
+ * can't (only Codex generates images); no_phone (D217): it needs Ducter's phone and 用手机 isn't on there.
  */
-export type WhereBlock = "no_browser" | "no_chrome" | "no_app" | "elsewhere" | "no_draw";
+export type WhereBlock = "no_browser" | "no_chrome" | "no_app" | "elsewhere" | "no_draw" | "no_phone";
 
 /** One AI agent (and model) that could do a task, best first, with why in words the client builds. */
 export interface Candidate {

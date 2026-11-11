@@ -857,6 +857,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         // D168: the user's Nowledge Mem plugin where it is on that computer, else Ducter's own
         // read-only memory; a browser task gets none (as with the Log, D62).
         ...((m) => (m === "plugin" || m === "ducter" ? { memory: m } : {}))(memoryMode(open.place, open.harness)),
+        // D217: work on Ducter's phone gets the phone's section (its tools are on the same server).
+        ...(open.needs?.phone ? { phone: true } : {}),
       }),
       mcp: [mcp],
       permissionMode: "bypass",

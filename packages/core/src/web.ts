@@ -80,6 +80,7 @@ import artAbComputer from "../../../apps/web/static/art/ab_computer.webp" with {
 import artAbRemote from "../../../apps/web/static/art/ab_remote.webp" with { type: "file" };
 import artAbComputerLater from "../../../apps/web/static/art/ab_computer_later.webp" with { type: "file" };
 import artAbPhoneLater from "../../../apps/web/static/art/ab_phone_later.webp" with { type: "file" };
+import artAbPhone from "../../../apps/web/static/art/ab_phone.webp" with { type: "file" }; // D217
 import artSetAutofill from "../../../apps/web/static/art/set_autofill.webp" with { type: "file" };
 
 const INDEX = indexHtml as unknown as string; // Bun types an .html import as an HTMLBundle; with type "file" it is a path
@@ -137,6 +138,7 @@ const ASSETS: Record<string, [string, string]> = {
   "art/ab_remote.webp": [artAbRemote, "image/webp"],
   "art/ab_computer_later.webp": [artAbComputerLater, "image/webp"],
   "art/ab_phone_later.webp": [artAbPhoneLater, "image/webp"],
+  "art/ab_phone.webp": [artAbPhone, "image/webp"],
   "art/set_autofill.webp": [artSetAutofill, "image/webp"],
 };
 

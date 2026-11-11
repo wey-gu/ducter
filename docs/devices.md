@@ -45,7 +45,9 @@ top to bottom like a character in a game:
     the phone line Ducter calls through; once it's connected, tapping **Calls** opens its card
     there. If your Tuwa sign-in runs out, the chip says **Sign in again**. See
     [Phone calls](calls.md).
-  - Faded chips marked **coming later**, such as **Use a phone**, show what Ducter will be able to
+  - **Use a phone** is on the card of a Mac with Apple silicon that Ducter lives on. It gives
+    Ducter a phone of its own: see [Ducter's phone](#ducters-phone) below.
+  - Faded chips marked **coming later**, such as **Use apps**, show what Ducter will be able to
     do in a later version. Tap one to read what it will do; there is nothing to turn on yet.
 - **How it's connected:** one quiet line, such as *Connected via the app and command line*. The
   **⋯** beside it shows each connection with its own **Disconnect**.
@@ -62,6 +64,44 @@ get *· 2* after the second one; rename either.
 `ducter` command line on that Mac connects too. It isn't a device of its own: the Mac's card says
 *Connected via the app and command line*, and the **⋯** beside that line disconnects just the
 command line.
+
+## Ducter's phone
+
+Some things only happen in an app on a phone. **Use a phone** gives Ducter its own Android phone
+(Android 16 with Google Play), running on your Mac and apart from your own phone. You put apps on
+it and sign in to them yourself; then Ducter can get things done in those apps for you.
+
+**Adding it.** Tap **+ Use a phone** on the card of your Mac. Ducter says what it downloads (about
+2.3 GB, once), how much space it takes (about 10 GB once the phone has been used), and when it
+runs. The phone comes from Google under Google's licenses: read them there (**Read**), turn on
+**I've read and agree to these licenses**, and tap **Add it**. The card shows the download; you
+can do something else meanwhile. You don't need Android Studio or anything else. For now this is
+for Macs with Apple silicon; other computers show **Use a phone** as coming later.
+
+**When it's on.** The phone starts by itself when a task needs it or you open it, and turns itself
+off a few minutes after nothing needs it. The first start takes about a minute; after that, a few
+seconds.
+
+**Putting your apps on it.** Tap **Open the phone** on the card. It's your turn: tap, swipe and type
+as on a phone (Back, Home and Recent apps are under the screen). Open Google Play, sign in to your
+Google account, install the apps you want, and sign in to them. Ducter can't see the phone while
+it's your turn. Tap **Done** when you're finished.
+
+**Asking for something.** Just say it, such as *"Use your phone to check my orders in the app"*.
+The task works on the phone; you can watch it from the task (**Watch it use the phone**) or from
+the card (**Watch**), and take a turn with **My turn** and **Hand it back**, as with
+[Ducter's browser](#browsing-the-web-on-a-server).
+
+**What always waits for you.**
+- Any tap that sends, posts, pays, buys, installs, deletes, calls, confirms or signs out: the task
+  asks first on a card that says what it will do (**Tap it**, or **Not yet**). One yes covers that
+  one tap.
+- Signing in, codes and puzzles: the card says **Open the phone**; you do it, then **Done**.
+- Banking, wallet and payment apps, password managers and authenticator apps: Ducter can't see or
+  use them at all, and never types into a password field.
+
+**Erasing it.** The **i** on **Use a phone** has **Erase this phone**: its apps, sign-ins and data
+are deleted and you get a fresh phone.
 
 ## Let this Mac do tasks
 

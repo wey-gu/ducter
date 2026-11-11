@@ -75,6 +75,7 @@ Design notes:
 - `media.md`: pictures and files both ways, the viewer, drawing (D206).
 - `autofill.md`: saved sign-ins, cards and details, filled by reference; the Pay card (D191).
 - `android.md`: the Android app, its self-update and foldable layout (D178–D182).
+- `phone-use.md`: 用手机 / Use a phone, Ducter's own Android phone on a Mac (D217).
 - `product-model.md`: see above.
 
 ## The change loop (run it for every new question or discovered problem)

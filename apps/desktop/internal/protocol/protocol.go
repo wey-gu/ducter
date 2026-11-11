@@ -172,6 +172,9 @@ type Decision struct {
 	Pay *PayAsk `json:"pay,omitempty"`
 	// Fill (D191): a saved sign-in or detail used on a site for the first time.
 	Fill *FillAsk `json:"fill,omitempty"`
+	// Phone (D217): a tap on Ducter's phone that commits (Go taps it once),
+	// or the user's own turn on the phone (Go = 好了 / Done).
+	Phone *PhoneAsk `json:"phone,omitempty"`
 	// Where (D157): wait for a computer (Hold, the default) or do it now on
 	// another (Go).
 	Where *WhereAsk `json:"where,omitempty"`
@@ -708,6 +711,7 @@ type TaskCard struct {
 	// merge or a draft PR the user made from Ducter.
 	Latest     *LogEvent   `json:"latest,omitempty"`
 	Integrated *Integrated `json:"integrated,omitempty"`
+	Phoning    *Browsing   `json:"phoning,omitempty"` // D217: is using Ducter's phone there
 }
 
 // Integrated is what the user did with a task's branch from Ducter (D216):
@@ -1247,8 +1251,13 @@ type DeviceAbility struct {
 	// web only (D130): where browser tasks run. WhereChrome = the user's own Chrome through an
 	// AI agent's own browser tools (no cua-driver needed); WhereDucter = Ducter's own browser.
 	Where string `json:"where,omitempty"`
-	// Setup (D151): "installing" while Ducter installs its own browser here.
+	// Setup (D151): "installing" while Ducter installs its own browser here
+	// (and D217: its phone).
 	Setup string `json:"setup,omitempty"`
+	// Step (D217): how far installing the phone is.
+	Step *PhoneInstallStep `json:"step,omitempty"`
+	// Running (D217): Ducter's phone is on right now.
+	Running bool `json:"running,omitempty"`
 }
 
 const (
@@ -1476,17 +1485,28 @@ type ServerFrame struct {
 	// Width, Height, Reason, Message) and live_frame (ID, Seq, Data = a base64
 	// JPEG, Width, Height, URL). browser_sites: Ready, Sites (and OK, Message
 	// after a sign-out).
-	DecisionID string     `json:"decisionId,omitempty"`
-	State      string     `json:"state,omitempty"`
-	Site       string     `json:"site,omitempty"`
-	URL        string     `json:"url,omitempty"`
-	Title      string     `json:"title,omitempty"`
-	Width      int        `json:"width,omitempty"`
-	Height     int        `json:"height,omitempty"`
-	Seq        int64      `json:"seq,omitempty"`
-	Data       string     `json:"data,omitempty"`
-	Ready      bool       `json:"ready,omitempty"`
-	Sites      []SiteView `json:"sites,omitempty"`
+	DecisionID string `json:"decisionId,omitempty"`
+	State      string `json:"state,omitempty"`
+	Site       string `json:"site,omitempty"`
+	URL        string `json:"url,omitempty"`
+	Title      string `json:"title,omitempty"`
+	Width      int    `json:"width,omitempty"`
+	Height     int    `json:"height,omitempty"`
+	Seq        int64  `json:"seq,omitempty"`
+	Data       string `json:"data,omitempty"`
+	// D217, Ducter's phone: phone_view (ID, State starting|open|closed, Mode,
+	// Turn, Here, Device, TaskID, Task, DecisionID, Reason, Message),
+	// phone_frame (ID, Seq, Data, Width, Height, App), phone_doing (ID,
+	// Doing), phone_terms (OK, Reason, Message, Download, Disk, Packages,
+	// Licenses), phone_install_result and phone_erase_result (OK, Reason, Message).
+	Mode     string         `json:"mode,omitempty"`
+	App      string         `json:"app,omitempty"`
+	Download int64          `json:"download,omitempty"`
+	Disk     int64          `json:"disk,omitempty"`
+	Packages []PhonePackage `json:"packages,omitempty"`
+	Licenses []PhoneLicense `json:"licenses,omitempty"`
+	Ready    bool           `json:"ready,omitempty"`
+	Sites    []SiteView     `json:"sites,omitempty"`
 	// D154: live (open) says which browser it is.
 	Browser *BrowserAbout `json:"browser,omitempty"`
 	// D190: live (open) and live_turn: whose turn (agent | you) and whether
@@ -1566,6 +1586,7 @@ type LiveTask struct {
 type LiveDoing struct {
 	Kind  string   `json:"kind"`
 	Host  string   `json:"host,omitempty"`
+	App   string   `json:"app,omitempty"` // D217: the phone's step (open: which app)
 	Label string   `json:"label,omitempty"`
 	Key   string   `json:"key,omitempty"`
 	X     *float64 `json:"x,omitempty"`
@@ -1687,7 +1708,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
-		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "browser_sites", "browser_check", "connection_reads", "saved",
+		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "saved",
 		"connection_signin", "phone_voice_result", "wb":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)

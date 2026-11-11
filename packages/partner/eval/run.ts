@@ -256,7 +256,16 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     const hm = (ms: number) => new Date(Date.now() + ms).toLocaleTimeString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
     writeFileSync(join(dataDir, "push.json"), JSON.stringify({ subs: [], settings: { quiet: { start: hm(-3600_000), end: hm(4 * 3600_000), tz }, done: false } }));
   }
-  const core = startCore({ dataDir, port: 0, persona, ...(sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
+  // D217: Ducter's phone added here: a stand-in install (the files the home checks), never started.
+  if (sc.ownPhone) {
+    const ph = join(dataDir, "phone");
+    for (const f of ["sdk/platform-tools/adb", "sdk/emulator/emulator"]) {
+      mkdirSync(join(ph, f, ".."), { recursive: true });
+      writeFileSync(join(ph, f), "");
+    }
+    writeFileSync(join(ph, "installed.json"), JSON.stringify({ packages: [{ path: "emulator", version: "stand-in" }], licenses: [], at: new Date().toISOString() }));
+  }
+  const core = startCore({ dataDir, port: 0, persona, ownPhone: { platform: "darwin", arch: "arm64" }, ...(sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   if (tuwa) {
     const added = await core.connections.add({ url: tuwa.url, token: JSON.stringify({ accessToken: tuwa.access(), refreshToken: tuwa.refresh(), expires_in: 3600 }) });
     if (!added.ok) throw new Error(`fake Tuwa: ${JSON.stringify(added)}`);

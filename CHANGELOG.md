@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.27
+
+<!-- whats-new
+zh: 可以用你自己的手机和号码打电话了，全球都能打
+en: Calls can go out from your own phone and number, to anywhere your SIM can call
+zh: 工作台、手头的事和手机的中文说法更自然
+en: Plainer Chinese in the workbench, On hand and Ducter's phone
+-->
+
+**Calls from your own number**
+- Plug your Android phone into the computer Ducter lives on, with a small headset cable bridge
+  (about US$15 of parts; the card lists them), add a live-voice key, and make a test call. Then a
+  call can go out from your own number and SIM, wherever it can call, under the same rules as
+  every call: your OK first, it says it's an AI first, never emergency numbers, at most 10 a day.
+- Ask for it ("用我的号码打"), or turn on **每通电话都用我的号码**; Tuwa stays the line otherwise. The
+  card shows which number calls and what the voice costs. Ducter only dials, hangs up, reads the
+  call's state and presses keypad digits on your phone; nothing is recorded.
+
+**Words**
+- The workbench, On hand and Ducter's phone read like the rest of Ducter: **保存 / 取消 / 还原**,
+  **点击 / 暂不点击**, **打开手机**, **安装**, and more.
+
 ## 0.0.26
 
 <!-- whats-new

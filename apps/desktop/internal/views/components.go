@@ -806,6 +806,9 @@ func (a *App) goLabel(d *store.DecisionState) string {
 		return a.L.T("memp.card.go")
 	}
 	if d.Call != nil {
+		if d.Call.Plan != nil && d.Call.Plan.At != "" {
+			return a.L.T("call.then") // D207: 到点再打 / Call then (现在就打 sits by the time)
+		}
 		return a.L.T("call.go") // D189: 打过去 / Call
 	}
 	if d.Asker != nil {

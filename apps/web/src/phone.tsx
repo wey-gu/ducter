@@ -25,21 +25,31 @@ function when(iso: string): string {
 
 const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
 
+/** A drawn ✓ in muted ink (D73: marks are glyphs, never tiles). */
+const Check = () => (
+  <svg class="call-check" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M2.5 7.4l3 3 6-6.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);
+
 /** The call's art: the clay phone; grey while it isn't connected. */
 export const CallArt = ({ off, size = 72 }: { off?: boolean; size?: number }) => <img class="call-art" src={`app/art/${off ? "ab_call_locked" : "ab_call"}.webp`} width={size} height={size} alt="" draggable={false} />;
 
 // ---------- the Go card ----------
 
-function PlanRows({ p }: { p: CallPlan }) {
+/** D207: why it isn't now, in plain words (the callee's clock, or the owner's quiet hours). */
+export const waitWords = (p: CallPlan) => (p.wait ? (p.wait.why === "quiet" ? t("call.wait.quiet") : t(`call.wait.${p.wait.why}`, p.wait.their, p.wait.then)) : "");
+
+function PlanRows({ p, now }: { p: CallPlan; now?: () => void }) {
   const rows: [string, string][] = [
     [t("call.row.number"), prettyNumber(p.to)],
     [t("call.row.goal"), p.goal],
     ...(p.say.length ? [[t("call.row.say"), p.say.join(t("acct.sep"))] as [string, string]] : []),
     ...(p.keep ? [[t("call.row.keep"), p.keep] as [string, string]] : []),
+    ...(p.mustNot.length ? [[t("call.row.mustnot"), p.mustNot.join(t("acct.sep"))] as [string, string]] : []),
     [t("call.row.voice"), t(p.voice === "owner" ? "call.voice.owner" : "call.voice.ducter")],
     [t("call.row.from"), t("call.from.provider", p.provider)],
     [t("call.row.about"), t("call.about", p.minutes, money(p.costUsd))],
-    [t("call.row.when"), p.at ? t("call.when.at", when(p.at)) : t("call.when.now")],
   ];
   return (
     <dl class="call-plan">
@@ -49,7 +59,58 @@ function PlanRows({ p }: { p: CallPlan }) {
           <dd>{v}</dd>
         </div>
       ))}
+      <div class="when">
+        <dt>{t("call.row.when")}</dt>
+        <dd>
+          <span class="v">{p.at ? t("call.when.at", when(p.at)) : t("call.when.now")}</span>
+          {p.wait && <span class="why">{waitWords(p)}</span>}
+          {p.canNow && now && <Btn kind="secondary" size="sm" label={t("call.now")} about={p.name} onClick={now} />}
+        </dd>
+      </div>
     </dl>
+  );
+}
+
+const SUMMARY_KEYS: [RegExp, string][] = [
+  [/^to$/i, "call.row.number"],
+  [/^goal$/i, "call.row.goal"],
+  [/^may (tell( them)?|share|say)$/i, "call.row.say"],
+  [/^private$/i, "call.row.keep"],
+  [/^scope$/i, "call.row.scope"],
+  [/^must ?not$/i, "call.row.mustnot"],
+  [/^when\b/i, "call.row.when"],
+  [/^(calling )?from$/i, "call.row.from"],
+  [/^voice$/i, "call.row.voice"],
+];
+
+/** The provider's own approval text as label / value lines (labels in the owner's words, values as written), or undefined when it isn't such lines. */
+export function summaryRows(s: string): [string, string][] | undefined {
+  const lines = s.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const rows = lines.map((l) => /^([A-Za-z][A-Za-z ()]{1,30}):\s*(.+)$/.exec(l));
+  if (lines.length < 2 || rows.some((m) => !m)) return undefined;
+  return rows.map((m) => {
+    const key = m![1]!.trim();
+    const hit = SUMMARY_KEYS.find(([re]) => re.test(key));
+    const utc = /utc/i.test(key) && hit?.[1] === "call.row.when" ? " (UTC)" : "";
+    return [hit ? `${t(hit[1])}${utc}` : key, m![2]!.trim()];
+  });
+}
+
+function Summary({ p }: { p: CallPlan }) {
+  const rows = summaryRows(p.summary ?? "");
+  return rows ? (
+    <dl class="call-summary small" lang="en">
+      {rows.map(([k, v], i) => (
+        <div key={i}>
+          <dt>{k}</dt>
+          <dd>{v}</dd>
+        </div>
+      ))}
+    </dl>
+  ) : (
+    <div class="call-summary small" lang="en">
+      {p.summary}
+    </div>
   );
 }
 
@@ -64,13 +125,13 @@ function GoCard({ d }: { d: DecisionState }) {
         <CallArt size={56} />
         <div class="q">{d.question}</div>
       </div>
-      {p && <PlanRows p={p} />}
+      {p && <PlanRows p={p} now={open ? () => A.callNow(d.decisionId, d.call!.callId) : undefined} />}
       <div class="small sub call-open">{t("call.opens", A.S.personaName)}</div>
       {p?.note && <div class="small warn">{p.note}</div>}
       {p?.summary && (
         <>
           <Btn kind="text" size="sm" expanded={fold} label={`${t("call.summary", p.provider)} ${fold ? "‹" : "›"}`} onClick={() => setFold(!fold)} />
-          {fold && <div class="call-summary small">{p.summary}</div>}
+          {fold && <Summary p={p} />}
         </>
       )}
       {open ? (
@@ -91,7 +152,7 @@ function GoCard({ d }: { d: DecisionState }) {
         </>
       ) : (
         <div class="resolved small" role="status">
-          {d.resolved?.option === "go" ? t("call.went") : d.resolved?.option === "hold" ? t("call.held") : t("call.replied")}
+          {d.resolved?.option === "go" ? t(d.resolved.now ? "call.went.now" : p?.at ? "call.went.then" : "call.went") : d.resolved?.option === "hold" ? t("call.held") : t("call.replied")}
         </div>
       )}
     </div>
@@ -108,7 +169,6 @@ function QuestionCard({ d }: { d: DecisionState }) {
   return (
     <div class={`call-card question${open ? " ringing" : ""}`}>
       <div class="call-q-head">
-        <span class="dot" aria-hidden="true" />
         {t("call.asking")}
         {c && <span class="sub"> · {c.plan.name}</span>}
       </div>
@@ -147,7 +207,42 @@ export function CallDecision({ d }: { d: DecisionState }) {
 
 // ---------- On hand: the live row and the result ----------
 
-const failWords = (c: CallView) => t(`call.fail.${c.reason ?? "provider"}`, c.plan.provider);
+/** The provider's own words for a failure, when it gave any (Ducter's stand-ins for "none" aren't words). */
+const providerWords = (c: CallView) => (c.error && !/^the provider (gave|answered)|^no reason/i.test(c.error) ? c.error : "");
+
+/** D207: why it failed, in the owner's words; the provider's own words after a colon when it gave them. */
+export function failWords(c: CallView): string {
+  const r = c.reason ?? "provider";
+  const said = providerWords(c);
+  if (r === "provider" || r === "call_failed") return said ? t(`call.fail.${r}.said`, said) : t(`call.fail.${r}`);
+  return t(`call.fail.${r}`, c.plan.provider);
+}
+
+/** The row's second line: why it waits, what answered, why it failed, or the outcome as reported. */
+export function callSub(c: CallView): { text: string; warn?: boolean } | undefined {
+  const hint = c.hint === "screening" ? t("call.hint.screening") : "";
+  switch (c.state) {
+    case "waiting":
+      return c.plan.wait ? { text: c.plan.wait.why === "quiet" ? t("call.waits.quiet") : t("call.waits.callee", c.plan.wait.then) } : undefined;
+    case "automated":
+      return { text: hint || t("call.automated") };
+    case "no_answer":
+      return hint ? { text: hint } : undefined;
+    case "failed":
+      return { text: [failWords(c), hint].filter(Boolean).join(" "), warn: true };
+    case "done":
+    case "uncertain":
+      return c.outcome ? { text: c.outcome } : undefined;
+    case "cancelled":
+      return c.reason === "too_long" ? { text: t("call.fail.too_long") } : undefined;
+    case "calling":
+    case "talking":
+    case "question":
+      return { text: prettyNumber(c.plan.to) };
+    default:
+      return undefined;
+  }
+}
 
 export function callLine(c: CallView): string {
   const n = c.plan.name;
@@ -162,6 +257,8 @@ export function callLine(c: CallView): string {
       return t("call.st.talking", n, c.talkingSince ? mmss((Date.now() - Date.parse(c.talkingSince)) / 1000) : "");
     case "question":
       return t("call.st.question", n);
+    case "failed":
+      return t(c.reason === "call_failed" ? "call.st.failed_line" : "call.st.failed", n);
     default:
       return t(`call.st.${c.state}`, n);
   }
@@ -171,6 +268,7 @@ function Result({ c }: { c: CallView }) {
   const [lines, setLines] = useState(false);
   return (
     <div class="call-result">
+      {c.state === "automated" && c.outcome && <p class="small">{c.outcome}</p>}
       {c.summary && <p class="small">{c.summary}</p>}
       {!!c.agreed?.length && (
         <ul class="small">
@@ -193,7 +291,7 @@ function Result({ c }: { c: CallView }) {
           )}
         </>
       )}
-      {(c.durationSec !== undefined || c.costUsd !== undefined) && <div class="small sub">{[c.durationSec !== undefined ? t("call.length", Math.floor(c.durationSec / 60), Math.round(c.durationSec % 60)) : "", c.costUsd !== undefined ? money(c.costUsd) : ""].filter(Boolean).join(" · ")}</div>}
+      {(c.durationSec !== undefined || c.costUsd !== undefined) && <div class="small sub">{[c.durationSec !== undefined ? (c.durationSec < 60 ? t("call.length.s", Math.round(c.durationSec)) : t("call.length", Math.floor(c.durationSec / 60), Math.round(c.durationSec % 60))) : "", c.costUsd !== undefined ? money(c.costUsd) : ""].filter(Boolean).join(" · ")}</div>}
     </div>
   );
 }
@@ -202,19 +300,21 @@ export function CallRow({ c }: { c: CallView }) {
   const [open, setOpen] = useState(false);
   const ended = callEnded(c.state);
   const live = ["calling", "talking", "question"].includes(c.state);
+  const sub = callSub(c);
+  const more = ended && !!(c.summary || c.agreed?.length || c.transcript?.length || c.durationSec !== undefined || c.costUsd !== undefined || (c.state === "automated" && c.outcome));
   return (
     <div class={`bcard call-row ${c.state}`}>
-      <button class="call-row-top" disabled={!ended} aria-expanded={ended ? open : undefined} onClick={() => setOpen(!open)}>
-        <CallArt size={36} off={c.state === "failed" || c.state === "cancelled"} />
+      <button class="call-row-top" disabled={!more} aria-expanded={more ? open : undefined} onClick={() => setOpen(!open)}>
+        <CallArt size={36} off={ended} />
         <span class="grow">
           <span class="t">{callLine(c)}</span>
-          {c.state === "done" || c.state === "uncertain" ? c.outcome && <span class="s">{c.outcome}</span> : c.state === "failed" ? <span class="s warn">{failWords(c)}</span> : live && <span class="s">{prettyNumber(c.plan.to)}</span>}
+          {sub && <span class={`s${sub.warn ? " warn" : ""}`}>{sub.text}</span>}
         </span>
-        {live && <span class="call-live" aria-hidden="true" />}
+        {more && <span class="chev" aria-hidden="true">{open ? "‹" : "›"}</span>}
       </button>
       {c.state === "failed" && c.payUrl && <Btn kind="text" size="sm" label={t("call.pay", c.plan.provider)} onClick={() => window.open(c.payUrl, "_blank", "noopener")} />}
       {(live || c.state === "waiting") && <Btn kind="text" size="sm" label={t(live ? "call.hangup" : "call.cancel")} about={c.plan.name} onClick={() => A.callCancel(c.callId)} />}
-      {ended && open && <Result c={c} />}
+      {more && open && <Result c={c} />}
     </div>
   );
 }
@@ -271,7 +371,6 @@ export function SignInPanel({ s }: { s: SignInView }) {
             <Btn kind="primary" label={t("call.signin.open", s.name)} onClick={() => window.open(s.verifyUrlComplete ?? s.verifyUrl, "_blank", "noopener")} />
           </div>
           <div class="signin-wait small sub">
-            <span class="pulse" aria-hidden="true" />
             {t("call.signin.waiting")}
             {mins && ` · ${t("call.signin.valid", mins)}`}
           </div>
@@ -309,14 +408,31 @@ export function PhoneCard({ c }: { c: ConnectionView }) {
         <div class={`small ${out ? "warn" : "sub"}`}>{out ? t("call.card.out", p.provider) : t("call.card.ok")}</div>
         {out && <Btn kind="secondary" size="sm" label={t("call.card.signin")} onClick={() => A.reauth(c.id)} />}
       </div>
-      <div class="phone-day small">{t("call.card.today", p.calls, money(p.spentTodayUsd))}</div>
+      <div class="phone-day small">{p.calls === 0 ? t("call.card.today.none") : p.calls === 1 ? t("call.card.today.one", money(p.spentTodayUsd)) : t("call.card.today", p.calls, money(p.spentTodayUsd))}</div>
       <div class="small sub">{t("call.card.rails")}</div>
       <div class="phone-cap">
         <h4>{t("call.card.cap")}</h4>
         <Seg<number> label={t("call.card.cap")} value={[5, 10, 20, 50].includes(p.capUsd) ? p.capUsd : undefined} options={[5, 10, 20, 50].map((n) => ({ v: n, label: `$${n}` }))} onPick={(n) => A.phoneCap(n)} />
         <div class="small sub">{t("call.card.cap.help")}</div>
       </div>
-      {p.rails && <div class="small sub">{[p.rails.sampling ? t("call.card.sampling") : "", p.rails.shared ? t("call.card.shared") : ""].filter(Boolean).join(" · ")}</div>}
+      {p.rails && (p.rails.sampling || p.rails.shared) && (
+        <div class="phone-rails">
+          <h4>{t("call.card.off", p.provider)}</h4>
+          {p.rails.sampling && (
+            <div class="small">
+              <Check />
+              {t("call.card.sampling", p.provider)}
+            </div>
+          )}
+          {p.rails.shared && (
+            <div class="small">
+              <Check />
+              {t("call.card.shared", p.provider)}
+            </div>
+          )}
+          {p.doNotCall > 0 && <div class="small sub">{t("call.card.dnc", p.doNotCall)}</div>}
+        </div>
+      )}
       <div class="phone-voice">
         <h4>{t("call.voice.title")}</h4>
         {v?.enrolled ? (

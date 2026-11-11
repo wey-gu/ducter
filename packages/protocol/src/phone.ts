@@ -12,14 +12,16 @@
  *   question  · the other side asked something only the owner can answer (对方在问 / They're asking)
  *   done      · ended; Tuwa reports an outcome
  *   uncertain · ended; Tuwa could not confirm the outcome (没能确认 / Couldn't confirm)
+ *   automated · ended; it got through, but only a machine answered (voicemail, call screening,
+ *               "not available"): no one talked (转到了自动语音 / Got an automated message)
  *   no_answer · nobody picked up, or busy (free)
- *   failed    · it did not go through (a provider error, a payment gate, the cap)
+ *   failed    · it did not go through (a provider refusal, a payment gate, the cap, a line that failed)
  *   cancelled · the owner hung up or withdrew it
  */
-export type CallState = "needs_go" | "held" | "waiting" | "calling" | "talking" | "question" | "done" | "uncertain" | "no_answer" | "failed" | "cancelled";
+export type CallState = "needs_go" | "held" | "waiting" | "calling" | "talking" | "question" | "done" | "uncertain" | "automated" | "no_answer" | "failed" | "cancelled";
 
 export const CALL_LIVE: readonly CallState[] = ["waiting", "calling", "talking", "question"];
-export const CALL_ENDED: readonly CallState[] = ["done", "uncertain", "no_answer", "failed", "cancelled", "held"];
+export const CALL_ENDED: readonly CallState[] = ["done", "uncertain", "automated", "no_answer", "failed", "cancelled", "held"];
 export const callLive = (s: CallState) => CALL_LIVE.includes(s);
 export const callEnded = (s: CallState) => CALL_ENDED.includes(s);
 
@@ -39,8 +41,26 @@ export interface CallPlan {
   perMinUsd: number;
   calleeZone: string; // IANA zone the 9:00–20:00 rule was checked in
   at?: string; // ISO: when it will dial, when that is not now (after quiet hours, or in the callee's morning)
+  /** D207: why it isn't now, when `at` is set: the callee's hours (their clock now and when it dials) or the owner's quiet hours. */
+  wait?: CallWait;
+  /** D207: the owner may say 现在就打 / Call now: only the courtesy hours pushed it, and the owner asked for it while here. */
+  canNow?: boolean;
+  /** D207: the owner's own number (they said so, or it is their saved phone): the callee's hours don't apply. */
+  own?: boolean;
   summary?: string; // the provider's own approval summary, shown as is
   note?: string; // one line the owner should know (a US mobile; mainland China likely won't connect)
+}
+
+/**
+ * D207: why a call waits. callee: outside 9:00–20:00 where they are (`their` is their clock now,
+ * `then` when it dials, both "HH:MM" in `zone`); late: also outside 8:00–21:00 there, which even
+ * the owner's Call now doesn't cross; quiet: the owner's own quiet hours (a call they didn't just ask for).
+ */
+export interface CallWait {
+  why: "callee" | "late" | "quiet";
+  zone: string;
+  their: string;
+  then: string;
 }
 
 /** A question from the line (Tuwa's pendingQuestion): the top card, pushed even in quiet hours. */
@@ -71,13 +91,22 @@ export interface CallBody {
   transcript?: { who: "them" | "agent"; text: string }[];
   durationSec?: number;
   costUsd?: number;
-  error?: string; // failed: why, in plain words (English; the clients map `reason`)
+  error?: string; // failed: why, in the provider's own words when it gave them (English; the clients map `reason`)
   reason?: CallFailReason;
+  /** D207: a known cause the owner can fix, said with the outcome (screening: Google Voice's call screening answered). */
+  hint?: "screening";
+  /** D207: the owner said 现在就打 / Call now over the callee's courtesy hours. */
+  callNow?: boolean;
   payUrl?: string; // failed on a payment gate: the provider's own page (Ducter never pays)
   by?: "owner" | "ducter"; // cancelled: who hung up (ducter = the 17-minute stop or the 90 s fallback)
 }
 
-export type CallFailReason = "payment" | "balance" | "cap" | "provider" | "unreachable" | "signed_out" | "too_long";
+/**
+ * Why a call failed. provider: the provider refused it (with its words); call_failed: it was dialed
+ * but the line failed, for a reason the provider gave or didn't; lost: Ducter couldn't tell whether a
+ * confirmation that errored placed the call (check the provider's app; never dialed twice).
+ */
+export type CallFailReason = "payment" | "balance" | "cap" | "provider" | "call_failed" | "lost" | "unreachable" | "signed_out" | "too_long";
 
 /** On hand's row and the opened call: the snapshot plus when it last changed. */
 export type CallView = CallBody & { updatedAt: string };
@@ -149,8 +178,10 @@ export interface DraftRequest {
   alternatives?: string;
   mustNot?: string[];
   voice?: "ducter" | "owner";
-  calleeZone?: string;
+  calleeZone?: string; // where the person is now, only when known (they're travelling); else read from the number
   minutes?: number;
+  own?: boolean; // D207: the owner said this number is theirs
+  present?: boolean; // D207: the owner asked for this call just now, in the conversation (their quiet hours don't hold it)
   forName?: string; // whom the call is for, as they'd be named on the line
   person?: boolean; // a private person, not a business
   language?: string;
@@ -170,23 +201,34 @@ export function callWakes(c: CallBody): boolean {
   return true;
 }
 
+/** D207: the fix for a known cause, said with the outcome (the partner says it in the user's language). */
+export const SCREENING_HINT =
+  "The number uses Google Voice call screening: Google answered, announced the caller to its owner (\"call from …\") and, as nobody pressed 1, told the caller \"not available\". The fix: answer and press 1, or turn off call screening in Google Voice's settings (Calls › Screen calls).";
+
 /** The partner's line when a call ends (render.ts): the outcome exactly as reported. */
 export function renderCallEnded(c: CallBody, taskTitle?: string): string {
   const who = `${c.plan.name} (${c.plan.to})`;
   const cost = [c.durationSec !== undefined ? `${Math.max(1, Math.round(c.durationSec / 60))} min` : "", c.costUsd !== undefined ? `$${c.costUsd.toFixed(2)}` : ""].filter(Boolean).join(", ");
   const task = c.taskId ? ` · task ${c.taskId}${taskTitle ? ` "${taskTitle}"` : ""} asked for this call: task_send it the outcome in one line` : "";
   const facts = `${c.outcome ? ` · reported: "${c.outcome}"` : ""}${c.agreed?.length ? ` · agreed: ${c.agreed.join("; ")}` : ""}${cost ? ` · ${cost}` : ""}`;
+  const hint = c.hint === "screening" ? ` · ${SCREENING_HINT}` : "";
+  const fix = c.hint ? ", then that fix, briefly" : "";
   switch (c.state) {
     case "done":
       return `[call ended: done] ${who}${facts}${task}. Tell the user the outcome in one line, exactly as reported, in their language; never add what wasn't reported.`;
     case "uncertain":
       return `[call ended: uncertain] ${who}${facts}${task}. The provider could NOT confirm the outcome: say plainly it couldn't confirm (没能确认), and what it did hear, in one line.`;
+    case "automated":
+      return `[call ended: it got through, but only an automated message answered; nobody talked] ${who}${facts}${hint}${task}. Say in one line, in their language: the call connected, but a machine answered (what it said, briefly), so nothing was done${fix}. Never say it didn't go through or that the provider refused.`;
     case "no_answer":
-      return `[call ended: no answer] ${who}${task}. Nobody picked up (it cost nothing). Say so in one line; offer to try again later only if it matters.`;
+      return `[call ended: no answer] ${who}${hint}${task}. Nobody picked up (it cost nothing). Say so in one line${fix}; offer to try again later only if it matters.`;
     case "cancelled":
       return `[call ended: Ducter hung up] ${who}${facts}${task}. It passed 17 minutes. Say so in one line, with what was reported.`;
-    default:
-      return `[call didn't go through] ${who}: ${c.error ?? "the provider refused"}${c.payUrl ? " (the app shows the provider's payment page as a button)" : ""}${task}. Say so in one short line and the one thing the user can do; never take card details.`;
+    default: {
+      // D207: a dialed call that failed says the provider's words; only a real refusal is a refusal.
+      const why = c.reason === "call_failed" ? `it was dialed but didn't connect; the provider said: ${c.error ?? "no reason"}` : c.reason === "lost" ? `Ducter couldn't tell whether it was placed (${c.error ?? ""}); the user should check the provider's app before asking again` : `${c.reason === "provider" ? "the provider refused it: " : ""}${c.error ?? "no reason given"}`;
+      return `[call didn't go through] ${who}: ${why}${c.payUrl ? " (the app shows the provider's payment page as a button)" : ""}${hint}${task}. Say so in one short line, in their language, with only what was reported, and the one thing the user can do${fix}; never take card details.`;
+    }
   }
 }
 

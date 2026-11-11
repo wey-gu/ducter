@@ -28,12 +28,13 @@ type phoneState struct {
 	open       map[string]bool   // an ended call's result, open in place
 	script     map[string]bool   // its transcript, unfolded
 	answer     map[string]string // a question's typed answer, by decision
+	now        map[string]bool   // D207: Call now was tapped on this Go card
 }
 
 func (a *App) ph() *phoneState {
 	p := &a.phone
 	if p.summary == nil {
-		p.summary, p.open, p.script, p.answer = map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]string{}
+		p.summary, p.open, p.script, p.answer, p.now = map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]string{}, map[string]bool{}
 	}
 	return p
 }
@@ -262,7 +263,7 @@ func (a *App) phoneCard(c *ui.Context, cv protocol.ConnectionView) {
 			default:
 				ui.Text(c, a.L.T("phone.card.ready")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 			}
-			today := a.L.T("phone.card.today.none")
+			today := a.L.T("phone.card.today.none") // D207: none / one / many
 			if pv.Calls == 1 {
 				today = a.L.T("phone.card.today.one", money(pv.SpentTodayUSD))
 			} else if pv.Calls > 1 {
@@ -286,20 +287,33 @@ func (a *App) phoneCard(c *ui.Context, cv protocol.ConnectionView) {
 				a.send(protocol.PhoneCap{T: "phone_cap", USD: phoneCaps[i]})
 			}
 		})
+		ui.Text(c, a.L.T("phone.card.cap.help")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+		// D207: what Ducter turned off on the provider, one plain line each (it was one cryptic line).
 		if r := pv.Rails; r != nil && (r.Sampling || r.Shared) {
-			var on []string
-			if r.Sampling {
-				on = append(on, a.L.T("phone.card.sampling"))
-			}
-			if r.Shared {
-				on = append(on, a.L.T("phone.card.shared"))
-			}
-			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				a.glyph(c, 14, drawCheck(t.InkMuted))
-				ui.Text(c, strings.Join(on, " · ")).FontSize(t.XS).TextColor(t.InkMuted)
+			ui.Box(c).Height(1).Background(t.LineSoft)
+			ui.Column(c.Key("phone-off")).Gap(t.S2).Children(func() {
+				ui.Text(c, a.L.T("phone.card.off")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+				for _, k := range []struct {
+					on  bool
+					key string
+				}{{r.Sampling, "phone.card.sampling"}, {r.Shared, "phone.card.shared"}} {
+					if !k.on {
+						continue
+					}
+					k := k
+					ui.Row(c.Key(k.key)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+						a.glyph(c, 14, drawCheck(t.Done.Ink))
+						ui.Text(c, a.L.T(k.key)).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0)
+					})
+				}
+				if pv.DoNotCall > 0 {
+					ui.Row(c.Key("dnc")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+						a.glyph(c, 14, drawCheck(t.Done.Ink))
+						ui.Text(c, a.L.T("phone.card.dnc", pv.DoNotCall)).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0)
+					})
+				}
 			})
-		}
-		if pv.DoNotCall > 0 {
+		} else if pv.DoNotCall > 0 {
 			ui.Text(c, a.L.T("phone.card.dnc", pv.DoNotCall)).FontSize(t.XS).TextColor(t.InkMuted)
 		}
 		ui.Box(c).Height(1).Background(t.LineSoft)
@@ -415,7 +429,7 @@ func (a *App) callFactsCard(c *ui.Context, d *store.DecisionState) {
 func (a *App) callPlanBody(c *ui.Context, d *store.DecisionState) {
 	t := a.T
 	pl := d.Call.Plan
-	a.callFacts(c, pl)
+	a.callFacts(c, d)
 	if pl.Note != "" {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
 			a.glyph(c, 16, drawBang(t.NeedsYou.Ink))
@@ -425,13 +439,80 @@ func (a *App) callPlanBody(c *ui.Context, d *store.DecisionState) {
 	ui.Text(c, a.L.T("call.opens", a.S.PersonaName)).FontSize(t.SM).TextColor(t.NeedsYou.Ink).LineHeight(a.leading(1.45))
 	if pl.Summary != "" {
 		p := a.ph()
-		if a.disclosureRow(c, "callsum:"+d.DecisionID, a.L.T("call.summary", firstNonEmpty(pl.Provider, "Tuwa")), "", p.summary[d.DecisionID]) {
+		if a.disclosureRow(c, "callsum:"+d.DecisionID, a.L.T("call.summary"), "", p.summary[d.DecisionID]) {
 			p.summary[d.DecisionID] = !p.summary[d.DecisionID]
 		}
 		if p.summary[d.DecisionID] {
-			ui.Text(c, pl.Summary).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).Padding(0, t.S3)
+			a.providerWording(c, pl.Summary)
 		}
 	}
+}
+
+// summaryLabels maps the provider's own "Key: value" labels to ours (D207);
+// the values stay exactly as the provider wrote them.
+var summaryLabels = []struct{ prefix, key string }{
+	{"calling from", "call.from"}, {"may tell them", "call.say"}, {"may share", "call.say"}, {"must not", "call.mustnot"},
+	{"private", "call.keep"}, {"scope", "call.sum.scope"}, {"goal", "call.goal"}, {"voice", "call.voice"},
+	{"when", "call.when"}, {"from", "call.from"}, {"to", "call.number"},
+}
+
+// summaryRows reads the provider's summary as label/value lines, or nil
+// when it isn't written that way (then it shows as is).
+func (a *App) summaryRows(text string) [][2]string {
+	var rows [][2]string
+	for _, ln := range strings.Split(strings.TrimSpace(text), "\n") {
+		ln = strings.TrimSpace(strings.TrimLeft(ln, "-•* "))
+		if ln == "" {
+			continue
+		}
+		i := strings.Index(ln, ":")
+		if i <= 0 || i > 32 {
+			return nil
+		}
+		k, v := strings.TrimSpace(ln[:i]), strings.TrimSpace(ln[i+1:])
+		label := k
+		lk := strings.ToLower(k)
+		for _, m := range summaryLabels {
+			if strings.HasPrefix(lk, m.prefix) {
+				label = a.L.T(m.key)
+				if m.prefix == "when" && lk != "when" {
+					// "When in UTC" → 什么时候（UTC） / When (UTC)
+					zone := strings.TrimPrefix(strings.TrimSpace(strings.Trim(k[4:], " ()")), "in ")
+					if a.L.Lang == "zh" {
+						label += "（" + zone + "）"
+					} else {
+						label += " (" + zone + ")"
+					}
+				}
+				break
+			}
+		}
+		rows = append(rows, [2]string{label, v})
+	}
+	if len(rows) < 2 {
+		return nil
+	}
+	return rows
+}
+
+// providerWording is the provider's own confirmation, secondary: label and
+// value lines when it reads that way, else the text as is.
+func (a *App) providerWording(c *ui.Context, text string) {
+	t := a.T
+	rows := a.summaryRows(text)
+	if rows == nil {
+		ui.Text(c, text).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).Padding(0, t.S3)
+		return
+	}
+	ui.Column(c.Key("callsum-rows")).Gap(t.S1).Padding(t.S2, t.S3).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
+		for i, r := range rows {
+			r := r
+			ui.Row(c.Key(i)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
+				ui.Text(c, r[0]).FontSize(t.XS).TextColor(t.InkMuted).Width(84).Shrink(0)
+				ui.Text(c, r[1]).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0).LineHeight(a.leading(1.45))
+			})
+		}
+	})
 }
 
 // callAnswered is how a question from the line was answered, in words.
@@ -455,9 +536,27 @@ func (a *App) callAnswered(d *store.DecisionState) string {
 	return a.L.T("call.q.sent") + " · " + text
 }
 
-// callFacts is the Go card's table: one fact a line, the label muted.
-func (a *App) callFacts(c *ui.Context, pl *protocol.CallPlan) {
+// callWaitWords is why a call waits (D207), or "".
+func (a *App) callWaitWords(pl *protocol.CallPlan) string {
+	if pl.At == "" || pl.Wait == nil {
+		return ""
+	}
+	switch pl.Wait.Why {
+	case "callee":
+		return a.L.T("call.wait.callee", pl.Wait.Their, pl.Wait.Then)
+	case "late":
+		return a.L.T("call.wait.late", pl.Wait.Their, pl.Wait.Then)
+	case "quiet":
+		return a.L.T("call.wait.quiet")
+	}
+	return ""
+}
+
+// callFacts is the Go card's table: one fact a line, the label muted; under
+// When, why it waits and (D207) 现在就打 / Call now when the owner may.
+func (a *App) callFacts(c *ui.Context, d *store.DecisionState) {
 	t := a.T
+	pl := d.Call.Plan
 	voice := a.L.T("call.voice.ducter")
 	if pl.Voice == "owner" {
 		voice = a.L.T("call.voice.owner")
@@ -475,6 +574,7 @@ func (a *App) callFacts(c *ui.Context, pl *protocol.CallPlan) {
 		{a.L.T("call.goal"), pl.Goal},
 		{a.L.T("call.say"), strings.Join(pl.Say, a.L.T("acct.sep"))},
 		{a.L.T("call.keep"), pl.Keep},
+		{a.L.T("call.mustnot"), strings.Join(pl.MustNot, a.L.T("acct.sep"))},
 		{a.L.T("call.voice"), voice},
 		{a.L.T("call.from"), a.L.T("call.from.provider", firstNonEmpty(pl.Provider, "Tuwa"))},
 		{a.L.T("call.about"), a.L.T("call.about.v", mins, money(pl.CostUSD))},
@@ -491,6 +591,20 @@ func (a *App) callFacts(c *ui.Context, pl *protocol.CallPlan) {
 				ui.Text(c, autospace(r[1])).FontSize(t.MD).TextColor(t.Ink).Grow(1).MinWidth(0).LineHeight(a.leading(1.45)).FontFeatures("tnum")
 			})
 		}
+		why := a.callWaitWords(pl)
+		if why == "" {
+			return
+		}
+		open := d.Resolved == nil && d.Pending == ""
+		ui.Row(c.Key("fact:wait")).Gap(t.S3).AlignItems(ui.Center).Wrap().Padding(0, 0, 0, 84+t.S3).Children(func() {
+			ui.Text(c, autospace(why)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.45)).Grow(1).Basis(180).MinWidth(0)
+			if pl.CanNow && open && a.buttonFor(c.Key("callnow"), a.L.T("call.now"), d.Question, btnSecondary, t.ControlSM, t.Surface) {
+				a.ph().now[d.DecisionID] = true
+				d.Pending, d.AnsweredAt = "go", a.Now()
+				a.markRead()
+				a.send(protocol.CallNow{T: "call_now", CallID: d.Call.CallID})
+			}
+		})
 	})
 }
 
@@ -637,11 +751,16 @@ func (a *App) callTitle(cl protocol.CallBody, now time.Time) string {
 	n := cl.Plan.Name
 	switch cl.State {
 	case protocol.CallWaiting:
-		when := a.L.T("call.when.now")
-		if at := store.ParseTime(cl.Plan.At); !at.IsZero() {
-			when = a.when(at.Local())
+		at := store.ParseTime(cl.Plan.At)
+		if at.IsZero() {
+			return a.L.T("call.row.calling", n)
 		}
-		return a.L.T("call.row.waiting", when, n)
+		return a.L.T("call.row.waiting", a.when(at.Local()), n)
+	case protocol.CallFailed:
+		if cl.Reason == "call_failed" {
+			return a.L.T("call.row.call_failed", n) // D207: dialed, didn't connect
+		}
+		return a.L.T("call.row.failed", n)
 	case protocol.CallTalking:
 		since := store.ParseTime(cl.TalkingSince)
 		clock := ""
@@ -653,10 +772,52 @@ func (a *App) callTitle(cl protocol.CallBody, now time.Time) string {
 			clock = fmt.Sprintf("%d:%02d", s/60, s%60)
 		}
 		return strings.TrimSpace(a.L.T("call.row.talking", n, clock))
-	case protocol.CallNeedsGo, protocol.CallCalling, protocol.CallAsking, protocol.CallDone, protocol.CallUncertain, protocol.CallNoAnswer, protocol.CallFailed, protocol.CallCancelled:
+	case protocol.CallNeedsGo, protocol.CallCalling, protocol.CallAsking, protocol.CallDone, protocol.CallUncertain, protocol.CallAutomated, protocol.CallNoAnswer, protocol.CallCancelled:
 		return a.L.T("call.row."+cl.State, n)
 	}
 	return n
+}
+
+// callFailWords is why a call failed (D207): the provider's own words when it
+// gave them, never "refused" unless it refused.
+func (a *App) callFailWords(cl protocol.CallBody) string {
+	r := firstNonEmpty(cl.Reason, "provider")
+	words := strings.TrimSpace(cl.Error)
+	if strings.HasPrefix(strings.ToLower(words), "the provider") {
+		words = "" // Ducter's own placeholder, not the provider's words
+	}
+	if (r == "provider" || r == "call_failed") && words != "" {
+		return a.L.T("call.why."+r+".v", words)
+	}
+	return a.L.T("call.why." + r)
+}
+
+// callSub is the line under a call's row title (D207).
+func (a *App) callSub(cl protocol.CallBody) string {
+	ended := protocol.CallEnded(cl.State)
+	var parts []string
+	switch {
+	case cl.State == protocol.CallFailed:
+		parts = append(parts, a.callFailWords(cl))
+	case cl.State == protocol.CallCancelled && cl.Reason == "too_long":
+		parts = append(parts, a.L.T("call.why.too_long"))
+	case cl.State == protocol.CallAutomated && cl.Hint == "":
+		parts = append(parts, a.L.T("call.auto.plain"))
+	case cl.State == protocol.CallWaiting && cl.Plan.Wait != nil:
+		if cl.Plan.Wait.Why == "quiet" {
+			parts = append(parts, a.L.T("call.row.wait.quiet"))
+		} else {
+			parts = append(parts, a.L.T("call.row.wait.callee", cl.Plan.Wait.Then))
+		}
+	case cl.Outcome != "" && cl.State != protocol.CallAutomated:
+		parts = append(parts, cl.Outcome)
+	case !ended:
+		parts = append(parts, prettyNumber(cl.Plan.To)+" · "+cl.Plan.Goal)
+	}
+	if cl.Hint == "screening" && (cl.State == protocol.CallAutomated || cl.State == protocol.CallNoAnswer || cl.State == protocol.CallFailed) {
+		parts = append(parts, a.L.T("call.auto.screening"))
+	}
+	return strings.Join(parts, "\n")
 }
 
 func (a *App) callRow(c *ui.Context, cl protocol.CallBody) {
@@ -693,19 +854,8 @@ func (a *App) callRow(c *ui.Context, cl protocol.CallBody) {
 			}
 			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
 				ui.Text(c, autospace(title)).FontSize(t.MD).FontWeight(800).TextColor(ink).MaxLines(2).FontFeatures("tnum")
-				sub := ""
-				switch {
-				case cl.State == protocol.CallFailed:
-					sub = a.L.T("call.why." + firstNonEmpty(cl.Reason, "provider"))
-				case cl.State == protocol.CallCancelled && cl.Reason == "too_long":
-					sub = a.L.T("call.why.too_long")
-				case cl.Outcome != "":
-					sub = cl.Outcome
-				case !ended:
-					sub = prettyNumber(cl.Plan.To) + " · " + cl.Plan.Goal
-				}
-				if sub != "" {
-					ui.Text(c, autospace(sub)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(3).LineHeight(a.leading(1.45))
+				if sub := a.callSub(cl); sub != "" {
+					ui.Text(c, autospace(sub)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(5).LineHeight(a.leading(1.45))
 				}
 			})
 			switch {
@@ -739,6 +889,9 @@ func (a *App) callResult(c *ui.Context, cl protocol.CallBody) {
 	t := a.T
 	p := a.ph()
 	ui.Column(c.Key("callres:"+cl.CallID)).Gap(t.S2).Padding(t.S2, 0, 0, 39).Children(func() {
+		if cl.State == protocol.CallAutomated && cl.Outcome != "" {
+			ui.Text(c, autospace(cl.Outcome)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)) // the provider's words
+		}
 		if cl.Summary != "" {
 			ui.Text(c, autospace(cl.Summary)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
 		}

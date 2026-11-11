@@ -10,11 +10,12 @@
 // restart picks up where it was: live calls are polled again, a call waiting for its hour waits on.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, CallBody, CallPlan, CallState, CallView, DraftRequest, DraftResult, LogEvent, PhoneView } from "@ducter/protocol";
+import type { Bodies, CallBody, CallPlan, CallState, CallView, CallWait, DraftRequest, DraftResult, LogEvent, PhoneView } from "@ducter/protocol";
 import { callEnded, e164 } from "@ducter/protocol";
 import type { LogStore, PhonePort } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 import type { ConnectionsStore } from "./connections.ts";
+import { nanpZones } from "./nanp.ts";
 import { providerOf, type CallProvider, type ProviderIo } from "./phone-provider.ts";
 import { inQuiet, localMinutes, type Quiet } from "./push.ts";
 
@@ -25,8 +26,10 @@ export const HANG_UP_MIN = 17; // Ducter hangs up if it is still on the line
 export const QUESTION_WAIT_MS = 90_000; // D189 (5): then the agent says it will call back
 export const POLL_MS = 15_000; // Tuwa asks for 15–30 s
 export const POLL_LIVE_MS = 5_000; // while someone is on the line (a question waits on the owner)
-const CALL_START = 9 * 60; // the callee's local 9:00
+const CALL_START = 9 * 60; // the callee's local 9:00 … (the courtesy hours: the owner's Call now may pass them, D207)
 const CALL_END = 20 * 60; // … to 20:00
+const LATE_START = 8 * 60; // never before 8:00 or from 21:00 where they are, even on Call now (D207; the TCPA's hours)
+const LATE_END = 21 * 60;
 const MAX_LOST_POLLS = 40; // status unreadable this many times in a row: say we lost track
 
 /** The fallback reply when the owner hasn't answered a question from the line (D189 (5)). */
@@ -121,10 +124,13 @@ const validZone = (z: string) => {
     return false;
   }
 };
-/** The zones the callee's 9:00–20:00 is checked in: the one named (if real), else every zone of the country. */
+/**
+ * The zones the callee's hours are checked in: the one named (if real: where the person is now),
+ * else a +1 number's area code (D207), else every zone of the country.
+ */
 export function calleeZones(n: string, named?: string): string[] | undefined {
   if (named && validZone(named)) return [named];
-  return ZONES[countryCode(n) ?? ""];
+  return (countryCode(n) === "1" ? nanpZones(n) : undefined) ?? ZONES[countryCode(n) ?? ""];
 }
 
 /** Numbers never called (D189 (8)): emergency and other short service numbers, wherever they hide. */
@@ -135,16 +141,43 @@ export function neverCall(n: string): boolean {
   return nat.length < 6 || EMERGENCY.includes(nat);
 }
 
-/** The earliest moment ≥ at when a call may start: outside quiet hours and 9:00–20:00 in every callee zone. */
-export function nextAllowed(at: number, quiet: Quiet | null, zones: string[], horizonMs = 3 * 24 * 3600_000): number | undefined {
-  const ok = (t: number) => !inQuiet(t, quiet) && zones.every((z) => {
+/**
+ * D207: how the hours apply to one call. present: the owner asked for it just now, while here (or
+ * is tapping Go): their own quiet hours don't hold "now", only a later time Ducter picks. own: the
+ * owner's own number: no callee hours at all. courtesy false: the owner said Call now: only the
+ * hard 8:00–21:00 holds where they are, not the 9:00–20:00 courtesy.
+ */
+export interface HoursOpts {
+  present?: boolean;
+  own?: boolean;
+  courtesy?: boolean;
+  horizonMs?: number;
+}
+
+const inHours = (t: number, zones: string[], start: number, end: number) =>
+  zones.every((z) => {
     const m = localMinutes(t, z);
-    return m >= CALL_START && m < CALL_END;
+    return m >= start && m < end;
   });
-  if (ok(at)) return at;
+
+/** The earliest moment ≥ at when a call may start (D193 (5), D207). */
+export function nextAllowed(at: number, quiet: Quiet | null, zones: string[], o: HoursOpts = {}): number | undefined {
+  const [start, end] = o.courtesy === false ? [LATE_START, LATE_END] : [CALL_START, CALL_END];
+  const callee = (t: number) => !!o.own || inHours(t, zones, start, end);
+  if (callee(at) && (o.present || !inQuiet(at, quiet))) return at;
   const step = 5 * 60_000;
-  for (let t = at - (at % step) + step; t < at + horizonMs; t += step) if (ok(t)) return t;
+  for (let t = at - (at % step) + step; t < at + (o.horizonMs ?? 3 * 24 * 3600_000); t += step) if (callee(t) && !inQuiet(t, quiet)) return t;
   return undefined;
+}
+
+const hhmm = (t: number, zone: string) => new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(t)).replace(/^0(?=\d)/, "");
+
+/** D207: why a call can't start now but at `at`: the callee's courtesy hours, the hard late hours, or the owner's quiet hours. */
+export function whyWaits(now: number, at: number, quiet: Quiet | null, zones: string[], o: HoursOpts = {}): CallWait {
+  const out = zones.find((z) => !inHours(now, [z], CALL_START, CALL_END)) ?? zones[0] ?? "UTC";
+  const calleeOk = !!o.own || inHours(now, zones, CALL_START, CALL_END);
+  if (calleeOk && !o.present && inQuiet(now, quiet)) return { why: "quiet", zone: out, their: hhmm(now, out), then: hhmm(at, out) };
+  return { why: o.own || inHours(now, zones, LATE_START, LATE_END) ? "callee" : "late", zone: out, their: hhmm(now, out), then: hhmm(at, out) };
 }
 
 // ---------- the store ----------
@@ -168,6 +201,8 @@ export interface Phone extends PhonePort {
   /** The owner's answer to a live call's question, said in the conversation (the partner passes it on exactly). */
   answer(text: string, callId?: string): { ok: true } | { ok: false; error: string };
   cancel(callId: string, by: "owner" | "ducter"): Promise<boolean>;
+  /** D207: 现在就打 / Call now on a Go card that waits for the callee's courtesy hours. */
+  callNow(callId: string): { ok: true } | { ok: false; error: string };
   block(number: string, why?: string): { ok: true; number: string } | { ok: false; error: string };
   get(callId: string): CallBody | undefined;
   /** On hand: live, waiting for Go, and ended today; newest first. */
@@ -187,7 +222,8 @@ export interface PhoneDeps {
   quiet: () => Quiet | null;
   zone: () => string;
   partnerName: () => string;
-  /** The words the Go button carries ("打过去" / "Call"), for the provider's personReply. */
+  /** D207: the owner's own numbers (their saved phone in Your details): no callee hours for them. */
+  ownNumbers?: () => string[];
   onChange?: () => void;
   /** D199: the calling connection came or went (the home's 打电话 follows it). */
   onCalling?: () => void;
@@ -220,7 +256,9 @@ export function openPhone(deps: PhoneDeps): Phone {
   const cap = () => file.capUsd ?? DEFAULT_CAP_USD;
 
   // The calls, rebuilt from the Log; the provider's ids ride in `ref` (never shown).
-  type Call = CallBody & { ref?: { draft?: string; confirmation?: string; call?: string; token?: string; summary?: string; scheduled?: boolean; yesNo?: boolean }; updatedAt: string };
+  // held: the draft carries scheduledAt (the provider holds the time); false: Ducter holds it (a
+  // card that offers Call now). zones: every zone the callee's hours are checked in (D207).
+  type Call = CallBody & { ref?: { draft?: string; confirmation?: string; call?: string; token?: string; summary?: string; scheduled?: boolean; yesNo?: boolean; held?: boolean; zones?: string[] }; updatedAt: string };
   const calls = new Map<string, Call>();
   const byDecision = new Map<string, { callId: string; kind: "go" | "question" }>();
   for (const e of deps.log.read({ stream: "channel", kinds: ["phone_call", "decision"], fromSeq: 0, limit: Number.MAX_SAFE_INTEGER })) {
@@ -232,7 +270,10 @@ export function openPhone(deps: PhoneDeps): Phone {
   }
   const answered = new Set(deps.log.read({ stream: "channel", kinds: ["decision_resolved"], fromSeq: 0, limit: Number.MAX_SAFE_INTEGER }).map((e) => (e.body as Bodies["decision_resolved"]).decisionId));
 
+  let stopped = false;
   const put = (c: Call, patch: Partial<Call>): Call => {
+    // A provider answer that lands after stop() (a confirm in flight) writes nothing: the Log is closed.
+    if (stopped) return { ...c, ...patch };
     const next: Call = { ...c, ...patch, updatedAt: new Date(clock.now()).toISOString() };
     if (patch.state && patch.state !== "question") delete next.question;
     calls.set(c.callId, next);
@@ -317,17 +358,18 @@ export function openPhone(deps: PhoneDeps): Phone {
   };
   const qTimers = new Map<string, unknown>();
   // Drafts the provider is still asking about (in memory: a restart asks the partner to draft again).
-  const pending = new Map<string, { draftId: string; req: DraftRequest; plan: CallPlan }>();
+  const pending = new Map<string, { draftId: string; req: DraftRequest; plan: CallPlan; x: { held: boolean; zones: string[] } }>();
   const lost = new Map<string, number>();
 
-  async function dial(callId: string): Promise<void> {
+  /** present: the owner is tapping Go right now (their quiet hours don't hold now); else a timer. */
+  async function dial(callId: string, present = false): Promise<void> {
     let c = calls.get(callId);
     if (!c || c.state !== "waiting") return;
-    const zones = calleeZones(c.plan.to, c.plan.calleeZone) ?? [c.plan.calleeZone];
-    const at = nextAllowed(clock.now(), deps.quiet(), zones);
+    const zones = c.ref?.zones ?? calleeZones(c.plan.to, c.plan.calleeZone) ?? [c.plan.calleeZone];
+    const at = nextAllowed(clock.now(), deps.quiet(), zones, { present, own: !!c.plan.own, courtesy: !c.callNow });
     if (at === undefined) return void put(c, { state: "failed", reason: "provider", error: "no allowed hour to call in the next three days" });
     // The provider already holds an allowed time (the draft's scheduledAt): confirm now, it dials then.
-    const held = !!c.plan.at && Date.parse(c.plan.at) >= at - 60_000;
+    const held = (c.ref?.held ?? !!c.plan.at) && !!c.plan.at && Date.parse(c.plan.at) >= at - 60_000;
     if (!held && at > clock.now() + 30_000) {
       if (c.plan.at !== new Date(at).toISOString()) c = put(c, { plan: { ...c.plan, at: new Date(at).toISOString() } });
       return later(callId, at - clock.now(), () => dial(callId));
@@ -337,10 +379,19 @@ export function openPhone(deps: PhoneDeps): Phone {
     if (!f || f.connectionId !== c.connectionId) return void put(c, { state: "failed", reason: "signed_out", error: "the calling connection is gone or signed out" });
     const io = ioOf(f);
     let conf = c.ref?.confirmation;
-    let r = conf ? await f.provider.confirm(io, conf, true, c.approvedWords ?? "Yes").catch((e) => ({ ok: false as const, reason: "provider" as const, error: String((e as Error).message ?? e) })) : undefined;
+    let r: Awaited<ReturnType<CallProvider["confirm"]>> | undefined = conf ? await f.provider.confirm(io, conf, true, c.approvedWords ?? "Yes").catch((e) => ({ ok: false as const, reason: "provider" as const, error: String((e as Error).message ?? e) })) : undefined;
+    // D207: a confirm that errored may still have placed the call. Read where it is first, by the
+    // draft's own id; never confirm it again blindly (a second yes could dial twice).
+    let where: Awaited<ReturnType<CallProvider["status"]>>["phase"] | undefined;
+    if (r && !r.ok && c.ref?.draft) {
+      where = (await f.provider.status(io, c.ref.draft).catch(() => ({ phase: "unknown" as const }))).phase;
+      if (where === "calling" || where === "talking" || where === "finished" || (where === "waiting" && held)) r = { ok: true, id: c.ref.draft };
+      else if (where === "unknown" && r.reason === "provider")
+        return void put(c, { state: "failed", reason: "lost", error: `the confirmation errored (${r.error}) and the call's status can't be read; check ${f.provider.name}'s app before calling again` });
+    }
     // An approval that went stale while it waited for its hour: ask the provider again. Only an
     // unchanged summary is confirmed with the owner's same words; anything else needs a new card.
-    if ((!r || !r.ok) && c.ref?.draft && r?.ok === false && r.reason === "provider") {
+    if (r && !r.ok && c.ref?.draft && r.reason === "provider" && where === "unconfirmed") {
       const again = await f.provider.requestApproval(io, c.ref.draft).catch(() => undefined);
       if (again?.ok && again.summary.trim() === (c.ref.summary ?? "").trim()) {
         conf = again.confirmationId;
@@ -375,7 +426,7 @@ export function openPhone(deps: PhoneDeps): Phone {
     }
     lost.delete(callId);
     if (s.phase === "finished") return void (await finish(callId));
-    if (s.phase === "waiting") return later(callId, c.state === "waiting" ? POLL_MS * 2 : POLL_MS, () => poll(callId));
+    if (s.phase === "waiting" || s.phase === "unconfirmed") return later(callId, c.state === "waiting" ? POLL_MS * 2 : POLL_MS, () => poll(callId));
     if (c.state === "waiting") c = put(c, { state: "calling", placedAt: new Date(clock.now()).toISOString() });
     if (s.phase === "talking" && !c.talkingSince) c = put(c, { state: "talking", talkingSince: new Date(clock.now()).toISOString() });
     else if (s.phase === "talking" && c.state === "calling") c = put(c, { state: "talking" });
@@ -410,9 +461,13 @@ export function openPhone(deps: PhoneDeps): Phone {
     // An open question is closed: the line is gone.
     if (c.question && !answered.has(c.question.decisionId)) closeQuestion(c.question.decisionId);
     const state: CallState = extra.reason === "too_long" ? "cancelled" : extra.state ?? res?.state ?? "uncertain";
+    // D207: a dialed call that failed says the provider's own words, or that it gave none; never "refused".
+    const failed = state === "failed" && !extra.reason ? { reason: "call_failed" as const, error: res?.detail ?? "the provider gave no reason" } : {};
     put(c, {
       state,
       endedAt: new Date(clock.now()).toISOString(),
+      ...failed,
+      ...(res?.hint ? { hint: res.hint } : {}),
       ...(res?.outcome ? { outcome: clip(res.outcome, 400) } : {}),
       ...(res?.summary ? { summary: clip(res.summary, 2000) } : {}),
       ...(res?.agreed ? { agreed: res.agreed } : {}),
@@ -454,9 +509,11 @@ export function openPhone(deps: PhoneDeps): Phone {
       if (c.state !== "needs_go") return;
       if (r.option === "go") {
         // The owner's own words go to the provider with the approval (Tuwa's personReply).
-        const goLabel = (deps.log.read({ stream: "channel", kinds: ["decision"], limit: 5000 }).map((e) => e.body as Bodies["decision"]).find((d) => d.decisionId === r.decisionId)?.goLabel) ?? "Call";
-        put(c, { state: "waiting", approvedWords: clip(r.text?.trim() ? `${goLabel} — ${r.text.trim()}` : goLabel, 300) });
-        return dial(c.callId);
+        const goLabel = r.now ? langOf(/[一-鿿]/.test(c.plan.goal) ? "zh" : "en").now : (deps.log.read({ stream: "channel", kinds: ["decision"], limit: 5000 }).map((e) => e.body as Bodies["decision"]).find((d) => d.decisionId === r.decisionId)?.goLabel) ?? "Call";
+        // D207: Call now passes the callee's courtesy hours (never the late ones); the card said so.
+        const now = r.now && c.plan.canNow ? { callNow: true } : {};
+        put(c, { state: "waiting", ...now, approvedWords: clip(r.text?.trim() ? `${goLabel} — ${r.text.trim()}` : goLabel, 300) });
+        return dial(c.callId, r.by === "user");
       }
       // Not now, or a reply (the partner reads it and drafts again): withdraw the draft.
       put(c, { state: "held" });
@@ -517,6 +574,9 @@ export function openPhone(deps: PhoneDeps): Phone {
     return {
       question: (name: string) => (lang === "zh" ? `打给 ${name}？` : `Call ${name}?`),
       go: lang === "zh" ? "打过去" : "Call",
+      // D207: a card that waits for the callee's hours: Go is "then", 现在就打 / Call now is beside it.
+      then: lang === "zh" ? "到点再打" : "Call then",
+      now: lang === "zh" ? "现在就打" : "Call now",
       us: lang === "zh" ? "这是美国的私人号码时，对方得事先同意接 AI 的电话。" : "If this is a private US mobile, the person must have agreed to AI calls.",
       cn: lang === "zh" ? "打到中国大陆的号码，多半接不通。" : "Calls to mainland China numbers likely won't connect.",
     };
@@ -538,7 +598,7 @@ export function openPhone(deps: PhoneDeps): Phone {
         const pend = pending.get(o.callId);
         if (!pend) return { ok: false, error: "No draft waiting for answers with that callId. Draft the call again." };
         const out = await f.provider.answer(io, pend.draftId, o.answers);
-        return after(out, pend.req, pend.plan);
+        return after(out, pend.req, pend.plan, pend.x);
       }
 
       // An emergency number is refused as one, before it is read as a number at all.
@@ -553,7 +613,10 @@ export function openPhone(deps: PhoneDeps): Phone {
       const name = (req.name ?? "").trim();
       const goal = (req.goal ?? "").trim();
       if (!name || !goal) return { ok: false, reason: "missing", error: "A call needs who (name) and the one thing it is for (goal). Ask the user in one short line." };
-      const zones = calleeZones(to, req.calleeZone);
+      // D207: the owner's own number (they said so, or it is their saved phone) has no callee hours.
+      const own = !!req.own || (deps.ownNumbers?.() ?? []).some((n) => e164(n) === to);
+      const present = !!req.present;
+      const zones = calleeZones(to, req.calleeZone) ?? (own ? [deps.zone()] : undefined);
       if (!zones) return { ok: false, reason: "zone", error: "Ducter can't tell the callee's local time for that country. Pass calleeZone (an IANA zone such as Europe/Paris) if you know where they are." };
       const voice = req.voice === "owner" ? "owner" : "ducter";
       if (voice === "owner" && !file.voice?.on) return { ok: false, reason: "voice", error: "The user's own voice isn't set up and on (Settings › Accounts › the phone card). Draft it in Ducter's voice, and tell the user in one line, in their language, where to set theirs up." };
@@ -565,8 +628,13 @@ export function openPhone(deps: PhoneDeps): Phone {
       if (spent + costUsd > cap()) return { ok: false, reason: "cap", error: `Today's calls would pass the $${cap()} daily cap ($${spent} so far, about $${costUsd} for this one). Tell the user in one line; it can wait until tomorrow.` };
 
       const r = rails({ forName: req.forName, voice });
-      const at = nextAllowed(clock.now(), deps.quiet(), zones);
-      const note = to.startsWith("+86") ? w.cn : to.startsWith("+1") && req.person ? w.us : undefined;
+      const now = clock.now();
+      const at = nextAllowed(now, deps.quiet(), zones, { present, own });
+      const waits = at !== undefined && at > now + 60_000;
+      const wait = waits ? whyWaits(now, at!, deps.quiet(), zones, { present, own }) : undefined;
+      // D207: only the courtesy hours pushed a call the owner just asked for: the card offers Call now.
+      const canNow = waits && present && !own && wait?.why === "callee" && nextAllowed(now, deps.quiet(), zones, { present, own, courtesy: false }) === now;
+      const note = to.startsWith("+86") ? w.cn : to.startsWith("+1") && req.person && !own ? w.us : undefined;
       const plan: CallPlan = {
         to,
         name: clip(name, 80),
@@ -581,14 +649,19 @@ export function openPhone(deps: PhoneDeps): Phone {
         costUsd,
         perMinUsd,
         calleeZone: zones[0]!,
-        ...(at !== undefined && at > clock.now() + 60_000 ? { at: new Date(at).toISOString() } : {}),
+        ...(waits ? { at: new Date(at!).toISOString(), wait: wait! } : {}),
+        ...(canNow ? { canNow: true } : {}),
+        ...(own ? { own: true } : {}),
         ...(note ? { note } : {}),
       };
       if (at === undefined) return { ok: false, reason: "hours", error: "No hour in the next three days is outside the user's quiet hours and inside 9:00–20:00 where the callee is. Say so in one line." };
+      // A card that offers Call now keeps the time in Ducter (no scheduledAt): Go waits here for the
+      // hour, Call now confirms at once. Otherwise the provider holds the time (D193 (5)).
+      const held = !!plan.at && !canNow;
       const out = await f.provider.draft(io, {
         to,
         voice,
-        ...(plan.at ? { at: plan.at.replace(/Z$/, "+00:00") } : {}),
+        ...(held ? { at: plan.at!.replace(/Z$/, "+00:00") } : {}),
         name: plan.name,
         goal: plan.goal,
         say: plan.say,
@@ -598,13 +671,13 @@ export function openPhone(deps: PhoneDeps): Phone {
         context: r.context,
         ...(req.language ? { language: req.language } : {}),
       });
-      return after(out, req, plan);
+      return after(out, req, plan, { held, zones });
 
-      async function after(out: Awaited<ReturnType<CallProvider["draft"]>>, req: DraftRequest, plan: CallPlan): Promise<DraftResult> {
+      async function after(out: Awaited<ReturnType<CallProvider["draft"]>>, req: DraftRequest, plan: CallPlan, x: { held: boolean; zones: string[] }): Promise<DraftResult> {
         if (!out.ok) return { ok: false, reason: out.reason, error: out.reason === "payment" || out.reason === "balance" ? `${f!.provider.name} needs ${out.error} before a call. Tell the user in one line; the payment page is theirs to open: ${out.payUrl ?? "the provider's app"}. Never take card details.` : `${f!.provider.name} said: ${out.error}` };
         const callId = o.callId ?? newCallId();
         if (!out.ready) {
-          pending.set(callId, { draftId: out.id, req, plan });
+          pending.set(callId, { draftId: out.id, req, plan, x });
           return { ok: true, needsInput: true, callId, questions: out.questions };
         }
         pending.delete(callId);
@@ -617,9 +690,9 @@ export function openPhone(deps: PhoneDeps): Phone {
           ...(ap.costUsd ? { costUsd: round2(ap.costUsd) } : {}),
         };
         const decisionId = newDecisionId();
-        const card: Bodies["decision"] = { decisionId, question: w.question(p.name), goLabel: w.go, defaultOption: "hold", reversible: false, call: { callId, kind: "go", plan: p } };
+        const card: Bodies["decision"] = { decisionId, question: w.question(p.name), goLabel: p.at ? w.then : w.go, defaultOption: "hold", reversible: false, call: { callId, kind: "go", plan: p } };
         byDecision.set(decisionId, { callId, kind: "go" });
-        const body: Call = { callId, connectionId: f!.connectionId, state: "needs_go", plan: p, decisionId, ...(req.taskId ? { taskId: req.taskId } : {}), ref: { draft: out.id, confirmation: ap.confirmationId, summary: ap.summary }, updatedAt: new Date(clock.now()).toISOString() };
+        const body: Call = { callId, connectionId: f!.connectionId, state: "needs_go", plan: p, decisionId, ...(req.taskId ? { taskId: req.taskId } : {}), ref: { draft: out.id, confirmation: ap.confirmationId, summary: ap.summary, held: x.held, zones: x.zones }, updatedAt: new Date(clock.now()).toISOString() };
         // Any change voids the earlier card: an older card for the same callee waiting for Go is withdrawn.
         for (const x of calls.values()) if (x.state === "needs_go" && x.plan.to === p.to && x.callId !== callId && x.decisionId && !answered.has(x.decisionId)) deps.log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId: x.decisionId, option: "hold", by: "default" } });
         put(body, {});
@@ -633,6 +706,14 @@ export function openPhone(deps: PhoneDeps): Phone {
       const t = text.trim();
       if (!t) return { ok: false, error: "Pass the user's answer, in their words." };
       deps.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: c.question.decisionId, option: "reply", text: clip(t, 500), by: "user" } });
+      return { ok: true };
+    },
+
+    callNow(callId) {
+      const c = calls.get(callId);
+      if (!c || c.state !== "needs_go" || !c.decisionId || answered.has(c.decisionId)) return { ok: false, error: "That call isn't waiting for your Go." };
+      if (!c.plan.canNow) return { ok: false, error: "That call can't be placed now: it's too late where they are." };
+      deps.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: c.decisionId, option: "go", by: "user", now: true } });
       return { ok: true };
     },
 
@@ -727,6 +808,7 @@ export function openPhone(deps: PhoneDeps): Phone {
     },
 
     stop() {
+      stopped = true;
       off();
       offAdded();
       for (const t of timers.values()) clock.clearTimeout(t);

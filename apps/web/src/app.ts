@@ -1111,6 +1111,16 @@ class AppState {
   callCancel(callId: string) {
     this.send({ t: "call_cancel", callId });
   }
+  /** D207: 现在就打 / Call now on a Go card that waits for the callee's hours: the Go, now. */
+  callNow(decisionId: string, callId: string) {
+    const d = this.S.decisions.get(decisionId);
+    if (d) d.pending = "go";
+    if (navigator.vibrate) navigator.vibrate(8);
+    haptic("success");
+    this.markRead();
+    this.send({ t: "call_now", callId });
+    this.changed();
+  }
   useOoConnection() {
     this.connecting = true;
     this.connRefusal = undefined;

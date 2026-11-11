@@ -1,7 +1,8 @@
-# Phone calls (D189, D193)
+# Phone calls (D189, D193, D207)
 
-**Status: settled and built (2026-11-11), not yet run against the real Tuwa.** The author: "第一性原理
-做决定", D189's defaults taken; what changed on reflection is in D193. Evidence:
+**Status: settled and built (2026-11-11); the author's first real calls the same day changed the
+hours and the outcomes (D207).** The author: "第一性原理 做决定", D189's defaults taken; what changed
+on reflection is in D193, what the first real test changed in D207. Evidence:
 `research/53-phone-calls-tuwa.md` (§8: Tuwa's real tool list, read with the author's account).
 Words: the glossary in `product-model.md` §1 ("a phone call").
 
@@ -45,13 +46,18 @@ be said, what stays private, the voice, the cost, when, and the line always says
    countries Tuwa doesn't call, a draft that would pass the daily cap, and the owner's voice when it
    isn't set up. It adds Ducter's own rules (the opening line, never claim to be the owner, no
    guessing an answer, 15 minutes, no marketing or payment details, "don't call again" respected),
-   `dialer: tuwa`, and `scheduledAt` when now isn't an allowed hour. Tuwa's `needs_input` questions
-   come back to the partner, who asks the owner and drafts again with their words.
+   `dialer: tuwa`, and `scheduledAt` when now isn't an allowed hour and the owner can't say Call now
+   (§6). Tuwa's `needs_input` questions come back to the partner, who asks the owner and drafts
+   again with their words.
 2. **The card** (a `decision` with `call`, `defaultOption: hold`, no countdown): **打给 {name}？ / Call
    {name}?**, then 号码 / Number · 要办的事 / What for · 可以说 / May say · 不说 / Won't say · 声音 /
-   Voice · 从 / From (a Tuwa number) · 大约 / About (n min · about $) · 什么时候 / When, the opening
-   line, Tuwa's own summary behind a fold. **打过去 / Call** · **先不打 / Not now** · Reply… (a change:
-   the partner drafts again; the old card is withdrawn).
+   Voice · 从 / From (a Tuwa number) · 大约 / About (n min · about $) · 什么时候 / When, and **不能做 /
+   Won't do** when the owner gave don'ts; the opening line; **Tuwa 的原话（英文） / Tuwa's own wording**
+   behind a fold (label / value lines, the labels in the owner's words, the values as Tuwa wrote
+   them). **打过去 / Call** · **先不打 / Not now** · Reply… (a change: the partner drafts again; the
+   old card is withdrawn). When it waits (D207): under When, why in plain words (**对方那边现在
+   20:03，我排到了对方的 9:00。**), Go reads **到点再打 / Call then**, and **现在就打 / Call now** sits
+   beside the reason when only the callee's courtesy hours moved a call the owner just asked for.
 3. **Go.** Ducter confirms with Tuwa (`tuwa_confirm`, the owner's button words, plus any words they
    added, as `personReply`). Tuwa dials at once or at `scheduledAt`; a Go given after that hour
    waits in Ducter for the next allowed one.
@@ -64,10 +70,15 @@ be said, what stays private, the voice, the cost, when, and the line always says
    what to say**. Foot: **电话那头在等；90 秒没回，就说回头再打。** After 90 s Ducter sends the fixed
    call-back line. An answer said in the conversation goes through `phone_call do=answer`.
 6. **After.** Done today: **打完了 · X / Called X** with the outcome line as reported, **没能确认 · X /
-   Couldn't confirm · X**, **没人接 · X / No answer · X**, **没打出去 · X / Didn't go through · X** (why:
-   a card to save, no minutes, today's limit, sign in again; with **去 Tuwa 的付款页 / Open Tuwa's
-   payment page** when Tuwa gave one). Tapped: summary, what was agreed, **说了什么 / What was said**
-   (the transcript, when Tuwa gives one), length and cost. The partner says the outcome once.
+   Couldn't confirm · X**, **转到了自动语音 · X / Got an automated message · X** (it connected, but
+   voicemail, a screening service or "not available" answered; D207), **没人接 · X / No answer · X**,
+   **没打通 · X / Didn't connect · X** (dialed; the line failed, with Tuwa's words or "Tuwa 没说原因"),
+   **没打出去 · X / Didn't go through · X** (never placed: a card to save, no minutes, today's limit,
+   sign in again, Tuwa refused it with its words, or not sure it went out; with **去 Tuwa 的付款页 /
+   Open Tuwa's payment page** when Tuwa gave one). Google Voice's call screening is said with its
+   fix (answer and press 1, or turn off Screen calls). Tapped: summary, what was agreed, **说了什么 /
+   What was said** (the transcript, when Tuwa gives one), length and cost. The partner says the
+   outcome once, from the same facts; never "refused" unless it was.
 
 ## 4. When Ducter must ask
 
@@ -93,7 +104,11 @@ approved 3 times in 14 days.
 |---|---|
 | Ask every call | the card; `decisions.ts` resolves, `phone.ts` confirms only on Go |
 | Disclosure | Ducter's context and `mustNot` on every draft |
-| Quiet hours and 9:00–20:00 callee time | `nextAllowed` (the owner's 免打扰; every zone of the country unless named) → `scheduledAt` |
+| The owner's quiet hours | `nextAllowed`: only for a call nobody just asked for (a task's call, a time Ducter picks); a call the owner asks for while here may start now (D207) |
+| The callee's 9:00–20:00 (a courtesy) | the card says why and offers **现在就打 / Call now** for a call the owner just asked for; then Ducter holds the hour (no `scheduledAt`), else `scheduledAt` (D207) |
+| 8:00–21:00 where they are (never crossed) | `nextAllowed` with `courtesy: false`; Call now can't pass it; none of these for the owner's own number (they said so, or their saved phone) |
+| The callee's zone | where they are now when the partner knows it; a +1 number's area code (`nanp.ts`); else every zone of the country |
+| A confirm that errored | the call's status read first: placed → go on, waiting for its yes → asked again, unreadable → failed as lost (never a second yes) |
 | Daily cap $10 | Ducter's ledger before drafting and before dialing; Tuwa's `dailyLimitCents` set at connect; changeable on the phone card |
 | 15 minutes | asked of the agent; Ducter hangs up at 17 on the line, 20 from dialing |
 | Do-not-call list | `phone_call do=block`; checked before drafting |
@@ -113,9 +128,12 @@ pusher (`push.ts`), frames (`ws.ts`). Partner: `phone_call` (`partner.ts`), pers
 Tuwa over real HTTP (`fake-tuwa.ts`, its real tool schemas), the partner eval's `calls` scenarios,
 `apps/desktop/internal/views/phone_test.go`. Shots: `.shots/phone/` (desktop and web, zh/en).
 
-## 9. To check with a real account (the answers were never seen)
+## 9. To check with a real account (the answers were mostly never seen)
 
-The tool names and input schemas are Tuwa's own; what comes back is read by likely field names. Check:
+The tool names and input schemas are Tuwa's own; what comes back is read by likely field names. The
+author's first real call (2026-11-11, D207) showed a connected call to a Google Voice number whose
+screening answered, reported with an outcome summary in English; its exact field values were not
+kept in the repo, so the outcome is read from the words (`outcomeOf`). Check:
 `tuwa_call_draft`'s id field (`taskId`), `tuwa_call_request_approval`'s `confirmationId` and `summary`,
 `tuwa_confirm`'s answer, `tuwa_call_status`'s status words and `pendingQuestion` (its token, a yes/no
 marker, its choices), `tuwa_call_result`'s `outcome` / `outcomeSummary` / transcript / duration / cost,

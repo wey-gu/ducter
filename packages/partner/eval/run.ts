@@ -455,6 +455,7 @@ function describeStep(st: Step): string {
   if ("reports" in st) return st.reports.map((r) => `task "${r.task}" reports ${r.body.state}: ${r.body.summary}`).join(" || ") + " (both within the same second)";
   if ("peer" in st) return `${st.peer.from} (${st.peer.from === "alex-reviewer" ? "a teammate's agent" : "the user's own Claude Code in a terminal"}) sends a Bridge message${st.peer.answer ? " answering the one Ducter sent it" : ""}: ${st.peer.text}`;
   if ("resolve" in st) return `user answers the open decision: ${st.resolve.option}${st.resolve.text ? ` "${st.resolve.text}"` : ""}`;
+  if ("callEnded" in st) return `the call to ${st.callEnded.name} (${st.callEnded.to}) ended; the provider reported: ${st.callEnded.state}${st.callEnded.outcome ? `, "${st.callEnded.outcome}"` : ""}${st.callEnded.hint === "screening" ? " (Google Voice call screening answered)" : ""}`;
   return `a reminder the partner set earlier is due: ${st.timerFired.reason}`;
 }
 
@@ -468,8 +469,12 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
     // D206: the pictures go through the home's media store, as an upload would.
     const media = (st.images ?? []).map((p) => core.media.putFile(join(import.meta.dir, "..", "..", "..", p)));
     core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: st.user, ...(media.length ? { media } : {}) } });
-  }
-  else if ("report" in st) report(st.report);
+  } else if ("callEnded" in st) {
+    const x = st.callEnded;
+    const plan = { to: x.to, name: x.name, goal: "", say: [], mustNot: [], voice: "ducter" as const, from: "provider" as const, provider: "Tuwa", minutes: 2, costUsd: 0.6, perMinUsd: 0.3, calleeZone: "America/New_York" };
+    const { name: _n, to: _t, ...ended } = x;
+    core.log.append({ stream: "channel", origin: "system", kind: "phone_call", body: { callId: "call_end", connectionId: core.connections.view()[0]?.id ?? "conn", plan, placedAt: new Date(Date.now() - 60_000).toISOString(), endedAt: new Date().toISOString(), ...ended } });
+  } else if ("report" in st) report(st.report);
   else if ("reports" in st) st.reports.forEach(report);
   else if ("resolve" in st) {
     const open = core.log.read({ stream: "channel", kinds: ["decision"], limit: 100 }).reverse().find((e) => core.decisions.isPending((e.body as Bodies["decision"]).decisionId));

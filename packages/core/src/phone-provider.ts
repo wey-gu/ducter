@@ -34,13 +34,19 @@ export type ProviderFail = { ok: false; reason: "payment" | "balance" | "cap" | 
 export type DraftOut = { ok: true; id: string; ready: true } | { ok: true; id: string; ready: false; questions: string[] } | ProviderFail;
 export type ApprovalOut = { ok: true; confirmationId: string; summary: string; minutes?: number; costUsd?: number } | ProviderFail;
 export type StatusOut = {
-  phase: "waiting" | "calling" | "talking" | "finished" | "unknown";
+  /** unconfirmed: still a draft waiting for its yes; waiting: confirmed, held for its time (D207). */
+  phase: "unconfirmed" | "waiting" | "calling" | "talking" | "finished" | "unknown";
   question?: { text: string; token: string; choices: string[]; yesNo: boolean };
   durationSec?: number;
 };
 export interface ResultOut {
-  state: "done" | "uncertain" | "no_answer" | "failed";
+  /** D207: automated = it got through but only a machine answered (voicemail, call screening, "not available"). */
+  state: "done" | "uncertain" | "automated" | "no_answer" | "failed";
   outcome?: string;
+  /** failed: the provider's own words for why, when it gave any. */
+  detail?: string;
+  /** A cause the owner can fix: Google Voice's call screening took the call. */
+  hint?: "screening";
   summary?: string;
   agreed?: string[];
   transcript?: { who: "them" | "agent"; text: string }[];
@@ -112,7 +118,8 @@ function failOf(r: LinkResult): ProviderFail | undefined {
   if (/prepaid_balance_low|balance/.test(w)) return { ok: false, reason: "balance", error: "no prepaid minutes left and no card saved", ...(url ? { payUrl: url } : {}) };
   if (/spend|limit|cap/.test(w) && /exceed|reach|over|limit_reached|cap/.test(w)) return { ok: false, reason: "cap", error: "the provider's daily limit is reached" };
   const errored = r.isError || o.ok === false || /^error|failed|invalid|unsupported/.test(word(o));
-  if (errored) return { ok: false, reason: "provider", error: (pickStr(o, ["message", "error_description", "error", "text"]) ?? "the provider refused").slice(0, 300) };
+  // D207: the provider's own words, or that it gave none; never a refusal it didn't say.
+  if (errored) return { ok: false, reason: "provider", error: (pickStr(o, ["message", "error_description", "error", "text"]) ?? `the provider answered "${word(o) || "error"}" and gave no reason`).slice(0, 300) };
   return undefined;
 }
 
@@ -155,6 +162,30 @@ function draftOut(r: LinkResult, prevId?: string): DraftOut {
     if (qs.length || /needs_input/.test(word(o))) return { ok: true, id, ready: false, questions: qs.length ? qs : [pickStr(o, ["message", "text"]) ?? "The provider needs one more detail."] };
   }
   return { ok: true, id, ready: true };
+}
+
+/**
+ * D207: what a finished call's answer means, from Tuwa's status word, its outcome word and the
+ * words it reported (the summaries, a failure reason, what the other side said). Tuwa's statuses
+ * are succeeded / partial / failed / canceled / uncertain; its outcome words were never seen (no
+ * call had ended when this was written), so the words decide: a machine that answered
+ * (voicemail, call screening, "not available") is `automated`, never "the provider refused".
+ */
+export function outcomeOf(a: { isError: boolean; status: string; outcome: string; words: string }): { state: ResultOut["state"]; hint?: "screening" } {
+  const st = `${a.status} ${a.outcome}`.toLowerCase();
+  const w = `${a.outcome} ${a.words}`.toLowerCase();
+  const hint = /google (voice|subscriber)|call screen|press (1|one)\b|state your name|say your name/.test(w) ? ("screening" as const) : undefined;
+  const out = (state: ResultOut["state"]) => ({ state, ...(hint ? { hint } : {}) });
+  if (a.isError) return out("uncertain");
+  if (/cancel/.test(st)) return out("failed"); // cancelled at the provider, not by the owner (their hang-up never asks for a result)
+  if (/uncertain|unclear|unknown/.test(st)) return out("uncertain");
+  if (/succeed|success|complete|achieved/.test(st) && !/fail/.test(st)) return out("done");
+  const machine = /voice ?mail|answering machine|automated|recorded message|(subscriber|customer|person|party|number)[^.]{0,40}(called|dialed|calling|reached)[^.]{0,30}(not available|unavailable)|call screen|screened|mailbox|leave a message|after the (tone|beep)|google (voice|subscriber)|no human/.test(w);
+  if (machine || /voicemail|machine|screen/.test(st)) return out("automated");
+  if (/no[_ -]?answer|unanswered|not[_ -]answered|didn'?t answer|did not answer|rang out|no one (picked|answered)|nobody (picked|answered)|busy|not[_ -]reached|unreached/.test(`${st} ${w}`)) return out("no_answer");
+  if (/partial/.test(st)) return out("done");
+  if (/fail|error|declin|reject/.test(st)) return out("failed");
+  return out("done");
 }
 
 // ---------- Tuwa ----------
@@ -248,8 +279,10 @@ export const tuwa: CallProvider = {
     const phase: StatusOut["phase"] =
       finished || /succeed|partial|fail|cancel|uncertain|finish|ended|complete|done|no_answer|busy/.test(w)
         ? "finished"
-        : /schedul|awaiting|draft|pending_approval/.test(w)
+        : /schedul/.test(w)
           ? "waiting"
+          : /awaiting|draft|pending_approval|ready|needs_input/.test(w)
+            ? "unconfirmed"
           : /execut|progress|ring|dial|queue|plac|connect|start|initiat|talk|live|in_call/.test(w)
             ? (durationSec ?? 0) > 0 || /talk|in_call|connected|answered/.test(w)
               ? "talking"
@@ -280,8 +313,6 @@ export const tuwa: CallProvider = {
   async result(io, id) {
     const r = await io.call(T.result, argsFor(io.schema(T.result), { id: { names: ID, value: id } }));
     const o = body(r);
-    const w = `${word(o)} ${pickStr(o, ["outcome"]) ?? ""}`.toLowerCase();
-    const state: ResultOut["state"] = r.isError ? "uncertain" : /uncertain|unclear|unknown/.test(w) ? "uncertain" : /no_answer|no-answer|busy|voicemail|unanswered|not_answered/.test(w) ? "no_answer" : /fail|error|declin|cancel/.test(w) ? "failed" : "done";
     const lines = pick(o, ["transcript", "turns"]);
     const transcript = Array.isArray(lines)
       ? lines
@@ -298,8 +329,18 @@ export const tuwa: CallProvider = {
     const agreed = strs(pick(o, ["agreed", "agreements", "facts"])).slice(0, 8);
     const durationSec = pickNum(o, ["durationSec", "durationSeconds", "duration"]);
     const costUsd = pickNum(o, ["costUsd", "cost", "charged", "chargedUsd"]);
+    const errObj = pick(o, ["error"]);
+    const detail = (isObj(errObj) ? pickStr(errObj, ["message", "code"]) : typeof errObj === "string" ? errObj : undefined) ?? pickStr(o, ["outcomeSummary", "failureReason", "reason", "message"]) ?? (/cancel/.test(word(o)) ? "cancelled at the provider" : undefined);
+    const { state, hint } = outcomeOf({
+      isError: !!r.isError,
+      status: word(o),
+      outcome: pickStr(o, ["outcome"]) ?? "",
+      words: [pickStr(o, ["outcomeSummary"]), said, pickStr(o, ["failureReason", "reason", "message"]), detail, ...(transcript ?? []).filter((l) => l.who === "them").map((l) => l.text)].filter(Boolean).join(" "),
+    });
     return {
       state,
+      ...(hint ? { hint } : {}),
+      ...(state === "failed" && detail ? { detail: detail.slice(0, 300) } : {}),
       ...(outcome && outcome.length > 12 ? { outcome } : said ? { outcome: said.split(/(?<=[.。!！?？])\s*/)[0] } : outcome ? { outcome } : {}),
       ...(summary ? { summary } : {}),
       ...(agreed.length ? { agreed } : {}),

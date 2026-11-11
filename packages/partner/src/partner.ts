@@ -1864,21 +1864,22 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "phone_call",
-    "Phone call for the user. do=draft (default): number, who, one-line goal → the Go card (end your turn). needs_input: ask its questions, redraft with callId, text = their answers. do=answer: their words to a live call's question. do=cancel; do=block a number.",
+    "Phone call for the user. do=draft (default): number, who, one goal → the Go card. needs_input: ask, then redraft with callId, text = their answers. do=answer: their words to a call's question. do=cancel; do=block.",
     {
       type: "object",
       properties: {
         do: { type: "string", enum: ["draft", "answer", "cancel", "block"] },
-        to: { type: "string", description: "E.164: +81…" },
+        to: { type: "string", description: "E.164" },
         name: { type: "string" },
         goal: { type: "string", description: "In the user's language" },
-        say: { type: "array", items: { type: "string" }, description: "May be said: booking name, callback number" },
+        say: { type: "array", items: { type: "string" }, description: "May be said: booking name" },
         keep: { type: "string", description: "Used, never said: a budget" },
         mustNot: { type: "array", items: { type: "string" } },
-        forName: { type: "string", description: "Name said on the line" },
+        forName: { type: "string", description: "Said on the line" },
         voice: { type: "string", enum: ["ducter", "owner"] },
-        calleeZone: { type: "string", description: "IANA zone if several" },
+        calleeZone: { type: "string", description: "IANA, if you know where they are" },
         person: { type: "boolean", description: "Private person" },
+        own: { type: "boolean", description: "User's own number" },
         taskId: { type: "string", description: "Asking task" },
         callId: { type: "string" },
         text: { type: "string", description: "User's own words" },
@@ -1903,6 +1904,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (turn?.askedId) return { ok: false, error: "You already asked this turn; that card is on screen. End your turn." };
       const arr = (v: unknown) => (Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean) : typeof v === "string" && v.trim() ? [v.trim()] : []);
       const lang: "zh" | "en" = userZh() === false ? "en" : userZh() === true ? "zh" : isChinese(s(a.goal)) ? "zh" : "en";
+      // D207: asked for by the user just now (they're here): their own quiet hours don't hold it.
+      const present = !!t?.triggers.some((e) => e.kind === "user_msg" || (e.kind === "decision_resolved" && (e.body as Bodies["decision_resolved"]).by === "user"));
       const r = await phone.draft(
         {
           to: s(a.to),
@@ -1915,6 +1918,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           calleeZone: s(a.calleeZone) || undefined,
           forName: s(a.forName) || undefined,
           person: a.person === true,
+          own: a.own === true,
+          present,
           taskId: s(a.taskId) || undefined,
         },
         { lang, callId: s(a.callId) || undefined, answers: (s(a.callId) && s(a.text)) || undefined },
@@ -1928,7 +1933,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         needsGo: true,
         callId: r.callId,
         ...(r.plan.at
-          ? { dialsAt: r.plan.at, note: "Not an hour to call now: after Go it dials at dialsAt, and the card says when. End your turn now without a word." }
+          ? {
+              dialsAt: r.plan.at,
+              note: `Ducter's own hours rule (${r.plan.wait?.why === "quiet" ? "the user's quiet hours" : `${r.plan.wait?.their ?? "?"} where they are, outside 9:00–20:00`}), not the provider: after Go it dials at dialsAt.${r.plan.canNow ? " The card says why and offers 现在就打 / Call now." : " The card says when and why."} End your turn now without a word; if asked later, never say the provider set the time.`,
+            }
           : { note: "The card shows everything. End your turn now without a word: nothing was dialed." }),
         ...(r.plan.note ? { tell: r.plan.note } : {}),
       };

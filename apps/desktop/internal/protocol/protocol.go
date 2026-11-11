@@ -269,7 +269,8 @@ type DecisionResolved struct {
 	DecisionID string `json:"decisionId"`
 	Option     string `json:"option"` // go | hold | reply
 	Text       string `json:"text,omitempty"`
-	By         string `json:"by"` // user | default
+	By         string `json:"by"`            // user | default
+	Now        bool   `json:"now,omitempty"` // D207: a call's Go given as Call now
 }
 
 type ReadReceipt struct {

@@ -2,8 +2,8 @@
 // events. `bun packages/protocol/fixtures/transcript-cases.ts` rewrites the JSON from the model
 // (review the diff: it is the expected output both ports must match).
 import { writeFileSync } from "node:fs";
-import type { LogEvent } from "../src/index.ts";
-import { blocksOf } from "../src/transcript.ts";
+import type { LogEvent, MediaRef } from "../src/index.ts";
+import { blocksOf, turnsOf } from "../src/transcript.ts";
 
 const KEY = "nmem_ct_8fK2pQx7Lm4vRz9TbW3y";
 const T0 = Date.parse("2026-11-10T06:58:00Z");
@@ -46,6 +46,63 @@ export const memEvents = (taskId = "mem1", upTo = Infinity) =>
     ).filter(([sec]) => sec <= upTo),
   );
 
+/** A picture's ref as a fixture names it (the demos put real bytes behind it). */
+export const pic = (id: string, w: number, h: number): MediaRef => ({ id: id.padEnd(64, "0"), type: "image/png", bytes: 48_000, w, h, k: "k" });
+
+/**
+ * D210: a long coding task from the author's own work, the way Claude Code runs one: reading and
+ * searching, a test that fails with its output, edits with their diffs, a real error, a question
+ * that ends its turn, the user's answer with a picture, more work, and a report with a picture.
+ * `zh` words the user's and the agent's lines in Chinese (the agent speaks the brief's language);
+ * `upTo` cuts the run (a task under way); `extra` adds that many reads and searches to the first
+ * stretch (a long history, for the demos' timing).
+ */
+export const glanceEvents = (o: { zh?: boolean; upTo?: number; extra?: number; pics?: { brief?: MediaRef; you?: MediaRef; report?: MediaRef } } = {}) => {
+  const L = (zh: string, en: string) => (o.zh ? zh : en);
+  const id = "gl1";
+  const bash = (command: string, description: string, output: string, ok = true) => ({ role: "tool", tool: { name: "Bash", input: { command, description }, output, ok } });
+  const read = (file: string) => ({ role: "tool", tool: { name: "Read", input: { file_path: `/Users/weyl/dev/ducter/${file}` }, ok: true } });
+  const grep = (pattern: string, path: string) => ({ role: "tool", tool: { name: "Grep", input: { pattern, path }, ok: true } });
+  const edit = (file: string, old_string: string, new_string: string) => ({ role: "tool", tool: { name: "Edit", input: { file_path: `/Users/weyl/dev/ducter/${file}`, old_string, new_string }, output: "The file has been updated.", ok: true } });
+  const extra: [number, string, LogEvent["origin"], unknown][] = [];
+  const files = ["apps/web/src/store.ts", "apps/web/src/views.tsx", "apps/web/src/board.tsx", "apps/web/src/conn.ts", "apps/web/src/main.tsx", "packages/core/src/ws.ts", "packages/protocol/src/index.ts", "apps/web/src/native.ts"];
+  for (let i = 0; i < (o.extra ?? 0); i++) {
+    // Every so often it says something, as a long run does: the history is many turns of steps.
+    if (i % 12 === 11) extra.push([22, "task_event", "task", { role: "assistant", text: L(`看完了第 ${(i + 1) / 12} 批文件。`, `Read batch ${(i + 1) / 12} of the files.`) }]);
+    else extra.push([22, "task_event", "task", i % 3 === 2 ? grep(["onHand", "hello", "replay", "cursor"][i % 4]!, "apps/web/src") : read(files[i % files.length]!)]);
+  }
+  const items: [number, string, LogEvent["origin"], unknown][] = [
+    [0, "task_open", "partner", { taskId: id, title: L("修好手机打开时 On hand 闪一下空白", "Stop On hand flashing empty when the phone app opens"), project: "ducter", place: { kind: "repo", repoPath: "/Users/weyl/dev/ducter", branch: "fix/glance-onhand" }, harness: "claude-code", model: "claude-opus-5-5", brief: L("iPad 上打开 app，On hand 先闪一下「什么都没有」，一两秒后才出来。D209 的 glance 缓存应该让它第一帧就是上次的样子。找到原因修好，测试要过。截图是用户发来的。", 'On the iPad, the app opens with On hand saying "Nothing on hand" for a second or two before the tasks come in. D209\'s glance cache should make the first frame what was there last time. Find why, fix it, keep the tests green. The screenshot is the user\'s.'), ...(o.pics?.brief ? { media: [o.pics.brief] } : {}) }],
+    [2, "task_event", "runner", { role: "user", from: "runner", text: "<brief>…</brief>\nStart the task." }],
+    [6, "task_event", "task", { role: "assistant", thinking: ["Where the glance cache restores On hand"] }],
+    [8, "task_event", "task", read("apps/web/src/glance.ts")],
+    [10, "task_event", "task", read("apps/web/src/app.ts")],
+    [12, "task_event", "task", grep("onHand", "apps/web/src")],
+    [13, "task_event", "task", { role: "tool", tool: { name: "Glob", input: { pattern: "apps/web/test/*.test.ts" }, ok: true } }],
+    ...extra,
+    [20, "task_event", "task", { role: "assistant", text: L("缓存里确实存了 On hand，但 `connect()` 在 hello 回来之前就把它清空了，所以第一帧是空的。先跑测试确认一下。", "The cache does keep On hand, but `connect()` clears it before hello comes back, so the first frame is empty. Running the tests to confirm.") }],
+    [26, "task_event", "task", bash("bun test apps/web/test/glance.test.ts", "Run the glance cache tests", 'bun test v1.3.2\n\napps/web/test/glance.test.ts:\n✓ glance > keeps the channel\'s newest 400 events [3.12ms]\n✓ glance > forgets a revoked device [0.88ms]\n✗ glance > paints On hand before the socket opens [2.41ms]\n\n  expect(received).toEqual(expected)\n  - Expected  + Received\n  -   "tasks": 3,\n  +   "tasks": 0,\n\n 2 pass\n 1 fail\nRan 3 tests across 1 file. [118.00ms]', false)],
+    [40, "task_event", "task", edit("apps/web/src/app.ts", "  connect() {\n    this.S.onHand = undefined;\n    this.S.board = emptyBoard();\n    this.open();", "  connect() {\n    // D209: the glance's On hand stays until the home answers.\n    if (!this.glanced) this.S.onHand = undefined;\n    this.open();")],
+    [46, "task_event", "task", bash("bun test apps/web/test/glance.test.ts", "Run the glance cache tests", "bun test v1.3.2\n\n 3 pass\n 0 fail\nRan 3 tests across 1 file. [96.00ms]")],
+    [58, "task_event", "task", bash("bun run typecheck", "Typecheck the workspace", "$ tsc -p . --noEmit\napps/web/src/app.ts(412,14): error TS2339: Property 'glanced' does not exist on type 'App'.\nerror: script \"typecheck\" exited with code 2", false)],
+    [64, "task_event", "task", edit("apps/web/src/app.ts", '  draft = "";', '  draft = "";\n  /** The first frame came from the glance cache (D209). */\n  glanced = false;')],
+    [70, "task_event", "task", edit("apps/web/src/glance.ts", "export function paintGlance(app: App, g: Glance) {\n  app.S.replay(g.events);", "export function paintGlance(app: App, g: Glance) {\n  app.glanced = true;\n  app.S.replay(g.events);")],
+    [84, "task_event", "task", bash("bun run typecheck", "Typecheck the workspace", "$ tsc -p . --noEmit")],
+    [90, "task_event", "task", { role: "assistant", text: L("测试和类型检查都过了。有一件事要你定：缓存里的 On hand 要不要也留着**等你定的事**？留着的话一打开就能看到，但其中有的可能已经在别的设备上回答过了。", "Tests and the typecheck pass. One thing for you to decide: should the cached On hand keep **the things waiting on you** too? Kept, they show the moment the app opens, but some may have been answered on another device by then.") }],
+    [300, "task_event", "user", { role: "user", from: "user", text: L("留着，但回答过的要在 hello 回来后马上消失。这是我 iPad 上现在的样子：", "Keep them, but any that were answered should go as soon as hello is back. This is my iPad now:"), ...(o.pics?.you ? { media: [o.pics.you] } : {}) }],
+    [304, "task_event", "task", read("apps/web/src/glance.ts")],
+    [306, "task_event", "task", grep("decisions", "apps/web/src/glance.ts")],
+    [318, "task_event", "task", edit("apps/web/src/glance.ts", "  const keep = { events: s.events.slice(-400), onHand: s.onHand };", "  // Kept with On hand: the asks still open when the page hid; hello's replay drops the answered.\n  const keep = { events: s.events.slice(-400), onHand: s.onHand, asks: s.openDecisions().map((d) => d.id) };")],
+    [330, "task_event", "task", { role: "tool", tool: { name: "Write", input: { file_path: "/Users/weyl/dev/ducter/apps/web/test/glance-asks.test.ts", content: 'import { expect, test } from "bun:test";\nimport { glanceOf, paintGlance } from "../src/glance.ts";\nimport { fakeApp } from "./guard.ts";\n\ntest("an ask answered elsewhere goes once hello is back", () => {\n  const app = fakeApp({ asks: ["d1", "d2"] });\n  paintGlance(app, glanceOf(app.S));\n  app.hello({ answered: ["d1"] });\n  expect(app.S.openDecisions().map((d) => d.id)).toEqual(["d2"]);\n});\n' }, output: "File created successfully", ok: true } }],
+    [342, "task_event", "task", bash("bun test apps/web/test", "Run the web client's tests", "bun test v1.3.2\n\n 212 pass\n 0 fail\n 611 expect() calls\nRan 212 tests across 21 files. [3.41s]")],
+    [350, "task_event", "task", bash("sh scripts/build-web.sh", "Build the web client", "built apps/web/static/app.js (418 KB)")],
+    [356, "task_event", "task", bash("git commit -am 'D209: On hand stays from the glance until hello'", "Commit the fix", "[fix/glance-onhand 4c1e9a2] D209: On hand stays from the glance until hello\n 4 files changed, 31 insertions(+), 4 deletions(-)")],
+    [362, "task_event", "task", { role: "assistant", text: L("改好了。打开时 On hand 直接是上次的样子，等你定的事也在；hello 回来后，别处回答过的会马上消失。\n\n- `connect()` 不再清空缓存里的 On hand\n- 缓存多存了还开着的事\n- 新加了一个测试，web 的 212 个测试全过", "Fixed. On hand now opens as it was, the things waiting on you included; once hello is back, any answered elsewhere go at once.\n\n- `connect()` no longer clears the cached On hand\n- the cache also keeps the asks still open\n- a new test; all 212 web tests pass") }],
+    [364, "report", "task", { taskId: id, state: "done", summary: L("On hand 不再闪空白：打开时就是上次的样子，回答过的事在连上后马上消失。测试全过，已提交到 fix/glance-onhand。", "On hand no longer flashes empty: it opens as it was, and asks answered elsewhere go once it connects. Tests pass; committed on fix/glance-onhand."), questions: [], evidence: [], ...(o.pics?.report ? { media: [o.pics.report] } : {}) }],
+  ];
+  return stream(id, items.filter(([sec]) => sec <= (o.upTo ?? Infinity)));
+};
+
 export const cases = [
   { name: "mem connect, finished", harness: "codex", working: false, events: memEvents() },
   { name: "mem connect, under way", harness: "codex", working: true, events: memEvents("mem1", 55) },
@@ -87,10 +144,28 @@ export const cases = [
       [20, "task_event", "task", { role: "system", text: "no report after one nudge; leaving the task idle (stall rule)", raw: { stall: true } }],
     ]),
   },
+  // D210: turns, looks folded, edits with their diffs, a failure's line, pictures on the prompts.
+  { name: "a long claude code run, finished (zh)", harness: "claude-code", working: false, events: glanceEvents({ zh: true, pics: { brief: pic("a1", 688, 918), you: pic("b2", 688, 918), report: pic("b2", 688, 918) } }) },
+  { name: "a long claude code run, under way", harness: "claude-code", working: true, events: glanceEvents({ upTo: 342 }) },
+  {
+    // D210: every shape an edit's input comes in.
+    name: "edits of every shape",
+    harness: "codex",
+    working: false,
+    events: stream("ed1", [
+      [0, "task_open", "user", { taskId: "ed1", title: "Tidy the config", project: "", place: { kind: "none" }, harness: "codex", origin: "you", brief: "Tidy the config files." }],
+      [1, "task_event", "task", { role: "tool", tool: { name: "apply_patch", input: { input: "*** Begin Patch\n*** Update File: a/config.toml\n@@ [server]\n-port = 80\n+port = 8080\n*** Add File: b/notes.md\n+# Notes\n+Port moved.\n*** End Patch" }, output: "Success. Updated 2 files", ok: true } }],
+      [2, "task_event", "task", { role: "tool", tool: { name: "MultiEdit", input: { file_path: "/w/src/a.ts", edits: [{ old_string: "let a = 1;", new_string: "const a = 1;" }, { old_string: "let b = 2;\nlet c = 3;", new_string: "const b = 2;\nlet c = 3;" }] }, ok: true } }],
+      [3, "task_event", "task", { role: "tool", tool: { name: "Write", input: { file_path: "/w/.env.example", content: "PORT=8080\nTOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123456789\n" }, ok: true } }],
+      [4, "task_event", "task", { role: "tool", tool: { name: "fileChange", input: { changes: [{ path: "/w/README.md", kind: "update", diff: "--- a/README.md\n+++ b/README.md\n@@ -1,2 +1,2 @@\n # App\n-Runs on 80.\n+Runs on 8080.\n" }] }, ok: true } }],
+      [5, "task_event", "task", { role: "tool", tool: { name: "Edit", input: { file_path: "/w/x.ts", old_string: "a", new_string: "b" }, output: "String to replace not found in file.", ok: false } }],
+      [6, "task_event", "task", { role: "assistant", text: "Done." }],
+    ]),
+  },
 ];
 
 if (import.meta.main) {
-  const out = cases.map((c) => ({ ...c, want: blocksOf(c.harness, c.events, c.working) }));
+  const out = cases.map((c) => ({ ...c, want: turnsOf(blocksOf(c.harness, c.events, c.working)) }));
   writeFileSync(new URL("./transcript.json", import.meta.url), JSON.stringify(out, null, 1) + "\n");
   console.log(`wrote ${out.length} cases`);
 }

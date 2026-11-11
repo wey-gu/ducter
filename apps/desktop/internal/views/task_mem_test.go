@@ -84,26 +84,30 @@ func TestOpenedTaskMem(t *testing.T) {
 	}
 }
 
-// A settled stretch folds under its gist and opens on a click; the probes
-// in it say "not there" in plain words, never 出错; a real failure shows
-// even folded.
+// D210: a run of looks folds into one line ("看了 1 个文件，搜了 4 次") that
+// opens on a click; the probes in it say "not there" in plain words, never
+// 出错; every other step is its own line, a real failure red with its
+// error line in place.
 func TestOpenedTaskMemStretches(t *testing.T) {
 	want := map[i18n.Lang][]string{
-		i18n.ZH: {"查看了一圈", "5 步", "没找到 nmem", "没全找到：python3 pip3 uv", "还没有 .nowledge-mem/config.json", "请求 cloud.nowledge.co", "隐藏了一段密钥", "你交给它的事"},
-		i18n.EN: {"Looked around", "5 steps", "No nmem here", "Not all found: python3 pip3 uv", "No .nowledge-mem/config.json yet", "Requested cloud.nowledge.co", "A key is hidden", "What you asked"},
+		i18n.ZH: {"没找到 nmem", "没全找到：python3 pip3 uv", "还没有 .nowledge-mem/config.json", "请求 cloud.nowledge.co", "隐藏了一段密钥", "你交给它的事"},
+		i18n.EN: {"No nmem here", "Not all found: python3 pip3 uv", "No .nowledge-mem/config.json yet", "Requested cloud.nowledge.co", "A key is hidden", "What you asked"},
 	}
+	fold := map[i18n.Lang]string{i18n.ZH: "看了 1 个文件，搜了 4 次", i18n.EN: "Read 1 file, 4 searches"}
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		_, tt := memTask(t, lang, "done")
 		all := texts(tt)
 		folded := map[i18n.Lang]string{i18n.ZH: "没找到 nmem", i18n.EN: "No nmem here"}[lang]
 		if strings.Contains(all, folded) {
-			t.Errorf("%s: the settled stretch isn't folded", lang)
+			t.Errorf("%s: the looks aren't folded", lang)
 		}
-		// The plugin step that really failed shows folded, in the agent's words.
-		if !strings.Contains(all, "Install the Mem plugin into Codex") {
-			t.Errorf("%s: the real failure is hidden in the fold: %q", lang, all)
+		// The plugin step that really failed is its own line, in the agent's words, with its error.
+		for _, w := range []string{"Install the Mem plugin into Codex", "error: unknown command 'plugin' for 'codex'"} {
+			if !strings.Contains(all, w) {
+				t.Errorf("%s: no %q: %q", lang, w, all)
+			}
 		}
-		if err := tt.Click(map[i18n.Lang]string{i18n.ZH: "查看了一圈 · 5 步", i18n.EN: "Looked around · 5 steps"}[lang]); err != nil {
+		if err := tt.Click(fold[lang]); err != nil {
 			t.Fatal(err)
 		}
 		tt.Advance(time.Second)
@@ -114,8 +118,8 @@ func TestOpenedTaskMemStretches(t *testing.T) {
 				t.Errorf("%s: no %q once opened: %q", lang, w, all)
 			}
 		}
-		// The plugin stretch says "1 处出错" and its row "出错"; no probe says either.
-		if n := strings.Count(all, map[i18n.Lang]string{i18n.ZH: "出错", i18n.EN: "Error"}[lang]); n != map[i18n.Lang]int{i18n.ZH: 2, i18n.EN: 1}[lang] {
+		// Only the plugin step says 出错; no probe does.
+		if n := strings.Count(all, map[i18n.Lang]string{i18n.ZH: "出错", i18n.EN: "Error"}[lang]); n != 1 {
 			t.Errorf("%s: %d error marks, want 1 (the plugin step only)", lang, n)
 		}
 		shotTo(t, tt, "task-mem-done-open-desktop-"+string(lang))
@@ -126,7 +130,11 @@ func TestOpenedTaskMemStretches(t *testing.T) {
 func openStretches(app *App, id string) {
 	for _, b := range app.blocks(app.S.Task(id)) {
 		if b.K == "steps" {
-			app.open[fmt.Sprintf("stretch:%s:%d", id, b.Seq)] = true
+			for _, l := range b.Lines {
+				if l.K == "looks" {
+					app.open[fmt.Sprintf("looks:%s:%d", id, l.Seq)] = true
+				}
+			}
 		}
 	}
 }

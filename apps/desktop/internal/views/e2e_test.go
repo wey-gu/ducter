@@ -204,10 +204,11 @@ func TestScenarioEndToEnd(t *testing.T) {
 		sd := s.Task("t-ci-1").Sends[0]
 		return sd.Delivered != "" && sd.Seq != 0
 	})
-	if !h.tt.HasText("它忙完手上的就看") {
-		t.Errorf("no delivery shown: %q", h.tt.Texts())
-	}
 	h.until("its answer", func() bool { return h.tt.HasText("收到，按你说的来。") })
+	// D210: queued only until it answers; then the receipt goes.
+	if h.tt.HasText("它忙完手上的就看") {
+		t.Errorf("the queued receipt stayed after the answer: %q", h.tt.Texts())
+	}
 	h.shot("task-sent")
 
 	// Keyboard: Esc goes up a level, Cmd+1 / Cmd+2 jump.

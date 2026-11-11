@@ -41,69 +41,80 @@ func (a *App) task(c *ui.Context) {
 		sc = &ui.ScrollState{}
 		a.taskScroll[task.ID] = sc
 	}
-	// While it works, a reader at the end follows the newest step; one who
-	// scrolled up stays where they are, and the page opens at its head.
-	if att := task.Attention(); (att == protocol.Working || att == protocol.Queued) && sc.MaxY > 0 && sc.Y >= sc.MaxY-4 {
+	att := task.Attention()
+	live := att == protocol.Working || att == protocol.Queued || att == protocol.NeedsYou
+	// D210: it opens at its latest while it works or waits on the user, at
+	// its head once finished (the outcome is there). While it works, a
+	// reader at the end follows the newest step; one who scrolled up stays,
+	// with Jump to latest.
+	if a.taskOpened != task.ID && task.HistoryLoaded {
+		a.taskOpened = task.ID
+		if live {
+			sc.Y = math.MaxFloat32
+		}
+	}
+	if (att == protocol.Working || att == protocol.Queued) && sc.MaxY > 0 && sc.Y >= sc.MaxY-4 {
 		sc.Y = math.MaxFloat32
 	}
-	ui.Scroll(c.Key("taskpage:" + task.ID)).TrackScroll(sc).Grow(1).MinHeight(0).Children(func() {
-		ui.Row(c).Justify(ui.Center).Padding(t.S5, t.S5, t.S6, t.S5).Children(func() {
-			ui.Column(c).Grow(1).MaxWidth(convWidth).MinWidth(0).Gap(t.S6).Children(func() {
-				// The head (D74, D89 layout): the clay partner's state face
-				// beside one block that reads top to bottom: one quiet meta
-				// line (state · when · who), the headline (what it is doing
-				// now, or the outcome), then a pending ask and what to do.
-				ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Children(func() {
-					ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
-						a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
-						// What it waits for, in a bubble by its head (D112).
-						if w := a.S.WaiterFor(task.ID); w != nil && task.Attention() == protocol.Blocked && (w.Check != nil || w.Event != nil) {
-							ui.Box(c.Key("bubble")).Absolute().Left(taskFaceW - 30).Top(-12).Children(func() {
-								a.waitBubble(c, waitGlyph(w.Check, w.Event), 46)
-							})
-						}
-					})
-					ui.Column(c).Grow(1).MinWidth(0).Gap(t.S4).Children(func() {
-						// The meta line sits 8 above the headline, the outcome's
-						// included: one block whatever the state.
-						ui.Column(c).Gap(t.S2).Children(func() {
-							a.taskStanding(c, task)
-							if finished(task) {
-								a.outcome(c, task)
-							} else {
-								a.taskHeadline(c, task)
+	blocks := a.blocks(task)
+	ui.Column(c.Key("taskpane")).Grow(1).MinHeight(0).Children(func() {
+		ui.Scroll(c.Key("taskpage:" + task.ID)).TrackScroll(sc).Grow(1).MinHeight(0).Children(func() {
+			ui.Row(c).Justify(ui.Center).Padding(t.S5, t.S5, t.S6, t.S5).Children(func() {
+				ui.Column(c).Grow(1).MaxWidth(convWidth).MinWidth(0).Gap(t.S6).Children(func() {
+					// The head (D74, D89 layout): the clay partner's state face
+					// beside one block that reads top to bottom: one quiet meta
+					// line (state · when · who), the headline (what it is doing
+					// now, or the outcome), then a pending ask and what to do.
+					ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Children(func() {
+						ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
+							a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
+							// What it waits for, in a bubble by its head (D112).
+							if w := a.S.WaiterFor(task.ID); w != nil && task.Attention() == protocol.Blocked && (w.Check != nil || w.Event != nil) {
+								ui.Box(c.Key("bubble")).Absolute().Left(taskFaceW - 30).Top(-12).Children(func() {
+									a.waitBubble(c, waitGlyph(w.Check, w.Event), 46)
+								})
 							}
 						})
-						if a.yourTurn(task) {
-							// Waiting on you with nothing to answer: say what it wants, plainly (D152).
-							ui.Text(c.Key("yourturn"), a.L.T("task.your.turn.hint")).FontSize(t.SM).TextColor(t.InkSoft)
-						}
-						// An answered ask is one line here; a pending one sits over
-						// the composer, where the answer is typed (D152).
-						if d := a.S.PendingDecision(task.ID); d != nil && (d.Resolved != nil || d.Pending != "") {
-							a.decisionAnswered(c, d)
-						}
-						a.switchSheet(c, task) // 换谁来做 / Switch who does it (D89)
+						ui.Column(c).Grow(1).MinWidth(0).Gap(t.S4).Children(func() {
+							// The meta line sits 8 above the headline, the outcome's
+							// included: one block whatever the state.
+							ui.Column(c).Gap(t.S2).Children(func() {
+								a.taskStanding(c, task)
+								if finished(task) {
+									a.outcome(c, task)
+								} else {
+									a.taskHeadline(c, task)
+								}
+							})
+							// An answered ask is one line here; a pending one sits over
+							// the composer, where the answer is typed (D152).
+							if d := a.S.PendingDecision(task.ID); d != nil && (d.Resolved != nil || d.Pending != "") {
+								a.decisionAnswered(c, d)
+							}
+							a.switchSheet(c, task) // 换谁来做 / Switch who does it (D89)
+						})
 					})
-				})
-				a.waitPanel(c, task)
-				a.tryStrip(c, task)
-				blocks := a.blocks(task)
-				a.briefCard(c, task, blocks)
-				a.whatItDid(c, task, blocks)
-				if workFolder(task.Place()) != "" {
-					ui.Column(c.Key("work")).Gap(t.S2).Children(func() {
-						a.workFolderLine(c, task) // D198: where its files are, over its changes
+					a.waitPanel(c, task)
+					a.tryStrip(c, task)
+					a.whatItDid(c, task, blocks)
+					if workFolder(task.Place()) != "" {
+						ui.Column(c.Key("work")).Gap(t.S2).Children(func() {
+							a.workFolderLine(c, task) // D198: where its files are, over its changes
+							a.changes(c, task)
+						})
+					} else {
 						a.changes(c, task)
-					})
-				} else {
-					a.changes(c, task)
-				}
-				a.outsideActs(c, task)
-				a.waitFacts(c, task)
+					}
+					a.outsideActs(c, task)
+					a.waitFacts(c, task)
+				})
 			})
 		})
+		if live {
+			a.jumpToLatest(c, sc)
+		}
 	})
+	a.taskFoot(c, task, blocks)
 	a.taskComposer(c, task)
 }
 
@@ -141,9 +152,7 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	if a.S.Browsing(task.ID) != "" && a.button(c, a.L.T("live.watch.title"), btnSecondary, t.ControlSM, t.Chrome) {
 		a.OpenWatch(task.ID)
 	}
-	if att == protocol.Working && a.button(c, a.L.T("task.action.pause"), btnText, t.ControlSM, t.Chrome) {
-		a.TaskAction(task.ID, "interrupt")
-	}
+	// D210: Pause sits in the foot over the composer, with Esc twice.
 	if a.button(c, a.L.T("task.action.drop"), btnText, t.ControlSM, t.Chrome) {
 		a.DropTask(task.ID)
 		title := task.Title()
@@ -162,7 +171,12 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 	if a.yourTurn(task) {
 		state = a.L.T("task.your.turn")
 	}
-	when := a.taskClock(c, task)
+	// D210: while it works, the clock ticks in the foot over the composer;
+	// here it says how long it took once finished.
+	when := ""
+	if finished(task) {
+		when = a.taskClock(c, task)
+	}
 	// One quiet line (D152): where it stands and its one clock, then who does it and where.
 	ui.Row(c.Key("meta")).Gap(t.S1).Wrap().AlignItems(ui.Center).Children(func() {
 		ui.Text(c, state).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
@@ -436,17 +450,19 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 
 // sentBubble is what the user said straight into the task, with how it
 // was delivered: steered into this turn, as the next turn, or queued.
-func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, media ...protocol.MediaRef) {
+func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, queued bool, media ...protocol.MediaRef) {
 	t := a.T
 	note, failed, waiting := "", false, false
+	queued = queued && sd != nil && sd.Delivered == "queued" && sd.Failed == ""
 	if sd != nil {
 		switch {
 		case sd.Failed != "":
 			note, failed = a.L.T("delivery.failed", sd.Failed), true
-		case sd.Delivered == "queued":
-			// D207: said only when it waits its turn; steered in or
-			// started at once, the live line shows it at work.
-			note = a.L.T("delivery.queued")
+		case sd.Delivered == "queued" && queued:
+			// D207: said only while it waits its turn (D210: 排队中, and
+			// when it will see it); steered in or started at once, the
+			// foot shows it at work.
+			note = a.L.T("delivery.queued.tag") + " · " + a.L.T("delivery.queued")
 		case sd.Delivered != "":
 		case sd.Seq == 0 && a.Now().Sub(sd.At) < 4*time.Second:
 			// No ack yet. A server without "sent" acks never says; after a
@@ -473,7 +489,7 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, media ...pr
 			r := t.BubbleRadius
 			b := ui.Text(c, text).FontSize(t.MD).LineHeight(1.5).TextColor(t.OnUserBubble).Background(t.UserBubble).
 				Padding(9, t.S3).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80).Selectable()
-			if waiting {
+			if waiting || queued {
 				b.Opacity(0.7)
 			}
 		}

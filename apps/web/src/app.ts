@@ -313,6 +313,8 @@ class AppState {
   replyOpen = new Set<string>();
   replyDraft = new Map<string, string>();
   held?: { taskId?: string; text: string };
+  /** Esc asked to pause this opened task (D210); a second Esc within 3 s pauses it. */
+  escAt?: { id: string; at: number };
   toasts: Toast[] = [];
   historyAsked = new Set<string>();
   livingAway = new Map<number, boolean>();

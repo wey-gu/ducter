@@ -1,7 +1,8 @@
-// An opened task as blocks (D152, after D127): what you asked, then the agent's own voice (what
-// it said and the progress it saved) as the readable layer, each stretch of steps between two
-// things it said folded under one gist line ("查看了环境 · 6 步"), the stretch still under way
-// live. Pure and language-neutral: the clients word blocks from their fields in their i18n. The
+// An opened task as turns (D210, after D152): each turn opens with what someone said to the agent
+// (the brief, your words, the partner's) and holds the agent's answer in order: what it said and
+// the progress it saved, and its steps as compact lines between them, one line per step (a run of
+// reads and searches folded into one), an edit with its own diff, a failure with its error line.
+// Pure and language-neutral: the clients word blocks from their fields in their i18n. The
 // Go port (apps/desktop/internal/views/transcript.go) passes the same cases
 // (fixtures/transcript.json). Every text in a block has its keys hidden (redact.ts): the home
 // already hides them in what it sends, this is the second wall.
@@ -10,6 +11,7 @@ import type { MediaRef } from "./media.ts";
 import { redact } from "./redact.ts";
 import { stepOf, type Step } from "./steps.ts";
 import { harnessName } from "./harnesses.ts";
+import { editDiff } from "./editdiff.ts";
 
 /** How a step came out: done, a real failure, or a look that found nothing (a probe's non-zero exit). */
 export type Outcome = "ok" | "error" | "missing";
@@ -26,18 +28,23 @@ export interface StepRow {
   command?: string;
   /** What it printed, keys hidden, at most 40 lines. */
   output?: string;
+  /** A real failure's line that says what went wrong (D210), keys hidden. */
+  hint?: string;
+  /** An edit's lines (editdiff.ts), keys hidden; `diffMore` past them; its counts. */
+  diff?: string[];
+  diffMore?: number;
+  added?: number;
+  removed?: number;
 }
 
-/** What a stretch of steps was, for its gist line. */
-export interface Gist {
-  /** look: only reading, searching, probing · edit: changed files · browse: a browser or the computer · run: commands · think: only thinking */
-  kind: "look" | "edit" | "browse" | "run" | "think";
-  steps: number;
-  /** Distinct files edited. */
-  files: number;
-  app?: string;
-  /** Rows that really failed (a probe's "not there" is not one). */
-  errors: number;
+/** A line of a stretch (D210): one step, or a run of two or more looks folded into one. */
+export type Line = { k: "row"; row: StepRow } | { k: "looks"; seq: number; rows: StepRow[]; reads: number; searches: number };
+
+/** A turn (D210): what someone said to the agent, then everything up to the next thing said to it. */
+export interface Turn {
+  seq: number;
+  prompt?: Block;
+  body: Block[];
 }
 
 export type Block =
@@ -45,7 +52,8 @@ export type Block =
   | { k: "brief"; seq: number; text: string; by: "you" | "partner"; media?: MediaRef[] }
   /** The agent's own words: a message, or progress it saved (`saved`), said once. */
   | { k: "voice"; seq: number; text: string; saved?: boolean }
-  | { k: "steps"; seq: number; rows: StepRow[]; gist: Gist; live?: boolean }
+  /** A stretch of steps between two things said; `live` = the one under way. */
+  | { k: "steps"; seq: number; lines: Line[]; live?: boolean }
   /** The user's words to the task; `go` = their Go relayed (its label, may be ""). */
   | { k: "you"; seq: number; text: string; go?: string; media?: MediaRef[] }
   | { k: "partner"; seq: number; text: string; media?: MediaRef[] }
@@ -97,8 +105,6 @@ export function goRelay(text: string): string | undefined {
 
 /** A step that only looks: reading, searching, a probe, a request or a fetch that reads a page. */
 const looks = (s: Step) => s.kind === "read" || s.kind === "searched" || !!s.probe || (s.kind === "browsed" && (s.act === "request" || s.act === "fetch"));
-/** A step in a browser or on the screen; a request or a fetch is a command that reads a page, not a browser (D207). */
-const inBrowser = (s: Step) => s.kind === "computer" || (s.kind === "browsed" && s.act !== "request" && s.act !== "fetch");
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 const clipLines = (s: string, n: number) => s.split("\n").slice(0, n).join("\n");
 
@@ -113,18 +119,47 @@ function shellCommand(input: unknown): string {
   return "";
 }
 
-function gistOf(rows: StepRow[]): Gist {
-  const steps = rows.filter((r) => r.step);
-  const n = steps.reduce((a, r) => a + r.n, 0);
-  const files = new Set(steps.filter((r) => r.step!.kind === "edited" && r.step!.act !== "mkdir").map((r) => r.step!.target ?? "")).size;
-  const errors = rows.filter((r) => r.outcome === "error").length;
-  const app = steps.map((r) => r.step!.app).filter(Boolean).at(-1);
-  let kind: Gist["kind"] = "run";
-  if (!steps.length) kind = "think";
-  else if (files > 0) kind = "edit";
-  else if (steps.every((r) => looks(r.step!))) kind = "look";
-  else if (steps.some((r) => inBrowser(r.step!))) kind = "browse";
-  return { kind, steps: n, files, ...(app ? { app } : {}), errors };
+/** A failure's telling line: the first that names an error, else the last that says anything. */
+export function failLine(output: string): string {
+  const ls = output.split("\n").map((l) => l.trim()).filter(Boolean);
+  const l = ls.find((x) => /error|fail|✗|exception|fatal|denied|not found|cannot|panic/i.test(x) && !/\b0 (fail|error)/i.test(x)) ?? ls.at(-1) ?? "";
+  return [...l].length > 160 ? [...l].slice(0, 159).join("") + "…" : l;
+}
+
+/** A stretch's rows as lines: two or more looks in a row fold into one (D210, Lorca's "Explored"). */
+export function linesOf(rows: StepRow[]): Line[] {
+  const out: Line[] = [];
+  let run: StepRow[] = [];
+  const flush = () => {
+    if (run.length >= 2) {
+      const reads = run.filter((r) => r.step!.kind === "read").reduce((a, r) => a + r.n, 0);
+      const all = run.reduce((a, r) => a + r.n, 0);
+      out.push({ k: "looks", seq: run[0]!.seq, rows: run, reads, searches: all - reads });
+    } else for (const r of run) out.push({ k: "row", row: r });
+    run = [];
+  };
+  for (const r of rows) {
+    if (r.step && looks(r.step) && r.outcome !== "error") run.push(r);
+    else {
+      flush();
+      out.push({ k: "row", row: r });
+    }
+  }
+  flush();
+  return out;
+}
+
+/** Blocks as turns: a brief, your words or the partner's open one (D210). */
+export function turnsOf(blocks: Block[]): Turn[] {
+  const out: Turn[] = [];
+  for (const b of blocks) {
+    if (b.k === "brief" || b.k === "you" || b.k === "partner") out.push({ seq: b.seq, prompt: b, body: [] });
+    else {
+      if (!out.length) out.push({ seq: b.seq, body: [] });
+      out.at(-1)!.body.push(b);
+    }
+  }
+  return out;
 }
 
 /** A task's events (its stream, in order) as blocks. `working`: the task is at it now, so its last stretch is live. */
@@ -133,14 +168,20 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
   const lastReport = events.filter((e) => e.kind === "report").at(-1)?.seq;
   let app = "";
   let briefed = false;
-  const stretch = (): Extract<Block, { k: "steps" }> | undefined => {
+  // The rows of each stretch, made into lines at the end.
+  const rowsOf = new Map<Block, StepRow[]>();
+  const stretch = (): StepRow[] | undefined => {
     const b = out.at(-1);
-    return b?.k === "steps" ? b : undefined;
+    return b?.k === "steps" ? rowsOf.get(b) : undefined;
   };
   const addRow = (seq: number, row: StepRow) => {
     let s = stretch();
-    if (!s) out.push((s = { k: "steps", seq, rows: [], gist: { kind: "run", steps: 0, files: 0, errors: 0 } }));
-    s.rows.push(row);
+    if (!s) {
+      const b: Block = { k: "steps", seq, lines: [] };
+      out.push(b);
+      rowsOf.set(b, (s = []));
+    }
+    s.push(row);
   };
   for (const ev of events) {
     switch (ev.kind) {
@@ -184,14 +225,18 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
           if (st.target) st.target = redact(st.target);
           if (st.says) st.says = redact(st.says);
           const outcome: Outcome = b.tool.ok === false ? (st.probe ? "missing" : "error") : "ok";
-          const prev = stretch()?.rows.at(-1);
+          const prev = stretch()?.at(-1);
           if (prev?.step && outcome === "ok" && prev.outcome === "ok" && JSON.stringify(prev.step) === JSON.stringify(st)) {
             prev.n++;
             break;
           }
           const command = st.kind === "ran" || st.kind === "searched" || st.kind === "read" || st.kind === "browsed" ? redact(shellCommand(b.tool.input)) : "";
-          const output = redact(clipLines((b.tool.output ?? "").trimEnd(), 40));
-          addRow(ev.seq, { seq: ev.seq, step: st, n: 1, outcome, ...(command ? { command } : {}), ...(output ? { output } : {}) });
+          const full = (b.tool.output ?? "").trimEnd();
+          const output = redact(clipLines(full, 40));
+          const hint = outcome === "error" ? redact(failLine(full)) : "";
+          const d = st.kind === "edited" && st.act !== "mkdir" ? editDiff(b.tool.input) : undefined;
+          const diff = d ? { diff: d.lines.map((l) => redact(l)), ...(d.more ? { diffMore: d.more } : {}), ...(d.added ? { added: d.added } : {}), ...(d.removed ? { removed: d.removed } : {}) } : {};
+          addRow(ev.seq, { seq: ev.seq, step: st, n: 1, outcome, ...(command ? { command } : {}), ...(output ? { output } : {}), ...(hint ? { hint } : {}), ...diff });
           break;
         }
         const text = (b.text ?? "").trim();
@@ -217,7 +262,7 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
       }
     }
   }
-  for (const b of out) if (b.k === "steps") b.gist = gistOf(b.rows);
+  for (const b of out) if (b.k === "steps") b.lines = linesOf(rowsOf.get(b)!);
   const last = out.at(-1);
   if (working && last?.k === "steps") last.live = true;
   return out;

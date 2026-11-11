@@ -28,7 +28,7 @@ import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, PayBody } from "./autofill.tsx";
 import { FillButton, forecast, FullTop } from "./board.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
-import { BriefCard, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
+import { safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
 import {
   attention,
   bodyReasonOf,
@@ -211,7 +211,8 @@ function AutoText(p: { value: string; onInput: (v: string) => void; placeholder:
       onInput={(e) => p.onInput((e.target as HTMLTextAreaElement).value)}
       onKeyDown={(e) => {
         // On a phone Return breaks the line and the button sends; with a keyboard Enter sends.
-        if (e.key === "Enter" && !e.shiftKey && !e.isComposing && !coarse() && p.onEnter) {
+        // ⌘↩ sends everywhere, a keyboard on a phone or tablet included (D210).
+        if (e.key === "Enter" && !e.isComposing && p.onEnter && (e.metaKey || e.ctrlKey || (!e.shiftKey && !coarse()))) {
           e.preventDefault();
           p.onEnter();
         }
@@ -1845,13 +1846,25 @@ function FolderChangesView({ task }: { task: Task }) {
 export function TaskView({ id, full }: { id: string; full?: boolean }) {
   const task = A.S.tasks.get(id);
   const scroller = useRef<HTMLDivElement>(null);
-  // D152: while it works, a reader at the end follows the newest step; one who scrolled up stays.
+  // D210: it opens at its latest while it works or waits on you, at its head once finished (the
+  // outcome is there). While it works, a reader at the end follows the newest step; one who
+  // scrolled up stays, with Jump to latest.
   const atEnd = useRef(false);
+  const [away, setAway] = useState(false);
+  const opened = useRef("");
   const moving = !!task && ["working", "queued"].includes(attention(task));
+  const live = moving || (!!task && attention(task) === "needs_you");
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el || !task?.historyLoaded || opened.current === id) return;
+    opened.current = id;
+    if (live) el.scrollTop = el.scrollHeight;
+    atEnd.current = live;
+  }, [id, task?.historyLoaded]);
   useEffect(() => {
     const el = scroller.current;
     if (el && moving && atEnd.current) el.scrollTop = el.scrollHeight;
-  }, [task?.events.length, moving]);
+  }, [task?.events.length, task?.sends.length, moving]);
   useEffect(() => A.history(id), [id, A.S.welcomed]);
   // D142: a folder task's list, again whenever its count or an undo / keep moved on.
   const isFolder = !!task && placeOf(task).kind === "folder";
@@ -1886,13 +1899,12 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
         // D184: the whole screen, as the Mac shows an opened task: the crumbs, then Pause and
         // Drop at the header's end.
         <FullTop task={task}>
-          {(a === "working" || a === "queued") && <Btn kind="text" size="sm" label={t("task.action.pause")} onClick={() => A.taskAction(id, "interrupt")} />}
           {!finished(task) && !["dropped", "superseded", "done"].includes(a) && <Btn kind="text" size="sm" label={t("task.action.drop")} onClick={() => A.drop(id)} />}
         </FullTop>
       ) : (
         <Top back={t("nav.back")} face={false} />
       )}
-      <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; atEnd.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48; }}>
+      <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); }}>
         <div class="task-head">
           <span class="face">
             <Avatar size={96} state={faceOf(a)} still={stillFace(a)} />
@@ -1914,7 +1926,6 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             {watchable && <Btn kind="secondary" size="sm" label={t("live.watch.title")} about={safe(title(task))} onClick={() => A.watchLive(id, liveSize())} />}
           </div>
         )}
-        {yourTurn && <div class="small sub">{t("task.your.turn.hint")}</div>}
         {A.switchFor === id && <SwitchList task={task} />}
         {finished(task) && (
           <div class="outcome">
@@ -1933,19 +1944,28 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             )}
           </div>
         )}
-        {!finished(task) && !full && (
+        {/* D210: Pause sits in the foot over the composer (Esc twice); Cancel task stays here. */}
+        {!finished(task) && !full && !["dropped", "superseded", "done"].includes(a) && (
           <div class="btns">
-            {(a === "working" || a === "queued") && <Btn kind="text" label={t("task.action.pause")} onClick={() => A.taskAction(id, "interrupt")} />}
-            {!["dropped", "superseded", "done"].includes(a) && <Btn kind="text" label={t("task.action.drop")} onClick={() => A.drop(id)} />}
+            <Btn kind="text" label={t("task.action.drop")} onClick={() => A.drop(id)} />
           </div>
         )}
         <WaitDetails task={task} />
         <TryStrip task={task} />
         <FolderChangesView task={task} />
-        <BriefCard task={task} blocks={blocks} />
         <WhatItDid task={task} blocks={blocks} />
         <OutsideActs task={task} />
       </main>
+      {live && away && (
+        <div class="jump-dock">
+          <button class="jump" aria-label={t("jump.latest")} title={t("jump.latest")} onClick={() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}>
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 2.5v11M3.5 9 8 13.5 12.5 9" />
+            </svg>
+          </button>
+        </div>
+      )}
+      <TaskFoot task={task} blocks={blocks} />
       {/* A pending ask sits over the composer, where the answer is typed (D152). */}
       {d && !d.resolved && (
         <div class="ask-dock">

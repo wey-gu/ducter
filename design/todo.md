@@ -98,6 +98,15 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Partner and tasks (`design/plan/v1-tonight.md` "Known gaps", `research/30`)
 
+- [ ] **The opened task, after D210** (`research/58`): (1) a step under way: Ducter's Log has a
+      tool call only once it is done, so the foot names the latest finished step; a "running"
+      line needs the runner to log a tool's start (OAR's item started events). Trigger: a live
+      run where the foot lags a long command. (2) The agent's words appear whole, not streamed;
+      streaming needs text deltas in the Log. Trigger: the same. (3) The Mac draws the whole
+      window of turns each frame (7 ms with 423 events in the test renderer); if a real long
+      task stutters, move the transcript into `ui.List` (Lorca's chat does). (4) Check the
+      foot, Esc twice and Jump to latest on a real iPad and a real long run with the author.
+
 - [ ] **The eval's new gaps on haiku** (research/48 addendum, `eval/results/2026-11-10-haiku-d175.md`):
       (1) it says a rule is kept without calling `rule_save` / `notice_rule` (an honesty gap: a
       code check could refuse "已存在「你的规则」" prose with no rule saved this turn); (2) it answers a

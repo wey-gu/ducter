@@ -134,7 +134,15 @@ type App struct {
 	// follows the newest step while the task works and the reader is at
 	// the end (D152).
 	taskScroll map[string]*ui.ScrollState
-	mdLang     i18n.Lang // the language md's themes were made for
+	// taskOpened is the task whose page was scrolled to where it opens:
+	// at its latest while it works or waits on the user, at its head once
+	// it is finished (D210).
+	taskOpened string
+	// escAt is when Esc asked to pause the opened task (D210): a second
+	// Esc within escWindow pauses it.
+	escAt   time.Time
+	escTask string
+	mdLang  i18n.Lang // the language md's themes were made for
 	// pressAll draws every button as pressed: the button specimen's
 	// pressed row (tests only).
 	pressAll bool
@@ -456,7 +464,7 @@ func (a *App) shortcuts(c *ui.Context) {
 		}
 		a.focusComposer = true
 	case c.Shortcut(0, ui.KeyEscape):
-		if !a.escDevice() {
+		if !a.taskEsc(c) && !a.escDevice() {
 			a.Up()
 		}
 	}

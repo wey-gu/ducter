@@ -400,219 +400,245 @@
   ],
   "want": [
    {
-    "k": "brief",
     "seq": 100,
-    "text": "Set up Nowledge Mem for Codex on this machine so Codex can search and save memories.\n\n1. Install the nmem CLI if it isn't there.\n2. Connect it to my space with this connect token: nmem_ct_••••••\n3. Install the Mem plugin into Codex and check that a search works.\n\nThis is a headless Linux box, no browser. Don't touch my other Codex settings.",
-    "by": "you"
-   },
-   {
-    "k": "voice",
-    "seq": 102,
-    "text": "Starting Nowledge Mem setup on this headless Linux host. First I'll see what's already installed.",
-    "saved": true
-   },
-   {
-    "k": "steps",
-    "seq": 105,
-    "rows": [
+    "prompt": {
+     "k": "brief",
+     "seq": 100,
+     "text": "Set up Nowledge Mem for Codex on this machine so Codex can search and save memories.\n\n1. Install the nmem CLI if it isn't there.\n2. Connect it to my space with this connect token: nmem_ct_••••••\n3. Install the Mem plugin into Codex and check that a search works.\n\nThis is a headless Linux box, no browser. Don't touch my other Codex settings.",
+     "by": "you"
+    },
+    "body": [
      {
+      "k": "voice",
+      "seq": 102,
+      "text": "Starting Nowledge Mem setup on this headless Linux host. First I'll see what's already installed.",
+      "saved": true
+     },
+     {
+      "k": "steps",
       "seq": 105,
-      "step": {
-       "kind": "searched",
-       "act": "cmd",
-       "target": "nmem",
-       "probe": true
-      },
-      "n": 1,
-      "outcome": "missing",
-      "command": "/bin/bash -lc 'command -v nmem'"
+      "lines": [
+       {
+        "k": "looks",
+        "seq": 105,
+        "rows": [
+         {
+          "seq": 105,
+          "step": {
+           "kind": "searched",
+           "act": "cmd",
+           "target": "nmem",
+           "probe": true
+          },
+          "n": 1,
+          "outcome": "missing",
+          "command": "/bin/bash -lc 'command -v nmem'"
+         },
+         {
+          "seq": 106,
+          "step": {
+           "kind": "searched",
+           "act": "cmd",
+           "target": "python3 pip3 uv",
+           "probe": true
+          },
+          "n": 1,
+          "outcome": "missing",
+          "command": "/bin/bash -lc 'which python3 pip3 uv'",
+          "output": "/usr/bin/python3\n/usr/bin/pip3"
+         },
+         {
+          "seq": 107,
+          "step": {
+           "kind": "searched",
+           "act": "files",
+           "target": "python*",
+           "probe": true
+          },
+          "n": 1,
+          "outcome": "missing",
+          "command": "/bin/bash -lc 'ls -d ~/.venv/bin/python*'",
+          "output": "ls: cannot access '/root/.venv/bin/python*': No such file or directory"
+         },
+         {
+          "seq": 108,
+          "step": {
+           "kind": "read",
+           "act": "exists",
+           "target": ".nowledge-mem/config.json",
+           "probe": true
+          },
+          "n": 1,
+          "outcome": "missing",
+          "command": "/bin/bash -lc 'test -e ~/.nowledge-mem/config.json'"
+         },
+         {
+          "seq": 109,
+          "step": {
+           "kind": "browsed",
+           "act": "request",
+           "target": "cloud.nowledge.co"
+          },
+          "n": 1,
+          "outcome": "ok",
+          "command": "/bin/bash -lc 'curl -fsS https://cloud.nowledge.co/api/v1/health'",
+          "output": "{\"ok\":true,\"region\":\"eu-1\"}"
+         }
+        ],
+        "reads": 1,
+        "searches": 4
+       }
+      ]
      },
      {
-      "seq": 106,
-      "step": {
-       "kind": "searched",
-       "act": "cmd",
-       "target": "python3 pip3 uv",
-       "probe": true
-      },
-      "n": 1,
-      "outcome": "missing",
-      "command": "/bin/bash -lc 'which python3 pip3 uv'",
-      "output": "/usr/bin/python3\n/usr/bin/pip3"
+      "k": "voice",
+      "seq": 110,
+      "text": "Nothing is installed yet and the cloud answers. I'll install the CLI with pipx so it stays out of the system Python."
      },
      {
-      "seq": 107,
-      "step": {
-       "kind": "searched",
-       "act": "files",
-       "target": "python*",
-       "probe": true
-      },
-      "n": 1,
-      "outcome": "missing",
-      "command": "/bin/bash -lc 'ls -d ~/.venv/bin/python*'",
-      "output": "ls: cannot access '/root/.venv/bin/python*': No such file or directory"
-     },
-     {
-      "seq": 108,
-      "step": {
-       "kind": "read",
-       "act": "exists",
-       "target": ".nowledge-mem/config.json",
-       "probe": true
-      },
-      "n": 1,
-      "outcome": "missing",
-      "command": "/bin/bash -lc 'test -e ~/.nowledge-mem/config.json'"
-     },
-     {
-      "seq": 109,
-      "step": {
-       "kind": "browsed",
-       "act": "request",
-       "target": "cloud.nowledge.co"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'curl -fsS https://cloud.nowledge.co/api/v1/health'",
-      "output": "{\"ok\":true,\"region\":\"eu-1\"}"
-     }
-    ],
-    "gist": {
-     "kind": "look",
-     "steps": 5,
-     "files": 0,
-     "errors": 0
-    }
-   },
-   {
-    "k": "voice",
-    "seq": 110,
-    "text": "Nothing is installed yet and the cloud answers. I'll install the CLI with pipx so it stays out of the system Python."
-   },
-   {
-    "k": "steps",
-    "seq": 111,
-    "rows": [
-     {
+      "k": "steps",
       "seq": 111,
-      "step": {
-       "kind": "ran",
-       "act": "install",
-       "target": "nowledge-mem-cli"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'pipx install nowledge-mem-cli'",
-      "output": "  installed package nowledge-mem-cli 0.9.4, installed using Python 3.12.3\n  These apps are now globally available\n    - nmem\ndone! ✨ 🌟 ✨"
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 111,
+         "step": {
+          "kind": "ran",
+          "act": "install",
+          "target": "nowledge-mem-cli"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "/bin/bash -lc 'pipx install nowledge-mem-cli'",
+         "output": "  installed package nowledge-mem-cli 0.9.4, installed using Python 3.12.3\n  These apps are now globally available\n    - nmem\ndone! ✨ 🌟 ✨"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 112,
+         "step": {
+          "kind": "ran",
+          "act": "mem_connect"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "/bin/bash -lc 'nmem connect --token nmem_ct_••••••'",
+         "output": "Connected to space “weyl” (eu-1). Wrote /root/.nowledge-mem/credentials.json"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 113,
+         "step": {
+          "kind": "ran",
+          "act": "mem_check"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "/bin/bash -lc 'nmem doctor'",
+         "output": "✓ CLI 0.9.4\n✓ credentials\n✓ cloud reachable (84 ms)\n✓ space weyl: 1,204 memories"
+        }
+       }
+      ]
      },
      {
-      "seq": 112,
-      "step": {
-       "kind": "ran",
-       "act": "mem_connect"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'nmem connect --token nmem_ct_••••••'",
-      "output": "Connected to space “weyl” (eu-1). Wrote /root/.nowledge-mem/credentials.json"
+      "k": "voice",
+      "seq": 114,
+      "text": "nmem 0.9.4 is installed and connected to the weyl space; doctor passes. Next: the Codex plugin.",
+      "saved": true
      },
      {
-      "seq": 113,
-      "step": {
-       "kind": "ran",
-       "act": "mem_check"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'nmem doctor'",
-      "output": "✓ CLI 0.9.4\n✓ credentials\n✓ cloud reachable (84 ms)\n✓ space weyl: 1,204 memories"
-     }
-    ],
-    "gist": {
-     "kind": "run",
-     "steps": 3,
-     "files": 0,
-     "errors": 0
-    }
-   },
-   {
-    "k": "voice",
-    "seq": 114,
-    "text": "nmem 0.9.4 is installed and connected to the weyl space; doctor passes. Next: the Codex plugin.",
-    "saved": true
-   },
-   {
-    "k": "steps",
-    "seq": 115,
-    "rows": [
-     {
+      "k": "steps",
       "seq": 115,
-      "step": {
-       "kind": "ran",
-       "target": "codex plugin add",
-       "says": "Install the Mem plugin into Codex"
-      },
-      "n": 1,
-      "outcome": "error",
-      "command": "/bin/bash -lc 'codex plugin add nowledge-mem'",
-      "output": "error: unknown command 'plugin' for 'codex'\nRun 'codex --help' for usage."
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 115,
+         "step": {
+          "kind": "ran",
+          "target": "codex plugin add",
+          "says": "Install the Mem plugin into Codex"
+         },
+         "n": 1,
+         "outcome": "error",
+         "command": "/bin/bash -lc 'codex plugin add nowledge-mem'",
+         "output": "error: unknown command 'plugin' for 'codex'\nRun 'codex --help' for usage.",
+         "hint": "error: unknown command 'plugin' for 'codex'"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 116,
+         "step": {
+          "kind": "ran",
+          "target": "codex"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "/bin/bash -lc 'codex --version'",
+         "output": "codex-cli 0.167.0"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 117,
+         "step": {
+          "kind": "read",
+          "target": ".codex/config.toml"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "/bin/bash -lc 'sed -n 1,40p ~/.codex/config.toml'",
+         "output": "model = \"gpt-6-luna\"\n[mcp_servers.github]\ncommand = \"gh-mcp\""
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 118,
+         "step": {
+          "kind": "edited",
+          "target": ".codex/config.toml"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "Success. Updated 1 file",
+         "diff": [
+          "+[mcp_servers.nowledge-mem]",
+          "+command = \"nmem\"",
+          "+args = [\"mcp\"]"
+         ],
+         "added": 3
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 119,
+         "step": {
+          "kind": "ran",
+          "act": "mem_search"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "/bin/bash -lc 'nmem search \"Ducter release checklist\" --limit 3'",
+         "output": "1. Ducter v0.0.1 release checklist (0.91)\n2. iPhone app public: TestFlight steps (0.77)\n3. Notarize the Mac app (0.70)"
+        }
+       }
+      ]
      },
      {
-      "seq": 116,
-      "step": {
-       "kind": "ran",
-       "target": "codex"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'codex --version'",
-      "output": "codex-cli 0.167.0"
-     },
-     {
-      "seq": 117,
-      "step": {
-       "kind": "read",
-       "target": ".codex/config.toml"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'sed -n 1,40p ~/.codex/config.toml'",
-      "output": "model = \"gpt-6-luna\"\n[mcp_servers.github]\ncommand = \"gh-mcp\""
-     },
-     {
-      "seq": 118,
-      "step": {
-       "kind": "edited",
-       "target": ".codex/config.toml"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "output": "Success. Updated 1 file"
-     },
-     {
-      "seq": 119,
-      "step": {
-       "kind": "ran",
-       "act": "mem_search"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'nmem search \"Ducter release checklist\" --limit 3'",
-      "output": "1. Ducter v0.0.1 release checklist (0.91)\n2. iPhone app public: TestFlight steps (0.77)\n3. Notarize the Mac app (0.70)"
+      "k": "voice",
+      "seq": 120,
+      "text": "Mem is connected and Codex can reach it. This Codex (0.167) has no `plugin` command, so I added Mem as an MCP server in `~/.codex/config.toml` instead; a search from it returned three memories.\n\nOpen a new Codex session to pick it up."
      }
-    ],
-    "gist": {
-     "kind": "edit",
-     "steps": 5,
-     "files": 1,
-     "errors": 1
-    }
-   },
-   {
-    "k": "voice",
-    "seq": 120,
-    "text": "Mem is connected and Codex can reach it. This Codex (0.167) has no `plugin` command, so I added Mem as an MCP server in `~/.codex/config.toml` instead; a search from it returned three memories.\n\nOpen a new Codex session to pick it up."
+    ]
    }
   ]
  },
@@ -876,142 +902,152 @@
   ],
   "want": [
    {
-    "k": "brief",
     "seq": 100,
-    "text": "Set up Nowledge Mem for Codex on this machine so Codex can search and save memories.\n\n1. Install the nmem CLI if it isn't there.\n2. Connect it to my space with this connect token: nmem_ct_••••••\n3. Install the Mem plugin into Codex and check that a search works.\n\nThis is a headless Linux box, no browser. Don't touch my other Codex settings.",
-    "by": "you"
-   },
-   {
-    "k": "voice",
-    "seq": 102,
-    "text": "Starting Nowledge Mem setup on this headless Linux host. First I'll see what's already installed.",
-    "saved": true
-   },
-   {
-    "k": "steps",
-    "seq": 105,
-    "rows": [
-     {
-      "seq": 105,
-      "step": {
-       "kind": "searched",
-       "act": "cmd",
-       "target": "nmem",
-       "probe": true
-      },
-      "n": 1,
-      "outcome": "missing",
-      "command": "/bin/bash -lc 'command -v nmem'"
-     },
-     {
-      "seq": 106,
-      "step": {
-       "kind": "searched",
-       "act": "cmd",
-       "target": "python3 pip3 uv",
-       "probe": true
-      },
-      "n": 1,
-      "outcome": "missing",
-      "command": "/bin/bash -lc 'which python3 pip3 uv'",
-      "output": "/usr/bin/python3\n/usr/bin/pip3"
-     },
-     {
-      "seq": 107,
-      "step": {
-       "kind": "searched",
-       "act": "files",
-       "target": "python*",
-       "probe": true
-      },
-      "n": 1,
-      "outcome": "missing",
-      "command": "/bin/bash -lc 'ls -d ~/.venv/bin/python*'",
-      "output": "ls: cannot access '/root/.venv/bin/python*': No such file or directory"
-     },
-     {
-      "seq": 108,
-      "step": {
-       "kind": "read",
-       "act": "exists",
-       "target": ".nowledge-mem/config.json",
-       "probe": true
-      },
-      "n": 1,
-      "outcome": "missing",
-      "command": "/bin/bash -lc 'test -e ~/.nowledge-mem/config.json'"
-     },
-     {
-      "seq": 109,
-      "step": {
-       "kind": "browsed",
-       "act": "request",
-       "target": "cloud.nowledge.co"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'curl -fsS https://cloud.nowledge.co/api/v1/health'",
-      "output": "{\"ok\":true,\"region\":\"eu-1\"}"
-     }
-    ],
-    "gist": {
-     "kind": "look",
-     "steps": 5,
-     "files": 0,
-     "errors": 0
-    }
-   },
-   {
-    "k": "voice",
-    "seq": 110,
-    "text": "Nothing is installed yet and the cloud answers. I'll install the CLI with pipx so it stays out of the system Python."
-   },
-   {
-    "k": "steps",
-    "seq": 111,
-    "rows": [
-     {
-      "seq": 111,
-      "step": {
-       "kind": "ran",
-       "act": "install",
-       "target": "nowledge-mem-cli"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'pipx install nowledge-mem-cli'",
-      "output": "  installed package nowledge-mem-cli 0.9.4, installed using Python 3.12.3\n  These apps are now globally available\n    - nmem\ndone! ✨ 🌟 ✨"
-     },
-     {
-      "seq": 112,
-      "step": {
-       "kind": "ran",
-       "act": "mem_connect"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'nmem connect --token nmem_ct_••••••'",
-      "output": "Connected to space “weyl” (eu-1). Wrote /root/.nowledge-mem/credentials.json"
-     },
-     {
-      "seq": 113,
-      "step": {
-       "kind": "ran",
-       "act": "mem_check"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'nmem doctor'",
-      "output": "✓ CLI 0.9.4\n✓ credentials\n✓ cloud reachable (84 ms)\n✓ space weyl: 1,204 memories"
-     }
-    ],
-    "gist": {
-     "kind": "run",
-     "steps": 3,
-     "files": 0,
-     "errors": 0
+    "prompt": {
+     "k": "brief",
+     "seq": 100,
+     "text": "Set up Nowledge Mem for Codex on this machine so Codex can search and save memories.\n\n1. Install the nmem CLI if it isn't there.\n2. Connect it to my space with this connect token: nmem_ct_••••••\n3. Install the Mem plugin into Codex and check that a search works.\n\nThis is a headless Linux box, no browser. Don't touch my other Codex settings.",
+     "by": "you"
     },
-    "live": true
+    "body": [
+     {
+      "k": "voice",
+      "seq": 102,
+      "text": "Starting Nowledge Mem setup on this headless Linux host. First I'll see what's already installed.",
+      "saved": true
+     },
+     {
+      "k": "steps",
+      "seq": 105,
+      "lines": [
+       {
+        "k": "looks",
+        "seq": 105,
+        "rows": [
+         {
+          "seq": 105,
+          "step": {
+           "kind": "searched",
+           "act": "cmd",
+           "target": "nmem",
+           "probe": true
+          },
+          "n": 1,
+          "outcome": "missing",
+          "command": "/bin/bash -lc 'command -v nmem'"
+         },
+         {
+          "seq": 106,
+          "step": {
+           "kind": "searched",
+           "act": "cmd",
+           "target": "python3 pip3 uv",
+           "probe": true
+          },
+          "n": 1,
+          "outcome": "missing",
+          "command": "/bin/bash -lc 'which python3 pip3 uv'",
+          "output": "/usr/bin/python3\n/usr/bin/pip3"
+         },
+         {
+          "seq": 107,
+          "step": {
+           "kind": "searched",
+           "act": "files",
+           "target": "python*",
+           "probe": true
+          },
+          "n": 1,
+          "outcome": "missing",
+          "command": "/bin/bash -lc 'ls -d ~/.venv/bin/python*'",
+          "output": "ls: cannot access '/root/.venv/bin/python*': No such file or directory"
+         },
+         {
+          "seq": 108,
+          "step": {
+           "kind": "read",
+           "act": "exists",
+           "target": ".nowledge-mem/config.json",
+           "probe": true
+          },
+          "n": 1,
+          "outcome": "missing",
+          "command": "/bin/bash -lc 'test -e ~/.nowledge-mem/config.json'"
+         },
+         {
+          "seq": 109,
+          "step": {
+           "kind": "browsed",
+           "act": "request",
+           "target": "cloud.nowledge.co"
+          },
+          "n": 1,
+          "outcome": "ok",
+          "command": "/bin/bash -lc 'curl -fsS https://cloud.nowledge.co/api/v1/health'",
+          "output": "{\"ok\":true,\"region\":\"eu-1\"}"
+         }
+        ],
+        "reads": 1,
+        "searches": 4
+       }
+      ]
+     },
+     {
+      "k": "voice",
+      "seq": 110,
+      "text": "Nothing is installed yet and the cloud answers. I'll install the CLI with pipx so it stays out of the system Python."
+     },
+     {
+      "k": "steps",
+      "seq": 111,
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 111,
+         "step": {
+          "kind": "ran",
+          "act": "install",
+          "target": "nowledge-mem-cli"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "/bin/bash -lc 'pipx install nowledge-mem-cli'",
+         "output": "  installed package nowledge-mem-cli 0.9.4, installed using Python 3.12.3\n  These apps are now globally available\n    - nmem\ndone! ✨ 🌟 ✨"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 112,
+         "step": {
+          "kind": "ran",
+          "act": "mem_connect"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "/bin/bash -lc 'nmem connect --token nmem_ct_••••••'",
+         "output": "Connected to space “weyl” (eu-1). Wrote /root/.nowledge-mem/credentials.json"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 113,
+         "step": {
+          "kind": "ran",
+          "act": "mem_check"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "/bin/bash -lc 'nmem doctor'",
+         "output": "✓ CLI 0.9.4\n✓ credentials\n✓ cloud reachable (84 ms)\n✓ space weyl: 1,204 memories"
+        }
+       }
+      ],
+      "live": true
+     }
+    ]
    }
   ]
  },
@@ -1208,92 +1244,123 @@
   ],
   "want": [
    {
-    "k": "brief",
     "seq": 100,
-    "text": "Make `bun test` pass on tinycart; the cart total test flakes.",
-    "by": "partner"
-   },
-   {
-    "k": "steps",
-    "seq": 101,
-    "rows": [
+    "prompt": {
+     "k": "brief",
+     "seq": 100,
+     "text": "Make `bun test` pass on tinycart; the cart total test flakes.",
+     "by": "partner"
+    },
+    "body": [
      {
+      "k": "steps",
       "seq": 101,
-      "thought": "Reading the failing test",
-      "n": 1,
-      "outcome": "ok"
-     },
-     {
-      "seq": 102,
-      "step": {
-       "kind": "read",
-       "target": "src/cart.ts"
-      },
-      "n": 1,
-      "outcome": "ok"
-     },
-     {
-      "seq": 103,
-      "step": {
-       "kind": "searched",
-       "target": "total\\("
-      },
-      "n": 1,
-      "outcome": "ok"
-     },
-     {
-      "seq": 104,
-      "step": {
-       "kind": "ran",
-       "target": "bun test",
-       "says": "Run the test suite"
-      },
-      "n": 1,
-      "outcome": "error",
-      "command": "bun test",
-      "output": "1 fail\n  expect(total()).toBe(30)\n  Received: 29.999999"
-     },
-     {
-      "seq": 105,
-      "step": {
-       "kind": "edited",
-       "target": "src/cart.ts"
-      },
-      "n": 1,
-      "outcome": "ok"
-     },
-     {
-      "seq": 106,
-      "step": {
-       "kind": "ran",
-       "target": "bun test",
-       "says": "Run the test suite"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "bun test",
-      "output": "14 pass\n0 fail"
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 101,
+         "thought": "Reading the failing test",
+         "n": 1,
+         "outcome": "ok"
+        }
+       },
+       {
+        "k": "looks",
+        "seq": 102,
+        "rows": [
+         {
+          "seq": 102,
+          "step": {
+           "kind": "read",
+           "target": "src/cart.ts"
+          },
+          "n": 1,
+          "outcome": "ok"
+         },
+         {
+          "seq": 103,
+          "step": {
+           "kind": "searched",
+           "target": "total\\("
+          },
+          "n": 1,
+          "outcome": "ok"
+         }
+        ],
+        "reads": 1,
+        "searches": 1
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 104,
+         "step": {
+          "kind": "ran",
+          "target": "bun test",
+          "says": "Run the test suite"
+         },
+         "n": 1,
+         "outcome": "error",
+         "command": "bun test",
+         "output": "1 fail\n  expect(total()).toBe(30)\n  Received: 29.999999",
+         "hint": "1 fail"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 105,
+         "step": {
+          "kind": "edited",
+          "target": "src/cart.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "diff": [
+          "-a + b",
+          "+round(a + b)"
+         ],
+         "added": 1,
+         "removed": 1
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 106,
+         "step": {
+          "kind": "ran",
+          "target": "bun test",
+          "says": "Run the test suite"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "bun test",
+         "output": "14 pass\n0 fail"
+        }
+       }
+      ]
      }
-    ],
-    "gist": {
-     "kind": "edit",
-     "steps": 5,
-     "files": 1,
-     "errors": 1
-    }
+    ]
    },
    {
-    "k": "you",
     "seq": 108,
-    "text": "User says Go: commit.",
-    "go": "commit"
-   },
-   {
-    "k": "note",
-    "seq": 109,
-    "say": "error",
-    "bad": true,
-    "text": "turn failed: stream disconnected"
+    "prompt": {
+     "k": "you",
+     "seq": 108,
+     "text": "User says Go: commit.",
+     "go": "commit"
+    },
+    "body": [
+     {
+      "k": "note",
+      "seq": 109,
+      "say": "error",
+      "bad": true,
+      "text": "turn failed: stream disconnected"
+     }
+    ]
    }
   ]
  },
@@ -1529,90 +1596,2018 @@
   ],
   "want": [
    {
-    "k": "brief",
     "seq": 100,
-    "text": "看看为什么电话只播开场白",
-    "by": "partner"
-   },
-   {
-    "k": "steps",
-    "seq": 103,
-    "rows": [
+    "prompt": {
+     "k": "brief",
+     "seq": 100,
+     "text": "看看为什么电话只播开场白",
+     "by": "partner"
+    },
+    "body": [
      {
+      "k": "steps",
       "seq": 103,
-      "step": {
-       "kind": "ran",
-       "target": "pwd"
-      },
-      "n": 1,
-      "outcome": "error",
-      "command": "/bin/bash -lc 'pwd'",
-      "output": "/root"
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 103,
+         "step": {
+          "kind": "ran",
+          "target": "pwd"
+         },
+         "n": 1,
+         "outcome": "error",
+         "command": "/bin/bash -lc 'pwd'",
+         "output": "/root",
+         "hint": "/root"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 104,
+         "step": {
+          "kind": "browsed",
+          "act": "request",
+          "target": "127.0.0.1:7777"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "/bin/bash -lc 'curl -fsS http://127.0.0.1:7777/health'",
+         "output": "{\"ok\":true}"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 105,
+         "step": {
+          "kind": "ran",
+          "target": "journalctl"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "/bin/bash -lc 'journalctl -u ducter -n 50'",
+         "output": "…"
+        }
+       }
+      ]
      },
      {
-      "seq": 104,
-      "step": {
-       "kind": "browsed",
-       "act": "request",
-       "target": "127.0.0.1:7777"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'curl -fsS http://127.0.0.1:7777/health'",
-      "output": "{\"ok\":true}"
+      "k": "note",
+      "seq": 106,
+      "say": "offline",
+      "name": "hel",
+      "text": "hel disconnected; the task carries on when it is back"
      },
      {
-      "seq": 105,
-      "step": {
-       "kind": "ran",
-       "target": "journalctl"
-      },
-      "n": 1,
-      "outcome": "ok",
-      "command": "/bin/bash -lc 'journalctl -u ducter -n 50'",
-      "output": "…"
+      "k": "note",
+      "seq": 107,
+      "say": "back",
+      "name": "hel",
+      "text": "hel is back; resuming the session"
+     },
+     {
+      "k": "note",
+      "seq": 108,
+      "say": "moved",
+      "name": "Codex",
+      "text": "moved from claude-code to codex"
+     },
+     {
+      "k": "note",
+      "seq": 110,
+      "say": "error_delivery",
+      "bad": true,
+      "text": "delivery failed: socket closed"
+     },
+     {
+      "k": "note",
+      "seq": 111,
+      "say": "stalled",
+      "text": "no report after one nudge; leaving the task idle (stall rule)"
      }
-    ],
-    "gist": {
-     "kind": "run",
-     "steps": 3,
-     "files": 0,
-     "errors": 1
+    ]
+   }
+  ]
+ },
+ {
+  "name": "a long claude code run, finished (zh)",
+  "harness": "claude-code",
+  "working": false,
+  "events": [
+   {
+    "seq": 100,
+    "ts": "2026-11-10T06:58:00.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "partner",
+    "kind": "task_open",
+    "body": {
+     "taskId": "gl1",
+     "title": "修好手机打开时 On hand 闪一下空白",
+     "project": "ducter",
+     "place": {
+      "kind": "repo",
+      "repoPath": "/Users/weyl/dev/ducter",
+      "branch": "fix/glance-onhand"
+     },
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "brief": "iPad 上打开 app，On hand 先闪一下「什么都没有」，一两秒后才出来。D209 的 glance 缓存应该让它第一帧就是上次的样子。找到原因修好，测试要过。截图是用户发来的。",
+     "media": [
+      {
+       "id": "a100000000000000000000000000000000000000000000000000000000000000",
+       "type": "image/png",
+       "bytes": 48000,
+       "w": 688,
+       "h": 918,
+       "k": "k"
+      }
+     ]
     }
    },
    {
-    "k": "note",
+    "seq": 101,
+    "ts": "2026-11-10T06:58:02.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "user",
+     "from": "runner",
+     "text": "<brief>…</brief>\nStart the task."
+    }
+   },
+   {
+    "seq": 102,
+    "ts": "2026-11-10T06:58:06.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "assistant",
+     "thinking": [
+      "Where the glance cache restores On hand"
+     ]
+    }
+   },
+   {
+    "seq": 103,
+    "ts": "2026-11-10T06:58:08.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Read",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 104,
+    "ts": "2026-11-10T06:58:10.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Read",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/app.ts"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 105,
+    "ts": "2026-11-10T06:58:12.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Grep",
+      "input": {
+       "pattern": "onHand",
+       "path": "apps/web/src"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
     "seq": 106,
-    "say": "offline",
-    "name": "hel",
-    "text": "hel disconnected; the task carries on when it is back"
+    "ts": "2026-11-10T06:58:13.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Glob",
+      "input": {
+       "pattern": "apps/web/test/*.test.ts"
+      },
+      "ok": true
+     }
+    }
    },
    {
-    "k": "note",
     "seq": 107,
-    "say": "back",
-    "name": "hel",
-    "text": "hel is back; resuming the session"
+    "ts": "2026-11-10T06:58:20.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "assistant",
+     "text": "缓存里确实存了 On hand，但 `connect()` 在 hello 回来之前就把它清空了，所以第一帧是空的。先跑测试确认一下。"
+    }
    },
    {
-    "k": "note",
     "seq": 108,
-    "say": "moved",
-    "name": "Codex",
-    "text": "moved from claude-code to codex"
+    "ts": "2026-11-10T06:58:26.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "bun test apps/web/test/glance.test.ts",
+       "description": "Run the glance cache tests"
+      },
+      "output": "bun test v1.3.2\n\napps/web/test/glance.test.ts:\n✓ glance > keeps the channel's newest 400 events [3.12ms]\n✓ glance > forgets a revoked device [0.88ms]\n✗ glance > paints On hand before the socket opens [2.41ms]\n\n  expect(received).toEqual(expected)\n  - Expected  + Received\n  -   \"tasks\": 3,\n  +   \"tasks\": 0,\n\n 2 pass\n 1 fail\nRan 3 tests across 1 file. [118.00ms]",
+      "ok": false
+     }
+    }
    },
    {
-    "k": "note",
+    "seq": 109,
+    "ts": "2026-11-10T06:58:40.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Edit",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/app.ts",
+       "old_string": "  connect() {\n    this.S.onHand = undefined;\n    this.S.board = emptyBoard();\n    this.open();",
+       "new_string": "  connect() {\n    // D209: the glance's On hand stays until the home answers.\n    if (!this.glanced) this.S.onHand = undefined;\n    this.open();"
+      },
+      "output": "The file has been updated.",
+      "ok": true
+     }
+    }
+   },
+   {
     "seq": 110,
-    "say": "error_delivery",
-    "bad": true,
-    "text": "delivery failed: socket closed"
+    "ts": "2026-11-10T06:58:46.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "bun test apps/web/test/glance.test.ts",
+       "description": "Run the glance cache tests"
+      },
+      "output": "bun test v1.3.2\n\n 3 pass\n 0 fail\nRan 3 tests across 1 file. [96.00ms]",
+      "ok": true
+     }
+    }
    },
    {
-    "k": "note",
     "seq": 111,
-    "say": "stalled",
-    "text": "no report after one nudge; leaving the task idle (stall rule)"
+    "ts": "2026-11-10T06:58:58.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "bun run typecheck",
+       "description": "Typecheck the workspace"
+      },
+      "output": "$ tsc -p . --noEmit\napps/web/src/app.ts(412,14): error TS2339: Property 'glanced' does not exist on type 'App'.\nerror: script \"typecheck\" exited with code 2",
+      "ok": false
+     }
+    }
+   },
+   {
+    "seq": 112,
+    "ts": "2026-11-10T06:59:04.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Edit",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/app.ts",
+       "old_string": "  draft = \"\";",
+       "new_string": "  draft = \"\";\n  /** The first frame came from the glance cache (D209). */\n  glanced = false;"
+      },
+      "output": "The file has been updated.",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 113,
+    "ts": "2026-11-10T06:59:10.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Edit",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts",
+       "old_string": "export function paintGlance(app: App, g: Glance) {\n  app.S.replay(g.events);",
+       "new_string": "export function paintGlance(app: App, g: Glance) {\n  app.glanced = true;\n  app.S.replay(g.events);"
+      },
+      "output": "The file has been updated.",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 114,
+    "ts": "2026-11-10T06:59:24.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "bun run typecheck",
+       "description": "Typecheck the workspace"
+      },
+      "output": "$ tsc -p . --noEmit",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 115,
+    "ts": "2026-11-10T06:59:30.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "assistant",
+     "text": "测试和类型检查都过了。有一件事要你定：缓存里的 On hand 要不要也留着**等你定的事**？留着的话一打开就能看到，但其中有的可能已经在别的设备上回答过了。"
+    }
+   },
+   {
+    "seq": 116,
+    "ts": "2026-11-10T07:03:00.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "user",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "user",
+     "from": "user",
+     "text": "留着，但回答过的要在 hello 回来后马上消失。这是我 iPad 上现在的样子：",
+     "media": [
+      {
+       "id": "b200000000000000000000000000000000000000000000000000000000000000",
+       "type": "image/png",
+       "bytes": 48000,
+       "w": 688,
+       "h": 918,
+       "k": "k"
+      }
+     ]
+    }
+   },
+   {
+    "seq": 117,
+    "ts": "2026-11-10T07:03:04.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Read",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 118,
+    "ts": "2026-11-10T07:03:06.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Grep",
+      "input": {
+       "pattern": "decisions",
+       "path": "apps/web/src/glance.ts"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 119,
+    "ts": "2026-11-10T07:03:18.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Edit",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts",
+       "old_string": "  const keep = { events: s.events.slice(-400), onHand: s.onHand };",
+       "new_string": "  // Kept with On hand: the asks still open when the page hid; hello's replay drops the answered.\n  const keep = { events: s.events.slice(-400), onHand: s.onHand, asks: s.openDecisions().map((d) => d.id) };"
+      },
+      "output": "The file has been updated.",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 120,
+    "ts": "2026-11-10T07:03:30.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Write",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/test/glance-asks.test.ts",
+       "content": "import { expect, test } from \"bun:test\";\nimport { glanceOf, paintGlance } from \"../src/glance.ts\";\nimport { fakeApp } from \"./guard.ts\";\n\ntest(\"an ask answered elsewhere goes once hello is back\", () => {\n  const app = fakeApp({ asks: [\"d1\", \"d2\"] });\n  paintGlance(app, glanceOf(app.S));\n  app.hello({ answered: [\"d1\"] });\n  expect(app.S.openDecisions().map((d) => d.id)).toEqual([\"d2\"]);\n});\n"
+      },
+      "output": "File created successfully",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 121,
+    "ts": "2026-11-10T07:03:42.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "bun test apps/web/test",
+       "description": "Run the web client's tests"
+      },
+      "output": "bun test v1.3.2\n\n 212 pass\n 0 fail\n 611 expect() calls\nRan 212 tests across 21 files. [3.41s]",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 122,
+    "ts": "2026-11-10T07:03:50.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "sh scripts/build-web.sh",
+       "description": "Build the web client"
+      },
+      "output": "built apps/web/static/app.js (418 KB)",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 123,
+    "ts": "2026-11-10T07:03:56.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "git commit -am 'D209: On hand stays from the glance until hello'",
+       "description": "Commit the fix"
+      },
+      "output": "[fix/glance-onhand 4c1e9a2] D209: On hand stays from the glance until hello\n 4 files changed, 31 insertions(+), 4 deletions(-)",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 124,
+    "ts": "2026-11-10T07:04:02.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "assistant",
+     "text": "改好了。打开时 On hand 直接是上次的样子，等你定的事也在；hello 回来后，别处回答过的会马上消失。\n\n- `connect()` 不再清空缓存里的 On hand\n- 缓存多存了还开着的事\n- 新加了一个测试，web 的 212 个测试全过"
+    }
+   },
+   {
+    "seq": 125,
+    "ts": "2026-11-10T07:04:04.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "report",
+    "body": {
+     "taskId": "gl1",
+     "state": "done",
+     "summary": "On hand 不再闪空白：打开时就是上次的样子，回答过的事在连上后马上消失。测试全过，已提交到 fix/glance-onhand。",
+     "questions": [],
+     "evidence": [],
+     "media": [
+      {
+       "id": "b200000000000000000000000000000000000000000000000000000000000000",
+       "type": "image/png",
+       "bytes": 48000,
+       "w": 688,
+       "h": 918,
+       "k": "k"
+      }
+     ]
+    }
+   }
+  ],
+  "want": [
+   {
+    "seq": 100,
+    "prompt": {
+     "k": "brief",
+     "seq": 100,
+     "text": "iPad 上打开 app，On hand 先闪一下「什么都没有」，一两秒后才出来。D209 的 glance 缓存应该让它第一帧就是上次的样子。找到原因修好，测试要过。截图是用户发来的。",
+     "by": "partner",
+     "media": [
+      {
+       "id": "a100000000000000000000000000000000000000000000000000000000000000",
+       "type": "image/png",
+       "bytes": 48000,
+       "w": 688,
+       "h": 918,
+       "k": "k"
+      }
+     ]
+    },
+    "body": [
+     {
+      "k": "steps",
+      "seq": 102,
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 102,
+         "thought": "Where the glance cache restores On hand",
+         "n": 1,
+         "outcome": "ok"
+        }
+       },
+       {
+        "k": "looks",
+        "seq": 103,
+        "rows": [
+         {
+          "seq": 103,
+          "step": {
+           "kind": "read",
+           "target": "src/glance.ts"
+          },
+          "n": 1,
+          "outcome": "ok"
+         },
+         {
+          "seq": 104,
+          "step": {
+           "kind": "read",
+           "target": "src/app.ts"
+          },
+          "n": 1,
+          "outcome": "ok"
+         },
+         {
+          "seq": 105,
+          "step": {
+           "kind": "searched",
+           "target": "onHand"
+          },
+          "n": 1,
+          "outcome": "ok"
+         },
+         {
+          "seq": 106,
+          "step": {
+           "kind": "searched",
+           "target": "apps/web/test/*.test.ts"
+          },
+          "n": 1,
+          "outcome": "ok"
+         }
+        ],
+        "reads": 2,
+        "searches": 2
+       }
+      ]
+     },
+     {
+      "k": "voice",
+      "seq": 107,
+      "text": "缓存里确实存了 On hand，但 `connect()` 在 hello 回来之前就把它清空了，所以第一帧是空的。先跑测试确认一下。"
+     },
+     {
+      "k": "steps",
+      "seq": 108,
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 108,
+         "step": {
+          "kind": "ran",
+          "target": "bun test",
+          "says": "Run the glance cache tests"
+         },
+         "n": 1,
+         "outcome": "error",
+         "command": "bun test apps/web/test/glance.test.ts",
+         "output": "bun test v1.3.2\n\napps/web/test/glance.test.ts:\n✓ glance > keeps the channel's newest 400 events [3.12ms]\n✓ glance > forgets a revoked device [0.88ms]\n✗ glance > paints On hand before the socket opens [2.41ms]\n\n  expect(received).toEqual(expected)\n  - Expected  + Received\n  -   \"tasks\": 3,\n  +   \"tasks\": 0,\n\n 2 pass\n 1 fail\nRan 3 tests across 1 file. [118.00ms]",
+         "hint": "✗ glance > paints On hand before the socket opens [2.41ms]"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 109,
+         "step": {
+          "kind": "edited",
+          "target": "src/app.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "The file has been updated.",
+         "diff": [
+          "   connect() {",
+          "-    this.S.onHand = undefined;",
+          "-    this.S.board = emptyBoard();",
+          "+    // D209: the glance's On hand stays until the home answers.",
+          "+    if (!this.glanced) this.S.onHand = undefined;",
+          "     this.open();"
+         ],
+         "added": 2,
+         "removed": 2
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 110,
+         "step": {
+          "kind": "ran",
+          "target": "bun test",
+          "says": "Run the glance cache tests"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "bun test apps/web/test/glance.test.ts",
+         "output": "bun test v1.3.2\n\n 3 pass\n 0 fail\nRan 3 tests across 1 file. [96.00ms]"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 111,
+         "step": {
+          "kind": "ran",
+          "target": "bun run typecheck",
+          "says": "Typecheck the workspace"
+         },
+         "n": 1,
+         "outcome": "error",
+         "command": "bun run typecheck",
+         "output": "$ tsc -p . --noEmit\napps/web/src/app.ts(412,14): error TS2339: Property 'glanced' does not exist on type 'App'.\nerror: script \"typecheck\" exited with code 2",
+         "hint": "apps/web/src/app.ts(412,14): error TS2339: Property 'glanced' does not exist on type 'App'."
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 112,
+         "step": {
+          "kind": "edited",
+          "target": "src/app.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "The file has been updated.",
+         "diff": [
+          "   draft = \"\";",
+          "+  /** The first frame came from the glance cache (D209). */",
+          "+  glanced = false;"
+         ],
+         "added": 2
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 113,
+         "step": {
+          "kind": "edited",
+          "target": "src/glance.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "The file has been updated.",
+         "diff": [
+          " export function paintGlance(app: App, g: Glance) {",
+          "+  app.glanced = true;",
+          "   app.S.replay(g.events);"
+         ],
+         "added": 1
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 114,
+         "step": {
+          "kind": "ran",
+          "target": "bun run typecheck",
+          "says": "Typecheck the workspace"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "bun run typecheck",
+         "output": "$ tsc -p . --noEmit"
+        }
+       }
+      ]
+     },
+     {
+      "k": "voice",
+      "seq": 115,
+      "text": "测试和类型检查都过了。有一件事要你定：缓存里的 On hand 要不要也留着**等你定的事**？留着的话一打开就能看到，但其中有的可能已经在别的设备上回答过了。"
+     }
+    ]
+   },
+   {
+    "seq": 116,
+    "prompt": {
+     "k": "you",
+     "seq": 116,
+     "text": "留着，但回答过的要在 hello 回来后马上消失。这是我 iPad 上现在的样子：",
+     "media": [
+      {
+       "id": "b200000000000000000000000000000000000000000000000000000000000000",
+       "type": "image/png",
+       "bytes": 48000,
+       "w": 688,
+       "h": 918,
+       "k": "k"
+      }
+     ]
+    },
+    "body": [
+     {
+      "k": "steps",
+      "seq": 117,
+      "lines": [
+       {
+        "k": "looks",
+        "seq": 117,
+        "rows": [
+         {
+          "seq": 117,
+          "step": {
+           "kind": "read",
+           "target": "src/glance.ts"
+          },
+          "n": 1,
+          "outcome": "ok"
+         },
+         {
+          "seq": 118,
+          "step": {
+           "kind": "searched",
+           "target": "decisions"
+          },
+          "n": 1,
+          "outcome": "ok"
+         }
+        ],
+        "reads": 1,
+        "searches": 1
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 119,
+         "step": {
+          "kind": "edited",
+          "target": "src/glance.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "The file has been updated.",
+         "diff": [
+          "-  const keep = { events: s.events.slice(-400), onHand: s.onHand };",
+          "+  // Kept with On hand: the asks still open when the page hid; hello's replay drops the answered.",
+          "+  const keep = { events: s.events.slice(-400), onHand: s.onHand, asks: s.openDecisions().map((d) => d.id) };"
+         ],
+         "added": 2,
+         "removed": 1
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 120,
+         "step": {
+          "kind": "edited",
+          "target": "test/glance-asks.test.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "File created successfully",
+         "diff": [
+          "+import { expect, test } from \"bun:test\";",
+          "+import { glanceOf, paintGlance } from \"../src/glance.ts\";",
+          "+import { fakeApp } from \"./guard.ts\";",
+          "+",
+          "+test(\"an ask answered elsewhere goes once hello is back\", () => {",
+          "+  const app = fakeApp({ asks: [\"d1\", \"d2\"] });",
+          "+  paintGlance(app, glanceOf(app.S));",
+          "+  app.hello({ answered: [\"d1\"] });",
+          "+  expect(app.S.openDecisions().map((d) => d.id)).toEqual([\"d2\"]);",
+          "+});"
+         ],
+         "added": 10
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 121,
+         "step": {
+          "kind": "ran",
+          "target": "bun test",
+          "says": "Run the web client's tests"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "bun test apps/web/test",
+         "output": "bun test v1.3.2\n\n 212 pass\n 0 fail\n 611 expect() calls\nRan 212 tests across 21 files. [3.41s]"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 122,
+         "step": {
+          "kind": "ran",
+          "target": "sh build-web.sh",
+          "says": "Build the web client"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "sh scripts/build-web.sh",
+         "output": "built apps/web/static/app.js (418 KB)"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 123,
+         "step": {
+          "kind": "ran",
+          "target": "git commit",
+          "says": "Commit the fix"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "git commit -am 'D209: On hand stays from the glance until hello'",
+         "output": "[fix/glance-onhand 4c1e9a2] D209: On hand stays from the glance until hello\n 4 files changed, 31 insertions(+), 4 deletions(-)"
+        }
+       }
+      ]
+     },
+     {
+      "k": "voice",
+      "seq": 124,
+      "text": "改好了。打开时 On hand 直接是上次的样子，等你定的事也在；hello 回来后，别处回答过的会马上消失。\n\n- `connect()` 不再清空缓存里的 On hand\n- 缓存多存了还开着的事\n- 新加了一个测试，web 的 212 个测试全过"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "a long claude code run, under way",
+  "harness": "claude-code",
+  "working": true,
+  "events": [
+   {
+    "seq": 100,
+    "ts": "2026-11-10T06:58:00.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "partner",
+    "kind": "task_open",
+    "body": {
+     "taskId": "gl1",
+     "title": "Stop On hand flashing empty when the phone app opens",
+     "project": "ducter",
+     "place": {
+      "kind": "repo",
+      "repoPath": "/Users/weyl/dev/ducter",
+      "branch": "fix/glance-onhand"
+     },
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "brief": "On the iPad, the app opens with On hand saying \"Nothing on hand\" for a second or two before the tasks come in. D209's glance cache should make the first frame what was there last time. Find why, fix it, keep the tests green. The screenshot is the user's."
+    }
+   },
+   {
+    "seq": 101,
+    "ts": "2026-11-10T06:58:02.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "user",
+     "from": "runner",
+     "text": "<brief>…</brief>\nStart the task."
+    }
+   },
+   {
+    "seq": 102,
+    "ts": "2026-11-10T06:58:06.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "assistant",
+     "thinking": [
+      "Where the glance cache restores On hand"
+     ]
+    }
+   },
+   {
+    "seq": 103,
+    "ts": "2026-11-10T06:58:08.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Read",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 104,
+    "ts": "2026-11-10T06:58:10.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Read",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/app.ts"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 105,
+    "ts": "2026-11-10T06:58:12.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Grep",
+      "input": {
+       "pattern": "onHand",
+       "path": "apps/web/src"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 106,
+    "ts": "2026-11-10T06:58:13.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Glob",
+      "input": {
+       "pattern": "apps/web/test/*.test.ts"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 107,
+    "ts": "2026-11-10T06:58:20.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "assistant",
+     "text": "The cache does keep On hand, but `connect()` clears it before hello comes back, so the first frame is empty. Running the tests to confirm."
+    }
+   },
+   {
+    "seq": 108,
+    "ts": "2026-11-10T06:58:26.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "bun test apps/web/test/glance.test.ts",
+       "description": "Run the glance cache tests"
+      },
+      "output": "bun test v1.3.2\n\napps/web/test/glance.test.ts:\n✓ glance > keeps the channel's newest 400 events [3.12ms]\n✓ glance > forgets a revoked device [0.88ms]\n✗ glance > paints On hand before the socket opens [2.41ms]\n\n  expect(received).toEqual(expected)\n  - Expected  + Received\n  -   \"tasks\": 3,\n  +   \"tasks\": 0,\n\n 2 pass\n 1 fail\nRan 3 tests across 1 file. [118.00ms]",
+      "ok": false
+     }
+    }
+   },
+   {
+    "seq": 109,
+    "ts": "2026-11-10T06:58:40.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Edit",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/app.ts",
+       "old_string": "  connect() {\n    this.S.onHand = undefined;\n    this.S.board = emptyBoard();\n    this.open();",
+       "new_string": "  connect() {\n    // D209: the glance's On hand stays until the home answers.\n    if (!this.glanced) this.S.onHand = undefined;\n    this.open();"
+      },
+      "output": "The file has been updated.",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 110,
+    "ts": "2026-11-10T06:58:46.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "bun test apps/web/test/glance.test.ts",
+       "description": "Run the glance cache tests"
+      },
+      "output": "bun test v1.3.2\n\n 3 pass\n 0 fail\nRan 3 tests across 1 file. [96.00ms]",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 111,
+    "ts": "2026-11-10T06:58:58.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "bun run typecheck",
+       "description": "Typecheck the workspace"
+      },
+      "output": "$ tsc -p . --noEmit\napps/web/src/app.ts(412,14): error TS2339: Property 'glanced' does not exist on type 'App'.\nerror: script \"typecheck\" exited with code 2",
+      "ok": false
+     }
+    }
+   },
+   {
+    "seq": 112,
+    "ts": "2026-11-10T06:59:04.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Edit",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/app.ts",
+       "old_string": "  draft = \"\";",
+       "new_string": "  draft = \"\";\n  /** The first frame came from the glance cache (D209). */\n  glanced = false;"
+      },
+      "output": "The file has been updated.",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 113,
+    "ts": "2026-11-10T06:59:10.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Edit",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts",
+       "old_string": "export function paintGlance(app: App, g: Glance) {\n  app.S.replay(g.events);",
+       "new_string": "export function paintGlance(app: App, g: Glance) {\n  app.glanced = true;\n  app.S.replay(g.events);"
+      },
+      "output": "The file has been updated.",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 114,
+    "ts": "2026-11-10T06:59:24.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "bun run typecheck",
+       "description": "Typecheck the workspace"
+      },
+      "output": "$ tsc -p . --noEmit",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 115,
+    "ts": "2026-11-10T06:59:30.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "assistant",
+     "text": "Tests and the typecheck pass. One thing for you to decide: should the cached On hand keep **the things waiting on you** too? Kept, they show the moment the app opens, but some may have been answered on another device by then."
+    }
+   },
+   {
+    "seq": 116,
+    "ts": "2026-11-10T07:03:00.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "user",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "user",
+     "from": "user",
+     "text": "Keep them, but any that were answered should go as soon as hello is back. This is my iPad now:"
+    }
+   },
+   {
+    "seq": 117,
+    "ts": "2026-11-10T07:03:04.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Read",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 118,
+    "ts": "2026-11-10T07:03:06.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Grep",
+      "input": {
+       "pattern": "decisions",
+       "path": "apps/web/src/glance.ts"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 119,
+    "ts": "2026-11-10T07:03:18.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Edit",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts",
+       "old_string": "  const keep = { events: s.events.slice(-400), onHand: s.onHand };",
+       "new_string": "  // Kept with On hand: the asks still open when the page hid; hello's replay drops the answered.\n  const keep = { events: s.events.slice(-400), onHand: s.onHand, asks: s.openDecisions().map((d) => d.id) };"
+      },
+      "output": "The file has been updated.",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 120,
+    "ts": "2026-11-10T07:03:30.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Write",
+      "input": {
+       "file_path": "/Users/weyl/dev/ducter/apps/web/test/glance-asks.test.ts",
+       "content": "import { expect, test } from \"bun:test\";\nimport { glanceOf, paintGlance } from \"../src/glance.ts\";\nimport { fakeApp } from \"./guard.ts\";\n\ntest(\"an ask answered elsewhere goes once hello is back\", () => {\n  const app = fakeApp({ asks: [\"d1\", \"d2\"] });\n  paintGlance(app, glanceOf(app.S));\n  app.hello({ answered: [\"d1\"] });\n  expect(app.S.openDecisions().map((d) => d.id)).toEqual([\"d2\"]);\n});\n"
+      },
+      "output": "File created successfully",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 121,
+    "ts": "2026-11-10T07:03:42.000Z",
+    "persona": "default",
+    "stream": "task:gl1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "gl1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "bun test apps/web/test",
+       "description": "Run the web client's tests"
+      },
+      "output": "bun test v1.3.2\n\n 212 pass\n 0 fail\n 611 expect() calls\nRan 212 tests across 21 files. [3.41s]",
+      "ok": true
+     }
+    }
+   }
+  ],
+  "want": [
+   {
+    "seq": 100,
+    "prompt": {
+     "k": "brief",
+     "seq": 100,
+     "text": "On the iPad, the app opens with On hand saying \"Nothing on hand\" for a second or two before the tasks come in. D209's glance cache should make the first frame what was there last time. Find why, fix it, keep the tests green. The screenshot is the user's.",
+     "by": "partner"
+    },
+    "body": [
+     {
+      "k": "steps",
+      "seq": 102,
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 102,
+         "thought": "Where the glance cache restores On hand",
+         "n": 1,
+         "outcome": "ok"
+        }
+       },
+       {
+        "k": "looks",
+        "seq": 103,
+        "rows": [
+         {
+          "seq": 103,
+          "step": {
+           "kind": "read",
+           "target": "src/glance.ts"
+          },
+          "n": 1,
+          "outcome": "ok"
+         },
+         {
+          "seq": 104,
+          "step": {
+           "kind": "read",
+           "target": "src/app.ts"
+          },
+          "n": 1,
+          "outcome": "ok"
+         },
+         {
+          "seq": 105,
+          "step": {
+           "kind": "searched",
+           "target": "onHand"
+          },
+          "n": 1,
+          "outcome": "ok"
+         },
+         {
+          "seq": 106,
+          "step": {
+           "kind": "searched",
+           "target": "apps/web/test/*.test.ts"
+          },
+          "n": 1,
+          "outcome": "ok"
+         }
+        ],
+        "reads": 2,
+        "searches": 2
+       }
+      ]
+     },
+     {
+      "k": "voice",
+      "seq": 107,
+      "text": "The cache does keep On hand, but `connect()` clears it before hello comes back, so the first frame is empty. Running the tests to confirm."
+     },
+     {
+      "k": "steps",
+      "seq": 108,
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 108,
+         "step": {
+          "kind": "ran",
+          "target": "bun test",
+          "says": "Run the glance cache tests"
+         },
+         "n": 1,
+         "outcome": "error",
+         "command": "bun test apps/web/test/glance.test.ts",
+         "output": "bun test v1.3.2\n\napps/web/test/glance.test.ts:\n✓ glance > keeps the channel's newest 400 events [3.12ms]\n✓ glance > forgets a revoked device [0.88ms]\n✗ glance > paints On hand before the socket opens [2.41ms]\n\n  expect(received).toEqual(expected)\n  - Expected  + Received\n  -   \"tasks\": 3,\n  +   \"tasks\": 0,\n\n 2 pass\n 1 fail\nRan 3 tests across 1 file. [118.00ms]",
+         "hint": "✗ glance > paints On hand before the socket opens [2.41ms]"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 109,
+         "step": {
+          "kind": "edited",
+          "target": "src/app.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "The file has been updated.",
+         "diff": [
+          "   connect() {",
+          "-    this.S.onHand = undefined;",
+          "-    this.S.board = emptyBoard();",
+          "+    // D209: the glance's On hand stays until the home answers.",
+          "+    if (!this.glanced) this.S.onHand = undefined;",
+          "     this.open();"
+         ],
+         "added": 2,
+         "removed": 2
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 110,
+         "step": {
+          "kind": "ran",
+          "target": "bun test",
+          "says": "Run the glance cache tests"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "bun test apps/web/test/glance.test.ts",
+         "output": "bun test v1.3.2\n\n 3 pass\n 0 fail\nRan 3 tests across 1 file. [96.00ms]"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 111,
+         "step": {
+          "kind": "ran",
+          "target": "bun run typecheck",
+          "says": "Typecheck the workspace"
+         },
+         "n": 1,
+         "outcome": "error",
+         "command": "bun run typecheck",
+         "output": "$ tsc -p . --noEmit\napps/web/src/app.ts(412,14): error TS2339: Property 'glanced' does not exist on type 'App'.\nerror: script \"typecheck\" exited with code 2",
+         "hint": "apps/web/src/app.ts(412,14): error TS2339: Property 'glanced' does not exist on type 'App'."
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 112,
+         "step": {
+          "kind": "edited",
+          "target": "src/app.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "The file has been updated.",
+         "diff": [
+          "   draft = \"\";",
+          "+  /** The first frame came from the glance cache (D209). */",
+          "+  glanced = false;"
+         ],
+         "added": 2
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 113,
+         "step": {
+          "kind": "edited",
+          "target": "src/glance.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "The file has been updated.",
+         "diff": [
+          " export function paintGlance(app: App, g: Glance) {",
+          "+  app.glanced = true;",
+          "   app.S.replay(g.events);"
+         ],
+         "added": 1
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 114,
+         "step": {
+          "kind": "ran",
+          "target": "bun run typecheck",
+          "says": "Typecheck the workspace"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "bun run typecheck",
+         "output": "$ tsc -p . --noEmit"
+        }
+       }
+      ]
+     },
+     {
+      "k": "voice",
+      "seq": 115,
+      "text": "Tests and the typecheck pass. One thing for you to decide: should the cached On hand keep **the things waiting on you** too? Kept, they show the moment the app opens, but some may have been answered on another device by then."
+     }
+    ]
+   },
+   {
+    "seq": 116,
+    "prompt": {
+     "k": "you",
+     "seq": 116,
+     "text": "Keep them, but any that were answered should go as soon as hello is back. This is my iPad now:"
+    },
+    "body": [
+     {
+      "k": "steps",
+      "seq": 117,
+      "lines": [
+       {
+        "k": "looks",
+        "seq": 117,
+        "rows": [
+         {
+          "seq": 117,
+          "step": {
+           "kind": "read",
+           "target": "src/glance.ts"
+          },
+          "n": 1,
+          "outcome": "ok"
+         },
+         {
+          "seq": 118,
+          "step": {
+           "kind": "searched",
+           "target": "decisions"
+          },
+          "n": 1,
+          "outcome": "ok"
+         }
+        ],
+        "reads": 1,
+        "searches": 1
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 119,
+         "step": {
+          "kind": "edited",
+          "target": "src/glance.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "The file has been updated.",
+         "diff": [
+          "-  const keep = { events: s.events.slice(-400), onHand: s.onHand };",
+          "+  // Kept with On hand: the asks still open when the page hid; hello's replay drops the answered.",
+          "+  const keep = { events: s.events.slice(-400), onHand: s.onHand, asks: s.openDecisions().map((d) => d.id) };"
+         ],
+         "added": 2,
+         "removed": 1
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 120,
+         "step": {
+          "kind": "edited",
+          "target": "test/glance-asks.test.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "File created successfully",
+         "diff": [
+          "+import { expect, test } from \"bun:test\";",
+          "+import { glanceOf, paintGlance } from \"../src/glance.ts\";",
+          "+import { fakeApp } from \"./guard.ts\";",
+          "+",
+          "+test(\"an ask answered elsewhere goes once hello is back\", () => {",
+          "+  const app = fakeApp({ asks: [\"d1\", \"d2\"] });",
+          "+  paintGlance(app, glanceOf(app.S));",
+          "+  app.hello({ answered: [\"d1\"] });",
+          "+  expect(app.S.openDecisions().map((d) => d.id)).toEqual([\"d2\"]);",
+          "+});"
+         ],
+         "added": 10
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 121,
+         "step": {
+          "kind": "ran",
+          "target": "bun test",
+          "says": "Run the web client's tests"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "bun test apps/web/test",
+         "output": "bun test v1.3.2\n\n 212 pass\n 0 fail\n 611 expect() calls\nRan 212 tests across 21 files. [3.41s]"
+        }
+       }
+      ],
+      "live": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "edits of every shape",
+  "harness": "codex",
+  "working": false,
+  "events": [
+   {
+    "seq": 100,
+    "ts": "2026-11-10T06:58:00.000Z",
+    "persona": "default",
+    "stream": "task:ed1",
+    "origin": "user",
+    "kind": "task_open",
+    "body": {
+     "taskId": "ed1",
+     "title": "Tidy the config",
+     "project": "",
+     "place": {
+      "kind": "none"
+     },
+     "harness": "codex",
+     "origin": "you",
+     "brief": "Tidy the config files."
+    }
+   },
+   {
+    "seq": 101,
+    "ts": "2026-11-10T06:58:01.000Z",
+    "persona": "default",
+    "stream": "task:ed1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ed1",
+     "role": "tool",
+     "tool": {
+      "name": "apply_patch",
+      "input": {
+       "input": "*** Begin Patch\n*** Update File: a/config.toml\n@@ [server]\n-port = 80\n+port = 8080\n*** Add File: b/notes.md\n+# Notes\n+Port moved.\n*** End Patch"
+      },
+      "output": "Success. Updated 2 files",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 102,
+    "ts": "2026-11-10T06:58:02.000Z",
+    "persona": "default",
+    "stream": "task:ed1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ed1",
+     "role": "tool",
+     "tool": {
+      "name": "MultiEdit",
+      "input": {
+       "file_path": "/w/src/a.ts",
+       "edits": [
+        {
+         "old_string": "let a = 1;",
+         "new_string": "const a = 1;"
+        },
+        {
+         "old_string": "let b = 2;\nlet c = 3;",
+         "new_string": "const b = 2;\nlet c = 3;"
+        }
+       ]
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 103,
+    "ts": "2026-11-10T06:58:03.000Z",
+    "persona": "default",
+    "stream": "task:ed1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ed1",
+     "role": "tool",
+     "tool": {
+      "name": "Write",
+      "input": {
+       "file_path": "/w/.env.example",
+       "content": "PORT=8080\nTOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123456789\n"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 104,
+    "ts": "2026-11-10T06:58:04.000Z",
+    "persona": "default",
+    "stream": "task:ed1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ed1",
+     "role": "tool",
+     "tool": {
+      "name": "fileChange",
+      "input": {
+       "changes": [
+        {
+         "path": "/w/README.md",
+         "kind": "update",
+         "diff": "--- a/README.md\n+++ b/README.md\n@@ -1,2 +1,2 @@\n # App\n-Runs on 80.\n+Runs on 8080.\n"
+        }
+       ]
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 105,
+    "ts": "2026-11-10T06:58:05.000Z",
+    "persona": "default",
+    "stream": "task:ed1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ed1",
+     "role": "tool",
+     "tool": {
+      "name": "Edit",
+      "input": {
+       "file_path": "/w/x.ts",
+       "old_string": "a",
+       "new_string": "b"
+      },
+      "output": "String to replace not found in file.",
+      "ok": false
+     }
+    }
+   },
+   {
+    "seq": 106,
+    "ts": "2026-11-10T06:58:06.000Z",
+    "persona": "default",
+    "stream": "task:ed1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ed1",
+     "role": "assistant",
+     "text": "Done."
+    }
+   }
+  ],
+  "want": [
+   {
+    "seq": 100,
+    "prompt": {
+     "k": "brief",
+     "seq": 100,
+     "text": "Tidy the config files.",
+     "by": "you"
+    },
+    "body": [
+     {
+      "k": "steps",
+      "seq": 101,
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 101,
+         "step": {
+          "kind": "edited",
+          "target": "a/config.toml",
+          "more": 1
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "Success. Updated 2 files",
+         "diff": [
+          "@@ a/config.toml",
+          "-port = 80",
+          "+port = 8080",
+          "@@ b/notes.md",
+          "+# Notes",
+          "+Port moved."
+         ],
+         "added": 3,
+         "removed": 1
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 102,
+         "step": {
+          "kind": "edited",
+          "target": "src/a.ts"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "diff": [
+          "-let a = 1;",
+          "+const a = 1;",
+          "@@",
+          "-let b = 2;",
+          "+const b = 2;",
+          " let c = 3;"
+         ],
+         "added": 2,
+         "removed": 2
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 103,
+         "step": {
+          "kind": "edited",
+          "target": "w/.env.example"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "diff": [
+          "+PORT=8080",
+          "+TOKEN=ghp_••••••"
+         ],
+         "added": 2
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 104,
+         "step": {
+          "kind": "edited",
+          "target": "w/README.md"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "diff": [
+          " # App",
+          "-Runs on 80.",
+          "+Runs on 8080."
+         ],
+         "added": 1,
+         "removed": 1
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 105,
+         "step": {
+          "kind": "edited",
+          "target": "w/x.ts"
+         },
+         "n": 1,
+         "outcome": "error",
+         "output": "String to replace not found in file.",
+         "hint": "String to replace not found in file.",
+         "diff": [
+          "-a",
+          "+b"
+         ],
+         "added": 1,
+         "removed": 1
+        }
+       }
+      ]
+     },
+     {
+      "k": "voice",
+      "seq": 106,
+      "text": "Done."
+     }
+    ]
    }
   ]
  }

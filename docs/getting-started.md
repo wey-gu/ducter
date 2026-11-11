@@ -69,6 +69,14 @@ Each computer has one **Ducter folder**, `~/ducter`, that holds what Ducter make
 `~/ducter` of your own, Ducter leaves it alone and uses `~/ducter-work`. To use another place, set
 `DUCTER_FOLDER` before starting Ducter.
 
+Open a task to read it like a conversation with the agent doing it: what was asked, then what it
+said and every step it took, one line each. A line with **›** opens: a command shows what it
+printed, an edit shows the lines it changed, and a step that went wrong shows its error right
+under it. The line over the box says what it's doing now; **Pause** stops it there (on a
+keyboard, press Esc twice). Write in the box to tell it something; if it's busy, your words wait
+as **Queued** until it gets to them. Scrolled up while it works? **Jump to latest** brings you
+back.
+
 To work on it by hand, open the task on the Mac and choose **Open** at its top right: **Show in
 Finder**, **Open in** Cursor, Visual Studio Code or Zed, or **Open in** Terminal, iTerm2, Ghostty
 or Warp, whichever you have. **Open** shows when the copy is on this Mac.

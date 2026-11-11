@@ -5,8 +5,9 @@
 //   DUCTER_PORT=7993 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh DEMO_PHASE=running|done|failed|yourturn bun apps/web/demo-transcript.ts
 // then open http://127.0.0.1:7993/app#task=mem1 (cc1 for "failed").
 import { startCore, stubRunner } from "@ducter/core";
-import type { Attention, LogEvent } from "@ducter/protocol";
-import { cases } from "../../packages/protocol/fixtures/transcript-cases.ts";
+import type { Attention, LogEvent, MediaRef } from "@ducter/protocol";
+import { readFileSync } from "node:fs";
+import { cases, glanceEvents } from "../../packages/protocol/fixtures/transcript-cases.ts";
 
 const phase = process.env.DEMO_PHASE ?? "running";
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
@@ -16,8 +17,16 @@ const core = startCore({ persona: { id: "default", name: zh ? "小鸭" : "Ducter
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 
+// DEMO_CASE=glance (D210): a long Claude Code run on Ducter itself, with pictures; DEMO_PICS names a
+// folder holding empty.png (the user's screenshot) and filled.png (what the task showed);
+// DEMO_EXTRA adds that many reads and searches (a long history).
+const glance = process.env.DEMO_CASE === "glance";
+const picsDir = process.env.DEMO_PICS;
+const put = (f: string) => (picsDir ? (core as unknown as { media: { put(b: Uint8Array): MediaRef } }).media.put(new Uint8Array(readFileSync(`${picsDir}/${f}`))) : undefined);
+const pics = glance ? { brief: put("empty.png"), you: put("filled.png"), report: put("filled.png") } : {};
 const c = cases[{ running: 1, done: 0, yourturn: 1, failed: 2 }[phase] ?? 1]!;
-const evs: LogEvent[] = [...c.events];
+const upTo = ({ running: 342, yourturn: 90 } as Record<string, number>)[phase] ?? Infinity;
+const evs: LogEvent[] = glance ? glanceEvents({ zh, extra: Number(process.env.DEMO_EXTRA ?? 0), upTo, pics }) : [...c.events];
 const end = Date.parse(evs.at(-1)!.ts);
 const id = evs[0]!.stream.slice("task:".length);
 // Each event as long before now as it was before the run's last one, plus 20 s.
@@ -28,7 +37,7 @@ for (const ev of evs) {
 offset = 0;
 // The fixture's Go was relayed already (its "User says Go" is in the stream): its ask is answered.
 for (const d of core.log.read({ stream: "channel", kinds: ["decision"] })) core.decisions.decide((d.body as { decisionId: string }).decisionId, "go");
-if (phase === "yourturn")
+if (phase === "yourturn" && !glance)
   core.log.append({ stream: `task:${id}`, origin: "task", kind: "task_event", body: { taskId: id, role: "assistant", text: "nmem is connected. Before I touch `~/.codex/config.toml`: do you want Mem as a Codex plugin or as an MCP server? This Codex may not have the plugin command." } });
 if (phase === "failed")
   core.log.append({ stream: `task:${id}`, origin: "task", kind: "report", body: { taskId: id, state: "failed", summary: "Couldn't commit: the turn failed when the stream dropped. The fix is in src/cart.ts and the tests pass.", questions: [], evidence: [] } });

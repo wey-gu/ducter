@@ -27,7 +27,7 @@ func TestTranscriptFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, c := range cases {
-		got, _ := json.Marshal(blocksOf(c.Harness, c.Events, c.Working))
+		got, _ := json.Marshal(turnsOf(blocksOf(c.Harness, c.Events, c.Working)))
 		var g, w any
 		_ = json.Unmarshal(got, &g)
 		_ = json.Unmarshal(c.Want, &w)

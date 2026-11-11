@@ -9,6 +9,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { A, type Route } from "./app.ts";
 import { canFill, currentSplit, markSplit, onFoldChange, WIDE, type Split } from "./fold.ts";
+import { escPause } from "./esc.ts";
 
 /** Two panes from WIDE (fold.ts): an iPad held across (1133–1366), a 13" iPad upright (1024–1032),
  *  a wide window. Under it, one column: a phone, Split View's thirds and halves, an 11" iPad
@@ -75,6 +76,8 @@ export function upFrom(r: Route): Route | undefined {
  *  keeps it. */
 export function escUp(e: KeyboardEvent) {
   if (e.key !== "Escape" || e.defaultPrevented || A.sheet || A.live) return;
+  // D210: on a task at work, Esc (in its composer too) asks to pause it; a second Esc pauses.
+  if (A.route.name === "task" && escPause(A.route.id)) return void e.preventDefault();
   const el = document.activeElement;
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) return;
   const up = upFrom(A.route);

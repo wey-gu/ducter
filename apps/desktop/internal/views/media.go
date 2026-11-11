@@ -469,6 +469,13 @@ func (a *App) mediaGrid(c *ui.Context, key string, items []mediaItem, end bool, 
 	}
 	g := protocol.Grid(sizes)
 	w, h := gridSize(g, a.colWidth())
+	// D210: in an opened task a picture stays small (the transcript is for
+	// reading); a click opens it big.
+	if strings.HasPrefix(scope, "task:") {
+		if f := min(240/w, 224/h, 1); f < 1 {
+			w, h = w*f, h*f
+		}
+	}
 	gap := t.MediaGap
 	r := t.BubbleRadius
 	box := ui.Box(c.Key("grid:"+key)).Size(w, h).Shrink(0).Clip()

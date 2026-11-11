@@ -176,14 +176,16 @@ What the window writes is what the user reads when they open the task, in one co
 - the latest **report** is said once, at the top: a finished task's report is its outcome
   (with its evidence as a line of proof and what went out), an unfinished one's is the line
   of where it stands. Earlier reports stay in What it did as "Told {name}" lines;
-- the **transcript** becomes What it did (D152, after D127): the window's own words are the
-  readable layer; each stretch of tool calls between two of them folds under one gist line
-  (`packages/protocol/src/transcript.ts`), each call one sentence (the agent's own words for
-  it, else a verb and a short summary, the same kinds on every harness:
-  `packages/protocol/src/steps.ts`), thinking as its headings, a probe that found nothing in
-  neutral words, a real failure one Error line with its raw text on a click; a stretch is
-  在浏览器里操作 / Worked in the browser only when a step was in a browser or on the screen (a
-  `curl` or a fetch reads a page and is a command, D207);
+- the **transcript** is a conversation with the window, turn by turn (D210, after D152): a turn
+  opens with what was said to it (the brief, the user's words, the partner's) and holds its
+  answer in order (`turnsOf(blocksOf(…))`, `packages/protocol/src/transcript.ts`): its own words,
+  and each tool call one line between them: a sentence (the agent's own words for it, with the
+  command beside them, else a verb and a short summary, the same kinds on every harness:
+  `packages/protocol/src/steps.ts`), thinking as its headings, consecutive looks (reads,
+  searches, probes, a page read) folded into one line, a probe that found nothing in neutral
+  words; an edit carries its diff, read from the edit tool's own input
+  (`packages/protocol/src/editdiff.ts`, at most 60 lines); a real failure carries its telling
+  output line (`failLine`) and its output on a click (40 lines kept);
 - the **runner's own lines** (D207) are said in the user's words from a key (`note.<say>`,
   `noteOf` in `transcript.ts` and its Go port): the stall (**它停下了，没交回结果 / It stopped
   without reporting back**), a computer going and coming back, a fresh session, a switch, an
@@ -192,7 +194,8 @@ What the window writes is what the user reads when they open the task, in one co
   memory recalled, a retry, archiving, a restart) says nothing;
 - a **message the user sends** carries a receipt only when it says something: **在发… /
   Sending…**, queued **它忙完手上的就看 / It'll read this once it's done with what it's doing**,
-  or **没送到 / Didn't get through**; steered in or started at once, the live line shows it (D207);
+  or **没送到 / Didn't get through**; steered in or started at once, the foot over the composer
+  shows it at work (D207, D210); a queued one reads **排队中 / Queued** until the window answers;
 - **checkpoints** are the window's words said once, marked saved (D152);
 - **keys** in the brief, a command or its output never leave the home: the projection hides
   them in every frame and push it sends; the Log keeps them for the task (D152);

@@ -444,8 +444,8 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
 3. **An opened task** (conductor depth; D74, D90). One centered column on the conversation's
    measure and rhythm, read top to bottom; the window's header is the breadcrumb and the title only.
    1. **The head is one block** (D90): the state face (96 pt) beside one quiet meta line
-      (D152): the state in its ink, the task's one clock (since it started, ticking; once
-      finished "用了 18 分钟 / took 18 min"), the agent's coin, the agent and the model, where
+      (D152): the state in its ink, the task's one clock once finished ("用了 18 分钟 / took 18
+      min"; while it works the clock ticks in the foot, D210), the agent's coin, the agent and the model, where
       (repo · branch, a folder, "在 hel 上 / on hel" for another machine; nothing for no
       place), and **换谁来做 / Switch who does it ›** as a small action; then a headline that is always there (D152: the task's short title, or where a browser or a wait stands; never the agent's latest sentence, which the transcript says): before D152, while it works, what it is doing now in a
       sentence (why it waits, its latest report, its latest saved progress, else its title)
@@ -456,20 +456,28 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    3. The outcome, said once: the report in the partner's size, the line of proof, what went
       out, then Merge / Open draft PR (Try again for one that didn't work). It replaces the
       result banner and the "Told Ducter · done" card.
-   4. **你交代的事 / What you asked** (D152): the brief on a quiet sunken card (Surface
-      Sunken, radius MD, no base), SM, three lines until **展开 / Show all**; a hidden key says
-      **隐藏了一段密钥 / A key is hidden** with a small drawn key.
-   5. **What it did** (D152, after D127), no heading: the agent's voice is the readable layer,
-      its messages and saved progress (said once, a small flag and **保存了进度 / Progress
-      saved** under them) in body ink at the reading measure. Each stretch of steps between
-      two things it said is one gist line (a drawn mark, the gist at SM/600, "· 5 步", "· 1
-      处出错" in the failed ink, a chevron that turns): folded when settled, open while under
-      way, where the gist is the latest step beside a spinner (the only thing that moves).
-      Under it, indented 22, each step one sentence: the agent's own words for it, else a
-      verb and the code in mono on the inline-code tint ("运行 `nmem doctor`"); a probe that
-      found nothing in muted ink ("没找到 nmem"); a real failure the one red-tinted line, shown
-      even folded, its command and output opening on a click in mono; ×n for a repeat. The
-      user's Go is their own bubble; turn endings are not shown.
+   4. **The conversation with the agent, turn by turn** (D210, after D152; no heading), turns
+      24 apart. A turn opens with what was said to the agent: the brief **你交给它的事 / What you
+      asked** on a quiet sunken card (Surface Sunken, radius MD, no base), SM, three lines until
+      **展开 / Show all**, a hidden key saying **隐藏了一段密钥 / A key is hidden** with a small
+      drawn key; your words as your bubble (the user's Go too); the partner's passed-on words
+      on the same sunken card under **{name} 对它说**. Pictures in a turn stay small (about 15
+      rem / 240 pt). Then the agent's answer in order, items 12 apart: its messages and saved
+      progress (said once, a small flag and **保存了进度 / Progress saved**) in body ink at the
+      reading measure, and its steps between them, **one line each**, consecutive lines tight
+      (26–28 pt, padding 0/6 bleeding past the column so a hover background reads as a row):
+      a drawn mark in muted ink; the sentence (the agent's own words, else a verb and a
+      summary, SM, InkSoft); the command or path in mono, muted, cut first (no inline-code
+      tile); an edit's **+n** in the done ink and **−n** in the failed ink; ×n; a chevron in
+      Faint only when the line opens. Consecutive looks fold into **看了 3 个文件，搜了 2 次 /
+      Read 3 files, 2 searches**. A probe that found nothing in muted ink. A real failure in
+      the failed ink with **出错 / Error**, and its telling output line under it in mono XS,
+      failed ink, indented 24. Opened, a step shows `$ command` and its output on Sunken (mono
+      XS, 12 lines then **还有 n 行 / n more lines**), an edit its diff on Sunken: put-in lines
+      on the done surface in the done ink, taken-out lines on the failed surface in the failed
+      ink, context plain, "@@ path" headers bold muted, ⋯ between hunks. Your words while it
+      is busy are lighter with **排队中 · 它忙完手上的就看**. Past 240 lines the older turns wait
+      behind **显示更早的 n 步 / Show n earlier steps**.
    6. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff
       in place, full width, under a quiet header. No diff shows by default; a task in no repo,
       or with nothing changed yet, has no section (D127). The phone names the changes in the proof line and shows no diff.
@@ -480,12 +488,18 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    24 / 32; a headline or paragraph at most about 68 Latin or 36 Chinese characters a line
    (D78 Chinese rules: leading 1.75, no tracking).
    The box to talk to the task stays at the bottom of the window, as the conversation's
-   composer does; a pending ask sits over it (D152), and while the task works a reader at the
-   page's end follows the newest step. Header actions: **打开 / Open** (D198: a menu, Show in
+   composer does; a pending ask sits over it (D152). Over it, **the foot** (D210): while the task
+   works, a spinner (the only thing that moves), **在做 / Working** in the working ink, the clock
+   in tabular figures, its latest step in InkSoft, and **暂停 / Pause** at the end (Esc twice: the
+   first turns it into **再按一次 Esc 就暂停** with **接着做** and **暂停**); over to you, **该你了**
+   in the needs ink and the hint muted; silent otherwise. A task that works or waits on you opens
+   at its latest, a finished one at its head; while it works a reader at the end follows the
+   newest step, one who scrolled up gets **回到最新 / Jump to latest**, a 40 pt round raised
+   button (Surface, the floating shadow) centred over the transcript's foot. Header actions: **打开 / Open** (D198: a menu, Show in
    Finder; then Open in each of Cursor / Visual Studio Code / Zed installed; then, D201, Open
    in each terminal installed, Terminal / iTerm2 / Ghostty / Warp, and Rex or con once they
-   open folders; a separator between the groups, the one used last first in each) in every state while its working copy is on this Mac, **暂停 / Pause**
-   while it works, **不做了 / Cancel task** until it finishes (D207). Over its changes, the working copy's path,
+   open folders; a separator between the groups, the one used last first in each) in every state while its working copy is on this Mac, and
+   **不做了 / Cancel task** until it finishes (D207); **暂停 / Pause** is in the foot (D210). Over its changes, the working copy's path,
    `~/…`, mono, small and selectable (D198).
 
 ## Prototype canvases

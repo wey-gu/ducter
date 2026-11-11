@@ -1,9 +1,10 @@
 package views
 
-// An opened task as blocks (D152): what you asked, the agent's own voice
-// (what it said, the progress it saved) as the readable layer, each
-// stretch of steps between two things it said folded under one gist line,
-// the stretch under way live. The Go port of
+// An opened task as turns (D210, after D152): each opens with what someone
+// said to the agent (the brief, your words, the partner's) and holds the
+// agent's answer in order: its words, and its steps as compact lines (a run
+// of looks folded into one, an edit with its diff, a failure with its
+// error line). The Go port of
 // packages/protocol/src/transcript.ts; both pass fixtures/transcript.json.
 // Every text has its keys hidden (internal/redact): the home already hides
 // them in what it sends; this is the second wall.
@@ -26,15 +27,32 @@ type StepRow struct {
 	Outcome string `json:"outcome"` // ok | error | missing (a probe that found nothing)
 	Command string `json:"command,omitempty"`
 	Output  string `json:"output,omitempty"`
+	// Hint is a real failure's telling line (D210).
+	Hint string `json:"hint,omitempty"`
+	// Diff is an edit's lines (editdiff.go); DiffMore past them.
+	Diff     []string `json:"diff,omitempty"`
+	DiffMore int      `json:"diffMore,omitempty"`
+	Added    int      `json:"added,omitempty"`
+	Removed  int      `json:"removed,omitempty"`
 }
 
-// Gist is what a stretch of steps was, for its one line.
-type Gist struct {
-	Kind   string `json:"kind"` // look | edit | browse | run | think
-	Steps  int    `json:"steps"`
-	Files  int    `json:"files"`
-	App    string `json:"app,omitempty"`
-	Errors int    `json:"errors"`
+// Line is a line of a stretch (D210): one step (K "row"), or a run of two
+// or more looks folded into one (K "looks").
+type Line struct {
+	K        string    `json:"k"`
+	Row      *StepRow  `json:"row,omitempty"`
+	Seq      int64     `json:"seq,omitempty"`
+	Rows     []StepRow `json:"rows,omitempty"`
+	Reads    *int      `json:"reads,omitempty"`
+	Searches *int      `json:"searches,omitempty"`
+}
+
+// Turn is what someone said to the agent, then everything up to the next
+// thing said to it (D210).
+type Turn struct {
+	Seq    int64   `json:"seq"`
+	Prompt *Block  `json:"prompt,omitempty"`
+	Body   []Block `json:"body"`
 }
 
 // Block is one thing in the transcript. K is brief, voice, steps, you,
@@ -45,8 +63,8 @@ type Block struct {
 	Text  string    `json:"text,omitempty"`
 	By    string    `json:"by,omitempty"`    // brief: you | partner
 	Saved bool      `json:"saved,omitempty"` // voice: progress it saved
-	Rows  []StepRow `json:"rows,omitempty"`
-	Gist  *Gist     `json:"gist,omitempty"`
+	Rows  []StepRow `json:"-"`
+	Lines []Line    `json:"lines,omitempty"`
 	Live  bool      `json:"live,omitempty"`
 	Go    *string   `json:"go,omitempty"`    // you: their Go relayed, its label
 	State string    `json:"state,omitempty"` // report
@@ -136,13 +154,6 @@ func looks(s *Step) bool {
 	return s.Kind == "read" || s.Kind == "searched" || s.Probe || s.Kind == "browsed" && (s.Act == "request" || s.Act == "fetch")
 }
 
-// inBrowser: a step in a browser or on the computer's screen. A request
-// or a fetch is a command that reads a page, not a browser (D207: curl
-// and pwd folded as 在浏览器里操作).
-func inBrowser(s *Step) bool {
-	return s.Kind == "computer" || s.Kind == "browsed" && s.Act != "request" && s.Act != "fetch"
-}
-
 func shellCommand(raw json.RawMessage) string {
 	var v any
 	if json.Unmarshal(raw, &v) != nil {
@@ -184,44 +195,89 @@ func clipLines(s string, n int) string {
 	return strings.Join(ls, "\n")
 }
 
-func gistOf(rows []StepRow) *Gist {
-	g := &Gist{Kind: "run"}
-	files := map[string]bool{}
-	steps, look, browse := 0, true, false
-	for _, r := range rows {
-		if r.Outcome == "error" {
-			g.Errors++
+var (
+	failWordRe = regexp.MustCompile(`(?i)error|fail|✗|exception|fatal|denied|not found|cannot|panic`)
+	noFailRe   = regexp.MustCompile(`(?i)\b0 (fail|error)`)
+)
+
+// failLine is a failure's telling line: the first that names an error,
+// else the last that says anything.
+func failLine(output string) string {
+	var ls []string
+	for _, l := range strings.Split(output, "\n") {
+		if l = strings.TrimSpace(l); l != "" {
+			ls = append(ls, l)
 		}
-		if r.Step == nil {
+	}
+	l := ""
+	for _, x := range ls {
+		if failWordRe.MatchString(x) && !noFailRe.MatchString(x) {
+			l = x
+			break
+		}
+	}
+	if l == "" && len(ls) > 0 {
+		l = ls[len(ls)-1]
+	}
+	if r := []rune(l); len(r) > 160 {
+		l = string(r[:159]) + "…"
+	}
+	return l
+}
+
+// linesOf is a stretch's rows as lines: two or more looks in a row fold
+// into one (D210).
+func linesOf(rows []StepRow) []Line {
+	var out []Line
+	var run []StepRow
+	flush := func() {
+		if len(run) >= 2 {
+			reads, all := 0, 0
+			for _, r := range run {
+				all += r.N
+				if r.Step.Kind == "read" {
+					reads += r.N
+				}
+			}
+			searches := all - reads
+			out = append(out, Line{K: "looks", Seq: run[0].Seq, Rows: run, Reads: &reads, Searches: &searches})
+		} else {
+			for i := range run {
+				r := run[i]
+				out = append(out, Line{K: "row", Row: &r})
+			}
+		}
+		run = nil
+	}
+	for i := range rows {
+		r := rows[i]
+		if r.Step != nil && looks(r.Step) && r.Outcome != "error" {
+			run = append(run, r)
 			continue
 		}
-		steps++
-		g.Steps += r.N
-		if r.Step.Kind == "edited" && r.Step.Act != "mkdir" {
-			files[r.Step.Target] = true
-		}
-		if r.Step.App != "" {
-			g.App = r.Step.App
-		}
-		if !looks(r.Step) {
-			look = false
-		}
-		if inBrowser(r.Step) {
-			browse = true
-		}
+		flush()
+		out = append(out, Line{K: "row", Row: &r})
 	}
-	g.Files = len(files)
-	switch {
-	case steps == 0:
-		g.Kind = "think"
-	case g.Files > 0:
-		g.Kind = "edit"
-	case look:
-		g.Kind = "look"
-	case browse:
-		g.Kind = "browse"
+	flush()
+	return out
+}
+
+// turnsOf is blocks as turns: a brief, your words or the partner's open one.
+func turnsOf(blocks []Block) []Turn {
+	var out []Turn
+	for i := range blocks {
+		b := blocks[i]
+		switch b.K {
+		case "brief", "you", "partner":
+			out = append(out, Turn{Seq: b.Seq, Prompt: &b, Body: []Block{}})
+			continue
+		}
+		if len(out) == 0 {
+			out = append(out, Turn{Seq: b.Seq, Body: []Block{}})
+		}
+		out[len(out)-1].Body = append(out[len(out)-1].Body, b)
 	}
-	return g
+	return out
 }
 
 // blocksOf is a task's events as blocks; working: its last stretch is live.
@@ -260,7 +316,7 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 			if b.Origin == "you" {
 				by = "you"
 			}
-			out = append(out, Block{K: "brief", Seq: ev.Seq, Text: redact.Text(strings.TrimSpace(b.Brief)), By: by})
+			out = append(out, Block{K: "brief", Seq: ev.Seq, Text: redact.Text(strings.TrimSpace(b.Brief)), By: by, Media: b.Media})
 		case *protocol.Checkpoint:
 			text := redact.Text(strings.TrimSpace(b.Text))
 			if text == "" {
@@ -315,7 +371,19 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 						continue
 					}
 				}
-				row := StepRow{Seq: ev.Seq, Step: &st, N: 1, Outcome: outcome, Output: redact.Text(clipLines(strings.TrimRight(b.Tool.Output, " \t\r\n"), 40))}
+				full := strings.TrimRight(b.Tool.Output, " \t\r\n")
+				row := StepRow{Seq: ev.Seq, Step: &st, N: 1, Outcome: outcome, Output: redact.Text(clipLines(full, 40))}
+				if outcome == "error" {
+					row.Hint = redact.Text(failLine(full))
+				}
+				if st.Kind == "edited" && st.Act != "mkdir" {
+					if d := editDiff(b.Tool.Input); d != nil {
+						for _, l := range d.Lines {
+							row.Diff = append(row.Diff, redact.Text(l))
+						}
+						row.DiffMore, row.Added, row.Removed = d.More, d.Added, d.Removed
+					}
+				}
 				switch st.Kind {
 				case "ran", "searched", "read", "browsed":
 					row.Command = redact.Text(shellCommand(b.Tool.Input))
@@ -336,7 +404,7 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 					continue // the runner's kickoff, not something anyone said
 				}
 				if b.From == "partner" || ev.Origin == protocol.OriginPartner {
-					out = append(out, Block{K: "partner", Seq: ev.Seq, Text: redact.Text(text)})
+					out = append(out, Block{K: "partner", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media})
 					continue
 				}
 				blk := Block{K: "you", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media}
@@ -351,7 +419,7 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 	}
 	for i := range out {
 		if out[i].K == "steps" {
-			out[i].Gist = gistOf(out[i].Rows)
+			out[i].Lines = linesOf(out[i].Rows)
 		}
 	}
 	if n := len(out); working && n > 0 && out[n-1].K == "steps" {

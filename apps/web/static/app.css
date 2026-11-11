@@ -1674,12 +1674,11 @@ a {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* D210: the command or path in mono beside the words, in muted ink: no chip. */
 .step .sum.code {
   font-family: var(--mono);
   font-size: var(--xs);
-  padding: 1px 6px;
-  border-radius: 6px;
-  background: var(--sunken);
+  color: var(--ink-muted);
 }
 .step .times {
   flex: none;
@@ -1692,32 +1691,22 @@ a {
   opacity: 0;
   transition: transform var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
 }
-.step:hover .chev,
-.step:focus-visible .chev,
-.stretch .rows .step.bad {
-  width: calc(100% + 4px);
-  margin-right: 0;
-}
-.step.bad .chev,
-.step.open .chev {
+.step .chev {
   opacity: 1;
+  color: var(--faint);
+}
+.step .chev .g {
+  width: 12px;
+  height: 12px;
+  color: inherit;
 }
 .step.open .chev {
   transform: rotate(90deg);
 }
-.step.bad {
-  padding: 0 8px 0 4px;
-  margin: 0 -8px 0 -4px;
-  width: calc(100% + 12px);
-  border-radius: var(--r-xs);
-  background: color-mix(in srgb, var(--failed-surface) 60%, transparent);
-}
 .step.bad .g,
-.step.bad b {
-  color: var(--failed-ink);
-}
+.step.bad b,
 .step.bad .sum {
-  color: var(--ink-soft);
+  color: var(--failed-ink);
 }
 .step.saved,
 .step.note {
@@ -1733,7 +1722,10 @@ a {
   display: inline-block;
 }
 .raw {
-  margin: 2px 0 6px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 2px 0 8px 24px;
   padding: 8px 12px;
   border-radius: var(--r-xs);
   background: var(--sunken);
@@ -1890,69 +1882,6 @@ a {
   height: 14px;
   color: var(--faint);
 }
-/* A stretch of steps: one gist line, its rows under it. */
-.stretch {
-  display: flex;
-  flex-direction: column;
-}
-.gist {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  align-self: flex-start;
-  max-width: 100%;
-  min-height: 32px;
-  padding: 0 6px;
-  margin: 0 -6px;
-  border-radius: var(--r-xs);
-  font-size: var(--sm);
-  color: var(--ink-muted);
-  text-align: left;
-}
-.gist .g {
-  flex: none;
-  width: 16px;
-  height: 16px;
-}
-.gist .sum {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-.stretch.underway .gist .sum {
-  color: var(--ink);
-}
-.gist .n {
-  flex: none;
-  font-variant-numeric: tabular-nums;
-}
-.gist .errs {
-  flex: none;
-  font-weight: 600;
-  color: var(--failed-ink);
-}
-.gist .chev,
-.step .chev {
-  display: inline-flex;
-  flex: none;
-  transition: transform var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
-}
-.gist .chev .g,
-.step .chev .g {
-  width: 12px;
-  height: 12px;
-}
-.gist.open .chev {
-  transform: rotate(90deg);
-}
-@media (hover: hover), (any-hover: hover) {
-  .gist:hover {
-    background: var(--surface-sunken);
-  }
-}
 .spin {
   flex: none;
   width: 12px;
@@ -1973,11 +1902,6 @@ a {
     animation-duration: 2.4s;
   }
 }
-.stretch .rows {
-  display: flex;
-  flex-direction: column;
-  padding-left: 22px;
-}
 .step.quiet .sum {
   color: var(--ink-muted);
 }
@@ -1988,8 +1912,205 @@ a {
 .step.note .sum {
   color: var(--ink-muted);
 }
+.step .sum {
+  flex: 0 1 auto;
+}
+.step .sum:first-of-type {
+  flex-shrink: 0.35;
+}
 .step .sum.code {
   flex: 0 1 auto;
+}
+/* ---------- D210: the opened task as turns ---------- */
+.turns {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+/* A settled turn off screen costs nothing to lay out (a long task holds hundreds of steps). */
+.turn:not(:last-child) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
+.turns .earlier {
+  align-self: flex-start;
+  font-size: var(--sm);
+}
+.lines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sline {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sline > .step {
+  padding: 0 6px;
+  margin: 0 -6px;
+  width: calc(100% + 12px);
+  border-radius: var(--r-xs);
+}
+@media (hover: hover), (any-hover: hover) {
+  .sline > button.step:hover {
+    background: var(--surface-sunken);
+  }
+}
+.step .plus,
+.step .minus {
+  flex: none;
+  font-family: var(--mono);
+  font-size: var(--xs);
+  font-variant-numeric: tabular-nums;
+}
+.step .plus {
+  color: var(--done-ink);
+}
+.step .minus {
+  color: var(--failed-ink);
+}
+/* A failure's telling line, in place under its step. */
+.sline .errline {
+  margin: -2px 0 4px 24px;
+  font-family: var(--mono);
+  font-size: var(--xs);
+  line-height: 1.5;
+  color: var(--failed-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sline .looks {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 4px 22px;
+}
+.raw pre {
+  margin: 0;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.raw .more {
+  align-self: flex-start;
+  font-family: var(--font);
+  font-size: var(--xs);
+  min-height: 24px;
+}
+/* An edit's lines: put in on the done tint, taken out on the failed tint. */
+.diff {
+  margin: 2px 0 8px 24px;
+  padding: 4px 0;
+  border-radius: var(--r-xs);
+  background: var(--sunken);
+  font-family: var(--mono);
+  font-size: var(--xs);
+  line-height: 1.6;
+  color: var(--ink-soft);
+  overflow-x: auto;
+}
+.diff .dl {
+  padding: 0 12px 0 8px;
+  white-space: pre;
+  min-width: max-content;
+}
+.diff .dl .sign {
+  display: inline-block;
+  width: 1.4em;
+  color: var(--ink-muted);
+}
+.diff .dl.add {
+  background: color-mix(in srgb, var(--done-surface) 70%, transparent);
+  color: var(--done-ink);
+}
+.diff .dl.del {
+  background: color-mix(in srgb, var(--failed-surface) 70%, transparent);
+  color: var(--failed-ink);
+}
+.diff .dl.add .sign,
+.diff .dl.del .sign {
+  color: inherit;
+}
+.diff .dl.head {
+  padding-top: 4px;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.diff .dl.gap {
+  color: var(--faint);
+  font-family: var(--font);
+}
+/* Your words while they wait their turn: lighter until it answers. */
+.tx.you.waits {
+  opacity: 0.72;
+}
+/* Where it stands, over the composer: working with its clock and latest step, or over to you. */
+.task-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 2px 16px 0;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+.task-foot b {
+  flex: none;
+  font-weight: 800;
+  color: var(--state-ink, var(--ink));
+}
+.task-foot .clock {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.task-foot .now {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+.task-foot .grow {
+  flex: 1;
+}
+.task-foot .esc {
+  flex: none;
+  font-size: var(--xs);
+}
+.task-foot .btn {
+  flex: none;
+}
+.full > .task-foot {
+  padding-left: max(24px, calc((100% - 720px) / 2));
+  padding-right: max(24px, calc((100% - 720px) / 2));
+}
+/* Jump to latest: a round raised button over the transcript's foot, never a pill. */
+.jump-dock {
+  position: relative;
+  height: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 2;
+}
+.jump {
+  position: absolute;
+  bottom: 10px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-soft);
+  box-shadow: var(--floating), 0 0 0 1px var(--rim);
 }
 .step .bad-tag {
   flex: none;
@@ -5063,6 +5184,11 @@ dl.call-summary dd { margin: 0; }
 }
 .media.on-task .pics {
   --pics-w: min(100%, 22rem);
+}
+/* D210: in a turn, a picture stays small: the transcript is for reading; a tap opens it big. */
+.turns .media.on-task .pics {
+  --pics-w: min(100%, 15rem);
+  --pics-h: 14rem;
 }
 .tx.you .media {
   margin-bottom: var(--s2);

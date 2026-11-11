@@ -169,6 +169,18 @@ notarize() {
   fi
   echo "notarizing $(basename "$1") (a few minutes)"
   xcrun notarytool submit "$@" --wait --timeout 30m >"$WORK/notary.log" 2>&1 || true
+  # The upload went through but waiting on Apple dropped (2026-11-11: "The request timed out."
+  # while In Progress): wait on the same submission again rather than fail or submit twice.
+  sub="$(sed -n 's/^ *id: //p' "$WORK/notary.log" | head -1)"
+  file="$1"; shift
+  tries=0
+  while [ -n "$sub" ] && ! grep -qE 'status: (Accepted|Invalid|Rejected)' "$WORK/notary.log" && [ "$tries" -lt 4 ]; do
+    tries=$((tries + 1))
+    echo "waiting on Apple again for $sub (try $tries)"
+    sleep 20
+    xcrun notarytool wait "$sub" "$@" --timeout 30m >>"$WORK/notary.log" 2>&1 || true
+  done
+  set -- "$file" "$@"
   if ! grep -q 'status: Accepted' "$WORK/notary.log"; then
     cat "$WORK/notary.log" >&2
     sub="$(sed -n 's/^ *id: //p' "$WORK/notary.log" | head -1)"

@@ -77,6 +77,12 @@ export interface NewTaskDraft {
   effort?: string;
   pending?: string;
   placeOnly?: string;
+  // D203: 找一个文件夹… / Find a folder… (list "browse"): the computer looked through (a device
+  // id), the folder asked for, the answer once it lands; adding: the clientId of its project_add;
+  // wantBranch: the branch to keep once the copy picked on another computer says its branches.
+  browse?: { device: string; cid: string; path?: string; res?: Extract<ServerFrame, { t: "folder_browse_result" }> };
+  adding?: string;
+  wantBranch?: string;
 }
 
 /** D185: the "every few hours" the sheet offers. */
@@ -387,7 +393,23 @@ class AppState {
     if (f.t === "update_result") return void ((this.checkingUpdates = false), (this.deviceAnswer = f.ok || f.update || f.reason === "no_release" ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "disconnect_result" || f.t === "rename_result") return void ((this.deviceAnswer = f.ok ? undefined : { device: f.device, reason: f.reason === "name_taken" ? "name_taken" : "failed" }), this.changed());
     if (f.t === "candidates") return void (this.candidates.set(f.taskId, f.candidates), this.changed());
-    if (f.t === "task_new_options") return void ((this.newTaskOptions = { places: f.places, candidates: f.candidates, ...(f.models ? { models: f.models } : {}) }), this.changed());
+    if (f.t === "task_new_options") {
+      this.newTaskOptions = { places: f.places, candidates: f.candidates, ...(f.models ? { models: f.models } : {}) };
+      // D203: the copy picked on another computer says its branches now: keep the branch it has.
+      const want = this.nt.wantBranch;
+      const ch = want ? this.chosenPlace() : undefined;
+      if (want && ch?.branches) {
+        if (ch.branches.includes(want) && want !== ch.defaultBranch) this.nt.branch = want;
+        this.nt.wantBranch = "";
+      }
+      return this.changed();
+    }
+    if (f.t === "folder_browse_result") {
+      const b = this.nt.browse;
+      if (b && f.clientId === b.cid) (b.res = f), f.ok && f.path && (b.path = f.path), this.changed();
+      return;
+    }
+    if (f.t === "project_add_result") return this.folderAdded(f);
     if (f.t === "task_new_result") return this.newTaskResult(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
@@ -610,6 +632,75 @@ class AppState {
     return this.newTaskPlaces().find((p) => this.placeComputer(p.place) === device && sameRepo(p, chosen));
   }
 
+  /** D203: the computers whose folders can be looked through from here: the home and each worker that is reachable. */
+  ntBrowsable(): DeviceView[] {
+    const cs = (this.devices ?? []).filter((d) => d.kind !== "phone" && (d.home || d.state !== "unreachable"));
+    return cs.length ? cs : [{ id: "local", name: this.homeName ?? "", kind: "server", home: true, state: "awake", harnesses: [], abilities: [] }];
+  }
+
+  /** D203: 找一个文件夹… / Find a folder… on that computer (a device id): its folders, from `path` (absent: ~). */
+  ntBrowse(device: string, path?: string) {
+    const nt = this.nt;
+    this.nextClient++;
+    const cid = `b${Date.now()}-${this.nextClient}`;
+    const keep = nt.browse?.device === device ? nt.browse.path : undefined;
+    nt.browse = { device, cid, ...(path ?? keep ? { path: path ?? keep } : {}) };
+    nt.list = "browse";
+    nt.branchOpen = nt.computerOpen = false;
+    nt.err = "";
+    const dev = this.ntDeviceArg(device);
+    this.send({ t: "folder_browse", clientId: cid, ...(dev ? { device: dev } : {}), ...(path ? { path } : {}) });
+    this.changed();
+  }
+
+  /** D203: the folder being looked at becomes a project on that computer (D186, D197) and the card's place. */
+  ntBrowseUse() {
+    const nt = this.nt;
+    const b = nt.browse;
+    if (!b?.res?.ok || !b.res.path || nt.adding) return;
+    this.nextClient++;
+    nt.adding = `p${Date.now()}-${this.nextClient}`;
+    nt.err = "";
+    const dev = this.ntDeviceArg(b.device);
+    this.send({ t: "project_add", path: b.res.path, clientId: nt.adding, ...(dev ? { device: dev } : {}) });
+    this.changed();
+  }
+
+  /** D203: the folder list again, from the browser (an agent waiting for a folder keeps waiting). */
+  ntBrowseBack() {
+    this.nt.list = "place";
+    this.changed();
+  }
+
+  /** The device a frame names for that computer: none for the home, else its id. */
+  private ntDeviceArg(device: string): string | undefined {
+    const d = (this.devices ?? []).find((x) => x.id === device || x.name === device);
+    return !device || device === "local" || d?.home ? undefined : (d?.id ?? device);
+  }
+
+  /** D203: a folder found there was added: it is the card's place (and picks the agent that waited for it). */
+  folderAdded(f: Extract<ServerFrame, { t: "project_add_result" }>) {
+    const nt = this.nt;
+    if (!nt.adding || f.clientId !== nt.adding) return;
+    nt.adding = "";
+    if (!f.ok || !f.place) {
+      nt.err = f.reason === "offline" ? this.L.t("newtask.find.offline", this.ntBrowseName()) : this.L.t("newtask.err.failed", f.message || "");
+      return this.changed();
+    }
+    const p = f.place;
+    nt.browse = undefined;
+    this.pickPlace(p);
+    // Shown at once, before the next options list it.
+    if (p.place.kind === "repo" || p.place.kind === "folder") nt.prefill = p.place;
+  }
+
+  /** D203: the name of the computer being looked through. */
+  ntBrowseName(): string {
+    const dev = this.nt.browse?.device ?? "";
+    const d = (this.devices ?? []).find((x) => x.id === dev || x.name === dev);
+    return d?.name ?? (dev === "local" || !dev ? (this.homeName ?? "") : dev);
+  }
+
   /** D202: the Model and Effort rows of an agent: its models, which is chosen, and the effort. */
   ntTune(c: Candidate | undefined): { models: ModelChoice[]; model?: ModelChoice; suggested?: ModelChoice; efforts: string[]; effort: string; live: boolean } {
     const none = { models: [] as ModelChoice[], efforts: [] as string[], effort: "", live: false };
@@ -666,6 +757,7 @@ class AppState {
       if (p.place.kind === "none" || this.placeComputer(p.place) === on) this.pickWho(nt.pending);
     }
     nt.pending = nt.placeOnly = undefined;
+    nt.wantBranch = "";
     if (placeKey(p.place) === placeKey(this.chosenPlace().place)) return this.changed();
     nt.placeKey = placeKey(p.place);
     nt.branch = "";
@@ -678,7 +770,7 @@ class AppState {
   /** D202: the folder list closes (or opens): an agent waiting for a folder stops waiting. */
   togglePlaces() {
     const nt = this.nt;
-    nt.list = nt.list === "place" ? "" : "place";
+    nt.list = nt.list === "place" || nt.list === "browse" ? "" : "place";
     nt.pending = nt.placeOnly = undefined;
     nt.branchOpen = nt.computerOpen = false;
     this.changed();
@@ -709,6 +801,8 @@ class AppState {
       this.pickWho(key);
       this.pickPlace(copy);
       if (branch && branch !== copy.defaultBranch && copy.branches?.includes(branch)) nt.branch = branch;
+      // D203: a repo that computer reported says its branches once asked: keep the branch then.
+      else if (branch && !copy.branches) nt.wantBranch = branch;
       return this.changed();
     }
     nt.pending = key;

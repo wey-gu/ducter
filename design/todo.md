@@ -107,10 +107,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **Projects: rename and remove (D186).** Defaults: click the name in By project to rename
       (the `cardName` control; every task carrying it follows); remove from the group's ⋯, its
       tasks untouched. Trigger: the first time a folder's name isn't the name the author wants.
-- [ ] **Projects: add a folder on the server itself, or from the phone (D186).** A folder on the
-      Mac is D197 (through its worker). Still open: a folder on the server home itself, and adding
-      from the phone. Default: a path field with that computer's folders suggested. Trigger: the
-      first project wanted on hel's own disk.
+- [x] **Projects: add a folder on the server itself, or from the phone (D186).** Done by D203:
+      找一个文件夹… on any computer of the home, from any client.
 - [ ] **New task: "every time something happens" (D185).** The card's 等某件事发生 is one-shot;
       a repeating condition still goes through the partner (its check is compiled by a model).
       Trigger: the first time the author wants a watcher without saying it.
@@ -523,6 +521,9 @@ computer part; 我要合电脑了; the parcel's Lands / Waits / Moves. Still ope
 - [ ] **D202: the switch sheet (换谁来做) picks a model and effort** the same way (today it keeps
       its rows per model and drops the effort on a switch). Trigger: the first ask to switch to a
       deeper effort mid-task.
+- [ ] **D203: live check** on hel + the Mac (a worker on this build answers `repos` and `browse`;
+      an older one reports none and Find a folder… says to update it), and whether 20 repos and the
+      REPO_ROOTS cover the author's checkouts. Trigger: the author's next run with the Mac switched on.
 
 ## Wide screens: the whole screen (D184)
 

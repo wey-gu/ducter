@@ -3705,11 +3705,57 @@ ol.tries b {
   max-height: 300px;
   overflow-y: auto;
 }
+/* A long list scrolls; its rows keep their height (a column flexbox under max-height would squeeze them). */
+.nt-list > * {
+  flex-shrink: 0;
+}
 .nt-list > small {
   font-size: var(--xs);
   font-weight: 700;
   color: var(--ink-muted);
   padding: 4px 10px 2px;
+}
+/* D203: a line in a list that isn't a choice (an empty computer, an empty folder), and Find a folder…'s head and foot. */
+.nt-empty {
+  padding: 6px 10px;
+}
+.nt-err-line {
+  color: var(--failed-ink);
+}
+.nt-browse-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  padding: 4px 10px 2px;
+  min-width: 0;
+}
+.nt-browse-head > small {
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.nt-browse-head > code {
+  font-size: var(--xs);
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.nt-browse {
+  max-height: 340px;
+}
+.nt-browse-foot {
+  position: sticky;
+  bottom: calc(-1 * var(--s2));
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+  margin: 4px calc(-1 * var(--s2)) calc(-1 * var(--s2));
+  padding: var(--s2);
+  background: var(--surface);
+  box-shadow: 0 -1px 0 var(--line-soft);
 }
 /* D202: under the chosen agent, its Model and Effort rows: short rows of chips that wrap. */
 .nt-agent {

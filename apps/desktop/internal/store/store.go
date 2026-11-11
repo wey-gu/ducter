@@ -434,7 +434,9 @@ type Store struct {
 	// frames (`ducter open`) the view has not taken yet.
 	NewTaskOptions *protocol.ServerFrame
 	NewTaskResults []protocol.ServerFrame
-	OpenRequests   []string
+	// FolderBrowse is the last folder_browse answer (D203, Find a folder…).
+	FolderBrowse *protocol.ServerFrame
+	OpenRequests []string
 }
 
 // Device returns a device of Your devices and abilities by id, or nil.
@@ -569,6 +571,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.NewTaskOptions = &fc
 	case "task_new_result", "project_add_result":
 		s.NewTaskResults = append(s.NewTaskResults, f)
+	case "folder_browse_result":
+		fc := f
+		s.FolderBrowse = &fc
 	case "open_task":
 		if f.TaskID != "" {
 			s.OpenRequests = append(s.OpenRequests, f.TaskID)

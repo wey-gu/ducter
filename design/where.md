@@ -210,8 +210,8 @@ but can **on another computer**, tagged **在 MacBook 上 / on MacBook** (D202: 
 on the chosen computer; an agent greyed here because it isn't installed gives way to the same agent
 there). Picking one moves the computer part with it (the chip's text slides to **MacBook**): one
 combined pick. For a folder (D202) it moves the folder: to the same repo's copy on that computer
-(same origin; neither knowing one, the exact folder name), else the folder list on that computer's
-places. If that computer is asleep, the chip says **睡着了 · 醒了就开始** and Start still works (the
+(same origin; neither knowing one, the exact folder name; D203: among the repos that computer
+reports too), else the folder list on that computer's places, with 找一个文件夹… to find one there. If that computer is asleep, the chip says **睡着了 · 醒了就开始** and Start still works (the
 task waits).
 
 New task never parses the words for needs (it is the power path, words unchanged, D128); the

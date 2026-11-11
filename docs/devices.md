@@ -272,7 +272,8 @@ going when MacBook closes*, *Needs your signed-in taobao.com*, *Only MacBook has
   to choose another. An AI agent you can only use on another computer shows *on MacBook*; picking
   it brings that computer along. For a folder on hel, that means the same project on the MacBook
   (the same repository, with its branch), or, when the MacBook has no copy, a folder you pick
-  there.
+  there. Each computer's own repositories are already in the folder list, and **Find a
+  folder…** looks through any of your computers' folders, from your phone too.
 - **About to close your laptop?** Say *"I'm closing my laptop"*, or choose **Move before closing**
   on its card in Devices. One card says what moves to a computer that stays awake and what can
   only run on the laptop; **Move them** is what happens if you don't answer, after a minute.

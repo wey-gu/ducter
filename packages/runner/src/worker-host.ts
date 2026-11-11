@@ -12,6 +12,8 @@ import { planPlace, provisionPlace } from "./places.ts";
 import { createFolderStore } from "./folder.ts";
 import { browserSidecar, sidecarWire, type BrowserOptions, type BrowserSidecar, type SidecarInput } from "./browser.ts";
 import { join } from "node:path";
+import { homedir } from "node:os";
+import { findRepos, listFolders, realFs, REPOS_REPORTED, type FsLike } from "@ducter/protocol/src/repos.ts";
 
 export interface WorkerHostOptions {
   dataDir: string; // the worker's own ~/.ducter (worktrees, scratch)
@@ -23,6 +25,9 @@ export interface WorkerHostOptions {
   gh?: string;
   /** D197 test seam: how folderInfo runs git here. */
   git?: GitRun;
+  /** D203 test seam: this computer's home folder and disk, for the repos and browse ops. */
+  home?: string;
+  fs?: FsLike;
   /** D157: this computer's browsers for browser places (its Chrome and the agents' own tools,
    *  cua-driver, Ducter's own browser), as the home's runner has them. */
   browser?: BrowserOptions;
@@ -165,6 +170,13 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     // D197: what a folder here is (missing, a folder, or a repo with its branches), so a home
     // elsewhere can add it as a project and offer its branches. Read-only.
     folderInfo: (a: { path?: unknown }) => folderInfo(String(a.path ?? ""), o.git ?? realGit),
+    // D203: the repos on this computer, most recently touched first, with each one's origin and
+    // default branch (read from its files, no git), so the home's New task card lists them and
+    // finds this computer's copy of a repo. Read-only; only under this computer's home folder.
+    repos: async () => findRepos(o.home ?? homedir(), o.fs ?? realFs, REPOS_REPORTED, { details: true, absolute: true }).repos,
+    // D203: a folder's subfolders here (never its files), for 找一个文件夹… / Find a folder…;
+    // confined to this computer's home folder, links resolved first. Read-only.
+    browse: async (a: { path?: unknown }) => listFolders(typeof a.path === "string" ? a.path : undefined, o.home ?? homedir(), o.fs ?? realFs),
     // D202: the models an AI agent's account offers here, with their effort levels, for the home's
     // New task card (token-free; null when it can't say). Read-only.
     models: async (a: { harness?: unknown }) => (await o.harness.models?.(String(a.harness ?? "")).catch(() => undefined)) ?? null,

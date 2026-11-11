@@ -765,6 +765,10 @@ export type ClientFrame =
   // project_add_result; On hand's projects and the card's places then include it. device (D197):
   // the folder is on that worker (the Mac app's own, when the home is elsewhere), read there.
   | { t: "project_add"; path: string; device?: string; clientId?: string }
+  // D203: 找一个文件夹… / Find a folder…: the subfolders of `path` (absent: the home folder, ~) on
+  // that computer (absent or "local": the home's own; else a worker, read there). Answered with
+  // folder_browse_result. Only under that computer's home folder; folders only, never files.
+  | { t: "folder_browse"; device?: string; path?: string; clientId?: string }
   // open_task: show this task in the apps (`ducter open <task>`): pushed to every connected app
   // as an open_task frame; the sender gets open_result with how many apps were told.
   | { t: "open_task"; taskId: string }
@@ -828,6 +832,13 @@ export interface SiteView {
 export type ClientKind = "desktop" | "web" | "cli";
 
 /** One place the New task card offers (D128). */
+/** D203: one subfolder in a folder_browse_result: its name, its path there, and whether it is a git repo. */
+export interface BrowseFolder {
+  name: string;
+  path: string;
+  repo?: true;
+}
+
 export interface PlaceChoice {
   place: Place; // kind "none" is 不用特定的地方 / No particular place (always last)
   name: string; // the repo's folder name; "" for no particular place
@@ -837,6 +848,7 @@ export interface PlaceChoice {
   added?: boolean; // D186: a project the user added by hand (listed even with no task yet)
   computer?: string; // D197: the computer it is on, only when the places span more than one
   remote?: string; // D202: a repo's origin URL, normalized (host/owner/repo), so its copy on another computer is found
+  found?: true; // D203: a repo that computer reported (no task there yet, not added); its branches come when it is asked for as `place`
 }
 
 /**
@@ -906,6 +918,9 @@ export type ServerFrame =
   | { t: "close_result"; device: string; ok: boolean; none?: boolean; decisionId?: string; message?: string }
   | { t: "task_new_result"; ok: boolean; clientId?: string; taskId?: string; card?: TaskCard; routineId?: string; routine?: RoutineView; reason?: NewTaskReason; message?: string }
   | { t: "project_add_result"; ok: boolean; clientId?: string; place?: PlaceChoice; reason?: "not_found" | "offline" | "failed"; message?: string }
+  // D203: path is the folder listed (real, absolute), home that computer's home folder, parent the
+  // folder above (absent at home); folders repos first (at most 200; more: there were more).
+  | { t: "folder_browse_result"; ok: boolean; clientId?: string; device?: string; path?: string; home?: string; parent?: string; folders?: BrowseFolder[]; more?: true; reason?: "outside" | "not_found" | "offline" | "failed"; message?: string }
   // Show this task (the app opens it, Esc returns). open_result answers the sender: apps = how many apps were told.
   | { t: "open_task"; taskId: string }
   | { t: "open_result"; taskId: string; ok: boolean; apps: number; message?: string }

@@ -13,6 +13,7 @@ import type { Projects } from "./projects.ts";
 import type { Routines } from "./routines.ts";
 import type { Untils } from "./until.ts";
 import { agentModels, agentsOf, MODELS_WAIT_MS, type ModelCatalog } from "./models.ts";
+import { listFolders, type BrowseResult, type RepoHint as FoundRepo } from "@ducter/protocol/src/repos.ts";
 
 // D197: the git reads are shared with a worker's folderInfo op (protocol/src/folder-info.ts).
 export { realGit, repoBranches, repoTop, type GitRun };
@@ -25,6 +26,87 @@ export interface NewTaskComputers {
   homeName(): string;
   /** A folder on that worker, read there; "offline" when it is away (or too old to answer). */
   folderInfo(device: string, path: string, timeoutMs: number): Promise<FolderInfo | "offline">;
+  /** D203: this home's workers, by id (an away one is listed, not online). */
+  workers?(): { id: string; name: string; online: boolean }[];
+  /** D203: the repos on that worker, read there (absolute paths, origin and default branch);
+   *  "offline" when it is away or too old to say. */
+  repos?(device: string, timeoutMs: number): Promise<FoundRepo[] | "offline">;
+  /** D203: a folder's subfolders on that worker (找一个文件夹… / Find a folder…). */
+  browse?(device: string, path: string | undefined, timeoutMs: number): Promise<BrowseResult | "offline">;
+}
+
+/** D203: how long a computer's reported repos are kept before they are asked again. */
+export const REPOS_KEEP_MS = 10 * 60_000;
+
+/**
+ * D203: each computer's repos, kept REPOS_KEEP_MS: the home's own from `home` (a scan of its
+ * disk), a worker's from its `repos` op. A read that takes longer than the card waits still lands
+ * here for the next card; an away or old worker has none.
+ */
+export interface FoundRepos {
+  get(device: string, waitMs: number): Promise<FoundRepo[]>;
+}
+
+export function createFoundRepos(o: { computers?: NewTaskComputers; home?: () => FoundRepo[]; now?: () => number; keepMs?: number }): FoundRepos {
+  const now = o.now ?? Date.now;
+  const keep = o.keepMs ?? REPOS_KEEP_MS;
+  const kept = new Map<string, { at: number; repos: FoundRepo[] }>();
+  const asking = new Map<string, Promise<FoundRepo[]>>();
+  const ask = (device: string): Promise<FoundRepo[]> => {
+    const had = asking.get(device);
+    if (had) return had;
+    const p = (async () => {
+      let repos: FoundRepo[] = [];
+      try {
+        if (isLocal(device)) repos = o.home?.() ?? [];
+        else {
+          const r = await o.computers?.repos?.(device, 15_000);
+          if (r === "offline" || !Array.isArray(r)) return [];
+          repos = r.filter((x) => x && typeof x.path === "string" && x.path.startsWith("/"));
+        }
+      } catch {
+        return [];
+      } finally {
+        asking.delete(device);
+      }
+      kept.set(device, { at: now(), repos });
+      return repos;
+    })();
+    asking.set(device, p);
+    return p;
+  };
+  return {
+    async get(device, waitMs) {
+      const k = kept.get(device);
+      if (k && now() - k.at < keep) return k.repos;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const late = new Promise<FoundRepo[]>((r) => (timer = setTimeout(() => r(k?.repos ?? []), waitMs)));
+      try {
+        return await Promise.race([ask(device), late]);
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+  };
+}
+
+/** D203: a folder's subfolders on a computer of this home: the home's own, or a worker's (read there). */
+export async function browseFolders(
+  d: Pick<NewTaskDeps, "computers" | "browseHome">,
+  device: string | undefined,
+  path: string | undefined,
+  ms = 10_000,
+): Promise<BrowseResult | { ok: false; reason: "offline" | "failed"; message: string }> {
+  if (isLocal(device)) return (d.browseHome ?? ((p) => listFolders(p)))(path);
+  const c = d.computers;
+  if (!c?.browse || !c.nameOf(device!)) return { ok: false, reason: "failed", message: "That computer isn't one of this home's." };
+  try {
+    const r = await c.browse(device!, path, ms);
+    if (r === "offline") return { ok: false, reason: "offline", message: "That computer can't be reached right now." };
+    return r;
+  } catch (err) {
+    return { ok: false, reason: "failed", message: (err as Error).message };
+  }
 }
 
 export interface NewTaskDeps {
@@ -45,6 +127,10 @@ export interface NewTaskDeps {
   computers?: NewTaskComputers;
   /** D202: each agent's models on each computer (the card's Model and Effort rows). */
   models?: ModelCatalog;
+  /** D203: each computer's repos (the home's own scan, a worker's report), kept a while. */
+  found?: FoundRepos;
+  /** D203: the home's own subfolders for 找一个文件夹… (default: this computer's home folder). */
+  browseHome?: (path: string | undefined) => BrowseResult;
 }
 
 /** D197: how long the card waits for a worker's branches before it shows the list without them. */
@@ -318,9 +404,32 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
     const models = d.models ? await newTaskModels(d.models, candidates).catch(() => undefined) : undefined;
     return { candidates, models };
   })();
+  // D203: the repos each computer has (the home's own scan, each worker's report), after the ones
+  // used or added, most recently touched first; a worker away or slow adds none. Their branches
+  // are read only for the one asked about (`at`): a card lists them, a pick reads them.
+  const found = d.found ?? foundOf(d);
+  const comps = ["local", ...(d.computers?.workers?.() ?? []).filter((w) => w.online).map((w) => w.id)];
+  const reported = await Promise.all(comps.map(async (dev) => ({ dev, repos: await found.get(dev, WORKER_BRANCHES_MS).catch(() => [] as FoundRepo[]) })));
+  const canon = (dev: string | undefined) => (isLocal(dev) ? "local" : (d.computers?.workers?.().find((w) => w.id === dev || w.name === dev)?.id ?? dev!));
+  const listed = new Set(places.map((c) => (c.place.kind === "repo" ? `${canon(c.place.device)} ${resolve(c.place.repoPath)}` : c.place.kind === "folder" ? `${canon(c.place.device)} ${resolve(c.place.path)}` : "")));
+  const atKey = at && (at.kind === "repo" || at.kind === "folder") ? `${canon(at.device)} ${resolve(expandHome(at.kind === "repo" ? at.repoPath : at.path))}` : "";
+  const extra: PlaceChoice[] = [];
+  for (const { dev, repos } of reported)
+    for (const r of repos) {
+      const path = resolve(expandHome(r.path));
+      const k = `${dev} ${path}`;
+      if (listed.has(k)) continue;
+      listed.add(k);
+      const place: Place = { kind: "repo", device: dev, repoPath: path };
+      extra.push({ place, name: nameOf(place, r.name || basename(path)), usedAt: r.touchedAt, found: true, ...(r.defaultBranch ? { defaultBranch: r.defaultBranch } : {}), ...(r.remote ? { remote: r.remote } : {}) });
+    }
+  extra.sort((a, b) => (b.usedAt ?? "").localeCompare(a.usedAt ?? ""));
+  const lazy = new Set<PlaceChoice>(extra);
+  places.push(...extra);
   await Promise.all(
     places.map(async (c) => {
       if (c.place.kind !== "repo") return;
+      if (lazy.has(c) && `${canon(c.place.device)} ${resolve(c.place.repoPath)}` !== atKey) return;
       const p = c.place;
       if (!isLocal(p.device)) {
         // D197: a repo on a worker: its branches from there, briefly; away or slow, none (as before).
@@ -351,6 +460,14 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
   // folder's is offered there, with its own copy of the repo); and each one's models.
   const { candidates, models } = await who;
   return { places, candidates, ...(models?.length ? { models } : {}) };
+}
+
+// D203: deps without their own FoundRepos keep one made from their computers (no home scan).
+const foundBy = new WeakMap<object, FoundRepos>();
+function foundOf(d: NewTaskDeps): FoundRepos {
+  let f = foundBy.get(d);
+  if (!f) foundBy.set(d, (f = createFoundRepos({ ...(d.computers ? { computers: d.computers } : {}) })));
+  return f;
 }
 
 /** D202: the Model and Effort rows of every agent the card may offer, read together (at most MODELS_WAIT_MS). */

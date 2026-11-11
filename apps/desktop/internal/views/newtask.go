@@ -73,6 +73,11 @@ type newTaskState struct {
 	startedTask string
 	// adding is the clientId of a project_add in flight (D186).
 	adding string
+	// D203: browse is 找一个文件夹… looking through a computer (the place
+	// list shows it instead of the places); wantBranch the branch to keep
+	// once the copy picked on another computer says its branches.
+	browse     *ntBrowse
+	wantBranch string
 	// sending is the clientId of the task_new in flight; err the line under
 	// Start when it didn't open.
 	sending string
@@ -374,6 +379,16 @@ func (a *App) StartNewTask(again ...bool) bool {
 // A folder added as a project (D186) becomes the chosen place.
 func (a *App) drainNewTask() {
 	nt := &a.nt
+	a.drainBrowse()
+	// D203: the copy picked on another computer says its branches now: keep the branch it has.
+	if nt.wantBranch != "" {
+		if ch := a.chosenPlace(a.newTaskPlaces()); ch.Branches != nil {
+			if hasString(ch.Branches, nt.wantBranch) && nt.wantBranch != ch.DefaultBranch {
+				nt.branch = nt.wantBranch
+			}
+			nt.wantBranch = ""
+		}
+	}
 	res := a.S.NewTaskResults
 	a.S.NewTaskResults = nil
 	for _, r := range res {
@@ -383,7 +398,15 @@ func (a *App) drainNewTask() {
 			}
 			nt.adding = ""
 			if r.OK && r.Place != nil {
-				nt.placeKey, nt.branch, nt.prefill = placeKey(r.Place.Place), "", nil
+				// D203: a folder found on the computer an agent waits on picks that agent.
+				if nt.pending != "" && a.placeComputer(r.Place.Place) == nt.placeOnly {
+					nt.pick = nt.pending
+					a.Local.SetNewTaskWho(nt.pick)
+				}
+				if nt.browse != nil {
+					nt.browse, nt.placeOpen, nt.pending, nt.placeOnly = nil, false, "", ""
+				}
+				nt.placeKey, nt.branch, nt.prefill, nt.wantBranch = placeKey(r.Place.Place), "", nil, ""
 				pl := r.Place.Place
 				a.send(protocol.TaskNewOptions{T: "task_new_options", Place: &pl})
 				continue
@@ -604,10 +627,10 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 	}
 	if click {
 		nt.shut("place")
-		nt.pending, nt.placeOnly = "", ""
+		nt.pending, nt.placeOnly, nt.browse = "", "", nil
 	}
 	if !nt.placeOpen {
-		nt.pending, nt.placeOnly = "", ""
+		nt.pending, nt.placeOnly, nt.browse = "", "", nil
 		return
 	}
 	ck := placeKey(chosen.Place)
@@ -621,8 +644,30 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 		}
 		title = a.L.T("newtask.agent.needsfolder", onlyName)
 	}
+	if nt.browse != nil {
+		title = a.L.T("newtask.find.title", a.browseName())
+	}
+	// D203: the repos computers reported fill the list after the used and
+	// added ones, up to 12 rows (all of one computer's while an agent
+	// waits there); 找一个文件夹… finds any other.
+	room, shownN := 12, 0
+	for _, p := range places {
+		if !p.Found && p.Place.Kind != "none" {
+			room--
+		}
+	}
 	a.listPanel(c, e, &nt.placeOpen, title, 360, func() {
+		if nt.browse != nil {
+			a.folderBrowser(c)
+			return
+		}
 		for _, p := range places {
+			if only == "" && p.Found && placeKey(p.Place) != ck {
+				if room <= 0 {
+					continue
+				}
+				room--
+			}
 			p := p
 			if only != "" && (p.Place.Kind == "none" || a.placeComputer(p.Place) != only) {
 				continue
@@ -644,7 +689,15 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 			}) {
 				a.pickPlace(p) // the chosen one again just closes the list
 			}
+			if p.Place.Kind != "none" {
+				shownN++
+			}
 		}
+		if only != "" && shownN == 0 {
+			// D203: nothing there yet: say so, and offer to find one, never a bare No folder.
+			ui.Text(c.Key("nt-place-empty"), a.L.T("newtask.find.empty", onlyName)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
+		}
+		a.findRows(c, only)
 		if only != "" {
 			// No folder on that computer works for the agent too.
 			if a.menuRow(c, "nt-place:none-on", a.L.T("newtask.nowhere")+" · "+onlyName, false, false, func() {
@@ -691,7 +744,7 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 // D202: an agent that waited for a folder on its computer is picked with it.
 func (a *App) pickPlace(p protocol.PlaceChoice) {
 	nt := &a.nt
-	nt.placeOpen = false
+	nt.placeOpen, nt.browse, nt.wantBranch = false, nil, ""
 	if nt.pending != "" {
 		if p.Place.Kind == "none" && nt.placeOnly != "" {
 			nt.computer = nt.placeOnly

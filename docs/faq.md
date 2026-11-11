@@ -109,6 +109,13 @@ this works once your Mac does tasks for it (Settings › Where it lives › **Le
 for …**): the folder stays on your Mac and tasks there run on your Mac. When your folders are on
 more than one computer, the list says which computer each one is on.
 
+The folder list also shows the repositories already on each of your computers (the ones you
+touched most recently), so you rarely need to add one. For any other folder, choose **Find a
+folder…** at the bottom of the list, on your phone or in the browser too: it shows that
+computer's folders one level at a time, starting from its home folder (repositories first); go
+in, then **Use this folder**. It becomes a project there, like **Add a folder**. Only folders
+inside that computer's home folder are shown, never the files in them.
+
 ### Does it remember me?
 
 It remembers your conversation. With [Nowledge Mem](https://mem.nowledge.co) it also starts out

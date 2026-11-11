@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.20
 
 <!-- whats-new
 zh: 能给伙伴发图片了，事情做出来的图也直接出现在对话里
@@ -29,6 +29,10 @@ lives on)**
   says no, you see why and what to do in Mem; Ducter never tries another identity or key. With an
   older Mem, the section says to update it first.
 - **Who can reach it › Nobody** now still brings back the answer to a message you asked it to send.
+
+**Fixes**
+- A task that only reads (on Codex) can report back again: its report, checkpoints and history
+  search were all refused before, so it stopped without a word.
 
 ## 0.0.19
 

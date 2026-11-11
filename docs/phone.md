@@ -126,6 +126,10 @@ Connect it the same way, with its own code.
 On iPhone Duo the app runs open or closed, laid out for the display it is on. Filling the whole
 open display, edge to edge, is coming soon.
 
+**Opening the app** shows what you saw last straight away, even when your Ducter is far away;
+what's new since then arrives a moment later. If your Ducter can't be reached, the app says so
+and offers to try again.
+
 **When the app is newer than your Ducter.** The app shows the pages your Ducter serves, so a
 Ducter still on an older version shows its older pages, and newer things wait for it. The app
 (iPhone, iPad or Android) then says so in one line: "Ducter on … is still …, older than this app".

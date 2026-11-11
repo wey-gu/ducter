@@ -64,7 +64,10 @@ struct Root: View {
                     .ignoresSafeArea()
                     .onAppear { shell.load(entry) }
                     .onChange(of: entry) { _, u in shell.load(u) }
-                    .opacity(shell.phase == .ready ? 1 : 0)
+                    // D206: under the loading screen while it loads, not hidden: WebKit holds a hidden
+                    // web view's layout, so a page opened from the cache drew its first frame without
+                    // the safe-area insets and jumped when shown.
+                    .opacity(shell.phase == .unreachable ? 0 : 1)
                 if shell.phase == .ready, let line = home.line {
                     // D200: the home is older than this app; its page can't say so.
                     VStack {

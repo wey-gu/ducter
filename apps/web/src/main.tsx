@@ -5,6 +5,7 @@ import { useEffect, useReducer, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Api, baseUrl, codeFromHash, pair, storage, type Me, type PairError } from "./conn.ts";
 import { kvSet } from "./idb.ts";
+import { forgetGlance, loadGlance, type Glance } from "./glance.ts";
 import { registerWorker } from "./push-client.ts";
 import { inApp, tellApp } from "./native.ts";
 import { startAutospace } from "./autospace.ts";
@@ -156,16 +157,43 @@ async function boot(pairing?: PairView) {
     return;
   }
   const had = token();
-  const r = await api.call<Me>("api/me");
-  if (r.status === 401) {
-    if (had) storage.clear(), await kvSet("token", undefined);
-    return boot({ busy: false, code: "", error: had ? "revoked" : undefined });
+  // D206: a paired device, or this machine's page with a last screen kept, paints at once: the
+  // last screen from the glance, the socket opening alongside, and who we are asked meanwhile.
+  // Nothing waits on a round trip before the first frame.
+  const device = storage.get()?.deviceId ?? (had ? "" : "local");
+  const glance = device ? loadGlance(device) : undefined;
+  if (had || glance) {
+    const me: Me = glance?.me ?? { via: had ? "device" : "local", personaName: storage.get()?.personaName ?? "Ducter", push: { supported: false } };
+    run(me, had, device, glance);
+    void api.call<Me>("api/me").then(async (r) => {
+      if (r.status === 401) {
+        // Revoked (or no longer this machine): nothing it showed stays on the device.
+        A.conn?.stop();
+        forgetGlance();
+        if (had) storage.clear(), await kvSet("token", undefined);
+        return boot({ busy: false, code: "", error: had ? "revoked" : undefined });
+      }
+      if (r.status !== 200 || !r.data) return;
+      A.me = r.data;
+      if (r.data.personaName && !A.S.welcomed) A.S.personaName = r.data.personaName;
+      if (r.data.personaName !== me.personaName) tellApp({ token: had, base: base.href, locale: A.L.lang, personaName: A.S.personaName });
+      A.changed();
+    });
+    return;
   }
-  if (r.status === 0 && !had) return boot({ busy: false, code: "", error: "unreachable" });
-  const me: Me = r.data ?? { via: had ? "device" : "local", personaName: storage.get()?.personaName ?? "Ducter", push: { supported: false } };
-  if (had) await kvSet("token", had);
+  const r = await api.call<Me>("api/me");
+  if (r.status === 401) return boot({ busy: false, code: "", error: undefined });
+  if (r.status === 0) return boot({ busy: false, code: "", error: "unreachable" });
+  const me: Me = r.data ?? { via: "local", personaName: "Ducter", push: { supported: false } };
+  run(me, had, "local");
+}
+
+function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
+  if (had) void kvSet("token", had);
   tellApp({ token: had, base: base.href, locale: A.L.lang, personaName: me.personaName });
   if (!inApp()) void registerWorker(base); // the app's notifications are its own (APNs)
+  A.glanceDevice = device;
+  if (glance) A.restore(glance);
   A.start(base, api, me, token);
   A.fromHash();
   // The app's menus and hardware-keyboard shortcuts (⌘N, ⌘1…⌘4, ⌘, and ⌘K, as on the Mac; D176).

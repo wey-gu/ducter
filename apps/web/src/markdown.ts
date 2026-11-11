@@ -20,7 +20,20 @@ function inline(s: string): string {
   });
 }
 
+// Every render of the conversation turns each message into HTML; a message's text doesn't change,
+// so each is turned once (D206: a long conversation re-rendered on every frame from the home).
+const memo = new Map<string, string>();
 export function markdown(src: string): string {
+  let html = memo.get(src);
+  if (html === undefined) {
+    html = render(src);
+    if (memo.size >= 2000) memo.delete(memo.keys().next().value!);
+    memo.set(src, html);
+  }
+  return html;
+}
+
+function render(src: string): string {
   const lines = src.replace(/\r\n?/g, "\n").split("\n");
   const out: string[] = [];
   let para: string[] = [];

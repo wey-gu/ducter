@@ -46,6 +46,13 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       the worker). Trigger: the user signs in on a worker.
 - [ ] `ducter domain` on a real VPS + domain as root (DNS check, apt Caddy, ACME, renewal, WebSocket through Caddy
       with TLS). Trigger: the first real VPS install.
+- [ ] **Opening fast (D206) on real devices:** time a relaunch of the iPad app against hel (the
+      conversation in the first frame, no empty page; full screen painted within 100 ms), the iPhone
+      simulator, and the Android app in the emulator (cache-first load, `reach` bringing up
+      can't-reach, the stale-page reload). If the ~1.2 s before the first frame holds on a real device:
+      start the web view at app launch, split the bundle so the conversation parses first, virtualize a
+      long transcript. The notifications ask still appears ~0.4 s after the first frame (the app's
+      push state is asked after it). Trigger: the next TestFlight build.
 - [ ] Phone web on real phones: iOS Home Screen push (16.4+), and whether a token paired in
       Safari carries into the Home Screen app (if not, pair from the installed app);
       `PushManager.subscribe` on a real Android Chrome (the Chromium builds here have no push

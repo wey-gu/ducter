@@ -5,10 +5,15 @@ import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
-import { haptic } from "./native.ts";
+import { haptic, inApp, tellReach } from "./native.ts";
 import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
+import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
+import type { LogEvent } from "@ducter/protocol";
+
+/** The most a cursor replay sends at once (core's ws.ts REPLAY_MAX). */
+const REPLAY_MAX = 5000;
 
 /** An iPad says "this iPad" where a phone says "this phone" (D176). */
 const HANDHELD: Handheld = typeof navigator !== "undefined" && deviceName().name.startsWith("iPad") ? "ipad" : "phone";
@@ -29,14 +34,16 @@ export const morphs = (a: Route, b: Route) => isFull(a) !== isFull(b) && wideNow
 
 /** Runs a layout change inside a view transition where there is one: the panes slide to their new
  *  places (static/app.css, ::view-transition-*). Without one, or under reduced motion, at once. */
-function morph(apply: () => void) {
+export function morph(apply: () => void) {
   const d = typeof document === "object" ? (document as Document & { startViewTransition?: (cb: () => Promise<void>) => unknown }) : undefined;
   const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (!d?.startViewTransition || still) return apply();
   d.startViewTransition(() => {
     apply();
-    // The page renders on the next frame (A.changed → the app's state): wait for it.
-    return new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+    // Preact renders the new layout in a microtask (A.changed → the app's state); a timer runs
+    // after it. Never wait for a frame here: WebKit holds frames while this callback runs, so a
+    // requestAnimationFrame never came and every change waited out WebKit's 4 s timeout (D206).
+    return new Promise<void>((r) => setTimeout(r, 0));
   });
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
@@ -357,12 +364,20 @@ class AppState {
       token,
       () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.lang, ...(zone() ? { tz: zone() } : {}), client: "web" }),
       (f) => this.receive(f),
-      (s) => ((this.status = s), this.changed()),
+      (s) => {
+        this.status = s;
+        // D206: the app, which opened this page from its cache, learns whether the home answers.
+        if (s !== "connecting" && inApp()) tellReach(s === "connected");
+        this.changed();
+      },
     );
     this.conn.onWritten = (f) => {
       if (f.t === "task_action" && (f.action === "merge" || f.action === "open_pr")) this.actSent.set(f.taskId, f.action);
     };
     this.conn.start();
+    // D206: going to the background keeps the last screen at once (the app may not come back).
+    if (typeof document === "object") document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && this.keepGlance(true));
+    if (typeof addEventListener === "function") addEventListener("pagehide", () => this.keepGlance(true));
     void this.refreshPush();
   }
 
@@ -386,10 +401,99 @@ class AppState {
     this.conn?.send(f);
   }
 
+  // ---------- the last screen, kept on this device (D206, glance.ts) ----------
+
+  /** The channel events this page holds, by seq: what the glance keeps. */
+  private kept = new Map<number, LogEvent>();
+  /** The device the glance belongs to ("local" for this machine's own page). */
+  glanceDevice = "";
+  /** Painted from the glance and not yet caught up with the home (the replay closes it). */
+  fromGlance = false;
+  private glanceTimer?: ReturnType<typeof setTimeout>;
+
+  /** Paints the last screen from the glance before the socket opens: the Store as the last replay
+   *  left it, its cursor where the glance ends, so hello asks only for what is newer. */
+  restore(g: Glance) {
+    this.S.apply({ t: "welcome", persona: g.persona, personaName: g.personaName, headSeq: g.headSeq } as ServerFrame);
+    this.S.welcomed = false; // nothing is sent before the home says welcome
+    this.S.apply({ t: "events", events: g.events });
+    if (g.onHand) this.S.apply({ t: "on_hand", onHand: g.onHand });
+    if (g.first) this.S.apply({ t: "first_screen", first: g.first });
+    for (const ev of g.events) {
+      this.kept.set(ev.seq, ev);
+      // Seen before the app closed: never "arrived while away".
+      if (ev.kind === "living_msg") this.livingAway.set(ev.seq, false);
+    }
+    this.fromGlance = g.events.length > 0 || !!g.onHand;
+  }
+
+  /** Keeps the screen as it is now, a moment after it settles (and at once when the page hides). */
+  keepGlance(now = false) {
+    if (!this.glanceDevice || !this.S.persona) return;
+    clearTimeout(this.glanceTimer);
+    const save = () => {
+      this.glanceTimer = undefined;
+      const events = keepEvents(this.kept.values());
+      // The map stays bounded: what the glance dropped is gone from it too.
+      if (this.kept.size > events.length + 200) this.kept = new Map(events.map((e) => [e.seq, e]));
+      saveGlance({
+        v: 1,
+        device: this.glanceDevice,
+        persona: this.S.persona,
+        personaName: this.S.personaName,
+        headSeq: this.S.headSeq,
+        events,
+        ...(this.S.onHand ? { onHand: this.S.onHand } : {}),
+        ...(this.S.first ? { first: this.S.first } : {}),
+        ...(this.me ? { me: this.me } : {}),
+        savedAt: Date.now(),
+      });
+    };
+    if (now) save();
+    else this.glanceTimer = setTimeout(save, 1200);
+  }
+
+  private buildChecked = false;
+  /**
+   * D206: the apps open this page from their cache first (no round trip before the first frame),
+   * so once caught up the page asks its home for the page again: a page naming other code
+   * (a home updated, or rebuilt under the same version) loads the home's, once nothing would be
+   * lost (reloadIfStale). The answer also refreshes the cached page for the next open.
+   */
+  async checkBuild(fetcher: typeof fetch = fetch) {
+    if (this.buildChecked || !inApp() || typeof document !== "object") return;
+    this.buildChecked = true;
+    const mine = /[?&]v=(\w+)/.exec(document.querySelector<HTMLScriptElement>('script[src*="app.js"]')?.src ?? "")?.[1];
+    if (!mine) return;
+    try {
+      const html = await (await fetcher(new URL("app", this.base), { cache: "no-cache" })).text();
+      const now = /app\.js\?v=(\w+)/.exec(html)?.[1];
+      if (now && now !== mine) {
+        this.staleFor ||= `build ${now}`;
+        this.reloadIfStale();
+      }
+    } catch {}
+  }
+
+  /** Forgets everything this page holds (a Log that started over, a device revoked). */
+  private startOver() {
+    this.S = new Store();
+    this.kept.clear();
+    this.fromGlance = false;
+    forgetGlance();
+  }
+
   receive(f: ServerFrame) {
+    // A cursor replay as long as the home sends at once: the glance is too old to catch up from.
+    // Start from the home's own fresh replay instead (it ends with on_hand, like any replay).
+    if (f.t === "events" && this.fromGlance && f.events.length >= REPLAY_MAX) {
+      this.startOver();
+      this.conn?.rehello();
+      return;
+    }
     if (this.S.stale(f)) {
       // The Log started over (its data was reset): forget everything and say hello from scratch.
-      this.S = new Store();
+      this.startOver();
       this.pending = [];
       this.actSent.clear();
       this.inDoubt = undefined;
@@ -510,6 +614,10 @@ class AppState {
     }
     // on_hand closes the replay that follows a welcome.
     if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);
+    // D206: the last screen follows what the home sent (on_hand closes a replay: caught up).
+    if (f.t === "events") for (const ev of f.events) if (ev.stream === "channel") this.kept.set(ev.seq, ev);
+    if (f.t === "on_hand") (this.fromGlance = false), void this.checkBuild();
+    if (f.t === "events" || f.t === "on_hand" || f.t === "first_screen" || f.t === "welcome") this.keepGlance();
     if (f.t === "events") for (const ev of f.events) if (!this.livingAway.has(ev.seq) && ev.kind === "living_msg") this.livingAway.set(ev.seq, (ev.seq <= this.S.headSeq && ev.seq > this.S.readUpTo) || document.hidden);
     this.followUserLanguage();
     this.drainActionResults();
@@ -1622,7 +1730,9 @@ class AppState {
   summary(): string {
     const L = this.L;
     if (this.status === "offline") return L.t("conn.offline");
-    if (!this.S.welcomed) return L.t("conn.connecting");
+    // D206: painted from the last screen, the line it showed then stands until the home answers
+    // (a second at most), rather than "connecting" on every open.
+    if (!this.S.welcomed && !this.fromGlance) return L.t("conn.connecting");
     const b = this.S.board();
     const parts: string[] = [];
     const needs = b.lanes[LANE.needs]!.length + this.S.partnerDecisions().length;

@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.0.25
+
+<!-- whats-new
+zh: 任务右侧多了工作台：改动、文件、预览、浏览器，按需打开
+en: A workbench beside each task: changes, files, live preview, browser
+zh: 中文文案全面重写，按钮说法更自然
+en: Clearer Chinese throughout, and no emoji-like marks anywhere
+-->
+
+**The workbench**
+- Open it beside a task (⌥⌘B, or the button in the task's header): **Changes** with a diff and
+  undo per file, **Files** with the tree, highlighted code and editing (the agent is told what you
+  changed), **Preview** of the page the task serves (through your Ducter, never public),
+  **Browser** with Ducter's browser live, and **Results**. Pages appear only when they have
+  something. On the phone it's a full-screen sheet you swipe through.
+
+**Words and looks**
+- Every Chinese string was rewritten to read like native product copy: **取消任务**, **继续**,
+  **立即拨打**, **暂不拨打**, **定时 / 定期 / 等条件满足**, **全部还原 / 保留改动**, and many more.
+- Nothing on any screen is drawn with an emoji or a symbol the phone can't draw as text; a check
+  keeps it that way. Agent marks are shown only where they're big enough to read; elsewhere the
+  name. Codex's mark has a light version for the dark theme. Updates are said in words, and every
+  "more" arrow is the same drawn chevron.
+
+**Calls**
+- A number no line can call (a country Tuwa doesn't reach) gets a **call sheet**: what to say first,
+  what to ask and not to share, what to note down, with **Call it yourself**; afterwards your partner
+  asks how it went.
+
 ## 0.0.24
 
 <!-- whats-new

@@ -233,6 +233,8 @@ describe("nudge (stall rule)", () => {
     await waitFor(() => taskEvents(card.taskId).some((e) => (e.raw as any)?.stall), "stall note");
     await Bun.sleep(50);
     expect(inputs).toEqual([expect.stringContaining("Start the task"), NUDGE]);
+    // It stopped without reporting: it waits for the user, never "working" for hours.
+    expect(core.tasks.get(card.taskId)?.attention).toBe("needs_you");
     await runner.dispose();
   });
 

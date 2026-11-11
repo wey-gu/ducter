@@ -339,6 +339,11 @@ function readOnlyFor(h: HarnessId, a: { disallowed: string[]; launchArgs?: strin
   return { ...a, disallowed };
 }
 
+/** Ducter's own MCP servers, told the session is sandboxed (?sandbox=read-only), once. */
+function sandboxedMcp(servers: McpServer[]): McpServer[] {
+  return servers.map((m) => ("url" in m && m.url && !/[?&]sandbox=read-only\b/.test(m.url) ? { ...m, url: m.url + (m.url.includes("?") ? "&" : "?") + "sandbox=read-only" } : m));
+}
+
 /** Spec -> OAR options for one harness (exported for tests; no process is started). */
 export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string | null>; dataDir: string; refused?: Readonly<Record<string, string>>; inherited?: Record<string, string | undefined> }): Adapted {
   const h = spec.harness;
@@ -407,7 +412,13 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       // D142: a folder task writes only inside its folder (and the temp folders). OAR passes
       // its own sandbox_mode first; a later -c wins (checked with codex 0.167 config/read, and
       // `codex sandbox` refused a write in the home folder). Network stays on.
-      if (spec.confineWrites) launchArgs = [...(launchArgs ?? []), "-c", `sandbox_mode="workspace-write"`, "-c", "sandbox_workspace_write.network_access=true"];
+      if (spec.confineWrites) {
+        launchArgs = [...(launchArgs ?? []), "-c", `sandbox_mode="workspace-write"`, "-c", "sandbox_workspace_write.network_access=true"];
+        // Under any sandbox Codex declines an MCP call not marked read-only (2026-11-11: a folder
+        // task on hel had report_to_main declined for hours, "approval policy is never"); the URL
+        // tells Ducter's MCP the session is sandboxed, and it marks its tools (core/src/mcp.ts).
+        mcpServers = sandboxedMcp(mcpServers);
+      }
       break;
     case "pi":
       break; // the clean setup is the runtime variant's flags (defaultLoader)
@@ -454,7 +465,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     ({ disallowed, launchArgs, env } = readOnlyFor(h, { disallowed, launchArgs, env }));
     // Codex declines MCP calls under its sandbox unless a tool is marked read-only: the URL tells
     // Ducter's MCP the session is sandboxed, and it marks the partner's tools (core/src/mcp.ts).
-    if (h === "codex") mcpServers = mcpServers.map((m) => ("url" in m && m.url ? { ...m, url: m.url + (m.url.includes("?") ? "&" : "?") + "sandbox=read-only" } : m));
+    if (h === "codex") mcpServers = sandboxedMcp(mcpServers);
   }
 
   // What the runtime says it cannot honor is never sent (OAR refuses by presence).

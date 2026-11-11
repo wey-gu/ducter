@@ -747,6 +747,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (!t.stallNoted) {
       t.stallNoted = true;
       logEvent(t, { role: "system", text: "no report after one nudge; leaving the task idle (stall rule)", raw: { stall: true } });
+      // It stopped without reporting: the user's turn, not "working" (2026-11-11: a task on hel
+      // read 在做 for four hours after it stalled and its harness exited). The note says why;
+      // a message from the user sets it working again.
+      if (currentAttention(t) === "working") setState(t, "needs_you", t.session ? "warm" : "parked");
     }
   }
 

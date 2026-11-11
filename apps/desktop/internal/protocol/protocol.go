@@ -1394,6 +1394,15 @@ type ServerFrame struct {
 	RoutineID string       `json:"routineId,omitempty"`
 	Routine   *Routine     `json:"routine,omitempty"`
 	Place     *PlaceChoice `json:"place,omitempty"`
+	// folder_browse_result (D203): OK, ClientID, Device, the folder listed
+	// (Path), that computer's home folder (HomeDir), the one above (Parent,
+	// "" at home), its subfolders (repos first) and More when there were
+	// more; or Reason (outside | not_found | offline | failed), Message.
+	Path    string         `json:"path,omitempty"`
+	HomeDir string         `json:"home,omitempty"`
+	Parent  string         `json:"parent,omitempty"`
+	Folders []BrowseFolder `json:"folders,omitempty"`
+	More    bool           `json:"more,omitempty"`
 	// update_result (D148): Device, OK, Reason, Detail, and with a check the
 	// device's Update. disconnect_result: Device, OK, Reason.
 	Update *DeviceUpdate `json:"update,omitempty"`
@@ -1616,7 +1625,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
-		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result",
+		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "folder_browse_result",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "browser_sites", "browser_check", "connection_reads", "saved",
 		"connection_signin", "phone_voice_result":
 	default:
@@ -1655,6 +1664,28 @@ type PlaceChoice struct {
 	// Remote: a repo's origin, normalized (host/owner/repo), so its copy
 	// on another computer is found (D202).
 	Remote string `json:"remote,omitempty"`
+	// Found: a repo that computer reported, no task there yet and not
+	// added (D203); its branches come when it is asked for as the place.
+	Found bool `json:"found,omitempty"`
+}
+
+// BrowseFolder is one subfolder in a folder_browse_result (D203): its
+// name, its path there, and whether it is a git repo.
+type BrowseFolder struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+	Repo bool   `json:"repo,omitempty"`
+}
+
+// FolderBrowse asks for a folder's subfolders on that computer (D203,
+// 找一个文件夹… / Find a folder…): Device "" is the home's own, else a
+// worker's id; Path "" is its home folder. Answered with
+// folder_browse_result.
+type FolderBrowse struct {
+	T        string `json:"t"` // "folder_browse"
+	Device   string `json:"device,omitempty"`
+	Path     string `json:"path,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
 }
 
 // ModelChoice is one model an AI agent offers on one computer, as the New

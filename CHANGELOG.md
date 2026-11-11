@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+<!-- whats-new
+zh: 每台电脑上的代码仓库直接出现在新建的文件夹列表里
+en: Each computer's repositories are already in New task's folder list
+zh: 在手机上也能找别的电脑上的文件夹
+en: Find a folder on any of your computers, from your phone too
+-->
+
+**New task: folders on every computer**
+- The folder list shows the repositories already on each of your computers (the most recently
+  touched first), after the folders you used. When your Ducter lives on a server and you pick
+  Claude Code on your Mac, it switches to your Mac's copy of the same project by itself.
+- **Find a folder…** at the bottom of the list looks through any of your computers' folders, one
+  level at a time from the home folder, repositories first, on the phone and in the browser too;
+  **Use this folder** adds it as a project there. When a computer has no folders listed yet, the
+  list says so and offers it, instead of only **No folder**.
+
 ## 0.0.17
 
 <!-- whats-new

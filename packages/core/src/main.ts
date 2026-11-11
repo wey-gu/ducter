@@ -3,6 +3,8 @@ import type { CoreApi, Partner, Runner } from "@ducter/protocol/src/internal.ts"
 import { startCore, type Core } from "./core.ts";
 import { DEFAULT_IDENTITY, loadPersona } from "./persona.ts";
 import { bindMemIdentity, nmemRunner, readMemIdentity, renameMemIdentity } from "./mem-identity.ts";
+import { homedir } from "node:os";
+import { findRepos, realFs, REPOS_REPORTED } from "@ducter/protocol/src/repos.ts";
 
 /**
  * D141: binds the persona's Mem identity the first time Mem answers with memory on (enrolling
@@ -89,7 +91,8 @@ export async function main(mods: BootModules = {}) {
   const bootName = persona.name;
   let core: Core;
   try {
-    core = startCore({ persona });
+    // D203: the repos on this computer, offered on the New task card (most recently touched first).
+    core = startCore({ persona, homeRepos: () => findRepos(homedir(), realFs, REPOS_REPORTED, { details: true, absolute: true }).repos });
   } catch (err) {
     console.error(`[ducter] failed to start core (is port ${process.env.DUCTER_PORT || 7777} in use?):`, (err as Error).message);
     process.exit(1);

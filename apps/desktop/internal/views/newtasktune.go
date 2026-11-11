@@ -266,6 +266,9 @@ func (a *App) pickAgent(cd protocol.Candidate, top *protocol.Candidate, away boo
 		a.pickPlace(*cp)
 		if branch != "" && branch != cp.DefaultBranch && hasString(cp.Branches, branch) {
 			nt.branch = branch
+		} else if branch != "" && cp.Branches == nil {
+			// D203: a repo that computer reported says its branches once asked: keep it then.
+			nt.wantBranch = branch
 		}
 		return
 	}

@@ -39,7 +39,8 @@ import { providerOf } from "./phone-provider.ts";
 import { registerConnectionTools } from "./connection-tools.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { createModelCatalog, type ModelCatalog } from "./models.ts";
-import { newTaskOptions, openYourTask, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
+import { browseFolders, createFoundRepos, newTaskOptions, openYourTask, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
+import type { BrowseResult, RepoHint } from "@ducter/protocol/src/repos.ts";
 import { createProjects } from "./projects.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
@@ -89,6 +90,10 @@ export interface CoreOptions {
   git?: GitRun;
   /** D197 test seam: the workers as New task and projects see them (names, a folder read there). */
   newTaskComputers?: NewTaskComputers;
+  /** D203: the repos on the home's own computer for New task (main.ts scans the home folder; absent: none). */
+  homeRepos?: () => RepoHint[];
+  /** D203 test seam: the home's own subfolders for 找一个文件夹… (default: this computer's home folder). */
+  browseHome?: (path: string | undefined) => BrowseResult;
   /** D202 test seam: each agent's models on each computer (else read from the agents themselves). */
   models?: ModelCatalog;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
@@ -301,6 +306,28 @@ export function startCore(opts: CoreOptions = {}): Core {
         throw err;
       }
     },
+    // D203: the workers, the repos each one reports, and its folders one level at a time.
+    workers: () => (workersRef?.list() ?? []).map((w) => ({ id: w.id, name: w.name, online: w.online })),
+    async repos(dev, ms) {
+      const link = workersRef?.link(dev);
+      if (!link?.online()) return "offline";
+      try {
+        return await link.call<RepoHint[]>("repos", {}, ms);
+      } catch {
+        return "offline"; // away, slow, or an older Ducter without the op: it reports none
+      }
+    },
+    async browse(dev, path, ms) {
+      const link = workersRef?.link(dev);
+      if (!link?.online()) return "offline";
+      try {
+        return await link.call<BrowseResult>("browse", path ? { path } : {}, ms);
+      } catch (err) {
+        if ((err as { offline?: boolean }).offline) return "offline";
+        if (/unknown op/.test((err as Error).message)) throw new Error(`${link.name} runs an older Ducter that can't look through its folders yet; update it first.`);
+        throw err;
+      }
+    },
   };
   const projects = createProjects({ dataDir, ...(opts.git ? { git: opts.git } : {}), onChange: () => onHandChanged(), remote: (dev, path) => computers.folderInfo(dev, path, 15_000) });
   // D193: phone calls (the partner drafts; the owner's Go places; Ducter polls and keeps the rails).
@@ -382,7 +409,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     return e.why ? { harness: e.harness } : undefined;
   };
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
-  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, ...(opts.git ? { git: opts.git } : {}) };
+  const found = createFoundRepos({ computers, ...(opts.homeRepos ? { home: opts.homeRepos } : {}) });
+  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, ...(opts.browseHome ? { browseHome: opts.browseHome } : {}), ...(opts.git ? { git: opts.git } : {}) };
   const newTask = {
     open: (i: NewTaskInput) => openYourTask(newTaskDeps, i),
     options: (p?: Place) => newTaskOptions(newTaskDeps, p),
@@ -395,6 +423,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       const place = (await newTaskOptions(newTaskDeps)).places.find((p) => p.added && same(p.place)) ?? fallback;
       return { ok: true as const, place };
     },
+    // D203: 找一个文件夹… / Find a folder…, on the home's computer or a worker's.
+    browse: (device: string | undefined, path: string | undefined) => browseFolders(newTaskDeps, device, path),
   };
   const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;

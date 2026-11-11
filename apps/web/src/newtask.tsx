@@ -6,7 +6,7 @@
 // ⇧⌘↩ starts and keeps the sheet for the next one.
 import type { Candidate } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
-import { A, agentKey, effortWord, EVERY_HOURS, parseClock, placeKey, placeLine } from "./app.ts";
+import { A, agentKey, effortWord, EVERY_HOURS, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { Btn, Choice, MenuRow, Pill, Seg } from "./controls.tsx";
 import { candName, candReason, coarse } from "./views.tsx";
@@ -28,6 +28,16 @@ const Branch = () => (
     <path d="M4 2v10M10 4.5V6L4 9.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
     <circle cx="10" cy="3.2" r="1.8" fill="currentColor" />
     <circle cx="4" cy="12" r="1.8" fill="currentColor" />
+  </svg>
+);
+const Plus = () => (
+  <svg class="nt-glyph" viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M7 2.5v9M2.5 7h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+  </svg>
+);
+const Up = () => (
+  <svg class="nt-glyph" viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M7 11.5V3M3.5 6.5 7 3l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
 );
 const Clock = () => (
@@ -136,8 +146,13 @@ export function NewTaskSheet() {
   const scheduled = nt.when === "at" || nt.when === "every";
   const start = scheduled ? t("newtask.schedule") : t("newtask.start");
   // D202: the folder list, only one computer's while an agent there waits for a folder.
+  // D203: the repos computers reported fill the list after the used and added ones, up to 12
+  // rows (all of one computer's while an agent waits there); 找一个文件夹… finds any other.
   const only = nt.placeOnly;
-  const shown = only ? places.filter((p) => p.place.kind !== "none" && A.placeComputer(p.place) === only) : places;
+  const all = only ? places.filter((p) => p.place.kind !== "none" && A.placeComputer(p.place) === only) : places;
+  const room = Math.max(0, 12 - all.filter((p) => !p.found && p.place.kind !== "none").length);
+  const shown = only ? all : all.filter((p) => !p.found || placeKey(p.place) === placeKey(chosen.place) || (room > 0 && all.filter((x) => x.found).indexOf(p) < room));
+  const finders = only ? A.ntBrowsable().filter((d) => d.id === only) : A.ntBrowsable();
   const onlyName = only ? (computerOf(only)?.name ?? "") : "";
   const awayLine = (c: Candidate) => {
     if (chosen.place.kind === "none") return candReason({ ...c, blocked: undefined });
@@ -218,6 +233,16 @@ export function NewTaskSheet() {
                 </span>
               </MenuRow>
             ))}
+            {only && !shown.length && <div class="nt-empty small sub">{t("newtask.find.empty", onlyName)}</div>}
+            {finders.map((d) => (
+              <MenuRow key={`find:${d.id}`} label={finders.length > 1 || only ? `${t("newtask.find")} · ${d.name}` : t("newtask.find")} on={false} onClick={() => A.ntBrowse(d.id)}>
+                <Plus />
+                <span class="mr-t">
+                  <b>{t("newtask.find")}</b>
+                  {(finders.length > 1 || manyComputers()) && <small>{t("newtask.find.on", d.name)}</small>}
+                </span>
+              </MenuRow>
+            ))}
             {only && (
               <MenuRow key="none" label={`${t("newtask.nowhere")} · ${onlyName}`} on={false} onClick={() => A.pickPlace({ place: { kind: "none" }, name: "" })}>
                 <Folder faint />
@@ -229,6 +254,7 @@ export function NewTaskSheet() {
             )}
           </div>
         )}
+        {nt.list === "browse" && nt.browse && <FolderBrowser />}
         {nt.branchOpen && chosen.branches && (
           <div class="nt-list" role="radiogroup" aria-label={t("newtask.branch.title")}>
             <small>{t("newtask.branch.title")}</small>
@@ -346,6 +372,55 @@ export function NewTaskSheet() {
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * D203: 找一个文件夹… / Find a folder…: one computer's folders, one level at a time, from its home
+ * folder (~). Repos first, with the branch glyph; tap one to go in; 上一层 / Up one level goes
+ * back; 用这个文件夹 / Use this folder adds it there as a project and makes it the card's place.
+ */
+function FolderBrowser() {
+  const nt = A.nt;
+  const b = nt.browse!;
+  const r = b.res;
+  const name = A.ntBrowseName();
+  const home = r?.home ?? "";
+  const shownPath = (p: string) => (home && (p === home || p.startsWith(home + "/")) ? "~" + p.slice(home.length) : tilde(p));
+  const err = r && !r.ok ? (r.reason === "offline" ? t("newtask.find.offline", name) : r.reason === "outside" ? t("newtask.find.outside") : r.reason === "not_found" ? t("newtask.find.missing") : r.message || t("newtask.err.unknown")) : "";
+  const atHome = !!r?.ok && r.path === home;
+  return (
+    <div class="nt-list nt-browse" role="group" aria-label={t("newtask.find.title", name)}>
+      <div class="nt-browse-head">
+        <small>{t("newtask.find.title", name)}</small>
+        {r?.ok && r.path && <code>{shownPath(r.path)}</code>}
+      </div>
+      {!r && <div class="nt-empty small sub">{t("newtask.find.loading")}</div>}
+      {err && <div class="nt-empty nt-err-line small">{err}</div>}
+      {r?.ok && r.parent && (
+        <MenuRow key="up" label={t("newtask.find.up")} on={false} onClick={() => A.ntBrowse(b.device, r.parent)}>
+          <Up />
+          <span class="mr-t">
+            <b>{t("newtask.find.up")}</b>
+          </span>
+        </MenuRow>
+      )}
+      {r?.ok &&
+        (r.folders ?? []).map((f) => (
+          <MenuRow key={f.path} label={f.name} on={false} onClick={() => A.ntBrowse(b.device, f.path)}>
+            {f.repo ? <Branch /> : <Folder />}
+            <span class="mr-t">
+              <b>{f.name}</b>
+            </span>
+          </MenuRow>
+        ))}
+      {r?.ok && !(r.folders ?? []).length && <div class="nt-empty small sub">{t("newtask.find.none")}</div>}
+      {r?.ok && r.more && <div class="nt-empty small sub">{t("newtask.find.more", (r.folders ?? []).length)}</div>}
+      <div class="nt-browse-foot">
+        <Btn kind="text" size="sm" label={t("newtask.find.back")} onClick={() => A.ntBrowseBack()} />
+        <Btn kind="primary" size="sm" label={nt.adding ? t("newtask.find.adding") : t("newtask.find.use")} disabled={!r?.ok || atHome || !!nt.adding} onClick={() => A.ntBrowseUse()} />
+      </div>
+    </div>
   );
 }
 

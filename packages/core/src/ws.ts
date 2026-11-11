@@ -93,6 +93,8 @@ export interface NewTaskFrames {
   options(place?: Place): Promise<Omit<Extract<ServerFrame, { t: "task_new_options" }>, "t">>;
   /** D186: add a folder as a project; absent where projects aren't kept. device (D197): a worker it is on. */
   addProject?(path: string, device?: string): Promise<Omit<Extract<ServerFrame, { t: "project_add_result" }>, "t" | "clientId">>;
+  /** D203: a folder's subfolders on that computer (the home's own without device). */
+  browse?(device: string | undefined, path: string | undefined): Promise<Omit<Extract<ServerFrame, { t: "folder_browse_result" }>, "t" | "clientId" | "device">>;
 }
 
 /** What the client frames for work over time do (core.ts wires them to waiters, untils, routines). */
@@ -768,6 +770,15 @@ export function createWsHandler(deps: WsDeps) {
         if (!deps.newTask?.addProject) return send(ws, { t: "project_add_result", ok: false, ...cid, reason: "failed", message: "Projects can't be added here." });
         const device = typeof f.device === "string" && f.device && f.device !== "local" ? f.device : undefined;
         send(ws, { t: "project_add_result", ...cid, ...(await deps.newTask.addProject(String(f.path ?? ""), device)) });
+        return;
+      }
+      case "folder_browse": {
+        const cid = typeof f.clientId === "string" && f.clientId ? { clientId: f.clientId } : {};
+        const device = typeof f.device === "string" && f.device && f.device !== "local" ? f.device : undefined;
+        const dev = device ? { device } : {};
+        if (!deps.newTask?.browse) return send(ws, { t: "folder_browse_result", ok: false, ...cid, ...dev, reason: "failed", message: "Folders can't be looked through here." });
+        const path = typeof f.path === "string" && f.path ? f.path : undefined;
+        send(ws, { t: "folder_browse_result", ...cid, ...dev, ...(await deps.newTask.browse(device, path)) });
         return;
       }
       case "open_task": {

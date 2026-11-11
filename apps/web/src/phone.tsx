@@ -200,8 +200,79 @@ function QuestionCard({ d }: { d: DecisionState }) {
   );
 }
 
-/** A decision about a call: its Go card, or a question from the line. */
+// ---------- D215: a call sheet, for a number no line calls ----------
+
+/** One row of the sheet: a line, or a short list (one item a line). */
+const SheetRow = ({ k, v }: { k: string; v: string | string[] }) =>
+  (Array.isArray(v) ? v.length > 0 : !!v) ? (
+    <div>
+      <dt>{k}</dt>
+      <dd>{Array.isArray(v) ? v.length === 1 ? v[0] : <ul class="call-list">{v.map((x) => <li key={x}>{x}</li>)}</ul> : v}</dd>
+    </div>
+  ) : null;
+
+/**
+ * The call sheet (通话单): who, what for, the first thing to say (set apart, the line they'll
+ * speak), the questions, what they may give, what not to share, what to note down. 自己打 / Call
+ * it yourself is a tel: link (the apps hand it to the phone's dialer); 打完了 / Done calling tells
+ * the partner, who asks how it went; 先不打 / Not now sets it aside.
+ */
+function SheetCard({ d }: { d: DecisionState }) {
+  const p = d.call!.plan!;
+  const s = p.sheet!;
+  const open = !d.resolved && !d.pending;
+  const [dialed, setDialed] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copy = () => void navigator.clipboard?.writeText(p.to).then(() => (setCopied(true), setTimeout(() => setCopied(false), 1800))).catch(() => undefined);
+  return (
+    <div class="call-card callsheet">
+      <div class="call-head">
+        <CallArt size={56} />
+        <div class="q">{d.question}</div>
+      </div>
+      {open && <div class="small sub call-open">{t("call.sheet.why")}</div>}
+      <dl class="call-plan">
+        <div>
+          <dt>{t("call.row.number")}</dt>
+          <dd class="call-num">
+            <span class="v">{prettyNumber(p.to)}</span>
+            <Btn kind="text" size="sm" label={t(copied ? "call.sheet.copied" : "call.sheet.copy")} about={p.name} onClick={copy} />
+          </dd>
+        </div>
+        <SheetRow k={t("call.row.goal")} v={p.goal} />
+      </dl>
+      <figure class="call-say" lang={/[一-鿿]/.test(s.open) ? "zh" : undefined}>
+        <figcaption>{t("call.sheet.open")}</figcaption>
+        <blockquote>{s.open}</blockquote>
+      </figure>
+      <dl class="call-plan">
+        <SheetRow k={t("call.sheet.ask")} v={s.ask} />
+        <SheetRow k={t("call.row.say")} v={p.say} />
+        <SheetRow k={t("call.sheet.dont")} v={s.dont} />
+        <SheetRow k={t("call.sheet.note")} v={s.note} />
+      </dl>
+      {open ? (
+        <div class="btns decide">
+          <Btn kind="text" label={t("call.hold")} about={d.question} onClick={() => A.decide(d.decisionId, "hold")} />
+          <span class="pair">
+            <Btn kind={dialed ? "primary" : "secondary"} label={t("call.sheet.done")} about={d.question} onClick={() => A.decide(d.decisionId, "go")} />
+            <a class={`btn ${dialed ? "secondary" : "primary"}`} href={`tel:${p.to}`} aria-label={`${t("call.sheet.dial")} · ${p.name}`} onClick={() => setDialed(true)}>
+              <span class="lbl">{t("call.sheet.dial")}</span>
+            </a>
+          </span>
+        </div>
+      ) : (
+        <div class="resolved small" role="status">
+          {d.resolved?.option === "go" ? t("call.sheet.went") : d.resolved?.option === "hold" ? t("call.held") : t("call.replied")}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A decision about a call: its Go card, a question from the line, or a call sheet (D215). */
 export function CallDecision({ d }: { d: DecisionState }) {
+  if (d.call?.kind === "sheet" && d.call.plan?.sheet) return <SheetCard d={d} />;
   return d.call?.kind === "question" ? <QuestionCard d={d} /> : <GoCard d={d} />;
 }
 
@@ -221,6 +292,8 @@ export function failWords(c: CallView): string {
 /** The row's second line: why it waits, what answered, why it failed, or the outcome as reported. */
 export function callSub(c: CallView): { text: string; warn?: boolean } | undefined {
   const hint = c.hint === "screening" ? t("call.hint.screening") : "";
+  // D215: a call the owner made from a call sheet: how it went, in their words, or that it was theirs.
+  if (c.plan.from === "self" && callEnded(c.state)) return { text: c.outcome || t("call.self") };
   switch (c.state) {
     case "waiting":
       return c.plan.wait ? { text: c.plan.wait.why === "quiet" ? t("call.waits.quiet") : t("call.waits.callee", c.plan.wait.then) } : undefined;
@@ -248,7 +321,7 @@ export function callLine(c: CallView): string {
   const n = c.plan.name;
   switch (c.state) {
     case "needs_go":
-      return t("call.st.needs_go", n);
+      return t(c.plan.from === "self" ? "call.st.sheet" : "call.st.needs_go", n);
     case "waiting":
       return t("call.st.waiting", c.plan.at ? when(c.plan.at) : t("call.when.soon"), n);
     case "calling":

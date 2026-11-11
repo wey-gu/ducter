@@ -1,4 +1,4 @@
-# Phone calls (D189, D193, D208)
+# Phone calls (D189, D193, D208, D215)
 
 **Status: settled and built (2026-11-11); the author's first real calls the same day changed the
 hours and the outcomes (D208).** The author: "第一性原理 做决定", D189's defaults taken; what changed
@@ -43,7 +43,7 @@ be said, what stays private, the voice, the cost, when, and the line always says
 
 1. **Draft.** The partner passes the number (country code), who, one goal, what may be said, what
    stays private. Core refuses emergency and short numbers, numbers on the do-not-call list,
-   countries Tuwa doesn't call, a draft that would pass the daily cap, and the owner's voice when it
+   a draft that would pass the daily cap, and the owner's voice when it
    isn't set up. It adds Ducter's own rules (the opening line, never claim to be the owner, no
    guessing an answer, 15 minutes, no marketing or payment details, "don't call again" respected),
    `dialer: tuwa`, and `scheduledAt` when now isn't an allowed hour and the owner can't say Call now
@@ -80,6 +80,31 @@ be said, what stays private, the voice, the cost, when, and the line always says
    What was said** (the transcript, when Tuwa gives one), length and cost. The partner says the
    outcome once, from the same facts; never "refused" unless it was.
 
+## 3a. A number no line calls: the call sheet (D215)
+
+*Who:* anyone asking for a call to a country Tuwa doesn't reach (research/53 §8: 20 countries;
+mainland China is one of the others, research/60). *Before:* a dead end. *After:* a ready script,
+one tap to dial, and the outcome kept like any call. Ducter dials nothing.
+
+1. **Detection is coverage only:** `reaches(provider, number)`: with no connection or with Tuwa,
+   the country code is in Tuwa's list; another provider answers for itself. A provider that
+   reaches the number (later: the owner's own phone) wins, and its Go card replaces the sheet.
+   No connection is needed for a sheet.
+2. **The partner** drafts as usual and adds `open` (the first thing the owner says, as they'll say
+   it), `ask`, `note`; without `open` it is asked to draft again. It says in one plain line that
+   it can't call there yet (kept, unlike the dropped line after a Go card).
+3. **The card** (`decision`, `call.kind = sheet`, `plan.from = self`): **打给 {name} 的通话单 / Call
+   sheet: {name}**; on On hand the line **这个国家或地区我还打不过去。照着这张单子，你自己打就行。**;
+   号码 / Number with **复制号码 / Copy number**, 要办的事 / What for, **先说 / Open with** set apart
+   as the line to read out, **要问 / Ask**, 可以说 / May say, **别说 / Don't share**, **记下 / Note
+   down**. Buttons: **先不打 / Not now** · **打完了 / Done calling** · **自己打 / Call it yourself**
+   (`tel:`; the apps hand it to the dialer; the Mac has Copy number instead). The sheet stays after
+   it is answered.
+4. **After:** 打完了 wakes the partner through the answered card; it asks in one short question how
+   it went and records the words with `phone_call do=result` (`reached: false` → no answer). On
+   hand: **等你自己打 · X**, then **打完了 · X** with their words (**你自己打的 / You made this
+   call** until they say). The snapshot itself never wakes the partner.
+
 ## 4. When Ducter must ask
 
 Every call, always. GQ4's "don't ask next time" never applies; no Rule can make a call run unasked.
@@ -112,7 +137,7 @@ approved 3 times in 14 days.
 | Daily cap $10 | Ducter's ledger before drafting and before dialing; Tuwa's `dailyLimitCents` set at connect; changeable on the phone card |
 | 15 minutes | asked of the agent; Ducter hangs up at 17 on the line, 20 from dialing |
 | Do-not-call list | `phone_call do=block`; checked before drafting |
-| Never | emergency numbers, countries Tuwa doesn't call, another person's voice, marketing, Friends sync (off at connect), voice sampling (paused at connect) |
+| Never | emergency numbers, dialing a country no line calls (a call sheet instead, §3a), another person's voice, marketing, Friends sync (off at connect), voice sampling (paused at connect) |
 
 ## 7. Not in v1
 

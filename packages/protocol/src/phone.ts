@@ -34,7 +34,8 @@ export interface CallPlan {
   keep?: string; // 不说 / Won't say: the bottom line the agent uses but never says (a budget)
   mustNot: string[]; // the owner's own "don't"s (Ducter's fixed rails are added on top, never shown as theirs)
   voice: "ducter" | "owner"; // 用 Ducter 的声音 / 用你的声音
-  from: "provider"; // 从 Tuwa 号码 / From a Tuwa number (the owner's own number is not in v1)
+  /** provider: a calling connection's line places it (从 Tuwa 的号码 / From a Tuwa number); self: the owner calls it themselves from a call sheet (D215). */
+  from: "provider" | "self";
   provider: string; // "Tuwa"
   minutes: number; // the estimate
   costUsd: number; // the estimate, rounded to cents
@@ -48,7 +49,24 @@ export interface CallPlan {
   /** D208: the owner's own number (they said so, or it is their saved phone): the callee's hours don't apply. */
   own?: boolean;
   summary?: string; // the provider's own approval summary, shown as is
-  note?: string; // one line the owner should know (a US mobile; mainland China likely won't connect)
+  note?: string; // one line the owner should know (a US mobile)
+  /** D215: a call sheet (通话单) the owner calls themselves: from = self, no provider, nothing to pay. */
+  sheet?: CallSheet;
+}
+
+/**
+ * D215: what the owner needs to make the call themselves when no line Ducter has reaches the
+ * number's country (Tuwa's coverage, research/53 §8): the first thing to say, the questions to
+ * ask, what not to say or share, what to note down. The words to speak are in the call's
+ * language, the user's own where possible. A later provider that reaches the number (the owner's
+ * own phone) takes the Go card instead; the sheet is only for numbers nothing can call.
+ */
+export interface CallSheet {
+  why: "uncovered"; // no calling provider Ducter has (or could connect) calls that country
+  open: string; // 先说 / Open with
+  ask: string[]; // 要问 / Ask
+  dont: string[]; // 别说 / Don't share: the owner's don'ts and what stays private
+  note: string[]; // 记下 / Note down
 }
 
 /**
@@ -151,7 +169,11 @@ export function e164(raw: string): string | undefined {
 /** A number for display: +81 3-1234-5678 style grouping is per country; this keeps it simple and honest. */
 export function prettyNumber(n: string): string {
   const d = n.replace(/^\+/, "");
-  const cc = d.startsWith("1") ? "1" : ["81", "86", "44", "33", "49", "82", "61", "65", "66", "84", "91", "63", "52", "55", "39", "34", "31"].find((c) => d.startsWith(c)) ?? (["852", "886"].find((c) => d.startsWith(c)) || d.slice(0, 2));
+  // Country codes are prefix-free: a known three-digit one first, then two, then 1 and 7.
+  const cc =
+    ["852", "853", "855", "856", "880", "886", "971", "972", "966", "977", "234", "254", "212"].find((c) => d.startsWith(c)) ??
+    ["20", "27", "30", "31", "32", "33", "34", "36", "39", "40", "41", "43", "44", "45", "46", "47", "48", "49", "51", "52", "53", "54", "55", "56", "57", "58", "60", "61", "62", "63", "64", "65", "66", "81", "82", "84", "86", "90", "91", "92", "93", "94", "95", "98"].find((c) => d.startsWith(c)) ??
+    (d.startsWith("1") ? "1" : d.startsWith("7") ? "7" : d.slice(0, 2));
   const rest = d.slice(cc.length);
   const groups = rest.length > 8 ? [rest.slice(0, rest.length - 8), rest.slice(-8, -4), rest.slice(-4)] : [rest.slice(0, rest.length - 4), rest.slice(-4)];
   return `+${cc} ${groups.filter(Boolean).join(" ")}`;
@@ -166,7 +188,7 @@ export interface DecisionCard {
   goLabel: string;
   defaultOption: "go" | "hold";
   reversible: boolean;
-  call?: { callId: string; kind: "go" | "question"; plan?: CallPlan; choices?: string[]; yesNo?: boolean };
+  call?: { callId: string; kind: "go" | "question" | "sheet"; plan?: CallPlan; choices?: string[]; yesNo?: boolean };
 }
 
 export interface DraftRequest {
@@ -186,6 +208,10 @@ export interface DraftRequest {
   person?: boolean; // a private person, not a business
   language?: string;
   taskId?: string;
+  /** D215, a call sheet: the first thing the owner says, the questions, what to note down (in the call's language). */
+  open?: string;
+  ask?: string[];
+  note?: string[];
 }
 
 export type DraftResult =
@@ -197,6 +223,8 @@ export type DraftResult =
 /** Whether a phone_call event wakes the partner: a call that ended on its own (not the owner's hang-up or Not now). */
 export function callWakes(c: CallBody): boolean {
   if (!callEnded(c.state) || c.state === "held") return false;
+  // D215: a call sheet: the owner's 打完了 tap wakes the partner (as an answered card); the outcome is the partner's own record.
+  if (c.plan.from === "self") return false;
   if (c.state === "cancelled") return c.by === "ducter";
   return true;
 }
@@ -213,6 +241,11 @@ export function renderCallEnded(c: CallBody, taskTitle?: string): string {
   const facts = `${c.outcome ? ` · reported: "${c.outcome}"` : ""}${c.agreed?.length ? ` · agreed: ${c.agreed.join("; ")}` : ""}${cost ? ` · ${cost}` : ""}`;
   const hint = c.hint === "screening" ? ` · ${SCREENING_HINT}` : "";
   const fix = c.hint ? ", then that fix, briefly" : "";
+  // D215: a call sheet the user called themselves: no provider, nothing reported but what they said.
+  if (c.plan.from === "self")
+    return c.outcome
+      ? `[call sheet: the user called it themselves] ${who} · they said: "${c.outcome}"${task}. Already recorded; nothing more to say unless they ask.`
+      : `[call sheet: the user says they called] ${who}${task}. Ask them in one short line, in their language, how it went; then record it: phone_call do=result, callId ${c.callId}, outcome in their words.`;
   switch (c.state) {
     case "done":
       return `[call ended: done] ${who}${facts}${task}. Tell the user the outcome in one line, exactly as reported, in their language; never add what wasn't reported.`;

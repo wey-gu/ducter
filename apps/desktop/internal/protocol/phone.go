@@ -44,25 +44,37 @@ func CallEnded(state string) bool {
 
 // CallPlan is everything the Go card shows (D189 (4)).
 type CallPlan struct {
-	To         string    `json:"to"`
-	Name       string    `json:"name"`
-	Goal       string    `json:"goal"`
-	Say        []string  `json:"say"`
-	Keep       string    `json:"keep,omitempty"`
-	MustNot    []string  `json:"mustNot"`
-	Voice      string    `json:"voice"` // ducter | owner
-	From       string    `json:"from"`  // provider
-	Provider   string    `json:"provider"`
-	Minutes    float64   `json:"minutes"`
-	CostUSD    float64   `json:"costUsd"`
-	PerMinUSD  float64   `json:"perMinUsd"`
-	CalleeZone string    `json:"calleeZone"`
-	At         string    `json:"at,omitempty"`
-	Wait       *CallWait `json:"wait,omitempty"`   // D208: why it isn't now, when At is set
-	CanNow     bool      `json:"canNow,omitempty"` // D208: 现在就打 / Call now is offered
-	Own        bool      `json:"own,omitempty"`    // D208: the owner's own number
-	Summary    string    `json:"summary,omitempty"`
-	Note       string    `json:"note,omitempty"`
+	To         string     `json:"to"`
+	Name       string     `json:"name"`
+	Goal       string     `json:"goal"`
+	Say        []string   `json:"say"`
+	Keep       string     `json:"keep,omitempty"`
+	MustNot    []string   `json:"mustNot"`
+	Voice      string     `json:"voice"` // ducter | owner
+	From       string     `json:"from"`  // provider | self (D215)
+	Provider   string     `json:"provider"`
+	Minutes    float64    `json:"minutes"`
+	CostUSD    float64    `json:"costUsd"`
+	PerMinUSD  float64    `json:"perMinUsd"`
+	CalleeZone string     `json:"calleeZone"`
+	At         string     `json:"at,omitempty"`
+	Wait       *CallWait  `json:"wait,omitempty"`   // D208: why it isn't now, when At is set
+	CanNow     bool       `json:"canNow,omitempty"` // D208: 现在就打 / Call now is offered
+	Own        bool       `json:"own,omitempty"`    // D208: the owner's own number
+	Summary    string     `json:"summary,omitempty"`
+	Note       string     `json:"note,omitempty"`
+	Sheet      *CallSheet `json:"sheet,omitempty"` // D215: a call sheet the owner calls themselves (From = self)
+}
+
+// CallSheet is what the owner needs to make a call themselves when no line
+// Ducter has calls the number's country (D215): the first thing to say, the
+// questions, what not to share, what to note down.
+type CallSheet struct {
+	Why  string   `json:"why"` // uncovered
+	Open string   `json:"open"`
+	Ask  []string `json:"ask"`
+	Dont []string `json:"dont"`
+	Note []string `json:"note"`
 }
 
 // CallWait says why a call waits (D208): callee (outside 9:00–20:00 where
@@ -124,7 +136,7 @@ type CallBody struct {
 // question from the line.
 type CallAsk struct {
 	CallID  string    `json:"callId"`
-	Kind    string    `json:"kind"` // go | question
+	Kind    string    `json:"kind"` // go | question | sheet (D215)
 	Plan    *CallPlan `json:"plan,omitempty"`
 	Choices []string  `json:"choices,omitempty"`
 	YesNo   bool      `json:"yesNo,omitempty"`

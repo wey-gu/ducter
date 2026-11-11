@@ -125,6 +125,9 @@ func (a *App) answeredWords(d *store.DecisionState) string {
 	if d.Call != nil && d.Call.Kind == "question" {
 		return a.callAnswered(d) // D189: a question from the line, answered
 	}
+	if d.Call != nil && d.Call.Kind == "sheet" && (d.Pending == "go" || (d.Resolved != nil && d.Resolved.Option == "go")) {
+		return a.L.T("call.sheet.went") // D215: they called it themselves
+	}
 	if d.Call != nil && ((d.Resolved != nil && d.Resolved.Now) || (d.Resolved == nil && d.Pending == "go" && a.ph().now[d.DecisionID])) {
 		return a.L.T("call.now.done") // D208: Call now
 	}

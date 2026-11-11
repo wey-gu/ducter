@@ -113,6 +113,12 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       if (d?.call) {
         // D193: Ducter acts on a call's cards itself: Go dials (or waits for the allowed hour), a
         // question's answer goes to the line. Nothing to say unless the user replied with a change.
+        // D215: a call sheet (no line calls that country): the user calls it themselves; 打完了 / Done calling means they did.
+        if (d.call.kind === "sheet") {
+          if (b.option === "go") return `[call sheet: the user says they called] ${d.call.plan?.name ?? ""} (${d.call.plan?.to ?? ""}): ask them how it went in one short question (one only), in their language; when they say, record it: phone_call do=result, callId ${d.call.callId}, text = their words (reached false if nobody answered).`;
+          if (b.option === "hold") return `[call sheet set aside${by}] "${d.question}": say nothing.`;
+          return `[call sheet: the user replied instead] "${d.question}" · user: ${b.text ?? ""}. If they changed something, phone_call again (a new sheet); if they called, ask how it went or record it (do=result); otherwise answer them.`;
+        }
         if (d.call.kind === "question") return `[a question from the call answered${by}] "${d.question}"${b.text ? ` · user: ${b.text}` : ""}: Ducter passed it to the line itself; say nothing.`;
         if (b.option === "go") return `[call card answered: go] "${d.question}": Ducter places the call itself${d.call.plan?.at ? ` at ${d.call.plan.at}` : ""}; say nothing now, the outcome comes back to you.`;
         if (b.option === "hold") return `[call card answered: not now${by}] "${d.question}": nothing was dialed; say nothing.`;

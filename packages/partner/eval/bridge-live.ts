@@ -140,7 +140,13 @@ async function preflightConnected(): Promise<boolean> {
   if (!space) return false;
   const l = await nm(["bridge", "connections", "list", "--space-id", space, "--agent-id", PERSONA_AGENT]);
   const conn = (Array.isArray(l.j?.connections) ? l.j.connections : []).find((c: any) => c?.client_label === CTX && c?.state === "active");
-  say(`  ${conn ? "✓" : "✗"} an active connection for ${PERSONA_AGENT} saved as context ${CTX}${conn ? "" : ` (exit ${l.code})`}`);
+  say(`  ${conn ? "✓" : "✗"} an active connection for ${PERSONA_AGENT} saved as context ${CTX}${conn ? "" : ` (exit ${l.code}${l.j?.error_code ? `, ${l.j.error_code}, HTTP ${l.j.http_status ?? "?"}` : ""})`}`);
+  // research/66 §3: Mem's Cloud answering 503 cloud_bridge_setup_unavailable for connections (and
+  // native session preparation) is Mem's side; the skill says stop, so the trial stops here too.
+  if (!conn && /_(unavailable|busy|capacity)$/.test(String(l.j?.error_code ?? ""))) {
+    say("\nNowledge Mem's side can't take Bridge connections right now (its own refusal; nothing to change here). Run this again later.");
+    return false;
+  }
   const st = await nm(["--agent-context", CTX, "bridge", "setup"]);
   const agent = st.j?.endpoint?.address?.agent_id ?? st.j?.identity?.agent_id;
   const same = st.code === 0 && agent === PERSONA_AGENT;

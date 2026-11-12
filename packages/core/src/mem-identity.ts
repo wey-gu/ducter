@@ -65,7 +65,7 @@ export function nmemRunner(opts: { bin?: string; timeoutMs?: number; env?: Recor
   return async (args) => {
     let proc: ReturnType<typeof Bun.spawn>;
     try {
-      proc = Bun.spawn([opts.bin ?? "nmem", "--json", ...args], { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: (opts.env ?? process.env) as Record<string, string> });
+      proc = Bun.spawn([opts.bin ?? (opts.env ?? process.env).NMEM_CLI_PATH ?? "nmem", "--json", ...args], { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: (opts.env ?? process.env) as Record<string, string> });
     } catch {
       return undefined;
     }

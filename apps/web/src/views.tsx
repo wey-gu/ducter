@@ -2065,16 +2065,72 @@ function TrustSettings() {
  * never named): what 连上 will do, each step, Mem's refusal with the step the user takes in Mem,
  * and 断开. With an older Mem on the home, the one line that says to update it.
  */
+/** D225: the first nmem with `bridge connections` (bridge-link.ts BRIDGE_CONNECT_SINCE). */
+const MEM_MIN = "0.10.118";
+/** D225: the row's states before the home's Mem can connect anyone (nothing else in the group yet). */
+const MEM_SETUP = new Set(["install_mem", "installing", "update_mem", "updating", "sign_in", "signing_in", "local_mem"]);
+
 function BridgeRow() {
   const b = A.bridge;
   const s = A.settings;
+  const [link, setLink] = useState("");
   if (!b || !s) return null;
   const name = s.name;
   const space = b.space?.label ?? "Only me";
-  if (b.state === "update_mem")
+  const home = b.home ?? "";
+  // D225: the home's own Nowledge Mem command line first (put in, updated, signed in), on this row.
+  if (b.state === "install_mem" || b.state === "installing" || b.state === "update_mem" || b.state === "updating") {
+    const busy = b.state === "installing" || b.state === "updating";
+    const install = b.state === "install_mem" || b.state === "installing";
+    const line =
+      b.state === "installing" ? t("bridge.mem.installing", home)
+      : b.state === "updating" ? t("bridge.mem.updating", home)
+      : install ? (b.canRun ? t("bridge.mem.install", home) : t("bridge.mem.install.need", home))
+      : b.canRun ? t("bridge.mem.update", home, b.version ?? "", MEM_MIN)
+      : b.need === "app" || !b.version ? t("bridge.update", home)
+      : t("bridge.mem.update.other", home, b.version ?? "", MEM_MIN);
+    const label = install ? (b.canRun ? t("bridge.mem.install.go") : t("bridge.retry")) : t("bridge.mem.update.go");
     return (
       <div class="set-item">
-        <small class="bridge-only">{t("bridge.update", b.home ?? "")}</small>
+        <b>{t("bridge.title", name)}</b>
+        <small>{line}</small>
+        {b.detail && !busy && <small>{t(install ? "bridge.mem.install.failed" : "bridge.mem.update.failed", b.detail)}</small>}
+        {(busy || b.canRun || install) && (
+          <div class="set-go bridge-acts">
+            {busy ? <Btn kind="secondary" size="sm" disabled label={line} onClick={() => {}} /> : <Btn kind={b.canRun ? "primary" : "secondary"} size="sm" label={label} about={home} onClick={() => A.installBridgeMem()} />}
+          </div>
+        )}
+      </div>
+    );
+  }
+  if (b.state === "sign_in" || b.state === "signing_in") {
+    const busy = b.state === "signing_in";
+    const why = b.signIn === "used" ? t("bridge.mem.signin.used") : b.signIn === "bad" ? t("bridge.mem.signin.bad") : b.signIn === "failed" ? t("bridge.mem.signin.failed", b.detail ?? "") : "";
+    const go = () => {
+      if (!link.trim() || busy) return;
+      A.signInBridgeMem(link.trim());
+      setLink("");
+    };
+    return (
+      <div class="set-item">
+        <b>{t("bridge.title", name)}</b>
+        <small>{t("bridge.mem.signin", home)}</small>
+        {why && <small class="bridge-why">{why}</small>}
+        <label class="acct-field">
+          <span class="small">{t("bridge.mem.signin.link")}</span>
+          <input type="url" inputMode="url" autoComplete="off" autoCapitalize="off" autoCorrect="off" spellcheck={false} enterKeyHint="go" placeholder="https://…?nmem_connect=…" value={link} disabled={busy} onInput={(e) => setLink((e.target as HTMLInputElement).value)} onKeyDown={(e) => e.key === "Enter" && go()} />
+        </label>
+        <div class="set-go bridge-acts">
+          <Btn kind="primary" size="sm" disabled={busy || !link.trim()} label={busy ? t("bridge.mem.signin.busy") : t("bridge.mem.signin.go")} about={home} onClick={go} />
+        </div>
+      </div>
+    );
+  }
+  if (b.state === "local_mem")
+    return (
+      <div class="set-item">
+        <b>{t("bridge.title", name)}</b>
+        <small>{t("bridge.mem.local", home)}</small>
       </div>
     );
   const note =
@@ -2124,7 +2180,7 @@ function PeerSettings() {
   const name = s.name;
   const set = (patch: Partial<typeof p>) => A.setSettings({ peers: { ...p, ...patch } });
   // An older Mem with nothing ever written: the one update line, nothing else.
-  const reachShown = seen || !!p.trusted.length || !!p.muted.length || (!!b && b.state !== "update_mem");
+  const reachShown = seen || !!p.trusted.length || !!p.muted.length || (!!b && !MEM_SETUP.has(b.state));
   return (
     <section class="set">
       <h3>{t("peers.title", name)}</h3>

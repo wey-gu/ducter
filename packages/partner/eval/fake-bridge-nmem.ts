@@ -13,7 +13,8 @@
 // list / revoke` and `bridge session --host H --session-id S prepare`, in the shapes the 0.10.118-rc2
 // CLI source prints (research/private/37b). Interfaces only: no Mem source is copied here.
 //   NMEM_FAKE_VERSION=0.10.116    an nmem without `bridge connections` (exit 2, as clap does)
-//   NMEM_FAKE_REFUSE=<error_code> connect answers Mem's 403 refusal with that registered code
+//   NMEM_FAKE_REFUSE=<error_code> connect answers Mem's 403 refusal with that registered code (503 for _unavailable)
+//   NMEM_FAKE_SIGNED_OUT=1 · NMEM_FAKE_BACKEND=local   (D225: `status`, `connect <link>`)
 //   NMEM_FAKE_SPACES=none|two     no personal place, or two of them
 //   NMEM_FAKE_ARGV_LOG=/path      every call's argv, one JSON line each (tests check the exact argv)
 //
@@ -64,6 +65,29 @@ const fail = (code: string, message: string, exit = 1) => {
   process.exit(exit);
 };
 
+// D225: `status` (signed in?) and `connect <link>` (the sign-in). NMEM_FAKE_SIGNED_OUT=1: not signed
+// in until a connect; NMEM_FAKE_BACKEND=local: Mem answers from this computer; a link containing
+// "used" answers Mem's 410.
+const signedFile = `${statePath}.signed-in`;
+if (argv[0] === "status") {
+  if (process.env.NMEM_FAKE_SIGNED_OUT === "1" && !existsSync(signedFile)) {
+    console.log(JSON.stringify({ status: "error", error: "unreachable", api_url: "http://127.0.0.1:14242" }));
+    process.exit(1);
+  }
+  out({ status: "healthy", cli_version: VERSION, mode: "remote", backend: process.env.NMEM_FAKE_BACKEND ?? "cloud" });
+  process.exit(0);
+}
+if (argv[0] === "connect") {
+  const link = argv.filter((a) => !a.startsWith("--"))[1] ?? "";
+  if (/used/.test(link)) {
+    console.error("Error: redeem failed: 410 Gone (the link was used, expired or never valid)");
+    process.exit(1);
+  }
+  writeFileSync(signedFile, "1");
+  out({ ok: true, server: "https://cloud.example", workspace: "fake", key: "nmem_ck_…0000" });
+  process.exit(0);
+}
+if (process.env.NMEM_FAKE_SIGNED_OUT === "1" && !existsSync(signedFile)) fail("unreachable", "fake nmem: not signed in", 1);
 if (argv[0] !== "bridge") fail("bad_arguments", "fake nmem: only `bridge` is implemented", 2);
 const verb = argv[1];
 if (!verb || verb === "--help" || verb === "help") {
@@ -98,7 +122,11 @@ if (verb === "connections") {
     const refuse = process.env.NMEM_FAKE_REFUSE;
     if (refuse) {
       // As the CLI prints a registered Bridge setup refusal under --json (stdout, exit 1).
-      console.log(JSON.stringify({ error_code: refuse, detail: `Mem refused (${refuse}).`, outcome_unknown: false, http_status: refuse.endsWith("binding_conflict") ? 409 : 403 }));
+      // nmem 0.10.118 against a Cloud that can't take it (research/66 §3): 503, outcome unknown,
+      // an agent-facing warning on stderr.
+      const down = /_(unavailable|busy|capacity|outcome_unknown)$/.test(refuse);
+      if (down) console.error("Warning: Nowledge Bridge cannot be prepared with this connection. Stop trying Bridge commands or registering another identity.");
+      console.log(JSON.stringify({ error_code: refuse, detail: down ? "Bridge setup is unavailable. Stop and keep the current connection; do not mint another key or try another backend." : `Mem refused (${refuse}).`, retryable: false, outcome_unknown: down, http_status: down ? 503 : refuse.endsWith("binding_conflict") ? 409 : 403 }));
       process.exit(1);
     }
     let c = s.connections.find((x) => x.agent_id === agent && x.client_label === name);

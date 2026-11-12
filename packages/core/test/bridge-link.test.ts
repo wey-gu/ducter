@@ -3,14 +3,17 @@
 // reaches Mem. What is checked: the capability check, the exact connect argv (the one personal
 // place's id, never a guessed one), each registered refusal said as its own reason with nothing
 // else tried, connected → the context that turns the partner's Bridge on, disconnect, old nmem.
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { ServerFrame } from "@ducter/protocol";
-import { BRIDGE_CONNECTION_FILE, createBridgeLink, errorCodeIn, nmemCall, parseNmemVersion, personalSpace, REFUSALS, versionConnects } from "../src/bridge-link.ts";
+import { BRIDGE_CONNECTION_FILE, createBridgeLink, errorCodeIn, nmemCall, parseNmemVersion, personalSpace, REFUSALS, versionConnects, type MemExec, type NmemCall } from "../src/bridge-link.ts";
+import { connectLinkOk, installPlan, type MemSys } from "../src/mem-cli.ts";
 import { startCore } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
 
+// Each fake nmem call starts a bun process: under a full, loaded run a test can pass 5 s.
+setDefaultTimeout(30_000);
 const FAKE = resolve(import.meta.dir, "../../partner/eval/fake-bridge-nmem.ts");
 let stops: (() => Promise<void> | void)[] = [];
 afterEach(async () => {
@@ -27,7 +30,7 @@ function rig(env: Record<string, string> = {}) {
   const state = join(t.dir, "state.json");
   writeFileSync(state, JSON.stringify({ identities: {}, messages: [], seq: 0 }));
   const argvLog = join(t.dir, "argv.log");
-  const fullEnv = { PATH: process.env.PATH ?? "", NMEM_FAKE_BRIDGE_STATE: state, NMEM_FAKE_ARGV_LOG: argvLog, ...env };
+  const fullEnv = { PATH: process.env.PATH ?? "", NMEM_CLI_PATH: bin, NMEM_FAKE_BRIDGE_STATE: state, NMEM_FAKE_ARGV_LOG: argvLog, ...env };
   const calls = (): string[][] => (existsSync(argvLog) ? readFileSync(argvLog, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l)) : []);
   const data = join(t.dir, "data");
   mkdirSync(data);
@@ -63,7 +66,8 @@ describe("pieces", () => {
 describe("the link over a fake nmem", () => {
   test("an older nmem: one line, update Mem on the home; nothing else is run", async () => {
     const r = rig({ NMEM_FAKE_VERSION: "0.10.116" });
-    expect(await r.link.view()).toEqual({ state: "update_mem", identity: "ducter", home: "hel" });
+    // The fake's copy isn't one Ducter can place (not the app's, pipx, uv or pip): the line alone.
+    expect(await r.link.view()).toEqual({ state: "update_mem", identity: "ducter", home: "hel", version: "0.10.116", canRun: false, need: "other" });
     await r.link.connect();
     expect(writes(r.calls())).toEqual([]);
     // Only the version and the help probe: no setup, no list.
@@ -149,11 +153,167 @@ describe("the link over a fake nmem", () => {
     expect(await off.link.view()).toBeUndefined();
   });
 
-  test("no Mem identity: nothing shows, nothing runs", async () => {
+  test("memory off: nothing shows, nothing runs", async () => {
     const r = rig();
-    const link = createBridgeLink({ dataDir: r.data, identity: () => undefined, home: () => "hel", run: nmemCall({ bin: r.bin, env: r.fullEnv }), env: r.fullEnv });
+    const link = createBridgeLink({ dataDir: r.data, identity: () => undefined, memoryOn: () => false, home: () => "hel", run: nmemCall({ bin: r.bin, env: r.fullEnv }), env: r.fullEnv });
     expect(await link.view()).toBeUndefined();
+    await link.installMem();
+    await link.connect();
     expect(r.calls()).toEqual([]);
+  });
+
+  test("no identity bound yet: the persona's own id is named (D141)", async () => {
+    const r = rig();
+    const link = createBridgeLink({ dataDir: r.data, identity: () => undefined, fallbackIdentity: () => "ducter", home: () => "hel", run: nmemCall({ bin: r.bin, env: r.fullEnv }), env: r.fullEnv });
+    expect((await link.view())?.state).toBe("ready");
+    await link.connect();
+    expect(writes(r.calls())[0]).toContain("ducter");
+  });
+
+  test("Mem's side unavailable (503, outcome unknown): a plain reason, never Mem's agent-facing words", async () => {
+    const r = rig({ NMEM_FAKE_REFUSE: "cloud_bridge_setup_unavailable" });
+    await r.link.view();
+    await r.link.connect();
+    const v = await r.link.view();
+    expect(v).toMatchObject({ state: "refused", reason: "unavailable" });
+    expect(JSON.stringify(v)).not.toMatch(/mint|Stop|backend/);
+  });
+
+  test("an unregistered code: its name, not Mem's agent-facing detail", async () => {
+    const r = rig({ NMEM_FAKE_REFUSE: "cloud_bridge_setup_policy_invalid" });
+    await r.link.view();
+    await r.link.connect();
+    expect(await r.link.view()).toMatchObject({ state: "failed", detail: "Nowledge Mem: policy_invalid" });
+  });
+
+  test("not signed in: sign_in; a bad link runs nothing; a used one says so; a good one signs in, then ready", async () => {
+    const r = rig({ NMEM_FAKE_SIGNED_OUT: "1" });
+    let ready = 0;
+    r.link.onMemReady(() => ready++);
+    expect(await r.link.view()).toEqual({ state: "sign_in", identity: "ducter", home: "hel", version: "0.10.118" });
+    await r.link.signInMem("just some words");
+    expect(await r.link.view()).toMatchObject({ state: "sign_in", signIn: "bad" });
+    expect(r.calls().some((c) => c.includes("connect") && !c.includes("connections"))).toBe(false);
+    await r.link.signInMem("https://cloud.example/app?nmem_connect=nmem_ct_used");
+    expect(await r.link.view()).toMatchObject({ state: "sign_in", signIn: "used" });
+    await r.link.signInMem("https://cloud.example/app?nmem_connect=nmem_ct_fresh");
+    // Credential only: no AI tool's settings change.
+    expect(r.calls().find((c) => c.some((x) => x.includes("nmem_ct_fresh")))).toEqual(["--json", "connect", "--skip-tools", "https://cloud.example/app?nmem_connect=nmem_ct_fresh"]);
+    expect(ready).toBe(1);
+    expect((await r.link.view())?.state).toBe("ready");
+    expect(JSON.stringify(await r.link.view())).not.toContain("nmem_ct_");
+  });
+
+  test("Mem answering from this computer, not a cloud workspace: local_mem, no setup run", async () => {
+    const r = rig({ NMEM_FAKE_BACKEND: "local" });
+    expect(await r.link.view()).toEqual({ state: "local_mem", identity: "ducter", home: "hel" });
+    expect(r.calls().some((c) => c.includes("setup"))).toBe(false);
+  });
+});
+
+describe("D225: the home's own nmem, put in or updated on the tap", () => {
+  // A home with no nmem: `run` can't start it; the installer is recorded, never run for real.
+  function sysOf(files: Record<string, string>, tools: Record<string, string>, home = "/home/u"): MemSys {
+    return {
+      which: (cmd) => tools[cmd],
+      exists: (p) => p in files,
+      read: (p) => files[p],
+      list: (d) => [...new Set(Object.keys(files).filter((p) => p.startsWith(d + "/")).map((p) => p.slice(d.length + 1).split("/")[0]!))],
+      real: (p) => p,
+      home,
+      platform: "linux",
+    };
+  }
+  function homeRig(o: { files?: Record<string, string>; tools?: Record<string, string>; version?: string; signedIn?: boolean; installOk?: boolean; pipOk?: boolean; externally?: boolean }) {
+    const t = tempDir();
+    stops.push(t.cleanup);
+    const files = { ...(o.files ?? {}) };
+    let version = o.version;
+    const execs: string[][] = [];
+    const env: Record<string, string | undefined> = { PATH: "/usr/bin:/bin" };
+    const run: NmemCall = async (args) => {
+      if (!version) return undefined;
+      if (args[0] === "--version") return { code: 0, out: `nmem ${version}`, err: "" };
+      if (args.join(" ") === "bridge connections --help") return { code: 2, out: "", err: "unrecognized" };
+      if (args[0] === "status") return o.signedIn === false ? { code: 1, out: "", err: "unreachable" } : { code: 0, out: JSON.stringify({ status: "healthy", backend: "cloud" }), err: "" };
+      if (args.join(" ") === "bridge setup") return { code: 0, out: JSON.stringify({ candidates: [{ id: "p1", label: "Only me", kind: "personal" }] }), err: "" };
+      return { code: 1, out: "", err: "not in this rig" };
+    };
+    const exec: MemExec = async (argv) => {
+      execs.push(argv);
+      if (argv.includes("--version")) return { code: o.pipOk ? 0 : 1, out: "pip 26", err: "" };
+      if (o.externally && !argv.includes("--break-system-packages")) return { code: 1, out: "", err: "error: externally-managed-environment\n× This environment is externally managed" };
+      if (o.installOk === false) return { code: 1, out: "", err: "ERROR: No matching distribution found for nmem-cli" };
+      version = "0.10.118";
+      files["/home/u/.local/bin/nmem"] = "ELF";
+      return { code: 0, out: "installed", err: "" };
+    };
+    const link = createBridgeLink({ dataDir: t.dir, identity: () => "ducter", home: () => "hel", run, exec, sys: sysOf(files, o.tools ?? {}), env });
+    return { link, execs, env };
+  }
+
+  test("no nmem, pipx here: install_mem with one tap; it runs pipx, finds the new nmem, and goes on", async () => {
+    const r = homeRig({ tools: { pipx: "/usr/bin/pipx", python3: "/usr/bin/python3" } });
+    expect(await r.link.view()).toEqual({ state: "install_mem", identity: "ducter", home: "hel", canRun: true });
+    await r.link.installMem();
+    expect(r.execs).toEqual([["/usr/bin/pipx", "install", "nmem-cli"]]);
+    expect(r.env.PATH!.split(":")[0]).toBe("/home/u/.local/bin");
+    expect(r.env.NMEM_CLI_PATH).toBe("/home/u/.local/bin/nmem");
+    expect((await r.link.view())?.state).toBe("ready");
+  });
+
+  test("no nmem, uv here: uv first", async () => {
+    const r = homeRig({ tools: { uv: "/usr/bin/uv", pipx: "/usr/bin/pipx" } });
+    await r.link.installMem();
+    expect(r.execs[0]).toEqual(["/usr/bin/uv", "tool", "install", "nmem-cli"]);
+  });
+
+  test("no nmem, no pipx or uv, pip refused by the system: one line naming pipx, nothing installed", async () => {
+    const r = homeRig({ tools: { python3: "/usr/bin/python3" }, pipOk: false });
+    expect(await r.link.view()).toEqual({ state: "install_mem", identity: "ducter", home: "hel", canRun: false, need: "pipx" });
+    await r.link.installMem();
+    expect(r.execs.every((a) => a.includes("--version"))).toBe(true);
+  });
+
+  test("an install that fails: the installer's last line, and Try again", async () => {
+    const r = homeRig({ tools: { pipx: "/usr/bin/pipx" }, installOk: false });
+    await r.link.installMem();
+    expect(await r.link.view()).toMatchObject({ state: "install_mem", canRun: true, detail: "ERROR: No matching distribution found for nmem-cli" });
+  });
+
+  test("hel's shape: nmem 0.10.116 put in the user's site by pip, under a marked system python: updated in place past the mark", async () => {
+    const files = {
+      "/home/u/.local/bin/nmem": "ELF",
+      "/home/u/.local/lib/python3.14/site-packages/nmem_cli-0.10.116.dist-info/INSTALLER": "pip\n",
+    };
+    const r = homeRig({ files, tools: { nmem: "/home/u/.local/bin/nmem", "python3.14": "/usr/bin/python3.14" }, version: "0.10.116", externally: true });
+    expect(await r.link.view()).toEqual({ state: "update_mem", identity: "ducter", home: "hel", version: "0.10.116", canRun: true });
+    await r.link.installMem();
+    expect(r.execs).toEqual([
+      ["/usr/bin/python3.14", "-m", "pip", "install", "--user", "--upgrade", "--disable-pip-version-check", "nmem-cli"],
+      ["/usr/bin/python3.14", "-m", "pip", "install", "--user", "--upgrade", "--disable-pip-version-check", "--break-system-packages", "nmem-cli"],
+    ]);
+    expect((await r.link.view())?.state).toBe("ready");
+  });
+
+  test("the app's copy: update the app (no command here)", async () => {
+    const files = { "/Applications/Nowledge Mem.app/Contents/Resources/nmem": "bin" };
+    const r = homeRig({ files, tools: { nmem: "/Applications/Nowledge Mem.app/Contents/Resources/nmem" }, version: "0.10.116" });
+    expect(await r.link.view()).toMatchObject({ state: "update_mem", canRun: false, need: "app" });
+    await r.link.installMem();
+    expect(r.execs).toEqual([]);
+  });
+
+  test("a fresh install is never forced past the system's mark", async () => {
+    expect(installPlan({ PATH: "" }, { which: (c) => (c === "python3" ? "/usr/bin/python3" : undefined), exists: () => false, read: () => undefined, list: () => [], real: (p) => p, home: "/h", platform: "linux" }, true)?.argv).toEqual(["/usr/bin/python3", "-m", "pip", "install", "--user", "--disable-pip-version-check", "nmem-cli"]);
+  });
+
+  test("connect links: Mem's shapes only", () => {
+    expect(connectLinkOk("https://mem.example.com/app?nmem_connect=nmem_ct_x")).toBe(true);
+    expect(connectLinkOk("https://mem.example.com/connect?token=abc")).toBe(true);
+    expect(connectLinkOk("https://mem.example.com/app")).toBe(false);
+    expect(connectLinkOk("http://evil.example/app?nmem_connect=x")).toBe(false);
+    expect(connectLinkOk("nowledgemem://login?x=1")).toBe(false);
   });
 });
 

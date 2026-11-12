@@ -44,7 +44,7 @@ export async function loadPersona(opts: { timeoutMs?: number; bin?: string; off?
   // D141: the persona's own identity's bundle once it is bound, never an ambient NMEM_AGENT_ID.
   const who = opts.mem ? ["--agent-id", opts.mem.agentId, ...(opts.mem.space ? ["--space", opts.mem.space] : [])] : [];
   try {
-    const proc = Bun.spawn([opts.bin ?? "nmem", "--json", "context", "--no-ensure", "--no-working-memory", ...who], {
+    const proc = Bun.spawn([opts.bin ?? process.env.NMEM_CLI_PATH ?? "nmem", "--json", "context", "--no-ensure", "--no-working-memory", ...who], {
       stdout: "pipe",
       stderr: "ignore",
       stdin: "ignore",

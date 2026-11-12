@@ -80,13 +80,13 @@ func (h *hub) RefuseNext(ability, reason string) {
 	d.mu.Unlock()
 }
 
-// MockHostname is the address 在哪儿都能用's setup makes in the mock (D228).
+// MockHostname is the address 从外面连's setup makes in the mock (D228).
 const MockHostname = "ducter.weygu.com"
 
 // mockQR is a small stand-in for a QR code (rows of 1 and 0).
 var mockQR = []string{"1111111010111", "1000001011001", "1011101001101", "1011101010101", "1011101001001", "1000001010111", "1111111010101", "0000000001000", "1101011100110", "0110100011011", "1010111101001", "0011001010110", "1110101101011"}
 
-// AnywhereStage moves 在哪儿都能用's guided setup in the mock (D228): login
+// AnywhereStage moves 从外面连's guided setup in the mock (D228): login
 // (the sign-in link waits for the person), go (the Go card waits), taken (the
 // name already has a record), on, off.
 func (h *hub) AnywhereStage(stage string) {

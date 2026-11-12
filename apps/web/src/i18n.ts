@@ -31,7 +31,7 @@ const zh: Record<string, string> = {
   "loadout.brain.auto_other": "自动选的：Claude Code 没登录",
   "settings.talk.row": "回你用的语言",
   "partner.memory.on.help": "记得你说过的事，下次不用再讲一遍。",
-  "partner.trust.title": "自己就做，还是先问你",
+  "partner.trust.title": "要不要先问",
   "partner.trust.own": "自己就做",
   "partner.trust.asks": "先问你",
   "partner.trust.own.1": "在自己的副本里改文件，你的原件不会被动到",
@@ -679,7 +679,7 @@ const zh: Record<string, string> = {
   "partner.memory.hidden": "这里不再显示「%s」；Nowledge Mem 里那条还在。",
   // What it thinks with, and who does the tasks (D89): the same keys as the desktop.
   "loadout.socket": "想事情用",
-  "loadout.brain.title": "它用什么想事情",
+  "loadout.brain.title": "用什么想",
   "loadout.brain.keep": "换了以后，名字、记得的事和你们的对话都还在。",
   "loadout.brain.next": "从你的下一句话开始用。",
   "loadout.brain.onlymac": "只能用 %s 住的这台 Mac 上登录了的 AI agent。",
@@ -2285,7 +2285,7 @@ const devcard: Record<Lang, Record<string, string>> = {
     "coin.close": "收起",
     "chip.web": "上网",
     "chip.computer": "用电脑",
-    "chip.remote": "在哪儿都能用",
+    "chip.remote": "从外面连",
     "chip.worker": "替 %s 做事",
     "chip.notify": "通知",
     "chip.info": "这是做什么的",
@@ -2406,7 +2406,7 @@ const devcard: Record<Lang, Record<string, string>> = {
     "coin.close": "Close",
     "chip.web": "Browse",
     "chip.computer": "Use apps",
-    "chip.remote": "From anywhere",
+    "chip.remote": "From outside",
     "chip.worker": "Tasks for %s",
     "chip.notify": "Notifications",
     "chip.info": "What this does",
@@ -2445,7 +2445,7 @@ const devcard: Record<Lang, Record<string, string>> = {
 // Generated from apps/desktop/internal/i18n/accounts.go (the same keys and words on the Mac).
 const accounts: Record<Lang, Record<string, string>> = {
   zh: {
-    "proactive.title": "自己发现了事，怎么告诉你",
+    "proactive.title": "发现了就说",
     "proactive.urgent": "只说急的",
     "proactive.three": "每天最多 3 件",
     "proactive.useful": "有用就说",

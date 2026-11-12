@@ -106,7 +106,7 @@ run the one command it prints.
 | `ducter open <part of a task's title>` | Show that task in the app (or, if the app isn't open, where it is) |
 | `ducter doctor` | The check-up (see [Troubleshooting](troubleshooting.md)) |
 | `ducter pair` | A code to connect your phone or another computer: one device, once, for 10 minutes. Run it again for the next device |
-| `ducter domain <your domain>` | On a server: HTTPS at your domain, then a code to connect your devices from anywhere. `--remove` undoes it |
+| `ducter domain <your domain>` | On a server: HTTPS at your domain, then a code to connect your devices from outside. `--remove` undoes it |
 | `ducter devices` | The devices connected to your Ducter; `ducter devices disconnect <name>` removes one |
 | `ducter devices rename <name> <new name>` | Give a device a name you'll recognize |
 | `ducter connect <address> --code <code>` | Send this computer's `ducter` commands to a Ducter on a server (the code comes from `ducter pair` there) |

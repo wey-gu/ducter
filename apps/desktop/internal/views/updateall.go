@@ -10,7 +10,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
 
-// D224: 全部更新 / Update all, first on Settings › 更新与关于. One card:
+// D224: 全部更新 / Update all, first on Settings › 更新和关于. One card:
 // what is behind and the one button, in the order the home will take it
 // (its own Ducter, the other computers, then each computer's AI agents);
 // then the same list ticking itself off, every step's state at its row's

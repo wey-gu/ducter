@@ -10,7 +10,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D167, the author's Settings › 更新与关于 › 各台电脑上的 Ducter on 0.0.7.
+// D167, the author's Settings › 更新和关于 › 各台电脑上的 Ducter on 0.0.7.
 func versionsApp(t *testing.T, devices ...protocol.DeviceView) (*App, *ui.Tester, *[]any) {
 	t.Helper()
 	app, sent := iaApp(t, i18n.ZH)

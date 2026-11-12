@@ -27,7 +27,7 @@ const (
 	RouteConversation Route = iota
 	RouteOnHand
 	RouteTask
-	// RouteDevices is 你的设备，和它们会做的事 / Your devices and what they can do.
+	// RouteDevices is 你的设备 / Your devices.
 	RouteDevices
 	// RoutePartner is Settings › 伙伴 / Partner (D150; its own page in D71).
 	RoutePartner

@@ -10,7 +10,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
 
-// D187, the author's Settings › 更新与关于 at 00:48 on 2026-11-11: the top
+// D187, the author's Settings › 更新和关于 at 00:48 on 2026-11-11: the top
 // card said 现在还查不到新版本 (the app's own check, refused by GitHub's
 // rate limit), and the same page's 各台电脑上的 Ducter said this Mac, a
 // worker of hel renamed "Macbook Pro M3", 有新版本 0.0.13. One page, two

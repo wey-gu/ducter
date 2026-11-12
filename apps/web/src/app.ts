@@ -1392,7 +1392,7 @@ class AppState {
     this.send({ t: "anywhere_setup", op: "begin" });
     this.changed();
   }
-  /** D228: 在哪儿都能用 on again (the tunnel made before), or the setup when there is none yet. */
+  /** D228: 从外面连 on again (the tunnel made before), or the setup when there is none yet. */
   anywhereOn(on: boolean) {
     this.anywhereAnswer = undefined;
     this.send({ t: "ability", device: "local", ability: "remote", on });

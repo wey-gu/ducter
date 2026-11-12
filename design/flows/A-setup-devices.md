@@ -134,7 +134,7 @@ missing. The design moves every interactive step into the user's own browser.
       - Escape hatch: "我的 AI 在 Mac 上 / My AI is on my Mac" → pair the Mac as a worker
         (A2-W) and let the partner think there.
    3. **Your memory (optional).**
-   4. **Reach from anywhere** (VPS only, because the temporary link is about to expire). One
+   4. **Reach from outside** (VPS only, because the temporary link is about to expire). One
       button: **登录 Cloudflare / Sign in to Cloudflare** (OAuth in this same browser; free
       account, no card, no domain). Ducter deploys the Edge and claims
       `ducter-<name>.workers.dev`. Alternatives (collapsed): own domain, Tailscale (shown first
@@ -184,7 +184,7 @@ missing. The design moves every interactive step into the user's own browser.
 | `setup.vps.running` | Ducter 在 {device} 上运行了 | Ducter is running on {device} |
 | `setup.vps.open_link` | 用浏览器打开这个链接完成设置（{min} 分钟内有效） | Open this link in a browser to finish setup (valid {min} min) |
 | `setup.vps.ai_on_mac` | 我的 AI 在 Mac 上 | My AI is on my Mac |
-| `setup.remote.title` | 在哪儿都能打开 | Reach from anywhere |
+| `setup.remote.title` | 从外面连 | Reach from outside |
 | `setup.remote.cf` | 登录 Cloudflare | Sign in to Cloudflare |
 | `setup.remote.cf.note` | 免费，不用绑卡，不用域名 | Free. No card, no domain |
 | `setup.remote.other` | 用自己的域名 · 用 Tailscale | Use my own domain · Use Tailscale |
@@ -215,7 +215,7 @@ missing. The design moves every interactive step into the user's own browser.
 ### Open questions
 1. Detect Mem *and* offer to create a Mem account in-flow for consumers, or only detect?
    *Proposed:* only detect in v1.
-2. Is "Reach from anywhere" on the Mac first run (not just VPS)? *Proposed:* no; offered after the
+2. Is "Reach from outside" on the Mac first run (not just VPS)? *Proposed:* no; offered after the
    first task (A2-P trigger). VPS needs it because its temporary link expires.
 3. Does `get.ducter.dev` exist (a project-owned domain), or do we use GitHub release URLs?
 4. The quick-tunnel setup link: acceptable to rely on trycloudflare for 15 minutes, given
@@ -251,7 +251,7 @@ with what it can do.**
   your phone too? One scan." with **好 / Go** · "以后再说 / Later".
 - Always available: Devices → **加一个设备 / Add a device** → Phone.
 
-1. **Remote access ready?** If the Edge isn't set up yet, this *is* adding the **在哪儿都能用** ability
+1. **Remote access ready?** If the Edge isn't set up yet, this *is* adding the **从外面连** ability
    (an ability) to the home device. One card, in place:
    - **登录 Cloudflare** → browser OAuth → back in the app: three ticks animate (deploy the
      Edge · claim `ducter-you.workers.dev` · check it from outside). ≈ 20 s.
@@ -329,7 +329,7 @@ with what it can do.**
 ### States touched
 - Device states (proposed, see §6): `online` · `asleep` · `unreachable` · `removed`; plus
   `joining` (shown on the add card only).
-- Ability: 在哪儿都能用 added to the home device; push enabled per client.
+- Ability: 从外面连 added to the home device; push enabled per client.
 - Tasks: a task `queued` with reason "needs a Linux device" moves to `working` when A2-W completes.
 
 ### Copy
@@ -342,8 +342,8 @@ with what it can do.**
 | `devices.add.phone` | 手机 | Phone |
 | `devices.add.mac` | Mac | Mac |
 | `devices.add.linux` | Linux 服务器 | Linux server |
-| `ability.remote.name` | 在哪儿都能用 | Reach from anywhere |
-| `ability.remote.added` | {device} 现在在哪儿都能打开了 | {device} can now be opened from anywhere |
+| `ability.remote.name` | 从外面连 | Reach from outside |
+| `ability.remote.added` | {device} 现在从外面也能打开了 | {device} can now be opened from outside |
 | `ability.remote.step.deploy` | 搭好中转 | Setting up the relay |
 | `ability.remote.step.address` | 拿到地址 {host} | Got the address {host} |
 | `ability.remote.step.check` | 从外面试一下 | Checking from outside |
@@ -386,7 +386,7 @@ with what it can do.**
 - Phone connects: on the desktop the QR card **flips** to show a small phone toy with the
   partner's face on its screen, which bounces once; on the phone the face does the same bounce at
   the same moment. Two screens, one beat: that synchronicity is the 惊喜.
-- Adding an ability (在哪儿都能用): the equip snap from `ui.md` (lift → slot → magnetic pull → tock
+- Adding an ability (从外面连): the equip snap from `ui.md` (lift → slot → magnetic pull → tock
   → bounce). The chime fires only after the outside check passes.
 - Worker joins: its device toy slides onto the Devices table from the edge; repos appear as
   small labels dropping onto it.
@@ -831,7 +831,7 @@ sees it. Visible only when:
 
 ## 6. Glossary gaps and state changes to run through the change loop
 
-*Status 2026-11-09:* the device states, 额度, 叫醒, 连上 / 断开, 在哪儿都能用 and 换到 X 接着做 are in the
+*Status 2026-11-09:* the device states, 额度, 叫醒, 连上 / 断开, 从外面连 and 换到 X 接着做 are in the
 glossary (D51, D54), and the device-offline rule is D52 Q1. Still open: 登录 · 登录过期 and 新伙伴
 (reviewed in `../glossary-review-2026-11-09.md`, D66).
 
@@ -841,7 +841,7 @@ glossary (D51, D54), and the device-offline rule is D52 Q1. Still open: 登录 �
 | 额度 / quota | subscription limit | alternative 用量上限 / usage limit |
 | 登录 · 登录过期 / Sign in · signed out | harness login | |
 | 连上 / Connect (pair), 断开 / Disconnect | pairing, revoking | avoids "pair/配对" jargon |
-| 在哪儿都能用 / Reach from anywhere | the remote-access ability | In the glossary (D51, reworded D66) |
+| 从外面连 / Reach from outside | the remote-access ability | In the glossary (D51, reworded D66) |
 | 换到 {device} 接着做 / Continue on {device}; 交给 {harness} / Let {harness} continue | handoff | glossary has no shown word for handoff; these are action phrases |
 | 叫醒 / Wake | wake a device | |
 | 新伙伴 / New partner | persona creation | uses the glossary category word 伙伴 / Partner |

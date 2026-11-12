@@ -1,4 +1,4 @@
-// `ducter anywhere` (D228): the terminal's way to 在哪儿都能用 / From anywhere, the same as the home's
+// `ducter anywhere` (D228): the terminal's way to 从外面连 / From outside, the same as the home's
 // device card. It talks to the running Ducter over its WebSocket, which runs the tunnel.
 //   on                              the guided setup: a task whose agent sets up the person's own
 //                                   Cloudflare tunnel to their own domain; this follows its steps

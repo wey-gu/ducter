@@ -1,4 +1,4 @@
-// 在哪儿都能用 / From anywhere (D228): a home with no public address reached at the person's own
+// 从外面连 / From outside (D228): a home with no public address reached at the person's own
 // domain, through their own Cloudflare account and a named tunnel that Ducter runs.
 //
 // - The guided way: 让 Ducter 帮我设好 / Set it up for me opens one task on the home (D169's
@@ -210,7 +210,7 @@ function lastError(out: string): string {
 /** The cloudflared config for a tunnel made by the setup: that hostname to this Ducter only. */
 export function tunnelConfig(o: { tunnelId: string; credentials: string; hostname: string; port: number }): string {
   return [
-    "# Written by Ducter for 在哪儿都能用 / From anywhere (D228). Rewritten on every start.",
+    "# Written by Ducter for 从外面连 / From outside (D228). Rewritten on every start.",
     `tunnel: ${o.tunnelId}`,
     `credentials-file: ${o.credentials}`,
     "no-autoupdate: true",
@@ -526,7 +526,7 @@ export function createAnywhere(o: AnywhereOptions): AnywhereCtl {
     const metricsPort = await sys.freePort();
     mkdirSync(anywhereDir(o.dataDir), { recursive: true, mode: 0o700 });
     // Its own config (a config.yml the person keeps for their own tunnels never applies).
-    writeFileSync(configFile(o.dataDir), setup ? tunnelConfig({ tunnelId: saved.tunnelId!, credentials: credFile(o.dataDir), hostname: saved.hostname, port: port() }) : "# Written by Ducter for 在哪儿都能用 / From anywhere (D228).\nno-autoupdate: true\n", { mode: 0o600 });
+    writeFileSync(configFile(o.dataDir), setup ? tunnelConfig({ tunnelId: saved.tunnelId!, credentials: credFile(o.dataDir), hostname: saved.hostname, port: port() }) : "# Written by Ducter for 从外面连 / From outside (D228).\nno-autoupdate: true\n", { mode: 0o600 });
     let handle: TunnelHandle;
     try {
       handle = await sys.start({ bin: b.bin, port: port(), metricsPort, logFile: logFile(o.dataDir), configFile: configFile(o.dataDir), ...(setup ? {} : { envFile: tokenEnv(o.dataDir) }) });
@@ -726,7 +726,7 @@ export function createAnywhere(o: AnywhereOptions): AnywhereCtl {
       delete s.asked;
       const z = zh();
       const taskId = await o.setup
-        .openTask(setupBrief({ cli: o.setup.cli(), device: o.setup.homeName(), zh: z }), z ? `让 ${o.setup.homeName()} 在哪儿都能用` : `Make ${o.setup.homeName()} reachable from anywhere`)
+        .openTask(setupBrief({ cli: o.setup.cli(), device: o.setup.homeName(), zh: z }), z ? `让 ${o.setup.homeName()} 能从外面连` : `Make ${o.setup.homeName()} reachable from outside`)
         .catch((e) => (log(`couldn't open the setup task: ${(e as Error).message}`), undefined));
       if (!taskId) {
         if (!Object.keys(s.steps).length && !s.taskId) delete saved.setup;
@@ -792,11 +792,11 @@ const slug = (s: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 24) || "home";
 
-/** D228: the brief of the task that sets up From anywhere with the person's own domain. */
+/** D228: the brief of the task that sets up From outside with the person's own domain. */
 export function setupBrief(o: { cli: string; device: string; zh: boolean }): string {
   const step = (s: string) => `\`${o.cli} anywhere step ${s} --json\``;
   const lang = o.zh ? "Write every report in Chinese (简体中文), in plain words a person who has never heard of a tunnel understands." : "Write every report in English, in plain words a person who has never heard of a tunnel understands.";
-  return `Make this computer (${o.device}) reachable from anywhere at the user's own domain, through their own Cloudflare account. The user tapped "Set it up for me" for this. Ducter does each step with Cloudflare's own program (cloudflared) and shows its progress on the card; you run the steps, read what each answers, and talk to the user only when it matters.
+  return `Make this computer (${o.device}) reachable from outside at the user's own domain, through their own Cloudflare account. The user tapped "Set it up for me" for this. Ducter does each step with Cloudflare's own program (cloudflared) and shows its progress on the card; you run the steps, read what each answers, and talk to the user only when it matters.
 
 The steps (each prints one JSON line: state done | waiting | failed, and "next", which says what to do; one can take up to two minutes, so give each command a timeout of at least 3 minutes):
 1. ${step("login")}: gets cloudflared (checked) and signs in. The user opens a link (on this computer a browser may open by itself; elsewhere it shows on the card as a link and a QR code), signs in to Cloudflare, picks their domain and presses Authorize. While it says waiting, say so once in a short progress report, then run it again: it waits for them.

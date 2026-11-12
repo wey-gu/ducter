@@ -2036,7 +2036,7 @@ function MemorySettings() {
   );
 }
 
-/** 自己就做，还是先问你: the rules core keeps, in everyday words (read-only). */
+/** 要不要先问: the rules core keeps, in everyday words (read-only). */
 function TrustSettings() {
   const list = (head: string, prefix: string, cls: string) => (
     <div class={`trust ${cls}`}>

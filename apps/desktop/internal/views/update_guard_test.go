@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// D167: Settings › 更新与关于 / Updates and about is built from shared pieces
+// D167: Settings › 更新和关于 / Updates and about is built from shared pieces
 // only. The author found a lone "在查…" left-aligned between the computers'
 // rows and the night-time switch, part of no row: a label made on the spot.
 // These functions may lay nothing out themselves (no ui.Text, ui.Row,

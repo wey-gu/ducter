@@ -43,7 +43,7 @@ export const accounts: Record<string, { name: string; art: Art }> = {
 /** The abilities in front of home: an empty well to fill, and one that is on. */
 export const dock = [
   { id: "web", name: "Browse the web", on: false },
-  { id: "remote", name: "Reach from anywhere", on: true },
+  { id: "remote", name: "Reach from outside", on: true },
 ] as const;
 
 interface Spot { cx: number; top: number; w: number }

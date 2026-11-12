@@ -52,7 +52,7 @@ function sea(l: Layout, id: string) {
 const seas = { wide: sea(wide, "w"), narrow: sea(narrow, "n") };
 ---
 <div class="isles-wrap">
-  <div class="isles" id="stage" role="group" aria-label="Your devices and what they can do: This Mac, where Ducter lives, with cloud-1, a Mac mini and an iPhone round it">
+  <div class="isles" id="stage" role="group" aria-label="Your devices: This Mac, where Ducter lives, with cloud-1, a Mac mini and an iPhone round it">
     {(["wide", "narrow"] as const).map((which) => {
       const l = L[which];
       const s = seas[which];
@@ -185,7 +185,7 @@ const seas = { wide: sea(wide, "w"), narrow: sea(narrow, "n") };
           role={a.on ? undefined : "button"} tabindex={a.on ? undefined : 0} aria-label={a.on ? undefined : `${a.name} · can add`}>
           <div class="well">
             {a.on ? (
-              <Art class="obj" name="ab_remote" alt="Reach from anywhere, added to this Mac" sizes="(min-width: 560px) 150px, 32vw" />
+              <Art class="obj" name="ab_remote" alt="Reach from outside, added to this Mac" sizes="(min-width: 560px) 150px, 32vw" />
             ) : (
               <Fragment>
                 <Art class="socket" name="slot_empty" alt="" sizes="(min-width: 560px) 150px, 32vw" />

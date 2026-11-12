@@ -12,8 +12,8 @@ var zhIsles = Table{
 	"device.other.working":     "在做 %d 件事",
 	"device.other.working.one": "在做 1 件事",
 	// A phone or an app window that reaches Ducter from elsewhere.
-	"device.client.line": "在哪儿都能找到 %s",
-	"device.client.seen": "在哪儿都能找到 %s · %s",
+	"device.client.line": "在外面也能找到 %s",
+	"device.client.seen": "在外面也能找到 %s · %s",
 	// What the chosen device can do now, in one line.
 	"devices.can": "%s 会：%s",
 	// Under an island: a task running there.
@@ -34,8 +34,8 @@ var enIsles = Table{
 	"isles.tag.moved":          "Moved to %s",
 	"device.other.working":     "working on %d tasks",
 	"device.other.working.one": "working on 1 task",
-	"device.client.line":       "Reaches %s from anywhere",
-	"device.client.seen":       "Reaches %s from anywhere · %s",
+	"device.client.line":       "Reaches %s from outside",
+	"device.client.seen":       "Reaches %s from outside · %s",
 	"devices.can":              "%s can: %s",
 	"isles.working":            "Working on %d tasks",
 	"isles.working.one":        "Working on 1 task",

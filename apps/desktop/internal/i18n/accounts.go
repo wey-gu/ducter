@@ -5,7 +5,7 @@ package i18n
 // (apps/web/src/i18n.ts) uses the same keys for the same words.
 
 var zhAccounts = Table{
-	"proactive.title":       "自己发现了事，怎么告诉你",
+	"proactive.title":       "发现了就说",
 	"proactive.urgent":      "只说急的",
 	"proactive.three":       "每天最多 3 件",
 	"proactive.useful":      "有用就说",

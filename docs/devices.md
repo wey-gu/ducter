@@ -11,9 +11,9 @@ conversation and your partner. Tasks run there, or on another computer you lend 
 (iPhone, iPad or Android), and other Macs, can connect to it to talk and decide (see
 [Your phone](phone.md)).
 
-## Your devices and what they can do
+## All your devices at a glance
 
-In the Mac app, **Your devices and what they can do** shows all your devices as little clay islands
+In the Mac app, **Your devices** shows all your devices as little clay islands
 on a calm sea. The computer Ducter lives on is the big one in the middle, with Ducter sitting
 beside it. Each other computer, and each phone you connected, has its own island with a bridge
 back to the middle one, because everything connects through the computer Ducter lives on.
@@ -38,19 +38,19 @@ top to bottom like a character in a game:
   a newer version is out. Tap a coin to see its details right there: its version and how it was
   installed, an update, **Use it for tasks**, and who shares its account. **Add an AI** at the end
   of the row lists the agents not on that device yet.
-- **What it can do:** a few chips, such as **Browse**, **Use apps** and **From anywhere**. One tap
+- **What it can do:** a few chips, such as **Browse**, **Use apps** and **From outside**. One tap
   turns one on or off. The small **i** on a chip says what it does.
   - **Calls** is on the card of the computer Ducter lives on, because a call doesn't run on any
     one computer. **+ Calls** takes you to **Settings › Accounts** and starts connecting Tuwa,
     the phone line Ducter calls through; once it's connected, tapping **Calls** opens its card
     there. If your Tuwa sign-in runs out, the chip says **Sign in again**. See
     [Phone calls](calls.md).
-  - **From anywhere** on the card of the computer Ducter lives on lets your phone and other
-    devices reach it from outside, at your own domain on Cloudflare. **+ From anywhere** says
+  - **From outside** on the card of the computer Ducter lives on lets your phone and other
+    devices reach it from outside, at your own domain on Cloudflare. **+ From outside** says
     what you need and offers **Set it up for me**: a task does the steps, and the card ticks them
     off. Once on, its **i** shows the address, who can get in (only devices you connected) and
     **Turn off**. On a server with your own domain it's simply on. See
-    [Your phone](phone.md#from-anywhere).
+    [Your phone](phone.md#from-outside).
   - **Use a phone** is on the card of a Mac with Apple silicon that Ducter lives on. It gives
     Ducter a phone of its own: see [Ducter's phone](#ducters-phone) below.
   - Faded chips marked **coming later**, such as **Use apps**, show what Ducter will be able to
@@ -190,7 +190,7 @@ What a device can do:
 | | What it means | Status |
 |---|---|---|
 | **Browse the web** | The computer can get things done on the web: look things up, read pages, gather what it finds. In your Chrome when your AI agent has its own browser, otherwise in Ducter's own browser | Ready on every computer that does tasks (a Mac, or a server: see below) |
-| **Reach from anywhere** | Reach Ducter from your phone or another computer, with a one-time code | Ready (needs an address that works from outside: your own domain on a server, see [Install](install.md#a-linux-server-that-stays-on), or on Cloudflare, see [From anywhere](phone.md#from-anywhere)) |
+| **Reach from outside** | Reach Ducter from your phone or another computer, with a one-time code | Ready (needs an address that works from outside: your own domain on a server, see [Install](install.md#a-linux-server-that-stays-on), or on Cloudflare, see [From outside](phone.md#from-outside)) |
 | **Use this computer** | Ducter uses the other apps on the computer the way you do | Coming later |
 | **Use a phone** | Ducter gets things done in apps on a phone of its own, running on your Mac ([below](#ducters-phone)) | Ready on a Mac with Apple silicon that Ducter lives on |
 | **Make calls** | Ducter makes phone calls for you, through Tuwa or from your own Android phone | Ready (needs a Tuwa account, or your own phone with a cable kit and a live-voice key; see [Phone calls](calls.md)) |
@@ -219,7 +219,7 @@ signed in to the sites you are signed in to, as you. It keeps to what it opened:
 
 Otherwise, and always for pi and DeepSeek Harness, Ducter uses its own browser. That needs
 Google Chrome in Applications and a small free helper, the browser driver (cua-driver). Choose
-**Browse the web** and Ducter walks you through **Set up browsing**: three small steps, no
+**Browse the web** and Ducter walks you through three small steps, with no
 Terminal. It installs the driver, then asks you to turn on two switches in System Settings,
 which macOS wants you to flip yourself. Each step checks itself off. If the Claude extension
 turns out not to be connected when a task starts, that task moves to Ducter's own browser by

@@ -857,7 +857,7 @@ type AbilityReq struct {
 	Ability string `json:"ability"`
 	On      bool   `json:"on"`
 	// Named: a tunnel the person made in Cloudflare's dashboard, for
-	// 在哪儿都能用 (D228).
+	// 从外面连 (D228).
 	Named *NamedTunnel `json:"named,omitempty"`
 }
 
@@ -868,7 +868,7 @@ type NamedTunnel struct {
 	Hostname string `json:"hostname"`
 }
 
-// AnywhereSetupReq is 在哪儿都能用's guided setup (D228): Op "begin" opens
+// AnywhereSetupReq is 从外面连's guided setup (D228): Op "begin" opens
 // the task (让 Ducter 帮我设好), "cancel" stops setting up.
 type AnywhereSetupReq struct {
 	T  string `json:"t"` // "anywhere_setup"
@@ -1468,11 +1468,11 @@ type ReachClient struct {
 type Reach struct {
 	Address string        `json:"address,omitempty"`
 	Clients []ReachClient `json:"clients"`
-	// Anywhere is 在哪儿都能用 / From anywhere on the home (D228); nil = off.
+	// Anywhere is 从外面连 / From outside on the home (D228); nil = off.
 	Anywhere *Anywhere `json:"anywhere,omitempty"`
 }
 
-// Anywhere is 在哪儿都能用 on the home (D228). How is "own" (an address set
+// Anywhere is 从外面连 on the home (D228). How is "own" (an address set
 // up some other way, D143) or "cloudflare" (the person's own Cloudflare
 // tunnel to their own domain, which Ducter runs). State is "off" (turned off,
 // the tunnel kept), "setup" (Setup says how far), "starting", "on" or
@@ -1715,7 +1715,7 @@ type ServerFrame struct {
 	SignIn *SignInView `json:"signIn,omitempty"`
 	// D218: the own-number card (with connections); own_phone_result: Action, Reason.
 	OwnPhone *OwnPhoneView `json:"ownPhone,omitempty"`
-	// Step is one step's answer of 在哪儿都能用's setup (anywhere_setup_result, D228).
+	// Step is one step's answer of 从外面连's setup (anywhere_setup_result, D228).
 	Step *AnywhereStepResult `json:"step,omitempty"`
 }
 

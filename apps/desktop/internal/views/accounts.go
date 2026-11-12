@@ -32,7 +32,7 @@ func (a *App) cards() *acctCards {
 	return &ps.cards
 }
 
-// proactiveChips is 自己发现了事，怎么告诉你 (D165 §5): one row, single
+// proactiveChips is 发现了就说 (D165 §5): one row, single
 // choice; never answered shows none chosen (nothing watches yet).
 func (a *App) proactiveChips(c *ui.Context, key string) {
 	t := a.T

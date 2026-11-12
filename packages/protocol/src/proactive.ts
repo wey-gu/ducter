@@ -17,7 +17,7 @@ export const FIND_KINDS: readonly FindKind[] = ["mismatch", "waiting_on_you", "w
 export const isFindKind = (k: unknown): k is FindKind => typeof k === "string" && (FIND_KINDS as readonly string[]).includes(k);
 
 /**
- * 自己发现了事，怎么告诉你 / When it notices something (§5): one chip row, single choice.
+ * 发现了就说 / When it notices something (§5): one chip row, single choice.
  *   urgent  只说急的 / Only urgent: only "now" finds, no morning note
  *   three   每天最多 3 件 / Up to 3 a day (the default answer to the first-add question)
  *   useful  有用就说 / Whenever useful: no cap, still batched

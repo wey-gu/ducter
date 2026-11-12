@@ -298,12 +298,12 @@ A new control is added to the set (and to this table) before it is used.
 |---|---|---|
 | The button family: primary, secondary, accent, text (D76) | `button`, `buttonFor` (`components.go`); `iconButton`, `navButton` | `Btn` |
 | Quiet text button and link (检查更新, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
-| A button that opens a page elsewhere in a new tab (打开 Cloudflare, the sign-in link of 在哪儿都能用; D228) | `button` then `openLink` (`abilities.go`) | `LinkBtn` |
+| A button that opens a page elsewhere in a new tab (打开 Cloudflare, the sign-in link of 从外面连; D228) | `button` then `openLink` (`abilities.go`) | `LinkBtn` |
 | Switch | `switchControl` (`shared.go`), inside `switchRow`, `toggleRow` | `Toggle` |
 | Segmented choice | `choices` (`partner.go`) | `Seg` |
 | Choice row (a theme, Remove's plan) | `selectRow` (`shared.go`) | — |
 | A value row's side link (检查更新 and its 正在检查…, 没能更新 ›; D167) | `sideLink` inside `valueRow` (`settings.go`) | the `Versions` line under the device list (`Btn` kind `text`) |
-| Disclosure row (素材与致谢) and link row | `disclosureRow` (`shared.go`), `linkRow` (`settings.go`) | — |
+| Disclosure row (素材和致谢) and link row | `disclosureRow` (`shared.go`), `linkRow` (`settings.go`) | — |
 | Settings rail tab | `railTab` (`settings.go`) | the pushed-page list |
 | Destructive text button (断开这台 MacBook, a connection's 断开) | `dangerText` (`shared.go`) | `DangerButton` |
 | ⋯ that opens more in place | `moreButton` (`shared.go`) | `MoreButton` |
@@ -341,8 +341,8 @@ pebbles; `mini_awake`; an arrow up on an accent pebble) and its name 15/700. The
 white surface on the card's 4pt base in ink 800; the others lie flat in soft ink, tinted and on a
 2pt base under the pointer, and sink while pressed. The build number sits at the rail's foot in
 12 muted. On the right one section at a time (max 820, centered): **伙伴 / Partner** · **通知 /
-Notifications** · **账号 / Accounts** · **外观与声音 / Look and sound** · **在哪儿运行 / Where it
-runs** · **更新与关于 / Updates and about**. Deep links land on their tab: ⌘4 and the partner's face
+Notifications** · **账号 / Accounts** · **外观和声音 / Look and sound** · **在哪儿运行 / Where it
+runs** · **更新和关于 / Updates and about**. Deep links land on their tab: ⌘4 and the partner's face
 on Partner, About Ducter and the update line on Updates and about (whose update block is one
 slot, `updateSection`).
 

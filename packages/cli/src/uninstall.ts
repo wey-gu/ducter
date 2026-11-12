@@ -404,7 +404,7 @@ export interface Runner {
   removeCaddySite?(path: string): Promise<{ ok: boolean; error?: string }>;
   /** Whether a Ducter still answers /health on the port. */
   healthy(port: number): Promise<boolean>;
-  /** D228: stops 在哪儿都能用's tunnel kept in this data folder (it outlives Ducter by design). */
+  /** D228: stops 从外面连's tunnel kept in this data folder (it outlives Ducter by design). */
   stopTunnel?(dataDir: string): Promise<void>;
   uid: number;
 }

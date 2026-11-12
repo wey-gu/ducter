@@ -8,9 +8,9 @@ var zhSettings = Table{
 	"settings.tab.partner":    "伙伴",
 	"settings.tab.notify":     "通知",
 	"settings.tab.accounts":   "账号",
-	"settings.tab.look":       "外观与声音",
+	"settings.tab.look":       "外观和声音",
 	"settings.tab.run":        "在哪儿运行",
-	"settings.tab.about":      "更新与关于",
+	"settings.tab.about":      "更新和关于",
 	"settings.tab.about.only": "关于",
 
 	"settings.lede.notify":   "有事要你定的时候它怎么找你，什么时候别打扰你。",
@@ -52,10 +52,10 @@ var zhSettings = Table{
 	"settings.data.open":            "打开",
 	"settings.data.run":             "检查",
 	"settings.devices.link":         "你的设备和 AI 账号",
-	"settings.devices.link.help":    "在「设备」里登录、安装，连接手机或另一台电脑",
+	"settings.devices.link.help":    "在「设备」里登录、安装，连上手机或电脑",
 
 	"settings.help.group":       "帮助",
-	"settings.credits":          "素材与致谢",
+	"settings.credits":          "素材和致谢",
 	"settings.credits.help":     "开场的声音用到的录音和混响",
 	"settings.update.auto.help": "下次退出 Ducter 时装好，后台的任务接着做。",
 }

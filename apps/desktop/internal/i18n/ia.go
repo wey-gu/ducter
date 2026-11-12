@@ -119,7 +119,7 @@ var zhIA = Table{
 	"partner.memory.forgot":    "已忘掉：%s",
 	"partner.memory.hidden":    "这里不再显示「%s」；Nowledge Mem 里那条还在。",
 
-	"partner.trust.title":  "自己就做，还是先问你",
+	"partner.trust.title":  "要不要先问",
 	"partner.trust.own":    "自己就做",
 	"partner.trust.asks":   "先问你",
 	"partner.trust.own.1":  "在自己的副本里改文件，你的原件不会被动到",
@@ -204,7 +204,7 @@ var zhIA = Table{
 	"token.installing":   "正在安装…",
 	"token.signingout":   "正在退出…",
 	"token.failed":       "没能完成，再试一次",
-	"devices.connect":    "连接手机或另一台电脑",
+	"devices.connect":    "连上手机或电脑",
 }
 
 var enIA = Table{

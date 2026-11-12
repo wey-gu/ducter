@@ -87,7 +87,7 @@ Check that the address is right. If you use an SSH tunnel, make sure it's still 
 (`ssh -N -L 7777:127.0.0.1:7777 you@server`). On a server, check that Ducter is running:
 `ducter service status`.
 
-### From anywhere didn't finish setting up
+### From outside didn't finish setting up
 
 The card shows which step stopped, and why:
 
@@ -118,7 +118,7 @@ If you use Codex, install the Codex app and turn on its computer use; if you use
 open Chrome with the Claude extension signed in to the same account. Either one makes **Browse**
 ready in your Chrome, with nothing more to set up.
 
-Otherwise, tapping **+ Browse** opens **Set up browsing**, three small steps that check themselves
+Otherwise, tapping **+ Browse** opens **Browse the web**, three small steps that check themselves
 off: install (or update) the browser driver, then turn on **CuaDriver** under **Accessibility**
 and under **Screen & System Audio Recording** in System Settings › Privacy & Security. The
 switches are for CuaDriver, not for Ducter. If a step won't turn green:

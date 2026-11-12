@@ -1,4 +1,4 @@
-// `ducter domain <name>`: an address that works from anywhere. Caddy in front of this Ducter
+// `ducter domain <name>`: an address that works from outside. Caddy in front of this Ducter
 // (certificates it gets and renews itself), then a fresh pair code at https://<name>.
 //
 //   ducter domain ducter.example.com          check DNS, install Caddy, write its site, wait for HTTPS, pair

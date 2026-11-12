@@ -11,7 +11,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
 
-// D224: 全部更新 / Update all on Settings › 更新与关于, from the home's plan.
+// D224: 全部更新 / Update all on Settings › 更新和关于, from the home's plan.
 
 func uaDevices() []protocol.DeviceView {
 	return []protocol.DeviceView{

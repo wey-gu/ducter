@@ -393,7 +393,7 @@ function Chips({ dv }: { dv: DeviceView }) {
   const web = dv.abilities.find((a) => a.id === "web");
   const about = (id: string) => (id === "web" && web?.where === "chrome" ? "ability.web.about.chrome" : id === "web" && web?.where === "ducter" ? "ability.web.about.ducter" : id === "phone" && chips.find((c) => c.id === id)?.look === "later" ? "ability.phone.later" : `ability.${id}.about`);
   const set = (id: string, on: boolean) => A.send({ t: "ability", device: dv.id, ability: id as "web", on });
-  // D228: From anywhere on the home: failed shows as failed; being set up or kept off is no "+".
+  // D228: From outside on the home: failed shows as failed; being set up or kept off is no "+".
   const any = dv.home ? A.reach?.anywhere : undefined;
   const lookOf = (c: { id: string; look: ChipLook }): ChipLook => {
     if (c.id !== "remote" || !any) return c.look;
@@ -457,7 +457,7 @@ function Chips({ dv }: { dv: DeviceView }) {
 const STEP_MARK = { todo: "queued", doing: "running", waiting: "waiting", done: "done", failed: "failed" } as const;
 
 /**
- * D228: 在哪儿都能用 / From anywhere in its ⓘ, on the home. Off: what it needs in one line and 让 Ducter
+ * D228: 从外面连 / From outside in its ⓘ, on the home. Off: what it needs in one line and 让 Ducter
  * 帮我设好 (a task on the home sets up the person's own Cloudflare tunnel to their own domain). Being
  * set up: the steps, ticking by themselves, the sign-in link (and a QR to open on a phone), and the
  * task. On: the address, who gets in, where TLS ends; 关掉 asks once more and says the tunnel stays

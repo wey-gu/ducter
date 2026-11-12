@@ -1,4 +1,4 @@
-// A demo core for 在哪儿都能用 / From anywhere's pictures (D228): hel is the home (a server, Claude
+// A demo core for 从外面连 / From outside's pictures (D228): hel is the home (a server, Claude
 // Code signed in), set up step by step with the person's own Cloudflare account. Real core and real
 // web client; cloudflared, Cloudflare and the setup task's agent are fakes (no network, nothing
 // installed, no account touched).

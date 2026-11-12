@@ -19,7 +19,7 @@ export function ownUrl(dataDir: string, env: Record<string, string | undefined> 
   return raw ? raw.replace(/\/+$/, "") : undefined;
 }
 
-/** Where remote clients reach this Ducter (D228: 在哪儿都能用 writes its tunnel's address there too). */
+/** Where remote clients reach this Ducter (D228: 从外面连 writes its tunnel's address there too). */
 export function publicUrl(dataDir: string, env: Record<string, string | undefined> = process.env): string | undefined {
   return ownUrl(dataDir, env);
 }

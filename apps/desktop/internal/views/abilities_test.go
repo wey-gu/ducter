@@ -179,7 +179,7 @@ func TestAbilitiesReachFromAnywhere(t *testing.T) {
 			h := openDevices(t, lang, false)
 			h.tt.SetSize(1280, 1300)
 			L := h.app.L
-			// D228: + 在哪儿都能用 opens its ⓘ: what it needs, and 让 Ducter 帮我设好.
+			// D228: + 从外面连 opens its ⓘ: what it needs, and 让 Ducter 帮我设好.
 			h.click("+ " + L.T("chip.remote"))
 			h.settle(200 * time.Millisecond)
 			if !h.tt.HasText(L.T("anywhere.need")) || !h.tt.HasText(L.T("anywhere.setup")) {

@@ -84,7 +84,7 @@ including what the check changed, is in `design/decisions.md`.
 | Device states | 醒着 / Awake · 睡着了 / Asleep · 连不上 / Can't reach |
 | Quota | 额度 / Allowance |
 | Wake a device | 叫醒 / Wake |
-| Remote access ability | 远程打开 / Reach from anywhere |
+| Remote access ability | 远程打开 / Reach from outside |
 | Handoff to another body or device | 换到 X 接着做 / Continue on X |
 | Pause | 先停 / Pause (shown as a waiting reason, not a new state) |
 | Recipe | 准备方法 / Setup steps |

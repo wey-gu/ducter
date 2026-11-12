@@ -1,4 +1,4 @@
-// D228: 在哪儿都能用 / From anywhere with the person's own Cloudflare account and domain. cloudflared
+// D228: 从外面连 / From outside with the person's own Cloudflare account and domain. cloudflared
 // (login, create, route, run), its metrics and the network are faked: the guided setup step by
 // step, a failure at each step, a Ducter restart, off and on again, a dashboard tunnel's token,
 // and a request through the tunnel counting as remote.
@@ -163,7 +163,7 @@ test("set it up for me: a task, then sign-in, the Go, the tunnel and its DNS, ru
   });
   const b = await a.begin();
   expect(b).toEqual({ ok: true, taskId: "t1" });
-  expect(s.tasks[0]!.title).toBe("Make Wey's MacBook reachable from anywhere");
+  expect(s.tasks[0]!.title).toBe("Make Wey's MacBook reachable from outside");
   expect(s.tasks[0]!.brief).toContain("`ducter --port 7777 anywhere step login --json`");
   expect(a.view()).toMatchObject({ how: "cloudflare", state: "setup", setup: { taskId: "t1" } });
   expect(states(a)).toEqual({ get: "todo", login: "todo", name: "todo", create: "todo", dns: "todo", run: "todo", check: "todo", use: "todo" });

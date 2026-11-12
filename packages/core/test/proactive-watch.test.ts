@@ -42,7 +42,7 @@ test("watching starts only when it's on, then looks by code: mail every 10 min, 
   clock.advance(10 * 60_000);
   await flush();
   const at10 = acc.calls.map((c) => c.action).sort();
-  expect(at10).toEqual(["discord.list_mentions", "github.list_notifications", "gmail.search_threads"]);
+  expect(at10).toEqual(["discord.list_mentions", "github.list_notifications", "gmail.fetch_emails"]);
   clock.advance(5 * 60_000);
   await flush();
   expect(acc.calls.filter((c) => c.action === "googlecalendar.list_events")).toHaveLength(1);
@@ -56,7 +56,7 @@ test("watching starts only when it's on, then looks by code: mail every 10 min, 
   expect(new Set(ids).size).toBe(ids.length);
   expect(ids).toContain("m_lina2");
   // Each look asks only for what is newer than the last one.
-  const mailLooks = acc.calls.filter((c) => c.action === "gmail.search_threads").map((c) => Number(/after:(\d+)/.exec(String(c.input.query))![1]));
+  const mailLooks = acc.calls.filter((c) => c.action === "gmail.fetch_emails").map((c) => Number(/after:(\d+)/.exec(String(c.input.query))![1]));
   for (let i = 1; i < mailLooks.length; i++) expect(mailLooks[i]!).toBeGreaterThanOrEqual(mailLooks[i - 1]!);
   // Chat: only @-mentions and DMs.
   expect(got.filter((i) => i.kind === "chat").map((i) => i.id)).toEqual(["c_1"]);
@@ -75,7 +75,7 @@ test("自己留意 off and 不让 Ducter 看这个 stop an app's looks; the rest
   w.sync();
   clock.advance(10 * 60_000);
   await flush();
-  expect(acc.calls.map((c) => c.action)).toEqual(["gmail.search_threads"]);
+  expect(acc.calls.map((c) => c.action)).toEqual(["gmail.fetch_emails"]);
   w.stop();
 });
 

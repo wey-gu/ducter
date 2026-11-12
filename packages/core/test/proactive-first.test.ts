@@ -41,7 +41,7 @@ test("好，看一眼: a 3-day look, the person waiting on them, then the cadenc
   expect(answer.finds.map((f) => f.kind)).toEqual(["waiting_on_you"]);
   expect(answer.finds[0]!.text).toContain("Lina");
   // The 3-day look read only mail, GitHub and chat over 3 days; then the quiet 60-day look back.
-  const looks = r.acc.calls.filter((c) => c.action === "gmail.search_threads").map((c) => Number(/after:(\d+)/.exec(String(c.input.query))![1]) * 1000);
+  const looks = r.acc.calls.filter((c) => c.action === "gmail.fetch_emails").map((c) => Number(/after:(\d+)/.exec(String(c.input.query))![1]) * 1000);
   expect(Math.round((r.clock.now() - looks[0]!) / 86_400_000)).toBe(3);
   expect(Math.round((r.clock.now() - looks[1]!) / 86_400_000)).toBe(60);
   const types = r.p.ledger.all().map((f) => f.type);

@@ -119,6 +119,21 @@ const until = async (ok: () => boolean | Promise<boolean>, ms = 3000) => {
   while (!(await ok()) && Date.now() < end) await Bun.sleep(10);
   return ok();
 };
+/**
+ * The message a promise rejects with, awaited before expect sees it. `await expect(p).rejects`
+ * on a pending promise makes bun:test run the event loop synchronously until it settles, and a
+ * tool call here often starts in a microtask still inside the home's /worker message handler
+ * (the MacBook's last answer resolved it). The MacBook's next answer is then read inside that
+ * handler, re-entering the socket's frame parser, which Bun 1.4.4 fails with 1006 "Received new
+ * message inside a fragmented message" (research/73). Product code never runs the loop that way.
+ */
+const rejection = (p: Promise<unknown>) =>
+  p.then(
+    () => {
+      throw new Error("resolved; expected a rejection");
+    },
+    (e: Error) => e.message,
+  );
 const macCard = async () => (await core.devicesView.frame()).devices.find((d) => d.id === workerId) as DeviceView;
 const ab = (d: DeviceView, id: string) => d.abilities.find((a) => a.id === id)!;
 
@@ -195,7 +210,7 @@ describe("the home is a Linux server, the MacBook its worker", () => {
     const call = (name: string, args: object = {}) => core.mcp.call({ role: "task", taskId: "tp" }, name, args) as Promise<any>;
     const look = await call("phone_look");
     expect(String(look)).toContain("发送");
-    await expect(call("phone_tap", { ref: 2 })).rejects.toThrow(/needs the user's Go/);
+    expect(await rejection(call("phone_tap", { ref: 2 }))).toMatch(/needs the user's Go/);
     expect(phone.did.some((d) => d.startsWith("tap"))).toBe(false);
     await call("phone_tap", { ref: 1 });
     expect(phone.did.some((d) => d.startsWith("tap"))).toBe(true);
@@ -248,25 +263,25 @@ describe("用电脑 / Use the computer on the MacBook", () => {
     core.tasks.setState("ta", "working", "hot");
     const call = (name: string, args: object = {}) => core.mcp.call({ role: "task", taskId: "ta" }, name, args) as Promise<any>;
     // A task that doesn't work in an app can't use them.
-    await expect(core.mcp.call({ role: "task", taskId: "tp" }, "computer_apps", {})).rejects.toThrow(/can't use the user's apps/);
+    expect(await rejection(core.mcp.call({ role: "task", taskId: "tp" }, "computer_apps", {}))).toMatch(/can't use the user's apps/);
 
     const apps = String(await call("computer_apps"));
     expect(apps).toContain("Mail (com.apple.mail)");
     expect(apps).not.toContain("1Password");
-    await expect(call("computer_look", { app: "1Password" })).rejects.toThrow(/theirs alone/);
+    expect(await rejection(call("computer_look", { app: "1Password" }))).toMatch(/theirs alone/);
 
     const text = String(await call("computer_look", { app: "Mail" }));
     expect(text).toContain('[2] Button "Send"');
     expect(text).toContain("[3] password field");
     expect(text).not.toContain("hunter2");
-    await expect(call("computer_type", { ref: 3, text: "secret" })).rejects.toThrow(/password field/);
+    expect(await rejection(call("computer_type", { ref: 3, text: "secret" }))).toMatch(/password field/);
 
     await call("computer_type", { ref: 1, text: "周六见，不见不散" });
     expect(cua.calls.at(-1)).toEqual(["type_text", { pid: 501, window_id: 77, element_token: "s0000002a:1", text: "周六见，不见不散" }]);
     // On hand: the task is in Mail on the MacBook (with 停下 in the clients).
     expect(core.tasks.onHand().tasks.find((c) => c.taskId === "ta")?.computing).toEqual({ device: workerId, app: "Mail" });
 
-    await expect(call("computer_click", { ref: 2 })).rejects.toThrow(/needs the user's Go/);
+    expect(await rejection(call("computer_click", { ref: 2 }))).toMatch(/needs the user's Go/);
     expect(cua.calls.some(([t]) => t === "click")).toBe(false);
     await call("computer_ask_go", { what: "把回复发给张三" });
     const d = decisions.find((x) => x.taskId === "ta")!;
@@ -275,9 +290,9 @@ describe("用电脑 / Use the computer on the MacBook", () => {
     await call("computer_click", { ref: 2 });
     expect(cua.calls.at(-1)).toEqual(["click", { pid: 501, window_id: 77, element_token: "s0000002a:2" }]);
     // One Go, one action.
-    await expect(call("computer_click", { ref: 2 })).rejects.toThrow(/needs the user's Go/);
+    expect(await rejection(call("computer_click", { ref: 2 }))).toMatch(/needs the user's Go/);
     // Return in a mail app sends too.
-    await expect(call("computer_key", { key: "return", modifiers: ["cmd"] })).rejects.toThrow(/needs the user's Go/);
+    expect(await rejection(call("computer_key", { key: "return", modifiers: ["cmd"] }))).toMatch(/needs the user's Go/);
   });
 
   test("停下 / Stop: every app tool refuses from then on, the turn is interrupted and the task is told", async () => {
@@ -286,7 +301,7 @@ describe("用电脑 / Use the computer on the MacBook", () => {
     expect(await c.until((x) => x.t === "computer_stop_result")).toMatchObject({ ok: true });
     expect(interrupted).toContain("ta");
     expect(told.some(([t, s]) => t === "ta" && s === COMPUTER_STOPPED)).toBe(true);
-    await expect(core.mcp.call({ role: "task", taskId: "ta" }, "computer_look", { app: "Mail" })).rejects.toThrow(/停下/);
+    expect(await rejection(core.mcp.call({ role: "task", taskId: "ta" }, "computer_look", { app: "Mail" }))).toMatch(/停下/);
     expect(core.tasks.onHand().tasks.find((x) => x.taskId === "ta")?.computing).toBeUndefined();
     c.ws.close();
   });
@@ -296,7 +311,7 @@ describe("用电脑 / Use the computer on the MacBook", () => {
     c.send({ t: "ability", device: workerId, ability: "computer", on: false });
     expect(await c.until((x) => x.t === "ability_result")).toMatchObject({ ok: true, on: false });
     const link = core.workers.link(workerId)!;
-    await expect(link.call("computer_call", { tool: "list_apps", args: {} })).rejects.toThrow(/off on this Mac/);
+    expect(await rejection(link.call("computer_call", { tool: "list_apps", args: {} }))).toMatch(/off on this Mac/);
     c.ws.close();
   });
 });

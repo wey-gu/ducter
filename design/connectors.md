@@ -405,7 +405,7 @@ existing parts; the app tile is literal (an app's rounded square), not a metapho
    和私信**); **这个月用了 3%** when watching; at the foot, quiet: **不让 Ducter 看这个** (and for
    oo: **要退出登录，去 oo 里**). A calendar tile adds a fourth band, **看哪些日历 / Calendars it
    reads**, one switch per calendar in that account (D222, `calendar.md` §4).
-5. **The proactive chips** (§5) sit once above the cards, titled **自己发现了事，怎么告诉你 / When
+5. **The proactive chips** (§5) sit once above the cards, titled **发现了就说 / When
    it notices something**; with a single source the page reads as one sheet.
 6. **One connection line, last:** where what it reads passes, worded by what the card holds
    (**经过 oo · 邮件和消息会经过 OOMOL 的服务器 / Through oo · your emails and messages pass through
@@ -456,7 +456,7 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 
 | Key | zh | en |
 |---|---|---|
-| ★ `proactive.title` | 自己发现了事，怎么告诉你 | When it notices something |
+| ★ `proactive.title` | 发现了就说 | When it notices something |
 | ★ `proactive.urgent` · `.three` · `.useful` · `.off` | 只说急的 · 每天最多 3 件 · 有用就说 · 不用主动找我 | Only urgent · Up to 3 a day · Whenever useful · Only when I ask |
 | ★ `note.open` | 早。 | Morning. |
 | ★ `note.left_out` (the partner's, said only when asked; never on screen) | 没说的：{list}；还有 {n} 件没说 | Left out: {list}; {n} more not said |

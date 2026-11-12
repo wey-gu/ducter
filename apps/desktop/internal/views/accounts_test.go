@@ -55,7 +55,7 @@ func TestAccountsCardSheet(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"自己发现了事，怎么告诉你", "每天最多 3 件", "oo 里的账号", "在留意", "经过 oo · 邮件、日程、消息和 GitHub 通知会经过 OOMOL 的服务器", i18n.New(i18n.ZH).T("card.stop", "oo 里的账号"), "连不上", "添加", "日历", "Discord"} {
+	for _, want := range []string{"发现了就说", "每天最多 3 件", "oo 里的账号", "在留意", "经过 oo · 邮件、日程、消息和 GitHub 通知会经过 OOMOL 的服务器", i18n.New(i18n.ZH).T("card.stop", "oo 里的账号"), "连不上", "添加", "日历", "Discord"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

@@ -14,7 +14,7 @@ import (
 // The app's own tabs of Settings (D150): Look and sound, Where it runs,
 // Updates and about. The partner's three are in partner.go.
 
-// ---------- 外观与声音 / Look and sound ----------
+// ---------- 外观和声音 / Look and sound ----------
 
 // cheerFor is how long the partner on the preview smiles after a choice.
 const cheerFor = 1600 * time.Millisecond
@@ -519,7 +519,7 @@ func (a *App) loadPlan(rm Remover, all bool) {
 	})
 }
 
-// ---------- 更新与关于 / Updates and about ----------
+// ---------- 更新和关于 / Updates and about ----------
 
 func (a *App) aboutPanel(c *ui.Context) {
 	t := a.T

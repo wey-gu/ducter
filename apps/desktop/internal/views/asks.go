@@ -37,7 +37,7 @@ type askState struct {
 	answeredAt time.Time
 	busy       bool
 	pairAsked  bool
-	recodeFor  string // D228: the address a fresh code was asked for once 在哪儿都能用 came on
+	recodeFor  string // D228: the address a fresh code was asked for once 从外面连 came on
 	clients    int    // paired clients when the code was asked for
 }
 
@@ -266,7 +266,7 @@ func InQuiet(at time.Time, q *protocol.QuietHours) bool {
 }
 
 // phoneNoAddress: the phone can't reach this Mac yet. D228: one tap starts
-// the guided setup of 在哪儿都能用 (a task sets up the person's own Cloudflare
+// the guided setup of 从外面连 (a task sets up the person's own Cloudflare
 // tunnel to their own domain); while it runs the row says so, and once there
 // is an address a fresh code (now with its link and QR) is asked.
 func (a *App) phoneNoAddress(c *ui.Context, done func()) {

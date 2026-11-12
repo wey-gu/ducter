@@ -25,7 +25,7 @@
 //   7. all     全部更新 / Update all (D224): V3 → V4 and pi 1.5.1 → 1.5.2 on the home in one tap, the
 //              worker away (said, not part of it): the home first, pi only after the home is back,
 //              the same plan finished by the restarted home.
-//   8. anywhere 在哪儿都能用 / From anywhere (D228), with no Cloudflare account: the setup's first
+//   8. anywhere 从外面连 / From outside (D228), with no Cloudflare account: the setup's first
 //              step downloads and checks the real cloudflared in the VM and gets a real sign-in
 //              link from it (headless: a link to open elsewhere); then a dashboard tunnel's
 //              token with a fake cloudflared: run in its own systemd user unit, the token in a
@@ -412,7 +412,7 @@ async function updateAll() {
   );
 }
 
-// ---------- 8. From anywhere (D228) ----------
+// ---------- 8. From outside (D228) ----------
 
 async function anywhere() {
   const reach = async () => (await clientJson("devices")).reach as any;

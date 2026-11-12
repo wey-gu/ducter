@@ -8,7 +8,7 @@ package i18n
 
 var zhLoadout = Table{
 	"loadout.socket":         "想事情用",
-	"loadout.brain.title":    "它用什么想事情",
+	"loadout.brain.title":    "用什么想",
 	"loadout.brain.keep":     "换了以后，名字、记得的事和你们的对话都还在。",
 	"loadout.brain.next":     "从你的下一句话开始用。",
 	"loadout.brain.onlymac":  "只能用 %s 上登录了的 AI agent。",

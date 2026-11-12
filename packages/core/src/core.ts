@@ -92,7 +92,7 @@ export interface CoreOptions {
   relayFetch?: RelayFetch;
   /** Test seams for Your devices and abilities (cua-driver, harness logins, device kind). */
   deviceProbes?: Partial<DeviceProbes>;
-  /** D228: test seam for 在哪儿都能用's tunnel (cloudflared, its metrics, the network). */
+  /** D228: test seam for 从外面连's tunnel (cloudflared, its metrics, the network). */
   anywhereSys?: TunnelSys;
   anywherePollMs?: number;
   anywhereStartMs?: number;
@@ -193,7 +193,7 @@ export interface Core extends CoreApi {
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
-  /** D228: 在哪儿都能用 / From anywhere (the tunnel and its guided setup). */
+  /** D228: 从外面连 / From outside (the tunnel and its guided setup). */
   anywhere: AnywhereCtl;
   setPartner(p: Partner): void;
   stop(): Promise<void>;
@@ -566,7 +566,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
   };
   const devices = openDeviceAuth(dataDir);
-  // A device that pairs changes Your devices and abilities (远程打开 / Reach from anywhere).
+  // A device that pairs changes Your devices and abilities (远程打开 / Reach from outside).
   const gateAuth = {
     ...devices,
     redeem: (...a: Parameters<typeof devices.redeem>) => {
@@ -693,7 +693,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(ua.tz ? { tz: ua.tz } : {}),
   });
   updateAllRef = updateAll;
-  // D228: 在哪儿都能用 / From anywhere: the person's own Cloudflare tunnel to their own domain, set
+  // D228: 从外面连 / From outside: the person's own Cloudflare tunnel to their own domain, set
   // up by a task they start (its agent runs `ducter anywhere step …` against this home).
   let listening = 0;
   const homeLabel = () => savedHomeName(dataDir) ?? u.homeName ?? osHostname().replace(/\.local$/, "");

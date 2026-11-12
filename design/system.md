@@ -381,11 +381,11 @@ first use" because `claude auth status` can't tell a bad token from a good one. 
 OAR's scripted runtime. Its script still calls Ducter's real MCP tools over HTTP (`task_open`,
 `report_to_main`) and every reply says it's a demo.
 
-## From anywhere: a home with no public address (D228, research/67; built 2026-11-12)
+## From outside: a home with no public address (D228, research/67; built 2026-11-12)
 
 **Who and when.** Anyone whose home has no address from outside: a Mac at home (most people), a
 Linux box behind NAT. They meet it when they first want the phone (the onboarding ask
-在手机上也能找到我), on the home's card (the chip **在哪儿都能用**), or in `ducter pair`. Before: a
+在手机上也能找到我), on the home's card (the chip **从外面连**), or in `ducter pair`. Before: a
 dead end; after: one line that says what is needed (a domain on Cloudflare, the account free), one
 tap, and a task that does the steps and asks only to sign in and to say go.
 
@@ -743,7 +743,7 @@ failed and skips the computers; the agents still run.
 
 **What the clients show** (`DevicesFrame.updateAll {offer, notNow, plan}`). Web
 (`apps/web/src/updateall.tsx`, at the top of 你的设备; the Settings list's row says 有 n 项更新) and
-Mac (Settings › 更新与关于, first card): before, the count, up to four lines with from → to, the order
+Mac (Settings › 更新和关于, first card): before, the count, up to four lines with from → to, the order
 line, notNow, what the app does at the end, one button; under way, every step with a drawn mark
 (queued ring, waiting with two bars, a turning arc while running, a check when done that pops once,
 a mark for failed) and its words (the single update's own step words while running); after, the

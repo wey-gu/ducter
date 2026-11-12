@@ -178,7 +178,7 @@ func qrBox(c *ui.Context, rows []string, size float32, ink, paper ui.Color) {
 		})
 }
 
-// pairNoAddress: nothing outside reaches this home yet. D228: 在哪儿都能用
+// pairNoAddress: nothing outside reaches this home yet. D228: 从外面连
 // is one tap away; once it has an address, a fresh code carries it.
 func (a *App) pairNoAddress(c *ui.Context) {
 	t := a.T

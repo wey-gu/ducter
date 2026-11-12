@@ -6,7 +6,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D228: 在哪儿都能用 / From anywhere on the home: an address from outside at
+// D228: 从外面连 / From outside on the home: an address from outside at
 // the person's own domain, through their own Cloudflare account. Off, its ⓘ
 // says in one line what it needs and offers 让 Ducter 帮我设好 (a task on the
 // home sets up their tunnel with Cloudflare's own program). Being set up, the
@@ -14,7 +14,7 @@ import (
 // On: the address, who gets in, where TLS ends; 关掉 asks once more and says
 // the tunnel stays in their Cloudflare account.
 
-// anywhere is the home's From anywhere, nil when off with nothing kept.
+// anywhere is the home's From outside, nil when off with nothing kept.
 func (a *App) anywhere() *protocol.Anywhere {
 	if a.S.Reach == nil {
 		return nil

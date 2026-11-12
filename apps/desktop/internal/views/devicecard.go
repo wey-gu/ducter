@@ -703,7 +703,7 @@ func (a *App) infoText(c *ui.Context, s string) {
 
 // chipSpecs are the chips a device gets, in order: 替 {home} 做事 first on
 // this Mac when it can do tasks for a home elsewhere, then 上网 · 用电脑 ·
-// 在哪儿都能用 as that device has them; on the home 打电话 (D199), then the
+// 从外面连 as that device has them; on the home 打电话 (D199), then the
 // abilities still to come as ghosts (用电脑 · 用手机, 以后会有). The same
 // rules as the web's chipsFor (apps/web/src/sheet.ts).
 func (a *App) chipSpecs(c *ui.Context, card string, dv *protocol.DeviceView, cl *protocol.ReachClient) []chipSpec {

@@ -135,7 +135,7 @@ const en = {
   howIKnow: "How I know",
   worldH: "One partner. All your agents.\nYour machines.",
   iphone: "iPhone",
-  reaches: "Reaches Ducter from anywhere",
+  reaches: "Reaches Ducter from outside",
   endLine: "Open source. On your Mac or your server.",
   time: "14:30",
 };
@@ -264,7 +264,7 @@ const zh: typeof en = {
   howIKnow: "怎么知道的",
   worldH: "一个伙伴，你所有的 agent，\n都在你自己的机器上。",
   iphone: "iPhone",
-  reaches: "在哪儿都能找到 Ducter",
+  reaches: "在外面也能找到 Ducter",
   endLine: "开源。装在你的 Mac 或服务器上。",
   time: "14:30",
 };

@@ -23,10 +23,10 @@ Where you can use it:
 
 ## Connect your phone
 
-Your phone needs an address it can reach from anywhere. If Ducter runs on a server with your own
+Your phone needs an address it can reach from outside. If Ducter runs on a server with your own
 domain (see [Install](install.md#a-linux-server-that-stays-on)), it has one already. If not (a Mac
-at home, say), set up **From anywhere** with your own domain on Cloudflare: see
-[From anywhere](#from-anywhere) below.
+at home, say), set up **From outside** with your own domain on Cloudflare: see
+[From outside](#from-outside) below.
 
 1. On the computer Ducter lives on, run `ducter pair`, or choose **Devices › Connect a phone or
    computer** in the Mac app.
@@ -40,15 +40,15 @@ remembers the connection. For a second phone or another computer, get a new code
 new one. To disconnect it, run `ducter devices disconnect <name>` on the computer Ducter
 lives on.
 
-### From anywhere
+### From outside
 
-**From anywhere** gives the computer Ducter lives on an address at your own domain, for example
+**From outside** gives the computer Ducter lives on an address at your own domain, for example
 `ducter.example.com`, through your own Cloudflare account. You need:
 
 - a free Cloudflare account, and
 - a domain on it. No domain yet? You can buy one right in Cloudflare; it's sold at cost.
 
-Then tap **+ From anywhere** on the card of the computer Ducter lives on and **Set it up for me**
+Then tap **+ From outside** on the card of the computer Ducter lives on and **Set it up for me**
 (or run `ducter anywhere on`). Ducter starts a task that does the steps with Cloudflare's own
 program, and the card ticks them off as it goes. It needs you twice:
 
@@ -63,7 +63,7 @@ carry it. The address never changes. Only devices you connected get in; the addr
 nothing. Cloudflare decrypts the traffic at its edge before passing it on, as with any site on
 Cloudflare.
 
-**Turn off** (tap **From anywhere** on the card) stops the tunnel and takes the address away. The
+**Turn off** (tap **From outside** on the card) stops the tunnel and takes the address away. The
 tunnel and its address stay in your Cloudflare account: turn it on again any time, or delete them
 in Cloudflare.
 

@@ -72,7 +72,7 @@ export interface DevicesOptions {
   onDisconnect?: (deviceId: string) => void;
   /** D199: 打电话 on the home, from the calling connection (`callAbility`); off when absent. */
   call?: () => DeviceAbility;
-  /** D228: 在哪儿都能用 / From anywhere: the tunnel Ducter runs (anywhere.ts). */
+  /** D228: 从外面连 / From outside: the tunnel Ducter runs (anywhere.ts). */
   anywhere?: Pick<AnywhereCtl, "view" | "turnOn" | "turnOff" | "onChange">;
   /** D217: 用手机 / Use a phone on the home: Ducter's own phone (an Android emulator on a Mac). */
   ownPhone?: { ability(): DeviceAbility; onChange(fn: () => void): () => void };
@@ -476,7 +476,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         // accepted); removing it is 抹掉 / Erase (phone_erase). Never a bare switch.
         return res(false, "failed");
       case "remote": {
-        // D228: on the home, From anywhere turns the person's tunnel on or off (on without one made
+        // D228: on the home, From outside turns the person's tunnel on or off (on without one made
         // yet answers no_address: the card offers the guided setup). Paired devices stay paired
         // either way (they are disconnected one by one, never by this switch).
         if (!d.home || !o.anywhere) return res(false, "home_only");

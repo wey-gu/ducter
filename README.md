@@ -50,7 +50,7 @@
 | **Android** | The Ducter app, from each [GitHub release](https://github.com/wey-gu/ducter/releases/latest); it updates itself, and a foldable opened like a book shows the conversation and On hand on either side of the fold. Or your phone's browser. |
 | **Terminal** | The `ducter` command, on the Mac or the server. |
 
-A phone needs an address it can reach from anywhere, which today means Ducter on a server with
+A phone needs an address it can reach from outside, which today means Ducter on a server with
 your own domain ([Your phone](docs/phone.md)).
 
 ## Get Ducter
@@ -99,7 +99,7 @@ Building from source, the walkthroughs and every command: [Install](docs/install
   </tr>
   <tr>
     <!-- devices.webp predates the 0.0.8 device cards; retake it from the app, don't redraw it. -->
-    <td><img src=".github/readme/devices.webp" alt="Your devices and what they can do: this Mac as a clay island with Ducter, Claude Code and Codex on it, and what it can do around it"></td>
+    <td><img src=".github/readme/devices.webp" alt="Your devices: this Mac as a clay island with Ducter, Claude Code and Codex on it, and what it can do around it"></td>
     <td><img src=".github/readme/partner.webp" alt="Partner: the AI agents on this Mac, what Ducter thinks with (Claude Code, Opus), and who does the tasks"></td>
   </tr>
   <tr>

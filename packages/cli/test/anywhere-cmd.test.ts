@@ -91,7 +91,7 @@ const step = async (c: Core, s: string, hostname?: string) => JSON.parse((await 
 
 test("the setup task's flow: sign in, the Go on the card, create and point, run; then status says on and off keeps the tunnel", async () => {
   const { core: c, opened, sent, execs, signIn, live } = start();
-  expect((await run(c, ["status"])).out).toContain("From anywhere is off");
+  expect((await run(c, ["status"])).out).toContain("From outside is off");
   // `ducter anywhere on` with nothing made yet starts the guided setup (one task).
   const on = JSON.parse((await run(c, ["on"], { json: true })).out);
   expect(on).toEqual({ ok: true, setup: true, taskId: "tsk_any" });
@@ -122,7 +122,7 @@ test("the setup task's flow: sign in, the Go on the card, create and point, run;
   expect(r).toMatchObject({ state: "done", hostname: "ducter.example.com" });
   const st = JSON.parse((await run(c, ["status"], { json: true })).out);
   expect(st).toMatchObject({ on: true, address: "https://ducter.example.com", anywhere: { how: "cloudflare", state: "on", hostname: "ducter.example.com" } });
-  expect((await run(c, ["status"])).out).toContain("From anywhere: on, at https://ducter.example.com, through your own Cloudflare tunnel");
+  expect((await run(c, ["status"])).out).toContain("From outside: on, at https://ducter.example.com, through your own Cloudflare tunnel");
   // Pairing codes carry it now.
   const pc = await connect({ kind: "local", port: c.port });
   pc!.send({ t: "pair_code" });

@@ -266,7 +266,7 @@ into a socket) where it carries meaning: a single choice that takes effect.
 **Partner page, top of the character sheet** (the clay partner and its socket on a small
 stage, the tray in front; two cards beside it; the four D71 cards below).
 
-1. **它用什么想事情 / What it thinks with** (proposal). The token in the socket, the model as a
+1. **用什么想 / What it thinks with** (proposal). The token in the socket, the model as a
    segmented clay control with two plain words per model (Opus **最聪明 / Smartest**, Sonnet
    **回得更快 / Answers faster**; Codex gpt-5 and gpt-5-mini the same), **换一个 / Switch**
    (only when a second account can be a brain), and two standing lines: **换了以后，名字、记得的
@@ -297,7 +297,7 @@ stage, the tray in front; two cards beside it; the four D71 cards below).
    Claude Code？" with 好 / 先等等, default hold (`focus-window.md` "Learned suggestion").
 5. **Runner-up in the prototype:** the literal cord (E2), same cards.
 
-**New words** (all proposals; none is in the glossary yet): 它用什么想事情 / What it thinks
+**New words** (all proposals; none is in the glossary yet): 用什么想 / What it thinks
 with · 想事情用 / Thinks with · 换一个 / Switch · 挑一个放进去 / Pick one to put in · 换了以后，名字、
 记得的事和你们的对话都还在 / Switching keeps its name, what it remembers and your conversation ·
 从你的下一句话开始用 / Takes over from your next message · 最聪明 / Smartest · 回得更快 / Answers
@@ -311,7 +311,7 @@ first. Reused: 规则, 额度, 装上, 换到 X 接着做, 谁在做, 好 / 先�
 1. **Where:** both cards on 伙伴 / Partner; Devices only marks the brain's token. *Default: yes.*
    Alternative: the brain on Partner, the tray and rules on Devices.
 2. **The metaphor:** H (socket beside the partner + tray), cord (E) as runner-up. *Default: H.*
-3. **The word:** zh 想事情用 vs 脑子; en Thinks with vs Brain. *Default: 想事情用 / Thinks with as the socket label and 它用什么想事情 / What it thinks with as the heading: literal, says what it does, and avoids 换脑子 (an idiom for changing one's mindset) and the "brain transplant" image. The proxies do not separate the two (§6 finding 5), so 脑子 / Brain is a fair alternative; the prototype has a switch for it.**
+3. **The word:** zh 想事情用 vs 脑子; en Thinks with vs Brain. *Default: 想事情用 / Thinks with as the socket label and 用什么想 / What it thinks with as the heading: literal, says what it does, and avoids 换脑子 (an idiom for changing one's mindset) and the "brain transplant" image. The proxies do not separate the two (§6 finding 5), so 脑子 / Brain is a fair alternative; the prototype has a switch for it.**
 4. **The partner's default brain** when several accounts exist: the strongest signed-in model
    (Claude Code · Opus today, as the code does) vs the fastest good one (Sonnet) for quicker
    acks. *Default: keep Opus; show Sonnet as "回得更快".*

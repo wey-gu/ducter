@@ -19,7 +19,7 @@ import (
 // with updateSection.
 
 type cardState struct {
-	anywhereOff bool                  // D228: 关掉 在哪儿都能用 is being confirmed
+	anywhereOff bool                  // D228: 关掉 从外面连 is being confirmed
 	anywhereNo  string                // D228: why 让 Ducter 帮我设好 didn't start
 	cutting     string                // the device whose 断开 is being confirmed
 	cutFailed   string                // why the server said no

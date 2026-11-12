@@ -707,15 +707,15 @@ export type ClientFrame =
   // socket subscribed (a fresh frame whenever a device or an ability changes). "ability" adds
   // (on: true, 装上) or removes (on: false, 取下) an ability on a device; it is answered with
   // ability_result, then a fresh devices frame. "pair_code" mints a one-time pairing code for
-  // 远程打开 / Reach from anywhere (D54), answered with a pair_code frame.
+  // 远程打开 / Reach from outside (D54), answered with a pair_code frame.
   // refresh: probe the harness sign-ins again now (after signing in or out from the app).
   | { t: "devices"; refresh?: boolean }
-  // D228: on the home, "remote" off turns 在哪儿都能用 / From anywhere off (stops the tunnel, clears
+  // D228: on the home, "remote" off turns 从外面连 / From outside off (stops the tunnel, clears
   // the address; the tunnel stays in the person's Cloudflare account). On with named: a tunnel the
   // person made in Cloudflare's dashboard (its token and the hostname it serves). On without it is
   // the guided setup, anywhere_setup below.
   | { t: "ability"; device: string; ability: AbilityId; on: boolean; named?: { token: string; hostname: string } }
-  // D228: the guided setup of 在哪儿都能用 on the home. begin: 让 Ducter 帮我设好 / Set it up for me
+  // D228: the guided setup of 从外面连 on the home. begin: 让 Ducter 帮我设好 / Set it up for me
   // (opens the task; answered with anywhere_setup_result {taskId}). step: one step, run by the
   // home for that task's agent (`ducter anywhere step <id>`): login, create (hostname?), run.
   // cancel: stop setting up (the task stays as it is). Progress arrives in devices frames.
@@ -1170,7 +1170,7 @@ export type AbilityState = "on" | "off" | "unavailable" | "later";
  * offline = that computer can't be reached right now to change it.
  * D199: signed_out = 打电话 is on (a calling connection is there) but its sign-in is gone: the
  * phone card in Accounts signs in again.
- * D228: own_address = 在哪儿都能用 is the person's own address (D143's domain), not a switch here.
+ * D228: own_address = 从外面连 is the person's own address (D143's domain), not a switch here.
  * D217: phone_unsupported = Ducter's phone can't run on this computer yet (phase 1: Apple
  * Silicon Macs; detail says why); phone_failed = installing or starting it failed (detail).
  */
@@ -1442,7 +1442,7 @@ export interface UpdateAllView {
 }
 
 /**
- * D228: 在哪儿都能用 / From anywhere on the home: an address from outside. how: own = an address
+ * D228: 从外面连 / From outside on the home: an address from outside. how: own = an address
  * set up some other way (D143's `ducter domain` on a server with a public IP, DUCTER_PUBLIC_URL);
  * cloudflare = the person's own Cloudflare tunnel to their own domain, which Ducter runs (made by
  * the guided setup, or in Cloudflare's dashboard and given as a token). state: off = turned off,
@@ -1587,7 +1587,7 @@ export interface Settings {
   /** D148: update Ducter and its computers at night, in quiet hours, when nothing is working. Off by default. */
   autoUpdate?: boolean;
   /**
-   * D165: 自己发现了事，怎么告诉你 / When it notices something. Absent: never answered, which
+   * D165: 发现了就说 / When it notices something. Absent: never answered, which
    * watches nothing (connecting is not consent to watch); clients show none chosen yet.
    */
   proactive?: ProactiveMode;

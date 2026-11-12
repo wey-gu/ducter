@@ -350,7 +350,7 @@ const T = {
   kindsCap: ["对话里的样子（Mac）。", "In the conversation (Mac)."],
   nowCap: ["「急的」：时效通知（手机可以按 app 关掉），算在每天 3 件里。", "Urgent: a time-sensitive notification (the phone lets you turn that off per app), counted within the 3 a day."],
   pH: ["Mac 的设置 › 账号：四种来源，四张角色卡", "The Mac's Settings › Accounts: four sources, four character sheets"],
-  pP: ["oo、OOMOL 托管、自己部署的 OpenConnector、另一个账号服务。上面一排是「自己发现了事，怎么告诉你」。点 app、点 ⋯、点开关、点最下面的按钮都能试。", "oo, Hosted by OOMOL, a self-hosted OpenConnector, another account service. The chips on top say how it tells you. Apps, ⋯, switches and the foot all work."],
+  pP: ["oo、OOMOL 托管、自己部署的 OpenConnector、另一个账号服务。上面一排是「发现了就说」。点 app、点 ⋯、点开关、点最下面的按钮都能试。", "oo, Hosted by OOMOL, a self-hosted OpenConnector, another account service. The chips on top say how it tells you. Apps, ⋯, switches and the foot all work."],
   phH: ["手机：设置 › 账号", "The phone: Settings › Accounts"],
   phP: ["同一张卡，单列；app 的详情原地展开。", "The same sheet in one column; an app's detail opens in place."],
   ph1Cap: ["默认：五行字。", "Default: five lines of text."],
@@ -478,7 +478,7 @@ function proChips(key) {
     L("早上把值得说的放在一条里，最多 3 件；急的随时说。", "One note in the morning with up to 3 things; urgent ones right away."),
     L("不设上限，还是放在早上那条和你在用的时候说。", "No cap, still in the morning note and while you're here."),
     L("它不自己看了，你问起来才去看。", "It stops looking on its own; it reads only when you ask.")];
-  return `<div><div class="ptitle">${L("自己发现了事，怎么告诉你", "When it notices something")}</div>
+  return `<div><div class="ptitle">${L("发现了就说", "When it notices something")}</div>
     <div class="pchips" role="radiogroup">${opts.map((t, i) => `<button class="pc ${PRO === i ? "on" : "off"}" role="radio" aria-checked="${PRO === i}" data-pro="${i}" data-k="${key}">${t}</button>`).join("")}</div>
     <div class="pnote">${notes[PRO]}</div></div>`;
 }
@@ -495,7 +495,7 @@ function renderBefore() {
     <div class="m" style="margin-top:10px">${L("它读到的内容会给你的 AI 账号看，别人拿不到。", "What it reads is shown to your AI account. No one else gets it.")}</div></div>`;
   document.getElementById("newA").innerHTML = `<div style="display:flex;flex-direction:column;gap:16px">${proChips("a")}${sourceCard("a", sources().oo)}</div>`;
   document.getElementById("fixes").innerHTML = [
-    L("<b>它会做什么</b>：没写 → 上面一排「自己发现了事，怎么告诉你」，一个选择，带默认。", "<b>What it will do</b>: missing → one chip row on top, a single choice with a default."),
+    L("<b>它会做什么</b>：没写 → 上面一排「发现了就说」，一个选择，带默认。", "<b>What it will do</b>: missing → one chip row on top, a single choice with a default."),
     L("<b>它现在怎么样</b>：没有 → 一行状态「在留意」（不报数，D173；看了多少在 ⋯ 里）。", "<b>How it is now</b>: missing → one status line, Keeping an eye out (no counts, D173; they are under ⋯)."),
     L("<b>能看什么</b>：一串字 → 一排 app 方块，点开说看什么、什么先问你、最后什么时候看的。", "<b>What it can read</b>: a run of names → a tray of app tiles; tap one for what it reads, what asks first, when it last looked."),
     L("<b>看了哪些</b>：看不到 → ⋯ 里一行一条，和诚实的那句话。", "<b>What it read</b>: invisible → ⋯ opens today's reads and the honest line."),

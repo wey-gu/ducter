@@ -15,7 +15,7 @@ import { PhoneCard, PhoneOffer, SignInPanel } from "./phone.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const OOMOL_ACCOUNTS = "https://console.oomol.com/app-connections";
 
-/** 自己发现了事，怎么告诉你: one row, single choice; never answered shows none chosen. */
+/** 发现了就说: one row, single choice; never answered shows none chosen. */
 export function ProactiveChips(p: { inNote?: boolean }) {
   const st = A.settings;
   useEffect(() => {

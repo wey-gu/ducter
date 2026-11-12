@@ -81,7 +81,7 @@ export function versionLine(L: Words, h: DeviceHarness): string {
 export type ChipLook = "on" | "off" | "add" | "fail" | "later";
 
 /**
- * The ability chips a device gets, in order: 上网 · 用电脑 · 在哪儿都能用 as it has them, then on the
+ * The ability chips a device gets, in order: 上网 · 用电脑 · 从外面连 as it has them, then on the
  * home 打电话 (D199: on with a calling connection, + to add one, failed when its sign-in is gone),
  * then the home's abilities still to come as ghosts (用电脑 · 用手机, 以后会有), which only explain.
  * Another computer shows none of the later ones. The same rules as the desktop's chipSpecs.

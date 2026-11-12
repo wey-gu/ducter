@@ -87,7 +87,7 @@ export interface WsDeps {
   updateAll?: () => import("./update-all.ts").UpdateAll | undefined;
   /** D169: Nowledge Mem in each device's own agents (mem-plugins.ts); absent in tests that don't need it. */
   memPlugins?: () => import("./mem-plugins.ts").MemPlugins | undefined;
-  /** D228: 在哪儿都能用's guided setup (anywhere.ts). */
+  /** D228: 从外面连's guided setup (anywhere.ts). */
   anywhere?: () => import("./anywhere.ts").AnywhereCtl | undefined;
   /** D151: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
   browser?: DucterBrowser;

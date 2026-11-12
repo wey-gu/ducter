@@ -688,7 +688,7 @@ func (a *App) drainAbilityResults() {
 		}
 	}
 	// A device that paired while the code was showing rises in the scene.
-	// (D228: pairing no longer turns 在哪儿都能用 on; an address does.)
+	// (D228: pairing no longer turns 从外面连 on; an address does.)
 	if d.pair.open && a.S.Reach != nil && len(a.S.Reach.Clients) > d.pair.clients {
 		a.joined("cl:" + a.S.Reach.Clients[len(a.S.Reach.Clients)-1].ID)
 	}

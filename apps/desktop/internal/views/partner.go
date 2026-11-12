@@ -433,7 +433,7 @@ func (a *App) drainForgot() {
 	a.partner.say(a.L.T(key, title), noticeDone, a.Now())
 }
 
-// trustCard is 自己就做，还是先问你: the two lists side by side in one
+// trustCard is 要不要先问: the two lists side by side in one
 // card, read-only, in everyday words (the rules core keeps: G-safety,
 // D62, D130, D132).
 func (a *App) trustCard(c *ui.Context) {

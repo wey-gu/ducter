@@ -530,7 +530,7 @@ func shrink(r ui.Rect, k float32) ui.Rect {
 
 // ---------- the two cards ----------
 
-// brainCard is 它用什么想事情 / What it thinks with: the account in the
+// brainCard is 用什么想 / What it thinks with: the account in the
 // socket with its limit and the part kept for the partner, the model in
 // two plain words, Switch, and the line that it stays itself.
 func (a *App) brainCard(c *ui.Context) {

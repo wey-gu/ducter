@@ -38,11 +38,11 @@ type Remover interface {
 //	通知 / Notifications     when it comes to you, quiet hours, if you
 //	                         don't answer
 //	账号 / Accounts          the accounts it can read (D96)
-//	外观与声音 / Look & sound the look, the window's language, Details,
+//	外观和声音 / Look & sound the look, the window's language, Details,
 //	                         the intro's sound
 //	在哪儿运行 / Where it runs this Mac or another computer, Stop,
 //	                         data and logs, Remove Ducter
-//	更新与关于 / Updates & about the update block, the mascot, links,
+//	更新和关于 / Updates & about the update block, the mascot, links,
 //	                         credits behind a fold
 //
 // Every section speaks one vocabulary: a group title on the paper, a white
@@ -81,7 +81,7 @@ type settingsState struct {
 	// rows counts the rows of the card being drawn: a hairline goes
 	// above every row but the first.
 	rows int
-	// credits: 素材与致谢 / Credits is open.
+	// credits: 素材和致谢 / Credits is open.
 	credits bool
 	// cheer is when something on Look and sound was chosen: the partner
 	// on the preview smiles for a moment.

@@ -136,7 +136,7 @@ One line, one idea: the role or the state, never the kind and never how it conne
 - Each ability on that device as a **toggle chip**: the ability's clay object at 30
   (`ab_web`, `ab_computer`, `ab_remote`; `wait_mail` for notifications, as Settings' tab;
   the home's own clay for **替 hel 做事**) and 2–5 words: **替 hel 做事 / Tasks for hel** ·
-  **上网 / Browse** · **在哪儿都能用 / From anywhere** · **用电脑 / Use apps** · **通知 /
+  **上网 / Browse** · **从外面连 / From outside** · **用电脑 / Use apps** · **通知 /
   Notifications**. English takes the short forms on chips (the long ability names wrapped one
   chip per line at 380); the long names stay on the stage and in ⓘ. On: white chip on a 2pt clay base,
   ink 700. Off: flat sunken chip, the object desaturated (the art's `_later` look). These are
@@ -157,9 +157,9 @@ Which chips a device gets:
 
 | Device | Chips (default order) |
 |---|---|
-| hel (home, server) | 上网 (Ducter's own browser, D151) · 在哪儿都能用 (D143) · 打电话 (D199) · then the ghosts 用电脑 · 用手机 |
-| a MacBook (home, Apple silicon) | 上网 · 在哪儿都能用 · 打电话 · **用手机** (D217: + opens the install sheet; on, the phone's block under the chips) · the ghost 用电脑 |
-| a Mac that is the home | 上网 · 用电脑 · 在哪儿都能用 · 打电话 · then the ghosts still to come |
+| hel (home, server) | 上网 (Ducter's own browser, D151) · 从外面连 (D143) · 打电话 (D199) · then the ghosts 用电脑 · 用手机 |
+| a MacBook (home, Apple silicon) | 上网 · 从外面连 · 打电话 · **用手机** (D217: + opens the install sheet; on, the phone's block under the chips) · the ghost 用电脑 |
+| a Mac that is the home | 上网 · 用电脑 · 从外面连 · 打电话 · then the ghosts still to come |
 | a Mac connected to a home elsewhere | **替 hel 做事** first (D155's switch, now a chip) · 上网 (needs D157 (9)) · 用电脑; no 打电话, no ghosts |
 | a phone | 通知 · 用手机 (later) |
 
@@ -289,7 +289,7 @@ Nothing animates on its own except the art (D77): the update dot never pulses.
 | ★ `chip.stop.after` · `chip.stop.now` | 做完再停 · 现在停 | After they finish · Stop now |
 | ★ `chip.failed` · `chip.log` | 没开成 · 看日志 | Didn't start · See the log |
 | ★ `switch.sub` | 换谁，也可以换一台电脑 | Someone else, or another computer |
-| ★ `chip.web` · `chip.computer` · `chip.remote` · `chip.worker` | 上网 · 用电脑 · 在哪儿都能用 · 替 {home} 做事 | Browse · Use apps · From anywhere · Tasks for {home} |
+| ★ `chip.web` · `chip.computer` · `chip.remote` · `chip.worker` | 上网 · 用电脑 · 从外面连 · 替 {home} 做事 | Browse · Use apps · From outside · Tasks for {home} |
 | ★ `coin.socket` | 再登录一个 | Add an AI |
 | ★ `coin.signin.why` | 登录以后，{device} 上的事也能交给它。 | Sign in and {device}'s tasks can go to it too. |
 | ★ `list.state.*` | 住这儿 · 在做 {n} 件 · 睡着了 · 连不上 · 现在连着 | home · {n} tasks · asleep · can't reach · connected |
@@ -321,7 +321,7 @@ Mechanisms (pairing, rename, revoke, updates, rules) are unchanged.
 3. **Ability chips toggle in one tap**, asking only when something would stop. **Default: yes.**
 4. **The coin's detail holds per-version facts** (版本, 装的方式, 未验证); the card shows only the
    dot. **Default: yes.**
-7. **English chip labels in short forms** (Browse, Use apps, Tasks for hel, From anywhere), the
+7. **English chip labels in short forms** (Browse, Use apps, Tasks for hel, From outside), the
    long names kept on the stage. **Default: yes.**
 5. **The version line** shows only with an update. **Default: yes** (versions live in Settings ›
    About).

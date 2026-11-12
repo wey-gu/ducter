@@ -241,7 +241,7 @@ test("D157: a worker Mac browses with its own Chrome; 上网 there is added and 
   w.close();
 });
 
-test("远程打开: a pairing code from the app; a device that pairs shows in reach (D228: From anywhere stays off without an address)", async () => {
+test("远程打开: a pairing code from the app; a device that pairs shows in reach (D228: From outside stays off without an address)", async () => {
   const core = boot();
   const c = await client(core.url);
   c.send({ t: "devices" });
@@ -259,7 +259,7 @@ test("远程打开: a pairing code from the app; a device that pairs shows in re
   expect(f.reach.clients[0]).toMatchObject({ name: "iPhone", platform: "ios", connected: false });
 });
 
-test("D83: the app's 连接手机或另一台电脑 code connects another computer (it was 403 before)", async () => {
+test("D83: the app's 连上手机或电脑 code connects another computer (it was 403 before)", async () => {
   const core = boot();
   const c = await client(core.url);
   c.send({ t: "devices" });
@@ -415,7 +415,7 @@ test("helpers", () => {
   expect(qrRows("hi")[0]).toMatch(/^1111111/);
 });
 
-// ---------- D228: 在哪儿都能用 / From anywhere on the home ----------
+// ---------- D228: 从外面连 / From outside on the home ----------
 
 function tunnelFake() {
   const live = new Set<number>();
@@ -436,7 +436,7 @@ function tunnelFake() {
   return { sys, live };
 }
 
-test("D228: From anywhere off with nothing set up; on asks for the setup; 让 Ducter 帮我设好 opens one task on the home with its signed-in agent", async () => {
+test("D228: From outside off with nothing set up; on asks for the setup; 让 Ducter 帮我设好 opens one task on the home with its signed-in agent", async () => {
   const t = tempDir();
   const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, sweepMs: 50, deviceProbes: probes(), platform: "darwin", anywhereSys: tunnelFake().sys });
   stops.push(t.cleanup, () => core.stop());
@@ -454,7 +454,7 @@ test("D228: From anywhere off with nothing set up; on asks for the setup; 让 Du
   c.send({ t: "anywhere_setup", op: "begin" });
   const b = await c.until<Extract<ServerFrame, { t: "anywhere_setup_result" }>>((x) => x.t === "anywhere_setup_result");
   expect(b).toMatchObject({ ok: true, taskId: "tsk_any" });
-  expect(opened[0]).toMatchObject({ harness: "claude-code", place: { kind: "none" }, origin: "you", title: expect.stringContaining("reachable from anywhere") });
+  expect(opened[0]).toMatchObject({ harness: "claude-code", place: { kind: "none" }, origin: "you", title: expect.stringContaining("reachable from outside") });
   expect(opened[0].brief).toMatch(/--port \d+ anywhere step login --json`/);
   const n = c.frames.length;
   c.send({ t: "devices" });
@@ -488,7 +488,7 @@ test("D228: the self-check answers over HTTP and as a WebSocket's first message,
   expect(first).toBe(token);
 });
 
-test("D228: an address of the person's own shows From anywhere on, and the switch doesn't take it away", async () => {
+test("D228: an address of the person's own shows From outside on, and the switch doesn't take it away", async () => {
   const t = tempDir();
   writeFileSync(join(t.dir, "public-url"), "https://hel.example.com\n");
   const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, sweepMs: 50, deviceProbes: probes(), platform: "linux", anywhereSys: tunnelFake().sys });

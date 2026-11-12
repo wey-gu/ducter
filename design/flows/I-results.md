@@ -661,8 +661,8 @@ Every link and send is in the day's record (G5).
 
 ### 6. Edge cases
 
-- **No Ducter Edge yet** (local-only setup): Make a link is shown disabled with "要先能在哪儿都能用
-  / Needs Reach from anywhere first", linking to the 在哪儿都能用 ability (D43, A-group).
+- **No Ducter Edge yet** (local-only setup): Make a link is shown disabled with "要先能从外面连
+  / Needs Reach from outside first", linking to the 从外面连 ability (D43, A-group).
 - **The document cites a source behind a login:** the shared page keeps the citation text and
   link, never the fetched content of a logged-in page [I].
 - **The result is a code change:** sharing offers the PR link (if any) and "复制 diff / Copy

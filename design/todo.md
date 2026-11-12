@@ -15,7 +15,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 Built and verified in Ubuntu VMs: systemd user service, code pairing, token gate, Caddy and
 SSH-tunnel paths, desktop connect card, worker enrollment, presence and task placement.
 
-**From anywhere (D228, research/67)**
+**From outside (D228, research/67)**
 - [ ] **One real run end to end on a Cloudflare account with a domain** (sign-in, the zone read with the certificate's token, `tunnel create`, `route dns`, run, the outside check over HTTPS and WebSocket) on a Mac home and on hel. Trigger: before the release that carries D228; everything so far is fakes plus the real binary's download and sign-in link.
 - [ ] **The setup task's agent on Claude Code and on Codex** with the real brief (does it stop at the Go card, rerun after it, ask for another name when taken). Trigger: the same real run.
 - [ ] **A start at login without Ducter**: the tunnel comes back when Ducter starts (its own unit or a detached process), not as a launchd/systemd service of its own. Trigger: a person who wants the address up while Ducter is not.
@@ -586,7 +586,7 @@ Built 2026-11-10 on both clients (§12). Still open:
       clay); Pebble dark on the phone's sheet; a device with five or more agents (the tray wraps
       today); the comprehension check of the chips with naive raters (LLM proxies first).
       Trigger: the next design pass on Devices.
-- [ ] **The phone's chips for another computer**: 上网 and 用电脑 toggle from the phone, but 在哪儿都能用
+- [ ] **The phone's chips for another computer**: 上网 and 用电脑 toggle from the phone, but 从外面连
       (a pairing code) and 替 {home} 做事 (a LaunchAgent on that Mac) only explain themselves there.
       Trigger: pairing from the phone.
 - [ ] **A phone's 通知 chip on the Mac's card** needs the home to know each phone's notification

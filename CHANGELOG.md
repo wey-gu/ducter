@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.44
+
+<!-- whats-new
+zh: 用这台手机：任务能借你的安卓手机用一会儿，先问你
+en: Use this phone: a task can borrow your Android phone, asking first
+zh: 借出时顶上一直显示，发送付款等你点 Go，随时停下
+en: While lent, a pill shows it; sends and payments wait for your Go
+-->
+
+**用这台手机 / Use this phone** (Android)
+- On your Android phone's own card, add 用这台手机. A short guide shows each tap in Android's own
+  settings (three steps on a phone where the app was installed from its file), ticks each one off
+  by itself and comes back to Ducter.
+- A task that needs a phone asks to borrow yours, every time, with no default. While it holds it,
+  a pill at the top says so with what it is doing and Stop; each tap shows as a soft ring.
+- Sends, payments and deletes wait for your Go; banking, wallet, password and authenticator apps
+  are out of reach, and password fields are never read. iPhones can't do this: iOS doesn't let one
+  app use others, so the iPhone card says so plainly.
+
 ## 0.0.43
 
 <!-- whats-new

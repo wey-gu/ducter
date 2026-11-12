@@ -37,7 +37,8 @@ type askState struct {
 	answeredAt time.Time
 	busy       bool
 	pairAsked  bool
-	clients    int // paired clients when the code was asked for
+	recodeFor  string // D228: the address a fresh code was asked for once 在哪儿都能用 came on
+	clients    int    // paired clients when the code was asked for
 }
 
 // askLine shows the one ask that may show now (false if none).
@@ -196,7 +197,7 @@ func (a *App) phoneAsk(c *ui.Context) {
 		}
 	}
 	if pc.Address == "" || len(pc.QR) == 0 {
-		a.askRow(c, theme.Idle, a.L.T("phone.noaddress"), a.L.T("phone.noaddress.body"), done)
+		a.phoneNoAddress(c, done)
 		return
 	}
 	paired := a.S.Reach != nil && len(a.S.Reach.Clients) > s.clients
@@ -262,4 +263,64 @@ func InQuiet(at time.Time, q *protocol.QuietHours) bool {
 		return now >= s && now < e
 	}
 	return now >= s || now < e
+}
+
+// phoneNoAddress: the phone can't reach this Mac yet. D228: one tap starts
+// the guided setup of 在哪儿都能用 (a task sets up the person's own Cloudflare
+// tunnel to their own domain); while it runs the row says so, and once there
+// is an address a fresh code (now with its link and QR) is asked.
+func (a *App) phoneNoAddress(c *ui.Context, done func()) {
+	t := a.T
+	s := &a.asks
+	home := a.homeDevice()
+	any := a.anywhere()
+	if addr := a.reachAddress(); addr != "" && s.recodeFor != addr {
+		s.recodeFor = addr
+		a.S.PairCode = nil
+		a.send(protocol.PairCodeReq{T: "pair_code"})
+		return
+	}
+	switch {
+	case any != nil && any.State == "setup" && !anywhereSetupFailed(any):
+		a.askRow(c, theme.Working, a.L.T("phone.anywhere.setup"), a.L.T("phone.anywhere.steps"), func() {})
+	case any != nil && any.State == "starting":
+		a.askRow(c, theme.Working, a.L.T("anywhere.starting", any.Hostname), a.L.T("phone.anywhere.who"), func() {})
+	case any != nil && (any.State == "failed" || anywhereSetupFailed(any)):
+		a.askRow(c, theme.Idle, a.L.T("phone.noaddress"), a.L.T("phone.anywhere.failed"), func() {
+			done()
+			if a.button(c, a.L.T("anywhere.retry"), btnPrimary, 40, t.Surface) {
+				if any.State == "failed" && home != nil {
+					a.send(protocol.AbilityReq{T: "ability", Device: home.ID, Ability: protocol.AbilityRemote, On: true})
+				} else {
+					a.beginAnywhere()
+				}
+			}
+		})
+	case any != nil && any.State == "off":
+		a.askRow(c, theme.Idle, a.L.T("phone.noaddress"), a.L.T("anywhere.kept", any.Hostname), func() {
+			if a.button(c, a.L.T("ask.later"), btnText, 40, t.Surface) {
+				a.answer(askPhone, "later")
+			}
+			if home != nil && home.State == protocol.DeviceAwake && a.button(c, a.L.T("anywhere.turnOn"), btnPrimary, 40, t.Surface) {
+				a.send(protocol.AbilityReq{T: "ability", Device: home.ID, Ability: protocol.AbilityRemote, On: true})
+			}
+		})
+	default:
+		a.askRow(c, theme.Idle, a.L.T("phone.noaddress"), a.L.T("phone.noaddress.body"), func() {
+			if a.button(c, a.L.T("ask.later"), btnText, 40, t.Surface) {
+				a.answer(askPhone, "later")
+			}
+			if home != nil && home.State == protocol.DeviceAwake && a.button(c, a.L.T("anywhere.setup"), btnPrimary, 40, t.Surface) {
+				a.beginAnywhere()
+			}
+		})
+	}
+}
+
+// reachAddress is the home's address from outside, "" when none.
+func (a *App) reachAddress() string {
+	if a.S.Reach == nil {
+		return ""
+	}
+	return a.S.Reach.Address
 }

@@ -87,6 +87,8 @@ export interface WsDeps {
   updateAll?: () => import("./update-all.ts").UpdateAll | undefined;
   /** D169: Nowledge Mem in each device's own agents (mem-plugins.ts); absent in tests that don't need it. */
   memPlugins?: () => import("./mem-plugins.ts").MemPlugins | undefined;
+  /** D228: 在哪儿都能用's guided setup (anywhere.ts). */
+  anywhere?: () => import("./anywhere.ts").AnywhereCtl | undefined;
   /** D151: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
   browser?: DucterBrowser;
   /** D214: the opened task's workbench (workbench.ts); absent in tests that don't need it. */
@@ -571,7 +573,7 @@ export function createWsHandler(deps: WsDeps) {
         const v = devicesView();
         if (!v) throw new Error("devices are not available");
         watchDevices();
-        send(ws, await v.setAbility(f.device, f.ability, f.on));
+        send(ws, await v.setAbility(f.device, f.ability, f.on, f.named && typeof f.named.token === "string" && typeof f.named.hostname === "string" ? f.named : undefined));
         return; // the change pushes a fresh devices frame to every subscriber
       }
       case "pair_code": {
@@ -648,6 +650,23 @@ export function createWsHandler(deps: WsDeps) {
         watchDevices();
         const r = await mp.install(device, harness);
         return send(ws, r.ok ? { t: "mem_plugin_result", device, harness, ok: true, taskId: r.taskId } : { t: "mem_plugin_result", device, harness, ok: false, reason: r.reason });
+      }
+      case "anywhere_setup": {
+        // D228: 让 Ducter 帮我设好 (the person's tap is the Go for this one task), and the steps its
+        // agent runs through `ducter anywhere step`. Progress reaches every client in devices frames.
+        const any = deps.anywhere?.();
+        if (!any) return send(ws, { t: "anywhere_setup_result", ok: false, reason: "not_home" });
+        watchDevices();
+        if (f.op === "begin") {
+          const r = await any.begin();
+          return send(ws, r.ok ? { t: "anywhere_setup_result", ok: true, taskId: r.taskId } : { t: "anywhere_setup_result", ok: false, reason: r.reason === "failed" ? "failed" : r.reason, ...(r.taskId ? { taskId: r.taskId } : {}) });
+        }
+        if (f.op === "cancel") return any.cancel(), send(ws, { t: "anywhere_setup_result", ok: true });
+        if (f.op === "step" && (f.step === "login" || f.step === "create" || f.step === "run")) {
+          const r = await any.step(f.step, typeof f.hostname === "string" ? { hostname: f.hostname } : {});
+          return send(ws, { t: "anywhere_setup_result", ok: r.state !== "failed", step: r });
+        }
+        return send(ws, { t: "anywhere_setup_result", ok: false, reason: "failed", detail: "op" });
       }
       case "bridge_connect":
       case "bridge_disconnect": {

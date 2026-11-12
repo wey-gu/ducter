@@ -27,6 +27,15 @@ export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size
   );
 }
 
+/** A Btn that opens a page elsewhere (a sign-in, a vendor's site) in a new tab: the same look. */
+export function LinkBtn(p: { kind: "primary" | "secondary"; size?: "sm"; href: string; label: string }) {
+  return (
+    <a class={`btn ${p.kind}${p.size ? ` ${p.size}` : ""}`} href={p.href} target="_blank" rel="noopener noreferrer">
+      <span class="lbl">{p.label}</span>
+    </a>
+  );
+}
+
 /** The one drawn chevron (D211, D213): every text link, button or row that opens more ends in it,
  *  in its text's ink; it turns down while what it opens is open (open, or an aria-expanded parent);
  *  back points the way back. Never a font's › ‹ ⌄: iOS draws some of those as an emoji or a

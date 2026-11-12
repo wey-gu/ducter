@@ -298,6 +298,7 @@ A new control is added to the set (and to this table) before it is used.
 |---|---|---|
 | The button family: primary, secondary, accent, text (D76) | `button`, `buttonFor` (`components.go`); `iconButton`, `navButton` | `Btn` |
 | Quiet text button and link (检查更新, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
+| A button that opens a page elsewhere in a new tab (打开 Cloudflare, the sign-in link of 在哪儿都能用; D228) | `button` then `openLink` (`abilities.go`) | `LinkBtn` |
 | Switch | `switchControl` (`shared.go`), inside `switchRow`, `toggleRow` | `Toggle` |
 | Segmented choice | `choices` (`partner.go`) | `Seg` |
 | Choice row (a theme, Remove's plan) | `selectRow` (`shared.go`) | — |

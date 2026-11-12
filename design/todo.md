@@ -15,6 +15,12 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 Built and verified in Ubuntu VMs: systemd user service, code pairing, token gate, Caddy and
 SSH-tunnel paths, desktop connect card, worker enrollment, presence and task placement.
 
+**From anywhere (D228, research/67)**
+- [ ] **One real run end to end on a Cloudflare account with a domain** (sign-in, the zone read with the certificate's token, `tunnel create`, `route dns`, run, the outside check over HTTPS and WebSocket) on a Mac home and on hel. Trigger: before the release that carries D228; everything so far is fakes plus the real binary's download and sign-in link.
+- [ ] **The setup task's agent on Claude Code and on Codex** with the real brief (does it stop at the Go card, rerun after it, ask for another name when taken). Trigger: the same real run.
+- [ ] **A start at login without Ducter**: the tunnel comes back when Ducter starts (its own unit or a detached process), not as a launchd/systemd service of its own. Trigger: a person who wants the address up while Ducter is not.
+- [x] **The systemd-run path on a Linux home**: the tunnel's own unit survives `systemctl --user restart ducter` (`bun run e2e:linux` step 8).
+
 **Verify for real**
 - [ ] **Move your Ducter to another computer (`ducter move`)**: a Mac-first user moves the home to a server: one-time move code from the new (empty) home; moves the Log, persona, settings, rules, routines, connections and the Mem binding over HTTPS with a verified count; not harness sign-ins (re-sign on the server, guided); running tasks parked first; the old machine becomes a worker for its local repos, its app connects to the new home; old data kept 30 days with a one-tap move back. Trigger: the author's Mac → Hetzner case (2026-11-10); design first, then v0.0.4.
 - [x] **Phone opened task overflows horizontally**: not the layout. The shot was taken with headless Chrome's `--window-size=390,…`, which lays out at its minimum window width (~500 px) and crops to 390. With device emulation at 390 px (CDP `Emulation.setDeviceMetricsOverride`) the folder task and a long zh title + long brief with unbreakable paths and URLs wrap, and `scrollWidth` is 390. Take phone shots with device emulation, never `--window-size`.

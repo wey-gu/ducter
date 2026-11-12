@@ -893,18 +893,44 @@ func (a *App) abilitySpec(c *ui.Context, card string, dv *protocol.DeviceView, a
 				a.startEquip(dv, id, r, false)
 			}
 		}
-	case on && id == protocol.AbilityRemote:
-		// Reaching it from anywhere isn't a switch: its ⓘ holds who is connected and 再连一台.
-		sp.look = chipOn
+	case id == protocol.AbilityRemote && dv.Home && (a.anywhere() == nil || a.anywhere().State == "failed" || a.anywhere().State == "setup" || a.anywhere().State == "off") && !(on && a.anywhere() == nil):
+		// D228: off, being set up, or it didn't open: the ⓘ holds what it
+		// needs and 让 Ducter 帮我设好, the setup's steps, or why and 再试一次.
+		any := a.anywhere()
+		switch {
+		case any != nil && (any.State == "failed" || anywhereSetupFailed(any)):
+			sp.look = chipFail
+		case any != nil:
+			sp.look = chipOff
+			sp.busy = any.State == "setup"
+		default:
+			sp.look = chipAdd
+		}
 		sp.tap = func(ui.Rect) { toggleInfo() }
 		sp.info = func() {
 			a.infoText(c, a.L.T(about))
+			a.anywhereInfo(c, dv)
+		}
+	case on && id == protocol.AbilityRemote:
+		// Its ⓘ holds the address and how it is reached (D228), who is
+		// connected, 再连一台, and (for Ducter's tunnel) 关掉.
+		sp.look = chipOn
+		sp.busy = dv.Home && a.anywhere() != nil && a.anywhere().State == "starting"
+		sp.tap = func(ui.Rect) { toggleInfo() }
+		sp.info = func() {
+			a.infoText(c, a.L.T(about))
+			if dv.Home {
+				a.anywhereInfo(c, dv)
+			}
 			a.reachList(c)
 			ui.Row(c).Children(func() {
 				if a.button(c, a.L.T("chip.remote.again"), btnSecondary, t.ControlSM, t.Bg) {
 					a.openPair()
 				}
 			})
+			if dv.Home {
+				a.anywhereOff(c, dv)
+			}
 		}
 	case on:
 		sp.look = chipOn

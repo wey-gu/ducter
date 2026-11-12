@@ -6937,3 +6937,13 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .reads.day .day-group { display: flex; flex-direction: column; gap: 2px; }
 .reads.day .read.soft { color: var(--ink-muted); }
 .reads.day .honest { margin-top: 0; padding-top: 8px; }
+/* D228: 在哪儿都能用 / From anywhere in its ⓘ: the address, who gets in, how it is reached. */
+.dev-anywhere { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.dev-anywhere .acts { align-items: center; }
+.dev-anywhere .any-steps { margin-top: 2px; }
+.dev-anywhere .any-login { display: flex; flex-direction: column; gap: 6px; padding: var(--s2) var(--s3); border-radius: var(--r-md); background: var(--surface-sunken); }
+.dev-anywhere .any-login-row { display: flex; align-items: center; gap: var(--s3); }
+.dev-anywhere .any-login-row .call-qr { width: 104px; height: 104px; flex: none; border-radius: var(--r-sm); }
+.dev-anywhere .any-login-go { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+/* On a phone the person is already on the phone: the link, no QR. */
+@media (max-width: 520px) { .dev-anywhere .any-login-row .call-qr, .dev-anywhere .any-qr-note { display: none; } }

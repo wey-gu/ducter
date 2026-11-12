@@ -417,10 +417,10 @@ export function PhoneOffer() {
   );
 }
 
-function Qr({ rows }: { rows: string[] }) {
+export function Qr({ rows, label }: { rows: string[]; label?: string }) {
   const n = rows.length;
   return (
-    <svg class="call-qr" viewBox={`-2 -2 ${n + 4} ${n + 4}`} width="168" height="168" role="img" aria-label={t("call.signin.qr")}>
+    <svg class="call-qr" viewBox={`-2 -2 ${n + 4} ${n + 4}`} width="168" height="168" role="img" aria-label={label ?? t("call.signin.qr")}>
       <rect x="-2" y="-2" width={n + 4} height={n + 4} fill="#fff" />
       {rows.flatMap((r, y) => [...r].map((v, x) => (v === "1" ? <rect key={`${x}-${y}`} x={x} y={y} width="1.02" height="1.02" fill="#1d1a16" /> : null)))}
     </svg>

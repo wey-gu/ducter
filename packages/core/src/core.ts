@@ -32,7 +32,8 @@ import { createPusher, openPushStore, type Pusher, type PushStore } from "./push
 import { createApnsSender, createAppPushSender, loadApnsConfig, type ApnsSender } from "./apns.ts";
 import { createRelayClient, relayUrl, type RelayFetch } from "./push-relay.ts";
 import { webApi, webStatic } from "./web.ts";
-import { callAbility, createDevicesView, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
+import { CHECK_PATH, createAnywhere, type AnywhereCtl, type TunnelSys } from "./anywhere.ts";
+import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createBridgeLink, type NmemCall } from "./bridge-link.ts";
 import { identityIdFor } from "./mem-identity.ts";
@@ -91,6 +92,11 @@ export interface CoreOptions {
   relayFetch?: RelayFetch;
   /** Test seams for Your devices and abilities (cua-driver, harness logins, device kind). */
   deviceProbes?: Partial<DeviceProbes>;
+  /** D228: test seam for 在哪儿都能用's tunnel (cloudflared, its metrics, the network). */
+  anywhereSys?: TunnelSys;
+  anywherePollMs?: number;
+  anywhereStartMs?: number;
+  anywhereStepWaitMs?: number;
   /** Test seams for connections: the MCP link, and the oo CLI's config. */
   connectionLinker?: Linker;
   ooSource?: OoSource;
@@ -187,6 +193,8 @@ export interface Core extends CoreApi {
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
+  /** D228: 在哪儿都能用 / From anywhere (the tunnel and its guided setup). */
+  anywhere: AnywhereCtl;
   setPartner(p: Partner): void;
   stop(): Promise<void>;
 }
@@ -547,7 +555,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
-  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ownNumber });
+  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ownNumber });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -572,6 +580,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   let agentsRef: AgentUpdates | undefined;
   let updateAllRef: UpdateAll | undefined;
   let memPluginsRef: MemPlugins | undefined;
+  let anywhereRef: AnywhereCtl | undefined;
   const workers = createWorkers({
     personaName: () => persona.name,
     onUpdate: (id, name, f) => updatesRef?.fromWorker(id, name, f),
@@ -684,7 +693,73 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(ua.tz ? { tz: ua.tz } : {}),
   });
   updateAllRef = updateAll;
-  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  // D228: 在哪儿都能用 / From anywhere: the person's own Cloudflare tunnel to their own domain, set
+  // up by a task they start (its agent runs `ducter anywhere step …` against this home).
+  let listening = 0;
+  const homeLabel = () => savedHomeName(dataDir) ?? u.homeName ?? osHostname().replace(/\.local$/, "");
+  const anywhere: AnywhereCtl = createAnywhere({
+    dataDir,
+    port: () => listening,
+    own: () => publicAddress(dataDir),
+    ...(opts.anywhereSys ? { sys: opts.anywhereSys } : {}),
+    ...(opts.anywherePollMs ? { pollMs: opts.anywherePollMs } : {}),
+    ...(opts.anywhereStartMs ? { startMs: opts.anywhereStartMs } : process.env.DUCTER_ANYWHERE_START_MS ? { startMs: Number(process.env.DUCTER_ANYWHERE_START_MS) || undefined } : {}),
+    ...(opts.anywhereStepWaitMs ? { stepWaitMs: opts.anywhereStepWaitMs } : {}),
+    setup: {
+      async openTask(brief, title) {
+        const home = ((await devicesView?.frame())?.devices ?? []).find((d) => d.home);
+        const body = home?.harnesses.find((h) => h.installed && h.loggedIn);
+        if (!runner || !body) return console.warn(`[anywhere] no agent signed in on the home to set it up (${home ? home.harnesses.map((h) => `${h.harness}:${h.installed ? "installed" : "-"}/${h.loggedIn ? "signed in" : "-"}`).join(", ") || "none probed yet" : "no home"})`), undefined;
+        const zh = settings.get().language === "zh";
+        const card = await runner.openTask({ persona: persona.id, title, brief, place: { kind: "none" }, harness: body.harness, language: zh ? "zh" : "en", origin: "you" });
+        return card.taskId;
+      },
+      open: (taskId) => {
+        const a = tasks.get(taskId)?.attention;
+        return !!a && !["done", "done_claimed", "failed", "dropped"].includes(a);
+      },
+      ask(taskId, hostname) {
+        const zh = settings.get().language === "zh";
+        const name = homeLabel();
+        const decisionId = "d_" + crypto.randomUUID().replaceAll("-", "").slice(0, 10);
+        log.append({
+          stream: "channel",
+          origin: "system",
+          kind: "decision",
+          body: {
+            decisionId,
+            taskId,
+            question: zh
+              ? `在你的 Cloudflare 账号里建一条通道，把 ${hostname} 指到 ${name}？以后在哪儿打开 ${hostname}，都是这台电脑上的 Ducter。想用别的名字，直接回我。`
+              : `Create a tunnel in your Cloudflare account and point ${hostname} at ${name}? Opening ${hostname} anywhere will then reach Ducter on this computer. Want another name? Just reply with it.`,
+            goLabel: zh ? "建好它" : "Set it up",
+            // Suggested, never applied by itself: it changes the person's own account (no timer).
+            defaultOption: "go",
+            reversible: false,
+            anywhere: { hostname },
+          },
+        });
+        const c = tasks.get(taskId);
+        if (c) tasks.setState(taskId, "needs_you", c.residency);
+        return decisionId;
+      },
+      cli: () => {
+        const exe = compiled ? process.execPath : `${process.execPath} ${join(import.meta.dir, "../../cli/src/main.ts")}`;
+        const q = (x: string) => (/^[\w./~-]+$/.test(x) ? x : `'${x.replaceAll("'", "'\\''")}'`);
+        return `${exe.split(" ").map(q).join(" ")} --port ${listening}`;
+      },
+      homeName: homeLabel,
+      zh: () => settings.get().language === "zh",
+      qr: qrRows,
+    },
+  });
+  anywhereRef = anywhere;
+  log.subscribe((e) => {
+    if (e.kind !== "decision_resolved") return;
+    const r = e.body as import("@ducter/protocol").Bodies["decision_resolved"];
+    if (decisions.get(r.decisionId)?.anywhere) anywhere.answered(r.decisionId, r.option === "go");
+  });
+  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
@@ -799,6 +874,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     idleTimeout: 120,
     async fetch(req, srv) {
       const url = new URL(req.url);
+      // D228: the tunnel's self-check (does this address still lead here, also as a WebSocket?).
+      // A random per-home string; nothing else.
+      if (url.pathname === CHECK_PATH) {
+        if (req.headers.get("upgrade")?.toLowerCase() === "websocket") return srv.upgrade(req, { data: { anywhereCheck: true } as unknown as WsData }) ? undefined : new Response("upgrade failed", { status: 400 });
+        return new Response(anywhere.checkToken(), { headers: { "content-type": "text/plain", "cache-control": "no-store" } });
+      }
       // The phone/web client's own files are public (web.ts); everything it talks to is not.
       const page = await webStatic(req);
       if (page) return page;
@@ -829,9 +910,17 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (url.pathname === "/health") return Response.json({ ok: true, headSeq: log.head(), build: BUILD, version });
       return new Response("not found", { status: 404 });
     },
-    websocket: sockets,
+    // D228: the self-check's socket says the check string and closes; every other socket is Ducter's.
+    websocket: {
+      ...sockets,
+      open: (w) => ((w.data as { anywhereCheck?: boolean })?.anywhereCheck ? (w.send(anywhere.checkToken()), w.close(1000, "ok")) : sockets.open!(w)),
+      message: (w, m) => ((w.data as { anywhereCheck?: boolean })?.anywhereCheck ? undefined : sockets.message(w, m)),
+      close: (w, code, reason) => ((w.data as { anywhereCheck?: boolean })?.anywhereCheck ? undefined : sockets.close!(w, code, reason)),
+    },
   });
   const port = server.port!;
+  listening = port;
+  void anywhere.resume().catch((e) => console.warn("[anywhere]", e));
   // Up and listening: an update's helper waiting on this restart knows it's this version (update.ts
   // waitHealthy), also when /health doesn't name the version to it.
   try {
@@ -874,6 +963,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     autofill,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
+    anywhere,
     setRunner(r) {
       runner = r;
       // The cheap judge (D112, D113) runs on the harness the partner thinks with, on its small model.
@@ -907,6 +997,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       await ownPhone?.stop().catch(() => {});
       autofill.stop();
       devicesView?.stop();
+      anywhere.close(); // the tunnel itself keeps running: the next Ducter adopts it (same address)
       workers.stop();
       sockets.stop();
       unsubscribePartner();

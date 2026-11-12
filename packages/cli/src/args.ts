@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect" | "update" | "ability" | "browser";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect" | "update" | "ability" | "browser" | "anywhere";
 
 export interface Args {
   command: Command;
@@ -34,13 +34,15 @@ export interface Args {
   agents?: boolean; // update --agents: the AI agents' own versions (D156)
   to?: string; // update --to <version>: this version, even an older one
   finish?: string; // update --finish <plan.json> (internal: the restart helper, D148)
+  token?: string; // anywhere on --token <token>: the person's own Cloudflare tunnel (D228)
+  hostname?: string; // anywhere on --hostname <name>: the hostname that tunnel serves; anywhere step create --hostname
 }
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout"; vars: Record<string, string> } };
 
-const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect", "update", "ability", "browser"]);
+const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect", "update", "ability", "browser", "anywhere"]);
 /** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
-const WITH_REST = new Set<Command>(["devices", "service", "domain", "merge", "undo", "open", "task", "say", "tail", "answer", "connect", "ability", "browser"]);
+const WITH_REST = new Set<Command>(["devices", "service", "domain", "merge", "undo", "open", "task", "say", "tail", "answer", "connect", "ability", "browser", "anywhere"]);
 const ALIASES: Record<string, Command> = {
   "-v": "version",
   "--version": "version",
@@ -161,10 +163,12 @@ export function parseArgs(argv: string[]): ParseResult {
         args.agents = true;
         continue;
       case "--to":
-      case "--finish": {
+      case "--finish":
+      case "--token":
+      case "--hostname": {
         const v = value();
         if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
-        args[a.slice(2) as "to" | "finish"] = v.trim();
+        args[a.slice(2) as "to" | "finish" | "token" | "hostname"] = v.trim();
         continue;
       }
       case "--out": {

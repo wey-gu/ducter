@@ -6,6 +6,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { hostname as osHostname, platform as osPlatform } from "node:os";
 import { join } from "node:path";
 import QRCode from "qrcode";
+import type { AnywhereCtl } from "./anywhere.ts";
 import { deviceHarness, type AbilityId, type AgentHow, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
 import { readAbilitySettings, writeAbilitySettings } from "@ducter/protocol/src/abilities.ts";
 import { claudeInChromeConnected, codexNative } from "@ducter/protocol/src/native-browser.ts";
@@ -71,6 +72,8 @@ export interface DevicesOptions {
   onDisconnect?: (deviceId: string) => void;
   /** D199: 打电话 on the home, from the calling connection (`callAbility`); off when absent. */
   call?: () => DeviceAbility;
+  /** D228: 在哪儿都能用 / From anywhere: the tunnel Ducter runs (anywhere.ts). */
+  anywhere?: Pick<AnywhereCtl, "view" | "turnOn" | "turnOff" | "onChange">;
   /** D217: 用手机 / Use a phone on the home: Ducter's own phone (an Android emulator on a Mac). */
   ownPhone?: { ability(): DeviceAbility; onChange(fn: () => void): () => void };
 }
@@ -88,7 +91,7 @@ export function callAbility(calling: { connectionId: string } | undefined, conne
 
 export interface DevicesView {
   frame(): Promise<DevicesFrame>;
-  setAbility(device: string, ability: AbilityId, on: boolean): Promise<AbilityResult>;
+  setAbility(device: string, ability: AbilityId, on: boolean, named?: { token: string; hostname: string }): Promise<AbilityResult>;
   pairCode(): Promise<PairCodeFrame>;
   /** 改名字 / Rename any device (D84); the home's is a display name beside its host name (D155). */
   rename(device: string, name: string): RenameResult;
@@ -307,9 +310,12 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
 
   const reach = (): Reach => {
     const live = o.connected?.() ?? new Set<string>();
+    // D228: the person's tunnel writes the address where `ducter domain` does, once it answers.
     const address = publicAddress(o.dataDir, env);
+    const anywhere = o.anywhere?.view() ?? (address ? { how: "own" as const, state: "on" as const } : undefined);
     return {
       ...(address ? { address } : {}),
+      ...(anywhere ? { anywhere } : {}),
       clients: clients().map((d) => ({
         id: d.id,
         name: d.name,
@@ -331,7 +337,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
 
   async function frame(): Promise<DevicesFrame> {
     const me = await local();
-    const remoteOn = clients().length > 0;
+    // D228: on = an address from outside (set up some other way, or the person's own tunnel, also
+    // while it starts or fails to); being set up is not on yet.
+    const av = o.anywhere?.view();
+    const remoteOn = !!publicAddress(o.dataDir, env) || (!!av && av.state !== "setup" && av.state !== "off");
     const home: DeviceView = {
       id: "local",
       name: homeName(o.dataDir) ?? host,
@@ -401,8 +410,9 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   const offWorkers = o.workers.onChange(changed);
   const offBrowser = o.browser?.onChange(changed);
   const offPhone = o.ownPhone?.onChange(changed);
+  const offAnywhere = o.anywhere?.onChange(changed);
 
-  async function setAbility(device: string, ability: AbilityId, on: boolean): Promise<AbilityResult> {
+  async function setAbility(device: string, ability: AbilityId, on: boolean, named?: { token: string; hostname: string }): Promise<AbilityResult> {
     const res = (ok: boolean, reason?: AbilityReason, detail?: string): AbilityResult => ({
       t: "ability_result",
       device,
@@ -465,10 +475,20 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         // D217: adding Ducter's phone is the install sheet (phone_install, with the licenses
         // accepted); removing it is 抹掉 / Erase (phone_erase). Never a bare switch.
         return res(false, "failed");
-      case "remote":
-        // On = a device pairs with a code (pair_code); off would disconnect every paired client,
-        // which is `ducter devices disconnect` per device, not a switch here.
-        return res(false, "failed");
+      case "remote": {
+        // D228: on the home, From anywhere turns the person's tunnel on or off (on without one made
+        // yet answers no_address: the card offers the guided setup). Paired devices stay paired
+        // either way (they are disconnected one by one, never by this switch).
+        if (!d.home || !o.anywhere) return res(false, "home_only");
+        const v = o.anywhere.view();
+        if (v?.how === "own") return on ? res(true) : res(false, "own_address");
+        if (!on) {
+          await o.anywhere.turnOff();
+          return res(true);
+        }
+        const r = await o.anywhere.turnOn(named);
+        return res(r.ok, r.ok ? undefined : r.reason === "own_address" || r.reason === "no_address" ? r.reason : "failed", r.detail ?? r.reason);
+      }
     }
     return res(false, "failed");
   }
@@ -540,6 +560,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       offWorkers();
       offBrowser?.();
       offPhone?.();
+      offAnywhere?.();
       if (timer) clearTimeout(timer);
       fns.clear();
     },

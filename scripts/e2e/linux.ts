@@ -25,6 +25,12 @@
 //   7. all     全部更新 / Update all (D224): V3 → V4 and pi 1.5.1 → 1.5.2 on the home in one tap, the
 //              worker away (said, not part of it): the home first, pi only after the home is back,
 //              the same plan finished by the restarted home.
+//   8. anywhere 在哪儿都能用 / From anywhere (D228), with no Cloudflare account: the setup's first
+//              step downloads and checks the real cloudflared in the VM and gets a real sign-in
+//              link from it (headless: a link to open elsewhere); then a dashboard tunnel's
+//              token with a fake cloudflared: run in its own systemd user unit, the token in a
+//              0600 file and never on a command line, the outside check failing honestly, the
+//              unit kept across a restart of ducter.service, and off stopping it.
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -406,6 +412,81 @@ async function updateAll() {
   );
 }
 
+// ---------- 8. From anywhere (D228) ----------
+
+async function anywhere() {
+  const reach = async () => (await clientJson("devices")).reach as any;
+  // A step waits up to ~75 s for the person (here: nobody signs in), after the download.
+  const step = async (name: string) =>
+    JSON.parse((await run([join(DIR, "bin", "e2eclient"), "-url", WS, "-token", token, "-timeout", "300s", "send", JSON.stringify({ t: "anywhere_setup", op: "step", step: name }), "-wait", "anywhere_setup_result"], { timeoutMs: 320_000 })).out.trim().split("\n").at(-1)!);
+  // The real cloudflared: downloaded, checked (SHA-256), and its sign-in link read. No account is
+  // signed in: the link is only shown, then the sign-in is stopped.
+  const login = await step("login");
+  const r = login.step ?? login;
+  const got = (await vm(`ls -l ~/.ducter/bin/ | grep cloudflared || true; ~/.ducter/bin/cloudflared-* --version 2>&1 | head -1 || true`, { ok: false })).out.trim();
+  check("anywhere cloudflared", /cloudflared version 2026\.10\.5/.test(got), `downloaded and checked in the VM: ${got.split("\n").at(-1)}`);
+  check("anywhere sign-in link", r.state === "waiting" && /^https:\/\/dash\.cloudflare\.com\/argotunnel\?/.test(r.url ?? ""), `the setup's login step answered ${r.state}, a sign-in link to open elsewhere (headless: no browser opened)`);
+  await client("send", JSON.stringify({ t: "anywhere_setup", op: "cancel" }), "-wait", "anywhere_setup_result");
+  const cert = (await vm(`test -e ~/.ducter/anywhere/.cloudflared/cert.pem && echo yes || echo no; test -e ~/.cloudflared/cert.pem && echo home-has-cert || echo home-clean`, { ok: false })).out.trim();
+  check("anywhere sign-in kept apart", cert.includes("no") && cert.includes("home-clean"), "no certificate without a sign-in, and nothing written to ~/.cloudflared");
+
+  // A dashboard tunnel's token, with a fake cloudflared: it serves /ready on the metrics port and
+  // notes whether TUNNEL_TOKEN reached it (it can't make the address answer from outside).
+  await vm(`mkdir -p ~/e2e && cat > ~/e2e/fake-cloudflared <<'FAKE'
+#!/bin/bash
+port=""; prev=""; for a in "$@"; do [ "$prev" = "--metrics" ] && port="\${a##*:}"; prev="$a"; done
+[ -n "$TUNNEL_TOKEN" ] && echo seen > ~/e2e/token-seen
+exec python3 -c "
+import http.server
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(s):
+        s.send_response(200); s.end_headers(); s.wfile.write(b'{}')
+    def log_message(s,*a): pass
+http.server.HTTPServer(('127.0.0.1', $port), H).serve_forever()"
+FAKE
+chmod +x ~/e2e/fake-cloudflared
+systemctl --user set-environment DUCTER_CLOUDFLARED=$HOME/e2e/fake-cloudflared DUCTER_ANYWHERE_START_MS=15000
+systemctl --user restart ducter.service`);
+  await until("the home back", async () => ((await fetch(`${HTTP}/health`).catch(() => undefined))?.ok ? true : undefined), 120_000);
+  const tok = "eyJhIjoiZTJlIiwidCI6InR1bm5lbCIsInMiOiJzZWNyZXQtZTJlIn0=";
+  await clientJson("send", JSON.stringify({ t: "ability", device: "local", ability: "remote", on: true, named: { token: tok, hostname: "ducter.e2e.invalid" } }), "-wait", "ability_result");
+  const failed = await until(
+    "the outside check to give up",
+    async () => {
+      const a = (await reach())?.anywhere;
+      return a?.state === "failed" ? a : undefined;
+    },
+    90_000,
+    3000,
+  );
+  const unit = `ducter-anywhere-${PORT}`;
+  const facts = (await vm(`systemctl --user is-active ${unit} || true
+cat ~/e2e/token-seen 2>/dev/null || echo unseen
+stat -c %a ~/.ducter/anywhere/token.env
+systemctl --user show ${unit} -p ExecStart --value | grep -c "${tok}" || true
+ps -eo args | grep -c "${tok}" | tr -d ' ' || true
+test -e ~/.ducter/public-url && echo has-url || echo no-url`, { ok: false })).out.trim().split("\n");
+  check(
+    "anywhere token",
+    failed.reason === "unreachable" && facts[0] === "active" && facts[1] === "seen" && facts[2] === "600" && facts[3] === "0" && facts[5] === "no-url",
+    `connected to the fake, the outside check failed as ${failed.reason}; its own unit ${facts[0]}; the token reached it (${facts[1]}) from a ${facts[2]} file, never on its command line (${facts[3]} in ExecStart); no address used (${facts[5]})`,
+  );
+  const pid = (await vm(`systemctl --user show ${unit} -p MainPID --value`)).out.trim();
+  await vm("systemctl --user restart ducter.service");
+  await until("the home back after a restart", async () => ((await fetch(`${HTTP}/health`).catch(() => undefined))?.ok ? true : undefined), 120_000);
+  await Bun.sleep(3000);
+  const after = (await vm(`systemctl --user is-active ${unit} || true; systemctl --user show ${unit} -p MainPID --value`, { ok: false })).out.trim().split("\n");
+  check("anywhere kept", after[0] === "active", `ducter.service restarted; the tunnel's own unit stayed ${after[0]} (pid ${pid} → ${after[1]}: ${pid === after[1] ? "adopted" : "started again"})`);
+  await clientJson("send", JSON.stringify({ t: "ability", device: "local", ability: "remote", on: false }), "-wait", "ability_result");
+  await Bun.sleep(2000);
+  const off = (await vm(`systemctl --user is-active ${unit} || true`, { ok: false })).out.trim();
+  const view = (await reach())?.anywhere;
+  check("anywhere off", off !== "active" && view?.state === "off" && view?.hostname === "ducter.e2e.invalid", `off stopped the unit (${off}); the tunnel is kept to turn on again (${view?.state})`);
+  await vm(`systemctl --user unset-environment DUCTER_CLOUDFLARED DUCTER_ANYWHERE_START_MS
+systemctl --user restart ducter.service`);
+  await until("the home back", async () => ((await fetch(`${HTTP}/health`).catch(() => undefined))?.ok ? true : undefined), 120_000);
+}
+
 // ---------- the run ----------
 
 async function cleanup() {
@@ -429,6 +510,7 @@ try {
   await browse();
   await agent();
   await updateAll();
+  await anywhere();
 } catch (e) {
   code = 1;
   say(`\nFAILED: ${(e as Error).message}\n(log: ${logFile})`);

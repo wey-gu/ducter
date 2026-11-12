@@ -381,6 +381,75 @@ first use" because `claude auth status` can't tell a bad token from a good one. 
 OAR's scripted runtime. Its script still calls Ducter's real MCP tools over HTTP (`task_open`,
 `report_to_main`) and every reply says it's a demo.
 
+## From anywhere: a home with no public address (D228, research/67; built 2026-11-12)
+
+**Who and when.** Anyone whose home has no address from outside: a Mac at home (most people), a
+Linux box behind NAT. They meet it when they first want the phone (the onboarding ask
+在手机上也能找到我), on the home's card (the chip **在哪儿都能用**), or in `ducter pair`. Before: a
+dead end; after: one line that says what is needed (a domain on Cloudflare, the account free), one
+tap, and a task that does the steps and asks only to sign in and to say go.
+
+**State.** `packages/core/src/anywhere.ts`, behind a `TunnelSys` seam (cloudflared, its process,
+its metrics, the network) faked in tests. `Reach.anywhere` is `{how: own|cloudflare, state:
+off|setup|starting|on|failed, hostname?, reason?, setup?}`; `setup` lists the eight steps
+(`get login name create dns run check use`, each `todo|doing|waiting|done|failed` with a
+reason), the sign-in link while it waits (`login: {url, opened, qr}`), the zone and the hostname.
+An address set up another way (`DUCTER_PUBLIC_URL`, `public-url` not written by this) is `own`:
+shown on, no setup over it. Everything lives in `<dataDir>/anywhere/` (0700): `state.json`
+(0600, no secrets), `.cloudflared/cert.pem` (written by cloudflared, 0600), `tunnel.json` (the
+tunnel's credentials, 0400), `token.env` (a dashboard token, 0600), `cloudflared.yml`,
+`cloudflared.log`.
+
+**The guided setup.** `{t:"anywhere_setup", op:"begin"}` opens one task on the home (the persona,
+place none, the first agent signed in there, origin you) with `setupBrief`: run `ducter --port
+<port> anywhere step login|create|run --json`, read each answer's `next`, never run cloudflared or
+touch Cloudflare another way, never overwrite a record, never read the data folder. Each step is
+`{t:"anywhere_setup", op:"step"}` to the home, which runs it and answers
+`anywhere_setup_result.step` `{state: done|waiting|failed, waiting: login|go|working, url,
+hostname, zone, reason, next}` within ~100 s (the agent asks again while waiting).
+- *login*: `ensure` (DUCTER_CLOUDFLARED, Ducter's own `<dataDir>/bin/cloudflared-2026.10.5`, one
+  on PATH, else downloaded with both SHA-256s pinned), then `cloudflared tunnel login` with
+  `HOME=<dataDir>/anywhere`; the link is read from its output (`dash.cloudflare.com/argotunnel?…`;
+  "A browser window should have opened" sets `opened`). Done once `cert.pem` exists; the zone is
+  asked of `api.cloudflare.com/client/v4/zones/<zoneID>` with the certificate's own token;
+  `ducter.<zone>` is suggested.
+- *create*: a hostname under the zone; the first time for a name the home appends a decision of
+  the task (`decision.anywhere: {hostname}`, Go **建好它**, default Go, no timer) and sets the
+  task needs_you; the answer is forwarded to the task ("Run the create step again now with
+  --hostname …"). After Go: `cloudflared tunnel --origincert <cert> create --output json
+  --credentials-file <dataDir>/anywhere/tunnel.json ducter-<home>-<4 hex>` (reused when made
+  before), then `tunnel route dns <id> <host>`; Cloudflare's answer names the record (`Added CNAME
+  … which will route`); "already exists" is `taken`.
+- *run*: `cloudflared tunnel --no-autoupdate --config <dataDir>/anywhere/cloudflared.yml
+  --metrics 127.0.0.1:<free port> run`, the config naming the tunnel, its credentials, the
+  hostname → `http://127.0.0.1:<port>` and a 404 for the rest; detached, or under systemd as the
+  transient user unit `ducter-anywhere-<port>`. `/ready`, then public DNS over HTTPS
+  (`cloudflare-dns.com`; 25 s without it), then the check: `GET https://<host>/.well-known/ducter-anywhere`
+  must answer the home's random check string, and a WebSocket to the same path must send it first
+  (core.ts answers both before the gate, nothing else). Then `https://<host>` goes to
+  `<dataDir>/public-url` and pairing codes carry it. Up to 3 min, else `unreachable` (connected)
+  or `cloudflare` (never connected).
+
+**A dashboard tunnel.** `{t:"ability", ability:"remote", on:true, named:{token, hostname}}`
+(`ducter anywhere on --token … --hostname …`): the token goes to `token.env` and reaches
+cloudflared as `TUNNEL_TOKEN` (an EnvironmentFile under systemd), never on a command line; the
+same run and check.
+
+**Running.** A starting Ducter adopts the tunnel (alive, a cloudflared by `ps`, same port) or
+starts it again; every 30 s a lost one is started again; every 5th look, while `/ready`, the
+check runs, and three misses restart the process (same address). Off stops it, takes `public-url`
+out if this wrote it, and keeps the tunnel (`state: off`; on again needs no setup). Uninstall
+stops it.
+
+**Who can get in.** Unchanged (D54/D57): through the tunnel the peer is loopback but the Host is the
+person's hostname and `CF-Connecting-IP`/`X-Forwarded-For` are present, so every request is remote
+and needs a device token. Cloudflare terminates TLS (said on the card).
+
+**Verified:** unit tests with fakes; the task's flow through the real CLI command with a fake
+runner; the Linux VM (`bun run e2e:linux` step 8) with the real cloudflared's download, checksum
+and sign-in link, and a dashboard token with a fake cloudflared in its own unit. **Not yet:** a
+real Cloudflare account (`design/todo.md`).
+
 ## Workers (D54; built and verified in two VMs, research/29)
 
 A worker is a machine that runs tasks for a main process elsewhere (a VPS next to a home Mac

@@ -87,6 +87,20 @@ Check that the address is right. If you use an SSH tunnel, make sure it's still 
 (`ssh -N -L 7777:127.0.0.1:7777 you@server`). On a server, check that Ducter is running:
 `ducter service status`.
 
+### From anywhere didn't finish setting up
+
+The card shows which step stopped, and why:
+
+- *Cloudflare's program couldn't be downloaded:* the computer couldn't reach GitHub. Try again
+  when it's online, or install `cloudflared` yourself (`brew install cloudflared` on a Mac).
+- *The Cloudflare sign-in didn't finish:* the link works for about 10 minutes. Tap **Try again**
+  for a fresh one.
+- *Already used for something else in your Cloudflare account:* reply in the task with another
+  name, such as `home.example.com`.
+- *The tunnel is connected, but the address doesn't lead here yet:* a new address can take a few
+  minutes to reach everyone. **Try again** in a minute.
+- **See the task** shows what it did and said. Check where it is with `ducter anywhere status`.
+
 ### "This phone was disconnected from your Ducter"
 
 The device was removed with `ducter devices disconnect`. Connect it again with a new code from

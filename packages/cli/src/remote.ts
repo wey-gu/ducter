@@ -13,10 +13,15 @@ import type { T } from "./i18n.ts";
 export const UNIT_NAME = "ducter.service";
 export const unitPath = (home = homedir()) => join(home, ".config", "systemd", "user", UNIT_NAME);
 
-/** Where remote clients reach this Ducter: DUCTER_PUBLIC_URL, else <dataDir>/public-url (written by `ducter domain`). */
-export function publicUrl(dataDir: string, env: Record<string, string | undefined> = process.env): string | undefined {
+/** The address the person set up: DUCTER_PUBLIC_URL, else <dataDir>/public-url (written by `ducter domain`). */
+export function ownUrl(dataDir: string, env: Record<string, string | undefined> = process.env): string | undefined {
   const raw = env.DUCTER_PUBLIC_URL?.trim() || (existsSync(join(dataDir, "public-url")) ? readFileSync(join(dataDir, "public-url"), "utf8").trim() : "");
   return raw ? raw.replace(/\/+$/, "") : undefined;
+}
+
+/** Where remote clients reach this Ducter (D228: 在哪儿都能用 writes its tunnel's address there too). */
+export function publicUrl(dataDir: string, env: Record<string, string | undefined> = process.env): string | undefined {
+  return ownUrl(dataDir, env);
 }
 
 /**
@@ -130,6 +135,7 @@ export async function cmdPair(o: {
         out.publicIp = ip ?? null;
         out.tunnel = tunnel;
         out.steps = [
+          { id: "anywhere", text: t("pair.json.anywhere"), command: `${o.self ?? "ducter"} anywhere on` },
           { id: "domain", text: t("pair.json.domain", { ip: ip ?? "<public IP>" }), command: "ducter domain <your domain>" },
           { id: "tunnel", text: t("pair.json.tunnel"), command: tunnel },
         ];
@@ -164,7 +170,9 @@ export async function cmdPair(o: {
       console.log(qr.split("\n").map((l) => "  " + l).join("\n"));
       console.log(computer().join("\n"));
     } else if (server) {
-      // First the way that works from anywhere, then the tunnel for a Mac alone.
+      // D228: first your own domain through Cloudflare (set up by a task), then the domain on this
+      // server's public IP, then the SSH tunnel.
+      lines.push(`  ${style.bold(t("pair.anywhere.lead"))}`, `    ${style.bold(`${o.self ?? "ducter"} anywhere on`)}`, `  ${style.dim(t("pair.anywhere.what"))}`, "");
       lines.push(
         `  ${style.bold(t("pair.domain.lead"))}`,
         `  ${t(ip ? "pair.domain.record" : "pair.domain.recordNoIp", { ip: ip ?? "" })}`,
@@ -181,7 +189,8 @@ export async function cmdPair(o: {
       console.log(lines.join("\n"));
       console.log(computer().join("\n"));
     } else {
-      // The Mac itself: the tunnel comes from another computer; 127.0.0.1 on a phone is the phone.
+      // The Mac itself: your own domain through Cloudflare first (D228); else a tunnel from another computer.
+      lines.push(`  ${style.bold(t("pair.anywhere.lead"))}`, `    ${style.bold(`${o.self ?? "ducter"} anywhere on`)}`, `  ${style.dim(t("pair.anywhere.what"))}`, "");
       lines.push(`  ${t("pair.tunnel.local")}`, "", `    ${tunnel}`, "", `  ${style.dim(t("pair.tunnelNote", { port: o.port }))}`, "");
       lines.push(`  ${t("pair.howApp")}`, row(t("pair.address"), address), row(t("pair.code"), code), "");
       lines.push(`  ${style.dim(t("pair.noPhone"))}`, "");

@@ -16,6 +16,8 @@ import { realpathSync } from "node:fs";
 import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./status.ts";
 import { cmdAbility, cmdBrowser } from "./browser-cmd.ts";
 import { cmdDevices, cmdPair, cmdService, ducterCommand, fetchPublicIp, isLoopback, publicUrl } from "./remote.ts";
+import { cmdAnywhere } from "./anywhere-cmd.ts";
+import { stopSavedTunnel } from "@ducter/core/src/anywhere.ts";
 import { caddyfileFor, cmdDomain, realDomainSys, removeDucterSite } from "./domain.ts";
 import { cmdWorker } from "./worker.ts";
 import { cmdUpdate } from "./update.ts";
@@ -63,6 +65,7 @@ export function helpText(t: T): string {
     cmd("ability", t("help.ability")),
     cmd("browser", t("help.browser")),
     cmd("service", t("help.service")),
+    cmd("anywhere", t("help.anywhere")),
     cmd("domain", t("help.domain")),
     cmd("worker", t("help.worker")),
     cmd("uninstall", t("help.uninstall")),
@@ -244,6 +247,7 @@ async function cmdUninstall(ctx: Ctx): Promise<number> {
     runner: {
       uid: process.getuid?.() ?? 0,
       run: (cmd) => ctx.host.run(cmd, 15_000),
+      stopTunnel: (dir) => stopSavedTunnel(dir), // D228
       removeCaddySite: async (path) => {
         const r = await removeDucterSite(sys, path);
         return r.error ? { ok: false, error: r.error === "root" ? "needs root: sudo ducter domain --remove" : r.error } : { ok: true };
@@ -602,6 +606,17 @@ export async function run(argv: string[]): Promise<number | "running"> {
     case "pair":
       if (ctx.target.kind === "remote") return cmdPairAt({ t, style, target: ctx.target, json: args.json });
       return cmdPair({ t, style, dataDir, port, json: args.json, running: (await host.port(port)) === "ducter", wait: Boolean(process.stdout.isTTY) && !args.json, worker: args.worker, publicIp: fetchPublicIp, self: ducterCommand() });
+    case "anywhere":
+      return cmdAnywhere({
+        t,
+        style,
+        target: ctx.target,
+        json: args.json,
+        rest: args.rest ?? [],
+        ...(args.token ? { token: args.token } : {}),
+        ...(args.hostname ? { hostname: args.hostname } : {}),
+        ...(ctx.target.kind === "local" && process.stdout.isTTY && !args.json ? { pair: () => cmdPair({ t, style, dataDir, port, json: false, running: true, wait: true, self: ducterCommand() }) } : {}),
+      });
     case "domain":
       return cmdDomain({
         t,

@@ -80,11 +80,58 @@ func (h *hub) RefuseNext(ability, reason string) {
 	d.mu.Unlock()
 }
 
+// MockHostname is the address 在哪儿都能用's setup makes in the mock (D228).
+const MockHostname = "ducter.weygu.com"
+
+// mockQR is a small stand-in for a QR code (rows of 1 and 0).
+var mockQR = []string{"1111111010111", "1000001011001", "1011101001101", "1011101010101", "1011101001001", "1000001010111", "1111111010101", "0000000001000", "1101011100110", "0110100011011", "1010111101001", "0011001010110", "1110101101011"}
+
+// AnywhereStage moves 在哪儿都能用's guided setup in the mock (D228): login
+// (the sign-in link waits for the person), go (the Go card waits), taken (the
+// name already has a record), on, off.
+func (h *hub) AnywhereStage(stage string) {
+	h.SetDevices(func(list []protocol.DeviceView, reach *protocol.Reach) []protocol.DeviceView {
+		steps := func(states ...string) []protocol.AnywhereStep {
+			ids := []string{"get", "login", "name", "create", "dns", "run", "check", "use"}
+			out := make([]protocol.AnywhereStep, len(ids))
+			for i, id := range ids {
+				st := "todo"
+				if i < len(states) {
+					st = states[i]
+				}
+				out[i] = protocol.AnywhereStep{ID: id, State: st}
+			}
+			return out
+		}
+		setup := &protocol.AnywhereSetup{TaskID: "tsk_any", Hostname: MockHostname, Zone: "weygu.com"}
+		switch stage {
+		case "login":
+			setup.Steps, setup.Hostname, setup.Zone = steps("done", "waiting"), "", ""
+			setup.Login = &protocol.AnywhereLogin{URL: "https://dash.cloudflare.com/argotunnel?aud=&callback=mock", QR: mockQR}
+		case "go":
+			setup.Steps = steps("done", "done", "waiting")
+		case "taken":
+			setup.Steps = steps("done", "done", "done", "done", "failed")
+			setup.Steps[4].Reason = "taken"
+		}
+		switch stage {
+		case "on":
+			reach.Anywhere, reach.Address = &protocol.Anywhere{How: "cloudflare", State: "on", Hostname: MockHostname}, "https://"+MockHostname
+			setAbility(list, "local", protocol.AbilityRemote, protocol.AbilityOn)
+		case "off":
+			reach.Anywhere, reach.Address = &protocol.Anywhere{How: "cloudflare", State: "off", Hostname: MockHostname}, ""
+			setAbility(list, "local", protocol.AbilityRemote, protocol.AbilityOff)
+		default:
+			reach.Anywhere = &protocol.Anywhere{How: "cloudflare", State: "setup", Setup: setup}
+		}
+		return list
+	})
+}
+
 // Pair pretends a device redeemed the code.
 func (h *hub) Pair(name, platform string) {
 	h.SetDevices(func(list []protocol.DeviceView, reach *protocol.Reach) []protocol.DeviceView {
 		reach.Clients = append(reach.Clients, protocol.ReachClient{ID: "c" + name, Name: name, Platform: platform, Connected: true})
-		setAbility(list, "local", protocol.AbilityRemote, protocol.AbilityOn)
 		return list
 	})
 }
@@ -149,6 +196,22 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 			state = protocol.AbilityOn
 		}
 		d.mu.Lock()
+		if f.Ability == protocol.AbilityRemote && f.Device == "local" {
+			// D228: on again starts the tunnel the setup made (off keeps it in the
+			// account); with none made yet, on answers no_address (the client
+			// then starts the guided setup).
+			switch {
+			case f.On && (d.reach.Anywhere == nil || d.reach.Anywhere.State != "off"):
+				d.mu.Unlock()
+				c.send(map[string]any{"t": "ability_result", "device": f.Device, "ability": f.Ability, "on": true, "ok": false, "reason": "no_address"})
+				return true
+			case f.On:
+				d.reach.Anywhere = &protocol.Anywhere{How: "cloudflare", State: "on", Hostname: MockHostname}
+				d.reach.Address = "https://" + MockHostname
+			case d.reach.Anywhere != nil:
+				d.reach.Anywhere, d.reach.Address = &protocol.Anywhere{How: "cloudflare", State: "off", Hostname: MockHostname}, ""
+			}
+		}
 		setAbility(d.list, f.Device, f.Ability, state)
 		d.mu.Unlock()
 		c.send(map[string]any{"t": "ability_result", "device": f.Device, "ability": f.Ability, "on": f.On, "ok": true})
@@ -156,6 +219,10 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 			time.Sleep(50 * time.Millisecond)
 			h.pushDevices()
 		}()
+	case "anywhere_setup":
+		// D228: 让 Ducter 帮我设好 opens the setup task; its steps move with AnywhereStage.
+		c.send(map[string]any{"t": "anywhere_setup_result", "ok": true, "taskId": "tsk_any"})
+		h.AnywhereStage("login")
 	case "connections":
 		d.mu.Lock()
 		d.subs[c] = true
@@ -166,7 +233,15 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 		d.mu.Lock()
 		d.codeN++
 		d.mu.Unlock()
-		c.send(map[string]any{"t": "pair_code", "code": "K7QM-4XPA", "expiresAt": time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339)})
+		d.mu.Lock()
+		addr := d.reach.Address
+		d.mu.Unlock()
+		pc := map[string]any{"t": "pair_code", "code": "K7QM-4XPA", "expiresAt": time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339)}
+		if addr != "" {
+			pc["address"], pc["link"] = addr, addr+"/pair#c=K7QM-4XPA"
+			pc["qr"] = mockQR
+		}
+		c.send(pc)
 	case "disconnect_device":
 		d.mu.Lock()
 		ok := false

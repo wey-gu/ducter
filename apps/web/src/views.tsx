@@ -24,7 +24,8 @@ import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
-import { BenchToggle } from "./workbench.tsx";
+import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
+import { TaskInfoButton } from "./task-info.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
@@ -51,6 +52,7 @@ import {
   outsideActs,
   placeOf,
   canIntegrate,
+  noRemote,
   countsChanges,
   reasonOf,
   reportOf,
@@ -574,12 +576,6 @@ function prFailure(task: Task): string {
   return noRemote(task) ? t("result.pr.noremote") : t("result.pr.failed", a.message ?? "");
 }
 
-/** The repo has nowhere to push to, so a PR can't be opened: Open draft PR isn't offered. */
-function noRemote(task: Task): boolean {
-  if ((placeOf(task) as { hasRemote?: boolean }).hasRemote === false) return true;
-  const a = task.acted;
-  return !!a && !a.ok && a.action === "open_pr" && /no (origin )?remote/i.test(a.message ?? "");
-}
 
 function PrFailure({ task }: { task: Task }) {
   const why = prFailure(task);
@@ -1778,7 +1774,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   const detail = !finished(task) ? (br && browsingLine(br)) || "" : "";
   // D190: it holds Ducter's own browser (not the user's Chrome): its tab can be watched.
   const watchable = !finished(task) && !!A.S.onHand?.tasks.find((c) => c.taskId === id)?.browsing;
-  // D217: it is using Ducter's phone: watch it from here (a minimal mount; the side panel takes it later).
+  // D217: it is using Ducter's phone: watch it from here (D220: in the workbench's Phone page).
   const phoning = !finished(task) ? A.S.onHand?.tasks.find((c) => c.taskId === id)?.phoning : undefined;
   const [headline, lede] = finished(task) && r ? splitOutcome(safe(r.summary)) : ["", ""];
   const blocks = taskBlocks(task);
@@ -1792,10 +1788,20 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
         // D184: the whole screen, as the Mac shows an opened task: the crumbs (Pause and Cancel
         // task are in the foot, D210, D213); D214: the workbench's toggle at the header's end.
         <FullTop task={task}>
+          <TaskInfoButton task={task} />
           <BenchToggle task={task} />
         </FullTop>
       ) : (
-        <Top back={t("nav.back")} face={false} extra={<BenchToggle task={task} />} />
+        <Top
+          back={t("nav.back")}
+          face={false}
+          extra={
+            <>
+              <TaskInfoButton task={task} />
+              <BenchToggle task={task} />
+            </>
+          }
+        />
       )}
       <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); }}>
         <div class="task-head">
@@ -1817,7 +1823,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             {detail && <div class="said">{safe(detail)}</div>}
             {/* D190: the page it is working on, live, from here. */}
             {watchable && <Btn kind="secondary" size="sm" label={t("live.watch.title")} about={safe(title(task))} onClick={() => A.watchLive(id, liveSize())} />}
-            {phoning && <Btn kind="secondary" size="sm" label={t("phoneuse.watch")} about={safe(title(task))} onClick={() => openPhone({ device: phoning.device, taskId: id, mode: "watch" })} />}
+            {/* D220: in the workbench's Phone page, beside the task (the full-screen sheet without one). */}
+            {phoning && <Btn kind="secondary" size="sm" label={t("phoneuse.watch")} about={safe(title(task))} onClick={() => (benchable(task) ? openBenchAt(task, "phone") : openPhone({ device: phoning.device, taskId: id, mode: "watch" }))} />}
           </div>
         )}
         {A.switchFor === id && <SwitchList task={task} />}

@@ -46,7 +46,15 @@ export type WbRequest =
   | { op: "revert"; path: string }
   | { op: "ports" }
   // The address the client shows this port's page at (a preview of its own, preview.ts).
-  | { op: "preview"; port: number };
+  | { op: "preview"; port: number }
+  // D220: the booted iOS Simulators on the task's computer, when they are this task's business
+  // (it touched one, or its working copy is an app project); none elsewhere.
+  | { op: "sims" }
+  // One frame of a simulator's screen, its long edge at most `edge` px (a JPEG).
+  | { op: "sim_frame"; udid: string; edge?: number }
+  // One of the controls simctl has (research/64): Home, dark or light, text size, open a link, a
+  // full screenshot. No taps: simctl has none.
+  | { op: "sim_act"; udid: string; act: SimAct; value?: string };
 
 export type WbAnswer =
   | { op: "files"; path: string; entries: WbEntry[]; more: number }
@@ -69,7 +77,55 @@ export type WbAnswer =
   | { op: "diff"; path: string; patch: string; binary?: boolean; truncated?: boolean }
   | { op: "revert"; path: string; message: string }
   | { op: "ports"; ports: WbPort[] }
-  | { op: "preview"; port: number; /** Where the page is, from the client's own address: a port of its own. */ previewPort: number; token: string };
+  | { op: "preview"; port: number; /** Where the page is, from the client's own address: a port of its own. */ previewPort: number; token: string }
+  | { op: "sims"; sims: WbSim[] }
+  | { op: "sim_frame"; udid: string; /** data: URL (JPEG) */ image: string; w: number; h: number }
+  // shot: the full screenshot (a PNG data: URL); otherwise the simulator's settings after the act.
+  | { op: "sim_act"; udid: string; act: SimAct; sim?: WbSim; image?: string };
+
+/** D220: a booted iOS Simulator on the task's computer. */
+export interface WbSim {
+  udid: string;
+  /** Its own name ("iPhone 16e"). */
+  name: string;
+  /** The runtime, said as Apple says it ("iOS 26.3"). */
+  os: string;
+  appearance?: "light" | "dark";
+  text?: SimText;
+}
+
+export type SimAct = "home" | "appearance" | "text" | "url" | "shot";
+
+/** Text size in four steps (T3 Code's, research/64), each a content size category of iOS's own. */
+export type SimText = "small" | "default" | "large" | "xlarge";
+export const SIM_TEXT: Record<SimText, string> = { small: "small", default: "large", large: "extra-extra-large", xlarge: "accessibility-large" };
+
+/** The step a content size category falls in (categories between steps go to the nearer one below). */
+export function simTextOf(category: string): SimText | undefined {
+  const order = ["extra-small", "small", "medium", "large", "extra-large", "extra-extra-large", "extra-extra-extra-large", "accessibility-medium", "accessibility-large", "accessibility-extra-large", "accessibility-extra-extra-large", "accessibility-extra-extra-extra-large"];
+  const i = order.indexOf(category.trim().toLowerCase());
+  if (i < 0) return undefined;
+  if (i <= 2) return "small";
+  if (i <= 4) return "default";
+  if (i <= 7) return "large";
+  return "xlarge";
+}
+
+/** A link a simulator may open: a scheme and something after it, no file: (that reads this computer). */
+export function simLinkOk(u: unknown): u is string {
+  return typeof u === "string" && u.length <= 2048 && /^[a-z][a-z0-9+.-]{0,30}:\S+$/i.test(u) && !/^file:/i.test(u);
+}
+
+/** A simulator's udid as simctl prints it. */
+export const isUdid = (u: unknown): u is string => typeof u === "string" && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(u);
+
+/** Whether a task's own words or commands touched an iOS Simulator (the home reads them from the Log). */
+export function simsSaid(text: string): boolean {
+  return /\bsimctl\b|\biOS Simulator\b|\bSimulator\.app\b|\biphonesimulator\b|\bxcodebuild\b[^\n]{0,240}\bsimulator\b/i.test(text);
+}
+
+/** Whether a folder's entries say it holds an iOS app (an Xcode project or workspace, or an ios/ folder). */
+export const appProject = (names: string[]): boolean => names.some((n) => /\.(xcodeproj|xcworkspace)$/i.test(n) || n === "ios");
 
 /** Why a workbench op was refused (the client says it in words). */
 export type WbError = "outside" | "missing" | "conflict" | "too_big" | "binary" | "not_text" | "offline" | "busy" | "unsupported" | "failed";

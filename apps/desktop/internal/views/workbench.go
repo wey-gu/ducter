@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
@@ -49,6 +50,12 @@ type benchTask struct {
 	file     *benchFile
 	ports    []protocol.WbPort
 	asked    bool
+	// D220: the simulators that are its business, the screen shown on
+	// the Phone page, and each simulator's live view.
+	sims   []protocol.WbSim
+	simsAt time.Time
+	screen string
+	sim    map[string]*benchSim
 }
 
 type benchState struct {
@@ -125,6 +132,9 @@ func (a *App) benchTabs(task *store.Task) []string {
 	if !finished(task) && a.S.Browsing(task.ID) != "" {
 		out = append(out, "browser")
 	}
+	if len(a.benchPhoneKeys(task)) > 0 {
+		out = append(out, "phone")
+	}
 	return out
 }
 
@@ -154,6 +164,7 @@ func (a *App) benchLoad(task *store.Task) {
 			b.ports = ans.Ports
 		}
 	})
+	a.benchSims(task)
 	if !benchHasFiles(task) {
 		return
 	}
@@ -273,6 +284,10 @@ func (a *App) workbench(c *ui.Context, task *store.Task) {
 		b.asked = true
 		a.benchLoad(task)
 	}
+	// Simulators come and go: looked for again while the workbench is open.
+	if a.Now().Sub(b.simsAt) > 7*time.Second {
+		a.benchSims(task)
+	}
 	if a.bench.toast != "" {
 		c.AddToast(ui.Toast{ID: "wb", Title: a.bench.toast})
 		a.bench.toast = ""
@@ -327,6 +342,8 @@ func (a *App) workbench(c *ui.Context, task *store.Task) {
 					a.benchPreview(c, task, b)
 				case "browser":
 					a.benchBrowser(c, task)
+				case "phone":
+					a.benchPhone(c, task, b)
 				}
 			})
 		})

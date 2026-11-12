@@ -120,9 +120,15 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
 - **Work beside it.** In a task that changes files or runs a web page, the **Workbench** button
   in its header (or ⌥⌘B) opens a side column (a sheet on the phone): **Changes** with each file's
   diff and **Undo** for one file, **Files** to read any file and edit it yourself, **Preview** to
-  see the page it is building, and **Browser** while it uses Ducter's browser. When you save a
+  see the page it is building, **Browser** while it uses Ducter's browser, and **Phone** while it
+  uses Ducter's phone or, on a Mac, an iPhone simulator it builds for: you see the simulator live
+  and can go to its Home screen, switch dark mode, change the text size, open a link, or take a
+  screenshot to send to the task (tapping happens in Simulator itself). When you save a
   file, the task is told what you changed the next time it works. If it changed the file while
   you were editing, Ducter asks before saving over it.
+- **Where the work is.** The branch name (or folder name) at the top of a task opens what you
+  check before merging: the computer, the folder (copy its path), the branch and what it came
+  from, its changes, and **Open draft PR** or **Merge into main**.
 - **Close the window whenever you like.** Ducter keeps working. The Dock icon brings the window
   back, and its badge counts what is waiting for you.
 - **A few small offers come later, one at a time,** each with **Later**: notifications on this

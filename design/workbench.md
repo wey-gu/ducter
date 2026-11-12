@@ -1,6 +1,6 @@
 # The workbench (工作台 / Workbench)
 
-> Design note for D214 · Evidence: `research/59` · Code: `apps/web/src/workbench.tsx`,
+> Design note for D214 and D220 · Evidence: `research/59`, `research/64` · Code: `apps/web/src/workbench.tsx`,
 > `apps/desktop/internal/views/workbench.go`, `packages/runner/src/workbench.ts`,
 > `packages/core/src/{preview,workbench}.ts`, `packages/protocol/src/workbench.ts`.
 
@@ -43,13 +43,44 @@ with while an agent works, hidden until asked for.
 | 文件 / Files | The working copy as a tree, listed a folder at a time, windowed (thousands of rows draw only what is in view), changed files in their status ink, dependency folders muted and listed only when opened | A file opens with its colours; 编辑 / Edit, 保存 / Save (⌘S). Pictures show; binary and files over 1 MB say so |
 | 预览 / Preview | The page the task serves: its title, its computer and port, the page itself in a frame; 手机 / 平板 / 全宽 widths (wide only) | 刷新 / Reload, 在浏览器中打开 / Open in browser; when this device can't reach the page directly, 在 Ducter 的浏览器中查看 / View in Ducter's browser |
 | 浏览器 / Browser | Ducter's own browser while the task uses it: the D190 live view, inside the workbench | 接手 / My turn, 还给它 / Hand it back, as in D190 |
-| 手机 / Phone | The phone the task uses (the phone-use view registers itself, `workbench-screens.ts`) | Its own turns |
+| 手机 / Phone | Ducter's phone while the task uses it (the live view, D217, registered through `workbench-screens.ts`); an iOS Simulator booted on its computer when that is the task's business (D220, below); a choice of screens when there are two | Ducter's phone: its own turns. The simulator: Home, dark/light, text size, open a link, a screenshot into the composer; view only |
 | 成果 / Results | Pictures it showed (D206) and the links of its result | Open them; a file opens in Files |
 
 Browser, Phone and later Computer share one frame (**Screen**): a chip that says who is driving
 (**它在用 / It's driving** in the working tint, **你在用 / You're driving** in the waiting tint,
 a clay bead before the words), then the screen on a raised surface. No metaphor: the screen is
 shown as it is (D190's rule).
+
+### The simulator on the Phone page (D220)
+
+- **When:** a booted iPhone or iPad simulator on the task's computer, and the task touched one
+  (its output names `simctl`, `xcodebuild … Simulator`, "iOS Simulator"; the home reads its Log)
+  or its working copy holds an iOS app (an `.xcodeproj` / `.xcworkspace` or `ios/` at its top or
+  one level down, or under `apps/*` / `packages/*`). Looked for once when the task opens and every
+  7 s while the workbench is open; off a Mac or without Xcode the answer is "none", at once.
+- **The screen:** `simctl io <udid> screenshot --type=jpeg -`, made small by `sips -Z <edge>`
+  (the edge the client asks for, 480–1600 px), one frame asked after another lands, 90 ms apart,
+  only while the page is shown and in sight: ≈250 ms and 35–70 KB a frame (research/64). Shown at
+  its own shape with an iPhone's corners in proportion, on a hairline ring; no drawn device.
+- **The rail** (beside the screen, under it on a phone), drawn marks named on hover and to screen
+  readers: Home (`simctl launch <udid> com.apple.springboard`), dark/light (`simctl ui
+  appearance`), text size in four steps (`simctl ui content_size`), open a link (`simctl
+  openurl`, `file:` refused), Screenshot (the full PNG into the task's composer, D206). The
+  settings read back after each act, so the rail shows what the simulator has.
+- **View only**, said under the screen. Taps need Xcode's private frameworks (todo); rotation has
+  no reliable route.
+- **Where:** `wb` ops `sims`, `sim_frame`, `sim_act` on the computer holding the working copy
+  (`packages/runner/src/sim.ts`); a worker serves its own simulator through its socket.
+
+## 工作副本 / Working copy at the task's top (D220)
+
+A button in the task's header shows the branch (repo) or the folder's name (folder) with a drawn
+mark (only the mark on a phone). It opens a popover (a sheet on a phone) of rows, each only when it
+has something: the computer; the folder (`~/…`, selectable, Copy path; on the Mac, Open in the
+editor used last, D198); the branch and the base it came off; the changes against the base
+(opening the workbench's Changes; the workbench's live list when loaded, else the card's count);
+Open draft PR / Merge into {base} under the result card's rule, or what became of them; and who
+has worked on it when that changed (each body, D89). No task-to-task lineage: Ducter has none yet.
 
 Considered and left out of this pass: a terminal (the transcript already shows every command
 and its output, D210; a server-owned terminal is a phase of its own, todo), the plan/todo (no

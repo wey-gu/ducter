@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.41
+
+<!-- whats-new
+zh: 替家里做事的 Mac 也能装上 Ducter 自己的手机
+en: A Mac that works for your home can now have Ducter's own phone
+zh: 用电脑：任务能在你的 Mac 应用里做事，要紧的先问你
+en: Use the computer: tasks work in your Mac's apps, asking first when it counts
+-->
+
+**用手机 / Use a phone**
+- A Mac that does tasks for a home elsewhere (a server, say) can now add Ducter's own phone on its
+  card. Tasks that need a phone run there; the home drives it through a fixed set of phone actions.
+
+**用电脑 / Use the computer**
+- Turn it on on a Mac's card and tasks can work in that Mac's apps (Keynote, Mail, Finder…). It
+  shows plainly which two macOS switches it needs and opens the guide for them on that Mac.
+- Anything that sends, pays or deletes waits for your Go; password managers, banks, System
+  Settings and Ducter itself are out of reach; while a task uses an app you see it, with Stop.
+
 ## 0.0.40
 
 <!-- whats-new

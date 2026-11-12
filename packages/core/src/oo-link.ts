@@ -32,7 +32,7 @@ export const WRITE_WORDS = new Set([
 
 /**
  * Reads whose names don't start with a verb, checked one by one against the service's own docs
- * (research/64: Google Calendar's freeBusy query only reads busy times).
+ * (research/65: Google Calendar's freeBusy query only reads busy times).
  */
 export const KNOWN_READS = new Set(["googlecalendar.free_busy_query"]);
 

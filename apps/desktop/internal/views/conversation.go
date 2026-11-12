@@ -212,7 +212,7 @@ func (a *App) emptyConversation(c *ui.Context) {
 				}
 			})
 		})
-		// D221: what is still on today, from the last look (never a new read).
+		// D222: what is still on today, from the last look (never a new read).
 		if f := a.S.First; f != nil && f.Today != nil {
 			ui.Column(c).Margin(t.S3, 0, 0, 0).AlignItems(ui.Center).Children(func() { a.calTodayLine(c, f.Today) })
 		}
@@ -473,7 +473,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 					markdown.View(c, autospace(e.AI.Text), &a.md)
 				})
 			}
-			// D221: the day glance the partner put under its words.
+			// D222: the day glance the partner put under its words.
 			if e.AI.Cal != nil {
 				a.dayCard(c, itoa(e.FirstSeq), e.AI.Cal)
 			}

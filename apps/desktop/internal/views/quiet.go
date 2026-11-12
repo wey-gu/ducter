@@ -340,7 +340,7 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 			a.callFactsCard(c, d) // D189 (4): who, what, the voice, the number, the cost, when
 		}
 		if d.Cal != nil {
-			// D221: what changes, where, when and who hears; settled in place after Go.
+			// D222: what changes, where, when and who hears; settled in place after Go.
 			a.calChangeBlock(c, d)
 			if !openAsk(d) {
 				a.calSettled(c, d)

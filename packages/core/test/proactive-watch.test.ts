@@ -171,7 +171,7 @@ test("the checkpoint moves only after the items were taken in: a look that dies 
   w.stop();
 });
 
-// D221: a calendar account is looked at calendar by calendar (the ones the person lets it read),
+// D222: a calendar account is looked at calendar by calendar (the ones the person lets it read),
 // with the real action and the main calendar as "primary"; holidays and hidden ones aren't read.
 test("calendars: each seen calendar of each account, with the real action, reads only", async () => {
   const { fakeCalendarStore, twoAccounts } = await import("./fake-calendar.ts");

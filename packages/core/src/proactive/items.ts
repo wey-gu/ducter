@@ -35,7 +35,7 @@ export interface Item {
   attendees?: string[];
   location?: string;
   cancelled?: boolean;
-  /** D221: an all-day event, one shown as free, or one the person declined: never a meeting or a clash. */
+  /** D222: an all-day event, one shown as free, or one the person declined: never a meeting or a clash. */
   allDay?: boolean;
   free?: boolean;
   declined?: boolean;

@@ -1,4 +1,4 @@
-// D221: an in-process oo (OoSource with its own OoCli) holding Gmail and two Google Calendar
+// D222: an in-process oo (OoSource with its own OoCli) holding Gmail and two Google Calendar
 // accounts, answering from the two-account fixture (fake-calendar.ts) moved to a chosen day.
 // For the partner eval, the tool-budget test and the fingerprint: never the user's real oo.
 import type { OoSource } from "../src/connections.ts";

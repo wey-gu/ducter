@@ -190,7 +190,7 @@ interface RunResult {
   work?: { until: boolean; routine: boolean; asks?: { reversible: boolean; go: boolean; timed: boolean }[] };
   retitles: { key: string; title: string; step: number }[]; // task_retitle, as new task_open events
   bridgeSent: FakeMsg[]; // what Ducter sent through the fake Bridge
-  /** D221: day cards under messages, and the kinds of calendar change cards made. */
+  /** D222: day cards under messages, and the kinds of calendar change cards made. */
   dayCards?: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[];
   calKinds?: string[];
 }
@@ -269,7 +269,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     }
     writeFileSync(join(ph, "installed.json"), JSON.stringify({ packages: [{ path: "emulator", version: "stand-in" }], licenses: [], at: new Date().toISOString() }));
   }
-  // D221: two Google Calendar accounts (and Gmail) in a fake oo, on today's date here; never the real oo.
+  // D222: two Google Calendar accounts (and Gmail) in a fake oo, on today's date here; never the real oo.
   const calOo = sc.calendar ? fakeOoCalendar({ day: new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()) }) : undefined;
   const core = startCore({ dataDir, port: 0, persona, ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   if (calOo && !(await core.connections.addFromOo()).ok) throw new Error("fake oo calendar: not added");
@@ -392,7 +392,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const visible: Visible[] = [];
   const dayCards: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[] = [];
   for (const e of core.log.read({ stream: "channel", fromSeq: startSeq + 1, limit: 10_000 })) {
-    // D221: a day card with no words of its own is a card, not a message.
+    // D222: a day card with no words of its own is a card, not a message.
     if (e.kind === "ai_msg" && (e.body as Bodies["ai_msg"]).cal) dayCards.push({ step: stepOf(e.seq), seq: e.seq, cal: (e.body as Bodies["ai_msg"]).cal! });
     if (e.kind === "ai_msg" && !(e.body as Bodies["ai_msg"]).text.trim()) continue;
     if (e.origin === "partner" && PARTNER_KINDS.has(e.kind)) visible.push({ seq: e.seq, kind: e.kind as Visible["kind"], text: visibleText(e), step: stepOf(e.seq), relays: (e.body as { decisionId?: string }).decisionId });
@@ -441,7 +441,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         const sh = d.call?.plan?.sheet;
         if (d.call?.plan && sh) lines.push(`    [the call sheet shows, for the user to call themselves] number ${d.call.plan.to} · what for: ${d.call.plan.goal} · open with: ${sh.open} · ask: ${sh.ask.join(" / ") || "-"} · may say: ${d.call.plan.say.join(", ") || "-"} · don't share: ${sh.dont.join(", ") || "-"} · note down: ${sh.note.join(" / ") || "-"} · buttons: 自己打 / Call it yourself (dials on their phone), 打完了 / Done calling, 先不打 / Not now · Ducter dials nothing`);
         else if (d.call?.plan) lines.push(`    [the call card shows] number ${d.call.plan.to} · what for: ${d.call.plan.goal} · may say: ${d.call.plan.say.join(", ") || "-"} · won't say: ${d.call.plan.keep ?? "-"} · voice: ${d.call.plan.voice} · about ${d.call.plan.minutes} min, $${d.call.plan.costUsd} · when: ${d.call.plan.at ? `not now; it dials at ${d.call.plan.at} (an allowed hour)` : "right after Go"} · nothing is dialed before Go`);
-        // D221: a calendar change's card.
+        // D222: a calendar change's card.
         if (d.cal) lines.push(`    [this decision card IS the calendar change card (one card, made by the calendar tool), and shows] ${d.cal.kind}${d.cal.response ? ` (${d.cal.response})` : ""} · ${d.cal.title} · ${d.cal.allDay ? d.cal.start : `${d.cal.start.slice(0, 16)}–${d.cal.end.slice(11, 16)}`}${d.cal.was ? ` (was ${d.cal.was.start.slice(0, 16)})` : ""} · in ${[d.cal.calendar || "main calendar", d.cal.account].filter(Boolean).join(" · ")} · notifies: ${d.cal.notify.join(", ") || "nobody"}${d.cal.clash ? ` · overlaps "${d.cal.clash}"` : ""}${d.cal.theirZone ? ` · their zone ${d.cal.theirZone}` : ""} · runs only on the user's tap, then the card shows it done`);
       } else if (v.kind === "waiter") lines.push(`  [reminder set] ${v.text}`);
       else lines.push(`  [partner ${v.kind === "ack" ? "ack line" : "message"}] ${v.text}`);

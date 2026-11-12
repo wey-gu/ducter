@@ -31,7 +31,7 @@ const MAIL: LookSpec = {
   input: (since) => ({ query: `after:${Math.floor(since / 1000)}`, maxResults: 50 }),
 };
 const OUTLOOK: LookSpec = { ...MAIL, actions: ["outlook.list_messages", "outlook.search_messages"], input: (since) => ({ filter: `receivedDateTime ge ${new Date(since).toISOString()}`, top: 50 }) };
-// D221 (research/64): the real actions, read live through oo. Google lists one calendar per read
+// D222 (research/65): the real actions, read live through oo. Google lists one calendar per read
 // (calendarId; the main one is "primary"), so a look reads each calendar the person lets it read.
 const CALENDAR = (service: string): LookSpec => ({
   kind: "event",
@@ -103,7 +103,7 @@ export function createWatchers(opts: {
   onItems: (a: AppTarget, items: Item[]) => void | Promise<void>;
   /** The person's zone, for "today". */
   zone: () => string;
-  /** D221: the calendars to read in a calendar account (absent: its default calendar only). */
+  /** D222: the calendars to read in a calendar account (absent: its default calendar only). */
   calendarIds?: (a: AppTarget) => Promise<string[]>;
 }): Watchers {
   const path = join(opts.dataDir, WATCH_FILE);
@@ -145,7 +145,7 @@ export function createWatchers(opts: {
     const k = appKey(a);
     const now = opts.clock.now();
     const tries = st.action[k] ? [st.action[k]!, ...spec.actions.filter((x) => x !== st.action[k])] : spec.actions;
-    // A calendar account: each calendar the person lets it read, one read each (D221).
+    // A calendar account: each calendar the person lets it read, one read each (D222).
     const cals = spec.kind === "event" && opts.calendarIds && a.service === "googlecalendar" ? await opts.calendarIds(a).catch(() => []) : [];
     for (const action of tries) {
       const inputs = cals.length ? cals.map((calendarId) => ({ ...spec.input(since, now), calendarId, timeZone: opts.zone() })) : [spec.input(since, now)];

@@ -1,4 +1,4 @@
-// D221 (design/calendar.md §6): calendar times read from the ISO string's own wall clock, the
+// D222 (design/calendar.md §6): calendar times read from the ISO string's own wall clock, the
 // person's words for days, the other side's zone, and who else is on an event.
 import { describe, expect, test } from "bun:test";
 import { dateRun, dayHead, hmOf, offsetOf, otherZoneLine, peopleWords, theirSide, todayIn, whenWords } from "../src/cal-format.ts";

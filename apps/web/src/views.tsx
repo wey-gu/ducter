@@ -246,7 +246,7 @@ export function goLabel(d: DecisionState): string {
   if (d.asker) return d.goLabel; // X1: the asking agent's own option, as it named it
   if (d.closing) return closingWords(d.closing).go;
   if (d.memPlugin) return t("memp.card.go");
-  if (d.cal) return d.goLabel; // D221: the action itself (添加到日历 / Add to calendar)
+  if (d.cal) return d.goLabel; // D222: the action itself (添加到日历 / Add to calendar)
   return shortGo(d.goLabel);
 }
 
@@ -868,7 +868,7 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
     <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
       {d.asker && <PeerAsker d={d} />}
       <div class="bubble">{d.said || d.question}</div>
-      {/* D221: a calendar change: what, when, where and who hears, before one Go. */}
+      {/* D222: a calendar change: what, when, where and who hears, before one Go. */}
       {d.cal && <CalFacts c={d.cal} />}
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
       {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
@@ -1045,7 +1045,7 @@ function EntryView({ e, chipOwner, livingItems, join }: { e: Entry; chipOwner: M
     return (
       <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}`}>
         {(e.ai.text || !e.ai.cal) && <div class="bubble" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />}
-        {/* D221: the day card under the partner's words (or alone in its column). */}
+        {/* D222: the day card under the partner's words (or alone in its column). */}
         {e.ai.cal && <DayCard g={e.ai.cal} />}
         {/* D206: what a task showed, under the partner's words about it. */}
         {e.ai.media?.length ? <MediaBlock media={e.ai.media} side="partner" ctx={{ kind: "conv" }} /> : null}
@@ -1410,7 +1410,7 @@ function Hello() {
           ))}
         </p>
       )}
-      {/* D221: what is still on today, from the last look (never a new read); silent when nothing is. */}
+      {/* D222: what is still on today, from the last look (never a new read); silent when nothing is. */}
       {f?.today && <TodayRow today={f.today} />}
       <div class="try">
         <div class="label">{t("empty.try")}</div>

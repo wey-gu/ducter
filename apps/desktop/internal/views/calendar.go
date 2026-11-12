@@ -12,7 +12,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// Calendars (D221, design/calendar.md §6): a day drawn literally, as a
+// Calendars (D222, design/calendar.md §6): a day drawn literally, as a
 // calendar app would. The day card under a partner message (a quiet column
 // of time; each calendar's own colour only as a thin rail; now as a line),
 // the change card under a calendar decision, the calendars an account

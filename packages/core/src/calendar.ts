@@ -1,10 +1,10 @@
-// D221 (design/calendar.md): the person's calendars as one day. Every calendar account the
+// D222 (design/calendar.md): the person's calendars as one day. Every calendar account the
 // person's sources hold (oo, OOMOL, their own OpenConnector), every calendar inside each one that
 // they let Ducter read, merged, deduplicated (an invitation sent to both of their addresses is one
 // event), in the person's zone. Reads go through the broker like any other; a change is staged
 // there as a write and runs only on the person's Go, once, by this module (never by a model).
 //
-// Google Calendar through oo is what was read live (research/64): list_calendars, list_events,
+// Google Calendar through oo is what was read live (research/65): list_calendars, list_events,
 // get_event, create_event, patch_event, delete_event. Other calendar services are listed as
 // accounts and read through connection_call as before.
 import { createHash } from "node:crypto";
@@ -24,7 +24,7 @@ const SLOTS = 5; // free-time options handed back // a glance or a free-time sea
 
 /** The services read here as calendars. */
 export const isCalendarService = (s: string) => /calendar/i.test(s);
-/** The one we read live; its actions are the real ones (research/64). */
+/** The one we read live; its actions are the real ones (research/65). */
 const GOOGLE = "googlecalendar";
 
 // ---------- time in a zone (no library: Intl only) ----------

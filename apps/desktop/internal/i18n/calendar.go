@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// D221 (design/calendar.md): the day card, the change card, the calendars
+// D222 (design/calendar.md): the day card, the change card, the calendars
 // an account reads, and the greeting's today line. The phone
 // (apps/web/src) uses the same keys for the same words.
 

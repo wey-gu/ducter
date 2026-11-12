@@ -206,7 +206,7 @@ export interface Bodies {
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
-  // cal (D221): the day glance the partner put under these words (calendar do=agenda show).
+  // cal (D222): the day glance the partner put under these words (calendar do=agenda show).
   ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   // act, ref (D216): the line a user's Merge or Open draft PR logs, with the merge's commit or the PR's address.
@@ -239,7 +239,7 @@ export interface Bodies {
     // kind "sheet" (D215): a call sheet the owner calls themselves (no line calls that country); Go = 打完了 /
     // Done calling, Hold = 先不打 / Not now; 自己打 / Call it yourself is the client's own tel: link.
     call?: { callId: string; kind: "go" | "question" | "sheet"; plan?: CallPlan; choices?: string[]; yesNo?: boolean };
-    // D221: a calendar change (add, move, cancel, answer an invitation). Go runs it once, by core;
+    // D222: a calendar change (add, move, cancel, answer an invitation). Go runs it once, by core;
     // its outcome is the connection_call with this decisionId (state done + link, or failed).
     cal?: CalChange;
   };
@@ -442,7 +442,7 @@ export interface Bodies {
     input?: unknown; // writes only: what Go runs
     summary?: string; // ≤ 200 chars, never the provider's full output
     error?: string;
-    link?: string; // D221: a write's result page (the event in Google Calendar), when it gave one
+    link?: string; // D222: a write's result page (the event in Google Calendar), when it gave one
   };
   // D189/D193: one snapshot of a phone call per change (core/src/phone.ts); the latest per callId
   // wins. On the channel, origin "system". Ended states wake the partner, which says the outcome once.
@@ -767,7 +767,7 @@ export type ClientFrame =
   // this one; answered with a fresh connections frame. connection_reads: 看了哪些 / What it read
   // today, answered with a connection_reads frame.
   | { t: "app_watch"; id: string; service: string; account?: string; watch?: boolean; excluded?: boolean }
-  // D221: read one calendar inside a calendar account, or stop reading it.
+  // D222: read one calendar inside a calendar account, or stop reading it.
   | { t: "cal_pick"; id: string; service: string; account?: string; calendarId: string; seen: boolean }
   | { t: "connection_reads"; id: string }
   // D193: the device sign-in (RFC 8628) a connection_add started: stop waiting for it; or sign in
@@ -1094,7 +1094,7 @@ export interface FirstScreen {
   news?: { kind: "needs_you" | "missed" | "done"; words: Words; taskId?: string };
   /** 3–4 things to say, life first, rotated by day. A tap fills the composer; it never sends. */
   starters: { id: string; kind: StarterKind; words: Words }[];
-  /** D221: what is still on today, from the last look at their calendars (never a new read). */
+  /** D222: what is still on today, from the last look at their calendars (never a new read). */
   today?: CalToday;
 }
 

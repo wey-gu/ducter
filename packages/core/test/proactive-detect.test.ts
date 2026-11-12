@@ -118,7 +118,7 @@ test("before a meeting: 10 minutes before, only with something open with them", 
   expect(meetingPrep(l, { now: Date.parse("2026-11-10T09:30:00+08:00"), zone: ZONE })).toEqual([]);
 });
 
-// D221: two meetings at once, often in two accounts that can't see each other.
+// D222: two meetings at once, often in two accounts that can't see each other.
 test("a clash today or tomorrow, across calendars, is a mismatch; one event in both calendars is not", () => {
   const l = ledger();
   const m = (id: string, account: string, title: string, start: string, end: string) => ({ ref: { connectionId: "conn_oo", service: "googlecalendar", account, id }, label: title, at: "2026-11-01T00:00:00Z", type: "meeting" as const, title, start, end, with: [] });

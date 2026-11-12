@@ -138,7 +138,7 @@ function mismatches(facts: Fact[], c: DetectCtx): Candidate[] {
       }
     }
   }
-  // D221: two meetings at the same time, today or tomorrow, often in two accounts that can't see
+  // D222: two meetings at the same time, today or tomorrow, often in two accounts that can't see
   // each other (a work calendar and a personal one). One event in both calendars is not a clash.
   const soon = meetings.filter((m) => m.end && Date.parse(m.start) > c.now && daysUntil(m.start, c.now, c.zone) <= 1).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
   for (let i = 0; i < soon.length; i++)

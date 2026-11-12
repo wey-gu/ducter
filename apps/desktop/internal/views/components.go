@@ -804,7 +804,7 @@ func (a *App) holdLabel(d *store.DecisionState) string {
 	case d.Call != nil:
 		return a.L.T("call.hold") // D189: 先不打 / Not now
 	case d.Cal != nil:
-		return a.calHold(d.Cal) // D221: 暂不添加 / 保留日程 …
+		return a.calHold(d.Cal) // D222: 暂不添加 / 保留日程 …
 	}
 	return a.L.T("decision.hold")
 }
@@ -831,7 +831,7 @@ func (a *App) goLabel(d *store.DecisionState) string {
 		return a.L.T("call.go") // D189: 打过去 / Call
 	}
 	if d.Cal != nil {
-		return a.calGo(d) // D221: the action itself (添加到日历 / Move it …)
+		return a.calGo(d) // D222: the action itself (添加到日历 / Move it …)
 	}
 	if d.Asker != nil {
 		return d.GoLabel // X1: the asking agent's own option, as it named it
@@ -842,7 +842,7 @@ func (a *App) goLabel(d *store.DecisionState) string {
 // defaultLine says what happens if the user doesn't answer.
 func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 	if d.Call != nil || d.Cal != nil {
-		return "" // D189 (4), D221: it waits for the owner; no default, no countdown
+		return "" // D189 (4), D222: it waits for the owner; no default, no countdown
 	}
 	if d.Asker != nil {
 		return a.L.T("peer.default") // silence never answers for the user (D164)

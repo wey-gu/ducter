@@ -1,4 +1,4 @@
-// D221 (design/calendar.md §4, §6): the calendar's words: the day card, the change card, the
+// D222 (design/calendar.md §4, §6): the calendar's words: the day card, the change card, the
 // greeting's today line and the calendar tile in Accounts. zh and en designed together.
 export const calendarWords: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {

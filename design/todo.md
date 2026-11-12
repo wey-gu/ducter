@@ -379,7 +379,7 @@ note and a `Dn`) before it is built.
 - [ ] **Nowledge Bridge live** (`design/bridge.md`): the live J1 round trip, then outbound
       (J4). Trigger: the account is enabled for Bridge.
 
-## Calendars (D221, `design/calendar.md`, research/64)
+## Calendars (D222, `design/calendar.md`, research/65)
 
 - [ ] **One real Go per change, on a test calendar of the author's** (create with a guest who is
   the author's other address, move, answer an invitation, cancel), through oo: that the staged

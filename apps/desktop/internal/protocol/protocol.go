@@ -126,7 +126,7 @@ type AIMsg struct {
 	DecisionID string `json:"decisionId,omitempty"`
 	// Media (D206): what a task showed, relayed with the partner's words about it.
 	Media []MediaRef `json:"media,omitempty"`
-	// Cal (D221): the day glance the partner put under these words.
+	// Cal (D222): the day glance the partner put under these words.
 	Cal *CalGlance `json:"cal,omitempty"`
 }
 
@@ -197,7 +197,7 @@ type Decision struct {
 	Trust *TrustAsk `json:"trust,omitempty"`
 	// Call (D189/D193): a phone call's Go card, or a question from the line.
 	Call *CallAsk `json:"call,omitempty"`
-	// Cal (D221): a calendar change (add, move, cancel, answer); its
+	// Cal (D222): a calendar change (add, move, cancel, answer); its
 	// outcome is the connection_call with this decision id.
 	Cal *CalChange `json:"cal,omitempty"`
 }
@@ -1550,7 +1550,7 @@ type FirstScreen struct {
 	Line     Words      `json:"line"`
 	News     *FirstNews `json:"news,omitempty"`
 	Starters []Starter  `json:"starters"`
-	// Today (D221): what is still on today, from the last look.
+	// Today (D222): what is still on today, from the last look.
 	Today *CalToday `json:"today,omitempty"`
 }
 

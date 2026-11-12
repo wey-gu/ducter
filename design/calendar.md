@@ -1,7 +1,7 @@
 # Calendars
 
-> Draft 1 · 2026-11-12 · Status: **D221, built 2026-11-12 with fakes; defaults taken while the
-> author was away, for review.** Evidence: `research/64-calendar.md` (the real Google Calendar
+> Draft 1 · 2026-11-12 · Status: **D222, built 2026-11-12 with fakes; defaults taken while the
+> author was away, for review.** Evidence: `research/65-calendar.md` (the real Google Calendar
 > actions through oo, read live on two accounts). Builds on D96 and D122 (the broker, oo), D165
 > and D173 (proactive kinds and restraint), D189 (Go cards), D192 (tiles), D149 (the greeting),
 > D212 (Chinese controls), D115 (time is drawn). Labels: **VERIFIED** run or read this session ·
@@ -11,7 +11,7 @@
 
 | Who | Before | After | First time, zero setup |
 |---|---|---|---|
-| The heavy developer (the author): a personal Gmail and a work Google account, each with its own calendar, in different zones (one set to Hong Kong, one to Tokyo, living in Tokyo; research/64) | Two calendars that can't see each other. "What's on tomorrow" means opening both; a dentist at 10:00 in one and a team call at 10:30 in the other collide unnoticed | One day, both accounts merged, in one sentence and one card; the clash said once, in the morning; "find me an hour with Lina" is one card naming which calendar and that Lina gets an invitation | oo already holds both accounts: the tiles show **日历 · weyl.gu** and **日历 · nowledge-labs**, connected, with one line of what it can do now |
+| The heavy developer (the author): a personal Gmail and a work Google account, each with its own calendar, in different zones (one set to Hong Kong, one to Tokyo, living in Tokyo; research/65) | Two calendars that can't see each other. "What's on tomorrow" means opening both; a dentist at 10:00 in one and a team call at 10:30 in the other collide unnoticed | One day, both accounts merged, in one sentence and one card; the clash said once, in the morning; "find me an hour with Lina" is one card naming which calendar and that Lina gets an invitation | oo already holds both accounts: the tiles show **日历 · weyl.gu** and **日历 · nowledge-labs**, connected, with one line of what it can do now |
 | The consumer personal-AI user | Asks a bot to "put it in my calendar" and isn't sure it did, or where | Says it; sees exactly what will land where and who hears; one tap; the card ticks itself off with a link to the event | The empty conversation offers **明天我都有什么安排？** |
 | The fresh user | Has never connected anything | Asks "我今天忙吗" and gets the day | Accounts says, under the Gmail tile, **加上 Google 日历，它就能看日程、帮你约时间。** with the one button that opens oo's page |
 
@@ -108,7 +108,7 @@ per client).
   the clash at that time, who gets an email, and the other side's zone; stages one write; logs the
   card. The partner ends its turn.
 
-Actions (VERIFIED in oo's catalog, research/64): `list_calendars`, `list_events`
+Actions (VERIFIED in oo's catalog, research/65): `list_calendars`, `list_events`
 (`singleEvents`, `orderBy=startTime`, `timeZone`), `create_event` (`sendUpdates` all when there
 are guests, else none), `patch_event` (move: start and end in the event's own zone; answer: the
 whole guest list back with only their own `responseStatus` changed), `delete_event`. Multiple

@@ -235,7 +235,7 @@ function ReadsList({ c }: { c: ConnectionView }) {
   );
 }
 
-/** D221: 看哪些日历 / Calendars it reads: each calendar in the account, its colour as a dot, and a switch. */
+/** D222: 看哪些日历 / Calendars it reads: each calendar in the account, its colour as a dot, and a switch. */
 function CalendarsBand({ c, w }: { c: ConnectionView; w: AppWatch }) {
   const rows = w.calendars;
   return (
@@ -263,7 +263,7 @@ function CalendarsBand({ c, w }: { c: ConnectionView; w: AppWatch }) {
   );
 }
 
-/** Client-local memory for the calendar lines (D221 §4): when each calendar tile was first seen here,
+/** Client-local memory for the calendar lines (D222 §4): when each calendar tile was first seen here,
  *  whether the first-time line was retired, and a dismissed Gmail nudge. Never synced. */
 const CAL_MEM = "ducter.cal.local";
 type CalMem = { seen?: Record<string, number>; done?: string[]; later?: string[] };

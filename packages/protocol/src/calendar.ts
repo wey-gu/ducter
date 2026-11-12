@@ -1,4 +1,4 @@
-// D221 (design/calendar.md): the person's calendars, read through their accounts (oo, OOMOL or
+// D222 (design/calendar.md): the person's calendars, read through their accounts (oo, OOMOL or
 // their own OpenConnector), merged across every account into one day. Shared by core and every
 // client. Times are ISO strings with the offset of the person's zone (all-day: YYYY-MM-DD).
 
@@ -82,7 +82,7 @@ export interface CalGlance {
 }
 
 /**
- * The Go card of a calendar change (D189's rails, D221): what will change, where, when in the
+ * The Go card of a calendar change (D189's rails, D222): what will change, where, when in the
  * person's zone (and the other side's when it differs), and who will hear about it. Go runs it
  * once; there is never a default and never "don't ask next time".
  */
@@ -113,7 +113,7 @@ export interface CalChange {
   clash?: string;
 }
 
-/** FirstScreen.today (D149, D221): one quiet line under the greeting, from the last look only. */
+/** FirstScreen.today (D149, D222): one quiet line under the greeting, from the last look only. */
 export interface CalToday {
   /** Timed events still ahead today. */
   left: number;

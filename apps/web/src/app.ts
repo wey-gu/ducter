@@ -1317,7 +1317,7 @@ class AppState {
     this.send({ t: "app_watch", id, service, ...(account ? { account } : {}), ...patch });
     this.changed();
   }
-  /** D221: 看哪些日历 / Calendars it reads: one calendar in a calendar account, on or off. */
+  /** D222: 看哪些日历 / Calendars it reads: one calendar in a calendar account, on or off. */
   pickCalendar(id: string, service: string, account: string | undefined, calendarId: string, seen: boolean) {
     const c = this.connections?.find((x) => x.id === id);
     const a = c?.look?.apps.find((x) => x.service === service && (x.account ?? "") === (account ?? ""));

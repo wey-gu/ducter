@@ -1,6 +1,6 @@
 package protocol
 
-// D221 (design/calendar.md): the person's calendars, merged across every
+// D222 (design/calendar.md): the person's calendars, merged across every
 // calendar account into one day. Mirrors packages/protocol/src/calendar.ts
 // (field names identical). Times are ISO strings with the offset of the
 // person's zone; all-day ones are YYYY-MM-DD.

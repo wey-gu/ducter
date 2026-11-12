@@ -6614,7 +6614,7 @@ dl.call-summary dd { margin: 0; }
 .sheet.phone-install .btns { display: flex; gap: 10px; margin-top: var(--s3); }
 .sheet.phone-install .btns .btn { flex: 1; }
 
-/* ---------- D221: calendars (design/calendar.md §6; calendar.tsx). A literal agenda in Pebble clay:
+/* ---------- D222: calendars (design/calendar.md §6; calendar.tsx). A literal agenda in Pebble clay:
    tokens only; a calendar's own colour appears only as an 8px dot or a 3px rail (inline, from data). ---------- */
 .partner.has-cal { max-width: 100%; align-self: stretch; }
 .partner.has-cal > .bubble { max-width: min(88%, var(--bubble-measure)); }

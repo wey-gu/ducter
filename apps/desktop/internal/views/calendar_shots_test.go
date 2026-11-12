@@ -14,7 +14,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D221's Mac screens against the seeded calendar demo core
+// D222's Mac screens against the seeded calendar demo core
 // (scripts/readme-shots/calendar-demo.ts), zh and en:
 //
 //	DUCTER_CAL_URL=ws://127.0.0.1:7802/ws DUCTER_CAL_URL_EN=ws://127.0.0.1:7803/ws \

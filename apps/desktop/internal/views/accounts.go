@@ -107,7 +107,7 @@ func (a *App) sourceCard(c *ui.Context, cv protocol.ConnectionView) {
 		})
 		// What it can read: the tray, and the open tile's detail under it.
 		a.appTray(c, cv)
-		// D221: a calendar new to this client, or Gmail without one.
+		// D222: a calendar new to this client, or Gmail without one.
 		a.calFirstLine(c, cv)
 		a.calNudge(c, cv)
 		// The connection itself, last and quiet (D192): where what it reads
@@ -396,7 +396,7 @@ func (a *App) tileDetail(c *ui.Context, cv protocol.ConnectionView, w protocol.A
 			}
 			if k == "calendar" {
 				rule()
-				a.calendarsBand(c, cv, w) // D221: 看哪些日历 / Calendars it reads
+				a.calendarsBand(c, cv, w) // D222: 看哪些日历 / Calendars it reads
 			}
 		}
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {

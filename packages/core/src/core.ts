@@ -159,7 +159,7 @@ export interface Core extends CoreApi {
   ownNumber: import("./phone-own/index.ts").OwnPhone;
   /** D165: what Ducter notices in them, and how it says so. */
   proactive: Proactive;
-  /** D221: the person's calendars as one day, and changes behind a Go. */
+  /** D222: the person's calendars as one day, and changes behind a Go. */
   calendar: Calendar;
   /** What each repo task changed so far (D128). */
   changes: Changes;
@@ -188,7 +188,7 @@ export const defaultDataDir = () => process.env.DUCTER_DATA_DIR || join(homedir(
 /** Events that wake the partner (principle 6): user messages, resolutions, non-progress reports, fired waiters. */
 export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "user_msg" || e.kind === "decision_resolved") return true;
-  // D221: a calendar change the person said Go to that didn't go through (core ran it; success is the card's).
+  // D222: a calendar change the person said Go to that didn't go through (core ran it; success is the card's).
   if (e.kind === "connection_call") {
     const c = e.body as Bodies["connection_call"];
     return c.op === "write" && c.state === "failed" && !!c.decisionId && /calendar/.test(c.action);
@@ -729,7 +729,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   // D165: the person's zone: their quiet hours', else the server's (a client's hello sets routines').
   const zone = () => opts.proactive?.zone ?? settings.get().quiet?.tz ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
-  // D221: every calendar account's calendars, merged (Accounts, the partner's calendar tool, the watcher).
+  // D222: every calendar account's calendars, merged (Accounts, the partner's calendar tool, the watcher).
   const calendar = createCalendar({ dataDir, connections, zone, log });
   calendarRef = calendar;
   const proactive = createProactive({

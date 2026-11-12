@@ -28,7 +28,7 @@ export async function partnerFingerprint(): Promise<Fingerprint> {
   const dir = mkdtempSync(join(tmpdir(), "ducter-fp-"));
   // Autofill's key in the scratch folder, never a keychain (this also runs from the eval).
   process.env.DUCTER_SAVED_KEY = "file";
-  // D221: two calendar accounts in a fake oo, so the calendar tool (listed only then) is judged too.
+  // D222: two calendar accounts in a fake oo, so the calendar tool (listed only then) is judged too.
   const oo = fakeOoCalendar({ day: "2026-11-18" });
   const core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin", ooSource: oo.source });
   await core.connections.addFromOo();

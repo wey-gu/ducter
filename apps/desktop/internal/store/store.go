@@ -354,7 +354,7 @@ type Store struct {
 	// FindStates are each find's latest change (D165), by find id.
 	FindStates map[string]*protocol.FindState
 	// DecisionCalls are the latest connection_call of each decision's Go,
-	// by decision id (D221: a calendar change settles from it).
+	// by decision id (D222: a calendar change settles from it).
 	DecisionCalls map[string]*protocol.ConnectionCall
 	// LastUserSeq is the user's latest message.
 	LastUserSeq int64
@@ -761,7 +761,7 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		}
 	}
 	if cc, ok := body.(*protocol.ConnectionCall); ok {
-		// D221: a decision's write, staged then run on Go; the latest wins.
+		// D222: a decision's write, staged then run on Go; the latest wins.
 		if cc.DecisionID != "" && cc.Op == "write" {
 			if s.DecisionCalls == nil {
 				s.DecisionCalls = map[string]*protocol.ConnectionCall{}

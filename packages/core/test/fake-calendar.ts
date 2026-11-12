@@ -1,4 +1,4 @@
-// D221: two Google Calendar accounts as oo answers them (shapes read live, research/64), with
+// D222: two Google Calendar accounts as oo answers them (shapes read live, research/65), with
 // made-up events. A fake broker: reads answer from the fixtures; a write is only ever staged and
 // run on Go (runApproved), and every call is recorded so a test can show nothing else ran.
 import type { Bodies, LogEvent } from "@ducter/protocol";

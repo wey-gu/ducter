@@ -25,7 +25,7 @@ const TASK_TOOLS = ["checkpoint", "log_read", "log_search", "memory_search", "re
 /** JSON characters of the whole tools/list result (≈ chars / 3.6 tokens). */
 const CEILING = {
   partner: 29_500, // 29.1K today (D215's call sheet fields on phone_call, D217's needs.phone on task_open): 26 tools (phone_call, D193, 2.2K after trimming; D206 media on task_open and task_send); wait_for (3.9K) and task_open (4.8K) are the largest
-  partnerWithCalendar: 31_500, // D221: + calendar (≈1.9K), listed only while a calendar account is connected
+  partnerWithCalendar: 31_500, // D222: + calendar (≈1.9K), listed only while a calendar account is connected
   task: 8_500, // 7.6K: 6 tools; wait_for alone is 3.6K; memory_search (1.2K) is the D168 fallback where the Mem plugin is absent
 };
 
@@ -69,7 +69,7 @@ test("a task's tools: the listed set, under the ceiling (no partner tool leaks i
   expect(JSON.stringify(tools).length).toBeLessThan(CEILING.task);
 });
 
-// D221: the calendar tool is listed only while a calendar account is connected (no cost otherwise);
+// D222: the calendar tool is listed only while a calendar account is connected (no cost otherwise);
 // with one, the whole list stays under its own ceiling.
 test("with a calendar connected: calendar is listed, still under a ceiling", async () => {
   const d = mkdtempSync(join(tmpdir(), "ducter-tools-cal-"));

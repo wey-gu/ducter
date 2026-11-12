@@ -1,4 +1,4 @@
-// D221's screens with realistic data: the real core with a silent partner, two Google Calendar
+// D222's screens with realistic data: the real core with a silent partner, two Google Calendar
 // accounts and Gmail in a fake oo (packages/core/test/fake-oo-calendar.ts, moved to today), and a
 // conversation seeded through the calendar module itself: a day card, a week card, a new event's
 // card, a move that ran (Go), and an invitation's answer waiting. Never the real oo.

@@ -1,4 +1,4 @@
-// D221 through the real core: the oo link (an in-process fake oo with two calendar accounts), the
+// D222 through the real core: the oo link (an in-process fake oo with two calendar accounts), the
 // broker's staging, Go run once by core, the partner never woken by a calendar card's Go or Hold,
 // woken once when the write fails; the Accounts frame carries each calendar account's calendars.
 import { afterEach, expect, test } from "bun:test";

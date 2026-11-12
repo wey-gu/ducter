@@ -1,4 +1,4 @@
-// D221 (design/calendar.md §6): calendar things in the conversation. The day card under the
+// D222 (design/calendar.md §6): calendar things in the conversation. The day card under the
 // partner's words (a day or a week, every account merged), the facts of a change card and how it
 // settles after Go, and the greeting's one quiet line about what is left today. Literal agenda,
 // Pebble clay: each calendar's colour only as a dot or a thin rail; marks are drawn glyphs.

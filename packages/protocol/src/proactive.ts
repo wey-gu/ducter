@@ -75,7 +75,7 @@ export interface AppWatch {
   unreachable?: boolean;
   lastReadAt?: string;
   readsToday?: number;
-  /** D221: a calendar account's calendars, and which it reads (absent until it listed them). */
+  /** D222: a calendar account's calendars, and which it reads (absent until it listed them). */
   calendars?: import("./calendar.ts").CalendarRow[];
 }
 

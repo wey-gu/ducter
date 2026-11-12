@@ -147,7 +147,7 @@ interface TurnState {
   recalls: number; // memory_search calls this turn
   noted: { title: string; memoryId?: string }[]; // memory_add successes, shown after the turn's text
   shows?: MediaRef[]; // D206: what the triggering reports showed, put under this turn's first message
-  cal?: CalGlance; // D221: the day card calendar do=agenda show put under this turn's next message
+  cal?: CalGlance; // D222: the day card calendar do=agenda show put under this turn's next message
   carried?: Carried; // this turn redoes one a restart cut off
   early: EarlyOpen[]; // tasks opened from the streamed head of a task_open call (D120)
 }
@@ -588,7 +588,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       turn.shows = undefined;
     }
     if (!decisionId && turn?.cal) {
-      // D221: the day card goes under the words about it, once.
+      // D222: the day card goes under the words about it, once.
       body.cal = turn.cal;
       turn.cal = undefined;
     }
@@ -1166,7 +1166,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       await session!.send(input, "turn", picturesOf(batch));
       await reading;
       flushPending();
-      // D221: a day card asked for with no words after it still shows, on its own.
+      // D222: a day card asked for with no words after it still shows, on its own.
       if (turn.cal) core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "", cal: turn.cal, ...(turn.replyTo !== undefined ? { replyTo: turn.replyTo } : {}) } }), (turn.cal = undefined);
       appendNoted(turn);
       await settleOwed(batch, turnFrom);
@@ -1880,7 +1880,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     );
   }
 
-  // ---------- Calendars (D221, design/calendar.md) ----------
+  // ---------- Calendars (D222, design/calendar.md) ----------
   // One tool over every calendar account, merged. Listed only while a calendar is connected. A
   // change is a Go card that core makes and runs on Go (the partner isn't woken for it).
   const cal = (core as { calendar?: import("../../core/src/calendar.ts").Calendar }).calendar;

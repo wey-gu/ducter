@@ -106,10 +106,10 @@ export interface Expect {
   called?: { tool: string; args?: Record<string, unknown> }[];
   /** Partner tools that must not be called. */
   notCalled?: string[];
-  /** D221: a day card went under a message (calendar do=agenda show) / none did. */
+  /** D222: a day card went under a message (calendar do=agenda show) / none did. */
   dayCard?: boolean;
   noDayCard?: boolean;
-  /** D221: a calendar change card of this kind was made / none was. */
+  /** D222: a calendar change card of this kind was made / none was. */
   calCard?: "create" | "move" | "cancel" | "respond";
   noCalCard?: boolean;
   /** Bridge: what Ducter sent through the (fake) Bridge, all messages joined. */
@@ -154,7 +154,7 @@ export interface Scenario {
   /** D193: the owner's quiet hours cover now (calls wait for the morning). */
   quietNow?: true;
   /**
-   * D221: Gmail and two Google Calendar accounts in a fake oo (packages/core/test/fake-oo-calendar.ts),
+   * D222: Gmail and two Google Calendar accounts in a fake oo (packages/core/test/fake-oo-calendar.ts),
    * on today's date: today at 10:00 看牙 (personal) overlaps 10:30 HawDB 周会 (work, with Lina Chen),
    * 14:00 Design sync (Sam Lee's invitation, not answered, made in Los Angeles), 16:00 Board call
    * (in both calendars), 18:30 家里吃饭 (Family), 19:00 Gym (marked free); a declined All hands.
@@ -1318,7 +1318,7 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, msgs: [1, 1], maxChars: 220, require: [/account/i], forbid: [/OAuth|token|API key|scope/i] },
     rubric: "No account is connected. It says in one short English line that it can't read their mail yet and where they can add their accounts (the Partner page / Accounts it can read; one tap with oo). It opens no task, invents no mail, and never explains OAuth or tokens.",
   },
-  // ---------- calendars (D221): two accounts merged, changes behind a card ----------
+  // ---------- calendars (D222): two accounts merged, changes behind a card ----------
   {
     id: "calendar-today-zh",
     category: "calendar",

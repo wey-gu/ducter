@@ -1,6 +1,6 @@
 # 64. Calendars through oo: the real actions, two accounts, and what a calendar partner owes
 
-> 2026-11-12 · For D221 (`design/calendar.md`). The author connected Google Calendar for two
+> 2026-11-12 · For D222 (`design/calendar.md`). The author connected Google Calendar for two
 > Google accounts in oomol's oo; until now Ducter's watcher guessed calendar action names and
 > nothing in the product was designed for calendars. Labels: **VERIFIED** run on this Mac this
 > session (read-only actions only) · **DOCUMENTED** a vendor's documentation says so ·

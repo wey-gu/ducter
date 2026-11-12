@@ -95,7 +95,7 @@ export interface WsDeps {
   autofill?: import("./saved/index.ts").Autofill;
   /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
-  /** D221: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
+  /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
   batchMs?: number;
 }
@@ -206,7 +206,7 @@ export function createWsHandler(deps: WsDeps) {
     const cal = deps.calendar?.();
     const list = deps.connections!.view().map((c) => {
       let look = p?.look(c.id);
-      // D221: a calendar account's tile carries its calendars and which it reads.
+      // D222: a calendar account's tile carries its calendars and which it reads.
       if (look && cal)
         look = {
           ...look,
@@ -225,7 +225,7 @@ export function createWsHandler(deps: WsDeps) {
   const offConnections = deps.connections?.onChange(() => {
     for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
   });
-  // D221: the calendar module is made after this handler; subscribe on the first Accounts frame.
+  // D222: the calendar module is made after this handler; subscribe on the first Accounts frame.
   let offCalendar: (() => void) | undefined;
   const watchCal = () => {
     if (offCalendar) return;
@@ -386,7 +386,7 @@ export function createWsHandler(deps: WsDeps) {
             .then(async (first) => {
               if (!sockets.has(ws)) return;
               send(ws, { t: "first_screen", first });
-              // D221: what is still on today, as a second frame once the calendars answered (they read
+              // D222: what is still on today, as a second frame once the calendars answered (they read
               // through oo, which takes seconds; the greeting never waits for it).
               const cal = deps.calendar?.();
               if (!cal?.accounts().length) return;
@@ -717,12 +717,12 @@ export function createWsHandler(deps: WsDeps) {
         watchLook();
         watchOwn();
         send(ws, connectionsFrame());
-        // D221: list the calendar accounts' calendars (cached); the frame follows when they change.
+        // D222: list the calendar accounts' calendars (cached); the frame follows when they change.
         watchCal();
         void deps.calendar?.()?.refresh().catch(() => {});
         const si = deps.connections.signInView();
         if (si) send(ws, { t: "connection_signin", signIn: si });
-        // D221: a cold home lists its accounts only after the recheck; read the calendar lists then.
+        // D222: a cold home lists its accounts only after the recheck; read the calendar lists then.
         void deps.connections
           .recheck()
           .then(() => deps.calendar?.()?.refresh())

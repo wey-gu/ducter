@@ -1,4 +1,4 @@
-// D221 (design/calendar.md §6): calendar times in the person's words. Every time arrives as an ISO
+// D222 (design/calendar.md §6): calendar times in the person's words. Every time arrives as an ISO
 // string carrying the person's own offset (all-day: YYYY-MM-DD), so the wall clock is read from the
 // string itself, never from this device's zone (a phone abroad still shows the person's day).
 // Pure: tested in test/calendar.test.ts.

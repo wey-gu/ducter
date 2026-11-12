@@ -39,7 +39,7 @@ func (a *App) handsetCard(c *ui.Context, cl *protocol.ReachClient) {
 	}
 	if u := h.Using; u != nil {
 		id, title := u.TaskID, u.Title
-		ui.Row(c.Key("handset-using:"+cl.ID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+		ui.Row(c.Key("handset-using:" + cl.ID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, a.L.T("handset.using", title)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
 			if a.buttonFor(c, a.L.T("handset.stop"), title, btnSecondary, t.ControlSM, t.Bg) {
 				a.send(protocol.HandsetStopReq{T: "handset_stop", TaskID: id})

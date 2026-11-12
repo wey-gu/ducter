@@ -348,6 +348,8 @@ class AppState {
   }
   /** D217: set by phone-use.tsx; takes every phone_* frame. */
   onPhoneFrame?: (f: import("@ducter/protocol").PhoneServerFrame) => void;
+  /** D228: the home stopped answering (main.tsx then asks where it moved to). */
+  onOffline?: () => void;
   changed() {
     for (const fn of this.listeners) fn();
     this.scheduleRead();
@@ -396,6 +398,7 @@ class AppState {
         this.status = s;
         // D209: the app, which opened this page from its cache, learns whether the home answers.
         if (s !== "connecting" && inApp()) tellReach(s === "connected");
+        if (s === "offline") this.onOffline?.();
         this.changed();
       },
     );

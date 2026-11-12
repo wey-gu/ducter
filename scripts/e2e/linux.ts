@@ -25,6 +25,10 @@
 //   7. all     全部更新 / Update all (D224): V3 → V4 and pi 1.5.1 → 1.5.2 on the home in one tap, the
 //              worker away (said, not part of it): the home first, pi only after the home is back,
 //              the same plan finished by the restarted home.
+//   8. anywhere 在哪儿都能用 / From anywhere (D228): the home turns on its free Cloudflare tunnel
+//              (cloudflared downloaded and checked in the VM), this Mac reaches it through
+//              Cloudflare with the client's token, and a restart of ducter.service keeps the
+//              address (the tunnel runs in its own systemd user unit).
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -406,6 +410,50 @@ async function updateAll() {
   );
 }
 
+// ---------- 8. From anywhere (D228) ----------
+
+async function anywhere() {
+  const reach = async () => (await clientJson("devices")).reach as any;
+  await clientJson("send", JSON.stringify({ t: "ability", device: "local", ability: "remote", on: true }), "-wait", "ability_result").catch(() => undefined);
+  const on = await until(
+    "From anywhere on the home",
+    async () => {
+      const r = await reach();
+      const a = r?.anywhere;
+      if (a?.state === "failed") return { failed: `${a.reason} ${a.detail ?? ""}`, address: "" };
+      return a?.state === "on" && r.address ? { failed: "", address: r.address as string } : undefined;
+    },
+    300_000,
+    3000,
+  );
+  check("anywhere", !on.failed, on.failed ? `couldn't turn on: ${on.failed}` : `on at ${on.address} (a quick tunnel; cloudflared fetched and checked in the VM)`);
+  const answer = await until(
+    "the address answering from this Mac",
+    async () => {
+      const x = await fetch(`${on.address}/.well-known/ducter-anywhere`, { signal: AbortSignal.timeout(10_000) }).catch(() => undefined);
+      return x?.ok ? (await x.text()).trim() || undefined : undefined;
+    },
+    120_000,
+    3000,
+  );
+  const wss = on.address.replace(/^https/, "wss") + "/ws";
+  const far = JSON.parse((await run([join(DIR, "bin", "e2eclient"), "-url", wss, "-token", token, "devices"], { timeoutMs: 120_000 })).out.trim().split("\n").at(-1)!);
+  const unauth = await fetch(`${on.address}/api/me`).then((x) => x.status).catch(() => 0);
+  check("anywhere reach", !!answer && far.reach?.address === on.address && unauth === 401, `this Mac through Cloudflare: the self-check answered, the client's socket with its token got the devices, /api/me without one ${unauth}`);
+  const unit = (await vm(`systemctl --user is-active ducter-anywhere-${PORT} || true`, { ok: false })).out.trim();
+  await vm("systemctl --user restart ducter.service");
+  const after = await until(
+    "the home back after a restart",
+    async () => {
+      const r = await reach();
+      return r?.anywhere?.state === "on" ? (r.address as string) : undefined;
+    },
+    180_000,
+    3000,
+  );
+  check("anywhere kept", after === on.address && unit === "active", `ducter.service restarted; the tunnel's own unit was ${unit}; the address ${after === on.address ? "stayed" : `changed to ${after}`}`);
+}
+
 // ---------- the run ----------
 
 async function cleanup() {
@@ -429,6 +477,7 @@ try {
   await browse();
   await agent();
   await updateAll();
+  await anywhere();
 } catch (e) {
   code = 1;
   say(`\nFAILED: ${(e as Error).message}\n(log: ${logFile})`);

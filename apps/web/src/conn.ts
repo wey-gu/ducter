@@ -87,6 +87,8 @@ export interface Me {
   deviceName?: string;
   /** apns: this home can notify the iPhone app; apnsVia: its own Apple key or the notification relay (D159). */
   push: { supported: boolean; publicKey?: string; apns?: boolean; apnsVia?: "key" | "relay"; relay?: "unreachable" };
+  /** D228: how to find this home again when its tunnel's address changes. */
+  follow?: import("@ducter/protocol").Follow;
 }
 
 export class Api {

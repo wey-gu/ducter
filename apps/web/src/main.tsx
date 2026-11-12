@@ -8,7 +8,8 @@ import { Api, baseUrl, codeFromHash, pair, storage, type Me, type PairError } fr
 import { kvSet } from "./idb.ts";
 import { forgetGlance, loadGlance, type Glance } from "./glance.ts";
 import { registerWorker } from "./push-client.ts";
-import { inApp, tellApp } from "./native.ts";
+import { inApp, nativeCall, tellApp } from "./native.ts";
+import { findHome, loadFollow, moveLink, saveFollow, takeMove } from "./follow-client.ts";
 import { startAutospace } from "./autospace.ts";
 import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
 import { LiveView } from "./live.tsx";
@@ -203,7 +204,11 @@ async function boot(pairing?: PairView) {
         if (had) storage.clear(), await kvSet("token", undefined);
         return boot({ busy: false, code: "", error: had ? "revoked" : undefined });
       }
-      if (r.status !== 200 || !r.data) return;
+      if (r.status !== 200 || !r.data) {
+        if (had && (r.status === 0 || r.status >= 500)) void follow();
+        return;
+      }
+      saveFollow(r.data.follow, storage.get());
       A.me = r.data;
       if (r.data.personaName && !A.S.welcomed) A.S.personaName = r.data.personaName;
       if (r.data.personaName !== me.personaName) tellApp({ token: had, base: base.href, locale: A.L.lang, personaName: A.S.personaName });
@@ -218,8 +223,28 @@ async function boot(pairing?: PairView) {
   run(me, had, "local");
 }
 
+// D228: the home's address changed (its free tunnel got a new one when the computer restarted).
+// Ask the relay where it is now, check a Ducter answers there, and carry this device over.
+let looked = 0;
+async function follow() {
+  if (Date.now() - looked < 20_000) return;
+  looked = Date.now();
+  const rec = storage.get();
+  const kept = loadFollow();
+  if (!rec || !kept) return;
+  const to = await findHome(base, kept);
+  if (!to) return;
+  const link = moveLink(to.url, rec, kept.follow, to.at);
+  // The apps keep the home's address themselves: they move, and open the page there.
+  if (inApp()) return void nativeCall({ t: "moved", base: `${to.url}/`, entry: link });
+  location.replace(link);
+}
+
 function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   if (had) void kvSet("token", had);
+  A.onOffline = () => void follow();
+  // Still away: ask again now and then (the home may leave its new address a moment after it is up).
+  setInterval(() => A.status === "offline" && void follow(), 20_000);
   tellApp({ token: had, base: base.href, locale: A.L.lang, personaName: me.personaName });
   if (!inApp()) void registerWorker(base); // the app's notifications are its own (APNs)
   A.glanceDevice = device;
@@ -243,5 +268,7 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
 // A pairing link carries its code in the fragment, which never reaches a server log. Take it,
 // and drop it from the address bar and history at once.
 const code = location.pathname.endsWith("/pair") ? codeFromHash(location.hash) : "";
+// D228: arrived at the home's new address carrying this device's pairing: it is this page's now.
+takeMove(storage);
 if (location.pathname.endsWith("/pair")) history.replaceState(null, "", new URL("app", base).pathname);
 void boot(code ? { busy: true, code } : undefined);

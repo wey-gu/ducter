@@ -626,7 +626,7 @@ func (a *App) startEquip(dv *protocol.DeviceView, id string, from ui.Rect, dropp
 	}
 	d.ability, d.removing = id, ""
 	delete(d.refused, dv.ID+"/"+id)
-	if id == protocol.AbilityRemote {
+	if id == protocol.AbilityRemote && !dv.Home {
 		a.openPair()
 		return
 	}
@@ -684,15 +684,10 @@ func (a *App) drainAbilityResults() {
 			d.refused[key] = r
 		}
 	}
-	// A device that paired while the code was showing: 远程打开 is on.
+	// A device that paired while the code was showing rises in the scene.
+	// (D228: pairing no longer turns 在哪儿都能用 on; an address does.)
 	if d.pair.open && a.S.Reach != nil && len(a.S.Reach.Clients) > d.pair.clients {
 		a.joined("cl:" + a.S.Reach.Clients[len(a.S.Reach.Clients)-1].ID)
-		if home := a.homeDevice(); home != nil {
-			d.ability = protocol.AbilityRemote
-			d.optimistic[home.ID+"/"+protocol.AbilityRemote] = a.Now()
-			d.fx = &equipFx{ability: protocol.AbilityRemote, device: home.ID, start: a.Now(), from: d.tiles[protocol.AbilityRemote], to: d.slots[protocol.AbilityRemote],
-				result: &protocol.ServerFrame{T: "ability_result", OK: true, On: true}}
-		}
 	}
 }
 

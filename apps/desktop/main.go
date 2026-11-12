@@ -326,6 +326,7 @@ func main() {
 		}
 		url, token := target()
 		var c *client.Client
+		follower := &homeFollower{} // D228: a home elsewhere whose address moves
 		c = client.New(client.Options{
 			URL:     url,
 			Token:   token,
@@ -339,6 +340,10 @@ func main() {
 				})
 			},
 			OnStatus: func(st client.Status, err error) {
+				follower.status(c, st, func(next remote.Saved) {
+					win.Update(func() { app.URL = c.URL() })
+					go followCLI(next, false) // the command line follows too (D147)
+				})
 				win.Update(func() {
 					app.Status = st
 					if st == client.Disconnected {

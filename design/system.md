@@ -381,6 +381,76 @@ first use" because `claude auth status` can't tell a bad token from a good one. 
 OAR's scripted runtime. Its script still calls Ducter's real MCP tools over HTTP (`task_open`,
 `report_to_main`) and every reply says it's a demo.
 
+## From anywhere: a home with no public address (D228, research/67; built 2026-11-12)
+
+**Who and when.** Anyone whose home has no address from outside: a Mac at home (most people), a
+Linux box behind NAT. They meet it when they first want the phone (the onboarding ask
+在手机上也能找到我), on the home's card (the chip **在哪儿都能用**), or in `ducter pair`. Before:
+a dead end ("set up a domain or an SSH tunnel"); after: one tap, about half a minute, a QR.
+
+**What the switch does.** On the home, `{t:"ability", ability:"remote", on}` turns Ducter's
+tunnel on or off (`packages/core/src/anywhere.ts`). An address of the person's own
+(`DUCTER_PUBLIC_URL`, `<dataDir>/public-url` from `ducter domain`) always wins: shown on, nothing
+runs, and off answers `own_address`. `Reach.anywhere` carries `{how: own|tunnel|named, state:
+starting|on|failed, getting?, moves?, reason?, since?, follow?}`; `Reach.address` is the
+address in use. Paired devices stay paired whatever the switch says.
+
+**The tunnel** (`anywhere.ts`, the real system behind a `TunnelSys` seam faked in tests):
+- cloudflared: `DUCTER_CLOUDFLARED`, else Ducter's own `<dataDir>/bin/cloudflared-2026.10.5`,
+  else one on PATH, else downloaded from GitHub with both SHA-256s pinned (the darwin `.tgz` and
+  the binary inside; Linux x64/arm64 bare binaries). Unsupported systems say so.
+- Started as `cloudflared tunnel --no-autoupdate --config <dataDir>/anywhere-cloudflared.yml
+  --metrics 127.0.0.1:<free port> --url http://127.0.0.1:<port>` (named: `… run`, the token in
+  `TUNNEL_TOKEN`), logging to `<dataDir>/anywhere.log`; detached, or under systemd as the
+  transient user unit `ducter-anywhere-<port>` so a restart of `ducter.service` doesn't take it.
+- On: `/quicktunnel` names it, `/ready` says Cloudflare is connected, and DNS over HTTPS
+  (`cloudflare-dns.com`) has the name; only then is the address shown (no early system lookup
+  that would cache "no such name"). Without DoH it waits 25 s instead. State in
+  `<dataDir>/anywhere.json` (0600): on, how, port, url, since, handle, metrics port, the check
+  string, the follow secrets, what was last published.
+- Restarts: a starting Ducter adopts the running tunnel (alive, a cloudflared by `ps`, same
+  port, `/quicktunnel` still names the saved address) and keeps the address. A dead tunnel is
+  started again at the next look (every 30 s; a quick tunnel then has a new address). Every 5th
+  look, while `/ready`, it fetches `<url>/.well-known/ducter-anywhere` (served before the gate:
+  a random per-home string, CORS open, nothing else); three misses start a fresh tunnel.
+- Off stops the process (or the unit) and forgets the address; the follow secrets are kept, so
+  the devices' key still works when it comes back on.
+
+**Following a new address** (`packages/protocol/src/follow.ts`, one implementation for the
+home, the page and its service worker; Go's twin in `apps/desktop/internal/remote/follow.go`):
+- The home leaves a note at the address relay (`DUCTER_ADDR_RELAY`, default
+  `https://ducter.ai/api/addr`, `off` to keep it home): `POST /put {id, w, d}`, `d` = AES-256-GCM
+  of `{url, at}` under the key, AAD `ducter-addr-v1:<id>`; on every change and every 12 h. The
+  relay (`apps/site/api/addr/[op].ts`, Upstash or memory) stores `{sha256(w), d}` for 30 days,
+  refuses another writer (403), rate-limits by id and by a keyed hash of the caller, answers
+  `GET /get?id=` with CORS open.
+- Paired devices learn `{relay, id, key}` from `GET /api/me` (`follow`). The page keeps it in
+  localStorage and, for the service worker, in IndexedDB (`move`: the device record plus follow).
+- When the home stops answering (the page's socket goes offline, then every 20 s while away),
+  the page asks the relay; it moves only to a note that opens, is newer than the one it followed,
+  is somewhere else, and where `/.well-known/ducter-anywhere` answers; then
+  `location.replace(<new>/app#move=<base64url{token, deviceId, name, follow, at}>)`. The new
+  page takes it, stores it, and `history.replaceState`s the fragment away. The service worker
+  does the same for a navigation the old address can't serve (≥ 500 or no answer) with a 302.
+  In the iPhone app the page posts `{t:"moved", base, entry}`; the app keeps its Keychain token
+  and loads the entry. The page's CSP allows the relay's origin and `https://*.trycloudflare.com`
+  for these two requests.
+- The Mac app connected to a home elsewhere asks `/api/me` once per connection for `follow` and
+  keeps it in its saved connection; after three failed reconnects it asks the relay, rewrites the
+  saved connection and retargets the client; the command line follows (D147).
+
+**Who can get in.** Unchanged (D54/D57): through the tunnel the peer is loopback but the Host is
+`*.trycloudflare.com` and `CF-Connecting-IP`/`X-Forwarded-For` are present, so every request is
+remote and needs a device token; pairing codes are rate limited per caller. Cloudflare terminates
+TLS (said in the detail line). Measured live, research/67 §4–5.
+
+**Verified:** live on a scratch home on a Mac (research/67 §5), and on the Linux VM home in
+`bun run e2e:linux` step 8: cloudflared fetched and checked in the VM, the address reached from
+the Mac through Cloudflare with the client's token, and `systemctl --user restart ducter` kept
+the address (its own unit stayed active). **Not yet:** the relay is not deployed (until then a
+home's notes fail quietly and devices pair again after a reboot); a quick tunnel across a long
+sleep is unmeasured; the Android app has no `moved` handler. `design/todo.md`.
+
 ## Workers (D54; built and verified in two VMs, research/29)
 
 A worker is a machine that runs tasks for a main process elsewhere (a VPS next to a home Mac

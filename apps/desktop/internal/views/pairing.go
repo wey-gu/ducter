@@ -19,9 +19,10 @@ import (
 // here in one small function so the code card's copy can change on its own.
 
 type pairState struct {
-	open    bool
-	asked   time.Time
-	clients int // paired clients when it opened
+	recodeFor string // D228: the address a fresh code was asked for
+	open      bool
+	asked     time.Time
+	clients   int // paired clients when it opened
 	// known are the islands there when the code went out: one that wasn't
 	// is the device that joined.
 	known map[string]bool
@@ -102,7 +103,7 @@ func (a *App) pairSign(c *ui.Context, v view, spot *isle, all []isle, sw, sh flo
 			ui.Text(c, a.L.T("pair.computer", a.S.PersonaName)).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
 			a.commandBoxSized(c, workerCommand(pc.Address, pc.Code), t.XS)
 		} else {
-			ui.Text(c, a.L.T("pair.noaddress")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
+			a.pairNoAddress(c)
 		}
 		ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(800).TextColor(t.Ink)
 	})
@@ -175,4 +176,33 @@ func qrBox(c *ui.Context, rows []string, size float32, ink, paper ui.Color) {
 				}
 			}
 		})
+}
+
+// pairNoAddress: nothing outside reaches this home yet. D228: 在哪儿都能用
+// is one tap away; once it has an address, a fresh code carries it.
+func (a *App) pairNoAddress(c *ui.Context) {
+	t := a.T
+	d := a.devState()
+	any := a.anywhere()
+	if addr := a.reachAddress(); addr != "" && d.pair.recodeFor != addr {
+		d.pair.recodeFor = addr
+		a.S.PairCode = nil
+		a.send(protocol.PairCodeReq{T: "pair_code"})
+		return
+	}
+	switch {
+	case any != nil && any.State == "starting":
+		key := "anywhere.starting"
+		if any.Getting {
+			key = "anywhere.getting"
+		}
+		ui.Text(c, a.L.T(key)).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
+	default:
+		ui.Text(c, a.L.T("pair.noaddress")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
+		if home := a.homeDevice(); home != nil && home.State == protocol.DeviceAwake {
+			if a.button(c, a.L.T("anywhere.turnOnLong"), btnSecondary, t.ControlSM, t.Surface) {
+				a.send(protocol.AbilityReq{T: "ability", Device: home.ID, Ability: protocol.AbilityRemote, On: true})
+			}
+		}
+	}
 }

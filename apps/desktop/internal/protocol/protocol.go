@@ -856,6 +856,15 @@ type AbilityReq struct {
 	Device  string `json:"device"`
 	Ability string `json:"ability"`
 	On      bool   `json:"on"`
+	// Named: the person's own Cloudflare tunnel for 在哪儿都能用 (D228).
+	Named *NamedTunnel `json:"named,omitempty"`
+}
+
+// NamedTunnel is a Cloudflare tunnel of the person's own: its token and the
+// hostname it serves (D228).
+type NamedTunnel struct {
+	Token   string `json:"token"`
+	Address string `json:"address"`
 }
 
 // PairCodeReq asks for a one-time pairing code (远程打开 / Reach from
@@ -1437,6 +1446,33 @@ type ReachClient struct {
 type Reach struct {
 	Address string        `json:"address,omitempty"`
 	Clients []ReachClient `json:"clients"`
+	// Anywhere is 在哪儿都能用 / From anywhere on the home (D228); nil = off.
+	Anywhere *Anywhere `json:"anywhere,omitempty"`
+}
+
+// Anywhere: How is "own" (an address the person set up, D143), "tunnel"
+// (Ducter's free Cloudflare tunnel; Moves: the address changes when the
+// computer restarts) or "named" (their own Cloudflare tunnel). State is
+// "starting" (Getting: fetching the tunnel program the first time),
+// "on" or "failed" (Reason: download, cloudflare, unsupported, failed).
+type Anywhere struct {
+	How     string  `json:"how"`
+	State   string  `json:"state"`
+	Getting bool    `json:"getting,omitempty"`
+	Moves   bool    `json:"moves,omitempty"`
+	Reason  string  `json:"reason,omitempty"`
+	Detail  string  `json:"detail,omitempty"`
+	Since   string  `json:"since,omitempty"`
+	Follow  *Follow `json:"follow,omitempty"`
+}
+
+// Follow is how a paired device finds its home again when the tunnel's
+// address changes: the address relay, the note's id, the key that opens it
+// (D228, packages/protocol/src/follow.ts).
+type Follow struct {
+	Relay string `json:"relay"`
+	ID    string `json:"id"`
+	Key   string `json:"key"`
 }
 
 // ClientFrame is any client -> server frame, decoded by its tag (for the

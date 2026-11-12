@@ -434,7 +434,7 @@ async function anywhere() {
   // notes whether TUNNEL_TOKEN reached it (it can't make the address answer from outside).
   await vm(`mkdir -p ~/e2e && cat > ~/e2e/fake-cloudflared <<'FAKE'
 #!/bin/bash
-port=$(echo "$@" | sed -n 's/.*--metrics 127.0.0.1:\([0-9]*\).*/\1/p')
+port=""; prev=""; for a in "$@"; do [ "$prev" = "--metrics" ] && port="\${a##*:}"; prev="$a"; done
 [ -n "$TUNNEL_TOKEN" ] && echo seen > ~/e2e/token-seen
 exec python3 -c "
 import http.server

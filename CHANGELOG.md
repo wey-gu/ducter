@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.0.30
+
+<!-- whats-new
+zh: 通过 OOMOL 连的日历也能读了，日程卡正常显示
+en: Calendars connected through OOMOL read again, with the day card
+zh: 读不到日历时直接告诉你，不再瞎猜
+en: When a calendar can't be read, it says so instead of guessing
+-->
+
+**Calendars through OOMOL**
+- With accounts hosted by OOMOL, Ducter asked the Gmail app for calendar reads, so every read was
+  refused. It now asks each account's calendar app, and the day card and change card show.
+- If a calendar can't be read, Ducter says so in one line and offers no guessed free time; calendar
+  changes only go through the calendar's own card.
+
+**Heads-ups**
+- Watching chat no longer retries an action OOMOL doesn't have every ten minutes.
+
 ## 0.0.29
 
 <!-- whats-new

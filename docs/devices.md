@@ -88,7 +88,8 @@ Google account, install the apps you want, and sign in to them. Ducter can't see
 it's your turn. Tap **Done** when you're finished.
 
 **Asking for something.** Just say it, such as *"Use your phone to check my orders in the app"*.
-The task works on the phone; you can watch it from the task (**Watch it use the phone**) or from
+The task works on the phone; you can watch it from the task (**Watch it use the phone** opens it
+beside the task, in the Workbench's **Phone** page) or from
 the card (**Watch**), and take a turn with **My turn** and **Hand it back**, as with
 [Ducter's browser](#browsing-the-web-on-a-server).
 

@@ -110,7 +110,7 @@ update; those still need hel and a real Mac before a release.
 | `macos` | macos-15 (arm64) | Imports the Developer ID `.p12` into a throwaway keychain (`scripts/ci/import-certificate.sh`), writes the API key `.p8`, runs `scripts/make-app.sh` with `DUCTER_REQUIRE_NOTARIZATION=1`. That script signs inside out with the hardened runtime, notarizes the app and the DMG with the API key, staples both, and checks them with `spctl`. The job checks the DMG again and uploads `Ducter-X-arm64.dmg`. |
 | `linux` | ubuntu | `scripts/install.sh --linux` builds `bun-linux-arm64` and `bun-linux-x64` with build.sh's pinned Bun 1.4.4. It smoke-runs the x64 binary, then packs `ducter-X-linux-{arm64,x64}.tar.gz`. Each tarball unpacks to one folder holding `ducter` and `install.sh`. |
 | `android` | ubuntu | `apps/android`: unit tests, then `./gradlew assembleRelease` signed with the release key from secrets (D181); `aapt2` checks package and versionName, `apksigner` that the certificate is not a debug key and equals the `ANDROID_CERT_SHA256` variable. Uploads `Ducter-X-android.apk`, which the app's updater looks for by that name. Skips with a warning while `ANDROID_KEYSTORE_BASE64` isn't set. [android.md](android.md) |
-| `ios` | macos-26 (Xcode 26) | `scripts/ci/testflight.sh`: xcodegen (unless the project is committed), `xcodebuild archive`, then `-exportArchive` with `destination=upload`. Marketing version is the tag without its suffix; the build number is `run_number.run_attempt`. It skips with a notice when `apps/ios` isn't on the tagged commit or no key is set, and it never blocks the GitHub Release. |
+| `ios` | macos-26 (Xcode 26) | `scripts/ci/testflight.sh`: xcodegen (unless the project is committed), an unsigned `xcodebuild archive` that is then ad-hoc signed with its entitlements, then `-exportArchive` with `destination=upload`, which signs with the cloud-managed Apple Distribution certificate. No run creates or revokes a certificate (D221). Marketing version is the tag without its suffix; the build number is `run_number.run_attempt`. It skips with a notice when `apps/ios` isn't on the tagged commit or no key is set, and it never blocks the GitHub Release. |
 | `release` | ubuntu | Writes `SHA256SUMS.txt`. Notes come from the `## X` section of `CHANGELOG.md` if there is one (its whats-new block is what the cards show; a section without one gets a warning), otherwise from the commit subjects since the previous `v*` tag (`scripts/ci/release-notes.sh`). The release is created as a draft, the files are uploaded, then it is published. |
 
 Only Apple silicon gets a DMG for now. An Intel build would add a `macos-15-intel` job running
@@ -220,20 +220,30 @@ The team id `JMU55RJW2K` is not secret. It is set in the workflow and in `apps/i
 Integrations > App Store Connect API > Team Keys > Generate API Key. Name it (e.g. "Ducter
 CI") and pick the role **Admin**. Download the `.p8`; Apple lets you download it once only.
 Note the Key ID and the Issuer ID. Roles: Developer is enough to notarize, App Manager is enough
-to upload a build signed elsewhere, and CI's automatic signing creates a cloud-managed Apple
-Distribution certificate, which needs Admin. If an iOS run fails with a "Cloud signing
+to upload a build signed elsewhere, and CI's export signs with the team's cloud-managed Apple
+Distribution certificate (Xcode makes it once if the team has none), which needs Admin. If an iOS run fails with a "Cloud signing
 permission error", the key is not Admin.
 
 ## Why TestFlight goes through `xcodebuild -exportArchive`
 
-CI signs with Xcode's automatic signing, authenticated by the API key
-(`-allowProvisioningUpdates -authenticationKeyPath/ID/IssuerID`), and exports with
-`method=app-store-connect` and `destination=upload`. That one command does the App Store
-signing and the upload, the same path as Organizer's "Distribute App > TestFlight". No
-distribution `.p12`, no `.mobileprovision`, and no fastlane match repo live in secrets, so
-nothing in CI expires or needs rotating except the key itself. Apple's tooling points uploads at
-Xcode, Transporter, or the App Store Connect API (altool's notarization was retired in 2023).
-`xcodebuild` is the one already on the runner.
+CI archives the app unsigned, then ad-hoc signs each bundle (`codesign -s -`, no identity) with
+its entitlements file, its `$(…)` references resolved from the project's build settings, so the
+archive keeps the push and keychain-group entitlements. The export uses Xcode's automatic
+signing, authenticated by the API key (`-allowProvisioningUpdates -authenticationKeyPath/ID/IssuerID`),
+with `method=app-store-connect` and `destination=upload`: it re-signs with the team's
+cloud-managed Apple Distribution certificate and an App Store profile and uploads, the same path
+as Organizer's "Distribute App > TestFlight". No distribution `.p12`, no `.mobileprovision`, and
+no fastlane match repo live in secrets, so nothing in CI expires or needs rotating except the key
+itself. Apple's tooling points uploads at Xcode, Transporter, or the App Store Connect API
+(altool's notarization was retired in 2023). `xcodebuild` is the one already on the runner.
+
+**Why not sign the archive automatically too (D221).** Automatic signing at archive time signs
+with an Apple Development identity. A fresh runner has none, so every run made a new "Created
+via API" Development certificate, owned by the key and not a person (Apple's mail names its
+owner "null null"); runs until v0.0.28 also revoked the previous run's one before archiving,
+which sent that mail on every release. The archive's signature is thrown away at export anyway,
+so it needs no identity at all. To check the path without a release, run `ios.yml` by hand with
+`testflight=true` (internal testers only, no Public Beta).
 
 - *Tradeoff:* it needs an Admin key.
 - *Fallback (Mem's path):* export with `destination=export`, then run

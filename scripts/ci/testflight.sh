@@ -6,15 +6,20 @@
 #   ASC_KEY_ID=… ASC_ISSUER_ID=… ASC_API_KEY_BASE64=…  (or ASC_KEY_PATH=…/AuthKey_….p8) \
 #   scripts/ci/testflight.sh [IOS_DIR]
 #
-#   DUCTER_TESTFLIGHT_DRY_RUN=1   archive unsigned and stop: proves the Release build compiles,
-#                                 needs no key and touches no Apple account.
+#   DUCTER_TESTFLIGHT_DRY_RUN=1   archive and ad-hoc sign, then stop: proves the Release build
+#                                 compiles and its entitlements resolve, needs no key and touches
+#                                 no Apple account.
 #   DUCTER_TESTFLIGHT_PUBLIC=0    upload only: don't add it to "Public Beta" or submit it for review.
 #
-# Signing is Xcode's automatic signing with the API key (-allowProvisioningUpdates plus
-# -authenticationKey*): Xcode registers the App ID and its Push capability if needed, makes a
-# cloud-managed Apple Distribution certificate and an App Store profile, and the export with
-# destination=upload sends the build to App Store Connect, the same path as Organizer's
-# "Distribute App > TestFlight". No .p12 or .mobileprovision lives in secrets. Cloud-managed
+# Signing touches no certificate (D221). The archive is built unsigned and then ad-hoc signed
+# ("-", no identity) with each bundle's entitlements resolved from the project, so it carries the
+# push and keychain-group entitlements without a signing identity. The export is Xcode's automatic
+# signing with the API key (-allowProvisioningUpdates plus -authenticationKey*): it re-signs with
+# the team's cloud-managed Apple Distribution certificate and an App Store profile, and with
+# destination=upload sends the build to App Store Connect, the path of Organizer's "Distribute App
+# > TestFlight". No .p12 or .mobileprovision lives in secrets. Archiving with automatic signing
+# instead would make a new Apple Development certificate on every throwaway runner, and Apple
+# revokes the oldest when the account fills (the "null null" revocation mail). Cloud-managed
 # certificates need the key's role to be Admin (design/release/README.md).
 set -eu
 
@@ -62,13 +67,58 @@ set -- -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
   MARKETING_VERSION="$MARKETING_VERSION" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   DEVELOPMENT_TEAM="$TEAM"
 
+ARCHIVE="$WORK/$SCHEME.xcarchive"
+APP="$ARCHIVE/Products/Applications/$SCHEME.app"
+
+# Ad-hoc signs every bundle in the archive, innermost first, each with its target's entitlements
+# file with $(VAR) references resolved from the build settings. Export re-signs them for the App
+# Store and keeps these entitlements (aps-environment becomes "production" there).
+adhoc_sign() {
+  xcodebuild -showBuildSettings -project "$PROJECT" -alltargets -configuration Release \
+    DEVELOPMENT_TEAM="$TEAM" 2>/dev/null >"$WORK/settings.txt"
+  find "$APP" -depth \( -name '*.framework' -o -name '*.dylib' -o -name '*.appex' -o -name '*.app' \) |
+  while IFS= read -r bundle; do
+    name="$(basename "$bundle")"
+    # This bundle's target: the settings block whose FULL_PRODUCT_NAME is the bundle's name.
+    awk -v want="$name" '
+      /^Build settings for / { if (hit) exit; blk = "" }
+      { blk = blk $0 "\n" }
+      /^ +FULL_PRODUCT_NAME = / { if ($3 == want) hit = 1 }
+      END { if (hit) printf "%s", blk }' "$WORK/settings.txt" >"$WORK/target.txt"
+    ent="$(sed -n 's/^ *CODE_SIGN_ENTITLEMENTS = //p' "$WORK/target.txt")"
+    if [ -z "$ent" ]; then
+      codesign --force --sign - --timestamp=none "$bundle"
+      continue
+    fi
+    src="$(sed -n 's/^ *SRCROOT = //p' "$WORK/target.txt")"
+    bid="$(sed -n 's/^ *PRODUCT_BUNDLE_IDENTIFIER = //p' "$WORK/target.txt")"
+    out="$WORK/$name.entitlements"
+    cp "$src/$ent" "$out"
+    # $(AppIdentifierPrefix) and $(TeamIdentifierPrefix) come from the profile in a normal build.
+    sed -i '' -e "s/\$(AppIdentifierPrefix)/$TEAM./g" -e "s/\$(TeamIdentifierPrefix)/$TEAM./g" "$out"
+    for var in $(grep -o '\$([A-Za-z0-9_]*)' "$out" | sort -u | tr -d '$()'); do
+      val="$(sed -n "s/^ *$var = //p" "$WORK/target.txt" | head -n 1)"
+      [ -n "$val" ] || { echo "entitlements of $name: \$($var) has no value" >&2; exit 1; }
+      sed -i '' "s|\$($var)|$val|g" "$out"
+    done
+    /usr/libexec/PlistBuddy -c "Add :application-identifier string $TEAM.$bid" \
+      -c "Add :com.apple.developer.team-identifier string $TEAM" "$out" >/dev/null
+    codesign --force --sign - --timestamp=none --generate-entitlement-der --entitlements "$out" "$bundle"
+  done
+  codesign --verify --deep --strict "$APP"
+  codesign -d --entitlements - --xml "$APP" 2>/dev/null | plutil -p - | grep -q aps-environment ||
+    { echo "the ad-hoc signed app lost its entitlements" >&2; exit 1; }
+}
+
+echo "archiving $SCHEME $MARKETING_VERSION ($BUILD_NUMBER), unsigned"
+xcodebuild archive "$@" CODE_SIGNING_ALLOWED=NO -quiet
+adhoc_sign
+echo "ad-hoc signed with entitlements; no certificate used"
+
 if [ "$DRY" = 1 ]; then
-  echo "dry run: unsigned archive of $SCHEME $MARKETING_VERSION ($BUILD_NUMBER)"
-  xcodebuild archive "$@" CODE_SIGNING_ALLOWED=NO -quiet
-  plist="$WORK/$SCHEME.xcarchive/Products/Applications/$SCHEME.app/Info.plist"
   /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' -c 'Print CFBundleShortVersionString' \
-    -c 'Print CFBundleVersion' "$plist"
-  echo "dry run OK: nothing signed, nothing uploaded"
+    -c 'Print CFBundleVersion' "$APP/Info.plist"
+  echo "dry run OK: nothing signed for distribution, nothing uploaded"
   exit 0
 fi
 
@@ -81,14 +131,6 @@ if [ -z "$KEY" ]; then
 fi
 grep -q 'BEGIN PRIVATE KEY' "$KEY" || { echo "the App Store Connect key is not a .p8 private key" >&2; exit 1; }
 AUTH="-allowProvisioningUpdates -authenticationKeyPath $KEY -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
-
-# Each run's automatic signing makes a Development certificate the throwaway runner then loses;
-# clear the ones past runs left before the account fills up (scripts/ci/prune-dev-certs.ts).
-ASC_KEY_PATH="$KEY" bun "$ROOT/scripts/ci/prune-dev-certs.ts" || true
-
-echo "archiving $SCHEME $MARKETING_VERSION ($BUILD_NUMBER)"
-# shellcheck disable=SC2086
-xcodebuild archive "$@" CODE_SIGN_STYLE=Automatic $AUTH -quiet
 
 cat >"$WORK/ExportOptions.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -113,7 +155,7 @@ EOF
 
 echo "signing for the App Store and uploading to App Store Connect"
 # shellcheck disable=SC2086
-xcodebuild -exportArchive -archivePath "$WORK/$SCHEME.xcarchive" \
+xcodebuild -exportArchive -archivePath "$ARCHIVE" \
   -exportOptionsPlist "$WORK/ExportOptions.plist" -exportPath "$WORK/export" $AUTH
 
 echo "uploaded $SCHEME $MARKETING_VERSION ($BUILD_NUMBER). App Store Connect processes it for"
@@ -123,7 +165,7 @@ echo "TestFlight in about 5-15 minutes; internal testers get it as soon as it is
 # App Review (scripts/ci/testflight-beta.ts). A problem there is a warning, never a failed release.
 if [ "${DUCTER_TESTFLIGHT_PUBLIC:-1}" = 1 ]; then
   BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' \
-    "$WORK/$SCHEME.xcarchive/Products/Applications/$SCHEME.app/Info.plist" 2>/dev/null || true)"
+    "$APP/Info.plist" 2>/dev/null || true)"
   if command -v bun >/dev/null 2>&1 && [ -n "$BUNDLE_ID" ]; then
     ASC_KEY_PATH="$KEY" bun "$ROOT/scripts/ci/testflight-beta.ts" "$BUNDLE_ID" "$MARKETING_VERSION" "$BUILD_NUMBER" || true
   else

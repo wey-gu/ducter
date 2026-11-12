@@ -7,11 +7,12 @@
 //                    save that refuses when the agent wrote the file in between;
 //   预览 / Preview   a page it serves (a dev server), framed from an address of its own;
 //   浏览器 / Browser Ducter's own browser while it uses it (the live view, D190);
-//   手机 / Phone     the phone it uses (a screen registered by the phone-use view);
+//   手机 / Phone     the phone it uses (a screen registered by the phone-use view), and an iOS
+//                    Simulator booted on its computer when that is its business (D220, sim.tsx);
 //   成果 / Results   what it made: pictures, links and files it showed.
 // Everything is asked for only while the workbench is open and the page is in sight (D209).
 import type { EvidenceRef, MediaRef } from "@ducter/protocol";
-import type { WbAnswer, WbChange, WbEntry, WbError, WbPort, WbRequest } from "@ducter/protocol/src/workbench.ts";
+import type { WbAnswer, WbChange, WbEntry, WbError, WbPort, WbRequest, WbSim } from "@ducter/protocol/src/workbench.ts";
 import { WB_HEAVY } from "@ducter/protocol/src/workbench.ts";
 import type { ComponentChildren, JSX } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
@@ -22,6 +23,7 @@ import { LiveView, liveSize } from "./live.tsx";
 import { MediaBlock } from "./media.tsx";
 import { attention, browsing, finished, placeOf, reportOf, resultEvidence, type Task } from "./store.ts";
 import { computerName } from "./where.ts";
+import { SimScreen } from "./sim.tsx";
 import { screenFor } from "./workbench-screens.ts";
 import { ask, wbSender } from "./workbench-ask.ts";
 
@@ -79,6 +81,10 @@ interface Data {
   preview?: { port: number; url?: string; base?: string; reach?: "yes" | "no"; width: "phone" | "tablet" | "fill"; nonce: number };
   asking?: string;
   revert?: string;
+  /** D220: booted iOS Simulators on its computer that are this task's business. */
+  sims?: WbSim[];
+  /** The screen shown on the Phone page when there is more than one: "phone" (Ducter's) or a simulator's udid. */
+  screen?: string;
 }
 const store = new Map<string, Data>();
 export const dataOf = (id: string): Data => {
@@ -110,7 +116,7 @@ export function tabsOf(task: Task): BenchTab[] {
   if (d.ports?.length) out.push("preview");
   const live = A.live?.watch && A.live.taskId === task.id;
   if (live || (!finished(task) && !!A.S.onHand?.tasks.find((c) => c.taskId === task.id)?.browsing)) out.push("browser");
-  if (screenFor("phone", task)) out.push("phone");
+  if (screenFor("phone", task) || d.sims?.length) out.push("phone");
   const m = made(task);
   if (m.media.length || m.links.length) out.push("made");
   return out;
@@ -148,6 +154,13 @@ export function toggleBench(taskId: string, on = benchShown.taskId !== taskId) {
   }
   keep();
   A.changed();
+}
+
+/** Opens the workbench at a page (the head's Watch, the working copy's changes). */
+export function openBenchAt(task: Task, tab: BenchTab) {
+  bench.tab = tab;
+  if (benchShown.taskId !== task.id) toggleBench(task.id, true);
+  else showTab(task, tab);
 }
 
 export function showTab(task: Task, tab: BenchTab) {
@@ -214,6 +227,17 @@ async function loadPorts(task: Task) {
     // Pages are a bonus: an older computer, or one away, just shows none.
   }
 }
+async function loadSims(task: Task) {
+  const d = dataOf(task.id);
+  try {
+    const a = (await ask(task.id, { op: "sims" })) as Extract<WbAnswer, { op: "sims" }>;
+    const before = JSON.stringify(d.sims ?? []);
+    d.sims = a.sims;
+    if (before !== JSON.stringify(a.sims)) A.changed();
+  } catch {
+    // An older computer, one away, or no Xcode: no simulator, nothing said.
+  }
+}
 async function openFile(task: Task, path: string, keepDraft = false) {
   const d = dataOf(task.id);
   const prev = d.file?.path === path ? d.file : undefined;
@@ -250,6 +274,8 @@ const PanelMark = ({ on }: { on: boolean }) => (
 export function BenchToggle({ task }: { task: Task }) {
   // Pages appear as the task gets something to show: its ports are looked for once here.
   useEffect(() => void (A.S.welcomed && hasFiles(task) && !dataOf(task.id).ports && loadPorts(task)), [task.id, A.S.welcomed]);
+  // D220: and the simulators that are its business, once (a computer with none answers at once).
+  useEffect(() => void (A.S.welcomed && !dataOf(task.id).sims && loadSims(task)), [task.id, A.S.welcomed]);
   if (!benchable(task)) return null;
   const on = benchShown.taskId === task.id;
   return (
@@ -286,7 +312,8 @@ export function Workbench({ task, sheet }: { task: Task; sheet?: boolean }) {
   // Pages it serves come and go: looked for while open and in sight.
   useEffect(() => {
     void loadPorts(task);
-    const id = setInterval(() => document.visibilityState !== "hidden" && loadPorts(task), finished(task) ? 20_000 : 7_000);
+    void loadSims(task);
+    const id = setInterval(() => document.visibilityState !== "hidden" && (loadPorts(task), loadSims(task)), finished(task) ? 20_000 : 7_000);
     return () => clearInterval(id);
   }, [task.id, finished(task)]);
   // On the phone the pages swipe; the strip follows the page in view.
@@ -951,10 +978,11 @@ function viaBrowser(task: Task, port: number) {
 // ---------- 浏览器 / Browser, 手机 / Phone: one screen frame ----------
 
 /** One frame for every screen the task drives (Ducter's browser, a phone, a computer): who is driving, then the screen. */
-export function Screen({ driver, where, children }: { driver: "agent" | "you" | "idle"; where?: string; children: ComponentChildren }) {
+export function Screen({ driver, where, head, children }: { driver: "agent" | "you" | "idle"; where?: string; head?: ComponentChildren; children: ComponentChildren }) {
   return (
     <div class={`screen drive-${driver}`}>
       <div class="screen-head">
+        {head}
         {driver !== "idle" && (
           <span class={`driver ${driver}`} role="status">
             <span class="driver-mark" aria-hidden="true" />
@@ -988,12 +1016,36 @@ function BrowserPage({ task }: { task: Task }) {
   );
 }
 
+/** Ducter's phone while the task uses it, and the simulators that are its business (D220). With
+ *  more than one, a choice of screens above; each screen in the same frame. */
 function PhonePage({ task }: { task: Task }) {
-  const S = screenFor("phone", task);
-  if (!S) return null;
+  const d = dataOf(task.id);
+  const P = screenFor("phone", task);
+  const sims = d.sims ?? [];
+  const keys = [...(P ? ["phone"] : []), ...sims.map((x) => x.udid)];
+  const on = d.screen && keys.includes(d.screen) ? d.screen : keys[0];
+  if (!on) return null;
+  const sim = sims.find((x) => x.udid === on);
+  const where = computerName(placeOf(task).device);
+  const pick = keys.length > 1 && (
+    <div class="seg sm screens" role="radiogroup" aria-label={t("wb.screens")}>
+      {keys.map((k) => (
+        <button key={k} role="radio" aria-checked={k === on} class={k === on ? "on" : ""} onClick={() => ((d.screen = k), A.changed())}>
+          {k === "phone" ? t("wb.phone.ducter") : sims.find((x) => x.udid === k)?.name}
+        </button>
+      ))}
+    </div>
+  );
+  if (sim)
+    return (
+      <Screen driver="idle" where={[sim.name, sim.os, t("wb.sim.on", where)].filter(Boolean).join(" · ")} head={pick}>
+        <SimScreen task={task} sim={sim} where={where} active={tabOf(task) === "phone" && benchShown.taskId === task.id} onSim={(s) => ((d.sims = sims.map((x) => (x.udid === s.udid ? s : x))), A.changed())} />
+      </Screen>
+    );
+  const Phone = P!;
   return (
-    <Screen driver="agent">
-      <S task={task} />
+    <Screen driver="agent" head={pick}>
+      <Phone task={task} active={tabOf(task) === "phone" && benchShown.taskId === task.id} />
     </Screen>
   );
 }

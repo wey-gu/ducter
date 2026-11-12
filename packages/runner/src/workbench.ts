@@ -24,6 +24,11 @@ import {
   type WbRequest,
 } from "@ducter/protocol/src/workbench.ts";
 import { git } from "./places.ts";
+import { createSims, holdsApp, type Sims } from "./sim.ts";
+
+let sims: Sims | undefined;
+/** This computer's simulators (one per process: their list is cached for a moment). */
+const defaultSims = () => (sims ??= createSims());
 
 export class WbFail extends Error {
   constructor(readonly code: WbError, message?: string) {
@@ -43,6 +48,8 @@ export interface WbCtx {
   exclude?: number[];
   /** Ports the task's own output named (the home reads them from the Log). */
   said?: number[];
+  /** D220: the task's own output touched an iOS Simulator (the home reads it from the Log). */
+  simSaid?: boolean;
 }
 
 const real = (p: string) => {
@@ -468,6 +475,7 @@ export async function wbOp(
   o: {
     folder?: () => Promise<{ files: { kind: string; path: string; from?: string; dir?: boolean }[]; more: number } | undefined>;
     undo?: (path: string) => Promise<{ ok: boolean; message: string }>;
+    sims?: Sims;
   } = {},
 ): Promise<WbAnswer> {
   switch (req?.op) {
@@ -493,6 +501,20 @@ export async function wbOp(
     }
     case "ports":
       return portsOf(ctx);
+    // D220: simulators are this task's business only when it touched one or holds an iOS app.
+    case "sims": {
+      const sims = o.sims ?? defaultSims();
+      if (!(await sims.booted()).length) return { op: "sims", sims: [] };
+      let app = false;
+      try {
+        app = holdsApp(rootOf(ctx));
+      } catch {}
+      return { op: "sims", sims: ctx.simSaid || app ? await sims.list() : [] };
+    }
+    case "sim_frame":
+      return (o.sims ?? defaultSims()).frame(req.udid, req.edge);
+    case "sim_act":
+      return (o.sims ?? defaultSims()).act(req.udid, req.act, req.value);
     default:
       throw new WbFail("unsupported");
   }
@@ -512,6 +534,7 @@ export interface WbCall {
   req: WbRequest;
   said?: number[];
   exclude?: number[];
+  simSaid?: boolean;
 }
 
 /** A request for a task's page, carried to the computer it runs on (a worker's preview). */
@@ -545,7 +568,7 @@ export function wbHost(o: { dataDir: string; folders: FolderLike }) {
   const pages = new Map<string, Set<number>>();
   const ctxOf = (a: WbCall): WbCtx => {
     const copy = join(o.dataDir, "snapshots", a.taskId.replace(/[^\w-]/g, "_"), "copy");
-    return { taskId: a.taskId, cwd: a.cwd, place: a.place, dataDir: o.dataDir, ...(existsSync(copy) ? { copy } : {}), ...(a.exclude ? { exclude: a.exclude } : {}), ...(a.said ? { said: a.said } : {}) };
+    return { taskId: a.taskId, cwd: a.cwd, place: a.place, dataDir: o.dataDir, ...(existsSync(copy) ? { copy } : {}), ...(a.exclude ? { exclude: a.exclude } : {}), ...(a.said ? { said: a.said } : {}), ...(a.simSaid ? { simSaid: true } : {}) };
   };
   return {
     async op(a: WbCall): Promise<WbAnswer> {

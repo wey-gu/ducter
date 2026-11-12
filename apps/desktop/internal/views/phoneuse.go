@@ -40,6 +40,8 @@ type phoneUseState struct {
 	downY    float64
 	downAt   time.Time
 	lastTurn bool
+	// inBench: the task whose workbench drew the live view this frame (D220).
+	inBench string
 }
 
 // OpenPhone opens the live view: mode watch (a task's turn), takeover (the
@@ -496,6 +498,12 @@ func (a *App) phoneView(c *ui.Context) {
 		c.After(liveDoingFor - a.Now().Sub(pv.DoingAt))
 	}
 	title := a.L.T("phoneuse.title")
+	// D220: watching a task from its workbench's Phone page: the page draws it.
+	if a.pu.inBench != "" && pv.Mode == "watch" && pv.TaskID == a.pu.inBench {
+		a.pu.inBench = ""
+		return
+	}
+	a.pu.inBench = ""
 	ui.Column(c.Key("phone-live")).Absolute().Left(0).Top(0).Right(0).Bottom(0).ZIndex(2000).Background(t.Bg).
 		Role(ui.RoleDialog).Label(title).Children(func() {
 		a.chrome(c, "phone-live", func() {
@@ -522,149 +530,157 @@ func (a *App) phoneView(c *ui.Context) {
 				a.ClosePhone(false)
 			}
 		})
-		if mine && pv.Mode != "signin" {
-			w := t.State("blocked")
-			ui.Row(c.Key("phone-band")).Gap(6).Justify(ui.Center).AlignItems(ui.Center).Padding(t.S2, t.S4).Background(w.Surface).Role(ui.RoleStatus).Children(func() {
-				a.glyph(c, 14, drawEyeShut(w.Ink))
-				ui.Text(c, a.L.T("phoneuse.yourturn")).FontSize(t.SM).TextColor(w.Ink)
-			})
-		}
-		ui.Row(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(t.S3, t.S3).Background(t.SurfaceSunken).Children(func() {
-			if a.pu.bmp == nil || pv.State != "open" {
-				line := a.L.T("phoneuse.opening")
-				if pv.State == "starting" {
-					line = a.L.T("phoneuse.starting")
-				}
-				c.After(500 * time.Millisecond)
-				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted)
-				return
-			}
-			// The screen at its own shape, as tall as there's room for.
-			avail := a.winH - ChromeH - 160
-			if mine {
-				avail -= 48
-			}
-			ph := float32(math.Max(240, float64(avail)))
-			pw := ph * float32(pv.Width) / float32(max(1, pv.Height))
-			scr := ui.Image(c.Key("phone-screen"), a.pu.bmp).Size(pw, ph).Shrink(1).Radius(t.RadiusXL).Focusable().AutoFocus().Cursor(ui.CursorDefault)
-			if !mine {
-				return
-			}
-			r := scr.Bounds()
-			frac := func(x, y float32) (float64, float64) {
-				if r.W <= 0 || r.H <= 0 {
-					return 0, 0
-				}
-				return float64(x / r.W), float64(y / r.H)
-			}
-			scr.HandleInput(func(ev ui.InputEvent) bool {
-				switch ev.Kind {
-				case ui.InputPointerDown:
-					a.pu.down = true
-					a.pu.downX, a.pu.downY = frac(ev.X, ev.Y)
-					a.pu.downAt = a.Now()
-					return true
-				case ui.InputPointerUp:
-					if !a.pu.down {
-						return true
-					}
-					a.pu.down = false
-					x, y := frac(ev.X, ev.Y)
-					ms := int(a.Now().Sub(a.pu.downAt) / time.Millisecond)
-					if math.Abs(x-a.pu.downX) > 0.02 || math.Abs(y-a.pu.downY) > 0.015 {
-						a.phoneInput(protocol.PhoneInput{Kind: "swipe", X1: a.pu.downX, Y1: a.pu.downY, X2: x, Y2: y, Ms: min(800, max(120, ms))})
-					} else {
-						a.phoneInput(protocol.PhoneInput{Kind: "tap", X: x, Y: y, Long: ms > 550})
-					}
-					return true
-				case ui.InputScroll:
-					x, _ := frac(ev.X, ev.Y)
-					dy := math.Max(-0.4, math.Min(0.4, float64(ev.DY)/1200))
-					a.phoneInput(protocol.PhoneInput{Kind: "swipe", X1: x, Y1: 0.5 + dy/2, X2: x, Y2: 0.5 - dy/2, Ms: 200})
-					return true
-				case ui.InputText:
-					if ev.Text == "" {
-						return true
-					}
-					a.phoneInput(protocol.PhoneInput{Kind: "text", Text: ev.Text})
-					return true
-				case ui.InputKeyDown:
-					if ev.Mods&(ui.Cmd|ui.Ctrl) != 0 {
-						return false
-					}
-					switch ev.Key {
-					case ui.KeyEnter:
-						a.phoneInput(protocol.PhoneInput{Kind: "key", Key: "enter"})
-					case ui.KeyBackspace:
-						a.phoneInput(protocol.PhoneInput{Kind: "key", Key: "delete"})
-					case ui.KeyEscape:
-						a.phoneInput(protocol.PhoneInput{Kind: "key", Key: "back"})
-					default:
-						return false
-					}
-					return true
-				}
-				return false
-			}).TextCaret(ui.Rect{X: 0, Y: 0, W: 1, H: 16})
+		a.phoneBody(c, pv, mine, doing, title, float32(a.winH-ChromeH-160))
+	})
+}
+
+// phoneBody is the live view under its title: the band in the user's turn,
+// the screen, the phone's keys, then the calm line and the turn's button.
+// The full-window view and the workbench's Phone page (D220) both draw it;
+// avail is the height the screen may take.
+func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *protocol.LiveDoing, title string, avail float32) {
+	t := a.T
+	if mine && pv.Mode != "signin" {
+		w := t.State("blocked")
+		ui.Row(c.Key("phone-band")).Gap(6).Justify(ui.Center).AlignItems(ui.Center).Padding(t.S2, t.S4).Background(w.Surface).Role(ui.RoleStatus).Children(func() {
+			a.glyph(c, 14, drawEyeShut(w.Ink))
+			ui.Text(c, a.L.T("phoneuse.yourturn")).FontSize(t.SM).TextColor(w.Ink)
 		})
-		if mine && pv.State == "open" {
-			// The phone's own keys, drawn (never characters).
-			ui.Row(c.Key("phone-keys")).Gap(t.S6).Justify(ui.Center).Padding(t.S1, t.S3).Background(t.SurfaceSunken).Role(ui.RoleGroup).Label(a.L.T("phoneuse.keys")).Children(func() {
-				for _, k := range []string{"back", "home", "recents"} {
-					k := k
-					if a.iconButton(c, a.L.T("phoneuse.key."+k), t.ControlSM, btnText, func(fg ui.Color) func(p *ui.Painter, r ui.Rect) { return drawPhoneKey(k, fg) }) {
-						a.phoneInput(protocol.PhoneInput{Kind: "key", Key: k})
-					}
+	}
+	ui.Row(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(t.S3, t.S3).Background(t.SurfaceSunken).Children(func() {
+		if a.pu.bmp == nil || pv.State != "open" {
+			line := a.L.T("phoneuse.opening")
+			if pv.State == "starting" {
+				line = a.L.T("phoneuse.starting")
+			}
+			c.After(500 * time.Millisecond)
+			ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted)
+			return
+		}
+		// The screen at its own shape, as tall as there's room for.
+		if mine {
+			avail -= 48
+		}
+		ph := float32(math.Max(240, float64(avail)))
+		pw := ph * float32(pv.Width) / float32(max(1, pv.Height))
+		scr := ui.Image(c.Key("phone-screen"), a.pu.bmp).Size(pw, ph).Shrink(1).Radius(t.RadiusXL).Focusable().AutoFocus().Cursor(ui.CursorDefault)
+		if !mine {
+			return
+		}
+		r := scr.Bounds()
+		frac := func(x, y float32) (float64, float64) {
+			if r.W <= 0 || r.H <= 0 {
+				return 0, 0
+			}
+			return float64(x / r.W), float64(y / r.H)
+		}
+		scr.HandleInput(func(ev ui.InputEvent) bool {
+			switch ev.Kind {
+			case ui.InputPointerDown:
+				a.pu.down = true
+				a.pu.downX, a.pu.downY = frac(ev.X, ev.Y)
+				a.pu.downAt = a.Now()
+				return true
+			case ui.InputPointerUp:
+				if !a.pu.down {
+					return true
+				}
+				a.pu.down = false
+				x, y := frac(ev.X, ev.Y)
+				ms := int(a.Now().Sub(a.pu.downAt) / time.Millisecond)
+				if math.Abs(x-a.pu.downX) > 0.02 || math.Abs(y-a.pu.downY) > 0.015 {
+					a.phoneInput(protocol.PhoneInput{Kind: "swipe", X1: a.pu.downX, Y1: a.pu.downY, X2: x, Y2: y, Ms: min(800, max(120, ms))})
+				} else {
+					a.phoneInput(protocol.PhoneInput{Kind: "tap", X: x, Y: y, Long: ms > 550})
+				}
+				return true
+			case ui.InputScroll:
+				x, _ := frac(ev.X, ev.Y)
+				dy := math.Max(-0.4, math.Min(0.4, float64(ev.DY)/1200))
+				a.phoneInput(protocol.PhoneInput{Kind: "swipe", X1: x, Y1: 0.5 + dy/2, X2: x, Y2: 0.5 - dy/2, Ms: 200})
+				return true
+			case ui.InputText:
+				if ev.Text == "" {
+					return true
+				}
+				a.phoneInput(protocol.PhoneInput{Kind: "text", Text: ev.Text})
+				return true
+			case ui.InputKeyDown:
+				if ev.Mods&(ui.Cmd|ui.Ctrl) != 0 {
+					return false
+				}
+				switch ev.Key {
+				case ui.KeyEnter:
+					a.phoneInput(protocol.PhoneInput{Kind: "key", Key: "enter"})
+				case ui.KeyBackspace:
+					a.phoneInput(protocol.PhoneInput{Kind: "key", Key: "delete"})
+				case ui.KeyEscape:
+					a.phoneInput(protocol.PhoneInput{Kind: "key", Key: "back"})
+				default:
+					return false
+				}
+				return true
+			}
+			return false
+		}).TextCaret(ui.Rect{X: 0, Y: 0, W: 1, H: 16})
+	})
+	if mine && pv.State == "open" {
+		// The phone's own keys, drawn (never characters).
+		ui.Row(c.Key("phone-keys")).Gap(t.S6).Justify(ui.Center).Padding(t.S1, t.S3).Background(t.SurfaceSunken).Role(ui.RoleGroup).Label(a.L.T("phoneuse.keys")).Children(func() {
+			for _, k := range []string{"back", "home", "recents"} {
+				k := k
+				if a.iconButton(c, a.L.T("phoneuse.key."+k), t.ControlSM, btnText, func(fg ui.Color) func(p *ui.Painter, r ui.Rect) { return drawPhoneKey(k, fg) }) {
+					a.phoneInput(protocol.PhoneInput{Kind: "key", Key: k})
+				}
+			}
+		})
+	}
+	ui.Row(c).Padding(t.S3, t.S4).Gap(t.S3).Justify(ui.End).AlignItems(ui.Center).Children(func() {
+		switch {
+		case pv.Mode == "signin":
+			ui.Text(c, a.L.T("phoneuse.signin.note")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).Grow(1).MinWidth(0)
+			if a.buttonFor(c, a.L.T("phoneuse.notnow"), title, btnSecondary, t.ControlMD, t.Bg) {
+				a.ClosePhone(false)
+			}
+			if a.buttonFor(c, a.L.T("live.done"), title, btnPrimary, t.ControlMD, t.Bg) {
+				a.ClosePhone(true)
+			}
+		default:
+			line, col := a.L.T("phoneuse.idle"), t.InkMuted
+			if pv.TaskID != "" {
+				line = a.L.T("phoneuse.idle.task")
+			}
+			if doing != nil {
+				line, col = a.phoneDoingWords(doing), t.InkSoft
+			} else if pv.Turn == "you" && !pv.Here {
+				line = a.L.T("live.elsewhere")
+			}
+			if mine {
+				line = ""
+			}
+			ui.Row(c.Key("phone-doing")).Gap(t.S2).AlignItems(ui.Center).Grow(1).MinWidth(0).Role(ui.RoleStatus).Children(func() {
+				if doing != nil {
+					ui.Box(c.Key("phone-pulse")).Size(8, 8).Shrink(0).Radius(4).Background(t.State("working").Dot)
+				}
+				if line != "" {
+					ui.Text(c, line).FontSize(t.SM).TextColor(col).SingleLine()
 				}
 			})
-		}
-		ui.Row(c).Padding(t.S3, t.S4).Gap(t.S3).Justify(ui.End).AlignItems(ui.Center).Children(func() {
 			switch {
-			case pv.Mode == "signin":
-				ui.Text(c, a.L.T("phoneuse.signin.note")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).Grow(1).MinWidth(0)
-				if a.buttonFor(c, a.L.T("phoneuse.notnow"), title, btnSecondary, t.ControlMD, t.Bg) {
+			case mine && (pv.Mode == "watch" || pv.TaskID != ""):
+				if a.buttonFor(c, a.L.T("live.handback"), title, btnPrimary, t.ControlMD, t.Bg) {
+					a.phoneTurn(false)
+				}
+			case mine:
+				if a.buttonFor(c, a.L.T("live.done"), title, btnPrimary, t.ControlMD, t.Bg) {
 					a.ClosePhone(false)
 				}
-				if a.buttonFor(c, a.L.T("live.done"), title, btnPrimary, t.ControlMD, t.Bg) {
-					a.ClosePhone(true)
-				}
 			default:
-				line, col := a.L.T("phoneuse.idle"), t.InkMuted
-				if pv.TaskID != "" {
-					line = a.L.T("phoneuse.idle.task")
-				}
-				if doing != nil {
-					line, col = a.phoneDoingWords(doing), t.InkSoft
-				} else if pv.Turn == "you" && !pv.Here {
-					line = a.L.T("live.elsewhere")
-				}
-				if mine {
-					line = ""
-				}
-				ui.Row(c.Key("phone-doing")).Gap(t.S2).AlignItems(ui.Center).Grow(1).MinWidth(0).Role(ui.RoleStatus).Children(func() {
-					if doing != nil {
-						ui.Box(c.Key("phone-pulse")).Size(8, 8).Shrink(0).Radius(4).Background(t.State("working").Dot)
-					}
-					if line != "" {
-						ui.Text(c, line).FontSize(t.SM).TextColor(col).SingleLine()
-					}
-				})
-				switch {
-				case mine && (pv.Mode == "watch" || pv.TaskID != ""):
-					if a.buttonFor(c, a.L.T("live.handback"), title, btnPrimary, t.ControlMD, t.Bg) {
-						a.phoneTurn(false)
-					}
-				case mine:
-					if a.buttonFor(c, a.L.T("live.done"), title, btnPrimary, t.ControlMD, t.Bg) {
-						a.ClosePhone(false)
-					}
-				default:
-					if a.buttonFor(c, a.L.T("live.myturn"), title, btnPrimary, t.ControlMD, t.Bg) {
-						a.phoneTurn(true)
-					}
+				if a.buttonFor(c, a.L.T("live.myturn"), title, btnPrimary, t.ControlMD, t.Bg) {
+					a.phoneTurn(true)
 				}
 			}
-		})
+		}
 	})
 }
 

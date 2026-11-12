@@ -106,11 +106,25 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
   a command beside the agent, or a task's dev server log is needed. (3) Comments on diff lines and
   on the preview, sent with the next words as chips (Conductor, Codex). Trigger: the first review
   of a real task's diff in the workbench. (4) Per-hunk revert and "this turn" as a scope (Codex).
-  (5) The Mac: resizing the column, Results and Phone pages, an embedded preview (a web view).
-  (6) The phone-use view registers with `registerScreen("phone", …)` (`apps/web/src/workbench-screens.ts`);
-  computer use (the agent driving a desktop) gets the same Screen frame once Ducter streams it.
+  (5) The Mac: resizing the column, the Results page, an embedded preview (a web view).
+  (6) Computer use (the agent driving a desktop) gets the same Screen frame once Ducter streams it.
   (7) Verify the phone sheet in the iOS Simulator and on Android; a single-HTTPS home's Preview
   through Ducter's browser on hel.
+- [ ] **D220, the simulator and the working copy**: (1) **Taps, swipes and typing on the
+  simulator.** simctl has none; every route loads Xcode's private CoreSimulator / SimulatorKit
+  frameworks (idb, AXe, serve-sim; T3 Code installs npm tools after a consent step). Decide between
+  a consented install like D217's phone and a small helper of Ducter's own built against the
+  user's Xcode, with its version pinned per Xcode. Trigger: the author asks to tap in the
+  simulator from Ducter, or an iOS task needs the user to drive the app while it watches.
+  (2) A faster screen (an H.264 stream from `recordVideo`, or the helper's framebuffer) when 3–4
+  frames a second is too slow for an animation. Trigger: the same helper, or a task about motion.
+  (3) Android emulators the task builds for (not Ducter's own phone) by adb, the same rail.
+  Trigger: the first Android dev task. (4) A worker Mac's simulator end to end through its socket.
+  Trigger: the author's first iOS task on a worker Mac. (5) Task-to-task lineage (a task opened
+  from another's result, or forked to try another way) in 谁做过 / Who's worked on it; the model
+  has no such link yet. Trigger: "continue this in a new task" or a fork lands. (6) Ducter's phone
+  live in the Phone page on a Mac with 用手机 installed (built and unit-checked; not seen with a
+  real emulator here). Trigger: the author's review on their Mac.
 - [ ] **The persona's one stale button word (D212)**: rule 15 says On hand keeps a missed wait
       "with 接着等 / Keep waiting"; the button is 继续等 now. Not changed alone because a persona
       change needs a fresh eval (D175). Trigger: the next persona change, in the same run.
@@ -968,7 +982,6 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - [ ] **On the author's Mac:** add 用手机 from the real app, sign in to Google Play and one real app, and run a real errand in it end to end (a Go at the tap, a sign-in turn). Trigger: the author's review.
 - [ ] **A worker Mac's phone**, driven over its socket like D157's browsers; then a Linux server (x86_64 image, KVM). Trigger: the author's home on hel.
-- [ ] **The opened task's side panel** mounts `PhoneLivePanel` / `phoneView` (a Phone tab). Trigger: the side panel framework lands.
 - [ ] **The user's own phones:** physical Android over adb (USB/Wi-Fi), iPhones through Pinky once it can be approved from outside its window (its M4) or a presence-proving client exists. Trigger: either lands.
 - [ ] **Autofill on the phone** (D191 by reference into app fields; the Pay card for in-app payments). Trigger: the first errand that needs a saved sign-in in an app.
 - [ ] **A faster screen reader** (an accessibility companion, ~70 ms vs uiautomator's ~2 s) and **video frames** (scrcpy) for games and video. Trigger: a task that waits on reading, or a moving screen.

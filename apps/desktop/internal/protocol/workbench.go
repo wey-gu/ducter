@@ -12,6 +12,20 @@ type WbRequest struct {
 	Text string `json:"text,omitempty"`
 	Base string `json:"base,omitempty"`
 	Port int    `json:"port,omitempty"`
+	// D220: a simulator's op (sims, sim_frame, sim_act).
+	Udid  string `json:"udid,omitempty"`
+	Edge  int    `json:"edge,omitempty"`
+	Act   string `json:"act,omitempty"`
+	Value string `json:"value,omitempty"`
+}
+
+// WbSim is a booted iOS Simulator on the task's computer (D220).
+type WbSim struct {
+	Udid       string `json:"udid"`
+	Name       string `json:"name"`
+	OS         string `json:"os"`
+	Appearance string `json:"appearance,omitempty"`
+	Text       string `json:"text,omitempty"`
 }
 
 // WbReq asks the home for one op; the answer is a `wb` frame with the same ID.
@@ -75,4 +89,11 @@ type WbAnswer struct {
 	Port        int      `json:"port,omitempty"`
 	PreviewPort int      `json:"previewPort,omitempty"`
 	Token       string   `json:"token,omitempty"`
+	// sims / sim_frame / sim_act (D220): Image (above) is the frame or the screenshot.
+	Sims []WbSim `json:"sims,omitempty"`
+	Udid string  `json:"udid,omitempty"`
+	W    int     `json:"w,omitempty"`
+	H    int     `json:"h,omitempty"`
+	Act  string  `json:"act,omitempty"`
+	Sim  *WbSim  `json:"sim,omitempty"`
 }

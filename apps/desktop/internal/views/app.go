@@ -268,6 +268,9 @@ type App struct {
 	Terminals  []Editor
 	OpenFolder func(with, path string) error
 	openFailed string
+	// D220: 工作副本 / Working copy: its panel open, and when its path was copied.
+	infoOpen   bool
+	infoCopied time.Time
 }
 
 // UndoWindow is how long a drop can be undone (D52).

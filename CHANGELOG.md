@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.0.32
+
+<!-- whats-new
+zh: 在 Ducter 里就能装上、更新 Nowledge Mem
+en: Install and update Nowledge Mem from inside Ducter
+zh: 连接你其他 AI 时的报错都说人话了
+en: Connecting your other AI agents explains every error plainly
+-->
+
+**Your other AI agents**
+- Settings › Partner › Your other AI agents walks a computer without Nowledge Mem, or with an old
+  one, through **Install**, **Update** and **Sign in** (a one-time link from Mem's web app), then
+  **Connect**. It uses Mem's official `nmem-cli` package through uv, pipx or pip; no restart.
+- Every answer Mem's Bridge can give now reads as one plain line. When Mem's side isn't open yet,
+  it says so, and that it isn't anything on your side.
+
 ## 0.0.31
 
 <!-- whats-new

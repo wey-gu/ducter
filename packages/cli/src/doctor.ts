@@ -179,7 +179,8 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
       if (!host.which("nmem")) return c("nmem", "check.nmem", "missing", false, "check.nmem.missing", {}, fix.nmemInstall);
       const r = await host.run(["nmem", "--json", "status"], 8_000);
       const j = parseJson(r.stdout);
-      if (r.code === 0 && j?.status === "healthy") {
+      // nmem says "healthy" against a remote server and "ok" against a local one (0.10.118, issue #2).
+      if (r.code === 0 && (j?.status === "healthy" || j?.status === "ok")) {
         const mode = String(j.mode ?? j.backend ?? "local");
         return c("nmem", "check.nmem", "ok", false, "check.nmem.ok", { mode: mode === "remote" ? t("check.nmem.remote") : mode === "local" ? t("check.nmem.local") : mode });
       }

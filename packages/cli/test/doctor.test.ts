@@ -121,6 +121,13 @@ describe("doctor", () => {
     expect(byId(remote, "nmem").detail).toBe("已连接（远程）");
   });
 
+  test("issue #2: a local nmem 0.10.118 answers status \"ok\" (a remote one \"healthy\"): both are reachable", async () => {
+    const local = await runDoctor(fake({ out: { "nmem --json status": { code: 0, stdout: JSON.stringify({ status: "ok", version: "0.10.118", server_version: "0.10.118", mode: "local", backend: "local", database: true }) } } }), zh, { ...opts, memoryOff: false });
+    expect(byId(local, "nmem")).toMatchObject({ status: "ok", detail: "已连接（本机）" });
+    const down = await runDoctor(fake({ out: { "nmem --json status": { code: 1, stdout: JSON.stringify({ status: "error" }) } } }), zh, { ...opts, memoryOff: false });
+    expect(byId(down, "nmem").status).toBe("warn");
+  });
+
   test("port: taken by another program blocks; taken by Ducter does not", async () => {
     const busy = await runDoctor(fake({ port: "busy" }), en, opts);
     expect(byId(busy, "port")).toMatchObject({ status: "missing", required: true, fix: "DUCTER_PORT=7784 ducter up" });

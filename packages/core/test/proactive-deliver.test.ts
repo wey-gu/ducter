@@ -127,7 +127,8 @@ test("opened before the end of quiet hours: the note is assembled then, once", a
 });
 
 test("one booking mailed to two accounts is one find, said once", async () => {
-  const r = make({ mode: "useful" });
+  // D226: a quiet inbox, so the catch-up look back adds nothing of its own.
+  const r = make({ mode: "useful", fx: quietDay() });
   const renewal = (account: string, id: string) => ({ ref: { connectionId: "conn_oo", service: "gmail", account, id }, label: "Cloudflare · renews", at: "2026-11-09T09:00:00+08:00", type: "renewal" as const, name: "ducter.dev", due: "2026-11-14", amount: "$10.44" });
   r.p.ledger.add([renewal("work", "a1"), renewal("home", "b1")]);
   await r.advance(HOUR + 2 * 60_000);

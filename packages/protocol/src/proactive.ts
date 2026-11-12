@@ -103,3 +103,51 @@ export interface ReadLine {
   items: number;
   what: "new" | "full" | "events" | "mentions";
 }
+
+/**
+ * D226: why it held something back today (今天看了什么 / What it looked at today, in Settings ›
+ * Notifications). Counts only, never a subject or a sender.
+ *   not_urgent   the mode is 只说急的 and it can wait
+ *   for_morning  it waits for the next morning note
+ *   below_bar    the bar said it isn't worth interrupting for
+ *   cap          over today's 3
+ *   muted        a kind or sender the person said not to tell them about
+ *   budget       the source used this month's budget (only urgent goes)
+ *   night        quiet hours: it waits for the morning
+ */
+export type QuietReason = "not_urgent" | "for_morning" | "below_bar" | "cap" | "muted" | "budget" | "night";
+export const QUIET_REASONS: readonly QuietReason[] = ["not_urgent", "for_morning", "below_bar", "cap", "muted", "budget", "night"];
+
+/**
+ * D226: it could not read mail closely (triage failed), in plain kinds:
+ *   no_agent       no AI agent to read with yet
+ *   not_installed  the agent it thinks with isn't installed on the home
+ *   signed_out     that agent is signed out or refused
+ *   failed         anything else (a timeout, an answer it couldn't use)
+ */
+export type ReadProblem = "no_agent" | "not_installed" | "signed_out" | "failed";
+
+/** D226: one day of watching, as Settings shows it under the switch. */
+export interface ProactiveDay {
+  /** The person's day, YYYY-MM-DD. */
+  day: string;
+  /** What the watchers looked at today (emails, calendar events, mentions and DMs). */
+  looked: { mail: number; events: number; mentions: number };
+  /** Left by rules before any model (notices and receipts, marketing, muted senders). */
+  skipped: { notices: number; promo: number; muted: number };
+  /** Read closely (triage) today, and the facts it noted from them and the calendars. */
+  read: number;
+  noted: number;
+  /** Said today (all rungs). */
+  said: number;
+  /** What it held back, open now, by reason (only reasons with n > 0). */
+  held: { reason: QuietReason; n: number }[];
+  /** Reading closely is failing: what, which agent (its name), since when, how many items wait. */
+  problem?: { why: ReadProblem; agent?: string; since: string; waiting: number };
+  /** The next morning note (ISO), when the mode has one. */
+  nextNote?: string;
+  /** Notifications are off, or no phone or browser has them on: a note would only show in the app. */
+  pushOff?: boolean;
+  /** The look back over earlier mail is still running. */
+  catchingUp?: boolean;
+}

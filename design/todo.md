@@ -371,6 +371,15 @@ note and a `Dn`) before it is built.
       author's inbox (outside git, like research/15), scored with
       `packages/partner/eval/proactive/` to tune the cap and the per-kind bars; iOS's
       time-sensitive category for "now". Trigger: the author's go for a live trial.
+- [ ] **D226 on hel, the first live week** (`connectors.md` §1.2, §5.1): after the release,
+      read-only: `findings.json` exists and grows; `proactive.json` `month.tokens` moves and
+      `backfill` reaches `done` for the oo source; no `triage:` warnings in the journal;
+      今天看了什么 shows read > 0. Then decide with evidence whether the bar is too strict for the
+      first days (在等你回 only for people and after 2 working days; a company mail that needs
+      an answer, like dots' warranty example, never qualifies), with the triage eval
+      (`packages/partner/eval/proactive/`) on a private labeled set. Also: the long look back reads
+      at most 50 mails per account (one page); paging it is owed if the eval shows misses.
+      Trigger: one week of hel running D226.
 - [ ] **Mailbox and app-tile art** (D166): a clay mailbox per source colour at 640 (closed, lid
       up, grey) and the app tiles' clay base; marks per each brand's guidelines (D146's rule).
       Then the human comprehension test (with D65's). Trigger: met (D166 decided 2026-11-10).

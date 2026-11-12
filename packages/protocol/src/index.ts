@@ -16,7 +16,7 @@ import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } f
 import type { MediaRef } from "./media.ts";
 import type { CalChange, CalGlance, CalToday } from "./calendar.ts";
 import type { CallBody, CallPlan, CallView, OwnPhoneAction, OwnPhoneView, PhoneView, SignInView } from "./phone.ts";
-import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveMode, ReadLine, SourceLook } from "./proactive.ts";
+import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveDay, ProactiveMode, ReadLine, SourceLook } from "./proactive.ts";
 import type { BodyWhy, Candidate, RuleView, TaskBody, TaskNeeds } from "./loadout.ts";
 
 // ---------- States (design/focus-window-states.md) ----------
@@ -783,6 +783,8 @@ export type ClientFrame =
   // D222: read one calendar inside a calendar account, or stop reading it.
   | { t: "cal_pick"; id: string; service: string; account?: string; calendarId: string; seen: boolean }
   | { t: "connection_reads"; id: string }
+  // D226: 今天看了什么 / What it looked at today, under the switch; answered with proactive_day.
+  | { t: "proactive_day" }
   // D193: the device sign-in (RFC 8628) a connection_add started: stop waiting for it; or sign in
   // again to a connection that was signed out (both answered with connection_signin frames).
   | { t: "connection_signin_cancel" }
@@ -990,6 +992,7 @@ export type ServerFrame =
   // D218: an own-number step the home refused (number: not a full number; key: not a key; busy: a call is on).
   | { t: "own_phone_result"; ok: false; action: string; reason?: string }
   | { t: "connection_reads"; id: string; reads: ReadLine[] }
+  | { t: "proactive_day"; day: ProactiveDay }
   // readable (D158): what the added connection can read now; [] = connected, but no account there yet.
   | { t: "connection_result"; ok: boolean; id?: string; reason?: ConnectionReason; readable?: OoApp[] }
   // D193: the device sign-in: the code and link to show, then done / denied / expired / failed.

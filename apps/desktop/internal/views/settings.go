@@ -146,6 +146,11 @@ func (a *App) openTab(tab string) {
 	if a.S.DevicesAt.IsZero() || tab == TabAbout {
 		a.send(protocol.DevicesReq{T: "devices"})
 	}
+	// D226: the reading problem shows under the switch without opening
+	// 今天看了什么, so Notifications asks for the day as it opens.
+	if tab == TabNotify {
+		a.send(protocol.ProactiveDayReq{T: "proactive_day"})
+	}
 }
 
 // settingsTab is the tab shown.

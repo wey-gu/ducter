@@ -47,28 +47,19 @@ export function QuietDay() {
   if (!mode || mode === "off") return null;
   const d = A.proactiveDay;
   const p = d?.problem;
-  const lines: string[] = [];
-  if (d) {
-    const l = d.looked;
-    lines.push(l.mail || l.events || l.mentions ? t("day.looked", [l.mail && t("day.mail", l.mail), l.events && t("day.events", l.events), l.mentions && t("day.mentions", l.mentions)].filter(Boolean).join(t("day.sep"))) : t("day.none"));
-    if (d.skipped.notices) lines.push(t("day.notices", d.skipped.notices));
-    if (d.skipped.promo) lines.push(t("day.promo", d.skipped.promo));
-    if (d.skipped.muted) lines.push(t("day.muted_senders", d.skipped.muted));
-    if (d.read || d.noted) lines.push(t("day.read", d.read, d.noted));
-    lines.push(t("day.said", d.said));
-    for (const h of d.held) lines.push(h.reason === "for_morning" && d.nextNote ? t("day.held.for_morning_at", h.n, new Date(d.nextNote).toTimeString().slice(0, 5)) : t(`day.held.${h.reason}`, h.n));
-    if (d.catchingUp) lines.push(t("day.catching_up"));
-    if (d.pushOff) lines.push(t("day.push_off"));
-  }
   return (
     <div class="quiet-day">
       {p && <div class="small warn">{t(`day.problem.${p.why}`, p.agent ?? t("day.agent"))}</div>}
       <Btn kind="text" size="sm" chev label={t("day.title")} expanded={open} onClick={() => (setOpen(!open), !open && A.askDay())} />
       {open && d && (
-        <div class="reads">
-          {lines.map((x, i) => (
-            <div class="read" key={i}>
-              <span>{x}</span>
+        <div class="reads day">
+          {dayGroups(d).map((g, i) => (
+            <div class="day-group" key={i}>
+              {g.map((x, j) => (
+                <div class={x.soft ? "read soft" : "read"} key={j}>
+                  {x.text}
+                </div>
+              ))}
             </div>
           ))}
           <div class="small sub honest">{t("day.honest")}</div>
@@ -76,6 +67,23 @@ export function QuietDay() {
       )}
     </div>
   );
+}
+
+/**
+ * The day in four short groups, so it reads as a story rather than a column of equal lines: what
+ * came in (and what rules left, softer), what it read and said, what it held and why, and how it
+ * stands (catching up, no notifications). The Mac draws the same groups (accounts.go dayGroups).
+ */
+export function dayGroups(d: import("@ducter/protocol").ProactiveDay): { text: string; soft?: boolean }[][] {
+  const l = d.looked;
+  const came: { text: string; soft?: boolean }[] = [{ text: l.mail || l.events || l.mentions ? t("day.looked", [l.mail && t("day.mail", l.mail), l.events && t("day.events", l.events), l.mentions && t("day.mentions", l.mentions)].filter(Boolean).join(t("day.sep"))) : t("day.none") }];
+  if (d.skipped.notices) came.push({ text: t("day.notices", d.skipped.notices), soft: true });
+  if (d.skipped.promo) came.push({ text: t("day.promo", d.skipped.promo), soft: true });
+  if (d.skipped.muted) came.push({ text: t("day.muted_senders", d.skipped.muted), soft: true });
+  const did = [...(d.read || d.noted ? [{ text: t("day.read", d.read, d.noted) }] : []), { text: t("day.said", d.said) }];
+  const held = d.held.map((h) => ({ text: h.reason === "for_morning" && d.nextNote ? t("day.held.for_morning_at", h.n, new Date(d.nextNote).toTimeString().slice(0, 5)) : t(`day.held.${h.reason}`, h.n) }));
+  const now = [...(d.catchingUp ? [{ text: t("day.catching_up"), soft: true }] : []), ...(d.pushOff ? [{ text: t("day.push_off"), soft: true }] : [])];
+  return [came, did, held, now].filter((g) => g.length);
 }
 
 const down = (c: ConnectionView) => c.state === "unreachable" || c.state === "unauthorized";

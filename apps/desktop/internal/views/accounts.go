@@ -101,19 +101,39 @@ func (a *App) quietDay(c *ui.Context) {
 		if !cs.day || d == nil {
 			return
 		}
-		ui.Column(c.Key("quiet-day-list")).Gap(t.S1).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-			for i, line := range a.dayLines(d) {
-				ui.Text(c.Key("day:"+itoa(int64(i))), line).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
+		// The day in short groups (came in · read and said · held · how it
+		// stands), a rule's leftovers and a status softer: the phone's own.
+		ui.Column(c.Key("quiet-day-list")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
+			for g, group := range a.dayGroups(d) {
+				ui.Column(c.Key("day-group:" + itoa(int64(g)))).Gap(2).Children(func() {
+					for i, line := range group {
+						ink := t.Ink
+						if line.soft {
+							ink = t.InkMuted
+						}
+						ui.Text(c.Key("day:"+itoa(int64(g))+":"+itoa(int64(i))), line.text).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.5))
+					}
+				})
 			}
-			ui.Box(c).Height(1).Background(t.LineSoft).Margin(t.S1, 0)
-			ui.Text(c, a.L.T("day.honest")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
+			ui.Column(c).Gap(t.S2).Children(func() {
+				ui.Box(c).Height(1).Background(t.Line)
+				ui.Text(c, a.L.T("day.honest")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
+			})
 		})
 	})
 }
 
-// dayLines words one day of watching, in the phone's order (accounts.tsx QuietDay).
-func (a *App) dayLines(d *protocol.ProactiveDay) []string {
-	var out []string
+// dayLine is one line of the day; soft lines are a rule's leftovers and a status.
+type dayLine struct {
+	text string
+	soft bool
+}
+
+// dayGroups words one day of watching in the phone's groups and order
+// (accounts.tsx dayGroups): what came in, what it read and said, what it
+// held and why, and how it stands.
+func (a *App) dayGroups(d *protocol.ProactiveDay) [][]dayLine {
+	var came, did, held, now []dayLine
 	l := d.Looked
 	if l.Mail+l.Events+l.Mentions > 0 {
 		var parts []string
@@ -126,35 +146,52 @@ func (a *App) dayLines(d *protocol.ProactiveDay) []string {
 		if l.Mentions > 0 {
 			parts = append(parts, a.L.T("day.mentions", l.Mentions))
 		}
-		out = append(out, a.L.T("day.looked", strings.Join(parts, a.L.T("day.sep"))))
+		came = append(came, dayLine{text: a.L.T("day.looked", strings.Join(parts, a.L.T("day.sep")))})
 	} else {
-		out = append(out, a.L.T("day.none"))
+		came = append(came, dayLine{text: a.L.T("day.none")})
 	}
 	if d.Skipped.Notices > 0 {
-		out = append(out, a.L.T("day.notices", d.Skipped.Notices))
+		came = append(came, dayLine{a.L.T("day.notices", d.Skipped.Notices), true})
 	}
 	if d.Skipped.Promo > 0 {
-		out = append(out, a.L.T("day.promo", d.Skipped.Promo))
+		came = append(came, dayLine{a.L.T("day.promo", d.Skipped.Promo), true})
 	}
 	if d.Skipped.Muted > 0 {
-		out = append(out, a.L.T("day.muted_senders", d.Skipped.Muted))
+		came = append(came, dayLine{a.L.T("day.muted_senders", d.Skipped.Muted), true})
 	}
 	if d.Read > 0 || d.Noted > 0 {
-		out = append(out, a.L.T("day.read", d.Read, d.Noted))
+		did = append(did, dayLine{text: a.L.T("day.read", d.Read, d.Noted)})
 	}
-	out = append(out, a.L.T("day.said", d.Said))
+	did = append(did, dayLine{text: a.L.T("day.said", d.Said)})
 	for _, h := range d.Held {
 		if h.Reason == "for_morning" && d.NextNote != "" {
-			out = append(out, a.L.T("day.held.for_morning_at", h.N, clockOf(d.NextNote)))
+			held = append(held, dayLine{text: a.L.T("day.held.for_morning_at", h.N, clockOf(d.NextNote))})
 		} else {
-			out = append(out, a.L.T("day.held."+h.Reason, h.N))
+			held = append(held, dayLine{text: a.L.T("day.held."+h.Reason, h.N)})
 		}
 	}
 	if d.CatchingUp {
-		out = append(out, a.L.T("day.catching_up"))
+		now = append(now, dayLine{a.L.T("day.catching_up"), true})
 	}
 	if d.PushOff {
-		out = append(out, a.L.T("day.push_off"))
+		now = append(now, dayLine{a.L.T("day.push_off"), true})
+	}
+	var out [][]dayLine
+	for _, g := range [][]dayLine{came, did, held, now} {
+		if len(g) > 0 {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
+// dayLines is the day's lines in order, without the groups.
+func (a *App) dayLines(d *protocol.ProactiveDay) []string {
+	var out []string
+	for _, g := range a.dayGroups(d) {
+		for _, l := range g {
+			out = append(out, l.text)
+		}
 	}
 	return out
 }
@@ -200,7 +237,7 @@ func (a *App) sourceCard(c *ui.Context, cv protocol.ConnectionView) {
 		a.calNudge(c, cv)
 		// The connection itself, last and quiet (D192): where what it reads
 		// passes, then its two actions on one row: 看了哪些 and the stop.
-		ui.Box(c).Height(1).Background(t.LineSoft)
+		ui.Box(c).Height(1).Background(t.Line)
 		ui.Column(c.Key("conn:" + cv.ID)).Gap(t.S2).Children(func() {
 			ui.Text(c, a.connLine(cv)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
 			if cs.reads == cv.ID {

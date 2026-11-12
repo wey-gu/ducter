@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.0.33
+
+<!-- whats-new
+zh: 主动提醒修好了，还能看今天看了什么、为什么没说
+en: Heads-ups work again, and you can see what it looked at today
+zh: 全部更新不会再被重启打断而卡住
+en: Update all no longer stalls when a computer restarts mid-way
+-->
+
+**Heads-ups**
+- Reading your mail and calendar for heads-ups now uses the AI your partner actually thinks with.
+  A home without Claude Code had silently skipped every look.
+- If it can't read for a while, it tells you once, in plain words. Choosing how it tells you in
+  Settings now runs the first look back (the last 3 days, 60 days of bookings and payments, a month
+  of calendar).
+- New: a booking whose date differs between your calendar and its confirmation mail. Before a
+  meeting now counts as urgent too. Calendars are read two weeks ahead.
+- **今天看了什么 / What it looked at today**, under the switch in Settings › Notifications: counts
+  of what it read and kept, and why anything was held back.
+
+**Update all**
+- A computer's own Ducter update and its AI agents' updates no longer cut each other off. A step
+  interrupted by a restart is judged again by what runs now, retried once, and the row says what
+  it waits for.
+
 ## 0.0.32
 
 <!-- whats-new

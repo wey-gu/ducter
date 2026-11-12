@@ -174,6 +174,9 @@ type Decision struct {
 	Pay *PayAsk `json:"pay,omitempty"`
 	// Fill (D191): a saved sign-in or detail used on a site for the first time.
 	Fill *FillAsk `json:"fill,omitempty"`
+	// Key (D233): a task asks the person for a key; Go carries it (Hold is
+	// 不给 / Don't give).
+	Key *KeyAsk `json:"key,omitempty"`
 	// Phone (D217): a tap on Ducter's phone that commits (Go taps it once),
 	// or the user's own turn on the phone (Go = 好了 / Done).
 	Phone *PhoneAsk `json:"phone,omitempty"`
@@ -1710,6 +1713,9 @@ type ServerFrame struct {
 	SavedDetails []DetailView `json:"details,omitempty"`
 	Uses         []SavedUse   `json:"uses,omitempty"`
 	KeptIn       string       `json:"keptIn,omitempty"`
+	// D233: 密钥 / Keys, and 让任务向我要密钥 (nil = on).
+	SavedKeys []KeyView `json:"keys,omitempty"`
+	AskKeys   *bool     `json:"askKeys,omitempty"`
 	// D193: connection_signin (the device sign-in); phone_voice_result uses
 	// Action, OK, URL, Reason, Message.
 	SignIn *SignInView `json:"signIn,omitempty"`

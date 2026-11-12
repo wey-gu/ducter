@@ -6,10 +6,13 @@ import type { CoreMcpHub, Ctx } from "../mcp.ts";
 import type { BrowserHost } from "../browser/host.ts";
 import { openSaved, SavedError, scrub, type SavedStore } from "./store.ts";
 import { hostSeam, registerFillTools, savedListText, type Fill, type FillSeam } from "./fill.ts";
+import type { Keys } from "./keys.ts";
 
 export interface Autofill {
   store: SavedStore;
   fill?: Fill;
+  /** D233: 密钥 / Keys tasks ask the person for (set by core). */
+  keys?: Keys;
   /** What a client shows (never a secret). */
   frame(extra?: Partial<SavedFrame>): SavedFrame;
   /** Hide every saved value in a text a model is about to read. */

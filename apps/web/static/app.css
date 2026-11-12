@@ -5199,6 +5199,29 @@ button.bcard:active {
   max-width: 9em;
   letter-spacing: 4px;
 }
+/* D233: 密钥 / Keys: the variable in mono, the pasted key masked; the card stays receipt-like. */
+.af-env {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+.af-key svg {
+  width: 18px;
+  height: 18px;
+}
+.key-facts .key-why {
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.key-field input {
+  width: 100%;
+  font-family: var(--mono);
+  letter-spacing: 2px;
+}
+.askq.key .seg {
+  margin: var(--s2) 0;
+}
 /* ---------- D193: phone calls (phone.tsx): the Go card, a question from the line, the call row,
    the device sign-in and the phone card. Tokens only. ---------- */
 .call-card { display: flex; flex-direction: column; gap: 10px; }

@@ -83,6 +83,9 @@ func (a *App) questionOf(d *store.DecisionState) string {
 	if d.MemPlugin != nil {
 		return a.memCardQuestion(d.MemPlugin)
 	}
+	if d.Key != nil {
+		return a.L.T("key.title", a.keyTask(d))
+	}
 	return d.Question
 }
 

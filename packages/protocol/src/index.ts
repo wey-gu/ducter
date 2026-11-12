@@ -7,7 +7,7 @@ import type { HarnessId } from "./harnesses.ts";
 export * from "./loadout.ts";
 export * from "./proactive.ts";
 export * from "./saved.ts";
-import type { FillAsk, PayAsk, SavedFrame, SavedInput } from "./saved.ts";
+import type { FillAsk, KeyAsk, PayAsk, SavedFrame, SavedInput } from "./saved.ts";
 export * from "./phone.ts";
 export * from "./media.ts";
 export * from "./phone-use.ts";
@@ -141,6 +141,8 @@ export interface Question {
   fill?: FillAsk;
   /** D217: a tap on Ducter's phone that commits (go), or the user's own turn on it (user); set by the phone tools only. */
   phone?: PhoneAsk;
+  /** D233: a task asks the person for a key (set by Ducter's ask_for_key, never by report_to_main). */
+  key?: KeyAsk;
 }
 
 /**
@@ -224,6 +226,7 @@ export interface Bodies {
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
     pay?: PayAsk; // D191: 付款 / Pay: merchant, amount, card; Go pays once, no default
     fill?: FillAsk; // D191: first use of a saved sign-in or detail on a site
+    key?: KeyAsk; // D233: {task} 需要一个密钥 / {task} needs a key: Go carries the value (never logged); Hold is 不给 / Don't give; no default
     phone?: PhoneAsk; // D217: one tap on Ducter's phone that commits (Go taps it once), or the user's turn on it (Go = 好了 / Done)
     where?: WhereAsk; // D157: wait for a computer (Hold, the default) or do it now on another (Go)
     closing?: ClosingPlan; // D157: 合上之前搬走 / Move before closing: Go (the default) moves them
@@ -245,7 +248,9 @@ export interface Bodies {
     cal?: CalChange;
   };
   // now (D208): a call's Go given as 现在就打 / Call now, over the callee's courtesy hours.
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean };
+  // delivered (D233): the task already has the answer (it came back in the tool call it was waiting
+  // in), so it is not forwarded again, now or after a restart.
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean; delivered?: boolean };
   read_receipt: { upToSeq: number };
   task_open: {
     taskId: string;
@@ -685,7 +690,9 @@ export type ClientFrame =
   | { t: "send"; text: string; clientId: string; media?: string[] }
   // cvc (D191): a pay card's security code when none is kept; held in memory for that one
   // payment's fill, never logged.
-  | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string }
+  // key, once (D233): a key card's Go carries the key the person pasted (kept in Autofill unless
+  // once; never logged, never sent back) and whether it is for this task only.
+  | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string; key?: string; once?: boolean }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
   | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[] }
   // merge: integrate the task branch into its base branch (local, reversible by revert);
@@ -884,7 +891,9 @@ export type ClientFrame =
   | { t: "saved" }
   | { t: "saved_put"; item: SavedInput }
   | { t: "saved_remove"; id: string }
-  | { t: "saved_forget_site"; id: string; site: string };
+  | { t: "saved_forget_site"; id: string; site: string }
+  // D233: 让任务向我要密钥 / Let tasks ask me for keys (on by default); answered with a saved frame.
+  | { t: "saved_ask_keys"; on: boolean };
 
 /** D151: input into the live view. x, y: fractions of the frame (0..1). */
 export type LiveInput =

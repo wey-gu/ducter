@@ -30,7 +30,7 @@ import { TaskInfoButton } from "./task-info.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
-import { AutofillSettings, FillBody, fillTitle, PayBody } from "./autofill.tsx";
+import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
 import { FillButton, forecast, FullTop } from "./board.tsx";
 import { OnHandList, Switcher } from "./onhand.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
@@ -315,6 +315,8 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   // D191: a payment names merchant, amount and card and asks for the security code; a first use asks OK.
   if (d.pay) return <PayBody d={d} />;
   if (d.fill) return <FillBody d={d} />;
+  // D233: a task asks for a key: the field is on the card itself, never a reply.
+  if (d.key) return <KeyBody d={d} />;
   if (d.call) return <CallDecision d={d} />;
   // D157: wait for a computer (the default) or do it now on another; built in the user's words.
   const wa = d.where ? whereAsk(d.where) : undefined;
@@ -858,6 +860,14 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
       <div ref={ref} class={`partner askq pay${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
         <div class="bubble">{d.said || (d.pay ? t("pay.title", d.pay.site) : fillTitle(d.fill!))}</div>
         {(buttons || !open) && (d.pay ? <PayBody d={d} compact /> : <FillBody d={d} compact />)}
+      </div>
+    );
+  // D233: {task} 需要一个密钥 / {task} needs a key, receipt-like, the field on the card.
+  if (d.key)
+    return (
+      <div ref={ref} class={`partner askq pay key${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+        <div class="bubble">{t("key.title", keyTask(d))}</div>
+        {(buttons || !open) && <KeyBody d={d} compact />}
       </div>
     );
   return (

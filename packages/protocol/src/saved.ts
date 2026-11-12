@@ -48,7 +48,42 @@ export const DETAIL_KEYS = Object.keys(DETAIL_CLASS) as DetailKey[];
 export type SavedInput =
   | { kind: "signin"; id?: string; site: string; username: string; password?: string; label?: string }
   | { kind: "card"; id?: string; label?: string; name: string; number?: string; expMonth: number; expYear: number; postcode?: string }
-  | { kind: "detail"; values: Partial<Record<DetailKey, string>> };
+  | { kind: "detail"; values: Partial<Record<DetailKey, string>> }
+  // D233: 密钥 / Keys. env: the variable a command reads (DO_TOKEN); a key saved under an env that
+  // is already kept replaces that one's value. value: needed to add one; empty on an edit keeps it.
+  | { kind: "key"; id?: string; name: string; env: string; value?: string };
+
+/** D233: the name a key is used by: an environment variable, upper case. */
+export const KEY_ENV = /^[A-Z_][A-Z0-9_]{0,63}$/;
+/**
+ * D233: names a key may not take: they change how a shell or a program loads (PATH, LD_PRELOAD,
+ * NODE_OPTIONS…) or are Ducter's own. Sourcing one inside a command could run something else.
+ */
+export const KEY_ENV_DENIED = /^(?:PATH|HOME|USER|LOGNAME|SHELL|PWD|OLDPWD|IFS|ENV|BASH_ENV|BASH_FUNC_.*|PS[0-4]|PROMPT_COMMAND|TERM|TMPDIR|LANG|LC_.*|LD_.*|DYLD_.*|NODE_OPTIONS|NODE_PATH|PYTHONPATH|PYTHONSTARTUP|PERL5LIB|PERL5OPT|RUBYOPT|RUBYLIB|GIT_DIR|GIT_EXEC_PATH|GIT_SSH|GIT_SSH_COMMAND|SSH_AUTH_SOCK|DUCTER_.*|NMEM_.*)$/;
+
+/** D233: 密钥 / Keys as clients see them: never the value; a known key's head when it has one ("dop_v1_••••••"). */
+export interface KeyView {
+  id: string;
+  kind: "key";
+  handle: string; // "key:DO_TOKEN"
+  env: string;
+  name: string; // what it is: "DigitalOcean deploy token"
+  hint?: string; // a recognisable head then ••••••; absent: the client says only that it is kept
+  addedAt: string;
+  usedAt?: string;
+}
+
+/**
+ * D233: a task asks the person for a key ({task} 需要一个密钥 / {task} needs a key). Set by Ducter's
+ * ask_for_key only. file: where the task's keys are on the home (not a secret: the path it sources).
+ */
+export interface KeyAsk {
+  env: string;
+  name: string;
+  why?: string; // the task's own words, one line
+  file: string;
+  saved?: boolean; // a key under this env is already kept (the card then offers to replace it)
+}
 
 /** One saved sign-in or card as clients and models see it. */
 export interface SavedView {
@@ -83,10 +118,13 @@ export interface SavedUse {
   handle: string;
   label: string;
   site: string;
-  what: "filled" | "approved" | "ok" | "declined"; // approved: a payment Go (the amount); ok: a first use on a site
+  // approved: a payment Go (the amount); ok: a first use on a site. D233 (a key, handle "key:ENV",
+  // site ""): given to a task (once: for that task only, not kept), refused (不给 / Don't give).
+  what: "filled" | "approved" | "ok" | "declined" | "given" | "refused";
   taskId?: string;
   task?: string; // the task's title then
   amount?: string; // a payment: "USD 128.00"
+  once?: boolean; // D233: a key given just this once
 }
 
 /** The Autofill list (answer to saved, saved_put, saved_remove). */
@@ -95,6 +133,10 @@ export interface SavedFrame {
   items: SavedView[];
   details: DetailView[];
   uses: SavedUse[];
+  /** D233: 密钥 / Keys (absent from a home before it). */
+  keys?: KeyView[];
+  /** D233: 让任务向我要密钥 / Let tasks ask me for keys; absent = on. */
+  askKeys?: boolean;
   /** Where the secrets are kept, said plainly: keychain (the Mac's), file (a key file on this computer). */
   keptIn: "keychain" | "file";
   ok?: boolean;

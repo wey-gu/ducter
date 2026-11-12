@@ -729,6 +729,10 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		a.fillButtons(c, d, st)
 		return
 	}
+	if d.Key != nil {
+		a.keyButtons(c, d, st) // D233: what and why, the masked field, remember or once
+		return
+	}
 	if d.Resolved != nil || d.Pending != "" {
 		msg := a.answeredWords(d)
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {

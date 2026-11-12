@@ -45,6 +45,8 @@ export interface HandsetsOptions {
   tell?(taskId: string, text: string): unknown;
   /** Interrupt a task's turn now (Stop). */
   interrupt?(taskId: string): unknown;
+  /** Ducter's language: the pill on the phone speaks it, one language with the lines the home sends. */
+  language?(): "zh" | "en" | undefined;
   now?: () => number;
   callMs?: number;
 }
@@ -199,7 +201,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       return false;
     }
     try {
-      await call(device, "start", { session: taskId, task: taskTitle(taskId), turn: theirTurn.has(taskId) ? "you" : "agent" });
+      await call(device, "start", { session: taskId, task: taskTitle(taskId), turn: theirTurn.has(taskId) ? "you" : "agent", ...(o.language?.() ? { lang: o.language() } : {}) });
     } catch (e) {
       console.warn(`[handset] couldn't start on ${name(device)}:`, (e as Error).message);
       toStart.add(taskId);

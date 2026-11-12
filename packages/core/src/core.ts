@@ -497,6 +497,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     tasks,
     deviceName: (id) => deviceAuthRef?.list().find((d) => d.id === id && d.kind === "client")?.name,
     interrupt: (taskId) => runner?.interrupt(taskId) ?? Promise.resolve(),
+    language: () => { const l = settings.get().language; return l === "zh" || l === "en" ? l : undefined; },
     tell: (taskId, text) => runner?.send(taskId, text, undefined, "user").catch((e) => console.warn(`[core] couldn't tell ${taskId} about the phone:`, (e as Error).message)),
   });
   // D217: Ducter's phone (an Android emulator on a Mac), on this computer's card as 用手机.

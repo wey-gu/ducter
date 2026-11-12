@@ -144,6 +144,7 @@ object Handset {
                 session = want
                 task = a.optString("task").take(80)
                 turn = if (a.optString("turn") == "you") "you" else "agent"
+                s.pill.lang = a.optString("lang").takeIf { it == "zh" || it == "en" } ?: ""
                 s.pill.show(task, turn)
                 changed(c)
                 return ok(JSONObject().put("session", want))

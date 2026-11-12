@@ -2,6 +2,7 @@ package co.nowledge.ducter.android
 
 import android.animation.ValueAnimator
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Outline
@@ -35,6 +36,11 @@ class HandsetPill(private val c: Context) {
     private var title: TextView? = null
     private var line: TextView? = null
     private var rings: Rings? = null
+    /** Ducter's language from the home ("zh" / "en"): the pill speaks it, one language with the
+     *  lines the home sends; unset (auto), the phone's own. */
+    var lang: String = ""
+    private val loc: Context
+        get() = if (lang.isEmpty()) c else c.createConfigurationContext(Configuration(c.resources.configuration).apply { setLocale(java.util.Locale.forLanguageTag(lang)) })
     private val still get() = Settings.Global.getFloat(c.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
     private fun params(touchable: Boolean, full: Boolean) = WindowManager.LayoutParams(
@@ -53,7 +59,7 @@ class HandsetPill(private val c: Context) {
 
     private fun words(turn: String): String {
         val name = Store(c).personaName
-        return c.getString(if (turn == "you") R.string.handset_pill_you else R.string.handset_pill, name)
+        return this@HandsetPill.loc.getString(if (turn == "you") R.string.handset_pill_you else R.string.handset_pill, name)
     }
 
     fun show(task: String, turn: String) {
@@ -61,7 +67,7 @@ class HandsetPill(private val c: Context) {
         // the width of an empty pill and cuts the name: seen on the emulator).
         if (pill == null) build(words(turn))
         title?.let { fit(it, words(turn)) }
-        line?.text = if (turn == "you") c.getString(R.string.handset_pill_you_line) else task
+        line?.text = if (turn == "you") this@HandsetPill.loc.getString(R.string.handset_pill_you_line) else task
         (pill?.background as? GradientDrawable)?.setStroke(Pebble.dp(c, if (turn == "you") 2 else 1), Pebble.color(c, if (turn == "you") R.color.accent else R.color.line2))
     }
 
@@ -96,7 +102,7 @@ class HandsetPill(private val c: Context) {
             addView(l, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = d * 2 })
         }
         val stop = Button(c).apply {
-            text = c.getString(R.string.handset_stop)
+            text = this@HandsetPill.loc.getString(R.string.handset_stop)
             Pebble.primary(this)
             Pebble.text(this, 13f, 700, R.color.on_accent)
             minHeight = Pebble.dp(c, 32)
@@ -105,7 +111,7 @@ class HandsetPill(private val c: Context) {
             minimumWidth = 0
             isSingleLine = true
             setPadding(Pebble.dp(c, 14), 0, Pebble.dp(c, 14), Pebble.dp(c, Pebble.LEDGE))
-            contentDescription = c.getString(R.string.handset_stop_about)
+            contentDescription = this@HandsetPill.loc.getString(R.string.handset_stop_about)
             setOnClickListener {
                 performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                 Handset.stopTapped(c)

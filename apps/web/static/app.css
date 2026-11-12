@@ -6953,60 +6953,65 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
    pressed into the reply like a pebble into clay (research/72). Tokens first; every colour,
    depth and time below comes from them. */
 :root {
+  --xxs: 11px; /* the imprint's who-line: the one step below captions */
   --r-imprint: 14px 14px 14px 4px; /* the partner's tail, bottom-left; the user's mirrors it */
   --r-imprint-you: 14px 14px 4px 14px;
-  --imprint-depth: inset 0 2.5px 0 rgba(43, 33, 24, 0.13), inset 0 0 0 1px rgba(43, 33, 24, 0.05), inset 0 -1px 0 rgba(255, 255, 255, 0.55);
-  --imprint-raised: 0 3px 0 rgba(43, 33, 24, 0.14); /* the pebble before it is pressed in */
-  /* In the user's orange bubble. */
-  --imprint-partner-on-user: color-mix(in srgb, var(--partner-bubble) 82%, var(--user-bubble));
-  --imprint-you-on-user: color-mix(in srgb, var(--user-bubble) 86%, var(--ink));
-  /* In the partner's bubble, and in the composer's white card. */
-  --imprint-you-on-partner: color-mix(in srgb, var(--user-bubble) 26%, var(--partner-bubble));
-  --imprint-partner-on-surface: var(--sunken);
-  --imprint-you-on-surface: color-mix(in srgb, var(--user-bubble) 22%, var(--surface));
-  --imprint-who-you: color-mix(in srgb, var(--needs-ink) 88%, var(--ink));
+  /* Debossed: the reverse of a raised button. A button has its light on top and its shadow
+     under it; the imprint has its shadow under its top and left rims (the clay above them casts
+     it) and a lit lower edge where the hollow turns back up. No border line. */
+  --imprint-deboss: inset 0 3px 3px -1px rgba(43, 33, 24, 0.3), inset 2px 0 3px -2px rgba(43, 33, 24, 0.2), inset 0 -1.5px 0 rgba(255, 255, 255, 0.45);
+  --imprint-depth: var(--imprint-deboss), 0 0 0 0 rgba(43, 33, 24, 0);
+  /* Before it is pressed in: a pebble standing on the clay (the same 4 shadows, so it animates). */
+  --imprint-raised: inset 0 0 0 0 rgba(43, 33, 24, 0), inset 0 0 0 0 rgba(43, 33, 24, 0), inset 0 0 0 0 rgba(255, 255, 255, 0), 0 3px 0 rgba(43, 33, 24, 0.16);
+  /* The hollow's floor sits a little below the bubble's own colour. */
+  --imprint-on-user: color-mix(in srgb, var(--user-bubble) 90%, var(--ink));
+  --imprint-on-partner: color-mix(in srgb, var(--sunken) 96%, var(--ink)); /* a warm hollow, not a grey one */
+  --imprint-on-surface: color-mix(in srgb, var(--sunken) 96%, var(--ink));
+  /* Quieter ink: the person's own words lead. */
+  --imprint-ink-on-user: color-mix(in srgb, var(--ink) 74%, var(--user-bubble));
+  --imprint-ink: var(--ink-muted);
   --swipe-mark: var(--surface);
   --swipe-mark-ink: var(--ink-muted);
   --found-user: color-mix(in srgb, var(--user-bubble) 84%, var(--ink));
   --found-partner: color-mix(in srgb, var(--partner-bubble) 80%, var(--accent));
   --t-back: 320ms; /* a swiped bubble springs home */
-  --t-press-in: 260ms; /* a sent imprint settles into its bubble */
+  --t-press-in: 300ms; /* a sent imprint settles into its bubble */
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --imprint-depth: inset 0 2px 0 rgba(0, 0, 0, 0.32), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-    --imprint-raised: 0 3px 0 rgba(0, 0, 0, 0.4);
-    --imprint-partner-on-user: color-mix(in srgb, var(--partner-bubble) 70%, var(--user-bubble));
-    --imprint-you-on-partner: color-mix(in srgb, var(--user-bubble) 22%, var(--partner-bubble));
-    --imprint-you-on-surface: color-mix(in srgb, var(--user-bubble) 20%, var(--surface));
-    --imprint-who-you: var(--needs-ink);
+    --imprint-deboss: inset 0 3px 3px -1px rgba(0, 0, 0, 0.55), inset 2px 0 3px -2px rgba(0, 0, 0, 0.4), inset 0 -1.5px 0 rgba(255, 255, 255, 0.08);
+    --imprint-raised: inset 0 0 0 0 rgba(0, 0, 0, 0), inset 0 0 0 0 rgba(0, 0, 0, 0), inset 0 0 0 0 rgba(255, 255, 255, 0), 0 3px 0 rgba(0, 0, 0, 0.45);
+    --imprint-on-user: color-mix(in srgb, var(--user-bubble) 86%, #000);
+    --imprint-on-partner: color-mix(in srgb, var(--partner-bubble) 78%, #000);
+    --imprint-on-surface: color-mix(in srgb, var(--surface) 78%, #000);
+    --imprint-ink-on-user: color-mix(in srgb, var(--on-user-bubble) 78%, var(--user-bubble));
     --found-partner: color-mix(in srgb, var(--partner-bubble) 78%, var(--accent));
   }
 }
 :root[data-theme="dark"] {
-  --imprint-depth: inset 0 2px 0 rgba(0, 0, 0, 0.32), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-  --imprint-raised: 0 3px 0 rgba(0, 0, 0, 0.4);
-  --imprint-partner-on-user: color-mix(in srgb, var(--partner-bubble) 70%, var(--user-bubble));
-  --imprint-you-on-partner: color-mix(in srgb, var(--user-bubble) 22%, var(--partner-bubble));
-  --imprint-you-on-surface: color-mix(in srgb, var(--user-bubble) 20%, var(--surface));
-  --imprint-who-you: var(--needs-ink);
+  --imprint-deboss: inset 0 3px 3px -1px rgba(0, 0, 0, 0.55), inset 2px 0 3px -2px rgba(0, 0, 0, 0.4), inset 0 -1.5px 0 rgba(255, 255, 255, 0.08);
+  --imprint-raised: inset 0 0 0 0 rgba(0, 0, 0, 0), inset 0 0 0 0 rgba(0, 0, 0, 0), inset 0 0 0 0 rgba(255, 255, 255, 0), 0 3px 0 rgba(0, 0, 0, 0.45);
+  --imprint-on-user: color-mix(in srgb, var(--user-bubble) 86%, #000);
+  --imprint-on-partner: color-mix(in srgb, var(--partner-bubble) 78%, #000);
+  --imprint-on-surface: color-mix(in srgb, var(--surface) 78%, #000);
+  --imprint-ink-on-user: color-mix(in srgb, var(--on-user-bubble) 78%, var(--user-bubble));
   --found-partner: color-mix(in srgb, var(--partner-bubble) 78%, var(--accent));
 }
 
 .imprint {
   display: grid;
-  gap: 1px;
+  gap: 0;
   min-width: 0;
   max-width: 100%;
-  padding: 6px 11px 7px;
+  padding: 6px 11px 7px 12px;
   border: 0;
   border-radius: var(--r-imprint);
-  background: var(--imprint-partner-on-user);
+  background: var(--imprint-on-partner);
   box-shadow: var(--imprint-depth);
-  color: var(--ink-soft);
+  color: var(--imprint-ink);
   font: inherit;
-  font-size: var(--sm);
-  line-height: 1.38;
+  font-size: var(--xs);
+  line-height: 1.4;
   text-align: left;
   white-space: normal;
   cursor: pointer;
@@ -7014,16 +7019,12 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 }
 .imprint.from-you {
   border-radius: var(--r-imprint-you);
-  background: var(--imprint-you-on-user);
 }
 .imprint .who {
-  font-size: var(--xs);
+  font-size: var(--xxs);
   font-weight: 800;
-  letter-spacing: 0.01em;
-  color: var(--ink);
-}
-.imprint.from-you .who {
-  color: var(--imprint-who-you);
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
 }
 .imprint .q {
   display: -webkit-box;
@@ -7033,10 +7034,10 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
   overflow-wrap: anywhere;
 }
 :lang(zh) .imprint {
-  line-height: 1.55;
+  line-height: 1.5;
 }
 button.imprint:active {
-  box-shadow: inset 0 3px 0 rgba(43, 33, 24, 0.16), inset 0 0 0 1px rgba(43, 33, 24, 0.06);
+  filter: brightness(0.97);
 }
 button.imprint:focus-visible {
   outline: 2px solid var(--accent);
@@ -7048,25 +7049,35 @@ button.imprint:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-top: 7px;
+  padding-top: 6px;
   min-width: min(14rem, 80%);
 }
 .user.has-reply > .imprint {
-  margin: 0 -7px;
+  margin: 0 -8px;
+  background: var(--imprint-on-user);
+  color: var(--imprint-ink-on-user);
   animation: press-in var(--t-press-in) var(--spring) both;
+}
+.user.has-reply > .imprint .who {
+  color: var(--on-user-bubble);
 }
 .user.has-reply > .words {
   white-space: pre-wrap;
 }
-/* A partner answer that came after other messages: the user's reply it answers, as a tab on top. */
-.partner > .imprint {
-  margin: 0 0 -2px;
-  max-width: min(22rem, 100%);
-  background: var(--imprint-you-on-partner);
+/* A partner answer that needs to say which reply it answers: pressed into the top of its bubble. */
+.partner > .bubble.has-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+}
+.partner > .bubble.has-reply > .imprint {
+  margin: 0 -8px;
+  animation: press-in var(--t-press-in) var(--spring) both;
 }
 @keyframes press-in {
   from {
-    transform: translateY(-5px) scale(1.035);
+    transform: translateY(-4px) scale(1.03);
     box-shadow: var(--imprint-raised);
   }
 }
@@ -7093,10 +7104,10 @@ button.imprint:focus-visible {
 }
 .replying > .imprint {
   flex: 1;
-  background: var(--imprint-partner-on-surface);
+  background: var(--imprint-on-surface);
 }
 .replying > .imprint.from-you {
-  background: var(--imprint-you-on-surface);
+  background: var(--imprint-on-surface);
 }
 .replying > .x {
   flex: none;
@@ -7313,3 +7324,6 @@ button.imprint:focus-visible {
   translate: -50% 0;
   animation: menu-in var(--t-fast) var(--ease) both;
 }
+/* Its links wrap rather than cut off (a narrow phone in English). */
+.bubble.note .freact { flex-wrap: wrap; }
+.bubble.note .freact .btn { flex: none; }

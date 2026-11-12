@@ -121,7 +121,7 @@ user picked is in quotation marks. Tapping it brings the original into view and 
 tint deepens once and settles (never a glow ring). One no longer on this screen says **那条在更早的
 对话里，这里翻不到了。/ That message is further back than this screen goes.**; the reply's own quote
 still reads. A partner answer that lands after other messages carries, as a tab above its bubble,
-the imprint of the user's reply it answers, so two answers in a row never look swapped.
+the imprint of the user's reply it answers, pressed into the top of its bubble, so two answers in a row never look swapped; an answer right after its reply carries none (adjacency already says it). The imprint is debossed (shadow under its top and left rims, a lit lower edge, its floor a little below the bubble's colour, no border line): the pressed twin of a raised clay button. Its quote is one step smaller (12) and quieter than the words, its who-line 11.
 
 **Routing (core decides what code can; the partner the rest).**
 - A reply to a task's question (or the partner's own ask) that is still open **is its answer**:

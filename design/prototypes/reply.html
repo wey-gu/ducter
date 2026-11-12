@@ -12,9 +12,9 @@
   --line: #e8d9c4; --accent: #ff8a3d; --press-accent: #c9642a; --user-bubble: #ff8a3d; --partner-bubble: #fff; --needs-ink: #8a3a0c;
   --bubble: 20px 20px 6px 20px; --bubble-partner: 20px 20px 20px 6px;
   --r-imprint: 14px 14px 14px 4px; --r-imprint-you: 14px 14px 4px 14px;
-  --imprint-depth: inset 0 2.5px 0 rgba(43,33,24,.13), inset 0 0 0 1px rgba(43,33,24,.05), inset 0 -1px 0 rgba(255,255,255,.55);
-  --imprint-partner-on-user: color-mix(in srgb, var(--partner-bubble) 82%, var(--user-bubble));
-  --imprint-you-on-partner: color-mix(in srgb, var(--user-bubble) 26%, var(--partner-bubble));
+  --imprint-depth: inset 0 3px 3px -1px rgba(43,33,24,.3), inset 2px 0 3px -2px rgba(43,33,24,.2), inset 0 -1.5px 0 rgba(255,255,255,.45);
+  --imprint-partner-on-user: color-mix(in srgb, var(--user-bubble) 90%, var(--ink));
+  --imprint-you-on-partner: color-mix(in srgb, var(--partner-bubble) 94%, var(--ink));
   --found-partner: color-mix(in srgb, var(--partner-bubble) 80%, var(--accent));
   --spring: cubic-bezier(.34,1.56,.64,1); --ease: cubic-bezier(.2,.8,.2,1);
   --font: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
@@ -30,10 +30,10 @@ p.note { color: var(--ink-muted); margin: 0 0 16px; max-width: 60em; }
 .user { align-self: flex-end; max-width: 80%; background: var(--user-bubble); padding: 10px 14px; border-radius: var(--bubble); font-size: 16px; }
 .partner { align-self: flex-start; max-width: 88%; background: var(--partner-bubble); padding: 10px 14px; border-radius: var(--bubble-partner); font-size: 16px; }
 .user.has { display: flex; flex-direction: column; gap: 6px; padding-top: 7px; }
-.imprint { display: grid; gap: 1px; padding: 6px 11px 7px; border-radius: var(--r-imprint); background: var(--imprint-partner-on-user); box-shadow: var(--imprint-depth); font-size: 13px; line-height: 1.45; color: var(--ink-soft); margin: 0 -7px; }
-.imprint b { font-size: 12px; color: var(--ink); }
+.imprint { display: grid; gap: 1px; padding: 6px 11px 7px; border-radius: var(--r-imprint); background: var(--imprint-partner-on-user); box-shadow: var(--imprint-depth); font-size: 12px; line-height: 1.45; color: color-mix(in srgb, var(--ink) 74%, var(--user-bubble)); margin: 0 -7px; }
+.imprint b { font-size: 11px; color: var(--ink); }
 .imprint.you { border-radius: var(--r-imprint-you); background: var(--imprint-you-on-partner); margin: 0 0 -2px; }
-.imprint.you b { color: var(--needs-ink); }
+.imprint.you b { color: var(--ink-soft); } .imprint.you { color: var(--ink-muted); }
 .q { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .press { animation: press 260ms var(--spring) both; }
 @keyframes press { from { transform: translateY(-5px) scale(1.035); box-shadow: 0 3px 0 rgba(43,33,24,.14); } }
@@ -53,7 +53,7 @@ p.note { color: var(--ink-muted); margin: 0 0 16px; max-width: 60em; }
 /* chosen: states */
 .composer { background: var(--surface); border-radius: 24px; box-shadow: 0 4px 0 var(--line); padding: 8px 8px 8px 18px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .replying { flex: 1 0 100%; display: flex; gap: 8px; align-items: center; margin-left: -8px; animation: rin 320ms var(--spring) both; }
-.replying .imprint { background: var(--sunken); margin: 0; flex: 1; }
+.replying .imprint { background: color-mix(in srgb, #fff 94%, var(--ink)); color: var(--ink-muted); margin: 0; flex: 1; }
 .replying .g { color: var(--accent); }
 .field { flex: 1; color: var(--ink-muted); padding: 10px 0; font-size: 16px; }
 .send { width: 44px; height: 44px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 45%, #fff); }
@@ -108,8 +108,7 @@ p.note { color: var(--ink-muted); margin: 0 0 16px; max-width: 60em; }
   <div class="board"><div class="cap">Two replies in a row; each answer replies to its own (the tab)</div>
     <div class="user has"><span class="imprint press"><b>Ducter</b><span class="q">TTL 测试修好了：它用真实计时去等 1 秒过期…</span></span>这个再补一条测试，覆盖正好到期那一刻</div>
     <div class="user has"><span class="imprint press"><b>Ducter</b><span class="q">ducter.dev 11 月 20 日到期，Cloudflare 上自动续费的那张卡过期了。</span></span>帮我把这个弄好</div>
-    <span class="imprint you"><b>你</b><span class="q">这个再补一条测试，覆盖正好到期那一刻</span></span>
-    <div class="partner">我接着给 TTL 补一条正好到期的测试。</div>
+    <div class="partner" style="display:flex;flex-direction:column;gap:6px;padding-top:6px"><span class="imprint you" style="margin:0 -8px"><b>你</b><span class="q">这个再补一条测试，覆盖正好到期那一刻</span></span>我接着给 TTL 补一条正好到期的测试。</div>
     <div class="partner">好，我去 Cloudflare 把 ducter.dev 的续费卡换上。</div></div>
   <div class="board"><div class="cap">Tap the imprint: the original is found (its own tint deepens once)</div>
     <div class="partner found">TTL 测试修好了：它用真实计时去等 1 秒过期，机器一忙就抢跑，现在改成假时钟。</div>

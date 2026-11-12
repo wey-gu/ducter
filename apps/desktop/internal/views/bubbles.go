@@ -36,6 +36,8 @@ func (a *App) partnerBubble(c *ui.Context, join bool, body func()) {
 	}
 	// D236: what replying to this bubble names, if it can be replied to.
 	rt := a.takeReply()
+	tab := a.rp.tab
+	a.rp.tab = nil
 	row := ui.Row(c).Gap(t.S2).AlignItems(ui.Center)
 	hov := rt != nil && row.Hovered()
 	row.Children(func() {
@@ -43,7 +45,16 @@ func (a *App) partnerBubble(c *ui.Context, join bool, body func()) {
 		b := ui.Column(c).TextColor(t.OnPartnerBubble).Padding(t.S2+2, t.S4-2).
 			Radius(tl, r[0], r[3], r[2]).MaxWidth(t.BubbleMeasure).MaxWidthPercent(84).MinWidth(0).Gap(t.S2).TransformOrigin(0, 0.5)
 		b.Background(a.found(c, b, rt, t.PartnerBubble, t.Reply.FoundPartner, 0.02))
-		b.Children(body)
+		if tab == nil {
+			b.Children(body)
+		} else {
+			// D236: the user's reply this answers, pressed into the bubble's
+			// top as on the user's side; the words keep the bubble's inset.
+			b.Padding(imprintInset, imprintInset, t.S2+2, imprintInset).Gap(imprintInset).MinWidth(224).Children(func() {
+				a.imprint(c, "answer", tab, tab.quote, false, onPartner, false, "")
+				ui.Column(c).Padding(0, t.S4-2-imprintInset).Gap(t.S2).MinWidth(0).Children(body)
+			})
+		}
 		a.hoverReply(c, rt, hov)
 		ui.Spacer(c)
 	})

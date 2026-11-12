@@ -462,24 +462,23 @@ func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *pro
 			}
 			return
 		}
-		// The imprint sits 4 points in from the bubble's sides, pressed in.
-		b := ui.Column(c).Gap(t.S1+2).Padding(7, 4, t.S2+2, 4).Radius(r[0], tr, r[2], r[3]).
+		// The imprint is pressed into the bubble's top, 6 points in from its
+		// sides and top; the words under it keep the bubble's own inset.
+		b := ui.Column(c).Gap(imprintInset).Padding(imprintInset, imprintInset, t.S2+2, imprintInset).Radius(r[0], tr, r[2], r[3]).
 			MaxWidth(t.BubbleMeasure).MaxWidthPercent(76).MinWidth(224).TransformOrigin(1, 0.5)
 		b.Background(a.found(c, b, rt, t.UserBubble, t.Reply.FoundUser, 0.025))
 		if pending {
 			b.Opacity(0.7)
 		}
 		b.Children(func() {
-			var im ui.Element
 			if ref != nil {
-				im = a.sentImprint(c, "sent", ref, onUser)
+				a.sentImprint(c, "sent", ref, onUser, clientID)
 			} else {
-				im = a.imprint(c, "pending", still, still.quote, false, onUser, true)
+				a.imprint(c, "pending", still, still.quote, false, onUser, true, "")
 			}
-			a.pressIn(c, im, clientID)
 			if strings.TrimSpace(text) != "" {
 				w := ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).
-					TextColor(t.OnUserBubble).Padding(0, t.S4-2-4)
+					TextColor(t.OnUserBubble).Padding(0, t.S4-2-imprintInset)
 				a.replyMenu(c, w, rt, text)
 			}
 		})
@@ -491,7 +490,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	// D236: the bubble this row draws first can be replied to; what no
 	// bubble took is let go at the end.
 	a.rp.next = a.replyOf(e)
-	defer func() { a.rp.next = nil }()
+	defer func() { a.rp.next, a.rp.tab = nil, nil }()
 	switch {
 	case e.User != nil:
 		if len(e.User.Media) > 0 {
@@ -513,7 +512,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		ui.Column(c).Gap(t.S1).CopyData(autospaceCopy).Children(func() {
 			// D236: an answer after other messages shows the reply it answers.
 			if ans := a.answerOf(e); ans != nil {
-				a.answerTab(c, ans)
+				a.rp.tab = ans // pressed into the top of the bubble below
 			}
 			if strings.TrimSpace(e.AI.Text) != "" || e.AI.Cal == nil {
 				a.partnerBubble(c, a.takeJoin(), func() {
@@ -581,7 +580,7 @@ func (a *App) job(c *ui.Context, e *store.Entry) {
 	ui.Column(c).Gap(t.S1).Children(func() {
 		if j.Ack != nil {
 			if ans := a.answerOf(e); ans != nil {
-				a.answerTab(c, ans)
+				a.rp.tab = ans // pressed into the top of the bubble below
 			}
 			a.partnerWords(c, j.Ack.Text)
 		}

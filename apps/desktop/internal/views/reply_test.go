@@ -1,6 +1,7 @@
 package views
 
 import (
+	"image"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -205,6 +206,42 @@ func TestReplyFromHoverAndSend(t *testing.T) {
 	// The pending bubble shows the imprint (still: not a way back yet).
 	if strings.Count(texts(tt), autospace(clipQuote(w.fixed, shownQuote))) < 3 {
 		t.Errorf("the pending bubble shows no imprint: %q", texts(tt))
+	}
+}
+
+// A 3x close look at the depth: the composer's raised clay Send beside the
+// imprint pressed into the card, with the sent replies' imprints above.
+func TestReplyDepthCrop(t *testing.T) {
+	app, tt, _ := replyApp(t, i18n.ZH)
+	app.StartReply(app.replyOf(app.S.Channel[2]))
+	tt.SetSize(1100, 760)
+	tt.SetScale(3)
+	tt.Frame()
+	tt.Frame()
+	send, ok := tt.Find(app.L.T("composer.send"))
+	if !ok {
+		t.Fatalf("no Send: %q", texts(tt))
+	}
+	tt.Advance(time.Second)
+	img := tt.Image()
+	const s = 3
+	x0, x1 := int((send.X+send.W+12-convWidth)*s), int((send.X+send.W+14)*s)
+	y0, y1 := int((send.Y-400)*s), int((send.Y+send.H+16)*s)
+	crop := img.SubImage(image.Rect(max(0, x0), max(0, y0), x1, y1))
+	dir := filepath.Join("..", "..", "..", "..", ".shots", "reply")
+	if d := os.Getenv("DUCTER_SHOTS_DIR"); d != "" {
+		dir = d
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Create(filepath.Join(dir, "mac-zh-crop-raised-and-pressed.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err := png.Encode(f, crop); err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -75,7 +75,7 @@ components and tokens; a value not in the scales below needs a token first.
 
 | Scale | Values | Use |
 |---|---|---|
-| type | 12 · 13 · 15 · 16 · 18 · 20 · 28 · 34 · 56; mono 13 (JetBrains Mono) | captions · labels and small controls · body and controls · both bubbles and the composer (D129) · a decision on a phone · card titles and asks · section titles · screen titles and a task's outcome · hero numbers |
+| type | (11, only the reply imprint's who-line, D236) · 12 · 13 · 15 · 16 · 18 · 20 · 28 · 34 · 56; mono 13 (JetBrains Mono) | captions · labels and small controls · body and controls · both bubbles and the composer (D129) · a decision on a phone · card titles and asks · section titles · screen titles and a task's outcome · hero numbers |
 | space | 4 · 8 · 12 · 16 · 24 · 32 · 48 (`S1…S7`) | inside a group S2–S3; between groups S4–S5; a screen's sections S6–S7 |
 | radius | 8 · 12 · 14 · 16 · 18 · 24 · 28 | inline code, diff boxes · small buttons, fields · buttons · sheets, notices · large buttons · cards · hero cards, the composer |
 | controls | 36 · 44 · 52 | chrome and inline lines · cards and the conversation · setup screens and the equip |
@@ -123,13 +123,15 @@ and only fades under reduced motion. Mac: `Lightbox`, `LightboxInk`, `MediaGap`.
 
 **Replies: the imprint (D236, research/72).** The message replied to as a small copy of its own
 bubble pressed into the reply: `--r-imprint` (14/14/14/4, the partner's tail bottom-left;
-`--r-imprint-you` mirrored), sunken by `--imprint-depth` (an inner shadow at the top, a faint light
-edge at the bottom), on `--imprint-partner-on-user` / `--imprint-you-on-user` inside the user's
-bubble, `--imprint-you-on-partner` as a partner answer's tab, `sunken` / `--imprint-you-on-surface`
-in the composer. A 12 (800) who-line, then 13 at most two lines. Motion: the swipe mark (a 32
+`--r-imprint-you` mirrored), debossed by `--imprint-deboss`: the reverse of a raised button, its
+shadow under the top and left rims and a lit lower edge, no border line. Its floor sits a little
+below the bubble it is pressed into: `--imprint-on-user` (the orange, 10% toward ink),
+`--imprint-on-partner` (a partner answer's, pressed into the top of its bubble), `--imprint-on-surface`
+(the composer). Quote at 12 (`--xs`) in `--imprint-ink` / `--imprint-ink-on-user`, at most two
+lines; who-line at 11 (`--xxs`, a new step below captions, only here), 800. Motion: the swipe mark (a 32
 round on the clay base, `--swipe-mark`) eases in with the drag and settles to accent with a spring
 at the arming point; the bubble springs home over `--t-back` (320 ms); the composer's imprint
-rises in (`--t-med`, spring); a sent imprint is pressed in (`--t-press-in`, 260 ms, from raised
+rises in (`--t-med`, spring); a sent imprint is pressed in (`--t-press-in`, 300 ms, from raised
 `--imprint-raised` to sunken); found = the original's own tint deepens once (`--found-user`,
 `--found-partner`, 1.4 s). The reply mark and × are drawn, never text glyphs. Mac: the same tokens
 in `apps/desktop/internal/theme`.

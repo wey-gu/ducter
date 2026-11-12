@@ -10,6 +10,7 @@ import (
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 // D236: 回复 / Reply to one message (design/conversation.md "Replies",
@@ -53,6 +54,9 @@ type replyState struct {
 	// next is the target of the bubble being drawn; the bubble takes it
 	// (as join), and entry clears what no bubble took.
 	next *replyTo
+	// tab is the user's reply the next partner bubble answers, pressed into
+	// its top (answerOf); taken and cleared as next is.
+	tab *replyTo
 	// found is the message an imprint just brought back: its tint deepens
 	// once, from at, and settles.
 	found struct {
@@ -237,28 +241,34 @@ type imprintOn int
 
 const (
 	onUser     imprintOn = iota // the user's sent bubble
-	onPartner                   // above the partner's answer, as a tab
+	onPartner                   // the partner's answer, pressed into its top
 	onComposer                  // the composer's card
 )
 
+// imprintInset is how far an imprint sits in from the sides and top of the
+// bubble it is pressed into.
+const imprintInset = 6
+
 // imprint is who, then the quote, in a small copy of that voice's bubble
-// pressed into what holds it. A seq of 0 holds still; else a click jumps
-// to the message it quotes.
-func (a *App) imprint(c *ui.Context, key string, r *replyTo, quote string, part bool, on imprintOn, still bool) ui.Element {
+// (its tail) debossed into what holds it: the clay above its top and left
+// rims shades the hollow, its lower edge catches the light, its floor a
+// little below the bubble's own colour, and no border line. The quote is
+// quieter than the words around it. Still holds it in place; else a click
+// jumps to the message it quotes. land is the sent message's clientId: a
+// reply this window sent lands from raised into the hollow once.
+func (a *App) imprint(c *ui.Context, key string, r *replyTo, quote string, part bool, on imprintOn, still bool, land string) ui.Element {
 	t := a.T
 	rt := t.Reply
-	rad, bg := rt.Radius, rt.PartnerOnUser
-	who := t.Ink
+	rad := rt.Radius
 	if r.from == "you" {
-		rad, bg, who = rt.RadiusYou, rt.YouOnUser, rt.WhoYou
+		rad = rt.RadiusYou
 	}
-	switch {
-	case on == onPartner:
-		bg = rt.YouOnPartner
-	case on == onComposer && r.from == "you":
-		bg = rt.YouOnSurface
-	case on == onComposer:
-		bg = rt.PartnerOnSurface
+	bg, ink, who := rt.OnPartner, rt.Ink, t.InkSoft
+	switch on {
+	case onUser:
+		bg, ink, who = rt.OnUser, rt.InkOnUser, t.OnUserBubble
+	case onComposer:
+		bg = rt.OnSurface
 	}
 	words := clipQuote(quote, shownQuote)
 	if part && words != "" {
@@ -268,20 +278,40 @@ func (a *App) imprint(c *ui.Context, key string, r *replyTo, quote string, part 
 		words = a.L.T("reply.pics", r.pics)
 	}
 	name := a.whoOf(r.from)
-	box := ui.Column(c.Key("imprint:"+key)).Gap(1).MinWidth(0).Padding(6, 11, 7, 11).
-		Radius(rad[0], rad[1], rad[2], rad[3]).Background(bg)
-	d := rt.Depth
-	top := d.Top
-	if !still && box.Pressed() {
-		top.Y++ // pressed a little deeper
+	box := ui.Column(c.Key("imprint:"+key)).MinWidth(0).Padding(6, 11, 7, 12).
+		Radius(rad[0], rad[1], rad[2], rad[3])
+	// sink is how far it is pressed in: 1 sits in the hollow; a landing
+	// reply comes from 0 (a pebble standing on the clay).
+	sink := float32(1)
+	if land != "" && a.rp.pressIn[land] && !c.Preferences().ReduceMotion {
+		landed := ui.Local(box, "landed", func() bool { return false })
+		target := float32(1)
+		if !*landed {
+			target, *landed = 0, true
+			c.Invalidate()
+		}
+		sink = box.AnimateTo("sink", target, ui.Animation{Spring: ui.SpringOptions{Duration: rt.PressIn, Bounce: t.Bouncy.Spring.Bounce}})
+		up := 1 - sink
+		box.Translate(0, -4*up).Scale(1+0.03*up, 1+0.03*up)
 	}
-	box.InsetShadow(0, top.Y, top.Blur, 0, top.Color).InsetShadow(0, 0, 0, 1, d.Rim).InsetShadow(0, d.Light.Y, d.Light.Blur, 0, d.Light.Color)
+	k := max(0, min(1, sink))
+	if !still && box.Pressed() {
+		bg = bg.Mix(t.Ink, 0.03) // pressed a little deeper
+	}
+	box.Background(bg)
+	d := rt.Deboss
+	for _, in := range []theme.Inset{d.Top, d.Left, d.Light} {
+		box.InsetShadow(in.X, in.Y, in.Blur, in.Spread, in.Color.Alpha(float32(in.Color.A)/255*k))
+	}
+	if k < 1 {
+		box.Shadow(0, rt.Raised.Y, rt.Raised.Blur, 0, rt.Raised.Color.Alpha(float32(rt.Raised.Color.A)/255*(1-k)))
+	}
 	if !still {
 		box.Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Label(a.L.T("reply.jump", name))
 	}
 	box.Children(func() {
-		ui.Text(c, name).FontSize(t.XS).FontWeight(800).LetterSpacing(0.12).TextColor(who).SingleLine().AccessHidden(!still)
-		ui.Text(c, autospace(words)).FontSize(t.SM).LineHeight(leadingFor(words, 1.38)).TextColor(t.InkSoft).MaxLines(2).AccessHidden(!still)
+		ui.Text(c, name).FontSize(t.XXS).FontWeight(800).LetterSpacing(0.22).TextColor(who).SingleLine().AccessHidden(!still)
+		ui.Text(c, autospace(words)).FontSize(t.XS).LineHeight(leadingFor(words, 1.4)).TextColor(ink).MaxLines(2).AccessHidden(!still)
 	})
 	if !still && box.Clicked() {
 		a.jumpTo(c, r.seq, r.findID)
@@ -290,35 +320,12 @@ func (a *App) imprint(c *ui.Context, key string, r *replyTo, quote string, part 
 }
 
 // sentImprint is a sent reply's imprint, from what core logged with it.
-func (a *App) sentImprint(c *ui.Context, key string, ref *protocol.ReplyRef, on imprintOn) ui.Element {
+func (a *App) sentImprint(c *ui.Context, key string, ref *protocol.ReplyRef, on imprintOn, land string) ui.Element {
 	r := &replyTo{seq: ref.Seq, findID: ref.FindID, from: ref.From, pics: len(ref.Media)}
 	if r.from != "you" {
 		r.from = "partner"
 	}
-	return a.imprint(c, key, r, ref.Quote, ref.Part, on, false)
-}
-
-// answerTab is the user's reply a partner answer answers, as an imprint tab
-// on top of its bubble (only when other messages came between).
-func (a *App) answerTab(c *ui.Context, r *replyTo) {
-	ui.Row(c.Key("answer-tab")).Children(func() {
-		a.imprint(c, "answer", r, r.quote, false, onPartner, false).MaxWidth(22 * a.T.Bubble).MaxWidthPercent(84)
-		ui.Spacer(c)
-	})
-}
-
-// pressIn settles a sent imprint into its bubble once, as the echo lands.
-func (a *App) pressIn(c *ui.Context, e ui.Element, clientID string) {
-	if clientID == "" || !a.rp.pressIn[clientID] || c.Preferences().ReduceMotion {
-		return
-	}
-	shown := ui.Local(e, "pressed", func() bool { return false })
-	p := ui.Pose{}
-	if !*shown {
-		p, *shown = ui.Pose{Y: -5, Scale: 1.035}, true
-		c.Invalidate()
-	}
-	e.AnimatePose(p, ui.Animation{Spring: ui.SpringOptions{Duration: a.T.Reply.PressIn, Bounce: a.T.Bouncy.Spring.Bounce}})
+	return a.imprint(c, key, r, ref.Quote, ref.Part, on, false, land)
 }
 
 // hoverReply is the round Reply beside a bubble, shown while the pointer is
@@ -389,7 +396,7 @@ func (a *App) composerReply(c *ui.Context) {
 	}
 	row.Children(func() {
 		a.glyph(c, 18, drawReply(t.Accent))
-		a.imprint(c, "composer", r, r.quote, false, onComposer, false).Grow(1)
+		a.imprint(c, "composer", r, r.quote, false, onComposer, false, "").Grow(1)
 		if a.iconButton(c, a.L.T("reply.cancel"), t.ChipLG, btnText, drawCross) {
 			a.CancelReply()
 		}

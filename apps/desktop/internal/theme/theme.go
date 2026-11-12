@@ -94,11 +94,14 @@ type Tokens struct {
 	// Chinese).
 	Display, Body, Mono     string
 	XS, SM, MD, LG, XL, XXL float32 // 12, 13, 15, 18, 20, 28
-	Bubble                  float32 // the conversation's one body size, both bubbles and the composer, 16
-	PartnerSize             float32 // the partner's words, the same 16 (D129)
-	Title                   float32 // screen titles and a task's outcome, 34
-	Hero                    float32 // hero numbers, 56
-	MonoSM                  float32 // code in cards and transcripts, 13
+	// XXS is the one step below captions, 11: only an imprint's who-line
+	// (D236), never words to read.
+	XXS         float32
+	Bubble      float32 // the conversation's one body size, both bubbles and the composer, 16
+	PartnerSize float32 // the partner's words, the same 16 (D129)
+	Title       float32 // screen titles and a task's outcome, 34
+	Hero        float32 // hero numbers, 56
+	MonoSM      float32 // code in cards and transcripts, 13
 
 	// space: one 4-point scale, S1 4 … S7 48. Gaps inside a group are
 	// S2–S3, between groups S4–S5, between a screen's sections S6–S7.
@@ -168,14 +171,20 @@ type ReplyTokens struct {
 	// Radius is the partner's imprint (tail bottom-left), RadiusYou the
 	// user's, mirrored: top-left, top-right, bottom-right, bottom-left.
 	Radius, RadiusYou [4]float32
-	// Depth is how it sits pressed in: a shadow along its top edge, a faint
-	// rim all round and a light edge at its bottom.
-	Depth Sunk
-	// The imprint's colour by voice and by what it is pressed into: the
+	// Deboss is how it sits pressed in: the reverse of a raised button.
+	// The clay above its top and left rims casts a shadow into the hollow,
+	// and its lower edge, where the hollow turns back up, catches the
+	// light. No border line. Raised is the pebble before it is pressed in
+	// (a sent imprint lands from it into Deboss).
+	Deboss Deboss
+	Raised Elevation
+	// The hollow's floor, a little below what it is pressed into: the
 	// user's orange bubble, the partner's bubble, the composer's card.
-	PartnerOnUser, YouOnUser, YouOnPartner, PartnerOnSurface, YouOnSurface ui.Color
-	// WhoYou is the who-line of the user's own words.
-	WhoYou ui.Color
+	OnUser, OnPartner, OnSurface ui.Color
+	// The quote's ink, quieter than the words around it so the person's own
+	// words lead: on the orange, and elsewhere. The who-line is InkSoft
+	// (OnUserBubble on the orange) at XXS.
+	InkOnUser, Ink ui.Color
 	// Found is how far a bubble's own tint deepens when an imprint brings it
 	// back, by voice; FoundDur the whole find.
 	FoundUser, FoundPartner ui.Color
@@ -184,12 +193,17 @@ type ReplyTokens struct {
 	PressIn time.Duration
 }
 
-// Sunk is an inner depth: Top along the top edge (Y down), Rim a 1-point
-// ring, Light along the bottom edge (Y up).
-type Sunk struct {
-	Top   Elevation
-	Rim   ui.Color
-	Light Elevation
+// Inset is an inner shadow: offset, blur, spread (negative pulls it in
+// from the sides), colour, as CSS's box-shadow: inset.
+type Inset struct {
+	X, Y, Blur, Spread float32
+	Color              ui.Color
+}
+
+// Deboss is a hollow's inner shadows: under the top rim, under the left
+// rim, and the lit lower edge.
+type Deboss struct {
+	Top, Left, Light Inset
 }
 
 // IslesTokens are the colors of the Devices stage's scene (D81): the sky
@@ -271,7 +285,7 @@ func Pebble() *Tokens {
 		Display: "Bricolage Grotesque, Resource Han Rounded CN, PingFang SC, Noto Sans SC",
 		Body:    "Bricolage Grotesque, PingFang SC, Noto Sans SC",
 		Mono:    "JetBrains Mono, SF Mono, Menlo, monospace",
-		XS:      12, SM: 13, MD: 15, LG: 18, XL: 20, XXL: 28,
+		XXS:     11, XS: 12, SM: 13, MD: 15, LG: 18, XL: 20, XXL: 28,
 		Bubble:      16,
 		PartnerSize: 16,
 		Title:       34,
@@ -314,25 +328,24 @@ func Pebble() *Tokens {
 // replyTokens derives the imprint's colours from the theme's own, as the
 // web's color-mix() does (D236).
 func replyTokens(t *Tokens) ReplyTokens {
-	clay := hex("#2B2118")
 	return ReplyTokens{
 		Radius:    [4]float32{14, 14, 14, 4},
 		RadiusYou: [4]float32{14, 14, 4, 14},
-		Depth: Sunk{
-			Top:   Elevation{Y: 2.5, Color: clay.Alpha(0.13)},
-			Rim:   clay.Alpha(0.05),
-			Light: Elevation{Y: -1, Color: hex("#FFFFFF").Alpha(0.55)},
+		Deboss: Deboss{
+			Top:   Inset{Y: 3, Blur: 3, Spread: -1, Color: t.Ink.Alpha(0.30)},
+			Left:  Inset{X: 2, Blur: 3, Spread: -2, Color: t.Ink.Alpha(0.20)},
+			Light: Inset{Y: -1.5, Color: hex("#FFFFFF").Alpha(0.45)},
 		},
-		PartnerOnUser:    t.PartnerBubble.Mix(t.UserBubble, 0.18),
-		YouOnUser:        t.UserBubble.Mix(t.Ink, 0.14),
-		YouOnPartner:     t.UserBubble.Mix(t.PartnerBubble, 0.74),
-		PartnerOnSurface: t.Sunken,
-		YouOnSurface:     t.UserBubble.Mix(t.Surface, 0.78),
-		WhoYou:           t.NeedsYou.Ink.Mix(t.Ink, 0.12),
-		FoundUser:        t.UserBubble.Mix(t.Ink, 0.16),
-		FoundPartner:     t.PartnerBubble.Mix(t.Accent, 0.20),
-		FoundDur:         1400 * time.Millisecond,
-		PressIn:          260 * time.Millisecond,
+		Raised:       Elevation{Y: 3, Color: t.Ink.Alpha(0.16)},
+		OnUser:       t.UserBubble.Mix(t.Ink, 0.10),
+		OnPartner:    t.Sunken.Mix(t.Ink, 0.04), // a warm hollow: the paper's sunken tone, a little deeper
+		OnSurface:    t.Sunken.Mix(t.Ink, 0.04),
+		InkOnUser:    t.Ink.Mix(t.UserBubble, 0.26),
+		Ink:          t.InkMuted,
+		FoundUser:    t.UserBubble.Mix(t.Ink, 0.16),
+		FoundPartner: t.PartnerBubble.Mix(t.Accent, 0.20),
+		FoundDur:     1400 * time.Millisecond,
+		PressIn:      300 * time.Millisecond,
 	}
 }
 

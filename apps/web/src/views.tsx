@@ -740,8 +740,14 @@ function JobRow({ e, chipOwner, noted, join, rk, ans }: { e: Entry; chipOwner: M
   const own = task && title(task) && chipOwner.get(task.id) === e.firstSeq;
   return (
     <div class={`partner${join ? " join" : ""}`} data-reply={j.ack ? rk : undefined} data-seq={e.firstSeq}>
-      {j.ack && ans && <Imprint from="you" quote={ans.quote} seq={ans.seq} />}
-      {j.ack && <div class="bubble">{j.ack.text}</div>}
+      {j.ack && (ans ? (
+        <div class="bubble has-reply">
+          <Imprint from="you" quote={ans.quote} seq={ans.seq} />
+          <span class="words">{j.ack.text}</span>
+        </div>
+      ) : (
+        <div class="bubble">{j.ack.text}</div>
+      ))}
       {j.ack && <HoverReply k={rk} />}
       {st && !(task && title(task)) && <div class={`status-line${st.state === "failed" ? " failed" : ""}`}>{st.text}</div>}
       <Quiet k={`m${e.firstSeq}`} tasks={own ? [task!] : []} detail={st?.text} noted={noted} />
@@ -1069,8 +1075,14 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
     const ans = answerOf(e, prevUser);
     return (
       <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
-        {ans && <Imprint from="you" quote={ans.quote} seq={ans.seq} />}
-        {(e.ai.text || !e.ai.cal) && <div class="bubble" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />}
+        {(e.ai.text || !e.ai.cal) && (ans ? (
+          <div class="bubble has-reply">
+            <Imprint from="you" quote={ans.quote} seq={ans.seq} />
+            <div dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />
+          </div>
+        ) : (
+          <div class="bubble" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />
+        ))}
         <HoverReply k={rk} />
         {/* D222: the day card under the partner's words (or alone in its column). */}
         {e.ai.cal && <DayCard g={e.ai.cal} />}

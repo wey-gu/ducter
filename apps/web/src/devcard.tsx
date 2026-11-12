@@ -5,6 +5,7 @@
 // update, one 断开这台 {device}. Every control here is a shared one (controls.tsx).
 import { PhoneBlock, PhoneInfo, startInstall } from "./phone-use.tsx";
 import { ComputerBlock, ComputerInfo } from "./computer-use.tsx";
+import { HandsetChip } from "./handset.tsx";
 import type { DeviceHarness, DeviceUpdate, DeviceView } from "@ducter/protocol";
 import { TRY_LIVE } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
@@ -221,6 +222,7 @@ function ClientSheet({ cl, folded }: { cl: Client; folded: Client[] }) {
       </div>
       <div class="dc-status">{line}</div>
       {mine && <NotifyChip />}
+      <HandsetChip cl={cl} />
       <Via card={`cl:${cl.id}`} list={[cl, ...folded]} computer={clientComputer(cl)} />
       <Foot id={cl.id} name={name} confirm={isCli(cl) ? t("device.cli.name", clientComputer(cl)) : name} means={isCli(cl) ? "device.disconnect.means.cli" : "device.disconnect.means.client"} />
     </div>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D238: 用这台手机 / Use this phone. It hears window changes only and ignores them (it reads only when asked, inside a
+     loan the person said yes to); it may read the window in front, act with gestures, and take a
+     picture of the screen (Android 11+). Not an accessibility tool: Android 14+ keeps views an app
+     marks as sensitive (a bank's fields) away from it, which is what Ducter wants. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds|flagIncludeNotImportantViews"
+    android:canRetrieveWindowContent="true"
+    android:canPerformGestures="true"
+    android:canTakeScreenshot="true"
+    android:isAccessibilityTool="false"
+    android:notificationTimeout="200"
+    android:description="@string/handset_service_description"
+    android:summary="@string/handset_service_summary" />

@@ -14,6 +14,7 @@ import { createPhoneLive, type PhoneLive, type PhoneSink } from "./live.ts";
 import { remotePhoneDevice } from "./remote.ts";
 import type { Fetcher, InstallResult, License } from "./sdk.ts";
 import { registerPhoneTools, type PhoneTools } from "./tools.ts";
+import { HANDSET_BLIND, type Handsets } from "../handset/index.ts";
 
 export type { PhoneSetup } from "./host.ts";
 
@@ -68,6 +69,8 @@ export interface DucterPhoneOptions {
   fetcher?: Fetcher;
   /** D234: the workers, whose Macs may have phones of their own. */
   workers?: () => PhoneWorkers | undefined;
+  /** D238: the person's own phones (用这台手机): a phone task uses one when it is added. */
+  handsets?: () => Handsets | undefined;
   /** Test seams. */
   device?: Partial<PhoneDeviceOptions>;
   installer?: (accepted: { id: string; sha256: string }[], current: License[]) => Promise<InstallResult>;
@@ -112,7 +115,11 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
     if (!dev || dev === "local") return "local";
     return workerOf(dev)?.id ?? dev;
   };
+  // D238: a phone task uses the person's own phone when one is added (its apps and sign-ins are
+  // theirs); Ducter's phone on its computer otherwise. Bound at the task's first use.
+  const handsetOf = (taskId: string): string | undefined => o.handsets?.()?.forTask(taskId, wantsPhone(taskId));
   const deviceFor = (taskId: string): PhoneDevice => {
+    if (handsetOf(taskId)) return o.handsets!()!.device(taskId);
     const where = computerOf(taskId);
     return where === "local" ? device : (remoteFor(where)?.device ?? device);
   };
@@ -133,7 +140,8 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
     return v;
   };
   const attached = (taskId: string) => {
-    if (!wantsPhone(taskId) || !readyOn(computerOf(taskId))) return false;
+    if (!wantsPhone(taskId)) return false;
+    if (!handsetOf(taskId) && !readyOn(computerOf(taskId))) return false;
     const c = o.tasks.get(taskId);
     return !!c && ACTIVE.has(c.attention);
   };
@@ -149,15 +157,18 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
     // A task on the phone keeps it running until it stops working (task_state below lets go).
     attached: (taskId) => {
       const a = attached(taskId);
-      if (a && !holds.has(taskId)) holds.set(taskId, deviceFor(taskId).hold(`task ${taskId}`));
+      if (a && !holds.has(taskId) && !handsetOf(taskId)) holds.set(taskId, deviceFor(taskId).hold(`task ${taskId}`));
       return a;
     },
-    blind: (taskId) => (taskId ? liveForTask(taskId) : live).blind(),
-    tried: (taskId) => liveForTask(taskId).tried(taskId),
+    blind: (taskId) => (taskId && handsetOf(taskId) ? o.handsets!()!.blind(taskId) : (taskId ? liveForTask(taskId) : live).blind()),
+    tried: (taskId) => void (handsetOf(taskId) ? undefined : liveForTask(taskId).tried(taskId)),
     note: (taskId, doing) => {
+      if (handsetOf(taskId)) return o.handsets!()!.note(taskId, doing);
       busy.add(taskId);
       liveForTask(taskId).note(taskId, doing);
     },
+    on: (taskId) => (handsetOf(taskId) ? o.handsets!()!.where(taskId) : undefined),
+    blindText: (taskId) => (handsetOf(taskId) ? HANDSET_BLIND : undefined),
     evidenceDir: (taskId) => join(o.dataDir, "evidence", taskId),
   });
 
@@ -244,8 +255,8 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
     computerOf,
     attached,
     decorate(on) {
-      for (const c of on.tasks) if (busy.has(c.taskId) && attached(c.taskId)) c.phoning = { device: computerOf(c.taskId) };
-      return on;
+      for (const c of on.tasks) if (busy.has(c.taskId) && attached(c.taskId) && !handsetOf(c.taskId)) c.phoning = { device: computerOf(c.taskId) };
+      return o.handsets?.()?.decorate(on) ?? on;
     },
     onChange(fn) {
       fns.add(fn);

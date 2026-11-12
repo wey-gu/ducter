@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Use this phone (D238)</title>
+<!-- Canvas for D238 (design/ui.md "Prototype canvases"). It decides nothing on its own: the
+     decision is design/decisions.md D238, the indicator's and the guide's reasoning research/74 §7.
+     It loads the web client's own stylesheet, so every board is the built markup and Pebble's tokens. -->
+<link rel="stylesheet" href="../../apps/web/static/app.css" />
+<style>
+  body { margin: 0; padding: 32px; background: var(--bg-deep); color: var(--ink); font-family: "Bricolage Grotesque", "PingFang SC", system-ui, sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 28px; }
+  h2 { margin: 36px 0 10px; font-size: 20px; }
+  p.note { max-width: 62em; margin: 0 0 14px; color: var(--ink-muted); line-height: 1.5; }
+  .cv-row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .cv-board { width: 390px; display: flex; flex-direction: column; gap: 8px; }
+  .cv-cap { font-size: 12px; font-weight: 800; color: var(--ink-muted); }
+  .cv-board .sheet { position: relative !important; inset: auto !important; transform: none !important; translate: none !important; margin: 0 !important; width: auto !important; max-height: none; animation: none; border-radius: 28px; box-shadow: 0 4px 0 var(--line-2); }
+  .still * { animation-play-state: paused !important; }
+  /* A still frame of a loop: the moment named (a negative delay, paused). */
+  .at-dialog * { animation-delay: -2.9s !important; } .at-menu * { animation-delay: -2.3s !important; }
+  .at-go * { animation-delay: -3.5s !important; } .at-ring * { animation-delay: -2.6s !important; }
+  .nativepill b, .nativepill small, .nativepill em { white-space: nowrap; }
+  /* The phone the pill sits on (the Android app draws the pill natively: HandsetPill.kt). */
+  .handheld { position: relative; width: 300px; height: 620px; border-radius: 40px; background: #fff; box-shadow: inset 0 0 0 9px #2b2118, 0 8px 0 #1b140e; overflow: hidden; font-size: 14px; }
+  .handheld .status { height: 34px; padding: 10px 26px 0; display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #2b2118; }
+  .handheld .wx-top { padding: 8px 18px; font-weight: 800; border-bottom: 1px solid #eee; }
+  .handheld .wx { padding: 12px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .handheld .wx div { align-self: flex-start; max-width: 70%; padding: 8px 12px; border-radius: 6px; background: #f1f1f1; }
+  .handheld .wx div.me { align-self: flex-end; background: #95ec69; }
+  .handheld .wx-bar { position: absolute; left: 16px; right: 16px; bottom: 26px; display: flex; gap: 8px; }
+  .handheld .wx-bar span { flex: 1; padding: 9px 12px; border-radius: 6px; background: #f4f4f4; }
+  .handheld .wx-bar b { padding: 9px 12px; border-radius: 6px; background: #07c160; color: #fff; }
+  .nativepill { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 22px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line-2), 0 6px 14px rgba(43,33,24,.18); }
+  .nativepill img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #fff; }
+  .nativepill span { display: flex; flex-direction: column; line-height: 1.2; }
+  .nativepill b { font-size: 12.5px; } .nativepill small { font-size: 11px; color: var(--ink-muted); }
+  .nativepill em { font-style: normal; font-weight: 800; font-size: 13px; padding: 7px 14px 9px; border-radius: 18px; background: var(--accent); box-shadow: 0 4px 0 var(--press-primary); }
+  .nativepill.you { box-shadow: inset 0 0 0 2px var(--accent), 0 6px 14px rgba(43,33,24,.18); }
+  .tapring { position: absolute; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  table.cands { border-collapse: collapse; font-size: 13px; background: var(--surface); border-radius: 14px; overflow: hidden; max-width: 1100px; }
+  table.cands td, table.cands th { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.cands th { background: var(--sunken); }
+  .win { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+</style>
+</head>
+<body>
+<h1>用这台手机 / Use this phone</h1>
+<p class="note">D238: a task borrows the person's own Android phone through the Ducter app on it. These boards are the built web markup (handset.tsx with app.css) and the Android app's pill (HandsetPill.kt) drawn in HTML. Frames are still; the live page loops them.</p>
+
+<h2>1 · The indicator: seven candidates (research/74 §7)</h2>
+<table class="cands">
+  <tr><th>#</th><th>Candidate</th><th>Naive raters (haiku ×3): what is happening / what Stop does</th><th>False implications</th></tr>
+  <tr class="win"><td>A</td><td>Literal pill in the status bar: the partner's face, "Ducter is using this phone", Stop</td><td>3/3 · 3/3</td><td>none; all asked "what has it done, what can it see"</td></tr>
+  <tr><td>B</td><td>The same pill without words, fingertip dots where it taps</td><td>3/3 "something is controlling it" · 3/3; nobody could say who</td><td>remote support / screen sharing</td></tr>
+  <tr><td>C</td><td>Warm glow around the screen edge</td><td>0/3 · 0/3</td><td>an overlay or an assistant listening; tap does "something"</td></tr>
+  <tr><td>D</td><td>The clay partner peeking over the top edge, a stop square</td><td>0/3 · 0/3</td><td>the app's own mascot; Stop pauses an animation</td></tr>
+  <tr><td>E</td><td>A luggage tag "handed over"</td><td>0/3 · 0/3</td><td>transferring an account or the phone</td></tr>
+  <tr><td>F</td><td>Red dot and a timer</td><td>3/3 screen recording · 0/3</td><td>it is recording; tapping opens Android's own panel</td></tr>
+  <tr class="win"><td>G</td><td>A + a soft ring where each tap lands (chosen)</td><td>3/3 · 3/3, and "its taps show up as the rings"</td><td>none</td></tr>
+</table>
+
+<h2>2 · On the phone, while a task holds it</h2>
+<div class="cv-row">
+  <div class="cv-board"><div class="cv-cap">The task's turn: what it does now, Stop</div>
+    <div class="handheld"><div class="status"><span>9:41</span><span>5G</span></div><div class="wx-top">妈妈</div>
+      <div class="wx"><div>周六回来吃饭吗？</div><div class="me">回来</div></div>
+      <div class="wx-bar"><span>周六见，不见不散</span><b>发送</b></div>
+      <div class="nativepill"><img src="../../apps/web/static/art/idle.webp" alt="" /><span><b>Ducter 正在用这台手机</b><small>在「输入框」里打字</small></span><em>停下</em></div>
+      <div class="tapring" style="left: 150px; top: 580px"></div>
+    </div>
+  </div>
+  <div class="cv-board"><div class="cv-cap">The person's turn (a sign-in): the task is blind</div>
+    <div class="handheld"><div class="status"><span>9:41</span><span>5G</span></div><div class="wx-top">登录</div>
+      <div class="wx"><div>手机号</div><div>验证码</div></div>
+      <div class="nativepill you"><img src="../../apps/web/static/art/idle.webp" alt="" /><span><b>轮到你了</b><small>做完以后，在卡片上点「好了」</small></span><em>停下</em></div>
+    </div>
+  </div>
+</div>
+
+<h2>3 · The guide to Android's one switch (Android 13+, a sideloaded app)</h2>
+<div class="cv-row">
+  <div class="cv-board still at-dialog"><div class="cv-cap">Step 1: tap the switch once (Android then offers the next step)</div>
+    <div class="sheet handset-guide"><div class="grab"></div><h2>让任务能借用这台手机</h2><p class="lede">安卓要你亲手打开一个开关，大约一分钟，只做一次。每一步都会带你到对的那一页，做完自己回来。</p>
+      <ol class="hs-steps">
+        <li class="here"><div class="hs-n">1</div><div class="hs-what"><div class="small sub">第 1 步</div><b>先点一下那个开关</b>
+          <div class="hs-mini try" style="--d:-3s"><div class="hs-bar"><span>无障碍</span></div><div class="hs-sec">已下载的应用</div><div class="hs-row"><img src="../../apps/web/static/art/idle.webp" alt="" /><span>Ducter</span><small>已关闭</small></div><div class="hs-switch"><span>使用 Ducter</span><i class="hs-toggle"></i></div><div class="hs-dialog"><b>受限制的设置</b><span>确定</span></div><i class="hs-tip"></i></div>
+          <p class="small">在「无障碍」里点「Ducter」，再点开关。安卓说这个设置受限，就点「确定」，接着做下一步；要是它直接问你「允许」，点「允许」就全好了。</p><button class="btn primary">去设置</button></div></li>
+        <li class="next"><div class="hs-n">2</div><div class="hs-what"><div class="small sub">第 2 步</div><b>允许受限制的设置</b></div></li>
+        <li class="next"><div class="hs-n">3</div><div class="hs-what"><div class="small sub">第 3 步</div><b>打开 Ducter</b></div></li>
+      </ol></div>
+  </div>
+  <div class="cv-board still at-menu"><div class="cv-cap">Step 2: App info › ⋮ › Allow restricted settings</div>
+    <div class="sheet handset-guide"><div class="grab"></div><h2>让任务能借用这台手机</h2>
+      <ol class="hs-steps">
+        <li class="done"><div class="hs-n"></div><div class="hs-what"><div class="small sub">第 1 步</div><b>先点一下那个开关</b></div></li>
+        <li class="here"><div class="hs-n">2</div><div class="hs-what"><div class="small sub">第 2 步</div><b>允许受限制的设置</b>
+          <div class="hs-mini allow"><div class="hs-bar"><span>应用信息</span><b class="hs-kebab">⋮</b></div><div class="hs-app"><img src="../../apps/web/static/art/idle.webp" alt="" /><span>Ducter</span></div><div class="hs-menu">允许受限制的设置</div><i class="hs-tip"></i></div>
+          <p class="small">在 Ducter 的应用信息里，点右上角的 ⋮，选「允许受限制的设置」，再解锁确认一下。</p><p class="small sub">回来了。如果还没做完，再去一次。</p><button class="btn primary">去设置</button></div></li>
+        <li class="next"><div class="hs-n">3</div><div class="hs-what"><div class="small sub">第 3 步</div><b>打开 Ducter</b></div></li>
+      </ol></div>
+  </div>
+  <div class="cv-board still at-dialog"><div class="cv-cap">Step 3: Use Ducter › Allow (then straight back)</div>
+    <div class="sheet handset-guide"><div class="grab"></div><h2>Let tasks borrow this phone</h2>
+      <ol class="hs-steps">
+        <li class="done"><div class="hs-n"></div><div class="hs-what"><div class="small sub">Step 1</div><b>Tap the switch once</b></div></li>
+        <li class="done"><div class="hs-n"></div><div class="hs-what"><div class="small sub">Step 2</div><b>Allow restricted settings</b></div></li>
+        <li class="here"><div class="hs-n">3</div><div class="hs-what"><div class="small sub">Step 3</div><b>Turn on Ducter</b>
+          <div class="hs-mini on"><div class="hs-bar"><span>Accessibility</span></div><div class="hs-sec">Downloaded apps</div><div class="hs-row"><img src="../../apps/web/static/art/idle.webp" alt="" /><span>Ducter</span><small>Off</small></div><div class="hs-switch"><span>Use Ducter</span><i class="hs-toggle"></i></div><div class="hs-dialog"><b>Allow Ducter to have full control of your device?</b><span>Allow</span></div><i class="hs-tip"></i></div>
+          <p class="small">In Accessibility, tap Ducter, turn on Use Ducter, then tap Allow. Once it's on you come straight back here.</p><button class="btn primary">Open settings</button></div></li>
+      </ol></div>
+  </div>
+  <div class="cv-board still at-go"><div class="cv-cap">Back by itself: how a loan looks (a still at the Go card; the page loops it)</div>
+    <div class="sheet handset-guide"><div class="grab"></div><h2>好了，这台手机能借给任务了</h2>
+      <div class="hs-demo"><div class="hs-phone"><div class="hs-pill"><img src="../../apps/web/static/art/idle.webp" alt="" /><span><b>Ducter 正在用这台手机</b><small>点「发送」</small></span><em>停下</em></div><div class="hs-chat"><div class="hs-msg">微信</div><div class="hs-input"><span>周六见，不见不散</span><i class="hs-send"></i></div></div><i class="hs-ring"></i><div class="hs-go"><span>发给妈妈：周六见</span><b>点击</b></div></div>
+        <ol class="hs-caps"><li style="--i:0">任务要用的时候，先问你</li><li style="--i:1">借出去时，顶上一直显示它在用</li><li style="--i:2">发送、付款，再等你点一次 Go</li><li style="--i:3">随时点「停下」，手机就回到你手里</li></ol></div>
+      <div class="btns"><button class="btn primary">知道了</button></div></div>
+  </div>
+</div>
+
+<h2>4 · In the conversation</h2>
+<div class="cv-row">
+  <div class="cv-board"><div class="cv-cap">The ask: one card, no default</div>
+    <div class="partner askq pay handset"><div class="bubble">「回妈妈的消息」想借你的 Pixel Fold 用一会儿</div>
+      <div class="dl">它会在那台手机上点、滑、打字，顶上一直显示它在用，随时能停下。发送、付款还会再问你。</div>
+      <div class="tray"><span class="grow"></span><button class="btn secondary sm">不借</button><button class="btn primary sm">借给它</button></div></div>
+  </div>
+  <div class="cv-board"><div class="cv-cap">A send on the person's phone waits for Go</div>
+    <div class="partner askq pay"><div class="bubble">发给妈妈：周六见</div>
+      <div class="dl">在你的 Pixel Fold 上</div><div class="dl">会在微信里点击「发送」</div>
+      <div class="tray"><span class="grow"></span><button class="btn secondary sm">暂不点击</button><button class="btn primary sm">点击</button></div></div>
+  </div>
+</div>
+</body>
+</html>

@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
@@ -101,6 +102,8 @@ class MainActivity : ComponentActivity() {
         watchInsets()
         watchFold()
         watchUpdates()
+        // D238: the phone's switch, a loan's end, 停下 on the pill: a `ducterhandset` event on the page.
+        Handset.listener = { ev -> js("dispatchEvent(new CustomEvent('ducterhandset',{detail:$ev}))") }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 // The page's routes are history entries: back goes up a level, as in any app.
@@ -138,6 +141,8 @@ class MainActivity : ComponentActivity() {
         // Back from Android's "Install unknown apps" switch: carry on with the update.
         (Updater.state.value as? UpdateState.NeedsPermission)?.let { if (packageManager.canRequestPackageInstalls()) Updater.install(this, it.r, it.apk) }
         if (helloed || store.base == null) quietCheck()
+        // D238: back from Android's settings (a step of the guide): the page sees where it stands now.
+        Handset.changed(this)
         // Back to the app: the home may have updated meanwhile (or fallen behind a new app).
         if (helloed && phase == "ready") homeCheck()
     }
@@ -366,6 +371,16 @@ window.ducterNative=Object.freeze($info);})();"""
             "push.disable" -> answer(JSONObject())
             "update.check" -> { checkNow(); answer(null) }
             "log" -> answer(null)
+            // D238: 用这台手机 / Use this phone. What the app can do, the guide's settings pages,
+            // and one call from the home (relayed by the page), answered when it is done.
+            "handset.state" -> answer(Handset.state(this))
+            "handset.settings" -> answer(JSONObject().put("ok", Handset.openSettings(this, m.optString("step"))))
+            "handset.call" -> Handset.call(this, m.optString("m"), m.optJSONObject("a") ?: JSONObject()) { r ->
+                // While a task holds this phone, the page (and its socket) must keep running
+                // with Ducter in the background: its renderer stays important (research/74 §4).
+                if (Build.VERSION.SDK_INT >= 26) web.setRendererPriorityPolicy(if (Handset.session != null) WebView.RENDERER_PRIORITY_IMPORTANT else WebView.RENDERER_PRIORITY_BOUND, Handset.session == null)
+                answer(r)
+            }
             // D209: a page opened from the cache whose home never answered: the can't-reach screen.
             "reach" -> {
                 if (m.optBoolean("ok", true)) reached = true

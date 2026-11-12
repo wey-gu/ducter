@@ -15,6 +15,8 @@ export * from "./calendar.ts";
 export * from "./computer-use.ts";
 import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFrame } from "./computer-use.ts";
 export * from "./reply.ts";
+export * from "./handset.ts";
+import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
 import type { CalChange, CalGlance, CalToday } from "./calendar.ts";
@@ -148,6 +150,8 @@ export interface Question {
   key?: KeyAsk;
   /** D235: one action in the person's apps that commits (go), or their own turn (user); set by the app tools only. */
   computer?: ComputerAsk;
+  /** D238: may this task use the person's own phone now (set by the home's handset code only). */
+  handset?: HandsetAsk;
 }
 
 /**
@@ -264,6 +268,7 @@ export interface Bodies {
     key?: KeyAsk; // D233: {task} 需要一个密钥 / {task} needs a key: Go carries the value (never logged); Hold is 不给 / Don't give; no default
     phone?: PhoneAsk; // D217: one tap on Ducter's phone that commits (Go taps it once), or the user's turn on it (Go = 好了 / Done)
     computer?: ComputerAsk; // D235: one action in the person's apps that commits (Go does it once), or their own turn (Go = 好了 / Done)
+    handset?: HandsetAsk; // D238: may this task use the person's own phone now (Go starts it there, with its indicator); no default
     where?: WhereAsk; // D157: wait for a computer (Hold, the default) or do it now on another (Go)
     closing?: ClosingPlan; // D157: 合上之前搬走 / Move before closing: Go (the default) moves them
     anywhere?: { hostname: string }; // D228: create the tunnel in the person's Cloudflare account and point this hostname at the home (Go)
@@ -558,6 +563,8 @@ export interface TaskCard {
   phoning?: { device: string };
   /** D235: the task is using the person's apps on this computer (its id; app: the one it last used), so it can be stopped. */
   computing?: { device: string; app?: string };
+  /** D238: the task is using the person's own phone (its device id; app: the one in front, by id), so it can be stopped. */
+  handset?: { device: string; app?: string };
 }
 
 export interface OnHand {
@@ -923,6 +930,7 @@ export type ClientFrame =
   | PhoneClientFrame
   // D235: 用电脑 / Use the computer (computer-use.ts).
   | ComputerClientFrame
+  | HandsetClientFrame
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" }
   // D154, `ducter browser check`: start Ducter's browser, load a page, quit. Answered with browser_check.
@@ -1097,6 +1105,7 @@ export type ServerFrame =
   | SavedFrame
   | PhoneServerFrame
   | ComputerServerFrame
+  | HandsetServerFrame
   | { t: "error"; message: string };
 
 /** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */
@@ -1554,7 +1563,8 @@ export interface Reach {
   address?: string; // the address from outside, when there is one (own, or the tunnel's once on)
   anywhere?: Anywhere; // D228: absent = off
   /** form "cli": the command line on a computer, shown inside that computer's card (D155); computer: the host it runs on. */
-  clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string; form?: "cli" | "app"; computer?: string }[];
+  /** handset (D238): 用这台手机 / Use this phone on that phone (an Android app's card only). */
+  clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string; form?: "cli" | "app"; computer?: string; handset?: HandsetView }[];
 }
 
 // ---------- Connections (D96, design/connectors.md) ----------

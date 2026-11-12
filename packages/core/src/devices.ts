@@ -78,6 +78,8 @@ export interface DevicesOptions {
   ownPhone?: { ability(): DeviceAbility; onChange(fn: () => void): () => void };
   /** D235: 用电脑 / Use the computer on this computer (computer/index.ts). */
   computer?: { ability(): Promise<DeviceAbility>; refresh(): void };
+  /** D238: 用这台手机 / Use this phone on each Android phone's card (handset/index.ts). */
+  handsets?: Pick<import("./handset/index.ts").Handsets, "view" | "onChange">;
 }
 
 /**
@@ -325,6 +327,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         connected: live.has(d.id),
         ...(d.lastSeenAt ? { lastSeen: d.lastSeenAt } : {}),
         ...deviceForm(d), // D155: a CLI says so, and which computer it belongs to
+        ...((): { handset?: import("@ducter/protocol").HandsetView } => {
+          const h = o.handsets?.view(d.id, d.platform ?? "");
+          return h ? { handset: h } : {};
+        })(),
       })),
     };
   };
@@ -415,6 +421,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   const offBrowser = o.browser?.onChange(changed);
   const offPhone = o.ownPhone?.onChange(changed);
   const offAnywhere = o.anywhere?.onChange(changed);
+  const offHandsets = o.handsets?.onChange(changed);
 
   async function setAbility(device: string, ability: AbilityId, on: boolean, named?: { token: string; hostname: string }): Promise<AbilityResult> {
     const res = (ok: boolean, reason?: AbilityReason, detail?: string): AbilityResult => ({
@@ -588,6 +595,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       offBrowser?.();
       offPhone?.();
       offAnywhere?.();
+      offHandsets?.();
       if (timer) clearTimeout(timer);
       fns.clear();
     },

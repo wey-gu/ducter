@@ -318,6 +318,8 @@ export type GateResult = { pass: true; via: "local" } | { pass: true; via: "devi
 
 export interface Gate {
   check(req: Request, peerIp: string | undefined): Promise<GateResult>;
+  /** The paired device whose token this request offers, if any (whether or not it is local). */
+  deviceOf(req: Request): Device | undefined;
 }
 
 const json = (status: number, body: unknown) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
@@ -335,6 +337,10 @@ export function createGate(opts: { auth: DeviceAuth; trustLoopback?: boolean; pe
     if (path === "/ws") return wsProtocolToken(req);
   };
   return {
+    deviceOf(req) {
+      const t = tokenOf(req, new URL(req.url).pathname);
+      return t ? opts.auth.verify(t) : undefined;
+    },
     async check(req, peerIp) {
       const url = new URL(req.url);
       const local = trust && isLocalRequest(req, peerIp);

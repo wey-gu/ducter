@@ -155,6 +155,41 @@ type Tokens struct {
 	PressDur, EnterDur time.Duration
 	// Equip is the sticker peel-and-stick of an ability (research/26, 28).
 	Equip EquipMotion
+
+	// Reply is 回复 / Reply to one message (D236): the imprint.
+	Reply ReplyTokens
+}
+
+// ReplyTokens are the imprint's (D236, research/72): the message replied to,
+// as a small copy of its own bubble (its voice's colour and tail), pressed
+// into the reply like a pebble into clay. The names mirror the web's
+// (--r-imprint, --imprint-*, --found-*, --t-press-in).
+type ReplyTokens struct {
+	// Radius is the partner's imprint (tail bottom-left), RadiusYou the
+	// user's, mirrored: top-left, top-right, bottom-right, bottom-left.
+	Radius, RadiusYou [4]float32
+	// Depth is how it sits pressed in: a shadow along its top edge, a faint
+	// rim all round and a light edge at its bottom.
+	Depth Sunk
+	// The imprint's colour by voice and by what it is pressed into: the
+	// user's orange bubble, the partner's bubble, the composer's card.
+	PartnerOnUser, YouOnUser, YouOnPartner, PartnerOnSurface, YouOnSurface ui.Color
+	// WhoYou is the who-line of the user's own words.
+	WhoYou ui.Color
+	// Found is how far a bubble's own tint deepens when an imprint brings it
+	// back, by voice; FoundDur the whole find.
+	FoundUser, FoundPartner ui.Color
+	FoundDur                time.Duration
+	// PressIn is a sent imprint settling into its bubble.
+	PressIn time.Duration
+}
+
+// Sunk is an inner depth: Top along the top edge (Y down), Rim a 1-point
+// ring, Light along the bottom edge (Y up).
+type Sunk struct {
+	Top   Elevation
+	Rim   ui.Color
+	Light Elevation
 }
 
 // IslesTokens are the colors of the Devices stage's scene (D81): the sky
@@ -183,7 +218,7 @@ func hex(s string) ui.Color { return ui.Hex(s) }
 
 // Pebble is the default theme.
 func Pebble() *Tokens {
-	return &Tokens{
+	t := &Tokens{
 		Name:          "pebble",
 		Bg:            hex("#FFF6EA"),
 		Surface:       hex("#FFFFFF"),
@@ -271,6 +306,33 @@ func Pebble() *Tokens {
 		Snappy:   ui.Snappy,
 		PressDur: 70 * time.Millisecond, EnterDur: 220 * time.Millisecond,
 		Equip: EquipMotion{Flight: 820 * time.Millisecond, Snap: 0.62, Squash: 420 * time.Millisecond, DoneFace: 1800 * time.Millisecond, Fade: 200 * time.Millisecond},
+	}
+	t.Reply = replyTokens(t)
+	return t
+}
+
+// replyTokens derives the imprint's colours from the theme's own, as the
+// web's color-mix() does (D236).
+func replyTokens(t *Tokens) ReplyTokens {
+	clay := hex("#2B2118")
+	return ReplyTokens{
+		Radius:    [4]float32{14, 14, 14, 4},
+		RadiusYou: [4]float32{14, 14, 4, 14},
+		Depth: Sunk{
+			Top:   Elevation{Y: 2.5, Color: clay.Alpha(0.13)},
+			Rim:   clay.Alpha(0.05),
+			Light: Elevation{Y: -1, Color: hex("#FFFFFF").Alpha(0.55)},
+		},
+		PartnerOnUser:    t.PartnerBubble.Mix(t.UserBubble, 0.18),
+		YouOnUser:        t.UserBubble.Mix(t.Ink, 0.14),
+		YouOnPartner:     t.UserBubble.Mix(t.PartnerBubble, 0.74),
+		PartnerOnSurface: t.Sunken,
+		YouOnSurface:     t.UserBubble.Mix(t.Surface, 0.78),
+		WhoYou:           t.NeedsYou.Ink.Mix(t.Ink, 0.12),
+		FoundUser:        t.UserBubble.Mix(t.Ink, 0.16),
+		FoundPartner:     t.PartnerBubble.Mix(t.Accent, 0.20),
+		FoundDur:         1400 * time.Millisecond,
+		PressIn:          260 * time.Millisecond,
 	}
 }
 

@@ -291,6 +291,8 @@ function answeredWords(d: DecisionState): string {
 }
 
 function Resolved({ d }: { d: DecisionState }) {
+  // D236: answered by a reply: its words are that bubble, not a line under the question.
+  if (d.resolved?.msgSeq) return null;
   const msg = answeredWords(d);
   return (
     <div class="resolved" role="status">

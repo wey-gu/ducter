@@ -113,6 +113,7 @@ func (a *App) rows() []row {
 func (a *App) conversation(c *ui.Context) {
 	t := a.T
 	rows := a.rows()
+	a.noteRows(rows) // D236: for the jump and the answer tab
 	a.header(c)
 	a.list.Key = func(i int) any {
 		if i >= len(rows) {
@@ -407,15 +408,15 @@ func (a *App) onHandButton(c *ui.Context, b store.Board) {
 func (a *App) pendingRow(c *ui.Context, p *pendingMsg) {
 	t := a.T
 	if len(p.atts) == 0 {
-		a.userBubble(c, p.text, true)
+		a.userReplyBubble(c, p.text, true, nil, p.reply, "")
 		return
 	}
 	join := a.takeJoin()
 	ui.Column(c).Gap(t.S1).AlignItems(ui.End).Children(func() {
 		a.messageMedia(c, "p"+p.clientID, nil, p.atts, true, "conv")
-		if p.text != "" {
+		if p.text != "" || p.reply != nil {
 			a.join = join
-			a.userBubble(c, p.text, true)
+			a.userReplyBubble(c, p.text, true, nil, p.reply, "")
 		}
 		if anyFailed(p.atts) {
 			ui.Row(c.Key("pfail:" + p.clientID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
@@ -428,27 +429,69 @@ func (a *App) pendingRow(c *ui.Context, p *pendingMsg) {
 	})
 }
 
+// userBubble is the user's words in their bubble. D236: one that replies
+// shows the imprint of what it replies to pressed into its top, the words
+// under it: from core's ReplyRef once echoed (ref), from the composer's
+// target while pending (still).
 func (a *App) userBubble(c *ui.Context, text string, pending bool) {
+	a.userReplyBubble(c, text, pending, nil, nil, "")
+}
+
+func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *protocol.ReplyRef, still *replyTo, clientID string) {
 	t := a.T
 	join := a.takeJoin()
-	ui.Row(c).Children(func() {
+	rt := a.takeReply()
+	row := ui.Row(c).Gap(t.S2).AlignItems(ui.Center)
+	hov := rt != nil && row.Hovered()
+	row.Children(func() {
 		ui.Spacer(c)
+		a.hoverReply(c, rt, hov)
 		r := t.BubbleRadius
 		tr := r[1]
 		if join {
 			tr = t.BubbleJoin
 		}
-		b := ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).
-			TextColor(t.OnUserBubble).Background(t.UserBubble).Padding(t.S2+2, t.S4-2).Radius(r[0], tr, r[2], r[3]).
-			MaxWidth(t.BubbleMeasure).MaxWidthPercent(76)
+		if ref == nil && still == nil {
+			b := ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).
+				TextColor(t.OnUserBubble).Padding(t.S2+2, t.S4-2).Radius(r[0], tr, r[2], r[3]).
+				MaxWidth(t.BubbleMeasure).MaxWidthPercent(76).TransformOrigin(1, 0.5)
+			b.Background(a.found(c, b, rt, t.UserBubble, t.Reply.FoundUser, 0.025))
+			a.replyMenu(c, b, rt, text)
+			if pending {
+				b.Opacity(0.7)
+			}
+			return
+		}
+		// The imprint sits 4 points in from the bubble's sides, pressed in.
+		b := ui.Column(c).Gap(t.S1+2).Padding(7, 4, t.S2+2, 4).Radius(r[0], tr, r[2], r[3]).
+			MaxWidth(t.BubbleMeasure).MaxWidthPercent(76).MinWidth(224).TransformOrigin(1, 0.5)
+		b.Background(a.found(c, b, rt, t.UserBubble, t.Reply.FoundUser, 0.025))
 		if pending {
 			b.Opacity(0.7)
 		}
+		b.Children(func() {
+			var im ui.Element
+			if ref != nil {
+				im = a.sentImprint(c, "sent", ref, onUser)
+			} else {
+				im = a.imprint(c, "pending", still, still.quote, false, onUser, true)
+			}
+			a.pressIn(c, im, clientID)
+			if strings.TrimSpace(text) != "" {
+				w := ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).
+					TextColor(t.OnUserBubble).Padding(0, t.S4-2-4)
+				a.replyMenu(c, w, rt, text)
+			}
+		})
 	})
 }
 
 func (a *App) entry(c *ui.Context, e *store.Entry) {
 	t := a.T
+	// D236: the bubble this row draws first can be replied to; what no
+	// bubble took is let go at the end.
+	a.rp.next = a.replyOf(e)
+	defer func() { a.rp.next = nil }()
 	switch {
 	case e.User != nil:
 		if len(e.User.Media) > 0 {
@@ -456,18 +499,22 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			join := a.takeJoin()
 			ui.Column(c).Gap(t.S1).Children(func() {
 				a.messageMedia(c, fmt.Sprint("u", e.FirstSeq), e.User.Media, nil, true, "conv")
-				if strings.TrimSpace(e.User.Text) != "" {
+				if strings.TrimSpace(e.User.Text) != "" || e.User.Reply != nil {
 					a.join = join
-					a.userBubble(c, e.User.Text, false)
+					a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID)
 				}
 			})
 			return
 		}
-		a.userBubble(c, e.User.Text, false)
+		a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID)
 	case e.AI != nil:
 		// The partner's words get the CJK-Latin gap at display time; a
 		// copy leaves it out (D78).
 		ui.Column(c).Gap(t.S1).CopyData(autospaceCopy).Children(func() {
+			// D236: an answer after other messages shows the reply it answers.
+			if ans := a.answerOf(e); ans != nil {
+				a.answerTab(c, ans)
+			}
 			if strings.TrimSpace(e.AI.Text) != "" || e.AI.Cal == nil {
 				a.partnerBubble(c, a.takeJoin(), func() {
 					markdown.View(c, autospace(e.AI.Text), &a.md)
@@ -533,6 +580,9 @@ func (a *App) job(c *ui.Context, e *store.Entry) {
 	j := e.Job
 	ui.Column(c).Gap(t.S1).Children(func() {
 		if j.Ack != nil {
+			if ans := a.answerOf(e); ans != nil {
+				a.answerTab(c, ans)
+			}
 			a.partnerWords(c, j.Ack.Text)
 		}
 		st := j.Status
@@ -749,15 +799,24 @@ func (a *App) composer(c *ui.Context) {
 			if over {
 				a.dropHint(c)
 			}
+			a.composerReply(c) // D236: what this replies to, pressed into the card
 			a.picTray(c, "conv")
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				a.addPicturesButton(c, "conv")
-				ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(a.L.T("composer.placeholder", a.S.PersonaName)).
-					Label(a.L.T("composer.label", a.S.PersonaName)).AutoFocus().
+				ph, label := a.L.T("composer.placeholder", a.S.PersonaName), a.L.T("composer.label", a.S.PersonaName)
+				if r := a.rp.replying; r != nil {
+					label = a.L.T("reply.to", a.whoOf(r.from))
+					ph = label + "…"
+				}
+				ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(ph).
+					Label(label).AutoFocus().
 					Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
 					OnTextKey(func(k ui.TextKey) bool {
 						if a.pictureKeys("conv", k) {
 							return true
+						}
+						if k.Key == ui.KeyEscape && k.Mods == 0 && a.CancelReply() {
+							return true // D236: Esc puts the reply away
 						}
 						if k.Key == ui.KeyEnter && k.Mods == 0 {
 							if a.SendMessage(k.Text()) {

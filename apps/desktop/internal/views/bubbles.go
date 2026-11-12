@@ -34,10 +34,17 @@ func (a *App) partnerBubble(c *ui.Context, join bool, body func()) {
 	if join {
 		tl = t.BubbleJoin
 	}
-	ui.Row(c).Children(func() {
+	// D236: what replying to this bubble names, if it can be replied to.
+	rt := a.takeReply()
+	row := ui.Row(c).Gap(t.S2).AlignItems(ui.Center)
+	hov := rt != nil && row.Hovered()
+	row.Children(func() {
 		// Mirrors the user's corners: the tail is the bottom-left one.
-		ui.Column(c).Background(t.PartnerBubble).TextColor(t.OnPartnerBubble).Padding(t.S2+2, t.S4-2).
-			Radius(tl, r[0], r[3], r[2]).MaxWidth(t.BubbleMeasure).MaxWidthPercent(84).MinWidth(0).Gap(t.S2).Children(body)
+		b := ui.Column(c).TextColor(t.OnPartnerBubble).Padding(t.S2+2, t.S4-2).
+			Radius(tl, r[0], r[3], r[2]).MaxWidth(t.BubbleMeasure).MaxWidthPercent(84).MinWidth(0).Gap(t.S2).TransformOrigin(0, 0.5)
+		b.Background(a.found(c, b, rt, t.PartnerBubble, t.Reply.FoundPartner, 0.02))
+		b.Children(body)
+		a.hoverReply(c, rt, hov)
 		ui.Spacer(c)
 	})
 }
@@ -45,8 +52,10 @@ func (a *App) partnerBubble(c *ui.Context, join bool, body func()) {
 // partnerWords is a plain sentence of the partner's in its bubble.
 func (a *App) partnerWords(c *ui.Context, text string) {
 	t := a.T
+	rt := a.rp.next
 	a.partnerBubble(c, a.takeJoin(), func() {
-		ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.5)).TextColor(t.OnPartnerBubble)
+		w := ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.5)).TextColor(t.OnPartnerBubble)
+		a.replyMenu(c, w, rt, text)
 	})
 }
 
@@ -151,6 +160,9 @@ func (a *App) answeredWords(d *store.DecisionState) string {
 // answeredLine is an answered ask: one tiny line on the user's side.
 func (a *App) answeredLine(c *ui.Context, d *store.DecisionState) {
 	t := a.T
+	if d.Resolved != nil && d.Resolved.MsgSeq != 0 {
+		return // D236: answered by a reply: its words show as that bubble, not here
+	}
 	ui.Row(c.Key("said:"+d.DecisionID)).Padding(0, t.S2, 0, 0).Children(func() {
 		ui.Spacer(c)
 		ui.Text(c, autospace(a.answeredWords(d))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.4).MaxLines(2).MaxWidthPercent(72)

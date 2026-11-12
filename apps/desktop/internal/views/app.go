@@ -45,6 +45,8 @@ type pendingMsg struct {
 	// atts (D206): the pictures going with it; sent once they're all up.
 	atts []*attach
 	sent bool
+	// reply (D236): the one message it answers.
+	reply *replyTo
 }
 
 // App is the window's state.
@@ -185,6 +187,8 @@ type App struct {
 	localeSet   bool
 	// focusComposer asks the shown composer to take the keyboard.
 	focusComposer bool
+	// rp is replying to one message (D236, reply.go).
+	rp replyState
 	// doneAt is when a task last came back done (the done glow).
 	doneAt time.Time
 	// historyAsked marks the tasks whose stream was asked for.
@@ -361,7 +365,7 @@ func (a *App) resendUnechoed() {
 	for _, p := range a.pending {
 		// A message whose pictures are still going up goes when they land.
 		if !echoed[p.clientID] && (len(p.atts) == 0 || allReady(p.atts)) {
-			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts)})
+			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts), Reply: p.reply.want()})
 		}
 	}
 	for _, t := range a.S.Tasks {
@@ -498,6 +502,9 @@ func (a *App) shortcuts(c *ui.Context) {
 		}
 		a.focusComposer = true
 	case c.Shortcut(0, ui.KeyEscape):
+		if a.Route == RouteConversation && a.CancelReply() {
+			break // D236: Esc puts a reply away first
+		}
 		if !a.taskEsc(c) && !a.escDevice() {
 			a.Up()
 		}
@@ -586,11 +593,20 @@ func (a *App) sendMessage(text string) {
 	// D206: the pictures in the tray go with it; until they're all up it waits, shown.
 	atts := a.takeTray("conv")
 	ready := allReady(atts)
-	a.pending = append(a.pending, pendingMsg{clientID: id, text: text, atts: atts, sent: ready})
+	// D236: what it replies to goes with it, and the composer lets go of it.
+	reply := a.rp.replying
+	a.rp.replying = nil
+	if reply != nil {
+		if a.rp.pressIn == nil {
+			a.rp.pressIn = map[string]bool{}
+		}
+		a.rp.pressIn[id] = true
+	}
+	a.pending = append(a.pending, pendingMsg{clientID: id, text: text, atts: atts, sent: ready, reply: reply})
 	a.thinkingSince = a.Now()
 	a.markRead()
 	if ready {
-		a.send(protocol.Send{T: "send", Text: text, ClientID: id, Media: idsOf(atts)})
+		a.send(protocol.Send{T: "send", Text: text, ClientID: id, Media: idsOf(atts), Reply: reply.want()})
 	}
 	a.list.ScrollToEnd()
 }

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.42
+
+<!-- whats-new
+zh: 可以回复某一条消息了：右滑或长按，引用会压进你的话里
+en: Reply to one message: swipe or long-press, and it's pressed into yours
+zh: 回复任务的结果就接着那件事做，几件事可以同时回
+en: Reply to a task's result to carry it on; reply to several at once
+-->
+
+**Reply to one message** (#3)
+- Swipe right on a message on the phone, long-press it, or use the reply button beside it on a
+  wide screen. The message you're answering sits pressed into your reply, in its own colour; tap
+  it to find the original.
+- Reply to a task's result and that task carries on; reply to a find or a question and it's about
+  that one. Replies to several messages at once each stay with their own.
+- On a wide screen, select part of the partner's words and reply to just that part.
+
 ## 0.0.41
 
 <!-- whats-new

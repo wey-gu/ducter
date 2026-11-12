@@ -4,6 +4,7 @@
 // line of how it is connected (⋯ opens the connections in place), Ducter's version only with an
 // update, one 断开这台 {device}. Every control here is a shared one (controls.tsx).
 import { PhoneBlock, PhoneInfo, startInstall } from "./phone-use.tsx";
+import { ComputerBlock, ComputerInfo } from "./computer-use.tsx";
 import type { DeviceHarness, DeviceUpdate, DeviceView } from "@ducter/protocol";
 import { TRY_LIVE } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
@@ -391,7 +392,7 @@ function Chips({ dv }: { dv: DeviceView }) {
   const chips = chipsFor(dv);
   if (!chips.length) return null;
   const web = dv.abilities.find((a) => a.id === "web");
-  const about = (id: string) => (id === "web" && web?.where === "chrome" ? "ability.web.about.chrome" : id === "web" && web?.where === "ducter" ? "ability.web.about.ducter" : id === "phone" && chips.find((c) => c.id === id)?.look === "later" ? "ability.phone.later" : `ability.${id}.about`);
+  const about = (id: string) => (id === "web" && web?.where === "chrome" ? "ability.web.about.chrome" : id === "web" && web?.where === "ducter" ? "ability.web.about.ducter" : id === "phone" && chips.find((c) => c.id === id)?.look === "later" ? "ability.phone.later" : id === "computer" && chips.find((c) => c.id === id)?.look === "later" ? "ability.computer.later" : `ability.${id}.about`);
   const set = (id: string, on: boolean) => A.send({ t: "ability", device: dv.id, ability: id as "web", on });
   // D228: From outside on the home: failed shows as failed; being set up or kept off is no "+".
   const any = dv.home ? A.reach?.anywhere : undefined;
@@ -430,6 +431,7 @@ function Chips({ dv }: { dv: DeviceView }) {
       </div>
       {web?.where === "ducter" && web.state === "on" && <Browsing dv={dv} />}
       <PhoneBlock dv={dv} />
+      <ComputerBlock dv={dv} />
       {web?.where === "ducter" && web.setup === "installing" && <div class="dc-note">{t("web.installing")}</div>}
       {web?.where === "ducter" && web.state === "unavailable" && web.reason !== "env_off" && (
         <div class="dc-note">
@@ -446,6 +448,7 @@ function Chips({ dv }: { dv: DeviceView }) {
           {info === "call" && <div class="small sub">{t(look("call") === "fail" ? "ability.call.signed_out" : "ability.call.where")}</div>}
           {info === "web" && web?.where === "ducter" && web.state === "on" && !web.setup && <Sites dv={dv} />}
           {info === "phone" && <PhoneInfo dv={dv} />}
+          {info === "computer" && <ComputerInfo dv={dv} />}
           {info === "remote" && dv.home && <AnywhereInfo dv={dv} />}
           {info !== "remote" && look(info) === "off" && dv.state !== "awake" && <div class="small sub">{t("ability.reason.asleep")}</div>}
         </div>

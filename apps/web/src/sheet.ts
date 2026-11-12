@@ -84,7 +84,7 @@ export type ChipLook = "on" | "off" | "add" | "fail" | "later";
  * The ability chips a device gets, in order: 上网 · 用电脑 · 从外面连 as it has them, then on the
  * home 打电话 (D199: on with a calling connection, + to add one, failed when its sign-in is gone),
  * then the home's abilities still to come as ghosts (用电脑 · 用手机, 以后会有), which only explain.
- * Another computer shows none of the later ones. The same rules as the desktop's chipSpecs.
+ * Another computer shows none of the later ones; a worker Mac has its own 用手机 and 用电脑 (D234, D235). The same rules as the desktop's chipSpecs.
  */
 export function chipsFor(dv: DeviceView): { id: string; look: ChipLook }[] {
   const out: { id: string; look: ChipLook }[] = [];
@@ -107,6 +107,8 @@ export function chipsFor(dv: DeviceView): { id: string; look: ChipLook }[] {
     }
     let look: ChipLook = "off";
     if (id === "web" && ab.where === "ducter" && ab.state === "unavailable" && ab.reason !== "env_off") look = "fail";
+    // D235: 用电脑 added, but macOS hasn't given cua-driver its two switches yet.
+    else if (id === "computer" && ab.state === "unavailable" && ab.reason === "computer_permissions") look = "fail";
     else if (ab.state === "on") look = "on";
     else if (ab.state === "off" && dv.state === "awake") look = "add";
     out.push({ id, look });

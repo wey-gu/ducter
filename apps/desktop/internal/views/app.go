@@ -218,7 +218,8 @@ type App struct {
 	// D151: the live view's bitmap and acks, a line to say once it closed, and the window size it asks for.
 	live       liveState
 	liveNote   string
-	pu         phoneUseState // D217: Ducter's phone
+	pu         phoneUseState    // D217: Ducter's phone
+	cu         computerUseState // D235: 用电脑
 	sites      sitesState
 	af         autofillState // D191: 设置 › 自动填充
 	winW, winH float32

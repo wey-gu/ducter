@@ -9,6 +9,7 @@ import { phone } from "./i18n-phone.ts";
 import { onhandWords } from "./i18n-onhand.ts";
 import { workbench } from "./i18n-workbench.ts";
 import { phoneuse } from "./i18n-phoneuse.ts";
+import { computeruse } from "./i18n-computeruse.ts";
 import { calendarWords } from "./i18n-calendar.ts";
 import { updateAllWords } from "./i18n-updateall.ts";
 
@@ -2201,7 +2202,7 @@ const devcard: Record<Lang, Record<string, string>> = {
     "ability.web.about": "让这台电脑用 Ducter 自己的浏览器替你办事：查资料、看网页、整理找到的东西。登录、提交和付款都留给你。",
     "ability.web.about.chrome": "让这台电脑在你的 Chrome 里替你办事，用的是你的 AI agent 自己的浏览器：查资料、看网页、整理找到的东西。它只在自己开的窗口里动手，用完就关；登录、提交和付款都留给你。",
     "ability.web.about.ducter": "让这台电脑用 Ducter 自己的浏览器替你上网：查资料、看网页、整理找到的东西。它和你自己的 Chrome 分开。要登录的网站由你自己登录，提交和付款都留给你。",
-    "ability.computer.about": "让 Ducter 像你一样用这台电脑上的其他应用。这一版还没有。",
+    "ability.computer.about": "让任务像你一样用这台 Mac 上的应用：看窗口、点按钮、打字。发送、付款、删除这类事先问你。",
     "ability.remote.about": "在别的地方也能找到 Ducter：手机，或者另一台电脑。用一次性的码连上。",
     "anywhere.need": "要一个放在 Cloudflare 上的域名，Cloudflare 账号是免费的。还没有域名？在 Cloudflare 里就能买，按成本价。",
     "anywhere.setup.what": "会开一件事，用 Cloudflare 自己的程序一步步建好你自己的通道。要你登录、要你点头的时候会说。",
@@ -2322,7 +2323,7 @@ const devcard: Record<Lang, Record<string, string>> = {
     "ability.web.about": "Lets this computer get things done on the web in Ducter's own browser: look things up, read pages, gather what it finds. Signing in, submitting and paying are always left to you.",
     "ability.web.about.chrome": "Lets this computer get things done on the web in your Chrome, with your AI agent's own browser: look things up, read pages, gather what it finds. It works only in windows it opens and closes them when done. Signing in, submitting and paying are always left to you.",
     "ability.web.about.ducter": "Lets this computer get things done on the web in Ducter's own browser: look things up, read pages, gather what it finds. It is separate from your own Chrome. You sign in to sites yourself; submitting and paying are always left to you.",
-    "ability.computer.about": "Lets Ducter use the other apps on this computer the way you do. Not in this version yet.",
+    "ability.computer.about": "Lets tasks use this Mac's apps the way you do: read a window, click, type. Anything that sends, pays or deletes asks you first.",
     "ability.remote.about": "Reach Ducter from somewhere else: your phone, or another computer. Connect with a one-time code.",
     "anywhere.need": "You need a domain on Cloudflare; the Cloudflare account is free. No domain yet? You can buy one right in Cloudflare, sold at cost.",
     "anywhere.setup.what": "This starts a task that sets up your own tunnel step by step with Cloudflare's own program. It tells you when it needs you to sign in or say go.",
@@ -2405,7 +2406,7 @@ const devcard: Record<Lang, Record<string, string>> = {
     "coin.there": "Sign in and out on %s itself.",
     "coin.close": "Close",
     "chip.web": "Browse",
-    "chip.computer": "Use apps",
+    "chip.computer": "Use the computer",
     "chip.remote": "From outside",
     "chip.worker": "Tasks for %s",
     "chip.notify": "Notifications",
@@ -2687,7 +2688,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...calendarWords.zh, ...updateAllWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...calendarWords.en, ...updateAllWords.en } };
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...calendarWords.zh, ...updateAllWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...calendarWords.en, ...updateAllWords.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

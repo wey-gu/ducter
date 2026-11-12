@@ -2,6 +2,7 @@
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
 import { openPhone, PhoneAskBody } from "./phone-use.tsx";
+import { ComputerLine } from "./computer-use.tsx";
 import type { AgentUpdate, Attention, Bodies, BridgeView, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
@@ -249,6 +250,7 @@ export function goLabel(d: DecisionState): string {
   if (d.closing) return closingWords(d.closing).go;
   if (d.memPlugin) return t("memp.card.go");
   if (d.cal) return d.goLabel; // D222: the action itself (添加到日历 / Add to calendar)
+  if (d.computer?.kind === "user") return t("computeruse.user.done"); // D235: their own turn in an app
   return shortGo(d.goLabel);
 }
 
@@ -1850,6 +1852,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             {phoning && <Btn kind="secondary" size="sm" label={t("phoneuse.watch")} about={safe(title(task))} onClick={() => (benchable(task) ? openBenchAt(task, "phone") : openPhone({ device: phoning.device, taskId: id, mode: "watch" }))} />}
           </div>
         )}
+        {/* D235: it is using the person's apps: where, and 停下 / Stop. */}
+        <ComputerLine task={task} />
         {A.switchFor === id && <SwitchList task={task} />}
         {finished(task) && (
           <div class="outcome">

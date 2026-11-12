@@ -76,6 +76,8 @@ export interface DevicesOptions {
   anywhere?: Pick<AnywhereCtl, "view" | "turnOn" | "turnOff" | "onChange">;
   /** D217: 用手机 / Use a phone on the home: Ducter's own phone (an Android emulator on a Mac). */
   ownPhone?: { ability(): DeviceAbility; onChange(fn: () => void): () => void };
+  /** D235: 用电脑 / Use the computer on this computer (computer/index.ts). */
+  computer?: { ability(): Promise<DeviceAbility>; refresh(): void };
 }
 
 /**
@@ -349,7 +351,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       state: "awake", // this answer comes from it
       alwaysOn: alwaysOnKind(me.kind),
       harnesses: agentsView("local", me.harnesses.map((h) => deviceHarness(h))),
-      abilities: [webAbility(me.cua, me.native), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, o.ownPhone?.ability() ?? later("phone"), o.call?.() ?? { id: "call", state: "off" }],
+      abilities: [webAbility(me.cua, me.native), (await o.computer?.ability().catch(() => undefined)) ?? later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, o.ownPhone?.ability() ?? later("phone"), o.call?.() ?? { id: "call", state: "off" }],
       ...(o.self ? { version: o.self.version, platform: o.self.platform } : {}),
     };
     const up = o.updates?.();
@@ -389,7 +391,9 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           ),
           // D157: a worker browses with its own browsers and says how in its hello; a Ducter
           // there from before that says nothing, so its card asks for an update.
-          abilities: [hello?.abilities?.find((a) => a.id === "web") ?? { id: "web", state: "unavailable", reason: "worker_old" }, later("computer"), later("phone")], // D199: no 打电话 here (the home's)
+          // D234, D235: 用手机 and 用电脑 on a worker Mac are that Mac's own, as it says them (a
+          // Ducter there from before says neither: they stay 以后会有 until it is updated).
+          abilities: [hello?.abilities?.find((a) => a.id === "web") ?? { id: "web", state: "unavailable", reason: "worker_old" }, hello?.abilities?.find((a) => a.id === "computer") ?? later("computer"), hello?.abilities?.find((a) => a.id === "phone") ?? later("phone")], // D199: no 打电话 here (the home's)
           alwaysOn: hello?.alwaysOn ?? alwaysOnKind(kind),
         } satisfies DeviceView;
       });
@@ -436,6 +440,26 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       if (a?.state !== "unavailable") changed();
     }
     if (!a || a.state === "later") return res(false, "failed");
+    // D235: 用电脑 is that Mac's: on a worker it is saved there; added without macOS's two switches,
+    // it is on and its card says what to turn on (computer_permissions) until they are.
+    if (ability === "computer") {
+      if (a.state === "unavailable" && a.reason !== "computer_permissions" && on) return res(false, a.reason ?? "failed", a.detail);
+      if (!d.home) {
+        const link = o.workers.link(d.id);
+        if (!link?.online()) return res(false, "offline");
+        try {
+          const r = await link.call<{ ok: boolean; reason?: AbilityReason; detail?: string }>("ability", { id: "computer", on }, 30_000);
+          changed();
+          return res(!!r?.ok, r?.ok ? undefined : (r?.reason ?? "failed"), r?.detail);
+        } catch (e) {
+          return res(false, "failed", (e as Error).message);
+        }
+      }
+      writeAbilitySettings(o.dataDir, { computer: on });
+      o.computer?.refresh();
+      changed();
+      return res(true);
+    }
     // D157: 上网 on a worker is that computer's: it adds or removes it there (and installs
     // Ducter's browser there when it is the one), then says what it is now.
     if (ability === "web" && !d.home) {
@@ -551,7 +575,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       return () => fns.delete(fn);
     },
     changed,
-    refresh: () => void (cached = undefined),
+    refresh: () => {
+      cached = undefined;
+      o.computer?.refresh();
+    },
     harnessesNow() {
       if (!cached || now() - cached.at >= cacheMs) void local().catch(() => {});
       return cached?.harnesses;

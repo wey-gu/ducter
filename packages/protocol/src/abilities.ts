@@ -9,6 +9,8 @@ export const ABILITIES_FILE = "abilities.json";
 export interface AbilitySettings {
   /** 上网 / Browse the web: browser places on this machine. */
   web?: boolean;
+  /** D235: 用电脑 / Use the computer: tasks on this Mac may use its apps (cua-driver). Absent = never added (off). */
+  computer?: boolean;
 }
 
 export function readAbilitySettings(dataDir: string): AbilitySettings {
@@ -16,7 +18,7 @@ export function readAbilitySettings(dataDir: string): AbilitySettings {
   if (!existsSync(p)) return {};
   try {
     const j = JSON.parse(readFileSync(p, "utf8"));
-    return j && typeof j === "object" ? { ...(typeof j.web === "boolean" ? { web: j.web } : {}) } : {};
+    return j && typeof j === "object" ? { ...(typeof j.web === "boolean" ? { web: j.web } : {}), ...(typeof j.computer === "boolean" ? { computer: j.computer } : {}) } : {};
   } catch {
     return {};
   }

@@ -41,7 +41,7 @@ export interface WorkerHostOptions {
   /** D157: more ops the main may call (Ducter's own browser here: core/src/browser/remote.ts). */
   extraOps?: Record<string, (a: any) => Promise<unknown>>;
   /** D157: what this computer can do for tasks now (sent up after 上网 changes here). */
-  abilities?: { set(id: "web", on: boolean): Promise<{ ok: boolean; reason?: string; detail?: string }> };
+  abilities?: { set(id: "web" | "computer", on: boolean): Promise<{ ok: boolean; reason?: string; detail?: string }> };
 }
 
 export interface WorkerHost {
@@ -240,8 +240,9 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     },
     // D157: 上网 added or removed on this computer's card (from any window of the home).
     async ability(a: { id?: unknown; on?: unknown }) {
-      if (a.id !== "web" || !o.abilities) return { ok: false, reason: "failed" };
-      return o.abilities.set("web", a.on === true);
+      // D235: 用电脑 too, saved here.
+      if ((a.id !== "web" && a.id !== "computer") || !o.abilities) return { ok: false, reason: "failed" };
+      return o.abilities.set(a.id, a.on === true);
     },
     ...(o.extraOps ?? {}),
   };

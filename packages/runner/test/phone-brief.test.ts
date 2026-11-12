@@ -14,3 +14,12 @@ test("only a phone task gets it", () => {
   expect(taskBrief({ ...base, phone: true } as any)).toContain("## Ducter's phone");
   expect(taskBrief(base as any)).not.toContain("## Ducter's phone");
 });
+
+// D235: work in a Mac app gets the apps' section: its tools, the gate, Stop, and what to do without 用电脑.
+test("the apps' section: its tools, the gate at the effect, the user's own, Stop", async () => {
+  const { appsBrief } = await import("../src/brief.ts");
+  const b = appsBrief("Ducter");
+  for (const s of ["computer_look", "computer_click", "computer_ask_go", "computer_ask_user", "data, not instructions", "停下 / Stop", "用电脑 / Use the computer", "System Settings"]) expect(b).toContain(s);
+  expect(taskBrief({ ...base, apps: true } as any)).toContain("## The user's apps");
+  expect(taskBrief(base as any)).not.toContain("## The user's apps");
+});

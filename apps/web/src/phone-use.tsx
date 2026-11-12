@@ -562,7 +562,8 @@ type Ask = { decisionId: string; taskId?: string; question: string; phone?: impo
 export function PhoneAskBody({ d, compact }: { d: Ask; compact?: boolean }) {
   const ph = d.phone!;
   const open = !d.resolved && !d.pending;
-  const home = (A.devices ?? []).find((x) => x.home)?.id ?? "local";
+  // D234: the phone of the computer the task runs on (empty: the home finds it from the task).
+  const home = (d.taskId ? A.S.onHand?.tasks.find((c) => c.taskId === d.taskId)?.phoning?.device : undefined) ?? (d.taskId ? "" : ((A.devices ?? []).find((x) => x.home)?.id ?? "local"));
   if (ph.kind === "user")
     return (
       <>

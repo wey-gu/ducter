@@ -52,6 +52,18 @@ func (a *App) OpenPhone(device, taskID, decisionID, mode string) {
 	a.send(protocol.PhoneOpenReq{T: "phone_open", Device: device, TaskID: taskID, DecisionID: decisionID, Mode: mode})
 }
 
+// phoneFor is the computer whose phone a task uses (D234: the home's or a
+// worker Mac's); "" lets the home find it from the task.
+func (a *App) phoneFor(taskID string) string {
+	if d := a.S.Phoning(taskID); d != "" {
+		return d
+	}
+	if taskID != "" {
+		return ""
+	}
+	return a.homeID()
+}
+
 // ClosePhone closes the live view (done: 好了 / Done answers its card).
 func (a *App) ClosePhone(done bool) {
 	pv := a.S.Phone.View
@@ -395,7 +407,7 @@ func (a *App) phoneButtons(c *ui.Context, d *store.DecisionState, st decisionSty
 				a.Decide(d.DecisionID, "hold", "")
 			}
 			if a.button(c, a.L.T("phoneuse.user.open"), btnPrimary, st.height, st.quietBg) {
-				a.OpenPhone(a.homeID(), d.TaskID, d.DecisionID, "signin")
+				a.OpenPhone(a.phoneFor(d.TaskID), d.TaskID, d.DecisionID, "signin")
 			}
 		})
 		return
@@ -411,7 +423,7 @@ func (a *App) phoneButtons(c *ui.Context, d *store.DecisionState, st decisionSty
 	ui.Text(c, what).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 	ui.Row(c.Key("phone-go:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
 		if d.TaskID != "" && a.button(c, a.L.T("phoneuse.go.look"), btnText, st.height, st.quietBg) {
-			a.OpenPhone(a.homeID(), d.TaskID, "", "watch")
+			a.OpenPhone(a.phoneFor(d.TaskID), d.TaskID, "", "watch")
 		}
 		if a.button(c, a.L.T("phoneuse.go.hold"), btnSecondary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "hold", "")

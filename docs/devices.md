@@ -38,7 +38,7 @@ top to bottom like a character in a game:
   a newer version is out. Tap a coin to see its details right there: its version and how it was
   installed, an update, **Use it for tasks**, and who shares its account. **Add an AI** at the end
   of the row lists the agents not on that device yet.
-- **What it can do:** a few chips, such as **Browse**, **Use apps** and **From outside**. One tap
+- **What it can do:** a few chips, such as **Browse**, **Use the computer** and **From outside**. One tap
   turns one on or off. The small **i** on a chip says what it does.
   - **Calls** is on the card of the computer Ducter lives on, because a call doesn't run on any
     one computer. **+ Calls** takes you to **Settings › Accounts** and starts connecting Tuwa,
@@ -51,10 +51,14 @@ top to bottom like a character in a game:
     off. Once on, its **i** shows the address, who can get in (only devices you connected) and
     **Turn off**. On a server with your own domain it's simply on. See
     [Your phone](phone.md#from-outside).
-  - **Use a phone** is on the card of a Mac with Apple silicon that Ducter lives on. It gives
-    Ducter a phone of its own: see [Ducter's phone](#ducters-phone) below.
-  - Faded chips marked **coming later**, such as **Use apps**, show what Ducter will be able to
-    do in a later version. Tap one to read what it will do; there is nothing to turn on yet.
+  - **Use a phone** is on the card of a Mac with Apple silicon, the one Ducter lives on or one
+    that does tasks for it. It gives Ducter a phone of its own on that Mac: see
+    [Ducter's phone](#ducters-phone) below.
+  - **Use the computer** is on the card of a Mac. It lets tasks use that Mac's apps the way you
+    do: see [Tasks in your Mac's apps](#tasks-in-your-macs-apps) below.
+  - Faded chips marked **coming later**, such as **Use the computer** on a Linux server, show what
+    Ducter will be able to do there in a later version. Tap one to read what it will do; there is
+    nothing to turn on yet.
 - **How it's connected:** one quiet line, such as *Connected via the app and command line*. The
   **⋯** beside it shows each connection with its own **Disconnect**.
 - **Disconnect this MacBook** is at the very bottom. Ducter asks once and says what it means; to
@@ -77,7 +81,9 @@ Some things only happen in an app on a phone. **Use a phone** gives Ducter its o
 (Android 16 with Google Play), running on your Mac and apart from your own phone. You put apps on
 it and sign in to them yourself; then Ducter can get things done in those apps for you.
 
-**Adding it.** Tap **+ Use a phone** on the card of your Mac. Ducter says what it downloads (about
+**Adding it.** Tap **+ Use a phone** on the card of your Mac: the Mac Ducter lives on, or a Mac
+that does tasks for a Ducter on a server (the phone then lives on that Mac, and the tasks that need
+it run there). Ducter says what it downloads (about
 2.3 GB, once), how much space it takes (about 10 GB once the phone has been used), and when it
 runs. The phone comes from Google under Google's licenses: read them there (**Read**), turn on
 **I've read and agree to these licenses**, and tap **Add it**. The card shows the download; you
@@ -109,6 +115,36 @@ the card (**Watch**), and take a turn with **My turn** and **Hand it back**, as 
 
 **Erasing it.** The **i** on **Use a phone** has **Erase this phone**: its apps, sign-ins and data
 are deleted and you get a fresh phone.
+
+## Tasks in your Mac's apps
+
+Some work lives in an app: export a Keynote deck, reply to a mail, change something in an app that
+has no website. **Use the computer** lets a task use the apps on one of your Macs the way you do:
+read a window, click, type. It works in the background, without taking your mouse or your screen;
+a second pointer shows where it acts.
+
+**Adding it.** Tap **+ Use the computer** on the card of your Mac (the one Ducter lives on, or one
+that does tasks for it). macOS then needs two switches for **CuaDriver**, the helper that does the
+clicking, in **System Settings › Privacy & Security**: **Accessibility** (to use the mouse and
+keyboard) and **Screen Recording** (to see what's on the screen). The chip's **i** shows which are
+on, and **Open the guide on** your Mac walks you through both on that Mac's screen. Ducter never
+turns them on by itself. CuaDriver is the same helper **Browse** uses; if it isn't on that Mac yet,
+the **i** says so.
+
+**Asking for something.** Just say it, such as *"Export the Q3 deck in Keynote as a PDF"*. The task
+runs on a Mac with **Use the computer** on. While it works in an app, the task says *On MacBook, in
+Keynote*, and the Mac's card lists it, each with **Stop**: one tap and it stops using your apps at
+once, and tells you what it did.
+
+**What always waits for you.**
+- Anything that sends, posts, pays, buys, installs, deletes, calls, confirms or signs out (a
+  button, a menu item, Return in a mail or chat app): the task asks first on a card that says what
+  it will do. One yes covers that one action.
+- Signing in, passwords and codes: you do it yourself on the Mac, then **Done**.
+- Password managers, Keychain and Passwords, authenticator, banking, wallet and payment apps, and
+  System Settings: tasks can't see or use them at all, and never type into a password field.
+
+For now this is for Macs; a Linux server shows **Use the computer** as coming later.
 
 ## Let this Mac do tasks
 
@@ -191,8 +227,8 @@ What a device can do:
 |---|---|---|
 | **Browse the web** | The computer can get things done on the web: look things up, read pages, gather what it finds. In your Chrome when your AI agent has its own browser, otherwise in Ducter's own browser | Ready on every computer that does tasks (a Mac, or a server: see below) |
 | **Reach from outside** | Reach Ducter from your phone or another computer, with a one-time code | Ready (needs an address that works from outside: your own domain on a server, see [Install](install.md#a-linux-server-that-stays-on), or on Cloudflare, see [From outside](phone.md#from-outside)) |
-| **Use this computer** | Ducter uses the other apps on the computer the way you do | Coming later |
-| **Use a phone** | Ducter gets things done in apps on a phone of its own, running on your Mac ([below](#ducters-phone)) | Ready on a Mac with Apple silicon that Ducter lives on |
+| **Use the computer** | Tasks use the apps on the computer the way you do, asking before anything that sends, pays or deletes ([above](#tasks-in-your-macs-apps)) | Ready on a Mac (it needs CuaDriver and two macOS switches); coming later on Linux |
+| **Use a phone** | Ducter gets things done in apps on a phone of its own, running on your Mac ([above](#ducters-phone)) | Ready on a Mac with Apple silicon: the one Ducter lives on, or one that does tasks for it |
 | **Make calls** | Ducter makes phone calls for you, through Tuwa or from your own Android phone | Ready (needs a Tuwa account, or your own phone with a cable kit and a live-voice key; see [Phone calls](calls.md)) |
 
 To give a device something, tap its dashed chip (**+ Browse**). When it's done you see, for

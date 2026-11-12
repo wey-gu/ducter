@@ -183,11 +183,13 @@ your memory works as usual.
 
 ### Can it use my other apps, my phone, or make calls?
 
-It can use apps on a phone and make calls; using the other apps on your computer is coming
-soon.
+Yes, on a Mac: it can use your Mac's apps, apps on a phone of its own, and make calls.
 
-- **Apps on a phone:** on a Mac with Apple silicon, **Use a phone** gives Ducter an Android phone
-  of its own, running on your Mac. You install the apps and sign in yourself; anything that sends,
+- **Your Mac's apps:** **Use the computer** on a Mac's card lets a task use its apps in the
+  background, once you turn on two macOS switches. Anything that sends, pays or deletes waits for
+  your Go, and **Stop** ends it at once. See [Tasks in your Mac's apps](devices.md#tasks-in-your-macs-apps).
+- **Apps on a phone:** on a Mac with Apple silicon (the one Ducter lives on, or one that does tasks
+  for it), **Use a phone** gives Ducter an Android phone of its own, running on that Mac. You install the apps and sign in yourself; anything that sends,
   pays or deletes waits for your Go. See [Ducter's phone](devices.md#ducters-phone).
 - **Calls:** through Tuwa, or from your own Android phone and SIM (with a small cable kit and a
   live-voice API key). Every call waits for your **Call**. See

@@ -76,7 +76,8 @@ Design notes:
 - `autofill.md`: saved sign-ins, cards and details, filled by reference; the Pay card (D191).
 - `calendar.md`: every calendar account as one day; the day card, change cards behind Go (D222).
 - `android.md`: the Android app, its self-update and foldable layout (D178–D182).
-- `phone-use.md`: 用手机 / Use a phone, Ducter's own Android phone on a Mac (D217).
+- `phone-use.md`: 用手机 / Use a phone, Ducter's own Android phone on a Mac (D217; a worker Mac's, D234).
+- `computer-use.md`: 用电脑 / Use the computer, tasks in the person's Mac apps (D235).
 - `product-model.md`: see above.
 
 ## The change loop (run it for every new question or discovered problem)

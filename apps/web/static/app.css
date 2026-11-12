@@ -6970,3 +6970,8 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .dev-anywhere .any-login-go { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 /* On a phone the person is already on the phone: the link, no QR. */
 @media (max-width: 520px) { .dev-anywhere .any-login-row .call-qr, .dev-anywhere .any-qr-note { display: none; } }
+/* D235: 用电脑's two macOS switches, each with where it stands. */
+.cu-perms { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 4px; }
+.cu-perms li { display: flex; justify-content: space-between; gap: 12px; font-size: var(--fs-sm, 13px); line-height: 1.5; color: var(--ink); }
+.cu-perms li b { font-weight: 700; color: var(--ink-soft); }
+.cu-perms li.off b { color: var(--needs-ink, var(--failed-ink)); }

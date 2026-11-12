@@ -180,6 +180,9 @@ type Decision struct {
 	// Phone (D217): a tap on Ducter's phone that commits (Go taps it once),
 	// or the user's own turn on the phone (Go = 好了 / Done).
 	Phone *PhoneAsk `json:"phone,omitempty"`
+	// Computer (D235): one action in the person's apps that commits (Go
+	// does it once), or their own turn in an app (Go = 好了 / Done).
+	Computer *ComputerAsk `json:"computer,omitempty"`
 	// Where (D157): wait for a computer (Hold, the default) or do it now on
 	// another (Go).
 	Where *WhereAsk `json:"where,omitempty"`
@@ -721,7 +724,8 @@ type TaskCard struct {
 	// merge or a draft PR the user made from Ducter.
 	Latest     *LogEvent   `json:"latest,omitempty"`
 	Integrated *Integrated `json:"integrated,omitempty"`
-	Phoning    *Browsing   `json:"phoning,omitempty"` // D217: is using Ducter's phone there
+	Phoning    *Browsing   `json:"phoning,omitempty"`   // D217: is using Ducter's phone there
+	Computing  *Computing  `json:"computing,omitempty"` // D235: is using the person's apps there
 }
 
 // Integrated is what the user did with a task's branch from Ducter (D216):
@@ -1328,6 +1332,8 @@ type DeviceAbility struct {
 	Step *PhoneInstallStep `json:"step,omitempty"`
 	// Running (D217): Ducter's phone is on right now.
 	Running bool `json:"running,omitempty"`
+	// Perms (D235): macOS's two switches for cua-driver on that Mac.
+	Perms *ComputerPerms `json:"perms,omitempty"`
 }
 
 const (

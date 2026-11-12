@@ -180,6 +180,8 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	if a.S.Browsing(task.ID) != "" && a.button(c, a.L.T("live.watch.title"), btnSecondary, t.ControlSM, t.Chrome) {
 		a.OpenWatch(task.ID)
 	}
+	// D235: it is using the person's apps: where, and 停下 / Stop.
+	a.computerTaskLine(c, task)
 	// D217: it is using Ducter's phone: watch it, in the workbench's Phone page (D220).
 	if dev := a.S.Phoning(task.ID); dev != "" && a.button(c, a.L.T("phoneuse.watch"), btnSecondary, t.ControlSM, t.Chrome) {
 		a.bench.open, a.bench.tab = true, "phone"

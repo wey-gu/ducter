@@ -29,13 +29,16 @@ export type PhoneDoing = { kind: "look" | "tap" | "type" | "swipe" | "key" | "op
 
 export interface PhoneToolsDeps {
   mcp: CoreMcpHub;
-  device: PhoneDevice;
+  /** The phone (one computer's). */
+  device?: PhoneDevice;
+  /** D234: the phone on the computer this task runs on (the home's, or a worker Mac's); else device. */
+  deviceFor?(taskId: string): PhoneDevice;
   log: LogStore;
   tasks: TaskRegistry & { get(id: string): { persona?: string; residency?: string; title?: string } | undefined };
   /** The task may use the phone now (it needs it, and the phone is installed here). */
   attached(taskId: string): boolean;
-  /** The user holds the phone (their turn). */
-  blind(): boolean;
+  /** The user holds the phone (their turn): the phone this task uses (D234: per computer). */
+  blind(taskId?: string): boolean;
   /** A task tried while it was the user's turn (told on hand-back). */
   tried?(taskId: string): void;
   note?(taskId: string, d: PhoneDoing): void;
@@ -63,7 +66,8 @@ const EFFECT_WORDS: Record<Effect, string> = {
 };
 
 export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
-  const { mcp, device } = d;
+  const { mcp } = d;
+  const dev = (taskId: string): PhoneDevice => d.deviceFor?.(taskId) ?? d.device!;
   const now = d.now ?? Date.now;
   const screens = new Map<string, Screen>();
   const allowed = new Map<string, Allowed>();
@@ -72,18 +76,19 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
 
   const ready = async (taskId: string) => {
     if (!d.attached(taskId)) throw new Error("this task doesn't have Ducter's phone");
-    if (d.blind()) {
+    if (d.blind(taskId)) {
       d.tried?.(taskId);
       note(taskId, { kind: "waiting" });
       throw new Error(PHONE_BLIND);
     }
+    const device = dev(taskId);
     await device.ensure();
     device.touch();
   };
 
   const look = async (taskId: string): Promise<{ s?: Screen; text: string }> => {
-    const s = await device.screen();
-    if (d.blind()) throw new Error(PHONE_BLIND);
+    const s = await dev(taskId).screen();
+    if (d.blind(taskId)) throw new Error(PHONE_BLIND);
     if (!s) return { text: "The screen is still moving, so its parts can't be listed right now. phone_look again in a moment, or pass picture:true to see it." };
     if (blockedApp(s.app)) {
       screens.delete(taskId);
@@ -93,7 +98,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
     return { s, text: screenText(s) };
   };
 
-  const picture = async () => ({ type: "image", data: Buffer.from(await device.jpeg()).toString("base64"), mimeType: "image/jpeg" });
+  const picture = async (taskId: string) => ({ type: "image", data: Buffer.from(await dev(taskId).jpeg()).toString("base64"), mimeType: "image/jpeg" });
 
   const reg = (name: string, description: string, schema: object, fn: (args: any, taskId: string) => Promise<unknown>) =>
     mcp.registerWhen(
@@ -116,7 +121,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       note(taskId, { kind: "look" });
       const r = await look(taskId);
       if (!args.picture && r.s) return r.text;
-      return { content: [{ type: "text", text: r.text }, await picture()] };
+      return { content: [{ type: "text", text: r.text }, await picture(taskId)] };
     },
   );
 
@@ -125,6 +130,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
     "Tap something on the phone by its [number] from the last phone_look (or at x,y in screen pixels when it has no number). A tap that pays, buys, sends, posts, deletes, installs, calls, confirms or signs out needs the user's Go first: the tool says so, and you call phone_ask_go.",
     { type: "object", properties: { ref: { type: "number" }, x: { type: "number" }, y: { type: "number" }, long: { type: "boolean", description: "A long press instead of a tap." } } },
     async (args, taskId) => {
+      const device = dev(taskId);
       const s = screens.get(taskId);
       let x: number, y: number, label = "";
       if (args.ref != null) {
@@ -163,6 +169,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
     "Type text into the field in focus, or into a field by its [number] (tapped first). submit presses Enter after. Never passwords or codes: those are the user's (phone_ask_user).",
     { type: "object", properties: { ref: { type: "number" }, text: { type: "string" }, submit: { type: "boolean" } }, required: ["text"] },
     async (args, taskId) => {
+      const device = dev(taskId);
       const s = screens.get(taskId);
       if (args.ref != null) {
         const n = nodeAt(s, args.ref);
@@ -187,6 +194,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
     "Scroll or swipe: direction up (see what's below), down (see what's above), left or right, by about one screen.",
     { type: "object", properties: { direction: { type: "string", enum: ["up", "down", "left", "right"] } }, required: ["direction"] },
     async (args, taskId) => {
+      const device = dev(taskId);
       const { width: w, height: h } = await device.size();
       const dir = String(args.direction);
       const [x1, y1, x2, y2] = dir === "up" ? [w / 2, h * 0.75, w / 2, h * 0.3] : dir === "down" ? [w / 2, h * 0.3, w / 2, h * 0.75] : dir === "left" ? [w * 0.85, h / 2, w * 0.15, h / 2] : [w * 0.15, h / 2, w * 0.85, h / 2];
@@ -206,14 +214,14 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       const k = KEYS[String(args.key)];
       if (!k) throw new Error(`unknown key ${args.key}`);
       note(taskId, { kind: "key", label: String(args.key) });
-      await device.key(k);
+      await dev(taskId).key(k);
       await Bun.sleep(400);
       return `Pressed ${args.key}.`;
     },
   );
 
-  reg("phone_apps", "List the apps on Ducter's phone (their ids). The user installs new ones from Google Play, or asks you to.", { type: "object", properties: {} }, async () => {
-    const apps = (await device.apps()).filter((a) => !blockedApp(a.pkg));
+  reg("phone_apps", "List the apps on Ducter's phone (their ids). The user installs new ones from Google Play, or asks you to.", { type: "object", properties: {} }, async (_args, taskId) => {
+    const apps = (await dev(taskId).apps()).filter((a) => !blockedApp(a.pkg));
     return apps.length ? apps.map((a) => a.pkg).sort().join("\n") : "No apps to open.";
   });
 
@@ -225,7 +233,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       const pkg = String(args.app ?? "").trim();
       if (blockedApp(pkg)) throw new Error("That app holds the user's money or keys: it's theirs alone, and stays closed to tasks.");
       note(taskId, { kind: "open", app: pkg });
-      await device.launch(pkg);
+      await dev(taskId).launch(pkg);
       await Bun.sleep(1200);
       return `Opened ${pkg}. phone_look to read it.`;
     },
@@ -236,6 +244,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
     "Save a picture of the phone's screen (JPEG in your evidence folder); returns its path. To let the user see it, put the path in your report's `show`.",
     { type: "object", properties: { name: { type: "string" } } },
     async (args, taskId) => {
+      const device = dev(taskId);
       const app = await device.front();
       if (blockedApp(app)) throw new Error("No pictures of an app that holds the user's money or keys.");
       note(taskId, { kind: "shot" });

@@ -12,6 +12,8 @@ export * from "./phone.ts";
 export * from "./media.ts";
 export * from "./phone-use.ts";
 export * from "./calendar.ts";
+export * from "./computer-use.ts";
+import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFrame } from "./computer-use.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
 import type { CalChange, CalGlance, CalToday } from "./calendar.ts";
@@ -143,6 +145,8 @@ export interface Question {
   phone?: PhoneAsk;
   /** D233: a task asks the person for a key (set by Ducter's ask_for_key, never by report_to_main). */
   key?: KeyAsk;
+  /** D235: one action in the person's apps that commits (go), or their own turn (user); set by the app tools only. */
+  computer?: ComputerAsk;
 }
 
 /**
@@ -228,6 +232,7 @@ export interface Bodies {
     fill?: FillAsk; // D191: first use of a saved sign-in or detail on a site
     key?: KeyAsk; // D233: {task} 需要一个密钥 / {task} needs a key: Go carries the value (never logged); Hold is 不给 / Don't give; no default
     phone?: PhoneAsk; // D217: one tap on Ducter's phone that commits (Go taps it once), or the user's turn on it (Go = 好了 / Done)
+    computer?: ComputerAsk; // D235: one action in the person's apps that commits (Go does it once), or their own turn (Go = 好了 / Done)
     where?: WhereAsk; // D157: wait for a computer (Hold, the default) or do it now on another (Go)
     closing?: ClosingPlan; // D157: 合上之前搬走 / Move before closing: Go (the default) moves them
     anywhere?: { hostname: string }; // D228: create the tunnel in the person's Cloudflare account and point this hostname at the home (Go)
@@ -519,6 +524,8 @@ export interface TaskCard {
   integrated?: { act: "merge" | "open_pr"; ref?: string; at: string };
   /** D217: the task is using Ducter's phone on this computer, so it can be watched. */
   phoning?: { device: string };
+  /** D235: the task is using the person's apps on this computer (its id; app: the one it last used), so it can be stopped. */
+  computing?: { device: string; app?: string };
 }
 
 export interface OnHand {
@@ -881,6 +888,8 @@ export type ClientFrame =
   | { t: "browser_sites" }
   // D217: 用手机 / Use a phone (phone-use.ts).
   | PhoneClientFrame
+  // D235: 用电脑 / Use the computer (computer-use.ts).
+  | ComputerClientFrame
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" }
   // D154, `ducter browser check`: start Ducter's browser, load a page, quit. Answered with browser_check.
@@ -1054,6 +1063,7 @@ export type ServerFrame =
   | ({ t: "browser_check" } & BrowserCheck)
   | SavedFrame
   | PhoneServerFrame
+  | ComputerServerFrame
   | { t: "error"; message: string };
 
 /** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */
@@ -1182,8 +1192,10 @@ export type AbilityState = "on" | "off" | "unavailable" | "later";
  * D228: own_address = 从外面连 is the person's own address (D143's domain), not a switch here.
  * D217: phone_unsupported = Ducter's phone can't run on this computer yet (phase 1: Apple
  * Silicon Macs; detail says why); phone_failed = installing or starting it failed (detail).
+ * D235: computer_permissions = 用电脑 is added but macOS hasn't given cua-driver Accessibility or
+ * Screen Recording yet (perms says which); the person turns them on in System Settings.
  */
-export type AbilityReason = "own_address" | "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_sandbox" | "browser_failed" | "worker_old" | "offline" | "signed_out" | "phone_unsupported" | "phone_failed";
+export type AbilityReason = "own_address" | "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_sandbox" | "browser_failed" | "worker_old" | "offline" | "signed_out" | "phone_unsupported" | "phone_failed" | "computer_permissions";
 
 export interface Allowance {
   left: number; // 0..1, as the harness reports it
@@ -1310,6 +1322,8 @@ export interface DeviceAbility {
   step?: PhoneInstallStep;
   /** phone (D217): Ducter's phone is running right now (it stops by itself when nobody needs it). */
   running?: boolean;
+  /** computer (D235): macOS's two switches for cua-driver on that Mac, as it last said. */
+  perms?: ComputerPerms;
 }
 
 export interface DeviceView {

@@ -859,6 +859,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         ...((m) => (m === "plugin" || m === "ducter" ? { memory: m } : {}))(memoryMode(open.place, open.harness)),
         // D217: work on Ducter's phone gets the phone's section (its tools are on the same server).
         ...(open.needs?.phone ? { phone: true } : {}),
+        // D235: work in a Mac app gets the apps' section (the tools show when 用电脑 is on there).
+        ...(open.needs?.app ? { apps: true } : {}),
       }),
       mcp: [mcp],
       permissionMode: "bypass",

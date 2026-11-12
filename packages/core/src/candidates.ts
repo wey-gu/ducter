@@ -56,6 +56,8 @@ export interface Computer {
   sites?: string[];
   /** D217: Ducter's phone is on here (用手机). */
   phone?: boolean;
+  /** D235: 用电脑 / Use the computer is on here (with macOS's two switches). */
+  computer?: boolean;
 }
 
 /** The computers that run tasks (the home and its workers), from the devices frame. */
@@ -65,6 +67,7 @@ export function computersOf(devices: DeviceView[], sites?: (deviceId: string) =>
     .map((d) => {
       const web = d.abilities.find((a) => a.id === "web");
       const phone = d.abilities.find((a) => a.id === "phone");
+      const computer = d.abilities.find((a) => a.id === "computer");
       const mac = d.platform ? d.platform.startsWith("darwin") : d.kind !== "server";
       return {
         id: d.id,
@@ -77,6 +80,7 @@ export function computersOf(devices: DeviceView[], sites?: (deviceId: string) =>
         ...(web ? { web: { on: web.state === "on", ...(web.where ? { where: web.where } : {}) } } : {}),
         ...(sites ? { sites: sites(d.id) } : {}),
         ...(phone?.state === "on" && !phone.setup ? { phone: true } : {}),
+        ...(computer?.state === "on" ? { computer: true } : {}),
       };
     });
 }
@@ -192,7 +196,8 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
         // The person's word: their pin of a computer, then their rule (its agent, its computer).
         const word = (inp.pinDevice && isComputer(c, inp.pinDevice) ? 4 : 0) + (ruled ? 2 : 0) + (rule?.device && isComputer(c, rule.device) ? 1 : 0);
         // Least access that does the job: Ducter's own browser (signed in where needed) over the user's Chrome.
-        const access = f.uses === "ducter" && !f.needsSignIn ? 2 : f.uses === "chrome" ? 1 : 0;
+        // D235: work in a Mac app goes to a Mac where the person added 用电脑 / Use the computer.
+        const access = f.uses === "ducter" && !f.needsSignIn ? 2 : f.uses === "chrome" ? 1 : inp.needs?.app && c.computer ? 1 : 0;
         // Strongest; plan before pay-per-use; then the most limit left (the agent's own rank, D89).
         const agent = (t.kind === "smart" ? 100 : 50) + (h.billing === "usage" ? -30 : 0) + (left ?? 0.5) * 20;
         const key = [blocked ? 0 : 1, waits ? 0 : 1, word, access, inp.needs?.long && c.alwaysOn ? 1 : 0, inp.current?.device && isComputer(c, inp.current.device) ? 1 : 0, agent, c.home ? 1 : 0];

@@ -19,6 +19,7 @@ import (
 // with updateSection.
 
 type cardState struct {
+	anywhereOff bool                  // D228: 关掉 在哪儿都能用 is being confirmed
 	cutting     string                // the device whose 断开 is being confirmed
 	cutFailed   string                // why the server said no
 	more        map[string]bool       // devices whose not-signed-in AI accounts are shown

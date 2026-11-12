@@ -12,6 +12,7 @@ export * from "./phone.ts";
 export * from "./media.ts";
 export * from "./phone-use.ts";
 export * from "./calendar.ts";
+export * from "./follow.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
 import type { CalChange, CalGlance, CalToday } from "./calendar.ts";
@@ -709,7 +710,9 @@ export type ClientFrame =
   // 远程打开 / Reach from anywhere (D54), answered with a pair_code frame.
   // refresh: probe the harness sign-ins again now (after signing in or out from the app).
   | { t: "devices"; refresh?: boolean }
-  | { t: "ability"; device: string; ability: AbilityId; on: boolean }
+  // D228: on the home, "remote" on/off turns 在哪儿都能用 / From anywhere on or off (Ducter's free
+  // tunnel); named: the person's own Cloudflare tunnel (its token and the address it serves).
+  | { t: "ability"; device: string; ability: AbilityId; on: boolean; named?: { token: string; address: string } }
   | { t: "pair_code" }
   // rename_device: 改名字 / Rename any device (another computer, a phone, a window; D84), and since
   // D155 the home too ("local": a display name; it still answers to its host name and to "local").
@@ -1159,10 +1162,11 @@ export type AbilityState = "on" | "off" | "unavailable" | "later";
  * offline = that computer can't be reached right now to change it.
  * D199: signed_out = 打电话 is on (a calling connection is there) but its sign-in is gone: the
  * phone card in Accounts signs in again.
+ * D228: own_address = 在哪儿都能用 is the person's own address (D143's domain), not a switch here.
  * D217: phone_unsupported = Ducter's phone can't run on this computer yet (phase 1: Apple
  * Silicon Macs; detail says why); phone_failed = installing or starting it failed (detail).
  */
-export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_sandbox" | "browser_failed" | "worker_old" | "offline" | "signed_out" | "phone_unsupported" | "phone_failed";
+export type AbilityReason = "own_address" | "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_sandbox" | "browser_failed" | "worker_old" | "offline" | "signed_out" | "phone_unsupported" | "phone_failed";
 
 export interface Allowance {
   left: number; // 0..1, as the harness reports it
@@ -1429,9 +1433,31 @@ export interface UpdateAllView {
   plan?: UpdateAllPlan;
 }
 
+/**
+ * D228: 在哪儿都能用 / From anywhere on the home. how: own = an address the person set up (their
+ * domain, D143; DUCTER_PUBLIC_URL); tunnel = Ducter's free Cloudflare tunnel (no account; the
+ * address changes when the computer restarts: moves); named = the person's own Cloudflare tunnel
+ * (a stable address). state starting: being opened (getting: fetching the tunnel program the first
+ * time, about 20 MB); failed: reason (download: couldn't download it; cloudflare: couldn't reach
+ * Cloudflare; unsupported: no build for this system; failed: detail). follow: how paired devices
+ * find the home when the address changes (follow.ts); given only to paired and local clients.
+ */
+export interface Anywhere {
+  how: "own" | "tunnel" | "named";
+  state: "starting" | "on" | "failed";
+  getting?: boolean;
+  moves?: boolean;
+  reason?: AnywhereReason;
+  detail?: string;
+  since?: string; // ISO: when this address began
+  follow?: import("./follow.ts").Follow;
+}
+export type AnywhereReason = "download" | "cloudflare" | "unsupported" | "failed";
+
 /** Who can reach this Ducter from elsewhere (paired clients), and the address they use. */
 export interface Reach {
-  address?: string; // the public address, when one is set (DUCTER_PUBLIC_URL or <dataDir>/public-url)
+  address?: string; // the address from outside, when there is one (own, or the tunnel's once on)
+  anywhere?: Anywhere; // D228: absent = off
   /** form "cli": the command line on a computer, shown inside that computer's card (D155); computer: the host it runs on. */
   clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string; form?: "cli" | "app"; computer?: string }[];
 }

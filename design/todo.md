@@ -15,6 +15,14 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 Built and verified in Ubuntu VMs: systemd user service, code pairing, token gate, Caddy and
 SSH-tunnel paths, desktop connect card, worker enrollment, presence and task placement.
 
+**From anywhere (D228, research/67)**
+- [ ] **Deploy the address relay** (`apps/site/api/addr`, `ADDR_HASH_KEY`; `design/release/push-relay.md`) and check `/api/addr/health`. Trigger: the release that carries D228; until then devices pair again after a home restarts.
+- [ ] **The systemd-run path on a Linux home behind NAT** (`ducter-anywhere-<port>` survives `systemctl --user restart ducter`): an e2e step in `bun run e2e:linux` (turn on, reach it from the Mac through the tunnel, restart the service, same address). Trigger: the next e2e run that has network to Cloudflare.
+- [ ] **A quick tunnel across a long sleep and a Wi-Fi change** on the author's MacBook: does the name survive, how fast does the self-check replace it. Trigger: the author tries it.
+- [ ] **The iPhone app's `moved`** in a build on the Simulator and a device (the Swift change is in; not compiled in this session), and **the Android app's** (`ducterBridge` has no `moved` yet; until then it pairs again). Trigger: the next app build.
+- [ ] **A phone that added the web page to its Home Screen** keeps opening the old address and is redirected each time; offer to add the new one once. Trigger: a person reports it.
+- [ ] **A Ducter-run stable hostname** (`<name>.ducter.ai`): only if the relay proves too slow or a free tunnel too fragile in real use; weigh TLS ending under the project's account and abuse of the domain first (research/67 §1c).
+
 **Verify for real**
 - [ ] **Move your Ducter to another computer (`ducter move`)**: a Mac-first user moves the home to a server: one-time move code from the new (empty) home; moves the Log, persona, settings, rules, routines, connections and the Mem binding over HTTPS with a verified count; not harness sign-ins (re-sign on the server, guided); running tasks parked first; the old machine becomes a worker for its local repos, its app connects to the new home; old data kept 30 days with a one-tap move back. Trigger: the author's Mac → Hetzner case (2026-11-10); design first, then v0.0.4.
 - [x] **Phone opened task overflows horizontally**: not the layout. The shot was taken with headless Chrome's `--window-size=390,…`, which lays out at its minimum window width (~500 px) and crops to 390. With device emulation at 390 px (CDP `Emulation.setDeviceMetricsOverride`) the folder task and a long zh title + long brief with unbreakable paths and URLs wrap, and `scrollWidth` is 390. Take phone shots with device emulation, never `--window-size`.

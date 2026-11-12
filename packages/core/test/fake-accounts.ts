@@ -22,7 +22,7 @@ export interface FakeCall {
   account?: string;
 }
 
-export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionSource; name?: string; apps?: FakeApp[]; state?: ConnectionView["state"]; legacyThreads?: boolean; refuse?: (input: Record<string, unknown>) => string | undefined } = {}) {
+export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionSource; name?: string; apps?: FakeApp[]; state?: ConnectionView["state"]; legacyThreads?: boolean; /** The apps not listed yet (right after a start, before OOMOL answered the list). */ unlisted?: boolean; refuse?: (input: Record<string, unknown>) => string | undefined } = {}) {
   const id = o.id ?? "conn_oo";
   const apps: FakeApp[] = o.apps ?? [
     { service: "gmail", title: "Gmail", account: ME },
@@ -35,6 +35,7 @@ export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionS
   const removers = new Set<(id: string) => void>();
   const flags = new Map<string, { watch?: boolean; excluded?: boolean }>();
   let present = true;
+  let listed = !o.unlisted;
   let state: ConnectionView["state"] = o.state ?? "ok";
   const key = (service: string, account?: string) => `${service}:${account ?? ""}`;
 
@@ -119,7 +120,7 @@ export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionS
     read,
     list: () => [],
     apps(cid: string): AppTarget[] {
-      if (cid !== id || !present) return [];
+      if (cid !== id || !present || !listed) return [];
       return apps.map((a) => {
         const f = flags.get(key(a.service, a.account)) ?? {};
         return { connectionId: id, source: o.source ?? "oo", service: a.service, title: a.title, ...(a.account ? { account: a.account, label: a.account } : {}), watch: f.watch ?? true, excluded: f.excluded ?? false };
@@ -151,6 +152,11 @@ export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionS
     remove() {
       present = false;
       removers.forEach((f) => f(id));
+      listeners.forEach((f) => f());
+    },
+    /** OOMOL answered the list: the apps are there, and the store says it changed. */
+    list() {
+      listed = true;
       listeners.forEach((f) => f());
     },
     setState(s: ConnectionView["state"]) {

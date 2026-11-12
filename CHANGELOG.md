@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.38
+
+<!-- whats-new
+zh: 主动留意终于看得到 Slack 里找你的消息了
+en: Watching now sees Slack messages addressed to you
+zh: 开机后邮件回看会等账号就绪，不再空跑
+en: The mail look back waits for your accounts after a start
+-->
+
+**Proactive**
+- Slack mentions and DMs reach the watcher: Slack's search answers had no mention or DM flag, so
+  every one was dropped; and the time window now goes the way Slack's search takes it.
+- Right after Ducter starts, the 60-day look back could run before your accounts had answered,
+  read nothing and call itself done. It now waits for them, and a home where it read nothing looks
+  back once more, quietly.
+- 今天看了什么 / What it looked at today counts each mail once, not again on every look, and a
+  calendar's events once a day.
+- Quiet hours turned off no longer hold finds for the morning.
+
 ## 0.0.37
 
 <!-- whats-new

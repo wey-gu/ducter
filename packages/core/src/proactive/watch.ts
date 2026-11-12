@@ -93,7 +93,13 @@ const CHAT = (svc: string): LookSpec => ({
   kind: "chat",
   everyMs: 10 * MIN,
   actions: [`${svc}.list_mentions`, `${svc}.search_messages`, `${svc}.list_direct_messages`],
-  inputs: (since) => [{ query: "to:me", after: new Date(since).toISOString(), limit: 50 }],
+  // Slack (through OOMOL) takes the window in the query, by day; a day earlier, so a zone never
+  // drops one (seen keeps them once). Its matches carry no mention or DM flag: what "to:me"
+  // answers is addressed to the person by the query itself (D230).
+  inputs: (since) =>
+    svc === "slack"
+      ? [{ query: `to:me after:${new Date(since - DAY).toISOString().slice(0, 10)}`, count: 50, sort: "timestamp" }]
+      : [{ query: "to:me", after: new Date(since).toISOString(), limit: 50 }],
 });
 
 /** How each service is looked at; undefined: not watched (it is still read when asked). */
@@ -147,6 +153,9 @@ export interface Watchers {
   stop(): void;
 }
 
+/** Calendars come back as a window: an event is new when its id or its time changed. */
+const seenId = (i: Item) => (i.kind === "event" ? `${i.id}@${i.start}${i.cancelled ? "x" : ""}` : i.id);
+
 export function createWatchers(opts: {
   dataDir: string;
   connections: ConnectionsStore;
@@ -191,7 +200,7 @@ export function createWatchers(opts: {
   const today = () => dayOf(opts.clock.now());
   const trimReads = () => {
     const d = today();
-    st.reads = st.reads.filter((r) => dayOf(Date.parse(r.at)) === d).slice(-400);
+    st.reads = st.reads.filter((r) => dayOf(Date.parse(r.at)) === d).slice(-1500); // a day of looks at ~6 apps every 10–15 min (D230)
   };
 
   const target = (a: AppTarget): Target => ({ connectionId: a.connectionId, source: a.source, service: a.service, title: a.title, ...(a.account ? { account: a.account } : {}), me: meOf(a) });
@@ -250,9 +259,16 @@ export function createWatchers(opts: {
       for (const it of results.flatMap((res) => itemsOf(target(a), spec.kind, res))) if (!byKey.has(it.key)) byKey.set(it.key, it);
       let items = [...byKey.values()];
       // Chat: only @-mentions and DMs (D165 call 1); the rest is never even counted.
+      // A "to:me" search answers only what is addressed to the person (D230).
+      if (spec.kind === "chat" && action.endsWith(".search_messages")) items = items.map((i) => (i.dm || i.out ? i : { ...i, mention: true }));
       if (spec.kind === "chat") items = items.filter((i) => i.mention || i.dm || i.out);
       trimReads();
-      st.reads.push({ connectionId: a.connectionId, at: new Date(opts.clock.now()).toISOString(), service: a.service, ...(a.label ?? a.account ? { account: a.label ?? a.account } : {}), items: items.length, what: what ?? (spec.kind === "event" ? "events" : spec.kind === "chat" || spec.kind === "github" ? "mentions" : "new") });
+      // 看了 N 封: mail and mentions this look saw for the first time, not the newest ones it reads
+      // again each time (a look asks from the last checkpoint on, D230). A calendar is a window:
+      // its count is the events in it (the day's total takes the largest window, not their sum).
+      const known = new Set(st.seen[k] ?? []);
+      const counted = spec.kind === "event" ? items.length : items.filter((i) => !known.has(seenId(i))).length;
+      st.reads.push({ connectionId: a.connectionId, at: new Date(opts.clock.now()).toISOString(), service: a.service, ...(a.label ?? a.account ? { account: a.label ?? a.account } : {}), items: counted, what: what ?? (spec.kind === "event" ? "events" : spec.kind === "chat" || spec.kind === "github" ? "mentions" : "new") });
       save();
       return items;
     }
@@ -270,8 +286,7 @@ export function createWatchers(opts: {
       const items = await look(a, since);
       if (items) {
         const seen = new Set(st.seen[k] ?? []);
-        // Calendars come back as a window: an event is new when its id or its time changed.
-        const idOf = (i: Item) => (i.kind === "event" ? `${i.id}@${i.start}${i.cancelled ? "x" : ""}` : i.id);
+        const idOf = seenId;
         const fresh = items.filter((i) => !seen.has(idOf(i)));
         // The checkpoint moves only after the items were taken in (research/48 P5): a restart in
         // between reads them again (the ledger keeps one fact per item), never loses them. An item
@@ -346,11 +361,15 @@ export function createWatchers(opts: {
     lookedToday() {
       trimReads();
       const n = { mail: 0, events: 0, mentions: 0 };
+      const windows = new Map<string, number>();
       for (const r of st.reads) {
-        if (r.what === "events") n.events += r.items;
-        else if (r.what === "mentions") n.mentions += r.items;
+        if (r.what === "events") {
+          const w = `${r.connectionId}|${r.service}|${r.account ?? ""}`;
+          windows.set(w, Math.max(windows.get(w) ?? 0, r.items));
+        } else if (r.what === "mentions") n.mentions += r.items;
         else n.mail += r.items;
       }
+      for (const v of windows.values()) n.events += v;
       return n;
     },
     readToday(connectionId) {

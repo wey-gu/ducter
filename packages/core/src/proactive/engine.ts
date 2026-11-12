@@ -121,13 +121,14 @@ interface State {
   /**
    * Which look back a source's "done" means. Below LOOK_BACK_REV, the look back ran on a read that
    * gave no dates or subjects (OOMOL's search_threads) or while triage failed, and read nothing: it
-   * runs once more, as a catch-up (the last 3 days in full).
+   * runs once more, as a catch-up (the last 3 days in full). Below 3, it may have run before the
+   * source's apps were listed (right after a start) and read nothing (D230).
    */
   lookBackRev?: number;
 }
 
 /** The look back that reads dated mail (fetch_emails) and leaves pending what triage couldn't read. */
-export const LOOK_BACK_REV = 2;
+export const LOOK_BACK_REV = 3;
 
 interface Today {
   day: string;
@@ -427,7 +428,10 @@ export function createProactive(o: ProactiveOptions): Proactive {
 
   // ---------- speaking ----------
 
+  /** When the morning note goes: the end of quiet hours, or 08:00 when there are none. */
   const quiet = () => o.settings.get().quiet ?? { ...DEFAULT_QUIET, tz: zone() };
+  /** What holds a find for the morning: quiet hours as set; none set, nothing holds (D230). */
+  const holding = () => o.settings.get().quiet ?? null;
   const rollDay = () => {
     if (st.day.key !== today()) st.day = { key: today(), said: 0 };
   };
@@ -557,8 +561,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     rollDay();
     const z = zh();
     const at = now();
-    const q = quiet();
-    const night = inQuiet(at, q);
+    const night = inQuiet(at, holding());
     const kept = await judged(detect(ledger, { now: at, zone: zone() }), why === "morning" ? "morning" : "day");
     if (why === "morning") {
       if (m === "urgent") {
@@ -763,11 +766,28 @@ export function createProactive(o: ProactiveOptions): Proactive {
     if (st.backfill[connectionId]) return;
     st.backfill[connectionId] = "pending";
     save();
-    void serial(() => backfill(connectionId));
+    backfill(connectionId);
   }
 
+  const backfilling = new Set<string>();
   /** The quiet 60-day look back for one source; marked done only once it finished, so a restart resumes it (P5). */
-  async function backfill(connectionId: string): Promise<void> {
+  /** A look back for one source, queued at most once at a time (a start, a model, its apps listed). */
+  function backfill(connectionId: string): void {
+    if (backfilling.has(connectionId)) return;
+    backfilling.add(connectionId);
+    void serial(async () => {
+      try {
+        await backfillOnce(connectionId);
+      } finally {
+        backfilling.delete(connectionId);
+      }
+    });
+  }
+  /** Look backs waiting: each goes (D230). */
+  function resumeBackfills(): void {
+    for (const [id, s] of Object.entries(st.backfill)) if (s === "pending" || s === "catchup") backfill(id);
+  }
+  async function backfillOnce(connectionId: string): Promise<void> {
     const how = st.backfill[connectionId];
     if ((how !== "pending" && how !== "catchup") || !o.connections.view().some((c) => c.id === connectionId)) return;
     // No model to read with yet (before the runner is set): it waits for setModels (D226).
@@ -783,7 +803,11 @@ export function createProactive(o: ProactiveOptions): Proactive {
       for (const i of recent.items) full.add(i.key);
     }
     const r = await toLedger(back.items, "backfill", { full });
-    const silent = !back.apps && o.connections.apps(connectionId).some((a) => !a.excluded && lookFor(a.service));
+    // No app answered: either it didn't, or the source's apps aren't listed yet (right after a
+    // start, before OOMOL answered the list, D230). Only a source whose listed apps hold nothing
+    // to look at is done with nothing read.
+    const listed = o.connections.apps(connectionId);
+    const silent = !back.apps && (!listed.length || listed.some((a) => !a.excluded && lookFor(a.service)));
     console.log(`[proactive] look back: read ${back.items.length}, kept ${r.kept}, noted ${r.noted}${r.failed ? `, failed ${r.failed}` : ""}${silent ? " (no source answered)" : ""}`);
     // Every read failed (the agent isn't there), or no source answered: it stays pending, tried
     // again when the models change or after a restart, rather than marked done with nothing read (D226).
@@ -806,17 +830,17 @@ export function createProactive(o: ProactiveOptions): Proactive {
       const again = Object.entries(st.backfill).filter(([, s]) => s === "done").map(([id]) => id);
       for (const id of again) {
         st.backfill[id] = "catchup";
-        void serial(() => backfill(id));
+        backfill(id);
       }
       st.lookBackRev = LOOK_BACK_REV;
-      if (again.length) console.log(`[proactive] look back again for ${again.length} source(s): the last one could not read dates or subjects`);
+      if (again.length) console.log(`[proactive] look back again for ${again.length} source(s): the last one read nothing it could use`);
       save();
     }
     for (const c of o.connections.view()) {
       if (st.backfill[c.id] || !o.connections.apps(c.id).some((a) => a.watch && !a.excluded && lookFor(a.service))) continue;
       st.backfill[c.id] = "catchup";
       save();
-      void serial(() => backfill(c.id));
+      backfill(c.id);
     }
   }
 
@@ -888,6 +912,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
   });
   const offConnections = o.connections.onChange(() => {
     watchers.sync();
+    // A source's apps listed (or back): a look back that found none goes now (D230).
+    resumeBackfills();
     catchUpAll();
   });
   const offRemove = o.connections.onRemove((id) => {
@@ -920,7 +946,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     rollDay();
     const held = new Map<QuietReason, number>();
     const hold = (r: QuietReason) => held.set(r, (held.get(r) ?? 0) + 1);
-    const night = inQuiet(at, quiet());
+    const night = inQuiet(at, holding());
     const morningMode = m === "three" || m === "useful";
     const seen = new Set<string>();
     if (m !== "off")
@@ -960,7 +986,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
   armMorning();
   armTick();
   // A look back a restart cut short picks up where it was (P5).
-  for (const [id, s] of Object.entries(st.backfill)) if (s === "pending" || s === "catchup") void serial(() => backfill(id));
+  resumeBackfills();
   catchUpAll();
 
   return {
@@ -1048,9 +1074,9 @@ export function createProactive(o: ProactiveOptions): Proactive {
       note({ noteId, rung: "first", opening: W.firstOffer(zh(), names), finds: [], ask: "first_look" });
     },
     hello() {
-      const q = quiet();
+      const q = holding();
       const at = now();
-      if (mode() === "off" || !inQuiet(at, q)) return;
+      if (mode() === "off" || !q || !inQuiet(at, q)) return;
       // Within the last two hours before the end of quiet hours: assembled now.
       if (quietEndsAt(at, q) - at <= 2 * 3_600_000) {
         void serial(async () => {
@@ -1074,7 +1100,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       if (m.triage) triage = m.triage;
       if (m.judge) judge = m.judge;
       // A look back that waited for a model to read with goes now (D226).
-      if (m.triage) for (const [id, s] of Object.entries(st.backfill)) if (s === "pending" || s === "catchup") void serial(() => backfill(id));
+      if (m.triage) resumeBackfills();
     },
     morning: () => serial(() => morningRun()),
     async lookNow(days = 1) {

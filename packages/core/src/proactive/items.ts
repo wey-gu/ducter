@@ -220,12 +220,13 @@ export function githubItem(t: Target, o: Record<string, unknown>): Item | undefi
 export function chatItem(t: Target, o: Record<string, unknown>): Item | undefined {
   const id = str(o.id) ?? str(o.ts);
   if (!id) return;
-  const author = party(o.author ?? o.user ?? o.from);
+  // OOMOL's Slack matches: userId / username / channelId (a "D…" channel is a DM).
+  const author = party(o.author ?? (typeof o.user === "object" ? o.user : undefined) ?? o.from ?? (str(o.username) ? { username: o.username } : o.user));
   const text = str(o.content) ?? str(o.text) ?? str(o.message);
   const me = t.me.map((m) => m.toLowerCase());
   const mentions = Array.isArray(o.mentions) ? o.mentions.map((m) => party(m).addr ?? party(m).name?.toLowerCase()) : [];
   const mention = o.mentioned === true || o.mention === true || mentions.some((m) => m && me.includes(m)) || (text ? me.some((m) => text.toLowerCase().includes(`@${m}`)) : false);
-  const dm = o.dm === true || o.is_im === true || o.channel_type === "im" || o.guild_id === null;
+  const dm = o.dm === true || o.is_im === true || o.channel_type === "im" || o.guild_id === null || (/^slack/.test(t.service) && /^D/.test(str(o.channelId) ?? ""));
   return {
     key: keyOf(t, id),
     connectionId: t.connectionId,
@@ -234,9 +235,10 @@ export function chatItem(t: Target, o: Record<string, unknown>): Item | undefine
     app: t.title,
     ...(t.account ? { account: t.account } : {}),
     id,
-    ...(str(o.channel_id) ?? str(o.channel) ? { thread: str(o.thread_ts) ?? str(o.channel_id) ?? str(o.channel) } : {}),
+    ...(str(o.channel_id) ?? str(o.channelId) ?? str(o.channel) ? { thread: str(o.thread_ts) ?? str(o.channel_id) ?? str(o.channelId) ?? str(o.channel) } : {}),
     kind: "chat",
-    at: timeOf(o.timestamp ?? o.ts ?? o.created_at ?? o.date) ?? 0,
+    // Slack's ts is epoch seconds with a fraction ("1794486113.874479").
+    at: timeOf(o.timestamp ?? o.created_at ?? o.date) ?? (/^\d{9,}(\.\d+)?$/.test(str(o.ts) ?? "") ? Math.round(Number(o.ts) * 1000) : timeOf(o.ts)) ?? 0,
     ...(author.addr ?? author.name ? { from: (author.addr ?? author.name)!.toLowerCase() } : {}),
     ...(author.name ? { fromName: author.name } : {}),
     ...(text ? { snippet: clip(text, SNIPPET_MAX), subject: clip(text.split("\n")[0]!, 120) } : {}),

@@ -109,7 +109,7 @@ test("hel on 0.0.33: the look back had read nothing and called itself done; it r
   writeFileSync(join(dir, WATCH_FILE), JSON.stringify({ since: { [GMAIL]: MORNING - 10 * MIN }, seen: { [GMAIL]: fx.mail.map((m) => m.threadId!) }, action: { [GMAIL]: "gmail.search_threads" }, reads: [] }));
   const r = make({ mode: "urgent", fx, dir, accounts: mailOnly });
   await r.settle();
-  expect(logs).toContain("[proactive] look back again for 1 source(s): the last one could not read dates or subjects");
+  expect(logs).toContain("[proactive] look back again for 1 source(s): the last one read nothing it could use");
   const line = logs.find((l) => l.startsWith("[proactive] look back: "))!;
   expect(line).toMatch(/^\[proactive\] look back: read \d+, kept \d+, noted \d+$/);
   const [read, kept, noted] = line.match(/\d+/g)!.map(Number);
@@ -209,4 +209,26 @@ test("a look back no source answered is not done: it runs again once the account
   await r2.settle();
   expect(JSON.parse(readFileSync(join(dir, PROACTIVE_FILE), "utf8")).backfill.conn_oo).toBe("done");
   expect(r2.p.ledger.of("change").map((f) => f.name)).toEqual(["NH920"]);
+});
+
+test("hel on 0.0.37: the look back ran before the apps were listed and read nothing; it waits, and goes once they are", async () => {
+  capture();
+  const dir = scratch();
+  const fx = day();
+  // What hel had: the look back done at rev 2, run in the second Ducter started (read 0).
+  writeFileSync(join(dir, PROACTIVE_FILE), JSON.stringify({ backfill: { conn_oo: "done" }, lookBackRev: 2 }));
+  const r = make({ mode: "urgent", fx, dir, accounts: { ...mailOnly, unlisted: true } });
+  await r.settle();
+  expect(logs).toContain("[proactive] look back again for 1 source(s): the last one read nothing it could use");
+  expect(logs).toContain("[proactive] look back: read 0, kept 0, noted 0 (no source answered)");
+  expect(JSON.parse(readFileSync(join(dir, PROACTIVE_FILE), "utf8")).backfill.conn_oo).toBe("catchup");
+  // OOMOL answers the list: the look back goes now, without a restart.
+  logs = [];
+  r.acc.list();
+  await r.settle();
+  const line = logs.find((l) => l.startsWith("[proactive] look back: "))!;
+  expect(line).toMatch(/^\[proactive\] look back: read [1-9]\d*, kept \d+, noted [1-9]\d*$/);
+  expect(logs.filter((l) => l.startsWith("[proactive] look back: "))).toHaveLength(1); // once, not per change
+  expect(JSON.parse(readFileSync(join(dir, PROACTIVE_FILE), "utf8")).backfill.conn_oo).toBe("done");
+  expect(r.p.ledger.of("change").map((f) => f.name)).toEqual(["NH920"]);
 });

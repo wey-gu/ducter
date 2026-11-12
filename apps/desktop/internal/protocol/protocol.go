@@ -116,6 +116,8 @@ type UserMsg struct {
 	ClientID string `json:"clientId,omitempty"`
 	// Media (D206): the pictures the user sent with it (Text may be empty then).
 	Media []MediaRef `json:"media,omitempty"`
+	// Reply (D236): the one message this answers, with its quote (core's).
+	Reply *ReplyRef `json:"reply,omitempty"`
 }
 
 type AIMsg struct {
@@ -285,6 +287,9 @@ type DecisionResolved struct {
 	Text       string `json:"text,omitempty"`
 	By         string `json:"by"`            // user | default
 	Now        bool   `json:"now,omitempty"` // D208: a call's Go given as Call now
+	// MsgSeq (D236): the reply message that answered it (its words show as
+	// that bubble, not on the card).
+	MsgSeq int64 `json:"msgSeq,omitempty"`
 }
 
 type ReadReceipt struct {
@@ -807,6 +812,8 @@ type Send struct {
 	ClientID string `json:"clientId"`
 	// Media (D206): ids from POST /api/media; Text may be empty then.
 	Media []string `json:"media,omitempty"`
+	// Reply (D236): the one message this answers; core fills the quote.
+	Reply *ReplyWant `json:"reply,omitempty"`
 }
 
 type Decide struct {

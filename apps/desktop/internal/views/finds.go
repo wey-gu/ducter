@@ -28,19 +28,31 @@ func (a *App) findsEntry(c *ui.Context, e *store.Entry) {
 				if i > 0 || n.Opening != "" {
 					ui.Box(c).Height(1).Background(t.LineSoft).Margin(t.S1, 0)
 				}
-				a.findBlock(c, f)
+				a.findBlock(c, f, e.Event.Seq)
 			}
 			a.noteAsk(c, n)
 		})
 	})
 }
 
-func (a *App) findBlock(c *ui.Context, f protocol.FindView) {
+func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 	t := a.T
 	st := a.S.FindStates[f.FindID]
-	ui.Column(c.Key("find:" + f.FindID)).Gap(t.S1).Children(func() {
+	// D236: each find can be replied to on its own; found, its own tint deepens.
+	rt := &replyTo{seq: seq, findID: f.FindID, from: "partner", quote: f.Text}
+	col := ui.Column(c.Key("find:" + f.FindID)).Gap(t.S1).Radius(t.RadiusSM)
+	hov := col.Hovered()
+	if k := a.foundAt(c, seq, f.FindID); k > 0 {
+		col.Background(t.PartnerBubble.Mix(t.Reply.FoundPartner, k))
+	}
+	col.Children(func() {
 		ui.Text(c, a.L.T("kind."+f.Kind)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
-		ui.Text(c, autospace(f.Text)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(f.Text, 1.5)).TextColor(t.OnPartnerBubble)
+		if hov {
+			// Over the find's top-right corner, out of the flow: nothing shifts.
+			a.replyButton(c, rt).Absolute().Top(-t.S1).Right(0)
+		}
+		ft := ui.Text(c, autospace(f.Text)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(f.Text, 1.5)).TextColor(t.OnPartnerBubble)
+		a.replyMenu(c, ft, rt, f.Text)
 		if d := a.S.Decisions[f.DecisionID]; d != nil {
 			switch {
 			case st != nil && st.State == "passed":

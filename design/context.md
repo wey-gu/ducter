@@ -96,6 +96,37 @@ The design:
   events on the `partner` stream, before the re-cut applies. They carry the size, the session,
   and whether the re-cut had digests. Clients never show them.
 
+## Replies: a reference that survives the window (D236)
+
+A reply (`conversation.md` "Replies") points at one earlier message. The reference must hold
+when that message has left the window, after a re-cut, a digest and a restart, and must cost the
+same however long the message was (research/71 §6: T3 Code sends 300 characters and a pointer,
+Lorca 280 characters).
+
+- **The Log keeps the quote with the reply.** The client names only the message (`ReplyWant`:
+  its seq, and a find or a part of its words); core reads that event and logs a `ReplyRef` inside
+  the `user_msg`: whose words, what kind (message, question, find), a quote of at most 200
+  characters (Markdown marks dropped; a part only if the message really has those words),
+  `clipped` when the words go on, the tasks it was about (the jobs whose acks answered it, a
+  question's task), the question or find, and its pictures (at most 4). Nothing a client typed is
+  trusted as the quote. A seq that isn't a conversation message logs a plain message.
+- **What the partner reads (L4).** One line ahead of the words:
+  `[user, replying to your message of 2026-11-12 14:03 (#412): "…"] 这个再补个测试`, then one
+  line per task it was about with where it stands (still working / done, not merged / done, its
+  work merged / set aside) and where more work goes, one for a find, one naming the pictures
+  (they ride again as the turn's images), and, when cut, the pointer
+  `log_read stream "channel" fromSeq 412 limit 1`. A reply that answered an open question reads as
+  that question answered (`[decision resolved: reply] … already forwarded to the task`).
+- **History and digests.** `renderHistoryLine` gives a reply as
+  `[14:20 user, replying to your message of … (#412): "first 100 characters"] words`, so the cold
+  seed, a re-cut's window and the spine writer all see what it answered even when #412 is gone
+  from the window or folded into a digest.
+- **Turns.** `turnLength` splits the queue at a user message that replies to a different message
+  than the one before it, and the history of a turn leaves out what is still queued: two replies
+  to two things are two turns that never see each other early. Plain messages still batch.
+- **Pictures.** A reply to a message with pictures shows the partner those pictures again (after
+  the reply's own), so "这个是不是上次那个问题" about a screenshot works without re-sending it.
+
 ## Working set and folds (principle 5)
 
 *Not built:* folds (read-fold, late fold) and forks. Today the only bound is the re-cut above.

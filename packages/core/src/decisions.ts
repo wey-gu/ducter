@@ -9,8 +9,8 @@ import { keyReadyText, keyRefusedText } from "./saved/key-words.ts";
 export type DecisionHook = (taskId: string, text: string, resolved: Bodies["decision_resolved"]) => void | Promise<void>;
 
 export interface Decisions {
-  /** extra.delivered (D233): the task already has the answer; it is not forwarded. */
-  decide(decisionId: string, option: "go" | "hold" | "reply", text?: string, extra?: { delivered?: boolean }): LogEvent<"decision_resolved">;
+  /** extra.delivered (D233): the task already has the answer; it is not forwarded. extra.msgSeq (D236): the reply message that answered it, when the answer was a reply in the conversation. */
+  decide(decisionId: string, option: "go" | "hold" | "reply", text?: string, extra?: { delivered?: boolean; msgSeq?: number }): LogEvent<"decision_resolved">;
   get(decisionId: string): Bodies["decision"] | undefined;
   isPending(decisionId: string): boolean;
   setHook(fn: DecisionHook): void;
@@ -274,6 +274,7 @@ export function createDecisions(opts: {
       const body: Bodies["decision_resolved"] = { decisionId, option, by: "user" };
       if (text) body.text = text;
       if (extra?.delivered) body.delivered = true;
+      if (extra?.msgSeq) body.msgSeq = extra.msgSeq;
       return log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body });
     },
     takeUnforwarded: () => unforwarded.splice(0),

@@ -24,11 +24,24 @@ export type Seed =
   // D193 (scenario.phone): a call on the line whose other side asks the user something (its card is up).
   | { callQuestion: { name: string; to: string; question: string } }
   // Something the user did by button on a task's result (merge, open PR), as core logs it.
-  | { userAction: { task: string; text: string } };
+  | { userAction: { task: string; text: string } }
+  // D236: a note Ducter said by itself (proactive finds), one find per line.
+  | { finds: { opening: string; finds: { kind: import("../../protocol/src/proactive.ts").FindKind; text: string; goLabel?: string }[] } }
+  // Many short exchanges (filler), so what came before them leaves the cold seed's window.
+  | { chatter: number };
+
+/** D236: a reply names an earlier message by words it has (the latest one that has them). */
+export interface UserSay {
+  text: string;
+  replyTo?: string;
+}
 
 export type Step =
   // images (D206): pictures sent with the words, as repo-relative paths (the app's own art: no fixture binaries).
-  | { user: string; images?: string[] }
+  // replyTo (D236): the user replies to the earlier message that has these words.
+  | { user: string; images?: string[]; replyTo?: string }
+  // D236: several messages sent at once (e.g. two replies to two things), before the partner answers.
+  | { users: UserSay[] }
   | { report: { task: string; body: Omit<Bodies["report"], "taskId"> } }
   // Several reports landing within the same second (two tasks finishing together).
   | { reports: { task: string; body: Omit<Bodies["report"], "taskId"> }[] }
@@ -43,8 +56,11 @@ export type Step =
 export interface Expect {
   /** task_open calls: exact count, or a range. */
   opens?: number | [number, number];
-  /** task_send to the seeded task with this key (at least one). */
-  sendTo?: string;
+  /** task_send to the seeded task with this key (at least one); several keys: to each of them. */
+  sendTo?: string | string[];
+  /** D236: what the task_sends to a task (by key, all joined) must match / must not match. */
+  sentRequire?: Record<string, RegExp[]>;
+  sentForbid?: Record<string, RegExp[]>;
   /** No task_send at all. */
   noSend?: boolean;
   /** No task_send to the seeded task with this key. */
@@ -1535,5 +1551,135 @@ export const scenarios: Scenario[] = [
     ],
     expect: { opens: 0, maxChars: 240, called: [{ tool: "phone_call", args: { to: /\+?62/ } }, { tool: "phone_call", args: { do: "result" } }], forbid: [/\bI('ve| have)? (called|booked|arranged)\b|I'?m calling/i] },
     rubric: "An Indonesian number: Ducter's calling line (Tuwa) doesn't call Indonesia, so it makes a call sheet (phone_call with the first words the user will say) and says plainly, in one short English line, that it can't make this call for them yet. The user then taps Done calling: it asks briefly, in one line, how it went. When the user tells it, it records the outcome with phone_call do=result in their words and says at most one short line (a brief acknowledgement is fine). It never claims it made the call or the booking itself, and opens no task.",
+  },
+
+  // ---------- R. replies to one message (D236) ----------
+  // The words alone point at the latest thing; the reply points at an older one. Only the
+  // reply's quote and its task can route it right.
+  {
+    id: "reply-older-task-zh",
+    category: "reply",
+    lang: "zh",
+    floor: true,
+    seed: [
+      { user: "修一下 ~/dev/foo 里 TTL 那个时好时坏的测试" },
+      {
+        task: {
+          key: "ttl",
+          title: "foo: TTL 测试不稳定",
+          repo: "~/dev/foo",
+          ack: "我去看看 foo 里那个时好时坏的 TTL 测试，弄清楚了告诉你。",
+          state: "done",
+          report: { state: "done", summary: "The TTL test waited on real time for a 1s expiry; under load it fired early. Switched it to a fake clock; 20 runs in a row pass.", questions: [], evidence: [{ kind: "test", label: "bun test 20/20", ref: "bun test" }] },
+        },
+      },
+      { ai: "TTL 测试修好了：它用真实计时去等 1 秒过期，机器一忙就抢跑，现在改成假时钟。" },
+      { user: "再给 ~/dev/foo 的 Cache 加一个 values() 方法" },
+      {
+        task: {
+          key: "values",
+          title: "foo: 给 Cache 加 values()",
+          repo: "~/dev/foo",
+          ack: "我去给 foo 的 Cache 加 values()。",
+          state: "done",
+          report: { state: "done", summary: "Added Cache.values() returning live values; 2 new tests, 14/14 pass.", questions: [], evidence: [{ kind: "test", label: "bun test 14/14", ref: "bun test" }] },
+        },
+      },
+      { ai: "加好了：values() 只返回没过期的值，加了 2 个测试。" },
+    ],
+    steps: [{ user: "这个再补一条测试，覆盖正好到期那一刻", replyTo: "TTL 测试修好了" }],
+    expect: { opens: 0, sendTo: "ttl", noSendTo: "values", maxChars: 80, forbid: [/做完(会|再|了)?(就)?告诉|会告诉你|已经交给|结果出来|你回复的|你说的那条/] },
+    rubric: "The user replied to the older TTL result (the quote shows it), not to the values() message that came last. The follow-up goes to the TTL task with task_send (same repo, builds on its unmerged change), nothing to the values() task, no new task. At most one short Chinese line naming the action (补一条正好到期的测试); it doesn't remark that they replied or repeat the quote.",
+  },
+  {
+    id: "reply-two-at-once-en",
+    category: "reply",
+    lang: "en",
+    floor: true,
+    seed: [
+      { user: "Add a values() method to the Cache in ~/dev/foo" },
+      {
+        task: {
+          key: "values",
+          title: "foo: Cache.values()",
+          repo: "~/dev/foo",
+          ack: "I'll add values() to foo's Cache.",
+          state: "done",
+          report: { state: "done", summary: "Added Cache.values() returning live values; 2 new tests, 14/14 pass.", questions: [], evidence: [{ kind: "test", label: "bun test 14/14", ref: "bun test" }] },
+        },
+      },
+      { ai: "Done: values() returns only the live entries, with 2 new tests." },
+      { user: "Change HawDB's default checkpoint interval to 30s in ~/dev/hawdb" },
+      {
+        task: {
+          key: "ckpt",
+          title: "hawdb: checkpoint interval 30s",
+          repo: "~/dev/hawdb",
+          ack: "I'll change HawDB's checkpoint default to 30s.",
+          state: "done",
+          report: { state: "done", summary: "Default checkpoint interval is 30s now; tests updated, 88/88 pass.", questions: [], evidence: [{ kind: "test", label: "cargo test 88/88", ref: "cargo test" }] },
+        },
+      },
+      { ai: "The checkpoint interval is 30s now, tests updated." },
+    ],
+    steps: [
+      {
+        users: [
+          { text: "add keys() too, same rule", replyTo: "values() returns only the live" },
+          { text: "and make this one configurable with an env var", replyTo: "checkpoint interval is 30s now" },
+        ],
+      },
+    ],
+    expect: { opens: 0, sendTo: ["values", "ckpt"], sentRequire: { values: [/keys/i], ckpt: [/env|configur/i] }, sentForbid: { values: [/env var|configurab|checkpoint/i], ckpt: [/keys\(\)/i] }, maxChars: 160 },
+    rubric: "Two replies sent together, each to a different earlier result. Each goes to its own task with task_send: keys() to the foo Cache task, the env-var setting to the HawDB checkpoint task; nothing of one reaches the other, and no new task. Each gets at most one short English line naming its action; no talk about replies, threads or tasks.",
+  },
+  {
+    id: "reply-find-zh",
+    category: "reply",
+    lang: "zh",
+    seed: [
+      {
+        finds: {
+          opening: "早。有两件事：",
+          finds: [
+            { kind: "waiting_on_you", text: "王磊周二问的 HawDB 报价，你还没回。" },
+            { kind: "deadline", text: "ducter.dev 11 月 20 日到期，Cloudflare 上自动续费用的那张卡过期了。", goLabel: "去续费" },
+          ],
+        },
+      },
+      { user: "知道了" },
+      { ai: "好。" },
+    ],
+    steps: [{ user: "帮我把这个弄好", replyTo: "ducter.dev 11 月 20 日到期" }],
+    expect: { opens: 1, ackFirst: true, placeKind: "browser", briefRequire: [/ducter\.dev/i], briefForbid: [/王磊|报价/], maxChars: 100, forbid: [/王磊|报价|续好了|换好了/] },
+    rubric: "The user replied to the domain-renewal find (\"帮我把这个弄好\"), not to the quote one. It opens one browser task about ducter.dev's renewal on Cloudflare (update the expired card / renew; it never pays or submits on its own beyond what rule 9 allows) with one short Chinese ack naming that action; nothing about 王磊 or the quote, and no claim that it is renewed. It never mentions replies.",
+  },
+  {
+    id: "reply-out-of-window-en",
+    category: "reply",
+    lang: "en",
+    seed: [
+      { user: "What's HawDB's default WAL flush interval?" },
+      { ai: "It's 200 ms by default; the checkpoint runs every 5 minutes." },
+      { chatter: 30 },
+    ],
+    steps: [{ user: "make that 50 for my test cluster in ~/dev/hawdb", replyTo: "200 ms by default" }],
+    expect: { opens: 1, ackFirst: true, briefRequire: [/WAL|flush/i, /50/], maxChars: 160 },
+    rubric: "The user replied to an answer from long ago (it is no longer in the recent conversation; only the reply's quote carries it): 'that' is the WAL flush interval, not the checkpoint and not the stand-up chatter in between. It opens one task in ~/dev/hawdb to set the WAL flush interval to 50 ms for the test cluster, with one short English ack; the brief names the WAL flush interval and 50.",
+  },
+  {
+    id: "reply-answers-question-zh",
+    category: "reply",
+    lang: "zh",
+    seed: [
+      { user: "修一下 ~/dev/foo 里 TTL 那个时好时坏的测试" },
+      { task: { key: "ttl", title: "foo: TTL 测试不稳定", repo: "~/dev/foo", ack: "我去看看 foo 里那个时好时坏的 TTL 测试，弄清楚了告诉你。", state: "working" } },
+    ],
+    steps: [
+      { report: { task: "ttl", body: { state: "needs_input", summary: "Fixed the TTL test with a fake clock. test/lru.test.ts uses the same sleep pattern.", questions: [{ id: "q1", text: "Also switch test/lru.test.ts to the fake clock?", default: "yes", reversible: true }], evidence: [] } } },
+      { user: "lru 的先别动，下周再说", replyTo: "Also switch test/lru" },
+    ],
+    expect: { noSend: true, opens: 0, msgs: [0, 1], maxChars: 80 },
+    rubric: "Step 1: the task asks; the partner says the question in one short Chinese line. Step 2: the user replies to that question (swipe), which Ducter passes to the task as the answer by itself. The partner sends nothing to the task (no task_send), opens nothing, and says at most one short line or nothing at all (silence is fine); it never asks the same question again.",
   },
 ];

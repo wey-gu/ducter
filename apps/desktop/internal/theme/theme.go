@@ -94,11 +94,14 @@ type Tokens struct {
 	// Chinese).
 	Display, Body, Mono     string
 	XS, SM, MD, LG, XL, XXL float32 // 12, 13, 15, 18, 20, 28
-	Bubble                  float32 // the conversation's one body size, both bubbles and the composer, 16
-	PartnerSize             float32 // the partner's words, the same 16 (D129)
-	Title                   float32 // screen titles and a task's outcome, 34
-	Hero                    float32 // hero numbers, 56
-	MonoSM                  float32 // code in cards and transcripts, 13
+	// XXS is the one step below captions, 11: only an imprint's who-line
+	// (D236), never words to read.
+	XXS         float32
+	Bubble      float32 // the conversation's one body size, both bubbles and the composer, 16
+	PartnerSize float32 // the partner's words, the same 16 (D129)
+	Title       float32 // screen titles and a task's outcome, 34
+	Hero        float32 // hero numbers, 56
+	MonoSM      float32 // code in cards and transcripts, 13
 
 	// space: one 4-point scale, S1 4 … S7 48. Gaps inside a group are
 	// S2–S3, between groups S4–S5, between a screen's sections S6–S7.
@@ -155,6 +158,52 @@ type Tokens struct {
 	PressDur, EnterDur time.Duration
 	// Equip is the sticker peel-and-stick of an ability (research/26, 28).
 	Equip EquipMotion
+
+	// Reply is 回复 / Reply to one message (D236): the imprint.
+	Reply ReplyTokens
+}
+
+// ReplyTokens are the imprint's (D236, research/72): the message replied to,
+// as a small copy of its own bubble (its voice's colour and tail), pressed
+// into the reply like a pebble into clay. The names mirror the web's
+// (--r-imprint, --imprint-*, --found-*, --t-press-in).
+type ReplyTokens struct {
+	// Radius is the partner's imprint (tail bottom-left), RadiusYou the
+	// user's, mirrored: top-left, top-right, bottom-right, bottom-left.
+	Radius, RadiusYou [4]float32
+	// Deboss is how it sits pressed in: the reverse of a raised button.
+	// The clay above its top and left rims casts a shadow into the hollow,
+	// and its lower edge, where the hollow turns back up, catches the
+	// light. No border line. Raised is the pebble before it is pressed in
+	// (a sent imprint lands from it into Deboss).
+	Deboss Deboss
+	Raised Elevation
+	// The hollow's floor, a little below what it is pressed into: the
+	// user's orange bubble, the partner's bubble, the composer's card.
+	OnUser, OnPartner, OnSurface ui.Color
+	// The quote's ink, quieter than the words around it so the person's own
+	// words lead: on the orange, and elsewhere. The who-line is InkSoft
+	// (OnUserBubble on the orange) at XXS.
+	InkOnUser, Ink ui.Color
+	// Found is how far a bubble's own tint deepens when an imprint brings it
+	// back, by voice; FoundDur the whole find.
+	FoundUser, FoundPartner ui.Color
+	FoundDur                time.Duration
+	// PressIn is a sent imprint settling into its bubble.
+	PressIn time.Duration
+}
+
+// Inset is an inner shadow: offset, blur, spread (negative pulls it in
+// from the sides), colour, as CSS's box-shadow: inset.
+type Inset struct {
+	X, Y, Blur, Spread float32
+	Color              ui.Color
+}
+
+// Deboss is a hollow's inner shadows: under the top rim, under the left
+// rim, and the lit lower edge.
+type Deboss struct {
+	Top, Left, Light Inset
 }
 
 // IslesTokens are the colors of the Devices stage's scene (D81): the sky
@@ -183,7 +232,7 @@ func hex(s string) ui.Color { return ui.Hex(s) }
 
 // Pebble is the default theme.
 func Pebble() *Tokens {
-	return &Tokens{
+	t := &Tokens{
 		Name:          "pebble",
 		Bg:            hex("#FFF6EA"),
 		Surface:       hex("#FFFFFF"),
@@ -236,7 +285,7 @@ func Pebble() *Tokens {
 		Display: "Bricolage Grotesque, Resource Han Rounded CN, PingFang SC, Noto Sans SC",
 		Body:    "Bricolage Grotesque, PingFang SC, Noto Sans SC",
 		Mono:    "JetBrains Mono, SF Mono, Menlo, monospace",
-		XS:      12, SM: 13, MD: 15, LG: 18, XL: 20, XXL: 28,
+		XXS:     11, XS: 12, SM: 13, MD: 15, LG: 18, XL: 20, XXL: 28,
 		Bubble:      16,
 		PartnerSize: 16,
 		Title:       34,
@@ -271,6 +320,32 @@ func Pebble() *Tokens {
 		Snappy:   ui.Snappy,
 		PressDur: 70 * time.Millisecond, EnterDur: 220 * time.Millisecond,
 		Equip: EquipMotion{Flight: 820 * time.Millisecond, Snap: 0.62, Squash: 420 * time.Millisecond, DoneFace: 1800 * time.Millisecond, Fade: 200 * time.Millisecond},
+	}
+	t.Reply = replyTokens(t)
+	return t
+}
+
+// replyTokens derives the imprint's colours from the theme's own, as the
+// web's color-mix() does (D236).
+func replyTokens(t *Tokens) ReplyTokens {
+	return ReplyTokens{
+		Radius:    [4]float32{14, 14, 14, 4},
+		RadiusYou: [4]float32{14, 14, 4, 14},
+		Deboss: Deboss{
+			Top:   Inset{Y: 3, Blur: 3, Spread: -1, Color: t.Ink.Alpha(0.30)},
+			Left:  Inset{X: 2, Blur: 3, Spread: -2, Color: t.Ink.Alpha(0.20)},
+			Light: Inset{Y: -1.5, Color: hex("#FFFFFF").Alpha(0.45)},
+		},
+		Raised:       Elevation{Y: 3, Color: t.Ink.Alpha(0.16)},
+		OnUser:       t.UserBubble.Mix(t.Ink, 0.10),
+		OnPartner:    t.Sunken.Mix(t.Ink, 0.04), // a warm hollow: the paper's sunken tone, a little deeper
+		OnSurface:    t.Sunken.Mix(t.Ink, 0.04),
+		InkOnUser:    t.Ink.Mix(t.UserBubble, 0.26),
+		Ink:          t.InkMuted,
+		FoundUser:    t.UserBubble.Mix(t.Ink, 0.16),
+		FoundPartner: t.PartnerBubble.Mix(t.Accent, 0.20),
+		FoundDur:     1400 * time.Millisecond,
+		PressIn:      300 * time.Millisecond,
 	}
 }
 

@@ -13,7 +13,18 @@ import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, 
 import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
-import type { LogEvent } from "@ducter/protocol";
+import type { LogEvent, ReplyWant } from "@ducter/protocol";
+
+/** D236: what the composer replies to: the message (a find or a part of it) and how its imprint reads. */
+export interface Replying {
+  seq: number;
+  findId?: string;
+  part?: string;
+  from: "you" | "partner";
+  quote: string;
+  pics?: number;
+}
+export const wantOf = (r: Replying): ReplyWant => ({ seq: r.seq, ...(r.findId ? { findId: r.findId } : {}), ...(r.part ? { part: r.part } : {}) });
 
 /** The most a cursor replay sends at once (core's ws.ts REPLAY_MAX). */
 const REPLAY_MAX = 5000;
@@ -315,7 +326,9 @@ class AppState {
   conn?: Connection;
   base!: URL;
   /** Messages sent and not yet echoed. pics (D206): pictures still going up; failed: one didn't, Retry sends. */
-  pending: { clientId: string; text: string; pics?: Pic[]; failed?: boolean }[] = [];
+  pending: { clientId: string; text: string; pics?: Pic[]; failed?: boolean; reply?: Replying }[] = [];
+  /** D236: the one message the composer replies to (its imprint sits above the field). */
+  replying?: Replying;
   /** D206: pictures picked for a message not sent yet: "" the conversation, a task id, "new" the New task card. */
   picks = new Map<string, Pic[]>();
   /** D206: the picture viewer, when open. */
@@ -641,7 +654,7 @@ class AppState {
       if (this.actSent.size) this.inDoubt = new Map([...(this.inDoubt ?? []), ...this.actSent]);
       this.actSent.clear();
       // A message whose pictures are still going up goes when they are (afterUpload).
-      for (const r of this.S.resends(this.pending.filter((p) => !p.pics || p.pics.every((x) => x.ref)).map((p) => ({ ...p, media: p.pics?.map((x) => x.ref!.id) })))) this.send(r);
+      for (const r of this.S.resends(this.pending.filter((p) => !p.pics || p.pics.every((x) => x.ref)).map((p) => ({ ...p, media: p.pics?.map((x) => x.ref!.id), ...(p.reply ? { reply: wantOf(p.reply) } : {}) })))) this.send(r);
       // D204: a clone in flight goes again with its id: the home answers the same clone, not a second.
       const k = this.nt.clone;
       if (k?.cid) {
@@ -1646,6 +1659,35 @@ class AppState {
 
   // ---------- actions ----------
 
+  /** D236: reply to this message: its imprint slides into the composer and the field takes focus. */
+  startReply(r: Replying) {
+    this.replying = r;
+    haptic("light");
+    this.changed();
+    requestAnimationFrame(() => (document.getElementById("composer") as HTMLTextAreaElement | null)?.focus());
+  }
+  cancelReply() {
+    if (!this.replying) return;
+    this.replying = undefined;
+    this.changed();
+  }
+  /** D236: tap an imprint: the message it quotes comes into view and is found (its own tint
+   *  deepens once, and it settles). One no longer on this screen says so in a toast. */
+  jumpTo(seq: number): boolean {
+    const el = document.querySelector<HTMLElement>(`[data-seq="${seq}"]`) ?? document.querySelector<HTMLElement>(`[data-seqs~="${seq}"]`);
+    if (!el) {
+      this.toast(this.L.t("reply.gone"));
+      return false;
+    }
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ block: "center", behavior: still ? "auto" : "smooth" });
+    el.classList.remove("found");
+    void el.offsetWidth; // found twice: the animation starts again
+    el.classList.add("found");
+    setTimeout(() => el.classList.remove("found"), 1600);
+    return true;
+  }
+
   sendMessage(text: string, force = false): boolean {
     text = text.trim();
     const pics = this.picks.get("") ?? [];
@@ -1657,13 +1699,16 @@ class AppState {
     }
     this.held = undefined;
     const clientId = `p${Date.now()}-${++this.nextClient}`;
-    const p: AppState["pending"][number] = { clientId, text, ...(pics.length ? { pics } : {}) };
+    const reply = this.replying;
+    this.replying = undefined;
+    const p: AppState["pending"][number] = { clientId, text, ...(pics.length ? { pics } : {}), ...(reply ? { reply } : {}) };
     this.picks.delete("");
     this.pending.push(p);
     this.thinkingSince = Date.now();
     this.markRead();
     // D206: the pictures went up when they were picked; one still going holds the message (with its words).
-    this.afterUpload(pics, (media) => this.send({ t: "send", text, clientId, ...(media.length ? { media } : {}) }), () => ((p.failed = true), this.changed()));
+    const want = reply ? { reply: wantOf(reply) } : {};
+    this.afterUpload(pics, (media) => this.send({ t: "send", text, clientId, ...(media.length ? { media } : {}), ...want }), () => ((p.failed = true), this.changed()));
     this.changed();
     return true;
   }
@@ -1745,7 +1790,7 @@ class AppState {
     if (!p?.pics) return;
     p.failed = false;
     for (const x of p.pics) if (x.state === "failed") void this.lift(x);
-    this.afterUpload(p.pics, (media) => this.send({ t: "send", text: p.text, clientId, ...(media.length ? { media } : {}) }), () => ((p.failed = true), this.changed()));
+    this.afterUpload(p.pics, (media) => this.send({ t: "send", text: p.text, clientId, ...(media.length ? { media } : {}), ...(p.reply ? { reply: wantOf(p.reply) } : {}) }), () => ((p.failed = true), this.changed()));
     this.changed();
   }
 

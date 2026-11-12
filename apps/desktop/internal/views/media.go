@@ -259,7 +259,7 @@ func (a *App) flushMediaSends() {
 		p := &a.pending[i]
 		if len(p.atts) > 0 && !p.sent && allReady(p.atts) {
 			p.sent = true
-			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts)})
+			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts), Reply: p.reply.want()})
 		}
 	}
 	m := a.med()

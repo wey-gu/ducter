@@ -1061,3 +1061,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Linux and Windows desktops** (cua-driver runs there). Trigger: a person with a desktop Linux or Windows worker.
 - [ ] **A harness's own computer use behind the gate**, if one offers a pre-call hook Ducter can block on (Claude Code's PreToolUse over its own computer use). Trigger: such a hook verified headless.
 
+## Reply to one message (D236)
+
+- [ ] **A human comprehension pass on the imprint**: five people who don't use Telegram, cold, on the phone shots (research/72 §6 is LLM raters only). Trigger: before calling the look settled.
+- [ ] **Reach an original that left the screen**: the clients hold the last 200 conversation events; a tap on an older imprint says so. Add a channel history frame (before a seq) and load toward it, as T3 Code does up to 20 pages. Trigger: the first "where was that" from the author.
+- [ ] **Reply to a part on the phone and the Mac**: the wide web has 回复这段; the phone needs a selection toolbar, the Mac a text selection hook in MyGo. Trigger: a long partner answer the author wants to answer in pieces.
+- [ ] **Reply inside an opened task's conversation** (to one of the task's own messages, steered with the quote). Trigger: the heavy developer asks for it.
+- [ ] **The partner's answer chooses what it replies to**: today a turn's messages reply to its last user message (each reply has its own turn). Trigger: one turn that answers two things.

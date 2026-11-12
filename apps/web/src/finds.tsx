@@ -5,19 +5,20 @@
 import type { Bodies, FindView } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { replyKey, replyOfFind } from "./reply.tsx";
 import { ProactiveChips } from "./accounts.tsx";
 import { Btn } from "./controls.tsx";
 import { ago } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
-function Find({ f }: { f: FindView }) {
+function Find({ f, seq }: { f: FindView; seq?: number }) {
   const [how, setHow] = useState(false);
   const st = A.S.findStates.get(f.findId);
   const d = f.decisionId ? A.S.decisions.get(f.decisionId) : undefined;
   const open = !!d && !d.resolved && !d.pending;
   return (
-    <div class="find">
+    <div class="find" data-reply={seq !== undefined ? replyKey(replyOfFind(seq, f.findId, f.text)) : undefined} data-seq={undefined}>
       <div class="kind">{t(`kind.${f.kind}`)}</div>
       <div class="ftext">{f.text}</div>
       {d &&
@@ -77,13 +78,13 @@ function Ask({ n }: { n: Bodies["finds"] }) {
   );
 }
 
-export function FindsNote({ n, join }: { n: Bodies["finds"]; join?: boolean }) {
+export function FindsNote({ n, join, seq, seqs }: { n: Bodies["finds"]; join?: boolean; seq?: number; seqs?: string }) {
   return (
-    <div class={`partner${join ? " join" : ""}`}>
+    <div class={`partner${join ? " join" : ""}`} data-seqs={seqs}>
       <div class="bubble note">
         {n.opening && <div class="ftext">{n.opening}</div>}
         {n.finds.map((f) => (
-          <Find key={f.findId} f={f} />
+          <Find key={f.findId} f={f} seq={seq} />
         ))}
         <Ask n={n} />
       </div>

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reply to one message (D236)</title>
+<!-- Canvas for D236 (design/ui.md "Prototype canvases"). It decides nothing on its own: the
+     decision is design/decisions.md D236, the look's reasoning research/72. Pebble tokens only. -->
+<style>
+:root {
+  --bg: #fff6ea; --surface: #fff; --sunken: #f7ebda; --ink: #2b2118; --ink-soft: #4a3d30; --ink-muted: #75654f;
+  --line: #e8d9c4; --accent: #ff8a3d; --press-accent: #c9642a; --user-bubble: #ff8a3d; --partner-bubble: #fff; --needs-ink: #8a3a0c;
+  --bubble: 20px 20px 6px 20px; --bubble-partner: 20px 20px 20px 6px;
+  --r-imprint: 14px 14px 14px 4px; --r-imprint-you: 14px 14px 4px 14px;
+  --imprint-depth: inset 0 3px 3px -1px rgba(43,33,24,.3), inset 2px 0 3px -2px rgba(43,33,24,.2), inset 0 -1.5px 0 rgba(255,255,255,.45);
+  --imprint-partner-on-user: color-mix(in srgb, var(--user-bubble) 90%, var(--ink));
+  --imprint-you-on-partner: color-mix(in srgb, var(--partner-bubble) 94%, var(--ink));
+  --found-partner: color-mix(in srgb, var(--partner-bubble) 80%, var(--accent));
+  --spring: cubic-bezier(.34,1.56,.64,1); --ease: cubic-bezier(.2,.8,.2,1);
+  --font: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg-deep, #fcecd7); color: var(--ink); font: 15px/1.5 var(--font); padding: 32px; }
+h1 { font-size: 28px; margin: 0 0 4px; }
+h2 { font-size: 20px; margin: 40px 0 12px; }
+p.note { color: var(--ink-muted); margin: 0 0 16px; max-width: 60em; }
+.row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.board { width: 390px; background: var(--bg); border-radius: 28px; padding: 20px 16px; box-shadow: 0 4px 0 var(--line); display: flex; flex-direction: column; gap: 12px; position: relative; overflow: hidden; }
+.cap { font-size: 12px; font-weight: 800; color: var(--ink-muted); letter-spacing: .02em; }
+.user { align-self: flex-end; max-width: 80%; background: var(--user-bubble); padding: 10px 14px; border-radius: var(--bubble); font-size: 16px; }
+.partner { align-self: flex-start; max-width: 88%; background: var(--partner-bubble); padding: 10px 14px; border-radius: var(--bubble-partner); font-size: 16px; }
+.user.has { display: flex; flex-direction: column; gap: 6px; padding-top: 7px; }
+.imprint { display: grid; gap: 1px; padding: 6px 11px 7px; border-radius: var(--r-imprint); background: var(--imprint-partner-on-user); box-shadow: var(--imprint-depth); font-size: 12px; line-height: 1.45; color: color-mix(in srgb, var(--ink) 74%, var(--user-bubble)); margin: 0 -7px; }
+.imprint b { font-size: 11px; color: var(--ink); }
+.imprint.you { border-radius: var(--r-imprint-you); background: var(--imprint-you-on-partner); margin: 0 0 -2px; }
+.imprint.you b { color: var(--ink-soft); } .imprint.you { color: var(--ink-muted); }
+.q { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.press { animation: press 260ms var(--spring) both; }
+@keyframes press { from { transform: translateY(-5px) scale(1.035); box-shadow: 0 3px 0 rgba(43,33,24,.14); } }
+/* candidates */
+.lit { align-self: flex-end; font-size: 13px; color: var(--ink-muted); display: flex; gap: 6px; align-items: center; max-width: 80%; }
+.inset { background: color-mix(in srgb, #fff 30%, var(--user-bubble)); border-left: 4px solid var(--ink); border-radius: 8px; padding: 4px 8px; font-size: 13px; }
+.stack { position: relative; align-self: flex-end; margin-top: 30px; }
+.stack .ghost { position: absolute; top: -26px; left: -30px; right: 40px; background: #fff; border-radius: var(--bubble-partner); padding: 4px 10px; font-size: 13px; color: var(--ink-muted); box-shadow: 0 2px 0 var(--line); }
+.tether { position: relative; align-self: flex-end; margin-top: 34px; }
+.tether svg { position: absolute; top: -30px; left: -20px; }
+.tether .ghost { position: absolute; top: -40px; left: 14px; font-size: 12px; color: var(--ink-muted); background: rgba(255,255,255,.7); border-radius: 10px; padding: 2px 8px; white-space: nowrap; }
+.slip { position: relative; }
+.slip .paper { position: absolute; top: -18px; left: -10px; transform: rotate(-4deg); background: #fffdf5; font: 12px/1.3 "Bradley Hand", cursive; padding: 4px 8px; box-shadow: 0 1px 2px rgba(0,0,0,.15); width: 70%; }
+.half { position: relative; margin-top: 18px; }
+.half .imprint { position: absolute; top: -20px; left: 12px; right: 30px; margin: 0; }
+.half .w { margin-top: 24px; display: block; }
+/* chosen: states */
+.composer { background: var(--surface); border-radius: 24px; box-shadow: 0 4px 0 var(--line); padding: 8px 8px 8px 18px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.replying { flex: 1 0 100%; display: flex; gap: 8px; align-items: center; margin-left: -8px; animation: rin 320ms var(--spring) both; }
+.replying .imprint { background: color-mix(in srgb, #fff 94%, var(--ink)); color: var(--ink-muted); margin: 0; flex: 1; }
+.replying .g { color: var(--accent); }
+.field { flex: 1; color: var(--ink-muted); padding: 10px 0; font-size: 16px; }
+.send { width: 44px; height: 44px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 45%, #fff); }
+@keyframes rin { from { transform: translateY(10px); opacity: 0; } }
+.swipe { transform: translateX(62px); }
+.mark { position: absolute; width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; background: var(--surface); box-shadow: 0 2px 0 var(--line); color: var(--ink-muted); }
+.mark.armed { background: var(--accent); box-shadow: 0 2px 0 var(--press-accent); color: var(--ink); animation: settle 320ms var(--spring); }
+@keyframes settle { 45% { scale: 1.18; } }
+.found { animation: found 1.4s var(--ease) infinite; }
+@keyframes found { 0%, 100% { background: var(--partner-bubble); } 22%, 55% { background: var(--found-partner); } }
+.menu { position: absolute; background: var(--surface); border-radius: 16px; padding: 6px; box-shadow: 0 10px 32px rgba(43,33,24,.14), 0 4px 0 var(--line); width: 156px; }
+.menu div { display: flex; gap: 10px; align-items: center; padding: 10px 12px; font-weight: 700; border-radius: 12px; }
+.menu div:first-child { background: var(--sunken); }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="r" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 5.5 4 11l5.5 5.5"/><path d="M4.6 11H13a6.5 6.5 0 0 1 6.5 6.5V19"/></g></symbol></svg>
+<h1>回复 / Reply to one message</h1>
+<p class="note">D236 · research/71 (other apps) · research/72 (the metaphor pass). Content from the author's real work. The built clients' shots are in <code>.shots/reply/</code>.</p>
+
+<h2>1. Seven candidates (research/72 §3)</h2>
+<div class="row">
+  <div class="board"><div class="cap">A · literal</div>
+    <div class="lit"><svg width="16" height="16"><use href="#r"/></svg>回复 Ducter：TTL 测试修好了：它用真实计时…</div>
+    <div class="user">这个再补一条测试，覆盖正好到期那一刻</div></div>
+  <div class="board"><div class="cap">B · inset block</div>
+    <div class="user"><div class="inset"><b>Ducter</b><div class="q">TTL 测试修好了：它用真实计时去等 1 秒过期…</div></div>这个再补一条测试，覆盖正好到期那一刻</div></div>
+  <div class="board"><div class="cap">C · the imprint (chosen)</div>
+    <div class="user has"><span class="imprint press"><b>Ducter</b><span class="q">TTL 测试修好了：它用真实计时去等 1 秒过期，机器一忙就抢跑…</span></span>这个再补一条测试，覆盖正好到期那一刻</div></div>
+  <div class="board"><div class="cap">D · stacked pebble</div>
+    <div class="user stack"><span class="ghost">TTL 测试修好了：它用真实计时…</span>这个再补一条测试，覆盖正好到期那一刻</div></div>
+  <div class="board"><div class="cap">E · tether</div>
+    <div class="user tether"><svg width="40" height="34"><path d="M36 32 C 10 32, 6 14, 30 6" fill="none" stroke="#c7b49a" stroke-width="2"/></svg><span class="ghost">TTL 测试修好了：它用真实计时…</span>这个再补一条测试，覆盖正好到期那一刻</div></div>
+  <div class="board"><div class="cap">F · paper slip</div>
+    <div class="user slip"><span class="paper">TTL 测试修好了：它用真实计时…</span><br/>这个再补一条测试，覆盖正好到期那一刻</div></div>
+  <div class="board"><div class="cap">G · half-pressed imprint</div>
+    <div class="user half"><span class="imprint"><b>Ducter</b><span class="q">TTL 测试修好了：它用真实计时去等…</span></span><span class="w">这个再补一条测试，覆盖正好到期那一刻</span></div></div>
+</div>
+
+<h2>2. The imprint, step by step (zh)</h2>
+<div class="row">
+  <div class="board"><div class="cap">Swipe right: the mark eases in, then settles at 56pt (haptic)</div>
+    <div class="partner">我去给 foo 的 Cache 加 values()。</div>
+    <div style="position:relative">
+      <span class="mark armed" style="left:0;top:14px"><svg width="20" height="20"><use href="#r"/></svg></span>
+      <div class="partner swipe">加好了：values() 只返回没过期的值，加了 2 个测试。</div>
+    </div></div>
+  <div class="board"><div class="cap">The composer: its imprint rises in; × or Esc puts it away</div>
+    <div class="partner">加好了：values() 只返回没过期的值，加了 2 个测试。</div>
+    <div class="composer"><div class="replying"><svg class="g" width="18" height="18"><use href="#r"/></svg><span class="imprint"><b>Ducter</b><span class="q">加好了：values() 只返回没过期的值，加了 2 个测试。</span></span><span style="color:var(--ink-muted)">×</span></div><span class="field">回复 Ducter…</span><span class="send"></span></div></div>
+  <div class="board"><div class="cap">Two replies in a row; each answer replies to its own (the tab)</div>
+    <div class="user has"><span class="imprint press"><b>Ducter</b><span class="q">TTL 测试修好了：它用真实计时去等 1 秒过期…</span></span>这个再补一条测试，覆盖正好到期那一刻</div>
+    <div class="user has"><span class="imprint press"><b>Ducter</b><span class="q">ducter.dev 11 月 20 日到期，Cloudflare 上自动续费的那张卡过期了。</span></span>帮我把这个弄好</div>
+    <div class="partner" style="display:flex;flex-direction:column;gap:6px;padding-top:6px"><span class="imprint you" style="margin:0 -8px"><b>你</b><span class="q">这个再补一条测试，覆盖正好到期那一刻</span></span>我接着给 TTL 补一条正好到期的测试。</div>
+    <div class="partner">好，我去 Cloudflare 把 ducter.dev 的续费卡换上。</div></div>
+  <div class="board"><div class="cap">Tap the imprint: the original is found (its own tint deepens once)</div>
+    <div class="partner found">TTL 测试修好了：它用真实计时去等 1 秒过期，机器一忙就抢跑，现在改成假时钟。</div>
+    <div class="partner">加好了：values() 只返回没过期的值，加了 2 个测试。</div></div>
+  <div class="board" style="min-height:260px"><div class="cap">Long press: 回复 · 复制</div>
+    <div class="partner">ducter.dev 11 月 20 日到期，Cloudflare 上自动续费的那张卡过期了。</div>
+    <div class="menu" style="left:110px;top:110px"><div><svg width="18" height="18"><use href="#r"/></svg>回复</div><div>复制</div></div></div>
+</div>
+
+<h2>3. English</h2>
+<div class="row">
+  <div class="board"><div class="cap">Sent</div>
+    <div class="user has"><span class="imprint press"><b>Ducter</b><span class="q">The TTL test is fixed: it waited on real time for a 1 s expiry and ran early when the machine was busy…</span></span>add one more test for the exact moment it expires</div>
+    <div class="partner">I'll add a test for the exact moment it expires.</div></div>
+  <div class="board"><div class="cap">Composer</div>
+    <div class="composer"><div class="replying"><svg class="g" width="18" height="18"><use href="#r"/></svg><span class="imprint"><b>Ducter</b><span class="q">ducter.dev expires on Nov 20 and the card Cloudflare renews it with has expired.</span></span><span style="color:var(--ink-muted)">×</span></div><span class="field">Reply to Ducter…</span><span class="send"></span></div></div>
+</div>
+</body>
+</html>

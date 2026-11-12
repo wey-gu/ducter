@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.43
+
+<!-- whats-new
+zh: 家里那台卡片会指向能用手机、用电脑的那台 Mac
+en: Your home's card now points to the Mac that can use a phone or apps
+zh: 没有屏幕的服务器不再显示"用电脑·以后会有"
+en: A server with no screen no longer promises Use the computer later
+-->
+
+**Devices**
+- When Ducter lives on a server and a Mac does tasks for it, the home's card shows 用手机 and
+  用电脑 as "on {Mac}" instead of "coming later"; tap one to open that Mac's card.
+- A Linux server with no screen no longer shows 用电脑 / Use the computer as coming later.
+
 ## 0.0.42
 
 <!-- whats-new

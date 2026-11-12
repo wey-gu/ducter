@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.34
+
+<!-- whats-new
+zh: 今天看了什么，分组更清楚，问题一眼看到
+en: What it looked at today reads in clear groups, problems shown up front
+zh: Mac 上一打开通知就能看到读信出了问题
+en: On the Mac, a reading problem shows as soon as Notifications opens
+-->
+
+**What it looked at today**
+- The counts read in four groups: what it saw, what it read closely and told you, what it held
+  back and why, and what it's doing now.
+- A problem reading your mail shows without opening the list, on the Mac too, and the counts
+  refresh when the home comes back after a restart.
+
 ## 0.0.33
 
 <!-- whats-new

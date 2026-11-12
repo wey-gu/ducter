@@ -3,8 +3,6 @@
 // push (D52 Q11), so a tap there always opens the decision. It also keeps the fonts and the clay
 // art on the phone (cache first): they are stable, and the rounded CJK face is 0.7 MB.
 import { kvGet } from "./idb.ts";
-import { lookupAddress, moveTarget, type MovePayload } from "@ducter/protocol/src/follow.ts";
-import { answers, moveLink } from "./follow-client.ts";
 
 declare const self: any;
 
@@ -33,31 +31,10 @@ self.addEventListener("activate", (e: any) =>
   ),
 );
 
-/**
- * D228: the page itself, when this address no longer leads to the home (its free tunnel got a new
- * address when the home's computer restarted: Cloudflare answers 530, or nothing answers). Ask the
- * relay where the home is now and send this device there, still paired; otherwise what came back.
- */
-async function openPage(req: Request): Promise<Response> {
-  let res: Response | undefined;
-  try {
-    res = await fetch(req);
-    if (res.status < 500) return res;
-  } catch {}
-  const m = await kvGet<MovePayload>("move");
-  if (m?.follow) {
-    const note = await lookupAddress(m.follow);
-    const to = moveTarget(scope().origin, note, m.at ?? 0);
-    if (to && note && (await answers(to))) return Response.redirect(moveLink(to, m, m.follow, note.at), 302);
-  }
-  return res ?? Response.error();
-}
-
 self.addEventListener("fetch", (e: any) => {
   const req = e.request as Request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  if (req.mode === "navigate" && url.origin === scope().origin && /\/(app\/?|pair)?$/.test(url.pathname)) return e.respondWith(openPage(req));
   if (url.origin !== scope().origin || !STABLE.test(url.pathname)) return;
   e.respondWith(
     caches.open(ASSETS).then(async (c) => {

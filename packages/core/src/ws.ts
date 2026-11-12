@@ -571,7 +571,7 @@ export function createWsHandler(deps: WsDeps) {
         const v = devicesView();
         if (!v) throw new Error("devices are not available");
         watchDevices();
-        send(ws, await v.setAbility(f.device, f.ability, f.on, f.named && typeof f.named.token === "string" && typeof f.named.address === "string" ? f.named : undefined));
+        send(ws, await v.setAbility(f.device, f.ability, f.on));
         return; // the change pushes a fresh devices frame to every subscriber
       }
       case "pair_code": {

@@ -32,8 +32,7 @@ import { createPusher, openPushStore, type Pusher, type PushStore } from "./push
 import { createApnsSender, createAppPushSender, loadApnsConfig, type ApnsSender } from "./apns.ts";
 import { createRelayClient, relayUrl, type RelayFetch } from "./push-relay.ts";
 import { webApi, webStatic } from "./web.ts";
-import { CHECK_PATH, createAnywhere, type TunnelSys } from "./anywhere.ts";
-import { callAbility, createDevicesView, publicAddress, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
+import { callAbility, createDevicesView, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createBridgeLink, type NmemCall } from "./bridge-link.ts";
 import { identityIdFor } from "./mem-identity.ts";
@@ -92,9 +91,6 @@ export interface CoreOptions {
   relayFetch?: RelayFetch;
   /** Test seams for Your devices and abilities (cua-driver, harness logins, device kind). */
   deviceProbes?: Partial<DeviceProbes>;
-  /** D228: test seam for 在哪儿都能用's tunnel (cloudflared, its metrics, the network). */
-  anywhereSys?: TunnelSys;
-  anywherePollMs?: number;
   /** Test seams for connections: the MCP link, and the oo CLI's config. */
   connectionLinker?: Linker;
   ooSource?: OoSource;
@@ -688,10 +684,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(ua.tz ? { tz: ua.tz } : {}),
   });
   updateAllRef = updateAll;
-  // D228: 在哪儿都能用 / From anywhere: Ducter's own tunnel when there is no address of the person's.
-  let listening = 0;
-  const anywhere = createAnywhere({ dataDir, port: () => listening, own: () => publicAddress(dataDir), ...(opts.anywhereSys ? { sys: opts.anywhereSys } : {}), ...(opts.anywherePollMs ? { pollMs: opts.anywherePollMs } : {}) });
-  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
@@ -806,8 +799,6 @@ export function startCore(opts: CoreOptions = {}): Core {
     idleTimeout: 120,
     async fetch(req, srv) {
       const url = new URL(req.url);
-      // D228: the tunnel's self-check (does this address still lead here?). Says nothing else.
-      if (url.pathname === CHECK_PATH) return new Response(anywhere.checkToken(), { headers: { "content-type": "text/plain", "cache-control": "no-store", "access-control-allow-origin": "*" } }); // a page that follows its home asks it (follow-client.ts)
       // The phone/web client's own files are public (web.ts); everything it talks to is not.
       const page = await webStatic(req);
       if (page) return page;
@@ -819,7 +810,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (!g.pass) return g.response;
       const d = deviceRoutes(req, g, srv, workers);
       if (d) return d === "upgraded" ? undefined : d;
-      const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name, version, media, follow: () => anywhere.view()?.follow });
+      const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name, version, media });
       if (api) return api;
       if (url.pathname === "/ws") {
         // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin
@@ -841,8 +832,6 @@ export function startCore(opts: CoreOptions = {}): Core {
     websocket: sockets,
   });
   const port = server.port!;
-  listening = port;
-  void anywhere.resume().catch((e) => console.warn("[anywhere]", e));
   // Up and listening: an update's helper waiting on this restart knows it's this version (update.ts
   // waitHealthy), also when /health doesn't name the version to it.
   try {
@@ -918,7 +907,6 @@ export function startCore(opts: CoreOptions = {}): Core {
       await ownPhone?.stop().catch(() => {});
       autofill.stop();
       devicesView?.stop();
-      anywhere.close(); // the tunnel itself keeps running: the next Ducter adopts it (same address)
       workers.stop();
       sockets.stop();
       unsubscribePartner();

@@ -37,8 +37,7 @@ type askState struct {
 	answeredAt time.Time
 	busy       bool
 	pairAsked  bool
-	recodeFor  string // D228: the address a fresh code was asked for once 在哪儿都能用 came on
-	clients    int    // paired clients when the code was asked for
+	clients    int // paired clients when the code was asked for
 }
 
 // askLine shows the one ask that may show now (false if none).
@@ -197,7 +196,7 @@ func (a *App) phoneAsk(c *ui.Context) {
 		}
 	}
 	if pc.Address == "" || len(pc.QR) == 0 {
-		a.phoneNoAddress(c, done)
+		a.askRow(c, theme.Idle, a.L.T("phone.noaddress"), a.L.T("phone.noaddress.body"), done)
 		return
 	}
 	paired := a.S.Reach != nil && len(a.S.Reach.Clients) > s.clients
@@ -263,61 +262,4 @@ func InQuiet(at time.Time, q *protocol.QuietHours) bool {
 		return now >= s && now < e
 	}
 	return now >= s || now < e
-}
-
-// phoneNoAddress: the phone can't reach this Mac yet. D228: one tap turns on
-// 在哪儿都能用 (Ducter's free tunnel); while it opens the row says so, and
-// once there is an address a fresh code (now with its link and QR) is asked.
-func (a *App) phoneNoAddress(c *ui.Context, done func()) {
-	t := a.T
-	s := &a.asks
-	home := a.homeDevice()
-	any := a.anywhere()
-	if addr := a.reachAddress(); addr != "" && s.recodeFor != addr {
-		s.recodeFor = addr
-		a.S.PairCode = nil
-		a.send(protocol.PairCodeReq{T: "pair_code"})
-		return
-	}
-	turnOn := func() {
-		if home != nil {
-			a.send(protocol.AbilityReq{T: "ability", Device: home.ID, Ability: protocol.AbilityRemote, On: true})
-		}
-	}
-	switch {
-	case any != nil && any.State == "starting":
-		key := "anywhere.starting"
-		if any.Getting {
-			key = "anywhere.getting"
-		}
-		a.askRow(c, theme.Working, a.L.T(key), a.L.T("phone.anywhere.who"), func() {})
-	case any != nil && any.State == "failed":
-		why := any.Reason
-		if why == "" {
-			why = "failed"
-		}
-		a.askRow(c, theme.Idle, a.L.T("phone.noaddress"), a.L.T("anywhere.failed", a.L.T("anywhere.why."+why)), func() {
-			done()
-			if a.button(c, a.L.T("anywhere.retry"), btnPrimary, 40, t.Surface) {
-				turnOn()
-			}
-		})
-	default:
-		a.askRow(c, theme.Idle, a.L.T("phone.noaddress"), a.L.T("phone.noaddress.body"), func() {
-			if a.button(c, a.L.T("ask.later"), btnText, 40, t.Surface) {
-				a.answer(askPhone, "later")
-			}
-			if home != nil && home.State == protocol.DeviceAwake && a.button(c, a.L.T("anywhere.turnOnLong"), btnPrimary, 40, t.Surface) {
-				turnOn()
-			}
-		})
-	}
-}
-
-// reachAddress is the home's address from outside, "" when none.
-func (a *App) reachAddress() string {
-	if a.S.Reach == nil {
-		return ""
-	}
-	return a.S.Reach.Address
 }

@@ -87,21 +87,6 @@ Check that the address is right. If you use an SSH tunnel, make sure it's still 
 (`ssh -N -L 7777:127.0.0.1:7777 you@server`). On a server, check that Ducter is running:
 `ducter service status`.
 
-### From anywhere says "Couldn't turn on"
-
-- *The tunnel program couldn't be downloaded:* the computer couldn't reach GitHub. Try again
-  when it's online, or install `cloudflared` yourself (`brew install cloudflared` on a Mac) and
-  tap **Try again**.
-- *Cloudflare couldn't be reached from here:* some networks block it. Try another network.
-  What it last said is in `~/.ducter/anywhere.log`.
-- Check what it's doing with `ducter anywhere status`.
-
-### The phone can't reach Ducter after the computer restarted
-
-With **From anywhere**, the address changes on a restart and your devices follow it by
-themselves once Ducter is running again. If one doesn't within a minute, open Ducter on it
-again; if it still can't, connect it again with a new code (`ducter pair`).
-
 ### "This phone was disconnected from your Ducter"
 
 The device was removed with `ducter devices disconnect`. Connect it again with a new code from

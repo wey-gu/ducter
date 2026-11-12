@@ -80,16 +80,11 @@ func (h *hub) RefuseNext(ability, reason string) {
 	d.mu.Unlock()
 }
 
-// MockTunnelAddress is the address 在哪儿都能用 gets in the mock (D228).
-const MockTunnelAddress = "https://amber-quiet-river.trycloudflare.com"
-
-// mockQR is a small stand-in for a QR code (rows of 1 and 0).
-var mockQR = []string{"1111111010111", "1000001011001", "1011101001101", "1011101010101", "1011101001001", "1000001010111", "1111111010101", "0000000001000", "1101011100110", "0110100011011", "1010111101001", "0011001010110", "1110101101011"}
-
 // Pair pretends a device redeemed the code.
 func (h *hub) Pair(name, platform string) {
 	h.SetDevices(func(list []protocol.DeviceView, reach *protocol.Reach) []protocol.DeviceView {
 		reach.Clients = append(reach.Clients, protocol.ReachClient{ID: "c" + name, Name: name, Platform: platform, Connected: true})
+		setAbility(list, "local", protocol.AbilityRemote, protocol.AbilityOn)
 		return list
 	})
 }
@@ -155,24 +150,6 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 		}
 		d.mu.Lock()
 		setAbility(d.list, f.Device, f.Ability, state)
-		if f.Ability == protocol.AbilityRemote && f.Device == "local" {
-			// D228: Ducter's free tunnel: opening (the first time it downloads), then an address.
-			if f.On {
-				d.reach.Anywhere = &protocol.Anywhere{How: "tunnel", State: "starting", Getting: true, Moves: true}
-				go func() {
-					time.Sleep(400 * time.Millisecond)
-					d.mu.Lock()
-					if d.reach.Anywhere != nil {
-						d.reach.Anywhere = &protocol.Anywhere{How: "tunnel", State: "on", Moves: true}
-						d.reach.Address = MockTunnelAddress
-					}
-					d.mu.Unlock()
-					h.pushDevices()
-				}()
-			} else {
-				d.reach.Anywhere, d.reach.Address = nil, ""
-			}
-		}
 		d.mu.Unlock()
 		c.send(map[string]any{"t": "ability_result", "device": f.Device, "ability": f.Ability, "on": f.On, "ok": true})
 		go func() {
@@ -189,15 +166,7 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 		d.mu.Lock()
 		d.codeN++
 		d.mu.Unlock()
-		d.mu.Lock()
-		addr := d.reach.Address
-		d.mu.Unlock()
-		pc := map[string]any{"t": "pair_code", "code": "K7QM-4XPA", "expiresAt": time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339)}
-		if addr != "" {
-			pc["address"], pc["link"] = addr, addr+"/pair#c=K7QM-4XPA"
-			pc["qr"] = mockQR
-		}
-		c.send(pc)
+		c.send(map[string]any{"t": "pair_code", "code": "K7QM-4XPA", "expiresAt": time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339)})
 	case "disconnect_device":
 		d.mu.Lock()
 		ok := false

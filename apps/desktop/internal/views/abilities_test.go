@@ -12,7 +12,6 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
-	"github.com/wey-gu/ducter/apps/desktop/internal/mock"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
@@ -175,39 +174,22 @@ func TestAbilitiesStates(t *testing.T) {
 
 func TestAbilitiesReachFromAnywhere(t *testing.T) {
 	h := openDevices(t, i18n.ZH, false)
-	h.tt.SetSize(1280, 1200)
 	L := h.app.L
-	// D228: + 在哪儿都能用 turns Ducter's tunnel on: it opens, then has an address.
 	h.click("+ " + L.T("chip.remote"))
+	h.until("code", func() bool { return h.app.S.PairCode != nil })
+	h.settle(200 * time.Millisecond)
+	if !h.tt.HasText("K7QM-4XPA") || !h.tt.HasText(L.T("pair.noaddress")) {
+		t.Fatalf("pair sheet: %q", h.tt.Texts())
+	}
+	h.shotAs("abilities-zh-pair")
+	h.hub.Pair("iPhone", "ios")
 	h.until("remote on", func() bool {
-		r := h.app.S.Reach
-		return r != nil && r.Address != "" && h.app.S.Device("local").Ability(protocol.AbilityRemote).State == protocol.AbilityOn && h.app.dev.fx == nil
+		return h.app.S.Device("local").Ability(protocol.AbilityRemote).State == protocol.AbilityOn && h.app.dev.fx == nil
 	})
 	h.settle(200 * time.Millisecond)
 	if !h.tt.HasText(L.T("ability.remote.done", L.T("device.local"))) {
 		t.Fatalf("no remote line: %q", h.tt.Texts())
 	}
-	// Its ⓘ: the address, who gets in, and that it changes on a restart.
-	h.click(L.T("chip.info") + " · " + L.T("chip.remote"))
-	h.settle(200 * time.Millisecond)
-	if !h.tt.HasText(mock.MockTunnelAddress) || !h.tt.HasText(L.T("anywhere.who")) {
-		t.Fatalf("anywhere info: %q", h.tt.Texts())
-	}
-	h.shotAs("abilities-zh-anywhere")
-	h.click(L.T("chip.remote.again"))
-	h.until("code", func() bool { return h.app.S.PairCode != nil && h.app.S.PairCode.Address != "" })
-	h.settle(200 * time.Millisecond)
-	if !h.tt.HasText("K7QM-4XPA") || h.tt.HasText(L.T("pair.noaddress")) {
-		t.Fatalf("pair sheet: %q", h.tt.Texts())
-	}
-	h.shotAs("abilities-zh-pair")
-	h.hub.Pair("iPhone", "ios")
-	h.until("joined", func() bool { return len(h.app.S.Reach.Clients) == 1 })
-	// 关掉 asks once more, then the address is gone.
-	h.click(L.T("anywhere.off"))
-	h.settle(100 * time.Millisecond)
-	h.click(L.T("anywhere.off.sure"))
-	h.until("off", func() bool { return h.app.S.Reach.Anywhere == nil && h.app.S.Reach.Address == "" })
 }
 
 func TestAbilitiesNarrow(t *testing.T) {

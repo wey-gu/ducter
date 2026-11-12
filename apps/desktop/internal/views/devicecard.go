@@ -893,34 +893,18 @@ func (a *App) abilitySpec(c *ui.Context, card string, dv *protocol.DeviceView, a
 				a.startEquip(dv, id, r, false)
 			}
 		}
-	case id == protocol.AbilityRemote && dv.Home && a.anywhere() != nil && a.anywhere().State == "failed":
-		// D228: it didn't open: the chip says so, its ⓘ says why and tries again.
-		sp.look = chipFail
-		sp.tap = func(ui.Rect) { toggleInfo() }
-		sp.info = func() {
-			a.infoText(c, a.L.T(about))
-			a.anywhereInfo(c, dv)
-		}
 	case on && id == protocol.AbilityRemote:
-		// Its ⓘ holds the address and how it is reached (D228), who is
-		// connected, 再连一台, and (for Ducter's tunnel) 关掉.
+		// Reaching it from anywhere isn't a switch: its ⓘ holds who is connected and 再连一台.
 		sp.look = chipOn
-		sp.busy = dv.Home && a.anywhere() != nil && a.anywhere().State == "starting"
 		sp.tap = func(ui.Rect) { toggleInfo() }
 		sp.info = func() {
 			a.infoText(c, a.L.T(about))
-			if dv.Home {
-				a.anywhereInfo(c, dv)
-			}
 			a.reachList(c)
 			ui.Row(c).Children(func() {
 				if a.button(c, a.L.T("chip.remote.again"), btnSecondary, t.ControlSM, t.Bg) {
 					a.openPair()
 				}
 			})
-			if dv.Home {
-				a.anywhereOff(c, dv)
-			}
 		}
 	case on:
 		sp.look = chipOn

@@ -45,11 +45,6 @@ top to bottom like a character in a game:
     the phone line Ducter calls through; once it's connected, tapping **Calls** opens its card
     there. If your Tuwa sign-in runs out, the chip says **Sign in again**. See
     [Phone calls](calls.md).
-  - **From anywhere** on the card of the computer Ducter lives on lets your phone and other
-    devices reach it from outside. **+ From anywhere** opens a free Cloudflare tunnel to it (no
-    account, no domain); its **i** shows the address, who can get in (only devices you
-    connected) and **Turn off**. With your own domain it's simply on. See
-    [Your phone](phone.md#connect-your-phone).
   - **Use a phone** is on the card of a Mac with Apple silicon that Ducter lives on. It gives
     Ducter a phone of its own: see [Ducter's phone](#ducters-phone) below.
   - Faded chips marked **coming later**, such as **Use apps**, show what Ducter will be able to

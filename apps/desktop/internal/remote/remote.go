@@ -30,10 +30,6 @@ type Saved struct {
 	Persona  string `json:"persona,omitempty"`
 	// Name is what the home calls this device (it may add " · 2" to a name it has).
 	Name string `json:"name,omitempty"`
-	// Follow finds the home again when its tunnel's address changes (D228);
-	// FollowAt is when the address in URL began (ms), from the note followed.
-	Follow   *Follow `json:"follow,omitempty"`
-	FollowAt int64   `json:"followAt,omitempty"`
 }
 
 // Errors the connect screen turns into words.

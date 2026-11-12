@@ -3,6 +3,11 @@ name: iOS build
 # The iPhone app compiles in Release (unsigned, nothing uploaded), only when apps/ios changes,
 # so a broken build shows up on the PR rather than at release time. macOS minutes are 10x on a
 # private repo, hence the path filter. Shipping to TestFlight is release.yml's job.
+#
+# Run by hand with testflight=true, it signs and uploads to TestFlight for internal testers only
+# (DUCTER_TESTFLIGHT_PUBLIC=0: no Public Beta, no Beta App Review), to check the signing path
+# without cutting a release. Pick a build number above every upload of that version and below the
+# next release re-run's: after release run 29 (v0.0.28, build 29.1), 0.0.28 + 29.1.1.
 
 on:
   pull_request:
@@ -10,6 +15,18 @@ on:
   push:
     branches: [main]
     paths: ["apps/ios/**", "scripts/ci/testflight.sh", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+    inputs:
+      testflight:
+        description: "Sign and upload to TestFlight (internal testers only)"
+        type: boolean
+        default: false
+      version:
+        description: "Marketing version, digits and dots (e.g. 0.0.28)"
+        default: "0.0.0"
+      build:
+        description: "Build number, unique and increasing for that version (e.g. 29.1.1)"
+        default: ""
 
 permissions:
   contents: read
@@ -31,4 +48,22 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
           DUCTER_TESTFLIGHT_DRY_RUN: "1"
           DUCTER_XCODE: "27.1" # as release.yml (D176)
+        run: scripts/ci/testflight.sh
+
+  testflight:
+    name: TestFlight upload (internal only)
+    if: github.event_name == 'workflow_dispatch' && inputs.testflight
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - name: Sign and upload (scripts/ci/testflight.sh)
+        env:
+          MARKETING_VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ inputs.build }}
+          DUCTER_TESTFLIGHT_PUBLIC: "0"
+          DUCTER_XCODE: "27.1"
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID || secrets.APPLE_NOTARY_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID || secrets.APPLE_NOTARY_ISSUER_ID }}
+          ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 || secrets.APPLE_NOTARY_API_KEY_BASE64 }}
         run: scripts/ci/testflight.sh

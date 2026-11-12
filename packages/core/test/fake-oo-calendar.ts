@@ -17,7 +17,12 @@ export function fixtureOn(day: string): CalFixture {
 
 const ACTIONS = ["list_calendars", "list_events", "get_event", "create_event", "patch_event", "delete_event", "free_busy_query"];
 
-export function fakeOoCalendar(o: { day: string; calendar?: boolean }) {
+/**
+ * `listFails`: list_calendars fails as OOMOL Hosted refused the calendar tool's reads on hel
+ * (2026-11-12, a Gmail app id for a calendar action), so the calendar tool can't read; other
+ * actions still answer, as the generic connection tools did there.
+ */
+export function fakeOoCalendar(o: { day: string; calendar?: boolean; listFails?: boolean }) {
   const fx = fixtureOn(o.day);
   const runs: { service: string; action: string; input: Record<string, unknown>; connection?: string }[] = [];
   const conn = (label: string) => label.replace(/[@.]/g, "-");
@@ -42,6 +47,8 @@ export function fakeOoCalendar(o: { day: string; calendar?: boolean }) {
     },
     async run(service, action, input, connection) {
       runs.push({ service, action, input, ...(connection ? { connection } : {}) });
+      if (o.listFails && action === "list_calendars")
+        return { isError: true, data: { errorCode: "invalid_input", message: "app service does not match requested service" } };
       const acc = connection === conn(WORK) ? WORK : HOME;
       if (service === "gmail") return { isError: false, data: { threads: [] } };
       if (action === "list_calendars") return { isError: false, data: { items: fx.calendars[acc] ?? [] } };

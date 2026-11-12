@@ -220,7 +220,8 @@ export interface Calendar {
   seenIds(a: AppTarget): Promise<string[]>;
   /** Every seen calendar, merged, over [from, to) (ms). */
   events(from: number, to: number): Promise<{ events: CalEvent[]; marks: Map<string, string[]>; errors: string[] }>;
-  glance(fromDate: string, toDate: string): Promise<CalGlance & { errors?: string[] }>;
+  /** errors: what couldn't be read; blind: nothing could (every account failed). */
+  glance(fromDate: string, toDate: string): Promise<CalGlance & { errors?: string[]; blind?: true }>;
   free(o: { minutes: number; from?: string; to?: string; dayStart?: string; dayEnd?: string; weekends?: boolean }): Promise<{ zone: string; slots: { start: string; end: string }[]; errors?: string[] }>;
   /** Builds the Go card and stages its write; the caller logs the decision. */
   propose(p: ProposeInput, decisionId: string): Promise<{ ok: true; cal: CalChange; goLabel: Record<"zh" | "en", string>; question: Record<"zh" | "en", string> } | { ok: false; error: string }>;
@@ -234,6 +235,13 @@ export interface Calendar {
   onChange(fn: () => void): () => void;
   stop(): void;
 }
+
+/**
+ * What a calendar that can't be read says to the partner: say so plainly, and change nothing
+ * another way. A change goes only through the calendar's own card (hel, 2026-11-12).
+ */
+export const cantRead = (what: string) =>
+  `Couldn't read the user's calendar just now (${what}). Tell them so in one plain line and stop. Don't change their calendar another way (no connection_call, no task): changes go through this card once it reads again.`;
 
 export function createCalendar(deps: CalendarDeps): Calendar {
   const now = deps.now ?? Date.now;
@@ -260,6 +268,7 @@ export function createCalendar(deps: CalendarDeps): Calendar {
   const held = new Map<string, Held>(); // ref -> the event as last read
   let lastRead: { at: number; events: Held[] } | undefined;
   const staged = new Set<string>(); // decision ids of calendar cards
+  let lastErrors: string[] = []; // what the last read couldn't read
   const running = new Set<string>();
 
   const accounts = () => deps.connections.view().flatMap((c) => deps.connections.apps(c.id).filter((a) => isCalendarService(a.service) && !a.excluded));
@@ -374,6 +383,7 @@ export function createCalendar(deps: CalendarDeps): Calendar {
     const marks = new Map<string, string[]>();
     // A few at a time: oo runs a process per read.
     const queue = [...cals];
+    let readOk = 0;
     const worker = async () => {
       for (let cal = queue.shift(); cal; cal = queue.shift()) {
         const items = await windowOf(cal, from, to);
@@ -381,6 +391,7 @@ export function createCalendar(deps: CalendarDeps): Calendar {
           errors.push(`${cal.row.name || cal.app.title}${label(cal.app) ? ` (${label(cal.app)})` : ""}: couldn't read`);
           continue;
         }
+        readOk++;
         for (const x of items) {
           const h = toEvent(cal, x, zone);
           if (!h) continue;
@@ -408,7 +419,9 @@ export function createCalendar(deps: CalendarDeps): Calendar {
     }
     for (const h of out) held.set(h.ev.ref, h);
     if (held.size > 2000) for (const k of [...held.keys()].slice(0, 1000)) held.delete(k);
-    return { held: out, marks, errors };
+    lastErrors = errors;
+    // Blind: nothing could be read, so an empty day means nothing (hel, 2026-11-12).
+    return { held: out, marks, errors, blind: errors.length > 0 && readOk === 0 };
   }
 
   const clashesOf = (hs: Held[]): [string, string][] => {
@@ -520,7 +533,7 @@ export function createCalendar(deps: CalendarDeps): Calendar {
       const inRange = r.held.filter((h) => h.startMs < end && h.endMs > from);
       if (from <= now() && now() < end) lastRead = { at: now(), events: inRange };
       const clashes = clashesOf(inRange);
-      return { zone, from: fromDate, to, days, ...(clashes.length ? { clashes } : {}), accounts: accounts().length, at: new Date(now()).toISOString(), ...(r.errors.length ? { errors: r.errors } : {}) };
+      return { zone, from: fromDate, to, days, ...(clashes.length ? { clashes } : {}), accounts: accounts().length, at: new Date(now()).toISOString(), ...(r.errors.length ? { errors: r.errors } : {}), ...(r.blind ? { blind: true as const } : {}) };
     },
     async free(o) {
       const zone = deps.zone();
@@ -591,7 +604,8 @@ export function createCalendar(deps: CalendarDeps): Calendar {
       if (p.change === "create") {
         a = accountFor(p.account, attendees);
         if (!a) return { ok: false, error: "No Google Calendar account to add it to." };
-        const list = (await listOf(a)) ?? [];
+        const list = await listOf(a);
+        if (!list) return { ok: false, error: cantRead(`${a.title}${label(a) ? ` (${label(a)})` : ""}`) };
         const rows = list.map((c) => rowOf(a!, c)).filter((r) => r.canEdit && r.kind !== "holidays" && r.kind !== "birthdays");
         const want = p.calendar?.trim().toLowerCase();
         cal = (want && rows.find((r) => r.name.toLowerCase() === want)) || rows.find((r) => r.kind === "main") || rows[0];
@@ -632,7 +646,7 @@ export function createCalendar(deps: CalendarDeps): Calendar {
       } else {
         if (!p.ref) return { ok: false, error: "Name the event by its ref (from calendar do=agenda)." };
         const h = await findHeld(p.ref);
-        if (!h) return { ok: false, error: "No event with that ref now. Look again with do=agenda." };
+        if (!h) return { ok: false, error: lastErrors.length ? cantRead(lastErrors.join("; ")) : "No event with that ref now. Look again with do=agenda." };
         a = h.cal.app;
         cal = h.cal.row;
         if (a.service !== GOOGLE) return { ok: false, error: "Changes are only built for Google Calendar; for this one use connection_call." };

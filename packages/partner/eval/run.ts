@@ -270,7 +270,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     writeFileSync(join(ph, "installed.json"), JSON.stringify({ packages: [{ path: "emulator", version: "stand-in" }], licenses: [], at: new Date().toISOString() }));
   }
   // D222: two Google Calendar accounts (and Gmail) in a fake oo, on today's date here; never the real oo.
-  const calOo = sc.calendar ? fakeOoCalendar({ day: new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()) }) : undefined;
+  const calOo = sc.calendar ? fakeOoCalendar({ day: new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()), ...(sc.calendarDown ? { listFails: true } : {}) }) : undefined;
   const core = startCore({ dataDir, port: 0, persona, ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   if (calOo && !(await core.connections.addFromOo()).ok) throw new Error("fake oo calendar: not added");
   if (tuwa) {
@@ -586,6 +586,7 @@ function check(r: RunResult): string[] {
   // D129: a task's question reaches the user as the partner's words, tied to its decision.
   if (e.relayed && !r.visible.some((v) => v.kind === "ai_msg" && v.relays)) fails.push("the task's question was not said in the partner's words");
   if (e.ask &&!r.visible.some((v) => v.kind === "decision")) fails.push("no ask (decision)");
+  if (e.noAsk && r.visible.some((v) => v.kind === "decision")) fails.push("a decision card nobody should get");
   if (e.dayCard && !r.dayCards?.length) fails.push("no day card (calendar do=agenda show)");
   if (e.noDayCard && r.dayCards?.length) fails.push("a day card nobody asked for");
   if (e.calCard && !r.calKinds?.includes(e.calCard)) fails.push(`no calendar ${e.calCard} card`);

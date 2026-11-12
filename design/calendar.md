@@ -112,9 +112,17 @@ Actions (VERIFIED in oo's catalog, research/65): `list_calendars`, `list_events`
 (`singleEvents`, `orderBy=startTime`, `timeZone`), `create_event` (`sendUpdates` all when there
 are guests, else none), `patch_event` (move: start and end in the event's own zone; answer: the
 whole guest list back with only their own `responseStatus` changed), `delete_event`. Multiple
-accounts of one service are addressed with oo's `--connection-name`. `free_busy_query` is a read
-(oo's name-based rule called it a write; fixed with a checked list). No write was ever run on the
-real account.
+accounts of one service are addressed with oo's `--connection-name`; through OOMOL Hosted or an
+OpenConnector, with the `appId` of that account's app *of the action's own service* (one address is
+both a Gmail and a Google Calendar app there, and the Gmail one is refused, D223). `free_busy_query`
+is a read (oo's name-based rule called it a write; fixed with a checked list). No write was ever
+run on the real account.
+
+**When it can't read (D223):** a day it couldn't read at all is not an empty day: `do=agenda` and
+`do=free` answer that it can't read (free time is never offered over a calendar it couldn't read),
+and `do=propose` stages nothing. The partner says so in one plain line and stops. A Google Calendar
+change through `connection_call` is refused while the calendar tool is listed, so a change only
+ever goes through the calendar's own card.
 
 ## 6. How calendar things look
 

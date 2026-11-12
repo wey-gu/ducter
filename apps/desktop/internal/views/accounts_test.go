@@ -329,5 +329,80 @@ func TestQuietDayUnderTheSwitch(t *testing.T) {
 			t.Errorf("no %q in %q", want, got)
 		}
 	}
-	_ = sent
+	// The day is asked as Notifications opens, so the problem line shows
+	// without a tap on the button.
+	asked := false
+	for _, f := range *sent {
+		if r, ok := f.(protocol.ProactiveDayReq); ok && r.T == "proactive_day" {
+			asked = true
+		}
+	}
+	if !asked {
+		t.Error("Notifications opened without asking for the day")
+	}
+	// Opened: the groups in order, the rules' leftovers softer.
+	groups := app.dayGroups(app.S.Day)
+	if len(groups) != 4 || groups[0][0].text != "看了 152 封信、3 个日程" || !groups[0][1].soft || groups[1][len(groups[1])-1].text != "跟你说了 0 件" || groups[2][0].text != "2 件不急，没说（你选了只说急的）" {
+		t.Errorf("groups %+v", groups)
+	}
+}
+
+// D226 on the Mac, each state in zh and en:
+//
+//	DUCTER_SHOTS=1 DUCTER_SHOTS_DIR=$PWD/../../../../.shots/quietday/mac go test ./internal/views -run QuietDayShots
+func TestQuietDayShots(t *testing.T) {
+	if os.Getenv("DUCTER_SHOTS") == "" {
+		t.Skip("DUCTER_SHOTS not set")
+	}
+	morning := time.Date(2026, 11, 13, 8, 30, 0, 0, time.Local).UTC().Format(time.RFC3339)
+	base := protocol.ProactiveDay{Day: "2026-11-12", Looked: protocol.DayLooked{Mail: 152, Events: 3}, Skipped: protocol.DaySkipped{Notices: 41, Promo: 18}}
+	states := map[string]func(d *protocol.ProactiveDay){
+		"closed": func(d *protocol.ProactiveDay) { d.Held = []protocol.DayHeld{{Reason: "not_urgent", N: 2}} },
+		"problem": func(d *protocol.ProactiveDay) {
+			d.Held = []protocol.DayHeld{{Reason: "not_urgent", N: 2}}
+			d.Problem = &protocol.ReadProblem{Why: "not_installed", Agent: "Claude Code", Since: "2026-11-12T01:00:00Z", Waiting: 40}
+		},
+		"counts": func(d *protocol.ProactiveDay) {
+			d.Looked.Mentions, d.Skipped.Muted, d.Read, d.Noted, d.Said = 7, 4, 23, 5, 1
+		},
+		"held": func(d *protocol.ProactiveDay) {
+			d.Read, d.Noted, d.Said, d.NextNote = 23, 5, 3, morning
+			for _, r := range []string{"not_urgent", "for_morning", "below_bar", "cap", "muted", "budget", "night"} {
+				d.Held = append(d.Held, protocol.DayHeld{Reason: r, N: 1})
+			}
+		},
+		"pushoff": func(d *protocol.ProactiveDay) { d.Read, d.Noted, d.Said, d.PushOff = 12, 2, 1, true },
+		"catching": func(d *protocol.ProactiveDay) {
+			d.Looked, d.Skipped, d.CatchingUp = protocol.DayLooked{}, protocol.DaySkipped{}, true
+		},
+	}
+	dir := shotsDir(t)
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		for name, set := range states {
+			app, _ := iaApp(t, lang)
+			app.Status = client.Connected
+			acctFrames(app, "urgent")
+			d := base
+			set(&d)
+			app.Receive(protocol.ServerFrame{T: "proactive_day", Day: &d})
+			app.openTab(TabNotify)
+			tt := ui.NewTesterWith(app.View, 1100, 1300, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+			tt.Frame()
+			if name != "closed" && name != "problem" {
+				if err := tt.Click(app.L.T("day.title")); err != nil {
+					t.Fatal(err)
+				}
+			}
+			tt.Advance(time.Second)
+			tt.Frame()
+			f, err := os.Create(filepath.Join(dir, "mac-"+string(lang)+"-"+name+".png"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := png.Encode(f, tt.Image()); err != nil {
+				t.Fatal(err)
+			}
+			f.Close()
+		}
+	}
 }

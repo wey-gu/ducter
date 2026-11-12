@@ -833,12 +833,12 @@ Codex first, once OAR is near 1.0. See `research/17`.
   open branch merged.
 
 
-## Nowledge Bridge (D105–D111, D162–D164, D170–D171, D205, D224, `design/bridge.md`)
+## Nowledge Bridge (D105–D111, D162–D164, D170–D171, D205, D225, `design/bridge.md`)
 
 - [ ] Connect the persona in Only me (D205): on the home, Settings › 伙伴 › 你的其他 AI › 连接 (it runs
       `nmem bridge connections connect --space-id <Only me> --agent-id ducter --context ducter`). Run once on a
       scratch home 2026-11-12: Mem answered 503 `cloud_bridge_setup_unavailable` (research/66 §3). On hel first
-      **更新** (nmem 0.10.116 by pip, D224). Trigger: Mem opens Bridge connections for the workspace (`bun run
+      **更新** (nmem 0.10.116 by pip, D225). Trigger: Mem opens Bridge connections for the workspace (`bun run
       bridge:live -- --connected` gets past the connection line).
 - [ ] After that: does a terminal session's native inbox (the plugin prepares one in every session now) send to
       the persona's Agent mailbox, and does the reply land where the session reads? Adjust X1/S1's peer prompt and
@@ -846,7 +846,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] File B16 with the Nowledge team: a device-code sign-in for `nmem connect` on a headless box, a public word on
       when Bridge connections open per workspace, and `status`'s `update.latest` lagging the release (research/66
       §6). Trigger: the author's go, with B11–B15.
-- [ ] A home with no pipx, uv or pip (a fresh Ubuntu server): the row names `sudo apt install pipx` (D224). If
+- [ ] A home with no pipx, uv or pip (a fresh Ubuntu server): the row names `sudo apt install pipx` (D225). If
       users stall there, offer a task that installs it with the user's OK (D169's shape). Trigger: a user stuck on
       that line.
 - [ ] Run `bun run bridge:live -- --connected` (dry), then `-- --connected --real` and record it in research/37:

@@ -71,7 +71,7 @@ type App struct {
 	devicesAsked bool
 	// bridgeConfirm: 断开 was tapped once and asks before it runs (D205).
 	bridgeConfirm bool
-	// bridgeLink: the connect link being pasted on the row (D224); never kept.
+	// bridgeLink: the connect link being pasted on the row (D225); never kept.
 	bridgeLink string
 	StatusErr  string
 	// Failed is set once a connection attempt failed, and cleared by a

@@ -492,7 +492,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const bridgeLink = createBridgeLink({
     dataDir,
     identity: () => (settings.memMissing() ? undefined : persona.mem?.agentId),
-    // D224: before Mem is in, the row still offers to put it in; connect names the persona's own id.
+    // D225: before Mem is in, the row still offers to put it in; connect names the persona's own id.
     fallbackIdentity: () => identityIdFor(persona.id),
     // Tests never reach the machine's real nmem (or Mem): without a fake one injected, the row is off.
     memoryOn: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),

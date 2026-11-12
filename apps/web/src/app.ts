@@ -1285,13 +1285,13 @@ class AppState {
     this.send({ t: "bridge_connect" });
     this.changed();
   }
-  /** D224: 装上 / 更新: the home puts in (or updates) its own Nowledge Mem command line. */
+  /** D225: 装上 / 更新: the home puts in (or updates) its own Nowledge Mem command line. */
   installBridgeMem() {
     if (this.bridge) this.bridge = { ...this.bridge, state: this.bridge.state === "update_mem" ? "updating" : "installing" };
     this.send({ t: "bridge_mem_install" });
     this.changed();
   }
-  /** D224: 登录: a one-time connect link, handed to the home's nmem (never kept here). */
+  /** D225: 登录: a one-time connect link, handed to the home's nmem (never kept here). */
   signInBridgeMem(link: string) {
     if (this.bridge) this.bridge = { ...this.bridge, state: "signing_in" };
     this.send({ t: "bridge_mem_sign_in", link });

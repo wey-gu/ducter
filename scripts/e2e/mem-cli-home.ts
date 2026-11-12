@@ -1,4 +1,4 @@
-// D224's check on a Linux home like hel, inside a container (never hel itself): the real core with a
+// D225's check on a Linux home like hel, inside a container (never hel itself): the real core with a
 // silent partner, and Settings › 伙伴 › 你的其他 AI driven over the socket as the clients do.
 //
 //   bun scripts/e2e/mem-cli-home.ts serve                 # the home (DUCTER_DATA_DIR, DUCTER_PORT)

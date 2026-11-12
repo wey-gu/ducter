@@ -14,7 +14,7 @@
 // CLI source prints (research/private/37b). Interfaces only: no Mem source is copied here.
 //   NMEM_FAKE_VERSION=0.10.116    an nmem without `bridge connections` (exit 2, as clap does)
 //   NMEM_FAKE_REFUSE=<error_code> connect answers Mem's 403 refusal with that registered code (503 for _unavailable)
-//   NMEM_FAKE_SIGNED_OUT=1 · NMEM_FAKE_BACKEND=local   (D224: `status`, `connect <link>`)
+//   NMEM_FAKE_SIGNED_OUT=1 · NMEM_FAKE_BACKEND=local   (D225: `status`, `connect <link>`)
 //   NMEM_FAKE_SPACES=none|two     no personal place, or two of them
 //   NMEM_FAKE_ARGV_LOG=/path      every call's argv, one JSON line each (tests check the exact argv)
 //
@@ -65,7 +65,7 @@ const fail = (code: string, message: string, exit = 1) => {
   process.exit(exit);
 };
 
-// D224: `status` (signed in?) and `connect <link>` (the sign-in). NMEM_FAKE_SIGNED_OUT=1: not signed
+// D225: `status` (signed in?) and `connect <link>` (the sign-in). NMEM_FAKE_SIGNED_OUT=1: not signed
 // in until a connect; NMEM_FAKE_BACKEND=local: Mem answers from this computer; a link containing
 // "used" answers Mem's 410.
 const signedFile = `${statePath}.signed-in`;

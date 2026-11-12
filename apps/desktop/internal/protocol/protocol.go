@@ -1101,7 +1101,7 @@ type MemView struct {
 // updating), ready, no_space, connecting, connected, disconnecting, refused
 // (Reason), failed (Detail), unconfirmed. Pinned: DUCTER_BRIDGE=1 on the home.
 //
-// D224, the home's own Mem command line first: install_mem / installing,
+// D225, the home's own Mem command line first: install_mem / installing,
 // update_mem / updating (CanRun: one tap does it; else Need: "pipx", "app",
 // "other"), sign_in / signing_in (a one-time connect link; SignIn: "used",
 // "bad", "failed"), local_mem (Mem here isn't a cloud workspace).
@@ -1131,7 +1131,7 @@ type BridgeAction struct {
 	T string `json:"t"`
 }
 
-// BridgeMemSignIn is D224's 登录: a one-time connect link for the home's
+// BridgeMemSignIn is D225's 登录: a one-time connect link for the home's
 // nmem (T "bridge_mem_sign_in"); BridgeAction{T: "bridge_mem_install"} is
 // 装上 / 更新.
 type BridgeMemSignIn struct {

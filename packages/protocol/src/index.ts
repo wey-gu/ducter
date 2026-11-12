@@ -731,7 +731,7 @@ export type ClientFrame =
   // connection, run by the home's nmem on the user's tap. Answered by fresh settings frames (bridge).
   | { t: "bridge_connect" }
   | { t: "bridge_disconnect" }
-  // D224: put in (or update) the home's Nowledge Mem command line; sign it in with a one-time
+  // D225: put in (or update) the home's Nowledge Mem command line; sign it in with a one-time
   // connect link the user made in Nowledge Mem (never logged or kept).
   | { t: "bridge_mem_install" }
   | { t: "bridge_mem_sign_in"; link: string }
@@ -1505,7 +1505,7 @@ export interface MemView {
  * the identity lacks its original registration; lifetime_inactive: the identity is retired;
  * attachment_mismatch: where it receives no longer matches it; control_denied: this sign-in doesn't
  * hold it; revoked: this connection was disconnected before; conflict: already bound to another.
- * D224: unavailable: Mem's side can't take it now
+ * D225: unavailable: Mem's side can't take it now
  * (`_unavailable`, `_busy`, `_capacity`), nothing to do on the user's side; unknown: no answer came
  * back, so whether it took is unknown (Try again is the same connect, never a second one).
  */
@@ -1520,7 +1520,7 @@ export type BridgeRefusal = "authority_missing" | "custody_birth_missing" | "lif
  * check after it didn't say it acts as the identity, so Bridge stays off (try again, or disconnect);
  * pinned: DUCTER_BRIDGE=1 on the home (no disconnect here).
  *
- * D224, the home's own Mem command line first: install_mem: the home has no `nmem` (canRun: one tap
+ * D225, the home's own Mem command line first: install_mem: the home has no `nmem` (canRun: one tap
  * puts it in with Mem's official route; else need names what to install first, "pipx");
  * update_mem: canRun: one tap updates it from the source it came from (else need: "app", update the
  * Nowledge Mem app; "other", update it the way it was installed); installing / updating while it

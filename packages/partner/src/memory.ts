@@ -95,7 +95,7 @@ export interface NmemOptions {
 
 /** MemoryClient over the nmem CLI (the user's own binary and its own connection config). */
 export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
-  // Read per call: D224 can put nmem in (and name it in NMEM_CLI_PATH) while Ducter runs.
+  // Read per call: D225 can put nmem in (and name it in NMEM_CLI_PATH) while Ducter runs.
   const binNow = () => opts.bin ?? process.env.NMEM_CLI_PATH ?? "nmem";
   const timeoutMs = opts.timeoutMs ?? 15_000;
   const run = async (args: string[], input?: string): Promise<{ code: number; out: string; err: string } | { missing: true }> => {

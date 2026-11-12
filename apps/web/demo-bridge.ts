@@ -3,7 +3,7 @@
 // a connect that never returns). For pictures of each state, web and phone.
 //   DUCTER_PORT=7798 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_BRIDGE=ready bun apps/web/demo-bridge.ts
 // DEMO_BRIDGE: ready · connecting · connected · update · no_space · refused:<reason> · failed · unconfirmed
-//   D224: install (no nmem; pipx here) · install_need (no pipx) · update_pip (hel: 0.10.116 by pip) · sign_in · local
+//   D225: install (no nmem; pipx here) · install_need (no pipx) · update_pip (hel: 0.10.116 by pip) · sign_in · local
 // then open http://127.0.0.1:7798/app#settings=partner
 import { startCore, stubRunner } from "@ducter/core";
 import { noOo } from "./demo-oo.ts";
@@ -43,7 +43,7 @@ const run = async (args: string[]) => {
   return { code: 2, out: "", err: "demo: not scripted" };
 };
 
-// D224: the home's files as the row reads them: hel's pip copy, or pipx to install with.
+// D225: the home's files as the row reads them: hel's pip copy, or pipx to install with.
 const files: Record<string, string> = want === "update_pip" ? { "/root/.local/bin/nmem": "ELF", "/root/.local/lib/python3.14/site-packages/nmem_cli-0.10.116.dist-info/INSTALLER": "pip\n" } : {};
 const tools: Record<string, string> = want === "install" ? { pipx: "/usr/bin/pipx" } : want === "update_pip" ? { nmem: "/root/.local/bin/nmem", "python3.14": "/usr/bin/python3.14" } : {};
 const sys = {

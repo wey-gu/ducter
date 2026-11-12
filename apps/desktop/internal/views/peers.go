@@ -169,7 +169,7 @@ func (a *App) bridgeRow(c *ui.Context, st *protocol.Settings, b *protocol.Bridge
 	})
 }
 
-// memSetup: the row's states before the home's Mem can connect anyone (D224).
+// memSetup: the row's states before the home's Mem can connect anyone (D225).
 func memSetup(state string) bool {
 	switch state {
 	case "install_mem", "installing", "update_mem", "updating", "sign_in", "signing_in", "local_mem":
@@ -178,7 +178,7 @@ func memSetup(state string) bool {
 	return false
 }
 
-// bridgeMemRow is D224's first part of the row: the home's own Nowledge Mem
+// bridgeMemRow is D225's first part of the row: the home's own Nowledge Mem
 // command line put in, updated or signed in, with one tap each. It reports
 // whether it drew the row.
 func (a *App) bridgeMemRow(c *ui.Context, st *protocol.Settings, b *protocol.BridgeView) bool {
@@ -202,7 +202,7 @@ func (a *App) bridgeMemRow(c *ui.Context, st *protocol.Settings, b *protocol.Bri
 		case b.CanRun:
 			line = a.L.T("bridge.mem.update", b.Home, b.Version, min)
 		case b.Need == "app" || b.Version == "":
-			// The app's copy, or a core from before D224: update it there.
+			// The app's copy, or a core from before D225: update it there.
 			line = a.L.T("bridge.update", b.Home)
 		default:
 			line = a.L.T("bridge.mem.update.other", b.Home, b.Version, min)

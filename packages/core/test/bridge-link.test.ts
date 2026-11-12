@@ -211,7 +211,7 @@ describe("the link over a fake nmem", () => {
   });
 });
 
-describe("D224: the home's own nmem, put in or updated on the tap", () => {
+describe("D225: the home's own nmem, put in or updated on the tap", () => {
   // A home with no nmem: `run` can't start it; the installer is recorded, never run for real.
   function sysOf(files: Record<string, string>, tools: Record<string, string>, home = "/home/u"): MemSys {
     return {

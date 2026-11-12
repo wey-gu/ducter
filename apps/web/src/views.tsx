@@ -2065,9 +2065,9 @@ function TrustSettings() {
  * never named): what 连上 will do, each step, Mem's refusal with the step the user takes in Mem,
  * and 断开. With an older Mem on the home, the one line that says to update it.
  */
-/** D224: the first nmem with `bridge connections` (bridge-link.ts BRIDGE_CONNECT_SINCE). */
+/** D225: the first nmem with `bridge connections` (bridge-link.ts BRIDGE_CONNECT_SINCE). */
 const MEM_MIN = "0.10.118";
-/** D224: the row's states before the home's Mem can connect anyone (nothing else in the group yet). */
+/** D225: the row's states before the home's Mem can connect anyone (nothing else in the group yet). */
 const MEM_SETUP = new Set(["install_mem", "installing", "update_mem", "updating", "sign_in", "signing_in", "local_mem"]);
 
 function BridgeRow() {
@@ -2078,7 +2078,7 @@ function BridgeRow() {
   const name = s.name;
   const space = b.space?.label ?? "Only me";
   const home = b.home ?? "";
-  // D224: the home's own Nowledge Mem command line first (put in, updated, signed in), on this row.
+  // D225: the home's own Nowledge Mem command line first (put in, updated, signed in), on this row.
   if (b.state === "install_mem" || b.state === "installing" || b.state === "update_mem" || b.state === "updating") {
     const busy = b.state === "installing" || b.state === "updating";
     const install = b.state === "install_mem" || b.state === "installing";

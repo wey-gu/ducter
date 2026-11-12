@@ -31,7 +31,7 @@ func TestBridgeRow(t *testing.T) {
 		{"old-nmem", protocol.BridgeView{State: "update_mem", Identity: "ducter", Home: "hel"},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.update", "hel")} },
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("peers.reach", "小鸭")} }},
-		// D224: the home's own Mem command line, put in, updated and signed in from the row.
+		// D225: the home's own Mem command line, put in, updated and signed in from the row.
 		{"install", protocol.BridgeView{State: "install_mem", Identity: "ducter", Home: "hel", CanRun: true},
 			func(L *i18n.Strings) []string {
 				return []string{L.T("bridge.mem.install", "hel"), L.T("bridge.mem.install.go")}

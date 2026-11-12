@@ -18,7 +18,7 @@
 // The confirmed connection is kept in <dataDir>/bridge-connection.json; its context turns the
 // partner's Bridge on (partner/src/bridge.ts bridgeFor) without DUCTER_BRIDGE=1.
 //
-// D224: the home's own Mem command line comes first, on the same row: no `nmem` here, or one too
+// D225: the home's own Mem command line comes first, on the same row: no `nmem` here, or one too
 // old for `bridge connections`, is one tap that puts it in or updates it (mem-cli.ts: Mem's official
 // route, the same source it came from); not signed in to Nowledge Mem, a one-time connect link the
 // user pastes (`nmem connect --skip-tools <link>`, never logged or kept). Then the same row goes on
@@ -58,7 +58,7 @@ export const REFUSALS: Record<string, BridgeRefusal> = {
   cloud_bridge_setup_role_control_denied: "control_denied",
   cloud_bridge_setup_connection_revoked: "revoked",
   cloud_bridge_setup_binding_conflict: "conflict",
-  // D224, the rest of nmem 0.10.118's registered codes (research/66 §2).
+  // D225, the rest of nmem 0.10.118's registered codes (research/66 §2).
   cloud_bridge_setup_authority_denied: "control_denied",
   cloud_bridge_setup_authority_retired: "lifetime_inactive",
   cloud_bridge_setup_unavailable: "unavailable",
@@ -156,9 +156,9 @@ export interface BridgeLink extends BridgeLinkApi {
   view(): Promise<BridgeView | undefined>;
   connect(): Promise<void>;
   disconnect(): Promise<void>;
-  /** D224: puts in (or updates) the home's `nmem` with Mem's official route, on the user's tap. */
+  /** D225: puts in (or updates) the home's `nmem` with Mem's official route, on the user's tap. */
   installMem(): Promise<void>;
-  /** D224: signs the home's `nmem` in with a one-time connect link (never logged or kept). */
+  /** D225: signs the home's `nmem` in with a one-time connect link (never logged or kept). */
   signInMem(link: string): Promise<void>;
   /** Mem became usable here after an install or a sign-in: core binds the persona's identity. */
   onMemReady(fn: () => void): () => void;
@@ -309,7 +309,7 @@ export function createBridgeLink(opts: {
   let signIn: BridgeView["signIn"];
   let signInDetail: string | undefined;
 
-  // D224: a fresh install's route, decided once per look (pip needs a quick question first).
+  // D225: a fresh install's route, decided once per look (pip needs a quick question first).
   let pipOk: boolean | undefined;
   async function freshPlan(): Promise<MemPlan | undefined> {
     const first = installPlan(env, sys, false);

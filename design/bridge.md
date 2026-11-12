@@ -2,7 +2,7 @@
 
 > Design note · 2026-11-09, updated 2026-11-12 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D224 (the released Bridge; the home's own Mem put in, updated and signed in from the same row); still open: J-Q1–3, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
 > run, Mem on a home without it), private `31` and `10`.
 >
@@ -39,7 +39,7 @@ holds, so the persona's context no longer needs a key or hand-made commands (D17
 - **No restart:** the partner's Bridge tools are listed only while it is on, and a change starts a fresh partner
   session at the next turn.
 
-### The home's own Mem first (D224)
+### The home's own Mem first (D225)
 
 The same row walks the user to Connect when the home's `nmem` isn't ready, one tap per step. It shows whenever
 memory is on, even before Mem is on the home.
@@ -562,7 +562,7 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
 
 ## Try it live (the author runs this)
 
-**Status 2026-11-12 (D224, research/66 §3).** nmem 0.10.118 is public. The dry preflight passes the version and
+**Status 2026-11-12 (D225, research/66 §3).** nmem 0.10.118 is public. The dry preflight passes the version and
 the one personal place; `connections list`, Ducter's Connect tap (on a scratch home) and a native session's
 `prepare` all answer 503 `cloud_bridge_setup_unavailable` (outcome unknown, not retryable). Per the skill nothing
 else was tried, and nothing was created. S1, S2, S3, X1 wait for Mem to open connections for the workspace; then

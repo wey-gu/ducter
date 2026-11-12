@@ -643,7 +643,7 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "bridge_mem_install":
       case "bridge_mem_sign_in": {
-        // D224: the tap on 装上 / 更新 / 登录 is the user's Go for this one step on the home. The
+        // D225: the tap on 装上 / 更新 / 登录 is the user's Go for this one step on the home. The
         // link is passed straight to nmem: never logged, kept or sent back.
         if (!deps.settings || !deps.bridgeLink) throw new Error("settings are not available");
         ws.data.settings = true;

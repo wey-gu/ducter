@@ -141,7 +141,7 @@ export async function main(mods: BootModules = {}) {
     return mem.source;
   });
   void identity.then((src) => keepMemIdentity(core, src === "nowledge-mem"));
-  // D224: Nowledge Mem put in or signed in from Settings › 伙伴 while running: Mem is connected
+  // D225: Nowledge Mem put in or signed in from Settings › 伙伴 while running: Mem is connected
   // now, so the persona's identity is bound as on a start (no restart).
   core.bridgeLink.onMemReady(() => {
     if (process.env.DUCTER_MEMORY === "off") return;

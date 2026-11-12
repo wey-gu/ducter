@@ -55,7 +55,7 @@
 2. **Connect from Settings**, on a scratch Ducter home (its own data folder and port; persona identity `ducter`
    adopted from the existing Mem identity, nothing enrolled): the row showed `ready` with `ducter · Only me · <id>`;
    one tap on Connect ran the one `connections connect`; Mem answered the same 503. The row showed Mem's
-   agent-facing text verbatim (fixed by D224). No local context was saved (`agents context show --name ducter`:
+   agent-facing text verbatim (fixed by D225). No local context was saved (`agents context show --name ducter`:
    still `selection_required`). VERIFIED.
 3. **The peer's native session**: one `bridge session --host claude-code --session-id <fresh id> prepare` (what
    the plugin does at every start): the same 503. VERIFIED.
@@ -103,10 +103,10 @@ it on the card. A device code would be one tap fewer; it is Mem's to add (B16 be
 
 1. **Say Mem's refusals in the user's words, all sixteen.** `unavailable` / `busy` / `capacity`: "Mem can't take
    it right now, nothing wrong on your side"; `outcome_unknown`: "not clear whether it took; Try again finds out".
-   Never show Mem's agent-facing detail. (D224)
+   Never show Mem's agent-facing detail. (D225)
 2. **Put Mem's command line in, or update it, from the same row**, with Mem's official route and the source the
    copy came from; a fresh install never passes the system's mark. Then a paste-a-link sign-in. Then Connect.
-   (D224)
+   (D225)
 3. **Keep Bridge off by default** (D170 (9)): the live run could not pass. Docs keep "coming soon" for the
    conversation with terminal agents, with the requirements stated honestly.
 4. **Re-check the X1/S1 send path when Mem opens connections**: a terminal session now has a native session inbox

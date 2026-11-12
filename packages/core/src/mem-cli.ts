@@ -1,4 +1,4 @@
-// D224: the home's own Nowledge Mem command line (`nmem`), put in or updated by Ducter on the user's
+// D225: the home's own Nowledge Mem command line (`nmem`), put in or updated by Ducter on the user's
 // tap in Settings › 伙伴 › 你的其他 AI, so a home without it (a headless Linux server) can connect
 // the persona with the user's other AI agents (D205) without the user typing a command there.
 //

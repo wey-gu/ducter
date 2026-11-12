@@ -339,6 +339,14 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 		if d.Call != nil && (d.Call.Kind == "go" || d.Call.Kind == "sheet") && d.Call.Plan != nil && openAsk(d) {
 			a.callFactsCard(c, d) // D189 (4): who, what, the voice, the number, the cost, when
 		}
+		if d.Cal != nil {
+			// D221: what changes, where, when and who hears; settled in place after Go.
+			a.calChangeBlock(c, d)
+			if !openAsk(d) {
+				a.calSettled(c, d)
+				return
+			}
+		}
 		if d.SignIn != nil {
 			// D151: Sign in opens the live view; answered, it says signed in or not now.
 			a.underBubble(c, func() { a.signInButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })

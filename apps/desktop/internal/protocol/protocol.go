@@ -126,6 +126,8 @@ type AIMsg struct {
 	DecisionID string `json:"decisionId,omitempty"`
 	// Media (D206): what a task showed, relayed with the partner's words about it.
 	Media []MediaRef `json:"media,omitempty"`
+	// Cal (D221): the day glance the partner put under these words.
+	Cal *CalGlance `json:"cal,omitempty"`
 }
 
 type Ack struct {
@@ -195,6 +197,9 @@ type Decision struct {
 	Trust *TrustAsk `json:"trust,omitempty"`
 	// Call (D189/D193): a phone call's Go card, or a question from the line.
 	Call *CallAsk `json:"call,omitempty"`
+	// Cal (D221): a calendar change (add, move, cancel, answer); its
+	// outcome is the connection_call with this decision id.
+	Cal *CalChange `json:"cal,omitempty"`
 }
 
 // TrustAsk names the agent a standing-go offer is about.
@@ -643,6 +648,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &FindState{}
 	case KindPhoneCall:
 		v = &CallBody{}
+	case KindConnectionCall:
+		v = &ConnectionCall{}
 	default:
 		return nil, nil
 	}
@@ -1543,6 +1550,8 @@ type FirstScreen struct {
 	Line     Words      `json:"line"`
 	News     *FirstNews `json:"news,omitempty"`
 	Starters []Starter  `json:"starters"`
+	// Today (D221): what is still on today, from the last look.
+	Today *CalToday `json:"today,omitempty"`
 }
 
 // FirstNews is one timely line for a returning person: needs_you | missed

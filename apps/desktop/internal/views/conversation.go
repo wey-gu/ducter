@@ -212,6 +212,10 @@ func (a *App) emptyConversation(c *ui.Context) {
 				}
 			})
 		})
+		// D221: what is still on today, from the last look (never a new read).
+		if f := a.S.First; f != nil && f.Today != nil {
+			ui.Column(c).Margin(t.S3, 0, 0, 0).AlignItems(ui.Center).Children(func() { a.calTodayLine(c, f.Today) })
+		}
 		ui.Column(c).Gap(t.S3).Margin(t.S6, 0, 0, 0).AlignItems(ui.Stretch).Width(640).MaxWidthPercent(100).Children(func() {
 			ui.Text(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5).Margin(0, 0, 0, 2)
 			ui.Row(c).Wrap().Gap(t.S3).AlignItems(ui.Stretch).Children(func() {
@@ -464,9 +468,15 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		// The partner's words get the CJK-Latin gap at display time; a
 		// copy leaves it out (D78).
 		ui.Column(c).Gap(t.S1).CopyData(autospaceCopy).Children(func() {
-			a.partnerBubble(c, a.takeJoin(), func() {
-				markdown.View(c, autospace(e.AI.Text), &a.md)
-			})
+			if strings.TrimSpace(e.AI.Text) != "" || e.AI.Cal == nil {
+				a.partnerBubble(c, a.takeJoin(), func() {
+					markdown.View(c, autospace(e.AI.Text), &a.md)
+				})
+			}
+			// D221: the day glance the partner put under its words.
+			if e.AI.Cal != nil {
+				a.dayCard(c, itoa(e.FirstSeq), e.AI.Cal)
+			}
 			// D206: what a task showed, under the partner's words about it.
 			a.messageMedia(c, fmt.Sprint("a", e.FirstSeq), e.AI.Media, nil, false, "conv")
 			a.quiet(c, "m"+itoa(e.FirstSeq), a.replyTasks(e), "", a.notedFor(e))

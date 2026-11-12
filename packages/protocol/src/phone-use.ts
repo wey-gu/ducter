@@ -24,7 +24,8 @@ export interface PhoneTerms {
 
 /** A decision a phone task asked for: one tap that commits (go), or the user's own turn (user). */
 /** app: the app's id (com.…, never shown); name: the app as the user knows it (信息, 小红书), from the task. */
-export type PhoneAsk = { kind: "go"; app: string; name?: string; label: string; effect: string } | { kind: "user"; app?: string };
+/** on (D238): the person's own phone it happens on (its device id and name); absent = Ducter's phone. */
+export type PhoneAsk = ({ kind: "go"; app: string; name?: string; label: string; effect: string } | { kind: "user"; app?: string }) & { on?: { device: string; name: string } };
 
 /** Who the live view is for: watching a task, taking the phone yourself, or a card's own turn. */
 export type PhoneMode = "watch" | "takeover" | "signin";

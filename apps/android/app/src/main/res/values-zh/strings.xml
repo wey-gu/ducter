@@ -40,4 +40,12 @@
     <string name="home_older_unknown">%1$s 上的 Ducter 比这个 App 旧，有些新东西要等它更新。</string>
     <string name="home_older_go">去更新</string>
     <string name="home_older_dismiss">知道了</string>
+    <!-- D238：用这台手机（术语表：design/product-model.md）。 -->
+    <string name="handset_service_summary">让 Ducter 的任务用这台手机上的应用，只在你借给它的时候</string>
+    <string name="handset_service_description">任务想用这台手机、你同意以后，Ducter 读前面那个应用的屏幕，替它点、滑、打字。顶上有一颗小胶囊告诉你它在用，带「停下」。发送、付款、删除这类事先等你点 Go；银行、钱包、密码和验证器应用它碰不到，密码框从不读、不填。任务之间它是关着的：你借给它之前，它什么都不读。</string>
+    <string name="handset_pill">%1$s 正在用这台手机</string>
+    <string name="handset_pill_you">轮到你了</string>
+    <string name="handset_pill_you_line">做完以后，在卡片上点「好了」</string>
+    <string name="handset_stop">停下</string>
+    <string name="handset_stop_about">让正在用这台手机的任务停下</string>
 </resources>

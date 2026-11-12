@@ -44,4 +44,12 @@
     <string name="home_older_go">Update it</string>
     <string name="home_older_dismiss">Got it</string>
     <string name="update_whats_new">What\'s new</string>
+    <!-- D238: 用这台手机 / Use this phone (glossary: design/product-model.md). -->
+    <string name="handset_service_summary">Lets a Ducter task use this phone\'s apps, only while you lend it one</string>
+    <string name="handset_service_description">When a task asks to use this phone and you say yes, Ducter reads the screen of the app in front and taps, swipes and types for it. A pill at the top shows it\'s happening, with Stop. Anything that sends, pays or deletes waits for your Go; banking, wallet, password and authenticator apps stay out of reach, and password fields are never read or typed. Off between tasks: it reads nothing until you lend it the phone.</string>
+    <string name="handset_pill">%1$s is using this phone</string>
+    <string name="handset_pill_you">Your turn on this phone</string>
+    <string name="handset_pill_you_line">When you\'re done, tap Done on the card</string>
+    <string name="handset_stop">Stop</string>
+    <string name="handset_stop_about">Stop the task using this phone</string>
 </resources>

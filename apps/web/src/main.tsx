@@ -1,6 +1,7 @@
 // Boot: pair if the page was opened from a `ducter pair` link (/pair#c=CODE), find out whether
 // this browser may talk to core (local, or a paired device), then run the app.
 import { PhoneInstallSheet, PhoneLiveSheet, phoneFrame } from "./phone-use.tsx";
+import { HandsetGuideSheet, handsetFrame, handsetHello } from "./handset.tsx";
 import { render } from "preact";
 import { useEffect, useReducer, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -101,6 +102,7 @@ function App() {
       <LiveView />
       <PhoneLiveSheet />
       <PhoneInstallSheet />
+      <HandsetGuideSheet />
       <Toasts />
     </>
   );
@@ -224,6 +226,8 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   if (!inApp()) void registerWorker(base); // the app's notifications are its own (APNs)
   A.glanceDevice = device;
   A.onPhoneFrame = phoneFrame; // D217
+  A.onHandsetFrame = handsetFrame; // D238
+  A.onHandsetWelcome = () => void handsetHello();
   if (glance) A.restore(glance);
   A.start(base, api, me, token);
   A.fromHash();

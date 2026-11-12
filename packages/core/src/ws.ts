@@ -44,6 +44,8 @@ export interface WsData {
   sink?: LiveSink;
   /** D217: this socket's end of its phone views. */
   phoneSink?: import("./android/live.ts").PhoneSink;
+  /** D238: the page on the person's own phone, relaying its app (handset_hello). */
+  handset?: import("./handset/index.ts").HandsetSocket;
 }
 
 const ON_HAND_KINDS = new Set<string>([...PROJECTED_KINDS, "phone_call"]);
@@ -98,6 +100,8 @@ export interface WsDeps {
   ownPhone?: import("./android/index.ts").DucterPhone;
   /** D235: 用电脑 / Use the computer. */
   computer?: import("./computer/index.ts").ComputerUse;
+  /** D238: 用这台手机 / Use this phone. */
+  handsets?: import("./handset/index.ts").Handsets;
   /** D191: 自动填充 / Autofill; absent in tests that don't need it. */
   autofill?: import("./saved/index.ts").Autofill;
   /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
@@ -1121,6 +1125,44 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "computer_grant_result", device, ok: r.ok, ...(r.reason ? { reason: r.reason } : {}), ...(r.message ? { message: r.message } : {}) });
         return;
       }
+      // D238: 用这台手机 / Use this phone. Only the page on that phone (a paired device) speaks for it.
+      case "handset_hello": {
+        const h = deps.handsets;
+        const me = ws.data.device?.id;
+        if (!h || !me || !f.state || typeof f.state !== "object") return;
+        const s = f.state;
+        ws.data.handset ??= { send: (fr) => sockets.has(ws) && send(ws, fr) };
+        h.hello(me, ws.data.handset, {
+          bridge: Number(s.bridge) || 0,
+          sdk: Number(s.sdk) || 0,
+          model: String(s.model ?? "").slice(0, 60),
+          service: s.service === true,
+          ...(typeof s.restricted === "boolean" ? { restricted: s.restricted } : {}),
+          pictures: s.pictures === true,
+          ...(typeof s.session === "string" && s.session ? { session: s.session } : {}),
+        });
+        return;
+      }
+      case "handset_res": {
+        const me = ws.data.device?.id;
+        if (me) deps.handsets?.answer(me, { id: String(f.id ?? ""), ok: f.ok === true, ...(f.result !== undefined ? { result: f.result } : {}), ...(typeof f.error === "string" ? { error: f.error } : {}) });
+        return;
+      }
+      case "handset_set": {
+        const device = (typeof f.device === "string" && f.device) || ws.data.device?.id || "";
+        const h = deps.handsets;
+        // Adding it is done on that phone itself (its switch is there); removing it, from anywhere.
+        const r = !h ? { ok: false, reason: "not_android" as const } : f.on && device !== ws.data.device?.id ? { ok: false, reason: "not_android" as const } : h.set(device, !!f.on);
+        send(ws, { t: "handset_set_result", device, on: !!f.on, ...r });
+        return;
+      }
+      case "handset_stop": {
+        const fromPhone = f.from === "phone" ? ws.data.device?.id : undefined;
+        const ok = deps.handsets ? await deps.handsets.stop(typeof f.taskId === "string" && f.taskId ? f.taskId : undefined, fromPhone) : false;
+        send(ws, { t: "handset_stop_result", ...(f.taskId ? { taskId: f.taskId } : {}), ok });
+        send(ws, { t: "on_hand", onHand: tasks.onHand() });
+        return;
+      }
       case "computer_stop": {
         const ok = deps.computer ? await deps.computer.stop(String(f.taskId ?? "")) : false;
         send(ws, { t: "computer_stop_result", taskId: String(f.taskId ?? ""), ok });
@@ -1177,6 +1219,7 @@ export function createWsHandler(deps: WsDeps) {
         sockets.delete(ws);
         if (ws.data.sink) void deps.browser?.live.drop(ws.data.sink);
         if (ws.data.phoneSink) void deps.ownPhone?.drop(ws.data.phoneSink);
+        if (ws.data.handset && ws.data.device) deps.handsets?.gone(ws.data.device.id, ws.data.handset);
         if (ws.data.device) devicesView()?.changed();
       },
       async message(ws: ServerWebSocket<WsData>, raw: string | Buffer) {

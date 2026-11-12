@@ -363,6 +363,9 @@ class AppState {
   }
   /** D217: set by phone-use.tsx; takes every phone_* frame. */
   onPhoneFrame?: (f: import("@ducter/protocol").PhoneServerFrame) => void;
+  /** D238: this page as its phone's link (handset.tsx). */
+  onHandsetFrame?: (f: import("@ducter/protocol").HandsetServerFrame) => void;
+  onHandsetWelcome?: () => void;
   changed() {
     for (const fn of this.listeners) fn();
     this.scheduleRead();
@@ -548,6 +551,8 @@ class AppState {
     if (f.t === "live" || f.t === "live_frame" || f.t === "live_turn" || f.t === "live_doing") return this.liveFrame(f);
     // D217: Ducter's phone (phone-use.tsx keeps its own state).
     if (f.t.startsWith("phone_")) return void this.onPhoneFrame?.(f as import("@ducter/protocol").PhoneServerFrame);
+    // D238: the person's own phone (handset.tsx relays the home's calls to this phone's app).
+    if (f.t.startsWith("handset_")) return void this.onHandsetFrame?.(f as import("@ducter/protocol").HandsetServerFrame);
     if (f.t === "browser_sites") {
       if (f.ok === false && f.message) this.toast(f.message);
       return void ((this.sites = f), this.changed());
@@ -648,6 +653,8 @@ class AppState {
       // socket's live view closed with it on the home, so the view that's still on screen opens
       // again, the same way (a watch stays a watch; the user's turn ended with the old socket).
       if (this.live?.id) queueMicrotask(() => this.retryLive());
+      // D238: a new socket: the phone's app says again what it can do (and whether it holds a loan).
+      queueMicrotask(() => this.onHandsetWelcome?.());
       this.readSent = 0;
       // What the old socket left unanswered: actions are settled from the Log after the replay;
       // messages go again, in order (core dedupes them, so none shows or lands twice).

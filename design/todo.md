@@ -1068,3 +1068,14 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Reply to a part on the phone and the Mac**: the wide web has 回复这段; the phone needs a selection toolbar, the Mac a text selection hook in MyGo. Trigger: a long partner answer the author wants to answer in pieces.
 - [ ] **Reply inside an opened task's conversation** (to one of the task's own messages, steered with the quote). Trigger: the heavy developer asks for it.
 - [ ] **The partner's answer chooses what it replies to**: today a turn's messages reply to its last user message (each reply has its own turn). Trigger: one turn that answers two things.
+
+## 用这台手机 / Use this phone (D238)
+
+- [ ] **On the author's Pixel Fold:** install the release APK from the browser, walk the guide through restricted settings, check Pixel's own strings against research/74 §2.2 and the miniatures, a real errand (a WeChat reply behind Go), Stop from the pill and from the Mac, and that the page keeps its socket with Ducter in the background for a 10-minute errand. Trigger: the author's review.
+- [ ] **The allowance across a self-update** (Android 15+: does "Allow restricted settings" survive Ducter's PackageInstaller update?). Trigger: the first release after the author turns it on.
+- [ ] **Say which phone in the request:** `needs.phone: "mine" | "ducter"` when both exist ("在我的手机上" vs "在 Ducter 的手机上"); a partner-tool change with its eval run (D175). Trigger: a person with both who means Ducter's phone.
+- [ ] **A native link** if the web view's socket proves unreliable in the background on real phones: the app's own WebSocket for the loan, with the same calls. Trigger: a dropped loan on a real phone.
+- [ ] **Restricted-settings detection** where the app op can't be read (it reads as unknown on the Android 16 emulator, so the guide shows all three steps): try `AppOpsManager` by op code or the package source. Trigger: the Pixel trial.
+- [ ] **A human comprehension pass** on the pill and the guide (the naive raters were LLM proxies, research/74 §8). Trigger: the first outside testers.
+- [ ] **Watching the loan from another window** (a live view of the person's own phone over the accessibility screenshot, ≤ 3 frames/s). Trigger: someone asks to watch from the Mac.
+- [ ] **iPhone** (research/74 §7): revisit if Apple opens app actions to third parties (App Intents across apps) or iPhone Mirroring becomes scriptable with an accessibility tree. Never iphone-use's code (PolyForm Shield).

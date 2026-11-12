@@ -3,6 +3,7 @@
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
 import { openPhone, PhoneAskBody } from "./phone-use.tsx";
 import { ComputerLine } from "./computer-use.tsx";
+import { HandsetAskBody, HandsetLine, handsetAskTitle } from "./handset.tsx";
 import type { AgentUpdate, Attention, Bodies, BridgeView, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
@@ -318,6 +319,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   if (d.signIn) return <SignInBody d={d} />;
   // D217: a phone task's Go for one tap, or the user's own turn on the phone.
   if (d.phone) return <PhoneAskBody d={d} />;
+  if (d.handset) return <HandsetAskBody d={d} />; // D238
   // D191: a payment names merchant, amount and card and asks for the security code; a first use asks OK.
   if (d.pay) return <PayBody d={d} />;
   if (d.fill) return <FillBody d={d} />;
@@ -852,6 +854,14 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
         <div class="decision">
           <CallDecision d={d} />
         </div>
+      </div>
+    );
+  // D238: may this task borrow the person's own phone (one card, no default).
+  if (d.handset)
+    return (
+      <div ref={ref} class={`partner askq pay handset${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
+        <div class="bubble">{d.said || handsetAskTitle(d)}</div>
+        {(buttons || !open) && <HandsetAskBody d={d} compact />}
       </div>
     );
   if (d.phone)
@@ -1908,6 +1918,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
         )}
         {/* D235: it is using the person's apps: where, and 停下 / Stop. */}
         <ComputerLine task={task} />
+        <HandsetLine task={task} />
         {A.switchFor === id && <SwitchList task={task} />}
         {finished(task) && (
           <div class="outcome">

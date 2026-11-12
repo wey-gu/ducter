@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: D238's probe (HandsetProbe.kt), for checking the bridge on an emulator. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <receiver
+            android:name=".HandsetProbe"
+            android:exported="true" />
+    </application>
+</manifest>

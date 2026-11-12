@@ -65,6 +65,7 @@ import { createAutofill, type Autofill } from "./saved/index.ts";
 import { createKeys } from "./saved/keys.ts";
 import { createDucterBrowser, type DucterBrowser, type DucterBrowserOptions } from "./browser/index.ts";
 import { createDucterPhone, type DucterPhone, type DucterPhoneOptions } from "./android/index.ts";
+import { createHandsets } from "./handset/index.ts";
 import { createComputerUse, type ComputerUse, type ComputerUseOptions } from "./computer/index.ts";
 import { readSites } from "./browser/sites.ts";
 import { createClosing, registerClosingTool } from "./closing.ts";
@@ -194,6 +195,8 @@ export interface Core extends CoreApi {
   ducterBrowser?: DucterBrowser;
   /** D217: Ducter's phone (用手机). */
   ducterPhone?: DucterPhone;
+  /** D238: the person's own phones (用这台手机). */
+  handsets: import("./handset/index.ts").Handsets;
   /** D235: 用电脑 / Use the computer. */
   computer?: ComputerUse;
   /** D191: 自动填充 / Autofill. */
@@ -486,11 +489,22 @@ export function startCore(opts: CoreOptions = {}): Core {
       : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief) => autofill.wants(brief !== undefined ? { brief } : log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string } | undefined), tell: (taskId, text) => runner?.send(taskId, text, undefined, "user").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
   if (browser) autofill.attachBrowser(browser.host);
   if (browser) decorateBrowsing = (o) => browser.decorate(o);
+  // D238: 用这台手机 / Use this phone: the person's own Android phones, through the Ducter app on each.
+  let deviceAuthRef: { list(): { id: string; name: string; kind: string }[] } | undefined;
+  const handsets = createHandsets({
+    dataDir,
+    log,
+    tasks,
+    deviceName: (id) => deviceAuthRef?.list().find((d) => d.id === id && d.kind === "client")?.name,
+    interrupt: (taskId) => runner?.interrupt(taskId) ?? Promise.resolve(),
+    language: () => { const l = settings.get().language; return l === "zh" || l === "en" ? l : undefined; },
+    tell: (taskId, text) => runner?.send(taskId, text, undefined, "user").catch((e) => console.warn(`[core] couldn't tell ${taskId} about the phone:`, (e as Error).message)),
+  });
   // D217: Ducter's phone (an Android emulator on a Mac), on this computer's card as 用手机.
   const ownPhone =
     opts.ownPhone === false
       ? undefined
-      : createDucterPhone({ dataDir, mcp, log, tasks, decisions, deviceName: () => savedHomeName(dataDir) ?? opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), tell: (taskId, text) => runner?.send(taskId, text, undefined, "user").catch((e) => console.warn(`[core] couldn't tell ${taskId} the phone is back:`, (e as Error).message)), workers: () => (workersRef ? { link: (d) => workersRef!.link(d), ability: (id) => workerAbility(id, "phone") } : undefined), ...(opts.ownPhone ?? {}) });
+      : createDucterPhone({ dataDir, mcp, log, tasks, decisions, deviceName: () => savedHomeName(dataDir) ?? opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), tell: (taskId, text) => runner?.send(taskId, text, undefined, "user").catch((e) => console.warn(`[core] couldn't tell ${taskId} the phone is back:`, (e as Error).message)), workers: () => (workersRef ? { link: (d) => workersRef!.link(d), ability: (id) => workerAbility(id, "phone") } : undefined), handsets: () => handsets, ...(opts.ownPhone ?? {}) });
   if (ownPhone) {
     const before = decorateBrowsing;
     decorateBrowsing = (o) => ownPhone.decorate(before(o));
@@ -540,7 +554,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         return Array.isArray(r) ? r : undefined;
       },
     });
-  const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn, models: modelCatalog });
+  const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any() });
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
   const closing = createClosing({ log, tasks, loadout, runner: () => runner });
   registerClosingTool(mcp, closing, () => settings.get().language === "zh");
@@ -596,7 +610,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
-  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber });
+  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets });
+  handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -607,6 +622,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
   };
   const devices = openDeviceAuth(dataDir);
+  deviceAuthRef = devices;
   // A device that pairs changes Your devices and abilities (远程打开 / Reach from outside).
   const gateAuth = {
     ...devices,
@@ -800,7 +816,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     const r = e.body as import("@ducter/protocol").Bodies["decision_resolved"];
     if (decisions.get(r.decisionId)?.anywhere) anywhere.answered(r.decisionId, r.option === "go");
   });
-  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
@@ -942,7 +958,10 @@ export function startCore(opts: CoreOptions = {}): Core {
         // A device token can't ride along ambiently (no cookies), so it needs no origin check.
         if (g.via === "local" && !sameOriginWs(req)) return new Response("forbidden", { status: 403 });
         // The device rides along so a revoked device's live socket can be closed (workers.ts).
-        const data = { ...ws.newData(), ...(g.via === "device" ? { device: g.device } : {}) };
+        // D238: a paired app that dials in over loopback (an SSH tunnel) is still that device when
+        // it offers its token: its phone's 用这台手机 is spoken for by it alone.
+        const own = g.via === "device" ? g.device : gate.deviceOf(req);
+        const data = { ...ws.newData(), ...(own ? { device: own } : {}) };
         // A browser that offered ["ducter", <token>] gets "ducter" back: Bun echoes the first
         // offered subprotocol by itself (adding the header again would send it twice).
         return srv.upgrade(req, { data }) ? undefined : new Response("upgrade failed", { status: 400 });
@@ -1001,6 +1020,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     memPlugins,
     ...(browser ? { ducterBrowser: browser } : {}),
     ...(ownPhone ? { ducterPhone: ownPhone } : {}),
+    handsets,
     ...(computer ? { computer } : {}),
     autofill,
     port,
@@ -1037,6 +1057,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       previews.close();
       await browser?.stop().catch(() => {});
       await ownPhone?.stop().catch(() => {});
+      handsets.stopAll();
       computer?.close();
       autofill.stop();
       keys.stop();

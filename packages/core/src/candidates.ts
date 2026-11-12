@@ -271,7 +271,7 @@ const BLOCK_WORDS: Record<CandidateBlock, string> = {
 
 /** The one line the New task card / `ducter task --agent` shows when the person's own pick can't run. */
 /** D217: what the partner hears when work needs Ducter's phone and no computer has it. */
-export const NO_PHONE = `no computer has Ducter's phone yet: the user adds 用手机 / Use a phone on their Mac in 设备 / Devices (a one-time download of about 2.3 GB). Tell the user that in one line; no task was opened.`;
+export const NO_PHONE = `no phone to work on yet: on their own Android phone the user adds 用这台手机 / Use this phone (in the Ducter app there: 设备 / Devices, that phone's card), or on their Mac 用手机 / Use a phone (Ducter's own phone, a one-time download of about 2.3 GB). Tell the user that in one line; no task was opened.`;
 
 export function pinProblem(harness: string, b: CandidateBlock): string {
   return `${harnessName(harness)} can't take this task: ${BLOCK_WORDS[b]}. Pick another AI agent, or fix that first.`;

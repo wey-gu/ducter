@@ -36,6 +36,8 @@ export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"
   if (d.where) return "";
   // D233: the task got the answer in the call it was waiting in; nothing to send again.
   if (r.delivered) return "";
+  // D238: the phone answers that one itself (handset/index.ts tells the task once it is on, or why not).
+  if (d.handset) return "";
   // D233: a key given (it is in the task's key file now) or refused; both resume the task.
   if (d.key) return r.option === "go" ? keyReadyText(d.key, true) : r.option === "hold" ? keyRefusedText(d.key) : "";
   if (r.option === "go" && d.signIn)
@@ -148,6 +150,8 @@ export function createDecisions(opts: {
           // D235: the same in the person's apps: Go does that one action; their own turn is Done.
           ...(q.computer ? { computer: q.computer, ...(q.computer.kind === "go" ? { goLabel: "Go", defaultOption: "hold" as const } : { goLabel: "Done", defaultOption: "hold" as const }) } : {}),
           ...(q.where ? { where: q.where } : {}),
+          // D238: may it use the person's own phone now: no default ever (silence never lends a phone).
+          ...(q.handset ? { handset: q.handset, goLabel: "Go", defaultOption: "hold" as const } : {}),
         };
         if (q.reversible && hasDefault) body.defaultAt = new Date(clock.now() + delay()).toISOString();
         log.append({ stream: "channel", origin: "system", kind: "decision", body });

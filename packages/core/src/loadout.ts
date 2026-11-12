@@ -43,6 +43,8 @@ export function createLoadout(o: {
   sites?: (deviceId: string) => string[];
   /** D202: each agent's models on each computer, to check an effort against the chosen model. */
   models?: ModelCatalog;
+  /** D238: the person's own phone is added (用这台手机): work on a phone app can run on any computer. */
+  handset?: () => boolean;
 }): Loadout {
   /** D157: every computer that runs tasks, from the devices frame. */
   const computers = async (): Promise<Computer[] | undefined> => {
@@ -50,7 +52,9 @@ export function createLoadout(o: {
     if (!v) return undefined;
     const f = await v.frame().catch((err) => (console.warn("[loadout] devices:", (err as Error).message), undefined));
     if (!f) return undefined;
-    return computersOf(f.devices, o.sites);
+    const comps = computersOf(f.devices, o.sites);
+    // D238: the tools drive the person's own phone from the home, wherever the task runs.
+    return o.handset?.() ? comps.map((c) => ({ ...c, phone: true })) : comps;
   };
   /** A computer the user named in the place (not the home's "local" default), for a place that can go anywhere. */
   const pinOf = (place?: Place) => {

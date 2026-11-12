@@ -93,8 +93,8 @@ The phone's apps, sign-ins and data live only in `<dataDir>/phone/home/avd`. **�
 
 - Linux servers (KVM, x86_64 images).
 - The real install and a real errand on a worker Mac through a server home (built with fakes, §10).
-- The user's own physical Android phones and iPhones (Pinky, once approvals can come from outside
-  its window; or adb over USB/Wi-Fi for Android).
+- The person's own Android phone is D238's 用这台手机 / Use this phone ([use-this-phone.md](use-this-phone.md));
+  iPhones are not offered (its §8).
 - Autofill on the phone (D191's fills by reference, into app fields).
 - A faster screen reader (an accessibility companion, ~70 ms) and video frames (scrcpy) for games.
 

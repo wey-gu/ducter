@@ -44,6 +44,10 @@ export interface PhoneToolsDeps {
   note?(taskId: string, d: PhoneDoing): void;
   evidenceDir(taskId: string): string;
   now?: () => number;
+  /** D238: the person's own phone this task uses (its cards say so), when it uses one. */
+  on?(taskId: string): { device: string; name: string } | undefined;
+  /** D238: what a tool says in the person's turn on their own phone. */
+  blindText?(taskId: string): string | undefined;
 }
 
 export interface PhoneTools {
@@ -79,20 +83,20 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
     if (d.blind(taskId)) {
       d.tried?.(taskId);
       note(taskId, { kind: "waiting" });
-      throw new Error(PHONE_BLIND);
+      throw new Error(d.blindText?.(taskId) ?? PHONE_BLIND);
     }
     const device = dev(taskId);
     await device.ensure();
     device.touch();
   };
 
-  const look = async (taskId: string): Promise<{ s?: Screen; text: string }> => {
+  const look = async (taskId: string): Promise<{ s?: Screen; text: string; blocked?: true }> => {
     const s = await dev(taskId).screen();
-    if (d.blind(taskId)) throw new Error(PHONE_BLIND);
+    if (d.blind(taskId)) throw new Error(d.blindText?.(taskId) ?? PHONE_BLIND);
     if (!s) return { text: "The screen is still moving, so its parts can't be listed right now. phone_look again in a moment, or pass picture:true to see it." };
     if (blockedApp(s.app)) {
       screens.delete(taskId);
-      return { text: `App in front: ${s.app}. This app holds the user's money or keys (a bank, wallet, payment app or password manager): it is the user's own, and you can't see or use it. Go back (phone_key back) and tell the user in your report if the work needs it.` };
+      return { text: `App in front: ${s.app}. This app holds the user's money or keys (a bank, wallet, payment app or password manager): it is the user's own, and you can't see or use it. Go back (phone_key back) and tell the user in your report if the work needs it.`, blocked: true };
     }
     screens.set(taskId, s);
     return { s, text: screenText(s) };
@@ -120,7 +124,8 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
     async (args, taskId) => {
       note(taskId, { kind: "look" });
       const r = await look(taskId);
-      if (!args.picture && r.s) return r.text;
+      // An app that holds the person's money or keys is never pictured either (D238 found this).
+      if (r.blocked || (!args.picture && r.s)) return r.text;
       return { content: [{ type: "text", text: r.text }, await picture(taskId)] };
     },
   );
@@ -275,7 +280,8 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       const what = String(args.what ?? "").trim().slice(0, 200);
       const app = s!.app;
       const name = String(args.app ?? "").trim().slice(0, 40);
-      ask(taskId, { id: "phone_go", text: what, blocking: true, default: "Go", reversible: false, phone: { kind: "go", app, ...(name && !/^[a-z][\w]*(\.[\w]+)+$/i.test(name) ? { name } : {}), label: n.label, effect } }, what);
+      const on = d.on?.(taskId);
+      ask(taskId, { id: "phone_go", text: what, blocking: true, default: "Go", reversible: false, phone: { kind: "go", app, ...(name && !/^[a-z][\w]*(\.[\w]+)+$/i.test(name) ? { name } : {}), label: n.label, effect, ...(on ? { on } : {}) } }, what);
       return `Asked the user's Go for "${n.label}" (${what}). End your turn now. After Go you'll get a message; phone_look, then tap it once.`;
     },
   );
@@ -287,8 +293,9 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
     async (args, taskId) => {
       const what = String(args.what ?? "").trim().slice(0, 200);
       const app = typeof args.app === "string" && args.app.trim() ? args.app.trim() : (screens.get(taskId)?.app ?? "");
-      ask(taskId, { id: "phone_user", text: what, blocking: true, default: "Done", reversible: false, phone: { kind: "user", ...(app ? { app } : {}) } }, what);
-      return "Asked the user to do it on the phone. End your turn now; when they're done you'll get a message, then phone_look.";
+      const on = d.on?.(taskId);
+      ask(taskId, { id: "phone_user", text: what, blocking: true, default: "Done", reversible: false, phone: { kind: "user", ...(app ? { app } : {}), ...(on ? { on } : {}) } }, what);
+      return on ? `Asked the user to do it themselves on ${on.name}. End your turn now; when they're done you'll get a message, then phone_look.` : "Asked the user to do it on the phone. End your turn now; when they're done you'll get a message, then phone_look.";
     },
   );
 

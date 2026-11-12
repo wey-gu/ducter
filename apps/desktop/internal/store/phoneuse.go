@@ -112,6 +112,15 @@ func (s *Store) applyPhone(f protocol.ServerFrame) {
 	}
 }
 
+// Handset says which of the person's own phones a task is using (D238);
+// nil = none.
+func (s *Store) Handset(taskID string) *protocol.Computing {
+	if c := s.card(taskID); c != nil {
+		return c.Handset
+	}
+	return nil
+}
+
 // Computing says where (and in which app) a task is using the person's
 // apps (D235); nil = it isn't.
 func (s *Store) Computing(taskID string) *protocol.Computing {

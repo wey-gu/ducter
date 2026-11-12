@@ -182,6 +182,8 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	}
 	// D235: it is using the person's apps: where, and 停下 / Stop.
 	a.computerTaskLine(c, task)
+	// D238: it is using the person's own phone: which, and 停下 / Stop.
+	a.handsetTaskLine(c, task)
 	// D217: it is using Ducter's phone: watch it, in the workbench's Phone page (D220).
 	if dev := a.S.Phoning(task.ID); dev != "" && a.button(c, a.L.T("phoneuse.watch"), btnSecondary, t.ControlSM, t.Chrome) {
 		a.bench.open, a.bench.tab = true, "phone"

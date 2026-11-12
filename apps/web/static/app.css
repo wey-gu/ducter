@@ -7362,3 +7362,102 @@ button.imprint:focus-visible {
 /* Its links wrap rather than cut off (a narrow phone in English). */
 .bubble.note .freact { flex-wrap: wrap; }
 .bubble.note .freact .btn { flex: none; }
+
+/* D238 · 用这台手机 / Use this phone: the guide to Android's one switch (a clay miniature of each
+   settings page, the fingertip where to tap: literal, research/74 §7), and the demo of a loan
+   (the pill, a tap's ring, a Go card, Stop). Every value is a Pebble token; motion stills itself. */
+.sheet.handset-guide h2 { text-align: center; }
+.sheet.handset-guide .lede { margin: 0 0 var(--s3); font-size: var(--sm); line-height: 1.55; color: var(--ink-soft); text-align: center; }
+.sheet.handset-guide .btns { display: flex; gap: 10px; margin-top: var(--s3); }
+.sheet.handset-guide .btns .btn { flex: 1; }
+.hs-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.hs-steps > li { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 16px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 3px 0 var(--line); }
+.hs-steps > li.next { background: var(--sunken); box-shadow: none; color: var(--ink-muted); }
+.hs-steps > li.done { background: var(--done-surface); box-shadow: 0 2px 0 var(--line); }
+.hs-n { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--sunken); color: var(--ink-soft); font-weight: 800; font-size: 14px; box-shadow: inset 0 2px 0 var(--line); }
+.hs-steps > li.here .hs-n { background: var(--accent); color: var(--ink); box-shadow: 0 3px 0 var(--press-primary); }
+.hs-steps > li.done .hs-n { background: var(--done-ink); }
+.hs-steps > li.done .hs-n::after { content: ""; width: 10px; height: 6px; border: solid var(--surface); border-width: 0 0 2.5px 2.5px; transform: translateY(-2px) rotate(-45deg); }
+.hs-what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.hs-what p { margin: 0; line-height: 1.5; }
+.hs-what .btn { align-self: stretch; }
+
+/* The miniature: Android's page as a small clay card, never a screenshot. */
+.hs-mini { position: relative; height: 176px; margin: 6px 0 2px; border-radius: 18px; overflow: hidden; background: var(--bg); box-shadow: inset 0 0 0 1.5px var(--line-2), 0 4px 0 var(--line-2); font-size: 12px; color: var(--ink); }
+.hs-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 8px; font-weight: 800; font-size: 14px; }
+/* Android's overflow menu, drawn (three dots), never the ⋮ character (D211). */
+.hs-kebab { width: 4px; height: 4px; margin-right: 4px; border-radius: 50%; background: var(--ink-soft); box-shadow: 0 -6px 0 var(--ink-soft), 0 6px 0 var(--ink-soft); }
+.hs-sec { padding: 4px 14px; color: var(--ink-muted); font-size: 11px; font-weight: 700; }
+.hs-row, .hs-app, .hs-switch { display: flex; align-items: center; gap: 8px; margin: 2px 10px; padding: 8px 10px; border-radius: 12px; background: var(--surface); box-shadow: 0 2px 0 var(--line); }
+.hs-row img, .hs-app img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: var(--sunken); }
+.hs-row span, .hs-app span, .hs-switch span { flex: 1; font-weight: 700; }
+.hs-row small { color: var(--ink-muted); }
+.hs-switch { position: absolute; left: 0; right: 0; top: 44px; opacity: 0; }
+.hs-toggle { position: relative; width: 30px; height: 18px; border-radius: 9px; background: var(--line-2); }
+.hs-toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 0 var(--line-2); }
+.hs-dialog { position: absolute; left: 18px; right: 18px; bottom: 14px; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 4px 0 var(--line-2); opacity: 0; transform: translateY(8px); }
+.hs-dialog b { font-size: 12px; line-height: 1.35; }
+.hs-dialog span { align-self: flex-end; color: var(--press-primary); font-weight: 800; }
+.hs-menu { position: absolute; right: 12px; top: 38px; padding: 10px 12px; border-radius: 12px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 4px 0 var(--line-2); font-weight: 700; opacity: 0; transform: scale(0.92); transform-origin: top right; }
+.hs-app { margin-top: 10px; }
+/* The fingertip: a soft clay dot that presses where Android wants the tap. */
+.hs-tip { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); pointer-events: none; left: 70%; top: 92px; }
+.hs-mini.try .hs-tip, .hs-mini.on .hs-tip { animation: hs-tip-a11y 4.8s ease-in-out infinite; }
+.hs-mini.try .hs-switch, .hs-mini.on .hs-switch { animation: hs-show-switch 4.8s ease-in-out infinite; }
+.hs-mini.try .hs-dialog, .hs-mini.on .hs-dialog { animation: hs-show-dialog 4.8s ease-in-out infinite; }
+/* The list gives way to Ducter's own page when its row is tapped (one page at a time, as Android shows them). */
+.hs-mini.try .hs-sec, .hs-mini.try .hs-row, .hs-mini.on .hs-sec, .hs-mini.on .hs-row { animation: hs-hide-list 4.8s ease-in-out infinite; }
+@keyframes hs-hide-list { 0%, 22% { opacity: 1; } 26%, 92% { opacity: 0; } 100% { opacity: 1; } }
+.hs-mini.on .hs-toggle { animation: hs-toggle-bg 4.8s ease-in-out infinite; }
+.hs-mini.on .hs-toggle::after { animation: hs-toggle-knob 4.8s ease-in-out infinite; }
+.hs-mini.allow .hs-tip { animation: hs-tip-allow 4s ease-in-out infinite; }
+.hs-mini.allow .hs-menu { animation: hs-show-menu 4s ease-in-out infinite; }
+@keyframes hs-tip-a11y {
+  0%, 8% { left: 50%; top: 104px; transform: scale(1); }
+  14% { transform: scale(0.8); } 20% { transform: scale(1); left: 50%; top: 104px; }
+  34%, 40% { left: 82%; top: 62px; transform: scale(1); } 46% { transform: scale(0.8); } 52% { transform: scale(1); left: 82%; top: 62px; }
+  66%, 72% { left: 82%; top: 150px; transform: scale(1); } 78% { transform: scale(0.8); } 84%, 100% { left: 82%; top: 150px; transform: scale(1); }
+}
+@keyframes hs-show-switch { 0%, 22% { opacity: 0; } 26%, 92% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes hs-show-dialog { 0%, 50% { opacity: 0; transform: translateY(8px); } 56%, 86% { opacity: 1; transform: none; } 94%, 100% { opacity: 0; transform: translateY(8px); } }
+@keyframes hs-toggle-bg { 0%, 46% { background: var(--line-2); } 50%, 92% { background: var(--accent); } 100% { background: var(--line-2); } }
+@keyframes hs-toggle-knob { 0%, 46% { transform: none; } 50%, 92% { transform: translateX(12px); } 100% { transform: none; } }
+@keyframes hs-tip-allow {
+  0%, 10% { left: 90%; top: 22px; transform: scale(1); } 16% { transform: scale(0.8); } 22% { transform: scale(1); left: 90%; top: 22px; }
+  44%, 52% { left: 66%; top: 52px; transform: scale(1); } 58% { transform: scale(0.8); } 64%, 100% { left: 66%; top: 52px; transform: scale(1); }
+}
+@keyframes hs-show-menu { 0%, 24% { opacity: 0; transform: scale(0.92); } 30%, 86% { opacity: 1; transform: none; } 94%, 100% { opacity: 0; transform: scale(0.92); } }
+
+/* The demo: a small clay phone in a loan. */
+.hs-demo { display: flex; flex-direction: column; align-items: center; gap: var(--s3); margin: var(--s2) 0; }
+.hs-phone { position: relative; width: 200px; height: 300px; border-radius: 30px; background: var(--bg); box-shadow: inset 0 0 0 6px var(--ink-soft), 0 6px 0 var(--ink), 0 14px 24px color-mix(in srgb, var(--ink) 18%, transparent); overflow: hidden; }
+.hs-pill { position: absolute; top: 12px; left: 50%; display: flex; align-items: center; gap: 6px; width: 184px; padding: 4px; border-radius: 18px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line-2), 0 3px 0 var(--line-2); transform: translate(-50%, -60px); animation: hs-pill 7s ease-in-out infinite; }
+.hs-pill img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: var(--surface); }
+.hs-pill span { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
+.hs-pill b { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs-pill small { font-size: 8.5px; color: var(--ink-muted); white-space: nowrap; }
+.hs-pill em { flex: none; white-space: nowrap; padding: 4px 8px 5px; border-radius: 10px; background: var(--accent); box-shadow: 0 2px 0 var(--press-primary); font-style: normal; font-weight: 800; font-size: 9.5px; animation: hs-stop 7s ease-in-out infinite; }
+.hs-chat { position: absolute; inset: 64px 12px 16px; display: flex; flex-direction: column; justify-content: space-between; }
+.hs-msg { align-self: flex-start; padding: 6px 10px; border-radius: 12px; background: var(--surface); box-shadow: 0 2px 0 var(--line); font-size: 10px; font-weight: 700; }
+.hs-input { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 10px; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-size: 9.5px; }
+.hs-input span { flex: 1; }
+.hs-send { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); box-shadow: 0 2px 0 var(--press-primary); }
+.hs-ring { position: absolute; right: 18px; bottom: 21px; width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--accent); opacity: 0; animation: hs-ring 7s ease-out infinite; }
+.hs-go { position: absolute; left: 12px; right: 12px; bottom: 110px; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 10px; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 4px 0 var(--line-2); font-size: 9.5px; opacity: 0; transform: translateY(10px); animation: hs-go 7s ease-in-out infinite; }
+.hs-go span { flex: 1; font-weight: 700; }
+.hs-go b { padding: 4px 10px 5px; border-radius: 10px; background: var(--accent); box-shadow: 0 2px 0 var(--press-primary); }
+.hs-caps { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; width: 100%; max-width: 340px; counter-reset: c; }
+.hs-caps li { display: flex; gap: 8px; align-items: baseline; font-size: var(--sm); line-height: 1.45; color: var(--ink-muted); counter-increment: c; animation: hs-cap 7s ease-in-out infinite; animation-delay: calc(var(--i) * 1.75s - 7s); }
+.hs-caps li::before { content: counter(c); flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--sunken); font-size: 11px; font-weight: 800; color: var(--ink-soft); }
+@keyframes hs-pill { 0%, 6% { transform: translate(-50%, -60px); } 14%, 88% { transform: translate(-50%, 0); } 96%, 100% { transform: translate(-50%, -60px); } }
+@keyframes hs-ring { 0%, 34% { opacity: 0; transform: scale(0.4); } 36% { opacity: 1; transform: scale(0.5); } 46%, 100% { opacity: 0; transform: scale(1.3); } }
+@keyframes hs-go { 0%, 40% { opacity: 0; transform: translateY(10px); } 46%, 66% { opacity: 1; transform: none; } 72%, 100% { opacity: 0; transform: translateY(10px); } }
+@keyframes hs-stop { 0%, 74% { transform: none; box-shadow: 0 2px 0 var(--press-primary); } 78% { transform: translateY(2px); box-shadow: 0 0 0 var(--press-primary); } 82%, 100% { transform: none; box-shadow: 0 2px 0 var(--press-primary); } }
+@keyframes hs-cap { 0%, 24% { color: var(--ink); } 25%, 100% { color: var(--ink-muted); } }
+@media (prefers-reduced-motion: reduce) {
+  .hs-tip, .hs-switch, .hs-dialog, .hs-toggle, .hs-toggle::after, .hs-menu, .hs-pill, .hs-pill em, .hs-ring, .hs-go, .hs-caps li { animation: none !important; }
+  .hs-pill { transform: translate(-50%, 0); }
+  .hs-dialog, .hs-switch, .hs-menu, .hs-go { opacity: 1; transform: none; }
+  .hs-sec, .hs-row { animation: none !important; opacity: 0; }
+  .hs-caps li { color: var(--ink-soft); }
+}

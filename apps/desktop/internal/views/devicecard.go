@@ -110,6 +110,7 @@ func (a *App) clientCard(c *ui.Context, cl *protocol.ReachClient) {
 	}
 	a.statusLine(c, line, t.InkMuted, false)
 	a.chipRow(c, "cl:"+cl.ID, nil, cl)
+	a.handsetCard(c, cl)
 	a.viaLine(c, "cl:"+cl.ID, computer, cl)
 	if isCLI(cl) {
 		a.sheetFoot(c, cl.ID, name, a.L.T("device.cli.name", computer), "device.disconnect.means.cli")

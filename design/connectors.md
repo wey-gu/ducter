@@ -153,7 +153,7 @@ Each find is typed (stage 2 extracts, stage 3 judges). The kind is what the pers
 
 | Kind (zh / en) | What it is | Sources | When it is said | Next step it offers | On by default |
 |---|---|---|---|---|---|
-| **两件事对不上 / Two things don't match** (the aha) | Two facts that contradict or leave a gap: a flight lands the night before the hotel starts; a renewal notice with no payment after it and the card expired; an invoice with no matching bank mail; a meeting during a flight | mail + calendar, joined through the ledger (§9) over 60 days | the morning note; **now** only if it costs something today | a 上网 task that looks it up (Go), never the change itself | yes |
+| **两件事对不上 / Two things don't match** (the aha) | Two facts that contradict or leave a gap: a flight lands the night before the hotel starts; a renewal notice with no payment after it and the card expired; an invoice with no matching bank mail; a meeting during a flight; two meetings at once in any of their calendars, today or tomorrow (D221) | mail + calendar, joined through the ledger (§9) over 60 days | the morning note; **now** only if it costs something today | a 上网 task that looks it up (Go), never the change itself | yes |
 | **在等你回 / Waiting on you** | A real person asked you something (a question, a request, a review) and you haven't answered in 2 working days, or they asked again | mail, GitHub review requests, Discord DMs and @-mentions | the morning note | read it first and write up what matters (a task, Go); a draft reply kept in Ducter (Go to save or send) | yes, people only (no lists, no bulk, no noreply) |
 | **你在等别人回 / You're waiting on someone** | You asked a question or made a request, and nobody answered in 3 working days, and it mattered (a deadline, money, a person who matters, Mem) | your sent mail | the morning note | a short follow-up draft (Go) | yes |
 | **你答应过的 / Something you promised** | A commitment in your own sent mail or messages ("我周五前发给你") with nothing showing it was kept | sent mail (14 days, research/46) | the morning of the due day | find the related draft or files; a draft reply (Go) | yes |
@@ -341,7 +341,8 @@ existing parts; the app tile is literal (an app's rounded square), not a metapho
    **会看** · **新邮件的发件人、标题和开头几行；要细看才读全文** and **先问你** · **发信、回复、存草稿、改标签、
    删除** as a label column beside the words; the **自己留意 / Watch on its own** switch (Discord: **只看 @你
    和私信**); **这个月用了 3%** when watching; at the foot, quiet: **不让 Ducter 看这个** (and for
-   oo: **要退出登录，去 oo 里**).
+   oo: **要退出登录，去 oo 里**). A calendar tile adds a fourth band, **看哪些日历 / Calendars it
+   reads**, one switch per calendar in that account (D221, `calendar.md` §4).
 5. **The proactive chips** (§5) sit once above the cards, titled **自己发现了事，怎么告诉你 / When
    it notices something**; with a single source the page reads as one sheet.
 6. **One connection line, last:** where what it reads passes, worded by what the card holds

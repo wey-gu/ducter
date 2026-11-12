@@ -170,6 +170,6 @@ export function factsOf(i: Item, t: TriageOut | undefined): NewFact[] {
 
 /** A calendar event is a fact already (no model). */
 export function eventFact(i: Item): NewFact | undefined {
-  if (i.kind !== "event" || i.start === undefined || i.cancelled) return;
+  if (i.kind !== "event" || i.start === undefined || i.cancelled || i.allDay || i.free || i.declined) return;
   return { ref: { connectionId: i.connectionId, service: i.service, ...(i.account ? { account: i.account } : {}), id: i.id }, label: (i.title ?? "").slice(0, 80), at: new Date(i.at).toISOString(), type: "meeting", title: i.title ?? "", start: new Date(i.start).toISOString(), ...(i.end ? { end: new Date(i.end).toISOString() } : {}), with: i.attendees ?? [], ...(i.location ? { location: i.location } : {}) };
 }

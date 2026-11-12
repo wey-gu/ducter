@@ -28,6 +28,8 @@ two accounts for one service (a work and a personal Gmail), your partner can rea
 
 If the card says oo isn't signed in, run `oo login` in a terminal, then tap again.
 
+Calendars have a page of their own: [Your calendar](calendar.md).
+
 ## Without oo: a key
 
 Choose **Add one** (or **Add one with an address and key** under the oo card), then pick where

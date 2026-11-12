@@ -117,3 +117,23 @@ test("before a meeting: 10 minutes before, only with something open with them", 
   // Too early: nothing yet.
   expect(meetingPrep(l, { now: Date.parse("2026-11-10T09:30:00+08:00"), zone: ZONE })).toEqual([]);
 });
+
+// D221: two meetings at once, often in two accounts that can't see each other.
+test("a clash today or tomorrow, across calendars, is a mismatch; one event in both calendars is not", () => {
+  const l = ledger();
+  const m = (id: string, account: string, title: string, start: string, end: string) => ({ ref: { connectionId: "conn_oo", service: "googlecalendar", account, id }, label: title, at: "2026-11-01T00:00:00Z", type: "meeting" as const, title, start, end, with: [] });
+  l.add([
+    m("a", "home", "看牙", "2026-11-11T10:00:00+08:00", "2026-11-11T11:00:00+08:00"),
+    m("b", "work", "HawDB 周会", "2026-11-11T10:30:00+08:00", "2026-11-11T11:30:00+08:00"),
+    // The same invitation in both accounts.
+    m("c", "home", "Board call", "2026-11-11T16:00:00+08:00", "2026-11-11T17:00:00+08:00"),
+    m("d", "work", "Board call", "2026-11-11T16:00:00+08:00", "2026-11-11T17:00:00+08:00"),
+    // Next week: not yet.
+    m("e", "home", "Lunch", "2026-11-18T12:00:00+08:00", "2026-11-18T13:00:00+08:00"),
+    m("f", "work", "Review", "2026-11-18T12:30:00+08:00", "2026-11-18T13:00:00+08:00"),
+  ]);
+  const clashes = detect(l, { now: MORNING, zone: ZONE, kinds: ["mismatch"] }).filter((c) => c.key.startsWith("clash:"));
+  expect(clashes).toHaveLength(1);
+  expect(clashes[0]!.words.zh).toMatch(/^(今天|明天) 10:30「看牙」和「HawDB 周会」撞了。$/);
+  expect(clashes[0]!.words.en).toContain("overlap");
+});

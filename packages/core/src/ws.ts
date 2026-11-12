@@ -95,6 +95,8 @@ export interface WsDeps {
   autofill?: import("./saved/index.ts").Autofill;
   /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
+  /** D221: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
+  calendar?: () => import("./calendar.ts").Calendar | undefined;
   batchMs?: number;
 }
 
@@ -201,8 +203,19 @@ export function createWsHandler(deps: WsDeps) {
   // Connections: same pattern. The frame never carries a token.
   const connectionsFrame = (): ServerFrame => {
     const p = deps.proactive?.();
+    const cal = deps.calendar?.();
     const list = deps.connections!.view().map((c) => {
-      const look = p?.look(c.id);
+      let look = p?.look(c.id);
+      // D221: a calendar account's tile carries its calendars and which it reads.
+      if (look && cal)
+        look = {
+          ...look,
+          apps: look.apps.map((w) => {
+            if (!/calendar/.test(w.service)) return w;
+            const rows = cal.rows({ connectionId: c.id, service: w.service, account: deps.connections!.apps(c.id).find((a) => a.service === w.service && (a.label ?? a.account) === w.account)?.account, label: w.account });
+            return rows ? { ...w, calendars: rows } : w;
+          }),
+        };
       const phone = deps.phone?.view(c.id);
       return { ...c, ...(look ? { look } : {}), ...(phone ? { phone } : {}) };
     });
@@ -212,6 +225,14 @@ export function createWsHandler(deps: WsDeps) {
   const offConnections = deps.connections?.onChange(() => {
     for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
   });
+  // D221: the calendar module is made after this handler; subscribe on the first Accounts frame.
+  let offCalendar: (() => void) | undefined;
+  const watchCal = () => {
+    if (offCalendar) return;
+    offCalendar = deps.calendar?.()?.onChange(() => {
+      for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
+    });
+  };
   // D218: the own-number card follows the phone (plugged in, allowed, the test call, a live call).
   let ownTimer: ReturnType<typeof setTimeout> | undefined;
   const offOwn = deps.ownNumber?.onChange(() => {
@@ -362,7 +383,22 @@ export function createWsHandler(deps: WsDeps) {
         if (f.client !== "cli") deps.proactive?.()?.hello();
         if (f.client !== "cli")
           void firstScreenFor(f.tz)
-            .then((first) => sockets.has(ws) && send(ws, { t: "first_screen", first }))
+            .then(async (first) => {
+              if (!sockets.has(ws)) return;
+              send(ws, { t: "first_screen", first });
+              // D221: what is still on today, as a second frame once the calendars answered (they read
+              // through oo, which takes seconds; the greeting never waits for it).
+              const cal = deps.calendar?.();
+              if (!cal?.accounts().length) return;
+              let today = cal.today();
+              // A read only when today wasn't read in the last half hour (never on every hello).
+              if (!today && Date.now() - (cal.readAt() ?? 0) > 30 * 60_000) {
+                const d = new Intl.DateTimeFormat("en-CA", { timeZone: f.tz || undefined, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+                await cal.glance(d, d).catch(() => undefined);
+                today = cal.today();
+              }
+              if (today && sockets.has(ws)) send(ws, { t: "first_screen", first: { ...first, today } });
+            })
             .catch((err) => console.warn("[ws] first screen:", (err as Error).message));
         return;
       }
@@ -681,6 +717,9 @@ export function createWsHandler(deps: WsDeps) {
         watchLook();
         watchOwn();
         send(ws, connectionsFrame());
+        // D221: list the calendar accounts' calendars (cached); the frame follows when they change.
+        watchCal();
+        void deps.calendar?.()?.refresh().catch(() => {});
         const si = deps.connections.signInView();
         if (si) send(ws, { t: "connection_signin", signIn: si });
         void deps.connections.recheck().catch(() => {});
@@ -762,6 +801,13 @@ export function createWsHandler(deps: WsDeps) {
         const patch = { ...(typeof f.watch === "boolean" ? { watch: f.watch } : {}), ...(typeof f.excluded === "boolean" ? { excluded: f.excluded } : {}) };
         const ok = p ? p.setApp(String(f.id ?? ""), String(f.service ?? ""), f.account, patch) : deps.connections.setApp(String(f.id ?? ""), String(f.service ?? ""), f.account, patch);
         if (!ok) send(ws, connectionsFrame());
+        return;
+      }
+      case "cal_pick": {
+        const cal = deps.calendar?.();
+        if (!cal) throw new Error("calendars are not available");
+        ws.data.connections = true;
+        if (!cal.pick(String(f.id ?? ""), String(f.service ?? ""), f.account, String(f.calendarId ?? ""), f.seen === true)) send(ws, connectionsFrame());
         return;
       }
       case "connection_reads": {
@@ -1075,6 +1121,7 @@ export function createWsHandler(deps: WsDeps) {
       offSettings?.();
       offRules?.();
       offConnections?.();
+      offCalendar?.();
       offOwn?.();
       if (ownScan) clearInterval(ownScan);
       if (ownTimer) clearTimeout(ownTimer);

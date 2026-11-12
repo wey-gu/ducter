@@ -51,7 +51,7 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { callWakes, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDIA_LIMITS, type MediaRef, type ActivityStep, type Bodies, type Brain, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
+import { callWakes, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDIA_LIMITS, type MediaRef, type ActivityStep, type Bodies, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeContextFor, bridgeFor, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
@@ -147,6 +147,7 @@ interface TurnState {
   recalls: number; // memory_search calls this turn
   noted: { title: string; memoryId?: string }[]; // memory_add successes, shown after the turn's text
   shows?: MediaRef[]; // D206: what the triggering reports showed, put under this turn's first message
+  cal?: CalGlance; // D221: the day card calendar do=agenda show put under this turn's next message
   carried?: Carried; // this turn redoes one a restart cut off
   early: EarlyOpen[]; // tasks opened from the streamed head of a task_open call (D120)
 }
@@ -585,6 +586,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // D206: what a task showed goes under the partner's first words about it, once.
       body.media = turn.shows;
       turn.shows = undefined;
+    }
+    if (!decisionId && turn?.cal) {
+      // D221: the day card goes under the words about it, once.
+      body.cal = turn.cal;
+      turn.cal = undefined;
     }
     core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body });
   };
@@ -1160,6 +1166,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       await session!.send(input, "turn", picturesOf(batch));
       await reading;
       flushPending();
+      // D221: a day card asked for with no words after it still shows, on its own.
+      if (turn.cal) core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "", cal: turn.cal, ...(turn.replyTo !== undefined ? { replyTo: turn.replyTo } : {}) } }), (turn.cal = undefined);
       appendNoted(turn);
       await settleOwed(batch, turnFrom);
       confirmResults(batch);
@@ -1869,6 +1877,117 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (!core.tasks.get(taskId)) return { ok: false, error: `unknown task ${taskId}` };
         return conns.grant(taskId, s_(a.connection));
       },
+    );
+  }
+
+  // ---------- Calendars (D221, design/calendar.md) ----------
+  // One tool over every calendar account, merged. Listed only while a calendar is connected. A
+  // change is a Go card that core makes and runs on Go (the partner isn't woken for it).
+  const cal = (core as { calendar?: import("../../core/src/calendar.ts").Calendar }).calendar;
+  if (cal && core.mcp.registerWhen) {
+    const str_ = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const zoneNow = () => cal.zone();
+    const todayIn = (z: string) => new Intl.DateTimeFormat("en-CA", { timeZone: z, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const hm = (iso: string) => (/T(\d\d:\d\d)/.exec(iso)?.[1] ?? "");
+    const brief = (e: CalEvent) => ({
+      ref: e.ref,
+      when: e.allDay ? "all day" : `${hm(e.start)}–${hm(e.end)}`,
+      title: e.title,
+      ...(e.account || e.calendar ? { in: [e.calendar, e.account].filter(Boolean).join(" · ") } : {}),
+      ...(e.with?.length ? { with: e.with.join(", ") + (e.people && e.people > e.with.length ? ` +${e.people - e.with.length}` : "") } : {}),
+      ...(e.me && e.me !== "accepted" ? { you: e.me } : {}),
+      ...(e.mine ? { mine: true } : {}),
+      ...(e.free ? { free: true } : {}),
+      ...(e.where ? { where: e.where } : {}),
+      ...(e.online ? { online: true } : {}),
+      ...(e.zone ? { theirZone: e.zone } : {}),
+    });
+    core.mcp.registerWhen(
+      "partner",
+      "calendar",
+      "The user's calendars, all accounts merged, in their zone. do=agenda: from/to dates; show=true puts the day card under your reply (what's my day/week): then say the gist in a line, don't list it. do=free: open slots. do=propose: a change as a Go card (ref from agenda), then end your turn; it runs on Go.",
+      {
+        type: "object",
+        properties: {
+          do: { type: "string", enum: ["agenda", "free", "propose"] },
+          from: { type: "string", description: "YYYY-MM-DD" },
+          to: { type: "string", description: "YYYY-MM-DD, inclusive" },
+          show: { type: "boolean" },
+          minutes: { type: "number" },
+          dayStart: { type: "string", description: "free: HH:MM (09:00)" },
+          dayEnd: { type: "string", description: "free: HH:MM (18:00)" },
+          weekends: { type: "boolean" },
+          change: { type: "string", enum: ["create", "move", "cancel", "respond"] },
+          ref: { type: "string" },
+          title: { type: "string", description: "User's language" },
+          start: { type: "string", description: "YYYY-MM-DDTHH:MM, user's zone" },
+          end: { type: "string" },
+          attendees: { type: "array", items: { type: "string" }, description: "Emails; each gets an invite" },
+          account: { type: "string", description: "Whose calendar, if said" },
+          where: { type: "string" },
+          response: { type: "string", enum: ["accepted", "declined", "tentative"] },
+          theirZone: { type: "string", description: "IANA, the other side's, if known" },
+          theirName: { type: "string" },
+        },
+        required: ["do"],
+      },
+      async (a: Record<string, unknown>) => {
+        const zone = zoneNow();
+        const what = str_(a.do);
+        if (what === "agenda") {
+          const from = /^\d{4}-\d\d-\d\d/.test(str_(a.from)) ? str_(a.from).slice(0, 10) : todayIn(zone);
+          const to = /^\d{4}-\d\d-\d\d/.test(str_(a.to)) ? str_(a.to).slice(0, 10) : from;
+          const g = await cal.glance(from, to);
+          const { errors, ...card } = g;
+          const any = g.days.some((d) => d.events.length || d.marks?.length);
+          if (a.show === true && turn && any) turn.cal = card;
+          return {
+            ok: true,
+            zone: g.zone,
+            days: g.days.map((d) => ({ date: d.date, ...(d.marks?.length ? { marks: d.marks } : {}), events: d.events.map(brief) })),
+            ...(g.clashes?.length ? { overlaps: g.clashes } : {}),
+            ...(errors?.length ? { unread: errors } : {}),
+            note: a.show === true && any ? "The card shows every event under your next message: say the gist in one line (how many, the first, anything that overlaps), never the list." : "Answer in a line or two; times are the user's.",
+          };
+        }
+        if (what === "free") {
+          const r = await cal.free({ minutes: Number(a.minutes) || 30, from: str_(a.from) || undefined, to: str_(a.to) || undefined, dayStart: str_(a.dayStart) || undefined, dayEnd: str_(a.dayEnd) || undefined, weekends: a.weekends === true });
+          return { ok: true, zone: r.zone, slots: r.slots.map((x) => `${x.start.slice(0, 16)}–${hm(x.end)}`), ...(r.errors?.length ? { unread: r.errors } : {}), note: r.slots.length ? "Offer two or three in plain words; propose only once the user picks (or said any time works)." : "Nothing free in that window: say so and offer a wider one." };
+        }
+        if (what === "propose") {
+          await Bun.sleep(5);
+          flushPending();
+          if (turn?.askedId) return { ok: false, error: "You already asked this turn; that card is on screen. End your turn." };
+          const decisionId = newId("d");
+          const change = str_(a.change) as "create" | "move" | "cancel" | "respond";
+          if (!["create", "move", "cancel", "respond"].includes(change)) return { ok: false, error: "propose needs change: create, move, cancel or respond." };
+          const r = await cal.propose(
+            {
+              change,
+              ...(str_(a.ref) ? { ref: str_(a.ref) } : {}),
+              ...(str_(a.title) ? { title: str_(a.title) } : {}),
+              ...(str_(a.start) ? { start: str_(a.start) } : {}),
+              ...(str_(a.end) ? { end: str_(a.end) } : {}),
+              ...(Number(a.minutes) > 0 ? { minutes: Number(a.minutes) } : {}),
+              ...(Array.isArray(a.attendees) ? { attendees: a.attendees.map(String) } : {}),
+              ...(str_(a.account) ? { account: str_(a.account) } : {}),
+              ...(str_(a.where) ? { where: str_(a.where) } : {}),
+              ...(str_(a.response) ? { response: str_(a.response) as "accepted" | "declined" | "tentative" } : {}),
+              ...(str_(a.theirZone) ? { theirZone: str_(a.theirZone) } : {}),
+              ...(str_(a.theirName) ? { theirName: str_(a.theirName) } : {}),
+            },
+            decisionId,
+          );
+          if (!r.ok) return r;
+          const lang = taskLanguage(turn) ?? "en";
+          const body: Bodies["decision"] = { decisionId, question: r.question[lang], goLabel: r.goLabel[lang], defaultOption: "hold", reversible: false, cal: r.cal };
+          core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
+          if (turn) (turn.asked = true), (turn.askedId = decisionId);
+          return { ok: true, needsGo: true, note: "The card shows what changes, where, when and who hears. End your turn without more words: on Go it runs by itself and the card shows it." };
+        }
+        return { ok: false, error: "do is agenda, free or propose." };
+      },
+      () => cal.accounts().length > 0,
     );
   }
 

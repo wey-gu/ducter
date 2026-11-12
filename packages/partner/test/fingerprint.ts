@@ -8,6 +8,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startCore } from "../../core/src/core.ts";
+import { fakeOoCalendar } from "../../core/test/fake-oo-calendar.ts";
 import { registerTaskTools } from "../../runner/src/tools.ts";
 import { createPartner } from "../src/partner.ts";
 import { buildSystemPrompt } from "../src/persona.ts";
@@ -27,7 +28,10 @@ export async function partnerFingerprint(): Promise<Fingerprint> {
   const dir = mkdtempSync(join(tmpdir(), "ducter-fp-"));
   // Autofill's key in the scratch folder, never a keychain (this also runs from the eval).
   process.env.DUCTER_SAVED_KEY = "file";
-  const core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin" });
+  // D221: two calendar accounts in a fake oo, so the calendar tool (listed only then) is judged too.
+  const oo = fakeOoCalendar({ day: "2026-11-18" });
+  const core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin", ooSource: oo.source });
+  await core.connections.addFromOo();
   // D191: saved_list is listed once something is saved: a test card, so it is judged too.
   core.autofill.store.put({ kind: "card", name: "Eval", number: "4242424242424242", expMonth: 12, expYear: 2099 });
   registerTaskTools(core as never, {});

@@ -30,8 +30,15 @@ export const WRITE_WORDS = new Set([
   "accept", "decline", "pin", "unpin", "star", "unstar", "react", "schedule", "book", "pay", "transfer", "and", "or",
 ]);
 
+/**
+ * Reads whose names don't start with a verb, checked one by one against the service's own docs
+ * (research/64: Google Calendar's freeBusy query only reads busy times).
+ */
+export const KNOWN_READS = new Set(["googlecalendar.free_busy_query"]);
+
 /** read only for a clear read verb first and no changing word anywhere; unknown is a write. */
 export function ooOp(action: string): "read" | "write" {
+  if (KNOWN_READS.has(action)) return "read";
   const name = action.includes(".") ? action.slice(action.indexOf(".") + 1) : action;
   const words = name
     .replace(/([a-z0-9])([A-Z])/g, "$1_$2")

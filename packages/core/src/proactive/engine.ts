@@ -153,6 +153,8 @@ export interface ProactiveOptions {
   present: () => boolean;
   /** The person's zone (quiet hours', else the last client's, else the server's). */
   zone: () => string;
+  /** D221: the calendars to read in a calendar account (the ones the person lets it read). */
+  calendarIds?: (a: import("../connections.ts").AppTarget) => Promise<string[]>;
   /** The month's model budget per source (D114's mechanism). */
   monthTokens?: number;
 }
@@ -278,6 +280,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     clock: o.clock,
     enabled: () => mode() !== "off",
     zone,
+    ...(o.calendarIds ? { calendarIds: o.calendarIds } : {}),
     onItems: (_a, items) => intake(items, "look"),
   });
 

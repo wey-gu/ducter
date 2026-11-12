@@ -379,6 +379,24 @@ note and a `Dn`) before it is built.
 - [ ] **Nowledge Bridge live** (`design/bridge.md`): the live J1 round trip, then outbound
       (J4). Trigger: the account is enabled for Bridge.
 
+## Calendars (D221, `design/calendar.md`, research/64)
+
+- [ ] **One real Go per change, on a test calendar of the author's** (create with a guest who is
+  the author's other address, move, answer an invitation, cancel), through oo: that the staged
+  input runs as built, the card settles with its link, and whether `online` gives a Meet link
+  (oo exposes no `conferenceDataVersion`). Trigger: the author back and willing; never on a
+  real meeting.
+- [ ] **Outlook calendars** through oo's `outlook_calendar` (`list_calendar_view`, `list_events`,
+  `create_event`): the same merged day and cards. Trigger: someone with Outlook connected in oo.
+- [ ] **Recurring events:** "every week from now on" for a move or a cancel (today one occurrence).
+  Trigger: the first ask for it.
+- [ ] **A guest's zone without being told:** from Mem (where Lina lives) or the guest's own
+  calendar settings when shared. Trigger: a wrong-zone proposal seen in use.
+- [ ] **Comprehension test** of the day card and the change card with naive raters (LLM proxies
+  first), with the next prototype review.
+- [ ] **The calendar in the iOS widget / Lock Screen** ("next: 14:00 Design sync"). Trigger:
+  the widget work.
+
 ## Pictures and files, phases 2 and 3 (D206, `design/media.md`)
 
 - [ ] **Phase 2: files and PDFs from the user.** The same tray, a file card in the message, the

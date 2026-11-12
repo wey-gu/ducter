@@ -106,6 +106,12 @@ export interface Expect {
   called?: { tool: string; args?: Record<string, unknown> }[];
   /** Partner tools that must not be called. */
   notCalled?: string[];
+  /** D221: a day card went under a message (calendar do=agenda show) / none did. */
+  dayCard?: boolean;
+  noDayCard?: boolean;
+  /** D221: a calendar change card of this kind was made / none was. */
+  calCard?: "create" | "move" | "cancel" | "respond";
+  noCalCard?: boolean;
   /** Bridge: what Ducter sent through the (fake) Bridge, all messages joined. */
   bridgeSent?: { to?: string; count?: [number, number]; require?: RegExp[]; forbid?: RegExp[] };
 }
@@ -147,6 +153,13 @@ export interface Scenario {
   ownPhone?: true;
   /** D193: the owner's quiet hours cover now (calls wait for the morning). */
   quietNow?: true;
+  /**
+   * D221: Gmail and two Google Calendar accounts in a fake oo (packages/core/test/fake-oo-calendar.ts),
+   * on today's date: today at 10:00 看牙 (personal) overlaps 10:30 HawDB 周会 (work, with Lina Chen),
+   * 14:00 Design sync (Sam Lee's invitation, not answered, made in Los Angeles), 16:00 Board call
+   * (in both calendars), 18:30 家里吃饭 (Family), 19:00 Gym (marked free); a declined All hands.
+   */
+  calendar?: true;
 }
 
 // Under a result message the app renders, from the task's typed report: the task chip, the
@@ -1304,6 +1317,63 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Anything in my email this week I still need to reply to?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 220, require: [/account/i], forbid: [/OAuth|token|API key|scope/i] },
     rubric: "No account is connected. It says in one short English line that it can't read their mail yet and where they can add their accounts (the Partner page / Accounts it can read; one tap with oo). It opens no task, invents no mail, and never explains OAuth or tokens.",
+  },
+  // ---------- calendars (D221): two accounts merged, changes behind a card ----------
+  {
+    id: "calendar-today-zh",
+    category: "calendar",
+    lang: "zh",
+    calendar: true,
+    floor: true,
+    steps: [{ user: "我今天都有什么安排？" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 90, dayCard: true, called: [{ tool: "calendar", args: { do: "agenda", show: true } }], noCalCard: true, forbid: [/^\s*[-•*\d]/m] },
+    rubric: "The user asks what's on today. It reads the calendars (both accounts merged) and puts the day card under a short Chinese reply (one or two short sentences) that gives the gist, never the whole list: e.g. how many things, the first one, that 10:00 看牙 and 10:30 HawDB 周会 overlap, and anything that needs them (the Design sync invitation isn't answered yet). Times must be right (10:00 / 10:30). No bullet list, no task, no account plumbing (oo, connection names).",
+  },
+  {
+    id: "calendar-tomorrow-en",
+    category: "calendar",
+    lang: "en",
+    calendar: true,
+    steps: [{ user: "What's on my calendar tomorrow?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "calendar", args: { do: "agenda" } }], noCalCard: true },
+    rubric: "Tomorrow is empty in the fixture. It reads tomorrow and says plainly in one short English line that nothing is on (a day card may or may not show). It invents no events, opens no task, and doesn't list today's events as if they were tomorrow's.",
+  },
+  {
+    id: "calendar-free-zh",
+    category: "calendar",
+    lang: "zh",
+    calendar: true,
+    steps: [{ user: "这周找个一小时的空档，我想去体检" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 140, called: [{ tool: "calendar", args: { do: "free" } }], noCalCard: true },
+    rubric: "The user wants an hour this week. It looks for free time (calendar do=free, both accounts) and offers two or three concrete options in short Chinese (day and time), then lets the user pick. It does NOT add anything to the calendar yet (no card), opens no task, and names no slot that overlaps a busy time today (10:00–11:30, 14:00–14:30, 16:00–17:00; 14:30 onwards is free until 16:00).",
+  },
+  {
+    id: "calendar-add-zh",
+    category: "calendar",
+    lang: "zh",
+    calendar: true,
+    floor: true,
+    steps: [{ user: "明天下午三点加个半小时的会，和 lina@nowledge-labs.ai 对一下 HawDB 的发布" }],
+    expect: { opens: 0, msgs: [0, 1], maxChars: 80, calCard: "create", called: [{ tool: "calendar" }], forbid: [/已(经)?(添加|加好|加上|发出|约好)|加好了|搞定/] },
+    rubric: "A new event with a guest. It proposes it with calendar do=propose (create, tomorrow 15:00 for 30 minutes, Lina invited, a Chinese title about the HawDB release), so a card appears that names the calendar, the time and that Lina gets an invitation. It writes nothing or one short Chinese line, never claims it was added or that Lina was invited, and does not restate the card's details.",
+  },
+  {
+    id: "calendar-decline-en",
+    category: "calendar",
+    lang: "en",
+    calendar: true,
+    steps: [{ user: "I can't make the design sync today, decline it" }],
+    expect: { opens: 0, msgs: [0, 1], maxChars: 140, calCard: "respond", called: [{ tool: "calendar" }], forbid: [/\b(declined it|I've declined|done|sent)\b/i] },
+    rubric: "The user wants to decline Sam's Design sync invitation today. It finds the event (calendar do=agenda) and proposes the answer (calendar do=propose, respond, declined), so a card shows that Sam will hear. Nothing or one short English line; it never claims it already declined, opens no task.",
+  },
+  {
+    id: "calendar-clash-zh",
+    category: "calendar",
+    lang: "zh",
+    calendar: true,
+    steps: [{ user: "看牙那个改到下午 5 点吧" }],
+    expect: { opens: 0, msgs: [0, 1], maxChars: 100, calCard: "move", called: [{ tool: "calendar" }], forbid: [/已(经)?(改|挪|移)好|改好了|搞定/] },
+    rubric: "The user moves their own dentist appointment (today 10:00) to 17:00. It finds it (agenda) and proposes the move (calendar do=propose, move, 17:00 today, same length), so a card shows before and after. One short Chinese line at most; never claims it was moved; no task.",
   },
   {
     id: "browser-task-en",

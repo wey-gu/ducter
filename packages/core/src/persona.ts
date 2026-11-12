@@ -1,5 +1,6 @@
 // L1 identity from Nowledge Mem (read-only `nmem context`), with a default that never blocks startup.
 import type { CoreApi } from "@ducter/protocol/src/internal.ts";
+import { nmemEnv } from "@ducter/protocol/src/tool-env.ts";
 
 export type Persona = CoreApi["persona"];
 
@@ -44,10 +45,11 @@ export async function loadPersona(opts: { timeoutMs?: number; bin?: string; off?
   // D141: the persona's own identity's bundle once it is bound, never an ambient NMEM_AGENT_ID.
   const who = opts.mem ? ["--agent-id", opts.mem.agentId, ...(opts.mem.space ? ["--space", opts.mem.space] : [])] : [];
   try {
-    const proc = Bun.spawn([opts.bin ?? process.env.NMEM_CLI_PATH ?? "nmem", "--json", "context", "--no-ensure", "--no-working-memory", ...who], {
+    const proc = Bun.spawn([opts.bin ?? process.env.NMEM_CLI_PATH ?? "nmem", "--json", "context", "--no-ensure", "--no-working-memory", "--source-app", "ducter", ...who], {
       stdout: "pipe",
       stderr: "ignore",
       stdin: "ignore",
+      env: nmemEnv(), // D102: the basics and NMEM_*, never Ducter's keys
     });
     const timer = setTimeout(() => proc.kill(), opts.timeoutMs ?? 4000);
     const out = await new Response(proc.stdout).text();

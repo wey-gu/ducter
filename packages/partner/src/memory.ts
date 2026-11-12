@@ -7,6 +7,9 @@
 //   - Identity (D141): the persona's own Mem AI Identity, bound once by core (mem-identity.ts),
 //     named on every write (--agent-id) and, when the user chose one, its Space (--space). Until
 //     it is bound, nmem's own fallback applies. Ducter never picks a Space of its own.
+//   - Lane (D229): with no Space chosen, recall reads where saves land (no Space named: Mem's
+//     default, "Only me" in a team workspace) and the identity's own lane (its profile's default
+//     Space, --space-id), the way Mem's plugin reads it for an NMEM_AGENT_ID, merged by id.
 //   - Provenance on every write: who = the identity above; through what =
 //     source / source_app "ducter"; from where = persona, Log seq and task id, carried in Mem's
 //     source metadata (--source-msg, kept under metadata.source_message_id), never in the text.
@@ -90,7 +93,7 @@ export interface NmemOptions {
   timeoutMs?: number; // default 15 s (a Cloud search takes ~4 s)
   env?: Record<string, string | undefined>; // default process.env
   /** The persona's Mem AI Identity (D141), read on every call: named explicitly, never taken from the env. */
-  identity?: () => { agentId: string; space?: string } | undefined;
+  identity?: () => { agentId: string; space?: string; lane?: string } | undefined;
 }
 
 /** MemoryClient over the nmem CLI (the user's own binary and its own connection config). */
@@ -127,16 +130,32 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
   };
   return {
     async search(query, limit) {
-      const space = opts.identity?.()?.space;
-      const r = await run(["m", "search", "-n", String(limit), ...(space ? ["--space", space] : []), "--", query]);
-      if ("missing" in r || r.code !== 0) return failure(r);
-      try {
-        const j = JSON.parse(r.out);
-        const list = Array.isArray(j?.memories) ? j.memories : Array.isArray(j) ? j : [];
-        return { ok: true, hits: list.slice(0, limit).map((m: unknown) => compactHit(m)) };
-      } catch {
-        return { ok: false, reason: "unavailable", message: "Nowledge Mem gave an unreadable answer." };
+      const who = opts.identity?.();
+      // The user's Space alone; else where saves land and, when it has one, the identity's lane (D229).
+      const scopes: string[][] = who?.space ? [["--space", who.space]] : who?.lane ? [[], ["--space-id", who.lane]] : [[]];
+      const rs = await Promise.all(scopes.map((sc) => run(["m", "search", "-n", String(limit), ...sc, "--", query])));
+      const lists: any[][] = [];
+      let unreadable = false;
+      for (const r of rs) {
+        if ("missing" in r || r.code !== 0) continue;
+        try {
+          const j = JSON.parse(r.out);
+          lists.push(Array.isArray(j?.memories) ? j.memories : Array.isArray(j) ? j : []);
+        } catch {
+          unreadable = true;
+        }
       }
+      if (!lists.length) return unreadable ? { ok: false, reason: "unavailable", message: "Nowledge Mem gave an unreadable answer." } : failure(rs[0]!);
+      // One list: Mem's order. Two: merged by id, by Mem's own score.
+      const seen = new Set<string>();
+      const merged = lists.length === 1 ? lists[0]! : lists.flat().filter((m) => {
+        const id = typeof m?.id === "string" ? m.id : undefined;
+        if (!id) return true;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      }).sort((a, b) => (Number(b?.score) || 0) - (Number(a?.score) || 0));
+      return { ok: true, hits: merged.slice(0, limit).map((m: unknown) => compactHit(m)) };
     },
     async add(m) {
       const imp = Math.min(1, Math.max(0, m.importance ?? 0.6));

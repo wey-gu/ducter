@@ -1358,7 +1358,9 @@ class AppState {
   }
   /** D225: 装上 / 更新: the home puts in (or updates) its own Nowledge Mem command line. */
   installBridgeMem() {
-    if (this.bridge) this.bridge = { ...this.bridge, state: this.bridge.state === "update_mem" ? "updating" : "installing" };
+    // D229: a quiet upkeep under a working row is an update too (a move keeps its own words).
+    const b = this.bridge;
+    if (b) this.bridge = { ...b, state: b.state === "install_mem" ? "installing" : "updating", detail: undefined, kept: undefined, done: undefined, ...(b.upkeep ? { upkeep: { kind: b.upkeep.kind } } : {}) };
     this.send({ t: "bridge_mem_install" });
     this.changed();
   }

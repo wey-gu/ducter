@@ -260,6 +260,33 @@ describe("nmem client (stub binary)", () => {
     expect(s.args()).toEqual(["--json", "m", "search", "-n", "2", "--space", "ducter-scratch", "--", "q"]);
   });
 
+  test("D229: no Space chosen, the identity has a lane: recall reads where saves land and its lane, merged by id and Mem's score", async () => {
+    // In the shape of nmem 0.10.118 `--json m search`: query, total, search_mode, memories[{id, score, space_id, …}].
+    const s = stub(`case "$*" in
+  *--space-id*) echo '{"query":"q","total":2,"search_mode":"normal","memories":[{"id":"a","title":"lane A","content":"x","score":0.9,"space_id":"lane-1"},{"id":"same","title":"dup","content":"x","score":0.5,"space_id":"lane-1"}]}' ;;
+  *) echo '{"query":"q","total":2,"search_mode":"normal","memories":[{"id":"same","title":"dup","content":"x","score":0.5,"space_id":"personal-1"},{"id":"b","title":"own note","content":"x","score":0.7,"space_id":"personal-1"}]}' ;;
+esac
+printf '%s\\n' "$*" >> "$(dirname "$0")/all"`);
+    const c = createNmemClient({ bin: s.bin, identity: () => ({ agentId: "ducter", lane: "lane-1" }) });
+    const r = await c.search("q", 5);
+    const calls = readFileSync(join(s.dir, "all"), "utf8").trim().split("\n").sort();
+    expect(calls).toEqual(["--json m search -n 5 --space-id lane-1 -- q", "--json m search -n 5 -- q"].sort());
+    expect(r.ok && r.hits.map((h) => h.id)).toEqual(["a", "b", "same"]);
+    // A Space the user chose wins alone: no lane read.
+    const s2 = stub(`echo '{"memories":[]}'`);
+    await createNmemClient({ bin: s2.bin, identity: () => ({ agentId: "ducter", space: "Work", lane: "lane-1" }) }).search("q", 2);
+    expect(s2.args()).toEqual(["--json", "m", "search", "-n", "2", "--space", "Work", "--", "q"]);
+  });
+
+  test("D229: one of the two reads fails: the other's hits; both fail: the failure, as before", async () => {
+    const s = stub(`case "$*" in *--space-id*) echo 'boom' >&2; exit 1 ;; *) echo '{"memories":[{"id":"b","title":"own","content":"x","score":0.7}]}' ;; esac`);
+    const r = await createNmemClient({ bin: s.bin, identity: () => ({ agentId: "ducter", lane: "lane-1" }) }).search("q", 5);
+    expect(r.ok && r.hits.map((h) => h.id)).toEqual(["b"]);
+    const d = stub(`echo 'boom' >&2; exit 1`);
+    const f = await createNmemClient({ bin: d.bin, identity: () => ({ agentId: "ducter", lane: "lane-1" }) }).search("q", 5);
+    expect(f).toMatchObject({ ok: false, reason: "unavailable" });
+  });
+
   test("missing binary and auth errors read as not configured; others as unavailable", async () => {
     const missing = await createNmemClient({ bin: join(tmp(), "nope") }).search("x", 1);
     expect(missing).toMatchObject({ ok: false, reason: "not_configured" });

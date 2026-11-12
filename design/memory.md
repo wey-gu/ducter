@@ -141,6 +141,13 @@ and tools (principle 17). The slice gives the partner two tools, both through th
 - **Who writes (D141):** the persona's own Mem AI Identity, bound once and named on every call
   (`system.md`, "Identity and Mem boundary"); its tasks run as the same identity, and inside
   them the user's Nowledge Mem plugin runs as that identity ("Mem and tasks" below, D168).
+- **Where recall reads (D229):** an identity carries its own lane (its profile's default
+  Space, `agents show` → `defaultSpaceId`, read again on each start). With no Space the user
+  chose, `memory_search` reads where saves land (no Space named: Mem's default, Only me in a
+  team workspace) and the lane (`--space-id`), in parallel, merged by id and Mem's score, as
+  Mem's plugin reads the lane for an `NMEM_AGENT_ID`. A chosen Space is read alone. Writes
+  name the identity and let Mem place them (research/69: on the author's workspace the two
+  reads shared no hit, so reading one alone missed the other).
 - **Live check (D63): done 2026-11-09** (`bun packages/partner/eval/mem-live.ts --real`, Cloud,
   7/7). One `memory_add` through the real partner tool and nmem client, as the scratch identity
   `ducter-scratch`; the stored record read back with `metadata.agent_id = ducter-scratch`,
@@ -172,7 +179,8 @@ blocked feature. Copy never implies payment.
 **A task runs with the user's own Nowledge Mem plugin, as the partner (D168).**
 
 - **Mem on** (the default when Mem is connected): the task keeps the user's setup, the plugin
-  included, with `NMEM_AGENT_ID` (and `NMEM_SPACE` when bound) set to the persona's identity.
+  included, with `NMEM_AGENT_ID` (and `NMEM_SPACE` when bound) set to the persona's identity,
+  and `NMEM_CLI_PATH` when Ducter has one (D229; the plugin reads the identity's lane itself).
   The plugin's own hooks then do what they do in the user's sessions (VERIFIED in its
   `hooks.json`, community repo 2026-11-10): SessionStart injects the Context Bundle (Working
   Memory as fallback) and restores it after compaction; UserPromptSubmit nudges one targeted

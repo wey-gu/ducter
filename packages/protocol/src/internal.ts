@@ -93,6 +93,12 @@ export interface MemIdentity {
   owned: boolean;
   /** The identity's display name in Mem, for one the user already had. */
   label?: string;
+  /**
+   * D229: the identity's own lane in Mem (its profile's default Space, an exact id), read from Mem
+   * on each start. Recall reads it alongside where saves land, as Mem's plugin reads it for an
+   * NMEM_AGENT_ID; absent: the identity has none, or Mem didn't say.
+   */
+  lane?: string;
 }
 
 export interface CoreApi {

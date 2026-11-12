@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { bindMemIdentity, identityIdFor, nmemRunner, readMemIdentity, renameMemIdentity } from "../src/mem-identity.ts";
+import { bindMemIdentity, identityIdFor, nmemRunner, readMemIdentity, refreshLane, renameMemIdentity, writeMemIdentity } from "../src/mem-identity.ts";
 import { keepMemIdentity } from "../src/main.ts";
 import { openSettings } from "../src/settings.ts";
 import { openPushStore } from "../src/push.ts";
@@ -71,6 +71,28 @@ describe("binding the persona's identity", () => {
     const theirs = fakeNmem('{"id":"ducter","display_name":"Some tool","source_app":"other"}');
     expect(await bindMemIdentity({ dataDir: tmp(), personaId: "default", name: "小鸭", run: theirs.run, env: {} })).toEqual({ agentId: "ducter", owned: false, label: "Some tool" });
     for (const n of [mine, theirs]) expect(n.calls().some((c) => c[2] === "enroll")).toBe(false);
+  });
+
+  test("D229: nmem 0.10.118's camelCase profile: name, source app and the identity's lane (defaultSpaceId) are read", async () => {
+    // The real shape (research/69): top-level id, displayName, sourceApp, defaultSpaceId, origin, canEdit, …
+    const n = fakeNmem('{"id":"ducter","displayName":"小鸭","role":"general","sourceApp":"ducter","defaultSpaceId":"space-lane-1","origin":"minted","canEdit":true,"tags":[]}');
+    const mem = await bindMemIdentity({ dataDir: tmp(), personaId: "default", name: "小鸭", run: n.run, env: {} });
+    expect(mem).toEqual({ agentId: "ducter", owned: true, lane: "space-lane-1" });
+    const theirs = fakeNmem('{"id":"weyl-main","displayName":"Weyl agent","sourceApp":"codex","defaultSpaceId":"team-room"}');
+    expect(await bindMemIdentity({ dataDir: tmp(), personaId: "default", name: "D", run: theirs.run, env: { NMEM_AGENT_ID: "weyl-main" } })).toEqual({ agentId: "weyl-main", owned: false, label: "Weyl agent", lane: "team-room" });
+  });
+
+  test("D229: the lane is read again on a start (changed in Mem: saved; Mem down: kept)", async () => {
+    const dataDir = tmp();
+    const was = { agentId: "ducter", owned: true, lane: "old" };
+    writeMemIdentity(dataDir, was);
+    const moved = fakeNmem('{"id":"ducter","sourceApp":"ducter","defaultSpaceId":"new"}');
+    expect(await refreshLane({ dataDir, run: moved.run, mem: was })).toEqual({ agentId: "ducter", owned: true, lane: "new" });
+    expect(readMemIdentity(dataDir)?.lane).toBe("new");
+    const none = fakeNmem('{"id":"ducter","sourceApp":"ducter"}');
+    expect(await refreshLane({ dataDir, run: none.run, mem: readMemIdentity(dataDir)! })).toEqual({ agentId: "ducter", owned: true });
+    const down = { run: async () => undefined } as any;
+    expect(await refreshLane({ dataDir, run: down.run, mem: was })).toBeUndefined();
   });
 
   test("Mem down or enroll refused: nothing bound, nothing saved (bound on a later start)", async () => {

@@ -4,6 +4,8 @@
 //   DUCTER_PORT=7798 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_BRIDGE=ready bun apps/web/demo-bridge.ts
 // DEMO_BRIDGE: ready · connecting · connected · update · no_space · refused:<reason> · failed · unconfirmed
 //   D225: install (no nmem; pipx here) · install_need (no pipx) · update_pip (hel: 0.10.116 by pip) · sign_in · local
+//   D229: hel_ready (hel's pip copy, working: a quiet move offered) · moving (a tap stays moving) ·
+//         moved (a tap moves it: done) · move_failed (a tap fails; the old copy is put back)
 // then open http://127.0.0.1:7798/app#settings=partner
 import { startCore, stubRunner } from "@ducter/core";
 import { noOo } from "./demo-oo.ts";
@@ -16,10 +18,12 @@ const code = reason ? Object.keys(REFUSALS).find((k) => REFUSALS[k] === reason) 
 const SPACE = "6f1c0d2e-8b4a-4d1e-9c3f-2a7b5e0d9c11";
 const ok = (j: unknown) => ({ code: 0, out: JSON.stringify(j), err: "" });
 const conn = { connection_id: "00000000-0000-4000-8000-000000000001", agent_id: "ducter", identity_birth: "00000000-0000-4000-8000-000000000900", client_label: "ducter", state: "active" };
+const HEL = ["update_pip", "hel_ready", "moving", "moved", "move_failed"];
+let moved = false;
 const run = async (args: string[]) => {
   const a = args.join(" ");
   if (want === "install" || want === "install_need") return undefined; // no nmem on the home
-  const old = want === "update" || want === "update_pip";
+  const old = (want === "update" || want === "update_pip") && !moved;
   if (args[0] === "--version") return ok(old ? "nmem 0.10.116" : "nmem 0.10.118");
   if (a.includes("bridge connections --help")) return { code: old ? 2 : 0, out: "", err: "" };
   if (a === "status") return want === "sign_in" ? { code: 1, out: "", err: "connection refused" } : ok({ status: "healthy", backend: want === "local" ? "local" : "cloud" });
@@ -44,8 +48,8 @@ const run = async (args: string[]) => {
 };
 
 // D225: the home's files as the row reads them: hel's pip copy, or pipx to install with.
-const files: Record<string, string> = want === "update_pip" ? { "/root/.local/bin/nmem": "ELF", "/root/.local/lib/python3.14/site-packages/nmem_cli-0.10.116.dist-info/INSTALLER": "pip\n" } : {};
-const tools: Record<string, string> = want === "install" ? { pipx: "/usr/bin/pipx" } : want === "update_pip" ? { nmem: "/root/.local/bin/nmem", "python3.14": "/usr/bin/python3.14" } : {};
+const files: Record<string, string> = HEL.includes(want) ? { "/root/.local/bin/nmem": "ELF", "/root/.local/lib/python3.14/site-packages/nmem_cli-0.10.116.dist-info/INSTALLER": "pip\n" } : {};
+const tools: Record<string, string> = want === "install" ? { pipx: "/usr/bin/pipx" } : HEL.includes(want) ? { nmem: "/root/.local/bin/nmem", "python3.14": "/usr/bin/python3.14", "apt-get": "/usr/bin/apt-get" } : {};
 const sys = {
   which: (c: string) => tools[c],
   exists: (p: string) => p in files,
@@ -54,8 +58,24 @@ const sys = {
   real: (p: string) => p,
   home: "/root",
   platform: "linux" as const,
+  uid: 0, // hel runs Ducter as root
 };
-const exec = async () => new Promise<never>(() => {}); // a tap shows "installing…" and stays there
+// The installers: the python is the system's marked one (PEP 668); apt puts pipx in; a move's last
+// step hangs (moving), works (moved) or fails (move_failed); anything else stays "installing…".
+const exec = async (argv: string[]) => {
+  if (argv.includes("-c")) return { code: 0, out: "managed\n", err: "" };
+  if (argv.some((x) => x.endsWith("apt-get"))) return (tools.pipx = "/usr/bin/pipx"), { code: 0, out: "", err: "" };
+  if (argv.includes("uninstall")) return { code: 0, out: "", err: "" };
+  if (want === "moved" && argv.includes("install")) {
+    await Bun.sleep(1800);
+    moved = true;
+    delete files["/root/.local/lib/python3.14/site-packages/nmem_cli-0.10.116.dist-info/INSTALLER"];
+    return { code: 0, out: "installed package nmem-cli 0.10.118", err: "" };
+  }
+  if (want === "move_failed" && argv[0]!.endsWith("pipx")) return { code: 1, out: "", err: "Fatal error from pip prevented installation. Full pip output in file:\n    /root/.local/state/pipx/log/cmd_2026-11-12.log\nERROR: Could not find a version that satisfies the requirement nmem-cli" };
+  if (want === "move_failed") return { code: 0, out: "", err: "" };
+  return new Promise<never>(() => {});
+};
 const core = startCore({ ooSource: noOo, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "hel" }, bridgeLink: { run: run as never, env: {}, sys, exec } });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
@@ -63,5 +83,5 @@ core.persona.mem = { agentId: "ducter", owned: true };
 core.settings.setMemState("connected");
 core.settings.set({ language: zh ? "zh" : "en" });
 // States after a tap are reached by tapping, as the user would.
-if (!["ready", "update", "no_space", "install", "install_need", "update_pip", "sign_in", "local"].includes(want)) void core.bridgeLink.connect();
+if (!["ready", "update", "no_space", "install", "install_need", "update_pip", "sign_in", "local", ...HEL].includes(want)) void core.bridgeLink.connect();
 console.log(`[demo] up at http://127.0.0.1:${core.port}/app#settings=partner (data: ${core.dataDir})`);

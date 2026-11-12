@@ -136,7 +136,12 @@ func (a *App) bridgeRow(c *ui.Context, st *protocol.Settings, b *protocol.Bridge
 	}
 	canTry := b.State == "ready" || b.State == "refused" || b.State == "failed" || b.State == "unconfirmed"
 	busy := b.State == "connecting" || b.State == "disconnecting"
+	help += a.memUpkeepHelp(b)
+	upkeep := a.memUpkeepButton(c, b)
 	a.row(c, "bridge", a.L.T("bridge.title", st.Name), help, func() {
+		if upkeep != nil {
+			upkeep()
+		}
 		if canUndo && a.bridgeConfirm && a.buttonFor(c, a.L.T("bridge.undo.keep"), b.Identity, btnText, t.ControlSM, t.Surface) {
 			a.bridgeConfirm = false
 		}
@@ -169,6 +174,66 @@ func (a *App) bridgeRow(c *ui.Context, st *protocol.Settings, b *protocol.Bridge
 	})
 }
 
+// memFailed is D229's failed install or update: one plain sentence, whether
+// the old copy still works, and the installer's own words last.
+func (a *App) memFailed(install bool, home, detail string, kept bool) string {
+	line := a.L.T("bridge.mem.update.failed")
+	if install {
+		line = a.L.T("bridge.mem.install.failed")
+	}
+	if kept {
+		line += " " + a.L.T("bridge.mem.kept")
+	}
+	return line + "\n" + a.L.T("bridge.mem.detail", detail)
+}
+
+// memUpkeepHelp is D229's quiet line under a working row: just done (a warm
+// word), or the one thing worth doing to the home's Mem (move, update).
+func (a *App) memUpkeepHelp(b *protocol.BridgeView) string {
+	if b.Done != "" {
+		return "\n" + a.L.T("bridge.mem.done."+b.Done, b.Home)
+	}
+	if b.Upkeep == nil {
+		return ""
+	}
+	if b.Upkeep.Kind == "move" {
+		// The how (pipx, the system Python's mark) stays off the row: plain words only.
+		line := "\n" + a.L.T("bridge.mem.upkeep.move", b.Home)
+		if b.Upkeep.Detail != "" {
+			return line + "\n" + a.memFailed(false, b.Home, b.Upkeep.Detail, b.Upkeep.Kept)
+		}
+		return line
+	}
+	line := "\n" + a.L.T("bridge.mem.upkeep.update", b.Home)
+	if b.Upkeep.Detail != "" {
+		line += "\n" + a.memFailed(false, b.Home, b.Upkeep.Detail, b.Upkeep.Kept)
+	}
+	return line
+}
+
+// memUpkeepButton is the upkeep's one tap (换一下 / 更新, or 再试一次);
+// nil when there is nothing to do.
+func (a *App) memUpkeepButton(c *ui.Context, b *protocol.BridgeView) func() {
+	if b.Done != "" || b.Upkeep == nil {
+		return nil
+	}
+	return func() {
+		t := a.T
+		label := a.L.T("bridge.mem.update.go")
+		if b.Upkeep.Kind == "move" {
+			label = a.L.T("bridge.mem.upkeep.move.go")
+		}
+		if b.Upkeep.Detail != "" {
+			label = a.L.T("bridge.retry")
+		}
+		if a.buttonFor(c, label, b.Home, btnSecondary, t.ControlSM, t.Surface) {
+			b.State = "updating"
+			b.Upkeep = &protocol.BridgeUpkeep{Kind: b.Upkeep.Kind}
+			a.send(protocol.BridgeAction{T: "bridge_mem_install"})
+		}
+	}
+}
+
 // memSetup: the row's states before the home's Mem can connect anyone (D225).
 func memSetup(state string) bool {
 	switch state {
@@ -193,12 +258,16 @@ func (a *App) bridgeMemRow(c *ui.Context, st *protocol.Settings, b *protocol.Bri
 		switch {
 		case b.State == "installing":
 			line = a.L.T("bridge.mem.installing", b.Home)
+		case b.State == "updating" && b.Upkeep != nil && b.Upkeep.Kind == "move":
+			line = a.L.T("bridge.mem.moving", b.Home)
 		case b.State == "updating":
 			line = a.L.T("bridge.mem.updating", b.Home)
 		case install && b.CanRun:
 			line = a.L.T("bridge.mem.install", b.Home)
 		case install:
 			line = a.L.T("bridge.mem.install.need", b.Home)
+		case b.CanRun && b.Upkeep != nil && b.Upkeep.Kind == "move":
+			line = a.L.T("bridge.mem.update.move", b.Home, b.Version, min)
 		case b.CanRun:
 			line = a.L.T("bridge.mem.update", b.Home, b.Version, min)
 		case b.Need == "app" || b.Version == "":
@@ -209,11 +278,10 @@ func (a *App) bridgeMemRow(c *ui.Context, st *protocol.Settings, b *protocol.Bri
 		}
 		help := line
 		if b.Detail != "" && !busy {
-			key := "bridge.mem.update.failed"
-			if install {
-				key = "bridge.mem.install.failed"
-			}
-			help += "\n" + a.L.T(key, b.Detail)
+			help += "\n" + a.memFailed(install, b.Home, b.Detail, b.Kept)
+		}
+		if install && !b.CanRun && !busy {
+			help += "\n" + a.L.T("bridge.mem.install.need.how")
 		}
 		a.row(c, "bridge", title, help, func() {
 			if busy {
@@ -224,6 +292,9 @@ func (a *App) bridgeMemRow(c *ui.Context, st *protocol.Settings, b *protocol.Bri
 				return
 			}
 			label, kind := a.L.T("bridge.mem.update.go"), btnPrimary
+			if !install && b.Detail != "" {
+				label = a.L.T("bridge.retry")
+			}
 			if install {
 				label = a.L.T("bridge.mem.install.go")
 				if !b.CanRun {
@@ -243,6 +314,9 @@ func (a *App) bridgeMemRow(c *ui.Context, st *protocol.Settings, b *protocol.Bri
 	case "sign_in", "signing_in":
 		busy := b.State == "signing_in"
 		help := a.L.T("bridge.mem.signin", b.Home)
+		if b.Done != "" {
+			help = a.L.T("bridge.mem.done."+b.Done, b.Home) + "\n" + help
+		}
 		switch b.SignIn {
 		case "used":
 			help += "\n" + a.L.T("bridge.mem.signin.used")
@@ -265,7 +339,7 @@ func (a *App) bridgeMemRow(c *ui.Context, st *protocol.Settings, b *protocol.Bri
 		})
 		return true
 	case "local_mem":
-		a.row(c, "bridge", title, a.L.T("bridge.mem.local", b.Home), nil)
+		a.row(c, "bridge", title, a.L.T("bridge.mem.local", b.Home)+a.memUpkeepHelp(b), a.memUpkeepButton(c, b))
 		return true
 	}
 	return false

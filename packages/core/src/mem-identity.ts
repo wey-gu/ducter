@@ -17,6 +17,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { MemIdentity } from "@ducter/protocol/src/internal.ts";
+import { nmemEnv } from "@ducter/protocol/src/tool-env.ts";
 
 const PERSONA_FILE = "persona.json";
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
@@ -48,6 +49,7 @@ export function readMemIdentity(dataDir: string): MemIdentity | undefined {
     owned: m.owned === true,
     ...(typeof m.space === "string" && m.space ? { space: m.space } : {}),
     ...(typeof m.label === "string" && m.label ? { label: m.label } : {}),
+    ...(typeof m.lane === "string" && m.lane ? { lane: m.lane } : {}),
   };
 }
 
@@ -65,7 +67,7 @@ export function nmemRunner(opts: { bin?: string; timeoutMs?: number; env?: Recor
   return async (args) => {
     let proc: ReturnType<typeof Bun.spawn>;
     try {
-      proc = Bun.spawn([opts.bin ?? (opts.env ?? process.env).NMEM_CLI_PATH ?? "nmem", "--json", ...args], { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: (opts.env ?? process.env) as Record<string, string> });
+      proc = Bun.spawn([opts.bin ?? (opts.env ?? process.env).NMEM_CLI_PATH ?? "nmem", "--json", ...args], { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: nmemEnv(opts.env ?? process.env) }); // D102
     } catch {
       return undefined;
     }
@@ -88,7 +90,7 @@ const parse = (s: string): any => {
 };
 
 /** An agent profile from `nmem --json agents show <id>`: undefined = no such identity, null = Mem didn't answer. */
-async function showAgent(run: NmemRun, id: string): Promise<{ name?: string; sourceApp?: string } | undefined | null> {
+async function showAgent(run: NmemRun, id: string): Promise<{ name?: string; sourceApp?: string; lane?: string } | undefined | null> {
   const r = await run(["agents", "show", id]);
   if (!r) return null;
   const j = parse(r.out);
@@ -96,7 +98,9 @@ async function showAgent(run: NmemRun, id: string): Promise<{ name?: string; sou
   if (r.code !== 0 || !j || j.error) return null;
   const a = j.agent ?? j.profile ?? j;
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
-  return { name: str(a.display_name) ?? str(a.displayName) ?? str(a.name), sourceApp: str(a.source_app) ?? str(a.sourceApp) };
+  // nmem 0.10.118 answers camelCase (displayName, sourceApp, defaultSpaceId); older ones snake_case.
+  const lane = str(a.defaultSpaceId) ?? str(a.default_space_id);
+  return { name: str(a.display_name) ?? str(a.displayName) ?? str(a.name), sourceApp: str(a.source_app) ?? str(a.sourceApp), ...(lane ? { lane } : {}) };
 }
 
 export interface BindOptions {
@@ -123,14 +127,14 @@ export async function bindMemIdentity(o: BindOptions): Promise<MemIdentity | und
   if (!o.agentId && userId && ID.test(userId)) {
     const a = await showAgent(o.run, userId);
     if (a === null) return undefined;
-    mem = { agentId: userId, owned: false, ...(env.NMEM_SPACE?.trim() ? { space: env.NMEM_SPACE.trim() } : {}), ...(a?.name ? { label: a.name } : {}) };
+    mem = { agentId: userId, owned: false, ...(env.NMEM_SPACE?.trim() ? { space: env.NMEM_SPACE.trim() } : {}), ...(a?.name ? { label: a.name } : {}), ...(a?.lane ? { lane: a.lane } : {}) };
   } else {
     const id = o.agentId ?? identityIdFor(o.personaId);
     const a = await showAgent(o.run, id);
     if (a === null) return undefined;
     if (a) {
       const owned = a.sourceApp === "ducter";
-      mem = { agentId: id, owned, ...(o.space ? { space: o.space } : {}), ...(!owned && a.name ? { label: a.name } : {}) };
+      mem = { agentId: id, owned, ...(o.space ? { space: o.space } : {}), ...(!owned && a.name ? { label: a.name } : {}), ...(a.lane ? { lane: a.lane } : {}) };
     } else {
       const args = ["agents", "enroll", id, "--name", o.name, "--source-app", "ducter", "--description", "Ducter, a personal AI partner. Its conversation and its tasks write to Mem as this identity."];
       if (o.space) args.push("--default-space", o.space);
@@ -142,6 +146,22 @@ export async function bindMemIdentity(o: BindOptions): Promise<MemIdentity | und
       mem = { agentId: id, owned: true, ...(o.space ? { space: o.space } : {}) };
     }
   }
+  writeMemIdentity(o.dataDir, mem);
+  return mem;
+}
+
+/**
+ * D229: the identity's lane as Mem has it now (the user can change an identity's default Space in
+ * Mem at any time): read once per start; saved when it changed. undefined: Mem didn't answer (keep
+ * what was there).
+ */
+export async function refreshLane(o: { dataDir: string; run: NmemRun; mem: MemIdentity }): Promise<MemIdentity | undefined> {
+  const a = await showAgent(o.run, o.mem.agentId);
+  if (a === null) return undefined;
+  const lane = a?.lane;
+  if (lane === o.mem.lane) return o.mem;
+  const { lane: _old, ...rest } = o.mem;
+  const mem: MemIdentity = { ...rest, ...(lane ? { lane } : {}) };
   writeMemIdentity(o.dataDir, mem);
   return mem;
 }

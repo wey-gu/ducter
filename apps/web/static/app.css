@@ -2474,6 +2474,66 @@ a {
   font-size: var(--xs);
   overflow-wrap: anywhere;
 }
+/* D229: the home's Mem: a quiet upkeep line, its detail behind a disclosure, a warm done line. */
+.set-item .mem-upkeep {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding-top: var(--s2);
+  border-top: 1px dashed var(--seam-quiet);
+}
+.set-item .mem-upkeep-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.set-item .mem-upkeep-row .mem-more {
+  flex: 1;
+  margin-top: 0;
+}
+.set-item .mem-upkeep > small {
+  margin-top: 0;
+}
+.set-item .mem-more {
+  margin-top: -4px;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.set-item .mem-more summary {
+  cursor: pointer;
+  width: fit-content;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.set-item .mem-more small {
+  display: block;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.set-item small.mem-done {
+  align-self: flex-start;
+  margin-top: 0;
+  padding: 2px var(--s2);
+  border-radius: 999px;
+  background: var(--done-surface);
+  color: var(--done-ink);
+  animation: mem-done-in 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+@keyframes mem-done-in {
+  from {
+    transform: translateY(4px) scale(0.96);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .set-item small.mem-done {
+    animation: none;
+  }
+}
 .set-item .bridge-acts {
   display: flex;
   flex-wrap: wrap;

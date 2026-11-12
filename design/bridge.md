@@ -46,9 +46,11 @@ memory is on, even before Mem is on the home.
 
 | The home | The row | The tap runs |
 |---|---|---|
-| no `nmem` | **装上 / Install** (free, Mem's own route) | the first route here: `uv tool install nmem-cli`, `pipx install nmem-cli`, `python3 -m pip install --user nmem-cli`; never past the system's PEP 668 mark |
-| no `nmem`, none of those | the line naming `sudo apt install pipx`, **再试一次** | the same check again |
-| `nmem` older than 0.10.118 | **更新 / Update**, with the version | the same source it came from: uv, pipx, or pip (user site past the mark when it was put there so; a venv's own python) |
+| no `nmem` | **装上 / Install** (free, Mem's own route) | the first route here (D229): `pipx install nmem-cli`, `uv tool install nmem-cli`, pipx from the system first when that needs no password (`brew install pipx`; `apt-get`/`dnf install -y pipx` as root or with `sudo -n`), then `python3 -m pip install --user nmem-cli` only under an unmarked Python; never past the system's PEP 668 mark |
+| no `nmem`, none of those | the line says a small tool is missing and this computer won't let Ducter add it; **怎么装 / How** holds `sudo apt install pipx`; **再试一次** | the same check again |
+| `nmem` older than 0.10.118 | **更新 / Update**, with the version | the same source it came from: pipx, uv, or pip (a venv's own python; the user's site under an unmarked Python). A pip copy past the mark (hel) is **moved** instead (below) |
+| a pip copy in the user's site under a marked Python, working (D229) | a quiet line under the row: **{home} 上的 Nowledge Mem 可以换成它官方推荐的装法…登录不变，记忆不动。**, **细节**, **换一下 / Move it** | pipx got first if needed; the old copy out (`pip uninstall`, past the mark); `pipx install --force nmem-cli` in; on failure the old copy back (**原来那份还在…**). `~/.nowledge-mem` untouched |
+| Mem says a newer `nmem` is out (`status.update`) | a quiet **更新 / Update** under the row | the copy's own source |
 | the app's copy, too old | the line: update the Nowledge Mem app | nothing |
 | not signed in | a link field, **登录 / Sign in** | `nmem connect --skip-tools <link>` (sign-in only); the link is never logged or kept |
 | Mem answers from the computer itself | one line: a cloud workspace is needed | nothing |
@@ -58,7 +60,9 @@ Afterwards the new `nmem`'s folder joins Ducter's PATH and `NMEM_CLI_PATH`, and 
 identity is bound as on a start (D141): no restart. Mem's registered codes are all plain lines; `unavailable`,
 `busy` and `capacity` say Mem's side can't take it yet and nothing is wrong on the user's side; `outcome_unknown`
 says Try again finds out. Nothing is retried by itself. Checked on a scratch Ubuntu 26.04 home: a fresh install
-with pipx, hel's pip copy updated past the mark, a used link refused (research/66 §4).
+with pipx, hel's pip copy updated past the mark, a used link refused (research/66 §4). D229 (research/69): pipx
+first, the move, password-free system pipx, and a short warm line in the done colour after each install, update or
+move (**{home} 上换好了。登录还在，什么都没丢。**); a failure keeps the installer's words behind **细节 / Details**.
 
 On hel (nmem 0.10.116 by pip, signed in): Settings › 伙伴 › 你的其他 AI › **更新**, then **连接**.
 

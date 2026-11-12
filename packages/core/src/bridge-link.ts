@@ -28,7 +28,8 @@ import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "nod
 import { dirname, join } from "node:path";
 import type { BridgeRefusal, BridgeView } from "@ducter/protocol";
 import type { BridgeLinkApi } from "@ducter/protocol/src/internal.ts";
-import { connectLinkOk, copyOf, externallyManaged, extraBins, findNmem, installPlan, joinPath, MEM_INSTALL_MS, realSys, updatePlan, type MemPlan, type MemSys } from "./mem-cli.ts";
+import { connectLinkOk, copyOf, copyPython, externallyManaged, extraBins, findNmem, installPlan, joinPath, MEM_INSTALL_MS, PY_PROBE, realSys, toolOf, updatePlan, type MemCopy, type MemFacts, type MemPlan, type MemStep, type MemSys } from "./mem-cli.ts";
+import { nmemEnv, toolEnv } from "@ducter/protocol/src/tool-env.ts";
 
 export const BRIDGE_CONNECTION_FILE = "bridge-connection.json";
 /** The first nmem with `bridge connections` (Mem PR #9996, in 0.10.118). */
@@ -76,7 +77,7 @@ export function nmemCall(opts: { bin?: string; env?: Record<string, string | und
     let proc: ReturnType<typeof Bun.spawn>;
     try {
       // An argument vector, never a shell string.
-      proc = Bun.spawn([opts.bin ?? env.NMEM_CLI_PATH ?? "nmem", "--json", ...args], { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: env as Record<string, string> });
+      proc = Bun.spawn([opts.bin ?? env.NMEM_CLI_PATH ?? "nmem", "--json", ...args], { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: nmemEnv(env) }); // D102
     } catch {
       return undefined;
     }
@@ -171,7 +172,8 @@ export function memExec(env: Record<string, string | undefined> = process.env): 
   return async (argv, timeoutMs) => {
     let proc: ReturnType<typeof Bun.spawn>;
     try {
-      proc = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: { ...env, PIP_NO_INPUT: "1", PIPX_NO_COLOR: "1", NO_COLOR: "1" } as Record<string, string> });
+      // D102: the basics and the installers' own settings, never Ducter's keys.
+      proc = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: { ...toolEnv({ own: /^(?:PIP_|PIPX_|UV_|HOMEBREW_|PYTHON)/, inherited: env }), PIP_NO_INPUT: "1", PIPX_NO_COLOR: "1", NO_COLOR: "1" } });
     } catch {
       return undefined;
     }
@@ -247,7 +249,7 @@ export function createBridgeLink(opts: {
   const pinned = () => env.DUCTER_BRIDGE === "1" && !!env.DUCTER_BRIDGE_CONTEXT?.trim();
   const agentNow = () => opts.identity() ?? opts.fallbackIdentity?.() ?? "ducter";
 
-  type Probe = { at: number; version?: string; supported: boolean; signedIn: boolean; backend?: string; space?: { id: string; label: string } };
+  type Probe = { at: number; version?: string; supported: boolean; signedIn: boolean; backend?: string; space?: { id: string; label: string }; updateAvailable?: boolean };
   let probe: Probe | undefined;
   let probeAt = 0; // when "no nmem here" was last seen (probe stays undefined)
   let probing: Promise<Probe | undefined> | undefined;
@@ -274,13 +276,15 @@ export function createBridgeLink(opts: {
       const sj = st && st.code === 0 ? jsonIn(st.out)[0] : undefined;
       const signedIn = !!sj && (sj.status === "healthy" || sj.status === "ok");
       const backend = typeof sj?.backend === "string" ? sj.backend : undefined;
+      // Mem's own word that a newer nmem is out (`status`.update; its command is only a hint).
+      const updateAvailable = sj?.update?.update_available === true;
       let space: { id: string; label: string } | undefined;
       if (signedIn && backend !== "local") {
         // Passive: no context, no Space, never --enable. It lists the user's places and picks none.
         const s = await run(["bridge", "setup"]);
         if (s && s.code === 0) space = personalSpace(jsonIn(s.out)[0]);
       }
-      return (probe = { at: now(), version: shortVersion, supported, signedIn, ...(backend ? { backend } : {}), ...(space ? { space } : {}) });
+      return (probe = { at: now(), version: shortVersion, supported, signedIn, ...(backend ? { backend } : {}), ...(space ? { space } : {}), ...(updateAvailable ? { updateAvailable } : {}) });
     })().finally(() => (probing = undefined));
     return probing;
   }
@@ -303,28 +307,67 @@ export function createBridgeLink(opts: {
 
   type Busy = "connecting" | "disconnecting" | "installing" | "updating" | "signing_in";
   let busy: Busy | undefined;
+  let busyMove = false; // the running update moves the copy (D229)
   let outcome: { state: "refused"; reason: BridgeRefusal } | { state: "failed"; detail: string } | undefined;
   let undoFailed: string | undefined;
   let memFailed: string | undefined; // the last install/update didn't work: what it said
+  let memKept = false; // ...and the old copy is still there, working
+  let memDone: { kind: "installed" | "updated" | "moved"; at: number } | undefined;
   let signIn: BridgeView["signIn"];
   let signInDetail: string | undefined;
 
-  // D225: a fresh install's route, decided once per look (pip needs a quick question first).
-  let pipOk: boolean | undefined;
+  // D225/D229: what a plan needs to know, asked once each (a python's pip, a password-free sudo).
+  const facts: MemFacts = { python: {} };
+  let sudoAsked = false;
+  async function learnPython(py: string) {
+    if (facts.python![py] !== undefined) return;
+    const r = await exec([py, "-c", PY_PROBE], 20_000);
+    const word = r && r.code === 0 ? r.out.trim().split("\n").at(-1)?.trim() : undefined;
+    facts.python![py] = word === "ok" || word === "managed" ? word : "nopip";
+  }
+  async function learnSudo() {
+    if (sudoAsked || sys.platform !== "linux" || sys.uid === 0) return;
+    sudoAsked = true;
+    const r = await exec(["sudo", "-n", "true"], 10_000); // -n: never asks for a password
+    facts.sudo = !!r && r.code === 0;
+  }
   async function freshPlan(): Promise<MemPlan | undefined> {
-    const first = installPlan(env, sys, false);
+    const first = installPlan(env, sys, facts);
     if (first) return first;
-    if (pipOk === undefined) {
-      const py = sys.which("python3", env.PATH ?? "");
-      const r = py ? await exec([py, "-m", "pip", "--version"], 20_000) : undefined;
-      pipOk = !!r && r.code === 0;
+    await learnSudo();
+    const py = sys.which("python3", env.PATH ?? "");
+    if (py) await learnPython(py);
+    return installPlan(env, sys, facts);
+  }
+  async function copyPlan(copy: MemCopy): Promise<MemPlan | undefined> {
+    if (copy.channel === "pip" && copy.userSite && copy.python) {
+      await learnPython(copyPython(copy, env, sys));
+      if (facts.python![copyPython(copy, env, sys)] === "managed") await learnSudo();
     }
-    return installPlan(env, sys, pipOk);
+    return updatePlan(copy, env, sys, facts);
   }
   const copyHere = () => {
     const bin = findNmem(env, sys);
     return bin ? copyOf(bin, sys) : undefined;
   };
+  /** D229: with Mem working here, the one quiet thing worth doing to its copy, if any. */
+  async function upkeepFor(p: Probe): Promise<{ plan: MemPlan; kind: "move" | "update" } | undefined> {
+    const copy = copyHere();
+    if (!copy) return undefined;
+    const plan = await copyPlan(copy);
+    if (plan?.how === "move") return { plan, kind: "move" };
+    if (plan && p.updateAvailable) return { plan, kind: "update" };
+    return undefined;
+  }
+  /** One step: a command found by name once an earlier step put it in; pip past the mark when the copy already is. */
+  async function runStep(st: MemStep) {
+    const head = st.argv[0]!;
+    const argv = !head.includes("/") && head !== "sudo" && head !== "env" ? [toolOf(head, env, sys) ?? head, ...st.argv.slice(1)] : st.argv;
+    let r = await exec(argv, MEM_INSTALL_MS);
+    if (r && r.code !== 0 && st.pastMark && externallyManaged(r.out + r.err)) r = await exec([...argv.slice(0, -1), "--break-system-packages", argv.at(-1)!], MEM_INSTALL_MS);
+    return r;
+  }
+  const DONE_SHOWN_MS = 10 * 60_000;
 
   const memReady = () => readyFns.forEach((fn) => fn());
 
@@ -338,12 +381,19 @@ export function createBridgeLink(opts: {
     const home = opts.home();
     const space = r ? { id: r.spaceId, label: r.spaceLabel } : p?.space;
     const base = { identity: r?.agentId ?? agent, ...(space ? { space } : {}) };
-    const failed = memFailed ? { detail: memFailed } : {};
-    if (busy) return { state: busy, ...base, ...(busy === "installing" || busy === "updating" || busy === "signing_in" ? { home } : {}) };
+    const failed = memFailed ? { detail: memFailed, ...(memKept ? { kept: true as const } : {}) } : {};
+    if (busy) return { state: busy, ...base, ...(busy === "installing" || busy === "updating" || busy === "signing_in" ? { home } : {}), ...(busy === "updating" && busyMove ? { upkeep: { kind: "move" as const } } : {}) };
+    // D229: a quiet line under any working state: just done (a warm word), or the one thing worth doing.
+    const extras = async (): Promise<Partial<BridgeView>> => {
+      if (memDone && now() - memDone.at < DONE_SHOWN_MS) return { home, done: memDone.kind };
+      if (!p?.supported) return {};
+      const u = await upkeepFor(p);
+      return u ? { home, upkeep: { kind: u.kind, ...(memFailed ? { detail: memFailed, ...(memKept ? { kept: true as const } : {}) } : {}) } } : {};
+    };
     if (r && p?.supported) {
       void verify(r).catch(() => {});
       if (!r.confirmed) return { state: "unconfirmed", ...base, ...(undoFailed ? { detail: undoFailed } : {}) };
-      return { state: "connected", ...base, ...(undoFailed ? { detail: undoFailed } : {}) };
+      return { state: "connected", ...(await extras()), ...base, ...(undoFailed ? { detail: undoFailed } : {}) };
     }
     if (!p) {
       const plan = await freshPlan();
@@ -351,14 +401,14 @@ export function createBridgeLink(opts: {
     }
     if (!p.supported) {
       const copy = copyHere();
-      const plan = copy && updatePlan(copy, env, sys);
-      return { state: "update_mem", identity: agent, home, version: p.version, canRun: !!plan, ...(plan ? {} : { need: copy?.channel === "app" ? ("app" as const) : ("other" as const) }), ...failed };
+      const plan = copy && (await copyPlan(copy));
+      return { state: "update_mem", identity: agent, home, version: p.version, canRun: !!plan, ...(plan?.how === "move" ? { upkeep: { kind: "move" as const } } : {}), ...(plan ? {} : { need: copy?.channel === "app" ? ("app" as const) : ("other" as const) }), ...failed };
     }
-    if (!p.signedIn) return { state: "sign_in", identity: agent, home, version: p.version, ...(signIn ? { signIn } : {}), ...(signInDetail ? { detail: signInDetail } : {}) };
-    if (p.backend === "local") return { state: "local_mem", identity: agent, home };
+    if (!p.signedIn) return { state: "sign_in", identity: agent, home, version: p.version, ...(memDone && now() - memDone.at < DONE_SHOWN_MS ? { done: memDone.kind } : {}), ...(signIn ? { signIn } : {}), ...(signInDetail ? { detail: signInDetail } : {}) };
+    if (p.backend === "local") return { state: "local_mem", identity: agent, home, ...(await extras()) };
     if (outcome) return { ...outcome, ...base };
-    if (!p.space) return { state: "no_space", identity: agent };
-    return { state: "ready", ...base };
+    if (!p.space) return { state: "no_space", identity: agent, ...(await extras()) };
+    return { state: "ready", ...(await extras()), ...base };
   };
 
   return {
@@ -448,27 +498,35 @@ export function createBridgeLink(opts: {
       if (busy || (opts.memoryOn && !opts.memoryOn())) return;
       const p = await look(true);
       let plan: MemPlan | undefined;
-      let copy: ReturnType<typeof copyHere>;
       if (!p) {
-        pipOk = undefined;
         plan = await freshPlan();
-      } else if (!p.supported) {
-        copy = copyHere();
-        plan = copy && updatePlan(copy, env, sys);
+      } else {
+        const copy = copyHere();
+        // Too old for Bridge: its update (D229: a move, for a copy past the system's mark);
+        // working: the quiet upkeep the row offered (the move, or Mem's own "a newer one is out").
+        plan = !p.supported ? copy && (await copyPlan(copy)) : (await upkeepFor(p))?.plan;
       }
       if (!plan) return changed(); // the row says what the user does instead
       busy = p ? "updating" : "installing";
+      busyMove = plan.how === "move";
       memFailed = undefined;
+      memKept = false;
+      memDone = undefined;
       changed();
       try {
-        let r = await exec(plan.argv, MEM_INSTALL_MS);
-        // The same copy, where pip already put it past the system's mark (PEP 668): update it there.
-        if (r && r.code !== 0 && plan.how === "pip" && copy?.userSite && externallyManaged(r.out + r.err)) {
-          r = await exec([...plan.argv.slice(0, -1), "--break-system-packages", plan.argv.at(-1)!], MEM_INSTALL_MS);
-        }
-        if (!r || r.code !== 0) {
-          memFailed = !r ? `${plan.argv[0]} didn't start` : externallyManaged(r.out + r.err) ? "pip: externally-managed-environment" : lastLine(r.err || r.out) || `exit ${r.code}`;
-          return;
+        let removed = false;
+        for (const st of plan.steps) {
+          const r = await runStep(st);
+          if (!r || r.code !== 0) {
+            memFailed = !r ? `${st.argv[0]} didn't start` : externallyManaged(r.out + r.err) ? "pip: externally-managed-environment" : lastLine(r.err || r.out) || `exit ${r.code}`;
+            // A move that took the old copy out but couldn't put the new one in: the old one goes back.
+            if (removed && plan.undo) {
+              const u = await runStep(plan.undo);
+              memKept = !!u && u.code === 0;
+            } else memKept = !!p;
+            return;
+          }
+          if (st.argv.includes("uninstall")) removed = true;
         }
         // Where the new nmem is: its folder joins this process's PATH (later spawns find it).
         const bin = findNmem({ ...env, NMEM_CLI_PATH: undefined }, sys) ?? extraBins(sys).map((d) => join(d, "nmem")).find(sys.exists);
@@ -477,12 +535,17 @@ export function createBridgeLink(opts: {
           if (!sys.which("nmem", env.PATH ?? "") || env.NMEM_CLI_PATH) env.NMEM_CLI_PATH = bin;
         }
         supportedBy.clear();
+        facts.python = {};
         const q = await look(true);
         if (!q) memFailed = "installed, but nmem doesn't answer";
         else if (!q.supported) memFailed = `nmem ${q.version ?? "?"}: still too old`;
-        else if (q.signedIn) memReady();
+        else {
+          memDone = { kind: plan.how === "move" ? "moved" : p ? "updated" : "installed", at: now() };
+          if (q.signedIn) memReady();
+        }
       } finally {
         busy = undefined;
+        busyMove = false;
         changed();
       }
     },

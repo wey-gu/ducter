@@ -213,66 +213,118 @@ describe("the link over a fake nmem", () => {
 
 describe("D225: the home's own nmem, put in or updated on the tap", () => {
   // A home with no nmem: `run` can't start it; the installer is recorded, never run for real.
-  function sysOf(files: Record<string, string>, tools: Record<string, string>, home = "/home/u"): MemSys {
+  function sysOf(files: Record<string, string>, tools: Record<string, string>, o: { home?: string; uid?: number; platform?: NodeJS.Platform } = {}): MemSys {
     return {
       which: (cmd) => tools[cmd],
       exists: (p) => p in files,
       read: (p) => files[p],
       list: (d) => [...new Set(Object.keys(files).filter((p) => p.startsWith(d + "/")).map((p) => p.slice(d.length + 1).split("/")[0]!))],
       real: (p) => p,
-      home,
-      platform: "linux",
+      home: o.home ?? "/home/u",
+      platform: o.platform ?? "linux",
+      uid: o.uid ?? 1000,
     };
   }
-  function homeRig(o: { files?: Record<string, string>; tools?: Record<string, string>; version?: string; signedIn?: boolean; installOk?: boolean; pipOk?: boolean; externally?: boolean }) {
+  // `python` is what PY_PROBE answers ("ok", "managed", "nopip"); `sudo`: `sudo -n true` works.
+  function homeRig(o: { files?: Record<string, string>; tools?: Record<string, string>; version?: string; signedIn?: boolean; installOk?: boolean; python?: "ok" | "managed" | "nopip"; sudo?: boolean; uid?: number; pipxInstallOk?: boolean; latest?: boolean }) {
     const t = tempDir();
     stops.push(t.cleanup);
     const files = { ...(o.files ?? {}) };
+    const tools = { ...(o.tools ?? {}) };
     let version = o.version;
+    let updateAvailable = !!o.latest;
     const execs: string[][] = [];
     const env: Record<string, string | undefined> = { PATH: "/usr/bin:/bin" };
+    // In the shape of nmem 0.10.118's `--json status` (research/69): mode, backend, update.
     const run: NmemCall = async (args) => {
       if (!version) return undefined;
       if (args[0] === "--version") return { code: 0, out: `nmem ${version}`, err: "" };
       if (args.join(" ") === "bridge connections --help") return { code: 2, out: "", err: "unrecognized" };
-      if (args[0] === "status") return o.signedIn === false ? { code: 1, out: "", err: "unreachable" } : { code: 0, out: JSON.stringify({ status: "healthy", backend: "cloud" }), err: "" };
+      if (args[0] === "status")
+        return o.signedIn === false
+          ? { code: 1, out: "", err: "unreachable" }
+          : { code: 0, out: JSON.stringify({ status: "healthy", cli_version: version, mode: "remote", backend: "cloud", update: { current: version, latest: "0.10.119", update_available: updateAvailable, command: "pipx upgrade nmem-cli" } }), err: "" };
       if (args.join(" ") === "bridge setup") return { code: 0, out: JSON.stringify({ candidates: [{ id: "p1", label: "Only me", kind: "personal" }] }), err: "" };
       return { code: 1, out: "", err: "not in this rig" };
     };
     const exec: MemExec = async (argv) => {
       execs.push(argv);
-      if (argv.includes("--version")) return { code: o.pipOk ? 0 : 1, out: "pip 26", err: "" };
-      if (o.externally && !argv.includes("--break-system-packages")) return { code: 1, out: "", err: "error: externally-managed-environment\n× This environment is externally managed" };
-      if (o.installOk === false) return { code: 1, out: "", err: "ERROR: No matching distribution found for nmem-cli" };
+      if (argv.includes("-c")) return o.python ? { code: 0, out: `${o.python}\n`, err: "" } : { code: 127, out: "", err: "no python" };
+      if (argv.join(" ") === "sudo -n true") return o.sudo ? { code: 0, out: "", err: "" } : { code: 1, out: "", err: "sudo: a password is required" };
+      if (argv.some((a) => a.endsWith("apt-get"))) {
+        tools.pipx = "/usr/bin/pipx";
+        return { code: 0, out: "Setting up pipx", err: "" };
+      }
+      const pip = argv.includes("pip");
+      if (pip && o.python === "managed" && !argv.includes("--break-system-packages")) return { code: 1, out: "", err: "error: externally-managed-environment\n× This environment is externally managed" };
+      if (pip && argv.includes("uninstall")) {
+        delete files["/home/u/.local/bin/nmem"];
+        version = undefined;
+        return { code: 0, out: "Successfully uninstalled nmem-cli", err: "" };
+      }
+      if (o.installOk === false || (o.pipxInstallOk === false && argv[0]!.endsWith("pipx"))) return { code: 1, out: "", err: "ERROR: No matching distribution found for nmem-cli" };
       version = "0.10.118";
+      updateAvailable = false;
       files["/home/u/.local/bin/nmem"] = "ELF";
       return { code: 0, out: "installed", err: "" };
     };
-    const link = createBridgeLink({ dataDir: t.dir, identity: () => "ducter", home: () => "hel", run, exec, sys: sysOf(files, o.tools ?? {}), env });
-    return { link, execs, env };
+    const link = createBridgeLink({ dataDir: t.dir, identity: () => "ducter", home: () => "hel", run, exec, sys: sysOf(files, tools, { uid: o.uid }), env });
+    return { link, execs, env, files };
   }
+  const installs = (execs: string[][]) => execs.filter((a) => !a.includes("-c") && a.join(" ") !== "sudo -n true");
 
-  test("no nmem, pipx here: install_mem with one tap; it runs pipx, finds the new nmem, and goes on", async () => {
+  test("no nmem, pipx here: install_mem with one tap; it runs pipx, finds the new nmem, and goes on, with a warm word", async () => {
     const r = homeRig({ tools: { pipx: "/usr/bin/pipx", python3: "/usr/bin/python3" } });
     expect(await r.link.view()).toEqual({ state: "install_mem", identity: "ducter", home: "hel", canRun: true });
     await r.link.installMem();
     expect(r.execs).toEqual([["/usr/bin/pipx", "install", "nmem-cli"]]);
     expect(r.env.PATH!.split(":")[0]).toBe("/home/u/.local/bin");
     expect(r.env.NMEM_CLI_PATH).toBe("/home/u/.local/bin/nmem");
+    expect(await r.link.view()).toMatchObject({ state: "ready", done: "installed" });
+  });
+
+  test("D229: pipx first (Mem's route), uv when pipx isn't here", async () => {
+    const both = homeRig({ tools: { uv: "/usr/bin/uv", pipx: "/usr/bin/pipx" } });
+    await both.link.installMem();
+    expect(both.execs[0]).toEqual(["/usr/bin/pipx", "install", "nmem-cli"]);
+    const uv = homeRig({ tools: { uv: "/usr/bin/uv" } });
+    await uv.link.installMem();
+    expect(uv.execs[0]).toEqual(["/usr/bin/uv", "tool", "install", "nmem-cli"]);
+  });
+
+  test("D229: no pipx or uv, root on Debian/Ubuntu: pipx from apt first (no password), then pipx", async () => {
+    const r = homeRig({ tools: { python3: "/usr/bin/python3", "apt-get": "/usr/bin/apt-get" }, uid: 0, python: "managed" });
+    expect(await r.link.view()).toEqual({ state: "install_mem", identity: "ducter", home: "hel", canRun: true });
+    await r.link.installMem();
+    expect(installs(r.execs)).toEqual([
+      ["env", "DEBIAN_FRONTEND=noninteractive", "/usr/bin/apt-get", "install", "-y", "-q", "pipx"],
+      ["/usr/bin/pipx", "install", "nmem-cli"],
+    ]);
+    expect(r.execs.some((a) => a[0] === "sudo")).toBe(false); // root: no sudo asked
     expect((await r.link.view())?.state).toBe("ready");
   });
 
-  test("no nmem, uv here: uv first", async () => {
-    const r = homeRig({ tools: { uv: "/usr/bin/uv", pipx: "/usr/bin/pipx" } });
+  test("D229: a user with password-free sudo gets pipx with `sudo -n`; with a password, never asked", async () => {
+    const ok = homeRig({ tools: { python3: "/usr/bin/python3", "apt-get": "/usr/bin/apt-get" }, sudo: true, python: "managed" });
+    await ok.link.installMem();
+    expect(installs(ok.execs)[0]).toEqual(["sudo", "-n", "env", "DEBIAN_FRONTEND=noninteractive", "/usr/bin/apt-get", "install", "-y", "-q", "pipx"]);
+    const no = homeRig({ tools: { python3: "/usr/bin/python3", "apt-get": "/usr/bin/apt-get" }, sudo: false, python: "managed" });
+    expect(await no.link.view()).toEqual({ state: "install_mem", identity: "ducter", home: "hel", canRun: false, need: "pipx" });
+    await no.link.installMem();
+    expect(installs(no.execs)).toEqual([]);
+  });
+
+  test("no pipx, uv or a password-free package manager; pip usable and unmarked: pip into the user's own site", async () => {
+    const r = homeRig({ tools: { python3: "/usr/bin/python3" }, python: "ok" });
     await r.link.installMem();
-    expect(r.execs[0]).toEqual(["/usr/bin/uv", "tool", "install", "nmem-cli"]);
+    expect(installs(r.execs)).toEqual([["/usr/bin/python3", "-m", "pip", "install", "--user", "--disable-pip-version-check", "nmem-cli"]]);
   });
 
   test("no nmem, no pipx or uv, pip refused by the system: one line naming pipx, nothing installed", async () => {
-    const r = homeRig({ tools: { python3: "/usr/bin/python3" }, pipOk: false });
+    const r = homeRig({ tools: { python3: "/usr/bin/python3" }, python: "managed" });
     expect(await r.link.view()).toEqual({ state: "install_mem", identity: "ducter", home: "hel", canRun: false, need: "pipx" });
     await r.link.installMem();
-    expect(r.execs.every((a) => a.includes("--version"))).toBe(true);
+    expect(installs(r.execs)).toEqual([]);
   });
 
   test("an install that fails: the installer's last line, and Try again", async () => {
@@ -281,19 +333,70 @@ describe("D225: the home's own nmem, put in or updated on the tap", () => {
     expect(await r.link.view()).toMatchObject({ state: "install_mem", canRun: true, detail: "ERROR: No matching distribution found for nmem-cli" });
   });
 
-  test("hel's shape: nmem 0.10.116 put in the user's site by pip, under a marked system python: updated in place past the mark", async () => {
-    const files = {
-      "/home/u/.local/bin/nmem": "ELF",
-      "/home/u/.local/lib/python3.14/site-packages/nmem_cli-0.10.116.dist-info/INSTALLER": "pip\n",
-    };
-    const r = homeRig({ files, tools: { nmem: "/home/u/.local/bin/nmem", "python3.14": "/usr/bin/python3.14" }, version: "0.10.116", externally: true });
+  const HEL = {
+    "/home/u/.local/bin/nmem": "ELF",
+    "/home/u/.local/lib/python3.14/site-packages/nmem_cli-0.10.116.dist-info/INSTALLER": "pip\n",
+  };
+
+  test("D229 hel's shape, too old: nmem 0.10.116 put past the mark by pip: 更新 moves it to pipx (apt as root), sign-in kept", async () => {
+    const r = homeRig({ files: HEL, tools: { nmem: "/home/u/.local/bin/nmem", "python3.14": "/usr/bin/python3.14", "apt-get": "/usr/bin/apt-get" }, version: "0.10.116", python: "managed", uid: 0 });
+    expect(await r.link.view()).toEqual({ state: "update_mem", identity: "ducter", home: "hel", version: "0.10.116", canRun: true, upkeep: { kind: "move" } });
+    await r.link.installMem();
+    expect(installs(r.execs)).toEqual([
+      ["env", "DEBIAN_FRONTEND=noninteractive", "/usr/bin/apt-get", "install", "-y", "-q", "pipx"],
+      ["/usr/bin/python3.14", "-m", "pip", "uninstall", "-y", "--disable-pip-version-check", "--break-system-packages", "nmem-cli"],
+      ["/usr/bin/pipx", "install", "--force", "nmem-cli"],
+    ]);
+    // `nmem connect`'s sign-in lives in ~/.nowledge-mem/config.json: no step touches it, and Mem still answers signed in.
+    expect(r.execs.flat().some((a) => a.includes(".nowledge-mem") || a === "connect")).toBe(false);
+    expect(await r.link.view()).toMatchObject({ state: "ready", done: "moved" });
+  });
+
+  test("D229 hel's shape, working: a quiet move offered under ready; one tap; pipx already here", async () => {
+    const r = homeRig({ files: HEL, tools: { nmem: "/home/u/.local/bin/nmem", "python3.14": "/usr/bin/python3.14", pipx: "/usr/bin/pipx" }, version: "0.10.118", python: "managed" });
+    expect(await r.link.view()).toMatchObject({ state: "ready", upkeep: { kind: "move" } });
+    await r.link.installMem();
+    expect(installs(r.execs)).toEqual([
+      ["/usr/bin/python3.14", "-m", "pip", "uninstall", "-y", "--disable-pip-version-check", "--break-system-packages", "nmem-cli"],
+      ["/usr/bin/pipx", "install", "--force", "nmem-cli"],
+    ]);
+    const v = await r.link.view();
+    expect(v).toMatchObject({ state: "ready", done: "moved" });
+    expect(v?.upkeep).toBeUndefined();
+  });
+
+  test("D229: a move whose new copy doesn't go in puts the old one back, and says so", async () => {
+    const r = homeRig({ files: HEL, tools: { nmem: "/home/u/.local/bin/nmem", "python3.14": "/usr/bin/python3.14", pipx: "/usr/bin/pipx" }, version: "0.10.118", python: "managed", pipxInstallOk: false });
+    await r.link.installMem();
+    expect(installs(r.execs).at(-1)).toEqual(["/usr/bin/python3.14", "-m", "pip", "install", "--user", "--disable-pip-version-check", "--break-system-packages", "nmem-cli"]);
+    expect(await r.link.view()).toMatchObject({ state: "ready", upkeep: { kind: "move", detail: "ERROR: No matching distribution found for nmem-cli", kept: true } });
+  });
+
+  test("D229: past the mark with no pipx to move to and none to get: the old in-place update, past the mark", async () => {
+    const r = homeRig({ files: HEL, tools: { nmem: "/home/u/.local/bin/nmem", "python3.14": "/usr/bin/python3.14" }, version: "0.10.116", python: "managed" });
     expect(await r.link.view()).toEqual({ state: "update_mem", identity: "ducter", home: "hel", version: "0.10.116", canRun: true });
     await r.link.installMem();
-    expect(r.execs).toEqual([
+    expect(installs(r.execs)).toEqual([
       ["/usr/bin/python3.14", "-m", "pip", "install", "--user", "--upgrade", "--disable-pip-version-check", "nmem-cli"],
       ["/usr/bin/python3.14", "-m", "pip", "install", "--user", "--upgrade", "--disable-pip-version-check", "--break-system-packages", "nmem-cli"],
     ]);
-    expect((await r.link.view())?.state).toBe("ready");
+    expect(await r.link.view()).toMatchObject({ state: "ready", done: "updated" });
+  });
+
+  test("D229: a pip copy under an unmarked python is left where it is (no move offered)", async () => {
+    const r = homeRig({ files: HEL, tools: { nmem: "/home/u/.local/bin/nmem", "python3.14": "/usr/bin/python3.14", pipx: "/usr/bin/pipx" }, version: "0.10.118", python: "ok" });
+    const v = await r.link.view();
+    expect(v?.state).toBe("ready");
+    expect(v?.upkeep).toBeUndefined();
+  });
+
+  test("D229: Mem says a newer nmem is out: a quiet 更新 from the copy's own source", async () => {
+    const files = { "/home/u/.local/pipx/venvs/nmem-cli/bin/nmem": "ELF", "/home/u/.local/bin/nmem": "ELF" };
+    const r = homeRig({ files, tools: { nmem: "/home/u/.local/pipx/venvs/nmem-cli/bin/nmem", pipx: "/usr/bin/pipx" }, version: "0.10.118", latest: true });
+    expect(await r.link.view()).toMatchObject({ state: "ready", upkeep: { kind: "update" } });
+    await r.link.installMem();
+    expect(installs(r.execs)).toEqual([["/usr/bin/pipx", "upgrade", "nmem-cli"]]);
+    expect(await r.link.view()).toMatchObject({ state: "ready", done: "updated" });
   });
 
   test("the app's copy: update the app (no command here)", async () => {
@@ -304,8 +407,10 @@ describe("D225: the home's own nmem, put in or updated on the tap", () => {
     expect(r.execs).toEqual([]);
   });
 
-  test("a fresh install is never forced past the system's mark", async () => {
-    expect(installPlan({ PATH: "" }, { which: (c) => (c === "python3" ? "/usr/bin/python3" : undefined), exists: () => false, read: () => undefined, list: () => [], real: (p) => p, home: "/h", platform: "linux" }, true)?.argv).toEqual(["/usr/bin/python3", "-m", "pip", "install", "--user", "--disable-pip-version-check", "nmem-cli"]);
+  test("a fresh install is never forced past the system's mark", () => {
+    const sys: MemSys = { which: (c) => (c === "python3" ? "/usr/bin/python3" : undefined), exists: () => false, read: () => undefined, list: () => [], real: (p) => p, home: "/h", platform: "linux", uid: 1000 };
+    expect(installPlan({ PATH: "" }, sys, { python: { "/usr/bin/python3": "ok" } })?.steps).toEqual([{ argv: ["/usr/bin/python3", "-m", "pip", "install", "--user", "--disable-pip-version-check", "nmem-cli"] }]);
+    expect(installPlan({ PATH: "" }, sys, { python: { "/usr/bin/python3": "managed" } })).toBeUndefined();
   });
 
   test("connect links: Mem's shapes only", () => {

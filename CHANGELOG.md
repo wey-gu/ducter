@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.0.28
+
+<!-- whats-new
+zh: 打开任务就能看手机和 iOS 模拟器的实时画面
+en: An opened task shows Ducter's phone and your iOS Simulator live
+zh: 任务顶部一眼看到分支、改动和开 PR
+en: The task's top shows its branch, changes and PR at a glance
+-->
+
+**The workbench's Phone page**
+- When a task uses Ducter's phone, the phone is live in the task's workbench under **手机 / Phone**.
+- For iOS work on a Mac, a booted iOS Simulator shows there too, with home, dark or light, text
+  size, open a link, and a screenshot that drops into the message box. Tapping is done in Simulator
+  itself for now.
+
+**Working copy**
+- The branch name at the task's top opens the computer, folder, branch and its base, the changes
+  against the base, Open draft PR or Merge, and who has worked on it.
+
+**Site**
+- The launch film plays on every browser again, in a new cut with the workbench, pictures, Ducter's
+  phone and calls.
+
 ## 0.0.27
 
 <!-- whats-new

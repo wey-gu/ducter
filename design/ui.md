@@ -121,6 +121,19 @@ partner's. A file is a white card on the clay base, one line. The upload ring is
 dark ground at 96%), its controls text buttons in ink; it grows out of the tile and shrinks back,
 and only fades under reduced motion. Mac: `Lightbox`, `LightboxInk`, `MediaGap`.
 
+**Replies: the imprint (D236, research/72).** The message replied to as a small copy of its own
+bubble pressed into the reply: `--r-imprint` (14/14/14/4, the partner's tail bottom-left;
+`--r-imprint-you` mirrored), sunken by `--imprint-depth` (an inner shadow at the top, a faint light
+edge at the bottom), on `--imprint-partner-on-user` / `--imprint-you-on-user` inside the user's
+bubble, `--imprint-you-on-partner` as a partner answer's tab, `sunken` / `--imprint-you-on-surface`
+in the composer. A 12 (800) who-line, then 13 at most two lines. Motion: the swipe mark (a 32
+round on the clay base, `--swipe-mark`) eases in with the drag and settles to accent with a spring
+at the arming point; the bubble springs home over `--t-back` (320 ms); the composer's imprint
+rises in (`--t-med`, spring); a sent imprint is pressed in (`--t-press-in`, 260 ms, from raised
+`--imprint-raised` to sunken); found = the original's own tint deepens once (`--found-user`,
+`--found-partner`, 1.4 s). The reply mark and × are drawn, never text glyphs. Mac: the same tokens
+in `apps/desktop/internal/theme`.
+
 **Task lines.** A task line says its title once, then where it stands: the job's status line
 when it adds something, else the state (a status line that only repeats the title falls back to
 the state). A finished task reads 做完了 / Done: `done?` shows as Done until something actually
@@ -562,6 +575,7 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
 | Device card as a character sheet (D161) | `design/prototypes/device-card.html` (open from the repo; shots in `.shots/device-card-v2/`) | before → after on the MacBook, the Mac's Devices page, five card states, the phone's Settings › Devices, and D157's switch sheet, where line, ask and rules in the same coin language; zh/en, motion / still | decided 2026-11-10 and built on both clients (`design/ui-devices-card.md` §12; built shots `.shots/device-card-built/`) |
 | Where a task runs (D157) | `design/prototypes/where.html` (open from the repo; shots in `.shots/where/`) | New task with and without a computer choice, the where line, Switch who does it with the island strip, the sleeping-Mac ask, the parcel landing / waiting / moving, closing the laptop; zh/en, motion / still | decided (D157); the build follows it |
 | Accounts and proactive help (drafts D165, D166) | `design/prototypes/accounts.html` (open from the repo; shots in `.shots/accounts/`) | today's card → the source as a character sheet; the first account (the 3-day look, the one question); the morning note in the conversation and on the lock screen; a silent day; an aha find becoming a Go-gated 上网 task; 有用 / 这类不用告诉我 → a rule; the other kinds; the Mac's Accounts page with four sources and a tile's detail; the phone; zh/en, motion / still | draft, pending the author's review (`design/connectors.md` Part A) |
+| Reply to one message (D236) | `design/prototypes/reply.html` (open from the repo; built shots in `.shots/reply/`) | the seven candidates for how a reply looks (research/72) and the chosen imprint: the swipe and its mark at rest and armed, the composer with the imprint, the sent reply, two replies in a row with their answers and the answer's tab, the found original, the long-press menu, light and dark, zh/en | draft, pending the author's review |
 | Phone web (built) | `.shots/phone-*.png` (390×844, zh/en, light/dark) | the real `apps/web` client: conversation, decisions, On hand, opened task, pairing, notifications | built, pending review |
 
 ### Screenshots of the built clients (2026-11-09)

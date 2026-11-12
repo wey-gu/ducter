@@ -8,7 +8,8 @@ import type { CoreRegistry } from "./registry.ts";
 export type DecisionHook = (taskId: string, text: string, resolved: Bodies["decision_resolved"]) => void | Promise<void>;
 
 export interface Decisions {
-  decide(decisionId: string, option: "go" | "hold" | "reply", text?: string): LogEvent<"decision_resolved">;
+  /** msgSeq (D236): the reply message that answered it, when the answer was a reply in the conversation. */
+  decide(decisionId: string, option: "go" | "hold" | "reply", text?: string, msgSeq?: number): LogEvent<"decision_resolved">;
   get(decisionId: string): Bodies["decision"] | undefined;
   isPending(decisionId: string): boolean;
   setHook(fn: DecisionHook): void;
@@ -252,13 +253,14 @@ export function createDecisions(opts: {
         });
       }
     },
-    decide(decisionId, option, text) {
+    decide(decisionId, option, text, msgSeq) {
       if (!all.has(decisionId)) throw new Error(`unknown decision ${decisionId}`);
       if (resolved.has(decisionId)) throw new Error(`decision ${decisionId} is already resolved`);
       if (option === "reply" && !text?.trim()) throw new Error("reply needs text");
       if (dropped(all.get(decisionId)!.taskId)) throw new Error("That task was dropped. Undo the drop first, then answer.");
       const body: Bodies["decision_resolved"] = { decisionId, option, by: "user" };
       if (text) body.text = text;
+      if (msgSeq) body.msgSeq = msgSeq;
       return log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body });
     },
     takeUnforwarded: () => unforwarded.splice(0),

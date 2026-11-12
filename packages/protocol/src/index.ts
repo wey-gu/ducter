@@ -12,6 +12,7 @@ export * from "./phone.ts";
 export * from "./media.ts";
 export * from "./phone-use.ts";
 export * from "./calendar.ts";
+export * from "./reply.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
 import type { CalChange, CalGlance, CalToday } from "./calendar.ts";
@@ -200,9 +201,39 @@ export interface SignInAsk {
   url?: string; // the sign-in page the task opened
 }
 
+/**
+ * D236: what the user picked to answer when they replied to one message (回复 / Reply). The client
+ * names only the message (its seq, and a find or a part of its words inside it); core fills the
+ * rest from the Log when it logs the reply, so the quote travels with the reply for good: it
+ * survives the window, a re-cut and a restart, and never trusts words a client made up.
+ */
+export interface ReplyRef {
+  seq: number; // the channel event replied to
+  from: "you" | "partner"; // whose words: the user's own, or the partner's (a find, a question, a result)
+  kind: "message" | "question" | "find";
+  quote: string; // at most REPLY_QUOTE characters of its words, or the part the user picked
+  part?: boolean; // the quote is a part the user picked, not the start of the message
+  clipped?: boolean; // its words go on past the quote (log_read gives the rest)
+  ts: string; // when it was said
+  taskIds?: string[]; // the tasks it was about (at most 3)
+  decisionId?: string; // the question it asked
+  answers?: boolean; // that question was open: these words are its answer (core resolved it, msgSeq)
+  findId?: string; // the find it was (one find of a note)
+  media?: MediaRef[]; // its pictures (at most 4): the partner sees them again with the reply
+}
+/** D236: how much of a message a reply carries: a bounded quote and its seq, never the whole thing. */
+export const REPLY_QUOTE = 200;
+/** D236: a client's half of a reply: the message, and a find or a part of its words in it. */
+export interface ReplyWant {
+  seq: number;
+  findId?: string;
+  part?: string;
+}
+
 export interface Bodies {
   // D206: media = the pictures the user sent with it (text may be empty then).
-  user_msg: { text: string; clientId?: string; media?: MediaRef[] };
+  // reply (D236): the one message this answers, with its quote.
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
@@ -245,7 +276,8 @@ export interface Bodies {
     cal?: CalChange;
   };
   // now (D208): a call's Go given as 现在就打 / Call now, over the callee's courtesy hours.
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean };
+  // msgSeq (D236): the reply message that answered it (its words show as that bubble, not on the card).
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean; msgSeq?: number };
   read_receipt: { upToSeq: number };
   task_open: {
     taskId: string;
@@ -682,7 +714,8 @@ export type ClientFrame =
   // release makes the home read GitHub again (its answer is stale).
   | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string }
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
-  | { t: "send"; text: string; clientId: string; media?: string[] }
+  // reply (D236): the one message this answers (core fills in its quote from the Log).
+  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant }
   // cvc (D191): a pay card's security code when none is kept; held in memory for that one
   // payment's fill, never logged.
   | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string }

@@ -30,6 +30,8 @@ import { TaskInfoButton } from "./task-info.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
+import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
+import { plainWords } from "@ducter/protocol";
 import { AutofillSettings, FillBody, fillTitle, PayBody } from "./autofill.tsx";
 import { FillButton, forecast, FullTop } from "./board.tsx";
 import { OnHandList, Switcher } from "./onhand.tsx";
@@ -729,14 +731,16 @@ function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; det
   );
 }
 
-function JobRow({ e, chipOwner, noted, join }: { e: Entry; chipOwner: Map<string, number>; noted: { seq: number; title: string }[]; join?: boolean }) {
+function JobRow({ e, chipOwner, noted, join, rk, ans }: { e: Entry; chipOwner: Map<string, number>; noted: { seq: number; title: string }[]; join?: boolean; rk?: string; ans?: { seq: number; quote: string } }) {
   const j = e.job!;
   const st = j.status;
   const task = st?.taskId ? A.S.tasks.get(st.taskId) : undefined;
   const own = task && title(task) && chipOwner.get(task.id) === e.firstSeq;
   return (
-    <div class={`partner${join ? " join" : ""}`}>
+    <div class={`partner${join ? " join" : ""}`} data-reply={j.ack ? rk : undefined} data-seq={e.firstSeq}>
+      {j.ack && ans && <Imprint from="you" quote={ans.quote} seq={ans.seq} />}
       {j.ack && <div class="bubble">{j.ack.text}</div>}
+      {j.ack && <HoverReply k={rk} />}
       {st && !(task && title(task)) && <div class={`status-line${st.state === "failed" ? " failed" : ""}`}>{st.text}</div>}
       <Quiet k={`m${e.firstSeq}`} tasks={own ? [task!] : []} detail={st?.text} noted={noted} />
     </div>
@@ -803,7 +807,7 @@ const dueAt = (d: DecisionState) => (d.defaultAt ? Date.parse(d.defaultAt) : Inf
 
 /** One ask in the partner's words (D104): the question as it speaks, its default in one muted
  *  line with Details, and, when it is the one being asked, Reply… · Hold · Go in one small row. */
-function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string; buttons?: boolean }) {
+function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?: string; buttons?: boolean; rk?: string; seq?: number }) {
   useTick(1000);
   const ref = useRef<HTMLDivElement>(null);
   const flash = A.flash === d.decisionId;
@@ -832,7 +836,7 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
   // D193: a call's Go card or a question from the line: the whole card, in the conversation too.
   if (d.call)
     return (
-      <div ref={ref} class={`partner askq call${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+      <div ref={ref} class={`partner askq call${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
         <div class="decision">
           <CallDecision d={d} />
         </div>
@@ -840,14 +844,14 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
     );
   if (d.phone)
     return (
-      <div ref={ref} class={`partner askq ${d.phone.kind === "user" ? "signin" : "pay"}${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+      <div ref={ref} class={`partner askq ${d.phone.kind === "user" ? "signin" : "pay"}${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
         <div class="bubble">{d.said || d.question}</div>
         {(buttons || !open) && <PhoneAskBody d={d} compact />}
       </div>
     );
   if (d.signIn)
     return (
-      <div ref={ref} class={`partner askq signin${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+      <div ref={ref} class={`partner askq signin${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
         <div class="bubble">{d.said || t("signin.title", d.signIn.site)}</div>
         {(buttons || !open) && <SignInBody d={d} compact />}
       </div>
@@ -855,13 +859,13 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
   // D191: 付款 / Pay and a first use: the facts and the code on the card itself, never in prose.
   if (d.pay || d.fill)
     return (
-      <div ref={ref} class={`partner askq pay${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+      <div ref={ref} class={`partner askq pay${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
         <div class="bubble">{d.said || (d.pay ? t("pay.title", d.pay.site) : fillTitle(d.fill!))}</div>
         {(buttons || !open) && (d.pay ? <PayBody d={d} compact /> : <FillBody d={d} compact />)}
       </div>
     );
   return (
-    <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+    <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
       {d.asker && <PeerAsker d={d} />}
       <div class="bubble">{d.said || d.question}</div>
       {/* D222: a calendar change: what, when, where and who hears, before one Go. */}
@@ -1026,21 +1030,46 @@ function stacks(prev: Entry | undefined, e: Entry, chipOwner: Map<string, number
   return !!e.user || !!e.ai || !!e.job?.ack;
 }
 
-function EntryView({ e, chipOwner, livingItems, join }: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean }) {
+/** D236: the user's words, with the imprint of what they reply to pressed into the top of the bubble. */
+function UserWords({ text, reply, cls, rk, seq }: { text: string; reply?: Bodies["user_msg"]["reply"]; cls: string; rk?: string; seq?: number }) {
+  if (!reply) return <div class={cls} data-reply={rk} data-seq={seq}>{text}<HoverReply k={rk} /></div>;
+  return (
+    <div class={`${cls} has-reply`} data-reply={rk} data-seq={seq}>
+      <SentImprint r={reply} />
+      {text && <span class="words">{text}</span>}
+      <HoverReply k={rk} />
+    </div>
+  );
+}
+
+/** D236: a partner answer that comes after other messages shows which reply it answers. */
+function answerOf(e: Entry, prevUser: number | undefined) {
+  const to = e.ai?.replyTo ?? e.job?.ack?.replyTo;
+  if (!to || to === prevUser) return undefined;
+  const u = A.S.channel.find((x) => x.firstSeq === to)?.user;
+  return u?.reply ? { seq: to, quote: plainWords(u.text) } : undefined;
+}
+
+function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean; prevUser?: number }) {
+  const rk = replyKey(replyOf(e));
   if (e.user) {
     // D206: the pictures stand above the words, on their own, as in a messaging app.
-    if (!e.user.media?.length) return <div class={`user${join ? " join" : ""}`}>{e.user.text}</div>;
+    if (!e.user.media?.length) return <UserWords text={e.user.text} reply={e.user.reply} cls={`user${join ? " join" : ""}`} rk={rk} seq={e.firstSeq} />;
     return (
-      <div class={`user-m${join ? " join" : ""}`}>
+      <div class={`user-m${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
         <MediaBlock media={e.user.media} side="user" ctx={{ kind: "conv" }} />
-        {e.user.text && <div class="user">{e.user.text}</div>}
+        {(e.user.text || e.user.reply) && <UserWords text={e.user.text} reply={e.user.reply} cls="user" />}
+        <HoverReply k={rk} />
       </div>
     );
   }
   if (e.ai) {
+    const ans = answerOf(e, prevUser);
     return (
-      <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}`}>
+      <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
+        {ans && <Imprint from="you" quote={ans.quote} seq={ans.seq} />}
         {(e.ai.text || !e.ai.cal) && <div class="bubble" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />}
+        <HoverReply k={rk} />
         {/* D222: the day card under the partner's words (or alone in its column). */}
         {e.ai.cal && <DayCard g={e.ai.cal} />}
         {/* D206: what a task showed, under the partner's words about it. */}
@@ -1049,13 +1078,13 @@ function EntryView({ e, chipOwner, livingItems, join }: { e: Entry; chipOwner: M
       </div>
     );
   }
-  if (e.job) return <JobRow e={e} chipOwner={chipOwner} noted={A.notedFor(e)} join={join} />;
+  if (e.job) return <JobRow e={e} chipOwner={chipOwner} noted={A.notedFor(e)} join={join} rk={rk} ans={answerOf(e, prevUser)} />;
   if (e.living) return <Living e={e} items={livingItems(e)} chipOwner={chipOwner} />;
-  if (e.finds) return <FindsNote n={e.finds} join={join} />;
+  if (e.finds) return <FindsNote n={e.finds} join={join} seq={e.ev.seq} seqs={`${e.firstSeq} ${e.ev.seq}`} />;
   if (e.decision) {
     const d = A.S.decisions.get(e.decision.decisionId);
     if (!d) return null;
-    return <Ask d={d} />;
+    return <Ask d={d} rk={rk} seq={e.firstSeq} />;
   }
   if (e.peer) {
     // A question it asked shows once, as its card (which already says who asks).
@@ -1203,9 +1232,11 @@ function Composer({ taskId }: { taskId?: string }) {
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <DropHint on={over} />
       <Tray where={where} />
-      <div class="composer">
+      <div class={`composer${!taskId && A.replying ? " has-reply" : ""}`} onKeyDown={(ev) => !taskId && ev.key === "Escape" && A.replying && (ev.preventDefault(), A.cancelReply())}>
+        {/* D236: what this replies to, pressed into the composer above the words. */}
+        {!taskId && <ComposerReply />}
         <AddPictures where={where} />
-        <AutoText id={taskId ? "composer-task" : "composer"} value={value} onInput={set} onEnter={submit} label={label} placeholder={taskId ? t("composer.task") : t("composer.placeholder", A.S.personaName)} />
+        <AutoText id={taskId ? "composer-task" : "composer"} value={value} onInput={set} onEnter={submit} label={label} placeholder={taskId ? t("composer.task") : A.replying ? `${t("reply.to", replyWho(A.replying.from))}…` : t("composer.placeholder", A.S.personaName)} />
         <button class="btn accent icon send" aria-label={t("composer.send")} disabled={!value.trim() && !pics.length} onClick={submit}>
           <Arrow />
         </button>
@@ -1298,6 +1329,10 @@ export function Conversation() {
   const { rows, livingItems, chipOwner } = A.rows();
   const scroller = useRef<HTMLDivElement>(null);
   const dropping = useDropPaste(scroller, "");
+  // D236: swipe right / long press / right click to reply; a selected part on a wide screen.
+  const menu = useReplyGestures(scroller);
+  const wide = useWide();
+  let lastUser: number | undefined;
   const atBottom = useRef(true);
   useLayoutEffect(() => {
     const el = scroller.current;
@@ -1321,10 +1356,12 @@ export function Conversation() {
         {empty && <Hello />}
         {rows.map((e, i) => {
           const gap = timeGap(rows[i - 1], e);
+          const prevUser = lastUser;
+          if (e.user) lastUser = e.firstSeq;
           return (
             <Fragment key={e.firstSeq}>
               {gap && !(e.living && A.livingAway.get(e.firstSeq)) && <div class="when">{when(A.L, e.ev.ts)}</div>}
-              <EntryView e={e} chipOwner={chipOwner} livingItems={livingItems} join={!gap && stacks(rows[i - 1], e, chipOwner)} />
+              <EntryView e={e} chipOwner={chipOwner} livingItems={livingItems} join={!gap && stacks(rows[i - 1], e, chipOwner)} prevUser={prevUser} />
             </Fragment>
           );
         })}
@@ -1342,14 +1379,17 @@ export function Conversation() {
               )}
             </div>
           ) : (
-            <div key={p.clientId} class={`user pending${i > 0 || rows.at(-1)?.user ? " join" : ""}`}>
-              {p.text}
+            <div key={p.clientId} class={`user pending${p.reply ? " has-reply" : ""}${i > 0 || rows.at(-1)?.user ? " join" : ""}`}>
+              {p.reply && <Imprint from={p.reply.from} quote={p.reply.part ?? p.reply.quote} pics={p.reply.pics} part={!!p.reply.part} still />}
+              {p.reply ? <span class="words">{p.text}</span> : p.text}
             </div>
           ),
         )}
         {A.thinking() && <Presence />}
         <NotifyAsk />
       </main>
+      <ReplyMenu menu={menu} />
+      {wide && <PartReply scroller={scroller} />}
       <Composer />
     </>
   );

@@ -14,9 +14,10 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type HarnessId, type LogEvent, type Place, type TaskCard } from "../../protocol/src/index.ts";
+import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type HarnessId, type LogEvent, type Place, type ReplyWant, type TaskCard } from "../../protocol/src/index.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, Runner } from "../../protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/index.ts";
+import { logUserMessage } from "../../core/src/reply.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
 import { buildSystemPrompt, createNmemBridge, createPartner, isChinese } from "../src/index.ts";
 import { scenarios, type Expect, type Scenario, type Step } from "./scenarios.ts";
@@ -117,7 +118,7 @@ function teePort(real: HarnessPort, onEvent: (e: HarnessEvent, sessionIdx: numbe
 interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number; needs?: Record<string, unknown>; harness?: string }
 function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
   const opened: Opened[] = [];
-  const sent: { taskId: string; text: string; step: number }[] = [];
+  const sent: { taskId: string; text: string; step: number; from?: string }[] = [];
   const stopped: string[] = [];
   const openCard = (taskId: string, title: string, place: Place, brief: string) => {
     core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title, project: "", place, harness: "claude-code", brief } });
@@ -153,7 +154,7 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
     },
     async send(taskId, text, _mode, from = "partner") {
       if (!core.tasks.get(taskId)) throw new Error(`unknown task ${taskId}`);
-      sent.push({ taskId, text, step: cur.step });
+      sent.push({ taskId, text, step: cur.step, from });
       core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_event", body: { taskId, role: "user", from, text } });
       return { delivered: "steered" };
     },
@@ -325,6 +326,19 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       const plan = { to: q.to, name: q.name, goal: "", say: [], mustNot: [], voice: "ducter" as const, from: "provider" as const, provider: "Tuwa", minutes: 4, costUsd: 1.6, perMinUsd: 0.4, calleeZone: "Asia/Tokyo" };
       core.log.append({ stream: "channel", origin: "system", kind: "phone_call", body: { callId: "call_q", connectionId: conn, state: "question", plan, placedAt: new Date(Date.now() - 90_000).toISOString(), talkingSince: new Date(Date.now() - 60_000).toISOString(), question: { text: q.question, choices: [], yesNo: true, askedAt: new Date().toISOString(), decisionId } } });
       core.log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId, question: q.question, goLabel: "yes", defaultOption: "hold", reversible: false, call: { callId: "call_q", kind: "question", choices: [], yesNo: true } } });
+    } else if ("finds" in s) {
+      // D236: a note Ducter said by itself; each find with a next step has its card (default Hold).
+      const n = `n_${shortId()}`;
+      const finds = s.finds.finds.map((f, i) => ({ findId: `${n}_f${i}`, kind: f.kind, text: f.text, how: [], ...(f.goLabel ? { goLabel: f.goLabel, decisionId: `${n}_d${i}` } : {}) }));
+      core.log.append({ stream: "channel", origin: "partner", kind: "finds", body: { noteId: n, rung: "morning", opening: s.finds.opening, finds } as Bodies["finds"] });
+      for (const f of finds) if (f.decisionId) core.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: f.decisionId, question: f.text, goLabel: f.goLabel!, defaultOption: "hold", reversible: false, findId: f.findId } });
+    } else if ("chatter" in s) {
+      const said = ["收到", "好", "嗯，记着了", "行"];
+      for (let i = 0; i < s.chatter; i++) {
+        const u = core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: `第 ${i + 1} 条：今天的站会改到 ${9 + (i % 8)} 点半` } });
+        core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: said[i % said.length]!, replyTo: u.seq } });
+      }
+      lastUser = core.log.head() - 1;
     } else if ("waiterArmed" in s) {
       const w: Bodies["waiter"] = { waiterId: "w_" + crypto.randomUUID().slice(0, 10), at: new Date(Date.now() + 3600_000).toISOString(), reason: s.waiterArmed.reason, state: "armed" };
       waiters.set(w.reason, w);
@@ -427,6 +441,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("task" in s) lines.push(`(earlier) partner ack: ${s.task.ack}  → task "${s.task.title}" ${s.task.state}${s.task.report ? `; its report: ${s.task.report.summary}` : ""}`);
     else if ("userAction" in s) lines.push(`(earlier) the user, by button, on task "${s.userAction.task}": ${s.userAction.text}`);
     else if ("callQuestion" in s) lines.push(`(earlier) a call to ${s.callQuestion.name} is live; the other side asked "${s.callQuestion.question}" and that question's card (Yes / No / reply) is on screen`);
+    else if ("finds" in s) lines.push(`(earlier) Ducter's own note from the user's accounts: ${s.finds.opening} ${s.finds.finds.map((f) => `[${f.kind}] ${f.text}${f.goLabel ? ` (next step offered: ${f.goLabel})` : ""}`).join(" | ")}`);
+    else if ("chatter" in s) lines.push(`(earlier) ${s.chatter} short exchanges about moving the stand-up (filler)`);
     else lines.push(`(earlier) reminder set: ${s.waiterArmed.reason}`);
   }
   for (const [i, st] of sc.steps.entries()) {
@@ -456,7 +472,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     }
     for (const n of notedByStep.filter((x) => x.step === i)) lines.push(`  [the app shows a small line: "Noted · ${n.title}"]`);
     for (const o of r_opened(fr.opened, i)) lines.push(`  [opened a task] title: ${o.title} | place: ${JSON.stringify(o.place ?? null)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
-    for (const x of fr.sent.filter((x) => x.step === i)) lines.push(`  [sent to task ${keyOf.get(x.taskId) ?? "?"}] ${x.text.slice(0, 400)}`);
+    for (const x of fr.sent.filter((x) => x.step === i)) lines.push(`  [${x.from === "user" ? "Ducter passed the user's answer to task" : "sent to task"} ${keyOf.get(x.taskId) ?? "?"}] ${x.text.slice(0, 400)}`);
     for (const x of retitles.filter((x) => x.step === i)) lines.push(`  [retitled task ${x.key}] ${x.title}`);
     const other = [...new Set(tools.filter((x) => x.step === i).map((x) => x.name.replace(/^mcp__ducter__/, "")).filter((n) => !["task_open", "task_send", "task_retitle", "ask", "wait_until", "ToolSearch", "memory_search", "memory_add"].includes(n)))];
     if (other.length) lines.push(`  [also used tools] ${other.join(", ")}`);
@@ -477,6 +493,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
 
 function describeStep(st: Step): string {
+  if ("users" in st) return st.users.map((u) => `user says${u.replyTo ? ` (replying, by swipe, to the earlier message with "${u.replyTo}")` : ""}: ${u.text}`).join(" || then at once ") + " (sent together, before any answer)";
+  if ("user" in st && st.replyTo) return `user replies (by swipe, quoting it) to the earlier message with "${st.replyTo}": ${st.user}`;
   if ("user" in st) return `user says: ${st.user}${st.images?.length ? ` (with ${st.images.length === 1 ? "a picture" : `${st.images.length} pictures`}: ${st.images.map((p) => p.split("/").pop()).join(", ")})` : ""}`;
   if ("report" in st) return `task "${st.report.task}" reports ${st.report.body.state}: ${st.report.body.summary}${st.report.body.questions.length ? ` | its question (already shown to the user with Go / Hold / Reply buttons): ${st.report.body.questions.map((q) => q.text).join(" / ")}` : ""}${st.report.body.evidence.length ? "" : " | (no evidence attached)"}`;
   if ("reports" in st) return st.reports.map((r) => `task "${r.task}" reports ${r.body.state}: ${r.body.summary}`).join(" || ") + " (both within the same second)";
@@ -484,6 +502,21 @@ function describeStep(st: Step): string {
   if ("resolve" in st) return `user answers the open decision: ${st.resolve.option}${st.resolve.text ? ` "${st.resolve.text}"` : ""}`;
   if ("callEnded" in st) return `the call to ${st.callEnded.name} (${st.callEnded.to}) ended; the provider reported: ${st.callEnded.state}${st.callEnded.outcome ? `, "${st.callEnded.outcome}"` : ""}${st.callEnded.hint === "screening" ? " (Google Voice call screening answered)" : ""}`;
   return `a reminder the partner set earlier is due: ${st.timerFired.reason}`;
+}
+
+/** D236: the latest channel message that has these words (a find inside a note by its own words). */
+function replyWant(core: Core, words: string): ReplyWant {
+  const evs = core.log.read({ stream: "channel", kinds: ["user_msg", "ai_msg", "ack", "decision", "finds"], limit: 5000 }).reverse();
+  for (const e of evs) {
+    if (e.kind === "finds") {
+      const f = (e.body as Bodies["finds"]).finds.find((x) => x.text.includes(words));
+      if (f) return { seq: e.seq, findId: f.findId };
+      continue;
+    }
+    const b = e.body as { text?: string; question?: string };
+    if ((b.text ?? b.question ?? "").includes(words)) return { seq: e.seq };
+  }
+  throw new Error(`no message has "${words}" to reply to`);
 }
 
 function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<string, string>, waiters: Map<string, Bodies["waiter"]>, opened: Opened[]) {
@@ -495,7 +528,9 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
   if ("user" in st) {
     // D206: the pictures go through the home's media store, as an upload would.
     const media = (st.images ?? []).map((p) => core.media.putFile(join(import.meta.dir, "..", "..", "..", p)));
-    core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: st.user, ...(media.length ? { media } : {}) } });
+    logUserMessage(core.log, core.decisions, { text: st.user, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}) });
+  } else if ("users" in st) {
+    for (const u of st.users) logUserMessage(core.log, core.decisions, { text: u.text, ...(u.replyTo ? { reply: replyWant(core, u.replyTo) } : {}) });
   } else if ("callEnded" in st) {
     const x = st.callEnded;
     const plan = { to: x.to, name: x.name, goal: "", say: [], mustNot: [], voice: "ducter" as const, from: "provider" as const, provider: "Tuwa", minutes: 2, costUsd: 0.6, perMinUsd: 0.3, calleeZone: "America/New_York" };
@@ -561,11 +596,17 @@ function check(r: RunResult): string[] {
     const [lo, hi] = Array.isArray(e.opens) ? e.opens : [e.opens, e.opens];
     if (r.opened.length < lo || r.opened.length > hi) fails.push(`task_open ×${r.opened.length} (want ${lo === hi ? lo : `${lo}-${hi}`})`);
   }
-  if (e.sendTo) {
-    const want = e.sendTo.startsWith("$opened") ? r.opened[Number(e.sendTo.slice(7))]?.taskId : r.idOf.get(e.sendTo);
-    if (!r.sent.some((s) => s.taskId === want)) fails.push(`no task_send to ${e.sendTo}`);
+  for (const key of e.sendTo === undefined ? [] : Array.isArray(e.sendTo) ? e.sendTo : [e.sendTo]) {
+    const want = key.startsWith("$opened") ? r.opened[Number(key.slice(7))]?.taskId : r.idOf.get(key);
+    if (!r.sent.some((s) => s.taskId === want)) fails.push(`no task_send to ${key}`);
   }
-  if (e.noSend && r.sent.length) fails.push(`task_send ×${r.sent.length} (want none)`);
+  // D236: no cross-talk: what went to each task is about that task only.
+  const sentTo = (key: string) => r.sent.filter((s) => s.taskId === r.idOf.get(key)).map((s) => s.text).join("\n");
+  for (const [key, res] of Object.entries(e.sentRequire ?? {})) for (const re of res) if (!re.test(sentTo(key))) fails.push(`what went to ${key} lacks ${re}`);
+  for (const [key, res] of Object.entries(e.sentForbid ?? {})) for (const re of res) if (re.test(sentTo(key))) fails.push(`what went to ${key} has ${re}`);
+  // The partner sends nothing (an answer core forwards from the user, D236, is not the partner's).
+  const bySelf = r.sent.filter((s) => (s as { from?: string }).from !== "user");
+  if (e.noSend && bySelf.length) fails.push(`task_send ×${bySelf.length} (want none)`);
   if (e.noSendTo && r.sent.some((s) => s.taskId === r.idOf.get(e.noSendTo!))) fails.push(`task_send to ${e.noSendTo} (want a new task)`);
   if (e.retitled && !r.retitles.some((x) => x.key === e.retitled)) fails.push(`${e.retitled} not retitled`);
   // Building on the repo's own branch (main) is fine; building on another task's branch is not.

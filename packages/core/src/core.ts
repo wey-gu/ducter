@@ -203,7 +203,9 @@ export const defaultDataDir = () => process.env.DUCTER_DATA_DIR || join(homedir(
 
 /** Events that wake the partner (principle 6): user messages, resolutions, non-progress reports, fired waiters. */
 export function triggersPartner(e: LogEvent): boolean {
-  if (e.kind === "user_msg" || e.kind === "decision_resolved") return true;
+  if (e.kind === "user_msg") return true;
+  // D236: a question answered by a reply wakes it through the reply, which says so.
+  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq;
   // D222: a calendar change the person said Go to that didn't go through (core ran it; success is the card's).
   if (e.kind === "connection_call") {
     const c = e.body as Bodies["connection_call"];

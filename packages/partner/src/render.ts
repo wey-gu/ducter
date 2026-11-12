@@ -3,7 +3,8 @@
 //   cold seed:   renderProjection() background blocks for a fresh session (L2, simplified)
 // Rule (principle 4, research/13): a fresh session reads as an ongoing conversation.
 // Nothing rendered here may say the session was reset, restarted, or lost.
-import type { Bodies, LogEvent, TaskCard } from "../../protocol/src/index.ts";
+import type { Attention, Bodies, LogEvent, ReplyRef, TaskCard } from "../../protocol/src/index.ts";
+import { REPLY_QUOTE } from "../../protocol/src/index.ts";
 import { renderCallEnded } from "../../protocol/src/phone.ts";
 import { isImage, shortId, type MediaRef } from "../../protocol/src/media.ts";
 import { shownOut, whoForModel } from "./bridge-out.ts";
@@ -81,6 +82,44 @@ export interface RenderCtx {
   bridgeOut?(messageId: string | undefined): Bodies["bridge_msg"] | undefined;
   /** X2 (D170): the user lets this own agent's work start without asking. */
   trusted?(agent: string): boolean;
+  /** D236: where a task stands now, so a reply about it can say whether more work goes to it. */
+  taskAttention?(taskId: string): Attention | undefined;
+}
+
+/** D236: who said the message a reply answers, and what it was, as the head of the user's line. */
+function replyHead(r: ReplyRef, short: boolean): string {
+  const what =
+    r.from === "you"
+      ? "their own earlier message"
+      : r.kind === "question"
+        ? "your question"
+        : r.kind === "find"
+          ? "something you noticed"
+          : "your message";
+  const quote = clip(r.quote, short ? 100 : REPLY_QUOTE);
+  return `replying to ${what} of ${hhmm(r.ts)} (#${r.seq}${r.part ? ", a part they picked" : ""}): "${quote}"`;
+}
+
+/** D236: one line on what the message replied to was about, so the reply goes where it belongs. */
+export function replyAbout(r: ReplyRef, ctx: RenderCtx): string[] {
+  const out: string[] = [];
+  for (const id of r.taskIds ?? []) {
+    const title = ctx.taskTitle(id);
+    const a = ctx.taskAttention?.(id);
+    const merged = ctx.merged?.(id);
+    const where = a === "dropped" || a === "superseded" ? "set aside" : a === "done" || a === "done_claimed" || a === "failed" ? (merged ? `${a === "failed" ? "didn't work" : "done"}, its work merged` : `${a === "failed" ? "didn't work" : "done"}, not merged`) : a ? "still working" : "";
+    const next = merged
+      ? "new work on it is a new task (rule 2d)"
+      : a === "dropped" || a === "superseded"
+        ? "the user set it aside: ask before doing more"
+        : "more of that work, a fix or a change to it: task_send it there (not a new task); a question about it: answer it yourself (task_read)";
+    out.push(`  (it was about task ${id}${title ? ` "${clip(title, 80)}"` : ""}${where ? `, ${where}` : ""}: ${next})`);
+  }
+  if (r.kind === "question" && r.decisionId) out.push("  (that question was already answered or has its own buttons: answer the user from what they say now)");
+  if (r.kind === "find") out.push(`  (a find from their accounts${r.decisionId ? " with a next step offered" : ""}: answer about that one; if they want it done, it is work like any other (rule 2))`);
+  if (r.media?.length) out.push(`  (it had ${mediaWords(r.media)}; you see ${r.media.length === 1 ? "it" : "them"} again with this message)`);
+  if (r.clipped) out.push(`  (the quote is cut; log_read stream "channel" fromSeq ${r.seq} limit 1 gives the whole message)`);
+  return out;
 }
 
 function userAction(b: Bodies["job_status"], ctx: RenderCtx, n = 400): string {
@@ -95,6 +134,17 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       const b = e.body as Bodies["user_msg"];
       // D206: the pictures ride as the turn's own image input; here they are only named.
       const pics = b.media?.length ? ` [with ${b.media.length === 1 ? "a picture" : `${b.media.length} pictures`}: ${mediaWords(b.media)}${ctx.seesPictures === false ? "; you can't see pictures on this AI" : "; you see them with this message"}]` : "";
+      // D236: a reply names the one message it answers, with its quote: it is about that one.
+      if (b.reply?.answers && b.reply.decisionId) {
+        // An open question answered by a reply reads as that question answered (rule 8): Ducter
+        // already handed the words over, exactly as the card's Reply would.
+        const d = ctx.decision(b.reply.decisionId);
+        const about = d?.taskId ? ` (task ${d.taskId}: "${clip(d.question, 200)}")` : d ? ` "${clip(d.question, 200)}"` : "";
+        return d?.taskId
+          ? `[decision resolved: reply]${about} ${b.text}${pics} (the user answered by replying to your question; already forwarded to the task)`
+          : `[your question answered: reply]${about} · user: ${b.text}${pics} (they answered by replying to it)`;
+      }
+      if (b.reply) return [`[user, ${replyHead(b.reply, false)}] ${b.text}${pics}`, ...replyAbout(b.reply, ctx)].join("\n");
       return `[user] ${b.text}${pics}`;
     }
     case "report": {
@@ -195,7 +245,9 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
   switch (e.kind) {
     case "user_msg": {
       const b = e.body as Bodies["user_msg"];
-      return `[${t} user] ${clip(b.text, 1200)}${b.media?.length ? ` [sent ${mediaWords(b.media)}]` : ""}`;
+      // D236: the quote rides with the reply, so it reads right even when its message left the window.
+      const re = b.reply ? `, ${replyHead(b.reply, true)}` : "";
+      return `[${t} user${re}] ${clip(b.text, 1200)}${b.media?.length ? ` [sent ${mediaWords(b.media)}]` : ""}`;
     }
     case "ai_msg": {
       const b = e.body as Bodies["ai_msg"];

@@ -7,6 +7,7 @@ import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, MediaRef, OoA
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
+import { logUserMessage } from "./reply.ts";
 import type { DevicesView } from "./devices.ts";
 import { redactDeep } from "@ducter/protocol/src/redact.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
@@ -416,7 +417,8 @@ export function createWsHandler(deps: WsDeps) {
         // D206: pictures come as ids the upload answered; words may be empty then.
         const media = mediaOf(f.media);
         if (!f.text?.trim() && !media.length) throw new Error("empty message");
-        log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: f.text ?? "", clientId: f.clientId, ...(media.length ? { media } : {}) } });
+        // D236: a reply carries its quote from the Log; one to an open question answers it.
+        logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}) });
         return; // the partner is triggered by core's user_msg subscription
       }
       case "decide": {

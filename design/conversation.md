@@ -91,6 +91,56 @@ promotion are not built.*
   pattern). A fast decision model (e.g. Jev/Kev class) may run the gates: attention tagging,
   the recall precision gate, and the voice escalation gate.
 
+## Replies: answering one message (D236)
+
+Evidence: `research/71` (T3 Code, Lorca, messaging apps), `research/72` (the look). Context:
+`context.md` "Replies".
+
+**The moment.** Three things came back at once, or the user wants to answer something from this
+morning, not the latest line. They point at that message and say one line; it goes where it
+belongs. Two or three replies in a row each keep their own subject. A fresh user needs nothing to
+learn: the gesture is the one their thumb already knows.
+
+**What can be replied to.** Any bubble in the conversation: the partner's words (a result, an
+ack, a task's question in its words), the user's own message, a message with pictures, and each
+find of a note (D165) on its own. Not a card's buttons, not a status line.
+
+**Gestures.** Phone: swipe the bubble right (it starts at 14pt, arms at 56pt with a light haptic,
+gives way to a scroll on 10pt up, down or left, and never starts within 28pt of the left edge, the
+back gesture); long press opens **回复 / Reply · 复制 / Copy**. Wide screen with a mouse: a round
+Reply beside the bubble on hover, right click for the same menu, and a selected part of the
+partner's words offers **回复这段 / Reply to this part**. Mac: hover Reply. Esc or the × puts a
+reply away (**不回复了 / Cancel reply**).
+
+**The look: the imprint (research/72).** The message replied to appears as a small copy of its
+own bubble (its voice's colour, its tail corner) pressed into the reply like a pebble into clay:
+in the composer while writing (with the drawn reply mark beside it and the placeholder **回复
+{who}… / Reply to {who}…**), inside the top of the sent bubble after. Its first line is literal:
+**Ducter** (the persona's name) or **你 / You**; then at most two lines of the quote; a part the
+user picked is in quotation marks. Tapping it brings the original into view and finds it: its own
+tint deepens once and settles (never a glow ring). One no longer on this screen says **那条在更早的
+对话里，这里翻不到了。/ That message is further back than this screen goes.**; the reply's own quote
+still reads. A partner answer that lands after other messages carries, as a tab above its bubble,
+the imprint of the user's reply it answers, so two answers in a row never look swapped.
+
+**Routing (core decides what code can; the partner the rest).**
+- A reply to a task's question (or the partner's own ask) that is still open **is its answer**:
+  core resolves it as Reply with the words, exactly as the card's 回复… does, and the task hears it
+  (decision_resolved carries the reply's seq; the card shows it answered, the words stay in the
+  bubble). The partner is told it was already passed on and sends nothing.
+- A reply to a message about a task (its ack, its result, its question once answered): the
+  partner reads which task and where it stands; more of that work goes to that task (task_send)
+  even when another task spoke last, unless its work was merged (D67's rule 2d: a new task).
+- A reply to a find: about that find only; doing it is work like any other (a task).
+- A reply to the user's own message or any plain message: conversation about that message.
+- **No cross-talk.** Replies to different messages are separate partner turns, each answering its
+  own; a turn never sees the next reply as history. Each answer replies to its own message.
+- **A reply never branches.** No fork, no new session, no side thread; it is one message in the
+  one conversation (principle 6).
+
+**Voice.** The partner never repeats the quote and never says the user replied ("关于你回复的那
+条"): it just answers. Its one line for a follow-up names the action, as any follow-up does.
+
 ## The living message (principle 7)
 
 | State | Meaning |

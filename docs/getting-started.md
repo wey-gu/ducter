@@ -115,6 +115,15 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
   **Hold** for "not yet", or **Reply…** in your own words. When several things are waiting, it
   asks one at a time; *"1 more waiting on you"* shows the rest, and **Go on all defaults** takes
   every suggested answer at once.
+- **Reply to one message.** When several things came back, answer the one you mean: on the phone,
+  swipe its bubble to the right (or press and hold it, then **Reply**); on a computer, point at it
+  and press the reply button beside it, or right-click it. A small copy of that message sits above
+  what you type (press × or Esc to put it away), and stays pressed into your message once sent.
+  Your partner takes it as being about that message: "add one more test" goes to the task that
+  message was about, even if something else spoke last, and a reply to a question answers it. Send
+  a few replies in a row and each gets its own answer. Tap the small copy to go back to the
+  original. On a computer you can also select part of your partner's words and press **Reply to
+  this part**.
 - **On hand** shows every task at a glance and what's waiting for you. Open any task to read
   *What it did*, see its changes, and talk to it directly.
 - **Work beside it.** In a task that changes files or runs a web page, the **Workbench** button

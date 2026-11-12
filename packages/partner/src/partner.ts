@@ -227,7 +227,9 @@ const PLUMBING_RE = /\/worktrees\/|\.ducter\/|\bjob_[a-z0-9]{6,}|\bducter\/[a-z0
 /** Same rule as core's triggersPartner (principle 6). */
 function isTrigger(e: LogEvent): boolean {
   if (e.origin === "partner") return false;
-  if (e.kind === "user_msg" || e.kind === "decision_resolved") return true;
+  if (e.kind === "user_msg") return true;
+  // D236: a question answered by a reply wakes it through the reply, which says so.
+  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq;
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
   if (e.kind === "waiter") {
     const w = e.body as Bodies["waiter"];
@@ -243,6 +245,25 @@ function isTrigger(e: LogEvent): boolean {
   if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in" && !(e.body as Bodies["bridge_msg"]).state;
   if (e.kind === "phone_call") return callWakes(e.body as Bodies["phone_call"]);
   return false;
+}
+
+/**
+ * D236: how many queued triggers the next turn takes. Everything waiting goes together, except
+ * that a user message replying to another message than the one before it starts a turn of its
+ * own: two replies to two things are two turns, each with its own subject and its own answer
+ * (no cross-talk), and each answer replies to its own message. Plain messages still batch.
+ */
+export function turnLength(queue: readonly LogEvent[]): number {
+  let key: string | undefined;
+  for (let i = 0; i < queue.length; i++) {
+    const e = queue[i]!;
+    if (e.kind !== "user_msg") continue;
+    const r = (e.body as Bodies["user_msg"]).reply;
+    const k = r ? `#${r.seq}${r.findId ? `/${r.findId}` : ""}` : "";
+    if (key === undefined) key = k;
+    else if (k !== key) return i;
+  }
+  return queue.length;
 }
 
 /** A turn woken only by Bridge messages (no user message, no answered card). */
@@ -517,6 +538,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     trusted: (agent) => !!core.settings?.get().peers?.trusted.includes(agent),
     taskTitle: (id) => core.tasks.get(id)?.title ?? jobs.get(id)?.title,
+    taskAttention: (id) => core.tasks.get(id)?.attention,
     merged: (id) =>
       core.log
         .read({ stream: "channel", kinds: ["job_status"], limit: 500 })
@@ -1024,12 +1046,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const isRecut = recutting;
     recutting = false;
     if (view) {
-      const batchSeqs = new Set(batch.map((e) => e.seq));
+      const batchSeqs = new Set([...batch, ...queue].map((e) => e.seq)); // D236: what waits for its own turn is not history yet
       const window = view.window.filter((e) => !batchSeqs.has(e.seq));
       const background = renderProjection(window, core.tasks.list(), ctx, { earlier: view.earlier, ledger: view.ledger, ...(view.gap ? { gap: view.gap } : {}) });
       return background ? `${background}\n\n${deltas.join("\n")}` : deltas.join("\n");
     }
-    const batchSeqs = new Set(batch.map((e) => e.seq));
+    const batchSeqs = new Set([...batch, ...queue].map((e) => e.seq)); // D236: what waits for its own turn is not history yet
     const kinds: EventKind[] = ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter", "memory_noted", "bridge_msg"];
     const history = core.log
       .read({ stream: "channel", beforeSeq: core.log.head() + 1, limit: historyLimit + batch.length, kinds })
@@ -1084,7 +1106,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
    */
   function picturesOf(batch: LogEvent[]): SendImage[] | undefined {
     if (!ctx.seesPictures || !core.media) return undefined;
-    const sent = batch.flatMap((e) => (e.kind === "user_msg" ? ((e.body as Bodies["user_msg"]).media ?? []) : []));
+    // D236: a reply to a message with pictures shows them again, after the reply's own.
+    const sent = batch.flatMap((e) => (e.kind === "user_msg" ? [...((e.body as Bodies["user_msg"]).media ?? []), ...((e.body as Bodies["user_msg"]).reply?.media ?? [])] : []));
     const shown = batch.flatMap((e) => (e.kind === "report" ? ((e.body as Bodies["report"]).media ?? []) : [])).slice(0, 4);
     const out: SendImage[] = [];
     for (const m of [...sent, ...shown].filter(isImage).slice(0, MEDIA_LIMITS.perMessage)) {
@@ -1193,7 +1216,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // Settlement batch (I-results rule 3, research/16): tasks that finish within a moment of
       // each other become one turn, so one message. Only when nothing from the user waits.
       if (settleMs > 0 && !queue.some((e) => e.kind === "user_msg" || e.seq < 0)) await Bun.sleep(settleMs);
-      const batch = queue.splice(0, queue.length);
+      // D236: replies to different messages are separate turns, each answering its own.
+      const batch = queue.splice(0, turnLength(queue));
       try {
         await runTurn(batch);
       } catch (err) {
@@ -1453,6 +1477,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // A turn woken only by a task's question: the user answers it on its card (eval: the
       // partner sent "Go：…" to the task on the user's behalf).
       if (turn?.quiet) return { ok: false, error: "The user answers this question on its card; send the task nothing and end your turn." };
+      // D236: a reply that answered this task's open question already reached it, word for word
+      // (eval: the partner sent the same words again in 2 of 2 runs).
+      const answered = turn?.triggers.some((e) => {
+        const r = e.kind === "user_msg" ? (e.body as Bodies["user_msg"]).reply : undefined;
+        return !!(r?.answers && r.taskIds?.includes(args.taskId));
+      });
+      if (answered) return { ok: false, error: "Ducter already gave this task the user's reply as the answer to its question. Send it nothing; say at most one short line, or nothing." };
       try {
         const named = mediaNamed(args.media);
         if (named.unknown.length && !named.media.length) return { ok: false, error: `No picture with id ${named.unknown.join(", ")}.` };

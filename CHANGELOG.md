@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.0.29
+
+<!-- whats-new
+zh: 能看你的日历了，两个账号合成一天
+en: Ducter reads your calendars, every account merged into one day
+zh: 加日程、改时间、回邀请，点了 Go 才改
+en: Add, move or answer events; nothing changes until you tap Go
+-->
+
+**Calendars**
+- With Google Calendar connected in oo, Ducter reads every account's calendars as one day in your
+  time zone. Ask "我今天怎么安排" or "what's tomorrow" and a day card answers: times, each
+  calendar's colour, what clashes, what you haven't answered.
+- It finds free time across both accounts, and can add, move, cancel or answer an event. Each
+  change waits on a card showing which calendar, the time on both sides, and who gets an email.
+- Settings › Accounts lists the calendars it reads, each with a switch. If only Gmail is
+  connected, it points you to adding Google Calendar in oo.
+- The morning greeting mentions what's still on today, and two meetings at the same time get
+  flagged.
+
+**Releases**
+- A release no longer creates or revokes an Apple certificate, so no more emails about one.
+
 ## 0.0.28
 
 <!-- whats-new

@@ -6867,3 +6867,6 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 @media (prefers-reduced-motion: reduce) {
   .ua-mark .spin, .ua-mark.done { animation: none; }
 }
+/* D226: 今天看了什么 / What it looked at today, under the switch (Settings › Notifications). */
+.quiet-day { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 0 4px; }
+.quiet-day .reads { align-self: stretch; }

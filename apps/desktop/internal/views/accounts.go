@@ -20,6 +20,7 @@ import (
 type acctCards struct {
 	tile     map[string]string // connection id -> the open tile ("" none)
 	reads    string            // the connection whose 看了哪些 is open
+	day      bool              // 今天看了什么 is open (D226)
 	stopping string            // the connection whose stop asks in place
 }
 
@@ -69,6 +70,93 @@ func (a *App) proactiveChips(c *ui.Context, key string) {
 		}
 		ui.Column(c).Padding(0, pad).Children(func() { a.note(c, a.L.T(note)) })
 	})
+}
+
+// quietDay is 今天看了什么 / What it looked at today (D226), under the
+// switch: counts only, and what it held back under each reason. A reading
+// problem shows without opening (a watcher that silently reads nothing is
+// the one silence that isn't success); the rest waits behind the button.
+func (a *App) quietDay(c *ui.Context) {
+	t := a.T
+	st := a.S.Settings
+	if st == nil || st.Proactive == "" || st.Proactive == "off" {
+		return
+	}
+	cs := a.cards()
+	d := a.S.Day
+	ui.Column(c.Key("quiet-day")).Gap(t.S2).Padding(0, t.S1).Children(func() {
+		if d != nil && d.Problem != nil {
+			agent := d.Problem.Agent
+			if agent == "" {
+				agent = a.L.T("day.agent")
+			}
+			ui.Text(c, a.L.T("day.problem."+d.Problem.Why, agent)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink)
+		}
+		if a.quietButton(c, "quiet-day-open", a.L.T("day.title"), "", false, map[bool]int{true: 2, false: 1}[cs.day]) {
+			cs.day = !cs.day
+			if cs.day {
+				a.send(protocol.ProactiveDayReq{T: "proactive_day"})
+			}
+		}
+		if !cs.day || d == nil {
+			return
+		}
+		ui.Column(c.Key("quiet-day-list")).Gap(t.S1).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
+			for i, line := range a.dayLines(d) {
+				ui.Text(c.Key("day:"+itoa(int64(i))), line).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
+			}
+			ui.Box(c).Height(1).Background(t.LineSoft).Margin(t.S1, 0)
+			ui.Text(c, a.L.T("day.honest")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
+		})
+	})
+}
+
+// dayLines words one day of watching, in the phone's order (accounts.tsx QuietDay).
+func (a *App) dayLines(d *protocol.ProactiveDay) []string {
+	var out []string
+	l := d.Looked
+	if l.Mail+l.Events+l.Mentions > 0 {
+		var parts []string
+		if l.Mail > 0 {
+			parts = append(parts, a.L.T("day.mail", l.Mail))
+		}
+		if l.Events > 0 {
+			parts = append(parts, a.L.T("day.events", l.Events))
+		}
+		if l.Mentions > 0 {
+			parts = append(parts, a.L.T("day.mentions", l.Mentions))
+		}
+		out = append(out, a.L.T("day.looked", strings.Join(parts, a.L.T("day.sep"))))
+	} else {
+		out = append(out, a.L.T("day.none"))
+	}
+	if d.Skipped.Notices > 0 {
+		out = append(out, a.L.T("day.notices", d.Skipped.Notices))
+	}
+	if d.Skipped.Promo > 0 {
+		out = append(out, a.L.T("day.promo", d.Skipped.Promo))
+	}
+	if d.Skipped.Muted > 0 {
+		out = append(out, a.L.T("day.muted_senders", d.Skipped.Muted))
+	}
+	if d.Read > 0 || d.Noted > 0 {
+		out = append(out, a.L.T("day.read", d.Read, d.Noted))
+	}
+	out = append(out, a.L.T("day.said", d.Said))
+	for _, h := range d.Held {
+		if h.Reason == "for_morning" && d.NextNote != "" {
+			out = append(out, a.L.T("day.held.for_morning_at", h.N, clockOf(d.NextNote)))
+		} else {
+			out = append(out, a.L.T("day.held."+h.Reason, h.N))
+		}
+	}
+	if d.CatchingUp {
+		out = append(out, a.L.T("day.catching_up"))
+	}
+	if d.PushOff {
+		out = append(out, a.L.T("day.push_off"))
+	}
+	return out
 }
 
 // sourceCards is the cards, two to a row when there is room.

@@ -21,8 +21,8 @@
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, FindKind, FindView, LogEvent, ProactiveMode, ReadLine, RuleView, SourceLook } from "@ducter/protocol";
-import { DAILY_CAP, isFindKind } from "@ducter/protocol";
+import type { Bodies, FindKind, FindView, LogEvent, ProactiveDay, ProactiveMode, QuietReason, ReadLine, ReadProblem, RuleView, SourceLook } from "@ducter/protocol";
+import { DAILY_CAP, isFindKind, QUIET_REASONS } from "@ducter/protocol";
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Clock } from "../clock.ts";
 import type { AppTarget, ConnectionsStore } from "../connections.ts";
@@ -36,7 +36,7 @@ import { barJudge, DEFAULT_BAR, JUDGE_MAX, type FindJudge, type Verdict } from "
 import { openLedger, type Ledger } from "./ledger.ts";
 import { backfillWorthy, stage1, type Left } from "./stage1.ts";
 import { BATCH, eventFact, factsOf, type Triage } from "./triage.ts";
-import { createWatchers, type Watchers } from "./watch.ts";
+import { createWatchers, lookFor, type Watchers } from "./watch.ts";
 import { KIND_WORDS, W } from "./words.ts";
 
 export const PROACTIVE_FILE = "proactive.json";
@@ -100,8 +100,8 @@ interface State {
   verdicts: Record<string, VerdictRec>;
   /** The partner-model judge runs today during the day (the morning run is apart: it always has its one). */
   judgeRuns: { day: string; n: number };
-  /** The 60-day look back per source: pending until it finished, so a restart resumes it (P5). */
-  backfill: Record<string, "pending" | "done">;
+  /** The 60-day look back per source: pending until it finished, so a restart resumes it (P5); catchup: with the last 3 days in full (D226). */
+  backfill: Record<string, "pending" | "catchup" | "done">;
   /** Kept by the bar but over the note's cap (有用就说), for the next note's Left out line. */
   more: number;
   finds: Record<string, FindRec>;
@@ -116,7 +116,29 @@ interface State {
   cadenceNote?: string;
   left: Left;
   monthTokens?: number;
+  /** D226: today's account for 今天看了什么 (counts only), and a reading problem while it lasts. */
+  today?: Today;
 }
+
+interface Today {
+  day: string;
+  read: number;
+  noted: number;
+  skipped: Left;
+  problem?: { why: ReadProblem; since: number; failures: number; told?: boolean };
+}
+
+/** A failed triage in plain kinds (D226): what the person can do something about. */
+export function readProblemOf(message: string): ReadProblem {
+  if (/no AI agent/i.test(message)) return "no_agent";
+  if (/not installed|ENOENT|not found on PATH/i.test(message)) return "not_installed";
+  if (/sign(ed)?[ -]?(in|out)|log(ged)?[ -]?(in|out)|unauthori[sz]ed|\b401\b|\bauth/i.test(message)) return "signed_out";
+  return "failed";
+}
+/** Failures in a row, over at least this long, before the partner says so once (one flaky call stays quiet). */
+const PROBLEM_TELL_AFTER = 3;
+const PROBLEM_TELL_MS = 30 * MIN;
+const CATCH_UP_DAYS = 3;
 
 const fresh = (): State => ({
   said: {},
@@ -157,6 +179,8 @@ export interface ProactiveOptions {
   calendarIds?: (a: import("../connections.ts").AppTarget) => Promise<string[]>;
   /** The month's model budget per source (D114's mechanism). */
   monthTokens?: number;
+  /** D226: the name of the AI agent it reads with ("Codex"), for the problem line. */
+  agentName?: () => string | undefined;
 }
 
 export interface Proactive {
@@ -175,6 +199,8 @@ export interface Proactive {
   setModels(m: { triage?: Triage; judge?: FindJudge }): void;
   /** Something the accounts card shows changed (a look, a find, a tile). */
   onChange(fn: () => void): () => void;
+  /** D226: 今天看了什么 / What it looked at today, and why it stayed quiet. */
+  day(): ProactiveDay;
   /** Tests and the eval: run the morning note now, look now, tick now. */
   morning(): Promise<void>;
   lookNow(days?: number): Promise<void>;
@@ -288,17 +314,51 @@ export function createProactive(o: ProactiveOptions): Proactive {
   let busy: Promise<void> = Promise.resolve();
   const serial = (fn: () => Promise<void>) => (busy = busy.then(fn).catch((err) => console.warn(`[proactive] ${(err as Error).message}`)));
 
+  /** Today's account (D226), rolled at the person's midnight; a reading problem carries over. */
+  const day0 = (): Today => {
+    if (st.today?.day !== today()) st.today = { day: today(), read: 0, noted: 0, skipped: { notices: 0, promo: 0, muted: 0 }, ...(st.today?.problem ? { problem: st.today.problem } : {}) };
+    return st.today;
+  };
+  /**
+   * Reading closely failed. Counted for the Settings line at once; said once in the conversation
+   * when it keeps failing (PROBLEM_TELL_AFTER in a row over PROBLEM_TELL_MS): a watcher that
+   * silently reads nothing is the one silence that is not success (D226).
+   */
+  function failed(message: string): void {
+    const d = day0();
+    const why = readProblemOf(message);
+    const p = d.problem && d.problem.why === why ? d.problem : { why, since: now(), failures: 0, ...(d.problem?.told ? { told: true } : {}) };
+    p.failures++;
+    d.problem = p;
+    if (!p.told && p.failures >= PROBLEM_TELL_AFTER && now() - p.since >= PROBLEM_TELL_MS) {
+      p.told = true;
+      o.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: W.readDown(zh(), why, o.agentName?.() ?? "") } });
+    }
+  }
+
   /** Stages 1–2 and the ledger, for items from a look (or a look back). */
-  async function toLedger(items: Item[], why: "look" | "first" | "backfill"): Promise<void> {
+  async function toLedger(items: Item[], why: "look" | "first" | "backfill"): Promise<{ read: number; failed: number }> {
+    const tally = { read: 0, failed: 0 };
     const s1 = stage1(items);
+    const d = day0();
     if (why !== "backfill") {
       st.left = { notices: st.left.notices + s1.left.notices, promo: st.left.promo + s1.left.promo, muted: st.left.muted + s1.left.muted };
+      if (why === "look") d.skipped = { notices: d.skipped.notices + s1.left.notices, promo: d.skipped.promo + s1.left.promo, muted: d.skipped.muted + s1.left.muted };
     }
-    ledger.add(s1.events.map(eventFact).filter((f): f is NonNullable<typeof f> => Boolean(f)));
+    d.noted += ledger.add(s1.events.map(eventFact).filter((f): f is NonNullable<typeof f> => Boolean(f))).length;
     // What a failed triage left (P5: a look is read at least once, not at most once).
     const again = why === "backfill" ? [] : retry.splice(0);
-    const toRead = [...again, ...(why === "backfill" ? [...s1.pass, ...s1.sent].filter((i) => backfillWorthy(i, now())) : [...s1.pass, ...s1.sent])];
-    if (!toRead.length || !triage) return save();
+    // The look back: subjects that may hold a fact, and (D226) everything from the last 3 days,
+    // since a source turned on from Settings never had its first look.
+    const toRead = [...again, ...(why === "backfill" ? [...s1.pass, ...s1.sent].filter((i) => backfillWorthy(i, now()) || (st.backfill[i.connectionId] === "catchup" && now() - i.at <= CATCH_UP_DAYS * DAY)) : [...s1.pass, ...s1.sent])];
+    if (!toRead.length) return save(), tally;
+    if (!triage) {
+      // No model to read with yet: kept for the next look, and counted as a problem (D226).
+      if (why !== "backfill") retry = [...retry, ...toRead].slice(-RETRY_MAX);
+      failed("no AI agent to ask yet");
+      tally.failed += toRead.length;
+      return save(), tally;
+    }
     // Batches per source, so each source's budget is its own.
     const bySource = new Map<string, Item[]>();
     for (const i of toRead) bySource.set(i.connectionId, [...(bySource.get(i.connectionId) ?? []), i]);
@@ -310,14 +370,22 @@ export function createProactive(o: ProactiveOptions): Proactive {
           const r = await triage(batch, { today: today(), zone: zone() });
           spend(cid, r.tokens);
           const by = new Map(r.out.map((x) => [x.id, x]));
-          ledger.add(batch.flatMap((it) => factsOf(it, by.get(it.id))));
+          const dd = day0();
+          dd.read += batch.length;
+          tally.read += batch.length;
+          dd.noted += ledger.add(batch.flatMap((it) => factsOf(it, by.get(it.id)))).length;
+          // Reading works again: the problem line goes, with nothing said (silence is success).
+          delete dd.problem;
         } catch (err) {
           console.warn(`[proactive] triage: ${(err as Error).message}`);
           if (why !== "backfill") retry = [...retry, ...batch].slice(-RETRY_MAX);
+          failed((err as Error).message);
+          tally.failed += batch.length;
         }
       }
     }
     save();
+    return tally;
   }
 
   async function intake(items: Item[], why: "look"): Promise<void> {
@@ -530,7 +598,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
   }
 
   async function meetings(): Promise<void> {
-    if (mode() === "off" || mode() === "urgent") return;
+    // D226: 开会前 is a "now" by nature (10 minutes before, only with something open): 只说急的 has it too.
+    if (mode() === "off") return;
     const z = zh();
     for (const c of meetingPrep(ledger, { now: now(), zone: zone() })) {
       if (st.said[c.key] || muted(c)) continue;
@@ -661,6 +730,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     st.left = { notices: 0, promo: 0, muted: 0 };
     save();
     // Meanwhile, silently: 60 days into the ledger (bookings, renewals, promises). No message.
+    if (st.backfill[connectionId]) return;
     st.backfill[connectionId] = "pending";
     save();
     void serial(() => backfill(connectionId));
@@ -668,11 +738,39 @@ export function createProactive(o: ProactiveOptions): Proactive {
 
   /** The quiet 60-day look back for one source; marked done only once it finished, so a restart resumes it (P5). */
   async function backfill(connectionId: string): Promise<void> {
-    if (st.backfill[connectionId] !== "pending" || !o.connections.view().some((c) => c.id === connectionId)) return;
-    const back = await watchers.lookBack(LEDGER_DAYS, { connectionId, kinds: ["mail", "event"] });
-    await toLedger(back.items, "backfill");
+    const how = st.backfill[connectionId];
+    if ((how !== "pending" && how !== "catchup") || !o.connections.view().some((c) => c.id === connectionId)) return;
+    // No model to read with yet (before the runner is set): it waits for setModels (D226).
+    if (!triage) return;
+    const back = await watchers.lookBack(LEDGER_DAYS, { connectionId, kinds: ["mail", "event"], long: true });
+    // D226: a source that never had its first look also gets the last 3 days read in full.
+    if (how === "catchup") {
+      const recent = await watchers.lookBack(CATCH_UP_DAYS, { connectionId, kinds: ["mail", "github", "chat"] });
+      const have = new Set(back.items.map((i) => i.key));
+      back.items.push(...recent.items.filter((i) => !have.has(i.key)));
+    }
+    const r = await toLedger(back.items, "backfill");
+    // Every read failed (the agent isn't there): it stays pending, tried again when the models
+    // change or after a restart, rather than marked done with nothing read (D226).
+    if (r.failed && !r.read) return save();
     st.backfill[connectionId] = "done";
     save();
+  }
+
+  /**
+   * D226: watching on, and a source has never been looked back over (the mode was set from
+   * Settings, not through the first-add question, or it was watching before this existed): the
+   * quiet look back runs once, the last 3 days in full, so the ledger knows the bookings, renewals
+   * and asks already in the inbox. Nothing is said for it.
+   */
+  function catchUpAll(): void {
+    if (mode() === "off") return;
+    for (const c of o.connections.view()) {
+      if (st.backfill[c.id] || !o.connections.apps(c.id).some((a) => a.watch && !a.excluded && lookFor(a.service))) continue;
+      st.backfill[c.id] = "catchup";
+      save();
+      void serial(() => backfill(c.id));
+    }
   }
 
   // ---------- timers ----------
@@ -730,6 +828,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
 
   const offSettings = o.settings.onChange(() => {
     watchers.sync();
+    catchUpAll();
     const m = o.settings.get().proactive;
     // The cadence question answered from the chips (in the note or in Settings): settled once.
     if (st.cadenceNote && m) {
@@ -740,7 +839,10 @@ export function createProactive(o: ProactiveOptions): Proactive {
       if (prev) note({ ...(prev.body as Bodies["finds"]), noteId: newId("note"), revises: id, answered: m });
     }
   });
-  const offConnections = o.connections.onChange(() => watchers.sync());
+  const offConnections = o.connections.onChange(() => {
+    watchers.sync();
+    catchUpAll();
+  });
   const offRemove = o.connections.onRemove((id) => {
     ledger.drop(id);
     watchers.forget(id);
@@ -750,11 +852,69 @@ export function createProactive(o: ProactiveOptions): Proactive {
     save();
   });
 
+  /** The next end of quiet hours (the morning note's time). */
+  function nextMorning(at: number): number {
+    const q = quiet();
+    const end = quietEndsAt(at, q);
+    if (end !== at) return end;
+    for (let t = at + MIN; t < at + 2 * DAY; t += 5 * MIN) if (inQuiet(t, q)) return quietEndsAt(t, q);
+    return at + DAY;
+  }
+
+  /**
+   * D226: 今天看了什么 / What it looked at today, and why it stayed quiet: counts from today's
+   * looks, and each open candidate placed under the one reason it is held (the same tests speak
+   * uses, read live, so the line never disagrees with what happens next).
+   */
+  function dayView(): ProactiveDay {
+    const d = day0();
+    const m = mode();
+    const at = now();
+    rollDay();
+    const held = new Map<QuietReason, number>();
+    const hold = (r: QuietReason) => held.set(r, (held.get(r) ?? 0) + 1);
+    const night = inQuiet(at, quiet());
+    const morningMode = m === "three" || m === "useful";
+    const seen = new Set<string>();
+    if (m !== "off")
+      for (const c of detect(ledger, { now: at, zone: zone() })) {
+        if (st.said[c.key] || seen.has(c.words.en)) continue;
+        seen.add(c.words.en);
+        const v = st.verdicts[c.key];
+        const judgedNow = v && v.h === hashOf(c) ? v : undefined;
+        if (muted(c)) hold("muted");
+        else if (m === "urgent" && !c.urgent) hold("not_urgent");
+        else if (sourcesOver(c) && !c.urgent) hold("budget");
+        else if (judgedNow && !judgedNow.keep) hold("below_bar");
+        else if ((m === "three" || m === "urgent") && capLeft(m) === 0) hold("cap");
+        else if (morningMode) hold("for_morning");
+        else if (night) hold("night");
+        // 只说急的 by day: an urgent one goes with the next look; nothing held.
+      }
+    const pushOff = Boolean(o.push.settings().off) || !o.push.subs().length;
+    const backfilling = Object.values(st.backfill).some((x) => x === "pending" || x === "catchup");
+    const p = d.problem;
+    return {
+      day: d.day,
+      looked: watchers.lookedToday(),
+      skipped: { ...d.skipped },
+      read: d.read,
+      noted: d.noted,
+      said: st.day.said,
+      held: QUIET_REASONS.filter((r) => held.has(r)).map((r) => ({ reason: r, n: held.get(r)! })),
+      ...(p ? { problem: { why: p.why, ...(o.agentName?.() ? { agent: o.agentName!() } : {}), since: new Date(p.since).toISOString(), waiting: retry.length } } : {}),
+      ...(morningMode ? { nextNote: new Date(nextMorning(at)).toISOString() } : {}),
+      ...(pushOff ? { pushOff: true } : {}),
+      ...(backfilling ? { catchingUp: true } : {}),
+    };
+  }
+
   watchers.sync();
   armMorning();
   armTick();
   // A look back a restart cut short picks up where it was (P5).
-  for (const [id, s] of Object.entries(st.backfill)) if (s === "pending") void serial(() => backfill(id));
+  for (const [id, s] of Object.entries(st.backfill)) if (s === "pending" || s === "catchup") void serial(() => backfill(id));
+  catchUpAll();
 
   return {
     ledger,
@@ -784,6 +944,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       };
     },
     reads: (id) => watchers.reads(id),
+    day: () => dayView(),
     setApp(id, service, account, patch) {
       // A tile names its account by label; the broker keys it by its name (oo's connection).
       const a = o.connections.apps(id).find((x) => x.service === service && (!account || x.label === account || x.account === account));
@@ -865,6 +1026,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
     setModels(m) {
       if (m.triage) triage = m.triage;
       if (m.judge) judge = m.judge;
+      // A look back that waited for a model to read with goes now (D226).
+      if (m.triage) for (const [id, s] of Object.entries(st.backfill)) if (s === "pending" || s === "catchup") void serial(() => backfill(id));
     },
     morning: () => serial(() => morningRun()),
     async lookNow(days = 1) {

@@ -7,7 +7,7 @@ import { createDecisions } from "../src/decisions.ts";
 import { openLog } from "../src/log.ts";
 import { createProactive, type ProactiveOptions } from "../src/proactive/engine.ts";
 import type { FindJudge } from "../src/proactive/judge.ts";
-import { recordedTriage } from "../src/proactive/triage.ts";
+import { recordedTriage, type Triage } from "../src/proactive/triage.ts";
 import { openPushStore, type PushMessage, type Pusher } from "../src/push.ts";
 import { createRegistry } from "../src/registry.ts";
 import { openRules } from "../src/rules.ts";
@@ -25,6 +25,9 @@ export interface RigOptions {
   judge?: FindJudge;
   monthTokens?: number;
   language?: "zh" | "en";
+  /** D226: a triage of the test's own (one that fails, as on a home without the agent). */
+  triage?: Triage;
+  agentName?: string;
 }
 
 export function rig(o: RigOptions = {}) {
@@ -71,7 +74,8 @@ export function rig(o: RigOptions = {}) {
     rules,
     decisions,
     runner: () => runner,
-    triage,
+    triage: o.triage ?? triage,
+    ...(o.agentName ? { agentName: () => o.agentName } : {}),
     ...(o.judge ? { judge: o.judge } : {}),
     ...(o.monthTokens ? { monthTokens: o.monthTokens } : {}),
     present: () => present,

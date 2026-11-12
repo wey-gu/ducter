@@ -320,7 +320,10 @@ func (a *App) notifyPanel(c *ui.Context) {
 	})
 	// D165: the same chips as on Accounts, once there is something to watch.
 	if st.Proactive != "" || len(a.S.Connections) > 0 {
-		ui.Column(c.Key("notify-proactive")).Children(func() { a.proactiveChips(c, "notify") })
+		ui.Column(c.Key("notify-proactive")).Gap(t.S2).Children(func() {
+			a.proactiveChips(c, "notify")
+			a.quietDay(c)
+		})
 	}
 	a.group(c, "default", a.L.T("partner.default.title"), "", func() {
 		sel := 1

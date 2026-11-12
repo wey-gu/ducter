@@ -122,3 +122,55 @@ type ProactiveAnswer struct {
 	Ask    string `json:"ask"`
 	Yes    bool   `json:"yes"`
 }
+
+// ProactiveDayReq asks for 今天看了什么 / What it looked at today (D226).
+type ProactiveDayReq struct {
+	T string `json:"t"` // "proactive_day"
+}
+
+// ProactiveDay is one day of watching (D226): counts only, never a subject
+// or a sender, and what it held back by reason.
+type ProactiveDay struct {
+	Day     string       `json:"day"`
+	Looked  DayLooked    `json:"looked"`
+	Skipped DaySkipped   `json:"skipped"`
+	Read    int          `json:"read"`
+	Noted   int          `json:"noted"`
+	Said    int          `json:"said"`
+	Held    []DayHeld    `json:"held"`
+	Problem *ReadProblem `json:"problem,omitempty"`
+	// NextNote is the next morning note (ISO), when the mode has one.
+	NextNote   string `json:"nextNote,omitempty"`
+	PushOff    bool   `json:"pushOff,omitempty"`
+	CatchingUp bool   `json:"catchingUp,omitempty"`
+}
+
+// DayLooked is what the watchers looked at today.
+type DayLooked struct {
+	Mail     int `json:"mail"`
+	Events   int `json:"events"`
+	Mentions int `json:"mentions"`
+}
+
+// DaySkipped is what rules left before any model.
+type DaySkipped struct {
+	Notices int `json:"notices"`
+	Promo   int `json:"promo"`
+	Muted   int `json:"muted"`
+}
+
+// DayHeld is how many open things wait for one reason: not_urgent |
+// for_morning | below_bar | cap | muted | budget | night.
+type DayHeld struct {
+	Reason string `json:"reason"`
+	N      int    `json:"n"`
+}
+
+// ReadProblem is reading closely failing: no_agent | not_installed |
+// signed_out | failed, with the agent's name.
+type ReadProblem struct {
+	Why     string `json:"why"`
+	Agent   string `json:"agent,omitempty"`
+	Since   string `json:"since"`
+	Waiting int    `json:"waiting"`
+}

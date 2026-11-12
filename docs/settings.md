@@ -91,6 +91,11 @@ working carries on there from its saved progress; it doesn't start over.
 - **When it notices something** (once you have accounts): how your partner tells you what it
   noticed by itself: **Only urgent**, **Up to 3 a day**, **Whenever useful** or **Only when I
   ask**. The same row sits on Accounts; see [When it notices something](accounts.md#when-it-notices-something).
+  Under it, **What it looked at today** shows, in numbers only, what it looked at, what it read
+  closely and why it said nothing about the rest (not urgent, waiting for the morning message,
+  not worth interrupting you for, today's three already said). If it can't read your mail
+  closely, for example because the AI agent it thinks with isn't installed, a line says so
+  there, and your partner tells you once in the conversation.
 
 On a phone, this page also turns on notifications for that phone and sends a test.
 

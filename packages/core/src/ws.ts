@@ -840,6 +840,12 @@ export function createWsHandler(deps: WsDeps) {
         if (!cal.pick(String(f.id ?? ""), String(f.service ?? ""), f.account, String(f.calendarId ?? ""), f.seen === true)) send(ws, connectionsFrame());
         return;
       }
+      case "proactive_day": {
+        // D226: 今天看了什么 / What it looked at today, under the switch.
+        const p = deps.proactive?.();
+        if (p) send(ws, { t: "proactive_day", day: p.day() });
+        return;
+      }
       case "connection_reads": {
         const p = deps.proactive?.();
         send(ws, { t: "connection_reads", id: String(f.id ?? ""), reads: p ? p.reads(String(f.id ?? "")) : [] });

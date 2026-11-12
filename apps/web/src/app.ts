@@ -273,6 +273,8 @@ class AppState {
   ownAnswer?: string;
   /** D166: 看了哪些 / What it read today, by connection, once asked for. */
   connReads = new Map<string, import("@ducter/protocol").ReadLine[]>();
+  /** D226: 今天看了什么 / What it looked at today (asked when the switch's detail opens). */
+  proactiveDay: import("@ducter/protocol").ProactiveDay | undefined;
   route: Route = { name: "conv" };
   sheet: Sheet = null;
   /** D151: the live view of Ducter's browser, while the user signs in (never stored). */
@@ -585,6 +587,7 @@ class AppState {
     if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), (this.ownPhone = f.ownPhone), this.changed();
     if (f.t === "own_phone_result") return (this.ownAnswer = f.reason ?? "phone"), this.changed();
     if (f.t === "connection_reads") return void (this.connReads.set(f.id, f.reads), this.changed());
+    if (f.t === "proactive_day") return void ((this.proactiveDay = f.day), this.changed());
     // D193: the device sign-in: the code and link, then done (a toast) or why not.
     if (f.t === "connection_signin") {
       this.signIn = f.signIn;
@@ -1412,6 +1415,10 @@ class AppState {
   }
   askReads(id: string) {
     this.send({ t: "connection_reads", id });
+  }
+  /** D226: 今天看了什么 / What it looked at today. */
+  askDay() {
+    this.send({ t: "proactive_day" });
   }
   /** D165: 有用 / 这类不用告诉我 under a find, and a note's ask. */
   reactFind(findId: string, reaction: "useful" | "mute") {

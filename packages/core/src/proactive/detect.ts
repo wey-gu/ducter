@@ -138,6 +138,41 @@ function mismatches(facts: Fact[], c: DetectCtx): Candidate[] {
       }
     }
   }
+  // D226: the calendar and a confirmation disagree on the day (a talk on the 18th in the calendar,
+  // the organizer's mail says the 19th): what dots caught for its first users. A booking that names
+  // the same thing as a coming meeting, on another day, within two weeks.
+  for (const b of bookings) {
+    if (b.what === "flight") continue;
+    const bIdx = daysUntil(b.start, c.now, c.zone);
+    if (bIdx < 0 || bIdx > 14 || !b.name) continue;
+    for (const m of meetings) {
+      const mIdx = daysUntil(m.start, c.now, c.zone);
+      if (mIdx < 0 || mIdx > 14 || mIdx === bIdx || !sameName(m.title, b.name)) continue;
+      const first = Math.min(bIdx, mIdx);
+      const sender = b.label.split(" · ")[0] || "";
+      out.push({
+        key: `mismatch:${b.id}:${m.id}`,
+        kind: "mismatch",
+        cost: first <= 1 ? 85 : 72,
+        urgent: first <= 1,
+        dueAt: mIdx < bIdx ? m.start : b.start,
+        ...(sender ? { sender } : {}),
+        people: m.with,
+        how: [howOf(m), howOf(b)],
+        words: {
+          zh: `日历上「${m.title}」是 ${md(m.start, c.zone)}，${sender ? `${sender} 的` : ""}确认信写的是 ${md(b.start, c.zone)}。`,
+          en: `Your calendar has "${m.title}" on ${md(m.start, c.zone)}, but the confirmation${sender ? ` from ${sender}` : ""} says ${md(b.start, c.zone)}.`,
+        },
+        step: {
+          kind: "read",
+          goLabel: { zh: "核对哪个对", en: "Check which is right" },
+          brief: `The person's calendar and a confirmation mail disagree on the day of the same thing (below): the calendar says ${dayKey(Date.parse(m.start), c.zone)}, the mail ${dayKey(Date.parse(b.start), c.zone)}. Read the mail and the event and say in two lines which date is right and why. Read only: move nothing, reply to nothing.`,
+          data: { event: m.title, mail: b.label },
+        },
+        facts: [b.id, m.id],
+      });
+    }
+  }
   // D222: two meetings at the same time, today or tomorrow, often in two accounts that can't see
   // each other (a work calendar and a personal one). One event in both calendars is not a clash.
   const soon = meetings.filter((m) => m.end && Date.parse(m.start) > c.now && daysUntil(m.start, c.now, c.zone) <= 1).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));

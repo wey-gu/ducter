@@ -59,8 +59,13 @@ export function stage1(items: Item[], ctx: { mutedSenders?: string[] } = {}): St
  * payment or a promise: subjects that say so, and the person's own sends from the last 14 days.
  * Everything else costs a model call for nothing.
  */
-const FACTY =
-  /(flight|航班|机票|boarding|itinerary|行程|hotel|酒店|住宿|booking|reservation|预订|预定|check-?in|入住|train|火车|高铁|renew|续费|续订|expir|到期|过期|invoice|发票|账单|bill|receipt|收据|payment|付款|支付|charged|扣款|subscription|订阅|trial|试用|price|涨价|due|截止|deadline|cancel|取消|changed|变更|改签)/i;
+/** The words a booking, a renewal, a payment or a promise is mailed under (the long look back's filter). */
+export const FACTY_TERMS = [
+  "flight", "航班", "机票", "boarding", "itinerary", "行程", "hotel", "酒店", "住宿", "booking", "reservation", "预订", "预定", "check-in", "入住", "train", "火车", "高铁",
+  "renew", "renewal", "续费", "续订", "expire", "expiring", "到期", "过期", "invoice", "发票", "账单", "bill", "receipt", "收据", "payment", "付款", "支付", "charged", "扣款",
+  "subscription", "订阅", "trial", "试用", "price", "涨价", "due", "截止", "deadline", "cancel", "cancelled", "取消", "changed", "变更", "改签", "confirmation", "confirmed", "确认", "appointment", "预约",
+];
+const FACTY = new RegExp(`(${["check-?in", "expir", ...FACTY_TERMS.filter((w) => w !== "check-in" && !w.startsWith("expir"))].join("|")})`, "i");
 
 export function backfillWorthy(it: Item, now: number): boolean {
   if (it.kind !== "mail") return false;

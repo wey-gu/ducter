@@ -33,6 +33,51 @@ export function ProactiveChips(p: { inNote?: boolean }) {
   );
 }
 
+/**
+ * D226: 今天看了什么 / What it looked at today, under the switch: counts only, and each thing it
+ * held back under its reason. A reading problem shows without opening (a silent watcher that reads
+ * nothing is the one silence that isn't success); the rest waits behind the button.
+ */
+export function QuietDay() {
+  const [open, setOpen] = useState(false);
+  const mode = A.settings?.proactive;
+  useEffect(() => {
+    if (mode && mode !== "off") A.askDay();
+  }, [mode]);
+  if (!mode || mode === "off") return null;
+  const d = A.proactiveDay;
+  const p = d?.problem;
+  const lines: string[] = [];
+  if (d) {
+    const l = d.looked;
+    lines.push(l.mail || l.events || l.mentions ? t("day.looked", [l.mail && t("day.mail", l.mail), l.events && t("day.events", l.events), l.mentions && t("day.mentions", l.mentions)].filter(Boolean).join(t("day.sep"))) : t("day.none"));
+    if (d.skipped.notices) lines.push(t("day.notices", d.skipped.notices));
+    if (d.skipped.promo) lines.push(t("day.promo", d.skipped.promo));
+    if (d.skipped.muted) lines.push(t("day.muted_senders", d.skipped.muted));
+    if (d.read || d.noted) lines.push(t("day.read", d.read, d.noted));
+    lines.push(t("day.said", d.said));
+    for (const h of d.held) lines.push(h.reason === "for_morning" && d.nextNote ? t("day.held.for_morning_at", h.n, new Date(d.nextNote).toTimeString().slice(0, 5)) : t(`day.held.${h.reason}`, h.n));
+    if (d.catchingUp) lines.push(t("day.catching_up"));
+    if (d.pushOff) lines.push(t("day.push_off"));
+  }
+  return (
+    <div class="quiet-day">
+      {p && <div class="small warn">{t(`day.problem.${p.why}`, p.agent ?? t("day.agent"))}</div>}
+      <Btn kind="text" size="sm" chev label={t("day.title")} expanded={open} onClick={() => (setOpen(!open), !open && A.askDay())} />
+      {open && d && (
+        <div class="reads">
+          {lines.map((x, i) => (
+            <div class="read" key={i}>
+              <span>{x}</span>
+            </div>
+          ))}
+          <div class="small sub honest">{t("day.honest")}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const down = (c: ConnectionView) => c.state === "unreachable" || c.state === "unauthorized";
 
 function status(c: ConnectionView): { line: string; warn: boolean } {

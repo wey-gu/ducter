@@ -299,3 +299,35 @@ func TestShortAccount(t *testing.T) {
 		}
 	}
 }
+
+// D226: 今天看了什么 under the switch on Settings › 通知: the reading
+// problem shows without opening; the counts and the held reasons behind
+// the button, in the phone's words.
+func TestQuietDayUnderTheSwitch(t *testing.T) {
+	app, sent := iaApp(t, i18n.ZH)
+	app.Status = client.Connected
+	acctFrames(app, "urgent")
+	app.Receive(protocol.ServerFrame{T: "proactive_day", Day: &protocol.ProactiveDay{
+		Day: "2026-11-12", Looked: protocol.DayLooked{Mail: 152, Events: 3}, Skipped: protocol.DaySkipped{Notices: 12},
+		Said: 0, Held: []protocol.DayHeld{{Reason: "not_urgent", N: 2}},
+		Problem: &protocol.ReadProblem{Why: "not_installed", Agent: "Claude Code", Since: "2026-11-12T01:00:00Z", Waiting: 40},
+		PushOff: true,
+	}})
+	app.openTab(TabNotify)
+	tt := ui.NewTesterWith(app.View, 1280, 1600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	tt.Frame()
+	if !tt.HasText("没法细读你的信：这台电脑上没装 Claude Code，现在只看得到标题。") {
+		t.Fatalf("no problem line in %q", tt.Texts())
+	}
+	if tt.HasText("看了 152 封信、3 个日程") {
+		t.Fatal("the counts show before the button is pressed")
+	}
+	got := strings.Join(app.dayLines(app.S.Day), "\n")
+	for _, want := range []string{"看了 152 封信、3 个日程", "12 封通知和收据，看标题就知道", "跟你说了 0 件", "2 件不急，没说（你选了只说急的）", "手机和浏览器都没开通知：说了也只在 Ducter 里看得到"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("no %q in %q", want, got)
+		}
+	}
+	_ = sent
+}

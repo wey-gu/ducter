@@ -17,6 +17,7 @@ import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./
 import { cmdAbility, cmdBrowser } from "./browser-cmd.ts";
 import { cmdDevices, cmdPair, cmdService, ducterCommand, fetchPublicIp, isLoopback, publicUrl } from "./remote.ts";
 import { cmdAnywhere } from "./anywhere-cmd.ts";
+import { stopSavedTunnel } from "@ducter/core/src/anywhere.ts";
 import { caddyfileFor, cmdDomain, realDomainSys, removeDucterSite } from "./domain.ts";
 import { cmdWorker } from "./worker.ts";
 import { cmdUpdate } from "./update.ts";
@@ -246,6 +247,7 @@ async function cmdUninstall(ctx: Ctx): Promise<number> {
     runner: {
       uid: process.getuid?.() ?? 0,
       run: (cmd) => ctx.host.run(cmd, 15_000),
+      stopTunnel: (dir) => stopSavedTunnel(dir), // D228
       removeCaddySite: async (path) => {
         const r = await removeDucterSite(sys, path);
         return r.error ? { ok: false, error: r.error === "root" ? "needs root: sudo ducter domain --remove" : r.error } : { ok: true };

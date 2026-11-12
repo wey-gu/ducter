@@ -350,3 +350,15 @@ test("a saved file from before (on, an address) reads back for the CLI's pair", 
   expect(tunnelAddress(dataDir)).toBeUndefined();
   expect(readFileSync(anywhereFile(dataDir), "utf8")).toContain("tunnel");
 });
+
+test("uninstall stops the tunnel a data folder keeps (it outlives Ducter by design)", async () => {
+  const dataDir = tmp();
+  const f = fakeSys();
+  const a = createAnywhere({ dataDir, port: 7777, env, sys: f.sys, log: () => {} });
+  await a.turnOn();
+  await until(() => a.view()?.state === "on");
+  a.close();
+  const { stopSavedTunnel } = await import("../src/anywhere.ts");
+  await stopSavedTunnel(dataDir, f.sys);
+  expect(f.procs.size).toBe(0);
+});

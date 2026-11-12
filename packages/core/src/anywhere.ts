@@ -421,6 +421,12 @@ export function createAnywhere(o: AnywhereOptions): AnywhereCtl {
   };
 }
 
+/** Stops the tunnel saved in a data folder (uninstall: it outlives Ducter by design). */
+export async function stopSavedTunnel(dataDir: string, sys: Pick<TunnelSys, "stop" | "alive"> = realTunnelSys({ dataDir })): Promise<void> {
+  const h = readSaved(dataDir)?.handle;
+  if (h && (await sys.alive(h))) await sys.stop(h);
+}
+
 function readToken(dataDir: string): string | undefined {
   try {
     return readFileSync(tokenFile(dataDir), "utf8").trim() || undefined;

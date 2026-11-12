@@ -404,6 +404,8 @@ export interface Runner {
   removeCaddySite?(path: string): Promise<{ ok: boolean; error?: string }>;
   /** Whether a Ducter still answers /health on the port. */
   healthy(port: number): Promise<boolean>;
+  /** D228: stops 在哪儿都能用's tunnel kept in this data folder (it outlives Ducter by design). */
+  stopTunnel?(dataDir: string): Promise<void>;
   uid: number;
 }
 
@@ -444,6 +446,7 @@ export async function executeUninstall(plan: Plan, o: { runner: Runner; port: nu
     }
   }
   for (const it of rest) {
+    if (it.kind === "data") await o.runner.stopTunnel?.(it.path).catch(() => {});
     if (it.kind === "rc") {
       // A shell profile is the user's: only Ducter's lines leave it.
       try {

@@ -1,0 +1,56 @@
+package i18n
+
+// D235, 用电脑 / Use the computer: tasks use the apps on one of the person's
+// Macs, gated at the effect. The same keys and words as the web client
+// (apps/web/src/i18n-computeruse.ts).
+
+var zhComputerUse = Table{
+	"ability.computer.later":         "让任务像你一样用这台电脑上的应用。目前只支持 Mac，这台电脑以后会支持。",
+	"computeruse.perms":              "macOS 还要你在 %s 上打开两个开关，任务才能用它的应用：",
+	"computeruse.perm.accessibility": "辅助功能：用鼠标和键盘",
+	"computeruse.perm.screen":        "屏幕录制：看到屏幕上的内容",
+	"computeruse.perm.on":            "已打开",
+	"computeruse.perm.off":           "还没打开",
+	"computeruse.perms.how":          "在「系统设置 › 隐私与安全性」里，给 CuaDriver 打开。",
+	"computeruse.guide":              "在 %s 上打开指引",
+	"computeruse.guide.sent":         "指引会出现在 %s 的屏幕上，一步一步带你打开。",
+	"computeruse.where":              "任务在后台用 %s 上的应用，不抢你的鼠标和屏幕，另一个指针会显示它在哪儿操作。发送、付款、删除这类事先问你；密码管理器、钥匙串、银行和系统设置它碰不到。",
+	"computeruse.cua_missing":        "这台 Mac 上还没有 cua-driver（上网也用它）。装好以后就能加上。",
+	"computeruse.remove":             "移除",
+	"computeruse.using":              "「%s」正在用 %s",
+	"computeruse.using.0":            "「%s」正在用这台 Mac 上的应用",
+	"computeruse.stop":               "停下",
+	"computeruse.task":               "正在用 %s 上的 %s",
+	"computeruse.task.0":             "正在用 %s 上的应用",
+	"computeruse.user.done":          "好了",
+}
+
+var enComputerUse = Table{
+	"ability.computer.later":         "Lets tasks use this computer's apps the way you do. In this version it's Macs only; this computer gets it later.",
+	"computeruse.perms":              "macOS needs two switches on %s before tasks can use its apps:",
+	"computeruse.perm.accessibility": "Accessibility: to use the mouse and keyboard",
+	"computeruse.perm.screen":        "Screen Recording: to see what's on the screen",
+	"computeruse.perm.on":            "On",
+	"computeruse.perm.off":           "Not yet",
+	"computeruse.perms.how":          "Turn them on for CuaDriver in System Settings › Privacy & Security.",
+	"computeruse.guide":              "Open the guide on %s",
+	"computeruse.guide.sent":         "The guide shows on %s's screen and walks you through both.",
+	"computeruse.where":              "Tasks use %s's apps in the background, without taking your mouse or screen; a second pointer shows where they act. Anything that sends, pays or deletes asks you first; password managers, Keychain, banks and System Settings stay out of reach.",
+	"computeruse.cua_missing":        "cua-driver isn't on this Mac yet (Browse uses it too). Install it, then add this.",
+	"computeruse.remove":             "Remove",
+	"computeruse.using":              "“%s” is in %s",
+	"computeruse.using.0":            "“%s” is using this Mac's apps",
+	"computeruse.stop":               "Stop",
+	"computeruse.task":               "On %s, in %s",
+	"computeruse.task.0":             "Using apps on %s",
+	"computeruse.user.done":          "Done",
+}
+
+func init() {
+	for k, v := range zhComputerUse {
+		zh[k] = v
+	}
+	for k, v := range enComputerUse {
+		en[k] = v
+	}
+}

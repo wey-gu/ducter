@@ -1,6 +1,6 @@
 # 用手机 / Use a phone: Ducter's own phone
 
-Decided in D217 (2026-11-12); evidence in [research/62](../research/62-phone-use.md). Calls (打电话)
+Decided in D217 (2026-11-12), a worker Mac's own phone in D234; evidence in [research/62](../research/62-phone-use.md). Calls (打电话)
 are a different thing: [phone.md](phone.md).
 
 ## 1. Who, what they feel, how it starts
@@ -27,7 +27,8 @@ apps out of reach), 惊喜 (a whole phone on the Mac).
   emulator itself writes a discovery file under `~/Library/Caches/TemporaryItems/avd/running`
   while it runs (removed when it quits).
 - One AVD, `ducter`: 720×1600 at 320 dpi, 3 GB RAM, 2 cores, 6 GB data, Play Store, quick boot.
-- Phase 1: Apple Silicon Macs, the home only. Anywhere else the chip stays the D199 ghost.
+- Apple Silicon Macs: the home, or a Mac that does tasks for a home elsewhere (D234, §10).
+  Anywhere else the chip stays the D199 ghost.
 
 ## 3. Adding it
 
@@ -43,7 +44,7 @@ download that didn't match, offline) with **再试一次**.
 
 Started by a task's first phone tool or an opened live view; held while a task that needs it works
 or a view is open; stopped five minutes after the last use with `adb emu kill` (saves the
-snapshot). Animations off. One phone per home.
+snapshot). Animations off. One phone per Mac (D234: the home's and each worker Mac's).
 
 ## 5. Tasks on the phone
 
@@ -89,8 +90,32 @@ The phone's apps, sign-ins and data live only in `<dataDir>/phone/home/avd`. **�
 
 ## 9. Next
 
-- Another Mac's phone (a worker), then Linux servers (KVM, x86_64 images).
+- Linux servers (KVM, x86_64 images).
+- The real install and a real errand on a worker Mac through a server home (built with fakes, §10).
 - The user's own physical Android phones and iPhones (Pinky, once approvals can come from outside
   its window; or adb over USB/Wi-Fi for Android).
 - Autofill on the phone (D191's fills by reference, into app fields).
 - A faster screen reader (an accessibility companion, ~70 ms) and video frames (scrcpy) for games.
+
+## 10. On a worker Mac (D234)
+
+The most common shape: the home is a server (hel) and the person's MacBook does tasks for it.
+
+- **The phone is that Mac's own.** The worker on an Apple Silicon Mac makes the same phone host
+  as the home (`android/host.ts`): the SDK and the phone in `<worker dataDir>/phone`, its installs
+  and erase. 用手机 rides in its hello and abilities frames (install progress at most once a
+  second). A Ducter there from before says nothing: its card has no phone chip until it is
+  updated.
+- **Adding it** is the same sheet on that Mac's card; `phone_terms` / `phone_install` /
+  `phone_erase` with its id go over the worker's socket, so Google's texts are read and checked
+  there.
+- **A task that needs the phone** runs on a computer that has it (`no_phone` elsewhere, D157).
+- **The tools, the gate and the live view stay on the home**, driving that Mac's phone over the
+  socket (`android/remote.ts`): one `phone_dev` request per device method, from a fixed set
+  (`state, ensure, touch, hold, release, stop, jpeg, screen, tap, swipe, key, text, front, apps,
+  launch, size`); key codes and app ids checked there; never a shell or adb from the home. The
+  phone a tool uses is the one on the task's computer (`place.device`).
+- **Turns are per phone**: each Mac's phone has its own live view; the person's turn on the
+  MacBook's phone blinds only the tasks on it. **查看手机** and a card's own turn open the phone the
+  task uses (`phoning.device`).
+- **The socket gone**, the worker lets go of every hold the home had; the phone stops when idle.

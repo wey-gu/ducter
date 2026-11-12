@@ -703,7 +703,8 @@ func (a *App) infoText(c *ui.Context, s string) {
 
 // chipSpecs are the chips a device gets, in order: 替 {home} 做事 first on
 // this Mac when it can do tasks for a home elsewhere, then 上网 · 用电脑 ·
-// 从外面连 as that device has them; on the home 打电话 (D199), then the
+// 从外面连 as that device has them; on the home 打电话 (D199); 用手机 on a
+// Mac that can have it, the home or a worker (D234); then the home's
 // abilities still to come as ghosts (用电脑 · 用手机, 以后会有). The same
 // rules as the web's chipsFor (apps/web/src/sheet.ts).
 func (a *App) chipSpecs(c *ui.Context, card string, dv *protocol.DeviceView, cl *protocol.ReachClient) []chipSpec {
@@ -735,10 +736,12 @@ func (a *App) chipSpecs(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 				out = append(out, a.callSpec(c, card, ab))
 			}
 		case id == protocol.AbilityPhone:
-			// D217: Ducter's own phone on a Mac (+ opens the install sheet).
-			if dv.Home {
-				out = append(out, a.phoneSpec(c, card, dv, ab))
-			}
+			// D217: Ducter's own phone on a Mac (+ opens the install sheet);
+			// D234: on a worker Mac too, installed and run there.
+			out = append(out, a.phoneSpec(c, card, dv, ab))
+		case id == protocol.AbilityComputer:
+			// D235: 用电脑 on a Mac: + adds it, then macOS's two switches.
+			out = append(out, a.computerSpec(c, card, dv, ab))
 		default:
 			out = append(out, a.abilitySpec(c, card, dv, ab))
 		}
@@ -765,6 +768,9 @@ func (a *App) laterSpec(c *ui.Context, card, id string) chipSpec {
 			key := "ability." + id + ".about"
 			if id == protocol.AbilityPhone {
 				key = "ability.phone.later" // D217: on an Apple Silicon Mac it is a real chip
+			}
+			if id == protocol.AbilityComputer {
+				key = "ability.computer.later" // D235: on a Mac it is a real chip
 			}
 			a.infoText(c, a.L.T(key))
 		}}
@@ -1213,6 +1219,7 @@ func (a *App) chipNotes(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 		}
 	}
 	a.phoneNotes(c, card, dv, note) // D217
+	a.computerNotes(c, dv, note)    // D235
 	for _, id := range []string{protocol.AbilityWeb, protocol.AbilityComputer, protocol.AbilityRemote} {
 		if r, ok := d.refused[dv.ID+"/"+id]; ok {
 			note("refused-"+id, true, func() {

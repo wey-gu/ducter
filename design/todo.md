@@ -1031,8 +1031,19 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## Ducter's phone (D217)
 
 - [ ] **On the author's Mac:** add 用手机 from the real app, sign in to Google Play and one real app, and run a real errand in it end to end (a Go at the tap, a sign-in turn). Trigger: the author's review.
-- [ ] **A worker Mac's phone**, driven over its socket like D157's browsers; then a Linux server (x86_64 image, KVM). Trigger: the author's home on hel.
+- [ ] **A worker Mac's phone, for real** (built with fakes, D234): the 2.3 GB install on the author's MacBook from hel's card, a real errand in an app through hel, frames over the internet. Trigger: the author updates the MacBook's Ducter.
+- [ ] **A Linux server's phone** (x86_64 image, KVM). Trigger: a home with no Mac.
 - [ ] **The user's own phones:** physical Android over adb (USB/Wi-Fi), iPhones through Pinky once it can be approved from outside its window (its M4) or a presence-proving client exists. Trigger: either lands.
 - [ ] **Autofill on the phone** (D191 by reference into app fields; the Pay card for in-app payments). Trigger: the first errand that needs a saved sign-in in an app.
 - [ ] **A faster screen reader** (an accessibility companion, ~70 ms vs uiautomator's ~2 s) and **video frames** (scrcpy) for games and video. Trigger: a task that waits on reading, or a moving screen.
 - [ ] **Update the pinned Android packages** (platform-tools, emulator, the image) on a schedule, with sizes and checksums together. Trigger: a security update to the image.
+
+## 用电脑 / Use the computer (D235)
+
+- [ ] **On the author's Mac:** + 用电脑 from the real app, the two switches through cua-driver's guide, a real Keynote export and a Mail reply behind Go, the agent pointer seen, Stop from the phone. Trigger: the author's review.
+- [ ] **Electron and Catalyst apps** (Slack, VS Code, Lark): cua-driver's tree can be thin; fall back to the picture and pixel clicks with the gate on the element under the point, checked on real apps. Trigger: the first app task that finds no elements.
+- [ ] **The gate's word lists against real apps** (Mail's 发送 icon-only button, WeChat's Enter-to-send setting, a menu item named only by a symbol). Trigger: the first real run.
+- [ ] **A worker's own re-check of blocked apps per pid** (today the worker refuses blocked apps on launch only; the home's gate holds for every action). Trigger: a review of the worker trust boundary.
+- [ ] **Linux and Windows desktops** (cua-driver runs there). Trigger: a person with a desktop Linux or Windows worker.
+- [ ] **A harness's own computer use behind the gate**, if one offers a pre-call hook Ducter can block on (Claude Code's PreToolUse over its own computer use). Trigger: such a hook verified headless.
+

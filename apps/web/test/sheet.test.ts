@@ -67,6 +67,17 @@ describe("the character sheet (D161)", () => {
     expect(chipsFor(dev({ abilities: [{ id: "web", state: "unavailable", where: "ducter", reason: "browser_deps" }] }))).toEqual([{ id: "web", look: "fail" }]);
   });
 
+  test("D234, D235: a worker Mac (not the home) has + 用手机 and + 用电脑; added without macOS's switches, 用电脑 fails", () => {
+    const mac = (computer: Record<string, unknown>) => dev({ home: false, abilities: [{ id: "web", state: "on", where: "chrome" }, { id: "computer", ...computer }, { id: "phone", state: "off" }] as any });
+    expect(chipsFor(mac({ state: "off" }))).toEqual([
+      { id: "web", look: "on" },
+      { id: "computer", look: "add" },
+      { id: "phone", look: "add" },
+    ]);
+    expect(chipsFor(mac({ state: "unavailable", reason: "computer_permissions", perms: { accessibility: true, screen: false } }))[1]).toEqual({ id: "computer", look: "fail" });
+    expect(chipsFor(mac({ state: "unavailable", reason: "cua_missing" }))[1]).toEqual({ id: "computer", look: "off" });
+  });
+
   test("D199: the home has 打电话 (on, + to add, sign in again) and its later abilities as ghosts; another computer has neither", () => {
     const home = (call: Record<string, unknown>) =>
       dev({

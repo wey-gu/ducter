@@ -137,6 +137,8 @@ export function createDecisions(opts: {
           ...(q.fill ? { fill: q.fill } : {}),
           // D217: a commit on Ducter's phone has no default (Go taps it once); the user's turn on it is Done.
           ...(q.phone ? { phone: q.phone, ...(q.phone.kind === "go" ? { goLabel: "Go", defaultOption: "hold" as const } : { goLabel: "Done", defaultOption: "hold" as const }) } : {}),
+          // D235: the same in the person's apps: Go does that one action; their own turn is Done.
+          ...(q.computer ? { computer: q.computer, ...(q.computer.kind === "go" ? { goLabel: "Go", defaultOption: "hold" as const } : { goLabel: "Done", defaultOption: "hold" as const }) } : {}),
           ...(q.where ? { where: q.where } : {}),
         };
         if (q.reversible && hasDefault) body.defaultAt = new Date(clock.now() + delay()).toISOString();

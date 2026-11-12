@@ -836,6 +836,9 @@ func (a *App) goLabel(d *store.DecisionState) string {
 	if d.Asker != nil {
 		return d.GoLabel // X1: the asking agent's own option, as it named it
 	}
+	if d.Computer != nil && d.Computer.Kind == "user" {
+		return a.L.T("computeruse.user.done") // D235: their own turn in an app: 好了 / Done
+	}
 	return a.shortGo(d.GoLabel)
 }
 

@@ -111,3 +111,12 @@ func (s *Store) applyPhone(f protocol.ServerFrame) {
 		}
 	}
 }
+
+// Computing says where (and in which app) a task is using the person's
+// apps (D235); nil = it isn't.
+func (s *Store) Computing(taskID string) *protocol.Computing {
+	if c := s.card(taskID); c != nil {
+		return c.Computing
+	}
+	return nil
+}

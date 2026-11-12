@@ -154,7 +154,7 @@ var enDeviceCard = Table{
 	"coin.there":                   "Sign in and out on %s itself.",
 	"coin.close":                   "Close",
 	"chip.web":                     "Browse",
-	"chip.computer":                "Use apps",
+	"chip.computer":                "Use the computer",
 	"chip.remote":                  "From outside",
 	"anywhere.need":                "You need a domain on Cloudflare; the Cloudflare account is free. No domain yet? You can buy one right in Cloudflare, sold at cost.",
 	"anywhere.setup.what":          "This starts a task that sets up your own tunnel step by step with Cloudflare's own program. It tells you when it needs you to sign in or say go.",

@@ -50,6 +50,11 @@ exactly what it will and won't do. This page lists it.
 - **It never types into a page you had open.** A web task in your own Chrome opens a window or
   tab of its own, checks that it's the one in front before typing, and closes it when it's done.
   It's signed in as you there, so it asks before anything that would act for you.
+- **In your Mac's apps, it asks before it acts for you, and stays out of your keys and money.**
+  With **Use the computer** on, a task in an app asks before anything that sends, pays or
+  deletes, never reads or types a password, and can't see or open password managers, Keychain,
+  banking and payment apps or System Settings. **Stop** on the task or the Mac's card ends it at
+  once. See [Tasks in your Mac's apps](devices.md#tasks-in-your-macs-apps).
 - **It never hides what went out.** When a result sent something out, a line marked ↗ says
   what, right under the message (never folded away). An opened task lists it again under
   **Sent out**, below what the task did.

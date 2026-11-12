@@ -205,14 +205,14 @@ func TestCharacterSheet(t *testing.T) {
 			t.Fatalf("%s: still doing tasks after they finished", lang)
 		}
 
-		// Turning on an ability is one tap: Use apps off is one tap too (nothing at stake).
+		// Turning on an ability is one tap: Use the computer off is one tap too (nothing at stake).
 		app = sheetApp(t, lang, "awake")
 		tt = sheetTester(app, 1280, 860, true)
 		var sent []any
 		app.Send = func(f any) error { sent = append(sent, f); return nil }
 		click(tt, L.T("chip.computer")+" · "+L.T("chip.state.on"))
 		if r, ok := lastSent[protocol.AbilityReq](sent); !ok || r.On || r.Ability != "computer" || r.Device != "dev_mac" {
-			t.Fatalf("%s: Use apps off sent %#v", lang, sent)
+			t.Fatalf("%s: Use the computer off sent %#v", lang, sent)
 		}
 
 		// The connections open in place, each with its own 断开 and an inline confirm.

@@ -20,6 +20,8 @@ import { isCompiled } from "./doctor.ts";
 import { createWorkerUpdater, lastOutcome, type WorkerUpdater } from "./update.ts";
 import { realSys, updateHow, writeAlive } from "@ducter/core/src/update.ts";
 import { createWorkerBrowse } from "@ducter/core/src/worker-browse.ts";
+import { createPhoneHost } from "@ducter/core/src/android/host.ts";
+import { packagesFor } from "@ducter/core/src/android/sdk.ts";
 import { inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
 
 /** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
@@ -140,7 +142,9 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
 
   // D157: this computer browses for tasks with its own browsers; 上网 rides in the hello.
   let sendUp: (f: object) => void = () => {};
-  const browse = createWorkerBrowse({ dataDir: o.dataDir, send: (f) => sendUp(f) });
+  // D234: an Apple Silicon Mac has Ducter's phone of its own (installed from its card on the home).
+  const phone = packagesFor(platform(), arch()).ok ? createPhoneHost({ dataDir: o.dataDir }) : undefined;
+  const browse = createWorkerBrowse({ dataDir: o.dataDir, send: (f) => sendUp(f), ...(phone ? { phone } : {}) });
   const kind = await localDeviceKind();
   let updater: WorkerUpdater | undefined;
   const agentUpdater = workerAgentUpdater(t, o.dataDir, () => updater?.underWay() ?? false);

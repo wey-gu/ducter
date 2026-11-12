@@ -58,7 +58,7 @@ async function client(url: string, headers?: Record<string, string>) {
 type Devices = Extract<ServerFrame, { t: "devices" }>;
 const ability = (d: DeviceView, id: string) => d.abilities.find((a) => a.id === id)!;
 
-test("this machine: awake, home, harness logins as probed, no allowance, web on, computer later", async () => {
+test("this machine: awake, home, harness logins as probed, no allowance, web on, computer off until added", async () => {
   const core = boot();
   const c = await client(core.url);
   c.send({ t: "devices" });
@@ -72,7 +72,7 @@ test("this machine: awake, home, harness logins as probed, no allowance, web on,
   ]);
   expect(home.harnesses.some((h) => "allowance" in h)).toBe(false);
   expect(ability(home, "web")).toMatchObject({ state: "on" });
-  expect(ability(home, "computer").state).toBe("later");
+  expect(ability(home, "computer").state).toBe("off"); // D235: a Mac with cua-driver can add 用电脑
   expect(ability(home, "remote").state).toBe("off");
   // D217: Ducter's phone can be added on an Apple Silicon Mac (not installed yet: off); elsewhere it is still to come.
   expect(ability(home, "phone").state).toBe(process.platform === "darwin" && process.arch === "arm64" ? "off" : "later");
@@ -155,14 +155,14 @@ test("cua-driver installed a moment ago (the app's setup): adding 上网 looks a
   expect(ability(on.devices[0]!, "web").state).toBe("on");
 });
 
-test("an old cua-driver reads as cua_old; a later ability can't be added", async () => {
+test("an old cua-driver reads as cua_old for 上网; 用电脑 (no browser tools needed) can still be added", async () => {
   const core = boot({ cua: async () => ({ missing: "cua-driver 0.6.8 has no typed browser tools" }) });
   const c = await client(core.url);
   c.send({ t: "devices" });
   const f = await c.until<Devices>((x) => x.t === "devices");
   expect(ability(f.devices[0]!, "web")).toMatchObject({ state: "unavailable", reason: "cua_old" });
   c.send({ t: "ability", device: "local", ability: "computer", on: true });
-  expect(await c.until((x) => x.t === "ability_result")).toMatchObject({ ok: false });
+  expect(await c.until((x) => x.t === "ability_result")).toMatchObject({ ok: true, on: true });
 });
 
 test("workers: awake with their hello, then can't reach with a last-seen time, or asleep when they said so", async () => {

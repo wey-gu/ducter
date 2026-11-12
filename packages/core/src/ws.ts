@@ -95,6 +95,8 @@ export interface WsDeps {
   workbench?: import("./workbench.ts").WbFrames;
   /** D217: Ducter's phone (用手机): install, erase, live view; absent in tests that don't need it. */
   ownPhone?: import("./android/index.ts").DucterPhone;
+  /** D235: 用电脑 / Use the computer. */
+  computer?: import("./computer/index.ts").ComputerUse;
   /** D191: 自动填充 / Autofill; absent in tests that don't need it. */
   autofill?: import("./saved/index.ts").Autofill;
   /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
@@ -1054,23 +1056,24 @@ export function createWsHandler(deps: WsDeps) {
       case "phone_close": {
         const p = deps.ownPhone;
         const where = typeof (f as { device?: unknown }).device === "string" ? String((f as { device?: string }).device) : "local";
+        // D234: on a worker Mac it is that Mac's phone: the request goes there.
         if (f.t === "phone_terms") {
-          if (!p || where !== "local") return void send(ws, { t: "phone_terms", ok: false, reason: "not_mac_arm" });
-          return void send(ws, { t: "phone_terms", ...(await p.terms()) });
+          if (!p) return void send(ws, { t: "phone_terms", ok: false, reason: "not_mac_arm" });
+          return void send(ws, { t: "phone_terms", ...(await p.terms(where)) });
         }
         if (f.t === "phone_install") {
-          if (!p || where !== "local") return void send(ws, { t: "phone_install_result", ok: false, reason: "not_mac_arm" });
+          if (!p) return void send(ws, { t: "phone_install_result", ok: false, reason: "not_mac_arm" });
           const accepted = Array.isArray(f.accepted) ? f.accepted.filter((a) => a && typeof a.id === "string" && typeof a.sha256 === "string").map((a) => ({ id: a.id, sha256: a.sha256 })) : [];
           // It takes minutes: the card shows the progress; the result says only whether it started.
-          const started = p.install(accepted);
+          const started = p.install(accepted, where);
           const quick = await Promise.race([started, Bun.sleep(300).then(() => undefined)]);
           if (quick && !quick.ok) return void send(ws, { t: "phone_install_result", ok: false, reason: quick.reason, message: quick.message });
           return void send(ws, { t: "phone_install_result", ok: true });
         }
         if (f.t === "phone_erase") {
           if (!p) return void send(ws, { t: "phone_erase_result", ok: false, message: "Ducter's phone isn't here" });
-          await p.erase(!!f.keepSdk);
-          return void send(ws, { t: "phone_erase_result", ok: true });
+          const r = await p.erase(!!f.keepSdk, where);
+          return void send(ws, { t: "phone_erase_result", ok: r.ok, ...(r.message ? { message: r.message } : {}) });
         }
         if (f.t === "phone_open" && (ws.data.client === "cli" || !p)) return void send(ws, { t: "phone_view", id: "", state: "closed", mode: f.mode ?? "watch", turn: "agent", here: false, device: "", reason: "failed", message: !p ? "Ducter's phone isn't available here" : "the phone shows in the Mac app or the phone" });
         if (!p) throw new Error("Ducter's phone isn't available here");
@@ -1078,12 +1081,37 @@ export function createWsHandler(deps: WsDeps) {
         const sink = ws.data.phoneSink;
         if (f.t === "phone_open") {
           const mode = f.mode === "takeover" || f.mode === "signin" ? f.mode : "watch";
-          await p.live.open(sink, { mode, ...(typeof f.taskId === "string" && f.taskId ? { taskId: f.taskId } : {}), ...(typeof f.decisionId === "string" && f.decisionId ? { decisionId: f.decisionId } : {}) });
-        } else if (f.t === "phone_input") await p.live.input(sink, String(f.id ?? ""), f.input);
-        else if (f.t === "phone_ack") p.live.ack(sink, String(f.id ?? ""), Number(f.seq));
-        else if (f.t === "phone_turn") await p.live.turn(sink, String(f.id ?? ""), !!f.mine);
-        else if (f.t === "phone_pause") p.live.pause(sink, String(f.id ?? ""), !!f.paused);
-        else await p.live.close(sink, String(f.id ?? ""), !!f.done);
+          // D234: the phone of the computer named, else the one the task (or the card's task) runs on.
+          const decTask = typeof f.decisionId === "string" && f.decisionId ? decisions.get(f.decisionId)?.taskId : undefined;
+          const taskFor = (typeof f.taskId === "string" && f.taskId) || decTask;
+          const on = typeof (f as { device?: unknown }).device === "string" && (f as { device?: string }).device ? where : taskFor ? p.computerOf(taskFor) : "local";
+          const lv = p.liveFor(on);
+          if (!lv) return void send(ws, { t: "phone_view", id: "", state: "closed", mode, turn: "agent", here: false, device: "", reason: "failed", message: "that computer's phone can't be reached right now" });
+          await lv.open(sink, { mode, ...(typeof f.taskId === "string" && f.taskId ? { taskId: f.taskId } : {}), ...(typeof f.decisionId === "string" && f.decisionId ? { decisionId: f.decisionId } : {}) });
+          return;
+        }
+        const lv = p.liveOf(String(f.id ?? "")) ?? p.live;
+        if (f.t === "phone_input") await lv.input(sink, String(f.id ?? ""), f.input);
+        else if (f.t === "phone_ack") lv.ack(sink, String(f.id ?? ""), Number(f.seq));
+        else if (f.t === "phone_turn") await lv.turn(sink, String(f.id ?? ""), !!f.mine);
+        else if (f.t === "phone_pause") lv.pause(sink, String(f.id ?? ""), !!f.paused);
+        else await lv.close(sink, String(f.id ?? ""), !!f.done);
+        return;
+      }
+      // D235: 用电脑 / Use the computer: open the guide to macOS's two switches on that Mac; Stop a task in the person's apps.
+      case "computer_grant": {
+        const c = deps.computer;
+        const device = String(f.device ?? "local") || "local";
+        if (!c) return void send(ws, { t: "computer_grant_result", device, ok: false, reason: "not_mac" });
+        const r = await c.grant(device);
+        deps.devices?.()?.refresh();
+        send(ws, { t: "computer_grant_result", device, ok: r.ok, ...(r.reason ? { reason: r.reason } : {}), ...(r.message ? { message: r.message } : {}) });
+        return;
+      }
+      case "computer_stop": {
+        const ok = deps.computer ? await deps.computer.stop(String(f.taskId ?? "")) : false;
+        send(ws, { t: "computer_stop_result", taskId: String(f.taskId ?? ""), ok });
+        send(ws, { t: "on_hand", onHand: tasks.onHand() });
         return;
       }
       case "browser_check": {
@@ -1135,7 +1163,7 @@ export function createWsHandler(deps: WsDeps) {
       close(ws: ServerWebSocket<WsData>) {
         sockets.delete(ws);
         if (ws.data.sink) void deps.browser?.live.drop(ws.data.sink);
-        if (ws.data.phoneSink) void deps.ownPhone?.live.drop(ws.data.phoneSink);
+        if (ws.data.phoneSink) void deps.ownPhone?.drop(ws.data.phoneSink);
         if (ws.data.device) devicesView()?.changed();
       },
       async message(ws: ServerWebSocket<WsData>, raw: string | Buffer) {

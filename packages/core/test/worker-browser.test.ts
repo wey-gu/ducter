@@ -122,8 +122,12 @@ test("the worker's socket goes: its browser reads as closed, the next tool start
 test("a worker's 上网: native tools say chrome; on a server, Ducter's browser installs there when added", async () => {
   const td = tempDir();
   const sent: any[] = [];
-  const mac = createWorkerBrowse({ dataDir: join(td.dir, "mac"), send: (f) => sent.push(f), env: {}, platform: "darwin", cua: async () => ({ missing: "cua-driver is not installed" }), native: async () => "claude" });
-  expect(await mac.abilities()).toEqual([{ id: "web", state: "on", detail: "claude", where: "chrome" }]);
+  const mac = createWorkerBrowse({ dataDir: join(td.dir, "mac"), send: (f) => sent.push(f), env: {}, platform: "darwin", cua: async () => ({ missing: "cua-driver is not installed" }), native: async () => "claude", perms: async () => undefined });
+  // D235: 用电脑 rides along: it needs cua-driver on that Mac.
+  expect(await mac.abilities()).toEqual([
+    { id: "web", state: "on", detail: "claude", where: "chrome" },
+    { id: "computer", state: "unavailable", reason: "cua_missing", detail: "cua-driver is not installed" },
+  ]);
   expect(mac.alwaysOn("laptop")).toBe(false);
 
   let installed = false;
@@ -142,7 +146,7 @@ test("a worker's 上网: native tools say chrome; on a server, Ducter's browser 
   expect(await srv.set("web", true)).toEqual({ ok: true });
   await Bun.sleep(5);
   expect((await srv.abilities())[0]).toMatchObject({ state: "on", where: "ducter", detail: "157.0.8103.38" });
-  expect(sent.at(-1)).toMatchObject({ t: "abilities", abilities: [{ state: "on", where: "ducter" }] });
+  expect(sent.at(-1)).toMatchObject({ t: "abilities", abilities: [{ state: "on", where: "ducter" }, { id: "computer", state: "later" }] });
   expect(await srv.ducter.status()).toEqual({ ok: true, version: "157.0.8103.38" });
   td.cleanup();
 });

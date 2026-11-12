@@ -623,7 +623,8 @@ export function createCalendar(deps: CalendarDeps): Calendar {
           start: t.allDay ? dateIn(t.s, zone) : isoIn(t.s, zone),
           end: t.allDay ? dateIn(t.e, zone) : isoIn(t.e, zone),
           ...(t.allDay ? { allDay: true } : {}),
-          notify: attendees.map((x) => x.split("@")[0]!),
+          // A guest by the name the person used for them, when there is one guest and they named them.
+          notify: attendees.length === 1 && p.theirName?.trim() ? [p.theirName.trim().slice(0, 40)] : attendees.map((x) => x.split("@")[0]!),
           ...(p.where?.trim() ? { where: p.where.trim().slice(0, 80) } : {}),
           ...(p.online ? { online: true } : {}),
           ...(clash ? { clash } : {}),

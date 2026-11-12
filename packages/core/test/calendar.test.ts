@@ -106,7 +106,7 @@ test("propose create: lands in the account the guests share, notifies them, says
   const r = await cal.propose({ change: "create", title: "和 Lina 对一下 HawDB", start: "2026-11-18T11:00", minutes: 30, attendees: ["lina@nowledge-labs.ai"], theirZone: "America/Los_Angeles", theirName: "Lina" }, "d_1");
   expect(r.ok).toBe(true);
   if (!r.ok) return;
-  expect(r.cal).toMatchObject({ kind: "create", account: WORK, calendar: "", start: "2026-11-18T11:00:00+09:00", end: "2026-11-18T11:30:00+09:00", notify: ["lina"], clash: "HawDB 周会", theirZone: "America/Los_Angeles", theirName: "Lina" });
+  expect(r.cal).toMatchObject({ kind: "create", account: WORK, calendar: "", start: "2026-11-18T11:00:00+09:00", end: "2026-11-18T11:30:00+09:00", notify: ["Lina"], clash: "HawDB 周会", theirZone: "America/Los_Angeles", theirName: "Lina" });
   expect(r.goLabel).toEqual({ zh: "添加到日历", en: "Add to calendar" });
   const s = f.staged.get("d_1")!;
   expect(s.action).toBe("googlecalendar.create_event");

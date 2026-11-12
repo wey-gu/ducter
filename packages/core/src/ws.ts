@@ -722,7 +722,11 @@ export function createWsHandler(deps: WsDeps) {
         void deps.calendar?.()?.refresh().catch(() => {});
         const si = deps.connections.signInView();
         if (si) send(ws, { t: "connection_signin", signIn: si });
-        void deps.connections.recheck().catch(() => {});
+        // D221: a cold home lists its accounts only after the recheck; read the calendar lists then.
+        void deps.connections
+          .recheck()
+          .then(() => deps.calendar?.()?.refresh())
+          .catch(() => {});
         return;
       }
       case "connection_signin_cancel": {

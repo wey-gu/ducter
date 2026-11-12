@@ -170,3 +170,30 @@ test("the checkpoint moves only after the items were taken in: a look that dies 
   expect(got).toContain("m_lina2"); // nothing was lost while intake kept failing
   w.stop();
 });
+
+// D222: a calendar account is looked at calendar by calendar (the ones the person lets it read),
+// with the real action and the main calendar as "primary"; holidays and hidden ones aren't read.
+test("calendars: each seen calendar of each account, with the real action, reads only", async () => {
+  const { fakeCalendarStore, twoAccounts } = await import("./fake-calendar.ts");
+  const { createCalendar } = await import("../src/calendar.ts");
+  const dir = scratch();
+  const f = fakeCalendarStore(twoAccounts());
+  const clock = new FakeClock(Date.parse("2026-11-18T08:00:00+09:00"));
+  const cal = createCalendar({ dataDir: dir, connections: f.store, zone: () => "Asia/Tokyo", now: () => clock.now(), log: f.log as never });
+  const got: Item[] = [];
+  const w = createWatchers({ dataDir: dir, connections: f.store, clock, enabled: () => true, zone: () => "Asia/Tokyo", calendarIds: (a) => cal.seenIds(a), onItems: (_a, items) => void got.push(...items) });
+  w.sync();
+  clock.advance(15 * 60_000);
+  for (let i = 0; i < 60; i++) await Promise.resolve(), await Bun.sleep(0);
+  const reads = f.calls.filter((c) => c.action === "googlecalendar.list_events");
+  expect(reads.map((c) => `${c.account}|${c.input.calendarId}`).sort()).toEqual(["wey-nowledge-labs-ai|primary", "weyl-gu-gmail-com|family123@group.calendar.google.com", "weyl-gu-gmail-com|primary"]);
+  expect(reads.every((c) => c.input.timeZone === "Asia/Tokyo" && c.input.singleEvents === true)).toBe(true);
+  expect(f.calls.every((c) => c.who === "watch" && !/create|patch|delete/.test(c.action))).toBe(true);
+  // Declined and free-shown events never become meetings (no prep, no clash).
+  const titles = got.filter((i) => !i.declined && !i.free && !i.allDay).map((i) => i.title);
+  expect(titles).toContain("HawDB 周会");
+  expect(got.find((i) => i.title === "All hands")!.declined).toBe(true);
+  expect(got.find((i) => i.title === "Gym")!.free).toBe(true);
+  cal.stop();
+  w.stop();
+});

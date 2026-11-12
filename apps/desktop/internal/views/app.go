@@ -216,7 +216,9 @@ type App struct {
 	af         autofillState // D191: 设置 › 自动填充
 	winW, winH float32
 	// partner and settings are the Partner page's and Settings' own state.
-	partner  partnerState
+	partner partnerState
+	// cal is the calendar screens' own memory (D222).
+	cal      calUI
 	phone    phoneState // D193: the phone card, the sign-in, a call's cards
 	own      ownState   // D218: the own-number card
 	settings settingsState

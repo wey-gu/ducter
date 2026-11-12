@@ -1026,7 +1026,10 @@ export function openConnections(opts: {
           record({ ...base, state: "failed", error: errorText(res) });
           return err(errorText(res), "write");
         }
-        record({ ...base, state: "done", summary: summarize(res.data) });
+        // D222: the page of what it made (an event in Google Calendar), for the card's own link.
+        const page = (payloadOf(res.data) as { htmlLink?: unknown } | undefined)?.htmlLink;
+        const link = typeof page === "string" && /^https:\/\/(www\.)?(calendar\.)?google\.com\//.test(page) ? page : undefined;
+        record({ ...base, state: "done", summary: summarize(res.data), ...(link ? { link } : {}) });
         return { ok: true, op: "write", result: forModel(payloadOf(res.data)) };
       } catch (e) {
         // Not retried: a write whose answer was lost may have happened (research/34, G-safety).

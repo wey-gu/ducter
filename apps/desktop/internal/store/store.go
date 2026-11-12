@@ -353,6 +353,9 @@ type Store struct {
 	Tasks     map[string]*Task
 	// FindStates are each find's latest change (D165), by find id.
 	FindStates map[string]*protocol.FindState
+	// DecisionCalls are the latest connection_call of each decision's Go,
+	// by decision id (D222: a calendar change settles from it).
+	DecisionCalls map[string]*protocol.ConnectionCall
 	// LastUserSeq is the user's latest message.
 	LastUserSeq int64
 	notes       map[string]*Entry
@@ -461,15 +464,16 @@ func (s *Store) Device(id string) *protocol.DeviceView {
 // New makes an empty store.
 func New() *Store {
 	return &Store{
-		PersonaName: "Ducter",
-		bySeq:       map[int64]*Entry{},
-		Jobs:        map[string]*Job{},
-		Decisions:   map[string]*DecisionState{},
-		Tasks:       map[string]*Task{},
-		FindStates:  map[string]*protocol.FindState{},
-		notes:       map[string]*Entry{},
-		Waiters:     map[string]*protocol.Waiter{},
-		Missed:      map[string]*protocol.Waiter{},
+		PersonaName:   "Ducter",
+		bySeq:         map[int64]*Entry{},
+		Jobs:          map[string]*Job{},
+		Decisions:     map[string]*DecisionState{},
+		Tasks:         map[string]*Task{},
+		FindStates:    map[string]*protocol.FindState{},
+		DecisionCalls: map[string]*protocol.ConnectionCall{},
+		notes:         map[string]*Entry{},
+		Waiters:       map[string]*protocol.Waiter{},
+		Missed:        map[string]*protocol.Waiter{},
 	}
 }
 
@@ -755,6 +759,19 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			m.EndedAt = ev.TS
 			s.Missed[w.WaiterID] = &m
 		}
+	}
+	if cc, ok := body.(*protocol.ConnectionCall); ok {
+		// D222: a decision's write, staged then run on Go; the latest wins.
+		if cc.DecisionID != "" && cc.Op == "write" {
+			if s.DecisionCalls == nil {
+				s.DecisionCalls = map[string]*protocol.ConnectionCall{}
+			}
+			s.DecisionCalls[cc.DecisionID] = cc
+		}
+		if ev.Stream == "channel" {
+			s.bySeq[ev.Seq] = nil
+		}
+		return
 	}
 	if ev.Stream != "channel" {
 		// Decisions may be logged on a task's stream too.

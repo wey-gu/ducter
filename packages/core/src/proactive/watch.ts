@@ -31,12 +31,17 @@ const MAIL: LookSpec = {
   input: (since) => ({ query: `after:${Math.floor(since / 1000)}`, maxResults: 50 }),
 };
 const OUTLOOK: LookSpec = { ...MAIL, actions: ["outlook.list_messages", "outlook.search_messages"], input: (since) => ({ filter: `receivedDateTime ge ${new Date(since).toISOString()}`, top: 50 }) };
-const CALENDAR: LookSpec = {
+// D222 (research/65): the real actions, read live through oo. Google lists one calendar per read
+// (calendarId; the main one is "primary"), so a look reads each calendar the person lets it read.
+const CALENDAR = (service: string): LookSpec => ({
   kind: "event",
   everyMs: 15 * MIN,
-  actions: ["googlecalendar.list_events", "google_calendar.list_events", "googlecalendar.events_list", "googlecalendar.find_event"],
-  input: (_since, now) => ({ timeMin: new Date(now - 6 * 3_600_000).toISOString(), timeMax: new Date(now + 3 * DAY).toISOString(), singleEvents: true, orderBy: "startTime", maxResults: 50 }),
-};
+  actions: service === "outlook_calendar" ? ["outlook_calendar.list_calendar_view", "outlook_calendar.list_events"] : [`${service}.list_events`],
+  input: (_since, now) =>
+    service === "outlook_calendar"
+      ? { startDateTime: new Date(now - 6 * 3_600_000).toISOString(), endDateTime: new Date(now + 3 * DAY).toISOString() }
+      : { timeMin: new Date(now - 6 * 3_600_000).toISOString(), timeMax: new Date(now + 3 * DAY).toISOString(), singleEvents: true, orderBy: "startTime", maxResults: 100 },
+});
 const GITHUB: LookSpec = {
   kind: "github",
   everyMs: 10 * MIN,
@@ -54,7 +59,7 @@ const CHAT = (svc: string): LookSpec => ({
 export function lookFor(service: string): LookSpec | undefined {
   if (service === "gmail") return MAIL;
   if (service === "outlook") return OUTLOOK;
-  if (/calendar/.test(service)) return CALENDAR;
+  if (/calendar/.test(service)) return CALENDAR(service);
   if (service === "github") return GITHUB;
   if (CHAT_SERVICES.has(service)) return CHAT(service.replace(/bot$/, ""));
   return;
@@ -98,6 +103,8 @@ export function createWatchers(opts: {
   onItems: (a: AppTarget, items: Item[]) => void | Promise<void>;
   /** The person's zone, for "today". */
   zone: () => string;
+  /** D222: the calendars to read in a calendar account (absent: its default calendar only). */
+  calendarIds?: (a: AppTarget) => Promise<string[]>;
 }): Watchers {
   const path = join(opts.dataDir, WATCH_FILE);
   let st: FileState = { since: {}, seen: {}, action: {}, reads: [] };
@@ -138,15 +145,24 @@ export function createWatchers(opts: {
     const k = appKey(a);
     const now = opts.clock.now();
     const tries = st.action[k] ? [st.action[k]!, ...spec.actions.filter((x) => x !== st.action[k])] : spec.actions;
+    // A calendar account: each calendar the person lets it read, one read each (D222).
+    const cals = spec.kind === "event" && opts.calendarIds && a.service === "googlecalendar" ? await opts.calendarIds(a).catch(() => []) : [];
     for (const action of tries) {
-      const r = await opts.connections.read({ role: "watch" }, a.connectionId, action, spec.input(since, now), a.account);
-      if (!r.ok) {
+      const inputs = cals.length ? cals.map((calendarId) => ({ ...spec.input(since, now), calendarId, timeZone: opts.zone() })) : [spec.input(since, now)];
+      const results: unknown[] = [];
+      let failed = "";
+      for (const input of inputs) {
+        const r = await opts.connections.read({ role: "watch" }, a.connectionId, action, input, a.account);
+        if (r.ok) results.push(r.result);
+        else failed ||= r.error;
+      }
+      if (!results.length) {
         // An action this source doesn't have: try the next one; anything else ends the look.
-        if (/no (such )?(action|tool)|unknown|not found|not_found/i.test(r.error)) continue;
+        if (/no (such )?(action|tool)|unknown action|metadata request returned HTTP 404/i.test(failed)) continue;
         return;
       }
       st.action[k] = action;
-      let items = itemsOf(target(a), spec.kind, r.result);
+      let items = results.flatMap((res) => itemsOf(target(a), spec.kind, res));
       // Chat: only @-mentions and DMs (D165 call 1); the rest is never even counted.
       if (spec.kind === "chat") items = items.filter((i) => i.mention || i.dm || i.out);
       trimReads();

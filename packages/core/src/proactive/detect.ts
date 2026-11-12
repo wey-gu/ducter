@@ -138,6 +138,30 @@ function mismatches(facts: Fact[], c: DetectCtx): Candidate[] {
       }
     }
   }
+  // D222: two meetings at the same time, today or tomorrow, often in two accounts that can't see
+  // each other (a work calendar and a personal one). One event in both calendars is not a clash.
+  const soon = meetings.filter((m) => m.end && Date.parse(m.start) > c.now && daysUntil(m.start, c.now, c.zone) <= 1).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  for (let i = 0; i < soon.length; i++)
+    for (let j = i + 1; j < soon.length; j++) {
+      const a = soon[i]!;
+      const b = soon[j]!;
+      if (Date.parse(b.start) >= Date.parse(a.end!)) break;
+      if (a.title === b.title && a.start === b.start && a.end === b.end) continue;
+      const d = daysUntil(b.start, c.now, c.zone);
+      const dayZh = d === 0 ? "今天" : "明天";
+      const dayEn = d === 0 ? "today" : "tomorrow";
+      out.push({
+        key: `clash:${[a.id, b.id].sort().join(":")}`,
+        kind: "mismatch",
+        cost: d === 0 ? 75 : 65,
+        urgent: d === 0,
+        dueAt: b.start,
+        people: [...new Set([...a.with, ...b.with])].slice(0, 6),
+        how: [howOf(a), howOf(b)],
+        words: { zh: `${dayZh} ${hm(b.start, c.zone)}「${a.title}」和「${b.title}」撞了。`, en: `"${a.title}" and "${b.title}" overlap ${dayEn} at ${hm(b.start, c.zone)}.` },
+        facts: [a.id, b.id],
+      });
+    }
   return out;
 }
 

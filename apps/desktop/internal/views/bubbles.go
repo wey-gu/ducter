@@ -70,7 +70,7 @@ func (a *App) bare(r row) bool {
 	case e.User != nil:
 		return true
 	case e.AI != nil:
-		return len(a.replyTasks(e)) == 0 && len(a.notedFor(e)) == 0
+		return e.AI.Cal == nil && len(a.replyTasks(e)) == 0 && len(a.notedFor(e)) == 0
 	case e.Job != nil:
 		st := e.Job.Status
 		if len(a.notedFor(e)) > 0 || e.Job.Ack == nil {

@@ -1317,6 +1317,22 @@ class AppState {
     this.send({ t: "app_watch", id, service, ...(account ? { account } : {}), ...patch });
     this.changed();
   }
+  /** D222: 看哪些日历 / Calendars it reads: one calendar in a calendar account, on or off. */
+  pickCalendar(id: string, service: string, account: string | undefined, calendarId: string, seen: boolean) {
+    const c = this.connections?.find((x) => x.id === id);
+    const a = c?.look?.apps.find((x) => x.service === service && (x.account ?? "") === (account ?? ""));
+    const row = a?.calendars?.find((r) => r.id === calendarId);
+    if (row) row.seen = seen;
+    this.send({ t: "cal_pick", id, service, ...(account ? { account } : {}), calendarId, seen });
+    this.changed();
+  }
+  /** Words put in the conversation's composer (a starter, 试试 / Try it): never sent. */
+  fillComposer(text: string) {
+    this.sheet = null;
+    this.draft = text;
+    this.go({ name: "conv" });
+    setTimeout(() => document.getElementById("composer")?.focus(), 50);
+  }
   askReads(id: string) {
     this.send({ t: "connection_reads", id });
   }

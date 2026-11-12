@@ -11,6 +11,7 @@ import { startCore, type Core } from "../../core/src/core.ts";
 import { registerTaskTools } from "../../runner/src/tools.ts";
 import { createPartner, type PartnerHandle } from "../src/partner.ts";
 import { fakeRunner } from "./fakes.ts";
+import { fakeOoCalendar } from "../../core/test/fake-oo-calendar.ts";
 import { partnerFingerprint } from "./fingerprint.ts";
 
 const PARTNER_TOOLS = [
@@ -24,6 +25,7 @@ const TASK_TOOLS = ["checkpoint", "log_read", "log_search", "memory_search", "re
 /** JSON characters of the whole tools/list result (≈ chars / 3.6 tokens). */
 const CEILING = {
   partner: 29_500, // 29.1K today (D215's call sheet fields on phone_call, D217's needs.phone on task_open): 26 tools (phone_call, D193, 2.2K after trimming; D206 media on task_open and task_send); wait_for (3.9K) and task_open (4.8K) are the largest
+  partnerWithCalendar: 31_500, // D222: + calendar (≈1.9K), listed only while a calendar account is connected
   task: 8_500, // 7.6K: 6 tools; wait_for alone is 3.6K; memory_search (1.2K) is the D168 fallback where the Mem plugin is absent
 };
 
@@ -65,6 +67,30 @@ test("a task's tools: the listed set, under the ceiling (no partner tool leaks i
   const tools = await list({ taskId: "t1" });
   expect(tools.map((t) => t.name).sort()).toEqual(TASK_TOOLS);
   expect(JSON.stringify(tools).length).toBeLessThan(CEILING.task);
+});
+
+// D222: the calendar tool is listed only while a calendar account is connected (no cost otherwise);
+// with one, the whole list stays under its own ceiling.
+test("with a calendar connected: calendar is listed, still under a ceiling", async () => {
+  const d = mkdtempSync(join(tmpdir(), "ducter-tools-cal-"));
+  const oo = fakeOoCalendar({ day: "2026-11-18" });
+  const c = startCore({ dataDir: d, port: 0, push: false, platform: "darwin", ooSource: oo.source });
+  c.autofill.store.put({ kind: "card", name: "Budget", number: "4242424242424242", expMonth: 12, expYear: 2099 });
+  expect((await c.connections.addFromOo()).ok).toBe(true);
+  const p = createPartner(c as never, fakeRunner(() => {}).runner, { prewarm: false, spine: false, persistState: false, onError: () => {} });
+  try {
+    const cfg = c.mcp.configFor("partner");
+    const req = new Request("http://127.0.0.1/mcp", { method: "POST", headers: { ...cfg.headers, "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }) });
+    const tools = ((await (await c.mcp.handle(req)).json()) as { result: { tools: { name: string }[] } }).result.tools;
+    expect(tools.map((t) => t.name).sort()).toEqual([...PARTNER_TOOLS, "calendar"].sort());
+    expect(JSON.stringify(tools).length).toBeLessThan(CEILING.partnerWithCalendar);
+    // No oo write ran to list it.
+    expect(oo.runs.filter((r) => !/^(list|get)_/.test(r.action))).toEqual([]);
+  } finally {
+    await p.close();
+    await c.stop();
+    rmSync(d, { recursive: true, force: true });
+  }
 });
 
 // D175 (4), research/48 F6: a persona or partner-tool change ships with a fresh eval result. The

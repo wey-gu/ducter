@@ -22,6 +22,7 @@ import { buildSystemPrompt, createNmemBridge, createPartner, isChinese } from ".
 import { scenarios, type Expect, type Scenario, type Step } from "./scenarios.ts";
 import { fakeMemory } from "../test/fakes.ts";
 import { fakeTuwa } from "../../core/test/fake-tuwa.ts";
+import { fakeOoCalendar } from "../../core/test/fake-oo-calendar.ts";
 import { partnerFingerprint } from "../test/fingerprint.ts";
 import type { MemoryAdd } from "../src/memory.ts";
 
@@ -189,6 +190,9 @@ interface RunResult {
   work?: { until: boolean; routine: boolean; asks?: { reversible: boolean; go: boolean; timed: boolean }[] };
   retitles: { key: string; title: string; step: number }[]; // task_retitle, as new task_open events
   bridgeSent: FakeMsg[]; // what Ducter sent through the fake Bridge
+  /** D222: day cards under messages, and the kinds of calendar change cards made. */
+  dayCards?: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[];
+  calKinds?: string[];
 }
 
 // ---------- fake Bridge (scenario.bridge): the fake nmem CLI over one JSON mailbox file ----------
@@ -265,7 +269,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     }
     writeFileSync(join(ph, "installed.json"), JSON.stringify({ packages: [{ path: "emulator", version: "stand-in" }], licenses: [], at: new Date().toISOString() }));
   }
-  const core = startCore({ dataDir, port: 0, persona, ownPhone: { platform: "darwin", arch: "arm64" }, ...(sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
+  // D222: two Google Calendar accounts (and Gmail) in a fake oo, on today's date here; never the real oo.
+  const calOo = sc.calendar ? fakeOoCalendar({ day: new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()) }) : undefined;
+  const core = startCore({ dataDir, port: 0, persona, ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
+  if (calOo && !(await core.connections.addFromOo()).ok) throw new Error("fake oo calendar: not added");
   if (tuwa) {
     const added = await core.connections.add({ url: tuwa.url, token: JSON.stringify({ accessToken: tuwa.access(), refreshToken: tuwa.refresh(), expires_in: 3600 }) });
     if (!added.ok) throw new Error(`fake Tuwa: ${JSON.stringify(added)}`);
@@ -383,7 +390,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     return s;
   };
   const visible: Visible[] = [];
+  const dayCards: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[] = [];
   for (const e of core.log.read({ stream: "channel", fromSeq: startSeq + 1, limit: 10_000 })) {
+    // D222: a day card with no words of its own is a card, not a message.
+    if (e.kind === "ai_msg" && (e.body as Bodies["ai_msg"]).cal) dayCards.push({ step: stepOf(e.seq), seq: e.seq, cal: (e.body as Bodies["ai_msg"]).cal! });
+    if (e.kind === "ai_msg" && !(e.body as Bodies["ai_msg"]).text.trim()) continue;
     if (e.origin === "partner" && PARTNER_KINDS.has(e.kind)) visible.push({ seq: e.seq, kind: e.kind as Visible["kind"], text: visibleText(e), step: stepOf(e.seq), relays: (e.body as { decisionId?: string }).decisionId });
     else if (e.kind === "waiter" && (e.body as Bodies["waiter"]).state === "armed") visible.push({ seq: e.seq, kind: "waiter", text: visibleText(e), step: stepOf(e.seq) });
   }
@@ -393,6 +404,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   };
   // Decisions made by the partner keep their full shape for the judge.
   const decisions = core.log.read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["decision"], limit: 100 }).filter((e) => e.origin === "partner");
+  const calKinds = decisions.map((e) => (e.body as Bodies["decision"]).cal?.kind).filter((k): k is NonNullable<typeof k> => !!k);
   const asks = decisions.map((e) => e.body as Bodies["decision"]).map((d) => ({ reversible: d.reversible, go: d.defaultOption === "go", timed: Boolean(d.defaultAt) }));
   const retitles = core.log
     .read({ fromSeq: startSeq + 1, kinds: ["task_open"], limit: 1000 })
@@ -429,9 +441,12 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         const sh = d.call?.plan?.sheet;
         if (d.call?.plan && sh) lines.push(`    [the call sheet shows, for the user to call themselves] number ${d.call.plan.to} · what for: ${d.call.plan.goal} · open with: ${sh.open} · ask: ${sh.ask.join(" / ") || "-"} · may say: ${d.call.plan.say.join(", ") || "-"} · don't share: ${sh.dont.join(", ") || "-"} · note down: ${sh.note.join(" / ") || "-"} · buttons: 自己打 / Call it yourself (dials on their phone), 打完了 / Done calling, 先不打 / Not now · Ducter dials nothing`);
         else if (d.call?.plan) lines.push(`    [the call card shows] number ${d.call.plan.to} · what for: ${d.call.plan.goal} · may say: ${d.call.plan.say.join(", ") || "-"} · won't say: ${d.call.plan.keep ?? "-"} · voice: ${d.call.plan.voice} · about ${d.call.plan.minutes} min, $${d.call.plan.costUsd} · when: ${d.call.plan.at ? `not now; it dials at ${d.call.plan.at} (an allowed hour)` : "right after Go"} · nothing is dialed before Go`);
+        // D222: a calendar change's card.
+        if (d.cal) lines.push(`    [this decision card IS the calendar change card (one card, made by the calendar tool), and shows] ${d.cal.kind}${d.cal.response ? ` (${d.cal.response})` : ""} · ${d.cal.title} · ${d.cal.allDay ? d.cal.start : `${d.cal.start.slice(0, 16)}–${d.cal.end.slice(11, 16)}`}${d.cal.was ? ` (was ${d.cal.was.start.slice(0, 16)})` : ""} · in ${[d.cal.calendar || "main calendar", d.cal.account].filter(Boolean).join(" · ")} · notifies: ${d.cal.notify.join(", ") || "nobody"}${d.cal.clash ? ` · overlaps "${d.cal.clash}"` : ""}${d.cal.theirZone ? ` · their zone ${d.cal.theirZone}` : ""} · runs only on the user's tap, then the card shows it done`);
       } else if (v.kind === "waiter") lines.push(`  [reminder set] ${v.text}`);
       else lines.push(`  [partner ${v.kind === "ack" ? "ack line" : "message"}] ${v.text}`);
     }
+    for (const c of dayCards.filter((x) => x.step === i)) lines.push(`  [the app shows a day card under the message] ${c.cal.days.map((d) => `${d.date}: ${d.events.map((x) => `${x.allDay ? "all day" : `${x.start.slice(11, 16)}–${x.end.slice(11, 16)}`} ${x.title}${x.me && x.me !== "accepted" ? ` (their answer: ${x.me})` : ""}${x.free ? " (shown as free)" : ""}`).join("; ") || "nothing"}`).join(" | ")}${c.cal.clashes?.length ? ` (overlaps drawn: ${c.cal.clashes.length})` : ""}`);
     for (const q of recalls.filter((x) => x.step === i)) lines.push(`  [searched long-term memory (invisible to the user)] ${q.query}`);
     for (const a of memAttempts.filter((x) => x.step === i)) {
       // The stream's tool input can be partial (title first); the saved record is the truth.
@@ -456,7 +471,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
   tuwa?.stop();
-  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent, work: { ...work, asks } };
+  return { sc, visible, dayCards, calKinds, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent, work: { ...work, asks } };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -571,6 +586,10 @@ function check(r: RunResult): string[] {
   // D129: a task's question reaches the user as the partner's words, tied to its decision.
   if (e.relayed && !r.visible.some((v) => v.kind === "ai_msg" && v.relays)) fails.push("the task's question was not said in the partner's words");
   if (e.ask &&!r.visible.some((v) => v.kind === "decision")) fails.push("no ask (decision)");
+  if (e.dayCard && !r.dayCards?.length) fails.push("no day card (calendar do=agenda show)");
+  if (e.noDayCard && r.dayCards?.length) fails.push("a day card nobody asked for");
+  if (e.calCard && !r.calKinds?.includes(e.calCard)) fails.push(`no calendar ${e.calCard} card`);
+  if (e.noCalCard && r.calKinds?.length) fails.push("a calendar change card nobody asked for");
   // D67 (2): a choice about how to do the work is reversible, defaults to Go and carries a time.
   if (e.askReversible && !r.work?.asks?.some((a) => a.reversible && a.go && a.timed)) fails.push("ask not reversible with a timed Go default");
   if (e.waiter && !r.visible.some((v) => v.kind === "waiter")) fails.push("no reminder set");

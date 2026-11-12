@@ -40,9 +40,10 @@ export function Chev(p: { open?: boolean; back?: boolean; cls?: string }) {
 }
 
 /** The one switch, with its words and an optional note. */
-export function Toggle(p: { label: string; help?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+export function Toggle(p: { label: string; help?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; lead?: ComponentChildren }) {
   return (
-    <label class="switch">
+    <label class={`switch${p.lead ? " lead" : ""}`}>
+      {p.lead}
       <span>
         {p.label}
         {p.help && <small>{p.help}</small>}

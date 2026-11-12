@@ -168,6 +168,11 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     }
     case "ai_msg":
       return `[${e.origin}] ${(e.body as Bodies["ai_msg"]).text}`;
+    case "connection_call": {
+      // D222: a calendar change the user said Go to that core ran and that didn't go through.
+      const c = e.body as Bodies["connection_call"];
+      return `[the calendar change the user said Go to didn't go through: ${clip(c.error ?? "no reason given", 300)}] Tell them in one short line, in their language; don't try again unless they ask.`;
+    }
     case "phone_call": {
       const c = e.body as Bodies["phone_call"];
       return renderCallEnded(c, c.taskId ? ctx.taskTitle(c.taskId) : undefined);
@@ -192,8 +197,12 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       const b = e.body as Bodies["user_msg"];
       return `[${t} user] ${clip(b.text, 1200)}${b.media?.length ? ` [sent ${mediaWords(b.media)}]` : ""}`;
     }
-    case "ai_msg":
-      return `[${t} you] ${clip((e.body as Bodies["ai_msg"]).text, 800)}`;
+    case "ai_msg": {
+      const b = e.body as Bodies["ai_msg"];
+      // D222: the day card it put under these words.
+      const card = b.cal ? ` [the day card for ${b.cal.from === b.cal.to ? b.cal.from : `${b.cal.from} to ${b.cal.to}`} was shown under it]` : "";
+      return `[${t} you] ${clip(b.text, 800)}${card}`.replace("] [", "] ");
+    }
     case "ack":
       return `[${t} you] ${clip((e.body as Bodies["ack"]).text, 300)}`;
     case "job_status": {

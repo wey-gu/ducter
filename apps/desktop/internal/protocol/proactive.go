@@ -68,6 +68,9 @@ type AppWatch struct {
 	Excluded    bool   `json:"excluded"`
 	Unreachable bool   `json:"unreachable,omitempty"`
 	LastReadAt  string `json:"lastReadAt,omitempty"`
+	// Calendars (D222): a calendar account's calendars, and which it
+	// reads (nil until it listed them).
+	Calendars []CalendarRow `json:"calendars,omitempty"`
 }
 
 // SourceLook is a source's watching today: the status line and the tiles.

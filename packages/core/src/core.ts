@@ -42,6 +42,7 @@ import { callWakes, neverCall, openPhone, type Phone } from "./phone.ts";
 import { openOwnPhone } from "./phone-own/index.ts";
 import { providerOf } from "./phone-provider.ts";
 import { registerConnectionTools } from "./connection-tools.ts";
+import { createCalendar, type Calendar } from "./calendar.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { createModelCatalog, type ModelCatalog } from "./models.ts";
 import { browseFolders, cloneProject, createFoundRepos, isOldOp, newTaskOptions, openYourTask, type FolderProjects, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
@@ -158,6 +159,8 @@ export interface Core extends CoreApi {
   ownNumber: import("./phone-own/index.ts").OwnPhone;
   /** D165: what Ducter notices in them, and how it says so. */
   proactive: Proactive;
+  /** D222: the person's calendars as one day, and changes behind a Go. */
+  calendar: Calendar;
   /** What each repo task changed so far (D128). */
   changes: Changes;
   /** D148: updating devices in place, and the newest release. */
@@ -185,6 +188,11 @@ export const defaultDataDir = () => process.env.DUCTER_DATA_DIR || join(homedir(
 /** Events that wake the partner (principle 6): user messages, resolutions, non-progress reports, fired waiters. */
 export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "user_msg" || e.kind === "decision_resolved") return true;
+  // D222: a calendar change the person said Go to that didn't go through (core ran it; success is the card's).
+  if (e.kind === "connection_call") {
+    const c = e.body as Bodies["connection_call"];
+    return c.op === "write" && c.state === "failed" && !!c.decisionId && /calendar/.test(c.action);
+  }
   if (e.kind === "waiter") {
     const w = e.body as Bodies["waiter"];
     // A routine's watch starts a run; a task's own check wakes that task, not the partner.
@@ -417,6 +425,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 
   let proactiveRef: Proactive | undefined;
+  let calendarRef: Calendar | undefined;
   const early: LogEvent[] = []; // triggers that arrive before the partner is wired
   const trigger = (e: LogEvent) => {
     try {
@@ -426,7 +435,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     }
   };
   const unsubscribePartner = log.subscribe((e) => {
-    if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e))) return;
+    if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e))) return;
     if (partner) trigger(e);
     else if (early.length < 100) early.push(e);
   });
@@ -524,7 +533,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
-  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ownNumber });
+  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ownNumber });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -720,7 +729,11 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   // D165: the person's zone: their quiet hours', else the server's (a client's hello sets routines').
   const zone = () => opts.proactive?.zone ?? settings.get().quiet?.tz ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+  // D222: every calendar account's calendars, merged (Accounts, the partner's calendar tool, the watcher).
+  const calendar = createCalendar({ dataDir, connections, zone, log });
+  calendarRef = calendar;
   const proactive = createProactive({
+    calendarIds: (a) => calendar.seenIds(a),
     dataDir,
     log,
     clock,
@@ -809,6 +822,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     phone,
     ownNumber,
     proactive,
+    calendar,
     changes,
     updates,
     release,
@@ -859,6 +873,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       living.stop();
       work.stop();
       proactive.stop();
+      calendar.stop();
       changes.stop();
       pusher.stop();
       updates.stop();

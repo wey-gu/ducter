@@ -653,7 +653,7 @@ a {
   border-top-left-radius: var(--bubble-join);
 }
 /* What sits under a bubble (the quiet row, a status line, the default) is set in to its text. */
-.partner > :not(.bubble):not(.tray):not(.reply):not(.routine-facts):not(.said) {
+.partner > :not(.bubble):not(.tray):not(.reply):not(.routine-facts):not(.said):not(.cal-card):not(.cal-change):not(.cal-settle) {
   margin-left: 14px;
 }
 .partner p {
@@ -6743,3 +6743,98 @@ dl.call-summary dd { margin: 0; }
 .info-who li .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .info-who li .when { font-size: var(--xs); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 .info-who li:last-child .nm { font-weight: 700; }
+/* ---------- D222: calendars (design/calendar.md §6; calendar.tsx). A literal agenda in Pebble clay:
+   tokens only; a calendar's own colour appears only as an 8px dot or a 3px rail (inline, from data). ---------- */
+.partner.has-cal { max-width: 100%; align-self: stretch; }
+.partner.has-cal > .bubble { max-width: min(88%, var(--bubble-measure)); }
+/* 6.1 the day card: a surface card on its clay ledge, the partner's column wide (at most 560). */
+.cal-card { display: flex; flex-direction: column; gap: var(--s3); width: min(100%, 560px); box-sizing: border-box; padding: var(--s4); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--base); animation: cal-rise 220ms var(--ease) both; }
+.cal-card.week { gap: var(--s4); }
+@keyframes cal-rise { from { opacity: 0; transform: translateY(8px); } }
+.cal-day { display: flex; flex-direction: column; gap: 6px; }
+.cal-card.week .cal-day + .cal-day { padding-top: var(--s3); border-top: 1px solid var(--line-soft); }
+.cal-head { font-family: var(--head); font-size: var(--md); font-weight: 800; color: var(--ink); line-height: 1.3; }
+.cal-dh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: var(--sm); font-weight: 700; color: var(--ink-soft); line-height: 1.35; }
+.cal-dh .none, .cal-none { font-size: var(--xs); font-weight: 500; color: var(--ink-muted); }
+.cal-day.empty .cal-dh { font-weight: 500; }
+.cal-marks { margin-top: -4px; font-size: var(--xs); color: var(--ink-muted); line-height: 1.4; }
+.cal-rows { display: flex; flex-direction: column; margin: 0 calc(-1 * var(--s2)); }
+.cal-row { position: relative; display: grid; grid-template-columns: 3.1em 3px minmax(0, 1fr); column-gap: var(--s3); align-items: stretch; padding: 7px var(--s2); border-radius: var(--r-xs); color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; transition: background var(--t-fast) ease-out; }
+a.cal-row { cursor: pointer; }
+@media (hover: hover) { a.cal-row:hover { background: var(--sunken); } }
+a.cal-row:active { background: var(--sunken); }
+a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.cal-row.past > * { opacity: 0.55; }
+.cal-t { display: flex; flex-direction: column; padding-top: 1px; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.3; }
+.cal-t .s { font-size: var(--sm); font-weight: 600; color: var(--ink-soft); }
+.cal-t .e { font-size: var(--xs); color: var(--ink-muted); }
+.cal-row.allday .cal-t .s { font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
+.cal-rail { display: block; width: 3px; min-height: 18px; border-radius: 3px; background: var(--faint); }
+.cal-b { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cal-tl { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.cal-ti { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--md); font-weight: 600; color: var(--ink); line-height: 1.35; }
+.cal-row.allday .cal-ti { font-size: var(--sm); }
+.cal-row.free .cal-ti { color: var(--ink-soft); font-weight: 500; }
+.cal-meta { font-size: var(--xs); color: var(--ink-muted); line-height: 1.45; overflow-wrap: anywhere; }
+.cal-meta .part { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre; vertical-align: bottom; }
+.cal-chip { flex: none; padding: 0 7px; border-radius: var(--pill); font-size: 11px; font-weight: 700; line-height: 18px; white-space: nowrap; }
+.cal-chip.ask { background: var(--waiting-surface); color: var(--waiting-ink); }
+.cal-chip.maybe { background: var(--sunken); color: var(--ink-soft); }
+.cal-chip.clash { background: var(--failed-surface); color: var(--failed-ink); }
+/* A clash: a thin bracket at the time column's edge joins the rows that overlap. */
+.cal-row.clash::before { content: ""; position: absolute; left: 1px; top: 0; bottom: 0; width: 4px; border-left: 1.5px solid var(--failed-dot); }
+.cal-row.clash.ctop::before { top: 10px; border-top: 1.5px solid var(--failed-dot); border-top-left-radius: 4px; }
+.cal-row.clash.cbot::before { bottom: 10px; border-bottom: 1.5px solid var(--failed-dot); border-bottom-left-radius: 4px; }
+/* Now: an accent line with a dot on the rails' line (today only). */
+.cal-now { position: relative; height: 0; margin: 1px var(--s2) 1px calc(var(--s2) + 3.1em + var(--s3) - 1.5px); border-top: 1.5px solid var(--accent); animation: fade 220ms ease-out 120ms both; }
+.cal-now .dot { position: absolute; left: -1.5px; top: -4.25px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .cal-card, .cal-now { animation: none; } }
+
+/* 6.2 the change card: one sunken block under the question, then the tray. */
+.cal-change { display: flex; flex-direction: column; gap: 5px; width: min(88%, var(--bubble-measure)); box-sizing: border-box; padding: var(--s3) var(--s3) var(--s3) 14px; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink-soft); }
+.cal-change > * { font-size: var(--sm); line-height: 1.5; }
+.decision .cal-change { width: 100%; margin: var(--s2) 0; }
+.cc-title { display: flex; align-items: stretch; gap: 10px; margin-bottom: 2px; }
+.cc-title .cal-rail { min-height: 20px; flex: none; }
+.cc-title b { font-size: var(--md); font-weight: 700; color: var(--ink); line-height: 1.4; }
+.cc-when { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.cc-when.move { display: flex; flex-direction: column; gap: 1px; }
+.cc-move { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.cc-was { color: var(--ink-muted); font-weight: 500; }
+.cc-was s { text-decoration-thickness: 1px; }
+.cal-arrow { flex: none; color: var(--ink-muted); }
+.cc-their { color: var(--ink-soft); }
+.cc-line { display: flex; align-items: center; gap: 6px; }
+.cc-k { color: var(--ink-muted); }
+.cc-whose { color: var(--ink-muted); }
+.cc-line.clash { color: var(--failed-ink); font-weight: 600; }
+.cal-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+/* After Go or Hold: the card settles in place. */
+.cal-settle { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-height: 32px; padding-left: 14px; font-size: var(--sm); font-weight: 700; color: var(--ink-soft); animation: settle 320ms var(--spring); }
+.cal-settle .mark { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; }
+.cal-settle.done .mark { background: var(--done-surface); color: var(--done-ink); }
+.cal-settle.done .btn { margin-left: -4px; }
+.cal-settle.failed { color: var(--failed-ink); }
+.cal-settle.failed .mark { background: var(--failed-surface); color: var(--failed-ink); }
+.cal-settle.failed .why { display: block; font-weight: 500; font-size: var(--xs); }
+.cal-settle.quiet { font-weight: 500; color: var(--ink-muted); }
+.cal-settle.said { align-self: flex-end; font-weight: 500; color: var(--ink-muted); }
+.decision .cal-settle { padding-left: 0; }
+
+/* 6.3 the greeting's today line: quiet, one row, a drawn calendar. */
+.hello-today { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; margin-top: 2px; padding: 8px 14px; border: 0; border-radius: var(--pill); background: var(--sunken); color: var(--ink-soft); font: inherit; font-size: var(--sm); font-weight: 600; line-height: 1.4; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform var(--t-press) ease-out; }
+.hello-today:active { transform: translateY(1px); }
+.hello-today .cal-glyph { flex: none; color: var(--accent); }
+
+/* §4 Accounts: the calendars inside a calendar account, and the lines under the tray. */
+.tile-detail .td-cals { display: flex; flex-direction: column; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.tile-detail .td-cals .td-k { margin-bottom: 2px; font-size: var(--sm); font-weight: 700; color: var(--ink-muted); }
+.tile-detail .td-cals .switch { min-height: 0; padding: 10px 0; align-items: flex-start; font-size: var(--sm); font-weight: 600; }
+.tile-detail .td-cals .switch input { margin-top: -4px; }
+.tile-detail .td-cals .switch > span.cal-dot { margin-top: 5px; }
+.switch.lead > span.cal-dot { flex: none; width: 8px; height: 8px; margin-right: -2px; }
+.tile-detail .td-cals .switch small { display: block; font-size: var(--xs); font-weight: 500; color: var(--ink-muted); }
+.cal-line { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0 4px; }
+.cal-line .small.soft { color: var(--ink-soft); line-height: 1.5; }
+.cal-line .btn.text { margin-left: -10px; }
+.cal-line.nudge .acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }

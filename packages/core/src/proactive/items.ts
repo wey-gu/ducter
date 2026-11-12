@@ -35,6 +35,10 @@ export interface Item {
   attendees?: string[];
   location?: string;
   cancelled?: boolean;
+  /** D222: an all-day event, one shown as free, or one the person declined: never a meeting or a clash. */
+  allDay?: boolean;
+  free?: boolean;
+  declined?: boolean;
   // GitHub and chat
   reason?: string; // review_requested, mention, assign, ci_activity …
   mention?: boolean;
@@ -181,6 +185,9 @@ export function eventItem(t: Target, o: Record<string, unknown>): Item | undefin
     ...(attendees.length ? { attendees } : {}),
     ...(str(o.location) ? { location: clip(str(o.location)!, 200) } : {}),
     ...(o.status === "cancelled" ? { cancelled: true } : {}),
+    ...(o.start && typeof o.start === "object" && (o.start as Record<string, unknown>).date && !(o.start as Record<string, unknown>).dateTime ? { allDay: true } : {}),
+    ...(o.transparency === "transparent" ? { free: true } : {}),
+    ...((Array.isArray(o.attendees) ? o.attendees : []).some((a) => (a as Record<string, unknown>)?.self && (a as Record<string, unknown>)?.responseStatus === "declined") ? { declined: true } : {}),
   };
 }
 

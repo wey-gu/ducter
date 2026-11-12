@@ -12,7 +12,6 @@ export * from "./phone.ts";
 export * from "./media.ts";
 export * from "./phone-use.ts";
 export * from "./calendar.ts";
-export * from "./follow.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
 import type { CalChange, CalGlance, CalToday } from "./calendar.ts";
@@ -228,6 +227,7 @@ export interface Bodies {
     phone?: PhoneAsk; // D217: one tap on Ducter's phone that commits (Go taps it once), or the user's turn on it (Go = 好了 / Done)
     where?: WhereAsk; // D157: wait for a computer (Hold, the default) or do it now on another (Go)
     closing?: ClosingPlan; // D157: 合上之前搬走 / Move before closing: Go (the default) moves them
+    anywhere?: { hostname: string }; // D228: create the tunnel in the person's Cloudflare account and point this hostname at the home (Go)
     memPlugin?: MemPluginAsk; // D169: put Nowledge Mem into this agent on that computer (Go); 先不装 / Not now (Hold, the default)
     // D165: a find's one next step. Clients render it inside its note (not as a card of its own);
     // On hand lists it like any ask. Never pushed on its own: the note is the one notification.
@@ -710,9 +710,16 @@ export type ClientFrame =
   // 远程打开 / Reach from anywhere (D54), answered with a pair_code frame.
   // refresh: probe the harness sign-ins again now (after signing in or out from the app).
   | { t: "devices"; refresh?: boolean }
-  // D228: on the home, "remote" on/off turns 在哪儿都能用 / From anywhere on or off (Ducter's free
-  // tunnel); named: the person's own Cloudflare tunnel (its token and the address it serves).
-  | { t: "ability"; device: string; ability: AbilityId; on: boolean; named?: { token: string; address: string } }
+  // D228: on the home, "remote" off turns 在哪儿都能用 / From anywhere off (stops the tunnel, clears
+  // the address; the tunnel stays in the person's Cloudflare account). On with named: a tunnel the
+  // person made in Cloudflare's dashboard (its token and the hostname it serves). On without it is
+  // the guided setup, anywhere_setup below.
+  | { t: "ability"; device: string; ability: AbilityId; on: boolean; named?: { token: string; hostname: string } }
+  // D228: the guided setup of 在哪儿都能用 on the home. begin: 让 Ducter 帮我设好 / Set it up for me
+  // (opens the task; answered with anywhere_setup_result {taskId}). step: one step, run by the
+  // home for that task's agent (`ducter anywhere step <id>`): login, create (hostname?), run.
+  // cancel: stop setting up (the task stays as it is). Progress arrives in devices frames.
+  | { t: "anywhere_setup"; op: "begin" | "step" | "cancel"; step?: AnywhereStepCmd; hostname?: string }
   | { t: "pair_code" }
   // rename_device: 改名字 / Rename any device (another computer, a phone, a window; D84), and since
   // D155 the home too ("local": a display name; it still answers to its host name and to "local").
@@ -981,6 +988,7 @@ export type ServerFrame =
   | ({ t: "wb"; id: string; taskId: string } & ({ ok: true; answer: import("./workbench.ts").WbAnswer } | { ok: false; error: import("./workbench.ts").WbError; message?: string }))
   | { t: "devices"; devices: DeviceView[]; reach: Reach; updateAll?: UpdateAllView }
   | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
+  | { t: "anywhere_setup_result"; ok: boolean; taskId?: string; step?: AnywhereStepResult; reason?: AnywhereReason | "own_address" | "no_agent" | "running" | "not_home"; detail?: string }
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
   | { t: "rename_result"; device: string; ok: boolean; name?: string; reason?: "unknown_device" | "empty" | "name_taken" | "home" }
   | { t: "disconnect_result"; device: string; ok: boolean; reason?: "unknown_device" | "home" }
@@ -1434,25 +1442,56 @@ export interface UpdateAllView {
 }
 
 /**
- * D228: 在哪儿都能用 / From anywhere on the home. how: own = an address the person set up (their
- * domain, D143; DUCTER_PUBLIC_URL); tunnel = Ducter's free Cloudflare tunnel (no account; the
- * address changes when the computer restarts: moves); named = the person's own Cloudflare tunnel
- * (a stable address). state starting: being opened (getting: fetching the tunnel program the first
- * time, about 20 MB); failed: reason (download: couldn't download it; cloudflare: couldn't reach
- * Cloudflare; unsupported: no build for this system; failed: detail). follow: how paired devices
- * find the home when the address changes (follow.ts); given only to paired and local clients.
+ * D228: 在哪儿都能用 / From anywhere on the home: an address from outside. how: own = an address
+ * set up some other way (D143's `ducter domain` on a server with a public IP, DUCTER_PUBLIC_URL);
+ * cloudflare = the person's own Cloudflare tunnel to their own domain, which Ducter runs (made by
+ * the guided setup, or in Cloudflare's dashboard and given as a token). state: off = turned off,
+ * the tunnel kept (on again needs no setup); setup = being set up (setup says how far); starting =
+ * the tunnel is starting or being checked; on; failed (reason).
  */
 export interface Anywhere {
-  how: "own" | "tunnel" | "named";
-  state: "starting" | "on" | "failed";
-  getting?: boolean;
-  moves?: boolean;
+  how: "own" | "cloudflare";
+  state: "off" | "setup" | "starting" | "on" | "failed";
+  hostname?: string;
   reason?: AnywhereReason;
   detail?: string;
-  since?: string; // ISO: when this address began
-  follow?: import("./follow.ts").Follow;
+  since?: string; // ISO: on since
+  setup?: AnywhereSetup;
 }
-export type AnywhereReason = "download" | "cloudflare" | "unsupported" | "failed";
+/**
+ * download: Cloudflare's program couldn't be downloaded (or its checksum didn't match);
+ * unsupported: no build for this system; login: the sign-in didn't finish (expired or refused);
+ * taken: that hostname already has a record in the person's zone; cloudflare: Cloudflare refused
+ * or couldn't be reached; unreachable: the tunnel is connected but the address doesn't lead here
+ * yet; failed: anything else (detail).
+ */
+export type AnywhereReason = "download" | "unsupported" | "login" | "taken" | "cloudflare" | "unreachable" | "failed";
+/** The guided setup's steps, in order; each ticks by itself as the home runs it (D228). */
+export type AnywhereStepId = "get" | "login" | "name" | "create" | "dns" | "run" | "check" | "use";
+export type AnywhereStepCmd = "login" | "create" | "run";
+export interface AnywhereSetup {
+  taskId?: string;
+  steps: { id: AnywhereStepId; state: "todo" | "doing" | "waiting" | "done" | "failed"; reason?: AnywhereReason; detail?: string }[];
+  /** While signing in: the link to open (opened: cloudflared opened it in this computer's browser). */
+  login?: { url: string; opened: boolean; qr?: string[] };
+  /** The address chosen (or suggested: ducter.<zone>), and the zone signed in to. */
+  hostname?: string;
+  zone?: string;
+}
+/** What one step answers its agent (`ducter anywhere step <id> --json`). */
+export interface AnywhereStepResult {
+  step: AnywhereStepCmd;
+  state: "done" | "waiting" | "failed";
+  /** waiting: for the person to sign in (login), for their Go on the card (go), or still at work (working: ask again). */
+  waiting?: "login" | "go" | "working";
+  url?: string;
+  hostname?: string;
+  zone?: string;
+  reason?: AnywhereReason;
+  detail?: string;
+  /** What to do next, in a sentence for the agent. */
+  next?: string;
+}
 
 /** Who can reach this Ducter from elsewhere (paired clients), and the address they use. */
 export interface Reach {

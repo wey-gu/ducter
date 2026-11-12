@@ -36,7 +36,6 @@ import artIdleClosed from "../../../apps/web/static/art/idle_closed.webp" with {
 import artWorking from "../../../apps/web/static/art/working.webp" with { type: "file" };
 import artNeeds from "../../../apps/web/static/art/needsyou.webp" with { type: "file" };
 import artDone from "../../../apps/web/static/art/done.webp" with { type: "file" };
-import { addrRelay } from "./anywhere.ts";
 import artNapping from "../../../apps/web/static/art/napping.webp" with { type: "file" };
 import tokenOrange from "../../../apps/web/static/art/token_orange.webp" with { type: "file" };
 import tokenInk from "../../../apps/web/static/art/token_ink.webp" with { type: "file" };
@@ -150,20 +149,11 @@ const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inl
  * D214: a task's page previews in a frame of the opened task's workbench, from a port of this
  * same host (preview.ts): only this host's own ports may be framed and pinged, nothing else.
  */
-/** D228: the page may ask the address relay where the home moved to, and check that a Ducter
- *  answers at the free tunnel's new address before it goes there. */
-const relayOrigin = () => {
-  const r = addrRelay();
-  return r ? `${new URL(r).origin} https://*.trycloudflare.com` : "";
-};
-
 export function cspFor(req: Request): string {
   const host = (req.headers.get("host") ?? "").replace(/:\d+$/, "");
-  const relay = relayOrigin();
-  const base = relay ? CSP.replace("connect-src 'self' ws: wss:", `connect-src 'self' ws: wss: ${relay}`) : CSP;
-  if (!/^(\[[0-9a-fA-F:.]+\]|[A-Za-z0-9.-]{1,253})$/.test(host)) return base;
+  if (!/^(\[[0-9a-fA-F:.]+\]|[A-Za-z0-9.-]{1,253})$/.test(host)) return CSP;
   const here = `http://${host}:* https://${host}:*`;
-  return base.replace("connect-src 'self' ws: wss:", `connect-src 'self' ws: wss: ${here}`).replace("default-src 'self';", `default-src 'self'; frame-src ${here};`);
+  return CSP.replace("connect-src 'self' ws: wss:", `connect-src 'self' ws: wss: ${here}`).replace("default-src 'self';", `default-src 'self'; frame-src ${here};`);
 }
 
 const etags = new Map<string, string>();
@@ -254,8 +244,6 @@ export interface WebApiDeps {
   version?: string;
   /** D206: the media store (media.ts); absent in tests that don't need it. */
   media?: import("./media.ts").MediaStore;
-  /** D228: the address relay note this home leaves while its tunnel's address can change. */
-  follow?: () => import("@ducter/protocol").Follow | undefined;
 }
 
 const json = (status: number, body: unknown) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
@@ -301,8 +289,6 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
         personaName: deps.personaName(),
         ...(deps.version ? { version: deps.version } : {}),
         ...(g.via === "device" ? { deviceId, deviceName: g.device.name } : {}),
-        // D228: how this device finds its home again when the tunnel's address changes.
-        ...(deps.follow?.() ? { follow: deps.follow() } : {}),
         // apns: this home can notify the iPhone app (through the relay, or its own Apple key);
         // apnsVia says which; relay: "unreachable" when the relay failed the last time (D159).
         push: {

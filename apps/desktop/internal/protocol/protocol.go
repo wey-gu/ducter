@@ -856,15 +856,23 @@ type AbilityReq struct {
 	Device  string `json:"device"`
 	Ability string `json:"ability"`
 	On      bool   `json:"on"`
-	// Named: the person's own Cloudflare tunnel for 在哪儿都能用 (D228).
+	// Named: a tunnel the person made in Cloudflare's dashboard, for
+	// 在哪儿都能用 (D228).
 	Named *NamedTunnel `json:"named,omitempty"`
 }
 
 // NamedTunnel is a Cloudflare tunnel of the person's own: its token and the
 // hostname it serves (D228).
 type NamedTunnel struct {
-	Token   string `json:"token"`
-	Address string `json:"address"`
+	Token    string `json:"token"`
+	Hostname string `json:"hostname"`
+}
+
+// AnywhereSetupReq is 在哪儿都能用's guided setup (D228): Op "begin" opens
+// the task (让 Ducter 帮我设好), "cancel" stops setting up.
+type AnywhereSetupReq struct {
+	T  string `json:"t"` // "anywhere_setup"
+	Op string `json:"op"`
 }
 
 // PairCodeReq asks for a one-time pairing code (远程打开 / Reach from
@@ -1450,29 +1458,60 @@ type Reach struct {
 	Anywhere *Anywhere `json:"anywhere,omitempty"`
 }
 
-// Anywhere: How is "own" (an address the person set up, D143), "tunnel"
-// (Ducter's free Cloudflare tunnel; Moves: the address changes when the
-// computer restarts) or "named" (their own Cloudflare tunnel). State is
-// "starting" (Getting: fetching the tunnel program the first time),
-// "on" or "failed" (Reason: download, cloudflare, unsupported, failed).
+// Anywhere is 在哪儿都能用 on the home (D228). How is "own" (an address set
+// up some other way, D143) or "cloudflare" (the person's own Cloudflare
+// tunnel to their own domain, which Ducter runs). State is "off" (turned off,
+// the tunnel kept), "setup" (Setup says how far), "starting", "on" or
+// "failed" (Reason: download, unsupported, login, taken, cloudflare,
+// unreachable, failed).
 type Anywhere struct {
-	How     string  `json:"how"`
-	State   string  `json:"state"`
-	Getting bool    `json:"getting,omitempty"`
-	Moves   bool    `json:"moves,omitempty"`
-	Reason  string  `json:"reason,omitempty"`
-	Detail  string  `json:"detail,omitempty"`
-	Since   string  `json:"since,omitempty"`
-	Follow  *Follow `json:"follow,omitempty"`
+	How      string         `json:"how"`
+	State    string         `json:"state"`
+	Hostname string         `json:"hostname,omitempty"`
+	Reason   string         `json:"reason,omitempty"`
+	Detail   string         `json:"detail,omitempty"`
+	Since    string         `json:"since,omitempty"`
+	Setup    *AnywhereSetup `json:"setup,omitempty"`
 }
 
-// Follow is how a paired device finds its home again when the tunnel's
-// address changes: the address relay, the note's id, the key that opens it
-// (D228, packages/protocol/src/follow.ts).
-type Follow struct {
-	Relay string `json:"relay"`
-	ID    string `json:"id"`
-	Key   string `json:"key"`
+// AnywhereSetup is the guided setup's progress: each step's state (todo,
+// doing, waiting, done, failed), the sign-in link while signing in, and the
+// address chosen.
+type AnywhereSetup struct {
+	TaskID   string         `json:"taskId,omitempty"`
+	Steps    []AnywhereStep `json:"steps"`
+	Login    *AnywhereLogin `json:"login,omitempty"`
+	Hostname string         `json:"hostname,omitempty"`
+	Zone     string         `json:"zone,omitempty"`
+}
+
+// AnywhereStep is one step of the setup.
+type AnywhereStep struct {
+	ID     string `json:"id"`
+	State  string `json:"state"`
+	Reason string `json:"reason,omitempty"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// AnywhereStepResult is what one setup step answers its agent.
+type AnywhereStepResult struct {
+	Step     string `json:"step"`
+	State    string `json:"state"`
+	Waiting  string `json:"waiting,omitempty"`
+	URL      string `json:"url,omitempty"`
+	Hostname string `json:"hostname,omitempty"`
+	Zone     string `json:"zone,omitempty"`
+	Reason   string `json:"reason,omitempty"`
+	Detail   string `json:"detail,omitempty"`
+	Next     string `json:"next,omitempty"`
+}
+
+// AnywhereLogin is the Cloudflare sign-in link (Opened: cloudflared opened it
+// in this computer's browser).
+type AnywhereLogin struct {
+	URL    string   `json:"url"`
+	Opened bool     `json:"opened"`
+	QR     []string `json:"qr,omitempty"`
 }
 
 // ClientFrame is any client -> server frame, decoded by its tag (for the
@@ -1662,6 +1701,8 @@ type ServerFrame struct {
 	SignIn *SignInView `json:"signIn,omitempty"`
 	// D218: the own-number card (with connections); own_phone_result: Action, Reason.
 	OwnPhone *OwnPhoneView `json:"ownPhone,omitempty"`
+	// Step is one step's answer of 在哪儿都能用's setup (anywhere_setup_result, D228).
+	Step *AnywhereStepResult `json:"step,omitempty"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -1845,7 +1886,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// dropped here unseen (the live view's live / live_frame were, from D151 to
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
+		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "saved",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb":

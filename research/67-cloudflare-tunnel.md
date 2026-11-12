@@ -1,9 +1,16 @@
 # 67: A home with no public address, reached through a Cloudflare tunnel
 
 **Question.** hel (Linux, public IP) is reachable through `ducter domain` (D143). A Mac at home, or
-a Linux box behind NAT, is not. Can Ducter give such a home an address from outside with one
-tap, for a person who knows nothing about tunnels, without weakening pairing (D54/D57)? Which
-path, and how do paired devices keep finding the home when the address changes?
+a Linux box behind NAT, is not. Can Ducter give such a home an address from outside, for a person
+who knows nothing about tunnels, without weakening pairing (D54/D57)? Which path?
+
+**Update (2026-11-12, same day): the decision changed.** The first draft (D228 as merged, then
+reverted before release) used quick tunnels and an address relay so devices could follow the
+changing address (§1a, §3, §5 below, kept as the record of what was measured). The author rejected
+it: "Don't do temporary tunnels — the experience is bad. Guide the user to use an agent and
+Cloudflare's CLI to bind their own domain", and the user's devices should not depend on a relay
+the project runs. D228 now uses only the person's own Cloudflare account and domain with a named
+tunnel (§1b), set up by a task (§6). Why, in §7.
 
 **Method.** Cloudflare's docs; the cloudflared GitHub releases API; and experiments on this Mac
 with quick tunnels only (no account), against a scratch echo server (port 17877) and then a
@@ -130,7 +137,7 @@ remote and needs a device token (unit-tested with these exact headers). On the l
 `x-forwarded-for` hop from a loopback proxy). Cloudflare sees the traffic in clear (TLS ends at its
 edge), as with any Cloudflare-proxied site: said in the detail, never hidden.
 
-## 5. Following a moving address
+## 5. Following a moving address (the reverted draft; not in Ducter)
 
 Measured on the scratch home with the phone client in Safari on the iOS Simulator (iPhone 17,
 iOS 26.3), and the address relay (`apps/site/api/addr`) run locally behind its own quick tunnel
@@ -148,28 +155,91 @@ iOS 26.3), and the address relay (`apps/site/api/addr`) run locally behind its o
   it now asks again every 20 s while away. A restarted home with a changed relay re-leaves its
   note.
 
+## 6. Named tunnels from the command line (cloudflared 2026.10.5 source, read 2026-11-12)
+
+Read from a fresh clone of `cloudflare/cloudflared` at tag 2026.10.5 (`cmd/cloudflared/tunnel/
+{login,subcommands,subcommand_context}.go`, `token/transfer.go`, `credentials/origin_cert.go`,
+`cfapi/hostname.go`). DOCUMENTED (the vendor's own code) unless marked; nothing here was run
+against an account.
+
+- **`cloudflared tunnel login`** builds `https://dash.cloudflare.com/argotunnel?…` and tries to
+  open a browser; on success it prints "A browser window should have opened at the following
+  URL:", else "Please open the following URL and log in with your Cloudflare account:", both to
+  stderr, the link on its own line. It then long-polls `login.cloudflareaccess.org` (10 polls ×
+  60 s client timeout: about 10 minutes) and writes `cert.pem` (0600). VERIFIED on the Linux VM
+  (`bun run e2e:linux` step 8): headless, it printed the second form, and Ducter read the link.
+- **Where `cert.pem` goes:** the first default config directory, `~/.cloudflared`, expanded with
+  `$HOME` (go-homedir); `--origincert` is not consulted by `login`. If a non-empty `cert.pem` is
+  already there it refuses ("You have an existing certificate … which login would overwrite").
+  So Ducter runs it with `HOME=<dataDir>/anywhere`: the certificate lands in Ducter's folder and
+  the person's own `~/.cloudflared` is never touched or read (VERIFIED in the VM: nothing written
+  there).
+- **What `cert.pem` holds:** one PEM block `ARGO TUNNEL TOKEN`, a JSON `{zoneID, accountID,
+  apiToken, endpoint?}`. The person picks the zone in the browser during login; the certificate is
+  for that zone. Reading the zone's *name* with that token (`GET /client/v4/zones/<zoneID>`) is
+  INFERRED to work (the token's scope is not documented in the code); when it doesn't, the agent
+  asks the person which domain they picked.
+- **`cloudflared tunnel --origincert <cert> create --output json --credentials-file <f> <name>`**
+  creates the tunnel with a fresh 32-byte secret, writes the credentials JSON `{AccountTag,
+  TunnelSecret, TunnelID, Endpoint}` with mode **0400**, refuses if `<f>` exists, and prints the
+  tunnel as JSON (`id`, `name`, `created_at`). Without `--output` it prints "Created tunnel <name>
+  with id <uuid>". Names must be unique in the account.
+- **`cloudflared tunnel --origincert <cert> route dns <id> <hostname>`** asks Cloudflare to add a
+  proxied CNAME; it logs "Added CNAME <name> which will route to this tunnel" (or "<name> is
+  already configured to route to your tunnel"), where `<name>` is **Cloudflare's** answer, not
+  the request. INFERRED from community reports, not from the code: a hostname outside the
+  certificate's zone gets the zone appended (`ducter.other.org.example.com`), so Ducter refuses a
+  name outside the zone before asking. Without `--overwrite-dns` an existing record fails ("An A,
+  AAAA, or CNAME record with that host already exists", API code 81053, DOCUMENTED in Cloudflare's
+  API errors); Ducter never passes `--overwrite-dns`.
+- **Running it:** `cloudflared tunnel --config <yml> run` with `tunnel:`, `credentials-file:` and an
+  `ingress:` list (the hostname to `http://127.0.0.1:<port>`, then `http_status:404`), the same
+  `--metrics` `/ready` as §1a. A dashboard tunnel runs from `TUNNEL_TOKEN` alone (its ingress lives
+  in the dashboard).
+
+## 7. Why not quick tunnels, and why no relay (the decision)
+
+- **The address changes.** A quick tunnel's name dies with its process (§1a): every reboot, every
+  lost connection that needs a new process. Devices then need a way to find the new name; the
+  draft's relay made that work (measured, §5), but each change is still a reconnection, a home-
+  screen icon pointing at a dead name, a QR code that stops working. The author judged the
+  experience bad, and the evidence agrees: "a reliable partner" cannot have an address that
+  quietly moves.
+- **Cloudflare positions quick tunnels for testing:** "for testing and development", no uptime
+  guarantee, 200 in-flight requests (§1a, DOCUMENTED [1]). Building a product's default on that is
+  building on something its owner says not to rely on.
+- **No project-run dependency.** The relay meant every paired device depended on a service the
+  Ducter project runs (and on its keys, KV, rate limits and uptime), for a self-hosted tool whose
+  promise is that it is yours. With the person's own account and domain, nothing between their
+  devices and their home belongs to the project.
+- **The cost moves to setup, and an agent carries it:** an account, a domain (bought in Cloudflare
+  if needed, at cost), a sign-in and a Go. That is the case for a task: the steps are fixed and
+  Ducter does them with cloudflared, but the agent explains, waits for the person, picks a name
+  with them, and recovers from the odd failure; the card shows each step, so it is never a black
+  box.
+
 ## Implications for Ducter
 
-1. Default: **a quick tunnel, one tap, no account**; the honest caveat is one line ("the address
-   changes when this computer restarts; your devices follow on their own").
-2. cloudflared lives beside Ducter (detached, or its own systemd user unit) and is adopted by
-   address, so updates don't move the address; only a reboot or a lost tunnel does.
-3. Paired devices follow through a **sealed note at an address relay** run with the push relay
-   (D159's pattern: a random id, AES-GCM under a key only the home and its devices hold; the relay
-   can neither read nor forge an address).
-4. Never touch the new name through the system resolver before public DNS has it (DoH first).
-5. Stable addresses stay available: the person's own domain (D143) or their own named tunnel
-   (`--token`, `--address`), both shown as already on.
-6. A Ducter-run hostname (c) is deferred: it trades the project's trust and abuse exposure for a
-   stability the relay already mostly gives.
+1. One path: the person's own Cloudflare account and domain, a named tunnel. No quick tunnels, no
+   address relay, no project-run hostname.
+2. Setup is a task the person starts; the home owns each step (cloudflared with fixed arguments,
+   credentials kept in Ducter's folder and never logged), the agent drives and talks, the card
+   ticks. Signing in is the person's; creating in their account waits for their Go.
+3. `tunnel login` runs with `HOME` in Ducter's folder; `create` writes a 0400 credentials file;
+   `route dns` never overwrites; the record's name is Cloudflare's answer.
+4. cloudflared lives beside Ducter (detached, or its own systemd user unit) and is adopted by a
+   restarted Ducter (§3); the address is used only once it answers from outside, over HTTPS and
+   a WebSocket.
+5. Requests through the tunnel are remote by auth.ts's rule (§4); Cloudflare ends TLS, said.
 
 ## Summary
 
-Quick tunnels give a no-account HTTPS address in seconds; WebSockets work, SSE doesn't (unused),
-and the name dies with the process. Running cloudflared beside Ducter keeps the name across
-updates; a sealed note at a tiny relay lets the phone, the apps and the Mac app follow it across
-reboots without pairing again (measured: 29 s, no touch). Requests through the tunnel are remote
-by Ducter's own rule, so pairing still guards everything.
+Quick tunnels give a no-account address in seconds but it changes with every process; following it
+needs a relay the project runs. The author rejected both; D228 now sets up the person's own named
+tunnel at their own domain. cloudflared's own code shows how to do that headlessly and safely:
+`login` prints a link and writes `cert.pem` under `$HOME` (so Ducter gives it its own), `create`
+writes a 0400 credentials file, `route dns` refuses to overwrite and names the record. Pairing
+still guards everything; Cloudflare ends TLS. What remains unmeasured is a run on a real account.
 
 ## Sources
 
@@ -179,3 +249,4 @@ by Ducter's own rule, so pairing still guards everything.
 4. Cloudflare, "Create a tunnel (dashboard / API)", …/cloudflare-tunnel/get-started/ (DOCUMENTED from the same doc set; not re-measured).
 5. Tailscale, "Tailscale Funnel", tailscale.com/kb/1223/funnel (fetched 2026-11-12).
 6. GitHub API, `repos/cloudflare/cloudflared/releases` and `releases/tags/2026.10.5` (2026-11-12).
+7. `cloudflare/cloudflared` at tag 2026.10.5, read-only clone (2026-11-12): `cmd/cloudflared/tunnel/login.go`, `subcommands.go`, `subcommand_context.go`, `token/transfer.go`, `credentials/origin_cert.go`, `cfapi/hostname.go`.

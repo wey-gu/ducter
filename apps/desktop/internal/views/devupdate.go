@@ -20,6 +20,7 @@ import (
 
 type cardState struct {
 	anywhereOff bool                  // D228: 关掉 在哪儿都能用 is being confirmed
+	anywhereNo  string                // D228: why 让 Ducter 帮我设好 didn't start
 	cutting     string                // the device whose 断开 is being confirmed
 	cutFailed   string                // why the server said no
 	more        map[string]bool       // devices whose not-signed-in AI accounts are shown
@@ -64,6 +65,14 @@ func (a *App) drainDeviceResults() {
 		} else {
 			fc := *res
 			d.card.agent = &fc
+		}
+	case "anywhere_setup_result":
+		d.card.anywhereNo = ""
+		if !res.OK && res.Reason != "running" {
+			d.card.anywhereNo = res.Reason
+			if d.card.anywhereNo == "" {
+				d.card.anywhereNo = "failed"
+			}
 		}
 	case "mem_plugin_result":
 		d.card.memAsk = ""

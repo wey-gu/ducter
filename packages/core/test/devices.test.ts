@@ -422,51 +422,70 @@ function tunnelFake() {
   let pid = 500;
   const sys: TunnelSys = {
     ensure: async () => ({ bin: "/fake/cloudflared" }),
+    login: () => ({ url: Promise.resolve({ url: "https://dash.cloudflare.com/argotunnel?x=1", opened: false }), done: new Promise(() => {}), stop: () => {} }),
+    exec: async () => ({ code: 1, out: "ERR not in this test" }),
     start: async () => (live.add(++pid), { pid }),
     alive: async (h) => !!h.pid && live.has(h.pid),
     stop: async (h) => void (h.pid && live.delete(h.pid)),
-    hostname: async () => `tunnel-${pid}.trycloudflare.com`,
     ready: async () => true,
     resolves: async () => true,
+    wsFirst: async () => undefined,
     freePort: async () => 21000,
     fetch: (async () => new Response("{}")) as unknown as typeof fetch,
   };
   return { sys, live };
 }
 
-test("D228: From anywhere is one switch on the home: on gives an address (and a pair link), off takes it away", async () => {
+test("D228: From anywhere off with nothing set up; on asks for the setup; 让 Ducter 帮我设好 opens one task on the home with its signed-in agent", async () => {
   const t = tempDir();
-  const fake = tunnelFake();
-  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, sweepMs: 50, deviceProbes: probes(), platform: "darwin", anywhereSys: fake.sys });
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, sweepMs: 50, deviceProbes: probes(), platform: "darwin", anywhereSys: tunnelFake().sys });
   stops.push(t.cleanup, () => core.stop());
   core.setPartner({ onTrigger: () => {} });
+  const opened: any[] = [];
+  core.setRunner({ openTask: async (i: any) => (opened.push(i), { taskId: "tsk_any" }) } as any);
   const c = await client(core.url);
   c.send({ t: "devices" });
   const first = await c.until<Devices>((x) => x.t === "devices");
   expect(ability(first.devices[0]!, "remote").state).toBe("off");
-  expect(first.reach.address).toBeUndefined();
+  expect(first.reach.anywhere).toBeUndefined();
   c.send({ t: "ability", device: "local", ability: "remote", on: true });
   const r = await c.until<Extract<ServerFrame, { t: "ability_result" }>>((x) => x.t === "ability_result");
-  expect(r.ok).toBe(true);
-  const on = await c.until<Devices>((x) => x.t === "devices" && x.reach.anywhere?.state === "on");
-  expect(on.reach.address).toBe("https://tunnel-501.trycloudflare.com");
-  expect(on.reach.anywhere).toMatchObject({ how: "tunnel", moves: true });
-  expect(on.reach.anywhere!.follow?.id).toMatch(/^[A-Za-z0-9_-]{22}$/);
-  expect(ability(on.devices[0]!, "remote").state).toBe("on");
+  expect(r).toMatchObject({ ok: false, reason: "no_address" });
+  c.send({ t: "anywhere_setup", op: "begin" });
+  const b = await c.until<Extract<ServerFrame, { t: "anywhere_setup_result" }>>((x) => x.t === "anywhere_setup_result");
+  expect(b).toMatchObject({ ok: true, taskId: "tsk_any" });
+  expect(opened[0]).toMatchObject({ harness: "claude-code", place: { kind: "none" }, origin: "you", title: expect.stringContaining("reachable from anywhere") });
+  expect(opened[0].brief).toMatch(/--port \d+ anywhere step login --json`/);
   const n = c.frames.length;
-  c.send({ t: "pair_code" });
-  const p = await c.until<Extract<ServerFrame, { t: "pair_code" }>>((x) => x.t === "pair_code", n);
-  expect(p.link).toBe(`https://tunnel-501.trycloudflare.com/pair#c=${p.code}`);
-  expect(p.qr?.length).toBeGreaterThan(10);
-  // The self-check answers anyone (it proves only that an address leads here) and says nothing else.
+  c.send({ t: "devices" });
+  const f = await c.until<Devices>((x) => x.t === "devices" && !!x.reach.anywhere, n);
+  expect(f.reach.anywhere).toMatchObject({ how: "cloudflare", state: "setup", setup: { taskId: "tsk_any" } });
+  expect(f.reach.anywhere!.setup!.steps.map((x) => x.id)).toEqual(["get", "login", "name", "create", "dns", "run", "check", "use"]);
+  // Being set up is not on yet.
+  expect(ability(f.devices[0]!, "remote").state).toBe("off");
+  // A step from the task's agent: the sign-in link reaches every client, with a QR.
+  c.send({ t: "anywhere_setup", op: "step", step: "login" });
+  const m = c.frames.length;
+  const withLink = await c.until<Devices>((x) => x.t === "devices" && !!x.reach.anywhere?.setup?.login, m);
+  expect(withLink.reach.anywhere!.setup!.login).toMatchObject({ url: "https://dash.cloudflare.com/argotunnel?x=1", opened: false });
+  expect(withLink.reach.anywhere!.setup!.login!.qr!.length).toBeGreaterThan(10);
+});
+
+test("D228: the self-check answers over HTTP and as a WebSocket's first message, and says nothing else", async () => {
+  const t = tempDir();
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, sweepMs: 50, deviceProbes: probes(), platform: "darwin", anywhereSys: tunnelFake().sys });
+  stops.push(t.cleanup, () => core.stop());
+  core.setPartner({ onTrigger: () => {} });
   const check = await fetch(`http://127.0.0.1:${core.port}/.well-known/ducter-anywhere`, { headers: { "x-forwarded-for": "203.0.113.9" } });
   expect(check.status).toBe(200);
-  expect((await check.text()).length).toBe(32);
-  const m = c.frames.length;
-  c.send({ t: "ability", device: "local", ability: "remote", on: false });
-  const off = await c.until<Devices>((x) => x.t === "devices" && !x.reach.anywhere, m);
-  expect(off.reach.address).toBeUndefined();
-  expect(fake.live.size).toBe(0);
+  const token = await check.text();
+  expect(token.length).toBe(32);
+  const first = await new Promise<string>((res, rej) => {
+    const w = new WebSocket(`ws://127.0.0.1:${core.port}/.well-known/ducter-anywhere`);
+    w.onmessage = (e) => res(String(e.data));
+    w.onerror = rej;
+  });
+  expect(first).toBe(token);
 });
 
 test("D228: an address of the person's own shows From anywhere on, and the switch doesn't take it away", async () => {

@@ -35,7 +35,7 @@ export interface Args {
   to?: string; // update --to <version>: this version, even an older one
   finish?: string; // update --finish <plan.json> (internal: the restart helper, D148)
   token?: string; // anywhere on --token <token>: the person's own Cloudflare tunnel (D228)
-  address?: string; // anywhere on --address <host>: the hostname that tunnel serves
+  hostname?: string; // anywhere on --hostname <name>: the hostname that tunnel serves; anywhere step create --hostname
 }
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout"; vars: Record<string, string> } };
@@ -165,10 +165,10 @@ export function parseArgs(argv: string[]): ParseResult {
       case "--to":
       case "--finish":
       case "--token":
-      case "--address": {
+      case "--hostname": {
         const v = value();
         if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
-        args[a.slice(2) as "to" | "finish" | "token" | "address"] = v.trim();
+        args[a.slice(2) as "to" | "finish" | "token" | "hostname"] = v.trim();
         continue;
       }
       case "--out": {

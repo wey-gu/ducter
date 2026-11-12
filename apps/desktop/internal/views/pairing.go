@@ -191,17 +191,17 @@ func (a *App) pairNoAddress(c *ui.Context) {
 		return
 	}
 	switch {
-	case any != nil && any.State == "starting":
-		key := "anywhere.starting"
-		if any.Getting {
-			key = "anywhere.getting"
-		}
-		ui.Text(c, a.L.T(key)).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
+	case any != nil && (any.State == "setup" || any.State == "starting"):
+		ui.Text(c, a.L.T("phone.anywhere.steps")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
 	default:
 		ui.Text(c, a.L.T("pair.noaddress")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
 		if home := a.homeDevice(); home != nil && home.State == protocol.DeviceAwake {
-			if a.button(c, a.L.T("anywhere.turnOnLong"), btnSecondary, t.ControlSM, t.Surface) {
-				a.send(protocol.AbilityReq{T: "ability", Device: home.ID, Ability: protocol.AbilityRemote, On: true})
+			if any != nil && any.State == "off" {
+				if a.button(c, a.L.T("anywhere.turnOnLong"), btnSecondary, t.ControlSM, t.Surface) {
+					a.send(protocol.AbilityReq{T: "ability", Device: home.ID, Ability: protocol.AbilityRemote, On: true})
+				}
+			} else if a.button(c, a.L.T("anywhere.setup"), btnSecondary, t.ControlSM, t.Surface) {
+				a.beginAnywhere()
 			}
 		}
 	}

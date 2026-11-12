@@ -37,6 +37,8 @@ export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"
   // D191: a payment Go, or the OK for a saved thing's first use on a site.
   if (r.option === "go" && d.pay)
     return `The user said Go: pay ${d.pay.currency} ${d.pay.amount} at ${d.pay.site} with ${d.pay.card}. Within 15 minutes, fill the card with browser_fill (use "${d.pay.handle}": number, exp, cvc, name as the form asks), place the order once, then report what the site confirmed (its order number).`;
+  // D228: Go on creating the tunnel in the person's Cloudflare account (the setup task asked it).
+  if (r.option === "go" && d.anywhere) return `The user said Go: create the tunnel in their Cloudflare account and point ${d.anywhere.hostname} at this computer. Run the create step again now with --hostname ${d.anywhere.hostname}, then the run step.`;
   if (r.option === "go" && d.fill) return `The user said OK to use ${d.fill.label} on ${d.fill.site}. Call browser_fill again now.`;
   if (r.option === "go") return `User says Go: ${d.goLabel}.`;
   // Hold is not forwarded: the task already ended its turn waiting, and a "pause" turn would

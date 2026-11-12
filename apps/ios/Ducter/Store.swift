@@ -42,15 +42,6 @@ final class AppState: ObservableObject {
         entry = c.code.map { var u = URLComponents(url: c.base.appendingPathComponent("pair"), resolvingAgainstBaseURL: false)!; u.fragment = "c=\($0)"; return u.url! } ?? c.base.appendingPathComponent("app")
     }
 
-    /// D228: the home's address changed (its free tunnel got a new one): the same device and
-    /// token at the new address. The page asked the address relay and checked a Ducter answers
-    /// there; the entry carries the page's pairing in its fragment (#move=…), never sent anywhere.
-    func move(to b: URL, entry e: URL) {
-        base = b
-        defaults.set(b.absoluteString, forKey: "base")
-        entry = e
-    }
-
     /// Back to the connect screen (another Ducter, or this one was unreachable).
     func forget() {
         base = nil

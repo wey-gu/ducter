@@ -252,6 +252,8 @@ class AppState {
   agentAnswer?: { device: string; harness: string; reason: AgentReason };
   /** D169: the last 装上 / Install of Nowledge Mem that didn't start, and why. */
   memAnswer?: { device: string; harness: string; reason: MemPluginReason };
+  /** D228: why 让 Ducter 帮我设好 didn't start (no agent signed in here, …). */
+  anywhereAnswer?: string;
   candidates = new Map<string, Candidate[]>();
   /** New task (D128): what the sheet offers (places, who could), as last sent; the draft. */
   newTaskOptions?: { places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[]; ducterFolders?: DucterFolderView[] };
@@ -348,8 +350,6 @@ class AppState {
   }
   /** D217: set by phone-use.tsx; takes every phone_* frame. */
   onPhoneFrame?: (f: import("@ducter/protocol").PhoneServerFrame) => void;
-  /** D228: the home stopped answering (main.tsx then asks where it moved to). */
-  onOffline?: () => void;
   changed() {
     for (const fn of this.listeners) fn();
     this.scheduleRead();
@@ -398,7 +398,6 @@ class AppState {
         this.status = s;
         // D209: the app, which opened this page from its cache, learns whether the home answers.
         if (s !== "connecting" && inApp()) tellReach(s === "connected");
-        if (s === "offline") this.onOffline?.();
         this.changed();
       },
     );
@@ -557,6 +556,9 @@ class AppState {
       return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach), this.changed());
     }
     if (f.t === "update_all_result") return void ((this.updateAllAnswer = f.ok || f.reason === "nothing" ? undefined : (f.reason ?? "failed")), this.changed());
+    // D228: on with no tunnel made yet starts the guided setup; a setup that couldn't start says why.
+    if (f.t === "ability_result" && f.ability === "remote" && f.on && !f.ok && f.reason === "no_address") return void this.beginAnywhere();
+    if (f.t === "anywhere_setup_result" && !f.step) return void ((this.anywhereAnswer = f.ok || f.reason === "running" ? undefined : (f.reason ?? "failed")), this.changed());
     if (f.t === "mem_plugin_result") return void ((this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     // "Nothing newer" answers a stale view, never a failure: the devices frame that follows has the version there now.
     if (f.t === "agent_update_result") return void ((this.agentAnswer = f.ok || f.reason === "no_update" ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
@@ -1381,6 +1383,26 @@ class AppState {
     if (this.bridge) this.bridge = { ...this.bridge, state: "disconnecting" };
     this.send({ t: "bridge_disconnect" });
     this.changed();
+  }
+  /** D228: 让 Ducter 帮我设好 / Set it up for me: one task on the home sets up the person's own Cloudflare tunnel. */
+  beginAnywhere() {
+    this.anywhereAnswer = undefined;
+    this.send({ t: "anywhere_setup", op: "begin" });
+    this.changed();
+  }
+  /** D228: 在哪儿都能用 on again (the tunnel made before), or the setup when there is none yet. */
+  anywhereOn(on: boolean) {
+    this.anywhereAnswer = undefined;
+    this.send({ t: "ability", device: "local", ability: "remote", on });
+    this.changed();
+  }
+  anywhereCancel() {
+    this.send({ t: "anywhere_setup", op: "cancel" });
+  }
+  /** Opens a task (the setup task from the device card). */
+  openTaskPage(taskId: string) {
+    this.sheet = null;
+    this.go({ name: "task", id: taskId });
   }
   /** D169: one task on that device puts Nowledge Mem into that agent, following Mem's own guide. */
   installMem(device: string, harness: string) {

@@ -80,7 +80,7 @@ export function planTitle(p: UpdateAllPlan): string {
 }
 
 /** A drawn mark for a step's state (never a symbol a phone might draw as an emoji). */
-function Mark({ state }: { state: UpdateAllItem["state"] }) {
+export function Mark({ state }: { state: UpdateAllItem["state"] }) {
   const ring = <circle cx="9" cy="9" r="6.5" fill="none" stroke="var(--line)" stroke-width="1.8" />;
   return (
     <svg class={`ua-mark ${state}`} width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

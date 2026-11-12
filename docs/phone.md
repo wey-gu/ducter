@@ -25,11 +25,8 @@ Where you can use it:
 
 Your phone needs an address it can reach from anywhere. If Ducter runs on a server with your own
 domain (see [Install](install.md#a-linux-server-that-stays-on)), it has one already. If not (a Mac
-at home, say), turn on **From anywhere**: tap **+ From anywhere** on the card of the computer
-Ducter lives on (or **Turn on From anywhere** when the Mac app offers your phone a code), or run
-`ducter anywhere on`. No account and no domain: Ducter opens a free Cloudflare tunnel to that
-computer by itself. It takes about half a minute, the first time a little longer (it downloads
-about 20 MB).
+at home, say), set up **From anywhere** with your own domain on Cloudflare: see
+[From anywhere](#from-anywhere) below.
 
 1. On the computer Ducter lives on, run `ducter pair`, or choose **Devices › Connect a phone or
    computer** in the Mac app.
@@ -43,23 +40,35 @@ remembers the connection. For a second phone or another computer, get a new code
 new one. To disconnect it, run `ducter devices disconnect <name>` on the computer Ducter
 lives on.
 
-### When the address changes
+### From anywhere
 
-With **From anywhere**, the address changes when the computer Ducter lives on restarts. You
-don't need to do anything: your phone, the Ducter app and the Mac app find the new address by
-themselves and stay connected, usually within half a minute of Ducter being back. Only devices
-you connected get in; the address alone opens nothing. The tap on **From anywhere** shows the
-address in use, and **Turn off** there closes it again (your devices stay connected and work
-again once it's back on).
+**From anywhere** gives the computer Ducter lives on an address at your own domain, for example
+`ducter.example.com`, through your own Cloudflare account. You need:
 
-How they find it: your computer leaves its new address, locked with a key only it and your
-connected devices have, at a small relay run by the Ducter project. The relay can't read it. If
-you'd rather it didn't, set `DUCTER_ADDR_RELAY=off`; after a restart you then connect your
-devices again with a new code.
+- a free Cloudflare account, and
+- a domain on it. No domain yet? You can buy one right in Cloudflare; it's sold at cost.
 
-For an address that never changes, use your own domain (`ducter domain`, on a server), or your
-own Cloudflare tunnel: `ducter anywhere on --token <your tunnel's token> --address <its
-hostname>`.
+Then tap **+ From anywhere** on the card of the computer Ducter lives on and **Set it up for me**
+(or run `ducter anywhere on`). Ducter starts a task that does the steps with Cloudflare's own
+program, and the card ticks them off as it goes. It needs you twice:
+
+1. **Sign in to Cloudflare and pick your domain.** On a Mac a browser opens by itself; elsewhere
+   the card shows a link and a QR code to open on your phone. Press **Authorize**.
+2. **Say go** in the conversation, to create the tunnel and point the address (it suggests
+   `ducter.<your domain>`) at this computer. Want another name? Reply with it. A name that is
+   already used for something in your account is never replaced.
+
+Then Ducter starts the tunnel, checks that the address opens from outside, and uses it: new codes
+carry it. The address never changes. Only devices you connected get in; the address alone opens
+nothing. Cloudflare decrypts the traffic at its edge before passing it on, as with any site on
+Cloudflare.
+
+**Turn off** (tap **From anywhere** on the card) stops the tunnel and takes the address away. The
+tunnel and its address stay in your Cloudflare account: turn it on again any time, or delete them
+in Cloudflare.
+
+Made a tunnel yourself in Cloudflare's dashboard (pointing at `http://localhost:7777`)? Run
+`ducter anywhere on --token <its token> --hostname <its address>` instead.
 
 ## Notifications
 

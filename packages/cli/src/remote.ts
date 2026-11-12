@@ -6,7 +6,6 @@ import { homedir, hostname, userInfo } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import QR from "qrcode";
 import { openDeviceAuth, CODE_TTL_MS, type Device } from "@ducter/core/src/auth.ts";
-import { tunnelAddress } from "@ducter/core/src/anywhere.ts";
 import { migrateKeys } from "@ducter/protocol/src/keys.ts";
 import { isCompiled, width, type Host, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
@@ -20,9 +19,9 @@ export function ownUrl(dataDir: string, env: Record<string, string | undefined> 
   return raw ? raw.replace(/\/+$/, "") : undefined;
 }
 
-/** Where remote clients reach this Ducter: the person's own address, else 在哪儿都能用's tunnel (D228). */
+/** Where remote clients reach this Ducter (D228: 在哪儿都能用 writes its tunnel's address there too). */
 export function publicUrl(dataDir: string, env: Record<string, string | undefined> = process.env): string | undefined {
-  return ownUrl(dataDir, env) ?? tunnelAddress(dataDir);
+  return ownUrl(dataDir, env);
 }
 
 /**
@@ -171,7 +170,8 @@ export async function cmdPair(o: {
       console.log(qr.split("\n").map((l) => "  " + l).join("\n"));
       console.log(computer().join("\n"));
     } else if (server) {
-      // D228: first the one command that needs nothing, then the domain, then the SSH tunnel.
+      // D228: first your own domain through Cloudflare (set up by a task), then the domain on this
+      // server's public IP, then the SSH tunnel.
       lines.push(`  ${style.bold(t("pair.anywhere.lead"))}`, `    ${style.bold(`${o.self ?? "ducter"} anywhere on`)}`, `  ${style.dim(t("pair.anywhere.what"))}`, "");
       lines.push(
         `  ${style.bold(t("pair.domain.lead"))}`,
@@ -189,7 +189,7 @@ export async function cmdPair(o: {
       console.log(lines.join("\n"));
       console.log(computer().join("\n"));
     } else {
-      // The Mac itself: From anywhere first (D228); else a tunnel from another computer.
+      // The Mac itself: your own domain through Cloudflare first (D228); else a tunnel from another computer.
       lines.push(`  ${style.bold(t("pair.anywhere.lead"))}`, `    ${style.bold(`${o.self ?? "ducter"} anywhere on`)}`, `  ${style.dim(t("pair.anywhere.what"))}`, "");
       lines.push(`  ${t("pair.tunnel.local")}`, "", `    ${tunnel}`, "", `  ${style.dim(t("pair.tunnelNote", { port: o.port }))}`, "");
       lines.push(`  ${t("pair.howApp")}`, row(t("pair.address"), address), row(t("pair.code"), code), "");

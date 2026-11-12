@@ -614,7 +614,7 @@ export async function run(argv: string[]): Promise<number | "running"> {
         json: args.json,
         rest: args.rest ?? [],
         ...(args.token ? { token: args.token } : {}),
-        ...(args.address ? { address: args.address } : {}),
+        ...(args.hostname ? { hostname: args.hostname } : {}),
         ...(ctx.target.kind === "local" && process.stdout.isTTY && !args.json ? { pair: () => cmdPair({ t, style, dataDir, port, json: false, running: true, wait: true, self: ducterCommand() }) } : {}),
       });
     case "domain":

@@ -174,40 +174,79 @@ func TestAbilitiesStates(t *testing.T) {
 }
 
 func TestAbilitiesReachFromAnywhere(t *testing.T) {
-	h := openDevices(t, i18n.ZH, false)
-	h.tt.SetSize(1280, 1200)
-	L := h.app.L
-	// D228: + 在哪儿都能用 turns Ducter's tunnel on: it opens, then has an address.
-	h.click("+ " + L.T("chip.remote"))
-	h.until("remote on", func() bool {
-		r := h.app.S.Reach
-		return r != nil && r.Address != "" && h.app.S.Device("local").Ability(protocol.AbilityRemote).State == protocol.AbilityOn && h.app.dev.fx == nil
-	})
-	h.settle(200 * time.Millisecond)
-	if !h.tt.HasText(L.T("ability.remote.done", L.T("device.local"))) {
-		t.Fatalf("no remote line: %q", h.tt.Texts())
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		t.Run(string(lang), func(t *testing.T) {
+			h := openDevices(t, lang, false)
+			h.tt.SetSize(1280, 1300)
+			L := h.app.L
+			// D228: + 在哪儿都能用 opens its ⓘ: what it needs, and 让 Ducter 帮我设好.
+			h.click("+ " + L.T("chip.remote"))
+			h.settle(200 * time.Millisecond)
+			if !h.tt.HasText(L.T("anywhere.need")) || !h.tt.HasText(L.T("anywhere.setup")) {
+				t.Fatalf("anywhere off: %q", h.tt.Texts())
+			}
+			h.shotAs("anywhere-" + string(lang) + "-off")
+			h.click(L.T("anywhere.setup"))
+			// The setup's steps tick on the card; the sign-in link and its QR wait for the person.
+			h.until("setup", func() bool {
+				a := h.app.S.Reach.Anywhere
+				return a != nil && a.State == "setup" && a.Setup != nil && a.Setup.Login != nil
+			})
+			h.settle(200 * time.Millisecond)
+			for _, want := range []string{L.T("anywhere.step.get"), L.T("anywhere.step.login"), L.T("anywhere.login.open"), L.T("anywhere.login.button"), L.T("anywhere.task")} {
+				if !h.tt.HasText(want) {
+					t.Fatalf("setup: missing %q in %q", want, h.tt.Texts())
+				}
+			}
+			h.shotAs("anywhere-" + string(lang) + "-login")
+			h.hub.AnywhereStage("go")
+			h.until("go", func() bool { return h.app.S.Reach.Anywhere.Setup != nil && h.app.S.Reach.Anywhere.Setup.Login == nil })
+			h.settle(200 * time.Millisecond)
+			if !h.tt.HasText(L.T("anywhere.step.name", mock.MockHostname)) || !h.tt.HasText(L.T("anywhere.go.wait")) {
+				t.Fatalf("go: %q", h.tt.Texts())
+			}
+			h.shotAs("anywhere-" + string(lang) + "-go")
+			h.hub.AnywhereStage("taken")
+			h.until("taken", func() bool { return anywhereSetupFailed(h.app.S.Reach.Anywhere) })
+			h.settle(200 * time.Millisecond)
+			if !h.tt.HasText(L.T("anywhere.why.taken", mock.MockHostname)) || !h.tt.HasText(L.T("anywhere.retry")) {
+				t.Fatalf("taken: %q", h.tt.Texts())
+			}
+			h.shotAs("anywhere-" + string(lang) + "-taken")
+			h.hub.AnywhereStage("on")
+			h.until("on", func() bool { return h.app.S.Reach.Address != "" })
+			h.settle(300 * time.Millisecond)
+			if !h.tt.HasText("https://"+mock.MockHostname) || !h.tt.HasText(L.T("anywhere.who")) || !h.tt.HasText(L.T("anywhere.edge")) {
+				t.Fatalf("on: %q", h.tt.Texts())
+			}
+			h.shotAs("anywhere-" + string(lang) + "-on")
+			h.click(L.T("chip.remote.again"))
+			h.until("code", func() bool { return h.app.S.PairCode != nil && h.app.S.PairCode.Address != "" })
+			h.settle(200 * time.Millisecond)
+			if !h.tt.HasText("K7QM-4XPA") || h.tt.HasText(L.T("pair.noaddress")) {
+				t.Fatalf("pair sheet: %q", h.tt.Texts())
+			}
+			h.shotAs("anywhere-" + string(lang) + "-pair")
+			h.hub.Pair("iPhone", "ios")
+			h.until("joined", func() bool { return len(h.app.S.Reach.Clients) == 1 })
+			h.settle(300 * time.Millisecond)
+			// 关掉 asks once more and says the tunnel stays in their account; then it is kept off.
+			if !h.tt.HasText(L.T("anywhere.off")) {
+				h.click(L.T("chip.info") + " · " + L.T("chip.remote"))
+				h.settle(200 * time.Millisecond)
+			}
+			h.click(L.T("anywhere.off"))
+			h.settle(100 * time.Millisecond)
+			if !h.tt.HasText(L.T("anywhere.off.note", L.T("device.local"))) && !h.tt.HasText(L.T("anywhere.off.note", h.app.deviceName(h.app.S.Device("local")))) {
+				t.Fatalf("off note: %q", h.tt.Texts())
+			}
+			h.shotAs("anywhere-" + string(lang) + "-offask")
+			h.click(L.T("anywhere.off.sure"))
+			h.until("off", func() bool {
+				return h.app.S.Reach.Anywhere != nil && h.app.S.Reach.Anywhere.State == "off" && h.app.S.Reach.Address == ""
+			})
+		})
 	}
-	// Its ⓘ: the address, who gets in, and that it changes on a restart.
-	h.click(L.T("chip.info") + " · " + L.T("chip.remote"))
-	h.settle(200 * time.Millisecond)
-	if !h.tt.HasText(mock.MockTunnelAddress) || !h.tt.HasText(L.T("anywhere.who")) {
-		t.Fatalf("anywhere info: %q", h.tt.Texts())
-	}
-	h.shotAs("abilities-zh-anywhere")
-	h.click(L.T("chip.remote.again"))
-	h.until("code", func() bool { return h.app.S.PairCode != nil && h.app.S.PairCode.Address != "" })
-	h.settle(200 * time.Millisecond)
-	if !h.tt.HasText("K7QM-4XPA") || h.tt.HasText(L.T("pair.noaddress")) {
-		t.Fatalf("pair sheet: %q", h.tt.Texts())
-	}
-	h.shotAs("abilities-zh-pair")
-	h.hub.Pair("iPhone", "ios")
-	h.until("joined", func() bool { return len(h.app.S.Reach.Clients) == 1 })
-	// 关掉 asks once more, then the address is gone.
-	h.click(L.T("anywhere.off"))
-	h.settle(100 * time.Millisecond)
-	h.click(L.T("anywhere.off.sure"))
-	h.until("off", func() bool { return h.app.S.Reach.Anywhere == nil && h.app.S.Reach.Address == "" })
 }
 
 func TestAbilitiesNarrow(t *testing.T) {

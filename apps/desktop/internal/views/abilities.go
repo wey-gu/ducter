@@ -680,6 +680,9 @@ func (a *App) drainAbilityResults() {
 			}
 		case r.OK && !r.On:
 			d.line, d.lineAt = a.L.T("ability.removed."+r.Ability, name), a.Now()
+		case r.Ability == protocol.AbilityRemote && r.On && r.Reason == "no_address":
+			// D228: no tunnel made yet: on is the guided setup.
+			a.beginAnywhere()
 		default:
 			d.refused[key] = r
 		}

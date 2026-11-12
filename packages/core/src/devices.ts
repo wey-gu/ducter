@@ -73,7 +73,7 @@ export interface DevicesOptions {
   /** D199: 打电话 on the home, from the calling connection (`callAbility`); off when absent. */
   call?: () => DeviceAbility;
   /** D228: 在哪儿都能用 / From anywhere: the tunnel Ducter runs (anywhere.ts). */
-  anywhere?: Pick<AnywhereCtl, "view" | "address" | "turnOn" | "turnOff" | "onChange">;
+  anywhere?: Pick<AnywhereCtl, "view" | "turnOn" | "turnOff" | "onChange">;
   /** D217: 用手机 / Use a phone on the home: Ducter's own phone (an Android emulator on a Mac). */
   ownPhone?: { ability(): DeviceAbility; onChange(fn: () => void): () => void };
 }
@@ -91,7 +91,7 @@ export function callAbility(calling: { connectionId: string } | undefined, conne
 
 export interface DevicesView {
   frame(): Promise<DevicesFrame>;
-  setAbility(device: string, ability: AbilityId, on: boolean, named?: { token: string; address: string }): Promise<AbilityResult>;
+  setAbility(device: string, ability: AbilityId, on: boolean, named?: { token: string; hostname: string }): Promise<AbilityResult>;
   pairCode(): Promise<PairCodeFrame>;
   /** 改名字 / Rename any device (D84); the home's is a display name beside its host name (D155). */
   rename(device: string, name: string): RenameResult;
@@ -310,8 +310,9 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
 
   const reach = (): Reach => {
     const live = o.connected?.() ?? new Set<string>();
-    const address = publicAddress(o.dataDir, env) ?? o.anywhere?.address();
-    const anywhere = o.anywhere?.view() ?? (publicAddress(o.dataDir, env) ? { how: "own" as const, state: "on" as const } : undefined);
+    // D228: the person's tunnel writes the address where `ducter domain` does, once it answers.
+    const address = publicAddress(o.dataDir, env);
+    const anywhere = o.anywhere?.view() ?? (address ? { how: "own" as const, state: "on" as const } : undefined);
     return {
       ...(address ? { address } : {}),
       ...(anywhere ? { anywhere } : {}),
@@ -336,8 +337,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
 
   async function frame(): Promise<DevicesFrame> {
     const me = await local();
-    // D228: on = an address from outside (the person's own, or Ducter's tunnel, also while it opens).
-    const remoteOn = !!publicAddress(o.dataDir, env) || !!o.anywhere?.view();
+    // D228: on = an address from outside (set up some other way, or the person's own tunnel, also
+    // while it starts or fails to); being set up is not on yet.
+    const av = o.anywhere?.view();
+    const remoteOn = !!publicAddress(o.dataDir, env) || (!!av && av.state !== "setup" && av.state !== "off");
     const home: DeviceView = {
       id: "local",
       name: homeName(o.dataDir) ?? host,
@@ -409,7 +412,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   const offPhone = o.ownPhone?.onChange(changed);
   const offAnywhere = o.anywhere?.onChange(changed);
 
-  async function setAbility(device: string, ability: AbilityId, on: boolean, named?: { token: string; address: string }): Promise<AbilityResult> {
+  async function setAbility(device: string, ability: AbilityId, on: boolean, named?: { token: string; hostname: string }): Promise<AbilityResult> {
     const res = (ok: boolean, reason?: AbilityReason, detail?: string): AbilityResult => ({
       t: "ability_result",
       device,
@@ -473,16 +476,18 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         // accepted); removing it is 抹掉 / Erase (phone_erase). Never a bare switch.
         return res(false, "failed");
       case "remote": {
-        // D228: on the home, From anywhere turns Ducter's tunnel on or off. Paired devices stay
-        // paired either way (they are disconnected one by one, never by this switch).
+        // D228: on the home, From anywhere turns the person's tunnel on or off (on without one made
+        // yet answers no_address: the card offers the guided setup). Paired devices stay paired
+        // either way (they are disconnected one by one, never by this switch).
         if (!d.home || !o.anywhere) return res(false, "home_only");
-        if (publicAddress(o.dataDir, env)) return on ? res(true) : res(false, "own_address");
+        const v = o.anywhere.view();
+        if (v?.how === "own") return on ? res(true) : res(false, "own_address");
         if (!on) {
           await o.anywhere.turnOff();
           return res(true);
         }
         const r = await o.anywhere.turnOn(named);
-        return res(r.ok, r.ok ? undefined : r.reason === "own_address" ? "own_address" : "failed", r.detail ?? r.reason);
+        return res(r.ok, r.ok ? undefined : r.reason === "own_address" || r.reason === "no_address" ? r.reason : "failed", r.detail ?? r.reason);
       }
     }
     return res(false, "failed");
@@ -490,7 +495,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
 
   async function pairCode(): Promise<PairCodeFrame> {
     const { code, expiresAt } = o.auth.createCode(); // one code for a phone, an app window or a computer (D83)
-    const address = publicAddress(o.dataDir, env) ?? o.anywhere?.address();
+    const address = publicAddress(o.dataDir, env);
     const link = address ? `${address}/pair#c=${code}` : undefined;
     return {
       t: "pair_code",

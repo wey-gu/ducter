@@ -16,12 +16,10 @@ Built and verified in Ubuntu VMs: systemd user service, code pairing, token gate
 SSH-tunnel paths, desktop connect card, worker enrollment, presence and task placement.
 
 **From anywhere (D228, research/67)**
-- [ ] **Deploy the address relay** (`apps/site/api/addr`, `ADDR_HASH_KEY`; `design/release/push-relay.md`) and check `/api/addr/health`. Trigger: the release that carries D228; until then devices pair again after a home restarts.
-- [x] **The systemd-run path on a Linux home** (`ducter-anywhere-<port>` survives `systemctl --user restart ducter`): `bun run e2e:linux` step 8, 2026-11-12 (22/22).
-- [ ] **A quick tunnel across a long sleep and a Wi-Fi change** on the author's MacBook: does the name survive, how fast does the self-check replace it. Trigger: the author tries it.
-- [ ] **The iPhone app's `moved`** in a build on the Simulator and a device (the Swift change builds for the Simulator; not yet run against a moving home), and **the Android app's** (`ducterBridge` has no `moved` yet; until then it pairs again). Trigger: the next app build.
-- [ ] **A phone that added the web page to its Home Screen** keeps opening the old address and is redirected each time; offer to add the new one once. Trigger: a person reports it.
-- [ ] **A Ducter-run stable hostname** (`<name>.ducter.ai`): only if the relay proves too slow or a free tunnel too fragile in real use; weigh TLS ending under the project's account and abuse of the domain first (research/67 §1c).
+- [ ] **One real run end to end on a Cloudflare account with a domain** (sign-in, the zone read with the certificate's token, `tunnel create`, `route dns`, run, the outside check over HTTPS and WebSocket) on a Mac home and on hel. Trigger: before the release that carries D228; everything so far is fakes plus the real binary's download and sign-in link.
+- [ ] **The setup task's agent on Claude Code and on Codex** with the real brief (does it stop at the Go card, rerun after it, ask for another name when taken). Trigger: the same real run.
+- [ ] **A start at login without Ducter**: the tunnel comes back when Ducter starts (its own unit or a detached process), not as a launchd/systemd service of its own. Trigger: a person who wants the address up while Ducter is not.
+- [x] **The systemd-run path on a Linux home**: the tunnel's own unit survives `systemctl --user restart ducter` (`bun run e2e:linux` step 8).
 
 **Verify for real**
 - [ ] **Move your Ducter to another computer (`ducter move`)**: a Mac-first user moves the home to a server: one-time move code from the new (empty) home; moves the Log, persona, settings, rules, routines, connections and the Mem binding over HTTPS with a verified count; not harness sign-ins (re-sign on the server, guided); running tasks parked first; the old machine becomes a worker for its local repos, its app connects to the new home; old data kept 30 days with a one-tap move back. Trigger: the author's Mac → Hetzner case (2026-11-10); design first, then v0.0.4.

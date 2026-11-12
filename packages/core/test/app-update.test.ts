@@ -259,7 +259,7 @@ test("a Mac worker from before D187 (no asksApp) still says to open the app ther
   expect(await phone.until((x) => x.t === "update_result", n)).toMatchObject({ ok: false, reason: "app" });
 });
 
-// D226: the author's MacBook restarted into its new Ducter 4 s after Update all started Codex's
+// D227: the author's MacBook restarted into its new Ducter 4 s after Update all started Codex's
 // npm there, and took the updater down with it. The worker's own restart now waits for it.
 test("the Mac's restart waits while its worker updates an AI agent, then goes", async () => {
   const dir = tempDir();

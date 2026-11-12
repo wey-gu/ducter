@@ -328,12 +328,12 @@ export interface AgentUpdates {
   start(device: string, harness: string, o?: { by?: "user" | "night"; to?: string }): Promise<{ ok: true } | AgentFail>;
   fromWorker(id: string, name: string, f: WorkerAgentFrame): void;
   /**
-   * D226: a worker said hello again. When its Ducter restarted (`restarted`), an update this home
+   * D227: a worker said hello again. When its Ducter restarted (`restarted`), an update this home
    * still thinks runs there and that it no longer runs (`running`) died with it: on its target it
    * is done, else it was interrupted. A plain reconnect leaves it be (the worker's frames follow).
    */
   reconnected(id: string, name: string, o: { restarted: boolean; running?: string[]; harnesses?: { id: string; version?: string }[] }): void;
-  /** Agents whose updater runs on that device now, past its safe point (the home's own restart waits for these, D226). */
+  /** Agents whose updater runs on that device now, past its safe point (the home's own restart waits for these, D227). */
   updating(device: string): string[];
   /** Reads every channel again now. */
   check(): Promise<void>;
@@ -584,7 +584,7 @@ export interface WorkerAgentHost {
 }
 
 /**
- * D226: what a worker is updating, kept at <dataDir>/updates/agent-updates.json while its updater
+ * D227: what a worker is updating, kept at <dataDir>/updates/agent-updates.json while its updater
  * runs: the next process reports what a restart cut off, and the Mac app holds a restart asked of
  * it while a live process still updates an agent (internal/update/asks.go reads the same file).
  */
@@ -640,14 +640,14 @@ export function createWorkerAgentUpdater(o: {
   /** This machine's agents as the hello says them, probed again. */
   probe: () => Promise<unknown[]>;
   settleMs?: number;
-  /** D226: where the update under way is kept (absent: not kept, as before). */
+  /** D227: where the update under way is kept (absent: not kept, as before). */
   dataDir?: string;
   pid?: number;
   alive?: (pid: number) => boolean;
-  /** D226: this computer's Ducter is updating itself: its restart would cut the updater off, so it waits. */
+  /** D227: this computer's Ducter is updating itself: its restart would cut the updater off, so it waits. */
   held?: () => boolean;
 }) {
-  // A send returns false when the socket is down: the frame waits for the next welcome (D226),
+  // A send returns false when the socket is down: the frame waits for the next welcome (D227),
   // so an outcome reached during a reconnect isn't lost.
   type Send = (f: object) => boolean | void;
   let raw: Send = () => false;
@@ -671,12 +671,12 @@ export function createWorkerAgentUpdater(o: {
       raw = send;
       for (const f of unsent.splice(0)) out(f);
     },
-    /** D226: agents this process is updating now, waiting or installing (the hello says them). */
+    /** D227: agents this process is updating now, waiting or installing (the hello says them). */
     updating: () => [...busy],
-    /** D226: agents whose updater runs now: this worker's own Ducter restart waits for them. */
+    /** D227: agents whose updater runs now: this worker's own Ducter restart waits for them. */
     installing: () => [...installing],
     /**
-     * D226: what a previous process left under way (its Ducter restarted under the updater): on
+     * D227: what a previous process left under way (its Ducter restarted under the updater): on
      * its target, done; else interrupted. Said once, on the next welcome.
      */
     async leftovers(): Promise<void> {

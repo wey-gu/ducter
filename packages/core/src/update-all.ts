@@ -17,7 +17,7 @@
 // The steps themselves are the ones a single 更新 takes (updates.ts, agents.ts); this file only
 // orders them, waits, and keeps the list. With autoUpdate on, the same plan runs at night.
 //
-// D226: a computer's agents also wait while its Ducter updates outside the plan (a 更新 tapped
+// D227: a computer's agents also wait while its Ducter updates outside the plan (a 更新 tapped
 // on its card a moment before), since that Ducter's restart would cut the updater off. A step
 // whose computer went away says it waits for it to reconnect; one that came back cut off (its
 // Ducter restarted under the updater, `interrupted`) is judged by what runs there now and, still
@@ -202,7 +202,7 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
   let dismissed = false;
   /** When each running step started (ms), for its timeout; not kept on disk: a restart starts it again. */
   const startedAt = new Map<string, number>();
-  /** Agent steps this process started (D226: a step from disk with no update state was forgotten). */
+  /** Agent steps this process started (D227: a step from disk with no update state was forgotten). */
   const dispatched = new Set<string>();
   /** Steps that failed at night: not tried again at night for a day. */
   const nightFailed = new Map<string, number>();
@@ -422,7 +422,7 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
         // an interruption. Started again, a worker still running it answers "running" and is followed.
         if (!j && !away && !h?.update && !dispatched.has(i.key) && !(h?.version && cmp(h.version, i.to) >= 0)) j = { state: "failed", reason: "interrupted" };
         if (j?.state === "failed" && j.reason === "interrupted" && !i.retried) {
-          // D226: once more, said on the row; started below as soon as nothing holds it.
+          // D227: once more, said on the row; started below as soon as nothing holds it.
           mark(i, { state: "queued", retried: true });
           startedAt.delete(i.key);
         } else {
@@ -435,7 +435,7 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
       }
       const own = ducterOf(i.device);
       if (own && !isFinal(own)) continue;
-      // D226: that computer's Ducter is updating outside this plan: its restart would cut the
+      // D227: that computer's Ducter is updating outside this plan: its restart would cut the
       // updater off, so the agent waits for it (and is judged afresh once it's back).
       if (dv && ducterMidUpdate(dv)) {
         mark(i, { state: "waiting", wait: "ducter" });

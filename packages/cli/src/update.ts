@@ -51,7 +51,7 @@ export interface WorkerUpdater {
   handle(req: { id?: number; args?: any }, send: (f: object) => void, host: { critical(): number; turning(): number }): Promise<void>;
   /** A new socket to the main: progress goes there from now on. */
   attach(send: (f: object) => void): void;
-  /** D226: this Ducter's own update is under way (an agent's updater waits before it starts). */
+  /** D227: this Ducter's own update is under way (an agent's updater waits before it starts). */
   underWay(): boolean;
 }
 
@@ -63,7 +63,7 @@ export function createWorkerUpdater(o: {
   run?: typeof runUpdate;
   execPath?: string;
   ask?: typeof askApp;
-  /** D226: AI agents whose updater runs on this computer now: the restart waits for them (it would cut them off). */
+  /** D227: AI agents whose updater runs on this computer now: the restart waits for them (it would cut them off). */
   agentsInstalling?: () => string[];
 }): WorkerUpdater {
   const sys = o.sys ?? realSys;
@@ -328,7 +328,7 @@ export function itemState(t: T, i: UpdateAllItem): string {
       if (i.wait === "ducter") return t("update.all.waitDucter", { d: i.deviceName });
       return t("update.all.waiting", { n: i.busy ?? 1 });
     case "running":
-      // D226: what it waits on, or started again after its computer's Ducter cut it off.
+      // D227: what it waits on, or started again after its computer's Ducter cut it off.
       if (i.wait === "reconnect") return t("update.all.reconnect", { d: i.deviceName });
       if (i.kind === "agent" && i.retried && (!i.phase || i.phase === "updating")) return t("update.all.retry", { v: i.to });
       return i.kind === "ducter" ? t(`update.phase.${i.phase ?? "downloading"}` as any, { v: i.to }) : t(i.phase === "checking" ? "agents.phase.checking" : i.phase === "waiting" ? "agents.phase.waiting" : "agents.phase.updating", { v: i.to });

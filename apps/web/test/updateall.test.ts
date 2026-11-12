@@ -35,7 +35,7 @@ describe("Update all (D224)", () => {
     expect(stateWords(item({ key: "ducter:mini", state: "skipped", reason: "home", detail: "hel" }))).toBe("hel 没能更新，这台保持原版本");
     expect(planTitle({ id: "p", by: "user", startedAt: "", items: [item({ state: "running" }), item({ state: "queued" })] })).toBe("正在全部更新");
     expect(planTitle({ id: "p", by: "user", startedAt: "", finishedAt: "x", items: [item({ state: "done" }), item({ state: "failed" })] })).toBe("已更新 1 项，1 项没能更新");
-    // D226: what a step waits on, a step started again after a cut, and why one cut twice failed.
+    // D227: what a step waits on, a step started again after a cut, and why one cut twice failed.
     expect(stateWords(item({ kind: "agent", harness: "codex", deviceName: "Macbook Pro M3", state: "waiting", wait: "ducter" }))).toBe("等 Macbook Pro M3 上的 Ducter 更新完");
     expect(stateWords(item({ kind: "agent", harness: "codex", deviceName: "Macbook Pro M3", state: "running", phase: "updating", to: "0.167.2", wait: "reconnect" }))).toBe("等 Macbook Pro M3 重新连上");
     expect(stateWords(item({ kind: "agent", harness: "codex", state: "running", phase: "updating", to: "0.167.2", retried: true }))).toBe("刚才被打断了，正在重新更新到 0.167.2");

@@ -40,7 +40,7 @@ type Asks struct {
 }
 
 // AgentUpdatesFile is <dataDir>/updates/agent-updates.json, which the
-// Ducter on this Mac keeps while an AI agent's updater runs there (D226,
+// Ducter on this Mac keeps while an AI agent's updater runs there (D227,
 // packages/core/src/agents.ts AgentUpdatesFile).
 type AgentUpdatesFile struct {
 	Pid   int                        `json:"pid"`
@@ -48,7 +48,7 @@ type AgentUpdatesFile struct {
 }
 
 // AgentUpdating names the AI agents a live Ducter on this Mac is updating
-// now (D226): a restart of this app then would take that Ducter down with
+// now (D227): a restart of this app then would take that Ducter down with
 // it and cut the updater off. A file left by a process that is gone says
 // nothing.
 func AgentUpdating(dir string) []string {
@@ -187,7 +187,7 @@ func (a *Asks) Step(ctx context.Context) {
 			a.Beat()
 		}()
 	case "restart":
-		// D226: not while an AI agent updates on this Mac: the swap restarts
+		// D227: not while an AI agent updates on this Mac: the swap restarts
 		// the Ducter running that updater. Held, and looked at again on the
 		// next tick (the Ducter asking waits for it too; this is the app's
 		// own guard).

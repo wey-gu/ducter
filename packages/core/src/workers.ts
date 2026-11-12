@@ -33,9 +33,9 @@ export interface WorkerHello {
   abilities?: import("@ducter/protocol").DeviceAbility[];
   /** D157: it doesn't sleep (a server, a desktop Mac). */
   alwaysOn?: boolean;
-  /** D226: one id per worker process: another one means its Ducter restarted since the last hello. */
+  /** D227: one id per worker process: another one means its Ducter restarted since the last hello. */
   boot?: string;
-  /** D226: the agents this process is updating now. */
+  /** D227: the agents this process is updating now. */
   agentUpdates?: string[];
 }
 
@@ -149,8 +149,8 @@ export function createWorkers(opts: {
   /** D156: a worker said how an agent update goes. */
   onAgentUpdate?: (deviceId: string, name: string, f: import("./agents.ts").WorkerAgentFrame) => void;
   /**
-   * D226: a worker said hello; restarted when it is another process than the last hello's (its
-   * boot id, or for a worker from before D226 another version than it said last).
+   * D227: a worker said hello; restarted when it is another process than the last hello's (its
+   * boot id, or for a worker from before D227 another version than it said last).
    */
   onHello?: (deviceId: string, name: string, hello: WorkerHello, o: { restarted: boolean }) => void;
 }): Workers {
@@ -172,7 +172,7 @@ export function createWorkers(opts: {
     sessions: Map<string, (f: WorkerSessionFrame) => void>;
     onOnline: Set<() => void>;
     link: WorkerLink;
-    /** The last hello's boot id and version (D226), kept across reconnects. */
+    /** The last hello's boot id and version (D227), kept across reconnects. */
     boot?: string;
     version?: string;
   }

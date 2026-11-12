@@ -412,7 +412,7 @@ test("over the socket: the devices frame offers it, update_all starts it, and th
   expect(await c2.until((f) => f.t === "update_all_result", m)).toMatchObject({ ok: true });
 });
 
-// ---------- D226: a computer whose Ducter restarts under an agent's update ----------
+// ---------- D227: a computer whose Ducter restarts under an agent's update ----------
 
 // The author's MacBook (2026-11-12): 更新 tapped on its card a minute before Update all; the plan
 // had only Codex there and started it at once; 5 s later the Mac's Ducter restarted into its new

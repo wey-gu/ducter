@@ -170,9 +170,9 @@ test("a disconnected (revoked) worker still resolves, never online: its tasks do
   expect(core.workers.link("mac")).toBeUndefined();
 });
 
-// D226: the home tells a reconnect (the same worker process) from a restart (another one), so an
+// D227: the home tells a reconnect (the same worker process) from a restart (another one), so an
 // agent update the restart cut off is judged at once instead of waiting 45 min.
-test("a hello says whether the worker restarted since the last one: its boot id, or (before D226) another version", async () => {
+test("a hello says whether the worker restarted since the last one: its boot id, or (before D227) another version", async () => {
   const { createWorkers } = await import("../src/workers.ts");
   const seen: { restarted: boolean; boot?: string }[] = [];
   const workers = createWorkers({ personaName: () => "Ducter", onHello: (_id, _name, h, o) => seen.push({ restarted: o.restarted, ...(h.boot ? { boot: h.boot } : {}) }) });

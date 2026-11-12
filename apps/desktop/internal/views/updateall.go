@@ -194,7 +194,7 @@ func (a *App) updAllName(it *protocol.UpdateAllItem) string {
 	return a.L.T("upall.item.ducter", it.DeviceName)
 }
 
-// updAllPhase is a running step in the single update's own words (D226:
+// updAllPhase is a running step in the single update's own words (D227:
 // or what it waits on: its computer to reconnect; started again after a cut).
 func (a *App) updAllPhase(it *protocol.UpdateAllItem) string {
 	if it.Wait == "reconnect" {
@@ -350,7 +350,7 @@ func (a *App) restartForPlan() {
 		if it.State == "running" || (it.State == "queued" && it.Kind == "ducter") {
 			return
 		}
-		// D226: nothing still to do on this Mac (its restart would take
+		// D227: nothing still to do on this Mac (its restart would take
 		// that step's Ducter down with it).
 		if !it.Final() && a.planStepHere(&it) {
 			return

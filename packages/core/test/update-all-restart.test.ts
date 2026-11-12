@@ -1,4 +1,4 @@
-// D226, end to end over the real sockets: Update all's Codex step on a Mac whose Ducter restarts
+// D227, end to end over the real sockets: Update all's Codex step on a Mac whose Ducter restarts
 // under the updater (the author's MacBook, 2026-11-12: the row said 正在更新到 0.167.2 for 45 min).
 // A real core (the home), the Mac's worker as two processes in turn (boot ids b1, b2), each with
 // the real worker-side agent updater over a fake machine; the first one's updater never finishes

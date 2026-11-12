@@ -105,7 +105,7 @@ func TestGoneRemovesTheHeartbeat(t *testing.T) {
 	}
 }
 
-// D226: a restart asked while a live Ducter on this Mac updates an AI agent
+// D227: a restart asked while a live Ducter on this Mac updates an AI agent
 // waits (the swap would take that Ducter, and the updater, down); a file left
 // by a process that is gone holds nothing.
 func TestAsksRestartWaitsForAnAgentUpdate(t *testing.T) {

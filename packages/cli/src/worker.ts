@@ -92,7 +92,7 @@ function workerAgentUpdater(t: T, dataDir: string, held: () => boolean) {
     detect: (h) => detectAgent(h, probe),
     loggedIn: async (h) => (await probeLocalHarnesses({ ...probe, only: [h] }))[0]?.loggedIn ?? false,
     probe: () => probeHarnesses(t, dataDir),
-    // D226: kept on disk while it runs (the next process reports a cut-off one; the Mac app holds
+    // D227: kept on disk while it runs (the next process reports a cut-off one; the Mac app holds
     // its restart), and it waits while this computer's own Ducter update is under way.
     dataDir,
     held,
@@ -159,7 +159,7 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     // D187: a Mac's worker asks its app to update (the phone's 更新 reaches it).
     asksApp: updateHow({ compiled: isCompiled(), platform: platform(), execPath: process.execPath }) === "app",
     ...((u) => (u ? { update: u } : {}))(lastOutcome(o.dataDir, { version: pkg.version })),
-    // D226: this process, and the agents it is updating now: a home that sees another boot knows
+    // D227: this process, and the agents it is updating now: a home that sees another boot knows
     // an update this one doesn't run was cut off by the restart.
     boot: `${process.pid}-${Date.now().toString(36)}`,
     get agentUpdates(): string[] {

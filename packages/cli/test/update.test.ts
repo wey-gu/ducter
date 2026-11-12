@@ -177,7 +177,7 @@ test("--agents --check --json: each AI agent's version, channel and latest; --ag
   expect(m.version).toBe("0.168.0");
 });
 
-// D226: a step says what it waits on, and why one its computer's Ducter cut off twice didn't update.
+// D227: a step says what it waits on, and why one its computer's Ducter cut off twice didn't update.
 test("Update all's lines: waiting for a computer's Ducter or for it to reconnect, started again, cut off twice", () => {
   const base = { key: "agent:mac:codex", kind: "agent" as const, device: "mac", deviceName: "Macbook Pro M3", harness: "codex", from: "0.167.1", to: "0.167.2", at: "x" };
   expect(itemState(t, { ...base, state: "waiting", wait: "ducter" })).toBe("waiting for Ducter on Macbook Pro M3 to finish updating");

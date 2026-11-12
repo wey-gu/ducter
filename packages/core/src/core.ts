@@ -572,7 +572,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     personaName: () => persona.name,
     onUpdate: (id, name, f) => updatesRef?.fromWorker(id, name, f),
     onAgentUpdate: (id, name, f) => agentsRef?.fromWorker(id, name, f),
-    // D226: a worker back after its Ducter restarted: an agent update it no longer runs died with it.
+    // D227: a worker back after its Ducter restarted: an agent update it no longer runs died with it.
     onHello: (id, name, hello, o) => agentsRef?.reconnected(id, name, { restarted: o.restarted, running: Array.isArray(hello.agentUpdates) ? hello.agentUpdates : [], harnesses: (hello.harnesses ?? []).map((h) => ({ id: h.id, ...(h.version ? { version: h.version } : {}) })) }),
     // A disconnected (revoked) worker still resolves, as a link that is never online: its tasks
     // show 连不上 / Can't reach and new ones are refused, instead of silently running here.
@@ -609,7 +609,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         return link.call<{ ok: boolean; reason?: import("@ducter/protocol").UpdateReason; detail?: string }>("update", args, 30_000);
       },
     }),
-    // D226: the home's own restart also waits for an AI agent updating here (it would cut it off).
+    // D227: the home's own restart also waits for an AI agent updating here (it would cut it off).
     critical: () => [...(runner?.critical?.() ?? []), ...(agentsRef?.updating("local") ?? []).map((h) => `updating ${h}`)],
     holdCritical: (why) => runner?.holdCritical?.(why),
     working: () => tasks.list().filter((c) => c.attention === "working").length,

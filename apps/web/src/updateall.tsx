@@ -15,7 +15,7 @@ const SHOWN = 4;
 
 export const itemName = (i: Pick<UpdateAllItem, "kind" | "deviceName" | "harness">) => (i.kind === "ducter" ? t("upall.item.ducter", i.deviceName) : t("upall.item.agent", harnessName(i.harness ?? ""), i.deviceName));
 
-/** A running step in the single update's own words (devup.phase.*, agentv.phase.*); D226: or what it waits on. */
+/** A running step in the single update's own words (devup.phase.*, agentv.phase.*); D227: or what it waits on. */
 function runningWords(i: UpdateAllItem): string {
   if (i.wait === "reconnect") return t("upall.state.reconnect", i.deviceName);
   if (i.kind === "agent" && i.retried && (!i.phase || i.phase === "updating")) return t("upall.state.retry", i.to);

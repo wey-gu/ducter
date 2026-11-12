@@ -176,7 +176,7 @@ func TestUpdateAllOwnAppStep(t *testing.T) {
 	}
 }
 
-// D226: a step says what it waits on: its computer's Ducter updating, its
+// D227: a step says what it waits on: its computer's Ducter updating, its
 // computer to reconnect, or that it was cut off and started again; a step
 // cut off twice says why.
 func TestUpdateAllWaitWords(t *testing.T) {
@@ -210,7 +210,7 @@ func TestUpdateAllWaitWords(t *testing.T) {
 	}
 }
 
-// D226: this app's own restart for a plan waits while a step is still to do
+// D227: this app's own restart for a plan waits while a step is still to do
 // on this Mac, or while an AI agent updates here.
 func TestUpdateAllOwnRestartWaitsForThisMac(t *testing.T) {
 	app, _ := iaApp(t, i18n.ZH)

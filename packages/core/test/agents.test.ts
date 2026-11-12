@@ -419,7 +419,7 @@ test("over the socket: the devices frame carries each agent's version and latest
   expect(core.log.read({ stream: "devices", kinds: ["agent_update"] }).map((e) => (e.body as any).phase)).toEqual(["waiting", "updating", "checking", "done"]);
 });
 
-// ---------- D226: a Ducter that restarts under an agent's update ----------
+// ---------- D227: a Ducter that restarts under an agent's update ----------
 
 test("the home: a worker back after its Ducter restarted ends an update it no longer runs (done on its target, else interrupted)", async () => {
   const t = tempDir();

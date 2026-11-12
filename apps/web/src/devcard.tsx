@@ -12,7 +12,7 @@ import { A } from "./app.ts";
 import { BackRow, Btn, Chip, CoinButton, DangerButton, ListRow, MoreButton, RenameTitle, SocketButton, Toggle } from "./controls.tsx";
 import { Coin } from "./coin.tsx";
 import { ago, behind, harnessName, memWords, phaseLine as phaseWords } from "./format.ts";
-import { agentBehind, agentRunning, androidApp, chipsFor, type Client, listWord, statusLine, versionLine, viaText } from "./sheet.ts";
+import { agentBehind, agentRunning, androidApp, chipsFor, type ChipLook, type Client, listWord, statusLine, versionLine, viaText } from "./sheet.ts";
 import { attention, placeOf } from "./store.ts";
 import { disablePush } from "./push-client.ts";
 import { turnOnPush } from "./views.tsx";
@@ -392,7 +392,13 @@ function Chips({ dv }: { dv: DeviceView }) {
   const web = dv.abilities.find((a) => a.id === "web");
   const about = (id: string) => (id === "web" && web?.where === "chrome" ? "ability.web.about.chrome" : id === "web" && web?.where === "ducter" ? "ability.web.about.ducter" : id === "phone" && chips.find((c) => c.id === id)?.look === "later" ? "ability.phone.later" : `ability.${id}.about`);
   const set = (id: string, on: boolean) => A.send({ t: "ability", device: dv.id, ability: id as "web", on });
-  const look = (id: string) => chips.find((c) => c.id === id)?.look;
+  // D228: From anywhere on the home: failed shows as failed; while it opens, it says so.
+  const any = dv.home ? A.reach?.anywhere : undefined;
+  const lookOf = (c: { id: string; look: ChipLook }): ChipLook => (c.id === "remote" && any?.state === "failed" ? "fail" : c.look);
+  const look = (id: string) => {
+    const c = chips.find((x) => x.id === id);
+    return c && lookOf(c);
+  };
   return (
     <>
       <div class="dc-chips">
@@ -401,8 +407,9 @@ function Chips({ dv }: { dv: DeviceView }) {
             key={c.id}
             label={t(`chip.${c.id}`)}
             art={art(c.look === "later" ? `ab_${c.id}_later` : `ab_${c.id}`)}
-            look={c.look}
+            look={lookOf(c)}
             {...(c.id === "call" && c.look === "fail" ? { state: t("chip.call.signed_out") } : {})}
+            {...(c.id === "remote" && any?.state === "starting" ? { state: t("chip.remote.starting") } : {})}
             infoOpen={info === c.id}
             onInfo={() => setInfo(info === c.id ? "" : c.id)}
             onClick={() => {
@@ -410,6 +417,8 @@ function Chips({ dv }: { dv: DeviceView }) {
               if (c.id === "call") return A.openCalls(c.look === "add");
               // D217: + 用手机 opens what it downloads and Google's licenses; on, the ⓘ says where it lives.
               if (c.id === "phone") return c.look === "add" || c.look === "fail" ? startInstall(dv.id) : setInfo(info === c.id ? "" : c.id);
+              // D228: + 在哪儿都能用 on the home turns it on, its ⓘ open to show it opening.
+              if (c.id === "remote" && dv.home && c.look === "add") return set("remote", true), setInfo("remote");
               if (c.look === "later" || c.id === "remote" || c.look === "off" || c.look === "fail") return setInfo(info === c.id ? "" : c.id);
               if (dv.state === "awake") set(c.id, c.look !== "on");
             }}
@@ -434,10 +443,58 @@ function Chips({ dv }: { dv: DeviceView }) {
           {info === "call" && <div class="small sub">{t(look("call") === "fail" ? "ability.call.signed_out" : "ability.call.where")}</div>}
           {info === "web" && web?.where === "ducter" && web.state === "on" && !web.setup && <Sites dv={dv} />}
           {info === "phone" && <PhoneInfo dv={dv} />}
+          {info === "remote" && dv.home && <AnywhereInfo dv={dv} />}
           {info !== "remote" && look(info) === "off" && dv.state !== "awake" && <div class="small sub">{t("ability.reason.asleep")}</div>}
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * D228: 在哪儿都能用 / From anywhere in its ⓘ: opening, why it didn't, or the address with who can
+ * get in and (for the free tunnel) that it changes on a restart and the devices follow. Turning it
+ * off from a phone that is itself connected through it asks once more: it cuts the phone off too.
+ */
+function AnywhereInfo({ dv }: { dv: DeviceView }) {
+  const [sure, setSure] = useState(false);
+  const any = A.reach?.anywhere;
+  const address = A.reach?.address;
+  const set = (on: boolean) => A.send({ t: "ability", device: dv.id, ability: "remote", on });
+  if (!any) {
+    if (dv.state !== "awake") return null;
+    return (
+      <div class="acts">
+        <Btn kind="primary" size="sm" label={t("anywhere.turnOn")} onClick={() => set(true)} />
+      </div>
+    );
+  }
+  if (any.state === "starting") return <div class="small sub">{t(any.getting ? "anywhere.getting" : "anywhere.starting")}</div>;
+  if (any.state === "failed")
+    return (
+      <>
+        <div class="small sub">{t("anywhere.failed", t(`anywhere.why.${any.reason ?? "failed"}`))}</div>
+        <div class="acts">
+          <Btn kind="secondary" size="sm" label={t("anywhere.retry")} onClick={() => set(true)} />
+        </div>
+      </>
+    );
+  const throughIt = !!address && typeof location === "object" && location.origin === new URL(address).origin;
+  return (
+    <div class="dev-anywhere">
+      {address && <code class="dev-cmd">{address}</code>}
+      <div class="small">{t("anywhere.who")}</div>
+      <div class="small sub">{t(any.how === "own" ? "anywhere.own" : any.how === "named" ? "anywhere.named" : "anywhere.moves", dv.name)}</div>
+      {any.how !== "own" && dv.state === "awake" && (
+        <>
+          {sure && <div class="small sub">{t(throughIt ? "anywhere.off.self" : "anywhere.off.note", dv.name)}</div>}
+          <div class="acts">
+            {sure && <Btn kind="secondary" size="sm" label={t("anywhere.keep")} onClick={() => setSure(false)} />}
+            {sure ? <DangerButton label={t("anywhere.off.sure")} onClick={() => (setSure(false), set(false))} /> : <Btn kind="text" size="sm" label={t("anywhere.off")} onClick={() => setSure(true)} />}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

@@ -132,3 +132,23 @@ per address (`LIMITS` in the function).
 The app now sends its device token to ducter.ai. App Store Connect's **App Privacy** answers need
 to say so: Identifiers → Device ID, used for App Functionality, not linked to identity, not used
 for tracking. TestFlight doesn't ask.
+
+## The address relay (D228)
+
+The same Vercel project serves `apps/site/api/addr/[op].ts`: where a paired device finds its
+home again after **From anywhere**'s free tunnel got a new address. It shares the store
+(`KV_REST_API_URL` + `KV_REST_API_TOKEN`) and needs one more variable, `ADDR_HASH_KEY` (base64 of
+32 random bytes: `openssl rand -base64 32`), under which callers' addresses are hashed for rate
+limits. Deploy, then check `GET https://ducter.ai/api/addr/health` → `{"ok":true,"store":"kv"}`.
+Until it is deployed, homes' notes fail quietly and devices pair again after a home restarts.
+
+| | Sees | Keeps |
+|---|---|---|
+| A home's address | no (AES-256-GCM under a key only the home and its devices hold) | no |
+| The note's id | yes (16 random bytes, nothing about the home) | 30 days after the last write |
+| The home's write secret | yes | its SHA-256, 30 days |
+| When an address changes | yes | no |
+| Caller's IP address | yes | as a keyed hash in a rate counter, 1 minute or 1 hour |
+
+Limits: 30 writes an hour per id, 120 an hour and 60 reads a minute per address
+(`ADDR_LIMITS`).

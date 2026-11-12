@@ -6877,3 +6877,6 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .reads.day .day-group { display: flex; flex-direction: column; gap: 2px; }
 .reads.day .read.soft { color: var(--ink-muted); }
 .reads.day .honest { margin-top: 0; padding-top: 8px; }
+/* D228: 在哪儿都能用 / From anywhere in its ⓘ: the address, who gets in, how it is reached. */
+.dev-anywhere { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.dev-anywhere .acts { align-items: center; }

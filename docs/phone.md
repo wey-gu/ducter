@@ -23,9 +23,13 @@ Where you can use it:
 
 ## Connect your phone
 
-Your phone needs an address it can reach from anywhere: Ducter on a server with your own domain
-(see [Install](install.md#a-linux-server-that-stays-on)). A zero-setup address with no domain
-of your own is coming soon.
+Your phone needs an address it can reach from anywhere. If Ducter runs on a server with your own
+domain (see [Install](install.md#a-linux-server-that-stays-on)), it has one already. If not (a Mac
+at home, say), turn on **From anywhere**: tap **+ From anywhere** on the card of the computer
+Ducter lives on (or **Turn on From anywhere** when the Mac app offers your phone a code), or run
+`ducter anywhere on`. No account and no domain: Ducter opens a free Cloudflare tunnel to that
+computer by itself. It takes about half a minute, the first time a little longer (it downloads
+about 20 MB).
 
 1. On the computer Ducter lives on, run `ducter pair`, or choose **Devices › Connect a phone or
    computer** in the Mac app.
@@ -38,6 +42,24 @@ remembers the connection. For a second phone or another computer, get a new code
 `ducter pair` on the computer Ducter lives on, or **Devices › Connect a phone or computer** in the Mac app (it works when the app is connected to a Ducter on a server, too). A code that was already used or ran out says so; just get a
 new one. To disconnect it, run `ducter devices disconnect <name>` on the computer Ducter
 lives on.
+
+### When the address changes
+
+With **From anywhere**, the address changes when the computer Ducter lives on restarts. You
+don't need to do anything: your phone, the Ducter app and the Mac app find the new address by
+themselves and stay connected, usually within half a minute of Ducter being back. Only devices
+you connected get in; the address alone opens nothing. The tap on **From anywhere** shows the
+address in use, and **Turn off** there closes it again (your devices stay connected and work
+again once it's back on).
+
+How they find it: your computer leaves its new address, locked with a key only it and your
+connected devices have, at a small relay run by the Ducter project. The relay can't read it. If
+you'd rather it didn't, set `DUCTER_ADDR_RELAY=off`; after a restart you then connect your
+devices again with a new code.
+
+For an address that never changes, use your own domain (`ducter domain`, on a server), or your
+own Cloudflare tunnel: `ducter anywhere on --token <your tunnel's token> --address <its
+hostname>`.
 
 ## Notifications
 

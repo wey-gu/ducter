@@ -197,6 +197,13 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
                 withAnimation(.easeOut(duration: 0.25)) { phase = .unreachable }
             }
             return (nil, nil)
+        case "moved":
+            // D228: follow the home to its new address (https only; the entry is on that host).
+            guard let s = m["base"] as? String, let b = URL(string: s), b.scheme == "https",
+                  let es = m["entry"] as? String, let e = URL(string: es), e.host == b.host else { return (nil, "refused") }
+            welcomed = false
+            AppState.shared.move(to: b, entry: e)
+            return (["ok": true], nil)
         case "log":
             NSLog("[ducter page] %@: %@", m["k"] as? String ?? "", m["m"] as? String ?? "")
             return (nil, nil)

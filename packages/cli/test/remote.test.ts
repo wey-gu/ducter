@@ -127,7 +127,7 @@ describe("ducter pair without a public address", () => {
     const j = JSON.parse((await run({}, { json: true, server: true, ip: "203.0.113.7" })).trim());
     expect(j.reachable).toBe(false);
     expect(j.publicIp).toBe("203.0.113.7");
-    expect(j.steps.map((x: { command: string }) => x.command)).toEqual(["ducter domain <your domain>", j.tunnel]);
+    expect(j.steps.map((x: { command: string }) => x.command)).toEqual(["ducter anywhere on", "ducter domain <your domain>", j.tunnel]);
     expect(j.code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
     const k = JSON.parse((await run({ DUCTER_PUBLIC_URL: "https://d.example.com" }, { json: true })).trim());
     expect(k.reachable).toBe(true);

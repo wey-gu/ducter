@@ -9,6 +9,7 @@ import { phone } from "./i18n-phone.ts";
 import { onhandWords } from "./i18n-onhand.ts";
 import { workbench } from "./i18n-workbench.ts";
 import { phoneuse } from "./i18n-phoneuse.ts";
+import { calendarWords } from "./i18n-calendar.ts";
 
 export type Lang = "zh" | "en";
 
@@ -2354,12 +2355,12 @@ const accounts: Record<Lang, Record<string, string>> = {
     "flow.other": "读到的内容",
     "flow.and": "和",
     "tile.reads.mail": "新邮件的发件人、标题和开头几行；要细看才读全文",
-    "tile.reads.calendar": "今天和明天的日程",
+    "tile.reads.calendar": "你选的日历里的日程：时间、标题、地点和参加的人",
     "tile.reads.github": "找你 review、@你、分给你的",
     "tile.reads.chat": "@你 的消息和私信",
     "tile.reads.other": "你问起来才去看",
     "tile.asks.mail": "发信、回复、存草稿、改标签、删除",
-    "tile.asks.calendar": "建、改、接受或拒绝日程",
+    "tile.asks.calendar": "添加、更改、取消日程，回复邀请",
     "tile.asks.github": "评论、点通过、合并",
     "tile.asks.chat": "发消息、回复、加反应",
     "tile.asks.other": "任何会改东西的事",
@@ -2445,12 +2446,12 @@ const accounts: Record<Lang, Record<string, string>> = {
     "flow.other": "what it reads",
     "flow.and": " and ",
     "tile.reads.mail": "New mail's sender, subject and first lines; the full text only when needed",
-    "tile.reads.calendar": "Today's and tomorrow's events",
+    "tile.reads.calendar": "Events in the calendars you pick: time, title, place and who's coming",
     "tile.reads.github": "Review requests, @-mentions and what's assigned to you",
     "tile.reads.chat": "@-mentions and DMs",
     "tile.reads.other": "Only when you ask",
     "tile.asks.mail": "Sending, replying, drafts, labels, deleting",
-    "tile.asks.calendar": "Creating, changing, accepting or declining events",
+    "tile.asks.calendar": "Adding, moving or cancelling events, answering invitations",
     "tile.asks.github": "Commenting, approving, merging",
     "tile.asks.chat": "Sending, replying, reacting",
     "tile.asks.other": "Anything that changes something",
@@ -2463,7 +2464,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en } };
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...calendarWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...calendarWords.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

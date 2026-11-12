@@ -176,6 +176,8 @@ export class Store {
   activity?: { step: ActivityStep; at: number };
   activityEndedAt = 0;
   actionResults: Extract<ServerFrame, { t: "action_result" }>[] = [];
+  /** D221: what a Go on a change card ran (the connection_call with its decision id), the latest by seq. */
+  calRuns = new Map<string, { state: Bodies["connection_call"]["state"]; link?: string; error?: string; seq: number }>();
 
   /** A welcome from a Log that no longer holds what we've seen (its data was reset). */
   stale(f: ServerFrame) {
@@ -308,6 +310,12 @@ export class Store {
       else this.waiters.delete(w.waiterId);
       if (w.state === "armed") this.missed.delete(w.waiterId);
       else if (endedUnmet(w)) this.missed.set(w.waiterId, { ...w, endedAt: ev.ts });
+    }
+    if (ev.kind === "connection_call") {
+      // D221: a calendar change card settles from its run's own record.
+      const c = ev.body as Bodies["connection_call"];
+      const had = c.decisionId ? this.calRuns.get(c.decisionId) : undefined;
+      if (c.decisionId && c.op === "write" && (!had || had.seq <= ev.seq)) this.calRuns.set(c.decisionId, { state: c.state, ...(c.link ? { link: c.link } : {}), ...(c.error ? { error: c.error } : {}), seq: ev.seq });
     }
     if (ev.stream !== "channel") {
       if (ev.kind === "decision") this.addDecision(ev as Ev<"decision">);

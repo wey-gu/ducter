@@ -22,6 +22,7 @@ import { OwnPhoneCard } from "./own-phone.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
+import { CalFacts, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx";
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
 import { BenchToggle } from "./workbench.tsx";
@@ -245,6 +246,7 @@ export function goLabel(d: DecisionState): string {
   if (d.asker) return d.goLabel; // X1: the asking agent's own option, as it named it
   if (d.closing) return closingWords(d.closing).go;
   if (d.memPlugin) return t("memp.card.go");
+  if (d.cal) return d.goLabel; // D221: the action itself (添加到日历 / Add to calendar)
   return shortGo(d.goLabel);
 }
 
@@ -318,8 +320,9 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
     <>
       <div class="q">{wa?.question ?? (d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question)}</div>
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
+      {d.cal && <CalFacts c={d.cal} />}
       {open && wa && wa.lines.map((l, i) => <div key={i} class={`dl${l.widen ? " widen" : ""}`}>{l.text}</div>)}
-      {open && !wa && (d.asker ? <div class="dl">{t("peer.default")}</div> : <DefaultRow d={d} />)}
+      {open && !wa && !d.cal && (d.asker ? <div class="dl">{t("peer.default")}</div> : <DefaultRow d={d} />)}
       {open ? (
         // Reply… · Hold · Go, the primary last (D76). Hold and Go stay one pair; a long Go
         // sends Reply… to its own line under them (.btns.decide).
@@ -338,12 +341,14 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
               // X1: its second option, answered in its own words (a reply), never Hold.
               <Btn kind="secondary" label={d.asker.other} about={about} onClick={() => A.decide(d.decisionId, "reply", d.asker!.other)} />
             ) : (
-              <Btn kind="secondary" label={wa?.hold ?? (d.closing ? closingWords(d.closing).hold : d.memPlugin ? t("memp.card.hold") : d.trust ? t("peers.trust.hold") : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+              <Btn kind="secondary" label={wa?.hold ?? (d.cal ? calHold(d.cal) : d.closing ? closingWords(d.closing).hold : d.memPlugin ? t("memp.card.hold") : d.trust ? t("peers.trust.hold") : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
             )}
             <Btn kind="primary" label={d.asker ? d.goLabel : goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
           </span>
           {d.asker?.suggests && <span class="sug">{t("peer.suggests", d.goLabel)}</span>}
         </div>
+      ) : d.cal ? (
+        <CalSettle d={d} />
       ) : (
         <Resolved d={d} />
       )}
@@ -863,6 +868,8 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
     <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
       {d.asker && <PeerAsker d={d} />}
       <div class="bubble">{d.said || d.question}</div>
+      {/* D221: a calendar change: what, when, where and who hears, before one Go. */}
+      {d.cal && <CalFacts c={d.cal} />}
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
       {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
       {open ? (
@@ -875,19 +882,19 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
                 // X1: its second option, answered in its own words (a reply), never Hold.
                 <Btn kind="secondary" size="sm" label={d.asker.other} about={about} onClick={() => A.decide(d.decisionId, "reply", d.asker!.other)} />
               ) : (
-                <Btn kind="text" size="sm" label={d.trust ? t("peers.trust.hold") : t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+                <Btn kind="text" size="sm" label={d.cal ? calHold(d.cal) : d.trust ? t("peers.trust.hold") : t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
               )}
               <span class="grow" />
               <Btn kind="primary" size="sm" label={goLabel(d)} about={about} onClick={() => A.decide(d.decisionId, "go")} />
             </div>
           )}
-          <div class="dflt">
+          {!d.cal && <div class="dflt">
             <span>
               {d.asker?.suggests && <b class="sug">{t("peer.suggests", d.goLabel)}</b>}
               {defaultInfo(d, Date.now()).line}
             </span>
             {task && title(task) && <DetailsToggle k={k} about={about} />}
-          </div>
+          </div>}
           {task && A.detailsOpen(k) && (
             <div class="det">
               <TaskLine task={task} />
@@ -918,6 +925,8 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
             </div>
           )}
         </>
+      ) : d.cal ? (
+        <CalSettle d={d} />
       ) : (
         // Answered: one tiny line on the user's side, in their own words.
         <div class="said" role="status">
@@ -1034,8 +1043,10 @@ function EntryView({ e, chipOwner, livingItems, join }: { e: Entry; chipOwner: M
   }
   if (e.ai) {
     return (
-      <div class={`partner${join ? " join" : ""}`}>
-        <div class="bubble" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />
+      <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}`}>
+        {(e.ai.text || !e.ai.cal) && <div class="bubble" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />}
+        {/* D221: the day card under the partner's words (or alone in its column). */}
+        {e.ai.cal && <DayCard g={e.ai.cal} />}
         {/* D206: what a task showed, under the partner's words about it. */}
         {e.ai.media?.length ? <MediaBlock media={e.ai.media} side="partner" ctx={{ kind: "conv" }} /> : null}
         <Quiet k={`m${e.firstSeq}`} tasks={replyTasks(e, chipOwner)} noted={A.notedFor(e)} />
@@ -1399,6 +1410,8 @@ function Hello() {
           ))}
         </p>
       )}
+      {/* D221: what is still on today, from the last look (never a new read); silent when nothing is. */}
+      {f?.today && <TodayRow today={f.today} />}
       <div class="try">
         <div class="label">{t("empty.try")}</div>
         <div class="grid">

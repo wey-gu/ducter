@@ -201,6 +201,7 @@ function TileDetail({ c, w }: { c: ConnectionView; w: AppWatch }) {
               <Toggle label={t("tile.watch")} help={[note, held].filter(Boolean).join("\n") || undefined} checked={w.watch} onChange={(v) => A.setApp(c.id, w.service, w.account, { watch: v })} />
             </div>
           )}
+          {k === "calendar" && <CalendarsBand c={c} w={w} />}
         </>
       )}
       <div class="td-foot">
@@ -234,6 +235,102 @@ function ReadsList({ c }: { c: ConnectionView }) {
   );
 }
 
+/** D221: 看哪些日历 / Calendars it reads: each calendar in the account, its colour as a dot, and a switch. */
+function CalendarsBand({ c, w }: { c: ConnectionView; w: AppWatch }) {
+  const rows = w.calendars;
+  return (
+    <div class="td-cals">
+      <div class="td-k">{t("cal.list.title")}</div>
+      {!rows ? (
+        <div class="small sub">{t("cal.list.loading")}</div>
+      ) : (
+        rows.map((r) => {
+          const name = r.kind === "main" || !r.name ? t("cal.main") : r.name;
+          const note = r.kind === "holidays" || r.kind === "birthdays" || r.kind === "shared" ? t(`cal.kind.${r.kind}`) : undefined;
+          return (
+            <Toggle
+              key={r.id}
+              lead={<span class="cal-dot" style={r.color && /^#[0-9a-f]{3,8}$/i.test(r.color) ? { background: r.color } : undefined} aria-hidden="true" />}
+              label={name}
+              help={note}
+              checked={r.seen}
+              onChange={(v) => A.pickCalendar(c.id, w.service, w.account, r.id, v)}
+            />
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+/** Client-local memory for the calendar lines (D221 §4): when each calendar tile was first seen here,
+ *  whether the first-time line was retired, and a dismissed Gmail nudge. Never synced. */
+const CAL_MEM = "ducter.cal.local";
+type CalMem = { seen?: Record<string, number>; done?: string[]; later?: string[] };
+function calMem(): CalMem {
+  try {
+    return (JSON.parse(localStorage.getItem(CAL_MEM) ?? "{}") as CalMem) || {};
+  } catch {
+    return {};
+  }
+}
+function saveCalMem(m: CalMem) {
+  try {
+    localStorage.setItem(CAL_MEM, JSON.stringify(m));
+  } catch {
+    /* private mode: the line simply shows again next time */
+  }
+}
+const WEEK = 7 * 86_400_000;
+const calKey = (c: ConnectionView, w: AppWatch) => `${c.id}:${w.service}:${w.account ?? ""}`;
+/** Retires the first-time line for these tiles (opened, or Try it). */
+function retireFirst(keys: string[]) {
+  const m = calMem();
+  m.done = [...new Set([...(m.done ?? []), ...keys])];
+  saveCalMem(m);
+}
+/** The calendar tiles of a card still new to this client: first seen here in the last 7 days, never opened. */
+function newCalendars(c: ConnectionView, tiles: AppWatch[]): string[] {
+  const cal = tiles.filter((w) => kindOf(w.service) === "calendar" && !w.excluded && !w.unreachable);
+  if (!cal.length || down(c)) return [];
+  const m = calMem();
+  const seen = { ...(m.seen ?? {}) };
+  let wrote = false;
+  for (const w of cal) if (!seen[calKey(c, w)]) (seen[calKey(c, w)] = Date.now()), (wrote = true);
+  if (wrote) saveCalMem({ ...m, seen });
+  return cal.map((w) => calKey(c, w)).filter((k) => !(m.done ?? []).includes(k) && Date.now() - seen[k]! < WEEK);
+}
+
+/** Under the tray: the first-time line with Try it, or, for a card with Gmail and no calendar, the nudge to add one. */
+function CalLines({ c, tiles }: { c: ConnectionView; tiles: AppWatch[] }) {
+  const [, bump] = useState(0);
+  const fresh = newCalendars(c, tiles);
+  if (fresh.length)
+    return (
+      <div class="cal-line">
+        <span class="small soft">{t("cal.first")}</span>
+        <Btn kind="text" size="sm" label={t("cal.first.try")} onClick={() => (retireFirst(fresh), A.fillComposer(t("cal.first.ask")))} />
+      </div>
+    );
+  const hosted = c.source === "oo" || c.source === "oomol";
+  const mail = tiles.some((w) => w.service === "gmail");
+  const cal = tiles.some((w) => kindOf(w.service) === "calendar");
+  if (!hosted || !mail || cal || down(c) || (calMem().later ?? []).includes(c.id)) return null;
+  return (
+    <div class="cal-line nudge">
+      <span class="small soft">{t("cal.nudge")}</span>
+      <span class="acts">
+        <Btn kind="text" size="sm" label={t("cal.nudge.later")} onClick={() => {
+          const m = calMem();
+          saveCalMem({ ...m, later: [...(m.later ?? []), c.id] });
+          bump((n) => n + 1);
+        }} />
+        <Btn kind="secondary" size="sm" label={t(c.source === "oo" ? "cal.nudge.oo" : "cal.nudge.oomol")} onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />
+      </span>
+    </div>
+  );
+}
+
 export function SourceCard({ c }: { c: ConnectionView }) {
   const [open, setOpen] = useState("");
   const [reads, setReads] = useState(false);
@@ -260,13 +357,14 @@ export function SourceCard({ c }: { c: ConnectionView }) {
           const sub = w.excluded ? t("tile.excluded") : short;
           const full = [label, w.account, w.excluded ? sub : ""].filter(Boolean).join(" · ");
           return (
-            <AppTile key={key(w)} label={label} sub={sub || undefined} about={full} sel={open === key(w)} off={!w.watch} grey={w.excluded || !!w.unreachable || down(c)} onClick={() => setOpen(open === key(w) ? "" : key(w))}>
+            <AppTile key={key(w)} label={label} sub={sub || undefined} about={full} sel={open === key(w)} off={!w.watch} grey={w.excluded || !!w.unreachable || down(c)} onClick={() => (kindOf(w.service) === "calendar" && retireFirst(tiles.filter((x) => kindOf(x.service) === "calendar").map((x) => `${c.id}:${key(x)}`)), setOpen(open === key(w) ? "" : key(w)))}>
               <AppMark service={w.service} />
             </AppTile>
           );
         })}
         {(c.source === "oo" || c.source === "oomol") && <AppTile label={t("tile.more")} about={t(`tile.more.${c.source}`)} add onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />}
       </div>
+      {!sel && <CalLines c={c} tiles={tiles} />}
       {sel && <TileDetail c={c} w={sel} />}
       {/* The connection itself, last and quiet (D192): where what it reads passes, then one row of its two actions. */}
       <div class="src-foot">

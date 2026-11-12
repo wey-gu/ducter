@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.35
+
+<!-- whats-new
+zh: 读信能看到日期和标题了，主动提醒真正开始工作
+en: Mail is read with its date and subject, so heads-ups actually work
+zh: 没读成的信会重试，不会被当成看过
+en: Mail it couldn't read is retried, never counted as seen
+-->
+
+**Heads-ups**
+- Mail through OOMOL is now read with its sender, subject, labels and date. Before, it arrived as
+  a thread id and a snippet, so nothing could be kept, noted or dated.
+- Mail counts as seen only once it was really read; a failed read waits and is retried, across
+  restarts too. A look back from before this runs once more by itself.
+- The 60-day look back searches in several short queries, and each look back logs one line of
+  what it read, kept and noted.
+
 ## 0.0.34
 
 <!-- whats-new

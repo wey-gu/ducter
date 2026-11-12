@@ -1,4 +1,4 @@
-// D228: the look back on hel read nothing, on fakes shaped like OOMOL's real answers (research/68).
+// D226: the look back on hel read nothing, on fakes shaped like OOMOL's real answers (research/68).
 // Through OOMOL, gmail.search_threads gives a thread id and a snippet only: no sender, subject,
 // date or labels. Every item it gave was dated 1970 and had no subject, so the 60-day look back's
 // filter (a facty subject, or the last 3 days) kept none of them and marked itself done; and the

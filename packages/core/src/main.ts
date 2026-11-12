@@ -141,6 +141,13 @@ export async function main(mods: BootModules = {}) {
     return mem.source;
   });
   void identity.then((src) => keepMemIdentity(core, src === "nowledge-mem"));
+  // D224: Nowledge Mem put in or signed in from Settings › 伙伴 while running: Mem is connected
+  // now, so the persona's identity is bound as on a start (no restart).
+  core.bridgeLink.onMemReady(() => {
+    if (process.env.DUCTER_MEMORY === "off") return;
+    core.settings.setMemState("connected");
+    keepMemIdentity(core, true);
+  });
   const identityOrTimeout = Promise.race([identity, Bun.sleep(IDENTITY_WAIT_MS).then(() => "timeout")]);
   await Promise.race([identity, Bun.sleep(BANNER_WAIT_MS)]); // usually lost: the banner says "loading"
 

@@ -31,6 +31,31 @@ func TestBridgeRow(t *testing.T) {
 		{"old-nmem", protocol.BridgeView{State: "update_mem", Identity: "ducter", Home: "hel"},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.update", "hel")} },
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("peers.reach", "小鸭")} }},
+		// D224: the home's own Mem command line, put in, updated and signed in from the row.
+		{"install", protocol.BridgeView{State: "install_mem", Identity: "ducter", Home: "hel", CanRun: true},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.mem.install", "hel"), L.T("bridge.mem.install.go")}
+			},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("peers.reach", "小鸭")} }},
+		{"install-need-pipx", protocol.BridgeView{State: "install_mem", Identity: "ducter", Home: "hel", Need: "pipx"},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.mem.install.need", "hel"), L.T("bridge.retry")}
+			},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.install.go")} }},
+		{"update-pip", protocol.BridgeView{State: "update_mem", Identity: "ducter", Home: "hel", Version: "0.10.116", CanRun: true},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.mem.update", "hel", "0.10.116", "0.10.118"), L.T("bridge.mem.update.go")}
+			}, nil},
+		{"updating", protocol.BridgeView{State: "updating", Identity: "ducter", Home: "hel"},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.updating", "hel")} },
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.update.go")} }},
+		{"sign-in", protocol.BridgeView{State: "sign_in", Identity: "ducter", Home: "hel", Version: "0.10.118", SignIn: "used"},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.mem.signin", "hel"), L.T("bridge.mem.signin.used"), L.T("bridge.mem.signin.go")}
+			}, nil},
+		{"local", protocol.BridgeView{State: "local_mem", Identity: "ducter", Home: "hel"},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.local", "hel")} },
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"ready", protocol.BridgeView{State: "ready", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
 				return []string{L.T("bridge.title", "小鸭"), L.T("bridge.connect"), L.T("peers.reach", "小鸭"), "ducter · Only me · 6f1c0d2e-personal"}
@@ -55,7 +80,7 @@ func TestBridgeRow(t *testing.T) {
 				return []string{L.T("bridge.unconfirmed", "ducter"), L.T("bridge.retry"), L.T("bridge.undo")}
 			}, nil},
 	}
-	for _, r := range []string{"authority_missing", "custody_birth_missing", "lifetime_inactive", "attachment_mismatch", "control_denied", "revoked", "conflict"} {
+	for _, r := range []string{"authority_missing", "custody_birth_missing", "lifetime_inactive", "attachment_mismatch", "control_denied", "revoked", "conflict", "unavailable", "unknown"} {
 		r := r
 		states = append(states, struct {
 			name string
@@ -99,6 +124,17 @@ func TestBridgeRow(t *testing.T) {
 				bridgeShot(t, tt, fmt.Sprintf("mac-%s-%s", lang, s.name))
 				n := len(*sent)
 				switch s.name {
+				case "install", "update-pip":
+					label := L.T("bridge.mem.install.go")
+					if s.name == "update-pip" {
+						label = L.T("bridge.mem.update.go")
+					}
+					if err := tt.Click(label); err != nil {
+						t.Fatal(err)
+					}
+					if len(*sent) != n+1 || (*sent)[n].(protocol.BridgeAction).T != "bridge_mem_install" {
+						t.Fatalf("装上 sent %v", (*sent)[n:])
+					}
 				case "ready":
 					if err := tt.Click(L.T("bridge.connect")); err != nil {
 						t.Fatal(err)

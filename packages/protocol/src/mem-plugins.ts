@@ -69,7 +69,7 @@ export function memPluginsFromInspect(json: unknown, checkedAt?: string): Record
 export type InspectExec = (argv: string[], timeoutMs?: number) => Promise<{ code: number; out: string }>;
 
 export async function inspectMemPlugins(exec: InspectExec, now: () => Date = () => new Date()): Promise<Record<string, MemPluginView> | undefined> {
-  const r = await exec(["nmem", "--json", "plugins", "inspect"], 20_000).catch(() => ({ code: -1, out: "" }));
+  const r = await exec([process.env.NMEM_CLI_PATH ?? "nmem", "--json", "plugins", "inspect"], 20_000).catch(() => ({ code: -1, out: "" }));
   if (r.code !== 0 || !r.out.trim()) return undefined;
   try {
     // Some nmem builds print a notice line before the JSON: read from the first brace.

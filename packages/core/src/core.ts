@@ -35,6 +35,7 @@ import { webApi, webStatic } from "./web.ts";
 import { callAbility, createDevicesView, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createBridgeLink, type NmemCall } from "./bridge-link.ts";
+import { identityIdFor } from "./mem-identity.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
@@ -109,7 +110,7 @@ export interface CoreOptions {
   models?: ModelCatalog;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
   /** D205: the persona's Bridge connection (bridge-link.ts): tests pass a fake nmem. */
-  bridgeLink?: { run?: NmemCall; env?: Record<string, string | undefined> };
+  bridgeLink?: { run?: NmemCall; env?: Record<string, string | undefined>; exec?: import("./bridge-link.ts").MemExec; sys?: import("./mem-cli.ts").MemSys };
   /** D218: seams for the own-number phone (tests and demos: a fake phone, a loopback cable, a fake voice engine). */
   ownNumber?: Partial<import("./phone-own/index.ts").OwnPhoneDeps>;
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
@@ -491,6 +492,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   const bridgeLink = createBridgeLink({
     dataDir,
     identity: () => (settings.memMissing() ? undefined : persona.mem?.agentId),
+    // D224: before Mem is in, the row still offers to put it in; connect names the persona's own id.
+    fallbackIdentity: () => identityIdFor(persona.id),
+    // Tests never reach the machine's real nmem (or Mem): without a fake one injected, the row is off.
+    memoryOn: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),
     home: () => computers.homeName(),
     ...(opts.bridgeLink ?? {}),
   });

@@ -641,6 +641,15 @@ export function createWsHandler(deps: WsDeps) {
         await (f.t === "bridge_connect" ? deps.bridgeLink.connect() : deps.bridgeLink.disconnect());
         return;
       }
+      case "bridge_mem_install":
+      case "bridge_mem_sign_in": {
+        // D224: the tap on 装上 / 更新 / 登录 is the user's Go for this one step on the home. The
+        // link is passed straight to nmem: never logged, kept or sent back.
+        if (!deps.settings || !deps.bridgeLink) throw new Error("settings are not available");
+        ws.data.settings = true;
+        await (f.t === "bridge_mem_install" ? deps.bridgeLink.installMem() : deps.bridgeLink.signInMem(typeof f.link === "string" ? f.link : ""));
+        return;
+      }
       case "settings": {
         if (!deps.settings) throw new Error("settings are not available");
         ws.data.settings = true;

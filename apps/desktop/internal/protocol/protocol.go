@@ -1100,6 +1100,11 @@ type MemView struct {
 // the user's other AI agents (D205). State: update_mem (Home's Mem needs
 // updating), ready, no_space, connecting, connected, disconnecting, refused
 // (Reason), failed (Detail), unconfirmed. Pinned: DUCTER_BRIDGE=1 on the home.
+//
+// D224, the home's own Mem command line first: install_mem / installing,
+// update_mem / updating (CanRun: one tap does it; else Need: "pipx", "app",
+// "other"), sign_in / signing_in (a one-time connect link; SignIn: "used",
+// "bad", "failed"), local_mem (Mem here isn't a cloud workspace).
 type BridgeView struct {
 	State    string       `json:"state"`
 	Identity string       `json:"identity"`
@@ -1108,6 +1113,10 @@ type BridgeView struct {
 	Reason   string       `json:"reason,omitempty"`
 	Detail   string       `json:"detail,omitempty"`
 	Pinned   bool         `json:"pinned,omitempty"`
+	CanRun   bool         `json:"canRun,omitempty"`
+	Need     string       `json:"need,omitempty"`
+	SignIn   string       `json:"signIn,omitempty"`
+	Version  string       `json:"version,omitempty"`
 }
 
 // BridgeSpace is the user's own place in Mem ("Only me"): label and exact id.
@@ -1120,6 +1129,14 @@ type BridgeSpace struct {
 // "bridge_connect" or "bridge_disconnect"; fresh settings frames answer.
 type BridgeAction struct {
 	T string `json:"t"`
+}
+
+// BridgeMemSignIn is D224's 登录: a one-time connect link for the home's
+// nmem (T "bridge_mem_sign_in"); BridgeAction{T: "bridge_mem_install"} is
+// 装上 / 更新.
+type BridgeMemSignIn struct {
+	T    string `json:"t"`
+	Link string `json:"link"`
 }
 
 // BrainNow is the brain in use, and why when it isn't the one set.

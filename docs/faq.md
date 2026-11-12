@@ -159,13 +159,24 @@ your **Go**. See [Accounts your partner can read](accounts.md).
 
 ### Can it work with the AI agent in my terminal?
 
-Coming soon: it needs [Nowledge Mem](https://mem.nowledge.co) 0.10.118 or later on the computer
-Ducter lives on. Then **Partner › Your other AI agents › Connect** lets the Claude Code or Codex
-session you have open in a terminal hand your partner a job or ask for your call, and lets your
-partner ask that session what it knows. Either way, your partner checks with you first.
-**Disconnect** turns it all off; **Who can reach it › Nobody** keeps other agents out while what
-you ask your partner to send still gets its answer. With an older Mem, that section says to
-update it first.
+Coming soon: Nowledge Mem is still opening this up on its side. When it does, **Partner › Your
+other AI agents › Connect** lets the Claude Code or Codex session you have open in a terminal hand
+your partner a job or ask for your call, and lets your partner ask that session what it knows.
+Either way, your partner checks with you first. **Disconnect** turns it all off; **Who can reach it
+› Nobody** keeps other agents out while what you ask your partner to send still gets its answer.
+
+What it needs, and what you can do today from that same section:
+
+- A [Nowledge Mem](https://mem.nowledge.co) cloud workspace (free to download and sign up).
+- Nowledge Mem's command-line tool, 0.10.118 or later, on the computer Ducter lives on. If it's
+  missing or older, the section shows **Install** or **Update**: one tap, done the way Nowledge
+  Mem's own guide says. On a Linux server without pipx, it first asks you to run
+  `sudo apt install pipx` there. If the tool came with the Nowledge Mem app, update the app.
+- That tool signed in: paste a one-time connect link from Nowledge Mem on the web
+  (**Connectors › AI Tools**) and tap **Sign in**. The link works once and isn't kept.
+
+If Nowledge Mem isn't ready on its side yet, the section says so; nothing is wrong on yours, and
+your memory works as usual.
 
 ### Can it use my other apps, my phone, or make calls?
 

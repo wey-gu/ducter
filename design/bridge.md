@@ -1,16 +1,18 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-11 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-12 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap); still open: J-Q1–3, J-Q8, J-Q14 ·
-> Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), private `31` and `10`.
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D224 (the released Bridge; the home's own Mem put in, updated and signed in from the same row); still open: J-Q1–3, J-Q8, J-Q14 ·
+> Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
+> run, Mem on a home without it), private `31` and `10`.
 >
 > Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. All of it is in `main`:
 > receive, ask and reply, the linked result reply (J2, D107), outbound messages through a card (J4, D105), the
 > outgoing ledger and recovery (D106) and follow-through (S3, D110). It is proven with real models over a fake
 > Bridge (research/37 §3, §3.2). It is on once the user connects the persona in Settings › 伙伴 (D205, with nmem
 > 0.10.118+ on the home; "Connecting the persona" below), or forced with `DUCTER_BRIDGE=1`. It is not on by
-> default until `bun run bridge:live -- --connected --real` passes (D170 (9), roadmap).
+> default until `bun run bridge:live -- --connected --real` passes (D170 (9), roadmap). On 2026-11-12 that run
+> stopped at Connect: Mem's Cloud answers 503 `cloud_bridge_setup_unavailable` for this workspace (research/66 §3).
 
 ## Connecting the persona (D205)
 
@@ -36,6 +38,29 @@ holds, so the persona's context no longer needs a key or hand-made commands (D17
   send on a card still goes, and its answer comes back (checks run only while one waits, at most 7 days).
 - **No restart:** the partner's Bridge tools are listed only while it is on, and a change starts a fresh partner
   session at the next turn.
+
+### The home's own Mem first (D224)
+
+The same row walks the user to Connect when the home's `nmem` isn't ready, one tap per step. It shows whenever
+memory is on, even before Mem is on the home.
+
+| The home | The row | The tap runs |
+|---|---|---|
+| no `nmem` | **装上 / Install** (free, Mem's own route) | the first route here: `uv tool install nmem-cli`, `pipx install nmem-cli`, `python3 -m pip install --user nmem-cli`; never past the system's PEP 668 mark |
+| no `nmem`, none of those | the line naming `sudo apt install pipx`, **再试一次** | the same check again |
+| `nmem` older than 0.10.118 | **更新 / Update**, with the version | the same source it came from: uv, pipx, or pip (user site past the mark when it was put there so; a venv's own python) |
+| the app's copy, too old | the line: update the Nowledge Mem app | nothing |
+| not signed in | a link field, **登录 / Sign in** | `nmem connect --skip-tools <link>` (sign-in only); the link is never logged or kept |
+| Mem answers from the computer itself | one line: a cloud workspace is needed | nothing |
+| ready | D205's **连接 / Connect** | D205's connect |
+
+Afterwards the new `nmem`'s folder joins Ducter's PATH and `NMEM_CLI_PATH`, and after a sign-in the persona's
+identity is bound as on a start (D141): no restart. Mem's registered codes are all plain lines; `unavailable`,
+`busy` and `capacity` say Mem's side can't take it yet and nothing is wrong on the user's side; `outcome_unknown`
+says Try again finds out. Nothing is retried by itself. Checked on a scratch Ubuntu 26.04 home: a fresh install
+with pipx, hel's pip copy updated past the mark, a used link refused (research/66 §4).
+
+On hel (nmem 0.10.116 by pip, signed in): Settings › 伙伴 › 你的其他 AI › **更新**, then **连接**.
 
 ## Chosen scenarios (dogfood, 2026-11-09)
 
@@ -536,6 +561,13 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
   - Nothing Ducter sends wakes the other side.
 
 ## Try it live (the author runs this)
+
+**Status 2026-11-12 (D224, research/66 §3).** nmem 0.10.118 is public. The dry preflight passes the version and
+the one personal place; `connections list`, Ducter's Connect tap (on a scratch home) and a native session's
+`prepare` all answer 503 `cloud_bridge_setup_unavailable` (outcome unknown, not retryable). Per the skill nothing
+else was tried, and nothing was created. S1, S2, S3, X1 wait for Mem to open connections for the workspace; then
+run the commands below. Also check then whether a terminal session's native inbox can send to the persona's Agent
+mailbox and where the reply lands (research/66 §2, INFERRED).
 
 **Status 2026-11-11 (D205).** The path is now Mem's existing-role connection. Built and tested over the fake
 nmem; never run against Mem (nmem 0.10.118 isn't public yet; the Cloud side is deployed). On the home, once

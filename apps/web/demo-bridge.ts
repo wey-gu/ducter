@@ -3,6 +3,7 @@
 // a connect that never returns). For pictures of each state, web and phone.
 //   DUCTER_PORT=7798 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_BRIDGE=ready bun apps/web/demo-bridge.ts
 // DEMO_BRIDGE: ready · connecting · connected · update · no_space · refused:<reason> · failed · unconfirmed
+//   D224: install (no nmem; pipx here) · install_need (no pipx) · update_pip (hel: 0.10.116 by pip) · sign_in · local
 // then open http://127.0.0.1:7798/app#settings=partner
 import { startCore, stubRunner } from "@ducter/core";
 import { noOo } from "./demo-oo.ts";
@@ -17,8 +18,11 @@ const ok = (j: unknown) => ({ code: 0, out: JSON.stringify(j), err: "" });
 const conn = { connection_id: "00000000-0000-4000-8000-000000000001", agent_id: "ducter", identity_birth: "00000000-0000-4000-8000-000000000900", client_label: "ducter", state: "active" };
 const run = async (args: string[]) => {
   const a = args.join(" ");
-  if (args[0] === "--version") return ok(want === "update" ? "nmem 0.10.116" : "nmem 0.10.118");
-  if (a.includes("bridge connections --help")) return { code: want === "update" ? 2 : 0, out: "", err: "" };
+  if (want === "install" || want === "install_need") return undefined; // no nmem on the home
+  const old = want === "update" || want === "update_pip";
+  if (args[0] === "--version") return ok(old ? "nmem 0.10.116" : "nmem 0.10.118");
+  if (a.includes("bridge connections --help")) return { code: old ? 2 : 0, out: "", err: "" };
+  if (a === "status") return want === "sign_in" ? { code: 1, out: "", err: "connection refused" } : ok({ status: "healthy", backend: want === "local" ? "local" : "cloud" });
   if (a === "bridge setup")
     return ok({
       state: "selection_needed",
@@ -39,12 +43,25 @@ const run = async (args: string[]) => {
   return { code: 2, out: "", err: "demo: not scripted" };
 };
 
-const core = startCore({ ooSource: noOo, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "hel" }, bridgeLink: { run, env: {} } });
+// D224: the home's files as the row reads them: hel's pip copy, or pipx to install with.
+const files: Record<string, string> = want === "update_pip" ? { "/root/.local/bin/nmem": "ELF", "/root/.local/lib/python3.14/site-packages/nmem_cli-0.10.116.dist-info/INSTALLER": "pip\n" } : {};
+const tools: Record<string, string> = want === "install" ? { pipx: "/usr/bin/pipx" } : want === "update_pip" ? { nmem: "/root/.local/bin/nmem", "python3.14": "/usr/bin/python3.14" } : {};
+const sys = {
+  which: (c: string) => tools[c],
+  exists: (p: string) => p in files,
+  read: (p: string) => files[p],
+  list: (d: string) => [...new Set(Object.keys(files).filter((p) => p.startsWith(d + "/")).map((p) => p.slice(d.length + 1).split("/")[0]!))],
+  real: (p: string) => p,
+  home: "/root",
+  platform: "linux" as const,
+};
+const exec = async () => new Promise<never>(() => {}); // a tap shows "installing…" and stays there
+const core = startCore({ ooSource: noOo, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "hel" }, bridgeLink: { run: run as never, env: {}, sys, exec } });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 core.persona.mem = { agentId: "ducter", owned: true };
 core.settings.setMemState("connected");
 core.settings.set({ language: zh ? "zh" : "en" });
 // States after a tap are reached by tapping, as the user would.
-if (want !== "ready" && want !== "update" && want !== "no_space") void core.bridgeLink.connect();
+if (!["ready", "update", "no_space", "install", "install_need", "update_pip", "sign_in", "local"].includes(want)) void core.bridgeLink.connect();
 console.log(`[demo] up at http://127.0.0.1:${core.port}/app#settings=partner (data: ${core.dataDir})`);

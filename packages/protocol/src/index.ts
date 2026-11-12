@@ -731,6 +731,10 @@ export type ClientFrame =
   // connection, run by the home's nmem on the user's tap. Answered by fresh settings frames (bridge).
   | { t: "bridge_connect" }
   | { t: "bridge_disconnect" }
+  // D224: put in (or update) the home's Nowledge Mem command line; sign it in with a one-time
+  // connect link the user made in Nowledge Mem (never logged or kept).
+  | { t: "bridge_mem_install" }
+  | { t: "bridge_mem_sign_in"; link: string }
   // The partner's and the app's settings (D71): "settings" answers with a settings frame and
   // keeps the socket subscribed (every change goes to every subscriber). "settings_set" changes
   // some of them. "memory_forget" forgets one 记下了 / Noted line: in Nowledge Mem when it has the
@@ -1501,8 +1505,11 @@ export interface MemView {
  * the identity lacks its original registration; lifetime_inactive: the identity is retired;
  * attachment_mismatch: where it receives no longer matches it; control_denied: this sign-in doesn't
  * hold it; revoked: this connection was disconnected before; conflict: already bound to another.
+ * D224: unavailable: Mem's side can't take it now
+ * (`_unavailable`, `_busy`, `_capacity`), nothing to do on the user's side; unknown: no answer came
+ * back, so whether it took is unknown (Try again is the same connect, never a second one).
  */
-export type BridgeRefusal = "authority_missing" | "custody_birth_missing" | "lifetime_inactive" | "attachment_mismatch" | "control_denied" | "revoked" | "conflict";
+export type BridgeRefusal = "authority_missing" | "custody_birth_missing" | "lifetime_inactive" | "attachment_mismatch" | "control_denied" | "revoked" | "conflict" | "unavailable" | "unknown";
 
 /**
  * D205: Settings › 伙伴's row for the persona's own Bridge connection (the frame carries it only
@@ -1512,14 +1519,28 @@ export type BridgeRefusal = "authority_missing" | "custody_birth_missing" | "lif
  * (reason); failed: it didn't answer as expected (detail); unconfirmed: connected, but the passive
  * check after it didn't say it acts as the identity, so Bridge stays off (try again, or disconnect);
  * pinned: DUCTER_BRIDGE=1 on the home (no disconnect here).
+ *
+ * D224, the home's own Mem command line first: install_mem: the home has no `nmem` (canRun: one tap
+ * puts it in with Mem's official route; else need names what to install first, "pipx");
+ * update_mem: canRun: one tap updates it from the source it came from (else need: "app", update the
+ * Nowledge Mem app; "other", update it the way it was installed); installing / updating while it
+ * runs; sign_in: `nmem` is here but not signed in to Nowledge Mem (paste a connect link; signIn says
+ * why the last one didn't work); signing_in; local_mem: Mem here answers from this computer, not a
+ * Nowledge Mem cloud workspace, which other AI agents need. detail, after a step that didn't work:
+ * what the installer or Mem said, clipped, never a secret.
  */
 export interface BridgeView {
-  state: "update_mem" | "ready" | "no_space" | "connecting" | "connected" | "disconnecting" | "refused" | "failed" | "unconfirmed";
+  state: "install_mem" | "installing" | "update_mem" | "updating" | "sign_in" | "signing_in" | "local_mem" | "ready" | "no_space" | "connecting" | "connected" | "disconnecting" | "refused" | "failed" | "unconfirmed";
+  canRun?: boolean;
+  need?: "pipx" | "app" | "other";
+  signIn?: "used" | "bad" | "failed";
+  /** The home's nmem version, when it answered. */
+  version?: string;
   /** The persona's identity in Mem, as connect names it (--agent-id). */
   identity: string;
   /** The user's own place in Mem, "Only me": its label and exact id. */
   space?: { id: string; label: string };
-  /** update_mem: the computer whose Nowledge Mem needs updating (the home). */
+  /** install_mem, update_mem, sign_in, local_mem: the computer it is about (the home). */
   home?: string;
   reason?: BridgeRefusal;
   /** failed, or a disconnect that didn't go through: what Mem said, clipped. */

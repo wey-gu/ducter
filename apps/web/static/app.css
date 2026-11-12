@@ -6870,6 +6870,13 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 /* D226: 今天看了什么 / What it looked at today, under the switch (Settings › Notifications). */
 .quiet-day { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 0 4px; }
 .quiet-day .reads { align-self: stretch; }
+/* The reading problem, two lines at most on a phone: balanced, never a lone clause on the second. */
+.quiet-day > .warn { text-wrap: balance; }
+/* D226: the day in short groups (came in · read and said · held · how it stands); a rule's leftovers and a status softer. */
+.reads.day { gap: 10px; padding: 12px 14px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.reads.day .day-group { display: flex; flex-direction: column; gap: 2px; }
+.reads.day .read.soft { color: var(--ink-muted); }
+.reads.day .honest { margin-top: 0; padding-top: 8px; }
 /* D228: 在哪儿都能用 / From anywhere in its ⓘ: the address, who gets in, how it is reached. */
 .dev-anywhere { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .dev-anywhere .acts { align-items: center; }

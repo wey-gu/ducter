@@ -652,6 +652,9 @@ class AppState {
       // D157: every task says which computer it runs on once there are two: know them.
       else this.send({ t: "devices" });
       if (this.connections || this.sheet?.kind === "settings") this.send({ t: "connections" });
+      // D226: the day, and the reading problem that shows without opening, once asked: a
+      // restarted home may read again (or no longer).
+      if (this.proactiveDay) this.askDay();
     }
     // on_hand closes the replay that follows a welcome.
     if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);

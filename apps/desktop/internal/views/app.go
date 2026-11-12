@@ -770,6 +770,11 @@ func (a *App) Welcomed() {
 	if a.S.ConnAsked || inSettings {
 		a.send(protocol.ConnectionsReq{T: "connections"})
 	}
+	// D226: the day (and its reading problem) is asked again on a new
+	// socket once asked: a restarted home may read again, or no longer.
+	if a.S.Day != nil || (inSettings && a.settingsTab() == TabNotify) {
+		a.send(protocol.ProactiveDayReq{T: "proactive_day"})
+	}
 }
 
 // forgetShown drops everything shown from a Log: it started over, or the

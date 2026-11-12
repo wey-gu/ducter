@@ -39,12 +39,14 @@ export function fakeCalendarStore(fx: CalFixture, o: { accounts?: string[] } = {
   const apps = (): AppTarget[] => accounts.map((acc, i) => ({ connectionId: "conn_oo", source: "oo", service: "googlecalendar", title: "Google Calendar", account: accounts.length === 1 && i === 0 ? undefined : acc.replace(/[@.]/g, "-"), label: acc, watch: true, excluded: false }));
   const labelOf = (account?: string) => (account ? accounts.find((a) => a.replace(/[@.]/g, "-") === account) : accounts[0]);
   let writeFails = false;
+  let readsFail = false;
   const store = {
     view: () => [{ id: "conn_oo", name: "oo", url: "oo:", source: "oo", addedAt: "2026-11-01T00:00:00Z", via: "oo", state: "ok" }],
     apps: (id: string) => (id === "conn_oo" ? apps() : []),
     async read(who: { role: string }, _c: string, action: string, input: Record<string, unknown>, account?: string) {
       calls.push({ action, input, account, who: who.role });
       if (ooOp(action) === "write") return { ok: false, error: "a write outside the Go path", op: "write" };
+      if (readsFail) return { ok: false, error: '{"errorCode":"invalid_input","message":"app service does not match requested service"}', op: "read" };
       const acc = labelOf(account)!;
       if (action === "googlecalendar.list_calendars") return { ok: true, op: "read", result: { items: fx.calendars[acc] ?? [] } };
       if (action === "googlecalendar.list_events") {
@@ -87,6 +89,7 @@ export function fakeCalendarStore(fx: CalFixture, o: { accounts?: string[] } = {
     ran,
     events: log,
     failWrites: () => (writeFails = true),
+    failReads: () => (readsFail = true),
     resolve: (decisionId: string, option: Bodies["decision_resolved"]["option"]) => append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId, option, by: "user" } }),
   };
 }

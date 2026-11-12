@@ -410,6 +410,13 @@ note and a `Dn`) before it is built.
   first), with the next prototype review.
 - [ ] **The calendar in the iOS widget / Lock Screen** ("next: 14:00 Design sync"). Trigger:
   the widget work.
+- [ ] **Re-check D223 on hel** after the next release: the day card and one change card through
+  OOMOL Hosted with both accounts (no `app service does not match` in the Log). Trigger: the
+  release that carries D223.
+- [ ] **The chat watcher's input on OOMOL Hosted** (D223 (3)): it now reaches
+  `slack.search_messages`, whose schema takes `query` and `count` only (no `after`, `limit`;
+  `additionalProperties: false`), so the look likely fails as invalid input; Discord has none of
+  the three actions there. Fit the input per action from its guide. Trigger: D223 on hel.
 
 ## Pictures and files, phases 2 and 3 (D206, `design/media.md`)
 

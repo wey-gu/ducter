@@ -7,7 +7,8 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 export interface FakeAction {
   id: string;
   operationType: "read" | "write" | "destructive";
-  run: (input: Record<string, unknown>) => unknown;
+  /** `app`: the account execute picked (v2 with apps: by appId, or its service's default). */
+  run: (input: Record<string, unknown>, app?: Record<string, unknown>) => unknown;
   /** v2 search: whether the catalog has an account for its service (default true). */
   authenticated?: boolean;
 }
@@ -70,7 +71,17 @@ export function fakeOpenConnectorV2(actions: FakeAction[], token?: string, opts:
         run: (a) => {
           const x = by.get(String(a.actionId));
           if (!x) return { errorCode: "invalid_input", message: "unknown action", ok: false };
-          return { executionId: "ex_1", actionId: x.id, output: x.run((a.input ?? {}) as Record<string, unknown>) };
+          // OOMOL Hosted checks the picked app against the action's service (hel, 2026-11-12).
+          const service = x.id.split(".")[0];
+          const apps = (opts.apps ?? []) as Record<string, unknown>[];
+          let app: Record<string, unknown> | undefined;
+          if (typeof a.appId === "string") {
+            app = apps.find((p) => p.id === a.appId);
+            if (!app) return { errorCode: "app_not_found", message: "app not found", ok: false };
+            if (app.service !== service) return { errorCode: "invalid_input", message: "app service does not match requested service", ok: false };
+          } else if (typeof a.alias === "string") app = apps.find((p) => p.service === service && (p.alias === a.alias || p.accountLabel === a.alias));
+          else app = apps.find((p) => p.service === service && p.isDefault) ?? apps.find((p) => p.service === service);
+          return { executionId: "ex_1", actionId: x.id, output: x.run((a.input ?? {}) as Record<string, unknown>, app) };
         },
       },
     ],

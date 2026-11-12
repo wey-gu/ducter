@@ -62,6 +62,8 @@ export interface Expect {
   askReversible?: boolean;
   /** A partner-level decision (ask) was made. */
   ask?: boolean;
+  /** No decision card of any kind was made. */
+  noAsk?: boolean;
   /** A task's question was said in the partner's own words, tied to its decision (D129). */
   relayed?: boolean;
   /** Max visible characters of a decision card's question the partner wrote (D129). */
@@ -160,6 +162,8 @@ export interface Scenario {
    * (in both calendars), 18:30 家里吃饭 (Family), 19:00 Gym (marked free); a declined All hands.
    */
   calendar?: true;
+  /** With `calendar`: the calendar tool can't read (hel, 2026-11-12); the default account still answers a generic read. */
+  calendarDown?: true;
 }
 
 // Under a result message the app renders, from the task's typed report: the task chip, the
@@ -1356,6 +1360,16 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "明天下午三点加个半小时的会，和 lina@nowledge-labs.ai 对一下 HawDB 的发布" }],
     expect: { opens: 0, msgs: [0, 1], maxChars: 80, calCard: "create", called: [{ tool: "calendar" }], forbid: [/已(经)?(添加|加好|加上|发出|约好)|加好了|搞定/] },
     rubric: "A new event with a guest. It proposes it with calendar do=propose (create, tomorrow 15:00 for 30 minutes, Lina invited, a Chinese title about the HawDB release), so a card appears that names the calendar, the time and that Lina gets an invitation. It writes nothing or one short Chinese line, never claims it was added or that Lina was invited, and does not restate the card's details.",
+  },
+  {
+    id: "calendar-unreadable-zh",
+    category: "calendar",
+    lang: "zh",
+    calendar: true,
+    calendarDown: true,
+    steps: [{ user: "帮我在日历上记一下 20 号去北京参加 agibar 的分享，记成全天，时间待定" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 90, noCalCard: true, noAsk: true, called: [{ tool: "calendar" }], forbid: [/已(经)?(添加|记(好|上|下)|加好|加上)|记好了|搞定/] },
+    rubric: "The calendar can't be read right now (hel, 2026-11-12). It tries the calendar tool, which says it can't read. It tells the user plainly in one short Chinese line that it can't reach their calendar just now (and may say it'll add it once it can). It must not claim the event was added, must not open a task, must not make any card or try to add it another way, and names no plumbing (oo, OOMOL, connection names, error codes).",
   },
   {
     id: "calendar-decline-en",

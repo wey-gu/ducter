@@ -681,8 +681,12 @@ export function openConnections(opts: {
     if (!d) throw new LinkError("not_mcp", `${r.name} no longer lists a search, guide and execute tool`);
     return d;
   };
-  /** The OpenConnector app id behind an account label (its email, alias or name), for v2's appId. */
-  async function appIdOf(r: Record_, account: string): Promise<string | undefined> {
+  /**
+   * The OpenConnector app id behind an account label (its email, alias or name), for v2's appId,
+   * of the action's own service: one address is often both a Gmail and a Google Calendar app, and
+   * the other's id is refused ("app service does not match requested service", hel 2026-11-12).
+   */
+  async function appIdOf(r: Record_, account: string, service: string | undefined): Promise<string | undefined> {
     try {
       const res = await fetcher(`${apiBase(r.url)}/v1/apps?status=active`, {
         headers: { accept: "application/json", ...(keyOf(r.id) ? { authorization: `Bearer ${keyOf(r.id)}` } : {}) },
@@ -691,7 +695,7 @@ export function openConnections(opts: {
       if (!res.ok) return;
       const rows = ((await res.json()) as { data?: Record<string, unknown>[] })?.data ?? [];
       const want = account.trim().toLowerCase();
-      const hit = rows.find((o) => [o.accountLabel, o.alias, o.displayName, o.connectionName].some((v) => typeof v === "string" && v.trim().toLowerCase() === want));
+      const hit = rows.find((o) => (!service || o.service === service) && [o.accountLabel, o.alias, o.displayName, o.connectionName].some((v) => typeof v === "string" && v.trim().toLowerCase() === want));
       return typeof hit?.id === "string" ? hit.id : undefined;
     } catch {
       return;
@@ -700,28 +704,40 @@ export function openConnections(opts: {
   const opOf = (t?: LinkTool) => (t?.annotations?.readOnlyHint === true ? "read" : "write");
 
   async function classify(key: string, action: string): Promise<"read" | "write"> {
+    const c = await lookUp(key, action);
+    return "op" in c ? c.op : "write";
+  }
+
+  /**
+   * Read or write, or `missing`: a catalog that can't describe the action (OOMOL answers 404 for
+   * one it doesn't have, e.g. slack.list_mentions) has nothing to run. That is not a write: a read
+   * of it fails as "no such action" (the watcher then tries its next one), never "a write outside
+   * the Go path" (hel 2026-11-12). Missing is not remembered; staging still treats it as a write.
+   */
+  async function lookUp(key: string, action: string): Promise<{ op: "read" | "write" } | { missing: string }> {
     const r = find(key);
-    if (!r) return "write";
+    if (!r) return { op: "write" };
     // oo says nothing about read or write: the action's name decides, conservatively (D122).
-    if (r.source === "oo") return ooOp(action);
+    if (r.source === "oo") return { op: ooOp(action) };
     const ck = `${r.id} ${action}`;
     const hit = opCache.get(ck);
-    if (hit) return hit;
+    if (hit) return { op: hit };
     let op: "read" | "write" = "write";
     try {
       if (await speaksCatalog(r)) {
         const d = await dialect(r);
         const g = await withLink(r, (l) => l.call(d.guide, { actionId: action }));
-        op = !failed(g) && ocOperation(g.data) === "read" ? "read" : "write";
+        if (failed(g)) return { missing: errorText(g) };
+        op = ocOperation(g.data) === "read" ? "read" : "write";
       } else {
         const t = (await tools(r)).find((x) => x.name === action);
         op = t?.annotations?.readOnlyHint === true ? "read" : "write";
       }
     } catch {
-      return "write"; // can't tell: treat as a write, and don't remember it
+      return { op: "write" }; // can't tell: treat as a write, and don't remember it
     }
     opCache.set(ck, op);
-    return op;
+    return { op };
   }
 
   const record = (body: Omit<Bodies["connection_call"], "callId"> & { callId?: string }, watch = false) => {
@@ -738,7 +754,7 @@ export function openConnections(opts: {
       let pick: Record<string, string> = {};
       if (account && d.account === "appId") {
         // An app id when the label (email, alias or name) is one it knows; else the label as alias.
-        const id = await appIdOf(r, account);
+        const id = await appIdOf(r, account, /^([a-z0-9_-]+)\./i.exec(action)?.[1]);
         pick = id ? { appId: id } : { alias: account };
       } else if (account && d.account) pick = { [d.account]: account };
       return withLink(r, (l) => l.call(d.exec, { actionId: action, input: args, ...pick }));
@@ -969,7 +985,13 @@ export function openConnections(opts: {
         record({ ...base, op: "read", state: "denied", error: "excluded" }, w);
         return err(`The user asked Ducter not to read this ${service} account (不让 Ducter 看这个). Don't read it another way.`);
       }
-      const op = await classify(r.id, action);
+      const looked = await lookUp(r.id, action);
+      if ("missing" in looked) {
+        const gone = /not.?found|404|unknown|no such|does not exist|doesn't exist/i.test(looked.missing);
+        record({ ...base, op: "read", state: "failed", error: gone ? `no such action (${looked.missing})` : looked.missing }, w);
+        return err(gone ? `No action ${action} on ${r.name}. connection_search finds the ones it has.` : `${r.name} couldn't describe ${action} (${looked.missing}); nothing ran.`);
+      }
+      const op = looked.op;
       if (op === "write") {
         record({ ...base, op, state: "denied", error: "a write outside the Go path" }, w);
         return err(who.role !== "partner" ? "This changes something outside. Tasks only read connections; tell the partner what you'd do and why." : "This changes something outside: ask the user first (connection_call with question and goLabel).", "write");

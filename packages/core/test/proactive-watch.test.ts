@@ -197,3 +197,36 @@ test("calendars: each seen calendar of each account, with the real action, reads
   cal.stop();
   w.stop();
 });
+
+test("an action the hosted catalog doesn't have is missing, not a write: the look moves on to the next (hel, 2026-11-12)", async () => {
+  // OOMOL Hosted has no slack.list_mentions (its guide answers 404); it was called "a write outside
+  // the Go path" and the look stopped there, every ten minutes.
+  const { fakeOpenConnectorV2 } = await import("./fake-mcp.ts");
+  const dir = scratch();
+  const apps = [{ id: "app_slack", service: "slack", accountLabel: "wey", authType: "oauth2", status: "active", isDefault: true }];
+  const v2 = fakeOpenConnectorV2([{ id: "slack.search_messages", operationType: "read", run: () => ({ matches: [] }) }], "tok_1", { apps });
+  try {
+    const log = openLog({ path: join(dir, "ducter.db"), persona: "default" });
+    const conns = openConnections({ dataDir: dir, log, oo: ooSource({ env: {}, dir: "/nonexistent-oo", which: () => null }) });
+    const added = await conns.add({ url: v2.url, token: "tok_1" });
+    expect(added.ok).toBe(true);
+    const id = (added as { id: string }).id;
+    const missing = await conns.read({ role: "watch" }, id, "slack.list_mentions", {});
+    expect(missing).toMatchObject({ ok: false });
+    expect((missing as { error: string }).error).toMatch(/^No action slack\.list_mentions/);
+    expect((missing as { op?: string }).op).toBeUndefined();
+    const w = createWatchers({ dataDir: dir, connections: conns, clock: new FakeClock(MORNING), enabled: () => true, zone: () => ZONE, onItems: () => {} });
+    const slack = conns.apps(id).find((a) => a.service === "slack")!;
+    expect(await w.look(slack, MORNING - 600_000)).toEqual([]);
+    const calls = log.read({ kinds: ["connection_call"] }).map((e) => e.body as { action: string; state: string; op: string });
+    expect(calls.some((b) => b.state === "denied")).toBe(false);
+    expect(calls.filter((b) => b.action === "slack.list_mentions").every((b) => b.state === "failed" && b.op === "read")).toBe(true);
+    expect(calls.find((b) => b.action === "slack.search_messages")).toMatchObject({ op: "read", state: "done" });
+    // Staging still treats an action it can't describe as a write (it costs a Go, never a silent run).
+    expect(await conns.classify(id, "slack.list_mentions")).toBe("write");
+    w.stop();
+    log.close();
+  } finally {
+    v2.stop();
+  }
+});

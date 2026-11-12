@@ -1852,6 +1852,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (!connection || !action) return { ok: false, error: "connection_call needs `connection` and `action` (or a `decisionId` after the user's Go)." };
         const op = await conns.classify(connection, action);
         if (op === "read") return conns.read(P, connection, action, a.input ?? {}, s_(a.account) || undefined);
+        // D222: a Google Calendar change is the calendar tool's own card, never a generic one,
+        // also when the calendar tool can't read right now (hel, 2026-11-12).
+        const calTool = (core as { calendar?: { accounts(): unknown[] } }).calendar;
+        if (/^googlecalendar\./i.test(action) && (calTool?.accounts().length ?? 0) > 0)
+          return { ok: false, op, error: "Calendar changes go through the calendar tool (do=propose), its own card. If it can't read the calendar now, tell the user so in one plain line and stop; don't change it another way." };
         const question = s_(a.question);
         const goLabel = s_(a.goLabel);
         if (!question || !goLabel)
@@ -1886,6 +1891,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const cal = (core as { calendar?: import("../../core/src/calendar.ts").Calendar }).calendar;
   if (cal && core.mcp.registerWhen) {
     const str_ = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const cantReadCal = (errors?: string[]) =>
+      `Couldn't read the user's calendar just now (${(errors ?? []).join("; ") || "no answer"}). Tell them so in one plain line and stop. Don't read or change it another way (no connection_call, no task).`;
     const zoneNow = () => cal.zone();
     const todayIn = (z: string) => new Intl.DateTimeFormat("en-CA", { timeZone: z, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const hm = (iso: string) => (/T(\d\d:\d\d)/.exec(iso)?.[1] ?? "");
@@ -1938,7 +1945,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           const from = /^\d{4}-\d\d-\d\d/.test(str_(a.from)) ? str_(a.from).slice(0, 10) : todayIn(zone);
           const to = /^\d{4}-\d\d-\d\d/.test(str_(a.to)) ? str_(a.to).slice(0, 10) : from;
           const g = await cal.glance(from, to);
-          const { errors, ...card } = g;
+          const { errors, blind, ...card } = g;
+          // Nothing could be read: an empty day would be a guess (hel, 2026-11-12).
+          if (blind) return { ok: false, error: cantReadCal(errors) };
           const any = g.days.some((d) => d.events.length || d.marks?.length);
           if (a.show === true && turn && any) turn.cal = card;
           return {
@@ -1947,11 +1956,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             days: g.days.map((d) => ({ date: d.date, ...(d.marks?.length ? { marks: d.marks } : {}), events: d.events.map(brief) })),
             ...(g.clashes?.length ? { overlaps: g.clashes } : {}),
             ...(errors?.length ? { unread: errors } : {}),
-            note: a.show === true && any ? "The card shows every event under your next message: say the gist in one line (how many, the first, anything that overlaps), never the list." : "Answer in a line or two; times are the user's.",
+            note: errors?.length
+              ? "Some calendars couldn't be read (unread): say which in a few words; what's here is only part of the day."
+              : a.show === true && any ? "The card shows every event under your next message: say the gist in one line (how many, the first, anything that overlaps), never the list." : "Answer in a line or two; times are the user's.",
           };
         }
         if (what === "free") {
           const r = await cal.free({ minutes: Number(a.minutes) || 30, from: str_(a.from) || undefined, to: str_(a.to) || undefined, dayStart: str_(a.dayStart) || undefined, dayEnd: str_(a.dayEnd) || undefined, weekends: a.weekends === true });
+          // A calendar it couldn't read may be busy then: no free time is offered on a guess.
+          if (r.errors?.length) return { ok: false, error: cantReadCal(r.errors) };
           return { ok: true, zone: r.zone, slots: r.slots.map((x) => `${x.start.slice(0, 16)}–${hm(x.end)}`), ...(r.errors?.length ? { unread: r.errors } : {}), note: r.slots.length ? "Offer two or three in plain words; propose only once the user picks (or said any time works)." : "Nothing free in that window: say so and offer a wider one." };
         }
         if (what === "propose") {

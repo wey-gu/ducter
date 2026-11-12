@@ -200,3 +200,19 @@ test("oo's freeBusy query is a read; the writes stay writes", () => {
   expect(ooOp("googlecalendar.find_free_slots")).toBe("read");
   for (const a of ["create_event", "patch_event", "delete_event", "move_event", "quick_add_event", "add_attendee", "import_event"]) expect(ooOp(`googlecalendar.${a}`)).toBe("write");
 });
+
+test("a calendar it can't read says so: blind, never an empty day, and no change is staged (hel, 2026-11-12)", async () => {
+  f.failReads();
+  const g = await cal.glance("2026-11-18", "2026-11-18");
+  expect(g.blind).toBe(true);
+  expect(g.errors?.length).toBeGreaterThan(0);
+  const r = await cal.propose({ change: "create", title: "Lunch", start: "2026-11-19T12:00" }, "d_blind");
+  expect(r.ok).toBe(false);
+  expect(!r.ok && r.error).toContain("Couldn't read the user's calendar");
+  expect(!r.ok && r.error).toContain("no connection_call");
+  const mv = await cal.propose({ change: "move", ref: "c_unknown", start: "2026-11-19T12:00" }, "d_blind2");
+  expect(!mv.ok && mv.error).toContain("Couldn't read the user's calendar");
+  expect(f.staged.size).toBe(0);
+  const free = await cal.free({ minutes: 30, from: "2026-11-18", to: "2026-11-18" });
+  expect(free.errors?.length).toBeGreaterThan(0);
+});

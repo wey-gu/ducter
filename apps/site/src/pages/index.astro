@@ -27,7 +27,7 @@ const ld = {
   "@type": "SoftwareApplication",
   name: "Ducter",
   applicationCategory: "DeveloperApplication",
-  operatingSystem: "macOS, Linux, iOS, iPadOS",
+  operatingSystem: "macOS, Linux, iOS, iPadOS, Android",
   description,
   url: "https://ducter.ai",
   license: "https://www.apache.org/licenses/LICENSE-2.0",
@@ -169,8 +169,8 @@ const ld = {
         <h3>You can also add</h3>
         <div class="stickers">
           <button class="sticker live" id="sticker-web" type="button" aria-describedby="web-detail"><Art name="ab_web" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Browse the web</b><small id="web-small">Drag onto this Mac, or tap</small></button>
-          <div class="sticker lock"><Art name="ab_computer_later" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Use this computer</b><small>Coming later</small></div>
-          <div class="sticker"><Art name="ab_phone" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Use a phone</b><small>On a Mac with Apple silicon</small></div>
+          <div class="sticker"><Art name="ab_computer" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Use the computer</b><small>Tasks in a Mac's apps</small></div>
+          <div class="sticker"><Art name="ab_phone" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Use a phone</b><small>Its own Android phone, on a Mac</small></div>
           <div class="sticker"><Art name="ab_call" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Make calls</b><small>Through Tuwa or your own number</small></div>
         </div>
         <div class="detail" id="web-detail">
@@ -240,7 +240,7 @@ const ld = {
       <li class="where-card reveal">
         <div class="where-art"><Art name="laptop_awake" alt="" sizes="160px" /></div>
         <h3>Mac</h3>
-        <p>The desktop app, for Apple silicon. Ducter can live here and run tasks here, with its own Chrome window for the web.</p>
+        <p>The desktop app, for Apple silicon. Ducter can live here and run tasks here, with its own Chrome window for the web and, once you say so, in your Mac's apps.</p>
         <p class="where-state"><b>Ready</b><a href={dl.href}>{dl.href.startsWith("#") ? "Get it" : "Download"}</a></p>
       </li>
       <li class="where-card reveal">
@@ -271,7 +271,7 @@ const ld = {
         </li>
       )}
     </ul>
-    <p class="body where-note">A phone or iPad needs an address it can reach from outside: Ducter on a server with your own domain. <a href="/docs/phone">Connect your phone</a></p>
+    <p class="body where-note">A phone or iPad needs an address it can reach from outside: Ducter on a server with your own domain, or a Mac at home set up From outside with your domain on Cloudflare. <a href="/docs/phone">Connect your phone</a></p>
   </div>
 </section>
 
@@ -308,10 +308,10 @@ const ld = {
       <div class="sec-head">
         <h2>It looks out for you, quietly.</h2>
       </div>
-      <p class="lede">Say yes once when you add your accounts, and your partner keeps an eye on your mail, calendar, GitHub and chat. It speaks up only when something needs you: one morning message with <b>at most three things</b>, and on a quiet day, nothing at all.</p>
+      <p class="lede">Say yes once when you add your accounts, and your partner keeps an eye on your mail, calendar, GitHub and chat. It speaks up only when something needs you: one morning message with <b>at most three things</b>, and on a quiet day, nothing at all. The first time, it looks back over the last two weeks and picks out what needs you.</p>
       <ul class="points">
         <li><span><b>Each one comes with a next step.</b> Open the renewal page, look for somewhere to stay. Go does it, Hold leaves it, and How I know shows the mails behind it.</span></li>
-        <li><span><b>Right away only when it can't wait</b>, and never in your quiet hours unless you asked for that kind.</span></li>
+        <li><span><b>Right away only when it can't wait:</b> someone who asked you again, or has waited three working days, or a promise due today. Never in your quiet hours unless you asked for that kind.</span></li>
         <li><span><b>It never sends, replies, pays or deletes</b> on its own, and it doesn't tell you how much it read. Tap Useful, or Don't tell me this kind, and it learns.</span></li>
       </ul>
     </div>
@@ -337,10 +337,10 @@ const ld = {
     <div class="sec-head">
       <h2>It runs errands, with your OK.</h2>
     </div>
-    <p class="lede">Booking, buying, calling: every step that spends money or reaches a person shows you exactly what will happen, and waits for you.</p>
+    <p class="lede">Booking, buying, calling, working in your Mac's apps: every step that spends money, sends something or reaches a person shows you exactly what will happen, and waits for you.</p>
     <ul class="points three">
       <li><span><b>It calls for you.</b> A restaurant, a clinic, a shop, in its voice or yours, through <a href="https://tuwa.ai" rel="noopener">Tuwa</a> or from your own Android phone. You see who, what it may say and the likely cost, then tap Call. <span class="when">Needs a Tuwa account, or your own phone with a small cable kit and a live-voice API key.</span></span></li>
-      <li><span><b>It fills in without seeing.</b> Save a sign-in, a card or your travel details once. Your partner fills them in on the right site; every payment asks you first.</span></li>
+      <li><span><b>It fills in without seeing.</b> Save a sign-in, a card or your travel details once. Your partner fills them in on the right site; every payment asks you first. A task that needs a key asks you with a card, never in the chat.</span></li>
       <li><span><b>You can take a turn.</b> Watch its browser from your phone or iPad. Tap My turn to sign in or check a page yourself, then Hand it back.</span></li>
     </ul>
   </div>
@@ -379,7 +379,7 @@ const ld = {
   <div class="wrap">
     <div class="sec-head">
         <h2>Open anything. Any time.</h2>
-      <p class="lede">Most days you stay in the conversation. When you want a closer look, <b>On hand</b> shows every task at a glance. Open one to read what it did, step by step, and the diff of every file it changed, and write to it while it works. On an iPad or a foldable, On hand can take the whole screen.</p>
+      <p class="lede">Most days you stay in the conversation. When you want a closer look, <b>On hand</b> shows every task at a glance. Open one to read what it did, step by step, and the diff of every file it changed, and write to it while it works. Or just reply to its result in the conversation, and it carries on. On an iPad or a foldable, On hand can take the whole screen.</p>
     </div>
     <div class="task-win reveal" aria-label="An opened task">
       <div class="tw-bar">
@@ -448,8 +448,8 @@ const ld = {
         <li><span><b>One adapter, four agents.</b> Claude Code, Codex, pi and DeepSeek Harness, started through <a href="https://github.com/botiverse/oar" rel="noopener">OAR</a> in clean sessions that still carry your own skills and settings.</span></li>
         <li><span><b>Small windows on purpose.</b> Your partner and its tasks work in about 200K tokens. A long conversation stays coherent through short digests and recall, not by replaying everything.</span></li>
         <li><span><b>The facts about each agent, in one place.</b> Context windows, compaction points and versions are checked against the real programs, and <code>ducter doctor</code> warns when yours is outside what was checked.</span></li>
-        <li><span><b>Each agent's own browser first.</b> Ducter's own Chrome is the fallback, on your Mac or your server.</span></li>
-        <li><span><b>Keys stay out of tasks.</b> A key or token you paste is taken out of what a task is told, and hidden everywhere Ducter shows one.</span></li>
+        <li><span><b>Each agent's own browser first.</b> Ducter's own Chrome is the fallback, on your Mac or your server. In a Mac's apps, Ducter's own app tools check every click before it happens, and never open a password manager, a bank or System Settings.</span></li>
+        <li><span><b>Keys stay out of the conversation.</b> A task that needs one asks on a card; it's kept encrypted on the computer Ducter lives on and handed only to the command that uses it. A key you paste is taken out of what a task is told, and hidden everywhere Ducter shows one.</span></li>
         <li><span><b>Budgets are tests.</b> Every prompt and tool list has a size limit that fails the build, and updates are rehearsed end to end on a Linux VM before a release.</span></li>
       </ul>
     </div>

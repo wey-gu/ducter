@@ -95,7 +95,9 @@ working carries on there from its saved progress; it doesn't start over.
   closely and why it said nothing about the rest (not urgent, waiting for the morning message,
   not worth interrupting you for, today's three already said). If it can't read your mail
   closely, for example because the AI agent it thinks with isn't installed, a line says so
-  there, and your partner tells you once in the conversation.
+  there, and your partner tells you once in the conversation. If it read a fair amount of mail
+  closely and noted nothing all day, it says so there too (*Something may be wrong on its side*),
+  rather than staying silent.
 
 On a phone, this page also turns on notifications for that phone and sends a test.
 

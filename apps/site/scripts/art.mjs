@@ -40,6 +40,7 @@ const jobs = [
   ["ab_remote", clay("ab_remote"), [160, 320]],
   ["ab_phone", clay("ab_phone"), [160, 320]],
   ["ab_call", clay("ab_call"), [160, 320]],
+  ["ab_computer", clay("ab_computer"), [160, 320]],
   ["ab_web_later", app("ab_web_later"), [128, 256]],
   ["ab_computer_later", app("ab_computer_later"), [128, 256]],
   ["ab_phone_later", app("ab_phone_later"), [128, 256]],

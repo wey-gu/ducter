@@ -33,7 +33,8 @@
 - **Your computers.** It lives on your Mac, or on a Linux server you own, at home or in the
   cloud, so it keeps working while your laptop sleeps. Lend it more computers to run tasks on.
 - **Quiet until it matters.** Done comes with proof, a question comes with a default it will
-  take if you don't answer, and on a quiet day you hear nothing.
+  take if you don't answer, and on a quiet day you hear nothing. Reply to a task's result and
+  that task carries on.
 - **Open source and self-hosted.** Hosted agent workbenches come and go, and the best personal
   AIs are closed. Ducter is Apache 2.0 and runs where you put it, so nobody can wind it down
   for you ([why it exists](motivation.md)).
@@ -50,8 +51,8 @@
 | **Android** | The Ducter app, from each [GitHub release](https://github.com/wey-gu/ducter/releases/latest); it updates itself, and a foldable opened like a book shows the conversation and On hand on either side of the fold. Or your phone's browser. |
 | **Terminal** | The `ducter` command, on the Mac or the server. |
 
-A phone needs an address it can reach from outside, which today means Ducter on a server with
-your own domain ([Your phone](docs/phone.md)).
+A phone needs an address it can reach from outside: Ducter on a server with your own domain, or
+a Mac at home set up **From outside** with your domain on Cloudflare ([Your phone](docs/phone.md)).
 
 ## Get Ducter
 
@@ -116,11 +117,20 @@ Building from source, the walkthroughs and every command: [Install](docs/install
   Monday at 9 ([Waiting and routines](docs/waiting-and-routines.md)).
 - **The web.** It browses in its own Chrome; watch it from your phone and take a turn when a page
   needs you ([Your devices](docs/devices.md)).
+- **Your Mac's apps, and a phone of its own.** With **Use the computer** on a Mac, a task exports
+  the Keynote deck or answers the mail in that Mac's apps, in the background, with **Stop** in
+  reach; password managers, banks and System Settings stay out of reach. **Use a phone** gives it
+  an Android phone of its own, running on a Mac with Apple silicon, for apps that live only on a
+  phone. Anything that sends, pays or deletes waits for your Go
+  ([Your devices](docs/devices.md#tasks-in-your-macs-apps)).
 - **Errands.** Book and buy with your saved sign-ins and cards, filled in without being seen, and
-  every payment waits for your OK ([Autofill](docs/autofill.md)). Calls through Tuwa, after you
-  tap Call ([Phone calls](docs/calls.md); needs a Tuwa account).
-- **Your mail and calendar.** Say yes once, and it tells you only what needs you: a morning
-  message with at most three things ([Accounts it can read](docs/accounts.md)).
+  every payment waits for your OK ([Autofill](docs/autofill.md)). A task that needs a key (a
+  deploy key, an API key) asks you with a card, never in the chat, and the key stays on your own
+  computer. Calls through Tuwa, after you tap Call ([Phone calls](docs/calls.md); needs a Tuwa
+  account).
+- **Your mail and calendar.** Say yes once, and it tells you only what needs you: a first look
+  over the last two weeks, then a morning message with at most three things, and right away only
+  when waiting would cost you ([Accounts it can read](docs/accounts.md)).
 - **What you already decided.** With [Nowledge Mem](https://mem.nowledge.co) (optional), your
   partner and its tasks share one memory with your other AI tools.
 
@@ -157,7 +167,8 @@ flowchart LR
 ## Privacy and safety
 
 Nothing lands without you: Ducter never merges, never works in your own checkout, never sees
-your passwords, and never pays, sends or calls without your OK. Your work reaches an AI provider only through your own agent's
+your passwords, and never pays, sends or calls without your OK. In your Mac's apps it never opens
+a password manager, a bank or System Settings. Your work reaches an AI provider only through your own agent's
 login or key. A server listens on itself only, and each phone or computer connects with a
 one-time code. Details: [Privacy and safety](docs/privacy-and-safety.md).
 
@@ -180,7 +191,9 @@ DeepSeek Harness 去做，用的是你本来就在付的订阅。它住在你的
 
 在哪儿用：Mac 桌面 app（Apple 芯片）、Linux 服务器、iPhone 和 iPad（同一个 app，TestFlight 公测）、Android（GitHub 发布页下载，自己更新，折叠屏也照顾到了）。界面中英双语。
 
-能替你跑腿：订、买时用你存好的登录和卡，它填进去但看不见，每笔付款都先问你；通过 Tuwa 替你打电话（需要 Tuwa 账号），你点了「打过去」才拨。上手请看
+能替你跑腿：订、买时用你存好的登录和卡，它填进去但看不见，每笔付款都先问你；通过 Tuwa 替你打电话（需要 Tuwa 账号），你点了「打过去」才拨。任务缺密钥时给你一张卡，填一次就接着做，密钥存在家里那台电脑上，对话里看不到。
+
+还能在你 Mac 的应用里做事（用电脑），也能用 Ducter 自己的 Android 手机（用手机，跑在 Apple 芯片的 Mac 上）；发送、付款、删除之前都等你点头，密码管理器、银行和系统设置它碰不到。想接着某件事说，回复那条消息就行。上手请看
 [Getting started](docs/getting-started.md)。
 
 ## License

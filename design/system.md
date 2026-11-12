@@ -444,9 +444,12 @@ home, the page and its service worker; Go's twin in `apps/desktop/internal/remot
 remote and needs a device token; pairing codes are rate limited per caller. Cloudflare terminates
 TLS (said in the detail line). Measured live, research/67 §4–5.
 
-**Not yet:** the relay is not deployed (until then a home's notes fail quietly and devices pair
-again after a reboot); the systemd-run path and a quick tunnel across a long sleep are
-unmeasured; the Android app has no `moved` handler. `design/todo.md`.
+**Verified:** live on a scratch home on a Mac (research/67 §5), and on the Linux VM home in
+`bun run e2e:linux` step 8: cloudflared fetched and checked in the VM, the address reached from
+the Mac through Cloudflare with the client's token, and `systemctl --user restart ducter` kept
+the address (its own unit stayed active). **Not yet:** the relay is not deployed (until then a
+home's notes fail quietly and devices pair again after a reboot); a quick tunnel across a long
+sleep is unmeasured; the Android app has no `moved` handler. `design/todo.md`.
 
 ## Workers (D54; built and verified in two VMs, research/29)
 

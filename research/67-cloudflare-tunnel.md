@@ -107,8 +107,11 @@ Tags: VERIFIED (measured here), DOCUMENTED (the vendor says so), INFERRED (reaso
 - VERIFIED on the scratch home: Ducter stopped and started → "kept the tunnel from before",
   same address, the phone reconnected by itself. cloudflared killed (a reboot) and Ducter
   started → a new address in 11–16 s, the sealed note left at the relay.
-- Not verified here: the systemd-run path (no VM run in this session; see the report's open
-  items), and whether a quick tunnel keeps its name across a long sleep or network change
+- VERIFIED on a Linux VM home (Ubuntu 24.04, systemd 255, `bun run e2e:linux` step 8): the home
+  downloaded and checked linux-arm64 cloudflared, the Mac reached it through Cloudflare with its
+  device token (`/api/me` without one: 401), and `systemctl --user restart ducter` kept the
+  address, the tunnel's unit `ducter-anywhere-47777` still active.
+- Not verified here: whether a quick tunnel keeps its name across a long sleep or network change
   (cloudflared reconnects its connection to the edge by itself; that the name survives is
   INFERRED). Ducter checks itself every ~2.5 min while Cloudflare is connected (`/ready`):
   three failed self-checks through the public address start a fresh tunnel.

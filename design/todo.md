@@ -17,7 +17,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 **From anywhere (D228, research/67)**
 - [ ] **Deploy the address relay** (`apps/site/api/addr`, `ADDR_HASH_KEY`; `design/release/push-relay.md`) and check `/api/addr/health`. Trigger: the release that carries D228; until then devices pair again after a home restarts.
-- [ ] **The systemd-run path on a Linux home behind NAT** (`ducter-anywhere-<port>` survives `systemctl --user restart ducter`): an e2e step in `bun run e2e:linux` (turn on, reach it from the Mac through the tunnel, restart the service, same address). Trigger: the next e2e run that has network to Cloudflare.
+- [x] **The systemd-run path on a Linux home** (`ducter-anywhere-<port>` survives `systemctl --user restart ducter`): `bun run e2e:linux` step 8, 2026-11-12 (22/22).
 - [ ] **A quick tunnel across a long sleep and a Wi-Fi change** on the author's MacBook: does the name survive, how fast does the self-check replace it. Trigger: the author tries it.
 - [ ] **The iPhone app's `moved`** in a build on the Simulator and a device (the Swift change builds for the Simulator; not yet run against a moving home), and **the Android app's** (`ducterBridge` has no `moved` yet; until then it pairs again). Trigger: the next app build.
 - [ ] **A phone that added the web page to its Home Screen** keeps opening the old address and is redirected each time; offer to add the new one once. Trigger: a person reports it.

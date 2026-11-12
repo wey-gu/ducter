@@ -121,7 +121,7 @@ export function DevicesSection() {
     return (
       <section class="set devices">
         <BackRow label={t("devices.title")} onClick={() => setOpen(null)} />
-        {shownDev ? <DeviceSheet dv={shownDev} folded={f.members.get(`dev:${shownDev.id}`) ?? []} /> : <ClientSheet cl={shownCl!} folded={f.members.get(`cl:${shownCl!.id}`) ?? []} />}
+        {shownDev ? <DeviceSheet dv={shownDev} folded={f.members.get(`dev:${shownDev.id}`) ?? []} go={(id) => setOpen(`dev:${id}`)} /> : <ClientSheet cl={shownCl!} folded={f.members.get(`cl:${shownCl!.id}`) ?? []} />}
       </section>
     );
   return (
@@ -189,7 +189,7 @@ function Hero({ src, grey, tall, motion }: { src: string; grey?: boolean; tall?:
   );
 }
 
-function DeviceSheet({ dv, folded }: { dv: DeviceView; folded: Client[] }) {
+function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go: (id: string) => void }) {
   const s = statusLine(A.L, dv, { persona: A.S.personaName, home: homeName(), running: runningOn(dv), ago: dv.lastSeen ? ago(A.L, dv.lastSeen) : "" });
   const motion = dv.state === "awake" ? (dv.kind === "server" ? "drift" : "float") : dv.state === "asleep" ? "blanket" : "";
   return (
@@ -200,7 +200,7 @@ function DeviceSheet({ dv, folded }: { dv: DeviceView; folded: Client[] }) {
       </div>
       <div class={`dc-status ${s.tone}`}>{s.text}</div>
       <CoinTray dv={dv} />
-      <Chips dv={dv} />
+      <Chips dv={dv} go={go} />
       {!dv.home && <Via card={`dev:${dv.id}`} list={folded} computer={dv.computer || dv.name} />}
       <DucterLine dv={dv} />
       {!dv.home && <Foot id={dv.id} name={dv.name} means="device.disconnect.means" />}
@@ -387,9 +387,9 @@ function CoinDetail({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
 
 // ---------- what it can do ----------
 
-function Chips({ dv }: { dv: DeviceView }) {
+function Chips({ dv, go }: { dv: DeviceView; go: (id: string) => void }) {
   const [info, setInfo] = useState("");
-  const chips = chipsFor(dv);
+  const chips = chipsFor(dv, A.devices ?? []);
   if (!chips.length) return null;
   const web = dv.abilities.find((a) => a.id === "web");
   const about = (id: string) => (id === "web" && web?.where === "chrome" ? "ability.web.about.chrome" : id === "web" && web?.where === "ducter" ? "ability.web.about.ducter" : id === "phone" && chips.find((c) => c.id === id)?.look === "later" ? "ability.phone.later" : id === "computer" && chips.find((c) => c.id === id)?.look === "later" ? "ability.computer.later" : `ability.${id}.about`);
@@ -405,6 +405,7 @@ function Chips({ dv }: { dv: DeviceView }) {
     const c = chips.find((x) => x.id === id);
     return c && lookOf(c);
   };
+  const elsewhere = (id: string) => chips.find((x) => x.id === id)?.at;
   return (
     <>
       <div class="dc-chips">
@@ -414,11 +415,14 @@ function Chips({ dv }: { dv: DeviceView }) {
             label={t(`chip.${c.id}`)}
             art={art(c.look === "later" ? `ab_${c.id}_later` : `ab_${c.id}`)}
             look={lookOf(c)}
+            {...(c.at ? { where: c.at.more ? t("chip.elsewhere.more", c.at.name, c.at.more) : t("chip.elsewhere", c.at.name) } : {})}
             {...(c.id === "call" && c.look === "fail" ? { state: t("chip.call.signed_out") } : {})}
             {...(c.id === "remote" && (any?.state === "starting" || any?.state === "setup") ? { state: t(any.state === "setup" ? "chip.remote.setup" : "chip.remote.starting") } : {})}
             infoOpen={info === c.id}
             onInfo={() => setInfo(info === c.id ? "" : c.id)}
             onClick={() => {
+              // D237: the home has it through another computer: open that one's card.
+              if (c.at) return go(c.at.id);
               // D199: 打电话 lives in Accounts (the phone card); + starts the same Tuwa sign-in as its offer.
               if (c.id === "call") return A.openCalls(c.look === "add");
               // D217: + 用手机 opens what it downloads and Google's licenses; on, the ⓘ says where it lives.
@@ -444,11 +448,11 @@ function Chips({ dv }: { dv: DeviceView }) {
       )}
       {info && (
         <div class="dc-note">
-          {t(about(info))}
+          {elsewhere(info) ? t(`ability.${info}.elsewhere`, elsewhere(info)!.name) : t(about(info))}
           {info === "call" && <div class="small sub">{t(look("call") === "fail" ? "ability.call.signed_out" : "ability.call.where")}</div>}
           {info === "web" && web?.where === "ducter" && web.state === "on" && !web.setup && <Sites dv={dv} />}
-          {info === "phone" && <PhoneInfo dv={dv} />}
-          {info === "computer" && <ComputerInfo dv={dv} />}
+          {info === "phone" && !elsewhere(info) && look(info) !== "later" && <PhoneInfo dv={dv} />}
+          {info === "computer" && !elsewhere(info) && <ComputerInfo dv={dv} />}
           {info === "remote" && dv.home && <AnywhereInfo dv={dv} />}
           {info !== "remote" && look(info) === "off" && dv.state !== "awake" && <div class="small sub">{t("ability.reason.asleep")}</div>}
         </div>

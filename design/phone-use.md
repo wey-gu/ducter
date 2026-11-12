@@ -28,7 +28,8 @@ apps out of reach), 惊喜 (a whole phone on the Mac).
   while it runs (removed when it quits).
 - One AVD, `ducter`: 720×1600 at 320 dpi, 3 GB RAM, 2 cores, 6 GB data, Play Store, quick boot.
 - Apple Silicon Macs: the home, or a Mac that does tasks for a home elsewhere (D234, §10).
-  Anywhere else the chip stays the D199 ghost.
+  Anywhere else the chip stays the D199 ghost, except on the home when a Mac has it on or is
+  installing it: then **用手机 · 在 {Mac} 上**, which opens that Mac's card (D237).
 
 ## 3. Adding it
 

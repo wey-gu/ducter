@@ -57,6 +57,26 @@ test("--check --json: where each device stands, for an agent to read", async () 
   expect(j.devices[0]).toMatchObject({ id: "local", home: true, current: "0.0.3", latest: "0.0.4", available: true, how: "self", notesBy: { zh: ["在任何设备上原地更新"], en: ["Update in place, from any device"] } });
 });
 
+// D224: --all is the home's one plan: listed in its order, asked once, followed to its end.
+test("--all: the plan in its order, asked once with --yes, followed until it is over", async () => {
+  const core = boot();
+  await core.release.check(true);
+  const out: string[] = [];
+  expect(await cmdUpdate({ t, style, args: args(["--all", "--check"]), port: core.port, dataDir: core.dataDir, log: (s) => out.push(s) })).toBe(0);
+  expect(out.join("\n")).toContain("1. Ducter on");
+  expect(out.join("\n")).toContain("0.0.3 → 0.0.4");
+  out.length = 0;
+  expect(await cmdUpdate({ t, style, args: args(["--all", "--yes"]), port: core.port, dataDir: core.dataDir, log: (s) => out.push(s) })).toBe(0);
+  const text = out.join("\n");
+  expect(text).toContain("updated to 0.0.4");
+  expect(text).toContain(t("update.all.summary"));
+  expect(core.log.read({ stream: "devices", kinds: ["update_all"] }).map((e) => (e.body as any).by)).toEqual(["cli", "cli"]);
+  // Nothing behind any more (the plan's step is done; the card shows 回来了): a second --all says so.
+  out.length = 0;
+  expect(await cmdUpdate({ t, style, args: args(["--all", "--yes", "--json"]), port: core.port, dataDir: core.dataDir, log: (s) => out.push(s) })).toBe(0);
+  expect(JSON.parse(out.join("\n"))).toMatchObject({ ok: true, updated: [] });
+});
+
 // D187: on a Mac that does tasks for a home elsewhere, `ducter update --check` asked nobody and
 // listed only itself. --check goes to the home the CLI follows and lists every computer there.
 test("--check lists every computer of the home it follows, not only this one", async () => {

@@ -353,7 +353,7 @@ From a terminal, on the computer Ducter lives on:
 ```sh
 ducter update --check   # where every device stands (also from a Mac that does tasks for your server)
 ducter update           # this computer (asks first; --yes doesn't)
-ducter update --all     # the other computers first, then this one
+ducter update --all     # everything: this computer, then the others, then their AI agents
 ```
 
 A Mac updates with the app, as above. Its card has the same **Update** button, from your phone or
@@ -366,8 +366,22 @@ the Mac. The Mac you're on updates with this app: if the app is already up to da
 that does tasks for your server still runs the older version, its card says so with **Restart it**. A computer running a Ducter older than
 0.0.4 can't be updated from here: run the install command on it once more.
 
-**Update at night** (off by default, in **Settings**) updates everything during your quiet hours,
-only when nothing is working.
+### Update everything at once
+
+When more than one thing has an update, **Settings › Your devices** says how many, and the top of
+that page (on the Mac, the top of **Settings › Updates and about**) lists them, for example
+*Ducter on hel 0.0.30 → 0.0.31* and *Claude Code on MacBook 2.1.319 → 2.1.322*, with one button,
+**Update all**. Ducter takes care of the order: the computer Ducter lives on first, then your other
+computers, then the AI agents on each. Nothing running is cut off: an AI agent that a task is using
+waits until that task pauses, and the list says so. The list ticks itself off as each one is done;
+if one doesn't update, it says why, the others still go ahead, and **Try again** is there at the
+end. **Stop the rest** leaves what hasn't started as it is. The phone's page reloads itself at the
+end, and the Ducter app on a Mac restarts into its new version last. `ducter update --all` does
+the same from a terminal and shows the same list.
+
+**Update automatically** (off by default, in the same place) does the same during your quiet
+hours (3–5 am if you haven't set any), only when nothing is working, and only to AI agent
+versions Ducter has checked.
 
 ## Remove Ducter
 

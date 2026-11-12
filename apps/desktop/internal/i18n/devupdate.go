@@ -71,8 +71,8 @@ var zhDevup = Table{
 	"devup.why.failed":               "出了点问题，再试一次。",
 	"settings.versions.title":        "各台电脑上的 Ducter",
 	"settings.versions.note":         "%s 和替它做事的电脑，各自是什么版本。",
-	"settings.versions.night":        "夜里自动更新",
-	"settings.versions.night.note":   "在免打扰的时段里、没有事在做的时候，悄悄更新到最新版本。",
+	"settings.versions.night":        "自动更新",
+	"settings.versions.night.note":   "在免打扰时段里（没设就是夜里 3 点到 5 点）、没有事在做的时候，按同样的顺序更新；AI 只更新到 Ducter 验证过的版本。",
 }
 
 var enDevup = Table{
@@ -144,8 +144,8 @@ var enDevup = Table{
 	"devup.why.failed":               "Something went wrong. Try again.",
 	"settings.versions.title":        "Ducter on each computer",
 	"settings.versions.note":         "Which version %s and the computers that do tasks for it run.",
-	"settings.versions.night":        "Update at night",
-	"settings.versions.night.note":   "In quiet hours, when nothing is working, update to the latest version quietly.",
+	"settings.versions.night":        "Update automatically",
+	"settings.versions.night.note":   "In quiet hours (3–5 am if none are set), when nothing is running, in the same order; AI agents only to versions Ducter has checked.",
 }
 
 func init() {

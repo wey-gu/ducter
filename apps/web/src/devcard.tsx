@@ -17,6 +17,7 @@ import { attention, placeOf } from "./store.ts";
 import { disablePush } from "./push-client.ts";
 import { turnOnPush } from "./views.tsx";
 import { liveSize } from "./live.tsx";
+import { UpdateAllCard } from "./updateall.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
@@ -123,6 +124,7 @@ export function DevicesSection() {
     );
   return (
     <section class="set devices">
+      <UpdateAllCard />
       <div class="plist">
         {list.map((dv) => {
           const w = listWord(A.L, dv, { home, running: runningOn(dv) });

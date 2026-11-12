@@ -46,7 +46,7 @@ func TestCheckingSitsInTheHomesRow(t *testing.T) {
 	}
 	name, _ := tt.Find("hel")
 	mac, _ := tt.Find("Siweis-MacBook-Pro")
-	night, _ := tt.Find("夜里自动更新")
+	night, _ := tt.Find("自动更新")
 	if !(checking.Y > name.Y && checking.Y < mac.Y && checking.Y < night.Y) {
 		t.Errorf("在查… at y=%v: not inside hel's row (hel %v, the Mac %v, night %v)", checking.Y, name.Y, mac.Y, night.Y)
 	}

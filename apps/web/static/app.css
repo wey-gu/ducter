@@ -2471,7 +2471,7 @@ a {
 .set-item small.bridge-id {
   margin-top: -4px;
   font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: var(--xs, 12px);
+  font-size: var(--xs);
   overflow-wrap: anywhere;
 }
 .set-item .bridge-acts {
@@ -6838,3 +6838,32 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .cal-line .small.soft { color: var(--ink-soft); line-height: 1.5; }
 .cal-line .btn.text { margin-left: -10px; }
 .cal-line.nudge .acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+
+/* D224: 全部更新 / Update all — one card at the top of 你的设备; a list that ticks itself off. */
+.ua { display: flex; flex-direction: column; gap: var(--s2); margin: 0 0 var(--s4); padding: var(--s4); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--base); }
+.ua-head b { font-size: var(--md); font-weight: 800; }
+.ua-list { display: flex; flex-direction: column; }
+.ua-row { display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 10px; align-items: center; padding: 7px 0; }
+.ua-row + .ua-row { border-top: 1px solid var(--line-soft); }
+.ua-what { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); min-width: 0; }
+.ua-name { font-size: var(--sm); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ua-ver { flex: none; font-size: var(--xs); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ua-state, .ua-why { grid-column: 2; font-size: var(--xs); line-height: 1.45; color: var(--ink-muted); }
+.ua-state.running, .ua-state.waiting { color: var(--working-ink); }
+.ua-state.done { color: var(--done-ink); }
+.ua-state.failed { color: var(--failed-ink); font-weight: 650; }
+.ua-why { color: var(--ink-soft); }
+.ua-mark { grid-row: 1; align-self: center; }
+.ua-mark .spin { transform-origin: 9px 9px; animation: ua-spin 1.1s linear infinite; }
+.ua-mark.done { animation: ua-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes ua-spin { to { transform: rotate(360deg); } }
+@keyframes ua-pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
+.ua-more { padding: 6px 0 0 28px; font-size: var(--xs); color: var(--ink-muted); }
+.ua-note { font-size: var(--sm); line-height: 1.5; color: var(--ink-soft); }
+.ua-note.quiet { font-size: var(--xs); color: var(--ink-muted); }
+.ua-act { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
+.ua-act:empty { display: none; }
+.set-row small.update { color: var(--highlight-ink); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) {
+  .ua-mark .spin, .ua-mark.done { animation: none; }
+}

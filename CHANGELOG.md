@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.0.40
+
+<!-- whats-new
+zh: 任务缺密钥时会给你一张卡，填一次就接着做
+en: A task that needs a key asks you with a card, then carries on
+zh: 密钥存在家里那台电脑上，对话和记录里都看不到
+en: Keys stay on your home computer, never in the chat or the record
+-->
+
+**Keys a task asks for**
+- A task that needs a key (a deploy key, an API key) asks you for it with a card, like a decision:
+  type it once, keep it or use it just this once, and the task carries on, even if it had already
+  stopped and waited for you. Your answer never goes through the chat.
+- Keys are kept encrypted on the computer Ducter lives on, under Settings › Autofill › Keys, with
+  where each was used. 让任务向我要密钥 / Let tasks ask me for keys turns the cards off.
+- A task that prints a key on purpose could still see it; Ducter keeps it out of the conversation,
+  the record and its own reads, and lists every use. Tasks on another computer can't get keys yet.
+
+**Fixes**
+- `ducter doctor` no longer says Nowledge Mem is unreachable when a local nmem answers "ok" (#2).
+
 ## 0.0.39
 
 <!-- whats-new

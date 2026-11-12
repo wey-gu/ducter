@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.31
+
+<!-- whats-new
+zh: 一键全部更新：Ducter 和各台电脑上的 AI 按顺序更新
+en: Update all in one tap: Ducter and every computer's AI agents, in order
+zh: 正在做的事不会被打断，失败的那一项会自己换回去
+en: Work in progress is never cut off; a failed step rolls itself back
+-->
+
+**Update all**
+- When anything has an update, Settings › Your devices (on the Mac, Updates and about) shows one
+  card with what will change, from which version to which, and one button: **全部更新 / Update all**.
+- Ducter puts it in order: the home first, then the other computers, then each computer's AI
+  agents, then this app last. An agent a task is using waits until that task pauses.
+- Each step that fails is put back as it was, and the rest carry on unless they depend on it. The
+  plan survives the home's own restart.
+- **自动更新 / Update automatically** runs the same plan at night when nothing is working (off by
+  default). On the command line: `ducter update --all`.
+
 ## 0.0.30
 
 <!-- whats-new

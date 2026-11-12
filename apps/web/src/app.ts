@@ -1,6 +1,6 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
 import { onWbFrame } from "./workbench-ask.ts";
-import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/protocol";
 import { prepare, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
@@ -8,7 +8,7 @@ import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
-import { haptic, inApp, tellReach } from "./native.ts";
+import { haptic, inApp, nativeCall, nativeInfo, tellReach } from "./native.ts";
 import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
@@ -243,6 +243,10 @@ class AppState {
   savedFailed = false;
   private savedDone?: () => void;
   reach?: Reach;
+  /** D224: 全部更新 / Update all: what it would do, and the plan the home runs (devices frame). */
+  updateAll?: UpdateAllView;
+  /** The last 全部更新 that didn't start, and why. */
+  updateAllAnswer?: "nothing" | "running" | "failed";
   deviceAnswer?: { device: string; reason: UpdateReason | "name_taken" | "failed" };
   /** D156: the last agent update that was refused, on its row. */
   agentAnswer?: { device: string; harness: string; reason: AgentReason };
@@ -374,6 +378,13 @@ class AppState {
     this.api = api;
     this.me = me;
     if (me.personaName) this.S.personaName = me.personaName;
+    // D224: reloaded at the end of 全部更新: back where the list was.
+    try {
+      if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("ducter.reopen") === "devices") {
+        sessionStorage.removeItem("ducter.reopen");
+        this.sheet = { kind: "settings", page: "devices" };
+      }
+    } catch {}
     this.conn = new Connection(
       wsUrl(base),
       token,
@@ -536,8 +547,11 @@ class AppState {
       const home = f.devices.find((d) => d.home);
       // A failure the device (or the agent's copy) has moved past is dropped (D167, D156).
       const devices = f.devices.map((d) => ({ ...d, ...(d.update ? { update: withoutStaleFailure(d.update) } : {}), harnesses: d.harnesses.map(withoutStaleAgentUpdate) }));
+      this.updateAll = f.updateAll;
+      this.afterUpdateAll(f.updateAll);
       return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach), this.changed());
     }
+    if (f.t === "update_all_result") return void ((this.updateAllAnswer = f.ok || f.reason === "nothing" ? undefined : (f.reason ?? "failed")), this.changed());
     if (f.t === "mem_plugin_result") return void ((this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     // "Nothing newer" answers a stale view, never a failure: the devices frame that follows has the version there now.
     if (f.t === "agent_update_result") return void ((this.agentAnswer = f.ok || f.reason === "no_update" ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
@@ -1271,6 +1285,57 @@ class AppState {
     this.deviceAnswer = undefined;
     this.send({ t: "device_update", device });
     this.changed();
+  }
+  /** D224: 全部更新 / Update all: the home makes the plan and runs it; its list comes back in devices frames. */
+  startUpdateAll() {
+    this.updateAllAnswer = undefined;
+    this.send({ t: "update_all" });
+    haptic("light");
+    this.changed();
+  }
+  /** 停止剩下的 / Stop the rest: what hasn't started stays as it is. */
+  stopUpdateAll() {
+    this.send({ t: "update_all", stop: true });
+  }
+  /** 完成 / Done: put a finished plan away. */
+  dismissUpdateAll() {
+    if (this.updateAll) this.updateAll = { ...this.updateAll, plan: undefined };
+    this.send({ t: "update_all", dismiss: true });
+    this.changed();
+  }
+  /**
+   * The apps' own last step (D224): once a plan this page saw running is over, the Android app
+   * checks for its own update, and a page the home now serves newer reloads itself, back on
+   * Settings › 你的设备 where the list was. Once per plan; the plan's id survives the reload.
+   */
+  afterUpdateAll(v: UpdateAllView | undefined) {
+    const p = v?.plan;
+    if (!p || typeof sessionStorage === "undefined") return;
+    const key = "ducter.updateAll";
+    let seen = "";
+    try {
+      seen = sessionStorage.getItem(key) ?? "";
+      if (!p.finishedAt) {
+        if (seen !== `${p.id}:running`) sessionStorage.setItem(key, `${p.id}:running`);
+        return;
+      }
+      if (seen !== `${p.id}:running`) return; // finished before this page saw it run, or handled
+      sessionStorage.setItem(key, `${p.id}:over`);
+    } catch {
+      return;
+    }
+    if (p.items.some((i) => i.state === "done")) haptic("success");
+    if (nativeInfo()?.platform === "android") void nativeCall({ t: "update.check" });
+    if (this.staleFor && typeof location !== "undefined") {
+      try {
+        if (sessionStorage.getItem("ducter.reloadedFor") === this.staleFor) return;
+        sessionStorage.setItem("ducter.reloadedFor", this.staleFor);
+        sessionStorage.setItem("ducter.reopen", "devices");
+      } catch {
+        return;
+      }
+      setTimeout(() => location.reload(), 1200); // the last tick is seen first
+    }
   }
   /** 现在检查 / Check now: the home reads the latest release again; fresh devices frames follow. */
   checkingUpdates = false;

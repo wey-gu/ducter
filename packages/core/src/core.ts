@@ -54,6 +54,7 @@ import { createProjects } from "./projects.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
 import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpdatesDeps } from "./agents.ts";
+import { createUpdateAll, type UpdateAll } from "./update-all.ts";
 import { bundledPiVersion, detectAgent, probeHarnesses } from "./harness-probe.ts";
 import { createMemPlugins, type MemPlugins } from "./mem-plugins.ts";
 import { inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
@@ -115,6 +116,8 @@ export interface CoreOptions {
   ownNumber?: Partial<import("./phone-own/index.ts").OwnPhoneDeps>;
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
   /** D156 test seams: the channels' feed, the agents' updaters, this machine's copies. */
+  /** D224 test seams: how often a running plan looks again, and the night's look. */
+  updateAll?: { tickMs?: number; nightEveryMs?: number; tz?: string };
   agents?: { fetch?: ReleaseFetch; sys?: UpdateSys; which?: (c: string) => string | null; detect?: AgentUpdatesDeps["detect"]; loggedIn?: AgentUpdatesDeps["loggedIn"]; exists?: (p: string) => boolean; settleMs?: number; autoEveryMs?: number };
   /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
   memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean };
@@ -169,6 +172,8 @@ export interface Core extends CoreApi {
   release: ReleaseWatch;
   /** D156: the AI agents' own versions and their updates. */
   agents: AgentUpdates;
+  /** D224: 全部更新 / Update all. */
+  updateAll: UpdateAll;
   /** D169: Nowledge Mem's plugin in each device's own agents. */
   memPlugins: MemPlugins;
   /** D151: Ducter's own browser. */
@@ -538,7 +543,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
-  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ownNumber });
+  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ownNumber });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -561,6 +566,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const gate = createGate({ auth: gateAuth, personaName: () => persona.name });
   let updatesRef: Updates | undefined;
   let agentsRef: AgentUpdates | undefined;
+  let updateAllRef: UpdateAll | undefined;
   let memPluginsRef: MemPlugins | undefined;
   const workers = createWorkers({
     personaName: () => persona.name,
@@ -606,7 +612,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     working: () => tasks.list().filter((c) => c.attention === "working").length,
     settings: () => settings.get(),
     ...(u.run ? { run: u.run } : {}),
-    ...(u.autoEveryMs !== undefined ? { autoEveryMs: u.autoEveryMs } : testing ? { autoEveryMs: 0 } : {}),
+    // D224: the night runs Update all's plan (home first); this one's own night look only in tests that ask.
+    autoEveryMs: u.autoEveryMs ?? 0,
     ...(u.graceMs !== undefined ? { graceMs: u.graceMs } : {}),
     ...(u.criticalWaitMs !== undefined ? { criticalWaitMs: u.criticalWaitMs } : {}),
   });
@@ -626,15 +633,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     name: () => u.homeName ?? osHostname().replace(/\.local$/, ""),
     detect: a.detect ?? ((h) => detectAgent(h, agentProbe)),
     loggedIn: a.loggedIn ?? (async (h) => (await probeHarnesses({ ...agentProbe, only: [h] }))[0]?.loggedIn ?? false),
-    busy: (device, h) => {
-      const here = (c: { place?: Place }) => {
-        const dev = c.place && "device" in c.place ? c.place.device : undefined;
-        return device === "local" ? !dev || dev === "local" || !isWorker(dev) : dev === device || (!!dev && devices.list().some((x) => x.id === device && x.name === dev));
-      };
-      const n = tasks.list().filter((c) => c.attention === "working" && c.harness === h && here(c)).length;
-      const partner = device === "local" && partnerTurn && effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness === h ? 1 : 0;
-      return n + partner;
-    },
+    busy: (device, h) => agentBusy(device, h),
     hold: (h, on) => runner?.holdHarness?.(h, on),
     workers: () => ({
       online: () => workers.online().map((w) => ({ id: w.deviceId, name: w.name })),
@@ -648,14 +647,41 @@ export function startCore(opts: CoreOptions = {}): Core {
     devices: async () => ((await devicesView?.frame())?.devices ?? []).map((x) => ({ id: x.id, name: x.name, awake: x.state === "awake", harnesses: x.harnesses })),
     probed: () => devicesView?.refresh(),
     ...(a.settleMs !== undefined ? { settleMs: a.settleMs } : {}),
-    ...(a.autoEveryMs !== undefined ? { autoEveryMs: a.autoEveryMs } : agentTesting ? { autoEveryMs: 0 } : {}),
+    autoEveryMs: a.autoEveryMs ?? 0, // D224: the night is Update all's
     ...(a.exists ? { exists: a.exists } : {}),
   });
+  function agentBusy(device: string, h: string): number {
+    const here = (c: { place?: Place }) => {
+      const dev = c.place && "device" in c.place ? c.place.device : undefined;
+      return device === "local" ? !dev || dev === "local" || !isWorker(dev) : dev === device || (!!dev && devices.list().some((x) => x.id === device && x.name === dev));
+    };
+    const n = tasks.list().filter((c) => c.attention === "working" && c.harness === h && here(c)).length;
+    const partner = device === "local" && partnerTurn && effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness === h ? 1 : 0;
+    return n + partner;
+  }
   agentsRef = agents;
-  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  // D224: 全部更新 / Update all: the home's one plan, kept on disk, picked up again after its restart.
+  const ua = opts.updateAll ?? {};
+  const updateAll = createUpdateAll({
+    dataDir,
+    log,
+    now: () => (u.sys ?? realSys).now(),
+    updates: () => updates,
+    agents: () => agents,
+    devices: async () => (await devicesView?.frame())?.devices ?? [],
+    busy: (device, h) => agentBusy(device, h),
+    working: () => tasks.list().filter((c) => c.attention === "working").length + (runner?.critical?.() ?? []).length,
+    settings: () => settings.get(),
+    ...(ua.tickMs !== undefined ? { tickMs: ua.tickMs } : {}),
+    ...(ua.nightEveryMs !== undefined ? { nightEveryMs: ua.nightEveryMs } : testing ? { nightEveryMs: 0 } : {}),
+    ...(ua.tz ? { tz: ua.tz } : {}),
+  });
+  updateAllRef = updateAll;
+  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
+  updateAll.onChange(() => devicesView?.changed());
   connections.onChange(() => devicesView?.changed()); // D199: 打电话 signed in, signed out, removed
   agents.onChange(() => devicesView?.changed());
   // D169: Nowledge Mem in the user's own agents, per device. Checked at start, each day, when a
@@ -832,6 +858,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     updates,
     release,
     agents,
+    updateAll,
     memPlugins,
     ...(browser ? { ducterBrowser: browser } : {}),
     ...(ownPhone ? { ducterPhone: ownPhone } : {}),
@@ -883,6 +910,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       pusher.stop();
       updates.stop();
       agents.stop();
+      updateAll.stop_();
       memPlugins.stop();
       release.stop();
       void server.stop(true); // awaiting hangs in Bun 1.3 when a WebSocket was open

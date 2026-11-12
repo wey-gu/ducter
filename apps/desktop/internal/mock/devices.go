@@ -21,6 +21,8 @@ type devices struct {
 	refuse map[string]string // ability -> reason the next add is refused with
 	// conns are the user's connections (D96) a scene shows as mailboxes.
 	conns []protocol.ConnectionView
+	// ua is 全部更新 / Update all as the home would say it (D224), nil: none.
+	ua *protocol.UpdateAllView
 }
 
 func defaultDevices() []protocol.DeviceView {
@@ -102,7 +104,11 @@ func (h *hub) devicesFrame() map[string]any {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	list := append([]protocol.DeviceView(nil), d.list...)
-	return map[string]any{"t": "devices", "devices": list, "reach": d.reach}
+	f := map[string]any{"t": "devices", "devices": list, "reach": d.reach}
+	if d.ua != nil {
+		f["updateAll"] = d.ua
+	}
+	return f
 }
 
 func (h *hub) pushDevices() {
@@ -201,6 +207,8 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 				time.Sleep(80 * time.Millisecond)
 			}
 		}()
+	case "update_all":
+		h.handleUpdateAll(c, f)
 	case "agent_update":
 		// D156: an AI agent's steps, a beat each (AgentStep sets one directly for pictures).
 		c.send(map[string]any{"t": "agent_update_result", "device": f.Device, "harness": f.Harness, "ok": true})

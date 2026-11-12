@@ -162,6 +162,11 @@ type App struct {
 	// open says which disclosures of an opened task are open:
 	// "changes:<id>", "file:<id>:<name>", "details:<id>", "fold:<id>:<seq>".
 	open map[string]bool
+	// D224: updAllAsked: this window tapped 全部更新 and waits for its plan's
+	// id (updAllMine); updAllRestarted: the plan this app restarted for.
+	updAllAsked     bool
+	updAllMine      string
+	updAllRestarted string
 	// livingNewest is, per living line, the newest living message with it.
 	livingNewest map[string]int64
 	// resultShown marks the tasks whose result the partner gave.
@@ -796,6 +801,11 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		delete(a.actSent, f.TaskID)
 	case "devices":
 		a.hintThisMac()
+		a.restartForPlan() // D224: this app's own step comes last
+	case "update_all_result":
+		if f.OK && f.ID != "" && a.updAllAsked {
+			a.updAllMine, a.updAllAsked = f.ID, false
+		}
 	case "on_hand":
 		// on_hand closes the replay that follows a welcome.
 		if a.inDoubt != nil {

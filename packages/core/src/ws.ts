@@ -83,6 +83,8 @@ export interface WsDeps {
   updates?: () => import("./updates.ts").Updates | undefined;
   /** D156: updating the AI agents on each device (agents.ts); absent in tests that don't need it. */
   agents?: () => import("./agents.ts").AgentUpdates | undefined;
+  /** D224: 全部更新 / Update all. */
+  updateAll?: () => import("./update-all.ts").UpdateAll | undefined;
   /** D169: Nowledge Mem in each device's own agents (mem-plugins.ts); absent in tests that don't need it. */
   memPlugins?: () => import("./mem-plugins.ts").MemPlugins | undefined;
   /** D151: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
@@ -620,6 +622,21 @@ export function createWsHandler(deps: WsDeps) {
         }
         const r = await ag.start(device, harness, { by: "user" });
         send(ws, r.ok ? { t: "agent_update_result", device, harness, ok: true } : { t: "agent_update_result", device, harness, ok: false, reason: r.reason, ...(r.detail ? { detail: r.detail } : {}) });
+        return; // progress pushes fresh devices frames to every subscriber
+      }
+      case "update_all": {
+        // D224: 全部更新 / Update all (stop: 停止剩下的; dismiss: put a finished plan away).
+        const ua = deps.updateAll?.();
+        if (!ua) return send(ws, { t: "update_all_result", ok: false, reason: "failed", detail: "updates are not available" });
+        watchDevices();
+        if (f.stop) return send(ws, { t: "update_all_result", ok: ua.stop(), ...(ua.plan() ? { id: ua.plan()!.id } : {}) });
+        if (f.dismiss) {
+          const ok = ua.dismiss();
+          devicesView()?.changed();
+          return send(ws, { t: "update_all_result", ok });
+        }
+        const r = await ua.start(f.by === "cli" ? "cli" : "user");
+        send(ws, r.ok ? { t: "update_all_result", ok: true, id: r.id } : { t: "update_all_result", ok: false, reason: r.reason, ...(r.detail ? { detail: r.detail } : {}) });
         return; // progress pushes fresh devices frames to every subscriber
       }
       case "mem_plugin_install": {

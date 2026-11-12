@@ -161,7 +161,7 @@ In place, from the release (0.0.4 and later):
 ```sh
 ducter update --check --json   # {latest, devices:[{id, name, home, current, latest, available, how, notes}]}
 ducter update --yes            # this machine: download, check the SHA-256, self-check, swap, restart, health-check
-ducter update --all --yes      # the computers doing tasks for it first, then the home
+ducter update --all --yes      # everything: the home, then the other computers, then their AI agents
 ducter update --to 0.0.3 --yes # go back to a version (never done without --to)
 ducter update --agents --check --json  # each AI agent: {device, harness, version, how, latest, available, standing}
 ducter update --agents --yes          # update the AI agents that are behind, each at its safe point

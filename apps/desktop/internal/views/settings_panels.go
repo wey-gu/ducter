@@ -534,6 +534,7 @@ func (a *App) aboutPanel(c *ui.Context) {
 			ui.Text(c, a.L.T("settings.about.made")).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		})
 	})
+	a.updateAllSection(c) // D224: 全部更新 / Update all, first: one tap for everything behind
 	a.appUpdateSection(c)
 	a.updateSection(c) // D148: every computer's Ducter version, the update work's own slot (devupdate.go)
 	a.group(c, "help", a.L.T("settings.help.group"), "", func() {

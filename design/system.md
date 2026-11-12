@@ -594,10 +594,9 @@ at once and reports `{t:"update", phase…}` frames up whichever socket is curre
 **CLI.** `ducter update [--check] [--all] [--json] [--yes] [--to <v>]`. With a Ducter answering
 on this machine it goes through it (`device_update` frames, its safe point, its Log); without
 one (a worker machine) it runs the staged update itself, restarting the service when
-`systemctl --user is-active ducter` says so. `--all`: workers first, then the home.
+`systemctl --user is-active ducter` says so. `--all`: Update all's plan on the home (below, D224).
 
-**At night** (`settings.autoUpdate`, off by default): every 10 min, inside quiet hours, nothing
-working and nothing critical: behind workers first, then the home.
+**At night** (`settings.autoUpdate`, off by default): Update all's plan (below, D224).
 
 **The Mac app's restart (D72, D160).** Restart Now (Settings, or a Mac card's Update) runs off
 the main thread: the administrator password if the bundle needs it (cancelled: nothing changes);
@@ -615,6 +614,68 @@ line until the next check), and skips its stale-LaunchAgent restart (the swap al
 **Simulated, not yet run on a real systemd box:** every step above runs in tests with fakes (fake
 fetch, a fixture tarball, fake systemctl and `/health`, a fake worker socket); the end-to-end on
 Linux waits for the 0.0.4 release.
+
+## Update all (D224, built 2026-11-12)
+
+**Who and when.** Everyone with more than one thing behind: the VPS owner after a release (the
+home, two computers, three agents on each), the Mac-home user with Ducter and Claude Code both
+saying 有更新, the fresh user who never thought about versions. One tap, and the order is
+Ducter's problem, not theirs.
+
+**The plan** (`core/src/update-all.ts`). `offerFrom(devices)` is pure and decides what is in it,
+in order, from the devices frame:
+
+| Step | What | Starts when | Never |
+|---|---|---|---|
+| 1 | the home's Ducter (`self`, or `app` with `fromHere`) | at once | — |
+| 2 | each other computer's Ducter, side by side | the home's step is done (a home that failed: skipped `home`) | past a home that didn't update |
+| 3 | each AI agent that is behind and updatable (`npm`, `brew`, `installer`) | its computer's Ducter step and the home's are over; no other agent updating on that computer; no task (or partner turn) using it there | while a task uses it (it waits, `busy` = how many) |
+| 4 | the apps, by themselves | the plan is over (the phone page, the Android app) or nothing is mid-update (a Mac app that is only a client) | — |
+
+Not in it, said in one line each (`notNow`): a computer that is away (its Ducter and agents), a
+Mac app too old to ask (`app_old`), a Ducter from source or too old (`source`, `manual`). Not
+offered: a step already under way, a Ducter swapped and waiting for its restart, an agent inside
+an app or Ducter, Nowledge Mem's plugin (D169).
+
+**Running it.** `update_all` makes the plan (`by` user, cli, night), logs `update_all started`, and
+writes `<dataDir>/updates/update-all.json` before each step starts. Each step is the single
+update's own call (`Updates.start(id, {to})`, `AgentUpdates.start(device, h, {to})`) and is judged
+from the devices frame on every change and every 3 s: a Ducter on its target is done whatever was
+said (D167); its update's `failed` for this target is a failure with its reason and `rolledBack`;
+an agent at or past its target is done, `no_update` is done (D172). A started step with no outcome
+in 45 min fails `no_answer`. All steps final: `finishedAt`, `update_all finished` (or `stopped`)
+with done and failed counts. `stop` skips what is queued or waiting; `dismiss` hides a finished
+plan (it is otherwise shown 30 min, a day with a failure).
+
+**The home's own restart.** Its step is marked running on disk before `Updates.start`; the helper
+restarts it (D148 (5)); the new home reads the file at start and judges its step by the version it
+runs and the helper's outcome (`absorb`), then goes on with step 2. A rollback ends the home's step
+failed and skips the computers; the agents still run.
+
+**What the clients show** (`DevicesFrame.updateAll {offer, notNow, plan}`). Web
+(`apps/web/src/updateall.tsx`, at the top of 你的设备; the Settings list's row says 有 n 项更新) and
+Mac (Settings › 更新与关于, first card): before, the count, up to four lines with from → to, the order
+line, notNow, what the app does at the end, one button; under way, every step with a drawn mark
+(queued ring, waiting with two bars, a turning arc while running, a check when done that pops once,
+a mark for failed) and its words (the single update's own step words while running); after, the
+title with counts, each why, 再试一次 with a failure, 完成, and 以后自动更新 when the setting is off.
+Reduced motion: no turning, no pop. **The page reloads itself** once a plan it saw running is over
+and the home now serves newer code (`afterUpdateAll`; it comes back on 你的设备); the Android app
+gets `update.check`; the iPhone app updates from the App Store and is not part of it.
+
+**Night** (`settings.autoUpdate`, off by default). Every 10 min: inside quiet hours, else 03:00–05:00
+on the home's clock; nothing working and nothing critical; no plan running: `start("night")`, where
+Ducter steps are only `self` and agents only to `nightTarget`; a step that failed at night is left
+out of night plans for 24 h. `Updates` and `AgentUpdates` keep their own night look for tests only.
+
+**CLI.** `ducter update --all [--check] [--json] [--yes]`: lists the plan in its order (and
+notNow), asks once, sends `update_all {by: "cli"}`, prints each step as it changes, reconnects
+through the home's restart (the same plan id), and ends with the counts; exit 1 when a step failed.
+
+**Simulated vs verified.** Order, waiting, failures, stop, the night and the restart run in
+`core/test/update-all.test.ts` with fake starters, and once through a real `startCore` restarted
+on the same data folder; the CLI against a real core (`cli/test/update.test.ts`); the e2e rig runs
+it on the Linux VM (`scripts/e2e/linux.ts`, step 7).
 
 ## Opening the phone client fast (D209, research/57)
 
@@ -686,10 +747,10 @@ once (`no_update` with its fresh `agents` list when it is already there), runs t
 `{t:"agent_update", phase…}` frames, then `{t:"agents", harnesses}` so the home sees the new
 version.
 
-**Night.** With `settings.autoUpdate` on, inside quiet hours: one agent per 10-minute look, on an
-awake device, signed in, nothing on it working, to `nightTarget`: the channel's latest when it is
-inside harness-facts' verified range, else (a pinning channel) the newest verified version not
-past the latest. Nothing outside the range is installed without a tap.
+**Night.** With `settings.autoUpdate` on, the agents update as steps of Update all's night plan
+(D224): on an awake device, signed in, nothing on it working, to `nightTarget`: the channel's
+latest when it is inside harness-facts' verified range, else (a pinning channel) the newest
+verified version not past the latest. Nothing outside the range is installed without a tap.
 
 **CLI.** `ducter update --agents [--check] [--json] [--yes] [--all]` (`cli/src/update-agents.ts`):
 through the running Ducter when there is one (`agent_update` frames), else detect, read and run

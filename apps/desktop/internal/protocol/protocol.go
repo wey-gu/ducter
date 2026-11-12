@@ -890,6 +890,18 @@ type DeviceUpdateReq struct {
 	Check  bool   `json:"check,omitempty"`
 }
 
+// UpdateAllReq is 全部更新 / Update all (D224): the home makes one plan
+// (its own Ducter first, then the other computers, then each computer's AI
+// agents at a safe point) and runs it. Stop: 停止剩下的; Dismiss: put a
+// finished plan away. Answered with update_all_result; progress comes as
+// fresh devices frames (UpdateAll.Plan).
+type UpdateAllReq struct {
+	T       string `json:"t"` // "update_all"
+	Stop    bool   `json:"stop,omitempty"`
+	Dismiss bool   `json:"dismiss,omitempty"`
+	By      string `json:"by,omitempty"` // user | cli
+}
+
 // AgentUpdateReq is 更新 / Update on an AI agent's row (D156). Answered with
 // agent_update_result; progress comes as fresh devices frames.
 type AgentUpdateReq struct {
@@ -1338,6 +1350,59 @@ type DeviceUpdate struct {
 	CheckedAt  string  `json:"checkedAt,omitempty"`
 }
 
+// UpdateAllItem is one step of Update all (D224): a computer's Ducter
+// (Kind "ducter") or one AI agent on a computer ("agent"). State: queued |
+// waiting (Busy tasks use it there) | running (Phase, Progress) | done |
+// failed (Reason, RolledBack) | skipped (Reason home | offline | stopped).
+type UpdateAllItem struct {
+	Key        string  `json:"key"`
+	Kind       string  `json:"kind"`
+	Device     string  `json:"device"`
+	DeviceName string  `json:"deviceName"`
+	Harness    string  `json:"harness,omitempty"`
+	From       string  `json:"from"`
+	To         string  `json:"to"`
+	State      string  `json:"state"`
+	Phase      string  `json:"phase,omitempty"`
+	Progress   float64 `json:"progress,omitempty"`
+	Busy       int     `json:"busy,omitempty"`
+	Reason     string  `json:"reason,omitempty"`
+	Detail     string  `json:"detail,omitempty"`
+	RolledBack bool    `json:"rolledBack,omitempty"`
+	At         string  `json:"at"`
+}
+
+// Final reports a step that is over (done, failed or skipped).
+func (i *UpdateAllItem) Final() bool {
+	return i.State == "done" || i.State == "failed" || i.State == "skipped"
+}
+
+// UpdateAllNotNow is what is behind but can't be part of Update all now.
+// Why: offline | app_old | source | manual.
+type UpdateAllNotNow struct {
+	Device     string `json:"device"`
+	DeviceName string `json:"deviceName"`
+	Why        string `json:"why"`
+	Items      int    `json:"items"`
+}
+
+// UpdateAllPlan is the plan under way, or the last one while it's shown.
+type UpdateAllPlan struct {
+	ID         string          `json:"id"`
+	By         string          `json:"by"`
+	StartedAt  string          `json:"startedAt"`
+	FinishedAt string          `json:"finishedAt,omitempty"`
+	Stopped    bool            `json:"stopped,omitempty"`
+	Items      []UpdateAllItem `json:"items"`
+}
+
+// UpdateAllView is the devices frame's Update all (D224).
+type UpdateAllView struct {
+	Offer  []UpdateAllItem   `json:"offer"`
+	NotNow []UpdateAllNotNow `json:"notNow"`
+	Plan   *UpdateAllPlan    `json:"plan,omitempty"`
+}
+
 // Running reports an update under way (not yet done or failed).
 func (u *DeviceUpdate) Running() bool {
 	return u != nil && (u.Phase == "downloading" || u.Phase == "verifying" || u.Phase == "waiting" || u.Phase == "restarting")
@@ -1396,6 +1461,8 @@ type ClientFrame struct {
 	Harness    string         `json:"harness,omitempty"`
 	Model      string         `json:"model,omitempty"` // task_switch
 	Patch      *SettingsPatch `json:"patch,omitempty"`
+	Stop       bool           `json:"stop,omitempty"`    // update_all
+	Dismiss    bool           `json:"dismiss,omitempty"` // update_all
 }
 
 // ---------- Server -> client frames ----------
@@ -1428,6 +1495,10 @@ type ServerFrame struct {
 	// devices: Your devices and abilities.
 	Devices []DeviceView `json:"devices,omitempty"`
 	Reach   *Reach       `json:"reach,omitempty"`
+	// UpdateAll (D224): 全部更新 / Update all: the offer, what can't be part
+	// of it, and the plan under way. update_all_result: OK, Reason
+	// (nothing | running | failed), Detail, ID (the plan).
+	UpdateAll *UpdateAllView `json:"updateAll,omitempty"`
 	// ability_result: Device, Ability, On, OK, Reason, Detail.
 	// rename_result: Device, OK, Name, Reason (unknown_device | empty |
 	// name_taken | home).
@@ -1734,7 +1805,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// dropped here unseen (the live view's live / live_frame were, from D151 to
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
+		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "saved",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb":

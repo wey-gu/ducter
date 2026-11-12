@@ -363,6 +363,9 @@ export interface Bodies {
   // D156: one step of updating an AI agent on a device (same stream, same rules). by: a tap or
   // the night-time update.
   agent_update: { device: string; name: string; harness: string; phase: AgentPhase; from: string; to?: string; reason?: AgentReason; detail?: string; rolledBack?: boolean; by?: "user" | "night" };
+  // D224: 全部更新 / Update all, on the same stream: a plan started, finished or was stopped (its
+  // items' own steps are device_update and agent_update events). by: a tap, the CLI, or the night.
+  update_all: { id: string; phase: "started" | "finished" | "stopped"; by: UpdateAllBy; items: number; done?: number; failed?: number };
   // Nowledge Bridge (behind DUCTER_BRIDGE=1, design/bridge.md). "in": a message another agent
   // sent the persona (origin "peer"); its text is untrusted task context, never the user's
   // permission. "out": the partner's reply to one (origin "partner"). Clients show one quiet
@@ -723,6 +726,12 @@ export type ClientFrame =
   // (check: read the latest versions again and only report). Answered with agent_update_result;
   // progress arrives as fresh devices frames and agent_update events.
   | { t: "agent_update"; device: string; harness: string; check?: boolean }
+  // D224: update_all: 全部更新 / Update all: the home makes one plan of everything behind (its own
+  // Ducter first, then the other computers, then each computer's AI agents at a safe point) and
+  // runs it, kept on disk so it outlives its own restart. stop: 停止剩下的 / Stop the rest (what
+  // hasn't started stays as it is); dismiss: put a finished plan away. Answered with
+  // update_all_result; progress arrives as fresh devices frames (updateAll.plan).
+  | { t: "update_all"; stop?: boolean; dismiss?: boolean; by?: "user" | "cli" }
   // D169: mem_plugin_install: 装上 / Install Nowledge Mem into one AI agent on a device, by a task
   // there that follows Mem's own setup guide (the user tapped it, so it is their Go). Answered with
   // mem_plugin_result; the card then reads the check again when the task finishes.
@@ -965,13 +974,14 @@ export type ServerFrame =
   | { t: "action_result"; taskId: string; action: string; ok: boolean; message?: string; ref?: string; confirm?: UndoConfirm }
   | { t: "folder_changes"; taskId: string; changes: FolderChanges | null }
   | ({ t: "wb"; id: string; taskId: string } & ({ ok: true; answer: import("./workbench.ts").WbAnswer } | { ok: false; error: import("./workbench.ts").WbError; message?: string }))
-  | { t: "devices"; devices: DeviceView[]; reach: Reach }
+  | { t: "devices"; devices: DeviceView[]; reach: Reach; updateAll?: UpdateAllView }
   | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
   | { t: "rename_result"; device: string; ok: boolean; name?: string; reason?: "unknown_device" | "empty" | "name_taken" | "home" }
   | { t: "disconnect_result"; device: string; ok: boolean; reason?: "unknown_device" | "home" }
   | { t: "update_result"; device: string; ok: boolean; reason?: UpdateReason; detail?: string; update?: DeviceUpdate }
   | { t: "agent_update_result"; device: string; harness: string; ok: boolean; reason?: AgentReason; detail?: string }
+  | { t: "update_all_result"; ok: boolean; reason?: "nothing" | "running" | "failed"; detail?: string; id?: string }
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; bridge?: BridgeView }
   | { t: "rules"; rules: RuleView[] }
@@ -1345,6 +1355,66 @@ export interface DeviceUpdate {
   rolledBack?: boolean; // failed after the swap: the previous version runs again
   at?: string; // ISO, when phase was entered
   checkedAt?: string; // ISO, when the latest release was last read
+}
+
+// ---------- Update all (D224, design/system.md "Update all") ----------
+
+/** What one step of Update all updates: a computer's Ducter, or one AI agent on a computer. */
+export type UpdateAllKind = "ducter" | "agent";
+/**
+ * queued: not started (it waits for what comes before it); waiting: at its safe point, until the
+ * tasks using it there pause (busy says how many), never cutting them off; running: updating
+ * (phase says the step); done; failed (reason, rolledBack); skipped (reason: home = the home
+ * didn't update, so this computer stays with it; offline; stopped = 停止剩下的).
+ */
+export type UpdateAllState = "queued" | "waiting" | "running" | "done" | "failed" | "skipped";
+export type UpdateAllBy = "user" | "cli" | "night";
+
+export interface UpdateAllItem {
+  key: string; // "ducter:<device>" | "agent:<device>:<harness>"
+  kind: UpdateAllKind;
+  device: string; // "local" for the home, else the paired device id
+  deviceName: string;
+  harness?: string; // agent
+  from: string;
+  to: string;
+  state: UpdateAllState;
+  phase?: UpdatePhase | AgentPhase; // running: the device's own step
+  progress?: number; // downloading, 0..1
+  busy?: number; // waiting: tasks on that computer using this agent right now
+  reason?: string; // an UpdateReason or AgentReason, or home / offline / stopped / no_answer
+  detail?: string;
+  rolledBack?: boolean;
+  at: string; // ISO, when state was entered
+}
+
+/** Behind, but not in Update all now, and why: away, or it updates another way. */
+export interface UpdateAllNotNow {
+  device: string;
+  deviceName: string;
+  /** offline: can't be reached now; app_old: a Mac whose Ducter can't take 更新 from here yet (open it there); source / manual: updated another way. */
+  why: "offline" | "app_old" | "source" | "manual";
+  items: number; // how many updates wait there
+}
+
+export interface UpdateAllPlan {
+  id: string;
+  by: UpdateAllBy;
+  startedAt: string;
+  finishedAt?: string;
+  stopped?: boolean;
+  items: UpdateAllItem[];
+}
+
+/**
+ * In the devices frame. offer: what 全部更新 would do now, in its order (absent while a plan
+ * runs); notNow: what's behind but can't be part of it; plan: the one running, or the last one
+ * while it is still worth showing (30 min, a day with a failure).
+ */
+export interface UpdateAllView {
+  offer: UpdateAllItem[];
+  notNow: UpdateAllNotNow[];
+  plan?: UpdateAllPlan;
 }
 
 /** Who can reach this Ducter from elsewhere (paired clients), and the address they use. */

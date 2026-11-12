@@ -411,3 +411,89 @@ test("over the socket: the devices frame offers it, update_all starts it, and th
   c2.send({ t: "update_all", dismiss: true });
   expect(await c2.until((f) => f.t === "update_all_result", m)).toMatchObject({ ok: true });
 });
+
+// ---------- D226: a computer whose Ducter restarts under an agent's update ----------
+
+// The author's MacBook (2026-11-12): 更新 tapped on its card a minute before Update all; the plan
+// had only Codex there and started it at once; 5 s later the Mac's Ducter restarted into its new
+// version and took the updater down with it; the row said 正在更新到 0.167.2 for 45 min.
+test("an agent waits while its computer's Ducter updates outside the plan, and starts once that is over", async () => {
+  const mac = device("mac", { kind: "laptop", how: "app", fromHere: true, harnesses: [agent("codex", "0.167.1", "0.167.2")] });
+  mac.update = { ...mac.update!, phase: "downloading", from: "0.0.30", to: "0.0.31" };
+  const w = world([device("local", { home: true, version: "0.0.31" }), mac]);
+  const ua = w.make();
+  expect(await ua.start()).toMatchObject({ ok: true });
+  expect(ua.plan()!.items.map((i) => i.key)).toEqual(["agent:mac:codex"]); // its Ducter is under way already: not offered
+  await ua.step();
+  expect(w.calls).toEqual([]);
+  expect(ua.plan()!.items[0]).toMatchObject({ state: "waiting", wait: "ducter" });
+  // Restarting into the new version: still waiting.
+  mac.update = { ...mac.update!, phase: "restarting" };
+  await ua.step();
+  expect(w.calls).toEqual([]);
+  // Back on the new version: the agent goes, and the row no longer waits on Ducter.
+  w.ducterOn("mac", "0.0.31");
+  await ua.step();
+  expect(w.calls).toEqual(["agent:mac:codex"]);
+  expect(ua.plan()!.items[0]!.state).toBe("running");
+  expect(ua.plan()!.items[0]!.wait).toBeUndefined();
+});
+
+test("a step whose computer went away says it waits for it; back and cut off, it starts again once, then fails with why", async () => {
+  const w = world([device("local", { home: true, version: "0.0.31" }), device("mac", { kind: "laptop", version: "0.0.31", harnesses: [agent("codex", "0.167.1", "0.167.2")] })]);
+  const mac = w.devs[1]!;
+  const codex = mac.harnesses[0]!;
+  const ua = w.make();
+  await ua.start();
+  await ua.step();
+  expect(ua.plan()!.items[0]).toMatchObject({ state: "running", phase: "updating" });
+  // Its Ducter restarts: away a moment.
+  mac.state = "unreachable";
+  await ua.step();
+  expect(ua.plan()!.items[0]).toMatchObject({ state: "running", wait: "reconnect" });
+  expect(readPlanFile(w.dir)!.items[0]).toMatchObject({ wait: "reconnect" });
+  // Back, still on 0.167.1, and the home's view says the update was cut off.
+  mac.state = "awake";
+  w.clock.t += 60_000; // long before the 45 min
+  codex.update = { phase: "failed", from: "0.167.1", to: "0.167.2", reason: "interrupted", at: new Date(w.clock.t).toISOString() };
+  await ua.step();
+  expect(w.calls).toEqual(["agent:mac:codex", "agent:mac:codex"]);
+  expect(ua.plan()!.items[0]).toMatchObject({ state: "running", retried: true });
+  expect(ua.plan()!.items[0]!.wait).toBeUndefined();
+  // A frame from before the new attempt (the last interruption) is old news.
+  await ua.step();
+  expect(ua.plan()!.items[0]!.state).toBe("running");
+  // Cut off again: failed, with the honest reason; not tried a third time.
+  w.clock.t += 60_000;
+  codex.update = { phase: "failed", from: "0.167.1", to: "0.167.2", reason: "interrupted", at: new Date(w.clock.t).toISOString() };
+  await ua.step();
+  expect(ua.plan()!.items[0]).toMatchObject({ state: "failed", reason: "interrupted", retried: true });
+  expect(w.calls.length).toBe(2);
+  expect(ua.plan()!.finishedAt).toBeDefined();
+});
+
+test("back after a restart: on its target it is done; with nobody updating it (a home that restarted forgot it) it starts again", async () => {
+  const w = world([device("local", { home: true, version: "0.0.31" }), device("mac", { kind: "laptop", version: "0.0.31", harnesses: [agent("codex", "0.167.1", "0.167.2"), agent("pi", "1.5.0", "1.5.1")] })]);
+  const [codex, pi] = w.devs[1]!.harnesses;
+  const ua = w.make();
+  await ua.start();
+  await ua.step();
+  expect(states(ua)).toMatchObject({ "agent:mac:codex": "running", "agent:mac:pi": "queued" });
+  // The updater finished just before the restart, the frame was lost: the version there says done.
+  codex!.version = "0.167.2";
+  delete codex!.update;
+  await ua.step();
+  expect(states(ua)).toMatchObject({ "agent:mac:codex": "done", "agent:mac:pi": "running" });
+  // The home restarts mid-step: the new one finds pi running on disk, and no update state for it
+  // (it forgot), still on 1.5.0: nobody runs it, so it is started again.
+  ua.stop_();
+  delete pi!.update;
+  const again = w.make();
+  await again.step();
+  expect(w.calls).toEqual(["agent:mac:codex", "agent:mac:pi", "agent:mac:pi"]);
+  expect(again.plan()!.items.find((i) => i.key === "agent:mac:pi")).toMatchObject({ state: "running", retried: true });
+  // The same process, a frame with no state yet right after it started it: not judged.
+  delete pi!.update;
+  await again.step();
+  expect(again.plan()!.items.find((i) => i.key === "agent:mac:pi")!.state).toBe("running");
+});

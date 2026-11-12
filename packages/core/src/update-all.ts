@@ -16,6 +16,12 @@
 // home, which judges each step by what runs now (D167, D172): the home on its target is done.
 // The steps themselves are the ones a single 更新 takes (updates.ts, agents.ts); this file only
 // orders them, waits, and keeps the list. With autoUpdate on, the same plan runs at night.
+//
+// D226: a computer's agents also wait while its Ducter updates outside the plan (a 更新 tapped
+// on its card a moment before), since that Ducter's restart would cut the updater off. A step
+// whose computer went away says it waits for it to reconnect; one that came back cut off (its
+// Ducter restarted under the updater, `interrupted`) is judged by what runs there now and, still
+// on the old version, started again once, then failed with that reason.
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentPhase, Bodies, DeviceHarness, DeviceView, Settings, UpdateAllBy, UpdateAllItem, UpdateAllNotNow, UpdateAllPlan, UpdateAllView, UpdatePhase } from "@ducter/protocol";
@@ -96,6 +102,12 @@ function ducterTakes(dv: DeviceView): boolean {
   const u = dv.update;
   if (!u?.available || !u.latest) return false;
   return u.how === "self" || (u.how === "app" && !!u.fromHere);
+}
+
+/** A computer's Ducter is in the middle of an update (not over, not swapped and waiting by hand). */
+export function ducterMidUpdate(dv: DeviceView): boolean {
+  const p = dv.update?.phase;
+  return !!p && p !== "done" && p !== "failed";
 }
 
 /** Its agents that are behind, with where each would go (night: only a version Ducter checked). */
@@ -190,6 +202,8 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
   let dismissed = false;
   /** When each running step started (ms), for its timeout; not kept on disk: a restart starts it again. */
   const startedAt = new Map<string, number>();
+  /** Agent steps this process started (D226: a step from disk with no update state was forgotten). */
+  const dispatched = new Set<string>();
   /** Steps that failed at night: not tried again at night for a day. */
   const nightFailed = new Map<string, number>();
 
@@ -220,6 +234,7 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
       delete next.progress;
     }
     if (patch.state && patch.state !== "waiting") delete next.busy;
+    if (patch.state && patch.state !== i.state && !("wait" in patch)) delete next.wait;
     for (const k of Object.keys(i) as (keyof UpdateAllItem)[]) if (!(k in next) || next[k] === undefined) delete i[k];
     for (const k of Object.keys(next) as (keyof UpdateAllItem)[]) if (next[k] !== undefined) (i as any)[k] = next[k];
     return true;
@@ -258,6 +273,7 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
     plan = { id: `ua-${now.toString(36)}`, by, startedAt: iso(now), items: offer };
     dismissed = false;
     startedAt.clear();
+    dispatched.clear();
     logEvent({ id: plan.id, phase: "started", by, items: offer.length });
     save();
     void step();
@@ -353,6 +369,7 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
       if (i.state === "running") {
         const j = judgeDucter(i, dv);
         if (j) mark(i, j);
+        if (!isFinal(i)) mark(i, { wait: !home && dv?.state !== "awake" ? "reconnect" : undefined });
         if (!isFinal(i) && now - (startedAt.get(i.key) ?? now) > DUCTER_STEP_MS) mark(i, { state: "failed", reason: "no_answer" });
         if (!startedAt.has(i.key)) startedAt.set(i.key, now); // a restarted home times it from now
         continue;
@@ -395,14 +412,35 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
       const dv = byId.get(i.device);
       const h = dv?.harnesses.find((x) => x.harness === i.harness);
       if (i.state === "running") {
-        const j = judgeAgent(i, h);
-        if (j) mark(i, j);
-        if (!isFinal(i) && now - (startedAt.get(i.key) ?? now) > AGENT_STEP_MS) mark(i, { state: "failed", reason: "no_answer" });
-        if (!startedAt.has(i.key)) startedAt.set(i.key, now);
-        continue;
+        const away = !dv || (!dv.home && dv.state !== "awake");
+        let j = judgeAgent(i, h);
+        // An interruption counts only when it is news since this attempt started (a devices frame
+        // from before it still shows the last one).
+        if (j?.reason === "interrupted" && !(h?.update?.at && Date.parse(h.update.at) > Date.parse(i.at))) j = undefined;
+        // Back, still on the old version, and nobody updating it, for a step this process didn't
+        // start (a restarted home forgot the update, and its updater likely died too): judged like
+        // an interruption. Started again, a worker still running it answers "running" and is followed.
+        if (!j && !away && !h?.update && !dispatched.has(i.key) && !(h?.version && cmp(h.version, i.to) >= 0)) j = { state: "failed", reason: "interrupted" };
+        if (j?.state === "failed" && j.reason === "interrupted" && !i.retried) {
+          // D226: once more, said on the row; started below as soon as nothing holds it.
+          mark(i, { state: "queued", retried: true });
+          startedAt.delete(i.key);
+        } else {
+          if (j) mark(i, j);
+          if (!isFinal(i)) mark(i, { wait: away ? "reconnect" : undefined });
+          if (!isFinal(i) && now - (startedAt.get(i.key) ?? now) > AGENT_STEP_MS) mark(i, { state: "failed", reason: "no_answer" });
+          if (!startedAt.has(i.key)) startedAt.set(i.key, now);
+          continue;
+        }
       }
       const own = ducterOf(i.device);
       if (own && !isFinal(own)) continue;
+      // D226: that computer's Ducter is updating outside this plan: its restart would cut the
+      // updater off, so the agent waits for it (and is judged afresh once it's back).
+      if (dv && ducterMidUpdate(dv)) {
+        mark(i, { state: "waiting", wait: "ducter" });
+        continue;
+      }
       if (homeItem && !isFinal(homeItem)) continue; // the home's restart would cut an updater off
       if (!dv || (!dv.home && dv.state !== "awake")) {
         mark(i, { state: "skipped", reason: "offline" });
@@ -415,15 +453,16 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
       if (updating(i.device)) continue;
       const n = d.busy(i.device, i.harness!);
       if (n > 0) {
-        mark(i, { state: "waiting", busy: n });
+        mark(i, { state: "waiting", busy: n, wait: undefined });
         continue;
       }
       if (!agents) {
         mark(i, { state: "failed", reason: "failed", detail: "agent updates are not available" });
         continue;
       }
-      mark(i, { state: "running" });
+      mark(i, { state: "running", wait: undefined });
       startedAt.set(i.key, now);
+      dispatched.add(i.key);
       const r = await agents.start(i.device, i.harness!, { by: p.by === "night" ? "night" : "user", to: i.to }).catch((err) => ({ ok: false as const, reason: "failed" as const, detail: (err as Error).message }));
       if (!r.ok) {
         if (r.reason === "running") continue; // already updating there: follow it

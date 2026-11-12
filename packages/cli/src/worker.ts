@@ -80,7 +80,7 @@ async function probeHarnesses(_t: T, dataDir: string) {
 }
 
 /** D156: the main's `agent_update` op on this machine (core agents.ts), with the real updaters. */
-function workerAgentUpdater(t: T, dataDir: string) {
+function workerAgentUpdater(t: T, dataDir: string, held: () => boolean) {
   const host = realHost();
   const exec = async (argv: string[], ms?: number) => {
     const r = await realSys.run(argv, { timeoutMs: ms ?? 15_000 });
@@ -92,6 +92,10 @@ function workerAgentUpdater(t: T, dataDir: string) {
     detect: (h) => detectAgent(h, probe),
     loggedIn: async (h) => (await probeLocalHarnesses({ ...probe, only: [h] }))[0]?.loggedIn ?? false,
     probe: () => probeHarnesses(t, dataDir),
+    // D226: kept on disk while it runs (the next process reports a cut-off one; the Mac app holds
+    // its restart), and it waits while this computer's own Ducter update is under way.
+    dataDir,
+    held,
   });
 }
 
@@ -138,6 +142,8 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
   let sendUp: (f: object) => void = () => {};
   const browse = createWorkerBrowse({ dataDir: o.dataDir, send: (f) => sendUp(f) });
   const kind = await localDeviceKind();
+  let updater: WorkerUpdater | undefined;
+  const agentUpdater = workerAgentUpdater(t, o.dataDir, () => updater?.underWay() ?? false);
   const hello = {
     t: "hello",
     name: saved.name,
@@ -153,13 +159,19 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     // D187: a Mac's worker asks its app to update (the phone's 更新 reaches it).
     asksApp: updateHow({ compiled: isCompiled(), platform: platform(), execPath: process.execPath }) === "app",
     ...((u) => (u ? { update: u } : {}))(lastOutcome(o.dataDir, { version: pkg.version })),
+    // D226: this process, and the agents it is updating now: a home that sees another boot knows
+    // an update this one doesn't run was cut off by the restart.
+    boot: `${process.pid}-${Date.now().toString(36)}`,
+    get agentUpdates(): string[] {
+      return agentUpdater.updating();
+    },
   };
   // DUCTER_SCRIPTED_MODEL=1: canned model words, real tools (scripted.ts), for demos and e2e.
   const harness = process.env.DUCTER_SCRIPTED_MODEL === "1" ? scriptedHarness(runnerMod) : runnerMod.createOarHarnessPort({ dataDir: o.dataDir });
   const s = saved;
   const dataDir = o.dataDir;
-  const updater = createWorkerUpdater({ dataDir, version: pkg.version, how: hello.how });
-  const agentUpdater = workerAgentUpdater(t, dataDir);
+  updater = createWorkerUpdater({ dataDir, version: pkg.version, how: hello.how, agentsInstalling: () => agentUpdater.installing() });
+  await agentUpdater.leftovers().catch(() => {});
   const makeHost = (send: (f: object) => void) => {
     sendUp = send;
     const host = runnerMod.createWorkerHost({ dataDir, harness, mainBase: s.url, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null }, abilities: browse });

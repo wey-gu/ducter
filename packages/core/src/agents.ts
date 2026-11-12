@@ -9,7 +9,7 @@
 //            version when the channel can) → read the version back and the login → a copy that
 //            doesn't answer, or lost its login, goes back to the old version where pinning is
 //   night:   the D148 switch: quiet hours, nothing working, only versions Ducter verified
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentHow, AgentPhase, AgentReason, AgentUpdate, Bodies, DeviceHarness, Settings } from "@ducter/protocol";
 import { CASK_LATEST, HARNESS_FACTS, NPM_LATEST, versionStanding } from "@ducter/protocol/src/harness-facts.ts";
@@ -327,6 +327,14 @@ export interface AgentUpdates {
   /** Update one agent on a device. Resolves once it is under way (or refused). */
   start(device: string, harness: string, o?: { by?: "user" | "night"; to?: string }): Promise<{ ok: true } | AgentFail>;
   fromWorker(id: string, name: string, f: WorkerAgentFrame): void;
+  /**
+   * D226: a worker said hello again. When its Ducter restarted (`restarted`), an update this home
+   * still thinks runs there and that it no longer runs (`running`) died with it: on its target it
+   * is done, else it was interrupted. A plain reconnect leaves it be (the worker's frames follow).
+   */
+  reconnected(id: string, name: string, o: { restarted: boolean; running?: string[]; harnesses?: { id: string; version?: string }[] }): void;
+  /** Agents whose updater runs on that device now, past its safe point (the home's own restart waits for these, D226). */
+  updating(device: string): string[];
   /** Reads every channel again now. */
   check(): Promise<void>;
   nightly(): Promise<void>;
@@ -505,6 +513,20 @@ export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
     });
   }
 
+  function reconnected(id: string, name: string, o: { restarted: boolean; running?: string[]; harnesses?: { id: string; version?: string }[] }) {
+    for (const [k, s] of [...states]) {
+      const [device, h] = k.split("|") as [string, string];
+      if (device !== id || !running(device, h)) continue;
+      const v = o.harnesses?.find((x) => x.id === h)?.version;
+      if (v && s.to && versionIn(v) && cmp(v, s.to) >= 0) {
+        set(id, name, h, { phase: "done", from: s.from, to: v, ...(s.by ? { by: s.by } : {}) });
+        continue;
+      }
+      if (!o.restarted || o.running?.includes(h)) continue;
+      set(id, name, h, { phase: "failed", from: s.from, ...(s.to ? { to: s.to } : {}), reason: "interrupted", detail: `Ducter on ${name} restarted while the update ran`, rolledBack: false, ...(s.by ? { by: s.by } : {}) });
+    }
+  }
+
   /** D156 (4): in quiet hours, nothing working, only to versions Ducter verified; one at a time. */
   async function nightly() {
     const s = d.settings?.();
@@ -533,6 +555,11 @@ export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
     view,
     start,
     fromWorker,
+    reconnected,
+    updating: (device) =>
+      [...states]
+        .filter(([k, s]) => k.startsWith(`${device}|`) && (s.phase === "updating" || s.phase === "checking"))
+        .map(([k]) => k.split("|")[1]!),
     async check() {
       const devices = (await d.devices?.()) ?? [];
       await d.latest.refresh(devices.flatMap((x) => x.harnesses), true);
@@ -557,6 +584,51 @@ export interface WorkerAgentHost {
 }
 
 /**
+ * D226: what a worker is updating, kept at <dataDir>/updates/agent-updates.json while its updater
+ * runs: the next process reports what a restart cut off, and the Mac app holds a restart asked of
+ * it while a live process still updates an agent (internal/update/asks.go reads the same file).
+ */
+export interface AgentUpdatesFile {
+  pid: number;
+  items: Record<string, { from: string; to: string; at: string }>;
+}
+
+export const agentUpdatesFile = (dataDir: string) => join(dataDir, "updates", "agent-updates.json");
+
+export function readAgentUpdatesFile(dataDir: string): AgentUpdatesFile | undefined {
+  try {
+    const f = JSON.parse(readFileSync(agentUpdatesFile(dataDir), "utf8")) as AgentUpdatesFile;
+    return f && typeof f.pid === "number" && f.items && typeof f.items === "object" ? f : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeAgentUpdatesFile(dataDir: string, f: AgentUpdatesFile) {
+  const p = agentUpdatesFile(dataDir);
+  try {
+    if (!Object.keys(f.items).length) {
+      if (existsSync(p)) rmSync(p, { force: true });
+      return;
+    }
+    mkdirSync(join(dataDir, "updates"), { recursive: true });
+    writeFileSync(`${p}.tmp`, JSON.stringify(f, null, 2) + "\n");
+    renameSync(`${p}.tmp`, p);
+  } catch (err) {
+    console.warn("[agents] could not keep the agent update:", (err as Error).message);
+  }
+}
+
+const pidAlive = (pid: number) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === "EPERM";
+  }
+};
+
+/**
  * The worker's `agent_update` op: answers at once (accepted or why not), then runs the same
  * update on this machine and reports each phase up the socket; when it is over, the fresh list
  * of this machine's agents follows (`agents`), so the home sees the new version.
@@ -568,19 +640,63 @@ export function createWorkerAgentUpdater(o: {
   /** This machine's agents as the hello says them, probed again. */
   probe: () => Promise<unknown[]>;
   settleMs?: number;
+  /** D226: where the update under way is kept (absent: not kept, as before). */
+  dataDir?: string;
+  pid?: number;
+  alive?: (pid: number) => boolean;
+  /** D226: this computer's Ducter is updating itself: its restart would cut the updater off, so it waits. */
+  held?: () => boolean;
 }) {
-  let out: (f: object) => void = () => {};
+  // A send returns false when the socket is down: the frame waits for the next welcome (D226),
+  // so an outcome reached during a reconnect isn't lost.
+  type Send = (f: object) => boolean | void;
+  let raw: Send = () => false;
+  const unsent: object[] = [];
+  const out = (f: object) => {
+    if (raw(f) === false) unsent.push(f);
+  };
   const busy = new Set<string>();
+  /** Past the safe point: the updater itself runs (a restart now would cut it off). */
+  const installing = new Set<string>();
+  const pid = o.pid ?? process.pid;
+  const kept: AgentUpdatesFile = { pid, items: {} };
+  const keep = (h: string, v?: { from: string; to: string }) => {
+    if (!o.dataDir) return;
+    if (v) kept.items[h] = { ...v, at: new Date(o.sys.now()).toISOString() };
+    else delete kept.items[h];
+    writeAgentUpdatesFile(o.dataDir, kept);
+  };
   return {
-    attach(send: (f: object) => void) {
-      out = send;
+    attach(send: Send) {
+      raw = send;
+      for (const f of unsent.splice(0)) out(f);
     },
-    async handle(req: { id?: number; args?: any }, send: (f: object) => void, host: WorkerAgentHost): Promise<void> {
-      out = send;
+    /** D226: agents this process is updating now, waiting or installing (the hello says them). */
+    updating: () => [...busy],
+    /** D226: agents whose updater runs now: this worker's own Ducter restart waits for them. */
+    installing: () => [...installing],
+    /**
+     * D226: what a previous process left under way (its Ducter restarted under the updater): on
+     * its target, done; else interrupted. Said once, on the next welcome.
+     */
+    async leftovers(): Promise<void> {
+      if (!o.dataDir) return;
+      const f = readAgentUpdatesFile(o.dataDir);
+      if (!f || f.pid === pid || (o.alive ?? pidAlive)(f.pid)) return;
+      for (const [h, it] of Object.entries(f.items)) {
+        if (!isHarnessId(h)) continue;
+        const a = await o.detect(h).catch(() => undefined);
+        if (a?.version && cmp(a.version, it.to) >= 0) unsent.push({ t: "agent_update", harness: h, from: it.from, phase: "done", to: a.version });
+        else unsent.push({ t: "agent_update", harness: h, from: it.from, phase: "failed", to: it.to, reason: "interrupted", detail: "Ducter on this computer restarted while the update ran", rolledBack: false });
+      }
+      writeAgentUpdatesFile(o.dataDir, kept);
+    },
+    async handle(req: { id?: number; args?: any }, send: Send, host: WorkerAgentHost): Promise<void> {
+      raw = send;
       const h = String(req.args?.harness ?? "");
       const to = String(req.args?.to ?? "");
       const latest = typeof req.args?.latest === "string" ? req.args.latest : undefined;
-      const answer = (ok: boolean, reason?: AgentReason, detail?: string) => send({ t: "res", id: req.id, ok: true, result: { ok, ...(reason ? { reason } : {}), ...(detail ? { detail } : {}) } });
+      const answer = (ok: boolean, reason?: AgentReason, detail?: string): void => void send({ t: "res", id: req.id, ok: true, result: { ok, ...(reason ? { reason } : {}), ...(detail ? { detail } : {}) } });
       if (!isHarnessId(h) || !versionIn(to)) return answer(false, "failed", "no agent or version");
       if (busy.has(h)) return answer(false, "running");
       const a = await o.detect(h);
@@ -593,11 +709,12 @@ export function createWorkerAgentUpdater(o: {
         return;
       }
       busy.add(h);
+      keep(h, { from: a.version, to });
       answer(true);
       const frame = (f: Omit<WorkerAgentFrame, "t" | "harness" | "from">) => out({ t: "agent_update", harness: h, from: a.version!, ...f });
       const settle = async (): Promise<AgentFail | undefined> => {
         const end = o.sys.now() + (o.settleMs ?? AGENT_SETTLE_MS);
-        while (host.turningOn(h) > 0) {
+        while (host.turningOn(h) > 0 || o.held?.()) {
           if (o.sys.now() > end) return { ok: false, reason: "busy" };
           await o.sys.sleep(2000);
         }
@@ -609,9 +726,14 @@ export function createWorkerAgentUpdater(o: {
         detect: () => o.detect(h),
         loggedIn: () => o.loggedIn(h),
         settle,
-        onPhase: (phase) => frame({ phase, to }),
+        onPhase: (phase) => {
+          if (phase === "updating" || phase === "checking") installing.add(h);
+          frame({ phase, to });
+        },
       }).catch((err): AgentOutcome => ({ ok: false, reason: "failed", detail: (err as Error).message }));
       busy.delete(h);
+      installing.delete(h);
+      keep(h);
       if (r.ok) frame({ phase: "done", to: r.to });
       else frame({ phase: "failed", to, reason: r.reason, ...(r.detail ? { detail: r.detail } : {}), ...(r.rolledBack !== undefined ? { rolledBack: r.rolledBack } : {}) });
       out({ t: "agents", harnesses: await o.probe().catch(() => []) });

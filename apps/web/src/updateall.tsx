@@ -15,8 +15,10 @@ const SHOWN = 4;
 
 export const itemName = (i: Pick<UpdateAllItem, "kind" | "deviceName" | "harness">) => (i.kind === "ducter" ? t("upall.item.ducter", i.deviceName) : t("upall.item.agent", harnessName(i.harness ?? ""), i.deviceName));
 
-/** A running step in the single update's own words (devup.phase.*, agentv.phase.*). */
+/** A running step in the single update's own words (devup.phase.*, agentv.phase.*); D226: or what it waits on. */
 function runningWords(i: UpdateAllItem): string {
+  if (i.wait === "reconnect") return t("upall.state.reconnect", i.deviceName);
+  if (i.kind === "agent" && i.retried && (!i.phase || i.phase === "updating")) return t("upall.state.retry", i.to);
   if (i.kind === "ducter") {
     switch (i.phase) {
       case "downloading":
@@ -45,6 +47,7 @@ export function stateWords(i: UpdateAllItem): string {
     case "queued":
       return t("upall.state.queued");
     case "waiting":
+      if (i.wait === "ducter") return t("upall.state.ducter", i.deviceName);
       return (i.busy ?? 1) <= 1 ? t("upall.state.waiting.one") : t("upall.state.waiting", i.busy);
     case "running":
       return runningWords(i);
@@ -61,6 +64,7 @@ export function stateWords(i: UpdateAllItem): string {
 export function whyWords(i: UpdateAllItem): string {
   if (i.state !== "failed") return "";
   if (i.reason === "no_answer") return t("upall.why.no_answer");
+  if (i.reason === "interrupted") return t("upall.why.interrupted", i.deviceName);
   const key = i.kind === "ducter" ? `devup.why.${i.reason ?? "failed"}` : `agentv.why.${i.reason ?? "failed"}`;
   const s = t(key);
   return s === key ? t("devup.why.failed") : s;

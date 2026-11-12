@@ -169,3 +169,26 @@ test("a disconnected (revoked) worker still resolves, never online: its tasks do
   core.devices.redeem(core.devices.createCode().code, { name: "mac" });
   expect(core.workers.link("mac")).toBeUndefined();
 });
+
+// D226: the home tells a reconnect (the same worker process) from a restart (another one), so an
+// agent update the restart cut off is judged at once instead of waiting 45 min.
+test("a hello says whether the worker restarted since the last one: its boot id, or (before D226) another version", async () => {
+  const { createWorkers } = await import("../src/workers.ts");
+  const seen: { restarted: boolean; boot?: string }[] = [];
+  const workers = createWorkers({ personaName: () => "Ducter", onHello: (_id, _name, h, o) => seen.push({ restarted: o.restarted, ...(h.boot ? { boot: h.boot } : {}) }) });
+  const device = { id: "mac", name: "Macbook Pro M3", kind: "worker" } as any;
+  const sock = () => ({ data: { worker: true, device, since: new Date().toISOString() }, send: () => {}, close: () => {} }) as any;
+  const hello = (h: object) => {
+    const ws = sock();
+    workers.websocket.open(ws);
+    workers.websocket.message(ws, JSON.stringify({ t: "hello", ...h }));
+    workers.websocket.close(ws);
+  };
+  hello({ version: "0.0.32", boot: "b1" }); // first seen: nothing to compare with
+  hello({ version: "0.0.32", boot: "b1" }); // the same process, back after a dropped socket
+  hello({ version: "0.0.32", boot: "b2" }); // another process
+  hello({ version: "0.0.32" }); // an older worker: no boot id, same version
+  hello({ version: "0.0.33" }); // ...that restarted into another version
+  hello({ version: "0.0.34", boot: "b3" }); // the first hello with a boot id after one without: its version says
+  expect(seen.map((x) => x.restarted)).toEqual([false, false, true, false, true, true]);
+});

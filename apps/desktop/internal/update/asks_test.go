@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -100,5 +102,52 @@ func TestGoneRemovesTheHeartbeat(t *testing.T) {
 	a.Gone()
 	if _, err := os.Stat(filepath.Join(dir, "app.json")); !os.IsNotExist(err) {
 		t.Fatal("app.json stays after the app quit")
+	}
+}
+
+// D226: a restart asked while a live Ducter on this Mac updates an AI agent
+// waits (the swap would take that Ducter, and the updater, down); a file left
+// by a process that is gone holds nothing.
+func TestAsksRestartWaitsForAnAgentUpdate(t *testing.T) {
+	w := setup(t, "0.2.0", "TEAM", nil)
+	dir := t.TempDir()
+	restarted := 0
+	var logged []string
+	a := &Asks{Dir: dir, U: w.u, Restart: func() { restarted++ }, Logf: func(f string, args ...any) { logged = append(logged, f) }}
+	writeAskFile(t, dir, Ask{ID: "k1", To: "0.2.0", Step: "get"})
+	a.Step(context.Background())
+	eventually(t, func() bool { s := readAppSide(t, dir); return s.Asked == "k1" && s.State == "ready" })
+	agents := filepath.Join(dir, "agent-updates.json")
+	if err := os.WriteFile(agents, []byte(`{"pid":`+strconv.Itoa(os.Getpid())+`,"items":{"codex":{"from":"0.167.1","to":"0.167.2","at":"x"}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := AgentUpdating(dir); len(got) != 1 || got[0] != "codex" {
+		t.Fatalf("updating %v", got)
+	}
+	writeAskFile(t, dir, Ask{ID: "k1", To: "0.2.0", Step: "restart"})
+	a.Step(context.Background())
+	a.Step(context.Background())
+	if restarted != 0 {
+		t.Fatal("restarted while codex updates on this Mac")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "app-ask.json")); err != nil {
+		t.Fatal("a held restart ask is kept for later")
+	}
+	held := 0
+	for _, l := range logged {
+		if strings.Contains(l, "waits") {
+			held++
+		}
+	}
+	if held != 1 {
+		t.Errorf("said %d times, want once: %v", held, logged)
+	}
+	// The updater's process is gone (its file left behind): the restart goes.
+	if err := os.WriteFile(agents, []byte(`{"pid":2147483000,"items":{"codex":{"from":"0.167.1","to":"0.167.2","at":"x"}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	a.Step(context.Background())
+	if restarted != 1 {
+		t.Fatalf("restarted %d, want 1", restarted)
 	}
 }

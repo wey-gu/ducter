@@ -160,6 +160,8 @@ func main() {
 	if lc.upd != nil {
 		app.Updates = lc.upd
 		app.RestartToUpdate = lc.restartToUpdate
+		updDir := filepath.Join(hints.DataDir(), "updates")
+		app.AgentUpdating = func() []string { return update.AgentUpdating(updDir) }
 	}
 	if lc.version != "" {
 		app.Version = lc.version

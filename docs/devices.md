@@ -134,7 +134,9 @@ and says so.
 - **Updates with the Codex app** means this copy came with the Codex app, so the app updates it;
   Ducter leaves it alone. **Updates with Ducter** means it ships inside Ducter.
 - **Update all** (at the top of your devices, when more than one thing has an update) updates
-  your AI agents too, after Ducter on each computer, each once nothing is running on it there.
+  your AI agents too, after Ducter on each computer, each once nothing is running on it there. If a
+  computer goes away in the middle, its line says it is waiting for it to reconnect; when Ducter
+  there restarted and cut an update off, it starts that update again once by itself.
 - **Update automatically** (under your devices) also covers your AI agents: in quiet hours, when
   nothing is running on one, Ducter updates it, but only to a version it has checked. Anything
   else waits for your tap.

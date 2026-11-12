@@ -51,9 +51,21 @@ export interface WorkerUpdater {
   handle(req: { id?: number; args?: any }, send: (f: object) => void, host: { critical(): number; turning(): number }): Promise<void>;
   /** A new socket to the main: progress goes there from now on. */
   attach(send: (f: object) => void): void;
+  /** D226: this Ducter's own update is under way (an agent's updater waits before it starts). */
+  underWay(): boolean;
 }
 
-export function createWorkerUpdater(o: { dataDir: string; version: string; how: string; sys?: UpdateSys; run?: typeof runUpdate; execPath?: string; ask?: typeof askApp }): WorkerUpdater {
+export function createWorkerUpdater(o: {
+  dataDir: string;
+  version: string;
+  how: string;
+  sys?: UpdateSys;
+  run?: typeof runUpdate;
+  execPath?: string;
+  ask?: typeof askApp;
+  /** D226: AI agents whose updater runs on this computer now: the restart waits for them (it would cut them off). */
+  agentsInstalling?: () => string[];
+}): WorkerUpdater {
   const sys = o.sys ?? realSys;
   const run = o.run ?? runUpdate;
   const ask = o.ask ?? askApp;
@@ -63,6 +75,7 @@ export function createWorkerUpdater(o: { dataDir: string; version: string; how: 
     attach(send) {
       out = send;
     },
+    underWay: () => busy,
     async handle(req, send, host) {
       out = send;
       const to = String(req.args?.to ?? "");
@@ -72,8 +85,8 @@ export function createWorkerUpdater(o: { dataDir: string; version: string; how: 
       const frame = (f: Omit<WorkerUpdateFrame, "t" | "from" | "to">) => out({ t: "update", from: o.version, to, ...f });
       const settle = async (): Promise<Fail | undefined> => {
         const end = sys.now() + CRITICAL_WAIT_MS;
-        while (host.critical() > 0) {
-          if (sys.now() > end) return { ok: false, reason: "busy" };
+        while (host.critical() > 0 || (o.agentsInstalling?.().length ?? 0) > 0) {
+          if (sys.now() > end) return { ok: false, reason: "busy", ...(o.agentsInstalling?.().length ? { detail: `still updating ${o.agentsInstalling().join(", ")}` } : {}) };
           await sys.sleep(1000);
         }
         const grace = sys.now() + TURN_GRACE_MS;
@@ -312,13 +325,17 @@ export function itemState(t: T, i: UpdateAllItem): string {
     case "queued":
       return t("update.all.queued");
     case "waiting":
+      if (i.wait === "ducter") return t("update.all.waitDucter", { d: i.deviceName });
       return t("update.all.waiting", { n: i.busy ?? 1 });
     case "running":
+      // D226: what it waits on, or started again after its computer's Ducter cut it off.
+      if (i.wait === "reconnect") return t("update.all.reconnect", { d: i.deviceName });
+      if (i.kind === "agent" && i.retried && (!i.phase || i.phase === "updating")) return t("update.all.retry", { v: i.to });
       return i.kind === "ducter" ? t(`update.phase.${i.phase ?? "downloading"}` as any, { v: i.to }) : t(i.phase === "checking" ? "agents.phase.checking" : i.phase === "waiting" ? "agents.phase.waiting" : "agents.phase.updating", { v: i.to });
     case "done":
       return t("update.all.done", { v: i.to });
     case "failed":
-      return (i.rolledBack ? t("update.all.rolledBack", { v: i.from }) : t("update.all.failed")) + (i.reason === "no_answer" ? ` (${t("update.all.noAnswer")})` : i.reason ? ` (${i.kind === "ducter" ? t(`update.reason.${i.reason}` as any) : i.reason}${i.detail ? `: ${i.detail}` : ""})` : "");
+      return (i.rolledBack ? t("update.all.rolledBack", { v: i.from }) : t("update.all.failed")) + (i.reason === "no_answer" ? ` (${t("update.all.noAnswer")})` : i.reason === "interrupted" ? ` (${t("update.all.interrupted", { d: i.deviceName })})` : i.reason ? ` (${i.kind === "ducter" ? t(`update.reason.${i.reason}` as any) : i.reason}${i.detail ? `: ${i.detail}` : ""})` : "");
     case "skipped":
       return i.reason === "home" ? t("update.all.home", { d: i.detail ?? "" }) : i.reason === "offline" ? t("update.all.offline") : t("update.all.stopped");
   }

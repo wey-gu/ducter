@@ -647,6 +647,26 @@ in 45 min fails `no_answer`. All steps final: `finishedAt`, `update_all finished
 with done and failed counts. `stop` skips what is queued or waiting; `dismiss` hides a finished
 plan (it is otherwise shown 30 min, a day with a failure).
 
+**A computer that restarts under a step (D226).** An agent step also waits while its computer's
+Ducter is mid-update outside the plan (a 更新 tapped on its card first): `wait: "ducter"`, **等
+{device} 上的 Ducter 更新完**. No restart cuts an updater off: a worker's own Ducter update waits at
+its safe point while an agent's updater runs there (`agentsInstalling`, the 15-min critical limit),
+an agent's updater waits before it starts while that worker's Ducter update is under way (`held`),
+and the home's own restart counts an agent updating on the home as critical. The worker keeps
+`<dataDir>/updates/agent-updates.json` (`{pid, items}`) while an updater runs; the Mac app reads it
+and holds an `app-ask.json` restart while a live process is named there, and its own last-step
+restart for a plan also waits while a step on this Mac is still to do. The worker's hello carries
+`boot` (one per process) and `agentUpdates` (what it updates now): a hello from another process
+(another boot; before D226, another version) makes `AgentUpdates.reconnected` end each update the
+home still thinks runs there and the new process doesn't: on its target, done; else failed
+`interrupted`. A plain reconnect judges nothing: frames the worker couldn't send are kept for the
+next welcome, and a new process reports once what the file says its predecessor left. In the plan,
+an interruption newer than the step's current attempt (or, for a step from disk a restarted home
+has no state for, its computer awake on the old version) sends it back to queued with `retried`,
+started again at once (**刚才被打断了，正在重新更新到 {v}**); interrupted again, it fails
+`interrupted`. A running step whose computer is away reads **等 {device} 重新连上** (`wait:
+"reconnect"`). The 45-min `no_answer` stays for a computer that never comes back.
+
 **The home's own restart.** Its step is marked running on disk before `Updates.start`; the helper
 restarts it (D148 (5)); the new home reads the file at start and judges its step by the version it
 runs and the helper's outcome (`absorb`), then goes on with step 2. A rollback ends the home's step
@@ -674,7 +694,8 @@ through the home's restart (the same plan id), and ends with the counts; exit 1 
 
 **Simulated vs verified.** Order, waiting, failures, stop, the night and the restart run in
 `core/test/update-all.test.ts` with fake starters, and once through a real `startCore` restarted
-on the same data folder; the CLI against a real core (`cli/test/update.test.ts`); the e2e rig runs
+on the same data folder; D226's restart under a step runs over real sockets in
+`core/test/update-all-restart.test.ts` (two and three worker processes in turn); the CLI against a real core (`cli/test/update.test.ts`); the e2e rig runs
 it on the Linux VM (`scripts/e2e/linux.ts`, step 7).
 
 ## Opening the phone client fast (D209, research/57)

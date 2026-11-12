@@ -258,3 +258,25 @@ test("a Mac worker from before D187 (no asksApp) still says to open the app ther
   phone.send({ t: "device_update", device: id });
   expect(await phone.until((x) => x.t === "update_result", n)).toMatchObject({ ok: false, reason: "app" });
 });
+
+// D226: the author's MacBook restarted into its new Ducter 4 s after Update all started Codex's
+// npm there, and took the updater down with it. The worker's own restart now waits for it.
+test("the Mac's restart waits while its worker updates an AI agent, then goes", async () => {
+  const dir = tempDir();
+  stops.push(dir.cleanup);
+  const app = fakeApp(dir.dir);
+  let installing = ["codex"];
+  const updater = createWorkerUpdater({ dataDir: dir.dir, version: "0.0.12", how: "app", ask: (i) => askApp({ ...i, sys, pollMs: 5 }), agentsInstalling: () => installing });
+  const sent: any[] = [];
+  expect(updater.underWay()).toBe(false);
+  const run = updater.handle({ id: 1, args: { to: "0.0.13" } }, (x) => void sent.push(x), { critical: () => 0, turning: () => 0 });
+  for (let i = 0; i < 200 && !sent.some((x) => x.t === "update" && x.phase === "waiting"); i++) await Bun.sleep(5);
+  expect(updater.underWay()).toBe(true);
+  await Bun.sleep(100);
+  expect(app.restarts).toEqual([]); // held while npm runs
+  installing = [];
+  await run;
+  for (let i = 0; i < 100 && !app.restarts.length; i++) await Bun.sleep(10);
+  expect(app.restarts.map((a) => a.to)).toEqual(["0.0.13"]);
+  expect(updater.underWay()).toBe(false);
+});

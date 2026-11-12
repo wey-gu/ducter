@@ -30,6 +30,7 @@ var zhAgentVer = Table{
 	"agentv.why.version":       "新版本没有回应。",
 	"agentv.why.signed_out":    "更新以后需要重新登录。",
 	"agentv.why.unchanged":     "更新程序跑完了，版本没变。",
+	"agentv.why.interrupted":   "更新时那台电脑上的 Ducter 重启了，把它打断了。",
 	"agentv.why.failed":        "出了点问题，再试一次。",
 }
 
@@ -61,6 +62,7 @@ var enAgentVer = Table{
 	"agentv.why.version":       "The new version didn't answer.",
 	"agentv.why.signed_out":    "After the update its sign-in stopped working.",
 	"agentv.why.unchanged":     "Its updater ran, but the version didn't change.",
+	"agentv.why.interrupted":   "Ducter on that computer restarted during the update and cut it off.",
 	"agentv.why.failed":        "Something went wrong; try again.",
 }
 

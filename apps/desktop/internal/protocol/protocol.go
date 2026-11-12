@@ -1366,6 +1366,8 @@ type UpdateAllItem struct {
 	Phase      string  `json:"phase,omitempty"`
 	Progress   float64 `json:"progress,omitempty"`
 	Busy       int     `json:"busy,omitempty"`
+	Wait       string  `json:"wait,omitempty"` // D226: "ducter" (waiting) · "reconnect" (running)
+	Retried    bool    `json:"retried,omitempty"`
 	Reason     string  `json:"reason,omitempty"`
 	Detail     string  `json:"detail,omitempty"`
 	RolledBack bool    `json:"rolledBack,omitempty"`

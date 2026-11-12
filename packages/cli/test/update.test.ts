@@ -2,7 +2,7 @@
 // install): --check --json for agents, and --yes required off a terminal.
 import { afterEach, expect, test } from "bun:test";
 import { parseArgs } from "../src/args.ts";
-import { cmdUpdate } from "../src/update.ts";
+import { cmdUpdate, itemState } from "../src/update.ts";
 import { translator } from "../src/i18n.ts";
 import { ansiStyle } from "../src/doctor.ts";
 import { startCore, type Core } from "@ducter/core/src/core.ts";
@@ -175,4 +175,15 @@ test("--agents --check --json: each AI agent's version, channel and latest; --ag
   expect(JSON.parse(out.join("\n"))).toEqual({ ok: true, updated: [{ device: expect.any(String), harness: "codex", ok: true, version: "0.168.0" }] });
   expect(runs).toEqual([["npm", "install", "-g", "@openai/codex@0.168.0"]]);
   expect(m.version).toBe("0.168.0");
+});
+
+// D226: a step says what it waits on, and why one its computer's Ducter cut off twice didn't update.
+test("Update all's lines: waiting for a computer's Ducter or for it to reconnect, started again, cut off twice", () => {
+  const base = { key: "agent:mac:codex", kind: "agent" as const, device: "mac", deviceName: "Macbook Pro M3", harness: "codex", from: "0.167.1", to: "0.167.2", at: "x" };
+  expect(itemState(t, { ...base, state: "waiting", wait: "ducter" })).toBe("waiting for Ducter on Macbook Pro M3 to finish updating");
+  expect(itemState(t, { ...base, state: "running", phase: "updating", wait: "reconnect" })).toBe("waiting for Macbook Pro M3 to reconnect");
+  expect(itemState(t, { ...base, state: "running", phase: "updating", retried: true })).toBe("cut off; updating to 0.167.2 again");
+  expect(itemState(t, { ...base, state: "failed", reason: "interrupted", retried: true })).toBe("didn't update (Ducter on Macbook Pro M3 restarted during the update and cut it off; tried once more, and it still didn't finish)");
+  const zh = translator("zh");
+  expect(itemState(zh, { ...base, state: "running", phase: "updating", wait: "reconnect" })).toBe("等 Macbook Pro M3 重新连上");
 });

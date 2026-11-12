@@ -140,7 +140,9 @@ func (a *App) updAllRow(c *ui.Context, it *protocol.UpdateAllItem) {
 		case "queued":
 			a.sideStatus(c, a.L.T("upall.state.queued"), sideMuted)
 		case "waiting":
-			if it.Busy <= 1 {
+			if it.Wait == "ducter" {
+				a.sideStatus(c, a.L.T("upall.state.ducter", it.DeviceName), sideInk)
+			} else if it.Busy <= 1 {
 				a.sideStatus(c, a.L.T("upall.state.waiting.one"), sideInk)
 			} else {
 				a.sideStatus(c, a.L.T("upall.state.waiting", it.Busy), sideInk)
@@ -192,8 +194,15 @@ func (a *App) updAllName(it *protocol.UpdateAllItem) string {
 	return a.L.T("upall.item.ducter", it.DeviceName)
 }
 
-// updAllPhase is a running step in the single update's own words.
+// updAllPhase is a running step in the single update's own words (D226:
+// or what it waits on: its computer to reconnect; started again after a cut).
 func (a *App) updAllPhase(it *protocol.UpdateAllItem) string {
+	if it.Wait == "reconnect" {
+		return a.L.T("upall.state.reconnect", it.DeviceName)
+	}
+	if it.Kind == "agent" && it.Retried && (it.Phase == "" || it.Phase == "updating") {
+		return a.L.T("upall.state.retry", it.To)
+	}
 	if it.Kind == "agent" {
 		ph := it.Phase
 		if ph == "" {
@@ -212,6 +221,9 @@ func (a *App) updAllPhase(it *protocol.UpdateAllItem) string {
 func (a *App) updAllWhy(it *protocol.UpdateAllItem) string {
 	if it.Reason == "no_answer" {
 		return a.L.T("upall.why.no_answer")
+	}
+	if it.Reason == "interrupted" {
+		return a.L.T("upall.why.interrupted", it.DeviceName)
 	}
 	if it.Kind == "agent" {
 		return a.agentWhy(it.Reason)
@@ -338,7 +350,31 @@ func (a *App) restartForPlan() {
 		if it.State == "running" || (it.State == "queued" && it.Kind == "ducter") {
 			return
 		}
+		// D226: nothing still to do on this Mac (its restart would take
+		// that step's Ducter down with it).
+		if !it.Final() && a.planStepHere(&it) {
+			return
+		}
+	}
+	if a.AgentUpdating != nil && len(a.AgentUpdating()) > 0 {
+		return
 	}
 	a.updAllRestarted = p.ID
 	a.RestartToUpdate()
+}
+
+// planStepHere: the step is for this Mac (its device's computer is this
+// one, or it is this app's own worker).
+func (a *App) planStepHere(it *protocol.UpdateAllItem) bool {
+	if a.MacWorker != nil {
+		if on, dev := a.workOn(); on && dev != "" && dev == it.Device {
+			return true
+		}
+	}
+	for i := range a.S.Devices {
+		if d := &a.S.Devices[i]; d.ID == it.Device {
+			return a.isThisMac(d.Computer) || a.isThisMac(d.Name)
+		}
+	}
+	return false
 }

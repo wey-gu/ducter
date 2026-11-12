@@ -33,6 +33,10 @@ export interface WorkerHello {
   abilities?: import("@ducter/protocol").DeviceAbility[];
   /** D157: it doesn't sleep (a server, a desktop Mac). */
   alwaysOn?: boolean;
+  /** D226: one id per worker process: another one means its Ducter restarted since the last hello. */
+  boot?: string;
+  /** D226: the agents this process is updating now. */
+  agentUpdates?: string[];
 }
 
 /** What the main last knew of a worker that isn't connected now. */
@@ -144,6 +148,11 @@ export function createWorkers(opts: {
   onUpdate?: (deviceId: string, name: string, f: import("./updates.ts").WorkerUpdateFrame) => void;
   /** D156: a worker said how an agent update goes. */
   onAgentUpdate?: (deviceId: string, name: string, f: import("./agents.ts").WorkerAgentFrame) => void;
+  /**
+   * D226: a worker said hello; restarted when it is another process than the last hello's (its
+   * boot id, or for a worker from before D226 another version than it said last).
+   */
+  onHello?: (deviceId: string, name: string, hello: WorkerHello, o: { restarted: boolean }) => void;
 }): Workers {
   const now = opts.now ?? (() => new Date());
   type Live = { ws: ServerWebSocket<WorkerSocketData>; hello?: WorkerHello };
@@ -163,6 +172,9 @@ export function createWorkers(opts: {
     sessions: Map<string, (f: WorkerSessionFrame) => void>;
     onOnline: Set<() => void>;
     link: WorkerLink;
+    /** The last hello's boot id and version (D226), kept across reconnects. */
+    boot?: string;
+    version?: string;
   }
   const states = new Map<string, State>();
   let nextId = 0;
@@ -305,10 +317,14 @@ export function createWorkers(opts: {
           if (entry?.ws !== ws) return;
           entry.hello = f as WorkerHello;
           gone.delete(ws.data.device.id);
+          const restarted = typeof f.boot === "string" && st.boot !== undefined ? st.boot !== f.boot : st.version !== undefined && typeof f.version === "string" && st.version !== f.version;
+          st.boot = typeof f.boot === "string" ? f.boot : undefined;
+          st.version = typeof f.version === "string" ? f.version : undefined;
           send(ws, { t: "welcome", personaName: opts.personaName(), deviceId: ws.data.device.id, at: now().toISOString() });
           for (const fn of st.onOnline) queueMicrotask(fn);
           changed();
           if (f.update?.t === "update") opts.onUpdate?.(ws.data.device.id, nameOf(st), f.update);
+          opts.onHello?.(ws.data.device.id, nameOf(st), f as WorkerHello, { restarted });
         } else if (f?.t === "ping") send(ws, { t: "pong" });
         // The worker's OS is putting it to sleep: when its socket goes, it is 睡着了 / Asleep,
         // not 连不上 / Can't reach (A3: "Asleep" only when the device told us).

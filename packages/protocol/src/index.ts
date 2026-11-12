@@ -1251,9 +1251,11 @@ export type AgentPhase = "waiting" | "updating" | "checking" | "done" | "failed"
  * on it didn't settle; network: its channel couldn't be reached; no_update: nothing newer;
  * unverified: the night-time update won't take a version Ducter hasn't verified; version: the
  * new copy didn't answer its --version; signed_out: it updated but its login no longer answers;
- * unchanged: the updater ran and the version didn't move; failed: anything else (detail).
+ * unchanged: the updater ran and the version didn't move; interrupted: Ducter on that computer
+ * restarted (or the home did) while the updater ran, and the copy is still on its old version
+ * (D226); failed: anything else (detail).
  */
-export type AgentReason = "how" | "offline" | "running" | "busy" | "network" | "no_update" | "unverified" | "version" | "signed_out" | "unchanged" | "failed";
+export type AgentReason = "how" | "offline" | "running" | "busy" | "network" | "no_update" | "unverified" | "version" | "signed_out" | "unchanged" | "interrupted" | "failed";
 
 export interface AgentUpdate {
   phase: AgentPhase;
@@ -1382,7 +1384,14 @@ export interface UpdateAllItem {
   phase?: UpdatePhase | AgentPhase; // running: the device's own step
   progress?: number; // downloading, 0..1
   busy?: number; // waiting: tasks on that computer using this agent right now
-  reason?: string; // an UpdateReason or AgentReason, or home / offline / stopped / no_answer
+  /**
+   * D226: what a step waits on besides tasks. ducter (waiting): that computer's Ducter is updating
+   * (in this plan or not), so its agents wait; reconnect (running): the computer went away mid-step.
+   */
+  wait?: "ducter" | "reconnect";
+  /** D226: the step was cut off once (its computer's Ducter restarted) and was started again. */
+  retried?: boolean;
+  reason?: string; // an UpdateReason or AgentReason, or home / offline / stopped / no_answer / interrupted
   detail?: string;
   rolledBack?: boolean;
   at: string; // ISO, when state was entered

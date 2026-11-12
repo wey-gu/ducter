@@ -3,9 +3,12 @@ package update
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -33,6 +36,36 @@ type Asks struct {
 	mu    sync.Mutex
 	taken string // the ask whose answer app.json carries
 	seen  string // the last ask read (taken or under way)
+	held  string // the restart ask held for an agent update (said once in the log)
+}
+
+// AgentUpdatesFile is <dataDir>/updates/agent-updates.json, which the
+// Ducter on this Mac keeps while an AI agent's updater runs there (D226,
+// packages/core/src/agents.ts AgentUpdatesFile).
+type AgentUpdatesFile struct {
+	Pid   int                        `json:"pid"`
+	Items map[string]json.RawMessage `json:"items"`
+}
+
+// AgentUpdating names the AI agents a live Ducter on this Mac is updating
+// now (D226): a restart of this app then would take that Ducter down with
+// it and cut the updater off. A file left by a process that is gone says
+// nothing.
+func AgentUpdating(dir string) []string {
+	b, err := os.ReadFile(filepath.Join(dir, "agent-updates.json"))
+	if err != nil {
+		return nil
+	}
+	var f AgentUpdatesFile
+	if json.Unmarshal(b, &f) != nil || f.Pid <= 0 || len(f.Items) == 0 || !pidAlive(f.Pid) {
+		return nil
+	}
+	out := make([]string, 0, len(f.Items))
+	for h := range f.Items {
+		out = append(out, h)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // AppSide is app.json.
@@ -154,6 +187,21 @@ func (a *Asks) Step(ctx context.Context) {
 			a.Beat()
 		}()
 	case "restart":
+		// D226: not while an AI agent updates on this Mac: the swap restarts
+		// the Ducter running that updater. Held, and looked at again on the
+		// next tick (the Ducter asking waits for it too; this is the app's
+		// own guard).
+		if hs := AgentUpdating(a.Dir); len(hs) > 0 {
+			a.mu.Lock()
+			a.seen = ""
+			first := a.held != k.ID
+			a.held = k.ID
+			a.mu.Unlock()
+			if first {
+				a.logf("ducter: a restart into %s waits: %v updating on this Mac", k.To, hs)
+			}
+			return
+		}
 		// Taken once: the app that opens after the swap must not restart again.
 		os.Remove(p)
 		a.mu.Lock()
@@ -181,4 +229,10 @@ func (u *Updater) begunNow() bool {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	return u.begun
+}
+
+// pidAlive: a process with that id runs (EPERM: it does, as another user).
+func pidAlive(pid int) bool {
+	err := syscall.Kill(pid, 0)
+	return err == nil || errors.Is(err, syscall.EPERM)
 }

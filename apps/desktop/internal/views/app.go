@@ -252,6 +252,9 @@ type App struct {
 	// goes in; Quit quits the app (after Remove Ducter).
 	Updates         Updates
 	RestartToUpdate func()
+	// AgentUpdating names the AI agents a Ducter on this Mac is updating
+	// now (D226, update.AgentUpdating): no restart for the plan meanwhile.
+	AgentUpdating func() []string
 	// PuttingIn: Restart to update is under way; the window says so
 	// until it goes away.
 	PuttingIn     bool

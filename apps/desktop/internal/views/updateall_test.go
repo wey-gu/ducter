@@ -175,3 +175,76 @@ func TestUpdateAllOwnAppStep(t *testing.T) {
 		t.Error("a local home lists the app twice")
 	}
 }
+
+// D226: a step says what it waits on: its computer's Ducter updating, its
+// computer to reconnect, or that it was cut off and started again; a step
+// cut off twice says why.
+func TestUpdateAllWaitWords(t *testing.T) {
+	items := uaItems()
+	items[0].State = "done"
+	items[1].State, items[1].Phase, items[1].Wait = "running", "restarting", "reconnect"
+	items[2].State, items[2].Phase, items[2].Retried = "running", "updating", true
+	items[3].State, items[3].Wait = "waiting", "ducter"
+	plan := &protocol.UpdateAllPlan{ID: "ua-1", By: "user", Items: items}
+	_, tt, _ := uaApp(t, i18n.ZH, &protocol.UpdateAllView{Plan: plan}, false)
+	for _, w := range []string{"等 mini 重新连上", "刚才被打断了，正在重新更新到 2.1.322", "等 mini 上的 Ducter 更新完"} {
+		if !tt.HasText(w) {
+			t.Errorf("running: no %q in %q", w, tt.Texts())
+		}
+	}
+	_, tt, _ = uaApp(t, i18n.EN, &protocol.UpdateAllView{Plan: plan}, false)
+	for _, w := range []string{"Waiting for mini to reconnect", "Cut off; updating to 2.1.322 again", "Waiting for Ducter on mini to finish updating"} {
+		if !tt.HasText(w) {
+			t.Errorf("en running: no %q in %q", w, tt.Texts())
+		}
+	}
+	items = uaItems()
+	for i := range items {
+		items[i].State = "done"
+	}
+	items[3].State, items[3].Reason, items[3].Retried = "failed", "interrupted", true
+	done := &protocol.UpdateAllPlan{ID: "ua-2", By: "user", FinishedAt: time.Now().UTC().Format(time.RFC3339), Items: items}
+	app, _, _ := uaApp(t, i18n.ZH, &protocol.UpdateAllView{Plan: done}, false)
+	if got := app.updAllWhy(&items[3]); got != "更新时 mini 上的 Ducter 重启了，把它打断了；重新试了一次，还是没更新完。" {
+		t.Errorf("why %q", got)
+	}
+}
+
+// D226: this app's own restart for a plan waits while a step is still to do
+// on this Mac, or while an AI agent updates here.
+func TestUpdateAllOwnRestartWaitsForThisMac(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	app.URL = "wss://hel.example.com/ws"
+	app.ThisComputer = "Siweis-MacBook-Pro"
+	fu := &fakeUpdates{st: update.Status{State: update.Ready, Current: "0.0.30", Version: "0.0.31"}}
+	app.Updates = fu
+	restarted := 0
+	app.RestartToUpdate = func() { restarted++ }
+	agentsHere := []string{}
+	app.AgentUpdating = func() []string { return agentsHere }
+	devs := uaDevices()
+	devs[1].Computer = "Siweis-MacBook-Pro"
+	app.updAllMine = "ua-1"
+	items := uaItems()
+	items[0].State, items[1].State, items[2].State = "done", "done", "done"
+	items[3].State, items[3].Wait = "waiting", "ducter"
+	frame := func() {
+		app.Receive(protocol.ServerFrame{T: "devices", Devices: devs, UpdateAll: &protocol.UpdateAllView{Plan: &protocol.UpdateAllPlan{ID: "ua-1", By: "user", Items: items}}})
+		app.restartForPlan()
+	}
+	frame()
+	if restarted != 0 {
+		t.Fatal("restarted while a step on this Mac is still to do")
+	}
+	items[3].State, items[3].Wait = "done", ""
+	agentsHere = []string{"codex"}
+	frame()
+	if restarted != 0 {
+		t.Fatal("restarted while an AI agent updates on this Mac")
+	}
+	agentsHere = nil
+	frame()
+	if restarted != 1 {
+		t.Fatalf("restarted %d, want once when nothing on this Mac is left", restarted)
+	}
+}

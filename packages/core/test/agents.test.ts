@@ -5,7 +5,9 @@ import { afterEach, expect, test } from "bun:test";
 import type { DeviceHarness, ServerFrame } from "@ducter/protocol";
 import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessId } from "@ducter/protocol/src/harnesses.ts";
-import { createAgentLatest, createAgentUpdates, createWorkerAgentUpdater, judgeAgent, nightTarget, parseLatest, updateAgent, updatePlan, type AgentLatest } from "../src/agents.ts";
+import { agentUpdatesFile, createAgentLatest, createAgentUpdates, createWorkerAgentUpdater, judgeAgent, nightTarget, parseLatest, readAgentUpdatesFile, updateAgent, updatePlan, type AgentLatest } from "../src/agents.ts";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { agentHow, detectAgent, type AgentInstall } from "../src/harness-probe.ts";
 import { startCore, type Core } from "../src/core.ts";
 import type { DeviceProbes } from "../src/devices.ts";
@@ -415,4 +417,121 @@ test("over the socket: the devices frame carries each agent's version and latest
   await until((x) => codexOf(x)?.update?.phase === "done");
   expect(f.runs.at(-1)).toEqual(["npm", "--prefix", "/usr", "install", "-g", "@openai/codex@0.168.0"]);
   expect(core.log.read({ stream: "devices", kinds: ["agent_update"] }).map((e) => (e.body as any).phase)).toEqual(["waiting", "updating", "checking", "done"]);
+});
+
+// ---------- D226: a Ducter that restarts under an agent's update ----------
+
+test("the home: a worker back after its Ducter restarted ends an update it no longer runs (done on its target, else interrupted)", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const log = openLog({ path: t.dir + "/log.db", persona: "p" });
+  stops.push(() => log.close());
+  const harnesses: DeviceHarness[] = [
+    { harness: "codex", installed: true, loggedIn: true, canBePartner: true, version: "0.167.1", how: "npm" },
+    { harness: "pi", installed: true, loggedIn: true, canBePartner: true, version: "1.5.0", how: "npm" },
+  ];
+  const ag = createAgentUpdates({
+    log,
+    sys: { run: async () => ({ code: 0, out: "" }), sleep: async () => {}, now: () => Date.now() },
+    latest: staticLatest({ codex: "0.167.2", pi: "1.5.1" }),
+    name: () => "hel",
+    detect: async () => undefined,
+    loggedIn: async () => true,
+    busy: () => 0,
+    workers: () => ({ online: () => [{ id: "mac", name: "Macbook Pro M3" }], update: async () => ({ ok: true }) }),
+    devices: async () => [{ id: "mac", name: "Macbook Pro M3", awake: true, harnesses }],
+    autoEveryMs: 0,
+  });
+  stops.push(() => ag.stop());
+  expect(await ag.start("mac", "codex", { to: "0.167.2" })).toEqual({ ok: true });
+  expect(await ag.start("mac", "pi", { to: "1.5.1" })).toEqual({ ok: true });
+  ag.fromWorker("mac", "Macbook Pro M3", { t: "agent_update", harness: "codex", phase: "updating", from: "0.167.1", to: "0.167.2" });
+  expect(ag.updating("mac")).toEqual(["codex"]); // pi only waits for its safe point
+  // A plain reconnect (the same process): the worker's own frames follow; nothing is judged.
+  ag.reconnected("mac", "Macbook Pro M3", { restarted: false, harnesses: [{ id: "codex", version: "0.167.1" }] });
+  expect(ag.view("mac", harnesses)[0]!.update?.phase).toBe("updating");
+  // Restarted, and the new process still runs pi's (it said so): only codex was cut off.
+  ag.reconnected("mac", "Macbook Pro M3", { restarted: true, running: ["pi"], harnesses: [{ id: "codex", version: "0.167.1" }, { id: "pi", version: "1.5.0" }] });
+  expect(ag.view("mac", harnesses)[0]!.update).toMatchObject({ phase: "failed", reason: "interrupted", from: "0.167.1", to: "0.167.2", rolledBack: false });
+  expect(ag.view("mac", harnesses)[1]!.update?.phase).toBe("waiting");
+  // Restarted again; pi had reached its target first: done.
+  const after = [harnesses[0]!, { ...harnesses[1]!, version: "1.5.1" }];
+  ag.reconnected("mac", "Macbook Pro M3", { restarted: true, running: [], harnesses: [{ id: "pi", version: "1.5.1" }] });
+  expect(ag.view("mac", after)[1]!.update).toMatchObject({ phase: "done", to: "1.5.1" });
+  const steps = log.read({ stream: "devices", kinds: ["agent_update"] }).map((e) => `${(e.body as any).harness}:${(e.body as any).phase}${(e.body as any).reason ? `:${(e.body as any).reason}` : ""}`);
+  expect(steps).toEqual(["codex:waiting", "pi:waiting", "codex:updating", "codex:failed:interrupted", "pi:done"]);
+  // Interrupted is no longer under way: it can be started again.
+  expect(await ag.start("mac", "codex", { to: "0.167.2" })).toEqual({ ok: true });
+});
+
+test("the worker: what it updates is kept on disk while it runs; a restart's leftover is said on the next welcome; a frame sent while away waits", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  let duringRun: unknown;
+  let installingDuring: string[] = [];
+  const f = fakeMachine({
+    how: "npm",
+    version: "0.167.1",
+    behave: (argv, m) => {
+      duringRun = readAgentUpdatesFile(t.dir);
+      installingDuring = [...w.installing(), ...w.updating()];
+      m.version = "0.167.2";
+    },
+  });
+  const w = createWorkerAgentUpdater({ sys: f.sys, detect: f.detect, loggedIn: f.loggedIn, probe: async () => [], dataDir: t.dir, pid: 4242 });
+  let up = true;
+  const sent: any[] = [];
+  const send = (x: object) => (up ? void sent.push(x) : false);
+  // The socket drops right after it accepts: the outcome waits for the next welcome.
+  const run = w.handle({ id: 1, args: { harness: "codex", to: "0.167.2" } }, (x) => {
+    const r = send(x);
+    if ((x as any).t === "res") up = false;
+    return r;
+  }, { turningOn: () => 0 });
+  await run;
+  expect(duringRun).toMatchObject({ pid: 4242, items: { codex: { from: "0.167.1", to: "0.167.2" } } });
+  expect(installingDuring).toEqual(["codex", "codex"]);
+  expect(existsSync(agentUpdatesFile(t.dir))).toBe(false); // over: nothing kept
+  expect(w.updating()).toEqual([]);
+  expect(sent.map((x) => x.t)).toEqual(["res"]);
+  up = true;
+  w.attach(send);
+  expect(sent.filter((x) => x.t === "agent_update").map((x) => x.phase)).toEqual(["waiting", "updating", "checking", "done"]);
+
+  // A previous process (gone) left codex under way: the next one says how it stands, once.
+  for (const [version, want] of [["0.167.1", { phase: "failed", reason: "interrupted", to: "0.167.2" }], ["0.167.2", { phase: "done", to: "0.167.2" }]] as const) {
+    mkdirSync(dirname(agentUpdatesFile(t.dir)), { recursive: true });
+    writeFileSync(agentUpdatesFile(t.dir), JSON.stringify({ pid: 999_999, items: { codex: { from: "0.167.1", to: "0.167.2", at: "2026-11-12T05:02:53Z" } } }));
+    const m = fakeMachine({ how: "npm", version });
+    const next = createWorkerAgentUpdater({ sys: m.sys, detect: m.detect, loggedIn: m.loggedIn, probe: async () => [], dataDir: t.dir, pid: 5151, alive: () => false });
+    await next.leftovers();
+    expect(existsSync(agentUpdatesFile(t.dir))).toBe(false);
+    const got: any[] = [];
+    next.attach((x) => void got.push(x));
+    expect(got).toEqual([{ t: "agent_update", harness: "codex", from: "0.167.1", ...want, ...(want.phase === "failed" ? { detail: "Ducter on this computer restarted while the update ran", rolledBack: false } : {}) }]);
+    next.attach((x) => void got.push(x));
+    expect(got.length).toBe(1); // said once
+  }
+  // A file of a process still alive (another worker of this data folder) is left alone.
+  writeFileSync(agentUpdatesFile(t.dir), JSON.stringify({ pid: 777, items: { codex: { from: "0.167.1", to: "0.167.2", at: "x" } } }));
+  const live = createWorkerAgentUpdater({ sys: f.sys, detect: f.detect, loggedIn: f.loggedIn, probe: async () => [], dataDir: t.dir, pid: 5152, alive: () => true });
+  await live.leftovers();
+  expect(existsSync(agentUpdatesFile(t.dir))).toBe(true);
+});
+
+test("the worker: an agent's updater waits while this computer's own Ducter update is under way", async () => {
+  const f = fakeMachine({ how: "npm", version: "0.167.1" });
+  let held = true;
+  const order: string[] = [];
+  const w = createWorkerAgentUpdater({
+    sys: { ...f.sys, sleep: async () => void (order.push("wait"), (held = false)) },
+    detect: f.detect,
+    loggedIn: f.loggedIn,
+    probe: async () => [],
+    held: () => held,
+  });
+  const sent: any[] = [];
+  await w.handle({ id: 2, args: { harness: "codex", to: "0.167.2" } }, (x) => void sent.push(x), { turningOn: () => 0 });
+  expect(order).toEqual(["wait"]);
+  expect(f.m.version).toBe("0.167.2");
 });

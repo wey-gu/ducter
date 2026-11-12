@@ -1645,7 +1645,7 @@ const devup: Record<Lang, Record<string, string>> = {
     "agentv.unverified": "Ducter 还没验证过这个版本。",
     "agentv.latest.unverified": "Ducter 还没验证过 %s，要等你点一下才装。",
     "agentv.phase.waiting": "等它手上的事停下…",
-    "agentv.phase.updating": "在更新到 %s…",
+    "agentv.phase.updating": "正在更新到 %s…",
     "agentv.phase.checking": "在检查 %s…",
     "agentv.phase.done": "已更新到 %s",
     "agentv.phase.failed": "没能更新",

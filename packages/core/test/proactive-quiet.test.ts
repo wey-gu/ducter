@@ -156,12 +156,18 @@ test("开会前 under 只说急的: 10 minutes before a meeting with something o
   expect(kinds).toEqual(["meeting"]);
 });
 
-test("the long look back asks only for subjects that may hold a fact", () => {
-  const q = String(lookFor("gmail")!.input(0, 0, { long: true }).query);
-  expect(q).toStartWith("after:0 subject:(");
-  expect(q).toContain("flight OR");
-  expect(q).toContain("invoice");
-  expect(String(lookFor("gmail")!.input(0, 0).query)).toBe("after:0");
+test("the long look back asks only for subjects that may hold a fact, in a few short searches", () => {
+  const qs = lookFor("gmail")!.inputs(0, 0, { long: true, action: "gmail.fetch_emails" });
+  expect(qs.length).toBeGreaterThan(1);
+  for (const i of qs) {
+    expect(String(i.query)).toStartWith("after:0 subject:(");
+    expect(String(i.query).length).toBeLessThan(260);
+    expect(i).toMatchObject({ detail: "summary", maxResults: 100 });
+  }
+  const all = qs.map((i) => String(i.query)).join(" ");
+  expect(all).toContain("flight OR");
+  expect(all).toContain("invoice");
+  expect(lookFor("gmail")!.inputs(0, 0, { action: "gmail.search_threads" })).toEqual([{ query: "after:0", maxResults: 50 }]);
 });
 
 // ---------- the real core: a Codex-only home reads with Codex ----------

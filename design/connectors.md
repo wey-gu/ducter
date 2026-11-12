@@ -92,8 +92,8 @@ The table above is the audit before the build. Now, in `packages/core/src/proact
 | Mem | through the partner only: its history shows the notes and reactions; its instructions say when to `memory_add` a distilled gist | `regressions.test.ts` snapshot |
 
 Not yet: the live trial on the author's oo (step 10); the action ids oo really answers for
-calendar, GitHub and chat (`watch.ts` tries a short list; mail's `gmail.search_threads` is
-known); a live triage run on a private labeled set; the clay mailbox and tile art, the lid
+calendar, GitHub and chat (`watch.ts` tries a short list; mail's `gmail.fetch_emails` is
+known, research/68); a live triage run on a private labeled set; the clay mailbox and tile art, the lid
 lifting while it looks and the equip snap; iOS's time-sensitive category on the app.
 
 ### 1.2 The first live days (D226, 2026-11-12, VERIFIED on hel read-only, counts only)
@@ -111,6 +111,23 @@ Two days of watching on the author's home said nothing at all. End to end:
 Lessons: a watcher that silently reads nothing is the one silence that is not success; a
 setting chosen outside the first-add moment must still do what the moment did; and every model
 call the partner's side makes runs on what the partner really thinks with.
+
+**After 0.0.33 (the same day, research/68).** Triage worked, and still nothing was noted: the
+catch-up look back read 157 mails and kept none. Through OOMOL, `gmail.search_threads` answers a
+thread id and a snippet only, so every mail was undated and had no subject; the look back keeps
+a facty subject or the last 3 days by date, so it kept nothing and called itself done, and a fact
+from such mail would have been dated 1970 and swept the next morning. Fixed (D226 follow-up):
+- mail is read with `gmail.fetch_emails` (`detail: "summary"`: sender, To, subject, labels,
+  date; 100 a page, up to 5 pages), `search_threads` the fallback; an action a source doesn't
+  have is remembered and skipped, so a better one is never hidden by the last one that answered;
+- an item is **seen** only once triage read it or a rule left it. One whose reading failed
+  waits in `watch.json` (its id and date only, up to 3 days), the checkpoint stays before it, and
+  the next look brings it again, across restarts (the in-memory retry list was lost at each one);
+- a look back that ran before this (`lookBackRev` < 2) runs once more as a catch-up;
+- the look back's subject search is a few short searches; if one is refused it reads the newest
+  mail instead and logs `[watch] … subject searches refused …`; each look back logs one line,
+  `[proactive] look back: read N, kept M, noted K`;
+- a look back that no source answered stays pending, like one whose every read failed.
 
 ## 2. User first
 
@@ -317,7 +334,7 @@ Asks raised by background work **expire into Passed** with the find's date (the 
 
 | Stage | Runs | Cost |
 |---|---|---|
-| 0. Look | **oo:** a model-free scheduled read through the broker (`gmail.search_threads` newer than the last look, every 10 min; calendar every 15 min, the coming two weeks (D226); GitHub notifications every 10 min; Discord mentions and DMs every 10 min), because oo has no triggers (`OO_NOT_WATCHABLE`). **OpenConnector:** Provider Triggers with a checkpoint (built for waits). | no model; oo or OpenConnector calls |
+| 0. Look | **oo:** a model-free scheduled read through the broker (`gmail.fetch_emails` newer than the last look, with what waits from a failed reading, every 10 min; calendar every 15 min, the coming two weeks (D226); GitHub notifications every 10 min; Discord mentions and DMs every 10 min), because oo has no triggers (`OO_NOT_WATCHABLE`). **OpenConnector:** Provider Triggers with a checkpoint (built for waits). | no model; oo or OpenConnector calls |
 | 1. Rules | code: drop bulk (`List-Unsubscribe`, Promotions/Updates), the person's own sends (kept for the waits/commitments ledger only), already-read-elsewhere, muted senders and kinds | none |
 | 2. Triage | the cheapest capable model over batches (≤ 20 items, headers + snippet), only when stage 1 passed something: kind, typed facts, who's waiting, confidence | ~5–15 small calls a day for a typical inbox (INFERRED) |
 | 3. Judge | the partner's model over at most 10 candidates (urgent first), once before the morning note and, during the day, only for what can't wait (urgent, or due today); at most 4 runs a day, a verdict remembered per candidate and content hash; past that, or with the sources over budget, code's tests (D174) | ≤ 4 calls a day; 8 in a synthetic busy 24 h of 144 looks (`proactive-cost.test.ts`) |

@@ -118,7 +118,16 @@ interface State {
   monthTokens?: number;
   /** D226: today's account for 今天看了什么 (counts only), and a reading problem while it lasts. */
   today?: Today;
+  /**
+   * Which look back a source's "done" means. Below LOOK_BACK_REV, the look back ran on a read that
+   * gave no dates or subjects (OOMOL's search_threads) or while triage failed, and read nothing: it
+   * runs once more, as a catch-up (the last 3 days in full).
+   */
+  lookBackRev?: number;
 }
+
+/** The look back that reads dated mail (fetch_emails) and leaves pending what triage couldn't read. */
+export const LOOK_BACK_REV = 2;
 
 interface Today {
   day: string;
@@ -307,7 +316,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     enabled: () => mode() !== "off",
     zone,
     ...(o.calendarIds ? { calendarIds: o.calendarIds } : {}),
-    onItems: (_a, items) => intake(items, "look"),
+    onItems: (_a, items) => intake(items),
   });
 
   let retry: Item[] = [];
@@ -336,25 +345,39 @@ export function createProactive(o: ProactiveOptions): Proactive {
     }
   }
 
-  /** Stages 1–2 and the ledger, for items from a look (or a look back). */
-  async function toLedger(items: Item[], why: "look" | "first" | "backfill"): Promise<{ read: number; failed: number }> {
-    const tally = { read: 0, failed: 0 };
+  /**
+   * Stages 1–2 and the ledger, for items from a look (or a look back). `hold`: items triage could
+   * not read are handed back (pending) for the watcher to bring again, instead of kept in memory.
+   * `full`: keys a look back reads in full (its last 3 days), whatever their subject.
+   */
+  async function toLedger(items: Item[], why: "look" | "first" | "backfill", o2: { hold?: boolean; full?: Set<string> } = {}): Promise<{ read: number; failed: number; kept: number; noted: number; pending: Item[] }> {
+    const tally = { read: 0, failed: 0, kept: 0, noted: 0, pending: [] as Item[] };
     const s1 = stage1(items);
     const d = day0();
     if (why !== "backfill") {
       st.left = { notices: st.left.notices + s1.left.notices, promo: st.left.promo + s1.left.promo, muted: st.left.muted + s1.left.muted };
       if (why === "look") d.skipped = { notices: d.skipped.notices + s1.left.notices, promo: d.skipped.promo + s1.left.promo, muted: d.skipped.muted + s1.left.muted };
     }
-    d.noted += ledger.add(s1.events.map(eventFact).filter((f): f is NonNullable<typeof f> => Boolean(f))).length;
+    const ev = ledger.add(s1.events.map(eventFact).filter((f): f is NonNullable<typeof f> => Boolean(f))).length;
+    d.noted += ev;
+    tally.noted += ev;
     // What a failed triage left (P5: a look is read at least once, not at most once).
     const again = why === "backfill" ? [] : retry.splice(0);
     // The look back: subjects that may hold a fact, and (D226) everything from the last 3 days,
     // since a source turned on from Settings never had its first look.
-    const toRead = [...again, ...(why === "backfill" ? [...s1.pass, ...s1.sent].filter((i) => backfillWorthy(i, now()) || (st.backfill[i.connectionId] === "catchup" && now() - i.at <= CATCH_UP_DAYS * DAY)) : [...s1.pass, ...s1.sent])];
+    const toRead = [...again, ...(why === "backfill" ? [...s1.pass, ...s1.sent].filter((i) => backfillWorthy(i, now()) || o2.full?.has(i.key)) : [...s1.pass, ...s1.sent])];
+    tally.kept = toRead.length;
+    // Not read closely: handed back to the watcher (it brings them again), else kept in memory.
+    const later = (list: Item[]) => {
+      if (why === "backfill") return;
+      if (o2.hold) tally.pending.push(...list.filter((i) => !again.includes(i)));
+      const back = o2.hold ? list.filter((i) => again.includes(i)) : list;
+      if (back.length) retry = [...retry, ...back].slice(-RETRY_MAX);
+    };
     if (!toRead.length) return save(), tally;
     if (!triage) {
       // No model to read with yet: kept for the next look, and counted as a problem (D226).
-      if (why !== "backfill") retry = [...retry, ...toRead].slice(-RETRY_MAX);
+      later(toRead);
       failed("no AI agent to ask yet");
       tally.failed += toRead.length;
       return save(), tally;
@@ -373,12 +396,14 @@ export function createProactive(o: ProactiveOptions): Proactive {
           const dd = day0();
           dd.read += batch.length;
           tally.read += batch.length;
-          dd.noted += ledger.add(batch.flatMap((it) => factsOf(it, by.get(it.id)))).length;
+          const n = ledger.add(batch.flatMap((it) => factsOf(it, by.get(it.id)))).length;
+          dd.noted += n;
+          tally.noted += n;
           // Reading works again: the problem line goes, with nothing said (silence is success).
           delete dd.problem;
         } catch (err) {
           console.warn(`[proactive] triage: ${(err as Error).message}`);
-          if (why !== "backfill") retry = [...retry, ...batch].slice(-RETRY_MAX);
+          later(batch);
           failed((err as Error).message);
           tally.failed += batch.length;
         }
@@ -388,11 +413,16 @@ export function createProactive(o: ProactiveOptions): Proactive {
     return tally;
   }
 
-  async function intake(items: Item[], why: "look"): Promise<void> {
+  /** A scheduled look's new items; the keys it could not read closely go back to the watcher (pending). */
+  async function intake(items: Item[]): Promise<{ pending: string[] }> {
+    // Until it was taken in, all of it waits (an error on the way leaves nothing marked seen).
+    let pending = items.map((i) => i.key);
     await serial(async () => {
-      await toLedger(items, why);
+      const r = await toLedger(items, "look", { hold: true });
+      pending = r.pending.map((i) => i.key);
       await speak("look");
     });
+    return { pending };
   }
 
   // ---------- speaking ----------
@@ -744,15 +774,20 @@ export function createProactive(o: ProactiveOptions): Proactive {
     if (!triage) return;
     const back = await watchers.lookBack(LEDGER_DAYS, { connectionId, kinds: ["mail", "event"], long: true });
     // D226: a source that never had its first look also gets the last 3 days read in full.
+    const full = new Set<string>();
     if (how === "catchup") {
       const recent = await watchers.lookBack(CATCH_UP_DAYS, { connectionId, kinds: ["mail", "github", "chat"] });
       const have = new Set(back.items.map((i) => i.key));
       back.items.push(...recent.items.filter((i) => !have.has(i.key)));
+      back.apps += recent.apps;
+      for (const i of recent.items) full.add(i.key);
     }
-    const r = await toLedger(back.items, "backfill");
-    // Every read failed (the agent isn't there): it stays pending, tried again when the models
-    // change or after a restart, rather than marked done with nothing read (D226).
-    if (r.failed && !r.read) return save();
+    const r = await toLedger(back.items, "backfill", { full });
+    const silent = !back.apps && o.connections.apps(connectionId).some((a) => !a.excluded && lookFor(a.service));
+    console.log(`[proactive] look back: read ${back.items.length}, kept ${r.kept}, noted ${r.noted}${r.failed ? `, failed ${r.failed}` : ""}${silent ? " (no source answered)" : ""}`);
+    // Every read failed (the agent isn't there), or no source answered: it stays pending, tried
+    // again when the models change or after a restart, rather than marked done with nothing read (D226).
+    if ((r.failed && !r.read) || silent) return save();
     st.backfill[connectionId] = "done";
     save();
   }
@@ -765,6 +800,18 @@ export function createProactive(o: ProactiveOptions): Proactive {
    */
   function catchUpAll(): void {
     if (mode() === "off") return;
+    // A look back that ran before LOOK_BACK_REV read nothing it could use (no dates or subjects
+    // through OOMOL's search_threads, or triage failing): once, it runs again as a catch-up.
+    if ((st.lookBackRev ?? 0) < LOOK_BACK_REV) {
+      const again = Object.entries(st.backfill).filter(([, s]) => s === "done").map(([id]) => id);
+      for (const id of again) {
+        st.backfill[id] = "catchup";
+        void serial(() => backfill(id));
+      }
+      st.lookBackRev = LOOK_BACK_REV;
+      if (again.length) console.log(`[proactive] look back again for ${again.length} source(s): the last one could not read dates or subjects`);
+      save();
+    }
     for (const c of o.connections.view()) {
       if (st.backfill[c.id] || !o.connections.apps(c.id).some((a) => a.watch && !a.excluded && lookFor(a.service))) continue;
       st.backfill[c.id] = "catchup";
@@ -902,7 +949,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       noted: d.noted,
       said: st.day.said,
       held: QUIET_REASONS.filter((r) => held.has(r)).map((r) => ({ reason: r, n: held.get(r)! })),
-      ...(p ? { problem: { why: p.why, ...(o.agentName?.() ? { agent: o.agentName!() } : {}), since: new Date(p.since).toISOString(), waiting: retry.length } } : {}),
+      ...(p ? { problem: { why: p.why, ...(o.agentName?.() ? { agent: o.agentName!() } : {}), since: new Date(p.since).toISOString(), waiting: retry.length + watchers.waiting() } } : {}),
       ...(morningMode ? { nextNote: new Date(nextMorning(at)).toISOString() } : {}),
       ...(pushOff ? { pushOff: true } : {}),
       ...(backfilling ? { catchingUp: true } : {}),

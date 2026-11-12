@@ -28,10 +28,14 @@ export interface RigOptions {
   /** D226: a triage of the test's own (one that fails, as on a home without the agent). */
   triage?: Triage;
   agentName?: string;
+  /** A data folder of the test's own (kept at stop: a restart opens it again). */
+  dir?: string;
+  /** How the fake accounts answer (fakeAccounts' options). */
+  accounts?: Parameters<typeof fakeAccounts>[1];
 }
 
 export function rig(o: RigOptions = {}) {
-  const t = tempDir();
+  const t = o.dir ? { dir: o.dir, cleanup: () => {} } : tempDir();
   const clock = new FakeClock(o.start ?? MORNING);
   const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default", clock });
   const tasks = createRegistry(log, clock);
@@ -42,7 +46,7 @@ export function rig(o: RigOptions = {}) {
   settings.set({ language: o.language ?? "zh", quiet: { start: "23:00", end: "08:00", tz: ZONE }, ...(o.mode ? { proactive: o.mode } : {}) });
   const rules = openRules(t.dir);
   const fx = o.fx ?? busyWeek();
-  const acc = fakeAccounts(fx);
+  const acc = fakeAccounts(fx, o.accounts);
   const sent: PushMessage[] = [];
   const pusher: Pusher = {
     pending: () => [],

@@ -22,7 +22,7 @@ export interface FakeCall {
   account?: string;
 }
 
-export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionSource; name?: string; apps?: FakeApp[]; state?: ConnectionView["state"] } = {}) {
+export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionSource; name?: string; apps?: FakeApp[]; state?: ConnectionView["state"]; legacyThreads?: boolean; refuse?: (input: Record<string, unknown>) => string | undefined } = {}) {
   const id = o.id ?? "conn_oo";
   const apps: FakeApp[] = o.apps ?? [
     { service: "gmail", title: "Gmail", account: ME },
@@ -59,9 +59,38 @@ export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionS
     if (state !== "ok") return { ok: false, error: `${state}` };
     const since = after(inp);
     if (service === "gmail") {
-      if (action !== "gmail.search_threads") return { ok: false, error: `unknown action ${action}` };
-      const rows = fx.mail.filter((m) => Date.parse(m.date) > since).map((m) => ({ ...m, ...(m.listUnsubscribe ? { headers: [{ name: "List-Unsubscribe", value: "<mailto:u@x>" }] } : {}) }));
-      return { ok: true, op: "read", result: { threads: rows } };
+      // Shaped like OOMOL's answers (research/68): fetch_emails with detail "summary" gives each
+      // message's sender, To, subject, labels and internalDate, newest first, in pages;
+      // search_threads gives a thread id and a snippet, nothing else. o.legacyThreads: the
+      // richer search_threads earlier tests were written against (no fetch_emails).
+      const q = String(inp.query ?? "");
+      if (o.refuse?.(inp)) return { ok: false, error: o.refuse(inp)! };
+      const terms = /subject:\(([^)]*)\)/.exec(q)?.[1]?.split(/\s+OR\s+/).map((w) => w.replace(/"/g, "").toLowerCase());
+      const rows = fx.mail
+        .filter((m) => Date.parse(m.date) > since && (!terms || terms.some((w) => m.subject.toLowerCase().includes(w))))
+        .sort((x, y) => Date.parse(y.date) - Date.parse(x.date));
+      if (o.legacyThreads) {
+        if (action !== "gmail.search_threads") return { ok: false, error: `unknown action ${action}` };
+        return { ok: true, op: "read", result: { threads: rows.map((m) => ({ ...m, ...(m.listUnsubscribe ? { headers: [{ name: "List-Unsubscribe", value: "<mailto:u@x>" }] } : {}) })) } };
+      }
+      if (action === "gmail.search_threads") return { ok: true, op: "read", result: { threads: rows.slice(0, Number(inp.maxResults ?? 20)).map((m) => ({ threadId: m.threadId ?? m.id, snippet: m.snippet })) } };
+      if (action !== "gmail.fetch_emails") return { ok: false, error: `unknown action ${action}` };
+      const at = Number(inp.pageToken ?? 0);
+      const n = Number(inp.maxResults ?? 20);
+      const page = rows.slice(at, at + n).map((m) => ({
+        messageId: m.id,
+        threadId: m.threadId ?? m.id,
+        labelIds: [...(m.labelIds ?? []), "INBOX"],
+        subject: m.subject,
+        sender: m.from,
+        to: (m.to ?? []).join(", "),
+        messageTimestamp: new Date(Date.parse(m.date)).toISOString(),
+        internalDate: String(Date.parse(m.date)),
+        historyId: "1",
+        sizeEstimate: 1000,
+        snippet: m.snippet,
+      }));
+      return { ok: true, op: "read", result: { messages: page, nextPageToken: at + n < rows.length ? String(at + n) : null, resultSizeEstimate: rows.length } };
     }
     if (/calendar/.test(service)) {
       if (action !== "googlecalendar.list_events") return { ok: false, error: `unknown action ${action}` };

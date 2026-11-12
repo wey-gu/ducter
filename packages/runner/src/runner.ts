@@ -1716,7 +1716,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const ops = t?.ops ?? opsFor(place);
       const cwd = t?.spec.cwd ?? (ops.device ? remoteCwd(place) : cwdOf(place, taskId, core.dataDir));
       if (ops.device && !ops.device.online()) throw new WbFail("offline");
-      const answer = await ops.wb({ taskId, cwd, place, req, ...(o.said ? { said: o.said } : {}), ...(o.exclude ? { exclude: o.exclude } : {}) });
+      const answer = await ops.wb({ taskId, cwd, place, req, ...(o.said ? { said: o.said } : {}), ...(o.exclude ? { exclude: o.exclude } : {}), ...(o.simSaid ? { simSaid: true } : {}) });
       if (answer.op === "write" || answer.op === "revert") {
         // The user's own change to the task's files: the task hears of it with its next turn,
         // and the Log keeps it (never drawn in the transcript: it has no note, D207).

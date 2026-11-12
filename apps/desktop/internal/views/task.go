@@ -154,9 +154,14 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 // Try again for a task that ended sits with its outcome.
 func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	t := a.T
+	// D220: 工作副本 / Working copy: its branch, and what a developer checks before acting.
+	a.taskInfo(c, task)
 	// D198: its working copy in Finder, a Terminal or an editor, whatever its state.
 	a.openIn(c, task)
-	// D214: the workbench, beside the task (⌥⌘B).
+	// D214: the workbench, beside the task (⌥⌘B); D220: the simulators are looked for once.
+	if b := a.benchOf(task.ID); b.simsAt.IsZero() {
+		a.benchSims(task)
+	}
 	if len(a.benchTabs(task)) > 0 {
 		kind := btnText
 		if a.benchShown(task) {
@@ -175,9 +180,10 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	if a.S.Browsing(task.ID) != "" && a.button(c, a.L.T("live.watch.title"), btnSecondary, t.ControlSM, t.Chrome) {
 		a.OpenWatch(task.ID)
 	}
-	// D217: it is using Ducter's phone: watch it (a minimal mount; the side panel takes it later).
+	// D217: it is using Ducter's phone: watch it, in the workbench's Phone page (D220).
 	if dev := a.S.Phoning(task.ID); dev != "" && a.button(c, a.L.T("phoneuse.watch"), btnSecondary, t.ControlSM, t.Chrome) {
-		a.OpenPhone(dev, task.ID, "", "watch")
+		a.bench.open, a.bench.tab = true, "phone"
+		a.benchLoad(task)
 	}
 }
 

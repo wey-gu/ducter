@@ -77,8 +77,10 @@ still; out of sight, none.
 
 It is one component with a small interface (computer, task or none, mode `watch | takeover |
 signin`; out: the turn changing, closing): web `PhoneLivePanel` (mounted full screen by
-`PhoneLiveSheet`; `embedded` for a side panel), Mac `phoneView`. The opened task has a minimal
-mount (**查看手机**) until its side panel takes the component.
+`PhoneLiveSheet`; `embedded` in the workbench), Mac `phoneView` (its body, `phoneBody`, is drawn by
+the workbench too). D220: the opened task's **查看手机** opens its workbench at the 手机 / Phone
+page, where the live view watches the task while the page is shown; the full-screen sheet stays
+for the device card, a card's own turn, and a task without a workbench.
 
 ## 8. Its data
 

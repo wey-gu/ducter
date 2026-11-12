@@ -125,6 +125,12 @@ export const canIntegrate = (t: Task): boolean => {
   const p = placeOf(t);
   return attention(t) !== "failed" && p.kind === "repo" && !!p.branch && hasBranchChanges(reportOf(t));
 };
+/** The repo has nowhere to push to, so a PR can't be opened: Open draft PR isn't offered. */
+export function noRemote(task: Task): boolean {
+  if ((placeOf(task) as { hasRemote?: boolean }).hasRemote === false) return true;
+  const a = task.acted;
+  return !!a && !a.ok && a.action === "open_pr" && /no (origin )?remote/i.test(a.message ?? "");
+}
 export const whoOf = (t: Task): TaskBody | undefined => t.body ?? t.card?.body;
 export const harnessOf = (t: Task) => whoOf(t)?.harness || t.open?.harness || t.card?.harness || "";
 export const modelOf = (t: Task) => { const w = whoOf(t); return w ? w.model ?? "" : t.open?.model || t.card?.model || ""; };

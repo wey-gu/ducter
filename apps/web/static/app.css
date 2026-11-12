@@ -6613,3 +6613,133 @@ dl.call-summary dd { margin: 0; }
 .phone-agree input { margin-top: 3px; accent-color: var(--accent); }
 .sheet.phone-install .btns { display: flex; gap: 10px; margin-top: var(--s3); }
 .sheet.phone-install .btns .btn { flex: 1; }
+
+/* D220 · the iOS Simulator on the Phone page: the screen at its own shape on the sunken stage,
+   the rail of simctl's controls beside it (under it on a phone), the view-only line under all. */
+.screens { flex: none; }
+.sim { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+.sim-main { flex: 1; min-height: 0; display: flex; gap: 10px; }
+.sim-stage { flex: 1; min-width: 0; min-height: 300px; display: flex; align-items: center; justify-content: center; }
+.sim-screen {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+  border-radius: 9% / 4.2%; /* an iPhone's own corners, in proportion */
+  background: #000;
+  box-shadow: 0 0 0 6px var(--surface), 0 0 0 7px var(--line-2), var(--base);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.sim-wait { margin: auto; text-align: center; }
+.sim-rail {
+  flex: none;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: var(--pill);
+  background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.sim-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--pill);
+  color: var(--ink-soft);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), transform var(--t-press) var(--ease);
+}
+.sim-btn:active { transform: translateY(1px); }
+.sim-btn.on { background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--line-2); }
+.sim-btn.busy { color: var(--working-ink); }
+@media (hover: hover), (any-hover: hover) {
+  .sim-btn:hover { background: var(--surface); color: var(--ink); }
+}
+.sim-pop { align-self: flex-end; display: flex; gap: 2px; padding: 3px; border-radius: var(--r-md); background: var(--surface-sunken); }
+.sim-pop button { min-height: 32px; padding: 0 12px; border-radius: var(--r-sm); font-size: var(--xs); font-weight: 600; color: var(--ink-muted); }
+.sim-pop button.on { background: var(--surface); color: var(--ink); font-weight: 800; box-shadow: 0 2px 0 var(--line-2); }
+.sim-link { display: flex; gap: 8px; align-items: center; }
+.sim-link-in { flex: 1; min-width: 0; min-height: 36px; padding: 0 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--sm); }
+.sim-note { text-align: center; font-size: var(--xs); }
+.as-sheet .sim-main { flex-direction: column; }
+.as-sheet .sim-rail { flex-direction: row; }
+.as-sheet .sim-pop { align-self: center; }
+
+/* D220 · 工作副本 / Working copy: its branch (or folder) in the header, and what it opens. */
+.info-anchor { position: relative; display: inline-flex; flex: none; }
+.info-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  max-width: 280px;
+  padding: 0 10px 0 12px;
+  border-radius: var(--r-btn);
+  color: var(--ink-soft);
+  font-size: var(--sm);
+  font-weight: 700;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.info-btn .info-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: var(--xs); font-weight: 600; }
+.info-btn .chev-g { flex: none; opacity: 0.7; }
+.info-btn.on { background: var(--surface); color: var(--ink); box-shadow: 0 3px 0 var(--line-2), inset 0 0 0 1px var(--rim); }
+@media (hover: hover), (any-hover: hover) {
+  .info-btn:hover { background: var(--surface-sunken); color: var(--ink); }
+  .info-btn.on:hover { background: var(--surface); }
+}
+@media (max-width: 699px) {
+  .info-btn { width: 40px; padding: 0; justify-content: center; }
+  .info-btn .info-label, .info-btn .chev-g { display: none; }
+}
+.info-mk { flex: none; }
+.info-pop:not(.as-sheet) {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  width: min(380px, calc(100vw - 32px));
+  padding: 8px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--floating), inset 0 0 0 1px var(--rim);
+  animation: info-in var(--t-fast) var(--ease);
+  text-align: left;
+}
+@keyframes info-in {
+  from { transform: translateY(-4px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .info-pop { animation: none; }
+}
+.info-pop.as-sheet { z-index: 60; }
+.info-rows { margin: 0; display: flex; flex-direction: column; }
+.info-row { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: baseline; padding: 9px 8px; }
+.info-row + .info-row { border-top: 1px solid var(--line-soft); }
+.info-pop:focus { outline: none; }
+.info-row dt { display: flex; align-items: center; gap: 7px; font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
+.info-row dd { margin: 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: var(--sm); color: var(--ink); }
+.info-row code { font-family: var(--mono); font-size: var(--xs); overflow-wrap: anywhere; color: var(--ink); user-select: text; }
+.info-path code { flex-basis: 100%; }
+.info-sub { font-size: var(--xs); color: var(--ink-muted); }
+.info-changes { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 0; text-align: left; color: var(--ink); font-size: var(--sm); }
+.info-changes .info-n { color: var(--ink-soft); }
+.info-changes .add { font-family: var(--mono); font-size: var(--xs); color: var(--done-ink); }
+.info-changes .del { font-family: var(--mono); font-size: var(--xs); color: var(--failed-ink); }
+.info-changes .chev-g { align-self: center; color: var(--ink-muted); }
+@media (hover: hover), (any-hover: hover) {
+  .info-changes:not(:disabled):hover > span:first-child { text-decoration: underline; text-underline-offset: 3px; }
+}
+.info-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; padding: 10px 8px 6px; border-top: 1px solid var(--line-soft); margin-top: 2px; }
+.info-acts .done-ink { color: var(--done-ink); font-weight: 700; }
+.info-who { padding: 8px 8px 4px; border-top: 1px solid var(--line-soft); margin-top: 2px; }
+.info-who h3 { margin: 0 0 6px; display: flex; align-items: center; gap: 7px; font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
+.info-who ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.info-who li { display: flex; align-items: center; gap: 8px; font-size: var(--sm); line-height: 1.3; }
+.info-who li .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.info-who li .when { font-size: var(--xs); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.info-who li:last-child .nm { font-weight: 700; }

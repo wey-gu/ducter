@@ -477,7 +477,7 @@ export interface Runner {
   // A refusal rejects with { code: WbError }. said: ports the task's own output named (the home
   // reads the Log); exclude: ports never offered (Ducter's own). A write or a revert is the
   // user's own change: the task hears of it with its next turn.
-  workbench?(taskId: string, req: import("./workbench.ts").WbRequest, o?: { said?: number[]; exclude?: number[] }): Promise<import("./workbench.ts").WbAnswer>;
+  workbench?(taskId: string, req: import("./workbench.ts").WbRequest, o?: { said?: number[]; exclude?: number[]; simSaid?: boolean }): Promise<import("./workbench.ts").WbAnswer>;
   // Optional (D214): where a task's page is reached from the home: "here" (this machine's
   // loopback), or a fetch that carries the request to its worker. undefined: no such task.
   pageRoute?(taskId: string): { here: true } | { here: false; fetch(a: { port: number; method: string; path: string; headers: [string, string][]; body?: string }): Promise<{ status: number; headers: [string, string][]; body: string }> } | undefined;

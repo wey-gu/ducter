@@ -13,6 +13,8 @@ import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { Btn } from "./controls.tsx";
 import { EyeShut } from "./live.tsx";
+import { finished, type Task } from "./store.ts";
+import { registerScreen } from "./workbench-screens.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const zh = () => A.L.lang === "zh";
@@ -251,7 +253,7 @@ export function PhoneLivePanel(p: { device: string; taskId?: string; mode: Phone
           <div class="live-host">{title}</div>
           <div class="live-sub">{sub}</div>
         </div>
-        {v.mode === "signin" ? <span class="live-nav" /> : <Btn kind="text" size="sm" label={t("live.close")} onClick={close} />}
+        {v.mode === "signin" || p.embedded ? <span class="live-nav" /> : <Btn kind="text" size="sm" label={t("live.close")} onClick={close} />}
       </div>
       {mine && (v.mode === "watch" || v.mode === "takeover") && (
         <div class="live-band" role="status">
@@ -374,6 +376,20 @@ export function PhoneLivePanel(p: { device: string; taskId?: string; mode: Phone
     </div>
   );
 }
+
+// ---------- in the opened task's workbench (D220) ----------
+
+const phoningOf = (task: Task) => (finished(task) ? undefined : A.S.onHand?.tasks.find((c) => c.taskId === task.id)?.phoning);
+
+/** The workbench's Phone page while the task uses Ducter's phone: the live view, watching it, inside
+ *  the page. It streams only while its page is the one shown; the full-screen sheet, when open, keeps it. */
+function PhoneScreen({ task, active }: { task: Task; active?: boolean }) {
+  const ph = phoningOf(task);
+  if (!ph) return null;
+  if (!active || PU.sheet) return <div class="screen-wait"><p class="bench-note quiet">{t("phoneuse.idle.task")}</p></div>;
+  return <PhoneLivePanel key={`${ph.device}:${task.id}`} device={ph.device} taskId={task.id} mode="watch" embedded />;
+}
+registerScreen("phone", { has: (task) => !!phoningOf(task), view: PhoneScreen });
 
 /** The standalone mount: the live view as a full-screen sheet (the phone, and the Mac's window). */
 export function PhoneLiveSheet() {

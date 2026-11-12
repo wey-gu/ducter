@@ -282,7 +282,9 @@ function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
       key: `wait_you:${k}:${list.length}`,
       kind: "waiting_on_you",
       cost: Math.min(90, 50 + (again ? 15 : 0) + days * 5),
-      urgent: false,
+      // D232: urgent by what waiting costs, not by kind: a person who asked again, or has waited
+      // three working days, is said in 只说急的 too.
+      urgent: again || days >= 3,
       sender: who,
       people: [first.from.toLowerCase()],
       how: list.map(howOf).slice(-3),
@@ -343,6 +345,7 @@ function promised(facts: Fact[], c: DetectCtx): Candidate[] {
       key: `promised:${p.id}`,
       kind: "promised",
       cost: 65,
+      // Due today. Said now only in 只说急的 (D232); otherwise it joins today's note.
       urgent: false,
       dueAt: p.by,
       sender: who,

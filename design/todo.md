@@ -386,6 +386,12 @@ note and a `Dn`) before it is built.
       (`packages/partner/eval/proactive/`) on a private labeled set. Also: the long look back reads
       at most 50 mails per account (one page); paging it is owed if the eval shows misses.
       Trigger: one week of hel running D226.
+- [ ] **Proactive judged per item, not by hand-written detectors** (D232 next): the cheap model
+      says per item whether the person needs to know and by when; code keeps timing, caps and
+      dedup, and the cross-source checks (a stay vs a flight). Only after a labelled week from the
+      author ("should this have been said?") scored for precision of what is said and recall of
+      what mattered, against today's detectors. Trigger: hel's first findings under D230–D232
+      and the author's labelled week.
 - [ ] **Mailbox and app-tile art** (D166): a clay mailbox per source colour at 640 (closed, lid
       up, grey) and the app tiles' clay base; marks per each brand's guidelines (D146's rule).
       Then the human comprehension test (with D65's). Trigger: met (D166 decided 2026-11-10).

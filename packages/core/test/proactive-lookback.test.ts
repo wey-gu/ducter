@@ -232,3 +232,24 @@ test("hel on 0.0.37: the look back ran before the apps were listed and read noth
   expect(JSON.parse(readFileSync(join(dir, PROACTIVE_FILE), "utf8")).backfill.conn_oo).toBe("done");
   expect(r.p.ledger.of("change").map((f) => f.name)).toEqual(["NH920"]);
 });
+
+test("D232: a day of reading closely that keeps nothing shows as a problem (likely broken, not a quiet inbox); the next fact clears it", async () => {
+  capture();
+  const fx: Fixture = { mail: [], events: [], github: [], chat: [], triage: {} };
+  // 70 personal mails over the last day, none of which the (broken) reading turns into a fact.
+  for (let i = 0; i < 70; i++) fx.mail.push({ id: `m_x${i}`, threadId: `t_x${i}`, from: `Person ${i} <p${i}@example.org>`, to: [ME], subject: `Note ${i}`, snippet: "…", date: T(`2026-11-09T${String(8 + (i % 12)).padStart(2, "0")}:${String(i % 60).padStart(2, "0")}:00+08:00`), labelIds: ["CATEGORY_PERSONAL"] });
+  const r = make({ mode: "urgent", fx, accounts: mailOnly });
+  await r.settle();
+  await r.p.lookNow(1);
+  expect(r.p.day().problem).toBeUndefined(); // not a day yet
+  await r.advance(25 * 60 * MIN);
+  fx.mail.push({ id: "m_late", threadId: "t_late", from: "Late <late@example.org>", to: [ME], subject: "Later", snippet: "…", date: new Date(r.clock.now() - MIN).toISOString(), labelIds: ["CATEGORY_PERSONAL"] });
+  await r.advance(11 * MIN);
+  expect(r.p.day().problem).toMatchObject({ why: "nothing_kept" });
+  expect(logs.filter((l) => l.includes("noted nothing: something may be wrong"))).toHaveLength(1);
+  // Reading gives a fact again: the line goes, with nothing said.
+  fx.mail.push({ id: "m_ok", threadId: "t_ok", from: "Mia <mia@example.org>", to: [ME], subject: "Friday?", snippet: "Can we meet Friday?", date: new Date(r.clock.now() - MIN).toISOString(), labelIds: ["CATEGORY_PERSONAL"] });
+  fx.triage.m_ok = { person: true, needsAnswer: true, facts: [{ type: "ask", what: "meet Friday" }] };
+  await r.advance(11 * MIN);
+  expect(r.p.day().problem).toBeUndefined();
+});

@@ -18,13 +18,13 @@ test("the first add: one offer, nothing read or watched until the person says ye
   r.p.added("conn_oo"); // once
   const offer = r.lastNote()!;
   expect(r.notes()).toHaveLength(1);
-  expect(offer).toMatchObject({ rung: "first", ask: "first_look", finds: [], opening: "已经能看你的 Gmail、日历、GitHub、Discord 了。要不要我现在看一眼过去 3 天，有没有在等你回的？" });
+  expect(offer).toMatchObject({ rung: "first", ask: "first_look", finds: [], opening: "已经能看你的 Gmail、日历、GitHub、Discord 了。要不要我现在看一眼最近两周，挑出要你管的？" });
   await r.advance(3 * 3_600_000);
   expect(r.acc.calls).toHaveLength(0); // connecting is not consent to watch
   expect(r.sent).toHaveLength(0); // the moment is in the conversation, never a notification
 });
 
-test("好，看一眼: a 3-day look, the person waiting on them, then the cadence question; 60 days fill the ledger silently", async () => {
+test("好，看一眼: 3 days in full and two weeks that may hold a fact, what needs the person (D232), then the cadence question; 60 days fill the ledger silently", async () => {
   const r = make({ start: Date.parse("2026-11-10T09:00:00+08:00") });
   r.p.added("conn_oo");
   const offer = r.lastNote()!;
@@ -37,13 +37,14 @@ test("好，看一眼: a 3-day look, the person waiting on them, then the cadenc
   const answer = ns[2]!;
   expect(answer.rung).toBe("first");
   expect(answer.ask).toBe("cadence");
-  expect(answer.opening).toBe("有 1 件在等你回："); // D173: what matters, never "I read N emails"
-  expect(answer.finds.map((f) => f.kind)).toEqual(["waiting_on_you"]);
-  expect(answer.finds[0]!.text).toContain("Lina");
-  // The 3-day look read only mail, GitHub and chat over 3 days; then the quiet 60-day look back.
-  const looks = r.acc.calls.filter((c) => c.action === "gmail.fetch_emails").map((c) => Number(/after:(\d+)/.exec(String(c.input.query))![1]) * 1000);
-  expect(Math.round((r.clock.now() - looks[0]!) / 86_400_000)).toBe(3);
-  expect(Math.round((r.clock.now() - looks[1]!) / 86_400_000)).toBe(60);
+  // D232: not only who is waiting: anything that needs the person, at most 3, most costly first.
+  expect(answer.opening).toBe("有 3 件要你管："); // D173: what matters, never "I read N emails"
+  expect(answer.finds.map((f) => f.kind)).toEqual(["mismatch", "waiting_on_you", "waiting_on_them"]);
+  expect(answer.finds[1]!.text).toContain("Lina");
+  // The first look read the last 3 days in full, then two weeks of facty subjects; then the quiet
+  // 60-day look back.
+  const looks = [...new Set(r.acc.calls.filter((c) => c.action === "gmail.fetch_emails").map((c) => Math.round((r.clock.now() - Number(/after:(\d+)/.exec(String(c.input.query))![1]) * 1000) / 86_400_000)))];
+  expect(looks).toEqual([3, 14, 60]);
   const types = r.p.ledger.all().map((f) => f.type);
   expect(types).toContain("renewal");
   expect(types).toContain("booking");
@@ -64,7 +65,7 @@ test("好，看一眼: a 3-day look, the person waiting on them, then the cadenc
 test("先不用: still the one question; no answer leaves it at 不用主动找我", async () => {
   const r = make({ start: Date.parse("2026-11-10T09:00:00+08:00"), language: "en" });
   r.p.added("conn_oo");
-  expect(r.lastNote()!.opening).toBe("I can read your Gmail, calendar, GitHub and Discord now. Want me to look through the last 3 days for anything waiting on you?");
+  expect(r.lastNote()!.opening).toBe("I can read your Gmail, calendar, GitHub and Discord now. Want me to look through the last two weeks for anything that needs you?");
   await r.p.answer(r.lastNote()!.noteId, "first_look", false);
   expect(r.lastNote()).toMatchObject({ rung: "first", ask: "cadence", opening: "OK, not now.", finds: [] });
   expect(r.acc.calls).toHaveLength(0);

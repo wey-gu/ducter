@@ -31,9 +31,9 @@ export const W = {
     return zh ? `没说的：${xs.join("；")}。` : `Left out: ${xs.join("; ")}.`;
   },
   firstOffer: (zh: boolean, apps: string[]) =>
-    zh ? `已经能看你的 ${join(apps, true)} 了。要不要我现在看一眼过去 3 天，有没有在等你回的？` : `I can read your ${join(apps, false)} now. Want me to look through the last 3 days for anything waiting on you?`,
+    zh ? `已经能看你的 ${join(apps, true)} 了。要不要我现在看一眼最近两周，挑出要你管的？` : `I can read your ${join(apps, false)} now. Want me to look through the last two weeks for anything that needs you?`,
   /** The first look's answer: only what matters (D173), never how much it read. */
-  firstAnswer: (zh: boolean, k: number) => (zh ? (k ? `有 ${k} 件在等你回：` : "没有在等你回的。") : k ? (k === 1 ? "One thing is waiting on you:" : `${k} things are waiting on you:`) : "Nothing is waiting on you."),
+  firstAnswer: (zh: boolean, k: number) => (zh ? (k ? `有 ${k} 件要你管：` : "最近两周没有要你管的。") : k ? (k === 1 ? "One thing needs you:" : `${k} things need you:`) : "Nothing in the last two weeks needs you."),
   /** D226: said once when reading closely keeps failing (a silent watcher is the one silence that isn't success). */
   readDown(zh: boolean, why: import("@ducter/protocol").ReadProblem, agent: string) {
     const a = agent || (zh ? "我用来想事情的 AI agent" : "the AI agent I think with");

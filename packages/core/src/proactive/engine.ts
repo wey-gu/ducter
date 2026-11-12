@@ -51,6 +51,8 @@ const BAR_MIN = 35;
 const BAR_MAX = 90;
 const IGNORED_TO_RAISE = 3;
 const FIRST_LOOK_DAYS = 3;
+/** D232: the first look also reads two weeks of mail that may hold a fact, and two weeks of calendar ahead. */
+const FIRST_WIDE_DAYS = 14;
 const LEDGER_DAYS = 60;
 /**
  * The bar's cadence (D165 §10: "a few calls a day"; research/48 P1). The partner's model judges
@@ -119,6 +121,12 @@ interface State {
   /** D226: today's account for 今天看了什么 (counts only), and a reading problem while it lasts. */
   today?: Today;
   /**
+   * D232: reading closely works but nothing has been noted since `since`: `read` items read
+   * closely, no fact kept. Past DRY_READ over DRY_MS it shows as a problem (the pipeline itself
+   * may be broken: a source answering in a shape it can't read). Gone with the next fact.
+   */
+  dry?: { since: number; read: number; warned?: boolean };
+  /**
    * Which look back a source's "done" means. Below LOOK_BACK_REV, the look back ran on a read that
    * gave no dates or subjects (OOMOL's search_threads) or while triage failed, and read nothing: it
    * runs once more, as a catch-up (the last 3 days in full). Below 3, it may have run before the
@@ -129,6 +137,9 @@ interface State {
 
 /** The look back that reads dated mail (fetch_emails) and leaves pending what triage couldn't read. */
 export const LOOK_BACK_REV = 3;
+/** D232: this many read closely over DRY_MS with nothing noted is a problem, not a quiet inbox. */
+export const DRY_READ = 60;
+export const DRY_MS = 24 * 3_600_000;
 
 interface Today {
   day: string;
@@ -334,6 +345,15 @@ export function createProactive(o: ProactiveOptions): Proactive {
    * when it keeps failing (PROBLEM_TELL_AFTER in a row over PROBLEM_TELL_MS): a watcher that
    * silently reads nothing is the one silence that is not success (D226).
    */
+  /** D232: read a lot closely, kept nothing for a day: likely broken, not a quiet inbox. */
+  const dry = () => Boolean(st.dry && st.dry.read >= DRY_READ && now() - st.dry.since >= DRY_MS);
+  /** Said once in the log when it starts (the Settings line shows it from day()). */
+  function checkDry(): void {
+    if (!dry() || st.dry!.warned) return;
+    st.dry!.warned = true;
+    console.warn(`[proactive] read ${st.dry!.read} closely since ${new Date(st.dry!.since).toISOString()} and noted nothing: something may be wrong`);
+    save();
+  }
   function failed(message: string): void {
     const d = day0();
     const why = readProblemOf(message);
@@ -362,6 +382,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     const ev = ledger.add(s1.events.map(eventFact).filter((f): f is NonNullable<typeof f> => Boolean(f))).length;
     d.noted += ev;
     tally.noted += ev;
+    if (ev) delete st.dry;
     // What a failed triage left (P5: a look is read at least once, not at most once).
     const again = why === "backfill" ? [] : retry.splice(0);
     // The look back: subjects that may hold a fact, and (D226) everything from the last 3 days,
@@ -400,6 +421,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
           const n = ledger.add(batch.flatMap((it) => factsOf(it, by.get(it.id)))).length;
           dd.noted += n;
           tally.noted += n;
+          if (n) delete st.dry;
+          else st.dry = { ...(st.dry ?? { since: now(), read: 0 }), read: (st.dry?.read ?? 0) + batch.length };
           // Reading works again: the problem line goes, with nothing said (silence is success).
           delete dd.problem;
         } catch (err) {
@@ -553,6 +576,11 @@ export function createProactive(o: ProactiveOptions): Proactive {
   };
 
   /** The note said this morning, if any (for fold-ins). */
+  /**
+   * What can't wait. D232: urgent by what waiting costs; in 只说急的, with no morning note to join,
+   * a promise due today is said now too.
+   */
+  const urgentIn = (m: ProactiveMode, c: Candidate) => c.urgent || (m === "urgent" && c.kind === "promised");
   const todaysNote = () => st.mornings.find((m) => m.day === today() && m.finds > 0);
 
   async function speak(why: "look" | "morning" | "tick"): Promise<void> {
@@ -566,7 +594,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     if (why === "morning") {
       if (m === "urgent") {
         // 只说急的: no morning note; anything urgent waiting through the night goes now.
-        return sayNow(kept.filter((x) => x.c.urgent), false);
+        return sayNow(kept.filter((x) => urgentIn(m, x.c)), false);
       }
       const pick = kept.slice(0, capLeft(m));
       // 有用就说: what the note had no room for is counted, never dropped silently (P2).
@@ -592,7 +620,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       return save();
     }
     // During the day: what can't wait goes now; what is timely today folds into today's note.
-    const urgent = kept.filter((x) => x.c.urgent && (!night || wakeKinds().has(x.c.kind)));
+    const urgent = kept.filter((x) => urgentIn(m, x.c) && (!night || wakeKinds().has(x.c.kind)));
     await sayNow(urgent, night);
     const morningNote = todaysNote();
     if (!night && m !== "urgent" && morningNote && o.present()) {
@@ -753,9 +781,15 @@ export function createProactive(o: ProactiveOptions): Proactive {
 
   async function firstLook(noteId: string, connectionId: string): Promise<void> {
     const z = zh();
+    // D232: the moment it shows it understood: not only who is waiting, but anything that needs the
+    // person (a booking that doesn't add up, a bill due, a promise, a person waiting): the last 3
+    // days in full, two weeks of mail that may hold a fact, two weeks of calendar ahead.
     const { items } = await watchers.lookBack(FIRST_LOOK_DAYS, { connectionId, kinds: ["mail", "github", "chat"] });
+    const wide = await watchers.lookBack(FIRST_WIDE_DAYS, { connectionId, kinds: ["mail", "event"], long: true });
+    const have = new Set(items.map((i) => i.key));
+    items.push(...wide.items.filter((i) => !have.has(i.key)));
     await toLedger(items, "first");
-    const kept = (await judged(detect(ledger, { now: now(), zone: zone(), kinds: ["waiting_on_you"] }), "first")).slice(0, DAILY_CAP);
+    const kept = (await judged(detect(ledger, { now: now(), zone: zone() }), "first")).slice(0, DAILY_CAP);
     const answer = newId("note");
     const finds = kept.map((x) => makeFind(x.c, x.text, answer));
     note({ noteId: answer, rung: "first", opening: W.firstAnswer(z, finds.length), finds, ask: "cadence" });
@@ -892,6 +926,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       tickTimer = undefined;
       void serial(async () => {
         passDue();
+        checkDry();
         await meetings();
       }).finally(armTick);
     }, TICK_MS);
@@ -975,7 +1010,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       noted: d.noted,
       said: st.day.said,
       held: QUIET_REASONS.filter((r) => held.has(r)).map((r) => ({ reason: r, n: held.get(r)! })),
-      ...(p ? { problem: { why: p.why, ...(o.agentName?.() ? { agent: o.agentName!() } : {}), since: new Date(p.since).toISOString(), waiting: retry.length + watchers.waiting() } } : {}),
+      ...(p ? { problem: { why: p.why, ...(o.agentName?.() ? { agent: o.agentName!() } : {}), since: new Date(p.since).toISOString(), waiting: retry.length + watchers.waiting() } } : dry() ? { problem: { why: "nothing_kept" as const, since: new Date(st.dry!.since).toISOString(), waiting: 0 } } : {}),
       ...(morningMode ? { nextNote: new Date(nextMorning(at)).toISOString() } : {}),
       ...(pushOff ? { pushOff: true } : {}),
       ...(backfilling ? { catchingUp: true } : {}),
@@ -1113,6 +1148,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     tick: () =>
       serial(async () => {
         passDue();
+        checkDry();
         await meetings();
       }),
     stop() {

@@ -63,7 +63,7 @@ test("only when I ask (the default before anyone answered): nothing watches, not
   expect(r.notes()).toHaveLength(0);
 });
 
-test("只说急的: no morning note; only what costs something if it waits goes, at once", async () => {
+test("只说急的: no morning note; only what costs something if it waits goes, at once (a person who asked again too)", async () => {
   const fx = (await import("./fixtures/inbox.ts")).busyWeek();
   fx.triage.m_cf = { person: false, needsAnswer: false, facts: [{ type: "renewal", name: "ducter.dev", due: "2026-11-11", amount: "$10.44", cardExpired: true }] };
   const r = make({ mode: "urgent", fx });
@@ -71,8 +71,10 @@ test("只说急的: no morning note; only what costs something if it waits goes,
   await r.advance(HOUR + 2 * 60_000);
   const ns = r.notes().map((e) => e.body);
   expect(ns.every((n) => n.rung === "now")).toBe(true);
-  expect(ns.map((n) => n.finds[0]!.kind)).toEqual(["deadline"]);
-  expect(r.sent.map((m) => m.level)).toEqual(["time-sensitive"]);
+  // D232: urgent by what waiting costs: the card that expired before a renewal, and Lina, who
+  // asked 4 days ago and again today (a person waiting is said in 只说急的 too).
+  expect(ns.map((n) => n.finds[0]!.kind)).toEqual(["deadline", "waiting_on_you"]);
+  expect(r.sent.map((m) => m.level)).toEqual(["time-sensitive", "time-sensitive"]);
 });
 
 test("now: during the day at once (time-sensitive), inside the cap of 3", async () => {

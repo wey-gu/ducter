@@ -94,7 +94,9 @@ test("at the month's budget it drops to 只说急的 and says so once", async ()
   expect(said).toEqual(["oo 里的账号 这个月的额度用完了，这个月剩下的日子我只说急的。"]);
   await r.advance(HOUR + 2 * 60_000);
   // Per source (research/48 P4): the source over its budget says only what is urgent; the
-  // morning note still comes (another source may have something) and has nothing from it.
-  expect(r.notes().filter((e) => e.body.rung === "morning").every((e) => e.body.finds.length === 0)).toBe(true);
+  // morning note still comes (another source may have something) and has only urgent finds from
+  // it (D232: a person who asked again is urgent).
+  const urgentKinds = new Set(["deadline", "plan_changed", "mismatch", "waiting_on_you"]);
+  expect(r.notes().filter((e) => e.body.rung === "morning").flatMap((e) => e.body.finds).every((f) => urgentKinds.has(f.kind))).toBe(true);
   expect(r.p.look("conn_oo")!.budgetPct).toBe(100);
 });

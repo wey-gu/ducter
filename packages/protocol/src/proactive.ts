@@ -125,7 +125,8 @@ export const QUIET_REASONS: readonly QuietReason[] = ["not_urgent", "for_morning
  *   signed_out     that agent is signed out or refused
  *   failed         anything else (a timeout, an answer it couldn't use)
  */
-export type ReadProblem = "no_agent" | "not_installed" | "signed_out" | "failed";
+/** nothing_kept (D232): reading closely works, yet a day of it kept nothing: likely broken. */
+export type ReadProblem = "no_agent" | "not_installed" | "signed_out" | "failed" | "nothing_kept";
 
 /** D226: one day of watching, as Settings shows it under the switch. */
 export interface ProactiveDay {

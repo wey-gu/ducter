@@ -258,13 +258,13 @@ func morningEventsEN() []protocol.LogEvent {
 }
 
 func firstEvents(en bool) []protocol.LogEvent {
-	offer := "已经能看你的 Gmail、日历、GitHub、Discord 了。要不要我现在看一眼过去 3 天，有没有在等你回的？"
-	answer := "有 1 件在等你回："
+	offer := "已经能看你的 Gmail、日历、GitHub、Discord 了。要不要我现在看一眼最近两周，挑出要你管的？"
+	answer := "有 1 件要你管："
 	find := "Lina 4 天前问你「#2141 什么时候能 review」，今天又问了一次。"
 	label := "先帮我读一遍"
 	if en {
-		offer = "I can read your Gmail, calendar, GitHub and Discord now. Want me to look through the last 3 days for anything waiting on you?"
-		answer = "One thing is waiting on you:"
+		offer = "I can read your Gmail, calendar, GitHub and Discord now. Want me to look through the last two weeks for anything that needs you?"
+		answer = "One thing needs you:"
 		find = "Lina asked you \"when can you review #2141\" 4 days ago, and asked again."
 		label = "Read it for me first"
 	}

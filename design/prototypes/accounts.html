@@ -333,7 +333,7 @@ const T = {
   oldCap: ["今天：一行设置。没说它会怎么用这些账号，没有状态，唯一的主按钮是「再加一个」；移除一下就没了（已修：现在先问）。", "Today: a settings row. Nothing about what it will do with the accounts, no state, the only primary button adds another; Remove was one tap (fixed: it asks first now)."],
   newCap: ["之后：默认 5 行字。点一个 app 看它看什么、什么要先问你；⋯ 看今天看了哪些。", "After: five lines of text by default. Tap an app for what it reads and what asks first; ⋯ for what it read today."],
   fH: ["第一次加上账号：它马上开口，问一次", "The first account: it speaks at once, and asks once"],
-  fP: ["不是 toast。伙伴在对话里说一句，给一个立刻的小收获（看过去 3 天有没有在等你回的），然后只问一个问题，带默认。点按钮试试。", "Not a toast. The partner says one thing in the conversation, offers a small win right away (anything waiting on you from the last 3 days), then asks one question with a default. Try the buttons."],
+  fP: ["不是 toast。伙伴在对话里说一句，给一个立刻的小收获（看最近两周有没有要你管的），然后只问一个问题，带默认。点按钮试试。", "Not a toast. The partner says one thing in the conversation, offers a small win right away (anything that needs you from the last two weeks), then asks one question with a default. Try the buttons."],
   fCap: ["Mac：点「好，看一眼」→ 一分钟内回答 → 最后一个问题。没回答就什么都不盯。", "Mac: Take a look → an answer within a minute → the one question. No answer means nothing watches."],
   phfCap: ["手机上同一段对话。", "The same moment on the phone."],
   mH: ["早上那条：最多 3 件，没声音；没事的日子什么都不发", "The morning note: up to 3, no sound; nothing at all on a quiet day"],
@@ -509,11 +509,11 @@ let FIRST = 0; // 0 offered · 1 looking · 2 answered · 3 cadence picked
 let FIRSTPICK = null;
 function firstBody(phone) {
   const parts = [`<div class="sysline">${L("加上了 oo 里的账号", "Added the accounts in oo")}</div>`];
-  parts.push(`<div class="bub partner"><p>${L("已经能看你的 Gmail、日历、Discord 和 GitHub 了。要不要我现在看一眼过去 3 天，有没有在等你回的？", "I can read your Gmail, calendar, Discord and GitHub now. Want me to look through the last 3 days for anything waiting on you?")}</p>
+  parts.push(`<div class="bub partner"><p>${L("已经能看你的 Gmail、日历、Discord 和 GitHub 了。要不要我现在看一眼最近两周，挑出要你管的？", "I can read your Gmail, calendar, Discord and GitHub now. Want me to look through the last two weeks for anything that needs you?")}</p>
     ${FIRST === 0 ? `<div class="acts"><button class="btn primary sm" data-first="go">${L("好，看一眼", "Take a look")}</button><button class="btn text sm" data-first="no">${L("先不用", "Not now")}</button></div>` : ""}</div>`);
   if (FIRST >= 1) parts.push(`<div class="bub you">${L("好，看一眼", "Take a look")}</div>`);
   if (FIRST === 1) parts.push(`<div class="waitline"><img src="${ART.working}" alt="">${L("在看过去 3 天的信", "Reading the last 3 days")} <span class="dots"><i></i><i></i><i></i></span></div>`);
-  if (FIRST >= 2) parts.push(`<div class="bub partner"><p>${L("有 1 件在等你回：Lina 周一问你 nowledge-co/mem #2141 什么时候能 review，今天上午又问了一次。改了 4 个文件，测试都过了。", "One thing is waiting on you: Lina asked on Monday when you can review nowledge-co/mem #2141, and asked again this morning. 4 files changed, tests pass.")}</p>
+  if (FIRST >= 2) parts.push(`<div class="bub partner"><p>${L("有 1 件要你管：Lina 周一问你 nowledge-co/mem #2141 什么时候能 review，今天上午又问了一次。改了 4 个文件，测试都过了。", "One thing needs you: Lina asked on Monday when you can review nowledge-co/mem #2141, and asked again this morning. 4 files changed, tests pass.")}</p>
       <div class="acts"><button class="btn secondary sm">${L("好，先帮我读一遍", "Read it first")}</button><button class="btn text sm">${L("先等等", "Hold")}</button></div>
       <details class="how"><summary>${L("怎么知道的", "How I know")}</summary><ul><li>${L("11/9 GitHub 通知《Review requested》", "GitHub notification \"Review requested\", 11/9")}</li><li>${L("今天 09:12 Lina 在 PR 下的评论", "Lina's comment on the PR, today 09:12")}</li></ul></details>
       <div class="find" style="border:0;padding:0;margin-top:14px"><p>${L("以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？", "From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK?")}</p>

@@ -168,8 +168,20 @@ export function factsOf(i: Item, t: TriageOut | undefined): NewFact[] {
   return out;
 }
 
+/** Words a stay is put in a calendar under (an all-day event with a place). */
+const STAY = /hotel|inn\b|hostel|resort|airbnb|ryokan|stay|lodg|酒店|宾馆|旅馆|民宿|入住|ホテル|旅館/i;
+
 /** A calendar event is a fact already (no model). */
 export function eventFact(i: Item): NewFact | undefined {
-  if (i.kind !== "event" || i.start === undefined || i.cancelled || i.allDay || i.free || i.declined) return;
+  if (i.kind !== "event" || i.start === undefined || i.cancelled || i.declined) return;
+  // D232: an all-day event with a place is a stay or a trip (a hotel night, a conference abroad;
+  // Gmail puts bookings there from their mails): a booking, so a flight that lands the night
+  // before it, or a confirmation on another day, can be seen. Not a meeting.
+  if (i.allDay) {
+    if (!i.location) return;
+    const title = i.title ?? "";
+    return { ref: { connectionId: i.connectionId, service: i.service, ...(i.account ? { account: i.account } : {}), id: i.id }, label: title.slice(0, 80), at: new Date(i.at).toISOString(), type: "booking", what: STAY.test(`${title} ${i.location}`) ? "hotel" : "other", name: title, place: i.location, start: new Date(i.start).toISOString(), ...(i.end ? { end: new Date(i.end).toISOString() } : {}) };
+  }
+  if (i.free) return;
   return { ref: { connectionId: i.connectionId, service: i.service, ...(i.account ? { account: i.account } : {}), id: i.id }, label: (i.title ?? "").slice(0, 80), at: new Date(i.at).toISOString(), type: "meeting", title: i.title ?? "", start: new Date(i.start).toISOString(), ...(i.end ? { end: new Date(i.end).toISOString() } : {}), with: i.attendees ?? [], ...(i.location ? { location: i.location } : {}) };
 }

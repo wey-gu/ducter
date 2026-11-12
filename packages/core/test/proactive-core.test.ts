@@ -96,7 +96,7 @@ test("the one tap, the first-account moment, the card's frames and its controls,
   c.send({ t: "proactive_answer", noteId: offer.noteId, ask: "first_look", yes: true });
   for (let i = 0; i < 300 && !notes(core).some((n) => n.ask === "cadence"); i++) await Bun.sleep(10);
   const answer = notes(core).find((n) => n.ask === "cadence")!;
-  expect(answer.finds.map((f) => f.kind)).toEqual(["waiting_on_you"]);
+  expect(answer.finds.map((f) => f.kind)).toEqual(["mismatch", "deadline", "waiting_on_you"]); // D232
 
   // The card: tiles per account, the status line's numbers, 看了哪些.
   c.send({ t: "connections" });

@@ -90,7 +90,11 @@ func (a *App) quietDay(c *ui.Context) {
 			if agent == "" {
 				agent = a.L.T("day.agent")
 			}
-			ui.Text(c, a.L.T("day.problem."+d.Problem.Why, agent)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink)
+			line := a.L.T("day.problem."+d.Problem.Why, agent)
+			if d.Problem.Why == "nothing_kept" { // D232: no agent named
+				line = a.L.T("day.problem.nothing_kept")
+			}
+			ui.Text(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink)
 		}
 		if a.quietButton(c, "quiet-day-open", a.L.T("day.title"), "", false, map[bool]int{true: 2, false: 1}[cs.day]) {
 			cs.day = !cs.day

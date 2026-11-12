@@ -100,7 +100,8 @@ test("a source over its month's budget gets no model judge; code's tests say onl
   expect(j.calls).toHaveLength(0);
   const said = r.notes().flatMap((e) => e.body.finds);
   expect(said.length).toBeGreaterThan(0);
-  expect(said.every((f) => f.kind === "plan_changed" || f.kind === "deadline" || f.kind === "mismatch")).toBe(true);
+  // D232: a person who asked again is urgent too.
+  expect(said.every((f) => f.kind === "plan_changed" || f.kind === "deadline" || f.kind === "mismatch" || f.kind === "waiting_on_you")).toBe(true);
 });
 
 test("有用就说: one note holds at most NOTE_MAX; the partner knows how many more, no screen shows it", async () => {

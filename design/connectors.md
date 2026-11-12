@@ -350,11 +350,11 @@ says so once. "Only when I ask" costs nothing.
 
 1. The person taps **用这些账号** (oo) or **检查并添加** (a key). The card lands (§12), and
    **the partner speaks in the conversation**, not a toast:
-   **已经能看你的 Gmail、日历、Discord 和 GitHub 了。要不要我现在看一眼过去 3 天，有没有在等你回的？**
+   **已经能看你的 Gmail、日历、Discord 和 GitHub 了。要不要我现在看一眼最近两周，挑出要你管的？**
    · **好，看一眼 / Take a look** (the default) · **以后再说 / Not now**.
 2. Go: a read-only look (stages 1–3 over 3 days), said within about a minute:
-   **有 1 件在等你回：Lina 周一问你 #2141 什么时候能 review，今天又问了一次。**
-   (with its next step), or **没有在等你回的。** Never how much it read (D173). Meanwhile, silently, the
+   **有 1 件要你管：Lina 周一问你 #2141 什么时候能 review，今天又问了一次。**
+   (with its next step), or **最近两周没有要你管的。** Never how much it read (D173). Meanwhile, silently, the
    60-day backfill fills the ledger with bookings, renewals and commitments (no message).
 3. Right under the answer, the one question, with a default:
    **以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？**
@@ -464,12 +464,12 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 | ★ `find.muted` | 好，这类以后不说了。 | OK, I won't mention this kind again. |
 | ★ `find.passed` | 过了 | Passed |
 | ★ `kind.*` | 两件事对不上 · 在等你回 · 你在等别人回 · 你答应过的 · 快到期 · 要花钱 · 计划变了 · 开会前 | Two things don't match · Waiting on you · You're waiting on someone · Something you promised · Deadlines and money · A plan changed · Before a meeting |
-| ★ `first.offer` | 已经能看你的 {apps} 了。要不要我现在看一眼过去 3 天，有没有在等你回的？ | I can read your {apps} now. Want me to look through the last 3 days for anything waiting on you? |
+| ★ `first.offer` | 已经能看你的 {apps} 了。要不要我现在看一眼最近两周，挑出要你管的？ | I can read your {apps} now. Want me to look through the last two weeks for anything that needs you? |
 | ★ `first.go` · `first.no` | 好，看一眼 · 以后再说 | Take a look · Not now |
 | ★ `first.ask` | 以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？ | From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK? |
 | ★ `note.pause` | 早上那条还要吗？ | Keep the morning note? |
 | ★ `card.status.watching` · `card.status.paused` | 在留意 · 已暂停 | Keeping an eye out · Paused |
-| ★ `first.answer` | 有 {k} 件在等你回： · 没有在等你回的。 | {k} things are waiting on you: · Nothing is waiting on you. |
+| ★ `first.answer` | 有 {k} 件要你管： · 最近两周没有要你管的。 | {k} things need you: · Nothing in the last two weeks needs you. |
 | ★ `card.status.asked` | 你问起来才去看 | Reads only when you ask |
 | ★ `card.oo_out` | oo 退出登录了 · 在终端里运行 oo login | oo is signed out · run oo login in a terminal |
 | ★ `tile.reads` · `tile.asks` | 会看：{what} · 先问你：{what} | Reads: {what} · Asks you first: {what} |

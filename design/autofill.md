@@ -36,6 +36,7 @@ OK).
 | Readable details: name, email, phone, seat, meal, passport country | Autofill on the home | the partner and its tasks may read them (to pick a seat, say whose name) |
 | Private details: passport number and expiry, birthday, address, known traveler number, loyalty numbers | Autofill on the home | the fill code only; clients see "kept" and a hint (•••678) |
 | The owner's own password manager | the owner's devices | untouched; on a Mac it fills in their own Chrome |
+| A key a task asked for (D233, §8): name, variable, value | Autofill on the home (or only the task's grant, just this once) | the task's key file on the home, loaded inside one command; clients see the name, the variable and a head (`dop_v1_••••••`) or "kept" |
 
 **At rest:** `<dataDir>/saved/<persona>.enc`, AES-256-GCM, 0600. The key is apart from it: on a
 Mac in the login keychain (generic password, service `Ducter Autofill`, an account per data folder,
@@ -111,3 +112,60 @@ object goes through the metaphor process first (`todo.md`).
   research/54 §7) as a second rail behind the same Pay card.
 - Face ID / Touch ID on the Pay card (the code is the fact only the owner has, for now).
 - Codes from a connected mailbox; TOTP secrets.
+- A key for a task on a worker (§8).
+
+## 8. Keys a task asks for (D233)
+
+Status: built 2026-11-12 on the home, the web client and the Mac app, for the author's review;
+unit tests for the store, an integration test through the real core (the card, the answer in the
+waiting call, the run-ended case resumed, a restart in between, Don't give, once, the switch, a
+worker task), the Mac card's tests. Not yet tried with a live harness.
+
+**Who and what they feel.** The developer's deploy task needs `DO_TOKEN`; the consumer's errand
+needs an API key they own; a fresh user has never set anything up. Before: paste a token into the
+chat and hope, or a task that stops at "I need DO_TOKEN". After: one card, paste, **保存，继续 /
+Save and continue**, and a receipt line. Easy (one field), smooth (the task carries on by itself,
+even after its run ended), trustworthy (the key never enters the conversation, the Log or Ducter's
+own model calls, and every use is listed). Unlike T3 Code's "Asked for a secret", whose card was
+cancelled with the run, the card stays until the person answers it.
+
+**The tool.** `ask_for_key({ env, name, why?, again? })`, for every task not in a browser place:
+
+| The case | What happens |
+|---|---|
+| A key is kept under `env` | given to the task at once (a use listed); the answer says how to load it |
+| Given to this task already | the same answer (`again: true` instead asks anew: the key didn't work) |
+| The switch is off | no card; the task is told to say in its report which key it needs and why |
+| The task runs on a worker | no card; the task is told plainly a key can't reach it there yet |
+| Otherwise | a key card; the call waits up to the harness's MCP limit (`MCP_CALL_WAIT`: Claude Code 5 min, the others 50 s) |
+| Answered while the call waits | the answer comes back in the call; the resolution is `delivered`, never forwarded again |
+| Answered later (the run ended, or Ducter restarted) | the task is resumed with one message (D10's forward through `runner.send`) |
+
+**The card** ({task} 需要一个密钥 / {task} needs a key), receipt-like, on the conversation, On hand
+and a push like any decision, no default: 要什么 / What, 变量名 / Variable (mono), 为什么 / Why;
+the masked field **把密钥粘贴到这里 / Paste the key here**; **记住，以后直接用 / Remember it**
+(default) or **只这一次 / Just this once**; **不给 / Don't give** · **保存，继续 / Save and
+continue** (**交给它，继续 / Give it and continue** when once). The note: **它只在要用的那条命令里读
+这个密钥：不进对话，不进记录，Ducter 自己的 AI 也看不到。任务若故意把它打印出来，自己会看到。**
+After: **已交给 {task} / Given to {task}** · **你没给 / You didn't give it**. A message to the task
+never answers it; the Mac's menu bar opens the window for it rather than offering Go.
+
+**How the task uses it.** The home writes `<dataDir>/task-keys/<taskId>.env` (folder 0700, file
+0600, `export ENV='…'`) from the store, and the tool's answer says to load it inside the one
+command that needs it: `. '<file>' && <command>`, never to print it. The file is rewritten on every
+change (an edit or a removal reaches it) and at start; it goes when the task is done, dropped or
+archived. A key given just this once lives only in the task's grant and goes with it.
+
+**What is guaranteed.** Every event the Log takes is scrubbed of every key value first, so the
+transcript, On hand, a push and the partner's reads show `••••••` even when a command printed it.
+What is not: the task's agent sees what its own commands print, and its harness keeps that in its
+own transcript. The card and the docs say so plainly.
+
+**Settings › Autofill › 密钥 / Keys.** **让任务向我要密钥 / Let tasks ask me for keys** (on by
+default) with **任务要用 API 密钥或部署密钥时，会在对话里问你要。关掉后，它只在报告里说需要哪一个。**;
+the kept keys (name; variable · last used; a head then `••••••`, or **已存 / kept**); **添加密钥 /
+Add a key** (它是什么 / What it is, 变量名 / Variable name, 密钥 / Key); Remove as for the others.
+使用记录 lists **把 {name} 交给了任务 / Gave {name} to a task** (**，只这一次 / , just this once**) and
+**你没给 {name} / You didn't give {name}**, with the task. A variable is `^[A-Z_][A-Z0-9_]{0,63}$`
+and never one that changes how a shell starts (PATH, LD_*, DYLD_*, NODE_OPTIONS, BASH_ENV…) or
+Ducter's own (DUCTER_*, NMEM_*).

@@ -3,7 +3,8 @@
 // AES-256-GCM, the key apart from it: key.ts). Nothing here is ever logged, sent to a client in
 // clear or put in a model's context: views carry names, handles, the last four digits and the
 // details the owner lets Ducter read. Secrets leave only through `secret()`, which the browser's
-// fill (fill.ts) calls to type one value into one field.
+// fill (fill.ts) calls to type one value into one field, and (D233) `grantsFor()`, which writes a
+// task's key file (keys.ts).
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -14,13 +15,17 @@ import {
   DETAIL_KEYS,
   digits,
   luhn,
+  KEY_ENV,
+  KEY_ENV_DENIED,
   siteOf,
   type DetailKey,
   type DetailView,
+  type KeyView,
   type SavedInput,
   type SavedUse,
   type SavedView,
 } from "@ducter/protocol/src/saved.ts";
+import { HIDDEN, redactWith } from "@ducter/protocol/src/redact.ts";
 import { keySource, type KeptIn, type KeySource } from "./key.ts";
 
 interface SignIn {
@@ -55,15 +60,60 @@ interface Detail {
   usedAt?: string;
 }
 
+/** D233: 密钥 / Keys: a key a task reads from an environment variable. */
+interface Key {
+  id: string;
+  env: string;
+  name: string;
+  value: string;
+  addedAt: string;
+  usedAt?: string;
+}
+
+/**
+ * D233: a key given to one task, until the task ends. keyId: a kept key (its value is read from
+ * there, so an edit or a removal reaches the task too); value: one given just this once (kept
+ * nowhere else, gone with the grant).
+ */
+export interface Grant {
+  taskId: string;
+  env: string;
+  keyId?: string;
+  value?: string;
+  at: string;
+}
+
 interface Vault {
   v: 1;
   signins: SignIn[];
   cards: Card[];
   details: Partial<Record<DetailKey, Detail>>;
   uses: SavedUse[];
+  keys: Key[];
+  grants: Grant[];
+  /** D233: 让任务向我要密钥 / Let tasks ask me for keys; absent = on. */
+  askKeys?: boolean;
 }
 
-const empty = (): Vault => ({ v: 1, signins: [], cards: [], details: {}, uses: [] });
+const empty = (): Vault => ({ v: 1, signins: [], cards: [], details: {}, uses: [], keys: [], grants: [] });
+
+/** D233: a key's hint per D152: a recognisable head ("dop_v1_") then ••••••; none for a key without one. */
+export function keyHint(value: string): string | undefined {
+  let head: string | undefined;
+  redactWith(value, (k) => {
+    if (k.kind === "prefixed" && head === undefined && value.startsWith(k.head)) head = k.head;
+    return undefined;
+  }, { strict: true });
+  return head ? `${head}${HIDDEN}` : undefined;
+}
+
+/** D233: a key's variable name, checked. */
+export function checkEnv(raw: unknown): string {
+  const env = String(raw ?? "").trim();
+  if (!KEY_ENV.test(env)) throw new SavedError("invalid", "a key's name is an environment variable in capitals, like DO_TOKEN");
+  if (KEY_ENV_DENIED.test(env)) throw new SavedError("invalid", `${env} changes how a shell or a program starts, so it can't hold a key; use another name (like ${env.replace(/^_+/, "")}_KEY)`);
+  return env;
+}
 const USES_KEPT = 300;
 
 /** What a handle names, with its secrets: for the fill only. */
@@ -87,8 +137,22 @@ export class SavedError extends Error {
 
 export interface SavedStore {
   keptIn: KeptIn;
-  view(): { items: SavedView[]; details: DetailView[]; uses: SavedUse[] };
-  put(input: SavedInput, now?: Date): SavedView | DetailView[];
+  view(): { items: SavedView[]; details: DetailView[]; uses: SavedUse[]; keys: KeyView[]; askKeys: boolean };
+  put(input: SavedInput, now?: Date): SavedView | DetailView[] | KeyView;
+  /** D233: the kept key a task may read under this variable. */
+  keyFor(env: string): KeyView | undefined;
+  /** D233: give a key to a task (a kept one by id, or a value just this once) and list the use. */
+  grant(o: { taskId: string; env: string; keyId?: string; value?: string; task?: string; name: string }, now?: Date): void;
+  /** D233: the keys a task was given, with their values: for its key file only. */
+  grantsFor(taskId: string): { env: string; value: string }[];
+  /** D233: every task holding a key. */
+  grantedTasks(): string[];
+  /** D233: a task ended: what it was given goes (a once value with it). */
+  endGrants(taskId: string): void;
+  askKeys(): boolean;
+  setAskKeys(on: boolean): void;
+  /** D233: every key value (kept or given once), to keep out of the Log. */
+  keyValues(): string[];
   remove(id: string): void;
   forgetSite(id: string, site: string): void;
   resolve(handle: string): Resolved | undefined;
@@ -142,7 +206,8 @@ export function openSaved(o: { dataDir: string; persona: string; key?: KeySource
     d.setAuthTag(Buffer.from(f.tag, "base64"));
     const plain = Buffer.concat([d.update(Buffer.from(f.data, "base64")), d.final()]).toString("utf8");
     const v = JSON.parse(plain) as Vault;
-    return (cache = { ...empty(), ...v });
+    // A vault from before D233 has no keys or grants.
+    return (cache = { ...empty(), ...v, keys: v.keys ?? [], grants: v.grants ?? [] });
   };
 
   const save = (v: Vault) => {
@@ -202,6 +267,13 @@ export function openSaved(o: { dataDir: string; persona: string; key?: KeySource
     };
   };
 
+  const keyView = (k: Key): KeyView => {
+    const hint = keyHint(k.value);
+    return { id: k.id, kind: "key", handle: `key:${k.env}`, env: k.env, name: k.name, ...(hint ? { hint } : {}), addedAt: k.addedAt, ...(k.usedAt ? { usedAt: k.usedAt } : {}) };
+  };
+  /** A pasted key keeps its own characters; only the line breaks and spaces around it go. */
+  const keyValue = (raw: unknown) => String(raw ?? "").replace(/^\s+|\s+$/g, "");
+
   const unique = (v: Vault, base: string) => {
     const taken = new Set([...v.signins.map((s) => s.handle), ...v.cards.map((c) => c.handle)]);
     if (!taken.has(base)) return base;
@@ -216,11 +288,31 @@ export function openSaved(o: { dataDir: string; persona: string; key?: KeySource
         items: [...v.signins.map(signinView), ...v.cards.map(cardView)],
         details: DETAIL_KEYS.map((k) => detailView(k, v.details[k])),
         uses: [...v.uses].reverse(),
+        keys: v.keys.map(keyView),
+        askKeys: v.askKeys !== false,
       };
     },
     put(input, now = new Date()) {
       const v = structuredClone(load());
       const at = now.toISOString();
+      if (input.kind === "key") {
+        const env = checkEnv(input.env);
+        const name = String(input.name ?? "").trim().slice(0, 120) || env;
+        const value = keyValue(input.value);
+        if (value.length > 16_384) throw new SavedError("invalid", "that key is too long to keep");
+        if (/[\r\n\0]/.test(value)) throw new SavedError("invalid", "a key is one line: paste just the key");
+        // An edit by id, or the key already kept under this name (one value per variable).
+        const was = input.id ? v.keys.find((k) => k.id === input.id) : v.keys.find((k) => k.env === env);
+        if (input.id && !was) throw new SavedError("not_found", "that key is gone");
+        if (!was && !value) throw new SavedError("invalid", "paste the key to keep it");
+        if (was && was.env !== env && v.keys.some((k) => k.env === env && k.id !== was.id)) throw new SavedError("invalid", `a key named ${env} is kept already`);
+        const k: Key = was ? { ...was, env, name, ...(value ? { value } : {}) } : { id: newId(), env, name, value, addedAt: at };
+        v.keys = was ? v.keys.map((x) => (x.id === was.id ? k : x)) : [...v.keys, k];
+        // Renamed: a task holding it under the old name keeps it under the new one.
+        if (was && was.env !== env) for (const g of v.grants) if (g.keyId === was.id) g.env = env;
+        save(v);
+        return keyView(k);
+      }
       if (input.kind === "signin") {
         const site = siteOf(input.site);
         const username = String(input.username ?? "").trim();
@@ -284,12 +376,64 @@ export function openSaved(o: { dataDir: string; persona: string; key?: KeySource
       const k = id.replace(/^me\./, "") as DetailKey;
       if (k in DETAIL_CLASS) delete v.details[k];
       else {
-        const n = v.signins.length + v.cards.length;
+        const n = v.signins.length + v.cards.length + v.keys.length;
         v.signins = v.signins.filter((s) => s.id !== id);
         v.cards = v.cards.filter((c) => c.id !== id);
-        if (v.signins.length + v.cards.length === n) throw new SavedError("not_found", "nothing saved by that name");
+        v.keys = v.keys.filter((x) => x.id !== id);
+        // D233: a removed key is gone from every task holding it too (their key files are rewritten).
+        v.grants = v.grants.filter((g) => g.keyId !== id);
+        if (v.signins.length + v.cards.length + v.keys.length === n) throw new SavedError("not_found", "nothing saved by that name");
       }
       save(v);
+    },
+    keyFor(env) {
+      const k = load().keys.find((x) => x.env === env);
+      return k ? keyView(k) : undefined;
+    },
+    grant(o, now = new Date()) {
+      const v = structuredClone(load());
+      const at = now.toISOString();
+      const env = checkEnv(o.env);
+      const kept = o.keyId ? v.keys.find((k) => k.id === o.keyId) : undefined;
+      if (o.keyId && !kept) throw new SavedError("not_found", "that key is gone");
+      const value = o.keyId ? undefined : keyValue(o.value);
+      if (!o.keyId && !value) throw new SavedError("invalid", "paste the key to give it");
+      if (value && /[\r\n\0]/.test(value)) throw new SavedError("invalid", "a key is one line: paste just the key");
+      v.grants = [...v.grants.filter((g) => !(g.taskId === o.taskId && g.env === env)), { taskId: o.taskId, env, ...(kept ? { keyId: kept.id } : { value: value! }), at }];
+      if (kept) kept.usedAt = at;
+      v.uses.push({ at, handle: `key:${env}`, label: o.name, site: "", what: "given", taskId: o.taskId, ...(o.task ? { task: o.task } : {}), ...(kept ? {} : { once: true }) });
+      if (v.uses.length > USES_KEPT) v.uses = v.uses.slice(-USES_KEPT);
+      save(v);
+    },
+    grantsFor(taskId) {
+      const v = load();
+      return v.grants.flatMap((g) => {
+        if (g.taskId !== taskId) return [];
+        const value = g.keyId ? v.keys.find((k) => k.id === g.keyId)?.value : g.value;
+        return value ? [{ env: g.env, value }] : [];
+      });
+    },
+    grantedTasks() {
+      return [...new Set(load().grants.map((g) => g.taskId))];
+    },
+    endGrants(taskId) {
+      const v = load();
+      if (!v.grants.some((g) => g.taskId === taskId)) return;
+      const w = structuredClone(v);
+      w.grants = w.grants.filter((g) => g.taskId !== taskId);
+      save(w);
+    },
+    askKeys: () => load().askKeys !== false,
+    setAskKeys(on) {
+      const v = structuredClone(load());
+      if (on) delete v.askKeys;
+      else v.askKeys = false;
+      save(v);
+    },
+    keyValues() {
+      if (!existsSync(path) && !cache) return [];
+      const v = load();
+      return [...new Set([...v.keys.map((k) => k.value), ...v.grants.flatMap((g) => (g.value ? [g.value] : []))])];
     },
     forgetSite(id, site) {
       const v = structuredClone(load());
@@ -400,6 +544,9 @@ export function openSaved(o: { dataDir: string; persona: string; key?: KeySource
         if (c.number.length === 15) out.add(`${c.number.slice(0, 4)} ${c.number.slice(4, 10)} ${c.number.slice(10)}`);
       }
       for (const k of DETAIL_KEYS) if (DETAIL_CLASS[k] === "fill" && v.details[k]) out.add(v.details[k]!.value);
+      // D233: keys, kept or given once.
+      for (const k of v.keys) out.add(k.value);
+      for (const g of v.grants) if (g.value) out.add(g.value);
       return [...out].filter((x) => x && x.length >= 6).sort((a, b) => b.length - a.length);
     },
     onChange(fn) {

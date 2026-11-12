@@ -674,3 +674,16 @@ export function resolveWindows(file: WindowsInput | undefined, env: Record<strin
 export function saveBeforeAt(compactAt: number): number {
   return Math.max(Math.round(compactAt * 0.85), compactAt - 20_000);
 }
+
+/**
+ * D233: how long one Ducter tool call may wait for the person (ask_for_key holds the call open
+ * while its card is fresh, then answers "the card stays; end your turn"). Under each harness's own
+ * limit on an MCP call, so an answer is never lost to a timeout the home can't see; past it, the
+ * task is resumed with a message when the person answers.
+ */
+export const MCP_CALL_WAIT: Record<HarnessId, Fact<number>> = {
+  "claude-code": { value: 5 * 60_000, evidence: { kind: "DOCUMENTED", source: "Claude Code docs: MCP_TOOL_TIMEOUT sets the MCP tool timeout, default far above minutes (child-env.ts passes a user's own through)" } },
+  codex: { value: 50_000, evidence: { kind: "DOCUMENTED", source: "Codex config docs: mcp_servers.<id>.tool_timeout_sec, default 60 s" } },
+  pi: { value: 50_000, evidence: { kind: "INFERRED", why: "OAR's MCP bridge for pi names no limit; kept under the shortest known (Codex's 60 s)" } },
+  "deepseek-harness": { value: 50_000, evidence: { kind: "INFERRED", why: "no documented MCP call limit; kept under the shortest known (Codex's 60 s)" } },
+};

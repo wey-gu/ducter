@@ -517,6 +517,20 @@ note and a `Dn`) before it is built.
       Secure by SMS/email shows up as the common blocker.
 - [ ] **Filling on a worker's browser** sends the value over the worker socket (the owner's own
       computer); say it on the Autofill page, or fill on the home only. Trigger: the review.
+- [ ] **The author's review of D233** (keys a task asks for): the card's words, Remember as the
+      default, the per-task key file, what is and isn't guaranteed. Trigger: the author's next session.
+- [ ] **A key for a task on a worker** (D233 (7)): write the task's key file on the worker over its
+      link (0600, removed when the task ends, rewritten when the worker comes back), and say on the
+      card which computer gets it. Trigger: the first task that must run on a worker and needs a key.
+- [ ] **ask_for_key live, once per harness** (Claude Code, Codex, pi): the task loads the file in
+      the command, ends its turn when told, and resumes from the message; check Codex's 60 s limit
+      holds and pi's real one. Trigger: before D233 leaves draft.
+- [ ] **A task's own transcript keeps what its command printed** (the harness's session file, e.g.
+      `~/.claude/projects`), key included if printed: scrub the harness transcripts Ducter keeps, or
+      wrap commands that load the key file to mask their output. Trigger: a key seen in a transcript.
+- [ ] **The partner and keys** (D233): the persona doesn't yet say "a task asks for a key itself;
+      never ask the user to paste one into the chat" (it needs the D175 eval). Trigger: the partner asks
+      for a key in words in a live session.
 
 ## Browser places (W5)
 

@@ -49,6 +49,34 @@ If nothing is saved, the task stops at the checkout or sign-in page and you fini
 - One-time codes, bank checks (3-D Secure) and passkeys are yours: a task opens that page and you
   finish it yourself, in a live view of Ducter's browser, while the AI can't see.
 
+## Keys a task asks you for
+
+Some work needs a key: a deploy key, an API key, an access key for your code host. When a task needs one,
+you get a card in the conversation:
+
+> **Deploy the blog needs a key**
+> What DigitalOcean deploy key · Variable DO_TOKEN · Why to push the new build
+
+Paste the key and tap **Save and continue**. Choose **Remember it** (the default) and the next
+task that needs the same key gets it without asking; choose **Just this once** and it's given to
+this task only and forgotten when the task ends. **Don't give** tells the task to carry on without
+it and say what's left undone.
+
+The card waits for you. If you answer after the task has paused, or after Ducter restarted, the
+task picks up again by itself.
+
+What you can count on: the key never shows in your conversation or in the task's history, and
+the AI that you talk to never sees it. The task uses it only inside the command that needs it.
+What a task could still do: if it printed the key on purpose, it would see it itself. Every time
+a key is given or refused is listed under **Where it was used**.
+
+In **Settings › Autofill › Keys** you can add a key yourself, see which are kept (by name, never
+the key), remove one, or turn off **Let tasks ask me for keys**. When it's off, a task only says
+in its report which key it needs.
+
+For now this works for tasks on the computer Ducter lives on; a task on another of your computers
+says in its report which key it needs (coming soon).
+
 ## Where it's kept
 
 Everything is kept on the computer Ducter lives on, locked. On a Mac the key is in that Mac's

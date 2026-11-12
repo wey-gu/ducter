@@ -422,6 +422,15 @@ export function createWsHandler(deps: WsDeps) {
       case "decide": {
         // D191: a pay card's Go carries the card's security code (never kept, never logged): it
         // waits in memory for that one fill. Go without it is refused, so nothing is half-paid.
+        // D233: a key card: Go carries the key (into Autofill and the task's key file, never the
+        // Log); Hold is 不给 / Don't give. Either answers the task, in its waiting call or by resuming it.
+        const keys = deps.autofill?.keys;
+        if (keys?.isKeyAsk(f.decisionId)) {
+          if (f.option === "go") keys.answer(f.decisionId, { value: String(f.key ?? ""), once: f.once === true });
+          else if (f.option === "hold") keys.answer(f.decisionId, "refuse");
+          else throw new Error("a key card is answered with the key or 不给 / Don't give");
+          return;
+        }
         const pay = deps.autofill?.fill;
         if (f.option === "go" && pay?.needsCvc(f.decisionId)) {
           if (!f.cvc) throw new Error("this payment needs the card's security code");
@@ -433,12 +442,14 @@ export function createWsHandler(deps: WsDeps) {
       case "saved":
       case "saved_put":
       case "saved_remove":
-      case "saved_forget_site": {
+      case "saved_forget_site":
+      case "saved_ask_keys": {
         // D191: the Autofill list. A put is the one frame that carries a secret; the answer never does.
         const af = deps.autofill;
         if (!af) throw new Error("Autofill isn't available here");
         try {
           if (f.t === "saved_put") af.store.put(f.item);
+          else if (f.t === "saved_ask_keys") af.store.setAskKeys(f.on !== false);
           else if (f.t === "saved_remove") af.store.remove(String(f.id ?? ""));
           else if (f.t === "saved_forget_site") af.store.forgetSite(String(f.id ?? ""), String(f.site ?? ""));
           send(ws, af.frame(f.t === "saved" ? {} : { ok: true }));

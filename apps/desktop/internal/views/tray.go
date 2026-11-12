@@ -14,6 +14,9 @@ type TrayDecision struct {
 	ID, Question, GoLabel, Task string
 	// CanGo: a Go of its own (always, today); Reply opens the window.
 	Reversible bool
+	// InWindow (D233): answered only in the window, where its field is (a
+	// key, a pay card's security code): the menu opens Ducter instead of Go.
+	InWindow bool
 }
 
 // TrayDecisions are the decisions open now, oldest first, at most max.
@@ -31,6 +34,9 @@ func (a *App) TrayDecisions(max int) []TrayDecision {
 		td := TrayDecision{ID: d.DecisionID, Question: oneLine(a.questionOf(d), 60), GoLabel: oneLine(d.GoLabel, 32), Reversible: d.Reversible}
 		if d.Where != nil { // D157: the where ask in the user's words
 			td.GoLabel = a.goLabel(d)
+		}
+		if d.Key != nil || (d.Pay != nil && d.Pay.NeedsCvc) {
+			td.InWindow = true
 		}
 		if t := a.S.Task(d.TaskID); t != nil {
 			td.Task = t.Title()

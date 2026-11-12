@@ -43,6 +43,7 @@ type SavedUse struct {
 	TaskID string `json:"taskId,omitempty"`
 	Task   string `json:"task,omitempty"`
 	Amount string `json:"amount,omitempty"`
+	Once   bool   `json:"once,omitempty"` // D233: a key given just this once
 }
 
 // PayAsk is a 付款 / Pay card (D191): merchant, amount, card; the security
@@ -105,6 +106,59 @@ type DecidePay struct {
 	DecisionID string `json:"decisionId"`
 	Option     string `json:"option"` // go
 	Cvc        string `json:"cvc,omitempty"`
+}
+
+// KeyView is one of 密钥 / Keys (D233): never the value; Hint is a known
+// head then ••••••, or empty (the client says it is kept).
+type KeyView struct {
+	ID      string `json:"id"`
+	Kind    string `json:"kind"` // key
+	Handle  string `json:"handle"`
+	Env     string `json:"env"`
+	Name    string `json:"name"`
+	Hint    string `json:"hint,omitempty"`
+	AddedAt string `json:"addedAt"`
+	UsedAt  string `json:"usedAt,omitempty"`
+}
+
+// KeyAsk is {task} 需要一个密钥 / {task} needs a key (D233).
+type KeyAsk struct {
+	Env   string `json:"env"`
+	Name  string `json:"name"`
+	Why   string `json:"why,omitempty"`
+	File  string `json:"file"`
+	Saved bool   `json:"saved,omitempty"`
+}
+
+// KeyInput adds or changes one key (saved_put; the value goes once).
+type KeyInput struct {
+	Kind  string `json:"kind"` // key
+	ID    string `json:"id,omitempty"`
+	Name  string `json:"name"`
+	Env   string `json:"env"`
+	Value string `json:"value,omitempty"`
+}
+
+// KeyPut is saved_put with a key.
+type KeyPut struct {
+	T    string   `json:"t"` // saved_put
+	Item KeyInput `json:"item"`
+}
+
+// DecideKey is 保存，继续 / Save and continue on a key card: the key goes
+// with this Go only (kept in Autofill unless Once).
+type DecideKey struct {
+	T          string `json:"t"` // "decide"
+	DecisionID string `json:"decisionId"`
+	Option     string `json:"option"` // go
+	Key        string `json:"key"`
+	Once       bool   `json:"once,omitempty"`
+}
+
+// SavedAskKeys is 让任务向我要密钥 / Let tasks ask me for keys.
+type SavedAskKeys struct {
+	T  string `json:"t"` // saved_ask_keys
+	On bool   `json:"on"`
 }
 
 // DetailFill reports whether a detail is fill-only (the partner and its

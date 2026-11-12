@@ -203,7 +203,7 @@ test("mcp: report_to_main round trip drives the card, decision and living messag
 
   const task = await mcpClient(core, { taskId: "t1" });
   const tools = (await task.listTools()).tools.map((t) => t.name).sort();
-  expect(tools).toEqual(["log_read", "log_search", "report_to_main", "wait_for"]);
+  expect(tools).toEqual(["ask_for_key", "log_read", "log_search", "report_to_main", "wait_for"]); // ask_for_key: D233
   const res: any = await task.callTool({
     name: "report_to_main",
     arguments: {
@@ -284,7 +284,7 @@ test("connections over real sockets: add over WS without the token ever coming b
   openTask(core.log, "t1");
   const task = await mcpClient(core, { taskId: "t1" });
   const names = (await task.listTools()).tools.map((x) => x.name).sort();
-  expect(names).toEqual(["connection_read", "connection_search", "log_read", "log_search", "wait_for"]);
+  expect(names).toEqual(["ask_for_key", "connection_read", "connection_search", "log_read", "log_search", "wait_for"]);
   const denied: any = await task.callTool({ name: "connection_read", arguments: { connection: "OpenConnector", action: "github.list_my_prs" } });
   expect(denied.content[0].text).toContain("No such connection");
   expect(core.connections.grant("t1", "OpenConnector").ok).toBe(true);

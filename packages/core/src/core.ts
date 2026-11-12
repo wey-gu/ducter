@@ -62,6 +62,7 @@ import { inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plu
 import { realSys, updateHow, writeAlive, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { createAutofill, type Autofill } from "./saved/index.ts";
+import { createKeys } from "./saved/keys.ts";
 import { createDucterBrowser, type DucterBrowser, type DucterBrowserOptions } from "./browser/index.ts";
 import { createDucterPhone, type DucterPhone, type DucterPhoneOptions } from "./android/index.ts";
 import { readSites } from "./browser/sites.ts";
@@ -81,6 +82,8 @@ export interface CoreOptions {
   persona?: Persona;
   clock?: Clock;
   defaultDelayMs?: number;
+  /** D233: how long ask_for_key waits in the call for the person (tests); default per harness. */
+  keyWaitMs?: number;
   batchMs?: number;
   sweepMs?: number; // how often live device sockets are re-checked for revocation (default 10 s)
   push?: boolean; // send Web Push (default on; env DUCTER_PUSH=off turns it off)
@@ -459,6 +462,14 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D191: 自动填充 / Autofill: saved sign-ins, cards and details, filled by reference in Ducter's browser.
   const autofill = createAutofill({ dataDir, persona: persona.id, mcp, log, tasks: tasks as never, ...(opts.platform ? { platform: opts.platform } : {}) });
   autofillRef = autofill;
+  // D233: 密钥 / Keys a task asks the person for. No key value ever enters the Log: every event's
+  // body is scrubbed of them on the way in (a command that printed one shows dots everywhere).
+  const keys = createKeys({ dataDir, mcp, log, decisions, store: autofill.store, tasks, ...(opts.keyWaitMs !== undefined ? { waitMs: () => opts.keyWaitMs! } : {}) });
+  autofill.keys = keys;
+  {
+    const append = log.append.bind(log);
+    log.append = ((input: Parameters<typeof log.append>[0]) => append({ ...input, body: keys.scrub(input.body) })) as typeof log.append;
+  }
   // D151: Ducter's own browser (a server's 上网): its tools are listed only for tasks attached to it.
   const browser =
     opts.browser === false
@@ -996,6 +1007,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       await browser?.stop().catch(() => {});
       await ownPhone?.stop().catch(() => {});
       autofill.stop();
+      keys.stop();
       devicesView?.stop();
       anywhere.close(); // the tunnel itself keeps running: the next Ducter adopts it (same address)
       workers.stop();

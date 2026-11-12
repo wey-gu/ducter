@@ -4,11 +4,13 @@ import type { Attention, Bodies, EvidenceRef, LogEvent, Question } from "@ducter
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 import type { CoreRegistry } from "./registry.ts";
+import { keyReadyText, keyRefusedText } from "./saved/key-words.ts";
 
 export type DecisionHook = (taskId: string, text: string, resolved: Bodies["decision_resolved"]) => void | Promise<void>;
 
 export interface Decisions {
-  decide(decisionId: string, option: "go" | "hold" | "reply", text?: string): LogEvent<"decision_resolved">;
+  /** extra.delivered (D233): the task already has the answer; it is not forwarded. */
+  decide(decisionId: string, option: "go" | "hold" | "reply", text?: string, extra?: { delivered?: boolean }): LogEvent<"decision_resolved">;
   get(decisionId: string): Bodies["decision"] | undefined;
   isPending(decisionId: string): boolean;
   setHook(fn: DecisionHook): void;
@@ -32,6 +34,10 @@ export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"
   // D151: the user signed in themselves in the live view; the task checks the page again.
   // D157: where it runs is the runner's to change (it re-places the task); the task hears nothing.
   if (d.where) return "";
+  // D233: the task got the answer in the call it was waiting in; nothing to send again.
+  if (r.delivered) return "";
+  // D233: a key given (it is in the task's key file now) or refused; both resume the task.
+  if (d.key) return r.option === "go" ? keyReadyText(d.key, true) : r.option === "hold" ? keyRefusedText(d.key) : "";
   if (r.option === "go" && d.signIn)
     return `The user says they're signed in to ${d.signIn.site} in Ducter's browser (they did it themselves; you saw nothing of it). browser_read the page to check, then carry on.`;
   // D191: a payment Go, or the OK for a saved thing's first use on a site.
@@ -135,6 +141,8 @@ export function createDecisions(opts: {
           ...(q.signIn ? { signIn: q.signIn } : {}),
           ...(q.pay ? { pay: q.pay, goLabel: "Pay", defaultOption: "hold" as const } : {}),
           ...(q.fill ? { fill: q.fill } : {}),
+          // D233: a key: no default ever; Go carries the value, Hold is 不给 / Don't give.
+          ...(q.key ? { key: q.key, goLabel: "Save and continue", defaultOption: "hold" as const } : {}),
           // D217: a commit on Ducter's phone has no default (Go taps it once); the user's turn on it is Done.
           ...(q.phone ? { phone: q.phone, ...(q.phone.kind === "go" ? { goLabel: "Go", defaultOption: "hold" as const } : { goLabel: "Done", defaultOption: "hold" as const }) } : {}),
           ...(q.where ? { where: q.where } : {}),
@@ -176,7 +184,8 @@ export function createDecisions(opts: {
     const taskId = d.taskId;
     if (dropped(taskId)) return; // resolved (e.g. by a direct message) while dropped: no turn, no flip
     if (!tasks.pendingDecisions(taskId).length) {
-      if (r.option === "hold") setAttention(taskId, "blocked"); // no reason text: the card shows Waiting
+      // D233: 不给 / Don't give on a key is an answer the task carries on with, not a wait.
+      if (r.option === "hold" && !d.key) setAttention(taskId, "blocked"); // no reason text: the card shows Waiting
       else setAttention(taskId, "working");
     }
     const text = silent.delete(r.decisionId) ? "" : forwardText(d, r);
@@ -243,6 +252,9 @@ export function createDecisions(opts: {
     answeredByMessage(taskId, text, by) {
       for (const id of tasks.pendingDecisions(taskId)) {
         if (resolved.has(id) || !all.has(id)) continue;
+        // D233: a key is never answered by a message (a key never goes through the conversation):
+        // its card stays until the person gives it or says no.
+        if (all.get(id)!.key) continue;
         silent.add(id);
         log.append({
           stream: "channel",
@@ -252,13 +264,14 @@ export function createDecisions(opts: {
         });
       }
     },
-    decide(decisionId, option, text) {
+    decide(decisionId, option, text, extra) {
       if (!all.has(decisionId)) throw new Error(`unknown decision ${decisionId}`);
       if (resolved.has(decisionId)) throw new Error(`decision ${decisionId} is already resolved`);
       if (option === "reply" && !text?.trim()) throw new Error("reply needs text");
       if (dropped(all.get(decisionId)!.taskId)) throw new Error("That task was dropped. Undo the drop first, then answer.");
       const body: Bodies["decision_resolved"] = { decisionId, option, by: "user" };
       if (text) body.text = text;
+      if (extra?.delivered) body.delivered = true;
       return log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body });
     },
     takeUnforwarded: () => unforwarded.splice(0),

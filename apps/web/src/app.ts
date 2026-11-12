@@ -1912,6 +1912,22 @@ class AppState {
     this.send({ t: "decide", decisionId: id, option: "go", ...(cvc ? { cvc } : {}) });
     this.changed();
   }
+  /** D233: 保存，继续 / Save and continue on a key card: the key goes with this Go only (kept unless once). */
+  giveKey(id: string, key: string, once: boolean) {
+    const d = this.S.decisions.get(id);
+    if (d) d.pending = "go";
+    if (navigator.vibrate) navigator.vibrate(8);
+    haptic("success");
+    this.markRead();
+    this.send({ t: "decide", decisionId: id, option: "go", key, once });
+    this.changed();
+  }
+  /** D233: 让任务向我要密钥 / Let tasks ask me for keys. */
+  setAskKeys(on: boolean) {
+    if (this.saved) this.saved = { ...this.saved, askKeys: on };
+    this.send({ t: "saved_ask_keys", on });
+    this.changed();
+  }
   decide(id: string, option: "go" | "hold" | "reply", text?: string) {
     const d = this.S.decisions.get(id);
     if (d) d.pending = option;

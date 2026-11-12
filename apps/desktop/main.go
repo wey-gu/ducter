@@ -546,6 +546,11 @@ func (tm *trayMenu) refresh(force bool) {
 					tm.win.Update(func() { app.Decide(id, opt, ""); tm.refresh(true) })
 				}
 			}
+			if d.InWindow {
+				// D233: a key or a security code is typed in the window, never from the menu.
+				items = append(items, &mygo.MenuItem{Label: d.Question, Subtitle: d.Task, Click: open(func() { app.Route = views.RouteConversation })})
+				continue
+			}
 			goLabel := l.T("decision.go")
 			if d.GoLabel != "" {
 				goLabel = l.T("tray.go", d.GoLabel)

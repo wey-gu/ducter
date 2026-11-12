@@ -28,7 +28,12 @@ type autofillState struct {
 	name, number, exp    string
 	details              map[string]string
 	cvc                  map[string]string // decisionId -> the code typed on its pay card
-	sentAt               time.Time
+	// D233: a key form's variable; a key card's pasted key and its choice
+	// (只这一次), by decisionId, until its Go.
+	keyEnv  string
+	keyVal  map[string]string
+	keyOnce map[string]bool
+	sentAt  time.Time
 }
 
 var expRe = regexp.MustCompile(`^\s*(\d{1,2})\s*/\s*(\d{2,4})\s*$`)
@@ -129,6 +134,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 			}
 		})
 	})
+	a.keysGroup(c, f)
 	ui.Column(c.Key("af-uses")).Gap(t.S2).Children(func() {
 		a.heading(c, a.L.T("af.uses"), t.XL)
 		if len(f.Uses) == 0 {
@@ -182,6 +188,7 @@ func (a *App) afRow(c *ui.Context, key, title, help, mark string, open func()) {
 func (a *App) clearForm() {
 	s := &a.af
 	s.site, s.user, s.password, s.name, s.number, s.exp = "", "", "", "", "", ""
+	s.keyEnv = ""
 	s.details = nil
 }
 
@@ -332,16 +339,26 @@ func (a *App) afUse(c *ui.Context, i int, u protocol.SavedUse) {
 		what = a.L.T("af.use.declined", u.Label)
 	case "ok":
 		what = a.L.T("af.use.ok", u.Label)
+	case "given": // D233: a key, given to the task named under it
+		what = a.L.T("af.use.given", u.Label)
+		if u.Once {
+			what = a.L.T("af.use.given.once", u.Label)
+		}
+	case "refused":
+		what = a.L.T("af.use.refused", u.Label)
 	default:
 		what = a.L.T("af.use.filled", u.Label)
 	}
+	if u.Site != "" {
+		what += " · " + u.Site
+	}
 	ink := t.Ink
-	if u.What == "declined" {
+	if u.What == "declined" || u.What == "refused" {
 		ink = t.InkMuted
 	}
 	ui.Row(c.Key("af-use:"+strconv.Itoa(i))).Gap(t.S3).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, what+" · "+u.Site).FontSize(t.SM).FontWeight(700).TextColor(ink)
+			ui.Text(c, what).FontSize(t.SM).FontWeight(700).TextColor(ink)
 			if u.Task != "" {
 				ui.Text(c, a.L.T("af.use.task", u.Task)).FontSize(t.XS).TextColor(t.InkMuted)
 			}

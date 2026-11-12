@@ -157,7 +157,7 @@ Which chips a device gets:
 
 | Device | Chips (default order) |
 |---|---|
-| hel (home, server) | 上网 (Ducter's own browser, D151) · 从外面连 (D143) · 打电话 (D199) · then the ghosts 用电脑 · 用手机 |
+| hel (home, server) | 上网 (Ducter's own browser, D151) · 从外面连 (D143) · 打电话 (D199) · then 用电脑 · 用手机 pointing at the Mac that has them (D237), else the ghost 用手机 only (no 用电脑 on a server) |
 | a MacBook (home, Apple silicon) | 上网 · 从外面连 · 打电话 · **用手机** (D217: + opens the install sheet; on, the phone's block under the chips) · the ghost 用电脑 |
 | a Mac that is the home | 上网 · 用电脑 · 从外面连 · 打电话 · then the ghosts still to come |
 | a Mac connected to a home elsewhere | **替 hel 做事** first (D155's switch, now a chip) · 上网 (needs D157 (9)) · 用电脑; no 打电话, no ghosts |
@@ -174,6 +174,22 @@ the core refuses an `ability` request for it). Its sign-in gone (D193), the fail
 (`later`) shows as a flat sunken chip with its `_later` clay, no base, its name and a faint **以后会有
 / coming later**. It never sinks, squishes or adds; a tap opens its ⓘ (what it will do). So the
 author sees what is coming, without a control that does nothing.
+
+**Elsewhere (D237):** a ghost is honest only when no computer can do it. When the home lacks an
+ability (`later`) that another computer has on, is installing, or (用电脑) has added and waits for
+macOS's two switches, the home's chip points there instead: **用手机 · 在 MacBook Pro M3 上 / Use a
+phone · on MacBook Pro M3** (several: the awake one first, then **+N**: **在 {name} 上 +{n} / on
+{name} +{n}**). Full clay (not desaturated), flat on the page with a 1.2 hairline in `line` and no
+base (it is not a switch here), the where words in `xs` 600 `ink-muted` (ellipsized at about 11em)
+and a drawn chevron. A tap opens that computer's card (never adds anything); it never squishes.
+ⓘ: **Ducter 自己的安卓手机在 {name} 上。在这里交给它的事，要用手机时就用那台。/ Ducter's own
+Android phone is on {name}. What you hand it here uses that phone when it needs one.** and
+**任务能像你一样用 {name} 上的应用 … 在这里交给 Ducter 的事，要用应用时就去那台做。…/ Tasks can use
+{name}'s apps the way you do … What you hand Ducter here goes there when it needs an app. …**
+On a home with no screen (kind `server`, or a Linux home), 用电脑 is never a ghost: it never comes
+there, so the chip is absent unless another computer has it. 用手机 keeps its ghost there only
+while no computer has it. The Isles stage already leaves `later` abilities off the home's dock, so
+it shows nothing false; the website's tray now shows 用电脑 as a Mac ability, not coming later.
 
 ### 3.5 How it is connected: one quiet line
 

@@ -78,22 +78,50 @@ export function versionLine(L: Words, h: DeviceHarness): string {
   return how ? L.t("coin.version", h.version, how) : L.t("agentv.version", h.version);
 }
 
-export type ChipLook = "on" | "off" | "add" | "fail" | "later";
+export type ChipLook = "on" | "off" | "add" | "fail" | "later" | "elsewhere";
+/** D237: an "elsewhere" chip points at the device that has the ability: the first, and how many more. */
+export type ChipAt = { id: string; name: string; more: number };
+export type ChipOut = { id: string; look: ChipLook; at?: ChipAt };
+
+/** D237: the abilities the home can have through another computer. */
+const LENT = ["computer", "phone"];
+
+/** D237: a device has it: on, being installed, or added and waiting for macOS's two switches. */
+function hasIt(d: DeviceView, id: string): boolean {
+  const ab = d.abilities.find((a) => a.id === id);
+  if (!ab) return false;
+  return ab.state === "on" || ab.setup === "installing" || (id === "computer" && ab.state === "unavailable" && ab.reason === "computer_permissions");
+}
+
+/** D237: a home with no screen of its own (a server, a Linux home): 用电脑 never comes to it. */
+export const headless = (dv: DeviceView) => dv.kind === "server" || (dv.platform ?? "").toLowerCase().startsWith("linux");
+
+/** D237: the other computers that have an ability, awake ones first. */
+export function holders(dv: DeviceView, all: DeviceView[], id: string): DeviceView[] {
+  const list = all.filter((d) => d.id !== dv.id && !d.home && d.kind !== "phone" && hasIt(d, id));
+  return [...list.filter((d) => d.state === "awake"), ...list.filter((d) => d.state !== "awake")];
+}
 
 /**
  * The ability chips a device gets, in order: 上网 · 用电脑 · 从外面连 as it has them, then on the
  * home 打电话 (D199: on with a calling connection, + to add one, failed when its sign-in is gone),
- * then the home's abilities still to come as ghosts (用电脑 · 用手机, 以后会有), which only explain.
- * Another computer shows none of the later ones; a worker Mac has its own 用手机 and 用电脑 (D234, D235). The same rules as the desktop's chipSpecs.
+ * then the home's abilities it doesn't have itself (D237): one another computer has on (or is
+ * installing) points there (用手机 · 在 MacBook Pro M3 上; a tap opens that card); one no computer
+ * has is a ghost (以后会有) that only explains, except 用电脑 on a home with no screen, which
+ * shows nothing. Another computer shows none of these; a worker Mac has its own 用手机 and 用电脑
+ * (D234, D235). The same rules as the desktop's chipSpecs.
  */
-export function chipsFor(dv: DeviceView): { id: string; look: ChipLook }[] {
-  const out: { id: string; look: ChipLook }[] = [];
-  const ghosts: { id: string; look: ChipLook }[] = [];
+export function chipsFor(dv: DeviceView, all: DeviceView[] = []): ChipOut[] {
+  const out: ChipOut[] = [];
+  const ghosts: ChipOut[] = [];
   for (const id of ["web", "computer", "remote", "call", "phone"]) {
     const ab = dv.abilities.find((a) => a.id === id);
     if (!ab) continue;
     if (ab.state === "later") {
-      if (dv.home) ghosts.push({ id, look: "later" });
+      if (!dv.home) continue;
+      const there = LENT.includes(id) ? holders(dv, all, id) : [];
+      if (there.length) ghosts.push({ id, look: "elsewhere", at: { id: there[0]!.id, name: there[0]!.name, more: there.length - 1 } });
+      else if (!(id === "computer" && headless(dv))) ghosts.push({ id, look: "later" });
       continue;
     }
     if (id === "call") {

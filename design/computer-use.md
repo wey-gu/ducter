@@ -20,7 +20,9 @@ and money out of reach, 停下 from any window), 惊喜 (it really uses the app,
 
 ## 2. Turning it on
 
-- Macs only for now; Linux and Windows show the D199 ghost with **以后会有**.
+- Macs only for now. Windows shows the D199 ghost with **以后会有**; a home with no screen (a server,
+  a Linux home) shows no 用电脑 chip at all, or, when a Mac has it, **用电脑 · 在 {Mac} 上**, which
+  opens that Mac's card (D237).
 - It needs cua-driver on that Mac (上网 already installs it there, research/23). Missing, the chip
   is flat and its ⓘ says to install it.
 - **+ 用电脑** saves the choice on that Mac (`<dataDir>/abilities.json` `computer: true`), on the home

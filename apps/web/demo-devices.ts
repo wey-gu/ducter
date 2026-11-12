@@ -15,6 +15,8 @@ const registry = async (u: string) =>
 const core = startCore({ ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
   hostname: "127.0.0.1",
+  // D237: with DEMO_PHONE, hel is the Linux server it is (no 用电脑, no 用手机 of its own).
+  ...(process.env.DEMO_PHONE ? { platform: "linux" as const } : {}),
   deviceProbes: {
     cua: async () => ({ missing: "no" }),
     native: async () => undefined,
@@ -48,6 +50,8 @@ ws.send(
     abilities: [
       { id: "web", state: "off", where: "chrome" },
       { id: "computer", state: "on" },
+      // D237: DEMO_PHONE=on gives the MacBook 用手机, so hel's card points there.
+      ...(process.env.DEMO_PHONE ? [{ id: "phone", state: process.env.DEMO_PHONE === "installing" ? "off" : "on", ...(process.env.DEMO_PHONE === "installing" ? { setup: "installing" } : {}) }] : []),
     ],
     harnesses: [
       { id: "claude-code", installed: true, loggedIn: true, version: "2.1.400", how: "installer" },

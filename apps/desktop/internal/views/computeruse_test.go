@@ -75,17 +75,30 @@ func TestWorkerMacPhoneAndComputer(t *testing.T) {
 	}
 }
 
-// The home (hel) is a Linux server: 用电脑 stays a ghost there that explains
-// it is Macs only for now.
+// The home (hel) is a Linux server (D237): 用电脑 never comes to it, so no
+// ghost; with the MacBook's 用电脑 on, the home's chip points there.
 func TestComputerGhostOnLinuxHome(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		L := i18n.New(lang)
 		app := sheetApp(t, lang, "awake")
 		app.devState().sel = "local"
 		tt := sheetTester(app, 1280, 860, true)
-		click(t, tt, L.T("chip.computer")+" · "+L.T("chip.state.later"))
-		if !tt.HasText(L.T("ability.computer.later")) {
-			t.Fatalf("%s: the ghost doesn't explain: %q", lang, tt.Texts())
+		if _, ok := tt.Find(L.T("chip.computer") + " · " + L.T("chip.state.later")); ok {
+			t.Fatalf("%s: a 用电脑 ghost on a Linux server: %q", lang, tt.Texts())
+		}
+		click(t, tt, L.T("chip.computer")+" · "+L.T("chip.elsewhere", "MacBook"))
+		if app.devState().sel != "dev_mac" {
+			t.Fatalf("%s: the chip opened %q, not the MacBook", lang, app.devState().sel)
+		}
+		// No computer has it: nothing at all on the home.
+		app = sheetApp(t, lang, "awake")
+		app.S.Device("dev_mac").Abilities = []protocol.DeviceAbility{{ID: "web", State: "off", Where: "chrome"}, {ID: "computer", State: "off"}}
+		app.devState().sel = "local"
+		tt = sheetTester(app, 1280, 860, true)
+		for _, s := range []string{L.T("chip.computer") + " · " + L.T("chip.state.later"), L.T("chip.computer") + " · " + L.T("chip.elsewhere", "MacBook")} {
+			if _, ok := tt.Find(s); ok {
+				t.Fatalf("%s: %q on a home with no screen and no Mac that has it", lang, s)
+			}
 		}
 	}
 }

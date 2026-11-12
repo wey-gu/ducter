@@ -654,7 +654,8 @@ const (
 	chipOff
 	chipAdd
 	chipFail
-	chipLater // D199: still to come: a ghost that only explains itself
+	chipLater     // D199: still to come: a ghost that only explains itself
+	chipElsewhere // D237: the home has it through another computer: points there
 )
 
 // chipSpec is one ability chip: its words and clay, how it looks, what a
@@ -664,6 +665,7 @@ type chipSpec struct {
 	id, label, art string
 	look           chipLook
 	state          string
+	where          string // chipElsewhere: 在 MacBook Pro M3 上
 	busy           bool
 	tap            func(art ui.Rect)
 	info           func() // the ⓘ note's body; nil: none
@@ -706,7 +708,10 @@ func (a *App) infoText(c *ui.Context, s string) {
 // 从外面连 as that device has them; on the home 打电话 (D199); 用手机 on a
 // Mac that can have it, the home or a worker (D234); then the home's
 // abilities still to come as ghosts (用电脑 · 用手机, 以后会有). The same
-// rules as the web's chipsFor (apps/web/src/sheet.ts).
+// rules as the web's chipsFor (apps/web/src/sheet.ts). D237: an ability the
+// home doesn't have itself but another computer has on (or is installing)
+// points there instead (用手机 · 在 MacBook Pro M3 上; a tap opens that
+// card); 用电脑 on a home with no screen shows nothing unless another has it.
 func (a *App) chipSpecs(c *ui.Context, card string, dv *protocol.DeviceView, cl *protocol.ReachClient) []chipSpec {
 	var out []chipSpec
 	computer := ""
@@ -728,7 +733,12 @@ func (a *App) chipSpecs(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 		switch {
 		case ab == nil:
 		case ab.State == protocol.AbilityLater:
-			if dv.Home {
+			if !dv.Home {
+				break
+			}
+			if there := a.holders(dv, id); len(there) > 0 {
+				ghosts = append(ghosts, a.elsewhereSpec(c, card, id, there))
+			} else if !(id == protocol.AbilityComputer && headless(dv)) {
 				ghosts = append(ghosts, a.laterSpec(c, card, id))
 			}
 		case id == protocol.AbilityCall:
@@ -757,6 +767,60 @@ func (a *App) toggleChipInfo(card, id string) {
 	} else {
 		s.info = card + "|" + id
 	}
+}
+
+// headless: a home with no screen of its own (a server, a Linux home), where
+// 用电脑 never comes (D237).
+func headless(dv *protocol.DeviceView) bool {
+	return dv.Kind == "server" || strings.HasPrefix(strings.ToLower(dv.Platform), "linux")
+}
+
+// hasAbility: the device has it on, is installing it, or (用电脑) added it
+// and waits for macOS's two switches (D237).
+func hasAbility(dv *protocol.DeviceView, id string) bool {
+	ab := dv.Ability(id)
+	if ab == nil {
+		return false
+	}
+	return ab.State == protocol.AbilityOn || ab.Setup == "installing" ||
+		(id == protocol.AbilityComputer && ab.State == protocol.AbilityUnavailable && ab.Reason == "computer_permissions")
+}
+
+// holders are the other computers that have an ability, awake ones first
+// (D237). The same rule as the web's holders (apps/web/src/sheet.ts).
+func (a *App) holders(dv *protocol.DeviceView, id string) []*protocol.DeviceView {
+	var awake, rest []*protocol.DeviceView
+	for i := range a.S.Devices {
+		d := &a.S.Devices[i]
+		if d.ID == dv.ID || d.Home || d.Kind == "phone" || !hasAbility(d, id) {
+			continue
+		}
+		if d.State == protocol.DeviceAwake {
+			awake = append(awake, d)
+		} else {
+			rest = append(rest, d)
+		}
+	}
+	return append(awake, rest...)
+}
+
+// elsewhereSpec is an ability the home has through another computer
+// (D237): the full clay, where it lives, and a tap opens that computer's
+// card; its ⓘ says the work goes there.
+func (a *App) elsewhereSpec(c *ui.Context, card, id string, there []*protocol.DeviceView) chipSpec {
+	first := there[0]
+	where := a.L.T("chip.elsewhere", first.Name)
+	if len(there) > 1 {
+		where = a.L.T("chip.elsewhere.more", first.Name, len(there)-1)
+	}
+	to, name := first.ID, first.Name
+	return chipSpec{id: id, label: a.L.T("chip." + id), art: abilityArt(id), look: chipElsewhere, where: where,
+		tap: func(ui.Rect) {
+			d := a.devState()
+			d.sel, d.selClient, d.removing = to, "", ""
+			d.card.sheet.info = ""
+		},
+		info: func() { a.infoText(c, a.L.T("ability."+id+".elsewhere", name)) }}
 }
 
 // laterSpec is an ability still to come (D199): its desaturated clay and
@@ -1004,6 +1068,8 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 		acc += " · " + firstNonEmpty(sp.state, a.L.T("chip.failed"))
 	case chipLater:
 		acc += " · " + a.L.T("chip.state.later")
+	case chipElsewhere:
+		acc += " · " + sp.where
 	}
 	chip := ui.Row(c.Key("chip:" + key)).Height(chipH).Gap(6).Radius(t.ButtonRadius[1]).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(acc).Focusable().AccessSelected(sp.look == chipOn).Shrink(0)
@@ -1034,6 +1100,12 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 		// No base to sink into: it isn't a switch yet.
 		chip.Background(t.Sunken).Opacity(0.8)
 		fg = t.InkMuted
+	case chipElsewhere:
+		// Flat on the page with a hairline: not a switch here, a way there.
+		chip.InsetShadow(0, 0, 0, 1.2, t.Line)
+		if chip.Pressed() {
+			chip.Background(t.Sunken)
+		}
 	}
 	if sp.busy {
 		chip.Opacity(0.7)
@@ -1041,7 +1113,7 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 	still := c.Preferences().ReduceMotion
 	// The press: it sinks into its base (70 ms).
 	sink := float32(0)
-	if chip.Pressed() && sp.look != chipLater {
+	if chip.Pressed() && sp.look != chipLater && sp.look != chipElsewhere {
 		sink = 2
 	}
 	if !still {
@@ -1108,6 +1180,15 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 		if sp.look == chipLater {
 			ui.Text(c, a.L.T("chip.state.later")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
 		}
+		if sp.look == chipElsewhere {
+			ui.Text(c, sp.where).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().MaxWidth(150).AccessHidden(true)
+			ink := t.InkMuted
+			ui.Box(c.Key("chip-go:"+key)).Size(6, 10).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
+				var m ui.Path
+				m.MoveTo(r.X+1, r.Y+1.5).LineTo(r.X+r.W-1, r.Y+r.H/2).LineTo(r.X+1, r.Y+r.H-1.5)
+				p.StrokePath(&m, 1.6, ink)
+			})
+		}
 		if sp.info != nil {
 			// ⓘ sits on the chip's corner, shown on hover, so nothing moves.
 			i := ui.Box(c.Key("chip-i:"+key)).Absolute().Right(-6).Top(-7).Size(18, 18).Radius(9).Background(t.Surface).
@@ -1129,7 +1210,7 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 		}
 	})
 	if chip.Clicked() && !infoHit && sp.tap != nil {
-		if sp.look != chipLater {
+		if sp.look != chipLater && sp.look != chipElsewhere {
 			s.squish[key] = a.Now()
 		}
 		sp.tap(artR)

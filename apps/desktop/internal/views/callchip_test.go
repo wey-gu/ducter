@@ -14,8 +14,9 @@ import (
 
 // D199: 打电话 is a chip on the home's character sheet again, and real: +
 // starts Accounts' own Tuwa sign-in, on opens the phone card there, a gone
-// sign-in says so. 用电脑 and 用手机 show as ghosts (以后会有) that only
-// explain themselves. Another computer has neither.
+// sign-in says so. 用手机 shows as a ghost (以后会有) that only explains
+// itself; on a Linux server 用电脑 shows nothing (D237). Another computer has
+// neither.
 func TestHomeCallChip(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		L := i18n.New(lang)
@@ -23,6 +24,8 @@ func TestHomeCallChip(t *testing.T) {
 			h := app.S.Device("local")
 			h.Abilities = []protocol.DeviceAbility{{ID: "web", State: "on", Where: "ducter"}, {ID: "computer", State: "later"}, {ID: "remote", State: "on"}, {ID: "phone", State: "later"}, call}
 			app.devState().sel = "local"
+			// D237: no other computer has either, so the home's are ghosts (or nothing).
+			app.S.Device("dev_mac").Abilities = []protocol.DeviceAbility{{ID: "web", State: "off", Where: "chrome"}, {ID: "computer", State: "off"}}
 		}
 		setup := func(call protocol.DeviceAbility) (*App, *[]any, func(label string)) {
 			app := sheetApp(t, lang, "awake")
@@ -39,10 +42,11 @@ func TestHomeCallChip(t *testing.T) {
 				tt.Frame()
 			}
 			// The ghosts: their clay, their words, 以后会有; a tap explains and adds nothing.
-			for _, id := range []string{"computer", "phone"} {
-				if !tt.HasText(L.T("chip." + id)) {
-					t.Fatalf("%s: no ghost %s in %q", lang, id, tt.Texts())
-				}
+			if !tt.HasText(L.T("chip.phone")) {
+				t.Fatalf("%s: no ghost phone in %q", lang, tt.Texts())
+			}
+			if _, ok := tt.Find(L.T("chip.computer") + " · " + L.T("chip.state.later")); ok {
+				t.Fatalf("%s: a 用电脑 ghost on a Linux server: %q", lang, tt.Texts())
 			}
 			if _, ok := tt.Find(L.T("chip.phone") + " · " + L.T("chip.state.later")); !ok || !tt.HasText(L.T("chip.state.later")) {
 				t.Fatalf("%s: the ghosts don't say %q: %q", lang, L.T("chip.state.later"), tt.Texts())
@@ -64,7 +68,6 @@ func TestHomeCallChip(t *testing.T) {
 		if len(*sent) != 0 {
 			t.Fatalf("%s: a ghost sent %#v", lang, *sent)
 		}
-		click(L.T("chip.computer") + " · " + L.T("chip.state.later"))
 		if len(*sent) != 0 || app.devState().card.sheet.info == "" {
 			t.Fatalf("%s: a ghost should only explain; sent %#v", lang, *sent)
 		}

@@ -78,6 +78,51 @@ describe("the character sheet (D161)", () => {
     expect(chipsFor(mac({ state: "unavailable", reason: "cua_missing" }))[1]).toEqual({ id: "computer", look: "off" });
   });
 
+  test("D237: the home points at the computer that has 用手机 or 用电脑; a home with no screen shows no 用电脑 ghost", () => {
+    const hel = dev({
+      id: "local",
+      name: "hel",
+      kind: "server",
+      platform: "linux-x64",
+      home: true,
+      abilities: [
+        { id: "web", state: "on", where: "ducter" },
+        { id: "computer", state: "later" },
+        { id: "remote", state: "on" },
+        { id: "phone", state: "later" },
+        { id: "call", state: "off" },
+      ],
+    });
+    const mbp = (phone: Record<string, unknown>, computer: Record<string, unknown> = { state: "off" }, o: Record<string, unknown> = {}) =>
+      dev({ id: "dev_mbp", name: "MacBook Pro M3", abilities: [{ id: "web", state: "on", where: "chrome" }, { id: "computer", ...computer }, { id: "phone", ...phone }], ...o });
+    const tail = (all: any[]) => chipsFor(hel, all).filter((c) => c.id === "computer" || c.id === "phone");
+    // A worker with 用手机 on: the home's chip points there; no 用电脑 ghost on a server.
+    expect(tail([hel, mbp({ state: "on" })])).toEqual([{ id: "phone", look: "elsewhere", at: { id: "dev_mbp", name: "MacBook Pro M3", more: 0 } }]);
+    // Both on the MacBook (用电脑 still waiting for macOS's switches counts: it was added there).
+    expect(tail([hel, mbp({ state: "on" }, { state: "unavailable", reason: "computer_permissions" })]).map((c) => [c.id, c.look, c.at?.name])).toEqual([
+      ["computer", "elsewhere", "MacBook Pro M3"],
+      ["phone", "elsewhere", "MacBook Pro M3"],
+    ]);
+    // Being installed there already points there.
+    expect(tail([hel, mbp({ state: "off", setup: "installing", step: "sdk" })])[0]).toMatchObject({ id: "phone", look: "elsewhere" });
+    // No computer has either: 用手机 keeps its ghost, 用电脑 shows nothing on a headless server.
+    expect(tail([hel, mbp({ state: "off" })])).toEqual([{ id: "phone", look: "later" }]);
+    expect(tail([])).toEqual([{ id: "phone", look: "later" }]);
+    expect(tail([hel, mbp({ state: "off" }, { state: "unavailable", reason: "cua_missing" })])).toEqual([{ id: "phone", look: "later" }]);
+    // Several: an awake one first, the rest as +N.
+    const mini = dev({ id: "dev_mini", name: "Mac mini", kind: "mini", state: "asleep", abilities: [{ id: "phone", state: "on" }] });
+    expect(tail([hel, mini, mbp({ state: "on" })])[0]!.at).toEqual({ id: "dev_mbp", name: "MacBook Pro M3", more: 1 });
+    // A Linux home that says it's a laptop is still screenless for 用电脑; a Mac home keeps its words.
+    expect(chipsFor({ ...hel, kind: "laptop" }, []).some((c) => c.id === "computer")).toBe(false);
+    expect(chipsFor({ ...hel, kind: "laptop", platform: "win32-x64" }, []).find((c) => c.id === "computer")).toEqual({ id: "computer", look: "later" });
+    // Another computer's card never points anywhere.
+    expect(chipsFor(mbp({ state: "later" }), [hel, mini]).some((c) => c.look === "elsewhere" || c.look === "later")).toBe(false);
+    // Its words, in both languages.
+    expect(zh.t("chip.elsewhere", "MacBook Pro M3")).toBe("在 MacBook Pro M3 上");
+    expect(en.t("chip.elsewhere.more", "MacBook Pro M3", 1)).toBe("on MacBook Pro M3 +1");
+    for (const L of [zh, en]) for (const k of ["ability.phone.elsewhere", "ability.computer.elsewhere"]) expect(L.t(k, "MacBook Pro M3")).toContain("MacBook Pro M3");
+  });
+
   test("D199: the home has 打电话 (on, + to add, sign in again) and its later abilities as ghosts; another computer has neither", () => {
     const home = (call: Record<string, unknown>) =>
       dev({

@@ -56,9 +56,13 @@ top to bottom like a character in a game:
     [Ducter's phone](#ducters-phone) below.
   - **Use the computer** is on the card of a Mac. It lets tasks use that Mac's apps the way you
     do: see [Tasks in your Mac's apps](#tasks-in-your-macs-apps) below.
-  - Faded chips marked **coming later**, such as **Use the computer** on a Linux server, show what
-    Ducter will be able to do there in a later version. Tap one to read what it will do; there is
-    nothing to turn on yet.
+  - When Ducter lives on a server and your Mac has **Use a phone** or **Use the computer** on, the
+    server's card says so: *Use a phone · on MacBook Pro*. Ducter can do it, on that Mac; tap the
+    chip to open the Mac's card. (With several Macs, the card names one and adds *+1*.)
+  - A faded **Use a phone** marked **coming later** on a server's card means no computer of yours
+    has it yet; tap it to read what it is. Add it on a Mac with Apple silicon and the chip points
+    there instead. A server shows no **Use the computer** of its own: it has no screen, so that
+    one is always on a Mac.
 - **How it's connected:** one quiet line, such as *Connected via the app and command line*. The
   **⋯** beside it shows each connection with its own **Disconnect**.
 - **Disconnect this MacBook** is at the very bottom. Ducter asks once and says what it means; to
@@ -88,7 +92,8 @@ it run there). Ducter says what it downloads (about
 runs. The phone comes from Google under Google's licenses: read them there (**Read**), turn on
 **I've read and agree to these licenses**, and tap **Add it**. The card shows the download; you
 can do something else meanwhile. You don't need Android Studio or anything else. For now this is
-for Macs with Apple silicon; other computers show **Use a phone** as coming later.
+for Macs with Apple silicon. When Ducter lives on a server and one of your Macs has the phone, the
+server's card shows **Use a phone · on** that Mac.
 
 **When it's on.** The phone starts by itself when a task needs it or you open it, and turns itself
 off a few minutes after nothing needs it. The first start takes about a minute; after that, a few
@@ -144,7 +149,8 @@ once, and tells you what it did.
 - Password managers, Keychain and Passwords, authenticator, banking, wallet and payment apps, and
   System Settings: tasks can't see or use them at all, and never type into a password field.
 
-For now this is for Macs; a Linux server shows **Use the computer** as coming later.
+For now this is for Macs. When Ducter lives on a server, it uses your Mac's apps through that Mac,
+and the server's card shows **Use the computer · on** that Mac.
 
 ## Let this Mac do tasks
 
@@ -227,7 +233,7 @@ What a device can do:
 |---|---|---|
 | **Browse the web** | The computer can get things done on the web: look things up, read pages, gather what it finds. In your Chrome when your AI agent has its own browser, otherwise in Ducter's own browser | Ready on every computer that does tasks (a Mac, or a server: see below) |
 | **Reach from outside** | Reach Ducter from your phone or another computer, with a one-time code | Ready (needs an address that works from outside: your own domain on a server, see [Install](install.md#a-linux-server-that-stays-on), or on Cloudflare, see [From outside](phone.md#from-outside)) |
-| **Use the computer** | Tasks use the apps on the computer the way you do, asking before anything that sends, pays or deletes ([above](#tasks-in-your-macs-apps)) | Ready on a Mac (it needs CuaDriver and two macOS switches); coming later on Linux |
+| **Use the computer** | Tasks use the apps on the computer the way you do, asking before anything that sends, pays or deletes ([above](#tasks-in-your-macs-apps)) | Ready on a Mac (it needs CuaDriver and two macOS switches); a server uses a Mac's |
 | **Use a phone** | Ducter gets things done in apps on a phone of its own, running on your Mac ([above](#ducters-phone)) | Ready on a Mac with Apple silicon: the one Ducter lives on, or one that does tasks for it |
 | **Make calls** | Ducter makes phone calls for you, through Tuwa or from your own Android phone | Ready (needs a Tuwa account, or your own phone with a cable kit and a live-voice key; see [Phone calls](calls.md)) |
 

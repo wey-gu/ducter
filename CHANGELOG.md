@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.0.37
+
+<!-- whats-new
+zh: 家里的 Mac 也能在外面用，挂在你自己的域名上
+en: Reach a Mac at home from anywhere, on your own domain
+zh: 一个任务帮你接好 Cloudflare，每步都先问你
+en: A task sets up Cloudflare for you, asking before each step
+-->
+
+**From anywhere**
+- A computer without a public address, like a Mac at home, can now be reached from anywhere at an
+  address on your own domain, through your own free Cloudflare account.
+- On its card, **让 Ducter 帮我设好 / Set it up for me** starts one task: sign in to Cloudflare
+  (a link to open on your phone when the computer has no screen), pick the name, tap Go, and it
+  checks the address answers before your devices use it. The steps tick off on the card.
+- Already made a tunnel in Cloudflare's dashboard? `ducter anywhere on --token … --hostname …`.
+  Only devices you've connected can come in; nothing goes through Ducter's own servers.
+
 ## 0.0.36
 
 <!-- whats-new

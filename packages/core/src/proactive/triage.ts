@@ -54,7 +54,7 @@ export function triagePrompt(batch: Item[], ctx: { today: string; zone: string }
     "again: they are asking again (a follow-up, \"any update?\", \"再问一下\").",
     "mattered (sent messages only): a deadline, money, or someone the reader depends on.",
     "facts, each one of:",
-    '  {"type":"booking","what":"flight|hotel|train|other","name":"CA929","place":"Tokyo Narita","from":"Beijing","start":"…","end":"…"}  (for a flight: start = departure, end = arrival)',
+    '  {"type":"booking","what":"flight|hotel|train|other","name":"CA929","place":"Tokyo Narita","from":"Beijing","start":"…","end":"…"}  (for a flight: start = departure, end = arrival; "other": an appointment, a reservation, a talk or an event someone confirmed, name = what it is, as a calendar would call it)',
     '  {"type":"renewal","name":"ducter.dev domain","due":"…","amount":"$10.44","autopay":true,"cardExpired":true}  (renewals, bills, trials ending, price rises, forms due)',
     '  {"type":"payment","name":"ducter.dev domain","amount":"$10.44"}  (a receipt: something was paid)',
     '  {"type":"commitment","to":"lina@x.org","what":"send the deck","by":"…"}  (sent messages only: the reader promised something by a date)',

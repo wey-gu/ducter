@@ -109,15 +109,20 @@ itself.
 
 The same choice sits above the cards, and under **Notifications**:
 
-- **Only urgent**: only what costs you something if it waits until tomorrow.
+- **Only urgent**: only what costs you something if it waits until tomorrow, and, 10 minutes
+  before a meeting, what you have open with those people.
 - **Up to 3 a day** (suggested): one message in the morning, when your quiet hours end, with at
   most three things; anything urgent right away. On a day with nothing worth saying it sends
   nothing and shows nothing: no news is good news.
 - **Whenever useful**: everything worth saying, still in the morning message (at most five in one).
 - **Only when I ask**: it doesn't look by itself.
 
+If you choose here instead of answering the first question, it still takes one quiet look back
+over earlier mail and your calendars, so it knows the bookings and bills already there. It says
+nothing about that look.
+
 What it may tell you: two things that don't match (a flight that lands the night before your
-hotel starts), someone waiting on your answer, you waiting on someone, something you promised
+hotel starts, or a talk your calendar has on the 18th while the organizer's mail says the 19th), someone waiting on your answer, you waiting on someone, something you promised
 for today, a deadline or a payment, a plan that changed, and, 10 minutes before a meeting, what
 you have open with those people. Each comes with **How I know** (the mails or events, with
 dates) and at most one next step, like **See if it can start earlier**: nothing happens until
@@ -130,7 +135,9 @@ the next time you write it asks whether to keep them. At night it never wakes yo
 said so for a kind ("wake me if a flight changes").
 
 It doesn't tell you how much it read or list what it skipped. Ask "anything else?" and it tells
-you what it left out; **What it read** under **⋯** on the card shows each look.
+you what it left out; **What it read** under **⋯** on the card shows each look, and **What it
+looked at today** under **Notifications** shows why it stayed quiet (see
+[Settings](settings.md)).
 
 It reads headers and the first lines of new mail, and keeps only small facts with dates (a
 booking, a renewal, a promise) for 30 days after they stop mattering; never the mail itself.

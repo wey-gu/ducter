@@ -96,6 +96,22 @@ calendar, GitHub and chat (`watch.ts` tries a short list; mail's `gmail.search_t
 known); a live triage run on a private labeled set; the clay mailbox and tile art, the lid
 lifting while it looks and the equip snap; iOS's time-sensitive category on the app.
 
+### 1.2 The first live days (D226, 2026-11-12, VERIFIED on hel read-only, counts only)
+
+Two days of watching on the author's home said nothing at all. End to end:
+
+| Stage | What hel showed | Why | Fixed |
+|---|---|---|---|
+| 0. Look | Gmail (two accounts) and Slack read every 10 min, calendars every 15 (after 0.0.30); 152 mails looked at today | working; calendars' checkpoint never moves by design (a window, not a cursor) | calendars now read two weeks ahead, not three days |
+| 1. Rules | nothing counted as notices or marketing | the mails all passed to triage | — |
+| 2. Triage | ~60 `harness claude-code is not installed` in two days; `month.tokens={}`; no `findings.json` | triage (and the bar, and D112's cheap judge) asked `settings.brain`, whose unset default is Claude Code; the partner thinks with Codex there (D150's fallback) | one `brainInUse` for all three |
+| 3. Judge | `judgeRuns.day=""`: never ran | nothing reached the ledger to judge | — |
+| 4. Say | no finds | 只说急的 was chosen in Settings: no morning note and (then) no 开会前; and the first look and the 60-day look back never ran (`backfill={}`) | a mode set from Settings catches up (§11); 只说急的 has 开会前; a failing read is said once and shown in 今天看了什么 (§5.1) |
+
+Lessons: a watcher that silently reads nothing is the one silence that is not success; a
+setting chosen outside the first-add moment must still do what the moment did; and every model
+call the partner's side makes runs on what the partner really thinks with.
+
 ## 2. User first
 
 | | Heavy multi-agent developer (the author) | Consumer personal-AI user | Fresh user |
@@ -153,7 +169,7 @@ Each find is typed (stage 2 extracts, stage 3 judges). The kind is what the pers
 
 | Kind (zh / en) | What it is | Sources | When it is said | Next step it offers | On by default |
 |---|---|---|---|---|---|
-| **两件事对不上 / Two things don't match** (the aha) | Two facts that contradict or leave a gap: a flight lands the night before the hotel starts; a renewal notice with no payment after it and the card expired; an invoice with no matching bank mail; a meeting during a flight; two meetings at once in any of their calendars, today or tomorrow (D222) | mail + calendar, joined through the ledger (§9) over 60 days | the morning note; **now** only if it costs something today | a 上网 task that looks it up (Go), never the change itself | yes |
+| **两件事对不上 / Two things don't match** (the aha) | Two facts that contradict or leave a gap: a flight lands the night before the hotel starts; a renewal notice with no payment after it and the card expired; an invoice with no matching bank mail; a meeting during a flight; two meetings at once in any of their calendars, today or tomorrow (D222); the calendar and a confirmation mail naming the same thing on different days, within two weeks (D226) | mail + calendar, joined through the ledger (§9) over 60 days | the morning note; **now** only if it costs something today | a 上网 task that looks it up (Go), never the change itself | yes |
 | **在等你回 / Waiting on you** | A real person asked you something (a question, a request, a review) and you haven't answered in 2 working days, or they asked again | mail, GitHub review requests, Discord DMs and @-mentions | the morning note | read it first and write up what matters (a task, Go); a draft reply kept in Ducter (Go to save or send) | yes, people only (no lists, no bulk, no noreply) |
 | **你在等别人回 / You're waiting on someone** | You asked a question or made a request, and nobody answered in 3 working days, and it mattered (a deadline, money, a person who matters, Mem) | your sent mail | the morning note | a short follow-up draft (Go) | yes |
 | **你答应过的 / Something you promised** | A commitment in your own sent mail or messages ("我周五前发给你") with nothing showing it was kept | sent mail (14 days, research/46) | the morning of the due day | find the related draft or files; a draft reply (Go) | yes |
@@ -186,7 +202,7 @@ mirrored in Settings › 通知 (什么时候找你):
 
 | Chip (zh / en) | Means |
 |---|---|
-| **只说急的 / Only urgent** | Only the "Now" rung; no morning note |
+| **只说急的 / Only urgent** | Only the "Now" rung and 开会前 (D226); no morning note |
 | **每天最多 3 件 / Up to 3 a day** (default) | Morning note with ≤ 3, plus "Now" within the 3 |
 | **有用就说 / Whenever useful** | No daily cap; still batched into the note and fold-ins, at most 5 a note (D174), the rest counted for when they ask |
 | **不用主动找我 / Only when I ask** | Nothing proactive; it reads only when asked. Watching stops (no cost) |
@@ -194,6 +210,31 @@ mirrored in Settings › 通知 (什么时候找你):
 Why a cap of 3 and not a confidence bar alone: the research says false alarms are the main
 failure (ProactiveBench, KnowU-Bench, research/35), and no product publishes a cap; 3 fits one
 phone screen with a next step each. INFERRED, to be tuned by the triage eval (§12).
+
+### 5.1 Why it stayed quiet: 今天看了什么 / What it looked at today (D226)
+
+*Who:* anyone who chose a mode and has heard nothing; the heavy developer checking it works.
+*Feels:* before, "is it even on?"; after, 放心: it looked, and here is why it said nothing, or what
+is broken. *First time:* under the chips in Settings › 通知 / Notifications, one quiet button.
+
+- **Closed:** the button **今天看了什么 / What it looked at today** only. If reading closely is
+  failing, one line shows above it without opening, in plain words: **没法细读你的信：这台电脑上没装
+  {agent}，现在只看得到标题。** (also `signed_out`, `no_agent`, `failed`).
+- **Open** (in place, the sunken panel 看了哪些 uses), counts only, one line each, only lines
+  with something: **看了 152 封信、3 个日程** · **12 封通知和收据，看标题就知道** · **细读了 20 封，记下 4
+  件事** · **跟你说了 0 件** · what is held now, each under its one reason (**不急，没说（你选了只说急的）**
+  · **留到早上 08:00 那条** · **不值得打扰你** · **今天已经说满 3 件** · **你说过这类不用告诉你的** ·
+  **这个月的额度用完了** · **急的在免打扰时间里**) · **手机和浏览器都没开通知** · **正在补看之前的信** ·
+  the honest line **这里只有数字，不留信的内容。**
+- The reasons are computed live by the same tests the note uses (`engine.ts` `day()`), so the
+  panel never disagrees with what happens next. Never a subject, a sender or a find's words.
+- **The partner says it once** when reading keeps failing (3 failures in a row over ≥ 30 min),
+  and nothing when it works again.
+- What dots surfaced for its first users (public hands-on reports, Sept–Oct 2026, DOCUMENTED):
+  a speaking engagement on one date in the calendar while the confirmation said another (Fast
+  Company), and a warranty mail that needed an answer (The Neuron). The first is now one of
+  两件事对不上's joins (§4, D226); the second is 在等你回 only when a person wrote (unchanged until
+  the eval shows the bar is too strict).
 
 ## 6. The morning note
 
@@ -276,7 +317,7 @@ Asks raised by background work **expire into Passed** with the find's date (the 
 
 | Stage | Runs | Cost |
 |---|---|---|
-| 0. Look | **oo:** a model-free scheduled read through the broker (`gmail.search_threads` newer than the last look, every 10 min; calendar every 15 min; GitHub notifications every 10 min; Discord mentions and DMs every 10 min), because oo has no triggers (`OO_NOT_WATCHABLE`). **OpenConnector:** Provider Triggers with a checkpoint (built for waits). | no model; oo or OpenConnector calls |
+| 0. Look | **oo:** a model-free scheduled read through the broker (`gmail.search_threads` newer than the last look, every 10 min; calendar every 15 min, the coming two weeks (D226); GitHub notifications every 10 min; Discord mentions and DMs every 10 min), because oo has no triggers (`OO_NOT_WATCHABLE`). **OpenConnector:** Provider Triggers with a checkpoint (built for waits). | no model; oo or OpenConnector calls |
 | 1. Rules | code: drop bulk (`List-Unsubscribe`, Promotions/Updates), the person's own sends (kept for the waits/commitments ledger only), already-read-elsewhere, muted senders and kinds | none |
 | 2. Triage | the cheapest capable model over batches (≤ 20 items, headers + snippet), only when stage 1 passed something: kind, typed facts, who's waiting, confidence | ~5–15 small calls a day for a typical inbox (INFERRED) |
 | 3. Judge | the partner's model over at most 10 candidates (urgent first), once before the morning note and, during the day, only for what can't wait (urgent, or due today); at most 4 runs a day, a verdict remembered per candidate and content hash; past that, or with the sources over budget, code's tests (D174) | ≤ 4 calls a day; 8 in a synthetic busy 24 h of 144 looks (`proactive-cost.test.ts`) |
@@ -304,6 +345,10 @@ says so once. "Only when I ask" costs nothing.
    The answer is the chip row's value; the partner says nothing more about it.
 4. If the person says nothing, nothing watches: the chip stays **不用主动找我** until they answer
    (connecting is not consent to watch).
+5. **Chosen elsewhere** (the chips in Settings, or "Not now" to the look): once watching is on,
+   each source that never had its look back gets it, silently: the last 3 days in full and 60
+   days of subjects that may hold a booking, a renewal, a payment or a promise (the mail
+   service is asked only for those; calendars a month ahead) (D226).
 
 Saying it works too: "帮我盯着邮箱，有要紧的告诉我" with no account leads to the one tap (oo
 signed in) or the add form, then the same three steps.

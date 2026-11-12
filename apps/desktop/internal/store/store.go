@@ -415,7 +415,9 @@ type Store struct {
 	Connections []protocol.ConnectionView
 	ConnAsked   bool
 	// ConnReads is 看了哪些 / What it read today, by connection (D166).
-	ConnReads  map[string][]protocol.ReadLine
+	ConnReads map[string][]protocol.ReadLine
+	// Day is 今天看了什么 / What it looked at today (D226), as last asked.
+	Day        *protocol.ProactiveDay
 	Oo         *protocol.OoDetect
 	ConnResult *protocol.ServerFrame
 	// SignIn is the device sign-in in progress or just ended (D193); nil
@@ -549,6 +551,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.Forgot != nil {
 			s.Forgot = f.Forgot
 		}
+	case "proactive_day":
+		s.Day = f.Day
 	case "connection_reads":
 		if s.ConnReads == nil {
 			s.ConnReads = map[string][]protocol.ReadLine{}

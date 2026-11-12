@@ -17,7 +17,7 @@ import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
 import { Btn, Chev, Seg, Toggle } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
-import { ProactiveChips, SourceCards } from "./accounts.tsx";
+import { ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
@@ -2235,6 +2235,7 @@ function NotifySettings() {
       {(s.proactive || !!A.connections?.length) && (
         <section class="set">
           <ProactiveChips />
+          <QuietDay />
         </section>
       )}
       <section class="set">

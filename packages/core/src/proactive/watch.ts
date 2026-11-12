@@ -9,26 +9,34 @@ import type { ReadLine } from "@ducter/protocol";
 import type { Clock } from "../clock.ts";
 import { CHAT_SERVICES, type AppTarget, type ConnectionsStore } from "../connections.ts";
 import { itemsOf, type Item, type ItemKind, type Target } from "./items.ts";
+import { FACTY_TERMS } from "./stage1.ts";
 
 export const WATCH_FILE = "watch.json";
 const MIN = 60_000;
 const DAY = 86_400_000;
 const SEEN_MAX = 600;
+export const CAL_AHEAD_DAYS = 14;
+const CAL_LONG_DAYS = 30;
 
 export interface LookSpec {
   kind: ItemKind;
   everyMs: number;
   /** Action ids to try, best first; the first that answers is remembered per app. */
   actions: string[];
-  /** The read's input: what is newer than `since` (mail, GitHub, chat) or the coming window (calendars). */
-  input(since: number, now: number): Record<string, unknown>;
+  /**
+   * The read's input: what is newer than `since` (mail, GitHub, chat) or the coming window
+   * (calendars). long: the long look back (D226) asks mail only for subjects that may hold a
+   * booking, a renewal or a payment (one read returns at most 50, the newest, so an unfiltered
+   * 60-day read of a busy inbox saw the last few hours only), and calendars a month ahead.
+   */
+  input(since: number, now: number, o?: { long?: boolean }): Record<string, unknown>;
 }
 
 const MAIL: LookSpec = {
   kind: "mail",
   everyMs: 10 * MIN,
   actions: ["gmail.search_threads", "gmail.fetch_emails", "gmail.list_messages"],
-  input: (since) => ({ query: `after:${Math.floor(since / 1000)}`, maxResults: 50 }),
+  input: (since, _now, o) => ({ query: `after:${Math.floor(since / 1000)}${o?.long ? ` subject:(${FACTY_TERMS.map((w) => (/\s/.test(w) ? `"${w}"` : w)).join(" OR ")})` : ""}`, maxResults: 50 }),
 };
 const OUTLOOK: LookSpec = { ...MAIL, actions: ["outlook.list_messages", "outlook.search_messages"], input: (since) => ({ filter: `receivedDateTime ge ${new Date(since).toISOString()}`, top: 50 }) };
 // D222 (research/65): the real actions, read live through oo. Google lists one calendar per read
@@ -37,10 +45,14 @@ const CALENDAR = (service: string): LookSpec => ({
   kind: "event",
   everyMs: 15 * MIN,
   actions: service === "outlook_calendar" ? ["outlook_calendar.list_calendar_view", "outlook_calendar.list_events"] : [`${service}.list_events`],
-  input: (_since, now) =>
-    service === "outlook_calendar"
-      ? { startDateTime: new Date(now - 6 * 3_600_000).toISOString(), endDateTime: new Date(now + 3 * DAY).toISOString() }
-      : { timeMin: new Date(now - 6 * 3_600_000).toISOString(), timeMax: new Date(now + 3 * DAY).toISOString(), singleEvents: true, orderBy: "startTime", maxResults: 100 },
+  // D226: two weeks ahead (a calendar entry and a confirmation two weeks out can disagree; 3 days
+  // saw only the clashes); the long look back a month.
+  input: (_since, now, o) => {
+    const until = new Date(now + (o?.long ? CAL_LONG_DAYS : CAL_AHEAD_DAYS) * DAY).toISOString();
+    return service === "outlook_calendar"
+      ? { startDateTime: new Date(now - 6 * 3_600_000).toISOString(), endDateTime: until }
+      : { timeMin: new Date(now - 6 * 3_600_000).toISOString(), timeMax: until, singleEvents: true, orderBy: "startTime", maxResults: 100 };
+  },
 });
 const GITHUB: LookSpec = {
   kind: "github",
@@ -81,9 +93,11 @@ export interface Watchers {
   /** Arms a timer per watched app (and drops the rest): call when settings or connections change. */
   sync(): void;
   /** One look at one app, over [since, now]: what it read, or undefined when it couldn't. */
-  look(a: AppTarget, since: number, what?: ReadLine["what"]): Promise<Item[] | undefined>;
+  look(a: AppTarget, since: number, what?: ReadLine["what"], o?: { long?: boolean }): Promise<Item[] | undefined>;
   /** A look back over `days` at every app of a source (or all), for the first look and the ledger. */
-  lookBack(days: number, opts?: { connectionId?: string; kinds?: ItemKind[] }): Promise<{ items: Item[]; apps: number }>;
+  lookBack(days: number, opts?: { connectionId?: string; kinds?: ItemKind[]; long?: boolean }): Promise<{ items: Item[]; apps: number }>;
+  /** D226: what the watchers looked at today, over every source (counts only). */
+  lookedToday(): { mail: number; events: number; mentions: number };
   /** 看了哪些 / What it read today, newest first. */
   reads(connectionId: string): ReadLine[];
   /** Items read today, per source. */
@@ -139,7 +153,7 @@ export function createWatchers(opts: {
 
   const target = (a: AppTarget): Target => ({ connectionId: a.connectionId, source: a.source, service: a.service, title: a.title, ...(a.account ? { account: a.account } : {}), me: meOf(a) });
 
-  async function look(a: AppTarget, since: number, what?: ReadLine["what"]): Promise<Item[] | undefined> {
+  async function look(a: AppTarget, since: number, what?: ReadLine["what"], lo: { long?: boolean } = {}): Promise<Item[] | undefined> {
     const spec = lookFor(a.service);
     if (!spec || a.excluded) return;
     const k = appKey(a);
@@ -148,7 +162,7 @@ export function createWatchers(opts: {
     // A calendar account: each calendar the person lets it read, one read each (D222).
     const cals = spec.kind === "event" && opts.calendarIds && a.service === "googlecalendar" ? await opts.calendarIds(a).catch(() => []) : [];
     for (const action of tries) {
-      const inputs = cals.length ? cals.map((calendarId) => ({ ...spec.input(since, now), calendarId, timeZone: opts.zone() })) : [spec.input(since, now)];
+      const inputs = cals.length ? cals.map((calendarId) => ({ ...spec.input(since, now, lo), calendarId, timeZone: opts.zone() })) : [spec.input(since, now, lo)];
       const results: unknown[] = [];
       let failed = "";
       for (const input of inputs) {
@@ -231,7 +245,7 @@ export function createWatchers(opts: {
         for (const a of opts.connections.apps(c.id)) {
           const spec = lookFor(a.service);
           if (!spec || a.excluded || (o.kinds && !o.kinds.includes(spec.kind))) continue;
-          const got = await look(a, since);
+          const got = await look(a, since, undefined, o.long ? { long: true } : {});
           if (got) apps++, items.push(...got);
         }
       }
@@ -240,6 +254,16 @@ export function createWatchers(opts: {
     reads(connectionId) {
       trimReads();
       return st.reads.filter((r) => r.connectionId === connectionId).reverse().map(({ connectionId: _c, ...r }) => r);
+    },
+    lookedToday() {
+      trimReads();
+      const n = { mail: 0, events: 0, mentions: 0 };
+      for (const r of st.reads) {
+        if (r.what === "events") n.events += r.items;
+        else if (r.what === "mentions") n.mentions += r.items;
+        else n.mail += r.items;
+      }
+      return n;
     },
     readToday(connectionId) {
       trimReads();

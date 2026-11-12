@@ -7,7 +7,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync
 import { homedir, hostname as osHostname } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, LogEvent, OnHand, Place } from "@ducter/protocol";
+import { HARNESSES, type Bodies, type HarnessId, type LogEvent, type OnHand, type Place } from "@ducter/protocol";
 import type { CoreApi, ListedModel, Partner, Runner } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -134,6 +134,8 @@ export interface CoreOptions {
 }
 
 export interface Core extends CoreApi {
+  /** D226: the harness and model the partner thinks with now (triage, the bar and the cheap judge use it). */
+  brainInUse(): { harness: HarnessId; model?: string };
   log: SqliteLog;
   tasks: CoreRegistry;
   mcp: CoreMcpHub;
@@ -513,6 +515,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     const e = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow());
     return e.why ? { harness: e.harness } : undefined;
   };
+  /** D226: what the partner thinks with now: the fallback (D150) when it applies, else the setting. */
+  const brainInUse = (): { harness: HarnessId; model?: string } => api.partnerFallback?.() ?? settings.get().brain;
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   // D204: the home's own Ducter folder (~/ducter, or <dataDir>/ducter for a Ducter with a data
   // folder of its own) and the projects in it; clones go there with this computer's own git.
@@ -781,6 +785,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(opts.proactive?.monthTokens ? { monthTokens: opts.proactive.monthTokens } : {}),
     present: () => ws.present(),
     zone,
+    agentName: () => HARNESSES[brainInUse().harness]?.name,
   });
   proactiveRef = proactive;
   registerProactiveTools(mcp, rules);
@@ -853,6 +858,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     phone,
     ownNumber,
     proactive,
+    brainInUse,
     calendar,
     changes,
     updates,
@@ -869,10 +875,12 @@ export function startCore(opts: CoreOptions = {}): Core {
       runner = r;
       // The cheap judge (D112, D113) runs on the harness the partner thinks with, on its small model.
       if (!opts.work?.judge)
-        work.setJudge(createHarnessJudge({ harness: () => runner?.harness, pick: () => settings.get().brain, dataDir }));
+        work.setJudge(createHarnessJudge({ harness: () => runner?.harness, pick: brainInUse, dataDir }));
       // D165: triage on the cheapest model of the harness the partner thinks with; the bar on its own model.
+      // D226: the harness it really thinks with (D150's fallback included), never the unset default:
+      // a Codex-only home once triaged every mail on a Claude Code that wasn't there, and said nothing.
       const port = () => runner?.harness;
-      const pick = () => settings.get().brain;
+      const pick = brainInUse;
       proactive.setModels({
         ...(opts.proactive?.triage ? {} : { triage: modelTriage(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "triage" })) }),
         ...(opts.proactive?.judge ? {} : { judge: modelJudge(createHarnessAsk({ harness: port, pick, dataDir, cheap: false, dir: "judge" })) }),

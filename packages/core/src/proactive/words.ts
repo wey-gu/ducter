@@ -34,6 +34,25 @@ export const W = {
     zh ? `已经能看你的 ${join(apps, true)} 了。要不要我现在看一眼过去 3 天，有没有在等你回的？` : `I can read your ${join(apps, false)} now. Want me to look through the last 3 days for anything waiting on you?`,
   /** The first look's answer: only what matters (D173), never how much it read. */
   firstAnswer: (zh: boolean, k: number) => (zh ? (k ? `有 ${k} 件在等你回：` : "没有在等你回的。") : k ? (k === 1 ? "One thing is waiting on you:" : `${k} things are waiting on you:`) : "Nothing is waiting on you."),
+  /** D226: said once when reading closely keeps failing (a silent watcher is the one silence that isn't success). */
+  readDown(zh: boolean, why: import("@ducter/protocol").ReadProblem, agent: string) {
+    const a = agent || (zh ? "我用来想事情的 AI agent" : "the AI agent I think with");
+    if (zh)
+      return why === "not_installed"
+        ? `我没法细读你的信：这台电脑上没装 ${a}。现在只看得到标题，所以什么都没跟你说。`
+        : why === "signed_out"
+          ? `我没法细读你的信：${a} 没登录。现在只看得到标题，所以什么都没跟你说。`
+          : why === "no_agent"
+            ? "我没法细读你的信：还没有能用的 AI agent。现在只看得到标题，所以什么都没跟你说。"
+            : `我细读你的信时 ${a} 一直出错。现在只看得到标题，所以什么都没跟你说。`;
+    return why === "not_installed"
+      ? `I can't read your mail closely: ${a} isn't installed on this computer. I only see subjects, so I haven't told you anything.`
+      : why === "signed_out"
+        ? `I can't read your mail closely: ${a} is signed out. I only see subjects, so I haven't told you anything.`
+        : why === "no_agent"
+          ? "I can't read your mail closely: no AI agent is ready yet. I only see subjects, so I haven't told you anything."
+          : `${a} keeps failing when I read your mail. I only see subjects, so I haven't told you anything.`;
+  },
   firstLater: (zh: boolean) => (zh ? "好，先不看。" : "OK, not now."),
   keepNote: (zh: boolean) => (zh ? "早上那条还要吗？" : "Keep the morning note?"),
   budget: (zh: boolean, name: string) => (zh ? `${name} 这个月的额度用完了，这个月剩下的日子我只说急的。` : `${name} used this month's budget; for the rest of the month I'll only say what's urgent.`),

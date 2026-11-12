@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.36
+
+<!-- whats-new
+zh: 回忆会连它自己那块记忆一起找，不再漏掉
+en: Recall now searches its own memory space too, so nothing is missed
+zh: Nowledge Mem 按官方方式装和更新，一键换过去
+en: Nowledge Mem installs and updates the official way, with a one-tap move
+-->
+
+**Memory**
+- Recall searches where your memories are saved and Ducter's own memory space together, and uses
+  whichever answers if one doesn't.
+- Turning memory off says what stays: everything already noted is still in Nowledge Mem.
+
+**Nowledge Mem on your computers**
+- Ducter installs Nowledge Mem the way Mem recommends, never asking for a password. A copy that was
+  installed another way can be moved over in one tap; your sign-in stays, and if the move fails the
+  old copy is put back.
+- Tasks find the same Nowledge Mem Ducter uses, and Mem's own "update available" now shows.
+
 ## 0.0.35
 
 <!-- whats-new

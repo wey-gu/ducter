@@ -90,7 +90,7 @@ export const Pictures = () => {
             </div>
             {/* the viewer: the picture grows out of its tile onto a dark ground */}
             {view > 0 && (
-              <div style={{ position: "absolute", inset: 0, background: `rgba(20,13,7,${0.94 * view})`, zIndex: 4 }}>
+              <div style={{ position: "absolute", inset: 0, background: `rgba(20,13,7,${view})`, zIndex: 4 }}>
                 <div style={{ position: "absolute", top: 96 * k, left: 0, right: 0, textAlign: "center", color: "#F3E7D6", fontWeight: 600, fontSize: 14 * k, opacity: bar, padding: `0 ${30 * k}px` }}>{t(c.picFrom)}</div>
                 <div style={{ position: "absolute", top: 22 * k, right: 22 * k, width: 30 * k, height: 30 * k, opacity: bar }}>
                   <svg width="100%" height="100%" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#F3E7D6" strokeWidth={2.4} strokeLinecap="round" /></svg>

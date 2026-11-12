@@ -19,11 +19,14 @@ export async function siteLinks() {
  * (src/lib/film.json); scripts/film.mjs copies it into public/film/ at build time, because GitHub
  * serves assets as downloads that Safari and iOS won't play inline. `src` is null when that copy
  * failed, and the page then shows the poster linking to the release. See design/site-audit-2026-11.md.
+ * `cut` names a re-render uploaded over the same release asset: /film/ is cached immutable for a
+ * year, so a changed file gets a new path (/film/v0.0.27-r2/...) instead of a stale cache.
  */
+export const filmDir = film.cut ? `${film.release}-${film.cut}` : film.release;
 
 export function launchFilm() {
   // Astro builds from apps/site, so the working directory is the site root.
-  const local = join(process.cwd(), "public", "film", film.release, film.file);
+  const local = join(process.cwd(), "public", "film", filmDir, film.file);
   const release = `https://github.com/wey-gu/ducter/releases/tag/${film.release}`;
-  return { src: existsSync(local) ? `/film/${film.release}/${film.file}` : null, poster: film.poster, seconds: film.seconds, release };
+  return { src: existsSync(local) ? `/film/${filmDir}/${film.file}` : null, poster: film.poster, seconds: film.seconds, release };
 }

@@ -9,7 +9,9 @@ import { fileURLToPath } from "node:url";
 
 const site = join(dirname(fileURLToPath(import.meta.url)), "..");
 const film = JSON.parse(readFileSync(join(site, "src", "lib", "film.json"), "utf8"));
-const outDir = join(site, "public", "film", film.release);
+// `cut` marks a re-render over the same asset: a new path, since /film/ is cached immutable
+const dir = film.cut ? `${film.release}-${film.cut}` : film.release;
+const outDir = join(site, "public", "film", dir);
 const out = join(outDir, film.file);
 const url = `https://github.com/wey-gu/ducter/releases/download/${film.release}/${film.file}`;
 
@@ -18,7 +20,7 @@ function isMp4(buf) {
 }
 
 if (existsSync(out) && statSync(out).size > 100_000 && isMp4(readFileSync(out).subarray(0, 16))) {
-  console.log(`film: ${film.file} already in public/film/${film.release}/`);
+  console.log(`film: ${film.file} already in public/film/${dir}/`);
   process.exit(0);
 }
 if (process.env.DUCTER_SITE_OFFLINE) {
@@ -33,7 +35,7 @@ try {
   mkdirSync(outDir, { recursive: true });
   writeFileSync(`${out}.part`, buf);
   renameSync(`${out}.part`, out);
-  console.log(`film: ${film.file} (${(buf.length / 1e6).toFixed(1)} MB) → public/film/${film.release}/`);
+  console.log(`film: ${film.file} (${(buf.length / 1e6).toFixed(1)} MB) → public/film/${dir}/`);
 } catch (err) {
   rmSync(`${out}.part`, { force: true });
   console.warn(`film: could not fetch ${url} (${err.message}); the page shows the poster`);

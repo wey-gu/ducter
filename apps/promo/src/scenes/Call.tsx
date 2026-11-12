@@ -43,6 +43,12 @@ export const Call = () => {
   return (
     <Fill style={{ background: C.bg }}>
       <Headline h={c.callH} sub={sq ? c.callSub.replace("\n", " ") : c.callSub} />
+      {/* on the square cut the handset comes in under the call's row once the Go card has gone */}
+      {sq && frame >= LIVE - 2 && (
+        <div style={{ position: "absolute", left: width - type.right - 230, top: 600, width: 230, transformOrigin: "50% 90%", transform: `scale(${0.9 + 0.1 * live}, ${1.1 - 0.1 * live}) rotate(${ring}deg)`, opacity: Math.min(1, live * 2) }}>
+          <Art src="clay/ab_call.png" safe="ducter" style={{ width: "100%" }} />
+        </div>
+      )}
       {!sq && (
         <div style={{ position: "absolute", left: 1300, top: 360, width: 420, transformOrigin: "50% 90%", transform: `scale(${0.9 + 0.1 * handset}, ${1.1 - 0.1 * handset}) rotate(${ring}deg)`, opacity: Math.min(1, handset * 2) }}>
           <Art src="clay/ab_call.png" safe="ducter" style={{ width: "100%" }} />

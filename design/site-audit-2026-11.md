@@ -90,12 +90,17 @@ play inline, so `apps/site/scripts/film.mjs` copies the asset into `public/film/
 (gitignored) at build time and the page plays it from ducter.ai, served as `video/mp4` with range
 requests (`vercel.json`). If the copy fails the build still succeeds and the page shows the
 poster linking to the release. To ship a new cut: attach it to a release, change `film.json`
-and the poster, deploy.
+and the poster, deploy. A re-render uploaded over the same asset also bumps `cut` in `film.json`
+(the page then plays `/film/<release>-<cut>/`): `/film/` is cached immutable for a year, so a
+changed file must get a new path.
 
 The v5 cut (56 s, attached to v0.0.27; v0.0.8 keeps v4) brings the film up to 0.0.27: On hand as one
 list (D216) and the opened task's workbench with its agent, model and effort (D202, D214) replace
 v4's README crops; new scenes show pictures both ways and the viewer (D206), Ducter's own phone
 (D217) and a call from the owner's own number (D189, D218), following the morning heads-up's
-Tokyo trip. Stills and renders are in `.shots/promo/v5` (D75).
+Tokyo trip. Stills and renders are in `.shots/promo/v5` (D75). Its second cut (`r2`) redraws the
+hotel app on Ducter's phone as a full booking screen (a drawn room photo, rating, amenities, dates
+and the price) and fills the empty areas the first cut left (the scrimmed conversation behind the
+Decide sheet, the handset on the square Call scene, an opaque picture viewer).
 The alternative, a ≤ 2 MB muted 6–8 s loop of the Decide scene committed under
 `apps/site/public/`, is cheap to add later if the poster link underperforms.

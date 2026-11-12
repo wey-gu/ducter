@@ -94,7 +94,8 @@ test("the one tap, the first-account moment, the card's frames and its controls,
   expect(oo.calls().some((x) => x.argv.includes("search_threads"))).toBe(false);
 
   c.send({ t: "proactive_answer", noteId: offer.noteId, ask: "first_look", yes: true });
-  for (let i = 0; i < 300 && !notes(core).some((n) => n.ask === "cadence"); i++) await Bun.sleep(10);
+  // D232: the first look reads two weeks more (each a real oo subprocess here): seconds, not one.
+  for (let i = 0; i < 1500 && !notes(core).some((n) => n.ask === "cadence"); i++) await Bun.sleep(10);
   const answer = notes(core).find((n) => n.ask === "cadence")!;
   expect(answer.finds.map((f) => f.kind)).toEqual(["mismatch", "deadline", "waiting_on_you"]); // D232
 

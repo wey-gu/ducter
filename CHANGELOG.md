@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.0.39
+
+<!-- whats-new
+zh: 第一次看一眼，会挑出最近两周真正要你管的事
+en: Its first look picks what needs you from the last two weeks
+zh: 有人追问或等了三天，只说急的也会告诉你
+en: Only urgent now tells you when someone asked again or waited days
+-->
+
+**Proactive**
+- The first look reads the last three days in full and two weeks of mail that may hold a booking,
+  a bill or a promise, and says at most three things that need you, not only who is waiting.
+- Only urgent now counts what waiting costs: someone who asked you again, or has waited three
+  working days, and a promise due today.
+- All-day calendar events with a place (a hotel stay, a trip) are read as bookings, so a flight
+  that lands the night before a stay can be caught.
+- If it reads plenty of mail closely for a day and keeps nothing, 今天看了什么 / What it looked at
+  today says something may be wrong, instead of staying silent.
+
+**Names**
+- Shorter Chinese names: 从外面连 (was 在哪儿都能用), 连上手机或电脑, 发现了就说, 要不要先问,
+  用什么想, and 和 instead of 与 in section names.
+
 ## 0.0.38
 
 <!-- whats-new

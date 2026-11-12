@@ -1905,7 +1905,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     core.mcp.registerWhen(
       "partner",
       "calendar",
-      "The user's calendars, all accounts merged, in their zone. do=agenda: from/to dates; show=true puts the day card under your reply (what's my day/week): then say the gist in a line, don't list it. do=free: open slots. do=propose: a change as a Go card (ref from agenda), then end your turn; it runs on Go.",
+      "The user's calendars, all accounts merged, in their zone. do=agenda: from/to dates; asked what's on a day or week, always show=true (a day card under your reply), then one short line of gist, never the list. do=free: open slots. do=propose: a change as its own Go card (ref from agenda); add no words after it, end your turn.",
       {
         type: "object",
         properties: {
@@ -1983,7 +1983,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           const body: Bodies["decision"] = { decisionId, question: r.question[lang], goLabel: r.goLabel[lang], defaultOption: "hold", reversible: false, cal: r.cal };
           core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
           if (turn) (turn.asked = true), (turn.askedId = decisionId);
-          return { ok: true, needsGo: true, note: "The card shows what changes, where, when and who hears. End your turn without more words: on Go it runs by itself and the card shows it." };
+          return { ok: true, needsGo: true, note: "The card already shows what changes, where, when and who hears, with its buttons. End your turn now and write nothing: on Go it runs by itself." };
         }
         return { ok: false, error: "do is agenda, free or propose." };
       },

@@ -112,6 +112,23 @@ test("plugin installed there: it stays on, as the persona, with no Ducter recall
   expect(seen[0]).toEqual([undefined, "claude-code"]);
 });
 
+test("D229: Ducter's nmem named in NMEM_CLI_PATH (put in off PATH) reaches the task's plugin; the lane is left to the plugin", async () => {
+  const was = process.env.NMEM_CLI_PATH;
+  process.env.NMEM_CLI_PATH = "/home/u/.local/bin/nmem";
+  try {
+    core.taskMemory = { on: () => true, recall: async () => NOTES };
+    core.persona.mem = { agentId: "ducter", owned: true, lane: "lane-1" } as any;
+    core.memPluginIn = () => true;
+    const h = recordingPort();
+    const runner = createRunner(core, { harness: h.port, newId: () => "tsk8b" });
+    await runner.whenStarted((await runner.openTask({ persona: "p1", title: "x", brief: "b", harness: "claude-code" })).taskId);
+    expect(h.specs[0]!.env).toEqual({ NMEM_AGENT_ID: "ducter", NMEM_CLI_PATH: "/home/u/.local/bin/nmem", NMEM_NO_MAILBOX_NOTICE: "1" });
+  } finally {
+    if (was === undefined) delete process.env.NMEM_CLI_PATH;
+    else process.env.NMEM_CLI_PATH = was;
+  }
+});
+
 test("memory off in Ducter: the user's Mem plugin is off in the task, on Claude Code and Codex; no identity env", async () => {
   core.taskMemory = { on: () => false, recall: async () => undefined };
   core.persona.mem = { agentId: "ducter", owned: true } as any;

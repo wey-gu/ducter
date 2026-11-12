@@ -2,7 +2,7 @@
 import type { CoreApi, Partner, Runner } from "@ducter/protocol/src/internal.ts";
 import { startCore, type Core } from "./core.ts";
 import { DEFAULT_IDENTITY, loadPersona } from "./persona.ts";
-import { bindMemIdentity, nmemRunner, readMemIdentity, renameMemIdentity } from "./mem-identity.ts";
+import { bindMemIdentity, nmemRunner, readMemIdentity, refreshLane, renameMemIdentity } from "./mem-identity.ts";
 import { homedir } from "node:os";
 
 /**
@@ -19,6 +19,17 @@ export function keepMemIdentity(core: Core, memConnected: boolean, run = nmemRun
         console.log(`[ducter] Mem identity: ${mem.agentId}${mem.owned ? " (Ducter's own)" : ""}${mem.space ? `, Space ${mem.space}` : ""}`);
       },
       (err) => console.warn("[ducter] binding the Mem identity failed:", (err as Error).message),
+    );
+  } else if (memConnected && core.persona.mem && core.settings.get().memory) {
+    // D229: the identity's lane as Mem has it now (the user may have changed it in Mem).
+    const was = core.persona.mem;
+    void refreshLane({ dataDir: core.dataDir, run, mem: was }).then(
+      (mem) => {
+        if (!mem || mem === was || core.persona.mem !== was) return;
+        core.persona.mem = mem;
+        core.settings.memIdentityChanged();
+      },
+      () => {},
     );
   }
   let named = core.persona.name;

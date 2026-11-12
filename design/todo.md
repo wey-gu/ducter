@@ -857,9 +857,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] File B16 with the Nowledge team: a device-code sign-in for `nmem connect` on a headless box, a public word on
       when Bridge connections open per workspace, and `status`'s `update.latest` lagging the release (research/66
       §6). Trigger: the author's go, with B11–B15.
-- [ ] A home with no pipx, uv or pip (a fresh Ubuntu server): the row names `sudo apt install pipx` (D225). If
-      users stall there, offer a task that installs it with the user's OK (D169's shape). Trigger: a user stuck on
-      that line.
+- [ ] A home with no pipx, uv, password-free package manager or usable pip (a fresh Ubuntu server, a non-root
+      user without `sudo -n`): the row's **怎么装** names `sudo apt install pipx` (D225, D229). If users stall there,
+      offer a task that installs it with the user's OK (D169's shape). Trigger: a user stuck on that line.
+- [ ] D229 live: tap **换一下** on hel (root, apt, pip copy 0.10.116 past the mark): pipx from apt, the old copy
+      out, `pipx install --force nmem-cli`, still signed in (`nmem --json status` healthy), Bridge row back to
+      Connect. Then a recall on hel that should find a memory from the identity's lane. Trigger: the author's go.
+- [ ] Partner recall and threads (research/69 K6): Mem's skill searches threads (`t search`) for "what did we
+      discuss in another tool"; the partner reads memories only. Measure on the eval first. Trigger: a user asking
+      the partner about a conversation they had in another AI tool.
+- [ ] Tasks get two voices on saving (research/69 K1): the brief says never save memories (D168 (5)); the plugin's
+      startup text says save durable decisions autonomously. Check in the task eval whether tasks still call
+      `nmem m add`. Trigger: a duplicate memory traced to a task.
 - [ ] Run `bun run bridge:live -- --connected` (dry), then `-- --connected --real` and record it in research/37:
       S1, S2, S3 and an X1 round trip with a native Claude Code session as the other side. Check that the native
       binding's own context works for logical `contacts/send/inbox/reply` (INFERRED) and replace the fake's

@@ -56,6 +56,21 @@ func TestBridgeRow(t *testing.T) {
 		{"local", protocol.BridgeView{State: "local_mem", Identity: "ducter", Home: "hel"},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.local", "hel")} },
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
+		// D229: hel's pip copy past the mark: a quiet move under a working row; moving; done; a failed move kept the old copy.
+		{"upkeep-move", protocol.BridgeView{State: "ready", Identity: "ducter", Space: space, Home: "hel", Upkeep: &protocol.BridgeUpkeep{Kind: "move"}},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.mem.upkeep.move", "hel"), L.T("bridge.mem.upkeep.move.go"), L.T("bridge.connect")}
+			}, nil},
+		{"moving", protocol.BridgeView{State: "updating", Identity: "ducter", Home: "hel", Upkeep: &protocol.BridgeUpkeep{Kind: "move"}},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.moving", "hel")} },
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.upkeep.move.go")} }},
+		{"moved", protocol.BridgeView{State: "ready", Identity: "ducter", Space: space, Home: "hel", Done: "moved"},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.done.moved", "hel")} },
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.upkeep.move.go"), "%!("} }},
+		{"move-failed-kept", protocol.BridgeView{State: "ready", Identity: "ducter", Space: space, Home: "hel", Upkeep: &protocol.BridgeUpkeep{Kind: "move", Detail: "ERROR: boom", Kept: true}},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.mem.update.failed") + " " + L.T("bridge.mem.kept"), L.T("bridge.retry")}
+			}, nil},
 		{"ready", protocol.BridgeView{State: "ready", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
 				return []string{L.T("bridge.title", "小鸭"), L.T("bridge.connect"), L.T("peers.reach", "小鸭"), "ducter · Only me · 6f1c0d2e-personal"}

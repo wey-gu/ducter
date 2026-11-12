@@ -875,9 +875,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // D202: the effort the user picked, on open and on every resume (Claude Code keeps none).
     if (open.effort) spec.effort = open.effort;
     // D141 (system.md): the user's own nmem (a skill, a hook) runs as the persona's identity.
-    // Only these two, set explicitly; every other NMEM_* the host has stays out (child-env.ts).
+    // Only these, set explicitly; every other NMEM_* the host has stays out (child-env.ts). The
+    // identity's own lane is left to Mem's plugin (it reads the profile's default Space itself);
+    // NMEM_SPACE only when the user chose one. D229: NMEM_CLI_PATH too, when Ducter's nmem is
+    // named there (one Ducter put in off PATH), so the plugin runs the same nmem (its own rule).
     const mem = core.persona.mem;
-    if (mem) spec.env = { NMEM_AGENT_ID: mem.agentId, ...(mem.space ? { NMEM_SPACE: mem.space } : {}) };
+    if (mem) spec.env = { NMEM_AGENT_ID: mem.agentId, ...(mem.space ? { NMEM_SPACE: mem.space } : {}), ...(process.env.NMEM_CLI_PATH ? { NMEM_CLI_PATH: process.env.NMEM_CLI_PATH } : {}) };
     if (memoryOn()) {
       // D168: the user's Nowledge Mem plugin stays on in the task, as the persona's identity. Its
       // Bridge mailbox notices stay out: messages to the persona are the partner's, not a task's.

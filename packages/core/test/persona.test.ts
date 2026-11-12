@@ -22,5 +22,5 @@ test("D141: a bound identity's own bundle is read (--agent-id, its Space), still
   chmodSync(bin, 0o755);
   const p = await loadPersona({ off: false, bin, mem: { agentId: "ducter", space: "ducter-scratch" } });
   expect(p).toMatchObject({ name: "小鸭", source: "nowledge-mem" });
-  expect(readFileSync(join(dir, "args"), "utf8").trim().split("\n")).toEqual(["--json", "context", "--no-ensure", "--no-working-memory", "--agent-id", "ducter", "--space", "ducter-scratch"]);
+  expect(readFileSync(join(dir, "args"), "utf8").trim().split("\n")).toEqual(["--json", "context", "--no-ensure", "--no-working-memory", "--source-app", "ducter", "--agent-id", "ducter", "--space", "ducter-scratch"]);
 });

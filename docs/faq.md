@@ -170,8 +170,11 @@ What it needs, and what you can do today from that same section:
 - A [Nowledge Mem](https://mem.nowledge.co) cloud workspace (free to download and sign up).
 - Nowledge Mem's command-line tool, 0.10.118 or later, on the computer Ducter lives on. If it's
   missing or older, the section shows **Install** or **Update**: one tap, done the way Nowledge
-  Mem's own guide says. On a Linux server without pipx, it first asks you to run
-  `sudo apt install pipx` there. If the tool came with the Nowledge Mem app, update the app.
+  Mem's own guide says (with pipx). On a Linux server where Ducter can't add pipx itself, it
+  shows the one command to run there (**How**). If the tool came with the Nowledge Mem app,
+  update the app. If your copy was installed in a way that bypasses the system's Python
+  protection, the section offers **Move it**: one tap puts in Nowledge Mem's recommended
+  install, and you stay signed in.
 - That tool signed in: paste a one-time connect link from Nowledge Mem on the web
   (**Connectors › AI Tools**) and tap **Sign in**. The link works once and isn't kept.
 

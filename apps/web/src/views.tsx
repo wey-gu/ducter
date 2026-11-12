@@ -2,7 +2,7 @@
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
 import { openPhone, PhoneAskBody } from "./phone-use.tsx";
-import type { AgentUpdate, Attention, Bodies, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
+import type { AgentUpdate, Attention, Bodies, BridgeView, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
@@ -2070,6 +2070,50 @@ const MEM_MIN = "0.10.118";
 /** D225: the row's states before the home's Mem can connect anyone (nothing else in the group yet). */
 const MEM_SETUP = new Set(["install_mem", "installing", "update_mem", "updating", "sign_in", "signing_in", "local_mem"]);
 
+/** D229: the detail behind a quiet disclosure: the main line stays in plain words. */
+function MemMore({ label, text }: { label: string; text: string }) {
+  return (
+    <details class="mem-more">
+      <summary>{label}</summary>
+      <small>{text}</small>
+    </details>
+  );
+}
+
+/** D229: a failed install or update: one plain sentence, whether the old copy still works, the installer's words behind 细节. */
+function MemFailed({ detail, kept, install, home }: { detail: string; kept?: boolean; install: boolean; home: string }) {
+  return (
+    <>
+      <small class="bridge-why">
+        {install ? t("bridge.mem.install.failed") : t("bridge.mem.update.failed")}
+        {kept ? ` ${t("bridge.mem.kept")}` : ""}
+      </small>
+      <MemMore label={t("bridge.mem.more")} text={detail} />
+    </>
+  );
+}
+
+/**
+ * D229: under a working row, the one quiet thing about the home's Mem: just done (a warm line), or
+ * worth doing (move to Mem's recommended install, or a newer version), with its one tap.
+ */
+function MemUpkeep({ b }: { b: BridgeView }) {
+  const home = b.home ?? "";
+  if (b.done) return <small class="mem-done">{t(`bridge.mem.done.${b.done}`, home)}</small>;
+  if (!b.upkeep) return null;
+  const move = b.upkeep.kind === "move";
+  return (
+    <div class="mem-upkeep">
+      <small>{move ? t("bridge.mem.upkeep.move", home) : t("bridge.mem.upkeep.update", home)}</small>
+      {b.upkeep.detail && <MemFailed detail={b.upkeep.detail} kept={b.upkeep.kept} install={false} home={home} />}
+      <div class="mem-upkeep-row">
+        {move && !b.upkeep.detail ? <MemMore label={t("bridge.mem.more")} text={t("bridge.mem.upkeep.move.how")} /> : <span />}
+        <Btn kind="secondary" size="sm" label={b.upkeep.detail ? t("bridge.retry") : move ? t("bridge.mem.upkeep.move.go") : t("bridge.mem.update.go")} about={home} onClick={() => A.installBridgeMem()} />
+      </div>
+    </div>
+  );
+}
+
 function BridgeRow() {
   const b = A.bridge;
   const s = A.settings;
@@ -2082,22 +2126,25 @@ function BridgeRow() {
   if (b.state === "install_mem" || b.state === "installing" || b.state === "update_mem" || b.state === "updating") {
     const busy = b.state === "installing" || b.state === "updating";
     const install = b.state === "install_mem" || b.state === "installing";
+    const moving = b.state === "updating" && b.upkeep?.kind === "move";
     const line =
       b.state === "installing" ? t("bridge.mem.installing", home)
+      : moving ? t("bridge.mem.moving", home)
       : b.state === "updating" ? t("bridge.mem.updating", home)
       : install ? (b.canRun ? t("bridge.mem.install", home) : t("bridge.mem.install.need", home))
-      : b.canRun ? t("bridge.mem.update", home, b.version ?? "", MEM_MIN)
+      : b.canRun ? t(b.upkeep?.kind === "move" ? "bridge.mem.update.move" : "bridge.mem.update", home, b.version ?? "", MEM_MIN)
       : b.need === "app" || !b.version ? t("bridge.update", home)
       : t("bridge.mem.update.other", home, b.version ?? "", MEM_MIN);
-    const label = install ? (b.canRun ? t("bridge.mem.install.go") : t("bridge.retry")) : t("bridge.mem.update.go");
+    const label = install ? (b.canRun ? t("bridge.mem.install.go") : t("bridge.retry")) : b.detail ? t("bridge.retry") : t("bridge.mem.update.go");
     return (
       <div class="set-item">
         <b>{t("bridge.title", name)}</b>
         <small>{line}</small>
-        {b.detail && !busy && <small>{t(install ? "bridge.mem.install.failed" : "bridge.mem.update.failed", b.detail)}</small>}
+        {b.detail && !busy && <MemFailed detail={b.detail} kept={b.kept} install={install} home={home} />}
+        {install && !b.canRun && !busy && <MemMore label={t("bridge.mem.how")} text={t("bridge.mem.install.need.how")} />}
         {(busy || b.canRun || install) && (
           <div class="set-go bridge-acts">
-            {busy ? <Btn kind="secondary" size="sm" disabled label={line} onClick={() => {}} /> : <Btn kind={b.canRun ? "primary" : "secondary"} size="sm" label={label} about={home} onClick={() => A.installBridgeMem()} />}
+            {busy ? <Btn kind="secondary" size="sm" disabled label={t(install ? "bridge.mem.busy.install" : moving ? "bridge.mem.busy.move" : "bridge.mem.busy.update")} onClick={() => {}} /> : <Btn kind={b.canRun ? "primary" : "secondary"} size="sm" label={label} about={home} onClick={() => A.installBridgeMem()} />}
           </div>
         )}
       </div>
@@ -2114,6 +2161,7 @@ function BridgeRow() {
     return (
       <div class="set-item">
         <b>{t("bridge.title", name)}</b>
+        {b.done && <small class="mem-done">{t(`bridge.mem.done.${b.done}`, home)}</small>}
         <small>{t("bridge.mem.signin", home)}</small>
         {why && <small class="bridge-why">{why}</small>}
         <label class="acct-field">
@@ -2131,6 +2179,7 @@ function BridgeRow() {
       <div class="set-item">
         <b>{t("bridge.title", name)}</b>
         <small>{t("bridge.mem.local", home)}</small>
+        <MemUpkeep b={b} />
       </div>
     );
   const note =
@@ -2160,6 +2209,7 @@ function BridgeRow() {
           {busy && <Btn kind="secondary" size="sm" disabled label={b.state === "connecting" ? t("bridge.connecting") : t("bridge.disconnecting")} onClick={() => {}} />}
         </div>
       )}
+      <MemUpkeep b={b} />
     </div>
   );
 }

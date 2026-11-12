@@ -2,23 +2,31 @@
 // tap in Settings › 伙伴 › 你的其他 AI, so a home without it (a headless Linux server) can connect
 // the persona with the user's other AI agents (D205) without the user typing a command there.
 //
-// Mem's official route (research/66 §4, https://mem.nowledge.co/SKILL.md Step 0): on a machine with
-// the Nowledge Mem app, the app's own command line; anywhere else, the PyPI package `nmem-cli`
-// (pipx, uv or pip). An update comes from the same source the copy came from:
+// Mem's official route (research/66 §4, research/69; https://mem.nowledge.co/SKILL.md, the CLI
+// docs, the plugin skills, and `nmem status`'s own update hint "pipx upgrade nmem-cli"): on a
+// machine with the Nowledge Mem app, the app's own command line; anywhere else, the PyPI package
+// `nmem-cli`. D229: pipx first (the route every Mem surface names, and the one a system Python
+// marked externally managed (PEP 668) allows without bypassing the mark). An update comes from the
+// same source the copy came from:
 //   - the app's copy (the app bundle or its wrapper): Ducter can't update it; one line says to
 //     update the app;
-//   - uv:   `uv tool upgrade nmem-cli`        · install: `uv tool install nmem-cli`
 //   - pipx: `pipx upgrade nmem-cli`           · install: `pipx install nmem-cli`
+//   - uv:   `uv tool upgrade nmem-cli`        · install: `uv tool install nmem-cli`
 //   - pip:  `<its python> -m pip install --user --upgrade nmem-cli` (a copy pip put in the user's
-//           own site; when that python is marked externally managed, the copy was already put there
-//           past the mark, so updating the same copy passes `--break-system-packages`, never for a
-//           fresh install)        · install: `python3 -m pip install --user nmem-cli`
+//           own site) when that python is not marked externally managed. When it is (hel: the
+//           system Python 3.14, the copy put there past the mark), D229 moves it instead: the
+//           old copy out, `pipx install nmem-cli` in, the sign-in (~/.nowledge-mem/config.json,
+//           Mem's single credential home) untouched; if the new copy doesn't go in, the old one
+//           is put back. With no pipx to move to and none to get, the old in-place update past
+//           the mark stays the fallback (`--break-system-packages`, never for a fresh install);
 //   - anything else (a system package, a copy Ducter can't place): no command; one line.
-// A fresh install tries uv, then pipx, then pip, the first that is here; none: one line naming the
-// one thing to install first. Every command is an argument vector, never a shell string, and runs
-// as the user Ducter runs as (no sudo). Afterwards the version is read back; the folder the new
-// `nmem` is in joins this process's PATH, so every later nmem call (memory, the partner's Bridge,
-// tasks) finds it.
+// A fresh install tries pipx, then uv, then gets pipx from the system's own package manager when
+// that needs no password (Homebrew; apt or dnf as root or with `sudo -n`), then pip into the user's
+// own site when that python isn't marked; none: one line naming the one thing to install first.
+// Every command is an argument vector, never a shell string, never asks for a password, and runs
+// as the user Ducter runs as. Afterwards the version is read back; the folder the new `nmem` is
+// in joins this process's PATH, so every later nmem call (memory, the partner's Bridge, tasks)
+// finds it.
 //
 // Signing in is a separate step (Mem's own `nmem connect <link>`): a one-time connect link the
 // user makes in Nowledge Mem and pastes on the card. `--skip-tools`: it saves the sign-in only and
@@ -43,10 +51,26 @@ export interface MemCopy {
   venv?: string;
 }
 
-export interface MemPlan {
+/** One command of a plan. pastMark: a pip step on a copy already put past the system's mark. */
+export interface MemStep {
   argv: string[];
+  pastMark?: boolean;
+}
+
+export interface MemPlan {
+  steps: MemStep[];
   /** What it does, for the record (never shown with a secret: there is none). */
-  how: "uv" | "pipx" | "pip";
+  how: "uv" | "pipx" | "pip" | "move";
+  /** move: puts the old copy back when the new one didn't go in. */
+  undo?: MemStep;
+}
+
+/** What a plan needs to know about this computer, learned with a quick question each. */
+export interface MemFacts {
+  /** A python's pip: usable, marked externally managed (PEP 668), or none. Keyed by the python. */
+  python?: Record<string, "ok" | "managed" | "nopip">;
+  /** The system's package manager runs without a password (root, or `sudo -n` works). */
+  sudo?: boolean;
 }
 
 export interface MemSys {
@@ -57,6 +81,8 @@ export interface MemSys {
   real: (p: string) => string;
   home: string;
   platform: NodeJS.Platform;
+  /** The user Ducter runs as (0: root); undefined where there is none (Windows). */
+  uid?: number;
 }
 
 export const realSys = (): MemSys => ({
@@ -85,6 +111,7 @@ export const realSys = (): MemSys => ({
   },
   home: homedir(),
   platform: process.platform,
+  uid: process.getuid?.(),
 });
 
 /** Folders a fresh `nmem` lands in that a service's PATH often lacks (pipx, uv, pip --user). */
@@ -130,39 +157,92 @@ export function copyOf(path: string, sys: MemSys): MemCopy {
   return { path, channel: "other" };
 }
 
+/** A command by name: on PATH, in the user's own bin folders, or where the system keeps it. */
+export function toolOf(cmd: string, env: Record<string, string | undefined>, sys: MemSys): string | undefined {
+  const sysDirs = sys.platform === "darwin" ? ["/opt/homebrew/bin", "/usr/local/bin"] : ["/usr/local/bin", "/usr/bin"];
+  return sys.which(cmd, env.PATH ?? "") ?? [...extraBins(sys), ...sysDirs].map((d) => join(d, cmd)).find(sys.exists);
+}
+
+/** The python a quick question asks about pip (`python3`, or a pip copy's own python). */
+export const PY_PROBE = 'import os, sysconfig\ntry:\n    import pip\nexcept Exception:\n    print("nopip"); raise SystemExit(0)\nprint("managed" if os.path.exists(os.path.join(sysconfig.get_path("stdlib"), "EXTERNALLY-MANAGED")) else "ok")';
+
+/**
+ * pipx from the system's own package manager, when it needs no password: Homebrew on a Mac; apt
+ * or dnf as root or with `sudo -n` on Linux. undefined: there's no such way here.
+ */
+export function pipxFromSystem(env: Record<string, string | undefined>, sys: MemSys, facts: MemFacts): MemStep | undefined {
+  if (sys.platform === "darwin") {
+    const brew = toolOf("brew", env, sys);
+    return brew ? { argv: [brew, "install", "pipx"] } : undefined;
+  }
+  if (sys.platform !== "linux") return undefined;
+  const root = sys.uid === 0;
+  if (!root && !facts.sudo) return undefined;
+  const asRoot = (argv: string[]) => (root ? argv : ["sudo", "-n", ...argv]);
+  const apt = toolOf("apt-get", env, sys);
+  if (apt) return { argv: asRoot(["env", "DEBIAN_FRONTEND=noninteractive", apt, "install", "-y", "-q", "pipx"]) };
+  const dnf = toolOf("dnf", env, sys);
+  if (dnf) return { argv: asRoot([dnf, "install", "-y", "-q", "pipx"]) };
+  return undefined;
+}
+
+/** Where a fresh copy goes: pipx, uv, or pipx got from the system first; undefined: none here. */
+function isolatedInstall(env: Record<string, string | undefined>, sys: MemSys, facts: MemFacts, force = false): { steps: MemStep[]; how: "pipx" | "uv" } | undefined {
+  const pipx = toolOf("pipx", env, sys);
+  if (pipx) return { steps: [{ argv: [pipx, "install", ...(force ? ["--force"] : []), MEM_PACKAGE] }], how: "pipx" };
+  const uv = toolOf("uv", env, sys);
+  if (uv) return { steps: [{ argv: [uv, "tool", "install", ...(force ? ["--force"] : []), MEM_PACKAGE] }], how: "uv" };
+  const boot = pipxFromSystem(env, sys, facts);
+  // After the system's pipx is in, "pipx" is found by name (bridge-link resolves it then).
+  if (boot) return { steps: [boot, { argv: ["pipx", "install", ...(force ? ["--force"] : []), MEM_PACKAGE] }], how: "pipx" };
+  return undefined;
+}
+
+/** The python a pip copy belongs to, as a command this computer runs. */
+export const copyPython = (copy: MemCopy, env: Record<string, string | undefined>, sys: MemSys) => (copy.venv ? copy.python! : (sys.which(copy.python!, env.PATH ?? "") ?? copy.python!));
+
+/** A pip copy in the user's own site under a python marked externally managed: D229 moves it to pipx. */
+export const movable = (copy: MemCopy, env: Record<string, string | undefined>, sys: MemSys, facts: MemFacts) =>
+  copy.channel === "pip" && !!copy.userSite && !!copy.python && facts.python?.[copyPython(copy, env, sys)] === "managed";
+
 /** The update for this copy from its own source; undefined: Ducter can't (the app's, a system package). */
-export function updatePlan(copy: MemCopy, env: Record<string, string | undefined>, sys: MemSys): MemPlan | undefined {
-  const path = env.PATH ?? "";
-  const tool = (cmd: string) => sys.which(cmd, path) ?? extraBins(sys).map((d) => join(d, cmd)).find(sys.exists);
+export function updatePlan(copy: MemCopy, env: Record<string, string | undefined>, sys: MemSys, facts: MemFacts = {}): MemPlan | undefined {
   switch (copy.channel) {
     case "uv": {
-      const uv = tool("uv");
-      return uv ? { argv: [uv, "tool", "upgrade", MEM_PACKAGE], how: "uv" } : undefined;
+      const uv = toolOf("uv", env, sys);
+      return uv ? { steps: [{ argv: [uv, "tool", "upgrade", MEM_PACKAGE] }], how: "uv" } : undefined;
     }
     case "pipx": {
-      const pipx = tool("pipx");
-      return pipx ? { argv: [pipx, "upgrade", MEM_PACKAGE], how: "pipx" } : undefined;
+      const pipx = toolOf("pipx", env, sys);
+      return pipx ? { steps: [{ argv: [pipx, "upgrade", MEM_PACKAGE] }], how: "pipx" } : undefined;
     }
     case "pip": {
       if (!copy.python) return undefined;
-      const py = copy.venv ? copy.python : (sys.which(copy.python, path) ?? copy.python);
-      return { argv: [py, "-m", "pip", "install", ...(copy.userSite ? ["--user"] : []), "--upgrade", "--disable-pip-version-check", MEM_PACKAGE], how: "pip" };
+      const py = copyPython(copy, env, sys);
+      const inPlace: MemStep = { argv: [py, "-m", "pip", "install", ...(copy.userSite ? ["--user"] : []), "--upgrade", "--disable-pip-version-check", MEM_PACKAGE], pastMark: !!copy.userSite };
+      if (movable(copy, env, sys, facts)) {
+        const to = isolatedInstall(env, sys, facts, true);
+        if (to) {
+          // The old copy out first (pip would otherwise take the new `nmem` with it), then the new one in.
+          const out: MemStep = { argv: [py, "-m", "pip", "uninstall", "-y", "--disable-pip-version-check", "--break-system-packages", MEM_PACKAGE] };
+          const boot = to.steps.length > 1 ? [to.steps[0]!] : [];
+          const undo: MemStep = { argv: [py, "-m", "pip", "install", "--user", "--disable-pip-version-check", "--break-system-packages", MEM_PACKAGE] };
+          return { steps: [...boot, out, to.steps.at(-1)!], how: "move", undo };
+        }
+      }
+      return { steps: [inPlace], how: "pip" };
     }
     default:
       return undefined;
   }
 }
 
-/** A fresh install with the first official route that is here (uv, pipx, pip); undefined: none. */
-export function installPlan(env: Record<string, string | undefined>, sys: MemSys, pipOk: boolean): MemPlan | undefined {
-  const path = env.PATH ?? "";
-  const tool = (cmd: string) => sys.which(cmd, path) ?? extraBins(sys).map((d) => join(d, cmd)).find(sys.exists);
-  const uv = tool("uv");
-  if (uv) return { argv: [uv, "tool", "install", MEM_PACKAGE], how: "uv" };
-  const pipx = tool("pipx");
-  if (pipx) return { argv: [pipx, "install", MEM_PACKAGE], how: "pipx" };
-  const py = sys.which("python3", path);
-  if (py && pipOk) return { argv: [py, "-m", "pip", "install", "--user", "--disable-pip-version-check", MEM_PACKAGE], how: "pip" };
+/** A fresh install with the first official route that is here (pipx, uv, pipx from the system, pip); undefined: none. */
+export function installPlan(env: Record<string, string | undefined>, sys: MemSys, facts: MemFacts = {}): MemPlan | undefined {
+  const iso = isolatedInstall(env, sys, facts);
+  if (iso) return iso;
+  const py = sys.which("python3", env.PATH ?? "");
+  if (py && facts.python?.[py] === "ok") return { steps: [{ argv: [py, "-m", "pip", "install", "--user", "--disable-pip-version-check", MEM_PACKAGE] }], how: "pip" };
   return undefined;
 }
 

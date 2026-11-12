@@ -1129,6 +1129,20 @@ type BridgeView struct {
 	Need     string       `json:"need,omitempty"`
 	SignIn   string       `json:"signIn,omitempty"`
 	Version  string       `json:"version,omitempty"`
+	// D229: Upkeep is the one quiet thing worth doing to the home's Mem
+	// (Kind "move" or "update"); Done what was just done ("installed",
+	// "updated", "moved"); Kept: it failed and the old copy still works.
+	Upkeep *BridgeUpkeep `json:"upkeep,omitempty"`
+	Done   string        `json:"done,omitempty"`
+	Kept   bool          `json:"kept,omitempty"`
+}
+
+// BridgeUpkeep is D229's quiet upkeep of the home's Mem: Kind "move" or
+// "update"; Detail and Kept when the last try didn't work.
+type BridgeUpkeep struct {
+	Kind   string `json:"kind"`
+	Detail string `json:"detail,omitempty"`
+	Kept   bool   `json:"kept,omitempty"`
 }
 
 // BridgeSpace is the user's own place in Mem ("Only me"): label and exact id.

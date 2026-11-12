@@ -1628,6 +1628,16 @@ export interface BridgeView {
   /** failed, or a disconnect that didn't go through: what Mem said, clipped. */
   detail?: string;
   pinned?: boolean;
+  /**
+   * D229: the one quiet thing worth doing to the home's Nowledge Mem, under a working state (and on
+   * update_mem): move a copy put past the system's mark to Mem's recommended install (sign-in kept),
+   * or update to the newer one Mem says is out. Sent with installing/updating while it runs.
+   */
+  upkeep?: { kind: "move" | "update"; detail?: string; kept?: true };
+  /** D229: just done on the home (shown for a few minutes): put in, updated, or moved. */
+  done?: "installed" | "updated" | "moved";
+  /** D229: with detail: it didn't work, and the copy that was there still is and works. */
+  kept?: true;
 }
 
 /** The choices offered for defaultAfterMin, in minutes. */

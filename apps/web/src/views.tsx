@@ -2630,6 +2630,14 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "phone", art: "phone", title: "settings.phone" },
 ];
 
+/** D224: the Settings list's 你的设备 row says how many updates wait, in the highlight's ink (D213), or what is under way. */
+function updatesWaiting(): string {
+  const v = A.updateAll;
+  if (v?.plan && !v.plan.finishedAt) return t(v.plan.items.length === 1 ? "upall.running.one" : "upall.running");
+  const n = v?.offer.length ?? 0;
+  return n ? t(n === 1 ? "upall.title.one" : "upall.title", n) : "";
+}
+
 /** Settings (D150): the same sections as the Mac's rail, as a list; a tap pushes its page. */
 function SettingsSheet() {
   useEffect(() => {
@@ -2658,7 +2666,7 @@ function SettingsSheet() {
                 <img src={`app/art/${x.art}.webp`} alt="" width="40" height="40" />
                 <span class="grow">
                   <b>{t(x.title)}</b>
-                  <small>{t(`settings.list.${x.page}`)}</small>
+                  {x.page === "devices" && updatesWaiting() ? <small class="update">{updatesWaiting()}</small> : <small>{t(`settings.list.${x.page}`)}</small>}
                 </span>
                 <Chev />
               </button>

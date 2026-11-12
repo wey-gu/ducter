@@ -98,7 +98,7 @@ func main() {
 	case "devices":
 		must(c.Send(map[string]any{"t": "devices"}))
 		f := next(func(f protocol.ServerFrame) bool { return f.T == "devices" })
-		out(map[string]any{"devices": f.Devices, "reach": f.Reach})
+		out(map[string]any{"devices": f.Devices, "reach": f.Reach, "updateAll": f.UpdateAll})
 	case "send":
 		var raw map[string]any
 		if err := json.Unmarshal([]byte(payload), &raw); err != nil {

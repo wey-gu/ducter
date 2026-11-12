@@ -27,6 +27,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       (`bun run e2e:linux`); still open there: a Linux worker's update, a forced rollback, x64
       (the rig is arm64 on Apple silicon), and a real network hop with TLS and a non-loopback
       peer at the auth gate (lima forwards the VM's port to this Mac's loopback).
+- [ ] **Update all (D224) across real computers:** a hel home, the MacBook doing tasks (its app asked through `asksApp`) and a mini, with Claude Code and Codex behind on two of them and a task mid-turn on one agent: the order, the wait, the home's restart mid-plan, the Mac app's own restart last, the phone page's reload. Fakes and the VM cover each part; the whole only on the author's machines. Trigger: the next release with Ducter and an agent both behind. Also open: the iPhone app updates from the App Store and is not part of it; a plan step for this Mac's app when it is only a client is shown by the Mac app itself, not the home, so the phone doesn't list it.
 - [ ] **Updating the AI agents (D156) for real:** an npm Codex and a native Claude Code on a
       server updated from the card and with `ducter update --agents --yes`, one forced rollback
       (a pinned npm version that fails `--version`), a worker's agent over its socket, and a

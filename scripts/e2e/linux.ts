@@ -21,7 +21,10 @@
 //              then 试一下 (live_open try): real JPEG frames must arrive and decode;
 //   6. agent   pi (a fake package on a local npm registry) 1.5.0 → 1.5.1 from the card; then the
 //              author's MacBook case: a worker whose pi was updated by hand is asked to update
-//              again (a stale view): "nothing newer" must not show as a failure.
+//              again (a stale view): "nothing newer" must not show as a failure;
+//   7. all     全部更新 / Update all (D224): V3 → V4 and pi 1.5.1 → 1.5.2 on the home in one tap, the
+//              worker away (said, not part of it): the home first, pi only after the home is back,
+//              the same plan finished by the restarted home.
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -52,7 +55,7 @@ echo 'Acquire::http::Proxy "${PROXY}"; Acquire::https::Proxy "${PROXY}"; Acquire
 systemctl --user set-environment http_proxy=${PROXY} https_proxy=${PROXY} HTTP_PROXY=${PROXY} HTTPS_PROXY=${PROXY} no_proxy=127.0.0.1,localhost NO_PROXY=127.0.0.1,localhost
 `
   : "";
-const VERSIONS = ["9.0.1", "9.0.2", "9.0.3"] as const;
+const VERSIONS = ["9.0.1", "9.0.2", "9.0.3", "9.0.4"] as const;
 const ARCH = process.arch === "arm64" ? "arm64" : "x64";
 const WS = `ws://127.0.0.1:${PORT}/ws`;
 const HTTP = `http://127.0.0.1:${PORT}`;
@@ -156,7 +159,7 @@ async function build() {
   await run(["go", "build", "-o", join(DIR, "bin", "e2eclient"), "./cmd/e2eclient"], { cwd: join(ROOT, "apps/desktop") });
   // The fake pi: prints its version, like `pi --version`.
   mkdirSync(join(DIR, "srv", "npm"), { recursive: true });
-  for (const v of ["1.5.0", "1.5.1"]) {
+  for (const v of ["1.5.0", "1.5.1", "1.5.2"]) {
     const p = join(DIR, "pkg", v, "package");
     mkdirSync(join(p, "bin"), { recursive: true });
     writeFileSync(join(p, "package.json"), JSON.stringify({ name: "@earendil-works/pi-coding-agent", version: v, bin: { pi: "bin/pi.js" } }));
@@ -356,6 +359,53 @@ systemd-run --user --unit=ducter-e2e-worker --collect --setenv=DUCTER_DATA_DIR=$
   check("no stale failure", fresh.update?.phase !== "failed" && !fresh.available, `更新 answered ${res.reason ?? (res.ok ? "ok" : "?")}; the card now says pi ${fresh.version}, ${fresh.update?.phase ?? "no update line"}, nothing offered (was: 没更新成 · 没有更新的版本)`);
 }
 
+// ---------- 7. 全部更新 / Update all (D224) ----------
+
+async function updateAll() {
+  const to = VERSIONS[3];
+  // The worker goes away: it is said as away, never part of the plan.
+  await vm(`systemctl --user stop ducter-e2e-worker.service 2>/dev/null || true`, { ok: false });
+  feed(to, "第四版：全部更新", "Fourth: update all");
+  writeFileSync(join(DIR, "srv", "npm", "latest"), "1.5.2\n");
+  await clientJson("send", JSON.stringify({ t: "device_update", device: "local", check: true }), "-wait", "update_result");
+  await clientJson("send", JSON.stringify({ t: "agent_update", device: "local", harness: "pi", check: true }), "-wait", "agent_update_result").catch(() => undefined);
+  const offer = await until(
+    "Update all's offer",
+    async () => {
+      const f = await clientJson("devices");
+      const keys = (f.updateAll?.offer ?? []).map((i: any) => i.key);
+      return keys.includes("ducter:local") && keys.includes("agent:local:pi") ? f.updateAll : undefined;
+    },
+    120_000,
+  );
+  check("all offered", offer.offer[0].key === "ducter:local" && !offer.offer.some((i: any) => i.device !== "local"), `in order: ${offer.offer.map((i: any) => `${i.key} ${i.from}→${i.to}`).join(", ")}; not now: ${offer.notNow.map((x: any) => `${x.deviceName} (${x.why})`).join(", ")}`);
+  const res = await clientJson("send", JSON.stringify({ t: "update_all" }), "-wait", "update_all_result");
+  check("all start", res.ok === true && !!res.id, `全部更新 answered ${JSON.stringify(res)}`);
+  // Watch the list through the home's restart: pi never starts while the home's own step runs.
+  const early: string[] = [];
+  const over = await until(
+    "the plan to finish",
+    async () => {
+      const p = (await clientJson("devices")).updateAll?.plan;
+      if (!p || p.id !== res.id) return undefined;
+      const home = p.items.find((i: any) => i.key === "ducter:local");
+      const pi = p.items.find((i: any) => i.key === "agent:local:pi");
+      if (home && !["done", "failed", "skipped"].includes(home.state) && pi && pi.state !== "queued") early.push(`${pi.state} while the home was ${home.state}`);
+      return p.finishedAt ? p : undefined;
+    },
+    600_000,
+    2000,
+  );
+  const h = await home();
+  const home4 = over.items.find((i: any) => i.key === "ducter:local");
+  const pi4 = over.items.find((i: any) => i.key === "agent:local:pi");
+  check(
+    "all → done in order",
+    home4?.state === "done" && pi4?.state === "done" && h.version === to && piOn(h)?.version === "1.5.2" && early.length === 0 && Date.parse(pi4.at) >= Date.parse(home4.at),
+    `the same plan ${over.id} finished by the restarted home: Ducter ${h.version} (${home4?.state}), pi ${piOn(h)?.version} (${pi4?.state}); pi waited for the home${early.length ? `; but saw ${early[0]}` : ""}`,
+  );
+}
+
 // ---------- the run ----------
 
 async function cleanup() {
@@ -378,6 +428,7 @@ try {
   await selfUpdate(VERSIONS[2], "第三版：连着两次原地更新", "Third: two updates in place in a row");
   await browse();
   await agent();
+  await updateAll();
 } catch (e) {
   code = 1;
   say(`\nFAILED: ${(e as Error).message}\n(log: ${logFile})`);

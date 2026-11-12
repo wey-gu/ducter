@@ -18,6 +18,7 @@ func TestUpdatesAndAboutUseOnlySharedPieces(t *testing.T) {
 	scope := map[string]map[string]bool{
 		"settings_update.go": {"appUpdateSection": true},
 		"devupdate.go":       {"updateSection": true, "versionRow": true},
+		"updateall.go":       {"updateAllSection": true, "updAllRow": true, "ownAppRow": true},
 	}
 	for file, funcs := range scope {
 		f, err := parser.ParseFile(token.NewFileSet(), file, nil, 0)

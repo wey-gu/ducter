@@ -61,6 +61,8 @@ export interface DevicesOptions {
   platform?: string;
   /** D156: each device's AI agents: latest per channel, standing, an update under way. */
   agents?: () => import("./agents.ts").AgentUpdates | undefined;
+  /** D224: 全部更新 / Update all: what it would do, and the plan under way. */
+  updateAll?: () => import("./update-all.ts").UpdateAll | undefined;
   /** D169: Nowledge Mem's plugin line on each device's agents. */
   mem?: () => import("./mem-plugins.ts").MemPlugins | undefined;
   /** D156: the pi inside this Ducter (harness-probe bundledPiVersion). */
@@ -382,7 +384,9 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           alwaysOn: hello?.alwaysOn ?? alwaysOnKind(kind),
         } satisfies DeviceView;
       });
-    return { t: "devices", devices: [home, ...workers], reach: reach() };
+    const devices = [home, ...workers];
+    const ua = o.updateAll?.()?.view(devices);
+    return { t: "devices", devices, reach: reach(), ...(ua ? { updateAll: ua } : {}) };
   }
 
   const fns = new Set<() => void>();

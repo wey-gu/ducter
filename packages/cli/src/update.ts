@@ -1,7 +1,8 @@
 // `ducter update` (D148): update Ducter in place, here or everywhere.
 //
 //   ducter update                this machine (asks first; --yes doesn't)
-//   ducter update --all          the computers that do tasks for it first, then Ducter's home
+//   ducter update --all          全部更新 / Update all (D224): the home first, then the other computers,
+//                                then each computer's AI agents at a safe point; the home runs the plan
 //   ducter update --check        only say where each stands (--json for agents)
 //   ducter update --to 0.0.3     that version, even an older one
 //   ducter update --agents       the AI agents' own versions instead (D156, update-agents.ts)
@@ -13,8 +14,9 @@ import { existsSync } from "node:fs";
 import pkg from "../package.json" with { type: "json" };
 import { arch as osArch, hostname as osHostname, platform as osPlatform } from "node:os";
 import { join } from "node:path";
-import type { DeviceUpdate, DeviceView, ServerFrame, UpdateReason } from "@ducter/protocol";
+import type { DeviceUpdate, DeviceView, ServerFrame, UpdateAllItem, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { compareVersions } from "@ducter/protocol/src/version.ts";
+import { harnessName } from "@ducter/protocol";
 import { fetchLatest, hasNotes, type Release } from "@ducter/core/src/release.ts";
 import { askApp } from "@ducter/core/src/app-update.ts";
 import { finish, judgeResult, readPlan, readResult, realSys, runUpdate, updateHow, writeResult, type Fail, type UpdateSys } from "@ducter/core/src/update.ts";
@@ -236,10 +238,15 @@ async function viaHome(c: UpdateCtx, conn: Conn, say: (s: string) => void, targe
   const shown = args.all || args.check ? all : all.filter((r) => r.home);
   const home = all.find((r) => r.home)!;
   if (args.check) {
-    if (args.json) say(JSON.stringify({ latest: home.update?.latest ?? null, checkedAt: home.update?.checkedAt ?? null, devices: shown.map((r) => ({ id: r.id, name: r.name, home: r.home, online: r.online, ...(r.update ?? {}) })) }, null, 2));
-    else say(formatRows(shown, t, style));
+    if (args.json) say(JSON.stringify({ latest: home.update?.latest ?? null, checkedAt: home.update?.checkedAt ?? null, devices: shown.map((r) => ({ id: r.id, name: r.name, home: r.home, online: r.online, ...(r.update ?? {}) })), ...(args.all && first.updateAll ? { updateAll: first.updateAll } : {}) }, null, 2));
+    else {
+      say(formatRows(shown, t, style));
+      if (args.all && first.updateAll?.offer.length) say("\n" + formatOffer(first.updateAll, t));
+    }
     return 0;
   }
+  // D224: --all is the home's one plan (a home from before it has no updateAll: the old way below).
+  if (args.all && !args.to && first.updateAll) return updateAll(c, conn, say, target, first.updateAll);
   const to = args.to;
   const targets = (args.all ? all.filter((r) => !r.home && (to ? r.online && r.update?.how === "self" : behind(r))) : []).concat(home);
   const homeNeeds = to ? compareVersions(to, home.update?.current ?? "0.0.0") !== 0 : Boolean(home.update?.available);
@@ -293,6 +300,113 @@ async function viaHome(c: UpdateCtx, conn: Conn, say: (s: string) => void, targe
   else
     for (const o of outcome) say(o.ok ? `  ${style.ok("✓")} ${o.name} · ${t("update.done", { v: o.version ?? "" })}` : `  ${o.name} · ${reasonText(t, o.reason, o.detail)}`);
   return outcome.every((o) => o.ok) ? 0 : 1;
+}
+
+// ---------- 全部更新 / Update all (D224) ----------
+
+const itemName = (t: T, i: UpdateAllItem) => (i.kind === "ducter" ? t("update.all.ducter", { d: i.deviceName }) : t("update.all.agent", { a: harnessName(i.harness ?? ""), d: i.deviceName }));
+
+/** One step in words: the plan's state, or the single update's own step while it runs. */
+export function itemState(t: T, i: UpdateAllItem): string {
+  switch (i.state) {
+    case "queued":
+      return t("update.all.queued");
+    case "waiting":
+      return t("update.all.waiting", { n: i.busy ?? 1 });
+    case "running":
+      return i.kind === "ducter" ? t(`update.phase.${i.phase ?? "downloading"}` as any, { v: i.to }) : t(i.phase === "checking" ? "agents.phase.checking" : i.phase === "waiting" ? "agents.phase.waiting" : "agents.phase.updating", { v: i.to });
+    case "done":
+      return t("update.all.done", { v: i.to });
+    case "failed":
+      return (i.rolledBack ? t("update.all.rolledBack", { v: i.from }) : t("update.all.failed")) + (i.reason === "no_answer" ? ` (${t("update.all.noAnswer")})` : i.reason ? ` (${i.kind === "ducter" ? t(`update.reason.${i.reason}` as any) : i.reason}${i.detail ? `: ${i.detail}` : ""})` : "");
+    case "skipped":
+      return i.reason === "home" ? t("update.all.home", { d: i.detail ?? "" }) : i.reason === "offline" ? t("update.all.offline") : t("update.all.stopped");
+  }
+}
+
+/** What Update all would do, in its order, and what can't be part of it. */
+export function formatOffer(v: UpdateAllView, t: T): string {
+  const lines = [t("update.all.list", { n: v.offer.length }), ...v.offer.map((i, n) => `  ${n + 1}. ${itemName(t, i)}  ${i.from} → ${i.to}`)];
+  for (const x of v.notNow) lines.push("  " + (x.why === "offline" ? t("update.all.away", { d: x.deviceName }) : t("update.all.elsewhere", { d: x.deviceName })));
+  return lines.join("\n");
+}
+
+/**
+ * --all (D224): the home makes the plan and runs it; this asks, starts it, and follows its list
+ * through the home's own restart (it reconnects and reads the same plan from the new home).
+ */
+async function updateAll(c: UpdateCtx, conn: Conn, say: (s: string) => void, target: Target, v: UpdateAllView): Promise<number> {
+  const { t, style, args } = c;
+  let id = v.plan && !v.plan.finishedAt ? v.plan.id : "";
+  if (id) {
+    if (!args.json) say(t("update.all.following"));
+  } else {
+    if (!v.offer.length) {
+      if (args.json) say(JSON.stringify({ ok: true, updated: [], notNow: v.notNow }));
+      else say(t("update.all.none") + (v.notNow.length ? "\n" + formatOffer(v, t).split("\n").slice(1).join("\n") : ""));
+      return 0;
+    }
+    if (!args.json) say(formatOffer(v, t));
+    if (!args.yes) {
+      if (!process.stdin.isTTY || args.json) return console.error(t("update.needsYes")), 2;
+      if (!(await (c.ask ?? askYes)(t("update.all.confirm", { n: v.offer.length })))) return say(t("update.cancelled")), 1;
+    }
+    conn.send({ t: "update_all", by: "cli" });
+    const r = (await conn.next((f): f is Extract<ServerFrame, { t: "update_all_result" }> => f.t === "update_all_result", 30_000)) as Extract<ServerFrame, { t: "update_all_result" }> | undefined;
+    if (!r) return say(t("update.noAnswer")), 1;
+    if (!r.ok) {
+      if (r.reason === "nothing") return say(t("update.all.none")), 0;
+      if (r.reason !== "running") return say(reasonText(t, "failed", r.detail)), 1;
+      if (!args.json) say(t("update.all.following"));
+    }
+    id = r.id ?? "";
+  }
+  const shown = new Map<string, string>();
+  let cur: Conn | undefined = conn;
+  let closed = false;
+  const watchClose = (x: Conn) => void x.closed.then(() => x === cur && (closed = true));
+  watchClose(conn);
+  const homeName = v.offer.find((i) => i.kind === "ducter" && i.device === "local")?.deviceName ?? (target.kind === "remote" ? target.name : "Ducter");
+  const end = Date.now() + 6 * 60 * 60_000;
+  let asked = Date.now();
+  while (Date.now() < end) {
+    if (!cur || closed) {
+      // The home is restarting: its socket went. Connect again and read the same plan there.
+      if (!args.json && cur) say(`  ${t("update.all.back", { d: homeName })}`);
+      cur = undefined;
+      closed = false;
+      await Bun.sleep(2000);
+      const again = await (c.connect ?? ((p) => connect(p, { timeoutMs: 5000 })))(target).catch(() => undefined);
+      if (!again) continue;
+      cur = again;
+      watchClose(again);
+      again.send({ t: "devices" });
+      asked = Date.now();
+    }
+    const f = (await cur.next((x): x is Extract<ServerFrame, { t: "devices" }> => x.t === "devices", 5000)) as Extract<ServerFrame, { t: "devices" }> | undefined;
+    if (!f) {
+      if (Date.now() - asked > 30_000 && !closed) (cur.send({ t: "devices" }), (asked = Date.now()));
+      continue;
+    }
+    const p = f.updateAll?.plan;
+    if (!p || (id && p.id !== id)) continue;
+    id = p.id;
+    for (const i of p.items) {
+      const line = itemState(t, i);
+      if (shown.get(i.key) === line) continue;
+      shown.set(i.key, line);
+      if (!args.json) say(`  ${i.state === "done" ? style.ok("✓") : i.state === "failed" ? style.bold("!") : " "} ${itemName(t, i)} · ${line}`);
+    }
+    if (p.finishedAt) {
+      if (cur !== conn) cur.close();
+      const done = p.items.filter((i) => i.state === "done").length;
+      const failed = p.items.filter((i) => i.state === "failed").length;
+      if (args.json) say(JSON.stringify({ ok: failed === 0, plan: p }, null, 2));
+      else say(p.stopped ? t("update.all.summaryStopped", { done }) : failed ? t("update.all.summarySome", { done, failed }) : t("update.all.summary"));
+      return failed ? 1 : 0;
+    }
+  }
+  return say(t("update.noAnswer")), 1;
 }
 
 /**

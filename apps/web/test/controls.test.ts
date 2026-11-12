@@ -14,7 +14,7 @@ describe("only shared controls (D161)", () => {
   });
 
   // D166: the accounts cards and the notes the partner says by itself, the same rule.
-  for (const f of ["accounts.tsx", "finds.tsx"])
+  for (const f of ["accounts.tsx", "finds.tsx", "updateall.tsx"])
     test(`${f} draws its controls only through controls.tsx`, () => {
       const card = src(f);
       expect(card.match(/<(button|input|select|textarea|a)\b/g) ?? []).toEqual([]);

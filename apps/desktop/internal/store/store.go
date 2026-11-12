@@ -377,6 +377,10 @@ type Store struct {
 	Devices   []protocol.DeviceView
 	Reach     *protocol.Reach
 	DevicesAt time.Time
+	// UpdateAll is 全部更新 / Update all as the home last said it (D224):
+	// the offer, what can't take part, and the plan under way; nil from a
+	// home before it.
+	UpdateAll *protocol.UpdateAllView
 	// AbilityResults are ability_result frames not yet handled by the view.
 	AbilityResults []protocol.ServerFrame
 	// Live is the live view of Ducter's browser while the user signs in
@@ -508,6 +512,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 			}
 		}
 		s.Devices, s.Reach, s.DevicesAt = f.Devices, f.Reach, time.Now()
+		s.UpdateAll = f.UpdateAll
 	case "ability_result":
 		s.AbilityResults = append(s.AbilityResults, f)
 	case "live", "live_frame", "live_turn", "live_doing":

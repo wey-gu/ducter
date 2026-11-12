@@ -69,8 +69,9 @@ one, and that folder must be on a computer that does tasks for it.
 
 `ducter update --check --json` says each device's version, the latest, and `available`. When
 the user wants it updated: `ducter update --yes` (this machine) or `ducter update --all --yes`
-(every computer doing tasks for it, then the home). Ducter restarts once; tasks pause and carry
-on. Exit code 1 with `reason` (and `rolledBack: true`) means it stayed on, or went back to, the
+(everything behind: the home, then the computers doing tasks for it, then their AI agents, each
+agent once no task uses it; the home keeps the plan through its own restart). Ducter restarts
+once; tasks pause and carry on. Exit code 1 with `reason` (and `rolledBack: true`) means it stayed on, or went back to, the
 version it had. Don't update on your own initiative while tasks are mid-merge or the user is
 in the middle of something.
 

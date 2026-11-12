@@ -10,6 +10,7 @@ import { onhandWords } from "./i18n-onhand.ts";
 import { workbench } from "./i18n-workbench.ts";
 import { phoneuse } from "./i18n-phoneuse.ts";
 import { calendarWords } from "./i18n-calendar.ts";
+import { updateAllWords } from "./i18n-updateall.ts";
 
 export type Lang = "zh" | "en";
 
@@ -1644,7 +1645,7 @@ const devup: Record<Lang, Record<string, string>> = {
     "agentv.unverified": "Ducter 还没验证过这个版本。",
     "agentv.latest.unverified": "Ducter 还没验证过 %s，要等你点一下才装。",
     "agentv.phase.waiting": "等它手上的事停下…",
-    "agentv.phase.updating": "在更新到 %s…",
+    "agentv.phase.updating": "正在更新到 %s…",
     "agentv.phase.checking": "在检查 %s…",
     "agentv.phase.done": "已更新到 %s",
     "agentv.phase.failed": "没能更新",
@@ -1661,8 +1662,8 @@ const devup: Record<Lang, Record<string, string>> = {
     "agentv.why.signed_out": "更新以后需要重新登录。",
     "agentv.why.unchanged": "更新程序跑完了，版本没变。",
     "agentv.why.failed": "出了点问题，再试一次。",
-    "settings.versions.night": "夜里自动更新",
-    "settings.versions.night.note": "在免打扰的时段里、没有事在做的时候，悄悄更新到最新版本。",
+    "settings.versions.night": "自动更新",
+    "settings.versions.night.note": "在免打扰时段里（没设就是夜里 3 点到 5 点）、没有事在做的时候，按同样的顺序更新；AI 只更新到 Ducter 验证过的版本。",
   },
   en: {
     "devices.title": "Your devices",
@@ -1808,8 +1809,8 @@ const devup: Record<Lang, Record<string, string>> = {
     "agentv.why.signed_out": "After the update its sign-in stopped working.",
     "agentv.why.unchanged": "Its updater ran, but the version didn't change.",
     "agentv.why.failed": "Something went wrong. Try again.",
-    "settings.versions.night": "Update at night",
-    "settings.versions.night.note": "In quiet hours, when nothing is working, update to the latest version quietly.",
+    "settings.versions.night": "Update automatically",
+    "settings.versions.night.note": "In quiet hours (3–5 am if none are set), when nothing is running, in the same order; AI agents only to versions Ducter has checked.",
   },
 };
 
@@ -2464,7 +2465,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...calendarWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...calendarWords.en } };
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...calendarWords.zh, ...updateAllWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...calendarWords.en, ...updateAllWords.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

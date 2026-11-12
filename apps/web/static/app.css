@@ -7378,7 +7378,8 @@ button.imprint:focus-visible {
 /* The miniature: Android's page as a small clay card, never a screenshot. */
 .hs-mini { position: relative; height: 176px; margin: 6px 0 2px; border-radius: 18px; overflow: hidden; background: var(--bg); box-shadow: inset 0 0 0 1.5px var(--line-2), 0 4px 0 var(--line-2); font-size: 12px; color: var(--ink); }
 .hs-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 8px; font-weight: 800; font-size: 14px; }
-.hs-kebab { font-size: 18px; line-height: 1; color: var(--ink-soft); }
+/* Android's overflow menu, drawn (three dots), never the ⋮ character (D211). */
+.hs-kebab { width: 4px; height: 4px; margin-right: 4px; border-radius: 50%; background: var(--ink-soft); box-shadow: 0 -6px 0 var(--ink-soft), 0 6px 0 var(--ink-soft); }
 .hs-sec { padding: 4px 14px; color: var(--ink-muted); font-size: 11px; font-weight: 700; }
 .hs-row, .hs-app, .hs-switch { display: flex; align-items: center; gap: 8px; margin: 2px 10px; padding: 8px 10px; border-radius: 12px; background: var(--surface); box-shadow: 0 2px 0 var(--line); }
 .hs-row img, .hs-app img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: var(--sunken); }

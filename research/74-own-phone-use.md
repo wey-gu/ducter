@@ -204,6 +204,87 @@ locked-phone, single-Mac and not in the EU. Offer it at most as a labelled exper
 home ("通过 iPhone 镜像 / through iPhone Mirroring"), and say plainly elsewhere that iPhone can't be
 used yet.
 
+## 8. The indicator and the guide: the visual process (AGENTS.md metaphor rules)
+
+### 8.1 The indicator (what the phone shows while a task holds it)
+
+Seven candidates, each described in plain visual words with no label naming its purpose, and asked
+of three naive raters each (`claude -p --model haiku --no-session-persistence` in a scratch folder,
+2026-11-13; VERIFIED, 21 answers): what is happening, what tapping it does, what worries you, calm
+1–5. Graded by hand against the truth (meaning: "an outside service is operating this phone";
+tap: "ends that").
+
+| # | Candidate | Maps | False implications | Meaning | Tap |
+|---|---|---|---|---|---|
+| A | Literal clay pill in the status bar: the partner's face, "Ducter is using this phone", Stop | who, that it acts, how to end it | none heard; every rater asked "what has it done, what can it see" | 3/3 | 3/3 |
+| B | The same pill with no words; a fingertip dot where each tap lands | that something acts, where | remote support or screen sharing; nobody could say who | 3/3 | 3/3 |
+| C | A warm glow around the whole screen edge (Gemini/Siri style) | that something is on | an overlay, an assistant listening; tap does "something" | 0/3 | 0/3 |
+| D | The clay partner peeking over the top edge, a stop square beside it | who (if you know it) | the app's own mascot; Stop pauses an animation | 0/3 | 0/3 |
+| E | A luggage tag "handed over" hanging in the corner | the loan | transferring an account or the phone | 0/3 | 0/3 |
+| F | Red dot and a timer (Android's recording idiom) | that it is on, for how long | it is **recording**; tap opens Android's own panel | 3/3 (as recording) | 0/3 |
+| G | A, plus a soft ring where each tap lands | who, what, where, how to end it | none heard; "its taps show up as the rings" | 3/3 | 3/3 |
+
+Rubric (1–5): legibility without labels, mapping fidelity, scale (one task, a long errand), states
+(its turn, your turn, waiting for Go), emotional fit (放心 and a little 惊喜), distinctiveness,
+feasibility on Android (an accessibility overlay, no extra permission).
+
+| # | Legible | Fidelity | Scale | States | Feel | Distinct | Feasible | Sum |
+|---|---|---|---|---|---|---|---|---|
+| A | 5 | 4 | 5 | 4 | 4 | 3 | 5 | 30 |
+| B | 3 | 3 | 5 | 2 | 2 | 3 | 5 | 23 |
+| C | 1 | 2 | 5 | 2 | 4 | 2 | 4 | 20 |
+| D | 1 | 2 | 4 | 3 | 5 | 5 | 4 | 24 |
+| E | 1 | 3 | 4 | 1 | 3 | 4 | 4 | 20 |
+| F | 3 | 1 | 5 | 1 | 1 | 1 | 5 | 17 |
+| G | 5 | 5 | 5 | 5 | 4 | 4 | 5 | 33 |
+
+**Chosen: G, "beautifully literal".** The pill answers the raters' one worry with its second line
+(what it is doing now: 点「发送」), its border turns accent in the person's turn (轮到你了), and the
+ring shows where each tap lands. The clay is Pebble's (the partner's face breathing, the Stop button
+on its ledge), so it is ours without asking the reader to learn a metaphor. INFERRED: human raters
+who have never met an agent would separate A and G more; a human pass is in `design/todo.md`.
+
+### 8.2 The guide (how a person turns Android's switch on without thinking)
+
+Three candidates, three raters each, asked what exactly they would tap and in what order, and how
+sure they are (VERIFIED, 9 answers):
+
+| # | Candidate | Right taps in the right order | Sure (1–5) | Notes |
+|---|---|---|---|---|
+| G1 | A clay miniature of Android's own pages, a fingertip pulsing on the row, the switch, the dialog's button | 3/3 | 3.7 | they quoted the dialog's words back |
+| G2 | A clay key handed from the phone to the partner, a padlock opening | 0/3 | 2.0 | "I can't tell which screen it is" |
+| G3 | A numbered list of the steps in words | 3/3 | 3.0 | right only from prior knowledge of Android |
+
+**Chosen: G1, with G3's numbering.** Each step shows the page Android will show, with Android's own
+words (§2.2) in the person's language and the fingertip where to tap; the step that is done turns
+to a check by itself (the app reads the service and the app op on its own side). Labels state the
+literal thing.
+
+## 9. Checked on an emulator (2026-11-13)
+
+A scratch AVD (Android 16, API 36.1, Google Play image, `ANDROID_AVD_HOME` in the scratchpad), the
+debug APK installed with adb, the service switched on with `settings put secure
+enabled_accessibility_services` (adb installs are not restricted, so the restricted steps were
+**not** walked here), and the bridge driven by the debug build's `HandsetProbe` broadcast with
+Ducter in the background. VERIFIED:
+
+| What | Result |
+|---|---|
+| Outside a loan | every call but state/start/stop answers "Ducter isn't lent this phone right now" |
+| `start` | the pill appears over Settings: the partner's face, "Ducter is using this phone", the step line, Stop (shot `emu-pill.png`) |
+| `launch com.android.settings`, `front` | Settings in front |
+| `screen` | 48 KB of uiautomator-shaped XML, 149 nodes; the home's own `parseDump` reads it as `[1] item "Search Settings"`, `[3] item "Network & internet · Mobile, Wi‑Fi, hotspot"` … |
+| `tap` on Search, then `text 无障碍` | the search field holds 无障碍 with Gboard open and no IME switch (shot `emu-typed.png`) |
+| `key KEYCODE_POWER` | refused: not one of the five keys |
+| `jpeg` | a JPEG of the screen through the accessibility screenshot, pill hidden for the frame |
+| `start … turn: you` | the pill says "Your turn on this phone", its border in accent (shot `emu-yourturn.png`) |
+| `stop` | the pill goes; reads refuse again |
+| `uiautomator dump` run during a loan | Android unbinds every accessibility service while UiAutomation runs: the service went, and the loan ended on the phone (its `gone()` path). The right behaviour; the home hears it as a Stop from the phone |
+| The pill's first build | cut the name to "Ducte…" (a vertical LinearLayout's default MATCH_PARENT child); fixed with WRAP_CONTENT and checked again |
+
+Not checked here: the restricted-settings path, Pixel's own strings, the self-update keeping the
+allowance, the WebView page keeping its socket with Ducter in the background on a real phone.
+
 ## Implications for Ducter
 
 1. **Build the Android accessibility service** with `canRetrieveWindowContent`,

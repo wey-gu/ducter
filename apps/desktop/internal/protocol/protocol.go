@@ -185,6 +185,9 @@ type Decision struct {
 	// Computer (D235): one action in the person's apps that commits (Go
 	// does it once), or their own turn in an app (Go = 好了 / Done).
 	Computer *ComputerAsk `json:"computer,omitempty"`
+	// Handset (D238): may this task borrow the person's own phone now (Go
+	// lends it; no default).
+	Handset *HandsetAsk `json:"handset,omitempty"`
 	// Where (D157): wait for a computer (Hold, the default) or do it now on
 	// another (Go).
 	Where *WhereAsk `json:"where,omitempty"`
@@ -731,6 +734,7 @@ type TaskCard struct {
 	Integrated *Integrated `json:"integrated,omitempty"`
 	Phoning    *Browsing   `json:"phoning,omitempty"`   // D217: is using Ducter's phone there
 	Computing  *Computing  `json:"computing,omitempty"` // D235: is using the person's apps there
+	Handset    *Computing  `json:"handset,omitempty"`   // D238: is using the person's own phone (device id, app id)
 }
 
 // Integrated is what the user did with a task's branch from Ducter (D216):
@@ -1478,6 +1482,8 @@ type ReachClient struct {
 	Form string `json:"form,omitempty"`
 	// Computer is the computer it runs on (its host name), when it said.
 	Computer string `json:"computer,omitempty"`
+	// Handset is 用这台手机 / Use this phone on an Android phone (D238).
+	Handset *HandsetView `json:"handset,omitempty"`
 }
 
 // Reach is who can reach this Ducter from elsewhere, and the address.

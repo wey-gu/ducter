@@ -149,7 +149,7 @@ function Mini({ step }: { step: "try" | "allow" | "on" }) {
       <div class="hs-mini allow" aria-hidden="true">
         <div class="hs-bar">
           <span>{t("android.appinfo")}</span>
-          <b class="hs-kebab">⋮</b>
+          <b class="hs-kebab" />
         </div>
         <div class="hs-app">
           <img src="app/art/idle.webp" alt="" />

@@ -189,3 +189,43 @@ unfolding and turning keep what you were reading and typing.
 
 Notifications in the Android app are coming soon; until then, Ducter in Chrome notifies you as
 above.
+
+## Let tasks borrow your Android phone
+
+Some errands live in an app on your phone: an order in a delivery app, a reply in a chat app. With
+**Use this phone**, a task can borrow the phone you already use, with your apps and accounts on it,
+for as long as the errand takes.
+
+**Turn it on (once, about a minute).** In the Ducter app on your Android phone, open **Settings ›
+Devices**, tap your phone, then **+ Use this phone**. Android wants you to flip one switch
+yourself; Ducter shows each page you'll see, with a fingertip where to tap, and opens the right one
+for you:
+
+1. On Android 13 and later, the first time: in **Accessibility**, tap **Ducter**, then its switch.
+   Android says the setting is restricted; tap **OK**.
+2. In Ducter's **App info**, tap the three dots at the top right, then **Allow restricted settings**, and
+   confirm with your screen lock.
+3. In **Accessibility**, tap **Ducter**, turn on **Use Ducter**, then **Allow**. You come straight
+   back to Ducter.
+
+If Android asks you to **Allow** straight away at step 1, that's all.
+
+**When a task wants it**, you get a card: **"Order lunch" wants to borrow your Pixel**, with
+**Not now** and **Lend it**. Nothing happens until you say. While it's lent:
+
+- A small pill sits at the top of the screen over every app: **Ducter is using this phone**, what
+  it's doing right now, and **Stop**. Each tap shows as a soft ring where it lands.
+- Anything that sends, pays, deletes or confirms waits for your Go on a card, every time.
+- Banking, wallet, payment, password and authenticator apps stay out of reach, and password fields
+  are never read or typed. Signing in is yours: the card asks you to do it on the phone, and the
+  task sees nothing until you tap **Done**.
+- Tap **Stop** on the pill, or **Stop** on the task from any of your devices, and the phone is
+  yours again at once.
+
+Between tasks it reads nothing. To turn it off, tap **Use this phone** on the phone's card and
+**Remove**: that also turns Ducter's switch off in Android. Keep the Ducter app open (in the
+background is fine) while a task is borrowing the phone.
+
+**iPhone:** not available. iOS doesn't let one app use other apps, and the ways around it need
+Xcode and a Mac next to the phone. On an iPhone, tasks use apps on your Mac or Ducter's own phone
+instead.

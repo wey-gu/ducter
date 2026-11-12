@@ -12,6 +12,8 @@ type PhoneAsk struct {
 	Name   string `json:"name,omitempty"` // the app as the user knows it (never its id)
 	Label  string `json:"label,omitempty"`
 	Effect string `json:"effect,omitempty"`
+	// On (D238): the person's own phone it happens on; nil = Ducter's phone.
+	On *HandsetOn `json:"on,omitempty"`
 }
 
 // PhoneInstallStep is how far installing the phone is.

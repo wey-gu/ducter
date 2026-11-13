@@ -1,6 +1,6 @@
 # 用这台手机 / Use this phone: a task borrows the person's own phone
 
-Decided in D238 (2026-11-13), the first-time card in D247; evidence in [research/74](../research/74-own-phone-use.md).
+Decided in D238 (2026-11-13), the first-time card in D247, which phone in D251; evidence in [research/74](../research/74-own-phone-use.md).
 Ducter's own Android phone on a Mac is a different thing: [phone-use.md](phone-use.md) (用手机 / Use
 a phone). Calls are [phone.md](phone.md). Tasks in the person's Mac apps: [computer-use.md](computer-use.md).
 
@@ -44,7 +44,28 @@ in the hand), 惊喜 (it really uses their phone, and they can watch every tap l
 
 **Added means Android's switch is on** (fixed 2026-11-13, 0.0.49): the home adds the phone as soon as its app reports the switch on, however it got on (an earlier version, Android's Settings, the guide closed); before, only the switch turning on while the guide was open added it, so the author's Pixel, switched on in 0.0.44, was never added and phone work fell to Ducter's own phone. Taking 用这台手机 off on its card is remembered: a switch still on doesn't add it back by itself.
 
-`needs.phone` work uses **the person's own phone when one is added** (its apps and sign-ins are
+**The work says which phone (D251).** `needs.phone` is `"mine"` (the person's own: their apps,
+accounts, messages; 用我的手机, 我的微信, "on my Pixel"), `"ducter"` (Ducter's own clean phone: 在安卓上试我们的
+App, an APK, a fresh phone) or `"any"` (either; `true` from before D251 means the same). The partner
+picks; unsure, mine (a wrong mine costs one card, a wrong ducter does the work in accounts that
+aren't theirs).
+
+| `needs.phone` | Their phone added | Their Android app connected, not added | Neither |
+|---|---|---|---|
+| `"mine"` | it (the loan, §4) | it, with the setup card (§3.1), **even where Ducter's phone could do it** | nothing opens: `MINE_NO_PHONE` (install Ducter on their Android phone; Ducter's phone only as a question, when the work needs none of their accounts) |
+| `"ducter"` | Ducter's phone (never theirs) | Ducter's phone | Ducter's phone; none anywhere: `DUCTER_NO_PHONE` (用手机 on a Mac) |
+| `"any"` / `true` | it | Ducter's phone where it runs; none: the setup card (D247) | Ducter's phone; none: `noPhoneLine` (D247) |
+
+A `"mine"` task never falls back to Ducter's phone: its phone is bound for the task's life; with
+none of theirs reachable its tools say so (`HANDSET_MINE_NONE`) and it reports blocked. **先不用 /
+Not now** (or **不借**) on a `"mine"` task: `HANDSET_MINE_NO`, no phone of theirs, report blocked; it
+may ask, waiting as the default, whether Ducter's phone would do when the work needs none of their
+accounts, and never switches by itself. The task knows which phone it has: the brief's phone
+section opens with it (`phoneBrief` in `packages/runner/src/brief.ts`), and every `phone_look`
+starts with **Phone: {Pixel Fold}, the user's own phone…** or **Phone: Ducter's own phone, an
+Android emulator on {Mac}. It is not the user's own phone…**.
+
+For `"any"`, a phone task uses **the person's own phone when one is added** (its apps and sign-ins are
 theirs); Ducter's phone on its computer otherwise. Bound at the task's first phone tool, for the
 task's life. With a phone added, phone work may run on any computer (`loadout.ts`): the tools drive
 the phone from the home wherever the task runs. Several phones added: the one connected most
@@ -59,10 +80,10 @@ blocked. The partner sets `needs.phone` for any work on a phone, set up or not.
 
 | Moment | What happens |
 |---|---|
-| No phone can serve it (none added, no Ducter's phone where it runs), the person's Android app connected | the task opens and binds that phone; its first phone tool posts one card, **「{task}」要用你的 {phone} / "{task}" needs your {phone}** · **在你的 {phone} 上打开「用这台手机」… / Turn on Use this phone on your {phone}…** · **先不用 / Not now** · **去打开 / Turn it on**; no default; the task ends its turn |
+| No phone can serve it (none added, no Ducter's phone where it runs), or the work is `"mine"` (D251), the person's Android app connected | the task opens and binds that phone; its first phone tool posts one card, **「{task}」要用你的 {phone} / "{task}" needs your {phone}** · **在你的 {phone} 上打开「用这台手机」… / Turn on Use this phone on your {phone}…** · **先不用 / Not now** · **去打开 / Turn it on**; no default; the task ends its turn |
 | Turn it on, from any window | Android's switch already on: added at once. Otherwise the home sends `handset_guide` to that phone's page and the guide (§6) opens there; the app isn't open: when it next connects |
 | The guide finishes (the chip is added) | the loan starts for that task with no second card (the tap on its card was the yes); **在你的 {phone} 上打开了 / Opened on your {phone}** |
-| Not now | the task carries on without a phone; its phone tools refuse (**没用手机 / No phone**) |
+| Not now | the task carries on without a phone; its phone tools refuse (**没用手机 / No phone**); `"mine"`: it reports blocked, never another phone by itself (D251) |
 | No Android app connected | nothing opens; the partner says one line: open Ducter on {phone} (paired, not open), update it (too old), or install Ducter on the Android phone and add 用这台手机 there (or 用手机 on a Mac) |
 
 ## 4. The loan

@@ -14,8 +14,8 @@ export interface BriefInput {
   language?: "zh" | "en";
   /** D168: plugin = the user's Nowledge Mem plugin is on in this session; ducter = Ducter's own read-only memory stands in. Absent: none (off, or a browser). */
   memory?: "plugin" | "ducter";
-  /** D217: the work uses Ducter's phone (needs.phone): its tools are on the Ducter MCP server. */
-  phone?: boolean;
+  /** D217: the work uses a phone (needs.phone): its tools are on the Ducter MCP server. D251: which one. */
+  phone?: boolean | "mine" | "ducter";
   /** D235: the work is in a Mac app (needs.app): Ducter's app tools, when 用电脑 is on for that Mac. */
   apps?: boolean;
 }
@@ -119,7 +119,7 @@ ${languageLine(b.language)}
 - Call \`checkpoint\` (same server) after each meaningful step with where the work stands and what comes next. Your context is small and is compacted when it fills up; your last checkpoint is what you carry on from afterwards.
 - Never ask the user questions in plain text, and never wait for a reply in text. Put every question in \`report_to_main\` with a default.
 - If you lack context, use \`log_search\` / \`log_read\` on the same server before asking.
-${memorySection(b)}${b.phone ? phoneBrief(b.partnerName) : ""}${b.apps ? appsBrief(b.partnerName) : ""}${b.phone || b.apps ? showNotHandBrief() : ""}`;
+${memorySection(b)}${b.phone ? phoneBrief(b.partnerName, b.phone === true ? undefined : b.phone) : ""}${b.apps ? appsBrief(b.partnerName) : ""}${b.phone || b.apps ? showNotHandBrief() : ""}`;
 }
 
 /** D248: Model-visible: when the user only needs to see something, a picture, not their turn (snapshot-tested). */
@@ -166,12 +166,24 @@ export function deviceRule(partnerName: string): string {
   return `- The user's own phone is reached only through Ducter's \`phone_*\` tools. Never ask the user to turn on USB or wireless debugging, plug in a cable, or open Developer options, and never run adb (or any other debugging tool) against a phone of theirs, unless the brief itself asks for exactly that. If the work needs a phone and you have no \`phone_*\` tools, report "blocked" in one line saying what you would do on it; ${partnerName} offers the user the way to lend it.`;
 }
 
+/**
+ * D251: Model-visible: which phone the task has. "mine": the user's own (never another in its
+ * place); "ducter": Ducter's emulator (never the user's own); absent: either, and phone_look says which.
+ */
+function whichPhoneLine(partnerName: string, which?: "mine" | "ducter"): string {
+  if (which === "mine")
+    return `You work on the user's own Android phone, with their own apps, accounts and messages on it (用这台手机 / Use this phone), through the tools on the \`ducter\` MCP server. Your first phone tool asks them to lend it (or, the first time, to turn Use this phone on there), so end your turn when it says so and carry on when the message arrives. This work is for their phone only: if you can't have it, report "blocked" in one line; never do it on another phone (Ducter's own phone has none of their accounts), and never switch by yourself. The tools:`;
+  if (which === "ducter")
+    return `You work on Ducter's own Android phone, through the tools on the \`ducter\` MCP server: an Android emulator (Android 16 with Google Play) on the computer this task runs on. It is not the user's own phone: a clean phone with none of their accounts, except apps they signed in to on it themselves. Never take it for theirs, and never say you used their phone. The tools:`;
+  return `You have a phone to work on, through the tools on the \`ducter\` MCP server: the user's own Android phone when they lend it to you (用这台手机 / Use this phone: your first phone tool asks them, so end your turn when it says so and carry on when the message arrives), otherwise Ducter's own Android phone (Android 16 with Google Play) on the computer this task runs on, where the user signed in to their apps themselves. \`phone_look\`'s first line says which phone it is: when you report, say which phone you used. The tools:`;
+}
+
 /** D217: Model-visible: how a task uses a phone (snapshot-tested). */
-export function phoneBrief(partnerName: string): string {
+export function phoneBrief(partnerName: string, which?: "mine" | "ducter"): string {
   return `
 ## The phone
 
-You have a phone to work on, through the tools on the \`ducter\` MCP server: the user's own Android phone when they lend it to you (用这台手机 / Use this phone: your first phone tool asks them, so end your turn when it says so and carry on when the message arrives), otherwise Ducter's own Android phone (Android 16 with Google Play) on the computer this task runs on, where the user signed in to their apps themselves:
+${whichPhoneLine(partnerName, which)}
 
 - \`phone_look\` reads the screen: the app in front, then what you can tap or type into, each with a [number], then the other text. Pass picture:true to see it too (icons, images, a screen whose text can't be read).
 - \`phone_open_app\` {app} opens an app by its id; \`phone_apps\` lists them. Google Play is com.android.vending, Settings com.android.settings.

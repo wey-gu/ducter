@@ -50,6 +50,8 @@ export interface PhoneToolsDeps {
   on?(taskId: string): { device: string; name: string } | undefined;
   /** D238: what a tool says in the person's turn on their own phone. */
   blindText?(taskId: string): string | undefined;
+  /** D251: one line naming which phone this is (the person's own, or Ducter's), first in phone_look. */
+  which?(taskId: string): string | undefined;
 }
 
 export interface PhoneTools {
@@ -126,14 +128,16 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
 
   reg(
     "phone_look",
-    "Read Ducter's phone's screen as text: the app in front, then everything you can tap or type into, each with a [number], then the other text on screen. Pass picture:true to also get a picture of the screen (for icons, images, or a screen whose text can't be read).",
+    "Read the phone's screen as text: which phone it is, the app in front, then everything you can tap or type into, each with a [number], then the other text on screen. Pass picture:true to also get a picture of the screen (for icons, images, or a screen whose text can't be read).",
     { type: "object", properties: { picture: { type: "boolean" } } },
     async (args, taskId) => {
       note(taskId, { kind: "look" });
       const r = await look(taskId);
+      const which = d.which?.(taskId);
+      const text = which ? `${which}\n${r.text}` : r.text;
       // An app that holds the person's money or keys is never pictured either (D238 found this).
-      if (r.blocked || (!args.picture && r.s)) return r.text;
-      return { content: [{ type: "text", text: r.text }, await picture(taskId)] };
+      if (r.blocked || (!args.picture && r.s)) return text;
+      return { content: [{ type: "text", text }, await picture(taskId)] };
     },
   );
 

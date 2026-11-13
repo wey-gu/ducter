@@ -282,15 +282,22 @@ export const NO_PHONE = `no phone to work on yet: the user installs Ducter on th
  * Android phone at all, NO_PHONE. (A connected one never gets here: the task opens and its card
  * offers to turn 用这台手机 on.)
  */
-export function noPhoneLine(clients: { name: string; platform: string; connected: boolean; handset?: { added: boolean; able: boolean; linked: boolean } }[] | undefined): string {
+export function noPhoneLine(clients: { name: string; platform: string; connected: boolean; handset?: { added: boolean; able: boolean; linked: boolean } }[] | undefined, which?: "mine" | "ducter" | "any"): string {
+  if (which === "ducter") return DUCTER_NO_PHONE;
   const androids = (clients ?? []).filter((c) => /android/i.test(c.platform) || c.handset);
   const nm = (c: { name: string }) => c.name.replace(/\s*·\s*Ducter$/, "").trim() || "their Android phone";
   const old = androids.find((c) => c.handset?.linked && !c.handset.able);
   if (old) return `no phone to work on yet: the Ducter app on ${nm(old)} is too old for 用这台手机 / Use this phone. Tell the user in one line to update Ducter on ${nm(old)}, then ask again; no task was opened. ${NO_ADB}`;
   const away = androids.find((c) => c.handset?.added) ?? androids[0];
   if (away) return `no phone to work on yet: Ducter isn't open on ${nm(away)} right now. Tell the user in one line to open Ducter on ${nm(away)} and ask again${away.handset?.added ? "" : "; it then offers to turn on 用这台手机 / Use this phone there (one switch in Android, once)"}; no task was opened. ${NO_ADB}`;
-  return NO_PHONE;
+  return which === "mine" ? MINE_NO_PHONE : NO_PHONE;
 }
+
+/** D251: work on the person's own phone, and no Android phone of theirs is paired. Ducter's phone never stands in by itself. */
+export const MINE_NO_PHONE = `no phone of the user's to work on: Ducter works on their own Android phone through the Ducter app there (用这台手机 / Use this phone), and none is paired; iPhones can't be lent. Tell the user in one line: install Ducter on their Android phone (from this home's web page there) and add 用这台手机 there. Only if the work needs none of their apps or accounts, you may ask whether to do it on Ducter's own phone instead (then needs.phone "ducter"); never open it there by yourself. No task was opened. ${NO_ADB}`;
+
+/** D251: work for Ducter's own phone (a clean one), and 用手机 isn't on any computer. */
+export const DUCTER_NO_PHONE = `Ducter's own phone isn't set up yet: the user adds 用手机 / Use a phone on their Mac in 设备 / Devices (a one-time download of about 2.3 GB). Tell the user that in one line; no task was opened. ${NO_ADB}`;
 
 export function pinProblem(harness: string, b: CandidateBlock): string {
   return `${harnessName(harness)} can't take this task: ${BLOCK_WORDS[b]}. Pick another AI agent, or fix that first.`;

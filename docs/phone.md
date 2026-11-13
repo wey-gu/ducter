@@ -223,6 +223,12 @@ on any of your devices and the steps above open on your phone; once Android's sw
 task carries on by itself. Ducter never asks you to turn on USB debugging, plug in a cable or open
 Developer options.
 
+**Which phone.** Ask for something in your own apps ("check my WeChat", "on my Pixel") and the task
+uses your phone, never Ducter's own phone on a Mac, which has none of your accounts. If you say
+**Not now**, the task tells you it couldn't do it without your phone; it may ask whether Ducter's
+own phone would do, and never switches by itself. Ask to try your team's app on Android, or to
+install an app on a clean phone, and it uses Ducter's own phone, never yours.
+
 **When a task wants it**, you get a card: **"Order lunch" wants to borrow your Pixel**, with
 **Not now** and **Lend it**. Nothing happens until you say. While it's lent:
 

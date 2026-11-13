@@ -31,6 +31,13 @@ export const HANDSET_SETUP_ASKED = (phone: string) =>
   `Use this phone (用这台手机) isn't on yet on ${phone}, the user's own phone. A card now asks them to turn it on there: one switch in Android, once. End your turn now; a message arrives when you may use it (or if they say not now). ${NO_ADB}`;
 export const HANDSET_SETUP_WAIT = (phone: string) => `Waiting for the user to turn on Use this phone on ${phone}. End your turn now; a message arrives when it's on. ${NO_ADB}`;
 export const HANDSET_SETUP_NO = `The user said not now to turning on Use this phone. Carry on without a phone, or report blocked in one line saying what you'd do on it. ${NO_ADB}`;
+/**
+ * D251: work on the person's own phone (needs.phone "mine") and they said not now: no phone of
+ * theirs, and never another phone in its place by the task's own choice.
+ */
+export const HANDSET_MINE_NO = `The user said not now to using their own phone for this task, so you have no phone of theirs. Report blocked in one line saying what you'd do on it. Never do this work on any other phone. Only if it needs none of their apps or accounts, you may ask in that report whether to do it on Ducter's own phone instead (a clean phone with none of their accounts), with waiting as the default; never switch by yourself. ${NO_ADB}`;
+/** D251: work on the person's own phone, and none of theirs can be reached for this task. */
+export const HANDSET_MINE_NONE = `This work is for the user's own phone, and none of theirs can be reached right now (the Ducter app on their Android phone isn't open, or Use this phone isn't on there). Report blocked in one line saying what you'd do on it. Never do it on any other phone. ${NO_ADB}`;
 export const HANDSET_BLIND = "It's the user's turn on their phone: they're doing a step themselves (signing in, a code). You can't see or use it until they're done. End your turn now; a message arrives when they are.";
 
 const ACTIVE = new Set(["queued", "working", "needs_you", "blocked"]);
@@ -79,7 +86,7 @@ export interface Handsets {
    * other phone serves this task, so a connected phone without 用这台手机 is bound too, and its first
    * phone tool asks to turn it on.
    */
-  forTask(taskId: string, wantsPhone: boolean, opts?: { offer?: boolean }): string | undefined;
+  forTask(taskId: string, wantsPhone: boolean, opts?: { offer?: boolean; mine?: boolean }): string | undefined;
   /** The phone, as the phone tools drive it, for this task. */
   device(taskId: string): PhoneDevice;
   /** It is the person's turn on that phone (a step of theirs is pending). */
@@ -171,6 +178,8 @@ export function createHandsets(o: HandsetsOptions): Handsets {
   const setups = new Map<string, { device: string; decisionId: string; go: boolean }>();
   /** D247: phones to open the guide on the next time their app connects. */
   const guideOnLink = new Set<string>();
+  /** D251: tasks whose work is for the person's own phone (needs.phone "mine"): they keep it, and a no is final. */
+  const mine = new Set<string>();
   const fns = new Set<() => void>();
   const changed = () => fns.forEach((f) => f());
 
@@ -326,12 +335,16 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       for (const [taskId, s] of setups) {
         if (s.decisionId !== r.decisionId) continue;
         if (r.option === "go") (s.go = true), guide(taskId);
-        else setups.delete(taskId), stopped.set(taskId, HANDSET_SETUP_NO), o.tell?.(taskId, HANDSET_SETUP_NO);
+        else {
+          const no = mine.has(taskId) ? HANDSET_MINE_NO : HANDSET_SETUP_NO;
+          setups.delete(taskId), stopped.set(taskId, no), o.tell?.(taskId, no);
+        }
       }
       for (const [taskId, id] of asking) {
         if (id !== r.decisionId) continue;
         asking.delete(taskId);
         if (r.option === "go") void lend(taskId);
+        else if (mine.has(taskId)) stopped.set(taskId, HANDSET_MINE_NO), o.tell?.(taskId, HANDSET_MINE_NO);
         else stopped.set(taskId, "The user said no to lending you their phone for this task. Carry on without it, or report what you would need it for."), o.tell?.(taskId, "The user said no to lending you their phone for this. Carry on without it, or report in one line what you'd need it for.");
       }
       for (const [taskId, id] of theirTurn) {
@@ -349,6 +362,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
         asking.delete(b.taskId);
         theirTurn.delete(b.taskId);
         setups.delete(b.taskId);
+        mine.delete(b.taskId);
       }
     }
   });
@@ -519,12 +533,14 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     forTask(taskId, wantsPhone, opts) {
       const b = bound.get(taskId);
       // D247: a task waiting for 用这台手机 to be turned on keeps its phone while the person does it.
-      if (b) return added(b) || setups.has(taskId) || offerable(b) ? b : undefined;
+      // D251: work for the person's own phone keeps it always (it never falls back to another phone).
+      if (b) return mine.has(taskId) || added(b) || setups.has(taskId) || offerable(b) ? b : undefined;
       if (!wantsPhone) return undefined;
       const card = o.tasks.get(taskId);
       if (!card || !ACTIVE.has(String(card.attention))) return undefined;
-      const d = choose() ?? (opts?.offer ? api.offer() : undefined);
+      const d = choose() ?? (opts?.offer || opts?.mine ? api.offer() : undefined);
       if (d) bound.set(taskId, d);
+      if (d && opts?.mine) mine.add(taskId);
       return d;
     },
     device: deviceFor,

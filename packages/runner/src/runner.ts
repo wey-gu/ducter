@@ -859,7 +859,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         // read-only memory; a browser task gets none (as with the Log, D62).
         ...((m) => (m === "plugin" || m === "ducter" ? { memory: m } : {}))(memoryMode(open.place, open.harness)),
         // D217: work on Ducter's phone gets the phone's section (its tools are on the same server).
-        ...(open.needs?.phone ? { phone: true } : {}),
+        // D251: and says which phone ("mine": the user's own; "ducter": Ducter's; true: either).
+        ...(open.needs?.phone ? { phone: open.needs.phone } : {}),
         // D235: work in a Mac app gets the apps' section (the tools show when 用电脑 is on there).
         ...(open.needs?.app ? { apps: true } : {}),
       }),

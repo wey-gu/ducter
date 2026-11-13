@@ -667,6 +667,8 @@ function check(r: RunResult): string[] {
       const ok = r.opened.some((o) => {
         const got = o.needs?.[k];
         if (want === false) return got === undefined || got === false;
+        // D251: any one of these (needs.phone "ducter" or "any", say).
+        if (Array.isArray(want)) return want.includes(got as never);
         if (typeof want === "string") return typeof got === "string" && got.toLowerCase().includes(want.toLowerCase());
         return got === want;
       });

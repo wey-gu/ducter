@@ -93,6 +93,14 @@ if (stage >= 1) {
   log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: w.ack4, replyTo: b.seq } });
 }
 
+// D256: DEMO_PIC=<a .png> adds a message with a picture (to see the reply pebble beside it).
+if (process.env.DEMO_PIC) {
+  const store = (core as unknown as { media: { put(b: Uint8Array, o?: object): import("@ducter/protocol").MediaRef } }).media;
+  const pic = store.put(new Uint8Array(await Bun.file(process.env.DEMO_PIC).arrayBuffer()));
+  const u = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "这个报错是什么意思？" : "What does this error mean?", media: [pic] } });
+  log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: zh ? "是 Xcode 找不到签名证书：钥匙串里那张开发证书上周过期了。" : "Xcode can't find the signing certificate: the development one in your keychain expired last week.", replyTo: u.seq } });
+}
+
 console.log(`[demo] up at http://127.0.0.1:${core.port}/app (data: ${core.dataDir})`);
 const pair = await core.devicesView.pairCode();
 console.log(`[demo] phone: xcrun simctl launch booted co.nowledge.ducter.ios -pairLink 'http://127.0.0.1:${core.port}/pair#c=${pair.code}'`);

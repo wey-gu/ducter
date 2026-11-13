@@ -450,11 +450,12 @@ func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *pro
 	t := a.T
 	join := a.takeJoin()
 	rt := a.takeReply()
-	row := ui.Row(c).Gap(t.S2).AlignItems(ui.Center)
+	// D256: the pebble rests on the bubble's bottom line, left of it.
+	row := ui.Row(c).Gap(a.pebbleGap()).AlignItems(ui.End)
 	hov := rt != nil && row.Hovered()
 	row.Children(func() {
 		ui.Spacer(c)
-		a.hoverReply(c, rt, hov)
+		a.hoverReply(c, rt, hov, -1)
 		r := t.BubbleRadius
 		tr := r[1]
 		if join {
@@ -504,13 +505,24 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	case e.User != nil:
 		if len(e.User.Media) > 0 {
 			// D206: the pictures first, then the words, on the user's side.
+			// D256: one pebble beside the whole message, on its last line;
+			// the words under the pictures keep their right-click Reply.
 			join := a.takeJoin()
-			ui.Column(c).Gap(t.S1).Children(func() {
-				a.messageMedia(c, fmt.Sprint("u", e.FirstSeq), e.User.Media, nil, true, "conv")
-				if strings.TrimSpace(e.User.Text) != "" || e.User.Reply != nil {
-					a.join = join
-					a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID)
-				}
+			rt := a.rp.next
+			row := ui.Row(c).Gap(a.pebbleGap()).AlignItems(ui.End)
+			hov := rt != nil && row.Hovered()
+			row.Children(func() {
+				ui.Spacer(c)
+				a.hoverReply(c, rt, hov, -1)
+				ui.Column(c).Gap(t.S1).AlignItems(ui.End).MinWidth(0).Children(func() {
+					a.messageMedia(c, fmt.Sprint("u", e.FirstSeq), e.User.Media, nil, true, "conv")
+					if strings.TrimSpace(e.User.Text) != "" || e.User.Reply != nil {
+						a.join = join
+						a.rp.noPebble = true
+						a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID)
+						a.rp.noPebble = false
+					}
+				})
 			})
 			return
 		}

@@ -107,9 +107,13 @@ find of a note (D165) on its own. Not a card's buttons, not a status line.
 
 **Gestures.** Phone: swipe the bubble right (it starts at 14pt, arms at 56pt with a light haptic,
 gives way to a scroll on 10pt up, down or left, and never starts within 28pt of the left edge, the
-back gesture); long press opens the message menu (D254: its time, **回复 / Reply**, **拷贝 / Copy**, see "Keeping your place and copying"). Wide screen with a mouse: a round
-Reply beside the bubble on hover, right click for the same menu, and a selected part of the
-partner's words offers **回复这段 / Reply to this part**. Mac: hover Reply. Esc or the × puts a
+back gesture); long press opens the message menu (D254: its time, **回复 / Reply**, **拷贝 / Copy**, see "Keeping your place and copying"). Wide screen with a mouse (D256):
+pointing at a message shows the reply pebble, a small clay pebble in the gutter beside it (left of
+the user's bubble, right of the partner's, outside a note's card beside a find), resting on the
+message's bottom line and never on a bubble's or a card's content; on the pebble itself it says
+**回复 / Reply**. Right click opens the same menu, and a selected part of the partner's words
+offers **回复这段 / Reply to this part**. The Mac: the same pebble. Touch has no pebble: the swipe
+reveals it. Esc or the × puts a
 reply away (**不回复了 / Cancel reply**).
 
 **The look: the imprint (research/72).** The message replied to appears as a small copy of its

@@ -276,6 +276,18 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       not checked in D254 is whether scrolling to the top of a longer conversation brings older
       ones, keeping the place. Trigger: a conversation longer than the replay.
 
+## The reply pebble (D256)
+
+- [ ] **An iPad with a trackpad or mouse** reports a fine pointer that hovers, so it gets the
+      pebble; check it there (and that a finger on the same iPad still swipes). Trigger: the next
+      iPad build.
+- [ ] **A message of pictures alone on the web** is placed by rule (left of the pictures, by their
+      width) but was not in the browser pass's demo; look at one with one picture and with a grid.
+      Trigger: the next pass over the media shots.
+- [ ] **Keyboard on the Mac:** the pebble shows on hover only; a way to reply from the keyboard
+      (focus a message, then ⌘R or the menu key) is not designed. Trigger: the keyboard pass, or
+      asked for.
+
 ## Long-term memory (`design/memory.md`)
 
 - [ ] **Ask Mem for orchestrator attribution on plugin writes** (D175 (6), principle 17): a task's

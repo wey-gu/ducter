@@ -41,18 +41,29 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 	// D236: each find can be replied to on its own; found, its own tint deepens.
 	rt := &replyTo{seq: seq, findID: f.FindID, from: "partner", quote: f.Text}
 	col := ui.Column(c.Key("find:" + f.FindID)).Gap(t.S1).Radius(t.RadiusSM)
-	hov := col.Hovered()
+	hov := col.Hovered() || a.rp.held == rt.key()
 	if k := a.foundAt(c, seq, f.FindID); k > 0 {
 		col.Background(t.PartnerBubble.Mix(t.Reply.FoundPartner, k))
 	}
 	col.Children(func() {
 		ui.Text(c, a.L.T("kind."+f.Kind)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
-		if hov {
-			// Over the find's top-right corner, out of the flow: nothing shifts.
-			a.replyButton(c, rt).Absolute().Top(-t.S1).Right(0)
-		}
-		ft := ui.Text(c, autospace(f.Text)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(f.Text, 1.5)).TextColor(t.OnPartnerBubble)
-		a.replyMenu(c, ft, rt, f.Text)
+		// D256: the find's words, and its pebble outside the note card in the
+		// gutter, resting on their last line; never on the card. The bridge
+		// (transparent, from the card's edge to the pebble) keeps the hover
+		// while the pointer crosses the card's inset.
+		ui.Column(c.Key("words:" + f.FindID)).Children(func() {
+			ft := ui.Text(c, autospace(f.Text)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(f.Text, 1.5)).TextColor(t.OnPartnerBubble)
+			a.replyMenu(c, ft, rt, f.Text)
+			out := t.S4 - 2 + a.pebbleGap()
+			// Wide enough for the pebble with its word; it grows away from the card.
+			reach := out + pebbleSize + 72
+			ui.Row(c.Key("bridge:"+f.FindID)).Absolute().Right(-reach).Bottom(-2).Width(reach).Height(pebbleSize).Padding(0, 0, 0, out).
+				Justify(ui.Start).AlignItems(ui.Center).AccessHidden(!hov).Children(func() {
+				if hov {
+					a.replyButton(c, rt, 1)
+				}
+			})
+		})
 		if d := a.S.Decisions[f.DecisionID]; d != nil {
 			switch {
 			case st != nil && st.State == "passed":

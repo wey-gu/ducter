@@ -657,7 +657,7 @@ a {
   border-top-left-radius: var(--bubble-join);
 }
 /* What sits under a bubble (the quiet row, a status line, the default) is set in to its text. */
-.partner > :not(.bubble):not(.tray):not(.reply):not(.routine-facts):not(.said):not(.cal-card):not(.cal-change):not(.cal-settle):not(.imprint):not(.hover-reply) {
+.partner > :not(.bubble):not(.tray):not(.reply):not(.routine-facts):not(.said):not(.cal-card):not(.cal-change):not(.cal-settle):not(.imprint) {
   margin-left: 14px;
 }
 .partner p {
@@ -7158,9 +7158,10 @@ button.imprint:focus-visible {
   height: 32px;
   display: grid;
   place-items: center;
-  border-radius: var(--pill);
+  /* D256: the reply pebble's clay, revealed by the swipe. */
+  border-radius: 17px 16px 17px 15px / 16px 17px 15px 17px;
   background: var(--swipe-mark);
-  box-shadow: 0 2px 0 var(--line);
+  box-shadow: inset 0 1.5px 0 var(--hi-secondary), inset 0 0 0 1px var(--rim), 0 1px 0 var(--seam-quiet), 0 var(--ledge) 0 var(--press-quiet);
   color: var(--swipe-mark-ink);
   opacity: 0;
   pointer-events: none;
@@ -7235,49 +7236,143 @@ button.imprint:focus-visible {
   }
 }
 
-/* Hover Reply on a wide screen with a mouse: beside the bubble, only while over it. */
+/* D256: the reply pebble. With a mouse only: one small clay pebble in the gutter beside what can be
+   replied to (left of the person's, right of the partner's, outside a note's card beside a find),
+   its ledge on the bottom line, never on a bubble's or a card's content. The secondary button's
+   clay at a pebble's size: rim, seam, a 3px ledge, a slightly uneven round. It settles in from the
+   bubble's side, says 回复 on itself while pointed at (wide windows), presses onto its ledge. */
 .user[data-reply],
 .user-m[data-reply],
-.partner[data-reply]:not(.askq):not(.has-cal) {
+.user-m > .user,
+.partner[data-reply] > .bubble,
+.bubble.note .find > .ftext {
   position: relative;
 }
-.partner[data-reply]:not(.askq):not(.has-cal) {
-  width: fit-content;
-}
 .hover-reply {
+  --fill: var(--surface);
   position: absolute;
-  top: 50%;
-  width: 32px;
-  height: 32px;
+  bottom: 3px;
+  z-index: 2;
+  height: 30px;
+  min-width: 30px;
   display: none;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 7px;
   border: 0;
-  border-radius: var(--pill);
-  background: var(--surface);
-  box-shadow: 0 2px 0 var(--line);
+  border-radius: 16px 15px 16px 14px / 15px 16px 14px 16px;
+  background: linear-gradient(var(--fill), var(--fill));
   color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--sm);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
-  translate: 0 -50%;
+  box-shadow: inset 0 1.5px 0 var(--hi-secondary), inset 0 0 0 1px var(--rim), 0 1px 0 var(--seam-quiet), 0 var(--ledge) 0 var(--press-quiet), var(--drop);
+  transition: transform var(--t-press) var(--ease), box-shadow var(--t-press) var(--ease), color var(--t-fast) var(--ease);
 }
-.user > .hover-reply,
-.user-m > .hover-reply {
+.hover-reply svg {
+  flex: none;
+}
+.hover-reply .w {
+  display: none;
+  color: var(--ink);
+}
+/* A bridge back to what it replies to, so the hover holds while the pointer crosses the gutter. */
+.hover-reply::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+.user > .hover-reply {
   right: calc(100% + 8px);
+  --from: 6px;
 }
-.partner > .hover-reply {
+/* Pictures alone: left of the pictures (one picture at its own shape, a grid at --pics-w). */
+.user-m > .hover-reply {
+  right: calc(var(--pics-w) + 8px);
+  --from: 6px;
+}
+.user-m[style*="--pa"] > .hover-reply {
+  right: calc(min(var(--pics-w), calc(var(--pics-h) / var(--pa))) + 8px);
+}
+.user > .hover-reply::before,
+.user-m > .hover-reply::before {
+  right: -14px;
+}
+.partner > .bubble > .hover-reply {
   left: calc(100% + 8px);
+  --from: -6px;
+}
+.partner > .bubble > .hover-reply::before {
+  left: -14px;
+}
+/* Beside a find: outside the note card (its 14px inset, then the 8px gutter), on the words' last line. */
+.find > .ftext > .hover-reply {
+  left: calc(100% + 22px);
+  bottom: -2px;
+  --from: -6px;
+}
+.find > .ftext > .hover-reply::before {
+  left: -28px;
 }
 @media (hover: hover) and (pointer: fine) {
-  .hover-reply {
-    display: grid;
-    opacity: 0;
-    transition: opacity var(--t-fast) var(--ease);
+  /* Room for the pebble beside every partner bubble, even in a narrow window. */
+  .partner {
+    max-width: min(88%, calc(100% - 44px), var(--bubble-measure));
   }
-  [data-reply]:hover > .hover-reply,
+  .hover-reply {
+    display: inline-flex;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .user[data-reply]:hover > .hover-reply,
+  .user-m[data-reply]:hover > .hover-reply,
+  .user-m[data-reply]:hover > .user > .hover-reply,
+  .partner[data-reply]:hover > .bubble > .hover-reply,
+  .find[data-reply]:hover > .ftext > .hover-reply,
   .hover-reply:focus-visible {
     opacity: 1;
+    pointer-events: auto;
+    animation: pebble-in 380ms var(--spring) both;
   }
+  .hover-reply:hover,
+  .hover-reply:focus-visible {
+    color: var(--accent);
+  }
+  .hover-reply:active {
+    transform: translateY(2px);
+    box-shadow: inset 0 1.5px 0 var(--hi-secondary), inset 0 0 0 1px var(--rim), 0 1px 0 var(--seam-quiet), 0 1px 0 var(--press-quiet);
+  }
+  .hover-reply:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+}
+/* On the pebble itself, in a window with room, it says its word (growing away from the bubble). */
+@media (hover: hover) and (pointer: fine) and (min-width: 900px) {
+  .hover-reply:hover,
+  .hover-reply:focus-visible {
+    padding: 0 11px 0 9px;
+  }
+  .hover-reply:hover .w,
+  .hover-reply:focus-visible .w {
+    display: inline;
+  }
+}
+@keyframes pebble-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--from, 0)) scale(0.82);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hover-reply,
   .hover-reply:hover {
-    color: var(--ink);
+    animation: none !important;
+    transition: none;
   }
 }
 

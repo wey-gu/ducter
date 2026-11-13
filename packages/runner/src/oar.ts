@@ -102,7 +102,10 @@ function writeDshHome(home: string, layer: Record<string, unknown>[], agentsMd: 
  * login, the provider route, resume): every MCP server the user configured is disabled by name
  * (a `mcp_servers={}` override merges, it does not replace: research/34), and the features that
  * load the user's hooks, plugins (their skills and MCP servers), apps and memories are off. The
- * partner also leaves out the features that compete with Ducter (goals, subagents, images, computer use).
+ * partner also leaves out images and computer use. Goals (Ducter owns when a task's turn ends) and
+ * subagents stay off for tasks too (D240): a Claude Code subagent never sees the task's brief
+ * (research/76, verified), a Codex one is not checked, and a task under this setup has Codex's
+ * browser or Computer Use, whose rules live in that brief.
  *
  * `nativeTools` (tasks, D130): Codex's own browser and Computer Use stay. Plugins stay on as a
  * feature, every plugin the user enabled is turned off by id except the four bundled browser /

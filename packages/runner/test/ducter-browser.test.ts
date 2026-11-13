@@ -86,7 +86,8 @@ describe("Ducter's browser for browser places (D151)", () => {
     expect(spec.appendSystemPrompt).not.toContain("Computer Use tool");
     expect(spec.userConfiguration).toBe("exclude");
     const claude = withBrowser({ harness: "claude-code", cwd: dir, mcp: [], permissionMode: "bypass" }, sc, "Ducter");
-    expect(claude.launchArgs).toEqual(["--tools", "Bash,Read,Write,ToolSearch"]);
+    expect(claude.launchArgs).toEqual([]);
+    expect(claude.disallowedTools).toEqual(["Agent", "Workflow"]);
     rmSync(dir, { recursive: true, force: true });
   });
 });

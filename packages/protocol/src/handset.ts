@@ -16,10 +16,17 @@ export interface HandsetState {
   service: boolean;
   /**
    * Android 13+: restricted settings still keep the service's switch greyed out for Ducter (a
-   * sideloaded app). true: still restricted; false: allowed (or never restricted); absent: the app
-   * can't tell on this phone.
+   * sideloaded app). true: restricted, or likely (installed from a downloaded file and never switched
+   * on since); false: allowed, or never restricted (a store install, Android 12 or older, or the
+   * switch has been on before); absent: the app can't tell on this phone.
    */
   restricted?: boolean;
+  /**
+   * While restricted: Android has shown its block once (the person tapped the grey Ducter row), so
+   * App info's ⋮ now has Allow restricted settings; false: not yet. Absent: the app can't tell
+   * (Android 16 refuses an app this read, D246), and the guide moves on by the person's visits.
+   */
+  seen?: boolean;
   /** It can take a picture of the screen (Android 11+, the accessibility screenshot). */
   pictures: boolean;
   /** A task is using it now (the session the home started), with its id. */

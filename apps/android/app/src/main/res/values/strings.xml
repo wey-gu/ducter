@@ -52,4 +52,7 @@
     <string name="handset_pill_you_line">When you\'re done, tap Done on the card</string>
     <string name="handset_stop">Stop</string>
     <string name="handset_stop_about">Stop the task using this phone</string>
+    <!-- D246: Android's notifications (Notify.kt): one channel, the loan's. -->
+    <string name="notify_loan_channel">Using this phone</string>
+    <string name="notify_loan_channel_about">Shown the whole time a task borrows this phone, with Stop.</string>
 </resources>

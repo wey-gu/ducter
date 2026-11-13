@@ -87,6 +87,8 @@ class MainActivity : ComponentActivity() {
         store = Store(this)
         scanner = registerForActivityResult(ScanContract()) { r -> r.contents?.let { connect?.take(it) } }
         pictures = Pictures(this)
+        // D246: Android's App info lists what Ducter shows from the first run.
+        Notify.channels(this)
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
         web = makeWebView()
@@ -130,6 +132,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        Notify.channels(this) // the phone's language changed: the channels' names follow
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         debugEntry(intent)?.let { loaded = null; load(it) }
@@ -143,6 +150,8 @@ class MainActivity : ComponentActivity() {
         if (helloed || store.base == null) quietCheck()
         // D238: back from Android's settings (a step of the guide): the page sees where it stands now.
         Handset.changed(this)
+        // D246: 用这台手机 is on (just now, or from before): ask once about notifications.
+        if (phase == "ready") Notify.askOnce(this, store)
         // Back to the app: the home may have updated meanwhile (or fallen behind a new app).
         if (helloed && phase == "ready") homeCheck()
     }
@@ -198,6 +207,7 @@ class MainActivity : ComponentActivity() {
             pushFold()
             web.animate().alpha(1f).setDuration(250).start()
             setOverlay(null)
+            Notify.askOnce(this@MainActivity, store)
             // The page says hello with its language first; a page from before the Android app
             // never does, so the update check goes ahead without it a moment later.
             root.postDelayed({ quietCheck() }, 3000)
@@ -365,8 +375,9 @@ window.ducterNative=Object.freeze($info);})();"""
                 )
                 answer(null)
             }
-            // Notifications on Android are not in this version (research/51 §5, D181 (4)): the
-            // page says so in its own words ("notify.app.unavailable").
+            // Notifications from the home are not in this version (research/51 §5, D181 (4)): the
+            // page says so in its own words ("notify.android.later"). The app's own (D246) is the
+            // loan's, in Notify.kt.
             "push.state", "push.enable" -> answer(JSONObject().put("state", "unsupported"))
             "push.disable" -> answer(JSONObject())
             "update.check" -> { checkNow(); answer(null) }

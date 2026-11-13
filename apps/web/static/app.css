@@ -4483,7 +4483,8 @@ button.dev-name {
 .ach.on { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2), 0 3px 0 var(--line-2); }
 .ach.off { background: var(--sunken); color: var(--ink-muted); box-shadow: 0 2px 0 var(--line); }
 .ach.off img { filter: grayscale(0.85); opacity: 0.55; }
-.ach.add { padding-left: 12px; background: transparent; color: var(--ink-muted); outline: 1.5px dashed var(--line-2); outline-offset: -1.5px; }
+.ach.add { padding-left: 6px; background: transparent; color: var(--ink-muted); outline: 1.5px dashed var(--line-2); outline-offset: -1.5px; }
+.ach.add img { filter: grayscale(0.35); opacity: 0.85; }
 .ach.fail { background: var(--failed-surface); color: var(--failed-ink); box-shadow: 0 3px 0 var(--failed-ledge, #efb7c4); }
 /* D199: still to come: a ghost on no base (the clay is already desaturated), its words faint. */
 .ach.later { background: var(--sunken); color: var(--ink-muted); box-shadow: none; opacity: 0.8; }
@@ -7432,11 +7433,30 @@ button.imprint:focus-visible {
 .hs-app { margin-top: 10px; }
 /* The fingertip: a soft clay dot that presses where Android wants the tap. */
 .hs-tip { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); pointer-events: none; left: 70%; top: 92px; }
-.hs-mini.try .hs-tip, .hs-mini.on .hs-tip { animation: hs-tip-a11y 4.8s ease-in-out infinite; }
-.hs-mini.try .hs-switch, .hs-mini.on .hs-switch { animation: hs-show-switch 4.8s ease-in-out infinite; }
-.hs-mini.try .hs-dialog, .hs-mini.on .hs-dialog { animation: hs-show-dialog 4.8s ease-in-out infinite; }
+.hs-mini.on .hs-tip { animation: hs-tip-a11y 4.8s ease-in-out infinite; }
+.hs-mini.on .hs-switch { animation: hs-show-switch 4.8s ease-in-out infinite; }
+.hs-mini.on .hs-dialog { animation: hs-show-dialog 4.8s ease-in-out infinite; }
 /* The list gives way to Ducter's own page when its row is tapped (one page at a time, as Android shows them). */
-.hs-mini.try .hs-sec, .hs-mini.try .hs-row, .hs-mini.on .hs-sec, .hs-mini.on .hs-row { animation: hs-hide-list 4.8s ease-in-out infinite; }
+.hs-mini.on .hs-sec, .hs-mini.on .hs-row { animation: hs-hide-list 4.8s ease-in-out infinite; }
+/* Step 1's first part (D246): the row is grey while restricted; one tap on it brings Android's block, then OK. */
+.hs-mini.try .hs-row { color: var(--ink-muted); background: var(--sunken); box-shadow: none; }
+.hs-mini.try .hs-row img { filter: grayscale(0.8); opacity: 0.7; }
+.hs-mini.try .hs-row small { flex: none; max-width: 52%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs-mini.try .hs-tip { animation: hs-tip-try 4.4s ease-in-out infinite; }
+.hs-mini.try .hs-dialog { animation: hs-show-block 4.4s ease-in-out infinite; }
+@keyframes hs-tip-try {
+  0%, 8% { left: 34%; top: 100px; transform: scale(1); } 14% { transform: scale(0.8); } 20%, 30% { transform: scale(1); left: 34%; top: 100px; }
+  48%, 54% { left: 82%; top: 150px; transform: scale(1); } 60% { transform: scale(0.8); } 66%, 100% { left: 82%; top: 150px; transform: scale(1); }
+}
+@keyframes hs-show-block { 0%, 20% { opacity: 0; transform: translateY(8px); } 26%, 64% { opacity: 1; transform: none; } 72%, 100% { opacity: 0; transform: translateY(8px); } }
+/* Step 1's two parts, the one done ticked, the one to do in ink. */
+.hs-parts { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
+.hs-parts li { display: flex; align-items: center; gap: 8px; }
+.hs-parts li::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--line-2); }
+.hs-parts li.here { color: var(--ink); }
+.hs-parts li.here::before { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 30%, transparent); }
+.hs-parts li.done::before { border: 0; background: var(--done-ink); }
+.hs-parts li.done { text-decoration: line-through; text-decoration-color: var(--line-2); }
 @keyframes hs-hide-list { 0%, 22% { opacity: 1; } 26%, 92% { opacity: 0; } 100% { opacity: 1; } }
 .hs-mini.on .hs-toggle { animation: hs-toggle-bg 4.8s ease-in-out infinite; }
 .hs-mini.on .hs-toggle::after { animation: hs-toggle-knob 4.8s ease-in-out infinite; }

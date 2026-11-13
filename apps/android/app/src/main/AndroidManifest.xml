@@ -10,6 +10,9 @@
          may install apps; after that an update needs one tap (or none, where Android allows). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    <!-- D246: Android 13+ asks before an app shows notifications. Ducter's one today is the loan's
+         (用这台手机, with Stop); asked once, when that is turned on (Notify.kt). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- D238: a task opens apps on this phone by name (phone_apps): the launcher's list only. -->
     <queries>
@@ -78,6 +81,11 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/handset_service" />
         </service>
+
+        <!-- D246: 停下 / Stop in the loan's notification. -->
+        <receiver
+            android:name=".HandsetStopReceiver"
+            android:exported="false" />
 
         <!-- Where Android reports how an update's install went (PackageInstaller). -->
         <receiver

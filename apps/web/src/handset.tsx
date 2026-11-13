@@ -17,7 +17,16 @@ const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const ACTIVE = ["working", "queued", "needs_you", "blocked"];
 
 /** What this page knows about its own phone's app, and the guide's place. */
-export const H: { state?: HandsetState; guide?: { visited: Set<string>; away?: string; added?: boolean }; demo?: boolean } = {};
+export const H: { state?: HandsetState; guide?: Guide; demo?: boolean } = {};
+
+/**
+ * The guide's place. Two steps (D246): 1 allow restricted settings (only where Android restricts a
+ * sideloaded Ducter), 2 turn on Ducter. Android's App info shows its Allow item only after the
+ * person has met the block once, so step 1 has two parts: "try" (tap the grey Ducter row once,
+ * then OK) and "allow" (App info › ⋮ › Allow restricted settings). Step 2 opens once step 1 is done.
+ */
+export type Part = "try" | "allow" | "on";
+export type Guide = { visited: Set<string>; away?: string; added?: boolean; steps?: ("allow" | "on")[] };
 
 const androidHere = () => nativeInfo()?.platform === "android";
 
@@ -67,16 +76,25 @@ if (typeof addEventListener === "function")
     if (d?.state) took(d.state);
   });
 
-/** The steps this phone needs: Android 13+ with restricted settings on has three, else one. */
-function steps(s: HandsetState | undefined): ("try" | "allow" | "on")[] {
-  if (s && s.sdk >= 33 && s.restricted !== false) return ["try", "allow", "on"];
-  return ["on"];
+/**
+ * The steps this phone needs, fixed once the guide knows (so step 1 stays, ticked, after restricted
+ * settings are allowed): Android 13+ with restricted settings on has two, else one.
+ */
+export function steps(s: HandsetState | undefined, g: Guide): ("allow" | "on")[] {
+  if (g.steps) return g.steps;
+  const all: ("allow" | "on")[] = s && s.sdk >= 33 && s.restricted !== false ? ["allow", "on"] : ["on"];
+  if (s) g.steps = all;
+  return all;
 }
-function current(s: HandsetState | undefined, visited: Set<string>): "try" | "allow" | "on" | "done" {
+/** Where the person is: a part of step 1, step 2, or done. */
+export function current(s: HandsetState | undefined, g: Guide): Part | "done" {
   if (s?.service) return "done";
-  const all = steps(s);
-  if (all.length === 1) return "on";
-  return visited.has("try") ? "allow" : "try";
+  if (!steps(s, g).includes("allow")) return "on";
+  if (s?.restricted === false) return "on";
+  // The app says whether the block was met (D246); an older app can't: then the visits say.
+  if (s?.restricted === true && typeof s.seen === "boolean") return s.seen ? "allow" : "try";
+  if (g.visited.has("allow")) return "on";
+  return g.visited.has("try") ? "allow" : "try";
 }
 
 export function openHandsetGuide() {
@@ -145,7 +163,7 @@ export function HandsetChip({ cl }: { cl: Client }) {
 // ---------- the guide, and the demo ----------
 
 /** A clay miniature of one of Android's own pages, the fingertip where to tap (literal: research/74 §7). */
-function Mini({ step }: { step: "try" | "allow" | "on" }) {
+function Mini({ step }: { step: Part }) {
   if (step === "allow")
     return (
       <div class="hs-mini allow" aria-hidden="true">
@@ -170,15 +188,15 @@ function Mini({ step }: { step: "try" | "allow" | "on" }) {
       <div class="hs-row">
         <img src="app/art/idle.webp" alt="" />
         <span>Ducter</span>
-        <small>{t("android.off")}</small>
+        <small>{step === "try" ? t("android.controlled") : t("android.off")}</small>
       </div>
       <div class="hs-switch">
         <span>{t("android.use")}</span>
         <i class="hs-toggle" />
       </div>
       <div class="hs-dialog">
-        <b>{step === "try" ? t("android.restricted") : t("android.full")}</b>
-        <span>{step === "try" ? t("android.ok") : t("android.allow")}</span>
+        <b>{step === "try" ? t((H.state?.sdk ?? 0) >= 35 ? "android.denied" : "android.restricted") : t("android.full")}</b>
+        <span>{step === "try" ? t((H.state?.sdk ?? 0) >= 35 ? "android.close" : "android.ok") : t("android.allow")}</span>
       </div>
       <i class="hs-tip" />
     </div>
@@ -233,11 +251,13 @@ export function HandsetGuideSheet() {
   if (!g) return null;
   const close = () => ((H.guide = undefined), (H.demo = false), A.changed());
   const s = H.state;
-  const all = steps(s);
-  const now = current(s, g.visited);
-  const go = (step: "try" | "allow" | "on") => {
-    g.away = step;
-    void nativeCall({ t: "handset.settings", step: step === "allow" ? "restricted" : "service" });
+  const all = steps(s, g);
+  const now = current(s, g);
+  /** Which numbered step a part belongs to: try and allow are step 1's two parts. */
+  const stepOf = (p: Part | "done") => (p === "done" ? all.length : p === "on" ? all.indexOf("on") : 0);
+  const go = (part: Part) => {
+    g.away = part;
+    void nativeCall({ t: "handset.settings", step: part === "allow" ? "restricted" : "service" });
   };
   return (
     <>
@@ -258,8 +278,9 @@ export function HandsetGuideSheet() {
             <p class="lede">{t("handset.guide.lede")}</p>
             <ol class="hs-steps">
               {all.map((step, i) => {
-                const done = all.indexOf(now as "try") > i;
-                const here = step === now;
+                const done = stepOf(now) > i;
+                const here = stepOf(now) === i;
+                const part = now as Part;
                 return (
                   <li key={step} class={done ? "done" : here ? "here" : "next"} aria-current={here ? "step" : undefined}>
                     <div class="hs-n">{done ? "" : i + 1}</div>
@@ -268,10 +289,24 @@ export function HandsetGuideSheet() {
                       <b>{t(`handset.step.${step}.title`)}</b>
                       {here && (
                         <>
-                          <Mini step={step} />
-                          <p class="small">{t(`handset.step.${step}.body`)}</p>
-                          {g.visited.has(step) && <p class="small sub" role="status">{t("handset.step.back")}</p>}
-                          <Btn kind="primary" label={t(g.visited.has(step) ? "handset.step.again" : "handset.step.go")} onClick={() => go(step)} />
+                          {step === "allow" && (
+                            <ol class="hs-parts">
+                              {(["try", "allow"] as const).map((p) => (
+                                <li key={p} class={p === part ? "here" : p === "try" ? "done" : "next"}>
+                                  {t(`handset.part.${p}`)}
+                                </li>
+                              ))}
+                            </ol>
+                          )}
+                          <Mini step={part} />
+                          <p class="small">{t(`handset.step.${part}.body`)}</p>
+                          {g.visited.has(part) && <p class="small sub" role="status">{t("handset.step.back")}</p>}
+                          <Btn kind="primary" label={t(g.visited.has(part) ? "handset.step.again" : "handset.step.go")} onClick={() => go(part)} />
+                          {part === "on" && all.length > 1 && s?.restricted !== false && (
+                            // Android 16 doesn't tell the app whether Allow was chosen: the guide moved on by the
+                            // visit, so if the row is still grey, step 1 is one tap away.
+                            <Btn kind="text" size="sm" label={t("handset.step.grey")} onClick={() => (g.visited.clear(), A.changed())} />
+                          )}
                         </>
                       )}
                     </div>

@@ -84,11 +84,13 @@ export function escUp(e: KeyboardEvent) {
   if (up) A.go(up);
 }
 
-/** D216: room for On hand's rail beside a task at the whole screen (the rail, then the task's
- *  720 column with its own room). Keep in step with `.with-rail` in static/app.css. */
-export const ROOMY = "(min-width: 1360px)";
-/** With the task's workbench open beside it too (D214), the rail needs more. */
-export const ROOMY_BENCH = "(min-width: 1720px)";
+/** D216, D244: room for On hand's rail beside a task at the whole screen: the rail
+ *  (clamp(300px, 22vw, 340px)), then the task with at least ~800 of its own, so an 11" iPad held
+ *  across (1180–1194) has it. Keep in step with `.with-rail` in static/app.css. */
+export const ROOMY = "(min-width: 1120px)";
+/** All three (rail, task, workbench) from here, as on the Mac; under it an open workbench takes the
+ *  rail's place (Lody's two-slot rule), never a sheet. */
+export const ROOMY_BENCH = "(min-width: 1560px)";
 export function useRoomy(query: string): boolean {
   const q = () => (typeof matchMedia === "function" ? matchMedia(query) : undefined);
   const [on, setOn] = useState(() => !!q()?.matches);

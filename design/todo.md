@@ -1107,3 +1107,11 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A human comprehension pass** on the pill and the guide (the naive raters were LLM proxies, research/74 §8). Trigger: the first outside testers.
 - [ ] **Watching the loan from another window** (a live view of the person's own phone over the accessibility screenshot, ≤ 3 frames/s). Trigger: someone asks to watch from the Mac.
 - [ ] **iPhone** (research/74 §7): revisit if Apple opens app actions to third parties (App Intents across apps) or iPhone Mirroring becomes scriptable with an accessibility tree. Never iphone-use's code (PolyForm Shield).
+
+## On hand beside the opened task (D244)
+
+- [ ] **The floating little phone** in the opened task (research/78 item 3): the next step, after D244 merges.
+- [ ] **On a real 11-inch iPad held across and a real Pixel Fold** (the rail at 1180–1194, the book split with the rail in the first half); so far headless shots only.
+- [ ] **Resizing the rail** (Lody's 240–420). Trigger: someone asks; today it follows the window (`clamp(300, 22%, 340)`).
+- [ ] **New results across devices**: seen is kept per device, so a result opened on the phone still shows as new on the Mac. Trigger: someone notices it; the fix is a seen cursor per task in the home.
+- [ ] **A human comprehension pass on the row faces** at 24 pt (flag, reading, done) on a 40-task rail.

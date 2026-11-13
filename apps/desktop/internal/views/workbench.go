@@ -30,6 +30,12 @@ import (
 // conversation keeps the rest.
 const benchWidth = 520
 
+// The workbench can be dragged from benchMin to benchMax wide (D244).
+const (
+	benchMin = 380
+	benchMax = 760
+)
+
 type benchFile struct {
 	path     string
 	answer   *protocol.WbAnswer
@@ -66,6 +72,10 @@ type benchState struct {
 	wait  map[string]func(f protocol.ServerFrame)
 	// toast and openURL wait for the next frame (an answer lands outside one).
 	toast, openURL string
+	// D244: the task whose pages the open workbench last showed (when they
+	// go, it shows the launcher), and the width a page has to draw in.
+	had  string
+	colW float32
 }
 
 func (a *App) benchOf(id string) *benchTask {
@@ -139,7 +149,7 @@ func (a *App) benchTabs(task *store.Task) []string {
 }
 
 func (a *App) benchShown(task *store.Task) bool {
-	return a.bench.open && len(a.benchTabs(task)) > 0
+	return a.bench.open && a.benchOpenable(task)
 }
 
 // ToggleBench shows or hides the workbench of the task that is open (⌥⌘B).
@@ -273,12 +283,16 @@ func (a *App) benchToast(s string) { a.bench.toast = s }
 
 // ---------- the column ----------
 
-func (a *App) workbench(c *ui.Context, task *store.Task) {
+func (a *App) workbench(c *ui.Context, task *store.Task, width float32) {
 	t := a.T
 	tabs := a.benchTabs(task)
-	if !contains(tabs, a.bench.tab) {
-		a.bench.tab = tabs[0]
+	if len(tabs) > 0 {
+		a.bench.had = task.ID
+		if !contains(tabs, a.bench.tab) {
+			a.bench.tab = tabs[0]
+		}
 	}
+	a.bench.colW = width
 	b := a.benchOf(task.ID)
 	if !b.asked {
 		b.asked = true
@@ -296,8 +310,14 @@ func (a *App) workbench(c *ui.Context, task *store.Task) {
 		c.OpenURL(a.bench.openURL)
 		a.bench.openURL = ""
 	}
-	ui.Column(c.Key("bench")).Width(benchWidth).Shrink(0).MinHeight(0).Background(t.BgDeep).
-		BorderWidth(0, 0, 0, 1).BorderColor(t.Line).Children(func() {
+	// D244: no hairline at its edge; the deeper ground is the edge, and a
+	// grip shows where it is dragged from only on hover.
+	ui.Column(c.Key("bench")).Width(width).Grow(1).Shrink(0).MinHeight(0).Background(t.BgDeep).Children(func() {
+		a.benchGrip(c)
+		if len(tabs) == 0 {
+			a.benchLauncher(c, task)
+			return
+		}
 		// The strip of pages, on a sunken track; the one shown raised.
 		ui.Row(c.Key("bench-head")).Padding(t.S3, t.S4).Gap(t.S2).AlignItems(ui.Center).
 			BorderWidth(0, 0, 1, 0).BorderColor(t.Line).Children(func() {

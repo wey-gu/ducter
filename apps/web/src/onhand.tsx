@@ -19,6 +19,7 @@ import { liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "./transcr
 import { computerName, deviceWait, manyComputers } from "./where.ts";
 import { DecisionCard, stateLabel } from "./views.tsx";
 import { Goal, Groove, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
+import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -148,6 +149,35 @@ function move(by: number, open: boolean) {
   requestAnimationFrame(() => document.querySelector(`[data-row="${CSS.escape(next)}"]`)?.scrollIntoView({ block: "nearest" }));
 }
 
+/** D244: the next (1) or the previous (-1) task, opened in place: the rail's order when it is
+ *  drawn (or On hand's), else the board's own by state. */
+export function walk(by: number) {
+  const r = A.route;
+  const cur = r.name === "task" ? r.id : L.focus;
+  let o = L.order;
+  if (!o.includes(cur)) {
+    const b = A.S.board();
+    o = [b.lanes[LANE.needs]!, b.lanes[LANE.working]!, b.lanes[LANE.waiting]!, b.lanes[LANE.done]!].flat().map((x) => x.id);
+  }
+  if (!o.length) return;
+  const i = o.indexOf(cur);
+  const next = o[i < 0 ? (by > 0 ? 0 : o.length - 1) : Math.max(0, Math.min(o.length - 1, i + by))]!;
+  if (next === cur) return;
+  L.focus = next;
+  A.go({ name: "task", id: next, full: r.name !== "conv" && !!r.full });
+  requestAnimationFrame(() => document.querySelector(`[data-row="${CSS.escape(next)}"]`)?.scrollIntoView({ block: "nearest" }));
+}
+A.walk = walk;
+
+/** ⌘⇧] / ⌘⇧[ (Ctrl elsewhere), from anywhere, the composer included (Lody's keys). */
+export function walkKey(e: KeyboardEvent) {
+  if (!(e.metaKey || e.ctrlKey) || !e.shiftKey || e.altKey || A.sheet || A.live) return;
+  const by = e.code === "BracketRight" || e.key === "}" || e.key === "]" ? 1 : e.code === "BracketLeft" || e.key === "{" || e.key === "[" ? -1 : 0;
+  if (!by || A.route.name !== "task") return;
+  e.preventDefault();
+  walk(by);
+}
+
 function toggle(id: string) {
   if (L.sel.has(id)) L.sel.delete(id);
   else L.sel.add(id);
@@ -212,6 +242,15 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   const w = a === "blocked" ? A.S.waiterFor(task.id) : undefined;
   const u = A.S.untilOf(task);
   const arrived = a !== "blocked" && A.S.justArrived(task.id);
+  // D244: one status place: needs you > working > new result. In the rail all three; elsewhere the
+  // sections already say needs you and working, so only a new result takes it.
+  const st = statusOf(task.id, a, task.card?.updatedAt);
+  const handing = handover(task.id, st);
+  const rail = room === "rail";
+  const place: Status = rail ? st : st === "new" ? "new" : "";
+  // An active row in the rail drops its resting facts (+a −d, a draft PR, the time).
+  const active = rail && place !== "";
+  const unseen = st === "new";
   const wide = room !== "phone";
   const meta = wide && room !== "rail" ? [manyComputers() && p.kind !== "none" ? computerName(p.device) : "", harnessName(harnessOf(task))].filter(Boolean).join(" · ") : "";
   const branch = wide && room !== "rail" && p.kind === "repo" ? p.branch : "";
@@ -223,21 +262,22 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
     A.go({ name: "task", id: task.id, full: room === "full" || room === "rail" });
   };
   return (
-    <div class={`trow${focus ? " kfocus" : ""}${sel ? " sel" : ""}${opened ? " opened" : ""}${arrived ? " arrived" : ""} a-${a}`} data-row={task.id}>
+    <div class={`trow${focus ? " kfocus" : ""}${sel ? " sel" : ""}${opened ? " opened" : ""}${arrived ? " arrived" : ""}${unseen ? " unseen" : ""} a-${a}`} data-row={task.id}>
       <button class="tmain" onClick={onClick} title={title(task)} aria-current={opened ? "page" : undefined}>
         {arrived && <span class="pop-bub" aria-hidden="true" />}
         <span class="l1">
           {w && <WaitBubble w={w} />}
           <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
-          {ch && (ch.adds > 0 || ch.dels > 0) && (
+          {!active && ch && (ch.adds > 0 || ch.dels > 0) && (
             <span class="stat">
               {ch.adds > 0 && <i class="add">+{ch.adds}</i>}
               {ch.dels > 0 && <i class="del">−{ch.dels}</i>}
             </span>
           )}
-          {pr && <span class="pr">{pr}</span>}
+          {pr && !active && <span class="pr">{pr}</span>}
           {state && <b class={`st ${a === "needs_you" ? "needs" : a === "failed" ? "failed" : ""}`}>{stateLabel(a)}</b>}
-          <span class="time">{timeOf(task)}</span>
+          {place && <StatusFace s={place} failed={a === "failed"} handing={handing} />}
+          {!active && <span class="time">{timeOf(task)}</span>}
         </span>
         <span class={`l2${s.tone ? ` ${s.tone}` : ""}`}>
           {s.mark && <StepMark k={s.mark} />}
@@ -253,6 +293,21 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
     </div>
   );
 });
+
+/** D244: a row's status place: the partner's own clay face at 24, still (no breathing in a row).
+ *  Needs you raises its flag, working reads, a new result smiles (a failed one raises the flag).
+ *  The handover plays once: the reading face sinks and fades as the done face pops up. */
+export function StatusFace({ s, failed, handing, title: label }: { s: Status; failed?: boolean; handing?: boolean; title?: string }) {
+  if (!s) return null;
+  const art = s === "needs" || (s === "new" && failed) ? "needsyou" : s === "working" ? "working" : "done";
+  const words = label ?? (s === "new" ? t("onhand.new") : s === "needs" ? t("lane.needs_you") : t("lane.working"));
+  return (
+    <span key={`${s}${handing ? "-h" : ""}`} class={`sface s-${s}${handing ? " handing" : ""}`} role="img" aria-label={words} title={words}>
+      {handing && <img class="from" src="app/art/working.webp" alt="" draggable={false} />}
+      <img class="to" src={`app/art/${art}.webp`} alt="" draggable={false} />
+    </span>
+  );
+}
 
 /** The one next step a row offers on hover (pointer, wide): merge or a draft PR for finished work
  *  with a branch, Pause for work under way. */
@@ -297,10 +352,28 @@ function ver(task: Task): string {
   const c = task.card;
   const l = latestOf(task);
   const w = A.S.waiterFor(task.id);
-  return [attention(task), l?.seq, c?.updatedAt, c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, A.S.justArrived(task.id), timeOf(task), A.L.lang, task.open?.title].join("|");
+  return [attention(task), l?.seq, c?.updatedAt, c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, A.S.justArrived(task.id), timeOf(task), A.L.lang, task.open?.title, isNewResult(task.id, attention(task), c?.updatedAt), handover(task.id, statusOf(task.id, attention(task), c?.updatedAt))].join("|");
 }
 
-function Section({ name, n, children, end }: { name: string; n?: number; children: ComponentChildren; end?: ComponentChildren }) {
+type Fold = { shut: boolean; onToggle: () => void; mark: Status; counts: string };
+
+function Section({ name, n, children, end, fold }: { name: string; n?: number; children: ComponentChildren; end?: ComponentChildren; fold?: Fold }) {
+  if (fold) {
+    const about = [fold.shut ? t("onhand.fold.open") : t("onhand.fold.close"), fold.counts].filter(Boolean).join(" · ");
+    return (
+      <section class={`tsec fold${fold.shut ? " shut" : ""}`} aria-label={name}>
+        <h3>
+          <button class="fold-name" aria-expanded={!fold.shut} title={about} aria-label={`${name}${fold.counts ? ` · ${fold.counts}` : ""}`} onClick={fold.onToggle}>
+            <Chevron open={!fold.shut} />
+            <span class="nm">{name}</span> {n ? <span class="n">{n}</span> : null}
+          </button>
+          {fold.shut && fold.mark && <StatusFace s={fold.mark} title={fold.counts} />}
+          {end && <span class="end">{end}</span>}
+        </h3>
+        {children}
+      </section>
+    );
+  }
   return (
     <section class="tsec" aria-label={name}>
       <h3>
@@ -310,6 +383,45 @@ function Section({ name, n, children, end }: { name: string; n?: number; childre
       {children}
     </section>
   );
+}
+
+/** A drawn disclosure chevron: right when folded, down when open. */
+const Chevron = ({ open }: { open: boolean }) => (
+  <svg class={`chev${open ? " open" : ""}`} viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+    <path d="M4.5 2.5L8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);
+
+// ---------- folded groups (D244): remembered on this device ----------
+
+const FOLDED = "ducter.onhand.folded";
+export function readFolded(): Set<string> {
+  try {
+    const v = JSON.parse(localStorage.getItem(FOLDED) ?? "[]");
+    return new Set(Array.isArray(v) ? v.filter((x) => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+function foldGroup(name: string, shut: boolean) {
+  const f = readFolded();
+  if (shut) f.add(name);
+  else f.delete(name);
+  try {
+    localStorage.setItem(FOLDED, JSON.stringify([...f]));
+  } catch {}
+  A.changed();
+}
+
+/** A folded group's counts in words, only the parts that are there: "1 needs you · 2 working". */
+export function foldCounts(statuses: Status[]): string {
+  const n = (s: Status) => statuses.filter((x) => x === s).length;
+  const needs = n("needs");
+  const working = n("working");
+  const fresh = n("new");
+  return [needs ? t("onhand.fold.needs", needs) : "", working ? t("onhand.fold.working", working) : "", fresh ? (fresh === 1 ? t("onhand.fold.new.one") : t("onhand.fold.new", fresh)) : ""]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 type Group = { name: string; place?: { device: string; repoPath: string }; tasks: Task[] };
@@ -376,7 +488,8 @@ export function OnHandList({ room }: { room: Room }) {
   const project = canBy && by === "project";
   const rail = room === "rail";
   // The order the keys walk, as drawn.
-  L.order = (project ? groups.flatMap((g) => keep(g.tasks)) : [...needs, ...working, ...waiting, ...done]).map((x) => x.id);
+  const folded = readFolded();
+  L.order = (project ? groups.flatMap((g) => (folded.has(g.name) ? [] : keep(g.tasks))) : [...needs, ...working, ...waiting, ...done]).map((x) => x.id);
   for (const id of [...L.sel]) if (!all.some((x) => x.id === id)) L.sel.delete(id);
   const pick = (v: "state" | "project") => {
     setBy(v);
@@ -409,18 +522,23 @@ export function OnHandList({ room }: { room: Room }) {
             const ts = keep(g.tasks);
             if (!ts.length) return null;
             const name = g.name || t("onhand.other");
+            const shut = folded.has(g.name);
+            const statuses = ts.map((x) => statusOf(x.id, attention(x), x.card?.updatedAt));
+            const mark = urgentOf(statuses);
+            const counts = foldCounts(statuses);
             return (
               <Section
                 key={g.name}
                 name={name}
                 n={ts.length}
+                fold={{ shut, onToggle: () => foldGroup(g.name, !shut), mark: shut ? mark : "", counts }}
                 end={
                   <button class="plus" aria-label={`${t("onhand.newhere")} ${name}`} title={t("onhand.newhere")} onClick={() => A.openNewTask(g.place ? { kind: "repo", device: g.place.device, repoPath: g.place.repoPath } : { kind: "none" })}>
                     <PlusSm />
                   </button>
                 }
               >
-                <Rows tasks={ts} room={room} state />
+                {!shut && <Rows tasks={ts} room={room} state />}
               </Section>
             );
           })}

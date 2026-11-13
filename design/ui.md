@@ -330,6 +330,7 @@ A new control is added to the set (and to this table) before it is used.
 | A candidate row in 换谁来做 | `candRow` (`shared.go`) | the `cand` row in `SwitchList` |
 | A property pill that opens a short list, and that list's rows (New task's where, branch, computer, who, when; D185) | `pill`, `menuRow` (`shared.go`; the list is `listPanel`) | `Pill`, `MenuRow` |
 | One short choice in a row of them, the chosen one raised (New task's model and effort under the chosen agent; D202) | `choice` (`shared.go`) | `Choice` |
+| A group's name that folds it, with its count (By project; D244) | `foldHead` (`shared.go`) | the folding `Section` in `onhand.tsx` |
 | Back to the list | the chrome's crumb | `BackRow` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 
@@ -429,11 +430,35 @@ the whole screen is the Mac's On hand: a 60-high header on the chrome's hairline
 (15/600 muted, `/` faint, the title 18/800, the counts 12 muted) and **新建** (`Btn` text), then
 the one list (D216, below) on a 960 measure. An opened task at the whole screen keeps its page on
 the 720 measure under the crumbs **对话 / 手头的事 / {task}**; **暂停 / 取消任务** are in its foot
-(D210, D213, D212); from 1360 CSS px (1720 with its workbench open, D214) On hand stands beside it as a
-340-wide rail. The move between the two is one view transition (`level` and `conv`, 320 ms,
-`--ease`; none under reduced motion). On a book fold a task stays in its half and the rail is not
-shown; a tabletop offers neither. Screens: `.shots/onhand-wide/` (D184), `.shots/onhand-redesign/`
-(D216).
+(D210, D213, D212); from 1120 CSS px On hand stands beside it as a rail (`clamp(300px, 22vw,
+340px)`, D244), and all three (rail, task, workbench) from 1560; narrower with the workbench open,
+the workbench takes the rail's place (task | workbench, Lody's two-slot rule). The move between
+them is one view transition (`level` and `conv`, 320 ms, `--ease`; none under reduced motion). On
+a book fold a task opened from the whole-screen On hand stands in the second half with the rail in
+the first, nothing across the fold (D244); a tabletop offers neither. Screens:
+`.shots/onhand-wide/` (D184), `.shots/onhand-redesign/` (D216), `.shots/onhand-rail/` (D244).
+
+**On hand beside the opened task (D244), on the Mac and the web.** The rail is not web-only (D216
+built it for the web alone; the Mac's opened task used to replace the window). The Mac
+(`task.go`, `onhandrail.go`): under the window's header (crumbs and the task's actions stay full
+width), **rail | task | workbench (520)**: the rail `clamp(22% of the window, 300, 340)` pt on
+`bg-deep` with no hairline, from 1100 pt; all three from 1560; narrower with the workbench open,
+task | workbench; under 1100 the task alone. It stands beside any opened task when there is room;
+with no task open On hand stays the 960 list. Rail and workbench slide their widths (260 ms,
+Pebble's ease; snap under reduced motion). **⌘⇧] / ⌘⇧[** (the View menu's **下一件事 / Next
+Task** · **上一件事 / Previous Task**) open the next and previous task in the rail's order from
+anywhere, the composer included; j/k when no field has the keys. **The rail row** is D216's
+two-line row, narrower (13/16 padding; no branch, computer or agent on line two). Line one ends
+in **one status place**, needs you > working > new result: the partner's own clay face at 24 pt,
+still (needs you: the raised flag; working: reading; new result: the done face, the flag for one
+that didn't work). An active row shows only its title and face; a resting row its `+a −d` and
+time (Draft PR stays off the narrow rail). The task open beside it: `sunken` with a 4pt ink bar. Elsewhere (the 960 list,
+beside the conversation, the phone) only **新结果 / New result** takes the place, before the
+time, and that row does not recede. **The handover:** a row seen working that turns into a new
+result plays once: the reading face sinks 5pt and fades as the done face pops from 0.55 on a
+back-out curve (about 560 ms); under reduced motion a cross-fade only. **Folded groups:** By
+project's groups fold from their name (a drawn chevron); a folded group carries its most urgent
+task's face, its counts on hover (**1 件等你 · 2 件在做 · 3 个新结果**).
 
 **On hand is one list (D216).** The phone, the pane beside the conversation, the whole screen and
 the rail draw the same rows (`apps/web/src/onhand.tsx`, `apps/desktop/internal/views/onhandlist.go`).

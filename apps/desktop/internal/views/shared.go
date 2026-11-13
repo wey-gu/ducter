@@ -1,6 +1,8 @@
 package views
 
 import (
+	"strconv"
+
 	"github.com/egoist/mygo/ui"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
@@ -294,4 +296,33 @@ func (a *App) listPanel(c *ui.Context, anchor ui.Element, open *bool, title stri
 			ui.Column(c).Gap(2).Role(ui.RoleRadioGroup).Label(title).Children(body)
 		})
 	})
+}
+
+// foldHead is a group's name that folds the group (D244): the drawn
+// chevron, the name and its count; it says whether it was pressed. With
+// nothing in the group it is the name alone.
+func (a *App) foldHead(c *ui.Context, name string, n int, folded bool) bool {
+	t := a.T
+	fold := ui.Row(c.Key("fold")).Gap(t.S2).AlignItems(ui.Center).Shrink(1).MinWidth(0).Padding(t.S1, t.S2, t.S1, 0).Radius(t.RadiusSM)
+	if n > 0 {
+		label := a.L.T("onhand.fold.close")
+		if folded {
+			label = a.L.T("onhand.fold.open")
+		}
+		fold.Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label + " " + name).Focusable()
+	}
+	fold.Children(func() {
+		if n > 0 {
+			ink := t.InkMuted
+			if fold.Hovered() {
+				ink = t.Ink
+			}
+			a.glyph(c, 14, drawChevron(ink, !folded))
+		}
+		a.heading(c, name, t.XL).SingleLine().Shrink(1).MinWidth(0)
+		if n > 0 {
+			a.heading(c, strconv.Itoa(n), t.XL).TextColor(t.InkMuted).FontFeatures("tnum")
+		}
+	})
+	return n > 0 && fold.Clicked()
 }

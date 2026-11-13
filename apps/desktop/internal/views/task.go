@@ -31,16 +31,29 @@ func (a *App) task(c *ui.Context) {
 	if task == nil {
 		task = &store.Task{ID: a.TaskID}
 	}
+	a.markOpenSeen(task)
 	a.taskHeader(c, task)
-	// D214: the workbench stands at the right; the task keeps the rest.
-	if a.benchShown(task) {
-		ui.Row(c.Key("benchrow")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
-			ui.Column(c.Key("taskcol")).Grow(1).MinWidth(0).MinHeight(0).Children(func() { a.taskBody(c, task) })
-			a.workbench(c, task)
-		})
-		return
+	// D244: On hand's rail | the task | the workbench (D214), as the
+	// window has room; with room for two, the workbench takes the rail's
+	// place. Each slides its width in and out.
+	w := a.winW
+	if w <= 0 {
+		w = 1280
 	}
-	a.taskBody(c, task)
+	rail, bench := panes(w, a.bench.open && a.benchOpenable(task))
+	ui.Row(c.Key("benchrow")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
+		rw := float32(0)
+		if rail {
+			rw = railWidth(w)
+		}
+		a.slide(c, "rail", rw, func(cw float32) { a.onHandRail(c, cw) })
+		ui.Column(c.Key("taskcol")).Grow(1).MinWidth(0).MinHeight(0).Children(func() { a.taskBody(c, task) })
+		bw := float32(0)
+		if bench {
+			bw = a.benchW(w)
+		}
+		a.slide(c, "bench", bw, func(cw float32) { a.workbench(c, task, cw) })
+	})
 }
 
 // taskBody is the task's page under its header: the transcript, its foot and its composer.
@@ -162,7 +175,7 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	if b := a.benchOf(task.ID); b.simsAt.IsZero() {
 		a.benchSims(task)
 	}
-	if len(a.benchTabs(task)) > 0 {
+	if a.benchOpenable(task) {
 		kind := btnText
 		if a.benchShown(task) {
 			kind = btnSecondary

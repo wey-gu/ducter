@@ -137,11 +137,20 @@ func (a *App) projectGroup(c *ui.Context, g projectGroup) {
 	if name == "" {
 		name = a.L.T("onhand.other")
 	}
+	// D244: a group folds from its name; folded, it keeps the face of its
+	// most urgent task, so a folded Needs you is never hidden.
+	folded := len(g.tasks) > 0 && a.Local.Folded(name)
 	ui.Column(c).Gap(t.S3).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			a.heading(c, name, t.XL).SingleLine().Shrink(1).MinWidth(0)
-			if n := len(g.tasks); n > 0 {
-				a.heading(c, fmt.Sprint(n), t.XL).TextColor(t.InkMuted).FontFeatures("tnum")
+			if a.foldHead(c, name, len(g.tasks), folded) {
+				a.Local.SetFolded(name, !folded)
+			}
+			if folded {
+				if st, of, words := a.foldMark(g.tasks); of != nil {
+					ui.Box(c.Key("fold-mark")).Shrink(0).Tooltip(words).Label(words).Children(func() {
+						a.statusFace(c, of, st)
+					})
+				}
 			}
 			if g.place != nil {
 				ui.Text(c, tildePath(placePath(*g.place))).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).SingleLine().Shrink(2).MinWidth(0)
@@ -156,6 +165,12 @@ func (a *App) projectGroup(c *ui.Context, g projectGroup) {
 				a.OpenNewTask(&p)
 			}
 		})
+		if folded {
+			for _, task := range g.tasks {
+				a.noteStatus(task.ID, a.rowMarkOf(task))
+			}
+			return
+		}
 		ui.Column(c).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
 			Dividers(1, t.LineSoft).Children(func() {
 			for _, task := range g.tasks {

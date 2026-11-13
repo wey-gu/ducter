@@ -22,6 +22,15 @@ var zhOnhand = Table{
 	"switch.menu":             "打开一件事…",
 	"switch.placeholder":      "打开哪件事？输入几个字…",
 	"switch.new":              "新建：「%s」",
+	"onhand.new":              "新结果",
+	"onhand.fold.needs":       "%d 件等你",
+	"onhand.fold.working":     "%d 件在做",
+	"onhand.fold.new":         "%d 个新结果",
+	"onhand.fold.new.one":     "1 个新结果",
+	"onhand.fold.open":        "展开",
+	"onhand.fold.close":       "收起",
+	"onhand.next":             "下一件事",
+	"onhand.prev":             "上一件事",
 }
 
 var enOnhand = Table{
@@ -42,6 +51,15 @@ var enOnhand = Table{
 	"switch.menu":             "Open Task…",
 	"switch.placeholder":      "Which task? Type a few words…",
 	"switch.new":              "New task: “%s”",
+	"onhand.new":              "New result",
+	"onhand.fold.needs":       "%d needs you",
+	"onhand.fold.working":     "%d working",
+	"onhand.fold.new":         "%d new results",
+	"onhand.fold.new.one":     "1 new result",
+	"onhand.fold.open":        "Expand",
+	"onhand.fold.close":       "Collapse",
+	"onhand.next":             "Next Task",
+	"onhand.prev":             "Previous Task",
 }
 
 func init() {

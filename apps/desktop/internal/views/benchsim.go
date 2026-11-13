@@ -98,6 +98,7 @@ func (a *App) benchPhone(c *ui.Context, task *store.Task, b *benchTask) {
 	if contains(keys, b.screen) {
 		on = b.screen
 	}
+	both := len(keys) > 1 && a.Local.ScreensBoth()
 	if len(keys) > 1 {
 		ui.Row(c.Key("screens")).Gap(t.S1).Padding(t.S1).Radius(t.RadiusMD).Background(t.SurfaceSunken).Role(ui.RoleRadioGroup).
 			Label(a.L.T("wb.screens")).Children(func() {
@@ -108,21 +109,43 @@ func (a *App) benchPhone(c *ui.Context, task *store.Task, b *benchTask) {
 						label = s.Name
 					}
 				}
-				if a.choice(c, "screen:"+k, label, k == on, "") {
+				if a.choice(c, "screen:"+k, label, k == on && !both, "") {
 					b.screen = k
+					a.Local.SetScreensBoth(false)
 				}
+			}
+			// D244: the two screens side by side, instead of a choice.
+			if a.choice(c, "screen:both", a.L.T("wb.screens.both"), both, "") {
+				a.Local.SetScreensBoth(true)
 			}
 		})
 	}
-	if on == "phone" {
-		a.benchDucterPhone(c, task)
-		return
-	}
-	for i := range b.sims {
-		if b.sims[i].Udid == on {
-			a.benchSimView(c, task, b, &b.sims[i])
+	screen := func(k string) {
+		if k == "phone" {
+			a.benchDucterPhone(c, task)
+			return
+		}
+		for i := range b.sims {
+			if b.sims[i].Udid == k {
+				a.benchSimView(c, task, b, &b.sims[i])
+			}
 		}
 	}
+	if !both {
+		screen(on)
+		return
+	}
+	full := a.bench.colW
+	colW := (full - 2*t.S4 - t.S3*float32(len(keys)-1)) / float32(len(keys))
+	ui.Row(c.Key("screens-both")).Gap(t.S3).AlignItems(ui.Start).Children(func() {
+		for _, k := range keys {
+			ui.Column(c.Key("both:" + k)).Width(colW).Shrink(0).Gap(t.S2).Children(func() {
+				a.bench.colW = colW
+				screen(k)
+			})
+		}
+	})
+	a.bench.colW = full
 }
 
 // benchDucterPhone draws the live view of Ducter's phone watching the task,
@@ -192,8 +215,8 @@ func (a *App) benchSimView(c *ui.Context, task *store.Task, b *benchTask, sim *p
 			}
 			ph := float32(a.winH - ChromeH - 230)
 			pw := ph * float32(max(1, s.w)) / float32(max(1, s.h))
-			if pw > benchWidth-110 {
-				pw = benchWidth - 110
+			if pw > a.bench.colW-110 {
+				pw = a.bench.colW - 110
 				ph = pw * float32(max(1, s.h)) / float32(max(1, s.w))
 			}
 			// An iPhone's own corners, in proportion; a hairline ring like the web's.

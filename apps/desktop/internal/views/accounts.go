@@ -64,6 +64,9 @@ func (a *App) proactiveChips(c *ui.Context, key string) {
 		if sel >= 0 {
 			note = "proactive.note." + modes[sel]
 		}
+		if sel >= 0 && st.ProactiveBy == "default" { // D250: never chosen says so
+			note = "proactive.note.default"
+		}
 		pad := t.S1
 		if strings.HasPrefix(key, "note-") {
 			pad = 0

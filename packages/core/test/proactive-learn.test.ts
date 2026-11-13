@@ -81,7 +81,11 @@ test("three unread morning notes pause them; the next time the person writes: �
   const ask = r.lastNote()!;
   expect(ask).toMatchObject({ rung: "morning", ask: "keep_note", opening: "早上那条还要吗？", finds: [] });
   await r.p.answer(ask.noteId, "keep_note", false);
-  expect(r.settings.get().proactive).toBe("urgent");
+  // D250: only urgent (never off), kept as their reason; no offer back on the same notes.
+  expect(r.settings.get()).toMatchObject({ proactive: "urgent", proactiveBy: "keep_note" });
+  expect(r.lastNote()).toMatchObject({ revises: ask.noteId, answered: "no" });
+  r.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "好的" } });
+  await r.settle();
   expect(r.lastNote()).toMatchObject({ revises: ask.noteId, answered: "no" });
   // Four simulated days of real looks (every 10 and 15 minutes, each read logged and its
   // checkpoint written): ~1.5 s alone, past bun's 5 s default under a full parallel run.

@@ -1,7 +1,7 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { brainNow } from "./brain.ts";
-import { harnessName, isHarnessId, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
+import { harnessName, isHarnessId, isProactiveYesNo, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
 import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, MediaRef, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
@@ -906,7 +906,7 @@ export function createWsHandler(deps: WsDeps) {
       case "proactive_answer": {
         const p = deps.proactive?.();
         if (!p) throw new Error("not available");
-        if (f.ask !== "first_look" && f.ask !== "keep_note") throw new Error("unknown ask");
+        if (!isProactiveYesNo(f.ask)) throw new Error("unknown ask");
         void p.answer(String(f.noteId ?? ""), f.ask, f.yes === true).catch((err) => console.warn("[ws] proactive:", (err as Error).message));
         return;
       }

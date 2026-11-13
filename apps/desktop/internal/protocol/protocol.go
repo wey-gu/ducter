@@ -1085,9 +1085,13 @@ type Settings struct {
 	TaskAccounts map[string]TaskAccount `json:"taskAccounts,omitempty"`
 	// AutoUpdate: update at night, in quiet hours, when nothing is working (D148).
 	AutoUpdate bool `json:"autoUpdate,omitempty"`
-	// Proactive (D165): when it notices something; "" = never answered
-	// (nothing watches).
+	// Proactive (D165): when it notices something. D250: a current core
+	// always sends it (never chosen is "three" with ProactiveBy "default");
+	// "" only from an older core (nothing watches).
 	Proactive string `json:"proactive,omitempty"`
+	// ProactiveBy (D250): "default", "chosen" or "keep_note"; "" = chosen
+	// before the source was kept.
+	ProactiveBy string `json:"proactiveBy,omitempty"`
 	// Peers: who of the user's other agents may reach the partner (D170).
 	Peers *Peers `json:"peers,omitempty"`
 }

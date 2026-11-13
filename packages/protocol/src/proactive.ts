@@ -23,12 +23,25 @@ export const isFindKind = (k: unknown): k is FindKind => typeof k === "string" &
  * 发现了就说 / When it notices something (§5): one chip row, single choice.
  *   urgent  只说急的 / Only urgent: only "now" finds, no morning note (D243: a trip, a
  *           production maintenance window or a correction within ~30 hours is urgent)
- *   three   每天最多 3 件 / Up to 3 a day (the default answer to the first-add question)
+ *   three   每天最多 3 件 / Up to 3 a day: the default (D250), also before the person chose
  *   useful  有用就说 / Whenever useful: no cap, still batched
- *   off     不用主动找我 / Only when I ask: nothing watches (also the state before the person answered)
+ *   off     不用主动找我 / Only when I ask: nothing watches
  */
 export type ProactiveMode = "urgent" | "three" | "useful" | "off";
 export const PROACTIVE_MODES: readonly ProactiveMode[] = ["urgent", "three", "useful", "off"];
+/** D250: the mode of a home that never chose one. */
+export const DEFAULT_PROACTIVE: ProactiveMode = "three";
+
+/**
+ * D250: where the mode came from.
+ *   default    never chosen: 每天最多 3 件 (connecting an account is consent to read; the first
+ *              morning note says how it works, with the chips)
+ *   chosen     the person picked it (the chips, in a note or in Settings; or answered a re-offer)
+ *   keep_note  they said 不再需要 / No more to 早上那条还要吗？ after three unread mornings: only
+ *              urgent, and the morning note offered back once when the notes got better (NOTES_REV)
+ * Absent with a mode set: chosen before D250 (the source wasn't kept then).
+ */
+export type ProactiveSource = "default" | "chosen" | "keep_note";
 export const DAILY_CAP = 3;
 
 /** 怎么知道的 / How I know: one mail, event or thread it rests on, with its date. Never a quote. */
@@ -58,10 +71,16 @@ export interface FindView {
  * "first" and "morning" may carry an `ask` the clients render with the shared controls:
  *   first_look  好，看一眼 / Take a look (default) · 先不用 / Not now
  *   cadence     the chip row itself (the answer is the setting)
- *   keep_note   要 / Keep (default) · 不用了 / No more (= 只说急的)
+ *   keep_note   保留 / Keep (default) · 不再需要 / No more (= 只说急的; D250: offered back once later)
+ *   note_again  好 / Yes · 不用 / No thanks: the morning note offered back once (D250); no answer
+ *               keeps 只说急的
+ * D250: the first morning note said on the default (never chosen) carries `cadence` too.
  */
 export type FindRung = "morning" | "fold" | "now" | "meeting" | "first";
-export type ProactiveAsk = "first_look" | "cadence" | "keep_note";
+export type ProactiveAsk = "first_look" | "cadence" | "keep_note" | "note_again";
+/** The asks answered with yes or no (the cadence ask is answered by the chips). */
+export type ProactiveYesNo = "first_look" | "keep_note" | "note_again";
+export const isProactiveYesNo = (a: unknown): a is ProactiveYesNo => a === "first_look" || a === "keep_note" || a === "note_again";
 
 /** One state change of a find (core writes it; clients fold it into the note). */
 export type FindState = "go" | "held" | "passed" | "useful" | "muted";

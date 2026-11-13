@@ -188,8 +188,10 @@ first three are Draft 3's bar, the fourth is new):
 - **Never invent urgency or nag.** No counts of unread mail, no streaks, no "you still haven't…"
   twice. A find said once and ignored is not said again unless something changed.
 - **Never wake the person** except for a kind they asked to be woken for.
-- **Never watch without asking.** Connecting is not consent to watch (dots, research/35); the
-  first add asks once, with a default.
+- **Never keep quiet about watching.** Connecting an account is consent to read it (D250): a
+  home that never chose is on **每天最多 3 件**, the first add still asks once with that default
+  shown, and the first morning message on the default carries the chips. Restraint is in what is
+  said (D243), never in whether it looks.
 
 ## 4. What it notices: ten kinds
 
@@ -235,9 +237,13 @@ mirrored in Settings › 通知 (什么时候找你):
 | Chip (zh / en) | Means |
 |---|---|
 | **只说急的 / Only urgent** | Only the "Now" rung and 开会前 (D226); no morning note |
-| **每天最多 3 件 / Up to 3 a day** (default) | Morning note with ≤ 3, plus "Now" within the 3 |
+| **每天最多 3 件 / Up to 3 a day** (default, also before the person chose: D250) | Morning note with ≤ 3, plus "Now" in its own room of 3 (D243) |
 | **有用就说 / Whenever useful** | No daily cap; still batched into the note and fold-ins, at most 5 a note (D174), the rest counted for when they ask |
 | **不用主动找我 / Only when I ask** | Nothing proactive; it reads only when asked. Watching stops (no cost) |
+
+**Where the mode came from (D250)** is kept with it: `default` (never chosen; the chips say
+**你还没选过，先这样：…**), `chosen` (any chip, in a note or in Settings, even the one already on),
+`keep_note` (不再需要 to the morning note, §8). Only `keep_note` is ever offered back.
 
 Why a cap of 3 and not a confidence bar alone: the research says false alarms are the main
 failure (ProactiveBench, KnowU-Bench, research/35), and no product publishes a cap; 3 fits one
@@ -316,7 +322,14 @@ Asks raised by background work **expire into Passed** with the find's date (the 
   cost-if-missed to be said).
 - **3 unread morning notes in a row** → the notes pause and the next time the person writes,
   one line asks **早上那条还要吗？/ Keep the morning note?** with **保留 / Keep** (default) and
-  **不用了** (= the chip **只说急的**). The routine rule (D114), reused.
+  **不再需要 / No more** (= the chip **只说急的**, never off; kept as `keep_note`, D250). The
+  routine rule (D114), reused. Not a weekly note: 只说急的 still carries what can't wait (§5), and
+  "anything for me?" is answered from the same finds in every mode.
+- **Offered back once (D250)** when what the notes can notice changed materially (`NOTES_REV`; 1 =
+  D243): a home on 只说急的 by `keep_note` hears, the next time the person writes, **现在我能提前告诉你
+  航班、维护、扣费这些了。要每天早上说几件吗？** with **好 / Yes** · **不用 / No thanks**. No answer keeps
+  只说急的; 好 restores the mode before; either answer is a choice and is never offered again. A
+  mode the person chose is never re-offered.
 - People: who the person answers fast, who reviews whose PRs, what money they watch, goes to Mem
   as distilled facts only when the partner is sure (§9).
 
@@ -373,12 +386,15 @@ says so once. "Only when I ask" costs nothing.
    60-day backfill fills the ledger with bookings, renewals and commitments (no message).
 3. Right under the answer, the one question, with a default:
    **以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？**
-   · **好 / Sounds good** (= 每天最多 3 件) · **只说急的** · **不用主动找我**.
+   · the chip row, with **每天最多 3 件** already selected (D250).
    The answer is the chip row's value; the partner says nothing more about it.
-4. If the person says nothing, nothing watches: the chip stays **不用主动找我** until they answer
-   (connecting is not consent to watch).
-5. **Chosen elsewhere** (the chips in Settings, or "Not now" to the look): once watching is on,
-   each source that never had its look back gets it, silently: the last 3 days in full and 60
+4. **Silence is yes (D250):** watching starts when the account is added (new mail only), on
+   **每天最多 3 件**. The quiet look back waits half an hour for the offer's answer, so a yes runs
+   the look the person is waiting for first; then it goes on its own. What can't wait may be
+   said "now" meanwhile. A home that never saw the question gets it once, under its first
+   morning message.
+5. **Chosen elsewhere** (the chips in Settings, or "Not now" to the look): each source that never
+   had its look back gets it at once, silently: the last 3 days in full and 60
    days of subjects that may hold a booking, a renewal, a payment or a promise (the mail
    service is asked only for those; calendars a month ahead) (D226).
 
@@ -483,6 +499,9 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 | ★ `first.go` · `first.no` | 好，看一眼 · 以后再说 | Take a look · Not now |
 | ★ `first.ask` | 以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？ | From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK? |
 | ★ `note.pause` | 早上那条还要吗？ | Keep the morning note? |
+| `note.keep` · `note.no_more` | 保留 · 不再需要 | Keep · No more |
+| ★ `proactive.note.default` (D250) | 你还没选过，先这样：早上把值得说的放在一条里，最多 3 件；急的随时说。 | You haven't chosen yet, so for now: one note each morning with up to 3 things; anything urgent right away. |
+| ★ the re-offer (D250; core words) · `note.again_yes` · `note.again_no` | 现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几件吗？ · 好 · 不用 | I can now tell you about flights, maintenance and billing changes ahead of time. Want a few each morning? · Yes · No thanks |
 | ★ `card.status.watching` · `card.status.paused` | 在留意 · 已暂停 | Keeping an eye out · Paused |
 | ★ `first.answer` | 有 {k} 件要你管： · 最近两周没有要你管的。 | {k} things need you: · Nothing in the last two weeks needs you. |
 | ★ `card.status.asked` | 你问起来才去看 | Reads only when you ask |
@@ -524,8 +543,9 @@ line (the tray and the connection line say them), **加一个** as the page's pr
 2. **Cap 3, one morning note, silent on nothing days** (D173: no header line either). **Default: yes.** Alternative: a one-line "nothing today" message every morning.
 3. **"Now" only for "costs something today and needs you"**, time-sensitive, inside the cap;
    night only by a per-kind rule the person said. **Default: yes.**
-4. **Watching starts only after the one question** (no answer = only when asked). **Default:
-   yes.** Alternative: start watching at the default and say so (faster aha, weaker consent).
+4. **Watching starts at the default when the account is added, and the one question stays with
+   that default shown** (D250, 2026-11-13: "默认策略需要有主动 ai"; this call's first answer is in
+   the decisions log).
 5. **The first look: 3 days for "waiting on you", plus a silent 60-day ledger backfill.**
    **Default: yes** (replaces D101's 14/60).
 6. **oo is watched by model-free polling** every 10 min (15 for calendars). **Default: yes.**

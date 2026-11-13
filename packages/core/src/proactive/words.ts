@@ -58,6 +58,9 @@ export const W = {
   },
   firstLater: (zh: boolean) => (zh ? "好，先不看。" : "OK, not now."),
   keepNote: (zh: boolean) => (zh ? "早上那条还要吗？" : "Keep the morning note?"),
+  /** D250: the morning note offered back once, after the notes got better (NOTES_REV). */
+  noteAgain: (zh: boolean) =>
+    zh ? "现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几件吗？" : "I can now tell you about flights, maintenance and billing changes ahead of time. Want a few each morning?",
   budget: (zh: boolean, name: string) => (zh ? `${name} 这个月的额度用完了，这个月剩下的日子我只说急的。` : `${name} used this month's budget; for the rest of the month I'll only say what's urgent.`),
   muteRule: (zh: boolean, kind: FindKind, sender?: string) => {
     const k = KIND_WORDS[kind];

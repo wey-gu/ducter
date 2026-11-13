@@ -1485,7 +1485,7 @@ class AppState {
     this.send({ t: "find_react", findId, reaction });
     this.changed();
   }
-  answerNote(noteId: string, ask: "first_look" | "keep_note", yes: boolean) {
+  answerNote(noteId: string, ask: import("@ducter/protocol").ProactiveYesNo, yes: boolean) {
     this.send({ t: "proactive_answer", noteId, ask, yes });
   }
   removeConnection(id: string) {

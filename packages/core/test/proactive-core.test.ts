@@ -88,7 +88,7 @@ test("the one tap, the first-account moment, the card's frames and its controls,
   c.send({ t: "connection_oo" });
   const added = await c.until<Extract<ServerFrame, { t: "connection_result" }>>((f) => f.t === "connection_result");
   expect(added.ok).toBe(true);
-  // The partner speaks once in the conversation; nothing has read or watched yet.
+  // The partner speaks once in the conversation; nothing has been read yet (D250: watching is on at the default).
   const offer = notes(core).at(-1)!;
   expect(offer).toMatchObject({ rung: "first", ask: "first_look" });
   expect(oo.calls().some((x) => x.argv.includes("search_threads"))).toBe(false);
@@ -103,7 +103,7 @@ test("the one tap, the first-account moment, the card's frames and its controls,
   c.send({ t: "connections" });
   const frame = await c.until<Extract<ServerFrame, { t: "connections" }>>((f) => f.t === "connections" && !!(f.connections[0] as ConnectionView | undefined)?.look);
   const look = frame.connections[0]!.look!;
-  expect(look.watching).toBe(false); // the cadence isn't answered yet
+  expect(look.watching).toBe(true); // D250: on the default (每天最多 3 件) before the cadence is answered
   expect(look.apps.map((a) => [a.service, a.account])).toEqual([
     ["gmail", "wey@example.com"],
     ["discord", "wey"],
@@ -112,7 +112,7 @@ test("the one tap, the first-account moment, the card's frames and its controls,
   const reads = await c.until<Extract<ServerFrame, { t: "connection_reads" }>>((f) => f.t === "connection_reads");
   expect(reads.reads.find((r) => r.service === "gmail")).toMatchObject({ what: "new" });
 
-  // The chips answer the question; watching starts.
+  // The chips answer the question (D250: watching was already on, at the default).
   c.send({ t: "settings_set", patch: { proactive: "three" } });
   await c.until((f) => f.t === "connections" && !!(f.connections[0] as ConnectionView | undefined)?.look?.watching);
   // 自己留意 off for Discord, then 不让 Ducter 看这个 for Gmail.

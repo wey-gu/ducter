@@ -67,13 +67,14 @@ function Ask({ n }: { n: Bodies["finds"] }) {
         {n.answered ? <div class="small sub">{t("first.chosen", t(`proactive.${n.answered}`))}</div> : <ProactiveChips inNote />}
       </div>
     );
-  if (n.ask !== "first_look" && n.ask !== "keep_note") return null;
-  const [yes, no] = n.ask === "keep_note" ? ["note.keep", "note.no_more"] : ["first.go", "first.no"];
+  if (n.ask !== "first_look" && n.ask !== "keep_note" && n.ask !== "note_again") return null;
+  const ask = n.ask;
+  const [yes, no] = ask === "keep_note" ? ["note.keep", "note.no_more"] : ask === "note_again" ? ["note.again_yes", "note.again_no"] : ["first.go", "first.no"];
   if (n.answered) return <div class="small sub">{t("note.answered", t(n.answered === "yes" ? yes : no))}</div>;
   return (
     <div class="fstep">
-      <Btn kind="secondary" size="sm" label={t(yes)} onClick={() => A.answerNote(n.noteId, n.ask as "first_look", true)} />
-      <Btn kind="text" size="sm" label={t(no)} onClick={() => A.answerNote(n.noteId, n.ask as "first_look", false)} />
+      <Btn kind="secondary" size="sm" label={t(yes)} onClick={() => A.answerNote(n.noteId, ask, true)} />
+      <Btn kind="text" size="sm" label={t(no)} onClick={() => A.answerNote(n.noteId, ask, false)} />
     </div>
   );
 }

@@ -5,7 +5,7 @@
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, MemView, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
-import { DEFAULT_AFTER_CHOICES, HARNESSES, PROACTIVE_MODES, isHarnessId, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
+import { DEFAULT_AFTER_CHOICES, DEFAULT_PROACTIVE, HARNESSES, PROACTIVE_MODES, isHarnessId, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
 import type { LogStore, MemIdentity, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
 import type { PushStore } from "./push.ts";
@@ -28,8 +28,10 @@ interface SettingsFile {
   hidden?: number[];
   /** D148: update at night (off by default). */
   autoUpdate?: boolean;
-  /** D165: when it notices something (absent: never answered, nothing watches). */
+  /** D165: when it notices something (D250: absent = never chosen = DEFAULT_PROACTIVE). */
   proactive?: ProactiveMode;
+  /** D250: who set it (absent with a mode: set before D250, source unknown). */
+  proactiveBy?: "chosen" | "keep_note";
   /** D170: who of the user's other agents may reach the partner; learned rules; muted senders. */
   peers?: PeersSettings;
 }
@@ -48,8 +50,10 @@ export function cleanName(raw: string): string {
 
 export interface SettingsStore extends SettingsApi {
   view(): Promise<{ settings: Settings; mem: MemView }>;
-  /** Applies a patch; unknown or invalid fields are ignored. Returns what changed. */
+  /** Applies a patch; unknown or invalid fields are ignored. Returns what changed. A mode in a patch is the person's choice (D250). */
   set(patch: SettingsPatch): string[];
+  /** D250: the mode set by Ducter for a reason the person gave (不再需要 to the morning note). */
+  setProactive(mode: ProactiveMode, by: "chosen" | "keep_note"): void;
   /** Forgets one noted line: in Mem when possible, else hidden here. */
   forget(seq: number): Promise<"mem" | "hidden" | undefined>;
   onChange(fn: () => void): () => void;
@@ -111,7 +115,8 @@ export function openSettings(opts: {
       ...(data.taskAccounts ? { taskAccounts: data.taskAccounts } : {}),
       windows: windowsNow().windows,
       autoUpdate: data.autoUpdate === true,
-      ...(data.proactive ? { proactive: data.proactive } : {}),
+      // D250: never chosen is the default (proactive with a morning note), said as such.
+      ...(data.proactive ? { proactive: data.proactive, ...(data.proactiveBy ? { proactiveBy: data.proactiveBy } : {}) } : { proactive: DEFAULT_PROACTIVE, proactiveBy: "default" as const }),
       peers: { reach: data.peers?.reach ?? "own", trusted: data.peers?.trusted ?? [], muted: data.peers?.muted ?? [] },
     };
   };
@@ -199,7 +204,9 @@ export function openSettings(opts: {
       if (typeof patch.memory === "boolean" && !opts.memoryPinnedOff) {
         if ((data.memory !== false) !== patch.memory) (data.memory = patch.memory), did.push("memory");
       }
-      if (typeof patch.proactive === "string" && (PROACTIVE_MODES as readonly string[]).includes(patch.proactive) && data.proactive !== patch.proactive) (data.proactive = patch.proactive), did.push("proactive");
+      // D250: a mode from a client is the person's choice, even the one already on (it settles a default).
+      if (typeof patch.proactive === "string" && (PROACTIVE_MODES as readonly string[]).includes(patch.proactive) && (data.proactive !== patch.proactive || data.proactiveBy !== "chosen"))
+        (data.proactive = patch.proactive), (data.proactiveBy = "chosen"), did.push("proactive");
       if (typeof patch.autoUpdate === "boolean" && (data.autoUpdate === true) !== patch.autoUpdate) (data.autoUpdate = patch.autoUpdate), did.push("autoUpdate");
       if (setPeers(patch.peers as Partial<PeersSettings> | undefined)) did.push("peers");
       if (typeof patch.defaultAfterMin === "number" && (DEFAULT_AFTER_CHOICES as readonly number[]).includes(patch.defaultAfterMin)) {
@@ -259,6 +266,13 @@ export function openSettings(opts: {
       save();
       changed();
       return how;
+    },
+    setProactive(mode, by) {
+      if (!(PROACTIVE_MODES as readonly string[]).includes(mode) || (data.proactive === mode && data.proactiveBy === by)) return;
+      data.proactive = mode;
+      data.proactiveBy = by;
+      save();
+      changed();
     },
     memIdentityChanged: changed,
     bridgeChanged: changed,

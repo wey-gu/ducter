@@ -109,10 +109,12 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 func (a *App) noteAsk(c *ui.Context, n *protocol.Finds) {
 	t := a.T
 	switch n.Ask {
-	case "first_look", "keep_note":
+	case "first_look", "keep_note", "note_again":
 		yes, no := "first.go", "first.no"
 		if n.Ask == "keep_note" {
 			yes, no = "note.keep", "note.no_more"
+		} else if n.Ask == "note_again" { // D250: the morning note offered back once
+			yes, no = "note.again_yes", "note.again_no"
 		}
 		if n.Answered != "" {
 			label := a.L.T(no)

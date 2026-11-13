@@ -34,7 +34,7 @@ type FindView struct {
 // Finds is one note the partner said by itself: the morning note, a
 // fold-in (Revises today's note), "now", before a meeting, or the
 // first-account moment. Quiet: a silent day (no message; the header line
-// changes). Ask: a question the note carries (first_look, cadence,
+// changes). Ask: a question the note carries (first_look, cadence, note_again,
 // keep_note); Answered: how it was answered.
 type Finds struct {
 	NoteID   string     `json:"noteId"`
@@ -115,7 +115,7 @@ type FindReact struct {
 	Reaction string `json:"reaction"` // useful | mute
 }
 
-// ProactiveAnswer answers a note's ask (first_look, keep_note).
+// ProactiveAnswer answers a note's ask (first_look, keep_note, note_again).
 type ProactiveAnswer struct {
 	T      string `json:"t"` // "proactive_answer"
 	NoteID string `json:"noteId"`

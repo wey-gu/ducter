@@ -180,6 +180,8 @@ type App struct {
 	// livingAway remembers, per living message, whether it came while
 	// the user was away.
 	livingAway map[int64]bool
+	// fl is the conversation's place (D254, follow.go).
+	fl follow
 	// forgotten are the Noted lines forgotten from a message's Details.
 	forgotten map[int64]bool
 	// thinkingSince is when this app sent the message it waits on (the
@@ -428,6 +430,7 @@ func (a *App) View(c *ui.Context) {
 		// Chinese reading text is 1.75 high (D78).
 		a.mdLang = a.L.Lang
 		a.md.Theme = a.markdownTheme(a.T.PartnerSize, a.leading(1.65))
+		a.md.ShareSelection = true                                    // D254: the bubble holds the selection and its menu (Reply, Copy)
 		a.md.CodeBlock, a.mdTask.CodeBlock = a.codeBlock, a.codeBlock // Ducter's own 拷贝 (D242)
 		a.mdTask.Theme = a.markdownTheme(a.T.MD, a.leading(1.55))
 	}
@@ -510,6 +513,8 @@ func (a *App) shortcuts(c *ui.Context) {
 			a.Route = RouteConversation
 		}
 		a.focusComposer = true
+	case a.Route == RouteConversation && c.Shortcut(ui.Cmd, ui.KeyDown):
+		a.ToLatest() // D254: to the newest message
 	case c.Shortcut(0, ui.KeyEscape):
 		if a.Route == RouteConversation && a.CancelReply() {
 			break // D236: Esc puts a reply away first
@@ -739,8 +744,10 @@ func (a *App) markRead() {
 // readWhenSeen marks the conversation read once it has shown something
 // new for ReadAfter while the window is in front.
 func (a *App) readWhenSeen(c *ui.Context) {
+	// D254: what came is read once it is seen: not while the reader is up the conversation.
+	first, last := a.list.Visible()
 	up := a.S.ChannelSeq
-	if up <= a.S.ReadUpTo || up <= a.readSent || !c.WindowActive() || c.WindowHidden() {
+	if up <= a.S.ReadUpTo || up <= a.readSent || !c.WindowActive() || c.WindowHidden() || (last >= first && !a.list.AtEnd()) {
 		a.unreadAt = time.Time{}
 		return
 	}

@@ -8,6 +8,9 @@
 import { clipQuote, plainWords, type ReplyRef } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A, type Replying } from "./app.ts";
+import { copyAndSay } from "./conv-copy.ts";
+import { when } from "./format.ts";
+import { copyText, COPY_GLYPH, forReading } from "./markdown.ts";
 import { haptic } from "./native.ts";
 import type { Entry } from "./store.ts";
 
@@ -130,7 +133,32 @@ interface Menu {
   y: number;
   key: string;
   text: string;
+  /** D254: when it was said (the menu's quiet first line), and a link pressed on. */
+  ts?: string;
+  link?: string;
 }
+
+/** D254: a message's words as they go to the clipboard: its source, not what the screen drew. */
+export function sourceOf(e: Entry | undefined): string | undefined {
+  if (!e) return undefined;
+  if (e.user) return e.user.text;
+  if (e.ai) return copyText(e.ai.text);
+  if (e.job?.ack) return e.job.ack.text;
+  if (e.decision) {
+    const d = A.S.decisions.get(e.decision.decisionId);
+    return d?.said || e.decision.question;
+  }
+  return undefined;
+}
+
+/** The row a pressed element belongs to, by its data-seq. */
+const entryAt = (el: HTMLElement): Entry | undefined => {
+  const seq = Number(el.closest<HTMLElement>("[data-seq]")?.dataset.seq);
+  return Number.isFinite(seq) ? A.S.channel.find((e) => e.firstSeq === seq) : undefined;
+};
+
+/** D254: on a touch screen a long press opens Ducter's menu, not the system's selection. */
+export const coarse = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 
 /**
  * Swipe right, long press and right click on any [data-reply] in the conversation, through one
@@ -138,11 +166,15 @@ interface Menu {
  */
 export function useReplyGestures(scroller: { current: HTMLElement | null }): Menu | undefined {
   const [menu, setMenu] = useState<Menu | undefined>();
+  closeMenu = () => setMenu(undefined);
   useEffect(() => {
     const root = scroller.current;
     if (!root) return;
-    let s: { el: HTMLElement; key: string; x0: number; y0: number; id: number; on: boolean; armed: boolean; glyph?: HTMLElement; hold?: ReturnType<typeof setTimeout> } | undefined;
+    let s: { el: HTMLElement; key: string; x0: number; y0: number; id: number; on: boolean; armed: boolean; glyph?: HTMLElement; hold?: ReturnType<typeof setTimeout>; link?: string } | undefined;
     const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // D254: the click that ends a long press never opens the link or the card under it.
+    let heldAt = 0;
+    const swallow = (ev: MouseEvent) => Date.now() - heldAt < 800 && (ev.preventDefault(), ev.stopPropagation());
     const reset = () => {
       if (!s) return;
       clearTimeout(s.hold);
@@ -157,20 +189,30 @@ export function useReplyGestures(scroller: { current: HTMLElement | null }): Men
       }
       s = undefined;
     };
-    const textOf = (el: HTMLElement) => (el.querySelector(".bubble, .words")?.textContent ?? el.textContent ?? "").trim();
+    // The source when the row has one; else the words as drawn, paragraphs kept (innerText).
+    const textOf = (el: HTMLElement) => {
+      const e = el.dataset.reply?.includes("/") ? undefined : entryAt(el);
+      const drawn = el.querySelector<HTMLElement>(".bubble, .words") ?? el;
+      return (sourceOf(e) ?? drawn.innerText ?? drawn.textContent ?? "").trim();
+    };
+    const menuAt = (el: HTMLElement, x: number, y: number, key: string, link?: string): Menu => ({ x, y, key, text: textOf(el), ts: entryAt(el)?.ev.ts, ...(link ? { link } : {}) });
     const down = (ev: PointerEvent) => {
       if (ev.button !== 0) return;
       const el = (ev.target as HTMLElement).closest<HTMLElement>("[data-reply]");
-      if (!el || (ev.target as HTMLElement).closest("button, a, textarea, input, .tray, .imprint")) return;
+      if (!el || (ev.target as HTMLElement).closest("button, textarea, input, .tray, .imprint")) return;
+      // D254: a link held opens the menu with Copy link; it never swipes.
+      const a = (ev.target as HTMLElement).closest<HTMLAnchorElement>("a[href]");
       const key = el.dataset.reply!;
       // The whole row moves (a find moves its note); what is replied to is the one under the finger.
       const row = (el.closest(".scroll > *") as HTMLElement | null) ?? el;
-      s = { el: row, key, x0: ev.clientX, y0: ev.clientY, id: ev.pointerId, on: false, armed: false };
+      s = { el: row, key, x0: ev.clientX, y0: ev.clientY, id: ev.pointerId, on: false, armed: false, ...(a ? { link: a.href } : {}) };
       if (ev.pointerType !== "mouse") {
+        const link = a?.href;
         s.hold = setTimeout(() => {
           if (!s || s.on) return;
           haptic("light");
-          setMenu({ x: ev.clientX, y: ev.clientY, key, text: textOf(el) });
+          heldAt = Date.now();
+          setMenu(menuAt(el, ev.clientX, ev.clientY, key, link));
           s = undefined;
         }, HOLD_MS);
       }
@@ -180,7 +222,7 @@ export function useReplyGestures(scroller: { current: HTMLElement | null }): Men
       const dx = ev.clientX - s.x0;
       const dy = ev.clientY - s.y0;
       if (!s.on) {
-        if (Math.abs(dy) > GIVE_UP || dx < -GIVE_UP || s.x0 < EDGE) return void (clearTimeout(s.hold), (s = undefined));
+        if (Math.abs(dy) > GIVE_UP || dx < -GIVE_UP || s.x0 < EDGE || (s.link && dx > GIVE_UP)) return void (clearTimeout(s.hold), (s = undefined));
         if (dx < START) return;
         clearTimeout(s.hold);
         s.on = true;
@@ -217,28 +259,33 @@ export function useReplyGestures(scroller: { current: HTMLElement | null }): Men
     };
     const up = (ev: PointerEvent) => {
       if (!s || ev.pointerId !== s.id) return;
+      if (s.link && !s.on) return void (clearTimeout(s.hold), (s = undefined)); // a tap on a link opens it
       const go = s.armed ? targets.get(s.key) : undefined;
       reset();
       if (go) A.startReply(go);
     };
     const context = (ev: MouseEvent) => {
       const el = (ev.target as HTMLElement).closest<HTMLElement>("[data-reply]");
-      if (!el || (ev.target as HTMLElement).closest("a, textarea, input")) return;
-      if (window.getSelection()?.toString().trim()) return; // the browser's own menu for a selection
+      if (!el || (ev.target as HTMLElement).closest("textarea, input")) return;
+      // With a mouse, a link and a selection keep the browser's own menu (Copy Link, Copy, Look Up).
+      if (!coarse() && ((ev.target as HTMLElement).closest("a") || window.getSelection()?.toString().trim())) return;
       ev.preventDefault();
-      setMenu({ x: ev.clientX, y: ev.clientY, key: el.dataset.reply!, text: textOf(el) });
+      if (coarse()) return; // a touch screen's long press (above) opens it, once
+      setMenu(menuAt(el, ev.clientX, ev.clientY, el.dataset.reply!));
     };
     root.addEventListener("pointerdown", down);
     root.addEventListener("pointermove", move, { passive: false });
     root.addEventListener("pointerup", up);
     root.addEventListener("pointercancel", reset);
     root.addEventListener("contextmenu", context);
+    root.addEventListener("click", swallow, true);
     return () => {
       root.removeEventListener("pointerdown", down);
       root.removeEventListener("pointermove", move);
       root.removeEventListener("pointerup", up);
       root.removeEventListener("pointercancel", reset);
       root.removeEventListener("contextmenu", context);
+      root.removeEventListener("click", swallow, true);
     };
   }, [scroller.current]);
   useEffect(() => {
@@ -256,34 +303,86 @@ export function useReplyGestures(scroller: { current: HTMLElement | null }): Men
   return menu;
 }
 
-/** Long press / right click: Reply and Copy, where the finger or the pointer is. */
+/** D254: the words a message gets in 选择文字 / Select text, while that sheet is open. */
+let selecting: string | undefined;
+/** Puts the open menu away (set by useReplyGestures, which holds it). */
+let closeMenu = () => {};
+
+/** Long press / right click: when it was said, then Reply, Copy (the whole message, as written),
+ *  Copy link on a link, and on a touch screen Select text (the words in a sheet, to pick a part). */
 export function ReplyMenu({ menu }: { menu?: Menu }) {
   if (!menu) return null;
   const r = targets.get(menu.key);
-  const x = Math.min(menu.x, window.innerWidth - 168);
-  const y = Math.min(menu.y + 8, window.innerHeight - 120);
+  const items = 1 + (r ? 1 : 0) + (menu.link ? 1 : 0) + (coarse() ? 1 : 0);
+  const x = Math.min(menu.x, window.innerWidth - 196);
+  const y = Math.min(menu.y + 8, window.innerHeight - 24 - items * 44 - (menu.ts ? 28 : 0));
+  const said = (ok: boolean) => A.toast(t(ok ? "conv.copied" : "conv.copy.failed"));
   return (
-    <div class="reply-menu" role="menu" style={{ left: `${Math.max(12, x)}px`, top: `${y}px` }} onPointerDown={(e) => e.stopPropagation()}>
+    <div class="reply-menu" role="menu" style={{ left: `${Math.max(12, x)}px`, top: `${Math.max(12, y)}px` }} onPointerDown={(e) => e.stopPropagation()}>
+      {menu.ts && (
+        <div class="menu-when" role="presentation">
+          {when(A.L, menu.ts)}
+        </div>
+      )}
       {r && (
-        <button type="button" role="menuitem" onClick={() => (A.startReply(r), A.changed())}>
+        <button type="button" role="menuitem" onClick={() => (closeMenu(), A.startReply(r), A.changed())}>
           <ReplyGlyph size={18} />
           <span>{t("reply.action")}</span>
         </button>
       )}
-      <button
-        type="button"
-        role="menuitem"
-        onClick={() => {
-          void navigator.clipboard?.writeText(menu.text).then(() => A.toast(t("reply.copied")), () => {});
-          A.changed();
-        }}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="8" y="8" width="11" height="12" rx="3" />
-          <path d="M5 15V7a3 3 0 0 1 3-3h7" />
-        </svg>
+      <button type="button" role="menuitem" onClick={() => (closeMenu(), void copyAndSay(menu.text, said))}>
+        <span class="menu-glyph" dangerouslySetInnerHTML={{ __html: COPY_GLYPH }} />
         <span>{t("reply.copy")}</span>
       </button>
+      {menu.link && (
+        <button type="button" role="menuitem" onClick={() => (closeMenu(), void copyAndSay(menu.link!, said))}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1" />
+            <path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" />
+          </svg>
+          <span>{t("conv.copy.link")}</span>
+        </button>
+      )}
+      {coarse() && (
+        <button type="button" role="menuitem" onClick={() => (closeMenu(), (selecting = forReading(menu.text)), A.changed())}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 6h14M5 12h9M5 18h11" />
+            <path d="M18 14v7" />
+          </svg>
+          <span>{t("conv.select")}</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** 选择文字 / Select text (D254): the message's words on a sheet where the system's own selection
+ *  works, to copy a part; Copy all and Done under them. */
+export function SelectText() {
+  const open = selecting !== undefined;
+  useEffect(() => {
+    if (!open) return;
+    const key = (e: KeyboardEvent) => e.key === "Escape" && ((selecting = undefined), A.changed());
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [open]);
+  if (selecting === undefined) return null;
+  const text = selecting;
+  const close = () => ((selecting = undefined), A.changed());
+  return (
+    <div class="select-text" role="dialog" aria-modal="true" aria-label={t("conv.select")}>
+      <div class="scrim" onClick={close} />
+      <div class="select-card">
+        <div class="select-words">{text}</div>
+        <div class="btns">
+          <button type="button" class="btn secondary" onClick={() => void copyAndSay(text, (ok) => (A.toast(t(ok ? "conv.copied" : "conv.copy.failed")), ok && close()))}>
+            {t("conv.select.all")}
+          </button>
+          <button type="button" class="btn primary" onClick={close}>
+            {t("conv.select.done")}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

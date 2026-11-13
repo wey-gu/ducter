@@ -255,6 +255,27 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Mac dark through the **Midnight** theme (D134, roadmap): the phone has Pebble dark, the
       Mac app has one light token set. Trigger: the roadmap slot for themes.
 
+## Keeping your place and copying (D254, research/83)
+
+- [ ] **The long press on real WebKit and Android touch:** the iPhone app in the Simulator and on a
+      device, the Android app on the emulator and the Pixel Fold: the menu always opens (never the
+      system's selection), Select text's sheet selects with the system's handles, Copy works over
+      the home's plain http in both web views (the hidden-field fallback). Shots so far are
+      Chromium with an iPhone UA and synthetic pointer events. Trigger: the next iOS/Android build.
+- [ ] **Find in the conversation** (⌘F on the Mac and the wide web, a magnifier in the phone's
+      header): matches in the loaded conversation, older ones through the home (the Log, and Mem's
+      recall for the gist). Trigger: the author or a user scrolling for something said last week.
+- [ ] **Dynamic Type on the phone:** the web client sets its sizes in px; follow iOS's text size
+      in the iPhone app (`-apple-system-body` as the root size, the scale tokens in rem). Trigger:
+      a reader with a larger text size, or the accessibility pass.
+- [ ] **The time on hover on the Mac** (the web's menu has it; the Mac's right-click menu cannot
+      show a disabled line yet). Trigger: MyGo's menu gains a header item, or a reader asks.
+- [ ] **The draft across devices:** kept per device today; a draft started on the phone and
+      finished on the Mac would need the home to keep it. Trigger: asked for.
+- [ ] **Older messages:** a fresh open replays the last 200 channel events (core `REPLAY_FRESH`);
+      not checked in D254 is whether scrolling to the top of a longer conversation brings older
+      ones, keeping the place. Trigger: a conversation longer than the replay.
+
 ## Long-term memory (`design/memory.md`)
 
 - [ ] **Ask Mem for orchestrator attribution on plugin writes** (D175 (6), principle 17): a task's

@@ -107,7 +107,7 @@ find of a note (D165) on its own. Not a card's buttons, not a status line.
 
 **Gestures.** Phone: swipe the bubble right (it starts at 14pt, arms at 56pt with a light haptic,
 gives way to a scroll on 10pt up, down or left, and never starts within 28pt of the left edge, the
-back gesture); long press opens **回复 / Reply · 复制 / Copy**. Wide screen with a mouse: a round
+back gesture); long press opens the message menu (D254: its time, **回复 / Reply**, **拷贝 / Copy**, see "Keeping your place and copying"). Wide screen with a mouse: a round
 Reply beside the bubble on hover, right click for the same menu, and a selected part of the
 partner's words offers **回复这段 / Reply to this part**. Mac: hover Reply. Esc or the × puts a
 reply away (**不回复了 / Cancel reply**).
@@ -140,6 +140,36 @@ the imprint of the user's reply it answers, pressed into the top of its bubble, 
 
 **Voice.** The partner never repeats the quote and never says the user replied ("关于你回复的那
 条"): it just answers. Its one line for a follow-up names the action, as any follow-up does.
+
+## Keeping your place and copying (D254)
+
+The conversation behaves as every messaging app does, on the Mac and the web alike (research/83;
+the rules are pure functions in `apps/web/src/follow.ts` and `apps/desktop/internal/views/follow.go`).
+
+- **At the end, it follows.** Within 80pt of the end the conversation follows what comes: a new
+  row glides up; a picture loading, a card or a living message growing, the phone's keyboard opening
+  keep the end. Only scrolling *up* lets go. Sending always goes to the end.
+- **Scrolled up, it stays.** Nothing moves under the reader's eye. Over the composer a clay pebble
+  is the way back: round with the drawn arrow when the reader is more than about a screen up
+  (**回到最新 / Jump to latest**); when the partner said something meanwhile, it widens to
+  **{n} 条新消息 / {n} new messages** (the person's own messages never count). A tap lands on the
+  first new message (the end when what came fits on the screen). ⌘↓ goes to the newest.
+- **Opening lands where the news starts.** A quiet accent line **新消息 / New messages** stands
+  before the first of the partner's messages not yet read (not when the person wrote after it, nor
+  where "你不在的时候" already says it). When what came is taller than the screen the conversation
+  opens on that line; else at the end. On the phone the same happens when the app comes back to the
+  front. Sending takes the line away.
+- **Read means seen.** The conversation counts as read only while its end is in view.
+- **The place is kept** while On hand or a task has the phone's screen.
+- **Copy.** Long press (touch) or right click on a message: its time, **回复 / Reply**, **拷贝 /
+  Copy** (the message as written: styling marks out, links as "words (address)", code kept), on a
+  link **拷贝链接 / Copy link**, and on a touch screen **选择文字 / Select text** (the words on a sheet
+  where the system's own selection works; **全部拷贝 / Copy all**, **完成 / Done**). With words
+  selected (Mac, wide web) Copy is the selection's. Each code block has its own quiet **拷贝**
+  (**已拷贝** for a moment). A copy says **已拷贝 / Copied** with a light tap, or that it couldn't.
+- **The draft is kept** when the app is closed, until it is sent.
+- **Not here:** editing a sent message (the partner already acted on it; say a correction), read
+  ticks, reactions. Find in the conversation is in `todo.md`.
 
 ## The living message (principle 7)
 

@@ -113,7 +113,8 @@ func (a *App) rows() []row {
 func (a *App) conversation(c *ui.Context) {
 	t := a.T
 	rows := a.rows()
-	a.noteRows(rows) // D236: for the jump and the answer tab
+	a.noteRows(rows)     // D236: for the jump and the answer tab
+	a.followBefore(rows) // D254: the divider, what is new since the reader left the end
 	a.header(c)
 	a.list.Key = func(i int) any {
 		if i >= len(rows) {
@@ -136,46 +137,54 @@ func (a *App) conversation(c *ui.Context) {
 	// Rhythm (D129): a run of one voice stacks 4 apart, other things the
 	// same voice says sit 12 apart, and 16 where the turn passes.
 	userTurn := func(i int) bool { return rows[i].pending != nil || (rows[i].entry != nil && rows[i].entry.User != nil) }
-	ui.List(c, &a.list, len(rows), func(i int) {
-		e := rows[i].entry
-		var prev *store.Entry
-		if i > 0 {
-			prev = rows[i-1].entry
-		}
-		// A time line before the first message and wherever 15 minutes
-		// passed, as a messaging app has (D104); the away divider is one.
-		when := e != nil && a.timeLineBefore(prev, e)
-		top, join := float32(0), false
-		switch {
-		case i == 0:
-		case userTurn(i) != userTurn(i-1):
-			top = t.S4
-		case !when && a.stacks(rows[i-1], rows[i]):
-			top, join = t.S1, true
-		default:
-			top = t.S3
-		}
-		a.join = join
-		ui.Row(c).Justify(ui.Center).Padding(top, 0, 0, 0).Children(func() {
-			ui.Column(c).Grow(1).MaxWidth(convWidth).Children(func() {
-				if p := rows[i].pending; p != nil {
-					a.pendingRow(c, p)
-					return
-				}
-				if rows[i].presence {
-					a.presenceRow(c)
-					return
-				}
-				if when {
-					a.timeLine(c, a.whenOf(e.Event.TS))
-				}
-				a.entry(c, e)
+	// D254: the list and the pebble over its foot share one pane.
+	ui.Column(c.Key("convpane")).Grow(1).MinHeight(0).Children(func() {
+		ui.List(c, &a.list, len(rows), func(i int) {
+			e := rows[i].entry
+			var prev *store.Entry
+			if i > 0 {
+				prev = rows[i-1].entry
+			}
+			// A time line before the first message and wherever 15 minutes
+			// passed, as a messaging app has (D104); the away divider is one.
+			when := e != nil && a.timeLineBefore(prev, e)
+			top, join := float32(0), false
+			switch {
+			case i == 0:
+			case userTurn(i) != userTurn(i-1):
+				top = t.S4
+			case !when && a.stacks(rows[i-1], rows[i]):
+				top, join = t.S1, true
+			default:
+				top = t.S3
+			}
+			a.join = join
+			ui.Row(c).Justify(ui.Center).Padding(top, 0, 0, 0).Children(func() {
+				ui.Column(c).Grow(1).MaxWidth(convWidth).Children(func() {
+					if p := rows[i].pending; p != nil {
+						a.pendingRow(c, p)
+						return
+					}
+					if rows[i].presence {
+						a.presenceRow(c)
+						return
+					}
+					if e.FirstSeq == a.fl.divider {
+						a.newDivider(c)
+					}
+					if when {
+						a.timeLine(c, a.whenOf(e.Event.TS))
+					}
+					a.entry(c, e)
+				})
 			})
+		}).Grow(1).Padding(t.S5, t.S5, t.S4, t.S5).Children(func() {
+			if len(rows) == 0 && a.S.Welcomed {
+				a.emptyConversation(c)
+			}
 		})
-	}).Grow(1).Padding(t.S5, t.S5, t.S4, t.S5).Children(func() {
-		if len(rows) == 0 && a.S.Welcomed {
-			a.emptyConversation(c)
-		}
+		a.landOpening(rows)
+		a.wayBack(c, rows)
 	})
 	a.firstResultLine(c)
 	// One card at a time under the conversation: Ducter can't run in the
@@ -515,8 +524,13 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 				a.rp.tab = ans // pressed into the top of the bubble below
 			}
 			if strings.TrimSpace(e.AI.Text) != "" || e.AI.Cal == nil {
+				rt := a.rp.next // D254: Reply and Copy on a right click, as the user's bubbles have
 				a.partnerBubble(c, a.takeJoin(), func() {
-					markdown.View(c, autospace(e.AI.Text), &a.md)
+					// The view shares its selection with this box (ShareSelection), whose
+					// menu is Ducter's: Reply, then Copy (the selection, or the message).
+					box := ui.Column(c).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).MinWidth(0)
+					a.replyMenu(c, box, rt, e.AI.Text)
+					box.Children(func() { markdown.View(c, autospace(e.AI.Text), &a.md) })
 				})
 			}
 			// D222: the day glance the partner put under its words.

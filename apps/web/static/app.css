@@ -7988,6 +7988,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   gap: 12px;
+}
 /* D248: the screens a task drives, as people expect them: asleep never woken by looking, a held
    frame under every reconnect, a turn that waits for the step in flight, and what it did. */
 :root {
@@ -8026,4 +8027,223 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 @media (prefers-reduced-motion: reduce) {
   .phone-blanket { animation: none; }
   .phone-stack > img.phone-fresh { animation: none; }
+}
+
+/* ---------- D254: keeping your place, and copying, in the conversation ---------- */
+/* The way back: a clay pebble over the composer. Round with only the drawn arrow when the reader
+   is more than a screen up; with news it grows sideways to say how many, and settles (a spring
+   that overshoots once, as a pebble set down). The arrow is the accent, the words the ink. */
+.conv-dock {
+  z-index: 3;
+}
+.way-back {
+  --fill: var(--surface);
+  position: absolute;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 21px 20px 22px 19px / 20px 22px 19px 21px;
+  background: linear-gradient(var(--fill), var(--fill));
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--sm);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset 0 1.5px 0 var(--hi-secondary), inset 0 0 0 1px var(--rim), 0 1px 0 var(--seam-quiet), 0 var(--ledge) 0 var(--press-quiet), var(--floating);
+  transition: transform var(--t-press) var(--ease), box-shadow var(--t-press) var(--ease);
+  animation: way-in 420ms var(--spring) both;
+}
+.way-back:not(.fresh) {
+  width: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+.way-back:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 1.5px 0 var(--hi-secondary), inset 0 0 0 1px var(--rim), 0 1px 0 var(--seam-quiet), 0 1px 0 var(--press-quiet), var(--drop);
+}
+.way-back svg {
+  flex: none;
+}
+.way-back .n {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  animation: count-in 260ms var(--ease) both;
+}
+.way-back:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+@keyframes way-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes count-in {
+  from {
+    opacity: 0.2;
+    transform: translateY(3px);
+  }
+}
+/* 新消息 / New messages: a quiet centred line, the time lines' voice in the accent ink. */
+.new-divider {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.2px;
+}
+.new-divider::before,
+.new-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+:lang(zh) .new-divider {
+  letter-spacing: 0;
+}
+/* A code block's own Copy, at its top right: quiet until it has copied. */
+.partner .codeblock,
+.tx .codeblock {
+  position: relative;
+  margin: 0 0 0.6em;
+}
+.partner .codeblock:last-child,
+.tx .codeblock:last-child {
+  margin-bottom: 0;
+}
+.partner .codeblock pre,
+.tx .codeblock pre {
+  margin: 0;
+  padding-top: 34px;
+}
+.code-copy {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+.code-copy svg {
+  width: 14px;
+  height: 14px;
+}
+.code-copy:hover,
+.code-copy:focus-visible {
+  background: var(--surface);
+  color: var(--ink);
+}
+.code-copy.done {
+  color: var(--done-ink);
+}
+/* The menu's first line: when it was said, quiet. */
+.reply-menu .menu-when {
+  padding: 4px 12px 6px;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.reply-menu .menu-glyph {
+  display: inline-grid;
+  place-items: center;
+}
+.reply-menu .menu-glyph svg {
+  width: 18px;
+  height: 18px;
+}
+/* On a touch screen a long press is Ducter's menu (D236, D254): the system's selection and its
+   callout stay out of the bubbles, and Select text gives the words a sheet of their own. */
+@media (pointer: coarse) {
+  .scroll .bubble,
+  .scroll .user,
+  .scroll .words,
+  .scroll .imprint {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+.select-text {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+.select-text .scrim {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  background: var(--scrim);
+  animation: fade-in 180ms var(--ease);
+}
+.select-card {
+  z-index: 21;
+  position: absolute;
+  left: max(12px, var(--safe-left));
+  right: max(12px, var(--safe-right));
+  bottom: calc(12px + var(--safe-bottom));
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  max-height: 72vh;
+  padding: var(--s4);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--floating), 0 4px 0 var(--line);
+  animation: way-in 320ms var(--spring) both;
+}
+.select-words {
+  overflow: auto;
+  font-size: var(--body);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+.select-card .btns {
+  display: flex;
+  gap: 10px;
+}
+.select-card .btns .btn {
+  flex: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .way-back,
+  .way-back .n,
+  .select-card,
+  .select-text .scrim {
+    animation: none;
+  }
 }

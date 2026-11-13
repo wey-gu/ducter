@@ -227,6 +227,22 @@ the try pebbles were replaced, see above.) No ticking numbers; nothing moves on 
 own. Waiting is Ducter's sixth pose (on a bench, looking out) with a small cream bubble holding
 the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alpha/wait_*`).
 
+**Keeping your place (D254).** The way back over the composer is a clay pebble, not a pill: the
+secondary button's clay (`--surface` fill, `--hi-secondary` inset highlight, `--rim`, `--seam-quiet`,
+the `--ledge` of `--press-quiet`) with `--floating`, a slightly uneven radius (21/20/22/19 over
+20/22/19/21), the arrow drawn in `--accent` (16, stroke 1.9). Round, 40, when the reader is more
+than about a screen up; with news it widens (12 side padding, gap 6) to "{n} 条新消息" at `--sm` 700
+in `--ink`, tabular figures. Mac: Surface, a 3pt Line ledge and the Raised shadow, ControlMD high.
+Motion: it settles in on `--spring` (420 ms: from 14pt below at 0.86 scale, one overshoot); a new
+count eases up 3pt (260 ms); pressed, it sinks 2pt onto its ledge; a new row glides up from below
+(smooth scroll; MyGo's Smooth follow); none of it under reduced motion. **新消息 / New messages**:
+the time lines' voice (12, centred, 700) in `--accent`, a hairline of the accent at 35% either side.
+A code block's **拷贝** sits at its top right (28 high, `--xs` 700, `--ink-muted`, `--surface` on
+hover, `--done-ink` once copied); the block's text starts 34 down to leave it room. The message
+menu's first line is its time (`--xs`, `--ink-muted`). **选择文字 / Select text** is a sheet over
+`--scrim` (`--r-lg`, `--surface`, the menu's ledge), the words at body size with the system's own
+selection, **全部拷贝** (secondary) and **完成** (primary) under them.
+
 **Motion: character and scene may breathe; status never blinks (D77).**
 
 | Thing | Idle motion |

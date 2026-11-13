@@ -124,6 +124,15 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
   a few replies in a row and each gets its own answer. Tap the small copy to go back to the
   original. On a computer you can also select part of your partner's words and press **Reply to
   this part**.
+- **Copy anything.** Press and hold a message on the phone (right-click it on a computer) and
+  choose **Copy**: you get its words as written, ready to paste. The same menu shows when it was
+  said, and on the phone offers **Copy link** on a link and **Select text** to pick just part of
+  it. Every block of code has its own **Copy** at its top right.
+- **You never lose your place.** While you read back, the conversation stays where you are. If
+  your partner says something meanwhile, a small button above where you type says how many new
+  messages came; tap it to read from the first of them. When you open Ducter after a while, a
+  **New messages** line shows where you left off. On a Mac, ⌘ with the down arrow key goes to the newest message, and
+  what you were typing is still there if you close the app before sending.
 - **On hand** shows every task at a glance and what's waiting for you. Open any task to read
   *What it did*, see its changes, and talk to it directly.
 - **Work beside it.** In a task that changes files or runs a web page, the **Workbench** button

@@ -34,7 +34,8 @@ import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
-import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
+import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
+import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { plainWords } from "@ducter/protocol";
 import { FillButton, forecast, FullTop } from "./board.tsx";
 import { OnHandList, Switcher } from "./onhand.tsx";
@@ -1101,10 +1102,10 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
         {(e.ai.text || !e.ai.cal) && (ans ? (
           <div class="bubble has-reply">
             <Imprint from="you" quote={ans.quote} seq={ans.seq} />
-            <div dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />
+            <div dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />
           </div>
         ) : (
-          <div class="bubble" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />
+          <div class="bubble" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />
         ))}
         <HoverReply k={rk} />
         {/* D222: the day card under the partner's words (or alone in its column). */}
@@ -1370,24 +1371,15 @@ export function Conversation() {
   const menu = useReplyGestures(scroller);
   const wide = useWide();
   let lastUser: number | undefined;
-  const atBottom = useRef(true);
-  useLayoutEffect(() => {
-    const el = scroller.current;
-    if (el && atBottom.current) el.scrollTop = el.scrollHeight;
-  });
+  // D254: keeping your place (conv-follow.tsx): following the end, the way back, the divider.
+  const follow = useFollow(scroller, rows, A.pending.length);
+  const divider = dividerSeq();
   const empty = rows.length === 0 && A.pending.length === 0 && A.S.welcomed;
   return (
     <>
       {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
       <Top />
-      <main
-        class="scroll"
-        ref={scroller}
-        onScroll={(e) => {
-          const el = e.currentTarget as HTMLDivElement;
-          atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-        }}
-      >
+      <main class="scroll" ref={scroller} role="log" aria-label={t("conv.log", A.S.personaName || "Ducter")} onScroll={(e) => follow.onScroll(e.currentTarget as HTMLDivElement)}>
         <div class="spacer" />
         <DropHint on={dropping} />
         {empty && <Hello />}
@@ -1397,6 +1389,7 @@ export function Conversation() {
           if (e.user) lastUser = e.firstSeq;
           return (
             <Fragment key={e.firstSeq}>
+              {e.firstSeq === divider && <NewDivider />}
               {gap && !(e.living && A.livingAway.get(e.firstSeq)) && <div class="when">{when(A.L, e.ev.ts)}</div>}
               <EntryView e={e} chipOwner={chipOwner} livingItems={livingItems} join={!gap && stacks(rows[i - 1], e, chipOwner)} prevUser={prevUser} />
             </Fragment>
@@ -1425,7 +1418,9 @@ export function Conversation() {
         {A.thinking() && <Presence />}
         <NotifyAsk />
       </main>
+      <WayBack f={follow} />
       <ReplyMenu menu={menu} />
+      <SelectText />
       {wide && <PartReply scroller={scroller} />}
       <Composer />
     </>

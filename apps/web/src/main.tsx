@@ -11,6 +11,7 @@ import { forgetGlance, loadGlance, type Glance } from "./glance.ts";
 import { registerWorker } from "./push-client.ts";
 import { inApp, tellApp } from "./native.ts";
 import { startAutospace } from "./autospace.ts";
+import { listenForCodeCopy } from "./conv-copy.ts";
 import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
 import { LiveView } from "./live.tsx";
 import { Board, Rail } from "./board.tsx";
@@ -190,6 +191,8 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
 
 const root = document.getElementById("app")!;
 startAutospace(document.body); // the CJK-Latin gap where the browser lacks text-autospace (D78)
+// D254: every code block's own Copy, wherever a message draws one.
+listenForCodeCopy(() => ({ copy: t("reply.copy"), copied: t("conv.copied"), failed: t("conv.copy.failed") }), (s) => A.toast(s));
 
 async function boot(pairing?: PairView) {
   if (pairing) {

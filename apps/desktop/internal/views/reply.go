@@ -359,17 +359,20 @@ func (a *App) replyButton(c *ui.Context, r *replyTo) ui.Element {
 	return b
 }
 
-// replyMenu is right-click on a bubble: Reply, then Copy (the whole message).
+// replyMenu is right-click on a bubble: Reply, then Copy. D254: with words
+// selected in it, Copy is the selection's (the system's own items, Select
+// All with it); else the whole message, as written (copyText).
 func (a *App) replyMenu(c *ui.Context, e ui.Element, r *replyTo, text string) {
-	if r == nil {
-		return
-	}
 	e.ContextMenu(func(m *ui.Menu) {
-		if m.Item(a.L.T("reply.action")).Chosen() {
+		if r != nil && m.Item(a.L.T("reply.action")).Chosen() {
 			a.StartReply(r)
 		}
+		if len(e.SelectedTexts()) > 0 {
+			m.EditItems()
+			return
+		}
 		if m.Item(a.L.T("reply.copy")).Chosen() {
-			c.WriteClipboard(text)
+			c.WriteClipboard(copyText(text))
 			c.Toast(a.L.T("reply.copied"))
 		}
 	})

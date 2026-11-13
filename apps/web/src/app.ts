@@ -14,6 +14,7 @@ import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } 
 import { canFillNow, wideNow } from "./fold.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
+import { keepDraft, readDraft } from "./follow.ts";
 import type { LogEvent, ReplyWant } from "@ducter/protocol";
 
 /** D236: what the composer replies to: the message (a find or a part of it) and how its imprint reads. */
@@ -336,7 +337,16 @@ class AppState {
   viewer?: ViewerState;
   /** D239: the file viewer, when open: a file a task showed, read inside Ducter. */
   fileView?: { ref: MediaRef; from?: DOMRect };
-  draft = "";
+  /** D254: what is typed to the partner survives the app being closed (a phone's web view is
+   *  often let go in the background): kept in this browser until it is sent or cleared. */
+  private draftNow = readDraft();
+  get draft() {
+    return this.draftNow;
+  }
+  set draft(v: string) {
+    this.draftNow = v;
+    keepDraft(v);
+  }
   taskDrafts = new Map<string, string>();
   replyOpen = new Set<string>();
   replyDraft = new Map<string, string>();
@@ -1600,9 +1610,12 @@ class AppState {
   }
 
   /** The conversation, in front and visible, counts as read after READ_AFTER_MS. */
+  /** D254: the reader is scrolled up the conversation (conv-follow.tsx): nothing new is read yet. */
+  convAway = false;
   private scheduleRead() {
     if (this.readTimer) return;
-    const want = () => this.status === "connected" && this.route.name === "conv" && !this.sheet && typeof document === "object" && document.visibilityState === "visible" && this.S.channelSeq > Math.max(this.S.readUpTo, this.readSent);
+    // D254: not while the reader is up the conversation: what came is read when it is seen.
+    const want = () => this.status === "connected" && this.route.name === "conv" && !this.sheet && !this.convAway && typeof document === "object" && document.visibilityState === "visible" && this.S.channelSeq > Math.max(this.S.readUpTo, this.readSent);
     if (!want()) return;
     this.readTimer = setTimeout(() => {
       this.readTimer = undefined;

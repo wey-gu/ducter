@@ -330,7 +330,7 @@ function BlockView({ task, b }: { task: Task; b: Block }) {
     case "voice":
       return (
         <div class="voice">
-          <div class="tx assistant md" dangerouslySetInnerHTML={{ __html: markdown(b.text) }} />
+          <div class="tx assistant md" dangerouslySetInnerHTML={{ __html: markdown(b.text, t("reply.copy")) }} />
           {b.saved && (
             <small class="saved">
               {GLYPHS.flag!()}

@@ -12,9 +12,16 @@
 //     started: it refuses everything else on its own side too;
 //   - the screen comes back in uiautomator's own XML shape, so it is read by the same parser
 //     (screen.ts parseDump), password fields with their text already left out on the phone.
+// D253, the loan's life: a yes is for one loan. Every way a loan ends (Stop anywhere, Android's
+// switch, the chip removed, the phone locked, the phone gone quiet, the task stopped) ends it here
+// and on the phone, says why to the task, and never comes back by itself: after Stop the task never
+// has the phone again, after a lock or a lost phone a new loan is a new card. While a loan is on, the
+// home beats every few seconds; a phone that stops answering is said at once (never a blind 20 s
+// wait) and ends the loan after 15 s, and the app ends it on its own side too (no beat for 15 s,
+// the screen locked). A loan is announced to the task only after a first read works.
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, HandsetMethod, HandsetServerFrame, HandsetState, HandsetView, OnHand, Question } from "@ducter/protocol";
+import type { Bodies, HandsetEnd, HandsetMethod, HandsetServerFrame, HandsetState, HandsetView, OnHand, Question } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { PhoneDevice, Raw } from "../android/device.ts";
 import { parseDump, type Screen } from "../android/screen.ts";
@@ -23,6 +30,8 @@ import type { PhoneDoing } from "../android/tools.ts";
 export const HANDSETS_FILE = "handsets.json";
 /** The app's bridge version this home speaks. */
 export const HANDSET_BRIDGE = 1;
+/** D253: an app that ends a loan by itself (lock, no beat), says why, and refuses a late step. */
+export const HANDSET_BRIDGE_LIFE = 2;
 
 export const HANDSET_STOPPED = "The user stopped you using their phone (停下 / Stop). Don't use it again in this task. Report what you finished and what is left, in one or two lines.";
 /** D247: never the person's phone over adb, a cable or Developer options (the brief says it too). */
@@ -38,10 +47,37 @@ export const HANDSET_SETUP_NO = `The user said not now to turning on Use this ph
 export const HANDSET_MINE_NO = `The user said not now to using their own phone for this task, so you have no phone of theirs. Report blocked in one line saying what you'd do on it. Never do this work on any other phone. Only if it needs none of their apps or accounts, you may ask in that report whether to do it on Ducter's own phone instead (a clean phone with none of their accounts), with waiting as the default; never switch by yourself. ${NO_ADB}`;
 /** D251: work on the person's own phone, and none of theirs can be reached for this task. */
 export const HANDSET_MINE_NONE = `This work is for the user's own phone, and none of theirs can be reached right now (the Ducter app on their Android phone isn't open, or Use this phone isn't on there). Report blocked in one line saying what you'd do on it. Never do it on any other phone. ${NO_ADB}`;
+/** D253: Android's switch for Ducter went off on that phone: like Stop, for the rest of the task. */
+export const HANDSET_SWITCH_OFF = (phone: string) => `Android's switch for Ducter went off on ${phone}, so you can't use it again in this task. Report what you finished and what is left, in one or two lines.`;
+/** D253: 用这台手机 was taken off that phone's card: like Stop, for the rest of the task. */
+export const HANDSET_REMOVED = (phone: string) => `The user took Use this phone off ${phone}, so you can't use it again in this task. Report what you finished and what is left, in one or two lines.`;
+/** D253: locking the phone gives it back; a new loan is a new card. */
+export const HANDSET_LOCKED = (phone: string) =>
+  `The user locked ${phone}, and locking gives it back: your loan of it ended, and nothing more runs on it. If the work still needs the phone, your next phone tool asks them again with one card (then end your turn); otherwise report what you finished and what is left.`;
+/** D253: the phone stopped answering long enough that the loan ended (on both sides). */
+export const HANDSET_LOST = (phone: string, why: string) =>
+  `${phone} stopped answering (${why}), so your loan of it ended and nothing more runs on it. Don't retry: report in one line what's done and what's left, and end your turn. A message arrives when it's back; then your next phone tool asks the user again with one card.`;
+export const HANDSET_BACK = (phone: string) => `${phone} is back. If the work still needs it, your next phone tool asks the user to lend it again (one card); end your turn when it says so.`;
+/** D253: a phone that went quiet mid-loan answers again (the loan held). */
+export const HANDSET_ANSWERS = (phone: string) => `${phone} answers again and is still lent to you. phone_look first to see where things are (a step sent while it was quiet may or may not have happened), then carry on.`;
+/** D253: the one card that asks for the phone is the ask: never a second one from the task. */
+const ONE_ASK = "That card is the only ask: don't ask for the phone yourself, in your report or anywhere else.";
+
 export const HANDSET_BLIND = "It's the user's turn on their phone: they're doing a step themselves (signing in, a code). You can't see or use it until they're done. End your turn now; a message arrives when they are.";
 
 const ACTIVE = new Set(["queued", "working", "needs_you", "blocked"]);
-const CALL_MS = 20_000;
+/** D253: one step's wait (was 20 s); the beat says sooner when the phone has gone quiet. */
+const CALL_MS = 10_000;
+/** D253: while lent, the home beats this often; the app ends a loan with no word for 15 s. */
+const BEAT_MS = 3_000;
+/** D253: no answer for this long: the phone is quiet, and tools say so at once. */
+const QUIET_MS = 6_000;
+/** D253: quiet this long (or its app gone this long): the loan ends, said to the task as lost. */
+const LOST_MS = 15_000;
+const GRACE_MS = 3_000;
+
+/** A call the phone never answered (as against one it answered with no). */
+class Unanswered extends Error {}
 
 /** One socket of the page on that phone (ws.ts holds it). */
 export interface HandsetSocket {
@@ -62,6 +98,11 @@ export interface HandsetsOptions {
   language?(): "zh" | "en" | undefined;
   now?: () => number;
   callMs?: number;
+  /** D253 (tests): the beat, when a phone is quiet, when a quiet or gone phone's loan ends. */
+  beatMs?: number;
+  quietMs?: number;
+  lostMs?: number;
+  graceMs?: number;
 }
 
 export interface Handsets {
@@ -73,8 +114,11 @@ export interface Handsets {
   answer(deviceId: string, r: { id: string; ok: boolean; result?: unknown; error?: string }): void;
   /** The chip: add (needs Android's switch on, from that phone) or remove. */
   set(deviceId: string, on: boolean): { ok: boolean; reason?: "not_android" | "service_off" | "unknown_device" | "old_app" };
-  /** 停下 / Stop: the task that is using the person's phone (any, when from the phone itself). */
-  stop(taskId: string | undefined, phone?: string): Promise<boolean>;
+  /**
+   * 停下 / Stop: the task that is using the person's phone (any, when from the phone itself). D253:
+   * why, when the phone ended it by itself (locked, its switch went off, the home went quiet).
+   */
+  stop(taskId: string | undefined, phone?: string, why?: "stop" | "locked" | "service" | "lost"): Promise<boolean>;
   /** The card's view of 用这台手机 on that phone (undefined: not a phone that has it). */
   view(deviceId: string, platform: string): HandsetView | undefined;
   /** Some phone has it added, so work on a phone app can go anywhere. */
@@ -109,6 +153,7 @@ interface Loan {
   device: string;
   since: number;
   app?: string;
+  beat?: ReturnType<typeof setInterval>;
 }
 
 type Saved = Record<string, { added: boolean }>;
@@ -141,6 +186,10 @@ export function doingLine(d: PhoneDoing): string {
 export function createHandsets(o: HandsetsOptions): Handsets {
   const now = o.now ?? Date.now;
   const callMs = o.callMs ?? CALL_MS;
+  const beatMs = o.beatMs ?? BEAT_MS;
+  const quietMs = o.quietMs ?? QUIET_MS;
+  const lostMs = o.lostMs ?? LOST_MS;
+  const graceMs = o.graceMs ?? GRACE_MS;
   const file = join(o.dataDir, HANDSETS_FILE);
   const read = (): Saved => {
     if (!existsSync(file)) return {};
@@ -160,6 +209,12 @@ export function createHandsets(o: HandsetsOptions): Handsets {
 
   const links = new Map<string, Link>();
   const lastLinked = new Map<string, number>();
+  /** D253: when each phone last answered anything (a call, a beat, a hello). */
+  const heard = new Map<string, number>();
+  /** D253: phones that are quiet now (no answer for quietMs while lent). */
+  const quiet = new Set<string>();
+  /** D253: a phone's app went away mid-loan: the loan ends unless it is back within graceMs. */
+  const graces = new Map<string, ReturnType<typeof setTimeout>>();
   const pending = new Map<string, { resolve(v: unknown): void; reject(e: Error): void; timer: ReturnType<typeof setTimeout>; device: string }>();
   let seq = 0;
   /** A task → the phone it uses (bound at first use, for the task's life). */
@@ -168,10 +223,20 @@ export function createHandsets(o: HandsetsOptions): Handsets {
   const loans = new Map<string, Loan>();
   /** Tasks waiting for the person's yes (their decision id). */
   const asking = new Map<string, string>();
+  /** D253: the person's yes, for one loan: a loan starts only on one, and every end spends it. */
+  const granted = new Set<string>();
   /** Tasks the person said yes to, whose phone wasn't connected yet: started when it is. */
   const toStart = new Set<string>();
+  /** D253: loans being started now (their sessions), so a hello in between doesn't stop them. */
+  const starting = new Set<string>();
   /** Tasks the person stopped (or said no to): their phone tools refuse from then on. */
   const stopped = new Map<string, string>();
+  /** D253: a loan that ended without Stop (locked, lost): said once by the next tool, which then asks again. */
+  const ended = new Map<string, string>();
+  /** D253: tasks whose loan was lost: told when that phone is back. */
+  const lostBack = new Set<string>();
+  /** D253: tasks a tool told the phone was quiet: told when it answers again. */
+  const quietTold = new Set<string>();
   /** Tasks with a step of the person's own pending on the phone (their decision ids). */
   const theirTurn = new Map<string, string>();
   /** D247: tasks waiting for 用这台手机 to be turned on (their card's id; go: the person tapped it). */
@@ -191,22 +256,37 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     return !!l && l.state.bridge >= HANDSET_BRIDGE && !saved[device]?.added && o.deviceName(device) !== undefined;
   };
 
+  /**
+   * D253: what can be known of why a phone doesn't answer, from what its app last said. Unknown is
+   * said as unknown, with the likely causes, never as a guess.
+   */
+  const whyQuiet = (device: string): string => {
+    const l = links.get(device);
+    if (!l) return "the Ducter app on it isn't connected: it was closed, or the phone lost its network";
+    if (l.state.locked) return "it is locked";
+    if (l.state.awake === false) return "its screen is off";
+    if (l.state.limited) return "Android limits Ducter in the background on it; the user can set Ducter's Battery to Unrestricted in App info";
+    return "the Ducter app on it may have been closed or paused by Android, or the phone lost its network";
+  };
+
   const call = <T>(device: string, m: HandsetMethod, a: Record<string, unknown> = {}, ms = callMs): Promise<T> => {
     const l = links.get(device);
-    if (!l) return Promise.reject(new Error(`${name(device)} can't be reached right now: the Ducter app on it isn't open. Tell the user in one line to open Ducter on ${name(device)}, then end your turn.`));
+    if (!l) return Promise.reject(new Unanswered(`${name(device)} can't be reached right now: the Ducter app on it isn't open. Tell the user in one line to open Ducter on ${name(device)}, then end your turn.`));
     const id = `h${++seq}`;
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         pending.delete(id);
-        reject(new Error(`${name(device)} didn't answer in time (its screen may be off, or the app was closed). Try once more; if it still doesn't answer, report it.`));
+        reject(new Unanswered(`${name(device)} didn't answer within ${Math.round(ms / 1000)} s (${whyQuiet(device)}). The step may or may not have happened. Don't retry now: end your turn; a message arrives when it answers again (then phone_look first), or when the loan ends.`));
       }, ms);
       pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer, device });
       try {
-        l.sock.send({ t: "handset_req", id, m, a });
+        // D253: exp, in the home's time: the app refuses a step that arrives after it (a page that
+        // was paused and wakes with old steps queued never runs them).
+        l.sock.send({ t: "handset_req", id, m, a: { ...a, exp: now() + ms } });
       } catch (e) {
         clearTimeout(timer);
         pending.delete(id);
-        reject(e as Error);
+        reject(new Unanswered((e as Error).message));
       }
     });
   };
@@ -218,10 +298,51 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     return l?.taskId === taskId ? l : undefined;
   };
 
-  /** Starts (or refreshes) the loan on the phone: its indicator says whose task, and whose turn. */
+  /** D253: a moot card (the person's turn, or the ask) is closed with no side effects: hold, never forwarded. */
+  const moot = (decisionId: string | undefined) => {
+    if (!decisionId) return;
+    o.log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId, option: "hold", by: "default" } });
+  };
+
+  /** D253: the phone answered (anything): a quiet phone is back, and the tasks told so hear it. */
+  const answered = (device: string) => {
+    heard.set(device, now());
+    if (!quiet.delete(device)) return;
+    const l = loans.get(device);
+    if (l && quietTold.delete(l.taskId)) o.tell?.(l.taskId, HANDSET_ANSWERS(name(device)));
+    changed();
+  };
+
+  /** D253: while lent, a beat every few seconds: the phone's app ends a loan it hears nothing for. */
+  const beat = (l: Loan) => {
+    if (l.beat) clearInterval(l.beat);
+    l.beat = setInterval(() => {
+      if (loans.get(l.device) !== l) return void clearInterval(l.beat);
+      const since = now() - (heard.get(l.device) ?? l.since);
+      if (since > lostMs) return endLoan(l.taskId, "lost", true);
+      if (since > quietMs && !quiet.has(l.device)) quiet.add(l.device), changed();
+      if (!links.has(l.device)) return;
+      call(l.device, "beat", { session: l.taskId }, Math.max(500, Math.min(beatMs, 2_500))).catch((e: Error) => {
+        if (e instanceof Unanswered || loans.get(l.device) !== l) return;
+        // Answered, and the phone doesn't hold this loan: it ended there (an app from before D253
+        // has no beat and says so, inside its loan: that is a yes).
+        if (/isn't lent/.test(e.message)) endLoan(l.taskId, links.get(l.device)?.state.ended?.session === l.taskId ? links.get(l.device)!.state.ended!.why : "lost", false);
+      });
+    }, beatMs);
+    (l.beat as { unref?: () => void }).unref?.();
+  };
+
+  /**
+   * Starts (or refreshes) the loan on the phone: its indicator says whose task, and whose turn.
+   * D253: only on a yes the person gave for it (granted), never after Stop, and announced to the
+   * task only once a first read has worked.
+   */
   const lend = async (taskId: string): Promise<boolean> => {
     const device = bound.get(taskId);
     if (!device) return false;
+    if (stopped.has(taskId)) return false;
+    const refresh = !!loanOf(taskId);
+    if (!refresh && !granted.has(taskId)) return false;
     const card = o.tasks.get(taskId);
     if (!card || !ACTIVE.has(String(card.attention))) return false;
     const other = loans.get(device);
@@ -230,30 +351,78 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       toStart.add(taskId);
       return false;
     }
+    starting.add(taskId);
     try {
-      await call(device, "start", { session: taskId, task: taskTitle(taskId), turn: theirTurn.has(taskId) ? "you" : "agent", ...(o.language?.() ? { lang: o.language() } : {}) });
+      await call(device, "start", { session: taskId, task: taskTitle(taskId), turn: theirTurn.has(taskId) ? "you" : "agent", now: now(), ...(o.language?.() ? { lang: o.language() } : {}) });
+      // The person may have said Stop, or the task stopped, while it started: never a loan they took back.
+      if (stopped.has(taskId) || !bound.has(taskId) || (!refresh && !granted.has(taskId))) {
+        void call(device, "stop", { session: taskId }).catch(() => {});
+        return false;
+      }
+      // A first read works before the task is told it may use the phone.
+      if (!refresh) await call(device, "front", { session: taskId }, Math.min(callMs, 5_000));
     } catch (e) {
       console.warn(`[handset] couldn't start on ${name(device)}:`, (e as Error).message);
-      toStart.add(taskId);
+      if (!refresh) void call(device, "stop", { session: taskId }).catch(() => {});
+      // The yes stands: it starts when the phone is back (its next hello).
+      if (!stopped.has(taskId) && granted.has(taskId)) toStart.add(taskId);
+      return false;
+    } finally {
+      starting.delete(taskId);
+    }
+    if (stopped.has(taskId) || (!refresh && !granted.has(taskId))) {
+      void call(device, "stop", { session: taskId }).catch(() => {});
       return false;
     }
     toStart.delete(taskId);
-    const fresh = !loans.has(device);
-    loans.set(device, { taskId, device, since: now(), ...(other?.app ? { app: other.app } : {}) });
+    answered(device);
+    const was = loans.get(device);
+    const fresh = !was;
+    const loan: Loan = was?.taskId === taskId ? was : { taskId, device, since: now() };
+    loans.set(device, loan);
+    if (fresh) beat(loan);
     changed();
-    if (fresh) o.tell?.(taskId, `You may use ${name(device)} now: the user's own phone, with their own apps, accounts and messages on it. It shows "Ducter 正在用这台手机" with a Stop button while you work. Take only the steps this task needs; anything that sends, pays or deletes still waits for their Go. Start with phone_look.`);
+    if (fresh) o.tell?.(taskId, `You may use ${name(device)} now: the user's own phone, with their own apps, accounts and messages on it. It shows "Ducter 正在用这台手机" with a Stop button while you work; locking the phone gives it back. Take only the steps this task needs; anything that sends, pays or deletes still waits for their Go. Start with phone_look.`);
     return true;
   };
 
-  /** The loan ends (the task stopped, the person stopped it, or the phone let go). */
-  const endLoan = (taskId: string, tellPhone: boolean) => {
+  /**
+   * The loan ends, everywhere, said once (D253). stop / service / removed: the task never has the
+   * phone again; locked / lost: its next phone tool says so once, then asks again with a new card;
+   * done: the task stopped working.
+   */
+  function endLoan(taskId: string, why: HandsetEnd, tellPhone: boolean) {
     const l = loanOf(taskId);
+    const device = l?.device ?? bound.get(taskId);
     toStart.delete(taskId);
-    if (!l) return;
-    loans.delete(l.device);
-    if (tellPhone && links.has(l.device)) void call(l.device, "stop", { session: taskId }).catch(() => {});
-    changed();
-  };
+    granted.delete(taskId);
+    quietTold.delete(taskId);
+    if (l) {
+      if (l.beat) clearInterval(l.beat);
+      loans.delete(l.device);
+      quiet.delete(l.device);
+      if (tellPhone && links.has(l.device)) void call(l.device, "stop", { session: taskId }).catch(() => {});
+    }
+    // Cards that are moot now: the person's own step on it, an ask still open.
+    const turn = theirTurn.get(taskId);
+    theirTurn.delete(taskId);
+    const ask = asking.get(taskId);
+    asking.delete(taskId);
+    if (why !== "done") moot(turn), moot(ask);
+    const phone = device ? name(device) : "the phone";
+    const permanent = why === "stop" ? HANDSET_STOPPED : why === "service" ? HANDSET_SWITCH_OFF(phone) : why === "removed" ? HANDSET_REMOVED(phone) : undefined;
+    if (permanent) {
+      stopped.set(taskId, permanent);
+      ended.delete(taskId);
+      if (l || turn || ask) o.tell?.(taskId, permanent);
+    } else if (l && (why === "locked" || why === "lost")) {
+      const text = why === "locked" ? HANDSET_LOCKED(phone) : HANDSET_LOST(phone, device ? whyQuiet(device) : "it can't be reached");
+      ended.set(taskId, text);
+      if (why === "lost") lostBack.add(taskId);
+      o.tell?.(taskId, text);
+    }
+    if (l) changed();
+  }
 
   const ask = (taskId: string, device: string) => {
     const card = o.tasks.get(taskId);
@@ -294,7 +463,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     }
   };
 
-  /** Before every phone tool: the loan must be this task's. */
+  /** Before every phone tool: the loan must be this task's, and the phone must be answering (D253). */
   const ready = async (taskId: string) => {
     const why = stopped.get(taskId);
     if (why) throw new Error(why);
@@ -303,17 +472,36 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       const s = setups.get(taskId);
       if (!s) {
         askSetup(taskId, device);
-        throw new Error(HANDSET_SETUP_ASKED(name(device)));
+        throw new Error(`${HANDSET_SETUP_ASKED(name(device))} ${ONE_ASK}`);
       }
       throw new Error(HANDSET_SETUP_WAIT(name(device)));
     }
     if (!device || !added(device)) throw new Error("this task doesn't have the user's phone");
-    if (loanOf(taskId)) return;
+    const mineNow = loanOf(taskId);
+    if (mineNow) {
+      // D253: said at once, never a blind wait: a phone that is away, locked or quiet gets nothing.
+      const link = links.get(device);
+      if (!link || quiet.has(device) || now() - (heard.get(device) ?? 0) > quietMs) {
+        quietTold.add(taskId);
+        throw new Unanswered(`${name(device)} isn't answering right now (${whyQuiet(device)}). Nothing was sent. Don't retry now: end your turn; a message arrives when it answers again, or when the loan ends.`);
+      }
+      if (link.state.locked) {
+        endLoan(taskId, "locked", true);
+        throw new Error(HANDSET_LOCKED(name(device)));
+      }
+      return;
+    }
+    // A loan that ended by a lock or a lost phone: said once; the next tool asks again.
+    const was = ended.get(taskId);
+    if (was) {
+      ended.delete(taskId);
+      throw new Error(was);
+    }
     const other = loans.get(device);
     if (other) throw new Error(`${name(device)} is lent to another task ("${taskTitle(other.taskId)}") right now. Wait for it, or report that you need the phone.`);
-    if (asking.has(taskId) || toStart.has(taskId)) throw new Error(`Waiting for the user to let you use ${name(device)}. End your turn now; a message arrives when it's on.`);
+    if (asking.has(taskId) || toStart.has(taskId) || granted.has(taskId)) throw new Error(`Waiting for the user to let you use ${name(device)}: a card is asking them. ${ONE_ASK} End your turn now; a message arrives when it's on.`);
     ask(taskId, device);
-    throw new Error(`Asked the user whether you may use ${name(device)}, their own phone, now. End your turn; a message arrives when it's on (or if they say no).`);
+    throw new Error(`Asked the user whether you may use ${name(device)}, their own phone, now: one card. ${ONE_ASK} End your turn; a message arrives when it's on (or if they say no).`);
   };
 
   // The person's answers, and tasks that stop.
@@ -334,7 +522,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       const r = e.body as Bodies["decision_resolved"];
       for (const [taskId, s] of setups) {
         if (s.decisionId !== r.decisionId) continue;
-        if (r.option === "go") (s.go = true), guide(taskId);
+        if (r.option === "go") (s.go = true), granted.add(taskId), guide(taskId);
         else {
           const no = mine.has(taskId) ? HANDSET_MINE_NO : HANDSET_SETUP_NO;
           setups.delete(taskId), stopped.set(taskId, no), o.tell?.(taskId, no);
@@ -343,7 +531,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       for (const [taskId, id] of asking) {
         if (id !== r.decisionId) continue;
         asking.delete(taskId);
-        if (r.option === "go") void lend(taskId);
+        if (r.option === "go") granted.add(taskId), void lend(taskId);
         else if (mine.has(taskId)) stopped.set(taskId, HANDSET_MINE_NO), o.tell?.(taskId, HANDSET_MINE_NO);
         else stopped.set(taskId, "The user said no to lending you their phone for this task. Carry on without it, or report what you would need it for."), o.tell?.(taskId, "The user said no to lending you their phone for this. Carry on without it, or report in one line what you'd need it for.");
       }
@@ -357,12 +545,14 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     if (e.kind === "task_state") {
       const b = e.body as Bodies["task_state"];
       if (!ACTIVE.has(b.attention)) {
-        endLoan(b.taskId, true);
+        endLoan(b.taskId, "done", true);
         bound.delete(b.taskId);
         asking.delete(b.taskId);
         theirTurn.delete(b.taskId);
         setups.delete(b.taskId);
         mine.delete(b.taskId);
+        ended.delete(b.taskId);
+        lostBack.delete(b.taskId);
       }
     }
   });
@@ -374,17 +564,22 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       return d;
     };
     const noShell = (): Promise<never> => Promise.reject(new Error("not on the user's own phone"));
-    const c = <T>(m: HandsetMethod, a: Record<string, unknown> = {}) => call<T>(dev(), m, { ...a, session: taskId });
+    const c = <T>(m: HandsetMethod, a: Record<string, unknown> = {}, ms?: number) =>
+      call<T>(dev(), m, { ...a, session: taskId }, ms).catch((e: Error) => {
+        // D253: the task is told when it answers again.
+        if (e instanceof Unanswered) quietTold.add(taskId);
+        throw e;
+      });
     return {
       state: () => (loanOf(taskId) ? "running" : "stopped"),
       ensure: () => ready(taskId),
       touch() {},
       hold: () => () => {},
-      stop: async () => endLoan(taskId, true),
+      stop: async () => endLoan(taskId, "done", true),
       adb: noShell as (args: string[]) => Promise<Raw>,
       shell: noShell as (cmd: string[]) => Promise<string>,
       async jpeg() {
-        const r = await c<{ data: string }>("jpeg");
+        const r = await c<{ data: string }>("jpeg", {}, Math.round(callMs * 1.5));
         return new Uint8Array(Buffer.from(r?.data ?? "", "base64"));
       },
       async screen(): Promise<Screen | undefined> {
@@ -421,18 +616,22 @@ export function createHandsets(o: HandsetsOptions): Handsets {
 
   const api: Handsets = {
     hello(deviceId, sock, state) {
-      const before = links.get(deviceId);
       links.set(deviceId, { sock, state });
       lastLinked.set(deviceId, now());
-      // The phone no longer holds a loan the home thought it did (its app restarted, or Stop was
-      // tapped while it was away): that loan ended on the phone.
+      const g = graces.get(deviceId);
+      if (g) clearTimeout(g), graces.delete(deviceId);
+      answered(deviceId);
+      // The phone no longer holds a loan the home thought it did: it ended there (D253: the app
+      // says why; an app from before D253 can't, and that counts as Stop: never revived).
       const l = loans.get(deviceId);
       if (l && state.session !== l.taskId) {
-        loans.delete(deviceId);
-        stopped.set(l.taskId, HANDSET_STOPPED);
-        o.interrupt?.(l.taskId);
-        o.tell?.(l.taskId, HANDSET_STOPPED);
-      }
+        const why: HandsetEnd = state.ended?.session === l.taskId ? state.ended.why : state.bridge >= HANDSET_BRIDGE_LIFE ? "lost" : "stop";
+        if (why === "stop") void o.interrupt?.(l.taskId);
+        endLoan(l.taskId, why, false);
+      } else if (l && state.locked) endLoan(l.taskId, "locked", true);
+      // D253: the phone shows a loan the home doesn't hold (a start that answered too late, a loan
+      // ended here while it was away): it ends there too, so an old yes never comes back.
+      if (state.session && loans.get(deviceId)?.taskId !== state.session && !starting.has(state.session)) void call(deviceId, "stop", { session: state.session }).catch(() => {});
       // Android's switch is on (its only use is this) and the person never took 用这台手机 off here:
       // the phone is added, however the switch got on (in an earlier version, from Settings, with the
       // guide closed). Before, only the switch going on while the guide was open added it, so a phone
@@ -443,11 +642,9 @@ export function createHandsets(o: HandsetsOptions): Handsets {
         guideOnLink.delete(deviceId);
         for (const [taskId, s] of [...setups]) if (s.device === deviceId && s.go) setups.delete(taskId), void lend(taskId);
       }
-      // Android's switch went off on the phone: the chip can't stay on.
-      if (saved[deviceId]?.added && before?.state.service && !state.service) {
-        /* kept added: the card shows it needs the switch again */
-      }
       for (const taskId of [...toStart]) if (bound.get(taskId) === deviceId) void lend(taskId);
+      // D253: a task whose loan was lost hears the phone is back (a new loan is a new card).
+      for (const taskId of [...lostBack]) if (bound.get(taskId) === deviceId && !state.locked) lostBack.delete(taskId), o.tell?.(taskId, HANDSET_BACK(name(deviceId)));
       // D247: a card asked to open the guide here while the app was away.
       if (guideOnLink.has(deviceId)) {
         guideOnLink.delete(deviceId);
@@ -463,7 +660,18 @@ export function createHandsets(o: HandsetsOptions): Handsets {
         if (p.device !== deviceId) continue;
         clearTimeout(p.timer);
         pending.delete(id);
-        p.reject(new Error(`${name(deviceId)} went away mid-step (the Ducter app on it closed or lost its connection). Try again in a moment.`));
+        p.reject(new Unanswered(`${name(deviceId)} went away mid-step (the Ducter app on it closed or lost its connection). The step may or may not have happened. Don't retry now: end your turn; a message arrives when it's back.`));
+      }
+      // D253: lent, and its app gone: the loan ends unless the app is back within a few seconds
+      // (a page reload); the app ends it on its side too once it hears nothing.
+      if (loans.has(deviceId) && !graces.has(deviceId)) {
+        const t = setTimeout(() => {
+          graces.delete(deviceId);
+          const lo = loans.get(deviceId);
+          if (lo && !links.has(deviceId)) endLoan(lo.taskId, "lost", false);
+        }, graceMs);
+        (t as { unref?: () => void }).unref?.();
+        graces.set(deviceId, t);
       }
       changed();
     },
@@ -472,13 +680,15 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       if (!p || p.device !== deviceId) return;
       clearTimeout(p.timer);
       pending.delete(String(r.id));
+      answered(deviceId);
       if (r.ok) p.resolve(r.result ?? null);
       else p.reject(new Error(String(r.error ?? "the phone said no")));
     },
     set(deviceId, on) {
       if (o.deviceName(deviceId) === undefined) return { ok: false, reason: "unknown_device" };
       if (!on) {
-        for (const l of [...loans.values()]) if (l.device === deviceId) void this.stop(l.taskId);
+        // D253: every task that has this phone (lent, or asking for it) never has it again.
+        for (const [taskId, d] of [...bound]) if (d === deviceId) endLoan(taskId, "removed", true);
         // Android's own switch goes off with the chip (the service turns itself off there).
         if (links.has(deviceId)) void call(deviceId, "off").catch(() => {});
         // Kept as not added (not deleted): a switch still on doesn't add it back by itself.
@@ -499,16 +709,16 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       changed();
       return { ok: true };
     },
-    async stop(taskId, phone) {
+    async stop(taskId, phone, why) {
       const ids = taskId ? [taskId] : phone ? [...loans.values()].filter((l) => l.device === phone).map((l) => l.taskId) : [];
       let any = false;
       for (const id of ids) {
-        if (!loanOf(id) && !asking.has(id) && !toStart.has(id)) continue;
+        if (!loanOf(id) && !asking.has(id) && !toStart.has(id) && !granted.has(id)) continue;
         any = true;
-        stopped.set(id, HANDSET_STOPPED);
-        endLoan(id, !phone);
-        await o.interrupt?.(id);
-        o.tell?.(id, HANDSET_STOPPED);
+        const w: HandsetEnd = why ?? "stop";
+        // Stop interrupts the turn (the person said stop); a lock or a lost phone tells it (endLoan).
+        if (w === "stop") await o.interrupt?.(id);
+        endLoan(id, w, !phone);
       }
       return any;
     },
@@ -521,7 +731,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
         able: !!l && l.state.bridge >= HANDSET_BRIDGE,
         ...(l ? { state: { sdk: l.state.sdk, model: l.state.model, service: l.state.service, ...(l.state.restricted !== undefined ? { restricted: l.state.restricted } : {}), pictures: l.state.pictures } } : {}),
         linked: !!l,
-        ...(loan ? { using: { taskId: loan.taskId, title: taskTitle(loan.taskId), ...(loan.app ? { app: loan.app } : {}) } } : {}),
+        ...(loan ? { using: { taskId: loan.taskId, title: taskTitle(loan.taskId), ...(loan.app ? { app: loan.app } : {}), ...(quiet.has(deviceId) || !l ? { quiet: true } : {}) } } : {}),
       };
     },
     any: () => !!choose(),
@@ -531,10 +741,12 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       return list[0];
     },
     forTask(taskId, wantsPhone, opts) {
+      // D253: a task's phone is bound for its life, whatever happens to it afterwards (taken off its
+      // card, away, said no to): a phone task never moves to another phone by itself. Before, an
+      // "any" task whose phone was removed (or went away while 用这台手机 was being turned on)
+      // fell back to Ducter's phone mid-task.
       const b = bound.get(taskId);
-      // D247: a task waiting for 用这台手机 to be turned on keeps its phone while the person does it.
-      // D251: work for the person's own phone keeps it always (it never falls back to another phone).
-      if (b) return mine.has(taskId) || added(b) || setups.has(taskId) || offerable(b) ? b : undefined;
+      if (b) return b;
       if (!wantsPhone) return undefined;
       const card = o.tasks.get(taskId);
       if (!card || !ACTIVE.has(String(card.attention))) return undefined;
@@ -547,7 +759,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     blind: (taskId) => theirTurn.has(taskId),
     note(taskId, d) {
       const l = loanOf(taskId);
-      if (!l) return;
+      if (!l || quiet.has(l.device)) return;
       // The pill's second line says what it is doing now, in the person's words (never awaited).
       const line = doingLine(d);
       if (line) void call(l.device, "doing", { session: taskId, line }).catch(() => {});
@@ -559,7 +771,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     decorate(on) {
       for (const c of on.tasks) {
         const l = loanOf(c.taskId);
-        if (l) c.handset = { device: l.device, ...(l.app ? { app: l.app } : {}) };
+        if (l) c.handset = { device: l.device, ...(l.app ? { app: l.app } : {}), ...(quiet.has(l.device) || !links.has(l.device) ? { quiet: true } : {}) };
       }
       return on;
     },
@@ -571,6 +783,9 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       offLog();
       for (const p of pending.values()) clearTimeout(p.timer);
       pending.clear();
+      for (const l of loans.values()) if (l.beat) clearInterval(l.beat);
+      for (const g of graces.values()) clearTimeout(g);
+      graces.clear();
     },
   };
   return api;

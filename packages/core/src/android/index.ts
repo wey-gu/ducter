@@ -125,19 +125,31 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
   // D251: the work says which phone. "mine": the person's own, always: added, or their connected
   // Android phone with a card to turn 用这台手机 on, even where Ducter's phone could do it; never
   // Ducter's phone. "ducter": Ducter's phone only. "any" (the legacy true): as D238 and D247.
+  // D253: a task that started on Ducter's phone stays on it for its life (it never moves to the
+  // person's phone because theirs was added mid-task; on hel a task began on the emulator and went on
+  // on the Pixel).
+  const onDucters = new Set<string>();
   const handsetOf = (taskId: string): string | undefined => {
     const h = o.handsets?.();
     if (!h) return undefined;
     const which = wantsPhone(taskId);
-    if (!which || which === "ducter") return undefined;
+    if (!which || which === "ducter" || onDucters.has(taskId)) return undefined;
     if (which === "mine") return h.forTask(taskId, true, { mine: true });
     return h.forTask(taskId, true, { offer: !readyOn(computerOf(taskId)) });
   };
   const deviceFor = (taskId: string): PhoneDevice => {
     if (handsetOf(taskId)) return o.handsets!()!.device(taskId);
     if (wantsPhone(taskId) === "mine") return noneOfTheirs;
+    if (wantsPhone(taskId)) onDucters.add(taskId);
     const where = computerOf(taskId);
     return where === "local" ? device : (remoteFor(where)?.device ?? device);
+  };
+  /** D253: which phone, in a few words, at the end of every step's answer. */
+  const whichShort = (taskId: string): string | undefined => {
+    const on = handsetOf(taskId) ? o.handsets!()!.where(taskId) : undefined;
+    if (on) return `on ${on.name}, the user's own phone`;
+    if (wantsPhone(taskId) === "mine") return undefined;
+    return "on Ducter's own phone (an emulator, not the user's)";
   };
   /** D251: what phone_look says first: which phone this is, so a task never takes one for the other. */
   const whichLine = (taskId: string): string | undefined => {
@@ -223,6 +235,7 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
     on: (taskId) => (handsetOf(taskId) ? o.handsets!()!.where(taskId) : undefined),
     blindText: (taskId) => (handsetOf(taskId) ? HANDSET_BLIND : undefined),
     which: whichLine,
+    whichShort,
     evidenceDir: (taskId) => join(o.dataDir, "evidence", taskId),
   });
 
@@ -261,6 +274,7 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
     if (e.kind === "task_state") {
       const b = e.body as Bodies["task_state"];
       if (!ACTIVE.has(b.attention)) {
+        onDucters.delete(b.taskId);
         holds.get(b.taskId)?.();
         holds.delete(b.taskId);
         busy.delete(b.taskId);

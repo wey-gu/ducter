@@ -80,6 +80,7 @@ const EFFECT_WORDS: Record<Effect, string> = {
   call: "makes a call",
   account: "changes the account",
   confirm: "confirms or allows",
+  setting: "changes a system setting",
 };
 
 const s = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));

@@ -136,6 +136,8 @@ export interface CoreOptions {
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
   /** D217: Ducter's phone (用手机); false leaves it out (tests). */
   ownPhone?: false | Partial<Omit<DucterPhoneOptions, "mcp" | "log" | "tasks" | "decisions" | "dataDir">>;
+  /** D253: test seams for the person's own phone's loan (its timings). */
+  handset?: Partial<Pick<import("./handset/index.ts").HandsetsOptions, "callMs" | "beatMs" | "quietMs" | "lostMs" | "graceMs">>;
   /** D235: 用电脑 / Use the computer test seams (a fake cua-driver; false leaves it out). */
   computer?: false | Partial<Omit<ComputerUseOptions, "mcp" | "log" | "tasks" | "dataDir">>;
   /** The machine's platform as Devices sees it (tests: "linux"). */
@@ -501,6 +503,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     interrupt: (taskId) => runner?.interrupt(taskId) ?? Promise.resolve(),
     language: () => { const l = settings.get().language; return l === "zh" || l === "en" ? l : undefined; },
     tell: (taskId, text) => runner?.send(taskId, text, undefined, "user").catch((e) => console.warn(`[core] couldn't tell ${taskId} about the phone:`, (e as Error).message)),
+    ...(opts.handset ?? {}),
   });
   // D217: Ducter's phone (an Android emulator on a Mac), on this computer's card as 用手机.
   const ownPhone =

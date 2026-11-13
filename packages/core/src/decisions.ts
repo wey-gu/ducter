@@ -48,6 +48,9 @@ export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"
   // D228: Go on creating the tunnel in the person's Cloudflare account (the setup task asked it).
   if (r.option === "go" && d.anywhere) return `The user said Go: create the tunnel in their Cloudflare account and point ${d.anywhere.hostname} at this computer. Run the create step again now with --hostname ${d.anywhere.hostname}, then the run step.`;
   if (r.option === "go" && d.fill) return `The user said OK to use ${d.fill.label} on ${d.fill.site}. Call browser_fill again now.`;
+  // D253: the person's own step on a phone: their Done is what they said, not what the task saw.
+  if (r.option === "go" && d.phone?.kind === "user")
+    return `The user says they're done on the phone (${d.question.slice(0, 160)}). That is their word, not something you saw: phone_look first and check it really happened (the right app and screen; for a recording, that it is running or saved) before you go on. If it didn't, say what you see in one line and ask again.`;
   if (r.option === "go") return `User says Go: ${d.goLabel}.`;
   // Hold is not forwarded: the task already ended its turn waiting, and a "pause" turn would
   // only flip it back to working and earn a nudge. The card shows Waiting (Hold).

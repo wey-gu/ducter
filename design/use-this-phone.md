@@ -1,6 +1,6 @@
 # 用这台手机 / Use this phone: a task borrows the person's own phone
 
-Decided in D238 (2026-11-13), the first-time card in D247, which phone in D251; evidence in [research/74](../research/74-own-phone-use.md).
+Decided in D238 (2026-11-13), the first-time card in D247, which phone in D251, the loan's life in D253; evidence in [research/74](../research/74-own-phone-use.md).
 Ducter's own Android phone on a Mac is a different thing: [phone-use.md](phone-use.md) (用手机 / Use
 a phone). Calls are [phone.md](phone.md). Tasks in the person's Mac apps: [computer-use.md](computer-use.md).
 
@@ -23,7 +23,7 @@ in the hand), 惊喜 (it really uses their phone, and they can watch every tap l
 - **The phone's side** (`apps/android`, `Handset.kt`): an Android accessibility service in the
   Ducter app. Switched on once in Android's settings; from then on bound by the system but it
   reads and does nothing outside a **loan** the home started. It answers a fixed set of calls
-  (`HandsetMethod`: state, start, doing, stop, off, screen, jpeg, tap, swipe, key, text, front,
+  (`HandsetMethod`: state, start, doing, stop, off, beat (D253), screen, jpeg, tap, swipe, key, text, front,
   apps, launch, size); every one but state/start/stop/off refuses outside the loan it names.
   - The screen goes back in uiautomator's XML shape (`HandsetTree.kt`), so the home reads it with
     the same parser as Ducter's phone. A password field's text is never sent, only that it is one.
@@ -97,9 +97,44 @@ blocked. The partner sets `needs.phone` for any work on a phone, set up or not.
 | A send, payment, delete… | `phone_ask_go`: the card says **在你的 {phone} 上** and what it taps; one Go, one tap |
 | The person's own step (a sign-in, a code) | `phone_ask_user`: **在你的 {phone} 上自己来，这时它什么都看不到。做完点「好了」。** The pill says **轮到你了**; every tool is blind until **好了 / Done** |
 | The task stops working | the loan ends; the pill goes |
-| **停下 / Stop** from any window, or on the pill | the loan ends, the task's turn is interrupted, it is told, and its phone tools refuse from then on |
-| The phone comes back without the loan (its app restarted, the service went) | the loan is over on the home too, as a Stop |
+| **停下 / Stop** from any window, on the pill or in the notification | the loan ends, the task's turn is interrupted, it is told, and its phone tools refuse from then on |
+| The person locks the phone | **locking gives it back** (D253): the loan ends; a new loan is a new card (§4.1) |
+| Android's switch goes off, or 用这台手机 is removed | as Stop, for the rest of the task |
+| The phone stops answering | its tools say so at once; 15 s later the loan ends as lost (§4.1) |
 | Another task wants the phone | it waits: one loan at a time |
+
+### 4.1 The loan's life (D253)
+
+A **yes is for one loan.** The person's Go on the card starts one loan; every way a loan ends spends
+it, ends it on both sides, is said to the task once with why, and never comes back by itself.
+
+| The loan ends because | On the phone | On the home | The task |
+|---|---|---|---|
+| **停下 / Stop** (any window, the pill, the notification) | pill and notification go at once | ended; a moot card (the person's turn, an open ask) closes as not answered | interrupted, told; never the phone again in this task |
+| **Android's switch goes off**, or **移除 / Remove** | the service ends it (**service**) | ended | told; never again in this task |
+| **The person locks it** (the screen goes off) | the app ends it at once (**locked**) | ended, also from a hello that says locked | told **locking gives it back**; its next tool says so once, then asks again: a new card |
+| **The phone goes quiet** (no answer to the beat for 6 s) | — | **暂时没回应 / isn't answering** on the opened task and the phone's card; every tool says so at once, nothing is sent | told when it answers again: **phone_look first** |
+| **Quiet for 15 s**, or its app gone for 3 s | the app ends it itself after 15 s with no word from the home (**lost**) | ended | told it was lost and why when knowable, told again when the phone is back; the next tool asks again |
+| **The task stops working** | the home ends it | ended | — |
+
+- **The beat.** While lent, the home calls the phone every 3 s; the app ends a loan it has heard
+  nothing about for 15 s. Both sides converge within 15 s whatever broke (a network change, the
+  app killed, a page Android paused), and a phone that comes back still showing an old loan is told
+  to end it.
+- **Never a late step.** Every call carries its deadline in the home's time; the app refuses a tap,
+  swipe, key, text or launch that arrives after it, so a page that wakes with queued steps never
+  runs them after the person has taken the phone back.
+- **Announced only when it works.** The task hears **you may use {phone} now** only after the
+  start and a first read have both answered; a start that answers after Stop, after the task
+  stopped, or after its deadline lends nothing (the home also stops it there).
+- **Why, when it can be known.** The app says whether the screen is on, the phone is locked, and
+  whether Android restricts Ducter in the background; a tool that can't reach it says which, or says
+  it doesn't know with the likely causes, and one next step: end the turn, a message follows.
+- **The screen stays on while lent.** The pill keeps the screen on, so the phone never locks
+  itself while the task thinks; only the person's own lock gives it back.
+- **States kept apart:** whether the task has the person's yes (a loan, or a card asking), whether
+  the phone holds the loan (its pill), whether it is answering now (quiet or not), and whose turn it
+  is. The opened task and the phone's card show the loan and, when quiet, **暂时没回应**.
 
 ## 5. The indicator (research/74 §8.1)
 
@@ -162,3 +197,24 @@ Once the switch is on and the app is back, Android asks once whether Ducter may 
   lent (research/74 §5); the chip says Android's switch is off.
 - **Banking apps that refuse to run beside an accessibility service**: removing the chip turns the
   switch off (research/74 §1).
+- **A task starting Android's screen recorder itself** (D253): the person does it on one card
+  (**phone_ask_user**: quick settings, Screen record, no audio, Start), and the task checks it is
+  recording and, at the end, that the video is there (its name and length in Photos or Files)
+  before it says it was recorded. A recording the app makes itself (MediaProjection, its own consent)
+  is in `todo.md`.
+
+## 9. The gate on the phone's own switches (D253)
+
+In quick settings and Settings, a tap on a switch that cuts the phone off or changes what it shares
+(Wi-Fi, Bluetooth, airplane mode, mobile data, hotspot, location, NFC, VPN, Do not disturb) waits for
+the person's Go like a send (`toggleOf` in `android/gate.ts`): by its name in quick settings (a tile
+flips on one tap), only on the switch itself in Settings (a row of that name only opens its page). A
+tap there at a place with nothing named is refused: only by [number]. On hel a task looking for the
+screen recorder tapped the Wi-Fi tile and turned it on.
+
+## 10. Every step says which phone (D253)
+
+A task's phone is bound at its first phone tool for its life, Ducter's phone as much as the person's:
+it never moves to the other one (on hel a task began on the emulator and went on on the Pixel once
+it was added). Besides `phone_look`'s first line, every step's answer ends with which phone it ran
+on (**on Pixel Fold, the user's own phone** / **on Ducter's own phone (an emulator, not the user's)**).

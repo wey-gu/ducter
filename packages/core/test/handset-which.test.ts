@@ -11,7 +11,7 @@ import type { Bodies } from "@ducter/protocol";
 import { startCore, type Core } from "../src/core.ts";
 import { stubRunner } from "../src/main.ts";
 import { DUCTER_NO_PHONE, MINE_NO_PHONE, noPhoneLine } from "../src/candidates.ts";
-import { HANDSET_MINE_NO, HANDSET_MINE_NONE } from "../src/handset/index.ts";
+import { HANDSET_MINE_NO, HANDSET_MINE_NONE, HANDSET_REMOVED } from "../src/handset/index.ts";
 import { tempDir } from "./helpers.ts";
 
 let td: ReturnType<typeof tempDir>;
@@ -177,6 +177,8 @@ describe("which phone a phone task uses (D251)", () => {
     expect(cardOf("m3")).toMatchObject({ handset: { kind: "use", device: phoneId } });
     core.decisions.decide(cardOf("m3")!.decisionId, "go");
     expect(await until(() => session === "m3")).toBe(true);
+    // D253: the loan is the task's once it is announced (after a first read answered).
+    expect(await until(() => told.some(([t, s]) => t === "m3" && /You may use/.test(s)))).toBe(true);
     const look = await call("m3", "phone_look");
     expect(typeof look === "string" ? look : look.content[0].text).toMatch(/^Phone: Pixel Fold · Ducter, the user's own phone/);
     expect(emulator).toBe(1);
@@ -190,6 +192,32 @@ describe("which phone a phone task uses (D251)", () => {
     expect(cardOf("d1")).toBeUndefined();
     expect(core.handsets.where("d1")).toBeUndefined();
     core.tasks.setState("d1", "done", "parked");
+    p.ws.close();
+  });
+
+  test("D253: a phone task keeps the phone it began on, for its life: never moved to the other one", async () => {
+    const p = await pixel();
+    expect(await until(linked)).toBe(true);
+    // Begun on the Pixel (added): taking 用这台手机 off ends it there, and never moves it to the emulator.
+    openTask("a2", true);
+    expect(await rejection(call("a2", "phone_look"))).toMatch(/Asked the user whether you may use Pixel Fold/);
+    const before = emulator;
+    expect(core.handsets.set(phoneId, false)).toEqual({ ok: true });
+    expect(await rejection(call("a2", "phone_look"))).toBe(HANDSET_REMOVED("Pixel Fold · Ducter"));
+    expect(await rejection(call("a2", "phone_tap", { x: 1, y: 1 }))).toBe(HANDSET_REMOVED("Pixel Fold · Ducter"));
+    expect(emulator).toBe(before);
+    core.tasks.setState("a2", "done", "parked");
+
+    // Begun on Ducter's phone (the Pixel not added): adding the Pixel mid-task doesn't move it there.
+    openTask("a3", true);
+    expect(await rejection(call("a3", "phone_look"))).toMatch(/Ducter's phone quit while starting/);
+    expect(emulator).toBe(before + 1);
+    expect(core.handsets.set(phoneId, true)).toEqual({ ok: true });
+    expect(await rejection(call("a3", "phone_look"))).toMatch(/Ducter's phone quit while starting/);
+    expect(emulator).toBe(before + 2);
+    expect(cardOf("a3")).toBeUndefined();
+    expect(core.handsets.where("a3")).toBeUndefined();
+    core.tasks.setState("a3", "done", "parked");
     p.ws.close();
   });
 });

@@ -4,7 +4,7 @@
 // The ideas follow Pinky's gateway (research/62: commit verbs, app classes, credential fields,
 // the re-check before acting); no code is taken from it.
 
-export type Effect = "pay" | "send" | "post" | "delete" | "buy" | "install" | "call" | "account" | "confirm";
+export type Effect = "pay" | "send" | "post" | "delete" | "buy" | "install" | "call" | "account" | "confirm" | "setting";
 
 /** Words on a button that commit something, by kind. Matched on the whole label, case-folded. */
 const VERBS: [Effect, RegExp][] = [
@@ -49,4 +49,28 @@ export interface Allowed {
 /** A tap is the one that was allowed: the same app and label, and the Go is fresh. */
 export function matches(a: Allowed | undefined, at: { app: string; label: string }, now: number): boolean {
   return !!a && a.until >= now && a.app === at.app && a.label.trim().toLowerCase() === at.label.trim().toLowerCase();
+}
+
+/**
+ * D253: the phone's own surfaces where one tap flips a switch: the status bar and quick settings
+ * (System UI) and the Settings app. On hel a task looking for the screen recorder in quick
+ * settings tapped Wi-Fi and turned it on; the phone then stopped answering.
+ */
+export function systemSurface(pkg: string): boolean {
+  return /^(com\.android\.systemui|com\.android\.settings|com\.google\.android\.settings\.intelligence)$/.test(pkg);
+}
+
+/** Switches that cut the phone off, or change what it shares, with one tap (case-folded, whole title). */
+const TOGGLES = /^(wi-?\s?fi|wlan|internet|network|bluetooth|airplane mode|aeroplane mode|flight mode|mobile data|cellular( data)?|data|hotspot|(wi-?fi |mobile )?hotspot|tethering|location|nfc|vpn|do not disturb|无线局域网|无线网络|网络|互联网|蓝牙|飞行模式|移动数据|数据流量|热点|个人热点|位置信息|定位|勿扰|免打扰|nfc)$/i;
+
+/**
+ * A tap on a system switch the work may not mean: it waits for Go like a send (D253). In quick
+ * settings by its name (a tile flips on one tap); in Settings only on a switch (a row of that name
+ * only opens its page).
+ */
+export function toggleOf(pkg: string, label: string, isSwitch = false): Effect | undefined {
+  if (!systemSurface(pkg)) return undefined;
+  if (pkg !== "com.android.systemui" && !isSwitch) return undefined;
+  const l = label.split(" · ")[0]!.trim().replace(/\u2011/g, "-");
+  return TOGGLES.test(l) ? "setting" : undefined;
 }

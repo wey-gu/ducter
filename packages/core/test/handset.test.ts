@@ -189,7 +189,7 @@ describe("用这台手机 / Use this phone, through the real core", () => {
     core.decisions.decide(ask.decisionId, "go");
     expect(await until(() => app.session() === "t1")).toBe(true);
     expect(app.pill()).toEqual({ task: "回妈妈的消息", turn: "agent" });
-    expect(told.some(([t, s]) => t === "t1" && /You may use Pixel Fold/.test(s))).toBe(true);
+    expect(await until(() => told.some(([t, s]) => t === "t1" && /You may use Pixel Fold/.test(s)))).toBe(true);
 
     const look = String(await call("t1", "phone_look"));
     expect(look).toContain("App in front: com.tencent.mm");
@@ -275,7 +275,7 @@ describe("用这台手机 / Use this phone, through the real core", () => {
     openTask("t2", "看看小红书上的评价");
     await rejection(call("t2", "phone_look"));
     core.decisions.decide(decisions.find((d) => d.taskId === "t2" && d.handset)!.decisionId, "go");
-    expect(await until(() => app.session() === "t2")).toBe(true);
+    expect(await until(() => app.session() === "t2" && told.some(([x, s]) => x === "t2" && /You may use/.test(s)))).toBe(true);
     app.restart(); // the pill's Stop: the phone ended it itself
     p.send({ t: "handset_stop", from: "phone" });
     expect(await p.until((f) => f.t === "handset_stop_result")).toMatchObject({ ok: true });
@@ -290,10 +290,10 @@ describe("用这台手机 / Use this phone, through the real core", () => {
     openTask("t3", "在美团上看看外卖");
     await rejection(call("t3", "phone_look"));
     core.decisions.decide(decisions.find((d) => d.taskId === "t3" && d.handset)!.decisionId, "go");
-    expect(await until(() => app.session() === "t3")).toBe(true);
+    expect(await until(() => app.session() === "t3" && told.some(([x, s]) => x === "t3" && /You may use/.test(s)))).toBe(true);
     p.ws.close();
     await until(async () => !(await clientCard()).handset?.linked);
-    expect(await rejection(call("t3", "phone_look"))).toMatch(/can't be reached right now/);
+    expect(await rejection(call("t3", "phone_look"))).toMatch(/isn.t answering right now \(the Ducter app on it isn.t connected/);
     app.restart();
     p = await pixel();
     await until(async () => !!(await clientCard()).handset?.linked);
@@ -320,7 +320,7 @@ describe("用这台手机 / Use this phone, through the real core", () => {
     openTask("t5", "查一下快递");
     await rejection(call("t5", "phone_look"));
     core.decisions.decide(decisions.find((d) => d.taskId === "t5" && d.handset)!.decisionId, "go");
-    expect(await until(() => app.session() === "t5")).toBe(true);
+    expect(await until(() => app.session() === "t5" && told.some(([x, s]) => x === "t5" && /You may use/.test(s)))).toBe(true);
     core.tasks.setState("t5", "done", "warm");
     expect(await until(() => app.session() === undefined)).toBe(true);
     p.send({ t: "handset_set", on: false });

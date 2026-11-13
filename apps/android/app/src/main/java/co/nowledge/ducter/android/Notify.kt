@@ -99,6 +99,6 @@ object Notify {
 /** 停下 / Stop in the loan's notification: the same as Stop on the pill. */
 class HandsetStopReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
-        if (Handset.session != null) Handset.stopTapped(c) else Notify.loanOver(c)
+        if (Handset.session != null) Handset.stopTapped(c, "stop") else Notify.loanOver(c)
     }
 }

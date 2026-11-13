@@ -71,8 +71,10 @@ export function handsetFrame(f: HandsetServerFrame): void {
 // The app tells the page when its switch, a loan or its pill's 停下 changed.
 if (typeof addEventListener === "function")
   addEventListener("ducterhandset", (e: Event) => {
-    const d = (e as CustomEvent).detail as { state?: HandsetState; stop?: boolean } | undefined;
-    if (d?.stop) A.send({ t: "handset_stop", from: "phone" });
+    const d = (e as CustomEvent).detail as { state?: HandsetState; stop?: boolean; why?: string } | undefined;
+    // D253: the app says why it ended the loan (Stop, the phone locked, its switch went off, the home went quiet).
+    const why = d?.why === "locked" || d?.why === "service" || d?.why === "lost" ? d.why : "stop";
+    if (d?.stop) A.send({ t: "handset_stop", from: "phone", why });
     if (d?.state) took(d.state);
   });
 
@@ -151,6 +153,7 @@ export function HandsetChip({ cl }: { cl: Client }) {
           <div class="dev-site">
             <div class="dev-site-what">
               <div class="small">{t("handset.using", h.using.title)}</div>
+              {h.using.quiet && <div class="small sub" role="status">{t("handset.quiet", name)}</div>}
             </div>
             <Btn kind="secondary" size="sm" label={t("handset.stop")} about={h.using.title} onClick={() => A.send({ t: "handset_stop", taskId: h.using!.taskId })} />
           </div>
@@ -378,7 +381,10 @@ export function HandsetLine({ task }: { task: Task }) {
   const line = t("handset.task", phoneName(hs.device, "phone"));
   return (
     <div class="outcome watch-row">
-      <div class="said">{line}</div>
+      <div class="said">
+        {line}
+        {hs.quiet && <div class="small sub" role="status">{t("handset.quiet", phoneName(hs.device, "phone"))}</div>}
+      </div>
       <Btn kind="secondary" size="sm" label={t("handset.stop")} about={line} onClick={() => A.send({ t: "handset_stop", taskId: task.id })} />
     </div>
   );

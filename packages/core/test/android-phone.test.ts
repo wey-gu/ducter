@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PhoneServerFrame } from "@ducter/protocol";
-import { blockedApp, effectOf } from "../src/android/gate.ts";
+import { blockedApp, effectOf, systemSurface, toggleOf } from "../src/android/gate.ts";
 import { nodeAt, parseDump, screenText } from "../src/android/screen.ts";
 import { downloadBytes, installPhone, licenseFromXml, MAC_ARM64, packagesFor, phoneDirs, readInstalled, sha256, type License, type SdkPackage } from "../src/android/sdk.ts";
 import { createPhoneDevice, inputText } from "../src/android/device.ts";
@@ -50,6 +50,17 @@ describe("the gate at the effect", () => {
   test("banks, wallets and password managers are out of reach", () => {
     for (const p of ["com.eg.android.AlipayGphone", "com.paypal.android.p2pmobile", "com.x8bit.bitwarden", "com.google.android.apps.authenticator2", "com.chase.sig.android.bank"]) expect(blockedApp(p)).toBe(true);
     for (const p of ["com.android.settings", "com.android.vending", "com.xingin.xhs"]) expect(blockedApp(p)).toBe(false);
+  });
+  test("D253: a quick-settings tile that cuts the phone off waits for Go; in Settings only a switch does", () => {
+    // The tile a task tapped on hel looking for the screen recorder (with Android's non-breaking hyphen).
+    expect(toggleOf("com.android.systemui", "Wi\u2011Fi · Networks available")).toBe("setting");
+    for (const l of ["Internet", "Bluetooth · Off", "Airplane mode", "飞行模式", "蓝牙", "移动数据", "Hotspot", "Location"]) expect(toggleOf("com.android.systemui", l)).toBe("setting");
+    for (const l of ["Screen record", "屏幕录制", "Flashlight", "Edit"]) expect(toggleOf("com.android.systemui", l)).toBeUndefined();
+    expect(toggleOf("com.android.settings", "Internet")).toBeUndefined(); // a row: it opens its page
+    expect(toggleOf("com.android.settings", "Bluetooth", true)).toBe("setting"); // its switch
+    expect(toggleOf("com.android.chrome", "Wi-Fi", true)).toBeUndefined();
+    expect(systemSurface("com.android.systemui")).toBe(true);
+    expect(systemSurface("com.tencent.mm")).toBe(false);
   });
 });
 

@@ -48,7 +48,10 @@ class HandsetPill(private val c: Context) {
         if (full) WindowManager.LayoutParams.MATCH_PARENT else WindowManager.LayoutParams.WRAP_CONTENT,
         WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-            (if (touchable) 0 else WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE) or (if (full) WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS else 0),
+            (if (touchable) 0 else WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE) or (if (full) WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS else 0) or
+            // D253: while lent the screen stays on, so the phone never locks itself while the task
+            // thinks; only the person's own lock (the power key) ends the loan.
+            (if (!full) WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON else 0),
         PixelFormat.TRANSLUCENT,
     ).apply {
         gravity = if (full) Gravity.TOP or Gravity.START else Gravity.TOP or Gravity.CENTER_HORIZONTAL

@@ -14,7 +14,7 @@ import type { Bodies, Question } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { CoreMcpHub } from "../mcp.ts";
 import type { PhoneDevice } from "./device.ts";
-import { blockedApp, effectOf, matches, type Allowed, type Effect } from "./gate.ts";
+import { blockedApp, effectOf, matches, systemSurface, toggleOf, type Allowed, type Effect } from "./gate.ts";
 import { nodeAt, screenText, type Screen } from "./screen.ts";
 
 export const PHONE_TOOL_NAMES = ["phone_look", "phone_tap", "phone_type", "phone_swipe", "phone_key", "phone_apps", "phone_open_app", "phone_screenshot", "phone_ask_go", "phone_ask_user"] as const;
@@ -52,6 +52,8 @@ export interface PhoneToolsDeps {
   blindText?(taskId: string): string | undefined;
   /** D251: one line naming which phone this is (the person's own, or Ducter's), first in phone_look. */
   which?(taskId: string): string | undefined;
+  /** D253: which phone in a few words ("on Pixel Fold, the user's own phone"), in every step's answer. */
+  whichShort?(taskId: string): string | undefined;
 }
 
 export interface PhoneTools {
@@ -71,6 +73,7 @@ const EFFECT_WORDS: Record<Effect, string> = {
   call: "makes a call",
   account: "changes the account",
   confirm: "confirms or allows",
+  setting: "changes a phone setting (Wi-Fi, Bluetooth, airplane mode, mobile data, location and the like)",
 };
 
 export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
@@ -81,6 +84,11 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
   const allowed = new Map<string, Allowed>();
   const visible = (ctx: { taskId?: string }) => !!ctx.taskId && d.attached(ctx.taskId);
   const note = (taskId: string, x: PhoneDoing) => d.note?.(taskId, x);
+  /** D253: every step's answer says which phone it ran on. */
+  const on = (taskId: string) => {
+    const w = d.whichShort?.(taskId);
+    return w ? ` (${w})` : "";
+  };
 
   const ready = async (taskId: string) => {
     if (!d.attached(taskId)) throw new Error("this task doesn't have Ducter's phone");
@@ -148,7 +156,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
     async (args, taskId) => {
       const device = dev(taskId);
       const s = screens.get(taskId);
-      let x: number, y: number, label = "";
+      let x: number, y: number, label = "", sw = false, pkg = "";
       if (args.ref != null) {
         const n = nodeAt(s, args.ref);
         // The re-check before acting: the button must still be there, with the same words.
@@ -158,15 +166,23 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
         if (now2) screens.set(taskId, now2);
         ({ x, y } = same ?? n);
         label = n.label;
+        sw = n.checked !== undefined;
+        pkg = n.pkg;
       } else {
         if (typeof args.x !== "number" || typeof args.y !== "number") throw new Error("pass ref (a [number] from phone_look), or x and y");
         ({ x, y } = args);
         const near = s?.nodes.find((m) => x >= m.bounds[0] && x <= m.bounds[2] && y >= m.bounds[1] && y <= m.bounds[3]);
         label = near?.label ?? "";
+        sw = near?.checked !== undefined && !!near;
+        pkg = near?.pkg ?? "";
       }
       const app = s?.app ?? (await device.front());
       if (blockedApp(app)) throw new Error("This app holds the user's money or keys: it's theirs alone. Go back, and say so in your report.");
-      const effect = effectOf(label);
+      // D253: in the status bar, quick settings or Settings a tap at a place with nothing named there
+      // could flip a switch the work never meant to (on hel one turned Wi-Fi on): only by [number].
+      // (Quick settings pulled down over an app: its nodes are System UI's while the app stays the one in front.)
+      if (!label && (systemSurface(app) || !!s?.nodes.some((m) => systemSurface(m.pkg)))) throw new Error("This is the phone's quick settings or Settings: tap only by [number] from phone_look here, so it's clear what the tap changes.");
+      const effect = toggleOf(pkg || app, label, sw) ?? effectOf(label);
       if (effect && !matches(allowed.get(taskId), { app, label }, now())) {
         throw new Error(`"${label}" ${EFFECT_WORDS[effect]}: that needs the user's Go first. Call phone_ask_go with what it will do (one plain sentence) and the button's [number], then end your turn. After Go, tap it once.`);
       }
@@ -176,7 +192,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       if (args.long) await device.swipe(x, y, x, y, 700);
       else await device.tap(x, y);
       await Bun.sleep(600);
-      return `Tapped${label ? ` "${label}"` : ` at ${Math.round(x)},${Math.round(y)}`}. Look again before the next step (phone_look).`;
+      return `Tapped${label ? ` "${label}"` : ` at ${Math.round(x)},${Math.round(y)}`}${on(taskId)}. Look again before the next step (phone_look).`;
     },
   );
 
@@ -201,7 +217,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       await device.text(String(args.text ?? ""));
       if (args.submit) await device.key("KEYCODE_ENTER");
       await Bun.sleep(300);
-      return `Typed${args.submit ? " and pressed Enter" : ""}. phone_look to check.`;
+      return `Typed${args.submit ? " and pressed Enter" : ""}${on(taskId)}. phone_look to check.`;
     },
   );
 
@@ -217,7 +233,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       note(taskId, { kind: "swipe" });
       await device.swipe(x1, y1, x2, y2, 350);
       await Bun.sleep(500);
-      return `Swiped ${dir}. phone_look to read it.`;
+      return `Swiped ${dir}${on(taskId)}. phone_look to read it.`;
     },
   );
 
@@ -232,7 +248,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       note(taskId, { kind: "key", label: String(args.key) });
       await dev(taskId).key(k);
       await Bun.sleep(400);
-      return `Pressed ${args.key}.`;
+      return `Pressed ${args.key}${on(taskId)}.`;
     },
   );
 
@@ -251,7 +267,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       note(taskId, { kind: "open", app: pkg });
       await dev(taskId).launch(pkg);
       await Bun.sleep(1200);
-      return `Opened ${pkg}. phone_look to read it.`;
+      return `Opened ${pkg}${on(taskId)}. phone_look to read it.`;
     },
   );
 
@@ -287,13 +303,13 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
     async (args, taskId) => {
       const s = screens.get(taskId);
       const n = nodeAt(s, args.ref);
-      const effect = effectOf(n.label) ?? "confirm";
+      const effect = toggleOf(n.pkg, n.label, n.checked !== undefined) ?? effectOf(n.label) ?? "confirm";
       const what = String(args.what ?? "").trim().slice(0, 200);
       const app = s!.app;
       const name = String(args.app ?? "").trim().slice(0, 40);
       const on = d.on?.(taskId);
       ask(taskId, { id: "phone_go", text: what, blocking: true, default: "Go", reversible: false, phone: { kind: "go", app, ...(name && !/^[a-z][\w]*(\.[\w]+)+$/i.test(name) ? { name } : {}), label: n.label, effect, ...(on ? { on } : {}) } }, what);
-      return `Asked the user's Go for "${n.label}" (${what}). End your turn now. After Go you'll get a message; phone_look, then tap it once.`;
+      return `Asked the user's Go for "${n.label}" (${what}). End your turn now (that card is the only ask: don't ask again in your report). After Go you'll get a message; phone_look, then tap it once.`;
     },
   );
 
@@ -306,7 +322,9 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       const app = typeof args.app === "string" && args.app.trim() ? args.app.trim() : (screens.get(taskId)?.app ?? "");
       const on = d.on?.(taskId);
       ask(taskId, { id: "phone_user", text: what, blocking: true, default: "Done", reversible: false, phone: { kind: "user", ...(app ? { app } : {}), ...(on ? { on } : {}) } }, what);
-      return on ? `Asked the user to do it themselves on ${on.name}. End your turn now; when they're done you'll get a message, then phone_look.` : "Asked the user to do it on the phone. End your turn now; when they're done you'll get a message, then phone_look.";
+      // D253: one card is the ask; their Done is their word, checked with phone_look before going on.
+      const after = "That card is the only ask: don't ask again in your report. When they say done, that is their word, not what you saw: phone_look first and check it really happened before you go on.";
+      return on ? `Asked the user to do it themselves on ${on.name}. End your turn now; a message arrives when they're done. ${after}` : `Asked the user to do it on the phone. End your turn now; a message arrives when they're done. ${after}`;
     },
   );
 

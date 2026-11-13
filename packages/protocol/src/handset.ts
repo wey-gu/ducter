@@ -31,7 +31,30 @@ export interface HandsetState {
   pictures: boolean;
   /** A task is using it now (the session the home started), with its id. */
   session?: string;
+  /**
+   * D253 (bridge 2): the screen is on (Android's interactive state). Absent: an app from before D253.
+   */
+  awake?: boolean;
+  /** D253: the lock screen is up. A loan never runs on a locked phone: locking gives it back. */
+  locked?: boolean;
+  /** D253: Android restricts Ducter in the background on this phone (Battery › Restricted). */
+  limited?: boolean;
+  /**
+   * D253: the last loan this phone ended by itself, and why: the person tapped Stop (on the pill or
+   * the notification), locked the phone, Android's switch went off, or the home went quiet (no word
+   * for 15 s). Said again on every hello, so a home that missed the moment still learns why.
+   */
+  ended?: { session: string; why: HandsetEnd };
 }
+
+/**
+ * D253: why a loan ended. stop: the person's 停下 / Stop (from any window or the phone); service:
+ * Android's switch for Ducter went off; removed: 用这台手机 taken off the phone's card; locked: the
+ * person locked the phone (locking gives it back); lost: the phone stopped answering (its app was
+ * closed or paused, or it lost its network); done: the task stopped working. After stop, service and
+ * removed the task never has the phone again; after locked and lost a new loan is a new card.
+ */
+export type HandsetEnd = "stop" | "service" | "removed" | "locked" | "lost" | "done";
 
 /** On a phone's card (reach.clients): 用这台手机 there, as the home holds it. */
 export interface HandsetView {
@@ -43,12 +66,12 @@ export interface HandsetView {
   state?: Pick<HandsetState, "sdk" | "model" | "service" | "restricted" | "pictures">;
   /** Its app is connected now, so a task can be started on it. */
   linked: boolean;
-  /** A task using it now. */
-  using?: { taskId: string; title: string; app?: string };
+  /** A task using it now. quiet (D253): the phone hasn't answered for a few seconds (nothing reaches it). */
+  using?: { taskId: string; title: string; app?: string; quiet?: boolean };
 }
 
 /** The phone's methods the home may call, a small fixed set (never a shell). */
-export type HandsetMethod = "state" | "start" | "doing" | "stop" | "off" | "screen" | "jpeg" | "tap" | "swipe" | "key" | "text" | "front" | "apps" | "launch" | "size";
+export type HandsetMethod = "state" | "start" | "doing" | "stop" | "off" | "beat" | "screen" | "jpeg" | "tap" | "swipe" | "key" | "text" | "front" | "apps" | "launch" | "size";
 
 /**
  * A decision about the person's own phone: may this task use it now (use)? Or, D247: the task needs
@@ -70,7 +93,7 @@ export type HandsetClientFrame =
   // The page's answer to one handset_req, relayed from its app.
   | { t: "handset_res"; id: string; ok: boolean; result?: unknown; error?: string }
   // 停下 / Stop from any window (taskId), or from the phone's own indicator (the page relays it, from: "phone").
-  | { t: "handset_stop"; taskId?: string; from?: "phone" };
+  | { t: "handset_stop"; taskId?: string; from?: "phone"; why?: "stop" | "locked" | "service" | "lost" };
 
 export type HandsetServerFrame =
   // One call into the phone's app, relayed by its page; answered with handset_res.

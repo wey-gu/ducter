@@ -241,10 +241,22 @@ install an app on a clean phone, and it uses Ducter's own phone, never yours.
   task sees nothing until you tap **Done**.
 - Tap **Stop** on the pill, or **Stop** on the task from any of your devices, and the phone is
   yours again at once.
+- **Locking the phone gives it back.** The screen stays on while a task is using it; press the
+  power key and the task stops using it right away. If it still needs the phone, you get a new card.
+- If the phone stops answering (it lost its network, or Android closed Ducter), the task says so
+  at once instead of waiting, and gives it back after a few seconds. On the task you see
+  **Pixel isn't answering right now**.
+- When a step is yours (signing in, starting a screen recording), the card says exactly what to do.
+  After you tap **Done**, the task checks the phone before it goes on.
+- Switches that cut your phone off, like Wi-Fi, Bluetooth or airplane mode, wait for your Go too.
 
 Between tasks it reads nothing. To turn it off, tap **Use this phone** on the phone's card and
 **Remove**: that also turns Ducter's switch off in Android. Keep the Ducter app open (in the
 background is fine) while a task is borrowing the phone.
+
+**Screen recordings** are yours to start and stop: the task asks on a card (Android's **Screen
+record** in quick settings, with audio off), checks that it is recording, and says the video is
+saved only after it has seen it in Photos or Files.
 
 **iPhone:** not available. iOS doesn't let one app use other apps, and the ways around it need
 Xcode and a Mac next to the phone. On an iPhone, tasks use apps on your Mac or Ducter's own phone

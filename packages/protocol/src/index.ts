@@ -575,7 +575,7 @@ export interface TaskCard {
   /** D235: the task is using the person's apps on this computer (its id; app: the one it last used), so it can be stopped. */
   computing?: { device: string; app?: string };
   /** D238: the task is using the person's own phone (its device id; app: the one in front, by id), so it can be stopped. */
-  handset?: { device: string; app?: string };
+  handset?: { device: string; app?: string; quiet?: boolean };
 }
 
 export interface OnHand {

@@ -2,10 +2,14 @@ package co.nowledge.ducter.android
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.app.ActivityManager
 import android.app.AppOpsManager
+import android.app.KeyguardManager
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.Path
 import android.graphics.Rect
@@ -13,6 +17,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.os.SystemClock
 import android.os.Process
 import android.provider.Settings
 import android.util.Base64
@@ -36,9 +42,16 @@ import java.io.ByteArrayOutputStream
  *
  * The page relays the home's calls (handset_req over its own socket) through the app's bridge:
  * MainActivity hands each to [call] and posts the answer back.
+ *
+ * D253, the loan's life on this side: the loan ends here by itself, and says why, when the person
+ * taps Stop, locks the phone (locking gives it back), Android's switch goes off, or the home says
+ * nothing for 15 s (it beats every few seconds while lent); a step that arrives after its deadline
+ * never runs. While lent in the task's turn the pill keeps the screen on, so only the person's own
+ * lock ends it, never the screen timing out while the task thinks.
  */
 object Handset {
-    const val BRIDGE = 1
+    /** 2 (D253): ends a loan by itself and says why; beats; refuses late steps. */
+    const val BRIDGE = 2
 
     @Volatile var service: HandsetService? = null
         internal set
@@ -53,6 +66,13 @@ object Handset {
     @Volatile var returning = false
     /** Tells the page something changed (MainActivity sets it). */
     @Volatile var listener: ((JSONObject) -> Unit)? = null
+    /** D253: the last loan this phone ended by itself, and why (said on every hello). */
+    @Volatile var ended: Pair<String, String>? = null
+        private set
+    /** D253: when the home last said anything about the loan (elapsed ms), and its clock minus ours. */
+    @Volatile private var heard = 0L
+    @Volatile private var skew = 0L
+    @Volatile private var skewKnown = false
 
     private val main = Handler(Looper.getMainLooper())
 
@@ -108,6 +128,11 @@ object Handset {
 
     fun state(c: Context): JSONObject = JSONObject()
         .put("bridge", BRIDGE)
+        // D253: what the home may know of why the phone doesn't answer: its screen, its lock, Android's background limit.
+        .put("awake", (c.getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive)
+        .put("locked", (c.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isKeyguardLocked)
+        .apply { if (Build.VERSION.SDK_INT >= 28) put("limited", (c.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).isBackgroundRestricted) }
+        .apply { ended?.let { (s, why) -> put("ended", JSONObject().put("session", s).put("why", why)) } }
         .put("sdk", Build.VERSION.SDK_INT)
         .put("model", Build.MODEL ?: "")
         .put("service", (service != null && enabled(c)).also { if (it) Store(c).handsetWasOn = true })
@@ -164,19 +189,30 @@ object Handset {
         if (m == "state") return ok(state(c))
         val s = service ?: return no("Android's switch for Ducter is off on this phone: the person turns it on again on this phone's card (用这台手机).")
         val want = a.optString("session")
+        val local = System.currentTimeMillis()
         when (m) {
             "start" -> {
                 if (want.isEmpty()) return no("no session")
                 val other = session
                 if (other != null && other != want) return no("this phone is lent to another task right now")
+                // D253: never on a locked phone (locking gave it back); the person unlocks, and a new card asks.
+                if ((c.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isKeyguardLocked || !(c.getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive) return no("this phone is locked: it can't be lent until the person unlocks it")
+                // A start that waited in a paused page's queue never lends the phone (the person may have
+                // said Stop since). The clocks' difference comes from the first start this app saw.
+                if (skewKnown && HandsetLife.late("tap", a.optLong("exp"), skew, local)) return no("too late: that start came after its deadline")
+                if (!skewKnown && a.optLong("now") > 0) skew = HandsetLife.skew(a.optLong("now"), local).also { skewKnown = true }
+                heard = SystemClock.elapsedRealtime()
+                if (other == null) ended = null
                 session = want
                 task = a.optString("task").take(80)
                 turn = if (a.optString("turn") == "you") "you" else "agent"
                 s.pill.lang = a.optString("lang").takeIf { it == "zh" || it == "en" } ?: ""
                 s.pill.show(task, turn)
                 changed(c)
+                watch(c)
                 return ok(JSONObject().put("session", want))
             }
+            // The home ended it (the task stopped, Stop from another window): no reason to say back.
             "stop" -> {
                 if (session != null && (want.isEmpty() || want == session)) end(c)
                 return ok()
@@ -190,11 +226,35 @@ object Handset {
             }
         }
         if (session == null || want != session) return no("Ducter isn't lent this phone right now")
+        heard = SystemClock.elapsedRealtime()
+        if (m == "beat") return ok()
+        // D253: a step that arrives after its deadline (a paused page's queue) never runs.
+        if (HandsetLife.late(m, a.optLong("exp"), skew, local)) return no("too late: that step came after its deadline, so it didn't run")
         s.act(m, a, ::ok, ::no)
     }
 
+    /**
+     * D253: while lent, every second: the screen went off (the person locked it; Android's
+     * SCREEN_OFF broadcast can come many seconds later, seen on the emulator), or the home said
+     * nothing for 15 s (gone, or this page paused): the loan ends here.
+     */
+    private fun watch(c: Context) {
+        val app = c.applicationContext
+        val pm = app.getSystemService(Context.POWER_SERVICE) as PowerManager
+        main.removeCallbacksAndMessages(WATCH)
+        fun tick() {
+            if (session == null) return
+            if (!pm.isInteractive) return stopTapped(app, "locked")
+            if (HandsetLife.silent(heard, SystemClock.elapsedRealtime())) return stopTapped(app, "lost")
+            main.postAtTime({ tick() }, WATCH, SystemClock.uptimeMillis() + 1_000)
+        }
+        main.postAtTime({ tick() }, WATCH, SystemClock.uptimeMillis() + 1_000)
+    }
+    private val WATCH = Any()
+
     /** The loan ends: the pill goes, nothing is read or done until the next one. */
     fun end(c: Context) {
+        main.removeCallbacksAndMessages(WATCH)
         session = null
         task = ""
         turn = "agent"
@@ -202,10 +262,16 @@ object Handset {
         changed(c)
     }
 
-    /** 停下 on the pill: the loan ends here, and the home is told (the page relays it). */
-    fun stopTapped(c: Context) {
+    /**
+     * The loan ends on this side, and the home is told why (the page relays it): stop (停下 on the
+     * pill or the notification), locked, service (Android's switch went off), lost (the home said
+     * nothing for 15 s). Kept as [ended], so a home that missed the moment reads it in the next hello.
+     */
+    fun stopTapped(c: Context, why: String = "stop") {
+        val s = session ?: return
+        ended = s to (if (why in HandsetLife.WHYS) why else "stop")
         end(c)
-        main.post { listener?.invoke(JSONObject().put("stop", true)) }
+        main.post { listener?.invoke(JSONObject().put("stop", true).put("why", ended?.second ?: "stop")) }
     }
 }
 
@@ -214,10 +280,23 @@ class HandsetService : AccessibilityService() {
     internal lateinit var pill: HandsetPill
     private val main = Handler(Looper.getMainLooper())
 
+    /** D253: the screen going off (the person locked it; the pill keeps it on otherwise) gives the phone back. */
+    private val screenOff = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            if (i.action == Intent.ACTION_SCREEN_OFF && Handset.session != null) Handset.stopTapped(this@HandsetService, "locked")
+            // Unlocked again: the home hears it (a Go given while it was locked starts now).
+            else Handset.changed(this@HandsetService)
+        }
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         pill = HandsetPill(this)
         Handset.service = this
+        try {
+            registerReceiver(screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF).apply { addAction(Intent.ACTION_USER_PRESENT) })
+        } catch (_: Exception) {
+        }
         Handset.changed(this)
         // The guide sent the person here to switch it on: straight back to Ducter (a bound
         // accessibility service may bring its own app to the front).
@@ -247,9 +326,14 @@ class HandsetService : AccessibilityService() {
 
     private fun gone() {
         if (Handset.service !== this) return
+        try {
+            unregisterReceiver(screenOff)
+        } catch (_: Exception) {
+        }
         if (::pill.isInitialized) pill.hide()
         Handset.service = null
-        if (Handset.session != null) Handset.stopTapped(this) else Handset.changed(this)
+        // Android's switch went off (or the service was stopped): like Stop, said as such.
+        if (Handset.session != null) Handset.stopTapped(this, "service") else Handset.changed(this)
     }
 
     /** The window in front (an app's, or a system dialog over it), never Ducter's own pill. */

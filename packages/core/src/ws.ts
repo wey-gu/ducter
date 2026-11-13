@@ -1150,6 +1150,11 @@ export function createWsHandler(deps: WsDeps) {
           ...(typeof s.restricted === "boolean" ? { restricted: s.restricted } : {}),
           pictures: s.pictures === true,
           ...(typeof s.session === "string" && s.session ? { session: s.session } : {}),
+          // D253: what the phone says of its screen, its background limits, and the loan it ended last.
+          ...(typeof s.awake === "boolean" ? { awake: s.awake } : {}),
+          ...(typeof s.locked === "boolean" ? { locked: s.locked } : {}),
+          ...(typeof s.limited === "boolean" ? { limited: s.limited } : {}),
+          ...(s.ended && typeof s.ended === "object" && typeof s.ended.session === "string" && ["stop", "service", "locked", "lost"].includes(String(s.ended.why)) ? { ended: { session: s.ended.session, why: s.ended.why } } : {}),
         });
         return;
       }
@@ -1168,7 +1173,9 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "handset_stop": {
         const fromPhone = f.from === "phone" ? ws.data.device?.id : undefined;
-        const ok = deps.handsets ? await deps.handsets.stop(typeof f.taskId === "string" && f.taskId ? f.taskId : undefined, fromPhone) : false;
+        // D253: the phone says why it ended a loan by itself (locked, its switch went off, the home went quiet).
+        const why = fromPhone && (f.why === "locked" || f.why === "service" || f.why === "lost" || f.why === "stop") ? f.why : undefined;
+        const ok = deps.handsets ? await deps.handsets.stop(typeof f.taskId === "string" && f.taskId ? f.taskId : undefined, fromPhone, why) : false;
         send(ws, { t: "handset_stop_result", ...(f.taskId ? { taskId: f.taskId } : {}), ok });
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
         return;

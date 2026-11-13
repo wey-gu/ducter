@@ -13,6 +13,7 @@
 //   POST /api/decide                 {decisionId, option, text?}: Go / Hold / Reply from a notification
 //   POST /api/media                  D206: a picture (multipart: file, thumb?, preview?, name?) → {media}
 // The assets are imported as files, so `bun build --compile` embeds them in the binary.
+import { MEDIA_LIMITS } from "@ducter/protocol";
 import type { Decisions } from "./decisions.ts";
 import type { Gate, GateResult } from "./auth.ts";
 import type { Pusher, PushStore, PushSub, Quiet } from "./push.ts";
@@ -249,6 +250,10 @@ export interface WebApiDeps {
   version?: string;
   /** D206: the media store (media.ts); absent in tests that don't need it. */
   media?: import("./media.ts").MediaStore;
+  /** D255: the person's own phones (a recording one of them sends back). */
+  handsets?: import("./handset/index.ts").Handsets;
+  /** A paired device that offers its token over loopback (an SSH tunnel) is still that device. */
+  deviceOf?: (req: Request) => { id: string } | undefined;
 }
 
 const json = (status: number, body: unknown) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
@@ -369,6 +374,19 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
     case "POST /api/media":
       if (!deps.media) return json(404, { error: "not found" });
       return deps.media.upload(req);
+    // D255: a lent phone sends back the recording of its screen it made (the body is the MP4; what
+    // the phone says of it rides in the query). Only that phone, for a recording the home asked for.
+    case "POST /api/handset/recording": {
+      const phone = g.via === "device" ? g.device.id : deps.deviceOf?.(req)?.id;
+      if (!deps.handsets || !phone) return json(404, { error: "not found" });
+      const q = new URL(req.url).searchParams;
+      const len = Number(req.headers.get("content-length") ?? 0);
+      if (len > MEDIA_LIMITS.video) return json(413, { error: "too big" });
+      const bytes = new Uint8Array(await req.arrayBuffer());
+      if (bytes.length > MEDIA_LIMITS.video) return json(413, { error: "too big" });
+      const r = deps.handsets.recording(phone, { id: q.get("id") ?? "", session: q.get("session") ?? "", ...(q.get("name") ? { name: q.get("name")!.slice(0, 120) } : {}), ms: Number(q.get("ms")) || 0, bytes: Number(q.get("bytes")) || 0, partial: q.get("partial") === "1" }, bytes);
+      return r.ok ? json(200, { ok: true }) : json(r.status, { error: r.error });
+    }
     case "POST /api/decide": {
       const b = await body();
       const option = b.option;

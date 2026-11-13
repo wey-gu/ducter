@@ -74,6 +74,8 @@ export interface DucterPhoneOptions {
   handsets?: () => Handsets | undefined;
   /** D248: how long a request for the person's own turn keeps the phone awake (ms; 30 min). */
   askAwakeMs?: number;
+  /** D255: how long phone_open_app waits for the app to be in front (ms; 3 s). */
+  openWaitMs?: number;
   /** Test seams. */
   device?: Partial<PhoneDeviceOptions>;
   installer?: (accepted: { id: string; sha256: string }[], current: License[]) => Promise<InstallResult>;
@@ -233,10 +235,14 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
     },
     acting: (taskId, on) => void (ducters(taskId) ? liveForTask(taskId).acting(taskId, on) : undefined),
     on: (taskId) => (handsetOf(taskId) ? o.handsets!()!.where(taskId) : undefined),
-    blindText: (taskId) => (handsetOf(taskId) ? HANDSET_BLIND : undefined),
+    blindText: (taskId) => (handsetOf(taskId) ? (o.handsets!()!.blindText?.(taskId) ?? HANDSET_BLIND) : undefined),
     which: whichLine,
     whichShort,
     evidenceDir: (taskId) => join(o.dataDir, "evidence", taskId),
+    // D255: the user's own phone records its screen itself (handsets); Ducter's phone has no recorder yet.
+    record: (taskId) => o.handsets!()!.record(taskId),
+    recordStop: (taskId) => o.handsets!()!.recordStop(taskId),
+    ...(o.openWaitMs !== undefined ? { openWaitMs: o.openWaitMs } : {}),
   });
 
   // Answers to the phone's cards: a Go covers that one tap; a task that stopped lets the phone go.

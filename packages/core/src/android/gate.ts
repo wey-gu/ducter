@@ -4,7 +4,7 @@
 // The ideas follow Pinky's gateway (research/62: commit verbs, app classes, credential fields,
 // the re-check before acting); no code is taken from it.
 
-export type Effect = "pay" | "send" | "post" | "delete" | "buy" | "install" | "call" | "account" | "confirm" | "setting";
+export type Effect = "pay" | "send" | "post" | "delete" | "buy" | "install" | "call" | "account" | "confirm" | "setting" | "record";
 
 /** Words on a button that commit something, by kind. Matched on the whole label, case-folded. */
 const VERBS: [Effect, RegExp][] = [
@@ -64,12 +64,30 @@ export function systemSurface(pkg: string): boolean {
 const TOGGLES = /^(wi-?\s?fi|wlan|internet|network|bluetooth|airplane mode|aeroplane mode|flight mode|mobile data|cellular( data)?|data|hotspot|(wi-?fi |mobile )?hotspot|tethering|location|nfc|vpn|do not disturb|无线局域网|无线网络|网络|互联网|蓝牙|飞行模式|移动数据|数据流量|热点|个人热点|位置信息|定位|勿扰|免打扰|nfc)$/i;
 
 /**
+ * D255: System UI's screen-recorder controls (the status bar chip, its Stop, the recording tile): a tap
+ * there starts or stops a recording, so it waits for Go.
+ */
+const RECORDER = /^(stop( recording| sharing| screen recording| screen sharing)?|screen record(ing)?|screen shar(e|ing)|record(ing)? screen|停止(录制|录屏|共享|分享|屏幕录制|共享屏幕)?|屏幕录制|屏幕共享|录屏|正在录屏|正在录制|正在共享屏幕)$/i;
+
+/**
+ * D255: Android's own dialog asking whether an app may record or share the screen (MediaProjection):
+ * the person's consent, never a task's tap. Matched on its words, in System UI.
+ */
+const CONSENT = /record or cast|recording or casting|share your screen|start recording\?|录制或投放|开始录制或投放|共享屏幕|分享屏幕|使用 .+ 录制/i;
+export function consentDialog(s: { app: string; nodes: { pkg: string; label: string }[]; lines: string[] } | undefined): boolean {
+  if (!s) return false;
+  const sys = s.app === "com.android.systemui" || s.nodes.some((n) => n.pkg === "com.android.systemui");
+  return sys && [...s.lines, ...s.nodes.map((n) => n.label)].some((t) => CONSENT.test(t));
+}
+
+/**
  * A tap on a system switch the work may not mean: it waits for Go like a send (D253). In quick
  * settings by its name (a tile flips on one tap); in Settings only on a switch (a row of that name
  * only opens its page).
  */
 export function toggleOf(pkg: string, label: string, isSwitch = false): Effect | undefined {
   if (!systemSurface(pkg)) return undefined;
+  if (pkg === "com.android.systemui" && RECORDER.test(label.split(" · ")[0]!.trim())) return "record";
   if (pkg !== "com.android.systemui" && !isSwitch) return undefined;
   const l = label.split(" · ")[0]!.trim().replace(/\u2011/g, "-");
   return TOGGLES.test(l) ? "setting" : undefined;

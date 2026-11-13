@@ -71,10 +71,11 @@ export function handsetFrame(f: HandsetServerFrame): void {
 // The app tells the page when its switch, a loan or its pill's 停下 changed.
 if (typeof addEventListener === "function")
   addEventListener("ducterhandset", (e: Event) => {
-    const d = (e as CustomEvent).detail as { state?: HandsetState; stop?: boolean; why?: string } | undefined;
+    const d = (e as CustomEvent).detail as { state?: HandsetState; stop?: boolean; why?: string; native?: boolean } | undefined;
     // D253: the app says why it ended the loan (Stop, the phone locked, its switch went off, the home went quiet).
-    const why = d?.why === "locked" || d?.why === "service" || d?.why === "lost" ? d.why : "stop";
-    if (d?.stop) A.send({ t: "handset_stop", from: "phone", why });
+    // D255: network (its own link couldn't reach the home); and when its own link is up it says so there itself.
+    const why = d?.why === "locked" || d?.why === "service" || d?.why === "lost" || d?.why === "network" ? d.why : "stop";
+    if (d?.stop && !d.native) A.send({ t: "handset_stop", from: "phone", why });
     if (d?.state) took(d.state);
   });
 

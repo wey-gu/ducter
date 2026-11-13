@@ -13,4 +13,6 @@
     <color name="line">#E8D9C4</color>
     <color name="line2">#E0C9B0</color>
     <color name="failed_ink">#8A1F3B</color>
+    <!-- D255: recording (the pill's dot). -->
+    <color name="rec">#D8443A</color>
 </resources>

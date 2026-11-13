@@ -1,6 +1,6 @@
 # 用这台手机 / Use this phone: a task borrows the person's own phone
 
-Decided in D238 (2026-11-13), the first-time card in D247, which phone in D251, the loan's life in D253; evidence in [research/74](../research/74-own-phone-use.md).
+Decided in D238 (2026-11-13), the first-time card in D247, which phone in D251, the loan's life in D253, the native link and recording in D255; evidence in [research/74](../research/74-own-phone-use.md).
 Ducter's own Android phone on a Mac is a different thing: [phone-use.md](phone-use.md) (用手机 / Use
 a phone). Calls are [phone.md](phone.md). Tasks in the person's Mac apps: [computer-use.md](computer-use.md).
 
@@ -31,11 +31,24 @@ in the hand), 惊喜 (it really uses their phone, and they can watch every tap l
   - Taps and swipes are `dispatchGesture`; back, home and recents are global actions; Enter is
     the field's own Enter (Android 11+); only those five keys.
   - Pictures of the screen are the accessibility screenshot (Android 11+, no extra consent; a
-    protected window gives none). Never MediaProjection (research/74 §3).
-- **The link** is the app's existing connection: the page in its web view (`handset.tsx`) says
-  what the app can do (`handset_hello`), relays each `handset_req` to the app's bridge and its
-  answer back (`handset_res`), and passes on 停下 from the pill. While a loan is on, the app keeps
-  its renderer important so the page keeps running with Ducter in the background.
+    protected window gives none). Never MediaProjection for pictures (research/74 §3); a recording
+    the task asks for is (§11, D255).
+- **The link, outside a loan,** is the app's existing connection: the page in its web view
+  (`handset.tsx`) says what the app can do (`handset_hello`), relays each `handset_req` to the
+  app's bridge and its answer back (`handset_res`), and passes on 停下 from the pill.
+- **The link, while lent (D255),** is the app's own: the loan's start starts a foreground service
+  (`HandsetLink.kt`, its notification the loan's, **{name} 正在用这台手机** with 停下) that holds its
+  own WebSocket to the home (the device's token from the page's hello, in memory only), says
+  `hello` as `client: "handset"` and `handset_hello` with `link: "native"`, answers the home's calls
+  itself, and reconnects with backoff (0.5 to 8 s, inside the 15 s rule). On hel the loan died a
+  minute after the task opened Chrome because the page carried it, and Android pauses a page (or
+  drops its socket) with Ducter in the background. The home prefers this link and keeps the page's
+  as the fallback (used at once when this one drops). Type `specialUse` on Android 14+ (no other
+  fits: connectedDevice is for Bluetooth, USB or NFC peripherals, dataSync is time-limited on
+  Android 15+), plus `mediaProjection` while recording; Android lets it start from the background
+  because the bound accessibility service keeps Ducter at BFGS (seen on the emulator). Doze never
+  sets in while lent: the pill keeps the screen on. The service goes when the loan ends, after a
+  recording in flight has been sent.
 - **The home's side** (`packages/core/src/handset/`): which phone a phone task uses, the loan, and a
   `PhoneDevice` that speaks to that phone. The phone tools, the gate at the effect, the blocked
   apps and the blind rule are the same code as Ducter's phone (`android/tools.ts`, `gate.ts`).
@@ -114,7 +127,7 @@ it, ends it on both sides, is said to the task once with why, and never comes ba
 | **Android's switch goes off**, or **移除 / Remove** | the service ends it (**service**) | ended | told; never again in this task |
 | **The person locks it** (the screen goes off) | the app ends it at once (**locked**) | ended, also from a hello that says locked | told **locking gives it back**; its next tool says so once, then asks again: a new card |
 | **The phone goes quiet** (no answer to the beat for 6 s) | — | **暂时没回应 / isn't answering** on the opened task and the phone's card; every tool says so at once, nothing is sent | told when it answers again: **phone_look first** |
-| **Quiet for 15 s**, or its app gone for 3 s | the app ends it itself after 15 s with no word from the home (**lost**) | ended | told it was lost and why when knowable, told again when the phone is back; the next tool asks again |
+| **Quiet for 15 s**, or its page gone for 3 s with no link of its own (D255: its own link gone falls back to the page, else the 15 s rule) | the app ends it itself after 15 s with no word from the home (**lost**, or **network** when its own link was down) | ended | told it was lost and why (D255: as precisely as known), told again when the phone is back (only on a later hello that answers); the next tool asks again |
 | **The task stops working** | the home ends it | ended | — |
 
 - **The beat.** While lent, the home calls the phone every 3 s; the app ends a loan it has heard
@@ -130,6 +143,16 @@ it, ends it on both sides, is said to the task once with why, and never comes ba
 - **Why, when it can be known.** The app says whether the screen is on, the phone is locked, and
   whether Android restricts Ducter in the background; a tool that can't reach it says which, or says
   it doesn't know with the likely causes, and one next step: end the turn, a message follows.
+- **Why it was lost, precisely (D255).** The app says its run (`boot`), its own link's generation
+  (`gen`) and why it ended a loan: **network** (its own link had been up and couldn't reach the home
+  for 15 s), **lost** (no beat), locked, stop, service. The home says the cause in words: the phone's
+  network; Android closed the app (a hello from a new run that holds no loan); the page paused (an
+  app without its own link); the app's connection gone; quiet.
+- **Said once, "back" only when it is (D255).** A loss that a hello reports is said once, as ended
+  with the app answering again now, and no "back" follows it (on hel "lost" and "back" came 3 ms
+  apart from one hello). Otherwise "back" is said only on a later hello, after the phone answered a
+  call. The next tool repeats a loss only within 2 minutes; later it just asks with a new card (on hel
+  the next tool, six hours later, said the old loss again and the task gave up).
 - **The screen stays on while lent.** The pill keeps the screen on, so the phone never locks
   itself while the task thinks; only the person's own lock gives it back.
 - **States kept apart:** whether the task has the person's yes (a loan, or a card asking), whether
@@ -197,11 +220,13 @@ Once the switch is on and the app is back, Android asks once whether Ducter may 
   lent (research/74 §5); the chip says Android's switch is off.
 - **Banking apps that refuse to run beside an accessibility service**: removing the chip turns the
   switch off (research/74 §1).
-- **A task starting Android's screen recorder itself** (D253): the person does it on one card
-  (**phone_ask_user**: quick settings, Screen record, no audio, Start), and the task checks it is
-  recording and, at the end, that the video is there (its name and length in Photos or Files)
-  before it says it was recorded. A recording the app makes itself (MediaProjection, its own consent)
-  is in `todo.md`.
+- **Android's own screen recorder for a task** (D255 supersedes D253's card): Ducter records the
+  screen itself (§11); the brief says never to ask the person to start Android's recorder, and the
+  recorder's tile, chip and Stop wait for Go (§9). On hel the recordings the person started stopped
+  at the task's `phone_open_app` both times; not reproduced on the emulator (a single-app recording
+  kept going when Chrome opened), so the cause is the Pixel's recorder or the person's hand, not a
+  tap of ours.
+- **Sound in a recording, and a recorder on Ducter's own phone**: not yet (`todo.md`).
 
 ## 9. The gate on the phone's own switches (D253)
 
@@ -210,7 +235,10 @@ In quick settings and Settings, a tap on a switch that cuts the phone off or cha
 the person's Go like a send (`toggleOf` in `android/gate.ts`): by its name in quick settings (a tile
 flips on one tap), only on the switch itself in Settings (a row of that name only opens its page). A
 tap there at a place with nothing named is refused: only by [number]. On hel a task looking for the
-screen recorder tapped the Wi-Fi tile and turned it on.
+screen recorder tapped the Wi-Fi tile and turned it on. D255: in System UI the screen recorder's
+tile, its status-bar chip and its Stop (recording or sharing) wait for Go the same way (`record`),
+and a tap on Android's dialog asking whether the screen may be recorded or shared is refused: only
+the person answers it.
 
 ## 10. Every step says which phone (D253)
 
@@ -218,3 +246,20 @@ A task's phone is bound at its first phone tool for its life, Ducter's phone as 
 it never moves to the other one (on hel a task began on the emulator and went on on the Pixel once
 it was added). Besides `phone_look`'s first line, every step's answer ends with which phone it ran
 on (**on Pixel Fold, the user's own phone** / **on Ducter's own phone (an emulator, not the user's)**).
+D255: `phone_open_app` says **opened; it is in front** only once that app is in front (within 3 s);
+otherwise it says what is in front and not to take it as opened (on hel it said "Opened
+com.android.chrome" twice while the recorder's preview, then the home screen, was in front).
+
+## 11. Ducter records the screen (D255)
+
+| Moment | What happens |
+|---|---|
+| `phone_record_start` (in a loan) | Android's own dialog opens over the app in front (**要与"Ducter"共享屏幕吗？ · 共享整个屏幕 · 共享屏幕 / Share your screen with Ducter?**, Android's words); on Android 14+ it offers the whole screen only, so opening another app never ends or blanks the recording. The pill says **等你允许录屏 / Waiting for you to allow recording**; the task is blind until the person answers, and its tap on the dialog is refused. No answer in 2 minutes: the dialog closes, said as not allowed |
+| The person allows it | it records: H.264, long edge ≤ 1280, 1.5 Mbit/s, no sound, at most 8 minutes; the pill shows a red dot and **在录屏 / Recording the screen**, the notification too; the task hears **Recording … now** |
+| The person says no | the task hears it once and doesn't ask again by itself |
+| `phone_record_stop` | the app stops it, saves it in the phone's Movies/Ducter (in Photos), and sends it to the home (`POST /api/handset/recording`, that phone's token, a recording the home asked for); the pill says **在把录屏发回 Ducter / Sending the recording to Ducter**. The home checks it (an MP4 by its header, the size the phone said, its length from the movie header) and keeps it in the task's evidence; only then the tool says **saved and checked** with length, size and path for the report's `show` (videos up to 100 MB play in the file viewer) |
+| The loan ends while recording (Stop, a lock, lost) | it stops cleanly; what was recorded is kept, sent and marked partial; the task is told when it is saved |
+| Android stops it (its own Stop in the status bar) | the same, partial |
+
+Never Android's own recorder for a task, and never a tap on the person's consent. Pictures stay the
+accessibility screenshot (§2).

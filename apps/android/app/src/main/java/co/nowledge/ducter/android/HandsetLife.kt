@@ -30,5 +30,11 @@ object HandsetLife {
     fun silent(lastHeard: Long, localNow: Long): Boolean = lastHeard > 0 && localNow - lastHeard > QUIET_END_MS
 
     /** Why a loan ended, as the home reads it (protocol HandsetEnd). */
-    val WHYS = setOf("stop", "locked", "service", "lost")
+    val WHYS = setOf("stop", "locked", "service", "lost", "network")
+
+    /**
+     * D255: a loan this phone heard nothing about for 15 s: the network when the app's own link had
+     * been up and is down now (the phone couldn't reach the home), else a home gone quiet.
+     */
+    fun quietWhy(linkWasUp: Boolean, linkUp: Boolean): String = if (linkWasUp && !linkUp) "network" else "lost"
 }

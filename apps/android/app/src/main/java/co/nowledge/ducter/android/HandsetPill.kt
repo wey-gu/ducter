@@ -60,6 +60,18 @@ class HandsetPill(private val c: Context) {
         else if (Build.VERSION.SDK_INT >= 28) layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
     }
 
+    /** A line in the pill's language. */
+    fun say(id: Int): String = loc.getString(id)
+
+    private var rec: View? = null
+
+    /** D255: Ducter is recording the screen: a small red dot by the face, and the line says so. */
+    fun recording(on: Boolean) {
+        rec?.visibility = if (on) View.VISIBLE else View.GONE
+        if (on) line?.text = loc.getString(R.string.handset_recording)
+        Notify.recording(c, on, loc.getString(R.string.handset_recording))
+    }
+
     private fun words(turn: String): String {
         val name = Store(c).personaName
         return this@HandsetPill.loc.getString(if (turn == "you") R.string.handset_pill_you else R.string.handset_pill, name)
@@ -133,6 +145,13 @@ class HandsetPill(private val c: Context) {
             }
             elevation = Pebble.dp(c, 6).toFloat()
             addView(face, LinearLayout.LayoutParams(Pebble.dp(c, 28), Pebble.dp(c, 28)))
+            // D255: recording: a red dot, the convention every recorder uses.
+            addView(View(c).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Pebble.color(c, R.color.rec)) }
+                visibility = if (Recorder.now?.state == "on") View.VISIBLE else View.GONE
+                contentDescription = this@HandsetPill.loc.getString(R.string.handset_recording)
+                rec = this
+            }, LinearLayout.LayoutParams(Pebble.dp(c, 8), Pebble.dp(c, 8)).apply { leftMargin = d * 6 })
             addView(words, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { leftMargin = d * 8; rightMargin = d * 10 })
             addView(stop, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, Pebble.dp(c, 36)))
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -166,6 +185,7 @@ class HandsetPill(private val c: Context) {
         pill = null
         rings = null
         title = null
+        rec = null
         line = null
         if (p != null) {
             if (still) remove(p) else p.animate().translationY(-Pebble.dp(c, 40).toFloat()).alpha(0f).setDuration(240).withEndAction { remove(p) }.start()

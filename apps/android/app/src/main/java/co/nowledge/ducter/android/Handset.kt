@@ -50,8 +50,18 @@ import java.io.ByteArrayOutputStream
  * lock ends it, never the screen timing out while the task thinks.
  */
 object Handset {
-    /** 2 (D253): ends a loan by itself and says why; beats; refuses late steps. */
-    const val BRIDGE = 2
+    /**
+     * 2 (D253): ends a loan by itself and says why; beats; refuses late steps. 3 (D255): its own link
+     * while lent (a foreground service), says why precisely (network), and records the screen.
+     */
+    const val BRIDGE = 3
+    /** D255: this run of the app's process: a hello from a new one that holds no loan means it was closed or killed. */
+    val boot: String = java.util.UUID.randomUUID().toString().take(8)
+    /** D255: the page's device token, from its hello (memory only, never stored): the app's own link and uploads use it. */
+    @Volatile var token: String? = null
+    fun base(c: Context): String? = Store(c).base
+    /** A line in the pill's language (Ducter's, from the home). */
+    fun words(c: Context, id: Int): String = service?.pill?.say(id) ?: c.getString(id)
 
     @Volatile var service: HandsetService? = null
         internal set
@@ -126,8 +136,13 @@ object Handset {
         }
     }
 
-    fun state(c: Context): JSONObject = JSONObject()
+    fun state(c: Context, link: String = "page"): JSONObject = JSONObject()
         .put("bridge", BRIDGE)
+        // D255: which run of the app, over which link, and its generation; a recording asked for in a loan.
+        .put("boot", boot)
+        .put("link", link)
+        .put("gen", HandsetLinkService.running?.gen ?: 0)
+        .apply { Recorder.now?.let { put("recording", it.json()) } }
         // D253: what the home may know of why the phone doesn't answer: its screen, its lock, Android's background limit.
         .put("awake", (c.getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive)
         .put("locked", (c.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isKeyguardLocked)
@@ -149,7 +164,11 @@ object Handset {
 
     internal fun changed(c: Context) {
         val s = state(c)
-        main.post { listener?.invoke(JSONObject().put("state", s)) }
+        main.post {
+            listener?.invoke(JSONObject().put("state", s))
+            // D255: the app's own link says it too (the page may be paused behind another app).
+            HandsetLinkService.running?.hello()
+        }
     }
 
     /** Opens the right page of Android's settings for a step of the guide. */
@@ -210,6 +229,8 @@ object Handset {
                 s.pill.show(task, turn)
                 changed(c)
                 watch(c)
+                // D255: the loan's own link to the home (a foreground service with the loan's notification).
+                HandsetLinkService.start(c.applicationContext)
                 return ok(JSONObject().put("session", want))
             }
             // The home ended it (the task stopped, Stop from another window): no reason to say back.
@@ -228,6 +249,15 @@ object Handset {
         if (session == null || want != session) return no("Ducter isn't lent this phone right now")
         heard = SystemClock.elapsedRealtime()
         if (m == "beat") return ok()
+        // D255: Ducter records the screen itself: Android's own dialog asks the person first.
+        if (m == "record") {
+            val r = Recorder.ask(s, want, a.optLong("maxMs", 8 * 60_000L))
+            return if (r.has("error")) no(r.getString("error")) else ok(r)
+        }
+        if (m == "record_stop") {
+            val r = Recorder.stop(c.applicationContext, partial = false)
+            return if (r.has("error")) no(r.getString("error")) else ok(r)
+        }
         // D253: a step that arrives after its deadline (a paused page's queue) never runs.
         if (HandsetLife.late(m, a.optLong("exp"), skew, local)) return no("too late: that step came after its deadline, so it didn't run")
         s.act(m, a, ::ok, ::no)
@@ -245,7 +275,9 @@ object Handset {
         fun tick() {
             if (session == null) return
             if (!pm.isInteractive) return stopTapped(app, "locked")
-            if (HandsetLife.silent(heard, SystemClock.elapsedRealtime())) return stopTapped(app, "lost")
+            // D255: said as the network when the app's own link had been up and is down (the phone couldn't
+            // reach the home), else as a home gone quiet.
+            if (HandsetLife.silent(heard, SystemClock.elapsedRealtime())) return stopTapped(app, HandsetLife.quietWhy(HandsetLinkService.running?.wasUp == true, HandsetLinkService.running?.linkUp == true))
             main.postAtTime({ tick() }, WATCH, SystemClock.uptimeMillis() + 1_000)
         }
         main.postAtTime({ tick() }, WATCH, SystemClock.uptimeMillis() + 1_000)
@@ -255,11 +287,15 @@ object Handset {
     /** The loan ends: the pill goes, nothing is read or done until the next one. */
     fun end(c: Context) {
         main.removeCallbacksAndMessages(WATCH)
+        // D255: a recording stops with the loan (what was recorded is kept and sent, marked partial).
+        Recorder.loanEnded(c.applicationContext)
         session = null
         task = ""
         turn = "agent"
         service?.pill?.hide()
         changed(c)
+        // Its own link goes once what is queued (and a recording being sent) is out.
+        main.post { HandsetLinkService.loanOver() }
     }
 
     /**
@@ -270,8 +306,13 @@ object Handset {
     fun stopTapped(c: Context, why: String = "stop") {
         val s = session ?: return
         ended = s to (if (why in HandsetLife.WHYS) why else "stop")
+        val w = ended?.second ?: "stop"
+        // D255: said over the app's own link first (the page may be paused), then the loan ends here.
+        HandsetLinkService.running?.stopped(w)
+        val native = HandsetLinkService.running?.linkUp == true
         end(c)
-        main.post { listener?.invoke(JSONObject().put("stop", true).put("why", ended?.second ?: "stop")) }
+        // The page says it too when the app's own link is down (a page from before D255 knows no "network").
+        main.post { listener?.invoke(JSONObject().put("stop", true).put("why", if (w == "network") "lost" else w).put("native", native)) }
     }
 }
 

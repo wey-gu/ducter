@@ -953,7 +953,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (!g.pass) return g.response;
       const d = deviceRoutes(req, g, srv, workers);
       if (d) return d === "upgraded" ? undefined : d;
-      const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name, version, media });
+      const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name, version, media, handsets, deviceOf: (r) => gate.deviceOf(r) });
       if (api) return api;
       if (url.pathname === "/ws") {
         // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin

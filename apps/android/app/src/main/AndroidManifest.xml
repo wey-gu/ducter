@@ -13,6 +13,13 @@
     <!-- D246: Android 13+ asks before an app shows notifications. Ducter's one today is the loan's
          (用这台手机, with Stop); asked once, when that is turned on (Notify.kt). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- D255: while a task borrows this phone, the app keeps its own link to the home in a foreground
+         service (the loan's notification), and records the screen when a task asks (Android's own
+         dialog asks the person each time). specialUse: no other type fits a phone the home drives
+         while lent; mediaProjection only while recording. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <!-- D238: a task opens apps on this phone by name (phone_apps): the launcher's list only. -->
     <queries>
@@ -81,6 +88,22 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/handset_service" />
         </service>
+
+        <!-- D255: the lent phone's own link to the home (HandsetLink.kt), and the recorder's consent. -->
+        <service
+            android:name=".HandsetLinkService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse|mediaProjection">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="While the person lends this phone to a task (they said yes on a card), the home drives it through Ducter's accessibility service: this keeps that connection, shows the loan with Stop, and ends when the loan does." />
+        </service>
+        <activity
+            android:name=".RecordActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <!-- D246: 停下 / Stop in the loan's notification. -->
         <receiver

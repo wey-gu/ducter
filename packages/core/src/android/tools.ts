@@ -14,10 +14,10 @@ import type { Bodies, Question } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { CoreMcpHub } from "../mcp.ts";
 import type { PhoneDevice } from "./device.ts";
-import { blockedApp, effectOf, matches, systemSurface, toggleOf, type Allowed, type Effect } from "./gate.ts";
+import { blockedApp, consentDialog, effectOf, matches, systemSurface, toggleOf, type Allowed, type Effect } from "./gate.ts";
 import { nodeAt, screenText, type Screen } from "./screen.ts";
 
-export const PHONE_TOOL_NAMES = ["phone_look", "phone_tap", "phone_type", "phone_swipe", "phone_key", "phone_apps", "phone_open_app", "phone_screenshot", "phone_ask_go", "phone_ask_user"] as const;
+export const PHONE_TOOL_NAMES = ["phone_look", "phone_tap", "phone_type", "phone_swipe", "phone_key", "phone_apps", "phone_open_app", "phone_screenshot", "phone_ask_go", "phone_ask_user", "phone_record_start", "phone_record_stop"] as const;
 
 export const PHONE_BLIND =
   "It's the user's turn on Ducter's phone: they're using it themselves right now (signing in, or they took it over). You can't see or use the phone until they're done. End your turn now; a message arrives when they hand it back.";
@@ -54,6 +54,11 @@ export interface PhoneToolsDeps {
   which?(taskId: string): string | undefined;
   /** D253: which phone in a few words ("on Pixel Fold, the user's own phone"), in every step's answer. */
   whichShort?(taskId: string): string | undefined;
+  /** D255: recording the screen of the user's own phone (handsets). */
+  record?(taskId: string): Promise<string>;
+  recordStop?(taskId: string): Promise<string>;
+  /** D255: how long phone_open_app waits for the app to be in front. */
+  openWaitMs?: number;
 }
 
 export interface PhoneTools {
@@ -74,12 +79,14 @@ const EFFECT_WORDS: Record<Effect, string> = {
   account: "changes the account",
   confirm: "confirms or allows",
   setting: "changes a phone setting (Wi-Fi, Bluetooth, airplane mode, mobile data, location and the like)",
+  record: "starts or stops a screen recording (use phone_record_start / phone_record_stop for Ducter's own)",
 };
 
 export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
   const { mcp } = d;
   const dev = (taskId: string): PhoneDevice => d.deviceFor?.(taskId) ?? d.device!;
   const now = d.now ?? Date.now;
+  const openWaitMs = d.openWaitMs ?? 3_000;
   const screens = new Map<string, Screen>();
   const allowed = new Map<string, Allowed>();
   const visible = (ctx: { taskId?: string }) => !!ctx.taskId && d.attached(ctx.taskId);
@@ -178,6 +185,8 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       }
       const app = s?.app ?? (await device.front());
       if (blockedApp(app)) throw new Error("This app holds the user's money or keys: it's theirs alone. Go back, and say so in your report.");
+      // D255: Android asking whether an app may record or share the screen is the user's to answer.
+      if (consentDialog(s)) throw new Error("That is Android asking the user whether the screen may be recorded or shared: only they answer it. End your turn; a message arrives when they have.");
       // D253: in the status bar, quick settings or Settings a tap at a place with nothing named there
       // could flip a switch the work never meant to (on hel one turned Wi-Fi on): only by [number].
       // (Quick settings pulled down over an app: its nodes are System UI's while the app stays the one in front.)
@@ -265,10 +274,43 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       const pkg = String(args.app ?? "").trim();
       if (blockedApp(pkg)) throw new Error("That app holds the user's money or keys: it's theirs alone, and stays closed to tasks.");
       note(taskId, { kind: "open", app: pkg });
-      await dev(taskId).launch(pkg);
-      await Bun.sleep(1200);
-      return `Opened ${pkg}${on(taskId)}. phone_look to read it.`;
+      const device = dev(taskId);
+      await device.launch(pkg);
+      // D255: opened means it is in front. On hel this said "Opened com.android.chrome" twice while the
+      // next read showed another app (the screen recorder's preview, then the home screen).
+      let front = "";
+      const until = now() + openWaitMs;
+      do {
+        await Bun.sleep(400);
+        front = await device.front().catch(() => "");
+        if (front === pkg) return `Opened ${pkg}; it is in front${on(taskId)}. phone_look to read it.`;
+      } while (now() < until);
+      throw new Error(`Asked the phone to open ${pkg}, but ${front ? `${front} is in front` : "no app is in front"} after ${Math.round(openWaitMs / 1000)} s${on(taskId)}. It may still be opening, or something took the front (a dialog, a recorder's preview, the home screen). phone_look to see what is there; don't take it as opened.`);
     },
+  );
+
+  // D255: recording the screen of the user's own phone (the Ducter app records it itself).
+  reg(
+    "phone_record_start",
+    "Start recording the phone's screen as a video (the whole screen, no sound). Only on the user's own phone: Android asks them once on the phone, with its own dialog; end your turn, and a message says when it is recording. Then do the work, and call phone_record_stop.",
+    { type: "object", properties: {} },
+    async (_args, taskId) => {
+      if (!d.record || !d.on?.(taskId)) throw new Error("Recording the screen works on the user's own phone only. On Ducter's phone, keep pictures with phone_screenshot instead.");
+      return d.record(taskId);
+    },
+  );
+  mcp.registerWhen(
+    "task",
+    "phone_record_stop",
+    "Stop the screen recording and bring the video back. It answers once the video is saved and checked (its length and size): only then say it was recorded, and put its path in your report's `show`.",
+    { type: "object", properties: {} },
+    async (_args, ctx) => {
+      const taskId = ctx.taskId!;
+      if (!d.recordStop || !d.on?.(taskId)) throw new Error("No recording here: recording works on the user's own phone only.");
+      // Not behind the loan's checks: a recording the loan's end stopped still comes back.
+      return d.recordStop(taskId);
+    },
+    visible,
   );
 
   reg(

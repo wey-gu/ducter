@@ -357,6 +357,8 @@ window.ducterNative=Object.freeze($info);})();"""
                 m.optString("locale").takeIf { it == "zh" || it == "en" }?.let { store.locale = it }
                 m.optString("personaName").takeIf { it.isNotEmpty() }?.let { store.personaName = it }
                 token = m.optString("token").takeIf { it.isNotEmpty() }
+                // D255: the lent phone's own link and its recording uploads speak as this device (memory only).
+                token?.let { Handset.token = it }
                 helloed = true
                 pushInsets()
                 pushFold()

@@ -160,9 +160,9 @@ export const SWITCHED_TO_CUA =
  * page and own-window rules), the cua-driver sidecar, and per harness a setup that leaves the
  * user's own config out: Claude Code `exclude`, its own built-ins kept but the two that start
  * agents (D240); Codex the clean setup that keeps its own browser and Computer Use plugins (its
- * subagents off, D240); pi its clean flags. DeepSeek Harness keeps
- * its own setup (its clean home is the partner's). Every Codex task without Codex's own browser
- * gets the Computer Use rules (its Computer Use stays on).
+ * subagents off, D240); pi its clean flags (its project's own AGENTS.md kept, D241); DeepSeek
+ * Harness a home of Ducter's for the task, its own tools kept (D241). Every Codex task without
+ * Codex's own browser gets the Computer Use rules (its Computer Use stays on).
  */
 export function withBrowser(base: SessionSpec, sc: BrowserSidecar | undefined, partnerName: string): SessionSpec {
   const spec: SessionSpec = { ...base, mcp: [...base.mcp] };
@@ -171,7 +171,7 @@ export function withBrowser(base: SessionSpec, sc: BrowserSidecar | undefined, p
     spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + sc.brief;
     if (sc.mcp) spec.mcp.push(sc.mcp);
     if (h === "claude-code") Object.assign(spec, sc.claude);
-    if (h === "codex") spec.userConfiguration = "exclude";
+    if (h === "codex" || h === "deepseek-harness") spec.userConfiguration = "exclude";
     if (h === "pi") spec.isolateUserConfig = true;
   }
   if (h === "codex" && sc?.driver !== "native" && sc?.driver !== "ducter") spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + codexComputerBrief(partnerName);

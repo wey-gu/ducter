@@ -12,9 +12,9 @@
 //   - Ducter's MCP endpoint: HTTP with headers, or the stdio bridge (DeepSeek Harness);
 //   - tool denials only where the harness can honor them.
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DSH_KEY_ENV, HARNESS_IDS, type HarnessId } from "@ducter/protocol";
 import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
@@ -28,13 +28,60 @@ import { CODEX_NATIVE_MCP, CODEX_NATIVE_PLUGINS } from "@ducter/protocol/src/nat
 
 export type { HarnessId };
 
-/** Native features that compete with Ducter (it owns waits, wakes, and talking to the human). */
-const DISALLOWED: Partial<Record<HarnessId, string[]>> = {
-  "claude-code": ["EnterPlanMode", "ExitPlanMode", "ScheduleWakeup", "CronCreate", "CronList", "CronDelete", "AskUserQuestion"],
+/**
+ * Native features that compete with Ducter (it owns waits, wakes, talking to the human, starting
+ * work and fanning it out). D241 (research/76 §6): PushNotification (a push to the person's terminal
+ * and phone, around Ducter), RemoteTrigger (scheduled remote agents on the person's claude.ai
+ * account, outliving the task) and Workflow (a scripted fan-out of agents that never see the
+ * brief; ~2.0K tokens a request). Agent stays outside browser places (browser.ts).
+ */
+export const DISALLOWED: Partial<Record<HarnessId, string[]>> = {
+  "claude-code": ["EnterPlanMode", "ExitPlanMode", "ScheduleWakeup", "CronCreate", "CronList", "CronDelete", "AskUserQuestion", "PushNotification", "RemoteTrigger", "Workflow"],
 };
 
 /** pi's own CLI flags that leave the user's pi setup out (pi --help, 1.4.0+). Login and models stay. */
 export const PI_CLEAN_FLAGS = ["--no-skills", "--no-context-files", "--no-prompt-templates", "--no-extensions", "--no-themes"];
+/** pi's own context-file names, in its order: the first one found in a folder is that folder's (pi 1.5 resource-loader). */
+const PI_CONTEXT_FILES = ["AGENTS.override.md", "AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"];
+
+/**
+ * D241: the project's own context files for a pi task under the clean setup, rendered the way pi
+ * renders them (`<project_instructions path=…>`). pi's walk minus the person's: from the task's
+ * folder up to its repository's top (the folder holding `.git`), or the folder alone outside a
+ * repository, outermost first; never pi's global agent dir, nor folders above the repository
+ * (the person's home), which are the person's own. Undefined when there are none.
+ */
+export function piProjectContext(cwd: string, env: Record<string, string | null | undefined> = {}): string | undefined {
+  const agentDir = resolve(env.OAR_PI_AGENT_DIR || process.env.OAR_PI_AGENT_DIR || env.PI_CODING_AGENT_DIR || process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent"));
+  const dirs: string[] = [];
+  let dir = resolve(cwd);
+  for (;;) {
+    dirs.unshift(dir);
+    if (existsSync(join(dir, ".git"))) break;
+    const up = dirname(dir);
+    if (up === dir) return render([resolve(cwd)]);
+    dir = up;
+  }
+  return render(dirs);
+  function render(found: string[]): string | undefined {
+    const files: string[] = [];
+    for (const d of found) {
+      if (d === agentDir) continue;
+      for (const name of PI_CONTEXT_FILES) {
+        const path = join(d, name);
+        try {
+          if (!statSync(path).isFile()) continue;
+          files.push(`<project_instructions path="${path}">\n${readFileSync(path, "utf8").replace(/^﻿/, "")}\n</project_instructions>`);
+          break;
+        } catch {
+          /* not there */
+        }
+      }
+    }
+    return files.length ? ["Project-specific instructions and guidelines:", ...files].join("\n\n") : undefined;
+  }
+}
+
 /**
  * Memory off in a pi task that keeps the user's setup (harness-facts memPlugin "flag"): pi has no
  * per-package switch, so every extension the user installed is off for that session, Mem's among
@@ -103,9 +150,11 @@ function writeDshHome(home: string, layer: Record<string, unknown>[], agentsMd: 
  * (a `mcp_servers={}` override merges, it does not replace: research/34), and the features that
  * load the user's hooks, plugins (their skills and MCP servers), apps and memories are off. The
  * partner also leaves out images and computer use. Goals (Ducter owns when a task's turn ends) and
- * subagents stay off for tasks too (D240): a Claude Code subagent never sees the task's brief
- * (research/76, verified), a Codex one is not checked, and a task under this setup has Codex's
- * browser or Computer Use, whose rules live in that brief.
+ * subagents stay off for tasks too (D240, D241): a Codex subagent inherits the thread's
+ * developerInstructions (codex 0.167.2 source, research/76 §6), but an agent role replaces them,
+ * and roles are the person's own config (`[agents]` in config.toml, `~/.codex/agents/`) that `-c`
+ * can't leave out; a task under this setup has Codex's browser or Computer Use, whose rules live
+ * in that brief. An ordinary task keeps the person's own multi_agent setting.
  *
  * `nativeTools` (tasks, D130): Codex's own browser and Computer Use stay. Plugins stay on as a
  * feature, every plugin the user enabled is turned off by id except the four bundled browser /
@@ -230,12 +279,17 @@ function ooSignedOut(dataDir: string): string {
 
 /** Whether DeepSeek Harness has a DeepSeek key anywhere it reads one (env, Ducter's key file, its own credential file). */
 function dshHasKey(dataDir: string, env: Record<string, string | null | undefined>): boolean {
-  if (harnessKey(dataDir, DSH_KEY_ENV, env)) return true;
+  return !!harnessKey(dataDir, DSH_KEY_ENV, env) || !!dshCredentialKey(env);
+}
+
+/** The DeepSeek key in the person's own DSH credential file (`<DSH_HOME or ~/.dsh>/.credentials.yaml`), if any. Never logged. */
+export function dshCredentialKey(env: Record<string, string | null | undefined>): string | undefined {
   const home = env.DSH_HOME || process.env.DSH_HOME || join(homedir(), ".dsh");
   try {
-    return new RegExp(`^\\s+${DSH_KEY_ENV}:\\s*\\S`, "m").test(readFileSync(join(home, ".credentials.yaml"), "utf8"));
+    const m = new RegExp(`^\\s+${DSH_KEY_ENV}:\\s*(?:"([^"\\n]+)"|'([^'\\n]+)'|([^\\s#]+))`, "m").exec(readFileSync(join(home, ".credentials.yaml"), "utf8"));
+    return m ? (m[1] ?? m[2] ?? m[3]) : undefined;
   } catch {
-    return false;
+    return undefined;
   }
 }
 
@@ -358,7 +412,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
   let appendSystemPrompt = spec.appendSystemPrompt;
   let preamble: string | undefined;
   let launchArgs: string[] | undefined;
-  let disallowed = [...(DISALLOWED[h] ?? []), ...(spec.disallowedTools ?? [])];
+  let disallowed = [...new Set([...(DISALLOWED[h] ?? []), ...(spec.disallowedTools ?? [])])];
   let mcpServers: McpServer[] = spec.mcp.map((m): McpServer =>
     "command" in m
       ? { name: m.name, command: m.command, ...(m.args ? { args: m.args } : {}), ...(m.env ? { env: m.env } : {}) }
@@ -424,7 +478,14 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       }
       break;
     case "pi":
-      break; // the clean setup is the runtime variant's flags (defaultLoader)
+      // The clean setup is the runtime variant's flags (defaultLoader). D241: `--no-context-files`
+      // drops the project's AGENTS.md with the person's global one, and pi has no flag for only the
+      // global one; a task (its brief appended, no prompt of its own) gets its project's files back here.
+      if (clean && systemPrompt === undefined) {
+        const project = piProjectContext(spec.cwd, ctx.env ?? {});
+        if (project) appendSystemPrompt = [appendSystemPrompt, project].filter(Boolean).join("\n\n");
+      }
+      break;
     case "deepseek-harness": {
       disallowed = []; // DSH: per-session tool denial unverified (OAR refuses it)
       // Stdio only: each HTTP server becomes Ducter's bridge, its endpoint in a 0600 file.
@@ -439,7 +500,12 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       // DSH has no known per-session profile switch, so the task runs under a Ducter-owned home of
       // its own too (research/48 M3).
       const memOff = !clean && !!spec.disablePlugins?.length;
-      if (clean || memOff) {
+      // D241: a browser place (userConfiguration "exclude", withBrowser) leaves the person's DSH
+      // setup out the same way: their profiles, plugins (Mem's bundle among them), AGENTS.md and
+      // ~/.agents stay out of a session that reads hostile pages. DSH's own tools are its built-in
+      // `acp` profile's, so they all stay (the layer drops none for a session that may write).
+      const browser = !clean && spec.userConfiguration === "exclude";
+      if (clean || memOff || browser) {
         // A Ducter-owned home: none of the user's profiles, plugins, AGENTS.md or ~/.agents, and a
         // profile layer of Ducter's own (D177, research/50): the clean session's prompt is the
         // system prompt's whole opener (a prompt with `{{` would be read as DSH template variables,
@@ -451,9 +517,19 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
         // One home per setup: sessions live in their home, so the same prompt and tools resume
         // where they were, and a one-shot starting beside the partner never rewrites its files.
         const key = createHash("sha256").update(JSON.stringify(layer)).update("\0").update(agentsMd).digest("hex").slice(0, 12);
-        const at = memOff ? join(ctx.dataDir, "harness", "deepseek-harness-memory-off", createHash("sha256").update(spec.cwd).digest("hex").slice(0, 12)) : join(ctx.dataDir, "harness", "dsh", key);
+        // A task's home is its folder's (its brief can change between sessions: the brief written
+        // after the open, a browser switch), so its sessions resume in the same home.
+        const perTask = (dir: string) => join(ctx.dataDir, "harness", dir, createHash("sha256").update(spec.cwd).digest("hex").slice(0, 12));
+        const at = browser ? perTask("deepseek-harness-browser") : memOff ? perTask("deepseek-harness-memory-off") : join(ctx.dataDir, "harness", "dsh", key);
         const { home, agents } = writeDshHome(at, layer, agentsMd);
         env = { ...env, DSH_HOME: home, DSH_AGENTS_HOME: agents, DSH_TELEMETRY_DISABLED: "1" };
+        // The person's key where they keep it for DSH itself (its own credential file): a home of
+        // Ducter's has no such file, so the key (never the file) rides in the launch env, which
+        // DSH reads after the file (research/34). One already in the env or keys.env wins.
+        if (!harnessKey(ctx.dataDir, DSH_KEY_ENV, ctx.env ?? {}) && !env[DSH_KEY_ENV]) {
+          const own = dshCredentialKey(ctx.env ?? {});
+          if (own) env[DSH_KEY_ENV] = own;
+        }
         // Underneath the dropped tools, DSH's own read-only sandbox preset (research/50 §2).
         if (spec.readOnly || spec.noTools) env[DSH_PROFILE.permissionEnv] = "read-only";
       } else if (instructions) {

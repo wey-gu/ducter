@@ -1008,18 +1008,22 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Prompt-cache hit rate**: read `cache_read` vs `cache_creation` from a day of the partner's
       sessions (OAR usage) to replace principle 4's heuristic. Trigger: the cost-model work.
 - [ ] **Before merging D165/D166 and D168/D169**: their highs in research/48 §2 (P1, P2, M1, M2).
-- [ ] **D240's open items (research/76):**
-  - a live rerun of the HN browser lookup with D240's built-ins, to replace the INFERRED ~190K;
-  - whether a Codex subagent (`multi_agent`) carries the thread's `developerInstructions`; an
-    ordinary Codex task keeps the person's `multi_agent` with Computer Use on (D130), so its
-    subagents may use Computer Use without the brief;
-  - `PushNotification` and `RemoteTrigger` in every ordinary Claude Code task (Ducter owns talking
-    to the person and starting work): what they do headless, then whether they join Ducter's
-    denials; and whether `Workflow` (8.2K tokens a request) belongs in a task at all;
-  - pi's `--no-context-files` also drops a repo's own AGENTS.md / CLAUDE.md under
-    `isolateUserConfig` (opt-in): find a flag that drops only the person's;
-  - a DeepSeek Harness browser task still keeps the person's own setup (no clean home).
-  Trigger: the next harness audit, or a live browser task on the author's setup.
+- [ ] **D240/D241's open items (research/76 §4, §6):** the rest were decided in D241 (Codex
+      subagents inherit the brief; PushNotification, RemoteTrigger, Workflow denied in every task;
+      pi's project AGENTS.md appended under the clean setup; DSH browser tasks in a home of Ducter's).
+  - a live rerun of the HN browser lookup with D240's built-ins, to replace the INFERRED ~190K. Not
+    done in D241: it needs the author's Chrome and a running instance (a session must not touch
+    either). Trigger: a live browser task on the author's setup.
+  - Claude Code's `EnterWorktree` / `ExitWorktree` in every task: a task already works in a
+    worktree of Ducter's (D204), and moving to another would put its commits where Ducter doesn't
+    look. Check what they do under `-p`, then whether they join the denials. Trigger: the next
+    harness audit.
+  - pi's global `SYSTEM.md` (`~/.pi/agent/SYSTEM.md`) replaces pi's own prompt in every task, clean
+    or not, and no flag turns it off (research/76 §6.3). Ask pi upstream for a flag, or pass pi's
+    own prompt explicitly. Trigger: a pi task that behaves unlike pi.
+  - DSH in a home of Ducter's (a browser task, D241) is checked by tests only: run one live browser
+    task on DSH and confirm its tools, its key from the person's credential file, and a resume
+    after a driver switch. Trigger: DSH installed on a test Mac.
 
 ## Phone calls (D189, D193; `phone.md`)
 

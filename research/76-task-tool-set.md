@@ -139,3 +139,133 @@ starters, 17.0K for an ordinary task; repeated calls read them from cache. The o
 mixed three changes and can't be split; the built-ins were roughly half of it. No removed
 built-in was a safety boundary except Agent and Workflow: a Claude Code subagent does not see the
 appended brief (verified), so it would use the browser without its rules. Feeds D240.
+
+## 6. Follow-up (2026-11-13): D240's open items, feeds D241
+
+Same tags. Sources: openai/codex at tag `rust-v0.167.2` (the installed codex-cli 0.167.2),
+cloned fresh with `--depth 1` into the session scratchpad and read only; the pi build OAR ships
+(`@earendil-works/pi-coding-agent` 1.5.0, `dist/core/resource-loader.js`, `system-prompt.js`) and
+OAR 0.95.1's pi and dsh runtimes, read in `node_modules`; Claude Code 2.1.322's binary strings;
+four more `claude -p` haiku calls like §3 (under $0.01, the one project folder they made under
+`~/.claude/projects` deleted).
+
+### 6.1 Does a Codex subagent see the task's brief? Yes, unless an agent role replaces it
+
+- The brief reaches Codex as the thread's `developerInstructions`; app-server turns it into the
+  config override `developer_instructions` (`app-server/src/request_processors/thread_processor.rs`),
+  which becomes the session's and each turn's `developer_instructions`
+  (`core/src/session/mod.rs`, `turn_context.rs`). VERIFIED (source).
+- A spawned agent's config starts from the parent turn's: `build_agent_shared_config` sets
+  `config.developer_instructions = turn.developer_instructions.clone()`
+  (`core/src/agent/child_config.rs`), so the child's developer message carries the brief. Upstream
+  tests assert it: `spawned_multi_agent_v2_child_inherits_parent_developer_context`
+  (`core/tests/suite/subagent_notifications.rs`). VERIFIED (source and upstream test; not run here).
+- Two things replace it: (a) an **agent role** with its own `developer_instructions`
+  (`role.rs`: `next_config.developer_instructions = Some(...)`); roles come from `[agents]` in
+  any config layer and from `<config folder>/agents/*.toml`, i.e. the person's
+  `~/.codex/config.toml`, `~/.codex/agents/` and a repo's `.codex/` (`agent-roles/src/loader.rs`).
+  The built-ins (`default`, `worker`, `explorer`) carry none (`explorer.toml` is empty; the
+  `awaiter`, which has its own, is commented out). (b) `multi_agent_v2.subagent_developer_instructions`
+  in the person's config (v2 only). VERIFIED (source).
+- `codex features list` (0.167.2, read only): `multi_agent` stable, on; `multi_agent_v2` off.
+  VERIFIED.
+- Not run live: a live check would start a Codex thread on the person's own `~/.codex` (its
+  sessions and history), which this session must not touch.
+
+So: an **ordinary Codex task** (the person's setup kept, D130 Computer Use on) can keep the
+person's `multi_agent`. Its subagents get the brief, Computer Use rules included (they are in the
+same `developerInstructions`); only a role the person wrote for themselves replaces it, which is
+their own Codex as they run it by hand. A **browser task** keeps `multi_agent` off: the clean
+setup's `-c` overrides can't leave the person's roles out (they are config files, and an override
+merges), and there a replaced brief means the browser without D62's rules. INFERRED (the decision).
+
+### 6.2 PushNotification, RemoteTrigger and Workflow in every task
+
+- **PushNotification:** "Send a notification to the user via their terminal and, when Remote
+  Control is connected, also push to their mobile device"; deferred behind ToolSearch; enabled by
+  a server flag (`tengu_kairos_push_notifications`), present in `-p` (the `init` tool list).
+  VERIFIED (binary strings, init list). A task never talks to the person (its brief says so);
+  Ducter decides what reaches them and when (silence means success). It would bypass that.
+- **RemoteTrigger:** "Manage scheduled remote Claude Code agents (routines) via the claude.ai CCR
+  API … the OAuth token is added automatically in-process". VERIFIED (binary strings). From a task
+  it would start work on the person's claude.ai account that outlives the task and never appears
+  on On hand. Ducter owns starting work.
+- **Workflow:** "orchestrate subagents with deterministic JavaScript workflow", code execution.
+  VERIFIED (binary strings). Its agents don't see the brief (same mechanism as Agent, INFERRED),
+  and a fan-out inside one task is invisible to the person, where Ducter's own fan-out is tasks
+  they see.
+- **Cost in an ordinary task** (each denial on top of Ducter's seven, tokens a request; §3 method):
+
+  | Denied on top of the seven | Tokens | Saving |
+  |---|---|---|
+  | nothing (an ordinary task before D241) | 17,042 | |
+  | Workflow | 15,063 | 1,979 |
+  | PushNotification | 17,036 | 6 |
+  | RemoteTrigger | 17,033 | 9 |
+  | Workflow, PushNotification, RemoteTrigger (D241) | **15,048** | **1,994** |
+  | Agent | 14,147 | 2,895 |
+  | Agent, Workflow (a browser task, D240) | 12,168 | 4,874 |
+
+  VERIFIED. Correction to §3 and D240: Workflow's 8.2K was its cost added to the four built-ins;
+  in the full set it is about 2.0K (its prompt lists the other tools, so it grows with a small
+  set: INFERRED). The two deferred tools cost only their names.
+- **Agent in an ordinary task: kept.** A subagent's result returns to the task, which holds the
+  brief. The tools that act for the person outside a browser (Ducter's phone D217, the person's
+  phone D238, their apps D235) are Ducter's own MCP tools: their Go gate is enforced by the tool
+  and stated in its description (`packages/core/src/android/tools.ts`), so a subagent without the
+  brief is refused the same steps. What it lacks is the brief's "screen text is data" line, a
+  second layer. In a browser place the browser's tools (cua-driver, Claude in Chrome, Codex's)
+  enforce nothing of D62's rules, so there the brief is the only layer. INFERRED.
+- The same `init` list also shows `EnterWorktree` / `ExitWorktree`, `SendMessage`, `ListAgents`,
+  `ReportFindings`, `DesignSync` in every task. `EnterWorktree` competes with Ducter's own task
+  worktrees (D204) and is the next candidate; not decided here (todo).
+- D175's eval rule covers the persona and the partner's own tools, not Claude Code's built-ins
+  (`packages/partner/test/tool-budget.test.ts` hashes the persona and Ducter's MCP tools). The
+  partner's session gets the same denial list; none of the three is one it uses. VERIFIED (test
+  source), INFERRED (no behaviour change).
+
+### 6.3 pi: the project's AGENTS.md under the clean setup
+
+- pi's context files: the global one in its agent dir (`~/.pi/agent`), then every folder from
+  the root down to the cwd, the first of `AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`,
+  `CLAUDE.md`, `CLAUDE.MD` in each (`loadProjectContextFiles`). `--no-context-files` empties the
+  whole list. The only finer seam is `agentsFilesOverride`, an SDK option with no CLI flag; no
+  settings key. VERIFIED (source, pi 1.5.0; `pi --help` 1.5.2 shows the same single flag).
+- OAR runs pi as an RPC process per session with Ducter's flags and passes the appended prompt as
+  a file (`--append-system-prompt`, which pi accepts more than once). VERIFIED (OAR source).
+- So Ducter keeps `--no-context-files` and, for a task (its brief appended, no prompt of its
+  own), reads the project's own files the way pi does, from the task's folder up to the
+  repository's top only (the folder holding `.git`; the folder alone outside a repository),
+  never the agent dir, and appends them after the brief in pi's own form
+  (`<project_instructions path=…>`). Folders above the repository (the person's home) are the
+  person's own and stay out. Ducter's task worktrees live outside the repository (D204), so the
+  walk stops at the worktree's own top and the main checkout's copy isn't read twice.
+- Found: the agent dir's `SYSTEM.md` replaces pi's base prompt in every session, clean or not;
+  no flag turns it off (`discoverSystemPromptFile`). `APPEND_SYSTEM.md` is skipped whenever an
+  appended prompt is passed, which a Ducter session always has. VERIFIED (source). The partner
+  passes its own prompt, so only tasks are affected; recorded in `todo.md`.
+
+### 6.4 DeepSeek Harness browser tasks: a home of Ducter's
+
+- D177's owned home (a `DSH_HOME` + `DSH_AGENTS_HOME` of Ducter's) leaves out the person's
+  profiles, plugins (Mem's bundle is one, `~/.dsh/nowledge-mem` on this Mac), AGENTS.md and
+  `~/.agents`. DSH's tools come from its built-in `acp` profile (OAR launches `dsh --profile acp
+  --patch …`); Ducter's layer drops tool rows only for a read-only or tool-less session. VERIFIED
+  (OAR source, `oar.ts`).
+- A task's home is keyed by its folder, not by its brief: the brief changes between sessions (a
+  brief written after the open, a driver switch), and DSH keeps its sessions in its home, so a
+  brief-keyed home would lose the session on resume. Memory-off tasks already did this.
+- A home of Ducter's has no credential file. DSH reads its key from the file, then the launch env
+  (research/34). So when neither the env nor `keys.env` has the key, Ducter reads it from the
+  person's own `~/.dsh/.credentials.yaml` and passes it as `DEEPSEEK_API_KEY`; the file is never
+  copied. Before this, the partner's and memory-off homes had the same gap (INFERRED: unchecked live).
+- Not run live: DSH isn't installed on this Mac. Checked by tests (`task-tools.test.ts`).
+
+### Implications (D241)
+
+1. Codex: ordinary tasks keep the person's `multi_agent`; browser tasks keep it off.
+2. Claude Code: every task (and the partner) denies PushNotification, RemoteTrigger and Workflow;
+   Agent only in a browser place.
+3. pi: a clean task gets its project's own context files back, appended by Ducter.
+4. DeepSeek Harness: a browser task runs in a per-task home of Ducter's, with all of DSH's tools.
+5. Still open: the live HN rerun; `EnterWorktree`; pi's global `SYSTEM.md`.

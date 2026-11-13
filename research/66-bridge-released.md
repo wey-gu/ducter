@@ -114,6 +114,47 @@ it on the card. A device code would be one tap fewer; it is Mem's to add (B16 be
 5. **B16 for Mem** (with B11–B15): a device-code sign-in for `nmem connect` on a headless box; a public line on
    when Bridge connections open per workspace; the `update.latest` in `status` lagging the release.
 
+## 7. Addendum 2026-11-13: the live trial against Mem Cloud (feeds D249)
+
+Mem Cloud now accepts the connection: `ducter` connected in Only me (context `ducter`), nmem 0.10.118, haiku on
+both sides of `bun run bridge:live -- --connected --real`, the peer a native Claude Code session. Four runs; raw
+argv/stdout/stderr per call under `~/dev/ducter-evidence/bridge/raw-2026-11-13T07-{27-26,44-31,51-45,56-28}*`.
+Message bodies are the trial's own synthetic text.
+
+| Fact | Tag |
+|---|---|
+| `--agent-context ducter bridge setup` exits 1 "agent context \"ducter\" was not found", while `inbox`, `contacts`, `open`, `send`, `reply` and `agents context show --name ducter` all work with it. | VERIFIED |
+| `agents context show` (local) names the Space `personal-<custodian id>` and the custodian; every card in that Space is "Member <the same id>". A contact's `r1:<uuid>` is the Agent's `identity_birth`. | VERIFIED |
+| `bridge inbox --json`: `{messages: [{message}], next, outgoing: [{message, status: delivered\|read, read_recipients, recipients}], status_observed_at_us}`. No sender, no time. | VERIFIED |
+| `bridge open --json`: `{message, body, reply_to, outgoing, status_observed_at_us}`. **No sender.** `reply_to` is the message's own id, **also for a message the peer sent with `bridge reply`**: no `in_reply_to`. Human output is the same. (B17) | VERIFIED |
+| `bridge send` / `reply` success: `{message, status: "delivered", operation: "bo1:…", outgoing}`. | VERIFIED |
+| `reply` from the persona to a message a native session sent reaches that session's logical inbox; the session's `reply` reaches the persona's. | VERIFIED |
+| A native session's binding (`bridge session … prepare` → `context: bridge-<…>`) works for the logical `contacts/send/inbox/open/reply`. It reuses one Agent identity across sessions; in `contacts` such Agents show as "Bridge agent" with no description (two cards). | VERIFIED |
+| `contacts --query Claude` returned "Claude 收尾协调", an older agent of the author's. `send` to it: stdout JSON, exit ≠ 0, `stage: upstream`, `cloud_agent_original_selection_unavailable`, HTTP 409, `retryable: false`, `outcome_unknown: true`, `original_operation: prepare`, detail "A selected recipient has no current registered mailbox. A previous unknown send remains unresolved; do not replace its identity." It was the context's first send ever, so the second sentence is Mem's wording, not an earlier op of Ducter's (each run uses a fresh Ducter data folder). | VERIFIED |
+| `inspect` of that op: `{operation, source: "retained_input", body, contacts, reply_to: null, outgoing}`, no state; `resume`: the same 409; `outbox`: `operations: []`. | VERIFIED |
+| The peer's native context keeps its inbox across runs (it saw the previous run's questions). | VERIFIED |
+
+**Diagnosis of the first run (07:27).** S1 and X1: the request was logged *muted* because `open` names no sender,
+so it was "another agent", not the user's, and Settings' default reach is "only yours". S2 and S3: haiku picked the
+only card matching "Claude" (a stale agent with no mailbox), each send got the 409 and stayed unknown; the
+partner then offered "再发一次" and carded a second copy (a replacement, which the skill forbids). X1's answer had
+nothing to go back to. No Ducter ledger state crossed runs.
+
+**After D249.** 07:44: 3/4, 2/4, 2/3, 2/3 (haiku made S1 an asker card; asked "which one?" in S2; the driver
+checked before slow sends finished). 07:51: 6/6, 4/5, 3/3, 2/3 (the driver's X1 check looked for a field the answer
+never carries). 07:56: **S1 6/6, S2 4/5, S3 3/3, X1 3/3.** The one failing check is "the answer came back as a reply
+to ours": Mem's `open` doesn't link it (B17).
+
+**B17 for Mem** (draft, not posted): an Agent mailbox's recipient sees neither the sender (member, Agent) nor the
+original a reply answers; the send intent has `in_reply_to` (`inspect` shows `prepare.in_reply_to`), the recipient's
+`open` drops it. Also: `contacts` lists a card whose Agent has no registered mailbox; the 409's "previous unknown
+send" sentence appears on a first send; native-session Agents are all "Bridge agent".
+
+**Implications.** (1) In Only me, an unnamed sender is the user's own; elsewhere, not. (2) An agent that wrote is
+reached by `reply` on its message, the only address Ducter has for it. (3) Without linked replies, follow-through
+after a send to an unnamed own agent stays quiet once any such agent writes. (4) Bridge stays off by default until
+B17 (D170 (9)).
+
 **Summary.** The released nmem 0.10.118 matches D205's commands and JSON, and adds nine more refusal codes and
 a native-session inbox the plugin prepares by itself. On the author's Cloud workspace, connections and native
 preparation answer 503 `cloud_bridge_setup_unavailable` today, so the live trial stopped at Connect, as the skill

@@ -846,7 +846,9 @@ describe("D205: connected in Settings › 伙伴, and 谁都不行", () => {
       expect(fc.tools.has("partner:bridge_reply")).toBe(true);
       expect(await partner.checkBridge()).toBe(1);
       const inn = fc.events.find((e) => e.kind === "bridge_msg")!.body as Bodies["bridge_msg"];
-      expect(inn).toMatchObject({ direction: "in", messageId: "msg-001", agent: "terminal-claude", mine: true });
+      // nmem 0.10.118 names no sender; in the user's "Only me" place it is one of theirs (D249).
+      expect(inn).toMatchObject({ direction: "in", messageId: "msg-001", from: "another agent", mine: true });
+      expect(inn.agent).toBeUndefined();
       context = undefined;
       fns.forEach((fn) => fn());
       expect(await partner.checkBridge()).toBe(0);

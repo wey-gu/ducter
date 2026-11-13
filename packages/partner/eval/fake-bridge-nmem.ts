@@ -20,6 +20,14 @@
 //
 //   NMEM_FAKE_BRIDGE_STATE=/path/state.json nmem [--json] --agent-context NAME bridge <verb> ...
 //
+// D249: by default `inbox`, `open`, `contacts`, `send`, `inspect` answer in nmem 0.10.118's shapes as
+// seen against Mem Cloud on 2026-11-13 (research/66 §7): `open` names no sender, `reply_to` is the
+// message's own handle, cards come as `contacts[]` with `match_state`. `in_reply_to` on a reply is
+// INFERRED (the trial's raw output had none). `agents context show --name NAME` answers the saved
+// context (Space `personal-<member>` for the user's own place). NMEM_FAKE_SHAPE=named keeps the old,
+// richer shape (sender agent and member on `open` and `inbox`) for the partner eval's teammates.
+//   NMEM_FAKE_UNREGISTERED=<context>  sends to it answer Mem's 409 "no current registered mailbox"
+//
 // Lost responses (J-Q6 tests): NMEM_FAKE_BRIDGE_LOSE="send" (or "reply", or "send,reply") makes the
 // next such call keep its operation but answer like a dropped connection (exit 1, no JSON).
 // NMEM_FAKE_BRIDGE_LOSE_MODE="pending" keeps it undelivered until `resume`; the default "delivered"
@@ -29,7 +37,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 interface Msg { id: string; op: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; read_at?: string; pending?: boolean }
 interface Ident { agent: string; member: string; member_id?: string; description: string }
 interface Conn { connection_id: string; agent_id: string; identity_birth: string; client_label: string; state: "active" | "revoked"; space_id: string }
-interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; connections?: Conn[] }
+interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; connections?: Conn[]; retained?: Record<string, { to: string; body: string }> }
 
 if (process.env.NMEM_FAKE_ARGV_LOG) appendFileSync(process.env.NMEM_FAKE_ARGV_LOG, JSON.stringify(process.argv.slice(2)) + "\n");
 const VERSION = process.env.NMEM_FAKE_VERSION ?? "0.10.118";
@@ -88,6 +96,21 @@ if (argv[0] === "connect") {
   process.exit(0);
 }
 if (process.env.NMEM_FAKE_SIGNED_OUT === "1" && !existsSync(signedFile)) fail("unreachable", "fake nmem: not signed in", 1);
+const NAMED = process.env.NMEM_FAKE_SHAPE === "named";
+if (argv[0] === "agents" && argv[1] === "context" && argv[2] === "show") {
+  // Local read of a saved context (0.10.118 shape): its custodian and exact Space.
+  const name = argv[argv.indexOf("--name") + 1] ?? "";
+  const st: State | undefined = existsSync(statePath) ? load() : undefined;
+  const id = st?.identities[name];
+  if (!id) {
+    out({ state: "selection_required", configured: false, name });
+    process.exit(0);
+  }
+  const member = id.member_id ?? id.member;
+  const space = st!.connections?.find((c) => c.client_label === name)?.space_id ?? `personal-${member}`;
+  out({ state: "unverified", configured: true, validation: "unverified", reason: "live_validation_required", name, selection: { scope: { space_id: space }, address: { custodian_id: member, agent_id: id.agent } } });
+  process.exit(0);
+}
 if (argv[0] !== "bridge") fail("bad_arguments", "fake nmem: only `bridge` is implemented", 2);
 const verb = argv[1];
 if (!verb || verb === "--help" || verb === "help") {
@@ -228,7 +251,9 @@ switch (verb) {
       .filter((n) => n !== me)
       .filter((n) => !words.length || words.some((w) => `${n} ${s.identities[n]!.agent} ${s.identities[n]!.member} ${s.identities[n]!.description}`.toLowerCase().includes(w)))
       .map((n) => ({ ...card(n), contact: `ct-${n}`, send_args_prefix: ["nmem", "bridge", `--resolved-space-id=${SPACE.id}`, "send", `--to=ct-${n}`] }));
-    out({ cards: contacts, spaces: [{ space: SPACE, status: "searched", next_cursor: null }], coverage_scope: "current_space_batch" });
+    if (NAMED) out({ cards: contacts, spaces: [{ space: SPACE, status: "searched", next_cursor: null }], coverage_scope: "current_space_batch" });
+    // 0.10.118 in one Space: no per-card Space, the batch's own envelope.
+    else out({ contacts: contacts.map(({ space: _s, ...c }) => c), next: null, match_state: contacts.length === 1 ? "unique" : contacts.length ? "ambiguous" : "none", has_more: false, outgoing: [] });
     break;
   }
   case "send":
@@ -246,6 +271,15 @@ switch (verb) {
       inReplyTo = orig!.id;
     }
     const text = await body();
+    if (process.env.NMEM_FAKE_UNREGISTERED && process.env.NMEM_FAKE_UNREGISTERED === to) {
+      // The real 409 (2026-11-13): the card's agent has no registered mailbox now. Outcome unknown;
+      // the CLI retains the original, and inspect/resume answer from it.
+      const op = `op-x${++s.seq}`;
+      s.retained = { ...(s.retained ?? {}), [op]: { to, body: text } };
+      save(s);
+      out({ stage: "upstream", upstream: { error_code: "cloud_agent_original_selection_unavailable", detail: "A selected recipient has no current registered mailbox. A previous unknown send remains unresolved; do not replace its identity.", retryable: false, outcome_unknown: true, request_id: `req-${s.seq}`, original_operation: "prepare", request_may_have_changed_state: true, http_status: 409 }, operation: op, detail: "Retain this operation. Resume it or inspect outbox; do not send a replacement." });
+      process.exit(1);
+    }
     const m: Msg = { id: newId(), op: `op-${s.seq}`, from: me, to, body: text, ...(inReplyTo ? { in_reply_to: inReplyTo } : {}), created_at: new Date().toISOString() };
     s.messages.push(m);
     const lost = lose(verb, m);
@@ -254,13 +288,21 @@ switch (verb) {
       console.error("connection reset by peer");
       process.exit(1);
     }
-    out({ state: "sent", message: m.id, operation: m.op, ...(inReplyTo ? { in_reply_to: inReplyTo } : {}) });
+    if (NAMED) out({ state: "sent", message: m.id, operation: m.op, ...(inReplyTo ? { in_reply_to: inReplyTo } : {}) });
+    else out({ message: m.id, status: "delivered", operation: m.op });
     break;
   }
   case "inbox": {
-    const messages = s.messages.filter((m) => m.to === me && !m.pending).map((m) => ({ message: m.id, ...card(m.from), created_at: m.created_at, read: !!m.read_at, ...(m.in_reply_to ? { in_reply_to: m.in_reply_to } : {}) }));
-    const outgoing = s.messages.filter((m) => m.from === me && !m.pending).map((m) => ({ message: m.id, read: !!m.read_at }));
-    out({ messages, outgoing });
+    const mine = s.messages.filter((m) => m.to === me && !m.pending);
+    if (NAMED) {
+      const messages = mine.map((m) => ({ message: m.id, ...card(m.from), created_at: m.created_at, read: !!m.read_at, ...(m.in_reply_to ? { in_reply_to: m.in_reply_to } : {}) }));
+      const outgoing = s.messages.filter((m) => m.from === me && !m.pending).map((m) => ({ message: m.id, read: !!m.read_at }));
+      out({ messages, outgoing });
+      break;
+    }
+    // 0.10.118: handles only; our own sent messages' read status beside them.
+    const outgoing = s.messages.filter((m) => m.from === me && !m.pending).map((m) => ({ message: m.id, status: m.read_at ? "read" : "delivered", read_recipients: m.read_at ? 1 : 0, recipients: 1 }));
+    out({ messages: mine.map((m) => ({ message: m.id })), next: "", outgoing, status_observed_at_us: Date.now() * 1000 });
     break;
   }
   case "open": {
@@ -268,7 +310,9 @@ switch (verb) {
     if (!m) fail("not_found", "No such message in this mailbox.");
     m!.read_at ??= new Date().toISOString();
     save(s);
-    out({ message: { id: m!.id, ...card(m!.from), created_at: m!.created_at, ...(m!.in_reply_to ? { in_reply_to: m!.in_reply_to } : {}) }, body: m!.body });
+    if (NAMED) out({ message: { id: m!.id, ...card(m!.from), created_at: m!.created_at, ...(m!.in_reply_to ? { in_reply_to: m!.in_reply_to } : {}) }, body: m!.body });
+    // 0.10.118: no sender; `reply_to` is this message's own handle (in_reply_to INFERRED).
+    else out({ message: m!.id, body: m!.body, reply_to: m!.id, ...(m!.in_reply_to ? { in_reply_to: m!.in_reply_to } : {}), outgoing: [] });
     break;
   }
   case "outbox": {
@@ -276,17 +320,28 @@ switch (verb) {
     break;
   }
   case "inspect": {
+    const kept = s.retained?.[argv[2]!];
+    // 0.10.118: the retained original, with no state (VERIFIED: `source: "retained_input"`).
+    if (kept) {
+      out({ operation: argv[2], source: "retained_input", body: kept.body, contacts: [`ct-${kept.to}`], reply_to: null, outgoing: [] });
+      break;
+    }
     const m = s.messages.find((x) => x.op === argv[2] && x.from === me);
     if (!m) fail("not_found", "No such operation.");
-    out({ ...opView(m!), body: m!.body });
+    if (NAMED) out({ ...opView(m!), body: m!.body });
+    else out({ operation: m!.op, source: "retained_input", body: m!.body, contacts: [`ct-${m!.to}`], reply_to: m!.in_reply_to ?? null, outgoing: [] });
     break;
   }
   case "resume": {
+    if (s.retained?.[argv[2]!]) {
+      out({ stage: "upstream", upstream: { error_code: "cloud_agent_original_selection_unavailable", detail: "A selected recipient has no current registered mailbox. A previous unknown send remains unresolved; do not replace its identity.", retryable: false, outcome_unknown: true, http_status: 409 }, operation: argv[2] });
+      process.exit(1);
+    }
     const m = s.messages.find((x) => x.op === argv[2] && x.from === me);
     if (!m) fail("not_found", "No such operation.");
     m!.pending = false; // the same original, never a replacement
     save(s);
-    out({ state: "sent", operation: m!.op, message: m!.id });
+    out(NAMED ? { state: "sent", operation: m!.op, message: m!.id } : { message: m!.id, status: "delivered", operation: m!.op });
     break;
   }
   default:

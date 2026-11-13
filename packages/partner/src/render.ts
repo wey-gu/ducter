@@ -436,7 +436,9 @@ export function renderBridge(b: Bodies["bridge_msg"], answers?: Bodies["bridge_m
       : "") +
     // X1 (D164): the user's own agent asking for the user's call, not for work.
     (b.mine
-      ? `If it asks for the user's own call (a choice only the user can make, not work for you), put it in front of the user at once with ask: forMessage "${b.messageId}", the question in the user's language, goLabel = the option it suggests (suggests: true) or its first, other = its second option. Ducter sends the user's answer back to it; don't bridge_reply and don't add anything in prose.\n`
+      ? `If it asks for the user's own call (a choice only the user can make, not work for you), put it in front of the user at once with ask: forMessage "${b.messageId}", the question in the user's language, goLabel = the option it suggests (suggests: true) or its first, other = its second option. Ducter sends the user's answer back to it; don't bridge_reply and don't add anything in prose. ` +
+        // Live trial (D249): haiku turned a work request that left the approach to Ducter into a call for the user.
+        `A request for work (a goal, a fix, something to build or check) is work even when it mentions ways to do it: ask whether to take it on (Go = open a task), without forMessage.\n`
       : "") +
     // The sender can't close the frame early.
     safe

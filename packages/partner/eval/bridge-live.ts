@@ -36,6 +36,7 @@ import type { Runner } from "../../protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/index.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
 import { createNmemBridge, createPartner } from "../src/index.ts";
+import { foldOut, whoForUser } from "../src/bridge-out.ts";
 import { fakeMemory } from "../test/fakes.ts";
 
 const argv = process.argv.slice(2);
@@ -280,9 +281,16 @@ function fakeRunner(core: Core, harness: Runner["harness"]) {
   return { runner, opened };
 }
 
+// Real nmem calls take seconds: a Go's send, or the code's reply, may still be on its way when the
+// partner is idle. settle waits for it (at most a minute), so a check reads what really happened.
+let sending = () => false;
 async function settle(p: { idle(): Promise<void> }) {
   for (let i = 0; i < 4; i++) {
     await Bun.sleep(i === 0 ? 50 : 500);
+    await p.idle();
+  }
+  for (let i = 0; i < 120 && sending(); i++) {
+    await Bun.sleep(500);
     await p.idle();
   }
 }
@@ -296,9 +304,9 @@ function show(core: Core, from: number) {
     else if (e.kind === "decision_resolved") say(`  [user taps] ${b.option}`);
     else if (e.kind === "bridge_msg") {
       const m = b as Bodies["bridge_msg"];
-      if (m.direction === "in") say(`  [in] ${m.mine ? `your ${m.agent}` : m.from}${m.inReplyTo ? " replied" : " asks"} · ${m.text.slice(0, 140).replace(/\n/g, " ")}`);
+      if (m.direction === "in") say(`  [in] ${whoForUser(m, false)}${m.inReplyTo ? " replied" : " asks"} · ${m.text.slice(0, 140).replace(/\n/g, " ")}`);
       else if (m.state === "sent" || m.state === undefined || m.state === "unknown" || m.state === "unconfirmed" || m.state === "failed")
-        say(`  [out ${m.state ?? "sent"}] ${m.decisionId ? "to" : "reply to"} ${m.mine ? `your ${m.agent}` : m.to} · ${m.text.slice(0, 160).replace(/\n/g, " ")}`);
+        say(`  [out ${m.state ?? "sent"}] ${m.decisionId ? "to" : "reply to"} ${whoForUser({ ...m, label: m.to }, false)} · ${m.text.slice(0, 160).replace(/\n/g, " ")}`);
     } else if (e.kind === "job_status") say(`  [task chip] ${b.text} · ${b.state}`);
   }
   return core.log.head();
@@ -321,6 +329,7 @@ async function main() {
   const stamp = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
   const msgs = () => core.log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 }).map((e) => e.body as Bodies["bridge_msg"]);
   const outs = () => msgs().filter((b) => b.direction === "out");
+  sending = () => [...foldOut(core.log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 })).values()].some((o) => o.state === "sending");
   const ins = () => msgs().filter((b) => b.direction === "in");
   const openCard = () => [...core.log.read({ stream: "channel", kinds: ["decision"], limit: 100 })].reverse().find((e) => core.decisions.isPending((e.body as Bodies["decision"]).decisionId))?.body as Bodies["decision"] | undefined;
   const saidSince = (from: number) => core.log.read({ stream: "channel", fromSeq: from + 1, kinds: ["ai_msg"], limit: 100 }).filter((e) => e.origin === "partner").map((e) => (e.body as Bodies["ai_msg"]).text);
@@ -368,7 +377,7 @@ async function main() {
     await settle(partner);
     seq = show(core, seq);
     const card = openCard();
-    check("s2", "one send card at once, naming 你的 <agent>", !!card && /^发给你的 /.test(card.question));
+    check("s2", "one send card at once, naming 你的 <agent>", !!card && /^发给你的/.test(card.question));
     if (card) {
       say(`[${stamp()}] Weyl checks the recipient and taps 发送`);
       core.decisions.decide(card.decisionId, "go");
@@ -384,7 +393,11 @@ async function main() {
     await partner.checkBridge();
     await settle(partner);
     seq = show(core, seq);
-    check("s2", "the answer came back as a reply to ours", !!sent && ins().some((b) => b.inReplyTo === sent.messageId));
+    // The answer arrived at all (Ducter's side), and Mem linked it to ours (Mem's side: nmem 0.10.118's
+    // `open` carries no in_reply_to, B17 in research/66 §7, so this one waits for Mem).
+    const answer = !!sent && ins().some((b) => b.messageId && core.log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 }).find((e) => (e.body as Bodies["bridge_msg"]).messageId === b.messageId)!.seq > before2);
+    check("s2", "an answer came in after ours", answer);
+    check("s2", "the answer came back as a reply to ours (Mem links it: B17)", !!sent && ins().some((b) => b.inReplyTo === sent.messageId));
     check("s2", "the partner told the user, without naming Weyl", saidSince(before2).length >= 1 && !saidSince(from).some((t) => /Weyl/.test(t)));
   }
 
@@ -431,7 +444,9 @@ async function main() {
       await settle(partner);
       seq = show(core, seq);
     }
-    const back = outs().find((b) => b.decisionId === card?.decisionId && b.inReplyTo && b.state === "sent");
+    // The answer is a reply to the asking message (it carries no decisionId: it is not a question the
+    // user sent, so follow-through never waits on it). The old check looked for a decisionId (D249).
+    const back = card?.asker && outs().find((b) => b.inReplyTo === card.asker!.messageId && b.state === "sent" && !b.taskId);
     check("x1", "the user's answer went back by code, as a reply to the question", !!back);
     const answer = await peer("Check your Bridge inbox and open what's new. What did Weyl decide? Tell him in one line what you'll do.");
     say(`  [terminal] ${answer}`);

@@ -21,9 +21,10 @@
 //   - Every failure comes back as { ok: false }; nothing here throws into a turn or a check.
 //   - Tests inject a fake BridgeClient or point `bin` at a stub; nothing in tests reaches Mem.
 //
-// The nmem JSON shapes below are read tolerantly: `bridge inbox` lists `messages[]` with a
-// `message` handle; `bridge open <message>` returns `body` and the sender. Field names that are
-// not documented in the CLI help are guesses with fallbacks (research/31).
+// The nmem JSON shapes below are read tolerantly. nmem 0.10.118 against Mem Cloud (VERIFIED
+// 2026-11-13, research/66 §7): `bridge inbox` lists `messages[]` of `{message}` only; `bridge open`
+// returns `{message, body, reply_to, outgoing}` with no sender at all, `reply_to` being the message's
+// own handle. Sender fields read below come from older shapes and stay as fallbacks (research/31).
 import { nmemEnv } from "./memory.ts";
 
 export interface BridgeMessage {
@@ -165,7 +166,8 @@ export function outgoingReads(j: any): Record<string, boolean> | undefined {
   const out: Record<string, boolean> = {};
   for (const m of list) {
     const id = str(m?.message) ?? str(m?.message_id) ?? str(m?.id);
-    if (id) out[id] = m?.read === true || !!str(m?.read_at) || /read|opened/i.test(str(m?.state) ?? "");
+    // nmem 0.10.118 (VERIFIED): `{message, status: "delivered"|"read", read_recipients, recipients}`.
+    if (id) out[id] = m?.read === true || !!str(m?.read_at) || /read|opened/i.test(str(m?.state) ?? str(m?.status) ?? "") || (typeof m?.read_recipients === "number" && m.read_recipients > 0);
   }
   return out;
 }
@@ -280,6 +282,18 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       return undefined;
     }
   };
+  // The saved context, read locally (nothing sent): the user's own member is its custodian, and its
+  // exact Space. "personal-<custodian>" is the user's "Only me" place (VERIFIED 2026-11-13: every card
+  // there is that member's), where every sender can only be one of the user's own agents.
+  let where: Promise<{ custodian?: string; personal: boolean }> | undefined;
+  const place = () =>
+    (where ??= (async () => {
+      const c = await run(["agents", "context", "show", "--name", opts.context], undefined, true);
+      if ("missing" in c || c.code !== 0) return { personal: false };
+      const sel = parse(c.out)?.selection;
+      const custodian = str(sel?.address?.custodian_id);
+      return { ...(custodian ? { custodian } : {}), personal: !!custodian && str(sel?.scope?.space_id) === `personal-${custodian}` };
+    })());
   // The user's own member: given, or what passive setup reports for this context (asked once).
   let me: Promise<string | undefined> | undefined;
   const self = () =>
@@ -292,11 +306,8 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         if (m.id ?? m.name) return m.id ?? m.name;
       }
       // nmem 0.10.118: a context saved by `bridge connections connect` is found by inbox, contacts
-      // and `agents context show`, but `bridge setup` says it was "not found". The saved context
-      // names the user's own member as its custodian (read locally, nothing sent).
-      const c = await run(["agents", "context", "show", "--name", opts.context], undefined, true);
-      if ("missing" in c || c.code !== 0) return undefined;
-      return str(parse(c.out)?.selection?.address?.custodian_id);
+      // and `agents context show`, but `bridge setup` says it was "not found".
+      return (await place()).custodian;
     })());
   const sent = (r: { code: number; out: string; err: string } | { missing: true }): BridgeResult<{ messageId?: string; operation?: string }> => {
     if ("missing" in r || r.code !== 0) return failure(r);
@@ -323,14 +334,20 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         const body = str(b?.body) ?? str(b?.message?.body) ?? str(b?.text);
         if (!body) continue;
         const sentAt = str(b?.sent_at) ?? str(b?.created_at) ?? str(b?.message?.created_at);
-        const inReplyTo = str(b?.in_reply_to) ?? str(b?.message?.in_reply_to) ?? str(b?.reply_to);
+        // nmem 0.10.118's `open` (VERIFIED): `{message, body, reply_to, outgoing}`, where `reply_to` is
+        // the handle `reply` takes, the message's own id. Only a different one names a parent.
+        const handle = str(b?.reply_to);
+        const inReplyTo = str(b?.in_reply_to) ?? str(b?.message?.in_reply_to) ?? (handle && handle !== id ? handle : undefined);
         const who = b?.message && typeof b.message === "object" ? { ...b, ...b.message } : b;
         const agent = agentOf(who);
+        // No sender at all (the released CLI): in the user's "Only me" place it is one of theirs (D249).
+        const said = memberOf(who);
+        const own = said.id || said.name ? isMine(who, mine) : (await place()).personal;
         messages.push({
           messageId: id,
           from: senderOf(who),
           ...(agent ? { agent } : {}),
-          ...(isMine(who, mine) ? { mine: true } : {}),
+          ...(own ? { mine: true } : {}),
           text: clip(body, MAX_TEXT),
           ...(sentAt ? { sentAt } : {}),
           ...(inReplyTo ? { inReplyTo } : {}),

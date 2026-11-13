@@ -45,6 +45,8 @@ export const MEDIA_LIMITS = {
   perReport: 6,
   /** One upload (a phone sends ≤ 2048 px JPEGs, well under). */
   bytes: 25 * 1024 * 1024,
+  /** D255: a video (a recording of a lent phone's screen, ≤ 8 minutes at ~1.5 Mbit/s). */
+  video: 100 * 1024 * 1024,
   /** A tiny preview, as a data: URL. */
   preview: 4096,
   /** The long edge a phone or the Mac scales a picture down to before sending. */

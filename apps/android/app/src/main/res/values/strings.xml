@@ -55,4 +55,9 @@
     <!-- D246: Android's notifications (Notify.kt): one channel, the loan's. -->
     <string name="notify_loan_channel">Using this phone</string>
     <string name="notify_loan_channel_about">Shown the whole time a task borrows this phone, with Stop.</string>
+    <!-- D255: Ducter records the lent phone's screen itself (MediaProjection); its own link while lent. -->
+    <string name="handset_recording">Recording the screen</string>
+    <string name="handset_record_asking">Waiting for you to allow recording</string>
+    <string name="handset_record_sending">Sending the recording to Ducter</string>
+    <string name="handset_link_fgs">Keeps the link to your Ducter while a task borrows this phone</string>
 </resources>

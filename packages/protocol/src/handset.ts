@@ -44,7 +44,41 @@ export interface HandsetState {
    * the notification), locked the phone, Android's switch went off, or the home went quiet (no word
    * for 15 s). Said again on every hello, so a home that missed the moment still learns why.
    */
-  ended?: { session: string; why: HandsetEnd };
+  ended?: { session: string; why: HandsetEnd | "network" };
+  /**
+   * D255: this run of the app (a fresh id each time Android starts its process). A hello from a new
+   * boot that holds no loan means the app was closed or killed since: said as such.
+   */
+  boot?: string;
+  /** D255: which connection says this: the app's own link (a foreground service) or its page. */
+  link?: "native" | "page";
+  /** D255: the app's own link's generation in this boot (each reconnect is one more). */
+  gen?: number;
+  /** D255: Ducter's own recording of the screen, when one was asked for in a loan. */
+  recording?: HandsetRecording;
+}
+
+/**
+ * D255: a recording of the phone's screen the app makes itself (Android's MediaProjection, the
+ * whole screen, no audio). asking: Android's own dialog is on the phone and the person answers it;
+ * on: recording; saving: stopped, the file is being finished and sent to the home; saved: the home
+ * has it; declined: the person said no (or didn't answer); failed: Android or the phone couldn't.
+ */
+export interface HandsetRecording {
+  /** Its id (the app's), and the loan (task) it was asked for in. */
+  id: string;
+  session: string;
+  state: "asking" | "on" | "saving" | "saved" | "declined" | "failed";
+  /** When it started recording (the phone's epoch ms). */
+  since?: number;
+  /** Once stopped: its file's name on the phone, its length in ms and its size in bytes. */
+  name?: string;
+  ms?: number;
+  bytes?: number;
+  /** It stopped because the loan ended (Stop, a lock, the link lost), not by phone_record_stop; what was recorded is kept. */
+  partial?: boolean;
+  /** Why it failed or was declined, in a few words. */
+  error?: string;
 }
 
 /**
@@ -71,7 +105,7 @@ export interface HandsetView {
 }
 
 /** The phone's methods the home may call, a small fixed set (never a shell). */
-export type HandsetMethod = "state" | "start" | "doing" | "stop" | "off" | "beat" | "screen" | "jpeg" | "tap" | "swipe" | "key" | "text" | "front" | "apps" | "launch" | "size";
+export type HandsetMethod = "state" | "start" | "doing" | "stop" | "off" | "beat" | "screen" | "jpeg" | "tap" | "swipe" | "key" | "text" | "front" | "apps" | "launch" | "size" | "record" | "record_stop";
 
 /**
  * A decision about the person's own phone: may this task use it now (use)? Or, D247: the task needs
@@ -93,7 +127,7 @@ export type HandsetClientFrame =
   // The page's answer to one handset_req, relayed from its app.
   | { t: "handset_res"; id: string; ok: boolean; result?: unknown; error?: string }
   // 停下 / Stop from any window (taskId), or from the phone's own indicator (the page relays it, from: "phone").
-  | { t: "handset_stop"; taskId?: string; from?: "phone"; why?: "stop" | "locked" | "service" | "lost" };
+  | { t: "handset_stop"; taskId?: string; from?: "phone"; why?: "stop" | "locked" | "service" | "lost" | "network" };
 
 export type HandsetServerFrame =
   // One call into the phone's app, relayed by its page; answered with handset_res.

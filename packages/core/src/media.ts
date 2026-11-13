@@ -283,7 +283,8 @@ export function createMediaStore(dataDir: string, opts: MediaStoreOptions = {}):
 
   /** Stores the bytes once; a second copy of the same bytes keeps the first's meta, adding what it lacked. */
   function store(bytes: Uint8Array, s: Sniffed, extra: Partial<Meta>): string {
-    if (bytes.length > MEDIA_LIMITS.bytes) throw new MediaError(413, "too big");
+    // D255: a video (a recording of a lent phone's screen) may be larger than a picture.
+    if (bytes.length > (s.type.startsWith("video/") ? MEDIA_LIMITS.video : MEDIA_LIMITS.bytes)) throw new MediaError(413, "too big");
     const id = createHash("sha256").update(bytes).digest("hex");
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     const prior = readMeta(id);
@@ -317,7 +318,7 @@ export function createMediaStore(dataDir: string, opts: MediaStoreOptions = {}):
     putFile(path, o = {}) {
       const st = statSync(path);
       if (!st.isFile()) throw new MediaError(400, "not a file");
-      if (st.size > MEDIA_LIMITS.bytes) throw new MediaError(413, "too big");
+      if (st.size > (/\.(mp4|mov)$/i.test(path) ? MEDIA_LIMITS.video : MEDIA_LIMITS.bytes)) throw new MediaError(413, "too big");
       return put(new Uint8Array(readFileSync(path)), { ...o, name: o.name ?? basename(path) });
     },
     get(id) {

@@ -10,6 +10,14 @@ test("the phone's section: its tools, the gate at the tap, the user's turns, scr
   expect(b).not.toMatch(/emulator|adb/i);
 });
 
+// D255: Ducter records the user's phone itself; the task never asks them to start Android's recorder,
+// and says it recorded only once the video is back and checked.
+test("recording the screen: Ducter's own tools, never Android's recorder by the user", () => {
+  const b = phoneBrief("Ducter");
+  for (const s of ["phone_record_start", "phone_record_stop", "Never ask the user to start Android's own screen recorder", "Only then say it was recorded", "marked partial"]) expect(b).toContain(s);
+  expect(b).toContain("answers once it is in front");
+});
+
 // D251: a task is told which phone it has, so it never takes Ducter's emulator for the user's own.
 test("the brief says which phone: the user's own, Ducter's, or either", () => {
   const mine = taskBrief({ ...base, phone: "mine" } as any);

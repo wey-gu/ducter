@@ -29,7 +29,7 @@ import androidx.core.app.NotificationManagerCompat
  */
 object Notify {
     const val LOAN = "handset"
-    private const val LOAN_ID = 238
+    const val LOAN_ID = 238
     private const val ACTION_STOP = "co.nowledge.ducter.HANDSET_STOP"
 
     /** The channels, named in the phone's language (made again when it changes: same id, new name). */
@@ -58,9 +58,39 @@ object Notify {
         a.requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 246)
     }
 
+    /** What the loan's notification says now (D255: the link's foreground service shows the same one). */
+    private var last: Triple<Context, String, String>? = null
+    private var rec: String? = null
+
     /** The loan's notification: whose task, what it is doing or whose turn, and Stop. */
     fun loan(c: Context, words: Context, title: String, line: String) {
+        last = Triple(words, title, line)
         if (!allowed(c)) return
+        try {
+            NotificationManagerCompat.from(c).notify(LOAN_ID, build(c, words, title, line))
+        } catch (_: SecurityException) {
+        }
+    }
+
+    /** D255: recording: the line says so (and goes back when it stops). */
+    fun recording(c: Context, on: Boolean, words: String) {
+        rec = if (on) words else null
+        val (w, t, l) = last ?: return
+        if (!allowed(c)) return
+        try {
+            NotificationManagerCompat.from(c).notify(LOAN_ID, build(c, w, t, l))
+        } catch (_: SecurityException) {
+        }
+    }
+
+    /** D255: the loan's notification for the link's foreground service (the same id: one notification). */
+    fun loanNotification(c: Context): android.app.Notification? = last?.let { (w, t, l) -> build(c, w, t, l) }
+
+    /** Before the pill has said anything: the channel's own words. */
+    fun quietNotification(c: Context, line: String? = null): android.app.Notification = build(c, c, c.getString(R.string.notify_loan_channel), line ?: c.getString(R.string.handset_link_fgs))
+
+    private fun build(c: Context, words: Context, title: String, line0: String): android.app.Notification {
+        val line = rec?.let { "$it · $line0" } ?: line0
         // Made at launch in the app's language; only if it is missing, here, in the pill's (a service's own
         // resources may not follow the app's language: seen on the emulator).
         if (Build.VERSION.SDK_INT >= 26 && c.getSystemService(NotificationManager::class.java)?.getNotificationChannel(LOAN) == null) channels(words)
@@ -72,7 +102,7 @@ object Notify {
             c, 1, Intent(c, HandsetStopReceiver::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val n = NotificationCompat.Builder(c, LOAN)
+        return NotificationCompat.Builder(c, LOAN)
             .setSmallIcon(R.drawable.ic_note_handset)
             .setColor(Pebble.color(c, R.color.accent))
             .setContentTitle(title)
@@ -86,14 +116,16 @@ object Notify {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(open)
             .addAction(0, words.getString(R.string.handset_stop), stop)
+            // D255: the link's foreground service shows it at once (Android may otherwise wait 10 s).
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
-        try {
-            NotificationManagerCompat.from(c).notify(LOAN_ID, n)
-        } catch (_: SecurityException) {
-        }
     }
 
-    fun loanOver(c: Context) = NotificationManagerCompat.from(c).cancel(LOAN_ID)
+    fun loanOver(c: Context) {
+        last = null
+        rec = null
+        NotificationManagerCompat.from(c).cancel(LOAN_ID)
+    }
 }
 
 /** 停下 / Stop in the loan's notification: the same as Stop on the pill. */

@@ -221,14 +221,17 @@ describe("the loan's life (D253)", () => {
     let p = await pixel();
     await lent("l1");
     app.setQuiet(true);
-    expect(await until(() => toldTo("l1").some((s) => /stopped answering .*your loan of it ended/.test(s)), 3000)).toBe(true);
+    expect(await until(() => toldTo("l1").some((s) => /Your loan of Pixel Fold ended: it didn't answer for 15 s/.test(s)), 3000)).toBe(true);
     expect((await card()).handset?.using).toBeUndefined();
+    // Said soon after, the next tool says the loan ended (once).
+    expect(await rejection(call("l1", "phone_look"))).toMatch(/Your loan of Pixel Fold ended/);
+    expect(askOf("l1").length).toBe(1);
     // A tap queued while quiet never runs when the page wakes (past its deadline).
     p.wake();
+    // D255: "back" on a later hello, once the phone answered a call.
     expect(await until(() => toldTo("l1").includes(HANDSET_BACK("Pixel Fold")))).toBe(true);
     expect(await until(() => app.session() === undefined)).toBe(true);
-    // The next tool says the loan ended (once), the one after asks again: one new card.
-    expect(await rejection(call("l1", "phone_look"))).toMatch(/stopped answering/);
+    // The next tool asks again: one new card.
     expect(await rejection(call("l1", "phone_look"))).toMatch(/Asked the user whether you may use Pixel Fold/);
     expect(askOf("l1").length).toBe(2);
     expect(await rejection(call("l1", "phone_look"))).toMatch(/a card is asking them. That card is the only ask/);
@@ -282,7 +285,7 @@ describe("the loan's life (D253)", () => {
     const p = await pixel();
     await lent("g1");
     p.ws.close();
-    expect(await until(() => toldTo("g1").some((s) => /stopped answering/.test(s)), 2000)).toBe(true);
+    expect(await until(() => toldTo("g1").some((s) => /Your loan of Pixel Fold ended: the Ducter app on it lost its connection/.test(s)), 2000)).toBe(true);
     expect(core.tasks.onHand().tasks.find((c) => c.taskId === "g1")?.handset).toBeUndefined();
     core.tasks.setState("g1", "done", "parked");
   });

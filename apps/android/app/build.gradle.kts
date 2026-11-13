@@ -100,6 +100,8 @@ dependencies {
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.window:window:1.4.0")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    // D255: the lent phone's own link to the home (a WebSocket outside the web view).
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation("junit:junit:4.13.2")
     // A real org.json on the JVM (Android's is stubs there), for the release parsing tests.
     testImplementation("org.json:json:20240303")

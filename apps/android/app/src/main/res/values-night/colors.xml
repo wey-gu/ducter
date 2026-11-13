@@ -12,4 +12,5 @@
     <color name="line">#3A3027</color>
     <color name="line2">#0D0A07</color>
     <color name="failed_ink">#F8A9BC</color>
+    <color name="rec">#FF6B5E</color>
 </resources>

@@ -1016,7 +1016,8 @@ export interface SiteView {
 }
 
 /** desktop: the Mac app; web: the web or phone client; cli: a `ducter` command. */
-export type ClientKind = "desktop" | "web" | "cli";
+/** handset (D255): the Android app's own link while its phone is lent: no conversation, only handset frames. */
+export type ClientKind = "desktop" | "web" | "cli" | "handset";
 
 /** One place the New task card offers (D128). */
 /** D203: one subfolder in a folder_browse_result: its name, its path there, and whether it is a git repo. */

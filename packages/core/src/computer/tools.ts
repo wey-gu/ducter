@@ -81,6 +81,7 @@ const EFFECT_WORDS: Record<Effect, string> = {
   account: "changes the account",
   confirm: "confirms or allows",
   setting: "changes a system setting",
+  record: "starts or stops a screen recording",
 };
 
 const s = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));

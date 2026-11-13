@@ -55,7 +55,9 @@ describe("the gate at the effect", () => {
     // The tile a task tapped on hel looking for the screen recorder (with Android's non-breaking hyphen).
     expect(toggleOf("com.android.systemui", "Wi\u2011Fi · Networks available")).toBe("setting");
     for (const l of ["Internet", "Bluetooth · Off", "Airplane mode", "飞行模式", "蓝牙", "移动数据", "Hotspot", "Location"]) expect(toggleOf("com.android.systemui", l)).toBe("setting");
-    for (const l of ["Screen record", "屏幕录制", "Flashlight", "Edit"]) expect(toggleOf("com.android.systemui", l)).toBeUndefined();
+    for (const l of ["Flashlight", "Edit"]) expect(toggleOf("com.android.systemui", l)).toBeUndefined();
+    // D255: the recorder's tile and its Stop start or stop a recording: they wait for Go.
+    for (const l of ["Screen record", "屏幕录制", "Stop recording", "停止录制"]) expect(toggleOf("com.android.systemui", l)).toBe("record");
     expect(toggleOf("com.android.settings", "Internet")).toBeUndefined(); // a row: it opens its page
     expect(toggleOf("com.android.settings", "Bluetooth", true)).toBe("setting"); // its switch
     expect(toggleOf("com.android.chrome", "Wi-Fi", true)).toBeUndefined();

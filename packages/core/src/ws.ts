@@ -375,9 +375,17 @@ export function createWsHandler(deps: WsDeps) {
   machineId();
 
   const handle = async (ws: ServerWebSocket<WsData>, f: ClientFrame) => {
-    if (f.t !== "hello" && !ws.data.live) throw new Error("send hello first");
+    // D255: the Android app's own link while its phone is lent speaks only handset frames, and is never
+    // "live" (no conversation, no presence: the person isn't in Ducter because their phone is lent).
+    if (f.t !== "hello" && !ws.data.live && !(ws.data.client === "handset" && f.t.startsWith("handset_"))) throw new Error("send hello first");
     switch (f.t) {
       case "hello": {
+        if (f.client === "handset") {
+          if (!ws.data.device) throw new Error("a paired phone only");
+          ws.data.client = "handset";
+          send(ws, { t: "welcome", persona: core.persona.id, personaName: core.persona.name, headSeq: log.head(), version: DUCTER_VERSION });
+          return;
+        }
         const machine = machineId();
         send(ws, { t: "welcome", persona: core.persona.id, personaName: core.persona.name, headSeq: log.head(), ...(machine ? { machine } : {}), version: DUCTER_VERSION });
         // Channel only: task streams are pulled with task_history.
@@ -1141,7 +1149,9 @@ export function createWsHandler(deps: WsDeps) {
         const me = ws.data.device?.id;
         if (!h || !me || !f.state || typeof f.state !== "object") return;
         const s = f.state;
-        ws.data.handset ??= { send: (fr) => sockets.has(ws) && send(ws, fr) };
+        // D255: the app's own link (hello.client "handset") is preferred over its page's while it is up.
+        ws.data.handset ??= { send: (fr) => sockets.has(ws) && send(ws, fr), ...(ws.data.client === "handset" ? { native: true } : {}) };
+        const rec = s.recording && typeof s.recording === "object" ? s.recording : undefined;
         h.hello(me, ws.data.handset, {
           bridge: Number(s.bridge) || 0,
           sdk: Number(s.sdk) || 0,
@@ -1154,7 +1164,26 @@ export function createWsHandler(deps: WsDeps) {
           ...(typeof s.awake === "boolean" ? { awake: s.awake } : {}),
           ...(typeof s.locked === "boolean" ? { locked: s.locked } : {}),
           ...(typeof s.limited === "boolean" ? { limited: s.limited } : {}),
-          ...(s.ended && typeof s.ended === "object" && typeof s.ended.session === "string" && ["stop", "service", "locked", "lost"].includes(String(s.ended.why)) ? { ended: { session: s.ended.session, why: s.ended.why } } : {}),
+          ...(s.ended && typeof s.ended === "object" && typeof s.ended.session === "string" && ["stop", "service", "locked", "lost", "network"].includes(String(s.ended.why)) ? { ended: { session: s.ended.session, why: s.ended.why } } : {}),
+          // D255: the app's run and link, and a recording asked for in a loan.
+          ...(typeof s.boot === "string" && s.boot ? { boot: s.boot.slice(0, 40) } : {}),
+          ...(s.link === "native" || s.link === "page" ? { link: s.link } : {}),
+          ...(typeof s.gen === "number" ? { gen: s.gen } : {}),
+          ...(rec && typeof rec.id === "string" && typeof rec.session === "string" && ["asking", "on", "saving", "saved", "declined", "failed"].includes(String(rec.state))
+            ? {
+                recording: {
+                  id: rec.id.slice(0, 64),
+                  session: rec.session.slice(0, 64),
+                  state: rec.state,
+                  ...(typeof rec.since === "number" ? { since: rec.since } : {}),
+                  ...(typeof rec.name === "string" ? { name: rec.name.slice(0, 120) } : {}),
+                  ...(typeof rec.ms === "number" ? { ms: rec.ms } : {}),
+                  ...(typeof rec.bytes === "number" ? { bytes: rec.bytes } : {}),
+                  ...(rec.partial === true ? { partial: true } : {}),
+                  ...(typeof rec.error === "string" ? { error: rec.error.slice(0, 200) } : {}),
+                },
+              }
+            : {}),
         });
         return;
       }
@@ -1174,10 +1203,11 @@ export function createWsHandler(deps: WsDeps) {
       case "handset_stop": {
         const fromPhone = f.from === "phone" ? ws.data.device?.id : undefined;
         // D253: the phone says why it ended a loan by itself (locked, its switch went off, the home went quiet).
-        const why = fromPhone && (f.why === "locked" || f.why === "service" || f.why === "lost" || f.why === "stop") ? f.why : undefined;
+        // D255: network (its own link couldn't reach the home).
+        const why = fromPhone && (f.why === "locked" || f.why === "service" || f.why === "lost" || f.why === "network" || f.why === "stop") ? f.why : undefined;
         const ok = deps.handsets ? await deps.handsets.stop(typeof f.taskId === "string" && f.taskId ? f.taskId : undefined, fromPhone, why) : false;
         send(ws, { t: "handset_stop_result", ...(f.taskId ? { taskId: f.taskId } : {}), ok });
-        send(ws, { t: "on_hand", onHand: tasks.onHand() });
+        if (ws.data.client !== "handset") send(ws, { t: "on_hand", onHand: tasks.onHand() });
         return;
       }
       case "computer_stop": {

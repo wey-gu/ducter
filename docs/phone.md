@@ -246,17 +246,22 @@ install an app on a clean phone, and it uses Ducter's own phone, never yours.
 - If the phone stops answering (it lost its network, or Android closed Ducter), the task says so
   at once instead of waiting, and gives it back after a few seconds. On the task you see
   **Pixel isn't answering right now**.
-- When a step is yours (signing in, starting a screen recording), the card says exactly what to do.
-  After you tap **Done**, the task checks the phone before it goes on.
+- When a step is yours (signing in, a code), the card says exactly what to do. After you tap
+  **Done**, the task checks the phone before it goes on.
 - Switches that cut your phone off, like Wi-Fi, Bluetooth or airplane mode, wait for your Go too.
 
 Between tasks it reads nothing. To turn it off, tap **Use this phone** on the phone's card and
-**Remove**: that also turns Ducter's switch off in Android. Keep the Ducter app open (in the
-background is fine) while a task is borrowing the phone.
+**Remove**: that also turns Ducter's switch off in Android. While a task is borrowing the phone,
+Ducter keeps its own connection to your Ducter (you see it in the notification, with **Stop**), so
+the task can work in other apps with Ducter in the background.
 
-**Screen recordings** are yours to start and stop: the task asks on a card (Android's **Screen
-record** in quick settings, with audio off), checks that it is recording, and says the video is
-saved only after it has seen it in Photos or Files.
+**Screen recordings.** Ask a task to record what it does ("record it and send me the video") and
+Ducter records the phone's screen itself. Android asks you once, with its own dialog (**Share
+entire screen** · **Share screen**); nothing is recorded until you allow it, and there's no sound.
+While it records, the pill shows a small red dot and **Recording the screen**. When the task stops
+it, the video is saved on your phone (Movies › Ducter, in Photos) and sent to your Ducter, which
+checks it before the task says it's done; you can play it in the conversation. Stopping the task or
+locking the phone stops the recording too, and what was recorded is kept.
 
 **iPhone:** not available. iOS doesn't let one app use other apps, and the ways around it need
 Xcode and a Mac next to the phone. On an iPhone, tasks use apps on your Mac or Ducter's own phone

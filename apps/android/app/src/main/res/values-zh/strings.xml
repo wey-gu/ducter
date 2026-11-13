@@ -50,4 +50,9 @@
     <string name="handset_stop_about">让正在用这台手机的任务停下</string>
     <string name="notify_loan_channel">在用这台手机</string>
     <string name="notify_loan_channel_about">任务借用这台手机时一直显示，带「停下」。</string>
+    <!-- D255: Ducter 自己录下借出去的手机的屏幕；借出去时用它自己的连接。 -->
+    <string name="handset_recording">在录屏</string>
+    <string name="handset_record_asking">等你允许录屏</string>
+    <string name="handset_record_sending">在把录屏发回 Ducter</string>
+    <string name="handset_link_fgs">任务借用这台手机时，保持和你的 Ducter 的连接</string>
 </resources>

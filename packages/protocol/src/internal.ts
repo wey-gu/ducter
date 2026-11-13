@@ -355,6 +355,7 @@ export interface SessionSpec {
   launchArgs?: string[];
   // claude-code: leave out the user's own Claude config. codex: Ducter's clean setup, keeping
   // Codex's own browser and Computer Use plugins (a browser place on Codex's own tools, D130).
+  // deepseek-harness: a home of Ducter's for the task, DSH's own tools kept (a browser place, D241).
   userConfiguration?: "include" | "exclude";
   // D135: the window the session runs on (standard-window models, never a 1M variant when it
   // fits) and where the harness's own compactor may fire. The partner keeps its compactor above

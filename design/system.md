@@ -56,6 +56,18 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
   persona (D168; off in the task only when memory is off in Ducter); a browser place runs clean. The cost (slower start, extra context) is off the
   user's attention path, since the ack comes from the partner. Turn it on for untrusted or
   shared-machine setups.
+- **What every task leaves out of the harness's own tools** (D241, research/76 §6): only what
+  competes with Ducter. Claude Code: plan mode, Cron ×3, ScheduleWakeup and AskUserQuestion (Ducter
+  owns waits, wakes and talking to the person), **PushNotification** (a push to the person's
+  terminal and phone, around Ducter), **RemoteTrigger** (scheduled remote agents on the person's
+  claude.ai account, which outlive the task) and **Workflow** (a scripted fan-out of agents that
+  never see the brief; Ducter owns fanning work out as tasks the person sees; ~2.0K tokens a
+  request). The partner's session gets the same list. **Agent stays** outside browser places: a
+  subagent returns to the task, which keeps the brief, and the tools that act for the person
+  outside a browser (the phone, the person's apps) are Ducter's own, with the Go gate enforced by
+  the tool and written in its description. Codex: an ordinary task keeps the person's
+  `multi_agent`; its subagents inherit the brief (`developerInstructions`, codex 0.167.2 source)
+  unless an agent role of the person's replaces it.
 
 - **Task model:** the partner may pass a model per task. If it passes none, `DUCTER_TASK_MODEL`
   applies (Claude Code); if that is unset, the harness's own default applies.
@@ -68,7 +80,7 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
 | | Claude Code | Codex | pi | DeepSeek Harness |
 |---|---|---|---|---|
 | Partner | yes | yes | yes (D177; passed the eval on `deepseek/deepseek-flash`) | yes (D177; passed the eval on `deepseek-official/deepseek-flash`) |
-| Clean setup | OAR `userConfiguration: "exclude"` | `-c` overrides: each user MCP server `enabled=false` by name, `features.{hooks,apps,memories,goals,multi_agent,…}=false`, `notify=[]` (tasks too keep goals and subagents off, D240); partner also drops plugins, images, computer use | pi flags `--no-skills --no-context-files --no-prompt-templates --no-extensions --no-themes` on its RPC process | a Ducter-owned `DSH_HOME` + `DSH_AGENTS_HOME` per setup, `<dataDir>/harness/dsh/<hash of its profile layer and AGENTS.md>`, so the same setup resumes in the same home; its profile layer (`profiles/acp/cordis.patch.yml`) also turns the session-log upload off |
+| Clean setup | OAR `userConfiguration: "exclude"` | `-c` overrides: each user MCP server `enabled=false` by name, `features.{hooks,apps,memories,goals,multi_agent,…}=false`, `notify=[]` (tasks too keep goals and subagents off, D240); partner also drops plugins, images, computer use | pi flags `--no-skills --no-context-files --no-prompt-templates --no-extensions --no-themes` on its RPC process; a task gets its project's own AGENTS.md / CLAUDE.md back, appended after its brief (D241: from its folder up to the repository's top, never pi's global one; pi has no flag for that) | a Ducter-owned `DSH_HOME` + `DSH_AGENTS_HOME` per setup, `<dataDir>/harness/dsh/<hash of its profile layer and AGENTS.md>`, so the same setup resumes in the same home; a task's (memory off, a browser place, D241) is its folder's, `<dataDir>/harness/deepseek-harness-{memory-off,browser}/<hash of its folder>`; its profile layer (`profiles/acp/cordis.patch.yml`) also turns the session-log upload off; the key comes from the env, `keys.env`, or else the person's own DSH credential file, passed as `DEEPSEEK_API_KEY` (the key, never the file) |
 | Partner prompt | system prompt | `baseInstructions` | system prompt | the system prompt's whole opener: the profile layer's `system-prompt` row, `includeHarnessIdentity: false` + `personaPrefix` (D177; a prompt with `{{` falls back to `$DSH_HOME/AGENTS.md`, which DSH sends as "workspace instructions" in a user message) |
 | Task brief | append | `developerInstructions` | append | first message, `<instructions>…</instructions>` |
 | Ducter's MCP | HTTP + bearer | HTTP + bearer | HTTP + bearer | stdio bridge (`mcp-bridge.ts`), target in a 0600 file |
@@ -124,10 +136,13 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
 - **Known gaps:** Codex's global `AGENTS.md` and `personality` are not left out (unverified);
   Codex lists the partner's sessions in the user's own history; pi's model list does not test
   its keys; in its owned home DeepSeek Harness sees only the DeepSeek key, not the user's other
-  provider routes.
-- **Browser tasks: a clean setup** (W5-2, D62, D240): only the curated cua-driver tools and no
+  provider routes; pi's clean flags leave the person's global `SYSTEM.md` in (it replaces pi's own
+  prompt in a task; no flag turns it off, D241).
+- **Browser tasks: a clean setup** (W5-2, D62, D240, D241): only the curated cua-driver tools and no
   user MCP servers, plugins, hooks or CLAUDE.md; the harness's own built-in tools stay, less the
-  ones that start a model without the brief (Claude Code's Agent and Workflow). Their `log_search` / `log_read`
+  ones that start a model without the brief (Claude Code's Agent and Workflow; Codex's subagents,
+  since a role of the person's would replace the brief). DeepSeek Harness runs in a home of
+  Ducter's for the task, with all of DSH's own tools. Their `log_search` / `log_read`
   are scoped to their own task (D62; built in `packages/core/src/tools.ts`). Reaching the user's own Chrome is
   allowed since D126; the harness's own browser tools are in "Screen places" below.
 - **Codex tasks keep Codex's own Computer Use and browser use** (D130): `cua_repl` (a bundled
@@ -970,9 +985,10 @@ What runs today, before sandboxes and spacesd:
   (`withBrowser`): the brief with its Go and own-window rules, the cua-driver sidecar, and per
   harness the setup that leaves the user's own config out: Claude Code its own built-ins less
   Agent and Workflow (D240), denials and `exclude`; Codex the clean setup that keeps its own browser and Computer Use
-  plugins (on either driver); pi its clean flags. DeepSeek Harness keeps its own setup for now
-  (its Ducter-owned home holds the partner's instructions). Before this, a recovered or reopened
-  browser task resumed with none of it.
+  plugins (on either driver); pi its clean flags; DeepSeek Harness a home of Ducter's for the task
+  (D241: `userConfiguration: "exclude"` on DSH, its folder's home, the brief in that home's
+  AGENTS.md, DSH's own tools all kept). Before this, a recovered or reopened browser task resumed
+  with none of it.
 - **Driver (cua):** Ducter starts its own cua-driver daemon per data dir on a private socket, via
   LaunchServices so that macOS grants stay with CuaDriver. The daemon gets
   `CUA_DRIVER_BROWSER_PROFILE_ROOT=<dataDir>/browser-profiles`. The task's harness runs
@@ -980,8 +996,8 @@ What runs today, before sandboxes and spacesd:
   `DUCTER_BROWSER` (0 / 1 / unset = auto).
 - **env-gate, first slice (no proxy yet):** a browser task sees 10 cua-driver tools.
   Everything else the driver offers, including `page` and `end_session`, is denied.
-  - Claude built-ins: Claude Code's own, less Ducter's seven denials for every task and
-    **Agent** and **Workflow** (D240). A subagent gets the parent's MCP tools but not its
+  - Claude built-ins: Claude Code's own, less Ducter's denials for every task (Workflow among
+    them since D241) and **Agent** (D240). A subagent gets the parent's MCP tools but not its
     appended brief (measured, research/76), so it would use the browser without the Go,
     untrusted-page and own-window rules. No `--tools` allowlist: one rots as Claude Code
     renames tools. Cost, per request (haiku, research/76): 12.2K tokens of built-ins against

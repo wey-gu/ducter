@@ -24,8 +24,8 @@ const PARTNER_TOOLS = [
 const TASK_TOOLS = ["ask_for_key", "checkpoint", "log_read", "log_search", "memory_search", "report_to_main", "wait_for"]; // memory_search: only where Mem is connected and the plugin is absent (D168); ask_for_key (D233, 0.8K): every task not in a browser place
 /** JSON characters of the whole tools/list result (≈ chars / 3.6 tokens). */
 const CEILING = {
-  partner: 30_100, // 29.6K today (D243: + noticed, 0.5K, the partner's answer to "anything for me?" from the same detectors as the note); (D215's call sheet fields on phone_call, D217's needs.phone on task_open): 26 tools (phone_call, D193, 2.2K after trimming; D206 media on task_open and task_send); wait_for (3.9K) and task_open (4.8K) are the largest
-  partnerWithCalendar: 32_100, // D243: + noticed; D222: + calendar (≈1.9K), listed only while a calendar account is connected
+  partner: 30_400, // 30.1K today (D245: routine_propose watch, routine_list run state; D247: needs.phone covers the person's own phone; D243: + noticed, 0.5K, the partner's answer to "anything for me?" from the same detectors as the note); (D215's call sheet fields on phone_call, D217's needs.phone on task_open): 26 tools (phone_call, D193, 2.2K after trimming; D206 media on task_open and task_send); wait_for (3.9K) and task_open (4.8K) are the largest
+  partnerWithCalendar: 32_400, // D245, D247; D243: + noticed; D222: + calendar (≈1.9K), listed only while a calendar account is connected
   task: 9_200, // 8.7K: 7 tools (ask_for_key, D233, 0.7K); wait_for alone is 3.6K; memory_search (1.2K) is the D168 fallback where the Mem plugin is absent
 };
 

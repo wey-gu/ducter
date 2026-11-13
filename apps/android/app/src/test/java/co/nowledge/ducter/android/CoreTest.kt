@@ -137,6 +137,17 @@ class FoldTest {
     @Test fun notAcross() {
         assertNull(Fold.of(intArrayOf(1104, 0, 1104, 1840), vertical = true, halfOpened = false, separating = false, occluding = false, web = intArrayOf(0, 0, 1000, 1840), density = 2.625f))
     }
+
+    // D252: unfolding reports the inner fold while the web view still has the cover screen's width
+    // (1080 px): read then, it is none. MainActivity reads it again when the web view grows, and
+    // the same fold is a book.
+    @Test fun unfoldingReadsAgainOnceTheWebViewGrows() {
+        val bounds = intArrayOf(1104, 0, 1104, 1840)
+        assertNull(Fold.of(bounds, vertical = true, halfOpened = false, separating = false, occluding = false, web = intArrayOf(0, 0, 1080, 2092), density = 2.625f))
+        val f = Fold.of(bounds, vertical = true, halfOpened = false, separating = false, occluding = false, web = intArrayOf(0, 0, 2208, 1840), density = 2.625f)!!
+        assertEquals("flat", f.state)
+        assertEquals(421, f.start)
+    }
 }
 
 /** D200: the same cases as the iPhone app's apps/ios/scripts/home-version/main.swift. */

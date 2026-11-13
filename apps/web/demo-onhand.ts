@@ -173,6 +173,10 @@ await seed.stop();
 const core = startCore({ dataDir, persona, push: false, ooSource, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
 core.setRunner(runnerOf(core));
 core.setPartner({ onTrigger() {} });
+// A phone or an emulator pairs with this link (the Android debug build: --es pairLink '…', with
+// 10.0.2.2 for 127.0.0.1 on an emulator; the iPhone simulator: -pairLink '…').
+const pair = await core.devicesView.pairCode();
+console.log(`[demo] pair: http://127.0.0.1:${core.port}/pair#c=${pair.code}`);
 console.log(`[demo] On hand demo (${few ? "one errand" : `${many} more`}, ${zh ? "zh" : "en"}) at http://127.0.0.1:${core.port}/app (data: ${dataDir})`);
 process.on("SIGINT", async () => {
   await core.stop();

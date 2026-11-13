@@ -4997,62 +4997,14 @@ button.bcard:active {
 .full > .task-page {
   padding-top: 24px;
 }
-/* On a book fold the lanes meet at the fold (D182): what needs you on the first half, the rest
-   on the second; nothing lies across it. */
+/* On a book fold (D182) only an opened task takes the whole screen, in the second half with On
+   hand's rail in the first (D244, D252); its crumbs keep to that half. */
 .full.book .top.crumbs {
   padding-left: calc(var(--safe-left) + 16px);
   padding-right: calc(var(--safe-right) + 16px);
 }
 .full.book .top.crumbs .trail {
   max-width: calc(var(--fold-a) - var(--safe-left) - 32px);
-}
-.full.book .board {
-  padding-left: 0;
-  padding-right: 0;
-}
-.full.book .board > .next,
-.full.book .board > .calm-band {
-  margin-left: calc(var(--safe-left) + 16px);
-  max-width: calc(var(--fold-a) - var(--safe-left) - 32px);
-}
-.full.book .board > .shelf {
-  margin: 0 calc(var(--safe-right) + 16px) 0 calc(var(--fold-a) + var(--fold-gap) + 16px);
-}
-.full.book .lanes {
-  flex-wrap: nowrap;
-  gap: 0;
-}
-.full.book .lanes > .col {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  min-width: 0;
-}
-.full.book .lanes > .col:first-child {
-  flex: 0 0 var(--fold-a);
-  padding: 0 16px 0 calc(var(--safe-left) + 16px);
-}
-.full.book .lanes > .col:last-child {
-  flex: 1 1 0;
-  margin-left: var(--fold-gap);
-  padding: 0 calc(var(--safe-right) + 16px) 0 16px;
-}
-.full.book .lane {
-  max-width: none;
-  flex: none;
-}
-.full.book .board .pd,
-.full.book .groups {
-  width: auto;
-  align-self: stretch;
-  margin: 0 calc(var(--safe-right) + 16px) 0 calc(var(--safe-left) + 16px);
-}
-.full.book .groups {
-  display: grid;
-  grid-template-columns: calc(var(--fold-a) - var(--safe-left) - 32px) 1fr;
-  column-gap: calc(var(--fold-gap) + 32px);
-  row-gap: 32px;
-  align-items: start;
 }
 
 /* D191: 自动填充 / Autofill. A sign-in is its site's letter on a clay pebble, a card a small

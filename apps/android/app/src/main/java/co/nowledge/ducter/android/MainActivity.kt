@@ -466,32 +466,55 @@ window.ducterNative=Object.freeze($info);})();"""
 
     // MARK: the fold (D182)
 
+    /** The fold Android reports for this window right now (none folded, or on a screen without one). */
+    private var feature: FoldingFeature? = null
+
+    /**
+     * The fold is read against the web view as it is laid out *now*, both when Android reports a
+     * posture and whenever the web view's size or place changes. Unfolding reports the inner
+     * screen's fold before the web view has grown from the cover screen's width; read only then,
+     * the fold seemed to lie past the page's right edge, came out as none, and the page stayed one
+     * column on an open book until the next posture change (the author's Pixel Fold, 0.0.48).
+     */
     private fun watchFold() {
+        web.addOnLayoutChangeListener { _, l, t, r, b, ol, ot, or, ob ->
+            if (l != ol || t != ot || r != or || b != ob) readFold()
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 WindowInfoTracker.getOrCreate(this@MainActivity).windowLayoutInfo(this@MainActivity).collect { info ->
-                    val f = info.displayFeatures.filterIsInstance<FoldingFeature>().firstOrNull()
-                    fold = f?.let { ff ->
-                        val loc = IntArray(2).also { web.getLocationInWindow(it) }
-                        val b = ff.bounds
-                        val d = resources.displayMetrics.density
-                        bookPx = if (ff.orientation == FoldingFeature.Orientation.VERTICAL && b.left / d >= 320 && (root.width - b.right) / d >= 320) b.left to b.right else null
-                        Fold.of(
-                            bounds = intArrayOf(b.left, b.top, b.right, b.bottom),
-                            vertical = ff.orientation == FoldingFeature.Orientation.VERTICAL,
-                            halfOpened = ff.state == FoldingFeature.State.HALF_OPENED,
-                            separating = ff.isSeparating,
-                            occluding = ff.occlusionType == FoldingFeature.OcclusionType.FULL,
-                            web = intArrayOf(loc[0], loc[1], web.width, web.height),
-                            density = resources.displayMetrics.density,
-                        )
-                    }
-                    if (f == null) bookPx = null
-                    relayout()
-                    pushFold()
+                    feature = info.displayFeatures.filterIsInstance<FoldingFeature>().firstOrNull()
+                    readFold(always = true)
                 }
             }
         }
+    }
+
+    private fun readFold(always: Boolean = false) {
+        val was = fold to bookPx
+        val ff = feature
+        val d = resources.displayMetrics.density
+        if (ff == null || web.width <= 0 || web.height <= 0) {
+            fold = null
+            bookPx = null
+        } else {
+            val loc = IntArray(2).also { web.getLocationInWindow(it) }
+            val b = ff.bounds
+            val vertical = ff.orientation == FoldingFeature.Orientation.VERTICAL
+            bookPx = if (vertical && b.left / d >= 320 && (root.width - b.right) / d >= 320) b.left to b.right else null
+            fold = Fold.of(
+                bounds = intArrayOf(b.left, b.top, b.right, b.bottom),
+                vertical = vertical,
+                halfOpened = ff.state == FoldingFeature.State.HALF_OPENED,
+                separating = ff.isSeparating,
+                occluding = ff.occlusionType == FoldingFeature.OcclusionType.FULL,
+                web = intArrayOf(loc[0], loc[1], web.width, web.height),
+                density = d,
+            )
+        }
+        if (!always && was == (fold to bookPx)) return
+        relayout()
+        pushFold()
     }
 
     /** window.ducterFold (null: no fold across the page) and a `ducterfold` event; apps/web/src/fold.ts. */

@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deviceName } from "../src/conn.ts";
 import { connWay, type Client } from "../src/sheet.ts";
-import { BOOK_MIN, markSplit, readFold, splitFor, type Fold } from "../src/fold.ts";
+import { BOOK_MIN, canFill, markSplit, readFold, splitFor, type Fold } from "../src/fold.ts";
 import { strings } from "../src/i18n.ts";
 
 const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
@@ -31,6 +31,30 @@ describe("the fold splits the panes", () => {
   });
   test("no fold, no split: the width decides (D176)", () => {
     expect(splitFor(undefined, 841, 701)).toBeUndefined();
+  });
+});
+
+// D182's posture table on a Pixel Fold (inner screen 841 × 701 CSS px, cover 412 × 797), and
+// what each level does there (D184, D244, D252). The panes show whenever there is a split.
+describe("the postures of a foldable", () => {
+  const W = 841;
+  const H = 701;
+  const posture = (f: Fold | undefined, w = W, h = H) => {
+    const s = splitFor(f, w, h);
+    return { split: s?.kind, onhandFills: canFill("onhand", !!s, s), taskFills: canFill("task", !!s, s) };
+  };
+  test("folded (the cover screen): one column, as on any phone", () => {
+    expect(posture(undefined, 412, 797)).toEqual({ split: undefined, onhandFills: false, taskFills: false });
+  });
+  test("open flat or half-open like a book: conversation | On hand; a task may stand beside its rail", () => {
+    for (const state of ["flat", "half"] as const)
+      expect(posture({ axis: "vertical", state, start: 421, end: 421 })).toEqual({ split: "book", onhandFills: false, taskFills: true });
+  });
+  test("half-open standing (tabletop): conversation above, On hand below, nothing fills", () => {
+    expect(posture({ axis: "horizontal", state: "half", start: 350, end: 350 })).toEqual({ split: "table", onhandFills: false, taskFills: false });
+  });
+  test("open flat, turned sideways: one tall screen, one column", () => {
+    expect(posture({ axis: "horizontal", state: "flat", start: 421, end: 421 }, 701, 841)).toEqual({ split: undefined, onhandFills: false, taskFills: false });
   });
 });
 

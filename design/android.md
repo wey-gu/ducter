@@ -70,6 +70,15 @@ The split sits at the fold's exact position from the app (`window.ducterFold`) o
 viewport segments; a hinge's width stays empty; each side needs 320 CSS px (book) or 220 (tabletop),
 else the width rule (D176) decides.
 
+The app reads Android's fold against the web view as it is laid out *now*: when Android reports a
+posture and again whenever the web view's size or place changes (D252). Unfolding reports the inner
+fold before the web view has grown from the cover screen, so a fold read only then is none, and the
+page stayed one column across the crease.
+
+On a book, On hand never takes the whole screen (the book already is On hand beside the
+conversation); an opened task can, and stands in the second half with On hand as a rail in the first
+(D244, D252).
+
 ## Notifications (D181 (4))
 
 From the home: not in this version; the page says so in Settings. The path chosen next:

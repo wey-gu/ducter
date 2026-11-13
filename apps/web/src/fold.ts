@@ -88,16 +88,16 @@ export const wideNow = (): boolean => (typeof matchMedia === "function" && match
 
 /**
  * D184: whether a level can take the whole screen instead of standing beside the conversation.
- * Wide without a fold: On hand and an opened task both. On a book fold both too, each in its own
- * halves: On hand's lanes split at the fold (what needs you on one side, the rest on the other),
- * and a task opened from there stands in the second half with On hand as a rail in the first
- * (D244). On a tabletop, neither: each half is a short screen, and a whole-screen page would lie
- * across the crease.
+ * Wide without a fold: On hand and an opened task both. On a book fold (D182, D252) the book is
+ * the layout: the conversation in the first half and On hand in the second, so On hand never
+ * takes the whole screen there (a one-column list would lie across the crease); an opened task
+ * can, and then stands in the second half with On hand as a rail in the first (D244). On a
+ * tabletop, neither: each half is a short screen, and a whole-screen page would lie across it.
  */
-export function canFill(_level: "onhand" | "task", wide: boolean, split?: Split): boolean {
+export function canFill(level: "onhand" | "task", wide: boolean, split?: Split): boolean {
   if (!wide) return false;
   if (!split) return true;
-  return split.kind === "book";
+  return split.kind === "book" && level === "task";
 }
 
 /** The current split, for code outside a component (app.ts's ⌘2). */

@@ -14,12 +14,12 @@ const book: Split = { kind: "book", a: 421, gap: 0 };
 const table: Split = { kind: "table", a: 350, gap: 0 };
 
 describe("taking the whole screen", () => {
-  test("only wide; on a book fold On hand only; on a tabletop neither", () => {
+  test("only wide; on a book fold an opened task only (the book is conversation | On hand); on a tabletop neither", () => {
     expect(canFill("onhand", false)).toBe(false);
     expect(canFill("task", false)).toBe(false);
     expect(canFill("onhand", true)).toBe(true);
     expect(canFill("task", true)).toBe(true);
-    expect(canFill("onhand", true, book)).toBe(true);
+    expect(canFill("onhand", true, book)).toBe(false); // D252: a one-column list would lie across the crease
     expect(canFill("task", true, book)).toBe(true); // D244: the rail in the first half, the task in the second
     expect(canFill("onhand", true, table)).toBe(false);
     expect(canFill("task", true, table)).toBe(false);
@@ -57,9 +57,10 @@ describe("taking the whole screen", () => {
     expect(strings("en").t("onhand.waiting.for", "CI")).toBe("Waiting · CI");
   });
 
-  test("the lanes meet at a book fold, never across it", () => {
-    expect(css).toContain(".full.book .lanes > .col:first-child {\n  flex: 0 0 var(--fold-a);");
-    expect(css).toContain("margin-left: var(--fold-gap);");
+  test("nothing at the whole screen lies across a book fold", () => {
+    // D252: D184 (5)'s lanes went with D216, and their book rules with them.
+    expect(css).not.toContain(".full.book .lanes");
+    expect(css).toContain(".full.book .with-rail {\n  grid-template-columns: var(--fold-a) minmax(0, 1fr);");
     // The side pane and the whole-screen page are one shape that grows and shrinks.
     expect(css).toMatch(/\.full \{[^}]*view-transition-name: level;/);
     expect(css).toMatch(/\.pane\.side \{\s*view-transition-name: level;/);

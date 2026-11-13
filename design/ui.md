@@ -435,8 +435,9 @@ the 720 measure under the crumbs **对话 / 手头的事 / {task}**; **暂停 / 
 340px)`, D244), and all three (rail, task, workbench) from 1560; narrower with the workbench open,
 the workbench takes the rail's place (task | workbench, Lody's two-slot rule). The move between
 them is one view transition (`level` and `conv`, 320 ms, `--ease`; none under reduced motion). On
-a book fold a task opened from the whole-screen On hand stands in the second half with the rail in
-the first, nothing across the fold (D244); a tabletop offers neither. Screens:
+a book fold On hand never takes the whole screen (the book is conversation | On hand); a task
+opened at the whole screen stands in the second half with the rail in the first, nothing across
+the fold (D244, D252); a tabletop offers neither. Screens:
 `.shots/onhand-wide/` (D184), `.shots/onhand-redesign/` (D216), `.shots/onhand-rail/` (D244).
 
 **On hand beside the opened task (D244), on the Mac and the web.** The rail is not web-only (D216

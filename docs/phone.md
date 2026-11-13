@@ -145,8 +145,9 @@ Connect it the same way, with its own code.
   waiting and what's done today, side by side, sorted by state or by project. Open a task from
   there and it fills the screen too, with On hand kept beside it as a list on the left, so the
   next task is one tap away. The same arrows, ⌘2 again, or **Conversation** at the top
-  bring you back to the two sides. On a foldable opened like a book, it splits at the fold: a
-  task opened from the full On hand stands on one side, with the list on the other.
+  bring you back to the two sides. On a foldable opened like a book, the two sides already are
+  the conversation and On hand; a task you open to fill the screen stands on one side of the
+  fold, with the list on the other.
 - **Upright, or side by side with another app** in Split View or Stage Manager, Ducter is one
   column, as on a phone. Turning the iPad or resizing the window keeps what you were reading and
   typing.

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.0.46
+
+<!-- whats-new
+zh: 用浏览器的任务也有完整的工具了：改文件、搜网页都行
+en: Browser tasks keep their full tools: edit files, search the web
+zh: 任务始终用原装 harness 的 prompt，Ducter 只附加说明
+en: Tasks always run on their harness's own prompt, plus a brief
+-->
+
+**Browser tasks keep their tools**
+- A task that uses a browser now keeps Claude Code's own tools (edit, search, fetch, skills and
+  the rest), like any other task. Only starting its own sub-agents stays off there, because a
+  sub-agent wouldn't follow the browser's rules (ask before sending, treat pages as untrusted).
+- Your own Claude setup still stays out of a browser task, so it has no way to your own Chrome.
+- Every task runs on its harness's own prompt; Ducter only adds a short brief on top.
+
 ## 0.0.45
 
 <!-- whats-new

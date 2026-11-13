@@ -47,6 +47,18 @@ type state struct {
 	// NewTaskTune is the model and effort last picked for each AI agent
 	// (D202), by harness.
 	NewTaskTune map[string]Tune `json:"newTaskTune,omitempty"`
+	// D244: new results. SeenSince is when this Mac started keeping
+	// track (a finish before it is never new); Seen is each task's card
+	// time when it was last open here.
+	SeenSince string            `json:"seenSince,omitempty"`
+	Seen      map[string]string `json:"seen,omitempty"`
+	// Folded are the By project groups folded on this Mac (D244).
+	Folded []string `json:"folded,omitempty"`
+	// BenchWidth is the workbench's width, dragged (D244); 0: 520.
+	BenchWidth float32 `json:"benchWidth,omitempty"`
+	// Screens is "both" when the Phone page shows its screens side by
+	// side (D244).
+	Screens string `json:"screens,omitempty"`
 }
 
 // Ask is one answer to a gentle offer: "yes", "no", or "later" (asked

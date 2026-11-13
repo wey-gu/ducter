@@ -412,7 +412,9 @@ a {
   view-transition-name: conv;
 }
 ::view-transition-group(level),
-::view-transition-group(conv) {
+::view-transition-group(conv),
+::view-transition-group(rail),
+::view-transition-group(bench) {
   animation-duration: 320ms;
   animation-timing-function: var(--ease);
 }
@@ -6056,14 +6058,32 @@ dl.call-summary dd { margin: 0; }
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
+  /* D244: the rail follows the window, 300 to 340. */
+  grid-template-columns: clamp(300px, 22vw, 340px) minmax(0, 1fr);
 }
+/* No hairline (D244): the deeper ground is the rail's edge. It has a view-transition name of its
+   own, so coming and going (and the workbench taking its place) slides instead of jumping. */
 .rail {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--line);
   background: var(--bg-deep);
+  view-transition-name: rail;
+}
+/* On a book fold (D244): the rail is the first half, the task the second, nothing across it. */
+.full.book .with-rail {
+  grid-template-columns: var(--fold-a) minmax(0, 1fr);
+  column-gap: var(--fold-gap);
+}
+.full.book .rail-head {
+  padding-left: calc(var(--safe-left) + 16px);
+}
+.full.book .beside-rail > .task-page,
+.full.book .beside-rail > .ask-dock,
+.full.book .beside-rail > .composer-wrap,
+.full.book .beside-rail > .task-foot {
+  padding-left: 16px;
+  padding-right: calc(var(--safe-right) + 16px);
 }
 .rail-head {
   min-height: 60px;
@@ -6267,6 +6287,11 @@ dl.call-summary dd { margin: 0; }
 
 /* Wide: the task keeps its column, the workbench stands at the right on a hairline. */
 .full.benched { padding-right: var(--bench-w); }
+/* D244: with the rail beside it too (all three), the workbench starts narrower so the task keeps
+   its reading column; a width the person dragged wins. */
+.full.benched:has(> .with-rail) { --bench-w: var(--bench-w-user, clamp(380px, 32vw, 600px)); }
+/* In the narrow rail a resting row keeps its title first: the draft PR word stays in the task. */
+.room-rail .trow .l1 .pr { display: none; }
 .bench.as-column {
   position: absolute;
   top: 0;
@@ -6276,7 +6301,8 @@ dl.call-summary dd { margin: 0; }
   display: flex;
   flex-direction: column;
   background: var(--bg-deep);
-  border-left: 1px solid var(--line);
+  /* D244: no hairline at rest; the deeper ground is its edge, the grip shows on hover. */
+  view-transition-name: bench;
   padding-right: var(--safe-right);
   animation: bench-in var(--t-med) var(--ease);
 }
@@ -6308,6 +6334,8 @@ dl.call-summary dd { margin: 0; }
 }
 .bench-resize:hover::after,
 .bench-resize:focus-visible::after { opacity: 1; }
+.bench-resize:focus-visible::after,
+.bench-resize.dragging::after { opacity: 1; background: var(--ink-muted); }
 
 /* Phone: a sheet over the task; its pages swipe, the strip follows. */
 .bench.as-sheet {
@@ -7708,4 +7736,224 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .fileview, .fileview.closing { animation-duration: 1ms; }
   .fv-sheet { transition: none; }
   button.filecard { transition: none; }
+}
+
+/* ---------- D244: a row's one status place, folded groups, the workbench's launcher ---------- */
+/* The partner's own clay face at 24, still: needs you (the flag), working (reading), a new result
+   (the done face; the flag for one that didn't work). Never a dot (D73). */
+.sface {
+  position: relative;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+}
+.sface img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  pointer-events: none;
+}
+.trow .l1 .sface {
+  margin: -4px 0 -4px 2px;
+}
+/* The handover, once: the reading face sinks and fades as the done face pops up. */
+.sface.handing .from {
+  animation: sface-out 220ms var(--ease) forwards;
+}
+.sface.handing .to {
+  animation: sface-pop 520ms var(--spring) 120ms backwards;
+}
+@keyframes sface-out {
+  to {
+    transform: translateY(5px) scale(0.6);
+    opacity: 0;
+  }
+}
+@keyframes sface-pop {
+  from {
+    transform: translateY(4px) scale(0.35);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sface.handing .from {
+    animation: sface-fade-out 260ms linear forwards;
+  }
+  .sface.handing .to {
+    animation: sface-fade-in 260ms linear backwards;
+  }
+}
+@keyframes sface-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes sface-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+/* A new result keeps its full ink until it is opened (it doesn't recede yet). */
+.trow.unseen.a-done .l1 .t,
+.trow.unseen.a-done_claimed .l1 .t {
+  color: var(--ink);
+  font-weight: 700;
+}
+/* By project's groups fold from their name; a folded one keeps its most urgent face. */
+.tsec.fold h3 {
+  gap: 10px;
+}
+.tsec.fold .fold-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 32px;
+  margin: 0 0 0 -8px;
+  padding: 0 10px 0 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.tsec.fold .fold-name .nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tsec.fold .fold-name .chev {
+  flex: none;
+  transition: transform var(--t-fast) var(--ease);
+}
+.tsec.fold .fold-name .chev.open {
+  transform: rotate(90deg);
+}
+@media (hover: hover) {
+  .tsec.fold .fold-name:hover {
+    background: var(--surface-sunken);
+    color: var(--ink);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tsec.fold .fold-name .chev {
+    transition: none;
+  }
+}
+/* The workbench open with nothing to show: what can show up here, as clay tiles. */
+.bench-title {
+  flex: 1;
+  min-width: 0;
+  padding-left: 8px;
+  font-family: var(--head);
+  font-size: var(--md);
+  font-weight: 800;
+}
+.bench-launcher {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 20px 16px 32px;
+}
+.bench-launcher .launch-hello {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 24px;
+}
+.bench-launcher .launch-hello img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+.bench-launcher .launch-hello .wb-h {
+  margin: 0;
+  font-size: var(--md);
+  color: var(--ink-soft);
+}
+.bench-launcher .tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.bench-launcher .tile {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--base);
+  color: var(--ink-soft);
+  font: inherit;
+  text-align: left;
+}
+.bench-launcher .tile.has {
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease), box-shadow var(--t-press) var(--ease);
+}
+.bench-launcher .tile.has:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--line);
+}
+.bench-launcher .tile .mk {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+}
+.bench-launcher .tile.has .mk {
+  background: var(--working-surface);
+}
+.bench-launcher .tile .tx {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.bench-launcher .tile b {
+  font-size: var(--md);
+  font-weight: 800;
+}
+.bench-launcher .tile .tx > span {
+  font-size: var(--sm);
+  line-height: 1.4;
+}
+/* Two screens side by side (D244), each in its own frame. */
+.screens-both {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.screens-both > .seg {
+  align-self: flex-start;
+}
+.screens-both .both-row {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 12px;
 }

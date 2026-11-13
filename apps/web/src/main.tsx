@@ -18,6 +18,8 @@ import { openKey, ROOMY, ROOMY_BENCH, useRoomy } from "./wide.ts";
 import { escUp, useFill, useSplit, useWide } from "./wide.ts";
 import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
 import { liveInBench } from "./live.tsx";
+import { walkKey } from "./onhand.tsx";
+import { markSeen } from "./seen.ts";
 
 const base = baseUrl();
 const token = () => storage.get()?.token;
@@ -60,11 +62,17 @@ function App() {
   // room when its workbench is open beside it too).
   const roomy = useRoomy(ROOMY);
   const roomyBench = useRoomy(ROOMY_BENCH);
-  const rail = r.name === "task" && !split && (benched ? roomyBench : roomy);
+  // D244: from 1120 the rail; all three from 1560, and under it an open workbench takes the rail's
+  // place (two slots). On a book fold, a task opened from the whole-screen On hand stands in the
+  // second half with the rail in the first, nothing across the fold.
+  const book = split?.kind === "book";
+  const rail = r.name === "task" && (book ? fill : !split && (benched ? roomyBench : roomy));
+  // D244: a task open on this device is seen, whatever it says now (seen.ts: 新结果 / New result).
+  if (benchTask) markSeen(benchTask.id, benchTask.card?.updatedAt);
   return (
     <>
       {fill ? (
-        <div class={`${split ? `full ${split.kind}` : "full"}${benched ? " benched" : ""}`}>
+        <div class={`${split ? `full ${split.kind}` : "full"}${benched && !book ? " benched" : ""}`}>
           {r.name === "task" ? (
             rail ? (
               <div class="with-rail">
@@ -79,7 +87,7 @@ function App() {
           ) : (
             <Board />
           )}
-          {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} />}
+          {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} sheet={book} />}
         </div>
       ) : wide ? (
         <div class={split ? `panes ${split.kind}` : "panes"}>
@@ -236,6 +244,7 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   addEventListener("keydown", (e) => void benchKey(e));
   addEventListener("keydown", escUp);
   addEventListener("keydown", openKey);
+  addEventListener("keydown", walkKey);
   addEventListener("popstate", () => A.fromHash());
   addEventListener("hashchange", () => A.fromHash());
   navigator.serviceWorker?.addEventListener("message", (e: MessageEvent) => {

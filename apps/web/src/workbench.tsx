@@ -16,7 +16,7 @@ import type { WbAnswer, WbChange, WbEntry, WbError, WbPort, WbRequest, WbSim } f
 import { WB_HEAVY } from "@ducter/protocol/src/workbench.ts";
 import type { ComponentChildren, JSX } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
-import { A } from "./app.ts";
+import { A, morph } from "./app.ts";
 import { Btn } from "./controls.tsx";
 import { hlLines, escHtml } from "./hl.ts";
 import { LiveView, liveSize } from "./live.tsx";
@@ -44,6 +44,9 @@ interface Bench {
   width: number;
   /** Opened from the two panes: closing goes back beside the conversation. */
   promoted?: boolean;
+  /** D244: the task whose workbench had a page while open: when its pages go away it stays open
+   *  on the launcher, never a blank, never closing on its own. */
+  kept?: string;
 }
 const read = (): Bench => {
   try {
@@ -135,13 +138,16 @@ export function tabOf(task: Task): BenchTab | undefined {
 export const benchShown = { taskId: "" };
 
 export function benchOpen(task: Task | undefined): boolean {
-  return !!task && bench.open && benchable(task);
+  if (!task || !bench.open) return false;
+  if (benchable(task)) return (bench.kept = task.id), true;
+  return bench.kept === task.id;
 }
 
 /** Opens or closes it. Wide, from the two panes, it takes the whole screen for it (and gives it back). */
 export function toggleBench(taskId: string, on = benchShown.taskId !== taskId) {
   const r = A.route;
   bench.open = on;
+  bench.kept = on ? taskId : undefined;
   if (on && r.name === "task" && !r.full && wideNow()) {
     bench.promoted = true;
     keep();
@@ -153,6 +159,8 @@ export function toggleBench(taskId: string, on = benchShown.taskId !== taskId) {
     return A.fill(false);
   }
   keep();
+  // D244: at the whole screen the workbench comes in, or takes the rail's place, as one move.
+  if (r.name === "task" && r.full && wideNow()) return morph(() => A.changed());
   A.changed();
 }
 
@@ -178,7 +186,7 @@ export function benchKey(e: KeyboardEvent): boolean {
   if (!(mod && e.altKey && !e.shiftKey && (e.code === "KeyB" || e.key.toLowerCase() === "b"))) return false;
   const r = A.route;
   const task = r.name === "task" ? A.S.tasks.get(r.id) : undefined;
-  if (!task || !benchable(task)) return false;
+  if (!task || !(benchable(task) || benchShown.taskId === task.id)) return false;
   e.preventDefault();
   toggleBench(task.id);
   return true;
@@ -276,8 +284,8 @@ export function BenchToggle({ task }: { task: Task }) {
   useEffect(() => void (A.S.welcomed && hasFiles(task) && !dataOf(task.id).ports && loadPorts(task)), [task.id, A.S.welcomed]);
   // D220: and the simulators that are its business, once (a computer with none answers at once).
   useEffect(() => void (A.S.welcomed && !dataOf(task.id).sims && loadSims(task)), [task.id, A.S.welcomed]);
-  if (!benchable(task)) return null;
   const on = benchShown.taskId === task.id;
+  if (!benchable(task) && !on) return null;
   return (
     <button class={`bench-toggle${on ? " on" : ""}`} aria-pressed={on} aria-label={t("wb.toggle")} title={`${t("wb.toggle")} · ${t("wb.toggle.about")}${coarseNow() ? "" : " (⌥⌘B)"}`} onClick={() => toggleBench(task.id)}>
       <PanelMark on={on} />
@@ -330,7 +338,7 @@ export function Workbench({ task, sheet }: { task: Task; sheet?: boolean }) {
     const to = tabs[i];
     if (to && to !== tab && Math.abs(el.scrollLeft - i * el.clientWidth) < 2) showTab(task, to);
   };
-  if (!tab) return null;
+  if (!tab) return <Launcher task={task} sheet={sheet} />;
   const strip = (
     <div class="bench-tabs" role="tablist" aria-label={t("wb.tabs")}>
       {tabs.map((k) => (
@@ -379,6 +387,7 @@ function Resizer() {
   const set = (w: number) => {
     bench.width = Math.round(Math.min(Math.max(w, 340), innerWidth - 480));
     document.documentElement.style.setProperty("--bench-w", `${bench.width}px`);
+    document.documentElement.style.setProperty("--bench-w-user", `${bench.width}px`);
   };
   useEffect(() => void (bench.width && set(bench.width)), []);
   return (
@@ -391,8 +400,10 @@ function Resizer() {
       onPointerDown={(e) => {
         const el = e.currentTarget;
         el.setPointerCapture(e.pointerId);
+        el.classList.add("dragging");
         const move = (m: PointerEvent) => set(innerWidth - m.clientX);
-        const up = () => (el.removeEventListener("pointermove", move), el.removeEventListener("pointerup", up), keep());
+        const up = () => (el.classList.remove("dragging"), el.removeEventListener("pointermove", move), el.removeEventListener("pointerup", up), el.removeEventListener("pointercancel", up), keep());
+        el.addEventListener("pointercancel", up);
         el.addEventListener("pointermove", move);
         el.addEventListener("pointerup", up);
       }}
@@ -402,6 +413,91 @@ function Resizer() {
         if (e.key === "ArrowRight") set(w - 24), keep();
       }}
     />
+  );
+}
+
+// ---------- the launcher (D244): open, with nothing to show right now ----------
+
+const TileMark = ({ k }: { k: "files" | "preview" | "browser" | "phone" | "made" }) => (
+  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    {k === "files" && <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z" />}
+    {k === "preview" && (
+      <>
+        <rect x="3.5" y="5" width="17" height="14" rx="3" />
+        <path d="M3.8 9h16.4M7 7h.01M9.5 7h.01" />
+      </>
+    )}
+    {k === "browser" && (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M3.5 12h17M12 3.5c2.6 2.4 3.6 5.3 3.6 8.5s-1 6.1-3.6 8.5c-2.6-2.4-3.6-5.3-3.6-8.5s1-6.1 3.6-8.5z" />
+      </>
+    )}
+    {k === "phone" && (
+      <>
+        <rect x="7" y="2.8" width="10" height="18.4" rx="3" />
+        <path d="M10.6 18h2.8" />
+      </>
+    )}
+    {k === "made" && (
+      <>
+        <rect x="4" y="4" width="16" height="16" rx="3.5" />
+        <circle cx="9.5" cy="9.5" r="1.8" />
+        <path d="M5 17.5l4.5-4.5 3 3 2.5-2.5 4 4" />
+      </>
+    )}
+  </svg>
+);
+
+/** What the workbench can hold, and when each page appears: shown when it is open with no page
+ *  (the preview stopped, the browser or the phone was put down). A page that has something now is
+ *  raised and opens; the rest are pressed into the ground with when they come. */
+function Launcher({ task, sheet }: { task: Task; sheet?: boolean }) {
+  const tabs = tabsOf(task);
+  const tiles: { k: "files" | "preview" | "browser" | "phone" | "made"; name: string; tab: BenchTab; has: boolean }[] = [
+    { k: "files", name: `${t("wb.tab.changes")} · ${t("wb.tab.files")}`, tab: "changes", has: tabs.includes("changes") },
+    { k: "preview", name: t("wb.tab.preview"), tab: "preview", has: tabs.includes("preview") },
+    { k: "browser", name: t("wb.tab.browser"), tab: "browser", has: tabs.includes("browser") },
+    { k: "phone", name: t("wb.tab.phone"), tab: "phone", has: tabs.includes("phone") },
+    { k: "made", name: t("wb.tab.made"), tab: "made", has: tabs.includes("made") },
+  ];
+  const body = (
+    <div class="bench-launcher">
+      <div class="launch-hello">
+        <img src="app/art/waiting.webp" alt="" draggable={false} />
+        <h3 class="wb-h">{t("wb.launcher")}</h3>
+      </div>
+      <ul class="tiles">
+        {tiles.map((x) => (
+          <li key={x.k}>
+            <button class={`tile${x.has ? " has" : ""}`} disabled={!x.has} onClick={() => showTab(task, x.tab)}>
+              <span class="mk">
+                <TileMark k={x.k} />
+              </span>
+              <span class="tx">
+                <b>{x.name}</b>
+                <span>{t(`wb.launcher.${x.k}`)}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+  const close = (
+    <button class="bench-x" aria-label={t("wb.close")} title={`${t("wb.close")}${sheet ? "" : " (⌥⌘B)"}`} onClick={() => toggleBench(task.id, false)}>
+      <Close />
+    </button>
+  );
+  return (
+    <aside class={`bench ${sheet ? "as-sheet" : "as-column"}`} aria-label={t("wb.toggle")} role={sheet ? "dialog" : undefined}>
+      {!sheet && <Resizer />}
+      <header class="bench-head">
+        <span class="bench-title">{t("wb.toggle")}</span>
+        {close}
+      </header>
+      <div class="bench-pages">{body}</div>
+    </aside>
   );
 }
 
@@ -1016,6 +1112,22 @@ function BrowserPage({ task }: { task: Task }) {
   );
 }
 
+// D244: two screens can stand side by side instead of a choice; kept on this device.
+const BOTH = "both";
+const BOTH_KEY = "ducter.bench.both";
+const readBoth = () => {
+  try {
+    return localStorage.getItem(BOTH_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+const keepBoth = (on: boolean) => {
+  try {
+    localStorage.setItem(BOTH_KEY, on ? "1" : "0");
+  } catch {}
+};
+
 /** Ducter's phone while the task uses it, and the simulators that are its business (D220). With
  *  more than one, a choice of screens above; each screen in the same frame. */
 function PhonePage({ task }: { task: Task }) {
@@ -1023,19 +1135,48 @@ function PhonePage({ task }: { task: Task }) {
   const P = screenFor("phone", task);
   const sims = d.sims ?? [];
   const keys = [...(P ? ["phone"] : []), ...sims.map((x) => x.udid)];
-  const on = d.screen && keys.includes(d.screen) ? d.screen : keys[0];
+  const both = keys.length > 1 && readBoth();
+  const on = both ? BOTH : d.screen && keys.includes(d.screen) ? d.screen : keys[0];
   if (!on) return null;
-  const sim = sims.find((x) => x.udid === on);
   const where = computerName(placeOf(task).device);
+  const choose = (k: string) => {
+    if (k === BOTH) keepBoth(true);
+    else ((d.screen = k), keepBoth(false));
+    A.changed();
+  };
   const pick = keys.length > 1 && (
     <div class="seg sm screens" role="radiogroup" aria-label={t("wb.screens")}>
-      {keys.map((k) => (
-        <button key={k} role="radio" aria-checked={k === on} class={k === on ? "on" : ""} onClick={() => ((d.screen = k), A.changed())}>
-          {k === "phone" ? t("wb.phone.ducter") : sims.find((x) => x.udid === k)?.name}
+      {[...keys, BOTH].map((k) => (
+        <button key={k} role="radio" aria-checked={k === on} class={k === on ? "on" : ""} onClick={() => choose(k)}>
+          {k === BOTH ? t("wb.screens.both") : k === "phone" ? t("wb.phone.ducter") : sims.find((x) => x.udid === k)?.name}
         </button>
       ))}
     </div>
   );
+  const active = tabOf(task) === "phone" && benchShown.taskId === task.id;
+  const one = (k: string) => {
+    const s = sims.find((x) => x.udid === k);
+    if (s)
+      return (
+        <Screen key={k} driver="idle" where={[s.name, s.os, t("wb.sim.on", where)].filter(Boolean).join(" · ")}>
+          <SimScreen task={task} sim={s} where={where} active={active} onSim={(n) => ((d.sims = sims.map((x) => (x.udid === n.udid ? n : x))), A.changed())} />
+        </Screen>
+      );
+    const Phone = P!;
+    return (
+      <Screen key={k} driver="agent" where={t("wb.phone.ducter")}>
+        <Phone task={task} active={active} />
+      </Screen>
+    );
+  };
+  if (both)
+    return (
+      <div class="screens-both">
+        {pick}
+        <div class="both-row">{keys.map((k) => one(k))}</div>
+      </div>
+    );
+  const sim = sims.find((x) => x.udid === on);
   if (sim)
     return (
       <Screen driver="idle" where={[sim.name, sim.os, t("wb.sim.on", where)].filter(Boolean).join(" · ")} head={pick}>

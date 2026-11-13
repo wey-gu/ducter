@@ -35,6 +35,12 @@ type onHandState struct {
 	swQuery string
 	swAt    int
 	steps   map[int64][]Block // a latest step's blocks, by seq
+	// D244: the room the list is drawn in now ("rail" beside an opened
+	// task, else ""), what each row's status place showed last, and when
+	// a row's handover to its done face began.
+	room   string
+	was    map[string]rowMark
+	handed map[string]bool
 }
 
 // latestStep is the task's latest step or words: the newest one this Mac
@@ -244,6 +250,19 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 		ui.Text(c.Key("none"), a.L.T("onhand.find.none")).FontSize(t.MD).TextColor(t.InkMuted)
 		return
 	}
+	rail := a.oh.room == "rail"
+	if rail {
+		// Beside an opened task (D244): every task is a row, and only tasks.
+		for _, s := range []struct {
+			key, name string
+			ts        []*store.Task
+		}{{"needs", "lane.needs_you", needs}, {"working", "lane.working", working}, {"waiting", "lane.waiting", waiting}, {"done", "lane.done", done}} {
+			if len(s.ts) > 0 {
+				a.listSection(c, s.key, a.L.T(s.name), len(s.ts), func() { a.taskRows(c, s.ts, false) })
+			}
+		}
+		return
+	}
 	nNeeds := len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
 	if nNeeds > 0 || q == "" {
 		a.listSection(c, "needs", a.L.T("lane.needs_you"), len(needs)+len(a.partnerDecisions()), func() {
@@ -307,7 +326,7 @@ func (a *App) listSection(c *ui.Context, key, name string, n int, body func()) {
 			if n > 0 {
 				ui.Text(c, fmt.Sprint(n)).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).FontFeatures("tnum")
 			}
-			if key == "needs" {
+			if key == "needs" && a.oh.room != "rail" {
 				ui.Spacer(c)
 				if open := a.defaultable(); len(open) >= 2 && a.button(c, a.L.T("decision.goall", len(open)), btnText, t.ControlSM, t.Bg) {
 					a.GoOnAllDefaults()
@@ -341,9 +360,24 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 	p := task.Place()
 	s := a.storyOf(task)
 	focus := a.oh.focus == task.ID
-	row := ui.Row(c).Gap(t.S3).Padding(t.S3+1, t.S4+2).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
+	// D244: one status place; beside an opened task an active row says
+	// only its title and its face.
+	rail := a.oh.room == "rail"
+	st := a.rowMarkOf(task)
+	a.noteStatus(task.ID, st)
+	face := st == stNew || (rail && st != stNone)
+	quiet := rail && st != stNone
+	opened := rail && a.Route == RouteTask && a.TaskID == task.ID
+	padX := t.S4 + 2
+	if rail {
+		padX = t.S3 + 2
+		focus = focus && !opened
+	}
+	row := ui.Row(c).Gap(t.S3).Padding(t.S3+1, padX).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
 	hover := row.Hovered()
 	switch {
+	case opened:
+		row.Background(t.Sunken)
 	case focus:
 		row.Background(t.SurfaceRaised).Border(0, t.Accent)
 	case hover:
@@ -353,6 +387,9 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 		if focus {
 			ui.Box(c.Key("kf")).Absolute().Left(0).Top(0).Bottom(0).Width(4).Background(t.Accent).AccessHidden(true)
 		}
+		if opened {
+			ui.Box(c.Key("open")).Absolute().Left(0).Top(0).Bottom(0).Width(4).Background(t.Ink).AccessHidden(true)
+		}
 		if att == protocol.Blocked {
 			if w := a.S.WaiterFor(task.ID); w != nil {
 				a.waitBubble(c, waitGlyph(w.Check, w.Event), 32)
@@ -361,10 +398,15 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 		ui.Column(c.Key("main")).Grow(1).Shrink(1).MinWidth(0).Gap(t.S1).Children(func() {
 			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				title := ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(700).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(task.Title())
-				if att == protocol.Done || att == protocol.DoneClaimed {
+				// Finished rows recede, unless they are a new result.
+				if (att == protocol.Done || att == protocol.DoneClaimed) && st != stNew {
 					title.TextColor(t.InkSoft).FontWeight(600)
 				}
-				if hover && a.rowActs(c, task, true) {
+				if quiet {
+					a.statusFace(c, task, st)
+					return
+				}
+				if !rail && hover && a.rowActs(c, task, true) {
 					return
 				}
 				if ch := taskChanges(task); ch != nil {
@@ -377,7 +419,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 						}
 					})
 				}
-				if act := integrated(task); act != "" {
+				if act := integrated(task); act != "" && !rail {
 					key := "onhand.pr.draft"
 					if act == "merge" {
 						key = "onhand.pr.merged"
@@ -393,6 +435,9 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 						ink = t.Failed.Ink
 					}
 					ui.Text(c.Key("st"), a.stateLabel(att)).FontSize(t.XS).FontWeight(700).TextColor(ink).Shrink(0).SingleLine()
+				}
+				if face {
+					a.statusFace(c, task, st)
 				}
 				ui.Text(c.Key("time"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).MinWidth(40).TextAlign(ui.End).SingleLine()
 			})
@@ -419,6 +464,9 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				if s.code != "" {
 					ui.Text(c.Key("code"), s.code).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(3).MinWidth(0)
 				}
+				if rail {
+					return // the rail is narrow: where and who are in the task beside it
+				}
 				ui.Spacer(c)
 				if p.Kind == "repo" && p.Branch != "" {
 					ui.Text(c.Key("br"), p.Branch).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(2).MinWidth(0).MaxWidth(260).Tooltip(p.Branch)
@@ -434,10 +482,10 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 					ui.Text(c.Key("meta"), strings.Join(meta, " · ")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
 				}
 			})
-			if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
+			if u := task.Card; !rail && u != nil && u.Until != nil && u.Until.State == "on" {
 				a.goal(c, u.Until, false)
 			}
-			if att == protocol.Blocked {
+			if att == protocol.Blocked && !rail {
 				if w := a.S.WaiterFor(task.ID); w != nil && (w.Check != nil || w.Event != nil) {
 					a.groove(c, w, false)
 				}

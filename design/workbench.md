@@ -31,7 +31,9 @@ with while an agent works, hidden until asked for.
 - **Phone, iPad in a narrow size, foldables folded**: a sheet over the task. A compact strip of
   pages at the top (tap or swipe; the strip follows the page in view), a close button. Pages next
   to the one shown are drawn, the rest wait.
-- **Mac (MyGo)**: the same column, 520 pt, the same pages, MyGo's own code editor and diff view.
+- **Mac (MyGo)**: the same column, 520 pt by default and dragged from 380 to 760 (kept on this Mac), the same pages, MyGo's own code editor and diff view. With On hand's rail (D244) it stands at the window's right: all three from 1560 pt; narrower, it takes the rail's place (task | workbench), and the rail comes back when it closes. Both slide their width in and out (260 ms; snap under reduced motion).
+- **Its edge (D244)** paints nothing at rest: the workbench's deeper ground (`bg-deep`) is the edge. Hovered, a 4 × 40 grip in `line-2`; dragged or focused, `ink-muted`. The arrows move it with a keyboard.
+- **Nothing to show (D244):** when the workbench is open and its pages go (the preview stopped, the browser or the phone was put down), it does not close by itself or go blank: it shows a launcher, **这里会出现什么 / What shows up here**, the pages it can hold as clay tiles with their drawn marks and when each appears (**它在文件夹里做事时 / When it works in a folder**, **它开了网页时 / When it serves a page**, **它用 Ducter 的浏览器时 / When it uses Ducter's browser**, **它用手机或模拟器时 / When it uses a phone or simulator**, **它做出图片、文件或链接时 / When it makes pictures, files or links**). A page that has something is raised and opens; the rest are dashed outlines.
 - **Open or closed, and the page shown**, are this device's own (localStorage), never synced: a
   workbench open on the Mac doesn't open on the phone.
 
@@ -43,7 +45,7 @@ with while an agent works, hidden until asked for.
 | 文件 / Files | The working copy as a tree, listed a folder at a time, windowed (thousands of rows draw only what is in view), changed files in their status ink, dependency folders muted and listed only when opened | A file opens with its colours; 编辑 / Edit, 保存 / Save (⌘S). Pictures show; binary and files over 1 MB say so |
 | 预览 / Preview | The page the task serves: its title, its computer and port, the page itself in a frame; 手机 / 平板 / 全宽 widths (wide only) | 刷新 / Reload, 在浏览器中打开 / Open in browser; when this device can't reach the page directly, 在 Ducter 的浏览器中查看 / View in Ducter's browser |
 | 浏览器 / Browser | Ducter's own browser while the task uses it: the D190 live view, inside the workbench | 接手 / My turn, 还给它 / Hand it back, as in D190 |
-| 手机 / Phone | Ducter's phone while the task uses it (the live view, D217, registered through `workbench-screens.ts`); an iOS Simulator booted on its computer when that is the task's business (D220, below); a choice of screens when there are two | Ducter's phone: its own turns. The simulator: Home, dark/light, text size, open a link, a screenshot into the composer; view only |
+| 手机 / Phone | Ducter's phone while the task uses it (the live view, D217, registered through `workbench-screens.ts`); an iOS Simulator booted on its computer when that is the task's business (D220, below); a choice of screens when there are two, and **并排 / Side by side** (D244: both screens in one row, each in its own frame with its own label and driver line; kept on the device) | Ducter's phone: its own turns. The simulator: Home, dark/light, text size, open a link, a screenshot into the composer; view only |
 | 成果 / Results | Pictures and files it showed (D206) and the links of its result | Open them: a picture in the picture viewer, a file it showed read inside Ducter (D239, `media.md`), a link to its working copy in Files |
 
 Browser, Phone and later Computer share one frame (**Screen**): a chip that says who is driving

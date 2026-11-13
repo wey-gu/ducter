@@ -753,6 +753,9 @@ class AppState {
    *  opened task, at its place), ⌘1 the conversation, ⌘2 On hand (wide: the whole screen, and
    *  again back to the two panes; D184), ⌘3 your devices, ⌘4 the
    *  partner, ⌘, Settings, ⌘K the composer of the level shown. Unknown names do nothing. */
+  /** D244: opens the next (1) or the previous (-1) task in On hand's order (onhand.tsx sets it). */
+  walk?: (by: number) => void;
+
   command(c: string) {
     const r = this.route;
     if (c === "new") {
@@ -761,6 +764,8 @@ class AppState {
       return this.openNewTask(task ? placeOf(task) : undefined);
     }
     if (c === "conv") return (this.sheet = null), this.go({ name: c });
+    // D244: ⌘⇧] / ⌘⇧[, 下一件事 / 上一件事: the next or the previous task in On hand's order.
+    if (c === "next" || c === "prev") return void this.walk?.(c === "next" ? 1 : -1);
     // D216: ⌘O, 打开一件事 / Open a task: the switcher (pressed again, closed).
     if (c === "switch") {
       if (this.sheet?.kind === "newtask") return;

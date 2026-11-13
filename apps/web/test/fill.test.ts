@@ -20,7 +20,7 @@ describe("taking the whole screen", () => {
     expect(canFill("onhand", true)).toBe(true);
     expect(canFill("task", true)).toBe(true);
     expect(canFill("onhand", true, book)).toBe(true);
-    expect(canFill("task", true, book)).toBe(false);
+    expect(canFill("task", true, book)).toBe(true); // D244: the rail in the first half, the task in the second
     expect(canFill("onhand", true, table)).toBe(false);
     expect(canFill("task", true, table)).toBe(false);
   });

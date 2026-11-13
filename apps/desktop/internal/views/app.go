@@ -231,6 +231,7 @@ type App struct {
 	sites      sitesState
 	af         autofillState // D191: 设置 › 自动填充
 	winW, winH float32
+	slid       map[string]float32 // D244: a sliding pane's width when open (onhandrail.go)
 	// partner and settings are the Partner page's and Settings' own state.
 	partner partnerState
 	// cal is the calendar screens' own memory (D222).
@@ -485,6 +486,7 @@ func (a *App) shortcuts(c *ui.Context) {
 		}
 		return // the switcher has the keys (D216)
 	}
+	a.railKeys(c) // D244: ⌘⇧] and ⌘⇧[ walk the tasks, from anywhere
 	switch {
 	case c.Shortcut(ui.Cmd, ui.KeyO):
 		a.OpenSwitcher()

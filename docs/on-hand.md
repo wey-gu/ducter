@@ -45,8 +45,19 @@ With one errand on hand, that's all there is: one row. More shows up as you use 
 - On the full-screen On hand, **⌘-click** or **⇧-click** selects several tasks (or press **x**
   on a selected row). A bar at the bottom then offers what fits them: merge them, open draft
   PRs, pause them, or cancel them. Cancel asks you first.
-- On a wide screen, a task opened from the full-screen On hand keeps the list beside it. **j**
-  and **k** then move to the next task and the one before.
+- On a wide window, opening a task keeps the list beside it, on the left, with the open task
+  marked. **⌘⇧]** and **⌘⇧[** open the next task and the one before, even while you're typing
+  (on the Mac they're also in the View menu as **Next Task** and **Previous Task**). **j** and
+  **k** do the same when you aren't typing. If you open the **Workbench** and the window is too
+  narrow for all three, the Workbench takes the list's place until you close it.
+- In the list beside a task, a row says only its title and a small picture of your partner while
+  something is going on: raising a flag when it needs you, reading while it works, smiling with
+  its phone when it has a **New result** you haven't opened yet. Open the task and the picture
+  goes. A task that finishes while you're looking elsewhere keeps that smile in every list until
+  you open it.
+- **By project**, tap a project's name to fold it. A folded project keeps the picture of its most
+  urgent task, so something that needs you is never hidden; hover it for how many need you, are
+  working, or have new results.
 
 ## On a phone
 

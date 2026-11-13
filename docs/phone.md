@@ -210,6 +210,12 @@ for you:
 
 If Android asks you to **Allow** straight away at step 1, that's all.
 
+**Or just ask.** Say "use my phone to…" before you've turned it on, with Ducter open on your
+phone: you get a card, **"Check the autumn leaves" needs your Pixel**, with **Turn it on**. Tap it
+on any of your devices and the steps above open on your phone; once Android's switch is on, the
+task carries on by itself. Ducter never asks you to turn on USB debugging, plug in a cable or open
+Developer options.
+
 **When a task wants it**, you get a card: **"Order lunch" wants to borrow your Pixel**, with
 **Not now** and **Lend it**. Nothing happens until you say. While it's lent:
 

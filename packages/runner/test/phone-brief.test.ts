@@ -11,8 +11,19 @@ test("the phone's section: its tools, the gate at the tap, the user's turns, scr
 });
 
 test("only a phone task gets it", () => {
-  expect(taskBrief({ ...base, phone: true } as any)).toContain("## Ducter's phone");
-  expect(taskBrief(base as any)).not.toContain("## Ducter's phone");
+  expect(taskBrief({ ...base, phone: true } as any)).toContain("## The phone");
+  expect(taskBrief(base as any)).not.toContain("## The phone");
+});
+
+// D247: a task once asked the user to turn on USB/Wi-Fi debugging when no phone was set up. Every
+// task's brief now says a phone comes only through Ducter's tools; without them it reports blocked.
+test("every task is told never to reach the user's phone by adb, a cable or Developer options", async () => {
+  const { deviceRule } = await import("../src/brief.ts");
+  const repo = { kind: "repo", device: "local", repoPath: "/tmp/r" } as const;
+  for (const b of [taskBrief(base as any), taskBrief({ ...base, phone: true } as any), taskBrief({ ...base, place: repo } as any)]) {
+    expect(b).toContain(deviceRule("Ducter"));
+    for (const s of ["USB or wireless debugging", "a cable", "Developer options", "never run adb", 'report "blocked"']) expect(b).toContain(s);
+  }
 });
 
 // D235: work in a Mac app gets the apps' section: its tools, the gate, Stop, and what to do without 用电脑.

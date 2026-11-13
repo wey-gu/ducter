@@ -16,6 +16,8 @@ var zhHandset = Table{
 	"handset.task":         "正在用你的 %s",
 	"handset.ask.go":       "借给它",
 	"handset.ask.hold":     "不借",
+	"handset.setup.go":     "去打开",
+	"handset.setup.hold":   "先不用",
 	"handset.user.done":    "好了",
 }
 
@@ -31,6 +33,8 @@ var enHandset = Table{
 	"handset.task":         "On your %s",
 	"handset.ask.go":       "Lend it",
 	"handset.ask.hold":     "Not now",
+	"handset.setup.go":     "Turn it on",
+	"handset.setup.hold":   "Not now",
 	"handset.user.done":    "Done",
 }
 

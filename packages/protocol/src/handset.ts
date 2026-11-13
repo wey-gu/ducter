@@ -43,9 +43,13 @@ export interface HandsetView {
 /** The phone's methods the home may call, a small fixed set (never a shell). */
 export type HandsetMethod = "state" | "start" | "doing" | "stop" | "off" | "screen" | "jpeg" | "tap" | "swipe" | "key" | "text" | "front" | "apps" | "launch" | "size";
 
-/** A decision about the person's own phone: may this task use it now (use)? */
+/**
+ * A decision about the person's own phone: may this task use it now (use)? Or, D247: the task needs
+ * a phone, and this one's app is connected but 用这台手机 isn't on yet (setup): Go opens the guide on
+ * that phone, and once it is on the task uses it (the tap was for this task).
+ */
 export interface HandsetAsk {
-  kind: "use";
+  kind: "use" | "setup";
   /** The phone's device id and its name as the person named it ("Pixel Fold"). */
   device: string;
   name: string;
@@ -65,4 +69,6 @@ export type HandsetServerFrame =
   // One call into the phone's app, relayed by its page; answered with handset_res.
   | { t: "handset_req"; id: string; m: HandsetMethod; a: Record<string, unknown> }
   | { t: "handset_set_result"; device: string; on: boolean; ok: boolean; reason?: "not_android" | "service_off" | "unknown_device" | "old_app" }
-  | { t: "handset_stop_result"; taskId?: string; ok: boolean };
+  | { t: "handset_stop_result"; taskId?: string; ok: boolean }
+  // D247: open the 用这台手机 guide on this phone now (a task's card asked for it, from any window).
+  | { t: "handset_guide"; taskId?: string };

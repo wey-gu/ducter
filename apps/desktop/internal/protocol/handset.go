@@ -6,9 +6,11 @@ package protocol
 // (who is using it, Stop, Remove) and Stop on the opened task; adding it is
 // done on the phone itself (Android's switch is there).
 
-// HandsetAsk is the card "may this task borrow your phone now" (no default).
+// HandsetAsk is the card "may this task borrow your phone now" (no default),
+// or (D247, kind "setup") "turn on 用这台手机 there first": Go opens the guide
+// on that phone, and the task goes on once it is on.
 type HandsetAsk struct {
-	Kind   string `json:"kind"` // "use"
+	Kind   string `json:"kind"` // "use" | "setup"
 	Device string `json:"device"`
 	Name   string `json:"name"`
 }

@@ -1,6 +1,6 @@
 # 用这台手机 / Use this phone: a task borrows the person's own phone
 
-Decided in D238 (2026-11-13); evidence in [research/74](../research/74-own-phone-use.md).
+Decided in D238 (2026-11-13), the first-time card in D247; evidence in [research/74](../research/74-own-phone-use.md).
 Ducter's own Android phone on a Mac is a different thing: [phone-use.md](phone-use.md) (用手机 / Use
 a phone). Calls are [phone.md](phone.md). Tasks in the person's Mac apps: [computer-use.md](computer-use.md).
 
@@ -11,7 +11,7 @@ a phone). Calls are [phone.md](phone.md). Tasks in the person's Mac apps: [compu
 | **Moment** | "帮我在美团上点一份老样子", "在微信里回妈妈：周六见": the app is on their phone, signed in | "check our app's onboarding on my Pixel", an app-only dashboard on the phone in their hand | opening their phone's card in Ducter |
 | **Before** | "it can only do the web"; Ducter's phone would need every app installed and signed in again | adb, a cable, an agent with no brakes on a real phone | nothing |
 | **After** | the task borrows the phone they already use, asks first, shows it is using it at the top, asks again before it sends or pays, and gives it back the moment they say | a real device, behind the same gate and Go as everything else | one chip, a one-minute guide that shows exactly where to tap, and a short demo of what a loan looks like |
-| **First time** | the partner says in one line to add 用这台手机 on their phone's card | **+ 用这台手机** on the Pixel's own card | the chip, the guide, the demo |
+| **First time** | they just ask; the task's card says **在你的 {phone} 上打开「用这台手机」** and one tap opens the guide on that phone (D247, §3.1) | **+ 用这台手机** on the Pixel's own card, or the same card | the chip, the guide, the demo |
 
 North star: 好用 (one chip, one switch, once), 顺滑 (each step opens the right page and comes back by
 itself), 赏心悦目 (the guide draws Android's own pages in clay with a fingertip; the pill is Pebble),
@@ -47,6 +47,21 @@ theirs); Ducter's phone on its computer otherwise. Bound at the task's first pho
 task's life. With a phone added, phone work may run on any computer (`loadout.ts`): the tools drive
 the phone from the home wherever the task runs. Several phones added: the one connected most
 recently.
+
+### 3.1 When it isn't on yet (D247)
+
+A phone task never reaches the person's phone by its own means: every task's brief says never to
+ask for USB or wireless debugging, a cable or Developer options, and never to run adb against
+their phone (`deviceRule` in `packages/runner/src/brief.ts`); without phone tools it reports
+blocked. The partner sets `needs.phone` for any work on a phone, set up or not.
+
+| Moment | What happens |
+|---|---|
+| No phone can serve it (none added, no Ducter's phone where it runs), the person's Android app connected | the task opens and binds that phone; its first phone tool posts one card, **「{task}」要用你的 {phone} / "{task}" needs your {phone}** · **在你的 {phone} 上打开「用这台手机」… / Turn on Use this phone on your {phone}…** · **先不用 / Not now** · **去打开 / Turn it on**; no default; the task ends its turn |
+| Turn it on, from any window | Android's switch already on: added at once. Otherwise the home sends `handset_guide` to that phone's page and the guide (§6) opens there; the app isn't open: when it next connects |
+| The guide finishes (the chip is added) | the loan starts for that task with no second card (the tap on its card was the yes); **在你的 {phone} 上打开了 / Opened on your {phone}** |
+| Not now | the task carries on without a phone; its phone tools refuse (**没用手机 / No phone**) |
+| No Android app connected | nothing opens; the partner says one line: open Ducter on {phone} (paired, not open), update it (too old), or install Ducter on the Android phone and add 用这台手机 there (or 用手机 on a Mac) |
 
 ## 4. The loan
 

@@ -1453,6 +1453,25 @@ export const scenarios: Scenario[] = [
   },
   // No phone anywhere: the loadout refuses the task (NO_PHONE, unit-tested in core android-phone.test.ts);
   // the eval's runner opens tasks without the loadout, so it is not a scenario here.
+  // D247: "use my phone" with no phone set up at all (no Ducter's phone, no 用这台手机). The partner
+  // still opens the phone task (the home then offers the one tap that turns 用这台手机 on, tested in
+  // core handset-setup.test.ts); it never tells the user about adb, a cable or Developer options.
+  {
+    id: "own-phone-not-set-up-zh",
+    category: "phone-use",
+    lang: "zh",
+    steps: [{ user: "用我的手机打开小红书，帮我看看最近大家怎么评价京都的红叶季" }],
+    expect: { opens: 1, ackFirst: true, needs: { phone: true }, placeKind: "none", maxChars: 80, notCalled: ["ask"], forbid: [/adb|USB|usb|数据线|开发者选项|无线调试|USB 调试|developer options|cable/i, /看完了|找到了[。！]|大家都说/] },
+    rubric: "The user asks for work in an app on their own phone, and no phone is set up yet. It opens one task whose needs say phone (needs.phone true, place none), the brief keeps the user's words; before it one short Chinese ack naming the action. It never claims results, never asks first, and never mentions adb, USB or wireless debugging, a cable, Developer options or an emulator (Ducter offers the user the one tap that sets the phone up).",
+  },
+  {
+    id: "own-phone-not-set-up-en",
+    category: "phone-use",
+    lang: "en",
+    steps: [{ user: "Use my phone to check my Meituan order and tell me when it arrives" }],
+    expect: { opens: 1, ackFirst: true, needs: { phone: true }, maxChars: 160, notCalled: ["ask"], forbid: [/\badb\b|USB|wireless debugging|developer options|cable|emulator/i] },
+    rubric: "Work in an app on the user's own phone, with no phone set up yet. It opens one task with needs.phone true and the user's words in the brief, after one short English ack naming the action. It never claims the order status, never asks first, and never mentions adb, USB or wireless debugging, a cable, Developer options or an emulator.",
+  },
   {
     id: "notice-rule-zh",
     category: "accounts",

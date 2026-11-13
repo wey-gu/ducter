@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.0.48
+
+<!-- whats-new
+zh: 默认就会主动：每天早上把值得说的放一条里
+en: Proactive by default: one morning note with what matters
+zh: 和你其他 AI 的互通在真实环境跑通了
+en: Talking with your other AI agents now works against real Mem
+-->
+
+**Proactive by default**
+- A home that never chose how often to hear from the partner is on 每天最多 3 件 / Up to 3 a day:
+  one morning note with what is worth saying, and urgent things at once.
+- 不再需要 under the morning note now means 只说急的 / Only urgent, never off. If that happened
+  before the partner learned trips, maintenance and billing, it asks once whether to bring the
+  morning note back.
+
+**Your other AI agents (Nowledge Bridge)**
+- Checked against real Nowledge Mem: requests from your own agents reach you, questions go to the
+  agent that wrote to you lately, follow-through stays quiet once they've answered, and a send whose
+  outcome is unknown is never sent again as a new message.
+
 ## 0.0.47
 
 <!-- whats-new

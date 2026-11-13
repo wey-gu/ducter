@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.0.47
+
+<!-- whats-new
+zh: 主动告诉你航班、维护、扣费，旧消息有变会更正
+en: It tells you flights, maintenance, billing, and corrects itself
+zh: 手头的事三栏并排；PDF、搜索都在 Ducter 里看
+en: On hand sits beside a task; PDFs and find open in Ducter
+-->
+
+**The partner notices more, on its own**
+- Trips coming up (flight time, when to be at the airport), maintenance on services you run, failing
+  jobs, billing changes and shutdowns now reach the partner; it says them in time, joins them with
+  your plans ("both before your 19:40 flight"), and corrects itself when something it said changed.
+  Asked "anything for me?", it checks everything, calendar included, and answers in a few lines.
+- Morning notes follow your own time zone.
+
+**On hand beside the opened task**
+- On the Mac and on wide screens (iPad, an open Fold), opening a task keeps On hand beside it, with
+  the workbench on the right when there is room; ⌘⇧] / ⌘⇧[ walk the tasks. Each row shows one face
+  for where it stands; a task that finished while you weren't looking shows its done face.
+
+**Files, phones and routines**
+- PDFs show their pages inside Ducter; ⌘F finds in a long file; file links expire after about a day.
+- Phone work never asks for adb: if your Android phone is connected, one tap turns on 用这台手机
+  there. On Android, the setup asks for restricted settings first, the connecting screen fits an
+  open Fold, and a lent phone shows a notification with 停下.
+- A phone that is asleep stays asleep until a task or 叫醒 wakes it; reconnects keep the last picture.
+- Routines know when they run late, retry once safely, wait out a signed-out account, catch up once,
+  and can watch for a change without spending anything until something changes.
+- Tasks keep their harness's own tools; a few that compete with Ducter are left out.
+
 ## 0.0.46
 
 <!-- whats-new

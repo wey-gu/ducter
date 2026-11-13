@@ -109,6 +109,21 @@ type PhonePauseReq struct {
 	Paused bool   `json:"paused"`
 }
 
+// PhoneWakeReq is 叫醒 / Wake on an asleep view (D248: looking never wakes it).
+type PhoneWakeReq struct {
+	T  string `json:"t"` // "phone_wake"
+	ID string `json:"id"`
+}
+
+// PhoneDid is one thing a task did on the phone (D248): taps, typing, an
+// app it opened; never what it read. Kind: tap | type | swipe | key | open.
+type PhoneDid struct {
+	Kind  string `json:"kind"`
+	Label string `json:"label,omitempty"`
+	App   string `json:"app,omitempty"`
+	At    int64  `json:"at"`
+}
+
 type PhoneCloseReq struct {
 	T    string `json:"t"` // "phone_close"
 	ID   string `json:"id"`

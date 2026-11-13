@@ -25,6 +25,11 @@ type PhoneView struct {
 	App             string
 	Doing           *protocol.LiveDoing
 	DoingAt         time.Time
+	// D248: Taking: My turn waits for the task's step in flight; Did:
+	// what it did (newest last); Waking: 叫醒 / Wake was pressed.
+	Taking bool
+	Did    []protocol.PhoneDid
+	Waking bool
 }
 
 // Mine says the user drives the phone from this window.
@@ -84,6 +89,10 @@ func (s *Store) applyPhone(f protocol.ServerFrame) {
 			return
 		}
 		pv.ID, pv.State, pv.Mode, pv.Turn, pv.Here, pv.Device = f.ID, f.State, f.Mode, f.Turn, f.Here, f.Device
+		pv.Taking = f.Taking
+		if f.State != "asleep" {
+			pv.Waking = false
+		}
 		if f.Task != nil {
 			pv.Task = f.Task
 		}
@@ -92,6 +101,10 @@ func (s *Store) applyPhone(f protocol.ServerFrame) {
 		}
 		if f.Turn == "you" {
 			pv.Doing = nil
+		}
+	case "phone_did":
+		if pv != nil && pv.ID == f.ID {
+			pv.Did = f.Did
 		}
 	case "phone_doing":
 		if pv != nil && pv.ID == f.ID {

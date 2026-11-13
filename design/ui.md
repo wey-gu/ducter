@@ -235,6 +235,7 @@ the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alp
 | an awake device | floats 5pt (5.6 s) |
 | a cloud machine | drifts ±4pt (11 s) |
 | a sleeping device | its blanket rises and falls (scale-y 1.045 from the bottom, 4.8 s) |
+| Ducter's phone asleep in a live view (D248) | the same blanket over the drawn dozing phone (scale-y 1.045 from its bottom, 4.8 s); a live screen that opens again: the held frame, the new stream fading in once (360 ms, an event, not idle motion) |
 | an ability that is on (Devices stage) | floats 5pt like an awake device (5.6 s), its own phase |
 | the sea and sky (Devices stage) | clouds drift ±16pt (70 s); slow light on the water drifts and fades (11–19 s); repainted at 12 fps |
 | parcels on a bridge | cross at a steady 40 scene-points a second, only while a task runs on that device (a state that is true, not decoration); still mode freezes them in place so "working" still reads |

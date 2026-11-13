@@ -1,6 +1,6 @@
 # 用手机 / Use a phone: Ducter's own phone
 
-Decided in D217 (2026-11-12), a worker Mac's own phone in D234; evidence in [research/62](../research/62-phone-use.md). Calls (打电话)
+Decided in D217 (2026-11-12), a worker Mac's own phone in D234, asleep / reconnects / turns / what it did in D248; evidence in [research/62](../research/62-phone-use.md). Calls (打电话)
 are a different thing: [phone.md](phone.md).
 
 ## 1. Who, what they feel, how it starts
@@ -43,8 +43,10 @@ download that didn't match, offline) with **再试一次**.
 
 ## 4. Running
 
-Started by a task's first phone tool or an opened live view; held while a task that needs it works
-or a view is open; stopped five minutes after the last use with `adb emu kill` (saves the
+Started by a task's first phone tool, **叫醒 / Wake** in an asleep live view, the device card's
+**打开手机**, or a card's own turn; never by watching (D248: a watch of a phone that isn't running is
+asleep and opens by itself when a task starts it). Held while a task that needs it works or a view
+is open; a request for the person's own turn keeps it awake 30 minutes, then the task lets go; stopped five minutes after the last use with `adb emu kill` (saves the
 snapshot). Animations off. One phone per Mac (D234: the home's and each worker Mac's).
 
 ## 5. Tasks on the phone
@@ -76,6 +78,13 @@ phone shape (rounded) on the sunken page; under it, in the user's turn, Android'
 (返回 · 主屏幕 · 最近使用). Taps, drags as swipes, the wheel as a swipe, keys (Enter, Backspace,
 Esc as back) and text. Frames: the device's own JPEG, one in flight until acked, ≤ 6/s, none while
 still; out of sight, none.
+
+D248 (research/82): asleep, the view shows the phone dozing under its knitted blanket with
+**Ducter 的手机睡着了**, why looking doesn't wake it, and **叫醒 / Wake**; a view that opens again starts
+on the last frame (memory only) with **正在重新连上…** and the new stream fades in; **接手** while a
+phone tool is in flight reads **这一步做完就轮到你** and the turn is the person's when that step ends
+(8 s at most); under the screen, **它做了什么 / What it did**: the last five taps, typings, keys,
+swipes and apps opened (kept in memory per task, eight at most; never what it read or typed).
 
 It is one component with a small interface (computer, task or none, mode `watch | takeover |
 signin`; out: the turn changing, closing): web `PhoneLivePanel` (mounted full screen by

@@ -93,6 +93,19 @@
    ]
   },
   {
+   "id": "phone_asleep",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/phone_asleep.md"
+   ],
+   "image": "raw/phone_asleep.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
    "id": "server_awake",
    "promptFiles": [
     "prompts/_style.md",

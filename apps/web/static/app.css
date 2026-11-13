@@ -7709,3 +7709,43 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .fv-sheet { transition: none; }
   button.filecard { transition: none; }
 }
+
+/* D248: the screens a task drives, as people expect them: asleep never woken by looking, a held
+   frame under every reconnect, a turn that waits for the step in flight, and what it did. */
+:root {
+  --art-mint-lit: #a8e6c6;
+  --art-mint: #6fcf9f;
+  --art-mint-deep: #3f9f74;
+  --art-glass-lit: #4a3d30;
+  --art-glass: #2b2118;
+  --art-face: #f6ebdd;
+  --art-knit-lit: #fbf1de;
+  --art-knit: #efdcb8;
+  --art-knit-deep: #c9ad7f;
+  --art-shadow: rgba(43, 33, 24, 0.14);
+}
+.screen-asleep { margin: auto; padding: var(--s5, 20px) var(--s4, 16px); display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; max-width: 22em; }
+.screen-asleep .phone-dozing { margin-bottom: 6px; filter: drop-shadow(0 6px 0 rgba(43, 33, 24, 0.06)); }
+.screen-asleep-title { font-weight: 800; font-size: var(--md, 15px); color: var(--ink); }
+.screen-asleep-why { font-size: var(--sm); color: var(--ink-muted); line-height: 1.5; margin-bottom: 6px; }
+.phone-blanket { transform-box: fill-box; transform-origin: 50% 100%; animation: blanket-breathe 4.8s ease-in-out infinite; }
+@keyframes blanket-breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.045); } }
+.phone-stack { position: relative; display: block; height: 100%; max-width: 100%; flex: none; }
+.phone-stack > img.phone-screen { display: block; width: 100%; height: 100%; max-height: none; object-fit: contain; }
+.phone-stack > img.phone-held { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.phone-stack > img.phone-fresh { position: relative; animation: screen-in 360ms var(--ease) both; }
+.phone-stack.waiting { align-self: stretch; }
+.phone-stack.waiting > img.phone-held { filter: saturate(0.6) brightness(0.92); }
+@keyframes screen-in { from { opacity: 0; } to { opacity: 1; } }
+.screen-pill { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); padding: 6px 12px; border-radius: 999px; background: var(--surface-raised); color: var(--ink-soft); font-size: var(--xs, 12px); box-shadow: var(--base); white-space: nowrap; max-width: 90%; overflow: hidden; text-overflow: ellipsis; }
+.screen-did { padding: 2px var(--s4, 16px) var(--s3, 12px); }
+.screen-did-title { font-size: var(--xs, 12px); font-weight: 700; color: var(--ink-muted); margin-bottom: 4px; }
+.screen-did ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.screen-did li { display: flex; align-items: center; gap: 8px; font-size: var(--sm); color: var(--ink-muted); min-width: 0; }
+.screen-did li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.screen-did li.now { color: var(--ink-soft); }
+.screen-did li svg { flex: none; color: var(--working-dot); }
+@media (prefers-reduced-motion: reduce) {
+  .phone-blanket { animation: none; }
+  .phone-stack > img.phone-fresh { animation: none; }
+}

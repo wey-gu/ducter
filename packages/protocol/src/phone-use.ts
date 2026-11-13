@@ -61,6 +61,8 @@ export type PhoneClientFrame =
   | { t: "phone_ack"; id: string; seq: number }
   | { t: "phone_turn"; id: string; mine: boolean }
   | { t: "phone_pause"; id: string; paused: boolean }
+  // D248: 叫醒 / Wake: an asleep view starts the phone (looking never does).
+  | { t: "phone_wake"; id: string }
   | { t: "phone_close"; id: string; done?: boolean };
 
 export type PhoneServerFrame =
@@ -71,7 +73,8 @@ export type PhoneServerFrame =
   | {
       t: "phone_view";
       id: string;
-      state: "starting" | "open" | "closed";
+      // D248: asleep: the phone isn't running and a watch never starts it; 叫醒 / Wake does.
+      state: "asleep" | "starting" | "open" | "closed";
       mode: PhoneMode;
       turn: "agent" | "you";
       here: boolean;
@@ -79,9 +82,21 @@ export type PhoneServerFrame =
       taskId?: string;
       task?: { title: string; harness: string };
       decisionId?: string;
+      // D248: My turn was asked while the task is mid-step: the turn is the person's when that step ends.
+      taking?: boolean;
       reason?: "done" | "closed" | "replaced" | "gone" | "failed";
       message?: string;
     }
   // One JPEG frame (base64); the next only after phone_ack for this seq.
   | { t: "phone_frame"; id: string; seq: number; data: string; width: number; height: number; app?: string }
-  | { t: "phone_doing"; id: string; doing: PhoneDoingView | null };
+  | { t: "phone_doing"; id: string; doing: PhoneDoingView | null }
+  // D248: what the task did on the phone (taps, typing, apps it opened; never what it read), newest last.
+  | { t: "phone_did"; id: string; did: PhoneDidView[] };
+
+/** D248: one thing the task did on the screen, for 它做了什么 / What it did. Kept in memory only. */
+export interface PhoneDidView {
+  kind: "tap" | "type" | "swipe" | "key" | "open";
+  label?: string;
+  app?: string;
+  at: number;
+}

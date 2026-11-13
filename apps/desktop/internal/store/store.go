@@ -519,7 +519,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.AbilityResults = append(s.AbilityResults, f)
 	case "live", "live_frame", "live_turn", "live_doing":
 		s.applyLive(f)
-	case "phone_view", "phone_frame", "phone_doing", "phone_terms", "phone_install_result", "phone_erase_result":
+	case "phone_view", "phone_frame", "phone_doing", "phone_did", "phone_terms", "phone_install_result", "phone_erase_result":
 		s.applyPhone(f)
 	case "saved":
 		fc := f

@@ -1726,6 +1726,10 @@ type ServerFrame struct {
 	Here  bool       `json:"here,omitempty"`
 	Task  *LiveTask  `json:"task,omitempty"`
 	Doing *LiveDoing `json:"doing,omitempty"`
+	// D248: phone_view: Taking (My turn waits for the step in flight);
+	// phone_did: what the task did on the phone, newest last.
+	Taking bool       `json:"taking,omitempty"`
+	Did    []PhoneDid `json:"did,omitempty"`
 	// saved (D191): the Autofill list (Items, Details, Uses, KeptIn; OK and
 	// Reason after a save).
 	SavedItems   []SavedView  `json:"items,omitempty"`
@@ -1927,7 +1931,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
-		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "saved",
+		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "phone_did", "browser_sites", "browser_check", "connection_reads", "proactive_day", "saved",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)

@@ -698,6 +698,24 @@ computer part; 我要合电脑了; the parcel's Lands / Waits / Moves. Still ope
 - [ ] One small mark on the AI agent Ducter thinks with (a separate proposal); the token has
       room for it. Trigger: that proposal is decided.
 
+## Screens a task drives (D248, `design/computer-use.md` §7–8, research/82)
+
+- [ ] **Teach by showing** (做给它看 → a draft 技能): a recorder of the person's inputs in their turn
+      on Ducter's phone (labels only, password fields never), a model pass that writes the steps,
+      the skills page, 试一次 / 留着 / 定期做. Trigger: the skills page exists, or the author asks.
+- [ ] **A reminder after about 4 hours waiting on the person** (research/77 §8.6): Ducter has no
+      reminder for an open card. Decide with the attention forecast and push, once. Trigger: the
+      attention forecast's next change.
+- [ ] **The dozing phone as clay raster art** (`design/art/assets/prompts/phone_asleep.md`, in
+      `batch.json`): the image provider didn't answer on 2026-11-13; a drawn SVG ships meanwhile.
+      Trigger: the art pipeline's next run.
+- [ ] **D248 on Ducter's browser:** the held frame and fade, the turn that waits for the step and
+      what it did for D190's live view (it already never starts the browser). Trigger: the next
+      browser live-view change.
+- [ ] **用电脑's 它做了什么** (its steps note only the app today) and a live view for a worker Mac,
+      under D248's rules. Trigger: the first worker-Mac 用电脑 task on the author's machines.
+- [ ] Human raters for research/82 §4 (LLM proxies only so far).
+
 ## Art assets: production export
 
 - [ ] Export WebP at 1×/2×/3× per the size each asset is used at in the clients. Commit only

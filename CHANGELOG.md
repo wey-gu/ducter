@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.45
+
+<!-- whats-new
+zh: 任务做出的文件，点开就在 Ducter 里看
+en: A file a task made now opens right inside Ducter
+zh: 报告排好版，表格和代码都清楚，存一份留在本机
+en: Reports laid out, tables and code clear; Save a copy keeps one
+-->
+
+**Files open inside Ducter**
+- Tap a file a task made and it opens in Ducter, growing out of its card: a Markdown report laid
+  out as a document, a CSV as a table, code and logs with colours and line numbers. 看原文 / Show
+  source switches to the raw text.
+- 存一份 / Save a copy keeps the whole file on this device (Downloads on the Mac, the share sheet
+  on a phone). Open no longer sends you to your home's address in a browser, so a file's link no
+  longer lands in your browser history.
+- Kinds Ducter can't show yet (PDF, Office, zip) say so, with Save a copy; on the Mac also Open on
+  this Mac. Tasks can now show code and text files (.ts, .go, .sh, .log, …), never .env.
+
 ## 0.0.44
 
 <!-- whats-new

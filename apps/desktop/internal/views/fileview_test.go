@@ -142,7 +142,7 @@ func TestFileViewer(t *testing.T) {
 	}
 	tt.Frame()
 	got := texts(tt)
-	for _, want := range []string{"investigation.md", "调查：点开文件为什么会打开 hel 上的链接", "存一份", "拷贝", "看原文", "来自点开文件为什么去了 hel"} {
+	for _, want := range []string{"investigation.md", "调查：点开文件为什么会打开 hel 上的链接", "存一份", "拷贝", "看原文", "来自「点开文件为什么去了 hel」"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the viewer lacks %q:\n%s", want, got)
 		}

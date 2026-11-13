@@ -108,7 +108,7 @@ drawing needs Codex signed in on one of their computers. The picture comes back 
   motion) onto the theme's paper; pinch and double-tap zoom; swipe through every picture of the
   conversation (or the task); swipe down or Esc shrinks it back into its tile. Bottom bar: **保存
   / Save** (the share sheet on a phone), **分享 / Share** where the device can, **拷贝 / Copy**,
-  and **来自 {task} / From {task}** to the task that made it. The Mac: Space opens and closes, ←/→,
+  and **来自「{task}」/ From {task}** to the task that made it. The Mac: Space opens and closes, ←/→,
   Esc, ⌘C copies, drag out to Finder.
 - Tokens only (`--pics-w`, `--pics-h`, `--pic-gap`, `--r-pics`, `--viewer-scrim`, `--pic-dim`,
   `--ring-back`; Mac `Lightbox`, `LightboxInk`, `MediaGap`). No pills, no dots (D69, D73).
@@ -126,7 +126,7 @@ is read where it was handed over.
   lightbox is for pictures). Wide: up to 48 rem, the text at a reading measure inside. Phone: the
   whole screen; pulling the head down closes it. Head: the file's drawn mark on a sunken tile
   (lines for a document, a grid for a table), name, **{KIND} · {size} · {n} 行**, **看原文 /
-  看排版** for Markdown and tables, ×. Foot: **来自 {task}**, **拷贝** (the text), **存一份 / Save a
+  看排版** for Markdown and tables, ×. Foot: **来自「{task}」**, **拷贝** (the text), **存一份 / Save a
   copy**. Esc, ×, or the scrim closes.
 - **By kind** (`fileView` in `@ducter/protocol`, `MediaRef.FileView` on the Mac): Markdown as a
   document (`apps/web/src/markdown-doc.ts`: every heading level, tables, quotes, task and nested

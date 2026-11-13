@@ -126,7 +126,7 @@ var zh = Table{
 	"media.copy":                     "拷贝",
 	"media.copied":                   "已拷贝",
 	"media.share":                    "分享",
-	"media.from":                     "来自 %s",
+	"media.from":                     "来自「%s」",
 	"media.close":                    "关闭",
 	"media.open":                     "打开",
 	"media.noImages":                 "无法显示图片",

@@ -118,7 +118,7 @@ const zh: Record<string, string> = {
   "media.copied": "已拷贝",
   "media.copy.failed": "这里拷贝不了图片",
   "media.close": "关闭",
-  "media.from": "来自 %s",
+  "media.from": "来自「%s」",
   "media.task": "这件事",
   "media.count": "%d / %d",
   "media.viewer": "图片 %d / %d",

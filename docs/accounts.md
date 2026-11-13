@@ -102,11 +102,11 @@ look (how many, and what it looked at; never what the mail said).
 
 ## When it notices something
 
-If you want, your partner keeps an eye on your accounts and tells you only what matters. When you
-add accounts the first time, it asks once whether to look through the last two weeks for anything
-that needs you (someone waiting, a bill due, a booking that doesn't add up), and then how you want
-to hear about things. Until you answer, it doesn't look by
-itself.
+Once you add an account, your partner keeps an eye on it and tells you only what matters. The
+first time, it asks whether to look through the last two weeks for anything that needs you
+(someone waiting, a bill due, a booking that doesn't add up), and then how you want to hear about
+things, with **Up to 3 a day** already chosen. If you don't answer, that's what it does; the
+first morning message shows the same choice under it, so you can change it there.
 
 The same choice sits above the cards, and under **Notifications**:
 
@@ -115,13 +115,13 @@ The same choice sits above the cards, and under **Notifications**:
   tomorrow, a correction to something it told you, someone who asked you again or has waited
   three working days, a promise due today; and, 10 minutes before a meeting, what you have open
   with those people.
-- **Up to 3 a day** (suggested): one message in the morning, when your quiet hours end, with at
+- **Up to 3 a day** (until you choose otherwise): one message in the morning, when your quiet hours end, with at
   most three things; anything urgent right away (at most three of those a day, on top). On a day with nothing worth saying it sends
   nothing and shows nothing: no news is good news.
 - **Whenever useful**: everything worth saying, still in the morning message (at most five in one).
 - **Only when I ask**: it doesn't look by itself.
 
-If you choose here instead of answering the first question, it still takes one quiet look back
+If you choose here instead of answering the first question, or don't answer it, it still takes one quiet look back
 over earlier mail and your calendars, so it knows the bookings and bills already there. It says
 nothing about that look.
 
@@ -140,7 +140,9 @@ deletes or marks anything read. A step you don't take quietly becomes **Passed**
 
 Under each one, **Useful** or **Don't tell me this kind**. The second becomes a rule in **Your
 rules**, where you can remove it. If three morning messages in a row go unread, they stop, and
-the next time you write it asks whether to keep them. At night it never wakes you, unless you
+the next time you write it asks whether to keep them. **No more** switches to **Only urgent**,
+never off. If what it can tell you gets clearly better later, it asks once more whether you want
+a few things each morning; whatever you answer, it doesn't ask again. At night it never wakes you, unless you
 said so for a kind ("wake me if a flight changes").
 
 It doesn't tell you how much it read or list what it skipped. Ask "anything else?" and it tells

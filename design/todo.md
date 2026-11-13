@@ -390,6 +390,11 @@ note and a `Dn`) before it is built.
       ~114 daily notices pass `NOTICE_TERMS` and what they cost against `NOTICE_DAY_MAX`; that
       Codex's cheap model gives `service` and `billing` facts; the judge's keep rate under the new
       rubric; `clientZone` set by the app's hello. Trigger: the first release with D243.
+- [ ] **D250 live** (counts only): on hel, whether the one line offering the morning note back was
+      said and how it was answered; on a fresh scratch home, the first morning message on the
+      default with the chips under it, and shots of both (web 390 zh/en, Mac). Bump `NOTES_REV`
+      (engine.ts) only for a material change in what the notes can notice, with its own Dn.
+      Trigger: the first release with D250.
 - [ ] **Topics the person follows** (dots' "news on something you care about", research/81): a
       product or a project they use, through Mem, so an announcement about it is a find. Trigger:
       D243 live and the author's labelled week.

@@ -21,7 +21,7 @@ import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } f
 import type { MediaRef } from "./media.ts";
 import type { CalChange, CalGlance, CalToday } from "./calendar.ts";
 import type { CallBody, CallPlan, CallView, OwnPhoneAction, OwnPhoneView, PhoneView, SignInView } from "./phone.ts";
-import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveDay, ProactiveMode, ReadLine, SourceLook } from "./proactive.ts";
+import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveDay, ProactiveMode, ProactiveSource, ProactiveYesNo, ReadLine, SourceLook } from "./proactive.ts";
 import type { BodyWhy, Candidate, RuleView, TaskBody, TaskNeeds } from "./loadout.ts";
 
 // ---------- States (design/focus-window-states.md) ----------
@@ -917,7 +917,7 @@ export type ClientFrame =
   | ({ t: "own_phone" } & OwnPhoneAction)
   // D165: the person's answer in a note: a reaction to a find, or an ask (first_look, keep_note).
   | { t: "find_react"; findId: string; reaction: "useful" | "mute" }
-  | { t: "proactive_answer"; noteId: string; ask: "first_look" | "keep_note"; yes: boolean }
+  | { t: "proactive_answer"; noteId: string; ask: ProactiveYesNo; yes: boolean }
   // Work over time (D112-D114), each answered with action_result (taskId = the waiter or routine
   // id). waiter_action look: look now; cancel: 不等了 / Stop waiting. routine_action pause, resume
   // (only a person resumes), end. waiter_action rearm: 接着等 / Keep waiting, on a missed wait (D144). until_action stop: stop the loop after this try.
@@ -1705,10 +1705,12 @@ export interface Settings {
   /** D148: update Ducter and its computers at night, in quiet hours, when nothing is working. Off by default. */
   autoUpdate?: boolean;
   /**
-   * D165: 发现了就说 / When it notices something. Absent: never answered, which
-   * watches nothing (connecting is not consent to watch); clients show none chosen yet.
+   * D165: 发现了就说 / When it notices something. D250: a current core always sets it: never
+   * chosen is 每天最多 3 件 (proactiveBy "default"). Absent only from a core before D250.
    */
   proactive?: ProactiveMode;
+  /** D250: where the mode came from (absent: chosen before the source was kept). Clients never set it. */
+  proactiveBy?: ProactiveSource;
   /** D170: who of the user's other agents may reach the partner (through Nowledge Bridge). */
   peers?: PeersSettings;
 }

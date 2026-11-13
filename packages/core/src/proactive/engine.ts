@@ -16,12 +16,13 @@
 //
 // Never: send, reply, pay, delete, archive, label, mark read (the broker refuses every write for
 // the watch caller; tasks only read), act on what mail says (fenced as data), keep mail (the
-// ledger holds typed facts), wake them unasked, or watch before the person said yes (§11).
+// ledger holds typed facts), or wake them unasked. D250: connecting an account is consent to read it;
+// a home that never chose is on 每天最多 3 件, and its first morning note carries the chips.
 // Mem gets only what the partner distills itself (memory_add, 记下了): nothing here writes Mem.
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, FindKind, FindView, LogEvent, ProactiveDay, ProactiveMode, QuietReason, ReadLine, ReadProblem, RuleView, SourceLook } from "@ducter/protocol";
+import type { Bodies, FindKind, FindView, LogEvent, ProactiveDay, ProactiveMode, ProactiveYesNo, QuietReason, ReadLine, ReadProblem, RuleView, SourceLook } from "@ducter/protocol";
 import { DAILY_CAP, isFindKind, QUIET_REASONS } from "@ducter/protocol";
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Clock } from "../clock.ts";
@@ -44,6 +45,14 @@ const MIN = 60_000;
 const DAY = 86_400_000;
 const TICK_MS = 5 * MIN;
 const UNREAD_TO_PAUSE = 3;
+/**
+ * D250: how good the notes are, bumped when what they can notice changed materially (1: D243's
+ * trips, maintenance, billing and corrections). A home that said 不再需要 to the morning note on
+ * an older rev hears it offered back once (note_again); never twice for one rev, never after a choice.
+ */
+export const NOTES_REV = 1;
+/** D250: a source's first-look offer gets this long to be answered before the quiet look back goes on its own. */
+export const OFFER_WAIT_MS = 30 * 60_000;
 export const DEFAULT_MONTH_TOKENS = 2_000_000;
 const BAR_UP = 10;
 const BAR_DOWN = 5;
@@ -124,7 +133,16 @@ interface State {
   ignored: { kind: FindKind; at: number }[];
   month: { key: string; tokens: Record<string, number>; told: string[] };
   offered: Record<string, string>; // connectionId -> the first-look note
+  /** D250: when each first-look offer was made; gone once answered. */
+  offeredAt?: Record<string, number>;
   cadenceNote?: string;
+  /** D250: the cadence question was shown once (in the first look's answer or the first morning note). */
+  cadenceAsked?: boolean;
+  /** D250: the NOTES_REV this home last knew, and the morning note offered back (pending until they next write). */
+  notesRev?: number;
+  again?: "pending" | "asked";
+  /** D250: the mode before 不再需要 (a yes to the re-offer goes back to it). */
+  beforeKeep?: ProactiveMode;
   left: Left;
   monthTokens?: number;
   /** D226: today's account for 今天看了什么 (counts only), and a reading problem while it lasts. */
@@ -233,7 +251,7 @@ export interface Proactive {
   reads(connectionId: string): ReadLine[];
   setApp(connectionId: string, service: string, account: string | undefined, patch: { watch?: boolean; excluded?: boolean }): boolean;
   react(findId: string, reaction: "useful" | "mute"): boolean;
-  answer(noteId: string, ask: "first_look" | "keep_note", yes: boolean): Promise<void>;
+  answer(noteId: string, ask: ProactiveYesNo, yes: boolean): Promise<void>;
   /** A source was just added: the first-account moment (§11), once. */
   added(connectionId: string): void;
   /** A client said hello (with its zone, D243): before the end of quiet hours, the note is assembled now (§6). */
@@ -320,8 +338,10 @@ export function createProactive(o: ProactiveOptions): Proactive {
     }
     save();
   };
-  /** The setting; absent (never answered) watches nothing. A source over its budget is "only urgent" on its own (sourcesOver), never the whole mode (P4). */
+  /** The setting (D250: never chosen is 每天最多 3 件). A source over its budget is "only urgent" on its own (sourcesOver), never the whole mode (P4). */
   const mode = (): ProactiveMode => o.settings.get().proactive ?? "off";
+  /** D250: where the mode came from; undefined: set before D250. */
+  const modeBy = () => o.settings.get().proactiveBy;
   /** The sources a candidate comes from (its facts' pointers). */
   const sourcesOf = (c: Candidate): string[] => {
     const byId = new Map(ledger.all().map((f) => [f.id, f.ref.connectionId]));
@@ -645,8 +665,11 @@ export function createProactive(o: ProactiveOptions): Proactive {
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
       } else {
         const finds = pick.map((x) => makeFind(x.c, x.text, noteId));
+        // D250: the first note on the default (never chosen, never asked) says how it works, with the chips.
+        const askHow = modeBy() === "default" && !st.cadenceAsked && !st.cadenceNote;
+        if (askHow) (st.cadenceAsked = true), (st.cadenceNote = noteId);
         // D173: no "I read 214 emails": a one-word greeting, then the things themselves.
-        const e = note({ noteId, rung: "morning", opening: W.open(z), finds, ...(leftOut ? { leftOut } : {}) });
+        const e = note({ noteId, rung: "morning", opening: W.open(z), finds, ...(leftOut ? { leftOut } : {}), ...(askHow ? { ask: "cadence" as const } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: finds.length });
         st.day.said += finds.length;
         notify("passive", W.lockBody(z, finds.map((f) => f.text)), noteId);
@@ -810,9 +833,39 @@ export function createProactive(o: ProactiveOptions): Proactive {
       st.keepAsk = "asked";
       save();
       void Promise.resolve().then(() => note({ noteId: newId("note"), rung: "morning", opening: W.keepNote(zh()), finds: [], ask: "keep_note" }));
+    } else if (e.kind === "user_msg" && st.again === "pending") {
+      // D250: the morning note offered back, once, the next time the person writes; only while they
+      // are still where 不再需要 put them, with an account to watch.
+      if (!stillNoMore()) {
+        st.again = undefined;
+        save();
+      } else if (o.connections.view().length) {
+        st.again = "asked";
+        save();
+        void Promise.resolve().then(() => note({ noteId: newId("note"), rung: "morning", opening: W.noteAgain(zh()), finds: [], ask: "note_again" }));
+      }
     }
   };
   const unsubscribe = o.log.subscribe(onEvent);
+
+  /** D250: they said 不再需要 to the morning note (now, or before the source was kept) and chose nothing since. */
+  function saidNoMoreInLog(): boolean {
+    return o.log.read({ stream: "channel", kinds: ["finds"], limit: 2000 }).some((e) => {
+      const b = e.body as Bodies["finds"];
+      return b.ask === "keep_note" && b.answered === "no";
+    });
+  }
+  function stillNoMore(): boolean {
+    if (mode() !== "urgent") return false;
+    const by = modeBy();
+    return by === "keep_note" || (by === undefined && saidNoMoreInLog());
+  }
+  // D250: the notes got better since they said 不再需要: offered back once, when they next write.
+  if ((st.notesRev ?? 0) < NOTES_REV) {
+    if (stillNoMore()) st.again = "pending";
+    st.notesRev = NOTES_REV;
+    save();
+  }
 
   // ---------- the first account (§11) ----------
 
@@ -837,6 +890,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     const finds = kept.map((x) => makeFind(x.c, x.text, answer));
     note({ noteId: answer, rung: "first", opening: W.firstAnswer(z, finds.length), finds, ask: "cadence" });
     st.cadenceNote = answer;
+    st.cadenceAsked = true;
     st.left = { notices: 0, promo: 0, muted: 0 };
     save();
     // Meanwhile, silently: 60 days into the ledger (bookings, renewals, promises). No message.
@@ -915,6 +969,15 @@ export function createProactive(o: ProactiveOptions): Proactive {
     }
     for (const c of o.connections.view()) {
       if (st.backfill[c.id] || !o.connections.apps(c.id).some((a) => a.watch && !a.excluded && lookFor(a.service))) continue;
+      // D250: watching is on by default, so a fresh first-look offer gets its half hour: a yes runs
+      // the look the person is waiting for first; silence lets the quiet one go; a choice goes at once.
+      // A source seen before its offer (the add's own change comes first) waits as if offered.
+      if (modeBy() === "default" && !Object.keys(st.offered).length && st.offeredAt?.[c.id] === undefined) {
+        st.offeredAt = { ...st.offeredAt, [c.id]: now() };
+        save();
+      }
+      const offeredAt = st.offeredAt?.[c.id];
+      if (modeBy() === "default" && offeredAt !== undefined && now() - offeredAt < OFFER_WAIT_MS) continue;
       st.backfill[c.id] = "catchup";
       save();
       backfill(c.id);
@@ -982,6 +1045,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       void serial(async () => {
         passDue();
         checkDry();
+        catchUpAll();
         await meetings();
         await ripen();
       }).finally(armTick);
@@ -993,7 +1057,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
     catchUpAll();
     const m = o.settings.get().proactive;
     // The cadence question answered from the chips (in the note or in Settings): settled once.
-    if (st.cadenceNote && m) {
+    // D250: the default is not an answer; a choice (or 不再需要) is.
+    if (st.cadenceNote && m && modeBy() !== "default") {
       const id = st.cadenceNote;
       st.cadenceNote = undefined;
       save();
@@ -1011,6 +1076,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     ledger.drop(id);
     watchers.forget(id);
     delete st.offered[id];
+    if (st.offeredAt) delete st.offeredAt[id];
     delete st.backfill[id];
     delete st.month.tokens[id];
     save();
@@ -1140,27 +1206,51 @@ export function createProactive(o: ProactiveOptions): Proactive {
         st.paused = false;
         st.keepAsk = undefined;
         st.mornings = st.mornings.map((m) => ({ ...m, seq: Number.MAX_SAFE_INTEGER - 1 })).slice(-1);
+        if (!yes) {
+          // D250: only urgent, kept as their reason (not a choice in Settings): the note is offered
+          // back once when it gets better (NOTES_REV), never silently off.
+          const m = mode();
+          if (m !== "urgent" && m !== "off") st.beforeKeep = m;
+          st.notesRev = NOTES_REV;
+          save();
+          o.settings.setProactive("urgent", "keep_note");
+        } else save();
+        return;
+      }
+      if (ask === "note_again") {
+        st.again = undefined;
+        if (yes) {
+          st.paused = false;
+          st.keepAsk = undefined;
+          st.mornings = st.mornings.map((m) => ({ ...m, seq: Number.MAX_SAFE_INTEGER - 1 })).slice(-1);
+        }
+        const back = st.beforeKeep ?? "three";
+        st.beforeKeep = undefined;
         save();
-        if (!yes) o.settings.set({ proactive: "urgent" });
+        // Either answer is their choice now: no more offers.
+        o.settings.setProactive(yes ? back : "urgent", "chosen");
         return;
       }
       const cid = Object.entries(st.offered).find(([, n]) => n === noteId)?.[0];
       if (!cid) return;
+      if (st.offeredAt) delete st.offeredAt[cid];
       if (yes) await serial(() => firstLook(noteId, cid));
       else {
         const id = newId("note");
         note({ noteId: id, rung: "first", opening: W.firstLater(zh()), finds: [], ask: "cadence" });
         st.cadenceNote = id;
+        st.cadenceAsked = true;
         save();
       }
     },
     added(connectionId) {
       if (st.offered[connectionId] || Object.keys(st.offered).length) return;
-      if (o.settings.get().proactive) return; // they already said how (a second source)
+      if (modeBy() !== "default") return; // they already said how (a second source)
       const names = appNames(connectionId);
       if (!names.length) return;
       const noteId = newId("note");
       st.offered[connectionId] = noteId;
+      st.offeredAt = { ...st.offeredAt, [connectionId]: now() };
       save();
       note({ noteId, rung: "first", opening: W.firstOffer(zh(), names), finds: [], ask: "first_look" });
     },
@@ -1244,6 +1334,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       serial(async () => {
         passDue();
         checkDry();
+        catchUpAll();
         await meetings();
         await ripen();
       }),

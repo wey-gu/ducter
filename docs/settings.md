@@ -89,7 +89,7 @@ working carries on there from its saved progress; it doesn't start over.
   suggested default: 10 minutes, 30 minutes, 1 hour or 2 hours. This applies only to things
   that can be undone. Anything that can't be undone always waits for you.
 - **When it notices something** (once you have accounts): how your partner tells you what it
-  noticed by itself: **Only urgent**, **Up to 3 a day**, **Whenever useful** or **Only when I
+  noticed by itself: **Only urgent**, **Up to 3 a day** (until you choose), **Whenever useful** or **Only when I
   ask**. The same row sits on Accounts; see [When it notices something](accounts.md#when-it-notices-something).
   Under it, **What it looked at today** shows, in numbers only, what it looked at, what it read
   closely and why it said nothing about the rest (not urgent, waiting for the morning message,

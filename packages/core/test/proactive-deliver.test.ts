@@ -56,12 +56,35 @@ test("a quiet day sends nothing and shows nothing: the note is only in the Log, 
   expect(r.sent).toHaveLength(0);
 });
 
-test("only when I ask (the default before anyone answered): nothing watches, nothing is said", async () => {
-  const r = make({}); // proactive never answered
+test("only when I ask: nothing watches, nothing is said", async () => {
+  const r = make({ mode: "off" });
   await r.advance(3 * HOUR);
   expect(r.acc.calls).toHaveLength(0);
   expect(r.notes()).toHaveLength(0);
 });
+
+test("D250: never chosen is 每天最多 3 件; its first morning note carries the chips once, the next ones don't", async () => {
+  const r = make({}); // proactive never chosen
+  expect(r.settings.get()).toMatchObject({ proactive: "three", proactiveBy: "default" });
+  await r.p.lookNow(40);
+  await r.advance(HOUR + 2 * 60_000); // past 08:00
+  const first = r.notes().map((e) => e.body).filter((n) => n.rung === "morning" && !n.quiet);
+  expect(first).toHaveLength(1);
+  expect(first[0]).toMatchObject({ opening: "早。", ask: "cadence" });
+  expect(first[0]!.finds.length).toBeGreaterThan(0);
+  expect(r.sent.map((m) => m.level)).toEqual(["passive"]);
+  // The next morning, something new: a plain note.
+  r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id: "r1" }, label: "Vendor · renews", at: new Date(r.clock.now()).toISOString(), type: "renewal", name: "plan", due: new Date(r.clock.now() + 4 * 86_400_000).toISOString().slice(0, 10), amount: "$9" }]);
+  await r.advance(24 * HOUR, 5 * 60_000);
+  const mornings = r.notes().map((e) => e.body).filter((n) => n.rung === "morning" && !n.quiet && !n.revises);
+  expect(mornings).toHaveLength(2);
+  expect(mornings[1]!.ask).toBeUndefined();
+  // A chip settles the question in the first note.
+  r.settings.set({ proactive: "three" });
+  await r.settle();
+  expect(r.settings.get().proactiveBy).toBe("chosen");
+  expect(r.lastNote()).toMatchObject({ revises: first[0]!.noteId, answered: "three" });
+}, 60_000);
 
 test("只说急的: no morning note; only what costs something if it waits goes, at once (a person who asked again too)", async () => {
   const fx = (await import("./fixtures/inbox.ts")).busyWeek();

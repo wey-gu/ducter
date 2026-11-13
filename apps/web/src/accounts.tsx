@@ -28,7 +28,8 @@ export function ProactiveChips(p: { inNote?: boolean }) {
     <div class="proactive">
       {!p.inNote && <h4>{t("proactive.title")}</h4>}
       <Seg<ProactiveMode> label={t("proactive.title")} value={v} options={PROACTIVE_MODES.map((m) => ({ v: m, label: t(`proactive.${m}`) }))} onPick={(m) => A.setSettings({ proactive: m })} />
-      <div class="small sub">{t(v ? `proactive.note.${v}` : "proactive.note.never")}</div>
+      {/* D250: never chosen is the default, and says so. */}
+      <div class="small sub">{t(!v ? "proactive.note.never" : st.proactiveBy === "default" ? "proactive.note.default" : `proactive.note.${v}`)}</div>
     </div>
   );
 }

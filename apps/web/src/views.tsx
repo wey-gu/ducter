@@ -2362,7 +2362,7 @@ function NotifySettings() {
         )}
       </section>
       {/* D165: the same chips as on Accounts, once there is something to watch. */}
-      {(s.proactive || !!A.connections?.length) && (
+      {((s.proactive && s.proactiveBy !== "default") || !!A.connections?.length) && (
         <section class="set">
           <ProactiveChips />
           <QuietDay />

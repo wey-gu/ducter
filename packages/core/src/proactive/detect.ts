@@ -289,9 +289,9 @@ function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
     const who = nameOf(first.from, first.name);
     const gh = first.ref.service === "github";
     const ago = daysUntil(first.at, c.now, c.zone);
-    const whenZh = ago === -1 ? "昨天" : `${-ago} 天前`;
+    const whenZh = ago >= 0 ? "今天" : ago === -1 ? "昨天" : `${-ago} 天前`;
     const zh = `${who} ${whenZh}问你${first.what ? `「${first.what}」` : "一件事"}${again ? `，${daysUntil(last.at, c.now, c.zone) === 0 ? "今天" : ""}又问了一次。` : `，还没回。`}`;
-    const en = `${who} asked you${first.what ? ` "${first.what}"` : " something"} ${ago === -1 ? "yesterday" : `${-ago} days ago`}${again ? ", and asked again." : ", not answered yet."}`;
+    const en = `${who} asked you${first.what ? ` "${first.what}"` : " something"} ${ago >= 0 ? "today" : ago === -1 ? "yesterday" : `${-ago} days ago`}${again ? ", and asked again." : ", not answered yet."}`;
     out.push({
       key: `wait_you:${k}:${list.length}`,
       kind: "waiting_on_you",

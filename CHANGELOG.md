@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.0.51
+
+<!-- whats-new
+zh: Fold 展开又是左右两栏：对话一边，手头的事一边
+en: An unfolded Fold is a book again: conversation beside On hand
+zh: 安卓每小时检查一次新版本
+en: The Android app checks for its own update every hour
+-->
+
+**Android**
+- On a foldable, unfolding from the cover screen shows the book again (the conversation on one side
+  of the fold, On hand or the task on the other). The fold was read only while the page still had the
+  cover screen's width; it is now read again as the page grows. Update the Android app to get this.
+- On hand at the whole screen on a book stays beside the conversation instead of across the fold.
+- The app checks for its own update at most every hour (it was every 6 hours).
+
 ## 0.0.50
 
 <!-- whats-new

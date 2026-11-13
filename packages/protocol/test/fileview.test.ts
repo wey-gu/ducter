@@ -13,7 +13,8 @@ test("each kind opens in the viewer that suits it; what can't be shown says so",
   expect(fileView({ type: "text/html", name: "report.html" })).toBe("text");
   expect(fileView({ type: "image/svg+xml", name: "logo.svg" })).toBe("picture");
   expect(fileView({ type: "video/mp4", name: "demo.mp4" })).toBe("video");
-  expect(fileView({ type: "application/pdf", name: "album.pdf" })).toBe("none");
+  // D241: a PDF is drawn page by page.
+  expect(fileView({ type: "application/pdf", name: "album.pdf" })).toBe("pdf");
   expect(fileView({ type: "application/zip" })).toBe("none");
   expect(tableSep("runs.tsv")).toBe("\t");
   expect(tableSep("sales.csv")).toBe(",");

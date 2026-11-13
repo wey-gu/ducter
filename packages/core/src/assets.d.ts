@@ -32,3 +32,11 @@ declare module "*/static/sw.js" {
   const path: string;
   export default path;
 }
+declare module "*/static/pdf.js" {
+  const path: string;
+  export default path;
+}
+declare module "*/static/pdf.worker.js" {
+  const path: string;
+  export default path;
+}

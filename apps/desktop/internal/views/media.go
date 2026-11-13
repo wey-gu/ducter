@@ -81,6 +81,8 @@ type mediaState struct {
 	taskWait []*taskWait
 	viewer   *viewerState
 	n        int
+	// asked is when fresh keys were last asked for, per id (D241).
+	asked map[string]time.Time
 }
 
 type taskWait struct {
@@ -316,15 +318,20 @@ func (a *App) takeDrops(e ui.Element, tray string) bool {
 
 // ---------- fetching ----------
 
-// picture is a picture from the home by its path, fetched once.
+// picture is a picture from the home by its path, fetched once (kept by
+// its id: a fresh key is the same picture, D241).
 func (a *App) picture(path string) *pic {
 	m := a.med()
-	p := m.pics[path]
+	id := protocol.MediaID(path)
+	p := m.pics[id]
 	if p != nil {
 		return p
 	}
 	p = &pic{loading: true}
-	m.pics[path] = p
+	m.pics[id] = p
+	if k := path[strings.IndexByte(path, '=')+1:]; protocol.KeyStale(k, a.Now()) {
+		a.askKeys(id)
+	}
 	if a.Media == nil {
 		p.loading, p.failed = false, true
 		return p
@@ -347,11 +354,57 @@ func (a *App) picture(path string) *pic {
 		p.loading = false
 		if err != nil {
 			p.failed = true
+			a.keyMaybeOld(err, id)
 			return
 		}
 		p.bmp, p.data, p.at = bmp, data, a.Now()
 	})
 	return p
+}
+
+// askKeys asks the home for fresh keys for ids (D241), at most once a
+// minute per id; the answer (media_keys) fetches what failed again.
+func (a *App) askKeys(ids ...string) {
+	m := a.med()
+	if m.asked == nil {
+		m.asked = map[string]time.Time{}
+	}
+	now := a.Now()
+	var want []string
+	for _, id := range ids {
+		if id != "" && now.Sub(m.asked[id]) > time.Minute {
+			m.asked[id] = now
+			want = append(want, id)
+		}
+	}
+	if len(want) > 0 {
+		a.send(protocol.MediaKeysReq{T: "media_keys", IDs: want})
+	}
+}
+
+// keyMaybeOld: a fetch the home said no to may have had a key past its
+// time; ask for a fresh one.
+func (a *App) keyMaybeOld(err error, ids ...string) {
+	if err != nil && strings.Contains(err.Error(), "404") {
+		a.askKeys(ids...)
+	}
+}
+
+// keysCame keeps fresh keys and tries again what failed with old ones: a
+// picture, and the open file.
+func (a *App) keysCame(keys map[string]string) {
+	protocol.SetFreshKeys(keys)
+	m := a.med()
+	for id := range keys {
+		if p := m.pics[id]; p != nil && p.failed {
+			delete(m.pics, id)
+		}
+	}
+	if fv := a.fileView; fv != nil && fv.failed {
+		if _, ok := keys[fv.ref.ID]; ok {
+			a.loadFile(fv)
+		}
+	}
 }
 
 // preview is a ref's ~16 px preview as a bitmap (drawn blurred, big).
@@ -967,7 +1020,7 @@ func (a *App) viewerPicture(c *ui.Context, v *viewerState, ref protocol.MediaRef
 	full := a.picture(ref.Path())
 	bmp := full.bmp
 	if bmp == nil {
-		if th := a.med().pics[ref.ThumbPath()]; th != nil && th.bmp != nil {
+		if th := a.med().pics[protocol.MediaID(ref.ThumbPath())]; th != nil && th.bmp != nil {
 			bmp = th.bmp
 		} else {
 			bmp = a.preview(&ref)

@@ -23,6 +23,11 @@ export async function buildWeb(): Promise<Record<string, string>> {
     if (!r.success) throw new AggregateError(r.logs, `build of ${entry} failed`);
     out[name] = await r.outputs[0]!.text();
   }
+  // D241: pdf.js (Mozilla, Apache-2.0) draws a PDF's pages inside the viewer. Its prebuilt
+  // modules are copied as they ship (about 1.7 MB together), loaded only when a PDF opens.
+  const pdfjs = join(here, "node_modules", "pdfjs-dist", "build");
+  out["pdf.js"] = await Bun.file(join(pdfjs, "pdf.min.mjs")).text();
+  out["pdf.worker.js"] = await Bun.file(join(pdfjs, "pdf.worker.min.mjs")).text();
   return out;
 }
 

@@ -1,8 +1,9 @@
 // A demo core for the file viewer (D239): a task looked into why a file card opened a link on the
 // home and showed what it made: its investigation (Markdown), the eval it ran (CSV), the fix
-// (source), and a PDF (which the viewer can't show, honestly). Open a card to read it in Ducter.
+// (source), and a PDF (drawn page by page, D241). Open a card to read it in Ducter.
 //   DUCTER_PORT=7797 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh bun apps/web/demo-file.ts
 // then open http://127.0.0.1:7797/app
+import { readFileSync } from "node:fs";
 import { startCore, stubRunner } from "@ducter/core";
 import type { MediaRef } from "@ducter/protocol";
 import { noOo } from "./demo-oo.ts";
@@ -115,7 +116,9 @@ func (a *App) fileCard(c *ui.Context, ref *protocol.MediaRef) {
 const md = put("investigation.md", INVESTIGATION);
 const csv = put(zh ? "评测结果.csv" : "eval-results.csv", EVAL_CSV);
 const go = put("media.go", FIX_GO);
-const pdf = put(zh ? "Ducter 文件查看器.pdf" : "Ducter file viewer.pdf", enc("%PDF-1.7\n% a stand-in\n" + "x".repeat(180_000)));
+// D241: a real PDF draws page by page (DEMO_PDF: the research report printed); else a stand-in, said plainly.
+const pdfBytes = process.env.DEMO_PDF ? new Uint8Array(readFileSync(process.env.DEMO_PDF)) : enc("%PDF-1.7\n% a stand-in\n" + "x".repeat(180_000));
+const pdf = put(zh ? "Ducter 文件查看器调研.pdf" : "Ducter file viewer research.pdf", pdfBytes);
 
 const log = core.log;
 log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "为什么我点开一个文件，打开的居然是 hel 上的链接？查一下" : "Why did opening a file open a link on hel? Look into it" } } as never);

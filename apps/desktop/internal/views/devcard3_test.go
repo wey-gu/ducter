@@ -145,7 +145,7 @@ func TestCharacterSheet(t *testing.T) {
 			has(tt, L.T("card.status.working", "hel", 2), L.T("chip.worker", "hel"), L.T("chip.computer"), "+ "+L.T("chip.web"),
 				L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli")), L.T("card.disconnect.device", "MacBook"))
 			hasNot(tt, L.T("agentv.unverified"), L.T("work.mac.note.on", app.MacWorker.Log()), app.MacWorker.Log(), L.T("device.does"), L.T("token.shared", 2))
-			if r, ok := tt.Find("· " + L.T("list.state.tasks", 2)); !ok || r.H > 24 {
+			if r, ok := tt.Find(L.T("list.state.tasks", 2)); !ok || r.H > 24 { // its own line under the name
 				t.Fatalf("%s: the list's word wraps or is missing: %v %v", lang, r, ok)
 			}
 			shot(tt, fmt.Sprintf("page-%d", sz[0]))

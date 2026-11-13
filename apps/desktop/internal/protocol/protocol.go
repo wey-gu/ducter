@@ -1742,6 +1742,8 @@ type ServerFrame struct {
 	OwnPhone *OwnPhoneView `json:"ownPhone,omitempty"`
 	// Step is one step's answer of 从外面连's setup (anywhere_setup_result, D228).
 	Step *AnywhereStepResult `json:"step,omitempty"`
+	// D241: media_keys, fresh keys for media ids this app asked about.
+	MediaKeys map[string]string `json:"mediaKeys,omitempty"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -1927,7 +1929,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
-		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "saved",
+		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)

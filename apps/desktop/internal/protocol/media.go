@@ -3,6 +3,10 @@ package protocol
 import (
 	"fmt"
 	"math"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
 // D206: pictures and files (packages/protocol/src/media.ts). Media is
@@ -55,8 +59,63 @@ func IsImageType(t string) bool {
 	return false
 }
 
-// MediaPath is the path a ref is served at, relative to the home's origin.
-func MediaPath(id, k string) string { return "media/" + id + "?k=" + k }
+// D241: media keys expire (MEDIA_KEY in media.ts). The home signs every
+// ref afresh as it sends it; an app left open past its keys asks for new
+// ones (MediaKeysReq) and keeps them here, newest first for each id.
+var freshKeys sync.Map // id → k
+
+// MediaKeysReq asks the home for fresh keys (answered with media_keys).
+type MediaKeysReq struct {
+	T   string   `json:"t"` // "media_keys"
+	IDs []string `json:"ids"`
+}
+
+// SetFreshKeys keeps the keys a media_keys frame brought.
+func SetFreshKeys(keys map[string]string) {
+	for id, k := range keys {
+		freshKeys.Store(id, k)
+	}
+}
+
+// KeyFor is the newest key this app has for id (k, from its ref, when none came since).
+func KeyFor(id, k string) string {
+	if v, ok := freshKeys.Load(id); ok {
+		return v.(string)
+	}
+	return k
+}
+
+// KeyExpires is when a key stops opening; false for a pre-D241 key.
+func KeyExpires(k string) (time.Time, bool) {
+	i := strings.IndexByte(k, '.')
+	if i <= 0 {
+		return time.Time{}, false
+	}
+	s, err := strconv.ParseInt(k[:i], 36, 64)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return time.Unix(s, 0), true
+}
+
+// KeyStale says a key is past its time, or will be within a minute.
+func KeyStale(k string, now time.Time) bool {
+	end, ok := KeyExpires(k)
+	return ok && !end.After(now.Add(time.Minute))
+}
+
+// MediaPath is the path a ref is served at, relative to the home's origin,
+// with the newest key this app has for it.
+func MediaPath(id, k string) string { return "media/" + id + "?k=" + KeyFor(id, k) }
+
+// MediaID is the id in a media path ("media/<id>?k=…").
+func MediaID(path string) string {
+	path = strings.TrimPrefix(path, "media/")
+	if i := strings.IndexByte(path, '?'); i >= 0 {
+		return path[:i]
+	}
+	return path
+}
 
 // Path is the picture's own path.
 func (m MediaRef) Path() string { return MediaPath(m.ID, m.K) }

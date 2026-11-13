@@ -148,8 +148,10 @@ type Tokens struct {
 	// gives way to warm dark so the picture is what you see; LightboxInk is
 	// the bar's words and marks on it, MediaGap the hairline between tiles.
 	Lightbox, LightboxInk ui.Color
-	MediaGap              float32
-	Drop, DropPressed     Elevation
+	// PDFPage is a PDF page's paper (D241): printed matter, white in every theme.
+	PDFPage           ui.Color
+	MediaGap          float32
+	Drop, DropPressed Elevation
 
 	// motion: Snappy for hover and lift, PressDur for a press, EnterDur
 	// for a screen or a notice coming in, Bouncy for the living message
@@ -311,6 +313,7 @@ func Pebble() *Tokens {
 		Floating:       Elevation{Y: 10, Blur: 32, Color: hex("#2B2118").Alpha(0.14)},
 		Scrim:          hex("#3C2814").Alpha(0.14),
 		Lightbox:       hex("#1A130D").Alpha(0.92),
+		PDFPage:        hex("#FFFFFF"),
 		LightboxInk:    hex("#FFF6EA"),
 		MediaGap:       3,
 		Drop:           Elevation{Y: 7, Blur: 12, Color: hex("#2B2118").Alpha(0.28)},

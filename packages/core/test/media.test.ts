@@ -1,7 +1,10 @@
 // D206: the home's media store: what it reads from a picture, upload over HTTP (the gate, the
 // caps, dedupe), the keyed GET, and messages that carry refs.
 import { afterEach, expect, test } from "bun:test";
-import type { Bodies, MediaRef, ServerFrame } from "@ducter/protocol";
+import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { MEDIA_KEY, keyExpires, type Bodies, type MediaRef, type ServerFrame } from "@ducter/protocol";
 import { startCore, type Core } from "../src/core.ts";
 import { createMediaStore, sniffFile, sniffImage } from "../src/media.ts";
 import { gif, jpeg, png, webp } from "./fixtures-media.ts";
@@ -156,6 +159,73 @@ test("a message with pictures (and no words) is logged with their refs; the echo
   const err = (await c.until((f) => f.t === "error")) as Extract<ServerFrame, { t: "error" }>;
   expect(err.message).toMatch(/didn't arrive/);
   expect(core.log.read({ kinds: ["user_msg"] })).toHaveLength(1);
+});
+
+// D241: keys expire. A key names its end; it opens until then, the same through one window; a
+// key from before D241 (no time in it) opens for a week after the home's first expiring key.
+test("a key opens for about a day, then never; an old key gets a week's grace", () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  let at = Date.UTC(2026, 10, 13, 9, 30);
+  const H = 3600_000;
+  const m = createMediaStore(t.dir, { now: () => at });
+  const r = m.put(png(64, 64));
+  expect(r.k).toMatch(/^[0-9a-z]+\.[A-Za-z0-9_-]{22}$/);
+  const end = keyExpires(r.k)!;
+  expect(end - at).toBeGreaterThanOrEqual(MEDIA_KEY.hours * H);
+  expect(end - at).toBeLessThanOrEqual((MEDIA_KEY.hours + MEDIA_KEY.windowHours) * H);
+  // One window, one key (one cache entry).
+  at += H;
+  expect(m.key(r.id)).toBe(r.k);
+  expect(m.verify(r.id, r.k)).toBe(true);
+  // Another id's key, a changed time or a forged sig: no.
+  const other = m.put(png(32, 32));
+  expect(m.verify(r.id, other.k)).toBe(false);
+  expect(m.verify(r.id, `${(Math.floor(end / 1000) + 3600).toString(36)}.${r.k.split(".")[1]}`)).toBe(false);
+  // Past its end: closed.
+  at = end + 1;
+  expect(m.verify(r.id, r.k)).toBe(false);
+  expect(m.verify(r.id, m.key(r.id))).toBe(true);
+  // A pre-D241 key (an HMAC of the id alone): open in the grace week, then never.
+  const legacy = createHmac("sha256", readFileSync(join(t.dir, "media", ".key"))).update(r.id).digest("base64url").slice(0, 22);
+  expect(m.verify(r.id, legacy)).toBe(true);
+  at = Date.UTC(2026, 10, 13, 9, 30) + MEDIA_KEY.legacyDays * 24 * H + 1;
+  expect(m.verify(r.id, legacy)).toBe(false);
+  // The grace starts once: a restarted home reads it back.
+  const again = createMediaStore(t.dir, { now: () => at });
+  expect(again.verify(r.id, legacy)).toBe(false);
+});
+
+test("refs are signed afresh as they leave; a client past its keys asks for new ones", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  let at = Date.UTC(2026, 10, 13, 9, 30);
+  const m = createMediaStore(t.dir, { now: () => at });
+  const r = m.put(png(64, 64), { thumb: png(32, 32, 1) });
+  const stale = { ...r, k: "old", thumb: { id: r.thumb!.id, k: "old" } };
+  const frame = { t: "events", events: [{ seq: 1, body: { text: "看", media: [stale] } }, { seq: 2, body: { text: "无图" } }] };
+  at += 30 * 3600_000;
+  const out = m.fresh(frame);
+  const got = out.events[0]!.body.media![0]!;
+  expect(got.k).toBe(m.key(r.id));
+  expect(got.thumb!.k).toBe(m.key(r.thumb!.id));
+  expect(m.verify(r.id, got.k)).toBe(true);
+  // Untouched parts are the same objects; the frame given is never changed.
+  expect(out.events[1]).toBe(frame.events[1]);
+  expect(stale.k).toBe("old");
+  expect(m.fresh({ t: "on_hand" })).toEqual({ t: "on_hand" });
+  // keysFor: only ids the home holds.
+  expect(m.keysFor([r.id, "e".repeat(64), 7, "../x"])).toEqual({ [r.id]: m.key(r.id) });
+  expect(m.keysFor("nope")).toEqual({});
+
+  // Over the wire: a frame carrying an old key arrives with a fresh one, and media_keys answers.
+  const core = boot();
+  const up = (await upload(core, png(640, 480))).body.media!;
+  const c = await client(core);
+  c.send({ t: "media_keys", ids: [up.id, "e".repeat(64)] });
+  const ans = (await c.until((f) => f.t === "media_keys")) as Extract<ServerFrame, { t: "media_keys" }>;
+  expect(Object.keys(ans.mediaKeys)).toEqual([up.id]);
+  expect((await fetch(http(core, `media/${up.id}?k=${ans.mediaKeys[up.id]}`))).status).toBe(200);
 });
 
 test("a picture sent into a task reaches the runner with the words", async () => {

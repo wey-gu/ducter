@@ -52,18 +52,23 @@ and it opens right there in Ducter:
   **Show source** shows the text as it was written.
 - **A table** (CSV) shows as a table.
 - **Code and text** show with their colours and line numbers.
+- **A PDF** shows its pages, one under the other; the top says how many there are.
+- **Find** (the magnifier, or ⌘F / Ctrl+F) looks for words in a report, a table or code: every
+  place they appear is marked, and the arrows (or Enter) go to the next one. On a Mac, a report
+  or a table is searched in its text, and closing Find lays it out again.
 - **Copy** copies the text, **Save a copy** keeps the whole file on your device (on a phone, your
   share sheet: save it to Files or send it to an app; on a Mac, your Downloads folder). **From**
   and the task's name opens the task.
 - Close it with the ×, Esc, or by tapping outside it; on a phone, pull it down.
 
 A very long file shows its first part and says so; Save a copy has all of it. Kinds Ducter can't
-show yet (a PDF, a Word or Excel file, a zip) say so, with **Save a copy**; on a Mac, **Open on
-this Mac** opens it in its own app.
+show yet (a Word or Excel file, a zip) say so, with **Save a copy**; on a Mac, **Open on this
+Mac** opens it in its own app.
 
 ## Good to know
 
 - Pictures stay on the computer Ducter lives on. A picture is only reachable through a link that
-  your own devices get from Ducter.
-- Sending files and PDFs, sharing into Ducter from other apps, video, and reading PDFs inside
-  Ducter are coming soon.
+  your own devices get from Ducter, and that link stops working after about a day: one that ends
+  up somewhere else (a browser's history, a message) soon opens nothing. Your devices get fresh
+  links by themselves.
+- Sending files and PDFs, sharing into Ducter from other apps, and video are coming soon.

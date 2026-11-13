@@ -45,6 +45,8 @@
   --line-soft: #f3e6d3;
   --highlight: #ffe9a8;
   --highlight-ink: #6b5000;
+  /* D241: a PDF page is printed matter: white paper in every theme. */
+  --pdf-page: #fff;
 
   --needs-dot: #ff8a3d;
   --needs-surface: #ffe3cf;
@@ -7690,6 +7692,64 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   color: var(--ink-muted);
 }
 .fv-paper .kind { position: absolute; bottom: 14px; font-size: var(--xs); font-weight: 800; letter-spacing: 0.08em; color: var(--ink-soft); }
+/* D241: find in a long file. The field belongs to the head (its surface), pressed into it. */
+.fv-lens { flex: none; color: var(--ink-soft); }
+.fv-lens[aria-pressed="true"] { color: var(--ink); background: var(--sunken); }
+.fv-find {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: -3px;
+  padding: 0 10px 12px 18px;
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--line), 0 3px 0 var(--line-soft);
+  animation: fv-find-in 160ms var(--ease);
+}
+@keyframes fv-find-in { from { opacity: 0; transform: translateY(-4px); } }
+.fv-find input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  margin-right: 6px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  box-shadow: inset 0 2px 0 var(--surface-sunken), inset 0 0 0 1px var(--line-soft);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--body);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.fv-find input:focus-visible { box-shadow: inset 0 2px 0 var(--surface-sunken), inset 0 0 0 2px var(--ink-soft); }
+.fv-find input::-webkit-search-cancel-button { display: none; }
+.fv-count { flex: none; min-width: 4.8em; text-align: center; font-size: var(--xs); font-weight: 700; color: var(--ink-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fv-find .btn[disabled] { opacity: 0.35; }
+::highlight(fv-hit) { background-color: var(--highlight); color: var(--highlight-ink); }
+::highlight(fv-now) { background-color: var(--accent); color: var(--on-accent); }
+/* D241: a PDF's pages, each a sheet of paper on the sunken ground, drawn as they come near. */
+.fv-k-pdf .fv-body { background: var(--sunken); }
+.fv-pdf { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 18px 18px 28px; }
+.fv-page {
+  width: 100%;
+  max-width: 44rem;
+  border-radius: 6px;
+  background: var(--pdf-page);
+  box-shadow: 0 3px 0 var(--line-2), inset 0 0 0 1px var(--line-soft);
+  overflow: hidden;
+}
+.fv-page canvas { display: block; width: 100%; height: 100%; }
+.fv-page.in canvas { animation: fv-page-in 200ms var(--ease); }
+@keyframes fv-page-in { from { opacity: 0; } }
+@media (max-width: 699px), (max-height: 639px) {
+  .fv-find { padding: 0 6px 10px max(16px, var(--safe-left)); }
+  .fv-pdf { padding: 10px 8px 20px; gap: 10px; }
+}
 @media (max-width: 699px), (max-height: 639px) {
   .fileview { place-items: stretch; }
   .fv-sheet {

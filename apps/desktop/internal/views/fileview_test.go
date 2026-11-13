@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -120,7 +121,7 @@ func fileApp(t *testing.T, lang i18n.Lang) (*App, *fakeHome, []protocol.MediaRef
 		h.fileRef([]byte(reportMD(zh)), "text/markdown", "investigation.md"),
 		h.fileRef([]byte(evalCSV), "text/csv", pick("评测结果.csv", "eval-results.csv")),
 		h.fileRef([]byte(fixGo), "text/plain", "media.go"),
-		h.fileRef([]byte("%PDF-1.7\n"+strings.Repeat("x", 180_000)), "application/pdf", pick("Ducter 文件查看器.pdf", "Ducter file viewer.pdf")),
+		h.fileRef(researchPDFTimes(3), "application/pdf", pick("Ducter 文件查看器调研.pdf", "Ducter file viewer research.pdf")),
 	}
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
 		mev(1, 5*time.Minute, "channel", protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: pick("为什么我点开一个文件，打开的居然是 hel 上的链接？查一下", "Why did opening a file open a link on hel? Look into it")}),
@@ -156,17 +157,74 @@ func TestFileViewer(t *testing.T) {
 	if app.fileView != nil {
 		t.Errorf("the viewer didn't close")
 	}
-	// A PDF: said plainly, opened on this Mac from a copy.
+	// D241: a PDF's pages drawn here, the count in the head.
 	app.OpenFile(refs[3], ui.Rect{})
+	for i := 0; i < 6; i++ {
+		tt.Advance(50 * time.Millisecond)
+		tt.Frame()
+	}
+	if fv := app.fileView; fv.pdf == nil || fv.pdf.Pages() < 2 || len(fv.pages) == 0 {
+		t.Fatalf("the PDF wasn't drawn: %+v", fv)
+	}
+	if got := texts(tt); !strings.Contains(got, "PDF · ") || !strings.Contains(got, " 页") {
+		t.Errorf("a PDF's head: %s", got)
+	}
+	app.fileView.open = false
+	tt.Frame()
+	// A PDF this Mac can't draw: said plainly, opened on this Mac from a copy.
+	broken := h.fileRef([]byte("%PDF-1.7\n"+strings.Repeat("x", 4000)), "application/pdf", "broken.pdf")
+	app.OpenFile(broken, ui.Rect{})
 	tt.Frame()
 	tt.Frame()
-	if !strings.Contains(texts(tt), "这种文件在 Ducter 里还打不开") {
-		t.Errorf("a PDF: %s", texts(tt))
+	if !strings.Contains(texts(tt), "这个 PDF 在这里画不出来") {
+		t.Errorf("a broken PDF: %s", texts(tt))
 	}
 	click(t, tt, "在 Mac 上打开")
 	if len(h.opened) != 1 || !strings.HasSuffix(h.opened[0], ".pdf") {
 		t.Errorf("Open on this Mac: %q", h.opened)
 	}
+	app.fileView.open = false
+	tt.Frame()
+	// D241: ⌘F finds in a text: every match marked, the current one in the
+	// accent; Esc closes the find field, not the file. No line is "current"
+	// in a read-only view.
+	app.OpenFile(refs[2], ui.Rect{})
+	tt.Frame()
+	fv := app.fileView
+	if fv.st == nil || !fv.st.NoActiveLine {
+		t.Errorf("the read-only code view highlights a current line")
+	}
+	app.openFind(fv)
+	fv.query = "ref"
+	tt.Frame()
+	tt.Frame()
+	if len(fv.hits) < 4 || len(fv.st.TextBackgrounds) != len(fv.hits) || fv.st.TextBackgrounds[0].Color != app.T.Accent {
+		t.Fatalf("find: %d hits, %d marks", len(fv.hits), len(fv.st.TextBackgrounds))
+	}
+	if got := texts(tt); !strings.Contains(got, fmt.Sprintf("1 / %d", len(fv.hits))) {
+		t.Errorf("find's count: %s", got)
+	}
+	app.findStep(fv, 1)
+	tt.Frame()
+	if fv.st.TextBackgrounds[1].Color != app.T.Accent || !strings.EqualFold(fv.st.SelectedText(), "ref") {
+		t.Errorf("next: %+v %q", fv.st.TextBackgrounds[:2], fv.st.SelectedText())
+	}
+	tt.Key(0, ui.KeyEscape)
+	tt.Frame()
+	if app.fileView == nil || fv.finding {
+		t.Errorf("Esc: viewer %v, finding %v", app.fileView != nil, fv.finding)
+	}
+	app.fileView.open = false
+	tt.Frame()
+	// A report's code block says Ducter's 拷贝, not MyGo's Copy.
+	app.OpenFile(refs[0], ui.Rect{})
+	tt.Frame()
+	tt.Frame()
+	if got := texts(tt); strings.Contains(got, "Copy") || strings.Count(got, "拷贝") < 2 {
+		t.Errorf("the code block's copy: %s", got)
+	}
+	app.fileView.open = false
+	tt.Frame()
 	// A long text is read in part, cut at a whole line, and says so.
 	long := strings.Repeat("一行日志 line of the log\n", 60_000)
 	big := h.fileRef([]byte(long), "text/plain", "run.log")
@@ -203,18 +261,58 @@ func TestFileViewerShots(t *testing.T) {
 		app, _, refs := fileApp(t, lang)
 		tt := mediaTester(app, 1100, 860)
 		shot(tt, "mac-"+l+"-0-cards")
-		for i, name := range []string{"1-markdown", "2-table", "3-code", "4-pdf"} {
+		for i, name := range []string{"1-markdown", "2-table", "3-code", "4-pdf-opening"} {
 			app.OpenFile(refs[i], ui.Rect{})
 			tt.Frame()
 			tt.Frame()
 			shot(tt, "mac-"+l+"-"+name)
-			if i == 0 {
-				app.fileView.source = true
+			fv := app.fileView
+			switch i {
+			case 0:
+				fv.source = true
 				tt.Frame()
 				shot(tt, "mac-"+l+"-1b-markdown-source")
+				fv.source = false
+				// D241: find in a report: found in its text.
+				app.openFind(fv)
+				fv.query = map[string]string{"zh": "钥匙", "en": "key"}[l]
+				tt.Frame()
+				app.findStep(fv, 1)
+				tt.Frame()
+				shot(tt, "mac-"+l+"-1c-markdown-find")
+			case 2:
+				app.openFind(fv)
+				fv.query = "ref"
+				tt.Frame()
+				app.findStep(fv, 2)
+				tt.Frame()
+				shot(tt, "mac-"+l+"-3b-code-find")
+				fv.query = "zzz"
+				tt.Frame()
+				shot(tt, "mac-"+l+"-3c-code-find-none")
+			case 3:
+				// The pages come as they're drawn; scrolled down, the first ones go.
+				for k := 0; k < 8; k++ {
+					tt.Advance(100 * time.Millisecond)
+					tt.Frame()
+				}
+				shot(tt, "mac-"+l+"-4-pdf")
 			}
+			fv.closeFile()
 			app.fileView = nil
 			tt.Frame()
 		}
+		// The narrow window.
+		tt.SetSize(720, 760)
+		app.OpenFile(refs[3], ui.Rect{})
+		for k := 0; k < 8; k++ {
+			tt.Advance(100 * time.Millisecond)
+			tt.Frame()
+		}
+		shot(tt, "mac-"+l+"-4b-pdf-narrow")
+		app.fileView.closeFile()
+		app.fileView = nil
+		tt.SetSize(1100, 860)
+		tt.Frame()
 	}
 }

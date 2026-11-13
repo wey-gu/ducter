@@ -13,6 +13,7 @@ import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, 
 import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
+import { gotKeys } from "./media-fresh.ts";
 import type { LogEvent, ReplyWant } from "@ducter/protocol";
 
 /** D236: what the composer replies to: the message (a find or a part of it) and how its imprint reads. */
@@ -612,6 +613,7 @@ class AppState {
     if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), (this.ownPhone = f.ownPhone), this.changed();
     if (f.t === "own_phone_result") return (this.ownAnswer = f.reason ?? "phone"), this.changed();
     if (f.t === "connection_reads") return void (this.connReads.set(f.id, f.reads), this.changed());
+    if (f.t === "media_keys") return gotKeys(f.mediaKeys);
     if (f.t === "proactive_day") return void ((this.proactiveDay = f.day), this.changed());
     // D193: the device sign-in: the code and link, then done (a toast) or why not.
     if (f.t === "connection_signin") {

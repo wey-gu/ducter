@@ -427,6 +427,7 @@ func (a *App) View(c *ui.Context) {
 		// Chinese reading text is 1.75 high (D78).
 		a.mdLang = a.L.Lang
 		a.md.Theme = a.markdownTheme(a.T.PartnerSize, a.leading(1.65))
+		a.md.CodeBlock, a.mdTask.CodeBlock = a.codeBlock, a.codeBlock // Ducter's own 拷贝 (D241)
 		a.mdTask.Theme = a.markdownTheme(a.T.MD, a.leading(1.55))
 	}
 	c.SetTheme(a.uiTheme)
@@ -829,6 +830,8 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		a.Welcomed()
 	case "action_result":
 		delete(a.actSent, f.TaskID)
+	case "media_keys":
+		a.keysCame(f.MediaKeys)
 	case "devices":
 		a.hintThisMac()
 		a.restartForPlan() // D224: this app's own step comes last

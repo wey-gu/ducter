@@ -1100,6 +1100,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## 用这台手机 / Use this phone (D238)
 
 - [ ] **On the author's Pixel Fold:** install the release APK from the browser, walk the guide through restricted settings, check Pixel's own strings against research/74 §2.2 and the miniatures, a real errand (a WeChat reply behind Go), Stop from the pill and from the Mac, and that the page keeps its socket with Ducter in the background for a 10-minute errand. Trigger: the author's review.
+- [ ] **D247 on the author's Pixel:** with 用这台手机 off, ask "用我的手机打开小红书…" from the Mac and from the phone; the card, 去打开 opening the guide on the phone, the task carrying on by itself once the switch is on; that no task asks for adb. Trigger: the author's review.
+- [ ] **A notification on the phone when 去打开 is tapped elsewhere** and the Ducter app is in the background (today the guide opens when the app is next in front; an Android change in `apps/android`). Trigger: the author's Pixel check, if the guide doesn't show.
+- [ ] **A paired phone whose app isn't open:** a card that waits for it (and opens the guide when it connects) instead of the partner's one line "open Ducter on {phone}". Trigger: a person who asks with the app closed.
 - [ ] **The allowance across a self-update** (Android 15+: does "Allow restricted settings" survive Ducter's PackageInstaller update?). Trigger: the first release after the author turns it on.
 - [ ] **Say which phone in the request:** `needs.phone: "mine" | "ducter"` when both exist ("在我的手机上" vs "在 Ducter 的手机上"); a partner-tool change with its eval run (D175). Trigger: a person with both who means Ducter's phone.
 - [ ] **A native link** if the web view's socket proves unreliable in the background on real phones: the app's own WebSocket for the loan, with the same calls. Trigger: a dropped loan on a real phone.

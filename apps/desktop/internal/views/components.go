@@ -809,6 +809,8 @@ func (a *App) holdLabel(d *store.DecisionState) string {
 		return a.L.T("call.hold") // D189: 先不打 / Not now
 	case d.Cal != nil:
 		return a.calHold(d.Cal) // D222: 暂不添加 / 保留日程 …
+	case d.Handset != nil && d.Handset.Kind == "setup":
+		return a.L.T("handset.setup.hold") // D247: 先不用 / Not now
 	case d.Handset != nil:
 		return a.L.T("handset.ask.hold") // D238: 不借 / Not now
 	}
@@ -844,6 +846,9 @@ func (a *App) goLabel(d *store.DecisionState) string {
 	}
 	if d.Computer != nil && d.Computer.Kind == "user" {
 		return a.L.T("computeruse.user.done") // D235: their own turn in an app: 好了 / Done
+	}
+	if d.Handset != nil && d.Handset.Kind == "setup" {
+		return a.L.T("handset.setup.go") // D247: 去打开 / Turn it on (the guide opens on that phone)
 	}
 	if d.Handset != nil {
 		return a.L.T("handset.ask.go") // D238: 借给它 / Lend it

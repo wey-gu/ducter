@@ -4,7 +4,7 @@
 import type { Bodies, Candidate, DeviceHarness, LogEvent, Place, TaskNeeds } from "@ducter/protocol";
 import { harnessName } from "@ducter/protocol";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
-import { blockOf, chooseBody, computersOf, fwCandidates, type Computer, NO_PHONE } from "./candidates.ts";
+import { blockOf, chooseBody, computersOf, fwCandidates, type Computer, noPhoneLine } from "./candidates.ts";
 import { checkEffort, type ModelCatalog } from "./models.ts";
 
 /** D202: how long a task's open waits for the chosen model's effort levels it doesn't have yet. */
@@ -45,16 +45,24 @@ export function createLoadout(o: {
   models?: ModelCatalog;
   /** D238: the person's own phone is added (用这台手机): work on a phone app can run on any computer. */
   handset?: () => boolean;
+  /** D247: the person's Android app is connected without 用这台手机: a phone task opens and its card offers to turn it on. */
+  handsetOffer?: () => string | undefined;
 }): Loadout {
+  /** The paired clients (phones among them), from the last devices frame read. */
+  let clients: Parameters<typeof noPhoneLine>[0];
   /** D157: every computer that runs tasks, from the devices frame. */
   const computers = async (): Promise<Computer[] | undefined> => {
     const v = o.devices();
     if (!v) return undefined;
     const f = await v.frame().catch((err) => (console.warn("[loadout] devices:", (err as Error).message), undefined));
     if (!f) return undefined;
+    clients = f.reach?.clients;
     const comps = computersOf(f.devices, o.sites);
     // D238: the tools drive the person's own phone from the home, wherever the task runs.
-    return o.handset?.() ? comps.map((c) => ({ ...c, phone: true })) : comps;
+    if (o.handset?.()) return comps.map((c) => ({ ...c, phone: true }));
+    // D247: no phone anywhere, but their Android app is here: the task opens, and offers it there.
+    if (!comps.some((c) => c.phone) && o.handsetOffer?.()) return comps.map((c) => ({ ...c, phone: true }));
+    return comps;
   };
   /** A computer the user named in the place (not the home's "local" default), for a place that can go anywhere. */
   const pinOf = (place?: Place) => {
@@ -87,7 +95,8 @@ export function createLoadout(o: {
     async choose(work) {
       const comps = await computers();
       // D217: work on an app on a phone needs Ducter's phone somewhere; without it, nothing opens.
-      if (work.needs?.phone && comps && !comps.some((c) => c.phone)) return { none: NO_PHONE };
+      // D247: never a silent task that would improvise (adb, a cable): one line naming the one thing to do.
+      if (work.needs?.phone && comps && !comps.some((c) => c.phone)) return { none: noPhoneLine(clients) };
       // D157: two or more computers: one ranking over all of them, from what the task needs.
       const multi = comps && comps.length > 1 && comps.some((c) => c.harnesses.length);
       const hs = multi ? [] : await harnessesFor(work.place && "device" in work.place ? work.place.device : undefined);

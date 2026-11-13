@@ -117,7 +117,14 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
   };
   // D238: a phone task uses the person's own phone when one is added (its apps and sign-ins are
   // theirs); Ducter's phone on its computer otherwise. Bound at the task's first use.
-  const handsetOf = (taskId: string): string | undefined => o.handsets?.()?.forTask(taskId, wantsPhone(taskId));
+  // D247: with no phone that can serve it (none added, no Ducter's phone where it runs), a phone task
+  // binds the person's connected phone too, and its first phone tool offers to turn 用这台手机 on.
+  const handsetOf = (taskId: string): string | undefined => {
+    const h = o.handsets?.();
+    if (!h) return undefined;
+    const wants = wantsPhone(taskId);
+    return h.forTask(taskId, wants, { offer: wants && !readyOn(computerOf(taskId)) });
+  };
   const deviceFor = (taskId: string): PhoneDevice => {
     if (handsetOf(taskId)) return o.handsets!()!.device(taskId);
     const where = computerOf(taskId);

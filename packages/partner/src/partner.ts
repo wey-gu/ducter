@@ -1320,7 +1320,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             app: { type: "string", description: 'A Mac app it works in ("Keynote", "Xcode")' },
             long: { type: "boolean", description: "Long or ongoing work (an hour or more, a loop, a wait): better on a computer that doesn't sleep" },
             draw: { type: "boolean", description: "It makes a picture (画一张…, draw, generate an image): only an agent that generates images takes it" },
-            phone: { type: "boolean", description: "It works in an app on a phone (用手机, 在某个 app 里…): Ducter's own phone, on the computer that has 用手机 / Use a phone" },
+            phone: { type: "boolean", description: "It works in an app on a phone (用手机, 用我的手机, 在某个 app 里…): the user's own Android phone (用这台手机 / Use this phone) or Ducter's own (用手机 / Use a phone). Set it even when no phone is set up yet: Ducter offers the user the one tap that sets it up. Never tell the user about adb, USB or wireless debugging, a cable or Developer options" },
           },
         },
         project: { type: "string" },

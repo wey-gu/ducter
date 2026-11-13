@@ -46,6 +46,8 @@ function took(s: HandsetState) {
 
 /** One of the home's calls, relayed to the app and answered. */
 export function handsetFrame(f: HandsetServerFrame): void {
+  // D247: a task's card asked to turn 用这台手机 on here (tapped on this phone or in another window).
+  if (f.t === "handset_guide") return void (androidHere() && openHandsetGuide());
   if (f.t === "handset_req") {
     void nativeCall<{ ok: boolean; result?: unknown; error?: string }>({ t: "handset.call", m: f.m, a: f.a }).then((r) => {
       const ok = !!r && r.ok === true;
@@ -289,26 +291,31 @@ export function HandsetGuideSheet() {
 
 // ---------- the cards ----------
 
-/** May this task borrow the person's phone? One card, no default; Go lends it. */
+/**
+ * May this task borrow the person's phone? One card, no default; Go lends it. D247 (setup): the task
+ * needs a phone and 用这台手机 isn't on there yet; Go opens its guide on that phone (from any window),
+ * and once it is on the task goes on by itself.
+ */
 export function HandsetAskBody({ d, compact }: { d: DecisionState; compact?: boolean }) {
   const h = d.handset!;
   const open = !d.resolved;
   const cl = A.reach?.clients.find((c) => c.id === h.device);
   const name = (cl?.name ?? h.name).replace(/\s*·\s*Ducter$/, "");
+  const k = h.kind === "setup" ? "handset.setup" : "handset.ask";
   return (
     <>
       {!compact && <div class="q">{d.question}</div>}
-      {open && <div class="dl">{t("handset.ask.what")}</div>}
-      {open && cl?.handset && !cl.handset.linked && <div class="dl">{t("handset.ask.away", name)}</div>}
+      {open && <div class="dl">{t(`${k}.what`, name)}</div>}
+      {open && cl?.handset && !cl.handset.linked && <div class="dl">{t(`${k}.away`, name)}</div>}
       {open ? (
         <div class={compact ? "tray" : "btns decide"}>
           {compact && <span class="grow" />}
-          <Btn kind="secondary" size={compact ? "sm" : undefined} label={t("handset.ask.hold")} onClick={() => A.decide(d.decisionId, "hold")} />
-          <Btn kind="primary" size={compact ? "sm" : undefined} label={t("handset.ask.go")} onClick={() => A.decide(d.decisionId, "go")} />
+          <Btn kind="secondary" size={compact ? "sm" : undefined} label={t(`${k}.hold`)} onClick={() => A.decide(d.decisionId, "hold")} />
+          <Btn kind="primary" size={compact ? "sm" : undefined} label={t(`${k}.go`)} onClick={() => A.decide(d.decisionId, "go")} />
         </div>
       ) : (
         <div class={compact ? "said" : "resolved"} role="status">
-          {d.resolved?.option === "go" ? t("handset.ask.done") : t("handset.ask.held")}
+          {d.resolved?.option === "go" ? t(`${k}.done`, name) : t(`${k}.held`)}
         </div>
       )}
     </>
@@ -321,7 +328,7 @@ export const handsetAskTitle = (d: DecisionState): string => {
   const tk = d.taskId ? A.S.tasks.get(d.taskId) : undefined;
   const task = (tk && title(tk)) || "";
   const name = ((A.reach?.clients.find((c) => c.id === h.device)?.name ?? h.name) || "").replace(/\s*·\s*Ducter$/, "");
-  return task ? t("handset.ask.title", task, name) : d.question;
+  return task ? t(h.kind === "setup" ? "handset.setup.title" : "handset.ask.title", task, name) : d.question;
 };
 
 /** A phone task's name for the person's phone ("Pixel Fold"). */

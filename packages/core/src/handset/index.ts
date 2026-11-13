@@ -25,6 +25,12 @@ export const HANDSETS_FILE = "handsets.json";
 export const HANDSET_BRIDGE = 1;
 
 export const HANDSET_STOPPED = "The user stopped you using their phone (停下 / Stop). Don't use it again in this task. Report what you finished and what is left, in one or two lines.";
+/** D247: never the person's phone over adb, a cable or Developer options (the brief says it too). */
+const NO_ADB = "Never ask the user to turn on USB or wireless debugging, plug in a cable or open Developer options, and never use adb on their phone.";
+export const HANDSET_SETUP_ASKED = (phone: string) =>
+  `Use this phone (用这台手机) isn't on yet on ${phone}, the user's own phone. A card now asks them to turn it on there: one switch in Android, once. End your turn now; a message arrives when you may use it (or if they say not now). ${NO_ADB}`;
+export const HANDSET_SETUP_WAIT = (phone: string) => `Waiting for the user to turn on Use this phone on ${phone}. End your turn now; a message arrives when it's on. ${NO_ADB}`;
+export const HANDSET_SETUP_NO = `The user said not now to turning on Use this phone. Carry on without a phone, or report blocked in one line saying what you'd do on it. ${NO_ADB}`;
 export const HANDSET_BLIND = "It's the user's turn on their phone: they're doing a step themselves (signing in, a code). You can't see or use it until they're done. End your turn now; a message arrives when they are.";
 
 const ACTIVE = new Set(["queued", "working", "needs_you", "blocked"]);
@@ -66,8 +72,14 @@ export interface Handsets {
   view(deviceId: string, platform: string): HandsetView | undefined;
   /** Some phone has it added, so work on a phone app can go anywhere. */
   any(): boolean;
-  /** The person's phone this task uses (bound at its first use), when it uses one. */
-  forTask(taskId: string, wantsPhone: boolean): string | undefined;
+  /** D247: no phone has it, but this one's app is connected now: a phone task can offer to turn it on there. */
+  offer(): string | undefined;
+  /**
+   * The person's phone this task uses (bound at its first use), when it uses one. offer (D247): no
+   * other phone serves this task, so a connected phone without 用这台手机 is bound too, and its first
+   * phone tool asks to turn it on.
+   */
+  forTask(taskId: string, wantsPhone: boolean, opts?: { offer?: boolean }): string | undefined;
   /** The phone, as the phone tools drive it, for this task. */
   device(taskId: string): PhoneDevice;
   /** It is the person's turn on that phone (a step of theirs is pending). */
@@ -155,11 +167,20 @@ export function createHandsets(o: HandsetsOptions): Handsets {
   const stopped = new Map<string, string>();
   /** Tasks with a step of the person's own pending on the phone (their decision ids). */
   const theirTurn = new Map<string, string>();
+  /** D247: tasks waiting for 用这台手机 to be turned on (their card's id; go: the person tapped it). */
+  const setups = new Map<string, { device: string; decisionId: string; go: boolean }>();
+  /** D247: phones to open the guide on the next time their app connects. */
+  const guideOnLink = new Set<string>();
   const fns = new Set<() => void>();
   const changed = () => fns.forEach((f) => f());
 
   const name = (device: string) => o.deviceName(device) ?? "your phone";
   const added = (device: string) => !!saved[device]?.added && o.deviceName(device) !== undefined;
+  /** D247: its app is connected and new enough, but 用这台手机 isn't on there yet. */
+  const offerable = (device: string) => {
+    const l = links.get(device);
+    return !!l && l.state.bridge >= HANDSET_BRIDGE && !saved[device]?.added && o.deviceName(device) !== undefined;
+  };
 
   const call = <T>(device: string, m: HandsetMethod, a: Record<string, unknown> = {}, ms = callMs): Promise<T> => {
     const l = links.get(device);
@@ -234,11 +255,49 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     o.tasks.setState(taskId, "needs_you", (card?.residency as any) ?? "hot");
   };
 
+  /** D247: the task needs a phone and this one's app is here, without 用这台手机: one card to turn it on. */
+  const askSetup = (taskId: string, device: string) => {
+    const card = o.tasks.get(taskId);
+    const q: Question = { id: "handset_setup", text: `「${taskTitle(taskId)}」要用你的 ${name(device)}：先在 ${name(device)} 上打开「用这台手机」`, blocking: true, reversible: false, handset: { kind: "setup", device, name: name(device) } };
+    setups.set(taskId, { device, decisionId: "", go: false }); // the id arrives with its decision event
+    const body: Bodies["report"] = { taskId, state: "needs_input", summary: q.text, questions: [q], evidence: [] };
+    o.log.append({ persona: card?.persona, stream: `task:${taskId}`, origin: "task", kind: "report", body });
+    o.tasks.setState(taskId, "needs_you", (card?.residency as any) ?? "hot");
+  };
+
+  /** D247: the person tapped the card: the guide opens on that phone (or it is already on: the task goes). */
+  const guide = (taskId: string) => {
+    const s = setups.get(taskId);
+    if (!s) return;
+    if (added(s.device)) {
+      setups.delete(taskId);
+      void lend(taskId);
+      return;
+    }
+    const l = links.get(s.device);
+    // Android's switch is already on there: nothing left for the person to do, so it is added now.
+    if (l && l.state.service && l.state.bridge >= HANDSET_BRIDGE) return void api.set(s.device, true);
+    if (!l) return void guideOnLink.add(s.device);
+    try {
+      l.sock.send({ t: "handset_guide", taskId });
+    } catch {
+      guideOnLink.add(s.device);
+    }
+  };
+
   /** Before every phone tool: the loan must be this task's. */
   const ready = async (taskId: string) => {
     const why = stopped.get(taskId);
     if (why) throw new Error(why);
     const device = bound.get(taskId);
+    if (device && !added(device) && o.deviceName(device) !== undefined) {
+      const s = setups.get(taskId);
+      if (!s) {
+        askSetup(taskId, device);
+        throw new Error(HANDSET_SETUP_ASKED(name(device)));
+      }
+      throw new Error(HANDSET_SETUP_WAIT(name(device)));
+    }
     if (!device || !added(device)) throw new Error("this task doesn't have the user's phone");
     if (loanOf(taskId)) return;
     const other = loans.get(device);
@@ -253,7 +312,9 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     if (e.kind === "decision") {
       const b = e.body as Bodies["decision"];
       if (!b.taskId) return;
-      if (b.handset) asking.set(b.taskId, b.decisionId);
+      const su = b.handset?.kind === "setup" ? setups.get(b.taskId) : undefined;
+      if (su) su.decisionId = b.decisionId;
+      else if (b.handset) asking.set(b.taskId, b.decisionId);
       else if (b.phone?.kind === "user" && bound.has(b.taskId)) {
         theirTurn.set(b.taskId, b.decisionId);
         if (loanOf(b.taskId)) void lend(b.taskId);
@@ -262,6 +323,11 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     }
     if (e.kind === "decision_resolved") {
       const r = e.body as Bodies["decision_resolved"];
+      for (const [taskId, s] of setups) {
+        if (s.decisionId !== r.decisionId) continue;
+        if (r.option === "go") (s.go = true), guide(taskId);
+        else setups.delete(taskId), stopped.set(taskId, HANDSET_SETUP_NO), o.tell?.(taskId, HANDSET_SETUP_NO);
+      }
       for (const [taskId, id] of asking) {
         if (id !== r.decisionId) continue;
         asking.delete(taskId);
@@ -282,6 +348,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
         bound.delete(b.taskId);
         asking.delete(b.taskId);
         theirTurn.delete(b.taskId);
+        setups.delete(b.taskId);
       }
     }
   });
@@ -338,7 +405,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     return list[0];
   };
 
-  return {
+  const api: Handsets = {
     hello(deviceId, sock, state) {
       const before = links.get(deviceId);
       links.set(deviceId, { sock, state });
@@ -357,6 +424,11 @@ export function createHandsets(o: HandsetsOptions): Handsets {
         /* kept added: the card shows it needs the switch again */
       }
       for (const taskId of [...toStart]) if (bound.get(taskId) === deviceId) void lend(taskId);
+      // D247: a card asked to open the guide here while the app was away.
+      if (guideOnLink.has(deviceId)) {
+        guideOnLink.delete(deviceId);
+        for (const [taskId, s] of setups) if (s.device === deviceId && s.go) guide(taskId);
+      }
       changed();
     },
     gone(deviceId, sock) {
@@ -396,6 +468,9 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       if (!l.state.service) return { ok: false, reason: "service_off" };
       saved[deviceId] = { added: true };
       write();
+      guideOnLink.delete(deviceId);
+      // D247: the tasks whose card the person tapped to turn it on go on now (that tap was their yes).
+      for (const [taskId, s] of [...setups]) if (s.device === deviceId && s.go) setups.delete(taskId), void lend(taskId);
       changed();
       return { ok: true };
     },
@@ -425,13 +500,19 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       };
     },
     any: () => !!choose(),
-    forTask(taskId, wantsPhone) {
+    offer() {
+      const list = [...links.keys()].filter(offerable);
+      list.sort((a, b) => (lastLinked.get(b) ?? 0) - (lastLinked.get(a) ?? 0));
+      return list[0];
+    },
+    forTask(taskId, wantsPhone, opts) {
       const b = bound.get(taskId);
-      if (b) return added(b) ? b : undefined;
+      // D247: a task waiting for 用这台手机 to be turned on keeps its phone while the person does it.
+      if (b) return added(b) || setups.has(taskId) || offerable(b) ? b : undefined;
       if (!wantsPhone) return undefined;
       const card = o.tasks.get(taskId);
       if (!card || !ACTIVE.has(String(card.attention))) return undefined;
-      const d = choose();
+      const d = choose() ?? (opts?.offer ? api.offer() : undefined);
       if (d) bound.set(taskId, d);
       return d;
     },
@@ -465,4 +546,5 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       pending.clear();
     },
   };
+  return api;
 }

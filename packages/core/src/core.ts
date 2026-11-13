@@ -554,7 +554,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         return Array.isArray(r) ? r : undefined;
       },
     });
-  const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any() });
+  const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any(), handsetOffer: () => handsets.offer() });
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
   const closing = createClosing({ log, tasks, loadout, runner: () => runner });
   registerClosingTool(mcp, closing, () => settings.get().language === "zh");

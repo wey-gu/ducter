@@ -266,12 +266,31 @@ const BLOCK_WORDS: Record<CandidateBlock, string> = {
   no_app: "it needs a Mac app, and it isn't on a Mac",
   elsewhere: "the folder is on another computer",
   no_draw: "it can't make pictures (only Codex can)",
-  no_phone: "it needs Ducter's phone, which isn't added yet: the user adds 用手机 / Use a phone on their Mac in 设备 / Devices (a one-time download of about 2.3 GB)",
+  no_phone: "it needs a phone, and none is set up yet: the user adds 用这台手机 / Use this phone on their Android phone (in the Ducter app there), or 用手机 / Use a phone on their Mac in 设备 / Devices (a one-time download of about 2.3 GB)",
 };
 
 /** The one line the New task card / `ducter task --agent` shows when the person's own pick can't run. */
-/** D217: what the partner hears when work needs Ducter's phone and no computer has it. */
-export const NO_PHONE = `no phone to work on yet: on their own Android phone the user adds 用这台手机 / Use this phone (in the Ducter app there: 设备 / Devices, that phone's card), or on their Mac 用手机 / Use a phone (Ducter's own phone, a one-time download of about 2.3 GB). Tell the user that in one line; no task was opened.`;
+/** D247: never the person's phone over adb, a cable or Developer options. */
+const NO_ADB = "Never suggest adb, USB or wireless debugging, a cable or Developer options.";
+
+/** D217, D247: what the partner hears when work needs a phone and none can serve it (no Android app connected). */
+export const NO_PHONE = `no phone to work on yet: the user installs Ducter on their own Android phone (from this home's web page there), opens it, and adds 用这台手机 / Use this phone on that phone's card (one switch in Android, once); or on their Mac 用手机 / Use a phone (Ducter's own phone, a one-time download of about 2.3 GB). Tell the user that in one line; no task was opened. ${NO_ADB}`;
+
+/**
+ * D247: the line for work that needs a phone when none can serve it now. A paired Android phone
+ * whose app isn't open (or is too old) is named, so the person knows the one thing to do; with no
+ * Android phone at all, NO_PHONE. (A connected one never gets here: the task opens and its card
+ * offers to turn 用这台手机 on.)
+ */
+export function noPhoneLine(clients: { name: string; platform: string; connected: boolean; handset?: { added: boolean; able: boolean; linked: boolean } }[] | undefined): string {
+  const androids = (clients ?? []).filter((c) => /android/i.test(c.platform) || c.handset);
+  const nm = (c: { name: string }) => c.name.replace(/\s*·\s*Ducter$/, "").trim() || "their Android phone";
+  const old = androids.find((c) => c.handset?.linked && !c.handset.able);
+  if (old) return `no phone to work on yet: the Ducter app on ${nm(old)} is too old for 用这台手机 / Use this phone. Tell the user in one line to update Ducter on ${nm(old)}, then ask again; no task was opened. ${NO_ADB}`;
+  const away = androids.find((c) => c.handset?.added) ?? androids[0];
+  if (away) return `no phone to work on yet: Ducter isn't open on ${nm(away)} right now. Tell the user in one line to open Ducter on ${nm(away)} and ask again${away.handset?.added ? "" : "; it then offers to turn on 用这台手机 / Use this phone there (one switch in Android, once)"}; no task was opened. ${NO_ADB}`;
+  return NO_PHONE;
+}
 
 export function pinProblem(harness: string, b: CandidateBlock): string {
   return `${harnessName(harness)} can't take this task: ${BLOCK_WORDS[b]}. Pick another AI agent, or fix that first.`;

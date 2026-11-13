@@ -1,6 +1,6 @@
 ---
 title: Pictures
-description: Send your partner a screenshot or a photo, see what a task made, ask for a drawing, and look through every picture in the conversation.
+description: Send your partner a screenshot or a photo, see what a task made, read the files it hands you, ask for a drawing, and look through every picture in the conversation.
 order: 5.7
 ---
 
@@ -42,11 +42,28 @@ ready. If none of your computers has Codex signed in, your partner tells you so.
   and the task's name: tap it to open that task.
 - **On your Mac:** Space opens and closes a picture, ← and → move between them, ⌘C copies it, and
   you can drag it to Finder.
-- **Files** a task made (a PDF, a spreadsheet) show as one line with their name and size. Tap
-  **Open**.
+
+## Read a file a task made
+
+A file a task made (a report, a table, a script) shows as one line with its name and size. Tap it
+and it opens right there in Ducter:
+
+- **A report** in Markdown is laid out like a document, with its headings, tables and lists.
+  **Show source** shows the text as it was written.
+- **A table** (CSV) shows as a table.
+- **Code and text** show with their colours and line numbers.
+- **Copy** copies the text, **Save a copy** keeps the whole file on your device (on a phone, your
+  share sheet: save it to Files or send it to an app; on a Mac, your Downloads folder). **From**
+  and the task's name opens the task.
+- Close it with the ×, Esc, or by tapping outside it; on a phone, pull it down.
+
+A very long file shows its first part and says so; Save a copy has all of it. Kinds Ducter can't
+show yet (a PDF, a Word or Excel file, a zip) say so, with **Save a copy**; on a Mac, **Open on
+this Mac** opens it in its own app.
 
 ## Good to know
 
 - Pictures stay on the computer Ducter lives on. A picture is only reachable through a link that
   your own devices get from Ducter.
-- Sending files and PDFs, sharing into Ducter from other apps, and video are coming soon.
+- Sending files and PDFs, sharing into Ducter from other apps, video, and reading PDFs inside
+  Ducter are coming soon.

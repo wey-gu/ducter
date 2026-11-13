@@ -1,6 +1,6 @@
 # Pictures and Files (media)
 
-> Design note for D206 · Principles 5, 6, 7 · Evidence: `research/56` · Screens: `.shots/media/`
+> Design note for D206 and D239 · Principles 5, 6, 7 · Evidence: `research/56`, `research/75` · Screens: `.shots/media/`
 > (D75: never in git)
 
 The author: "要优雅一些，极度顺滑方便用户浏览查看，体验拉满". A partner you message has to see what
@@ -102,7 +102,8 @@ drawing needs Codex signed in on one of their computers. The picture comes back 
   pixel size before any byte loads; the preview, blurred, fades to the picture.
 - **Where:** the user's pictures stand above their words, right-aligned; what a task showed sits
   under the partner's words; in a task, with your lines, the partner's, the brief and each report.
-  A file is one line on a card: icon, name, size, **打开 / Open**.
+  A file is one line on a card, a clay button: its drawn kind, name, size, **打开 / Open**. A tap
+  reads it inside Ducter (below, D239).
 - **The viewer:** a tap grows the picture out of its tile (shared element; a fade under reduced
   motion) onto the theme's paper; pinch and double-tap zoom; swipe through every picture of the
   conversation (or the task); swipe down or Esc shrinks it back into its tile. Bottom bar: **保存
@@ -111,6 +112,45 @@ drawing needs Codex signed in on one of their computers. The picture comes back 
   Esc, ⌘C copies, drag out to Finder.
 - Tokens only (`--pics-w`, `--pics-h`, `--pic-gap`, `--r-pics`, `--viewer-scrim`, `--pic-dim`,
   `--ring-back`; Mac `Lightbox`, `LightboxInk`, `MediaGap`). No pills, no dots (D69, D73).
+
+## Reading a file (D239, research/75)
+
+Who: the developer reading a task's `investigation.md` or the script it wrote; the consumer
+handed "the report"; the fresh user who taps a card and expects to read it. Before, Open sent
+the browser to the home's address (a raw page, the file's key in browser history); now the file
+is read where it was handed over.
+
+- **Never a link.** The client fetches the bytes itself through the same keyed path an `<img>`
+  uses (`GET /media/<id>?k=`), and nothing navigates to it. `&dl=1` is a download for every kind.
+- **The sheet:** the theme's paper over the dimmed page (`--scrim`; the picture viewer's dark
+  lightbox is for pictures). Wide: up to 48 rem, the text at a reading measure inside. Phone: the
+  whole screen; pulling the head down closes it. Head: the file's drawn mark on a sunken tile
+  (lines for a document, a grid for a table), name, **{KIND} · {size} · {n} 行**, **看原文 /
+  看排版** for Markdown and tables, ×. Foot: **来自 {task}**, **拷贝** (the text), **存一份 / Save a
+  copy**. Esc, ×, or the scrim closes.
+- **By kind** (`fileView` in `@ducter/protocol`, `MediaRef.FileView` on the Mac): Markdown as a
+  document (`apps/web/src/markdown-doc.ts`: every heading level, tables, quotes, task and nested
+  lists, front matter shown quietly, fenced code coloured by `hl.ts`; pictures in it show their
+  words, since its relative paths point at a folder the viewer doesn't have; the Mac: MyGo's
+  `markdown.View`); CSV/TSV as a table (header row stays, numbers on the right; the Mac draws it
+  as a Markdown table); text, JSON, HTML source and code with line numbers and colours (the web:
+  the workbench's `.code.view` and `hl.ts`, drawn in 300-line blocks with `content-visibility`;
+  the Mac: MyGo's editor, read only); the web: an SVG as a picture, a video playing. Anything
+  else says **这种文件在 Ducter 里还打不开** with Save a copy; the Mac adds **在 Mac 上打开**, a
+  copy in the user's own temporary folder (0600) opened by `Shell.OpenPath` (Preview for a PDF).
+- **Bounded:** 1 MB of a text (`FILE_VIEW_BYTES`), read as a stream and stopped there, cut at a
+  whole line, said at the foot; 2000 table rows. Copy of a cut file fetches all of it first.
+- **Save a copy** writes on this device: Downloads on the Mac (**已存到「下载」**), the share sheet
+  on a phone (Save to Files, AirDrop, an app), a download from the bytes in a desktop browser.
+- **Motion:** the sheet grows out of the card (its box to the sheet's, 320 ms, `--ease`) and
+  shrinks back into it when the card is on screen; a fade under reduced motion. The Mac starts
+  the panel's pose at the card's centre and width (MyGo poses scale evenly).
+- **What may arrive** (`report_to_main.show`): besides `FILE_TYPES`, text and source by name
+  (`TEXT_EXTS`: `.ts`, `.go`, `.sh`, `.log`, `.yaml`, …) as `text/plain` when its first 8 KB has
+  no NUL; never `.env`.
+- **Not the workbench's file view.** The workbench (D214) reads the live working copy; a shown
+  file is a snapshot in the home's store that outlives it (a worker offline, a worktree cleaned
+  up). The viewer shares its renderers, not its data path.
 
 ## The apps
 
@@ -123,3 +163,4 @@ drawing needs Codex signed in on one of their computers. The picture comes back 
 
 Phase 2: files and PDFs sent by the user; a share sheet into Ducter (iOS share extension, Android
 share intent). Phase 3: video (the model sees ~6 frames), reply to a message, link previews.
+D239's later: PDF pages drawn inside Ducter, expiring media keys, find in a long file.

@@ -118,7 +118,10 @@ func (h *fakeHome) Save(n string, _ []byte) (string, error) {
 	h.saved = append(h.saved, n)
 	return n, nil
 }
-func (h *fakeHome) OpenURL(u string) { h.opened = append(h.opened, u) }
+func (h *fakeHome) OpenLocal(n string, _ []byte) error {
+	h.opened = append(h.opened, n)
+	return nil
+}
 
 // ---------- realistic pictures ----------
 

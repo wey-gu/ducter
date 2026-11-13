@@ -42,7 +42,12 @@ test("it reads a picture's type and pixel size from its header, an EXIF quarter 
   expect(sniffFile(new TextEncoder().encode("%PDF-1.7 …"), "report.pdf")).toEqual({ type: "application/pdf" });
   expect(sniffFile(new TextEncoder().encode("not a pdf"), "report.pdf")).toBeUndefined();
   expect(sniffFile(new TextEncoder().encode("a,b\n1,2"), "sales.csv")).toEqual({ type: "text/csv" });
-  expect(sniffFile(new TextEncoder().encode("#!/bin/sh"), "run.sh")).toBeUndefined();
+  // D239: a script or source is text (kept as text/plain, never run); a binary by that name is not;
+  // a secrets file never is.
+  expect(sniffFile(new TextEncoder().encode("#!/bin/sh"), "run.sh")).toEqual({ type: "text/plain" });
+  expect(sniffFile(new Uint8Array([0x7f, 0x45, 0x4c, 0x46, 0, 0, 1]), "run.sh")).toBeUndefined();
+  expect(sniffFile(new TextEncoder().encode("TOKEN=x"), ".env")).toBeUndefined();
+  expect(sniffFile(new TextEncoder().encode("TOKEN=x"), "prod.env")).toBeUndefined();
 });
 
 test("the same bytes are stored once; a second upload adds what the first lacked", () => {
@@ -96,6 +101,19 @@ test("a picture is served only with its key, immutable", async () => {
   expect((await fetch(http(core, `media/${"0".repeat(64)}?k=${m.k}`))).status).toBe(404);
   const thumb = await fetch(http(core, `media/${m.thumb?.id ?? m.id}?k=${m.thumb?.k ?? m.k}`));
   expect(thumb.status).toBe(200);
+});
+
+test("a task's file: shown as itself (sandboxed) for the viewer's fetch; &dl=1 always a download (D239)", async () => {
+  const core = boot();
+  const store = (core as unknown as { media: { put(b: Uint8Array, o?: object): MediaRef } }).media;
+  const m = store.put(new TextEncoder().encode("# Investigation\n\nThe TTL test raced the clock.\n"), { files: true, name: "investigation.md", from: { taskId: "t1" } });
+  expect(m.type).toBe("text/markdown");
+  const view = await fetch(http(core, `media/${m.id}?k=${m.k}`));
+  expect(view.headers.get("content-disposition")).toStartWith("inline;");
+  expect(view.headers.get("content-security-policy")).toContain("sandbox");
+  expect(await view.text()).toStartWith("# Investigation");
+  const dl = await fetch(http(core, `media/${m.id}?k=${m.k}&dl=1`));
+  expect(dl.headers.get("content-disposition")).toBe("attachment; filename*=UTF-8''investigation.md");
 });
 
 async function client(core: Core) {

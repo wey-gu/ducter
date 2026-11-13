@@ -17,6 +17,7 @@ import { A } from "./app.ts";
 import { title } from "./store.ts";
 import { picturesIn, viewerKey } from "./media-keys.ts";
 import { decode, draw, type Pic, type ViewCtx } from "./media-up.ts";
+import { FileGlyph, openFile } from "./fileview.tsx";
 
 export { picturesIn, viewerKey };
 export { prepare, upload, type Pic, type Prepared, type ViewCtx, type ViewerState } from "./media-up.ts";
@@ -97,22 +98,21 @@ export function Pictures({ items, side, onOpen }: { items: Shown[]; side: "user"
   );
 }
 
-/** A file a task showed (not a picture): one line, icon, name, size, Open. */
+/** A file a task showed (not a picture): one line, icon, name, size, Open. D239: the whole card
+ *  opens the file inside Ducter (the viewer grows out of it), never a link to the home. */
 export function FileCard({ m }: { m: MediaRef }) {
+  const name = m.name ?? t("media.file");
   return (
-    <div class="filecard">
-      <svg class="fi" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
-        <path d="M6 2.8h8l4.2 4.2v14.2H6z" />
-        <path d="M14 2.8V7h4.2" />
-      </svg>
+    <button type="button" class="filecard" data-file={m.id} aria-label={t("media.fileOpen", name)} onClick={(e) => openFile(m, e.currentTarget)}>
+      <FileGlyph m={m} />
       <span class="fn" title={m.name}>
-        {m.name ?? t("media.file")}
+        {name}
       </span>
       <span class="fs">{sizeWords(m.bytes)}</span>
-      <a class="btn text sm" href={`${url(mediaPath(m))}&dl=1`} target="_blank" rel="noopener" download={m.name ?? ""}>
+      <span class="btn text sm" aria-hidden="true">
         {t("media.open")}
-      </a>
-    </div>
+      </span>
+    </button>
   );
 }
 

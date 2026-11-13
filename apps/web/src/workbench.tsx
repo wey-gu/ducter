@@ -24,7 +24,7 @@ import { MediaBlock } from "./media.tsx";
 import { attention, browsing, finished, placeOf, reportOf, resultEvidence, type Task } from "./store.ts";
 import { computerName } from "./where.ts";
 import { SimScreen } from "./sim.tsx";
-import { screenFor } from "./workbench-screens.ts";
+import { driverFor, screenFor } from "./workbench-screens.ts";
 import { ask, wbSender } from "./workbench-ask.ts";
 
 wbSender((f) => A.send(f));
@@ -1185,7 +1185,7 @@ function PhonePage({ task }: { task: Task }) {
     );
   const Phone = P!;
   return (
-    <Screen driver="agent" head={pick}>
+    <Screen driver={driverFor("phone", task)} head={pick}>
       <Phone task={task} active={tabOf(task) === "phone" && benchShown.taskId === task.id} />
     </Screen>
   );

@@ -42,13 +42,24 @@ type phoneUseState struct {
 	lastTurn bool
 	// inBench: the task whose workbench drew the live view this frame (D220).
 	inBench string
+	// D248: heldDev: whose phone bmp last showed (it stays under a view that
+	// opens again); inID / inAt: the view whose first frame fades in, and when.
+	heldDev string
+	inID    string
+	inAt    time.Time
 }
 
 // OpenPhone opens the live view: mode watch (a task's turn), takeover (the
 // user's turn), signin (a card's own turn; Done answers it).
 func (a *App) OpenPhone(device, taskID, decisionID, mode string) {
 	a.S.OpenPhone(device, taskID, decisionID, mode)
-	a.pu.bmp, a.pu.shown, a.pu.down = nil, 0, false
+	// D248: the last frame stays (held) when it is the same phone, so the view
+	// opens on it and the new stream fades in over it; never a flash.
+	if a.pu.heldDev != device {
+		a.pu.bmp = nil
+	}
+	a.pu.heldDev = device
+	a.pu.shown, a.pu.down = 0, false
 	a.send(protocol.PhoneOpenReq{T: "phone_open", Device: device, TaskID: taskID, DecisionID: decisionID, Mode: mode})
 }
 
@@ -74,7 +85,7 @@ func (a *App) ClosePhone(done bool) {
 		a.send(protocol.PhoneCloseReq{T: "phone_close", ID: pv.ID, Done: done})
 	}
 	a.S.Phone.View = nil
-	a.pu.bmp = nil
+	// D248: the last frame stays, held for the next view of this phone.
 }
 
 func (a *App) phoneInput(in protocol.PhoneInput) {
@@ -471,7 +482,6 @@ func (a *App) phoneDoingWords(d *protocol.LiveDoing) string {
 func (a *App) phoneView(c *ui.Context) {
 	if cl := a.S.Phone.Closed; cl != nil {
 		a.S.Phone.Closed = nil
-		a.pu.bmp = nil
 		switch cl.Reason {
 		case "failed":
 			a.pu.note = a.L.T("phoneuse.live.failed", cl.Message)
@@ -500,6 +510,9 @@ func (a *App) phoneView(c *ui.Context) {
 			} else {
 				a.pu.bmp.Update(img)
 			}
+		}
+		if a.pu.inID != pv.ID {
+			a.pu.inID, a.pu.inAt = pv.ID, a.Now()
 		}
 		a.pu.shown = pv.Seq
 		a.send(protocol.PhoneAckReq{T: "phone_ack", ID: pv.ID, Seq: pv.Seq})
@@ -560,13 +573,32 @@ func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *pr
 		})
 	}
 	ui.Row(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(t.S3, t.S3).Background(t.SurfaceSunken).Children(func() {
-		if a.pu.bmp == nil || pv.State != "open" {
+		if pv.State == "asleep" {
+			a.phoneAsleep(c, pv)
+			return
+		}
+		if a.pu.bmp == nil || pv.State != "open" || a.pu.inID != pv.ID {
 			line := a.L.T("phoneuse.opening")
 			if pv.State == "starting" {
 				line = a.L.T("phoneuse.starting")
 			}
 			c.After(500 * time.Millisecond)
-			ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted)
+			if a.pu.bmp == nil {
+				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted)
+				return
+			}
+			// D248: the last frame, quiet, with one line over it.
+			if pv.State != "starting" {
+				line = a.L.T("phoneuse.again")
+			}
+			ph := float32(math.Max(240, float64(avail)))
+			w, h := a.pu.bmp.Size()
+			pw := ph * float32(w) / float32(max(1, h))
+			ui.Box(c.Key("phone-held")).Size(pw, ph).Shrink(1).Children(func() {
+				ui.Image(c.Key("phone-held-img"), a.pu.bmp).Size(pw, ph).Radius(t.RadiusXL).Opacity(0.78).AccessHidden(true)
+				ui.Text(c.Key("phone-held-pill"), line).FontSize(t.XS).TextColor(t.InkSoft).Padding(6, 12).Radius(999).Background(t.SurfaceRaised).
+					Absolute().Bottom(18).Left(12).Right(12).TextAlign(ui.Center).SingleLine().Role(ui.RoleStatus)
+			})
 			return
 		}
 		// The screen at its own shape, as tall as there's room for.
@@ -576,6 +608,11 @@ func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *pr
 		ph := float32(math.Max(240, float64(avail)))
 		pw := ph * float32(pv.Width) / float32(max(1, pv.Height))
 		scr := ui.Image(c.Key("phone-screen"), a.pu.bmp).Size(pw, ph).Shrink(1).Radius(t.RadiusXL).Focusable().AutoFocus().Cursor(ui.CursorDefault)
+		// D248: the new stream fades up over where the held frame was (360 ms).
+		if since := a.Now().Sub(a.pu.inAt); since < 360*time.Millisecond && !c.Preferences().ReduceMotion {
+			scr.Opacity(0.78 + 0.22*float32(since)/float32(360*time.Millisecond))
+			c.After(16 * time.Millisecond)
+		}
 		if !mine {
 			return
 		}
@@ -662,12 +699,14 @@ func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *pr
 			if pv.TaskID != "" {
 				line = a.L.T("phoneuse.idle.task")
 			}
-			if doing != nil {
+			if pv.Taking {
+				line, col = a.L.T("phoneuse.taking.why"), t.InkSoft
+			} else if doing != nil {
 				line, col = a.phoneDoingWords(doing), t.InkSoft
 			} else if pv.Turn == "you" && !pv.Here {
 				line = a.L.T("live.elsewhere")
 			}
-			if mine {
+			if mine || pv.State == "asleep" {
 				line = ""
 			}
 			ui.Row(c.Key("phone-doing")).Gap(t.S2).AlignItems(ui.Center).Grow(1).MinWidth(0).Role(ui.RoleStatus).Children(func() {
@@ -687,6 +726,12 @@ func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *pr
 				if a.buttonFor(c, a.L.T("live.done"), title, btnPrimary, t.ControlMD, t.Bg) {
 					a.ClosePhone(false)
 				}
+			case pv.State == "asleep":
+			case pv.Taking:
+				// D248: it is mid-step; the turn is the person's when that step ends. Again: let it be.
+				if a.buttonFor(c, a.L.T("phoneuse.taking"), a.L.T("phoneuse.taking.why"), btnSecondary, t.ControlMD, t.Bg) {
+					a.phoneTurn(false)
+				}
 			default:
 				if a.buttonFor(c, a.L.T("live.myturn"), title, btnPrimary, t.ControlMD, t.Bg) {
 					a.phoneTurn(true)
@@ -694,6 +739,9 @@ func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *pr
 			}
 		}
 	})
+	if pv.Mode == "watch" && !mine {
+		a.phoneDid(c, pv.Did)
+	}
 }
 
 // drawPhoneKey draws Android's three keys: back (a chevron), home (a ring),

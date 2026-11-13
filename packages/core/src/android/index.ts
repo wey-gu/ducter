@@ -71,6 +71,8 @@ export interface DucterPhoneOptions {
   workers?: () => PhoneWorkers | undefined;
   /** D238: the person's own phones (用这台手机): a phone task uses one when it is added. */
   handsets?: () => Handsets | undefined;
+  /** D248: how long a request for the person's own turn keeps the phone awake (ms; 30 min). */
+  askAwakeMs?: number;
   /** Test seams. */
   device?: Partial<PhoneDeviceOptions>;
   installer?: (accepted: { id: string; sha256: string }[], current: License[]) => Promise<InstallResult>;
@@ -174,6 +176,7 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
       busy.add(taskId);
       liveForTask(taskId).note(taskId, doing);
     },
+    acting: (taskId, on) => void (handsetOf(taskId) ? undefined : liveForTask(taskId).acting(taskId, on)),
     on: (taskId) => (handsetOf(taskId) ? o.handsets!()!.where(taskId) : undefined),
     blindText: (taskId) => (handsetOf(taskId) ? HANDSET_BLIND : undefined),
     evidenceDir: (taskId) => join(o.dataDir, "evidence", taskId),
@@ -181,14 +184,30 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
 
   // Answers to the phone's cards: a Go covers that one tap; a task that stopped lets the phone go.
   const pendingGo = new Map<string, { taskId: string; app: string; label: string; effect: any }>();
+  // D248: a request for the person's own turn (a sign-in, a code) keeps the phone awake 30 minutes,
+  // so the page is still there when they come; then the task lets go and the phone may sleep
+  // (opening the card wakes it again: a card's own turn is the person's explicit ask).
+  const askTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const unsubscribe = o.log.subscribe((e) => {
     if (e.kind === "decision") {
       const b = e.body as Bodies["decision"];
+      if (b.taskId && b.phone?.kind === "user") {
+        const taskId = b.taskId;
+        const timer = setTimeout(() => {
+          askTimers.delete(b.decisionId);
+          holds.get(taskId)?.();
+          holds.delete(taskId);
+        }, o.askAwakeMs ?? 30 * 60_000);
+        (timer as { unref?: () => void }).unref?.();
+        askTimers.set(b.decisionId, timer);
+      }
       if (b.taskId && b.phone?.kind === "go") pendingGo.set(b.decisionId, { taskId: b.taskId, app: b.phone.app, label: b.phone.label, effect: b.phone.effect as any });
       return;
     }
     if (e.kind === "decision_resolved") {
       const r = e.body as Bodies["decision_resolved"];
+      const at = askTimers.get(r.decisionId);
+      if (at) clearTimeout(at), askTimers.delete(r.decisionId);
       const g = pendingGo.get(r.decisionId);
       if (!g) return;
       pendingGo.delete(r.decisionId);

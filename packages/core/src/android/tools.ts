@@ -42,6 +42,8 @@ export interface PhoneToolsDeps {
   /** A task tried while it was the user's turn (told on hand-back). */
   tried?(taskId: string): void;
   note?(taskId: string, d: PhoneDoing): void;
+  /** D248: a step starts or ends (the person's My turn waits for the step in flight). */
+  acting?(taskId: string, on: boolean): void;
   evidenceDir(taskId: string): string;
   now?: () => number;
   /** D238: the person's own phone this task uses (its cards say so), when it uses one. */
@@ -112,7 +114,12 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
       schema,
       async (args, ctx) => {
         await ready(ctx.taskId!);
-        return fn(args ?? {}, ctx.taskId!);
+        d.acting?.(ctx.taskId!, true);
+        try {
+          return await fn(args ?? {}, ctx.taskId!);
+        } finally {
+          d.acting?.(ctx.taskId!, false);
+        }
       },
       visible,
     );

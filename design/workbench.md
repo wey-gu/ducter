@@ -53,6 +53,12 @@ Browser, Phone and later Computer share one frame (**Screen**): a chip that says
 a clay bead before the words), then the screen on a raised surface. No metaphor: the screen is
 shown as it is (D190's rule).
 
+D248 ([research/82](../research/82-computer-use-presence.md)): opening the page never wakes a screen
+(asleep, Ducter's phone dozes under its blanket with **叫醒 / Wake**, and the chip is idle); a page
+shown again starts on the last frame and fades the stream in; the chip follows the turn (the web's
+Phone page had it fixed to 它在用); **接手** mid-step reads **这一步做完就轮到你**; under the screen,
+**它做了什么 / What it did**.
+
 ### The simulator on the Phone page (D220)
 
 - **When:** a booted iPhone or iPad simulator on the task's computer, and the task touched one

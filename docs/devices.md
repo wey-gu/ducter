@@ -95,9 +95,10 @@ can do something else meanwhile. You don't need Android Studio or anything else.
 for Macs with Apple silicon. When Ducter lives on a server and one of your Macs has the phone, the
 server's card shows **Use a phone · on** that Mac.
 
-**When it's on.** The phone starts by itself when a task needs it or you open it, and turns itself
-off a few minutes after nothing needs it. The first start takes about a minute; after that, a few
-seconds.
+**When it's awake.** The phone wakes by itself when a task needs it or you open it, and goes back
+to sleep a few minutes after nothing needs it. The first start takes about a minute; after that, a
+few seconds. Just looking never wakes it: when it's asleep, its screen shows it dozing with
+**Wake**, because waking uses your Mac's battery and memory.
 
 **Putting your apps on it.** Tap **Open the phone** on the card. It's your turn: tap, swipe and type
 as on a phone (Back, Home and Recent apps are under the screen). Open Google Play, sign in to your
@@ -108,7 +109,11 @@ it's your turn. Tap **Done** when you're finished.
 The task works on the phone; you can watch it from the task (**Watch it use the phone** opens it
 beside the task, in the Workbench's **Phone** page) or from
 the card (**Watch**), and take a turn with **My turn** and **Hand it back**, as with
-[Ducter's browser](#browsing-the-web-on-a-server).
+[Ducter's browser](#browsing-the-web-on-a-server). If the task is in the middle of a tap when you press
+**My turn**, the button says **Yours after this step**, and the phone is yours as soon as that step
+is done. Under the screen, **What it did** lists its last few taps, typing and the apps it opened
+(never what it read or typed). When you only need to see something, such as a QR code to scan, the
+task sends you a picture of the screen instead of asking you to take over.
 
 **What always waits for you.**
 - Any tap that sends, posts, pays, buys, installs, deletes, calls, confirms or signs out: the task

@@ -119,7 +119,16 @@ ${languageLine(b.language)}
 - Call \`checkpoint\` (same server) after each meaningful step with where the work stands and what comes next. Your context is small and is compacted when it fills up; your last checkpoint is what you carry on from afterwards.
 - Never ask the user questions in plain text, and never wait for a reply in text. Put every question in \`report_to_main\` with a default.
 - If you lack context, use \`log_search\` / \`log_read\` on the same server before asking.
-${memorySection(b)}${b.phone ? phoneBrief(b.partnerName) : ""}${b.apps ? appsBrief(b.partnerName) : ""}`;
+${memorySection(b)}${b.phone ? phoneBrief(b.partnerName) : ""}${b.apps ? appsBrief(b.partnerName) : ""}${b.phone || b.apps ? showNotHandBrief() : ""}`;
+}
+
+/** D248: Model-visible: when the user only needs to see something, a picture, not their turn (snapshot-tested). */
+export function showNotHandBrief(): string {
+  return `
+## A picture, not the user's turn
+
+When the user only needs to *see* something on the screen (a QR code to scan with their own phone, a confirmation number, a code to read out, how a page looks), don't ask them to do it themselves. On Ducter's phone, take a picture with \`phone_screenshot\` and put its path in your report's \`show\` with one plain sentence of what to do with it (state "needs_input" when they must act on it, with a default). In an app on their Mac, say in the report which app and window shows it. Ask for their own turn (\`phone_ask_user\` / \`computer_ask_user\`) only when their hands are needed: signing in, a password, a code only they receive, a choice only they can make.
+`;
 }
 
 /** D235: Model-visible: how a task uses the user's own Mac apps (snapshot-tested). */

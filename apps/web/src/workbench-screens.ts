@@ -11,6 +11,13 @@ interface Entry {
   has(task: Task): boolean;
   /** active: its page is the one shown (a view that streams starts only then). */
   view: FunctionComponent<{ task: Task; active?: boolean }>;
+  /** D248: who is driving it now, for the frame's chip (idle: asleep, or not open yet). */
+  driver?(task: Task): "agent" | "you" | "idle";
+}
+
+/** D248: who is driving this kind of screen for the task (the frame's chip); "agent" when it can't say. */
+export function driverFor(kind: ScreenKind, task: Task): "agent" | "you" | "idle" {
+  return screens.get(kind)?.driver?.(task) ?? "agent";
 }
 const screens = new Map<ScreenKind, Entry>();
 

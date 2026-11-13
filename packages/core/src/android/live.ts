@@ -5,8 +5,11 @@
 // and a card's own turn (a sign-in, a code: the task asked with phone_ask_user). In the user's
 // turn every task is blind (the phone tools refuse) and taps, swipes, keys and text go in.
 // Nothing of a view is logged or written to disk.
+// D248: watching never wakes the phone (a view of a phone that isn't running is asleep until 叫醒 /
+// Wake, or until a task starts it); My turn asked mid-step is the person's when that step ends;
+// and each view gets what the task did (taps, typing, apps; never what it read), kept in memory.
 import { createHash } from "node:crypto";
-import type { PhoneDoingView, PhoneInput, PhoneMode, PhoneServerFrame } from "@ducter/protocol";
+import type { PhoneDidView, PhoneDoingView, PhoneInput, PhoneMode, PhoneServerFrame } from "@ducter/protocol";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import type { PhoneDevice } from "./device.ts";
 
@@ -23,6 +26,10 @@ export interface PhoneLiveDeps {
   tell?: (taskId: string, text: string) => unknown;
   maxFps?: number;
   ackTimeoutMs?: number;
+  /** D248: how often an asleep view looks whether a task started the phone (ms). */
+  asleepPollMs?: number;
+  /** D248: the longest My turn waits for a step in flight before it is the person's anyway (ms). */
+  stepWaitMs?: number;
 }
 
 export interface PhoneLive {
@@ -40,6 +47,12 @@ export interface PhoneLive {
   /** What a task just did, for its watchers. */
   note(taskId: string, d: PhoneDoingView): void;
   views(): { id: string; mode: PhoneMode; taskId?: string; turn: "agent" | "you" }[];
+  /** D248: 叫醒 / Wake: an asleep view starts the phone. */
+  wake(sink: PhoneSink, id: string): Promise<void>;
+  /** D248: a task's step starts or ends on this phone. */
+  acting(taskId: string, on: boolean): void;
+  /** D248: what a task did on this phone, newest last (memory only). */
+  did(taskId: string): PhoneDidView[];
 }
 
 interface View {
@@ -57,7 +70,14 @@ interface View {
   closed: boolean;
   timer?: ReturnType<typeof setTimeout>;
   release: () => void;
+  /** D248: the phone isn't running and this view didn't start it. */
+  asleep?: boolean;
+  poll?: ReturnType<typeof setInterval>;
 }
+
+/** D248: how many things a task did are kept per task (memory only), and which doings count. */
+const DID_KEEP = 8;
+const DID_KINDS = new Set(["tap", "type", "swipe", "key", "open"]);
 
 const newId = () => "ph_" + crypto.randomUUID().replaceAll("-", "").slice(0, 10);
 const clamp = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0);
@@ -72,6 +92,11 @@ export function createPhoneLive(d: PhoneLiveDeps): PhoneLive {
   let shot: { at: number; data: Uint8Array; hash: string } | undefined;
   let taking: Promise<typeof shot> | undefined;
   let app = "";
+  // D248: steps in flight per task, and a My turn waiting for them to end.
+  const steps = new Map<string, number>();
+  let asked: { by: string; timer: ReturnType<typeof setTimeout> } | undefined;
+  const didOf = new Map<string, PhoneDidView[]>();
+  const stepping = () => [...steps.values()].some((n) => n > 0);
 
   const capture = async () => {
     if (shot && Date.now() - shot.at < 120) return shot;
@@ -92,7 +117,7 @@ export function createPhoneLive(d: PhoneLiveDeps): PhoneLive {
     const c = taskId ? d.tasks.get(taskId) : undefined;
     return c?.title ? { title: redact(c.title), harness: c.harness ?? "" } : undefined;
   };
-  const viewFrame = (v: View, state: "starting" | "open" | "closed", extra: Partial<Extract<PhoneServerFrame, { t: "phone_view" }>> = {}): PhoneServerFrame => ({
+  const viewFrame = (v: View, state: "asleep" | "starting" | "open" | "closed", extra: Partial<Extract<PhoneServerFrame, { t: "phone_view" }>> = {}): PhoneServerFrame => ({
     t: "phone_view",
     id: v.id,
     state,
@@ -103,10 +128,47 @@ export function createPhoneLive(d: PhoneLiveDeps): PhoneLive {
     ...(v.taskId ? { taskId: v.taskId } : {}),
     ...((t) => (t ? { task: t } : {}))(taskInfo(v.taskId)),
     ...(v.decisionId ? { decisionId: v.decisionId } : {}),
+    ...(asked?.by === v.id ? { taking: true } : {}),
     ...extra,
   });
   const tellTurns = () => {
-    for (const v of views.values()) if (!v.closed) v.sink.send(viewFrame(v, "open"));
+    for (const v of views.values()) if (!v.closed) v.sink.send(viewFrame(v, v.asleep ? "asleep" : "open"));
+  };
+  const sendDid = (v: View) => {
+    if (v.mode !== "watch" || !v.taskId) return;
+    const did = didOf.get(v.taskId);
+    if (did?.length) v.sink.send({ t: "phone_did", id: v.id, did: [...did] });
+  };
+  /** The turn becomes this view's (the person's): every task on this phone is blind. */
+  const grant = (v: View) => {
+    if (asked) clearTimeout(asked.timer), (asked = undefined);
+    if (v.closed) return;
+    if (turn && turn.by !== v.id) {
+      const holder = views.get(turn.by);
+      turn = { by: v.id, tried: turn.tried };
+      if (holder) holder.sink.send(viewFrame(holder, "open"));
+    } else turn = { by: v.id, tried: turn?.tried ?? new Set() };
+    tellTurns();
+  };
+  /** Wakes an asleep view: hold the phone, start it (start: false when a task already is), then frames. */
+  const rouse = async (v: View, start: boolean) => {
+    if (!v.asleep || v.closed) return;
+    v.asleep = false;
+    if (v.poll) clearInterval(v.poll), (v.poll = undefined);
+    v.release = d.device.hold(`view ${v.mode}`);
+    v.sink.send(viewFrame(v, d.device.state() === "running" ? "open" : "starting"));
+    try {
+      await d.device.ensure();
+    } catch (e) {
+      await closeView(v, "failed", (e as Error).message);
+      return;
+    }
+    if (v.closed) return;
+    app = await d.device.front().catch(() => app);
+    v.sink.send(viewFrame(v, "open"));
+    sendDid(v);
+    pump(v);
+    void start;
   };
 
   const pump = (v: View) => {
@@ -154,6 +216,8 @@ export function createPhoneLive(d: PhoneLiveDeps): PhoneLive {
     if (v.closed) return;
     v.closed = true;
     if (v.timer) clearTimeout(v.timer);
+    if (v.poll) clearInterval(v.poll);
+    if (asked?.by === v.id) clearTimeout(asked.timer), (asked = undefined);
     views.delete(v.id);
     giveBack(v);
     v.release();
@@ -172,8 +236,21 @@ export function createPhoneLive(d: PhoneLiveDeps): PhoneLive {
         return undefined;
       }
       const taskId = o.taskId ?? (o.decisionId ? d.decisions.get(o.decisionId)?.taskId : undefined);
-      const v: View = { id: newId(), sink, mode: o.mode, ...(taskId ? { taskId } : {}), ...(o.decisionId ? { decisionId: o.decisionId } : {}), seq: 0, inflight: false, inflightAt: 0, lastSent: 0, paused: false, closed: false, release: d.device.hold(`view ${o.mode}`) };
+      // D248: watching a phone that isn't running never starts it: the view is asleep until 叫醒 /
+      // Wake, or until a task starts the phone (looked for every couple of seconds).
+      const st = d.device.state();
+      const asleep = o.mode === "watch" && (st === "stopped" || st === "stopping");
+      const v: View = { id: newId(), sink, mode: o.mode, ...(taskId ? { taskId } : {}), ...(o.decisionId ? { decisionId: o.decisionId } : {}), seq: 0, inflight: false, inflightAt: 0, lastSent: 0, paused: false, closed: false, release: asleep ? () => {} : d.device.hold(`view ${o.mode}`), ...(asleep ? { asleep: true } : {}) };
       views.set(v.id, v);
+      if (asleep) {
+        sink.send(viewFrame(v, "asleep"));
+        sendDid(v);
+        v.poll = setInterval(() => {
+          const now = d.device.state();
+          if (now === "running" || now === "starting") void rouse(v, false);
+        }, d.asleepPollMs ?? 2_000);
+        return v.id;
+      }
       if (o.mode !== "watch") turn = { by: v.id, tried: new Set() };
       sink.send(viewFrame(v, d.device.state() === "running" ? "open" : "starting"));
       try {
@@ -186,6 +263,7 @@ export function createPhoneLive(d: PhoneLiveDeps): PhoneLive {
       app = await d.device.front().catch(() => app);
       sink.send(viewFrame(v, "open"));
       if (o.mode !== "watch") tellTurns();
+      sendDid(v);
       pump(v);
       return v.id;
     },
@@ -226,13 +304,23 @@ export function createPhoneLive(d: PhoneLiveDeps): PhoneLive {
       const v = mine(sink, id);
       if (!v) return;
       if (want) {
-        if (turn && turn.by !== v.id) {
-          const holder = views.get(turn.by);
-          turn = { by: v.id, tried: turn.tried };
-          if (holder) holder.sink.send(viewFrame(holder, "open"));
-        } else turn = { by: v.id, tried: turn?.tried ?? new Set() };
-        tellTurns();
-      } else giveBack(v);
+        // D248: a task mid-step finishes that step first (a tap half done is the worst of both);
+        // the turn is the person's the moment it ends, or after stepWaitMs at most.
+        if (!turn && stepping()) {
+          if (asked) clearTimeout(asked.timer);
+          asked = { by: v.id, timer: setTimeout(() => grant(v), d.stepWaitMs ?? 8_000) };
+          v.sink.send(viewFrame(v, v.asleep ? "asleep" : "open"));
+          return;
+        }
+        grant(v);
+      } else {
+        if (asked?.by === v.id) {
+          clearTimeout(asked.timer);
+          asked = undefined;
+          v.sink.send(viewFrame(v, v.asleep ? "asleep" : "open"));
+        }
+        giveBack(v);
+      }
     },
     pause(sink, id, paused) {
       const v = mine(sink, id);
@@ -247,6 +335,21 @@ export function createPhoneLive(d: PhoneLiveDeps): PhoneLive {
       await closeView(v, done ? "done" : "closed");
       if (done && decisionId && d.decisions.isPending(decisionId)) d.decisions.decide(decisionId, "go");
     },
+    async wake(sink, id) {
+      const v = mine(sink, id);
+      if (v?.asleep) await rouse(v, true);
+    },
+    acting(taskId, on) {
+      const n = Math.max(0, (steps.get(taskId) ?? 0) + (on ? 1 : -1));
+      if (n) steps.set(taskId, n);
+      else steps.delete(taskId);
+      if (!on && asked && !stepping()) {
+        const v = views.get(asked.by);
+        if (v) grant(v);
+        else clearTimeout(asked.timer), (asked = undefined);
+      }
+    },
+    did: (taskId) => [...(didOf.get(taskId) ?? [])],
     async drop(sink) {
       for (const v of [...views.values()]) if (v.sink === sink) await closeView(v, "gone");
     },
@@ -257,6 +360,14 @@ export function createPhoneLive(d: PhoneLiveDeps): PhoneLive {
     note(taskId, doing) {
       for (const v of views.values()) if (!v.closed && v.mode === "watch" && (!v.taskId || v.taskId === taskId)) v.sink.send({ t: "phone_doing", id: v.id, doing });
       shot = undefined;
+      // D248: what it did (never what it read: looks and pictures aren't kept), labels only.
+      if (DID_KINDS.has(doing.kind)) {
+        const list = didOf.get(taskId) ?? [];
+        list.push({ kind: doing.kind as PhoneDidView["kind"], ...(doing.label ? { label: doing.label.split(" · ")[0] } : {}), ...(doing.app ? { app: doing.app } : {}), at: Date.now() });
+        if (list.length > DID_KEEP) list.splice(0, list.length - DID_KEEP);
+        didOf.set(taskId, list);
+        for (const v of views.values()) if (!v.closed && v.mode === "watch" && v.taskId === taskId) sendDid(v);
+      }
     },
     views: () => [...views.values()].map((v) => ({ id: v.id, mode: v.mode, ...(v.taskId ? { taskId: v.taskId } : {}), turn: turnOf(v) })),
   };

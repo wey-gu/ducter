@@ -7,7 +7,7 @@
 //   - <PhoneAskBody>: a phone task's decision cards (a Go for one tap; the user's own turn).
 // The live view is D190's browser live view for the phone: the same classes, bars, band and calm
 // line, so it reads as the same thing. Nothing here is kept: frames are shown and dropped.
-import type { DeviceView, PhoneDoingView, PhoneInput, PhoneKey, PhoneMode, PhoneServerFrame, PhoneTerms } from "@ducter/protocol";
+import type { DeviceView, PhoneDidView, PhoneDoingView, PhoneInput, PhoneKey, PhoneMode, PhoneServerFrame, PhoneTerms } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
@@ -23,7 +23,7 @@ const zh = () => A.L.lang === "zh";
 
 export interface PhoneViewState {
   id: string;
-  state: "opening" | "starting" | "open" | "closed";
+  state: "opening" | "asleep" | "starting" | "open" | "closed";
   mode: PhoneMode;
   turn: "agent" | "you";
   here: boolean;
@@ -38,7 +38,19 @@ export interface PhoneViewState {
   app?: string;
   doing?: PhoneDoingView;
   doingAt?: number;
+  /** D248: My turn asked mid-step: the person's when that step ends. */
+  taking?: boolean;
+  /** D248: what the task did on the phone, newest last. */
+  did?: PhoneDidView[];
+  /** D248: 叫醒 / Wake was pressed. */
+  waking?: boolean;
 }
+
+/** D248: the last frame each phone showed (by the computer the panel opened it on), so a view that
+ *  opens again starts from it and the new stream fades in over it: never a flash, a spinner over
+ *  black, or a jump. Memory only. */
+const held = new Map<string, { src: string; w?: number; h?: number }>();
+let heldKey = "";
 
 export const PU: {
   /** The full-screen live view (the standalone mount). */
@@ -76,7 +88,7 @@ export function phoneFrame(f: PhoneServerFrame): void {
         return changed();
       }
       if (!v) return;
-      Object.assign(v, { id: f.id, state: f.state, mode: f.mode, turn: f.turn, here: f.here, device: f.device, ...(f.taskId ? { taskId: f.taskId } : {}), ...(f.task ? { task: f.task } : {}), ...(f.decisionId ? { decisionId: f.decisionId } : {}) });
+      Object.assign(v, { id: f.id, state: f.state, mode: f.mode, turn: f.turn, here: f.here, taking: !!f.taking, ...(f.state === "asleep" ? {} : { waking: false }), device: f.device, ...(f.taskId ? { taskId: f.taskId } : {}), ...(f.task ? { task: f.task } : {}), ...(f.decisionId ? { decisionId: f.decisionId } : {}) });
       return changed();
     }
     case "phone_frame": {
@@ -86,7 +98,14 @@ export function phoneFrame(f: PhoneServerFrame): void {
       v.seq = f.seq;
       v.w = f.width;
       v.h = f.height;
+      held.set(heldKey, { src: v.src, w: v.w, h: v.h });
       if (f.app) v.app = f.app;
+      return changed();
+    }
+    case "phone_did": {
+      const v = PU.view;
+      if (!v || v.id !== f.id) return;
+      v.did = f.did;
       return changed();
     }
     case "phone_doing": {
@@ -139,6 +158,118 @@ const KeysMark = () => (
   </svg>
 );
 
+// ---------- D248: asleep, drawn ----------
+
+/** Ducter's phone dozing under its knitted blanket (the asleep devices' look, D77/D81): the blanket
+ *  rises and falls (4.8 s); reduced motion holds it still. Drawn, in the clay's own colours. */
+export const PhoneDozing = () => (
+  <svg class="phone-dozing" width="168" height="188" viewBox="0 0 132 148" aria-hidden="true">
+    <defs>
+      <radialGradient id="pdz-body" cx="0.32" cy="0.22" r="0.95">
+        <stop offset="0" stop-color="var(--art-mint-lit)" />
+        <stop offset="0.55" stop-color="var(--art-mint)" />
+        <stop offset="1" stop-color="var(--art-mint-deep)" />
+      </radialGradient>
+      <radialGradient id="pdz-screen" cx="0.35" cy="0.2" r="1">
+        <stop offset="0" stop-color="var(--art-glass-lit)" />
+        <stop offset="1" stop-color="var(--art-glass)" />
+      </radialGradient>
+      <linearGradient id="pdz-knit" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="var(--art-knit-lit)" />
+        <stop offset="1" stop-color="var(--art-knit)" />
+      </linearGradient>
+      <pattern id="pdz-rows" width="9" height="7" patternUnits="userSpaceOnUse">
+        <path d="M0.5 1.2 4.5 5.4 8.5 1.2" fill="none" stroke="var(--art-knit-deep)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.55" />
+      </pattern>
+    </defs>
+    <ellipse cx="66" cy="138" rx="46" ry="6.5" fill="var(--art-shadow)" />
+    <g transform="rotate(-8 66 80)">
+      <rect x="30" y="10" width="72" height="122" rx="20" fill="url(#pdz-body)" />
+      <rect x="37" y="17" width="58" height="108" rx="14" fill="url(#pdz-screen)" />
+      <circle cx="66" cy="24" r="2.4" fill="var(--art-glass-lit)" />
+      <path d="M50 52q5 5 10 0M72 52q5 5 10 0" fill="none" stroke="var(--art-face)" stroke-width="3" stroke-linecap="round" />
+      <path d="M62 62q4 3 8 0" fill="none" stroke="var(--art-face)" stroke-width="2.4" stroke-linecap="round" />
+      <ellipse cx="45" cy="30" rx="6" ry="9" fill="#fff" opacity="0.12" />
+    </g>
+    <g class="phone-blanket">
+      <path d="M14 82c18-9 38-12 54-11s36 5 50 13c4 2 5 6 5 10v30c0 9-6 14-15 14H25c-9 0-15-5-15-14V92c0-4 1-8 4-10z" fill="url(#pdz-knit)" />
+      <path d="M14 82c18-9 38-12 54-11s36 5 50 13c4 2 5 6 5 10v30c0 9-6 14-15 14H25c-9 0-15-5-15-14V92c0-4 1-8 4-10z" fill="url(#pdz-rows)" />
+      <path d="M15 84c17-8 37-11 53-10s35 5 49 12" fill="none" stroke="var(--art-knit-lit)" stroke-width="5" stroke-linecap="round" />
+      <path d="M96 92c6 10 7 26 3 44" fill="none" stroke="var(--art-knit-deep)" stroke-width="2" stroke-linecap="round" opacity="0.45" />
+    </g>
+  </svg>
+);
+
+/** D248: the asleep screen: the phone dozing, why looking doesn't wake it, and 叫醒 / Wake. */
+function PhoneAsleep({ device, task, waking, onWake }: { device: string; task: boolean; waking?: boolean; onWake: () => void }) {
+  return (
+    <div class="screen-asleep" role="status">
+      <PhoneDozing />
+      <div class="screen-asleep-title">{t("phoneuse.asleep.title")}</div>
+      <div class="screen-asleep-why">{task ? t("phoneuse.asleep.task") : t("phoneuse.asleep.why", device)}</div>
+      <Btn kind="secondary" size="sm" label={waking ? t("phoneuse.waking") : t("phoneuse.wake")} disabled={waking} about={t("phoneuse.title")} onClick={onWake} />
+    </div>
+  );
+}
+
+// ---------- D248: what it did, not what it read ----------
+
+export function didWords(d: PhoneDidView): string {
+  switch (d.kind) {
+    case "tap":
+      return d.label ? t("phoneuse.did.tap", d.label) : t("phoneuse.did.tap.0");
+    case "type":
+      return d.label ? t("phoneuse.did.type", d.label) : t("phoneuse.did.type.0");
+    case "open":
+      return t("phoneuse.did.open", d.app ?? "");
+    case "key":
+      return t("phoneuse.did.key", t(`phoneuse.key.${d.label ?? "back"}`));
+    default:
+      return t("phoneuse.did.swipe");
+  }
+}
+
+/** A small drawn mark per kind of step: a tap's ring, typing's keys, an app's tile, a swipe's arc. */
+const DidMark = ({ kind }: { kind: PhoneDidView["kind"] }) => (
+  <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+    {kind === "tap" ? (
+      <>
+        <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6" />
+        <circle cx="7" cy="7" r="1.8" fill="currentColor" />
+      </>
+    ) : kind === "type" ? (
+      <path d="M2 4.5h10M2 7.5h7M2 10.5h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+    ) : kind === "open" ? (
+      <rect x="2.5" y="2.5" width="9" height="9" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.6" />
+    ) : kind === "key" ? (
+      <path d="M2.5 4.5h9a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 1 9V6a1.5 1.5 0 0 1 1.5-1.5zM5 7.5h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+    ) : (
+      <path d="M3 10c1.5-4 6.5-4 8 0M9 5.5l2 4.5-4.5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+    )}
+  </svg>
+);
+
+/** D248: the last few things the task did on the screen, newest first; never what it read. */
+export function PhoneDid({ did }: { did?: PhoneDidView[] }) {
+  if (!did?.length) return null;
+  return (
+    <div class="screen-did">
+      <div class="screen-did-title">{t("phoneuse.did.title")}</div>
+      <ol>
+        {did
+          .slice(-5)
+          .reverse()
+          .map((d, i) => (
+            <li key={`${d.at}:${i}`} class={i === 0 ? "now" : undefined}>
+              <DidMark kind={d.kind} />
+              <span>{didWords(d)}</span>
+            </li>
+          ))}
+      </ol>
+    </div>
+  );
+}
+
 // ---------- the live view ----------
 
 const DOING_MS = 6_000;
@@ -171,10 +302,13 @@ export function PhoneLivePanel(p: { device: string; taskId?: string; mode: Phone
   const composing = useRef(false);
   const [, tick] = useState(0);
   const opened = useRef(false);
+  /** D248: the frame this phone showed last, from before this view opened. */
+  const heldBefore = useRef(held.get(p.device));
 
   useEffect(() => {
     if (opened.current) return;
     opened.current = true;
+    heldKey = p.device;
     PU.view = { id: "", state: "opening", mode: p.mode, turn: p.mode === "watch" ? "agent" : "you", here: p.mode !== "watch", device: p.device, ...(p.taskId ? { taskId: p.taskId } : {}), ...(p.decisionId ? { decisionId: p.decisionId } : {}) };
     send({ t: "phone_open", device: p.device, mode: p.mode, ...(p.taskId ? { taskId: p.taskId } : {}), ...(p.decisionId ? { decisionId: p.decisionId } : {}) });
     changed();
@@ -229,6 +363,8 @@ export function PhoneLivePanel(p: { device: string; taskId?: string; mode: Phone
   };
   const close = () => (p.onClose ? (p.onClose(), closePhone()) : closePhone());
   const title = t("phoneuse.title");
+  const hold = heldBefore.current;
+  const under = v.src ? { src: v.src, w: v.w, h: v.h } : hold;
 
   const sub = v.mode === "watch" && v.task ? (
     <>
@@ -262,10 +398,16 @@ export function PhoneLivePanel(p: { device: string; taskId?: string; mode: Phone
         </div>
       )}
       <div class={`live-page phone-page${mine ? "" : " watching"}`} onClick={() => mine && keys.current?.focus({ preventScroll: true })}>
-        {v.src && v.state === "open" ? (
+        {v.state === "asleep" ? (
+          <PhoneAsleep device={v.device || A.homeName || "Mac"} task={!!v.taskId} waking={v.waking} onWake={() => v.id && ((v.waking = true), send({ t: "phone_wake", id: v.id }), changed())} />
+        ) : v.src && v.state === "open" ? (
+          <span class="phone-stack" style={{ aspectRatio: `${v.w || 9} / ${v.h || 20}` }}>
+            {/* D248: the last frame stays under the new stream, which fades in over it once. */}
+            {hold && <img class="phone-screen phone-held" src={hold.src} alt="" aria-hidden="true" draggable={false} />}
           <img
             ref={img}
-            class="phone-screen"
+            key={v.id}
+            class={`phone-screen${hold ? " phone-fresh" : ""}`}
             src={v.src}
             alt={v.app ?? title}
             draggable={false}
@@ -300,10 +442,19 @@ export function PhoneLivePanel(p: { device: string; taskId?: string; mode: Phone
               input({ kind: "swipe", x1: a.x, y1: 0.5 + dy / 2, x2: a.x, y2: 0.5 - dy / 2, ms: 200 });
             }}
           />
+            {ring}
+          </span>
+        ) : under ? (
+          // D248: reconnecting or opening again: the last frame, quiet, with one line over it.
+          <span class="phone-stack waiting" style={{ aspectRatio: `${under.w || 9} / ${under.h || 20}` }}>
+            <img class="phone-screen phone-held" src={under.src} alt="" aria-hidden="true" draggable={false} />
+            <span class="screen-pill" role="status">
+              {v.state === "starting" ? t("phoneuse.starting") : t("phoneuse.again")}
+            </span>
+          </span>
         ) : (
           <div class="live-wait">{v.state === "starting" ? t("phoneuse.starting") : t("phoneuse.opening")}</div>
         )}
-        {ring}
         <input
           ref={keys}
           class="live-keys"
@@ -346,9 +497,11 @@ export function PhoneLivePanel(p: { device: string; taskId?: string; mode: Phone
           </button>
         )}
         {v.mode === "signin" && <div class="live-note">{t("phoneuse.signin.note")}</div>}
-        {v.mode !== "signin" && !mine && (
+        {v.mode !== "signin" && !mine && v.state !== "asleep" && (
           <div class={`live-doing${doing ? " on" : ""}`} role="status" aria-live="polite">
-            {doing ? (
+            {v.taking ? (
+              <span>{t("phoneuse.taking.why")}</span>
+            ) : doing ? (
               <>
                 <span class="live-pulse" aria-hidden="true" />
                 <span>{doingPhoneWords(doing)}</span>
@@ -368,11 +521,15 @@ export function PhoneLivePanel(p: { device: string; taskId?: string; mode: Phone
             </>
           ) : mine ? (
             v.mode === "watch" || v.taskId ? <Btn kind="primary" label={t("live.handback")} onClick={() => v.id && send({ t: "phone_turn", id: v.id, mine: false })} /> : <Btn kind="primary" label={t("live.done")} onClick={close} />
+          ) : v.state === "asleep" ? null : v.taking ? (
+            // D248: it is mid-step; the turn is the person's the moment that step ends. Tapping again lets it be.
+            <Btn kind="secondary" label={t("phoneuse.taking")} about={t("phoneuse.taking.why")} onClick={() => v.id && send({ t: "phone_turn", id: v.id, mine: false })} />
           ) : (
             <Btn kind="primary" label={t("live.myturn")} onClick={() => v.id && send({ t: "phone_turn", id: v.id, mine: true })} />
           )}
         </div>
       </div>
+      {v.mode === "watch" && !mine && <PhoneDid did={v.did} />}
     </div>
   );
 }
@@ -389,7 +546,17 @@ function PhoneScreen({ task, active }: { task: Task; active?: boolean }) {
   if (!active || PU.sheet) return <div class="screen-wait"><p class="bench-note quiet">{t("phoneuse.idle.task")}</p></div>;
   return <PhoneLivePanel key={`${ph.device}:${task.id}`} device={ph.device} taskId={task.id} mode="watch" embedded />;
 }
-registerScreen("phone", { has: (task) => !!phoningOf(task), view: PhoneScreen });
+registerScreen("phone", {
+  has: (task) => !!phoningOf(task),
+  view: PhoneScreen,
+  // D248: the chip says whose turn it is on the phone this page shows; asleep, nobody's.
+  driver: (task) => {
+    const v = PU.view;
+    if (!v || v.taskId !== task.id) return "agent";
+    if (v.state === "asleep") return "idle";
+    return v.turn === "you" ? "you" : "agent";
+  },
+});
 
 /** The standalone mount: the live view as a full-screen sheet (the phone, and the Mac's window). */
 export function PhoneLiveSheet() {

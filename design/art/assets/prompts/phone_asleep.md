@@ -1,0 +1,1 @@
+The same chunky toy Android phone (soft mint-green clay body, ink bezel of even thickness, one small round punch-hole camera) lying on its back, tucked under a small cream knitted blanket pulled up over its lower half, a calm sleeping face on the dark screen (two closed arc eyes, a tiny smile), peaceful. No logo, no letters.

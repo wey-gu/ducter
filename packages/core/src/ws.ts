@@ -1078,6 +1078,7 @@ export function createWsHandler(deps: WsDeps) {
       case "phone_ack":
       case "phone_turn":
       case "phone_pause":
+      case "phone_wake":
       case "phone_close": {
         const p = deps.ownPhone;
         const where = typeof (f as { device?: unknown }).device === "string" ? String((f as { device?: string }).device) : "local";
@@ -1120,6 +1121,7 @@ export function createWsHandler(deps: WsDeps) {
         else if (f.t === "phone_ack") lv.ack(sink, String(f.id ?? ""), Number(f.seq));
         else if (f.t === "phone_turn") await lv.turn(sink, String(f.id ?? ""), !!f.mine);
         else if (f.t === "phone_pause") lv.pause(sink, String(f.id ?? ""), !!f.paused);
+        else if (f.t === "phone_wake") await lv.wake(sink, String(f.id ?? ""));
         else await lv.close(sink, String(f.id ?? ""), !!f.done);
         return;
       }

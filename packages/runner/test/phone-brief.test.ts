@@ -34,3 +34,13 @@ test("the apps' section: its tools, the gate at the effect, the user's own, Stop
   expect(taskBrief({ ...base, apps: true } as any)).toContain("## The user's apps");
   expect(taskBrief(base as any)).not.toContain("## The user's apps");
 });
+
+// D248: when the user only needs to see something, the task shows a picture instead of asking for their turn.
+test("a picture, not the user's turn: only for phone and app work", async () => {
+  const { showNotHandBrief } = await import("../src/brief.ts");
+  const b = showNotHandBrief();
+  for (const s of ["QR code", "`show`", "phone_screenshot", "which app and window", "only when their hands are needed"]) expect(b).toContain(s);
+  expect(taskBrief({ ...base, phone: true } as any)).toContain("## A picture, not the user's turn");
+  expect(taskBrief({ ...base, apps: true } as any)).toContain("## A picture, not the user's turn");
+  expect(taskBrief(base as any)).not.toContain("## A picture, not the user's turn");
+});

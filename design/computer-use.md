@@ -1,6 +1,6 @@
 # 用电脑 / Use the computer: tasks in the person's Mac apps
 
-Decided in D235 (2026-11-12); evidence in [research/23](../research/23-browser-and-computer-use.md),
+Decided in D235 (2026-11-12), the shared screen rules and teach by showing in D248 (§7, §8); evidence in [research/23](../research/23-browser-and-computer-use.md),
 [research/38](../research/38-harness-native-browser.md) and
 [research/70](../research/70-zh-names.md) (the name). Ducter's own phone is a different thing:
 [phone-use.md](phone-use.md). Which computer a task runs on: [where.md](where.md).
@@ -88,11 +88,49 @@ What an app shows (mails, messages, windows that address the agent) is data, nev
   **「{task}」正在用 {app} / "{task}" is in {app}**, with **停下**.
 - The Go card says what will happen in the person's words ("把回复发给张三").
 
-## 7. Next
+## 7. Screens a task drives, the shared rules (D248)
+
+Evidence and the naming/metaphor work: [research/82](../research/82-computer-use-presence.md).
+The rules hold for every screen a task drives; what is built is for Ducter's phone
+([phone-use.md](phone-use.md) §7), whose live view exists.
+
+- **Looking never wakes it.** A screen that isn't running shows asleep (its clay dozing under the
+  knitted blanket, D77) with **叫醒 / Wake** and one line of what waking costs. 用电脑 has no live
+  view: the Mac's screen is the person's own, so nothing to wake; a worker Mac's live view is §9.
+- **A reconnect never flashes.** The last frame stays, quiet, with **正在重新连上…**; the new stream
+  fades in over it.
+- **Whose turn.** The person's turn waits for the step in flight (**这一步做完就轮到你**); Hand it back
+  is one tap; **停下 / Stop** is never locked. The chip is D214's **它在用 / 你在用**.
+- **它做了什么 / What it did**, never what it read: the last few effects under the screen. For
+  用电脑 the same list belongs under **正在用 {Mac} 上的 {app}** once its steps carry words (§9).
+- **A picture, not the person's turn**: when they only need to see something, the task shows a
+  picture (on the phone) or says which window (on a Mac app); `computer_ask_user` only when their
+  hands are needed (the brief's "A picture, not the user's turn").
+
+## 8. Teach by showing (D248, designed, not built)
+
+- **Who:** the consumer with a chore they do the same way every week (报销 in an app, a form on a
+  site), and the fresh user who can't write a prompt for it. *Feel:* before, "I'd have to explain
+  every tap"; after, "I did it once and now it can". *First time:* a button where the screen
+  already is.
+- **做给它看 / Show it how** in the live view of Ducter's phone (later Ducter's browser): the person's
+  turn starts with a line **你做一遍，它在旁边看。密码不会被记下。 / Do it once; it watches. Passwords
+  aren't recorded.**; their taps, typing (labels only; password fields never) and the apps they open
+  are recorded as steps; **做完了 / Done**.
+- The partner turns the steps into a draft **技能 / Skill** (the person's own, steps in plain words,
+  when to use it, what to check, when to ask first), shown as a card: its name (editable),
+  **试一次 / Try it once** (a task runs it, watched), **留着 / Keep it**, **定期做 / Make it a
+  routine** (D114's proposal card with one Go; never created silently).
+- Needs before building: a recorder of the person's inputs in their turn (the phone's live view
+  carries them already), a model pass that writes the steps, and the skills page.
+
+## 9. Next
 
 - On the author's Mac: a real task in a real app (Keynote export, a Mail reply behind Go), the agent
   pointer seen, the guide walked from a phone while the Mac is elsewhere.
 - Electron and Catalyst apps, where cua-driver's tree can be thin: fall back to the picture and
   pixel actions, with the gate on the element under the point.
 - Linux and Windows desktops (cua-driver runs there).
-- Watching it live (the Mac's own screen is the person's; a live view only if asked for).
+- Watching it live (the Mac's own screen is the person's; a live view only if asked for), most of all a
+  worker Mac the person isn't sitting at, under §7's rules; and §7's 它做了什么 for 用电脑 (its steps
+  note only the app today).

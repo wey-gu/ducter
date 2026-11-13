@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.0.52
+
+<!-- whats-new
+zh: 往上翻时有新消息会提示，一点回到最新；长按就能拷贝
+en: New messages show while you scroll up; long-press to copy
+zh: 借手机更稳：锁屏就还给你，失联会说清楚
+en: Lending your phone: locking takes it back, silence is explained
+-->
+
+**The conversation**
+- Reading back while the partner writes: a pebble over the composer counts the new messages and
+  brings you to the first one; a 新消息 line marks where they start; ⌘↓ on the Mac.
+- It stays at the end while you're there, through pictures loading, cards growing and the keyboard.
+- Long-press (right-click on the Mac) a message for its time, Reply, Copy, Copy link and Select text;
+  each code block has its own Copy. Copy works on a home reached over plain http too.
+- A half-written message survives the app closing.
+
+**Lending your phone**
+- Locking the phone, Stop, or Android's switch going off ends the loan on the phone and in Ducter at
+  once, and it never comes back by itself; a phone that stops answering is said plainly within
+  seconds, with what to do.
+- One ask per loan; your "Done" is checked; Wi-Fi, Bluetooth and similar switches wait for your Go;
+  a task keeps the phone it started on. Update the Android app for this.
+
 ## 0.0.51
 
 <!-- whats-new

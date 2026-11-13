@@ -96,10 +96,12 @@ func replyShot(t *testing.T, tt *ui.Tester, name string) {
 	if dir == "" {
 		dir = filepath.Join("..", "..", "..", "..", ".shots", "reply")
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	full := filepath.Join(dir, name+".png")
+	// A name may reach a sibling folder (../conversation-ux/…): make the file's own folder.
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	f, err := os.Create(filepath.Join(dir, name+".png"))
+	f, err := os.Create(full)
 	if err != nil {
 		t.Fatal(err)
 	}

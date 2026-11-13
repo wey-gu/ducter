@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.49
+
+<!-- whats-new
+zh: 安卓开关开着的手机，连上就能被任务借用
+en: A phone with its Android switch on is ready to lend at once
+zh: 不再把你的手机活交给 Ducter 的模拟器
+en: Work on your own phone no longer lands on Ducter's emulator
+-->
+
+**用这台手机 / Use this phone**
+- A phone whose Android switch for Ducter is already on is added as soon as its app connects, however
+  the switch got on. Before, it was added only if the switch turned on while the guide was open, so
+  a phone set up in an earlier version stayed unadded and phone work went to Ducter's own phone.
+- Taking it off on its card is remembered; a switch still on doesn't add it back.
+
 ## 0.0.48
 
 <!-- whats-new

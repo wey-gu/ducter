@@ -2,7 +2,7 @@
 // read, and how it says so. Shared by core and every client.
 
 /**
- * The seven kinds of finds (§4). Each has a plain name on screen (i18n `kind.<id>`), and is what
+ * The ten kinds of finds (§4; coming_up, service and update: D243). Each has a plain name on screen (i18n `kind.<id>`), and is what
  * the person reacts to ("这类不用告诉我 / Don't tell me this kind").
  *   mismatch         两件事对不上 / Two things don't match (joins over the facts ledger)
  *   waiting_on_you   在等你回 / Waiting on you (people only; 2 working days, or asked again)
@@ -11,14 +11,18 @@
  *   deadline         快到期 · 要花钱 / Deadlines and money
  *   plan_changed     计划变了 / A plan changed
  *   meeting          开会前 / Before a meeting (10 min before, only with something open)
+ *   coming_up        快到了 / Coming up (a flight or a train in the next day and a half: when, where, when to leave)
+ *   service          你用的服务 / A service you use (maintenance, an outage, a job that keeps failing, a shutdown)
+ *   update           之前说的有变 / An update to what I told you (a later notice changes a find already said)
  */
-export type FindKind = "mismatch" | "waiting_on_you" | "waiting_on_them" | "promised" | "deadline" | "plan_changed" | "meeting";
-export const FIND_KINDS: readonly FindKind[] = ["mismatch", "waiting_on_you", "waiting_on_them", "promised", "deadline", "plan_changed", "meeting"];
+export type FindKind = "mismatch" | "waiting_on_you" | "waiting_on_them" | "promised" | "deadline" | "plan_changed" | "meeting" | "coming_up" | "service" | "update";
+export const FIND_KINDS: readonly FindKind[] = ["mismatch", "waiting_on_you", "waiting_on_them", "promised", "deadline", "plan_changed", "meeting", "coming_up", "service", "update"];
 export const isFindKind = (k: unknown): k is FindKind => typeof k === "string" && (FIND_KINDS as readonly string[]).includes(k);
 
 /**
  * 发现了就说 / When it notices something (§5): one chip row, single choice.
- *   urgent  只说急的 / Only urgent: only "now" finds, no morning note
+ *   urgent  只说急的 / Only urgent: only "now" finds, no morning note (D243: a trip, a
+ *           production maintenance window or a correction within ~30 hours is urgent)
  *   three   每天最多 3 件 / Up to 3 a day (the default answer to the first-add question)
  *   useful  有用就说 / Whenever useful: no cap, still batched
  *   off     不用主动找我 / Only when I ask: nothing watches (also the state before the person answered)

@@ -30,11 +30,11 @@ import type { Decisions } from "../decisions.ts";
 import { DEFAULT_QUIET, inQuiet, quietEndsAt, type Pusher, type PushStore } from "../push.ts";
 import type { RulesStore } from "../rules.ts";
 import type { SettingsStore } from "../settings.ts";
-import { dayKey, daysUntil, detect, meetingPrep, type Candidate } from "./detect.ts";
+import { dayKey, daysUntil, detect, meetingPrep, type Candidate, type SaidFind } from "./detect.ts";
 import type { Item } from "./items.ts";
 import { barJudge, DEFAULT_BAR, JUDGE_MAX, type FindJudge, type Verdict } from "./judge.ts";
 import { openLedger, type Ledger } from "./ledger.ts";
-import { backfillWorthy, stage1, type Left } from "./stage1.ts";
+import { backfillWorthy, NOTICE_DAY_MAX, stage1, type Left } from "./stage1.ts";
 import { BATCH, eventFact, factsOf, type Triage } from "./triage.ts";
 import { createWatchers, lookFor, type Watchers } from "./watch.ts";
 import { KIND_WORDS, W } from "./words.ts";
@@ -64,6 +64,11 @@ const LEDGER_DAYS = 60;
 export const JUDGE_RUNS_PER_DAY = 4;
 /** 有用就说 has no daily cap, but one note holds at most this many finds; the rest are counted in Left out (P2). */
 export const NOTE_MAX = 5;
+/**
+ * D243: what can't wait has its own room: a maintenance window or a correction that lands after
+ * the morning note took the day's 3 is still said, at most this many a day.
+ */
+export const NOW_MAX = 3;
 const VERDICT_DAYS = 7;
 /** Items whose triage failed, retried on the next look (in memory only: nothing on disk keeps mail). */
 const RETRY_MAX = 100;
@@ -83,6 +88,9 @@ interface FindRec {
   how: FindView["how"];
   state?: "go" | "held" | "passed";
   reaction?: "useful" | "muted";
+  /** D243: what it was about and the facts it rested on (a later notice on it is an update). */
+  topic?: string;
+  facts?: string[];
 }
 
 interface VerdictRec {
@@ -107,7 +115,8 @@ interface State {
   /** Kept by the bar but over the note's cap (有用就说), for the next note's Left out line. */
   more: number;
   finds: Record<string, FindRec>;
-  day: { key: string; said: number };
+  /** said: all today; now: those said on the "now" rung (D243: they have their own NOW_MAX). */
+  day: { key: string; said: number; now?: number };
   mornings: { noteId: string; seq: number; day: string; finds: number }[];
   paused?: boolean;
   keepAsk?: "pending" | "asked";
@@ -133,6 +142,11 @@ interface State {
    * source's apps were listed (right after a start) and read nothing (D230).
    */
   lookBackRev?: number;
+  /**
+   * D243: the person's zone, from the last app that said hello. A home on a server runs in UTC
+   * (hel): without it "today", the morning note's 08:00 and every date it said were the server's.
+   */
+  clientZone?: string;
 }
 
 /** The look back that reads dated mail (fetch_emails) and leaves pending what triage couldn't read. */
@@ -146,6 +160,8 @@ interface Today {
   read: number;
   noted: number;
   skipped: Left;
+  /** D243: service notices read closely today (against NOTICE_DAY_MAX). */
+  notices?: number;
   problem?: { why: ReadProblem; since: number; failures: number; told?: boolean };
 }
 
@@ -204,6 +220,13 @@ export interface ProactiveOptions {
   agentName?: () => string | undefined;
 }
 
+/** D243: the partner's view of what it noticed (the `noticed` tool). Words only, never mail. */
+export interface Noticed {
+  /** It watches on its own (a mode other than Only when I ask). */
+  watching: boolean;
+  items: { kind: FindKind; text: string; urgent: boolean; when?: string; how: string[]; said: boolean; next?: string }[];
+}
+
 export interface Proactive {
   /** The card's status line and tiles for one source (D166). */
   look(connectionId: string): SourceLook | undefined;
@@ -213,8 +236,15 @@ export interface Proactive {
   answer(noteId: string, ask: "first_look" | "keep_note", yes: boolean): Promise<void>;
   /** A source was just added: the first-account moment (§11), once. */
   added(connectionId: string): void;
-  /** A client said hello: before the end of quiet hours, the note is assembled now (§6). */
-  hello(): void;
+  /** A client said hello (with its zone, D243): before the end of quiet hours, the note is assembled now (§6). */
+  hello(tz?: string): void;
+  /** D243: the zone the person's apps last said they are in. */
+  clientZone(): string | undefined;
+  /**
+   * D243: what it has noticed now, said or not, ranked by what it costs them: the partner's answer
+   * to "anything worth telling me?" comes from the same detectors as the note.
+   */
+  noticed(): Noticed;
   /** Whether a Log event should wake the partner (a find's Go/Hold is handled here). */
   wakes(e: LogEvent): boolean;
   setModels(m: { triage?: Triage; judge?: FindJudge }): void;
@@ -264,6 +294,10 @@ export function createProactive(o: ProactiveOptions): Proactive {
   const zone = () => o.zone();
   const today = () => dayKey(now(), zone());
   const newId = (p: string) => `${p}_${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
+  /** D243: what the detectors need: the time, the zone, and the finds already said (for updates). */
+  const saidFinds = (): SaidFind[] =>
+    Object.entries(st.finds).map(([findId, f]) => ({ findId, kind: f.kind, ...(f.topic ? { topic: f.topic } : {}), text: f.text, at: f.at, facts: f.facts ?? [], ...(f.state === "passed" ? { passed: true } : {}) }));
+  const dctx = () => ({ now: now(), zone: zone(), said: saidFinds() });
 
   // ---------- the switch, the language, the budget ----------
 
@@ -373,8 +407,11 @@ export function createProactive(o: ProactiveOptions): Proactive {
    */
   async function toLedger(items: Item[], why: "look" | "first" | "backfill", o2: { hold?: boolean; full?: Set<string> } = {}): Promise<{ read: number; failed: number; kept: number; noted: number; pending: Item[] }> {
     const tally = { read: 0, failed: 0, kept: 0, noted: 0, pending: [] as Item[] };
-    const s1 = stage1(items);
     const d = day0();
+    // D243: service notices go to triage too, up to a day's room (a look back's own filter keeps
+    // only the facty ones, so it has no room to count).
+    const s1 = stage1(items, { noticeRoom: why === "backfill" ? Number.POSITIVE_INFINITY : Math.max(0, NOTICE_DAY_MAX - (d.notices ?? 0)) });
+    if (why !== "backfill") d.notices = (d.notices ?? 0) + s1.notices;
     if (why !== "backfill") {
       st.left = { notices: st.left.notices + s1.left.notices, promo: st.left.promo + s1.left.promo, muted: st.left.muted + s1.left.muted };
       if (why === "look") d.skipped = { notices: d.skipped.notices + s1.left.notices, promo: d.skipped.promo + s1.left.promo, muted: d.skipped.muted + s1.left.muted };
@@ -461,7 +498,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
   /** Room left today: the daily cap, or (有用就说) one note's cap. */
   const capLeft = (m: ProactiveMode) => {
     rollDay();
-    return m === "three" || m === "urgent" ? Math.max(0, DAILY_CAP - st.day.said) : NOTE_MAX;
+    return m === "three" || m === "urgent" ? Math.max(0, DAILY_CAP - (st.day.said - (st.day.now ?? 0))) : NOTE_MAX;
   };
 
   /** What a candidate says, for its verdict's memo: a changed candidate is judged again. */
@@ -562,6 +599,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
       ...(decisionId ? { decisionId, goLabel } : {}),
       ...(c.step ? { step: c.step } : {}),
       how: c.how,
+      ...(c.topic ? { topic: c.topic } : {}),
+      facts: c.facts,
     };
     st.finds[findId] = rec;
     st.said[c.key] = findId;
@@ -590,12 +629,10 @@ export function createProactive(o: ProactiveOptions): Proactive {
     const z = zh();
     const at = now();
     const night = inQuiet(at, holding());
-    const kept = await judged(detect(ledger, { now: at, zone: zone() }), why === "morning" ? "morning" : "day");
+    const kept = await judged(detect(ledger, { ...dctx(), now: at }), why === "morning" ? "morning" : "day");
     if (why === "morning") {
-      if (m === "urgent") {
-        // 只说急的: no morning note; anything urgent waiting through the night goes now.
-        return sayNow(kept.filter((x) => urgentIn(m, x.c)), false);
-      }
+      // 只说急的: no morning note; anything urgent waiting through the night goes now.
+      if (m === "urgent") return sayNow(kept.filter((x) => urgentIn(m, x.c)), false);
       const pick = kept.slice(0, capLeft(m));
       // 有用就说: what the note had no room for is counted, never dropped silently (P2).
       if (m === "useful") st.more += kept.length - pick.length;
@@ -620,7 +657,11 @@ export function createProactive(o: ProactiveOptions): Proactive {
       return save();
     }
     // During the day: what can't wait goes now; what is timely today folds into today's note.
-    const urgent = kept.filter((x) => urgentIn(m, x.c) && (!night || wakeKinds().has(x.c.kind)));
+    // D243: with no quiet hours set, a heads-up that can wait six hours still waits for the
+    // morning (23:00–08:00): a flight tomorrow evening is not said at 3 a.m.
+    const resting = !night && !holding() && inQuiet(at, { ...DEFAULT_QUIET, tz: zone() });
+    const soon = (c: Candidate) => !c.dueAt || Date.parse(c.dueAt) - at <= 6 * 3_600_000;
+    const urgent = kept.filter((x) => urgentIn(m, x.c) && (!night || wakeKinds().has(x.c.kind)) && (!resting || soon(x.c) || wakeKinds().has(x.c.kind)));
     await sayNow(urgent, night);
     const morningNote = todaysNote();
     if (!night && m !== "urgent" && morningNote && o.present()) {
@@ -645,13 +686,15 @@ export function createProactive(o: ProactiveOptions): Proactive {
 
   async function sayNow(list: { c: Candidate; text: string }[], _night: boolean): Promise<void> {
     const m = mode();
-    const room = capLeft(m);
+    rollDay();
+    const room = Math.max(0, NOW_MAX - (st.day.now ?? 0));
     const pick = list.slice(0, room);
     for (const x of pick) {
       const noteId = newId("note");
       const f = makeFind(x.c, x.text, noteId);
       note({ noteId, rung: "now", opening: "", finds: [f] });
       st.day.said++;
+      st.day.now = (st.day.now ?? 0) + 1;
       // Time-sensitive: the phone lets the person turn that off per app (research/46).
       notify("time-sensitive", f.text, noteId);
     }
@@ -695,7 +738,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
   function prune(): void {
     if (prunedDay === today()) return;
     prunedDay = today();
-    const live = new Set(detect(ledger, { now: now(), zone: zone() }).map((c) => c.key));
+    const live = new Set(detect(ledger, dctx()).map((c) => c.key));
     for (const [k, findId] of Object.entries(st.said)) if (!st.finds[findId] && !live.has(k)) delete st.said[k];
     for (const [k, v] of Object.entries(st.verdicts)) if (now() - v.at > VERDICT_DAYS * DAY && !live.has(k)) delete st.verdicts[k];
   }
@@ -789,7 +832,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     const have = new Set(items.map((i) => i.key));
     items.push(...wide.items.filter((i) => !have.has(i.key)));
     await toLedger(items, "first");
-    const kept = (await judged(detect(ledger, { now: now(), zone: zone() }), "first")).slice(0, DAILY_CAP);
+    const kept = (await judged(detect(ledger, dctx()), "first")).slice(0, DAILY_CAP);
     const answer = newId("note");
     const finds = kept.map((x) => makeFind(x.c, x.text, answer));
     note({ noteId: answer, rung: "first", opening: W.firstAnswer(z, finds.length), finds, ask: "cadence" });
@@ -919,6 +962,18 @@ export function createProactive(o: ProactiveOptions): Proactive {
     await speak("morning");
   }
 
+  /**
+   * D243: a trip or a maintenance window ripens with time, not with new mail: every half hour the
+   * detectors run again, so a flight becomes "now" thirty hours before it leaves even on a day no
+   * mail came. Judged like any day run (urgent or due today only; the model's runs stay capped).
+   */
+  let ripened = 0;
+  async function ripen(): Promise<void> {
+    if (mode() === "off" || now() - ripened < 30 * MIN) return;
+    ripened = now();
+    await speak("tick");
+  }
+
   function armTick() {
     if (tickTimer !== undefined) o.clock.clearTimeout(tickTimer);
     if (stopped) return;
@@ -928,6 +983,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
         passDue();
         checkDry();
         await meetings();
+        await ripen();
       }).finally(armTick);
     }, TICK_MS);
   }
@@ -985,7 +1041,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     const morningMode = m === "three" || m === "useful";
     const seen = new Set<string>();
     if (m !== "off")
-      for (const c of detect(ledger, { now: at, zone: zone() })) {
+      for (const c of detect(ledger, { ...dctx(), now: at })) {
         if (st.said[c.key] || seen.has(c.words.en)) continue;
         seen.add(c.words.en);
         const v = st.verdicts[c.key];
@@ -1108,7 +1164,46 @@ export function createProactive(o: ProactiveOptions): Proactive {
       save();
       note({ noteId, rung: "first", opening: W.firstOffer(zh(), names), finds: [], ask: "first_look" });
     },
-    hello() {
+    clientZone: () => st.clientZone,
+    noticed() {
+      // The same detectors and the same words as the note; muted ones stay out, said ones are marked.
+      const z = zh();
+      const at = now();
+      const seen = new Set<string>();
+      const items: Noticed["items"] = [];
+      const cands = detect(ledger, { ...dctx(), now: at })
+        .filter((c) => !muted(c))
+        .sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.cost - a.cost);
+      for (const c of cands) {
+        if (seen.has(c.words.en)) continue;
+        seen.add(c.words.en);
+        const v = st.verdicts[c.key];
+        const findId = st.said[c.key];
+        items.push({
+          kind: c.kind,
+          text: (findId && st.finds[findId]?.text) || (v?.keep && v.text) || (z ? c.words.zh : c.words.en),
+          urgent: c.urgent,
+          ...(c.dueAt ? { when: c.dueAt } : {}),
+          how: c.how.slice(0, 3).map((h) => `${h.what} (${h.at.slice(0, 10)})`),
+          said: Boolean(findId),
+          ...(c.step ? { next: z ? c.step.goLabel.zh : c.step.goLabel.en } : {}),
+        });
+        if (items.length >= 8) break;
+      }
+      return { watching: mode() !== "off", items };
+    },
+    hello(tz) {
+      // D243: the person's zone, as their app says it (a server home runs in UTC).
+      if (typeof tz === "string" && tz && tz !== st.clientZone) {
+        try {
+          new Intl.DateTimeFormat("en-US", { timeZone: tz });
+          st.clientZone = tz;
+          save();
+          armMorning();
+        } catch {
+          /* not a zone */
+        }
+      }
       const q = holding();
       const at = now();
       if (mode() === "off" || !q || !inQuiet(at, q)) return;
@@ -1150,6 +1245,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
         passDue();
         checkDry();
         await meetings();
+        await ripen();
       }),
     stop() {
       stopped = true;

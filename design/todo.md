@@ -386,6 +386,13 @@ note and a `Dn`) before it is built.
       (`packages/partner/eval/proactive/`) on a private labeled set. Also: the long look back reads
       at most 50 mails per account (one page); paging it is owed if the eval shows misses.
       Trigger: one week of hel running D226.
+- [ ] **D243 live on hel** (research/81 §7): counts only, after the release: how many of the
+      ~114 daily notices pass `NOTICE_TERMS` and what they cost against `NOTICE_DAY_MAX`; that
+      Codex's cheap model gives `service` and `billing` facts; the judge's keep rate under the new
+      rubric; `clientZone` set by the app's hello. Trigger: the first release with D243.
+- [ ] **Topics the person follows** (dots' "news on something you care about", research/81): a
+      product or a project they use, through Mem, so an announcement about it is a find. Trigger:
+      D243 live and the author's labelled week.
 - [ ] **Proactive judged per item, not by hand-written detectors** (D232 next): the cheap model
       says per item whether the person needs to know and by when; code keeps timing, caps and
       dedup, and the cross-source checks (a stay vs a flight). Only after a labelled week from the

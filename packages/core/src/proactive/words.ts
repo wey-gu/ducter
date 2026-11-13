@@ -11,6 +11,9 @@ export const KIND_WORDS: Record<FindKind, { zh: string; en: string }> = {
   deadline: { zh: "快到期 · 要花钱", en: "Deadlines and money" },
   plan_changed: { zh: "计划变了", en: "A plan changed" },
   meeting: { zh: "开会前", en: "Before a meeting" },
+  coming_up: { zh: "快到了", en: "Coming up" },
+  service: { zh: "你用的服务", en: "A service you use" },
+  update: { zh: "之前说的有变", en: "An update to what I told you" },
 };
 
 const join = (xs: string[], zh: boolean) => (zh ? xs.join("、") : xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);

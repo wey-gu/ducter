@@ -169,6 +169,11 @@ export interface Scenario {
   phone?: true;
   /** D217: Ducter's phone is added on this computer (a stand-in install; no emulator runs). */
   ownPhone?: true;
+  /**
+   * D243: the facts Ducter noted by itself (findings.json, synthetic, dated around now): the day
+   * dots spoke four times (research/81). The `noticed` tool answers from them.
+   */
+  noticed?: "dots";
   /** D193: the owner's quiet hours cover now (calls wait for the morning). */
   quietNow?: true;
   /**
@@ -1337,6 +1342,25 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Anything in my email this week I still need to reply to?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 220, require: [/account/i], forbid: [/OAuth|token|API key|scope/i] },
     rubric: "No account is connected. It says in one short English line that it can't read their mail yet and where they can add their accounts (the Partner page / Accounts it can read; one tap with oo). It opens no task, invents no mail, and never explains OAuth or tokens.",
+  },
+  // ---------- D243: "anything worth telling me?" (research/81) ----------
+  {
+    id: "noticed-anything-zh",
+    category: "accounts",
+    lang: "zh",
+    noticed: "dots",
+    steps: [{ user: "你今天没查邮件给我值得说的么？" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 320, called: [{ tool: "noticed" }], require: [/19:40/, /13:00/], forbid: [/还没(有)?主动|没(有)?主动(告诉|跟你说)|我(刚|先)?(补)?(查|看|读)了|封(邮件|信)/] },
+    rubric: "The user asks whether there's anything worth telling them today. It calls noticed and answers in short Chinese with the few things that matter most, time-bound first: tomorrow's 19:40 NH 920 flight (be at the airport by 17:40), PlanetScale maintenance on two production databases tomorrow at 13:00 and 15:00 (before the flight; restarts may drop connections), the nightly-stats job failing repeatedly on main, and Mia waiting on an answer about onboarding; Cloudflare AI Search starting to charge in two days may come after them or be left out. At most four or five items; the office carpet cleaning is left out or last. Each item is one line with when and what to do. It never says what it read or checked, how many mails, or that it hadn't told them before (no '我还没主动告诉你'). No task opened.",
+  },
+  {
+    id: "noticed-anything-en",
+    category: "accounts",
+    lang: "en",
+    noticed: "dots",
+    steps: [{ user: "Anything I should know about today?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 700, called: [{ tool: "noticed" }], require: [/19:40/, /13:00/], forbid: [/I (just )?(checked|read|scanned|went through)|\b\d+ (e-?mails|messages)\b|haven't (told|mentioned)/i] },
+    rubric: "The user asks if there's anything they should know today. It calls noticed and answers in short English with the few things that matter, time-bound first: tomorrow's 19:40 NH 920 flight (airport by 17:40), PlanetScale maintenance on two production databases tomorrow at 13:00 and 15:00, the nightly-stats job failing repeatedly, Cloudflare AI Search starting to charge, Mia waiting about onboarding. The carpet cleaning is left out or last. One line each with when and what to do. Never says what it read or checked, or that it hadn't told them before. No task opened.",
   },
   // ---------- calendars (D222): two accounts merged, changes behind a card ----------
   {

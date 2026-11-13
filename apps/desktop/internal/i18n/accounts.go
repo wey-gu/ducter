@@ -31,6 +31,9 @@ var zhAccounts = Table{
 	"kind.deadline":        "快到期 · 要花钱",
 	"kind.plan_changed":    "计划变了",
 	"kind.meeting":         "开会前",
+	"kind.coming_up":       "快到了",
+	"kind.service":         "你用的服务",
+	"kind.update":          "之前说的有变",
 
 	"first.go":      "好，看一眼",
 	"first.no":      "以后再说",
@@ -157,6 +160,9 @@ var enAccounts = Table{
 	"kind.deadline":        "Deadlines and money",
 	"kind.plan_changed":    "A plan changed",
 	"kind.meeting":         "Before a meeting",
+	"kind.coming_up":       "Coming up",
+	"kind.service":         "A service you use",
+	"kind.update":          "An update to what I told you",
 
 	"first.go":      "Take a look",
 	"first.no":      "Not now",

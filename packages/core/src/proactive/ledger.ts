@@ -5,6 +5,7 @@
 // after its own date; removing an account drops its facts. <dataDir>/findings.json, 0600.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { BILLING_WHATS, SERVICE_WHATS, type BillingWhat, type ServiceWhat } from "./triage.ts";
 
 export const FINDINGS_FILE = "findings.json";
 const DAY = 86_400_000;
@@ -40,6 +41,8 @@ export type Fact = Base &
     | { type: "reply"; out: boolean; with: string }
     | { type: "change"; what: "flight_changed" | "flight_cancelled" | "meeting_moved" | "other"; name: string; on: string }
     | { type: "meeting"; title: string; start: string; end?: string; with: string[]; location?: string }
+    | { type: "service"; what: ServiceWhat; name: string; start?: string; end?: string; effect?: string; prod?: boolean }
+    | { type: "billing"; what: BillingWhat; name: string; on: string; amount?: string }
   );
 
 export type FactType = Fact["type"];
@@ -58,6 +61,10 @@ function dateOf(f: NewFact): string {
       return f.on;
     case "meeting":
       return f.end ?? f.start;
+    case "service":
+      return f.end ?? f.start ?? f.at;
+    case "billing":
+      return f.on;
     default:
       return f.at;
   }
@@ -74,6 +81,11 @@ function identity(f: NewFact | Fact): string {
     case "ask_in":
     case "ask_out":
       return `${p}|${f.type}|${f.ref.thread ?? f.ref.id}|${f.ref.id}`;
+    // D243: one mail may hold two flights (out and back) or two maintenance windows.
+    case "booking":
+      return `${p}|booking|${f.ref.id}|${f.name}|${f.start}`;
+    case "service":
+      return `${p}|service|${f.ref.id}|${f.name}|${f.start ?? ""}`;
     default:
       return `${p}|${f.type}|${f.ref.id}`;
   }
@@ -190,6 +202,16 @@ export function sanitize(f: Fact): Fact | undefined {
       const start = iso(f.start);
       if (!start) return;
       return { ...base, type: "meeting", title: s80(f.title) ?? "", start, ...(iso(f.end) ? { end: iso(f.end) } : {}), with: (Array.isArray(f.with) ? f.with : []).map((x) => s80(x)).filter((x): x is string => Boolean(x)).slice(0, 20), ...(s80(f.location) ? { location: s80(f.location) } : {}) };
+    }
+    case "service": {
+      const start = iso(f.start);
+      const end = iso(f.end);
+      return { ...base, type: "service", what: (SERVICE_WHATS as readonly string[]).includes(f.what) ? f.what : "other", name: s80(f.name) ?? "", ...(start ? { start } : {}), ...(end ? { end } : {}), ...(s80(f.effect) ? { effect: s80(f.effect) } : {}), ...(f.prod ? { prod: true } : {}) };
+    }
+    case "billing": {
+      const on = iso(f.on);
+      if (!on) return;
+      return { ...base, type: "billing", what: (BILLING_WHATS as readonly string[]).includes(f.what) ? f.what : "other", name: s80(f.name) ?? "", on, ...(s80(f.amount) ? { amount: s80(f.amount) } : {}) };
     }
     default:
       return;

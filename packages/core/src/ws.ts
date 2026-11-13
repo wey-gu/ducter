@@ -391,7 +391,7 @@ export function createWsHandler(deps: WsDeps) {
         // An app newer than the latest release the home knows: that answer is stale.
         if (typeof f.version === "string") deps.updates?.()?.sawVersion(f.version);
         // The empty conversation's words (D149), for the apps only; a failure leaves the client's own.
-        if (f.client !== "cli") deps.proactive?.()?.hello();
+        if (f.client !== "cli") deps.proactive?.()?.hello(typeof f.tz === "string" ? f.tz : undefined);
         if (f.client !== "cli")
           void firstScreenFor(f.tz)
             .then(async (first) => {

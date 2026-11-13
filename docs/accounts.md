@@ -110,11 +110,13 @@ itself.
 
 The same choice sits above the cards, and under **Notifications**:
 
-- **Only urgent**: only what costs you something if it waits until tomorrow (someone who asked
-  you again, or has waited three working days, counts too; so does a promise due today), and,
-  10 minutes before a meeting, what you have open with those people.
+- **Only urgent**: only what costs you something if it waits until tomorrow: a flight or train
+  in the next day or so, maintenance or an outage on your production systems, money that changes
+  tomorrow, a correction to something it told you, someone who asked you again or has waited
+  three working days, a promise due today; and, 10 minutes before a meeting, what you have open
+  with those people.
 - **Up to 3 a day** (suggested): one message in the morning, when your quiet hours end, with at
-  most three things; anything urgent right away. On a day with nothing worth saying it sends
+  most three things; anything urgent right away (at most three of those a day, on top). On a day with nothing worth saying it sends
   nothing and shows nothing: no news is good news.
 - **Whenever useful**: everything worth saying, still in the morning message (at most five in one).
 - **Only when I ask**: it doesn't look by itself.
@@ -125,8 +127,13 @@ nothing about that look.
 
 What it may tell you: two things that don't match (a flight that lands the night before your
 hotel starts, or a talk your calendar has on the 18th while the organizer's mail says the 19th), someone waiting on your answer, you waiting on someone, something you promised
-for today, a deadline or a payment, a plan that changed, and, 10 minutes before a meeting, what
-you have open with those people. Each comes with **How I know** (the mails or events, with
+for today, a deadline or a payment, a price or a charge about to start, a plan that changed, a
+flight or train coming up (when, from where, when to leave), a service you use (maintenance on
+your production databases, an outage, a job that keeps failing, a product shutting down), a
+correction when a later mail changes something it told you, and, 10 minutes before a meeting,
+what you have open with those people. Service notices it reads too, not only mail from people;
+newsletters, marketing and receipts it leaves alone. Ask it any time ("anything for me?") and it
+answers from the same things, most pressing first. Each comes with **How I know** (the mails or events, with
 dates) and at most one next step, like **See if it can start earlier**: nothing happens until
 you tap it, and even then it only looks things up or drafts; it never sends, pays, books,
 deletes or marks anything read. A step you don't take quietly becomes **Passed** after its date.

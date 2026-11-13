@@ -77,13 +77,17 @@ test("只说急的: no morning note; only what costs something if it waits goes,
   expect(r.sent.map((m) => m.level)).toEqual(["time-sensitive", "time-sensitive"]);
 });
 
-test("now: during the day at once (time-sensitive), inside the cap of 3", async () => {
+test("now: during the day at once (time-sensitive), in its own room of 3 (D243)", async () => {
   const r = make({ mode: "three" });
   await r.p.lookNow(40);
   await r.advance(HOUR + 2 * 60_000); // the morning note used the 3
   r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id: "chg" }, label: "Air China · Schedule change", at: new Date(r.clock.now()).toISOString(), type: "change", what: "flight_changed", name: "CA930", on: "2026-11-11T08:00:00+08:00" }]);
   await r.p.lookNow(0);
-  expect(r.notes()).toHaveLength(1); // the cap holds: the change waits for tomorrow's note
+  // D243: what can't wait isn't pushed to tomorrow because the morning note used the day's 3.
+  expect(r.notes().map((n) => n.body.rung)).toEqual(["morning", "now"]);
+  for (let i = 0; i < 3; i++) r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id: `chg${i}` }, label: `Air China · Schedule change ${i}`, at: new Date(r.clock.now()).toISOString(), type: "change", what: "flight_changed", name: `CA93${i + 1}`, on: "2026-11-11T08:00:00+08:00" }]);
+  await r.p.lookNow(0);
+  expect(r.notes().filter((n) => n.body.rung === "now")).toHaveLength(3); // NOW_MAX holds
 });
 
 test("now: an urgent find while there's room goes at once; at night it waits unless that kind may wake them", async () => {

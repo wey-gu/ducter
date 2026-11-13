@@ -897,8 +897,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     apns,
     alive: (s) => s.deviceId === "local" || devices.isLive(s.deviceId),
   });
-  // D165: the person's zone: their quiet hours', else the server's (a client's hello sets routines').
-  const zone = () => opts.proactive?.zone ?? settings.get().quiet?.tz ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+  // D165: the person's zone: their quiet hours', else (D243) the one their app last said, else the server's.
+  const zone = () => opts.proactive?.zone ?? settings.get().quiet?.tz ?? proactiveRef?.clientZone() ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   // D222: every calendar account's calendars, merged (Accounts, the partner's calendar tool, the watcher).
   const calendar = createCalendar({ dataDir, connections, zone, log });
   calendarRef = calendar;
@@ -923,7 +923,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     agentName: () => HARNESSES[brainInUse().harness]?.name,
   });
   proactiveRef = proactive;
-  registerProactiveTools(mcp, rules);
+  registerProactiveTools(mcp, rules, proactive);
 
   const server = Bun.serve<WsData | WorkerSocketData>({
     hostname,

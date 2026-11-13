@@ -1,10 +1,11 @@
-// The seven kinds (D165 §4), found by code over the facts ledger. A detector proposes; the bar
+// The ten kinds (D165 §4; coming_up, service and update, and money changing: D243), found by code over the facts ledger. A detector proposes; the bar
 // (judge.ts) decides what is said. Each candidate carries its evidence (怎么知道的 / How I know:
 // the facts' labels and dates), its one next step, and plain words in both languages, two
 // sentences at most (zh ≤ ~60 characters).
 import type { FindHow, FindKind } from "@ducter/protocol";
 import type { Candidate } from "./candidate.ts";
 import type { Fact, Ledger } from "./ledger.ts";
+import { FLIGHT_NO, type BillingWhat } from "./triage.ts";
 
 export type { Candidate, StepKind } from "./candidate.ts";
 
@@ -15,6 +16,19 @@ export interface DetectCtx {
   zone: string;
   /** Which kinds to look for (all, unless the first look asks for one). */
   kinds?: FindKind[];
+  /** D243: finds already said (an update to one of them is a find of its own). */
+  said?: SaidFind[];
+}
+
+/** D243: a find already said, as the update detector needs it. */
+export interface SaidFind {
+  findId: string;
+  kind: FindKind;
+  topic?: string;
+  text: string;
+  at: number;
+  facts: string[];
+  passed?: boolean;
 }
 
 // ---------- dates in the person's zone ----------
@@ -407,12 +421,375 @@ export function meetingPrep(ledger: Ledger, c: DetectCtx, withinMs = 12 * 60_000
 export function detect(ledger: Ledger, c: DetectCtx): Candidate[] {
   const facts = ledger.all();
   const want = (k: FindKind) => !c.kinds || c.kinds.includes(k);
+  const ups = want("update") ? updates(facts, c) : [];
+  // A change that updates something already said is said as that update, not as a new plan.
+  const usedByUpdate = new Set(ups.flatMap((u) => u.facts));
   return [
+    ...ups,
     ...(want("mismatch") ? mismatches(facts, c) : []),
-    ...(want("deadline") ? deadlines(facts, c) : []),
-    ...(want("plan_changed") ? changes(facts, c) : []),
+    ...(want("deadline") ? [...deadlines(facts, c), ...billing(facts, c)] : []),
+    ...(want("plan_changed") ? changes(facts, c).filter((x) => !x.facts.some((id) => usedByUpdate.has(id))) : []),
+    ...(want("coming_up") ? comingUp(facts, c) : []),
+    ...(want("service") ? services(facts, c) : []),
     ...(want("waiting_on_you") ? waitingOnYou(facts, c) : []),
     ...(want("waiting_on_them") ? waitingOnThem(facts, c) : []),
     ...(want("promised") ? promised(facts, c) : []),
   ];
 }
+
+// ---------- D243: coming up, services, money changing, updates ----------
+
+const HOUR = 3_600_000;
+/** A trip is said once, inside this window before it leaves (the evening before an evening flight, or that morning). */
+export const COMING_MS = 36 * HOUR;
+/** Within this, a trip or a maintenance window is urgent (只说急的 says it). */
+export const URGENT_AHEAD_MS = 30 * HOUR;
+const senderOf = (f: Fact) => f.label.split(" · ")[0] || "";
+/** D78: a space between Chinese and Latin words or numbers. */
+export const zhSpace = (t: string) => t.replace(/([㐀-鿿])([A-Za-z0-9$€¥£])/g, "$1 $2").replace(/([A-Za-z0-9%)])([㐀-鿿])/g, "$1 $2");
+const hmAt = (ms: number, zone: string) => hm(new Date(ms).toISOString(), zone);
+const dayZh = (iso: string, c: DetectCtx) => {
+  const d = daysUntil(iso, c.now, c.zone);
+  return d === 0 ? "今天" : d === 1 ? "明天" : d === 2 ? "后天" : d === -1 ? "昨天" : md(iso, c.zone);
+};
+const dayEn = (iso: string, c: DetectCtx) => {
+  const d = daysUntil(iso, c.now, c.zone);
+  return d === 0 ? "today" : d === 1 ? "tomorrow" : d === -1 ? "yesterday" : `on ${md(iso, c.zone)}`;
+};
+const norm = (x: string) => x.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+/** The same thing by name, or by its flight number ("NH 920" and "NH920"). */
+const flightNo = (x: string) => FLIGHT_NO.exec(x)?.[0]?.replace(/\s+/g, "").toUpperCase();
+const sameThing = (a: string, b: string) => sameName(a, b) || (Boolean(flightNo(a)) && flightNo(a) === flightNo(b));
+
+type Booking = Extract<Fact, { type: "booking" }>;
+type Service = Extract<Fact, { type: "service" }>;
+
+/** 快到了 / Coming up: a flight or a train in the next day and a half, or a booked thing at a time today. */
+function comingUp(facts: Fact[], c: DetectCtx): Candidate[] {
+  const out: Candidate[] = [];
+  const trips = facts
+    .filter((f): f is Booking => f.type === "booking" && hasTime(f.start) && (f.what === "flight" || f.what === "train" || f.what === "other"))
+    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  const idOf = (b: Booking) => `${b.what === "other" ? norm(b.name).replace(/\s+/g, "") : (FLIGHT_NO.exec(b.name)?.[0] ?? b.name).replace(/\s+/g, "").toLowerCase()}|${Math.round(Date.parse(b.start) / 60_000)}`;
+  const done = new Set<string>();
+  for (const b of trips) {
+    const t = Date.parse(b.start);
+    const id = idOf(b);
+    if (t <= c.now || t - c.now > COMING_MS || done.has(id)) continue;
+    done.add(id);
+    const d = daysUntil(b.start, c.now, c.zone);
+    // "other" (a reservation, an appointment confirmed by mail) only on its day: the calendar has the rest.
+    if (b.what === "other" && d !== 0) continue;
+    // A later change to it: 计划变了 says that one.
+    if (facts.some((f) => f.type === "change" && Date.parse(f.at) > Date.parse(b.at) && sameThing(f.name, b.name))) continue;
+    // The same trip from the calendar and from the booking mail: one find, the fields of both.
+    const twins = trips.filter((x) => idOf(x) === id).sort((a, b) => Number(/calendar/.test(a.ref.service)) - Number(/calendar/.test(b.ref.service)));
+    const pick = <K extends "from" | "place" | "end">(k: K) => twins.map((x) => x[k]).find(Boolean);
+    const from = pick("from");
+    const place = pick("place");
+    const end = pick("end");
+    const name = twins.map((x) => FLIGHT_NO.exec(x.name)?.[0]).find(Boolean) ?? b.name;
+    const lead = b.what === "flight" ? 2 * HOUR : b.what === "train" ? 20 * 60_000 : 0;
+    const leave = lead ? hmAt(t - lead, c.zone) : "";
+    const when = `${dayZh(b.start, c)} ${hm(b.start, c.zone)}`;
+    const arrive = end ? hm(end, c.zone) : "";
+    let zh: string;
+    let en: string;
+    if (b.what === "flight") {
+      const base = `${when} ${name}${from ? ` 从${from}` : ""}起飞${place ? `，飞${place}` : ""}`;
+      zh = `${base}${arrive ? `，${arrive} 到` : ""}；${leave} 前到机场。`;
+      if ([...zh].length > 60) zh = `${base}；${leave} 前到机场。`;
+      en = `${name} leaves${from ? ` ${from}` : ""} at ${hm(b.start, c.zone)} ${dayEn(b.start, c)}${place ? ` for ${place}` : ""}${arrive ? `, landing ${arrive}` : ""}. Be at the airport by ${leave}.`;
+    } else if (b.what === "train") {
+      zh = `${when} ${name}${from ? ` 从${from}` : ""}出发${place ? `去${place}` : ""}；${leave} 前到站。`;
+      en = `${name} leaves${from ? ` ${from}` : ""} at ${hm(b.start, c.zone)} ${dayEn(b.start, c)}${place ? ` for ${place}` : ""}. Be at the station by ${leave}.`;
+    } else {
+      zh = `${when} ${name}${b.place ? `（${b.place}）` : ""}。`;
+      en = `${name} at ${hm(b.start, c.zone)} ${dayEn(b.start, c)}${b.place ? ` (${b.place})` : ""}.`;
+    }
+    const trip = b.what !== "other";
+    const mailed = twins.find((x) => x.ref.service !== "googlecalendar" && !/calendar/.test(x.ref.service));
+    out.push({
+      key: `coming:${id}`,
+      kind: "coming_up",
+      cost: trip ? 80 : 60,
+      urgent: trip ? t - c.now <= URGENT_AHEAD_MS : t - c.now <= 6 * HOUR,
+      dueAt: b.start,
+      ...(mailed && senderOf(mailed) ? { sender: senderOf(mailed) } : {}),
+      people: [],
+      how: twins.map(howOf).slice(0, 3),
+      words: { zh: zhSpace(zh), en },
+      ...(b.what === "flight"
+        ? {
+            step: {
+              kind: "lookup" as const,
+              goLabel: { zh: "查一下航班状态", en: "Check the flight status" },
+              brief: "Look up the live status of the flight below (on time or not, terminal, gate) on the airline's or the airport's site. Read only: check in nothing, change nothing, buy nothing. Report in two lines.",
+              data: { flight: name, departs: b.start, ...(from ? { from } : {}), ...(place ? { to: place } : {}) },
+              needs: { browse: true },
+            },
+          }
+        : {}),
+      facts: twins.map((x) => x.id),
+      topic: name,
+      // dots' "I checked the booking mail and found no later change" (2026-11-13): the bar may say so.
+      ...(mailed ? { notes: ["no later change notice for it"] } : {}),
+    });
+  }
+  return out;
+}
+
+/** 你用的服务 / A service you use: maintenance ahead, an outage now, a job that keeps failing, a shutdown, a security alert. */
+function services(facts: Fact[], c: DetectCtx): Candidate[] {
+  const out: Candidate[] = [];
+  const svc = facts.filter((f): f is Service => f.type === "service");
+  const undone = (f: Service) => svc.some((r) => r.what === "resolved" && Date.parse(r.at) > Date.parse(f.at) && (sameName(r.name, f.name) || (senderOf(r) !== "" && senderOf(r) === senderOf(f))));
+  const trips = facts.filter((f): f is Booking => f.type === "booking" && (f.what === "flight" || f.what === "train") && hasTime(f.start));
+  const endOf = (x: Service) => (x.end ? Date.parse(x.end) : Date.parse(x.start!) + HOUR);
+
+  // Maintenance in the next two days: one find per sender and day, joined with the person's trip that day.
+  const groups = new Map<string, Service[]>();
+  for (const f of svc) {
+    if (f.what !== "maintenance" || !f.start || undone(f)) continue;
+    const t = Date.parse(f.start);
+    if (endOf(f) <= c.now || t - c.now > 48 * HOUR) continue;
+    const k = `${senderOf(f) || norm(f.name)}|${dayKey(t, c.zone)}`;
+    groups.set(k, [...(groups.get(k) ?? []), f]);
+  }
+  for (const list of groups.values()) {
+    list.sort((a, b) => Date.parse(a.start!) - Date.parse(b.start!));
+    const first = list[0]!;
+    const prod = list.some((x) => x.prod);
+    const t = Date.parse(first.start!);
+    const lastEnd = Math.max(...list.map(endOf));
+    const times = [...new Set(list.map((x) => hm(x.start!, c.zone)))];
+    const who = senderOf(first) || first.name;
+    const what = list.length > 1 ? `${list.length} 个${prod ? "生产" : ""}实例` : "";
+    const whatEn = list.length > 1 ? `${list.length} ${prod ? "production " : ""}instances` : "";
+    // The trip that day that isn't over before the window starts.
+    // Only production is joined with their plans: a building's notice stays a building's notice.
+    const trip = prod ? trips.find((b) => dayKey(Date.parse(b.start), c.zone) === dayKey(t, c.zone)) : undefined;
+    let joinZh = "";
+    let joinEn = "";
+    if (trip) {
+      const s = Date.parse(trip.start);
+      const e = trip.end ? Date.parse(trip.end) : s + 2 * HOUR;
+      const tripName = FLIGHT_NO.exec(trip.name)?.[0] ?? trip.name;
+      if (list.some((x) => Date.parse(x.start!) < e && endOf(x) > s)) {
+        joinZh = `那会儿你在 ${tripName} 上`;
+        joinEn = `you'll be on ${tripName} then`;
+      } else if (lastEnd <= s) {
+        joinZh = `${list.length > 1 ? "都" : ""}在你 ${hm(trip.start, c.zone)} 的航班之前`;
+        joinEn = `${list.length > 1 ? "both " : ""}before your ${hm(trip.start, c.zone)} ${tripName}`;
+      } else {
+        joinZh = `当天你 ${hm(trip.start, c.zone)} 要走`;
+        joinEn = `you leave on ${tripName} at ${hm(trip.start, c.zone)} that day`;
+      }
+      if (trip.what === "train") joinZh = joinZh.replace("航班", "车");
+    }
+    const zh = `${dayZh(first.start!, c)} ${times.join("、")} ${who}${what ? ` ${what}` : ""}要维护${joinZh ? `，${joinZh}` : ""}。`;
+    const en = `${who} has maintenance${whatEn ? ` on ${whatEn}` : ""} ${dayEn(first.start!, c)} at ${times.join(" and ")}${first.effect ? ` (${first.effect})` : ""}${joinEn ? `, ${joinEn}` : ""}.`;
+    out.push({
+      key: `service:${list.map((x) => x.id).sort().join(":")}`,
+      kind: "service",
+      cost: prod ? 76 + (trip ? 8 : 0) : 42,
+      urgent: prod && t - c.now <= URGENT_AHEAD_MS,
+      dueAt: first.start!,
+      ...(who ? { sender: who } : {}),
+      people: [],
+      how: [...list.map(howOf), ...(trip ? [howOf(trip)] : [])].slice(0, 4),
+      words: { zh: zhSpace(zh), en },
+      step: {
+        kind: "read",
+        goLabel: { zh: "看看要准备什么", en: "See what to prepare" },
+        brief: "A service the person uses has maintenance coming (below). Read the notice and say in a few lines which of their systems it touches, what may break (connections, jobs, deploys), and what to have ready or who should watch it come back. Read only: change nothing, reply to nothing.",
+        data: { service: who, notice: first.label, windows: list.map((x) => `${x.name} ${x.start}${x.end ? `–${x.end}` : ""}`).join("; ") },
+      },
+      facts: [...list.map((x) => x.id), ...(trip ? [trip.id] : [])],
+      topic: who,
+      notes: [...new Set(list.map((x) => x.effect).filter((x): x is string => Boolean(x)))].map((e) => `effect: ${e}`),
+    });
+  }
+
+  // An outage or an incident in the last 12 hours, not since resolved.
+  for (const f of svc) {
+    if ((f.what !== "outage" && f.what !== "incident") || undone(f) || c.now - Date.parse(f.at) > 12 * HOUR) continue;
+    const who = senderOf(f) || f.name;
+    out.push({
+      key: `service:${f.id}`,
+      kind: "service",
+      cost: f.prod ? 85 : 48,
+      urgent: Boolean(f.prod),
+      dueAt: f.end ?? new Date(Date.parse(f.at) + 12 * HOUR).toISOString(),
+      sender: who,
+      people: [],
+      how: [howOf(f)],
+      words: { zh: zhSpace(`${f.name} 出了故障${f.end ? `，预计 ${hm(f.end, c.zone)} 恢复` : ""}。`), en: `${f.name} has an outage${f.effect ? ` (${f.effect})` : ""}${f.end ? `, expected back by ${hm(f.end, c.zone)}` : ""}.` },
+      step: { kind: "read", goLabel: { zh: "看看影响到哪", en: "See what it affects" }, brief: "A service the person uses reports an outage (below). Read the notice and its status page and say in a few lines what is down, what of theirs it touches, and when it is expected back. Read only.", data: { service: who, notice: f.label } },
+      facts: [f.id],
+      topic: who,
+      ...(f.effect ? { notes: [`effect: ${f.effect}`] } : {}),
+    });
+  }
+
+  // A job that keeps failing: two or more failures of the same thing in three days (one is CI noise),
+  // or one on production.
+  const fails = new Map<string, Service[]>();
+  for (const f of svc) {
+    if (f.what !== "failing" || undone(f) || c.now - Date.parse(f.at) > 72 * HOUR) continue;
+    const k = norm(f.name).replace(/\d+/g, "#");
+    fails.set(k, [...(fails.get(k) ?? []), f]);
+  }
+  for (const list of fails.values()) {
+    list.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+    const prod = list.some((x) => x.prod);
+    const n = list.length;
+    if (n < 2 && !prod) continue;
+    const first = list[0]!;
+    const last = list.at(-1)!;
+    if (c.now - Date.parse(last.at) > 24 * HOUR) continue;
+    out.push({
+      key: `failing:${first.id}`,
+      kind: "service",
+      cost: Math.min(88, 58 + n * 5 + (prod ? 8 : 0)),
+      urgent: prod && n >= 3,
+      sender: senderOf(first) || first.name,
+      people: [],
+      how: list.map(howOf).slice(-3),
+      words:
+        n > 1
+          ? { zh: zhSpace(`${first.name} 从${dayZh(first.at, c)} ${hm(first.at, c.zone)} 起失败了 ${n} 次，最近一次 ${hm(last.at, c.zone)}。`), en: `${first.name} has failed ${n} times since ${hm(first.at, c.zone)} ${dayEn(first.at, c)}; the last at ${hm(last.at, c.zone)}.` }
+          : { zh: zhSpace(`${first.name} ${dayZh(first.at, c)} ${hm(first.at, c.zone)} 失败了。`), en: `${first.name} failed at ${hm(first.at, c.zone)} ${dayEn(first.at, c)}.` },
+      step: { kind: "read", goLabel: { zh: "先帮我看看哪儿坏了", en: "Find what's failing" }, brief: "A job of the person's keeps failing (below). Read the failure notices and the run's log page if one is linked, and say in a few lines what fails, since when, and the likely cause. Read only: re-run nothing, change nothing.", data: { job: first.name, notices: list.map((x) => x.label).slice(-3).join("; ") } },
+      facts: list.map((x) => x.id),
+      topic: first.name,
+      notes: [`failures: ${n}`, ...(prod ? ["production"] : [])],
+    });
+  }
+
+  // A product shutting down within six weeks (one later undone is not said).
+  for (const f of svc) {
+    if (f.what !== "shutdown" || undone(f)) continue;
+    const d = f.start ? daysUntil(f.start, c.now, c.zone) : undefined;
+    if (d !== undefined && (d < 0 || d > 45)) continue;
+    if (d === undefined && c.now - Date.parse(f.at) > 3 * 86_400_000) continue;
+    const who = senderOf(f) || f.name;
+    out.push({
+      key: `shutdown:${f.id}`,
+      kind: "service",
+      cost: d !== undefined && d <= 14 ? 70 : 60,
+      urgent: false,
+      ...(f.start ? { dueAt: f.start } : {}),
+      sender: who,
+      people: [],
+      how: [howOf(f)],
+      words: f.start ? { zh: zhSpace(`${f.name} 说 ${md(f.start, c.zone)} 停止服务。`), en: `${f.name} says it shuts down on ${md(f.start, c.zone)}.` } : { zh: zhSpace(`${f.name} 说要停止服务。`), en: `${f.name} says it is shutting down.` },
+      step: { kind: "lookup", goLabel: { zh: "看看要怎么迁走", en: "See how to move off it" }, brief: "A product the person uses says it is shutting down (below). Read the announcement and say in a few lines when, what happens to their data, how to export it, and one or two alternatives. Read only: export nothing, sign up for nothing.", data: { product: who, notice: f.label }, needs: { browse: true } },
+      facts: [f.id],
+      topic: who,
+    });
+  }
+
+  // A security alert on their account in the last two days: the bar decides (most are their own sign-ins).
+  for (const f of svc) {
+    if (f.what !== "security" || c.now - Date.parse(f.at) > 2 * 86_400_000) continue;
+    const who = senderOf(f) || f.name;
+    out.push({
+      key: `security:${f.id}`,
+      kind: "service",
+      cost: 52,
+      urgent: false,
+      dueAt: new Date(Date.parse(f.at) + 2 * 86_400_000).toISOString(),
+      sender: who,
+      people: [],
+      how: [howOf(f)],
+      words: { zh: zhSpace(`${f.name}：${dayZh(f.at, c)} ${hm(f.at, c.zone)} 有一条安全提醒，看看是不是你。`), en: `${f.name}: a security alert ${dayEn(f.at, c)} at ${hm(f.at, c.zone)}; check it was you.` },
+      step: { kind: "read", goLabel: { zh: "帮我看看", en: "Look at it for me" }, brief: "A security alert on one of the person's accounts (below). Read it and say in two lines what happened (device, place, time) and whether it looks like the person. Read only: change no password, sign out nothing.", data: { service: who, alert: f.label } },
+      facts: [f.id],
+      topic: who,
+    });
+  }
+  return out;
+}
+
+/** 快到期 · 要花钱 / Deadlines and money (D243): what they are charged is about to change. */
+function billing(facts: Fact[], c: DetectCtx): Candidate[] {
+  const out: Candidate[] = [];
+  for (const f of facts.filter((x): x is Extract<Fact, { type: "billing" }> => x.type === "billing")) {
+    const d = daysUntil(f.on, c.now, c.zone);
+    const failed = f.what === "payment_failed";
+    if (failed ? c.now - Date.parse(f.at) > 3 * 86_400_000 : d < 0 || d > 10) continue;
+    const amt = f.amount ? `（${f.amount}）` : "";
+    const amtEn = f.amount ? ` (${f.amount})` : "";
+    const when = md(f.on, c.zone);
+    const w: Record<BillingWhat, { zh: string; en: string }> = {
+      starts_charging: { zh: `${f.name} ${when} 起开始收费${amt}。还要用的话，去控制台确认一下。`, en: `${f.name} starts charging on ${when}${amtEn}. If you still need it, check it in the console.` },
+      price_up: { zh: `${f.name} ${when} 起涨价${amt}。`, en: `${f.name} goes up on ${when}${amtEn}.` },
+      payment_failed: { zh: `${f.name} 的扣款没成功${amt}。`, en: `A payment to ${f.name} failed${amtEn}.` },
+      over_limit: { zh: `${f.name} 的用量超过免费额度了，${when} 起会收费${amt}。`, en: `${f.name} is over its free tier; charges start ${when}${amtEn}.` },
+      trial_ends: { zh: `${f.name} 的试用 ${when} 结束${amt}。`, en: `The ${f.name} trial ends on ${when}${amtEn}.` },
+      other: { zh: `${f.name} 的费用 ${when} 起有变化${amt}。`, en: `What ${f.name} charges changes on ${when}${amtEn}.` },
+    };
+    out.push({
+      key: `billing:${f.id}`,
+      kind: "deadline",
+      cost: failed ? 85 : Math.min(82, 58 + (10 - d) * 2 + (f.what === "over_limit" ? 6 : 0)),
+      urgent: failed || d <= 1,
+      dueAt: failed ? new Date(Date.parse(f.at) + 3 * 86_400_000).toISOString() : f.on,
+      sender: senderOf(f) || f.name,
+      people: [],
+      how: [howOf(f)],
+      words: { zh: zhSpace(w[f.what].zh), en: w[f.what].en },
+      step: {
+        kind: "lookup",
+        goLabel: { zh: "打开账单页", en: "Open the billing page" },
+        brief: `Open the billing or usage page for the service below in Ducter's browser and stop there: tell the person what changes on ${dayKey(Date.parse(f.on), c.zone)}, what they would be charged on their plan, and what is using it if it shows. Never pay, never change a setting or a plan; that is the person's.`,
+        data: { service: f.name, mail: f.label, ...(f.amount ? { amount: f.amount } : {}) },
+        needs: { browse: true, signedIn: true },
+      },
+      facts: [f.id],
+      topic: f.name,
+    });
+  }
+  return out;
+}
+
+/** 之前说的有变 / An update to what I told you: a later notice undoes or changes a find already said. */
+function updates(facts: Fact[], c: DetectCtx): Candidate[] {
+  const out: Candidate[] = [];
+  for (const s of c.said ?? []) {
+    if (!s.topic || s.passed || c.now - s.at > 14 * 86_400_000) continue;
+    const mine = new Set(s.facts);
+    const own = facts.filter((f) => mine.has(f.id));
+    const sameSender = (f: Fact) => own.some((o) => senderOf(o) !== "" && senderOf(o) === senderOf(f));
+    for (const f of facts) {
+      if (mine.has(f.id) || Date.parse(f.at) <= s.at) continue;
+      const undo = f.type === "service" && f.what === "resolved";
+      if (!undo && f.type !== "change") continue;
+      const name = f.type === "service" || f.type === "change" ? f.name : "";
+      if (!sameThing(name, s.topic) && !sameSender(f)) continue;
+      const first = s.text.split(/[。.!?！？；;]/)[0]!.trim();
+      const effect = f.type === "service" ? f.effect : undefined;
+      const now = f.type === "change" ? (hasTime(f.on) ? `${md(f.on, c.zone)} ${hm(f.on, c.zone)}` : md(f.on, c.zone)) : "";
+      out.push({
+        key: `update:${s.findId}:${f.id}`,
+        kind: "update",
+        cost: 80,
+        // It corrects something they may act on: said now, not tomorrow.
+        urgent: true,
+        sender: senderOf(f) || name,
+        people: [],
+        how: [howOf(f), ...own.map(howOf)].slice(0, 3),
+        words: undo
+          ? { zh: zhSpace(`更正：之前说的「${first}」不算数了。`), en: `Correction: "${first}" no longer holds${effect ? `: ${effect}` : ""}.` }
+          : { zh: zhSpace(`更正：之前说的「${first}」改了，现在是 ${now}。`), en: `Correction to "${first}": it changed, now ${now}.` },
+        facts: [f.id],
+        topic: s.topic,
+        ...(effect ? { notes: [`effect: ${effect}`] } : {}),
+      });
+      break;
+    }
+  }
+  return out;
+}
+

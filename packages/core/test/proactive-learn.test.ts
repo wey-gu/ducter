@@ -85,7 +85,7 @@ test("three unread morning notes pause them; the next time the person writes: �
   expect(r.lastNote()).toMatchObject({ revises: ask.noteId, answered: "no" });
   // Four simulated days of real looks (every 10 and 15 minutes, each read logged and its
   // checkpoint written): ~1.5 s alone, past bun's 5 s default under a full parallel run.
-}, 20_000);
+}, 120_000); // ~22 s on a loaded machine (2026-11-13, before D243 too)
 
 test("at the month's budget it drops to 只说急的 and says so once", async () => {
   const r = make({ mode: "three", monthTokens: 3000 });

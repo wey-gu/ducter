@@ -129,6 +129,18 @@ from such mail would have been dated 1970 and swept the next morning. Fixed (D22
   `[proactive] look back: read N, kept M, noted K`;
 - a look back that no source answered stays pending, like one whose every read failed.
 
+### 1.3 The day dots spoke four times (D243, 2026-11-13, research/81)
+
+dots told the author about a billing change, Saturday's flight (asked), a correction to a
+shutdown it had mentioned, and production database maintenance before the flight; Ducter said
+nothing. On hel (counts only): 114 mails a day skipped as notices unread, no flight fact, no
+meeting fact, `只说急的` with no quiet hours and the server in UTC. Lost at stage 1 (every no-reply
+or list mail left out, also in the look back), at the detectors (no kind for a trip coming up,
+maintenance, money changing or a correction), at the zone and the mode, and in the partner's
+answer (no access to what the pipeline knew). The fix is D243: notices reach triage (§10), three
+more kinds (§4), "now" in its own room and ripening by time (§5), the person's zone, and `noticed`
+for the partner. Replayed day: 1/7 → 7/7 said in time, no false alarms.
+
 ## 2. User first
 
 | | Heavy multi-agent developer (the author) | Consumer personal-AI user | Fresh user |
@@ -179,7 +191,7 @@ first three are Draft 3's bar, the fourth is new):
 - **Never watch without asking.** Connecting is not consent to watch (dots, research/35); the
   first add asks once, with a default.
 
-## 4. What it notices: seven kinds
+## 4. What it notices: ten kinds
 
 Each find is typed (stage 2 extracts, stage 3 judges). The kind is what the person reacts to
 ("这类不用告诉我"), so each kind has a plain name.
@@ -193,6 +205,9 @@ Each find is typed (stage 2 extracts, stage 3 judges). The kind is what the pers
 | **快到期 · 要花钱 / Deadlines and money** | A renewal, a price going up, a trial ending, a bill or a form due | mail (+ Mem: the last price) | the morning note, a few days ahead; **now** the day before if unpaid | open the renewal page in Ducter's browser (Go); paying is the person's | yes |
 | **计划变了 / A plan changed** | A flight changed or was cancelled; a meeting moved into a clash | mail, calendar | **now** if it affects today or tomorrow, else the morning note | look up options (Go) | yes |
 | **开会前 / Before a meeting** | 10 minutes before a meeting with people you have something open with: their last thread, the open item, what you promised them | calendar + the other kinds | in the conversation 10 min before; a silent notification if you aren't in Ducter | — (it is the prep) | yes, only with something open; never for a meeting with nothing open |
+| **快到了 / Coming up** (D243) | A flight or a train within 36 hours: when, from where, when to be there (2 h for a flight); a booking confirmed by mail for a time today | mail + calendar (a flight in the calendar is a booking) | the morning note; **now** within 30 h | check the flight's status (Go) | yes |
+| **你用的服务 / A service you use** (D243) | Maintenance on their production within 48 h, joined with their trip that day; an outage now; a job failing twice in three days, or once on production; a product they use shutting down within six weeks; a security alert (the bar decides). A building's or a shop's routine notice stays below the bar; one CI run failing on a branch is not a find | service notices in mail | the morning note; **now** for production within 30 h, an outage, a job failing three times | read the notice and say what to prepare / what is failing (Go) | yes |
+| **之前说的有变 / An update to what I told you** (D243) | A later notice undoes or changes something already said (a shutdown called off, a flight moved after the heads-up) | mail + the finds already said | **now** | — | yes |
 
 Kinds left out on purpose: newsletters, receipts, shipping updates that say it all in the
 subject, "you have N unread", social notifications, anything GitHub or the calendar already
@@ -207,7 +222,7 @@ The existing escalation (principle 7: badge → message → push → call) with 
 | **Left out** | Nothing on screen (D173). The partner knows it and says it only when asked ("还有别的吗？" → "没说的：12 封通知和收据，看标题就知道；1 封像推销。") | everything below the bar |
 | **The morning note** | One message in the conversation at the end of quiet hours; one **silent** notification (Apple's passive level; research/46) | up to the daily cap |
 | **Fold-in** | While the person is in Ducter, a find that is timely today joins the open living message (principle 7, revised in place, never re-notifies) | today's finds after the morning |
-| **Now** | A notification that may come through (time-sensitive, which the phone lets them turn off per app) | only "costs something today and needs you": a flight changed today, a domain that lapses tomorrow unpaid. Counts within the cap |
+| **Now** | A notification that may come through (time-sensitive, which the phone lets them turn off per app) | only "costs something if it waits a day": a flight changed today, a domain that lapses tomorrow unpaid, a flight or production maintenance within 30 h, a correction (D243). Its own room of 3 a day, not inside the note's 3 (D243); the detectors run every half hour, so a trip ripens without new mail; with no quiet hours set, what can wait six hours waits for 08:00 in the person's zone |
 | **Before a meeting** | A line in the conversation; silent notification when away | 开会前 only |
 
 **Quiet hours** (D59, built) hold everything. The only way through at night is a **per-kind
@@ -335,8 +350,8 @@ Asks raised by background work **expire into Passed** with the find's date (the 
 | Stage | Runs | Cost |
 |---|---|---|
 | 0. Look | **oo:** a model-free scheduled read through the broker (`gmail.fetch_emails` newer than the last look, with what waits from a failed reading, every 10 min; calendar every 15 min, the coming two weeks (D226); GitHub notifications every 10 min; Discord mentions and DMs every 10 min), because oo has no triggers (`OO_NOT_WATCHABLE`). **OpenConnector:** Provider Triggers with a checkpoint (built for waits). | no model; oo or OpenConnector calls |
-| 1. Rules | code: drop bulk (`List-Unsubscribe`, Promotions/Updates), the person's own sends (kept for the waits/commitments ledger only), already-read-elsewhere, muted senders and kinds | none |
-| 2. Triage | the cheapest capable model over batches (≤ 20 items, headers + snippet), only when stage 1 passed something: kind, typed facts, who's waiting, confidence | ~5–15 small calls a day for a typical inbox (INFERRED) |
+| 1. Rules | code: drop bulk (`List-Unsubscribe`, Promotions/Updates) except a service's notice whose subject or sender says it may need the person (maintenance, outage, failing job, security, billing change, shutdown, booking, delivery; D243: at most 60 a day, receipts and Promotions never), the person's own sends (kept for the waits/commitments ledger only), already-read-elsewhere, muted senders and kinds | none |
+| 2. Triage | the cheapest capable model over batches (≤ 20 items, headers + snippet), only when stage 1 passed something: kind, typed facts, who's waiting, confidence | ~5–15 small calls a day for a typical inbox, plus at most 3 batches of notices (D243; ≤ ~24K tokens a day, INFERRED) |
 | 3. Judge | the partner's model over at most 10 candidates (urgent first), once before the morning note and, during the day, only for what can't wait (urgent, or due today); at most 4 runs a day, a verdict remembered per candidate and content hash; past that, or with the sources over budget, code's tests (D174) | ≤ 4 calls a day; 8 in a synthetic busy 24 h of 144 looks (`proactive-cost.test.ts`) |
 | 4. Say | the morning note, fold-ins, "Now", rendered from typed finds | none |
 

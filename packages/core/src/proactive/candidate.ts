@@ -24,4 +24,8 @@ export interface Candidate {
    */
   step?: { kind: StepKind; goLabel: { zh: string; en: string }; brief: string; data?: Record<string, string>; needs?: TaskNeeds };
   facts: string[];
+  /** D243: what it is about, in a few words ("NH 108", "Conductor"): a later notice on the same thing is an update to it. */
+  topic?: string;
+  /** D243: typed details for the bar only (an effect, a count), never said as they are. */
+  notes?: string[];
 }

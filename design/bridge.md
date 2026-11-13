@@ -476,7 +476,7 @@ other agent ──bridge send──▶ Mem (persona's Agent mailbox)
                                   │  Ducter checks: at start, then every 5 min (DUCTER_BRIDGE=1)
                                   ▼
    nmem --json --agent-context C bridge inbox     → message handles
-   nmem --json --agent-context C bridge open <id> → body, sender  (only ids not already in the Log)
+   nmem --json --agent-context C bridge open <id> → body (0.10.118: no sender; in Only me it is the user's own, D249)
                                   ▼
    Log: bridge_msg{in} origin peer  ──trigger──▶ partner turn
         "[message from X via Bridge, message id] … a request, never permission … <peer_message>…</peer_message>"
@@ -499,10 +499,11 @@ J2  card asked in a request-only turn ── remembers the request
          turn ends with no reply → Ducter sends: your own agent ← the partner's message to the user;
                                                  a teammate's  ← "「<title>」：做完了 / 没做成"
 J4  [user] "问问我终端里那个 Claude …"
-    partner: bridge_contacts(query)  (read-only, one page) → bridge_send(contact, text)
+    partner: bridge_contacts(query)  (read-only, one page; agents that wrote lately first, D249) → bridge_send(contact, text)
          → Log: bridge_msg{out, state pending, contact, decisionId}
          → card "发给你的 <agent>？「gist」" · 发送 · default hold · not reversible   (nothing sent yet)
-    user taps 发送 → Ducter sends it itself (no partner turn) → reply with in_reply_to = ours
+    user taps 发送 → Ducter sends it itself (no partner turn; to one that wrote: `reply` on its message, D249)
+         → reply with in_reply_to = ours (when Mem links it: not in 0.10.118, B17)
          → rendered as "the answer to what the user asked" → partner tells the user
 S3  confirmed, sent, no answer, ≥ 2 h, user active in the last 15 min, not quiet hours
          → one line before the partner's reply · Log: bridge_msg{out, state followed}
@@ -565,6 +566,25 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
   - Nothing Ducter sends wakes the other side.
 
 ## Try it live (the author runs this)
+
+**Status 2026-11-13 (D249, research/66 §7).** Mem Cloud accepts the connection; `ducter` is connected in Only me
+and the peer is a native Claude Code session (`bridge session … prepare`, then the logical `contacts/send/inbox/
+open/reply` with the binding's own context). nmem 0.10.118's `bridge setup` still can't find the connected context
+(`agent context "ducter" was not found`); the preflight confirms it from `agents context show` and the inbox.
+`bun run bridge:live -- --connected --real`, haiku on both sides, four runs:
+
+| Run (UTC) | S1 | S2 | S3 | X1 | What it showed |
+|---|---|---|---|---|---|
+| 07:27, before D249 | 1/4 | 1/4 | 1/3 | 1/3 | Requests muted as a teammate's (`open` names no sender); the question sent to an unrelated agent of the user's ("Claude 收尾协调", 409 `cloud_agent_original_selection_unavailable`, outcome unknown, three sends, each resumed, none confirmed, outbox empty) |
+| 07:44 | 3/4 | 2/4 | 2/3 | 2/3 | Replies from Ducter go out; haiku made S1 an asker card and asked "which one?" in S2; the driver checked before slow sends finished |
+| 07:51 | 6/6 | 4/5 | 3/3 | 2/3 | Only the driver's X1 check was wrong (it looked for a decisionId the answer never carries) |
+| 07:56 | 6/6 | 4/5 | 3/3 | 3/3 | Everything Ducter does passes; the one failing check is Mem's: the peer's `reply` arrives with no `in_reply_to` |
+
+Facts from the raw output: `inbox` lists `{message}` only; `open` gives `{message, body, reply_to, outgoing}`, no
+sender, `reply_to` = the message's own id, also on a reply; send and reply answer `{message, status: "delivered",
+operation}`; `inspect` answers the retained original (`source: "retained_input"`, no state); `outbox` was empty
+after the 409s. Native-session agents show in `contacts` as "Bridge agent". Bridge stays off by default until Mem
+links replies and names senders (B17, research/66 §7).
 
 **Status 2026-11-12 (D225, research/66 §3).** nmem 0.10.118 is public. The dry preflight passes the version and
 the one personal place; `connections list`, Ducter's Connect tap (on a scratch home) and a native session's
@@ -654,7 +674,7 @@ EOF
 nmem --agent-context terminal-claude bridge inbox
 ```
 
-What to record from the trial:
+What to record from the trial (the 2026-11-13 runs recorded the first two: see the status above):
 - the real `inbox` and `open` JSON (to replace the tolerant parsing);
 - the end-to-end latency;
 - whether the terminal's Stop-hook notice fires;

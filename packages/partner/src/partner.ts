@@ -55,7 +55,7 @@ import { callWakes, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDIA_LIMITS, 
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeContextFor, bridgeFor, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
-import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, zhJoin, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
+import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, zhJoin, UNNAMED_OWN, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, type MemoryClient } from "./memory.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
@@ -1627,7 +1627,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const m = bridgeIn(forMessage);
         if (!m) return { ok: false, error: "No Bridge message with that id. Use forMessage only with a [message from … via Bridge] id you received." };
         if (!m.mine) return { ok: false, error: "Only the user's own agents can ask for the user's call this way. Ask the user as usual (without forMessage), or answer with bridge_reply." };
-        const agent = m.agent ?? m.from ?? "";
+        // An own agent Mem doesn't name (D249) is "另一个 AI" / "other AI agent" on the card.
+        const agent = m.agent ?? (m.from && m.from !== "another agent" ? m.from : (userZh() ?? true) ? UNNAMED_OWN.zh : UNNAMED_OWN.en);
         if (openPeerAsks(agent).length >= PEER_ASKS_OPEN)
           return { ok: true, note: `The user already has ${PEER_ASKS_OPEN} open questions from ${agent}; this one waits until they answer one. End your turn without asking.` };
         const other = typeof args.other === "string" && args.other.trim() ? args.other.trim().slice(0, 60) : undefined;
@@ -2221,7 +2222,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     inFlight.add(op.opId);
     try {
       logOut(op, "sending");
-      const r = kind === "send" ? await bridge.send!(op.contact!, op.text) : await bridge.reply(op.inReplyTo!, op.text);
+      // D249: a new message to an agent that wrote to us goes by `reply` on its latest message: Mem
+      // routes it to that sender, the only address Ducter has for an agent Mem doesn't name.
+      const via = kind === "send" ? replyHandle(op.contact) : undefined;
+      const r = via ? await bridge.reply(via, op.text) : kind === "send" ? await bridge.send!(op.contact!, op.text) : await bridge.reply(op.inReplyTo!, op.text);
       if (r.ok) {
         logOut(op, "sent", { messageId: r.messageId ?? "", ...(r.operation ? { operation: r.operation } : {}) });
         return "sent";
@@ -2342,6 +2346,28 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   // S2: a send waits on the user's Go as a "pending" op in the Log (D106), so a restart keeps it.
   const seenContacts = new Map<string, BridgeContact>(); // handles bridge_contacts returned
+  /** "reply:<message id>": an agent that wrote to us, reached through its own latest message (D249). */
+  const REPLY = "reply:";
+  const replyHandle = (contact: string | undefined) => (contact?.startsWith(REPLY) ? contact.slice(REPLY.length) : undefined);
+  /**
+   * The agents that wrote lately, newest first, at most three (a named agent once, by its latest):
+   * Mem's cards can't be matched to a sender (nmem 0.10.118 names none), so these are the only way
+   * to reach "the one that just wrote" (D249). Muted or set-aside messages are not offered.
+   */
+  function recentWriters(t: number): (BridgeContact & { wrote: string; ago: number })[] {
+    const out: (BridgeContact & { wrote: string; ago: number })[] = [];
+    const evs = loggedBridge();
+    for (let i = evs.length - 1; i >= 0 && out.length < 3; i--) {
+      const e = evs[i]!;
+      const b = e.body;
+      const age = t - Date.parse(e.ts);
+      if (age > 7 * DAY_MS) break;
+      if (b.direction !== "in" || b.state || !b.text) continue;
+      if (b.agent && out.some((x) => x.agent === b.agent)) continue; // a named agent once, by its latest
+      out.push({ contact: `${REPLY}${b.messageId}`, label: !b.from || b.from === "another agent" ? "" : b.from, ...(b.agent ? { agent: b.agent } : {}), ...(b.mine ? { mine: true } : {}), wrote: b.text, ago: age });
+    }
+    return out;
+  }
   const sendOp = (decisionId: string): OutOp | undefined => [...foldOut(loggedBridge()).values()].find((o) => o.last.decisionId === decisionId);
   async function performSend(decisionId: string, option: "go" | "hold" | "reply") {
     const op = sendOp(decisionId);
@@ -2646,15 +2672,27 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           const query = typeof args?.query === "string" ? args.query.trim() : "";
           if (!query) return { ok: false, error: "bridge_contacts needs `query`." };
           const r = bridge?.contacts ? await bridge.contacts(query) : undefined;
-          if (!r) return { ok: false, note: "Can't reach other agents right now. Tell the user in one short line if they asked you to message one." };
-          if (!r.ok) return { ok: false, note: "Can't reach other agents right now. Tell the user in one short line if they asked you to message one." };
+          // D249: who wrote lately comes first, whatever the query: Mem names none of them.
+          const recent = recentWriters(now());
+          for (const c of recent) seenContacts.set(c.contact, c);
+          const ago = (ms: number) => (ms < 120 * 60_000 ? `${Math.max(1, Math.round(ms / 60_000))} min` : `${Math.round(ms / 3_600_000)} h`);
+          const wrote = recent.map((c) => ({ contact: c.contact, who: `${whoForModel(c)}, who wrote to you ${ago(c.ago)} ago:"${[...c.wrote.replace(/\s+/g, " ")].slice(0, 140).join("")}"` }));
+          if (!r?.ok) {
+            if (wrote.length) return { ok: true, wroteLately: wrote, note: "Mem's list didn't answer; these wrote to you lately. Pick one only if it is clearly the one the user meant, else tell the user in one short line you can't reach it now." };
+            return { ok: false, note: "Can't reach other agents right now. Tell the user in one short line if they asked you to message one." };
+          }
           for (const c of r.contacts) seenContacts.set(c.contact, c);
           return {
             ok: true,
+            ...(wrote.length ? { wroteLately: wrote } : {}),
             contacts: r.contacts.map((c) => ({ contact: c.contact, who: whoForModel(c), ...(c.description ? { about: c.description } : {}) })),
-            note: r.contacts.length
-              ? "Pick the one the user meant. If two could fit, ask the user in one short line which. Then bridge_send."
-              : r.more ? "No match on this page; there may be more. Ask the user for a clearer name." : "No such agent here. Tell the user plainly in one short line.",
+            note:
+              (wrote.length
+                ? "wroteLately: agents that wrote to you, newest first; Mem doesn't name them. When the user means an agent they work with that has written to you (\"my terminal Claude\", \"that one\", what it was doing), bridge_send to the newest wroteLately contact now: the card shows what it wrote, so the user's tap confirms the recipient. Don't ask about it in prose. contacts: Mem's list by name, other mailboxes; use one only when the user called it by that very name (a shared word like \"Claude\" is not enough). "
+                : "") +
+              (r.contacts.length || wrote.length
+                ? `Pick the one the user meant${wrote.length ? "" : ". If two could fit, ask the user in one short line which"}. Then bridge_send.`
+                : r.more ? "No match on this page; there may be more. Ask the user for a clearer name." : "No such agent here. Tell the user plainly in one short line."),
           };
         },
       );
@@ -2682,13 +2720,21 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           if (redactSecrets(text) !== text) return { ok: false, error: "That contains a secret. Nothing was sent." };
           // D109: what the user asked, in plain sentences; not a list of extra sub-questions.
           if (overAsks(text)) return { ok: false, error: "Ask what the user asked in plain sentences with the background the recipient needs, without numbered or bulleted sub-questions. Rewrite it and call bridge_send again." };
+          // The skill and D106: an earlier message to the same agent whose outcome isn't known yet is
+          // recovered, never replaced (live: haiku offered "再发一次" and carded a second copy).
+          const open = [...foldOut(loggedBridge()).values()].find((o) => o.last.contact === contact.contact && (o.state === "unknown" || o.state === "sending"));
+          if (open) return { ok: false, error: "Ducter is still finding out whether your earlier message to it went out, and never sends a replacement. Tell the user that in one short line; nothing new was sent." };
           await Bun.sleep(5);
           flushPending();
           const gist = text.length > 160 ? text.slice(0, 159) + "…" : text;
           const who = whoForUser(contact, t.zh);
+          // An agent Mem doesn't name is shown by what it wrote, so the user can tell which (D249).
+          const via = replyHandle(contact.contact) ? bridgeIn(replyHandle(contact.contact)!) : undefined;
+          const theirs = via && !via.agent ? [...via.text.replace(/\s+/g, " ")].slice(0, 40).join("") + (via.text.length > 40 ? "…" : "") : "";
+          const whose = theirs ? (t.zh ? `\n（就是发来「${theirs}」的那个）` : `\n(the one that wrote "${theirs}")`) : "";
           const body: Bodies["decision"] = {
             decisionId: newId("d"),
-            question: t.zh ? `${zhJoin("发给", who, "？")}\n「${gist}」` : `Send this to ${who}?\n"${gist}"`,
+            question: t.zh ? `${zhJoin("发给", who, "？")}\n「${gist}」${whose}` : `Send this to ${who}?\n"${gist}"${whose}`,
             goLabel: t.zh ? "发送" : "Send",
             defaultOption: "hold",
             reversible: false,

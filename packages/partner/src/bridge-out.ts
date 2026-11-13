@@ -9,18 +9,29 @@ export type OutState = NonNullable<Msg["state"]>;
 
 // ---------- names (D108) ----------
 
+/**
+ * An own agent Mem doesn't name: nmem 0.10.118's `open` carries no sender at all, and in the user's
+ * "Only me" place every sender is one of their own agents (D249).
+ */
+const unnamed = (b: { label?: string; from?: string; to?: string }) => {
+  const l = b.label || b.from || b.to;
+  return !l || l === "another agent";
+};
+export const UNNAMED_OWN = { zh: "另一个 AI", en: "other AI agent" } as const;
+
 /** What the user reads for another agent: "你的 <agent>" / "your <agent>" when it is theirs. */
 export function whoForUser(b: { mine?: boolean; agent?: string; label?: string; from?: string; to?: string }, zh: boolean): string {
-  const label = b.label ?? b.from ?? b.to ?? (zh ? "另一个 agent" : "another agent");
   if (b.mine && b.agent) return zh ? `你的 ${b.agent}` : `your ${b.agent}`;
-  return label;
+  if (b.mine && unnamed(b)) return zh ? `你的${UNNAMED_OWN.zh}` : `your ${UNNAMED_OWN.en}`;
+  return b.label || b.from || b.to || (zh ? "另一个 agent" : "another agent");
 }
 
 /** The same agent in the partner's input, with how to call it when talking to the user. */
 export function whoForModel(b: { mine?: boolean; agent?: string; label?: string; from?: string; to?: string }): string {
-  const label = b.label ?? b.from ?? b.to ?? "another agent";
   if (b.mine && b.agent) return `${b.agent} (the user's own agent: call it 你的 ${b.agent} / your ${b.agent}, never by the user's name)`;
-  return label;
+  if (b.mine && unnamed(b))
+    return "one of the user's own AI agents (Mem doesn't say which: call it by what its message says it is, e.g. 你终端里的 Claude, else 你的另一个 AI / your other AI agent; never by the user's name)";
+  return b.label || b.from || b.to || "another agent";
 }
 
 // ---------- what the code says to other agents ----------
@@ -146,15 +157,20 @@ export function inQuiet(at: number, q: Quiet | null | undefined): boolean {
 export function followCandidates(events: LogEvent[], now: number): OutOp[] {
   const answered = new Set<string>();
   const followed = new Set<string>();
+  let unlinked = ""; // the latest unlinked message from an own agent Mem doesn't name (D249)
   for (const e of events) {
     if (e.kind !== "bridge_msg") continue;
     const b = e.body as Msg;
     if (b.direction === "in" && b.inReplyTo) answered.add(b.inReplyTo);
+    if (b.direction === "in" && !b.inReplyTo && b.mine && !b.agent && !b.state && e.ts > unlinked) unlinked = e.ts;
     if (b.direction === "out" && b.state === "followed") followed.add(b.messageId);
   }
+  // nmem 0.10.118 links no reply to what it answers and names no sender: after a message to such an
+  // agent, anything an unnamed own agent wrote since may be the answer. Unsure, Ducter stays quiet.
+  const maybeAnswered = (o: OutOp) => o.last.mine && !o.last.agent && !!unlinked && unlinked > o.sentTs!;
   return [...foldOut(events).values()]
     .filter((o) => o.state === "sent" && o.last.decisionId && o.last.messageId && o.sentTs)
-    .filter((o) => !answered.has(o.last.messageId) && !followed.has(o.last.messageId))
+    .filter((o) => !answered.has(o.last.messageId) && !followed.has(o.last.messageId) && !maybeAnswered(o))
     .filter((o) => {
       const age = now - Date.parse(o.sentTs!);
       return age >= FOLLOW_AFTER_MS && age <= FOLLOW_MAX_AGE_MS;

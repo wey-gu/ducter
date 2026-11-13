@@ -907,14 +907,26 @@ Codex first, once OAR is near 1.0. See `research/17`.
   open branch merged.
 
 
-## Nowledge Bridge (D105–D111, D162–D164, D170–D171, D205, D225, `design/bridge.md`)
+## Nowledge Bridge (D105–D111, D162–D164, D170–D171, D205, D225, D249, `design/bridge.md`)
 
-- [ ] Connect the persona in Only me (D205): on the home, Settings › 伙伴 › 你的其他 AI › 连接 (it runs
+- [x] Connect the persona in Only me (D205): connected 2026-11-13 by the author; the live trial ran (D249).
+- [ ] File B17 with the Nowledge team (research/66 §7; the draft text is ready): `open` names no sender and links
+      no reply; `contacts` lists an Agent with no registered mailbox; the 409's "previous unknown send" wording on
+      a first send; native-session Agents all "Bridge agent". Trigger: the author's go.
+- [ ] When Mem names senders and links replies: drop D249 (5)'s maybe-answered rule, read the sender into
+      `agent`/`mine`, and make the live S2 check pass (5/5). Trigger: a newer nmem whose `open` has them.
+- [ ] "你的 %s 问你" puts a space before a Chinese agent name ("你的 另一个 AI 问你"); join by D78's rule in the
+      web, Mac and push templates. Trigger: the next touch of the asker card.
+- [ ] Unnamed own agents share one name, so the daily quota, mute and "3 open asks" count them together (D249).
+      Trigger: a user with two own agents writing on the same day.
+- [ ] The live driver: the peer's native context keeps its inbox across runs; give each run its own peer session
+      context, or have the peer ignore what predates the run. Trigger: the next live run.
+- [x] (history) Connect the persona in Only me (D205): on the home, Settings › 伙伴 › 你的其他 AI › 连接 (it runs
       `nmem bridge connections connect --space-id <Only me> --agent-id ducter --context ducter`). Run once on a
       scratch home 2026-11-12: Mem answered 503 `cloud_bridge_setup_unavailable` (research/66 §3). On hel first
       **更新** (nmem 0.10.116 by pip, D225). Trigger: Mem opens Bridge connections for the workspace (`bun run
       bridge:live -- --connected` gets past the connection line).
-- [ ] After that: does a terminal session's native inbox (the plugin prepares one in every session now) send to
+- [x] (D249, VERIFIED: the binding's own context works for the logical commands, and replies land in it) After that: does a terminal session's native inbox (the plugin prepares one in every session now) send to
       the persona's Agent mailbox, and does the reply land where the session reads? Adjust X1/S1's peer prompt and
       the skill hints to what works (research/66 §2). Trigger: the live run.
 - [ ] File B16 with the Nowledge team: a device-code sign-in for `nmem connect` on a headless box, a public word on
@@ -932,7 +944,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Tasks get two voices on saving (research/69 K1): the brief says never save memories (D168 (5)); the plugin's
       startup text says save durable decisions autonomously. Check in the task eval whether tasks still call
       `nmem m add`. Trigger: a duplicate memory traced to a task.
-- [ ] Run `bun run bridge:live -- --connected` (dry), then `-- --connected --real` and record it in research/37:
+- [x] (2026-11-13, research/66 §7) Run `bun run bridge:live -- --connected` (dry), then `-- --connected --real` and record it in research/37:
       S1, S2, S3 and an X1 round trip with a native Claude Code session as the other side. Check that the native
       binding's own context works for logical `contacts/send/inbox/reply` (INFERRED) and replace the fake's
       `connections`/`session prepare` shapes with the raw ones. Trigger: the connection above.
@@ -957,10 +969,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
       mailbox.
 - [ ] File B11–B13 and B15 with the Nowledge team (research/37 §6, §8; the text is ready). Trigger: the author's go
       (D111's channel was not reachable from the session that found them).
-- [ ] Replace the tolerant JSON parsing (`inbox`, `open`, `outbox`, `inspect`, send/reply results) with the real
-      shapes from the live run's `raw-<time>/` folder. Trigger: the live run.
+- [x] Read the real shapes from the live run (D249): `inbox`, `open`, send/reply, `inspect` and the 409; the fake
+      answers in them by default. The older fields stay as fallbacks until Mem's next shape.
 - [ ] Turn Bridge on by default by D170 (9)'s criteria (the first is met by D205: Ducter finds the persona's
-      context itself; 断开 and 谁都不行 are the offs). Trigger: the live run passes.
+      context itself; 断开 and 谁都不行 are the offs). Trigger: the live run passes (2026-11-13: everything but the linked reply, B17).
 - [x] Clients render the quiet lines (发来请求 / 已发给 / 已回复, and a sender set aside) (D170).
 - [ ] Follow-through by a time the user named ("今晚前告诉我"). Trigger: a user asks for it; `wait_until`
       covers it today.

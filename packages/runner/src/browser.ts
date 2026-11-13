@@ -72,8 +72,13 @@ export const BROWSER_TOOLS = [
   "start_session",
 ];
 
-/** Claude Code built-in tools a browser task keeps (ToolSearch loads deferred MCP tools). */
-export const BROWSER_BUILTIN_TOOLS = ["Bash", "Read", "Write", "ToolSearch"];
+/**
+ * D239: a browser task keeps Claude Code's own built-in tools, like any other task, except the
+ * two that start another model session: a subagent or workflow agent never sees the task's
+ * brief (its Go, untrusted-page and own-window rules; verified on 2.1.322, research/75) but does
+ * get the browser's tools. The user's own config stays out (`userConfiguration: "exclude"`).
+ */
+export const BROWSER_DENIED_BUILTINS = ["Agent", "Workflow"];
 
 export type Exec = (argv: string[], opts?: { env?: Record<string, string>; timeoutMs?: number }) => Promise<{ code: number; out: string; err: string }>;
 
@@ -178,7 +183,7 @@ export interface BrowserSidecar {
   profileDir: string;
   evidenceDir: string;
   socket: string;
-  /** Claude Code only: tools to deny and launch flags (env-gate first slice, token diet). */
+  /** Claude Code only: tools to deny and launch flags (env-gate first slice; D239: no built-in allowlist). */
   claude: { disallowedTools: string[]; launchArgs: string[]; userConfiguration: "exclude" };
   /** native only: which of the harness's tools carry the place. */
   native?: NativeKind;
@@ -586,8 +591,8 @@ export async function browserSidecar(input: SidecarInput, opts: BrowserOptions =
     driver: "cua",
     close: () => (opts.closeBrowser ?? closeBrowserGracefully)(join(root, name)),
     claude: {
-      disallowedTools: found.tools.filter((t) => !allowed.has(t)).map((t) => `mcp__${BROWSER_MCP_NAME}__${t}`),
-      launchArgs: ["--tools", BROWSER_BUILTIN_TOOLS.join(",")],
+      disallowedTools: [...BROWSER_DENIED_BUILTINS, ...found.tools.filter((t) => !allowed.has(t)).map((t) => `mcp__${BROWSER_MCP_NAME}__${t}`)],
+      launchArgs: [],
       userConfiguration: "exclude",
     },
     statusFor: statusForDriver("cua"),
@@ -612,9 +617,9 @@ function nativeSidecar(input: SidecarInput, kind: NativeKind): BrowserSidecar {
     driver: "native",
     native: kind,
     claude: {
-      disallowedTools: [],
+      disallowedTools: [...BROWSER_DENIED_BUILTINS],
       // Claude in Chrome works with -p and with the user's config left out (research/38).
-      launchArgs: ["--chrome", "--tools", BROWSER_BUILTIN_TOOLS.join(",")],
+      launchArgs: ["--chrome"],
       userConfiguration: "exclude",
     },
     statusFor: statusForDriver("native"),
@@ -644,7 +649,7 @@ function ducterSidecar(input: SidecarInput, port: DucterBrowserPort): BrowserSid
     driver: "ducter",
     profile: name,
     downloads,
-    claude: { disallowedTools: [], launchArgs: ["--tools", BROWSER_BUILTIN_TOOLS.join(",")], userConfiguration: "exclude" },
+    claude: { disallowedTools: [...BROWSER_DENIED_BUILTINS], launchArgs: [], userConfiguration: "exclude" },
     statusFor: statusForDriver("ducter"),
     brief: ducterBrowserBrief({ partnerName: input.partnerName, evidenceDir }),
     async ready() {

@@ -478,7 +478,8 @@ Setup: cua-driver 0.44.0, Chrome 157, macOS 15, partner and task on Sonnet.
 - Lookup tasks took 25–50 s from task start to report.
 - The partner's first line took 5–31 s; the 31 s case was a cold start.
 - An HN lookup used 332k input tokens before the token diet and 140k after (mostly cache
-  reads).
+  reads). D239 gave back Claude Code's own built-ins (less Agent and Workflow), about 5.5K
+  tokens a request (research/75); not re-measured live.
 
 ## Ideas to decide (heavy-user delight)
 

@@ -68,7 +68,7 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
 | | Claude Code | Codex | pi | DeepSeek Harness |
 |---|---|---|---|---|
 | Partner | yes | yes | yes (D177; passed the eval on `deepseek/deepseek-flash`) | yes (D177; passed the eval on `deepseek-official/deepseek-flash`) |
-| Clean setup | OAR `userConfiguration: "exclude"` | `-c` overrides: each user MCP server `enabled=false` by name, `features.{hooks,plugins,apps,memories,…}=false`, `notify=[]`; partner also drops goals, subagents, images, computer use | pi flags `--no-skills --no-context-files --no-prompt-templates --no-extensions --no-themes` on its RPC process | a Ducter-owned `DSH_HOME` + `DSH_AGENTS_HOME` per setup, `<dataDir>/harness/dsh/<hash of its profile layer and AGENTS.md>`, so the same setup resumes in the same home; its profile layer (`profiles/acp/cordis.patch.yml`) also turns the session-log upload off |
+| Clean setup | OAR `userConfiguration: "exclude"` | `-c` overrides: each user MCP server `enabled=false` by name, `features.{hooks,apps,memories,goals,multi_agent,…}=false`, `notify=[]` (tasks too keep goals and subagents off, D239); partner also drops plugins, images, computer use | pi flags `--no-skills --no-context-files --no-prompt-templates --no-extensions --no-themes` on its RPC process | a Ducter-owned `DSH_HOME` + `DSH_AGENTS_HOME` per setup, `<dataDir>/harness/dsh/<hash of its profile layer and AGENTS.md>`, so the same setup resumes in the same home; its profile layer (`profiles/acp/cordis.patch.yml`) also turns the session-log upload off |
 | Partner prompt | system prompt | `baseInstructions` | system prompt | the system prompt's whole opener: the profile layer's `system-prompt` row, `includeHarnessIdentity: false` + `personaPrefix` (D177; a prompt with `{{` falls back to `$DSH_HOME/AGENTS.md`, which DSH sends as "workspace instructions" in a user message) |
 | Task brief | append | `developerInstructions` | append | first message, `<instructions>…</instructions>` |
 | Ducter's MCP | HTTP + bearer | HTTP + bearer | HTTP + bearer | stdio bridge (`mcp-bridge.ts`), target in a 0600 file |
@@ -125,8 +125,9 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
   Codex lists the partner's sessions in the user's own history; pi's model list does not test
   its keys; in its owned home DeepSeek Harness sees only the DeepSeek key, not the user's other
   provider routes.
-- **Browser tasks: a clean setup** (W5-2, D62): only the curated cua-driver tools and no user
-  MCP servers, measured 332k → 140k input tokens on one lookup. Their `log_search` / `log_read`
+- **Browser tasks: a clean setup** (W5-2, D62, D239): only the curated cua-driver tools and no
+  user MCP servers, plugins, hooks or CLAUDE.md; the harness's own built-in tools stay, less the
+  ones that start a model without the brief (Claude Code's Agent and Workflow). Their `log_search` / `log_read`
   are scoped to their own task (D62; built in `packages/core/src/tools.ts`). Reaching the user's own Chrome is
   allowed since D126; the harness's own browser tools are in "Screen places" below.
 - **Codex tasks keep Codex's own Computer Use and browser use** (D130): `cua_repl` (a bundled
@@ -935,8 +936,8 @@ What runs today, before sandboxes and spacesd:
   DeepSeek Harness always get cua-driver. No sidecar and no Ducter browser on a native path;
   Ducter never closes the user's Chrome (the brief says to close what it opened). The probes
   live in `packages/protocol/src/native-browser.ts`, shared with Your devices and abilities.
-  - **Claude Code:** Claude in Chrome (`--chrome`, with the clean setup and the four built-ins
-    kept) when it is connected at task open: a live bridge socket
+  - **Claude Code:** Claude in Chrome (`--chrome`, with the clean setup and its own built-ins
+    less Agent and Workflow, D239) when it is connected at task open: a live bridge socket
     `/tmp/claude-mcp-browser-bridge-<user>/<pid>.sock` (Chrome started Claude Code's host), else
     one read-only `list_connected_browsers` call to `claude --claude-in-chrome-mcp` (no model,
     ~2 s, minimal env, cached 30 s). Not connected: cua-driver. If a call still answers "Browser
@@ -967,8 +968,8 @@ What runs today, before sandboxes and spacesd:
   restart, reopen, resuming a parked task and a switch of who does it all start from the task's
   spec without browser parts (`base`) and add the browser for the harness doing it now
   (`withBrowser`): the brief with its Go and own-window rules, the cua-driver sidecar, and per
-  harness the setup that leaves the user's own config out: Claude Code its four built-ins,
-  denials and `exclude`; Codex the clean setup that keeps its own browser and Computer Use
+  harness the setup that leaves the user's own config out: Claude Code its own built-ins less
+  Agent and Workflow (D239), denials and `exclude`; Codex the clean setup that keeps its own browser and Computer Use
   plugins (on either driver); pi its clean flags. DeepSeek Harness keeps its own setup for now
   (its Ducter-owned home holds the partner's instructions). Before this, a recovered or reopened
   browser task resumed with none of it.
@@ -979,10 +980,18 @@ What runs today, before sandboxes and spacesd:
   `DUCTER_BROWSER` (0 / 1 / unset = auto).
 - **env-gate, first slice (no proxy yet):** a browser task sees 10 cua-driver tools.
   Everything else the driver offers, including `page` and `end_session`, is denied.
-  - Claude built-ins are limited to `Bash, Read, Write, ToolSearch`.
+  - Claude built-ins: Claude Code's own, less Ducter's seven denials for every task and
+    **Agent** and **Workflow** (D239). A subagent gets the parent's MCP tools but not its
+    appended brief (measured, research/75), so it would use the browser without the Go,
+    untrusted-page and own-window rules. No `--tools` allowlist: one rots as Claude Code
+    renames tools. Cost, per request (haiku, research/75): 12.2K tokens of built-ins against
+    6.6K for the four this slice first kept and 17.0K in an ordinary task; a cache read after
+    the first call.
   - The user's own Claude config is left out (`userConfiguration: exclude`): no user MCP
-    servers (so no path to the real Chrome), skills, or CLAUDE.md.
-  - Live, the same HN lookup went from 332k to 140k input tokens.
+    servers, plugins, hooks, skills, or CLAUDE.md in a session that reads hostile pages.
+  - Live, the same HN lookup went from 332k to 140k input tokens when this slice first cut
+    user config, cua-driver tools and built-ins at once (not separable; the built-ins were
+    roughly half, research/75 §4).
 - **Focus:** a freshly launched Ducter Chrome makes itself frontmost. Ducter hands focus back
   to the user's app (only within 5 s of launch).
 - **Clean quit:** cua-driver ends its browsers with SIGKILL, which loses recent cookies. Ducter

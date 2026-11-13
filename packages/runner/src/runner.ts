@@ -158,8 +158,9 @@ export const SWITCHED_TO_CUA =
 /**
  * A task's spec with its browser's parts (D62, D126, D130): the browser brief (its Go, untrusted
  * page and own-window rules), the cua-driver sidecar, and per harness a setup that leaves the
- * user's own config out: Claude Code its curated built-ins and `exclude`; Codex the clean setup
- * that keeps its own browser and Computer Use plugins; pi its clean flags. DeepSeek Harness keeps
+ * user's own config out: Claude Code `exclude`, its own built-ins kept but the two that start
+ * agents (D239); Codex the clean setup that keeps its own browser and Computer Use plugins (its
+ * subagents off, D239); pi its clean flags. DeepSeek Harness keeps
  * its own setup (its clean home is the partner's). Every Codex task without Codex's own browser
  * gets the Computer Use rules (its Computer Use stays on).
  */

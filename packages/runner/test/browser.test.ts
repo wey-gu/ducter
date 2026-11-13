@@ -112,7 +112,10 @@ describe("browser place: session-config wiring", () => {
     // env-gate first slice: only the browser tools; no user MCP servers, skills or CLAUDE.md.
     expect(o.disallowedTools).toEqual(expect.arrayContaining(["AskUserQuestion", "mcp__browser__page", "mcp__browser__end_session", "mcp__browser__click"]));
     expect(o.disallowedTools).not.toContain("mcp__browser__browser_navigate");
-    expect(o.launchArgs).toEqual(["--tools", "Bash,Read,Write,ToolSearch"]);
+    // D239: Claude Code's own built-ins stay (no --tools allowlist); only the agent starters go.
+    expect(o.disallowedTools).toEqual(expect.arrayContaining(["Agent", "Workflow"]));
+    for (const keep of ["Edit", "Read", "Write", "Bash", "WebSearch", "WebFetch", "ToolSearch"]) expect(o.disallowedTools).not.toContain(keep);
+    expect(o.launchArgs).toBeUndefined();
     expect(o.userConfiguration).toBe("exclude");
 
     // The daemon is Ducter's own, launched through LaunchServices with the profile root.
@@ -444,7 +447,8 @@ describe("browser place: the harness's own browser tools first (D126, D130)", ()
     await runner.whenStarted(card.taskId);
     const o = seen.options;
     expect(o.mcpServers.map((m: any) => m.name)).toEqual(["ducter"]);
-    expect(o.launchArgs).toEqual(["--chrome", "--tools", "Bash,Read,Write,ToolSearch"]);
+    expect(o.launchArgs).toEqual(["--chrome"]);
+    expect(o.disallowedTools).toEqual(expect.arrayContaining(["Agent", "Workflow"]));
     expect(o.userConfiguration).toBe("exclude");
     expect(o.appendSystemPrompt).toContain("Claude in Chrome");
     expect(o.appendSystemPrompt).toContain("Never sign in");
@@ -466,6 +470,8 @@ describe("browser place: the harness's own browser tools first (D126, D130)", ()
     expect(args.some((a) => a.startsWith("plugins.unified-computer-use") || a.startsWith("plugins.browser@"))).toBe(false);
     expect(args).toContain("features.apps=false");
     for (const kept of ["plugins", "plugin_hooks", "computer_use", "browser_use"]) expect(args).not.toContain(`features.${kept}=false`);
+    // D239: a subagent would drive the browser without the brief; Ducter owns when a turn ends.
+    for (const off of ["multi_agent", "goals"]) expect(args).toContain(`features.${off}=false`);
     expect(seen.options.appendSystemPrompt).toContain("--new-window");
     expect(args.slice(-4)).toEqual(["-c", "model_context_window=200000", "-c", "model_auto_compact_token_limit=160000"]); // the small window (D135)
     await runner.dispose();
@@ -509,7 +515,8 @@ describe("browser place: the harness's own browser tools first (D126, D130)", ()
     const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", place });
     await runner.whenStarted(card.taskId);
     expect(seen.options.mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]);
-    expect(seen.options.launchArgs).toEqual(["--tools", "Bash,Read,Write,ToolSearch"]);
+    expect(seen.options.launchArgs).toBeUndefined();
+    expect(seen.options.disallowedTools).toContain("Agent");
     await runner.dispose();
   });
 
@@ -566,7 +573,8 @@ describe("browser place: the harness's own browser tools first (D126, D130)", ()
     await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "done on cua-driver");
     expect(all.length).toBe(2);
     expect(all[1].mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]);
-    expect(all[1].launchArgs).toEqual(["--tools", "Bash,Read,Write,ToolSearch"]);
+    expect(all[1].launchArgs).toBeUndefined();
+    expect(all[1].disallowedTools).toContain("Agent");
     expect(all[1].appendSystemPrompt).toContain("cua-driver");
     expect(all[1].appendSystemPrompt).not.toContain("Claude in Chrome tools");
     expect(inputs.at(-1)).toBe(SWITCHED_TO_CUA);
@@ -699,9 +707,10 @@ describe("browser place: the browser comes back after a restart, on reopen, and 
     expect(o.mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]);
     expect(o.appendSystemPrompt).toContain("## Your browser");
     expect(o.appendSystemPrompt).toContain("Never sign in");
-    expect(o.launchArgs).toEqual(["--tools", "Bash,Read,Write,ToolSearch"]);
+    expect(o.launchArgs).toBeUndefined();
     expect(o.userConfiguration).toBe("exclude");
     expect(o.disallowedTools).toContain("mcp__browser__page");
+    expect(o.disallowedTools).toContain("Agent");
   };
 
   test("a mid-turn browser task resumed after a restart keeps its browser, brief and denials", async () => {

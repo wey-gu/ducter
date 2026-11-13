@@ -539,8 +539,8 @@ note and a `Dn`) before it is built.
 
 - [ ] **env-gate MCP proxy:** untrusted-content framing, domain policy, submit/pay as intents
       (today the rule lives only in the task brief). First slice done: 10 allowed cua tools,
-      Claude built-ins Bash/Read/Write/ToolSearch, no user Claude config (W5-2; HN lookup 332k →
-      140k input tokens).
+      Claude Code's own built-ins less Agent and Workflow (D239; first Bash/Read/Write/ToolSearch),
+      no user Claude config (W5-2; HN lookup 332k → 140k input tokens before D239).
 - [x] **Hostile pages and the Log.** A browser task's `log_search` / `log_read` reach only its
       own stream (D62); other tasks reach their own stream, their person's conversation and
       that person's other tasks, never another person's (`packages/core/src/tools.ts`,
@@ -998,6 +998,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Prompt-cache hit rate**: read `cache_read` vs `cache_creation` from a day of the partner's
       sessions (OAR usage) to replace principle 4's heuristic. Trigger: the cost-model work.
 - [ ] **Before merging D165/D166 and D168/D169**: their highs in research/48 §2 (P1, P2, M1, M2).
+- [ ] **D239's open items (research/75):**
+  - a live rerun of the HN browser lookup with D239's built-ins, to replace the INFERRED ~190K;
+  - whether a Codex subagent (`multi_agent`) carries the thread's `developerInstructions`; an
+    ordinary Codex task keeps the person's `multi_agent` with Computer Use on (D130), so its
+    subagents may use Computer Use without the brief;
+  - `PushNotification` and `RemoteTrigger` in every ordinary Claude Code task (Ducter owns talking
+    to the person and starting work): what they do headless, then whether they join Ducter's
+    denials; and whether `Workflow` (8.2K tokens a request) belongs in a task at all;
+  - pi's `--no-context-files` also drops a repo's own AGENTS.md / CLAUDE.md under
+    `isolateUserConfig` (opt-in): find a flag that drops only the person's;
+  - a DeepSeek Harness browser task still keeps the person's own setup (no clean home).
+  Trigger: the next harness audit, or a live browser task on the author's setup.
 
 ## Phone calls (D189, D193; `phone.md`)
 

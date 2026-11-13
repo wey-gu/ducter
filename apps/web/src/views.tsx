@@ -26,6 +26,7 @@ import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
 import { CalFacts, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx";
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
+import { FileViewer } from "./fileview.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
@@ -2896,6 +2897,7 @@ function SettingsSheet() {
 
 export function Sheets() {
   if (A.viewer) return <Viewer />;
+  if (A.fileView) return <FileViewer />;
   if (!A.sheet) return null;
   if (A.sheet.kind === "newtask") return <NewTaskSheet />;
   if (A.sheet.kind === "switch") return <Switcher />;

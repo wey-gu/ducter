@@ -122,6 +122,12 @@ func (h Home) Upload(ctx context.Context, p *Prepared, name string, progress fun
 
 // Fetch gets a ref's bytes (GET media/<id>?k=, no header needed).
 func (h Home) Fetch(ctx context.Context, path string) ([]byte, error) {
+	return h.FetchHead(ctx, path, protocol.MediaBytesMax+1)
+}
+
+// FetchHead gets at most limit bytes of a ref and stops reading there (D239:
+// the file viewer reads the first part of a long text, never all of it).
+func (h Home) FetchHead(ctx context.Context, path string, limit int64) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, h.URL(path), nil)
 	if err != nil {
 		return nil, err
@@ -134,7 +140,7 @@ func (h Home) Fetch(ctx context.Context, path string) ([]byte, error) {
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("media: %s", res.Status)
 	}
-	return io.ReadAll(io.LimitReader(res.Body, protocol.MediaBytesMax+1))
+	return io.ReadAll(io.LimitReader(res.Body, limit))
 }
 
 type countReader struct {

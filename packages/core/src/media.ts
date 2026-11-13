@@ -16,7 +16,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
-import { EXT_OF, FILE_TYPES, MEDIA_LIMITS, isImageType, type MediaRef } from "@ducter/protocol";
+import { EXT_OF, FILE_TYPES, MEDIA_LIMITS, TEXT_EXTS, isImageType, type MediaRef } from "@ducter/protocol";
 
 export interface Sniffed {
   type: string;
@@ -92,6 +92,9 @@ export function sniffFile(b: Uint8Array, name: string): Sniffed | undefined {
   const img = sniffImage(b);
   if (img) return img;
   const ext = extname(name).slice(1).toLowerCase();
+  // D239: a report, a log, a script or source is text: kept as text/plain (never run, never a
+  // page), its name's extension colouring it in the viewer. Text has no NUL in its first 8 KB.
+  if (!FILE_TYPES[ext] && TEXT_EXTS.has(ext)) return b.subarray(0, 8192).includes(0) ? undefined : { type: "text/plain" };
   const t = FILE_TYPES[ext];
   if (!t) return undefined;
   if (t === "application/pdf" && ascii(b, 0, 4) !== "%PDF") return undefined;
@@ -286,8 +289,10 @@ export function createMediaStore(dataDir: string): MediaStore {
         // A file a task showed opens as a download, never as a page of this origin.
         "content-security-policy": "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox",
       };
-      const dl = url.searchParams.get("dl") === "1" || !isImageType(meta.type);
-      if (dl) headers["content-disposition"] = `${isImageType(meta.type) ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(meta.name ?? `${id.slice(0, 12)}.${EXT_OF[meta.type] ?? "bin"}`)}`;
+      // &dl=1 is a download whatever the kind (D239: it said "inline" for every file that wasn't a
+      // picture, so a report opened as a bare page of the home's address).
+      const dl = url.searchParams.get("dl") === "1";
+      if (dl || !isImageType(meta.type)) headers["content-disposition"] = `${dl ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(meta.name ?? `${id.slice(0, 12)}.${EXT_OF[meta.type] ?? "bin"}`)}`;
       if (req.headers.get("if-none-match") === headers.etag) return new Response(null, { status: 304, headers });
       return new Response(Bun.file(f), { headers });
     },

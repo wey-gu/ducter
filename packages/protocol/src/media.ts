@@ -27,6 +27,17 @@ export const FILE_TYPES: Record<string, string> = {
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 };
 
+/**
+ * D239: text a task may show besides the kinds above, kept as text/plain (served as text, never
+ * run, never rendered): reports, logs, scripts and source. Its name keeps the extension, which
+ * picks the colours in the viewer. Never .env or a key file: what looks like a secret stays home.
+ */
+export const TEXT_EXTS: ReadonlySet<string> = new Set([
+  "log", "diff", "patch", "ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs", "go", "py", "rb", "rs", "swift", "kt", "kts", "java",
+  "c", "h", "cc", "cpp", "hpp", "m", "cs", "css", "scss", "less", "vue", "svelte", "xml", "yml", "yaml", "toml", "ini", "sh", "bash",
+  "zsh", "fish", "sql", "mdx", "markdown", "jsonc", "tsv", "rst", "tex", "graphql", "proto",
+]);
+
 export const MEDIA_LIMITS = {
   /** Pictures (or files) in one message. */
   perMessage: 10,
@@ -163,6 +174,77 @@ export function gridLayout(sizes: { w?: number; h?: number }[]): GridLayout {
   const tiles: Tile[] = [0, 1, 2, 3].map((i) => ({ i, x: (i % 2) / 2, y: Math.floor(i / 2) / 2, w: 0.5, h: 0.5 }));
   if (n > 4) tiles[3]!.more = n - 4;
   return { tiles, aspect, single: false };
+}
+
+// ---------- The file viewer (D239) ----------
+
+/** How a file a task showed opens inside Ducter. */
+export type FileView = "markdown" | "table" | "text" | "picture" | "video" | "none";
+
+/** The text the viewer reads of a file: more is cut at a line, and Save a copy has all of it. */
+export const FILE_VIEW_BYTES = 1024 * 1024;
+/** Rows a table (CSV) shows before the rest is left to Save a copy. */
+export const FILE_VIEW_ROWS = 2000;
+
+const extOf = (name?: string) => {
+  const n = (name ?? "").toLowerCase();
+  return n.includes(".") ? n.split(".").pop()! : "";
+};
+
+/** Which viewer a file opens in: rendered Markdown, a table, coloured text, a picture, a video, or none (PDF, Office, zip). */
+export function fileView(m: { type: string; name?: string }): FileView {
+  const ext = extOf(m.name);
+  if (m.type === "text/markdown" || (m.type === "text/plain" && (ext === "markdown" || ext === "mdx"))) return "markdown";
+  if (m.type === "text/csv" || (m.type === "text/plain" && ext === "tsv")) return "table";
+  if (m.type === "text/plain" || m.type === "application/json" || m.type === "text/html") return "text";
+  if (m.type === "image/svg+xml" || isImageType(m.type)) return "picture";
+  if (m.type.startsWith("video/")) return "video";
+  return "none";
+}
+
+/** The column separator of a table file: a tab for .tsv, else a comma. */
+export const tableSep = (name?: string) => (extOf(name) === "tsv" ? "\t" : ",");
+
+/**
+ * The text of a file's first bytes, cut at the last whole line when the file is longer than what
+ * was read (a UTF-8 character or a line never shows half).
+ */
+export function viewText(bytes: Uint8Array, total: number): { text: string; cut: boolean } {
+  const cut = total > bytes.length;
+  let text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  if (cut) {
+    const nl = text.lastIndexOf("\n");
+    text = nl > 0 ? text.slice(0, nl) : text.replace(/�+$/, "");
+  }
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+  return { text: text.replace(/\r\n?/g, "\n"), cut };
+}
+
+/** Rows of CSV (or TSV): quotes, doubled quotes and line breaks inside quotes; at most `max` rows. */
+export function parseTable(text: string, sep = ",", max = FILE_VIEW_ROWS): { rows: string[][]; more: boolean } {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (q) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') (cell += '"'), i++;
+        else q = false;
+      } else cell += ch;
+      continue;
+    }
+    if (ch === '"' && cell === "") q = true;
+    else if (ch === sep) row.push(cell), (cell = "");
+    else if (ch === "\n") {
+      row.push(cell), (cell = "");
+      rows.push(row), (row = []);
+      if (rows.length > max) return { rows: rows.slice(0, max), more: true };
+    } else cell += ch;
+  }
+  if (cell !== "" || row.length) row.push(cell), rows.push(row);
+  return rows.length > max ? { rows: rows.slice(0, max), more: true } : { rows, more: false };
 }
 
 /** A file's size in words a person reads: 820 KB, 3.4 MB. */

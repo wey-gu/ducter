@@ -76,4 +76,18 @@ func (h mediaHands) Save(name string, data []byte) (string, error) {
 	return p, os.WriteFile(p, data, 0o644)
 }
 
-func (h mediaHands) OpenURL(u string) { _ = mygo.Shell.OpenExternal(u) }
+// OpenLocal (D239): a kind Ducter can't show (a PDF, a deck) opens in its
+// Mac app from a copy in this user's own temporary folder (0700, the file
+// 0600), never from the home's address in a browser. The copy is named as
+// the task named it, so Preview's title says it.
+func (h mediaHands) OpenLocal(name string, data []byte) error {
+	dir, err := os.MkdirTemp("", "ducter-file-")
+	if err != nil {
+		return err
+	}
+	p := filepath.Join(dir, filepath.Base(name))
+	if err := os.WriteFile(p, data, 0o600); err != nil {
+		return err
+	}
+	return mygo.Shell.OpenPath(p)
+}

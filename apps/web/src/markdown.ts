@@ -3,7 +3,7 @@
 // so a message can never inject markup.
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-function inline(s: string): string {
+export function inline(s: string): string {
   const codes: string[] = [];
   // NUL marks code spans below: one in the text itself would point at a span that isn't there.
   s = s.replace(/\u0000/g, "");

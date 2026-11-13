@@ -44,7 +44,7 @@ with while an agent works, hidden until asked for.
 | 预览 / Preview | The page the task serves: its title, its computer and port, the page itself in a frame; 手机 / 平板 / 全宽 widths (wide only) | 刷新 / Reload, 在浏览器中打开 / Open in browser; when this device can't reach the page directly, 在 Ducter 的浏览器中查看 / View in Ducter's browser |
 | 浏览器 / Browser | Ducter's own browser while the task uses it: the D190 live view, inside the workbench | 接手 / My turn, 还给它 / Hand it back, as in D190 |
 | 手机 / Phone | Ducter's phone while the task uses it (the live view, D217, registered through `workbench-screens.ts`); an iOS Simulator booted on its computer when that is the task's business (D220, below); a choice of screens when there are two | Ducter's phone: its own turns. The simulator: Home, dark/light, text size, open a link, a screenshot into the composer; view only |
-| 成果 / Results | Pictures it showed (D206) and the links of its result | Open them; a file opens in Files |
+| 成果 / Results | Pictures and files it showed (D206) and the links of its result | Open them: a picture in the picture viewer, a file it showed read inside Ducter (D239, `media.md`), a link to its working copy in Files |
 
 Browser, Phone and later Computer share one frame (**Screen**): a chip that says who is driving
 (**它在用 / It's driving** in the working tint, **你在用 / You're driving** in the waiting tint,

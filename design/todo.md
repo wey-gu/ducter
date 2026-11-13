@@ -456,6 +456,16 @@ note and a `Dn`) before it is built.
       Trigger: two conversations a week where "that one" is ambiguous / a pasted link reads as noise.
 - [ ] **A routine's pictures.** A New task scheduled for later keeps its words only. Trigger: the
       first scheduled task that needs a picture.
+- [ ] **PDF pages inside Ducter (D239).** Today a PDF says it can't be shown here: Save a copy, or
+      (Mac) Open on this Mac. Draw its pages in the viewer: pdf.js bundled on the web (about 1 MB with
+      its worker and fonts; Chromium's own viewer won't run under the media CSP's `sandbox`), PDFKit
+      if MyGo gains a native view on the Mac. Trigger: the second PDF report the author opens.
+- [ ] **Expiring media keys (D239, research/75).** A key (`k`) never expires; T3 Code signs asset
+      URLs with an `expiresAt`. Short-lived keys, refreshed by clients for refs in the Log. Trigger:
+      any client that would put a media URL where it can be kept or shared (history, a share sheet).
+- [ ] **Find in a long file, and Office files drawn (D239).** ⌘F in the file viewer; docx/xlsx
+      drawn as T3 Code does (`officeArchive.ts`). Trigger: a task hands over a log past a screen or
+      a spreadsheet a person wants to read on the phone.
 - [ ] **Media housekeeping.** The store keeps everything; a sweep of pictures no event references
       for 90 days. Trigger: the media folder passes 2 GB on any home.
 - [ ] **Mac viewer: pinch and grow-from-tile.** The Mac opens with a scale and fade and zooms by

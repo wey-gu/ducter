@@ -40,8 +40,10 @@ type MediaHands interface {
 	CopyImage(png []byte) error
 	// Save keeps a picture in the user's Downloads; returns where.
 	Save(name string, data []byte) (string, error)
-	// OpenURL opens a link (a file a task showed) in the default app.
-	OpenURL(u string)
+	// OpenLocal keeps a copy of a file a task showed in this Mac's own
+	// temporary folder and opens it in its app (D239: a kind Ducter can't
+	// show; never the home's address).
+	OpenLocal(name string, data []byte) error
 }
 
 // attach is one picture in a composer's tray, or of a message on its way.
@@ -599,21 +601,35 @@ func ringFromTop(cx, cy, r float32) ui.Path {
 	return p
 }
 
-// fileCard is a file a task showed: one line with its kind, name, size and Open.
+// fileCard is a file a task showed: one line with its kind, name, size and
+// Open. D239: the whole card is a clay button; it opens the file inside
+// Ducter, the viewer growing out of it (never the home's address).
 func (a *App) fileCard(c *ui.Context, ref *protocol.MediaRef) {
 	t := a.T
-	name := firstNonEmpty(ref.Name, a.L.T("media.image"))
-	ui.Row(c.Key("file:"+ref.ID)).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S3).MinWidth(280).MaxWidth(420).
-		Radius(t.RadiusMD).Background(t.Surface).Shadow(0, t.Raised.Y-1, 0, 0, t.Raised.Color).Children(func() {
-		a.glyph(c, 22, drawFile(t.InkSoft))
+	name := firstNonEmpty(ref.Name, a.L.T("media.file"))
+	card := ui.Row(c.Key("file:"+ref.ID)).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S3).MinWidth(280).MaxWidth(420).
+		Radius(t.RadiusMD).Background(t.Surface).Role(ui.RoleButton).Label(a.L.T("media.fileOpen", name)).Cursor(ui.CursorPointer).Focusable()
+	lift, sink := t.Raised.Y-1, float32(0)
+	if card.Pressed() {
+		lift, sink = 1, t.Raised.Y-2
+	} else if card.Hovered() {
+		card.Background(t.SurfaceRaised)
+	}
+	card.Shadow(0, lift, 0, 0, t.Raised.Color).AnimatePose(ui.Pose{Y: sink}, t.Snappy)
+	open := card.Clicked()
+	card.Children(func() {
+		a.glyph(c, 22, drawFileKind(t.InkSoft, fileKind(*ref)))
 		ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
 			ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(name)
 			ui.Text(c, protocol.SizeWords(ref.Bytes)).FontSize(t.XS).TextColor(t.InkMuted)
 		})
-		if a.buttonFor(c, a.L.T("media.open"), name, btnSecondary, t.ControlSM, t.Surface) && a.Media != nil {
-			a.Media.OpenURL(a.Media.Home().URL(ref.Path() + "&dl=1"))
+		if a.buttonFor(c, a.L.T("media.open"), name, btnSecondary, t.ControlSM, t.Surface) {
+			open = true
 		}
 	})
+	if open {
+		a.OpenFile(*ref, card.Bounds())
+	}
 }
 
 // drawFile is a sheet with a folded corner.

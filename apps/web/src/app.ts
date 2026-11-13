@@ -333,6 +333,8 @@ class AppState {
   picks = new Map<string, Pic[]>();
   /** D206: the picture viewer, when open. */
   viewer?: ViewerState;
+  /** D239: the file viewer, when open: a file a task showed, read inside Ducter. */
+  fileView?: { ref: MediaRef; from?: DOMRect };
   draft = "";
   taskDrafts = new Map<string, string>();
   replyOpen = new Set<string>();

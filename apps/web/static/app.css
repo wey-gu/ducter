@@ -7461,3 +7461,251 @@ button.imprint:focus-visible {
   .hs-sec, .hs-row { animation: none !important; opacity: 0; }
   .hs-caps li { color: var(--ink-soft); }
 }
+
+/* ---------- D239: a file a task showed, read inside Ducter ---------- */
+/* The card is a clay button: raised on its ledge, pressed in when tapped. */
+button.filecard {
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--t-press) var(--ease), box-shadow var(--t-press) var(--ease), background var(--t-fast) var(--ease);
+}
+button.filecard:hover { background: var(--surface-raised); }
+button.filecard:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.filecard .btn.text { pointer-events: none; }
+/* The viewer: a sheet of the theme's paper over the dimmed page; on a phone, the whole screen. */
+.fileview {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  animation: fade-in 160ms var(--ease);
+}
+.fileview.closing { animation: fade-out 220ms var(--ease) forwards; }
+.fileview .scrim {
+  position: absolute;
+  z-index: 0;
+  animation: none;
+  inset: 0;
+  background: var(--scrim);
+}
+.fv-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(48rem, calc(100vw - 48px));
+  height: min(56rem, calc(100dvh - 56px));
+  border-radius: var(--r-xl);
+  background: var(--bg);
+  box-shadow: 0 5px 0 var(--line-2), var(--floating), inset 0 0 0 1px var(--rim);
+  overflow: hidden;
+  z-index: 1;
+  transform-origin: 0 0;
+  will-change: transform;
+  transition: transform 220ms var(--ease);
+}
+.fv-head {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: 14px 10px 12px 18px;
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--line), 0 3px 0 var(--line-soft);
+  z-index: 1;
+  touch-action: none;
+}
+.fv-head > .fi {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  padding: 8px;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  box-shadow: inset 0 2px 0 var(--surface-sunken), inset 0 0 0 1px var(--line-soft);
+  color: var(--ink-soft);
+}
+.fv-grab { display: none; }
+.fv-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.fv-title .nm {
+  font-family: var(--head);
+  font-size: var(--lg);
+  font-weight: 800;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fv-title .meta { font-size: var(--xs); font-weight: 600; color: var(--ink-muted); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+.fv-toggle { flex: none; color: var(--ink-soft); }
+.fv-toggle[aria-pressed="true"] { color: var(--ink); }
+.fv-x { flex: none; color: var(--ink-soft); }
+.fv-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-top: 12px;
+}
+.fv-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 10px 14px 12px;
+  background: var(--surface);
+  box-shadow: 0 -1px 0 var(--line);
+}
+.fv-bar .grow { flex: 1; }
+.fv-bar .from {
+  min-width: 0;
+  max-width: 55%;
+  height: 40px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--sm);
+  font-weight: 700;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.fv-note { padding: var(--s6) var(--s5); display: flex; flex-direction: column; align-items: center; gap: var(--s3); color: var(--ink-soft); text-align: center; }
+.fv-note p { margin: 0; }
+.fv-note.quiet { color: var(--ink-muted); font-size: var(--sm); }
+.fv-cut {
+  margin: var(--s4) auto var(--s5);
+  max-width: 38em;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  color: var(--ink-soft);
+  font-size: var(--sm);
+  text-align: center;
+}
+/* A document: the reading measure, the head face for headings, generous leading. */
+.fv-doc {
+  max-width: 40em;
+  margin: 0 auto;
+  padding: 28px 28px 40px;
+  font-size: var(--body);
+  line-height: var(--lh-read);
+  overflow-wrap: anywhere;
+}
+:lang(zh) .fv-doc { line-height: 1.75; }
+.fv-doc > :first-child { margin-top: 0; }
+.fv-doc :is(h1, h2, h3, h4, h5, h6) { font-family: var(--head); font-weight: 800; line-height: 1.3; margin: 1.5em 0 0.5em; color: var(--ink); }
+.fv-doc h1 { font-size: var(--t28); letter-spacing: -0.01em; margin-top: 0.4em; }
+.fv-doc h2 { font-size: var(--t20); padding-bottom: 0.3em; box-shadow: 0 2px 0 var(--line-soft); }
+.fv-doc h3 { font-size: var(--lg); }
+.fv-doc :is(h4, h5, h6) { font-size: var(--body); color: var(--ink-soft); }
+.fv-doc p, .fv-doc ul, .fv-doc ol, .fv-doc blockquote, .fv-doc .md-table, .fv-doc pre { margin: 0 0 1em; }
+.fv-doc ul, .fv-doc ol { padding-left: 1.4em; }
+.fv-doc li { margin: 0.25em 0; }
+.fv-doc li > :is(ul, ol) { margin: 0.25em 0 0; }
+.fv-doc li::marker { color: var(--ink-muted); }
+.fv-doc li.md-task { list-style: none; margin-left: -1.4em; display: block; }
+.md-check {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin: 0 8px -2px 0;
+  border-radius: 5px;
+  background: var(--sunken);
+  box-shadow: inset 0 2px 0 var(--surface-sunken), inset 0 0 0 1.5px var(--line-2);
+  vertical-align: baseline;
+}
+.md-check.on { background: var(--done-dot); box-shadow: 0 2px 0 var(--done-ink); position: relative; }
+.md-check.on::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid var(--done-ink); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.fv-doc li.md-task.done { color: var(--ink-soft); }
+.fv-doc blockquote { padding: 2px 0 2px 16px; color: var(--ink-soft); box-shadow: inset 4px 0 0 var(--line-2); }
+.fv-doc blockquote > :last-child { margin-bottom: 0; }
+.fv-doc hr { border: 0; height: 4px; margin: 2em auto; width: 48px; border-radius: 2px; background: var(--line-2); }
+.fv-doc a { color: var(--needs-ink); text-decoration-color: var(--needs-ledge); text-underline-offset: 3px; }
+.fv-doc strong { font-weight: 800; }
+.fv-doc code { font-family: var(--mono); font-size: 0.86em; background: var(--sunken); padding: 1px 0.35em; border-radius: 6px; }
+.fv-doc pre {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  background: var(--code-bg);
+  box-shadow: inset 0 0 0 1px var(--line), inset 0 2px 0 var(--line-soft);
+  overflow-x: auto;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+.fv-doc pre code { background: none; padding: 0; font-size: inherit; }
+.fv-doc pre.md-front { background: var(--sunken); box-shadow: none; color: var(--ink-muted); font-size: 12px; }
+.md-pic { color: var(--ink-muted); font-style: italic; }
+.md-pic::before { content: "["; }
+.md-pic::after { content: "]"; }
+.md-table { overflow-x: auto; border-radius: var(--r-sm); box-shadow: inset 0 0 0 1px var(--line); }
+.md-table table, .fv-table table { border-collapse: collapse; font-size: var(--sm); line-height: 1.45; min-width: 100%; }
+.md-table :is(th, td), .fv-table :is(th, td) { min-width: 5.5em; padding: 7px 12px; text-align: left; vertical-align: top; box-shadow: inset 0 -1px 0 var(--line-soft); }
+.md-table th, .fv-table th { background: var(--sunken); font-weight: 800; color: var(--ink); white-space: nowrap; }
+.md-table tr:last-child td { box-shadow: none; }
+/* Text and source: the workbench's lines, numbered, coloured; blocks out of view are skipped. */
+.fv-code { border-radius: 0; box-shadow: none; overflow: visible; min-height: 100%; padding: 12px 0 24px; background: var(--code-bg); }
+.fv-code .ln { width: calc(var(--ln-w, 4ch) + 12px); }
+.fv-block { content-visibility: auto; }
+.fv-k-text .fv-body, .fv-k-table .fv-body, .fv-src .fv-body { background: var(--code-bg); }
+/* A table file: its header row stays while the rows scroll. */
+.fv-table { overflow: auto; max-height: 100%; }
+.fv-sheet .fv-table { height: 100%; }
+.fv-table table { font-variant-numeric: tabular-nums; }
+.fv-table th { position: sticky; top: 0; z-index: 1; box-shadow: inset 0 -2px 0 var(--line); }
+.fv-table td { white-space: pre-wrap; max-width: 28em; }
+.fv-table :is(td, th).num { text-align: right; }
+.fv-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--sunken) 45%, transparent); }
+.fv-media { height: 100%; display: grid; place-items: center; padding: var(--s4); background: var(--sunken); }
+.fv-media :is(img, video) { max-width: 100%; max-height: 100%; border-radius: var(--r-sm); box-shadow: 0 3px 0 var(--line-2); background: var(--surface); }
+/* What can't be shown here: the file as a sheet of clay, its kind on it, and Save a copy. */
+.fv-none { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s4); padding: var(--s6) var(--s5); text-align: center; color: var(--ink-soft); }
+.fv-none p { margin: 0; max-width: 24em; line-height: 1.6; }
+.fv-paper {
+  position: relative;
+  width: 112px;
+  height: 136px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px 34px 18px 18px;
+  background: var(--surface);
+  box-shadow: 0 6px 0 var(--line-2), inset 0 0 0 1px var(--rim);
+  color: var(--ink-muted);
+}
+.fv-paper .kind { position: absolute; bottom: 14px; font-size: var(--xs); font-weight: 800; letter-spacing: 0.08em; color: var(--ink-soft); }
+@media (max-width: 699px), (max-height: 639px) {
+  .fileview { place-items: stretch; }
+  .fv-sheet {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .fv-head { padding: calc(var(--safe-top) + 14px) 6px 12px max(16px, var(--safe-left)); }
+  .fv-grab { display: block; position: absolute; top: calc(var(--safe-top) + 5px); left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--line-2); }
+  .fv-bar { padding: 8px max(12px, var(--safe-right)) calc(var(--safe-bottom) + 10px) max(12px, var(--safe-left)); }
+  .fv-doc { padding: 20px 20px 32px; }
+  .fv-doc h1 { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fileview, .fileview.closing { animation-duration: 1ms; }
+  .fv-sheet { transition: none; }
+  button.filecard { transition: none; }
+}

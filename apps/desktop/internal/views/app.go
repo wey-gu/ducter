@@ -69,6 +69,10 @@ type App struct {
 	// pasteboard, the home's address; nil hides adding pictures.
 	Media MediaHands
 	media mediaState
+	// fileView is the file viewer while open (D239); fileToast and copyText
+	// a line or a copy it hands to the next frame.
+	fileView            *fileViewState
+	fileToast, copyText string
 	// devicesAsked: the where line (D157) asked for devices once on its own.
 	devicesAsked bool
 	// bridgeConfirm: 断开 was tapped once and asks before it runs (D205).
@@ -464,7 +468,8 @@ func (a *App) View(c *ui.Context) {
 		a.phoneInstallSheet(c) // D217
 		a.phoneView(c)
 	}
-	a.viewer(c) // D206: a picture, over everything
+	a.viewer(c)     // D206: a picture, over everything
+	a.fileViewer(c) // D239: a file a task showed
 }
 
 // shortcuts: Esc goes up one level, Cmd+1 the conversation, Cmd+2 On

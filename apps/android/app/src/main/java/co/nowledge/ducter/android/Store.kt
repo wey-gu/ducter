@@ -7,7 +7,7 @@ import java.util.Locale
 /**
  * What the app remembers: which Ducter it talks to, and what the page last told it (its language
  * and the partner's name). The page keeps its own device token in its own storage; the app never
- * holds it (no notifications yet that would need it without opening the app; research/51 §5).
+ * holds it (no notifications from the home yet that would need it without opening the app; research/51 §5).
  */
 class Store(context: Context) {
     private val p: SharedPreferences = context.getSharedPreferences("ducter", Context.MODE_PRIVATE)
@@ -60,4 +60,14 @@ class Store(context: Context) {
     var laterAt: Long
         get() = p.getLong("update.laterAt", 0)
         set(v) = p.edit().putLong("update.laterAt", v).apply()
+
+    /** D246: Android 13+ asked once whether Ducter may show notifications. */
+    var notifyAsked: Boolean
+        get() = p.getBoolean("notify.asked", false)
+        set(v) = p.edit().putBoolean("notify.asked", v).apply()
+
+    /** D246: Ducter's accessibility switch has been on on this install, so restricted settings are allowed. */
+    var handsetWasOn: Boolean
+        get() = p.getBoolean("handset.wasOn", false)
+        set(v) { if (v != handsetWasOn) p.edit().putBoolean("handset.wasOn", v).apply() }
 }

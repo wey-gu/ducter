@@ -48,4 +48,6 @@
     <string name="handset_pill_you_line">做完以后，在卡片上点「好了」</string>
     <string name="handset_stop">停下</string>
     <string name="handset_stop_about">让正在用这台手机的任务停下</string>
+    <string name="notify_loan_channel">在用这台手机</string>
+    <string name="notify_loan_channel_about">任务借用这台手机时一直显示，带「停下」。</string>
 </resources>

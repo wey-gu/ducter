@@ -166,14 +166,33 @@ class ConnectView(c: Context, private val scan: () -> Unit, private val connect:
     }
 }
 
-/** Between launch and the page's first paint: the partner, standing by (no white flash). */
-fun loadingView(c: Context): View = Column(c).apply {
-    gravity = Gravity.CENTER
-    setBackgroundColor(Pebble.color(c, R.color.bg))
-    val face = partner(c, R.drawable.idle, 120)
-    add(face, 0, dp(c, 120))
-    Pebble.breathe(face)
-    add(c.label(R.string.conn_connecting, 13f, 700, R.color.ink_muted), 18)
+/**
+ * Between launch and the page's first paint: the partner, standing by (no white flash).
+ *
+ * The column sits centred inside a full-size frame: the frame takes the bars' and the fold's
+ * padding (MainActivity.applyOverlayInsets), the column keeps its own width. (Before, the column
+ * itself took a book's padding: on an open Fold its 480 dp less half the screen left a strip a few
+ * dp wide at the left, the partner squeezed into it and the word broken letter by letter.)
+ * It settles in after a moment, so a page that opens straight from the cache never flashes it.
+ */
+fun loadingView(c: Context): View {
+    val col = Column(c, 360).apply {
+        gravity = Gravity.CENTER
+        setPadding(dp(c, 24), 0, dp(c, 24), 0)
+        val face = partner(c, R.drawable.idle, 120)
+        add(face, 0, dp(c, 120))
+        Pebble.breathe(face)
+        add(c.label(R.string.conn_connecting, 14f, 700, R.color.ink_muted).apply {
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            letterSpacing = 0.01f
+        }, 20)
+    }
+    return FrameLayout(c).apply {
+        setBackgroundColor(Pebble.color(c, R.color.bg))
+        addView(col, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.CENTER))
+        Pebble.settle(col)
+    }
 }
 
 /** The page couldn't load at all (the home is asleep, or the tunnel is closed). */

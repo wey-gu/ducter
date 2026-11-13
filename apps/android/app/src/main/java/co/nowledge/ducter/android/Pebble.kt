@@ -98,6 +98,19 @@ object Pebble {
 
     fun card(c: Context): Drawable = rounded(c, R.color.bg, 24f, R.color.line)
 
+    /**
+     * A screen settles in (Pebble's enter): after a short wait it rises 8 dp and fades in, with a
+     * small overshoot; at once when the system turns animations off.
+     */
+    fun settle(v: View, delayMs: Long = 180) {
+        val off = Settings.Global.getFloat(v.context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+        if (off) return
+        v.alpha = 0f
+        v.translationY = dp(v.context, 8).toFloat()
+        v.animate().alpha(1f).translationY(0f).setStartDelay(delayMs).setDuration(420)
+            .setInterpolator(android.view.animation.OvershootInterpolator(1.2f)).start()
+    }
+
     /** The partner breathes (D77): 3.8 s, from its feet; still when the system turns animations off. */
     fun breathe(v: View) {
         val off = Settings.Global.getFloat(v.context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f

@@ -80,20 +80,29 @@ Only on the phone itself (Android's switch is there). The chip on that phone's o
 each a clay miniature of Android's own page with Android's own words and a fingertip where to tap,
 **去设置 / Open settings** opening the right page, and the step ticking itself when it is done:
 
-1. Android 13+ and the app restricted (a browser-downloaded APK, research/74 §2): **先点一下那个开关**
-   (Accessibility › Ducter › the switch › **受限制的设置 · 确定**); **允许受限制的设置** (App info ›
-   ⋮ › **允许受限制的设置**, then the screen lock); then step 3.
-2. Otherwise (and as the last step): **打开 Ducter** (Accessibility › Ducter › **使用 Ducter** ›
-   **允许**). The moment the service connects, the app brings itself back to the front.
+1. **允许受限制的设置 / Allow restricted settings** (D246), only where Android restricts a
+   sideloaded Ducter (Android 13+, an APK from a download, research/74 §2). Android shows the Allow
+   item only after the person has met its block once, so the step has two parts, listed under it and
+   ticked in turn: **在「无障碍」里碰一下 Ducter** (Accessibility › the grey Ducter row › Android's
+   block, **关闭 / 确定**) and **在应用信息里允许** (App info › ⋮ › **允许受限制的设置**, then the
+   screen lock).
+2. **打开 Ducter / Turn on Ducter** (Accessibility › Ducter › **使用 Ducter** › **允许**); it opens only
+   once step 1 is done. The moment the service connects, the app brings itself back to the front.
+   Where the app can't tell whether Allow was chosen, it carries **「Ducter」还是灰的？回到第 1 步**.
 
 Then the chip is on, and the sheet becomes **好了，这台手机能借给任务了**: a small clay phone that loops a
 loan (the pill settling in, a tap's ring, a Go card, Stop pressed) beside four lines: 先问你 · 顶上
 一直显示 · 发送付款再等 Go · 随时停下. **知道了**.
 
 Pages Ducter can open: App info, and the Accessibility list scrolled to Ducter's row (Android has no
-public way to open the service's own page). The app op tells whether restricted settings are still
-on where Android lets it read it; otherwise the guide shows all three steps, and step 1 says what
-to do if Android asks to Allow straight away.
+public way to open the service's own page). What the app knows of restricted settings (D246): none
+on Android 12 or older, for a store install, or once its switch has been on on this install; likely
+for an APK from a download; the app op where Android lets it read it (Android 16 doesn't). Otherwise
+the guide shows both steps, moves on by the person's visits, and step 1 says what to do if Android
+lets the switch on straight away.
+
+Once the switch is on and the app is back, Android asks once whether Ducter may show notifications
+(D246): the loan's notification, **{name} 正在用这台手机** with **停下**, is the second place for Stop.
 
 ## 7. On the card
 

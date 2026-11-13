@@ -187,8 +187,8 @@ touch and hold the Ducter icon and choose **Check for updates**.
 conversation is above the fold, On hand below. Folded, it is one column as on any phone. Folding,
 unfolding and turning keep what you were reading and typing.
 
-Notifications in the Android app are coming soon; until then, Ducter in Chrome notifies you as
-above.
+Notifications from your Ducter in the Android app are coming soon; until then, Ducter in Chrome
+notifies you as above. The app's one notification today is **Using this phone**, below.
 
 ## Let tasks borrow your Android phone
 
@@ -201,14 +201,19 @@ Devices**, tap your phone, then **+ Use this phone**. Android wants you to flip 
 yourself; Ducter shows each page you'll see, with a fingertip where to tap, and opens the right one
 for you:
 
-1. On Android 13 and later, the first time: in **Accessibility**, tap **Ducter**, then its switch.
-   Android says the setting is restricted; tap **OK**.
-2. In Ducter's **App info**, tap the three dots at the top right, then **Allow restricted settings**, and
-   confirm with your screen lock.
-3. In **Accessibility**, tap **Ducter**, turn on **Use Ducter**, then **Allow**. You come straight
-   back to Ducter.
+1. **Allow restricted settings** (Android 13 and later, when you installed Ducter from a
+   download). Android shows that choice only after you've tapped Ducter once, so this step has two
+   parts: in **Accessibility**, tap the greyed-out **Ducter**; Android says it's restricted, so close
+   that message and come back. Then in Ducter's **App info**, tap the three dots at the top right,
+   **Allow restricted settings**, and confirm with your screen lock.
+2. **Turn on Ducter:** in **Accessibility**, tap **Ducter**, turn on **Use Ducter**, then **Allow**.
+   You come straight back to Ducter.
 
-If Android asks you to **Allow** straight away at step 1, that's all.
+Installed from a store, or on Android 12 or older, you only do step 2. If Ducter is still greyed out
+at step 2, tap **Ducter still greyed out? Back to step 1**.
+
+Once it's on, Android asks once whether Ducter may show notifications. Say yes and, while a task
+borrows the phone, **Stop** is also in your notifications, under **Using this phone**.
 
 **When a task wants it**, you get a card: **"Order lunch" wants to borrow your Pixel**, with
 **Not now** and **Lend it**. Nothing happens until you say. While it's lent:

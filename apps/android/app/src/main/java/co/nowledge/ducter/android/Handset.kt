@@ -71,15 +71,36 @@ object Handset {
 
     /**
      * Android 13+ keeps a sideloaded app's accessibility switch greyed out ("restricted setting")
-     * until the person allows it in App info. The app op says where it stands; null when this
-     * phone can't tell (older Android, or the op isn't there).
+     * until the person allows it in App info (research/74 §2). What this app can know of it:
+     *  - "none": not restricted: an older Android, installed by a store, or Ducter's switch has been
+     *    on before on this install (allowing lasts until it is uninstalled);
+     *  - "blocked" / "seen": the app op, where Android lets an app read its own (it says whether the
+     *    block was met, so App info's ⋮ has Allow); Android 16 refuses that read (verified on the
+     *    emulator, D246), so on most phones this is never said;
+     *  - "maybe": installed from a downloaded or local file (what Android restricts), the op unread;
+     *  - null: can't tell (a self-update, adb, another installer).
+     * The guide asks Allow first whenever it isn't "none", and moves on by the person's visits.
      */
-    fun restricted(c: Context): Boolean? {
-        if (Build.VERSION.SDK_INT < 33) return false
-        return try {
+    fun restriction(c: Context): String? {
+        if (Build.VERSION.SDK_INT < 33) return "none"
+        if (Store(c).handsetWasOn) return "none"
+        try {
             val ops = c.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-            val mode = ops.unsafeCheckOpNoThrow("android:access_restricted_settings", Process.myUid(), c.packageName)
-            mode != AppOpsManager.MODE_ALLOWED
+            when (ops.unsafeCheckOpNoThrow("android:access_restricted_settings", Process.myUid(), c.packageName)) {
+                AppOpsManager.MODE_ALLOWED -> return "none"
+                AppOpsManager.MODE_IGNORED -> return "seen"
+                AppOpsManager.MODE_ERRORED -> return "blocked"
+            }
+        } catch (_: Exception) {
+            // Android 16: "verifyIncomingOp: uid … does not have any of {MANAGE_APPOPS, …}".
+        }
+        return try {
+            when (c.packageManager.getInstallSourceInfo(c.packageName).packageSource) {
+                android.content.pm.PackageInstaller.PACKAGE_SOURCE_LOCAL_FILE,
+                android.content.pm.PackageInstaller.PACKAGE_SOURCE_DOWNLOADED_FILE -> "maybe"
+                android.content.pm.PackageInstaller.PACKAGE_SOURCE_STORE -> "none"
+                else -> null
+            }
         } catch (_: Exception) {
             null
         }
@@ -89,8 +110,15 @@ object Handset {
         .put("bridge", BRIDGE)
         .put("sdk", Build.VERSION.SDK_INT)
         .put("model", Build.MODEL ?: "")
-        .put("service", service != null && enabled(c))
-        .apply { restricted(c)?.let { put("restricted", it) } }
+        .put("service", (service != null && enabled(c)).also { if (it) Store(c).handsetWasOn = true })
+        .apply {
+            when (restriction(c)) {
+                "none" -> put("restricted", false)
+                "maybe" -> put("restricted", true)
+                "blocked" -> put("restricted", true).put("seen", false)
+                "seen" -> put("restricted", true).put("seen", true)
+            }
+        }
         .put("pictures", Build.VERSION.SDK_INT >= 30)
         .apply { session?.let { put("session", it) } }
 
@@ -103,7 +131,7 @@ object Handset {
     fun openSettings(c: Context, step: String): Boolean {
         returning = true
         val intents = when (step) {
-            // App info, where ⋮ › Allow restricted settings is (Android 13+).
+            // App info, where ⋮ › Allow restricted settings is (Android 13+, once the block was seen).
             "restricted" -> listOf(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", c.packageName, null)))
             // Accessibility, scrolled to Ducter's row and lit (ACCESSIBILITY_DETAILS_SETTINGS, which
             // would open Ducter's own page, is a system API: research/74 §2.4).

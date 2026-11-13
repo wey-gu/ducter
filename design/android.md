@@ -72,6 +72,12 @@ else the width rule (D176) decides.
 
 ## Notifications (D181 (4))
 
-Not in this version; the page says so in Settings. The path chosen next: UnifiedPush, whose
-endpoints accept the home's existing Web Push (no new sender; the endpoint allowlist widens), with
-an embedded FCM distributor only on phones that have Play services. Trigger and details: `todo.md`.
+From the home: not in this version; the page says so in Settings. The path chosen next:
+UnifiedPush, whose endpoints accept the home's existing Web Push (no new sender; the endpoint
+allowlist widens), with an embedded FCM distributor only on phones that have Play services. Trigger
+and details: `todo.md`.
+
+The app's own (D246): one channel, **在用这台手机 / Using this phone**, made at launch so Android's
+App info lists it; its one notification is the loan's (use-this-phone.md §5), silent and ongoing,
+with **停下 / Stop**. `POST_NOTIFICATIONS` is asked once on Android 13+, when 用这台手机 is on
+(`Notify.kt`).

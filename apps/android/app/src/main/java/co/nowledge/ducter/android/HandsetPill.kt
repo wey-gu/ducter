@@ -69,6 +69,8 @@ class HandsetPill(private val c: Context) {
         title?.let { fit(it, words(turn)) }
         line?.text = if (turn == "you") this@HandsetPill.loc.getString(R.string.handset_pill_you_line) else task
         (pill?.background as? GradientDrawable)?.setStroke(Pebble.dp(c, if (turn == "you") 2 else 1), Pebble.color(c, if (turn == "you") R.color.accent else R.color.line2))
+        // D246: the same words in Android's notifications, with Stop (when notifications are allowed).
+        Notify.loan(c, loc, words(turn), if (turn == "you") loc.getString(R.string.handset_pill_you_line) else task)
     }
 
     /** The name line at its whole width, up to a limit (a long partner name ends in "…"). */
@@ -155,6 +157,7 @@ class HandsetPill(private val c: Context) {
     }
 
     fun hide() {
+        Notify.loanOver(c)
         val p = pill
         val r = rings
         pill = null

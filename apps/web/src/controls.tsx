@@ -160,7 +160,7 @@ export function Chip(p: { label: string; art?: string; look: "on" | "off" | "add
         aria-label={p.look === "add" ? `+ ${p.label}` : `${p.label} · ${state}`}
         onClick={() => (still || setSquish(squish + 1), p.onClick())}
       >
-        {p.look !== "add" && p.art && <img src={p.art} alt="" />}
+        {p.art && <img src={p.art} alt="" />}
         {p.look === "add" ? `+ ${p.label}` : p.label}
         {p.look === "later" && (
           <small class="ach-later" aria-hidden="true">

@@ -57,6 +57,27 @@ or you haven't read its last three reports, and after 30 days it asks whether to
 Each run uses a little of your AI allowance. If one run uses much more than usual, Ducter stops
 it and asks you.
 
+### When something changes
+
+> Whenever a new file shows up in ~/Downloads/invoices, rename it to the date and vendor.
+
+Ducter can also run a routine when something changes: files in a folder, a web page, what a
+command prints, or what one of your connected apps shows. It looks for changes itself, without
+using your AI, so nothing is spent until something actually changes. Its card says so under
+**Cost**. When it runs, it is told what is new, what changed and what is gone. If a look ever
+seems wrong (everything vanished at once), Ducter asks **Run it anyway?** before doing anything.
+
+### When things don't go to plan
+
+- **It ran late.** If your computer was asleep or Ducter was off at the time, the routine runs
+  once when it's back, not once per missed time. It knows it's late and adjusts: a morning brief
+  at 3 pm says so. The routine shows **12 min late** under its last run.
+- **A run didn't work.** If it failed before doing anything, Ducter tries once more about 12
+  minutes later (**Tries again 9:12**).
+- **An account needs signing in again**, or your allowance ran out. Ducter tells you once what to
+  do and keeps trying by itself, less and less often (**Can't run for now: needs signing in
+  again**). Once it works again, it carries on, and Ducter tells you.
+
 Some of this is still coming: a routine that runs on another of your computers, and editing a
 routine by just saying the change.
 

@@ -478,6 +478,15 @@ type Routine struct {
 	By      string `json:"by,omitempty"`
 	Place   *Place `json:"place,omitempty"`
 	Project string `json:"project,omitempty"`
+	// D245: kept from running by an account error; it tries again by itself.
+	Backoff *RoutineBackoff `json:"backoff,omitempty"`
+}
+
+// RoutineBackoff is a routine spaced out by account errors (D245).
+type RoutineBackoff struct {
+	Trouble   string `json:"trouble"` // signin | quota
+	NextTryAt string `json:"nextTryAt"`
+	Failures  int    `json:"failures"`
 }
 
 type RoutineTrigger struct {
@@ -492,6 +501,9 @@ type RoutineTrigger struct {
 	Condition string     `json:"condition,omitempty"`
 	Check     *CheckSpec `json:"check,omitempty"`
 	Event     *EventSpec `json:"event,omitempty"`
+	Judge     string     `json:"judge,omitempty"`
+	// D245: a "when something changes" watch; only its presence matters here.
+	Watch map[string]any `json:"watch,omitempty"`
 }
 
 type RoutineDryRun struct {
@@ -507,6 +519,8 @@ type RoutineRun struct {
 	State        string `json:"state"` // started | skipped | done | failed
 	TaskID       string `json:"taskId,omitempty"`
 	At           string `json:"at,omitempty"`
+	LateMin      int    `json:"lateMin,omitempty"` // D245: started this late (>= 15 min)
+	RetryAt      string `json:"retryAt,omitempty"` // D245: a failed run tried again then
 }
 
 // FromRoutine marks a routine's run task.

@@ -240,6 +240,7 @@ function isTrigger(e: LogEvent): boolean {
   if (e.kind === "until") return (e.body as Bodies["until"]).state !== "on" && (e.body as Bodies["until"]).stop !== "user";
   if (e.kind === "routine") {
     const r = e.body as Bodies["routine"];
+    if (r.news) return r.state === "active"; // D245: stuck on an account error, or working again
     return r.state === "paused" && r.pausedBy === "system" && r.pauseReason !== "review";
   }
   if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in" && !(e.body as Bodies["bridge_msg"]).state;

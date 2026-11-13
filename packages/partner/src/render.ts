@@ -208,6 +208,12 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     }
     case "routine": {
       const r = e.body as Bodies["routine"];
+      // D245: an account error that repeats, and the run that works again. Ducter retries by itself.
+      if (r.news === "stuck" && r.backoff) {
+        const what = r.backoff.trouble === "quota" ? "the AI allowance or the account's plan ran out" : "an account it needs is signed out";
+        return `[routine can't run] "${r.name}" (${r.triggerWords}): ${what} (${r.backoff.reason}). Ducter tries again by itself, less and less often, and picks up as soon as it works; nothing is paused. Tell the user once, in one plain line, what to do (for example sign in to that account again, or wait for the allowance to come back).`;
+      }
+      if (r.news === "works_again") return `[routine works again] "${r.name}": it ran fine again after the account trouble. Say so in a few words.`;
       const why = { failures: "3 runs in a row didn't work", unread: "its last 3 reports went unread", budget: "it reached its monthly budget", review: "it is up for review", asked: "asked" }[r.pauseReason ?? "asked"];
       return `[routine paused] "${r.name}" (${r.triggerWords}): ${why}. Only the user can resume it from its card; tell them in one line.`;
     }

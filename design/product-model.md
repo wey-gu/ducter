@@ -38,7 +38,7 @@
 | Place | **在哪儿做 / Where** | Where a task works |
 | Device (machine, runner) | **设备 / Devices** | |
 | harness (Claude Code, Codex, pi, DeepSeek Harness, …) | each by its own product name; as a category **AI agent / AI agent** (D88) | The AI tools Ducter hands work to. Not "coding agent": people use them for much more than code |
-| Routine | **例行 / Routine**; the shelf **例行 / Routines**; a run says **来自例行：{name} / From the routine: {name}**; **暂停 / Pause** · **继续 / Resume**; paused: "已暂停：连着 3 次没成 / Paused: 3 runs in a row didn't work" · "已暂停：连着 3 次你没看 / Paused: 3 reports unread" · "已暂停：到期了，等你说还要不要 / Paused: up for review"; the review card "还要吗？/ Keep this?" with **保留 / Keep it**; the proposal card's rows **什么时候 / When** · **做什么 / Does** · **怎么告诉你 / Reports** · **能动什么 / Can touch** · **花多少 / Cost** ("每次用一点你的 AI 额度 / A little of your AI allowance each time") · **到期 / Review**, Go **好，开始 / Go: Start** | Recurring or triggered work (D114, D115). A time routine shows its next date on a clay tear-off calendar, its cadence in words |
+| Routine | **例行 / Routine**; the shelf **例行 / Routines**; a run says **来自例行：{name} / From the routine: {name}**; **暂停 / Pause** · **继续 / Resume**; paused: "已暂停：连着 3 次没成 / Paused: 3 runs in a row didn't work" · "已暂停：连着 3 次你没看 / Paused: 3 reports unread" · "已暂停：到期了，等你说还要不要 / Paused: up for review"; the review card "还要吗？/ Keep this?" with **保留 / Keep it**; the proposal card's rows **什么时候 / When** · **做什么 / Does** · **怎么告诉你 / Reports** · **能动什么 / Can touch** · **花多少 / Cost** ("每次用一点你的 AI 额度 / A little of your AI allowance each time"; a routine that waits for a change: "只在有变化时用你的 AI 额度；平时看一眼不花 / Uses your AI allowance only when something changed; looking costs nothing"; one that waits for a condition: "只在条件满足时用你的 AI 额度；平时看一眼不花 / Uses your AI allowance only when it holds; looking costs nothing", D245) · **到期 / Review**, Go **好，开始 / Go: Start**; on the shelf (D245): a late run **晚了 12 分钟 / 12 min late** (from 90 min, **晚了 n 小时 / n h late**) · **{time}再试一次 / Tries again {time}** · **暂时跑不了：要重新登录 / Can't run for now: needs signing in again** · **暂时跑不了：额度用完了 / Can't run for now: out of allowance**; a watch unsure of what it saw asks "例行「{name}」这次看到的跟平时很不一样（…），可能是没看对。要照样做一次吗？/ The routine "{name}" saw something unusual this time (…); it may not have looked right. Run it anyway?" with **照样做 / Run it anyway** | Recurring or triggered work (D114, D115, D245). Never "cron", "trigger" or "watch" on screen. A time routine shows its next date on a clay tear-off calendar, its cadence in words |
 | Waiter | named as awaited: **等 {what} / Waiting until {what}** ("等 PR #1592 通过", "等域名续费的邮件"), never as if done; its deadline **最多等到 {time} / Until {time}**; **停止等待 / Stop waiting** · **立即查看 / Look now**; ended unmet (D145): **没等到：{why} / Didn't happen: {why}** (到时间了还没等到 / ran out of time) with **继续等 / Keep waiting**, in Done today for the day; in Details only, **怎么判断的 / How it checks** | D112, D115. How often it looks, the command and whether a model judges are never on a card, the head, a proposal card or the conversation |
 | `until` loop | "一直…直到… / Keep … until …" on the task; each try **第 n 次 / Try n**; **最多 20 / up to 20**; **停止 / Stop** | D113 |
 | Rule | **规则 / Rule**; the list **你的规则 / Your rules** · **删除 / Remove** · **跟 {name} 说一条规则… / Tell {name} a rule…** | A standing preference stated in words. Added only by saying it in the conversation; listed and removed on Partner (D89). After two switches the same way the partner asks once "以后…也用 X？ / Use X for … from now on?" |
@@ -364,9 +364,23 @@ Two primitives plus one property cover every case.
     always delivered.
   - **Missed firings** (devices asleep) coalesce. Ducter tries, in order: another device, then
     waking the device, then one late run, then recording the skip. The cloud fallback is off
-    unless enabled per routine.
+    unless enabled per routine. *Built: one late run or one skip (D114); another device and
+    waking one are not.* A firing never runs twice: a catch-up, a retry and a try after an
+    account error are one pending run (D245).
+  - **Firing robustly (D245):**
+    - a run that starts 15 min or more late is told so in its brief and adapts what depends on
+      the time of day;
+    - a run that failed before it acted (no tool call beyond reading, nothing posted, no question)
+      is tried once more 12 min later, unless the next firing is within 30 min;
+    - account errors (signed out, the allowance used up) space it out from 5 min, doubling to
+      24 h; said once at the second in a row, and once more when it works again.
+  - **When something changes (D245):** a condition can be a model-free watch of files, a
+    reading command, a URL or an app's reading tool. Nothing runs, and nothing is spent, until
+    what it sees differs; the run hears what is new, updated or gone, as untrusted data. A look
+    it can't trust (all of it gone at once) asks before it runs.
   - **Lifespan:** each routine has a review date, 30 days by default. It auto-pauses after 3
-    consecutive failures or 3 unread reports, then asks "还要吗？ / Keep this?".
+    consecutive failures or 3 unread reports, then asks "还要吗？ / Keep this?". A retried
+    failure and an account error before the spacing reaches 24 h don't count (D245).
   - **Visibility:** the condition is always shown in plain words; the compiled code is
     visible once the task is opened.
   - **Safety:** each routine has a fixed effect scope, and anything beyond it becomes an

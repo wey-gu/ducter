@@ -544,13 +544,24 @@ func (a *App) routineCard(c *ui.Context, r *protocol.Routine) {
 				line = a.pausedWhy(r)
 			case r.Running != "":
 				line = a.L.T("routine.running")
+			case r.Backoff != nil:
+				// D245: kept from running by an account error; it tries again by itself.
+				line = strings.Join(nonEmpty(a.L.T("routine.cant."+r.Backoff.Trouble), a.tp("routine.retry", a.when(store.ParseTime(r.Backoff.NextTryAt)))), " · ")
 			case once:
 				line = a.L.T("routine.once.starts")
+			case r.LastRun != nil && r.LastRun.State == "failed" && r.LastRun.RetryAt != "":
+				line = a.tp("routine.retry", a.when(store.ParseTime(r.LastRun.RetryAt)))
 			case r.NextAt != "":
 				line = a.tp("routine.next", (a.when(store.ParseTime(r.NextAt))))
 			}
 			if r.LastRun != nil && r.LastRun.At != "" {
-				line = strings.Join(nonEmpty(line, a.tp("routine.last."+r.LastRun.State, (a.day(store.ParseTime(r.LastRun.At))))), " · ")
+				last := a.tp("routine.last."+r.LastRun.State, (a.day(store.ParseTime(r.LastRun.At))))
+				if m := r.LastRun.LateMin; m >= 90 {
+					last += " · " + a.L.T("routine.late.h", (m+30)/60)
+				} else if m > 0 {
+					last += " · " + a.L.T("routine.late.m", m)
+				}
+				line = strings.Join(nonEmpty(line, last), " · ")
 			}
 			if line != "" {
 				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
@@ -569,6 +580,18 @@ func (a *App) routineCard(c *ui.Context, r *protocol.Routine) {
 			a.send(protocol.RoutineAction{T: "routine_action", RoutineID: r.RoutineID, Action: "pause"})
 		}
 	})
+}
+
+// routineCostKey says what a routine costs, honestly (D245): a watch or a
+// check looks without the AI, so only a run spends.
+func routineCostKey(r *protocol.Routine) string {
+	if r.Trigger.Kind != "condition" || r.Trigger.Judge != "" {
+		return "routine.cost"
+	}
+	if r.Trigger.Watch != nil {
+		return "routine.cost.change"
+	}
+	return "routine.cost.when"
 }
 
 // routineFacts is a routine's proposal card body (D29): the trigger in
@@ -602,7 +625,7 @@ func (a *App) routineFacts(c *ui.Context, id string, ink ui.Color) {
 		row(a.L.T("routine.does"), func() { text(firstLine(r.Brief)) })
 		row(a.L.T("routine.reports"), func() { text(a.L.T("routine.reports." + r.Reports)) })
 		row(a.L.T("routine.touch"), func() { text(a.L.T("routine.effect." + r.Effect)) })
-		row(a.L.T("routine.budget"), func() { text(a.L.T("routine.cost")) })
+		row(a.L.T("routine.budget"), func() { text(a.L.T(routineCostKey(r))) })
 		row(a.L.T("routine.review"), func() { text(a.tp("routine.review.v", (a.day(store.ParseTime(r.ReviewAt))))) })
 	})
 }

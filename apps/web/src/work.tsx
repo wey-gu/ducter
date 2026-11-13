@@ -273,6 +273,18 @@ export function pausedWhy(r: RoutineView): string {
   return r.pausedBy === "user" ? t("routine.paused.by_you") : t("routine.paused.by_partner", A.S.personaName);
 }
 
+/** D245: how late a run started, said only when it was: "晚了 12 分钟 / 12 min late". */
+function lateWords(min: number | undefined): string {
+  if (!min) return "";
+  return " · " + (min < 90 ? t("routine.late.m", min) : t("routine.late.h", Math.round(min / 60)));
+}
+
+/** D245: what it costs, honestly: a watch or a check looks without the AI; only a run spends. */
+function routineCost(r: RoutineView): string {
+  if (r.trigger.kind !== "condition" || r.trigger.judge) return t("routine.cost");
+  return t(r.trigger.watch ? "routine.cost.change" : "routine.cost.when");
+}
+
 /** One routine on the shelf: its name and when in words, its next runs as beads, then where it
  *  stands, with Pause / Resume. */
 export function RoutineRow({ r }: { r: RoutineView }) {
@@ -281,9 +293,12 @@ export function RoutineRow({ r }: { r: RoutineView }) {
   const lines: string[] = [];
   if (paused) lines.push(pausedWhy(r));
   else if (r.running) lines.push(t("routine.running"));
+  // D245: kept from running by an account error: why in words, and when it tries again by itself.
+  else if (r.backoff) lines.push(t(`routine.cant.${r.backoff.trouble}`), tp("routine.retry", when(A.L, r.backoff.nextTryAt)));
   else if (once) lines.push(t("routine.once.starts"));
+  else if (r.lastRun?.state === "failed" && r.lastRun.retryAt) lines.push(tp("routine.retry", when(A.L, r.lastRun.retryAt)));
   else if (r.nextAt) lines.push(tp("routine.next", (when(A.L, r.nextAt))));
-  if (r.lastRun) lines.push(tp(`routine.last.${r.lastRun.state}`, (day(A.L, r.lastRun.at))));
+  if (r.lastRun) lines.push(tp(`routine.last.${r.lastRun.state}`, (day(A.L, r.lastRun.at))) + lateWords(r.lastRun.lateMin));
   return (
     <div class={`row routine${paused ? " paused" : ""}`}>
       {r.trigger.kind === "time" ? (
@@ -352,7 +367,7 @@ export function RoutineFacts({ routineId }: { routineId: string }) {
       <span class="k">{t("routine.touch")}</span>
       <span class="v">{t(`routine.effect.${r.effect}`)}</span>
       <span class="k">{t("routine.budget")}</span>
-      <span class="v">{t("routine.cost")}</span>
+      <span class="v">{routineCost(r)}</span>
       <span class="k">{t("routine.review")}</span>
       <span class="v">{tp("routine.review.v", (day(A.L, r.reviewAt)))}</span>
     </div>

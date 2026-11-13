@@ -1,6 +1,6 @@
 # Pictures and Files (media)
 
-> Design note for D206 and D239 · Principles 5, 6, 7 · Evidence: `research/56`, `research/75` · Screens: `.shots/media/`
+> Design note for D206, D239 and D242 · Principles 5, 6, 7 · Evidence: `research/56`, `research/75` · Screens: `.shots/media/`
 > (D75: never in git)
 
 The author: "要优雅一些，极度顺滑方便用户浏览查看，体验拉满". A partner you message has to see what
@@ -53,10 +53,32 @@ has a canvas. A picture a task shows has no tile rendition; clients scale it.
 
 `MediaRef { id, type, bytes, w?, h?, name?, k, thumb?: {id, k}, preview?, from?: {taskId} }`. The
 Log keeps refs, never bytes. **Fetching:** `GET /media/<id>?k=<key>`, before the gate because an
-`<img>` sends no token; the key is an HMAC of the id with the home's own secret
-(`media/.key`, 0600), so only someone who read the ref through the gate can fetch it and an id
+`<img>` sends no token; only someone who read the ref through the gate can fetch it, and an id
 alone proves nothing. Immutable caching; `&dl=1` downloads; files a task showed are served as
 downloads under a sandboxing CSP.
+
+**Keys expire (D242).** A key is `<exp>.<sig>`: its end in seconds (base 36) and an HMAC of
+`<id>.<exp>` with the home's own secret (`media/.key`, 0600). It opens for at least 24 hours,
+and every key signed within one 6-hour window ends together, so a URL stays one cache entry that
+long (`MEDIA_KEY`).
+
+- **The home signs as it sends.** Every frame to a client passes through `fresh` (ws.ts `send`):
+  every ref under a `media` key, and its `thumb`, gets a key made now. What the Log keeps is never
+  what a client gets, so old messages, a reconnect, a first screen and a task's history all arrive
+  with good keys, and nothing in the Log needs rewriting.
+- **A client past its keys asks.** `media_keys {ids}` over its own connection (behind the gate)
+  → `media_keys {mediaKeys: {id: k}}` for ids the home holds. The web (and so the iPhone and
+  Android apps, which are the web client) fetches through `media-fresh.ts`: the newest key per
+  id, a stale one asked about before it is used, a picture that fails asking once a minute at most
+  and drawing again when the keys come. The Mac keeps the newest key per id in `protocol`
+  (`MediaPath` uses it), keys its picture cache by id, and fetches again what failed when the keys
+  come. The answer's field is `mediaKeys`, not `keys` (the saved frame's).
+- **Old keys** (a bare HMAC of the id, from before D242) still open for 7 days after the home
+  first signs an expiring key (`media/.keys-expire`), so a Mac app not yet updated keeps its
+  pictures across the update; then never. A link that leaked into a browser's history stops
+  opening within a week of the update, and any new one within a day.
+- **Remote and Edge.** The tunnel (D228) and any later relay carry the same `GET` and the same
+  WebSocket; nothing about keys changes with the path.
 
 ## To the models
 
@@ -136,8 +158,35 @@ is read where it was handed over.
   as a Markdown table); text, JSON, HTML source and code with line numbers and colours (the web:
   the workbench's `.code.view` and `hl.ts`, drawn in 300-line blocks with `content-visibility`;
   the Mac: MyGo's editor, read only); the web: an SVG as a picture, a video playing. Anything
-  else says **这种文件在 Ducter 里还打不开** with Save a copy; the Mac adds **在 Mac 上打开**, a
-  copy in the user's own temporary folder (0600) opened by `Shell.OpenPath` (Preview for a PDF).
+  else (Office, zip) says **这种文件在 Ducter 里还打不开** with Save a copy; the Mac adds **在 Mac
+  上打开**, a copy in the user's own temporary folder (0600) opened by `Shell.OpenPath`.
+- **A PDF's pages (D242).** One under the other, each a sheet of white paper (`--pdf-page`,
+  `PDFPage`: printed matter stays white in every theme) on the sunken ground at the reading width;
+  the head says **{n} 页 / {n} pages**. The web draws with pdf.js (Mozilla, Apache-2.0, 4.10.38:
+  `app/pdf.js` and its worker `app/pdf.worker.js`, copied as they ship, about 1.7 MB, loaded only
+  when a PDF opens; no eval), from the bytes it fetched: the browser's own reader can't be used,
+  since files are served under a sandboxing CSP and Chromium's reader won't run in a sandboxed
+  document. The Mac draws with Core Graphics (the engine Preview draws with), called through
+  purego as the app reaches the system elsewhere, without cgo: MyGo has no PDF view. A page is
+  drawn as it comes within about a screen of view and let go once it leaves (an
+  IntersectionObserver on the web, `InViewMargin` on the Mac), so a long PDF holds a few bitmaps,
+  never all of them; pages are drawn at twice their width in points (devicePixelRatio, at most 2,
+  on the web). A PDF that can't be drawn (locked, broken) says **这个 PDF 在这里画不出来。存一份，
+  用你自己的应用看。** (the Mac: **…可以用这台 Mac 上的应用看，或者存一份。** with 在 Mac 上打开).
+- **Find (D242).** ⌘F / Ctrl+F, or the head's drawn magnifier (**查找 / Find**), in a text, a
+  report or a table: a field pressed into the head (**在这个文件里找 / Find in this file**), **{i} /
+  {n}** (**{i} of {n}**) or **没找到 / No matches**, **上一个 / Previous** and **下一个 / Next**
+  (drawn chevrons; Enter and ⌘G go on, ⇧ back); Esc closes the field first, then the file. Every
+  match is marked in the highlight's colours, the current one in the accent, and scrolled to
+  (across too, in a long line of code). Case is set aside; nothing spans two lines; at most 5000
+  are marked (`findAll`, `FindAll`). The web marks with the CSS Custom Highlight API (where a
+  browser lacks it, the current match is selected); the Mac marks the editor's text
+  (`TextBackgrounds`) and selects the current one. MyGo's Markdown view has no ranges to mark, so
+  on the Mac a report or a table is found in its text (the source toggle steps aside while
+  finding, and closing Find lays it out again). A PDF has no find yet.
+- **The Mac's read-only views (D242).** The code view has no current line (no caret to stand on);
+  a report's code blocks carry Ducter's own **拷贝 / Copy** (**已拷贝**), not MyGo's "Copy code", in
+  the file viewer and the conversation alike.
 - **Bounded:** 1 MB of a text (`FILE_VIEW_BYTES`), read as a stream and stopped there, cut at a
   whole line, said at the foot; 2000 table rows. Copy of a cut file fetches all of it first.
 - **Save a copy** writes on this device: Downloads on the Mac (**已存到「下载」**), the share sheet
@@ -163,4 +212,4 @@ is read where it was handed over.
 
 Phase 2: files and PDFs sent by the user; a share sheet into Ducter (iOS share extension, Android
 share intent). Phase 3: video (the model sees ~6 frames), reply to a message, link previews.
-D239's later: PDF pages drawn inside Ducter, expiring media keys, find in a long file.
+D239's later, built by D242: PDF pages drawn inside Ducter, expiring media keys, find in a long file. Still later: Office files drawn, find in a PDF.

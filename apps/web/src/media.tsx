@@ -10,7 +10,8 @@
 // the Mac); space kept from the known size, a blurred preview fading to the picture. The viewer
 // grows out of the tile, pinches and double-taps to zoom, swipes through every picture of the
 // conversation (or the task) and down to close.
-import { gridLayout, isImage, isImageType, mediaPath, sizeWords, thumbPath, type MediaRef } from "@ducter/protocol";
+import { gridLayout, isImage, isImageType, sizeWords, type MediaRef } from "@ducter/protocol";
+import { mediaFetch, mediaUrl, refreshKeys } from "./media-fresh.ts";
 import type { JSX } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -48,7 +49,7 @@ const sizeOf = (s: Shown) => (s.ref ? { w: s.ref.w, h: s.ref.h } : { w: s.pic!.w
 
 function Tile({ s, style, more, onOpen, alone }: { s: Shown; style: JSX.CSSProperties; more?: number; onOpen?: (el: HTMLElement) => void; alone: boolean }) {
   const [loaded, setLoaded] = useState(false);
-  const src = s.ref ? url(alone ? mediaPath(s.ref) : thumbPath(s.ref)) : s.pic!.local;
+  const src = s.ref ? mediaUrl(alone ? s.ref : (s.ref.thumb ?? s.ref)) : s.pic!.local;
   const preview = s.ref?.preview;
   const p = s.pic;
   const busy = p && (p.state === "preparing" || p.state === "uploading");
@@ -63,7 +64,7 @@ function Tile({ s, style, more, onOpen, alone }: { s: Shown; style: JSX.CSSPrope
       onClick={(e) => onOpen?.(e.currentTarget.querySelector("img") ?? e.currentTarget)}
     >
       {preview && <span class="ph" style={{ backgroundImage: `url("${preview}")` }} aria-hidden="true" />}
-      <img src={src} alt="" decoding="async" loading="lazy" draggable={false} onLoad={() => setLoaded(true)} ref={(el) => {
+      <img src={src} alt="" decoding="async" loading="lazy" draggable={false} onLoad={() => setLoaded(true)} onError={() => s.ref && void refreshKeys([s.ref.id, ...(s.ref.thumb ? [s.ref.thumb.id] : [])])} ref={(el) => {
           if (el?.complete && el.naturalWidth && !loaded) setLoaded(true);
         }} />
       {busy && <Ring f={p!.state === "preparing" ? 0 : p!.progress} />}
@@ -423,10 +424,10 @@ export function Viewer() {
     });
   };
 
-  const full = url(mediaPath(m));
+  const full = mediaUrl(m);
   const name = m.name ?? `ducter-${m.id.slice(0, 8)}.${m.type.split("/")[1] === "jpeg" ? "jpg" : m.type.split("/")[1]}`;
   const fileOf = async () => {
-    const b = await (await fetch(full)).blob();
+    const b = await (await mediaFetch(m)).blob();
     return new File([b], name, { type: m.type });
   };
   const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
@@ -460,7 +461,7 @@ export function Viewer() {
     try {
       // Clipboards take PNG everywhere; anything else is drawn to PNG first.
       const blob = (async () => {
-        const b = await (await fetch(full)).blob();
+        const b = await (await mediaFetch(m)).blob();
         if (b.type === "image/png") return b;
         const d = await decode(b);
         try {
@@ -505,6 +506,7 @@ export function Viewer() {
           key={m.id}
           ref={img}
           src={full}
+          onError={() => void refreshKeys([m.id])}
           alt={m.name ?? t("media.image")}
           draggable={false}
           style={{

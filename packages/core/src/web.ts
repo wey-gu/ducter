@@ -24,6 +24,9 @@ import indexHtml from "../../../apps/web/static/index.html" with { type: "file" 
 import appJs from "../../../apps/web/static/app.js" with { type: "file" };
 import appCss from "../../../apps/web/static/app.css" with { type: "file" };
 import swJs from "../../../apps/web/static/sw.js" with { type: "file" };
+// D242: pdf.js, loaded only when a PDF opens in the file viewer.
+import pdfJs from "../../../apps/web/static/pdf.js" with { type: "file" };
+import pdfWorkerJs from "../../../apps/web/static/pdf.worker.js" with { type: "file" };
 import manifest from "../../../apps/web/static/manifest.webmanifest" with { type: "file" };
 import font from "../../../apps/web/static/bricolage.woff" with { type: "file" };
 import icon192 from "../../../apps/web/static/icon-192.png" with { type: "file" };
@@ -88,6 +91,8 @@ const INDEX = indexHtml as unknown as string; // Bun types an .html import as an
 const ASSETS: Record<string, [string, string]> = {
   "app.js": [appJs, "text/javascript; charset=utf-8"],
   "app.css": [appCss, "text/css; charset=utf-8"],
+  "pdf.js": [pdfJs, "text/javascript; charset=utf-8"],
+  "pdf.worker.js": [pdfWorkerJs, "text/javascript; charset=utf-8"],
   "manifest.webmanifest": [manifest, "application/manifest+json"],
   "bricolage.woff": [font, "font/woff"],
   "icon-192.png": [icon192, "image/png"],

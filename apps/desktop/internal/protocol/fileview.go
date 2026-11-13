@@ -15,6 +15,7 @@ const (
 	FileText     = "text"
 	FilePicture  = "picture"
 	FileVideo    = "video"
+	FilePDF      = "pdf" // D242: drawn page by page
 	FileNone     = "none"
 )
 
@@ -45,6 +46,8 @@ func (m MediaRef) FileView() string {
 		return FileText
 	case m.Type == "image/svg+xml" || IsImageType(m.Type):
 		return FilePicture
+	case m.Type == "application/pdf":
+		return FilePDF
 	case strings.HasPrefix(m.Type, "video/"):
 		return FileVideo
 	}
@@ -127,4 +130,30 @@ func ParseTable(text string, sep rune, max int) (rows [][]string, more bool) {
 		return rows[:max], true
 	}
 	return rows, false
+}
+
+// FindMax bounds the matches find marks (FIND_MAX in apps/web/src/fileview-find.ts).
+const FindMax = 5000
+
+// FindAll is where q occurs in text, case set aside, as byte ranges
+// [start, end), at most max (D242: find in a long file). Lowering keeps
+// offsets only when it keeps lengths; else the exact case is searched.
+func FindAll(text, q string, max int) [][2]int {
+	if q == "" {
+		return nil
+	}
+	hay, needle := strings.ToLower(text), strings.ToLower(q)
+	if len(hay) != len(text) || len(needle) != len(q) {
+		hay, needle = text, q
+	}
+	var out [][2]int
+	for at := 0; len(out) < max; {
+		i := strings.Index(hay[at:], needle)
+		if i < 0 {
+			break
+		}
+		out = append(out, [2]int{at + i, at + i + len(needle)})
+		at += i + len(needle)
+	}
+	return out
 }

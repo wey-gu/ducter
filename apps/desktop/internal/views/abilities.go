@@ -330,10 +330,11 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 	}
 }
 
-// listRow is one line in the left list (D161 (7)): the clay at 32, the
-// name, and after a middle dot one short word of state, then 有更新 when an
-// update is available (words in the highlight's ink, never a dot: D213);
-// never wraps (the name ellipsizes, not the state). 52 high, all equal.
+// listRow is one row in the left list (D161 (7)): the clay at 32, the
+// name, and under it one short word of state, then 有更新 when an update
+// is available (words in the highlight's ink, never a dot: D213). Each
+// line ellipsizes on its own, the state word before 有更新. 52 high, all
+// equal.
 func (a *App) listRow(c *ui.Context, key, name, word string, ink ui.Color, update, sel bool, width float32, clay func()) bool {
 	t := a.T
 	label := name + " · " + word
@@ -353,14 +354,25 @@ func (a *App) listRow(c *ui.Context, key, name, word string, ink ui.Color, updat
 	}
 	row.Children(func() {
 		clay()
-		ui.Row(c).Gap(6).AlignItems(ui.Center).Grow(1).MinWidth(0).Children(func() {
-			ui.Text(c, name).FontSize(t.MD).FontWeight(700).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
-			if word != "" {
-				ui.Text(c, "· "+word).FontSize(t.SM).TextColor(ink).SingleLine().Shrink(0).AccessHidden(true)
+		// The name on its own line, the state and 有更新 under it: the name
+		// never gives way to them, and 有更新 never runs past the row's edge
+		// (on one line it pushed the name down to "…" and spilled out).
+		ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
+			ui.Text(c, name).FontSize(t.MD).FontWeight(700).SingleLine().MinWidth(0).AccessHidden(true)
+			if word == "" && !update {
+				return
 			}
-			if update {
-				ui.Text(c, "· "+a.L.T("devices.update_word")).FontSize(t.SM).FontWeight(700).TextColor(t.HighlightInk).SingleLine().Shrink(0).AccessHidden(true)
-			}
+			ui.Row(c).Gap(4).AlignItems(ui.Center).MinWidth(0).Children(func() {
+				if word != "" {
+					ui.Text(c, word).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
+				}
+				if update {
+					if word != "" {
+						ui.Text(c, "·").FontSize(t.XS).TextColor(t.InkMuted).Shrink(0).AccessHidden(true)
+					}
+					ui.Text(c, a.L.T("devices.update_word")).FontSize(t.XS).FontWeight(800).TextColor(t.HighlightInk).SingleLine().Shrink(0).AccessHidden(true)
+				}
+			})
 		})
 	})
 	return row.Clicked()

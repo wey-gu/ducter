@@ -153,7 +153,10 @@ export function createWsHandler(deps: WsDeps) {
   // What the Log holds goes out with every key in it hidden (D152): the Log keeps them (a task
   // needs the key it was given), no client ever shows one. The frames that carry Log text: events,
   // a task's history, On hand (titles, reports, questions).
-  const send = (ws: ServerWebSocket<WsData>, f: ServerFrame) => ws.send(JSON.stringify(REDACTED.has(f.t) ? redactDeep(f) : f));
+  // D242: and with every media ref signed afresh: a client gets keys that open for about a day,
+  // whatever key the Log kept.
+  const fresh = <T>(v: T): T => (core.media?.fresh ? core.media.fresh(v) : v);
+  const send = (ws: ServerWebSocket<WsData>, f: ServerFrame) => ws.send(JSON.stringify(fresh(REDACTED.has(f.t) ? redactDeep(f) : f)));
 
   const flush = () => {
     flushTimer = undefined;
@@ -876,6 +879,11 @@ export function createWsHandler(deps: WsDeps) {
         if (!cal) throw new Error("calendars are not available");
         ws.data.connections = true;
         if (!cal.pick(String(f.id ?? ""), String(f.service ?? ""), f.account, String(f.calendarId ?? ""), f.seen === true)) send(ws, connectionsFrame());
+        return;
+      }
+      case "media_keys": {
+        // D242: a client whose keys ran out (a window left open for a day) asks for new ones.
+        send(ws, { t: "media_keys", mediaKeys: core.media?.keysFor?.(f.ids) ?? {} });
         return;
       }
       case "proactive_day": {

@@ -849,6 +849,8 @@ export type ClientFrame =
   | { t: "connection_reads"; id: string }
   // D226: 今天看了什么 / What it looked at today, under the switch; answered with proactive_day.
   | { t: "proactive_day" }
+  // D242: fresh keys for media this client holds refs to (its keys ran out); answered with media_keys.
+  | { t: "media_keys"; ids: string[] }
   // D193: the device sign-in (RFC 8628) a connection_add started: stop waiting for it; or sign in
   // again to a connection that was signed out (both answered with connection_signin frames).
   | { t: "connection_signin_cancel" }
@@ -1063,6 +1065,8 @@ export type ServerFrame =
   | { t: "own_phone_result"; ok: false; action: string; reason?: string }
   | { t: "connection_reads"; id: string; reads: ReadLine[] }
   | { t: "proactive_day"; day: ProactiveDay }
+  // D242: a fresh key per id the home holds (ids it doesn't hold are left out). Not "keys": the saved frame's.
+  | { t: "media_keys"; mediaKeys: Record<string, string> }
   // readable (D158): what the added connection can read now; [] = connected, but no account there yet.
   | { t: "connection_result"; ok: boolean; id?: string; reason?: ConnectionReason; readable?: OoApp[] }
   // D193: the device sign-in: the code and link to show, then done / denied / expired / failed.

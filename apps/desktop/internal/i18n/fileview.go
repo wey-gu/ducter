@@ -16,6 +16,19 @@ var zhFile = Table{
 	"file.openMac":   "在 Mac 上打开",
 	"file.loading":   "正在打开…",
 	"file.failed":    "没能打开这个文件。",
+	// D242
+	"file.pages":            "%d 页",
+	"file.pages.one":        "1 页",
+	"file.page":             "第 %d 页",
+	"file.pdfFailed.mac":    "这个 PDF 在这里画不出来。可以用这台 Mac 上的应用看，或者存一份。",
+	"file.find":             "查找",
+	"file.find.key":         "查找（%s）",
+	"file.find.placeholder": "在这个文件里找",
+	"file.find.count":       "%d / %d",
+	"file.find.none":        "没找到",
+	"file.find.prev":        "上一个",
+	"file.find.next":        "下一个",
+	"code.block":            "代码",
 }
 
 var enFile = Table{
@@ -30,6 +43,19 @@ var enFile = Table{
 	"file.openMac":   "Open on this Mac",
 	"file.loading":   "Opening…",
 	"file.failed":    "Couldn't open this file.",
+	// D242
+	"file.pages":            "%d pages",
+	"file.pages.one":        "1 page",
+	"file.page":             "Page %d",
+	"file.pdfFailed.mac":    "This PDF can't be drawn here. Open it in an app on this Mac, or save a copy.",
+	"file.find":             "Find",
+	"file.find.key":         "Find (%s)",
+	"file.find.placeholder": "Find in this file",
+	"file.find.count":       "%d of %d",
+	"file.find.none":        "No matches",
+	"file.find.prev":        "Previous",
+	"file.find.next":        "Next",
+	"code.block":            "Code",
 }
 
 func init() {

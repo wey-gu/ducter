@@ -10,6 +10,7 @@
   "dependencies": {
     "@ducter/core": "workspace:*",
     "@ducter/protocol": "workspace:*",
+    "pdfjs-dist": "4.10.38",
     "preact": "10.27.2"
   }
 }

@@ -91,6 +91,40 @@ export const EXT_OF: Record<string, string> = {
   ...Object.fromEntries(Object.entries(FILE_TYPES).map(([e, t]) => [t, e])),
 };
 
+/**
+ * D242: a media key expires. `k` is `<exp>.<sig>`: exp in seconds since the epoch, base 36, and an
+ * HMAC of `<id>.<exp>` with the home's secret. The home signs every ref afresh as it leaves for a
+ * client (the Log keeps ids; a key in it is never what a client gets), each good for a day and
+ * the same through one window of hours (so a URL stays one cache entry for that long). A client
+ * holding one past its time asks again over its own connection (`media_keys`). Keys from before
+ * (a bare HMAC of the id, no expiry) still open for `legacyDays` after the home first signs this
+ * way, then never.
+ */
+export const MEDIA_KEY = {
+  /** At least this long a key opens. */
+  hours: 24,
+  /** Keys signed within one such window are the same (and end together). */
+  windowHours: 6,
+  /** A pre-D242 key keeps working this long after the home's first expiring key. */
+  legacyDays: 7,
+  /** Ids one media_keys frame may ask for. */
+  perAsk: 200,
+} as const;
+
+/** When a key stops opening, in ms since the epoch; undefined for a key that names no time (pre-D242). */
+export function keyExpires(k: string): number | undefined {
+  const dot = k.indexOf(".");
+  if (dot <= 0) return undefined;
+  const s = parseInt(k.slice(0, dot), 36);
+  return Number.isFinite(s) ? s * 1000 : undefined;
+}
+
+/** True when a key is past its time, or will be within `marginMs`. */
+export function keyStale(k: string, now: number, marginMs = 60_000): boolean {
+  const e = keyExpires(k);
+  return e !== undefined && e - marginMs <= now;
+}
+
 /** The path a ref is served at, relative to the home's origin. */
 export function mediaPath(m: { id: string; k: string }): string {
   return `media/${m.id}?k=${m.k}`;
@@ -179,7 +213,7 @@ export function gridLayout(sizes: { w?: number; h?: number }[]): GridLayout {
 // ---------- The file viewer (D239) ----------
 
 /** How a file a task showed opens inside Ducter. */
-export type FileView = "markdown" | "table" | "text" | "picture" | "video" | "none";
+export type FileView = "markdown" | "table" | "text" | "picture" | "video" | "pdf" | "none";
 
 /** The text the viewer reads of a file: more is cut at a line, and Save a copy has all of it. */
 export const FILE_VIEW_BYTES = 1024 * 1024;
@@ -191,7 +225,7 @@ const extOf = (name?: string) => {
   return n.includes(".") ? n.split(".").pop()! : "";
 };
 
-/** Which viewer a file opens in: rendered Markdown, a table, coloured text, a picture, a video, or none (PDF, Office, zip). */
+/** Which viewer a file opens in: rendered Markdown, a table, coloured text, a picture, a video, a PDF's pages (D242), or none (Office, zip). */
 export function fileView(m: { type: string; name?: string }): FileView {
   const ext = extOf(m.name);
   if (m.type === "text/markdown" || (m.type === "text/plain" && (ext === "markdown" || ext === "mdx"))) return "markdown";
@@ -199,6 +233,7 @@ export function fileView(m: { type: string; name?: string }): FileView {
   if (m.type === "text/plain" || m.type === "application/json" || m.type === "text/html") return "text";
   if (m.type === "image/svg+xml" || isImageType(m.type)) return "picture";
   if (m.type.startsWith("video/")) return "video";
+  if (m.type === "application/pdf") return "pdf";
   return "none";
 }
 

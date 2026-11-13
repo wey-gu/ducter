@@ -11,12 +11,16 @@
 //                              → { media: MediaRef }; 413 too big, 415 not a picture
 //   GET  /media/<id>?k=<key>   (before the gate: an <img> sends no header) the bytes, immutable
 //
-// A key is an HMAC of the id with the home's own secret (<dataDir>/media/.key, 0600): only someone
-// who got the ref from the Log (through the gate) can fetch it, and an id alone proves nothing.
+// A key is `<exp>.<sig>`, an HMAC of `<id>.<exp>` with the home's own secret (<dataDir>/media/.key,
+// 0600): only someone who got the ref through the gate can fetch it, an id alone proves nothing,
+// and it stops opening after about a day (D242, MEDIA_KEY). The home signs refs afresh as they
+// leave for a client (`fresh`, in ws.ts's send), so what the Log keeps never decides; a client
+// past its keys asks for new ones (`keysFor`). A key from before (a bare HMAC of the id) opens for
+// MEDIA_KEY.legacyDays after this home's first expiring key (<dataDir>/media/.keys-expire), then never.
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
-import { EXT_OF, FILE_TYPES, MEDIA_LIMITS, TEXT_EXTS, isImageType, type MediaRef } from "@ducter/protocol";
+import { EXT_OF, FILE_TYPES, MEDIA_KEY, MEDIA_LIMITS, TEXT_EXTS, isImageType, type MediaRef } from "@ducter/protocol";
 
 export interface Sniffed {
   type: string;
@@ -133,8 +137,13 @@ export interface MediaStore {
   refs(ids: unknown): MediaRef[];
   /** The file a ref's bytes are in. */
   path(id: string): string | undefined;
+  /** A key for id, good for at least MEDIA_KEY.hours from now. */
   key(id: string): string;
   verify(id: string, k: string): boolean;
+  /** D242: v with every media ref in it (any `media` list, a ref's `thumb`) carrying a fresh key; v itself when it holds none. */
+  fresh<T>(v: T): T;
+  /** D242: fresh keys for the ids this home holds (others left out), at most MEDIA_KEY.perAsk. */
+  keysFor(ids: unknown): Record<string, string>;
   /** GET /media/<id>?k=: the bytes (undefined for any other path). */
   serve(req: Request): Promise<Response | undefined>;
   /** POST /api/media, after the gate. */
@@ -155,7 +164,15 @@ interface Meta {
 
 const json = (status: number, body: unknown) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 
-export function createMediaStore(dataDir: string): MediaStore {
+export interface MediaStoreOptions {
+  /** The clock, in ms (tests). */
+  now?: () => number;
+}
+
+const HOUR = 3600_000;
+
+export function createMediaStore(dataDir: string, opts: MediaStoreOptions = {}): MediaStore {
+  const now = opts.now ?? Date.now;
   const dir = join(dataDir, "media");
   let secret: Buffer | undefined;
   const keyOf = () => {
@@ -173,13 +190,70 @@ export function createMediaStore(dataDir: string): MediaStore {
     } catch {}
     return secret;
   };
-  const key = (id: string) => createHmac("sha256", keyOf()).update(id).digest("base64url").slice(0, 22);
-  const verify = (id: string, k: string) => {
-    if (!ID.test(id) || typeof k !== "string" || !k) return false;
-    const a = Buffer.from(key(id));
-    const b = Buffer.from(k);
-    return a.length === b.length && timingSafeEqual(a, b);
+  const sig = (msg: string) => createHmac("sha256", keyOf()).update(msg).digest("base64url").slice(0, 22);
+  // When this home first signed a key that expires: pre-D242 keys open until legacyDays after it.
+  let first: number | undefined;
+  const since = () => {
+    if (first !== undefined) return first;
+    const f = join(dir, ".keys-expire");
+    try {
+      const n = Number(readFileSync(f, "utf8").trim());
+      if (Number.isFinite(n) && n > 0) return (first = n);
+    } catch {}
+    first = now();
+    try {
+      mkdirSync(dir, { recursive: true, mode: 0o700 });
+      writeFileSync(f, String(first), { mode: 0o600 });
+    } catch {}
+    return first;
   };
+  // D242: every key signed within one window ends at the same time, at least MEDIA_KEY.hours on.
+  const key = (id: string) => {
+    const w = MEDIA_KEY.windowHours * HOUR;
+    const exp = Math.floor((Math.floor(now() / w) * w + w + MEDIA_KEY.hours * HOUR) / 1000).toString(36);
+    since();
+    return `${exp}.${sig(`${id}.${exp}`)}`;
+  };
+  const same = (a: string, b: string) => {
+    const x = Buffer.from(a);
+    const y = Buffer.from(b);
+    return x.length === y.length && timingSafeEqual(x, y);
+  };
+  const verify = (id: string, k: string) => {
+    if (!ID.test(id) || typeof k !== "string" || !k || k.length > 64) return false;
+    const dot = k.indexOf(".");
+    if (dot < 0) return now() < since() + MEDIA_KEY.legacyDays * 24 * HOUR && same(sig(id), k);
+    const exp = k.slice(0, dot);
+    if (!/^[0-9a-z]{1,10}$/.test(exp) || parseInt(exp, 36) * 1000 <= now()) return false;
+    return same(sig(`${id}.${exp}`), k.slice(dot + 1));
+  };
+  const isRef = (v: unknown): v is { id: string; k: string } =>
+    !!v && typeof v === "object" && typeof (v as { id?: unknown }).id === "string" && ID.test((v as { id: string }).id) && typeof (v as { k?: unknown }).k === "string";
+  const freshRef = (r: { id: string; k: string; thumb?: unknown }) => ({ ...r, k: key(r.id), ...(isRef(r.thumb) ? { thumb: { ...r.thumb, k: key(r.thumb.id) } } : {}) });
+  /** Walks v; a list under a `media` key (or a lone ref there) is signed afresh. Unchanged parts are shared. */
+  const walkFresh = (v: unknown, at: string): unknown => {
+    if (!v || typeof v !== "object") return v;
+    if (at === "media") {
+      if (Array.isArray(v)) return v.map((r) => (isRef(r) ? freshRef(r) : r));
+      if (isRef(v)) return freshRef(v);
+    }
+    if (Array.isArray(v)) {
+      let out: unknown[] | undefined;
+      v.forEach((x, i) => {
+        const y = walkFresh(x, "");
+        if (y !== x) (out ??= v.slice())[i] = y;
+      });
+      return out ?? v;
+    }
+    let out: Record<string, unknown> | undefined;
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if (!x || typeof x !== "object") continue;
+      const y = walkFresh(x, k);
+      if (y !== x) (out ??= { ...(v as Record<string, unknown>) })[k] = y;
+    }
+    return out ?? v;
+  };
+  const fresh = <T>(v: T): T => walkFresh(v, "") as T;
   const metaPath = (id: string) => join(dir, `${id}.json`);
   const readMeta = (id: string): Meta | undefined => {
     if (!ID.test(id)) return undefined;
@@ -269,6 +343,13 @@ export function createMediaStore(dataDir: string): MediaStore {
     },
     key,
     verify,
+    fresh,
+    keysFor(ids) {
+      const out: Record<string, string> = {};
+      if (!Array.isArray(ids)) return out;
+      for (const id of ids.slice(0, MEDIA_KEY.perAsk)) if (typeof id === "string" && ID.test(id) && existsSync(metaPath(id))) out[id] = key(id);
+      return out;
+    },
     async serve(req) {
       if (req.method !== "GET" && req.method !== "HEAD") return;
       const url = new URL(req.url);

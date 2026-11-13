@@ -1,6 +1,6 @@
 # 75. Opening a file a task made: what Ducter did, what T3 Code does
 
-> 2026-11-13 · Feeds D239 · Trigger: the author tapped **打开** on a task's
+> 2026-11-13 · Feeds D239, D242 (§5) · Trigger: the author tapped **打开** on a task's
 > `investigation.md · 5 KB` card in the Mac app and got a page on his home server (hel) in the
 > browser: "让我点开一个文件居然是 hel 上的链接 … 应该能在 ducter 里合理设计 ui 查看".
 
@@ -90,6 +90,29 @@ downloading it. VERIFIED (code; fixed by D239 and covered by a test).
   `markdown.View` already does GFM tables, task lists and highlighted code. VERIFIED.
 - PDF on the Mac: MyGo has no PDF view (only `Page.PrintToPDF`). Opening a local copy with
   `Shell.OpenPath` gives Preview, the Mac's own reader, with no address involved. VERIFIED (API).
+
+## 5. Addendum for D242 (2026-11-13): drawing a PDF, and where keys go
+
+- **The Mac can draw PDFs natively without MyGo.** MyGo 0.8.3 has no PDF view (`pdf.go` only
+  prints a page to PDF; `pdf_text*.go` fixes a printed PDF's text). The app already depends on
+  `ebitengine/purego` 0.11.1 (through MyGo), whose `RegisterLibFunc` takes C structs by value on
+  darwin. Core Graphics' C API (`CGPDFDocumentCreateWithProvider`, `CGPDFPageGetBoxRect`,
+  `CGPDFPageGetDrawingTransform`, `CGContextDrawPDFPage` into a `CGBitmapContext`) draws a page
+  into RGBA rows top down. VERIFIED: `apps/desktop/internal/media/pdf_test.go` draws a two-page
+  PDF (A4, and Letter turned a quarter) and reads its pixels; a rendered report in
+  `.shots/d241/`.
+- **pdf.js on the web.** `pdfjs-dist` 4.10.38 ships `build/pdf.min.mjs` (344 KB) and
+  `build/pdf.worker.min.mjs` (1.3 MB); `isEvalSupported: false` keeps it inside the page's CSP
+  (`script-src 'self'`, `worker-src 'self'`). Without its CMaps and standard fonts, a PDF that
+  names a CJK font it doesn't embed draws boxes (DOCUMENTED, pdf.js's options); PDFs printed by a
+  browser or an office suite embed theirs (INFERRED). VERIFIED in Chromium: research/75 printed to
+  PDF, drawn at 1280 and 390 px.
+- **Where media refs leave the home.** Every frame a client gets goes through one `send` in
+  `packages/core/src/ws.ts`; refs ride under a `media` key (messages, reports, task lines, a
+  task's history), with a `thumb` inside. The upload's answer is the only other place, and it is
+  made fresh. Workers get bytes, never keys; push notifications carry no media. VERIFIED (code).
+- **A field-name clash.** The Mac decodes every frame into one struct, where `keys` is already the
+  saved frame's list, so the answer's field is `mediaKeys`. VERIFIED (the frame-coverage test).
 
 ## Implications for Ducter
 

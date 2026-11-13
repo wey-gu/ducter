@@ -12,15 +12,24 @@ package views
 // whole line), never by sending the person to the home's address. Save a
 // copy keeps the whole file in Downloads; Copy copies its text; 来自
 // {task} goes to the task; Esc, × or a click outside closes it.
+//
+// D242: a PDF's pages are drawn by the Mac itself (Core Graphics, in
+// internal/media), each as it comes near the screen and let go once well
+// away from it. ⌘F finds in a text or a file's source: a field in the
+// head, every match marked, the current one selected and scrolled to;
+// for a report or a table it finds in the file's text (MyGo's Markdown
+// view has no ranges to mark yet), and closing it lays the file out again.
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/media"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
@@ -39,6 +48,22 @@ type fileViewState struct {
 	more    bool   // the table has more rows than it shows
 	md      *markdown.Options
 	n       int // which load is current (a Retry starts another)
+
+	// A PDF (D242): its pages, the bitmaps drawn now and at what width.
+	pdf       *media.PDF
+	pdfFailed bool
+	pages     map[int]*ui.Bitmap
+	pageW     map[int]int
+	drawing   int // the page being drawn (0: none)
+
+	// Find (D242): the field in the head, its matches in fv.text.
+	finding  bool
+	query    string
+	hits     [][2]int
+	hitsFor  string
+	at       int
+	scrolled int  // the match last scrolled to (-1: none yet)
+	wasSrc   bool // the source toggle before find took it
 }
 
 // fileKind is the view a file opens in on the Mac: an SVG is its source
@@ -51,7 +76,7 @@ func fileKind(ref protocol.MediaRef) string {
 	if k == protocol.FileVideo || k == protocol.FilePicture {
 		return protocol.FileNone
 	}
-	return k
+	return k // a PDF is drawn here (D242)
 }
 
 // OpenFile opens a file a task showed in the viewer, growing out of the
@@ -70,6 +95,10 @@ func (a *App) OpenFile(ref protocol.MediaRef, from ui.Rect) {
 // isn't shown here).
 func (a *App) loadFile(fv *fileViewState) {
 	if fileKind(fv.ref) == protocol.FileNone {
+		return
+	}
+	if fileKind(fv.ref) == protocol.FilePDF {
+		a.loadPDF(fv)
 		return
 	}
 	if a.Media == nil {
@@ -91,6 +120,7 @@ func (a *App) loadFile(fv *fileViewState) {
 		fv.loading = false
 		if err != nil {
 			fv.failed = true
+			a.keyMaybeOld(err, fv.ref.ID)
 			return
 		}
 		fv.text, fv.cut = protocol.ViewText(data, fv.ref.Bytes)
@@ -98,6 +128,52 @@ func (a *App) loadFile(fv *fileViewState) {
 			fv.table, fv.more = tableMarkdown(fv.text, fv.ref.Name)
 		}
 	})
+}
+
+// loadPDF fetches the whole PDF and parses it on this Mac; pages are drawn
+// as they show (pdfBody).
+func (a *App) loadPDF(fv *fileViewState) {
+	if a.Media == nil {
+		fv.failed = true
+		return
+	}
+	fv.n++
+	n := fv.n
+	fv.loading, fv.failed, fv.pdfFailed = true, false, false
+	home := a.Media.Home()
+	var doc *media.PDF
+	var err error
+	a.later(func() {
+		var data []byte
+		if data, err = home.Fetch(context.Background(), fv.ref.Path()); err == nil {
+			doc, err = media.OpenPDF(data)
+		}
+	}, func() {
+		if n != fv.n || !fv.open {
+			if doc != nil {
+				doc.Close()
+			}
+			return
+		}
+		fv.loading = false
+		switch {
+		case err == media.ErrNotPDF:
+			fv.pdfFailed = true
+		case err != nil:
+			fv.failed = true
+			a.keyMaybeOld(err, fv.ref.ID)
+		default:
+			fv.pdf, fv.pages, fv.pageW = doc, map[int]*ui.Bitmap{}, map[int]int{}
+		}
+	})
+}
+
+// closeFile lets the open file's PDF go.
+func (fv *fileViewState) closeFile() {
+	if fv.pdf != nil {
+		fv.pdf.Close()
+		fv.pdf, fv.pages = nil, nil
+	}
 }
 
 // tableMarkdown is a table file as a Markdown table (numbers lined up on
@@ -209,10 +285,28 @@ func (a *App) fileViewer(c *ui.Context) {
 		return
 	}
 	if !fv.open {
+		fv.closeFile()
 		a.fileView = nil
 		return
 	}
 	t := a.T
+	// ⌘F finds; Esc closes the find field before the file (D242): the
+	// dialog takes Esc itself, so a dismissal that wasn't a click outside,
+	// while finding, is find's.
+	clickedOut := false
+	findKeys := func() {
+		if !fileFindable(fv) {
+			return
+		}
+		switch {
+		case c.Shortcut(ui.Cmd, ui.KeyF):
+			a.openFind(fv)
+		case fv.finding && c.Shortcut(ui.Cmd, ui.KeyG):
+			a.findStep(fv, 1)
+		case fv.finding && c.Shortcut(ui.Cmd|ui.Shift, ui.KeyG):
+			a.findStep(fv, -1)
+		}
+	}
 	w, h := c.Size()
 	if w <= 0 {
 		w, h = 1100, 800
@@ -221,17 +315,27 @@ func (a *App) fileViewer(c *ui.Context) {
 	kind := fileKind(fv.ref)
 	name := fileSaveName(fv.ref)
 	ui.DialogBase(c, &fv.open, func(back, panel ui.Element) {
+		findKeys() // inside the dialog (a shortcut outside it never fires)
+		clickedOut = back.Clicked()
 		back.Background(t.Scrim)
 		panel.Width(pw).Height(ph).Radius(t.RadiusXL).Background(t.Bg).Clip().
 			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Shadow(0, 5, 0, 0, t.Line).Label(name)
 		a.fileGrow(c, panel, fv, w, h, pw, ph)
 		ui.Column(c.Key("fv")).Fill().Children(func() {
 			a.fileHead(c, fv, kind, name)
+			if fv.finding {
+				a.findBar(c, fv)
+			}
 			ui.Box(c.Key("fv-body")).Grow(1).MinHeight(0).Children(func() { a.fileBody(c, fv, kind) })
 			a.fileBar(c, fv, kind)
 		})
 	})
+	if !fv.open && fv.finding && !clickedOut {
+		a.closeFind(fv)
+		fv.open = true // that Esc was find's
+	}
 	if !fv.open {
+		fv.closeFile()
 		a.fileView = nil
 	}
 }
@@ -270,9 +374,30 @@ func (a *App) fileHead(c *ui.Context, fv *fileViewState, kind, name string) {
 			if fv.text != "" && kind != protocol.FileTable {
 				meta = append(meta, a.L.T("file.lines", strings.Count(fv.text, "\n")+1))
 			}
+			if fv.pdf != nil {
+				if n := fv.pdf.Pages(); n == 1 {
+					meta = append(meta, a.L.T("file.pages.one"))
+				} else {
+					meta = append(meta, a.L.T("file.pages", n))
+				}
+			}
 			ui.Text(c, strings.Join(nonEmpty(meta...), " · ")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
 		})
-		if (kind == protocol.FileMarkdown || kind == protocol.FileTable) && fv.text != "" {
+		if fileFindable(fv) {
+			lens := ui.Box(c.Key("fv-find")).Size(t.ControlMD, t.ControlMD).Radius(t.RadiusSM).Role(ui.RoleButton).Shrink(0).
+				Label(a.L.T("file.find")).Tooltip(a.L.T("file.find.key", "⌘F")).Cursor(ui.CursorPointer).Focusable().AccessSelected(fv.finding).Draw(drawLens(t.InkSoft))
+			if fv.finding || lens.Hovered() {
+				lens.Background(t.Sunken)
+			}
+			if lens.Clicked() {
+				if fv.finding {
+					a.closeFind(fv)
+				} else {
+					a.openFind(fv)
+				}
+			}
+		}
+		if (kind == protocol.FileMarkdown || kind == protocol.FileTable) && fv.text != "" && !fv.finding {
 			label := a.L.T("file.source")
 			if fv.source {
 				label = a.L.T("file.formatted")
@@ -287,7 +412,7 @@ func (a *App) fileHead(c *ui.Context, fv *fileViewState, kind, name string) {
 			cl.Background(t.Sunken)
 		}
 		if cl.Clicked() {
-			fv.open = false
+			fv.open, fv.finding = false, false
 		}
 	})
 }
@@ -329,11 +454,23 @@ func (a *App) fileBody(c *ui.Context, fv *fileViewState, kind string) {
 			ui.Text(c.Key("fv-cut"), msg).FontSize(t.SM).TextColor(t.InkSoft).Padding(t.S2+2, t.S4).Radius(t.RadiusSM).Background(t.Sunken).TextAlign(ui.Center)
 		}
 	}
+	if kind == protocol.FilePDF {
+		if fv.pdfFailed {
+			a.fileNone(c, fv)
+			return
+		}
+		if fv.pdf != nil {
+			a.pdfBody(c, fv)
+		}
+		return
+	}
 	if kind == protocol.FileText || fv.source {
 		if fv.st == nil {
-			fv.st = &editor.State{Buffer: editor.NewBuffer(fv.text), ReadOnly: true}
+			// Read only: no caret, so no line is "current" (D242).
+			fv.st = &editor.State{Buffer: editor.NewBuffer(fv.text), ReadOnly: true, NoActiveLine: true}
 			fv.st.Buffer.SetLanguage(editor.LanguageFor(fv.ref.Name))
 		}
+		a.findMarks(fv)
 		ui.Column(c.Key("fv-text")).Fill().Background(t.SurfaceRaised).Children(func() {
 			editor.View(c, fv.st).Grow(1).MinHeight(0)
 			if fv.cut {
@@ -345,7 +482,7 @@ func (a *App) fileBody(c *ui.Context, fv *fileViewState, kind string) {
 	if fv.md == nil {
 		th := a.markdownTheme(t.MD+1, a.leading(1.6))
 		th.Headings[0].Size, th.Headings[1].Size, th.Headings[2].Size = 1.75, 1.3, 1.12
-		fv.md = &markdown.Options{Theme: th}
+		fv.md = &markdown.Options{Theme: th, CodeBlock: a.codeBlock}
 	}
 	src := fv.text
 	if kind == protocol.FileTable {
@@ -370,7 +507,11 @@ func (a *App) fileNone(c *ui.Context, fv *fileViewState) {
 			ui.Box(c).Size(56, 56).Draw(drawFileKind(t.InkMuted, protocol.FileNone))
 			ui.Text(c, strings.ToUpper(strings.TrimPrefix(fileExt(fileSaveName(fv.ref)), "."))).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft)
 		})
-		ui.Text(c, a.L.T("file.none.mac")).FontSize(t.MD).TextColor(t.InkSoft).MaxWidth(380).TextAlign(ui.Center)
+		said := a.L.T("file.none.mac")
+		if fv.pdfFailed {
+			said = a.L.T("file.pdfFailed.mac")
+		}
+		ui.Text(c, said).FontSize(t.MD).TextColor(t.InkSoft).MaxWidth(380).TextAlign(ui.Center)
 		ui.Row(c).Gap(t.S3).Children(func() {
 			if a.button(c, a.L.T("file.save"), btnSecondary, t.ControlMD, t.Bg) {
 				a.saveFileCopy(fv.ref)
@@ -400,7 +541,7 @@ func (a *App) fileBar(c *ui.Context, fv *fileViewState, kind string) {
 					l.TextColor(t.Ink)
 				}
 				if l.Clicked() {
-					fv.open = false
+					fv.open, fv.finding = false, false
 					a.OpenTask(ref.From.TaskID)
 				}
 			}
@@ -419,7 +560,7 @@ func (a *App) fileBar(c *ui.Context, fv *fileViewState, kind string) {
 				}
 			}
 		}
-		if kind != protocol.FileNone {
+		if kind != protocol.FileNone && !fv.pdfFailed {
 			if a.button(c, a.L.T("file.save"), btnSecondary, t.ControlSM, t.Surface) {
 				a.saveFileCopy(fv.ref)
 			}
@@ -447,6 +588,9 @@ func drawFileKind(col ui.Color, kind string) func(p *ui.Painter, r ui.Rect) {
 		switch kind {
 		case protocol.FileMarkdown, protocol.FileText:
 			in.MoveTo(pt(8.8, 11.6)).LineTo(pt(15.2, 11.6)).MoveTo(pt(8.8, 14.6)).LineTo(pt(15.2, 14.6)).MoveTo(pt(8.8, 17.6)).LineTo(pt(12.6, 17.6))
+		case protocol.FilePDF:
+			in.MoveTo(pt(8.8, 11.4)).LineTo(pt(15.2, 11.4)).LineTo(pt(15.2, 14.8)).LineTo(pt(8.8, 14.8)).Close()
+			in.MoveTo(pt(8.8, 17.6)).LineTo(pt(15.2, 17.6))
 		case protocol.FileTable:
 			in.MoveTo(pt(8.6, 11.2)).LineTo(pt(15.4, 11.2)).LineTo(pt(15.4, 17.8)).LineTo(pt(8.6, 17.8)).Close()
 			in.MoveTo(pt(8.6, 14.5)).LineTo(pt(15.4, 14.5)).MoveTo(pt(12, 11.2)).LineTo(pt(12, 17.8))
@@ -455,4 +599,211 @@ func drawFileKind(col ui.Color, kind string) func(p *ui.Painter, r ui.Rect) {
 		}
 		p.StrokePath(&in, 1.35*s, col)
 	}
+}
+
+// ---------- a PDF's pages (D242) ----------
+
+// pdfNear is how far from the screen a page is still kept drawn, in
+// points: about a screen either way.
+const pdfNear = 900
+
+// pdfBody is the PDF's pages on the sunken ground, each a sheet of white
+// paper at the reading width; a page is drawn when it comes within
+// pdfNear of the screen and let go when it leaves, so a long PDF holds a
+// few bitmaps at once.
+func (a *App) pdfBody(c *ui.Context, fv *fileViewState) {
+	t := a.T
+	doc := fv.pdf
+	const scale = 2 // Retina: the page is drawn at twice its points
+	ui.Scroll(c.Key("fv-pdf")).Fill().Background(t.Sunken).Children(func() {
+		ui.Row(c).Justify(ui.Center).Padding(t.S4+2, t.S4+2, t.S6, t.S4+2).Children(func() {
+			ui.Column(c).Grow(1).MaxWidth(720).MinWidth(0).Gap(t.S3 + 2).Children(func() {
+				for i := 1; i <= doc.Pages(); i++ {
+					w, h := doc.Size(i)
+					if w <= 0 || h <= 0 {
+						w, h = 595, 842
+					}
+					page := ui.Box(c.Key(fmt.Sprintf("pg:%d", i))).AlignSelf(ui.Stretch).AspectRatio(float32(w/h)).
+						Radius(6).Background(t.PDFPage).Clip().Shadow(0, 3, 0, 0, t.Line).Role(ui.RoleImage).Label(a.L.T("file.page", i))
+					near := page.InViewMargin(pdfNear)
+					b := page.Bounds()
+					px := int(b.W*scale + 0.5)
+					switch {
+					case !near:
+						delete(fv.pages, i) // let the pixels go
+						delete(fv.pageW, i)
+					case px > 0 && fv.pageW[i] != px && fv.drawing == 0:
+						a.drawPage(fv, i, px)
+					}
+					if bmp := fv.pages[i]; bmp != nil {
+						page.Children(func() { ui.Image(c, bmp).Fill().AccessHidden(true) })
+					}
+				}
+			})
+		})
+	})
+}
+
+// drawPage draws page i at px pixels wide, off the UI thread, one at a time.
+func (a *App) drawPage(fv *fileViewState, i, px int) {
+	doc := fv.pdf
+	fv.drawing = i
+	var bmp *ui.Bitmap
+	a.later(func() {
+		if img, err := doc.Render(i, px); err == nil {
+			bmp = ui.NewBitmap(img)
+		}
+	}, func() {
+		fv.drawing = 0
+		if fv.pdf != doc || fv.pages == nil || bmp == nil {
+			return
+		}
+		fv.pages[i], fv.pageW[i] = bmp, px
+	})
+}
+
+// ---------- find (D242) ----------
+
+// fileFindable: a text, a report or a table, read.
+func fileFindable(fv *fileViewState) bool {
+	k := fileKind(fv.ref)
+	return fv.text != "" && (k == protocol.FileText || k == protocol.FileMarkdown || k == protocol.FileTable)
+}
+
+func (a *App) openFind(fv *fileViewState) {
+	if fv.finding {
+		return
+	}
+	fv.finding, fv.wasSrc, fv.scrolled = true, fv.source, -1
+	fv.source = true // a report or a table is found in its text here
+}
+
+func (a *App) closeFind(fv *fileViewState) {
+	fv.finding, fv.source = false, fv.wasSrc
+	if fv.st != nil {
+		fv.st.TextBackgrounds = nil
+	}
+}
+
+func (a *App) findStep(fv *fileViewState, d int) {
+	if n := len(fv.hits); n > 0 {
+		fv.at = (fv.at + d + n) % n
+	}
+}
+
+// findBar is the find field under the head: the words, n of m, previous
+// and next. Enter goes to the next.
+func (a *App) findBar(c *ui.Context, fv *fileViewState) {
+	t := a.T
+	ui.Row(c.Key("fv-findbar")).Gap(t.S1).AlignItems(ui.Center).Padding(0, t.S3, t.S3, t.S4+2).Background(t.Surface).
+		BorderWidth(0, 0, 1, 0).BorderColor(t.Line).Role(ui.RoleSearch).Children(func() {
+		in := ui.TextInput(c.Key("fv-find-in"), &fv.query).Placeholder(a.L.T("file.find.placeholder")).Label(a.L.T("file.find")).
+			FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Sunken).Border(1, t.LineSoft).Grow(1).MinWidth(0).AutoFocus()
+		if in.Changed() {
+			fv.at, fv.scrolled = 0, -1
+		}
+		if in.Submitted() {
+			a.findStep(fv, 1)
+		}
+		word := ""
+		if fv.query != "" {
+			if n := len(fv.hits); n > 0 {
+				word = a.L.T("file.find.count", min(fv.at, n-1)+1, n)
+			} else {
+				word = a.L.T("file.find.none")
+			}
+		}
+		ui.Text(c.Key("fv-find-n"), word).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).MinWidth(64).TextAlign(ui.Center).Shrink(0)
+		for _, s := range []struct {
+			key, label string
+			d          int
+		}{{"prev", a.L.T("file.find.prev"), -1}, {"next", a.L.T("file.find.next"), 1}} {
+			b := ui.Box(c.Key("fv-find-"+s.key)).Size(t.ControlSM, t.ControlSM).Radius(t.RadiusSM).Role(ui.RoleButton).Shrink(0).
+				Label(s.label).Cursor(ui.CursorPointer).Focusable().Draw(drawStep(t.InkSoft, s.d < 0)).Disabled(len(fv.hits) == 0)
+			if b.Hovered() && len(fv.hits) > 0 {
+				b.Background(t.Sunken)
+			}
+			if b.Clicked() {
+				a.findStep(fv, s.d)
+			}
+		}
+	})
+}
+
+// findMarks marks every match in the editor, the current one in the
+// accent, selects it and scrolls it into view.
+func (a *App) findMarks(fv *fileViewState) {
+	st := fv.st
+	if st == nil {
+		return
+	}
+	if !fv.finding || fv.query == "" {
+		fv.hits, fv.hitsFor, st.TextBackgrounds = nil, "", nil
+		return
+	}
+	if fv.hitsFor != fv.query {
+		fv.hits, fv.hitsFor = protocol.FindAll(fv.text, fv.query, protocol.FindMax), fv.query
+	}
+	if len(fv.hits) == 0 {
+		st.TextBackgrounds = nil
+		return
+	}
+	fv.at = min(fv.at, len(fv.hits)-1)
+	t := a.T
+	bg := make([]editor.TextBackground, 0, len(fv.hits))
+	for i, h := range fv.hits {
+		col := t.Highlight
+		if i == fv.at {
+			col = t.Accent
+		}
+		bg = append(bg, editor.TextBackground{Start: h[0], End: h[1], Color: col})
+	}
+	st.TextBackgrounds = bg
+	if fv.scrolled != fv.at {
+		fv.scrolled = fv.at
+		h := fv.hits[fv.at]
+		st.Select(h[0], h[1])
+	}
+}
+
+// drawStep is previous (up) or next (down).
+func drawStep(col ui.Color, up bool) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		s := min(r.W, r.H) / 22
+		ox, oy := r.X+(r.W-20*s)/2, r.Y+(r.H-20*s)/2
+		var path ui.Path
+		if up {
+			path.MoveTo(ox+5.5*s, oy+12.5*s).LineTo(ox+10*s, oy+8*s).LineTo(ox+14.5*s, oy+12.5*s)
+		} else {
+			path.MoveTo(ox+5.5*s, oy+7.5*s).LineTo(ox+10*s, oy+12*s).LineTo(ox+14.5*s, oy+7.5*s)
+		}
+		p.StrokePath(&path, 2*s, col)
+	}
+}
+
+// ---------- code blocks ----------
+
+// codeBlock is a code block in Ducter's words: its language, and Ducter's
+// own 拷贝 / Copy (MyGo's says "Copy code" in its own words and language).
+func (a *App) codeBlock(c *ui.Context, b *markdown.CodeBlockView) {
+	t := a.T
+	ui.Column(c).AlignSelf(ui.Stretch).Background(t.SurfaceRaised).Border(1, t.Line).Radius(t.RadiusSM).Clip().
+		Role(ui.RoleGroup).Label(firstNonEmpty(b.Language, a.L.T("code.block"))).Children(func() {
+		head := ui.Row(c).AlignItems(ui.Center).Padding(t.S1, t.S1, 0, t.S3)
+		head.Children(func() {
+			ui.Text(c, b.Language).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Unselectable()
+			ui.Spacer(c)
+			copied := ui.Local(head, "copied", func() int64 { return 0 })
+			label := a.L.T("media.copy")
+			if *copied != 0 && a.Now().UnixMilli()-*copied < 1600 {
+				label = a.L.T("media.copied")
+			}
+			if a.button(c, label, btnText, t.ControlSM-6, t.SurfaceRaised) && !b.Open {
+				c.WriteClipboard(b.Code())
+				*copied = a.Now().UnixMilli()
+				c.After(1700e6)
+			}
+		})
+		b.Body(c)
+	})
 }

@@ -151,6 +151,10 @@ export interface MediaApi {
   /** A file on the home (a task's report): copied in. files: besides pictures. Throws when it isn't one Ducter shows. */
   putFile(path: string, o?: { name?: string; from?: { taskId: string }; files?: boolean }): import("./media.ts").MediaRef;
   put(bytes: Uint8Array, o?: { name?: string; from?: { taskId: string }; files?: boolean }): import("./media.ts").MediaRef;
+  /** D242: v with every media ref in it carrying a fresh, expiring key (what a client gets). */
+  fresh?<T>(v: T): T;
+  /** D242: fresh keys for the ids the home holds. */
+  keysFor?(ids: unknown): Record<string, string>;
 }
 
 /**

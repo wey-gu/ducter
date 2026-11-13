@@ -54,6 +54,9 @@ snapshot). Animations off. One phone per Mac (D234: the home's and each worker M
 - `needs.phone` puts a task on a computer with the phone (`no_phone` elsewhere); the brief gets
   `phoneBrief` (runner `brief.ts`); the ten `phone_*` tools are listed only for such a task.
   With no phone anywhere, the person's own phone is offered first (D247, [use-this-phone.md](use-this-phone.md) §3.1);
+  D251: only work that says `"ducter"` or `"any"` comes here; work for the person's own phone
+  (`"mine"`) never does, even when this phone is the only one ready (use-this-phone.md §3); its
+  brief and every `phone_look` say it is Ducter's own phone, an emulator, not the person's;
   no task ever asks the person for adb, debugging or a cable (every brief's `deviceRule`).
 - `phone_look` numbers what can be tapped; a tappable row with no words is named by the words
   inside it ("Title · subtitle"); a screen uiautomator can't read comes back as a picture.

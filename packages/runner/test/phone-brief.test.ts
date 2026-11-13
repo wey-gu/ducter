@@ -10,6 +10,21 @@ test("the phone's section: its tools, the gate at the tap, the user's turns, scr
   expect(b).not.toMatch(/emulator|adb/i);
 });
 
+// D251: a task is told which phone it has, so it never takes Ducter's emulator for the user's own.
+test("the brief says which phone: the user's own, Ducter's, or either", () => {
+  const mine = taskBrief({ ...base, phone: "mine" } as any);
+  expect(mine).toContain("You work on the user's own Android phone");
+  expect(mine).toContain("never do it on another phone");
+  expect(mine).not.toContain("You work on Ducter's own Android phone");
+  const ducter = taskBrief({ ...base, phone: "ducter" } as any);
+  expect(ducter).toContain("You work on Ducter's own Android phone");
+  expect(ducter).toContain("It is not the user's own phone");
+  expect(phoneBrief("Ducter", "ducter")).not.toMatch(/\badb\b/);
+  const either = taskBrief({ ...base, phone: true } as any);
+  expect(either).toContain("`phone_look`'s first line says which phone it is");
+  for (const b of [mine, ducter, either]) expect(b).toContain("## The phone");
+});
+
 test("only a phone task gets it", () => {
   expect(taskBrief({ ...base, phone: true } as any)).toContain("## The phone");
   expect(taskBrief(base as any)).not.toContain("## The phone");

@@ -115,7 +115,7 @@ export interface Expect {
   /** Regexes the partner's own lines (messages and acks, not card text) may not match. */
   proseForbid?: RegExp[];
   /** D157: some opened task's needs has each of these (a string matches case-insensitively as a part; false = absent or false). */
-  needs?: { browse?: boolean; signedIn?: boolean; site?: string; app?: string; long?: boolean; draw?: boolean; phone?: boolean };
+  needs?: { browse?: boolean; signedIn?: boolean; site?: string; app?: string; long?: boolean; draw?: boolean; phone?: boolean | string | (boolean | string)[] };
   /** Some opened task names this agent (harness). */
   harness?: string;
   /** Some opened task's place has this kind. */
@@ -1472,8 +1472,8 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     ownPhone: true,
     steps: [{ user: "用你的手机在小红书里帮我看看，最近大家怎么评价京都的红叶季" }],
-    expect: { opens: 1, ackFirst: true, needs: { phone: true }, placeKind: "none", maxChars: 80, notCalled: ["ask"], forbid: [/看完了|找到了[。！]|大家都说/] },
-    rubric: "Work in an app on a phone. It opens one task whose needs say phone (needs.phone true, place none), the brief keeps the user's words. Before it, one short Chinese ack naming the action (我用手机去小红书看看…); it never claims results, never asks first, and never says emulator, adb or Android Studio.",
+    expect: { opens: 1, ackFirst: true, needs: { phone: ["ducter", "any", true] }, placeKind: "none", maxChars: 80, notCalled: ["ask"], forbid: [/看完了|找到了[。！]|大家都说/] },
+    rubric: "Work in an app on a phone. It opens one task whose needs say phone (needs.phone 'ducter' or 'any': the user said 你的手机, Ducter's own; place none), the brief keeps the user's words. Before it, one short Chinese ack naming the action (我用手机去小红书看看…); it never claims results, never asks first, and never says emulator, adb or Android Studio. Which phone it chose (needs.phone) and the task's needs are checked by code and not shown to you; don't judge them.",
   },
   {
     id: "phone-send-no-ask-zh",
@@ -1481,8 +1481,8 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     ownPhone: true,
     steps: [{ user: "用手机在信息里给 5551234 发一条短信：周六见" }],
-    expect: { opens: 1, ackFirst: true, needs: { phone: true }, maxChars: 80, notCalled: ["ask"], forbid: [/发出去了|已发送|发好了/] },
-    rubric: "A send on Ducter's phone. It does not ask first (the phone itself asks the user's Go at the tap that sends, as for payments): it opens one phone task (needs.phone true) with the user's words in the brief and one short Chinese ack naming the action. It never claims the message was sent.",
+    expect: { opens: 1, ackFirst: true, needs: { phone: ["mine", "any", true] }, maxChars: 80, notCalled: ["ask"], forbid: [/发出去了|已发送|发好了/] },
+    rubric: "A send from a phone (a text in Messages: the user's own phone or either). It does not ask first (the phone itself asks the user's Go at the tap that sends, as for payments): it opens one phone task (needs.phone 'mine' or 'any') with the user's words in the brief and one short Chinese ack naming the action. It never claims the message was sent. Which phone it chose (needs.phone) and the task's needs are checked by code and not shown to you; don't judge them.",
   },
   // No phone anywhere: the loadout refuses the task (NO_PHONE, unit-tested in core android-phone.test.ts);
   // the eval's runner opens tasks without the loadout, so it is not a scenario here.
@@ -1494,16 +1494,55 @@ export const scenarios: Scenario[] = [
     category: "phone-use",
     lang: "zh",
     steps: [{ user: "用我的手机打开小红书，帮我看看最近大家怎么评价京都的红叶季" }],
-    expect: { opens: 1, ackFirst: true, needs: { phone: true }, placeKind: "none", maxChars: 80, notCalled: ["ask"], forbid: [/adb|USB|usb|数据线|开发者选项|无线调试|USB 调试|developer options|cable/i, /看完了|找到了[。！]|大家都说/] },
-    rubric: "The user asks for work in an app on their own phone, and no phone is set up yet. It opens one task whose needs say phone (needs.phone true, place none), the brief keeps the user's words; before it one short Chinese ack naming the action. It never claims results, never asks first, and never mentions adb, USB or wireless debugging, a cable, Developer options or an emulator (Ducter offers the user the one tap that sets the phone up).",
+    expect: { opens: 1, ackFirst: true, needs: { phone: "mine" }, placeKind: "none", maxChars: 80, notCalled: ["ask"], forbid: [/adb|USB|usb|数据线|开发者选项|无线调试|USB 调试|developer options|cable/i, /看完了|找到了[。！]|大家都说/] },
+    rubric: "The user asks for work in an app on their own phone, and no phone is set up yet. It opens one task whose needs say phone (needs.phone 'mine': 我的手机 is their own phone, never Ducter's; place none), the brief keeps the user's words; before it one short Chinese ack naming the action. It never claims results, never asks first, and never mentions adb, USB or wireless debugging, a cable, Developer options or an emulator (Ducter offers the user the one tap that sets the phone up). Which phone it chose (needs.phone) and the task's needs are checked by code and not shown to you; don't judge them.",
   },
   {
     id: "own-phone-not-set-up-en",
     category: "phone-use",
     lang: "en",
     steps: [{ user: "Use my phone to check my Meituan order and tell me when it arrives" }],
-    expect: { opens: 1, ackFirst: true, needs: { phone: true }, maxChars: 160, notCalled: ["ask"], forbid: [/\badb\b|USB|wireless debugging|developer options|cable|emulator/i] },
-    rubric: "Work in an app on the user's own phone, with no phone set up yet. It opens one task with needs.phone true and the user's words in the brief, after one short English ack naming the action. It never claims the order status, never asks first, and never mentions adb, USB or wireless debugging, a cable, Developer options or an emulator.",
+    expect: { opens: 1, ackFirst: true, needs: { phone: "mine" }, maxChars: 160, notCalled: ["ask"], forbid: [/\badb\b|USB|wireless debugging|developer options|cable|emulator/i] },
+    rubric: "Work in an app on the user's own phone, with no phone set up yet. It opens one task with needs.phone 'mine' (their own phone: their Meituan account) and the user's words in the brief, after one short English ack naming the action. It never claims the order status, never asks first, and never mentions adb, USB or wireless debugging, a cable, Developer options or an emulator. Which phone it chose (needs.phone) and the task's needs are checked by code and not shown to you; don't judge them.",
+  },
+  // D251: which phone. Work in the person's own apps (their WeChat, their texts) is "mine", even with
+  // Ducter's phone right there (ownPhone): on hel a task used the emulator for the author's Pixel.
+  {
+    id: "which-phone-mine-zh",
+    category: "phone-use",
+    lang: "zh",
+    ownPhone: true,
+    steps: [{ user: "用我的手机看看微信里妈妈刚发了什么" }],
+    expect: { opens: 1, ackFirst: true, needs: { phone: "mine" }, placeKind: "none", maxChars: 80, notCalled: ["ask"], forbid: [/adb|USB|数据线|开发者选项|无线调试|模拟器|emulator/i, /妈妈说|她说了/] },
+    rubric: "The user asks for their own WeChat on their own phone. It opens one task with needs.phone 'mine' (their phone, not Ducter's own: Ducter's phone has none of their accounts) and the user's words in the brief, after one short Chinese ack naming the action. It never claims what was said, never asks first, and never mentions an emulator, adb or a cable. Which phone it chose (needs.phone) and the task's needs are checked by code and not shown to you; don't judge them.",
+  },
+  {
+    id: "which-phone-mine-en",
+    category: "phone-use",
+    lang: "en",
+    ownPhone: true,
+    steps: [{ user: "Check on my Pixel what my landlord texted me this morning" }],
+    expect: { opens: 1, ackFirst: true, needs: { phone: "mine" }, maxChars: 160, notCalled: ["ask"], forbid: [/\badb\b|USB|wireless debugging|developer options|cable|emulator/i] },
+    rubric: "The user's own texts on their own Pixel. It opens one task with needs.phone 'mine' and the user's words in the brief, after one short English ack naming the action. It never claims what the landlord said, never asks first, and never mentions an emulator, adb or a cable. Which phone it chose (needs.phone) and the task's needs are checked by code and not shown to you; don't judge them.",
+  },
+  // D251: trying the team's own app on a clean Android phone is Ducter's phone ("ducter").
+  {
+    id: "which-phone-ducter-zh",
+    category: "phone-use",
+    lang: "zh",
+    ownPhone: true,
+    steps: [{ user: "找一台干净的安卓手机，从 Google Play 装上 Nowledge Mem，试一下注册流程，看看哪里会卡住" }],
+    expect: { opens: 1, ackFirst: true, needs: { phone: "ducter" }, maxChars: 80, notCalled: ["ask"], forbid: [/adb|USB|数据线|开发者选项/i, /没问题|都正常|卡在/] },
+    rubric: "Trying the team's own app on Android: a clean phone with none of the user's accounts suits it. It opens one task with needs.phone 'ducter' and the user's words in the brief, after one short Chinese ack naming the action. It never claims results and never asks first. Which phone it chose (needs.phone) and the task's needs are checked by code and not shown to you; don't judge them.",
+  },
+  {
+    id: "which-phone-ducter-en",
+    category: "phone-use",
+    lang: "en",
+    ownPhone: true,
+    steps: [{ user: "Try our app's onboarding on a fresh Android phone and tell me where it's confusing" }],
+    expect: { opens: 1, ackFirst: true, needs: { phone: "ducter" }, maxChars: 160, notCalled: ["ask"], forbid: [/\badb\b|USB|wireless debugging|developer options|cable/i] },
+    rubric: "Trying the team's own app on a fresh Android phone. It opens one task with needs.phone 'ducter' (Ducter's own clean phone, not the user's) and the user's words in the brief, after one short English ack naming the action. It never claims results and never asks first. Which phone it chose (needs.phone) and the task's needs are checked by code and not shown to you; don't judge them.",
   },
   {
     id: "notice-rule-zh",

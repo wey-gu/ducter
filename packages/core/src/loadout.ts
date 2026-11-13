@@ -2,7 +2,7 @@
 // (换谁来做 / Switch who does it), moves a task when the person switches it, keeps 你的规则 / Your
 // rules, and after two switches the same way asks the partner to offer a rule once.
 import type { Bodies, Candidate, DeviceHarness, LogEvent, Place, TaskNeeds } from "@ducter/protocol";
-import { harnessName } from "@ducter/protocol";
+import { harnessName, whichPhone } from "@ducter/protocol";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import { blockOf, chooseBody, computersOf, fwCandidates, type Computer, noPhoneLine } from "./candidates.ts";
 import { checkEffort, type ModelCatalog } from "./models.ts";
@@ -28,7 +28,7 @@ export interface Loadout {
    *  D157: with two or more computers, on every computer (anyComputer: a No folder card). */
   candidatesFor(work: { title: string; brief?: string; place?: Place; needs?: TaskNeeds }, opts?: { every?: true }): Promise<Candidate[]>;
   /** D157: the computers that run tasks, as the ranking sees them (undefined without device info). */
-  computers(): Promise<Computer[] | undefined>;
+  computers(needs?: TaskNeeds): Promise<Computer[] | undefined>;
   /** 换到 X 接着做 / Continue on X; D157: on another computer (device: its id or name), the task moves there. */
   switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined, device?: string): Promise<{ ok: boolean; message?: string }>;
 }
@@ -51,15 +51,22 @@ export function createLoadout(o: {
   /** The paired clients (phones among them), from the last devices frame read. */
   let clients: Parameters<typeof noPhoneLine>[0];
   /** D157: every computer that runs tasks, from the devices frame. */
-  const computers = async (): Promise<Computer[] | undefined> => {
+  /** D251: `phone` on each computer means "can serve this phone work": which phone the work needs decides it. */
+  const computers = async (needs?: TaskNeeds): Promise<Computer[] | undefined> => {
     const v = o.devices();
     if (!v) return undefined;
     const f = await v.frame().catch((err) => (console.warn("[loadout] devices:", (err as Error).message), undefined));
     if (!f) return undefined;
     clients = f.reach?.clients;
     const comps = computersOf(f.devices, o.sites);
+    const which = whichPhone(needs);
+    // D251: Ducter's own phone only where it is on (用手机); the person's phone never stands in.
+    if (which === "ducter") return comps;
     // D238: the tools drive the person's own phone from the home, wherever the task runs.
     if (o.handset?.()) return comps.map((c) => ({ ...c, phone: true }));
+    // D251: their own phone: their Android app connected without 用这台手机 opens the task, and its
+    // card offers to turn it on there, even where Ducter's phone could do it; else no computer can.
+    if (which === "mine") return comps.map((c) => ({ ...c, phone: !!o.handsetOffer?.() }));
     // D247: no phone anywhere, but their Android app is here: the task opens, and offers it there.
     if (!comps.some((c) => c.phone) && o.handsetOffer?.()) return comps.map((c) => ({ ...c, phone: true }));
     return comps;
@@ -93,10 +100,10 @@ export function createLoadout(o: {
     computers,
 
     async choose(work) {
-      const comps = await computers();
+      const comps = await computers(work.needs);
       // D217: work on an app on a phone needs Ducter's phone somewhere; without it, nothing opens.
       // D247: never a silent task that would improvise (adb, a cable): one line naming the one thing to do.
-      if (work.needs?.phone && comps && !comps.some((c) => c.phone)) return { none: noPhoneLine(clients) };
+      if (work.needs?.phone && comps && !comps.some((c) => c.phone)) return { none: noPhoneLine(clients, whichPhone(work.needs)) };
       // D157: two or more computers: one ranking over all of them, from what the task needs.
       const multi = comps && comps.length > 1 && comps.some((c) => c.harnesses.length);
       const hs = multi ? [] : await harnessesFor(work.place && "device" in work.place ? work.place.device : undefined);
@@ -125,7 +132,7 @@ export function createLoadout(o: {
     },
 
     async candidatesFor(work, opts) {
-      const comps = await computers();
+      const comps = await computers(work.needs);
       if (comps && comps.length > 1) {
         const pinDevice = pinOf(work.place);
         return fwCandidates({ work, computers: comps, ...(work.place ? { place: work.place } : {}), ...(work.needs ? { needs: work.needs } : {}), ...(pinDevice ? { pinDevice } : {}), settings: o.settings.get(), rules: o.rules.list(), ...(opts?.every ? { every: true as const } : {}) });
@@ -139,7 +146,7 @@ export function createLoadout(o: {
       if (!card) throw new Error(`unknown task ${taskId}`);
       // The latest: a task opened before its brief was written logs the brief in a second one (D120).
       const open = o.log.read({ stream: taskStream(taskId), kinds: ["task_open"], limit: 1000 }).at(-1)?.body as Bodies["task_open"] | undefined;
-      const comps = await computers();
+      const comps = await computers(open?.needs);
       const current = { harness: card.harness, ...(card.model ? { model: card.model } : {}) };
       if (comps && comps.length > 1) {
         // D157: who and where together (the switch sheet groups by computer). The task keeps its

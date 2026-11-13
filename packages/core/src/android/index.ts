@@ -14,7 +14,8 @@ import { createPhoneLive, type PhoneLive, type PhoneSink } from "./live.ts";
 import { remotePhoneDevice } from "./remote.ts";
 import type { Fetcher, InstallResult, License } from "./sdk.ts";
 import { registerPhoneTools, type PhoneTools } from "./tools.ts";
-import { HANDSET_BLIND, type Handsets } from "../handset/index.ts";
+import { HANDSET_BLIND, HANDSET_MINE_NONE, type Handsets } from "../handset/index.ts";
+import { whichPhone } from "@ducter/protocol";
 
 export type { PhoneSetup } from "./host.ts";
 
@@ -121,16 +122,31 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
   // theirs); Ducter's phone on its computer otherwise. Bound at the task's first use.
   // D247: with no phone that can serve it (none added, no Ducter's phone where it runs), a phone task
   // binds the person's connected phone too, and its first phone tool offers to turn 用这台手机 on.
+  // D251: the work says which phone. "mine": the person's own, always: added, or their connected
+  // Android phone with a card to turn 用这台手机 on, even where Ducter's phone could do it; never
+  // Ducter's phone. "ducter": Ducter's phone only. "any" (the legacy true): as D238 and D247.
   const handsetOf = (taskId: string): string | undefined => {
     const h = o.handsets?.();
     if (!h) return undefined;
-    const wants = wantsPhone(taskId);
-    return h.forTask(taskId, wants, { offer: wants && !readyOn(computerOf(taskId)) });
+    const which = wantsPhone(taskId);
+    if (!which || which === "ducter") return undefined;
+    if (which === "mine") return h.forTask(taskId, true, { mine: true });
+    return h.forTask(taskId, true, { offer: !readyOn(computerOf(taskId)) });
   };
   const deviceFor = (taskId: string): PhoneDevice => {
     if (handsetOf(taskId)) return o.handsets!()!.device(taskId);
+    if (wantsPhone(taskId) === "mine") return noneOfTheirs;
     const where = computerOf(taskId);
     return where === "local" ? device : (remoteFor(where)?.device ?? device);
+  };
+  /** D251: what phone_look says first: which phone this is, so a task never takes one for the other. */
+  const whichLine = (taskId: string): string | undefined => {
+    const on = handsetOf(taskId) ? o.handsets!()!.where(taskId) : undefined;
+    if (on) return `Phone: ${on.name}, the user's own phone (their own apps, accounts and messages).`;
+    if (wantsPhone(taskId) === "mine") return undefined;
+    const where = computerOf(taskId);
+    const mac = where === "local" ? o.deviceName() : (workerOf(where)?.name ?? where);
+    return `Phone: Ducter's own phone, an Android emulator on ${mac}. It is not the user's own phone: only apps they signed in to on it themselves have their accounts.`;
   };
   const liveForTask = (taskId: string): PhoneLive => {
     const where = computerOf(taskId);
@@ -138,19 +154,43 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
   };
 
   // needs.phone from the task's opening (kept on the task_open event), read once per task.
-  const needs = new Map<string, boolean>();
+  // D251: which phone ("mine", "ducter", or "any" for the legacy true); "" when it needs none.
+  const needs = new Map<string, "mine" | "ducter" | "any" | "">();
   const wantsPhone = (taskId: string) => {
     let v = needs.get(taskId);
     if (v === undefined) {
       const open = o.log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as Bodies["task_open"] | undefined;
-      v = !!open?.needs?.phone;
+      v = whichPhone(open?.needs) ?? "";
       needs.set(taskId, v);
     }
-    return v;
+    return v || undefined;
+  };
+  /** D251: work for the person's own phone with none of theirs to use: every tool says so, never Ducter's phone. */
+  const refuse = (): Promise<never> => Promise.reject(new Error(HANDSET_MINE_NONE));
+  const noneOfTheirs: PhoneDevice = {
+    state: () => "stopped",
+    ensure: refuse,
+    touch() {},
+    hold: () => () => {},
+    stop: async () => {},
+    adb: refuse,
+    shell: refuse,
+    jpeg: refuse,
+    screen: refuse,
+    tap: refuse,
+    swipe: refuse,
+    key: refuse,
+    text: refuse,
+    front: refuse,
+    apps: refuse,
+    launch: refuse,
+    size: refuse,
   };
   const attached = (taskId: string) => {
-    if (!wantsPhone(taskId)) return false;
-    if (!handsetOf(taskId) && !readyOn(computerOf(taskId))) return false;
+    const which = wantsPhone(taskId);
+    if (!which) return false;
+    // D251: work for their own phone keeps its phone tools, which say plainly when none of theirs is there.
+    if (which !== "mine" && !handsetOf(taskId) && !readyOn(computerOf(taskId))) return false;
     const c = o.tasks.get(taskId);
     return !!c && ACTIVE.has(c.attention);
   };
@@ -158,6 +198,8 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
   // A task that holds the phone keeps it running while it works (released when it stops).
   const holds = new Map<string, () => void>();
   const busy = new Set<string>();
+  /** The task works on Ducter's phone (not the person's, and not work that is for theirs only: D251). */
+  const ducters = (taskId: string) => !handsetOf(taskId) && wantsPhone(taskId) !== "mine";
   const tools = registerPhoneTools({
     mcp: o.mcp,
     deviceFor,
@@ -166,19 +208,21 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
     // A task on the phone keeps it running until it stops working (task_state below lets go).
     attached: (taskId) => {
       const a = attached(taskId);
-      if (a && !holds.has(taskId) && !handsetOf(taskId)) holds.set(taskId, deviceFor(taskId).hold(`task ${taskId}`));
+      if (a && !holds.has(taskId) && ducters(taskId)) holds.set(taskId, deviceFor(taskId).hold(`task ${taskId}`));
       return a;
     },
-    blind: (taskId) => (taskId && handsetOf(taskId) ? o.handsets!()!.blind(taskId) : (taskId ? liveForTask(taskId) : live).blind()),
-    tried: (taskId) => void (handsetOf(taskId) ? undefined : liveForTask(taskId).tried(taskId)),
+    blind: (taskId) => (taskId && handsetOf(taskId) ? o.handsets!()!.blind(taskId) : taskId && !ducters(taskId) ? false : (taskId ? liveForTask(taskId) : live).blind()),
+    tried: (taskId) => void (ducters(taskId) ? liveForTask(taskId).tried(taskId) : undefined),
     note: (taskId, doing) => {
       if (handsetOf(taskId)) return o.handsets!()!.note(taskId, doing);
+      if (!ducters(taskId)) return;
       busy.add(taskId);
       liveForTask(taskId).note(taskId, doing);
     },
-    acting: (taskId, on) => void (handsetOf(taskId) ? undefined : liveForTask(taskId).acting(taskId, on)),
+    acting: (taskId, on) => void (ducters(taskId) ? liveForTask(taskId).acting(taskId, on) : undefined),
     on: (taskId) => (handsetOf(taskId) ? o.handsets!()!.where(taskId) : undefined),
     blindText: (taskId) => (handsetOf(taskId) ? HANDSET_BLIND : undefined),
+    which: whichLine,
     evidenceDir: (taskId) => join(o.dataDir, "evidence", taskId),
   });
 
@@ -281,7 +325,7 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
     computerOf,
     attached,
     decorate(on) {
-      for (const c of on.tasks) if (busy.has(c.taskId) && attached(c.taskId) && !handsetOf(c.taskId)) c.phoning = { device: computerOf(c.taskId) };
+      for (const c of on.tasks) if (busy.has(c.taskId) && attached(c.taskId) && ducters(c.taskId)) c.phoning = { device: computerOf(c.taskId) };
       return o.handsets?.()?.decorate(on) ?? on;
     },
     onChange(fn) {

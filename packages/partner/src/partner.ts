@@ -1321,7 +1321,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             app: { type: "string", description: 'A Mac app it works in ("Keynote", "Xcode")' },
             long: { type: "boolean", description: "Long or ongoing work (an hour or more, a loop, a wait): better on a computer that doesn't sleep" },
             draw: { type: "boolean", description: "It makes a picture (画一张…, draw, generate an image): only an agent that generates images takes it" },
-            phone: { type: "boolean", description: "It works in an app on a phone (用手机, 用我的手机, 在某个 app 里…): the user's own Android phone (用这台手机 / Use this phone) or Ducter's own (用手机 / Use a phone). Set it even when no phone is set up yet: Ducter offers the user the one tap that sets it up. Never tell the user about adb, USB or wireless debugging, a cable or Developer options" },
+            phone: { type: "string", enum: ["mine", "ducter", "any"], description: "It works in an app on a phone; which phone. mine: the user's own, with their apps, accounts and messages (用我的手机, 我的微信, their orders, \"on my Pixel\"). ducter: Ducter's own clean phone with none of their accounts (用你的手机 = yours, Ducter's; 在安卓上试我们的 App, install an APK, a fresh phone). any: either does (an app anyone can open, nothing of theirs). Unsure: mine. Set it even when no phone is set up yet: Ducter offers the user the one tap that sets it up. Never tell the user about adb, USB or wireless debugging, a cable or Developer options" },
           },
         },
         project: { type: "string" },
@@ -2910,7 +2910,8 @@ export function parseNeeds(raw: unknown): TaskNeeds | undefined {
     ...(str(r.app) ? { app: str(r.app) } : {}),
     ...(r.long === true ? { long: true } : {}),
     ...(r.draw === true ? { draw: true } : {}),
-    ...(r.phone === true ? { phone: true } : {}),
+    // D251: which phone; true (before D251) and "any" are either.
+    ...(r.phone === "mine" || r.phone === "ducter" ? { phone: r.phone } : r.phone === true || r.phone === "any" ? { phone: true } : {}),
   };
   return Object.keys(n).length ? n : undefined;
 }

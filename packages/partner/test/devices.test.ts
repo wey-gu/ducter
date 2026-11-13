@@ -21,6 +21,12 @@ test("needs from the model: only the known fields, a site as its host", () => {
   expect(parseNeeds({})).toBeUndefined();
   expect(parseNeeds({ browse: true, signedIn: true, site: "https://www.Taobao.com/orders", long: "yes", extra: 1 })).toEqual({ browse: true, signedIn: true, site: "taobao.com" });
   expect(parseNeeds({ app: " Keynote ", long: true })).toEqual({ app: "Keynote", long: true });
+  // D251: which phone; "any" and the old true are either; anything else is dropped.
+  expect(parseNeeds({ phone: "mine" })).toEqual({ phone: "mine" });
+  expect(parseNeeds({ phone: "ducter" })).toEqual({ phone: "ducter" });
+  expect(parseNeeds({ phone: "any" })).toEqual({ phone: true });
+  expect(parseNeeds({ phone: true })).toEqual({ phone: true });
+  expect(parseNeeds({ phone: "theirs" })).toBeUndefined();
 });
 
 test("a place on another device is taken as given: its paths live on that disk", () => {

@@ -42,8 +42,18 @@ export interface TaskNeeds {
   long?: boolean;
   /** D206: it makes a picture (画一张… / Draw…): only an agent that generates images takes it. */
   draw?: boolean;
-  /** D217: it uses Ducter's phone (an app on a phone): only a computer with 用手机 takes it. */
-  phone?: boolean;
+  /**
+   * D217, D251: it works in an app on a phone. Which phone (D251): "mine" = the person's own phone
+   * (用这台手机: their apps, accounts, messages), never Ducter's; "ducter" = Ducter's own phone (用手机,
+   * a clean emulator on a Mac); true = either (the person's when added, else Ducter's: D238, D247).
+   */
+  phone?: boolean | "mine" | "ducter";
+}
+
+/** D251: which phone a task's work needs: undefined when it needs none; "any" for the legacy true. */
+export function whichPhone(needs: { phone?: boolean | "mine" | "ducter" } | undefined): "mine" | "ducter" | "any" | undefined {
+  const p = needs?.phone;
+  return p === "mine" || p === "ducter" ? p : p ? "any" : undefined;
 }
 
 /**

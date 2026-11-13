@@ -54,8 +54,8 @@ enum class Why { NETWORK, NO_ASSET, CHECKSUM, SIGNATURE, INSTALL }
  * Android only installs it over this app if the same key signed both (research/51 §2).
  */
 object Updater {
-    /** At most every 6 h without asking (D148's cadence); "Check for updates" asks now. */
-    const val EVERY_MS = 6 * 60 * 60_000L
+    /** At most every hour without asking (6 h before 2026-11-13: releases come several a day in the preview, and a phone hours behind its home missed fixes); "Check for updates" asks now. */
+    const val EVERY_MS = 60 * 60_000L
     /** "Later" puts that version off for 3 days; a newer one is offered at once. */
     const val LATER_MS = 3 * 24 * 60 * 60_000L
 

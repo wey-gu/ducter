@@ -50,7 +50,7 @@ nothing changed on any failure, said plainly), 惊喜 (the fold becomes the spin
 
 ## Updating itself (D181)
 
-Quiet by default: at most every 6 h, after the page says hello (or 3 s after a page that never
+Quiet by default: at most every hour (6 h until 0.0.51), after the page says hello (or 3 s after a page that never
 does); only a newer, published release with this app's APK, not put off with **以后再说**, shows a
 card. **检查更新** in the icon's long-press menu asks now. Words are the device card's (D148): 有新版本
 {v} · 更新 · 在下载 {v}… n% · 在核对 {v}… · 在安装 {v}… · 回来了，现在是 {v} · 没更新成 with the reason

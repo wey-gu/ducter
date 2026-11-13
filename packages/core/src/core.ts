@@ -233,9 +233,11 @@ export function triggersPartner(e: LogEvent): boolean {
   }
   // An `until` loop that ends (met or stopped short) is said once, by the partner (D113).
   if (e.kind === "until") return (e.body as Bodies["until"]).state !== "on" && (e.body as Bodies["until"]).stop !== "user";
-  // A routine Ducter paused by itself (failures, unread, budget) is said once (D114).
+  // A routine Ducter paused by itself (failures, unread, budget) is said once (D114); one that
+  // keeps hitting an account error, and then works again, is said once each (D245).
   if (e.kind === "routine") {
     const r = e.body as Bodies["routine"];
+    if (r.news) return r.state === "active";
     return r.state === "paused" && r.pausedBy === "system" && r.pauseReason !== "review";
   }
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";

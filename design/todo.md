@@ -950,6 +950,16 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Routines on another device, waking a sleeping one, the cloud fallback (D29). Trigger: a
       routine missed because its device slept.
 - [ ] Editing a routine by saying it ("改成 8:30") as a diff card (research/20 §7.3).
+- [ ] **D245, live:** a routine run that hits a real sign-out (Claude Code logged out, a
+      connection signed out) and recovers after signing in, to check `troubleOf` against the
+      real wording; a late run after the home slept; a folder watch on a real ~/Downloads.
+      Trigger: the author's next routine that misses a morning.
+- [ ] **D245 follow-ups:** a watch of files on a worker (only this computer today); a watched
+      command's full output from a worker (the worker's check answers 4 KB); the
+      routine-proposal guidance line "a repeating run carries out the lasting request each time,
+      not a copy of today's decision" (research/77 §8.2, a persona change with its eval); a
+      watch kept on New task's **等条件满足** (today it is the task's own wait, not a routine).
+      Trigger: a person who asks for one of these.
 - [ ] The partner eval: scenarios for "PR 过了告诉我", "一直修到 CI 绿", "每周一给我周报".
 
 

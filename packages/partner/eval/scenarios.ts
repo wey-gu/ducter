@@ -282,6 +282,15 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, routine: true, msgs: [0, 1], maxChars: 90, proseForbid: [/已经(开始|设好|安排好)|模型|命令/] },
     rubric: "It proposes a weekly routine (Mondays 9:00) with a proposal card and at most one short Chinese line; it does not claim the routine is already on before the user presses Go, and it does not restate the card.",
   },
+  {
+    // D245: a routine "when something changes", watched without a model.
+    id: "routine-change-en",
+    category: "work-over-time",
+    lang: "en",
+    steps: [{ user: "Whenever a new file shows up in ~/Downloads/invoices, rename it to the date and vendor and tell me." }],
+    expect: { opens: 0, routine: true, msgs: [0, 1], maxChars: 120, proseForbid: [/\b(cron|trigger|is (now )?(on|set up|running))\b/i] },
+    rubric: "It proposes a routine that runs when something changes in ~/Downloads/invoices (a proposal card), with at most one short English line; it does not claim it is already on before Go, does not open a task now, and never says cron or trigger.",
+  },
 
   // ---------- B. work: ack naming the action, then silence ----------
   {

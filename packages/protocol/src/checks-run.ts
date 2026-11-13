@@ -14,7 +14,7 @@ export interface CheckResult {
   summary: string; // what it saw, <= 200 chars
   error?: string; // it could not run: refused, not found, timed out
   exitCode?: number;
-  output?: string; // the first 4 KB of what it printed, for a judge (never logged)
+  output?: string; // the first 4 KB of what it printed (outputMax: more, for a change watch), for a judge (never logged)
 }
 
 /** The seam tests replace: run argv in cwd, return exit code and stdout. */
@@ -64,7 +64,7 @@ export function checkContext(env: Record<string, string | undefined> = process.e
 
 const tilde = (a: string, home: string) => (a === "~" ? home : a.startsWith("~/") ? home + a.slice(1) : a);
 
-export async function runCheck(spec: CheckSpec, opts: { cwd?: string; exec?: Exec; timeoutMs?: number; ctx?: CheckContext } = {}): Promise<CheckResult> {
+export async function runCheck(spec: CheckSpec, opts: { cwd?: string; exec?: Exec; timeoutMs?: number; ctx?: CheckContext; outputMax?: number } = {}): Promise<CheckResult> {
   const ctx: CheckContext = { ...(opts.ctx ?? checkContext()), cwd: opts.cwd };
   const v = validateCheck(spec, ctx);
   if (!v.ok) return { ok: false, met: false, summary: v.error, error: v.error };
@@ -75,7 +75,7 @@ export async function runCheck(spec: CheckSpec, opts: { cwd?: string; exec?: Exe
     const r = await (opts.exec ?? realExec)(argv, { cwd: spec.cwd ? tilde(spec.cwd, home) : opts.cwd, env: checkEnv(), timeoutMs: opts.timeoutMs ?? CHECK_TIMEOUT_MS });
     const e = evaluate(spec.succeedWhen, r.exitCode, r.stdout);
     const failed = !e.met && spec.failWhen ? evaluate(spec.failWhen, r.exitCode, r.stdout).met : false;
-    return { ok: true, met: e.met, ...(failed ? { failed } : {}), summary: e.summary, exitCode: r.exitCode, output: r.stdout.slice(0, 4096) };
+    return { ok: true, met: e.met, ...(failed ? { failed } : {}), summary: e.summary, exitCode: r.exitCode, output: r.stdout.slice(0, opts.outputMax ?? 4096) };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const error = /ENOENT|not found|No such file/i.test(msg) ? `${spec.argv[0]} is not installed here` : msg;

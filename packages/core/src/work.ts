@@ -1,11 +1,13 @@
 // Work over time (D112–D115), wired: waiters (timer, check, event, judge), `until` loops,
 // routines, the partner's and tasks' tools for them, the client frames, and On hand's view.
 // See waiters.ts, until.ts, routines.ts for each mechanism.
+import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import type { Bodies, CheckSpec, EventSpec, LogEvent, OnHand, Place, RoutineTrigger } from "@ducter/protocol";
+import { urlArgv, WATCH_MAX_ITEMS } from "@ducter/protocol/src/watch.ts";
 import type { LogStore, Runner, WorkerLinks } from "@ducter/protocol/src/internal.ts";
-import { describeCheck, describePredicate, validateCheck } from "@ducter/protocol/src/checks.ts";
+import { CHECK_MAX_OUTPUT, describeCheck, describePredicate, validateCheck } from "@ducter/protocol/src/checks.ts";
 import { runCheck, type CheckResult, type Exec } from "@ducter/protocol/src/checks-run.ts";
 import type { Clock } from "./clock.ts";
 import type { ConnectionsStore } from "./connections.ts";
@@ -74,13 +76,13 @@ const zhOf = (s: string) => /[一-鿿]/.test(s);
 export function createWork(o: WorkOptions): Work {
   const { log, tasks, mcp } = o;
 
-  const check = async (spec: CheckSpec, w: { taskId?: string }): Promise<CheckResult> => {
+  const check = async (spec: CheckSpec, w: { taskId?: string }, outputMax?: number): Promise<CheckResult> => {
     const where = placeOfCheck(w.taskId ? tasks.get(w.taskId)?.place : undefined);
     const device = spec.device ?? where.device;
     const at = cwdOfCheck(where.cwd, spec.cwd);
     if ("error" in at) return { ok: false, met: false, summary: at.error, error: at.error };
     const cwd = at.cwd;
-    if (device === "local") return runCheck({ ...spec, ...(cwd ? { cwd } : {}) }, { exec: o.exec });
+    if (device === "local") return runCheck({ ...spec, ...(cwd ? { cwd } : {}) }, { exec: o.exec, ...(outputMax ? { outputMax } : {}) });
     const link = o.workers?.()?.link(device);
     if (!link) return { ok: false, met: false, summary: `no device called ${device}`, error: "unknown device" };
     if (!link.online()) return { ok: false, met: false, summary: `${link.name} can't be reached`, error: "offline" };
@@ -97,7 +99,47 @@ export function createWork(o: WorkOptions): Work {
   };
   const readEvent: WaiterDeps["readEvent"] = o.connections ? (spec, cp) => o.connections!.readTrigger(spec.connection, spec.service, spec.trigger, spec.config, cp) : undefined;
 
-  const waiters = createWaiters({ log, clock: o.clock, check, readEvent, minEveryMs: o.minEveryMs, judgeMinMs: o.judgeMinMs, restartLookMs: o.restartLookMs });
+  /**
+   * D245: one look of a change watch, no model. Files: names, sizes and modification times (a
+   * folder's direct entries), on this computer. A command or a URL: its output through the check
+   * rules; a failing one is an error, never a change. An app: one reading tool, as Ducter's own
+   * look (a write is refused there).
+   */
+  const fetchWatch: WaiterDeps["fetchWatch"] = async (spec, w) => {
+    if (spec.files) {
+      const base = placeOfCheck(w.taskId ? tasks.get(w.taskId)?.place : undefined).cwd ?? homedir();
+      const out: { path: string; size: number; mtime: number; folder?: boolean }[] = [];
+      for (const f of spec.files) {
+        const p = resolve(base, expand(f));
+        const s = await stat(p).catch(() => undefined);
+        if (!s) continue; // not there (yet): it shows as gone, or new when it comes
+        if (!s.isDirectory()) {
+          out.push({ path: f, size: s.size, mtime: Math.round(s.mtimeMs) });
+          continue;
+        }
+        const names = (await readdir(p).catch(() => [] as string[])).filter((n) => !n.startsWith(".")).sort().slice(0, WATCH_MAX_ITEMS);
+        for (const n of names) {
+          const e = await stat(join(p, n)).catch(() => undefined);
+          if (e) out.push({ path: `${f.replace(/\/$/, "")}/${n}`, size: e.isDirectory() ? 0 : e.size, mtime: Math.round(e.mtimeMs), ...(e.isDirectory() ? { folder: true } : {}) });
+        }
+      }
+      return { ok: true, data: out };
+    }
+    if (spec.argv || spec.url) {
+      const argv = spec.argv ?? urlArgv(spec.url!);
+      const r = await check({ argv, ...(spec.cwd ? { cwd: spec.cwd } : {}), ...(spec.device ? { device: spec.device } : {}), succeedWhen: { exitCode: 0 } }, w, CHECK_MAX_OUTPUT);
+      if (!r.ok) return { ok: false, error: r.error ?? r.summary };
+      if (r.exitCode !== undefined && r.exitCode !== 0) return { ok: false, error: `${argv[0]} exited ${r.exitCode}: ${r.summary}` };
+      return { ok: true, data: r.output ?? "" };
+    }
+    const t = spec.tool;
+    if (!t) return { ok: false, error: "nothing to watch" };
+    if (!o.connections) return { ok: false, error: "no connected apps here" };
+    const r = await o.connections.read({ role: "watch" }, t.connection, t.action, t.input ?? {}, t.account);
+    return r.ok ? { ok: true, data: r.result } : { ok: false, error: r.error };
+  };
+
+  const waiters = createWaiters({ log, clock: o.clock, check, readEvent, fetchWatch, minEveryMs: o.minEveryMs, judgeMinMs: o.judgeMinMs, restartLookMs: o.restartLookMs });
   const untils = createUntils({ log, tasks, runner: o.runner, check });
   const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone });
 
@@ -258,7 +300,8 @@ export function createWork(o: WorkOptions): Work {
     type: "object",
     description:
       'Time: {"kind":"time","every":"week","days":[1],"time":"09:00","zone":"personal","tz":"Asia/Shanghai"} (every: day | weekday | week (days 0=Sun..6) | month (dayOfMonth) | hours (hours)); zone "personal" for the user\'s own rhythm (follows them when they travel), "world" for things pinned to a place (market open, a team standup). ' +
-      'Condition: {"kind":"condition","condition":"hawdb 的 nightly 挂了","check":{…},"everyMs":3600000} or with event/judge like wait_for. Fires each time it turns true.',
+      'Condition: {"kind":"condition","condition":"hawdb 的 nightly 挂了","check":{…},"everyMs":3600000} or with event/judge like wait_for. Fires each time it turns true. ' +
+      'When something changes (no model, nothing spent until it does; the run is told what is new, updated, gone): {"kind":"condition","condition":"~/inbox 里有新文件","watch":{"files":["~/inbox"]},"everyMs":900000}; watch is one of files, argv (a reading command), url, tool {connection,action,input}; for a JSON list add path and key (fields naming an item).',
   };
   mcp.register(
     "partner",
@@ -304,7 +347,7 @@ export function createWork(o: WorkOptions): Work {
     async (a: { routineId: string }) => ({ ok: routines.pause(String(a.routineId), "partner", "asked") }),
   );
   mcp.register("partner", "routine_list", "The user's routines: name, trigger in words, state, next firing, latest run.", { type: "object", properties: {} }, async () =>
-    routines.views().map((v) => ({ routineId: v.routineId, name: v.name, triggerWords: v.triggerWords, state: v.state, ...(v.pauseReason ? { pauseReason: v.pauseReason } : {}), ...(v.nextAt ? { nextAt: v.nextAt } : {}), ...(v.lastRun ? { lastRun: { state: v.lastRun.state, taskId: v.lastRun.taskId, at: v.lastRun.at } } : {}) })),
+    routines.views().map((v) => ({ routineId: v.routineId, name: v.name, triggerWords: v.triggerWords, state: v.state, ...(v.pauseReason ? { pauseReason: v.pauseReason } : {}), ...(v.nextAt ? { nextAt: v.nextAt } : {}), ...(v.lastRun ? { lastRun: { state: v.lastRun.state, taskId: v.lastRun.taskId, at: v.lastRun.at, ...(v.lastRun.lateMin ? { lateMin: v.lastRun.lateMin } : {}), ...(v.lastRun.retryAt ? { retryAt: v.lastRun.retryAt } : {}) } } : {}), ...(v.backoff ? { cantRun: { why: v.backoff.trouble, reason: v.backoff.reason, nextTryAt: v.backoff.nextTryAt } } : {}) })),
   );
 
   return {

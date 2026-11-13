@@ -262,6 +262,7 @@ export interface Bodies {
     defaultAt?: string; // ISO time the default applies (only if reversible)
     reversible: boolean;
     routineId?: string; // a routine's proposal card (D114): Go activates it
+    unsure?: boolean; // D245: with routineId: its watch saw something it isn't sure of; Go runs it once
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
     pay?: PayAsk; // D191: 付款 / Pay: merchant, amount, card; Go pays once, no default
     fill?: FillAsk; // D191: first use of a saved sign-in or detail on a site
@@ -368,6 +369,10 @@ export interface Bodies {
     state: "armed" | "fired" | "cancelled" | "expired";
     kind?: WaitKind; // absent = "timer"
     check?: CheckSpec;
+    watch?: WatchSpec; // D245: kind "change": fires when what it watches changed (no model)
+    baseline?: WatchBaseline; // D245: what the watch saw last (armed: start from it; fired: the new one)
+    detail?: string; // D245: fired: what changed, longer than observed (<= 2000 chars; untrusted data)
+    unsure?: boolean; // D245: fired on a look it can't trust (all of it gone at once, a changed shape): ask, don't run
     event?: EventSpec;
     judge?: string; // the yes/no question a cheap model answers over the fetched data
     everyMs?: number; // how often it looks (check/event); backs off on errors
@@ -399,7 +404,13 @@ export interface Bodies {
   routine: RoutineBody;
   // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
   // many were coalesced into it); "done"/"failed" close a run from its task's final report.
-  routine_run: { routineId: string; runId: string; scheduledFor: string; state: "started" | "skipped" | "done" | "failed"; taskId?: string; catchUp?: boolean; coalesced?: number; reason?: string; tokens?: number };
+  // D245: lateMin: it started that many minutes after its time (>= 15; its brief said so).
+  // attempt 1+: the one safe retry, or a try after an account error. retryAt: this failed run is
+  // tried again then (it had posted and done nothing yet). trouble: an account error (signed out,
+  // out of allowance): it spaces the routine out instead of counting as a failure. acted: the
+  // run had posted or done something before it failed, so it is never repeated. spent: an account
+  // error after the spacing reached 24 h: from then on it counts toward "3 in a row".
+  routine_run: { routineId: string; runId: string; scheduledFor: string; state: "started" | "skipped" | "done" | "failed"; taskId?: string; catchUp?: boolean; coalesced?: number; reason?: string; tokens?: number; lateMin?: number; attempt?: number; retryAt?: string; trouble?: RoutineTrouble; acted?: boolean; spent?: boolean };
   // The partner saved something durable to the user's long-term memory (Nowledge Mem). Clients
   // show one quiet line under the reply: "记下了 · <title>" / "Noted · <title>". Never a card,
   // never a notification. Provenance lives in Mem, not here.
@@ -604,7 +615,34 @@ export type WaiterView = Bodies["waiter"] & { armedAt?: string; lastLookAt?: str
 
 // ---------- Work over time (D112-D115, design/product-model.md section 4) ----------
 
-export type WaitKind = "timer" | "check" | "event" | "judge";
+export type WaitKind = "timer" | "check" | "event" | "judge" | "change";
+
+/**
+ * D245: what a "when something changes" routine watches, looked at without a model. Exactly one
+ * source: files (names, sizes, modification times; a folder's direct entries), argv (a reading
+ * command under the check rules: its output), url (a public GET), tool (a reading tool of a
+ * connected app, fixed input). `path` picks the part of a JSON answer that matters; `key` names
+ * the fields that identify one item of that list, so a change can say what is new, updated or
+ * gone, and a fetch time elsewhere in the answer never counts; `fields` limits which of an item's
+ * fields count as an update (default: all).
+ */
+export interface WatchSpec {
+  files?: string[];
+  argv?: string[];
+  cwd?: string;
+  device?: string; // argv only: "local" (default) or a worker's device
+  url?: string;
+  tool?: { connection: string; action: string; input?: unknown; account?: string };
+  path?: string;
+  key?: string[];
+  fields?: string[];
+}
+
+/** D245: what a watch saw last: a hash of the whole, and one hash per keyed item (<= 200). */
+export interface WatchBaseline {
+  hash: string;
+  items?: Record<string, string>;
+}
 
 /**
  * A compiled condition: a read-only command (argv, never a shell line) run where the task works,
@@ -658,7 +696,10 @@ export type RoutineTrigger =
       zone: "personal" | "world"; // personal follows the user; world stays pinned (D29)
       tz: string; // IANA zone; for personal, replaced by the user's current zone at each firing
     }
-  | { kind: "condition"; condition: string; check?: CheckSpec; event?: EventSpec; judge?: string; everyMs: number };
+  | { kind: "condition"; condition: string; check?: CheckSpec; event?: EventSpec; judge?: string; watch?: WatchSpec; everyMs: number };
+
+/** D245: an account error a run hit: signed out (an AI agent or an app), or out of allowance. */
+export type RoutineTrouble = "signin" | "quota";
 
 export interface RoutineBody {
   routineId: string;
@@ -683,6 +724,13 @@ export interface RoutineBody {
   model?: string;
   effort?: string; // D202: the effort picked on the New task card
   project?: string;
+  /** D245: its runs keep hitting an account error. Ducter tries again by itself, 5 min doubling
+   *  to 24 h, and clears this on the first run that works. failures: account errors in a row
+   *  (the person is told once, at 2). */
+  backoff?: { trouble: RoutineTrouble; reason: string; since: string; nextTryAt: string; stepMs: number; failures: number };
+  /** D245: set only on the one snapshot the partner says: "stuck" when account errors repeat
+   *  (the second in a row), "works_again" when the first run after that works. */
+  news?: "stuck" | "works_again";
 }
 
 export interface RoutineView extends RoutineBody {

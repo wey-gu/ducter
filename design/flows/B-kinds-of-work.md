@@ -648,11 +648,32 @@ Branches:
 - **2c. Event trigger** ("有人回这个 thread 就总结一下"): Next 5 replaced by the dry run:
   "现在不会触发，因为最近一条回复是你自己的 / Wouldn't fire now: the latest reply is yours".
 - **2d. Adjust** ("改成 8:30"): a diff card (old → new + next 5), not a silent change.
+- **2f. When something changes** (D245; "~/Downloads/invoices 里有新文件就改名"): a watch Ducter
+  checks without the AI (files, a reading command, a URL, an app's reading tool). The card's
+  dry run says what it sees now ("sees 4 now"), and Cost says "只在有变化时用你的 AI 额度；平时看一眼
+  不花 / Uses your AI allowance only when something changed; looking costs nothing". Each run hears
+  what is new, updated, gone. If a look shows everything gone at once, it asks first: "例行「发票
+  改名」这次看到的跟平时很不一样（3 gone），可能是没看对。要照样做一次吗？" (default Hold).
 - **2e. The routine needs effects** ("…and comment on them"): scope line "可以：在 PR 下留言
   草稿 / May: draft PR comments"; each actual post is an intent.
 - **4a. Missed firing** (all devices asleep, past late window): recorded; mentioned once in the
   next report: "周二的没跑：Mac mini 睡着了".
 - **4b. Run hits budget:** run stops, `needs-you` with spend; default = Hold.
+- **4c. Late run** (D245; the home slept, Ducter restarted): a run 15 min or more past its
+  time is told so in its brief ("due 09:00, started 15:00; adapt anything that depends on the
+  time of day") and doesn't say "good morning" at 3 pm without saying it ran late. The shelf
+  line says "上次 11月11日做完了 · 晚了 6 小时 / Last Nov 11: done · 6 h late".
+- **4d. A run fails before it did anything** (D245): tried once more 12 min later ("09:12再试一次
+  / Tries again 09:12"); only the retry's outcome counts toward 3 in a row. A run that ran a
+  command, posted progress or asked something is never repeated.
+- **4e. An account is signed out, or the allowance is used up** (D245): it tries again by itself,
+  5 min, then 10, 20 … up to a day apart. The second time in a row, the partner says once what
+  to do: "「周报」暂时跑不了：Claude Code 没登录。重新登录后它会自己接着跑。" The shelf says
+  "暂时跑不了：要重新登录 · 09:35再试一次". The first run that works clears it: "「周报」又能跑了。"
+  Nothing pauses unless it is still failing at a day apart.
+- **4f. Missed while off** (D245 with D114): one catch-up run with "{n} missed times folded into
+  this one", or one skip; right after a restart it waits a few seconds for the runner rather
+  than skipping.
 - **Auto-pause:** after 3 consecutive failures *or* 3 unread reports, the routine pauses and
   asks "还要吗？ / Keep this?" with Go "继续 / Keep it" and "停掉 / Stop"; default = stays
   paused. The agent may pause; only the user resumes.
@@ -689,6 +710,12 @@ firing; a running run is a normal Working card nested under it.
 | `routine.paused.keep_q` | {name} 先停了：{why}。还要吗？ | Paused {name}: {why}. Keep this? |
 | `routine.keep` | 继续 | Keep it |
 | `routine.skipped` | {day}的没跑：{device} 睡着了 | {day}'s run was skipped: {device} was asleep |
+| `routine.late.m` / `routine.late.h` | 晚了 %d 分钟 / 晚了 %d 小时 | %d min late / %d h late |
+| `routine.retry` | %s再试一次 | Tries again %s |
+| `routine.cant.signin` | 暂时跑不了：要重新登录 | Can't run for now: needs signing in again |
+| `routine.cant.quota` | 暂时跑不了：额度用完了 | Can't run for now: out of allowance |
+| `routine.cost.change` | 只在有变化时用你的 AI 额度；平时看一眼不花 | Uses your AI allowance only when something changed; looking costs nothing |
+| `routine.cost.when` | 只在条件满足时用你的 AI 额度；平时看一眼不花 | Uses your AI allowance only when it holds; looking costs nothing |
 
 ### Motion
 - The proposal card builds top-down as fields resolve (When, Next 5, dry run last, since it is

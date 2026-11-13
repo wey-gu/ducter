@@ -13,7 +13,8 @@
 // what it saw changed. Errors back off
 // by doubling up to 30 min. Everything is rebuilt from the Log on start, so armed waiters survive
 // a restart; overdue timers fire at once, checks look again soon (staggered).
-import { endedUnmet, type Attention, type Bodies, type CheckSpec, type EventSpec, type LogEvent, type Origin, type WaiterView } from "@ducter/protocol";
+import { endedUnmet, type Attention, type Bodies, type CheckSpec, type EventSpec, type LogEvent, type Origin, type WaiterView, type WatchBaseline, type WatchSpec } from "@ducter/protocol";
+import { describeChange, diffWatch, snapshot, validateWatch } from "@ducter/protocol/src/watch.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { DEFAULT_EVERY_MS, MAX_BACKOFF_MS, MIN_EVERY_MS, validateCheck } from "@ducter/protocol/src/checks.ts";
 import type { CheckResult } from "@ducter/protocol/src/checks-run.ts";
@@ -40,6 +41,9 @@ export interface ArmInput {
   everyMs?: number;
   until?: string;
   held?: boolean;
+  /** D245: a change watch (kind "change"), and what it saw last when it is re-armed. */
+  watch?: WatchSpec;
+  baseline?: WatchBaseline;
   /** D145: what to say if it can no longer come true (check.failWhen), in the user's words. */
   unmetSays?: string;
 }
@@ -54,7 +58,7 @@ export interface Waiters {
   /** D145: 接着等 / Keep waiting: arms a wait that ended unmet again, as it was. */
   rearm(waiterId: string): boolean;
   /** One look of a check or event, outside any waiter: the dry run on a proposal card. */
-  dryRun(input: { check?: CheckSpec; event?: EventSpec; judge?: string; reason: string; taskId?: string }): Promise<{ met: boolean; summary: string }>;
+  dryRun(input: { check?: CheckSpec; event?: EventSpec; judge?: string; watch?: WatchSpec; reason: string; taskId?: string }): Promise<{ met: boolean; summary: string }>;
   views(): WaiterView[];
   /** D145: task-less waits that ended unmet on the given day (toDateString), newest first. */
   missed(day?: string): (Bodies["waiter"] & { endedAt: string })[];
@@ -68,6 +72,8 @@ export interface WaiterDeps {
   /** Runs a check where it belongs (the task's device and place); default: refuses. */
   check?: (spec: CheckSpec, w: { taskId?: string }) => Promise<CheckResult>;
   readEvent?: (spec: EventSpec, checkpoint: unknown) => Promise<TriggerRead>;
+  /** D245: one look of a change watch (files, a command, a URL, an app's reading tool). */
+  fetchWatch?: (spec: WatchSpec, w: { taskId?: string }) => Promise<{ ok: true; data: unknown } | { ok: false; error: string }>;
   judge?: Judge;
   minEveryMs?: number; // tests lower the 60 s floor
   judgeMinMs?: number;
@@ -102,10 +108,12 @@ interface Entry {
   lastJudgeAt?: number;
   checkpoint?: unknown;
   armedAt?: string; // when it was armed: the start of its deadline groove
+  baseline?: WatchBaseline; // D245: a change watch's last look
 }
 
-export function kindOf(w: Pick<Bodies["waiter"], "kind" | "check" | "event" | "judge">): NonNullable<Bodies["waiter"]["kind"]> {
+export function kindOf(w: Pick<Bodies["waiter"], "kind" | "check" | "event" | "judge" | "watch">): NonNullable<Bodies["waiter"]["kind"]> {
   if (w.kind) return w.kind;
+  if (w.watch) return "change";
   if (w.judge) return "judge";
   if (w.event) return "event";
   if (w.check) return "check";
@@ -128,7 +136,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     a.timer = a.deadline = undefined;
   };
 
-  const close = (waiterId: string, state: "fired" | "cancelled" | "expired", observed?: string, why: { unmet?: string; by?: Origin } = {}) => {
+  const close = (waiterId: string, state: "fired" | "cancelled" | "expired", observed?: string, why: { unmet?: string; by?: Origin; detail?: string; unsure?: boolean } = {}) => {
     const a = armed.get(waiterId);
     if (!a) return;
     armed.delete(waiterId);
@@ -137,6 +145,9 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     const seen = observed ?? a.lastSummary;
     if (seen && (state !== "cancelled" || why.unmet)) body.observed = clip(seen);
     if (why.unmet?.trim()) body.unmet = clip(why.unmet.trim(), 160);
+    if (a.baseline) body.baseline = a.baseline;
+    if (why.detail) body.detail = clip(why.detail, 2000);
+    if (why.unsure) body.unsure = true;
     log.append({ stream: "channel", origin: why.by ?? "waiter", kind: "waiter", body });
   };
 
@@ -189,10 +200,61 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     return { ok: false, met: false, summary: "nothing to look at", data: "", error: "no check or event" };
   }
 
+  /** D245: a change watch's look: no model; it fires only when what it sees differs from last time. */
+  async function lookChange(a: Entry): Promise<void> {
+    const w = a.w;
+    const got = opts.fetchWatch ? await opts.fetchWatch(w.watch!, { taskId: w.taskId }) : ({ ok: false, error: "watches can't run here" } as const);
+    if (!armed.has(w.waiterId)) return;
+    a.looks++;
+    a.lastLookAt = clock.now();
+    if (!got.ok) {
+      // A look that errors is never a change: it backs off and looks again (D245 (6)).
+      a.lastSummary = got.error;
+      record(a, { ok: false, met: false, summary: clip(got.error), error: clip(got.error) });
+      a.backoff = Math.min(MAX_BACKOFF_MS, a.backoff ? a.backoff * 2 : every(w) * 2);
+      return scheduleLook(a, a.backoff);
+    }
+    a.backoff = 0;
+    const seen = snapshot(got.data, w.watch!);
+    const n = seen.baseline.items ? Object.keys(seen.baseline.items).length : undefined;
+    if (!a.baseline) {
+      // The first look only learns what is there now.
+      a.baseline = seen.baseline;
+      a.lastSummary = n !== undefined ? `sees ${n} now` : "first look";
+      record(a, { ok: true, met: false, summary: a.lastSummary, checkpoint: seen.baseline });
+      return scheduleLook(a, every(w));
+    }
+    const d = diffWatch(a.baseline, seen);
+    if (!d.changed) {
+      a.lastSummary = n !== undefined ? `no change · ${n}` : "no change";
+      record(a, { ok: true, met: false, summary: a.lastSummary });
+      return scheduleLook(a, every(w));
+    }
+    const said = describeChange(d, seen);
+    // A look it can't trust keeps what it saw before: if the source comes back, nothing changed.
+    if (!d.unsure) a.baseline = seen.baseline;
+    a.lastSummary = said.observed;
+    record(a, { ok: true, met: true, summary: said.observed, ...(d.unsure ? {} : { checkpoint: seen.baseline }) });
+    close(w.waiterId, "fired", said.observed, { detail: said.detail, ...(d.unsure ? { unsure: true } : {}) });
+  }
+
   async function lookOnce(a: Entry): Promise<void> {
     if (a.busy || stopped) return;
     a.busy = true;
     const w = a.w;
+    if (kindOf(w) === "change") {
+      try {
+        await lookChange(a);
+      } catch (err) {
+        a.lastSummary = (err as Error).message;
+        record(a, { ok: false, met: false, summary: clip((err as Error).message), error: clip((err as Error).message) });
+        a.backoff = Math.min(MAX_BACKOFF_MS, a.backoff ? a.backoff * 2 : every(w) * 2);
+        scheduleLook(a, a.backoff);
+      } finally {
+        a.busy = false;
+      }
+      return;
+    }
     try {
       const got = await fetchOnce(w, a.checkpoint);
       if (!armed.has(w.waiterId)) return; // cancelled while it looked
@@ -252,7 +314,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
   }
 
   const schedule = (w: Bodies["waiter"], firstLookMs = 0, seen?: Partial<Entry>) => {
-    const a: Entry = { w, backoff: 0, looks: 0, changes: 0, lastMet: Boolean(w.held), ...seen };
+    const a: Entry = { w, backoff: 0, looks: 0, changes: 0, lastMet: Boolean(w.held), ...(w.baseline ? { baseline: w.baseline } : {}), ...seen };
     armed.set(w.waiterId, a);
     if (w.until) {
       const due = Date.parse(w.until);
@@ -329,6 +391,8 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     const a = w.taskId ? finished.get(w.taskId) : undefined;
     const l = lastLook.get(w.waiterId);
     const seen: Partial<Entry> = l ? { lastLookAt: l.at, lastSummary: l.summary, checkpoint: l.checkpoint, lastKey: l.key, changes: l.changes } : {};
+    // D245: a change watch picks up from what it saw last, across a restart.
+    if (kindOf(w) === "change" && l?.checkpoint) seen.baseline = l.checkpoint as WatchBaseline;
     schedule(w, (opts.restartLookMs ?? 2000) * ++stagger, { ...seen, armedAt: armedTs.get(w.waiterId) });
     if ((a && FINISHED.includes(a)) || (w.decisionId && answered.has(w.decisionId))) close(w.waiterId, "cancelled");
   }
@@ -338,7 +402,15 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       const reason = input.reason?.trim();
       if (!reason) throw new Error("a wait needs its reason, in the user's words");
       const body: Bodies["waiter"] = { waiterId: newId(), reason: clip(reason, 160), state: "armed" };
-      if (input.check || input.event) {
+      if (input.watch) {
+        const v = validateWatch(input.watch);
+        if (!v.ok) throw new Error(v.error);
+        if (input.at || input.check || input.event || input.judge) throw new Error("a change watch stands alone: no time, check, event or judge with it");
+        body.watch = input.watch;
+        body.kind = "change";
+        body.everyMs = Math.max(minEvery, input.everyMs ?? DEFAULT_EVERY_MS);
+        if (input.baseline) body.baseline = input.baseline;
+      } else if (input.check || input.event) {
         if (input.check) {
           const v = validateCheck(input.check);
           if (!v.ok) throw new Error(v.error);
@@ -394,6 +466,17 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       return true;
     },
     async dryRun(input) {
+      if (input.watch) {
+        // D245: what it sees now, so the card can say it (nothing runs until it changes).
+        const v = validateWatch(input.watch);
+        if (!v.ok) return { met: false, summary: v.error };
+        if (!opts.fetchWatch) return { met: false, summary: "watches can't run here" };
+        const r = await opts.fetchWatch(input.watch, { taskId: input.taskId });
+        if (!r.ok) return { met: false, summary: clip(r.error) };
+        const seen = snapshot(r.data, input.watch);
+        const n = seen.baseline.items ? Object.keys(seen.baseline.items).length : undefined;
+        return { met: false, summary: n !== undefined ? `sees ${n} now` : clip(`sees: ${(seen.text ?? "").split("\n")[0] ?? ""}`) };
+      }
       const got = await fetchOnce({ check: input.check, event: input.event, taskId: input.taskId }, null);
       if (!got.ok || !got.met || !input.judge || !judge) return { met: got.ok && got.met && !input.judge, summary: got.summary };
       try {

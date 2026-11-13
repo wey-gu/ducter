@@ -427,7 +427,9 @@ test("a routine pauses itself after 3 failed runs; only the user resumes", async
   for (const i of [1, 2, 3]) {
     s.clock.advance(86_400_000);
     await flush();
-    report(s.log, `run${i}`, { state: "failed", summary: "gh not signed in" });
+    // It ran a command before it failed (D245: acted), so it isn't tried again: each counts.
+    s.log.append({ stream: `task:run${i}`, origin: "task", kind: "task_event", body: { taskId: `run${i}`, role: "tool", tool: { name: "Bash", input: { command: "gh run list" } } } });
+    report(s.log, `run${i}`, { state: "failed", summary: "the nightly's page didn't load" });
     await flush();
   }
   const paused = s.log.read({ kinds: ["routine"] }).at(-1)!;

@@ -141,10 +141,14 @@ afterAll(async () => {
 });
 
 describe("用这台手机 / Use this phone, through the real core", () => {
-  test("the Pixel's card offers it once its app says hello; adding it needs Android's switch, from that phone", async () => {
+  test("a Pixel whose switch is already on is added as soon as its app says hello (however the switch got on)", async () => {
     const p = await pixel();
     expect(await until(async () => !!(await clientCard()).handset?.linked)).toBe(true);
-    expect((await clientCard()).handset).toMatchObject({ added: false, able: true, linked: true, state: { model: "Pixel Fold", service: true } });
+    // Before, only the switch going on while the guide was open added it: a phone whose switch was
+    // on already (an earlier version, Android's Settings) stayed unadded, and phone work fell to
+    // Ducter's own phone (seen on the author's home, 2026-11-13).
+    expect(await until(async () => !!(await clientCard()).handset?.added)).toBe(true);
+    expect((await clientCard()).handset).toMatchObject({ added: true, able: true, linked: true, state: { model: "Pixel Fold", service: true } });
     // From another window: not here (the switch is on the phone).
     const other = new WebSocket(core.url);
     await new Promise<void>((res) => (other.onopen = () => res()));
@@ -324,6 +328,12 @@ describe("用这台手机 / Use this phone, through the real core", () => {
     expect(await until(() => app.did.includes("off"))).toBe(true);
     expect((await clientCard()).handset?.added).toBe(false);
     p.ws.close();
+    // Taken off here: its app saying hello again with the switch still on doesn't add it back.
+    const again = await pixel();
+    await until(async () => !!(await clientCard()).handset?.linked);
+    await Bun.sleep(100);
+    expect((await clientCard()).handset?.added).toBe(false);
+    again.ws.close();
   });
 
   test("the pill's step line in the person's words", () => {

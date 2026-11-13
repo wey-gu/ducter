@@ -42,6 +42,8 @@ in the hand), 惊喜 (it really uses their phone, and they can watch every tap l
 
 ## 3. Which phone a phone task uses
 
+**Added means Android's switch is on** (fixed 2026-11-13, 0.0.49): the home adds the phone as soon as its app reports the switch on, however it got on (an earlier version, Android's Settings, the guide closed); before, only the switch turning on while the guide was open added it, so the author's Pixel, switched on in 0.0.44, was never added and phone work fell to Ducter's own phone. Taking 用这台手机 off on its card is remembered: a switch still on doesn't add it back by itself.
+
 `needs.phone` work uses **the person's own phone when one is added** (its apps and sign-ins are
 theirs); Ducter's phone on its computer otherwise. Bound at the task's first phone tool, for the
 task's life. With a phone added, phone work may run on any computer (`loadout.ts`): the tools drive

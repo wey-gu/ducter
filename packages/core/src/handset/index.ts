@@ -419,6 +419,16 @@ export function createHandsets(o: HandsetsOptions): Handsets {
         o.interrupt?.(l.taskId);
         o.tell?.(l.taskId, HANDSET_STOPPED);
       }
+      // Android's switch is on (its only use is this) and the person never took 用这台手机 off here:
+      // the phone is added, however the switch got on (in an earlier version, from Settings, with the
+      // guide closed). Before, only the switch going on while the guide was open added it, so a phone
+      // whose switch was on already stayed unadded and phone work fell to Ducter's own phone.
+      if (state.service && state.bridge >= HANDSET_BRIDGE && saved[deviceId] === undefined && o.deviceName(deviceId) !== undefined) {
+        saved[deviceId] = { added: true };
+        write();
+        guideOnLink.delete(deviceId);
+        for (const [taskId, s] of [...setups]) if (s.device === deviceId && s.go) setups.delete(taskId), void lend(taskId);
+      }
       // Android's switch went off on the phone: the chip can't stay on.
       if (saved[deviceId]?.added && before?.state.service && !state.service) {
         /* kept added: the card shows it needs the switch again */
@@ -457,7 +467,8 @@ export function createHandsets(o: HandsetsOptions): Handsets {
         for (const l of [...loans.values()]) if (l.device === deviceId) void this.stop(l.taskId);
         // Android's own switch goes off with the chip (the service turns itself off there).
         if (links.has(deviceId)) void call(deviceId, "off").catch(() => {});
-        delete saved[deviceId];
+        // Kept as not added (not deleted): a switch still on doesn't add it back by itself.
+        saved[deviceId] = { added: false };
         write();
         changed();
         return { ok: true };

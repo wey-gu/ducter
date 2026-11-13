@@ -102,6 +102,43 @@ describe("the link over a fake nmem", () => {
     expect((await r.link.view())?.state).toBe("ready");
   });
 
+  test("nmem 0.10.118: setup can't find a connected context; the saved context and the inbox confirm it instead", async () => {
+    const t = tempDir();
+    stops.push(t.cleanup);
+    const bin = join(t.dir, "nmem");
+    writeFileSync(bin, `#!/bin/sh\nexec bun ${FAKE} "$@"\n`);
+    chmodSync(bin, 0o755);
+    const state = join(t.dir, "state.json");
+    writeFileSync(state, JSON.stringify({ identities: {}, messages: [], seq: 0 }));
+    const env = { PATH: process.env.PATH ?? "", NMEM_CLI_PATH: bin, NMEM_FAKE_BRIDGE_STATE: state };
+    const real = nmemCall({ bin, env });
+    const seen: string[][] = [];
+    let inboxWorks = true;
+    const run: NmemCall = async (args) => {
+      seen.push(args);
+      if (args.includes("--agent-context") && args.at(-1) === "setup") return { code: 1, out: "", err: 'error: agent context "ducter" was not found\n' };
+      if (args[0] === "agents" && args[1] === "context" && args[2] === "show")
+        return { code: 0, out: JSON.stringify({ name: "ducter", selection: { scope: { space_id: "fake-space" }, address: { agent_id: "ducter", custodian_id: "m-1" } } }), err: "" };
+      if (args.includes("inbox") && !inboxWorks) return { code: 1, out: "", err: "error: refused\n" };
+      if (args.includes("inbox")) return { code: 0, out: JSON.stringify({ messages: [], next: "" }), err: "" };
+      return real(args);
+    };
+    const connected = async (name: string) => {
+      const data = join(t.dir, name);
+      mkdirSync(data);
+      const link = createBridgeLink({ dataDir: data, identity: () => "ducter", home: () => "hel", run, env });
+      await link.view();
+      await link.connect();
+      return JSON.parse(readFileSync(join(data, BRIDGE_CONNECTION_FILE), "utf8"));
+    };
+    expect(await connected("a")).toMatchObject({ context: "ducter", confirmed: true });
+    expect(seen.some((a) => a[0] === "agents" && a.includes("show"))).toBe(true);
+    // A context whose inbox doesn't answer stays unconfirmed.
+    inboxWorks = false;
+    writeFileSync(state, JSON.stringify({ identities: {}, messages: [], seq: 0 }));
+    expect(await connected("b")).toMatchObject({ confirmed: false });
+  });
+
   test("DUCTER_BRIDGE_CONTEXT names the context it saves", async () => {
     const r = rig({ DUCTER_BRIDGE_CONTEXT: "ducter-bridge" });
     await r.link.view();

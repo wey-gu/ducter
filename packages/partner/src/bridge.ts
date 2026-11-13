@@ -240,11 +240,12 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   const bin = opts.bin ?? env.NMEM_CLI_PATH ?? "nmem";
   const timeoutMs = opts.timeoutMs ?? 20_000;
   const maxOpen = opts.maxOpen ?? 5;
-  const run = async (args: string[], input?: string): Promise<{ code: number; out: string; err: string } | { missing: true }> => {
+  // `whole`: the arguments are a whole nmem command (not a `bridge` one under the context).
+  const run = async (args: string[], input?: string, whole = false): Promise<{ code: number; out: string; err: string } | { missing: true }> => {
     let proc: ReturnType<typeof Bun.spawn>;
     try {
       // Argument vector, never a shell string: message text can't become a flag or a command.
-      proc = Bun.spawn([bin, "--json", "--agent-context", opts.context, "bridge", ...args], {
+      proc = Bun.spawn(whole ? [bin, "--json", ...args] : [bin, "--json", "--agent-context", opts.context, "bridge", ...args], {
         stdout: "pipe",
         stderr: "pipe",
         stdin: input !== undefined ? new Blob([input]) : "ignore",
@@ -286,10 +287,16 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       const given = (opts.me ?? env.DUCTER_BRIDGE_MEMBER)?.trim();
       if (given) return given;
       const r = await run(["setup"]); // passive: inspects only, never --enable
-      if ("missing" in r || r.code !== 0) return undefined;
-      const j = parse(r.out);
-      const m = memberOf(j);
-      return m.id ?? m.name;
+      if (!("missing" in r) && r.code === 0) {
+        const m = memberOf(parse(r.out));
+        if (m.id ?? m.name) return m.id ?? m.name;
+      }
+      // nmem 0.10.118: a context saved by `bridge connections connect` is found by inbox, contacts
+      // and `agents context show`, but `bridge setup` says it was "not found". The saved context
+      // names the user's own member as its custodian (read locally, nothing sent).
+      const c = await run(["agents", "context", "show", "--name", opts.context], undefined, true);
+      if ("missing" in c || c.code !== 0) return undefined;
+      return str(parse(c.out)?.selection?.address?.custodian_id);
     })());
   const sent = (r: { code: number; out: string; err: string } | { missing: true }): BridgeResult<{ messageId?: string; operation?: string }> => {
     if ("missing" in r || r.code !== 0) return failure(r);

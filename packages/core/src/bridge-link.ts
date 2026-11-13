@@ -463,7 +463,18 @@ export function createBridgeLink(opts: {
         const s = await run(["--agent-context", ctx, "bridge", "setup"]);
         const sj = s && s.code === 0 ? jsonIn(s.out)[0] : undefined;
         const said = sj?.endpoint?.address?.agent_id ?? sj?.identity?.agent_id;
-        const confirmed = !!sj && (said === undefined || said === agent);
+        let confirmed = !!sj && (said === undefined || said === agent);
+        // nmem 0.10.118: `bridge setup` says a context saved by `connections connect` was "not
+        // found", while `agents context show` and the inbox use it. Then the saved context must name
+        // this identity and place, and the inbox must answer with it (both read-only).
+        if (!confirmed && s && /agent context .* was not found/i.test(`${s.err}\n${s.out}`)) {
+          const shown = await run(["agents", "context", "show", "--name", ctx]);
+          const sel = shown && shown.code === 0 ? jsonIn(shown.out)[0]?.selection : undefined;
+          if (sel?.address?.agent_id === agent && sel?.scope?.space_id === space.id) {
+            const inbox = await run(["--agent-context", ctx, "bridge", "inbox"]);
+            confirmed = !!inbox && inbox.code === 0 && jsonIn(inbox.out).length > 0;
+          }
+        }
         write({ context: ctx, agentId: agent, spaceId: space.id, spaceLabel: space.label, connectionId: conn.connection_id, ...(typeof conn.identity_birth === "string" ? { identityBirth: conn.identity_birth } : {}), confirmed, at: new Date(now()).toISOString() });
         if (!confirmed) undoFailed = s ? detailIn(s.out, s.err) : "nmem didn't start";
         verified = true;

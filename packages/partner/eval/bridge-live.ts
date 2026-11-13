@@ -148,9 +148,18 @@ async function preflightConnected(): Promise<boolean> {
     return false;
   }
   const st = await nm(["--agent-context", CTX, "bridge", "setup"]);
-  const agent = st.j?.endpoint?.address?.agent_id ?? st.j?.identity?.agent_id;
-  const same = st.code === 0 && agent === PERSONA_AGENT;
+  let agent = st.j?.endpoint?.address?.agent_id ?? st.j?.identity?.agent_id;
+  let same = st.code === 0 && agent === PERSONA_AGENT;
   say(`  ${same ? "✓" : "✗"} passive setup with ${CTX} acts as ${PERSONA_AGENT}: exit ${st.code}, state ${st.j?.state ?? "(none)"}, agent ${agent ?? "(none)"}`);
+  // nmem 0.10.118: `bridge setup` can't find a context saved by `connections connect`, which the
+  // inbox and `agents context show` use (the same fallback as bridge-link.ts). Both read-only.
+  if (!same && /agent context .* was not found/i.test(`${st.err}\n${st.out}`)) {
+    const sh = await nm(["agents", "context", "show", "--name", CTX]);
+    const inbox = await nm(["--agent-context", CTX, "bridge", "inbox"]);
+    agent = sh.j?.selection?.address?.agent_id;
+    same = agent === PERSONA_AGENT && sh.j?.selection?.scope?.space_id === space && inbox.code === 0;
+    say(`  ${same ? "✓" : "✗"} (nmem 0.10.118 setup can't find the context) the saved context names ${agent ?? "(none)"} in this place, and its inbox answers: exit ${inbox.code}`);
+  }
   const prep = ["bridge", "session", "--host", "claude-code", "--session-id", PEER_SESSION, "prepare"];
   if (!conn || !same) {
     say(

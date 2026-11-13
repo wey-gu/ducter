@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.50
+
+<!-- whats-new
+zh: 说"我的手机"就用你的手机，不会换成模拟器
+en: "My phone" means your phone, never Ducter's emulator
+zh: 任务看手机时第一句就写明是哪台
+en: A task's first look says which phone it holds
+-->
+
+**Which phone**
+- The partner tells your own phone (your apps, accounts, messages) from Ducter's phone (a clean
+  phone for trying an app). Work on your own apps uses yours, or asks you to turn 用这台手机 on
+  there; it never moves to Ducter's emulator by itself.
+- A task's first look at a phone starts by saying which phone it is.
+
 ## 0.0.49
 
 <!-- whats-new

@@ -19,14 +19,12 @@ const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 /** Shown in the imprint: at most two lines' worth (core keeps up to 200 characters). */
 const SHOWN = 120;
 
-/** The drawn reply mark: an arrow that turns back. Never a text arrow (iOS turns those into emoji). */
-export function ReplyGlyph({ size = 20 }: { size?: number }) {
-  return (
-    <svg class="reply-glyph" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M9.5 5.5 4 11l5.5 5.5" />
-      <path d="M4.6 11H13a6.5 6.5 0 0 1 6.5 6.5V19" />
-    </svg>
-  );
+/** D256: Ducter's reply mark: the one drawn chevron (D213's open angle, round ends) pointing back,
+ *  on a single line that sweeps back from below. A 16-unit grid at a 1.8 stroke, like the chevron.
+ *  Never a text arrow (iOS turns those into emoji). */
+export const REPLY_PATHS = '<path d="M6.4 3 3 6.4l3.4 3.4"/><path d="M3.4 6.4c5.6 0 9.4 1.8 9.4 6.6"/>';
+export function ReplyGlyph({ size = 16 }: { size?: number }) {
+  return <svg class="reply-glyph" width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" dangerouslySetInnerHTML={{ __html: REPLY_PATHS }} />;
 }
 
 /** A drawn ×, for putting a reply away. */
@@ -230,7 +228,7 @@ export function useReplyGestures(scroller: { current: HTMLElement | null }): Men
         s.el.style.transition = "none";
         const g = document.createElement("span");
         g.className = `swipe-mark${s.el.matches(".user, .user-m") ? " for-user" : ""}`;
-        g.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 5.5 4 11l5.5 5.5"/><path d="M4.6 11H13a6.5 6.5 0 0 1 6.5 6.5V19"/></svg>';
+        g.innerHTML = `<svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${REPLY_PATHS}</svg>`;
         s.el.parentElement?.insertBefore(g, s.el);
         const r = s.el.getBoundingClientRect();
         const pr = s.el.parentElement!.getBoundingClientRect();
@@ -387,7 +385,10 @@ export function SelectText() {
   );
 }
 
-/** The hover Reply beside a bubble on a wide screen (with a mouse; touch swipes). */
+/** D256: the reply pebble. With a mouse, while the pointer is over something that can be replied
+ *  to, one small clay pebble rests in the gutter beside it (left of the person's, right of the
+ *  partner's, outside a note's card beside a find), its ledge on the bottom line; on the pebble
+ *  itself it says 回复 / Reply. Touch has the swipe and the long-press menu instead. */
 export function HoverReply({ k }: { k?: string }) {
   if (!k) return null;
   return (
@@ -395,14 +396,16 @@ export function HoverReply({ k }: { k?: string }) {
       type="button"
       class="hover-reply"
       aria-label={t("reply.action")}
-      title={t("reply.action")}
       onClick={(ev) => {
         ev.stopPropagation();
         const r = targets.get(k);
         if (r) A.startReply(r);
       }}
     >
-      <ReplyGlyph size={18} />
+      <ReplyGlyph />
+      <span class="w" aria-hidden="true">
+        {t("reply.action")}
+      </span>
     </button>
   );
 }

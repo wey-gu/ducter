@@ -38,7 +38,8 @@ func (a *App) partnerBubble(c *ui.Context, join bool, body func()) {
 	rt := a.takeReply()
 	tab := a.rp.tab
 	a.rp.tab = nil
-	row := ui.Row(c).Gap(t.S2).AlignItems(ui.Center)
+	// D256: the pebble rests on the bubble's bottom line, right of it.
+	row := ui.Row(c).Gap(a.pebbleGap()).AlignItems(ui.End)
 	hov := rt != nil && row.Hovered()
 	row.Children(func() {
 		// Mirrors the user's corners: the tail is the bottom-left one.
@@ -55,7 +56,7 @@ func (a *App) partnerBubble(c *ui.Context, join bool, body func()) {
 				ui.Column(c).Padding(0, t.S4-2-imprintInset).Gap(t.S2).MinWidth(0).Children(body)
 			})
 		}
-		a.hoverReply(c, rt, hov)
+		a.hoverReply(c, rt, hov, 1)
 		ui.Spacer(c)
 	})
 }

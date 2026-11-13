@@ -36,7 +36,7 @@ import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
-import { plainWords } from "@ducter/protocol";
+import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, forecast, FullTop } from "./board.tsx";
 import { OnHandList, Switcher } from "./onhand.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
@@ -748,15 +748,19 @@ function JobRow({ e, chipOwner, noted, join, rk, ans }: { e: Entry; chipOwner: M
   const own = task && title(task) && chipOwner.get(task.id) === e.firstSeq;
   return (
     <div class={`partner${join ? " join" : ""}`} data-reply={j.ack ? rk : undefined} data-seq={e.firstSeq}>
+      {/* D256: the pebble rests beside the bubble itself, on its bottom line. */}
       {j.ack && (ans ? (
         <div class="bubble has-reply">
           <Imprint from="you" quote={ans.quote} seq={ans.seq} />
           <span class="words">{j.ack.text}</span>
+          <HoverReply k={rk} />
         </div>
       ) : (
-        <div class="bubble">{j.ack.text}</div>
+        <div class="bubble">
+          {j.ack.text}
+          <HoverReply k={rk} />
+        </div>
       ))}
-      {j.ack && <HoverReply k={rk} />}
       {st && !(task && title(task)) && <div class={`status-line${st.state === "failed" ? " failed" : ""}`}>{st.text}</div>}
       <Quiet k={`m${e.firstSeq}`} tasks={own ? [task!] : []} detail={st?.text} noted={noted} />
     </div>
@@ -1062,14 +1066,24 @@ function stacks(prev: Entry | undefined, e: Entry, chipOwner: Map<string, number
   return !!e.user || !!e.ai || !!e.job?.ack;
 }
 
+/** D256: a picture-only message's pebble stands left of its pictures: one picture's shape (as
+ *  Pictures sizes it) for the CSS to place it by; a grid is --pics-w wide. */
+function picsAspect(media: MediaRef[]): JSX.CSSProperties | undefined {
+  const pics = media.filter(isImage);
+  const one = pics.length === 1 ? pics[0] : undefined;
+  return one?.w && one.h ? { "--pa": (one.h / one.w).toFixed(4) } as JSX.CSSProperties : undefined;
+}
+
 /** D236: the user's words, with the imprint of what they reply to pressed into the top of the bubble. */
-function UserWords({ text, reply, cls, rk, seq }: { text: string; reply?: Bodies["user_msg"]["reply"]; cls: string; rk?: string; seq?: number }) {
-  if (!reply) return <div class={cls} data-reply={rk} data-seq={seq}>{text}<HoverReply k={rk} /></div>;
+function UserWords({ text, reply, cls, rk, seq, peb }: { text: string; reply?: Bodies["user_msg"]["reply"]; cls: string; rk?: string; seq?: number; peb?: string }) {
+  // D256: under pictures (peb), the words carry the whole message's pebble, on its last line.
+  const k = rk ?? peb;
+  if (!reply) return <div class={cls} data-reply={rk} data-seq={seq}>{text}<HoverReply k={k} /></div>;
   return (
     <div class={`${cls} has-reply`} data-reply={rk} data-seq={seq}>
       <SentImprint r={reply} />
       {text && <span class="words">{text}</span>}
-      <HoverReply k={rk} />
+      <HoverReply k={k} />
     </div>
   );
 }
@@ -1088,10 +1102,9 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
     // D206: the pictures stand above the words, on their own, as in a messaging app.
     if (!e.user.media?.length) return <UserWords text={e.user.text} reply={e.user.reply} cls={`user${join ? " join" : ""}`} rk={rk} seq={e.firstSeq} />;
     return (
-      <div class={`user-m${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
+      <div class={`user-m${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq} style={picsAspect(e.user.media)}>
         <MediaBlock media={e.user.media} side="user" ctx={{ kind: "conv" }} />
-        {(e.user.text || e.user.reply) && <UserWords text={e.user.text} reply={e.user.reply} cls="user" />}
-        <HoverReply k={rk} />
+        {e.user.text || e.user.reply ? <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} /> : <HoverReply k={rk} />}
       </div>
     );
   }
@@ -1099,15 +1112,20 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
     const ans = answerOf(e, prevUser);
     return (
       <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
+        {/* D256: the pebble rests beside the bubble itself, on its bottom line (a day card or
+            pictures under the words never move it). */}
         {(e.ai.text || !e.ai.cal) && (ans ? (
           <div class="bubble has-reply">
             <Imprint from="you" quote={ans.quote} seq={ans.seq} />
             <div dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />
+            <HoverReply k={rk} />
           </div>
         ) : (
-          <div class="bubble" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />
+          <div class="bubble">
+            <div class="md" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />
+            <HoverReply k={rk} />
+          </div>
         ))}
-        <HoverReply k={rk} />
         {/* D222: the day card under the partner's words (or alone in its column). */}
         {e.ai.cal && <DayCard g={e.ai.cal} />}
         {/* D206: what a task showed, under the partner's words about it. */}

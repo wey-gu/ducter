@@ -57,6 +57,12 @@ type replyState struct {
 	// tab is the user's reply the next partner bubble answers, pressed into
 	// its top (answerOf); taken and cleared as next is.
 	tab *replyTo
+	// noPebble is set while a picture message's words are drawn: the
+	// pebble stands beside the whole message (pictures and words) instead.
+	noPebble bool
+	// held is the pebble under the pointer or pressed, kept while the
+	// pointer is on it outside what it replies to (a find's, in the gutter).
+	held string
 	// found is the message an imprint just brought back: its tint deepens
 	// once, from at, and settles.
 	found struct {
@@ -328,31 +334,75 @@ func (a *App) sentImprint(c *ui.Context, key string, ref *protocol.ReplyRef, on 
 	return a.imprint(c, key, r, ref.Quote, ref.Part, on, false, land)
 }
 
-// hoverReply is the round Reply beside a bubble, shown while the pointer is
-// over it (a mouse hovers; there is no swipe on the Mac). It keeps its
-// place when hidden, so the bubble never shifts.
-func (a *App) hoverReply(c *ui.Context, r *replyTo, show bool) {
-	if r == nil {
+// D256: the reply pebble. While the pointer is over something that can be
+// replied to, one small clay pebble rests in the gutter beside it, on the
+// side away from its voice's edge (left of the person's, right of the
+// partner's), its ledge on the bubble's bottom line; never on a bubble's or
+// a card's content. It settles in from the bubble's side, shows the word
+// 回复 / Reply while the pointer is on it (when the window has room), and
+// presses down onto its ledge like the other clay buttons.
+
+// pebbleSize is the pebble's height (and its width while round).
+const pebbleSize = 30
+
+// pebbleGap is the gutter between what is replied to and its pebble.
+func (a *App) pebbleGap() float32 { return a.T.S2 }
+
+// hoverReply is the pebble beside a bubble. Hidden, it keeps its place, so
+// the bubble never shifts.
+func (a *App) hoverReply(c *ui.Context, r *replyTo, show bool, side int) {
+	if r == nil || a.rp.noPebble {
 		return
 	}
 	if !show {
-		ui.Box(c.Key("hover-reply:"+r.key())).Size(a.T.ChipLG, a.T.ChipLG).Shrink(0).AccessHidden(true)
+		ui.Box(c.Key("hover-reply:"+r.key())).Size(pebbleSize, pebbleSize).Shrink(0).AccessHidden(true)
 		return
 	}
-	a.replyButton(c, r)
+	a.replyButton(c, r, side)
 }
 
-// replyButton is the round Reply itself.
-func (a *App) replyButton(c *ui.Context, r *replyTo) ui.Element {
+// replyButton is the pebble itself. side is -1 when it stands left of what
+// it replies to (it settles in from the right), +1 when right.
+func (a *App) replyButton(c *ui.Context, r *replyTo, side int) ui.Element {
 	t := a.T
-	size := t.ChipLG
-	b := ui.Box(c.Key("hover-reply:"+r.key())).Size(size, size).Shrink(0).Radius(t.Pill).Background(t.Surface).
-		Shadow(0, 2, 0, 0, t.Line).Role(ui.RoleButton).Cursor(ui.CursorPointer).Label(a.L.T("reply.action")).Tooltip(a.L.T("reply.action"))
-	ink := t.InkMuted
-	if b.Hovered() {
-		ink = t.Ink
+	b := ui.Row(c.Key("hover-reply:" + r.key())).Height(pebbleSize).MinWidth(pebbleSize).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Gap(t.S1 + 1).
+		Radius(pebbleSize / 2).Background(t.Surface).
+		Role(ui.RoleButton).Focusable().Cursor(ui.CursorPointer).Label(a.L.T("reply.action")).Tooltip(a.L.T("reply.action"))
+	on, down := b.Hovered() || b.FocusVisible(), b.Pressed()
+	if on || down {
+		a.rp.held = r.key()
+	} else if a.rp.held == r.key() {
+		a.rp.held = ""
 	}
-	b.Draw(drawReply(ink))
+	if down {
+		// Pressed into its ledge, like clay.
+		b.Translate(0, 2).Shadow(0, 1, 0, 0, t.Line)
+	} else {
+		b.Shadow(0, 3, 0, 0, t.Line).Shadow(0, 4, 10, -3, t.Raised.Color)
+	}
+	if !c.Preferences().ReduceMotion {
+		in := ui.Local(b, "in", func() bool { return false })
+		p := ui.Pose{}
+		if !*in {
+			p, *in = ui.Pose{X: float32(-side) * 6, Scale: 0.82, Fade: 1}, true
+			c.Invalidate()
+		}
+		b.AnimatePose(p, t.Bouncy)
+	}
+	ink := t.InkMuted
+	if on {
+		ink = t.Accent
+	}
+	words := on && a.winW >= 900
+	if words {
+		b.Padding(0, t.S3, 0, t.S2+2)
+	}
+	b.Children(func() {
+		ui.Box(c).Size(16, 16).Shrink(0).Draw(drawReply(ink))
+		if words {
+			ui.Text(c, a.L.T("reply.action")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
+		}
+	})
 	if b.Clicked() {
 		a.StartReply(r)
 	}
@@ -406,29 +456,26 @@ func (a *App) composerReply(c *ui.Context) {
 	})
 }
 
-// drawReply is the reply mark: an arrow that turns back, its head pointing
-// left and its tail curving down and to the right. Never a text arrow
-// (the Mac and iOS turn those into emoji).
+// drawReply is Ducter's reply mark (D256): the one drawn chevron (D213's
+// open angle, round ends) pointing back, on a single line that sweeps back
+// from below, as a hand does to point at what was said. Drawn on a 16-unit
+// grid at a 1.8 stroke, like the chevron. Never a text arrow (the Mac and
+// iOS turn those into emoji).
 func drawReply(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {
-		// The web's 24-unit glyph, scaled to the box.
-		s := min(r.W, r.H) / 24
-		x0, y0 := r.X+(r.W-24*s)/2, r.Y+(r.H-24*s)/2
+		s := min(r.W, r.H) / 16
+		x0, y0 := r.X+(r.W-16*s)/2, r.Y+(r.H-16*s)/2
 		at := func(x, y float32) (float32, float32) { return x0 + x*s, y0 + y*s }
 		var m ui.Path
-		m.MoveTo(at(9.5, 5.5))
-		m.LineTo(at(4, 11))
-		m.LineTo(at(9.5, 16.5))
-		m.MoveTo(at(4.6, 11))
-		m.LineTo(at(13, 11))
-		// A quarter circle of radius 6.5 down to (19.5, 17.5), as a cubic.
-		const k = 6.5 * 0.5523
-		c1x, c1y := at(13+k, 11)
-		c2x, c2y := at(19.5, 17.5-k)
-		ex, ey := at(19.5, 17.5)
+		m.MoveTo(at(6.4, 3))
+		m.LineTo(at(3, 6.4))
+		m.LineTo(at(6.4, 9.8))
+		m.MoveTo(at(3.4, 6.4))
+		c1x, c1y := at(9, 6.4)
+		c2x, c2y := at(12.8, 8.2)
+		ex, ey := at(12.8, 13)
 		m.CubeTo(c1x, c1y, c2x, c2y, ex, ey)
-		m.LineTo(at(19.5, 19))
-		p.StrokePath(&m, max(1.6, 2.2*s), col)
+		p.StrokePath(&m, max(1.5, 1.8*s), col)
 	}
 }
 

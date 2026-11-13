@@ -128,13 +128,29 @@ shadow under the top and left rims and a lit lower edge, no border line. Its flo
 below the bubble it is pressed into: `--imprint-on-user` (the orange, 10% toward ink),
 `--imprint-on-partner` (a partner answer's, pressed into the top of its bubble), `--imprint-on-surface`
 (the composer). Quote at 12 (`--xs`) in `--imprint-ink` / `--imprint-ink-on-user`, at most two
-lines; who-line at 11 (`--xxs`, a new step below captions, only here), 800. Motion: the swipe mark (a 32
-round on the clay base, `--swipe-mark`) eases in with the drag and settles to accent with a spring
+lines; who-line at 11 (`--xxs`, a new step below captions, only here), 800. Motion: the swipe mark (the reply pebble at 32,
+`--swipe-mark`) eases in with the drag and settles to accent with a spring
 at the arming point; the bubble springs home over `--t-back` (320 ms); the composer's imprint
 rises in (`--t-med`, spring); a sent imprint is pressed in (`--t-press-in`, 300 ms, from raised
 `--imprint-raised` to sunken); found = the original's own tint deepens once (`--found-user`,
 `--found-partner`, 1.4 s). The reply mark and × are drawn, never text glyphs. Mac: the same tokens
 in `apps/desktop/internal/theme`.
+
+**The reply pebble (D256).** With a mouse, pointing at a message shows one small clay pebble in
+the gutter beside it: 30 high, the secondary button's clay at a pebble's size (`--surface`, the
+`--hi-secondary` inset light, `--rim`, `--seam-quiet`, the 3 px `--press-quiet` ledge, `--drop`), a
+slightly uneven round (16/15/16/14 over 15/16/14/16). 8 px of gutter; its ledge on the message's
+bottom line; left of the user's bubble, right of the partner's bubble itself, beside the words under
+a message's pictures (pictures alone: beside them), outside a note's card beside a find (the card's
+14 inset, then the gutter). It never sits on a bubble's or a card's content; with a mouse a partner
+bubble always leaves the room (at most 100% − 44 px). Its mark in `--ink-muted`, `--accent` while
+pointed at, when (900 wide and up) it widens away from the message to say **回复 / Reply** at
+`--sm` 700 in `--ink`. Motion: it settles in from the bubble's side (6 px, from 0.82, the spring,
+380 ms); pressed, it sinks 2 px onto its ledge; none under reduced motion. Touch never shows it.
+**The reply mark** is Ducter's own: the drawn chevron (D213) pointing back on a single line that
+sweeps back from below, a 16-unit grid at a 1.8 stroke (web `REPLY_PATHS`, Mac `drawReply`), the
+same in the pebble, the swipe, the menu, the composer and 回复这段. Mac: `replyButton` (Surface, a
+3 pt Line ledge, the Raised shadow softened, `Bouncy`).
 
 **Task lines.** A task line says its title once, then where it stands: the job's status line
 when it adds something, else the state (a status line that only repeats the title falls back to

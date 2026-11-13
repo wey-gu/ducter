@@ -5,7 +5,7 @@
 import type { Bodies, FindView } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { replyKey, replyOfFind } from "./reply.tsx";
+import { HoverReply, replyKey, replyOfFind } from "./reply.tsx";
 import { ProactiveChips } from "./accounts.tsx";
 import { Btn } from "./controls.tsx";
 import { ago } from "./format.ts";
@@ -17,10 +17,15 @@ function Find({ f, seq }: { f: FindView; seq?: number }) {
   const st = A.S.findStates.get(f.findId);
   const d = f.decisionId ? A.S.decisions.get(f.decisionId) : undefined;
   const open = !!d && !d.resolved && !d.pending;
+  const rk = seq !== undefined ? replyKey(replyOfFind(seq, f.findId, f.text)) : undefined;
   return (
-    <div class="find" data-reply={seq !== undefined ? replyKey(replyOfFind(seq, f.findId, f.text)) : undefined} data-seq={undefined}>
+    <div class="find" data-reply={rk} data-seq={undefined}>
       <div class="kind">{t(`kind.${f.kind}`)}</div>
-      <div class="ftext">{f.text}</div>
+      {/* D256: the pebble rests outside the card, beside the find's words. */}
+      <div class="ftext">
+        {f.text}
+        <HoverReply k={rk} />
+      </div>
       {d &&
         (st?.state === "passed" ? (
           <div class="small sub">{t("find.passed")}</div>

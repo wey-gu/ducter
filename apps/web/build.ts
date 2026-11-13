@@ -1,7 +1,7 @@
 // Builds the phone client into apps/web/static (committed, so core serves it with no build step
 // and the compiled `ducter` binary embeds it). `bun run apps/web/build.ts`; test/build.test.ts
 // fails when the committed bundle is older than src.
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const here = import.meta.dir;
 
@@ -25,7 +25,8 @@ export async function buildWeb(): Promise<Record<string, string>> {
   }
   // D242: pdf.js (Mozilla, Apache-2.0) draws a PDF's pages inside the viewer. Its prebuilt
   // modules are copied as they ship (about 1.7 MB together), loaded only when a PDF opens.
-  const pdfjs = join(here, "node_modules", "pdfjs-dist", "build");
+  // Resolved as a module: a workspace install may hoist it to the repo's node_modules (CI does).
+  const pdfjs = dirname(Bun.resolveSync("pdfjs-dist/build/pdf.min.mjs", here));
   out["pdf.js"] = await Bun.file(join(pdfjs, "pdf.min.mjs")).text();
   out["pdf.worker.js"] = await Bun.file(join(pdfjs, "pdf.worker.min.mjs")).text();
   return out;

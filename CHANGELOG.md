@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.0.53
+
+<!-- whats-new
+zh: 借手机时 Ducter 在后台也不断，还能自己录屏
+en: A lent phone stays lent in the background; Ducter records it
+zh: 记忆有了自己的一页；回复按钮重新做了
+en: Memory gets its own page; the reply button is redrawn
+-->
+
+**Lending your phone**
+- While lent, the Android app keeps its own link to your home, so the loan holds with Ducter in the
+  background; when it drops, Ducter says why (network, app closed) and says "back" only once it answers.
+- Ducter can record the phone's screen itself: Android asks once per recording, the video (no
+  sound) comes to your home and plays in the conversation. Locking or Stop keeps what was recorded.
+- Opening an app is checked: it says opened only when that app is in front.
+- Update the Android app for this.
+
+**Memory**
+- 记忆 / Memory has its own page in Settings: the partner shows what it remembers, grouped by day,
+  each with 忘掉 / Forget, and Nowledge Mem's card shows where it runs, its version and any update.
+- 你的其他 AI / Your other AI agents has its own page once Nowledge Mem is ready.
+
+**Reply**
+- The reply button is a small clay pebble with Ducter's own drawn mark, beside the message and never
+  on it; it says 回复 when you point at it. On a phone, swipe a message to reply.
+
 ## 0.0.52
 
 <!-- whats-new

@@ -19,7 +19,7 @@
 Mem 0.10.118 (PR nowledge-co/mem#9996) lets the user's ordinary Mem login represent an existing identity it
 holds, so the persona's context no longer needs a key or hand-made commands (D171's refusal).
 
-- **Who and when.** The heavy multi-agent developer, in Settings › 伙伴 › 你的其他 AI, once Mem is connected on
+- **Who and when.** The heavy multi-agent developer, in Settings › 你的其他 AI (its own tab, D257), once Mem is connected on
   the home. A user without Mem never meets it; with an older Mem, one line says to update it on the home.
 - **What Ducter finds by itself** (read-only): that the home's nmem has `bridge connections` (`--version`
   ≥ 0.10.118, else the subcommand's `--help`, cached per version); the one place with `kind: "personal"`
@@ -41,8 +41,9 @@ holds, so the persona's context no longer needs a key or hand-made commands (D17
 
 ### The home's own Mem first (D225)
 
-The same row walks the user to Connect when the home's `nmem` isn't ready, one tap per step. It shows whenever
-memory is on, even before Mem is on the home.
+D257 moved these steps to Settings › 记忆 / Memory's **Nowledge Mem** card (and Mem's newer version to its own
+highlighted card there); 你的其他 AI shows once Mem is in and signed in, and before that says which step is missing
+with **去「记忆」 / Go to Memory**. The steps themselves, one tap each:
 
 | The home | The row | The tap runs |
 |---|---|---|
@@ -64,7 +65,7 @@ with pipx, hel's pip copy updated past the mark, a used link refused (research/6
 first, the move, password-free system pipx, and a short warm line in the done colour after each install, update or
 move (**{home} 上换好了。登录还在，什么都没丢。**); a failure keeps the installer's words behind **细节 / Details**.
 
-On hel (nmem 0.10.116 by pip, signed in): Settings › 伙伴 › 你的其他 AI › **更新**, then **连接**.
+On hel (nmem 0.10.116 by pip, signed in): Settings › 记忆 › **更新**, then Settings › 你的其他 AI › **连接**.
 
 ## Chosen scenarios (dogfood, 2026-11-09)
 
@@ -305,7 +306,7 @@ decision cards; their rules live with the learned rules.
 | On hand · 等你 | the same card beside Ducter's own tasks' asks, the coin and who where a task's title would be |
 | Phone and lock screen | the same card; the notification is **小鸭 · 你的 terminal-claude 问你**, the question and the waiting line, no Go/Hold actions (its options are its own) |
 | X2's offer | after two Go's: **以后你的 terminal-claude 发来的活，直接接？** · **直接接** · **还是先问我**; then its work shows up in 在做 / Working with no card, the brief starting **你的 terminal-claude 让我做的** |
-| Settings › 伙伴 | **你的其他 AI**: **谁能找到小鸭** (只有你自己的 · 也包括同事的 · 谁都不行), the learned rules (**不再直接接**), the muted (**恢复**). Shown once another agent has written (J6) |
+| Settings › 你的其他 AI (D257) | **你的其他 AI**: **谁能找到小鸭** (只有你自己的 · 也包括同事的 · 谁都不行), the learned rules (**不再直接接**), the muted (**恢复**). Shown once another agent has written (J6) |
 | Saying it | "不再听 X 的", "X 的活还是先问我" to the partner does the same (`peer_rule`) |
 | Device islands | nothing: other agents aren't places, and a visitor on an island would be a new metaphor that tells nothing a coin doesn't |
 
@@ -599,7 +600,7 @@ nmem; never run against Mem (nmem 0.10.118 isn't public yet; the Cloud side is d
 
 ```sh
 nmem --version                                   # 0.10.118 or later
-# In Ducter: Settings › 伙伴 › 你的其他 AI › 连上. Or by hand, the same command Ducter runs:
+# In Ducter: Settings › 你的其他 AI › 连上. Or by hand, the same command Ducter runs:
 nmem bridge connections connect --space-id <Only me id> --agent-id ducter --context ducter
 bun run bridge:live -- --connected               # dry: read-only preflight, prints what --real would run
 bun run bridge:live -- --connected --real        # S1, S2, S3, X1; the peer is a native Claude Code session

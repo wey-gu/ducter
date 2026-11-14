@@ -1182,6 +1182,9 @@ type BridgeView struct {
 	Need     string       `json:"need,omitempty"`
 	SignIn   string       `json:"signIn,omitempty"`
 	Version  string       `json:"version,omitempty"`
+	// D257: Newer is Mem's own word that a newer nmem is out: its version,
+	// or "" when Mem didn't name it; nil when none is.
+	Newer *string `json:"newer,omitempty"`
 	// D229: Upkeep is the one quiet thing worth doing to the home's Mem
 	// (Kind "move" or "update"); Done what was just done ("installed",
 	// "updated", "moved"); Kept: it failed and the old copy still works.

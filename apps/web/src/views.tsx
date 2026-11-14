@@ -4,7 +4,7 @@
 import { openPhone, PhoneAskBody } from "./phone-use.tsx";
 import { ComputerLine } from "./computer-use.tsx";
 import { HandsetAskBody, HandsetLine, handsetAskTitle } from "./handset.tsx";
-import type { AgentUpdate, Attention, Bodies, BridgeView, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
+import type { AgentUpdate, Attention, Bodies, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
@@ -28,6 +28,8 @@ import { CalFacts, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx"
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
 import { FileViewer } from "./fileview.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
+import { MemoryPage, Notebook, PeersPage, peersPageShown } from "./memory.tsx";
+import { memBadge, memUpdate } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
@@ -2066,51 +2068,6 @@ function TalkSettings() {
   );
 }
 
-/** 记得什么 (D150): said as it is. No Mem: no switch, the way to get it; connected: whose name it's kept under (D141). */
-function MemorySettings() {
-  const s = A.settings;
-  const mem = A.mem;
-  if (!s) return null;
-  const missing = mem?.state === "missing" && s.memory;
-  const help = !s.memory
-    ? t("partner.memory.off")
-    : mem?.keptUnder
-      ? t("partner.memory.under", mem.keptUnder)
-      : mem?.state === "connected"
-        ? t("partner.memory.connected")
-        : t("partner.memory.on.help");
-  return (
-    <section class="set">
-      <h3>{t("partner.memory.title")}</h3>
-      {missing ? (
-        <div class="set-card">
-          <div class="set-item">
-            <b>{t("partner.memory.switch")}</b>
-            <small>{t("partner.memory.missing")}</small>
-            <a class="btn secondary sm set-go" href="https://mem.nowledge.co" target="_blank" rel="noopener">
-              <span class="lbl">{t("partner.memory.connect")}</span>
-            </a>
-          </div>
-        </div>
-      ) : (
-        <>
-          <Toggle label={t("partner.memory.switch")} help={help} checked={s.memory} onChange={(memory) => A.setSettings({ memory })} />
-          {s.memory && !!mem?.noted.length && (
-            <div class="noted" aria-label={t("partner.memory.recent")}>
-              {mem.noted.map((n) => (
-                <div class="noted-row" key={n.seq}>
-                  <span>{n.title}</span>
-                  <Btn kind="text" label={t("partner.memory.forget")} about={n.title} onClick={() => A.forget(n.seq)} />
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </section>
-  );
-}
-
 /** 要不要先问: the rules core keeps, in everyday words (read-only). */
 function TrustSettings() {
   const list = (head: string, prefix: string, cls: string) => (
@@ -2131,208 +2088,6 @@ function TrustSettings() {
         {list("partner.trust.asks", "partner.trust.asks", "asks")}
       </div>
       <div class="small sub">{t("partner.trust.note")}</div>
-    </section>
-  );
-}
-
-/**
- * D205: the persona's own connection with the user's other AI agents (Nowledge Bridge underneath,
- * never named): what 连上 will do, each step, Mem's refusal with the step the user takes in Mem,
- * and 断开. With an older Mem on the home, the one line that says to update it.
- */
-/** D225: the first nmem with `bridge connections` (bridge-link.ts BRIDGE_CONNECT_SINCE). */
-const MEM_MIN = "0.10.118";
-/** D225: the row's states before the home's Mem can connect anyone (nothing else in the group yet). */
-const MEM_SETUP = new Set(["install_mem", "installing", "update_mem", "updating", "sign_in", "signing_in", "local_mem"]);
-
-/** D229: the detail behind a quiet disclosure: the main line stays in plain words. */
-function MemMore({ label, text }: { label: string; text: string }) {
-  return (
-    <details class="mem-more">
-      <summary>{label}</summary>
-      <small>{text}</small>
-    </details>
-  );
-}
-
-/** D229: a failed install or update: one plain sentence, whether the old copy still works, the installer's words behind 细节. */
-function MemFailed({ detail, kept, install, home }: { detail: string; kept?: boolean; install: boolean; home: string }) {
-  return (
-    <>
-      <small class="bridge-why">
-        {install ? t("bridge.mem.install.failed") : t("bridge.mem.update.failed")}
-        {kept ? ` ${t("bridge.mem.kept")}` : ""}
-      </small>
-      <MemMore label={t("bridge.mem.more")} text={detail} />
-    </>
-  );
-}
-
-/**
- * D229: under a working row, the one quiet thing about the home's Mem: just done (a warm line), or
- * worth doing (move to Mem's recommended install, or a newer version), with its one tap.
- */
-function MemUpkeep({ b }: { b: BridgeView }) {
-  const home = b.home ?? "";
-  if (b.done) return <small class="mem-done">{t(`bridge.mem.done.${b.done}`, home)}</small>;
-  if (!b.upkeep) return null;
-  const move = b.upkeep.kind === "move";
-  return (
-    <div class="mem-upkeep">
-      <small>{move ? t("bridge.mem.upkeep.move", home) : t("bridge.mem.upkeep.update", home)}</small>
-      {b.upkeep.detail && <MemFailed detail={b.upkeep.detail} kept={b.upkeep.kept} install={false} home={home} />}
-      <div class="mem-upkeep-row">
-        {move && !b.upkeep.detail ? <MemMore label={t("bridge.mem.more")} text={t("bridge.mem.upkeep.move.how")} /> : <span />}
-        <Btn kind="secondary" size="sm" label={b.upkeep.detail ? t("bridge.retry") : move ? t("bridge.mem.upkeep.move.go") : t("bridge.mem.update.go")} about={home} onClick={() => A.installBridgeMem()} />
-      </div>
-    </div>
-  );
-}
-
-function BridgeRow() {
-  const b = A.bridge;
-  const s = A.settings;
-  const [link, setLink] = useState("");
-  if (!b || !s) return null;
-  const name = s.name;
-  const space = b.space?.label ?? "Only me";
-  const home = b.home ?? "";
-  // D225: the home's own Nowledge Mem command line first (put in, updated, signed in), on this row.
-  if (b.state === "install_mem" || b.state === "installing" || b.state === "update_mem" || b.state === "updating") {
-    const busy = b.state === "installing" || b.state === "updating";
-    const install = b.state === "install_mem" || b.state === "installing";
-    const moving = b.state === "updating" && b.upkeep?.kind === "move";
-    const line =
-      b.state === "installing" ? t("bridge.mem.installing", home)
-      : moving ? t("bridge.mem.moving", home)
-      : b.state === "updating" ? t("bridge.mem.updating", home)
-      : install ? (b.canRun ? t("bridge.mem.install", home) : t("bridge.mem.install.need", home))
-      : b.canRun ? t(b.upkeep?.kind === "move" ? "bridge.mem.update.move" : "bridge.mem.update", home, b.version ?? "", MEM_MIN)
-      : b.need === "app" || !b.version ? t("bridge.update", home)
-      : t("bridge.mem.update.other", home, b.version ?? "", MEM_MIN);
-    const label = install ? (b.canRun ? t("bridge.mem.install.go") : t("bridge.retry")) : b.detail ? t("bridge.retry") : t("bridge.mem.update.go");
-    return (
-      <div class="set-item">
-        <b>{t("bridge.title", name)}</b>
-        <small>{line}</small>
-        {b.detail && !busy && <MemFailed detail={b.detail} kept={b.kept} install={install} home={home} />}
-        {install && !b.canRun && !busy && <MemMore label={t("bridge.mem.how")} text={t("bridge.mem.install.need.how")} />}
-        {(busy || b.canRun || install) && (
-          <div class="set-go bridge-acts">
-            {busy ? <Btn kind="secondary" size="sm" disabled label={t(install ? "bridge.mem.busy.install" : moving ? "bridge.mem.busy.move" : "bridge.mem.busy.update")} onClick={() => {}} /> : <Btn kind={b.canRun ? "primary" : "secondary"} size="sm" label={label} about={home} onClick={() => A.installBridgeMem()} />}
-          </div>
-        )}
-      </div>
-    );
-  }
-  if (b.state === "sign_in" || b.state === "signing_in") {
-    const busy = b.state === "signing_in";
-    const why = b.signIn === "used" ? t("bridge.mem.signin.used") : b.signIn === "bad" ? t("bridge.mem.signin.bad") : b.signIn === "failed" ? t("bridge.mem.signin.failed", b.detail ?? "") : "";
-    const go = () => {
-      if (!link.trim() || busy) return;
-      A.signInBridgeMem(link.trim());
-      setLink("");
-    };
-    return (
-      <div class="set-item">
-        <b>{t("bridge.title", name)}</b>
-        {b.done && <small class="mem-done">{t(`bridge.mem.done.${b.done}`, home)}</small>}
-        <small>{t("bridge.mem.signin", home)}</small>
-        {why && <small class="bridge-why">{why}</small>}
-        <label class="acct-field">
-          <span class="small">{t("bridge.mem.signin.link")}</span>
-          <input type="url" inputMode="url" autoComplete="off" autoCapitalize="off" autoCorrect="off" spellcheck={false} enterKeyHint="go" placeholder="https://…?nmem_connect=…" value={link} disabled={busy} onInput={(e) => setLink((e.target as HTMLInputElement).value)} onKeyDown={(e) => e.key === "Enter" && go()} />
-        </label>
-        <div class="set-go bridge-acts">
-          <Btn kind="primary" size="sm" disabled={busy || !link.trim()} label={busy ? t("bridge.mem.signin.busy") : t("bridge.mem.signin.go")} about={home} onClick={go} />
-        </div>
-      </div>
-    );
-  }
-  if (b.state === "local_mem")
-    return (
-      <div class="set-item">
-        <b>{t("bridge.title", name)}</b>
-        <small>{t("bridge.mem.local", home)}</small>
-        <MemUpkeep b={b} />
-      </div>
-    );
-  const note =
-    b.state === "ready" ? t("bridge.ready", b.identity, space)
-    : b.state === "connecting" ? t("bridge.connecting")
-    : b.state === "disconnecting" ? t("bridge.disconnecting")
-    : b.state === "connected" ? (b.pinned ? t("bridge.pinned") : t("bridge.connected", b.identity, space))
-    : b.state === "no_space" ? t("bridge.no_space")
-    : b.state === "refused" ? t(`bridge.refused.${b.reason ?? "control_denied"}`, b.identity)
-    : b.state === "unconfirmed" ? t("bridge.unconfirmed", b.identity)
-    : t("bridge.failed", b.detail ?? "");
-  const busy = b.state === "connecting" || b.state === "disconnecting";
-  const canUndo = (b.state === "connected" && !b.pinned) || b.state === "unconfirmed";
-  const canTry = b.state === "ready" || b.state === "refused" || b.state === "failed" || b.state === "unconfirmed";
-  return (
-    <div class="set-item">
-      <b>{t("bridge.title", name)}</b>
-      <small>{note}</small>
-      {b.space && (b.state === "ready" || b.state === "connected") && <small class="bridge-id">{`${b.identity} · ${space} · ${b.space.id}`}</small>}
-      {b.state === "connected" && b.detail && <small>{t("bridge.undo.failed", b.detail)}</small>}
-      {canUndo && A.bridgeConfirm && <small>{t("bridge.undo.ask")}</small>}
-      {(canTry || canUndo || busy) && (
-        <div class="set-go bridge-acts">
-          {canUndo && A.bridgeConfirm && <Btn kind="text" size="sm" label={t("bridge.undo.keep")} onClick={() => ((A.bridgeConfirm = false), A.changed())} />}
-          {canUndo && <Btn kind="secondary" size="sm" label={t("bridge.undo")} about={b.identity} onClick={() => A.disconnectBridge()} />}
-          {canTry && <Btn kind={b.state === "ready" ? "primary" : "secondary"} size="sm" label={b.state === "ready" ? t("bridge.connect") : t("bridge.retry")} about={b.identity} onClick={() => A.connectBridge()} />}
-          {busy && <Btn kind="secondary" size="sm" disabled label={b.state === "connecting" ? t("bridge.connecting") : t("bridge.disconnecting")} onClick={() => {}} />}
-        </div>
-      )}
-      <MemUpkeep b={b} />
-    </div>
-  );
-}
-
-/**
- * D170: who of the user's other AI agents may reach the partner, what it learned about them, and
- * whom the user stopped listening to. D205: always findable once the home's Mem can connect them
- * (or needs updating to); before that, only once another agent has written (J6: a fresh user
- * never meets it). Two levels: 断开 ends it all (no checks, nothing sent); 谁都不行 lets no
- * other agent reach the partner, while what the user sends on a card still goes.
- */
-function PeerSettings() {
-  const s = A.settings;
-  const p = s?.peers;
-  const seen = A.S.channel.some((e) => e.peer);
-  const b = A.bridge;
-  if (!s || !p || (!b && !seen && !p.trusted.length && !p.muted.length)) return null;
-  const name = s.name;
-  const set = (patch: Partial<typeof p>) => A.setSettings({ peers: { ...p, ...patch } });
-  // An older Mem with nothing ever written: the one update line, nothing else.
-  const reachShown = seen || !!p.trusted.length || !!p.muted.length || (!!b && !MEM_SETUP.has(b.state));
-  return (
-    <section class="set">
-      <h3>{t("peers.title", name)}</h3>
-      <div class="set-card">
-        <BridgeRow />
-        {reachShown && (
-          <div class="set-item">
-            <b>{t("peers.reach", name)}</b>
-            <small>{p.reach === "off" ? t("peers.reach.off.note", name) : t("peers.reach.note")}</small>
-            <Seg label={t("peers.reach", name)} value={p.reach} options={(["own", "team", "off"] as const).map((v) => ({ v, label: t(`peers.reach.${v}`) }))} onPick={(reach) => set({ reach })} />
-          </div>
-        )}
-      </div>
-      {p.trusted.map((a) => (
-        <div class="noted-row" key={`t-${a}`}>
-          <span>
-            {t("peers.trusted", a)} · <small>{t("peers.trusted.why")}</small>
-          </span>
-          <Btn kind="text" label={t("peers.trusted.stop")} about={a} onClick={() => set({ trusted: p.trusted.filter((x) => x !== a) })} />
-        </div>
-      ))}
-      {p.muted.map((a) => (
-        <div class="noted-row" key={`m-${a}`}>
-          <span>{t("peers.muted", a)}</span>
-          <Btn kind="text" label={t("peers.muted.undo")} about={a} onClick={() => set({ muted: p.muted.filter((x) => x !== a) })} />
-        </div>
-      ))}
     </section>
   );
 }
@@ -2805,12 +2560,34 @@ function PhoneSettings() {
 
 const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[] = [
   { page: "partner", art: "idle", title: "settings.tab.partner" },
+  // D257: the partner's own notebook (the one it always carries), and two of the person's agents' coins.
+  { page: "memory", art: "notebook", title: "settings.tab.memory" },
+  { page: "peers", art: "coins", title: "settings.tab.peers" },
   { page: "notify", art: "wait_clock", title: "settings.tab.notify" },
   { page: "accounts", art: "wait_mail", title: "settings.tab.accounts" },
   { page: "autofill", art: "set_autofill", title: "settings.tab.autofill" },
   { page: "devices", art: "mini_awake", title: "settings.tab.devices" },
   { page: "phone", art: "phone", title: "settings.phone" },
 ];
+
+/** A section's art: its clay picture, or for 你的其他 AI two of the person's agents' coins (D257). */
+function SectionArt({ art, size }: { art: string; size: number }) {
+  if (art === "notebook") return <Notebook size={size} />;
+  if (art === "coins")
+    return (
+      <span class="set-coins" style={{ width: size, height: size }} aria-hidden="true">
+        <Coin harness="claude-code" size={Math.round(size * 0.68)} />
+        <Coin harness="codex" size={Math.round(size * 0.68)} />
+      </span>
+    );
+  return <img src={`app/art/${art}.webp`} alt="" width={size} height={size} />;
+}
+
+/** D257: the Memory row says a Nowledge Mem update in the highlight's ink, as 你的设备 does (D224). */
+function memWaiting(): string {
+  const k = memBadge(memUpdate(A.bridge));
+  return k ? t(k) : "";
+}
 
 /** D224: the Settings list's 你的设备 row says how many updates wait, in the highlight's ink (D213), or what is under way. */
 function updatesWaiting(): string {
@@ -2843,12 +2620,12 @@ function SettingsSheet() {
             <Chev />
           </button>
           <div class="set-card set-list">
-            {SECTIONS.map((x) => (
+            {SECTIONS.filter((x) => x.page !== "peers" || peersPageShown()).map((x) => (
               <button class="set-row" key={x.page} onClick={() => go(x.page)}>
-                <img src={`app/art/${x.art}.webp`} alt="" width="40" height="40" />
+                <SectionArt art={x.art} size={40} />
                 <span class="grow">
                   <b>{t(x.title)}</b>
-                  {x.page === "devices" && updatesWaiting() ? <small class="update">{updatesWaiting()}</small> : <small>{t(`settings.list.${x.page}`)}</small>}
+                  {x.page === "devices" && updatesWaiting() ? <small class="update">{updatesWaiting()}</small> : x.page === "memory" && memWaiting() ? <small class="update">{memWaiting()}</small> : <small>{t(`settings.list.${x.page}`)}</small>}
                 </span>
                 <Chev />
               </button>
@@ -2864,7 +2641,7 @@ function SettingsSheet() {
             {t("settings.back")}
           </button>
           <h2 class="set-title">
-            <img src={`app/art/${sec.art}.webp`} alt="" width="32" height="32" />
+            <SectionArt art={sec.art} size={32} />
             {t(sec.title)}
           </h2>
           {page === "partner" && (
@@ -2872,11 +2649,11 @@ function SettingsSheet() {
               <NameRow />
               <Loadout />
               <TalkSettings />
-              <MemorySettings />
               <TrustSettings />
-              <PeerSettings />
             </>
           )}
+          {page === "memory" && <MemoryPage />}
+          {page === "peers" && <PeersPage />}
           {page === "notify" && <NotifySettings />}
           {page === "accounts" && <Accounts />}
           {page === "autofill" && <AutofillSettings />}

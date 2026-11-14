@@ -161,6 +161,25 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   a stated preference (zh and en), no save of a task result or a pasted key, no recall for a
   general question, Mem down.
 
+## Settings › 记忆 / Memory (D257, built 2026-11-14)
+
+Memory has its own Settings tab after 伙伴, marked by the partner's own blue notebook (research/84). In order:
+
+- **The partner and one sentence.** Its face says where memory stands: done (hugging its notebook) when it
+  remembers, napping when off, idle when Mem is missing, working while Mem goes in. **{name} 记得你** and why it
+  matters (a new conversation or another AI tool picks up); nothing noted yet: how to start ("记住，周报每周五下午
+  发"). **记住事情 / Remember things** is on this card.
+- **它记下的 / What it noted:** the Log's `memory_noted` lines (the partner's own saves, up to 12, newest first),
+  grouped **今天 / 这一周 / 更早** by this computer's day, each forgettable as before; **在 Nowledge Mem 里看全部**
+  opens Mem for everything else. No heading when there is nothing.
+- **Nowledge Mem:** where it runs and its version, **已连上**, the display name it goes by there; every D225/D229
+  step (install, sign in, move, local-only) with its words. An update gets its own card in the highlight (Mem's
+  `status.update`, carried as `BridgeView.newer` with `version` on every working state): **Nowledge Mem 有新版本
+  {v}** · **更新**, or **要更新一下** when Bridge needs it, or "update it in the Nowledge Mem app" for the app's
+  copy. The Settings entry (Mac rail, web list) says **Nowledge Mem 有新版本** under 记忆 in the highlight's ink.
+
+Rules in `apps/web/src/mem-view.ts` and `apps/desktop/internal/views/memory.go` (the same cases tested on both).
+
 ## Mem and tasks (D168, D169; built 2026-11-10)
 
 Who: the developer whose Claude Code task on the Mac mini should keep their conventions like
@@ -172,7 +191,7 @@ Nowledge Mem is the memory of Ducter's tasks, the same Mem the user's own agents
 partner's own digest and window (D123) remember the conversation, and tasks run the same
 without the plugin. Everything below shows only to someone who already has Mem connected (its
 identity bound, D141, and Mem not answering "missing"). Without Mem there is one mention, in
-Settings › 记得什么: what Mem adds and a link, said as "free to download, runs on your own
+Settings › 记忆 / Memory (D257): what Mem adds and a link, said as "free to download, runs on your own
 computer" (DOCUMENTED, research/47 §4); never in the conversation, never a card, never a
 blocked feature. Copy never implies payment.
 

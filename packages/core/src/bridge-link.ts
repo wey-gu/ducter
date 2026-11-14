@@ -249,7 +249,7 @@ export function createBridgeLink(opts: {
   const pinned = () => env.DUCTER_BRIDGE === "1" && !!env.DUCTER_BRIDGE_CONTEXT?.trim();
   const agentNow = () => opts.identity() ?? opts.fallbackIdentity?.() ?? "ducter";
 
-  type Probe = { at: number; version?: string; supported: boolean; signedIn: boolean; backend?: string; space?: { id: string; label: string }; updateAvailable?: boolean };
+  type Probe = { at: number; version?: string; supported: boolean; signedIn: boolean; backend?: string; space?: { id: string; label: string }; updateAvailable?: boolean; latest?: string };
   let probe: Probe | undefined;
   let probeAt = 0; // when "no nmem here" was last seen (probe stays undefined)
   let probing: Promise<Probe | undefined> | undefined;
@@ -278,13 +278,15 @@ export function createBridgeLink(opts: {
       const backend = typeof sj?.backend === "string" ? sj.backend : undefined;
       // Mem's own word that a newer nmem is out (`status`.update; its command is only a hint).
       const updateAvailable = sj?.update?.update_available === true;
+      // D257: the newer version's number, when Mem names it (said beside 有新版本 / New version).
+      const latest = updateAvailable && typeof sj?.update?.latest === "string" ? parseNmemVersion(sj.update.latest)?.join(".") : undefined;
       let space: { id: string; label: string } | undefined;
       if (signedIn && backend !== "local") {
         // Passive: no context, no Space, never --enable. It lists the user's places and picks none.
         const s = await run(["bridge", "setup"]);
         if (s && s.code === 0) space = personalSpace(jsonIn(s.out)[0]);
       }
-      return (probe = { at: now(), version: shortVersion, supported, signedIn, ...(backend ? { backend } : {}), ...(space ? { space } : {}), ...(updateAvailable ? { updateAvailable } : {}) });
+      return (probe = { at: now(), version: shortVersion, supported, signedIn, ...(backend ? { backend } : {}), ...(space ? { space } : {}), ...(updateAvailable ? { updateAvailable } : {}), ...(latest ? { latest } : {}) });
     })().finally(() => (probing = undefined));
     return probing;
   }
@@ -384,11 +386,16 @@ export function createBridgeLink(opts: {
     const failed = memFailed ? { detail: memFailed, ...(memKept ? { kept: true as const } : {}) } : {};
     if (busy) return { state: busy, ...base, ...(busy === "installing" || busy === "updating" || busy === "signing_in" ? { home } : {}), ...(busy === "updating" && busyMove ? { upkeep: { kind: "move" as const } } : {}) };
     // D229: a quiet line under any working state: just done (a warm word), or the one thing worth doing.
+    // D257: on every working state, the home's Mem version and Mem's own word that a newer one is
+    // out (newer: its number, "" when Mem didn't name it), so Settings › 记忆 says so even for a
+    // copy Ducter can't update (the Nowledge Mem app's).
+    const said = (q: Probe): Partial<BridgeView> => ({ home, ...(q.version ? { version: q.version } : {}), ...(q.updateAvailable ? { newer: q.latest ?? "" } : {}) });
     const extras = async (): Promise<Partial<BridgeView>> => {
-      if (memDone && now() - memDone.at < DONE_SHOWN_MS) return { home, done: memDone.kind };
-      if (!p?.supported) return {};
+      if (!p) return {};
+      if (memDone && now() - memDone.at < DONE_SHOWN_MS) return { ...said(p), done: memDone.kind };
+      if (!p.supported) return said(p);
       const u = await upkeepFor(p);
-      return u ? { home, upkeep: { kind: u.kind, ...(memFailed ? { detail: memFailed, ...(memKept ? { kept: true as const } : {}) } : {}) } } : {};
+      return u ? { ...said(p), upkeep: { kind: u.kind, ...(memFailed ? { detail: memFailed, ...(memKept ? { kept: true as const } : {}) } : {}) } } : said(p);
     };
     if (r && p?.supported) {
       void verify(r).catch(() => {});

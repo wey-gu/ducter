@@ -15,6 +15,7 @@ import { fileWords } from "./i18n-fileview.ts";
 import { calendarWords } from "./i18n-calendar.ts";
 import { updateAllWords } from "./i18n-updateall.ts";
 import { convWords } from "./i18n-conv.ts";
+import { memoryWords } from "./i18n-memory.ts";
 
 export type Lang = "zh" | "en";
 
@@ -23,7 +24,7 @@ const zh: Record<string, string> = {
   "settings.tab.partner": "伙伴",
   "settings.tab.notify": "通知",
   "settings.tab.accounts": "账号",
-  "settings.list.partner": "名字、用什么想事情、怎么说话、记得什么",
+  "settings.list.partner": "名字、用什么想事情、谁来做事、怎么说话",
   "settings.list.notify": "什么时候找你、免打扰、你没回的时候",
   "settings.list.accounts": "它能看的邮件、日历和别的账号",
   "settings.tab.devices": "你的设备",
@@ -790,7 +791,7 @@ const en: Record<string, string> = {
   "settings.tab.partner": "Partner",
   "settings.tab.notify": "Notifications",
   "settings.tab.accounts": "Accounts",
-  "settings.list.partner": "Name, what it thinks with, how it talks, what it remembers",
+  "settings.list.partner": "Name, what it thinks with, who does the tasks, how it talks",
   "settings.list.notify": "When it comes to you, quiet hours, if you don't answer",
   "settings.list.accounts": "The mail, calendars and other accounts it can read",
   "settings.tab.devices": "Your devices",
@@ -2574,7 +2575,7 @@ const accounts: Record<Lang, Record<string, string>> = {
     "day.problem.failed": "细读你的信时 %s 一直出错，现在只看得到标题。",
     "day.problem.nothing_kept": "读了不少信，一天下来一件都没记下。可能是我这边出了问题。",
     "card.stop": "停用 %s",
-    "card.stop.ask": "停用以后，它就看不到这些账号了；记下的事还在「记得什么」里，可以忘掉。",
+    "card.stop.ask": "停用以后，它就看不到这些账号了；记下的事还在「记忆」里，可以忘掉。",
     "card.stop.keep": "取消",
     "card.stop.go": "停用",
     "card.budget": "这个月用了 %d%%",
@@ -2700,7 +2701,7 @@ const accounts: Record<Lang, Record<string, string>> = {
     "day.problem.failed": "%s keeps failing when it reads your mail, so it only sees subjects.",
     "day.problem.nothing_kept": "It read a fair amount of mail and noted nothing all day. Something may be wrong on its side.",
     "card.stop": "Stop using %s",
-    "card.stop.ask": "Once stopped, it can't read these accounts. What it noted stays in What it remembers, where you can forget it.",
+    "card.stop.ask": "Once stopped, it can't read these accounts. What it noted stays in Memory, where you can forget it.",
     "card.stop.keep": "Keep it",
     "card.stop.go": "Stop",
     "card.budget": "%d%% of this month's budget used",
@@ -2746,7 +2747,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en } };
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

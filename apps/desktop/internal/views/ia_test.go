@@ -50,9 +50,20 @@ func TestPartnerPage(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"小鸭", "怎么说话", "跟着我", "记得什么", "测试统一用假时钟", "先问你", "付钱：永远是你来付"} {
+	for _, want := range []string{"小鸭", "怎么说话", "跟着我", "先问你", "付钱：永远是你来付"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
+		}
+	}
+	// D257: what it remembers is its own tab, not a card on the partner's.
+	if tt.HasText("测试统一用假时钟") {
+		t.Errorf("the noted lines are still on the partner's tab")
+	}
+	tt.Click("记忆")
+	tt.Frame()
+	for _, want := range []string{"小鸭记得你", "记住事情", "它记下的", "测试统一用假时钟", "Nowledge Mem"} {
+		if !tt.HasText(want) {
+			t.Errorf("Memory: no %q in %q", want, tt.Texts())
 		}
 	}
 	// When it comes to you is its own tab now (D150).
@@ -77,7 +88,7 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"住在 hel 上 · 用 Codex 想事情", "自动选的：只有 Codex 登录了", "hel 上的 AI agent", "了解 Nowledge Mem"} {
+	for _, want := range []string{"住在 hel 上 · 用 Codex 想事情", "自动选的：只有 Codex 登录了", "hel 上的 AI agent"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -85,9 +96,17 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	if tt.HasText("Claude Code · Opus") {
 		t.Errorf("claims Claude Code: %q", tt.Texts())
 	}
-	// Mem not connected: no switch that says it remembers.
-	if tt.HasText("记住事情") && tt.HasText("记得你说过的事，存在 Nowledge Mem 里；替你做事时也用得上。") {
-		t.Errorf("memory says connected while missing")
+	// Mem not connected (D257, Memory): the way to get it, and no switch that says it remembers.
+	app.openTab(TabMemory)
+	tt.Frame()
+	tt.Frame()
+	for _, want := range []string{"小鸭记得这次对话", "hel 上还没有 Nowledge Mem。", "了解 Nowledge Mem"} {
+		if !tt.HasText(want) {
+			t.Errorf("Memory: no %q in %q", want, tt.Texts())
+		}
+	}
+	if tt.HasText("记住事情") {
+		t.Errorf("memory has its switch while Mem is missing")
 	}
 }
 
@@ -115,22 +134,22 @@ func TestPartnerTabDeepSeekFallback(t *testing.T) {
 	}
 }
 
-// D141: with the persona's Mem identity bound, the memory card says whose name
-// its memories are kept under, in plain words.
-func TestPartnerPageKeptUnder(t *testing.T) {
+// D141, D257: with the persona's Mem identity bound, Memory's Nowledge Mem
+// card says the name its memories are kept under, in plain words.
+func TestMemoryTabKeptUnder(t *testing.T) {
 	for _, tc := range []struct {
 		lang i18n.Lang
 		want string
 	}{
-		{i18n.ZH, "你说过的事，它记在 Nowledge Mem 的「小鸭」名下；替你做事时也用得上。"},
-		{i18n.EN, "What you've told it is kept in Nowledge Mem under “小鸭”, and its tasks use it too."},
+		{i18n.ZH, "它在 Nowledge Mem 里叫「小鸭」。"},
+		{i18n.EN, "In Nowledge Mem it goes by 小鸭."},
 	} {
 		app, _ := iaApp(t, tc.lang)
 		f := settingsFrame()
 		f.Mem.KeptUnder = "小鸭"
 		app.Receive(f)
-		app.Route = RoutePartner
-		tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		app.openTab(TabMemory)
+		tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
 		tt.Frame()
 		if !tt.HasText(tc.want) {
@@ -139,17 +158,17 @@ func TestPartnerPageKeptUnder(t *testing.T) {
 	}
 }
 
-func TestPartnerPageEmptyMemoryHidesList(t *testing.T) {
+func TestMemoryTabEmptyHidesList(t *testing.T) {
 	app, _ := iaApp(t, i18n.EN)
 	f := settingsFrame()
 	f.Mem.Noted = nil
 	f.Mem.State = "missing"
 	app.Receive(f)
-	app.Route = RoutePartner
-	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	app.openTab(TabMemory)
+	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	if tt.HasText("Noted lately") {
+	if tt.HasText("What it noted") {
 		t.Errorf("an empty noted list still has its heading")
 	}
 	if !tt.HasText("About Nowledge Mem") {

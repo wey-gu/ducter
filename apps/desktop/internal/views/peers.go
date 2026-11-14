@@ -117,18 +117,39 @@ func (a *App) bridgeNote(b *protocol.BridgeView) string {
 
 // bridgeRow is the persona's own connection with the user's other AI agents
 // (D205; Nowledge Bridge underneath, never named): 连上 runs the home's
-// nmem on this tap; 断开 asks once, then runs. An older Mem: one line.
+// nmem on this tap; 断开 asks once, then runs. D257: the home's Mem steps
+// (put in, sign in, update) live in Settings › 记忆; this row says which
+// and goes there.
 func (a *App) bridgeRow(c *ui.Context, st *protocol.Settings, b *protocol.BridgeView) {
 	t := a.T
-	if a.bridgeMemRow(c, st, b) {
+	title := a.L.T("bridge.title", st.Name)
+	toMemory := func() {
+		if a.button(c, a.L.T("peers.mem.go"), btnSecondary, t.ControlSM, t.Surface) {
+			a.openTab(TabMemory)
+		}
+	}
+	switch b.State {
+	case "install_mem", "installing", "sign_in", "signing_in":
+		a.row(c, "bridge", title, a.L.T("peers.mem.first", a.memHome(), st.Name), toMemory)
+		return
+	case "update_mem":
+		a.row(c, "bridge", title, a.L.T("peers.mem.update", a.memHome(), memMin), toMemory)
+		return
+	case "updating":
+		a.row(c, "bridge", title, a.L.T("bridge.mem.updating", a.memHome()), nil)
+		return
+	case "local_mem":
+		a.row(c, "bridge", title, a.L.T("bridge.mem.local", a.memHome()), nil)
 		return
 	}
 	help := a.bridgeNote(b)
-	if b.Space != nil && (b.State == "ready" || b.State == "connected") {
-		help += "\n" + b.Identity + " · " + b.Space.Label + " · " + b.Space.ID
-	}
 	if b.State == "connected" && b.Detail != "" {
 		help += "\n" + a.L.T("bridge.undo.failed", b.Detail)
+	}
+	// When it doesn't connect and Mem says a newer one is out, that's the first thing to try (D257).
+	tryNewer := b.Newer != nil && (b.State == "refused" || b.State == "failed" || b.State == "unconfirmed")
+	if tryNewer {
+		help += "\n" + a.L.T("peers.mem.newer")
 	}
 	canUndo := (b.State == "connected" && !b.Pinned) || b.State == "unconfirmed"
 	if canUndo && a.bridgeConfirm {
@@ -136,11 +157,9 @@ func (a *App) bridgeRow(c *ui.Context, st *protocol.Settings, b *protocol.Bridge
 	}
 	canTry := b.State == "ready" || b.State == "refused" || b.State == "failed" || b.State == "unconfirmed"
 	busy := b.State == "connecting" || b.State == "disconnecting"
-	help += a.memUpkeepHelp(b)
-	upkeep := a.memUpkeepButton(c, b)
-	a.row(c, "bridge", a.L.T("bridge.title", st.Name), help, func() {
-		if upkeep != nil {
-			upkeep()
+	a.row(c, "bridge", title, help, func() {
+		if tryNewer {
+			toMemory()
 		}
 		if canUndo && a.bridgeConfirm && a.buttonFor(c, a.L.T("bridge.undo.keep"), b.Identity, btnText, t.ControlSM, t.Surface) {
 			a.bridgeConfirm = false
@@ -172,6 +191,11 @@ func (a *App) bridgeRow(c *ui.Context, st *protocol.Settings, b *protocol.Bridge
 			ui.Text(c, label).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 	})
+	// The exact identity, place and id it uses, said literally, quietly (D205).
+	if b.Space != nil && (b.State == "ready" || b.State == "connected") {
+		ui.Text(c.Key("bridge-ids"), b.Identity+" · "+b.Space.Label+" · "+b.Space.ID).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).
+			Padding(0, t.S5, t.S4, t.S5).Margin(-t.S3, 0, 0, 0).Selectable()
+	}
 }
 
 // memFailed is D229's failed install or update: one plain sentence, whether
@@ -187,53 +211,6 @@ func (a *App) memFailed(install bool, home, detail string, kept bool) string {
 	return line + "\n" + a.L.T("bridge.mem.detail", detail)
 }
 
-// memUpkeepHelp is D229's quiet line under a working row: just done (a warm
-// word), or the one thing worth doing to the home's Mem (move, update).
-func (a *App) memUpkeepHelp(b *protocol.BridgeView) string {
-	if b.Done != "" {
-		return "\n" + a.L.T("bridge.mem.done."+b.Done, b.Home)
-	}
-	if b.Upkeep == nil {
-		return ""
-	}
-	if b.Upkeep.Kind == "move" {
-		// The how (pipx, the system Python's mark) stays off the row: plain words only.
-		line := "\n" + a.L.T("bridge.mem.upkeep.move", b.Home)
-		if b.Upkeep.Detail != "" {
-			return line + "\n" + a.memFailed(false, b.Home, b.Upkeep.Detail, b.Upkeep.Kept)
-		}
-		return line
-	}
-	line := "\n" + a.L.T("bridge.mem.upkeep.update", b.Home)
-	if b.Upkeep.Detail != "" {
-		line += "\n" + a.memFailed(false, b.Home, b.Upkeep.Detail, b.Upkeep.Kept)
-	}
-	return line
-}
-
-// memUpkeepButton is the upkeep's one tap (换一下 / 更新, or 再试一次);
-// nil when there is nothing to do.
-func (a *App) memUpkeepButton(c *ui.Context, b *protocol.BridgeView) func() {
-	if b.Done != "" || b.Upkeep == nil {
-		return nil
-	}
-	return func() {
-		t := a.T
-		label := a.L.T("bridge.mem.update.go")
-		if b.Upkeep.Kind == "move" {
-			label = a.L.T("bridge.mem.upkeep.move.go")
-		}
-		if b.Upkeep.Detail != "" {
-			label = a.L.T("bridge.retry")
-		}
-		if a.buttonFor(c, label, b.Home, btnSecondary, t.ControlSM, t.Surface) {
-			b.State = "updating"
-			b.Upkeep = &protocol.BridgeUpkeep{Kind: b.Upkeep.Kind}
-			a.send(protocol.BridgeAction{T: "bridge_mem_install"})
-		}
-	}
-}
-
 // memSetup: the row's states before the home's Mem can connect anyone (D225).
 func memSetup(state string) bool {
 	switch state {
@@ -243,130 +220,18 @@ func memSetup(state string) bool {
 	return false
 }
 
-// bridgeMemRow is D225's first part of the row: the home's own Nowledge Mem
-// command line put in, updated or signed in, with one tap each. It reports
-// whether it drew the row.
-func (a *App) bridgeMemRow(c *ui.Context, st *protocol.Settings, b *protocol.BridgeView) bool {
-	t := a.T
-	const min = "0.10.118"
-	title := a.L.T("bridge.title", st.Name)
-	switch b.State {
-	case "install_mem", "installing", "update_mem", "updating":
-		install := b.State == "install_mem" || b.State == "installing"
-		busy := b.State == "installing" || b.State == "updating"
-		var line string
-		switch {
-		case b.State == "installing":
-			line = a.L.T("bridge.mem.installing", b.Home)
-		case b.State == "updating" && b.Upkeep != nil && b.Upkeep.Kind == "move":
-			line = a.L.T("bridge.mem.moving", b.Home)
-		case b.State == "updating":
-			line = a.L.T("bridge.mem.updating", b.Home)
-		case install && b.CanRun:
-			line = a.L.T("bridge.mem.install", b.Home)
-		case install:
-			line = a.L.T("bridge.mem.install.need", b.Home)
-		case b.CanRun && b.Upkeep != nil && b.Upkeep.Kind == "move":
-			line = a.L.T("bridge.mem.update.move", b.Home, b.Version, min)
-		case b.CanRun:
-			line = a.L.T("bridge.mem.update", b.Home, b.Version, min)
-		case b.Need == "app" || b.Version == "":
-			// The app's copy, or a core from before D225: update it there.
-			line = a.L.T("bridge.update", b.Home)
-		default:
-			line = a.L.T("bridge.mem.update.other", b.Home, b.Version, min)
-		}
-		help := line
-		if b.Detail != "" && !busy {
-			help += "\n" + a.memFailed(install, b.Home, b.Detail, b.Kept)
-		}
-		if install && !b.CanRun && !busy {
-			help += "\n" + a.L.T("bridge.mem.install.need.how")
-		}
-		a.row(c, "bridge", title, help, func() {
-			if busy {
-				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted)
-				return
-			}
-			if !b.CanRun && !install {
-				return
-			}
-			label, kind := a.L.T("bridge.mem.update.go"), btnPrimary
-			if !install && b.Detail != "" {
-				label = a.L.T("bridge.retry")
-			}
-			if install {
-				label = a.L.T("bridge.mem.install.go")
-				if !b.CanRun {
-					label, kind = a.L.T("bridge.retry"), btnSecondary
-				}
-			}
-			if a.buttonFor(c, label, b.Home, kind, t.ControlSM, t.Surface) {
-				if b.State == "update_mem" {
-					b.State = "updating"
-				} else {
-					b.State = "installing"
-				}
-				a.send(protocol.BridgeAction{T: "bridge_mem_install"})
-			}
-		})
-		return true
-	case "sign_in", "signing_in":
-		busy := b.State == "signing_in"
-		help := a.L.T("bridge.mem.signin", b.Home)
-		if b.Done != "" {
-			help = a.L.T("bridge.mem.done."+b.Done, b.Home) + "\n" + help
-		}
-		switch b.SignIn {
-		case "used":
-			help += "\n" + a.L.T("bridge.mem.signin.used")
-		case "bad":
-			help += "\n" + a.L.T("bridge.mem.signin.bad")
-		case "failed":
-			help += "\n" + a.L.T("bridge.mem.signin.failed", b.Detail)
-		}
-		a.row(c, "bridge", title, help, func() {
-			a.field(c, "bridge-link", a.L.T("bridge.mem.signin.link"), &a.bridgeLink, "https://…?nmem_connect=…", "")
-			label := a.L.T("bridge.mem.signin.go")
-			if busy {
-				label = a.L.T("bridge.mem.signin.busy")
-			}
-			if a.buttonFor(c, label, b.Home, btnPrimary, t.ControlSM, t.Surface) && !busy && strings.TrimSpace(a.bridgeLink) != "" {
-				b.State = "signing_in"
-				a.send(protocol.BridgeMemSignIn{T: "bridge_mem_sign_in", Link: strings.TrimSpace(a.bridgeLink)})
-				a.bridgeLink = ""
-			}
-		})
-		return true
-	case "local_mem":
-		a.row(c, "bridge", title, a.L.T("bridge.mem.local", b.Home)+a.memUpkeepHelp(b), a.memUpkeepButton(c, b))
-		return true
-	}
-	return false
-}
-
-// peersCard is Settings › 伙伴's "your other AI agents" (D170): who may reach
-// the partner, the rules it learned about them, and whom the user stopped
-// listening to. D205: always there once the home's Mem can connect the
-// persona (or needs updating to); before that, only once another agent has
-// written (J6). 断开 ends it all; 谁都不行 lets no other agent reach the
-// partner while what the user sends on a card still goes.
+// peersCard is 你的其他 AI / Your other AI agents (D170, its own tab since
+// D257): the connection, who may reach the partner, the rules it learned
+// about them, and whom the user stopped listening to. 断开 ends it all;
+// 谁都不行 lets no other agent reach the partner while what the user sends
+// on a card still goes.
 func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 	if st == nil || st.Peers == nil {
 		return
 	}
 	p := st.Peers
 	b := a.S.Bridge
-	seen := false
-	for _, e := range a.S.Channel {
-		if e.Peer != nil {
-			seen = true
-			break
-		}
-	}
-	if b == nil && !seen && len(p.Trusted) == 0 && len(p.Muted) == 0 {
-		return
-	}
+	seen := a.peersSeen()
 	if b != nil && b.State != "connected" {
 		a.bridgeConfirm = false
 	}
@@ -376,7 +241,7 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		*p = next
 		a.SetSettings(protocol.SettingsPatch{Peers: &next})
 	}
-	a.group(c, "peers", a.L.T("peers.title"), "", func() {
+	a.group(c, "peers", "", "", func() {
 		if b != nil {
 			a.bridgeRow(c, st, b)
 		}
@@ -402,6 +267,11 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 				set(next)
 			}
 		})
+	})
+	if len(p.Trusted) == 0 && len(p.Muted) == 0 {
+		return
+	}
+	a.group(c, "peer-rules", "", "", func() {
 		for _, agent := range p.Trusted {
 			agent := agent
 			a.row(c, "trusted:"+agent, a.L.T("peers.trusted", agent), a.L.T("peers.trusted.why"), func() {

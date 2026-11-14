@@ -290,6 +290,23 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Long-term memory (`design/memory.md`)
 
+- [ ] **Memory shows Mem's own memories, by kind** (D257, research/84 §4): 它记下的 lists only the partner's
+      own conversation saves (the Log's `memory_noted`). Read the identity's memories from Mem (its lane and
+      where saves land, as recall reads, D229) and group them by Mem's `unit_type` (preference, decision, fact),
+      with their source (this conversation, a task, another tool) and Forget in Mem. A new read path and a
+      privacy surface: decide what shows on the phone. Trigger: the author reviews D257's Memory tab, or Mem
+      ships a list-by-identity call.
+- [ ] **Nowledge Mem in 全部更新 / Update all** (D257 option C): the home's `nmem` as an item beside Ducter
+      and the agents (D224), so one tap updates everything. Trigger: the next time 全部更新 grows an item kind.
+- [ ] **An On hand line when a Mem update blocks something in use** (D257 (5)): today the update is said on
+      Memory, on the Settings entry, and on 你的其他 AI when a connection fails with a newer Mem out. If people
+      miss it there (Bridge broken for days), add one quiet On hand line. Trigger: a real report of a missed
+      update.
+- [ ] **The notebook mark's comprehension test** (D257, AGENTS.md's metaphor rule step 4): naive raters (LLM
+      proxies, then people) read the drawn notebook on the Settings rail without its label. Not run with D257
+      (it would write to `~/.claude`). Trigger: the next metaphor test batch.
+- [ ] **Review D257 on the iOS Simulator** (memory: verify on iOS): the Memory page at 390 in light and dark,
+      the Settings list's notebook and coins marks. Trigger: before the next tagged release.
 - [ ] **Ask Mem for orchestrator attribution on plugin writes** (D175 (6), principle 17): a task's
       plugin capture records the persona and its agent's `source_app`, but nothing says Ducter
       ran it or which task. Ask for an env the plugin passes through (e.g. `NMEM_ORCHESTRATOR`

@@ -410,8 +410,16 @@ One vocabulary on every tab:
 - **Partner:** one calm clay header (the partner at 112, its name 34 with Rename, one line "住在
   hel 上 · 用 Codex 想事情"), then the tray titled **{device} 上的 AI agent**, What it thinks with
   (the clay well holding the token; the token flies into it on Switch), Who does the tasks, How it
-  talks, What it remembers (no Mem: no switch; one gentle line on what Mem adds and **了解 Nowledge Mem**, D169), On its own or asks
-  you first (two lists side by side in one card). Single column; the faces strip is gone.
+  talks, On its own or asks you first (two lists side by side in one card). Single column; the faces strip is gone.
+- **Memory** (D257; its mark the partner's own blue notebook, drawn in clay from `--notebook-*` / `Tokens.Notebook`):
+  a raised clay hero (the partner's face for where memory stands at 112 on the Mac, 84 on the phone; one 24/20
+  title; one sentence; the switch under a hairline), an update card in the highlight (title LG/MD 800, one line,
+  the ink **更新** at its end; the working colour while it runs; it rises in with the spring), **它记下的** grouped by
+  when (XS 700 muted day labels; each line an 8 pt accent pebble on its ledge, the title MD 600, its age XS;
+  hairlines start past the pebble; the door to Mem last), then the **Nowledge Mem** card (where · version in mono ·
+  a green **已连上** pill). No Mem: no switch; one gentle line and **了解 Nowledge Mem** (D169).
+- **Your other AI agents** (D257; two of the person's agents' coins): the tab's lede, then one card (the connection,
+  who can reach it), then the learned rules and the muted in their own card. Shown once it means something (J6).
 - **Look and sound** opens on a preview stage: the partner, one message of yours and its answer
   in this window's language, and Details folded or shown as set. The partner smiles (its done
   face, cross-faded) for 1.6 s after any choice there, and while **试听 / Play** plays the

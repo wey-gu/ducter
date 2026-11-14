@@ -76,7 +76,7 @@ describe("the link over a fake nmem", () => {
 
   test("ready: what 接上 will do, read passively", async () => {
     const r = rig();
-    expect(await r.link.view()).toEqual({ state: "ready", identity: "ducter", space: { id: "fake-space", label: "Only me" } });
+    expect(await r.link.view()).toEqual({ state: "ready", identity: "ducter", space: { id: "fake-space", label: "Only me" }, home: "hel", version: "0.10.118" });
     expect(writes(r.calls())).toEqual([]);
     expect(r.calls().some((c) => c.includes("--enable"))).toBe(false);
     expect(r.link.context()).toBeUndefined();
@@ -90,7 +90,7 @@ describe("the link over a fake nmem", () => {
     const after = r.calls().slice(r.calls().findIndex((c) => c.includes("connect")) + 1);
     expect(after[0]).toEqual(["--json", "--agent-context", "ducter", "bridge", "setup"]);
     expect(r.link.context()).toBe("ducter");
-    expect(await r.link.view()).toEqual({ state: "connected", identity: "ducter", space: { id: "fake-space", label: "Only me" } });
+    expect(await r.link.view()).toEqual({ state: "connected", identity: "ducter", space: { id: "fake-space", label: "Only me" }, home: "hel", version: "0.10.118" });
     expect(r.changes()).toBeGreaterThanOrEqual(2); // connecting…, then connected
     const kept = JSON.parse(readFileSync(join(r.data, BRIDGE_CONNECTION_FILE), "utf8"));
     expect(kept).toMatchObject({ context: "ducter", agentId: "ducter", spaceId: "fake-space", confirmed: true });
@@ -162,7 +162,7 @@ describe("the link over a fake nmem", () => {
   for (const which of ["none", "two"])
     test(`no single personal place (${which}): nothing offered, connect runs nothing`, async () => {
       const r = rig({ NMEM_FAKE_SPACES: which });
-      expect(await r.link.view()).toEqual({ state: "no_space", identity: "ducter" });
+      expect(await r.link.view()).toEqual({ state: "no_space", identity: "ducter", home: "hel", version: "0.10.118" });
       await r.link.connect();
       expect(writes(r.calls())).toEqual([]);
     });
@@ -243,7 +243,7 @@ describe("the link over a fake nmem", () => {
 
   test("Mem answering from this computer, not a cloud workspace: local_mem, no setup run", async () => {
     const r = rig({ NMEM_FAKE_BACKEND: "local" });
-    expect(await r.link.view()).toEqual({ state: "local_mem", identity: "ducter", home: "hel" });
+    expect(await r.link.view()).toEqual({ state: "local_mem", identity: "ducter", home: "hel", version: "0.10.118" });
     expect(r.calls().some((c) => c.includes("setup"))).toBe(false);
   });
 });
@@ -430,10 +430,21 @@ describe("D225: the home's own nmem, put in or updated on the tap", () => {
   test("D229: Mem says a newer nmem is out: a quiet 更新 from the copy's own source", async () => {
     const files = { "/home/u/.local/pipx/venvs/nmem-cli/bin/nmem": "ELF", "/home/u/.local/bin/nmem": "ELF" };
     const r = homeRig({ files, tools: { nmem: "/home/u/.local/pipx/venvs/nmem-cli/bin/nmem", pipx: "/usr/bin/pipx" }, version: "0.10.118", latest: true });
-    expect(await r.link.view()).toMatchObject({ state: "ready", upkeep: { kind: "update" } });
+    // D257: the version here and the one Mem names, for Settings › 记忆's 有新版本 card.
+    expect(await r.link.view()).toMatchObject({ state: "ready", upkeep: { kind: "update" }, home: "hel", version: "0.10.118", newer: "0.10.119" });
     await r.link.installMem();
     expect(installs(r.execs)).toEqual([["/usr/bin/pipx", "upgrade", "nmem-cli"]]);
-    expect(await r.link.view()).toMatchObject({ state: "ready", done: "updated" });
+    const after = await r.link.view();
+    expect(after).toMatchObject({ state: "ready", done: "updated" });
+    expect(after?.newer).toBeUndefined();
+  });
+
+  test("D257: the app's copy with a newer one out: said (newer), with nothing Ducter can run", async () => {
+    const files = { "/Applications/Nowledge Mem.app/Contents/Resources/nmem": "bin" };
+    const r = homeRig({ files, tools: { nmem: "/Applications/Nowledge Mem.app/Contents/Resources/nmem" }, version: "0.10.118", latest: true });
+    const v = await r.link.view();
+    expect(v).toMatchObject({ state: "ready", version: "0.10.118", newer: "0.10.119" });
+    expect(v?.upkeep).toBeUndefined();
   });
 
   test("the app's copy: update the app (no command here)", async () => {

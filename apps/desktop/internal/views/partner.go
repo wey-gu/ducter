@@ -16,8 +16,8 @@ import (
 // 通知 / Notifications and 账号 / Accounts. One calm header (the clay
 // partner, its name renamed in place, where it lives and what it thinks
 // with in one line), then single-column groups: what it thinks with, who
-// does the tasks, how it talks, what it remembers, what it does on its own
-// or asks you first. Everything here is the partner's and lives on the
+// does the tasks, how it talks, what it does on its own or asks you first
+// (what it remembers is Settings › 记忆, D257). Everything here is the partner's and lives on the
 // server (the settings frame), so the phone shows the same.
 
 type partnerState struct {
@@ -102,9 +102,8 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	a.brainCard(c)
 	a.tasksCard(c)
 	a.talkCard(c, st)
-	a.memoryCard(c, st)
 	a.trustCard(c)
-	a.peersCard(c, st)
+	// D257: what it remembers and your other AI agents are tabs of their own (memory.go).
 }
 
 // partnerHero is the calm header: the clay partner, its name (a click on
@@ -356,65 +355,6 @@ func (a *App) notifyTurnedOn() {
 	a.answer(askNotify, "yes")
 	name := a.personaName()
 	go func() { _ = a.Desktop.Notify(a.L.T("notify.test.title", name), a.L.T("notify.test.body")) }()
-}
-
-// memoryCard is 记得什么 / What it remembers, said as it is: no Mem, no
-// switch (the way to get it instead); connected, the switch and whose name
-// its memories are kept under (D141); then the noted lines.
-func (a *App) memoryCard(c *ui.Context, st *protocol.Settings) {
-	t := a.T
-	a.group(c, "memory", a.L.T("partner.memory.title"), "", func() {
-		mem := a.S.Mem
-		state := "missing"
-		if mem != nil {
-			state = mem.State
-		}
-		if state == "missing" && st.Memory {
-			a.row(c, "memory", a.L.T("partner.memory.switch"), a.L.T("partner.memory.missing"), func() {
-				if a.button(c, a.L.T("partner.memory.connect"), btnSecondary, t.ControlMD, t.Surface) {
-					a.openLink("https://mem.nowledge.co")
-				}
-			})
-			return
-		}
-		help := a.L.T("partner.memory.on.help")
-		switch {
-		case !st.Memory:
-			help = a.L.T("partner.memory.off")
-		case mem != nil && mem.KeptUnder != "":
-			help = a.L.T("partner.memory.under", mem.KeptUnder)
-		case state == "connected":
-			help = a.L.T("partner.memory.connected")
-		}
-		if v, ch := a.toggleRow(c, "memory", a.L.T("partner.memory.switch"), help, st.Memory); ch {
-			st.Memory = v
-			a.SetSettings(protocol.SettingsPatch{Memory: &v})
-		}
-		// The noted lines, newest first; none: no heading, no empty row.
-		if !st.Memory || mem == nil || len(mem.Noted) == 0 {
-			return
-		}
-		a.rowBlock(c, "noted", func() {
-			ui.Text(c, a.L.T("partner.memory.recent")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
-			ui.Column(c).Gap(t.S1).Children(func() {
-				for _, n := range mem.Noted {
-					ui.Row(c.Key("noted:" + itoa(n.Seq))).Gap(t.S3).AlignItems(ui.Center).MinHeight(t.ControlSM).Children(func() {
-						ui.Text(c, n.Title).FontSize(t.MD).Grow(1).MinWidth(0).MaxLines(2)
-						if ago := a.agoLong(n.At); ago != "" {
-							ui.Text(c, ago).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
-						}
-						if a.buttonFor(c, a.L.T("partner.memory.forget"), n.Title, btnText, t.ControlSM, t.Surface) {
-							if a.partner.forgetting == nil {
-								a.partner.forgetting = map[int64]string{}
-							}
-							a.partner.forgetting[n.Seq] = n.Title
-							a.send(protocol.MemoryForget{T: "memory_forget", Seq: n.Seq})
-						}
-					})
-				}
-			})
-		})
-	})
 }
 
 // drainForgot turns the server's word on a forget into one line.

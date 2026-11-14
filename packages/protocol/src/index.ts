@@ -1802,8 +1802,13 @@ export interface BridgeView {
   canRun?: boolean;
   need?: "pipx" | "app" | "other";
   signIn?: "used" | "bad" | "failed";
-  /** The home's nmem version, when it answered. */
+  /** The home's nmem version, when it answered (D257: on every state where it did). */
   version?: string;
+  /**
+   * D257: Mem's own word (`nmem status`.update) that a newer nmem is out: its version, or "" when
+   * Mem didn't name it. Sent whether or not Ducter can update this copy (the app's it can't).
+   */
+  newer?: string;
   /** The persona's identity in Mem, as connect names it (--agent-id). */
   identity: string;
   /** The user's own place in Mem, "Only me": its label and exact id. */

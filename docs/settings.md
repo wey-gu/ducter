@@ -14,7 +14,9 @@ On the left is a row of tabs; the one you pick shows on the right:
 
 | Tab | What's in it |
 |---|---|
-| **Partner** | Its name, what it thinks with, who does the tasks, how it talks, what it remembers, and what it does on its own or asks you first |
+| **Partner** | Its name, what it thinks with, who does the tasks, how it talks, and what it does on its own or asks you first |
+| **Memory** | What it remembers about you, and Nowledge Mem: its version and updates |
+| **Your other AI agents** | How your other AI agents reach it (shown once Nowledge Mem is in) |
 | **Notifications** | When it comes to you, quiet hours, and how long it waits if you don't answer |
 | **Accounts** | The mail, calendars and other accounts it can read |
 | **Look and sound** | The look, the window's language, Details in the conversation, the intro's sound |
@@ -22,7 +24,7 @@ On the left is a row of tabs; the one you pick shows on the right:
 | **Updates and about** | The version, updates, help links and credits |
 
 On a phone, tap your partner at the top of the conversation: Settings opens as a list of the
-same sections (**Partner**, **Notifications**, **Accounts**, **This phone**), and tapping one opens
+same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **This phone**), and tapping one opens
 it.
 
 ## Partner
@@ -54,15 +56,6 @@ At the top is your partner, its name and one line: where it lives and what it th
   it a rule.
 - **How it talks.** **Follow me** answers in whatever language you write in; **中文** or
   **English** always answers in that language.
-- **What it remembers.** With [Nowledge Mem](https://mem.nowledge.co) connected, your partner
-  remembers what you've told it across conversations, kept in Nowledge Mem under your
-  partner's name. Without it, your partner still remembers your conversation on its own, and the
-  row says what Nowledge Mem would add (it is free to download and runs on your own computer),
-  with **About Nowledge Mem**. That row is the only place Ducter mentions it. **Noted lately** lists what it wrote down; **Forget** removes a line (Nowledge Mem
-  forgets it when it can, otherwise the line is only hidden here, and the app tells you which).
-  Its tasks use it too, through your Nowledge Mem plugin. Turn off **Remember things** to stop it from recalling
-  or noting anything, in the conversation and in its tasks; the Nowledge Mem lines on your
-  devices' cards go away too.
 - **On its own, or asks you first.** The rules Ducter keeps, in two lists. On its own: changing
   files in its own copy (your originals stay as they are), reading your projects and files,
   looking things up and reading web pages (in your own Chrome when it can), and going with the
@@ -78,6 +71,32 @@ rule). Open the task and look under **Details › Who's doing it**: one sentence
 why. **Switch who does it** lists who else could do it, with why and how much limit each has
 left; the ones that can't say why. **Continue on …** moves the task: a task that is still
 working carries on there from its saved progress; it doesn't start over.
+
+## Memory
+
+What your partner remembers about you has its own section, **Memory**.
+
+- At the top, your partner and one sentence on what it remembers, with **Remember things** to
+  turn memory on or off. Its tasks use it too, through your Nowledge Mem plugin. Off, it neither
+  recalls nor notes anything, in the conversation or in its tasks, and the Nowledge Mem lines on
+  your devices' cards go away; what it noted stays.
+- **What it noted** lists what it wrote down in your conversations, by **Today**, **This week**
+  and **Earlier**. **Forget** removes a line (Nowledge Mem forgets it when it can, otherwise the
+  line is only hidden here, and the app tells you which). **See everything in Nowledge Mem**
+  opens Nowledge Mem for the rest.
+- **Nowledge Mem** says where it runs, its version, and the name your partner goes by there.
+  When a newer Nowledge Mem is out, a yellow card says so with **Update** (your sign-in and your
+  memories stay as they are), and the Settings entry for Memory says it too. If Nowledge Mem
+  isn't on your computer yet, **Install** puts it in, and a sign-in link connects it.
+- Without [Nowledge Mem](https://mem.nowledge.co), your partner still remembers your
+  conversation on its own, and this section says what Nowledge Mem would add (it is free to
+  download and runs on your own computer), with **About Nowledge Mem**. It is the only place
+  Ducter mentions it.
+
+## Your other AI agents
+
+Once Nowledge Mem is in, **Your other AI agents** lets the AI you use elsewhere, like Claude Code
+or Codex in a terminal, reach your partner: **Connect**, and **Who can reach** your partner.
 
 ## Notifications
 

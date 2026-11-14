@@ -80,6 +80,9 @@ type Tokens struct {
 
 	// Clay is the surface clay art sits on (the renders' own cream).
 	Clay ui.Color
+	// Notebook is the partner's own blue notebook (its clay art's), drawn as
+	// Settings › 记忆 / Memory's mark (D257); the web's --notebook-*.
+	Notebook NotebookTokens
 	// Isles is the Devices stage's scene (D81): a calm clay sea, the
 	// bridges from home and what crosses them.
 	Isles IslesTokens
@@ -222,6 +225,12 @@ type IslesTokens struct {
 	ParcelSpeed float32
 }
 
+// NotebookTokens are the notebook's: its cover on a darker ledge, the
+// pages' edge, the highlight along its top, the strap and its clasp.
+type NotebookTokens struct {
+	Cover, Ledge, Pages, Shine, Strap, Clasp ui.Color
+}
+
 // EquipMotion times the equip: the whole flight, the moment it snaps into
 // the slot (a fraction of the flight), the device's squash, how long
 // Ducter shows its done face, and the reduced-motion cross-fade.
@@ -275,6 +284,7 @@ func Pebble() *Tokens {
 		Asleep:   StateColors{Dot: hex("#6C63A8"), Surface: hex("#ECE9F8"), Ink: hex("#4B3F70"), Strong: hex("#574F8F")},
 		Away:     StateColors{Dot: hex("#A99C8B"), Surface: hex("#EFEAE3"), Ink: hex("#5E5448"), Strong: hex("#8C7F6E")},
 		Clay:     hex("#FFF4E6"),
+		Notebook: NotebookTokens{Cover: hex("#5FA6E4"), Ledge: hex("#3A78B0"), Pages: hex("#FFF6EA"), Shine: hex("#FFFFFF").Alpha(0.55), Strap: hex("#9A6236"), Clasp: hex("#F0C879")},
 		Isles: IslesTokens{
 			Sky: hex("#FCEBD6"), SeaFar: hex("#C4E6DF"), Sea: hex("#A6D8D0"), SeaNear: hex("#86C4BC"),
 			SkyTop: hex("#E9EEEA"), Haze: hex("#FFF6EA"), Cloud: hex("#FFFDF8"),

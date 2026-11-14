@@ -2697,6 +2697,307 @@ a {
   font-size: var(--md);
   line-height: 1.4;
 }
+/* D257: Settings › 记忆 / Memory. The partner with its notebook and one sentence on a raised clay
+   card; an update worth a tap in the highlight; what it noted grouped by when; Nowledge Mem itself.
+   The notebook's colours are its clay art's (the blue book the partner carries), in every theme. */
+:root {
+  --notebook-cover: #5fa6e4;
+  --notebook-ledge: #3a78b0;
+  --notebook-pages: #fff6ea;
+  --notebook-shine: rgba(255, 255, 255, 0.55);
+  --notebook-strap: #9a6236;
+  --notebook-clasp: #f0c879;
+}
+.notebook {
+  flex: none;
+  display: block;
+}
+.mem-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s4) var(--s4) var(--s3);
+  border-radius: var(--r-xl);
+  background: var(--surface-raised);
+  box-shadow: var(--base);
+  margin: var(--s2) 0 4px;
+}
+.mem-hero.off,
+.mem-hero.missing {
+  background: var(--sunken);
+}
+.mem-hero-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+.mem-hero-top .avatar {
+  flex: none;
+}
+.mem-hero-top .grow {
+  flex: 1;
+  min-width: 0;
+}
+.mem-hero h3 {
+  margin: 0;
+  font-family: var(--head);
+  font-size: var(--t20);
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.mem-hero p {
+  margin: var(--s1) 0 0;
+  font-size: var(--sm);
+  line-height: var(--lh-read);
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+/* The switch belongs to the card: no card of its own, a hairline above it. */
+.mem-hero .switch {
+  margin: 0;
+  padding: var(--s3) 0 var(--s1);
+  min-height: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--line-soft);
+  background: transparent;
+  box-shadow: none;
+}
+.mem-hero.off .switch,
+.mem-hero.missing .switch {
+  border-top-color: var(--line);
+}
+.mem-update {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-lg);
+  background: var(--highlight);
+  color: var(--highlight-ink);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--highlight) 70%, var(--ink) 18%);
+  margin-bottom: 4px;
+  animation: mem-rise var(--t-med) var(--spring) both;
+}
+.mem-update.busy {
+  background: var(--working-surface);
+  color: var(--working-ink);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--working-surface) 70%, var(--ink) 14%);
+}
+.mem-update .grow {
+  flex: 1 1 14em;
+  min-width: 0;
+}
+.mem-update b {
+  display: block;
+  font-size: var(--md);
+  font-weight: 800;
+  line-height: 1.35;
+}
+.mem-update small {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--sm);
+  line-height: 1.5;
+  opacity: 0.86;
+}
+.mem-update .mem-more summary {
+  color: inherit;
+}
+.mem-update > .btn {
+  margin-left: auto;
+}
+@keyframes mem-rise {
+  from {
+    transform: translateY(6px) scale(0.98);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mem-update {
+    animation: none;
+  }
+}
+.mem-notes {
+  padding-bottom: 0;
+}
+.mem-group + .mem-group {
+  border-top: 1px solid var(--line-soft);
+}
+.mem-group h4 {
+  margin: 0;
+  padding: var(--s3) var(--s4) var(--s1);
+  font-size: var(--xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+}
+.mem-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s2) var(--s1) var(--s2) var(--s4);
+}
+.mem-note {
+  position: relative;
+}
+/* The hairline between two lines starts where the words do, past the pebble. */
+.mem-note + .mem-note::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: calc(var(--s4) + 8px + var(--s3));
+  border-top: 1px solid var(--line-soft);
+}
+/* A small clay pebble in the accent, standing on its ledge: a thing kept. */
+.mem-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1.5px 0 var(--press-accent);
+}
+.mem-note .grow {
+  flex: 1;
+  min-width: 0;
+  padding-top: 1px;
+}
+.mem-title {
+  display: block;
+  font-size: var(--md);
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.mem-note small {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.mem-note .btn {
+  flex: none;
+  color: var(--ink-muted);
+}
+.mem-door {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  min-height: 48px;
+  margin-top: var(--s1);
+  padding: 0 var(--s4);
+  border-top: 1px solid var(--line-soft);
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+.mem-door:active {
+  background: var(--surface-sunken);
+}
+.mem-app .set-item {
+  gap: var(--s2);
+}
+.mem-app .set-item small {
+  margin-top: 0;
+}
+.mem-app-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  min-height: 28px;
+}
+.mem-app-head .mem-pill {
+  flex: none;
+}
+.mem-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px var(--s2) 2px 7px;
+  border-radius: var(--pill);
+  font-size: var(--xs);
+  font-weight: 700;
+}
+.mem-pill.on {
+  background: var(--done-surface);
+  color: var(--done-ink);
+}
+.mem-pill.on::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--done-dot);
+}
+.set-item small.mem-meta {
+  color: var(--ink-soft);
+}
+.mem-meta .mono {
+  font-family: var(--mono);
+  font-size: var(--xs);
+}
+.set-item small.mem-why {
+  color: var(--needs-ink);
+  font-weight: 600;
+}
+.mem-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s2);
+}
+.mem-acts.split {
+  justify-content: space-between;
+}
+.peer-rule .mem-acts {
+  margin-top: calc(-1 * var(--s1));
+}
+/* 你的其他 AI / Your other AI agents (D257): two of the person's own agents' coins, overlapped. */
+.peers-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s1) 0;
+}
+.peers-hero p {
+  margin: 0;
+  font-size: var(--sm);
+  line-height: var(--lh-read);
+  color: var(--ink-soft);
+}
+.peers-coins {
+  display: inline-flex;
+  flex: none;
+}
+.peers-coins .coin-art + .coin-art {
+  margin-left: -14px;
+}
+.set-coins {
+  position: relative;
+  display: inline-block;
+  flex: none;
+}
+.set-coins .coin-art {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.set-coins .coin-art + .coin-art {
+  top: auto;
+  left: auto;
+  right: 0;
+  bottom: 0;
+}
 /* 它能看的账号 / Accounts it can read (D96): one card, a clay mailbox per connection. */
 .acct-row {
   display: flex;

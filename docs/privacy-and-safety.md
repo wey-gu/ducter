@@ -103,13 +103,13 @@ there does, including your Nowledge Mem plugin (below).
 
 Memory is optional. Without it, Ducter works fine: your partner remembers your conversation on
 its own, and tasks run the same. Ducter never asks you to get Nowledge Mem; it is mentioned in one
-place, Settings › What it remembers. Nowledge Mem is free to download and runs on your own
+place, Settings › Memory. Nowledge Mem is free to download and runs on your own
 computer.
 
 If you use [Nowledge Mem](https://mem.nowledge.co), your partner starts out knowing who you are
 and what you're working on, from the same memory your other AI tools share. When it saves
 something worth keeping, its reply's **Details** shows one quiet line: **Noted · <what it
-saved>**, with **Forget**. **Partner › What it remembers** lists all of them.
+saved>**, with **Forget**. **Settings › Memory** lists them under **What it noted**.
 Its tasks know you too. A task runs with your Nowledge Mem plugin, under your partner's name in
 Nowledge Mem, so it starts with what you and your partner know and its work is kept there the
 way your own sessions are. On a computer where the plugin isn't installed for that AI agent, your

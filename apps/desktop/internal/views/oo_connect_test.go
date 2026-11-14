@@ -162,7 +162,7 @@ func TestAccountRemoveAsksFirst(t *testing.T) {
 	if len(*sent) != n {
 		t.Fatalf("the first tap sends nothing, sent %d", len(*sent)-n)
 	}
-	if !tt.HasText("停用以后，它就看不到这些账号了；记下的事还在「记得什么」里，可以忘掉。") || !tt.HasText("取消") {
+	if !tt.HasText("停用以后，它就看不到这些账号了；记下的事还在「记忆」里，可以忘掉。") || !tt.HasText("取消") {
 		t.Fatalf("the card asks first; texts: %v", tt.Texts())
 	}
 	tt.Click("取消 · oo 里的账号")

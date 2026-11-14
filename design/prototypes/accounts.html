@@ -460,7 +460,7 @@ function sourceCard(key, src, o = {}) {
       <div class="r"><time>07:58</time><span>${L("Gmail · work：读了 1 封全文（Cloudflare 续费）", "Gmail · work: read 1 in full (Cloudflare renewal)")}</span></div>
       <div class="hon">${L("它读到的内容会给你的 AI 账号看，别人拿不到。", "What it reads is shown to your AI account. No one else gets it.")}</div></div>` : "";
   const foot = s.stop
-    ? `<div class="dfoot"><span class="ask">${L("不用了以后它就看不到这些账号；记下的事还在「记得什么」里，可以忘掉。", "Once stopped, it can't read these accounts. What it noted stays in What it remembers, where you can forget it.")}</span><button class="btn text sm" data-k="${key}" data-stop>${L("算了", "Keep it")}</button><button class="btn danger sm" data-k="${key}" data-stop>${L("不用了", "Stop")}</button></div>`
+    ? `<div class="dfoot"><span class="ask">${L("不用了以后它就看不到这些账号；记下的事还在「记忆」里，可以忘掉。", "Once stopped, it can't read these accounts. What it noted stays in Memory, where you can forget it.")}</span><button class="btn text sm" data-k="${key}" data-stop>${L("算了", "Keep it")}</button><button class="btn danger sm" data-k="${key}" data-stop>${L("不用了", "Stop")}</button></div>`
     : `<div class="dfoot"><button class="btn danger sm" data-k="${key}" data-stop>${src.stop}</button></div>`;
   const statusCls = src.fail ? "fail" : src.quiet || PRO === 3 ? "quiet" : "";
   const statusTx = PRO === 3 && !src.fail ? L("你问起来才去看", "Reads only when you ask") : src.status();

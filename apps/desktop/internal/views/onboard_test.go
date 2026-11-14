@@ -330,7 +330,7 @@ func TestOnboardAsksAfterResults(t *testing.T) {
 }
 
 // D169: Ducter is whole without Nowledge Mem. The conversation never brings it up by itself; the
-// one mention is in Settings › 记得什么.
+// one mention is in Settings › 记忆 (D257).
 func TestOnboardNoMemLineInTheEmptyConversation(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		dir := hintsDir(t, hintsJSON)

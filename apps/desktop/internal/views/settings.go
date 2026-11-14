@@ -34,7 +34,12 @@ type Remover interface {
 //
 //	伙伴 / Partner           the character sheet: name, faces, what it
 //	                         thinks with, who does the tasks, how it
-//	                         talks, what it remembers, what it asks first
+//	                         talks, what it asks first
+//	记忆 / Memory            what it remembers about you, and Nowledge
+//	                         Mem with its version and updates (D257)
+//	你的其他 AI / Your other AI agents: the persona's connection with
+//	                         them and who may reach it, once it means
+//	                         something (D257)
 //	通知 / Notifications     when it comes to you, quiet hours, if you
 //	                         don't answer
 //	账号 / Accounts          the accounts it can read (D96)
@@ -60,6 +65,8 @@ const (
 // The tabs of Settings, in the rail's order.
 const (
 	TabPartner  = "partner"
+	TabMemory   = "memory"
+	TabPeers    = "peers"
 	TabNotify   = "notify"
 	TabAccounts = "accounts"
 	TabAutofill = "autofill"
@@ -68,7 +75,7 @@ const (
 	TabAbout    = "about"
 )
 
-var settingsTabs = []string{TabPartner, TabNotify, TabAccounts, TabAutofill, TabLook, TabRun, TabAbout}
+var settingsTabs = []string{TabPartner, TabMemory, TabPeers, TabNotify, TabAccounts, TabAutofill, TabLook, TabRun, TabAbout}
 
 type settingsState struct {
 	// tab is the section shown ("" is the first).
@@ -158,7 +165,7 @@ func (a *App) settingsTab() string {
 	if a.Route == RoutePartner {
 		return TabPartner
 	}
-	for _, t := range settingsTabs {
+	for _, t := range a.visibleTabs() {
 		if t == a.settings.tab {
 			return t
 		}
@@ -209,6 +216,10 @@ func (a *App) settingsView(c *ui.Context) {
 					switch tab {
 					case TabPartner:
 						a.partnerPanel(c, w-railW)
+					case TabMemory:
+						a.memoryPanel(c)
+					case TabPeers:
+						a.peersPanel(c)
 					case TabNotify:
 						a.notifyPanel(c)
 					case TabAutofill:
@@ -248,7 +259,7 @@ func (a *App) settingsRail(c *ui.Context, shown string) {
 	ui.Column(c.Key("settings-rail")).Width(railW).Shrink(0).Padding(t.S6, t.S4, t.S5, t.S5).Gap(t.S2).
 		Background(t.Chrome).BorderWidth(0, 1, 0, 0).BorderColor(t.ChromeLine).
 		Role(ui.RoleTabList).Label(a.L.T("nav.settings")).Children(func() {
-		for _, tab := range settingsTabs {
+		for _, tab := range a.visibleTabs() {
 			a.railTab(c, tab, tab == shown)
 		}
 		ui.Box(c).Grow(1)
@@ -278,7 +289,21 @@ func (a *App) railTab(c *ui.Context, tab string, on bool) {
 		if on {
 			fg, weight = t.Ink, 800
 		}
-		ui.Text(c, name).FontSize(t.MD).FontWeight(weight).TextColor(fg).Grow(1).MinWidth(0).MaxLines(2).AccessHidden(true)
+		// D257: Memory says a Nowledge Mem update under its name, in the highlight's ink (D224).
+		badge := ""
+		if tab == TabMemory {
+			if k := memBadge(memUpdate(a.S.Bridge)); k != "" {
+				badge = a.L.T(k)
+			}
+		}
+		if badge == "" {
+			ui.Text(c, name).FontSize(t.MD).FontWeight(weight).TextColor(fg).Grow(1).MinWidth(0).MaxLines(2).AccessHidden(true)
+			return
+		}
+		ui.Column(c).Grow(1).MinWidth(0).Gap(1).AccessHidden(true).Children(func() {
+			ui.Text(c, name).FontSize(t.MD).FontWeight(weight).TextColor(fg).SingleLine()
+			ui.Text(c, badge).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
+		})
 	})
 	if b.Clicked() && !on {
 		a.openTab(tab)
@@ -296,6 +321,20 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 	switch tab {
 	case TabPartner:
 		bmp = theme.Face(theme.Idle, size*2)
+	case TabMemory:
+		box.Draw(a.drawNotebook())
+		return
+	case TabPeers:
+		// Two of the person's own agents' coins, overlapped: literal, not a metaphor (D257).
+		small := size * 0.68
+		box.Children(func() {
+			for i, h := range []string{"coin_claude_code", "coin_codex"} {
+				if bmp := theme.Clay(h); bmp != nil {
+					ui.Image(c, bmp).Size(small, small).Absolute().Left(float32(i) * (size - small)).Top(float32(i) * (size - small))
+				}
+			}
+		})
+		return
 	case TabNotify:
 		bmp = theme.Clay("wait_clock")
 	case TabAccounts:

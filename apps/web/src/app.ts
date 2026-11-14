@@ -63,7 +63,7 @@ export function morph(apply: () => void) {
   });
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
-export type SettingsPage = "" | "partner" | "notify" | "accounts" | "autofill" | "devices" | "phone";
+export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "autofill" | "devices" | "phone";
 export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
@@ -1665,7 +1665,7 @@ class AppState {
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
     if (hash === "#onhand/full") return this.applyRoute({ name: "onhand", full: true });
     this.route = { name: "conv" };
-    const set = /^#settings(?:=(partner|notify|accounts|autofill|devices|phone))?$/.exec(hash);
+    const set = /^#settings(?:=(partner|memory|peers|notify|accounts|autofill|devices|phone))?$/.exec(hash);
     if (set) {
       history.replaceState(null, "", location.pathname);
       return this.openSettings((set[1] ?? "") as SettingsPage);

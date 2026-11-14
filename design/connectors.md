@@ -443,7 +443,7 @@ existing parts; the app tile is literal (an app's rounded square), not a metapho
    OOMOL's servers**, D192), then one row: **看了哪些 / What it read** (opens in place: today's reads,
    one line each, and the honest line about the AI account) at the start and the foot's stop at the end.
 7. **Foot:** one destructive text button, **不用 oo 里的账号了 / Stop using the accounts in oo**,
-   confirmed inline: **不用了以后它就看不到这些账号；记下的事还在「记得什么」里，可以忘掉。** ·
+   confirmed inline: **不用了以后它就看不到这些账号；记下的事还在「记忆」里，可以忘掉。** ·
    **取消** · **停用**.
 8. **Default text: five lines** (name, status, tile labels, the connection line, the foot).
    Everything else is one tap away.
@@ -511,7 +511,7 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 | ★ `tile.exclude` · `tile.signout_oo` | 不让 Ducter 看这个 · 要退出登录，去 oo 里 | Don't let Ducter read this one · Sign out in oo |
 | ★ `tile.more.oo` | 在 oo 里再连一个 | Connect another in oo |
 | ★ `card.read_list` | 看了哪些 | What it read |
-| ★ `card.stop` · `card.stop.ask` | 不用 {name} 了 · 不用了以后它就看不到这些账号；记下的事还在「记得什么」里，可以忘掉。 | Stop using {name} · Once stopped, it can't read these accounts. What it noted stays in What it remembers, where you can forget it. |
+| ★ `card.stop` · `card.stop.ask` | 不用 {name} 了 · 不用了以后它就看不到这些账号；记下的事还在「记忆」里，可以忘掉。 | Stop using {name} · Once stopped, it can't read these accounts. What it noted stays in Memory, where you can forget it. |
 | ★ `card.budget` | 这个月用了 {p}% | {p}% of this month's budget used |
 | `acct.remove.ask` (built) | 移除 {name}？Ducter 就看不到这些账号了。 | Remove {name}? Ducter won't read these accounts anymore. |
 

@@ -136,7 +136,12 @@ func memApp(t *testing.T, lang i18n.Lang, state string) (*App, *[]any) {
 	backs := []time.Duration{40 * time.Minute, 3 * time.Hour, 26 * time.Hour, 50 * time.Hour, 4 * 24 * time.Hour, 9 * 24 * time.Hour}
 	f.Mem.Noted = nil
 	for i, title := range memNotes(lang) {
-		f.Mem.Noted = append(f.Mem.Noted, protocol.Noted{Seq: int64(10 - i), Title: title, At: now.Add(-backs[i]).UTC().Format(time.RFC3339), MemoryID: fmt.Sprint("m", i)})
+		at := now.Add(-backs[i])
+		// The first two are "today" whatever the hour (CI runs past midnight: 00:34 minus 40 minutes is yesterday).
+		if midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()); i < 2 && at.Before(midnight) {
+			at = midnight.Add(time.Duration(2-i) * time.Second)
+		}
+		f.Mem.Noted = append(f.Mem.Noted, protocol.Noted{Seq: int64(10 - i), Title: title, At: at.UTC().Format(time.RFC3339), MemoryID: fmt.Sprint("m", i)})
 	}
 	f.Mem.KeptUnder = "小鸭"
 	if lang == i18n.EN {

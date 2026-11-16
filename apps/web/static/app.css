@@ -773,7 +773,7 @@ a {
 .partner ul,
 .partner ol {
   margin: 0 0 0.6em;
-  padding-left: 1.3em;
+  padding-inline-start: 1.3em; /* D292: right-to-left text indents on its own side */
 }
 .partner code {
   font-family: var(--mono);
@@ -5275,6 +5275,22 @@ button.dev-name {
 .dc-conn { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: var(--sm); }
 .dc-conn + .dc-conn { border-top: 1px solid var(--line-soft); }
 .dc-conn small { flex: 1; min-width: 0; color: var(--ink-muted); }
+/* D293: how a device is connected, and the home's addresses: a header, then one inset group of
+   rows (title, one muted line, the state at the right edge). */
+.dc-reach { margin-top: 16px; }
+.dc-reach-h { margin: 0 0 6px 12px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.dc-reach-list { border-radius: 12px; background: var(--bg); overflow: hidden; }
+.dc-reach .rw { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px; }
+.dc-reach .rw + .rw { border-top: 1px solid var(--line-soft); }
+.dc-reach .rw .t { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
+.dc-reach .rw b { font-size: var(--sm); font-weight: 700; color: var(--ink); }
+.dc-reach .rw small { font-size: var(--xs); color: var(--ink-muted); overflow-wrap: anywhere; }
+.dc-reach .rw small.open { color: var(--ink-soft); }
+.dc-reach .rw .st { flex: none; font-size: var(--sm); font-weight: 700; color: var(--ink-muted); }
+.dc-reach .rw .st.up { color: var(--done-ink); }
+.dc-reach .rw .st.down { color: var(--failed-ink); }
+.dc-reach-note { margin: 6px 12px 0; line-height: 1.5; }
+:lang(zh) .dc-reach-note { line-height: 1.7; }
 .danger-text { height: 32px; padding: 0 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--failed-ink); font: inherit; font-size: var(--sm); font-weight: 700; white-space: nowrap; cursor: pointer; }
 .danger-text:hover, .danger-text:active { background: var(--failed-surface); }
 
@@ -12228,6 +12244,41 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .g-state { flex: none; font-size: var(--sm); font-weight: 600; color: var(--ink-muted); white-space: nowrap; }
 .g-state.tone-done { color: var(--done-ink); }
 .g-state.tone-bad { color: var(--failed-ink); }
+/* D295: Settings › 记忆 and › 连上的 AI agent on the settings grid. Marks in the tile column: the
+   notebook, an accent pebble, Mem's letter on a notebook-blue pebble, another tool's coin or letter,
+   two agents' coins; the empty state on the paper; the raw facts behind 详情. Tokens only. */
+.g-tile .mem-dot { margin: 0; width: 10px; height: 10px; box-shadow: 0 2px 0 var(--press-accent); }
+.mem-letter,
+.mem-tool-letter { display: grid; place-items: center; font-family: var(--head); font-weight: 800; line-height: 1; }
+.mem-letter { width: 40px; height: 40px; border-radius: var(--r-sm); background: var(--notebook-cover); color: var(--surface); font-size: var(--lg); box-shadow: 0 3px 0 var(--notebook-ledge); }
+.mem-letter.faded { background: var(--surface-sunken); color: var(--ink-soft); box-shadow: 0 3px 0 var(--line); }
+.mem-tool-letter { width: 36px; height: 36px; border-radius: 50%; background: var(--surface-sunken); color: var(--ink-soft); font-size: var(--md); box-shadow: 0 2px 0 var(--line); }
+.mem-coins { display: flex; align-items: center; }
+.mem-coins > * + * { margin-left: -8px; }
+.mem-glyph { display: grid; place-items: center; color: var(--accent); }
+.mem-glyph.done { color: var(--done-ink); }
+.mem-glyph svg { width: 18px; height: 18px; }
+.g-note { margin: 0; padding: 0 var(--set-in, var(--s4)); font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); }
+.mem-first { display: flex; flex-direction: column; align-items: center; gap: var(--s2); padding: var(--s3) var(--s4) var(--s2); text-align: center; }
+.mem-first h3 { margin: 0; font-family: var(--head); font-size: var(--xl); font-weight: 800; line-height: 1.3; color: var(--ink); }
+.mem-first p { margin: 0; max-width: 34em; font-size: var(--md); line-height: 1.6; color: var(--ink-soft); }
+.chat-step .grow small { display: block; font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); }
+.chat-step .grow > .btn { align-self: flex-start; }
+.mem-reach b { display: block; font-size: var(--md); font-weight: 700; line-height: 1.5; }
+.mem-reach small { display: block; font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); }
+.mem-facts { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.mem-facts div { display: flex; gap: var(--s3); align-items: baseline; }
+.mem-facts dt { flex: none; width: 6em; font-size: var(--sm); color: var(--ink-muted); }
+.mem-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-size: var(--xs); color: var(--ink-soft); user-select: text; }
+.chat-head small { white-space: pre-line; }
+.chat-head .switch.bare { box-shadow: none; background: none; margin: 0; padding: 0; min-height: 0; }
+/* A memory line keeps its quiet action beside it on a phone: the action is short. */
+@media (max-width: 520px) {
+  .mem-g .chat-row { flex-wrap: nowrap; }
+  .mem-g .chat-row .grow { flex-basis: 0; }
+}
+.chat-head > .grow { flex: 1; min-width: 0; }
+.set-page .mem-first h3 { margin: var(--s1) 0 0; padding: 0; font-family: var(--head); font-size: var(--xl); font-weight: 800; color: var(--ink); }
 
 /* ---------- D298: the partner's first words, and a pasted key ---------- */
 /* The clay partner over its first words waves once (the empty screen's wave); still under reduced motion. */

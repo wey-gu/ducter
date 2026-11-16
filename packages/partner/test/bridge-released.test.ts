@@ -57,9 +57,9 @@ esac`;
   });
 
   test("an own agent Mem doesn't name: 一个 AI agent to the user (D273), told to the model as the user's own", () => {
-    expect(whoForUser({ mine: true, from: "another agent" }, true)).toBe("一个 AI agent");
-    expect(whoForUser({ mine: true, label: "" }, false)).toBe("an AI agent");
-    expect(whoForUser({ from: "another agent" }, true)).toBe("一个 AI agent");
+    expect(whoForUser({ mine: true, from: "another agent" }, "zh")).toBe("一个 AI agent");
+    expect(whoForUser({ mine: true, label: "" }, "en")).toBe("an AI agent");
+    expect(whoForUser({ from: "another agent" }, "zh")).toBe("一个 AI agent");
     expect(whoForModel({ mine: true, from: "another agent" })).toContain("one of the user's own AI agents");
   });
 });

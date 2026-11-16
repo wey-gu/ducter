@@ -72,7 +72,7 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
   const r = reportOf(task);
   if (a === "needs_you") {
     const d = A.S.pendingDecision(task.id);
-    const q = d?.question || r?.questions?.[0]?.text || (r?.summary ? sayable(r.summary, A.L.lang) : "");
+    const q = d?.question || r?.questions?.[0]?.text || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
     return { words: q || stateLabel(a), tone: "needs" };
   }
   if (a === "blocked") {
@@ -82,7 +82,7 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     if (w?.reason?.trim()) return { words: waitLine(w.reason) };
     const why = reasonOf(task);
     if (why && !why.startsWith("report:") && !why.endsWith("by user")) return { words: deviceWait(why) ?? why };
-    const said = r?.summary?.trim() ? sayable(r.summary.trim().split("\n")[0], A.L.lang) : "";
+    const said = r?.summary?.trim() ? sayable(r.summary.trim().split("\n")[0], A.readerLang(task)) : "";
     return { words: said || t("onhand.wait.unsaid") };
   }
   if (a === "working" || a === "queued") {
@@ -94,8 +94,8 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
   }
   const failed = a === "failed";
   const ev = r && !failed ? headlineEvidence(task.evidence.length ? task.evidence : r.evidence) : undefined;
-  const first = r ? sayable(r.summary.split("\n")[0], A.L.lang) : undefined;
-  return { words: first || (ev && proofLabel(ev, A.L.lang)) || stateLabel(a), ...(failed ? { tone: "failed" as const } : {}) };
+  const first = r ? sayable(r.summary.split("\n")[0], A.readerLang(task)) : undefined;
+  return { words: first || (ev && proofLabel(ev, A.readerLang(task))) || stateLabel(a), ...(failed ? { tone: "failed" as const } : {}) };
 }
 
 /** How long it has been at it ("12 分钟"), or when it last changed ("3 分钟前"). */
@@ -159,7 +159,7 @@ export function taskNext(task: Task, now = Date.now()): string {
   if (attention(task) !== "blocked") return "";
   const parts = [quietWait(task, now) ? t("onhand.wait.since", ago(A.L, task.card?.updatedAt, now)) : "", waitNext(A.S.waiterFor(task.id), now).text].filter(Boolean);
   const s = parts.join(" · ");
-  return A.L.lang === "zh" || !s ? s : s[0]!.toUpperCase() + s.slice(1);
+  return !A.L.style.cased || !s ? s : s[0]!.toUpperCase() + s.slice(1);
 }
 
 /** A small ring: how far along a wait's interval is. */
@@ -751,7 +751,7 @@ function ver(task: Task): string {
   const c = task.card;
   const l = latestOf(task);
   const w = A.S.waiterFor(task.id);
-  return [attention(task), l?.seq, c?.updatedAt, c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, w?.nextLookAt, L.showProj, quietWait(task), A.S.justArrived(task.id), timeOf(task), A.L.lang, task.open?.title, isNewResult(task.id, attention(task), c?.updatedAt), handover(task.id, statusOf(task.id, attention(task), c?.updatedAt))].join("|");
+  return [attention(task), l?.seq, c?.updatedAt, c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, w?.nextLookAt, L.showProj, quietWait(task), A.S.justArrived(task.id), timeOf(task), A.L.lang, A.convLang, task.open?.title, isNewResult(task.id, attention(task), c?.updatedAt), handover(task.id, statusOf(task.id, attention(task), c?.updatedAt))].join("|");
 }
 
 type Fold = { shut: boolean; onToggle: () => void; mark: Status; counts: string };

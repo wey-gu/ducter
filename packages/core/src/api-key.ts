@@ -5,11 +5,12 @@
 // never in the Log, never printed, never sent back. Used by the home (the key_add frame) and by
 // the CLI before Ducter runs (`ducter key add`, the Mac app's first run).
 import { writeKey } from "@ducter/protocol/src/keys.ts";
-import { KEY_PROVIDER_INFO, PI_INSTALL, cleanKey, keyName, recognizeKey, type HarnessId, type KeyProvider, type KeyResult, type KeyTrouble } from "@ducter/protocol";
+import { KEY_PROVIDER_INFO, PI_INSTALL, cleanKey, keyName, recognizeKey, type HarnessId, type KeyProvider, type LangTag, type KeyResult, type KeyTrouble } from "@ducter/protocol";
 
 export interface KeyCheckOptions {
   dataDir: string;
-  lang: "zh" | "en";
+  /** The person's language (keyName picks the provider's name; any tag). */
+  lang: LangTag;
   /** Test seam: the network. */
   fetch?: typeof fetch;
   /** Can this computer run that agent now (claude, dsh on PATH; pi: node or pi)? */
@@ -129,6 +130,6 @@ export async function addKey(raw: string, o: KeyCheckOptions): Promise<KeyResult
   return candidates.length === 1 ? { ok: false, provider: candidates[0], name: keyName(candidates[0]!, o.lang), reason: "wrong" } : { ok: false, reason: "wrong" };
 }
 
-function troubled(p: KeyProvider, one: Extract<One, { kind: "trouble" }>, lang: "zh" | "en"): KeyResult {
+function troubled(p: KeyProvider, one: Extract<One, { kind: "trouble" }>, lang: LangTag): KeyResult {
   return { ok: false, provider: p, name: keyName(p, lang), reason: one.reason, ...(one.detail ? { detail: one.detail } : {}) };
 }

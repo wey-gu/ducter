@@ -8,6 +8,7 @@ import type { Bodies } from "@ducter/protocol";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { afterCompaction, createOarHarnessPort, createRunner, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, registerTaskTools, SAVE_BEFORE_COMPACT, taskBrief } from "../src/index.ts";
 import { git, worktreeFor } from "../src/places.ts";
+import { askBeforeWriting } from "../src/runner.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
 // ---------- helpers ----------
@@ -177,6 +178,22 @@ describe("session spec", () => {
     expect(en).not.toContain("in the language of the user's own words");
     const zh = taskBrief({ partnerName: "Ducter", taskId: "x", title: "t", brief: "b", place: { kind: "none" }, cwd: "/w", mcpServerName: "ducter", language: "zh" });
     expect(zh).toContain("**Language: Chinese (简体中文).**");
+    expect(zh).toContain("The user reads Chinese: write `summary`");
+    // D292 (issue #5): any language by name, never English by default.
+    const brief = (language: string) => taskBrief({ partnerName: "Ducter", taskId: "x", title: "t", brief: "b", place: { kind: "none" }, cwd: "/w", mcpServerName: "ducter", language });
+    expect(brief("ko")).toContain("**Language: Korean (한국어).** The user reads Korean: write `summary`");
+    expect(brief("ja")).toContain("**Language: Japanese (日本語).**");
+    expect(brief("zh-TW")).toContain("**Language: Traditional Chinese (繁體中文).** The user reads Traditional Chinese");
+    expect(brief("es")).toContain("in Spanish, whatever language the code");
+    expect(brief("ar")).toContain("**Language: Arabic (العربية).**");
+  });
+
+  test("D292: the ask before writing a folder is in the task's language, English for one without a table", () => {
+    expect(askBeforeWriting("cloud", "iCloud", "zh").summary).toBe("动手之前先问你：这个文件夹在 iCloud 里同步，没法先留一份，改了就改不回去。");
+    expect(askBeforeWriting("cloud", undefined, "zh").summary).toContain("在网盘里同步");
+    expect(askBeforeWriting("too_big", "40 GB", "zh-Hant").summary).toContain("这个文件夹太大了（40 GB）");
+    expect(askBeforeWriting("too_big", "40 GB", "en").summary).toBe("Before changing anything: this folder is too big to copy (40 GB), so Ducter can't keep a copy to undo with. Changes made there can't be undone.");
+    expect(askBeforeWriting("network", undefined, "ko").question).toBe("Change the files in this folder directly, with no way to undo?");
   });
 });
 

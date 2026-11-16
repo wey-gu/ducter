@@ -1,7 +1,7 @@
 // D298: the partner's first words (what they offer, where they were read, 别再看了 / Stop
 // looking) and the pasted-key card, the same as the Mac's (views/firstwords.go). A start fills
 // the composer; it never sends. The key goes once in key_add and is never shown again.
-import type { FirstWords, KeyResult } from "@ducter/protocol";
+import { words, type FirstWords, type KeyResult } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn } from "./controls.tsx";
@@ -78,7 +78,7 @@ export function keyJustAdded(): boolean {
   return !!last?.r.ok && Date.now() - last.at < SHOWN_MS;
 }
 
-const say = (r: KeyResult) => (r.say ? (A.L.lang === "zh" ? r.say.zh : r.say.en) : r.ok ? t("key.paste.title") : t("key.paste.failed", r.detail ?? r.reason ?? ""));
+const say = (r: KeyResult) => (r.say ? words(r.say, A.L.lang) : r.ok ? t("key.paste.title") : t("key.paste.failed", r.detail ?? r.reason ?? ""));
 
 /** The card: what to paste and why it's safe, a masked field, 检查 / Check, the partner's words. */
 export function KeyCard() {

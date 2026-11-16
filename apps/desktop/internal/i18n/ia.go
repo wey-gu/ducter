@@ -98,7 +98,7 @@ var zhIA = Table{
 	"partner.talk.zh":         "中文",
 	"partner.talk.en":         "English",
 	"partner.talk.auto.note":  "你用什么语言说，它就用什么语言回。",
-	"partner.talk.fixed.note": "不管你用什么语言说，它都用%s回。",
+	"partner.talk.fixed.note": "不管你用什么语言说，它都用 %s 回。",
 
 	"partner.notify.title":    "什么时候找你",
 	"partner.notify.on":       "通知",

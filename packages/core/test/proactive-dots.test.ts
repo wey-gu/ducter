@@ -55,7 +55,7 @@ test("每天最多 3 件: the four things dots said, and the stuck user and the 
   // Each once; each in the phone's budget; never about itself.
   expect(new Set(said.map((s) => s.text)).size).toBe(said.length);
   for (const s of said) {
-    expect(fitsBudget(s.text, true)).toBe(true);
+    expect(fitsBudget(s.text, "zh")).toBe(true);
     expect(s.text).not.toMatch(/我(看|读|查)了|封(邮件|信)|还没(主动)?(告诉|跟你说)/);
   }
   // Nothing during quiet hours (23:00–08:00) except the morning note at its end.

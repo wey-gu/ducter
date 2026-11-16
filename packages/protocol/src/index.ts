@@ -4,6 +4,8 @@
 
 export * from "./harnesses.ts";
 export * from "./api-keys.ts";
+export * from "./lang.ts";
+import type { LangTag } from "./lang.ts";
 import type { HarnessId } from "./harnesses.ts";
 import type { KeyResult } from "./api-keys.ts";
 export * from "./loadout.ts";
@@ -21,6 +23,8 @@ export * from "./context-meter.ts";
 export * from "./handset.ts";
 export * from "./channels.ts";
 export * from "./past.ts";
+export * from "./reach.ts";
+import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
@@ -319,7 +323,9 @@ export interface Bodies {
     effort?: string;
     brief: string;
     bodyReason?: string; // why this harness/model
-    language?: "zh" | "en"; // the language the user reads its reports in (the brief says so)
+    // D292: the language the user reads its reports in, a BCP 47 tag ("ko", "zh-Hant"; the old
+    // "zh" | "en" are tags too). The brief says so; clients check its result against it.
+    language?: LangTag;
     // D206: the pictures the brief carries (the user's, handed on); the first turn gives them to the agent.
     media?: MediaRef[];
     // D128: "you" = the user opened it themselves (开一件事 / New task, `ducter task`); the brief
@@ -858,7 +864,7 @@ export type ClientFrame =
   | { t: "key_add"; key: string; clientId: string }
   // D298: 别再看了 / Stop looking: the first words never read the person's agents' records again (on: back on).
   | { t: "local_agents"; on: boolean }
-  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape; gzip?: boolean }
+  | { t: "hello"; persona?: string; cursor?: number; locale?: LangTag; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape; gzip?: boolean }
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
   // via (D277): the Mac app's iMessage bridge relays words the person wrote in iMessage.
@@ -898,6 +904,9 @@ export type ClientFrame =
   // 远程打开 / Reach from outside (D54), answered with a pair_code frame.
   // refresh: probe the harness sign-ins again now (after signing in or out from the app).
   | { t: "devices"; refresh?: boolean }
+  // D293: liveness (a home from D293 on answers pong), and "this computer is going to sleep" (the Mac app, before system sleep).
+  | { t: "ping" }
+  | { t: "sleep" }
   // D228: on the home, "remote" off turns 从外面连 / From outside off (stops the tunnel, clears
   // the address; the tunnel stays in the person's Cloudflare account). On with named: a tunnel the
   // person made in Cloudflare's dashboard (its token and the hostname it serves). On without it is
@@ -1213,7 +1222,7 @@ export type NewTaskReason = "empty" | "no_agent" | "not_repo" | "offline" | "pas
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
   // the same hash is on that machine, so the place paths it sees are its own.
-  | { t: "welcome"; persona: string; personaName: string; headSeq: number; machine?: string; /** The home's Ducter version: a page built for another reloads (it would draw an older card). */ version?: string }
+  | { t: "welcome"; persona: string; personaName: string; headSeq: number; machine?: string; /** The home's Ducter version: a page built for another reloads (it would draw an older card). */ version?: string; /** D293: the home answers {t:"ping"} with {t:"pong"}, so a client may close a socket silent for 45 s. */ ping?: true; /** D293: the home's key fingerprint. */ fp?: string }
   | { t: "events"; events: LogEvent[] }
   | { t: "on_hand"; onHand: OnHand }
   // D284: a page of a task's stream, oldest first: the newest `limit` events, or those before
@@ -1226,6 +1235,9 @@ export type ServerFrame =
   | { t: "folder_changes"; taskId: string; changes: FolderChanges | null }
   | ({ t: "wb"; id: string; taskId: string } & ({ ok: true; answer: import("./workbench.ts").WbAnswer } | { ok: false; error: import("./workbench.ts").WbError; message?: string }))
   | { t: "devices"; devices: DeviceView[]; reach: Reach; updateAll?: UpdateAllView }
+  // D293: the ways to reach the home and its key, right after the welcome and whenever they change.
+  | { t: "ways"; ways: ReachWay[]; key?: string; fp?: string }
+  | { t: "pong" }
   | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
   | { t: "anywhere_setup_result"; ok: boolean; taskId?: string; step?: AnywhereStepResult; reason?: AnywhereReason | "own_address" | "no_agent" | "running" | "not_home"; detail?: string }
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
@@ -1598,6 +1610,8 @@ export interface DeviceView {
   computer?: string;
   /** D157: it doesn't sleep (a server, a desktop Mac), so long work keeps going there. */
   alwaysOn?: boolean;
+  /** D293: how a connected worker reaches the home now. */
+  via?: DeviceVia;
 }
 
 // ---------- Updating in place (D148, design/system.md "Updating in place") ----------
@@ -1777,7 +1791,10 @@ export interface Reach {
   /** form "cli": the command line on a computer, shown inside that computer's card (D155); computer: the host it runs on. */
   /** handset (D238): 用这台手机 / Use this phone on that phone (an Android app's card only). */
   /** shape (D263): a phone, tablet or foldable, as it last said (absent from a home before D263: clientShape reads the name). */
-  clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string; form?: "cli" | "app"; computer?: string; handset?: HandsetView; shape?: ClientShape }[];
+  clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string; form?: "cli" | "app"; computer?: string; handset?: HandsetView; shape?: ClientShape; via?: DeviceVia }[];
+  /** D293: every way to reach the home, with up or down, and its key (a home before D293 sends neither). */
+  ways?: ReachWay[];
+  home?: HomeKey;
 }
 
 // ---------- A handheld's shape (D263) ----------
@@ -1882,8 +1899,11 @@ export type ConnectionReason = "bad_url" | "unreachable" | "unauthorized" | "not
 // and quiet hours in push.json (shared with the phone's own endpoints), the rest in
 // settings.json. Interface language and theme are each client's own, not here.
 
-/** How the partner talks: "auto" follows the language of the user's message. */
-export type TalkLanguage = "auto" | "zh" | "en";
+/**
+ * How the partner talks: "auto" (跟着我 / Follow me) follows the language of the user's message;
+ * otherwise a BCP 47 tag it always replies in ("zh", "en", "ko", "zh-Hant", …; D292).
+ */
+export type TalkLanguage = "auto" | LangTag;
 
 export interface QuietHours {
   start: string; // "23:00", local to tz
@@ -1968,6 +1988,11 @@ export interface MemView {
   noted: { seq: number; title: string; at: string; memoryId?: string }[];
   /** The name its memories are kept under in Mem (D141): the persona's AI Identity, once bound. */
   keptUnder?: string;
+  /**
+   * D295: a glance at Mem itself, when it answers: how many memories it holds, and the latest ones the
+   * person's other AI tools saved there (titles only; from: the tool's own name, "Claude Code").
+   */
+  glance?: { total: number; others: { id: string; title: string; from: string; at?: string }[] };
 }
 
 /**
@@ -2008,6 +2033,11 @@ export interface BridgeView {
   signIn?: "used" | "bad" | "failed";
   /** The home's nmem version, when it answered (D257: on every state where it did). */
   version?: string;
+  /**
+   * D295: where Mem keeps the memories, from `nmem status`: Nowledge Mem Cloud, the Mem app or a
+   * Vault on the home itself (local), or a Mem server of the person's own (server).
+   */
+  where?: "cloud" | "local" | "server";
   /**
    * D257: Mem's own word (`nmem status`.update) that a newer nmem is out: its version, or "" when
    * Mem didn't name it. Sent whether or not Ducter can update this copy (the app's it can't).

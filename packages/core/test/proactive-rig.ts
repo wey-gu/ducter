@@ -24,7 +24,7 @@ export interface RigOptions {
   present?: boolean;
   judge?: FindJudge;
   monthTokens?: number;
-  language?: "zh" | "en";
+  language?: import("@ducter/protocol").TalkLanguage;
   /** D226: a triage of the test's own (one that fails, as on a home without the agent). */
   triage?: Triage;
   agentName?: string;

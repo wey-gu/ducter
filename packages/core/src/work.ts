@@ -5,6 +5,8 @@ import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Bodies, CheckSpec, EventSpec, LogEvent, OnHand, Place, RoutineTrigger } from "@ducter/protocol";
+import { fill, words } from "@ducter/protocol";
+import { langOfText } from "./lang.ts";
 import { urlArgv, WATCH_MAX_ITEMS } from "@ducter/protocol/src/watch.ts";
 import type { LogStore, Runner, WorkerLinks } from "@ducter/protocol/src/internal.ts";
 import { CHECK_MAX_OUTPUT, describeCheck, describePredicate, validateCheck } from "@ducter/protocol/src/checks.ts";
@@ -71,7 +73,24 @@ export function cwdOfCheck(placeCwd: string | undefined, specCwd: string | undef
   return { cwd };
 }
 
-const zhOf = (s: string) => /[一-鿿]/.test(s);
+// What a task hears when its own wait ends, in the language of the wait's reason (D292; ko → en).
+const W = {
+  zh: {
+    time: "到时间了：「{reason}」。接着做。",
+    over: "等到了：「{reason}」。接着做。",
+    overSeen: "等到了：「{reason}」（{seen}）。接着做。",
+    deadline: "等到最后也没等到：{reason}",
+    wont: "没等到：「{reason}」，{unmet}。看看接下来怎么做。",
+  },
+  en: {
+    time: 'It\'s time: "{reason}". Carry on.',
+    over: 'The wait is over: "{reason}". Carry on.',
+    overSeen: 'The wait is over: "{reason}" ({seen}). Carry on.',
+    deadline: "Waited until the deadline: {reason}",
+    wont: 'This won\'t happen: "{reason}": {unmet}. Decide what to do next.',
+  },
+};
+const wordsOf = (reason: string) => words(W, langOfText(reason));
 
 /** D261: a wait's reason written as an agent's notes, not words ("requests仍4+mentions7去重9…45minwait"):
  *  two or more words glued to numbers, or numbers glued to words, with no space ("mentions7",
@@ -172,23 +191,19 @@ export function createWork(o: WorkOptions): Work {
       if (card.attention !== "blocked") tasks.setState(w.taskId, "blocked", card.residency, w.reason);
     } else if (w.state === "fired") {
       if (card.attention === "blocked") tasks.setState(w.taskId, "working", card.residency);
-      const zh = zhOf(w.reason);
+      const c = wordsOf(w.reason);
       const timer = kindOf(w) === "timer";
       // D271: a bare number (a clock's epoch a check printed) tells the agent nothing: left out.
       const seen = w.observed?.trim() && !/^\d+$/.test(w.observed.trim()) ? w.observed.trim() : "";
-      const text = timer
-        ? zh ? `到时间了：「${w.reason}」。接着做。` : `It's time: "${w.reason}". Carry on.`
-        : zh ? `等到了：「${w.reason}」${seen ? `（${seen}）` : ""}。接着做。` : `The wait is over: "${w.reason}"${seen ? ` (${seen})` : ""}. Carry on.`;
+      const text = fill(timer ? c.time : seen ? c.overSeen : c.over, { reason: w.reason, seen });
       void o.runner()?.send(w.taskId, text, undefined, "partner").catch((err) => console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`));
     } else if (w.state === "expired") {
-      const zh = zhOf(w.reason);
-      tasks.setState(w.taskId, "needs_you", card.residency, zh ? `等到最后也没等到：${w.reason}` : `Waited until the deadline: ${w.reason}`);
+      tasks.setState(w.taskId, "needs_you", card.residency, fill(wordsOf(w.reason).deadline, { reason: w.reason }));
     } else if (w.state === "cancelled" && card.attention === "blocked") {
       tasks.setState(w.taskId, "working", card.residency);
       // D144: it can no longer come true: the task hears why and decides what is next.
       if (w.unmet && e.origin === "waiter") {
-        const zh = zhOf(w.reason);
-        const text = zh ? `没等到：「${w.reason}」，${w.unmet}。看看接下来怎么做。` : `This won't happen: "${w.reason}": ${w.unmet}. Decide what to do next.`;
+        const text = fill(wordsOf(w.reason).wont, { reason: w.reason, unmet: w.unmet });
         void o.runner()?.send(w.taskId, text, undefined, "partner").catch((err) => console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`));
       }
     }

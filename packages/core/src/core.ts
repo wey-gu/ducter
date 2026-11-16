@@ -8,7 +8,8 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync
 import { homedir, hostname as osHostname } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { HARNESSES, type Bodies, type HarnessId, type LogEvent, type OnHand, type Place } from "@ducter/protocol";
+import { HARNESSES, fill, normalizeTag, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type Place } from "@ducter/protocol";
+import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, Partner, Runner } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -38,7 +39,8 @@ import { webApi, webStatic } from "./web.ts";
 import { CHECK_PATH, createAnywhere, type AnywhereCtl, type TunnelSys } from "./anywhere.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
-import { createBridgeLink, type NmemCall } from "./bridge-link.ts";
+import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
+import { createMemGlance } from "./mem-glance.ts";
 import { identityIdFor } from "./mem-identity.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
@@ -78,11 +80,27 @@ import { createAccountUsage } from "./account-usage.ts";
 import { workerProfile } from "./browser/remote.ts";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 import { createChannels, type ChannelDeps, type Channels } from "./channels/index.ts";
+import { homeIdentity, okNonce } from "./home-key.ts";
+import { addWay, bookHas, createReach, removeWay, viaOf, type ReachWatch } from "./reach-book.ts";
+import { CHALLENGE_PATH } from "@ducter/protocol/src/reach.ts";
+import { proveHome } from "@ducter/protocol/src/reach-verify.ts";
 
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
  *  Ducter still on the helper it replaced (the app dragged in by hand) and restart it. */
 const BUILD = typeof DUCTER_COMMIT === "string" ? DUCTER_COMMIT : "dev";
+
+/** D228: the Go card for a tunnel in the person's own Cloudflare account (D292: zh and en; ko → en). */
+const ANYWHERE_ASK = {
+  zh: {
+    question: "在你的 Cloudflare 账号里建一条通道，把 {hostname} 指到 {name}？以后在哪儿打开 {hostname}，都是这台电脑上的 Ducter。想用别的名字，直接回我。",
+    go: "建好它",
+  },
+  en: {
+    question: "Create a tunnel in your Cloudflare account and point {hostname} at {name}? Opening {hostname} anywhere will then reach Ducter on this computer. Want another name? Just reply with it.",
+    go: "Set it up",
+  },
+};
 
 export interface CoreOptions {
   dataDir?: string;
@@ -107,6 +125,8 @@ export interface CoreOptions {
   /** D228: test seam for 从外面连's tunnel (cloudflared, its metrics, the network). */
   anywhereSys?: TunnelSys;
   anywherePollMs?: number;
+  /** D293 test seam: how the home checks one of its ways (none in tests: no network). */
+  reachCheck?: (url: string) => Promise<boolean>;
   anywhereStartMs?: number;
   anywhereStepWaitMs?: number;
   /** Test seams for connections: the MCP link, and the oo CLI's config. */
@@ -337,6 +357,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   let partner: Partner | undefined;
   const push = openPushStore(dataDir);
   const settings = openSettings({ dataDir, log, push, persona, memoryPinnedOff: process.env.DUCTER_MEMORY === "off" });
+  /** D292: the conversation's language now (the setting, else what the person writes in, else English). */
+  const langNow = (): LangTag => talkLang(settings, log) ?? "en";
   let workRef: Work | undefined; // set below: until loops hold their tries' done reports (D113)
   const decisions = createDecisions({
     log,
@@ -524,12 +546,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     clock,
     quiet: () => push.settings().quiet,
     notifyOff: () => push.settings().off === true,
-    zh: () => {
-      const l = settings.get().language;
-      if (l === "zh" || l === "en") return l === "zh";
-      const last = log.read({ stream: "channel", kinds: ["user_msg"], limit: 1 }).at(-1);
-      return last ? /[一-鿿]/.test((last.body as Bodies["user_msg"]).text) : /^zh/i.test(Intl.DateTimeFormat().resolvedOptions().locale);
-    },
+    // D292: the conversation's language, else this computer's (nothing said yet).
+    lang: () => talkLang(settings, log) ?? normalizeTag(Intl.DateTimeFormat().resolvedOptions().locale) ?? "en",
     personaName: () => persona.name,
     openUrl: opts.channels?.openUrl ?? (() => {
       const v = anywhereRef?.view();
@@ -568,7 +586,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const browser =
     opts.browser === false
       ? undefined
-      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief) => autofill.wants(brief !== undefined ? { brief } : log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string } | undefined), tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
+      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => { const l = settings.get().language; return intlLocale(l === "auto" ? undefined : l); }, workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief) => autofill.wants(brief !== undefined ? { brief } : log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string } | undefined), tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
   if (browser) autofill.attachBrowser(browser.host);
   if (browser) decorateBrowsing = (o) => browser.decorate(o);
   // D238: 用这台手机 / Use this phone: the person's own Android phones, through the Ducter app on each.
@@ -579,7 +597,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     tasks,
     deviceName: (id) => deviceAuthRef?.list().find((d) => d.id === id && d.kind === "client")?.name,
     interrupt: (taskId) => runner?.interrupt(taskId) ?? Promise.resolve(),
-    language: () => { const l = settings.get().language; return l === "zh" || l === "en" ? l : undefined; },
+    // The pill speaks the language of the lines the home sends it (zh and en tables; ko → en).
+    language: () => { const l = settings.get().language; return l === "auto" ? undefined : pickTag(l, ["zh", "en"]); },
     tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} about the phone:`, (e as Error).message)),
     ...(opts.handset ?? {}),
   });
@@ -640,7 +659,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any(), handsetOffer: () => handsets.offer() });
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
   const closing = createClosing({ log, tasks, loadout, runner: () => runner });
-  registerClosingTool(mcp, closing, () => settings.get().language === "zh");
+  registerClosingTool(mcp, closing, langNow);
   // D205: Settings › 伙伴's one-tap Bridge connection for the persona, run by the home's nmem.
   const bridgeLink = createBridgeLink({
     dataDir,
@@ -653,8 +672,19 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(opts.bridgeLink ?? {}),
   });
   bridgeLink.onChange(() => settings.bridgeChanged());
+  // D295: a glance at Mem itself for Settings › 记忆 (its count, what other AI tools saved), gated like the row.
+  const memGlance = createMemGlance({
+    run: opts.bridgeLink?.run ?? nmemCall({ env: opts.bridgeLink?.env }),
+    on: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && process.env.DUCTER_BRIDGE !== "0" && !settings.memMissing() && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),
+    changed: () => settings.bridgeChanged(),
+  });
+  settings.setGlance(() => memGlance.get());
   // D206: pictures and files, content-addressed on the home (media.ts).
   const media = createMediaStore(dataDir);
+  // D293: the home's own key, and its ways to be reached (the address book, reach-book.ts).
+  const identity = homeIdentity(dataDir);
+  let reachRef: ReachWatch | undefined;
+  const waysFrame = () => ({ t: "ways" as const, ways: reachRef?.ways() ?? [], key: identity.key, fp: identity.fp });
   // D288: each agent's account usage limits on the home, read by the agent itself and kept current by its sessions.
   const accountUsage = createAccountUsage({ read: async (h) => (await runner?.harness.accountUsage?.(h)) ?? { why: "unsupported" } });
   const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, spine: log.spine, bridgeLink, media, limits: accountUsage, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
@@ -709,7 +739,22 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
-  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(opts.firstWords ? { firstWords: { projects: () => recentProjects({ ...opts.firstWords, exclude: [dataDir, homeFolder()] }), ...(opts.firstWords.home ? { home: opts.firstWords.home } : {}) } } : {}) });
+  const ws = createWsHandler({
+    home: {
+      fp: identity.fp,
+      ways: waysFrame,
+      // D293: a Mac app says its computer is going to sleep: so is the worker on that computer.
+      sleeping: (device) => {
+        const me = devices.list().find((d) => d.id === device.id);
+        const computer = me?.computer || me?.name;
+        for (const w of workersRef?.online() ?? []) {
+          const d = devices.list().find((x) => x.id === w.deviceId);
+          if (d && computer && (d.computer || d.name) === computer) workersRef?.sleeping(w.deviceId);
+        }
+      },
+      socketsChanged: () => reachRef?.refresh(),
+    },
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(opts.firstWords ? { firstWords: { projects: () => recentProjects({ ...opts.firstWords, exclude: [dataDir, homeFolder()] }), ...(opts.firstWords.home ? { home: opts.firstWords.home } : {}) } } : {}) });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -732,7 +777,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       return r;
     },
   };
-  const gate = createGate({ auth: gateAuth, personaName: () => persona.name });
+  const gate = createGate({ auth: gateAuth, personaName: () => persona.name, pairExtra: () => ({ fp: identity.fp, key: identity.key, ways: reachRef?.ways() ?? [] }) });
   let updatesRef: Updates | undefined;
   let agentsRef: AgentUpdates | undefined;
   let updateAllRef: UpdateAll | undefined;
@@ -740,6 +785,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   let anywhereRef: AnywhereCtl | undefined;
   const workers = createWorkers({
     personaName: () => persona.name,
+    welcome: () => ({ ways: reachRef?.ways() ?? [], key: identity.key, fp: identity.fp }),
     onUpdate: (id, name, f) => updatesRef?.fromWorker(id, name, f),
     onAgentUpdate: (id, name, f) => agentsRef?.fromWorker(id, name, f),
     // D227: a worker back after its Ducter restarted: an agent update it no longer runs died with it.
@@ -857,7 +903,12 @@ export function startCore(opts: CoreOptions = {}): Core {
   const anywhere: AnywhereCtl = createAnywhere({
     dataDir,
     port: () => listening,
-    own: () => publicAddress(dataDir),
+    // D293: an address in the book coexists with the tunnel; only one set up by hand is "own".
+    own: () => {
+      const p = publicAddress(dataDir);
+      return p && !bookHas(dataDir, p) ? p : undefined;
+    },
+    ways: { add: (u) => void addWay(dataDir, "tunnel", u), remove: (u) => void removeWay(dataDir, u) },
     ...(opts.anywhereSys ? { sys: opts.anywhereSys } : {}),
     ...(opts.anywherePollMs ? { pollMs: opts.anywherePollMs } : {}),
     ...(opts.anywhereStartMs ? { startMs: opts.anywhereStartMs } : process.env.DUCTER_ANYWHERE_START_MS ? { startMs: Number(process.env.DUCTER_ANYWHERE_START_MS) || undefined } : {}),
@@ -867,8 +918,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         const home = ((await devicesView?.frame())?.devices ?? []).find((d) => d.home);
         const body = home?.harnesses.find((h) => h.installed && h.loggedIn);
         if (!runner || !body) return console.warn(`[anywhere] no agent signed in on the home to set it up (${home ? home.harnesses.map((h) => `${h.harness}:${h.installed ? "installed" : "-"}/${h.loggedIn ? "signed in" : "-"}`).join(", ") || "none probed yet" : "no home"})`), undefined;
-        const zh = settings.get().language === "zh";
-        const card = await runner.openTask({ persona: persona.id, title, brief, place: { kind: "none" }, harness: body.harness, language: zh ? "zh" : "en", origin: "you" });
+        const card = await runner.openTask({ persona: persona.id, title, brief, place: { kind: "none" }, harness: body.harness, language: langNow(), origin: "you" });
         return card.taskId;
       },
       open: (taskId) => {
@@ -876,7 +926,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         return !!a && !["done", "done_claimed", "failed", "dropped"].includes(a);
       },
       ask(taskId, hostname) {
-        const zh = settings.get().language === "zh";
+        const w = words(ANYWHERE_ASK, langNow());
         const name = homeLabel();
         const decisionId = "d_" + crypto.randomUUID().replaceAll("-", "").slice(0, 10);
         log.append({
@@ -886,10 +936,8 @@ export function startCore(opts: CoreOptions = {}): Core {
           body: {
             decisionId,
             taskId,
-            question: zh
-              ? `在你的 Cloudflare 账号里建一条通道，把 ${hostname} 指到 ${name}？以后在哪儿打开 ${hostname}，都是这台电脑上的 Ducter。想用别的名字，直接回我。`
-              : `Create a tunnel in your Cloudflare account and point ${hostname} at ${name}? Opening ${hostname} anywhere will then reach Ducter on this computer. Want another name? Just reply with it.`,
-            goLabel: zh ? "建好它" : "Set it up",
+            question: fill(w.question, { hostname, name }),
+            goLabel: w.go,
             // Suggested, never applied by itself: it changes the person's own account (no timer).
             defaultOption: "go",
             reversible: false,
@@ -906,7 +954,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         return `${exe.split(" ").map(q).join(" ")} --port ${listening}`;
       },
       homeName: homeLabel,
-      zh: () => settings.get().language === "zh",
+      lang: langNow,
       qr: qrRows,
     },
   });
@@ -916,7 +964,21 @@ export function startCore(opts: CoreOptions = {}): Core {
     const r = e.body as import("@ducter/protocol").Bodies["decision_resolved"];
     if (decisions.get(r.decisionId)?.anywhere) anywhere.answered(r.decisionId, r.option === "go");
   });
-  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  // D293: the book as this home holds it; each way checked from here (never in tests: no network).
+  reachRef = createReach({
+    dataDir,
+    tunnelHost: () => anywhere.view()?.hostname,
+    ...(opts.reachCheck ? { check: opts.reachCheck } : process.env.NODE_ENV === "test" ? {} : { check: proveHome(identity.fp) }),
+    inUse: () => new Set([...[...ws.vias().values()].map((v) => v.url), ...workers.online().map((w) => w.via?.url)].filter((u): u is string => !!u)),
+  });
+  reachRef.onChange(() => {
+    const f = waysFrame();
+    ws.broadcast(f);
+    workers.ways(f);
+    devicesView?.changed();
+  });
+  workers.onChange(() => reachRef?.refresh());
+  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
@@ -937,7 +999,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     persona,
     runner: () => runner,
     on: memOn,
-    zh: () => settings.get().language === "zh",
+    lang: langNow,
     inspectLocal:
       mp.inspectLocal ??
       (agentTesting ? async () => undefined : () => inspectMemPlugins(nmemInspectExec(process.env))),
@@ -1040,6 +1102,13 @@ export function startCore(opts: CoreOptions = {}): Core {
         if (req.headers.get("upgrade")?.toLowerCase() === "websocket") return srv.upgrade(req, { data: { anywhereCheck: true } as unknown as WsData }) ? undefined : new Response("upgrade failed", { status: 400 });
         return new Response(anywhere.checkToken(), { headers: { "content-type": "text/plain", "cache-control": "no-store" } });
       }
+      // D293: the home proves it is itself (its key signs the device's nonce), before the gate:
+      // a device asks this of a way it hasn't used yet, before it shows that way its token.
+      if (url.pathname === CHALLENGE_PATH) {
+        const n = url.searchParams.get("n");
+        if (!okNonce(n)) return new Response("bad nonce", { status: 400 });
+        return Response.json(identity.prove(n), { headers: { "cache-control": "no-store" } });
+      }
       // The phone/web client's own files are public (web.ts); everything it talks to is not.
       const page = await webStatic(req);
       if (page) return page;
@@ -1049,7 +1118,9 @@ export function startCore(opts: CoreOptions = {}): Core {
       // Off-machine callers need a paired device token (auth.ts); /pair is answered here.
       const g = await gate.check(req, srv.requestIP(req)?.address);
       if (!g.pass) return g.response;
-      const d = deviceRoutes(req, g, srv, workers);
+      // D293: which way this request came in by, for the socket it may open.
+      const via = () => viaOf(req, srv.requestIP(req)?.address, reachRef?.ways() ?? []);
+      const d = deviceRoutes(req, g, srv, workers, via);
       if (d) return d === "upgraded" ? undefined : d;
       const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name, version, media, handsets, deviceOf: (r) => gate.deviceOf(r) });
       if (api) return api;
@@ -1064,7 +1135,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         // D238: a paired app that dials in over loopback (an SSH tunnel) is still that device when
         // it offers its token: its phone's 用这台手机 is spoken for by it alone.
         const own = g.via === "device" ? g.device : gate.deviceOf(req);
-        const data = { ...ws.newData(), ...(own ? { device: own } : {}) };
+        const data = { ...ws.newData(), ...(own ? { device: own } : {}), via: via() };
         // A browser that offered ["ducter", <token>] gets "ducter" back: Bun echoes the first
         // offered subprotocol by itself (adding the header again would send it twice).
         return srv.upgrade(req, { data }) ? undefined : new Response("upgrade failed", { status: 400 });
@@ -1171,6 +1242,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       devicesView?.stop();
       anywhere.close(); // the tunnel itself keeps running: the next Ducter adopts it (same address)
       workers.stop();
+      reachRef?.stop();
       sockets.stop();
       unsubscribePartner();
       phone.stop();

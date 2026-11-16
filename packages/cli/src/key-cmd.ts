@@ -5,12 +5,17 @@
 // key_add frame).
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { HARNESSES, keyWords, type HarnessId, type KeyResult } from "@ducter/protocol";
+import { HARNESSES, keyWords, words, type HarnessId, type KeyResult, type LangTag } from "@ducter/protocol";
+
+const USAGE = {
+  en: "Usage: ducter key add < key.txt (the key is read from stdin, never the command line)",
+  zh: "用法：ducter key add < key.txt（从标准输入读密钥，不放在命令行里）",
+};
 import { addKey } from "@ducter/core/src/api-key.ts";
 
 export interface KeyCmd {
   dataDir: string;
-  lang: "zh" | "en";
+  lang: LangTag;
   json: boolean;
   rest: string[];
   stdin?: () => Promise<string>;
@@ -44,7 +49,7 @@ export function brainFromKeyFile(dataDir: string, harness: HarnessId, model?: st
 export async function cmdKey(c: KeyCmd): Promise<number> {
   const print = c.print ?? ((s: string) => console.log(s));
   if (c.rest[0] !== "add") {
-    print(c.lang === "zh" ? "用法：ducter key add < key.txt（从标准输入读密钥，不放在命令行里）" : "Usage: ducter key add < key.txt (the key is read from stdin, never the command line)");
+    print(words(USAGE, c.lang));
     return 2;
   }
   const raw = (await (c.stdin ?? (() => Bun.stdin.text()))()).trim();
@@ -55,10 +60,10 @@ export async function cmdKey(c: KeyCmd): Promise<number> {
     result = await addKey(raw, { dataDir: c.dataDir, lang: c.lang, ...(c.fetch ? { fetch: c.fetch } : {}), ...(c.canRun ? { canRun: c.canRun } : {}) });
     if (result.ok && result.harness && !result.needs && blind) brainFromKeyFile(c.dataDir, result.harness, result.model);
   }
-  const words = keyWords(result);
-  if (c.json) print(JSON.stringify({ ...result, say: words }));
+  const said = keyWords(result);
+  if (c.json) print(JSON.stringify({ ...result, say: said }));
   else {
-    print(words[c.lang]);
+    print(words(said, c.lang));
     if (result.needs === "pi" && result.install) print(`  ${result.install}`);
   }
   return result.ok ? 0 : 1;

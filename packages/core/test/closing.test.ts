@@ -51,7 +51,7 @@ test("one card for the MacBook: CI and the translation move to hel; Keynote and 
     switchTask: async (id: string, _h: string, _m: string | undefined, _r: unknown, device?: string) => (switched.push([id, device]), { ok: true }),
   } as any;
   const closing = createClosing({ log: log as any, tasks: { list: () => tasks } as any, loadout, runner: () => undefined, now: () => 0 });
-  const r = await closing.ask("MacBook", true);
+  const r = await closing.ask("MacBook", "zh");
   expect(r).toMatchObject({ ok: true });
   const d = log.events.find((e) => e.kind === "decision")!.body as Bodies["decision"];
   expect(d.question).toBe("合上之前：「修 CI」「英译」转到 hel 上接着做；「做 Keynote」「整理照片」只能在 MacBook 上做，醒了接着。");
@@ -63,7 +63,7 @@ test("one card for the MacBook: CI and the translation move to hel; Keynote and 
   expect(switched).toEqual([["t_ci", "local"], ["t_tr", "local"]]);
   // Nothing running: no card, just "close it whenever".
   tasks.length = 0;
-  expect(await closing.ask("MacBook", true)).toMatchObject({ ok: true, none: true });
+  expect(await closing.ask("MacBook", "zh")).toMatchObject({ ok: true, none: true });
   closing.stop();
 });
 

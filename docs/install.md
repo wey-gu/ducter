@@ -108,6 +108,7 @@ run the one command it prints.
 | `ducter pair` | A code to connect your phone or another computer: one device, once, for 10 minutes. Run it again for the next device |
 | `ducter tailscale` | On a computer in your Tailscale network: HTTPS at its Tailscale name, only for your own devices, then a code. `--remove` undoes it |
 | `ducter domain <your domain>` | On a server: HTTPS at your domain, then a code to connect your devices from outside. `--remove` undoes it |
+| `ducter reach` | The addresses that reach this Ducter, each checked from here. `ducter reach add <address>` adds one you set up yourself, `remove <address>` takes one out, `primary <address>` picks the one connection links show |
 | `ducter devices` | The devices connected to your Ducter; `ducter devices disconnect <name>` removes one |
 | `ducter devices rename <name> <new name>` | Give a device a name you'll recognize |
 | `ducter connect <address> --code <code>` | Send this computer's `ducter` commands to a Ducter on a server (the code comes from `ducter pair` there) |
@@ -122,7 +123,7 @@ Messages follow your system language. Set `DUCTER_LOCALE=zh` or `DUCTER_LOCALE=e
 `open`, `pair` and `devices` talk to the Ducter you use: the one on this computer, or the one on
 a server once you've connected to it (see [below](#using-the-command-line-with-a-ducter-on-a-server)).
 Each one says where first: `→ this computer`, `→ hel.example.com`. `up`, `doctor`, `tailscale`,
-`domain`, `service`, `worker`, `report` and `uninstall` always act on this computer.
+`domain`, `reach`, `service`, `worker`, `report` and `uninstall` always act on this computer.
 
 **Started on another port?** Add `--port 7790` (or set `DUCTER_PORT`) to every command, for
 example `ducter status --port 7790`. A `--port` always means this computer.
@@ -270,12 +271,18 @@ stops), checks nothing else holds ports 80 and 443, installs [Caddy](https://cad
 minute), and ends with a code, a link and a QR code to connect your devices. Running it again
 is safe. `ducter domain --remove` takes Ducter's site out of Caddy again.
 
+**Both, or more.** `ducter tailscale`, `ducter domain` and **From outside** each add their own
+address; none replaces another. Your devices learn every address the next time they connect and
+use the best one that works: the Tailscale address while the device is in your Tailscale network,
+your domain when it isn't. Connection links keep showing the first address you set up;
+`ducter reach` lists them all and `ducter reach primary <address>` changes which one links show.
+
 Another private network (ZeroTier, NetBird, your own WireGuard)? Give Ducter the HTTPS address
-you set up for it: put it in `~/.ducter/public-url` and run `ducter pair`.
+you set up for it: `ducter reach add https://ducter.example.net`, then `ducter pair`.
 
 Already run a web server such as nginx on 80 and 443? `ducter domain ducter.example.com --print`
 shows what to forward to Ducter (`127.0.0.1:7777`, WebSocket upgrades included); after you've
-set that up, put `https://ducter.example.com` in `~/.ducter/public-url` and run `ducter pair`.
+set that up, run `ducter reach add https://ducter.example.com` and `ducter pair`.
 
 **Neither yet?** Your Mac alone can reach it through an SSH tunnel. On the Mac (leave it
 running):

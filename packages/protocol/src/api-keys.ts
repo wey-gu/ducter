@@ -6,6 +6,7 @@
 // Shapes are a guess, the check decides: several providers hand out plain `sk-…` keys, so a plain
 // one is tried against each candidate in order and the first that knows it wins.
 import { CLAUDE_TOKEN_ENV, type HarnessId } from "./harnesses.ts";
+import { words, type LangTag } from "./lang.ts";
 
 export const KEY_PROVIDERS = [
   "anthropic",
@@ -252,7 +253,7 @@ export interface KeyResult {
 export const PI_INSTALL = "curl -fsSL https://pi.dev/install.sh | sh";
 
 /** The name a provider goes by, in one language. */
-export const keyName = (p: KeyProvider, lang: "zh" | "en") => KEY_PROVIDER_INFO[p].name[lang];
+export const keyName = (p: KeyProvider, lang: LangTag) => words(KEY_PROVIDER_INFO[p].name, lang);
 
 /**
  * D298: the partner's own words for a key's result, both languages (the clients and the CLI show

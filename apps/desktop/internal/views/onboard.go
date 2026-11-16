@@ -306,10 +306,7 @@ func (a *App) setupReady(c *ui.Context) {
 			ready = append(ready, k.Label)
 		}
 	}
-	sep := ", " // D291: a list in words, never " · "
-	if a.L.Lang == "zh" {
-		sep = "、"
-	}
+	sep := a.L.T("setup.ready.sep") // D291: a list in words, never " · "
 	ui.Text(c, a.L.T("setup.ready.body", strings.Join(ready, sep), a.personaName())).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 	left := a.setup.readyAt.Add(ReadyFor).Sub(a.Now())
 	if left > 0 {

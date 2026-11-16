@@ -22,6 +22,7 @@ var zhFirstWords = Table{
 	"key.paste.instead":      "或者，贴一个 API 密钥",
 	"key.paste.instead.note": "不用订阅：按用量付费的密钥也行。",
 	"key.paste.back":         "收起",
+	"setup.ready.sep":        "、",
 	"key.paste.check.open":   "贴密钥",
 	"key.paste.failed":       "没检查成：%s",
 }
@@ -42,6 +43,7 @@ var enFirstWords = Table{
 	"key.paste.instead":      "Or paste an API key",
 	"key.paste.instead.note": "No subscription needed: a key you pay for by use works too.",
 	"key.paste.back":         "Hide",
+	"setup.ready.sep":        ", ",
 	"key.paste.check.open":   "Paste a key",
 	"key.paste.failed":       "The check didn't go through: %s",
 }

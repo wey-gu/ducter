@@ -481,10 +481,7 @@ func (a *App) setupBlocked(c *ui.Context) {
 			}
 			names = append(names, k.Label)
 		}
-		sep := ", "
-		if a.L.Lang == "zh" {
-			sep = "、"
-		}
+		sep := a.L.T("words.sep")
 		if len(names) > 0 {
 			ui.Text(c, a.L.T("setup.later", strings.Join(names, sep))).FontSize(t.SM).TextColor(t.InkMuted)
 		}

@@ -18,10 +18,7 @@ import (
 
 // words are the home's words in this window's language.
 func (a *App) words(w protocol.Words) string {
-	if a.L.Lang == i18n.ZH {
-		return w.ZH
-	}
-	return w.EN
+	return i18n.Pick(a.L, map[string]string{"zh": w.ZH, "en": w.EN})
 }
 
 // dayPart names the part of the day an hour falls in, for the greeting.

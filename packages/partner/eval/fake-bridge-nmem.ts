@@ -27,6 +27,12 @@
 // context (Space `personal-<member>` for the user's own place). NMEM_FAKE_SHAPE=named keeps the old,
 // richer shape (sender agent and member on `open` and `inbox`) for the partner eval's teammates.
 //   NMEM_FAKE_UNREGISTERED=<context>  sends to it answer Mem's 409 "no current registered mailbox"
+// D294 (Mem PR #10278, the CLI after 0.10.119; interfaces only, research/66 §8): NMEM_FAKE_SHAPE=presentation
+// adds `sender: {actor_id, member, agent, agent_id}` and `in_reply_to` (null on an original) to `inbox`
+// messages and `open`, and `agent_id` + `mailbox_available` to contact cards (an unregistered one has
+// `send_args_prefix: null`). NMEM_FAKE_SENDER_MEMBER=<label> replaces `sender.member` (a display name).
+//   NMEM_FAKE_BUSY=<verb>[:n][:unknown]  the first n (default 1) calls of that verb answer Mem's 503
+//   (`retryable: true`, `outcome_unknown: false`, or true with ":unknown"), exit 1, nothing done.
 //
 // Lost responses (J-Q6 tests): NMEM_FAKE_BRIDGE_LOSE="send" (or "reply", or "send,reply") makes the
 // next such call keep its operation but answer like a dropped connection (exit 1, no JSON).
@@ -37,7 +43,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 interface Msg { id: string; op: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; read_at?: string; pending?: boolean }
 interface Ident { agent: string; member: string; member_id?: string; description: string }
 interface Conn { connection_id: string; agent_id: string; identity_birth: string; client_label: string; state: "active" | "revoked"; space_id: string }
-interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; connections?: Conn[]; retained?: Record<string, { to: string; body: string }> }
+interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; connections?: Conn[]; retained?: Record<string, { to: string; body: string }>; busy?: Record<string, number> }
 
 if (process.env.NMEM_FAKE_ARGV_LOG) appendFileSync(process.env.NMEM_FAKE_ARGV_LOG, JSON.stringify(process.argv.slice(2)) + "\n");
 const VERSION = process.env.NMEM_FAKE_VERSION ?? "0.10.118";
@@ -97,6 +103,7 @@ if (argv[0] === "connect") {
 }
 if (process.env.NMEM_FAKE_SIGNED_OUT === "1" && !existsSync(signedFile)) fail("unreachable", "fake nmem: not signed in", 1);
 const NAMED = process.env.NMEM_FAKE_SHAPE === "named";
+const PRESENT = process.env.NMEM_FAKE_SHAPE === "presentation";
 if (argv[0] === "agents" && argv[1] === "context" && argv[2] === "show") {
   // Local read of a saved context (0.10.118 shape): its custodian and exact Space.
   const name = argv[argv.indexOf("--name") + 1] ?? "";
@@ -234,6 +241,20 @@ const body = async (): Promise<string> => {
   return "";
 };
 const newId = () => `msg-${String(++s.seq).padStart(3, "0")}`;
+// D294: Mem's side answering "can't right now" for the first n calls of one verb (nothing is done).
+{
+  const [want, n, unknown] = (process.env.NMEM_FAKE_BUSY ?? "").split(":");
+  if (want && want === verb && ((s.busy ?? {})[verb] ?? 0) < Number(n || 1)) {
+    s.busy = { ...(s.busy ?? {}), [verb]: ((s.busy ?? {})[verb] ?? 0) + 1 };
+    save(s);
+    const write = verb === "send" || verb === "reply";
+    const error_code = write ? "cloud_agent_original_authority_busy" : "cloud_agent_im_backend_unavailable";
+    out({ stage: "upstream", upstream: { error_code, detail: "Try again shortly.", retryable: true, outcome_unknown: unknown === "unknown", http_status: 503 } });
+    process.exit(1);
+  }
+}
+// Mem #10278's sender attribution, as the owner's CLI shows it (member label as on its cards).
+const sender = (name: string) => ({ actor_id: `actor-${memberId(name)}-${s.identities[name]!.agent}`, member: process.env.NMEM_FAKE_SENDER_MEMBER ?? `Member ${memberId(name)}`, agent: s.identities[name]!.agent, agent_id: s.identities[name]!.agent });
 // A lost answer: the operation is kept (delivered, or pending until resume), the caller hears nothing.
 const lose = (kind: "send" | "reply", m: Msg): boolean => {
   const want = (process.env.NMEM_FAKE_BRIDGE_LOSE ?? "").split(",").includes(kind);
@@ -257,7 +278,11 @@ switch (verb) {
     const contacts = Object.keys(s.identities)
       .filter((n) => n !== me)
       .filter((n) => !words.length || words.some((w) => `${n} ${s.identities[n]!.agent} ${s.identities[n]!.member} ${s.identities[n]!.description}`.toLowerCase().includes(w)))
-      .map((n) => ({ ...card(n), contact: `ct-${n}`, send_args_prefix: ["nmem", "bridge", `--resolved-space-id=${SPACE.id}`, "send", `--to=ct-${n}`] }));
+      .map((n) => {
+        const available = process.env.NMEM_FAKE_UNREGISTERED !== n;
+        const prefix = ["nmem", "bridge", `--resolved-space-id=${SPACE.id}`, "send", `--to=ct-${n}`];
+        return PRESENT ? { ...card(n), contact: `ct-${n}`, agent_id: s.identities[n]!.agent, mailbox_available: available, send_args_prefix: available ? prefix : null } : { ...card(n), contact: `ct-${n}`, send_args_prefix: prefix };
+      });
     if (NAMED) out({ cards: contacts, spaces: [{ space: SPACE, status: "searched", next_cursor: null }], coverage_scope: "current_space_batch" });
     // 0.10.118 in one Space: no per-card Space, the batch's own envelope.
     else out({ contacts: contacts.map(({ space: _s, ...c }) => c), next: null, match_state: contacts.length === 1 ? "unique" : contacts.length ? "ambiguous" : "none", has_more: false, outgoing: [] });
@@ -309,7 +334,7 @@ switch (verb) {
     }
     // 0.10.118: handles only; our own sent messages' read status beside them.
     const outgoing = s.messages.filter((m) => m.from === me && !m.pending).map((m) => ({ message: m.id, status: m.read_at ? "read" : "delivered", read_recipients: m.read_at ? 1 : 0, recipients: 1 }));
-    out({ messages: mine.map((m) => ({ message: m.id })), next: "", outgoing, status_observed_at_us: Date.now() * 1000 });
+    out({ messages: mine.map((m) => (PRESENT ? { message: m.id, sender: sender(m.from), in_reply_to: m.in_reply_to ?? null } : { message: m.id })), next: "", outgoing, status_observed_at_us: Date.now() * 1000 });
     break;
   }
   case "open": {
@@ -318,6 +343,10 @@ switch (verb) {
     m!.read_at ??= new Date().toISOString();
     save(s);
     if (NAMED) out({ message: { id: m!.id, ...card(m!.from), created_at: m!.created_at, ...(m!.in_reply_to ? { in_reply_to: m!.in_reply_to } : {}) }, body: m!.body });
+    if (PRESENT) {
+      out({ message: m!.id, body: m!.body, reply_to: m!.id, in_reply_to: m!.in_reply_to ?? null, sender: sender(m!.from), outgoing: [], status_observed_at_us: Date.now() * 1000 });
+      break;
+    }
     // 0.10.118: no sender; `reply_to` is this message's own handle (in_reply_to INFERRED).
     else out({ message: m!.id, body: m!.body, reply_to: m!.id, ...(m!.in_reply_to ? { in_reply_to: m!.in_reply_to } : {}), outgoing: [] });
     break;

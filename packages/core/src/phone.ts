@@ -10,8 +10,9 @@
 // restart picks up where it was: live calls are polled again, a call waiting for its hour waits on.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, CallBody, CallPlan, CallSheet, CallState, CallView, CallWait, DraftRequest, DraftResult, LogEvent, PhoneView } from "@ducter/protocol";
-import { callEnded, e164, OWN_PHONE } from "@ducter/protocol";
+import type { Bodies, CallBody, CallPlan, CallSheet, CallState, CallView, CallWait, DraftRequest, DraftResult, LangTag, LogEvent, PhoneView } from "@ducter/protocol";
+import { callEnded, e164, fill, OWN_PHONE, words } from "@ducter/protocol";
+import { langOfText } from "./lang.ts";
 import type { LogStore, PhonePort } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 import type { ConnectionsStore, LinkResult } from "./connections.ts";
@@ -32,6 +33,30 @@ const CALL_END = 20 * 60; // … to 20:00
 const LATE_START = 8 * 60; // never before 8:00 or from 21:00 where they are, even on Call now (D208; the TCPA's hours)
 const LATE_END = 21 * 60;
 const MAX_LOST_POLLS = 40; // status unreadable this many times in a row: say we lost track
+
+// A call card's own words (D292: zh and en; any other language falls back, ko → en).
+const CALL_WORDS = {
+  zh: {
+    question: "打给 {name}？",
+    go: "拨打",
+    // D208: a card that waits for the callee's hours: Go is "then", 现在就打 / Call now is beside it.
+    then: "到时拨打",
+    now: "立即拨打",
+    us: "这是美国的私人号码时，对方得事先同意接 AI 的电话。",
+    // D215: a call sheet's card: the question names who; Go is the owner saying they called.
+    sheet: "打给 {name} 的通话单",
+    done: "通话结束",
+  },
+  en: {
+    question: "Call {name}?",
+    go: "Call",
+    then: "Call then",
+    now: "Call now",
+    us: "If this is a private US mobile, the person must have agreed to AI calls.",
+    sheet: "Call sheet: {name}",
+    done: "Done calling",
+  },
+};
 
 /** The fallback reply when the owner hasn't answered a question from the line (D189 (5)). */
 export const CALLBACK_REPLY =
@@ -206,7 +231,7 @@ export interface Phone extends PhonePort {
   /** The calling connection, when there is one. */
   available(): { connectionId: string; provider: string } | undefined;
   /** Drafts a call (or continues a draft with the owner's answers) and builds its Go card. The caller logs the card. */
-  draft(req: DraftRequest, o: { lang: "zh" | "en"; callId?: string; answers?: string }): Promise<DraftResult>;
+  draft(req: DraftRequest, o: { lang: LangTag; callId?: string; answers?: string }): Promise<DraftResult>;
   /** The owner's answer to a live call's question, said in the conversation (the partner passes it on exactly). */
   answer(text: string, callId?: string): { ok: true } | { ok: false; error: string };
   cancel(callId: string, by: "owner" | "ducter"): Promise<boolean>;
@@ -555,7 +580,7 @@ export function openPhone(deps: PhoneDeps): Phone {
       if (c.state !== "needs_go") return;
       if (r.option === "go") {
         // The owner's own words go to the provider with the approval (Tuwa's personReply).
-        const goLabel = r.now ? langOf(/[一-鿿]/.test(c.plan.goal) ? "zh" : "en").now : (deps.log.read({ stream: "channel", kinds: ["decision"], limit: 5000 }).map((e) => e.body as Bodies["decision"]).find((d) => d.decisionId === r.decisionId)?.goLabel) ?? "Call";
+        const goLabel = r.now ? langOf(langOfText(c.plan.goal)).now : (deps.log.read({ stream: "channel", kinds: ["decision"], limit: 5000 }).map((e) => e.body as Bodies["decision"]).find((d) => d.decisionId === r.decisionId)?.goLabel) ?? "Call";
         // D208: Call now passes the callee's courtesy hours (never the late ones); the card said so.
         const now = r.now && c.plan.canNow ? { callNow: true } : {};
         put(c, { state: "waiting", ...now, approvedWords: clip(r.text?.trim() ? `${goLabel} — ${r.text.trim()}` : goLabel, 300) });
@@ -616,18 +641,10 @@ export function openPhone(deps: PhoneDeps): Phone {
     };
   }
 
-  function langOf(lang: "zh" | "en") {
-    return {
-      question: (name: string) => (lang === "zh" ? `打给 ${name}？` : `Call ${name}?`),
-      go: lang === "zh" ? "拨打" : "Call",
-      // D208: a card that waits for the callee's hours: Go is "then", 现在就打 / Call now is beside it.
-      then: lang === "zh" ? "到时拨打" : "Call then",
-      now: lang === "zh" ? "立即拨打" : "Call now",
-      us: lang === "zh" ? "这是美国的私人号码时，对方得事先同意接 AI 的电话。" : "If this is a private US mobile, the person must have agreed to AI calls.",
-      // D215: a call sheet's card: the question names who; Go is the owner saying they called.
-      sheet: (name: string) => (lang === "zh" ? `打给 ${name} 的通话单` : `Call sheet: ${name}`),
-      done: lang === "zh" ? "通话结束" : "Done calling",
-    };
+  /** A call card's words in the person's language (D292: through the fallback chain; ko → en). */
+  function langOf(lang: LangTag) {
+    const w = words(CALL_WORDS, lang);
+    return { ...w, question: (name: string) => fill(w.question, { name }), sheet: (name: string) => fill(w.sheet, { name }) };
   }
 
   /**
@@ -636,7 +653,7 @@ export function openPhone(deps: PhoneDeps): Phone {
    * they like). Needs no calling connection. When a provider that reaches the number exists (the
    * owner's own phone, later), draft() takes it before ever getting here.
    */
-  function sheet(to: string, req: DraftRequest, o: { lang: "zh" | "en" }, why: CallSheet["why"] = "uncovered"): DraftResult {
+  function sheet(to: string, req: DraftRequest, o: { lang: LangTag }, why: CallSheet["why"] = "uncovered"): DraftResult {
     if ((file.doNotCall ?? []).some((x) => x.number === to)) return { ok: false, reason: "dnc", error: "That number is on the user's do-not-call list. Say so in one line; no sheet." };
     const name = (req.name ?? "").trim();
     const goal = (req.goal ?? "").trim();

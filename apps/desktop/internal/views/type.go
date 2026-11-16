@@ -6,8 +6,6 @@ import (
 
 	"github.com/egoist/mygo/transfer"
 	"github.com/egoist/mygo/ui"
-
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 )
 
 // Chinese typography (D78) on MyGo's text, which sets one font size and one
@@ -206,7 +204,7 @@ func (a *App) heading(c *ui.Context, text string, size float32) ui.Element {
 
 // leading is the line height of reading text: Chinese 1.75, else latin.
 func (a *App) leading(latin float32) float32 {
-	if a.L.Lang == i18n.ZH {
+	if a.L.Han() {
 		return 1.75
 	}
 	return latin

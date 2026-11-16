@@ -258,7 +258,7 @@ func (a *App) taskNext(task *store.Task) string {
 		parts = append(parts, next)
 	}
 	s := strings.Join(parts, " · ")
-	if a.L.Lang != "zh" && s != "" {
+	if a.L.Cased() && s != "" {
 		s = strings.ToUpper(s[:1]) + s[1:]
 	}
 	return s
@@ -878,26 +878,31 @@ func (a *App) waitFacts(c *ui.Context, task *store.Task) {
 // sentence says "about".
 func (a *App) aboutTokens(n int64) string {
 	trim := func(f float64) string { return strings.TrimSuffix(fmt.Sprintf("%.1f", f), ".0") }
-	if a.L.Lang == i18n.ZH {
-		switch {
-		case n >= 100_000_000:
-			return trim(float64(n)/1e8) + " 亿字"
-		case n >= 1_000_000:
-			return fmt.Sprintf("%.0f 万字", float64(n)/1e4)
-		case n >= 10_000:
-			return trim(float64(n)/1e4) + " 万字"
-		}
-		return fmt.Sprint(n) + " 字"
-	}
-	switch {
-	case n >= 1_000_000:
-		return trim(float64(n)/1e6) + "M"
-	case n >= 10_000:
-		return fmt.Sprintf("%.0fk", float64(n)/1e3)
-	case n >= 1000:
-		return trim(float64(n)/1e3) + "k"
-	}
-	return fmt.Sprint(n)
+	// Each table's own units: Chinese counts in 万 and 亿, English in k and M.
+	return i18n.Pick(a.L, map[string]func() string{
+		"zh": func() string {
+			switch {
+			case n >= 100_000_000:
+				return trim(float64(n)/1e8) + " 亿字"
+			case n >= 1_000_000:
+				return fmt.Sprintf("%.0f 万字", float64(n)/1e4)
+			case n >= 10_000:
+				return trim(float64(n)/1e4) + " 万字"
+			}
+			return fmt.Sprint(n) + " 字"
+		},
+		"en": func() string {
+			switch {
+			case n >= 1_000_000:
+				return trim(float64(n)/1e6) + "M"
+			case n >= 10_000:
+				return fmt.Sprintf("%.0fk", float64(n)/1e3)
+			case n >= 1000:
+				return trim(float64(n)/1e3) + "k"
+			}
+			return fmt.Sprint(n)
+		},
+	})()
 }
 
 // filesLabel counts changed files: "2 files", "1 file".

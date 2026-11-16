@@ -100,6 +100,7 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	}
 	st := a.S.Settings
 	a.partnerToast(c)
+	a.partnersGroup(c) // D309: 伙伴们 / Your partners
 	// What it thinks with and who does the tasks (D89): the tray of the
 	// home's AI agents, then the two groups.
 	a.tray(c)
@@ -145,7 +146,7 @@ func (a *App) partnerName(c *ui.Context) {
 	ps := &a.partner
 	if !ps.editing {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-			a.heading(c, a.S.PersonaName, t.Title).SingleLine().Shrink(1).MinWidth(0)
+			a.heading(c, a.defaultName(), t.Title).SingleLine().Shrink(1).MinWidth(0)
 			if a.S.Settings != nil && a.button(c, a.L.T("partner.rename"), btnText, t.ControlSM, t.Clay) {
 				ps.editing, ps.nameDraft, ps.focused = true, "", false
 			}
@@ -154,14 +155,16 @@ func (a *App) partnerName(c *ui.Context) {
 	}
 	save := func() {
 		name := strings.TrimSpace(ps.nameDraft)
-		if name != "" && name != a.S.PersonaName {
+		if name != "" && name != a.defaultName() {
 			a.SetSettings(protocol.SettingsPatch{Name: &name})
-			a.S.PersonaName = name // shown at once; the settings frame confirms it
+			if a.shownPartnerID() == protocol.DefaultPartner {
+				a.S.PersonaName = name // shown at once; the settings frame confirms it
+			}
 		}
 		ps.editing = false
 	}
 	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-		in := ui.TextInput(c.Key("input:partner-name"), &ps.nameDraft).Placeholder(a.S.PersonaName).Label(a.L.T("partner.rename")).
+		in := ui.TextInput(c.Key("input:partner-name"), &ps.nameDraft).Placeholder(a.defaultName()).Label(a.L.T("partner.rename")).
 			FontSize(t.XL).FontWeight(800).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).
 			Width(260).OnSubmit(save)
 		if !ps.focused {

@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
@@ -36,6 +37,45 @@ type TrayView struct {
 	// line and the icon's tooltip.
 	Say       string
 	Decisions []TrayDecision
+	// Partners (D309) are the other partners with something waiting, each
+	// a line naming it ("换到小家，有 1 件等你"); a click shows its conversation.
+	Partners []TrayPartner
+}
+
+// TrayPartner is another partner with its own questions waiting (D309).
+type TrayPartner struct {
+	ID, Label string
+}
+
+// trayPartners are the other partners whose own questions wait.
+func (a *App) trayPartners() []TrayPartner {
+	if !a.manyPartners() {
+		return nil
+	}
+	var out []TrayPartner
+	shown := a.shownPartnerID()
+	for _, p := range a.S.Partners {
+		if p.ID != shown && p.Asks > 0 {
+			out = append(out, TrayPartner{ID: p.ID, Label: a.L.T("partners.switch.asks", p.Name, p.Asks)})
+		}
+	}
+	return out
+}
+
+// needsWho is the partner a needs-you notification names (D309): the
+// shown one, unless only another partner has something of its own waiting.
+func (a *App) needsWho() string {
+	if !a.manyPartners() || len(a.partnerDecisions()) > 0 || len(a.S.Board().Lanes[store.LaneNeedsYou]) > 0 {
+		return a.personaName()
+	}
+	for _, p := range a.trayPartners() {
+		for _, q := range a.S.Partners {
+			if q.ID == p.ID {
+				return q.Name
+			}
+		}
+	}
+	return a.personaName()
 }
 
 // TrayState is how the whole stands: needs you over working over quiet.
@@ -66,6 +106,7 @@ func (a *App) Tray(max int) TrayView {
 		Needs:     needs,
 		Say:       autospace(a.headSay(b, "", n)),
 		Decisions: a.TrayDecisions(max),
+		Partners:  a.trayPartners(),
 	}
 }
 
@@ -105,6 +146,9 @@ func (a *App) TraySignature() string {
 	fmt.Fprintf(&b, "%s|%d|%s", a.L.Lang, v.State, v.Say)
 	for _, d := range v.Decisions {
 		b.WriteString("|" + d.ID)
+	}
+	for _, p := range v.Partners {
+		b.WriteString("|" + p.Label)
 	}
 	return b.String()
 }

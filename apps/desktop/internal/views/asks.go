@@ -237,7 +237,7 @@ func (a *App) NeedsYouNotice(n int) (title, body string) {
 	if st := a.S.Settings; st != nil && (!st.Notify || InQuiet(a.Now(), st.Quiet)) {
 		return "", ""
 	}
-	return a.L.T("notify.needs", a.personaName()), a.L.T("notify.needs.body", n)
+	return a.L.T("notify.needs", a.needsWho()), a.L.T("notify.needs.body", n) // D309: names whose
 }
 
 // InQuiet reports whether at falls in the quiet hours (in their zone; an

@@ -21,6 +21,25 @@ import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
 import { keepDraft, readDraft } from "./follow.ts";
 import type { AccountUsage, LogEvent, ReplyWant } from "@ducter/protocol";
+import { DEFAULT_PARTNER, needsAcross, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+
+/** D309: the partner whose conversation this device shows, kept on this device (another may show another). */
+const PARTNER_KEY = "ducter.partner";
+let lastPartner = DEFAULT_PARTNER;
+export function savedPartner(): string {
+  try {
+    return localStorage.getItem(PARTNER_KEY) || lastPartner;
+  } catch {
+    return lastPartner;
+  }
+}
+function savePartner(id: string) {
+  lastPartner = id;
+  try {
+    if (id === DEFAULT_PARTNER) localStorage.removeItem(PARTNER_KEY);
+    else localStorage.setItem(PARTNER_KEY, id);
+  } catch {}
+}
 
 /** D236: what the composer replies to: the message (a find or a part of it) and how its imprint reads. */
 export interface Replying {
@@ -340,6 +359,14 @@ class AppState {
   proactiveDay: import("@ducter/protocol").ProactiveDay | undefined;
   route: Route = { name: "conv" };
   sheet: Sheet = null;
+  /** D309: every partner on the home (absent: a home without them, or one only). */
+  partners?: PartnerInfo[];
+  /** D309: the partner this page shows; the hello asks for it. */
+  partnerShown = savedPartner();
+  /** D309: a partner_add or partner_set on its way, and what came back for it. */
+  partnerAsk?: { cid: string; kind: "add" | "set"; name?: string; error?: string };
+  /** D309: when a partner was last added from this page (Settings' form closes). */
+  partnerAddedAt = 0;
   /** D151: the live view of Ducter's browser, while the user signs in (never stored). */
   live?: {
     decisionId: string;
@@ -487,7 +514,7 @@ class AppState {
     this.conn = new Connection(
       wsUrl(base),
       token,
-      () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.locale, ...(zone() ? { tz: zone() } : {}), client: "web", ...((s) => (s ? { shape: s } : {}))(myShape()) }),
+      () => ({ t: "hello", ...(this.partnerShown !== DEFAULT_PARTNER ? { persona: this.partnerShown } : {}), ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.locale, ...(zone() ? { tz: zone() } : {}), client: "web", ...((s) => (s ? { shape: s } : {}))(myShape()) }),
       (f) => this.receive(f),
       (s) => {
         this.status = s;
@@ -539,6 +566,8 @@ class AppState {
   /** Paints the last screen from the glance before the socket opens: the Store as the last replay
    *  left it, its cursor where the glance ends, so hello asks only for what is newer. */
   restore(g: Glance) {
+    // D309: the last screen was another partner's conversation: start from this one's replay.
+    if (g.persona && g.persona !== this.partnerShown) return;
     this.S.apply({ t: "welcome", persona: g.persona, personaName: g.personaName, headSeq: g.headSeq } as ServerFrame);
     this.S.welcomed = false; // nothing is sent before the home says welcome
     this.S.apply({ t: "events", events: g.events });
@@ -618,6 +647,14 @@ class AppState {
       this.conn?.rehello();
       return;
     }
+    // D309: the home shows another partner than the one this page holds (a switch elsewhere, one
+    // gone): forget this one's conversation and hear that one's from the start.
+    if (f.t === "welcome" && this.S.persona && f.persona !== this.S.persona) {
+      this.startOver();
+      this.pending = [];
+      this.conn?.rehello();
+      return;
+    }
     if (this.S.stale(f)) {
       // The Log started over (its data was reset): forget everything and say hello from scratch.
       this.startOver();
@@ -647,6 +684,7 @@ class AppState {
       return void this.changed();
     }
     if (f.t === "settings") return this.applySettings(f);
+    if (f.t === "partners") return this.applyPartners(f);
     if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
     if (f.t === "ways") {
       this.ways = f;
@@ -802,7 +840,7 @@ class AppState {
     this.bridge = f.bridge;
     if (f.bridge?.state !== "connected") this.bridgeConfirm = false;
     this.brainNow = f.brainNow;
-    if (f.settings.name) this.S.personaName = f.settings.name;
+    if (f.settings.name && this.showsDefault()) this.S.personaName = f.settings.name; // D309: the default's name
     if (f.forgot) {
       const title = this.forgetting.get(f.forgot.seq) ?? "";
       this.forgetting.delete(f.forgot.seq);
@@ -1596,10 +1634,85 @@ class AppState {
     setTimeout(() => document.getElementById("composer")?.focus(), 50);
   }
 
+  /** D309: whether this page shows the default partner (the one Settings › 伙伴's name and rules are). */
+  showsDefault(): boolean {
+    return (this.S.persona || this.partnerShown) === DEFAULT_PARTNER;
+  }
+
+  /** D309: the default partner's name (the one Settings › 伙伴 renames), whoever is shown. */
+  defaultName(): string {
+    return this.partners?.find((p) => p.id === DEFAULT_PARTNER)?.name ?? this.settings?.name ?? this.S.personaName;
+  }
+
+  /** D309: more than one partner, so the bar shows whose conversation this is and the others. */
+  manyPartners(): boolean {
+    return (this.partners?.length ?? 0) > 1;
+  }
+
+  /** D309: the partner shown, as the partners frame says it (undefined with one partner). */
+  shownPartner(): PartnerInfo | undefined {
+    if (!this.manyPartners()) return undefined;
+    return this.partners!.find((p) => p.id === (this.S.persona || this.partnerShown));
+  }
+
+  private applyPartners(f: Extract<ServerFrame, { t: "partners" }>) {
+    this.partners = f.partners;
+    const ask = this.partnerAsk;
+    if (ask && f.clientId === ask.cid) {
+      if (f.error) ask.error = f.error;
+      else {
+        this.partnerAsk = undefined;
+        if (ask.kind === "add" && ask.name) (this.partnerAddedAt = Date.now()), this.toast(this.L.t("partners.added", ask.name));
+      }
+    }
+    // The partner this page asked for is gone (or never was): the home showed the default's.
+    if (this.partnerShown !== f.shown && !f.partners.some((p) => p.id === this.partnerShown)) savePartner((this.partnerShown = f.shown));
+    const shown = f.partners.find((p) => p.id === f.shown);
+    if (shown && shown.name !== this.S.personaName) this.S.personaName = shown.name;
+    this.changed();
+  }
+
+  /** D309: shows another partner's conversation: this page starts over on it (a new hello). */
+  switchPartner(id: string) {
+    if (id === (this.S.persona || this.partnerShown) || !this.partners?.some((p) => p.id === id)) return;
+    savePartner((this.partnerShown = id));
+    this.startOver();
+    this.pending = [];
+    this.actSent.clear();
+    this.inDoubt = undefined;
+    this.historyAsked.clear();
+    this.livingAway.clear();
+    this.draft = "";
+    this.replying = undefined;
+    this.route = { name: "conv" };
+    this.sheet = null;
+    this.S.personaName = this.partners.find((p) => p.id === id)!.name;
+    this.conn?.rehello();
+    this.changed();
+  }
+
+  /** D309: 再加一个伙伴 / Add a partner. */
+  addPartner(name: string, look: PartnerLook) {
+    const cid = `pa-${Date.now().toString(36)}`;
+    this.partnerAsk = { cid, kind: "add", name: name.trim() };
+    this.send({ t: "partner_add", name, look, clientId: cid });
+    this.changed();
+  }
+
+  /** D309: a partner's new name or look (the default's name is setSettings'). */
+  setPartner(id: string, patch: { name?: string; look?: PartnerLook }) {
+    if (id === DEFAULT_PARTNER && patch.name) return this.setSettings({ name: patch.name });
+    const cid = `ps-${Date.now().toString(36)}`;
+    this.partnerAsk = { cid, kind: "set" };
+    if (this.partners) this.partners = this.partners.map((p) => (p.id === id ? { ...p, ...patch } : p));
+    this.send({ t: "partner_set", id, ...patch, clientId: cid });
+    this.changed();
+  }
+
   /** Changes partner settings: shown at once, then confirmed by the server's frame. */
   setSettings(patch: SettingsPatch) {
     if (this.settings) this.settings = { ...this.settings, ...patch };
-    if (patch.name) this.S.personaName = patch.name;
+    if (patch.name && this.showsDefault()) this.S.personaName = patch.name;
     this.send({ t: "settings_set", patch });
     this.changed();
   }
@@ -2604,7 +2717,8 @@ class AppState {
     const parts: string[] = [];
     const kinds: number[] = [];
     const add = (kind: number, words: string) => (parts.push(words), kinds.push(kind));
-    const needs = b.lanes[LANE.needs]!.length + this.S.partnerDecisions().length;
+    // D309: one count across partners: On hand is everyone's already; the others' own questions join it.
+    const needs = needsAcross(b.lanes[LANE.needs]!.length + this.S.partnerDecisions().length, this.partners, this.S.persona || this.partnerShown);
     if (needs) add(1, L.t("header.needs", needs));
     // Thinking is said where the reply will appear (Presence, D104), not here.
     if (b.lanes[LANE.working]!.length) add(2, L.t("header.working", b.lanes[LANE.working]!.length));

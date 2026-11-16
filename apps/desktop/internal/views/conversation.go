@@ -288,6 +288,10 @@ func (a *App) header(c *ui.Context) {
 			// The clay partner, 44 points: it breathes and blinks (D77).
 			face := ui.Box(c.Key("who-face")).Shrink(0).Cursor(ui.CursorPointer).AccessHidden(true).Tooltip(about)
 			a.lookAround(c, face) // D290: it glances round as you come back
+			// D309: with more than one partner, the face sits on its own clay stone.
+			if p := a.shownPartner(); p != nil {
+				face.Size(48, 48).Radius(24).Background(t.Looks[p.Look]).Border(1, t.LookRim).Clip().AlignItems(ui.Center).Justify(ui.End)
+			}
 			face.Children(func() { a.partnerFace(c, "bar", a.presence(c), 44) })
 			ui.Column(c).Gap(0).MinWidth(0).Children(func() {
 				name := ui.Text(c.Key("who-name"), a.S.PersonaName).FontSize(barText).FontWeight(600).TextColor(t.Ink).LineHeight(1.25).SingleLine().
@@ -334,6 +338,7 @@ func (a *App) header(c *ui.Context) {
 					ui.Text(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Padding(1, t.S1+2)
 				})
 			})
+			a.partnerSwitch(c) // D309: the other partners, a click away
 		})
 	}, nil)
 }
@@ -344,7 +349,7 @@ func (a *App) WaitingCount() int {
 	if !a.S.Welcomed {
 		return 0
 	}
-	return len(a.S.Board().Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
+	return a.needsAcross(a.S.Board())
 }
 
 // summaryFilter is where the counts line leads (D270): ok when it says
@@ -355,7 +360,7 @@ func (a *App) summaryFilter(b store.Board) (filter int, ok bool) {
 		return 0, false
 	}
 	n := [4]int{
-		len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions()),
+		a.needsAcross(b),
 		len(b.Lanes[store.LaneWorking]),
 		len(b.Lanes[store.LaneWaiting]) + len(a.looseWaiters()),
 		a.doneToday(b),
@@ -403,7 +408,7 @@ func (a *App) summary(b store.Board) string {
 // what needs the user, what is being worked on, what came back.
 func (a *App) countParts(b store.Board) []string {
 	var parts []string
-	if n := len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions()); n > 0 {
+	if n := a.needsAcross(b); n > 0 {
 		parts = append(parts, a.L.T("header.needs", n))
 	}
 	// Thinking is said where the reply will appear (the presence row,

@@ -85,6 +85,7 @@ Design notes:
 - `settings.md`: Settings pane by pane: who is in each, the flows walked, the shared pieces and the partner's word after a change (D296).
 - `voice.md`: hold to talk and read aloud, each platform's own speech, the app bridge (D305).
 - `channels.md`: 聊天软件 / Chat apps, the partner in the person's own Telegram bot, Slack app and WeChat ClawBot as more windows on the one conversation (D276, D301).
+- `personas.md`: 伙伴们 / Your partners, a second partner: what is shared and what is its own, one needs-you count, the switch, its stone (D309, preview).
 - `did.md`: 替你做过的 / Done for you, every outward action on the person's behalf, day by day (D300).
 - `product-model.md`: see above.
 

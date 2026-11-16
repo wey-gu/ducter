@@ -53,7 +53,10 @@ type Options struct {
 	// Authorization: Bearer. Loopback servers need none.
 	Token   string
 	Persona string
-	Locale  string // zh | en
+	// PersonaOf (D309), when set, is the partner to show, read at each
+	// hello (a switch, then a reconnect, keeps it); it wins over Persona.
+	PersonaOf func() string
+	Locale    string // zh | en
 	// Version is this app's version, said in the hello ("" a dev build).
 	Version string
 	// Cursor returns the seq of the last event the app holds, sent with
@@ -249,7 +252,11 @@ func (c *Client) session(ctx context.Context) error {
 	stop := context.AfterFunc(ctx, func() { conn.Close() })
 	defer stop()
 
-	hello := protocol.Hello{T: "hello", Persona: c.opt.Persona, Locale: c.opt.Locale, Client: "desktop", Version: c.opt.Version, Gzip: true}
+	persona := c.opt.Persona
+	if c.opt.PersonaOf != nil {
+		persona = c.opt.PersonaOf()
+	}
+	hello := protocol.Hello{T: "hello", Persona: persona, Locale: c.opt.Locale, Client: "desktop", Version: c.opt.Version, Gzip: true}
 	if c.opt.Cursor != nil {
 		if cur := c.opt.Cursor(); cur > 0 {
 			hello.Cursor = &cur

@@ -341,6 +341,11 @@ func deviceOfPlace(p protocol.Place) string {
 
 // Store is the client's state.
 type Store struct {
+	// Partners are every partner on the home (D309); nil with one, or a
+	// home without them. PartnerAnswer is the last partners frame that
+	// answered this window's own add or set (its ClientID, WbError).
+	Partners      []protocol.PartnerInfo
+	PartnerAnswer *protocol.ServerFrame
 	// Past is 做过的事 / Past tasks (D285, past.go).
 	Past PastState
 	// Did is 替你做过的 / Done for you (D300, did.go).
@@ -549,6 +554,17 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.PersonaName != "" {
 			s.PersonaName = f.PersonaName
 		}
+	case "partners":
+		s.Partners = f.Partners
+		if f.ClientID != "" {
+			fc := f
+			s.PartnerAnswer = &fc
+		}
+		for _, p := range f.Partners {
+			if p.ID == f.Shown && p.Name != "" {
+				s.PersonaName = p.Name
+			}
+		}
 	case "first_screen":
 		s.First = f.First
 	case "key_add_result":
@@ -606,7 +622,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "settings":
 		if f.Settings != nil {
 			s.Settings = f.Settings
-			if f.Settings.Name != "" {
+			// D309: the settings' name is the default partner's.
+			if f.Settings.Name != "" && (s.Persona == "" || s.Persona == protocol.DefaultPartner) {
 				s.PersonaName = f.Settings.Name
 			}
 		}

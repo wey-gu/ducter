@@ -3986,8 +3986,9 @@ a.btn {
   line-height: 1.45;
 }
 .agent small.paid {
-  color: var(--needs-ink);
-  font-weight: 700;
+  /* D296: a fact to know, not an alarm: the soft ink, a little weight. */
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 .switch-list {
   display: flex;
@@ -12383,7 +12384,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .g-open b { display: flex; align-items: center; gap: 4px; font-size: var(--md); font-weight: 700; line-height: 1.5; }
 .g-open small { display: block; font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .g-open small.warn { color: var(--failed-ink); }
-.switch.bare { flex: none; padding: 0; min-height: 0; background: none; border: 0; }
+.switch.bare { flex: none; padding: 0; min-height: 0; margin: 0; background: none; border: 0; box-shadow: none; } /* D296: a switch alone, no card base under it */
 .g-block { display: flex; flex-direction: column; gap: var(--s3); padding: var(--s3) var(--set-in, var(--s4)) var(--s4) calc(var(--set-in, var(--s4)) + var(--chat-col)); }
 .g-block.first { padding: var(--s4) var(--set-in, var(--s4)); }
 .g-group > .switch { min-height: 64px; padding: var(--s3) var(--set-in, var(--s4)) var(--s3) calc(var(--set-in, var(--s4)) + var(--chat-col)); }
@@ -12455,3 +12456,11 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .pcard.gone .pt { color: var(--ink-soft); }
 .pmenu-k { padding: 6px 10px 2px; font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
 .tx-divider.earlier { align-self: stretch; width: 100%; margin: 6px 0 10px; }
+/* D296: a group's first row keeps its state at the right edge at any width. */
+.chat-head > .grow { flex: 1; min-width: 0; }
+.agent-model { margin-top: calc(-1 * var(--s1)); padding: 0 var(--set-in, var(--s4)) var(--s3); }
+@media (max-width: 520px) {
+  /* D296: a switch never drops under its words; only buttons do (D273). */
+  .chat-row:has(> .switch.bare) { flex-wrap: nowrap; }
+  .chat-row:has(> .switch.bare) .grow { flex-basis: auto; }
+}

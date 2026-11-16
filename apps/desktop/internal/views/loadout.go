@@ -204,13 +204,13 @@ func modelLabel(h *protocol.DeviceHarness, id string) string {
 
 func pct(f float64) int { return int(f*100 + 0.5) }
 
-// brainLine: "Claude Code · Opus".
+// brainLine: "Claude Code 的 Opus" / "Claude Code with Opus" (D296: a
+// phrase, never "Claude Code · Opus").
 func (a *App) brainLine(b protocol.Brain) string {
-	parts := []string{harnessName(b.Harness)}
 	if m := modelLabel(a.trayHarness(b.Harness), b.Model); m != "" {
-		parts = append(parts, m)
+		return a.L.T("loadout.brain.with", harnessName(b.Harness), m)
 	}
-	return strings.Join(parts, " · ")
+	return harnessName(b.Harness)
 }
 
 // tokenStatus is a tray token's one line under its name.
@@ -300,7 +300,7 @@ func (a *App) socket(c *ui.Context) {
 	lo := &a.lo
 	b := a.brain()
 	flying := lo.fx != nil && !lo.fx.back
-	label := a.L.T("loadout.socket") + " · " + a.brainLine(b)
+	label := a.L.T("loadout.socket") + ", " + a.brainLine(b)
 	ui.Column(c.Key("socket")).Width(150).Shrink(0).AlignItems(ui.Center).Gap(t.S1).Role(ui.RoleGroup).Label(label).Children(func() {
 		ui.Text(c, a.L.T("loadout.socket")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).AccessHidden(true)
 		well := ui.Box(c.Key("well")).Size(112, 112).Radius(56).
@@ -334,7 +334,7 @@ func (a *App) socketWell(c *ui.Context, b protocol.Brain) {
 	well := ui.Box(c.Key("well")).Size(80, 80).Radius(40).Shrink(0).
 		LinearGradient(ui.LinearGradient{From: t.SurfaceSunken, To: t.Line2, Angle: 180}).
 		InsetShadow(0, 5, 8, 0, t.Ink.Alpha(0.2)).Shadow(0, 3, 0, 0, t.Surface.Alpha(0.8)).
-		Role(ui.RoleImage).Label(a.L.T("loadout.socket") + " · " + a.brainLine(b))
+		Role(ui.RoleImage).Label(a.L.T("loadout.socket") + ", " + a.brainLine(b))
 	well.Children(func() {
 		if !flying {
 			if bmp := theme.Clay(coinArt(b.Harness, false)); bmp != nil {
@@ -391,7 +391,7 @@ func (a *App) trayToken(c *ui.Context, h protocol.DeviceHarness, b protocol.Brai
 	}
 	name := harnessName(h.Harness)
 	tok := ui.Column(c.Key("tok:"+h.Harness)).Width(130).AlignItems(ui.Center).Gap(2).Padding(t.S1, 0).Radius(t.RadiusLG).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name + " · " + a.tokenStatus(h)).Focusable().AccessSelected(lo.acct == h.Harness)
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name + ", " + a.tokenStatus(h)).Focusable().AccessSelected(lo.acct == h.Harness)
 	why := ""
 	if lo.choosing {
 		switch {
@@ -546,13 +546,12 @@ func (a *App) brainCard(c *ui.Context) {
 		ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 			a.socketWell(c, b)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				head := a.brainLine(b)
+				// D296: the head is the AI agent; the model is the choice under
+				// it, or, with none to pick, its own phrase on the line below.
+				ui.Text(c, harnessName(b.Harness)).Font(t.Display).FontSize(t.LG).FontWeight(800).SingleLine()
 				if b.Model == "" && len(a.brainModels(b, h)) == 0 {
-					// No model to pick: the AI agent's own default, said on the
-					// line it belongs to rather than as a stray note.
-					head += " · " + a.L.T("loadout.model.default")
+					ui.Text(c, a.L.T("loadout.model.default.line")).FontSize(t.SM).TextColor(t.InkSoft).SingleLine()
 				}
-				ui.Text(c, head).Font(t.Display).FontSize(t.LG).FontWeight(800).SingleLine()
 				if bn := a.S.BrainNow; bn != nil && bn.Why != "" && a.lo.pending == nil {
 					// D150/D177: core picked it, the user didn't: say so, and only what is true.
 					auto := a.L.T("loadout.brain.auto", harnessName(b.Harness))
@@ -563,7 +562,7 @@ func (a *App) brainCard(c *ui.Context) {
 				}
 				line := ""
 				if h != nil && h.Allowance != nil {
-					line = a.L.T("loadout.left", pct(h.Allowance.Left)) + " · " + a.L.T("loadout.brain.reserve", a.S.PersonaName)
+					line = a.L.T("loadout.left.kept", pct(h.Allowance.Left), a.S.PersonaName)
 					if h.Allowance.Left <= protocol.PartnerReserve {
 						line = a.L.T("loadout.left.reserve", pct(h.Allowance.Left), a.S.PersonaName)
 					}
@@ -588,22 +587,26 @@ func (a *App) brainCard(c *ui.Context) {
 			a.note(c, a.L.T("loadout.brain.onlymac", a.homeName()))
 		}
 		if ms := a.brainModels(b, h); len(ms) > 0 {
+			// D296: the choice says the model; what it is like is one phrase
+			// under it, for the one chosen (never "Opus · 最聪明").
 			sel := 0
 			labels := make([]string, len(ms))
 			for i, m := range ms {
-				word := a.L.T("loadout.model.smart")
-				if m.fast {
-					word = a.L.T("loadout.model.fast")
-				}
-				labels[i] = m.label + " · " + word
+				labels[i] = m.label
 				if m.id == b.Model {
 					sel = i
 				}
 			}
 			if i := a.choices(c, "brain-model", a.L.T("loadout.brain.model"), labels, sel); i >= 0 {
 				a.setBrain(protocol.Brain{Harness: b.Harness, Model: ms[i].id})
-				lo.toast, lo.toastAt = a.L.T("loadout.toast.brain", a.S.PersonaName, harnessName(b.Harness)+" · "+ms[i].label), a.Now()
+				lo.toast, lo.toastAt = a.L.T("loadout.toast.brain", a.S.PersonaName, a.L.T("loadout.brain.with", harnessName(b.Harness), ms[i].label)), a.Now()
+				sel = i
 			}
+			k := "loadout.model.line.smart"
+			if ms[sel].fast {
+				k = "loadout.model.line.fast"
+			}
+			a.note(c, a.L.T(k, ms[sel].label))
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
 			ui.Box(c).Size(18, 18).Draw(drawCheck(t.Done.Ink)).Shrink(0).Margin(2, 0, 0, 0)
@@ -707,30 +710,30 @@ func (a *App) acctLine(c *ui.Context) {
 		case !h.LoggedIn:
 			say(a.L.T("loadout.acct.signin", name))
 		default:
-			parts := []string{}
+			// D296: each fact its own line, each line a phrase.
 			if al := h.Allowance; al != nil {
-				if brain && al.Left <= protocol.PartnerReserve {
-					parts = append(parts, a.L.T("loadout.left.reserve", pct(al.Left), a.S.PersonaName))
-				} else {
-					parts = append(parts, a.L.T("loadout.left", pct(al.Left)))
+				at := store.ParseTime(al.ResetsAt)
+				switch {
+				case brain && al.Left <= protocol.PartnerReserve:
+					say(a.L.T("loadout.left.reserve", pct(al.Left), a.S.PersonaName))
+				case !at.IsZero():
+					say(a.L.T("loadout.left.back", pct(al.Left), a.when(at)))
+				default:
+					say(a.L.T("loadout.left", pct(al.Left)))
 				}
 				if al.SharedBy > 1 {
-					parts = append(parts, a.L.T("loadout.acct.shared", al.SharedBy))
+					say(a.L.T("loadout.acct.shared", al.SharedBy))
 				} else {
-					parts = append(parts, a.L.T("loadout.acct.only", a.homeName()))
-				}
-				if at := store.ParseTime(al.ResetsAt); !at.IsZero() {
-					parts = append(parts, a.L.T("loadout.acct.resets", a.when(at)))
+					say(a.L.T("loadout.acct.only", a.homeName()))
 				}
 			} else {
-				parts = append(parts, a.L.T("loadout.signed_in"))
+				say(a.L.T("loadout.signed_in"))
 			}
-			say(strings.Join(parts, " · "))
 			if brain {
 				say(a.L.T("loadout.acct.same", a.S.PersonaName))
 			}
 			if h.Billing == "usage" {
-				ui.Text(c, a.L.T("loadout.acct.paid")).FontSize(t.SM).FontWeight(700).LineHeight(1.5).TextColor(t.NeedsYou.Ink)
+				ui.Text(c, a.L.T("loadout.acct.paid")).FontSize(t.SM).FontWeight(600).LineHeight(1.5).TextColor(t.InkSoft)
 			}
 			on := a.taskReady(*h)
 			note := a.L.T("loadout.acct.tasks.on", a.S.PersonaName)
@@ -899,12 +902,12 @@ func (a *App) tuneInPlace(c *ui.Context, task *store.Task, device string) {
 
 func candKey(cd protocol.Candidate) string { return cd.Harness + "/" + cd.Model }
 
+// candName is "Claude Code 的 Opus" / "Claude Code with Opus" (D296: a phrase).
 func (a *App) candName(cd protocol.Candidate) string {
-	parts := []string{harnessName(cd.Harness)}
 	if cd.Model != "" {
-		parts = append(parts, modelLabel(a.trayHarness(cd.Harness), cd.Model))
+		return a.L.T("loadout.brain.with", harnessName(cd.Harness), modelLabel(a.trayHarness(cd.Harness), cd.Model))
 	}
-	return strings.Join(parts, " · ")
+	return harnessName(cd.Harness)
 }
 
 // candReason is a row's why, then its limit.
@@ -917,7 +920,7 @@ func (a *App) candReason(cd protocol.Candidate) string {
 		if at := store.ParseTime(cd.ResetsAt); !at.IsZero() {
 			parts = append(parts, a.L.T("cand.resets", a.when(at)))
 		}
-		return strings.Join(parts, " · ")
+		return strings.Join(parts, a.L.T("phrase.sep"))
 	default:
 		return a.L.T("cand." + cd.Blocked)
 	}
@@ -935,7 +938,8 @@ func (a *App) candReason(cd protocol.Candidate) string {
 	if cd.Billing == "usage" {
 		parts = append(parts, a.L.T("cand.paid"))
 	}
-	return strings.Join(parts, " · ")
+	// D296: one phrase, its facts in a sentence, never joined with a dot.
+	return strings.Join(parts, a.L.T("phrase.sep"))
 }
 
 // drainSwitch takes the server's answer to a switch.
@@ -1052,7 +1056,7 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 							if dv != nil && dv.State == protocol.DeviceAsleep {
 								ink = t.Asleep.Ink
 							}
-							ui.Text(c, "· "+s).FontSize(t.SM).TextColor(ink)
+							ui.Text(c, s).FontSize(t.SM).TextColor(ink) // its own element (D296)
 						}
 					})
 				}

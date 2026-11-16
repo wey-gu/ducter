@@ -28,6 +28,8 @@ var sharedControls = map[string]bool{
 	"pill": true, "menuRow": true, "choice": true, "foldHead": true,
 	// D289: a group's add row, and a destructive action before it is confirmed
 	"addRow": true, "quietDanger": true, "openRow": true,
+	// D296: a row that goes elsewhere with its tile
+	"tileLinkRow": true,
 }
 
 // controlFiles are the cards and settings pages the rule covers.

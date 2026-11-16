@@ -51,37 +51,15 @@ export const ALLOW: { file: string; has?: string; why: string }[] = [
   { file: "apps/desktop/internal/views/follow.go", has: "[*•]", why: "parses a list bullet" },
   { file: "apps/desktop/internal/views/phone.go", has: '"•"', why: "strips a provider's Markdown list marker" },
   // The secret mask itself, and the rule that never masks a mask again.
+  // A saved card's or secret's hidden digits (•••• 4242) in Autofill: a mask, not a separator (D296).
+  { file: "apps/web/src/autofill.tsx", has: "••••", why: "a saved card's or secret's masked digits" },
+  { file: "apps/desktop/internal/views/autofill.go", has: "••••", why: "a saved card's or secret's masked digits" },
   { file: "packages/protocol/src/redact.ts", why: "the secret mask (HIDDEN) and its exclusion" },
   { file: "apps/desktop/internal/redact/redact.go", why: "the secret mask (Hidden) and its exclusion" },
   // Words only a model reads: a watcher item's fields for the partner.
   { file: "packages/core/src/connections.ts", has: 'pick.join(" · ")', why: "a watcher item for the model, never shown" },
   // TODO(D175): a partner tool's parameter example; changing it needs the partner eval run (research/98).
   { file: "packages/core/src/work.ts", has: "每周一 9:00 · 跟着你的时区", why: "partner tool description, waits for its eval" },
-  // TODO(D296): the Settings panes belong to the settings pass (D289 merged, D296 in flight); listed in research/98.
-  { file: "apps/desktop/internal/i18n/accounts.go", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/i18n/autofill.go", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/i18n/channels.go", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/i18n/ia.go", has: "acct.src.", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/i18n/imessage.go", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/i18n/loadout.go", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/views/accounts.go", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/views/autofill.go", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/views/keys.go", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/views/loadout.go", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/views/settings.go", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/views/settings_panels.go", why: "TODO D296: Settings" },
-  { file: "apps/desktop/internal/views/settings_rows.go", why: "TODO D296: Settings" },
-  { file: "apps/web/src/accounts.tsx", why: "TODO D296: Settings" },
-  { file: "apps/web/src/autofill.tsx", why: "TODO D296: Settings" },
-  { file: "apps/web/src/i18n-autofill.ts", why: "TODO D296: Settings" },
-  { file: "apps/web/src/i18n-channels.ts", why: "TODO D296: Settings" },
-  { file: "apps/web/src/i18n.ts", has: '"acct.src.', why: "TODO D296: Settings" },
-  { file: "apps/web/src/i18n.ts", has: '"loadout.', why: "TODO D296: Settings" },
-  { file: "apps/web/src/i18n.ts", has: '"card.oo_out"', why: "TODO D296: Settings" },
-  { file: "apps/web/src/i18n.ts", has: '"card.key_bad"', why: "TODO D296: Settings" },
-  { file: "apps/web/src/i18n.ts", has: '"card.empty"', why: "TODO D296: Settings" },
-  { file: "apps/web/src/views.tsx", has: "loadout.", why: "TODO D296: Settings (the loadout pane)" },
-  { file: "apps/web/src/views.tsx", has: 'a.accounts.join(" · ")', why: "TODO D296: Settings (the loadout pane)" },
   // A fact saved before D291 kept its sender inside its label: split once on load, never shown.
   { file: "packages/core/src/proactive/ledger.ts", has: 'indexOf(" · ")', why: "splits facts saved before D291" },
   // The partner's own Markdown list (model-written) as plain text: a marker at a line's start, one item per line.

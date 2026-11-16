@@ -302,6 +302,7 @@ func (a *App) sourceCard(c *ui.Context, cv protocol.ConnectionView) {
 		}
 		a.connActions(c, cv, name)
 	})
+	a.saidLine(c, "watch:"+cv.ID) // D296
 }
 
 // connLine is where what a source reads passes (D192): worded by the apps
@@ -470,11 +471,25 @@ func (a *App) serviceRows(c *ui.Context, cv protocol.ConnectionView) {
 		state, ink := a.serviceState(cv, w)
 		sw := kindOf(w.Service) != "other" && !w.Excluded && !sourceDown(cv)
 		control := func() {
-			ui.Text(c, state).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine()
+			// D296: the word only where the row differs from what the
+			// group's first row already says (its switch says the rest).
+			if state != "" {
+				ui.Text(c, state).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine()
+			}
 			if sw {
 				v := w.Watch
-				if a.switchControl(c, "watch:"+cv.ID+"|"+k, title+" · "+a.L.T("tile.watch"), &v) {
+				if a.switchControl(c, "watch:"+cv.ID+"|"+k, title+", "+a.L.T("tile.watch"), &v) {
 					a.send(protocol.AppWatchSet{T: "app_watch", ID: cv.ID, Service: w.Service, Account: w.Account, Watch: &v})
+					// D296: the switch moved; the partner says what that means, once.
+					what := title
+					if w.Account != "" {
+						what = w.Account
+					}
+					if v {
+						a.say("watch:"+cv.ID, a.L.T("said.watch.on", what))
+					} else {
+						a.say("watch:"+cv.ID, a.L.T("said.watch.off", what))
+					}
 				}
 			}
 		}
@@ -492,16 +507,26 @@ func (a *App) serviceRows(c *ui.Context, cv protocol.ConnectionView) {
 }
 
 // serviceState is whether Ducter reads a service, as one state word in its
-// ink: 自己留意着 (done) · 你问起来才看 · 不看 · 连不上 (failed).
+// ink: 自己留意着 (done), 你问起来才看, 不看, 连不上 (failed). D296: a
+// service that reads the way its group's first row says (在留意: watching;
+// 你问起来才去看: asked) says nothing, so the page names only the
+// exceptions; 不看 and 连不上 always speak.
 func (a *App) serviceState(cv protocol.ConnectionView, w protocol.AppWatch) (string, ui.Color) {
 	t := a.T
+	watching := cv.Look != nil && cv.Look.Watching && !cv.Look.Paused
 	switch {
 	case w.Excluded:
 		return a.L.T("svc.excluded"), t.InkMuted
 	case w.Unreachable || sourceDown(cv):
 		return a.L.T("card.unreachable"), t.Failed.Ink
 	case kindOf(w.Service) != "other" && w.Watch:
+		if watching {
+			return "", t.Done.Ink
+		}
 		return a.L.T("svc.watching"), t.Done.Ink
+	}
+	if !watching {
+		return "", t.InkMuted
 	}
 	return a.L.T("svc.asked"), t.InkMuted
 }

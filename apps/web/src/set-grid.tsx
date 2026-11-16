@@ -5,6 +5,7 @@
 // destructive action is quiet until hovered and asks in place (GConfirm). The Mac's settings_rows.go.
 // Layout only: every control is a shared one (controls.tsx).
 import type { ComponentChildren } from "preact";
+import { useEffect, useState } from "preact/hooks";
 import { Btn, DangerButton } from "./controls.tsx";
 
 /** One raised group whose first row is the thing itself. */
@@ -89,4 +90,44 @@ export function Tag(p: { text: string }) {
 /** A section's header on the text edge. */
 export function SecHead(p: { title: string }) {
   return <h3 class="g-sec">{p.title}</h3>;
+}
+
+// ---------- D296: the partner's one word after a change ----------
+
+const SAID_MS = 4000;
+const saidWords = new Map<string, { text: string; at: number }>();
+const saidListeners = new Set<() => void>();
+
+/** Keep the partner's word for a change you made, for <Said> to show. The Mac's `say`. */
+export function say(key: string, text: string) {
+  saidWords.set(key, { text, at: Date.now() });
+  for (const f of saidListeners) f();
+}
+
+/**
+ * The partner's one word after a change (D296): a small clay pebble pops in on the done ink, then the
+ * line in its voice, on the text edge; it settles away by itself. Never a toast, never what a switch
+ * already shows. The Mac's `saidLine`.
+ */
+export function Said(p: { k: string }) {
+  const [, bump] = useState(0);
+  useEffect(() => {
+    const f = () => bump((n) => n + 1);
+    saidListeners.add(f);
+    return () => void saidListeners.delete(f);
+  }, []);
+  const w = saidWords.get(p.k);
+  const left = w ? SAID_MS - (Date.now() - w.at) : 0;
+  useEffect(() => {
+    if (left <= 0) return;
+    const h = setTimeout(() => bump((n) => n + 1), left);
+    return () => clearTimeout(h);
+  }, [w?.at]);
+  if (!w || left <= 0) return null;
+  return (
+    <div class="said" role="status" key={w.at}>
+      <span class="said-dot" aria-hidden="true" />
+      <span>{w.text}</span>
+    </div>
+  );
 }

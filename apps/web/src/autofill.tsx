@@ -73,7 +73,7 @@ function CardForm({ item, done }: { item?: SavedView; done: () => void }) {
   const save = () => m && A.savedPut({ kind: "card", ...(item ? { id: item.id } : {}), name, ...(num ? { number: num } : {}), expMonth: Number(m[1]), expYear: Number(m[2]) }, done);
   return (
     <div class="acct-form af-form">
-      <Field id="af-num" label={t("af.card.number")} value={num} onInput={setNum} mode="numeric" auto="off" placeholder={item ? `•••• ${item.last4} · ${t("af.keep")}` : "4242 4242 4242 4242"} />
+      <Field id="af-num" label={t("af.card.number")} value={num} onInput={setNum} mode="numeric" auto="off" placeholder={item ? t("af.keep.with", `•••• ${item.last4}`) : "4242 4242 4242 4242"} />
       <div class="af-pair">
         <Field id="af-exp" label={t("af.card.exp")} value={exp} onInput={setExp} mode="numeric" placeholder="08/29" wrong={!!exp && !m} />
         <Field id="af-name" label={t("af.card.name")} value={name} onInput={setName} />
@@ -102,7 +102,7 @@ function KeyForm({ item, done }: { item?: KeyView; done: () => void }) {
     <div class="acct-form af-form">
       <Field id="af-key-name" label={t("af.key.name")} value={name} onInput={setName} placeholder={t("af.key.name.eg")} />
       <Field id="af-key-env" label={t("af.key.env")} value={env} onInput={(v) => setEnv(v.toUpperCase().replace(/[^A-Z0-9_]/g, "_"))} placeholder="DO_TOKEN" wrong={!!env && !envOk} />
-      <Field id="af-key-value" label={t("af.key.value")} value={value} onInput={setValue} type="password" auto="off" placeholder={item ? `${item.hint ?? t("af.key.kept")} · ${t("af.keep")}` : ""} />
+      <Field id="af-key-value" label={t("af.key.value")} value={value} onInput={setValue} type="password" auto="off" placeholder={item ? t("af.keep.with", item.hint ?? t("af.key.kept")) : ""} />
       <AfError />
       <div class="row">
         {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.name} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.name} onClick={() => setSure(true)} />)}
@@ -148,7 +148,7 @@ function DetailsForm({ details, done }: { details: DetailView[]; done: () => voi
         const priv = DETAIL_CLASS[k] === "fill";
         return (
           <div key={k}>
-            <Field id={`af-${k}`} label={t(`af.d.${k}`)} value={vals[k] ?? ""} onInput={(v) => setVals({ ...vals, [k]: v })} mode={k === "email" ? "email" : k === "phone" ? "tel" : "text"} placeholder={priv && d?.kept && !cleared.has(k) ? `${d.hint ?? "••••"} · ${t("af.keep")}` : t(`af.d.${k}.eg`)} />
+            <Field id={`af-${k}`} label={t(`af.d.${k}`)} value={vals[k] ?? ""} onInput={(v) => setVals({ ...vals, [k]: v })} mode={k === "email" ? "email" : k === "phone" ? "tel" : "text"} placeholder={priv && d?.kept && !cleared.has(k) ? t("af.keep.with", d.hint ?? "••••") : t(`af.d.${k}.eg`)} />
             {priv && d?.kept && !cleared.has(k) && (
               <button type="button" class="qlink af-clear" onClick={() => setCleared(new Set([...cleared, k]))}>
                 {t("af.d.clear")}
@@ -181,12 +181,13 @@ function AfError() {
 
 const usedLine = (x: { usedAt?: string }) => (x.usedAt ? t("af.used", ago(A.L, x.usedAt)) : t("af.unused"));
 
-function useLine(u: SavedUse): string {
+/** A use's line and, apart, its site (D291, D296: each fact its own element, as on the Mac). */
+function useLine(u: SavedUse): [string, string] {
   // D233: a key has no site; it was given to the task named under it, or refused.
-  if (u.what === "given") return t(u.once ? "af.use.given.once" : "af.use.given", u.label);
-  if (u.what === "refused") return t("af.use.refused", u.label);
+  if (u.what === "given") return [t(u.once ? "af.use.given.once" : "af.use.given", u.label), ""];
+  if (u.what === "refused") return [t("af.use.refused", u.label), ""];
   const what = u.what === "approved" ? t("af.use.approved", u.amount ?? "", u.label) : u.what === "declined" ? t("af.use.declined", u.label) : u.what === "ok" ? t("af.use.ok", u.label) : t("af.use.filled", u.label);
-  return `${what} · ${u.site}`;
+  return [what, u.site ?? ""];
 }
 
 /** The Autofill page. */
@@ -221,10 +222,9 @@ export function AutofillSettings() {
                 </span>
                 <span class="grow">
                   <b>{x.label}</b>
-                  <small>
-                    {x.username} · {usedLine(x)}
-                  </small>
+                  <small>{x.username}</small>
                 </span>
+                <span class="g-state">{usedLine(x)}</span>
                 <span class="af-dots" aria-hidden="true">
                   ••••••
                 </span>
@@ -266,10 +266,9 @@ export function AutofillSettings() {
                 </span>
                 <span class="grow">
                   <b>{x.label}</b>
-                  <small>
-                    {x.name} · {x.exp} · {usedLine(x)}
-                  </small>
+                  <small>{t("af.card.line", x.name, x.exp)}</small>
                 </span>
+                <span class="g-state">{usedLine(x)}</span>
               </button>
             ),
           )}
@@ -309,8 +308,9 @@ export function AutofillSettings() {
                 </svg>
               </span>
               <span class="grow">
-                <b>{kept.length ? kept.filter((d) => d.value).slice(0, 3).map((d) => d.value).join(" · ") || t("af.d.kept", kept.length) : t("af.d.add")}</b>
-                <small>{kept.length ? kept.filter((d) => !d.value).map((d) => t(`af.d.${d.key}`)).join(" · ") || t("af.d.edit") : t("af.d.why")}</small>
+                {/* D296: a list said as one, never facts joined with " · " (the Mac's afRow). */}
+                <b>{kept.length ? kept.filter((d) => d.value).slice(0, 3).map((d) => d.value).join(t("acct.sep")) || t("af.d.kept", kept.length) : t("af.d.add")}</b>
+                <small>{kept.length ? (kept.some((d) => !d.value) ? t("af.d.also", kept.filter((d) => !d.value).map((d) => t(`af.d.${d.key}`)).join(t("acct.sep"))) : t("af.d.edit")) : t("af.d.why")}</small>
               </span>
             </button>
           )}
@@ -334,9 +334,10 @@ export function AutofillSettings() {
                 <span class="grow">
                   <b>{x.name}</b>
                   <small>
-                    <code class="af-env">{x.env}</code> · {usedLine(x)}
+                    <code class="af-env">{x.env}</code>
                   </small>
                 </span>
+                <span class="g-state">{usedLine(x)}</span>
                 <span class="af-dots" aria-hidden="true">
                   {x.hint ?? t("af.key.kept")}
                 </span>
@@ -370,7 +371,8 @@ export function AutofillSettings() {
             {f.uses.slice(0, 30).map((u, i) => (
               <li key={i} class={u.what === "declined" ? "no" : undefined}>
                 <span class="grow">
-                  {useLine(u)}
+                  {useLine(u)[0]}
+                  {useLine(u)[1] && <small>{useLine(u)[1]}</small>}
                   {u.task && <small>{t("af.use.task", u.task)}</small>}
                 </span>
                 <time dateTime={u.at}>{ago(A.L, u.at)}</time>

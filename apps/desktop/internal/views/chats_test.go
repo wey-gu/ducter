@@ -32,7 +32,7 @@ func TestChatsPanel(t *testing.T) {
 		{Kind: "telegram", State: "linked", Bot: &protocol.ChannelBot{Name: "Ducter", Handle: "my_ducter_bot"}, Linked: &protocol.ChannelLinked{Name: "Wey", At: at}},
 		{Kind: "slack", State: "off"},
 	})
-	for _, want := range []string{"Chat apps", "Connected · @my_ducter_bot", "Linked to Wey", "Telegram keeps a copy of your chats.", "This workspace's admins may be able to see what's said here.", "Copy the app manifest", "View", "Unlink", "Disconnect Telegram"} {
+	for _, want := range []string{"Chat apps", "Waiting for you at @my_ducter_bot", "Linked to Wey", "Telegram keeps a copy of your chats.", "This workspace's admins may be able to see what's said here.", "Copy the app manifest", "View", "Unlink", "Disconnect Telegram"} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}

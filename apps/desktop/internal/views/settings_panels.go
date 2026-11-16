@@ -247,7 +247,7 @@ func (a *App) runPanel(c *ui.Context) {
 	})
 	a.dataGroup(c)
 	a.group(c, "devices", "", "", func() {
-		if a.linkRow(c, "devices", a.L.T("settings.devices.link"), a.L.T("settings.devices.link.help"), false) {
+		if a.tileLinkRow(c, "devices", a.clayTile(c, "laptop_awake", false), a.L.T("settings.devices.link"), a.L.T("settings.devices.link.help"), false) {
 			a.OpenDevices()
 		}
 	})
@@ -257,23 +257,9 @@ func (a *App) runPanel(c *ui.Context) {
 // placeRow is the computer Ducter lives on: its clay, its name, and in
 // words what happens when the window closes.
 func (a *App) placeRow(c *ui.Context, art, place, line string) {
-	t := a.T
-	a.sep(c)
-	ui.Row(c.Key("place")).Gap(t.S4).Padding(t.S4, t.S5).AlignItems(ui.Center).Children(func() {
-		if bmp := theme.Clay(art); bmp != nil {
-			iw, ih := ui.ImageSize(bmp)
-			w := float32(72)
-			h := w
-			if iw > 0 {
-				h = w * ih / iw
-			}
-			ui.Image(c, bmp).Size(w, h).Shrink(0).AccessHidden(true)
-		}
-		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, place).Font(t.Display).FontSize(t.LG).FontWeight(800)
-			ui.Text(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
-		})
-	})
+	// D296: the group's first row like every other one (D289): its clay
+	// small in the tile column, the name 18/800, one line.
+	a.headRow(c, "place", a.clayTile(c, art, false), place, line, sideMuted, nil)
 }
 
 // askStopHereCard: the app now uses a Ducter on another computer; asked
@@ -441,13 +427,13 @@ func (a *App) removeEntry(c *ui.Context) {
 				if len(p.Remove) > 0 {
 					ui.Text(c, a.L.T("remove.removes")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
 					for _, it := range p.Remove {
-						ui.Text(c.Key("rmi:"+it.Path), it.What+"  "+tildeHome(it.Path)).FontSize(t.SM).MaxLines(2).Selectable()
+						a.planLine(c, "rmi:"+it.Path, it.What, tildeHome(it.Path), true)
 					}
 				}
 				if len(p.Keep) > 0 {
 					ui.Text(c, a.L.T("remove.keeps")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
 					for _, k := range p.Keep {
-						ui.Text(c.Key("rmk:"+k.What), k.What+" · "+tildeHome(k.Detail)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(2)
+						a.planLine(c, "rmk:"+k.What, k.What, tildeHome(k.Detail), false)
 					}
 				}
 			}
@@ -472,6 +458,21 @@ func (a *App) removeEntry(c *ui.Context) {
 				a.uninstall(rm)
 			}
 		})
+	})
+}
+
+// planLine is one thing a removal takes or leaves (D296): what it is, and
+// where, each its own element, never joined with " · ".
+func (a *App) planLine(c *ui.Context, key, what, where string, path bool) {
+	t := a.T
+	ui.Column(c.Key(key)).Gap(1).Children(func() {
+		ui.Text(c, what).FontSize(t.SM).FontWeight(600).MaxLines(2)
+		if where != "" {
+			w := ui.Text(c, where).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2).Selectable()
+			if path {
+				w.Font(t.Mono)
+			}
+		}
 	})
 }
 

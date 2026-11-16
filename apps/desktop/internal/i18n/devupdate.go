@@ -65,7 +65,11 @@ var zhDevup = Table{
 	"settings.versions.title":        "各台电脑上的 Ducter",
 	"settings.versions.note":         "%s 和替它做事的电脑，各自是什么版本。",
 	"settings.versions.night":        "自动更新",
-	"settings.versions.night.note":   "在免打扰时段里（没设就是夜里 3 点到 5 点）、没有事在做的时候，按同样的顺序更新；AI 只更新到 Ducter 验证过的版本。",
+	"settings.versions.night.note":   "在免打扰时段里、没有事在做的时候，一台一台地更新；AI agent 只更新到验证过的版本。",
+	"settings.versions.home":         "%s 住在这儿",
+	"settings.versions.worker":       "替 %s 做事",
+	"settings.versions.current":      "%s看过，已经是最新的",
+	"settings.versions.current.now":  "刚看过，已经是最新的",
 }
 
 var enDevup = Table{
@@ -131,7 +135,11 @@ var enDevup = Table{
 	"settings.versions.title":        "Ducter on each computer",
 	"settings.versions.note":         "Which version %s and the computers that do tasks for it run.",
 	"settings.versions.night":        "Update automatically",
-	"settings.versions.night.note":   "In quiet hours (3–5 am if none are set), when nothing is running, in the same order; AI agents only to versions Ducter has checked.",
+	"settings.versions.night.note":   "In quiet hours, when nothing is running, one computer at a time; AI agents only to versions Ducter has checked.",
+	"settings.versions.home":         "Where %s lives",
+	"settings.versions.worker":       "Does tasks for %s",
+	"settings.versions.current":      "Up to date, checked %s",
+	"settings.versions.current.now":  "Up to date, checked just now",
 }
 
 func init() {

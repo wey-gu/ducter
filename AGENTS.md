@@ -82,6 +82,7 @@ Design notes:
 - `on-hand.md`: 手头的事 / On hand, the conductor surface: projects as a lens, the strip, the folds (D261).
 - `past.md`: 做过的事 / Past tasks and 一直在跑的 / Ongoing: finding, marking, continuing, pausing (D285).
 - `imessage.md`: the partner in iMessage through the Mac app: chat.db, AppleScript, identity, pairing (D277).
+- `settings.md`: Settings pane by pane: who is in each, the flows walked, the shared pieces and the partner's word after a change (D296).
 - `channels.md`: 聊天软件 / Chat apps, the partner in the person's own Telegram bot and Slack app as more windows on the one conversation (D276).
 - `product-model.md`: see above.
 

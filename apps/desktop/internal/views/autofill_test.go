@@ -60,7 +60,7 @@ func autofillApp(t *testing.T, lang i18n.Lang, h int) (*App, *[]any, *ui.Tester)
 
 func TestAutofillPanel(t *testing.T) {
 	_, sent, tt := autofillApp(t, i18n.EN, 1500)
-	for _, want := range []string{"Autofill", "Sign-ins", "booking.com", "Visa ••4242", "Your details", "Where it was used", "You said Go to JPY 38,400 · Visa ••4242", "ryokan-kurashiki.jp"} {
+	for _, want := range []string{"Autofill", "Sign-ins", "booking.com", "Visa ••4242", "Your details", "Where it was used", "You said Go to JPY 38,400, on Visa ••4242", "ryokan-kurashiki.jp"} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
@@ -95,7 +95,7 @@ func TestPayCardSendsTheCodeWithGo(t *testing.T) {
 		ui.Column(c).Padding(24).Gap(12).Children(func() { a := app; a.payButtons(c, sd, decisionStyle{height: a.T.ControlMD, quietBg: a.T.Surface}) })
 	}, 520, 520, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	for _, want := range []string{"JPY 38,400", "ryokan-kurashiki.jp · First payment here", "Visa ••4242", "Security code of the card ending 4242"} {
+	for _, want := range []string{"JPY 38,400", "ryokan-kurashiki.jp", "First payment here", "Visa ••4242", "Security code of the card ending 4242"} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}

@@ -77,7 +77,7 @@ func TestFailedSaysWhyOnTapAndNeverOnTheTarget(t *testing.T) {
 	if tt.HasText(why) {
 		t.Fatal("the why shows before the tap")
 	}
-	if err := tt.Click(line + " · hel"); err != nil {
+	if err := tt.Click(line + ", hel"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

@@ -91,7 +91,10 @@ Under **What it can read**, each place your accounts come from (oo, OOMOL, your 
 OpenConnector, another service) is one group. Its first row is the place: a small mailbox, its
 name and one line that says how it is (**Keeping an eye out**, **Paused**, **Reads only when you
 ask**, or what went wrong and how to fix it). Then one row for each app and account it can read,
-saying whether Ducter reads it (**Watching**, **Only when you ask**, **Not read**), with a switch:
+with a switch. A row only says how Ducter reads it when that differs from the place's own line: under
+**Keeping an eye out**, a row with its switch off says **Only when you ask**; a row Ducter doesn't
+read says **Not read**. When you flip a switch, your partner says in one short line what that
+means, and the line goes away by itself.
 
 - **Watch on its own** (the switch): on, Ducter looks at this app by itself (once you said yes,
   below). For Discord and Slack it looks only at @-mentions and direct messages.

@@ -101,7 +101,7 @@ func TestUpdateAllRunningAndFinished(t *testing.T) {
 	if tt.HasText(why) {
 		t.Error("the why shows before the tap")
 	}
-	if err := tt.Click("没能更新，已换回 0.0.30 · hel 上的 Ducter"); err != nil {
+	if err := tt.Click("没能更新，已换回 0.0.30, hel 上的 Ducter"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

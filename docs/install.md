@@ -380,7 +380,7 @@ version with a quiet **Updated to 0.2.0**. Your tasks carry on.
 ### Updating a server, and the computers that do tasks for Ducter
 
 Every device's card under **Your devices** shows its version. When it's the newest, the card says
-so with when Ducter last looked (**Up to date · checked 3 h ago**) and a quiet **Check now**; Ducter
+so with when Ducter last looked (**Up to date, checked 3 h ago**) and a quiet **Check now**; Ducter
 looks every hour, and again whenever you open the page. When a newer one is out, the list
 says **Update available** by its name and the card says **Update to 0.0.4**, with a line or two of what's
 new in your language and one **Update** button. Nothing pops up and nothing nags. On the phone it's the same,

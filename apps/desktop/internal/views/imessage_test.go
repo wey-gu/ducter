@@ -85,7 +85,7 @@ func TestIMessageStatesInWords(t *testing.T) {
 	}
 	br.set(imessage.Status{State: imessage.StateOn, Mode: imessage.ModePartner, Handle: "+8613800000000", Automation: true, Disk: true, Stranger: time.Now()})
 	tt.Frame()
-	if !tt.HasText("Connected · +8613800000000") || !tt.HasText("Someone else wrote to 小鸭 in iMessage. It didn't answer, and kept nothing of theirs.") {
+	if !tt.HasText("Waiting for you at +8613800000000") || !tt.HasText("Someone else wrote to 小鸭 in iMessage. It didn't answer, and kept nothing of theirs.") {
 		t.Fatalf("on: %q", tt.Texts())
 	}
 	br.set(imessage.Status{State: imessage.StateOwnID, Mode: imessage.ModePartner, Handle: "+8613800000000", Automation: true, Disk: true})

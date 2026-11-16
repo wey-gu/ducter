@@ -19,10 +19,10 @@ func TestUpToDateSaysWhenItChecked(t *testing.T) {
 		ago       time.Duration
 		line, btn string
 	}{
-		// D291: two facts, each its own text.
-		{i18n.ZH, 3 * time.Hour, "已经是最新的\n3 小时前检查过", "检查更新"},
-		{i18n.EN, 3 * time.Hour, "Up to date\nChecked 3 h ago", "Check now"},
-		{i18n.ZH, 20 * time.Second, "已经是最新的\n刚检查过", "检查更新"},
+		// D296: one phrase in the partner's words (D291 allows one natural phrase).
+		{i18n.ZH, 3 * time.Hour, "3 小时前看过，已经是最新的", "检查更新"},
+		{i18n.EN, 3 * time.Hour, "Up to date, checked 3 h ago", "Check now"},
+		{i18n.ZH, 20 * time.Second, "刚看过，已经是最新的", "检查更新"},
 	} {
 		app, sent := iaApp(t, tc.lang)
 		at := time.Now().Add(-tc.ago).UTC().Format(time.RFC3339)

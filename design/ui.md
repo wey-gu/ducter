@@ -471,7 +471,8 @@ A new control is added to the set (and to this table) before it is used.
 | A group's add row: a drawn ＋ in the tile column, title, one line (D273) | `addRow` (`settings_rows.go`) | `AddRow` |
 | A destructive action before it is confirmed (停用 OOMOL, 断开 Tuwa, 断开 Telegram; D289): quiet text, the failed ink only under the pointer; it asks in place, and the confirmation is `dangerText` | `quietDanger` (`settings_rows.go`; the ask is `confirmRow`) | `DangerButton` with `quiet` |
 | A row that opens more under it, a switch apart at its right edge (a source's service, a setup's step; D289) | `openRow` (`settings_rows.go`) | `OpenRow` |
-| The one switch alone at a row's right edge, its words the row's own (Memory's head row; D295) | `switchControl` inside the row's control | `Switch` |
+| A row that goes elsewhere with its tile in the tile column (AI accounts → Devices with the agents' coins; D296) | `tileLinkRow` (`settings_rows.go`) | the phone's Settings list rows |
+| The one switch alone at a row's right edge, its words the row's own (Memory's head row, D295; 用我的声音打, D296) | `switchControl` inside the row's control | `Switch` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
 
@@ -532,8 +533,11 @@ you, each with Go / Hold / Reply…, then Open Ducter.
 with a hairline) of chunky clay tabs, 56 tall, radius 16: each the clay thing it is about at 40
 (the partner's face; `wait_clock`; `wait_mail`; Pebble's paper, accent and ink as three clay
 pebbles; `mini_awake`; an arrow up on an accent pebble) and its name 15/700. The tab shown is a
-white surface on the card's 4pt base in ink 800; the others lie flat in soft ink, tinted and on a
-2pt base under the pointer, and sink while pressed. The build number sits at the rail's foot in
+white surface on the card's 4pt base in ink 800 (D296: the knob, its own piece under the tabs,
+sliding from the tab left to the tab shown on `Nav.Across`, as the places' knob does, D290); the
+others lie flat in soft ink, tinted and on a 2pt base under the pointer, and sink while pressed.
+A pane comes in with a short rise (12) from the side the knob came from: down the rail from
+below, up the rail from above (`paneEnter`); from another place, the route's own entrance. The build number sits at the rail's foot in
 12 muted. On the right one section at a time (max 820, centered): **伙伴 / Partner** · **通知 /
 Notifications** · **账号 / Accounts** · **外观和声音 / Look and sound** · **在哪儿运行 / Where it
 runs** · **更新和关于 / Updates and about**. Deep links land on their tab: ⌘4 and the partner's face
@@ -555,7 +559,15 @@ One vocabulary on every tab:
   inside a group. **Accounts** (D289): 发现了就说 as a section; under 它能看的 one group per
   source (the connection, a row per app and account with whether Ducter reads it and its switch,
   the add row, the last line); 再连一个账号服务 as an add row; under 打电话 Tuwa, its offer and
-  用你自己的号码打 as groups in the same flow; the AI accounts row last.
+  用你自己的号码打 as groups in the same flow; the AI accounts row last (D296: the agents' three
+  coins in the tile column, the title **AI 账号 / AI accounts**, where they sign in as its line).
+  A service row says its state only where it differs from its source's first row (D296,
+  `settings.md`): the switch says the rest.
+- **The partner's word after a change (D296, `saidLine` / `Said`):** where a change has a
+  consequence the control doesn't show (quiet hours, the default wait, a service's watch
+  switch), one line in the partner's voice under the group on the text edge: a 12 clay pebble on
+  the done ink popping in on Bouncy's spring, the line in the soft ink rising 4; gone after 4 s;
+  never a toast. `settings.md` has the words.
 - **Groups:** the header on the paper, then a white card (radius 24, the 4pt clay base) of rows.
   A row is 68 high at least, padded 16 × 24, its label and one-line helper on the left and the
   control at the right end: a switch, a segmented control, a small secondary button, or a ›
@@ -565,7 +577,7 @@ One vocabulary on every tab:
   text button (Cancel, Add one with an address and key) at the left of the same line. Remove
   Ducter is a quiet text button after the last group, never centered.
 - **Partner:** one calm clay header (the partner at 112, its name 34 with Rename, one line "住在
-  hel 上 · 用 Codex 想事情"), then the tray titled **{device} 上的 AI agent**, What it thinks with
+  hel 上，用 Codex 想事情"; with a model, "用 Claude Code 的 Opus 想事情", D296), then the tray titled **{device} 上的 AI agent**, What it thinks with
   (the clay well holding the token; the token flies into it on Switch), Who does the tasks, How it
   talks, On its own or asks you first (two lists side by side in one card). Single column; the faces strip is gone.
 - **Memory** (D257; D295 on D289's grid; its mark the partner's own blue notebook, drawn in clay from `--notebook-*` / `Tokens.Notebook`):

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.54
+
+<!-- whats-new
+zh: 回过的提醒不再让 Ducter 变安静
+en: Replying to a heads-up no longer makes Ducter quieter
+zh: 早上那条变好了，选过「只说急的」的会再问你一次
+en: The morning note got better; if you chose "only urgent", it asks once more
+-->
+
+**Heads-ups**
+- Replying to something Ducter noticed (or answering it with a message) now counts as engaging, not
+  as "not now", so that kind no longer goes quiet. What it had learned is relearned once from your
+  own Go and Not now.
+- If you chose 只说急的 / Only urgent before the morning note could see trips, maintenance and
+  billing, Ducter offers the morning note back once, the next time you write.
+
+**Your other AI agents**
+- A request from one of your agents that Nowledge Mem doesn't name reads 你的另一个 AI / your other
+  AI agent.
+
 ## 0.0.53
 
 <!-- whats-new

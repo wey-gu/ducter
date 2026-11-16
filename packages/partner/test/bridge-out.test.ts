@@ -879,3 +879,10 @@ describe("D205: connected in Settings › 伙伴, and 谁都不行", () => {
     expect(ins.map((b) => [b.messageId, b.state ?? "read"])).toEqual([["bm-1", "muted"], ["bm-a", "read"]]);
   });
 });
+
+describe("memberOf: the user's own member in passive setup", () => {
+  test("nmem 0.10.119 reports it as endpoint.address.custodian_id", async () => {
+    const { memberOf } = await import("../src/bridge.ts");
+    expect(memberOf({ state: "enable_needed", endpoint: { address: { custodian_id: "m-9", agent_id: "ducter" } } })).toEqual({ id: "m-9" });
+  });
+});

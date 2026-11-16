@@ -1,7 +1,7 @@
 // D250: a home that said 不再需要 to the morning note before the notes got better (NOTES_REV) hears
 // it offered back once, in the partner's own voice, the next time the person writes; no answer
 // keeps 只说急的; either answer is a choice (never offered again). A mode the person chose in
-// Settings is never re-offered.
+// Settings is never re-offered. D258: neither is one set before D250 left out any more.
 import { afterEach, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -81,11 +81,13 @@ test("no answer keeps 只说急的; 不用 is a choice too, and nothing is offer
   expect(r.notes().filter((e) => e.body.ask === "note_again" && !e.body.revises)).toHaveLength(1);
 });
 
-test("只说急的 chosen in Settings (or before D250 without 不再需要): never offered back", async () => {
+test("D258: 只说急的 set before D250 (no 不再需要, no proactiveBy) hears it once too; chosen in Settings never", async () => {
   const legacy = await before(false);
   const a = make({ dir: legacy });
   await say(a, "帮我看看日程");
-  expect(a.notes().filter((e) => e.body.ask === "note_again")).toHaveLength(0);
+  expect(a.notes().filter((e) => e.body.ask === "note_again")).toHaveLength(1);
+  await say(a, "还有呢");
+  expect(a.notes().filter((e) => e.body.ask === "note_again")).toHaveLength(1);
 
   const b = make({ mode: "urgent" });
   expect(b.settings.get().proactiveBy).toBe("chosen");

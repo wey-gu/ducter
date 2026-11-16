@@ -12,6 +12,7 @@
 // Without --real it runs only read-only checks (`--version`, `bridge connections list`, passive
 // `bridge setup`) and prints the commands it would run.
 //
+//   --share-mailbox: run even when another home (hel) is connected as the same identity (D258)
 //   options: --context NAME (persona, default ducter: the persona's own context, D171) · --peer-context NAME (default terminal-test)
 //            --peer-config-dir DIR (NMEM_CLI_CONFIG_DIR for the terminal side, if it needs its own)
 //            --model haiku · --peer-model haiku · --only s1,s2,s3,x1,j6 · --out DIR
@@ -142,6 +143,14 @@ async function preflightConnected(): Promise<boolean> {
   const l = await nm(["bridge", "connections", "list", "--space-id", space, "--agent-id", PERSONA_AGENT]);
   const conn = (Array.isArray(l.j?.connections) ? l.j.connections : []).find((c: any) => c?.client_label === CTX && c?.state === "active");
   say(`  ${conn ? "✓" : "✗"} an active connection for ${PERSONA_AGENT} saved as context ${CTX}${conn ? "" : ` (exit ${l.code}${l.j?.error_code ? `, ${l.j.error_code}, HTTP ${l.j.http_status ?? "?"}` : ""})`}`);
+  // D258: another active connection for the same identity is another home (hel) reading this very
+  // mailbox: its Ducter takes the trial's messages into the person's real conversation. Stop.
+  const others = (Array.isArray(l.j?.connections) ? l.j.connections : []).filter((c: any) => c?.state === "active" && c !== conn);
+  if (conn && others.length && !argv.includes("--share-mailbox")) {
+    say(`  ✗ ${others.length} other active connection(s) for ${PERSONA_AGENT}: another home reads this mailbox, so the trial's messages would reach the person's real conversation.`);
+    say(`\nStop that home's Ducter (or 断开 it in Settings › 伙伴) for the trial, or pass --share-mailbox if its messages are expected there.`);
+    return false;
+  }
   // research/66 §3: Mem's Cloud answering 503 cloud_bridge_setup_unavailable for connections (and
   // native session preparation) is Mem's side; the skill says stop, so the trial stops here too.
   if (!conn && /_(unavailable|busy|capacity)$/.test(String(l.j?.error_code ?? ""))) {

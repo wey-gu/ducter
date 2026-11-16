@@ -1154,12 +1154,15 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
 
 /** One quiet line about the user's other agents (D170, J-Q5): who, and what, never Bridge words. */
 export function peerLineText(b: Bodies["bridge_msg"], ts: string, setAside?: number): string {
-  const agent = b.agent ?? b.from ?? b.to ?? "";
-  const who = b.mine ? (A.L.lang === "zh" ? `你的 ${agent}` : `your ${agent}`) : agent;
+  const zh = A.L.lang === "zh";
+  // Mem may not say who sent it (nmem stores "another agent"): one of their own is 你的另一个 AI.
+  const named = [b.agent, b.from, b.to].find((x) => x && x !== "another agent") ?? "";
+  const agent = named || (b.mine ? (zh ? "另一个 AI" : "other AI agent") : zh ? "另一个 AI" : "another AI agent");
+  const who = b.mine ? (zh ? (named ? `你的 ${agent}` : `你的${agent}`) : `your ${agent}`) : agent;
   if (b.direction === "in" && b.state === "set_aside") return t("peer.set_aside", b.mine ? who : agent, String(setAside ?? 1));
   if (b.direction === "in") {
     const gist = b.text.replace(/\s+/g, " ").trim();
-    return t(b.mine ? "peer.in" : "peer.in.other", agent, gist.length > 40 ? gist.slice(0, 39) + "…" : gist);
+    return t(b.mine && named ? "peer.in" : "peer.in.other", b.mine ? who : agent, gist.length > 40 ? gist.slice(0, 39) + "…" : gist);
   }
   void ts;
   return t(b.decisionId ? "peer.sent" : "peer.replied", who);

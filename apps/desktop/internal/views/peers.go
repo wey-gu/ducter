@@ -40,10 +40,23 @@ func peerHarness(agent string) string {
 
 // peerWho is how the user hears of an agent: 你的 <agent> for their own.
 func (a *App) peerWho(agent string, mine bool) string {
+	zh := a.L.Lang == i18n.ZH
+	if agent == "" || agent == "another agent" {
+		// Mem didn't say who sent it: one of their own is 你的另一个 AI.
+		switch {
+		case mine && zh:
+			return "你的另一个 AI"
+		case mine:
+			return "your other AI agent"
+		case zh:
+			return "另一个 AI"
+		}
+		return "another AI agent"
+	}
 	if !mine {
 		return agent
 	}
-	if a.L.Lang == i18n.ZH {
+	if zh {
 		return "你的 " + agent
 	}
 	return "your " + agent
@@ -71,10 +84,10 @@ func (a *App) peerLineText(b *protocol.BridgeMsg) string {
 		if r := []rune(gist); len(r) > 40 {
 			gist = string(r[:39]) + "…"
 		}
-		if b.Mine {
+		if b.Mine && agent != "" && agent != "another agent" {
 			return a.L.T("peer.in", agent, gist)
 		}
-		return a.L.T("peer.in.other", agent, gist)
+		return a.L.T("peer.in.other", a.peerWho(agent, b.Mine), gist)
 	}
 	if b.DecisionID != "" {
 		return a.L.T("peer.sent", a.peerWho(agent, b.Mine))

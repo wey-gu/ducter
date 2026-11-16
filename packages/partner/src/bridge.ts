@@ -136,7 +136,9 @@ export function memberOf(m: any): { id?: string; name?: string } {
   const labelled = typeof o === "string" ? memberIdLabel(o) : undefined;
   const id =
     labelled ?? str(o?.id) ?? str(o?.member_id) ?? str(m?.member_id) ?? str(m?.sender_member_id) ?? str(m?.owner_member_id) ?? str(m?.ownerMemberId) ??
-    str(m?.agent?.ownerMemberId) ?? str(m?.agent?.owner_member_id) ?? str(m?.custodian_member_id) ?? str(m?.custodianMemberId) ?? str(m?.identity?.custodian_id);
+    str(m?.agent?.ownerMemberId) ?? str(m?.agent?.owner_member_id) ?? str(m?.custodian_member_id) ?? str(m?.custodianMemberId) ?? str(m?.identity?.custodian_id) ??
+    // nmem 0.10.119: passive `bridge setup` reports it as `endpoint.address.custodian_id`.
+    str(m?.endpoint?.address?.custodian_id);
   const name = labelled ? str(m?.member_display_name) : ((typeof o === "string" ? o : str(o?.display_name) ?? str(o?.displayName) ?? str(o?.name)) ?? str(m?.member_display_name));
   return { ...(id ? { id } : {}), ...(name ? { name } : {}) };
 }

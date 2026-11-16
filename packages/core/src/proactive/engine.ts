@@ -49,8 +49,12 @@ const UNREAD_TO_PAUSE = 3;
  * D250: how good the notes are, bumped when what they can notice changed materially (1: D243's
  * trips, maintenance, billing and corrections). A home that said 不再需要 to the morning note on
  * an older rev hears it offered back once (note_again); never twice for one rev, never after a choice.
+ * 2 (D258): a find answered by a reply no longer quiets its kind, and a home put on 只说急的
+ * before D250 (no `proactiveBy`: chosen when the notes could notice far less) hears it too.
  */
-export const NOTES_REV = 1;
+export const NOTES_REV = 2;
+/** D258: the rules `bars` were learned under (1: a reply is never a "not now"). */
+export const BARS_REV = 1;
 /** D250: a source's first-look offer gets this long to be answered before the quiet look back goes on its own. */
 export const OFFER_WAIT_MS = 30 * 60_000;
 export const DEFAULT_MONTH_TOKENS = 2_000_000;
@@ -143,6 +147,8 @@ interface State {
   again?: "pending" | "asked";
   /** D250: the mode before 不再需要 (a yes to the re-offer goes back to it). */
   beforeKeep?: ProactiveMode;
+  /** D258: the BARS_REV whose rules learned `bars` (an older one is relearned from the Log once). */
+  barsRev?: number;
   left: Left;
   monthTokens?: number;
   /** D226: today's account for 今天看了什么 (counts only), and a reading problem while it lasts. */
@@ -769,8 +775,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
   // ---------- learning ----------
 
   const bar = (k: FindKind) => st.bars[k] ?? DEFAULT_BAR;
-  function ignored(kind: FindKind) {
-    st.ignored = [...st.ignored.filter((x) => now() - x.at < 14 * DAY), { kind, at: now() }];
+  function ignored(kind: FindKind, at = now()) {
+    st.ignored = [...st.ignored.filter((x) => at - x.at < 14 * DAY), { kind, at }];
     if (st.ignored.filter((x) => x.kind === kind).length >= IGNORED_TO_RAISE) {
       st.bars[kind] = Math.min(BAR_MAX, bar(kind) + BAR_UP);
       st.ignored = st.ignored.filter((x) => x.kind !== kind);
@@ -822,6 +828,12 @@ export function createProactive(o: ProactiveOptions): Proactive {
         welcomed(f.kind);
         save();
         void Promise.resolve().then(() => follow(findId, f));
+      } else if (r.option === "reply") {
+        // D258: a reply (or a message that answered the card) is the person engaging, never a
+        // "not now": the find is done with and the bar learns nothing from it.
+        f.state = "passed";
+        save();
+        o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "passed" } });
       } else {
         f.state = "held";
         ignored(f.kind);
@@ -849,17 +861,31 @@ export function createProactive(o: ProactiveOptions): Proactive {
   const unsubscribe = o.log.subscribe(onEvent);
 
   /** D250: they said 不再需要 to the morning note (now, or before the source was kept) and chose nothing since. */
-  function saidNoMoreInLog(): boolean {
-    return o.log.read({ stream: "channel", kinds: ["finds"], limit: 2000 }).some((e) => {
-      const b = e.body as Bodies["finds"];
-      return b.ask === "keep_note" && b.answered === "no";
-    });
-  }
   function stillNoMore(): boolean {
     if (mode() !== "urgent") return false;
     const by = modeBy();
-    return by === "keep_note" || (by === undefined && saidNoMoreInLog());
+    // D258: undefined is a 只说急的 set before D250, when the morning note couldn't see a flight.
+    return by === "keep_note" || by === undefined;
   }
+  // D258: bars learned before BARS_REV counted a reply as "not now". Relearned once from the Log:
+  // only the person's own Go and Not now on a find move a bar; a find held by a reply is passed.
+  if ((st.barsRev ?? 0) < BARS_REV) {
+    const byId = new Map(Object.entries(st.finds).filter(([, f]) => f.decisionId).map(([id, f]) => [f.decisionId!, { id, f }]));
+    st.bars = {};
+    st.ignored = [];
+    for (const e of o.log.read({ stream: "channel", kinds: ["decision_resolved"], limit: 5000 })) {
+      const r = e.body as Bodies["decision_resolved"];
+      const hit = byId.get(r.decisionId);
+      if (!hit || r.by === "default") continue;
+      if (r.option === "go") welcomed(hit.f.kind);
+      else if (r.option === "hold") ignored(hit.f.kind, Date.parse(e.ts));
+      else if (hit.f.state === "held") hit.f.state = "passed";
+    }
+    st.ignored = st.ignored.filter((x) => now() - x.at < 14 * DAY);
+    st.barsRev = BARS_REV;
+    save();
+  }
+
   // D250: the notes got better since they said 不再需要: offered back once, when they next write.
   if ((st.notesRev ?? 0) < NOTES_REV) {
     if (stillNoMore()) st.again = "pending";

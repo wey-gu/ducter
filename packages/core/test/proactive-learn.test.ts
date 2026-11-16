@@ -104,3 +104,46 @@ test("at the month's budget it drops to 只说急的 and says so once", async ()
   expect(r.notes().filter((e) => e.body.rung === "morning").flatMap((e) => e.body.finds).every((f) => urgentKinds.has(f.kind))).toBe(true);
   expect(r.p.look("conn_oo")!.budgetPct).toBe(100);
 });
+
+test("D258: a reply to a find (or a message that answered it) never quiets its kind", async () => {
+  const r = make({ mode: "useful" });
+  const n = await firstMorning(r);
+  const st = () => JSON.parse(require("node:fs").readFileSync(require("node:path").join(r.dir, "proactive.json"), "utf8")) as { bars: Record<string, number>; ignored: unknown[] };
+  for (const f of n.finds.filter((x) => x.decisionId)) r.decisions.decide(f.decisionId!, "reply", "这个我回过了");
+  await r.settle();
+  expect(r.states().filter((s) => s.state === "held")).toHaveLength(0);
+  expect(r.states().filter((s) => s.state === "passed").length).toBeGreaterThan(0);
+  expect(st().ignored).toHaveLength(0);
+  expect(Object.values(st().bars).every((b) => b <= 50)).toBe(true);
+});
+
+test("D258: bars learned before BARS_REV are relearned once from the Log: only Go and Not now count", async () => {
+  const fs = require("node:fs") as typeof import("node:fs");
+  const path = require("node:path") as typeof import("node:path");
+  const t = (await import("./helpers.ts")).tempDir();
+  let r = make({ dir: t.dir, mode: "useful" });
+  const n = await firstMorning(r);
+  const cards = n.finds.filter((x) => x.decisionId);
+  expect(cards.length).toBeGreaterThan(0);
+  r.decisions.decide(cards[0]!.decisionId!, "reply", "回过了");
+  await r.settle();
+  r.stop();
+  rigs.splice(rigs.indexOf(r), 1);
+  // As the old rules left it: the reply held the find and the bar was raised.
+  const pp = path.join(r.dir, "proactive.json");
+  const old = JSON.parse(fs.readFileSync(pp, "utf8"));
+  old.bars = { waiting_on_you: 60 };
+  old.ignored = [{ kind: "waiting_on_you", at: r.clock.now() }];
+  delete old.barsRev;
+  for (const f of Object.values(old.finds) as { state?: string }[]) if (f.state === "passed") f.state = "held";
+  fs.writeFileSync(pp, JSON.stringify(old));
+  r = make({ dir: r.dir, mode: "useful" });
+  const now = JSON.parse(fs.readFileSync(pp, "utf8"));
+  expect(now.bars).toEqual({});
+  expect(now.ignored).toEqual([]);
+  expect(now.barsRev).toBe(1);
+  expect((Object.values(now.finds) as { state?: string }[]).some((f) => f.state === "held")).toBe(false);
+  r.stop();
+  rigs.splice(rigs.indexOf(r), 1);
+  t.cleanup();
+});

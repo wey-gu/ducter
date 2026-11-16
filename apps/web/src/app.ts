@@ -3,7 +3,7 @@ import { onWbFrame } from "./workbench-ask.ts";
 import { onPastFrame, openPast } from "./past.tsx";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GitLoginState, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/protocol";
-import { prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
+import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { Api, Connection, deviceName, myShape, type ConnStatus, type Me, wsUrl } from "./conn.ts";
@@ -2064,6 +2064,7 @@ class AppState {
     const reply = this.replying;
     this.replying = undefined;
     const p: AppState["pending"][number] = { clientId, text, ...(pics.length ? { pics } : {}), ...(reply ? { reply } : {}) };
+    noteFlights(pics);
     this.picks.delete("");
     this.pending.push(p);
     this.thinkingSince = Date.now();
@@ -2148,6 +2149,7 @@ class AppState {
       pic.ref = await upload(pic.prepared, name, (f) => ((pic.progress = f), this.changed()));
       pic.progress = 1;
       pic.state = "done";
+      keepLocal(pic);
     } catch (err) {
       pic.state = "failed";
       pic.error = (err as Error).message;
@@ -2216,7 +2218,7 @@ class AppState {
     this.held = undefined;
     const clientId = `t${Date.now()}-${++this.nextClient}`;
     const sd = this.S.addSend(id, text, Date.now(), clientId);
-    if (pics.length) (sd.pics = pics), this.picks.delete(id);
+    if (pics.length) noteFlights(pics), (sd.pics = pics), this.picks.delete(id);
     const task = this.S.tasks.get(id);
     const busy = !!task && ["working", "queued"].includes(attention(task));
     const mode = queue ? "queue" : busy ? "steer" : undefined;

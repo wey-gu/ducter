@@ -120,6 +120,14 @@ partner's. A file is a white card on the clay base, one line. The upload ring is
 `--ring-back`. The viewer lies on the theme's paper (`--viewer-scrim`: Pebble's paper at 97%, the
 dark ground at 96%), its controls text buttons in ink; it grows out of the tile and shrinks back,
 and only fades under reduced motion. Mac: `Lightbox`, `LightboxInk`, `MediaGap`.
+D286: five to nine in rows (2+3, 3+3, a 2:1 banner over 3+3, 2+3+3, 3×3), inner corners
+`--r-tile` (4); a picture clears out of its blurred preview (blur, scale 1.04, opacity over
+`t-med`); a pressed tile sinks to .965 over `t-press`; a landed picture's ring closes, ticks and
+lets go, its tile settles over `t-pop` on `--spring`. A file's badge is a page whose band is the
+family's colour, `--fam-{pdf,code,text,doc,sheet,slides,archive,audio,video,picture,other}` with
+`--fam-on` for the extension on it (muted clay tints; lighter ones in dark); Mac `Family`,
+`FamilyOn`. The viewer's strip slides over `t-med` on `ease`; Remove on a tray tile is a small
+surface pebble, never an ink disc.
 
 **Replies: the imprint (D236, research/72).** The message replied to as a small copy of its own
 bubble pressed into the reply: `--r-imprint` (14/14/14/4, the partner's tail bottom-left;

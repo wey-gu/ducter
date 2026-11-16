@@ -603,6 +603,13 @@ note and a `Dn`) before it is built.
 
 ## Pictures and files, phases 2 and 3 (D206, `design/media.md`)
 
+- [ ] **D286 on the Mac: a video's frame and a sound's waveform in their cards** (AVFoundation
+      through purego, as Core Graphics is reached for PDFs), and playing a sound inside the app.
+      Trigger: the author sends a voice memo or a clip from the Mac.
+- [ ] **D286 on real devices:** the strip, pinch and drag-down on the author's iPhone and Pixel
+      Fold; a light haptic when a picture lands (`haptic("light")` exists). Trigger: the next
+      phone build.
+
 - [x] **Phase 2: files and PDFs from the user.** Built by D259: one button, the same tray, the file
       card in the message, the partner's line with its path (a short text whole), a task's line
       with its path, a worker gets the bytes.

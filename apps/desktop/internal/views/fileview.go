@@ -67,13 +67,14 @@ type fileViewState struct {
 }
 
 // fileKind is the view a file opens in on the Mac: an SVG is its source
-// here (the Mac draws no SVG), a video can't play here.
+// here (the Mac draws no SVG), a video or a sound can't play here (D286:
+// 在 Mac 上打开 plays it).
 func fileKind(ref protocol.MediaRef) string {
 	k := ref.FileView()
 	if k == protocol.FilePicture && !ref.IsImage() {
 		return protocol.FileText
 	}
-	if k == protocol.FileVideo || k == protocol.FilePicture {
+	if k == protocol.FileVideo || k == protocol.FileAudio || k == protocol.FilePicture {
 		return protocol.FileNone
 	}
 	return k // a PDF is drawn here (D242)

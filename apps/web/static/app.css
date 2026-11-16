@@ -140,6 +140,21 @@
   --viewer-scrim: rgba(255, 246, 234, 0.97);
   --pic-dim: rgba(43, 33, 24, 0.42);
   --ring-back: rgba(43, 33, 24, 0.38);
+  /* D286: a grid's inner corners stay soft; a file's family colour (its badge's band, a sound's
+     waveform) and the ink on it. Muted clay tints, one per family. */
+  --r-tile: 4px;
+  --fam-pdf: #d65a40;
+  --fam-code: #5469a3;
+  --fam-text: #8c7458;
+  --fam-doc: #3f74c2;
+  --fam-sheet: #3c8f57;
+  --fam-slides: #d9772c;
+  --fam-archive: #9a7a50;
+  --fam-audio: #8659bd;
+  --fam-video: #2f8a92;
+  --fam-picture: #c1648a;
+  --fam-other: #9a8670;
+  --fam-on: #ffffff;
 
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -221,11 +236,35 @@
     --drop-pressed: 0 1px 3px rgba(0, 0, 0, 0.4);
     --viewer-scrim: rgba(10, 8, 6, 0.96);
     --pic-dim: rgba(0, 0, 0, 0.5);
+    --fam-pdf: #ee8a72;
+    --fam-code: #8ea4dc;
+    --fam-text: #c4aa8a;
+    --fam-doc: #7ca9ea;
+    --fam-sheet: #74c48e;
+    --fam-slides: #f2a35f;
+    --fam-archive: #c9a77a;
+    --fam-audio: #b893e8;
+    --fam-video: #66c0c7;
+    --fam-picture: #e69bb8;
+    --fam-other: #b9a690;
+    --fam-on: #1a130d;
   }
 }
 :root[data-theme="dark"] {
   --viewer-scrim: rgba(10, 8, 6, 0.96);
   --pic-dim: rgba(0, 0, 0, 0.5);
+  --fam-pdf: #ee8a72;
+  --fam-code: #8ea4dc;
+  --fam-text: #c4aa8a;
+  --fam-doc: #7ca9ea;
+  --fam-sheet: #74c48e;
+  --fam-slides: #f2a35f;
+  --fam-archive: #c9a77a;
+  --fam-audio: #b893e8;
+  --fam-video: #66c0c7;
+  --fam-picture: #e69bb8;
+  --fam-other: #b9a690;
+  --fam-on: #1a130d;
   --bg: #17120e;
   --bg-deep: #120e0b;
   --surface: #231c16;
@@ -6017,12 +6056,20 @@ dl.call-summary dd { margin: 0; }
 .partner > .media {
   margin-left: 0;
 }
+/* D206, D286: a message's pictures: one rounded clay box; inside a grid, tiles 2px apart with
+   soft inner corners; the outer corners are the box's. */
 .pics {
   position: relative;
   width: var(--pics-w);
   border-radius: var(--r-pics);
   overflow: hidden;
   background: var(--sunken);
+  box-shadow: 0 3px 0 var(--line-soft);
+  isolation: isolate;
+}
+/* Five and more take a little more of the column: every picture of a trip shows. */
+.pics:is(.n5, .n6, .n7, .n8, .n9) {
+  --pics-w: min(78%, 25rem);
 }
 .media.on-task .pics {
   --pics-w: min(100%, 22rem);
@@ -6043,50 +6090,109 @@ dl.call-summary dd { margin: 0; }
   background: none;
   cursor: zoom-in;
   -webkit-tap-highlight-color: transparent;
+  --r-in: var(--r-tile);
 }
 .pics .tile > img,
-.pics .tile > .ph {
+.pics .tile > .ph,
+.pics .tile .more,
+.pics .tile .failed-mark {
   position: absolute;
   inset: calc(var(--pic-gap) / 2);
   width: calc(100% - var(--pic-gap));
   height: calc(100% - var(--pic-gap));
+  border-radius: var(--r-in);
+}
+.pics .tile.c-tl > :is(img, .ph, .more, .failed-mark) { border-top-left-radius: 0; }
+.pics .tile.c-tr > :is(img, .ph, .more, .failed-mark) { border-top-right-radius: 0; }
+.pics .tile.c-bl > :is(img, .ph, .more, .failed-mark) { border-bottom-left-radius: 0; }
+.pics .tile.c-br > :is(img, .ph, .more, .failed-mark) { border-bottom-right-radius: 0; }
+.pics .tile > img {
   object-fit: cover;
   display: block;
 }
 .pics.one .tile > img,
-.pics.one .tile > .ph {
+.pics.one .tile > .ph,
+.pics.one .tile .failed-mark {
   inset: 0;
   width: 100%;
   height: 100%;
+  border-radius: 0;
 }
+/* Blur-up (D286): the tiny preview, blurred, holds the place; the picture clears out of it. */
 .pics .tile > .ph {
   background-size: cover;
   background-position: center;
-  filter: blur(14px);
-  transform: scale(1.15);
+  filter: blur(12px) saturate(1.1);
+  transform: scale(1.12);
+  overflow: hidden;
 }
 .pics .tile > img {
   opacity: 0;
-  transition: opacity var(--t-med) var(--ease);
+  filter: blur(10px);
+  transform: scale(1.04);
+  transition: opacity var(--t-med) var(--ease), filter var(--t-med) var(--ease), transform var(--t-med) var(--ease);
 }
 .pics .tile.in > img {
   opacity: 1;
+  filter: none;
+  transform: none;
+}
+/* A gentle press: the picture sinks into its clay a little. */
+@media (hover: hover) {
+  .pics .tile.in:hover > img {
+    filter: brightness(1.03);
+  }
+}
+.pics .tile.in:active > img {
+  transform: scale(0.965);
+  transition-duration: var(--t-press);
 }
 .pics .tile:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: -3px;
+  z-index: 1;
 }
 .pics .tile .more {
-  position: absolute;
-  inset: calc(var(--pic-gap) / 2);
   display: grid;
   place-items: center;
   background: var(--pic-dim);
   color: #fff;
   font: 800 var(--t20) / 1 var(--head);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
 }
 .pics .tile.in.failed > img {
-  opacity: 0.45;
+  opacity: 0.5;
+  filter: saturate(0.6);
+}
+.pics .tile .failed-mark {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(43, 33, 24, 0.28);
+}
+.pics .tile .failed-mark .retry-mark {
+  padding: 7px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--failed-ink);
+  box-shadow: var(--drop-pressed);
+}
+/* A sent picture lands: a small settle, as a pebble set down (D286). */
+.pics .tile.settle > img {
+  animation: settle var(--t-pop) var(--spring);
+}
+@keyframes settle {
+  0% {
+    transform: scale(0.97);
+  }
+  60% {
+    transform: scale(1.012);
+  }
+  100% {
+    transform: none;
+  }
 }
 .ring {
   position: absolute;
@@ -6095,20 +6201,48 @@ dl.call-summary dd { margin: 0; }
   margin: -18px 0 0 -18px;
   border-radius: 50%;
   background: var(--ring-back);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  z-index: 2;
 }
 .ring circle {
   fill: none;
   stroke-width: 2.6;
 }
 .ring .track {
-  stroke: rgba(255, 255, 255, 0.28);
+  stroke: rgba(255, 255, 255, 0.3);
 }
 .ring .arc {
   stroke: #fff;
   stroke-linecap: round;
   transform: rotate(-90deg);
   transform-origin: 18px 18px;
-  transition: stroke-dashoffset var(--t-fast) linear;
+  transition: stroke-dashoffset var(--t-med) var(--ease);
+}
+/* Landed: the ring closes, a tick draws, and the ring lets go. */
+.ring .tick {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tick var(--t-med) var(--ease) 80ms forwards;
+}
+.ring.done {
+  animation: ring-out var(--t-med) var(--ease) 520ms forwards;
+}
+@keyframes tick {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes ring-out {
+  to {
+    opacity: 0;
+    transform: scale(0.7);
+  }
 }
 .unsent {
   display: flex;
@@ -6121,43 +6255,360 @@ dl.call-summary dd { margin: 0; }
 .unsent .btn.text {
   color: var(--failed-ink);
 }
-/* A file a task showed: one line on a card, Open at its end. */
+
+/* ---------- D286: a file, drawn as the thing it is ---------- */
+
+/* The badge: a little page, its band in the family's colour holding the extension. */
+.fbadge {
+  flex: none;
+  display: block;
+  --fam: var(--fam-other);
+  filter: drop-shadow(0 1.5px 0 var(--line));
+}
+.fbadge .pg {
+  fill: var(--surface);
+  stroke: color-mix(in srgb, var(--fam) 55%, var(--line-2));
+  stroke-width: 1.4;
+}
+.fbadge .fold {
+  fill: color-mix(in srgb, var(--fam) 14%, var(--surface));
+  stroke: color-mix(in srgb, var(--fam) 55%, var(--line-2));
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+.fbadge .mk {
+  stroke: var(--fam);
+}
+.fbadge .band {
+  fill: var(--fam);
+}
+.fbadge .ext {
+  fill: var(--fam-on);
+  font-family: var(--head);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.fam-pdf { --fam: var(--fam-pdf); }
+.fam-code { --fam: var(--fam-code); }
+.fam-text { --fam: var(--fam-text); }
+.fam-doc { --fam: var(--fam-doc); }
+.fam-sheet { --fam: var(--fam-sheet); }
+.fam-slides { --fam: var(--fam-slides); }
+.fam-archive { --fam: var(--fam-archive); }
+.fam-audio { --fam: var(--fam-audio); }
+.fam-video { --fam: var(--fam-video); }
+.fam-picture { --fam: var(--fam-picture); }
+.fam-other { --fam: var(--fam-other); }
+
+/* The card: a clay sheet; a glimpse of the file over its line; the whole card opens it. */
 .filecard {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: var(--s3);
+  flex-direction: column;
   width: min(100%, 22rem);
-  padding: 6px 6px 6px 14px;
   border-radius: var(--r-md);
   background: var(--surface);
   box-shadow: var(--base);
   color: var(--ink);
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--t-press) var(--ease), box-shadow var(--t-press) var(--ease);
+  animation: pop-in var(--t-med) var(--spring);
 }
-.filecard .fi {
-  flex-shrink: 0;
-  color: var(--ink-muted);
+.filecard:not(.sending):active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--line);
 }
-.filecard .fn {
+.filecard:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.filecard.sending {
+  cursor: default;
+}
+.fc-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: 10px 14px 10px 12px;
+  min-width: 0;
+}
+.fc-meta {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.filecard .fn {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--md);
   font-weight: 700;
+  line-height: 1.3;
 }
 .filecard .fs {
-  flex-shrink: 0;
   font-size: var(--sm);
   color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.filecard .btn.text {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-  color: var(--ink);
+.filecard.failed .fs {
+  color: var(--failed-ink);
   font-weight: 700;
 }
+.fc-open {
+  flex: none;
+  font-size: var(--sm);
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+@media (hover: hover) {
+  .filecard:not(.sending):hover .fc-open {
+    color: var(--ink);
+  }
+  .filecard:not(.sending):hover {
+    background: var(--surface-raised, var(--surface));
+  }
+}
+/* A file on its way: a calm bar where Open will be. */
+.fc-bar {
+  flex: none;
+  width: 44px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+.fc-bar i,
+.doc-bar i {
+  display: block;
+  height: 100%;
+  background: var(--fam, var(--ink));
+  transform-origin: left;
+  transition: transform var(--t-med) var(--ease);
+}
+.filecard.failed {
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--failed-ink) 30%, var(--line));
+}
+
+/* The glimpses (made once, when the card comes near). */
+.fc-pv {
+  position: relative;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--sunken);
+  overflow: hidden;
+}
+/* A PDF's first page: white paper, its top, in the sunken ground. */
+.fc-pv.pdf {
+  height: 9rem;
+  padding: 12px 18px 0;
+}
+.fc-pv.pdf .fc-page {
+  display: block;
+  width: 100%;
+  min-height: 12rem;
+  border-radius: 4px 4px 0 0;
+  background: var(--pdf-page);
+  box-shadow: 0 0 0 1px var(--line-soft), 0 6px 14px -6px rgba(43, 33, 24, 0.25);
+  object-fit: cover;
+  object-position: top;
+  animation: fade-in var(--t-med) var(--ease);
+}
+.fc-pv.pdf .fc-page.blank {
+  animation: none;
+  opacity: 0.6;
+}
+/* Code and text: the first lines in their colours, fading out at the foot. */
+.fc-pv.code {
+  height: 7.4rem;
+  background: var(--code-bg, var(--sunken));
+}
+.fc-pv.code pre {
+  margin: 0;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font: 500 11.5px / 1.5 var(--mono);
+  color: var(--ink-soft);
+  white-space: pre;
+  overflow: hidden;
+}
+.fc-pv.code pre.in {
+  animation: fade-in var(--t-med) var(--ease);
+}
+.fc-pv.code .cl {
+  display: block;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.fc-pv.code .cl.ghost {
+  height: 9px;
+  margin: 4px 0 3px;
+  border-radius: 4px;
+  background: var(--line-soft);
+}
+.fc-pv.code::after,
+.fc-pv.table::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 2.2rem;
+  background: linear-gradient(to bottom, transparent, var(--code-bg, var(--sunken)));
+  pointer-events: none;
+}
+.fc-pv.table {
+  height: 6.6rem;
+  padding: 8px 10px;
+}
+.fc-pv.table table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: var(--xs);
+  animation: fade-in var(--t-med) var(--ease);
+}
+.fc-pv.table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--line-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink-soft);
+}
+.fc-pv.table tr.head td {
+  font-weight: 800;
+  color: var(--ink);
+}
+/* A video: its frame, a clay play button, its length. */
+.fc-pv.video {
+  aspect-ratio: 16 / 9;
+  background: #1a130d;
+}
+.fc-pv.video video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--t-med) var(--ease);
+  pointer-events: none;
+}
+.fc-pv.video.in video {
+  opacity: 1;
+}
+.fc-pv.video .play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: 0 4px 0 rgba(43, 33, 24, 0.3), var(--drop);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: transform var(--t-press) var(--ease);
+}
+.filecard:active .fc-pv.video .play {
+  transform: scale(0.94);
+}
+.fc-pv.video .len {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 18px 12px 8px;
+  text-align: right;
+  font-size: var(--sm);
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.45));
+}
+/* A sound: play right here; the waveform fills as it plays. */
+.fc-pv.audio {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  height: 4.25rem;
+  padding: 0 14px 0 12px;
+}
+.fc-pv.audio .pp {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--fam-on);
+  background: var(--fam);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--fam) 60%, #000);
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease), box-shadow var(--t-press) var(--ease);
+}
+.fc-pv.audio .pp:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--fam) 60%, #000);
+}
+.fc-pv.audio .pp:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.fc-pv.audio .wave {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+}
+.fc-pv.audio .wave i {
+  flex: 1;
+  min-height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--fam) 30%, var(--line));
+  transform-origin: center;
+  transform: scaleY(0.25);
+  transition: transform var(--t-med) var(--spring), background var(--t-fast) linear;
+}
+.fc-pv.audio.in .wave i {
+  transform: none;
+}
+.fc-pv.audio .wave i.on {
+  background: var(--fam);
+}
+.fc-pv.audio .len {
+  flex: none;
+  min-width: 2.6em;
+  text-align: right;
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.fv-audio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+}
+.fv-audio audio {
+  width: min(100%, 26rem);
+}
+
 /* The composer: 添加文件或图片 / Add files or pictures (the attach mark, D273) first, the tray of what is picked above it. */
 .composer .add-pic {
   flex-shrink: 0;
@@ -6169,7 +6620,7 @@ dl.call-summary dd { margin: 0; }
   display: flex;
   gap: var(--s2);
   overflow-x: auto;
-  padding: 8px 4px 10px;
+  padding: 10px 6px 10px;
   scrollbar-width: none;
 }
 .tray-pics::-webkit-scrollbar {
@@ -6182,8 +6633,18 @@ dl.call-summary dd { margin: 0; }
   height: 64px;
   border-radius: var(--r-sm);
   background: var(--sunken);
-  box-shadow: var(--base);
-  animation: pop-in 220ms var(--spring);
+  box-shadow: 0 3px 0 var(--line);
+  animation: pop-in var(--t-med) var(--spring);
+  transition: transform var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease), width var(--t-fast) var(--ease), margin var(--t-fast) var(--ease);
+}
+.chosen.leaving {
+  transform: scale(0.6);
+  opacity: 0;
+  width: 0;
+  margin-right: calc(-1 * var(--s2));
+}
+.chosen.landed:not(.doc) > img {
+  animation: settle var(--t-pop) var(--spring);
 }
 .chosen > img {
   width: 100%;
@@ -6195,48 +6656,83 @@ dl.call-summary dd { margin: 0; }
 .chosen .ring {
   transform: scale(0.72);
 }
+.chosen .ring.done {
+  animation-name: ring-out-sm;
+}
+@keyframes ring-out-sm {
+  from {
+    transform: scale(0.72);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
 .chosen.failed > img {
   opacity: 0.4;
+  filter: saturate(0.5);
 }
 .chosen .retry {
   position: absolute;
   inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
   border: 0;
-  background: none;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
   font-size: var(--xs);
   font-weight: 800;
   color: var(--failed-ink);
+  cursor: pointer;
 }
+.chosen .retry .retry-mark {
+  width: 20px;
+  height: 20px;
+}
+/* Remove: a small clay pebble on the corner, not a black hole. */
 .chosen .x {
   position: absolute;
-  top: -7px;
-  right: -7px;
-  width: 24px;
-  height: 24px;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--ink);
-  color: var(--bg);
-  box-shadow: var(--drop-pressed);
+  background: var(--surface);
+  color: var(--ink-soft);
+  box-shadow: 0 0 0 1px var(--line), 0 2px 0 var(--line), 0 3px 6px -2px rgba(43, 33, 24, 0.25);
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease), color var(--t-fast) linear;
+}
+.chosen .x:hover {
+  color: var(--ink);
+}
+.chosen .x:active {
+  transform: scale(0.88);
 }
 .chosen .x::after {
   content: "";
   position: absolute;
   inset: -10px;
 }
-/* D259: a file in the tray: its drawn kind over its name, on the same clay tile, a little wider. */
+/* D259: a file in the tray: its badge over its name, on the same clay tile, a little wider. */
 .chosen.doc {
   width: 128px;
   background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line-soft), 0 3px 0 var(--line);
 }
 .chosen .doc-face {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
+  gap: 5px;
   height: 100%;
   padding: 8px 10px;
   color: var(--ink-muted);
@@ -6252,35 +6748,18 @@ dl.call-summary dd { margin: 0; }
   line-height: 1.25;
   color: var(--ink);
 }
-.chosen.doc .ring {
-  left: auto;
-  right: 4px;
-  top: 4px;
-  margin: 0;
-  transform: scale(0.6);
-  transform-origin: top right;
+.chosen .doc-bar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 7px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
 }
 .chosen.doc.failed .doc-face {
   opacity: 0.45;
-}
-/* D259: a file of the person's own message on its way: the card, its ring where Open will be. */
-.filecard.sending .ring {
-  position: relative;
-  left: auto;
-  top: auto;
-  margin: 0;
-  flex-shrink: 0;
-  transform: scale(0.8);
-  background: var(--sunken);
-}
-.filecard.sending .ring .track {
-  stroke: var(--line);
-}
-.filecard.sending .ring .arc {
-  stroke: var(--ink);
-}
-.filecard.sending.failed {
-  opacity: 0.6;
 }
 @keyframes pop-in {
   from {
@@ -6300,11 +6779,25 @@ dl.call-summary dd { margin: 0; }
   display: grid;
   place-items: center;
   border-radius: var(--r-lg);
-  border: 2px solid var(--accent);
+  border: 2px dashed var(--accent);
   background: color-mix(in srgb, var(--bg-deep) 88%, transparent);
   pointer-events: none;
   font-weight: 800;
   color: var(--needs-ink);
+  animation: fade-in var(--t-fast) var(--ease);
+}
+.drop-hint .dh-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  animation: drop-lift var(--t-med) var(--spring);
+}
+@keyframes drop-lift {
+  from {
+    transform: translateY(8px) scale(0.94);
+    opacity: 0;
+  }
 }
 .scroll > .drop-hint {
   position: sticky;
@@ -6326,17 +6819,22 @@ dl.call-summary dd { margin: 0; }
   z-index: 60;
   color: var(--ink);
   touch-action: none;
-  animation: fade-in 180ms var(--ease);
 }
-.viewer.closing {
-  animation: fade-out 200ms var(--ease) forwards;
+.viewer .scrim {
+  animation: fade-in var(--t-med) var(--ease);
+}
+.viewer :is(.v-top, .v-bar, .v-step) {
+  animation: fade-in var(--t-med) var(--ease) 80ms backwards;
+}
+.viewer.closing .scrim,
+.viewer.closing :is(.v-top, .v-bar, .v-step) {
+  animation: fade-out var(--t-med) var(--ease) forwards;
 }
 .viewer .scrim {
   position: absolute;
   inset: 0;
   z-index: 0;
   background: var(--viewer-scrim);
-  animation: none;
 }
 .viewer .stage,
 .viewer .v-top,
@@ -6346,20 +6844,40 @@ dl.call-summary dd { margin: 0; }
 .viewer .stage {
   position: absolute;
   inset: calc(var(--safe-top) + 56px) 0 calc(var(--safe-bottom) + 64px);
+  overflow: visible;
+}
+.viewer.zoomed .stage {
+  cursor: grab;
+}
+.viewer.zoomed .stage:active {
+  cursor: grabbing;
+}
+.viewer .v-strip {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+  transition: transform var(--t-med) var(--ease);
+}
+.viewer .v-strip.still,
+.viewer .v-strip.still .v-slide img {
+  transition: none;
+}
+.viewer .v-slide {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  overflow: hidden;
 }
-.viewer .stage img {
-  max-width: 100%;
-  max-height: 100%;
+.viewer .v-slide img {
+  max-width: none;
   object-fit: contain;
   background-size: cover;
+  background-position: center;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   will-change: transform;
-  transition: transform 220ms var(--ease);
+  transition: transform var(--t-med) var(--ease);
   border-radius: 0;
 }
 .viewer .v-top,
@@ -6386,9 +6904,49 @@ dl.call-summary dd { margin: 0; }
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
+/* ←/→ on a wide screen: clay pebbles at the sides (a phone swipes). */
+.viewer .v-step {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  margin-top: -22px;
+  display: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  box-shadow: 0 3px 0 var(--line), var(--drop-pressed);
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease), opacity var(--t-fast) linear;
+}
+.viewer .v-step.prev {
+  left: max(16px, var(--safe-left));
+}
+.viewer .v-step.next {
+  right: max(16px, var(--safe-right));
+}
+.viewer .v-step:active {
+  transform: translateY(2px);
+}
+.viewer .v-step:disabled {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+@media (hover: hover) and (min-width: 700px) {
+  .viewer .v-step {
+    display: grid;
+  }
+}
 .viewer .btn.text {
   color: var(--ink);
   font-weight: 700;
+}
+.viewer .btn.text.done {
+  color: var(--done-ink);
 }
 .viewer .from {
   min-width: 0;
@@ -6422,14 +6980,31 @@ dl.call-summary dd { margin: 0; }
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .viewer,
-  .viewer.closing,
-  .chosen {
+  .viewer .scrim,
+  .viewer :is(.v-top, .v-bar, .v-step),
+  .chosen,
+  .filecard,
+  .drop-hint,
+  .drop-hint .dh-in,
+  .pics .tile.settle > img,
+  .chosen.landed > img,
+  .fc-pv :is(.fc-page, pre, table) {
     animation: none;
   }
-  .viewer .stage img,
-  .pics .tile > img {
+  .viewer.closing .scrim,
+  .viewer.closing :is(.v-top, .v-bar, .v-step) {
+    animation: fade-out var(--t-fast) linear forwards;
+  }
+  .viewer .v-strip,
+  .viewer .v-slide img,
+  .pics .tile > img,
+  .chosen,
+  .fc-pv.audio .wave i {
     transition: none;
+  }
+  .pics .tile > img {
+    filter: none;
+    transform: none;
   }
 }
 
@@ -8378,6 +8953,9 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   box-shadow: 0 1px 0 var(--line), 0 3px 0 var(--line-soft);
   z-index: 1;
   touch-action: none;
+}
+.fv-head > .fbadge {
+  flex: none;
 }
 .fv-head > .fi {
   flex: none;

@@ -42,10 +42,16 @@ type MediaFrom struct {
 const (
 	MediaPerMessage = 10
 	MediaBytesMax   = 25 * 1024 * 1024
+	// MediaFileMax is one file a person sends that isn't a picture (D259).
+	MediaFileMax    = 50 * 1024 * 1024
 	MediaPreviewMax = 4096
 	MediaLongEdge   = 2048
 	MediaThumbEdge  = 720
 )
+
+// AnyFile is what a file a person sent is kept as when it is no kind Ducter
+// knows: inert bytes, never opened, never run (D259; ANY_FILE in media.ts).
+const AnyFile = "application/octet-stream"
 
 // IsImage says whether the ref is a picture every client shows.
 func (m MediaRef) IsImage() bool { return IsImageType(m.Type) }

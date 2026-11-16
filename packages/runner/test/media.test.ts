@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Bodies, MediaRef } from "@ducter/protocol";
-import type { HarnessEvent, HarnessPort, HarnessSession, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
+import type { HarnessEvent, HarnessPort, HarnessSession, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { createMediaStore } from "../../core/src/media.ts";
 import { png } from "../../core/test/fixtures-media.ts";
 import { codexCleanArgs } from "../src/oar.ts";
@@ -13,7 +13,7 @@ import { createRunner, registerTaskTools } from "../src/index.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
 class Session implements HarnessSession {
-  sent: { text: string; mode: string; images?: SendImage[] }[] = [];
+  sent: { text: string; mode: string; images?: SendImage[]; files?: SendFile[] }[] = [];
   canSteer = true;
   private done = false;
   private wake?: () => void;
@@ -21,8 +21,8 @@ class Session implements HarnessSession {
   busy() {
     return false;
   }
-  async send(text: string, mode: "turn" | "steer" | "queue" = "turn", images?: SendImage[]) {
-    this.sent.push({ text, mode, ...(images ? { images } : {}) });
+  async send(text: string, mode: "turn" | "steer" | "queue" = "turn", images?: SendImage[], files?: SendFile[]) {
+    this.sent.push({ text, mode, ...(images ? { images } : {}), ...(files ? { files } : {}) });
   }
   async interrupt() {}
   async close() {
@@ -80,6 +80,26 @@ test("a task's brief carries the user's pictures: the first turn hands them to t
   expect(again.images?.map((i) => i.path)).toEqual([core.media!.path(later.id)!]);
   const line = core.events.filter((e) => e.kind === "task_event").map((e) => e.body as Bodies["task_event"]).find((b) => b.clientId === "c1")!;
   expect(line.media?.map((m) => m.id)).toEqual([later.id]);
+  await runner.dispose();
+});
+
+// D259: a file the user sent reaches the task as a line naming it, its kind, size and where it
+// is, under its own name; every agent reads it with its own tools (pictures or not).
+test("a task's brief carries the user's files: a line names each, under its own name, for any agent", async () => {
+  const port = new Port();
+  const runner = createRunner(core, { harness: port, newId: () => "tsk4" });
+  const pdf = core.media!.put(new TextEncoder().encode("%PDF-1.7 the quarterly report"), { sent: true, name: "季度报告.pdf" });
+  const shot = core.media!.put(png(640, 480));
+  const card = await runner.openTask({ persona: "p1", title: "看看这份报告", brief: "User's words: 帮我总结这份报告", harness: "deepseek-harness", media: [pdf, shot] });
+  await runner.whenStarted(card.taskId);
+  const first = port.sessions[0]!.sent[0]!;
+  const at = core.media!.named!(pdf.id)!;
+  expect(at.endsWith("/季度报告.pdf")).toBe(true);
+  expect(first.text).toContain(`"季度报告.pdf" (PDF, 29 B) at ${at}`);
+  expect(first.text).toContain("Read it there with your own tools");
+  // The picture keeps its own line (this agent can't see it); the file's line doesn't depend on that.
+  expect(first.text).toContain("can't see pictures");
+  expect(first.files).toEqual([{ path: at, name: "季度报告.pdf" }]);
   await runner.dispose();
 });
 

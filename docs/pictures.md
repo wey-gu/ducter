@@ -1,21 +1,23 @@
 ---
-title: Pictures
-description: Send your partner a screenshot or a photo, see what a task made, read the files it hands you, ask for a drawing, and look through every picture in the conversation.
+title: Pictures and files
+description: Send your partner a screenshot, a photo or any file, see what a task made, read the files it hands you, ask for a drawing, and look through every picture in the conversation.
 order: 5.7
 ---
 
-# Pictures
+# Pictures and files
 
 Your partner sees the pictures you send, the way a friend would in a messaging app. Ask about a
-screenshot, send a photo of a whiteboard to work from, or ask it to draw something. When a task
-makes something worth seeing (a screenshot that shows it works, a picture, a file), it shows up
-in the conversation.
+screenshot, send a photo of a whiteboard to work from, hand it a report, a log or a spreadsheet,
+or ask it to draw something. When a task makes something worth seeing (a screenshot that shows it
+works, a picture, a file), it shows up in the conversation.
 
 ## Send a picture
 
-- **On your phone:** tap the picture button left of where you type. Your phone's own menu opens:
-  pick from your photos, take one, or choose a file. You can also paste a picture you copied.
-- **On your Mac:** click the picture button, paste (⌘V), or drag pictures onto the conversation.
+- **On your phone:** tap the picture button left of where you type (**Add images or files**). Your
+  phone's own menu opens: pick from your photos, take one, or choose a file. You can also paste a
+  picture you copied.
+- **On your Mac:** click the picture button, paste (⌘V), or drag pictures and files onto the
+  conversation. A file you copied in Finder pastes as that file.
 - **Up to 10 at a time.** Each one starts going up the moment you pick it, so Send is instant.
   Type words with them, or send them alone.
 - **To a task:** open the task and send it pictures the same way, or drop them on the words when
@@ -27,6 +29,22 @@ everything stored inside it is removed, including where it was taken.
 
 If a picture doesn't go up (the connection dropped), your words and the picture stay where they
 are, with **Didn't send · Retry**. Nothing you typed is lost.
+
+## Send a file
+
+Any file goes the same way as a picture: a PDF, a Word document, a spreadsheet, a log, some code,
+a zip. It shows in your message as one line with its name and size, and you can tap it to read it
+right there, like a file a task made (below).
+
+- **Your partner reads it.** Ask about it in the same message ("summarise this", "what's wrong
+  in this log?"). A short text it reads at once; a long one or a PDF it reads as it needs to.
+- **A task gets it too.** When the work needs the file ("fix the bug in this script", "turn this
+  table into a chart"), the task your partner starts has it, and works on its own copy.
+- **Up to 50 MB each.** A bigger file isn't added, and Ducter says so: **That file is too big: up
+  to 50 MB each**.
+- **Nothing in it runs.** A program or a page you send is kept as it is and never opened as one:
+  Ducter only shows its text, or offers **Save a copy**.
+- A file is sent as it is: unlike a picture, nothing is made smaller or removed from it.
 
 ## Ask for a drawing
 
@@ -71,4 +89,5 @@ Mac** opens it in its own app.
   your own devices get from Ducter, and that link stops working after about a day: one that ends
   up somewhere else (a browser's history, a message) soon opens nothing. Your devices get fresh
   links by themselves.
-- Sending files and PDFs, sharing into Ducter from other apps, and video are coming soon.
+- Files you send stay on the computer Ducter lives on, behind the same kind of link as pictures.
+- Sharing into Ducter from other apps, and video, are coming soon.

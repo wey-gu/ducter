@@ -8,7 +8,8 @@
 // shows arrives as it is; its size is read from its header.
 //
 //   POST /api/media            (behind the gate) multipart: file, thumb?, preview?, name?
-//                              → { media: MediaRef }; 413 too big, 415 not a picture
+//                              → { media: MediaRef }; 413 too big. D259: any file a person
+//                              sends is kept (a kind Ducter doesn't know, as inert bytes).
 //   GET  /media/<id>?k=<key>   (before the gate: an <img> sends no header) the bytes, immutable
 //
 // A key is `<exp>.<sig>`, an HMAC of `<id>.<exp>` with the home's own secret (<dataDir>/media/.key,
@@ -18,9 +19,9 @@
 // past its keys asks for new ones (`keysFor`). A key from before (a bare HMAC of the id) opens for
 // MEDIA_KEY.legacyDays after this home's first expiring key (<dataDir>/media/.keys-expire), then never.
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, linkSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
-import { EXT_OF, FILE_TYPES, MEDIA_KEY, MEDIA_LIMITS, TEXT_EXTS, isImageType, type MediaRef } from "@ducter/protocol";
+import { ANY_FILE, EXT_OF, FILE_TYPES, MEDIA_KEY, MEDIA_LIMITS, TEXT_EXTS, isImageType, type MediaRef } from "@ducter/protocol";
 
 export interface Sniffed {
   type: string;
@@ -106,6 +107,33 @@ export function sniffFile(b: Uint8Array, name: string): Sniffed | undefined {
   return { type: t };
 }
 
+/**
+ * D259: what a file a person sent is. A picture by its bytes, a kind Ducter shows by its name,
+ * else text when its first 8 KB is UTF-8 with no NUL (a Dockerfile, a .env the person chose to
+ * send), else inert bytes (ANY_FILE): kept as they are, never run, served as a download.
+ */
+export function sniffSent(b: Uint8Array, name: string): Sniffed {
+  const known = sniffFile(b, name);
+  if (known) return known;
+  const head = b.subarray(0, 8192);
+  if (b.length && !head.includes(0)) {
+    try {
+      // A multi-byte character cut at the 8 KB edge is no reason to call it binary.
+      new TextDecoder("utf-8", { fatal: true }).decode(b.length > 8192 ? head.subarray(0, 8188) : head);
+      return { type: "text/plain" };
+    } catch {}
+  }
+  return { type: ANY_FILE };
+}
+
+/** A name safe as one path segment: no folders, no leading dots, no control characters. */
+export function safeFileName(n: string): string {
+  return basename(n.replace(/\\/g, "/"))
+    .replace(/[\u0000-\u001f:]/g, "_")
+    .replace(/^\.+/, "")
+    .slice(0, 120);
+}
+
 const ID = /^[0-9a-f]{64}$/;
 const PREVIEW = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 
@@ -114,8 +142,10 @@ export interface PutOptions {
   preview?: string;
   thumb?: Uint8Array;
   from?: { taskId: string };
-  /** Files besides pictures (a task's report); uploads take pictures only (phase 1). */
+  /** Files besides pictures (a task's report): the kinds Ducter shows. */
   files?: boolean;
+  /** D259: a file a person sent: any file at all (sniffSent), up to MEDIA_LIMITS.file. */
+  sent?: boolean;
 }
 
 export class MediaError extends Error {
@@ -137,6 +167,8 @@ export interface MediaStore {
   refs(ids: unknown): MediaRef[];
   /** The file a ref's bytes are in. */
   path(id: string): string | undefined;
+  /** D259: the same bytes under the file's own name (a hard link in media/named/<id12>/), for an agent to read. */
+  named(id: string): string | undefined;
   /** A key for id, good for at least MEDIA_KEY.hours from now. */
   key(id: string): string;
   verify(id: string, k: string): boolean;
@@ -282,9 +314,11 @@ export function createMediaStore(dataDir: string, opts: MediaStoreOptions = {}):
   };
 
   /** Stores the bytes once; a second copy of the same bytes keeps the first's meta, adding what it lacked. */
-  function store(bytes: Uint8Array, s: Sniffed, extra: Partial<Meta>): string {
-    // D255: a video (a recording of a lent phone's screen) may be larger than a picture.
-    if (bytes.length > (s.type.startsWith("video/") ? MEDIA_LIMITS.video : MEDIA_LIMITS.bytes)) throw new MediaError(413, "too big");
+  function store(bytes: Uint8Array, s: Sniffed, extra: Partial<Meta>, sent = false): string {
+    // D255: a video (a recording of a lent phone's screen) may be larger than a picture; D259: a
+    // file a person sends, up to MEDIA_LIMITS.file.
+    const cap = sent && !isImageType(s.type) ? MEDIA_LIMITS.file : s.type.startsWith("video/") ? MEDIA_LIMITS.video : MEDIA_LIMITS.bytes;
+    if (bytes.length > cap) throw new MediaError(413, "too big");
     const id = createHash("sha256").update(bytes).digest("hex");
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     const prior = readMeta(id);
@@ -300,7 +334,7 @@ export function createMediaStore(dataDir: string, opts: MediaStoreOptions = {}):
 
   function put(bytes: Uint8Array, o: PutOptions = {}): MediaRef {
     const name = o.name ? basename(o.name).slice(0, 120) : undefined;
-    const s = o.files ? sniffFile(bytes, name ?? "") : sniffImage(bytes);
+    const s = o.sent ? sniffSent(bytes, name ?? "") : o.files ? sniffFile(bytes, name ?? "") : sniffImage(bytes);
     if (!s) throw new MediaError(415, o.files ? "not a picture or a file Ducter shows" : "not a picture");
     let thumb: string | undefined;
     if (o.thumb && o.thumb.length && isImageType(s.type)) {
@@ -308,9 +342,16 @@ export function createMediaStore(dataDir: string, opts: MediaStoreOptions = {}):
       if (ts) thumb = store(o.thumb, ts, {});
     }
     const preview = o.preview && o.preview.length <= MEDIA_LIMITS.preview && PREVIEW.test(o.preview) ? o.preview : undefined;
-    const id = store(bytes, s, { ...(name ? { name } : {}), ...(thumb ? { thumb } : {}), ...(preview ? { preview } : {}), ...(o.from ? { from: o.from } : {}) });
+    const id = store(bytes, s, { ...(name ? { name } : {}), ...(thumb ? { thumb } : {}), ...(preview ? { preview } : {}), ...(o.from ? { from: o.from } : {}) }, o.sent);
     return refOf(id, readMeta(id)!);
   }
+
+  const pathOf = (id: string) => {
+    const m = readMeta(id);
+    if (!m) return undefined;
+    const f = fileOf(id, m.type);
+    return existsSync(f) ? f : undefined;
+  };
 
   return {
     dir,
@@ -331,16 +372,30 @@ export function createMediaStore(dataDir: string, opts: MediaStoreOptions = {}):
       const out: MediaRef[] = [];
       for (const id of ids.slice(0, MEDIA_LIMITS.perMessage)) {
         const m = typeof id === "string" ? readMeta(id) : undefined;
-        if (!m) throw new Error("A picture didn't arrive. Send it again.");
+        if (!m) throw new Error("A picture or file didn't arrive. Send it again.");
         if (!out.some((r) => r.id === id)) out.push(refOf(id, m));
       }
       return out;
     },
-    path(id) {
-      const m = readMeta(id);
-      if (!m) return undefined;
-      const f = fileOf(id, m.type);
-      return existsSync(f) ? f : undefined;
+    path: pathOf,
+    named(id) {
+      const f = pathOf(id);
+      if (!f) return undefined;
+      const name = safeFileName(readMeta(id)?.name ?? "") || basename(f);
+      const d = join(dir, "named", id.slice(0, 12));
+      const p = join(d, name);
+      if (existsSync(p)) return p;
+      try {
+        mkdirSync(d, { recursive: true, mode: 0o700 });
+        try {
+          linkSync(f, p); // the same bytes, no second copy on the disk
+        } catch {
+          copyFileSync(f, p);
+        }
+        return p;
+      } catch {
+        return f;
+      }
     },
     key,
     verify,
@@ -380,7 +435,8 @@ export function createMediaStore(dataDir: string, opts: MediaStoreOptions = {}):
     },
     async upload(req) {
       const len = Number(req.headers.get("content-length") ?? 0);
-      if (len > MEDIA_LIMITS.bytes * 1.3) return json(413, { error: "too big" });
+      // The file itself is measured once it is in; this only turns away what can't be one.
+      if (len > MEDIA_LIMITS.file + MEDIA_LIMITS.bytes) return json(413, { error: "too big", limit: MEDIA_LIMITS.file });
       let form: Awaited<ReturnType<Request["formData"]>>;
       try {
         form = await req.formData();
@@ -397,10 +453,11 @@ export function createMediaStore(dataDir: string, opts: MediaStoreOptions = {}):
           ...(typeof name === "string" && name ? { name } : file.name && file.name !== "blob" ? { name: file.name } : {}),
           ...(thumb && typeof thumb !== "string" ? { thumb: new Uint8Array(await thumb.arrayBuffer()) } : {}),
           ...(typeof preview === "string" ? { preview } : {}),
+          sent: true,
         });
         return json(200, { media: ref });
       } catch (err) {
-        if (err instanceof MediaError) return json(err.status, { error: err.message });
+        if (err instanceof MediaError) return json(err.status, { error: err.message, ...(err.status === 413 ? { limit: MEDIA_LIMITS.file } : {}) });
         throw err;
       }
     },

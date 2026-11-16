@@ -51,7 +51,7 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { callWakes, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDIA_LIMITS, type MediaRef, type ActivityStep, type Bodies, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
+import { callWakes, fileView, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeContextFor, bridgeFor, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
@@ -60,7 +60,7 @@ import { createNmemClient, noMemory, type MemoryClient } from "./memory.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
-import { isChinese, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
+import { FILE_INLINE_CHARS, isChinese, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
 import { inTongue } from "../../protocol/src/say.ts";
 import { isConnectCode, redactWith } from "../../protocol/src/redact.ts";
 import type { SpineStore } from "../../protocol/src/internal.ts";
@@ -526,6 +526,20 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const ctx: RenderCtx = {
     get seesPictures() {
       return HARNESSES[partnerRun().harness]?.images !== false;
+    },
+    // D259: a file the user sent, where the partner's own read tool finds it under its name.
+    fileAt: (m) => core.media?.named?.(m.id) ?? core.media?.path(m.id),
+    fileText: (m) => {
+      const v = fileView(m);
+      if ((v !== "text" && v !== "markdown" && v !== "table") || m.bytes > FILE_INLINE_CHARS * 4) return undefined;
+      const p = core.media?.path(m.id);
+      if (!p) return undefined;
+      try {
+        const text = viewText(new Uint8Array(readFileSync(p)), m.bytes).text;
+        return text.length <= FILE_INLINE_CHARS ? text : undefined;
+      } catch {
+        return undefined;
+      }
     },
     // Spike: an incoming message that answers one we sent renders as that answer.
     bridgeOut: (messageId) => {
@@ -1384,7 +1398,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // D206: the pictures it hands on (the ones the user sent this turn when it names none but the
       // brief is about them: an agent would otherwise get "this screenshot" without the screenshot).
       const named = mediaNamed(raw.media);
-      if (named.unknown.length && !named.media.length) return { ok: false, error: `No picture with id ${named.unknown.join(", ")}. Use the ids from [with … picture <id>].` };
+      if (named.unknown.length && !named.media.length) return { ok: false, error: `No picture or file with id ${named.unknown.join(", ")}. Use the ids from [with … picture <id>] or [with … file <id>].` };
       const sentNow = (t?.triggers ?? []).flatMap((e) => (e.kind === "user_msg" ? ((e.body as Bodies["user_msg"]).media ?? []) : []));
       const handed = named.media.length ? named.media : sentNow;
       const note = forOriginal
@@ -1487,7 +1501,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (answered) return { ok: false, error: "Ducter already gave this task the user's reply as the answer to its question. Send it nothing; say at most one short line, or nothing." };
       try {
         const named = mediaNamed(args.media);
-        if (named.unknown.length && !named.media.length) return { ok: false, error: `No picture with id ${named.unknown.join(", ")}.` };
+        if (named.unknown.length && !named.media.length) return { ok: false, error: `No picture or file with id ${named.unknown.join(", ")}.` };
         const r = await runner.send(args.taskId, redactSecrets(args.text, turn?.userTexts ?? []), args.mode, undefined, undefined, named.media.length ? named.media : undefined);
         return { ok: true, ...r };
       } catch (err) {

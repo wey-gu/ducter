@@ -15,9 +15,11 @@ export interface Prepared {
   h: number;
 }
 
-/** One picture the user picked, from the moment it is picked until its message is sent. */
+/** One picture (or, D259, any other file) the user picked, from the moment it is picked until its message is sent. */
 export interface Pic {
   key: string;
+  /** D259: a file goes up as it is (no canvas, nothing changed); a picture is made ready first. */
+  kind?: "picture" | "file";
   name: string;
   /** What the phone shows while it goes up (an object URL of the picture as picked). */
   local: string;
@@ -121,13 +123,19 @@ function fit(w: number, h: number, edge: number): [number, number] {
   return [Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s))];
 }
 
-/** Uploads one prepared picture (POST /api/media) with progress; resolves with its ref. */
-export function upload(p: Prepared, name: string, onProgress: (f: number) => void): Promise<MediaRef> {
+/** D259: the words for a file over the home's cap: they say the cap. */
+export const tooBigWords = () => t("media.tooBig", Math.round(MEDIA_LIMITS.file / (1024 * 1024)));
+
+/** Uploads one prepared picture, or (D259) a file as it is, to POST /api/media with progress; resolves with its ref. */
+export function upload(p: Prepared | Blob, name: string, onProgress: (f: number) => void): Promise<MediaRef> {
   return new Promise((resolve, reject) => {
     const form = new FormData();
-    form.set("file", p.display, name);
-    if (p.thumb) form.set("thumb", p.thumb, "thumb");
-    if (p.preview) form.set("preview", p.preview);
+    if (p instanceof Blob) form.set("file", p, name);
+    else {
+      form.set("file", p.display, name);
+      if (p.thumb) form.set("thumb", p.thumb, "thumb");
+      if (p.preview) form.set("preview", p.preview);
+    }
     form.set("name", name);
     const x = new XMLHttpRequest();
     x.open("POST", new URL("api/media", A.base).href);
@@ -136,14 +144,15 @@ export function upload(p: Prepared, name: string, onProgress: (f: number) => voi
     x.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.min(0.98, e.loaded / e.total));
     x.onerror = () => reject(new Error(t("media.failed")));
     x.ontimeout = () => reject(new Error(t("media.failed")));
-    x.timeout = 120_000;
+    // A big file over a phone's link takes its time (50 MB at 5 Mbit/s is about 80 s).
+    x.timeout = p instanceof Blob ? 600_000 : 120_000;
     x.onload = () => {
       let body: { media?: MediaRef; error?: string } = {};
       try {
         body = JSON.parse(x.responseText);
       } catch {}
       if (x.status === 200 && body.media) return resolve(body.media);
-      reject(new Error(x.status === 413 ? t("media.tooBig") : x.status === 415 ? t("media.notImage") : t("media.failed")));
+      reject(new Error(x.status === 413 ? tooBigWords() : t("media.failed")));
     };
     x.send(form);
   });

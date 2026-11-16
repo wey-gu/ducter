@@ -49,7 +49,8 @@ func (h Home) client() *http.Client {
 	if h.HTTP != nil {
 		return h.HTTP
 	}
-	return &http.Client{Timeout: 2 * time.Minute}
+	// A 50 MB file over a slow link takes its time (D259).
+	return &http.Client{Timeout: 10 * time.Minute}
 }
 
 // URL is a ref's path on this home.
@@ -82,9 +83,33 @@ func (h Home) Upload(ctx context.Context, p *Prepared, name string, progress fun
 		mw.WriteField("name", name)
 	}
 	mw.Close()
+	return h.post(ctx, &body, mw, progress)
+}
+
+// UploadFile sends a file that isn't a picture as it is (D259): nothing on
+// the Mac changes it; the home keeps what it doesn't know as inert bytes.
+func (h Home) UploadFile(ctx context.Context, data []byte, name string, progress func(float64)) (protocol.MediaRef, error) {
+	if len(data) > protocol.MediaFileMax {
+		return protocol.MediaRef{}, ErrTooBig
+	}
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	fw, err := mw.CreateFormFile("file", name)
+	if err != nil {
+		return protocol.MediaRef{}, err
+	}
+	fw.Write(data)
+	if name != "" {
+		mw.WriteField("name", name)
+	}
+	mw.Close()
+	return h.post(ctx, &body, mw, progress)
+}
+
+func (h Home) post(ctx context.Context, body *bytes.Buffer, mw *multipart.Writer, progress func(float64)) (protocol.MediaRef, error) {
 	total := int64(body.Len())
 	var sent atomic.Int64
-	r := &countReader{r: &body, n: &sent, total: total, progress: progress}
+	r := &countReader{r: body, n: &sent, total: total, progress: progress}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, h.URL("api/media"), r)
 	if err != nil {
 		return protocol.MediaRef{}, err

@@ -26,32 +26,32 @@ func (h mediaHands) Home() media.Home {
 	return media.Home{Base: media.HTTPBase(url), Token: token}
 }
 
-// pictureExts are what the panel offers and a pasted file may be. HEIC is
-// left out: Go can't read it (a photo from the iPhone is sent from there).
-var pictureExts = []string{"png", "jpg", "jpeg", "gif", "webp"}
-
-func (h mediaHands) PickImages(title string) ([]string, error) {
-	return mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: h.win, Title: title, Message: title, Multiple: true,
-		Filters: []mygo.FileFilter{{Name: title, Extensions: pictureExts}}})
+// PickFiles (D259): the panel offers every file, pictures among them; a
+// picture is made ready on the Mac, anything else goes as it is.
+func (h mediaHands) PickFiles(title string) ([]string, error) {
+	return mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: h.win, Title: title, Message: title, Multiple: true})
 }
 
 func (h mediaHands) PastedImage() ([]byte, string, bool) {
 	if b, err := mygo.Clipboard.ReadFormat(transfer.PNG); err == nil && len(b) > 0 {
 		return b, "Pasted.png", true
 	}
-	if files, err := mygo.Clipboard.ReadFiles(); err == nil {
-		for _, f := range files {
-			ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(f)), ".")
-			for _, e := range pictureExts {
-				if e == ext {
-					if b, err := os.ReadFile(f); err == nil {
-						return b, filepath.Base(f), true
-					}
-				}
-			}
+	return nil, "", false
+}
+
+// PastedFiles are files copied in Finder, any kind (D259); folders stay out.
+func (h mediaHands) PastedFiles() []string {
+	files, err := mygo.Clipboard.ReadFiles()
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, f := range files {
+		if st, err := os.Stat(f); err == nil && !st.IsDir() {
+			out = append(out, f)
 		}
 	}
-	return nil, "", false
+	return out
 }
 
 func (h mediaHands) CopyImage(png []byte) error {

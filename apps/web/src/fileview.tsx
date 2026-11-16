@@ -8,7 +8,7 @@
 // client's own fetch (the same keyed path the pictures use), the first FILE_VIEW_BYTES of a text,
 // cut at a whole line; Save a copy takes the whole file to this device (the share sheet on a
 // phone, a download elsewhere), never by sending the person to the home's address.
-import { EXT_OF, FILE_VIEW_BYTES, FILE_VIEW_ROWS, fileView, parseTable, sizeWords, tableSep, viewText, type MediaRef } from "@ducter/protocol";
+import { ANY_FILE, EXT_OF, FILE_VIEW_BYTES, FILE_VIEW_ROWS, fileView, parseTable, sizeWords, tableSep, viewText, type MediaRef } from "@ducter/protocol";
 import type { JSX } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -233,7 +233,7 @@ function NoneBody({ m, said }: { m: MediaRef; said?: string }) {
         <FileGlyph m={m} size={56} />
         <span class="kind">{kindWord(m)}</span>
       </div>
-      <p>{said ?? t("file.none")}</p>
+      <p>{said ?? t(m.type === ANY_FILE ? "file.none.kept" : "file.none")}</p>
       <button type="button" class="btn primary" onClick={() => void saveCopy(m)}>
         <span class="lbl">{t("file.save")}</span>
       </button>

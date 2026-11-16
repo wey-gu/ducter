@@ -44,6 +44,10 @@ type fakeHome struct {
 	saved  []string
 	opened []string
 	paste  []byte
+	// pastedFiles are files copied in Finder (D259).
+	pastedFiles []string
+	// names are the names the uploads came with.
+	names []string
 }
 
 func newFakeHome(t *testing.T) *fakeHome {
@@ -63,6 +67,7 @@ func newFakeHome(t *testing.T) *fakeHome {
 				return
 			}
 			b, _ := io.ReadAll(f)
+			h.names = append(h.names, r.FormValue("name"))
 			json.NewEncoder(w).Encode(map[string]any{"media": h.put(b, r.FormValue("preview"), r.FormValue("name"))})
 			return
 		}
@@ -111,8 +116,9 @@ func (h *fakeHome) ref(t *testing.T, img image.Image, from string) protocol.Medi
 }
 
 func (h *fakeHome) Home() media.Home                    { return media.Home{Base: h.srv.URL + "/"} }
-func (h *fakeHome) PickImages(string) ([]string, error) { return nil, nil }
+func (h *fakeHome) PickFiles(string) ([]string, error)  { return nil, nil }
 func (h *fakeHome) PastedImage() ([]byte, string, bool) { return h.paste, "Pasted.png", h.paste != nil }
+func (h *fakeHome) PastedFiles() []string               { return h.pastedFiles }
 func (h *fakeHome) CopyImage(b []byte) error            { h.copied = append(h.copied, b); return nil }
 func (h *fakeHome) Save(n string, _ []byte) (string, error) {
 	h.saved = append(h.saved, n)
@@ -319,6 +325,61 @@ func TestSendPicture(t *testing.T) {
 	app.Media.(*fakeHome).paste = pngBytes(photo(400, 300, 0.1))
 	if !app.pasteInto("conv") || len(app.med().trays["conv"]) != 1 {
 		t.Errorf("paste didn't add a picture")
+	}
+}
+
+// D259: any file goes as itself: picked, dropped or copied in Finder; it
+// shows in the tray by its kind and name, goes up unchanged, is sent by its
+// id, and stands in the person's own message as the file card. A picture
+// the Mac can't read (HEIC) goes as a file; one over the cap is said.
+func TestSendAnyFile(t *testing.T) {
+	app, sent, h := mediaApp(t, i18n.ZH)
+	dir := t.TempDir()
+	report := filepath.Join(dir, "季度报告.pdf")
+	pdf := []byte("%PDF-1.7\n1 0 obj << >> endobj\n%%EOF\n")
+	os.WriteFile(report, pdf, 0o600)
+	notes := filepath.Join(dir, "notes.md")
+	os.WriteFile(notes, []byte("# 周会\n- 发版\n"), 0o600)
+	app.AddPictureFiles("conv", []string{report})
+	x := app.med().trays["conv"][0]
+	if !x.ready() || x.prep != nil || !bytes.Equal(x.file, pdf) {
+		t.Fatalf("the PDF didn't go up as itself: %+v", x)
+	}
+	if !bytes.Equal(h.files[x.ref.ID], pdf) || h.names[len(h.names)-1] != "季度报告.pdf" {
+		t.Errorf("the home got other bytes or another name: %q", h.names)
+	}
+	tt := mediaTester(app, 1100, 900)
+	if all := texts(tt); !strings.Contains(all, "季度报告.pdf") {
+		t.Errorf("the tray doesn't name the file: %q", all)
+	}
+	// Copied in Finder: ⌘V brings the file itself, not its icon.
+	h.pastedFiles = []string{notes}
+	if !app.pasteInto("conv") || len(app.med().trays["conv"]) != 2 {
+		t.Fatalf("paste didn't add the copied file")
+	}
+	if !app.SendMessage("帮我看看这两份") {
+		t.Fatal("not sent")
+	}
+	f, ok := lastFrame[protocol.Send](sent)
+	if !ok || len(f.Media) != 2 || f.Media[0] != x.ref.ID {
+		t.Fatalf("send: %+v", f)
+	}
+	if all := texts(mediaTester(app, 1100, 900)); !strings.Contains(all, "季度报告.pdf") || !strings.Contains(all, "notes.md") {
+		t.Errorf("the message doesn't show its files: %q", all)
+	}
+	// HEIC (Go can't read it) goes as the file it is.
+	app.AddPicture("conv", []byte("\x00\x00\x00\x18ftypheic\x00\x00\x00\x00"), "IMG_0042.HEIC")
+	if y := app.med().trays["conv"][0]; y.file == nil || !y.ready() {
+		t.Errorf("a HEIC didn't go as a file: %+v", y)
+	}
+	// Over the cap: said in the tray, never added.
+	big := filepath.Join(dir, "big.zip")
+	fh, _ := os.Create(big)
+	fh.Truncate(protocol.MediaFileMax + 1)
+	fh.Close()
+	app.AddPictureFiles("nt", []string{big})
+	if len(app.med().trays["nt"]) != 0 || app.med().note["nt"] != "这个文件太大了：每个最多 50 MB" {
+		t.Errorf("too big: %d %q", len(app.med().trays["nt"]), app.med().note["nt"])
 	}
 }
 

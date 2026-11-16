@@ -21,7 +21,8 @@ import androidx.core.content.FileProvider
 import java.io.File
 
 /**
- * D206: the page's 加图片 / Add images in the app. A web view shows no file chooser by itself:
+ * D206: the page's 添加图片或文件 / Add images or files in the app (D259: any file; the page names no
+ * type, so the picker offers every kind). A web view shows no file chooser by itself:
  * this opens Android's own picker (Photos, Files; several at once), with the camera as its first
  * choice when the app may use it (the QR scan already asked). A photo taken lands in the app's
  * cache and is handed to the page like a picked one; the page scales it and strips its EXIF.

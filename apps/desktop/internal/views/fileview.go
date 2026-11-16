@@ -507,7 +507,14 @@ func (a *App) fileNone(c *ui.Context, fv *fileViewState) {
 			ui.Box(c).Size(56, 56).Draw(drawFileKind(t.InkMuted, protocol.FileNone))
 			ui.Text(c, strings.ToUpper(strings.TrimPrefix(fileExt(fileSaveName(fv.ref)), "."))).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft)
 		})
+		// D259: a file of no kind Ducter knows (a program, a script bundle,
+		// anything a person sent) is never handed to macOS to open: opening
+		// can run it. Save a copy only.
+		inert := fv.ref.Type == protocol.AnyFile
 		said := a.L.T("file.none.mac")
+		if inert {
+			said = a.L.T("file.none.kept")
+		}
 		if fv.pdfFailed {
 			said = a.L.T("file.pdfFailed.mac")
 		}
@@ -516,7 +523,7 @@ func (a *App) fileNone(c *ui.Context, fv *fileViewState) {
 			if a.button(c, a.L.T("file.save"), btnSecondary, t.ControlMD, t.Bg) {
 				a.saveFileCopy(fv.ref)
 			}
-			if a.button(c, a.L.T("file.openMac"), btnPrimary, t.ControlMD, t.Bg) {
+			if !inert && a.button(c, a.L.T("file.openMac"), btnPrimary, t.ControlMD, t.Bg) {
 				ref := fv.ref
 				a.fileBytes(ref, func(data []byte) {
 					if err := a.Media.OpenLocal(fileSaveName(ref), data); err != nil {

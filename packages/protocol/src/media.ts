@@ -43,8 +43,14 @@ export const MEDIA_LIMITS = {
   perMessage: 10,
   /** Files a task shows in one report. */
   perReport: 6,
-  /** One upload (a phone sends ≤ 2048 px JPEGs, well under). */
+  /** One picture, or a file a task shows (a phone sends ≤ 2048 px JPEGs, well under). */
   bytes: 25 * 1024 * 1024,
+  /**
+   * D259: one file a person sends (anything but a picture). Under Cloudflare's 100 MB request cap
+   * on a From-anywhere tunnel (D228) and Bun's 128 MB body cap with room to spare, and held in
+   * memory once on the home while it is stored.
+   */
+  file: 50 * 1024 * 1024,
   /** D255: a video (a recording of a lent phone's screen, ≤ 8 minutes at ~1.5 Mbit/s). */
   video: 100 * 1024 * 1024,
   /** A tiny preview, as a data: URL. */
@@ -85,7 +91,11 @@ export function isImage(m: Pick<MediaRef, "type">): boolean {
   return isImageType(m.type);
 }
 
+/** D259: what a file a person sent is stored as when it is no kind Ducter knows: inert bytes, never run, served as a download. */
+export const ANY_FILE = "application/octet-stream";
+
 export const EXT_OF: Record<string, string> = {
+  [ANY_FILE]: "bin",
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/gif": "gif",
@@ -282,6 +292,32 @@ export function parseTable(text: string, sep = ",", max = FILE_VIEW_ROWS): { row
   }
   if (cell !== "" || row.length) row.push(cell), rows.push(row);
   return rows.length > max ? { rows: rows.slice(0, max), more: true } : { rows, more: false };
+}
+
+/**
+ * D259: a file's kind in words an agent reads ("Markdown", "PDF", "Word document"), from its type
+ * and name: the line that names a file the user sent says what it is before anything opens it.
+ */
+export function kindWords(m: { type: string; name?: string }): string {
+  const ext = extOf(m.name);
+  const office: Record<string, string> = { docx: "Word document", doc: "Word document", xlsx: "spreadsheet", xls: "spreadsheet", pptx: "slide deck", ppt: "slide deck", key: "Keynote deck", pages: "Pages document", numbers: "Numbers spreadsheet" };
+  if (office[ext]) return office[ext]!;
+  switch (fileView(m)) {
+    case "markdown":
+      return "Markdown";
+    case "table":
+      return ext === "tsv" ? "table (TSV)" : "table (CSV)";
+    case "pdf":
+      return "PDF";
+    case "video":
+      return "video";
+    case "picture":
+      return m.type === "image/svg+xml" ? "SVG picture" : "picture";
+    case "text":
+      return m.type === "application/json" ? "JSON" : m.type === "text/html" ? "HTML source" : ext && ext !== "txt" ? `text (.${ext})` : "text";
+  }
+  if (m.type === "application/zip" || ext === "zip") return "zip archive";
+  return ext ? `.${ext} file` : "file";
 }
 
 /** A file's size in words a person reads: 820 KB, 3.4 MB. */

@@ -1,6 +1,6 @@
 # Pictures and Files (media)
 
-> Design note for D206, D239 and D242 · Principles 5, 6, 7 · Evidence: `research/56`, `research/75` · Screens: `.shots/media/`
+> Design note for D206, D239, D242 and D259 · Principles 5, 6, 7 · Evidence: `research/56`, `research/75` · Screens: `.shots/media/`
 > (D75: never in git)
 
 The author: "要优雅一些，极度顺滑方便用户浏览查看，体验拉满". A partner you message has to see what
@@ -24,11 +24,11 @@ only what a task chose to show comes back · 惊喜 "画一张…" gives you the
 ## Sending
 
 - **Where:** the conversation's composer, an opened task's composer, and the New task card's What
-  row. **添加图片 / Add images** opens the phone's own sheet (library, camera, files), the Mac's open
-  panel; paste (⌘V, long-press Paste) and drag and drop work on the same three places
-  (**松开即可添加 / Drop to add** while a drag is over). Up to 10 per message (**一次最多 10 张 / Up to
-  10 at a time**); anything but a picture is refused for now (**现在只能发图片 / Only images can be
-  sent for now**, phase 2 brings files).
+  row. **添加图片或文件 / Add images or files** opens the phone's own sheet (library, camera,
+  files), the Mac's open panel (every file); paste (⌘V, long-press Paste; on the Mac, files copied
+  in Finder) and drag and drop work on the same three places (**松开即可添加 / Drop to add** while a
+  drag is over). Up to 10 per message, pictures and files together (**一次最多 10 个 / Up to 10 at a
+  time**). Any file goes (D259, below).
 - **Made ready on the device, never on the home.** Scaled to 2048 px on the long edge and
   re-encoded (JPEG ~0.85; a screenshot stays a crisp PNG, a GIF stays moving), which turns it
   upright by its EXIF and drops all of its metadata, location included. HEIC becomes JPEG on the
@@ -37,10 +37,37 @@ only what a task chose to show comes back · 惊喜 "画一张…" gives you the
   its thumbnail, so Send is instant. A message waits for its pictures; one that didn't go up
   stays with its words and its picture: **没发出去 · 重试 / Didn't send · Retry**. Words are never
   lost.
-- **Wire.** `POST /api/media` (behind the gate, same origin, 25 MB): multipart `file`, `thumb?`,
+- **Wire.** `POST /api/media` (behind the gate, same origin; 25 MB a picture, 50 MB a file): multipart `file`, `thumb?`,
   `preview?`, `name?` → `{media: MediaRef}`. Frames name ids: `send.media`, `task_send.media`,
   `task_new.media`; the home turns them into refs (an id it doesn't hold is refused: **A picture
   didn't arrive. Send it again.**). Text may be empty when there are pictures.
+
+## Files the person sends (D259)
+
+Who: the developer handing over a log, a script, a CSV or a design doc; the consumer forwarding a
+PDF or a spreadsheet as in any messaging app; the fresh user who picks Choose File and expects it
+to go. A messaging app that refuses a file feels broken; now it simply goes, it is answered from,
+and nothing in it can run.
+
+- **As it is.** A picture the device can read is made ready (above); anything else, and a picture
+  it can't read (HEIC on the Mac, TIFF in Chrome), goes up unchanged: no canvas, nothing stripped.
+- **The tray:** a file is a wider clay tile (128 pt), its drawn kind over its name (two lines), the
+  ring in its corner while it goes up, Remove and Retry as for a picture. **The bubble:** the file
+  card (drawn kind, name, size), its ring where **打开 / Open** will be until it lands; then the card
+  itself, which opens the file in the viewer (D239).
+- **Limit: 50 MB a file** (`MEDIA_LIMITS.file`; pictures stay at 25 MB, they are scaled first).
+  Under Cloudflare's 100 MB request cap on a From-anywhere tunnel (D228) and Bun's 128 MB, held in
+  memory once while stored. Checked on the device before a byte leaves, and on the home (413 with
+  the cap): **这个文件太大了：每个最多 50 MB / That file is too big: up to 50 MB each**.
+- **What the home keeps it as** (`sniffSent`): a picture by its bytes; a kind Ducter shows by its
+  name and bytes; text when its first 8 KB is UTF-8 with no NUL (a Dockerfile; a `.env` the person
+  chose to send); else `application/octet-stream` (`ANY_FILE`, stored as `.bin`): inert bytes,
+  served with `nosniff`, the sandboxing CSP and its own name, never run, never a page. Its viewer
+  says **这种文件在 Ducter 里不会打开，只原样存着。存一份，用你自己的应用看。 / Ducter never opens this
+  kind of file; it keeps it as it is. Save a copy and open it in your own app.**; the Mac offers no
+  **在 Mac 上打开** for it (opening can run it).
+- **Under its own name** (`named(id)`): `media/named/<id12>/<name>`, a hard link to the stored
+  bytes, so an agent reads `季度报告.pdf`, not `<sha>.pdf`.
 
 ## The home's store
 
@@ -87,11 +114,21 @@ long (`MEDIA_KEY`).
   3f2a91c04b7e (1290×2796); you see them with this message]`). Image *generation* stays off for the
   partner (it opens a task for that). An AI that can't see pictures (DeepSeek Harness: OAR
   `capabilities.images` false) gets none, and the line says so; the persona says it in one line.
-- **To a task:** `task_open.media` / `task_send.media` name pictures by id; when it names none, the
+- **Files (D259)** are never image input. The partner's line names each: `[with a file: file
+  3f2a91c04b7e "季度报告.pdf" (PDF, 2.1 MB) at …/named/3f2a91c04b7e/季度报告.pdf. Read it with your
+  file tools when the message needs it (a long one in parts). A task that needs it gets it by id in
+  task_open's or task_send's media. Never say a path to the user]` (`filesLine`, `kindWords`). A
+  text, Markdown or table of at most 6,000 characters comes whole in the line (`FILE_INLINE_CHARS`);
+  a longer one or a PDF the partner reads with its own read-only tool, in parts (Claude Code's Read
+  takes PDFs, capped at 8K tokens a read). The persona and tool descriptions are unchanged.
+- **To a task:** `task_open.media` / `task_send.media` name pictures and files by id; when it names none, the
   pictures of the user's latest message go with the brief. The runner hands them to the agent
   with the first turn (or the message) as its image input; a worker's session gets their bytes.
   An agent that can't see pictures gets the words and a line saying pictures came that it can't
-  see. Never bytes in text.
+  see. Never bytes in text. Files (D259): one line in the turn names each, its kind, size and path
+  under its own name, and that it is a copy (changes go in the task's own folder); any agent reads
+  it with its own tools. On a worker, the bytes go down with the words (`send.files`), the worker
+  keeps them in `media-in/files/<id12>/<name>` and the line names its own path.
 - **谁来做 / Who:** with pictures on the New task card, an agent that can't see them shows **看不了图片
   / Can't see images** (`Candidate.noImages`).
 
@@ -210,6 +247,7 @@ is read where it was handed over.
 
 ## Later (design/todo.md)
 
-Phase 2: files and PDFs sent by the user; a share sheet into Ducter (iOS share extension, Android
-share intent). Phase 3: video (the model sees ~6 frames), reply to a message, link previews.
+Built by D259: files and PDFs sent by the user. Still phase 2: a share sheet into Ducter (iOS share
+extension, Android share intent); a PDF as a model's own document input through OAR; PDF text on the
+home for an agent with no PDF reader. Phase 3: video (the model sees ~6 frames), reply to a message, link previews.
 D239's later, built by D242: PDF pages drawn inside Ducter, expiring media keys, find in a long file. Still later: Office files drawn, find in a PDF.

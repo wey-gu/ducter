@@ -2,7 +2,7 @@
 import { onWbFrame } from "./workbench-ask.ts";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/protocol";
-import { prepare, upload, type Pic, type ViewerState } from "./media-up.ts";
+import { prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
@@ -1744,15 +1744,19 @@ class AppState {
 
   // ---------- pictures (D206) ----------
 
-  /** Pictures picked, pasted or dropped: made ready on this phone and sent up at once. */
+  /** Pictures and files picked, pasted or dropped: a picture made ready on this phone, a file as it
+   *  is (D259), and sent up at once. A file over the home's cap is said, never added. */
   addFiles(where: string, files: File[]) {
-    const { pics, other } = picturesIn(files);
-    if (other && !pics.length) return this.toast(this.L.t("media.notImage"));
+    const { pics, files: docs } = picturesIn(files);
+    const big = docs.filter((f) => f.size > MEDIA_LIMITS.file);
+    const all = [...pics.map((file) => ({ file, kind: "picture" as const })), ...docs.filter((f) => f.size <= MEDIA_LIMITS.file).map((file) => ({ file, kind: "file" as const }))];
+    if (big.length) this.toast(tooBigWords());
     const list = this.picks.get(where) ?? [];
     const room = MEDIA_LIMITS.perMessage - list.length;
-    if (pics.length > room) this.toast(this.L.t("media.tooMany", MEDIA_LIMITS.perMessage));
-    for (const file of pics.slice(0, Math.max(0, room))) {
-      const pic: Pic = { key: `m${Date.now()}-${++this.nextClient}`, name: file.name || "image.jpg", local: URL.createObjectURL(file), w: 4, h: 3, state: "preparing", progress: 0, file };
+    if (all.length > room) this.toast(this.L.t("media.tooMany", MEDIA_LIMITS.perMessage));
+    if (!all.length) return;
+    for (const { file, kind } of all.slice(0, Math.max(0, room))) {
+      const pic: Pic = { key: `m${Date.now()}-${++this.nextClient}`, kind, name: file.name || (kind === "file" ? "file" : "image.jpg"), local: kind === "picture" ? URL.createObjectURL(file) : "", w: 4, h: 3, state: kind === "file" ? "uploading" : "preparing", progress: 0, file };
       list.push(pic);
       void this.lift(pic);
     }
@@ -1762,8 +1766,44 @@ class AppState {
   }
 
   private async lift(pic: Pic) {
-    pic.state = "preparing";
     pic.error = undefined;
+    if (pic.kind === "picture" && !pic.prepared) {
+      // A picture this browser can't read (a TIFF in Chrome, a broken one) goes as the file it is.
+      try {
+        pic.state = "preparing";
+        this.changed();
+        pic.prepared = await prepare(pic.file);
+      } catch {
+        if (pic.local) URL.revokeObjectURL(pic.local);
+        if (pic.file.size > MEDIA_LIMITS.file) {
+          pic.state = "failed";
+          pic.error = tooBigWords();
+          this.toast(pic.error);
+          this.changed();
+          for (const fn of this.lifted.splice(0)) fn();
+          return;
+        }
+        (pic.kind = "file"), (pic.local = "");
+      }
+    }
+    if (pic.kind === "file") {
+      pic.state = "uploading";
+      pic.progress = 0;
+      this.changed();
+      try {
+        pic.ref = await upload(pic.file, pic.name, (f) => ((pic.progress = f), this.changed()));
+        pic.progress = 1;
+        pic.state = "done";
+      } catch (err) {
+        pic.state = "failed";
+        pic.error = (err as Error).message;
+        if (pic.error === tooBigWords()) this.toast(pic.error);
+      }
+      this.changed();
+      for (const fn of this.lifted.splice(0)) fn();
+      return;
+    }
+    pic.state = "preparing";
     this.changed();
     try {
       pic.prepared ??= await prepare(pic.file);
@@ -1800,7 +1840,7 @@ class AppState {
 
   removePic(where: string, key: string) {
     const list = (this.picks.get(where) ?? []).filter((p) => {
-      if (p.key === key) URL.revokeObjectURL(p.local);
+      if (p.key === key && p.local) URL.revokeObjectURL(p.local);
       return p.key !== key;
     });
     if (list.length) this.picks.set(where, list);

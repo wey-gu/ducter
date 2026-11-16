@@ -142,7 +142,7 @@ export function createWsHandler(deps: WsDeps) {
   /** D206: the refs for the ids a client sent (throws on one the home doesn't hold). */
   const mediaOf = (ids: unknown): MediaRef[] => {
     if (ids === undefined || ids === null || (Array.isArray(ids) && !ids.length)) return [];
-    if (!core.media) throw new Error("Pictures can't be sent here.");
+    if (!core.media) throw new Error("Pictures and files can't be sent here.");
     return (core.media as unknown as { refs(ids: unknown): MediaRef[] }).refs(ids);
   };
   const { log, tasks } = core;

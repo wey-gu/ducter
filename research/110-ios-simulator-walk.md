@@ -74,6 +74,9 @@ Guarded by `apps/web/test/phone-fit.test.ts` (7 tests; all 7 fail on `main`).
 
 ### Open (not fixed; small, or a design call)
 
+*Update 2026-11-17: all but the picture viewer's scrim are fixed by D311 (`.shots/d311/`); the
+items stay below as they were found.*
+
 - **Under 44 pt, by a 402-pt Chromium audit of the same stylesheet:** header name and summary
   buttons (20 and 19 tall), the 想起了 line (24), 换谁来做 (19), the worked line (30), On hand's count
   cells (28), lens chips and small text buttons (36). Most are text links; widening the places

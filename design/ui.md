@@ -79,6 +79,7 @@ components and tokens; a value not in the scales below needs a token first.
 | space | 4 · 8 · 12 · 16 · 24 · 32 · 48 (`S1…S7`) | inside a group S2–S3; between groups S4–S5; a screen's sections S6–S7 |
 | radius | 8 · 12 · 14 · 16 · 18 · 24 · 28 | inline code, diff boxes · small buttons, fields · buttons · sheets, notices · large buttons · cards · hero cards, the composer |
 | controls | 36 · 44 · 52 | chrome and inline lines · cards and the conversation · setup screens and the equip |
+| touch | 44 tall, always (D311) | anything smaller than 44 that a finger taps keeps its look and gets an invisible box (`::before`) 44 tall, where the space around it allows; a track that scrolls sideways clips it, so its chips grow instead (Past tasks' and Done for you's chips 36 in a 44 track) |
 | chips | 24 · 28 · 32 (`ChipSM/Chip/ChipLG`) | a state tag · evidence and metadata · a task in the conversation |
 | motion | press 70 ms · hover/lift `Snappy` · enter 220 ms (6-pt rise + fade: a Settings panel, a notice) · moving between views by D290's vocabulary (below) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
 

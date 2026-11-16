@@ -8700,3 +8700,303 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
     animation: none;
   }
 }
+
+/* ---------- D261: On hand as a conductor: the project lens, the strip, the folds ---------- */
+/* The whole screen: the lens beside the board when there is room (ROOMY), else a row of names. */
+.board-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  min-width: 0;
+}
+.board-wrap > .board-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-inline: auto;
+}
+.lens-col {
+  display: none;
+  position: sticky;
+  top: 0;
+  flex: none;
+  width: 224px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 8px;
+  border-radius: var(--r-lg);
+  background: var(--bg-deep);
+}
+.lens-col .gap {
+  height: 10px;
+}
+@media (min-width: 1120px) {
+  .lens-col {
+    display: flex;
+  }
+  .lens-tabs.in-board {
+    display: none;
+  }
+}
+.lens-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .lens-row:not(.on):hover {
+    background: color-mix(in srgb, var(--surface) 55%, transparent);
+  }
+}
+.lens-row.on {
+  background: var(--surface);
+  box-shadow: var(--base);
+  color: var(--ink);
+}
+.lens-row.other:not(.on) {
+  color: var(--ink-muted);
+}
+.lens-row .nm {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.lens-row .nm b {
+  font-size: var(--md);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lens-row .stat {
+  display: flex;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: var(--xs);
+  font-variant-numeric: tabular-nums;
+}
+.lens-row .stat i {
+  font-style: normal;
+}
+.lens-row .stat .add {
+  color: var(--done-ink);
+}
+.lens-row .stat .del {
+  color: var(--failed-ink);
+}
+.lens-row .n {
+  flex: none;
+  min-width: 20px;
+  text-align: right;
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.lens-row .sface {
+  flex: none;
+}
+/* Narrow: one row of names that scrolls sideways, the chosen one raised. */
+.lens-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -4px;
+  /* Its names never widen the page: it scrolls sideways inside it. */
+  contain: inline-size;
+  min-width: 0;
+  padding: 4px 4px 6px;
+}
+.lens-tabs::-webkit-scrollbar {
+  display: none;
+}
+.lens-tabs .lens-row {
+  flex: none;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--ink-muted);
+}
+.lens-tabs .lens-row.on {
+  color: var(--ink);
+}
+.lens-tabs .lens-row .nm b {
+  font-size: var(--sm);
+}
+.lens-tabs .lens-row .sface {
+  width: 20px;
+  height: 20px;
+}
+/* The board's head: one calm sentence, then the strip of four counts (each one a filter). */
+.board-top {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.board-top .calm-line {
+  margin: 0 2px;
+  font-size: var(--md);
+  line-height: var(--lh-read);
+  color: var(--ink-soft);
+}
+.strip-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.strip-row .grow {
+  flex: 1;
+}
+.strip-row .find {
+  flex: 0 1 260px;
+}
+.strip {
+  display: flex;
+  gap: 4px;
+}
+.strip .cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 84px;
+  padding: 8px 16px 9px;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+.strip .cell b {
+  font-family: var(--head);
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.strip .cell span {
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.strip .cell.needs b {
+  color: var(--needs-ink);
+}
+.strip .cell.none {
+  cursor: default;
+}
+.strip .cell.none b {
+  color: var(--faint);
+}
+@media (hover: hover) {
+  .strip .cell:not(.none):not(.on):hover {
+    background: var(--sunken);
+  }
+}
+.strip .cell.on {
+  background: var(--surface);
+  box-shadow: var(--base);
+}
+.strip .cell.on span {
+  color: var(--ink);
+}
+/* A phone: the four counts share the width. */
+.room-phone .strip-row .find {
+  flex: 1 1 100%;
+}
+.room-phone .strip {
+  flex: 1 1 100%;
+}
+.room-phone .strip .cell {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 6px 10px 7px;
+}
+.room-phone .strip .cell b {
+  font-size: 24px;
+}
+/* A wait's next look, with its small ring; a quiet one says since when. */
+.trow .l2 .next {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.trow .l2 .next .wring {
+  flex: none;
+}
+.trow .l2 .next .wring .fill {
+  fill: var(--waiting-ink);
+}
+.trow .l2 .next + .meta {
+  margin-left: auto;
+}
+.trow.quiet .l1 .t {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.room-phone .trow .l2 .next {
+  display: none;
+}
+/* The fold under 在等 and 今天做完: a quiet line with a chevron. */
+.fold-line {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font: inherit;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .fold-line:hover {
+    color: var(--ink);
+  }
+}
+.fold-line .chev {
+  transition: transform 160ms ease;
+}
+.fold-line .chev.open {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .fold-line .chev {
+    transition: none;
+  }
+}
+.rail-head .lens-name {
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The opened task's head: when it looks again, or since when it is quiet. */
+.task-head .waitnext {
+  margin: 4px 0 0;
+  font-size: var(--md);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}

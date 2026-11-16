@@ -13,7 +13,7 @@ import { shortTitle } from "./transcript.tsx";
 import { Avatar } from "./views.tsx";
 import { useCanFill, useFill } from "./wide.ts";
 import { RoutineShelf } from "./work.tsx";
-import { OnHandList } from "./onhand.tsx";
+import { currentLens, lensGroups, lensName, lensOn, LensColumn, OnHandList } from "./onhand.tsx";
 import type { Task } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -139,6 +139,8 @@ export function Board() {
             <p>{t("onhand.empty", A.S.personaName)}</p>
           </div>
         ) : (
+          <div class="board-wrap">
+          <LensColumn />
           <div class="board-col">
             {next && (
               <p class="next" title={next}>
@@ -149,6 +151,7 @@ export function Board() {
             <OnHandList room="full" />
             <RoutineShelf />
           </div>
+          </div>
         )}
       </main>
     </>
@@ -158,13 +161,16 @@ export function Board() {
 /** Beside a task opened at the whole screen, the list as a rail (D216): the same rows, narrower;
  *  j/k open the next and the one before. */
 export function Rail() {
+  // D261: the rail is the board narrowed by the same lens; its head says which.
+  const groups = lensGroups();
+  const lens = currentLens(groups);
   return (
     <aside class="rail" aria-label={t("nav.onhand")}>
       <div class="rail-head">
         <button class="crumb" onClick={() => A.go({ name: "onhand", full: true })}>
           {t("onhand.title")}
         </button>
-        <span class="sum">{boardSummary()}</span>
+        {lensOn(groups) ? <span class="lens-name">{lens ? lensName(lens) : t("onhand.lens.all")}</span> : <span class="sum">{boardSummary()}</span>}
       </div>
       <div class="scroll rail-list">
         <OnHandList room="rail" />

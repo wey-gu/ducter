@@ -170,8 +170,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **New task: "every time something happens" (D185).** The card's 等某件事发生 is one-shot;
       a repeating condition still goes through the partner (its check is compiled by a model).
       Trigger: the first time the author wants a watcher without saying it.
-- [ ] **New task: By project on the phone (D128).** The phone's On hand stays by state.
-      Trigger: someone works several repos from the phone.
+- [x] **New task: By project on the phone (D128).** Built as D261's project lens: a row of names on the phone.
 
 - [ ] Two results landing together still mention branches and guess at merge conflicts (eval
       `settle` 0/2). Settlement batching in code, not prose.
@@ -1234,3 +1233,12 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Resizing the rail** (Lody's 240–420). Trigger: someone asks; today it follows the window (`clamp(300, 22%, 340)`).
 - [ ] **New results across devices**: seen is kept per device, so a result opened on the phone still shows as new on the Mac. Trigger: someone notices it; the fix is a seen cursor per task in the home.
 - [ ] **A human comprehension pass on the row faces** at 24 pt (flag, reading, done) on a 40-task rail.
+
+## On hand as a conductor (D261)
+
+- [ ] **Against a live home with the author's real board** (the 3 quiet waits, 30+ tasks): so far the Mac's view tests and headless web shots from a demo core.
+- [ ] **A task's own timer** (`wait_for` with a time): a task can only wait on a check or an event, which is why one used `date` as a clock; D261 refuses that, and a time-only wait for a task needs the waiter to wake the task, not the partner (a task's timer is the partner's today). Trigger: a task asks for "look again in 45 minutes" twice in a week.
+- [ ] **The shorthand guard on a task's reports and checkpoints**, not only a wait's reason (D261 (10)). Trigger: a row's line shows notes again; the rule then belongs in the task's brief.
+- [ ] **The web's routine shelf under a project's lens** (the Mac shows only that project's routines; the web still shows all). Trigger: the next pass on routines.
+- [ ] **The window header's counts vs the strip**: the header's 今天做完 counts successes today, the strip counts the section (failures and yesterday's late finishes too). One rule for both is the shell's call (the header is shared chrome).
+- [ ] **Quiet after 24 hours** and **seen results folded by default** are defaults to revisit with real use.

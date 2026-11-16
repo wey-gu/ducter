@@ -7,12 +7,12 @@
 import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { callEnded, type Bodies, type LogEvent } from "@ducter/protocol";
+import { callEnded, type Bodies, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
-import { Btn, Seg } from "./controls.tsx";
-import { ago, harnessName } from "./format.ts";
+import { Btn } from "./controls.tsx";
+import { ago, clock, day, harnessName, when } from "./format.ts";
 import { CallRow } from "./phone.tsx";
 import { attention, canIntegrate, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
 import { liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "./transcript.tsx";
@@ -74,10 +74,14 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     return { words: q || stateLabel(a), tone: "needs" };
   }
   if (a === "blocked") {
+    // D261: a wait always says what it waits for: its waiter, the state's reason, what the task
+    // last reported, or that it stopped without saying (true, and worth a look).
     const w = A.S.waiterFor(task.id);
-    if (w) return { words: [waitLine(w.reason), waitCaption(w)].filter(Boolean).join(" · ") };
+    if (w?.reason?.trim()) return { words: waitLine(w.reason) };
     const why = reasonOf(task);
-    return { words: (why && (deviceWait(why) ?? why)) || stateLabel(a) };
+    if (why && !why.startsWith("report:") && !why.endsWith("by user")) return { words: deviceWait(why) ?? why };
+    const said = r?.summary?.trim() ? sayable(r.summary.trim().split("\n")[0], A.L.lang) : "";
+    return { words: said || t("onhand.wait.unsaid") };
   }
   if (a === "working" || a === "queued") {
     const u = A.S.untilOf(task);
@@ -112,6 +116,244 @@ function prWord(task: Task): string {
   return i ? t(i.act === "merge" ? "onhand.pr.merged" : "onhand.pr.draft") : "";
 }
 
+// ---------- D261: quiet waits, the next look, the project lens ----------
+
+/** A wait nothing has changed on for a day folds away under the fresh ones. */
+export const QUIET_MS = 24 * 3600_000;
+export function quietWait(task: Task, now = Date.now()): boolean {
+  if (attention(task) !== "blocked" || !task.card?.updatedAt) return false;
+  let at = Date.parse(task.card.updatedAt);
+  const w = A.S.waiterFor(task.id);
+  if (w?.changes && w.lastLookAt) at = Math.max(at, Date.parse(w.lastLookAt));
+  return Number.isFinite(at) && now - at >= QUIET_MS;
+}
+
+/** A time of day, with its day only when it isn't today. */
+function soon(iso: string, now = Date.now()): string {
+  return day(A.L, iso, now) === day(A.L, new Date(now).toISOString(), now) ? clock(iso) : when(A.L, iso, now);
+}
+
+/** When a wait looks again (or goes on), in words, and how far along that interval it is (the
+ *  small ring); "" when it doesn't look on its own. The waiter's own times, never a model. */
+export function waitNext(w: ReturnType<typeof A.S.waiterFor>, now = Date.now()): { text: string; frac: number } {
+  if (!w) return { text: "", frac: 0 };
+  if (w.check || w.event) {
+    const next = Date.parse(w.nextLookAt ?? "");
+    if (!Number.isFinite(next) || next <= now) return { text: "", frac: 0 };
+    const last = Date.parse(w.lastLookAt ?? w.armedAt ?? "");
+    const frac = Number.isFinite(last) && next > last ? (now - last) / (next - last) : 0;
+    return { text: t("onhand.wait.next", soon(w.nextLookAt!, now)), frac };
+  }
+  const at = Date.parse(w.at ?? "");
+  if (Number.isFinite(at) && at > now) {
+    const from = Date.parse(w.armedAt ?? "");
+    return { text: t("onhand.wait.at", soon(w.at!, now)), frac: Number.isFinite(from) && at > from ? (now - from) / (at - from) : 0 };
+  }
+  return { text: "", frac: 0 };
+}
+
+/** What comes next for a waiting task, in one line, for the opened task's head. */
+export function taskNext(task: Task, now = Date.now()): string {
+  if (attention(task) !== "blocked") return "";
+  const parts = [quietWait(task, now) ? t("onhand.wait.since", ago(A.L, task.card?.updatedAt, now)) : "", waitNext(A.S.waiterFor(task.id), now).text].filter(Boolean);
+  const s = parts.join(" · ");
+  return A.L.lang === "zh" || !s ? s : s[0]!.toUpperCase() + s.slice(1);
+}
+
+/** A small ring: how far along a wait's interval is. */
+const Ring = ({ frac }: { frac: number }) => {
+  const f = Math.max(0, Math.min(1, frac));
+  const a = f * 2 * Math.PI;
+  const x = 6 + 3.6 * Math.sin(a), y = 6 - 3.6 * Math.cos(a);
+  return (
+    <svg class="wring" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+      <circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.5" />
+      {f >= 0.999 ? <circle cx="6" cy="6" r="3.6" class="fill" /> : f > 0 && <path class="fill" d={`M6 6V2.4A3.6 3.6 0 ${f > 0.5 ? 1 : 0} 1 ${x.toFixed(2)} ${y.toFixed(2)}Z`} />}
+    </svg>
+  );
+};
+
+/** The lens key a task is under: its project, else "~" (其他 / Other). */
+export const OTHER = "~";
+export const lensOf = (task: Task) => {
+  const p = placeOf(task);
+  return projectOf(task) || (p.kind === "repo" ? (p.repoPath.replace(/\/+$/, "").split("/").pop() ?? "") : p.kind === "folder" ? (p.path.replace(/\/+$/, "").split("/").pop() ?? "") : "") || OTHER;
+};
+export const lensName = (key: string) => (key === OTHER ? t("onhand.other") : key);
+
+const LENS = "ducter.onhand.lens";
+export function readLens(): string {
+  try {
+    return localStorage.getItem(LENS) ?? "";
+  } catch {
+    return "";
+  }
+}
+export function setLens(key: string) {
+  try {
+    if (key) localStorage.setItem(LENS, key);
+    else localStorage.removeItem(LENS);
+  } catch {}
+  L.focus = "";
+  A.changed();
+}
+
+export type LensGroup = { key: string; name: string; place?: Place; tasks: Task[] };
+/** The board's projects, what needs you first, then the projects added by hand, Other last. */
+export function lensGroups(): LensGroup[] {
+  const b = A.S.board();
+  const out: LensGroup[] = [];
+  const at = new Map<string, number>();
+  let other: LensGroup | undefined;
+  for (const lane of b.lanes.slice(0, 4))
+    for (const task of lane) {
+      const k = lensOf(task);
+      if (k === OTHER) {
+        (other ??= { key: OTHER, name: t("onhand.other"), tasks: [] }).tasks.push(task);
+        continue;
+      }
+      let i = at.get(k);
+      if (i === undefined) at.set(k, (i = out.push({ key: k, name: k, tasks: [] }) - 1));
+      const g = out[i]!;
+      const p = placeOf(task);
+      if (!g.place && (p.kind === "repo" || p.kind === "folder")) g.place = p;
+      g.tasks.push(task);
+    }
+  for (const p of A.S.onHand?.projects ?? []) if (!at.has(p.name)) at.set(p.name, out.push({ key: p.name, name: p.name, place: p.place, tasks: [] }) - 1);
+  if (other) out.push(other);
+  return out;
+}
+/** Offered from two groups (one project with errands beside it is already two kinds of work). */
+export const lensOn = (groups: LensGroup[]) => groups.length >= 2;
+/** The lens kept on this device, if that project is still there; else all. */
+export function currentLens(groups: LensGroup[]): string {
+  const k = readLens();
+  return k && lensOn(groups) && groups.some((g) => g.key === k) ? k : "";
+}
+/** The lanes narrowed to a lens. */
+export const lensLanes = (lens: string): Task[][] => A.S.board().lanes.slice(0, 4).map((l) => (lens ? l.filter((x) => lensOf(x) === lens) : l));
+/** Only all, and Other, hold what belongs to no task: the partner's own asks, task-less waits, calls. */
+export const looseIn = (lens: string) => !lens || lens === OTHER;
+
+/** A group's unmerged changes, summed over its tasks' branches. */
+function groupStat(tasks: Task[]): { adds: number; dels: number } {
+  let adds = 0, dels = 0;
+  for (const x of tasks) {
+    if (x.card?.integrated?.act === "merge" || (x.acted?.ok && x.acted.action === "merge")) continue;
+    adds += x.card?.changes?.adds ?? 0;
+    dels += x.card?.changes?.dels ?? 0;
+  }
+  return { adds, dels };
+}
+
+function LensEntry({ k, name, tasks, on, tab }: { k: string; name: string; tasks: Task[]; on: boolean; tab?: boolean }) {
+  const statuses = tasks.map((x) => statusOf(x.id, attention(x), x.card?.updatedAt));
+  const mark = urgentOf(statuses);
+  const counts = foldCounts(statuses);
+  const st = tab ? { adds: 0, dels: 0 } : groupStat(tasks);
+  return (
+    <button class={`lens-row${on ? " on" : ""}${k === OTHER ? " other" : ""}`} aria-pressed={on} aria-label={[name, counts].filter(Boolean).join(" · ")} title={counts || undefined} onClick={() => setLens(k)}>
+      <span class="nm">
+        <b>{name}</b>
+        {st.adds + st.dels > 0 && (
+          <span class="stat">
+            {st.adds > 0 && <i class="add">+{st.adds}</i>}
+            {st.dels > 0 && <i class="del">−{st.dels}</i>}
+          </span>
+        )}
+      </span>
+      {mark && !(tab && mark === "working") && <StatusFace s={mark} title={counts} />}
+      {!tab && <span class="n">{tasks.length || ""}</span>}
+    </button>
+  );
+}
+
+/** The lens beside the board (wide): All, each project, Other; then Add a folder. */
+export function LensColumn() {
+  const groups = lensGroups();
+  if (!lensOn(groups)) return null;
+  const lens = currentLens(groups);
+  return (
+    <nav class="lens-col" aria-label={t("onhand.lens")}>
+      <LensEntry k="" name={t("onhand.lens.all")} tasks={groups.flatMap((g) => g.tasks)} on={!lens} />
+      <span class="gap" />
+      {groups.map((g) => (
+        <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} />
+      ))}
+    </nav>
+  );
+}
+
+/** The lens where there is no room for the column: one row of names, the chosen one raised. */
+export function LensTabs({ inBoard }: { inBoard?: boolean }) {
+  const groups = lensGroups();
+  if (!lensOn(groups)) return null;
+  const lens = currentLens(groups);
+  return (
+    <nav class={`lens-tabs${inBoard ? " in-board" : ""}`} aria-label={t("onhand.lens")}>
+      <LensEntry k="" name={t("onhand.lens.all")} tasks={groups.flatMap((g) => g.tasks)} on={!lens} tab />
+      {groups.map((g) => (
+        <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} tab />
+      ))}
+    </nav>
+  );
+}
+
+/** The strip's four counts in a lens: needs you, working, waiting, done today. */
+function stateCounts(lens: string): number[] {
+  const l = lensLanes(lens);
+  const loose = looseIn(lens);
+  const calls = loose ? (A.S.onHand?.calls ?? []) : [];
+  return [
+    l[0]!.length + (loose ? A.S.partnerDecisions().length : 0),
+    l[1]!.length + calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state)).length,
+    l[2]!.length + (loose ? A.S.armedWaiters().filter((w) => !w.taskId).length : 0),
+    l[3]!.length + (loose ? A.S.missedToday().length + calls.filter((c) => callEnded(c.state) && c.state !== "held").length : 0),
+  ];
+}
+
+/** The board's head: one calm sentence when nothing needs you, the strip of four counts (each one a
+ *  filter; pressed again, or Esc, lets go), Find from ten tasks, New task here under a project. */
+function BoardTop({ lens, groups, findable }: { lens: string; groups: LensGroup[]; findable: boolean }) {
+  const n = stateCounts(lens);
+  if (L.filter && !n[L.filter - 1]) L.filter = 0;
+  const names = ["lane.needs_you", "lane.working", "lane.waiting", "lane.done"];
+  const g = groups.find((x) => x.key === lens && x.key !== OTHER);
+  return (
+    <div class="board-top">
+      {!n[0] && <p class="calm-line">{n[1] ? t("onhand.calm.working", A.S.personaName, n[1]) : t("onhand.calm")}</p>}
+      <div class="strip-row">
+        <div class="strip" role="group" aria-label={t("onhand.strip")}>
+          {names.map((k, i) => {
+            const c = n[i]!;
+            const on = L.filter === i + 1;
+            return (
+              <button
+                key={k}
+                class={`cell${on ? " on" : ""}${!c ? " none" : ""}${i === 0 && c ? " needs" : ""}`}
+                disabled={!c}
+                aria-pressed={on}
+                aria-label={`${t(k)} ${c}`}
+                onClick={() => ((L.filter = on ? 0 : i + 1), (L.focus = ""), A.changed())}
+              >
+                <b>{c}</b>
+                <span>{t(k)}</span>
+              </button>
+            );
+          })}
+        </div>
+        <span class="grow" />
+        {g && (
+          <button class="plus" aria-label={`${t("onhand.newhere")} ${g.name}`} title={t("onhand.newhere")} onClick={() => A.openNewTask(g.place && g.place.kind !== "none" ? g.place : { kind: "none" })}>
+            <PlusSm />
+          </button>
+        )}
+        {findable && <Find />}
+      </div>
+    </div>
+  );
+}
+
 /** What a row is matched against by Find and the switcher. */
 export function haystack(task: Task): string {
   const p = placeOf(task);
@@ -131,7 +373,7 @@ export function matches(task: Task, q: string): boolean {
 // ---------- the keys, the focus and the selection ----------
 
 /** The list's state that outlives a render: the row the keys are on, what is selected, Find. */
-export const L = { focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false };
+export const L = { focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false };
 
 const typing = () => {
   const el = document.activeElement;
@@ -213,10 +455,11 @@ function useKeys(room: Room) {
       if (e.key === "k" || e.key === "ArrowUp") return void (e.preventDefault(), move(-1, rail));
       if ((e.key === "Enter" || e.key === "o") && L.focus && !rail) return void (e.preventDefault(), A.go({ name: "task", id: L.focus, full: A.route.name === "onhand" && !!A.route.full }));
       if (e.key === "x" && L.focus && room === "full") return void (e.preventDefault(), toggle(L.focus));
-      if (e.key === "Escape" && (L.sel.size || L.find) && !rail) {
+      if (e.key === "Escape" && (L.sel.size || L.find || L.filter) && !rail) {
         e.preventDefault();
         if (L.sel.size) L.sel.clear();
-        else L.find = "";
+        else if (L.find) L.find = "";
+        else L.filter = 0; // D261: then the strip's filter
         L.dropAsk = false;
         A.changed();
       }
@@ -252,8 +495,11 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   const active = rail && place !== "";
   const unseen = st === "new";
   const wide = room !== "phone";
-  const meta = wide && room !== "rail" ? [manyComputers() && p.kind !== "none" ? computerName(p.device) : "", harnessName(harnessOf(task))].filter(Boolean).join(" · ") : "";
-  const branch = wide && room !== "rail" && p.kind === "repo" ? p.branch : "";
+  // D261: where, quietly: its project when the board shows all of them, its computer with two or
+  // more. Who does it and its branch are in the task.
+  const meta = room !== "rail" ? [L.showProj ? lensName(lensOf(task)) : "", wide && manyComputers() && p.kind !== "none" ? computerName(p.device) : ""].filter(Boolean).join(" · ") : "";
+  const quiet = a === "blocked" && room !== "rail" && quietWait(task);
+  const next = a === "blocked" && room !== "rail" && !quiet ? waitNext(w) : undefined;
   const acts = wide ? <RowActs task={task} /> : null;
   const onClick = (e: MouseEvent) => {
     if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
@@ -262,7 +508,7 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
     A.go({ name: "task", id: task.id, full: room === "full" || room === "rail" });
   };
   return (
-    <div class={`trow${focus ? " kfocus" : ""}${sel ? " sel" : ""}${opened ? " opened" : ""}${arrived ? " arrived" : ""}${unseen ? " unseen" : ""} a-${a}`} data-row={task.id}>
+    <div class={`trow${quiet ? " quiet" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${opened ? " opened" : ""}${arrived ? " arrived" : ""}${unseen ? " unseen" : ""} a-${a}`} data-row={task.id}>
       <button class="tmain" onClick={onClick} title={title(task)} aria-current={opened ? "page" : undefined}>
         {arrived && <span class="pop-bub" aria-hidden="true" />}
         <span class="l1">
@@ -283,7 +529,13 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
           {s.mark && <StepMark k={s.mark} />}
           <span class="w">{s.words}</span>
           {s.code && <code class="c">{s.code}</code>}
-          {branch && <code class="br">{branch}</code>}
+          {quiet && <span class="next">{t("onhand.wait.since", ago(A.L, task.card?.updatedAt))}</span>}
+          {next?.text && (
+            <span class="next">
+              <Ring frac={next.frac} />
+              {next.text}
+            </span>
+          )}
           {meta && <span class="meta">{meta}</span>}
         </span>
         {u && !finished(task) && room !== "rail" && <Goal u={u} />}
@@ -352,7 +604,7 @@ function ver(task: Task): string {
   const c = task.card;
   const l = latestOf(task);
   const w = A.S.waiterFor(task.id);
-  return [attention(task), l?.seq, c?.updatedAt, c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, A.S.justArrived(task.id), timeOf(task), A.L.lang, task.open?.title, isNewResult(task.id, attention(task), c?.updatedAt), handover(task.id, statusOf(task.id, attention(task), c?.updatedAt))].join("|");
+  return [attention(task), l?.seq, c?.updatedAt, c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, w?.nextLookAt, L.showProj, quietWait(task), A.S.justArrived(task.id), timeOf(task), A.L.lang, task.open?.title, isNewResult(task.id, attention(task), c?.updatedAt), handover(task.id, statusOf(task.id, attention(task), c?.updatedAt))].join("|");
 }
 
 type Fold = { shut: boolean; onToggle: () => void; mark: Status; counts: string };
@@ -392,27 +644,6 @@ const Chevron = ({ open }: { open: boolean }) => (
   </svg>
 );
 
-// ---------- folded groups (D244): remembered on this device ----------
-
-const FOLDED = "ducter.onhand.folded";
-export function readFolded(): Set<string> {
-  try {
-    const v = JSON.parse(localStorage.getItem(FOLDED) ?? "[]");
-    return new Set(Array.isArray(v) ? v.filter((x) => typeof x === "string") : []);
-  } catch {
-    return new Set();
-  }
-}
-function foldGroup(name: string, shut: boolean) {
-  const f = readFolded();
-  if (shut) f.add(name);
-  else f.delete(name);
-  try {
-    localStorage.setItem(FOLDED, JSON.stringify([...f]));
-  } catch {}
-  A.changed();
-}
-
 /** A folded group's counts in words, only the parts that are there: "1 needs you · 2 working". */
 export function foldCounts(statuses: Status[]): string {
   const n = (s: Status) => statuses.filter((x) => x === s).length;
@@ -423,165 +654,123 @@ export function foldCounts(statuses: Status[]): string {
     .filter(Boolean)
     .join(" · ");
 }
-
-type Group = { name: string; place?: { device: string; repoPath: string }; tasks: Task[] };
-
-/** The board's tasks by project, in the order their first task comes (what needs you first),
- *  then Other. */
-export function projectGroups(lanes: Task[][]): Group[] {
-  const out: Group[] = [];
-  const at = new Map<string, number>();
-  let other: Group | undefined;
-  for (const lane of lanes.slice(0, 4))
-    for (const task of lane) {
-      const p = placeOf(task);
-      const name = projectOf(task) || (p.kind === "repo" ? (p.repoPath.replace(/\/+$/, "").split("/").pop() ?? "") : "");
-      if (!name) {
-        (other ??= { name: "", tasks: [] }).tasks.push(task);
-        continue;
-      }
-      let i = at.get(name);
-      if (i === undefined) at.set(name, (i = out.push({ name, tasks: [] }) - 1));
-      const g = out[i]!;
-      if (p.kind === "repo" && !g.place) g.place = { device: p.device, repoPath: p.repoPath };
-      g.tasks.push(task);
-    }
-  if (other) out.push(other);
-  return out;
-}
-
-const BY = "ducter.onhand.by";
-function readBy(): "state" | "project" {
-  try {
-    return localStorage.getItem(BY) === "project" ? "project" : "state";
-  } catch {
-    return "state";
-  }
-}
-
-/** From how many tasks Find shows, and from how many projects By project is offered. */
+/** From how many tasks Find shows. */
 export const FIND_FROM = 10;
-export const PROJECTS_FROM = 2;
 
 // ---------- the list ----------
 
-/** On hand's list, in any room. `head` draws above it (the counts, Next) and gets the toggle. */
+/** Seen results under 今天做完 are folded by default; unfolded is remembered on this device. */
+const DONE_OPEN = "ducter.onhand.done-open";
+function doneOpenKept(): boolean {
+  try {
+    return localStorage.getItem(DONE_OPEN) === "1";
+  } catch {
+    return false;
+  }
+}
+function keepDoneOpen(on: boolean) {
+  try {
+    if (on) localStorage.setItem(DONE_OPEN, "1");
+    else localStorage.removeItem(DONE_OPEN);
+  } catch {}
+  A.changed();
+}
+
+/** A quiet line that folds what is under it away: its words and a chevron. */
+const FoldLine = ({ words, open, onToggle }: { words: string; open: boolean; onToggle: () => void }) => (
+  <button class="fold-line" aria-expanded={open} onClick={onToggle}>
+    <span>{words}</span>
+    <Chevron open={open} />
+  </button>
+);
+
+/** On hand's list, in any room (D216, D261): under the project lens, by state, with the strip's
+ *  filter; what needs you first and taking no room when there is none; a wait quiet for a day and
+ *  a result you have seen folded away. Beside an opened task (the rail) every task is a row. */
 export function OnHandList({ room }: { room: Room }) {
-  const [by, setBy] = useState(readBy);
   useKeys(room);
-  const b = A.S.board();
-  const all = b.lanes.slice(0, 4).flat();
+  const groups = lensGroups();
+  const lens = currentLens(groups);
+  L.showProj = lensOn(groups) && !lens;
+  const lanes = lensLanes(lens);
+  const all = lanes.flat();
   const q = L.find.trim();
+  const rail = room === "rail";
+  const f = rail ? 0 : L.filter;
+  const show = (i: number) => !f || f === i;
   const keep = (ts: Task[]) => (q ? ts.filter((x) => matches(x, q)) : ts);
-  const needs = keep(b.lanes[LANE.needs]!);
-  const working = keep(b.lanes[LANE.working]!);
-  const waiting = keep(b.lanes[LANE.waiting]!);
-  const done = keep(b.lanes[LANE.done]!);
-  const partnerDs = q ? [] : A.S.partnerDecisions();
-  const loose = q ? [] : A.S.armedWaiters().filter((w) => !w.taskId);
-  const missed = q ? [] : A.S.missedToday();
-  const calls = q ? [] : (A.S.onHand?.calls ?? []);
+  const needs = keep(lanes[LANE.needs]!);
+  const working = keep(lanes[LANE.working]!);
+  const waiting = keep(lanes[LANE.waiting]!);
+  const done = keep(lanes[LANE.done]!);
+  const loose = !q && looseIn(lens);
+  const partnerDs = loose ? A.S.partnerDecisions() : [];
+  const looseWs = loose ? A.S.armedWaiters().filter((w) => !w.taskId) : [];
+  const missed = loose ? A.S.missedToday() : [];
+  const calls = loose ? (A.S.onHand?.calls ?? []) : [];
   const liveCalls = calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state));
   const endedCalls = calls.filter((c) => callEnded(c.state) && c.state !== "held");
-  const groups = projectGroups(b.lanes);
-  const canBy = groups.filter((g) => g.name).length >= PROJECTS_FROM && room !== "rail";
-  const project = canBy && by === "project";
-  const rail = room === "rail";
+  const fresh = rail ? waiting : waiting.filter((x) => !quietWait(x));
+  const quiet = rail ? [] : waiting.filter((x) => quietWait(x));
+  const newer = rail ? done : done.filter((x) => statusOf(x.id, attention(x), x.card?.updatedAt) === "new");
+  const seen = rail ? [] : done.filter((x) => statusOf(x.id, attention(x), x.card?.updatedAt) !== "new");
+  const quietOpen = L.quietOn || f === 3 || !!q;
+  const doneOpen = doneOpenKept() || f === 4 || !!q;
   // The order the keys walk, as drawn.
-  const folded = readFolded();
-  L.order = (project ? groups.flatMap((g) => (folded.has(g.name) ? [] : keep(g.tasks))) : [...needs, ...working, ...waiting, ...done]).map((x) => x.id);
+  L.order = [...(show(1) ? needs : []), ...(show(2) ? working : []), ...(show(3) ? fresh : []), ...(show(3) && quietOpen ? quiet : []), ...(show(4) ? newer : []), ...(show(4) && doneOpen ? seen : [])].map((x) => x.id);
   for (const id of [...L.sel]) if (!all.some((x) => x.id === id)) L.sel.delete(id);
-  const pick = (v: "state" | "project") => {
-    setBy(v);
-    try {
-      localStorage.setItem(BY, v);
-    } catch {}
-  };
   const openN = A.defaultable().length;
-  const nNeeds = b.lanes[LANE.needs]!.length + A.S.partnerDecisions().length;
-  const findable = all.length >= FIND_FROM;
   const shown = needs.length + working.length + waiting.length + done.length;
   return (
     <div class={`onhand-list room-${room}`}>
-      {(findable || canBy) && (
-        <div class="tools">
-          {findable && <Find />}
-          {canBy && <Seg label={t("onhand.by")} value={by} options={[{ v: "state", label: t("onhand.by.state") }, { v: "project", label: t("onhand.by.project") }]} onPick={pick} />}
-        </div>
+      {!rail && (
+        <>
+          {room !== "full" && <LensTabs />}
+          {room === "full" && <LensTabs inBoard />}
+          <BoardTop lens={lens} groups={groups} findable={all.length >= FIND_FROM} />
+        </>
       )}
       {q && !shown && <p class="none">{t("onhand.find.none")}</p>}
-      {project ? (
-        <>
-          {!rail &&
-            partnerDs.map((d) => (
-              <div class="pd" key={d.decisionId}>
-                <DecisionCard d={d} />
-              </div>
-            ))}
-          {groups.map((g) => {
-            const ts = keep(g.tasks);
-            if (!ts.length) return null;
-            const name = g.name || t("onhand.other");
-            const shut = folded.has(g.name);
-            const statuses = ts.map((x) => statusOf(x.id, attention(x), x.card?.updatedAt));
-            const mark = urgentOf(statuses);
-            const counts = foldCounts(statuses);
-            return (
-              <Section
-                key={g.name}
-                name={name}
-                n={ts.length}
-                fold={{ shut, onToggle: () => foldGroup(g.name, !shut), mark: shut ? mark : "", counts }}
-                end={
-                  <button class="plus" aria-label={`${t("onhand.newhere")} ${name}`} title={t("onhand.newhere")} onClick={() => A.openNewTask(g.place ? { kind: "repo", device: g.place.device, repoPath: g.place.repoPath } : { kind: "none" })}>
-                    <PlusSm />
-                  </button>
-                }
-              >
-                {!shut && <Rows tasks={ts} room={room} state />}
-              </Section>
-            );
-          })}
-        </>
-      ) : (
-        <>
-          {(nNeeds > 0 || !q) && (
-            <Section
-              name={t("lane.needs_you")}
-              n={needs.length + partnerDs.length}
-              end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}
-            >
-              {!nNeeds && !q && <p class="calm-line">{working.length ? t("onhand.calm.working", A.S.personaName, working.length) : t("onhand.calm")}</p>}
-              {/* What needs you is answered in place: its card, not a row (beside a task, a row). */}
-              {rail ? (
-                <Rows tasks={needs} room={room} />
-              ) : (
-                <>
-                  {partnerDs.map((d) => (
-                    <DecisionCard key={d.decisionId} d={d} />
-                  ))}
-                  {needs.map((task) => {
-                    const d = A.S.pendingDecision(task.id);
-                    return d ? <DecisionCard key={task.id} d={d} taskId={task.id} /> : <Rows key={task.id} tasks={[task]} room={room} />;
-                  })}
-                </>
-              )}
-            </Section>
+      {needs.length + partnerDs.length > 0 && show(1) && (
+        <Section name={t("lane.needs_you")} n={needs.length + partnerDs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
+          {/* What needs you is answered in place: its card, not a row (beside a task, a row). */}
+          {rail ? (
+            <Rows tasks={needs} room={room} />
+          ) : (
+            <>
+              {partnerDs.map((d) => (
+                <DecisionCard key={d.decisionId} d={d} />
+              ))}
+              {needs.map((task) => {
+                const d = A.S.pendingDecision(task.id);
+                return d ? <DecisionCard key={task.id} d={d} taskId={task.id} /> : <Rows key={task.id} tasks={[task]} room={room} />;
+              })}
+            </>
           )}
-          {working.length + liveCalls.length > 0 && (
-            <Section name={t("lane.working")} n={working.length + liveCalls.length}>
-              {!rail && liveCalls.map((c) => <CallRow key={c.callId} c={c} />)}
-              <Rows tasks={working} room={room} />
-            </Section>
+        </Section>
+      )}
+      {working.length + liveCalls.length > 0 && show(2) && (
+        <Section name={t("lane.working")} n={working.length + liveCalls.length}>
+          {!rail && liveCalls.map((c) => <CallRow key={c.callId} c={c} />)}
+          <Rows tasks={working} room={room} />
+        </Section>
+      )}
+      {waiting.length + looseWs.length > 0 && show(3) && (
+        <Section name={t("lane.waiting")} n={waiting.length + looseWs.length}>
+          <Rows tasks={fresh} room={room} />
+          {!rail && looseWs.map((w) => <LooseWait key={w.waiterId} w={w} />)}
+          {quiet.length > 0 && f !== 3 && !q && <FoldLine words={t("onhand.wait.quiet", quiet.length)} open={quietOpen} onToggle={() => ((L.quietOn = !L.quietOn), A.changed())} />}
+          {quiet.length > 0 && quietOpen && <Rows tasks={quiet} room={room} />}
+        </Section>
+      )}
+      {done.length + missed.length + endedCalls.length > 0 && show(4) && (
+        <Section name={t("lane.done")} n={done.length + missed.length + endedCalls.length}>
+          <Rows tasks={newer} room={room} />
+          {seen.length + missed.length + endedCalls.length > 0 && f !== 4 && !q && (
+            <FoldLine words={t("onhand.done.seen", seen.length + missed.length + endedCalls.length)} open={doneOpen} onToggle={() => keepDoneOpen(!doneOpenKept())} />
           )}
-          {waiting.length + loose.length > 0 && (
-            <Section name={t("lane.waiting")} n={waiting.length + loose.length}>
-              <Rows tasks={waiting} room={room} />
-              {!rail && loose.map((w) => <LooseWait key={w.waiterId} w={w} />)}
-            </Section>
-          )}
-          {done.length + missed.length + endedCalls.length > 0 && (
-            <Section name={t("lane.done")} n={done.length + missed.length + endedCalls.length}>
+          {doneOpen && (
+            <>
               {!rail && endedCalls.map((c) => <CallRow key={c.callId} c={c} />)}
               {!rail &&
                 missed.map((w) => (
@@ -600,10 +789,10 @@ export function OnHandList({ room }: { room: Room }) {
                     </span>
                   </div>
                 ))}
-              <Rows tasks={done} room={room} />
-            </Section>
+              <Rows tasks={seen} room={room} />
+            </>
           )}
-        </>
+        </Section>
       )}
       {room === "full" && L.sel.size > 0 && <BulkBar />}
     </div>

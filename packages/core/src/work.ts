@@ -73,6 +73,23 @@ export function cwdOfCheck(placeCwd: string | undefined, specCwd: string | undef
 
 const zhOf = (s: string) => /[一-鿿]/.test(s);
 
+/** D261: a wait's reason written as an agent's notes, not words ("requests仍4+mentions7去重9…45minwait"):
+ *  two or more words glued to numbers, or numbers glued to words, with no space ("mentions7",
+ *  "45minwait"). Units people write ("41ms", "2x", "arm64") don't count. Returns the first such
+ *  token, or "". A heuristic: INFERRED from one live case, kept narrow on purpose. */
+export function shorthand(reason: string): string {
+  const units = /^(\d+(ms|s|m|h|d|x|k|kb|mb|gb|tb|px|pt|min|mins|hrs?|nd|st|rd|th|am|pm|fps|gbps|mbps)|(arm|amd|x86|ipv|utf|sha|md|gpt|es|py|ios|macos|node|bun|go|php)\d+|v\d.*)$/i;
+  const glued = reason.match(/[A-Za-z]{2,}\d+[A-Za-z]*|\d+[A-Za-z]{2,}/g) ?? [];
+  const bad = glued.filter((t) => !units.test(t));
+  return bad.length >= 2 ? bad[0]! : "";
+}
+
+/** D261: a check that only reads the clock: it says nothing about what is awaited. */
+export function clockCheck(check: CheckSpec): boolean {
+  const cmd = String(check.argv?.[0] ?? "").split("/").pop();
+  return cmd === "date" || cmd === "sleep";
+}
+
 export function createWork(o: WorkOptions): Work {
   const { log, tasks, mcp } = o;
 
@@ -215,6 +232,12 @@ export function createWork(o: WorkOptions): Work {
     const reason = String(a.reason ?? "").trim();
     if (!reason) return { ok: false, error: "wait_for needs reason: the condition in the user's words (在等 PR #1592 通过 / PR #1592 passes)." };
     if (!a.check && !a.event) return { ok: false, error: "wait_for needs a check (a command) or an event (a connection's trigger). For a time, use wait_until." };
+    // D261: the reason is shown to the person as it is, on On hand and in the task.
+    const notes = shorthand(reason);
+    if (notes) return { ok: false, error: `reason is shown to the person as written, after 等 / Waiting until: write it as plain words in their language (PR #1592 的 CI 通过 / PR #1592's CI passes), not notes like "${notes}".` };
+    // D261: a check is never a clock (seen live: `date -u +%s` against a regex of epoch seconds,
+    // so On hand said nothing true about what it waited for, for two days).
+    if (a.check && clockCheck(a.check)) return { ok: false, error: "a check isn't a clock: wait on the condition itself (the PR's checks, the file, the page) and set everyMinutes to how often to look." };
     if (taskId && !tasks.get(taskId)) return { ok: false, error: `unknown task ${taskId}` };
     if (a.check) {
       const v = validateCheck(a.check);

@@ -199,6 +199,7 @@ func backOut(x float32) float32 {
 // the rail is drawn or not.
 func (a *App) railOrder() []string {
 	b := a.S.Board()
+	b = lensBoard(b, a.currentLens(a.lensGroups(b))) // D261: the lens holds beside a task
 	var out []string
 	for _, l := range []store.Lane{store.LaneNeedsYou, store.LaneWorking, store.LaneWaiting, store.LaneDone} {
 		for _, x := range b.Lanes[l] {
@@ -283,9 +284,34 @@ func (a *App) benchOpenable(task *store.Task) bool {
 func (a *App) onHandRail(c *ui.Context, w float32) {
 	t := a.T
 	b := a.S.Board()
+	// D261: the rail is the board narrowed by the same lens; its head says
+	// which, and goes back to the board.
+	groups := a.lensGroups(b)
+	lens := a.currentLens(groups)
+	b = lensBoard(b, lens)
 	ui.Column(c.Key("rail-in")).Width(w).Grow(1).MinHeight(0).Background(t.BgDeep).Label(a.L.T("nav.onhand")).Children(func() {
+		if lensOn(groups) {
+			name := a.L.T("onhand.lens.all")
+			if lens != "" {
+				name = a.lensName(lens)
+			}
+			ui.Row(c.Key("rail-lens")).Padding(t.S4, t.S4, 0, t.S4).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				h := ui.Row(c.Key("lens-back")).Gap(t.S1).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).
+					Label(a.L.T("onhand.lens") + " · " + name).Focusable().MinWidth(0).Shrink(1)
+				ink := t.InkSoft
+				if h.Hovered() {
+					ink = t.Ink
+				}
+				h.Children(func() {
+					ui.Text(c, name).FontSize(t.MD).FontWeight(800).TextColor(ink).SingleLine().MinWidth(0).AccessHidden(true)
+				})
+				if h.Clicked() {
+					a.Route = RouteOnHand
+				}
+			})
+		}
 		ui.Scroll(c.Key("rail-scroll")).Grow(1).MinHeight(0).Children(func() {
-			ui.Column(c).Gap(t.S4).Padding(t.S4, t.S3, t.S6, t.S3).Children(func() {
+			ui.Column(c).Gap(t.S4).Padding(t.S3, t.S3, t.S6, t.S3).Children(func() {
 				prev := a.oh.room
 				a.oh.room = "rail"
 				a.onHandList(c, b)

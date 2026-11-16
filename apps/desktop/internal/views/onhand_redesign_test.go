@@ -43,6 +43,7 @@ func TestOnHandRowsFromTheCard(t *testing.T) {
 		t.Fatalf("the draft PR is not on the row")
 	}
 	app.Route = RouteOnHand
+	app.Local.SetFolded(doneOpenKey, true) // D261: seen results fold by default
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	if len(app.oh.order) != 2 {
@@ -104,9 +105,9 @@ func TestOnHandRedesignShots(t *testing.T) {
 		app.moveFocus(1)
 		app.moveFocus(1)
 		shot("mac-keys")
-		app.Local.SetByProject(true)
+		app.Local.SetLens("hawdb")
 		shot("mac-byproject")
-		app.Local.SetByProject(false)
+		app.Local.SetLens("")
 		app.OpenSwitcher()
 		app.oh.swQuery = "compaction"
 		shot("mac-switcher")

@@ -258,10 +258,9 @@ func (a *App) taskHeadline(c *ui.Context, task *store.Task) {
 	case task.Browsing() != "":
 		line = a.L.T(task.BrowsingKey(), task.Browsing())
 	case task.Attention() == protocol.Blocked:
-		line = a.waitReason(task)
-		if w := a.S.WaiterFor(task.ID); w != nil && (w.Check != nil || w.Event != nil) {
-			line = a.waitLine(w.Reason)
-		}
+		// D261: what it waits for, always: its waiter, its reason, what it
+		// last reported, or that it stopped without saying.
+		line = a.storyOf(task).words
 	}
 	// Else what the task is (D152): the agent's latest words are the
 	// transcript's, in its own language, and are never said twice.
@@ -269,6 +268,30 @@ func (a *App) taskHeadline(c *ui.Context, task *store.Task) {
 		line = shortTitle(task.Title())
 	}
 	a.heading(c, autospace(redact.Text(line)), t.XXL).LineHeight(1.25).Balance().MaxWidth(headMeasure).Selectable()
+	if next := a.taskNext(task); next != "" {
+		ui.Text(c.Key("next"), next).FontSize(t.MD).TextColor(t.InkSoft).FontFeatures("tnum").MaxWidth(headMeasure)
+	}
+}
+
+// taskNext is what comes next for a waiting task, in one line (D261): when
+// it looks again (or goes on), and, for a wait gone quiet, since when
+// nothing has changed. Deterministic: the waiter's own times, never a model.
+func (a *App) taskNext(task *store.Task) string {
+	if task.Attention() != protocol.Blocked {
+		return ""
+	}
+	var parts []string
+	if a.quietWait(task) && task.Card != nil {
+		parts = append(parts, a.tp("onhand.wait.since", a.agoLong(task.Card.UpdatedAt)))
+	}
+	if next, _ := a.waitNext(a.S.WaiterFor(task.ID)); next != "" {
+		parts = append(parts, next)
+	}
+	s := strings.Join(parts, " · ")
+	if a.L.Lang != "zh" && s != "" {
+		s = strings.ToUpper(s[:1]) + s[1:]
+	}
+	return s
 }
 
 // lastSaid is where the work stands in a sentence: the latest progress it

@@ -24,8 +24,12 @@ interface SettingsFile {
   taskAccounts?: Partial<Record<HarnessId, { enabled: boolean }>>;
   /** D135: context windows, in tokens (env DUCTER_PARTNER_* / DUCTER_TASK_* override them). */
   windows?: WindowsInput;
-  /** 记下了 lines forgotten here, by seq (Mem forgot them, or they are only hidden). */
+  /** 记下了 lines forgotten here, by seq (Mem forgot them, or they are only hidden); D304: 想起了 lines too. */
   hidden?: number[];
+  /** D304: 记下了 lines the person said are right (这周记下的), by seq. */
+  confirmed?: number[];
+  /** D304: 记下了 lines the person corrected, by seq: their words now. */
+  corrected?: Record<string, string>;
   /** D148: update at night (off by default). */
   autoUpdate?: boolean;
   /** D165: when it notices something (D250: absent = never chosen = DEFAULT_PROACTIVE). */
@@ -65,8 +69,14 @@ export interface SettingsStore extends SettingsApi {
   setProactive(mode: ProactiveMode, by: "chosen" | "keep_note"): void;
   /** D295: the glance at Mem itself (mem-glance.ts), read on each view. */
   setGlance(fn: () => MemView["glance"]): void;
-  /** Forgets one noted line: in Mem when possible, else hidden here. */
+  /** Forgets one noted line (D304: or one 想起了 line's memory): in Mem when possible, else hidden here. */
   forget(seq: number): Promise<"mem" | "hidden" | undefined>;
+  /** D304: how many lines it noted in the 7 days before `at` that are still there (0 with memory off). */
+  learnedThisWeek(at: number): number;
+  /** D304: the person said a noted line is right. */
+  confirm(seq: number): boolean;
+  /** D304: the person corrected a noted line's words: in Mem when it has the id ("mem"), else only here. */
+  correct(seq: number, title: string): Promise<"mem" | "here" | undefined>;
   onChange(fn: () => void): () => void;
   /** The persona's Mem identity was bound (D141): clients show whose name its memories are under. */
   memIdentityChanged(): void;
@@ -168,22 +178,34 @@ export function openSettings(opts: {
 
   const noted = (): MemView["noted"] => {
     const hidden = new Set(data.hidden ?? []);
+    const confirmed = new Set(data.confirmed ?? []);
     const events = opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 200 });
     const out: MemView["noted"] = [];
     for (let i = events.length - 1; i >= 0 && out.length < NOTED_SHOWN; i--) {
       const e = events[i]!;
       if (hidden.has(e.seq)) continue;
       const b = e.body as Bodies["memory_noted"];
-      out.push({ seq: e.seq, title: b.title, at: e.ts, ...(b.memoryId ? { memoryId: b.memoryId } : {}) });
+      const fixed = data.corrected?.[String(e.seq)];
+      out.push({ seq: e.seq, title: fixed ?? b.title, at: e.ts, ...(b.memoryId ? { memoryId: b.memoryId } : {}), ...(confirmed.has(e.seq) ? { confirmed: true } : {}), ...(fixed ? { corrected: true } : {}) });
     }
     return out;
   };
+  /** D304: the 想起了 lines forgotten (their seqs), so every client stops showing them. */
+  const forgottenRecalls = (): number[] => {
+    const hidden = new Set(data.hidden ?? []);
+    if (!hidden.size) return [];
+    return opts.log.read({ stream: "channel", kinds: ["memory_recalled"], limit: 500 }).filter((e) => hidden.has(e.seq)).map((e) => e.seq);
+  };
+  let corrector: ((id: string, title: string) => Promise<boolean>) | undefined;
 
   return {
     get,
     brainChosen: () => data.brain !== undefined || Boolean(envHarness((opts.env ?? process.env).DUCTER_PARTNER_HARNESS)),
     setForgetter(fn) {
       forgetter = fn;
+    },
+    setCorrector(fn) {
+      corrector = fn;
     },
     setGlance(fn) {
       glance = fn;
@@ -222,7 +244,8 @@ export function openSettings(opts: {
       const m = opts.persona.mem;
       const keptUnder = state === "connected" && m ? (m.owned ? opts.persona.name : m.label || m.agentId) : undefined;
       const g = state !== "off" ? glance?.() : undefined;
-      return { settings: s, mem: { state, noted: noted(), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}) } };
+      const forgotten = forgottenRecalls();
+      return { settings: s, mem: { state, noted: noted(), ...(forgotten.length ? { forgotten } : {}), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}) } };
     },
     set(patch) {
       const did: string[] = [];
@@ -286,9 +309,10 @@ export function openSettings(opts: {
       return did;
     },
     async forget(seq) {
-      const e = opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 500 }).find((x) => x.seq === seq);
+      // D304: a 想起了 line forgets the memory it names, the same way.
+      const e = opts.log.read({ stream: "channel", kinds: ["memory_noted", "memory_recalled"], limit: 1000 }).find((x) => x.seq === seq);
       if (!e) return undefined;
-      const id = (e.body as Bodies["memory_noted"]).memoryId;
+      const id = (e.body as Bodies["memory_noted"] | Bodies["memory_recalled"]).memoryId;
       let how: "mem" | "hidden" = "hidden";
       if (id && forgetter) {
         try {
@@ -298,6 +322,40 @@ export function openSettings(opts: {
         }
       }
       data.hidden = [...(data.hidden ?? []).filter((s) => s !== seq), seq].slice(-HIDDEN_MAX);
+      save();
+      changed();
+      return how;
+    },
+    learnedThisWeek(at) {
+      if (!get().memory) return 0;
+      const hidden = new Set(data.hidden ?? []);
+      return opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 200 }).filter((e) => !hidden.has(e.seq) && at - Date.parse(e.ts) < 7 * 86_400_000 && Date.parse(e.ts) <= at).length;
+    },
+    confirm(seq) {
+      if (!opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 500 }).some((x) => x.seq === seq)) return false;
+      if ((data.confirmed ?? []).includes(seq)) return true;
+      data.confirmed = [...(data.confirmed ?? []), seq].slice(-HIDDEN_MAX);
+      save();
+      changed();
+      return true;
+    },
+    async correct(seq, title) {
+      const words = title.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+      const e = opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 500 }).find((x) => x.seq === seq);
+      if (!e || !words) return undefined;
+      const id = (e.body as Bodies["memory_noted"]).memoryId;
+      let how: "mem" | "here" = "here";
+      if (id && corrector) {
+        try {
+          if (await corrector(id, words)) how = "mem";
+        } catch (err) {
+          console.warn("[settings] correcting in Mem failed:", (err as Error).message);
+        }
+      }
+      // Mem refused or has no id: said honestly ("here"), and the line still reads their words.
+      data.corrected = { ...(data.corrected ?? {}), [String(seq)]: words };
+      // A corrected line is one they looked at: right as it reads now.
+      data.confirmed = [...(data.confirmed ?? []).filter((s) => s !== seq), seq].slice(-HIDDEN_MAX);
       save();
       changed();
       return how;

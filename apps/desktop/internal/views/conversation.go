@@ -612,6 +612,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			if e.AI.First != nil {
 				a.firstWordsAfter(c, e) // D298: what they offer, where they were read, a key
 			}
+			a.recalledUnder(c, e.Event.Seq) // D304: where a recall that changed this answer came from
 			a.quiet(c, "m"+itoa(e.FirstSeq), a.replyTasks(e), "", a.notedFor(e))
 		})
 	case e.Job != nil:
@@ -670,6 +671,7 @@ func (a *App) job(c *ui.Context, e *store.Entry) {
 				a.rp.tab = ans // pressed into the top of the bubble below
 			}
 			a.partnerWords(c, j.Ack.Text)
+			a.recalledUnder(c, e.FirstSeq) // D304: "像上次那样": what it remembered
 		}
 		st := j.Status
 		var task *store.Task

@@ -32,6 +32,7 @@ func (a *App) findsEntry(c *ui.Context, e *store.Entry) {
 			}
 			a.noteAsk(c, n)
 		})
+		a.learnedLine(c, key, n) // D304: the week's offer, 这周记下的
 		// D300: under the morning note, one quiet line to what was done for you.
 		if n.Rung == "morning" && !n.Quiet {
 			ui.Row(c.Key("did-line")).Padding(0, t.S4-2).Children(func() { a.didLink(c, "did-morning:"+key) })

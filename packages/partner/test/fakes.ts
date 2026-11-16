@@ -206,17 +206,19 @@ export function fakeRunner(script: Script) {
 }
 
 /** In-memory stand-in for Nowledge Mem: tests never reach the user's real Mem. */
-export function fakeMemory(seed: { title: string; content: string; date?: string; kind?: string }[] = [], opts: { down?: boolean } = {}) {
+export function fakeMemory(seed: { id?: string; title: string; content: string; date?: string; kind?: string; source?: string }[] = [], opts: { down?: boolean } = {}) {
   const searches: { query: string; limit: number }[] = [];
   const added: MemoryAdd[] = [];
+  // D304: every seeded memory has Mem's id and source (the person's words to Ducter by default).
+  const all = seed.map((m, i) => ({ ...m, id: m.id ?? `mem-seed-${i + 1}`, source: m.source ?? "ducter" }));
   const memory: MemoryClient = {
     async search(query, limit) {
       searches.push({ query, limit });
       if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
       const words = query.toLowerCase().split(/[\s,，。]+/).filter(Boolean);
-      const score = (m: (typeof seed)[number]) => words.filter((w) => `${m.title} ${m.content}`.toLowerCase().includes(w)).length;
-      const hits = seed.filter((m) => score(m) > 0).sort((a, b) => score(b) - score(a));
-      return { ok: true, hits: (hits.length ? hits : seed).slice(0, limit) };
+      const score = (m: (typeof all)[number]) => words.filter((w) => `${m.title} ${m.content}`.toLowerCase().includes(w)).length;
+      const hits = all.filter((m) => score(m) > 0).sort((a, b) => score(b) - score(a));
+      return { ok: true, hits: (hits.length ? hits : all).slice(0, limit) };
     },
     async add(m) {
       if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };

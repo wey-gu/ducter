@@ -190,6 +190,7 @@ interface RunResult {
   recalls: { query: string; step: number }[];
   remembered: MemoryAdd[]; // saved (accepted by the fake Mem)
   memAttempts: { input: unknown; step: number }[]; // every memory_add call, refused ones too
+  sources: (Bodies["memory_recalled"] & { step: number })[]; // D304: the 想起了 lines
   /** Work over time (D112-D114): a keep-going loop started, a routine proposed. */
   work?: { until: boolean; routine: boolean; asks?: { reversible: boolean; go: boolean; timed: boolean }[] };
   retitles: { key: string; title: string; step: number }[]; // task_retitle, as new task_open events
@@ -439,6 +440,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const notedByStep = core.log
     .read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["memory_noted"], limit: 100 })
     .map((e) => ({ title: (e.body as Bodies["memory_noted"]).title, step: stepOf(e.seq) }));
+  // D304: the source lines under the replies.
+  const sources = core.log
+    .read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["memory_recalled"], limit: 100 })
+    .map((e) => ({ ...(e.body as Bodies["memory_recalled"]), step: stepOf(e.seq) }));
   for (const o of fr.opened) keyOf.set(o.taskId, keyOf.get(o.taskId) ?? `$opened${fr.opened.indexOf(o)}`);
   const sent = fr.sent.map((s) => ({ ...s, key: keyOf.get(s.taskId) ?? s.taskId }));
 
@@ -479,6 +484,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       lines.push(`  [${saved ? "saved to long-term memory" : "tried to save to memory (refused by the tool)"}] ${m.title ?? ""}: ${String(saved?.content ?? m.content ?? "").slice(0, 300)}`);
     }
     for (const n of notedByStep.filter((x) => x.step === i)) lines.push(`  [the app shows a small line: "Noted · ${n.title}"]`);
+    for (const s of sources.filter((x) => x.step === i)) lines.push(`  [the app shows a quiet source line under the reply: "Remembered from what ${s.by === "tool" ? `${s.from} saved` : s.by === "said" ? "you said" : "you saved"}${s.date ? ` on ${s.date}` : ""}" (the memory "${s.title}")]`);
     for (const o of r_opened(fr.opened, i)) lines.push(`  [opened a task] title: ${o.title} | place: ${JSON.stringify(o.place ?? null)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
     for (const x of fr.sent.filter((x) => x.step === i)) lines.push(`  [${x.from === "user" || x.from === "ducter" ? "Ducter passed the user's answer to task" : "sent to task"} ${keyOf.get(x.taskId) ?? "?"}] ${x.text.slice(0, 400)}`);
     for (const x of retitles.filter((x) => x.step === i)) lines.push(`  [retitled task ${x.key}] ${x.title}`);
@@ -495,7 +501,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
   tuwa?.stop();
-  return { sc, visible, dayCards, calKinds, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent, work: { ...work, asks } };
+  return { sc, visible, dayCards, calKinds, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks } };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -665,6 +671,13 @@ function check(r: RunResult): string[] {
   const attempted = r.memAttempts.map((a) => JSON.stringify(a.input)).join("\n");
   for (const re of e.rememberForbid ?? []) if (re.test(attempted)) fails.push(`memory_add carried ${re}`);
   for (const m of r.remembered) if (m.provenance.logSeq === undefined || !m.provenance.persona) fails.push("memory saved without provenance");
+  // D304: the source line under a reply a recall changed; none where it didn't; never a mark left in the words.
+  if (e.sourceLines !== undefined && r.sources.length !== e.sourceLines) fails.push(`source lines ×${r.sources.length} (want ${e.sourceLines})`);
+  if (e.sourceOf && r.sources[0]) {
+    if (e.sourceOf.title && !e.sourceOf.title.test(r.sources[0].title)) fails.push(`source line names "${r.sources[0].title}" (want ${e.sourceOf.title})`);
+    if (e.sourceOf.by && r.sources[0].by !== e.sourceOf.by) fails.push(`source line is by ${r.sources[0].by} (want ${e.sourceOf.by})`);
+  }
+  if (/\[\[\s*m\d/i.test(all)) fails.push("a recall mark reached the user");
   // D157 / D175 (4): what a new task needs of a computer, a pinned agent, its place.
   if (e.needs) {
     for (const [k, want] of Object.entries(e.needs)) {

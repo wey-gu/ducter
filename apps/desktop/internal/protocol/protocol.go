@@ -109,6 +109,7 @@ const (
 	KindWaiter           = "waiter"
 	KindWaiterLook       = "waiter_look"
 	KindMemoryNoted      = "memory_noted"
+	KindMemoryRecalled   = "memory_recalled"
 	KindBridgeMsg        = "bridge_msg"
 )
 
@@ -593,6 +594,19 @@ type MemoryNoted struct {
 	ReplyTo  int64  `json:"replyTo,omitempty"`
 }
 
+// MemoryRecalled is the one memory a reply leaned on (D304): a quiet source
+// line under the message AboutSeq. By: "said" (the person told the partner),
+// "tool" (another AI tool saved it; From is its name), "you" (they saved it).
+type MemoryRecalled struct {
+	MemoryID string `json:"memoryId"`
+	Title    string `json:"title"`
+	By       string `json:"by"`
+	From     string `json:"from,omitempty"`
+	Date     string `json:"date,omitempty"`
+	AboutSeq int64  `json:"aboutSeq"`
+	ReplyTo  int64  `json:"replyTo,omitempty"`
+}
+
 // Waiter states.
 const (
 	WaiterArmed     = "armed"
@@ -714,6 +728,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &Checkpoint{}
 	case KindMemoryNoted:
 		v = &MemoryNoted{}
+	case KindMemoryRecalled:
+		v = &MemoryRecalled{}
 	case KindWaiter:
 		v = &Waiter{}
 	case KindBridgeMsg:
@@ -1130,6 +1146,19 @@ type SettingsSet struct {
 	Patch SettingsPatch `json:"patch"`
 }
 
+// MemoryConfirm says a noted line is right (D304, 这周记下的).
+type MemoryConfirm struct {
+	T   string `json:"t"` // "memory_confirm"
+	Seq int64  `json:"seq"`
+}
+
+// MemoryCorrect corrects a noted line's words (D304); written back to Mem when it can.
+type MemoryCorrect struct {
+	T     string `json:"t"` // "memory_correct"
+	Seq   int64  `json:"seq"`
+	Title string `json:"title"`
+}
+
 // MemoryForget forgets one 记下了 / Noted line, by its seq.
 type MemoryForget struct {
 	T   string `json:"t"` // "memory_forget"
@@ -1226,6 +1255,9 @@ type Noted struct {
 	Title    string `json:"title"`
 	At       string `json:"at"`
 	MemoryID string `json:"memoryId,omitempty"`
+	// D304: the person said it is right, or corrected its words.
+	Confirmed bool `json:"confirmed,omitempty"`
+	Corrected bool `json:"corrected,omitempty"`
 }
 
 // MemView is what the partner remembers, as far as this Ducter can tell:
@@ -1233,6 +1265,8 @@ type Noted struct {
 type MemView struct {
 	State string  `json:"state"`
 	Noted []Noted `json:"noted"`
+	// D304: the 想起了 lines the person had it forget (their seqs).
+	Forgotten []int64 `json:"forgotten,omitempty"`
 	// KeptUnder is the name its memories are kept under in Mem (D141).
 	KeptUnder string `json:"keptUnder,omitempty"`
 	// D295: Glance is a look at Mem itself when it answers: how many
@@ -1816,6 +1850,8 @@ type ServerFrame struct {
 	// unless core runs it on a signed-in agent instead (Why "only_codex", "only_signed_in").
 	BrainNow *BrainNow `json:"brainNow,omitempty"`
 	Forgot   *Forgot   `json:"forgot,omitempty"`
+	// D304: how a memory_correct went: "mem" (Mem took it) or "here" (only here).
+	Corrected *Forgot `json:"corrected,omitempty"`
 	// Bridge is the persona's own connection row (D205); nil: nothing to show.
 	Bridge *BridgeView `json:"bridge,omitempty"`
 	// rules: Your rules. candidates: who could do TaskID, best first.

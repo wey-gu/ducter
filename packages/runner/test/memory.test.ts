@@ -95,7 +95,7 @@ test("the brief speaks of memory only when the task gets it (a browser task neve
   expect(plugin).toContain("You never save memories yourself");
 });
 
-test("plugin installed there: it stays on, as the persona, with no Ducter recall; mailbox notices stay out", async () => {
+test("plugin installed there: it stays on, as the persona, with no Ducter notes (D304: only other tools' titles, none here); mailbox notices stay out", async () => {
   let asked = 0;
   core.taskMemory = { on: () => true, recall: async () => (asked++, NOTES) };
   core.persona.mem = { agentId: "ducter", owned: true } as any;
@@ -108,8 +108,21 @@ test("plugin installed there: it stays on, as the persona, with no Ducter recall
   expect(h.specs[0]!.env).toEqual({ NMEM_AGENT_ID: "ducter", NMEM_NO_MAILBOX_NOTICE: "1" });
   expect(h.specs[0]!.appendSystemPrompt).toContain("Nowledge Mem is on in this session");
   expect(h.turns[0]).toStartWith('Start the task "x"');
-  expect(asked).toBe(0);
+  expect(asked).toBe(1); // D304: asked once, for other tools' memories; the person's own come from the plugin
   expect(seen[0]).toEqual([undefined, "claude-code"]);
+});
+
+test("D304: plugin there: other AI tools' memories that fit are named by title and id before the first turn, never their text", async () => {
+  core.taskMemory = { on: () => true, recall: async () => [...NOTES, { id: "m_cc1", title: "Run gofmt -l before committing", content: "the text stays in Mem", from: "Claude Code" }] };
+  core.persona.mem = { agentId: "ducter", owned: true } as any;
+  core.memPluginIn = () => true;
+  const h = recordingPort();
+  const runner = createRunner(core, { harness: h.port, newId: () => "tsk8c" });
+  await runner.whenStarted((await runner.openTask({ persona: "p1", title: "x", brief: "b", harness: "claude-code" })).taskId);
+  expect(h.turns[0]).toStartWith("<from_your_other_tools>");
+  expect(h.turns[0]).toContain("[m_cc1] Claude Code: Run gofmt -l before committing");
+  expect(h.turns[0]).not.toContain("the text stays in Mem");
+  expect(h.turns[0]).not.toContain("<what_i_know>");
 });
 
 test("D229: Ducter's nmem named in NMEM_CLI_PATH (put in off PATH) reaches the task's plugin; the lane is left to the plugin", async () => {

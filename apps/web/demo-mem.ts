@@ -65,3 +65,32 @@ export const notedSeed = (zh: boolean): { title: string; daysAgo: number }[] => 
   { title: zh ? "喜欢先看结论，细节放后面" : "Likes the conclusion first, details after", daysAgo: 19 },
   { title: zh ? "Ducter 的设计文档用英文写，聊天用中文" : "Ducter's design docs are written in English; chat is in Chinese", daysAgo: 26 },
 ];
+
+type DemoLog = { append(e: { stream: string; origin: string; kind: string; body: unknown }): { seq: number } };
+
+/**
+ * D304 (DEMO_RECALL=1): the conversation side of Mem, seeded: the week's morning note offering what
+ * it learned, a reply that leaned on the person's own words (想起了你 … 说的), and one that leaned on
+ * what Claude Code saved (想起了 Claude Code … 记下的). Forget and corrections "reach Mem" (a fake).
+ */
+export function seedRecall(core: { log: DemoLog; settings: { learnedThisWeek(at: number): number; setForgetter(f: (id: string) => Promise<boolean>): void; setCorrector?(f: (id: string, t: string) => Promise<boolean>): void } }, zh: boolean, setSkew: (ms: number) => void) {
+  const log = core.log;
+  const day = 86_400_000;
+  const ymd = (back: number) => new Date(Date.now() - back).toISOString().slice(0, 10);
+  core.settings.setForgetter(async () => true);
+  core.settings.setCorrector?.(async () => true);
+  const week = core.settings.learnedThisWeek(Date.now());
+  setSkew(-3 * 3600_000);
+  log.append({ stream: "channel", origin: "partner", kind: "finds", body: { noteId: "note_week", rung: "morning", opening: zh ? "早。" : "Morning.", finds: [], learned: { count: week } } });
+  setSkew(-40 * 60_000);
+  const u1 = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "周报一般哪天发、发给谁来着？" : "When does the weekly report go out again, and to whom?" } });
+  const a1 = log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: zh ? "周五下午发，发给 Nowledge 全组。" : "Friday afternoon, to the whole Nowledge team.", replyTo: u1.seq } });
+  const said = notedSeed(zh)[0]!;
+  log.append({ stream: "channel", origin: "partner", kind: "memory_recalled", body: { memoryId: "m_week1", title: said.title, by: "said", date: ymd(said.daysAgo * day), aboutSeq: a1.seq, replyTo: u1.seq } });
+  setSkew(-8 * 60_000);
+  const u2 = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "我要提交 ducter 的 Go 改动了，有什么要先跑的吗？" : "I'm about to commit the Go changes in ducter. Anything to run first?" } });
+  const a2 = log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: zh ? "先跑一下 `gofmt -l apps/desktop`，有列出来的文件就 `gofmt -w` 一下再提交。" : "Run `gofmt -l apps/desktop` first; anything it lists, `gofmt -w` before you commit.", replyTo: u2.seq } });
+  const cc = memories(zh)[0]!;
+  log.append({ stream: "channel", origin: "partner", kind: "memory_recalled", body: { memoryId: cc.id, title: cc.title, by: "tool", from: "Claude Code", date: cc.created_at.slice(0, 10), aboutSeq: a2.seq, replyTo: u2.seq } });
+  setSkew(0);
+}

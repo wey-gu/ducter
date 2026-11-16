@@ -179,6 +179,8 @@ export interface TaskMemoryNote {
   title: string;
   content: string;
   date?: string;
+  /** D304: another AI tool saved it (its name, "Claude Code"); absent: the person or the partner. */
+  from?: string;
 }
 
 /**
@@ -266,6 +268,8 @@ export interface SettingsApi {
   get(): Settings;
   /** The partner registers how to forget a memory in Mem; true when Mem forgot it. */
   setForgetter(fn: (memoryId: string) => Promise<boolean>): void;
+  /** D304: how to correct a memory's words in Mem (这周记下的); true when Mem took it. */
+  setCorrector?(fn: (memoryId: string, title: string) => Promise<boolean>): void;
   /** The partner says whether Mem answers (connected) or not (missing), as it finds out. */
   setMemState(state: "connected" | "missing"): void;
   /** D170: the partner keeps the learned rules (trusted) and the muted senders here. */

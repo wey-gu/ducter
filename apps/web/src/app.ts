@@ -73,7 +73,7 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "chats" | "autofill" | "devices" | "phone";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "recall"; seq: number } | { kind: "learned" } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {
@@ -805,6 +805,8 @@ class AppState {
       this.forgetting.delete(f.forgot.seq);
       this.toast(this.L.t(f.forgot.how === "mem" ? "partner.memory.forgot" : "partner.memory.hidden", title));
     }
+    // D304: a correction says whether Nowledge Mem took it too.
+    if (f.corrected) this.toast(this.L.t(f.corrected.how === "mem" ? "learned.fixed.mem" : "learned.fixed.here"));
     this.changed();
   }
 
@@ -1851,9 +1853,44 @@ class AppState {
 
   /** Titles of the noted lines being forgotten, for the toast that answers. */
   private forgetting = new Map<number, string>();
+  /** D304: 想起了 lines forgotten from this client, before the home's frame says so. */
+  forgottenHere = new Set<number>();
+  /** D304: the 想起了 line under this message, unless it was forgotten. */
+  recalledUnder(seq: number) {
+    const r = this.S.recalled.get(seq);
+    if (!r || this.forgottenHere.has(r.seq) || this.mem?.forgotten?.includes(r.seq)) return undefined;
+    return r;
+  }
+  /** D304: opens what it remembered (the line under a reply). */
+  openRecall(seq: number) {
+    this.sheet = { kind: "recall", seq };
+    this.changed();
+  }
+  /** D304: 这周记下的 / What it learned this week, from the week's morning note. */
+  openLearned() {
+    this.sheet = { kind: "learned" };
+    this.send({ t: "settings" });
+    this.changed();
+  }
+  /** D304: the person says a noted line is right. */
+  confirmNoted(seq: number) {
+    if (this.mem) this.mem = { ...this.mem, noted: this.mem.noted.map((n) => (n.seq === seq ? { ...n, confirmed: true } : n)) };
+    this.send({ t: "memory_confirm", seq });
+    this.changed();
+  }
+  /** D304: the person corrects a noted line's words (written back to Mem by the home). */
+  correctNoted(seq: number, title: string) {
+    const words = title.replace(/\s+/g, " ").trim();
+    if (!words) return;
+    if (this.mem) this.mem = { ...this.mem, noted: this.mem.noted.map((n) => (n.seq === seq ? { ...n, title: words, corrected: true, confirmed: true } : n)) };
+    this.send({ t: "memory_correct", seq, title: words });
+    this.changed();
+  }
   forget(seq: number) {
     const n = this.mem?.noted.find((x) => x.seq === seq);
-    const title = n?.title ?? this.S.noted.find((x) => x.seq === seq)?.title;
+    const rc = [...this.S.recalled.values()].find((x) => x.seq === seq);
+    if (rc) this.forgottenHere.add(seq);
+    const title = n?.title ?? this.S.noted.find((x) => x.seq === seq)?.title ?? rc?.title;
     if (title) this.forgetting.set(seq, title);
     this.S.noted = this.S.noted.filter((x) => x.seq !== seq);
     if (this.mem) this.mem = { ...this.mem, noted: this.mem.noted.filter((n) => n.seq !== seq) };

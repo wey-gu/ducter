@@ -202,6 +202,8 @@ type App struct {
 	fl follow
 	// forgotten are the Noted lines forgotten from a message's Details.
 	forgotten map[int64]bool
+	// recall is the 想起了 line's card and 这周记下的 (D304, recall.go).
+	recall recallState
 	// thinkingSince is when this app sent the message it waits on (the
 	// presence row's clock before the partner names a step, D104).
 	thinkingSince time.Time
@@ -566,6 +568,9 @@ func (a *App) shortcuts(c *ui.Context) {
 		}
 		if a.Route == RouteConversation && a.CancelReply() {
 			break // D236: Esc puts a reply away first
+		}
+		if a.Route == RouteConversation && a.recallEsc() {
+			break // D304: the 想起了 card or 这周记下的 closes, one step at a time
 		}
 		if !a.taskEsc(c) && !a.escDevice() {
 			a.Up()

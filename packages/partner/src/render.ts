@@ -352,7 +352,9 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       const shown = fresh.slice(0, FINDS_SHOWN);
       const finds = [...shown.map((f) => `${f.kind}: ${clip(f.text, 200)}${f.goLabel ? ` (next step offered: ${clip(f.goLabel, 40)})` : ""}`), ...(fresh.length > shown.length ? [`${fresh.length - shown.length} more`] : [])].join(" | ");
       const what = b.rung === "fold" ? "you added to this morning's note" : b.rung === "first" ? "you said when they added accounts" : `you noticed in their accounts (${b.rung})`;
-      return `[${t} ${what}] ${b.rung === "fold" ? "" : clip(b.opening, 200)}${finds ? ` ${finds}` : ""}${left}`.replace(/\] +/, "] ").trim();
+      // D304: the week's offer; the app opens the list itself when they tap it.
+      const learned = b.learned ? ` (and offered to show the ${b.learned.count} things you noted about them this week; the app's list lets them confirm, correct or forget each)` : "";
+      return `[${t} ${what}] ${b.rung === "fold" ? "" : clip(b.opening, 200)}${finds ? ` ${finds}` : ""}${learned}${left}`.replace(/\] +/, "] ").trim();
     }
     case "find_state": {
       const b = e.body as Bodies["find_state"];

@@ -193,6 +193,8 @@ export class Store {
   errors: string[] = [];
   /** 记下了 / Noted lines in the channel, shown inside the Details of the reply they belong to (D104). */
   noted: { seq: number; title: string; memoryId?: string; replyTo?: number }[] = [];
+  /** D304: the 想起了 / Remembered line under a message, by the seq of the message it stands under. */
+  recalled = new Map<number, Bodies["memory_recalled"] & { seq: number }>();
   /** D165: each find's latest change, and the user's latest message. */
   findStates = new Map<string, Bodies["find_state"]>();
   lastUserSeq = 0;
@@ -480,6 +482,14 @@ export class Store {
       case "memory_noted": {
         const b = ev.body as Bodies["memory_noted"];
         this.noted.push({ seq: ev.seq, title: b.title, ...(b.memoryId ? { memoryId: b.memoryId } : {}), ...(b.replyTo != null ? { replyTo: b.replyTo } : {}) });
+        return void this.bySeq.set(ev.seq, null);
+      }
+      case "memory_recalled": {
+        // D304: one line under the message it names, never an entry of its own.
+        const b = ev.body as Bodies["memory_recalled"];
+        if (!this.recalled.has(b.aboutSeq)) this.recalled.set(b.aboutSeq, { ...b, seq: ev.seq });
+        const about = this.bySeq.get(b.aboutSeq);
+        if (about) about.revision++;
         return void this.bySeq.set(ev.seq, null);
       }
       case "bridge_msg": {

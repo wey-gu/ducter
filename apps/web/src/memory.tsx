@@ -16,7 +16,7 @@ import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Tile } from "./set-grid.ts
 import { Avatar, Check } from "./views.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
-const MEM_SITE = "https://mem.nowledge.co";
+export const MEM_SITE = "https://mem.nowledge.co";
 
 const homeOf = (b: BridgeView | undefined) => b?.home || A.homeName || "";
 

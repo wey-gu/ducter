@@ -28,6 +28,7 @@ import { Said, say } from "./set-grid.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
+import { LearnedSheet, RecallLine, RecallSheet } from "./recall.tsx";
 import { FirstAfter, firstOpening, KeyCard, keyJustAdded } from "./first-words.tsx";
 import { CalFacts, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx";
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
@@ -776,6 +777,7 @@ function JobRow({ e, chipOwner, noted, join, rk, ans }: { e: Entry; chipOwner: M
           <HoverReply k={rk} />
         </div>
       ))}
+      {j.ack && <RecallLine seq={e.firstSeq} />}
       {st && !(task && title(task)) && <div class={`status-line${st.state === "failed" ? " failed" : ""}`}>{st.text}</div>}
       <Quiet k={`m${e.firstSeq}`} tasks={own ? [task!] : []} detail={st?.text} noted={noted} />
     </div>
@@ -1067,10 +1069,10 @@ function replyTasks(e: Entry, chipOwner: Map<string, number>): Task[] {
  *  it (D129). */
 function bare(e: Entry, chipOwner: Map<string, number>): boolean {
   if (e.user) return true;
-  if (e.ai) return !replyTasks(e, chipOwner).length && !A.notedFor(e).length;
+  if (e.ai) return !replyTasks(e, chipOwner).length && !A.notedFor(e).length && !A.recalledUnder(e.firstSeq);
   if (e.job) {
     const st = e.job.status;
-    if (!e.job.ack || A.notedFor(e).length) return false;
+    if (!e.job.ack || A.notedFor(e).length || A.recalledUnder(e.firstSeq)) return false;
     if (!st) return true;
     const task = st.taskId ? A.S.tasks.get(st.taskId) : undefined;
     return !!task && !!title(task) && chipOwner.get(task.id) !== e.firstSeq;
@@ -1155,6 +1157,7 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
         {/* D206: what a task showed, under the partner's words about it. */}
         {e.ai.media?.length ? <MediaBlock media={e.ai.media} side="partner" ctx={{ kind: "conv" }} /> : null}
         {e.ai.first && <FirstAfter fw={e.ai.first} />}
+        <RecallLine seq={e.firstSeq} />
         <Quiet k={`m${e.firstSeq}`} tasks={replyTasks(e, chipOwner)} noted={A.notedFor(e)} />
       </div>
     );
@@ -2934,6 +2937,8 @@ export function Sheets() {
   if (A.sheet.kind === "switch") return <Switcher />;
   if (A.sheet.kind === "past") return <PastSheet />;
   if (A.sheet.kind === "did") return <DidSheet />;
+  if (A.sheet.kind === "recall") return <RecallSheet seq={A.sheet.seq} />;
+  if (A.sheet.kind === "learned") return <LearnedSheet />;
   return A.sheet.kind === "decision" ? <DecisionSheet id={A.sheet.id} /> : <SettingsSheet />;
 }
 

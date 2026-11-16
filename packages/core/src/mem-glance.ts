@@ -6,33 +6,13 @@
 // travel to the person's own clients; contents never leave Mem. A source that isn't a known AI tool
 // (the person's own `cli`, the app, a web clip) is not "another tool" and is left out; Ducter's own
 // memories are the noted lines (settings.ts), so they are left out too.
-import type { MemView } from "@ducter/protocol";
+import { AI_TOOLS, type MemView } from "@ducter/protocol";
 import type { NmemCall } from "./bridge-link.ts";
 
 export type MemGlance = NonNullable<MemView["glance"]>;
 
-/** Mem's `source` for an AI tool, and the name the person knows it by. */
-export const AI_TOOLS: Record<string, string> = {
-  "claude-code": "Claude Code",
-  claude_code: "Claude Code",
-  claude: "Claude",
-  "claude-desktop": "Claude",
-  codex: "Codex",
-  "codex-cli": "Codex",
-  cursor: "Cursor",
-  windsurf: "Windsurf",
-  "gemini-cli": "Gemini CLI",
-  gemini: "Gemini",
-  chatgpt: "ChatGPT",
-  openclaw: "OpenClaw",
-  opencode: "OpenCode",
-  pi: "pi",
-  cline: "Cline",
-  copilot: "GitHub Copilot",
-  "github-copilot": "GitHub Copilot",
-  zed: "Zed",
-  raycast: "Raycast",
-};
+/** Mem's `source` for an AI tool (D304: shared with the 想起了 line and task briefs, protocol/src/mem-source.ts). */
+export { AI_TOOLS };
 
 const OTHERS_SHOWN = 6;
 const LIST_N = 40;

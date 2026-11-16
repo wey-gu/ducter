@@ -25,6 +25,7 @@ export * from "./channels.ts";
 export * from "./past.ts";
 export * from "./did.ts";
 export * from "./reach.ts";
+export * from "./mem-source.ts";
 import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
@@ -32,6 +33,7 @@ import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./chan
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
+import type { RecallBy } from "./mem-source.ts";
 import type { CalChange, CalGlance, CalToday } from "./calendar.ts";
 import type { CallBody, CallPlan, CallView, OwnPhoneAction, OwnPhoneView, PhoneView, SignInView } from "./phone.ts";
 import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveDay, ProactiveMode, ProactiveSource, ProactiveYesNo, ReadLine, SourceLook } from "./proactive.ts";
@@ -444,6 +446,15 @@ export interface Bodies {
   // show one quiet line under the reply: "记下了 · <title>" / "Noted · <title>". Never a card,
   // never a notification. Provenance lives in Mem, not here.
   memory_noted: { title: string; memoryId?: string; replyTo?: number };
+  // D304: a memory the partner's answer actually leaned on, said once under that answer: "想起了你
+  // 11月10日 说的" / "Remembered from what you said on Nov 10". Only when recall changed the answer,
+  // at most one per reply, and only a memory memory_search returned that turn (the partner names
+  // it by the result's ref; code checks it). aboutSeq: the ai_msg or ack it stands under. by: who
+  // the memory is from: "said" (the person's own words to the partner, Mem source "ducter"),
+  // "tool" (another AI tool saved it; from: its name, "Claude Code"), "you" (the person saved it
+  // themselves: the CLI, the app, a clip). date: YYYY-MM-DD it was recorded. Titles only; the
+  // memory's text never leaves Mem.
+  memory_recalled: { memoryId: string; title: string; by: RecallBy; from?: string; date?: string; aboutSeq: number; replyTo?: number };
   // D148: one step of a device's update, on the "devices" stream (origin "system"). device is
   // "local" for the home or a paired device id; name is its name then. Clients show the latest
   // on the device's card; the partner reads it only when asked.
@@ -517,7 +528,9 @@ export interface Bodies {
   // "first": the first-account moment (§11). quiet: a silent day: no message, no notification;
   // clients change the header line until the person next writes. leftOut: the 没说的 line.
   // answered: the ask was answered (the clients show the controls settled, not live).
-  finds: { noteId: string; rung: FindRung; opening: string; finds: FindView[]; leftOut?: string; quiet?: boolean; ask?: ProactiveAsk; revises?: string; answered?: string; /** A fold-in: how many finds at the end are new in this revision (the partner reads only those). */ added?: number };
+  // learned (D304): the week's first morning note offers, in one line, to show what it noted about
+  // the person in the last 7 days (count), opening 这周记下的 / What it learned this week.
+  finds: { noteId: string; rung: FindRung; opening: string; finds: FindView[]; leftOut?: string; quiet?: boolean; ask?: ProactiveAsk; revises?: string; answered?: string; /** A fold-in: how many finds at the end are new in this revision (the partner reads only those). */ added?: number; learned?: { count: number } };
   // A find changed: Go or Hold on its step, passed its date (过了), or the person's reaction
   // (有用; 这类不用告诉我 adds a Rule, ruleId). taskId: the task Go opened.
   find_state: { findId: string; kind: FindKind; state: FindState; taskId?: string; ruleId?: string };
@@ -982,6 +995,10 @@ export type ClientFrame =
   | { t: "settings" }
   | { t: "settings_set"; patch: SettingsPatch }
   | { t: "memory_forget"; seq: number }
+  // D304: 这周记下的 / What it learned this week, line by line: confirm one as right, or correct its
+  // words (written back to Nowledge Mem through nmem when the line has the memory's id).
+  | { t: "memory_confirm"; seq: number }
+  | { t: "memory_correct"; seq: number; title: string }
   // Who does the tasks (D89): "rules" answers with a rules frame and keeps the socket subscribed;
   // rule_remove (不要这条 / Remove) drops one, then every subscriber gets a fresh rules frame.
   // Rules are added only by saying them in the conversation (the partner's rule_save tool).
@@ -1273,7 +1290,7 @@ export type ServerFrame =
   | { t: "agent_update_result"; device: string; harness: string; ok: boolean; reason?: AgentReason; detail?: string }
   | { t: "update_all_result"; ok: boolean; reason?: "nothing" | "running" | "failed"; detail?: string; id?: string }
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
-  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; bridge?: BridgeView }
+  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; bridge?: BridgeView }
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
   // D288: no usage: the agent doesn't share it (unsupported), isn't signed in, or the read failed.
@@ -2014,7 +2031,9 @@ export interface MemView {
   /** connected: Nowledge Mem answers; missing: not installed or not connected; off: switched off. */
   state: "connected" | "missing" | "off";
   /** Recent 记下了 / Noted lines from the conversation, newest first, without forgotten ones. */
-  noted: { seq: number; title: string; at: string; memoryId?: string }[];
+  noted: { seq: number; title: string; at: string; memoryId?: string; confirmed?: boolean; corrected?: boolean }[];
+  /** D304: the 想起了 / Remembered lines the person had it forget (their seqs): the conversation stops showing them. */
+  forgotten?: number[];
   /** The name its memories are kept under in Mem (D141): the persona's AI Identity, once bound. */
   keptUnder?: string;
   /**

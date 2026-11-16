@@ -113,6 +113,18 @@ What your partner remembers about you has its own section, **Memory**.
   **Sign in to your Nowledge Mem** with a one-time connect link. Already use the Nowledge Mem app?
   Open it on that computer and your partner finds it.
 
+### What it remembered, in the conversation
+
+When something your partner remembered changed its answer, one quiet line sits under that reply:
+**Remembered from what you said on Nov 10**, or **Remembered from what Claude Code saved on Nov 16**.
+It never lists what it looked through, only the one thing that mattered, and only then. Tap the line
+to see that memory, who it is from and when, with **Forget** (it asks first; forgetting reaches
+Nowledge Mem, so your other tools won't recall it either) and **Open in Nowledge Mem**.
+
+Once a week, in the first morning note of the week, one line offers to show what it noted about you
+in the last seven days. **Show me** opens **What it learned this week**: mark a line **Right**,
+**Fix** its words (the fix goes back to Nowledge Mem), or **Forget** it.
+
 ## Connected AI agents
 
 Once Nowledge Mem is in, **Connected AI agents** lets the AI agents you use elsewhere, like Claude

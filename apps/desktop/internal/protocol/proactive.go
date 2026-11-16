@@ -49,6 +49,13 @@ type Finds struct {
 	Answered string     `json:"answered,omitempty"`
 	// Added: on a fold-in, how many finds at the end are new in this revision.
 	Added int `json:"added,omitempty"`
+	// D304: the week's first morning note offers to show what it noted this week.
+	Learned *Learned `json:"learned,omitempty"`
+}
+
+// Learned is how many things it noted about the person in the last 7 days.
+type Learned struct {
+	Count int `json:"count"`
 }
 
 // FindState is a find's change: go, held, passed (过了), useful, muted.

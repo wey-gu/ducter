@@ -15,8 +15,7 @@
 <p align="center">
   <a href="https://ducter.ai">ducter.ai</a> ·
   <a href="docs/getting-started.md">Getting started</a> ·
-  <a href="docs/README.md">Docs</a> ·
-  <a href="#中文">中文</a>
+  <a href="docs/README.md">Docs</a>
 </p>
 
 <p align="center">
@@ -51,8 +50,9 @@
 | **Android** | The Ducter app, from each [GitHub release](https://github.com/wey-gu/ducter/releases/latest); it updates itself, and a foldable opened like a book shows the conversation and On hand on either side of the fold. Or your phone's browser. |
 | **Terminal** | The `ducter` command, on the Mac or the server. |
 
-A phone needs an address it can reach from outside: Ducter on a server with your own domain, or
-a Mac at home set up **From outside** with your domain on Cloudflare ([Your phone](docs/phone.md)).
+Away from home, a phone reaches Ducter in one of three ways: over your Tailscale network, at a
+server's own domain, or at a Mac at home set up **From outside** with your domain on Cloudflare
+([Your phone](docs/phone.md)).
 
 ## Get Ducter
 
@@ -131,6 +131,11 @@ Building from source, the walkthroughs and every command: [Install](docs/install
 - **Your mail and calendar.** Say yes once, and it tells you only what needs you: a first look
   over the last two weeks, then a morning message with at most three things, and right away only
   when waiting would cost you ([Accounts it can read](docs/accounts.md)).
+- **Where you already chat.** Talk to the same partner from Telegram or Slack through a bot of
+  your own, or from Messages on your iPhone through your Mac
+  ([Chat apps](docs/chat-apps.md), [iMessage](docs/imessage.md)).
+- **What you did before.** Find any earlier task by what it did or what you said, star it, and
+  carry on with it; pause and resume what runs on its own ([Past tasks](docs/past-tasks.md)).
 - **What you already decided.** With [Nowledge Mem](https://mem.nowledge.co) (optional), your
   partner and its tasks share one memory with the AI tools you use elsewhere.
 
@@ -154,7 +159,7 @@ For people who already run several agents at once, what makes them hold up as on
 
 ```mermaid
 flowchart LR
-  you(["You<br/>Mac · iPhone · iPad · browser · terminal"]) <-->|one connection| partner
+  you(["You<br/>Mac, iPhone, iPad, browser, terminal"]) <-->|one connection| partner
   subgraph main["Ducter, on your Mac or your server"]
     partner["Your partner"]
     log[("The Log<br/>local SQLite")]
@@ -183,18 +188,6 @@ one-time code. Details: [Privacy and safety](docs/privacy-and-safety.md).
 
 Ducter is made by the people behind Nowledge Mem. Once a pull request of yours is merged, mention
 it and we'll send you a free lifetime Nowledge Mem license ([details](CONTRIBUTING.md)).
-
-## 中文
-
-Ducter 是开源、自己部署的个人 AI。你只跟一个伙伴说话，它把活儿交给 Claude Code、Codex、pi 或
-DeepSeek Harness 去做，用的是你本来就在付的订阅。它住在你的 Mac 上，或者你自己的 Linux 服务器上（家里或云上都行）；做完了一两句话告诉你结果，证据点开就能看，只有真要你拍板的事才来找你，而且先替你想好默认的做法。
-
-在哪儿用：Mac 桌面 app（Apple 芯片）、Linux 服务器、iPhone 和 iPad（同一个 app，TestFlight 公测）、Android（GitHub 发布页下载，自己更新，折叠屏也照顾到了）。界面中英双语。
-
-能替你跑腿：订、买时用你存好的登录和卡，它填进去但看不见，每笔付款都先问你；通过 Tuwa 替你打电话（需要 Tuwa 账号），你点了「打过去」才拨。任务缺密钥时给你一张卡，填一次就接着做，密钥存在家里那台电脑上，对话里看不到。
-
-还能在你 Mac 的应用里做事（用电脑），也能用 Ducter 自己的 Android 手机（用手机，跑在 Apple 芯片的 Mac 上）；发送、付款、删除之前都等你点头，密码管理器、银行和系统设置它碰不到。想接着某件事说，回复那条消息就行。上手请看
-[Getting started](docs/getting-started.md)。
 
 ## License
 

@@ -343,9 +343,9 @@ func (a *App) taskRows(c *ui.Context, tasks []*store.Task, state bool) {
 		return
 	}
 	t := a.T
-	// Clipped, with a small inset: a hovered or focused row is a rounded tile
-	// inside the card, never a square block poking past its corners.
-	ui.Column(c.Key("rows")).Radius(t.RadiusLG).Clip().Padding(t.S1, t.S1).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
+	// Clipped: a hovered or focused row fills its band edge to edge and the
+	// card's own corners round it, never a tile inside a rim.
+	ui.Column(c.Key("rows")).Radius(t.RadiusLG).Clip().Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
 		Dividers(1, t.LineSoft).Children(func() {
 		for _, task := range tasks {
 			a.taskRow(c.Key(task.ID), task, state)
@@ -387,10 +387,10 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 	}
 	row.Children(func() {
 		if focus {
-			ui.Box(c.Key("kf")).Absolute().Left(t.S1 / 2).Top(t.S3).Bottom(t.S3).Width(4).Radius(t.Pill).Background(t.Accent).AccessHidden(true)
+			ui.Box(c.Key("kf")).Absolute().Left(t.S1).Top(t.S3).Bottom(t.S3).Width(4).Radius(t.Pill).Background(t.Accent).AccessHidden(true)
 		}
 		if opened {
-			ui.Box(c.Key("open")).Absolute().Left(t.S1 / 2).Top(t.S3).Bottom(t.S3).Width(4).Radius(t.Pill).Background(t.Ink).AccessHidden(true)
+			ui.Box(c.Key("open")).Absolute().Left(t.S1).Top(t.S3).Bottom(t.S3).Width(4).Radius(t.Pill).Background(t.Ink).AccessHidden(true)
 		}
 		if att == protocol.Blocked {
 			if w := a.S.WaiterFor(task.ID); w != nil {
@@ -399,7 +399,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 		}
 		ui.Column(c.Key("main")).Grow(1).Shrink(1).MinWidth(0).Gap(t.S1).Children(func() {
 			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				title := ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(700).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(task.Title())
+				title := ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(700).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
 				// Finished rows recede, unless they are a new result.
 				if (att == protocol.Done || att == protocol.DoneClaimed) && st != stNew {
 					title.TextColor(t.InkSoft).FontWeight(600)

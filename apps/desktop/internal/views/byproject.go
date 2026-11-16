@@ -216,7 +216,7 @@ func (a *App) projectRow(c *ui.Context, task *store.Task) {
 		ui.Box(c.Key("face")).Size(32, 32).Shrink(0).Children(func() {
 			a.avatar(c, taskPresence(task), 32)
 		})
-		title := ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(700).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(task.Title())
+		title := ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(700).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
 		if row.Hovered() {
 			title.Underline()
 		}

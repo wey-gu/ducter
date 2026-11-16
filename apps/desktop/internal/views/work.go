@@ -351,7 +351,11 @@ func (a *App) waitRows(c *ui.Context, task *store.Task, row func(string, func())
 	row(a.L.T("wait.how.title"), func() {
 		if w.Check != nil {
 			ui.Text(c, strings.Join(w.Check.Argv, " ")).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
-			ui.Text(c, a.L.T("wait.met_when", describePredicate(w.Check.SucceedWhen))).FontSize(t.SM).TextColor(t.InkMuted)
+			// A long predicate (a regex over a clock) says nothing to a person: the
+			// reason above says what it waits for; only a short one is shown.
+			if d := describePredicate(w.Check.SucceedWhen); len([]rune(d)) <= 60 {
+				ui.Text(c, a.L.T("wait.met_when", d)).FontSize(t.SM).TextColor(t.InkMuted)
+			}
 		} else {
 			value(a.L.T("wait.event", w.Event.Connection, w.Event.Trigger))
 		}
@@ -628,4 +632,13 @@ func (a *App) routineFacts(c *ui.Context, id string, ink ui.Color) {
 		row(a.L.T("routine.budget"), func() { text(a.L.T(routineCostKey(r))) })
 		row(a.L.T("routine.review"), func() { text(a.tp("routine.review.v", (a.day(store.ParseTime(r.ReviewAt))))) })
 	})
+}
+
+// longTitleTip is a row title's tooltip: only a title the row may cut short
+// has one (a tooltip over a title it repeats covers the line under it).
+func longTitleTip(title string) string {
+	if len([]rune(title)) <= 28 {
+		return ""
+	}
+	return title
 }

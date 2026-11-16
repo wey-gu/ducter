@@ -342,11 +342,9 @@ switch (verb) {
     if (!m) fail("not_found", "No such message in this mailbox.");
     m!.read_at ??= new Date().toISOString();
     save(s);
+    // One JSON document per shape: two would make the whole answer unparseable (the eval's D294 break).
     if (NAMED) out({ message: { id: m!.id, ...card(m!.from), created_at: m!.created_at, ...(m!.in_reply_to ? { in_reply_to: m!.in_reply_to } : {}) }, body: m!.body });
-    if (PRESENT) {
-      out({ message: m!.id, body: m!.body, reply_to: m!.id, in_reply_to: m!.in_reply_to ?? null, sender: sender(m!.from), outgoing: [], status_observed_at_us: Date.now() * 1000 });
-      break;
-    }
+    else if (PRESENT) out({ message: m!.id, body: m!.body, reply_to: m!.id, in_reply_to: m!.in_reply_to ?? null, sender: sender(m!.from), outgoing: [], status_observed_at_us: Date.now() * 1000 });
     // 0.10.118: no sender; `reply_to` is this message's own handle (in_reply_to INFERRED).
     else out({ message: m!.id, body: m!.body, reply_to: m!.id, ...(m!.in_reply_to ? { in_reply_to: m!.in_reply_to } : {}), outgoing: [] });
     break;

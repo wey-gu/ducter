@@ -87,6 +87,34 @@ describe("D294: sender and in_reply_to (Mem #10278)", () => {
   }, 20_000);
 });
 
+describe("D294: an inbound message from the user's own terminal agent wakes the partner", () => {
+  // The partner eval runs the fake in "named"; a D294 edit once made its `open` print two JSON
+  // documents there, so every inbound message was silently dropped and the partner never woke.
+  for (const shape of ["named", "presentation", "released"]) {
+    test(`shape ${shape}: one check, one partner turn carrying the message`, async () => {
+      const w = world({ messages: [{ id: "msg-001", from: "terminal", to: "ducter", body: "Should I push fix-linux-ci now, or wait for macOS?" }] });
+      const clock = new FakeClock();
+      const fc = fakeCore(clock, tmp());
+      const inputs: string[] = [];
+      const fr = fakeRunner((input, s) => {
+        inputs.push(input);
+        s.end();
+      });
+      fr.bindCards(fc.cards);
+      const env = shape === "released" ? { ...w.env(), NMEM_FAKE_SHAPE: "" } : w.env({ NMEM_FAKE_SHAPE: shape });
+      const bridge = createNmemBridge({ context: "ducter", bin: w.bin, env, retryDelaysMs: [0, 0] });
+      const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, settleMs: 0, onError: (e: unknown) => console.error(e), memory: fakeMemory([]).memory, bridge, bridgeIntervalMs: 0, bridgeStartMark: false });
+      expect(await partner.checkBridge()).toBe(1);
+      await partner.idle();
+      const inbound = fc.events.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).direction === "in");
+      expect(inbound).toHaveLength(1);
+      expect(inbound[0]!.body).toMatchObject({ messageId: "msg-001", mine: true });
+      expect(inputs.some((t) => t.includes("Should I push fix-linux-ci now"))).toBe(true);
+      await partner.close();
+    }, 30_000);
+  }
+});
+
 describe("D294: Mem can't take it right now", () => {
   test("a read is tried again briefly and then succeeds", async () => {
     const w = world({ messages: [{ id: "msg-001", from: "coord", to: "ducter", body: "hello" }] });

@@ -15,7 +15,7 @@ import { triggersPartner } from "../src/core.ts";
 import { openLog } from "../src/log.ts";
 import { createMcpHub } from "../src/mcp.ts";
 import { createRegistry } from "../src/registry.ts";
-import { actedBy, troubleOf } from "../src/routines.ts";
+import { actedBy, CLOSE_WAIT_MS, troubleOf } from "../src/routines.ts";
 import { createWork } from "../src/work.ts";
 import { openTask, report, tempDir, tick } from "./helpers.ts";
 
@@ -66,6 +66,9 @@ function setup(o: { exec?: Exec; start?: number; dir?: string; log?: ReturnType<
 }
 
 const daily9: RoutineTrigger = { kind: "time", every: "day", time: "09:00", zone: "world", tz: "Asia/Shanghai" };
+/** D308: the turn's end, after its report (the order on Claude Code); a run closes on it. */
+const turnEnd = (log: ReturnType<typeof openLog>, taskId: string, usage?: { inputTokens: number; outputTokens: number }) =>
+  log.append({ stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, role: "system", ...(usage ? { usage } : {}), raw: { turnEnd: true } } });
 const tool = (log: ReturnType<typeof openLog>, taskId: string, name: string) =>
   log.append({ stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, role: "tool", tool: { name, input: {} } } });
 
@@ -141,6 +144,7 @@ test("a run that failed before doing anything is tried once more, 12 minutes lat
   expect(s.started().at(-1)).toMatchObject({ attempt: 1, scheduledFor: "2026-11-10T01:00:00.000Z" });
   expect(s.briefs[1]).toContain("fresh start");
   report(s.log, s.task(2), { state: "failed", summary: "still overloaded" });
+  turnEnd(s.log, s.task(2));
   await flush();
   expect(s.runs().at(-1)).toMatchObject({ state: "failed", attempt: 1 });
   expect(s.runs().at(-1)!.retryAt).toBeUndefined(); // only one retry
@@ -157,6 +161,7 @@ test("no retry once the run posted or did something, or when the next time is ne
   tool(s.log, s.task(1), "Read"); // reading is not acting
   tool(s.log, s.task(1), "Bash"); // a command could have changed something
   report(s.log, s.task(1), { state: "failed", summary: "the page didn't load" });
+  turnEnd(s.log, s.task(1));
   await flush();
   expect(s.runs().at(-1)).toMatchObject({ state: "failed", acted: true });
   expect(s.runs().at(-1)!.retryAt).toBeUndefined();
@@ -168,6 +173,7 @@ test("no retry once the run posted or did something, or when the next time is ne
   await flush();
   h.clock.advance(40 * MIN);
   report(h.log, h.task(1), { state: "failed", summary: "timeout" });
+  turnEnd(h.log, h.task(1));
   await flush();
   expect(h.runs().at(-1)!.retryAt).toBeUndefined();
   // The person cancelling it is never retried either.
@@ -177,6 +183,74 @@ test("no retry once the run posted or did something, or when the next time is ne
   await flush();
   expect(h.runs().at(-1)).toMatchObject({ state: "failed" });
   expect(h.runs().at(-1)!.retryAt).toBeUndefined();
+});
+
+// ---------- D308: a run closes at its turn's end ----------
+
+test("D308: a run reported done closes on the turn's usage that follows, so the budgets bind", async () => {
+  const s = setup();
+  const v = await active(s, { name: "日报", trigger: daily9, brief: "Daily notes." });
+  s.clock.advance(23 * 60 * MIN); // Tue 9:00
+  await flush();
+  // Claude Code's order: report_to_main inside the turn, then the turn's usage.
+  report(s.log, s.task(1), { state: "done", summary: "日报写好了。" });
+  await flush();
+  expect(s.runs().at(-1)!.state).toBe("started"); // the result is set; it waits for the turn's end
+  expect(s.work.routines.get(v.routineId)!.running).toBeUndefined();
+  turnEnd(s.log, s.task(1), { inputTokens: 75_725, outputTokens: 508 });
+  await flush();
+  expect(s.runs().at(-1)).toMatchObject({ state: "done", tokens: 76_233 });
+  expect(s.work.routines.get(v.routineId)!.budget.perRunTokens).toBe(152_466);
+  // The next run goes past the per-run budget before it reports: stopped, said as the budget.
+  s.clock.advance(24 * 60 * MIN);
+  await flush();
+  turnEnd(s.log, s.task(2), { inputTokens: 150_000, outputTokens: 5_000 });
+  await flush();
+  expect(s.runs().at(-1)).toMatchObject({ state: "failed", reason: "budget", tokens: 155_000 });
+  // The month's count is the runs' tokens: rebuilt the same after a restart.
+  s.work.stop();
+  const back = setup({ dir: s.dir, log: s.log, start: s.clock.now() });
+  await flush();
+  expect(back.work.routines.get(v.routineId)!.budget.perRunTokens).toBe(152_466);
+});
+
+test("D308: with no usage line, a reported run closes when its residency leaves hot, or after the bound", async () => {
+  const s = setup();
+  await active(s, { name: "日报", trigger: daily9, brief: "Daily notes." });
+  s.clock.advance(23 * 60 * MIN);
+  await flush();
+  tool(s.log, s.task(1), "Read");
+  report(s.log, s.task(1), { state: "done", summary: "ok" });
+  s.tasks.setState(s.task(1), "done", "warm");
+  await flush();
+  expect(s.runs().at(-1)).toMatchObject({ state: "done" });
+  expect(s.runs().at(-1)!.tokens ?? 0).toBe(0);
+  // The next day: the report, and nothing after it; it closes after CLOSE_WAIT_MS with what it has.
+  s.clock.advance(24 * 60 * MIN);
+  await flush();
+  report(s.log, s.task(2), { state: "done", summary: "ok" });
+  await flush();
+  s.clock.advance(CLOSE_WAIT_MS - 1000);
+  await flush();
+  expect(s.runs().at(-1)!.state).toBe("started");
+  s.clock.advance(1000);
+  await flush();
+  expect(s.runs().at(-1)).toMatchObject({ state: "done", taskId: s.task(2) });
+});
+
+test("D308: a run that reported just before a restart closes on the way back, with the turn's usage", async () => {
+  const s = setup();
+  const v = await active(s, { name: "日报", trigger: daily9, brief: "Daily notes." });
+  s.clock.advance(23 * 60 * MIN);
+  await flush();
+  report(s.log, s.task(1), { state: "done", summary: "ok" });
+  await flush();
+  s.work.stop();
+  turnEnd(s.log, s.task(1), { inputTokens: 4000, outputTokens: 100 }); // logged while the routines were down
+  const back = setup({ dir: s.dir, log: s.log, start: s.clock.now() + 1000 });
+  await flush();
+  expect(back.runs().at(-1)).toMatchObject({ state: "done", tokens: 4100 });
+  expect(back.work.routines.get(v.routineId)!.budget.perRunTokens).toBe(8200);
 });
 
 // ---------- account errors ----------
@@ -196,6 +270,7 @@ test("account errors space the routine out, are said once, never pause it, and c
   await flush();
   expect(s.started().at(-1)).toMatchObject({ attempt: 1, scheduledFor: "2026-11-10T01:00:00.000Z" });
   report(s.log, s.task(2), { state: "failed", summary: "Claude Code: Not logged in" });
+  turnEnd(s.log, s.task(2));
   await flush();
   r = s.latest();
   expect(r.body).toMatchObject({ state: "active", news: "stuck", backoff: { failures: 2, stepMs: 10 * MIN, nextTryAt: "2026-11-10T01:15:00.000Z" } });
@@ -205,6 +280,7 @@ test("account errors space the routine out, are said once, never pause it, and c
     s.clock.advance(step * MIN);
     await flush();
     report(s.log, s.task(i), { state: "failed", summary: "Not logged in" });
+    turnEnd(s.log, s.task(i));
     await flush();
   }
   r = s.latest();
@@ -217,6 +293,7 @@ test("account errors space the routine out, are said once, never pause it, and c
   expect(s.started().length).toBe(6);
   expect(s.started().at(-1)!.lateMin).toBeGreaterThan(150);
   report(s.log, s.task(6), { state: "done", summary: "日报写好了。" });
+  turnEnd(s.log, s.task(6), { inputTokens: 3000, outputTokens: 200 });
   await flush();
   r = s.latest();
   expect(r.body).toMatchObject({ state: "active", news: "works_again" });

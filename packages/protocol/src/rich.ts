@@ -34,15 +34,23 @@ export const RICH_LIMITS = {
 } as const;
 
 // The punctuation a plain form is written with, by language (D292: a table, never a branch).
+// `after` is what follows a part that already ends in its own punctuation ("…your app." then the
+// next cell), so the separator never doubles it.
 const PLAIN: { en: Punct } & Record<string, Punct> = {
-  en: { colon: ": ", comma: ", " },
-  zh: { colon: "：", comma: "，" },
-  ja: { colon: "：", comma: "、" },
+  en: { colon: ": ", comma: ", ", after: " " },
+  zh: { colon: "：", comma: "，", after: "" },
+  ja: { colon: "：", comma: "、", after: "" },
 };
 interface Punct {
   colon: string;
   comma: string;
+  after: string;
 }
+/** A part ending in a stop, a comma, a colon or a closing quote of its own, in any script. */
+const ENDS_PUNCT = /[.!?;:,…。！？；：，、．｡]["'”’»」』）)]*$/u;
+/** `part` then `sep`, unless the part already ends in its own punctuation: then only `after`. */
+const joinPlain = (parts: string[], sep: string, after: string) =>
+  parts.map((x, i) => (i === parts.length - 1 ? x : x + (ENDS_PUNCT.test(x) ? after : sep))).join("");
 
 const len = (s: string) => [...s].length;
 const str = (v: unknown, max: number, what: string, need = true): string => {
@@ -118,12 +126,12 @@ export function plainOf(b: RichBlock, lang: LangTag | undefined): string {
     case "table": {
       const rows = b.rows.map((r) => {
         const rest = r.slice(1).map((c, j) => (c ? `${b.columns[j + 1]} ${c}` : "")).filter(Boolean);
-        return `- ${r[0]}${rest.length ? p.colon + rest.join(p.comma) : ""}`;
+        return `- ${rest.length ? joinPlain([r[0]!, joinPlain(rest, p.comma, p.after)], p.colon, p.after) : r[0]}`;
       });
       return [...head, ...rows].join("\n");
     }
     case "chart":
-      return [...head, b.summary, b.points.map((x) => `${x.label} ${withUnit(fmtNum(x.value), b.unit)}`).join(p.comma)].join("\n");
+      return [...head, b.summary, joinPlain(b.points.map((x) => `${x.label} ${withUnit(fmtNum(x.value), b.unit)}`), p.comma, p.after)].join("\n");
     case "checklist":
       return [...head, ...b.items.map((x) => `- ${x}`)].join("\n");
     case "choices":

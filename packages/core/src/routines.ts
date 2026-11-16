@@ -52,6 +52,8 @@ export const BACKOFF_FIRST_MS = 5 * MIN;
 export const BACKOFF_MAX_MS = DAY;
 /** D245: the runner isn't wired yet (just after a restart): look again this soon. */
 const NOT_READY_MS = 10_000;
+/** D308: how long a reported run waits for its turn's end (its usage) before it closes with what it has. */
+export const CLOSE_WAIT_MS = 2 * MIN;
 
 /**
  * D245: whether a failure is an account error: an AI agent or an app signed out, a key refused, or
@@ -143,6 +145,8 @@ interface Running {
   coalesced: number;
   observed?: string;
   detail?: string;
+  /** D308: the run has reported; its result is set, it closes at its turn's end (with the turn's usage). */
+  reported?: { state: "done" | "failed"; seq: number; reason?: string; timer: unknown };
 }
 
 interface State {
@@ -273,6 +277,7 @@ export function createRoutines(opts: {
     const runId = newId("run");
     const attempt = extra.attempt ?? 0;
     const coalesced = extra.coalesced ?? 0;
+    if (s.running?.reported) closeReported(s);
     if (s.running && tasks.get(s.running.taskId) && isActive(tasks.get(s.running.taskId)!.attention)) {
       run({ routineId: r.routineId, runId, scheduledFor: at, state: "skipped", reason: "previous_running" });
       return;
@@ -432,10 +437,31 @@ export function createRoutines(opts: {
     if (retryAt !== undefined) arm(s); // the try again goes first
   }
 
+  /**
+   * D308: a report sets the run's result, but the run closes at its turn's end, so its tokens are
+   * the usage that turn reports (on Claude Code the report_to_main call comes before the turn's
+   * usage). A usage line, a turn end, the residency leaving hot, or CLOSE_WAIT_MS closes it.
+   */
+  function noteReport(s: State, state: "done" | "failed", seq: number, reason?: string) {
+    const cur = s.running!;
+    if (cur.reported) return; // the first report sets the result
+    const timer = clock.setTimeout(() => {
+      if (s.running === cur) closeReported(s);
+    }, CLOSE_WAIT_MS);
+    cur.reported = { state, seq, ...(reason !== undefined ? { reason } : {}), timer };
+  }
+
+  function closeReported(s: State) {
+    const rep = s.running?.reported;
+    if (!rep) return;
+    finishRun(s, rep.state, rep.seq, rep.reason);
+  }
+
   function finishRun(s: State, state: "done" | "failed", reportSeq: number, reason?: string, opt: { noRetry?: boolean } = {}) {
     const cur = s.running;
     if (!cur) return;
     s.running = undefined;
+    if (cur.reported) clock.clearTimeout(cur.reported.timer);
     if (state === "failed") return afterFailure(s, cur, reason ?? "failed", opt);
     run({ routineId: s.r.routineId, runId: cur.runId, scheduledFor: cur.scheduledFor, state, taskId: cur.taskId, tokens: cur.tokens, ...(cur.attempt ? { attempt: cur.attempt } : {}) });
     s.fails = 0;
@@ -670,14 +696,16 @@ export function createRoutines(opts: {
       const rid = byTask.get(r.taskId);
       const s = rid ? states.get(rid) : undefined;
       if (!s || s.running?.taskId !== r.taskId) return;
-      if (r.state === "done") finishRun(s, "done", e.seq);
-      else if (r.state === "failed") finishRun(s, "failed", e.seq, r.summary.slice(0, 200));
+      if (r.state === "done") noteReport(s, "done", e.seq);
+      else if (r.state === "failed") noteReport(s, "failed", e.seq, r.summary.slice(0, 200));
       else s.running.acted = true; // progress, a question, blocked: it has said something to the person
     } else if (e.kind === "task_state") {
       const b = e.body as Bodies["task_state"];
       const rid = byTask.get(b.taskId);
       const s = rid ? states.get(rid) : undefined;
       if (s?.running?.taskId !== b.taskId) return;
+      // D308: a reported run whose turn is over without a usage line closes with what was seen.
+      if (s.running.reported) return void (b.residency !== "hot" && closeReported(s));
       // The person cancelled it (dropped): never tried again.
       if (b.attention === "failed") finishRun(s, "failed", e.seq, b.reason || "failed");
       else if (b.attention === "dropped") finishRun(s, "failed", e.seq, b.reason || "dropped", { noRetry: true });
@@ -687,10 +715,13 @@ export function createRoutines(opts: {
       const s = rid ? states.get(rid) : undefined;
       if (!s?.running || s.running.taskId !== b.taskId) return;
       if (b.tool?.name && actedBy(b.tool.name)) s.running.acted = true;
-      if (!b.usage) return;
+      const turnEnd = Boolean((b.raw as { turnEnd?: boolean } | undefined)?.turnEnd);
+      if (!b.usage) return void (turnEnd && closeReported(s));
       const n = (b.usage.inputTokens ?? 0) + (b.usage.outputTokens ?? 0);
       s.running.tokens += n;
       s.monthTokens += n;
+      // D308: the turn's usage after its report: the run closes now, its result as reported.
+      if (s.running.reported) return closeReported(s);
       const cap = s.r.budget.perRunTokens;
       if (cap && s.running.tokens > cap) {
         const { taskId } = s.running;
@@ -746,6 +777,25 @@ export function createRoutines(opts: {
       }
     }
   }
+  // D308: a run that reported before a restart but hadn't closed: it closes now, with its report's result.
+  for (const s of states.values()) {
+    const cur = s.running;
+    if (!cur) continue;
+    const r = log.read({ stream: `task:${cur.taskId}`, fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["report"] }).findLast((e) => {
+      const st = (e.body as Bodies["report"]).state;
+      return st === "done" || st === "failed";
+    });
+    if (!r) continue;
+    const b = r.body as Bodies["report"];
+    for (const e of log.read({ stream: `task:${cur.taskId}`, fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["task_event"] })) {
+      const u = (e.body as Bodies["task_event"]).usage;
+      const n = u ? (u.inputTokens ?? 0) + (u.outputTokens ?? 0) : 0;
+      cur.tokens += n;
+      if (monthOf(Date.parse(e.ts)) === s.month) s.monthTokens += n;
+    }
+    cur.reported = { state: b.state as "done" | "failed", seq: r.seq, ...(b.state === "failed" ? { reason: b.summary.slice(0, 200) } : {}), timer: undefined };
+    queueMicrotask(() => s.running === cur && closeReported(s));
+  }
   const unsubscribe = log.subscribe(onEvent);
   for (const s of states.values()) {
     if (s.r.state !== "active") continue;
@@ -759,7 +809,7 @@ export function createRoutines(opts: {
   const view = (s: State): RoutineView => {
     const v: RoutineView = { ...s.r };
     if (s.lastRun) v.lastRun = { ...s.lastRun };
-    if (s.running) v.running = s.running.taskId;
+    if (s.running && !s.running.reported) v.running = s.running.taskId;
     if (s.monthTokens) v.monthTokens = s.monthTokens;
     if (s.dryRun) v.dryRun = s.dryRun;
     if (s.r.trigger.kind === "time" && (s.r.state === "active" || s.r.state === "proposed")) {
@@ -914,7 +964,10 @@ export function createRoutines(opts: {
     stop() {
       stopped = true;
       unsubscribe();
-      for (const s of states.values()) clearTimers(s);
+      for (const s of states.values()) {
+        clearTimers(s);
+        if (s.running?.reported) clock.clearTimeout(s.running.reported.timer);
+      }
     },
   };
 }

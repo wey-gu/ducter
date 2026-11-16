@@ -75,6 +75,9 @@ function setup(o: { exec?: Exec; judge?: Judge; readEvent?: boolean; start?: num
 
 const kinds = (log: ReturnType<typeof openLog>, k: "waiter" | "waiter_look" | "until" | "until_try" | "routine" | "routine_run") => log.read({ kinds: [k], limit: 1000 }).map((e) => e.body);
 
+/** D308: the turn's end, after its report (the order on Claude Code); a run closes on it. */
+const turnEnd = (log: ReturnType<typeof openLog>, taskId: string, usage?: { inputTokens: number; outputTokens: number }) =>
+  log.append({ stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, role: "system", ...(usage ? { usage } : {}), raw: { turnEnd: true } } });
 // ---------- checks ----------
 
 test("checks: only reading commands, as argv, never key files", () => {
@@ -435,8 +438,10 @@ test("a routine: proposal card, Go, it fires as a fresh task, the run closes fro
   expect(runs[0]).toMatchObject({ state: "started", taskId: "run1", scheduledFor: "2026-11-16T01:00:00.000Z" });
   expect(s.tasks.get("run1")!.fromRoutine).toEqual({ routineId: v.routineId, name: "周报" });
   expect(s.opened[0]).toContain("read only");
-  s.log.append({ stream: "task:run1", origin: "task", kind: "task_event", body: { taskId: "run1", role: "assistant", usage: { inputTokens: 9000, outputTokens: 1000 } } });
+  // The real order on Claude Code (research/108 B3): report_to_main inside the turn, then the turn's usage.
   report(s.log, "run1", { state: "done", summary: "周报写好了。" });
+  await flush();
+  s.log.append({ stream: "task:run1", origin: "task", kind: "task_event", body: { taskId: "run1", role: "system", usage: { inputTokens: 9000, outputTokens: 1000 }, raw: { turnEnd: true } } });
   await flush();
   const view = s.tasks.onHand().routines![0]!;
   expect(view.lastRun).toMatchObject({ state: "done", tokens: 10000 });
@@ -472,6 +477,7 @@ test("a routine pauses itself after 3 failed runs; only the user resumes", async
     // It ran a command before it failed (D245: acted), so it isn't tried again: each counts.
     s.log.append({ stream: `task:run${i}`, origin: "task", kind: "task_event", body: { taskId: `run${i}`, role: "tool", tool: { name: "Bash", input: { command: "gh run list" } } } });
     report(s.log, `run${i}`, { state: "failed", summary: "the nightly's page didn't load" });
+    turnEnd(s.log, `run${i}`);
     await flush();
   }
   const paused = s.log.read({ kinds: ["routine"] }).at(-1)!;

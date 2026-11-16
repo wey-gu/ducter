@@ -384,6 +384,100 @@
    "dropped": []
   },
   {
+   "name": "sentence-cells-en",
+   "lang": "en",
+   "src": "```ducter-ui\n{\"type\":\"table\",\"title\":\"SQLite or Postgres\",\"columns\":[\"\",\"Setup\",\"Concurrency\",\"Backups\"],\"rows\":[[\"SQLite\",\"Zero setup. It's a file inside your app.\",\"Single writer at a time.\",\"Copy the file\"],[\"Postgres\",\"A server to run!\",\"Many writers, \\\"row locks.\\\"\",\"pg_dump, or a managed service.\"]]}\n```",
+   "text": "SQLite or Postgres\n- SQLite: Setup Zero setup. It's a file inside your app. Concurrency Single writer at a time. Backups Copy the file\n- Postgres: Setup A server to run! Concurrency Many writers, \"row locks.\" Backups pg_dump, or a managed service.",
+   "ui": [
+    {
+     "type": "table",
+     "title": "SQLite or Postgres",
+     "columns": [
+      "",
+      "Setup",
+      "Concurrency",
+      "Backups"
+     ],
+     "rows": [
+      [
+       "SQLite",
+       "Zero setup. It's a file inside your app.",
+       "Single writer at a time.",
+       "Copy the file"
+      ],
+      [
+       "Postgres",
+       "A server to run!",
+       "Many writers, \"row locks.\"",
+       "pg_dump, or a managed service."
+      ]
+     ],
+     "plain": "SQLite or Postgres\n- SQLite: Setup Zero setup. It's a file inside your app. Concurrency Single writer at a time. Backups Copy the file\n- Postgres: Setup A server to run! Concurrency Many writers, \"row locks.\" Backups pg_dump, or a managed service."
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "sentence-cells-zh",
+   "lang": "zh",
+   "src": "```ducter-ui\n{\"type\":\"table\",\"columns\":[\"\",\"装起来\",\"并发\"],\"rows\":[[\"SQLite：\",\"不用装，就是一个文件。\",\"同一时间只能一个人写！\"],[\"Postgres\",\"要跑一个服务器\",\"可以很多人一起写。\"]]}\n```",
+   "text": "- SQLite：装起来 不用装，就是一个文件。并发 同一时间只能一个人写！\n- Postgres：装起来 要跑一个服务器，并发 可以很多人一起写。",
+   "ui": [
+    {
+     "type": "table",
+     "columns": [
+      "",
+      "装起来",
+      "并发"
+     ],
+     "rows": [
+      [
+       "SQLite：",
+       "不用装，就是一个文件。",
+       "同一时间只能一个人写！"
+      ],
+      [
+       "Postgres",
+       "要跑一个服务器",
+       "可以很多人一起写。"
+      ]
+     ],
+     "plain": "- SQLite：装起来 不用装，就是一个文件。并发 同一时间只能一个人写！\n- Postgres：装起来 要跑一个服务器，并发 可以很多人一起写。"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "sentence-cells-ja",
+   "lang": "ja",
+   "src": "```ducter-ui\n{\"type\":\"table\",\"columns\":[\"\",\"準備\",\"同時書き込み\"],\"rows\":[[\"SQLite\",\"ファイルひとつ。\",\"一度にひとつだけ。\"],[\"Postgres\",\"サーバーが要る\",\"たくさん書ける。\"]]}\n```",
+   "text": "- SQLite：準備 ファイルひとつ。同時書き込み 一度にひとつだけ。\n- Postgres：準備 サーバーが要る、同時書き込み たくさん書ける。",
+   "ui": [
+    {
+     "type": "table",
+     "columns": [
+      "",
+      "準備",
+      "同時書き込み"
+     ],
+     "rows": [
+      [
+       "SQLite",
+       "ファイルひとつ。",
+       "一度にひとつだけ。"
+      ],
+      [
+       "Postgres",
+       "サーバーが要る",
+       "たくさん書ける。"
+      ]
+     ],
+     "plain": "- SQLite：準備 ファイルひとつ。同時書き込み 一度にひとつだけ。\n- Postgres：準備 サーバーが要る、同時書き込み たくさん書ける。"
+    }
+   ],
+   "dropped": []
+  },
+  {
    "name": "big",
    "lang": "en",
    "src": "```ducter-ui\n{\"type\":\"chart\",\"kind\":\"bar\",\"unit\":\"USD\",\"summary\":\"Spend rose each month.\",\"points\":[{\"label\":\"Sep\",\"value\":1240},{\"label\":\"Oct\",\"value\":2310.5},{\"label\":\"Nov\",\"value\":3875}]}\n```",
@@ -798,6 +892,106 @@
       ]
      ],
      "plain": "- Pro: Price $20, Window 200K, Note for most days\n- Max: Price $100, Window 1M\n- Team: Price 30, Window 200K, Note per seat"
+    }
+   ],
+   "parts": [
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "sentence-cells-en",
+   "text": "SQLite or Postgres\n- SQLite: Setup Zero setup. It's a file inside your app. Concurrency Single writer at a time. Backups Copy the file\n- Postgres: Setup A server to run! Concurrency Many writers, \"row locks.\" Backups pg_dump, or a managed service.",
+   "ui": [
+    {
+     "type": "table",
+     "title": "SQLite or Postgres",
+     "columns": [
+      "",
+      "Setup",
+      "Concurrency",
+      "Backups"
+     ],
+     "rows": [
+      [
+       "SQLite",
+       "Zero setup. It's a file inside your app.",
+       "Single writer at a time.",
+       "Copy the file"
+      ],
+      [
+       "Postgres",
+       "A server to run!",
+       "Many writers, \"row locks.\"",
+       "pg_dump, or a managed service."
+      ]
+     ],
+     "plain": "SQLite or Postgres\n- SQLite: Setup Zero setup. It's a file inside your app. Concurrency Single writer at a time. Backups Copy the file\n- Postgres: Setup A server to run! Concurrency Many writers, \"row locks.\" Backups pg_dump, or a managed service."
+    }
+   ],
+   "parts": [
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "sentence-cells-zh",
+   "text": "- SQLite：装起来 不用装，就是一个文件。并发 同一时间只能一个人写！\n- Postgres：装起来 要跑一个服务器，并发 可以很多人一起写。",
+   "ui": [
+    {
+     "type": "table",
+     "columns": [
+      "",
+      "装起来",
+      "并发"
+     ],
+     "rows": [
+      [
+       "SQLite：",
+       "不用装，就是一个文件。",
+       "同一时间只能一个人写！"
+      ],
+      [
+       "Postgres",
+       "要跑一个服务器",
+       "可以很多人一起写。"
+      ]
+     ],
+     "plain": "- SQLite：装起来 不用装，就是一个文件。并发 同一时间只能一个人写！\n- Postgres：装起来 要跑一个服务器，并发 可以很多人一起写。"
+    }
+   ],
+   "parts": [
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "sentence-cells-ja",
+   "text": "- SQLite：準備 ファイルひとつ。同時書き込み 一度にひとつだけ。\n- Postgres：準備 サーバーが要る、同時書き込み たくさん書ける。",
+   "ui": [
+    {
+     "type": "table",
+     "columns": [
+      "",
+      "準備",
+      "同時書き込み"
+     ],
+     "rows": [
+      [
+       "SQLite",
+       "ファイルひとつ。",
+       "一度にひとつだけ。"
+      ],
+      [
+       "Postgres",
+       "サーバーが要る",
+       "たくさん書ける。"
+      ]
+     ],
+     "plain": "- SQLite：準備 ファイルひとつ。同時書き込み 一度にひとつだけ。\n- Postgres：準備 サーバーが要る、同時書き込み たくさん書ける。"
     }
    ],
    "parts": [
@@ -1536,6 +1730,164 @@
      false,
      true,
      true,
+     false
+    ]
+   }
+  },
+  {
+   "name": "sentence-cells-en#0",
+   "block": {
+    "type": "table",
+    "title": "SQLite or Postgres",
+    "columns": [
+     "",
+     "Setup",
+     "Concurrency",
+     "Backups"
+    ],
+    "rows": [
+     [
+      "SQLite",
+      "Zero setup. It's a file inside your app.",
+      "Single writer at a time.",
+      "Copy the file"
+     ],
+     [
+      "Postgres",
+      "A server to run!",
+      "Many writers, \"row locks.\"",
+      "pg_dump, or a managed service."
+     ]
+    ],
+    "plain": "SQLite or Postgres\n- SQLite: Setup Zero setup. It's a file inside your app. Concurrency Single writer at a time. Backups Copy the file\n- Postgres: Setup A server to run! Concurrency Many writers, \"row locks.\" Backups pg_dump, or a managed service."
+   },
+   "model": {
+    "type": "table",
+    "title": "SQLite or Postgres",
+    "columns": [
+     "",
+     "Setup",
+     "Concurrency",
+     "Backups"
+    ],
+    "rows": [
+     [
+      "SQLite",
+      "Zero setup. It's a file inside your app.",
+      "Single writer at a time.",
+      "Copy the file"
+     ],
+     [
+      "Postgres",
+      "A server to run!",
+      "Many writers, \"row locks.\"",
+      "pg_dump, or a managed service."
+     ]
+    ],
+    "numeric": [
+     false,
+     false,
+     false,
+     false
+    ]
+   }
+  },
+  {
+   "name": "sentence-cells-zh#0",
+   "block": {
+    "type": "table",
+    "columns": [
+     "",
+     "装起来",
+     "并发"
+    ],
+    "rows": [
+     [
+      "SQLite：",
+      "不用装，就是一个文件。",
+      "同一时间只能一个人写！"
+     ],
+     [
+      "Postgres",
+      "要跑一个服务器",
+      "可以很多人一起写。"
+     ]
+    ],
+    "plain": "- SQLite：装起来 不用装，就是一个文件。并发 同一时间只能一个人写！\n- Postgres：装起来 要跑一个服务器，并发 可以很多人一起写。"
+   },
+   "model": {
+    "type": "table",
+    "title": "",
+    "columns": [
+     "",
+     "装起来",
+     "并发"
+    ],
+    "rows": [
+     [
+      "SQLite：",
+      "不用装，就是一个文件。",
+      "同一时间只能一个人写！"
+     ],
+     [
+      "Postgres",
+      "要跑一个服务器",
+      "可以很多人一起写。"
+     ]
+    ],
+    "numeric": [
+     false,
+     false,
+     false
+    ]
+   }
+  },
+  {
+   "name": "sentence-cells-ja#0",
+   "block": {
+    "type": "table",
+    "columns": [
+     "",
+     "準備",
+     "同時書き込み"
+    ],
+    "rows": [
+     [
+      "SQLite",
+      "ファイルひとつ。",
+      "一度にひとつだけ。"
+     ],
+     [
+      "Postgres",
+      "サーバーが要る",
+      "たくさん書ける。"
+     ]
+    ],
+    "plain": "- SQLite：準備 ファイルひとつ。同時書き込み 一度にひとつだけ。\n- Postgres：準備 サーバーが要る、同時書き込み たくさん書ける。"
+   },
+   "model": {
+    "type": "table",
+    "title": "",
+    "columns": [
+     "",
+     "準備",
+     "同時書き込み"
+    ],
+    "rows": [
+     [
+      "SQLite",
+      "ファイルひとつ。",
+      "一度にひとつだけ。"
+     ],
+     [
+      "Postgres",
+      "サーバーが要る",
+      "たくさん書ける。"
+     ]
+    ],
+    "numeric": [
+     false,
+     false,
      false
     ]
    }

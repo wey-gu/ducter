@@ -11,7 +11,8 @@
 //    is its one sentence plus 在 Ducter 里看看 / Open in Ducter; money, sign-ins and keys never go
 //    to a chat app. A card answered anywhere is edited there to its end state.
 //  - The living message: only a status line is edited in place; anything new is a new message.
-import type { Bodies, ChannelKind, ChannelView, LogEvent, ReplyWant, ServerFrame } from "@ducter/protocol";
+import type { Bodies, ChannelKind, ChannelView, LangTag, LogEvent, ReplyWant, ServerFrame } from "@ducter/protocol";
+import { fill, words as wordsIn } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import { realClock, type Clock } from "../clock.ts";
@@ -41,6 +42,40 @@ const DAY_MS = 24 * 3600_000;
 const GO_WORDS = /^(好|好的|好啊|行|可以|嗯|ok|okay|go|yes|sure)[\s!！。.~～]*$/i;
 const HOLD_WORDS = /^(先等等|等等|先别|先不|不用|hold|wait|not now|no)[\s!！。.~～]*$/i;
 
+// The hub's own words in a chat app (D292: zh and en; any other language falls back, ko → en).
+const HUB_WORDS = {
+  zh: {
+    linked: "连上了。以后在这儿跟我说就行。",
+    open: "在 Ducter 里看看",
+    never: "有件事要你在 Ducter 里确认。",
+    settled: "这件定了。",
+    already: "这件已经定了",
+    hold: "先等等",
+    go: "好，{label}",
+    goPlain: "就这样",
+    said: "你说：{s}",
+    byDefault: "你没回，我照原计划做了",
+    still: "还在做：{t}…",
+    done: "做完了：{t}",
+    failed: "没做成：{t}",
+  },
+  en: {
+    linked: "Linked. Talk to me here any time.",
+    open: "Open in Ducter",
+    never: "Something needs you in Ducter.",
+    settled: "That's settled.",
+    already: "Already decided",
+    hold: "Hold",
+    go: "Go: {label}",
+    goPlain: "OK",
+    said: "You said: {s}",
+    byDefault: "No answer, so I went ahead",
+    still: "Still on it: {t}…",
+    done: "Done: {t}",
+    failed: "Didn't work: {t}",
+  },
+};
+
 export interface ChannelDeps {
   dataDir: string;
   log: LogStore;
@@ -50,7 +85,8 @@ export interface ChannelDeps {
   /** The quiet hours in force (push.ts effectiveSettings), and whether notifications are off. */
   quiet: () => Quiet | null;
   notifyOff?: () => boolean;
-  zh: () => boolean;
+  /** The conversation's language (D292); the hub's own words come through the fallback chain (ko → en). */
+  lang: () => LangTag;
   personaName: () => string;
   /** The home's https address when it has one (D228), for 在 Ducter 里看看 / Open in Ducter. */
   openUrl?: () => string | undefined;
@@ -134,20 +170,20 @@ export function createChannels(deps: ChannelDeps): Channels {
   let releaseTimer: unknown;
   let lastUser: { seq: number; via?: ChannelKind; at: number } | undefined;
   let fromChat = 0; // >0 while the hub itself logs a message or a decision (synchronous appends)
-  const zh = () => deps.zh();
+  const w = () => wordsIn(HUB_WORDS, deps.lang());
   const W = {
-    linked: () => (zh() ? "连上了。以后在这儿跟我说就行。" : "Linked. Talk to me here any time."),
-    open: () => (zh() ? "在 Ducter 里看看" : "Open in Ducter"),
-    never: () => (zh() ? "有件事要你在 Ducter 里确认。" : "Something needs you in Ducter."),
-    settled: () => (zh() ? "这件定了。" : "That's settled."),
-    already: () => (zh() ? "这件已经定了" : "Already decided"),
-    hold: () => (zh() ? "先等等" : "Hold"),
-    go: (label: string) => (zh() ? `好，${label || "就这样"}` : `Go: ${label || "OK"}`),
-    said: (s: string) => (zh() ? `你说：${s}` : `You said: ${s}`),
-    byDefault: () => (zh() ? "你没回，我照原计划做了" : "No answer, so I went ahead"),
-    still: (t: string) => (zh() ? `还在做：${t}…` : `Still on it: ${t}…`),
-    done: (t: string) => (zh() ? `做完了：${t}` : `Done: ${t}`),
-    failed: (t: string) => (zh() ? `没做成：${t}` : `Didn't work: ${t}`),
+    linked: () => w().linked,
+    open: () => w().open,
+    never: () => w().never,
+    settled: () => w().settled,
+    already: () => w().already,
+    hold: () => w().hold,
+    go: (label: string) => fill(w().go, { label: label || w().goPlain }),
+    said: (s: string) => fill(w().said, { s }),
+    byDefault: () => w().byDefault,
+    still: (t: string) => fill(w().still, { t }),
+    done: (t: string) => fill(w().done, { t }),
+    failed: (t: string) => fill(w().failed, { t }),
   };
 
   // ---------- what is up ----------
@@ -341,7 +377,7 @@ export function createChannels(deps: ChannelDeps): Channels {
       text = said + openLine(kind, d.decisionId);
       buttons = openButton(d.decisionId);
     } else {
-      text = `${said}\n\n_${defaultLine(d, zh() ? "zh" : "en", clock.now())}_`;
+      text = `${said}\n\n_${defaultLine(d, deps.lang(), clock.now())}_`;
       buttons = [{ label: W.go(d.goLabel), data: tapData("go", d.decisionId), style: "primary" }, { label: W.hold(), data: tapData("hold", d.decisionId) }];
     }
     void say(kind, text, { buttons, seq }).then((ids) => {

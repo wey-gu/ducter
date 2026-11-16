@@ -61,8 +61,12 @@ At the top is your partner, its name and one line: where it lives and what it th
   partner repeats it back and keeps it. Your rules are listed here; **Remove** drops one. If you
   move the same kind of task to another AI agent twice, your partner asks once whether to make
   it a rule.
-- **How it talks.** **Follow me** answers in whatever language you write in; **中文** or
-  **English** always answers in that language.
+- **How it talks.** **Follow me** answers in whatever language you write in: Korean gets
+  Korean, Spanish gets Spanish. A message with no language of its own, like "OK" or a thumbs-up,
+  keeps the one you were using. Pick a language (简体中文, 繁體中文, English, 日本語, 한국어,
+  Español and more under **Other language…**) and it always answers in that one. Ducter's own
+  screens are in Chinese or English for now; a task's results are shown in the language you
+  talk in.
 - **On its own, or asks you first.** The rules Ducter keeps, in two lists. On its own: changing
   files in its own copy (your originals stay as they are), reading your projects and files,
   looking things up and reading web pages (in your own Chrome when it can), and going with the

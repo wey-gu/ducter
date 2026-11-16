@@ -92,9 +92,8 @@ export function computerApart(d: DeviceView): string {
 
 /** D157: the closing card in the reader's words: what moves where, what stays until it wakes. */
 export function closingWords(p: ClosingPlan): { question: string; go: string; hold: string } {
-  const zh = A.L.lang === "zh";
-  const q = (s: string) => (zh ? `「${s}」` : `“${s}”`);
-  const sep = zh ? "" : ", ";
+  const q = A.L.style.quote;
+  const sep = A.L.style.spaced ? A.L.style.list : ""; // 「a」「b」 / “a”, “b”
   const moved = p.moves.map((m) => q(m.title)).join(sep);
   const stay = p.stays.map((s) => q(s.title)).join(sep);
   const dst = p.moves[0]?.toName ?? "";

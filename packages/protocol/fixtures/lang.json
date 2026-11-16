@@ -1,0 +1,83 @@
+{
+  "_": "D292 (research/99): the language of a message, of a conversation, and of the words an app shows. detect: the language a message is in (null = none of its own; sure = the language and not only its script). conversation: messages oldest first and the language after each. inLanguage: may this text be shown as is to a reader of that language. normalize, chain, negotiate: tags and the interface's fallback. The TypeScript (packages/protocol/src/lang.ts) and Go (apps/desktop/internal/lang) versions both pass these cases.",
+  "detect": [
+    { "text": "안녕하세요. 오늘 어떤 일을 도와줄 수 있나요?", "lang": "ko", "sure": true },
+    { "text": "이 PR 리뷰해줘 please", "lang": "ko", "sure": true },
+    { "text": "회의록(會議錄) 정리해 줘", "lang": "ko", "sure": true },
+    { "text": "今日の会議のメモをまとめてください", "lang": "ja", "sure": true },
+    { "text": "東京駅で待ち合わせしましょう", "lang": "ja", "sure": true },
+    { "text": "帮我看一下这个测试为什么挂了", "lang": "zh", "sure": true },
+    { "text": "幫我看一下這個測試為什麼掛了", "lang": "zh-Hant", "sure": true },
+    { "text": "好的", "lang": "zh", "sure": false },
+    { "text": "了解", "lang": "zh", "sure": false },
+    { "text": "帮我 review 一下这个 PR", "lang": "zh", "sure": true },
+    { "text": "what does 你好 mean?", "lang": "en", "sure": true },
+    { "text": "Fix the login bug in src/auth.ts please", "lang": "en", "sure": true },
+    { "text": "¿Puedes revisar el informe de hoy?", "lang": "es", "sure": true },
+    { "text": "hola", "lang": "es", "sure": true },
+    { "_": "eval direct-es (D292): de and en are not Dutch on their own", "text": "En dos líneas: ¿cuándo debo hacer rebase en vez de merge?", "lang": "es", "sure": true },
+    { "text": "Kun je de tests voor mij repareren?", "lang": "nl", "sure": true },
+    { "text": "Bonjour, peux-tu résumer ce document ?", "lang": "fr", "sure": true },
+    { "text": "Kannst du bitte die Tests reparieren?", "lang": "de", "sure": true },
+    { "text": "Você pode ver isso hoje?", "lang": "pt", "sure": true },
+    { "text": "Привет, можешь проверить отчёт?", "lang": "ru", "sure": true },
+    { "text": "Привіт, що ти можеш зробити сьогодні?", "lang": "uk", "sure": true },
+    { "text": "مرحبا، هل يمكنك مساعدتي اليوم؟", "lang": "ar", "sure": true },
+    { "text": "سلام، می‌توانی این را بررسی کنی؟ چطور", "lang": "fa", "sure": true },
+    { "text": "שלום, תוכל לעזור לי?", "lang": "he", "sure": true },
+    { "text": "สวัสดีครับ", "lang": "th", "sure": true },
+    { "text": "Xin chào, bạn có thể giúp tôi không?", "lang": "vi", "sure": true },
+    { "text": "deploy now", "lang": "en", "sure": false },
+    { "text": "okay", "lang": "en", "sure": false },
+    { "text": "OK", "lang": null },
+    { "text": "ok!", "lang": null },
+    { "text": "123", "lang": null },
+    { "text": "👍🎉", "lang": null },
+    { "text": "```\nconst x = await fetch(url)\n```", "lang": null },
+    { "text": "`npm run build`", "lang": null },
+    { "text": "https://github.com/wey-gu/ducter/issues/5", "lang": null },
+    { "text": "", "lang": null }
+  ],
+  "conversation": [
+    { "_": "Korean, then neutral input keeps Korean", "texts": ["안녕하세요", "OK", "👍", "123", "`bun test`", "npm run build", "okay"], "want": ["ko", "ko", "ko", "ko", "ko", "ko", "ko"] },
+    { "_": "English, Chinese, Korean switches", "texts": ["Hello, can you help me?", "帮我看一下", "고마워요"], "want": ["en", "zh", "ko"] },
+    { "_": "Japanese with a kanji-only reply stays Japanese", "texts": ["よろしくお願いします", "了解", "東京"], "want": ["ja", "ja", "ja"] },
+    { "_": "Traditional Chinese with a short reply stays Traditional", "texts": ["這個報告幫我看一下", "好的"], "want": ["zh-Hant", "zh-Hant"] },
+    { "_": "Spanish with a command stays Spanish", "texts": ["¿Puedes revisar el informe?", "deploy now", "OK"], "want": ["es", "es", "es"] },
+    { "_": "a first message with no language says nothing", "texts": ["OK", "👍"], "want": [null, null] },
+    { "_": "English then a Chinese two-character reply moves to Chinese", "texts": ["Can you check the tests?", "好的"], "want": ["en", "zh"] },
+    { "_": "Russian then Ukrainian", "texts": ["Привет, как дела?", "Дякую, ти все зробив і перевірив"], "want": ["ru", "uk"] }
+  ],
+  "inLanguage": [
+    { "text": "Installed standalone CLI 0.10.116 and native Codex plugin 0.1.49 with hooks enabled; all doctor checks pass.", "lang": "en", "want": true },
+    { "text": "Installed standalone CLI 0.10.116 and native Codex plugin 0.1.49 with hooks enabled; all doctor checks pass.", "lang": "zh", "want": false },
+    { "text": "Installed standalone CLI 0.10.116 and native Codex plugin 0.1.49 with hooks enabled; all doctor checks pass.", "lang": "ko", "want": false },
+    { "text": "Installed the CLI and all the checks pass now.", "lang": "es", "want": false },
+    { "text": "Instalé el CLI y todas las pruebas pasan.", "lang": "es", "want": true },
+    { "text": "Installed the CLI and all the checks pass now.", "lang": "eo", "want": true },
+    { "text": "Mem 已经连上了，检查都过了。", "lang": "zh", "want": true },
+    { "text": "Mem 已经连上了，检查都过了。", "lang": "en", "want": false },
+    { "text": "Mem 已经连上了，检查都过了。", "lang": "ko", "want": false },
+    { "text": "Mem 연결됐어요. 검사도 모두 통과했어요.", "lang": "ko", "want": true },
+    { "text": "Mem 연결됐어요. 검사도 모두 통과했어요.", "lang": "zh", "want": false },
+    { "text": "Mem 연결됐어요. 검사도 모두 통과했어요.", "lang": "en", "want": false },
+    { "text": "テストはすべて通りました", "lang": "ja", "want": true },
+    { "text": "テストはすべて通りました", "lang": "zh", "want": false },
+    { "text": "Все тесты прошли.", "lang": "ru", "want": true },
+    { "text": "Все тесты прошли.", "lang": "en", "want": false },
+    { "text": "نجحت كل الاختبارات.", "lang": "ar", "want": true },
+    { "text": "All tests pass.", "lang": "ar", "want": false },
+    { "text": "OK", "lang": "en", "want": true },
+    { "text": "OK", "lang": "zh", "want": false },
+    { "text": "", "lang": "en", "want": true }
+  ],
+  "normalize": [
+    ["ko", "ko"], ["ko_KR.UTF-8", "ko-KR"], ["EN-us", "en-US"], ["zh-CN", "zh"], ["zh-Hans-CN", "zh"], ["zh-TW", "zh-Hant"], ["zh_HK", "zh-Hant"], ["zh-hant", "zh-Hant"], ["pt-BR", "pt-BR"], ["no", "nb"], ["sr-Latn", "sr-Latn"], ["", null], ["C", null], ["1234", null]
+  ],
+  "chain": [
+    ["ko", ["ko", "en"]], ["zh-Hant", ["zh-Hant", "zh", "en"]], ["zh-TW", ["zh-Hant", "zh", "en"]], ["pt-BR", ["pt-BR", "pt", "en"]], ["en-GB", ["en-GB", "en"]], ["", ["en"]]
+  ],
+  "negotiate": [
+    [["ko-KR", "zh-CN"], "zh"], [["ko"], "en"], [["ja", "en-US"], "en"], [["zh-TW"], "zh"], [["fr-FR", "zh-Hans"], "zh"], [[], "en"]
+  ]
+}

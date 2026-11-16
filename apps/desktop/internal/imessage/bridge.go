@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
@@ -229,9 +230,13 @@ func (b *Bridge) save() {
 	}
 }
 
+// lang is the table the bridge's own words come from: the app's language
+// through its fallback chain (D292), Chinese until the app says.
 func (b *Bridge) lang() string {
-	if b.o.Lang != nil && b.o.Lang() == "en" {
-		return "en"
+	if b.o.Lang != nil {
+		if t := b.o.Lang(); t != "" {
+			return lang.PickTag(t, []string{"zh", "en"})
+		}
 	}
 	return "zh"
 }

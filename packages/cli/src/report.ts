@@ -8,6 +8,31 @@ import { join } from "node:path";
 import { redactSecrets } from "@ducter/partner";
 import type { DoctorReport } from "./doctor.ts";
 import type { Locale } from "./i18n.ts";
+import { fill, words } from "@ducter/protocol";
+
+// The issue's own words (D292: zh and en; any other language falls back, ko → en).
+const ISSUE = {
+  zh: {
+    what: "## 发生了什么",
+    describe: "（请描述你做了什么、看到了什么）",
+    versions: "## 版本",
+    doctor: "## 检查结果（未通过的项）",
+    allOk: "- 全部通过",
+    attachFolder: "请把 {where} 里的文件拖到这里附上（发之前可以先打开看看）。",
+    attachZip: "请把桌面上的 .zip 拖到这里附上（发之前可以先打开看看）。",
+    title: "问题：",
+  },
+  en: {
+    what: "## What happened",
+    describe: "(What you did, and what you saw)",
+    versions: "## Versions",
+    doctor: "## Doctor (items not ok)",
+    allOk: "- all ok",
+    attachFolder: "Attach the files in {where} (you can open them first to see what's inside).",
+    attachZip: "Attach the .zip from your Desktop (you can open it first to see what's inside).",
+    title: "Problem: ",
+  },
+};
 
 export const ISSUE_BASE = "https://github.com/wey-gu/ducter/issues/new";
 export const MAX_ISSUE_URL = 6000;
@@ -109,33 +134,11 @@ export function writeReport(i: ReportInput): ReportResult {
 /** `folder`: the files are attached from there (ducter report in a terminal); absent: the app's .zip on the Desktop. */
 export function issueUrl(versions: string, doctor: DoctorReport, locale: Locale, home = "", folder?: string): string {
   const where = folder && home && folder.startsWith(home + "/") ? "~" + folder.slice(home.length) : folder;
-  const zh = locale === "zh";
+  const w = words(ISSUE, locale);
   const notOk = doctor.checks.filter((c) => c.status !== "ok").map((c) => `- ${c.id}: ${c.status}`);
-  const head = [
-    zh ? "## 发生了什么" : "## What happened",
-    "",
-    zh ? "（请描述你做了什么、看到了什么）" : "(What you did, and what you saw)",
-    "",
-    zh ? "## 版本" : "## Versions",
-    "",
-    "```",
-  ];
-  const tail = [
-    "```",
-    "",
-    zh ? "## 检查结果（未通过的项）" : "## Doctor (items not ok)",
-    "",
-    ...(notOk.length ? notOk : [zh ? "- 全部通过" : "- all ok"]),
-    "",
-    where
-      ? zh
-        ? `请把 ${where} 里的文件拖到这里附上（发之前可以先打开看看）。`
-        : `Attach the files in ${where} (you can open them first to see what's inside).`
-      : zh
-        ? "请把桌面上的 .zip 拖到这里附上（发之前可以先打开看看）。"
-        : "Attach the .zip from your Desktop (you can open it first to see what's inside).",
-  ];
-  const title = zh ? "问题：" : "Problem: ";
+  const head = [w.what, "", w.describe, "", w.versions, "", "```"];
+  const tail = ["```", "", w.doctor, "", ...(notOk.length ? notOk : [w.allOk]), "", where ? fill(w.attachFolder, { where }) : w.attachZip];
+  const title = w.title;
   let v = redactReport(versions.trim(), { home });
   for (;;) {
     const body = [...head, v, ...tail].join("\n");

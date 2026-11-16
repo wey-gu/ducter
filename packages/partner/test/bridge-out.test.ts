@@ -266,9 +266,9 @@ describe("Copy (D108, D109)", () => {
   });
 
   test("labels: your own agent by its name, a teammate's with theirs", () => {
-    expect(whoForUser(CODEX, true)).toBe("codex-mem");
-    expect(whoForUser(CODEX, false)).toBe("codex-mem");
-    expect(whoForUser(ALEX, true)).toBe("reviewer (Alex)");
+    expect(whoForUser(CODEX, "zh")).toBe("codex-mem");
+    expect(whoForUser(CODEX, "en")).toBe("codex-mem");
+    expect(whoForUser(ALEX, "zh")).toBe("reviewer (Alex)");
   });
 
   test("over-asking: numbered or bulleted sub-questions are refused, plain questions pass", async () => {
@@ -573,10 +573,10 @@ describe("S3 / D110: follow-through on silence", () => {
     const sentTs = "2026-11-09T10:00:00.000Z";
     const op = { opId: "o", state: "sent" as const, seq: 1, first: 1, ts: sentTs, sentTs, last: { direction: "out" as const, messageId: "m", to: "codex-mem (Weyl)", agent: "codex-mem", mine: true, text: "bridge 那块写到哪了？", decisionId: "d" } };
     const at = Date.parse(sentTs) + 3 * HOUR;
-    expect(followLine(op, at, true, true)).toBe("codex-mem 看过你 3 小时前问的「bridge 那块写到哪了？」，还没回。回了我马上告诉你。");
-    expect(followLine(op, at, false)).toBe('codex-mem hasn\'t answered what you asked 3 hours ago ("bridge 那块写到哪了？"); it may have stopped. I\'ll tell you as soon as it does.');
+    expect(followLine(op, at, "zh", true)).toBe("codex-mem 看过你 3 小时前问的「bridge 那块写到哪了？」，还没回。回了我马上告诉你。");
+    expect(followLine(op, at, "en")).toBe('codex-mem hasn\'t answered what you asked 3 hours ago ("bridge 那块写到哪了？"); it may have stopped. I\'ll tell you as soon as it does.');
     const alex = { ...op, last: { ...op.last, to: "reviewer (Alex)", agent: "reviewer", mine: undefined } };
-    expect(followLine(alex, at + 24 * HOUR, true)).toBe("reviewer (Alex) 还没回你昨天问的「bridge 那块写到哪了？」，它可能停了。回了我马上告诉你。");
+    expect(followLine(alex, at + 24 * HOUR, "zh")).toBe("reviewer (Alex) 还没回你昨天问的「bridge 那块写到哪了？」，它可能停了。回了我马上告诉你。");
     expect(inQuiet(Date.parse("2026-11-09T23:30:00Z"), { start: "23:00", end: "08:00", tz: "UTC" })).toBe(true);
     expect(inQuiet(Date.parse("2026-11-09T12:00:00Z"), { start: "23:00", end: "08:00", tz: "UTC" })).toBe(false);
   });

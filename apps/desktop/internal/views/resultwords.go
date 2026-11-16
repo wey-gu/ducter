@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/say"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
@@ -86,28 +86,78 @@ func editedFiles(task *store.Task) int {
 	return len(files)
 }
 
+// tongue is the reader's language for a task's words (D292), a BCP 47 tag
+// for package say: the report's language (the task's Language, the
+// conversation's when it began), else the conversation's now, else the
+// interface's. Never only the interface's: a Korean reader of an English
+// window still reads Korean reports.
+func (a *App) tongue(task *store.Task) string {
+	if task != nil && task.Open != nil {
+		if t := lang.NormalizeTag(task.Open.Language); t != "" {
+			return t
+		}
+	}
+	return a.talkLang()
+}
+
+// tongueOf is tongue for a task by its id ("" or unknown: the
+// conversation's).
+func (a *App) tongueOf(taskID string) string {
+	if taskID == "" || a.S == nil {
+		return a.tongue(nil)
+	}
+	return a.tongue(a.S.Task(taskID))
+}
+
+// talkCache keeps the conversation's language until the channel changes.
+type talkCache struct {
+	n           int
+	first, last *store.Entry
+	start, lang string
+}
+
+// talkLang is the conversation's language from the user's messages,
+// oldest first (lang.OfTexts), starting from the interface's: a message
+// that shows only its script doesn't move it, and before any message has
+// a language it is the interface's.
+func (a *App) talkLang() string {
+	start := string(a.L.Locale)
+	if start == "" {
+		start = string(a.L.Lang)
+	}
+	if a.S == nil || len(a.S.Channel) == 0 {
+		return start
+	}
+	ch := a.S.Channel
+	k := talkCache{n: len(ch), first: ch[0], last: ch[len(ch)-1], start: start}
+	if a.talk.n == k.n && a.talk.first == k.first && a.talk.last == k.last && a.talk.start == start {
+		return a.talk.lang
+	}
+	var texts []string
+	for _, e := range ch {
+		if e != nil && e.User != nil {
+			texts = append(texts, e.User.Text)
+		}
+	}
+	k.lang = lang.OfTexts(texts, start)
+	a.talk = k
+	return k.lang
+}
+
+// proofLabel is an evidence label as this task's reader sees it (D154).
+func (a *App) proofLabel(task *store.Task, ev protocol.EvidenceRef) string {
+	return say.ProofLabel(ev.Kind, ev.Label, ev.Ref, a.tongue(task))
+}
+
 // changesWords is the changes as one item: "2 files changed" (D73). A label
 // that already counts them stands; else the diff read for the opened task,
 // the task's edits, or the files it named; "See changes" when nothing
 // counts them (a bare "commit" or a hash says nothing to a person).
-// tongue is the reader's language for package say ("zh" or "en").
-func (a *App) tongue() string {
-	if a.L.Lang == i18n.ZH {
-		return "zh"
-	}
-	return "en"
-}
-
-// proofLabel is an evidence label as this reader sees it (D154).
-func (a *App) proofLabel(ev protocol.EvidenceRef) string {
-	return say.ProofLabel(ev.Kind, ev.Label, ev.Ref, a.tongue())
-}
-
 func (a *App) changesWords(task *store.Task, changed []protocol.EvidenceRef) string {
 	files := 0
 	for _, e := range changed {
 		if e.Kind == "diff" && countsFile.MatchString(e.Label) {
-			if say.InTongue(e.Label, a.tongue()) {
+			if say.InTongue(e.Label, a.tongue(task)) {
 				return e.Label
 			}
 			// D154: the task's count, said in the reader's language.

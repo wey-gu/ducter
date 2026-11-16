@@ -4,6 +4,13 @@
 
 ## Turn protocol (principle 6)
 
+**Language (D292, research/99).** The partner answers in the language of the person's latest
+message, any language; each turn names it (`[language] … Korean (한국어)`), a message with none of
+its own (OK, a number, an emoji, code) keeps the conversation's, and the conversation's is read
+from the Log, so a restart keeps it. A fixed **Replies in** language wins. Tasks report in it (the
+task's `language` tag), and a result said in another language is held back and said again once
+(D154). Lines Ducter's code writes itself come from zh/en tables through the fallback chain.
+
 The human sees one conversation: text now, voice later. Focus Windows are hidden unless the
 human opens them.
 

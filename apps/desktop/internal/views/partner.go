@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
@@ -24,6 +25,9 @@ type partnerState struct {
 	editing   bool
 	nameDraft string
 	focused   bool
+	// The reply-language list is open (D292), and its Other language
+	// fold shows the rest.
+	talkOpen, talkMore bool
 	// The quiet hours being edited, and the server's value they came from.
 	qStart, qEnd time.Time
 	qFrom        string
@@ -243,24 +247,72 @@ func (a *App) switchRow(c *ui.Context, key, label, note string, on bool) (bool, 
 }
 
 func (a *App) talkCard(c *ui.Context, st *protocol.Settings) {
+	// D292: 跟着我 / Follow me, else any language, each by its own name
+	// (한국어, Español): the common ones in the list, the rest behind
+	// 其他语言… / Other language…. A saved tag shows by its own name.
+	t := a.T
+	ps := &a.partner
 	a.group(c, "talk", a.L.T("partner.talk.title"), "", func() {
-		opts := []string{"auto", "zh", "en"}
-		sel := 0
-		for i, o := range opts {
-			if o == st.Language {
-				sel = i
-			}
-		}
+		cur := lang.NormalizeTag(st.Language) // "" is auto
+		name := a.L.T("partner.talk.auto")
 		help := a.L.T("partner.talk.auto.note")
-		if st.Language == "zh" || st.Language == "en" {
-			help = a.L.T("partner.talk.fixed.note", a.L.T("partner.talk."+st.Language))
+		if cur != "" {
+			name = lang.Autonym(cur)
+			help = a.L.T("partner.talk.fixed.note", name)
 		}
 		a.row(c, "talk", a.L.T("settings.talk.row"), help, func() {
-			labels := []string{a.L.T("partner.talk.auto"), a.L.T("partner.talk.zh"), a.L.T("partner.talk.en")}
-			if i := a.choices(c, "talk", a.L.T("partner.talk.title"), labels, sel); i >= 0 {
-				st.Language = opts[i]
-				a.SetSettings(protocol.SettingsPatch{Language: opts[i]})
+			e, click := a.pill(c, "talk-lang", a.L.T("partner.talk.title")+" · "+name, ps.talkOpen, func() {
+				ui.Text(c, name).FontSize(t.MD).TextColor(t.Ink).SingleLine().AccessHidden(true)
+			})
+			if click {
+				ps.talkOpen, ps.talkMore = !ps.talkOpen, false
 			}
+			if !ps.talkOpen {
+				return
+			}
+			pick := func(tag string) {
+				ps.talkOpen, ps.talkMore = false, false
+				if tag == "" {
+					tag = "auto"
+				}
+				st.Language = tag
+				a.SetSettings(protocol.SettingsPatch{Language: tag})
+			}
+			row := func(tag, label string) {
+				if a.menuRow(c, "talk:"+tag, label, tag == cur, false, func() {
+					ui.Text(c, label).FontSize(t.MD).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
+				}) && tag != cur {
+					pick(tag)
+				}
+			}
+			a.listPanel(c, e, &ps.talkOpen, a.L.T("partner.talk.title"), 260, func() {
+				row("", a.L.T("partner.talk.auto"))
+				listed := false
+				for _, l := range lang.Languages {
+					if l.Common {
+						row(l.Tag, l.Name)
+						listed = listed || l.Tag == cur
+					}
+				}
+				if cur != "" && !listed && !ps.talkMore {
+					row(cur, name) // a saved language from the rest stays in sight
+				}
+				if !ps.talkMore {
+					other := a.L.T("partner.talk.other")
+					if a.menuRow(c, "talk:other", other, false, false, func() {
+						ui.Text(c, other).FontSize(t.MD).TextColor(t.InkSoft).SingleLine().Grow(1).MinWidth(0)
+					}) {
+						ps.talkMore = true
+					}
+					return
+				}
+				ui.Text(c, a.L.T("partner.talk.more")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(t.S2, t.S3, t.S1, t.S3)
+				for _, l := range lang.Languages {
+					if !l.Common {
+						row(l.Tag, l.Name)
+					}
+				}
+			})
 		})
 	})
 }

@@ -1,6 +1,10 @@
 // Package i18n holds every user-facing string of the desktop client, by
 // key, in Chinese and English (design/product-model.md §1: no court
 // vocabulary; partners, not hierarchy). Views never hard-code copy.
+//
+// The engine is locale-general (D292): a language is any BCP 47 tag, and
+// it reads the first table on its fallback chain (lang.FallbackChain:
+// "zh-TW" → zh-Hant → zh → en; "ko" → en). Tables exist for zh and en.
 package i18n
 
 import (
@@ -9,11 +13,14 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 )
 
-// Lang is a supported language.
+// Lang is a BCP 47 language tag ("zh", "en", "ko", "zh-Hant").
 type Lang string
 
+// The languages with tables.
 const (
 	ZH Lang = "zh"
 	EN Lang = "en"
@@ -412,8 +419,8 @@ var zh = Table{
 	"until.last":                     "上一次：%s",
 	"until.title":                    "一直做到：%s",
 	"until.n":                        "第 %d 次",
-	"until.lights":                   "%d 盏灯里亮了 %d 盏",
-	"until.items":                    "%d 处里好了 %d 处",
+	"until.lights":                   "%[2]d 盏灯里亮了 %[1]d 盏",
+	"until.items":                    "%[2]d 处里好了 %[1]d 处",
 	"until.now":                      "在做",
 	"until.stops.v":                  "做到了、试满 %d 次、连着 3 次没进展、来回打转时停下",
 	"until.stop":                     "停止",
@@ -1450,6 +1457,15 @@ var en = Table{
 // Tables returns the tables by language, for tests.
 func Tables() map[Lang]Table { return map[Lang]Table{ZH: zh, EN: en} }
 
+// tables are the interface's tables by tag; a tag reads the first on its
+// fallback chain.
+var tables = map[string]Table{"zh": zh, "en": en}
+
+// tableLang is the language whose table answers for tag ("ko" → en).
+func tableLang(tag Lang) Lang {
+	return Lang(lang.PickTag(string(tag), lang.UILangs))
+}
+
 // OnEmptyArg, when set (tests), hears every placeholder filled with an empty
 // string: "这是  上的浏览器" must fail a test, not reach a person.
 var OnEmptyArg func(key string, arg int)
@@ -1486,16 +1502,38 @@ func usedArgs(format string, n int) []bool {
 
 // Strings translates keys in one language.
 type Strings struct {
-	Lang  Lang
-	table Table
+	// Lang is the language whose table answers (ZH or EN), so Lang being
+	// ZH still means "showing Chinese words".
+	Lang Lang
+	// Locale is the tag asked for ("ko", "zh-Hant", "en-GB").
+	Locale Lang
+	table  Table
 }
 
-// New returns the strings of a language (English for an unknown one).
+// New returns the strings of a language: the first table on its fallback
+// chain (English for a language without one).
 func New(l Lang) *Strings {
-	if l == ZH {
-		return &Strings{Lang: ZH, table: zh}
+	t := tableLang(l)
+	loc := Lang(lang.NormalizeTag(string(l)))
+	if loc == "" {
+		loc = t
 	}
-	return &Strings{Lang: EN, table: en}
+	return &Strings{Lang: t, Locale: loc, table: tables[string(t)]}
+}
+
+// N translates a counted key: key + "." + the plural category of n in the
+// interface's language ("one", "few", "other", …), else key + ".other",
+// else key. args fill the chosen form as in T.
+func (s *Strings) N(key string, n int, args ...any) string {
+	for _, k := range []string{key + "." + lang.Plural(string(s.Lang), n), key + ".other"} {
+		if _, ok := s.table[k]; ok {
+			return s.T(k, args...)
+		}
+		if _, ok := en[k]; ok {
+			return s.T(k, args...)
+		}
+	}
+	return s.T(key, args...)
 }
 
 // T translates key, formatting args into it. A missing key shows itself,
@@ -1519,10 +1557,36 @@ func (s *Strings) T(key string, args ...any) string {
 		}
 	}
 	out := fmt.Sprintf(v, args...)
-	if s.Lang == ZH {
+	if s.Han() {
 		out = JoinHan(SpaceHan(out))
 	}
 	return out
+}
+
+// traits are how a table's script sets text, for the few rules views
+// apply around filled-in words (D292: by trait, never by comparing a
+// language).
+type traits struct {
+	han   bool // Han characters: a Latin word gets its own spaces (D78), CJK leading and faces
+	cased bool // letter case: a sentence's capital goes mid-sentence, a line starts on one
+}
+
+var tableTraits = map[Lang]traits{ZH: {han: true}, EN: {cased: true}}
+
+// Han reports whether the words are in Han characters: a Latin word or a
+// number filled in is spaced from them (D78), reading text takes CJK
+// leading, headings the CJK faces.
+func (s *Strings) Han() bool { return tableTraits[s.Lang].han }
+
+// Cased reports whether the words' script has letter case, so a label
+// starts a line on a capital and drops it mid-sentence.
+func (s *Strings) Cased() bool { return tableTraits[s.Lang].cased }
+
+// Pick is the value for this window's language from one per table
+// language: Pick(map[string]string{"zh": w.ZH, "en": w.EN}), by the
+// fallback chain.
+func Pick[T any](s *Strings, byLang map[string]T) T {
+	return lang.Words(byLang, string(s.Lang))
 }
 
 // SpaceHan puts a space where a Chinese character touches a Latin letter
@@ -1560,50 +1624,31 @@ func JoinHan(s string) string {
 }
 
 // Detect picks the language: DUCTER_LOCALE, else the system's preferred
-// languages (as mygo reports them), else LANG, else English.
+// languages (as mygo reports them) negotiated against the tables (["ko",
+// "zh-CN"] → zh), else LANG, else English. The result is the table's
+// language, so a Korean Mac with no Chinese in its list reads English.
 func Detect(preferred []string) Lang {
-	if l := os.Getenv("DUCTER_LOCALE"); l != "" {
-		return parse(l)
+	if l := lang.NormalizeTag(os.Getenv("DUCTER_LOCALE")); l != "" {
+		return Lang(lang.Negotiate([]string{l}, lang.UILangs))
 	}
+	var pref []string
 	for _, p := range preferred {
-		if l := parse(p); l != "" {
-			return l
+		if t := lang.NormalizeTag(p); t != "" {
+			pref = append(pref, t)
 		}
 	}
-	if l := parse(os.Getenv("LANG")); l != "" {
-		return l
+	if l := lang.NormalizeTag(os.Getenv("LANG")); l != "" {
+		pref = append(pref, l) // "C" and "POSIX" aren't tags
 	}
-	return EN
+	return Lang(lang.Negotiate(pref, lang.UILangs))
 }
 
 // Fixed reports whether DUCTER_LOCALE pins the language.
 func Fixed() bool { return os.Getenv("DUCTER_LOCALE") != "" }
 
-// FromText guesses the language a person writes in: Chinese with any Han
-// character, English with Latin words and none, else "".
+// FromText is the language a person writes in (lang.Detect): any tag,
+// "ko", "es", "zh-Hant", or "" when the text has none of its own (OK, a
+// number, an emoji, a command).
 func FromText(text string) Lang {
-	latin := 0
-	for _, r := range text {
-		switch {
-		case unicode.Is(unicode.Han, r):
-			return ZH
-		case r < 0x80 && unicode.IsLetter(r):
-			latin++
-		}
-	}
-	if latin >= 3 {
-		return EN
-	}
-	return ""
-}
-
-func parse(tag string) Lang {
-	tag = strings.ToLower(tag)
-	switch {
-	case strings.HasPrefix(tag, "zh"):
-		return ZH
-	case strings.HasPrefix(tag, "en"):
-		return EN
-	}
-	return ""
+	return Lang(lang.Detect(text).Lang)
 }

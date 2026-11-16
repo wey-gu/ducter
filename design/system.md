@@ -348,6 +348,25 @@ changes.
   - The client protocol comes first; the two UI codebases share only the protocol, the state
     model, and design tokens.
 
+## Languages (D292, research/99)
+
+Three tags, never one boolean:
+
+| Layer | What | Where it is decided | Carried as |
+|---|---|---|---|
+| Conversation language | what the person writes in, any language | `detect` / `resolveLanguage` per message, folded from the Log's last 40 user messages (`languageOfTexts`); the Partner setting wins when fixed | the partner's `[language]` line; `Settings.language` = `auto` or a tag |
+| Report language | what a task reports, asks and labels in | the partner: the setting, else the turn's, else the conversation's | `task_open.language` (any tag; old `zh`/`en` read), the brief's Language line, `inLanguage` checks |
+| Interface locale | the app's own words | each client: system languages through `negotiate`, or the person's first words (D262) | a tag; tables through `fallbackChain`; `hello.locale` |
+
+One implementation: `packages/protocol/src/lang.ts` (TypeScript: core, partner, runner, web) and
+`apps/desktop/internal/lang` (Go), both run `packages/protocol/fixtures/lang.json`; the language
+table is `packages/protocol/src/languages.json` (tag, own name, English name, `common`, `hasUI`).
+Detection is script-first with a stopword score inside Latin, Cyrillic and Arabic; no model and no
+dependency. Code-made sentences live in per-language tables read with `words(tables, tag)` and
+`fill("…{name}…")`; a language without a table reads English. Adding an interface language is a
+table plus `hasUI`, no code. `packages/protocol/test/lang-guard.test.ts` fails on a new inline
+zh/en branch.
+
 ## Server mode and remote access, first slice (D54, research/29)
 
 **Who and when.** Mostly the heavy developer who wants the partner awake while the Mac sleeps

@@ -25,6 +25,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/hints"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/imessage"
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 	"github.com/wey-gu/ducter/apps/desktop/internal/local"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
@@ -414,11 +415,9 @@ func main() {
 // lc adds the update line (after About) and Help's Report a problem (D72);
 // Stop Ducter only when this app runs the Ducter of this Mac.
 // mygoLocale is the language tag MyGo knows a window language by.
+// It has words for these two; any other tag reads its fallback chain.
 func mygoLocale(l i18n.Lang) string {
-	if l == i18n.ZH {
-		return "zh-Hans"
-	}
-	return "en"
+	return lang.Words(map[string]string{"zh": "zh-Hans", "en": "en"}, string(l))
 }
 
 func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *mygo.Menu {

@@ -579,6 +579,15 @@ first, Coming later), a tap flies the token into the socket with the equip's lif
 tock (`research/26`; reduced motion: a cross-fade), then one line: "{name} thinks with {agent}
 now". Nothing blinks; only the partner breathes.
 
+**Languages (D292).** The interface language is a BCP 47 tag resolved to a table through a
+fallback chain (zh-TW → zh-Hant → zh → en; ko → en), so a system set to Korean shows English words,
+never a key; only zh and en have tables and only they are offered. A task's report, summary and
+proof labels are shown against that task's own language (then the conversation's), never the
+interface's alone. Every bubble with the person's or the partner's words carries `dir="auto"`, and
+list indents use logical properties, so Arabic and Hebrew read right to left in a left-to-right
+app. The reply-language choice lists languages by their own names (한국어, Español), never
+translated.
+
 **Choices** (talk language, interface language, the default wait) are a segmented clay control
 (D76): a sunken track (`#F3E6D3`, radius 16, 4pt inset), the chosen one a white surface on a 2pt
 `#E0C9B0` base in ink 700, the others muted 500; switches are the platform's. The options

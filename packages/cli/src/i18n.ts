@@ -1,7 +1,13 @@
 // CLI strings, zh + en designed together. Keys are stable; copy follows the glossary
 // (design/product-model.md): partner, task, On hand / 手头的事, Needs you / 等你.
 
-export type Locale = "en" | "zh";
+import { negotiate, words, type LangTag } from "@ducter/protocol";
+
+/** A person's language (D292): any BCP 47 tag; the words come from a table on its fallback chain (ko → en, zh-Hant → zh). */
+export type Locale = LangTag;
+/** The languages the CLI has complete tables for. */
+export type UiLocale = "en" | "zh";
+export const UI_LOCALES: readonly UiLocale[] = ["en", "zh"];
 
 const en = {
   "doctor.title": "Checking this Mac for Ducter",
@@ -1279,14 +1285,16 @@ const zh: Record<MsgKey, string> = {
   "agents.confirm": "更新 {names}？每一个都等它手上没事了再更新。[y/N] ",
 };
 
-export const STRINGS: Record<Locale, Record<MsgKey, string>> = { en, zh };
+export const STRINGS: Record<UiLocale, Record<MsgKey, string>> = { en, zh };
 
-/** DUCTER_LOCALE wins, then the POSIX order LC_ALL > LC_MESSAGES > LANG. */
-export function detectLocale(env: Record<string, string | undefined> = process.env): Locale {
+/**
+ * The table the CLI speaks: DUCTER_LOCALE wins, then the POSIX order LC_ALL > LC_MESSAGES > LANG.
+ * The first one set decides, through its fallback chain (zh_TW.UTF-8 → zh; ko_KR → en).
+ */
+export function detectLocale(env: Record<string, string | undefined> = process.env): UiLocale {
   for (const v of [env.DUCTER_LOCALE, env.LC_ALL, env.LC_MESSAGES, env.LANG]) {
-    if (!v) continue;
-    if (/^zh/i.test(v)) return "zh";
-    if (v !== "C" && v !== "POSIX") return "en";
+    if (!v || v === "C" || v === "POSIX") continue;
+    return negotiate([v], UI_LOCALES);
   }
   return "en";
 }
@@ -1315,11 +1323,12 @@ export function commandsFor(flags: { port?: number; dataDir?: string } = {}): Co
 }
 
 export function translator(locale: Locale, commands: Commands = commandsFor()): T {
-  const table = STRINGS[locale];
+  const table = words(STRINGS, locale);
+  const flush = table === STRINGS.zh;
   return (key, vars) => {
     if (/\{(up|status|pair|merge)\}/.test(table[key])) vars = { ...commands, ...vars };
     const out = table[key].replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars ? String(vars[k]) : m));
     // zh copy spaces around a name so "Ducter" reads well; a Chinese name ("小鸭") sits flush.
-    return locale === "zh" && vars ? out.replace(/(\p{Script=Han}) (?=\p{Script=Han})/gu, "$1") : out;
+    return flush && vars ? out.replace(/(\p{Script=Han}) (?=\p{Script=Han})/gu, "$1") : out;
   };
 }

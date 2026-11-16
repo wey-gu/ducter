@@ -117,9 +117,9 @@ describe("D294: Mem can't take it right now", () => {
 
   test("the user hears it in the partner's words: nothing went out, not their fault, ask again", () => {
     const op = { last: { direction: "out", messageId: "", text: "x", agent: "Claude Code", mine: true, to: "Claude Code" } } as unknown as OutOp;
-    expect(lostLine(op, true, "busy", "message")).toBe("你让我发的消息没发给 Claude Code：Nowledge Mem 那边这会儿收不了，不是你这边的问题。这次什么都没发出去，过一会儿再跟我说一声，我重新发。");
-    expect(lostLine(op, false, "busy", "message")).toContain("Nothing went out");
-    expect(lostLine(op, false, "busy", "message")).not.toMatch(/Bridge|mailbox|503/);
+    expect(lostLine(op, "zh", "busy", "message")).toBe("你让我发的消息没发给 Claude Code：Nowledge Mem 那边这会儿收不了，不是你这边的问题。这次什么都没发出去，过一会儿再跟我说一声，我重新发。");
+    expect(lostLine(op, "en", "busy", "message")).toContain("Nothing went out");
+    expect(lostLine(op, "en", "busy", "message")).not.toMatch(/Bridge|mailbox|503/);
   });
 
   test("a tapped send that Mem can't take: failed once, said once, and the user may simply ask again", async () => {

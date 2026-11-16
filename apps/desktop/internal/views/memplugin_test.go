@@ -66,7 +66,7 @@ func TestMemPluginLines(t *testing.T) {
 				t.Fatalf("Mem line on the card itself: %q", h.tt.Texts())
 			}
 			coin("local", "claude-code")
-			if !h.tt.HasText(L.T("memp.installed", "0.7.34")) || h.tt.HasText(L.T("memp.btn.install")+" · Claude Code · Nowledge Mem") {
+			if !h.tt.HasText(L.T("memp.installed", "0.7.34")) || h.tt.HasText(L.T("memp.btn.install")+" · "+spoken(L, "Claude Code", "Nowledge Mem")) {
 				t.Fatalf("claude coin: %q", h.tt.Texts())
 			}
 			shot("coin-installed")
@@ -82,17 +82,17 @@ func TestMemPluginLines(t *testing.T) {
 				t.Fatalf("pi coin: %q", h.tt.Texts())
 			}
 			shot("coin-absent")
-			h.click(L.T("memp.btn.install") + " · pi · Nowledge Mem")
+			h.click(L.T("memp.btn.install") + " · " + spoken(L, "pi", "Nowledge Mem"))
 			h.until("ask", func() bool { return h.tt.HasText(L.T("memp.means", "pi", "hel")) })
 			shot("coin-ask")
-			h.click(L.T("memp.ok") + " · pi · Nowledge Mem")
+			h.click(L.T("memp.ok") + " · " + spoken(L, "pi", "Nowledge Mem"))
 			h.until("installed", func() bool { return h.tt.HasText(L.T("memp.installed", "0.7.34")) && !h.tt.HasText(L.T("memp.absent")) })
 			shot("coin-installed-after")
 
 			// A computer that is away: the line alone.
 			d.sel = "a3f9c2d1e0"
 			coin("a3f9c2d1e0", "claude-code")
-			if !h.tt.HasText(L.T("memp.absent")) || h.tt.HasText(L.T("memp.btn.install")+" · Claude Code · Nowledge Mem") {
+			if !h.tt.HasText(L.T("memp.absent")) || h.tt.HasText(L.T("memp.btn.install")+" · "+spoken(L, "Claude Code", "Nowledge Mem")) {
 				t.Fatalf("away coin: %q", h.tt.Texts())
 			}
 			shot("coin-away")

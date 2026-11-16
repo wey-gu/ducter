@@ -444,23 +444,6 @@ func (a *App) isleLine(s *isle) (string, ui.Color) {
 	}
 }
 
-// clientLine says what a phone (or a window elsewhere) is for.
-// D155: in plain words, what it is (你的 iPhone · 用 Safari 连着), or for a
-// command line alone, that it is the command line; then when it was last
-// here.
-func (a *App) clientLine(cl *protocol.ReachClient) string {
-	what := a.clientKind(cl)
-	if isCLI(cl) {
-		what = a.L.T("device.cli.only")
-	}
-	if !cl.Connected {
-		if ago := a.agoLong(cl.LastSeen); ago != "" {
-			return what + " · " + ago
-		}
-	}
-	return what
-}
-
 // homePose is Ducter's face on its island.
 func (a *App) homePose(home *protocol.DeviceView, now time.Time) theme.Presence {
 	d := a.devState()
@@ -1254,12 +1237,12 @@ func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now 
 		flying := d.fx != nil && d.fx.ability == id && d.fx.device == s.dv.ID && !d.fx.back
 		addable := !on && !flying && a.canAdd(s.dv, id)
 		name := a.L.T("ability." + id)
-		label := a.L.T("ability.slot", name)
+		label := spoken(a.L, name, a.L.T("ability.slot"))
 		switch {
 		case on:
-			label = a.L.T("ability.slot.on", name)
+			label = spoken(a.L, name, a.L.T("ability.slot.on"))
 		case ab != nil && ab.State == protocol.AbilityUnavailable:
-			label = a.L.T("ability.slot.unavailable", name)
+			label = spoken(a.L, name, a.L.T("ability.slot.unavailable"))
 		}
 		left := x - gap - slotW
 		col := ui.Column(c.Key("dock:" + id)).Absolute().Left(left).Top(y0).Width(slotW).AlignItems(ui.Center).Gap(4).
@@ -1378,7 +1361,7 @@ func (a *App) badges(c *ui.Context, v view, s *isle, ir ui.Rect, sel bool) float
 		at := spot(i)
 		name := a.L.T("ability." + id)
 		bd := ui.Box(c.Key("badge:"+s.key+":"+id)).Absolute().Left(at.X).Top(at.Y).Size(at.W, at.H).
-			Role(ui.RoleButton).Label(a.L.T("ability.slot.on", name)).Cursor(ui.CursorPointer)
+			Role(ui.RoleButton).Label(spoken(a.L, name, a.L.T("ability.slot.on"))).Cursor(ui.CursorPointer)
 		bmp := theme.Clay(abilityArt(id))
 		bd.Draw(func(p *ui.Painter, r ui.Rect) {
 			softEllipse(p, ui.Rect{X: r.X + r.W*0.1, Y: r.Y + r.H*0.7, W: r.W * 0.95, H: r.H * 0.36}, ui.RGBA(110, 66, 28, 0.3))

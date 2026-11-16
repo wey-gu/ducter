@@ -200,7 +200,7 @@ func (a *App) benchSimView(c *ui.Context, task *store.Task, b *benchTask, sim *p
 	}
 	c.After(simGap + 10*time.Millisecond)
 	where := a.taskComputerName(task)
-	ui.Text(c, strings.Join([]string{sim.Name, sim.OS, a.L.T("wb.sim.on", where)}, " · ")).FontSize(t.XS).TextColor(t.InkMuted)
+	a.facts(c, t.XS, t.InkMuted, sim.Name, sim.OS, a.L.T("wb.sim.on", where))
 	ui.Row(c.Key("sim-main")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 		ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).Children(func() {
 			if s.bmp == nil || s.off {

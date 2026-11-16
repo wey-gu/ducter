@@ -2,15 +2,20 @@
 // one word, how it is connected, how an agent was installed, and which chips it gets. The same
 // rules as the desktop's devicecard.go.
 import type { DeviceHarness, DeviceView, Reach } from "@ducter/protocol";
+import { shownDeviceName } from "./format.ts";
 
 export type Client = Reach["clients"][number];
 type Words = { t(key: string, ...args: unknown[]): string };
 export type Tone = "" | "working" | "asleep" | "away";
 
-/** The one status line under a device's name: the role or the state, never the kind. */
-export function statusLine(L: Words, dv: DeviceView, o: { persona: string; home: string; running: number; ago?: string }): { text: string; tone: Tone } {
-  if (dv.state === "unreachable") return { text: o.ago ? L.t("card.status.unreachable", o.ago) : L.t("card.status.unreachable.none"), tone: "away" };
-  if (dv.state === "asleep") return { text: L.t("device.state.asleep"), tone: "asleep" };
+/**
+ * The status under a device's name: the role, or what it is doing, as one line. Asleep or out of
+ * reach, `state` is the state word (drawn with its dot, in its color) and `text` the line under it
+ * (最后在线 3 小时前 / Last seen 3 hours ago), never one string joined by a separator (D291).
+ */
+export function statusLine(L: Words, dv: DeviceView, o: { persona: string; home: string; running: number; ago?: string }): { state?: string; text: string; tone: Tone } {
+  if (dv.state === "unreachable") return { state: L.t("card.status.away"), text: o.ago ? L.t("device.client.seen", o.ago) : "", tone: "away" };
+  if (dv.state === "asleep") return { state: L.t("device.state.asleep"), text: L.t("device.asleep.after"), tone: "asleep" };
   const n = o.running;
   if (dv.home) return { text: n === 1 ? L.t("card.status.home.working.one", o.persona) : n > 1 ? L.t("card.status.home.working", o.persona, n) : L.t("card.status.home", o.persona), tone: "" };
   if (dv.kind === "phone") return { text: L.t("device.client.now"), tone: "" };
@@ -27,12 +32,12 @@ export function listWord(L: Words, dv: DeviceView, o: { home: string; running: n
   if (dv.state === "unreachable") return { text: L.t("list.state.away"), tone: "away" };
   if (dv.home) return { text: L.t("list.state.home"), tone: "" };
   if (dv.kind === "phone") return { text: L.t("list.state.now"), tone: "" };
-  if (o.running > 0) return { text: L.t("list.state.tasks", o.running), tone: "working" };
+  if (o.running > 0) return { text: o.running === 1 ? L.t("list.state.tasks.one") : L.t("list.state.tasks", o.running), tone: "working" };
   return { text: L.t("list.state.does", o.home), tone: "" };
 }
 
-/** The Android app (D178): its platform says "android-app"; one paired before that is named "… · Ducter". */
-export const androidApp = (cl: Client) => cl.platform.toLowerCase().includes("app") || cl.name.endsWith("· Ducter");
+/** The Android app (D178): its platform says "android-app"; one paired before D291 still carries the app's old name suffix. */
+export const androidApp = (cl: Client) => cl.platform.toLowerCase().includes("app") || shownDeviceName(cl.name) !== cl.name;
 
 const cli = (cl: Client) => cl.form === "cli" || (!cl.form && cl.name.startsWith("CLI on "));
 
@@ -71,11 +76,10 @@ export function coinHow(L: Words, h: DeviceHarness): string {
   return "";
 }
 
-/** The version line in a coin's detail: 版本 2.1.322 · 用 npm 装的. */
-export function versionLine(L: Words, h: DeviceHarness): string {
-  if (!h.version) return "";
-  const how = coinHow(L, h);
-  return how ? L.t("coin.version", h.version, how) : L.t("agentv.version", h.version);
+/** The version facts in a coin's detail, each its own element (D291): 版本 2.1.322, 用 npm 装的. */
+export function versionFacts(L: Words, h: DeviceHarness): string[] {
+  if (!h.version) return [];
+  return [L.t("agentv.version", h.version), coinHow(L, h)].filter(Boolean);
 }
 
 export type ChipLook = "on" | "off" | "add" | "fail" | "later" | "elsewhere";

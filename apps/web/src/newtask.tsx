@@ -8,10 +8,10 @@ import type { Candidate } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
 import { A, agentKey, effortWord, EVERY_HOURS, ntGitHubish, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { Btn, Choice, MenuRow, Pill, Seg } from "./controls.tsx";
-import { candName, candReason, Check, coarse } from "./views.tsx";
+import { Btn, Choice, Facts, MenuRow, Pill, Seg } from "./controls.tsx";
+import { candReason, Check, coarse } from "./views.tsx";
 import { AddPictures, DropHint, Tray, useDropPaste } from "./media.tsx";
-import { harnessName } from "./format.ts";
+import { harnessName, spoken } from "./format.ts";
 import { computerApart, computerOf, computers, manyComputers } from "./where.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -72,7 +72,9 @@ function whenLabel(): string {
 
 const Suggested = () => <small class="suggested">{t("newtask.suggested")}</small>;
 
-const whoLabel = (c: Candidate) => A.ntWhoLabel(c) || candName(c);
+const whoLabel = (c: Candidate) => A.ntWhoLabel(c);
+/** The agent's name, then its model and effort as words of their own (D291). */
+const whoParts = (c: Candidate) => A.ntWhoParts(c);
 
 /**
  * D202: under the chosen agent, its 模型 / Model row (its own models, Ducter's suggestion tagged
@@ -225,7 +227,14 @@ export function NewTaskSheet() {
             </Pill>
           ) : (
             <Pill label={whoLabel(who)} about={t("newtask.who")} open={nt.list === "who"} onClick={() => toggle("who")}>
-              <b>{whoLabel(who)}</b>
+              <b>{whoParts(who)[0]}</b>
+              {whoParts(who)
+                .slice(1)
+                .map((p) => (
+                  <span key={p} class="pill-fact">
+                    {p}
+                  </span>
+                ))}
               {!picked && !A.ntSendTune(who).model && !A.ntSendTune(who).effort && <Suggested />}
             </Pill>
           )}
@@ -242,7 +251,7 @@ export function NewTaskSheet() {
                 <Folder />
                 <span class="mr-t">
                   <b>{placeName(p)}</b>
-                  {placeLine(p) && <code>{placeLine(p)}</code>}
+                  {placeLine(p).path && <Facts class="mr-place" items={[<code>{placeLine(p).path}</code>, placeLine(p).computer && <small>{placeLine(p).computer}</small>]} />}
                 </span>
               </MenuRow>
             ))}
@@ -250,7 +259,7 @@ export function NewTaskSheet() {
             {!folders.length && <div class="nt-empty small sub">{only ? t("newtask.find.empty", onlyName) : t("newtask.empty")}</div>}
             {/* D272: one 加一个文件夹… per computer that can take one; its three ways open in place. */}
             {finders.map((d) => (
-              <MenuRow key={`add:${d.id}`} label={named ? `${t("newtask.add")} · ${d.name}` : t("newtask.add")} on={false} onClick={() => A.ntAddOpen(d.id)}>
+              <MenuRow key={`add:${d.id}`} label={named ? spoken(A.L, t("newtask.add"), t("newtask.find.on", d.name)) : t("newtask.add")} on={false} onClick={() => A.ntAddOpen(d.id)}>
                 <Plus />
                 <span class="mr-t">
                   <b>{t("newtask.add")}</b>
@@ -268,7 +277,7 @@ export function NewTaskSheet() {
               </MenuRow>
             ))}
             {only ? (
-              <MenuRow key="none" label={`${t("newtask.nowhere")} · ${onlyName}`} on={false} onClick={() => A.pickPlace({ place: { kind: "none" }, name: "" })}>
+              <MenuRow key="none" label={spoken(A.L, t("newtask.nowhere"), t("newtask.agent.elsewhere", onlyName))} on={false} onClick={() => A.pickPlace({ place: { kind: "none" }, name: "" })}>
                 <Folder faint />
                 <span class="mr-t">
                   <b>{t("newtask.nowhere")}</b>

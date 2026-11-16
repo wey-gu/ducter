@@ -98,7 +98,7 @@ func TestAbilitiesScreen(t *testing.T) {
 			h.shotAs(fmt.Sprintf("abilities-%s-added", lang))
 
 			// D161: the chip turns it off in one tap (nothing at stake).
-			h.click(L.T("chip.web") + " · " + L.T("chip.state.on"))
+			h.click(spoken(L, L.T("chip.web"), L.T("chip.state.on")))
 			h.until("web off", func() bool {
 				return h.app.S.Device("local").Ability(protocol.AbilityWeb).State == protocol.AbilityOff
 			})
@@ -157,15 +157,15 @@ func TestAbilitiesStates(t *testing.T) {
 			})
 			h.until("four devices", func() bool { return len(h.app.S.Devices) == 4 })
 			h.settle(100 * time.Millisecond)
-			h.click("Mac mini · " + L.T("list.state.asleep"))
+			h.click(spoken(L, "Mac mini", L.T("list.state.asleep")))
 			h.settle(300 * time.Millisecond)
 			if !h.tt.HasText(L.T("device.state.asleep")) {
 				t.Fatalf("asleep line: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("abilities-%s-asleep", lang))
-			h.click("ducter-vps · " + L.T("list.state.away"))
+			h.click(spoken(L, "ducter-vps", L.T("list.state.away")))
 			h.settle(300 * time.Millisecond)
-			if !h.tt.HasText(L.T("card.status.unreachable", L.T("time.ago.hour", 2))) {
+			if !h.tt.HasText(L.T("card.status.away")) || !h.tt.HasText(L.T("device.last_seen", L.T("time.ago.hour", 2))) {
 				t.Fatalf("unreachable line: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("abilities-%s-unreachable", lang))
@@ -232,7 +232,7 @@ func TestAbilitiesReachFromAnywhere(t *testing.T) {
 			h.settle(300 * time.Millisecond)
 			// 关掉 asks once more and says the tunnel stays in their account; then it is kept off.
 			if !h.tt.HasText(L.T("anywhere.off")) {
-				h.click(L.T("chip.info") + " · " + L.T("chip.remote"))
+				h.click(spoken(L, L.T("chip.info"), L.T("chip.remote")))
 				h.settle(200 * time.Millisecond)
 			}
 			h.click(L.T("anywhere.off"))
@@ -333,7 +333,7 @@ func TestAbilitiesLiveDevice(t *testing.T) {
 		return dv != nil
 	})
 	chip, _ := h.app.listWord(dv)
-	h.click(name + " · " + chip)
+	h.click(spoken(h.app.L, name, chip))
 	h.until("shown", func() bool { return h.app.shownDevice().Name == name })
 	h.tt.Advance(time.Second)
 	h.tt.Frame()

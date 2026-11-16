@@ -147,10 +147,10 @@ func (a *App) clientName(cl *protocol.ReachClient) string {
 	return cl.Name
 }
 
-// androidApp: the Android app (D178). Its platform says "android-app"; one paired before that is
-// named "… · Ducter" (the page's deviceName for an app web view).
+// androidApp: the Android app (D178). Its platform says "android-app"; one paired before that
+// still carries the app's old name suffix (shownDeviceName drops it, D291).
 func androidApp(cl *protocol.ReachClient) bool {
-	return strings.Contains(strings.ToLower(cl.Platform), "app") || strings.HasSuffix(cl.Name, "· Ducter")
+	return strings.Contains(strings.ToLower(cl.Platform), "app") || shownDeviceName(cl.Name) != cl.Name
 }
 
 // clientKind says what a phone or a window is, in plain words.
@@ -160,7 +160,7 @@ func (a *App) clientKind(cl *protocol.ReachClient) string {
 	case isCLI(cl):
 		return a.L.T("device.kind.cli")
 	case strings.Contains(p, "ios") || strings.Contains(p, "iphone"):
-		// An iPad pairs as "iPad · Ducter" or "iPad · Safari" (the phone client's deviceName).
+		// An iPad pairs named by its model, "iPad" (the phone client's deviceName).
 		kind := "iphone"
 		if strings.HasPrefix(cl.Name, "iPad") {
 			kind = "ipad"
@@ -180,21 +180,6 @@ func (a *App) clientKind(cl *protocol.ReachClient) string {
 		return a.L.T("device.kind.browser")
 	}
 	return a.L.T("device.kind.other")
-}
-
-// clientDoes is what a phone or a window does for the person.
-func (a *App) clientDoes(cl *protocol.ReachClient) string {
-	who := a.S.PersonaName
-	p := strings.ToLower(cl.Platform)
-	switch {
-	case isCLI(cl):
-		return a.L.T("device.does.cli")
-	case strings.Contains(p, "ios") || strings.Contains(p, "iphone") || strings.Contains(p, "android"):
-		return a.L.T("device.does.phone", who)
-	case strings.HasPrefix(p, "darwin") || strings.Contains(p, "mac"):
-		return a.L.T("device.does.app", who)
-	}
-	return a.L.T("device.does.browser", who)
 }
 
 // clientState is a client's state line and its ink.

@@ -102,6 +102,6 @@ describe("the Android app", () => {
   test("says plainly it can't notify in this version, in both languages", () => {
     expect(strings("zh").t("notify.android.later")).toContain("安卓 App");
     expect(strings("en").t("notify.android.later")).toContain("Android app");
-    expect(strings("en").t("device.kind.android.app")).toBe("Your Android phone · through the Ducter app");
+    expect(strings("en").t("device.kind.android.app")).toBe("An Android phone with the Ducter app");
   });
 });

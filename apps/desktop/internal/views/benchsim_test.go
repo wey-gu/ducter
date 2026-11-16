@@ -106,7 +106,7 @@ func TestBenchSimulatorAndInfo(t *testing.T) {
 		}
 		tt.Frame()
 		all = texts(tt)
-		for _, w := range []string{"iPhone 16e · iOS 26.3", L.T("wb.sim.viewonly", app.taskComputerName(app.S.Task("t_tea")))} {
+		for _, w := range []string{"iPhone 16e", "iOS 26.3", L.T("wb.sim.viewonly", app.taskComputerName(app.S.Task("t_tea")))} {
 			if !strings.Contains(all, w) {
 				t.Errorf("%s: no %q on the Phone page: %q", lang, w, all)
 			}

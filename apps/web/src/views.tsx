@@ -1760,7 +1760,12 @@ function SwitchList({ task }: { task: Task }) {
                   {/* D161 (9): a group head is the device's mini card. */}
                   {dv && <img src={deviceArt(dv)} alt="" />}
                   <b>{dv?.name ?? g}</b>
-                  {dv && <span class={dv.state === "asleep" ? "asleep" : ""}>· {computerState(dv)}</span>}
+                  {dv && (
+                    <span class={`sw-state ${dv.state}`}>
+                      <i class="sdot" aria-hidden="true" />
+                      {computerState(dv)}
+                    </span>
+                  )}
                 </div>
                 {list.filter((c) => (c.device ?? "") === g).map(row)}
               </div>

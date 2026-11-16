@@ -107,13 +107,13 @@ func TestDeviceCards(t *testing.T) {
 			shot("mac-worker")
 
 			// Rename in place: click the name, type, Enter (here: the keep button).
-			h.click(L.T("device.rename") + " · Mac mini")
+			h.click(spoken(L, L.T("device.rename"), "Mac mini"))
 			h.settle(100 * time.Millisecond)
 			d.rename.draft = "Studio"
 			h.click(L.T("device.rename.ok"))
 			h.until("renamed", func() bool { x := h.app.S.Device("a3f9c2d1e0"); return x != nil && x.Name == "Studio" })
 			// Esc cancels an edit instead of leaving the page.
-			h.click(L.T("device.rename") + " · Studio")
+			h.click(spoken(L, L.T("device.rename"), "Studio"))
 			if !h.app.escDevice() || d.rename.device != "" || h.app.Route != RouteDevices {
 				t.Fatalf("esc: %+v route %v", d.rename, h.app.Route)
 			}

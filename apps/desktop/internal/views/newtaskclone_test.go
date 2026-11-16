@@ -31,7 +31,7 @@ func TestNewTaskCloneOnTheMac(t *testing.T) {
 			}
 		}
 		newTaskShot(t, tt, "clone-row-"+string(lang))
-		click(t, tt, L.T("newtask.add")+" · Macbook Pro M3")
+		click(t, tt, spoken(L, L.T("newtask.add"), L.T("newtask.find.on", "Macbook Pro M3")))
 		for _, s := range []string{L.T("newtask.add.title", "Macbook Pro M3"), L.T("newtask.new", "Macbook Pro M3"), L.T("newtask.choose", "Macbook Pro M3"), L.T("newtask.clone")} {
 			if !tt.HasText(s) {
 				t.Errorf("%s: the add panel: no %q: %q", lang, s, tt.Texts())
@@ -132,7 +132,7 @@ func TestNewTaskCloneOlderWorker(t *testing.T) {
 		if !tt.HasText(L.T("newtask.old.row", "Macbook Pro M3")) || !tt.HasText(L.T("newtask.old.why")) {
 			t.Errorf("%s: the older Mac says to update it: %q", lang, tt.Texts())
 		}
-		for _, s := range []string{L.T("newtask.add") + " · Macbook Pro M3"} {
+		for _, s := range []string{spoken(L, L.T("newtask.add"), L.T("newtask.find.on", "Macbook Pro M3"))} {
 			if tt.Click(s) == nil {
 				t.Errorf("%s: no %q row for an older Mac", lang, s)
 			}

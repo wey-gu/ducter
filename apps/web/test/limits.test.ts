@@ -49,8 +49,10 @@ describe("a limit wait's words", () => {
     const { clock } = await import("../src/format.ts");
     const w1 = A.S.waiterFor("t1")!;
     expect(w.limitAt(w1)).toBe(iso(reset));
-    expect(w.limitState(w1)).toBe(`额度 ${clock(iso(reset))} 恢复`);
-    expect(w.backWords(w1)).toBe(`额度 ${clock(iso(reset))} 恢复`);
+    // The reset may fall after midnight (明天 then joins 额度 with no space, by Chinese spacing).
+    const at = new RegExp(`^额度(?: |明天 )${clock(iso(reset))} 恢复$`);
+    expect(w.limitState(w1)).toMatch(at);
+    expect(w.backWords(w1)).toMatch(at);
     expect(w.limitState(A.S.waiterFor("t4")!)).toBe("等额度恢复");
   });
 
@@ -61,7 +63,7 @@ describe("a limit wait's words", () => {
     expect(o.storyOf(A.S.tasks.get("t4")!).words).toBe("Waiting until pi's limit resets");
     const { A: Z } = await home("zh");
     expect(o.storyOf(Z.S.tasks.get("t1")!).words).toBe("等 Claude Code 的额度恢复");
-    expect(o.waitNext(Z.S.waiterFor("t1")).text).toMatch(/^额度 .+ 恢复$/);
+    expect(o.waitNext(Z.S.waiterFor("t1")).text).toMatch(/^额度(?: |明天 ).+ 恢复$/); // after midnight: 额度明天 …
   });
 
   test("On hand groups the tasks on one account (two or more), a known reset over a next try", async () => {

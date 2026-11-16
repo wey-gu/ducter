@@ -80,7 +80,11 @@ func (a *App) taskInfo(c *ui.Context, task *store.Task) {
 			mark = "folder"
 		}
 		a.glyph(c, 14, drawInfoMark(mark, fg))
-		ui.Text(c, midCut(label, 30)).Font(t.Mono).FontSize(t.MonoSM).TextColor(fg).SingleLine().AccessHidden(true)
+		cut := 30
+		if a.compactBar() {
+			cut = 18 // D262: a narrow bar keeps room for the task's name
+		}
+		ui.Text(c, midCut(label, cut)).Font(t.Mono).FontSize(t.MonoSM).TextColor(fg).SingleLine().AccessHidden(true)
 		ui.Box(c).Size(10, 10).Shrink(0).Draw(drawCaret(fg)).AccessHidden(true)
 	})
 	if b.Clicked() {

@@ -17,7 +17,7 @@ import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, m
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { Btn, Chev, Seg, Toggle } from "./controls.tsx";
+import { Btn, Chev, Gear, NavBtn, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
@@ -1203,20 +1203,45 @@ function Presence({ line }: { line?: string }) {
 
 // ---------- header, composer ----------
 
-function OnHandButton() {
-  // Just the word: the header line says what needs you, in words; no row of colored dots.
-  return <Btn kind="secondary" size="sm" label={t("nav.onhand")} onClick={() => A.go({ name: "onhand" })} />;
+/** D262: the way to the other places, at the end of every bar: 更新 while something waits to be
+ *  updated, then the places (on a phone 手头的事 from the conversation and Settings' gear; wide, 设备
+ *  · 手头的事 · 设置 as on the Mac). here: the place shown, pressed in. One per screen. */
+export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | "settings"; onHand?: boolean }) {
+  const wide = useWide();
+  const ua = A.updateAll;
+  const running = !!ua?.plan && !ua.plan.finishedAt;
+  const n = ua?.offer.length ?? 0;
+  const home = (A.devices ?? []).find((d) => d.home);
+  return (
+    <>
+      {(n > 0 || running) && (
+        <NavBtn
+          label={running ? t("nav.updating") : n > 1 ? t("nav.update.n", n) : t("nav.update")}
+          about={t("nav.update.about")}
+          glyph={<UpdatePebble />}
+          onClick={() => A.openSettings("devices")}
+        />
+      )}
+      {wide && (
+        <NavBtn
+          label={t("nav.devices")}
+          about={t("nav.devices.label")}
+          here={here === "devices"}
+          glyph={<img class="nav-art" src={home ? deviceArt(home) : "app/art/dev_laptop_awake.webp"} alt="" />}
+          onClick={() => A.openSettings("devices")}
+        />
+      )}
+      {onHand && <NavBtn label={t("nav.onhand")} here={here === "onhand"} onClick={() => A.go({ name: "onhand" })} />}
+      <NavBtn label={t("nav.settings")} icon={!wide} here={here === "settings"} glyph={wide ? undefined : <Gear />} onClick={() => A.openSettings()} />
+    </>
+  );
 }
 
-const Plus = () => (
-  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
-  </svg>
-);
-
-function Top({ back, face = true, plus, level, extra }: { back?: string; face?: boolean; plus?: boolean; level?: string; extra?: preact.ComponentChildren }) {
-  // D176: side by side, the conversation's own header carries the face, and On hand is already
-  // in view: its pane's header names it instead of going back to a conversation that is there.
+function Top({ back, plus, level, extra }: { back?: string; plus?: boolean; level?: string; extra?: preact.ComponentChildren }) {
+  // D176: side by side, the conversation's own header carries the face and the places, and On hand
+  // is already in view: its pane's header names it instead of going back to a conversation that is
+  // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
+  // way to the other places (one per screen: the conversation's, when the panes stand side by side).
   const wide = useWide();
   if (back || level)
     return (
@@ -1225,36 +1250,39 @@ function Top({ back, face = true, plus, level, extra }: { back?: string; face?: 
           <h1 class="level">{level}</h1>
         ) : (
           // Side by side, an opened task goes back to On hand: the conversation never left.
-          <button class="back" onClick={() => (wide ? A.go({ name: "onhand" }) : history.length > 1 && location.hash ? history.back() : A.go({ name: "conv" }))}>
+          // D262: the crumb is the place it goes back to, in one word, as on the Mac (‹ 对话).
+          <button class="back" aria-label={wide ? t("nav.onhand") : back} onClick={() => (wide ? A.go({ name: "onhand" }) : history.length > 1 && location.hash ? history.back() : A.go({ name: "conv" }))}>
             <Back />
-            {wide ? t("nav.onhand") : back}
+            {wide ? t("nav.onhand") : t("nav.conversation")}
           </button>
         )}
         <span style={{ flex: 1 }} />
-        {plus && (
-          // 开一件事 / New task (D128): a quiet ＋, never a floating button.
-          <button class="plus" aria-label={t("newtask.button")} title={`${t("newtask.button")} (⌘N)`} onClick={() => A.openNewTask()}>
-            <Plus />
-          </button>
-        )}
+        {/* 新建 / New task (D128): the place's own action, the bar's clay button, never a floating one. */}
+        {plus && <NavBtn label={t("newtask.button")} about={`${t("newtask.button")} (⌘N)`} glyph={<PlusMark />} onClick={() => A.openNewTask()} />}
         {extra}
-        {face && !wide && <Avatar size={40} />}
         {/* D184: wide, the level can take the whole screen; the same button brings it back. */}
         {wide && <FillButton level={level ? "onhand" : "task"} />}
+        {!wide && (
+          <>
+            {(plus || extra) && <span class="bar-sep" aria-hidden="true" />}
+            <Places onHand={false} />
+          </>
+        )}
       </header>
     );
   return (
     <header class="top">
-      <button class="who" onClick={() => A.openSettings()} aria-label={t("settings.title")}>
+      {/* The partner opens its own page: a second way in; Settings is the visible one (D262). */}
+      <button class="who" onClick={() => A.openSettings("partner")} aria-label={t("nav.partner.about", A.S.personaName)} title={t("nav.partner.about", A.S.personaName)}>
         <Avatar size={52} />
         <span style={{ minWidth: 0 }}>
           <div class="name">{A.S.personaName}</div>
           <div class="sum" role="status">
-            {A.summary()}
+            {A.summary() || " "}
           </div>
         </span>
       </button>
-      {!wide && <OnHandButton />}
+      <Places onHand={!wide} />
     </header>
   );
 }
@@ -1902,7 +1930,6 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
       ) : (
         <Top
           back={t("nav.back")}
-          face={false}
           extra={
             <>
               <TaskInfoButton task={task} />

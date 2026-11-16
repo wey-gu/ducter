@@ -9,6 +9,12 @@ package i18n
 var zhIA = Table{
 	"nav.partner":  "伙伴",
 	"nav.settings": "设置",
+	// D262: the shell's way to the other places.
+	"nav.partner.about": "%s 的设置",
+	"nav.update":        "更新",
+	"nav.update.n":      "%d 项更新",
+	"nav.updating":      "正在更新",
+	"nav.update.about":  "有新版本：去更新",
 
 	// 它能看的账号 / Accounts it can read (D96); same keys as the phone.
 	"acct.title":                  "它能看的账号",
@@ -275,6 +281,12 @@ var enIA = Table{
 
 	"nav.partner":  "Partner",
 	"nav.settings": "Settings",
+	// D262: the shell's way to the other places.
+	"nav.partner.about": "%s's settings",
+	"nav.update":        "Update",
+	"nav.update.n":      "%d updates",
+	"nav.updating":      "Updating",
+	"nav.update.about":  "A new version is ready: update",
 
 	"partner.lives":          "Lives on %s",
 	"partner.rename":         "Rename",

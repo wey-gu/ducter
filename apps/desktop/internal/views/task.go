@@ -148,7 +148,7 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 // be done to the task itself (pause, drop) as quiet buttons. No chips: the
 // state is in words under it, the rest is in Details.
 func (a *App) taskHeader(c *ui.Context, task *store.Task) {
-	a.chrome(c, "task", func() {
+	a.placeBar(c, "task", RouteTask, func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.crumb(c, a.L.T("nav.onhand"), RouteOnHand)
 		title := shortTitle(task.Title())

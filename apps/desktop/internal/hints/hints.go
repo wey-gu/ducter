@@ -59,6 +59,63 @@ type state struct {
 	// Screens is "both" when the Phone page shows its screens side by
 	// side (D244).
 	Screens string `json:"screens,omitempty"`
+	// D262: the first frame is the settled one. SpokeLang is the language
+	// the window last followed from the person's words ("zh", "en"), and
+	// PersonaName the partner's name as last said, so the next launch
+	// starts in them instead of switching once the home answers.
+	SpokeLang   string `json:"spokeLang,omitempty"`
+	PersonaName string `json:"personaName,omitempty"`
+}
+
+// StartLang is the window's language at launch: the one chosen in
+// Settings (chosen), else the one last followed from the person's words,
+// else system. fixed (DUCTER_LOCALE) keeps system.
+func (l *Local) StartLang(system string, fixed bool) (lang string, chosen bool) {
+	if fixed {
+		return system, false
+	}
+	if v := l.Lang(); v == "zh" || v == "en" {
+		return v, true
+	}
+	if v := l.SpokeLang(); v == "zh" || v == "en" {
+		return v, false
+	}
+	return system, false
+}
+
+// SpokeLang is the language last followed from the person's words; empty
+// when none was.
+func (l *Local) SpokeLang() string {
+	if l == nil {
+		return ""
+	}
+	return l.st.SpokeLang
+}
+
+// SetSpokeLang remembers the language followed from the person's words.
+func (l *Local) SetSpokeLang(lang string) {
+	if l == nil || l.st.SpokeLang == lang {
+		return
+	}
+	l.st.SpokeLang = lang
+	l.save()
+}
+
+// PersonaName is the partner's name as last shown here.
+func (l *Local) PersonaName() string {
+	if l == nil {
+		return ""
+	}
+	return l.st.PersonaName
+}
+
+// SetPersonaName remembers the partner's name for the next launch.
+func (l *Local) SetPersonaName(name string) {
+	if l == nil || name == "" || l.st.PersonaName == name {
+		return
+	}
+	l.st.PersonaName = name
+	l.save()
 }
 
 // Ask is one answer to a gentle offer: "yes", "no", or "later" (asked

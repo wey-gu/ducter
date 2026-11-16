@@ -203,6 +203,29 @@ export function savedUiLang(): UiLang {
   }
 }
 export const UNDO_MS = 10_000;
+/** D262: the longest a first open waits on the home before showing its words. */
+export const SETTLE_MS = 1500;
+
+/** D262: the language this page last followed from the person's words, so the next open starts in
+ *  it instead of switching once the conversation arrives. */
+const SPOKE = "ducter.spoke";
+export function savedSpoke(): Lang | undefined {
+  try {
+    const v = localStorage.getItem(SPOKE);
+    return v === "zh" || v === "en" ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function saveSpoke(l: Lang) {
+  try {
+    if (localStorage.getItem(SPOKE) !== l) localStorage.setItem(SPOKE, l);
+  } catch {}
+}
+/** The language a page opens in: the one chosen on this device, else the one it followed last, else the system's. */
+export function startLang(ui: UiLang = savedUiLang()): Lang {
+  return ui === "auto" ? (savedSpoke() ?? detectLang()) : ui;
+}
 
 /** 对话里的细节 / Details in the conversation (D104): folded (the default) or shown, per client. */
 const DETAILS = "ducter.details";
@@ -229,7 +252,7 @@ class AppState {
   thinkingSince?: number;
   /** Messages whose Details the person flipped from the default (D104). */
   flipped = new Set<string>();
-  L: Strings = strings(this.uiLang === "auto" ? detectLang() : this.uiLang, HANDHELD);
+  L: Strings = strings(startLang(this.uiLang), HANDHELD);
   localeSet = this.uiLang !== "auto";
   /** The partner's settings (D71), once the server sent them; mem is what it remembers. */
   settings?: Settings;
@@ -406,8 +429,22 @@ class AppState {
     location.reload();
   }
 
+  /** D262: when this page started; a first open with nothing kept settles for at most SETTLE_MS. */
+  startedAt = Date.now();
+
+  /** D262: a first open on this device knows neither the conversation nor its language: until the
+   *  home's first answer lands (at most SETTLE_MS) it shows only the calm ground, never the system's
+   *  language switching to the person's. Any later open paints its kept screen at once (D209). */
+  settling(now = Date.now()): boolean {
+    if (this.fromGlance || this.uiLang !== "auto" || savedSpoke()) return false;
+    if (now - this.startedAt >= SETTLE_MS) return false;
+    if (!this.S.welcomed) return true;
+    return this.S.headSeq > 0 && this.S.channel.length === 0;
+  }
+
   start(base: URL, api: Api, me: Me, token: () => string | undefined) {
     this.base = base;
+    if (this.settling()) setTimeout(() => this.changed(), SETTLE_MS);
     this.api = api;
     this.me = me;
     if (me.personaName) this.S.personaName = me.personaName;
@@ -484,6 +521,8 @@ class AppState {
       if (ev.kind === "living_msg") this.livingAway.set(ev.seq, false);
     }
     this.fromGlance = g.events.length > 0 || !!g.onHand;
+    // D262: the kept conversation already says which language to speak: the first frame is in it.
+    this.followUserLanguage();
   }
 
   /** Keeps the screen as it is now, a moment after it settles (and at once when the page hides). */
@@ -1557,7 +1596,7 @@ class AppState {
       else localStorage.setItem(UI_LANG, v);
     } catch {}
     this.localeSet = v !== "auto";
-    this.L = strings(v === "auto" ? detectLang() : v, HANDHELD);
+    this.L = strings(v === "auto" ? startLang(v) : v, HANDHELD);
     if (v === "auto") this.followUserLanguage();
     this.changed();
   }
@@ -1569,6 +1608,7 @@ class AppState {
     const l = langOfText(first.user!.text);
     if (l) {
       this.localeSet = true;
+      saveSpoke(l); // D262: the next open starts in it
       if (l !== this.L.lang) this.L = strings(l, HANDHELD);
     }
   }

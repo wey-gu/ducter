@@ -38,7 +38,7 @@ user; no live clone has been run (tests fake git).
   whom and wants no middleman rewriting it; also anyone who already knows the words.
 - **Before:** "I know what I want; let me just start it." **After:** it is running, in the
   place they picked, with their own words, and the partner will tell them when it's done.
-- **First time:** they see 新建 / New task on On hand (a quiet text button, never a FAB),
+- **First time:** they see 新建 / New task on On hand (the bar's clay button with its ＋, D262; never a FAB),
   or press ⌘N. The card's defaults are already right (last repo, its default branch, the best
   fit); typing and pressing Start is all it takes.
 

@@ -17,13 +17,14 @@ import (
 func (a *App) onHand(c *ui.Context) {
 	t := a.T
 	b := a.S.Board()
-	a.chrome(c, "onhand", func() {
+	a.placeBar(c, "onhand", RouteOnHand, func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.chromeTitle(c, a.L.T("onhand.title"))
 		ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).Margin(0, 0, 0, 4)
 	}, func() {
-		// 新建 / New task: a quiet text button, never a FAB (D128).
-		if a.button(c, a.L.T("newtask.button"), btnText, t.ControlSM, t.Chrome) {
+		// 新建 / New task: the place's own action, a clay button in the bar
+		// like every other (D262), never a FAB (D128).
+		if a.newTaskButton(c) {
 			a.OpenNewTask(nil)
 		}
 	})

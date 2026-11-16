@@ -204,7 +204,7 @@ func (a *App) devicesView(c *ui.Context) {
 		d.ability = protocol.AbilityWeb
 	}
 
-	a.chrome(c, "devices", func() {
+	a.placeBar(c, "devices", RouteDevices, func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.chromeTitle(c, a.L.T("devices.title"))
 	}, nil)

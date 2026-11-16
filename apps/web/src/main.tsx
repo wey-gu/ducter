@@ -70,6 +70,9 @@ function App() {
   const rail = r.name === "task" && (book ? fill : !split && (benched ? roomyBench : roomy));
   // D244: a task open on this device is seen, whatever it says now (seen.ts: 新结果 / New result).
   if (benchTask) markSeen(benchTask.id, benchTask.card?.updatedAt);
+  // D262: a first open settles on the calm ground (at most 1.5 s) instead of flashing the system's
+  // language before the person's. After every hook, so their order never changes.
+  if (A.settling()) return <main class="boot" aria-busy="true" />;
   return (
     <>
       {fill ? (

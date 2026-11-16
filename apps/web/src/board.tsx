@@ -6,11 +6,11 @@
 // (apps/desktop/internal/views/onhand.go).
 import type { ComponentChildren } from "preact";
 import { A } from "./app.ts";
-import { Btn } from "./controls.tsx";
+import { NavBtn, PlusMark } from "./controls.tsx";
 import { when } from "./format.ts";
 import { LANE, title } from "./store.ts";
 import { shortTitle } from "./transcript.tsx";
-import { Avatar } from "./views.tsx";
+import { Avatar, Places } from "./views.tsx";
 import { useCanFill, useFill } from "./wide.ts";
 import { RoutineShelf } from "./work.tsx";
 import { OnHandList } from "./onhand.tsx";
@@ -72,9 +72,12 @@ export function FullTop({ task, sub, children }: { task?: Task; sub?: string; ch
         </h1>
         {sub && <span class="sum">{sub}</span>}
       </nav>
+      {/* D262: the bar's one anatomy: this place's own actions, then the way to the other places. */}
       <span class="acts">
         {children}
         <FillButton level={task ? "task" : "onhand"} />
+        <span class="bar-sep" aria-hidden="true" />
+        <Places here={task ? undefined : "onhand"} />
       </span>
     </header>
   );
@@ -130,7 +133,7 @@ export function Board() {
     <>
       <FullTop sub={boardSummary()}>
         {/* 新建 / New task: a quiet text button, never a floating one (D128). */}
-        <Btn kind="text" size="sm" label={t("newtask.button")} about="⌘N" onClick={() => A.openNewTask()} />
+        <NavBtn label={t("newtask.button")} about={`${t("newtask.button")} (⌘N)`} glyph={<PlusMark />} onClick={() => A.openNewTask()} />
       </FullTop>
       <main class="scroll board">
         {nothing ? (

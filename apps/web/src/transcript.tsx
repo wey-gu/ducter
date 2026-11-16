@@ -478,6 +478,16 @@ export function switchLine(task: Task, b: Extract<Block, { k: "note" }>): string
   return t(`note.${b.say}`, b.name || t("note.computer"), at);
 }
 
+/** D299: where an outside session's earlier turns began: the agent and the day. */
+export function earlierLine(b: Extract<Block, { k: "note" }>): string {
+  const agent = b.name || t("note.earlier.agent");
+  const ms = b.at ? Date.parse(b.at) : NaN;
+  if (!Number.isFinite(ms)) return t("note.earlier.undated", agent);
+  const d = new Date(ms);
+  const day = A.L.lang === "zh" ? `${d.getMonth() + 1}月${d.getDate()}日` : d.toLocaleDateString("en", { month: "short", day: "numeric" });
+  return A.L.lang === "zh" ? t("note.earlier", day, agent) : t("note.earlier", agent, day);
+}
+
 function noteName(b: Extract<Block, { k: "note" }>): string {
   if (b.say === "effort_dropped") return b.name ? effortWord(A.L, b.name) : "";
   if (b.say === "offline" || b.say === "back" || b.say === "waiting_device") return b.name || t("note.computer");
@@ -538,6 +548,13 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
           <div class="tx-divider" role="separator">
             {/* D288: with its size before and after when known (压缩了上下文 · 152k → 31k). */}
             <span>{b.say === "compacted" && b.from && b.to ? t("note.compacted.size", tokensShort(b.from), tokensShort(b.to)) : b.say === "compacted" && b.from ? t("note.compacted.from", tokensShort(b.from)) : t(`note.${b.say}`)}</span>
+          </div>
+        );
+      // D299: a session from outside Ducter: its earlier turns follow (11月12日在 Claude Code 里开始的).
+      if (b.say === "earlier")
+        return (
+          <div class="tx-divider earlier" role="separator">
+            <span>{earlierLine(b)}</span>
           </div>
         );
       // D282: who does it changed inside the task: one hairline with its time (换成 Codex 接着做 · 21:40).

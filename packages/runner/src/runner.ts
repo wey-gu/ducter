@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief, type CarryOver } from "./brief.ts";
+import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief, type CarryOver } from "./brief.ts";
 import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace, type ResolvedPlace } from "./places.ts";
@@ -188,6 +188,8 @@ interface TaskRt {
   waiting?: StartCtx;
   /** D157: the user moved it to another computer; its next session starts with movedOver. */
   movedFrom?: { from: string; to: string; repo: boolean };
+  /** D299: carried on from a session the person ran outside Ducter, by another agent: its first session starts with outsideOver. */
+  outsideOver?: boolean;
 }
 
 /** The turn after a browser driver switch (D130): same task, now on Ducter's own browser. */
@@ -679,9 +681,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const seed = t.movedFrom
       ? movedOver(t.movedFrom.from, t.movedFrom.to, progress, t.movedFrom.repo)
       : t.handedFrom
-        ? handedOver(harnessName(t.handedFrom), progress.slice(-CARRY_CHECKPOINTS), await carryOver(t))
+        ? t.outsideOver
+          ? outsideOver(harnessName(t.handedFrom), await carryOver(t))
+          : handedOver(harnessName(t.handedFrom), progress.slice(-CARRY_CHECKPOINTS), await carryOver(t))
         : startedAfresh(progress);
     t.movedFrom = undefined;
+    t.outsideOver = undefined;
     await startSession(t, false);
     return seed;
   }
@@ -1453,7 +1458,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const fixed = h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined;
     const model = (ranked && fixed) || input.model || fixed;
     const later = typeof briefIn !== "string";
-    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(!later && input.media?.length ? { media: input.media } : {}), ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.from ? { from: input.from } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}) };
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(!later && input.media?.length ? { media: input.media } : {}), ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.from ? { from: input.from } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}), ...(input.adopt ? { outside: { agent: input.adopt.agent, sessionId: input.adopt.sessionId, startedAt: input.adopt.startedAt } } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
     core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), ...(effort ? { effort } : {}), why: pick?.why ?? { kind: input.harness ? (you ? "you" : "partner") : "default" } } });
     const card: TaskCard = {
@@ -1491,8 +1496,49 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return core.tasks.get(id) ?? card;
     }
     core.tasks.setState(id, "queued", "provisioning");
-    t.started = launch(t, start, resolved);
+    t.started = input.adopt ? adopt(t, input.adopt, resolved) : launch(t, start, resolved);
     return core.tasks.get(id) ?? card;
+  }
+
+  /**
+   * D299: a session the person ran in their own agent outside Ducter becomes this task. Its
+   * conversation goes into the task's history (the transcript shows it as earlier turns); then
+   * the same agent resumes that very session by its id, in its own folder (the agent appends to
+   * its file as it does by hand), or another agent starts there from what the session said
+   * (D282's condensed start). Ducter never writes the session's file itself.
+   */
+  async function adopt(t: TaskRt, a: NonNullable<Parameters<Runner["openTask"]>[0]["adopt"]>, resolved: ResolvedPlace): Promise<void> {
+    const same = a.agent === t.base.harness;
+    // The person worked in this folder directly by hand; their own tools (git) are its undo.
+    t.direct = true;
+    logEvent(t, { role: "system", from: "runner", raw: { folder: { direct: true } } });
+    logEvent(t, { role: "system", from: "runner", text: `carried on from a ${harnessName(a.agent)} session started outside Ducter`, raw: { outside: { agent: a.agent, at: a.startedAt, turns: a.turns.length }, ...(same ? { sessionId: a.sessionId, harness: a.agent } : {}) } });
+    for (const turn of a.turns) logEvent(t, { role: turn.role, ...(turn.role === "user" ? { from: "user" as const } : {}), text: preview(turn.text, 16 * 1024), raw: { outside: true, ...(turn.at ? { at: turn.at } : {}) } });
+    if (same) {
+      t.sessionId = a.sessionId;
+      (t.past ??= {})[a.agent] = a.sessionId;
+      // A rejected resume falls back to what the session said, like another agent would get.
+      t.handedFrom = a.agent;
+      t.outsideOver = true;
+    } else {
+      logEvent(t, { role: "system", from: "runner", text: `switched from ${a.agent} to ${t.base.harness}`, raw: { switched: { from: a.agent, to: t.base.harness } } });
+      t.handedFrom = a.agent;
+      t.outsideOver = true;
+    }
+    try {
+      await t.ops.provision(resolved);
+      const seed = await resumeOrSeed(t);
+      t.handedFrom = undefined;
+      t.outsideOver = undefined;
+      if (t.dropped) return;
+      const told = `${ADOPTED} It began in ${harnessName(a.agent)} on ${a.startedAt.slice(0, 10)}, in ${t.spec.cwd}${same ? "; this is that same session, resumed, so its earlier turns are yours" : ""}.`;
+      await sendTurn(t, seed ? `${told}\n\n${seed}` : told, "ducter");
+    } catch (err) {
+      if (isOffline(err)) return deviceLost(t, true);
+      const reason = preview(err instanceof Error ? err.message : String(err), 500);
+      logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}` });
+      setState(t, "failed", "archived", reason);
+    }
   }
 
 

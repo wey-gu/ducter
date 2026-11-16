@@ -51,6 +51,24 @@ var gos = []struct {
 
 // switchLine is a switch inside the task with its time (D282): 换成 Codex
 // 接着做 · 21:40, 换成 Sonnet · 高 · 21:40, 换到 hel 接着做 · 21:40.
+// earlierLine is where an outside session's earlier turns began (D299):
+// the agent and the day.
+func (a *App) earlierLine(b *Block) string {
+	agent := b.Name
+	if agent == "" {
+		agent = a.L.T("note.earlier.agent")
+	}
+	at := store.ParseTime(b.At)
+	if at.IsZero() {
+		return a.L.T("note.earlier.undated", agent)
+	}
+	at = at.Local()
+	if a.L.Lang == i18n.ZH {
+		return a.L.T("note.earlier", fmt.Sprintf("%d月%d日", int(at.Month()), at.Day()), agent)
+	}
+	return a.L.T("note.earlier", agent, at.Format("Jan 2"))
+}
+
 func (a *App) switchLine(task *store.Task, b *Block) string {
 	at := clock(a.tsOf(task, b.Seq))
 	if b.Say == "retuned" {

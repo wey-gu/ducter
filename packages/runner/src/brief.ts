@@ -291,6 +291,22 @@ export function handedOver(from: string, progress: string[], carry?: CarryOver):
 }
 
 /**
+ * D299: the first turn of a session the person ran outside Ducter, now carried on as a Ducter
+ * task (its own agent resumed it, or another agent took it over). Logged from "ducter": the
+ * transcript draws it as one hairline, never as the person's words.
+ */
+export const ADOPTED =
+  "The user picked this session up again in Ducter; it is a Ducter task now. Check where the work stands, then carry on from where it was left. If it was already finished, say so via report_to_main and wait for them. Report via report_to_main when done, blocked, or needing a decision.";
+
+/**
+ * D299: another agent takes over a session the person ran outside Ducter: what that session's
+ * own conversation ended with (the person's last words to it and its last words), read from it.
+ */
+export function outsideOver(from: string, carry?: CarryOver): string {
+  return `This work began in ${from}, which the user ran by hand outside Ducter, in this same folder; the user moved it to you to carry on. Check where things stand (the files, git status, git log), then continue from there. Don't start over.${carryLines(carry)}`;
+}
+
+/**
  * D282: what a task carries to another agent beside the brief (in its instructions) and the
  * saved progress: its last report and the questions in it, the person's words to it since, the
  * last thing the agent said, and what the branch holds. All read from the task's own Log.

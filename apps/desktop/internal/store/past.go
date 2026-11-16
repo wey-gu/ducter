@@ -12,6 +12,9 @@ type PastState struct {
 	Version int
 	// Ongoing is 一直在跑的 / Ongoing's last list (nil until asked).
 	Ongoing []protocol.OngoingItem
+	// Adopted is the last outside_adopted (D299): the outside session
+	// carried on, and its task (or why not).
+	Adopted *protocol.PastFrame
 }
 
 func (s *Store) applyPast(f protocol.ServerFrame) {
@@ -25,6 +28,25 @@ func (s *Store) applyPast(f protocol.ServerFrame) {
 		s.Past.Result, s.Past.ResultID = p, p.ID
 	case "ongoing_result":
 		s.Past.Ongoing = p.Ongoing
+	case "outside_adopted":
+		s.Past.Adopted = p
+	case "outside_hidden":
+		if r := s.Past.Result; r != nil {
+			for i := range r.Sources {
+				if r.Sources[i].Agent == p.Agent {
+					r.Sources[i].Hidden = p.Hidden
+				}
+			}
+			if p.Hidden {
+				var kept []protocol.OutsideItem
+				for _, o := range r.Outside {
+					if o.Agent != p.Agent {
+						kept = append(kept, o)
+					}
+				}
+				r.Outside = kept
+			}
+		}
 	case "past_marked":
 		var mark *protocol.PastMark
 		if p.Mark != nil {

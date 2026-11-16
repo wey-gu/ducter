@@ -106,6 +106,8 @@ type Block struct {
 	// Timer is a wake's (D271): its wait was for a time. A wake's Text is
 	// the wait's reason.
 	Timer bool `json:"timer,omitempty"`
+	// At is an earlier note's (D299): when the outside session began.
+	At string `json:"at,omitempty"`
 }
 
 // The words core's work.ts sends a task when its own wait ends (D271),
@@ -144,6 +146,8 @@ var tolds = []struct {
 	{regexp.MustCompile(`^The user (?:said no to lending you their phone|said not now to using their own phone)`), "declined"},
 	{regexp.MustCompile(`^The user pressed 停下 / Stop`), "stopped"},
 	{regexp.MustCompile(`^The user reopened this task\.`), "reopened"},
+	// D299: a session from outside Ducter, carried on here.
+	{regexp.MustCompile(`^The user picked this session up again in Ducter`), "adopted"},
 	// D280: a loan of the person's own phone ended: taken back, given back
 	// (or the task finished), or lost.
 	{regexp.MustCompile(`^Your loan of (.+?) ended: (?:the user |Android's switch for Ducter went off)`), "taken_back"},
@@ -243,6 +247,14 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 		return b
 	}
 	_, hasDevice := r["device"]
+	// D299: a session the person ran outside Ducter: its earlier turns follow.
+	if out := obj("outside"); out != nil {
+		name := ""
+		if ag := str(out["agent"]); ag != "" {
+			name = harnessName(ag)
+		}
+		return Block{Say: "earlier", Name: name, At: str(out["at"])}, true
+	}
 	switch {
 	// D268: a divider for a compaction or an interruption; a retry only while it is the latest thing.
 	case r["kind"] == "compaction_ended" && r["outcome"] != "failed":

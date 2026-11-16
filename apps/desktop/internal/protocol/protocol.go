@@ -2049,7 +2049,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "channels", "channel_result",
 		"handset_dial_result":
-	case "past_result", "past_marked":
+	case "past_result", "past_marked", "outside_adopted", "outside_hidden":
 		return decodePast(data, f)
 	case "ongoing_result":
 		return decodeOngoing(data, f)

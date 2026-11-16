@@ -323,6 +323,9 @@ export interface Bodies {
     origin?: "you";
     // D285: opened with 带着它开新任务 / New task from this: the task its brief carries findings from.
     from?: string;
+    // D299: a session the person ran in their own AI agent outside Ducter, carried on here: which
+    // agent kept it, its id there, and when it began. The task works in that session's folder.
+    outside?: { agent: string; sessionId: string; startedAt: string };
     // D157: what the task needs of its computer (kept so a move or a switch keeps them).
     needs?: TaskNeeds;
   };
@@ -644,6 +647,8 @@ export interface TaskCard {
   original?: string;
   /** D285: seeded from that task (New task from this). */
   from?: { taskId: string; title: string };
+  /** D299: carried on from a session the person ran in their own agent outside Ducter. */
+  outside?: { agent: string; sessionId: string; startedAt: string };
 }
 
 export interface OnHand {

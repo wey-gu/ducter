@@ -904,6 +904,10 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		a.Welcomed()
 	case "action_result":
 		delete(a.actSent, f.TaskID)
+	case "outside_adopted":
+		a.outsideAdopted(f.Past) // D299 (pastoutside.go)
+	case "outside_hidden":
+		a.askPast()
 	case "media_keys":
 		a.keysCame(f.MediaKeys)
 	case "devices":

@@ -10,7 +10,9 @@ const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 // The seed can log events in the past (a run that took minutes, D268), then time is real again.
 let skew = 0;
 const clock = { ...realClock, now: () => Date.now() + skew };
-const core = startCore({ ooSource: noOo, persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", clock });
+// D299: the demo reads its own scratch "this computer", never the real home's agent sessions.
+const localAgents = (await import("./demo-outside.ts")).outsideAgents(zh, process.env.DEMO_PAST === "1");
+const core = startCore({ localAgents, ooSource: noOo, persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", clock });
 core.setRunner(stubRunner(core));
 // A quiet partner: the seed below writes its words, so a live reply would only be noise.
 core.setPartner({ onTrigger() {} });
@@ -185,6 +187,7 @@ await tick();
 if (process.env.DEMO_PAST === "1") {
   await (await import("./demo-past.ts")).seedPast(core, zh, (ms) => (skew = ms));
   await (await import("./demo-ongoing.ts")).seedOngoing(core, zh);
+  await (await import("./demo-outside.ts")).seedAdopted(core, zh);
 }
 
 // After the seed, a scripted partner answers new messages the way a real one paces itself, so

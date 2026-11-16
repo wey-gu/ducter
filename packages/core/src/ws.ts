@@ -121,7 +121,7 @@ export interface WsDeps {
   /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
-  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing };
+  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside };
   batchMs?: number;
 }
 
@@ -1099,8 +1099,11 @@ export function createWsHandler(deps: WsDeps) {
       // D285: 做过的事 / Past tasks.
       case "past": {
         if (!deps.past) throw new Error("past tasks are not available");
-        const r = deps.past.query(deps.past.persona(), f.query && typeof f.query === "object" ? f.query : {});
-        send(ws, { t: "past_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), ...r });
+        const query = f.query && typeof f.query === "object" ? f.query : {};
+        const r = deps.past.query(deps.past.persona(), query);
+        // D299: the sessions the person ran in their own agents here, beside Ducter's tasks.
+        const o = deps.past.outside?.list(query);
+        send(ws, { t: "past_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), ...r, ...(o ? { outside: o.items, sources: o.sources } : {}) });
         return;
       }
       case "past_mark": {
@@ -1133,6 +1136,25 @@ export function createWsHandler(deps: WsDeps) {
         const r = await o.act(kind === "routine" ? "routine" : "task", String(id ?? ""), a as import("@ducter/protocol").OngoingAction).catch((err: Error) => ({ ok: false, message: err.message }));
         send(ws, { t: "action_result", taskId: String(id ?? ""), action: a.action, ok: r.ok, ...(r.message ? { message: r.message } : {}) });
         ongoingChanged();
+        return;
+      }
+      case "outside_continue": {
+        // D299: a session from outside Ducter carried on as a task (the same agent resumes it).
+        const o = deps.past?.outside;
+        const done = (r: { ok: boolean; taskId?: string; message?: string }) => send(ws, { t: "outside_adopted", agent: f.agent, id: f.id, ...r });
+        if (!o) return done({ ok: false, message: "Past tasks are not available." });
+        const harness = typeof f.harness === "string" && f.harness ? f.harness : undefined;
+        const model = typeof f.model === "string" && f.model ? f.model : undefined;
+        const r = await o.adopt(deps.runner(), deps.past!.persona(), f.agent, String(f.id ?? ""), harness, model);
+        if (r.ok && r.taskId) log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: `act_${r.taskId}_continue`, taskId: r.taskId, state: "running", text: `the user carried on a ${f.agent} session they had run outside Ducter${harness && harness !== f.agent ? `, with ${harness}` : ""}` } });
+        return done(r);
+      }
+      case "outside_hide": {
+        const o = deps.past?.outside;
+        if (!o) throw new Error("past tasks are not available");
+        o.hide(f.agent, !!f.hidden);
+        for (const s of sockets) if (s.data.live && s.data.client !== "cli") send(s, { t: "outside_hidden", agent: f.agent, hidden: !!f.hidden });
+        if (!sockets.has(ws)) send(ws, { t: "outside_hidden", agent: f.agent, hidden: !!f.hidden });
         return;
       }
       case "past_continue": {

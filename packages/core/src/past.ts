@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { dirname, join } from "node:path";
 import {
   harnessName,
+  OUTSIDE_AGENTS,
   PAST_GLYPHS,
   PAST_NAME_LEN,
   PAST_TAG_LEN,
@@ -16,6 +17,7 @@ import {
   PAST_TINTS,
   type Bodies,
   type LogEvent,
+  type OutsideAgent,
   type PastFacets,
   type PastField,
   type PastGlyph,
@@ -288,7 +290,7 @@ const bigrams = (s: string) => {
 };
 
 /** How well a term matches a text: 1 whole word or CJK substring, 0.75 inside a word, scaled by the share of CJK bigrams (half or more), else 0. */
-function termIn(term: string, text: string): { s: number; at: number } {
+export function termIn(term: string, text: string): { s: number; at: number } {
   if (!text) return { s: 0, at: -1 };
   const at = text.indexOf(term);
   if (at >= 0) {
@@ -409,6 +411,7 @@ export function createPast(d: PastDeps): Past {
       kind: kindOf(own, doc?.brief),
       ...(mark ? { mark } : {}),
       ...(from && fromCard ? { from: { taskId: from, title: fromCard.title } } : {}),
+      ...(c.outside && (OUTSIDE_AGENTS as readonly string[]).includes(c.outside.agent) ? { outside: { agent: c.outside.agent as OutsideAgent, startedAt: c.outside.startedAt } } : {}),
     };
   };
 

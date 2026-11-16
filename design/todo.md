@@ -18,6 +18,19 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] **Change when for every week picks the weekday** (today it keeps the routine's own day). Trigger: the first weekly routine moved to another day.
 - [ ] **On hand's rows draw the person's picture and name** (the name already is the title; the picture is not drawn on rows yet). Trigger: On hand's redesign settles.
 
+## Earlier sessions from the person's own agents (D299, `past.md`, research/103)
+
+- A worker's own sessions: a `localSessions` op over the worker link answering the shared reader's
+  `sessions()` there, and Continue on that worker. Trigger: the first person with a worker who asks.
+- A session still running in a terminal: say **还开着 / Still open** (its file written in the last
+  few minutes, or the agent's own lock) and hold Continue until it ends. Trigger: before release.
+- Codex's own thread names (`/rename`) from its `state_5.sqlite` `threads.name`, read only, when the
+  schema is the known one. Trigger: a Codex user asks why a renamed thread shows its first words.
+- 带着它开新任务 / New task from this for an outside session (its last words and first ask as the
+  seed). Trigger: after the first real use.
+- A real-model run: carry a real Claude Code and a real Codex session on, and switch it once.
+- Keys on the outside cards (j/k walk into the section, Enter continues).
+
 ## Chat apps (D276, `channels.md`)
 
 Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).

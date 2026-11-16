@@ -11,6 +11,10 @@
 //    is its one sentence plus 在 Ducter 里看看 / Open in Ducter; money, sign-ins and keys never go
 //    to a chat app. A card answered anywhere is edited there to its end state.
 //  - The living message: only a status line is edited in place; anything new is a new message.
+//  - D301, WeChat (research/105): the scan is the pairing; it may write only inside the window
+//    after the person's words (caps.replyWindowMs, caps.windowSends), with no buttons and no edits,
+//    so a question asks for a typed 好 / 先等等 and there is no status line.
+import { CHANNEL_KINDS } from "@ducter/protocol";
 import type { Bodies, ChannelKind, ChannelView, LangTag, LogEvent, ReplyWant, ServerFrame } from "@ducter/protocol";
 import { fill, words as wordsIn } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
@@ -25,6 +29,8 @@ import { ChannelError, type BotInfo, type Channel, type InMessage, type InTap, t
 import { createSlack, isSlackAppToken, isSlackBotToken, slackManifest } from "./slack.ts";
 import { openChannelStore, type ChannelRec, type ChannelStore } from "./store.ts";
 import { createTelegram, isTelegramToken } from "./telegram.ts";
+import { createWechat, wechatLogin, WECHAT_API, type WechatLogin } from "./wechat.ts";
+import { qrRows } from "../devices.ts";
 
 /** A turn started in a chat app is "now" for this long: its answers, asks and status go there at once. */
 export const TURN_MS = 15 * 60_000;
@@ -58,6 +64,8 @@ const HUB_WORDS = {
     still: "还在做：{t}…",
     done: "做完了：{t}",
     failed: "没做成：{t}",
+    reply: "回「好」就{label}，回「先等等」就先放着。",
+    openAt: "在 Ducter 里看看：{url}",
   },
   en: {
     linked: "Linked. Talk to me here any time.",
@@ -73,6 +81,8 @@ const HUB_WORDS = {
     still: "Still on it: {t}…",
     done: "Done: {t}",
     failed: "Didn't work: {t}",
+    reply: "Reply “ok” to {label}, or “wait” to hold it.",
+    openAt: "Open in Ducter: {url}",
   },
 };
 
@@ -94,12 +104,14 @@ export interface ChannelDeps {
   make?: (kind: ChannelKind, rec: ChannelRec, store: ChannelStore) => Channel;
   sleep?: (ms: number) => Promise<void>;
   gapMs?: number;
+  /** D301, tests: WeChat's login against a fake, and the pause between scan polls. */
+  wechat?: { login?: WechatLogin; api?: string; pollGapMs?: number };
 }
 
 export interface Channels {
   view(): ChannelView[];
   frame(): Extract<ServerFrame, { t: "channels" }>;
-  connect(kind: ChannelKind, t: { token?: string; botToken?: string; appToken?: string }): Promise<{ ok: boolean; reason?: "token" | "network" }>;
+  connect(kind: ChannelKind, t: { token?: string; botToken?: string; appToken?: string; verifyCode?: string }): Promise<{ ok: boolean; reason?: "token" | "network" }>;
   code(kind: ChannelKind): { ok: true; code: string; link?: string; expiresAt: number } | { ok: false; reason: "not_connected" | "busy" };
   unlink(kind: ChannelKind): boolean;
   forget(kind: ChannelKind): void;
@@ -184,6 +196,8 @@ export function createChannels(deps: ChannelDeps): Channels {
     still: (t: string) => fill(w().still, { t }),
     done: (t: string) => fill(w().done, { t }),
     failed: (t: string) => fill(w().failed, { t }),
+    reply: (label: string) => fill(w().reply, { label: label || w().goPlain }),
+    openAt: (url: string) => fill(w().openAt, { url }),
   };
 
   // ---------- what is up ----------
@@ -193,17 +207,146 @@ export function createChannels(deps: ChannelDeps): Channels {
     const l = live.get(kind);
     return l?.up && !l.trouble && linkedOf(kind) ? l : undefined;
   };
+  /** D301: until when an app that only answers may still write (undefined: any time; 0: not heard yet). */
+  const openUntil = (kind: ChannelKind): number | undefined => {
+    const caps = live.get(kind)?.ch.caps;
+    if (!caps?.replyWindowMs) return undefined;
+    const rec = store.get(kind);
+    const heard = rec?.heardAt ? Date.parse(rec.heardAt) : 0;
+    if (!heard) return 0;
+    if ((rec?.sentSince ?? 0) >= (caps.windowSends ?? Infinity)) return heard; // used up: closed
+    return heard + caps.replyWindowMs;
+  };
+  /** Ready, and allowed to write now (WeChat's window, D301). */
+  const reach = (kind: ChannelKind) => {
+    const l = ready(kind);
+    if (!l) return undefined;
+    const until = openUntil(kind);
+    return until === undefined || clock.now() < until ? l : undefined;
+  };
+  /** One message of the window went out. */
+  const spend = (kind: ChannelKind) => {
+    if (!live.get(kind)?.ch.caps.replyWindowMs) return;
+    store.patch(kind, { sentSince: (store.get(kind)?.sentSince ?? 0) + 1 });
+    changed();
+  };
+  /** The app refused for the window: closed until the person writes again. */
+  const spent = (kind: ChannelKind) => {
+    const caps = live.get(kind)?.ch.caps;
+    if (!caps?.replyWindowMs) return;
+    store.patch(kind, { sentSince: caps.windowSends ?? 0 });
+    changed();
+  };
+
+  // ---------- WeChat's scan (D301): the person's own WeChat scans a QR; that scan is the pairing ----------
+
+  interface Scan {
+    qrcode: string;
+    text: string;
+    rows: string[];
+    base: string;
+    step: "wait" | "scanned" | "verify";
+    expiresAt: number;
+    refreshes: number;
+    verify?: string;
+    stop: AbortController;
+  }
+  let scan: Scan | undefined;
+  let scanFail: "expired" | "unavailable" | undefined;
+  /** A QR is good for 5 minutes; an expired one is replaced at most 3 times (research/105 §2.2). */
+  const SCAN_MS = 5 * 60_000;
+  const login = () => deps.wechat?.login ?? wechatLogin(deps.wechat?.api ? { api: deps.wechat.api } : {});
+  const loginApi = () => (deps.wechat?.api ?? WECHAT_API).replace(/\/$/, "");
+  const endScan = (fail?: "expired" | "unavailable") => {
+    scan?.stop.abort();
+    scan = undefined;
+    scanFail = fail;
+    changed();
+  };
+  const freshQr = async (stop: AbortController, refreshes: number): Promise<Scan> => {
+    const known = store.get("wechat")?.token;
+    const q = await login().qr(known ? [known] : []);
+    return { qrcode: q.qrcode, text: q.text, rows: qrRows(q.text), base: loginApi(), step: "wait", expiresAt: clock.now() + SCAN_MS, refreshes, stop };
+  };
+  const confirmed = async (r: { bot_token?: string; ilink_bot_id?: string; baseurl?: string; ilink_user_id?: string }) => {
+    if (!r.bot_token || !r.ilink_bot_id || !r.ilink_user_id) return endScan("expired");
+    const before = store.get("wechat");
+    const same = before?.linked?.id === r.ilink_user_id && before?.bot?.id === r.ilink_bot_id;
+    // The one who scanned is the one account: WeChat lets nobody else add this ClawBot.
+    const rec: ChannelRec = {
+      token: r.bot_token,
+      ...(r.baseurl ? { base: r.baseurl } : {}),
+      bot: { id: r.ilink_bot_id, name: "ClawBot" },
+      linked: { id: r.ilink_user_id, chat: r.ilink_user_id, name: "", at: same ? before!.linked!.at : new Date(clock.now()).toISOString() },
+      ...(same && before?.buf ? { buf: before.buf } : {}),
+      ...(same && before?.ctx ? { ctx: before.ctx, ...(before.heardAt ? { heardAt: before.heardAt } : {}), sentSince: before.sentSince ?? 0 } : {}),
+    };
+    store.set("wechat", rec);
+    endScan();
+    await bring("wechat", rec).catch((err) => console.warn(`[channels] wechat didn't start: ${(err as Error).message}`));
+  };
+  const watchScan = async (first: Scan) => {
+    let s = first;
+    const gap = deps.wechat?.pollGapMs ?? 1000;
+    const again = async (fail: "expired" | "unavailable") => {
+      if (s.refreshes >= 3) return endScan(fail);
+      try {
+        const next = await freshQr(s.stop, s.refreshes + 1);
+        if (scan !== s) return;
+        scan = s = next;
+        changed();
+      } catch {
+        if (scan === s) endScan(fail);
+      }
+    };
+    while (scan === s && !s.stop.signal.aborted) {
+      const verify = s.verify;
+      s.verify = undefined;
+      const r = await login().status(s.base, s.qrcode, verify, s.stop.signal);
+      if (scan !== s) return;
+      switch (r.status) {
+        case "scaned":
+          if (s.step !== "scanned") (s.step = "scanned"), changed();
+          break;
+        case "need_verifycode":
+          if (s.step !== "verify") (s.step = "verify"), changed();
+          break;
+        case "scaned_but_redirect":
+          if (r.redirect_host) s.base = `${new URL(loginApi()).protocol}//${r.redirect_host}`;
+          break;
+        case "expired":
+          await again("expired");
+          break;
+        case "verify_code_blocked":
+          await again("unavailable");
+          break;
+        case "binded_redirect":
+          // Already bound to this home: what is there stays.
+          if (store.get("wechat")?.linked) return endScan();
+          await again("expired");
+          break;
+        case "confirmed":
+          return confirmed(r);
+        default:
+          break;
+      }
+      if (scan === s && clock.now() > s.expiresAt) await again("expired");
+      if (scan === s) await new Promise((res) => setTimeout(res, gap));
+    }
+  };
 
   const view = (): ChannelView[] =>
-    (["telegram", "slack"] as const).map((kind): ChannelView => {
+    CHANNEL_KINDS.map((kind): ChannelView => {
       const rec = store.get(kind);
-      if (!rec) return { kind, state: "off" };
+      if (kind === "wechat" && scan) return { kind, state: "scan", scan: { qr: scan.rows, link: scan.text, step: scan.step, expiresAt: new Date(scan.expiresAt).toISOString() } };
+      if (!rec) return { kind, state: "off", ...(kind === "wechat" && scanFail ? { reason: scanFail } : {}) };
       const l = live.get(kind);
       const bot = rec.bot ? { name: rec.bot.name, ...(rec.bot.handle ? { handle: rec.bot.handle } : {}), ...(rec.bot.team ? { team: rec.bot.team } : {}) } : undefined;
       const base = { kind, ...(bot ? { bot } : {}), ...(rec.linked ? { linked: { name: rec.linked.name, at: rec.linked.at } } : {}), ...(rec.strangerAt ? { strangerAt: rec.strangerAt } : {}) };
       if (l?.trouble) return { ...base, state: "cant_connect", reason: l.trouble };
       if (!l?.up) return { ...base, state: "starting" };
-      return { ...base, state: rec.linked ? "linked" : "unlinked" };
+      const until = rec.linked ? openUntil(kind) : undefined;
+      return { ...base, state: rec.linked ? "linked" : "unlinked", ...(until ? { openUntil: new Date(until).toISOString() } : {}) };
     });
 
   const setTrouble = (kind: ChannelKind, t: Trouble | undefined) => {
@@ -231,9 +374,15 @@ export function createChannels(deps: ChannelDeps): Channels {
       for (let i = 0; i < parts.length; i++) {
         const last = i === parts.length - 1;
         try {
-          const id = await outbox.run(`${kind}:${chat}`, () =>
-            l.ch.send(chat, { text: parts[i]!, ...(last && o.buttons?.length && l.ch.caps.buttons ? { buttons: o.buttons } : {}), ...(i === 0 && o.replyTo ? { replyTo: o.replyTo } : {}), ...(o.silent && l.ch.caps.silent ? { silent: true } : {}) }),
-          );
+          const id = await outbox.run(`${kind}:${chat}`, async () => {
+            // D301: an app that only answers: stop where its window ends (checked in the line, so
+            // messages waiting their turn see the ones before them).
+            if (l.ch.caps.replyWindowMs && !reach(kind)) return "";
+            const id = await l.ch.send(chat, { text: parts[i]!, ...(last && o.buttons?.length && l.ch.caps.buttons ? { buttons: o.buttons } : {}), ...(i === 0 && o.replyTo ? { replyTo: o.replyTo } : {}), ...(o.silent && l.ch.caps.silent ? { silent: true } : {}) });
+            spend(kind);
+            return id;
+          });
+          if (!id) return ids;
           ids.push(id);
           if (o.seq !== undefined) {
             seqOf.set(`${kind}:${chat}:${id}`, o.seq);
@@ -252,6 +401,7 @@ export function createChannels(deps: ChannelDeps): Channels {
 
   const troubled = (kind: ChannelKind, err: unknown) => {
     if (err instanceof ChannelError && (err.trouble === "token" || err.trouble === "blocked")) setTrouble(kind, err.trouble);
+    else if (err instanceof ChannelError && err.trouble === "refused") spent(kind);
   };
 
   const edit = (kind: ChannelKind, chat: string, id: string, text: string, buttons?: OutButton[]) => {
@@ -270,7 +420,12 @@ export function createChannels(deps: ChannelDeps): Channels {
       const path = deps.media.path(m.id);
       if (!path || m.bytes > l.ch.caps.maxUpload) continue;
       void outbox
-        .run(`${kind}:${acc.chat}`, () => l.ch.sendFile(acc.chat, { path, name: m.name ?? (m.type.startsWith("image/") ? `picture.${m.type.split("/")[1]}` : "file"), type: m.type }))
+        .run(`${kind}:${acc.chat}`, async () => {
+          if (l.ch.caps.replyWindowMs && !reach(kind)) return "";
+          const id = await l.ch.sendFile(acc.chat, { path, name: m.name ?? (m.type.startsWith("image/") ? `picture.${m.type.split("/")[1]}` : "file"), type: m.type });
+          spend(kind);
+          return id;
+        })
         .catch((err) => (troubled(kind, err), console.warn(`[channels] ${kind}: a file wasn't sent: ${(err as Error).message}`)));
     }
   };
@@ -302,7 +457,7 @@ export function createChannels(deps: ChannelDeps): Channels {
   type Route = { kind: ChannelKind; mode: "turn" | "own" };
   const placeNow = (): ChannelKind | undefined => {
     const r = store.lastRoute();
-    return r !== "app" && ready(r) ? r : undefined;
+    return r !== "app" && reach(r) ? r : undefined;
   };
   const routeOf = (replyTo: number | undefined): Route | undefined => {
     if (replyTo === undefined) return undefined;
@@ -311,7 +466,7 @@ export function createChannels(deps: ChannelDeps): Channels {
     // Words about something Ducter started (a report, a routine): its own, to the person's place.
     if (!u) return place ? { kind: place, mode: "own" } : undefined;
     // A turn that is still now answers where it started; an app's turn is not mirrored.
-    if (clock.now() - u.at < TURN_MS) return u.via && ready(u.via) ? { kind: u.via, mode: "turn" } : undefined;
+    if (clock.now() - u.at < TURN_MS) return u.via && reach(u.via) ? { kind: u.via, mode: "turn" } : undefined;
     // A late result: to the person's place, once.
     return place ? { kind: place, mode: "own" } : undefined;
   };
@@ -359,7 +514,12 @@ export function createChannels(deps: ChannelDeps): Channels {
     if (!base) return [];
     return [{ label: W.open(), url: `${base.replace(/\/?$/, "/")}app${decisionId ? `#d=${encodeURIComponent(decisionId)}` : ""}` }];
   };
-  const openLine = (kind: ChannelKind, decisionId?: string) => (openButton(decisionId).length && live.get(kind)?.ch.caps.buttons ? "" : `\n\n${W.open()}`);
+  const openLine = (kind: ChannelKind, decisionId?: string) => {
+    const b = openButton(decisionId)[0];
+    if (b && live.get(kind)?.ch.caps.buttons) return "";
+    // No buttons there (WeChat): the address written out, when the home has one.
+    return b && "url" in b ? `\n\n${W.openAt(b.url)}` : `\n\n${W.open()}`;
+  };
 
   const sendCard = (kind: ChannelKind, d: Bodies["decision"], said: string, seq: number, mode: Route["mode"]) => {
     const policy = cardPolicy(d);
@@ -378,6 +538,8 @@ export function createChannels(deps: ChannelDeps): Channels {
       buttons = openButton(d.decisionId);
     } else {
       text = `${said}\n\n_${defaultLine(d, deps.lang(), clock.now())}_`;
+      // No buttons there (WeChat): say which words answer it; the hub reads them (GO_WORDS).
+      if (!live.get(kind)?.ch.caps.buttons) text += `\n\n${W.reply(d.goLabel)}`;
       buttons = [{ label: W.go(d.goLabel), data: tapData("go", d.decisionId), style: "primary" }, { label: W.hold(), data: tapData("hold", d.decisionId) }];
     }
     void say(kind, text, { buttons, seq }).then((ids) => {
@@ -408,7 +570,7 @@ export function createChannels(deps: ChannelDeps): Channels {
     let route: Route | undefined;
     const place = placeNow();
     // Asked during a turn that is still now: where it started (an app's turn: not mirrored).
-    if (lastUser && clock.now() - lastUser.at < TURN_MS) route = lastUser.via && ready(lastUser.via) ? { kind: lastUser.via, mode: "turn" } : undefined;
+    if (lastUser && clock.now() - lastUser.at < TURN_MS) route = lastUser.via && reach(lastUser.via) ? { kind: lastUser.via, mode: "turn" } : undefined;
     else if (place) route = { kind: place, mode: "own" };
     if (!route || (route.mode === "own" && deps.notifyOff?.())) return;
     const r = route;
@@ -438,6 +600,8 @@ export function createChannels(deps: ChannelDeps): Channels {
     else run();
     const job: Job = { kind: r.kind, chat: acc.chat, title: b.text };
     jobs.set(b.jobId, job);
+    // An app that can't edit gets no status line: one more message there, never brought up to date.
+    if (!live.get(r.kind)?.ch.caps.edit) return void jobs.set(b.jobId, job);
     job.timer = clock.setTimeout(() => {
       job.timer = undefined;
       if (job.done || jobs.get(b.jobId) !== job || !ready(job.kind) || inQuiet(clock.now(), deps.quiet())) return;
@@ -535,7 +699,7 @@ export function createChannels(deps: ChannelDeps): Channels {
   };
   for (const e of log.read({ stream: "channel", kinds: ["user_msg"], limit: 500 })) {
     const id = (e.body as Bodies["user_msg"]).clientId;
-    if (id && /^(telegram|slack):/.test(id)) remember(id);
+    if (id && /^(telegram|slack|wechat):/.test(id)) remember(id);
   }
 
   const stranger = (kind: ChannelKind) => {
@@ -561,6 +725,11 @@ export function createChannels(deps: ChannelDeps): Channels {
     }
     if (m.from.id !== acc.id) return stranger(kind);
     if (m.chat !== acc.chat) store.patch(kind, { linked: { ...acc, chat: m.chat } });
+    // D301: the person's words open the window again.
+    if (live.get(kind)?.ch.caps.replyWindowMs) {
+      store.patch(kind, { heardAt: new Date(clock.now()).toISOString(), sentSince: 0 });
+      changed();
+    }
     const clientId = `${kind}:${m.chat}:${m.id}`;
     if (seenIds.has(clientId)) return;
     remember(clientId);
@@ -636,7 +805,9 @@ export function createChannels(deps: ChannelDeps): Channels {
       ? deps.make(kind, rec, store)
       : kind === "telegram"
         ? createTelegram({ token: rec.token, offset: () => store.get("telegram")?.offset, setOffset: (n) => store.patch("telegram", { offset: n }) })
-        : createSlack({ botToken: rec.token, appToken: rec.appToken ?? "" });
+        : kind === "wechat"
+          ? createWechat({ token: rec.token, ...(rec.base ? { base: rec.base } : {}), botId: rec.bot?.id ?? "", state: () => wechatState(store), save: (p) => store.patch("wechat", p) })
+          : createSlack({ botToken: rec.token, appToken: rec.appToken ?? "" });
 
   const bring = async (kind: ChannelKind, rec: ChannelRec): Promise<BotInfo> => {
     live.get(kind)?.ch.stop();
@@ -663,10 +834,38 @@ export function createChannels(deps: ChannelDeps): Channels {
     }
   };
 
+  function forget(kind: ChannelKind) {
+    if (kind === "wechat") scan?.stop.abort(), (scan = undefined), (scanFail = undefined);
+    live.get(kind)?.ch.stop();
+    live.delete(kind);
+    store.set(kind, undefined);
+    if (store.lastRoute() === kind) store.setLastRoute("app");
+    changed();
+  }
+
   return {
     view,
     frame: () => ({ t: "channels", channels: view(), slackManifest: slackManifest(deps.personaName()) }),
     async connect(kind, t) {
+      if (kind === "wechat") {
+        // WeChat's number for this scan (need_verifycode): the next poll carries it.
+        if (t.verifyCode && scan?.step === "verify") {
+          scan.verify = t.verifyCode.replace(/\s/g, "").slice(0, 12);
+          return { ok: true };
+        }
+        endScan();
+        try {
+          const s = await freshQr(new AbortController(), 0);
+          scan = s;
+          scanFail = undefined;
+          changed();
+          void watchScan(s).catch((err) => (console.warn(`[channels] wechat scan: ${(err as Error).message}`), scan === s && endScan("expired")));
+          return { ok: true };
+        } catch (err) {
+          changed();
+          return { ok: false, reason: err instanceof ChannelError && err.trouble === "token" ? "token" : "network" };
+        }
+      }
       const token = (kind === "telegram" ? t.token : t.botToken)?.trim() ?? "";
       const appToken = t.appToken?.trim();
       if (kind === "telegram" ? !isTelegramToken(token) : !isSlackBotToken(token) || !isSlackAppToken(appToken ?? "")) return { ok: false, reason: "token" };
@@ -691,24 +890,20 @@ export function createChannels(deps: ChannelDeps): Channels {
     code(kind) {
       const rec = store.get(kind);
       if (!rec || !live.get(kind)?.up) return { ok: false, reason: "not_connected" };
-      if (rec.linked) return { ok: false, reason: "busy" };
+      if (rec.linked || kind === "wechat") return { ok: false, reason: "busy" }; // WeChat: the scan linked it
       const c = store.newCode(kind);
       return { ok: true, code: c.code, expiresAt: c.expiresAt, ...(kind === "telegram" && rec.bot?.handle ? { link: `https://t.me/${rec.bot.handle}?start=${c.raw}` } : {}) };
     },
     unlink(kind) {
       if (!store.get(kind)?.linked) return false;
+      // WeChat's ClawBot is bound to the one who scanned: unlinking it is disconnecting it.
+      if (kind === "wechat") return forget(kind), true;
       store.patch(kind, { linked: undefined, strangerAt: undefined });
       if (store.lastRoute() === kind) store.setLastRoute("app");
       changed();
       return true;
     },
-    forget(kind) {
-      live.get(kind)?.ch.stop();
-      live.delete(kind);
-      store.set(kind, undefined);
-      if (store.lastRoute() === kind) store.setLastRoute("app");
-      changed();
-    },
+    forget,
     claimed: (key) => claims.has(key),
     lastRoute: () => store.lastRoute(),
     turnEnded() {
@@ -719,13 +914,15 @@ export function createChannels(deps: ChannelDeps): Channels {
       return () => listeners.delete(fn);
     },
     async start() {
-      for (const kind of ["telegram", "slack"] as const) {
+      for (const kind of CHANNEL_KINDS) {
         const rec = store.get(kind);
         if (rec) await bring(kind, rec).catch((err) => console.warn(`[channels] ${kind} didn't start: ${(err as Error).message}`));
       }
     },
     stop() {
       off();
+      scan?.stop.abort();
+      scan = undefined;
       outbox.stop();
       for (const l of live.values()) l.ch.stop();
       live.clear();
@@ -736,4 +933,10 @@ export function createChannels(deps: ChannelDeps): Channels {
     },
     idle: () => outbox.idle(),
   };
+}
+
+/** What WeChat's adapter keeps between runs: the newest context_token and getupdates' cursor. */
+function wechatState(store: ChannelStore) {
+  const r = store.get("wechat");
+  return { ...(r?.ctx ? { ctx: r.ctx } : {}), ...(r?.buf ? { buf: r.buf } : {}) };
 }

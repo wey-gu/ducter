@@ -1,12 +1,12 @@
 ---
 title: Chat apps
-description: Talk to your partner from Telegram or Slack, in the same conversation, through a bot of your own that nobody else can use.
+description: Talk to your partner from Telegram, Slack or WeChat, in the same conversation, through a contact of your own that nobody else can use.
 order: 7.5
 ---
 
 # Chat apps
 
-You can talk to your partner from **Telegram** and **Slack** too. It isn't a second chat: it's
+You can talk to your partner from **Telegram**, **Slack** and **WeChat** too. It isn't a second chat: it's
 the same conversation you have in the Ducter app, seen from another window. Ask from Telegram on
 the bus, and the answer comes back in Telegram; the Ducter app shows all of it as well.
 
@@ -43,9 +43,42 @@ Slack needs an app of your own in your workspace. Ducter gives you everything to
    starts with `xoxb-`) and paste it into the next one. Press **Connect**.
 6. Press **Link my account**, then send the code to your partner in a Slack direct message.
 
+## Connect WeChat
+
+WeChat works through **WeChat's own ClawBot**, a feature WeChat added for people's own AI: a
+one-to-one contact in your WeChat that only you can talk to. Ducter never signs in to your WeChat
+and never sends anything as you; your account stays exactly as it was.
+
+1. Update WeChat on your phone. ClawBot is still reaching WeChat accounts, so yours may not have
+   it yet.
+2. Open **Settings › Chat apps** and press **Connect** in the **WeChat** group. A QR code appears.
+3. Open **Scan** in WeChat on your phone, scan the code, and confirm on the phone. If WeChat shows
+   a number, type it into **The number WeChat shows**. Only have the one phone? Take a
+   screenshot and pick it from your photos in Scan.
+4. The ClawBot contact appears in WeChat. Say something to it.
+
+The scan is the link: there is no code to send, and nobody else can add your ClawBot. If the QR
+code runs out and scanning did nothing, your WeChat probably doesn't have ClawBot yet.
+
+What WeChat allows is narrower than Telegram or Slack, and Ducter keeps to it:
+
+- **It only answers you.** For about a day after you write, your partner can send you a few
+  messages in WeChat. After that, or once those few are used, it tells you in the Ducter app
+  instead, until you write in WeChat again. Settings shows whether it can reach you there now.
+- **There are no buttons.** A question says which words answer it: reply **好** or **ok** to go
+  ahead, **先等等** or **wait** to hold. Anything bigger says **Open in Ducter**, with your home's
+  address when it has one.
+- **No "Still on it" line**: WeChat can't change a sent message, so you just get the result.
+- Pictures and files work both ways. A voice message comes in as WeChat's own transcript.
+- **What you say goes through WeChat.** WeChat may change or stop ClawBot; if it asks you to scan
+  again, Settings says so.
+
+**Disconnect WeChat** in Settings takes the ClawBot connection away. Your conversation stays in
+Ducter.
+
 ## iMessage
 
-iMessage is the third group on the same page. It goes through a Mac, so you set it up in the
+iMessage is the fourth group on the same page. It goes through a Mac, so you set it up in the
 Ducter app on that Mac; see [Talk to your partner in iMessage](imessage.md).
 
 ## What goes where

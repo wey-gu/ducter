@@ -27,11 +27,19 @@ export interface ChannelRec {
   /** Telegram: the next update to read (confirmed only after it was handled). */
   offset?: number;
   strangerAt?: string;
+  /** D301, WeChat: the base the scan answered, its newest context_token, getupdates' cursor. */
+  base?: string;
+  ctx?: string;
+  buf?: string;
+  /** D301: when the person last wrote there, and how many messages went out since (the window). */
+  heardAt?: string;
+  sentSince?: number;
 }
 
 interface File {
   telegram?: ChannelRec;
   slack?: ChannelRec;
+  wechat?: ChannelRec;
   /** Where the person last spoke to the partner: a chat app, or "app" (any Ducter app). */
   lastRoute?: ChannelKind | "app";
 }

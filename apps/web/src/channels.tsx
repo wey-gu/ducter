@@ -7,11 +7,16 @@
 // a step mark in the tile column and one sentence beside it; Connect is the group's one primary at
 // the right edge of its last line, its privacy note on the left. iMessage is the third group: it
 // goes through a Mac, so here it only says where to set it up.
+//
+// D301: WeChat, through WeChat's own ClawBot. Connect puts up a QR; the person scans it with their
+// own WeChat and confirms on the phone, and that scan is the link (no code). Its group says plainly
+// what WeChat allows: it answers inside a day of their words, a few messages, no buttons.
 import type { ChannelKind, ChannelServerFrame, ChannelView } from "@ducter/protocol";
 import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, DangerButton, LinkBtn } from "./controls.tsx";
+import { Qr } from "./phone.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -37,7 +42,8 @@ A.onChannelFrame = (f) => {
   A.changed();
 };
 
-const NAMES: Record<ChannelKind, string> = { telegram: "Telegram", slack: "Slack" };
+/** A chat app's name: Telegram and Slack are theirs in every language; WeChat's is 微信 in Chinese. */
+const nameOf = (kind: ChannelKind) => (kind === "wechat" ? t("chats.wechat") : kind === "slack" ? "Slack" : "Telegram");
 const BOTFATHER = "https://t.me/BotFather";
 const SLACK_APPS = "https://api.slack.com/apps?new_app=1";
 
@@ -50,9 +56,7 @@ export function ChatAppsSettings() {
   return (
     <>
       <p class="af-lede">{t("chats.lede", A.S.personaName)}</p>
-      {f.channels.map((v) => (
-        <ChannelCard key={v.kind} v={v} manifest={f.slackManifest} />
-      ))}
+      {f.channels.map((v) => (v.kind === "wechat" ? <WechatCard key={v.kind} v={v} /> : <ChannelCard key={v.kind} v={v} manifest={f.slackManifest} />))}
       <section class="set-card chat-app" aria-label="iMessage">
         <Head kind="imessage" name="iMessage" line={t("chats.im.mac")} />
         <Foot note={t("chats.im.mac.note")} />
@@ -66,8 +70,8 @@ function stateLine(v: ChannelView): [string, string] {
   if (v.state === "linked") return [t("chats.state.linked", botLine(v)), "done"];
   if (v.state === "cant_connect") {
     const r = v.reason ?? "network";
-    if (r === "token") return [t("chats.cant.key", NAMES[v.kind]), "bad"];
-    return [r === "network" ? t("chats.cant.network", NAMES[v.kind]) : t(`chats.cant.${r}`), "bad"];
+    if (r === "token") return [t("chats.cant.key", nameOf(v.kind)), "bad"];
+    return [r === "network" ? t("chats.cant.network", nameOf(v.kind)) : t(`chats.cant.${r}`), "bad"];
   }
   if (v.state === "unlinked") return [t("chats.state.unlinked"), "ink"];
   return [t(v.state === "starting" ? "chats.state.starting" : "chats.state.off"), ""];
@@ -75,18 +79,19 @@ function stateLine(v: ChannelView): [string, string] {
 
 /** The partner's own bot there: @handle on Telegram, the workspace on Slack, else its name. */
 function botLine(v: ChannelView): string {
-  if (!v.bot) return NAMES[v.kind];
+  if (!v.bot) return nameOf(v.kind);
   return v.bot.handle ? `@${v.bot.handle}` : v.bot.team || v.bot.name;
 }
 
 const LETTER: Record<string, string> = { telegram: "T", slack: "S", imessage: "M" };
+const letterOf = (kind: string) => (kind === "wechat" ? t("chats.wx.mark") : LETTER[kind]);
 
 /** A chat app's first row: its letter pebble (never the service's logo), its name, how it stands. */
 function Head(p: { kind: string; name: string; line: string; tone?: string }) {
   return (
     <div class="chat-head">
       <span class={`chat-tile ${p.kind}`} aria-hidden="true">
-        {LETTER[p.kind]}
+        {letterOf(p.kind)}
       </span>
       <span class="grow">
         <b>{p.name}</b>
@@ -135,7 +140,7 @@ function Step(p: { n: number; text: string; children?: ComponentChildren }) {
 }
 
 function ChannelCard({ v, manifest }: { v: ChannelView; manifest: string }) {
-  const name = NAMES[v.kind];
+  const name = nameOf(v.kind);
   const needsTokens = v.state === "off" || (v.state === "cant_connect" && v.reason === "token");
   const stranger = v.strangerAt && Date.now() - Date.parse(v.strangerAt) < 24 * 3600_000;
   const [line, tone] = stateLine(v);
@@ -230,7 +235,7 @@ function Connect({ kind, manifest, who }: { kind: ChannelKind; manifest: string;
         {bad && <li class="chat-bad">{t(bad === "token" ? "chats.bad.key" : "chats.bad.network")}</li>}
       </ol>
       <Foot note={who}>
-        <Btn kind="primary" label={t(busy ? "chats.connecting" : "chats.connect")} about={NAMES[kind]} disabled={busy || !ready} onClick={go} />
+        <Btn kind="primary" label={t(busy ? "chats.connecting" : "chats.connect")} about={nameOf(kind)} disabled={busy || !ready} onClick={go} />
       </Foot>
     </>
   );
@@ -239,7 +244,7 @@ function Connect({ kind, manifest, who }: { kind: ChannelKind; manifest: string;
 function Link({ v }: { v: ChannelView }) {
   const c = S.code[v.kind];
   const live = c?.expiresAt && Date.parse(c.expiresAt) > Date.now();
-  const name = NAMES[v.kind];
+  const name = nameOf(v.kind);
   if (!live || !c.code)
     return (
       <Row title={t("chats.link.title")} line={t("chats.link.note", A.S.personaName)}>
@@ -264,5 +269,86 @@ function Link({ v }: { v: ChannelView }) {
       </span>
       {v.kind === "telegram" && c.link && <LinkBtn kind="primary" href={c.link} label={t("chats.tg.open")} />}
     </div>
+  );
+}
+
+// ---------- D301: WeChat, through WeChat's own ClawBot ----------
+
+function wechatLine(v: ChannelView): [string, string] {
+  if (v.state === "scan") return [t(v.scan?.step === "scanned" ? "chats.wx.state.scanned" : v.scan?.step === "verify" ? "chats.wx.state.verify" : "chats.wx.state.scan"), "ink"];
+  if (v.state === "linked") return [t("chats.wx.state.linked"), "done"];
+  if (v.state === "starting") return [t("chats.state.starting"), ""];
+  if (v.state === "cant_connect") return [v.reason === "token" ? t("chats.wx.cant.key") : t("chats.cant.network", t("chats.wechat")), "bad"];
+  if (v.reason === "expired" || v.reason === "unavailable") return [t(`chats.wx.${v.reason}`), "bad"];
+  return [t("chats.wx.off"), ""];
+}
+
+function WechatCard({ v }: { v: ChannelView }) {
+  const name = t("chats.wechat");
+  const [line, tone] = wechatLine(v);
+  const busy = S.busy.wechat;
+  const again = v.state === "off" || (v.state === "cant_connect" && v.reason === "token");
+  const connect = () => {
+    S.busy.wechat = true;
+    A.send({ t: "channel_connect", kind: "wechat" });
+    A.changed();
+  };
+  const open = v.openUntil ? Date.parse(v.openUntil) > Date.now() : false;
+  return (
+    <section class="set-card chat-app" aria-label={name}>
+      <Head kind="wechat" name={name} line={line} tone={tone} />
+      {again && (
+        <>
+          <ol class="chat-steps">
+            <Step n={1} text={t("chats.wx.step1")} />
+            <Step n={2} text={t("chats.wx.step2")} />
+            {S.bad.wechat === "network" && <li class="chat-bad">{t("chats.bad.network")}</li>}
+          </ol>
+          <Foot note={t("chats.wx.who")}>
+            <Btn kind="primary" label={t(busy ? "chats.connecting" : "chats.connect")} about={name} disabled={busy} onClick={connect} />
+          </Foot>
+        </>
+      )}
+      {v.state === "scan" && v.scan && <WechatScan v={v} />}
+      {(v.state === "linked" || v.state === "starting" || (v.state === "cant_connect" && v.reason !== "token")) && (
+        <>
+          {v.state === "linked" && <Row title={t("chats.wx.linked")} line={t("chats.linked.goes", name)} />}
+          {v.state === "linked" && <Row title={t(open ? "chats.wx.open" : "chats.wx.closed")} line={t("chats.wx.rule")} />}
+          <Foot note={t("chats.wx.who")}>
+            <DangerButton label={t("chats.wx.forget")} about={name} onClick={() => A.send({ t: "channel_forget", kind: "wechat" })} />
+          </Foot>
+        </>
+      )}
+    </section>
+  );
+}
+
+function WechatScan({ v }: { v: ChannelView }) {
+  const s = v.scan!;
+  const [code, setCode] = useState("");
+  return (
+    <>
+      <div class="chat-row chat-scan">
+        <span class="grow">
+          <p>{t("chats.wx.scan")}</p>
+          <small>{t("chats.wx.scan.phone")}</small>
+          {s.step === "verify" && (
+            <span class="chat-verify">
+              <label class="acct-field chat-field" for="ch-wechat-verify">
+                <span>{t("chats.wx.verify")}</span>
+                <input id="ch-wechat-verify" inputMode="numeric" autocomplete="one-time-code" value={code} onInput={(e) => setCode((e.target as HTMLInputElement).value)} />
+              </label>
+              <Btn kind="primary" size="sm" label={t("chats.wx.verify.go")} disabled={!code.trim()} onClick={() => (A.send({ t: "channel_connect", kind: "wechat", verifyCode: code.trim() }), setCode(""))} />
+            </span>
+          )}
+        </span>
+        <span class={`chat-qr${s.step === "scanned" ? " scanned" : ""}`}>
+          <Qr rows={s.qr} label={t("chats.wx.scan")} />
+        </span>
+      </div>
+      <Foot note={t("chats.wx.who")}>
+        <Btn kind="text" size="sm" label={t("chats.wx.cancel")} about={t("chats.wechat")} onClick={() => A.send({ t: "channel_forget", kind: "wechat" })} />
+      </Foot>
+    </>
   );
 }

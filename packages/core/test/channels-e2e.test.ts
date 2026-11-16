@@ -3,10 +3,11 @@
 // telegram, the partner's answer goes back, a card's button decides it, and its push is skipped.
 import { afterEach, expect, test } from "bun:test";
 import type { Bodies, LogEvent, ServerFrame } from "@ducter/protocol";
-import { createTelegram } from "../src/channels/index.ts";
+import { createTelegram, createWechat } from "../src/channels/index.ts";
 import { startCore } from "../src/core.ts";
 import { PERSON, waitFor } from "./channels-rig.ts";
 import { fakeTelegram } from "./fake-telegram.ts";
+import { fakeWechat, SCANNER } from "./fake-wechat.ts";
 import { tempDir } from "./helpers.ts";
 
 let stops: (() => Promise<void> | void)[] = [];
@@ -51,7 +52,7 @@ test("Settings connects and links Telegram; a turn there goes through the one co
   send({ t: "hello", client: "web" });
   send({ t: "channels" });
   const first = await waitFor(() => frames.find((f) => f.t === "channels") as Extract<ServerFrame, { t: "channels" }> | undefined);
-  expect(first.channels.map((c) => c.state)).toEqual(["off", "off"]);
+  expect(first.channels.map((c) => c.state)).toEqual(["off", "off", "off"]);
   expect(JSON.parse(first.slackManifest).features.bot_user.display_name).toBe("Ducter");
 
   send({ t: "channel_connect", kind: "telegram", token: tg.token });
@@ -77,4 +78,47 @@ test("Settings connects and links Telegram; a turn there goes through the one co
   expect(core.channels.claimed("d:d_e2e000001")).toBe(true);
   await Bun.sleep(80);
   expect(core.pusher.pending()).not.toContain("d:d_e2e000001");
+});
+
+test("D301: Settings puts up WeChat's QR over the socket; the scan links it; a message there goes through and back", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const wx = fakeWechat();
+  stops.push(() => wx.stop());
+  const core = startCore({
+    dataDir: t.dir,
+    port: 0,
+    batchMs: 5,
+    pushHoldMs: 30,
+    channels: {
+      gapMs: 0,
+      sleep: async () => {},
+      wechat: { api: wx.api, pollGapMs: 5 },
+      make: (_kind, rec, store) => createWechat({ token: rec.token, api: wx.api, ...(rec.base ? { base: rec.base } : {}), cdn: `${wx.api}/cdn`, botId: rec.bot?.id ?? "", pollMs: 400, backoffMs: 20, state: () => ({ ...(store.get("wechat")?.ctx ? { ctx: store.get("wechat")!.ctx } : {}) }), save: (p) => store.patch("wechat", p) }),
+    },
+  });
+  stops.push(() => core.stop());
+  core.setPartner({
+    onTrigger: (e: LogEvent) => {
+      if (e.kind !== "user_msg") return;
+      core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: `收到：${(e.body as Bodies["user_msg"]).text}`, replyTo: e.seq } });
+    },
+  });
+  const frames: ServerFrame[] = [];
+  const ws = new WebSocket(core.url);
+  ws.onmessage = (m) => frames.push(JSON.parse(String(m.data)));
+  await new Promise<void>((res, rej) => ((ws.onopen = () => res()), (ws.onerror = rej)));
+  stops.push(() => ws.close());
+  const send = (f: object) => ws.send(JSON.stringify(f));
+  send({ t: "hello", client: "web" });
+  send({ t: "channels" });
+  send({ t: "channel_connect", kind: "wechat" });
+  const scan = await waitFor(() => frames.find((f) => f.t === "channels" && f.channels[2]!.state === "scan") as Extract<ServerFrame, { t: "channels" }> | undefined);
+  expect(scan.channels[2]!.scan!.qr.length).toBeGreaterThan(20);
+  wx.confirm();
+  await waitFor(() => frames.some((f) => f.t === "channels" && f.channels[2]!.state === "linked"));
+  wx.says(SCANNER, "今天有什么要我做的？");
+  await waitFor(() => wx.texts().includes("收到：今天有什么要我做的？"));
+  await waitFor(() => frames.some((f) => f.t === "events" && f.events.some((e) => e.kind === "user_msg" && (e.body as Bodies["user_msg"]).via === "wechat")));
+  expect(JSON.stringify(frames)).not.toContain(wx.token);
 });

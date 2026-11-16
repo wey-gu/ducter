@@ -196,7 +196,7 @@ export interface CoreOptions {
   /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
   proactive?: { triage?: Triage; judge?: FindJudge; monthTokens?: number; zone?: string };
   /** D276 test seams for 聊天软件 / Chat apps: the adapters against fake servers, the outbox's sleep. */
-  channels?: Pick<ChannelDeps, "make" | "sleep" | "gapMs" | "openUrl">;
+  channels?: Pick<ChannelDeps, "make" | "sleep" | "gapMs" | "openUrl" | "wechat">;
 }
 
 export interface Core extends CoreApi {
@@ -569,6 +569,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(opts.channels?.make ? { make: opts.channels.make } : {}),
     ...(opts.channels?.sleep ? { sleep: opts.channels.sleep } : {}),
     ...(opts.channels?.gapMs !== undefined ? { gapMs: opts.channels.gapMs } : {}),
+    ...(opts.channels?.wechat ? { wechat: opts.channels.wechat } : {}),
   });
   const early: LogEvent[] = []; // triggers that arrive before the partner is wired
   const trigger = (e: LogEvent) => {

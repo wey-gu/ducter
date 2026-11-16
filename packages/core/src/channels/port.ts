@@ -1,4 +1,4 @@
-// D276: the Channel port. A chat app (Telegram, Slack) is a window on the one conversation, so an
+// D276: the Channel port. A chat app (Telegram, Slack, WeChat D301) is a window on the one conversation, so an
 // adapter only moves words: inbound messages and taps up, outbound parts down. What goes where,
 // pairing, decisions and quiet hours live in hub.ts, once for every chat app.
 import type { ChannelKind } from "@ducter/protocol";
@@ -20,6 +20,13 @@ export interface ChannelCaps {
   maxUpload: number;
   /** A message may be sent without a sound (Telegram's disable_notification). */
   silent: boolean;
+  /**
+   * D301: the app only lets the bot answer: it may write for this long after the person's last
+   * words there (WeChat's ClawBot, about 24 hours), and at most windowSends messages in that time.
+   * Absent: it may write any time.
+   */
+  replyWindowMs?: number;
+  windowSends?: number;
 }
 
 export type OutButton = { label: string; data: string; style?: "primary" | "danger" } | { label: string; url: string };

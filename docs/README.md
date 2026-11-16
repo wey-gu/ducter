@@ -57,8 +57,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   something needs you, and keep your nights quiet.
 - **[iMessage](imessage.md):** text your partner from Messages on your iPhone, through a Mac,
   and get its answers in the same thread, under its own name.
-- **[Chat apps](chat-apps.md):** talk to your partner from Telegram or Slack, in the same
-  conversation, through a bot of your own.
+- **[Chat apps](chat-apps.md):** talk to your partner from Telegram, Slack or WeChat, in
+  the same conversation, through a contact of your own.
 - **[Privacy and safety](privacy-and-safety.md):** what Ducter never does by itself, what runs
   where, your AI plans, and memory.
 

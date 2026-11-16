@@ -76,6 +76,10 @@ func (a *App) chatsPanel(c *ui.Context) {
 		ui.Text(c, a.L.T("chats.state.starting")).FontSize(t.MD).TextColor(t.InkMuted)
 	} else {
 		for _, v := range f.Channels {
+			if v.Kind == "wechat" {
+				a.wechatCard(c, v) // D301 (wechat.go)
+				continue
+			}
 			a.chatCard(c, v, f.SlackManifest)
 		}
 	}
@@ -155,6 +159,12 @@ func (a *App) chatTile(c *ui.Context, kind string) {
 		letter, fill, ledge, ink = "S", t.Waiting.Surface, t.Waiting.Ledge, t.Waiting.Ink
 	case "imessage":
 		letter, fill, ledge, ink = "M", t.Done.Surface, t.Done.Ledge, t.Done.Ink
+	case "wechat":
+		// D301: 微 in Chinese, W in English, on the sage tint.
+		letter = a.L.T("chats.wx.mark")
+		if g, ok := t.Tint("sage"); ok {
+			fill, ledge, ink = g.Ground, g.Ledge, g.Ink
+		}
 	}
 	ui.Row(c.Key("chat-tile:"+kind)).Size(40, 40).Shrink(0).Radius(t.RadiusSM).Background(fill).
 		Shadow(0, 3, 0, 0, ledge).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {

@@ -1,7 +1,7 @@
-# Chat apps: Telegram and Slack as more windows on the one conversation
+# Chat apps: Telegram, Slack and WeChat as more windows on the one conversation
 
-> Design note for principles 6, 7 (one conversation, jobs and the living message) · Decision:
-> D276 · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
+> Design note for principles 6, 7 (one conversation, jobs and the living message) · Decisions:
+> D276, D301 (WeChat, §9) · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
 > (Telegram, which cards may be buttons), `research/77` §1 (an outbox, linking).
 > Status: **built 2026-11-16 (core, the web client, the Mac app), checked against fake servers
 > only.** No real Telegram bot or Slack workspace was used; see "What is not verified".
@@ -166,3 +166,36 @@ started in the test. **Not checked live:** a real BotFather bot and Telegram's r
 manifest as Slack's importer reads it, an admin-gated install, Socket Mode's refresh timing,
 `files.getUploadURLExternal` with form encoding, a Slack Connect DM), the Mac page on screen.
 iMessage is a separate step on the Mac app (`research/88` §4). See `todo.md` "Chat apps".
+
+## 9. WeChat, through WeChat's own ClawBot (D301)
+
+Evidence: `research/105`. **Built 2026-11-17, checked against a fake iLink and CDN only**
+(`packages/core/test/fake-wechat.ts`); no real WeChat account was used.
+
+- **The moment.** A person in mainland China, where Telegram is out of reach, lives in WeChat.
+  They want the partner there without anything that could cost them their account.
+- **The route.** WeChat's own ClawBot over iLink: a QR scan binds a one-to-one contact to the
+  scanner; the home long-polls `ilink/bot/getupdates`; replies carry the newest `context_token`.
+  Ducter's own client (`channels/wechat.ts`), identifying itself in `bot_agent`. Never a client
+  that logs in as the person.
+- **Pairing.** Connect → `get_bot_qrcode` → the QR in Settings (`ChannelView.scan`: rows, link,
+  step `wait | scanned | verify`, expiry) → `get_qrcode_status` until `confirmed`, whose
+  `ilink_user_id` is the one linked account. WeChat's number (`need_verifycode`) goes back with
+  `channel_connect {verifyCode}`. An expired QR is replaced three times, then the group is back at
+  off with `reason: expired`. Unlink is Disconnect.
+- **The window.** `caps.replyWindowMs` (23 h) and `caps.windowSends` (9): the hub writes there
+  only after the person's words and within those, for a turn's answer and for what it starts
+  itself alike (`reach()`); otherwise the place is the app and push carries it.
+  `ChannelView.openUntil` tells Settings. A refused send closes the window.
+- **No buttons, no edits.** A reversible card says which words answer it; others are Open in
+  Ducter with the address written out; no status line.
+- **Media.** `getuploadurl` → AES-128-ECB ciphertext to the CDN → `x-encrypted-param` → an
+  image, file or video item; inbound decrypted with the item's key. Voice arrives as its
+  transcript.
+- **Settings.** The WeChat group (§6's grid): 用微信自己的 ClawBot 连 and two steps; the QR with
+  等你用微信扫码 / 扫好了，在手机上点确认 / 还差一步：填上微信里显示的数字 and 不连了; once linked 和你的微信连着,
+  现在能在微信里找你 or 在微信里跟它说句话，它才能找你, and the rule; the privacy line names WeChat's
+  ClawBot. Web `channels.tsx` `WechatCard`, Mac `views/wechat.go`.
+- **Not verified:** a real scan (the `qrcode_img_content` a real QR carries, the redirect host),
+  the 24 h / 10-message limits as WeChat really enforces them, `ret` codes beyond -14 and -2, the
+  CDN's real answers, whether WeChat accepts a client that says it is Ducter. See `todo.md`.

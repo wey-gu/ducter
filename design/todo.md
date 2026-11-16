@@ -70,6 +70,16 @@ Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
 - [ ] **Outgoing text never carries a saved value** (an Autofill detail that isn't key-shaped): refuse and have the partner reword, as one project does in code (research/88 §7.4). Key-shaped text is already hidden on the way out, as for clients (D152). Trigger: before a public release of chat apps.
 - [ ] **Telegram Mini App for the full card** (only for homes with an https address). Trigger: a card people keep opening in Ducter from Telegram.
 
+### WeChat through ClawBot (D301, `channels.md` §9, research/105)
+
+Built against a fake iLink and CDN only.
+
+- [ ] **One live run on a test WeChat account, never the author's own** (a real QR's text, the scan, the redirect host, a turn, a typed 好, a picture and a file both ways, a voice message, the window: how long and how many messages WeChat really allows, which `ret` it answers past them). Trigger: before calling WeChat more than a preview.
+- [ ] **WeChat's own terms page** 《微信ClawBot功能使用条款》 read in full (research/105 could not open it): whether it says anything about clients other than OpenClaw. Trigger: the same; stop and ask the author if it forbids them.
+- [ ] **The order of the groups for a person in China** (WeChat first when the conversation is Chinese?). Trigger: the author's review of D301.
+- [ ] **The 来自微信 / via WeChat mark** with the other chat apps' marks. Trigger: D276's mark.
+- [ ] **WeCom's long-connection bot** as a second window for people who live in WeCom (research/105 §3). Trigger: a person asks.
+
 ## A harness's own background work (D266)
 
 - [ ] **One live Claude Code task with a `run_in_background` shell and a background subagent:** the steps show, no nudge at the turn's end, the card stays 在做, Claude Code's own turn arrives when the shell ends (the 60 s settle never fires), and the session isn't parked under it. Trigger: before the release that carries D266; so far fakes and OAR's scripted runtime.

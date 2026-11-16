@@ -627,6 +627,17 @@ type LogEvent struct {
 	Kind       string          `json:"kind"`
 	Body       json.RawMessage `json:"body"`
 	Supersedes int64           `json:"supersedes,omitempty"`
+	// typed is a task_event's body decoded once (D284: a task's transcript
+	// is made again as older pages land; decoding each event every time
+	// was a fifth of it). Read-only once kept.
+	typed any
+}
+
+// KeepTyped keeps a task_event's decoded body with the event, for Typed.
+func (e *LogEvent) KeepTyped(v any) {
+	if e.Kind == KindTaskEvent {
+		e.typed = v
+	}
 }
 
 // Decode decodes the event's body into v.
@@ -640,6 +651,9 @@ func (e LogEvent) Decode(v any) error {
 // Typed returns the body decoded into its Go type, by kind, or nil for an
 // unknown kind.
 func (e LogEvent) Typed() (any, error) {
+	if e.typed != nil {
+		return e.typed, nil
+	}
 	var v any
 	switch e.Kind {
 	case KindUserMsg:
@@ -828,6 +842,9 @@ type Hello struct {
 	// Version is the app's own Ducter version: newer than the home's latest
 	// release, the home reads GitHub again.
 	Version string `json:"version,omitempty"`
+	// Gzip (D284): this client reads a frame over 16 KB sent as one binary
+	// message, its JSON gzipped (a task's history over a slow link).
+	Gzip bool `json:"gzip,omitempty"`
 }
 
 type Send struct {
@@ -1649,8 +1666,11 @@ type ServerFrame struct {
 	Events      []LogEvent `json:"events,omitempty"`
 	OnHand      *OnHand    `json:"onHand,omitempty"`
 	TaskID      string     `json:"taskId,omitempty"`
-	Delivered   Delivery   `json:"delivered,omitempty"` // sent: how a task_send was delivered
-	Message     string     `json:"message,omitempty"`
+	// task_history (D284): the beforeSeq the page was asked with (0 the
+	// newest window); More (below) says older events remain.
+	BeforeSeq int64    `json:"beforeSeq,omitempty"`
+	Delivered Delivery `json:"delivered,omitempty"` // sent: how a task_send was delivered
+	Message   string   `json:"message,omitempty"`
 	// action_result: the outcome of a task_action (merge, open_pr, ...).
 	Action string `json:"action,omitempty"`
 	OK     bool   `json:"ok,omitempty"`
@@ -1747,7 +1767,8 @@ type ServerFrame struct {
 	HomeDir string         `json:"home,omitempty"`
 	Parent  string         `json:"parent,omitempty"`
 	Folders []BrowseFolder `json:"folders,omitempty"`
-	More    bool           `json:"more,omitempty"`
+	// More: browse, more folders; task_history (D284), older events remain.
+	More bool `json:"more,omitempty"`
 	// update_result (D148): Device, OK, Reason, Detail, and with a check the
 	// device's Update. disconnect_result: Device, OK, Reason.
 	Update *DeviceUpdate `json:"update,omitempty"`

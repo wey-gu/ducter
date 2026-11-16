@@ -42,6 +42,8 @@ export interface WsData {
   greeting?: Promise<void>;
   /** What connected (hello.client); absent = an app. */
   client?: ClientKind;
+  /** D284: the client reads a large frame as one binary message, its JSON gzipped (hello.gzip). */
+  gzip?: boolean;
   /** D151: this socket's end of its live views (frames go only to the socket that opened one). */
   sink?: LiveSink;
   /** D217: this socket's end of its phone views. */
@@ -53,6 +55,8 @@ export interface WsData {
 }
 
 const ON_HAND_KINDS = new Set<string>([...PROJECTED_KINDS, "phone_call"]);
+/** D284: frames longer than this go gzipped to a client that asked (hello.gzip). */
+const GZIP_MIN = 16 * 1024;
 const REDACTED = new Set<string>(["events", "task_history", "on_hand", "task_new_result", "action_result"]);
 const REPLAY_FRESH = 200; // channel events replayed when hello has no cursor
 const REPLAY_MAX = 5000; // cap for a cursor replay
@@ -166,7 +170,13 @@ export function createWsHandler(deps: WsDeps) {
   // D242: and with every media ref signed afresh: a client gets keys that open for about a day,
   // whatever key the Log kept.
   const fresh = <T>(v: T): T => (core.media?.fresh ? core.media.fresh(v) : v);
-  const send = (ws: ServerWebSocket<WsData>, f: ServerFrame) => ws.send(JSON.stringify(fresh(REDACTED.has(f.t) ? redactDeep(f) : f)));
+  const send = (ws: ServerWebSocket<WsData>, f: ServerFrame) => {
+    const s = JSON.stringify(fresh(REDACTED.has(f.t) ? redactDeep(f) : f));
+    // D284: a task's history over a slow link (a VPS behind a tunnel) is mostly tool output that
+    // gzips several times over; a client that asked for it gets a large frame gzipped.
+    if (ws.data.gzip && s.length > GZIP_MIN) ws.sendBinary(Bun.gzipSync(Buffer.from(s)));
+    else ws.send(s);
+  };
 
   const flush = () => {
     flushTimer = undefined;
@@ -394,6 +404,7 @@ export function createWsHandler(deps: WsDeps) {
     if (f.t !== "hello" && !ws.data.live && !(ws.data.client === "handset" && f.t.startsWith("handset_"))) throw new Error("send hello first");
     switch (f.t) {
       case "hello": {
+        if (f.gzip === true) ws.data.gzip = true;
         if (f.client === "handset") {
           if (!ws.data.device) throw new Error("a paired phone only");
           ws.data.client = "handset";
@@ -1087,9 +1098,14 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "task_history": {
+        // D284: a page of the task's stream, newest first by its index (stream, seq): the newest
+        // window when the task opens, then older pages before beforeSeq. `more`: older ones remain.
         const stream = taskStream(f.taskId);
-        const events = log.read({ stream, beforeSeq: f.beforeSeq, limit: Math.min(f.limit ?? 200, 2000) });
-        send(ws, { t: "task_history", taskId: f.taskId, events });
+        const limit = Math.max(1, Math.min(f.limit ?? 200, 2000));
+        const page = log.read({ stream, beforeSeq: f.beforeSeq, limit: limit + 1 });
+        const more = page.length > limit;
+        const events = more ? page.slice(1) : page;
+        send(ws, { t: "task_history", taskId: f.taskId, events, more, ...(f.beforeSeq != null ? { beforeSeq: f.beforeSeq } : {}) });
         return;
       }
       case "wb": {

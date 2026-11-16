@@ -11,7 +11,7 @@ import { HARNESSES, type Bodies, type HarnessId, type LogEvent, type OnHand, typ
 import type { CoreApi, ListedModel, Partner, Runner } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
-import { createDecisions, type Decisions } from "./decisions.ts";
+import { createDecisions, forwardFrom, type Decisions } from "./decisions.ts";
 import { createLiving, type Living } from "./living.ts";
 import { openLog, type SqliteLog } from "./log.ts";
 import { createMcpHub, type CoreMcpHub } from "./mcp.ts";
@@ -334,9 +334,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     delayMs: () => settings.defaultAfterMs(),
     holds: (taskId) => Boolean(workRef?.untils.active(taskId)),
     rests: (taskId) => Boolean(workRef?.waiters.views().some((w) => w.taskId === taskId && w.state === "armed" && (w.check || w.event || w.watch || w.judge || w.wakes === "task"))),
-    onDecision: async (taskId, text) => {
+    onDecision: async (taskId, text, r) => {
       if (!runner) return console.warn(`[core] no runner: decision for ${taskId} not forwarded`);
-      await runner.send(taskId, text, undefined, "user");
+      await runner.send(taskId, text, undefined, forwardFrom(r)); // D284: a Go relayed is Ducter's words, a reply the person's
     },
   });
   const living = createLiving({ log, tasks, decisions, clock });
@@ -1129,7 +1129,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       for (const u of decisions.takeUnforwarded()) {
         console.warn(`[core] re-sending the answer to ${u.decisionId} that ${u.taskId} never got (restart)`);
         void Promise.resolve()
-          .then(() => r.send(u.taskId, u.text, undefined, "user"))
+          .then(() => r.send(u.taskId, u.text, undefined, u.from))
           .catch((err) => console.error(`[core] re-sending ${u.decisionId} to ${u.taskId} failed:`, (err as Error).message));
       }
     },

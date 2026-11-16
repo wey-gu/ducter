@@ -8,6 +8,7 @@ package views
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,14 +20,33 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// goRelay is the label of a Go the user gave, from the text Ducter relays
-// to the task ("User says Go: …."), or false.
+// goRelay is the label of a Go the person gave on a card, from the text
+// Ducter relays to the task ("User says Go: …."; the longer relays of a
+// payment, a sign-in or a phone step name none: ""), or false. The port of
+// goRelay in packages/protocol/src/transcript.ts.
 func goRelay(text string) (string, bool) {
-	rest, ok := strings.CutPrefix(text, "User says Go: ")
-	if !ok {
-		return "", false
+	text = strings.TrimSpace(text)
+	if rest, ok := strings.CutPrefix(text, "User says Go: "); ok {
+		return strings.TrimRight(strings.TrimSpace(rest), ".。"), true
 	}
-	return strings.TrimRight(strings.TrimSpace(rest), ".。"), true
+	for _, g := range gos {
+		if g.re.MatchString(text) {
+			return g.label, true
+		}
+	}
+	return "", false
+}
+
+// gos are the words core's decisions.ts relays a Go in (D284), and the
+// label the card's Go carried when the words don't name it.
+var gos = []struct {
+	re    *regexp.Regexp
+	label string
+}{
+	{regexp.MustCompile(`^The user says they're done on the phone \(`), "Done"},
+	{regexp.MustCompile(`^The user says they're signed in to `), ""},
+	{regexp.MustCompile(`^The user said Go: `), ""},
+	{regexp.MustCompile(`^The user said OK to use `), ""},
 }
 
 // noteLine is a note in words: note.<say>, its name filled in (a

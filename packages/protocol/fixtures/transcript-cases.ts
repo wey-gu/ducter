@@ -305,6 +305,28 @@ export const cases = [
       [303, "task_event", "user", { role: "user", from: "user", text: "好的，先停一下" }],
     ]),
   },
+  {
+    // D284: Ducter's own lines logged as the person's words (before D271/D280 they carried from
+    // "user"): the first Stop's words, a Done on a phone step, Go relays with and without a label,
+    // a recording's answer. Only the person's own words are a bubble; the rest are chips and hairlines.
+    name: "a phone task's old relays, from the user (zh)",
+    harness: "claude-code",
+    working: false,
+    events: stream("ph2", [
+      [0, "task_open", "partner", { taskId: "ph2", title: "录一段 Chrome 冷启动", project: "", place: { kind: "none" }, harness: "claude-code", brief: "在我的手机上录一段 Chrome 冷启动的视频。" }],
+      [4, "task_event", "task", { role: "assistant", text: "要你先在手机上把 Chrome 的数据清掉，好了点做完了。" }],
+      [60, "task_event", "user", { role: "user", from: "user", text: "The user says they're done on the phone (清掉 Chrome 的数据). That is their word, not something you saw: phone_look first and check it really happened (the right app and screen; for a recording, that it is running or saved) before you go on. If it didn't, say what you see in one line and ask again." }],
+      [64, "task_event", "task", { role: "assistant", text: "看到了，数据已清。开始录。" }],
+      [70, "task_event", "user", { role: "user", from: "user", text: "Recording Pixel Fold's screen now (the whole screen, no sound; the phone shows it is recording). Carry on with the work; call phone_record_stop when what should be in the video is done." }],
+      [90, "task_event", "user", { role: "user", from: "user", text: "The user stopped you using their phone (停下 / Stop). Don't use it again in this task. Report what you finished and what is left, in one or two lines." }],
+      [94, "task_event", "task", { role: "assistant", text: "录到一半停了：冷启动录到了，热启动还没录。" }],
+      [120, "task_event", "user", { role: "user", from: "user", text: "User says Go: Continue." }],
+      [124, "task_event", "task", { role: "assistant", text: "接着录热启动。" }],
+      [150, "task_event", "user", { role: "user", from: "user", text: "The user said Go: pay USD 9.99 at example.com with Visa ••4242. Within 15 minutes, fill the card with browser_fill." }],
+      [160, "task_event", "user", { role: "user", from: "user", text: "热启动不用录了，收尾吧" }],
+      [170, "task_event", "task", { role: "assistant", text: "好，收尾。" }],
+    ]),
+  },
 ];
 
 if (import.meta.main) {

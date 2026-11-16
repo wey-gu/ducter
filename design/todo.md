@@ -203,13 +203,20 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       real long run with the author.
 
 - [ ] **The opened task, after D271**: (1) done in D279: a progress report after `wait_for`
-      leaves the card on Waiting (core's `rests`). (2) An opened task loads its latest 2,000 events
-      (the home's most per ask); older ones are not reachable from the page or the locator.
-      Trigger: a loop that runs past a day. (3) In a loop, a finished round folds everything
+      leaves the card on Waiting (core's `rests`). (2) Done in D284: the newest window first, pages
+      in the background up to 2,000, then as the reader reaches the head. (3) In a loop, a finished round folds everything
       before its last words, so a review round's findings hide under "做了 8 分 21 秒" when its
       last words are "45 分钟后再看"; consider keeping the round's longest words in view. Trigger:
       the author's review of D271. (4) The web's locator marks the turns in view by scroll
       position (no virtual list); the Mac's by the list's rows. Check both on a real loop.
+
+- [ ] **The opened task, after D284**: (1) check the opening time against the author's own VPS
+      home (the perf tests simulate a 4 Mbit/s link) and the locator's glide and tint on the real
+      Mac and in Safari on an iPhone (the web keeps the reader's place itself when older pages
+      land; WebKit has no scroll anchoring). (2) The web unzips a gzipped frame only where the
+      browser has DecompressionStream (Safari 16.4+); older ones take text as before. (3) The
+      socket's own deflate (permessage-deflate) for every client if the phone app's or a
+      worker's link is slow too. Trigger: the author's review of D284.
 
 - [ ] **The eval's new gaps on haiku** (research/48 addendum, `eval/results/2026-11-10-haiku-d175.md`):
       (1) it says a rule is kept without calling `rule_save` / `notice_rule` (an honesty gap: a

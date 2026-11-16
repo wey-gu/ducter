@@ -787,7 +787,9 @@ export type ClientFrame =
   // version: the Ducter version the client runs (the Mac app's); newer than the home's latest
   // release makes the home read GitHub again (its answer is stale).
   // shape (D263): what the device a page runs on is shaped like (shapeFromBrowser), for its clay.
-  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape }
+  // gzip (D284): the client reads a frame over 16 KB sent as one binary message, its JSON gzipped
+  // (the Mac app; a browser has the socket's own deflate).
+  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape; gzip?: boolean }
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
   // via (D277): the Mac app's iMessage bridge relays words the person wrote in iMessage.
@@ -817,6 +819,8 @@ export type ClientFrame =
   // frame carrying the same id.
   | { t: "wb"; id: string; taskId: string; req: import("./workbench.ts").WbRequest }
   | { t: "read"; upToSeq: number }
+  // D284: an opened task asks for its newest window first (limit ~200), then older pages with
+  // beforeSeq = the oldest seq it holds; limit is at most 2,000.
   | { t: "task_history"; taskId: string; beforeSeq?: number; limit?: number }
   // Devices and abilities (D43, D51): "devices" answers with a devices frame and keeps the
   // socket subscribed (a fresh frame whenever a device or an ability changes). "ability" adds
@@ -1137,7 +1141,9 @@ export type ServerFrame =
   | { t: "welcome"; persona: string; personaName: string; headSeq: number; machine?: string; /** The home's Ducter version: a page built for another reloads (it would draw an older card). */ version?: string }
   | { t: "events"; events: LogEvent[] }
   | { t: "on_hand"; onHand: OnHand }
-  | { t: "task_history"; taskId: string; events: LogEvent[] }
+  // D284: a page of a task's stream, oldest first: the newest `limit` events, or those before
+  // beforeSeq (echoed). more: older events remain (absent from a home before D284).
+  | { t: "task_history"; taskId: string; events: LogEvent[]; more?: boolean; beforeSeq?: number }
   | { t: "sent"; taskId: string; delivered: Delivery } // ack for task_send
   // ref: merge commit or PR URL. confirm (D142 undo): the folder changed after the task finished;
   // these would be lost (count, the first few paths).

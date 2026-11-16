@@ -23,6 +23,8 @@ var zhLoop = Table{
 	"told.loan_lost":     "%s 断开了，借用结束了 · %s",
 	"locator.name":       "这件事里说过的话",
 	"locator.brief":      "交给它的事",
+	"locator.quiet":      "%d 条提示 · %s–%s",
+	"turn.go":            "你点了「%s」",
 	"group.more":         "还有 %d 步",
 }
 
@@ -45,6 +47,8 @@ var enLoop = Table{
 	"told.loan_lost":     "Lost your %s; the loan ended · %s",
 	"locator.name":       "What was said in this task",
 	"locator.brief":      "The task it was given",
+	"locator.quiet":      "%d notes · %s–%s",
+	"turn.go":            "You chose “%s”",
 	"group.more":         "%d more steps",
 }
 

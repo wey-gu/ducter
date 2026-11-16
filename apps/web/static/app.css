@@ -1615,6 +1615,8 @@ a {
 /* ---------- opened task: one column (D74) ---------- */
 .task-page {
   gap: 20px;
+  /* D284: older pages land above; the page keeps the reader's place itself, in every engine. */
+  overflow-anchor: none;
 }
 .task-head {
   display: grid;
@@ -2111,6 +2113,102 @@ a {
   width: 10px;
   background: var(--ink);
   opacity: 0.75;
+}
+/* D284: a quiet turn (a wake, Ducter's note, a Go relayed) is a short tick; the turns in view sit on
+   a soft clay thumb that glides as the page moves. */
+.locator .rail i.quiet {
+  width: 4px;
+  opacity: 0.45;
+}
+.locator .rail i.quiet.here {
+  width: 6px;
+  opacity: 0.75;
+}
+.locator .rail .thumb {
+  position: absolute;
+  right: -1px;
+  width: 12px;
+  margin-top: -5px;
+  padding-bottom: 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  transition: top 260ms var(--ease), height 260ms var(--ease);
+}
+.locator .loc-list {
+  /* D284: the card rises out of the rail (its bottom right), scale and fade, and goes back into it. */
+  transform-origin: 100% 100%;
+  opacity: 0;
+  transform: translateX(6px) scale(0.94);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 140ms var(--ease), transform 180ms var(--ease), visibility 0s linear 180ms;
+}
+.locator.open .loc-list {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 160ms var(--ease), transform 200ms var(--ease), visibility 0s;
+}
+.locator .loc-list button.quiet {
+  min-height: 22px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.locator .loc-list button.quiet i {
+  width: 7px;
+  height: 1px;
+  border-radius: 0;
+  opacity: 0.6;
+}
+.locator .loc-list button.quiet.here {
+  font-weight: 400;
+}
+/* D284: the turn the locator went to wears a soft clay tint that fades. */
+.turns > .turn.flash {
+  animation: turn-flash 1.6s var(--ease);
+}
+@keyframes turn-flash {
+  0% {
+    box-shadow: 0 0 0 10px transparent;
+    background: transparent;
+  }
+  12% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 14%, transparent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+    background: transparent;
+  }
+}
+.turns > .turn {
+  border-radius: var(--r-md);
+}
+/* D284: the person's Go on a card, relayed to the task: a quiet chip on their side, never a bubble. */
+.tx.go-chip {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--sunken);
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.tx.go-chip time {
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  .locator .rail .thumb,
+  .locator .loc-list,
+  .locator.open .loc-list {
+    transition: opacity 120ms linear, visibility 0s;
+    transform: none;
+  }
 }
 .locator .loc-list {
   list-style: none;

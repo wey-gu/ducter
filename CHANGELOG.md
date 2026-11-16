@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.0.59
+
+<!-- whats-new
+zh: 更安静：顶栏一个字号，任务只说真实状态
+en: Calmer: one size in the header; tasks say only what's true
+zh: 在 Slack、Telegram、iMessage 里也能找它
+en: Reach your partner from Slack, Telegram and iMessage
+-->
+
+**A calmer app**
+- Every header uses one type size; the places are three drawn marks, where you are is the raised one.
+- Lists show the chosen item as a raised card, no side bars. On hand is one quiet column.
+- The counts under your partner's name open On hand; its face and name open its page.
+
+**An opened task**
+- The end line says what is true: what it's doing in a turn, or what it waits for and when it looks
+  again. A wake is a thin line, and Ducter's own notes to the agent no longer look like your words.
+- Scrolling up works on the first move; long tasks scroll smoothly. A thin rail on the right lists
+  what was said and jumps there.
+
+**Chat apps**
+- Telegram and Slack: your own bot, the same conversation; reversible decisions as buttons.
+- iMessage through the Mac app, from the partner's own Apple ID.
+
+**Projects and Git**
+- Add a folder on any computer: a new one, one already there, or a clone. Git is optional.
+- Sign in to GitHub on your server from the app with a one-time code.
+
+**Also**
+- The attach button is a paperclip: any file, not only pictures.
+- "Connected AI agents" replaces "your other AI"; agents are named by what they are.
+- Settings pages on the phone line up on one grid.
+- Your partner answers you before it offers anything of its own.
+- On your phone, the pill says it's waiting when the agent sits still.
+
 ## 0.0.58
 
 <!-- whats-new

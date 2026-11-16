@@ -124,5 +124,6 @@ export function describeTrigger(t: RoutineTrigger, zh: boolean): string {
     : t.every === "month" ? (zh ? `每月 ${t.dayOfMonth} 号 ${time}` : `Monthly on the ${t.dayOfMonth}${["th", "st", "nd", "rd"][t.dayOfMonth! % 10 > 3 || [11, 12, 13].includes(t.dayOfMonth!) ? 0 : t.dayOfMonth! % 10]} ${time}`)
     : zh ? `每${(t.days ?? []).map((d) => ZH_DAYS[d]).join("、")} ${time}` : `${(t.days ?? []).map((d) => EN_DAYS[d]).join(", ")} ${time}`;
   const zone = t.zone === "personal" ? (zh ? "跟着你的时区" : "follows your time zone") : zh ? `按 ${t.tz} 时间` : `${t.tz} time`;
-  return `${when} · ${zone}`;
+  // D291: the zone qualifies the time, in parentheses, never joined by a dot.
+  return zh ? `${when}（${zone}）` : `${when} (${zone})`;
 }

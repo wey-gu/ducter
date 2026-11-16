@@ -730,7 +730,7 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 			out = append(out, Block{K: "report", Seq: ev.Seq, State: b.State, Text: redact.Text(b.Summary), Media: b.Media})
 		case *protocol.TaskEvent:
 			if len(b.Thinking) > 0 {
-				addRow(ev.Seq, StepRow{Seq: ev.Seq, Thought: redact.Text(strings.Join(b.Thinking, " · ")), N: 1, Outcome: "ok", Ms: took})
+				addRow(ev.Seq, StepRow{Seq: ev.Seq, Thought: redact.Text(strings.Join(b.Thinking, "\n")), N: 1, Outcome: "ok", Ms: took})
 				continue
 			}
 			if b.Tool != nil {

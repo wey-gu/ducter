@@ -11,7 +11,6 @@ package views
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -67,7 +66,7 @@ func (a *App) taskInfo(c *ui.Context, task *store.Task) {
 	}
 	h := a.controlHeight(t.ControlSM)
 	b := ui.Row(c.Key("task-info")).Height(h).Padding(0, a.textPad(h)).Gap(t.S1 + 2).Radius(a.buttonRadius(h)).
-		AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("info.about") + " · " + label).
+		AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, a.L.T("info.about"), label)).
 		Focusable().Shrink(1).MinWidth(0).Tooltip(label)
 	kind := btnText
 	if a.infoOpen {
@@ -203,12 +202,20 @@ func (a *App) taskInfoBody(c *ui.Context, task *store.Task) {
 					if w.Effort != "" {
 						parts = append(parts, a.effortWord(w.Effort))
 					}
-					tx := ui.Text(c, strings.Join(parts, " · ")).FontSize(t.SM).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
+					// D291: the agent, the model, the effort, each its own small element.
+					ui.Row(c.Key("nm")).Gap(t.S2).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
+						for j, p := range parts {
+							tx := ui.Text(c.Key(j), p).FontSize(t.SM).TextColor(t.Ink).SingleLine().MinWidth(0)
+							if last {
+								tx.FontWeight(700)
+							}
+						}
+					})
 					when := a.L.T("info.who.now")
-					if last {
-						tx.FontWeight(700)
-					} else if ts, err := time.Parse(time.RFC3339Nano, w.TS); err == nil {
-						when = ts.Local().Format("15:04")
+					if !last {
+						if ts, err := time.Parse(time.RFC3339Nano, w.TS); err == nil {
+							when = ts.Local().Format("15:04")
+						}
 					}
 					ui.Text(c, when).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum")
 				})

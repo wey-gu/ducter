@@ -15,6 +15,7 @@ import { mediaFetch, mediaUrl, refreshKeys } from "./media-fresh.ts";
 import type { JSX } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { spoken } from "./format.ts";
 import { title } from "./store.ts";
 import { picturesIn, viewerKey } from "./media-keys.ts";
 import { decode, draw, type Pic, type ViewCtx } from "./media-up.ts";
@@ -160,7 +161,7 @@ export function Tray({ where }: { where: string }) {
   return (
     <div class="tray-pics" role="list">
       {pics.map((p) => (
-        <div key={p.key} class={`chosen${p.kind === "file" ? " doc" : ""}${p.state === "failed" ? " failed" : ""}`} role="listitem" title={p.kind === "file" ? `${p.name} · ${sizeWords(p.file.size)}` : undefined}>
+        <div key={p.key} class={`chosen${p.kind === "file" ? " doc" : ""}${p.state === "failed" ? " failed" : ""}`} role="listitem" title={p.kind === "file" ? spoken(A.L, p.name, sizeWords(p.file.size)) : undefined}>
           {p.kind === "file" ? (
             <span class="doc-face" aria-label={p.name}>
               <FileGlyph m={{ id: p.key, type: p.file.type || "application/octet-stream", bytes: p.file.size, name: p.name, k: "" }} size={22} />

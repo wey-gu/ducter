@@ -27,8 +27,8 @@ var enWatch = Table{
 	"watch.left.day":  "%d d",
 	"watch.tally":     "Looked %d times",
 	"watch.tally.one": "Looked once",
-	"watch.last":      "last at %s",
-	"watch.last.not":  "last at %s: not yet",
+	"watch.last":      "Last at %s",
+	"watch.last.not":  "Last at %s: not yet",
 	"watch.met":       "Wait over, carrying on",
 }
 

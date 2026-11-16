@@ -107,7 +107,7 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 		case "wake", "told":
 			// D271: Ducter woke it, or told it something itself: a hairline
 			// with its time, the reason (or what was sent) on hover.
-			a.dividerTip(c, a.promptLine(task, p), p.Text)
+			a.dividerTip(c, a.promptLine(p), a.promptAt(task, p), p.Text)
 		}
 	}
 	took := a.turnTook(task, tu)
@@ -463,7 +463,7 @@ func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, live bool) {
 		switch {
 		case open && r.Step == nil:
 			// Its thinking, indented, quiet.
-			ui.Text(c, autospace(strings.ReplaceAll(r.Thought, " · ", "\n"))).FontSize(stepSize).LineHeight(1.5).TextColor(t.InkMuted).
+			ui.Text(c, autospace(r.Thought)).FontSize(stepSize).LineHeight(1.5).TextColor(t.InkMuted).
 				Padding(2, 0, t.S1, 22).MinWidth(0).Selectable()
 		case open && len(r.Diff) > 0:
 			a.diffPanel(c, r)
@@ -584,7 +584,7 @@ func (a *App) tallyWords(ts []Tally) string {
 // liveRowWords is a step in the present tense, while it runs (D268).
 func (a *App) liveRowWords(r *StepRow) string {
 	if r.Step == nil {
-		if h := strings.Split(r.Thought, " · ")[0]; h != "" {
+		if h := strings.Split(r.Thought, "\n")[0]; h != "" {
 			return h
 		}
 		return a.L.T("live.thinking")

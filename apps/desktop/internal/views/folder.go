@@ -219,7 +219,7 @@ func (a *App) folderRow(c *ui.Context, task *store.Task, f protocol.FolderChange
 	row.Children(func() {
 		ui.Text(c, text).FontSize(t.SM).TextColor(col).Grow(1).MinWidth(0).SingleLine().Selectable()
 		if undo && !f.Dir && row.Hovered() {
-			if a.quietLink(c, "restore:"+task.ID+":"+f.Path, a.L.T("folder.row.restore"), a.L.T("folder.row.restore")+" · "+lastPart(f.Path)) {
+			if a.quietLink(c, "restore:"+task.ID+":"+f.Path, a.L.T("folder.row.restore"), spoken(a.L, a.L.T("folder.row.restore"), lastPart(f.Path))) {
 				a.send(protocol.TaskAction{T: "task_action", TaskID: task.ID, Action: "undo", Path: f.Path})
 			}
 		}

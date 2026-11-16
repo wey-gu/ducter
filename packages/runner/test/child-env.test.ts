@@ -98,15 +98,17 @@ async function openAll(): Promise<Partial<Record<HarnessId, Record<string, strin
 const values = (env: Record<string, string>) => new Set(Object.values(env));
 
 describe("a harness child's environment", () => {
-  test("Claude Code, Codex and pi never see the DeepSeek key, a connection token or any other key", async () => {
+  test("Claude Code and Codex never see the DeepSeek key; none of them a connection token or any other key", async () => {
     const seen = await openAll();
     for (const h of ["claude-code", "codex", "pi"] as const) {
       const env = seen[h]!;
-      expect(env.DEEPSEEK_API_KEY).toBeUndefined();
+      // D298: pi signs in with a DeepSeek key too (a pasted one runs on pi without DeepSeek Harness).
+      if (h === "pi") expect(env.DEEPSEEK_API_KEY).toBe(DS_KEY);
+      else expect(env.DEEPSEEK_API_KEY).toBeUndefined();
       for (const k of ["OO_CONNECTOR_TOKEN", "GITHUB_TOKEN", "AWS_SECRET_ACCESS_KEY", "NMEM_API_KEY", "DUCTER_TOKEN"]) expect(env[k]).toBeUndefined();
-      for (const secret of [DS_KEY, DS_FILE_KEY, OO_TOKEN, CONN_TOKEN]) expect(values(env).has(secret)).toBe(false);
-      // No fake secret value under any name, except Claude Code's own login token (below).
-      const { CLAUDE_CODE_OAUTH_TOKEN: _own, ...rest } = h === "claude-code" ? env : { ...env, CLAUDE_CODE_OAUTH_TOKEN: "" };
+      for (const secret of [...(h === "pi" ? [] : [DS_KEY, DS_FILE_KEY]), OO_TOKEN, CONN_TOKEN]) expect(values(env).has(secret)).toBe(false);
+      // No fake secret value under any name, except Claude Code's own login token (below) and pi's DeepSeek key.
+      const { CLAUDE_CODE_OAUTH_TOKEN: _own, DEEPSEEK_API_KEY: _ds, ...rest } = h === "claude-code" ? { ...env, DEEPSEEK_API_KEY: "" } : h === "pi" ? { ...env, CLAUDE_CODE_OAUTH_TOKEN: "" } : { ...env, CLAUDE_CODE_OAUTH_TOKEN: "", DEEPSEEK_API_KEY: "" };
       expect(JSON.stringify(rest)).not.toContain("fake-0");
       // The basics stay.
       expect(env.PATH).toBe(process.env.PATH!);
@@ -140,7 +142,7 @@ describe("a harness child's environment", () => {
     delete process.env.DEEPSEEK_API_KEY;
     seen = await openAll();
     expect(seen["deepseek-harness"]!.DEEPSEEK_API_KEY).toBe(DS_FILE_KEY);
-    expect(seen.pi!.DEEPSEEK_API_KEY).toBeUndefined();
+    expect(seen.pi!.DEEPSEEK_API_KEY).toBe(DS_FILE_KEY);
   });
 
   test("the probes (installed, signed in, models) run with the same environment", async () => {
@@ -162,7 +164,7 @@ describe("a harness child's environment", () => {
       },
     });
     await port.available();
-    expect(seen.pi!.DEEPSEEK_API_KEY).toBeUndefined();
+    expect(seen.pi!.DEEPSEEK_API_KEY).toBe(DS_KEY);
     expect(seen.codex!.OO_CONNECTOR_TOKEN).toBeUndefined();
     expect(seen["deepseek-harness"]!.DEEPSEEK_API_KEY).toBe(DS_KEY);
     expect(seen["claude-code"]!.CLAUDE_CODE_OAUTH_TOKEN).toBe(CLAUDE_TOKEN);
@@ -199,7 +201,7 @@ describe("the allowlist", () => {
     expect(allowedFor("deepseek-harness", "DUCTER_APNS_KEY_FILE")).toBe(false);
     expect(allowedFor("deepseek-harness", "SSH_AUTH_SOCK")).toBe(true);
     const env = childEnvironment("pi", { inherited: { PATH: "/bin", ANTHROPIC_API_KEY: "a", DEEPSEEK_API_KEY: "d" }, explicit: { ENABLE_X: "1" } });
-    expect(env).toEqual({ PATH: "/bin", ANTHROPIC_API_KEY: "a", ENABLE_X: "1" });
+    expect(env).toEqual({ PATH: "/bin", ANTHROPIC_API_KEY: "a", DEEPSEEK_API_KEY: "d", ENABLE_X: "1" }); // D298: pi signs in with DeepSeek too
   });
 
   test("Codex also gets the key its own config names for a custom provider", () => {

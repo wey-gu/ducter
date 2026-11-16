@@ -134,6 +134,8 @@ type AIMsg struct {
 	Media []MediaRef `json:"media,omitempty"`
 	// Cal (D222): the day glance the partner put under these words.
 	Cal *CalGlance `json:"cal,omitempty"`
+	// First (D298): the partner's first words, with what they offer.
+	First *FirstWords `json:"first,omitempty"`
 }
 
 type Ack struct {
@@ -1790,6 +1792,8 @@ type ServerFrame struct {
 	Why          string        `json:"why,omitempty"`
 	// first_screen (D149): the empty conversation's words from the home.
 	First *FirstScreen `json:"first,omitempty"`
+	// key_add_result (D298): ClientID and what the pasted key came to.
+	KeyResult *KeyResult `json:"result,omitempty"`
 	// D151 live view: live (ID, DecisionID, State open|closed, Site, URL, Title,
 	// Width, Height, Reason, Message) and live_frame (ID, Seq, Data = a base64
 	// JPEG, Width, Height, URL). browser_sites: Ready, Sites (and OK, Message
@@ -1878,6 +1882,10 @@ type FirstScreen struct {
 	Starters []Starter  `json:"starters"`
 	// Today (D222): what is still on today, from the last look.
 	Today *CalToday `json:"today,omitempty"`
+	// Looks (D298): the home may read this computer's agents' records for
+	// its first words; NoBrain: nothing there can think yet (offer a key).
+	Looks   bool `json:"looks,omitempty"`
+	NoBrain bool `json:"noBrain,omitempty"`
 }
 
 // FirstNews is one timely line for a returning person: needs_you | missed
@@ -2048,7 +2056,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "channels", "channel_result",
-		"handset_dial_result":
+		"handset_dial_result", "key_add_result":
 	case "past_result", "past_marked":
 		return decodePast(data, f)
 	case "ongoing_result":

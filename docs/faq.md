@@ -26,8 +26,32 @@ Ducter also works with **pi** and **DeepSeek Harness**, which run on an API key 
 use rather than a plan. If one of them is installed and has its key, ask your partner to use it
 for a task ("do this with DeepSeek Harness"), or make it what your partner thinks with in
 Settings › Partner (see [Your partner and settings](settings.md)). A server with only a DeepSeek
-key works as it is: your partner thinks with DeepSeek Harness. Typing a DeepSeek key into Devices
-is coming soon; until then it goes in the key file (see [Install](install.md)).
+key works as it is: your partner thinks with DeepSeek Harness.
+
+### Can I use it without a Claude or ChatGPT subscription?
+
+Yes. Paste an API key instead: when you first open the app, under Claude Code and Codex, choose
+**Paste a key**; or, whenever nothing is signed in, paste it in the card in the conversation. A key
+from DeepSeek, Kimi, Zhipu GLM, OpenAI, Anthropic, OpenRouter, Google Gemini, xAI or Groq works.
+Ducter tells which one it is, checks it without spending anything, and says what it found in plain
+words: it works, the key is wrong, the account has no balance left, or the provider can't be
+reached from where you are (from mainland China, OpenAI, Anthropic and Google usually need a proxy;
+DeepSeek, Kimi and Zhipu don't). Your partner then thinks with it, through DeepSeek Harness or pi.
+The key stays in Ducter on that computer, in a private file, and never appears in the conversation.
+
+If the computer doesn't have pi yet, Ducter keeps the key and opens pi's own installer in Terminal.
+Alibaba Cloud Model Studio (Qwen) keys are recognised but can't be used yet: that's coming soon. On
+a server, `ducter key add < key.txt` does the same from the terminal (see [Install](install.md)).
+
+### How does my partner know what I was working on?
+
+The first time you open Ducter, your partner looks at what Claude Code and Codex keep on that
+computer about your recent work: which folder each one ran in, its title, and your first words
+there. It reads only that, only on that computer, and shows it only to you, as two or three things
+you might want to pick up ("Yesterday you were on 'Fix the flaky test' in hawdb. Want me to pick it
+up?"). It never opens your folders to find them. Tapping one puts it in the box; nothing is sent
+until you send it, and then it goes to the AI you chose, like anything else you write. Don't want
+that? Choose **Stop looking** right under them, and it won't look again.
 
 ### What does it run on?
 

@@ -30,6 +30,7 @@ import { scriptedRunnerModule } from "./scripted.ts";
 import { hostname } from "node:os";
 import { openDeviceAuth } from "@ducter/core/src/auth.ts";
 import { probeHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { cmdKey } from "./key-cmd.ts";
 import { harnessName } from "@ducter/protocol";
 
 declare const DUCTER_COMMIT: string | undefined; // set by build.sh via --define
@@ -589,6 +590,25 @@ export async function run(argv: string[]): Promise<number | "running"> {
   switch (args.command) {
     case "doctor":
       return cmdDoctor(ctx);
+    case "key":
+      // D298: a pasted API key for this computer's Ducter (stdin only).
+      return cmdKey({
+        dataDir,
+        lang: detectLocale() === "zh" ? "zh" : "en",
+        json: args.json,
+        rest: args.rest ?? [],
+        signedIn: async () => {
+          const hs = await probeHarnesses({
+            exec: async (argv, ms) => {
+              const r = await host.run(argv, ms);
+              return { code: r.code, out: r.stdout };
+            },
+            which: (c) => host.which(c),
+            dataDir,
+          }).catch(() => []);
+          return hs.some((h) => h.installed && h.loggedIn);
+        },
+      });
     case "undo":
       return cmdUndo(ctx);
     case "merge":

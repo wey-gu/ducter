@@ -26,6 +26,7 @@ import { OwnPhoneCard } from "./own-phone.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
+import { FirstAfter, firstOpening, KeyCard, keyJustAdded } from "./first-words.tsx";
 import { CalFacts, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx";
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
 import { FileViewer } from "./fileview.tsx";
@@ -1121,7 +1122,13 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
   if (e.ai) {
     const ans = answerOf(e, prevUser);
     return (
-      <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
+      <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}${e.ai.first ? " first" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
+        {/* D298: the clay partner over its first words, while nothing else was said. */}
+        {e.ai.first && firstOpening() && (
+          <span class="first-face">
+            <Avatar size={128} state="idle" />
+          </span>
+        )}
         {/* D256: the pebble rests beside the bubble itself, on its bottom line (a day card or
             pictures under the words never move it). */}
         {(e.ai.text || !e.ai.cal) && (ans ? (
@@ -1140,6 +1147,7 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
         {e.ai.cal && <DayCard g={e.ai.cal} />}
         {/* D206: what a task showed, under the partner's words about it. */}
         {e.ai.media?.length ? <MediaBlock media={e.ai.media} side="partner" ctx={{ kind: "conv" }} /> : null}
+        {e.ai.first && <FirstAfter fw={e.ai.first} />}
         <Quiet k={`m${e.firstSeq}`} tasks={replyTasks(e, chipOwner)} noted={A.notedFor(e)} />
       </div>
     );
@@ -1513,7 +1521,7 @@ export function Conversation() {
           if (e.user) lastUser = e.firstSeq;
           return (
             <Fragment key={e.firstSeq}>
-              {e.firstSeq === divider && <NewDivider />}
+              {e.firstSeq === divider && !e.ai?.first && <NewDivider />}
               {gap && !(e.living && A.livingAway.get(e.firstSeq)) && <div class="when">{when(A.L, e.ev.ts)}</div>}
               <EntryView e={e} chipOwner={chipOwner} livingItems={livingItems} join={!gap && stacks(rows[i - 1], e, chipOwner)} prevUser={prevUser} />
             </Fragment>
@@ -1540,6 +1548,8 @@ export function Conversation() {
           ),
         )}
         {A.thinking() && <Presence />}
+        {/* D298: nothing can think and the first words aren't the opening: the key card here. */}
+        {(A.S.first?.noBrain || keyJustAdded()) && !rows.some((r) => r.ai?.first) && <KeyCard />}
         <NotifyAsk />
       </main>
       <WayBack f={follow} />

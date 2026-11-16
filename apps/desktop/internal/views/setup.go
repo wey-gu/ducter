@@ -434,6 +434,9 @@ func (a *App) setupBlocked(c *ui.Context) {
 	if len(fixable) > 0 {
 		a.optionRows(c, fixable)
 	}
+	if !a.setup.report.HarnessReady {
+		a.setupKeyRow(c) // D298: no subscription needed
+	}
 	for _, k := range blocking {
 		k := k
 		if k.Action != "" && a.Backend != nil {

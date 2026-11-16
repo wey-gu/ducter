@@ -205,7 +205,14 @@ browser: `claude auth login` prints a link to open on any device and waits for t
 `codex login --device-auth` works the same way. One is enough. With only Codex signed in,
 your partner thinks with Codex and Codex does the tasks; Claude Code is optional.
 
-If you'd rather use a sign-in token or an API key (for example `CLAUDE_CODE_OAUTH_TOKEN` from
+To use an API key instead of a subscription, paste it: `ducter key add < key.txt` reads it from
+the file (never from the command line), tells which provider it is, checks it without spending
+anything, keeps it, and says whether it works. A key from DeepSeek, Kimi, Zhipu GLM, OpenAI,
+Anthropic, OpenRouter, Google Gemini, xAI or Groq works; your partner then thinks with it. You can
+also paste one in the app or on your phone, in the card the conversation shows while nothing is
+signed in.
+
+If you'd rather put a sign-in token or an API key in yourself (for example `CLAUDE_CODE_OAUTH_TOKEN` from
 `claude setup-token`, or `DEEPSEEK_API_KEY` for DeepSeek Harness), put it in
 `~/.ducter/keys.env`, one `NAME=value` per line, and make the file private:
 
@@ -213,8 +220,8 @@ If you'd rather use a sign-in token or an API key (for example `CLAUDE_CODE_OAUT
 chmod 600 ~/.ducter/keys.env
 ```
 
-Ducter gives each key only to the AI agent that signs in with it. Your DeepSeek key reaches
-DeepSeek Harness and nothing else. Other keys and tokens on the server, such as one in your
+Ducter gives each key only to the AI agents that sign in with it. Your DeepSeek key reaches
+DeepSeek Harness and pi, and nothing else. Other keys and tokens on the server, such as one in your
 shell, aren't passed to tasks either. If an older Ducter had you put keys in `~/.ducter/env`,
 Ducter moves them to `keys.env` the next time it starts.
 

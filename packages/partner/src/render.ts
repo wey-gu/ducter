@@ -299,7 +299,9 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       const b = e.body as Bodies["ai_msg"];
       // D222: the day card it put under these words.
       const card = b.cal ? ` [the day card for ${b.cal.from === b.cal.to ? b.cal.from : `${b.cal.from} to ${b.cal.to}`} was shown under it]` : "";
-      return `[${t} you] ${clip(b.text, 800)}${card}`.replace("] [", "] ");
+      // D298: your first words, said by the home, with what they offered (a tap fills the user's box).
+      const offered = b.first?.starts.length ? ` [your first words to the user; offered: ${b.first.starts.map((s) => `“${clip(s.draft, 160)}”`).join("; ")}]` : "";
+      return `[${t} you] ${clip(b.text, 800)}${card}${offered}`.replace("] [", "] ");
     }
     case "ack":
       return `[${t} you] ${clip((e.body as Bodies["ack"]).text, 300)}`;

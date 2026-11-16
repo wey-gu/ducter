@@ -3,7 +3,9 @@
 // apps/desktop/internal/protocol (keep field names identical; JSON is the wire format).
 
 export * from "./harnesses.ts";
+export * from "./api-keys.ts";
 import type { HarnessId } from "./harnesses.ts";
+import type { KeyResult } from "./api-keys.ts";
 export * from "./loadout.ts";
 export * from "./proactive.ts";
 export * from "./saved.ts";
@@ -257,7 +259,9 @@ export interface Bodies {
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
   // cal (D222): the day glance the partner put under these words (calendar do=agenda show).
-  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance };
+  // first (D298): the partner's first words, said by the home when someone first opens the
+  // conversation, with the things it offers to start or continue (a tap fills the composer).
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   // act, ref (D216): the line a user's Merge or Open draft PR logs, with the merge's commit or the PR's address.
   job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string; act?: "merge" | "open_pr"; ref?: string };
@@ -850,6 +854,10 @@ export type ClientFrame =
   // shape (D263): what the device a page runs on is shaped like (shapeFromBrowser), for its clay.
   // gzip (D284): the client reads a frame over 16 KB sent as one binary message, its JSON gzipped
   // (the Mac app; a browser has the socket's own deflate).
+  // D298: a pasted API key (never logged, never sent back): recognised, checked, kept, thought with.
+  | { t: "key_add"; key: string; clientId: string }
+  // D298: 别再看了 / Stop looking: the first words never read the person's agents' records again (on: back on).
+  | { t: "local_agents"; on: boolean }
   | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape; gzip?: boolean }
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
@@ -1268,6 +1276,7 @@ export type ServerFrame =
   | { t: "open_result"; taskId: string; ok: boolean; apps: number; message?: string }
   // D149: the empty conversation's words, after each app's hello (never to a CLI).
   | { t: "first_screen"; first: FirstScreen }
+  | { t: "key_add_result"; clientId: string; result: KeyResult }
   // D151: a live view opened (with the page's size in CSS pixels) or closed (reason: done, closed,
   // replaced = another window opened one, gone = the browser went away, failed with message).
   // browser (D154): which browser it is, for the view's top line.
@@ -1368,6 +1377,26 @@ export interface FirstScreen {
   starters: { id: string; kind: StarterKind; words: Words }[];
   /** D222: what is still on today, from the last look at their calendars (never a new read). */
   today?: CalToday;
+  /** D298: the home may look at this computer's AI agents' own records for its first words (off after 别再看了). */
+  looks?: boolean;
+  /** D298: nothing on the home can think yet (no agent signed in, no key): the clients offer to paste a key. */
+  noBrain?: boolean;
+}
+
+/**
+ * D298: one thing the first words offer. A tap fills the composer with `draft`; it never sends.
+ * from: whose records it came from (the person's own Claude Code or Codex), or an everyday example.
+ */
+export interface FirstStart {
+  id: string;
+  words: string;
+  draft: string;
+  from: "claude-code" | "codex" | "everyday";
+}
+export interface FirstWords {
+  starts: FirstStart[];
+  /** The agents whose records were read for these words (the clients say so, with 别再看了). */
+  looked?: ("claude-code" | "codex")[];
 }
 
 /**

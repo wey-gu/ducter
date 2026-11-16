@@ -29,7 +29,7 @@ test("a machine with all four: logins read from their own commands and files", a
 
 test("pi with no provider and DeepSeek Harness too old or without a key are not signed in", async () => {
   const base = { which: (c: string) => (c === "node" || c === "dsh" ? `/bin/${c}` : null), env: {}, home: "/h", dataDir: "/d" };
-  const old = await probeHarnesses({ ...base, exec: async () => ({ code: 0, out: "0.2.0" }), read: files({ "/d/env": "DEEPSEEK_API_KEY=sk-x" }), only: ["pi", "deepseek-harness"] });
+  const old = await probeHarnesses({ ...base, exec: async () => ({ code: 0, out: "0.2.0" }), read: files({ "/d/env": "OO_TOKEN=x" }), only: ["pi", "deepseek-harness"] });
   expect(old).toEqual([
     { harness: "pi", installed: true, loggedIn: false, canBePartner: false },
     { harness: "deepseek-harness", installed: false, loggedIn: false, canBePartner: false },

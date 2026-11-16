@@ -107,12 +107,54 @@ from the test harness signalling its own wrapper shell, not from Ducter.
 
 **Not yet**
 
-- The greeting is the client's empty state in the partner's voice, not a message from the
-  partner; it isn't in the Log, so the partner doesn't know it "said" it. Proposed persona text
-  for the partner's real first words is in the first-run report (packages/partner is owned
-  elsewhere right now).
-- The partner doesn't know the user's repos at first run (D204: no scan; `firstrun.json` is gone),
-  so "I found 14 repos; the most active is …" (the target in A1 step 6) is neither shown nor said.
+- ~~The greeting is the client's empty state~~ and ~~the partner doesn't know the user's repos at
+  first run~~: see "First words" below (D298).
+
+## First words (D298)
+
+*Who:* all three. The heavy developer's first minute should already know what they were doing in
+their own agents; the consumer's and the fresh user's should be a warm hello with everyday things
+to say; anyone with nothing signed in should see the one step that gets them going. *Feel:* met,
+not interviewed. *How it starts:* by itself, within a second of the first window opening.
+
+1. **A message, said by the home.** The first time an app says hello to a conversation that has
+   never had a word in it, the home appends the partner's own `ai_msg` (`core/src/first-words.ts`)
+   before the hello's events go out: so it is there with the window, it is in the Log (the partner
+   knows it said it; its context lists what was offered), and it is said once. No model runs. The
+   language is the hello's; the greeting is by the person's hour.
+2. **From the person's own agents' records.** `core/src/local-agents/` reads Claude Code's and
+   Codex's own session records on this computer (the newest 40 files of the last 14 days per
+   agent: the folder, the title, the person's first words, the time; never inside the folders,
+   never Ducter's own sessions), groups them by folder and offers up to three, newest first:
+   **昨天你在 hawdb 里做「Fix the flaky compaction test」，要我接着看看吗？** A tap fills the
+   composer with a sentence that names the folder's path; it never sends. One everyday example
+   follows (three when there are no records). This module is the one reader of those folders;
+   importing earlier sessions into Past tasks (D299) builds on it.
+3. **Consent in place.** Right under the offers: where they came from, **只在这里读，只给你看**, and
+   **别再看了 / Stop looking**: the offers from the records go at once, and the first words never
+   read them again (`settings.json` `localAgents: false`); **还是看吧 / Look again** undoes it.
+   Why this is not D204's scan: research/102 §4 and D298 (2).
+4. **The clay partner** waves once over the first words while nothing else has been said (still
+   under reduced motion); the empty screen (D149) shows only until they arrive, or for an older home.
+5. **Nothing to think with yet:** the first words say so in one sentence, and the key card sits
+   under them (A key instead, below).
+6. **Later:** Nowledge Mem's line about the person (`FirstWordsInput.memLine`, D295's to wire).
+
+Shots: `.shots/d298/mac/first-words-*.png`, `.shots/d298/web/first-words-{wide,phone}-{zh,en}.png`.
+
+## A key instead (D298)
+
+No subscription needed. In the Mac's first run, under the agents to install and sign in: **或者，
+贴一个 API 密钥 / Or paste an API key**; in the conversation (Mac, web, phone) whenever nothing on
+the home can think: the same card. One masked field and **检查 / Check**; the key is recognised by
+its shape (`protocol/src/api-keys.ts`), checked with one call that spends nothing (research/102
+§2), kept in `keys.env` (0600) under the variable its agent reads, and thought with (DeepSeek
+Harness for a DeepSeek key when installed, else pi; the partner's brain when nothing else could
+think). Every result is said in the partner's words (`keyWords`). Before Ducter runs, the Mac app
+uses `ducter key add --json` (the key on stdin); a good key makes the check run again and the first
+run goes on by itself. A computer that can't run pi yet keeps the key and opens pi's own installer
+in Terminal. Shots: `.shots/d298/mac/{d298-setup-key,key-card}-*.png`,
+`.shots/d298/web/key-*.png`.
 - ~~There is no rename in the desktop yet~~: the partner is renamed in place on Partner (D71).
 - ~~A double-clickable app doesn't exist~~: see the app path below.
 
@@ -396,7 +438,7 @@ row's detection result animates in.
    1. **This device**: ✓ ("MacBook Pro"; D204: no repo count, Ducter doesn't scan for repos).
    2. **Your AI**: lists the logged-in harnesses (Claude Code ✓, Codex ✓/✗). A missing one
       gets a **Connect** button that runs its official login in a sheet. At least one is
-      required. An API key is the fallback path.
+      required. An API key is the fallback path (D298: "A key instead").
    3. **Your memory (optional)**: Nowledge Mem detected → "connect" / "skip for now".
 3. **Name and look (optional, 10 s):** "Ducter" is prefilled, with 4 face colors. Skipping
    is fine.

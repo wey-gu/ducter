@@ -1,4 +1,5 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
+import { recentProjects } from "./local-agents/index.ts";
 import { createPreviews, loopbackOf } from "./preview.ts";
 import { createWbFrames } from "./workbench.ts";
 import { effectiveBrain } from "./brain.ts";
@@ -118,6 +119,15 @@ export interface CoreOptions {
   git?: GitRun;
   /** D197 test seam: the workers as New task and projects see them (names, a folder read there). */
   newTaskComputers?: NewTaskComputers;
+  /**
+   * D298: the partner's first words. Present: said once when an app opens a fresh conversation
+   * (main.ts turns them on); `home` and `env` say whose agents' records to read (tests: a scratch
+   * home with fake Claude Code and Codex folders). Absent: no first words.
+   */
+  firstWords?: { home?: string; env?: Record<string, string | undefined> };
+  /** D298 test seams for a pasted key: the network, and which agents this computer can run. */
+  keyFetch?: typeof fetch;
+  keyCanRun?: (h: HarnessId) => boolean;
   /** D204 test seam: the home's own Ducter folder and its projects (default: <Ducter folder>/projects here). */
   homeRepos?: () => FolderProjects;
   /** D204 test seam: clone into the home's own Ducter folder (default: git, with this computer's sign-in). */
@@ -699,7 +709,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
-  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing } });
+  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(opts.firstWords ? { firstWords: { projects: () => recentProjects({ ...opts.firstWords, exclude: [dataDir, homeFolder()] }), ...(opts.firstWords.home ? { home: opts.firstWords.home } : {}) } } : {}) });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.

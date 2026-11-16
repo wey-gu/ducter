@@ -34,6 +34,8 @@ interface SettingsFile {
   proactiveBy?: "chosen" | "keep_note";
   /** D170: who of the user's other agents may reach the partner; learned rules; muted senders. */
   peers?: PeersSettings;
+  /** D298: false after 别再看了 / Stop looking: the first words never read the person's own agents' records. */
+  localAgents?: boolean;
 }
 
 /** A list of agent names as kept: trimmed, one line, at most 80 characters, 50 names, no repeats. */
@@ -52,6 +54,11 @@ export interface SettingsStore extends SettingsApi {
   view(): Promise<{ settings: Settings; mem: MemView }>;
   /** Applies a patch; unknown or invalid fields are ignored. Returns what changed. A mode in a patch is the person's choice (D250). */
   set(patch: SettingsPatch): string[];
+  /** D298: may the first words look at this computer's AI agents' own records (on unless the person said no). */
+  localAgents(): boolean;
+  setLocalAgents(on: boolean): void;
+  /** D298: a pasted key's brain, only when nothing was chosen (the person's own choice stays). */
+  brainFromKey(harness: HarnessId, model?: string): boolean;
   /** D250: the mode set by Ducter for a reason the person gave (不再需要 to the morning note). */
   setProactive(mode: ProactiveMode, by: "chosen" | "keep_note"): void;
   /** Forgets one noted line: in Mem when possible, else hidden here. */
@@ -183,6 +190,21 @@ export function openSettings(opts: {
       changed();
     },
     defaultAfterMs: () => get().defaultAfterMin * 60_000,
+    localAgents: () => data.localAgents !== false,
+    setLocalAgents(on) {
+      if ((data.localAgents !== false) === on) return;
+      if (on) delete data.localAgents;
+      else data.localAgents = false;
+      save();
+      changed();
+    },
+    brainFromKey(harness, model) {
+      if (data.brain !== undefined || !HARNESSES[harness]?.partner) return false;
+      data.brain = { harness, ...(model ? { model } : {}) };
+      save();
+      changed();
+      return true;
+    },
     memMissing: () => memSeen === "missing",
     async view() {
       const s = get();

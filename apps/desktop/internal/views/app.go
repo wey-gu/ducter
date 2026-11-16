@@ -199,6 +199,8 @@ type App struct {
 	localeSet   bool
 	// focusComposer asks the shown composer to take the keyboard.
 	focusComposer bool
+	// D298: the pasted-key card (firstwords.go).
+	kp keyPaste
 	// rp is replying to one message (D236, reply.go).
 	rp replyState
 	// doneAt is when a task last came back done (the done glow).

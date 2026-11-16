@@ -102,7 +102,7 @@ export async function main(mods: BootModules = {}) {
   let core: Core;
   try {
     // D204: the projects in this computer's Ducter folder are offered on the New task card (core.ts).
-    core = startCore({ persona });
+    core = startCore({ persona, firstWords: {} });
   } catch (err) {
     console.error(`[ducter] failed to start core (is port ${process.env.DUCTER_PORT || 7777} in use?):`, (err as Error).message);
     process.exit(1);

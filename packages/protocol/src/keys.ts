@@ -5,7 +5,7 @@
 //
 // <dataDir>/env stays for non-secret settings (a server's systemd unit loads it as its
 // EnvironmentFile). Keys found there are moved to keys.env on start (migrateKeys).
-import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 /** Keys and tokens for harnesses, 0600. */
@@ -132,4 +132,23 @@ export function scrubKeysFromEnv(keys: Record<string, string>, env: Record<strin
     }
   }
   return out;
+}
+
+/**
+ * D298: keeps one key in keys.env (0600), replacing a line of the same name and keeping every
+ * other line as it was. The value is written as it is (never quoted, never echoed anywhere).
+ */
+export function writeKey(dataDir: string, name: string, value: string): void {
+  if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) throw new Error("not a key name");
+  if (!value || /[\r\n]/.test(value)) throw new Error("not a key");
+  mkdirSync(dataDir, { recursive: true, mode: 0o700 });
+  const path = join(dataDir, KEYS_FILE);
+  const prior = readText(path) ?? "# Ducter's keys for harness sign-ins (0600). Each goes only to the harness that uses it.\n";
+  const lines = prior.split("\n").filter((l, i, all) => !(i === all.length - 1 && l === ""));
+  const kept = lines.filter((l) => {
+    const m = l.trim().startsWith("#") ? undefined : ASSIGN.exec(l);
+    return !m || m[1] !== name;
+  });
+  kept.push(`${name}=${value}`);
+  writePrivate(path, kept.join("\n") + "\n");
 }

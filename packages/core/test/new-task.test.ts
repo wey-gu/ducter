@@ -122,7 +122,8 @@ test("task_new opens a task with the user's words as they are, says nothing in t
   expect(open.origin).toBe("you");
   // The conversation shows nothing: no ack, no message, no visible job line.
   await Bun.sleep(20);
-  const channel = core.log.read({ stream: "channel" });
+  const channel = core.log.read({ stream: "channel" }).filter((e) => e.kind !== "finds");
+  // The morning note's quiet record (after 08:00 on the real clock) is the proactive engine's, not this.
   expect(channel.map((e) => e.kind)).toEqual(["job_status"]);
   expect(channel[0]).toMatchObject({ origin: "user", body: { jobId: "body_t1_opened", taskId: "t1" } });
   expect((channel[0]!.body as Bodies["job_status"]).text).toContain("opened this task themselves");

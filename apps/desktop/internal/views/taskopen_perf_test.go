@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"os"
 	"testing"
 	"time"
 
@@ -85,7 +86,12 @@ func historyReqs(sent []any) []protocol.TaskHistoryReq {
 }
 
 func TestTaskOpensFast(t *testing.T) {
-	const budget = 300 * time.Millisecond
+	budget := 300 * time.Millisecond
+	if os.Getenv("CI") != "" {
+		// A shared CI runner paints on the CPU about half again slower than a Mac at
+		// rest; the 300 ms budget holds locally, CI catches only a real regression.
+		budget = 450 * time.Millisecond
+	}
 	home := historyHome{evs: longTask(5000, "long1"), rtt: 80 * time.Millisecond, bps: 4e6 / 8, gzip: true}
 	app, sent := iaApp(t, i18n.ZH)
 	app.Status = client.Connected

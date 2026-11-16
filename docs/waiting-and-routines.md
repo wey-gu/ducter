@@ -28,8 +28,12 @@ and what you can do next. The wait stays under **Done today** for the rest of th
 Watching your email needs a connection to your mail ([Settings](settings.md)). Waiting for a
 PR or a website needs nothing more than what Ducter already uses.
 
-To see how a wait checks, open it and look under **How it checks**. **Stop waiting**
-and **Look now** are on the same page.
+A task that waits on its own, like a review it checks every 45 minutes, says when it comes
+back: **Back at 21:59**. Open it to see a ring fill toward that time, how often it looks, and
+how many times it has looked so far. **Check now** has it look right away instead of at
+21:59; **Stop checking** ends the wait and keeps the task. When the wait comes true, the ring
+closes with a tick and the task carries on. To see how a wait checks, click the line at the end
+of the task, which says what it waits for and when it is back.
 
 ## "Keep going until …"
 

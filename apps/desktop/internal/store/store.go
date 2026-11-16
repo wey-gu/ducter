@@ -775,7 +775,7 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		}
 	}
 	if w, ok := body.(*protocol.Waiter); ok {
-		if w.State == protocol.WaiterFired && w.TaskID != "" && (w.Check != nil || w.Event != nil) {
+		if w.State == protocol.WaiterFired && w.TaskID != "" && (w.Check != nil || w.Event != nil || w.Wakes == "task") {
 			if s.Arrived == nil {
 				s.Arrived = map[string]time.Time{}
 			}

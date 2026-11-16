@@ -42,8 +42,8 @@ import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, forecast, FullTop } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
-import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
-import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, WhatItDid } from "./transcript.tsx";
+import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, waitCaption, waitLine, WatchCard } from "./work.tsx";
+import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
   attention,
   bodyReasonOf,
@@ -131,6 +131,12 @@ export function Avatar({ size, state, still }: { size: number; state?: Face; sti
 }
 
 /** An opened task's face: how the partner looks about it (D76). */
+/** D279: the rounds a task's own wait came true, for the watch card's tally. */
+function wakeTally(task: Task): { wakes: number; wokeAt: number } {
+  const w = wakesOf(task);
+  return { wakes: w.n, wokeAt: w.lastAt };
+}
+
 export function faceOf(a: Attention): Face {
   if (a === "needs_you" || a === "failed") return "needsyou";
   if (a === "done" || a === "done_claimed") return "done";
@@ -1998,12 +2004,13 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             {a === "blocked" && A.S.waiterFor(id) && <WaitBubble w={A.S.waiterFor(id)} size="lg" />}
           </span>
           <div class="head-words">
-            <TaskMeta task={task} stateLabel={yourTurn ? t("task.your.turn") : stateLabel(a)} mark={<StateMark a={a} />} onSwitch={canSwitch ? () => A.openSwitch(task.id) : undefined} />
+            <TaskMeta task={task} stateLabel={yourTurn ? t("task.your.turn") : (a === "blocked" && backWords(A.S.waiterFor(id))) || stateLabel(a)} mark={<StateMark a={a} />} onSwitch={canSwitch ? () => A.openSwitch(task.id) : undefined} />
             <h1 title={safe(title(task))}>{safe(shortTitle(title(task))) || t("task.unknown")}</h1>
             {/* D261: what it waits for, always (its waiter, its reason, what it last reported, or
                 that it stopped without saying), then when it looks again or since when it's quiet. */}
             {a === "blocked" && <p class="waitline">{storyOf(task).words}</p>}
-            {a === "blocked" && taskNext(task) && <p class="waitnext">{taskNext(task)}</p>}
+            {/* D279: a wait of its own says when it comes back in the state and the watch card. */}
+            {a === "blocked" && !A.S.waiterFor(id) && taskNext(task) && <p class="waitnext">{taskNext(task)}</p>}
           </div>
           {headline && <p class="headline">{headline}</p>}
         </div>
@@ -2037,7 +2044,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             )}
           </div>
         )}
-        <WaitDetails task={task} />
+        <WatchCard task={task} {...wakeTally(task)} />
         <TryStrip task={task} />
         <FolderChangesView task={task} />
         <WhatItDid task={task} blocks={blocks} />

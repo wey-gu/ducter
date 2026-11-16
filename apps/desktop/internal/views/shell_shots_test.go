@@ -78,6 +78,18 @@ func TestShellShots(t *testing.T) {
 		scrollTaskTo(h.app, "t_conduct", 0.5)
 		shot("conduct-groups", 1280, 1100)
 	}
+	// D279: a review loop resting on its own wait: its state says when it
+	// comes back, the watch card's ring and looks, its row and its end line.
+	if s.Task("t_loop") != nil {
+		h.app.OpenTask("t_loop")
+		h.until("history", func() bool { return s.Task("t_loop").HistoryLoaded })
+		shot("loop-end", 1280, 900)
+		scrollTaskTo(h.app, "t_loop", 0)
+		shot("loop-head", 1280, 900)
+		shot("loop-head-narrow", 900, 760)
+		h.app.Route = RouteOnHand
+		shot("loop-onhand", 1280, 1100)
+	}
 	h.app.OpenDevices()
 	h.until("devices", func() bool { return len(s.Devices) > 0 })
 	shot("devices", 1280, 820)

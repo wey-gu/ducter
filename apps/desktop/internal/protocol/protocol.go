@@ -376,9 +376,11 @@ type Waiter struct {
 	Check     *CheckSpec `json:"check,omitempty"`
 	Event     *EventSpec `json:"event,omitempty"`
 	Judge     string     `json:"judge,omitempty"`
-	EveryMs   int64      `json:"everyMs,omitempty"`
-	Until     string     `json:"until,omitempty"`
-	Observed  string     `json:"observed,omitempty"`
+	// Wakes is "task" when a timer wakes its task (D267), not the partner.
+	Wakes    string `json:"wakes,omitempty"`
+	EveryMs  int64  `json:"everyMs,omitempty"`
+	Until    string `json:"until,omitempty"`
+	Observed string `json:"observed,omitempty"`
 	// Unmet (D145): it ended without its condition, and why, in the
 	// user's words ("cancelled" with Unmet: it can't come true).
 	Unmet string `json:"unmet,omitempty"`

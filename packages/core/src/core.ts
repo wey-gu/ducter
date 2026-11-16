@@ -333,6 +333,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     defaultDelayMs: opts.defaultDelayMs ?? (Number(process.env.DUCTER_DECISION_DEFAULT_MS) || undefined),
     delayMs: () => settings.defaultAfterMs(),
     holds: (taskId) => Boolean(workRef?.untils.active(taskId)),
+    rests: (taskId) => Boolean(workRef?.waiters.views().some((w) => w.taskId === taskId && w.state === "armed" && (w.check || w.event || w.watch || w.judge || w.wakes === "task"))),
     onDecision: async (taskId, text) => {
       if (!runner) return console.warn(`[core] no runner: decision for ${taskId} not forwarded`);
       await runner.send(taskId, text, undefined, "user");

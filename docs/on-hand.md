@@ -28,7 +28,7 @@ Each task is one row:
   last changed.
 - **The second line** says what it is doing right now, in words: "Running the tests",
   "Opened booking.com in Chrome". A waiting task always says what it waits for and when it
-  looks again ("looks again at 11:39"). Once it's done, the line shows its result instead.
+  comes back ("back at 11:39"). Once it's done, the line shows its result instead.
 
 A task in a code folder also shows the lines it added and removed (**+42 −7**), and **Draft PR**
 or **Merged** once you've done either from Ducter.

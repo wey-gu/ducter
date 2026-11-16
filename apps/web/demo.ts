@@ -175,9 +175,9 @@ await tick();
     },
   } as never);
   await tick();
-  // What the author saw: its progress report after arming put the card back on working, though
-  // its turn has ended and it rests on the wait.
-  core.tasks.setState("t_loop", "working", "warm");
+  // What the author saw before D279: its progress report after arming put the card back on
+  // working. Now the report leaves it resting on its wait.
+  log.append({ stream: "task:t_loop", origin: "task", kind: "report", body: { taskId: "t_loop", state: "progress", summary: zh ? "45 分钟后再看。" : "Looking again in 45 minutes.", questions: [], evidence: [] } } as never);
   await tick();
 }
 

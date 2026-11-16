@@ -243,6 +243,20 @@ the try pebbles were replaced, see above.) No ticking numbers; nothing moves on 
 own. Waiting is Ducter's sixth pose (on a bench, looking out) with a small cream bubble holding
 the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alpha/wait_*`).
 
+**A task resting on its own wait (D279).** Its state in the head's meta line is when it comes
+back, **21:59 回来 / Back at 21:59**, in the waiting ink with the clock mark. Under the head, the
+**watch card**: a 56 ring (a clay disc, its groove `--line-2` at 55%, 8 wide) whose arc in
+`--waiting-dot` fills clockwise from the last look (or the arming) to the next, redrawn each
+half minute, so it maps to time and nothing else; a bead at the arc's edge breathes once per
+`--t-breathe` (3.2 s, scale 1 → 1.3 on `--ease`; Mac `Breathe`), still under reduced motion;
+how long is left inside (**45 分 / 45 min**, `--xs` 700). Beside it the rhythm (`--md` 600), then
+the looks as pebbles (7, gap 3, at most 12: filled `--waiting-dot` for each wake, hollow
+`--line-2` for a look that found nothing yet) and **看了 24 次 · 上次 21:31**. Then **现在就去看一次**
+(secondary) and **不用再去看了** (text). When the wait comes true the card turns to the moment for
+2.6 s: the ring closes in `--done-dot`, pops on `--spring` over `--t-pop` (560 ms; Mac `Pop`), a
+tick draws in `--done-ink`, **等到了，接着做**; under reduced motion it is simply there. A
+deadline keeps its groove inside the card. Rows never breathe (D244).
+
 **Keeping your place (D254).** The way back over the composer is a clay pebble, not a pill: the
 secondary button's clay (`--surface` fill, `--hi-secondary` inset highlight, `--rim`, `--seam-quiet`,
 the `--ledge` of `--press-quiet`) with `--floating`, a slightly uneven radius (21/20/22/19 over

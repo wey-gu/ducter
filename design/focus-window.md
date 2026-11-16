@@ -212,9 +212,9 @@ What the window writes is what the user reads when they open the task, in one co
   bare number;
 - **the end line** (D271) says only what the state proves: `inTurn` (something happened since
   the last `turn_ended`) and a working card is a turn under way (what it is on, the turn's
-  clock); no turn and an armed wait of its own is **在等：{reason} · 下次 {time}**, how it checks
-  opened under it; otherwise nothing. A progress report after `wait_for` can leave the card
-  on working: the end line still says it waits;
+  clock); no turn and an armed wait of its own is **等 {what} · {time} 回来** (D279), how it checks
+  opened under it; otherwise nothing. Since D279 a progress report after `wait_for` leaves the
+  card on Waiting (core's `rests`); the wake puts it back on Working;
 - **checkpoints** are the window's words said once, marked saved (D152);
 - **keys** in the brief, a command or its output never leave the home: the projection hides
   them in every frame and push it sends; the Log keeps them for the task (D152);

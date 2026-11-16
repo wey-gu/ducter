@@ -27,6 +27,30 @@ function setup() {
 
 const kinds = (log: ReturnType<typeof openLog>, k: string) => log.read({}).filter((e) => e.kind === k);
 
+test("D279: a progress report after a task arms its own wait leaves it resting on Waiting", async () => {
+  const t = tempDir();
+  cleanup = t.cleanup;
+  const clock = new FakeClock();
+  const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default", clock });
+  const tasks = createRegistry(log, clock);
+  let rests = true;
+  createDecisions({ log, tasks, clock, rests: () => rests });
+  openTask(log, "t1");
+  tasks.setState("t1", "blocked", "warm", "约45分钟后继续检查");
+  report(log, "t1", { state: "progress", summary: "45 分钟后再看。" });
+  await tick();
+  clock.advance(1000);
+  await tick();
+  expect(tasks.get("t1")).toMatchObject({ attention: "blocked", reason: "约45分钟后继续检查" });
+  // Once nothing of its own is armed, progress puts it on Working as before.
+  rests = false;
+  report(log, "t1", { state: "progress", summary: "Reading #1612." });
+  await tick();
+  clock.advance(1000);
+  await tick();
+  expect(tasks.get("t1")!.attention).toBe("working");
+});
+
 test("registry projects task_open / task_state / report and counts On hand", () => {
   const { path, log, tasks, clock } = setup();
   openTask(log, "t1");

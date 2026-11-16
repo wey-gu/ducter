@@ -150,6 +150,23 @@
      wait comes true pops on the spring for this long. */
   --t-breathe: 3200ms;
   --t-pop: 560ms;
+  /* D290 (research/96): the way between levels. A push (a level deeper or back) and the hero (the
+     card growing into the task's head) on a decelerating curve and a soft spring; one task to the
+     next, a place's knob, a settings page on the shorter across; the page left goes in leave. The
+     Mac's theme.Nav holds the same numbers. */
+  --t-push: 380ms;
+  --t-across: 300ms;
+  --t-hero: 440ms;
+  --t-leave: 260ms;
+  --t-stagger: 22ms;
+  --t-look: 620ms;
+  --ease-push: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring-soft: cubic-bezier(0.3, 1.1, 0.5, 1);
+  --nav-depth: 28px;
+  --nav-recede: 10px;
+  --nav-rise: 6px;
+  --nav-page-recede: -30%;
+  --look-tilt: -7deg;
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -2616,7 +2633,7 @@ a {
   gap: var(--s3);
 }
 .set-page.pushed {
-  animation: push-in 280ms var(--ease);
+  animation: push-in var(--t-across) var(--ease);
 }
 @keyframes push-in {
   from {
@@ -10191,5 +10208,181 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .lookring.met,
   .lookring .tick {
     animation: none;
+  }
+}
+
+/* ---------- D290: the way between levels (nav.ts, sheetmotion.ts; research/96) ---------- */
+/* A phone (data-navw="page") pushes the whole page: deeper, the new one comes in from the trailing
+   edge over the one left, which recedes a third and dims into the paper; back is the reverse, the
+   page left sliding off on top. The bar ("bar") holds still and its words cross-fade; the card you
+   opened ("hero") grows into the task's head on the soft spring. Beside the conversation
+   (data-navw="pane") only the pane's page moves, as on the Mac: in from 28px, the one left fading. */
+:root[data-nav]::view-transition-group(root),
+:root[data-nav]::view-transition-group(level) {
+  animation-duration: var(--t-push);
+  animation-timing-function: var(--ease-push);
+}
+:root[data-navw="page"][data-nav="deeper"]::view-transition-old(root) {
+  animation: nav-recede var(--t-push) var(--ease-push) both;
+}
+:root[data-navw="page"][data-nav="deeper"]::view-transition-new(root) {
+  animation: nav-push-in var(--t-push) var(--ease-push) both;
+  box-shadow: -10px 0 28px rgb(43 33 24 / 0.1);
+}
+:root[data-navw="page"][data-nav="back"]::view-transition-old(root) {
+  z-index: 1;
+  animation: nav-push-out var(--t-push) var(--ease-push) both;
+  box-shadow: -10px 0 28px rgb(43 33 24 / 0.1);
+}
+:root[data-navw="page"][data-nav="back"]::view-transition-new(root) {
+  animation: nav-recede-in var(--t-push) var(--ease-push) both;
+}
+:root[data-nav="task"]::view-transition-old(root),
+:root[data-nav="task"]::view-transition-old(level) {
+  animation: fade-out calc(var(--t-leave) * 0.6) var(--ease) both;
+}
+:root[data-nav="task"]::view-transition-new(root),
+:root[data-nav="task"]::view-transition-new(level) {
+  animation: nav-rise-in var(--t-across) var(--ease-push) both;
+}
+:root[data-navw="pane"][data-nav="deeper"]::view-transition-old(level) {
+  animation: nav-out var(--t-leave) var(--ease) both;
+  --nav-out: calc(-1 * var(--nav-recede));
+}
+:root[data-navw="pane"][data-nav="deeper"]::view-transition-new(level) {
+  animation: nav-in var(--t-push) var(--ease-push) both;
+  --nav-in: var(--nav-depth);
+}
+:root[data-navw="pane"][data-nav="back"]::view-transition-old(level) {
+  animation: nav-out var(--t-leave) var(--ease) both;
+  --nav-out: var(--nav-depth);
+}
+:root[data-navw="pane"][data-nav="back"]::view-transition-new(level) {
+  animation: nav-in var(--t-push) var(--ease-push) both;
+  --nav-in: calc(-1 * var(--nav-recede));
+}
+::view-transition-group(bar) {
+  animation-duration: var(--t-across);
+  z-index: 2;
+}
+::view-transition-group(hero) {
+  animation-duration: var(--t-hero);
+  /* No overshoot: a card flying a whole screen must land on its place, not past it. */
+  animation-timing-function: var(--ease-push);
+  z-index: 3;
+}
+::view-transition-old(hero),
+::view-transition-new(hero) {
+  height: 100%;
+  object-fit: cover;
+  object-position: left top;
+  animation-duration: var(--t-hero);
+}
+@keyframes nav-push-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes nav-push-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes nav-recede {
+  to {
+    transform: translateX(var(--nav-page-recede));
+    opacity: 0.55;
+  }
+}
+@keyframes nav-recede-in {
+  from {
+    transform: translateX(var(--nav-page-recede));
+    opacity: 0.55;
+  }
+}
+@keyframes nav-in {
+  from {
+    transform: translateX(var(--nav-in));
+    opacity: 0;
+  }
+}
+@keyframes nav-out {
+  to {
+    transform: translateX(var(--nav-out));
+    opacity: 0;
+  }
+}
+@keyframes nav-rise-in {
+  from {
+    transform: translateY(calc(var(--nav-rise) * 1.5));
+    opacity: 0;
+  }
+}
+/* The places' knob: its own piece under the marks, sliding to the place shown on the soft spring. */
+.places {
+  position: relative;
+}
+.places .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 32px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: var(--knob);
+  transform: translateX(calc(var(--i, 0) * 34px));
+  transition: transform var(--t-across) var(--spring-soft);
+}
+.places .place {
+  position: relative;
+  z-index: 1;
+}
+.places .place.on {
+  background: transparent;
+  box-shadow: none;
+}
+/* A list's first paint: its rows come in one after another, at most eight steps. */
+.onhand-list.entering .trow {
+  animation: nav-row-in var(--t-across) var(--ease-push) both;
+}
+.onhand-list.entering .trow:nth-child(2) { animation-delay: calc(1 * var(--t-stagger)); }
+.onhand-list.entering .trow:nth-child(3) { animation-delay: calc(2 * var(--t-stagger)); }
+.onhand-list.entering .trow:nth-child(4) { animation-delay: calc(3 * var(--t-stagger)); }
+.onhand-list.entering .trow:nth-child(5) { animation-delay: calc(4 * var(--t-stagger)); }
+.onhand-list.entering .trow:nth-child(6) { animation-delay: calc(5 * var(--t-stagger)); }
+.onhand-list.entering .trow:nth-child(7) { animation-delay: calc(6 * var(--t-stagger)); }
+.onhand-list.entering .trow:nth-child(n + 8) { animation-delay: calc(7 * var(--t-stagger)); }
+@keyframes nav-row-in {
+  from {
+    transform: translateY(var(--nav-rise));
+    opacity: 0;
+  }
+}
+/* Settings: a page pushed comes in from the trailing side (push-in); the list comes back from the
+   leading side. */
+.set-page.popped {
+  animation: nav-pop-in var(--t-across) var(--ease) both;
+}
+@keyframes nav-pop-in {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+}
+/* Back at the conversation, the partner glances round at where you were, settling with a wobble. */
+.top .who-face.look {
+  transform-origin: 50% 100%;
+  animation: look-round var(--t-look) var(--ease) both;
+}
+@keyframes look-round {
+  0% { transform: rotate(var(--look-tilt)) translateX(-2px); }
+  45% { transform: rotate(2.5deg); }
+  75% { transform: rotate(-1deg); }
+  100% { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .places .knob {
+    transition: none;
   }
 }

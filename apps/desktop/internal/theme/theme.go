@@ -164,11 +164,59 @@ type Tokens struct {
 	// Breathe is one breath of a waiting bead (D279), slower than any
 	// reading rhythm; Pop is the moment a wait comes true.
 	Breathe, Pop time.Duration
+	// Nav is how the window moves between zoom levels and places (D290).
+	Nav NavMotion
 	// Equip is the sticker peel-and-stick of an ability (research/26, 28).
 	Equip EquipMotion
 
 	// Reply is 回复 / Reply to one message (D236): the imprint.
 	Reply ReplyTokens
+}
+
+// NavMotion is the window's way between zoom levels and places (D290,
+// research/96): a level deeper comes in from the trailing side as the one
+// left recedes and fades; the way back is its reverse; a place beside
+// another slides a little toward where its mark sits in the places
+// control, whose knob slides there; the card you opened grows into the
+// task's head (Hero) and goes back into its place. The web's --t-push,
+// --t-across, --t-hero and --nav-* are the same numbers.
+type NavMotion struct {
+	// Push is a level deeper or back: a spring that lands with a hint of
+	// clay (Pebble's bounce, kept small so text never wobbles).
+	Push ui.Animation
+	// Across is one place to another, and one task to the next.
+	Across ui.Animation
+	// Hero is the opened card growing into the task's head.
+	Hero ui.Animation
+	// Leave is how long the page left behind recedes, opaque under the
+	// one coming, which covers it within EnterDur: two pages are never
+	// washed together.
+	Leave time.Duration
+	// Depth is how far a deeper page comes from; Recede how far the page
+	// left behind moves back; Shift the places' direction cue.
+	Depth, Recede, Shift float32
+	// Stagger parts the rows of a list on its first paint, for at most
+	// StaggerRows rows; Rise is how far each comes up from.
+	Stagger     time.Duration
+	StaggerRows int
+	Rise        float32
+	// Look is the partner's look-around when you come back to it: a tilt
+	// of LookTilt degrees settling on Bouncy's spring.
+	LookTilt float32
+	Look     ui.Animation
+}
+
+func navMotion() NavMotion {
+	return NavMotion{
+		Push:   ui.Animation{Spring: ui.SpringOptions{Duration: 380 * time.Millisecond, Bounce: 0.08}},
+		Across: ui.Animation{Spring: ui.SpringOptions{Duration: 300 * time.Millisecond}},
+		Hero:   ui.Animation{Spring: ui.SpringOptions{Duration: 440 * time.Millisecond, Bounce: 0.06}},
+		Leave:  260 * time.Millisecond,
+		Depth:  28, Recede: 10, Shift: 14,
+		Stagger: 22 * time.Millisecond, StaggerRows: 8, Rise: 6,
+		LookTilt: 7,
+		Look:     ui.Animation{Spring: ui.SpringOptions{Duration: 620 * time.Millisecond, Bounce: 0.45}},
+	}
 }
 
 // ReplyTokens are the imprint's (D236, research/72): the message replied to,
@@ -336,6 +384,7 @@ func Pebble() *Tokens {
 		Snappy:   ui.Snappy,
 		PressDur: 70 * time.Millisecond, EnterDur: 220 * time.Millisecond,
 		Breathe: 3200 * time.Millisecond, Pop: 560 * time.Millisecond,
+		Nav:   navMotion(),
 		Equip: EquipMotion{Flight: 820 * time.Millisecond, Snap: 0.62, Squash: 420 * time.Millisecond, DoneFace: 1800 * time.Millisecond, Fade: 200 * time.Millisecond},
 	}
 	t.Reply = replyTokens(t)

@@ -77,7 +77,8 @@ export function FullTop({ task, children }: { task?: Task; children?: ComponentC
       <span class="acts">
         {children}
         <FillButton level={task ? "task" : "onhand"} />
-        <Places here={task ? undefined : "onhand"} />
+        {/* D290: Devices and Settings open over the board; the knob goes there and comes back. */}
+        <Places here={A.sheet?.kind === "settings" ? (A.sheet.page === "devices" ? "devices" : "settings") : task ? undefined : "onhand"} />
       </span>
     </header>
   );

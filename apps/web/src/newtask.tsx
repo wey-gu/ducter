@@ -6,6 +6,7 @@
 // ⇧⌘⏎ starts and keeps the sheet for the next one.
 import type { Candidate } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
+import { useSheetMotion } from "./sheetmotion.ts";
 import { A, agentKey, effortWord, EVERY_HOURS, ntGitHubish, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { Btn, Choice, MenuRow, Pill, Seg } from "./controls.tsx";
@@ -112,7 +113,8 @@ function Tune({ c }: { c: Candidate }) {
 
 export function NewTaskSheet() {
   const nt = A.nt;
-  const close = () => ((A.sheet = null), A.changed());
+  // D290: the sheet goes back down the way it came; on a phone it follows the finger down.
+  const { sheet: sheetEl, scrim, close } = useSheetMotion(() => ((A.sheet = null), A.changed()));
   const ref = useRef<HTMLTextAreaElement>(null);
   const condRef = useRef<HTMLInputElement>(null);
   // D206: a picture dropped or pasted on the What row goes to the task with the words.
@@ -178,8 +180,8 @@ export function NewTaskSheet() {
   };
   return (
     <>
-      <div class="scrim" onClick={close} />
-      <div class="sheet newtask" role="dialog" aria-modal="true" aria-label={t("newtask.title")}>
+      <div class="scrim" ref={scrim} onClick={close} />
+      <div class="sheet newtask" ref={sheetEl} role="dialog" aria-modal="true" aria-label={t("newtask.title")}>
         <div class="grab" />
         <h2>{t("newtask.title")}</h2>
         <div class="nt-what" ref={what}>

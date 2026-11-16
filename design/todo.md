@@ -1425,3 +1425,15 @@ Codex first, once OAR is near 1.0. See `research/17`.
       loaded transcript (an opened task loads its latest 2,000 events), so a loop older than that
       counts from there; core could log a look count on a waiter's end. Trigger: the author's
       review of D279.
+
+## Moving between views (D290, 2026-11-16)
+- [ ] **Real devices.** The motion was tuned on the Mac tester's frames and headless Chrome; not yet
+      on the iPhone app (WKWebView: View Transitions need iOS 18; the edge swipe and the sheet's
+      drag), Safari in a tab (its own edge swipe, `hasUAVisualTransition`), a Pixel (the system's
+      predictive back), or a real Mac window on a 120 Hz display. Trigger: the next release run on
+      the author's phone and Mac.
+- [ ] **Human eyes on the feel.** Durations and curves were judged from frame sequences only
+      (`.shots/d290/`). Trigger: the author's review; tune `theme.Nav` and `--t-*` together.
+- [ ] **The hero from places other than On hand's rows** (a task chip in the conversation, a
+      notification's card, the rail beside an open task on the web). Trigger: after the review, if
+      the row's hero reads well.

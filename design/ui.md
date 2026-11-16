@@ -80,7 +80,7 @@ components and tokens; a value not in the scales below needs a token first.
 | radius | 8 · 12 · 14 · 16 · 18 · 24 · 28 | inline code, diff boxes · small buttons, fields · buttons · sheets, notices · large buttons · cards · hero cards, the composer |
 | controls | 36 · 44 · 52 | chrome and inline lines · cards and the conversation · setup screens and the equip |
 | chips | 24 · 28 · 32 (`ChipSM/Chip/ChipLG`) | a state tag · evidence and metadata · a task in the conversation |
-| motion | press 70 ms · hover/lift `Snappy` · enter 220 ms (6-pt rise + fade) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
+| motion | press 70 ms · hover/lift `Snappy` · enter 220 ms (6-pt rise + fade: a Settings panel, a notice) · moving between views by D290's vocabulary (below) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
 
 **Depth: one clay (D76).** Every solid thing stands on clay; how it stands says what it does.
 - A **card** (the living message, the composer, On hand cards, Devices cards, a page's cards)
@@ -290,6 +290,31 @@ selection, **全部拷贝** (secondary) and **完成** (primary) under them.
 | the equip | peel (14%) → arc (50%) → snap (62–69%), 0.82 s, a tock and a 10 ms haptic |
 | the title moment (D87) | once per Mac: dawn rises, a 3% push-in with parallax, the eyes open on the tone, the logotype lit by a passing light; see `onboarding.md` |
 
+**Moving between views (D290, research/96).** A move says where you went; it is never waited on.
+Tokens (Mac `theme.Nav`; web `:root`): push 380 ms (`--t-push`, `--ease-push`, Mac a spring of 380
+ms, bounce 0.08), across 300 ms (`--t-across`), hero 440 ms (`--t-hero` on `--ease-push`, Mac bounce
+0.06: a long flight must not overshoot its place), leave 260 ms (`--t-leave`), stagger 22 ms (`--t-stagger`, 8 rows at most), look 620 ms
+(`--t-look`, tilt 7°, Mac bounce 0.45); depth 28 · recede 10 · shift 14 · rise 6 (`--nav-*`).
+
+| Move | Mac (toned down) | Phone web | Wide web (the pane) |
+|---|---|---|---|
+| go deeper (conversation → On hand → task) | page in from 28 pt on the push spring, its fade on a quick ease-out (`EnterDur`); the page left recedes 10, opaque under it | a full push from the trailing edge; the page left recedes a third and dims | the pane's page in from 28px; the one left recedes and fades |
+| come back | the reverse | the page left slides off the trailing edge on top | the reverse |
+| the card you opened | On hand's row (held on hover or focus) grows into the task's head (`Match` + `Fly`), and the head goes back into it | the row's `.tmain` and the head share `hero` | the same |
+| one task to the next (rail, ⌘⇧], j/k) | the task's column alone rises 9 into place; bar and rail stay | the page rises 9 as the old fades | the same |
+| a place beside another | page 14 toward its mark; the knob (its own piece under the marks) slides there | — | the knob goes to Devices or Settings while their sheet is over the board |
+| the bar | held still against its page (a pose turned back); its words cross-fade | named `bar`: stays, cross-fades | — (two bars) |
+| sheets | the New task card springs in (unchanged) | spring up; close back down; drag down from the grab or a top-scrolled sheet (past a quarter or a flick), else spring home | centred: sink 4% and fade |
+| Settings pages | panels rise 6 (enter) | a pushed page from the trailing side; the list back from the leading side | the same |
+| a list's first paint | On hand's rows rise 6 one after another | the same (CSS, per group) | the same |
+| the partner, back at the conversation | glances round (−7°) and settles on a clay wobble | the same (`look-round`) | — |
+| edge swipe back | — | from the leading 24px where the browser has none (the app's web view, an installed page, Chrome); the browser's own back never doubled (`hasUAVisualTransition`) | — |
+
+Overshoot only on small objects (the knob on `--spring-soft`, the face), never a page of text or a long flight. Transform and opacity only.
+Reduced motion: MyGo fades in place by itself; the web skips view transitions and the CSS stops
+every animation; the knob jumps, the face is still. Frames: `.shots/d290/` (Mac tester and headless
+Chrome, zh and en); `navmotion_test.go` logs a move's frame time.
+
 Delays are staggered so nothing moves in unison. A device that can't be reached is still and a
 little grey. One exception (D87): the title moment's "Press any key" breathes (60–100%, 3.4 s); it
 is an invitation, not a status. Status, chips, lines and buttons never animate on their own. Reduced motion: all
@@ -334,7 +359,7 @@ Mac (`placeBar`, `placeNav` in `views/chrome.go`) and the web (`Top`, `Places` i
 |---|---|---|
 | Left: where you are | **One type size in the bar (D270): 14/600.** The conversation: the partner, two ways in: the face (44) and the name (14/600 ink) open its page, the counts line under it (12 muted, keeping its height while empty) is its own quiet link to On hand, narrowed to what it names when it names one thing; each tints on its own under the pointer. Elsewhere the crumbs (14/600 muted text buttons, `/` faint) and the current one at the same size and weight in full ink, not a button; no line under it (an opened task's agent · state · where is said once, in its head). A page's own large heading lives in its content, never in the bar. A phone's inner page: **‹ 对话 / ‹ Conversation** | `crumb`, `chromeTitle` · `.back`, `.level`, `.trail`, `.here` |
 | Right, first: this place's own actions | 新建 / New task (On hand); an opened task's working copy, workbench and ⋯; 铺满 / Full screen | **at most one worded clay button per bar** (D270): the place's primary action (新建), the bar button (secondary clay, 36, a drawn glyph before the word). Every other action is a quiet text or icon button with no ledge until hovered; a view toggle that is open stays pressed in (sunken, no ledge). Spacing alone parts these from the places: no hairline |
-| Right, last: the way to the other places | **更新 / Update** only while something waits to update (the accent pebble with its arrow; *n 项更新 / n updates*; 正在更新 while 全部更新 runs; it opens 更新和关于 on the Mac, 你的设备 on the web); then the places as **one segmented control** (D264, D270): a small sunk track (34) holding three drawn marks, each about 28 square: **设备 · 手头的事 · 设置** in that order (a laptop and phone; three things in hand; the gear). **Always the marks alone, at every width**; tooltips and accessible names give the words. The place shown is **the knob** (the card's white raised on a 2-pt clay ledge and a soft drop) and does nothing; the others lie flat and tint on hover | `placeSegments`, `knob` · `PlaceSeg` |
+| Right, last: the way to the other places | **更新 / Update** only while something waits to update (the accent pebble with its arrow; *n 项更新 / n updates*; 正在更新 while 全部更新 runs; it opens 更新和关于 on the Mac, 你的设备 on the web); then the places as **one segmented control** (D264, D270): a small sunk track (34) holding three drawn marks, each about 28 square: **设备 · 手头的事 · 设置** in that order (a laptop and phone; three things in hand; the gear). **Always the marks alone, at every width**; tooltips and accessible names give the words. The place shown is **the knob** (the card's white raised on a 2-pt clay ledge and a soft drop), its own piece under the marks that slides to the place shown (D290), and does nothing; the others lie flat and tint on hover | `placeSegments`, `knob` · `PlaceSeg` |
 
 One way to the places per screen: wide (the panes side by side) it is in the conversation's bar,
 whose 手头的事 is dropped because On hand stands beside it (D176); the side pane's bar holds only

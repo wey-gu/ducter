@@ -207,7 +207,7 @@ describe("quiet hours", () => {
 });
 
 describe("the pusher", () => {
-  async function setup(o: { start?: string } = {}) {
+  async function setup(o: { start?: string; channelUp?: (via: string) => boolean } = {}) {
     const t = tempDir();
     const clock = new FakeClock(Date.parse(o.start ?? "2026-11-09T04:00:00Z")); // 12:00 Shanghai
     const log = openLog({ path: `${t.dir}/d.db`, persona: "default", clock });
@@ -224,12 +224,35 @@ describe("the pusher", () => {
       holdMs: 30_000,
       coalesceMs: 15 * 60_000,
       fetcher: async (url, init) => (sent.push({ url, body: init.body as Uint8Array }), new Response(null, { status: 201 })),
+      ...(o.channelUp ? { channelUp: o.channelUp } : {}),
     });
     stops.push(() => pusher.stop(), () => log.close(), t.cleanup);
     return { log, store, sub, sent, pusher, clock, r };
   }
   const decision = (log: Awaited<ReturnType<typeof setup>>["log"], id: string) =>
     log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId: id, taskId: "t1", question: "要 rebase 吗？", goLabel: "rebase", defaultOption: "go", reversible: true } });
+
+  test("D277: while the person last wrote from iMessage and its bridge is on, the push stays quiet", async () => {
+    let up = true;
+    const s = await setup({ channelUp: (via) => via === "imessage" && up });
+    s.store.subscribe(s.sub);
+    s.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "看下 CI", via: "imessage" } });
+    decision(s.log, "d1");
+    s.clock.advance(31_000);
+    await s.pusher.idle();
+    expect(s.sent.length).toBe(0); // iMessage carried it
+    up = false; // the bridge went off: the phone gets the next one
+    decision(s.log, "d2");
+    s.clock.advance(31_000);
+    await s.pusher.idle();
+    expect(s.sent.length).toBe(1);
+    up = true;
+    s.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "在 app 里说的" } });
+    decision(s.log, "d3");
+    s.clock.advance(16 * 60_000);
+    await s.pusher.idle();
+    expect(s.sent.length).toBe(2); // the last words came from an app: push as before
+  });
 
   test("a decision nobody read within the hold earns one push; a read or an answer cancels it", async () => {
     const s = await setup();

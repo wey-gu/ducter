@@ -243,7 +243,8 @@ export interface ReplyWant {
 export interface Bodies {
   // D206: media = the pictures the user sent with it (text may be empty then).
   // reply (D236): the one message this answers, with its quote.
-  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef };
+  // via (D276/D277): the chat app the person wrote it in; absent = a Ducter app or the CLI.
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: "slack" | "telegram" | "imessage" };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
@@ -784,7 +785,12 @@ export type ClientFrame =
   | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape }
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
-  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant }
+  // via (D277): the Mac app's iMessage bridge relays words the person wrote in iMessage.
+  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant; via?: "imessage" }
+  // D277: the Mac app's iMessage bridge says how it stands (on: it reads and answers there).
+  // While some socket says on and the person last wrote from iMessage, the home's push stays quiet
+  // for what the bridge carries, so each thing reaches them once.
+  | { t: "channel_status"; channel: "imessage"; state: "on" | "needs_permission" | "not_signed_in" | "off" | "error" }
   // cvc (D191): a pay card's security code when none is kept; held in memory for that one
   // payment's fill, never logged.
   // key, once (D233): a key card's Go carries the key the person pasted (kept in Autofill unless

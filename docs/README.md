@@ -50,6 +50,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   after you say Call, in its voice or yours, through Tuwa or from your own number.
 - **[Your phone](phone.md):** connect your iPhone, iPad or Android phone, get a nudge when
   something needs you, and keep your nights quiet.
+- **[iMessage](imessage.md):** text your partner from Messages on your iPhone, through a Mac,
+  and get its answers in the same thread, under its own name.
 - **[Privacy and safety](privacy-and-safety.md):** what Ducter never does by itself, what runs
   where, your AI plans, and memory.
 

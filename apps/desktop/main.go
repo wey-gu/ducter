@@ -24,6 +24,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/hints"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
+	"github.com/wey-gu/ducter/apps/desktop/internal/imessage"
 	"github.com/wey-gu/ducter/apps/desktop/internal/local"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
@@ -327,6 +328,7 @@ func main() {
 		}
 		url, token := target()
 		var c *client.Client
+		var im *imessage.Bridge // D277: set before the client runs
 		c = client.New(client.Options{
 			URL:     url,
 			Token:   token,
@@ -334,6 +336,9 @@ func main() {
 			Version: app.Version,
 			Cursor:  cursor,
 			OnFrame: func(f protocol.ServerFrame) {
+				if im != nil {
+					im.Observe(f)
+				}
 				win.Update(func() {
 					app.Receive(f)
 					updateBadge()
@@ -356,6 +361,7 @@ func main() {
 		})
 		app.Send = c.Send
 		app.Media = mediaHands{win: win, c: c} // D206: pictures
+		im = startIMessage(app, win, c)        // D277: iMessage, through this Mac
 		app.URL = c.URL()
 		app.RetryNow = c.RetryNow
 		app.NextAttempt = c.NextAttempt

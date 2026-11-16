@@ -155,6 +155,8 @@ export interface CoreOptions {
 }
 
 export interface Core extends CoreApi {
+  /** D277: a chat app reaches the person now (a Mac app's iMessage bridge says on). */
+  channelUp(via: string): boolean;
   /** D226: the harness and model the partner thinks with now (triage, the bar and the cheap judge use it). */
   brainInUse(): { harness: HarnessId; model?: string };
   log: SqliteLog;
@@ -938,6 +940,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     fetcher: opts.pushFetch,
     apns,
     alive: (s) => s.deviceId === "local" || devices.isLive(s.deviceId),
+    channelUp: (via) => ws.channelUp(via), // D277
   });
   // D165: the person's zone: their quiet hours', else (D243) the one their app last said, else the server's.
   const zone = () => opts.proactive?.zone ?? settings.get().quiet?.tz ?? proactiveRef?.clientZone() ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
@@ -1032,6 +1035,7 @@ export function startCore(opts: CoreOptions = {}): Core {
 
   return {
     ...api,
+    channelUp: (via: string) => ws.channelUp(via),
     log,
     tasks,
     mcp,

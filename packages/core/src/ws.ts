@@ -46,6 +46,8 @@ export interface WsData {
   phoneSink?: import("./android/live.ts").PhoneSink;
   /** D238: the page on the person's own phone, relaying its app (handset_hello). */
   handset?: import("./handset/index.ts").HandsetSocket;
+  /** D277: this Mac app's iMessage bridge, as it last said (channel_status). */
+  imessage?: "on" | "needs_permission" | "not_signed_in" | "off" | "error";
 }
 
 const ON_HAND_KINDS = new Set<string>([...PROJECTED_KINDS, "phone_call"]);
@@ -441,8 +443,15 @@ export function createWsHandler(deps: WsDeps) {
         const media = mediaOf(f.media);
         if (!f.text?.trim() && !media.length) throw new Error("empty message");
         // D236: a reply carries its quote from the Log; one to an open question answers it.
-        logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}) });
+        // D277: only the Mac app's iMessage bridge says via (a desktop socket); anything else is dropped.
+        const via = f.via === "imessage" && (ws.data.client ?? "desktop") === "desktop" ? f.via : undefined;
+        logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}) });
         return; // the partner is triggered by core's user_msg subscription
+      }
+      case "channel_status": {
+        // D277: how this Mac app's iMessage bridge stands; gone with the socket.
+        if (f.channel === "imessage") ws.data.imessage = f.state;
+        return;
       }
       case "decide": {
         // D191: a pay card's Go carries the card's security code (never kept, never logged): it
@@ -1327,6 +1336,12 @@ export function createWsHandler(deps: WsDeps) {
     /** D165: an app (not a CLI) is open on some socket now: the person is in Ducter. */
     present(): boolean {
       for (const ws of sockets) if (ws.data.live && ws.data.client !== "cli") return true;
+      return false;
+    },
+    /** D277: a chat app reaches the person now (a Mac app's iMessage bridge says on). */
+    channelUp(via: string): boolean {
+      if (via !== "imessage") return false;
+      for (const ws of sockets) if (ws.data.imessage === "on") return true;
       return false;
     },
     /** Paired client devices with a live socket now. */

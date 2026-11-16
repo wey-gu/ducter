@@ -469,6 +469,9 @@ export function createPusher(opts: {
   enabled?: boolean;
   /** A subscription whose device was disconnected gets nothing more (and is dropped). */
   alive?: (s: PushSub) => boolean;
+  /** D277: the chat app the person last wrote from carries Ducter's own items now (its bridge is
+   * on), so the push stays quiet for them: each thing reaches the person once. */
+  channelUp?: (via: string) => boolean;
 }): Pusher {
   const clock = opts.clock ?? realClock;
   const hold = opts.holdMs ?? PUSH_HOLD_MS;
@@ -477,6 +480,7 @@ export function createPusher(opts: {
   const items = new Map<string, Item>();
   const pushed = new Set<string>(); // one push per item, ever
   let maxRead = 0;
+  let lastVia: string | undefined; // D277: where the person's last words came from (absent: an app)
   let lastPushAt = -Infinity;
   let heldByQuiet = false;
   let timer: unknown;
@@ -501,8 +505,12 @@ export function createPusher(opts: {
       return false;
     });
 
-  const deliver = async (list: Item[], morning = false) => {
+  const deliver = async (list: Item[], morning = false, urgent = false) => {
     if (opts.store.settings().off) return; // the user switched notifications off (D71)
+    if (!urgent && lastVia && opts.channelUp?.(lastVia)) {
+      for (const it of list) pushed.add(it.key); // D277: the chat app carried it
+      return;
+    }
     const subs = liveSubs();
     if (!subs.length || !list.length) return;
     const v = await opts.store.vapid();
@@ -570,12 +578,15 @@ export function createPusher(opts: {
           const key = `d:${d.decisionId}`;
           if (!enabled || pushed.has(key)) return;
           const it: Item = { key, seq: e.seq, at: clock.now(), kind: "decision", decision: d };
-          running = running.then(() => deliver([it])).catch((err) => console.warn(`[push] call question: ${(err as Error).message}`));
+          running = running.then(() => deliver([it], false, true)).catch((err) => console.warn(`[push] call question: ${(err as Error).message}`));
           return;
         }
         add({ key: `d:${d.decisionId}`, seq: e.seq, kind: "decision", decision: d });
         return;
       }
+      case "user_msg":
+        lastVia = (e.body as Bodies["user_msg"]).via;
+        return;
       case "decision_resolved": {
         const r = e.body as Bodies["decision_resolved"];
         items.delete(`d:${r.decisionId}`);

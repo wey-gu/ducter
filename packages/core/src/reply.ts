@@ -139,7 +139,7 @@ export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get
 export function logUserMessage(
   log: LogStore,
   decisions: ReplyDecisions,
-  m: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyWant },
+  m: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyWant; via?: Bodies["user_msg"]["via"] },
 ): LogEvent<"user_msg"> {
   let reply: ReplyRef | undefined;
   if (m.reply) {
@@ -153,7 +153,7 @@ export function logUserMessage(
   const d = id ? decisions.get(id) : undefined;
   const answers = !!(reply && id && d && m.text.trim() && decisions.isPending(id) && plainDecision(d));
   if (answers) reply!.answers = true;
-  const body: Bodies["user_msg"] = { text: m.text, ...(m.clientId ? { clientId: m.clientId } : {}), ...(m.media?.length ? { media: m.media } : {}), ...(reply ? { reply } : {}) };
+  const body: Bodies["user_msg"] = { text: m.text, ...(m.clientId ? { clientId: m.clientId } : {}), ...(m.media?.length ? { media: m.media } : {}), ...(reply ? { reply } : {}), ...(m.via ? { via: m.via } : {}) };
   const e = log.append({ stream: "channel", origin: "user", kind: "user_msg", body });
   if (answers) {
     try {

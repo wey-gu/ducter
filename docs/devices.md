@@ -63,8 +63,19 @@ top to bottom like a character in a game:
     has it yet; tap it to read what it is. Add it on a Mac with Apple silicon and the chip points
     there instead. A server shows no **Use the computer** of its own: it has no screen, so that
     one is always on a Mac.
-- **How it's connected:** one quiet line, such as *Connected via the app and command line*. The
-  **⋯** beside it shows each connection with its own **Disconnect**.
+- **How it's connected:** for a device that is connected now, which way it reaches Ducter
+  (**Through your tailnet**, **Through your domain**, **Through your Cloudflare tunnel**, or
+  **On this same computer**) and, on the line under it, whether anyone in between can read it.
+  Everything is encrypted all the way except through a Cloudflare tunnel: Cloudflare opens the
+  traffic at its edge, so the card says *Cloudflare can read it*. Below that, one quiet line such
+  as *Connected via the app and command line*; the **⋯** beside it shows each connection with its
+  own **Disconnect**.
+- **Addresses that reach it:** on the card of the computer Ducter lives on, every address it has
+  (your Tailscale network, your domain, your Cloudflare tunnel), each with **Reachable**,
+  **Can't reach** or **Not checked yet**, and **In use** for the one this window uses. The Ducter
+  apps on your phone and Mac know all of them and use the best one that works, so adding or
+  removing one never means connecting your devices again. A web page stays on the address it was
+  opened at.
 - **Disconnect this MacBook** is at the very bottom. Ducter asks once and says what it means; to
   bring the device back, connect it again with a new code.
 

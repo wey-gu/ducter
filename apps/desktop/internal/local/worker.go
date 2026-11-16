@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
@@ -38,6 +39,10 @@ type WorkerSaved struct {
 	DeviceID string `json:"deviceId"`
 	Persona  string `json:"persona"`
 	Name     string `json:"name"`
+	// Ways and FP (D293): the home's ways and key fingerprint, so the worker
+	// follows the home to its best way without joining again.
+	Ways []protocol.ReachWay `json:"ways,omitempty"`
+	FP   string              `json:"fp,omitempty"`
 }
 
 // MacWorker runs this Mac as a worker of a Ducter elsewhere.
@@ -128,7 +133,7 @@ func (w *MacWorker) Start(ctx context.Context, base, appToken string) (*WorkerSa
 		if name == "" {
 			name = w.Computer
 		}
-		s = &WorkerSaved{URL: base, Token: got.Token, DeviceID: got.DeviceID, Persona: got.Persona, Name: name}
+		s = &WorkerSaved{URL: base, Token: got.Token, DeviceID: got.DeviceID, Persona: got.Persona, Name: name, Ways: got.Ways, FP: got.FP}
 		if err := w.save(*s); err != nil {
 			return nil, err
 		}

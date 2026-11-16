@@ -133,7 +133,7 @@ describe("ducter pair without a public address", () => {
     expect(j.code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
     const k = JSON.parse((await run({ DUCTER_PUBLIC_URL: "https://d.example.com" }, { json: true })).trim());
     expect(k.reachable).toBe(true);
-    expect(k.link).toBe(`https://d.example.com/pair#c=${k.code}`);
+    expect(k.link).toStartWith(`https://d.example.com/pair#c=${k.code}&k=`); // D293: the home's key fingerprint rides beside the code
     expect(k.steps).toBeUndefined();
   });
   test("D265: a server in a tailnet leads with ducter tailscale; one without lists Tailscale beside the domain", async () => {
@@ -159,7 +159,7 @@ describe("ducter pair without a public address", () => {
     // A ts.net address saved by ducter tailscale is the address pairing hands out, with its QR.
     const k = JSON.parse((await run({ DUCTER_PUBLIC_URL: "https://hel.tail1234.ts.net" }, { json: true })).trim());
     expect(k.reachable).toBe(true);
-    expect(k.link).toBe(`https://hel.tail1234.ts.net/pair#c=${k.code}`);
+    expect(k.link).toStartWith(`https://hel.tail1234.ts.net/pair#c=${k.code}&k=`); // D293: the home's key fingerprint rides beside the code
     expect(await run({ DUCTER_PUBLIC_URL: "https://hel.tail1234.ts.net" }, { server: true })).toContain("scan this with your phone");
   });
   test("D83: one code, both ways to use it: a phone or app window, and another computer's one command", async () => {

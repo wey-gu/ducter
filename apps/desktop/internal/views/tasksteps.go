@@ -91,7 +91,7 @@ func (a *App) noteLine(b *Block) string {
 		if name != "" {
 			name = a.effortWord(name)
 		}
-	case "offline", "back", "waiting_device":
+	case "offline", "reconnecting", "back", "waiting_device":
 		if name == "" {
 			name = a.L.T("note.computer")
 		}

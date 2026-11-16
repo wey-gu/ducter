@@ -277,6 +277,10 @@ export interface SettingsApi {
 export type WorkerSessionFrame =
   | { t: "ev"; key: string; ev: HarnessEvent; busy: boolean; sessionId?: string }
   | { t: "end"; key: string; error?: string; offline?: boolean }
+  // D293: the worker's socket dropped and the worker keeps the session for a grace (away), or it
+  // came back within it and still has the session (back). Made by the home; never on the wire.
+  | { t: "away"; key: string }
+  | { t: "back"; key: string }
   // D157: Ducter's own browser on a worker. One CDP message (an event) from the browser there,
   // or the browser's connection closed (closed: true); the main drives it with cdpSend.
   | { t: "cdp"; key: string; msg?: { method: string; params?: unknown; sessionId?: string }; closed?: boolean };
@@ -437,6 +441,8 @@ export interface HarnessSession {
   events(): AsyncIterable<HarnessEvent>;
   /** D282: the agent's own manual compaction, where the runtime has one (Codex through OAR). */
   compact?(): Promise<void>;
+  /** D293: a session on a worker: its worker dropped and holds it (away), or came back with it (back). */
+  onLink?(fn: (state: "away" | "back") => void): void;
 }
 
 export interface HarnessPort {

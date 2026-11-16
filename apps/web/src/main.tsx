@@ -9,7 +9,7 @@ import { Api, baseUrl, codeFromHash, pair, storage, type Me, type PairError } fr
 import { kvSet } from "./idb.ts";
 import { forgetGlance, loadGlance, type Glance } from "./glance.ts";
 import { registerWorker } from "./push-client.ts";
-import { inApp, tellApp } from "./native.ts";
+import { deviceFromApp, inApp, tellApp } from "./native.ts";
 import { startAutospace } from "./autospace.ts";
 import { listenForCodeCopy } from "./conv-copy.ts";
 import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
@@ -24,6 +24,11 @@ import { markSeen } from "./seen.ts";
 
 const base = baseUrl();
 const token = () => storage.get()?.token;
+/** D293: what the iPhone and Android apps keep so a page at another of the home's addresses is the same device. */
+const recordForApp = () => {
+  const r = storage.get();
+  return r ? { deviceId: r.deviceId, name: r.name } : {};
+};
 const api = new Api(base, token);
 const t = (k: string, ...a: unknown[]) => A.L.t(k, ...a);
 
@@ -202,6 +207,15 @@ async function boot(pairing?: PairView) {
     render(<Pairing initial={pairing} onPaired={() => void boot()} />, root);
     return;
   }
+  // D293: the app opened the home at another of its addresses (another origin, empty storage):
+  // it hands back the device record it kept, so nothing is paired again.
+  if (!token() && inApp()) {
+    const rec = await deviceFromApp();
+    if (rec?.token && rec.deviceId) {
+      storage.set({ token: rec.token, deviceId: rec.deviceId, name: rec.name ?? "", ...(rec.personaName ? { personaName: rec.personaName } : {}), pairedAt: new Date().toISOString() });
+      await kvSet("token", rec.token);
+    }
+  }
   const had = token();
   // D209: a paired device, or this machine's page with a last screen kept, paints at once: the
   // last screen from the glance, the socket opening alongside, and who we are asked meanwhile.
@@ -222,7 +236,7 @@ async function boot(pairing?: PairView) {
       if (r.status !== 200 || !r.data) return;
       A.me = r.data;
       if (r.data.personaName && !A.S.welcomed) A.S.personaName = r.data.personaName;
-      if (r.data.personaName !== me.personaName) tellApp({ token: had, base: base.href, locale: A.L.lang, personaName: A.S.personaName });
+      if (r.data.personaName !== me.personaName) tellApp({ token: had, base: base.href, locale: A.L.lang, personaName: A.S.personaName, ...recordForApp() });
       A.changed();
     });
     return;
@@ -236,7 +250,7 @@ async function boot(pairing?: PairView) {
 
 function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   if (had) void kvSet("token", had);
-  tellApp({ token: had, base: base.href, locale: A.L.lang, personaName: me.personaName });
+  tellApp({ token: had, base: base.href, locale: A.L.lang, personaName: me.personaName, ...recordForApp() });
   if (!inApp()) void registerWorker(base); // the app's notifications are its own (APNs)
   A.glanceDevice = device;
   A.onPhoneFrame = phoneFrame; // D217

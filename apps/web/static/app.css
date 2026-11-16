@@ -5258,6 +5258,22 @@ button.dev-name {
 .dc-conn { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: var(--sm); }
 .dc-conn + .dc-conn { border-top: 1px solid var(--line-soft); }
 .dc-conn small { flex: 1; min-width: 0; color: var(--ink-muted); }
+/* D293: how a device is connected, and the home's addresses: a header, then one inset group of
+   rows (title, one muted line, the state at the right edge). */
+.dc-reach { margin-top: 16px; }
+.dc-reach-h { margin: 0 0 6px 12px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.dc-reach-list { border-radius: 12px; background: var(--bg); overflow: hidden; }
+.dc-reach .rw { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px; }
+.dc-reach .rw + .rw { border-top: 1px solid var(--line-soft); }
+.dc-reach .rw .t { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
+.dc-reach .rw b { font-size: var(--sm); font-weight: 700; color: var(--ink); }
+.dc-reach .rw small { font-size: var(--xs); color: var(--ink-muted); overflow-wrap: anywhere; }
+.dc-reach .rw small.open { color: var(--ink-soft); }
+.dc-reach .rw .st { flex: none; font-size: var(--sm); font-weight: 700; color: var(--ink-muted); }
+.dc-reach .rw .st.up { color: var(--done-ink); }
+.dc-reach .rw .st.down { color: var(--failed-ink); }
+.dc-reach-note { margin: 6px 12px 0; line-height: 1.5; }
+:lang(zh) .dc-reach-note { line-height: 1.7; }
 .danger-text { height: 32px; padding: 0 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--failed-ink); font: inherit; font-size: var(--sm); font-weight: 700; white-space: nowrap; cursor: pointer; }
 .danger-text:hover, .danger-text:active { background: var(--failed-surface); }
 

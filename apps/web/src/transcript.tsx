@@ -480,7 +480,7 @@ export function switchLine(task: Task, b: Extract<Block, { k: "note" }>): string
 
 function noteName(b: Extract<Block, { k: "note" }>): string {
   if (b.say === "effort_dropped") return b.name ? effortWord(A.L, b.name) : "";
-  if (b.say === "offline" || b.say === "back" || b.say === "waiting_device") return b.name || t("note.computer");
+  if (b.say === "offline" || b.say === "reconnecting" || b.say === "back" || b.say === "waiting_device") return b.name || t("note.computer");
   return b.name ?? "";
 }
 

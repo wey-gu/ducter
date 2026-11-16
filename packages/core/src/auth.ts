@@ -335,7 +335,7 @@ export interface Gate {
 
 const json = (status: number, body: unknown) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 
-export function createGate(opts: { auth: DeviceAuth; trustLoopback?: boolean; personaName?: () => string }): Gate {
+export function createGate(opts: { auth: DeviceAuth; trustLoopback?: boolean; personaName?: () => string; /** D293: the home's key and its ways, in the pairing answer (a device pins the key). */ pairExtra?: () => Record<string, unknown> }): Gate {
   const trust = opts.trustLoopback ?? process.env.DUCTER_LOCAL_TRUST !== "off";
   const tokenOf = (req: Request, path: string) => {
     const dev = req.headers.get("x-ducter-device");
@@ -371,7 +371,7 @@ export function createGate(opts: { auth: DeviceAuth; trustLoopback?: boolean; pe
         const computer = typeof body?.computer === "string" ? body.computer : undefined;
         const r = opts.auth.redeem(String(body?.code ?? ""), { name: String(body?.name ?? ""), platform: String(body?.platform ?? ""), role, form, computer }, key);
         if ("error" in r) return { pass: false, response: json(r.error === "locked" ? 429 : 401, { error: r.error }) };
-        return { pass: false, response: json(200, { token: r.token, deviceId: r.device.id, name: r.device.name, personaName: opts.personaName?.() ?? "Ducter" }) };
+        return { pass: false, response: json(200, { token: r.token, deviceId: r.device.id, name: r.device.name, personaName: opts.personaName?.() ?? "Ducter", ...(opts.pairExtra?.() ?? {}) }) };
       }
       // A worker is always a paired device, also when it dials in over loopback (same box, or
       // through an SSH tunnel): its token decides, or /worker refused it as "local" (soak).

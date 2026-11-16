@@ -103,7 +103,7 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	a.tasksCard(c)
 	a.talkCard(c, st)
 	a.trustCard(c)
-	// D257: what it remembers and your other AI agents are tabs of their own (memory.go).
+	// D257: what it remembers and the connected AI agents are tabs of their own (memory.go).
 }
 
 // partnerHero is the calm header: the clay partner, its name (a click on

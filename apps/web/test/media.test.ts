@@ -33,7 +33,7 @@ test("every picture word exists in zh and en", () => {
   // D259: the cap is said in the words, in both languages.
   expect(zh.t("media.tooBig", 50)).toBe("这个文件太大了：每个最多 50 MB");
   expect(en.t("media.tooBig", 50)).toBe("That file is too big: up to 50 MB each");
-  expect(zh.t("media.add")).toBe("添加图片或文件");
-  expect(en.t("media.add")).toBe("Add images or files");
+  expect(zh.t("media.add")).toBe("添加文件或图片");
+  expect(en.t("media.add")).toBe("Add files or pictures");
   expect(en.t("media.from", "Draw a clay laptop")).toBe("From Draw a clay laptop");
 });

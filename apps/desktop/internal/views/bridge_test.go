@@ -14,7 +14,7 @@ import (
 )
 
 // D205/D225/D229, placed by D257: the persona's own connection with the
-// user's other AI agents is Settings › 你的其他 AI; the home's own Nowledge
+// user's other AI agents is Settings › 连上的 AI agent; the home's own Nowledge
 // Mem steps (put in, update, move, sign in) are Settings › 记忆. Each state
 // shows on its tab; 连上, 断开 (after one confirm), 装上 and 更新 send their
 // frames; nothing else does.
@@ -200,7 +200,7 @@ func TestBridgeRow(t *testing.T) {
 
 func ptr[T any](v T) *T { return &v }
 
-// With no Mem that can connect and no agent ever written, 你的其他 AI stays
+// With no Mem that can connect and no agent ever written, 连上的 AI agent stays
 // away (J6): not in the rail, and its tab falls back to the partner's.
 func TestBridgeRowAbsentForAFreshUser(t *testing.T) {
 	for _, b := range []*protocol.BridgeView{nil, {State: "install_mem", Identity: "ducter", Home: "hel", CanRun: true}, {State: "sign_in", Identity: "ducter", Home: "hel"}} {
@@ -214,7 +214,7 @@ func TestBridgeRowAbsentForAFreshUser(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		if tt.HasText(app.L.T("settings.tab.peers")) {
-			t.Fatalf("你的其他 AI shows for a fresh user (%v): %q", b, tt.Texts())
+			t.Fatalf("连上的 AI agent shows for a fresh user (%v): %q", b, tt.Texts())
 		}
 	}
 }

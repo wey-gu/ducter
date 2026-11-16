@@ -410,7 +410,7 @@ export function PhoneOffer() {
         <div class="small sub">{t("call.offer.lede")}</div>
       </div>
       <div class="phone-acts">
-        <Btn kind="primary" label={A.connecting ? t("acct.checking") : t("call.offer.go")} disabled={A.connecting} onClick={() => A.addConnection(TUWA_MCP, "")} />
+        <Btn kind="primary" size="sm" label={A.connecting ? t("acct.checking") : t("call.offer.go")} disabled={A.connecting} onClick={() => A.addConnection(TUWA_MCP, "")} />
       </div>
       <div class="small sub">{t("call.offer.how")}</div>
     </section>

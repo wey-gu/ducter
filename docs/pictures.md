@@ -13,10 +13,10 @@ works, a picture, a file), it shows up in the conversation.
 
 ## Send a picture
 
-- **On your phone:** tap the picture button left of where you type (**Add images or files**). Your
+- **On your phone:** tap the paperclip left of where you type (**Add files or pictures**). Your
   phone's own menu opens: pick from your photos, take one, or choose a file. You can also paste a
   picture you copied.
-- **On your Mac:** click the picture button, paste (⌘V), or drag pictures and files onto the
+- **On your Mac:** click the paperclip, paste (⌘V), or drag pictures and files onto the
   conversation. A file you copied in Finder pastes as that file.
 - **Up to 10 at a time.** Each one starts going up the moment you pick it, so Send is instant.
   Type words with them, or send them alone.

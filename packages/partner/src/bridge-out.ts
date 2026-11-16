@@ -17,13 +17,14 @@ const unnamed = (b: { label?: string; from?: string; to?: string }) => {
   const l = b.label || b.from || b.to;
   return !l || l === "another agent";
 };
-export const UNNAMED_OWN = { zh: "另一个 AI", en: "other AI agent" } as const;
+export const UNNAMED_OWN = { zh: "一个 AI agent", en: "an AI agent" } as const;
 
-/** What the user reads for another agent: "你的 <agent>" / "your <agent>" when it is theirs. */
+/** What the user reads for another agent (D273): what it is, by its own name ("Claude Code"),
+ *  never "你的 …"; one Mem doesn't name is "一个 AI agent" / "an AI agent". */
 export function whoForUser(b: { mine?: boolean; agent?: string; label?: string; from?: string; to?: string }, zh: boolean): string {
-  if (b.mine && b.agent) return zh ? `你的 ${b.agent}` : `your ${b.agent}`;
-  if (b.mine && unnamed(b)) return zh ? `你的${UNNAMED_OWN.zh}` : `your ${UNNAMED_OWN.en}`;
-  return b.label || b.from || b.to || (zh ? "另一个 agent" : "another agent");
+  if (b.mine && b.agent) return b.agent;
+  if (b.mine && unnamed(b)) return zh ? UNNAMED_OWN.zh : UNNAMED_OWN.en;
+  return (unnamed(b) ? "" : b.label || b.from || b.to) || (zh ? UNNAMED_OWN.zh : UNNAMED_OWN.en);
 }
 
 /** The same agent in the partner's input, with how to call it when talking to the user. */
@@ -216,7 +217,7 @@ export function followLine(op: OutOp, now: number, zh: boolean, read?: boolean, 
       ? zhJoin(who, "看过你", when, `问的「${gist}」，还没回。回了我马上告诉你。`)
       : zhJoin(who, "还没回你", when, `问的「${gist}」，它可能停了。回了我马上告诉你。`);
   }
-  const Who = who.charAt(0).toUpperCase() + who.slice(1);
+  const Who = who === UNNAMED_OWN.en ? "An AI agent" : who; // D273: an agent's own name stays as it is
   return read
     ? `${Who} read what you asked ${when} ("${gist}") but hasn't answered yet. I'll tell you as soon as it does.`
     : `${Who} hasn't answered what you asked ${when} ("${gist}"); it may have stopped. I'll tell you as soon as it does.`;

@@ -325,11 +325,18 @@ export function defaultLine(d: Bodies["decision"], locale: "zh" | "en", now: num
   return c.defaultGo(inWords(at - now, c), d.goLabel || c.go);
 }
 
+/** D273: who asks, by what it is and where it works: "Claude Code（~/dev/ducter）问你". */
+export function askerLine(agent: string, where: string | undefined, locale: "zh" | "en"): string {
+  if (locale === "zh") return where ? `${agent}（${where}）问你` : `${agent} 问你`;
+  const s = where ? `${agent} (${where}) asks you` : `${agent} asks you`;
+  return s.startsWith("an ") ? "A" + s.slice(1) : s;
+}
+
 export function decisionMessage(d: Bodies["decision"], o: { persona: string; task?: string; locale: "zh" | "en"; platform: string; now: number }): PushMessage {
   const c = COPY[o.locale];
   // X1 (D170): a question one of the user's own agents asked: who asks is the title, and silence
   // never answers for the user (the card's own default line).
-  const peer = d.asker ? (o.locale === "zh" ? `你的 ${d.asker.agent} 问你` : `Your ${d.asker.agent} asks`) : undefined;
+  const peer = d.asker ? askerLine(d.asker.agent, d.asker.where, o.locale) : undefined;
   // D193: a question from a live call: someone is waiting on the line. No buttons (the answer is
   // the owner's own words or a choice on the card), time-sensitive so it comes through.
   if (d.call?.kind === "question")

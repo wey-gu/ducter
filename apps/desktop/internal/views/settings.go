@@ -37,7 +37,7 @@ type Remover interface {
 //	                         talks, what it asks first
 //	记忆 / Memory            what it remembers about you, and Nowledge
 //	                         Mem with its version and updates (D257)
-//	你的其他 AI / Your other AI agents: the persona's connection with
+//	连上的 AI agent / Connected AI agents: the persona's connection with
 //	                         them and who may reach it, once it means
 //	                         something (D257)
 //	通知 / Notifications     when it comes to you, quiet hours, if you

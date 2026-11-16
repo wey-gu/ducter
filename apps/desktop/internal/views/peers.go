@@ -38,61 +38,56 @@ func peerHarness(agent string) string {
 	return "peer"
 }
 
-// peerWho is how the user hears of an agent: 你的 <agent> for their own.
-func (a *App) peerWho(agent string, mine bool) string {
-	zh := a.L.Lang == i18n.ZH
+// peerWho is how the user hears of an agent Ducter didn't start (D273): by
+// what it is, its own name ("Claude Code"), never 你的 / other; when Mem
+// didn't say who sent it, 一个 AI agent / an AI agent.
+func (a *App) peerWho(agent string) string {
 	if agent == "" || agent == "another agent" {
-		// Mem didn't say who sent it: one of their own is 你的另一个 AI.
-		switch {
-		case mine && zh:
-			return "你的另一个 AI"
-		case mine:
-			return "your other AI agent"
-		case zh:
-			return "另一个 AI"
+		if a.L.Lang == i18n.ZH {
+			return "一个 AI agent"
 		}
-		return "another AI agent"
+		return "an AI agent"
 	}
-	if !mine {
-		return agent
+	return agent
+}
+
+// capPeer starts a line "An AI agent …"; an agent's own name stays as it is.
+func capPeer(s string) string {
+	if strings.HasPrefix(s, "an AI agent") {
+		return "A" + s[1:]
 	}
-	if zh {
-		return "你的 " + agent
-	}
-	return "your " + agent
+	return s
 }
 
 // peerAskerRow stands where a task's title would on a card asked for one of
-// the user's own agents: 你的 <agent> 问你 and where it works (no coin at
+// the user's own agents (D273): "Claude Code（~/dev/ducter）问你" (no coin at
 // this size, D213).
 func (a *App) peerAskerRow(c *ui.Context, d *protocol.PeerAsk) {
 	t := a.T
+	text := a.L.T("peer.asks", a.peerWho(d.Agent))
+	if d.Where != "" {
+		text = a.L.T("peer.asks.where", a.peerWho(d.Agent), d.Where)
+	}
 	ui.Row(c.Key("peer-asker")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, a.L.T("peer.asks", d.Agent)).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).MaxLines(1)
-		if d.Where != "" {
-			ui.Text(c, "· "+d.Where).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(1)
-		}
+		ui.Text(c, capPeer(text)).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).MaxLines(1)
 	})
 }
 
-// peerLineText is the one quiet line about the user's other agents (J-Q5's
-// strings): a request came in, or a reply or a message went out.
+// peerLineText is the one quiet line about an agent Ducter didn't start
+// (J-Q5's strings): a request came in, or a reply or a message went out.
 func (a *App) peerLineText(b *protocol.BridgeMsg) string {
-	agent := firstNonEmpty(b.Agent, b.From, b.To)
+	who := a.peerWho(firstNonEmpty(b.Agent, b.From, b.To))
 	if b.Direction == "in" {
 		gist := strings.Join(strings.Fields(b.Text), " ")
 		if r := []rune(gist); len(r) > 40 {
 			gist = string(r[:39]) + "…"
 		}
-		if b.Mine && agent != "" && agent != "another agent" {
-			return a.L.T("peer.in", agent, gist)
-		}
-		return a.L.T("peer.in.other", a.peerWho(agent, b.Mine), gist)
+		return capPeer(a.L.T("peer.in.other", who, gist))
 	}
 	if b.DecisionID != "" {
-		return a.L.T("peer.sent", a.peerWho(agent, b.Mine))
+		return a.L.T("peer.sent", who)
 	}
-	return a.L.T("peer.replied", a.peerWho(agent, b.Mine))
+	return a.L.T("peer.replied", who)
 }
 
 // bridgeNote is the line under the persona's connection row (D205), in its
@@ -233,7 +228,7 @@ func memSetup(state string) bool {
 	return false
 }
 
-// peersCard is 你的其他 AI / Your other AI agents (D170, its own tab since
+// peersCard is 连上的 AI agent / Connected AI agents (D170, its own tab since
 // D257): the connection, who may reach the partner, the rules it learned
 // about them, and whom the user stopped listening to. 断开 ends it all;
 // 谁都不行 lets no other agent reach the partner while what the user sends
@@ -335,7 +330,7 @@ func (a *App) peerLine(c *ui.Context, b *protocol.BridgeMsg, setAside int) {
 	t := a.T
 	text := a.peerLineText(b)
 	if b.State == "set_aside" {
-		text = a.L.T("peer.set_aside", a.peerWho(firstNonEmpty(b.Agent, b.From), b.Mine), itoa(int64(setAside)))
+		text = capPeer(a.L.T("peer.set_aside", a.peerWho(firstNonEmpty(b.Agent, b.From)), itoa(int64(setAside))))
 	}
 	ui.Row(c).Justify(ui.Center).Children(func() {
 		ui.Row(c).Gap(t.S1+2).AlignItems(ui.Center).Padding(3, t.S3).Radius(999).Background(t.SurfaceSunken).Children(func() {

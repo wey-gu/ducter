@@ -330,7 +330,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **Nowledge Mem in 全部更新 / Update all** (D257 option C): the home's `nmem` as an item beside Ducter
       and the agents (D224), so one tap updates everything. Trigger: the next time 全部更新 grows an item kind.
 - [ ] **An On hand line when a Mem update blocks something in use** (D257 (5)): today the update is said on
-      Memory, on the Settings entry, and on 你的其他 AI when a connection fails with a newer Mem out. If people
+      Memory, on the Settings entry, and on 连上的 AI agent when a connection fails with a newer Mem out. If people
       miss it there (Bridge broken for days), add one quiet On hand line. Trigger: a real report of a missed
       update.
 - [ ] **The notebook mark's comprehension test** (D257, AGENTS.md's metaphor rule step 4): naive raters (LLM
@@ -440,7 +440,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Read-fold and late fold (principle 5) are still not built.
 - [ ] Meter the digest writer's cost (the eval records answer cost only).
 
-## Your accounts and your other AI agents (promised as "coming soon" on the site)
+## Your accounts and connected AI agents (promised as "coming soon" on the site)
 
 The site, README and `docs/faq.md` say these are coming. Each needs the change loop (a design
 note and a `Dn`) before it is built.
@@ -542,9 +542,11 @@ note and a `Dn`) before it is built.
 - [ ] **A sent PDF as a model's own document input** (OAR, where the runtime takes documents), and
       **PDF text on the home** for a partner or agent with no PDF reader (Codex, pi, DSH on a machine
       without one). Trigger: the first sent PDF a partner couldn't read (D259).
-- [ ] **The composer's picture mark for pictures and files** (D259 kept the picture mark; the label
-      says both). Through the metaphor process (AGENTS.md) before changing it. Trigger: the
-      author's review of D259, or a fresh user who doesn't find where to send a file.
+- [x] **The composer's picture mark for pictures and files** (D259 kept the picture mark; the label
+      says both). Done by D273: the drawn paperclip, by the author's call, with the candidate table in D273.
+- [ ] **D273's attach mark, a comprehension check:** naive raters (LLM proxies first) shown the composer at
+      18–20 pt, asked "what does this button do?". Trigger: the next composer change, or a person who
+      misses it.
 - [ ] **Try D259 for real:** a PDF and a 40 MB deck from a real iPhone and Android over the
       tunnel, a real partner (haiku) answering from a sent PDF and a long log. Trigger: the next
       release with D259.
@@ -1040,13 +1042,19 @@ Codex first, once OAR is near 1.0. See `research/17`.
       a first send; native-session Agents all "Bridge agent". Trigger: the author's go.
 - [ ] When Mem names senders and links replies: drop D249 (5)'s maybe-answered rule, read the sender into
       `agent`/`mine`, and make the live S2 check pass (5/5). Trigger: a newer nmem whose `open` has them.
-- [ ] "你的 %s 问你" puts a space before a Chinese agent name ("你的 另一个 AI 问你"); join by D78's rule in the
+- [ ] "%s 问你" (D273) puts a space before 问你 after a Chinese agent name ("Claude 收尾协调 问你"); join by D78's rule in the
       web, Mac and push templates. Trigger: the next touch of the asker card.
+- [ ] D273 in the words the partner model reads: `whoForModel` and the `ask`/`bridge_send` refusals still tell it
+      to say 你的 <agent> / your <agent>, and an own agent's task brief says （你的 <agent> 让我做的）. Make them say
+      the agent by its own name, as the UI now does. Trigger: the next persona or partner-tool change (D175 eval).
+- [ ] D273 on the Mac: the Settings panes share the phone's discipline in spirit but not its code; audit them for
+      the same misalignments (headers on the text edge, one row anatomy, no card in a card), and draw the add rows'
+      ＋ in the tile column. Trigger: the next Mac Settings change.
 - [ ] Unnamed own agents share one name, so the daily quota, mute and "3 open asks" count them together (D249).
       Trigger: a user with two own agents writing on the same day.
 - [ ] The live driver: the peer's native context keeps its inbox across runs; give each run its own peer session
       context, or have the peer ignore what predates the run. Trigger: the next live run.
-- [x] (history) Connect the persona in Only me (D205): on the home, Settings › 伙伴 › 你的其他 AI › 连接 (it runs
+- [x] (history) Connect the persona in Only me (D205): on the home, Settings › 连上的 AI agent › 连接 (it runs
       `nmem bridge connections connect --space-id <Only me> --agent-id ducter --context ducter`). Run once on a
       scratch home 2026-11-12: Mem answered 503 `cloud_bridge_setup_unavailable` (research/66 §3). On hel first
       **更新** (nmem 0.10.116 by pip, D225). Trigger: Mem opens Bridge connections for the workspace (`bun run
@@ -1078,7 +1086,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] X1 · "有事问 Ducter" (D164, D170): the asker card on both clients, the reply by code, "not yet" after 30 min,
       60 s checks while live, 3 open asks per agent, the lock-screen copy.
 - [x] X2 · "直接接" (D163, D170): the offer after two Go's, the rule in Settings › 伙伴, 5 a day.
-- [x] Settings › 伙伴 › 你的其他 AI (D170): who can reach the partner, the learned rules, the muted.
+- [x] Settings › 连上的 AI agent (D170): who can reach the partner, the learned rules, the muted.
 - [ ] X3 · a team's agents: a per-team switch once a team context exists, Space-scoped answers (Mem search in that
       Space only), and the eval scenario for a teammate's question. Trigger: a team context and Mem's Team Bridge
       accepted.

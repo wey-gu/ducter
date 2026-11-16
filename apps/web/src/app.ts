@@ -429,6 +429,8 @@ class AppState {
   /** D238: this page as its phone's link (handset.tsx). */
   onHandsetFrame?: (f: import("@ducter/protocol").HandsetServerFrame) => void;
   onHandsetWelcome?: () => void;
+  /** D306: after each frame, the glances the app shows are kept true (ambient.tsx). */
+  onAmbient?: () => void;
   changed() {
     for (const fn of this.listeners) fn();
     this.scheduleRead();
@@ -740,6 +742,7 @@ class AppState {
     }
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
     this.S.apply(f);
+    this.onAmbient?.();
     if (f.t === "task_history") this.pageHistory(f.taskId);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
     if (f.t === "action_result") this.actSent.delete(f.taskId);

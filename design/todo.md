@@ -1130,7 +1130,14 @@ Codex first, once OAR is near 1.0. See `research/17`.
       dark row). Trigger: a second theme (Midnight, Volt…) works on the desktop and the phone alike.
 - [ ] Walk Forget against a live Nowledge Mem (`nmem m forget --force` on a line with a memory
       id) and check recall no longer returns it. Trigger: a scratch Mem space for tests.
-- [ ] Screenshot the menu bar extra's open menu natively. On the test Mac it sat in the menu
+- [ ] **D306: the Lock Screen glance on a real iPhone** (trigger: a signed build on a device with
+      the relay's `activity` op deployed): start from a task, watch needs you and done arrive by
+      push (own key and relay), the stale line after 4 h, then turn `DUCTER_LIVE_ACTIVITIES` on.
+      Then: push-to-start for a call that goes live while the app is closed (iOS 17.2+), and a
+      tap on the glance opening its task (the app has no URL scheme yet).
+- [ ] **D306: Android's glance while the app is closed** (trigger: UnifiedPush, D181 (4)); and
+      Android 16's promoted ongoing notification (Live Updates) for a live call.
+- [ ] Screenshot the menu bar extra's open menu natively (D306: its mark's three states too). On the test Mac it sat in the menu
       bar's overflow, so only its contents are covered by unit tests. Trigger: a Mac with room in
       the menu bar.
 - [ ] Sign in, install and sign out from a Devices account card in the real Ducter.app (the

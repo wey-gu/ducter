@@ -12,6 +12,8 @@ struct DucterApp: App {
             #if DEBUG
             if UserDefaults.standard.bool(forKey: "buttonSpecimen") {
                 ButtonSpecimen()
+            } else if UserDefaults.standard.bool(forKey: "glanceSpecimen") {
+                GlanceSpecimen()
             } else {
                 Root(state: state, shell: shell).tint(Pebble.accent)
             }

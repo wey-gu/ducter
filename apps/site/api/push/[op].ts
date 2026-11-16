@@ -12,8 +12,11 @@
 //   counters keyed by handle id or a keyed hash of the caller's address, each with a TTL.
 //
 // Routes (one Vercel Node function; `[op]` is the last path segment):
-//   POST /api/push/register {token, topic, env}        → {handle}          (the iPhone app)
+//   POST /api/push/register {token, topic, env, kind?}  → {handle}          (the iPhone app; kind
+//                                                                            "activity": a Live Activity's push token, D306)
 //   POST /api/push/send     {handle, d, collapse?, category?} → {ok} | 410  (a home)
+//   POST /api/push/activity {handle, s: {phase, since}, at} → {ok} | 410    (a home, D306: a Live
+//                           Activity's update or end; words-free, so nothing to seal)
 //   POST /api/push/revoke   {handle}                    → {ok}             (app or home)
 //   GET  /api/push/health                               → {ok, apns, store}
 //
@@ -53,7 +56,12 @@ export const LIMITS = {
   addrHour: 600,
   /** Registrations per caller address per hour. */
   registerHour: 30,
+  /** Live Activity pushes per activity handle per hour (a home sends one per change of phase). */
+  activityHour: 40,
 };
+/** D306: the glance phases a Live Activity understands (packages/protocol/src/ambient.ts). */
+export const PHASES = new Set(["working", "waiting", "needs_you", "done", "failed", "cancelled", "calling", "talking", "asking", "called", "no_answer", "not_connected"]);
+const ENDED = new Set(["done", "failed", "cancelled", "called", "no_answer", "not_connected"]);
 const REVOKED_TTL = 400 * 86400; // longer than a handle is useful: a token changes on reinstall
 const HOSTS = { sandbox: "api.sandbox.push.apple.com", production: "api.push.apple.com" } as const;
 const GONE = new Set(["BadDeviceToken", "Unregistered", "DeviceTokenNotForTopic"]);
@@ -122,6 +130,7 @@ interface Sealed {
   p: string; // topic (bundle id)
   e: "sandbox" | "production";
   i: string; // handle id: what revocation and rate limits key on
+  k?: "a"; // D306: a Live Activity's push token, usable only with the activity op
 }
 
 async function sealKey(raw: Uint8Array<ArrayBuffer>, use: ("encrypt" | "decrypt")[]) {
@@ -141,7 +150,7 @@ export async function readHandle(key: Uint8Array<ArrayBuffer>, handle: unknown):
     if (raw.length < 12 + 16) return;
     const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.slice(0, 12), additionalData: HANDLE_AAD }, await sealKey(key, ["decrypt"]), raw.slice(12));
     const s = JSON.parse(new TextDecoder().decode(pt)) as Sealed;
-    return isToken(s.t) && isTopic(s.p) && (s.e === "sandbox" || s.e === "production") && typeof s.i === "string" ? s : undefined;
+    return isToken(s.t) && isTopic(s.p) && (s.e === "sandbox" || s.e === "production") && typeof s.i === "string" && (s.k === undefined || s.k === "a") ? s : undefined;
   } catch {
     return;
   }
@@ -249,12 +258,12 @@ export function createRelay(deps: RelayDeps): (req: Request) => Promise<Response
       if (await over(`rl:a:${ak}`, 3600, LIMITS.addrHour)) return json(429, { error: "slow down" });
       switch (op) {
         case "register": {
-          const { token, topic, env: apnsEnv } = b as { token?: unknown; topic?: unknown; env?: unknown };
-          if (!isToken(token) || !isTopic(topic) || (apnsEnv !== "sandbox" && apnsEnv !== "production")) return json(400, { error: "invalid" });
+          const { token, topic, env: apnsEnv, kind } = b as { token?: unknown; topic?: unknown; env?: unknown; kind?: unknown };
+          if (!isToken(token) || !isTopic(topic) || (apnsEnv !== "sandbox" && apnsEnv !== "production") || (kind !== undefined && kind !== "activity")) return json(400, { error: "invalid" });
           if (!topics.has(topic)) return json(403, { error: "unknown app" });
           if (await over(`rl:r:${ak}`, 3600, LIMITS.registerHour)) return json(429, { error: "slow down" });
           const id = b64u(crypto.getRandomValues(new Uint8Array(12)));
-          return json(200, { handle: await makeHandle(seal, { t: token.toLowerCase(), p: topic, e: apnsEnv, i: id }) });
+          return json(200, { handle: await makeHandle(seal, { t: token.toLowerCase(), p: topic, e: apnsEnv, i: id, ...(kind === "activity" ? { k: "a" as const } : {}) }) });
         }
         case "revoke": {
           const h = await readHandle(seal, b.handle);
@@ -262,9 +271,63 @@ export function createRelay(deps: RelayDeps): (req: Request) => Promise<Response
           await deps.store.set(`rev:${h.i}`, "1", REVOKED_TTL);
           return json(200, { ok: true });
         }
+        case "activity": {
+          // D306: a Live Activity's update or end. Only a phase and times: the relay builds the
+          // payload itself, so a home can't put words (or anything else) on someone's Lock Screen.
+          const h = await readHandle(seal, b.handle);
+          if (!h || h.k !== "a") return json(400, { error: "invalid" });
+          if (!topics.has(h.p)) return json(410, { gone: true });
+          const st = b.s as { phase?: unknown; since?: unknown } | undefined;
+          const at = b.at;
+          const nowS = Math.floor(now() / 1000);
+          if (typeof st?.phase !== "string" || !PHASES.has(st.phase) || !Number.isInteger(st.since) || !Number.isInteger(at) || Math.abs((at as number) - nowS) > 3600)
+            return json(400, { error: "invalid" });
+          if (await deps.store.get(`rev:${h.i}`)) return json(410, { gone: true });
+          if (await over(`rl:la:${h.i}`, 3600, LIMITS.activityHour)) return json(429, { error: "slow down" });
+          const end = ENDED.has(st.phase);
+          const urgent = end || st.phase === "needs_you" || st.phase === "asking";
+          const payload = {
+            aps: {
+              timestamp: at,
+              event: end ? "end" : "update",
+              "content-state": { phase: st.phase, since: st.since },
+              "stale-date": (at as number) + 4 * 3600,
+              ...(end ? { "dismissal-date": (at as number) + 15 * 60 } : {}),
+            },
+          };
+          let res: { status: number; body: string };
+          try {
+            res = await deps.transport({
+              host: HOSTS[h.e],
+              path: `/3/device/${h.t}`,
+              headers: {
+                authorization: `bearer ${await provider()}`,
+                "apns-topic": `${h.p}.push-type.liveactivity`,
+                "apns-push-type": "liveactivity",
+                "apns-priority": urgent ? "10" : "5",
+                "content-type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            });
+          } catch {
+            return json(502, { error: "apple unreachable" });
+          }
+          let reason = "";
+          try {
+            reason = (JSON.parse(res.body || "{}") as { reason?: string }).reason ?? "";
+          } catch {}
+          if (res.status === 403 && reason === "ExpiredProviderToken") jwt = undefined;
+          if (res.status === 410 || GONE.has(reason) || reason === "ExpiredToken") {
+            await deps.store.set(`rev:${h.i}`, "1", REVOKED_TTL);
+            return json(410, { gone: true });
+          }
+          if (res.status >= 200 && res.status < 300) return json(200, { ok: true });
+          console.warn(`[relay] APNs ${res.status} ${reason}`);
+          return json(502, { error: "apple refused", status: res.status, reason });
+        }
         case "send": {
           const h = await readHandle(seal, b.handle);
-          if (!h) return json(400, { error: "invalid" });
+          if (!h || h.k) return json(400, { error: "invalid" });
           if (!topics.has(h.p)) return json(410, { gone: true });
           const d = b.d;
           if (typeof d !== "string" || !/^[A-Za-z0-9_-]{40,3400}$/.test(d)) return json(400, { error: "invalid" });

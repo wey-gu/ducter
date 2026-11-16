@@ -66,4 +66,19 @@
     <string name="handset_record_asking">安卓在问能不能录屏</string>
     <string name="handset_record_sending">在把录屏发回 Ducter</string>
     <string name="handset_link_fgs">任务借用这台手机时，保持和你的 Ducter 的连接</string>
+    <!-- D306: the glance (packages/protocol/src/ambient.ts AMBIENT_WORDS). -->
+    <string name="glance_channel">跟着看的任务和通话</string>
+    <string name="glance_channel_about">你选了要跟着看的任务，和正在打的电话：只显示到了哪一步。</string>
+    <string name="glance_working">在做</string>
+    <string name="glance_waiting">在等</string>
+    <string name="glance_needs_you">等你</string>
+    <string name="glance_done">做完了</string>
+    <string name="glance_failed">没成</string>
+    <string name="glance_cancelled">已取消</string>
+    <string name="glance_calling">在打</string>
+    <string name="glance_talking">通话中</string>
+    <string name="glance_asking">对方在问</string>
+    <string name="glance_called">打完了</string>
+    <string name="glance_no_answer">没人接</string>
+    <string name="glance_not_connected">没打通</string>
 </resources>

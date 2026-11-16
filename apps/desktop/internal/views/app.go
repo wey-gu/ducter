@@ -176,6 +176,8 @@ type App struct {
 	// ApplyAppearance tells macOS the appearance chosen in Settings
 	// ("system", "light", "dark"; main.go: mygo.Theme.SetSource).
 	ApplyAppearance func(string)
+	// ApplyMenuBar shows or takes away the menu bar extra (D306; main.go).
+	ApplyMenuBar func(on bool)
 	// readSent is the last seq a read frame covered; unreadAt is when the
 	// conversation first showed something unread to the user.
 	readSent int64

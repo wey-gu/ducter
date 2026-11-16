@@ -524,9 +524,16 @@ v1 has five places, and every one is reachable from the menu bar, a shortcut and
 | 伙伴 / Partner | ⌘4, the partner's own face and name | Settings' first tab (D150), below |
 | 设置 / Settings | ⌘, Settings… in the app menu and the menu bar extra, and **设置** at the end of every bar (D262) | One place for everything you can set (D150), below; an update waiting is **更新** in every bar |
 
-An opened task is the third zoom level under On hand. The **menu bar extra** (the clay partner
-as a template icon) is the handheld moment: with the window closed, its menu lists what needs
-you, each with Go / Hold / Reply…, then Open Ducter.
+An opened task is the third zoom level under On hand. The **menu bar extra** (the clay partner)
+is the handheld moment and the glance (D306): its mark is quiet (the pebble, a template), at work
+(its eyes look down, still a template) or needs you (the pebble in the bar's ink and a soft clay
+dot in the accent at its shoulder, drawn for a light or dark bar; never a number, never red). Its
+menu opens with On hand's one sentence, lists what needs you, each with Go / Hold / Reply… / Open
+the Task, then Open Ducter, Settings…, Don't Show in the Menu Bar (back from Settings › Look and
+sound). On the phone (D306) one thing the person chose, or a live call, shows on the iPhone's Lock
+Screen and Dynamic Island (`apps/ios/LiveShared/Glance.swift`: the same pebble mark at 34 on the
+card, 18 compact, 16 minimal; the paper, the ink and the accent from Pebble) and in Android's
+notification shade (the pebble as a one-colour icon).
 
 **Settings (D150).** A game's settings menu. On the left a rail (264 wide, on the chrome's cream
 with a hairline) of chunky clay tabs, 56 tall, radius 16: each the clay thing it is about at 40

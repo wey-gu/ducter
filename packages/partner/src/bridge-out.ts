@@ -226,11 +226,16 @@ export function followLine(op: OutOp, now: number, zh: boolean, read?: boolean, 
 // ---------- what the user is told when an outgoing message can't be confirmed (D106) ----------
 
 export type OutKind = "message" | "claim" | "result" | "reply";
-export function lostLine(op: OutOp, zh: boolean, state: "failed" | "unconfirmed", kind: OutKind): string {
+export function lostLine(op: OutOp, zh: boolean, state: "failed" | "busy" | "unconfirmed", kind: OutKind): string {
   const who = whoForUser({ ...op.last, label: op.last.to }, zh);
   const what = zh
     ? { message: "你让我发的消息", claim: "「接了」的回复", result: "任务的结果", reply: "回复" }[kind]
     : { message: "the message you asked me to send", claim: "the reply saying I took it", result: "the task's result", reply: "the reply" }[kind];
+  // D294: Mem's side couldn't take it right now and said so; nothing went out, so asking again is safe.
+  if (state === "busy")
+    return zh
+      ? zhJoin(what, "没发给", who, "：Nowledge Mem 那边这会儿收不了，不是你这边的问题。这次什么都没发出去，过一会儿再跟我说一声，我重新发。")
+      : `I couldn't send ${what} to ${who}: Nowledge Mem can't take messages right now, nothing wrong on your side. Nothing went out; tell me again in a little while and I'll send it.`;
   if (state === "failed") return zh ? zhJoin(what, "没能发给", who, "：被拒绝了。") : `I couldn't send ${what} to ${who}: it was refused.`;
   return zh ? zhJoin("没能确认", what, "是否到了", who, "那里。我没有重发；需要的话再跟我说一次。") : `I couldn't confirm ${what} reached ${who}. I didn't resend it; ask me again if you need it.`;
 }

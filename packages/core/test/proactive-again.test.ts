@@ -24,6 +24,9 @@ const make = (...a: Parameters<typeof rig>) => {
 const say = async (r: Rig, text: string) => {
   r.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text } });
   await r.settle();
+  // D274: the partner answers first; an offer comes after its reply, never before it.
+  r.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "好的。" } });
+  await r.settle();
 };
 
 /**

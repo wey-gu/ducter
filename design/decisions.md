@@ -1354,3 +1354,10 @@ right; the extra choices are pills that say their value (现在 / Now), shown, n
 
 ## Superseded
 - **D225 (4)'s `local_mem` whenever Mem answers from the computer itself.** Superseded by D269: asked, and only when it offers no place.
+
+## 2026-11-16: an offer never comes before the answer (the author, on "现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几件吗？" arriving first when they asked for a phone test: "正常么？")
+
+| # | Decision | Source | Reflected in |
+|---|---|---|---|
+| D274 | **Built 2026-11-16 (core). The morning note offered back (D250/D258) and 早上那条还要吗？ (D243) are still asked once, the next time the person writes, but only after the partner has answered what they wrote.** Before, the offer was appended the moment the person's message landed, so it read as the partner's answer and pushed their request back. Now the person's message arms it and the partner's next message releases it; if the partner says nothing (a quiet action), it waits for the next exchange. Principle: the person's words come first; Ducter's own business never jumps the queue | A | `packages/core/src/proactive/engine.ts`, `proactive-again.test.ts`, `proactive-learn.test.ts` |
+

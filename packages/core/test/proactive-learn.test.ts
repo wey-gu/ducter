@@ -78,6 +78,8 @@ test("three unread morning notes pause them; the next time the person writes: �
   expect(r.notes().filter((e) => e.body.rung === "morning" && !e.body.quiet)).toHaveLength(3); // paused
   r.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "帮我看看日程" } });
   await r.settle();
+  r.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "在看。" } }); // D274: after its reply
+  await r.settle();
   const ask = r.lastNote()!;
   expect(ask).toMatchObject({ rung: "morning", ask: "keep_note", opening: "早上那条还要吗？", finds: [] });
   await r.p.answer(ask.noteId, "keep_note", false);
@@ -85,6 +87,8 @@ test("three unread morning notes pause them; the next time the person writes: �
   expect(r.settings.get()).toMatchObject({ proactive: "urgent", proactiveBy: "keep_note" });
   expect(r.lastNote()).toMatchObject({ revises: ask.noteId, answered: "no" });
   r.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "好的" } });
+  await r.settle();
+  r.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "在看。" } }); // D274: after its reply
   await r.settle();
   expect(r.lastNote()).toMatchObject({ revises: ask.noteId, answered: "no" });
   // Four simulated days of real looks (every 10 and 15 minutes, each read logged and its

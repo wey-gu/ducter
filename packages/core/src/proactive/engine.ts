@@ -816,6 +816,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
 
   const byDecision = (decisionId: string) => Object.entries(st.finds).find(([, f]) => f.decisionId === decisionId);
 
+  let afterReply = false; // D274: an offer waits for the partner's answer to the person's words
   const onEvent = (e: LogEvent) => {
     if (e.kind === "decision_resolved") {
       const r = e.body as Bodies["decision_resolved"];
@@ -840,12 +841,18 @@ export function createProactive(o: ProactiveOptions): Proactive {
         save();
         o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "held" } });
       }
-    } else if (e.kind === "user_msg" && st.keepAsk === "pending") {
-      // 早上那条还要吗？: asked once, the next time the person writes.
+    } else if (e.kind === "user_msg" && (st.keepAsk === "pending" || st.again === "pending")) {
+      // D274: asked once, the next time the person writes, but only after the partner has answered
+      // what they wrote: the offer never comes before (or instead of) the reply to their words.
+      afterReply = true;
+    } else if (e.kind === "ai_msg" && e.origin === "partner" && afterReply && st.keepAsk === "pending") {
+      afterReply = false;
+      // 早上那条还要吗？
       st.keepAsk = "asked";
       save();
       void Promise.resolve().then(() => note({ noteId: newId("note"), rung: "morning", opening: W.keepNote(zh()), finds: [], ask: "keep_note" }));
-    } else if (e.kind === "user_msg" && st.again === "pending") {
+    } else if (e.kind === "ai_msg" && e.origin === "partner" && afterReply && st.again === "pending") {
+      afterReply = false;
       // D250: the morning note offered back, once, the next time the person writes; only while they
       // are still where 不再需要 put them, with an account to watch.
       if (!stillNoMore()) {

@@ -21,7 +21,7 @@ func TestReplyLanguageAnyLanguage(t *testing.T) {
 	app.Receive(f)
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if err := tt.Click("How it talks · Follow me"); err != nil {
+	if err := tt.Click("How it talks, Follow me"); err != nil {
 		t.Fatalf("no reply-language pill: %v in %q", err, tt.Texts())
 	}
 	tt.Frame()

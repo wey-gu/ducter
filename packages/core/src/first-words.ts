@@ -12,10 +12,47 @@
 //
 // D292: the words are per-language tables picked by the hello's language (lang.ts words()); a
 // language without a table gets English.
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
+import { basename, resolve, sep } from "node:path";
 import { fill, words, type FirstStart, type FirstWords, type LangTag, type Words } from "@ducter/protocol";
-import type { LocalAgent, LocalProject, LocalSession } from "./local-agents/index.ts";
+import type { LocalAgent, LocalAgents, SessionSummary } from "./local-agents/index.ts";
 import { space } from "./first-screen.ts";
+
+/** A folder the person worked in lately with their own agents, and its sessions, newest first. */
+export interface FirstFolder {
+  cwd: string;
+  name: string;
+  sessions: SessionSummary[];
+}
+
+const under = (p: string, root: string) => {
+  const a = resolve(p);
+  const b = resolve(root);
+  return a === b || a.startsWith(b.endsWith(sep) ? b : b + sep);
+};
+
+/**
+ * The folders for the first words, from D299's reader of the agents' own records: the newest
+ * sessions of the last `days` (default 14), at most `files` per agent (default 40), grouped by
+ * folder; never the home itself, a temporary folder, or Ducter's own (its data and Ducter folders).
+ */
+export function recentFolders(reader: Pick<LocalAgents, "sessions">, o: { now?: Date; days?: number; files?: number; exclude?: string[]; home?: string } = {}): FirstFolder[] {
+  const now = (o.now ?? new Date()).getTime();
+  const since = now - (o.days ?? 14) * DAY;
+  const home = o.home ?? homedir();
+  const skip = [tmpdir(), "/tmp", "/private/tmp", "/private/var/folders", "/var/folders", ...(o.exclude ?? [])];
+  const by = new Map<string, FirstFolder>();
+  for (const s of reader.sessions({ limit: o.files ?? 40 })) {
+    const at = Date.parse(s.updatedAt);
+    if (!(at >= since) || !s.cwd.startsWith("/") || resolve(s.cwd) === resolve(home) || resolve(s.cwd) === "/") continue;
+    if (skip.some((r) => r && under(s.cwd, r))) continue;
+    const key = resolve(s.cwd);
+    const f = by.get(key) ?? { cwd: key, name: basename(key), sessions: [] };
+    f.sessions.push(s);
+    by.set(key, f);
+  }
+  return [...by.values()].sort((a, b) => Date.parse(b.sessions[0]!.updatedAt) - Date.parse(a.sessions[0]!.updatedAt));
+}
 
 export interface FirstWordsInput {
   name: string;
@@ -24,7 +61,7 @@ export interface FirstWordsInput {
   now: Date;
   tz?: string;
   /** Recent folders from the person's own agents (empty when looking is off or nothing was found). */
-  projects: LocalProject[];
+  projects: FirstFolder[];
   /** Everyday starters (first-screen.ts), both languages. */
   everyday: Words[];
   /** Nothing on the home can think yet. */
@@ -143,14 +180,14 @@ const cut = (s: string, max: number) => {
 
 const tilde = (p: string, home: string) => (p === home ? "~" : p.startsWith(home + "/") ? "~" + p.slice(home.length) : p);
 
-const AGENT: Record<LocalAgent, string> = { "claude-code": "Claude Code", codex: "Codex" };
+const AGENT: Record<LocalAgent, string> = { "claude-code": "Claude Code", codex: "Codex", pi: "pi" };
 
 /** One offer for one folder: its newest session with something to say. */
-function offer(p: LocalProject, i: FirstWordsInput, home: string): FirstStart {
+function offer(p: FirstFolder, i: FirstWordsInput, home: string): FirstStart {
   const t = words(T, i.lang);
-  const s: LocalSession = p.sessions.find((x) => x.title || x.ask) ?? p.sessions[0]!;
-  const topic = s.title ?? s.ask;
-  const vars = { when: whenSaid(i.lang, s.at, i.now, i.tz), folder: p.name, path: tilde(p.cwd, home), agent: AGENT[s.agent], topic: topic ? cut(topic, t.width) : "" };
+  const s = p.sessions.find((x) => x.title || x.firstPrompt) ?? p.sessions[0]!;
+  const topic = s.title ?? s.firstPrompt;
+  const vars = { when: whenSaid(i.lang, s.updatedAt, i.now, i.tz), folder: p.name, path: tilde(p.cwd, home), agent: AGENT[s.agent], topic: topic ? cut(topic, t.width) : "" };
   return {
     id: `local:${s.agent}:${s.id}`,
     from: s.agent,

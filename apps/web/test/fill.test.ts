@@ -54,7 +54,7 @@ describe("taking the whole screen", () => {
       for (const k of ["pane.fill", "pane.beside", "onhand.by", "onhand.by.state", "onhand.by.project", "onhand.other", "onhand.newhere", "onhand.next"]) expect(L.t(k)).not.toBe(k);
     }
     expect(strings("zh").t("onhand.by.project")).toBe("按项目");
-    expect(strings("en").t("onhand.waiting.for", "CI")).toBe("Waiting · CI");
+
   });
 
   test("nothing at the whole screen lies across a book fold", () => {

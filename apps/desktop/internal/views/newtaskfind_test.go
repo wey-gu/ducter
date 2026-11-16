@@ -52,7 +52,7 @@ func TestNewTaskFindAFolder(t *testing.T) {
 			}
 		}
 		newTaskShot(t, tt, "find-empty-"+string(lang))
-		click(t, tt, L.T("newtask.add")+" · Macbook Pro M3")
+		click(t, tt, spoken(L, L.T("newtask.add"), L.T("newtask.find.on", "Macbook Pro M3")))
 		click(t, tt, L.T("newtask.choose", "Macbook Pro M3"))
 		f, ok := lastFrame[protocol.FolderBrowse](sent)
 		if !ok || f.Device != "dev_mac" || f.Path != "" {
@@ -77,7 +77,7 @@ func TestNewTaskFindAFolder(t *testing.T) {
 		if !tt.HasText(L.T("newtask.find.none")) {
 			t.Errorf("%s: an empty folder says so: %q", lang, tt.Texts())
 		}
-		click(t, tt, L.T("newtask.find.use")+" · ~/Sites/blog")
+		click(t, tt, spoken(L, L.T("newtask.find.use"), "~/Sites/blog"))
 		add, ok := lastFrame[protocol.ProjectAdd](sent)
 		if !ok || add.Path != "/Users/weyl/Sites/blog" || add.Device != "dev_mac" {
 			t.Fatalf("%s: added on the Mac: %+v", lang, add)
@@ -97,7 +97,7 @@ func TestNewTaskFindOnTheHome(t *testing.T) {
 	app, sent, tt := tuneAppUI(t, i18n.EN, []protocol.PlaceChoice{tuneHelRepo, tuneNone}, tuneCandsAtHel())
 	app.nt.shut("place")
 	tt.Frame()
-	click(t, tt, "Add a folder… · hel")
+	click(t, tt, "Add a folder…, on hel")
 	click(t, tt, "Choose a folder on hel")
 	f, _ := lastFrame[protocol.FolderBrowse](sent)
 	if f.Device != "" {

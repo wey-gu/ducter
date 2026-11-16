@@ -109,14 +109,14 @@ func TestMemoryTab(t *testing.T) {
 		}
 		n = len(*sent)
 		// D295: 忘掉 is quiet and asks in place; only the answer forgets.
-		if err := tt.Click(L.T("partner.memory.forget") + " · " + memNotes(lang)[0]); err != nil {
+		if err := tt.Click(spoken(L, L.T("partner.memory.forget"), memNotes(lang)[0])); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()
 		if len(*sent) != n || !tt.HasText(L.T("mem.forget.ask", memNotes(lang)[0])) {
 			t.Fatalf("忘掉 didn't ask first: %v %q", (*sent)[n:], tt.Texts())
 		}
-		if err := tt.Click(L.T("partner.memory.forget") + " · " + memNotes(lang)[0]); err != nil {
+		if err := tt.Click(spoken(L, L.T("partner.memory.forget"), memNotes(lang)[0])); err != nil {
 			t.Fatal(err)
 		}
 		if len(*sent) != n+1 || (*sent)[n].(protocol.MemoryForget).T != "memory_forget" {

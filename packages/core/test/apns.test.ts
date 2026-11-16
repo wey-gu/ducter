@@ -46,7 +46,7 @@ describe("APNs (the iPhone app)", () => {
     const msg = decisionMessage(decision, { persona: "Ducter", task: "修 fix-ci", locale: "zh", platform: "ios", now: 0 });
     const p = apnsPayload(msg) as any;
     expect(p.aps.category).toBe(APNS_CATEGORY);
-    expect(p.aps.alert.title).toBe("Ducter · 修 fix-ci");
+    expect(p.aps.alert.title).toBe("修 fix-ci");
     expect(p).toMatchObject({ url: "app#d=d1", decisionId: "d1" });
   });
 

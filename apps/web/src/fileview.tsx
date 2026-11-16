@@ -18,6 +18,7 @@ import { findAll, rangeOf, textMap } from "./fileview-find.ts";
 import { PdfBody } from "./fileview-pdf.tsx";
 import { mediaFetch, mediaUrl } from "./media-fresh.ts";
 import { title } from "./store.ts";
+import { Facts } from "./controls.tsx";
 import { FileBadge } from "./filecard.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -370,7 +371,8 @@ export function FileViewer() {
   const from = m.from?.taskId;
   const task = from ? A.S.tasks.get(from) : undefined;
   const taskTitle = task ? title(task).trim() : "";
-  const meta = [kindWord(m), sizeWords(m.bytes), lines && kind !== "table" ? t("file.lines", lines) : "", pages ? t(pages === 1 ? "file.pages.one" : "file.pages", pages) : ""].filter(Boolean).join(" · ");
+  // D291: kind, size, lines, pages: each its own small element.
+  const meta = [kindWord(m), sizeWords(m.bytes), lines && kind !== "table" ? t("file.lines", lines) : "", pages ? t(pages === 1 ? "file.pages.one" : "file.pages", pages) : ""];
   const body =
     got.state === "loading" ? (
       <p class="fv-note quiet">{t("file.loading")}</p>
@@ -416,7 +418,7 @@ export function FileViewer() {
             <span class="nm" title={name}>
               {name}
             </span>
-            <span class="meta">{meta}</span>
+            <Facts class="meta" items={meta} />
           </div>
           {findable && (
             <button type="button" class="btn text icon fv-lens" aria-label={t("file.find")} aria-pressed={!!find} title={t("file.find.key", /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘F" : "Ctrl+F")} onClick={() => (find ? setFind(null) : openFind())}>

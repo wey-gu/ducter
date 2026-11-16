@@ -309,7 +309,7 @@ func TestSettingsUpdateReady(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"Update 0.3.1 ready · restart to finish", "Restart Now", "Update automatically when quitting"} {
+	for _, want := range []string{"Restart to use version 0.3.1", "Restart Now", "Update automatically when quitting"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

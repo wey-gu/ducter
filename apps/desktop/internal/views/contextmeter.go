@@ -440,7 +440,7 @@ func (a *App) contextCard(c *ui.Context, task *store.Task, m ContextMeter) {
 				for i, p := range parts {
 					parts[i] = strings.ReplaceAll(p, " ", "\u00a0") // a label stays with its number
 				}
-				ui.Text(c, strings.Join(parts, " · ")).FontSize(t.SM).TextColor(t.Ink).Wrap()
+				a.facts(c, t.SM, t.Ink, parts...) // D291: each count its own element
 			}
 			if m.Turn != nil {
 				row("turn", a.L.T("ctx.turn"), func() { tokens(m.Turn) })
@@ -555,6 +555,6 @@ func (a *App) accountLimits(c *ui.Context, harness string) {
 		who = append(who, u.Account)
 	}
 	if len(who) > 0 {
-		ui.Text(c, strings.Join(who, " · ")).FontSize(t.XS).TextColor(t.InkMuted).Wrap()
+		a.facts(c, t.XS, t.InkMuted, who...) // D291
 	}
 }

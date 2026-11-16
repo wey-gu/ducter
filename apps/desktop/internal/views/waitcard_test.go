@@ -68,7 +68,7 @@ func TestWaitWatchCard(t *testing.T) {
 			}
 		}
 		// The end line says what it waits for and when it comes back.
-		if w := app.waitWords(app.S.WaiterFor(id)); !strings.Contains(w, i18n.Clock(next)) || strings.Contains(w, "在等：") || strings.Contains(w, "Waiting:") {
+		if w, back := app.waitWords(app.S.WaiterFor(id)); !strings.Contains(back, i18n.Clock(next)) || w == "" || strings.Contains(w, "在等：") || strings.Contains(w, "Waiting:") {
 			t.Errorf("%s: end line %q", lang, w)
 		}
 		// The wait comes true: the moment shows, then the task carries on.

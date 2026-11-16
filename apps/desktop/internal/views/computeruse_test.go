@@ -44,7 +44,7 @@ func TestWorkerMacPhoneAndComputer(t *testing.T) {
 		sent = nil
 		app.Send = func(f any) error { sent = append(sent, f); return nil }
 		tt = sheetTester(app, 1280, 860, true)
-		click(t, tt, L.T("chip.computer")+" · "+L.T("chip.failed"))
+		click(t, tt, spoken(L, L.T("chip.computer"), L.T("chip.failed")))
 		for _, s := range []string{L.T("computeruse.perms", "MacBook"), L.T("computeruse.perm.accessibility"), L.T("computeruse.perm.screen"), L.T("computeruse.perm.on"), L.T("computeruse.perm.off")} {
 			if !tt.HasText(s) {
 				t.Fatalf("%s: no %q in %q", lang, s, tt.Texts())
@@ -68,7 +68,7 @@ func TestWorkerMacPhoneAndComputer(t *testing.T) {
 		if !tt.HasText(L.T("computeruse.using", "回张三的邮件", "Mail")) {
 			t.Fatalf("%s: the card doesn't say the task is in Mail: %q", lang, tt.Texts())
 		}
-		click(t, tt, L.T("computeruse.stop")+" · 回张三的邮件")
+		click(t, tt, spoken(L, L.T("computeruse.stop"), "回张三的邮件"))
 		if r, ok := lastSent[protocol.ComputerStopReq](sent); !ok || r.TaskID != "t9" {
 			t.Fatalf("%s: 停下 sent %#v", lang, sent)
 		}
@@ -83,10 +83,10 @@ func TestComputerGhostOnLinuxHome(t *testing.T) {
 		app := sheetApp(t, lang, "awake")
 		app.devState().sel = "local"
 		tt := sheetTester(app, 1280, 860, true)
-		if _, ok := tt.Find(L.T("chip.computer") + " · " + L.T("chip.state.later")); ok {
+		if _, ok := tt.Find(spoken(L, L.T("chip.computer"), L.T("chip.state.later"))); ok {
 			t.Fatalf("%s: a 用电脑 ghost on a Linux server: %q", lang, tt.Texts())
 		}
-		click(t, tt, L.T("chip.computer")+" · "+L.T("chip.elsewhere", "MacBook"))
+		click(t, tt, spoken(L, L.T("chip.computer"), L.T("chip.elsewhere", "MacBook")))
 		if app.devState().sel != "dev_mac" {
 			t.Fatalf("%s: the chip opened %q, not the MacBook", lang, app.devState().sel)
 		}
@@ -95,7 +95,7 @@ func TestComputerGhostOnLinuxHome(t *testing.T) {
 		app.S.Device("dev_mac").Abilities = []protocol.DeviceAbility{{ID: "web", State: "off", Where: "chrome"}, {ID: "computer", State: "off"}}
 		app.devState().sel = "local"
 		tt = sheetTester(app, 1280, 860, true)
-		for _, s := range []string{L.T("chip.computer") + " · " + L.T("chip.state.later"), L.T("chip.computer") + " · " + L.T("chip.elsewhere", "MacBook")} {
+		for _, s := range []string{spoken(L, L.T("chip.computer"), L.T("chip.state.later")), spoken(L, L.T("chip.computer"), L.T("chip.elsewhere", "MacBook"))} {
 			if _, ok := tt.Find(s); ok {
 				t.Fatalf("%s: %q on a home with no screen and no Mac that has it", lang, s)
 			}

@@ -333,6 +333,9 @@ export interface Bodies {
     origin?: "you";
     // D285: opened with 带着它开新任务 / New task from this: the task its brief carries findings from.
     from?: string;
+    // D299: a session the person ran in their own AI agent outside Ducter, carried on here: which
+    // agent kept it, its id there, and when it began. The task works in that session's folder.
+    outside?: { agent: string; sessionId: string; startedAt: string };
     // D157: what the task needs of its computer (kept so a move or a switch keeps them).
     needs?: TaskNeeds;
   };
@@ -654,6 +657,8 @@ export interface TaskCard {
   original?: string;
   /** D285: seeded from that task (New task from this). */
   from?: { taskId: string; title: string };
+  /** D299: carried on from a session the person ran in their own agent outside Ducter. */
+  outside?: { agent: string; sessionId: string; startedAt: string };
 }
 
 export interface OnHand {
@@ -1403,12 +1408,12 @@ export interface FirstStart {
   id: string;
   words: string;
   draft: string;
-  from: "claude-code" | "codex" | "everyday";
+  from: "claude-code" | "codex" | "pi" | "everyday";
 }
 export interface FirstWords {
   starts: FirstStart[];
   /** The agents whose records were read for these words (the clients say so, with 别再看了). */
-  looked?: ("claude-code" | "codex")[];
+  looked?: ("claude-code" | "codex" | "pi")[];
 }
 
 /**

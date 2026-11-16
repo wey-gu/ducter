@@ -17,7 +17,8 @@ import { WB_HEAVY } from "@ducter/protocol/src/workbench.ts";
 import type { ComponentChildren, JSX } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { A, morph } from "./app.ts";
-import { Btn } from "./controls.tsx";
+import { Btn, Facts } from "./controls.tsx";
+import { spoken } from "./format.ts";
 import { hlLines, escHtml } from "./hl.ts";
 import { LiveView, liveSize } from "./live.tsx";
 import { MediaBlock } from "./media.tsx";
@@ -287,7 +288,7 @@ export function BenchToggle({ task }: { task: Task }) {
   const on = benchShown.taskId === task.id;
   if (!benchable(task) && !on) return null;
   return (
-    <button class={`bench-toggle${on ? " on" : ""}`} aria-pressed={on} aria-label={t("wb.toggle")} title={`${t("wb.toggle")} · ${t("wb.toggle.about")}${coarseNow() ? "" : " (⌥⌘B)"}`} onClick={() => toggleBench(task.id)}>
+    <button class={`bench-toggle${on ? " on" : ""}`} aria-pressed={on} aria-label={t("wb.toggle")} title={`${spoken(A.L, t("wb.toggle"), t("wb.toggle.about"))}${coarseNow() ? "" : " (⌥⌘B)"}`} onClick={() => toggleBench(task.id)}>
       <PanelMark on={on} />
     </button>
   );
@@ -455,7 +456,7 @@ const TileMark = ({ k }: { k: "files" | "preview" | "browser" | "phone" | "made"
 function Launcher({ task, sheet }: { task: Task; sheet?: boolean }) {
   const tabs = tabsOf(task);
   const tiles: { k: "files" | "preview" | "browser" | "phone" | "made"; name: string; tab: BenchTab; has: boolean }[] = [
-    { k: "files", name: `${t("wb.tab.changes")} · ${t("wb.tab.files")}`, tab: "changes", has: tabs.includes("changes") },
+    { k: "files", name: t("wb.tab.changes_files"), tab: "changes", has: tabs.includes("changes") },
     { k: "preview", name: t("wb.tab.preview"), tab: "preview", has: tabs.includes("preview") },
     { k: "browser", name: t("wb.tab.browser"), tab: "browser", has: tabs.includes("browser") },
     { k: "phone", name: t("wb.tab.phone"), tab: "phone", has: tabs.includes("phone") },
@@ -1010,7 +1011,7 @@ function PreviewPage({ task }: { task: Task }) {
           <select class="wb-select" aria-label={t("wb.preview.pages")} value={p?.port} onChange={(e) => void openPreview(task, Number(e.currentTarget.value))}>
             {ports.map((x) => (
               <option key={x.port} value={x.port}>
-                {x.title ? `${x.title} · ${x.port}` : String(x.port)}
+                {x.title ? t("wb.preview.opt", x.title, x.port) : String(x.port)}
               </option>
             ))}
           </select>
@@ -1074,7 +1075,7 @@ function viaBrowser(task: Task, port: number) {
 // ---------- 浏览器 / Browser, 手机 / Phone: one screen frame ----------
 
 /** One frame for every screen the task drives (Ducter's browser, a phone, a computer): who is driving, then the screen. */
-export function Screen({ driver, where, head, children }: { driver: "agent" | "you" | "idle"; where?: string; head?: ComponentChildren; children: ComponentChildren }) {
+export function Screen({ driver, where, head, children }: { driver: "agent" | "you" | "idle"; where?: ComponentChildren; head?: ComponentChildren; children: ComponentChildren }) {
   return (
     <div class={`screen drive-${driver}`}>
       <div class="screen-head">
@@ -1158,7 +1159,7 @@ function PhonePage({ task }: { task: Task }) {
     const s = sims.find((x) => x.udid === k);
     if (s)
       return (
-        <Screen key={k} driver="idle" where={[s.name, s.os, t("wb.sim.on", where)].filter(Boolean).join(" · ")}>
+        <Screen key={k} driver="idle" where={<Facts items={[s.name, s.os, t("wb.sim.on", where)]} />}>
           <SimScreen task={task} sim={s} where={where} active={active} onSim={(n) => ((d.sims = sims.map((x) => (x.udid === n.udid ? n : x))), A.changed())} />
         </Screen>
       );
@@ -1179,7 +1180,7 @@ function PhonePage({ task }: { task: Task }) {
   const sim = sims.find((x) => x.udid === on);
   if (sim)
     return (
-      <Screen driver="idle" where={[sim.name, sim.os, t("wb.sim.on", where)].filter(Boolean).join(" · ")} head={pick}>
+      <Screen driver="idle" where={<Facts items={[sim.name, sim.os, t("wb.sim.on", where)]} />} head={pick}>
         <SimScreen task={task} sim={sim} where={where} active={tabOf(task) === "phone" && benchShown.taskId === task.id} onSim={(s) => ((d.sims = sims.map((x) => (x.udid === s.udid ? s : x))), A.changed())} />
       </Screen>
     );

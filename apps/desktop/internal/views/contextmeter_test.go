@@ -111,7 +111,7 @@ func TestContextRingCard(t *testing.T) {
 func TestCompactionHairlineSizes(t *testing.T) {
 	app, _, _ := newTaskApp(t, i18n.ZH)
 	b, _ := noteOf("compaction completed", json.RawMessage(`{"kind":"compaction_ended","outcome":"completed","before":152000,"after":31000}`))
-	if got := app.noteLine(&b); got != "压缩了上下文 · 152k → 31k" {
+	if got := app.noteLine(&b); got != "上下文从 152k 压缩到了 31k" {
 		t.Errorf("sizes: %q", got)
 	}
 	b, _ = noteOf("compaction completed", json.RawMessage(`{"kind":"compaction_ended","outcome":"completed"}`))

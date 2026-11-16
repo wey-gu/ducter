@@ -7,7 +7,7 @@ import { A } from "./app.ts";
 import { Btn } from "./controls.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
-const AGENTS: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex" };
+const AGENTS: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", pi: "pi" };
 
 /** Still at the very start: the first words, nothing said back yet. */
 export const firstOpening = () => A.S.first?.visit === "first";

@@ -38,7 +38,8 @@ export function fakeAgents(home: string, sessions: FakeSession[]) {
       lines = [
         { timestamp: d.toISOString(), type: "session_meta", payload: { id: s.id, cwd: s.cwd, originator: "codex_cli_rs" } },
         { type: "response_item", payload: { type: "message", role: "user", content: [{ type: "input_text", text: "<environment_context>\n  <cwd>x</cwd>\n</environment_context>" }] } },
-        ...(s.ask ? [{ type: "event_msg", payload: { type: "user_message", message: s.ask } }] : []),
+        { type: "event_msg", payload: { type: "user_message", message: s.ask ?? "go on" } },
+        ...(s.title ? [{ type: "event_msg", payload: { type: "thread_name_updated", thread_name: s.title } }] : []),
       ];
       if (s.title) index.push(JSON.stringify({ id: s.id, thread_name: s.title, updated_at: d.toISOString() }));
     }

@@ -76,7 +76,7 @@ func TestOnboardInstallAndSignInFromTheWindow(t *testing.T) {
 
 			// One click: the official installer runs in the background, with
 			// its last line and how long so far.
-			h.click(install + " · Claude Code")
+			h.click(spoken(h.app.L, install, "Claude Code"))
 			j := f.jobs["claude.install"]
 			if j == nil || j.Cmd != "curl -fsSL https://claude.ai/install.sh | bash" {
 				t.Fatalf("runs %q", f.runs)
@@ -98,7 +98,7 @@ func TestOnboardInstallAndSignInFromTheWindow(t *testing.T) {
 			// moves on to signing in.
 			f.reports = []local.Report{signedOut(fresh, L)}
 			f.doctored = 0
-			h.click(T("fix.retry") + " · Claude Code")
+			h.click(spoken(h.app.L, T("fix.retry"), "Claude Code"))
 			j2 := f.jobs["claude.install"]
 			if j2 == j || !j2.Running() {
 				t.Fatal("try again didn't start a new install")
@@ -112,7 +112,7 @@ func TestOnboardInstallAndSignInFromTheWindow(t *testing.T) {
 
 			// Sign in: the browser does it; the window waits and offers the
 			// page again and a place for a code.
-			h.click(signin + " · Claude Code")
+			h.click(spoken(h.app.L, signin, "Claude Code"))
 			s := f.jobs["claude.signin"]
 			if s == nil || s.Cmd != "claude auth login" {
 				t.Fatalf("runs %q", f.runs)
@@ -200,7 +200,7 @@ func TestOnboardWebSetup(t *testing.T) {
 			h.has(T("web.driver"), T("web.driver.body"), T("web.ax"), T("web.screen"))
 			h.shotAs("onboard-web-driver-" + string(lang))
 
-			h.click(T("web.driver.install") + " · " + T("ability.web"))
+			h.click(spoken(h.app.L, T("web.driver.install"), T("ability.web")))
 			j := f.jobs[jobCuaInstall]
 			if j == nil || !strings.Contains(j.Cmd, "https://cua.ai/driver/install.sh") || !strings.Contains(j.Cmd, "--no-connect") {
 				t.Fatalf("runs %q", f.runs)
@@ -215,7 +215,7 @@ func TestOnboardWebSetup(t *testing.T) {
 			h.settle(2 * time.Second)
 			h.has(T("web.ax.body"), T("web.grant.open"), T("web.art.where", T("web.ax.pane")))
 			h.shotAs("onboard-web-accessibility-" + string(lang))
-			h.click(T("web.grant.open") + " · " + T("web.ax.pane"))
+			h.click(spoken(h.app.L, T("web.grant.open"), T("web.ax.pane")))
 			g := f.jobs[jobCuaGrant]
 			if g == nil || !strings.HasSuffix(g.Cmd, "permissions grant") {
 				t.Fatalf("runs %q", f.runs)

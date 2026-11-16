@@ -142,7 +142,7 @@ func TestSignInCardAndLiveView(t *testing.T) {
 		if ack, ok := lastSent[protocol.LiveAckReq](*sent); !ok || ack.Seq != 1 || ack.ID != "lv1" {
 			t.Fatalf("%s: frame 1 not acked: %#v", lang, *sent)
 		}
-		if !tt.HasText(pick("Ducter 的浏览器 · 它现在看不见", "Ducter's browser · it can't see this now")) {
+		if !tt.HasText(pick("它现在看不见这个浏览器", "It can't see this browser now")) {
 			t.Errorf("%s: the top line doesn't say the partner can't see: %q", lang, tt.Texts())
 		}
 		shoot(t, tt, "desktop-live-view-"+string(lang)+".png")

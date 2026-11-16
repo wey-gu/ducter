@@ -79,7 +79,7 @@ func (a *App) oldRows(c *ui.Context, only string) {
 	t := a.T
 	for _, d := range a.reachable(only, true) {
 		label := a.L.T("newtask.old.row", d.Name)
-		a.menuRow(c, "nt-old:"+d.ID, label+" · "+a.L.T("newtask.old.why"), false, true, func() {
+		a.menuRow(c, "nt-old:"+d.ID, spoken(a.L, label, a.L.T("newtask.old.why")), false, true, func() {
 			a.glyph(c, 16, drawPlus(t.InkSoft))
 			ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
 				ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()

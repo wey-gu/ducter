@@ -121,7 +121,7 @@ HawDB later. [4][9]
 
 **20. Simple surface, full depth on demand.**
 One partner reports to you. Any window opens into a full workspace and closes again, without
-new concepts.
+new concepts. Each fact on screen is its own element; no line is words joined by a dot (D291).
 
 ---
 

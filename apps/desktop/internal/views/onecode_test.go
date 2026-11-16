@@ -78,14 +78,14 @@ func TestOneCodeLive(t *testing.T) {
 	h.wait = 0
 	h.tt.Advance(time.Second)
 	h.tt.Frame()
-	if !h.tt.HasText(L.T("device.other") + " · " + L.T("device.other.does", h.app.S.PersonaName)) {
+	if !h.tt.HasText(L.T("card.status.does", h.app.S.PersonaName)) {
 		t.Fatalf("card: %q", h.tt.Texts())
 	}
 	t.Logf("joined: %s (%s, %s)", dv.Name, dv.ID, dv.State)
 	h.shotAs(fmt.Sprintf("live-%s-joined", lang))
 	if name := os.Getenv("DUCTER_LIVE_RENAME"); name != "" {
 		id := dv.ID
-		h.click(L.T("device.rename") + " · " + dv.Name)
+		h.click(spoken(L, L.T("device.rename"), dv.Name))
 		h.app.dev.rename.draft = name
 		h.click(L.T("device.rename.ok"))
 		h.until("renamed", func() bool { d := h.app.S.Device(id); return d != nil && d.Name == name })
@@ -103,12 +103,12 @@ func TestOtherComputerCard(t *testing.T) {
 			h := openDevices(t, lang, false)
 			L := h.app.L
 			does := L.T("list.state.does", h.app.workHome())
-			if !h.tt.HasText("· " + does) {
+			if !h.tt.HasText(does) {
 				t.Fatalf("subtitle: %q", h.tt.Texts())
 			}
-			h.click("ducter-worker · " + does)
+			h.click(spoken(L, "ducter-worker", does))
 			h.settle(200 * time.Millisecond)
-			h.click(L.T("device.rename") + " · ducter-worker")
+			h.click(spoken(L, L.T("device.rename"), "ducter-worker"))
 			h.settle(100 * time.Millisecond)
 			h.app.dev.rename.draft = "MacBook-Pro"
 			h.click(L.T("device.rename.ok"))
@@ -136,7 +136,7 @@ func TestOtherComputerCard(t *testing.T) {
 			})
 			h.until("asleep", func() bool { return h.app.S.Device("a3f9c2d1e0").State == protocol.DeviceAsleep })
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("device.state.asleep")) || h.tt.HasText(L.T("device.other")+" · "+does) {
+			if !h.tt.HasText(L.T("device.state.asleep")) || h.tt.HasText(spoken(L, L.T("device.other"), does)) {
 				t.Fatalf("asleep subtitle: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("one-code-%s-card-asleep", lang))

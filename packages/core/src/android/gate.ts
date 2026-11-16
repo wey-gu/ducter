@@ -4,6 +4,8 @@
 // The ideas follow Pinky's gateway (research/62: commit verbs, app classes, credential fields,
 // the re-check before acting); no code is taken from it.
 
+import { labelHead } from "@ducter/protocol";
+
 export type Effect = "pay" | "send" | "post" | "delete" | "buy" | "install" | "call" | "account" | "confirm" | "setting" | "record";
 
 /** Words on a button that commit something, by kind. Matched on the whole label, case-folded. */
@@ -21,8 +23,8 @@ const VERBS: [Effect, RegExp][] = [
 
 /** What a tap on this label would commit, if anything. */
 export function effectOf(label: string): Effect | undefined {
-  // A row named by the words inside it ("Title · subtitle"): its title is what it does.
-  const l = label.split(" · ")[0]!.trim();
+  // A row named by the words inside it ("Title | subtitle"): its title is what it does.
+  const l = labelHead(label);
   if (!l || l.length > 60) return undefined; // a long label is text, not a button's verb
   for (const [kind, re] of VERBS) if (re.test(l)) return kind;
   return undefined;
@@ -87,8 +89,8 @@ export function consentDialog(s: { app: string; nodes: { pkg: string; label: str
  */
 export function toggleOf(pkg: string, label: string, isSwitch = false): Effect | undefined {
   if (!systemSurface(pkg)) return undefined;
-  if (pkg === "com.android.systemui" && RECORDER.test(label.split(" · ")[0]!.trim())) return "record";
+  if (pkg === "com.android.systemui" && RECORDER.test(labelHead(label))) return "record";
   if (pkg !== "com.android.systemui" && !isSwitch) return undefined;
-  const l = label.split(" · ")[0]!.trim().replace(/\u2011/g, "-");
+  const l = labelHead(label).replace(/\u2011/g, "-");
   return TOGGLES.test(l) ? "setting" : undefined;
 }

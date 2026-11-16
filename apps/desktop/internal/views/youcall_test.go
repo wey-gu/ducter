@@ -73,14 +73,14 @@ func TestOwnPhoneInstallAndLook(t *testing.T) {
 	v := ownView("none")
 	v.Where = "MacBook"
 	v.LookedAt = time.Date(2026, 11, 16, 20, 14, 0, 0, time.Local).UTC().Format(time.RFC3339)
-	if got := app.ownLooked(v); got != "看过了 · 20:14 · MacBook 上还没看到手机" {
-		t.Fatalf("looked: %q", got)
+	if saw, at := app.ownLooked(v); saw != "MacBook 上还没看到手机" || at != "20:14" {
+		t.Fatalf("looked: %q %q", saw, at)
 	}
 	app.Receive(protocol.ServerFrame{T: "connections", Connections: []protocol.ConnectionView{}, Oo: &protocol.OoDetect{}, OwnPhone: v})
 	app.openTab(TabAccounts)
 	tt := ui.NewTesterWith(app.View, 1280, 1800, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if !tt.HasText("看过了 · 20:14 · MacBook 上还没看到手机") {
+	if !tt.HasText("MacBook 上还没看到手机") || !tt.HasText("20:14") {
 		t.Fatalf("the look's line: %q", tt.Texts())
 	}
 	v.Looking = true

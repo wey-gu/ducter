@@ -52,7 +52,7 @@ function fakeApp() {
       case "front":
         return failFront ? { ok: false, error: "no window" } : { ok: true, result: { app: "com.android.chrome" } };
       case "screen":
-        return { ok: true, result: { xml: shade ? xml("com.android.systemui", "Wi\u2011Fi · Networks available") : xml("com.android.chrome") } };
+        return { ok: true, result: { xml: shade ? xml("com.android.systemui", "Wi\u2011Fi | Networks available") : xml("com.android.chrome") } };
       case "size":
         return { ok: true, result: { width: 1080, height: 2400 } };
       case "tap":

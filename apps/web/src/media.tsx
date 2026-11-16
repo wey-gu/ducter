@@ -20,6 +20,7 @@ import { mediaFetch, mediaUrl, refreshKeys } from "./media-fresh.ts";
 import type { JSX } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { spoken } from "./format.ts";
 import { title } from "./store.ts";
 import { picturesIn, viewerKey } from "./media-keys.ts";
 import { decode, draw, flights, localOf, type Pic, type ViewCtx } from "./media-up.ts";

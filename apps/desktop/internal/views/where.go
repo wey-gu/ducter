@@ -212,8 +212,9 @@ func (a *App) whereAskLines(c *ui.Context, w *protocol.WhereAsk) {
 	a.mark(c.Key("default"), drawClock, a.L.T("where.ask.default"), t.NeedsYou.Ink)
 }
 
-// taskWhere is the where part of a task's meta line and its hover: "在 hel
-// 上 · 用 Ducter 自己的浏览器", "为什么在 hel 上：…". Empty with one computer.
+// taskWhere is the where part of a task's meta line and its hover, each one
+// phrase (D291): "在 hel 上用 Ducter 自己的浏览器", "为什么在 hel 上：…".
+// Empty with one computer.
 func (a *App) taskWhere(task *store.Task) (line, why string) {
 	if !a.manyComputers() {
 		return "", ""
@@ -225,7 +226,10 @@ func (a *App) taskWhere(task *store.Task) (line, why string) {
 	if w != nil && a.computerName(w.Device) != name {
 		w = nil
 	}
-	line = strings.Join(nonEmpty(a.L.T("where.on", name), a.whereUses(w)), " · ")
+	line = a.L.T("where.on", name)
+	if uses := a.whereUses(w); uses != "" {
+		line = a.L.T("where.on.uses", name, uses)
+	}
 	if r := a.whereReason(w); r != "" {
 		why = a.L.T("where.why", name, r)
 	}

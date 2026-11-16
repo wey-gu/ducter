@@ -14,6 +14,7 @@ const pad = (s: string) => cjkPad(A.L, s);
 /** t with a time padded from the Chinese around it, without stray spaces at the ends or before punctuation. */
 const tp = (key: string, v: string) => t(key, pad(v)).trim().replace(/ ([，。；：])/g, "$1");
 import { attention, type Task } from "./store.ts";
+import { Facts } from "./controls.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -130,16 +131,16 @@ export function Goal({ u, big }: { u: UntilView; big?: boolean }) {
             <img key={i} src={`app/art/${i < lit ? "goal_light_on" : "goal_light_off"}.webp`} alt="" draggable={false} />
           ))}
         </span>
-        <span class="cap">{[words, t("until.n", n)].join(" · ")}</span>
+        <Facts class="cap" items={[words, t("until.n", n)]} />
       </span>
     );
   }
   const latest = u.tries.at(-1);
-  const line = met ? t("until.met", u.tries.length) : [t("until.n", n), latest ? latest.summary : t("until.now")].join(" · ");
+  // D291: which try, and what the latest one says, each its own element.
   return (
     <span class={`goal plain${big ? " big" : ""}`}>
       {!met && <img class="worker" src="app/art/working.webp" alt="" draggable={false} />}
-      <span class="cap">{line}</span>
+      {met ? <span class="cap">{t("until.met", u.tries.length)}</span> : <Facts class="cap" items={[t("until.n", n), latest ? latest.summary : t("until.now")]} />}
     </span>
   );
 }
@@ -298,7 +299,8 @@ export function WatchCard({ task, wakes, wokeAt }: { task: Task; wakes: number; 
   const lastWords = last > 0 ? tp(notYet ? "watch.last.not" : "watch.last", clock(new Date(last).toISOString())) : "";
   // How it comes back first, so a count reads as looks now and then, never as watching nonstop.
   const rhythm = w.check ? t("wait.every", minutes(w.everyMs ?? DEFAULT_EVERY_MS)) : w.event ? t("wait.each_new") : t("watch.timer");
-  const tally = [looks > 0 ? (looks === 1 ? t("watch.tally.one") : t("watch.tally", looks)) : "", lastWords].filter(Boolean).join(" · ");
+  const count = looks > 0 ? (looks === 1 ? t("watch.tally.one") : t("watch.tally", looks)) : "";
+  const tally = count || lastWords;
   return (
     <section class="watch">
       <div class="watch-main">
@@ -308,7 +310,7 @@ export function WatchCard({ task, wakes, wokeAt }: { task: Task; wakes: number; 
           {tally && (
             <p class="tally">
               {looks > 0 && <Pebbles came={wakes} empty={w.looks ?? 0} />}
-              <span>{tally}</span>
+              <Facts items={[count, lastWords]} />
             </p>
           )}
         </div>
@@ -353,7 +355,10 @@ export function WaitHow({ task }: { task: Task }) {
             {w.judge && <span class="sub">{t("wait.judge", w.judge)}</span>}
           </span>
           <span class="k">{t("wait.often")}</span>
-          <span class="v">{w.event ? t("wait.each_new") : t("wait.every", minutes(w.everyMs))}{w.lastLookAt ? ` · ${tp("wait.last", (when(A.L, w.lastLookAt)))}` : ""}</span>
+          <span class="v">
+            {w.event ? t("wait.each_new") : t("wait.every", minutes(w.everyMs))}
+            {w.lastLookAt && <span class="sub">{tp("wait.last", when(A.L, w.lastLookAt))}</span>}
+          </span>
           {looks.length > 0 && (
             <>
               <span class="k">{t("wait.looks")}</span>
@@ -394,9 +399,9 @@ export function CalendarBadge({ r, big }: { r: RoutineView; big?: boolean }) {
   );
 }
 
-/** The next few runs in words, for the proposal card: "11/16 · 11/23 · 11/30". */
-function nextFew(r: RoutineView): string {
-  return (r.upcoming ?? []).slice(0, 4).map((x) => md(x)).join(" · ");
+/** The next few runs, for the proposal card: each date its own fact (D291). */
+function nextFew(r: RoutineView): string[] {
+  return (r.upcoming ?? []).slice(0, 4).map((x) => md(x));
 }
 
 /** Why a routine is paused, in words: "已暂停：连着 3 次你没看", "已暂停：你停下的". */
@@ -406,10 +411,10 @@ export function pausedWhy(r: RoutineView): string {
   return r.pausedBy === "user" ? t("routine.paused.by_you") : t("routine.paused.by_partner", A.S.personaName);
 }
 
-/** D245: how late a run started, said only when it was: "晚了 12 分钟 / 12 min late". */
+/** D245: how late a run started, said only when it was: "晚了 12 分钟 / 12 min late"; its own fact (D291). */
 function lateWords(min: number | undefined): string {
   if (!min) return "";
-  return " · " + (min < 90 ? t("routine.late.m", min) : t("routine.late.h", Math.round(min / 60)));
+  return min < 90 ? t("routine.late.m", min) : t("routine.late.h", Math.round(min / 60));
 }
 
 /** D245: what it costs, honestly: a watch or a check looks without the AI; only a run spends. */
@@ -431,7 +436,7 @@ export function RoutineRow({ r }: { r: RoutineView }) {
   else if (once) lines.push(t("routine.once.starts"));
   else if (r.lastRun?.state === "failed" && r.lastRun.retryAt) lines.push(tp("routine.retry", when(A.L, r.lastRun.retryAt)));
   else if (r.nextAt) lines.push(tp("routine.next", (when(A.L, r.nextAt))));
-  if (r.lastRun) lines.push(tp(`routine.last.${r.lastRun.state}`, (day(A.L, r.lastRun.at))) + lateWords(r.lastRun.lateMin));
+  if (r.lastRun) lines.push(tp(`routine.last.${r.lastRun.state}`, (day(A.L, r.lastRun.at))), lateWords(r.lastRun.lateMin));
   return (
     <div class={`row routine${paused ? " paused" : ""}`}>
       {r.trigger.kind === "time" ? (
@@ -443,7 +448,11 @@ export function RoutineRow({ r }: { r: RoutineView }) {
         <span class="t">{r.name}</span>
         {/* A condition routine's name already says its condition. */}
         {r.trigger.kind === "time" && !r.name.includes(r.triggerWords) && <span class="m">{r.triggerWords}</span>}
-        {lines.length > 0 && <span class="m cap">{lines.join(" · ")}</span>}
+        {lines.some(Boolean) && (
+          <span class="m cap">
+            <Facts items={lines} />
+          </span>
+        )}
       </span>
       {once && !paused ? (
         <button class="btn text sm" onClick={() => A.routineAction(r.routineId, "end")}>{t("routine.cancel")}</button>
@@ -486,7 +495,11 @@ export function RoutineFacts({ routineId }: { routineId: string }) {
             <CalendarBadge r={r} big />
             <span>
               {r.triggerWords}
-              {nextFew(r) && <span class="sub">{nextFew(r)}</span>}
+              {nextFew(r).length > 0 && (
+                <span class="sub">
+                  <Facts items={nextFew(r)} />
+                </span>
+              )}
             </span>
           </span>
         ) : (

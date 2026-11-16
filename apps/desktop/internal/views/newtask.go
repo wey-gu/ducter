@@ -664,15 +664,19 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 	t := a.T
 	nt := &a.nt
 	name := a.placeName(chosen)
-	e, click := a.pill(c, "nt-place", a.L.T("newtask.where")+" · "+name, nt.placeOpen, func() {
+	e, click := a.pill(c, "nt-place", spoken(a.L, a.L.T("newtask.where"), name), nt.placeOpen, func() {
 		a.glyph(c, 16, drawFolder(t.InkMuted))
 		ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MaxWidth(200).AccessHidden(true)
 		if nt.adding != "" {
 			ui.Spinner(c).Size(12, 12)
 		}
 	})
-	if line := placeLine(chosen); line != "" {
-		e.Tooltip(line)
+	if path, on := placeLine(chosen); path != "" {
+		// The path, and on a line of its own which computer it is on.
+		if on != "" {
+			path += "\n" + a.L.T("newtask.find.on", on)
+		}
+		e.Tooltip(path)
 	}
 	dropIdle := func() {
 		nt.pending, nt.placeOnly, nt.browse = "", "", nil
@@ -770,8 +774,14 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 				a.glyph(c, 16, drawFolder(t.InkMuted))
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
 					ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
-					if line := placeLine(p); line != "" {
-						ui.Text(c, line).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).SingleLine()
+					if path, on := placeLine(p); path != "" {
+						// The path in mono, its computer beside it as its own word (D291).
+						ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() {
+							ui.Text(c, path).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+							if on != "" {
+								ui.Text(c, on).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+							}
+						})
 					}
 				})
 			}) {
@@ -796,7 +806,7 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 		a.oldRows(c, only)
 		if only != "" {
 			// No folder on that computer works for the agent too.
-			if a.menuRow(c, "nt-place:none-on", a.L.T("newtask.nowhere")+" · "+onlyName, false, false, func() {
+			if a.menuRow(c, "nt-place:none-on", spoken(a.L, a.L.T("newtask.nowhere"), a.L.T("newtask.agent.elsewhere", onlyName)), false, false, func() {
 				a.glyph(c, 16, drawFolder(t.Faint))
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
 					ui.Text(c, a.L.T("newtask.nowhere")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
@@ -821,7 +831,7 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 			// folders here aren't reachable from it yet. Greyed, with the one step.
 			why := a.L.T("newtask.addfolder.off", a.workHome())
 			ui.Box(c.Key("nt-off-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
-			a.menuRow(c, "nt-add-folder", a.L.T("newtask.addfolder")+" · "+why, false, true, func() {
+			a.menuRow(c, "nt-add-folder", spoken(a.L, a.L.T("newtask.addfolder"), why), false, true, func() {
 				a.glyph(c, 16, drawPlus(t.InkSoft))
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
 					ui.Text(c, a.L.T("newtask.addfolder")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
@@ -868,7 +878,7 @@ func (a *App) branchPill(c *ui.Context, p protocol.PlaceChoice) {
 	if branch == "" {
 		return
 	}
-	e, click := a.pill(c, "nt-branch", a.L.T("newtask.branch.title")+" · "+branch, nt.branchOpen, func() {
+	e, click := a.pill(c, "nt-branch", spoken(a.L, a.L.T("newtask.branch.title"), branch), nt.branchOpen, func() {
 		a.glyph(c, 14, drawBranch(t.InkMuted))
 		ui.Text(c, branch).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).SingleLine().MaxWidth(180).AccessHidden(true)
 	})
@@ -912,7 +922,7 @@ func (a *App) computerPill(c *ui.Context, place protocol.PlaceChoice) {
 	if d == nil {
 		return
 	}
-	e, click := a.pill(c, "nt-comp", a.L.T("newtask.computer")+" · "+d.Name, nt.computerOpen, func() {
+	e, click := a.pill(c, "nt-comp", spoken(a.L, a.L.T("newtask.computer"), d.Name), nt.computerOpen, func() {
 		a.glyph(c, 14, drawScreen(t.InkMuted))
 		ui.Text(c.Key("nt-comp-part"), d.Name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
 	})
@@ -949,12 +959,17 @@ func (a *App) whoPill(c *ui.Context) {
 	}
 	top := topCandidate(cands)
 	name := a.L.T("newtask.pickwho")
+	parts := []string{name}
 	if chosen != nil {
-		name = a.whoLabel(*chosen)
+		name, parts = a.whoLabel(*chosen), a.whoParts(*chosen)
 	}
-	e, click := a.pill(c, "nt-who", a.L.T("newtask.who")+" · "+name, nt.whoOpen, func() {
-		// The agent's name alone: a 22-point coin in a pill reads as an emoji (D213).
-		ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
+	e, click := a.pill(c, "nt-who", spoken(a.L, a.L.T("newtask.who"), name), nt.whoOpen, func() {
+		// The agent's name alone: a 22-point coin in a pill reads as an emoji (D213). Its model
+		// and effort follow as facts of their own, never joined by a separator (D291).
+		ui.Text(c, parts[0]).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
+		for _, p := range parts[1:] {
+			ui.Text(c, p).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
+		}
 		if chosen != nil && !picked && a.tuneIsDefault(*chosen) {
 			a.suggestedTag(c)
 		}
@@ -1081,7 +1096,7 @@ func (a *App) whenPill(c *ui.Context) {
 	t := a.T
 	nt := &a.nt
 	label := a.whenLabel()
-	e, click := a.pill(c, "nt-when", a.L.T("newtask.when")+" · "+label, nt.whenOpen, func() {
+	e, click := a.pill(c, "nt-when", spoken(a.L, a.L.T("newtask.when"), label), nt.whenOpen, func() {
 		a.glyph(c, 14, drawClock(t.InkMuted))
 		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MaxWidth(220).AccessHidden(true)
 	})
@@ -1230,13 +1245,17 @@ func (a *App) newTaskFoot(c *ui.Context) {
 			case nt.started != "":
 				a.glyph(c, 14, drawCheck(t.Done.Ink))
 				ui.Text(c.Key("nt-started"), nt.started).FontSize(t.SM).FontWeight(600).TextColor(t.Done.Ink).Shrink(1).MinWidth(0).SingleLine().Role(ui.RoleStatus)
-				if nt.startedTask != "" && a.quietLink(c, "nt-open-started", a.L.T("newtask.open"), a.L.T("newtask.open")+" · "+nt.started) {
+				if nt.startedTask != "" && a.quietLink(c, "nt-open-started", a.L.T("newtask.open"), spoken(a.L, a.L.T("newtask.open"), nt.started)) {
 					id := nt.startedTask
 					nt.open, nt.started, nt.startedTask = false, "", ""
 					a.openFromElsewhere(id)
 				}
 			default:
-				ui.Text(c, a.L.T("newtask.keys", start)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
+				// Two shortcuts, two elements spaced by a gap (D291); the buttons say them aloud.
+				ui.Row(c).Gap(t.S3).Shrink(1).MinWidth(0).AccessHidden(true).Children(func() {
+					ui.Text(c, a.L.T("newtask.keys", start)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+					ui.Text(c, a.L.T("newtask.keys.more")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+				})
 			}
 		})
 		if nt.sending != "" {
@@ -1275,16 +1294,14 @@ func tildePath(p string) string {
 }
 
 // placeLine is a place's second line in the card's list: its path, and
-// the computer it is on when the places span more than one (D197).
-func placeLine(p protocol.PlaceChoice) string {
-	path := placePath(p.Place)
+// the computer it is on when the places span more than one (D197), two
+// facts the caller draws apart (D291).
+func placeLine(p protocol.PlaceChoice) (path, computer string) {
+	path = placePath(p.Place)
 	if path == "" {
-		return ""
+		return "", ""
 	}
-	if p.Computer != "" {
-		return tildePath(path) + " · " + p.Computer
-	}
-	return tildePath(path)
+	return tildePath(path), p.Computer
 }
 
 // drawCaret is a small down caret: the chip opens a list.

@@ -45,10 +45,10 @@ func TestHomeCallChip(t *testing.T) {
 			if !tt.HasText(L.T("chip.phone")) {
 				t.Fatalf("%s: no ghost phone in %q", lang, tt.Texts())
 			}
-			if _, ok := tt.Find(L.T("chip.computer") + " · " + L.T("chip.state.later")); ok {
+			if _, ok := tt.Find(spoken(L, L.T("chip.computer"), L.T("chip.state.later"))); ok {
 				t.Fatalf("%s: a 用电脑 ghost on a Linux server: %q", lang, tt.Texts())
 			}
-			if _, ok := tt.Find(L.T("chip.phone") + " · " + L.T("chip.state.later")); !ok || !tt.HasText(L.T("chip.state.later")) {
+			if _, ok := tt.Find(spoken(L, L.T("chip.phone"), L.T("chip.state.later"))); !ok || !tt.HasText(L.T("chip.state.later")) {
 				t.Fatalf("%s: the ghosts don't say %q: %q", lang, L.T("chip.state.later"), tt.Texts())
 			}
 			// Evidence, not source (D75): DUCTER_CARD_SHOTS=… go test ./internal/views -run HomeCallChip
@@ -64,7 +64,7 @@ func TestHomeCallChip(t *testing.T) {
 
 		// Off: + 打电话 goes to Accounts and starts the offer's own Tuwa sign-in.
 		app, sent, click := setup(protocol.DeviceAbility{ID: "call", State: "off"})
-		click(L.T("chip.phone") + " · " + L.T("chip.state.later"))
+		click(spoken(L, L.T("chip.phone"), L.T("chip.state.later")))
 		if len(*sent) != 0 {
 			t.Fatalf("%s: a ghost sent %#v", lang, *sent)
 		}
@@ -84,14 +84,14 @@ func TestHomeCallChip(t *testing.T) {
 
 		// On: a tap opens the phone card in Accounts; nothing is added again.
 		app, sent, click = setup(protocol.DeviceAbility{ID: "call", State: "on"})
-		click(L.T("chip.call") + " · " + L.T("chip.state.on"))
+		click(spoken(L, L.T("chip.call"), L.T("chip.state.on")))
 		if _, ok := lastSent[protocol.ConnectionAdd](*sent); ok || app.Route != RouteSettings || app.settings.tab != TabAccounts {
 			t.Fatalf("%s: Calls on: route %v/%q, sent %#v", lang, app.Route, app.settings.tab, *sent)
 		}
 
 		// Its sign-in gone: the chip says sign in again, and goes to the card that does it.
 		app, sent, click = setup(protocol.DeviceAbility{ID: "call", State: "on", Reason: "signed_out"})
-		click(L.T("chip.call") + " · " + L.T("chip.call.signed_out"))
+		click(spoken(L, L.T("chip.call"), L.T("chip.call.signed_out")))
 		if _, ok := lastSent[protocol.ConnectionAdd](*sent); ok || app.settings.tab != TabAccounts {
 			t.Fatalf("%s: Calls signed out: tab %q, sent %#v", lang, app.settings.tab, *sent)
 		}
@@ -101,7 +101,7 @@ func TestHomeCallChip(t *testing.T) {
 		mac := app.S.Device("dev_mac")
 		mac.Abilities = append(mac.Abilities, protocol.DeviceAbility{ID: "phone", State: "later"})
 		tt := sheetTester(app, 1280, 860, true)
-		for _, label := range []string{L.T("chip.phone") + " · " + L.T("chip.state.later"), "+ " + L.T("chip.call")} {
+		for _, label := range []string{spoken(L, L.T("chip.phone"), L.T("chip.state.later")), "+ " + L.T("chip.call")} {
 			if _, ok := tt.Find(label); ok {
 				t.Fatalf("%s: %q on a computer that isn't the home", lang, label)
 			}

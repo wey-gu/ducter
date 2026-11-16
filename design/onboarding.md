@@ -6,7 +6,7 @@
 ## Scenario card
 
 **Who**
-- *Primary (v1):* a heavy multi-agent developer moving off conductor or herdr. Claude Code
+- *Primary (v1):* a heavy multi-agent developer moving off another agent workbench. Claude Code
   and/or Codex are already logged in, and dozens of repos sit under `~/dev`.
 - *Secondary:* a curious person who has one AI subscription and has never heard the words
   "subagent" or "worktree".
@@ -122,14 +122,14 @@ not interviewed. *How it starts:* by itself, within a second of the first window
    before the hello's events go out: so it is there with the window, it is in the Log (the partner
    knows it said it; its context lists what was offered), and it is said once. No model runs. The
    language is the hello's; the greeting is by the person's hour.
-2. **From the person's own agents' records.** `core/src/local-agents/` reads Claude Code's and
-   Codex's own session records on this computer (the newest 40 files of the last 14 days per
+2. **From the person's own agents' records.** D299's reader (`core/src/local-agents/`, shared
+   with Past tasks) reads Claude Code's, Codex's and pi's own session records on this computer (the newest 40 files of the last 14 days per
    agent: the folder, the title, the person's first words, the time; never inside the folders,
    never Ducter's own sessions), groups them by folder and offers up to three, newest first:
    **昨天你在 hawdb 里做「Fix the flaky compaction test」，要我接着看看吗？** A tap fills the
    composer with a sentence that names the folder's path; it never sends. One everyday example
-   follows (three when there are no records). This module is the one reader of those folders;
-   importing earlier sessions into Past tasks (D299) builds on it.
+   follows (three when there are no records). `recentFolders` in `first-words.ts` picks the
+   folders from that reader; nothing reads those records a second way.
 3. **Consent in place.** Right under the offers: where they came from, **只在这里读，只给你看**, and
    **别再看了 / Stop looking**: the offers from the records go at once, and the first words never
    read them again (`settings.json` `localAgents: false`); **还是看吧 / Look again** undoes it.
@@ -525,8 +525,9 @@ Setup: cua-driver 0.44.0, Chrome 157, macOS 15, partner and task on Sonnet.
 
 ## Ideas to decide (heavy-user delight)
 
-- ~~Adopt running sessions~~: not in v1 (D45). Users start fresh and grow into it.
-- **Conductor import:** read its workspaces/worktrees, if any are left on disk.
+- Earlier sessions come along (D299, superseding D45): the person's own Claude Code, Codex and pi
+  sessions are in Past tasks under 也在这台电脑上 / Also on this computer from the first open, and
+  one tap carries one on. A worktree another agent workbench made counts as its repo's project.
 
 ## Open
 

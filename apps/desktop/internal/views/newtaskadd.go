@@ -75,7 +75,7 @@ func (a *App) addRows(c *ui.Context, only string) bool {
 		d := d
 		label := a.L.T("newtask.add")
 		if named {
-			label += " · " + d.Name
+			label = spoken(a.L, label, a.L.T("newtask.find.on", d.Name))
 		}
 		if a.menuRow(c, "nt-add:"+d.ID, label, false, false, func() {
 			a.glyph(c, 16, drawPlus(t.InkSoft))

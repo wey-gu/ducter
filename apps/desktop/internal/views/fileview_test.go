@@ -166,7 +166,7 @@ func TestFileViewer(t *testing.T) {
 	if fv := app.fileView; fv.pdf == nil || fv.pdf.Pages() < 2 || len(fv.pages) == 0 {
 		t.Fatalf("the PDF wasn't drawn: %+v", fv)
 	}
-	if got := texts(tt); !strings.Contains(got, "PDF · ") || !strings.Contains(got, " 页") {
+	if got := texts(tt); !strings.Contains(got, "\nPDF\n") || !strings.Contains(got, " 页") {
 		t.Errorf("a PDF's head: %s", got)
 	}
 	app.fileView.open = false

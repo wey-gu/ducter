@@ -274,7 +274,7 @@ test("D185: at a time, or every …: a routine of the user's own, nothing opened
   // Every weekday at 9.
   c.send({ t: "task_new", words: "Check the nightly build.", clientId: "ev1", when: { kind: "every", every: "weekday", time: "09:00", tz: "UTC" } });
   const ev = await c.until<Extract<ServerFrame, { t: "task_new_result" }>>((f) => f.t === "task_new_result" && f.clientId === "ev1");
-  expect(ev.routine).toMatchObject({ triggerWords: "Weekdays 9:00 · follows your time zone", trigger: { every: "weekday", zone: "personal" } });
+  expect(ev.routine).toMatchObject({ triggerWords: "Weekdays 9:00 (follows your time zone)", trigger: { every: "weekday", zone: "personal" } });
   // A time already gone says so.
   c.send({ t: "task_new", words: "x", clientId: "past", when: { kind: "at", date: "2020-01-01", time: "09:00", tz: "UTC" } });
   expect(await c.until((f) => f.t === "task_new_result" && f.clientId === "past")).toMatchObject({ ok: false, reason: "past" });

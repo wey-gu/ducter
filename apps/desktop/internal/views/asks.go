@@ -209,7 +209,11 @@ func (a *App) phoneAsk(c *ui.Context) {
 				return
 			}
 			ui.Text(c, a.L.T("phone.scan")).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
-			ui.Text(c, a.L.T("pair.code")+" · "+pc.Code).Font(t.Mono).FontSize(t.SM).TextColor(t.InkSoft).Selectable()
+			// D291: a small label, and apart the code itself in mono.
+			ui.Row(c.Key("code")).Gap(t.S2).AlignItems(ui.Baseline).Children(func() {
+				ui.Text(c, a.L.T("pair.code")).FontSize(t.XS).TextColor(t.InkMuted)
+				ui.Text(c, pc.Code).Font(t.Mono).FontSize(t.SM).TextColor(t.InkSoft).Selectable()
+			})
 			if exp := store.ParseTime(pc.ExpiresAt); !exp.IsZero() {
 				left := exp.Sub(a.Now())
 				if left > 0 {

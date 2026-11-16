@@ -39,10 +39,10 @@ func TestOutsideLineOnlyWhenItSaysSomething(t *testing.T) {
 		task.HistoryLoaded = true
 		return task
 	}
-	if got := a.outsideLine(open("t1", protocol.Place{Kind: "none"})); got != "" {
+	if got, _ := a.outsideLine(open("t1", protocol.Place{Kind: "none"})); got != "" {
 		t.Errorf("no place, nothing outside: %q, want no line", got)
 	}
-	if got := a.outsideLine(open("t2", protocol.Place{Kind: "repo", Branch: "ducter/calc", Device: "MacBook"})); got != "" {
+	if got, _ := a.outsideLine(open("t2", protocol.Place{Kind: "repo", Branch: "ducter/calc", Device: "MacBook"})); got != "" {
 		t.Errorf("a repo task that sent nothing out: %q, want no line", got)
 	}
 }

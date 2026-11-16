@@ -128,3 +128,35 @@ pebble settled 2 pt; it lifts back on resume.
 - **A dropped task**: Continue brings it back (it is no longer dropped).
 - **Hundreds of tasks**: the index is built from the Log on first use and kept live; a query
   reads memory only.
+
+## 也在这台电脑上 / Also on this computer (D299)
+
+The sessions the person ran by hand in their own AI agents on the home (Claude Code, Codex, pi),
+under Ducter's own cards as one quiet section with one line: **你自己在这台电脑上用 AI 做过的。接着做，
+就在 Ducter 里接着同一段对话。/ What you did yourself with your AI agents here. Continue carries on
+the same conversation in Ducter.** Where they live and what their records say: `research/103`.
+
+- **Read** only when Past tasks asks, on the home, each file's head and tail only (the shared
+  reader `packages/core/src/local-agents/`, also D298's), kept until the file changes. Ducter's own
+  sessions never show (their ids are in the Log; its data folder, the Ducter folder and temporary
+  folders are left out); one carried on already shows as its task.
+- **Found** by the same field: its name (`/rename`, Claude Code's own title, pi's `--name`), the
+  person's first and last words, its folder and project (a worktree of another agent workbench is
+  its repo), its branch, its agent, and time words; the agent and project chips narrow it; starred
+  and tags are Ducter's tasks only. Newest first without words, at most 40.
+- **A card:** the picture guessed from its words (the same rule as a task's, pressed into the
+  ground), its name, the person's first words (or where the words matched), and project, agent,
+  branch and day, each its own word. A folder no longer there: **文件夹不在了 / Folder gone**, and
+  Continue says why instead.
+- **接着做 / Continue:** a new task working in that folder directly (no copy), the same agent
+  resuming that very session by its id, which appends to its own file as by hand. Its transcript
+  opens with **在 {agent} 里开始的，{day} / Began in {agent} on {day}**, the last 60 turns (the
+  person's words and the agent's), then **{time} 在 Ducter 里接着做 / Picked up in Ducter at
+  {time}**. Again on the same session opens that task. Its Past card then says **从 {agent}
+  接过来的 / Carried on from {agent}**.
+- **⋯:** **换一个 agent 接着做 / Continue with another agent** (the other agent starts there from
+  what the session said, D282's condensed start; also the fallback when the agent refuses the
+  resume), and **不再显示 {agent} 的 / Don't show {agent} here** (for good, on the home; the
+  section's last line **不显示的：{agents} / Not shown: {agents}** with **再显示 / Show again**).
+- **Not here yet:** a worker's sessions, New task from an outside session, a session still running
+  in a terminal (not detected; its agent would race itself).

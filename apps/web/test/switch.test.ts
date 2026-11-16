@@ -1,5 +1,6 @@
 // D282: a switch inside one task says itself as one hairline with its time, in both languages:
-// another agent (换成 Codex 接着做), another model or effort (换成 Sonnet · 高), another computer.
+// another agent (换成 Codex 接着做), another model or effort (换成 Sonnet（高）), another computer;
+// its time is drawn apart (D291).
 import { expect, test } from "bun:test";
 import { noteOf } from "@ducter/protocol/src/transcript.ts";
 import { strings } from "../src/i18n.ts";
@@ -7,11 +8,11 @@ import { strings } from "../src/i18n.ts";
 test("the hairline words, zh and en", () => {
   const zh = strings("zh");
   const en = strings("en");
-  expect(zh.t("note.switched", "Codex", "21:40")).toBe("换成 Codex 接着做 · 21:40");
-  expect(en.t("note.switched", "Codex", "21:40")).toBe("Continued on Codex · 21:40");
-  expect(zh.t("note.retuned", "Sonnet · 高", "21:40")).toBe("换成 Sonnet · 高 · 21:40");
-  expect(en.t("note.retuned", "Sonnet · High", "21:40")).toBe("Now on Sonnet · High · 21:40");
-  expect(zh.t("note.moved", "hel", "21:40")).toBe("换到 hel 接着做 · 21:40");
+  expect(zh.t("note.switched", "Codex")).toBe("换成 Codex 接着做");
+  expect(en.t("note.switched", "Codex")).toBe("Continued on Codex");
+  expect(zh.t("note.retuned", zh.t("who.name", "Sonnet", "高"))).toBe("换成 Sonnet（高）");
+  expect(en.t("note.retuned", en.t("who.name", "Sonnet", "High"))).toBe("Now on Sonnet (High)");
+  expect(zh.t("note.moved", "hel")).toBe("换到 hel 接着做");
   for (const L of [zh, en]) for (const k of ["switch.tune.note", "note.retuned.default"]) expect(L.t(k, "Claude Code")).not.toBe(k);
 });
 

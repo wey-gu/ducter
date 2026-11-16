@@ -48,7 +48,7 @@ func TestThisMacsWorkerUpdatesHere(t *testing.T) {
 		if !tt.HasText(L.T("devup.how.helper", "0.0.7", "hel")) {
 			t.Fatalf("%s: no restart line in %q", lang, tt.Texts())
 		}
-		if err := tt.Click(L.T("devup.restart") + " · MacBook"); err != nil {
+		if err := tt.Click(spoken(L, L.T("devup.restart"), "MacBook")); err != nil {
 			t.Fatal(err)
 		}
 		for i := 0; i < 50 && w.restarts == 0; i++ {

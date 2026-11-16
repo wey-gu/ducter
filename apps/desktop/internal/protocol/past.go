@@ -61,6 +61,60 @@ type PastItem struct {
 	Mark       *PastMark   `json:"mark,omitempty"`
 	Hit        *PastHit    `json:"hit,omitempty"`
 	From       *PastFrom   `json:"from,omitempty"`
+	// Outside: D299, carried on from a session the person ran outside Ducter.
+	Outside *PastOutside `json:"outside,omitempty"`
+}
+
+// PastOutside is the agent and the day of the outside session a task carries on (D299).
+type PastOutside struct {
+	Agent     string `json:"agent"`
+	StartedAt string `json:"startedAt"`
+}
+
+// OutsideAgents are the agents whose own sessions Past tasks lists (D299).
+var OutsideAgents = []string{"claude-code", "codex", "pi"}
+
+// OutsideItem is one session the person ran in their own agent on the
+// home, outside Ducter (D299: 也在这台电脑上 / Also on this computer).
+type OutsideItem struct {
+	Agent     string   `json:"agent"`
+	ID        string   `json:"id"`
+	Title     string   `json:"title"`
+	Ask       string   `json:"ask,omitempty"`
+	Project   string   `json:"project"`
+	Cwd       string   `json:"cwd"`
+	Branch    string   `json:"branch,omitempty"`
+	Model     string   `json:"model,omitempty"`
+	StartedAt string   `json:"startedAt"`
+	UpdatedAt string   `json:"updatedAt"`
+	Kind      string   `json:"kind"`
+	Hit       *PastHit `json:"hit,omitempty"`
+	Gone      bool     `json:"gone,omitempty"`
+}
+
+// OutsideSource is one agent Past tasks read, its count, and whether the
+// person hid it.
+type OutsideSource struct {
+	Agent  string `json:"agent"`
+	N      int    `json:"n"`
+	Hidden bool   `json:"hidden"`
+}
+
+// OutsideContinue carries an outside session on as a task (outside_continue),
+// answered with outside_adopted.
+type OutsideContinue struct {
+	T       string `json:"t"` // outside_continue
+	Agent   string `json:"agent"`
+	ID      string `json:"id"`
+	Harness string `json:"harness,omitempty"`
+	Model   string `json:"model,omitempty"`
+}
+
+// OutsideHide stops (or starts again) showing one agent's sessions (outside_hide).
+type OutsideHide struct {
+	T      string `json:"t"` // outside_hide
+	Agent  string `json:"agent"`
+	Hidden bool   `json:"hidden"`
 }
 
 // PastQuery narrows Past tasks; every field optional, together they AND.
@@ -110,6 +164,15 @@ type PastFrame struct {
 	Range       *PastRange `json:"range,omitempty"`
 	TaskID      string     `json:"taskId,omitempty"`
 	Mark        *PastMark  `json:"mark"`
+	// D299: past_result's outside sessions and sources; outside_adopted
+	// (Agent, ID the session's, OK, TaskID, Message) and outside_hidden
+	// (Agent, Hidden).
+	Outside []OutsideItem   `json:"outside,omitempty"`
+	Sources []OutsideSource `json:"sources,omitempty"`
+	Agent   string          `json:"agent,omitempty"`
+	OK      bool            `json:"ok,omitempty"`
+	Message string          `json:"message,omitempty"`
+	Hidden  bool            `json:"hidden,omitempty"`
 	// Ongoing is ongoing_result's items (ongoing.go).
 	Ongoing []OngoingItem `json:"-"`
 }

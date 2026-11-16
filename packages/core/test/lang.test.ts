@@ -50,8 +50,8 @@ test("server-made words for a Korean conversation are English, for zh-Hant Chine
   expect(waitFirstBrief("CI 绿了", "合进去", "zh-Hant")).toStartWith("先等到：CI 绿了\n然后：合进去");
   expect(nextTryText(2, "테스트 통과", "1 failing", "ko")).toBe('Try 2: "테스트 통과" isn\'t true yet (1 failing). Keep going toward it, and report when this try is done.');
   const monday9: RoutineTrigger = { kind: "time", every: "week", days: [1], time: "09:00", zone: "personal", tz: "Asia/Seoul" };
-  expect(describeTrigger(monday9, "ko")).toBe("Mondays 9:00 · follows your time zone");
-  expect(describeTrigger(monday9, "zh-Hant")).toBe("每周一 9:00 · 跟着你的时区");
+  expect(describeTrigger(monday9, "ko")).toBe("Mondays 9:00 (follows your time zone)");
+  expect(describeTrigger(monday9, "zh-Hant")).toBe("每周一 9:00（跟着你的时区）");
   expect(W.keepNote("ko")).toBe("Keep the morning note?");
   expect(W.keepNote("zh-Hant")).toBe("早上那条还要吗？");
   expect(W.muteRule("ko", "deadline", "Cloudflare")).toBe('Don\'t tell me "Deadlines and money" from Cloudflare');

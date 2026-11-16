@@ -4,8 +4,8 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { LogEvent, ServerFrame } from "@ducter/protocol";
 import { startCore } from "../src/core.ts";
-import { firstWords, greet, whenSaid } from "../src/first-words.ts";
-import { recentProjects, recentSessions } from "../src/local-agents/index.ts";
+import { firstWords, greet, recentFolders, whenSaid } from "../src/first-words.ts";
+import { createLocalAgents } from "../src/local-agents/index.ts";
 import { fakeAgents } from "./fake-agents.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -29,17 +29,18 @@ function scratch() {
   return { t, home, data };
 }
 
-test("the reader finds the person's own folders, newest first, without Ducter's own or stale ones", () => {
+test("D299's reader gives the first words the person's own folders, newest first, without Ducter's own or stale ones", () => {
   const { t, home, data } = scratch();
   try {
-    const ss = recentSessions({ home, env: {}, now: NOW, exclude: [data] });
-    expect(ss.map((s) => s.id)).toEqual(["019a0000-1111-7222-8333-444455556666", "c1", "019a0000-1111-7222-8333-777788889999", "c0"]);
-    expect(ss[1]).toMatchObject({ agent: "claude-code", title: "Fix the flaky compaction test", ask: "the compaction test fails one run in five, find out why" });
-    expect(ss[0]).toMatchObject({ agent: "codex", cwd: "/Users/ada/dev/website", title: "Move the blog to the new theme" });
-    expect(ss[2]!.ask).toBe("sort my reading list by topic"); // the environment block isn't the person's words
-    expect(recentProjects({ home, env: {}, now: NOW, exclude: [data] }).map((p) => p.name)).toEqual(["website", "hawdb", "notes"]);
-    // An agent never used, or a home with nothing: an empty list.
-    expect(recentSessions({ home: join(t.dir, "nobody"), env: {}, now: NOW })).toEqual([]);
+    const reader = createLocalAgents({ home, env: {} });
+    const folders = recentFolders(reader, { now: NOW, exclude: [data], home: "/Users/ada" });
+    expect(folders.map((p) => p.name)).toEqual(["website", "hawdb", "notes"]);
+    expect(folders[1]!.sessions.map((s) => s.id)).toEqual(["c1", "c0"]);
+    expect(folders[1]!.sessions[0]).toMatchObject({ agent: "claude-code", title: "Fix the flaky compaction test", firstPrompt: "the compaction test fails one run in five, find out why" });
+    expect(folders[0]!.sessions[0]).toMatchObject({ agent: "codex", cwd: "/Users/ada/dev/website", title: "Move the blog to the new theme" });
+    expect(folders[2]!.sessions[0]!.firstPrompt).toBe("sort my reading list by topic"); // the environment block isn't the person's words
+    // A home with nothing: nothing.
+    expect(recentFolders(createLocalAgents({ home: join(t.dir, "nobody"), env: {} }), { now: NOW })).toEqual([]);
   } finally {
     t.cleanup();
   }
@@ -48,7 +49,7 @@ test("the reader finds the person's own folders, newest first, without Ducter's 
 test("the words: a greeting by the person's hour, then what they were doing, by folder and title", () => {
   const { t, home, data } = scratch();
   try {
-    const projects = recentProjects({ home, env: {}, now: NOW, exclude: [data] });
+    const projects = recentFolders(createLocalAgents({ home, env: {} }), { now: NOW, exclude: [data], home: "/Users/ada" });
     const zh = firstWords({ name: "小鸭", lang: "zh", now: NOW, tz: "Asia/Shanghai", projects, everyday: [{ zh: "周五下午提醒我交水电费", en: "Remind me on Friday" }], home: "/Users/ada" });
     expect(zh.text.startsWith("晚上好，我是小鸭。")).toBe(true);
     expect(zh.text).toContain("Claude Code 和 Codex");

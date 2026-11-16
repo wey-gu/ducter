@@ -93,8 +93,8 @@ func (h *hub) Scene(name string) bool {
 	case "handhelds": // D263: each handheld in its own shape
 		list = []protocol.DeviceView{macHome("claude-code", "codex"), cloud(protocol.DeviceAwake)}
 		clients = []protocol.ReachClient{iphone,
-			{ID: "c-ipad", Name: "iPad · Ducter", Platform: "ios-app", Connected: true, Shape: "tablet"},
-			{ID: "c-fold", Name: "Pixel Fold · Ducter", Platform: "android-app", Connected: true, Shape: "foldable"}}
+			{ID: "c-ipad", Name: "iPad", Platform: "ios-app", Connected: true, Shape: "tablet"},
+			{ID: "c-fold", Name: "Pixel Fold", Platform: "android-app", Connected: true, Shape: "foldable"}}
 	case "update-all", "update-all-running", "update-all-done":
 		list, clients = updateAllScene(name)
 	default:

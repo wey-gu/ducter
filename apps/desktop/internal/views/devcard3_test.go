@@ -145,31 +145,31 @@ func TestCharacterSheet(t *testing.T) {
 			has(tt, L.T("card.status.working", "hel", 2), L.T("chip.worker", "hel"), L.T("chip.computer"), "+ "+L.T("chip.web"),
 				L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli")), L.T("card.disconnect.device", "MacBook"))
 			hasNot(tt, L.T("agentv.unverified"), L.T("work.mac.note.on", app.MacWorker.Log()), app.MacWorker.Log(), L.T("device.does"), L.T("token.shared", 2))
-			if r, ok := tt.Find(L.T("list.state.tasks", 2)); !ok || r.H > 24 { // its own line under the name
+			if r, ok := tt.Find(L.T("list.state.tasks", 2)); !ok || r.H > 24 { // its own line under the name, with its dot
 				t.Fatalf("%s: the list's word wraps or is missing: %v %v", lang, r, ok)
 			}
 			shot(tt, fmt.Sprintf("page-%d", sz[0]))
 			// pi has an update: its detail in place, the channel in words, D156's helper.
-			click(tt, "pi · MacBook · "+L.T("agentv.available", "1.4.2"))
-			has(tt, L.T("coin.version", "1.4.0", L.T("coin.how.installer")), L.T("agentv.available", "1.4.2"), L.T("agentv.latest.unverified", "1.4.2"), L.T("loadout.acct.tasks"))
+			click(tt, spoken(L, "pi", "MacBook", L.T("agentv.available", "1.4.2")))
+			has(tt, L.T("agentv.version", "1.4.0"), L.T("coin.how.installer"), L.T("agentv.available", "1.4.2"), L.T("agentv.latest.unverified", "1.4.2"), L.T("loadout.acct.tasks"))
 			shot(tt, fmt.Sprintf("page-%d-pi", sz[0]))
 		}
 
 		app := sheetApp(t, lang, "awake")
 		tt := sheetTester(app, 1280, 860, false)
 		// Claude Code: "not checked" said once, only here.
-		click(tt, "Claude Code · MacBook")
-		has(tt, L.T("agentv.unverified"), L.T("coin.version", "2.1.322", L.T("coin.how.installer")))
+		click(tt, spoken(L, "Claude Code", "MacBook"))
+		has(tt, L.T("agentv.unverified"), L.T("agentv.version", "2.1.322"), L.T("coin.how.installer"))
 		// Codex: the account's limit shared with hel? Codex is signed out on hel, so no.
-		click(tt, "Codex · MacBook")
-		has(tt, L.T("coin.version", "0.167.0", L.T("coin.how.brew")))
+		click(tt, spoken(L, "Codex", "MacBook"))
+		has(tt, L.T("agentv.version", "0.167.0"), L.T("coin.how.brew"))
 		hasNot(tt, L.T("coin.shared", "hel"))
-		click(tt, "Codex · MacBook") // closes
-		hasNot(tt, L.T("coin.version", "0.167.0", L.T("coin.how.brew")))
+		click(tt, spoken(L, "Codex", "MacBook")) // closes
+		hasNot(tt, L.T("agentv.version", "0.167.0"))
 
 		// The update lands: the coin pops once (the motion is time-boxed).
-		click(tt, "pi · MacBook · "+L.T("agentv.available", "1.4.2"))
-		click(tt, L.T("agentv.button")+" · pi")
+		click(tt, spoken(L, "pi", "MacBook", L.T("agentv.available", "1.4.2")))
+		click(tt, spoken(L, L.T("agentv.button"), "pi"))
 		mac := app.S.Device("dev_mac")
 		mac.Harnesses[2].Update = &protocol.AgentUpdate{Phase: "updating", From: "1.4.0", To: "1.4.2"}
 		tt.Advance(100 * time.Millisecond)
@@ -188,10 +188,10 @@ func TestCharacterSheet(t *testing.T) {
 		// ⓘ holds the old helper; the chip asks before stopping running tasks, default 做完再停.
 		app = sheetApp(t, lang, "awake")
 		tt = sheetTester(app, 1280, 860, true)
-		click(tt, L.T("chip.info")+" · "+L.T("chip.worker", "hel"))
+		click(tt, spoken(L, L.T("chip.info"), L.T("chip.worker", "hel")))
 		has(tt, L.T("work.mac.note.off", "hel")+" "+L.T("where.first_line"))
-		click(tt, L.T("chip.info")+" · "+L.T("chip.worker", "hel"))
-		click(tt, L.T("chip.worker", "hel")+" · "+L.T("chip.state.on"))
+		click(tt, spoken(L, L.T("chip.info"), L.T("chip.worker", "hel")))
+		click(tt, spoken(L, L.T("chip.worker", "hel"), L.T("chip.state.on")))
 		has(tt, L.T("chip.stop.ask", "MacBook", 2), L.T("chip.stop.after"), L.T("chip.stop.now"))
 		shot(tt, "stop-ask")
 		click(tt, L.T("chip.stop.after"))
@@ -210,7 +210,7 @@ func TestCharacterSheet(t *testing.T) {
 		tt = sheetTester(app, 1280, 860, true)
 		var sent []any
 		app.Send = func(f any) error { sent = append(sent, f); return nil }
-		click(tt, L.T("chip.computer")+" · "+L.T("chip.state.on"))
+		click(tt, spoken(L, L.T("chip.computer"), L.T("chip.state.on")))
 		if r, ok := lastSent[protocol.AbilityReq](sent); !ok || r.On || r.Ability != "computer" || r.Device != "dev_mac" {
 			t.Fatalf("%s: Use the computer off sent %#v", lang, sent)
 		}
@@ -218,7 +218,7 @@ func TestCharacterSheet(t *testing.T) {
 		// The connections open in place, each with its own 断开 and an inline confirm.
 		click(tt, L.T("card.via.more"))
 		has(tt, L.T("card.conn.app"), L.T("card.conn.cli"))
-		click(tt, L.T("device.disconnect")+" · "+L.T("device.cli.name", "MacBook"))
+		click(tt, spoken(L, L.T("device.disconnect"), L.T("device.cli.name", "MacBook")))
 		has(tt, L.T("device.disconnect.ask", L.T("device.cli.name", "MacBook")))
 		shot(tt, "connections")
 		// The foot: one 断开这台 MacBook, confirmed in place.
@@ -233,7 +233,7 @@ func TestCharacterSheet(t *testing.T) {
 		tt = sheetTester(app, 1280, 860, true)
 		has(tt, L.T("card.status.home", "Ducter"), L.T("chip.web"), L.T("chip.remote"))
 		hasNot(tt, L.T("card.disconnect.device", "hel"))
-		click(tt, "Codex · hel · "+L.T("coin.signed_out"))
+		click(tt, spoken(L, "Codex", "hel", L.T("coin.signed_out")))
 		has(tt, L.T("coin.signin.why", "hel"), L.T("coin.there", "hel"))
 		shot(tt, "hel-codex")
 		// Ducter's own version line only with an update.
@@ -247,11 +247,12 @@ func TestCharacterSheet(t *testing.T) {
 		for _, st := range []string{"asleep", "unreachable"} {
 			app = sheetApp(t, lang, st)
 			tt = sheetTester(app, 1280, 860, true)
-			want := L.T("device.state.asleep")
+			// D291: the state word with its dot, and its line under it.
 			if st == "unreachable" {
-				want = L.T("card.status.unreachable", L.T("time.ago.hour", 2))
+				has(tt, L.T("card.status.away"), L.T("device.last_seen", L.T("time.ago.hour", 2)))
+			} else {
+				has(tt, L.T("device.state.asleep"), L.T("device.asleep.after"))
 			}
-			has(tt, want)
 			shot(tt, st)
 		}
 

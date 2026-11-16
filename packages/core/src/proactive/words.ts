@@ -10,7 +10,7 @@ export const KIND_WORDS: Record<FindKind, { zh: string; en: string }> = {
   waiting_on_you: { zh: "在等你回", en: "Waiting on you" },
   waiting_on_them: { zh: "你在等别人回", en: "You're waiting on someone" },
   promised: { zh: "你答应过的", en: "Something you promised" },
-  deadline: { zh: "快到期 · 要花钱", en: "Deadlines and money" },
+  deadline: { zh: "到期和花钱的事", en: "Deadlines and money" },
   plan_changed: { zh: "计划变了", en: "A plan changed" },
   meeting: { zh: "开会前", en: "Before a meeting" },
   coming_up: { zh: "快到了", en: "Coming up" },
@@ -46,7 +46,7 @@ const T = {
     muteFrom: "{sender} 的「{kind}」不用告诉我",
     muteKind: "「{kind}」这类不用告诉我",
     lockJoin: "；",
-    taskTitle: "{go} · {about}",
+    taskTitle: "{go}：{about}",
   },
   en: {
     join: (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`),
@@ -74,7 +74,7 @@ const T = {
     muteFrom: 'Don\'t tell me "{kind}" from {sender}',
     muteKind: 'Don\'t tell me "{kind}"',
     lockJoin: "; ",
-    taskTitle: "{go} · {about}",
+    taskTitle: "{go}: {about}",
   },
 };
 
@@ -124,5 +124,6 @@ export const W = {
   lockBody(lang: LangTag, texts: string[]) {
     return texts.map((t) => t.split(/[。.!?！？]/)[0]!.trim()).filter(Boolean).join(words(T, lang).lockJoin);
   },
+  /** A find's task is named as a heading: what to do, then what about (D291). */
   taskTitle: (lang: LangTag, goLabel: string, about: string) => fill(words(T, lang).taskTitle, { go: goLabel, about }),
 };

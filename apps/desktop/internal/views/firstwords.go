@@ -118,6 +118,8 @@ func agentName(id string) string {
 		return "Claude Code"
 	case "codex":
 		return "Codex"
+	case "pi":
+		return "pi"
 	}
 	return id
 }

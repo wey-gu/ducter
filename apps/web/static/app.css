@@ -384,7 +384,7 @@ textarea {
 .decision .q,
 .ask .q,
 .task-head .headline {
-  text-wrap: balance;
+  text-wrap: pretty;
 }
 :lang(zh) .top .name,
 :lang(zh) .living h2,
@@ -1516,7 +1516,7 @@ a {
   color: var(--ink-soft);
   font-size: var(--lg);
   line-height: var(--lh-voice);
-  text-wrap: balance;
+  text-wrap: pretty;
 }
 /* What it can do, then its promise: a line each (D149). */
 .hello p > span {
@@ -3197,7 +3197,7 @@ a {
   font-size: var(--sm);
   line-height: var(--lh-read);
   color: var(--ink-soft);
-  text-wrap: balance;
+  text-wrap: pretty;
 }
 /* The switch belongs to the card: no card of its own, a hairline above it. */
 .mem-hero .switch {
@@ -4549,7 +4549,7 @@ ol.tries b {
 /* A question is a sentence in a bubble: it fills the measure (D78), never balanced. */
 .partner > .bubble {
   line-break: strict;
-  text-wrap: balance;
+  text-wrap: pretty;
 }
 
 /* ---------- 开一件事 / New task (D128): a quiet ＋ on On hand, a bottom sheet ---------- */
@@ -11775,6 +11775,9 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   cursor: pointer;
 }
 .past-x:hover { color: var(--ink); }
+/* A finger's 44 pt around the 34-pt mark. */
+.past-x { position: relative; }
+.past-x::after { content: ""; position: absolute; inset: -5px; }
 .past-find {
   display: flex;
   align-items: center;
@@ -12297,6 +12300,12 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .places {
   position: relative;
 }
+/* A finger's 44 pt tall around each 28-pt mark (the marks sit side by side, so only up and down). */
+.places .place::after {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+}
 .places .knob {
   position: absolute;
   top: 3px;
@@ -12376,6 +12385,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .g-tile.mark { border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line-soft); box-shadow: 0 2px 0 var(--line); }
 .g-tile img { width: 40px; height: 40px; object-fit: contain; }
 .g-tile.faded img { opacity: 0.5; }
+/* A tile of agent coins: each coin keeps its own size (the tile's 40-pt art rule is for one image). */
+.g-tile .coin-art img { width: 100%; height: 100%; }
 .g-open-row { display: flex; align-items: center; gap: var(--s3); min-height: 64px; padding: var(--s2) var(--set-in, var(--s4)) var(--s2) calc(var(--set-in, var(--s4)) - var(--s2)); }
 .g-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s3); padding: var(--s2); border: 0; border-radius: var(--r-md); background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
 .g-open:hover { background: color-mix(in srgb, var(--ink) 3%, transparent); }

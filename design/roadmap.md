@@ -32,7 +32,7 @@ heard of a subagent.
   browser is the fallback.
 
 **Your devices and accounts**
-- A Mac app (Apple silicon, signed and notarized), a phone web client, and an
+- A Mac app (Apple silicon, signed and notarized) that follows your Mac's light or dark (D302), a phone web client, and an
   [iPhone app in public beta](https://testflight.apple.com/join/Z4GvWt7t) with Go / Hold / Reply
   on notifications.
 - Server mode on Linux: a systemd service, reached through Tailscale (private to your devices,
@@ -74,7 +74,6 @@ heard of a subagent.
 - **The AI tools you use elsewhere reach you through Ducter** (draft): a terminal Claude Code or Codex sends
   its questions for you to your partner and gets your answer back; work from your own agents can
   start without asking once you say so; a team's agents can reach your partner when you let them.
-- **Mac dark mode** through the Midnight theme. Web and iPhone already follow the system.
 - **Quota awareness.** Keep a reserve for your partner, prefer the account with the most limit
   left, and fall back gracefully when one runs low.
 - **Remote access without a domain.** Built for a server: your own Cloudflare tunnel

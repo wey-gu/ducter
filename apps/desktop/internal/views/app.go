@@ -171,6 +171,11 @@ type App struct {
 	// join: the row being drawn stacks its first bubble on the one before (D129).
 	join    bool
 	uiTheme *ui.Theme
+	// appear is the window's light or dark and the move between them (D302).
+	appear appearanceState
+	// ApplyAppearance tells macOS the appearance chosen in Settings
+	// ("system", "light", "dark"; main.go: mygo.Theme.SetSource).
+	ApplyAppearance func(string)
 	// readSent is the last seq a read frame covered; unreadAt is when the
 	// conversation first showed something unread to the user.
 	readSent int64
@@ -444,6 +449,9 @@ func (a *App) flushOutbox() {
 
 // View is the window's content.
 func (a *App) View(c *ui.Context) {
+	if a.followAppearance(c) {
+		a.uiTheme = nil
+	}
 	if a.uiTheme == nil || a.mdLang != a.L.Lang {
 		if a.uiTheme == nil {
 			a.uiTheme = a.T.UITheme(c.Theme())

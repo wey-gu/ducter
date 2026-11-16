@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 
 	"github.com/egoist/mygo/ui"
 )
@@ -102,12 +103,32 @@ var IdleSquareContent = struct{ X, Y, W, H float32 }{X: 66.0 / 400, Y: 88.0 / 40
 // content: devices and the pedestal at 640 px on the long side, abilities,
 // the empty slot and the AI-account tokens at 256. Nil if it is missing.
 func Clay(name string) *ui.Bitmap {
-	for _, size := range []int{1280, 640, 256} {
+	if artDark.Load() {
+		if b := clay(name + "_dark"); b != nil {
+			return b
+		}
+	}
+	if b := clay(name); b != nil {
+		return b
+	}
+	log.Printf("ducter: no clay art %q", name)
+	return nil
+}
+
+// artDark is whether the window is dark (D302): Clay then gives an asset's
+// dark cast where it has one (D213: Codex's charcoal knot in bone clay, so
+// it never vanishes into the dark paper).
+var artDark atomic.Bool
+
+// UseDarkArt says whether the window is dark; the app sets it every frame.
+func UseDarkArt(dark bool) { artDark.Store(dark) }
+
+func clay(name string) *ui.Bitmap {
+	for _, size := range []int{1280, 640, 256, 128} {
 		if _, err := artFS.Open(fmt.Sprintf("art/clay/%s@%d.png", name, size)); err == nil {
 			return load(fmt.Sprintf("art/clay/%s@%d.png", name, size))
 		}
 	}
-	log.Printf("ducter: no clay art %q", name)
 	return nil
 }
 

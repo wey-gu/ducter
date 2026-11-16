@@ -43,6 +43,21 @@ func (a *App) lookPanel(c *ui.Context) {
 		}) {
 			a.cheer()
 		}
+		// D302: light, dark, or as macOS is (the default), live.
+		modes := []string{"system", "light", "dark"}
+		msel := 0
+		for i, m := range modes {
+			if m == a.Local.Appearance() {
+				msel = i
+			}
+		}
+		a.row(c, "appearance", a.L.T("settings.look.mode"), a.L.T("settings.look.mode.help"), func() {
+			labels := []string{a.L.T("settings.look.mode.system"), a.L.T("settings.look.mode.light"), a.L.T("settings.look.mode.dark")}
+			if i := a.choices(c, "appearance", a.L.T("settings.look.mode"), labels, msel); i >= 0 {
+				a.SetAppearance(modes[i])
+				a.cheer()
+			}
+		})
 	})
 	a.group(c, "lang", a.L.T("settings.lang.group"), "", func() {
 		opts := []string{"auto", "zh", "en"}

@@ -5,9 +5,9 @@
 ## Decision
 
 **Pebble is the default theme.** Volt, Paper, Signal, and Midnight are designed as
-alternative themes; only Pebble ships. Pebble is light; **Midnight** (dark) is planned for the
-Mac app (D134, roadmap); web and iPhone follow the system's dark mode today, and the Mac app is
-light only for now. Every theme is a **token set**; components never hard-code a color, font,
+alternative themes; only Pebble ships. Pebble has a light and a dark paper: web, iPhone and
+the Mac app follow the system's light or dark (the Mac: Settings › Look and sound can pin
+浅色 / Light or 深色 / Dark, D302). Every theme is a **token set**; components never hard-code a color, font,
 radius, or shadow, so adding or switching a theme is pure data. The same tokens drive the MyGo
 desktop UI, the phone web client and the iPhone app's own screens.
 
@@ -21,7 +21,7 @@ desktop UI, the phone web client and the iPhone app's own screens.
 | depth | `shadow-style`: `press` (Pebble: solid offset under), `offset` (Volt: hard drop), `hairline` (Paper/Signal), `glow` (Midnight); plus values |
 | motion | `personality`: `bouncy` (Pebble), `snappy` (Volt), `calm` (Paper/Midnight), `stepped` (Signal); durations and easing |
 | density | `comfortable` (default) / `compact` |
-| mode | each theme declares light/dark variants. Midnight is dark-only. Pebble dark = Pebble shapes and motion on Midnight-like surfaces; web and iPhone follow the system's dark mode with it today; the Mac app is light only for now (Midnight planned, D134) |
+| mode | each theme declares light/dark variants. Midnight is dark-only. Pebble dark = Pebble shapes and motion on Midnight-like surfaces; web, iPhone and the Mac follow the system's dark mode with it (Mac `theme.PebbleDark`, the web's dark values; a change cross-fades every colour over 360 ms, at once under Reduce Motion; an art asset may have a `_dark` cast, D213, D302) |
 
 ## Pebble (default) values
 
@@ -53,7 +53,7 @@ brows when something needs you. Other themes render the same states in their own
   in lightness and shape (waiting = dashed outline), not only in hue.
 - **Voices (D129):** a messaging app with one partner. The user's messages are accent bubbles
   (`user-bubble` `#FF8A3D` with ink, 6.9:1); the partner's are soft bubbles (`partner-bubble`:
-  white on the paper, `#2A221B` in Pebble dark on web and iPhone; the Mac app is light only for now). Corners `bubble-shape` 20/20/6/20, mirrored
+  white on the paper, `#2A221B` in Pebble dark). Corners `bubble-shape` 20/20/6/20, mirrored
   for the partner (tail bottom-left); a bubble stacked on one of its voice tucks its tail
   side's top corner to `bubble-join` 6. One body size for both (16), at most `bubble-measure`
   ~38em wide. An ask's buttons sit in one compact tray under its bubble, a white card on a 3pt
@@ -407,8 +407,7 @@ task's Details (D74).
 **Mac and phone (D262).** The same places and the same bar on both, with these deliberate
 differences: Settings is a place with a rail on the Mac and a pushed sheet on the phone (D150);
 设备 is a place on the Mac and Settings' 你的设备 page on the phone, so a phone's bar has no 设备
-button (wide web has it, opening that page); the Mac has no dark theme yet (`todo.md`), the web
-follows the system's.
+button (wide web has it, opening that page); both follow the system's light or dark (D302).
 
 **The first frame is the settled one (D262).** A launch never shows one state and then switches:
 the Mac starts in the language it last followed from the person's words (`hints.StartLang`,

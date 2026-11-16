@@ -26,7 +26,7 @@ On the left is a row of tabs; the one you pick shows on the right:
 | **Connected AI agents** | The AI agents you use elsewhere that can reach it (shown once Nowledge Mem is in) |
 | **Notifications** | When it comes to you, quiet hours, and how long it waits if you don't answer |
 | **Accounts** | The mail, calendars and other accounts it can read |
-| **Look and sound** | The look, the window's language, Details in the conversation, the intro's sound |
+| **Look and sound** | The look, light or dark, the window's language, Details in the conversation, the intro's sound |
 | **Where it runs** | Which computer Ducter lives on, stopping it, data and logs, and Remove Ducter |
 | **Updates and about** | The version, updates, help links and credits |
 
@@ -167,6 +167,8 @@ At the top is a small preview of the window as it looks now. Your partner smiles
 something.
 
 - **Look:** Pebble, the warm paper and clay look. More looks will appear here once they work.
+- **Light and dark:** **Follow the system** (the default) turns the window dark when your Mac
+  does, and back again, with a short fade. **Light** or **Dark** keeps it that way on this Mac.
 - **Language:** the language of this window's own words. **Follow the system** uses your Mac's
   language. This is separate from how your partner talks.
 - **Details in the conversation:** **Folded** (the default) keeps the conversation to what your

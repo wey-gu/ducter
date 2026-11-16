@@ -52,6 +52,8 @@ type Elevation struct {
 // Tokens is one theme's full token set.
 type Tokens struct {
 	Name string
+	// Dark is the dark appearance of the theme (D302, PebbleDark).
+	Dark bool
 
 	// color
 	Bg, Surface, SurfaceRaised, SurfaceSunken, Ink, InkMuted, InkSoft ui.Color
@@ -168,6 +170,9 @@ type Tokens struct {
 	// Breathe is one breath of a waiting bead (D279), slower than any
 	// reading rhythm; Pop is the moment a wait comes true.
 	Breathe, Pop time.Duration
+	// AppearDur is the move between the light and the dark paper (D302): a
+	// calm cross-fade of every colour; none under Reduce Motion.
+	AppearDur time.Duration
 	// Nav is how the window moves between zoom levels and places (D290).
 	Nav NavMotion
 	// Equip is the sticker peel-and-stick of an ability (research/26, 28).
@@ -396,8 +401,9 @@ func Pebble() *Tokens {
 		Snappy:   ui.Snappy,
 		PressDur: 70 * time.Millisecond, EnterDur: 220 * time.Millisecond,
 		Breathe: 3200 * time.Millisecond, Pop: 560 * time.Millisecond,
-		Nav:   navMotion(),
-		Equip: EquipMotion{Flight: 820 * time.Millisecond, Snap: 0.62, Squash: 420 * time.Millisecond, DoneFace: 1800 * time.Millisecond, Fade: 200 * time.Millisecond},
+		AppearDur: 360 * time.Millisecond,
+		Nav:       navMotion(),
+		Equip:     EquipMotion{Flight: 820 * time.Millisecond, Snap: 0.62, Squash: 420 * time.Millisecond, DoneFace: 1800 * time.Millisecond, Fade: 200 * time.Millisecond},
 	}
 	t.Reply = replyTokens(t)
 	t.Tints = pebbleTints()
@@ -448,7 +454,7 @@ func (t *Tokens) State(attention string) StateColors {
 // UITheme is the MyGo theme for the widgets, from the tokens.
 func (t *Tokens) UITheme(base *ui.Theme) *ui.Theme {
 	th := *base
-	th.Dark = false
+	th.Dark = t.Dark
 	th.Background = t.Bg
 	th.Surface = t.Surface
 	th.SurfaceHover = t.SurfaceSunken

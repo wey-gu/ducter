@@ -399,8 +399,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] A push for a task's question goes out with the task's wording, before the partner has said
       it (D129 holds only the conversation). Hold the push for the relay, up to the same 60 s.
       Trigger: push dogfood.
-- [ ] Mac dark through the **Midnight** theme (D134, roadmap): the phone has Pebble dark, the
-      Mac app has one light token set. Trigger: the roadmap slot for themes.
+- [ ] Watch D302's light-to-dark cross-fade on a real Mac at macOS's Auto switch, and the dark
+      Devices sea and coins at full size. Trigger: the author's next evening session.
 
 ## Keeping your place and copying (D254, research/83)
 
@@ -1117,8 +1117,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## Partner and Settings (D71)
 
-- [ ] A theme choice in Settings › Look. Trigger: a second theme (Pebble dark first) works on
-      the desktop and the phone alike.
+- [ ] A theme choice in Settings › Look (Pebble's light and dark is D302's 浅色和深色 / Light and
+      dark row). Trigger: a second theme (Midnight, Volt…) works on the desktop and the phone alike.
 - [ ] Walk Forget against a live Nowledge Mem (`nmem m forget --force` on a line with a memory
       id) and check recall no longer returns it. Trigger: a scratch Mem space for tests.
 - [ ] Screenshot the menu bar extra's open menu natively. On the test Mac it sat in the menu

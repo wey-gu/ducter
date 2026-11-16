@@ -32,8 +32,8 @@ func pebbleTints() Tints {
 	}
 }
 
-// MidnightTints are the same six for the dark theme (design/ui.md:
-// Midnight is planned; the web's dark tokens use these).
+// MidnightTints are the same six on the dark paper (PebbleDark, D302; the
+// web's dark tokens).
 func MidnightTints() Tints {
 	return Tints{
 		"clay":  {Ground: hex("#5A3B30"), Ink: hex("#F0CBB9"), Ledge: hex("#3E281F")},

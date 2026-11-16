@@ -62,6 +62,7 @@ import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
 import { FILE_INLINE_CHARS, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
 import { inTongue } from "../../protocol/src/say.ts";
+import { parseRich } from "../../protocol/src/rich.ts";
 import { detect, inLanguage, langName, languageOfTexts, normalizeTag, words, type LangTag } from "../../protocol/src/lang.ts";
 import { NO_WORDS_YET, said } from "./words.ts";
 import { isConnectCode, redactWith } from "../../protocol/src/redact.ts";
@@ -611,16 +612,22 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   // ---------- channel output ----------
   const appendAiMsg = (text: string, decisionId?: string) => {
-    const t = text.trim();
-    if (!t) return;
+    const raw = text.trim();
+    if (!raw) return;
     // Said already in the cut-off turn this one redoes: once is enough.
-    if (turn?.carried && turn.carried.said.delete(t)) return;
+    if (turn?.carried && turn.carried.said.delete(raw)) return;
+    // D303: each ```ducter-ui block, validated, stands in the text as its plain form; the block
+    // goes with the message for the apps to draw. A task's question carries words only.
+    const rich = parseRich(raw, userLang());
+    const t = rich.text;
     if (!decisionId && CLAIMS_CHOICE.test(t) && !openDecisionExists()) {
       // Honesty guard (live: "选 Go 就保留" with no decision anywhere). The words are already
       // the model's; make them true right away or have it take them back, in a follow-up turn.
       corrections.push(t);
     }
     const body: Bodies["ai_msg"] = turn?.replyTo !== undefined ? { text: t, replyTo: turn.replyTo } : { text: t };
+    if (!decisionId && rich.ui.length) body.ui = rich.ui;
+    if (rich.dropped.length) body.uiDropped = rich.dropped.length;
     if (decisionId) {
       body.decisionId = decisionId;
       if (turn) turn.relayed = true;
@@ -709,7 +716,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const replyToFor = (t: TurnState) => t.replyTo ?? t.triggers[t.triggers.length - 1]?.seq ?? core.log.head();
   const appendAck = (t: TurnState, text: string): { jobId: string } => {
     const jobId = newId("job");
-    core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: text.trim(), replyTo: replyToFor(t) } });
+    core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: parseRich(text.trim(), userLang()).text, replyTo: replyToFor(t) } });
     t.acked = true;
     endWaiting(); // D120: the ack is the reply the user waited for
     return { jobId };

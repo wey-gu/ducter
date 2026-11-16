@@ -761,7 +761,7 @@ a {
   border-top-left-radius: var(--bubble-join);
 }
 /* What sits under a bubble (the quiet row, a status line, the default) is set in to its text. */
-.partner > :not(.bubble):not(.tray):not(.reply):not(.routine-facts):not(.said):not(.cal-card):not(.cal-change):not(.cal-settle):not(.imprint) {
+.partner > :not(.bubble):not(.tray):not(.reply):not(.routine-facts):not(.said):not(.cal-card):not(.cal-change):not(.cal-settle):not(.imprint):not(.rich-card):not(.rich-choices) {
   margin-left: 14px;
 }
 .partner p {
@@ -12621,3 +12621,128 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .chat-qr { align-self: center; }
 }
 @media (prefers-reduced-motion: reduce) { .chat-qr { transition: none; } }
+
+/* ---------- D303: rich answers. A block the partner put in its words, on the partner's side:
+   the card's white on its clay base like the day card; theme tokens only, so Pebble dark follows. */
+.partner.has-rich { width: min(88%, var(--bubble-measure)); }
+.rich-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  width: min(100%, 560px);
+  box-sizing: border-box;
+  margin: 2px 0 4px;
+  padding: var(--s4);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--base);
+  animation: cal-rise 220ms var(--ease) both;
+}
+.rich-title { font-family: var(--head); font-size: var(--md); font-weight: 800; color: var(--ink); line-height: 1.3; }
+.rich-card figcaption { display: flex; flex-direction: column; gap: 2px; }
+.rich-sum { font-size: var(--sm); color: var(--ink-soft); line-height: 1.45; }
+
+/* A table is a real table: its head, its row labels, numbers on the right in even figures. */
+.rich-scroll { overflow-x: auto; margin: 0 calc(-1 * var(--s2)); padding: 0 var(--s2); -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.rich-scroll:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-xs); }
+.rich-table table { width: 100%; border-collapse: collapse; font-size: var(--md); line-height: 1.4; }
+.rich-table th, .rich-table td { padding: 8px 10px; text-align: start; vertical-align: top; }
+.rich-table thead th { font-size: var(--sm); font-weight: 700; color: var(--ink-muted); border-bottom: 1px solid var(--line); vertical-align: bottom; }
+.rich-table tbody th { font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+.rich-table tbody tr + tr > * { border-top: 1px solid var(--line-soft); }
+.rich-table td { color: var(--ink); min-width: 6em; }
+.rich-table .rc-num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rich-table th:first-child { position: sticky; left: 0; background: var(--surface); padding-left: 0; }
+
+/* A chart: a few soft lines with their numbers, bars or a line in the accent, the labels under it. */
+.rich-chart .rc-chart { display: flex; flex-direction: column; gap: 6px; }
+.rich-chart .rc-plot { position: relative; height: 148px; margin: 18px 0 0 2.6em; }
+.rich-chart .rc-tick { position: absolute; left: 0; right: 0; bottom: calc(var(--f) * 100%); border-top: 1px dashed var(--line); }
+.rich-chart .rc-tick.rc-zero { border-top: 1px solid var(--line-2); }
+.rich-chart .rc-tick i { position: absolute; right: calc(100% + 6px); top: -0.7em; font-style: normal; font-size: var(--xs); color: var(--ink-muted); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.4; }
+.rich-chart .rc-bars { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+.rich-chart .rc-col { position: relative; }
+.rich-chart .rc-bar {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: calc(var(--a) * 100%);
+  height: calc((var(--b) - var(--a)) * 100%);
+  min-height: 2px;
+  border-radius: 8px 8px 3px 3px;
+  background: linear-gradient(var(--seam-accent), var(--accent));
+  box-shadow: inset 0 1.5px 0 var(--hi-accent), 0 2px 0 var(--press-accent);
+  transform-origin: bottom;
+  animation: rich-grow 420ms var(--spring-soft) both;
+}
+.rich-chart .rc-col.rc-neg .rc-bar { border-radius: 3px 3px 8px 8px; transform-origin: top; }
+.rich-chart .rc-bar b, .rich-chart .rc-dot b {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rich-chart .rc-col.rc-neg .rc-bar b { bottom: auto; top: calc(100% + 4px); }
+@keyframes rich-grow { from { transform: scaleY(0); } }
+.rich-chart svg.rc-line { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.rich-chart svg.rc-line polyline { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.rich-chart .rc-dot {
+  position: absolute;
+  left: calc(var(--x) * 100%);
+  bottom: calc(var(--f) * 100%);
+  width: 10px;
+  height: 10px;
+  margin: 0 0 -5px -5px;
+  border-radius: var(--pill);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2.5px var(--accent);
+}
+.rich-chart .rc-dot b { bottom: calc(100% + 6px); }
+.rich-chart .rc-xl { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); margin-left: 2.6em; }
+.rich-chart .rc-xl span { text-align: center; font-size: var(--xs); color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* A checklist: clay boxes to tick, on this device only. */
+.rich-check ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rich-check li + li { border-top: 1px solid var(--line-soft); }
+.rich-check label { display: flex; align-items: flex-start; gap: var(--s3); padding: 9px 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rich-check input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.rich-check .rc-box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 7px;
+  background: var(--bg);
+  color: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--line-2), 0 2px 0 var(--line);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), transform var(--t-press) var(--ease);
+}
+.rich-check li.on .rc-box { background: var(--done-surface); color: var(--done-ink); box-shadow: inset 0 0 0 1.5px var(--done-dot), 0 2px 0 var(--done-dot); }
+.rich-check label:active .rc-box { transform: translateY(1px); }
+.rich-check input:focus-visible + .rc-box { outline: 2px solid var(--ink); outline-offset: 2px; }
+.rich-check .rc-item { font-size: var(--md); line-height: 1.45; color: var(--ink); }
+.rich-check li.on .rc-item { color: var(--ink-muted); text-decoration: line-through; text-decoration-color: var(--faint); }
+.rich-tell { display: flex; justify-content: flex-end; }
+
+/* Choices: the answers to tap, under the question; once the conversation moves on they stay as a record. */
+.rich-choices { display: flex; flex-wrap: wrap; gap: var(--s2); padding: 4px 0 6px; }
+.rich-choices .rich-chip { border-radius: var(--pill); height: 38px; padding: 0 16px; font-size: var(--md); }
+.rich-choices.past .rich-chip:not(.picked) { opacity: 0.5; }
+.rich-choices.past .rich-chip { cursor: default; }
+.rich-choices.past .rich-chip.picked { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .rich-card, .rich-chart .rc-bar { animation: none; }
+}
+@media (max-width: 480px) {
+  .partner.has-rich { width: 100%; max-width: 100%; }
+  .rich-card { padding: var(--s3) var(--s4); }
+  .rich-chart .rc-plot { height: 128px; }
+}

@@ -1,0 +1,1670 @@
+{
+ "parse": [
+  {
+   "name": "compare-zh",
+   "lang": "zh",
+   "user": "Mac mini 和 MacBook Air 哪个更适合放家里当 Ducter 的家？帮我比一下",
+   "src": "放家里一直开着，Mac mini 更合适：便宜，插着电不用管电池。\n\n```ducter-ui\n{\"type\":\"table\",\"title\":\"当 Ducter 的家\",\"columns\":[\"\",\"Mac mini M4\",\"MacBook Air M4\"],\"rows\":[[\"起售价\",\"¥4,499\",\"¥7,999\"],[\"内存\",\"16 GB\",\"16 GB\"],[\"一直开着\",\"很适合\",\"要一直插电\"],[\"带出门\",\"不行\",\"可以\"]]}\n```\n\n要是你也想带着它出门，再选 Air。",
+   "text": "放家里一直开着，Mac mini 更合适：便宜，插着电不用管电池。\n\n当 Ducter 的家\n- 起售价：Mac mini M4 ¥4,499，MacBook Air M4 ¥7,999\n- 内存：Mac mini M4 16 GB，MacBook Air M4 16 GB\n- 一直开着：Mac mini M4 很适合，MacBook Air M4 要一直插电\n- 带出门：Mac mini M4 不行，MacBook Air M4 可以\n\n要是你也想带着它出门，再选 Air。",
+   "ui": [
+    {
+     "type": "table",
+     "title": "当 Ducter 的家",
+     "columns": [
+      "",
+      "Mac mini M4",
+      "MacBook Air M4"
+     ],
+     "rows": [
+      [
+       "起售价",
+       "¥4,499",
+       "¥7,999"
+      ],
+      [
+       "内存",
+       "16 GB",
+       "16 GB"
+      ],
+      [
+       "一直开着",
+       "很适合",
+       "要一直插电"
+      ],
+      [
+       "带出门",
+       "不行",
+       "可以"
+      ]
+     ],
+     "plain": "当 Ducter 的家\n- 起售价：Mac mini M4 ¥4,499，MacBook Air M4 ¥7,999\n- 内存：Mac mini M4 16 GB，MacBook Air M4 16 GB\n- 一直开着：Mac mini M4 很适合，MacBook Air M4 要一直插电\n- 带出门：Mac mini M4 不行，MacBook Air M4 可以"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "week-en",
+   "lang": "en",
+   "user": "How many tasks did you finish for me each day this week?",
+   "src": "Thirty-four this week; Friday was the busiest.\n\n```ducter-ui\n{\"type\":\"chart\",\"kind\":\"bar\",\"title\":\"Tasks finished\",\"summary\":\"Friday was the busiest with 9; the weekend was quiet.\",\"points\":[{\"label\":\"Mon\",\"value\":5},{\"label\":\"Tue\",\"value\":8},{\"label\":\"Wed\",\"value\":3},{\"label\":\"Thu\",\"value\":6},{\"label\":\"Fri\",\"value\":9},{\"label\":\"Sat\",\"value\":2},{\"label\":\"Sun\",\"value\":1}]}\n```",
+   "text": "Thirty-four this week; Friday was the busiest.\n\nTasks finished\nFriday was the busiest with 9; the weekend was quiet.\nMon 5, Tue 8, Wed 3, Thu 6, Fri 9, Sat 2, Sun 1",
+   "ui": [
+    {
+     "type": "chart",
+     "kind": "bar",
+     "title": "Tasks finished",
+     "summary": "Friday was the busiest with 9; the weekend was quiet.",
+     "points": [
+      {
+       "label": "Mon",
+       "value": 5
+      },
+      {
+       "label": "Tue",
+       "value": 8
+      },
+      {
+       "label": "Wed",
+       "value": 3
+      },
+      {
+       "label": "Thu",
+       "value": 6
+      },
+      {
+       "label": "Fri",
+       "value": 9
+      },
+      {
+       "label": "Sat",
+       "value": 2
+      },
+      {
+       "label": "Sun",
+       "value": 1
+      }
+     ],
+     "plain": "Tasks finished\nFriday was the busiest with 9; the weekend was quiet.\nMon 5, Tue 8, Wed 3, Thu 6, Fri 9, Sat 2, Sun 1"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "ci-zh",
+   "lang": "zh",
+   "user": "HawDB 的 CI 这周每天要跑多久？",
+   "src": "周四最慢，26 分钟多，是那天加了集成测试；之后回到 22 分钟左右。\n\n```ducter-ui\n{\"type\":\"chart\",\"kind\":\"line\",\"title\":\"HawDB CI 每天平均时长\",\"unit\":\"分钟\",\"summary\":\"周一 18.5 分钟，周四最慢 26.4 分钟，周五回到 22.1 分钟。\",\"points\":[{\"label\":\"周一\",\"value\":18.5},{\"label\":\"周二\",\"value\":21},{\"label\":\"周三\",\"value\":19.2},{\"label\":\"周四\",\"value\":26.4},{\"label\":\"周五\",\"value\":22.1}]}\n```",
+   "text": "周四最慢，26 分钟多，是那天加了集成测试；之后回到 22 分钟左右。\n\nHawDB CI 每天平均时长\n周一 18.5 分钟，周四最慢 26.4 分钟，周五回到 22.1 分钟。\n周一 18.5 分钟，周二 21 分钟，周三 19.2 分钟，周四 26.4 分钟，周五 22.1 分钟",
+   "ui": [
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "HawDB CI 每天平均时长",
+     "unit": "分钟",
+     "summary": "周一 18.5 分钟，周四最慢 26.4 分钟，周五回到 22.1 分钟。",
+     "points": [
+      {
+       "label": "周一",
+       "value": 18.5
+      },
+      {
+       "label": "周二",
+       "value": 21
+      },
+      {
+       "label": "周三",
+       "value": 19.2
+      },
+      {
+       "label": "周四",
+       "value": 26.4
+      },
+      {
+       "label": "周五",
+       "value": 22.1
+      }
+     ],
+     "plain": "HawDB CI 每天平均时长\n周一 18.5 分钟，周四最慢 26.4 分钟，周五回到 22.1 分钟。\n周一 18.5 分钟，周二 21 分钟，周三 19.2 分钟，周四 26.4 分钟，周五 22.1 分钟"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "release-en",
+   "lang": "en",
+   "user": "What's left before 0.0.62 goes out? Give me a list I can tick off",
+   "src": "Four things, and tell me when they're done:\n\n```ducter-ui\n{\"type\":\"checklist\",\"title\":\"Before 0.0.62\",\"items\":[\"Rerun the full partner eval\",\"Check the iPhone build in TestFlight\",\"Tag v0.0.62\",\"Update the release notes page\"],\"tell\":true}\n```",
+   "text": "Four things, and tell me when they're done:\n\nBefore 0.0.62\n- Rerun the full partner eval\n- Check the iPhone build in TestFlight\n- Tag v0.0.62\n- Update the release notes page",
+   "ui": [
+    {
+     "type": "checklist",
+     "title": "Before 0.0.62",
+     "items": [
+      "Rerun the full partner eval",
+      "Check the iPhone build in TestFlight",
+      "Tag v0.0.62",
+      "Update the release notes page"
+     ],
+     "tell": true,
+     "plain": "Before 0.0.62\n- Rerun the full partner eval\n- Check the iPhone build in TestFlight\n- Tag v0.0.62\n- Update the release notes page"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "compare-en",
+   "lang": "en",
+   "user": "Put the Mac mini and the MacBook Air side by side as an always-on home for you",
+   "src": "The Mac mini: it's cheaper and made to stay plugged in.\n\n```ducter-ui\n{\"type\":\"table\",\"title\":\"An always-on home\",\"columns\":[\"\",\"Mac mini M4\",\"MacBook Air M4\"],\"rows\":[[\"From\",\"$599\",\"$999\"],[\"Memory\",\"16 GB\",\"16 GB\"],[\"Always on\",\"Made for it\",\"Needs to stay plugged in\"],[\"Comes with you\",\"No\",\"Yes\"]]}\n```",
+   "text": "The Mac mini: it's cheaper and made to stay plugged in.\n\nAn always-on home\n- From: Mac mini M4 $599, MacBook Air M4 $999\n- Memory: Mac mini M4 16 GB, MacBook Air M4 16 GB\n- Always on: Mac mini M4 Made for it, MacBook Air M4 Needs to stay plugged in\n- Comes with you: Mac mini M4 No, MacBook Air M4 Yes",
+   "ui": [
+    {
+     "type": "table",
+     "title": "An always-on home",
+     "columns": [
+      "",
+      "Mac mini M4",
+      "MacBook Air M4"
+     ],
+     "rows": [
+      [
+       "From",
+       "$599",
+       "$999"
+      ],
+      [
+       "Memory",
+       "16 GB",
+       "16 GB"
+      ],
+      [
+       "Always on",
+       "Made for it",
+       "Needs to stay plugged in"
+      ],
+      [
+       "Comes with you",
+       "No",
+       "Yes"
+      ]
+     ],
+     "plain": "An always-on home\n- From: Mac mini M4 $599, MacBook Air M4 $999\n- Memory: Mac mini M4 16 GB, MacBook Air M4 16 GB\n- Always on: Mac mini M4 Made for it, MacBook Air M4 Needs to stay plugged in\n- Comes with you: Mac mini M4 No, MacBook Air M4 Yes"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "release-zh",
+   "lang": "zh",
+   "user": "发 0.0.62 之前我还得自己做几件事：重跑整套伙伴测评、在 TestFlight 里看一眼 iPhone 版、打 tag、更新发布说明。给我列个能勾的单子",
+   "src": "好，四件，做完了跟我说一声：\n\n```ducter-ui\n{\"type\":\"checklist\",\"title\":\"发 0.0.62 之前\",\"items\":[\"重跑整套伙伴测评\",\"在 TestFlight 里看一眼 iPhone 版\",\"打 v0.0.62 的 tag\",\"更新发布说明\"],\"tell\":true}\n```",
+   "text": "好，四件，做完了跟我说一声：\n\n发 0.0.62 之前\n- 重跑整套伙伴测评\n- 在 TestFlight 里看一眼 iPhone 版\n- 打 v0.0.62 的 tag\n- 更新发布说明",
+   "ui": [
+    {
+     "type": "checklist",
+     "title": "发 0.0.62 之前",
+     "items": [
+      "重跑整套伙伴测评",
+      "在 TestFlight 里看一眼 iPhone 版",
+      "打 v0.0.62 的 tag",
+      "更新发布说明"
+     ],
+     "tell": true,
+     "plain": "发 0.0.62 之前\n- 重跑整套伙伴测评\n- 在 TestFlight 里看一眼 iPhone 版\n- 打 v0.0.62 的 tag\n- 更新发布说明"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "which-repo-zh",
+   "lang": "zh",
+   "user": "帮我把那个时好时坏的测试修一下",
+   "src": "哪个仓库里的？\n\n```ducter-ui\n{\"type\":\"choices\",\"options\":[\"ducter\",\"hawdb\",\"foo\"]}\n```",
+   "text": "哪个仓库里的？\n\n- ducter\n- hawdb\n- foo",
+   "ui": [
+    {
+     "type": "choices",
+     "options": [
+      "ducter",
+      "hawdb",
+      "foo"
+     ],
+     "plain": "- ducter\n- hawdb\n- foo"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "which-meeting-en",
+   "lang": "en",
+   "user": "I can't make both at 10, move one",
+   "src": "Which one should move?\n\n```ducter-ui\n{\"type\":\"choices\",\"options\":[\"The dentist\",\"HawDB weekly\"]}\n```",
+   "text": "Which one should move?\n\n- The dentist\n- HawDB weekly",
+   "ui": [
+    {
+     "type": "choices",
+     "options": [
+      "The dentist",
+      "HawDB weekly"
+     ],
+     "plain": "- The dentist\n- HawDB weekly"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "bad-json",
+   "lang": "en",
+   "src": "Here it is:\n\n```ducter-ui\n{\"type\": \"table\", \"columns\": [\"a\"\n```\n\nThat's all.",
+   "text": "Here it is:\n\nThat's all.",
+   "ui": [],
+   "dropped": [
+    {
+     "error": "not valid JSON"
+    }
+   ]
+  },
+  {
+   "name": "only-bad",
+   "lang": "en",
+   "src": "```ducter-ui\n{\"type\":\"chart\",\"kind\":\"pie\",\"summary\":\"x\",\"points\":[]}\n```",
+   "text": "```\n{\"type\":\"chart\",\"kind\":\"pie\",\"summary\":\"x\",\"points\":[]}\n```",
+   "ui": [],
+   "dropped": [
+    {
+     "error": "chart.kind is \"bar\" or \"line\""
+    }
+   ]
+  },
+  {
+   "name": "too-many-rows",
+   "lang": "en",
+   "src": "```ducter-ui\n{\"type\":\"table\",\"columns\":[\"n\",\"v\"],\"rows\":[[\"r0\",\"0\"],[\"r1\",\"1\"],[\"r2\",\"2\"],[\"r3\",\"3\"],[\"r4\",\"4\"],[\"r5\",\"5\"],[\"r6\",\"6\"],[\"r7\",\"7\"],[\"r8\",\"8\"],[\"r9\",\"9\"],[\"r10\",\"10\"],[\"r11\",\"11\"],[\"r12\",\"12\"]]}\n```",
+   "text": "```\n{\"type\":\"table\",\"columns\":[\"n\",\"v\"],\"rows\":[[\"r0\",\"0\"],[\"r1\",\"1\"],[\"r2\",\"2\"],[\"r3\",\"3\"],[\"r4\",\"4\"],[\"r5\",\"5\"],[\"r6\",\"6\"],[\"r7\",\"7\"],[\"r8\",\"8\"],[\"r9\",\"9\"],[\"r10\",\"10\"],[\"r11\",\"11\"],[\"r12\",\"12\"]]}\n```",
+   "ui": [],
+   "dropped": [
+    {
+     "error": "table rows: 1–12, got 13"
+    }
+   ]
+  },
+  {
+   "name": "unclosed",
+   "lang": "zh",
+   "src": "选一个：\n```ducter-ui\n{\"type\":\"choices\",\"options\":[\"好\",\"先不\"]}",
+   "text": "选一个：\n\n- 好\n- 先不",
+   "ui": [
+    {
+     "type": "choices",
+     "options": [
+      "好",
+      "先不"
+     ],
+     "plain": "- 好\n- 先不"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "negatives",
+   "lang": "en",
+   "src": "```ducter-ui\n{\"type\":\"chart\",\"kind\":\"line\",\"title\":\"Tokyo lows\",\"unit\":\"°C\",\"summary\":\"From -3 °C on Monday up to 7 °C by Friday.\",\"points\":[{\"label\":\"Mon\",\"value\":-3},{\"label\":\"Tue\",\"value\":-1.5},{\"label\":\"Wed\",\"value\":2},{\"label\":\"Thu\",\"value\":4.25},{\"label\":\"Fri\",\"value\":7}]}\n```",
+   "text": "Tokyo lows\nFrom -3 °C on Monday up to 7 °C by Friday.\nMon -3°C, Tue -1.5°C, Wed 2°C, Thu 4.25°C, Fri 7°C",
+   "ui": [
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "Tokyo lows",
+     "unit": "°C",
+     "summary": "From -3 °C on Monday up to 7 °C by Friday.",
+     "points": [
+      {
+       "label": "Mon",
+       "value": -3
+      },
+      {
+       "label": "Tue",
+       "value": -1.5
+      },
+      {
+       "label": "Wed",
+       "value": 2
+      },
+      {
+       "label": "Thu",
+       "value": 4.25
+      },
+      {
+       "label": "Fri",
+       "value": 7
+      }
+     ],
+     "plain": "Tokyo lows\nFrom -3 °C on Monday up to 7 °C by Friday.\nMon -3°C, Tue -1.5°C, Wed 2°C, Thu 4.25°C, Fri 7°C"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "numbers-table",
+   "lang": "en",
+   "src": "```ducter-ui\n{\"type\":\"table\",\"columns\":[\"Plan\",\"Price\",\"Window\",\"Note\"],\"rows\":[[\"Pro\",\"$20\",\"200K\",\"for most days\"],[\"Max\",\"$100\",\"1M\",\"\"],[\"Team\",30,\"200K\",\"per seat\"]]}\n```",
+   "text": "- Pro: Price $20, Window 200K, Note for most days\n- Max: Price $100, Window 1M\n- Team: Price 30, Window 200K, Note per seat",
+   "ui": [
+    {
+     "type": "table",
+     "columns": [
+      "Plan",
+      "Price",
+      "Window",
+      "Note"
+     ],
+     "rows": [
+      [
+       "Pro",
+       "$20",
+       "200K",
+       "for most days"
+      ],
+      [
+       "Max",
+       "$100",
+       "1M",
+       ""
+      ],
+      [
+       "Team",
+       "30",
+       "200K",
+       "per seat"
+      ]
+     ],
+     "plain": "- Pro: Price $20, Window 200K, Note for most days\n- Max: Price $100, Window 1M\n- Team: Price 30, Window 200K, Note per seat"
+    }
+   ],
+   "dropped": []
+  },
+  {
+   "name": "big",
+   "lang": "en",
+   "src": "```ducter-ui\n{\"type\":\"chart\",\"kind\":\"bar\",\"unit\":\"USD\",\"summary\":\"Spend rose each month.\",\"points\":[{\"label\":\"Sep\",\"value\":1240},{\"label\":\"Oct\",\"value\":2310.5},{\"label\":\"Nov\",\"value\":3875}]}\n```",
+   "text": "Spend rose each month.\nSep 1,240 USD, Oct 2,310.5 USD, Nov 3,875 USD",
+   "ui": [
+    {
+     "type": "chart",
+     "kind": "bar",
+     "unit": "USD",
+     "summary": "Spend rose each month.",
+     "points": [
+      {
+       "label": "Sep",
+       "value": 1240
+      },
+      {
+       "label": "Oct",
+       "value": 2310.5
+      },
+      {
+       "label": "Nov",
+       "value": 3875
+      }
+     ],
+     "plain": "Spend rose each month.\nSep 1,240 USD, Oct 2,310.5 USD, Nov 3,875 USD"
+    }
+   ],
+   "dropped": []
+  }
+ ],
+ "split": [
+  {
+   "name": "compare-zh",
+   "text": "放家里一直开着，Mac mini 更合适：便宜，插着电不用管电池。\n\n当 Ducter 的家\n- 起售价：Mac mini M4 ¥4,499，MacBook Air M4 ¥7,999\n- 内存：Mac mini M4 16 GB，MacBook Air M4 16 GB\n- 一直开着：Mac mini M4 很适合，MacBook Air M4 要一直插电\n- 带出门：Mac mini M4 不行，MacBook Air M4 可以\n\n要是你也想带着它出门，再选 Air。",
+   "ui": [
+    {
+     "type": "table",
+     "title": "当 Ducter 的家",
+     "columns": [
+      "",
+      "Mac mini M4",
+      "MacBook Air M4"
+     ],
+     "rows": [
+      [
+       "起售价",
+       "¥4,499",
+       "¥7,999"
+      ],
+      [
+       "内存",
+       "16 GB",
+       "16 GB"
+      ],
+      [
+       "一直开着",
+       "很适合",
+       "要一直插电"
+      ],
+      [
+       "带出门",
+       "不行",
+       "可以"
+      ]
+     ],
+     "plain": "当 Ducter 的家\n- 起售价：Mac mini M4 ¥4,499，MacBook Air M4 ¥7,999\n- 内存：Mac mini M4 16 GB，MacBook Air M4 16 GB\n- 一直开着：Mac mini M4 很适合，MacBook Air M4 要一直插电\n- 带出门：Mac mini M4 不行，MacBook Air M4 可以"
+    }
+   ],
+   "parts": [
+    {
+     "words": "放家里一直开着，Mac mini 更合适：便宜，插着电不用管电池。"
+    },
+    {
+     "block": 0
+    },
+    {
+     "words": "要是你也想带着它出门，再选 Air。"
+    }
+   ]
+  },
+  {
+   "name": "week-en",
+   "text": "Thirty-four this week; Friday was the busiest.\n\nTasks finished\nFriday was the busiest with 9; the weekend was quiet.\nMon 5, Tue 8, Wed 3, Thu 6, Fri 9, Sat 2, Sun 1",
+   "ui": [
+    {
+     "type": "chart",
+     "kind": "bar",
+     "title": "Tasks finished",
+     "summary": "Friday was the busiest with 9; the weekend was quiet.",
+     "points": [
+      {
+       "label": "Mon",
+       "value": 5
+      },
+      {
+       "label": "Tue",
+       "value": 8
+      },
+      {
+       "label": "Wed",
+       "value": 3
+      },
+      {
+       "label": "Thu",
+       "value": 6
+      },
+      {
+       "label": "Fri",
+       "value": 9
+      },
+      {
+       "label": "Sat",
+       "value": 2
+      },
+      {
+       "label": "Sun",
+       "value": 1
+      }
+     ],
+     "plain": "Tasks finished\nFriday was the busiest with 9; the weekend was quiet.\nMon 5, Tue 8, Wed 3, Thu 6, Fri 9, Sat 2, Sun 1"
+    }
+   ],
+   "parts": [
+    {
+     "words": "Thirty-four this week; Friday was the busiest."
+    },
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "ci-zh",
+   "text": "周四最慢，26 分钟多，是那天加了集成测试；之后回到 22 分钟左右。\n\nHawDB CI 每天平均时长\n周一 18.5 分钟，周四最慢 26.4 分钟，周五回到 22.1 分钟。\n周一 18.5 分钟，周二 21 分钟，周三 19.2 分钟，周四 26.4 分钟，周五 22.1 分钟",
+   "ui": [
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "HawDB CI 每天平均时长",
+     "unit": "分钟",
+     "summary": "周一 18.5 分钟，周四最慢 26.4 分钟，周五回到 22.1 分钟。",
+     "points": [
+      {
+       "label": "周一",
+       "value": 18.5
+      },
+      {
+       "label": "周二",
+       "value": 21
+      },
+      {
+       "label": "周三",
+       "value": 19.2
+      },
+      {
+       "label": "周四",
+       "value": 26.4
+      },
+      {
+       "label": "周五",
+       "value": 22.1
+      }
+     ],
+     "plain": "HawDB CI 每天平均时长\n周一 18.5 分钟，周四最慢 26.4 分钟，周五回到 22.1 分钟。\n周一 18.5 分钟，周二 21 分钟，周三 19.2 分钟，周四 26.4 分钟，周五 22.1 分钟"
+    }
+   ],
+   "parts": [
+    {
+     "words": "周四最慢，26 分钟多，是那天加了集成测试；之后回到 22 分钟左右。"
+    },
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "release-en",
+   "text": "Four things, and tell me when they're done:\n\nBefore 0.0.62\n- Rerun the full partner eval\n- Check the iPhone build in TestFlight\n- Tag v0.0.62\n- Update the release notes page",
+   "ui": [
+    {
+     "type": "checklist",
+     "title": "Before 0.0.62",
+     "items": [
+      "Rerun the full partner eval",
+      "Check the iPhone build in TestFlight",
+      "Tag v0.0.62",
+      "Update the release notes page"
+     ],
+     "tell": true,
+     "plain": "Before 0.0.62\n- Rerun the full partner eval\n- Check the iPhone build in TestFlight\n- Tag v0.0.62\n- Update the release notes page"
+    }
+   ],
+   "parts": [
+    {
+     "words": "Four things, and tell me when they're done:"
+    },
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "compare-en",
+   "text": "The Mac mini: it's cheaper and made to stay plugged in.\n\nAn always-on home\n- From: Mac mini M4 $599, MacBook Air M4 $999\n- Memory: Mac mini M4 16 GB, MacBook Air M4 16 GB\n- Always on: Mac mini M4 Made for it, MacBook Air M4 Needs to stay plugged in\n- Comes with you: Mac mini M4 No, MacBook Air M4 Yes",
+   "ui": [
+    {
+     "type": "table",
+     "title": "An always-on home",
+     "columns": [
+      "",
+      "Mac mini M4",
+      "MacBook Air M4"
+     ],
+     "rows": [
+      [
+       "From",
+       "$599",
+       "$999"
+      ],
+      [
+       "Memory",
+       "16 GB",
+       "16 GB"
+      ],
+      [
+       "Always on",
+       "Made for it",
+       "Needs to stay plugged in"
+      ],
+      [
+       "Comes with you",
+       "No",
+       "Yes"
+      ]
+     ],
+     "plain": "An always-on home\n- From: Mac mini M4 $599, MacBook Air M4 $999\n- Memory: Mac mini M4 16 GB, MacBook Air M4 16 GB\n- Always on: Mac mini M4 Made for it, MacBook Air M4 Needs to stay plugged in\n- Comes with you: Mac mini M4 No, MacBook Air M4 Yes"
+    }
+   ],
+   "parts": [
+    {
+     "words": "The Mac mini: it's cheaper and made to stay plugged in."
+    },
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "release-zh",
+   "text": "好，四件，做完了跟我说一声：\n\n发 0.0.62 之前\n- 重跑整套伙伴测评\n- 在 TestFlight 里看一眼 iPhone 版\n- 打 v0.0.62 的 tag\n- 更新发布说明",
+   "ui": [
+    {
+     "type": "checklist",
+     "title": "发 0.0.62 之前",
+     "items": [
+      "重跑整套伙伴测评",
+      "在 TestFlight 里看一眼 iPhone 版",
+      "打 v0.0.62 的 tag",
+      "更新发布说明"
+     ],
+     "tell": true,
+     "plain": "发 0.0.62 之前\n- 重跑整套伙伴测评\n- 在 TestFlight 里看一眼 iPhone 版\n- 打 v0.0.62 的 tag\n- 更新发布说明"
+    }
+   ],
+   "parts": [
+    {
+     "words": "好，四件，做完了跟我说一声："
+    },
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "which-repo-zh",
+   "text": "哪个仓库里的？\n\n- ducter\n- hawdb\n- foo",
+   "ui": [
+    {
+     "type": "choices",
+     "options": [
+      "ducter",
+      "hawdb",
+      "foo"
+     ],
+     "plain": "- ducter\n- hawdb\n- foo"
+    }
+   ],
+   "parts": [
+    {
+     "words": "哪个仓库里的？"
+    },
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "which-meeting-en",
+   "text": "Which one should move?\n\n- The dentist\n- HawDB weekly",
+   "ui": [
+    {
+     "type": "choices",
+     "options": [
+      "The dentist",
+      "HawDB weekly"
+     ],
+     "plain": "- The dentist\n- HawDB weekly"
+    }
+   ],
+   "parts": [
+    {
+     "words": "Which one should move?"
+    },
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "unclosed",
+   "text": "选一个：\n\n- 好\n- 先不",
+   "ui": [
+    {
+     "type": "choices",
+     "options": [
+      "好",
+      "先不"
+     ],
+     "plain": "- 好\n- 先不"
+    }
+   ],
+   "parts": [
+    {
+     "words": "选一个："
+    },
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "negatives",
+   "text": "Tokyo lows\nFrom -3 °C on Monday up to 7 °C by Friday.\nMon -3°C, Tue -1.5°C, Wed 2°C, Thu 4.25°C, Fri 7°C",
+   "ui": [
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "Tokyo lows",
+     "unit": "°C",
+     "summary": "From -3 °C on Monday up to 7 °C by Friday.",
+     "points": [
+      {
+       "label": "Mon",
+       "value": -3
+      },
+      {
+       "label": "Tue",
+       "value": -1.5
+      },
+      {
+       "label": "Wed",
+       "value": 2
+      },
+      {
+       "label": "Thu",
+       "value": 4.25
+      },
+      {
+       "label": "Fri",
+       "value": 7
+      }
+     ],
+     "plain": "Tokyo lows\nFrom -3 °C on Monday up to 7 °C by Friday.\nMon -3°C, Tue -1.5°C, Wed 2°C, Thu 4.25°C, Fri 7°C"
+    }
+   ],
+   "parts": [
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "numbers-table",
+   "text": "- Pro: Price $20, Window 200K, Note for most days\n- Max: Price $100, Window 1M\n- Team: Price 30, Window 200K, Note per seat",
+   "ui": [
+    {
+     "type": "table",
+     "columns": [
+      "Plan",
+      "Price",
+      "Window",
+      "Note"
+     ],
+     "rows": [
+      [
+       "Pro",
+       "$20",
+       "200K",
+       "for most days"
+      ],
+      [
+       "Max",
+       "$100",
+       "1M",
+       ""
+      ],
+      [
+       "Team",
+       "30",
+       "200K",
+       "per seat"
+      ]
+     ],
+     "plain": "- Pro: Price $20, Window 200K, Note for most days\n- Max: Price $100, Window 1M\n- Team: Price 30, Window 200K, Note per seat"
+    }
+   ],
+   "parts": [
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "big",
+   "text": "Spend rose each month.\nSep 1,240 USD, Oct 2,310.5 USD, Nov 3,875 USD",
+   "ui": [
+    {
+     "type": "chart",
+     "kind": "bar",
+     "unit": "USD",
+     "summary": "Spend rose each month.",
+     "points": [
+      {
+       "label": "Sep",
+       "value": 1240
+      },
+      {
+       "label": "Oct",
+       "value": 2310.5
+      },
+      {
+       "label": "Nov",
+       "value": 3875
+      }
+     ],
+     "plain": "Spend rose each month.\nSep 1,240 USD, Oct 2,310.5 USD, Nov 3,875 USD"
+    }
+   ],
+   "parts": [
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "plain missing goes last",
+   "text": "Words only.",
+   "ui": [
+    {
+     "type": "choices",
+     "options": [
+      "a",
+      "b"
+     ],
+     "plain": "- a\n- b"
+    }
+   ],
+   "parts": [
+    {
+     "words": "Words only."
+    },
+    {
+     "block": 0
+    }
+   ]
+  },
+  {
+   "name": "unknown kind is skipped",
+   "text": "Before.\n\n- x\n\nAfter.",
+   "ui": [
+    {
+     "type": "map",
+     "plain": "- x"
+    }
+   ],
+   "parts": [
+    {
+     "words": "Before.\n\n- x\n\nAfter."
+    }
+   ]
+  },
+  {
+   "name": "two blocks",
+   "text": "One.\n\n- a\n- b\n\nTwo.\n\n- c\n\nEnd.",
+   "ui": [
+    {
+     "type": "checklist",
+     "items": [
+      "a",
+      "b"
+     ],
+     "plain": "- a\n- b"
+    },
+    {
+     "type": "checklist",
+     "items": [
+      "c"
+     ],
+     "plain": "- c"
+    }
+   ],
+   "parts": [
+    {
+     "words": "One."
+    },
+    {
+     "block": 0
+    },
+    {
+     "words": "Two."
+    },
+    {
+     "block": 1
+    },
+    {
+     "words": "End."
+    }
+   ]
+  }
+ ],
+ "model": [
+  {
+   "name": "compare-zh#0",
+   "block": {
+    "type": "table",
+    "title": "当 Ducter 的家",
+    "columns": [
+     "",
+     "Mac mini M4",
+     "MacBook Air M4"
+    ],
+    "rows": [
+     [
+      "起售价",
+      "¥4,499",
+      "¥7,999"
+     ],
+     [
+      "内存",
+      "16 GB",
+      "16 GB"
+     ],
+     [
+      "一直开着",
+      "很适合",
+      "要一直插电"
+     ],
+     [
+      "带出门",
+      "不行",
+      "可以"
+     ]
+    ],
+    "plain": "当 Ducter 的家\n- 起售价：Mac mini M4 ¥4,499，MacBook Air M4 ¥7,999\n- 内存：Mac mini M4 16 GB，MacBook Air M4 16 GB\n- 一直开着：Mac mini M4 很适合，MacBook Air M4 要一直插电\n- 带出门：Mac mini M4 不行，MacBook Air M4 可以"
+   },
+   "model": {
+    "type": "table",
+    "title": "当 Ducter 的家",
+    "columns": [
+     "",
+     "Mac mini M4",
+     "MacBook Air M4"
+    ],
+    "rows": [
+     [
+      "起售价",
+      "¥4,499",
+      "¥7,999"
+     ],
+     [
+      "内存",
+      "16 GB",
+      "16 GB"
+     ],
+     [
+      "一直开着",
+      "很适合",
+      "要一直插电"
+     ],
+     [
+      "带出门",
+      "不行",
+      "可以"
+     ]
+    ],
+    "numeric": [
+     false,
+     false,
+     false
+    ]
+   }
+  },
+  {
+   "name": "week-en#0",
+   "block": {
+    "type": "chart",
+    "kind": "bar",
+    "title": "Tasks finished",
+    "summary": "Friday was the busiest with 9; the weekend was quiet.",
+    "points": [
+     {
+      "label": "Mon",
+      "value": 5
+     },
+     {
+      "label": "Tue",
+      "value": 8
+     },
+     {
+      "label": "Wed",
+      "value": 3
+     },
+     {
+      "label": "Thu",
+      "value": 6
+     },
+     {
+      "label": "Fri",
+      "value": 9
+     },
+     {
+      "label": "Sat",
+      "value": 2
+     },
+     {
+      "label": "Sun",
+      "value": 1
+     }
+    ],
+    "plain": "Tasks finished\nFriday was the busiest with 9; the weekend was quiet.\nMon 5, Tue 8, Wed 3, Thu 6, Fri 9, Sat 2, Sun 1"
+   },
+   "model": {
+    "type": "chart",
+    "kind": "bar",
+    "title": "Tasks finished",
+    "unit": "",
+    "summary": "Friday was the busiest with 9; the weekend was quiet.",
+    "lo": 0,
+    "hi": 10,
+    "ticks": [
+     {
+      "value": 0,
+      "label": "0"
+     },
+     {
+      "value": 2,
+      "label": "2"
+     },
+     {
+      "value": 4,
+      "label": "4"
+     },
+     {
+      "value": 6,
+      "label": "6"
+     },
+     {
+      "value": 8,
+      "label": "8"
+     },
+     {
+      "value": 10,
+      "label": "10"
+     }
+    ],
+    "points": [
+     {
+      "label": "Mon",
+      "value": 5,
+      "text": "5",
+      "frac": 0.5
+     },
+     {
+      "label": "Tue",
+      "value": 8,
+      "text": "8",
+      "frac": 0.8
+     },
+     {
+      "label": "Wed",
+      "value": 3,
+      "text": "3",
+      "frac": 0.3
+     },
+     {
+      "label": "Thu",
+      "value": 6,
+      "text": "6",
+      "frac": 0.6
+     },
+     {
+      "label": "Fri",
+      "value": 9,
+      "text": "9",
+      "frac": 0.9
+     },
+     {
+      "label": "Sat",
+      "value": 2,
+      "text": "2",
+      "frac": 0.2
+     },
+     {
+      "label": "Sun",
+      "value": 1,
+      "text": "1",
+      "frac": 0.1
+     }
+    ],
+    "values": true
+   }
+  },
+  {
+   "name": "ci-zh#0",
+   "block": {
+    "type": "chart",
+    "kind": "line",
+    "title": "HawDB CI 每天平均时长",
+    "unit": "分钟",
+    "summary": "周一 18.5 分钟，周四最慢 26.4 分钟，周五回到 22.1 分钟。",
+    "points": [
+     {
+      "label": "周一",
+      "value": 18.5
+     },
+     {
+      "label": "周二",
+      "value": 21
+     },
+     {
+      "label": "周三",
+      "value": 19.2
+     },
+     {
+      "label": "周四",
+      "value": 26.4
+     },
+     {
+      "label": "周五",
+      "value": 22.1
+     }
+    ],
+    "plain": "HawDB CI 每天平均时长\n周一 18.5 分钟，周四最慢 26.4 分钟，周五回到 22.1 分钟。\n周一 18.5 分钟，周二 21 分钟，周三 19.2 分钟，周四 26.4 分钟，周五 22.1 分钟"
+   },
+   "model": {
+    "type": "chart",
+    "kind": "line",
+    "title": "HawDB CI 每天平均时长",
+    "unit": "分钟",
+    "summary": "周一 18.5 分钟，周四最慢 26.4 分钟，周五回到 22.1 分钟。",
+    "lo": 0,
+    "hi": 30,
+    "ticks": [
+     {
+      "value": 0,
+      "label": "0"
+     },
+     {
+      "value": 10,
+      "label": "10"
+     },
+     {
+      "value": 20,
+      "label": "20"
+     },
+     {
+      "value": 30,
+      "label": "30"
+     }
+    ],
+    "points": [
+     {
+      "label": "周一",
+      "value": 18.5,
+      "text": "18.5 分钟",
+      "frac": 0.616666667
+     },
+     {
+      "label": "周二",
+      "value": 21,
+      "text": "21 分钟",
+      "frac": 0.7
+     },
+     {
+      "label": "周三",
+      "value": 19.2,
+      "text": "19.2 分钟",
+      "frac": 0.64
+     },
+     {
+      "label": "周四",
+      "value": 26.4,
+      "text": "26.4 分钟",
+      "frac": 0.88
+     },
+     {
+      "label": "周五",
+      "value": 22.1,
+      "text": "22.1 分钟",
+      "frac": 0.736666667
+     }
+    ],
+    "values": true
+   }
+  },
+  {
+   "name": "release-en#0",
+   "block": {
+    "type": "checklist",
+    "title": "Before 0.0.62",
+    "items": [
+     "Rerun the full partner eval",
+     "Check the iPhone build in TestFlight",
+     "Tag v0.0.62",
+     "Update the release notes page"
+    ],
+    "tell": true,
+    "plain": "Before 0.0.62\n- Rerun the full partner eval\n- Check the iPhone build in TestFlight\n- Tag v0.0.62\n- Update the release notes page"
+   },
+   "model": {
+    "type": "checklist",
+    "title": "Before 0.0.62",
+    "items": [
+     "Rerun the full partner eval",
+     "Check the iPhone build in TestFlight",
+     "Tag v0.0.62",
+     "Update the release notes page"
+    ],
+    "tell": true
+   }
+  },
+  {
+   "name": "compare-en#0",
+   "block": {
+    "type": "table",
+    "title": "An always-on home",
+    "columns": [
+     "",
+     "Mac mini M4",
+     "MacBook Air M4"
+    ],
+    "rows": [
+     [
+      "From",
+      "$599",
+      "$999"
+     ],
+     [
+      "Memory",
+      "16 GB",
+      "16 GB"
+     ],
+     [
+      "Always on",
+      "Made for it",
+      "Needs to stay plugged in"
+     ],
+     [
+      "Comes with you",
+      "No",
+      "Yes"
+     ]
+    ],
+    "plain": "An always-on home\n- From: Mac mini M4 $599, MacBook Air M4 $999\n- Memory: Mac mini M4 16 GB, MacBook Air M4 16 GB\n- Always on: Mac mini M4 Made for it, MacBook Air M4 Needs to stay plugged in\n- Comes with you: Mac mini M4 No, MacBook Air M4 Yes"
+   },
+   "model": {
+    "type": "table",
+    "title": "An always-on home",
+    "columns": [
+     "",
+     "Mac mini M4",
+     "MacBook Air M4"
+    ],
+    "rows": [
+     [
+      "From",
+      "$599",
+      "$999"
+     ],
+     [
+      "Memory",
+      "16 GB",
+      "16 GB"
+     ],
+     [
+      "Always on",
+      "Made for it",
+      "Needs to stay plugged in"
+     ],
+     [
+      "Comes with you",
+      "No",
+      "Yes"
+     ]
+    ],
+    "numeric": [
+     false,
+     false,
+     false
+    ]
+   }
+  },
+  {
+   "name": "release-zh#0",
+   "block": {
+    "type": "checklist",
+    "title": "发 0.0.62 之前",
+    "items": [
+     "重跑整套伙伴测评",
+     "在 TestFlight 里看一眼 iPhone 版",
+     "打 v0.0.62 的 tag",
+     "更新发布说明"
+    ],
+    "tell": true,
+    "plain": "发 0.0.62 之前\n- 重跑整套伙伴测评\n- 在 TestFlight 里看一眼 iPhone 版\n- 打 v0.0.62 的 tag\n- 更新发布说明"
+   },
+   "model": {
+    "type": "checklist",
+    "title": "发 0.0.62 之前",
+    "items": [
+     "重跑整套伙伴测评",
+     "在 TestFlight 里看一眼 iPhone 版",
+     "打 v0.0.62 的 tag",
+     "更新发布说明"
+    ],
+    "tell": true
+   }
+  },
+  {
+   "name": "which-repo-zh#0",
+   "block": {
+    "type": "choices",
+    "options": [
+     "ducter",
+     "hawdb",
+     "foo"
+    ],
+    "plain": "- ducter\n- hawdb\n- foo"
+   },
+   "model": {
+    "type": "choices",
+    "options": [
+     "ducter",
+     "hawdb",
+     "foo"
+    ]
+   }
+  },
+  {
+   "name": "which-meeting-en#0",
+   "block": {
+    "type": "choices",
+    "options": [
+     "The dentist",
+     "HawDB weekly"
+    ],
+    "plain": "- The dentist\n- HawDB weekly"
+   },
+   "model": {
+    "type": "choices",
+    "options": [
+     "The dentist",
+     "HawDB weekly"
+    ]
+   }
+  },
+  {
+   "name": "unclosed#0",
+   "block": {
+    "type": "choices",
+    "options": [
+     "好",
+     "先不"
+    ],
+    "plain": "- 好\n- 先不"
+   },
+   "model": {
+    "type": "choices",
+    "options": [
+     "好",
+     "先不"
+    ]
+   }
+  },
+  {
+   "name": "negatives#0",
+   "block": {
+    "type": "chart",
+    "kind": "line",
+    "title": "Tokyo lows",
+    "unit": "°C",
+    "summary": "From -3 °C on Monday up to 7 °C by Friday.",
+    "points": [
+     {
+      "label": "Mon",
+      "value": -3
+     },
+     {
+      "label": "Tue",
+      "value": -1.5
+     },
+     {
+      "label": "Wed",
+      "value": 2
+     },
+     {
+      "label": "Thu",
+      "value": 4.25
+     },
+     {
+      "label": "Fri",
+      "value": 7
+     }
+    ],
+    "plain": "Tokyo lows\nFrom -3 °C on Monday up to 7 °C by Friday.\nMon -3°C, Tue -1.5°C, Wed 2°C, Thu 4.25°C, Fri 7°C"
+   },
+   "model": {
+    "type": "chart",
+    "kind": "line",
+    "title": "Tokyo lows",
+    "unit": "°C",
+    "summary": "From -3 °C on Monday up to 7 °C by Friday.",
+    "lo": -5,
+    "hi": 10,
+    "ticks": [
+     {
+      "value": -5,
+      "label": "-5"
+     },
+     {
+      "value": 0,
+      "label": "0"
+     },
+     {
+      "value": 5,
+      "label": "5"
+     },
+     {
+      "value": 10,
+      "label": "10"
+     }
+    ],
+    "points": [
+     {
+      "label": "Mon",
+      "value": -3,
+      "text": "-3°C",
+      "frac": 0.133333333
+     },
+     {
+      "label": "Tue",
+      "value": -1.5,
+      "text": "-1.5°C",
+      "frac": 0.233333333
+     },
+     {
+      "label": "Wed",
+      "value": 2,
+      "text": "2°C",
+      "frac": 0.466666667
+     },
+     {
+      "label": "Thu",
+      "value": 4.25,
+      "text": "4.25°C",
+      "frac": 0.616666667
+     },
+     {
+      "label": "Fri",
+      "value": 7,
+      "text": "7°C",
+      "frac": 0.8
+     }
+    ],
+    "values": true
+   }
+  },
+  {
+   "name": "numbers-table#0",
+   "block": {
+    "type": "table",
+    "columns": [
+     "Plan",
+     "Price",
+     "Window",
+     "Note"
+    ],
+    "rows": [
+     [
+      "Pro",
+      "$20",
+      "200K",
+      "for most days"
+     ],
+     [
+      "Max",
+      "$100",
+      "1M",
+      ""
+     ],
+     [
+      "Team",
+      "30",
+      "200K",
+      "per seat"
+     ]
+    ],
+    "plain": "- Pro: Price $20, Window 200K, Note for most days\n- Max: Price $100, Window 1M\n- Team: Price 30, Window 200K, Note per seat"
+   },
+   "model": {
+    "type": "table",
+    "title": "",
+    "columns": [
+     "Plan",
+     "Price",
+     "Window",
+     "Note"
+    ],
+    "rows": [
+     [
+      "Pro",
+      "$20",
+      "200K",
+      "for most days"
+     ],
+     [
+      "Max",
+      "$100",
+      "1M",
+      ""
+     ],
+     [
+      "Team",
+      "30",
+      "200K",
+      "per seat"
+     ]
+    ],
+    "numeric": [
+     false,
+     true,
+     true,
+     false
+    ]
+   }
+  },
+  {
+   "name": "big#0",
+   "block": {
+    "type": "chart",
+    "kind": "bar",
+    "unit": "USD",
+    "summary": "Spend rose each month.",
+    "points": [
+     {
+      "label": "Sep",
+      "value": 1240
+     },
+     {
+      "label": "Oct",
+      "value": 2310.5
+     },
+     {
+      "label": "Nov",
+      "value": 3875
+     }
+    ],
+    "plain": "Spend rose each month.\nSep 1,240 USD, Oct 2,310.5 USD, Nov 3,875 USD"
+   },
+   "model": {
+    "type": "chart",
+    "kind": "bar",
+    "title": "",
+    "unit": "USD",
+    "summary": "Spend rose each month.",
+    "lo": 0,
+    "hi": 4000,
+    "ticks": [
+     {
+      "value": 0,
+      "label": "0"
+     },
+     {
+      "value": 1000,
+      "label": "1,000"
+     },
+     {
+      "value": 2000,
+      "label": "2,000"
+     },
+     {
+      "value": 3000,
+      "label": "3,000"
+     },
+     {
+      "value": 4000,
+      "label": "4,000"
+     }
+    ],
+    "points": [
+     {
+      "label": "Sep",
+      "value": 1240,
+      "text": "1,240 USD",
+      "frac": 0.31
+     },
+     {
+      "label": "Oct",
+      "value": 2310.5,
+      "text": "2,310.5 USD",
+      "frac": 0.577625
+     },
+     {
+      "label": "Nov",
+      "value": 3875,
+      "text": "3,875 USD",
+      "frac": 0.96875
+     }
+    ],
+    "values": true
+   }
+  }
+ ],
+ "nums": [
+  [
+   0,
+   "0"
+  ],
+  [
+   1,
+   "1"
+  ],
+  [
+   -1,
+   "-1"
+  ],
+  [
+   0.5,
+   "0.5"
+  ],
+  [
+   1.005,
+   "1"
+  ],
+  [
+   2.999,
+   "3"
+  ],
+  [
+   12.3456,
+   "12.35"
+  ],
+  [
+   1000,
+   "1,000"
+  ],
+  [
+   1234567.891,
+   "1,234,567.89"
+  ],
+  [
+   -2500.5,
+   "-2,500.5"
+  ],
+  [
+   0.004,
+   "0"
+  ],
+  [
+   -0.004,
+   "0"
+  ]
+ ]
+}

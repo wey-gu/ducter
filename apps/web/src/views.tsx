@@ -49,6 +49,8 @@ import { FillButton, forecast, FullTop, NextLine } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
 import { PastSheet } from "./past.tsx";
 import { DidSheet } from "./did.tsx";
+import { RichBlock } from "./rich.tsx";
+import { splitRich } from "@ducter/protocol/src/rich.ts";
 import { ContextButton } from "./context-meter.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, WatchCard } from "./work.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
@@ -1114,7 +1116,41 @@ function answerOf(e: Entry, prevUser: number | undefined) {
   return u?.reply ? { seq: to, quote: plainWords(u.text) } : undefined;
 }
 
-function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean; prevUser?: number }) {
+/**
+ * D303: a message with blocks: its words in bubbles, each block drawn where its plain text stood.
+ * The first bubble keeps the reply's imprint and the pebble; the words after a block stack under it.
+ */
+function RichWords({ e, ans, rk }: { e: Entry; ans?: { seq: number; quote: string }; rk?: string }) {
+  const parts = splitRich(e.ai!.text, e.ai!.ui);
+  const after = A.S.channel.slice(A.S.channel.indexOf(e) + 1);
+  const next = after.find((x) => x.user);
+  const live = !next;
+  let first = true;
+  return (
+    <>
+      {parts.map((p) => {
+        if ("block" in p) return <RichBlock b={p.block} at={{ seq: e.firstSeq, index: p.index, live, ...(next?.user ? { picked: next.user.text.trim() } : {}) }} />;
+        const head = first;
+        first = false;
+        const words = <div class="md" dir="auto" dangerouslySetInnerHTML={{ __html: markdown(p.words, t("reply.copy")) }} />;
+        return head && ans ? (
+          <div class="bubble has-reply">
+            <Imprint from="you" quote={ans.quote} seq={ans.seq} />
+            {words}
+            <HoverReply k={rk} />
+          </div>
+        ) : (
+          <div class={`bubble${head ? "" : " join"}`}>
+            {words}
+            {head && <HoverReply k={rk} />}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean; prevUser?: number }) {
   const rk = replyKey(replyOf(e));
   if (e.user) {
     // D206: the pictures stand above the words, on their own, as in a messaging app.
@@ -1129,7 +1165,7 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
   if (e.ai) {
     const ans = answerOf(e, prevUser);
     return (
-      <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}${e.ai.first ? " first" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
+      <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}${e.ai.ui?.length ? " has-rich" : ""}${e.ai.first ? " first" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
         {/* D298: the clay partner over its first words, while nothing else was said. */}
         {e.ai.first && firstOpening() && (
           <span class="first-face">
@@ -1138,7 +1174,9 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
         )}
         {/* D256: the pebble rests beside the bubble itself, on its bottom line (a day card or
             pictures under the words never move it). */}
-        {(e.ai.text || !e.ai.cal) && (ans ? (
+        {e.ai.ui?.length ? (
+          <RichWords e={e} ans={ans} rk={rk} />
+        ) : (e.ai.text || !e.ai.cal) && (ans ? (
           <div class="bubble has-reply">
             <Imprint from="you" quote={ans.quote} seq={ans.seq} />
             <div dir="auto" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />

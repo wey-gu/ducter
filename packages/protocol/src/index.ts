@@ -24,10 +24,12 @@ export * from "./handset.ts";
 export * from "./channels.ts";
 export * from "./past.ts";
 export * from "./did.ts";
+export * from "./rich.ts";
 export * from "./reach.ts";
 import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
+import type { RichUi } from "./rich.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
@@ -267,7 +269,9 @@ export interface Bodies {
   // cal (D222): the day glance the partner put under these words (calendar do=agenda show).
   // first (D298): the partner's first words, said by the home when someone first opens the
   // conversation, with the things it offers to start or continue (a tap fills the composer).
-  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords };
+  // ui (D303): the blocks the partner put in its words (a table, a chart, a checklist, choices),
+  // each standing in for its plain text in `text`; uiDropped: how many it wrote that weren't valid.
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   // act, ref (D216): the line a user's Merge or Open draft PR logs, with the merge's commit or the PR's address.
   job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string; act?: "merge" | "open_pr"; ref?: string };

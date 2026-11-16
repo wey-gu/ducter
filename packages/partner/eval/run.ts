@@ -22,6 +22,7 @@ import { logUserMessage } from "../../core/src/reply.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
 import { buildSystemPrompt, createNmemBridge, createPartner } from "../src/index.ts";
 import { inLanguage, langName } from "../../protocol/src/lang.ts";
+import { wordsOnly, type RichUi } from "../../protocol/src/rich.ts";
 import { scenarios, type Expect, type Scenario, type Step } from "./scenarios.ts";
 import { fakeMemory } from "../test/fakes.ts";
 import { fakeTuwa } from "../../core/test/fake-tuwa.ts";
@@ -197,6 +198,9 @@ interface RunResult {
   /** D222: day cards under messages, and the kinds of calendar change cards made. */
   dayCards?: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[];
   calKinds?: string[];
+  /** D303: the blocks drawn in messages (ducter-ui), and how many written ones weren't valid. */
+  blocks?: { step: number; seq: number; ui: RichUi }[];
+  dropped?: number;
 }
 
 // ---------- fake Bridge (scenario.bridge): the fake nmem CLI over one JSON mailbox file ----------
@@ -240,8 +244,11 @@ function visibleText(e: LogEvent): string {
   switch (e.kind) {
     case "ack":
       return (e.body as Bodies["ack"]).text;
-    case "ai_msg":
-      return (e.body as Bodies["ai_msg"]).text;
+    case "ai_msg": {
+      // D303: what the partner said around its blocks; the blocks are graded on their own.
+      const b = e.body as Bodies["ai_msg"];
+      return wordsOnly(b.text, b.ui);
+    }
     case "decision": {
       const d = e.body as Bodies["decision"];
       return d.question;
@@ -413,7 +420,14 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   };
   const visible: Visible[] = [];
   const dayCards: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[] = [];
+  const blocks: { step: number; seq: number; ui: RichUi }[] = [];
+  let dropped = 0;
   for (const e of core.log.read({ stream: "channel", fromSeq: startSeq + 1, limit: 10_000 })) {
+    if (e.kind === "ai_msg") {
+      const b = e.body as Bodies["ai_msg"];
+      for (const ui of b.ui ?? []) blocks.push({ step: stepOf(e.seq), seq: e.seq, ui });
+      dropped += b.uiDropped ?? 0;
+    }
     // D222: a day card with no words of its own is a card, not a message.
     if (e.kind === "ai_msg" && (e.body as Bodies["ai_msg"]).cal) dayCards.push({ step: stepOf(e.seq), seq: e.seq, cal: (e.body as Bodies["ai_msg"]).cal! });
     if (e.kind === "ai_msg" && !(e.body as Bodies["ai_msg"]).text.trim()) continue;
@@ -471,6 +485,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       else lines.push(`  [partner ${v.kind === "ack" ? "ack line" : "message"}] ${v.text}`);
     }
     for (const c of dayCards.filter((x) => x.step === i)) lines.push(`  [the app shows a day card under the message] ${c.cal.days.map((d) => `${d.date}: ${d.events.map((x) => `${x.allDay ? "all day" : `${x.start.slice(11, 16)}–${x.end.slice(11, 16)}`} ${x.title}${x.me && x.me !== "accepted" ? ` (their answer: ${x.me})` : ""}${x.free ? " (shown as free)" : ""}`).join("; ") || "nothing"}`).join(" | ")}${c.cal.clashes?.length ? ` (overlaps drawn: ${c.cal.clashes.length})` : ""}`);
+    for (const b of blocks.filter((x) => x.step === i)) lines.push(`  [the message also shows a ${b.ui.type === "chart" ? `${b.ui.kind} chart` : b.ui.type} block the partner wrote] ${JSON.stringify({ ...b.ui, plain: undefined })}`);
     for (const q of recalls.filter((x) => x.step === i)) lines.push(`  [searched long-term memory (invisible to the user)] ${q.query}`);
     for (const a of memAttempts.filter((x) => x.step === i)) {
       // The stream's tool input can be partial (title first); the saved record is the truth.
@@ -495,7 +510,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
   tuwa?.stop();
-  return { sc, visible, dayCards, calKinds, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent, work: { ...work, asks } };
+  return { sc, visible, dayCards, calKinds, blocks, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent, work: { ...work, asks } };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -638,6 +653,13 @@ function check(r: RunResult): string[] {
   if (e.noAsk && r.visible.some((v) => v.kind === "decision")) fails.push("a decision card nobody should get");
   if (e.dayCard && !r.dayCards?.length) fails.push("no day card (calendar do=agenda show)");
   if (e.noDayCard && r.dayCards?.length) fails.push("a day card nobody asked for");
+  // D303: a rich block only where it helps, and every one valid.
+  if (r.dropped) fails.push(`wrote ${r.dropped} ducter-ui block(s) that weren't valid`);
+  if (e.ui && !r.blocks?.some((b) => b.ui.type === e.ui)) fails.push(`no ${e.ui} block (got ${r.blocks?.map((b) => b.ui.type).join(", ") || "none"})`);
+  if (e.noUi && r.blocks?.length) fails.push(`a ${r.blocks.map((b) => b.ui.type).join(", ")} block nobody needed`);
+  if (e.uiKind && !r.blocks?.some((b) => b.ui.type === "chart" && b.ui.kind === e.uiKind)) fails.push(`no ${e.uiKind} chart`);
+  const blockText = (r.blocks ?? []).map((b) => JSON.stringify(b.ui)).join("\n");
+  for (const re of e.uiRequire ?? []) if (!re.test(blockText)) fails.push(`the block lacks ${re}`);
   if (e.calCard && !r.calKinds?.includes(e.calCard)) fails.push(`no calendar ${e.calCard} card`);
   if (e.noCalCard && r.calKinds?.length) fails.push("a calendar change card nobody asked for");
   // D67 (2): a choice about how to do the work is reversible, defaults to Go and carries a time.

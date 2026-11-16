@@ -222,6 +222,22 @@ if (process.env.DEMO_DID) {
   seedDidDay(core, { zh, setSkew: (ms) => (skew = ms), yesterday: true, ...(process.env.DEMO_DID === "empty" ? { shift: -86_400_000 } : {}) });
 }
 
+// D303: DEMO_RICH=1 ends the conversation with rich answers (a table, a chart, a checklist, then
+// choices, still open), written as the partner writes them and read the way the home reads them.
+if (process.env.DEMO_RICH === "1") {
+  const { RICH_REPLIES } = await import("@ducter/protocol/fixtures/rich-cases.ts");
+  const { parseRich } = await import("@ducter/protocol/src/rich.ts");
+  const lang = zh ? "zh" : "en";
+  const order = zh ? ["compare-zh", "ci-zh", "release-zh", "which-repo-zh"] : ["compare-en", "week-en", "release-en", "which-meeting-en"];
+  for (const name of order) {
+    const r = RICH_REPLIES.find((x) => x.name === name && x.lang === lang)!;
+    const u = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: r.user } });
+    const { text, ui } = parseRich(r.src, lang);
+    log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text, ui, replyTo: u.seq } });
+    await tick();
+  }
+}
+
 // After the seed, a scripted partner answers new messages the way a real one paces itself, so
 // the waiting moments can be seen and timed (D104): thinking at once, a look back at the Log at
 // 0.4 s, a task being set up at 1.5 s, the ack at 2.3 s, then the turn ends.

@@ -2102,6 +2102,20 @@ class AppState {
     return true;
   }
 
+  /** D303: words a tap says for the person (a choice, a checklist's progress): sent as their reply,
+   *  without the composer's pictures or its reply-to. */
+  sendWords(text: string) {
+    text = text.trim();
+    if (!text) return;
+    const clientId = `p${Date.now()}-${++this.nextClient}`;
+    this.pending.push({ clientId, text });
+    this.thinkingSince = Date.now();
+    this.markRead();
+    this.send({ t: "send", text, clientId });
+    haptic("light");
+    this.changed();
+  }
+
   sendMessage(text: string, force = false): boolean {
     text = text.trim();
     const pics = this.picks.get("") ?? [];

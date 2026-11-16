@@ -49,6 +49,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   payment.
 - **[Pictures and files](pictures.md):** send a screenshot, a photo or any file, see what a task made, ask for a
   drawing, and look through every picture in the conversation.
+- **[Tables, charts, lists and choices](tables-and-charts.md):** when a reply reads better as a
+  table, a chart, a list to tick or a few answers to tap, and how it reads in your chat apps.
 - **[Waiting, keep going, routines](waiting-and-routines.md):** "tell me when…", "keep fixing
   until it works", and "every Monday…".
 - **[Phone calls](calls.md):** let your partner ring a restaurant, a clinic or a shop for you, only

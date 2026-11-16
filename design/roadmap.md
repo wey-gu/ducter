@@ -90,7 +90,7 @@ heard of a subagent.
 | **Phone use** | Tasks that operate an Android or iPhone app |
 | **Voice** | Talk to your partner hands-free |
 | **More AI agents** | Cursor, Gemini, Kimi and others as their command-line agents mature |
-| **Your own small apps** | Pages and tools your partner builds for you to keep |
+| **Your own small apps** | Pages and tools your partner builds for you to keep (the first small step, tables, charts, lists and choices in a reply, is built: D303) |
 | **Leaner runtime** | A Go runner with no JavaScript runtime, and an embedded database option |
 
 ## Not planned for now

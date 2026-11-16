@@ -140,6 +140,7 @@ class MainActivity : ComponentActivity() {
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
         Notify.channels(this) // the phone's language changed: the channels' names follow
+        Glance.channel(this)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -454,6 +455,14 @@ window.ducterNative=Object.freeze($info);})();"""
             // loan's, in Notify.kt.
             "push.state", "push.enable" -> answer(JSONObject().put("state", "unsupported"))
             "push.disable" -> answer(JSONObject())
+            // D306: a followed task or a live call in the notification shade, kept true by the page.
+            "glance.shown" -> answer(JSONObject().put("on", true).put("shown", org.json.JSONArray(Glance.shown().map { (k, i) -> JSONObject().put("kind", k).put("id", i) })))
+            "glance.start", "glance.update" -> {
+                Notify.askOnceForGlance(this, store)
+                val ok = Glance.show(this, m.optString("kind"), m.optString("id"), m.optString("title").takeIf { it.isNotEmpty() }, m.optString("phase"), m.optLong("since", System.currentTimeMillis() / 1000))
+                answer(JSONObject().put("ok", ok))
+            }
+            "glance.end" -> { Glance.hide(this, m.optString("kind"), m.optString("id")); answer(null) }
             "update.check" -> { checkNow(); answer(null) }
             // D293: the home's ways and key; the fingerprint is kept from the first one (or the link).
             "ways" -> {

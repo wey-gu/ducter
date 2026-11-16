@@ -1,0 +1,14 @@
+/* D306: the Live Activity's words (packages/protocol/src/ambient.ts AMBIENT_WORDS). */
+"glance.phase.working" = "Working";
+"glance.phase.waiting" = "Waiting";
+"glance.phase.needs_you" = "Needs you";
+"glance.phase.done" = "Done";
+"glance.phase.failed" = "Didn't work";
+"glance.phase.cancelled" = "Cancelled";
+"glance.phase.calling" = "Calling";
+"glance.phase.talking" = "On the call";
+"glance.phase.asking" = "They're asking";
+"glance.phase.called" = "Called";
+"glance.phase.no_answer" = "No answer";
+"glance.phase.not_connected" = "Didn't connect";
+"glance.stale" = "May be out of date";

@@ -11,6 +11,8 @@
 //   GET|POST /api/push/settings      {done?, quiet?}
 //   POST /api/push/test              one test push to this device's subscriptions
 //   POST /api/decide                 {decisionId, option, text?}: Go / Hold / Reply from a notification
+//   POST /api/ambient/follow         D306: {kind: task|call, id, phase?, apns: {token, topic, env, relay?}} → {id}
+//   POST /api/ambient/unfollow       {id}: the phone stopped showing it
 //   POST /api/media                  D206: a picture (multipart: file, thumb?, preview?, name?) → {media}
 // The assets are imported as files, so `bun build --compile` embeds them in the binary.
 import { MEDIA_LIMITS } from "@ducter/protocol";
@@ -258,6 +260,8 @@ export interface WebApiDeps {
   media?: import("./media.ts").MediaStore;
   /** D255: the person's own phones (a recording one of them sends back). */
   handsets?: import("./handset/index.ts").Handsets;
+  /** D306: the iPhone's Live Activities for followed tasks and live calls (ambient.ts). */
+  ambient?: import("./ambient.ts").Ambient;
   /** A paired device that offers its token over loopback (an SSH tunnel) is still that device. */
   deviceOf?: (req: Request) => { id: string } | undefined;
 }
@@ -353,6 +357,15 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
       const quiet = parseQuiet(b.quiet);
       if (quiet && deps.push.settings().quietDefault) deps.push.setSettings({ quiet });
       return json(200, { ok: true, settings: deps.push.settings() });
+    }
+    case "POST /api/ambient/follow": {
+      if (!deps.ambient) return json(404, { error: "not here" });
+      const r = deps.ambient.follow(deviceId, await body());
+      return "error" in r ? json(400, { error: `invalid ${r.error}` }) : json(200, { ok: true, id: r.id });
+    }
+    case "POST /api/ambient/unfollow": {
+      const b = await body();
+      return json(200, { ok: !!deps.ambient && typeof b.id === "string" && deps.ambient.unfollow(deviceId, b.id) });
     }
     case "POST /api/push/unsubscribe": {
       const b = await body();

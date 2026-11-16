@@ -27,6 +27,12 @@
 	</array>
 	<key>DucterKeychainGroup</key>
 	<string>$(AppIdentifierPrefix)$(DUCTER_BUNDLE_ID).shared</string>
+	<!-- D306: the Lock Screen glance (a followed task, a live call). Behind DUCTER_LIVE_ACTIVITIES
+	     until its push path is checked on a real iPhone. -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>DucterLiveActivities</key>
+	<string>$(DUCTER_LIVE_ACTIVITIES)</string>
 	<key>DucterPushRelay</key>
 	<string>$(DUCTER_PUSH_RELAY)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

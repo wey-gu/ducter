@@ -58,6 +58,17 @@ object Notify {
         a.requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 246)
     }
 
+    /**
+     * D306: the person tapped Show in notifications: Android 13+ asks then, if it never asked
+     * (the tap is the moment it starts to matter). Never again after an answer.
+     */
+    fun askOnceForGlance(a: Activity, store: Store) {
+        if (Build.VERSION.SDK_INT < 33 || store.notifyAsked) return
+        if (a.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        store.notifyAsked = true
+        a.requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 306)
+    }
+
     /** What the loan's notification says now (D255: the link's foreground service shows the same one). */
     private var last: Triple<Context, String, String>? = null
     private var rec: String? = null

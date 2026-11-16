@@ -21,9 +21,12 @@ targets:
     sources:
       - path: Ducter
       - path: Shared
+      - path: LiveShared
     dependencies:
       # Opens sealed notifications (D159); embedded in the app's PlugIns.
       - target: DucterNotify
+      # D306: draws the Lock Screen glance (Live Activities); embedded in the app's PlugIns.
+      - target: DucterLive
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(DUCTER_BUNDLE_ID)
@@ -56,6 +59,24 @@ targets:
         CODE_SIGN_ENTITLEMENTS: DucterNotify/DucterNotify.entitlements
         CODE_SIGN_STYLE: Automatic
         # iPhone and iPad, one universal app (D176).
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+      configs:
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: -O
+  DucterLive:
+    # D306: the widget extension that draws the Live Activity the app starts (LiveShared). Its own
+    # App ID, <app id>.live; no capability of its own (the push goes to the app's topic).
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: DucterLive
+      - path: LiveShared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(DUCTER_BUNDLE_ID).live
+        INFOPLIST_FILE: DucterLive/Info.plist
+        CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1,2"
         SKIP_INSTALL: YES
       configs:

@@ -37,7 +37,8 @@ import { createWsHandler, type WsData } from "./ws.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
 import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
 import { createPusher, openPushStore, type Pusher, type PushStore } from "./push.ts";
-import { createApnsSender, createAppPushSender, loadApnsConfig, type ApnsSender } from "./apns.ts";
+import { createApnsSender, createAppPushSender, http2Transport, loadApnsConfig, type ApnsSender, type ApnsTransport } from "./apns.ts";
+import { createActivitySender, createAmbient, openAmbientStore } from "./ambient.ts";
 import { createRelayClient, relayUrl, type RelayFetch } from "./push-relay.ts";
 import { webApi, webStatic } from "./web.ts";
 import { CHECK_PATH, createAnywhere, type AnywhereCtl, type TunnelSys } from "./anywhere.ts";
@@ -129,6 +130,8 @@ export interface CoreOptions {
   apns?: ApnsSender;
   /** Test seam: how the notification relay is called (default fetch to DUCTER_PUSH_RELAY or ducter.ai). */
   relayFetch?: RelayFetch;
+  /** D306 test seam: how Live Activity pushes reach Apple with this home's own key. */
+  ambientTransport?: ApnsTransport;
   /** Test seams for Your devices and abilities (cua-driver, harness logins, device kind). */
   deviceProbes?: Partial<DeviceProbes>;
   /** D228: test seam for 从外面连's tunnel (cloudflared, its metrics, the network). */
@@ -1087,6 +1090,14 @@ export function startCore(opts: CoreOptions = {}): Core {
     channelUp: (via) => ws.channelUp(via), // D277
     claimed: (k) => channels.claimed(k),
   });
+  // D306: the iPhone's Live Activities follow the Log, through the same key or relay as alerts.
+  const ambient = createAmbient({
+    log,
+    store: openAmbientStore(dataDir),
+    clock,
+    sender: createActivitySender({ config: loadApnsConfig(dataDir), transport: opts.ambientTransport ?? http2Transport(), relayUrl: relayAt, relayFetch: opts.relayFetch }),
+    alive: (d) => d === "local" || devices.isLive(d),
+  });
   // D165: the person's zone: their quiet hours', else (D243) the one their app last said, else the server's.
   const zone = () => opts.proactive?.zone ?? settings.get().quiet?.tz ?? proactiveRef?.clientZone() ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   // D222: every calendar account's calendars, merged (Accounts, the partner's calendar tool, the watcher).
@@ -1148,7 +1159,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       const via = () => viaOf(req, srv.requestIP(req)?.address, reachRef?.ways() ?? []);
       const d = deviceRoutes(req, g, srv, workers, via);
       if (d) return d === "upgraded" ? undefined : d;
-      const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name, version, media, handsets, deviceOf: (r) => gate.deviceOf(r) });
+      const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name, version, media, handsets, ambient, deviceOf: (r) => gate.deviceOf(r) });
       if (api) return api;
       if (url.pathname === "/ws") {
         // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin

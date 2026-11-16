@@ -46,6 +46,9 @@ type state struct {
 	// Appearance is 外观 / Look's light or dark (D302): "light", "dark", or
 	// empty (follow macOS).
 	Appearance string `json:"appearance,omitempty"`
+	// MenuBarOff takes the menu bar extra away on this Mac (D306); shown
+	// by default.
+	MenuBarOff bool `json:"menuBarOff,omitempty"`
 	// OnHandLens is the project On hand is narrowed to (D261): a name,
 	// "~" for Other (no folder), "" for all. D128's by-state/by-project
 	// toggle (onHandBy) is retired: the lens replaced it.
@@ -230,6 +233,19 @@ func (l *Local) SetAppearance(v string) {
 		v = ""
 	}
 	l.st.Appearance = v
+	l.save()
+}
+
+// MenuBar reports whether the menu bar extra shows (D306): on unless
+// turned off on this Mac.
+func (l *Local) MenuBar() bool { return l == nil || !l.st.MenuBarOff }
+
+// SetMenuBar shows or takes away the menu bar extra.
+func (l *Local) SetMenuBar(on bool) {
+	if l == nil {
+		return
+	}
+	l.st.MenuBarOff = !on
 	l.save()
 }
 

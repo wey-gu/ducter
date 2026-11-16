@@ -13,6 +13,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { useSheetMotion } from "./sheetmotion.ts";
 import { last as lastMove } from "./nav.ts";
 import type { JSX } from "preact";
+import { AmbientLine } from "./ambient.tsx";
 import { A, candKey, effortWord, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, whereCandReason } from "./where.ts";
@@ -2159,6 +2160,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
         {/* D235: it is using the person's apps: where, and 停下 / Stop. */}
         <ComputerLine task={task} />
         <HandsetLine task={task} />
+        {/* D306: keep it in sight on the Lock Screen or in the notification shade. */}
+        <AmbientLine task={task} />
         {A.switchFor === id && <SwitchList task={task} />}
         {finished(task) && (
           <div class="outcome">

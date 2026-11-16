@@ -155,6 +155,27 @@ describe("the notification relay", () => {
     expect(a.slice(0, 2)).toEqual(b.slice(0, 2));
   });
 
+  test("D306: an activity handle sends only a phase, built by the relay; alert and activity handles don't mix", async () => {
+    const t = await setup();
+    const at = Math.floor(Date.parse("2026-11-10T00:00:00Z") / 1000);
+    const alert = (await t.call("register", { token: TOKEN, topic: TOPIC, env: "production" })).body.handle;
+    expect((await t.call("register", { token: TOKEN, topic: TOPIC, env: "production", kind: "widget" })).status).toBe(400);
+    const la = (await t.call("register", { token: TOKEN, topic: TOPIC, env: "production", kind: "activity" })).body.handle;
+    expect((await t.call("activity", { handle: alert, s: { phase: "working", since: at }, at })).status).toBe(400);
+    expect((await t.call("send", { handle: la, d: sealedBlob })).status).toBe(400);
+    expect((await t.call("activity", { handle: la, s: { phase: "Your bank code is 1234", since: at }, at })).status).toBe(400);
+    expect((await t.call("activity", { handle: la, s: { phase: "working", since: at }, at: at - 7200 })).status).toBe(400);
+    expect((await t.call("activity", { handle: la, s: { phase: "needs_you", since: at, title: "x" }, at })).status).toBe(200);
+    const req = t.reqs[0]!;
+    expect(req.headers).toMatchObject({ "apns-topic": TOPIC + ".push-type.liveactivity", "apns-push-type": "liveactivity", "apns-priority": "10" });
+    expect(JSON.parse(req.body)).toEqual({ aps: { timestamp: at, event: "update", "content-state": { phase: "needs_you", since: at }, "stale-date": at + 4 * 3600 } });
+    await t.call("activity", { handle: la, s: { phase: "done", since: at }, at });
+    expect(JSON.parse(t.reqs[1]!.body).aps).toMatchObject({ event: "end", "dismissal-date": at + 15 * 60 });
+    expect(t.reqs[1]!.headers["apns-priority"]).toBe("10");
+    for (let i = 0; i < LIMITS.activityHour; i++) await t.call("activity", { handle: la, s: { phase: "working", since: at }, at });
+    expect((await t.call("activity", { handle: la, s: { phase: "working", since: at }, at })).status).toBe(429);
+  });
+
   test("the Vercel entry answers health from its env", async () => {
     const r = await relayEntry.fetch(new Request("https://ducter.ai/api/push/health"));
     expect(r.status).toBe(200);

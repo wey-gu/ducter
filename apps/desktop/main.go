@@ -528,30 +528,54 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 	return menu
 }
 
-// trayMenu is the menu bar extra (D71): the clay partner as a template
-// icon; its menu is what needs you, each with Go and Hold, then Open
-// Ducter. It is the "handheld" moment: answering without the window.
+// trayMenu is the menu bar extra (D71, D306): the clay partner whose mark
+// says how the whole stands (quiet, at work, needs you: a soft clay dot,
+// never a number); its menu is On hand's one sentence, what needs you, each
+// with Go and Hold and Open the task, then Open Ducter. It is the
+// "handheld" moment: answering without the window.
 type trayMenu struct {
-	app  *views.App
-	win  *mygo.Window
-	tray *mygo.Tray
-	sig  string
+	app   *views.App
+	win   *mygo.Window
+	tray  *mygo.Tray
+	sig   string
+	state theme.TrayState
+	dark  bool
+	drawn bool
 }
 
 func newTray(app *views.App, win *mygo.Window) *trayMenu {
 	tm := &trayMenu{app: app, win: win}
-	t, err := mygo.NewTray(mygo.TrayOptions{ID: "ducter", Icon: theme.TrayIcon(), IconIsTemplate: true, ToolTip: "Ducter"})
-	if err != nil {
-		log.Printf("ducter: no menu bar extra: %v", err)
-		return tm
-	}
-	tm.tray = t
-	tm.refresh(true)
+	app.ApplyMenuBar = func(on bool) { tm.show(on) }
+	tm.show(app.MenuBarOn())
 	return tm
 }
 
-// refresh rebuilds the menu when what it shows changed (or force). UI
-// thread.
+// show puts the extra in the menu bar or takes it away (Settings, or Don't
+// show in the menu bar). UI thread.
+func (tm *trayMenu) show(on bool) {
+	if !on {
+		if tm.tray != nil {
+			tm.tray.Destroy()
+			tm.tray = nil
+		}
+		return
+	}
+	if tm.tray != nil {
+		return
+	}
+	t, err := mygo.NewTray(mygo.TrayOptions{ID: "ducter", Icon: theme.TrayIcon(), IconIsTemplate: true, ToolTip: "Ducter"})
+	if err != nil {
+		log.Printf("ducter: no menu bar extra: %v", err)
+		return
+	}
+	tm.tray, tm.drawn = t, false
+	// A coloured mark (needs you) is drawn for the bar it sits on.
+	t.OnAppearanceChange(func() { tm.win.Update(func() { tm.drawn = false; tm.refresh(true) }) })
+	tm.refresh(true)
+}
+
+// refresh rebuilds the menu when what it shows changed (or force), and
+// sets the mark when the state did. UI thread.
 func (tm *trayMenu) refresh(force bool) {
 	if tm == nil || tm.tray == nil {
 		return
@@ -562,6 +586,13 @@ func (tm *trayMenu) refresh(force bool) {
 		return
 	}
 	tm.sig = sig
+	v := app.Tray(6)
+	if dark := tm.tray.Dark(); !tm.drawn || v.State != tm.state || (v.State == theme.TrayNeedsYou && dark != tm.dark) {
+		png, template := theme.TrayIconFor(v.State, dark)
+		if err := tm.tray.SetIcon(png, template); err == nil {
+			tm.state, tm.dark, tm.drawn = v.State, dark, true
+		}
+	}
 	open := func(fn func()) func(*mygo.MenuItem, *mygo.Window) {
 		return func(*mygo.MenuItem, *mygo.Window) {
 			tm.win.Update(func() {
@@ -574,45 +605,57 @@ func (tm *trayMenu) refresh(force bool) {
 			})
 		}
 	}
-	ds := app.TrayDecisions(6)
-	var items []*mygo.MenuItem
-	if len(ds) == 0 {
-		items = append(items, &mygo.MenuItem{Label: l.T("tray.none"), Disabled: true})
-	} else {
-		items = append(items, &mygo.MenuItem{Label: l.T("tray.needs", app.WaitingCount()), Disabled: true})
-		for _, d := range ds {
-			id := d.ID
-			decide := func(opt string) func(*mygo.MenuItem, *mygo.Window) {
-				return func(*mygo.MenuItem, *mygo.Window) {
-					tm.win.Update(func() { app.Decide(id, opt, ""); tm.refresh(true) })
-				}
+	// The one sentence, always first (D287: counts and times only).
+	items := []*mygo.MenuItem{{Label: v.Say, Disabled: true}}
+	if len(v.Decisions) > 0 {
+		items = append(items, mygo.Separator())
+	}
+	for _, d := range v.Decisions {
+		id, task := d.ID, d.TaskID
+		decide := func(opt string) func(*mygo.MenuItem, *mygo.Window) {
+			return func(*mygo.MenuItem, *mygo.Window) {
+				tm.win.Update(func() { app.Decide(id, opt, ""); tm.refresh(true) })
 			}
-			if d.InWindow {
-				// D233: a key or a security code is typed in the window, never from the menu.
-				items = append(items, &mygo.MenuItem{Label: d.Question, Subtitle: d.Task, Click: open(func() { app.Route = views.RouteConversation })})
-				continue
-			}
-			goLabel := l.T("decision.go")
-			if d.GoLabel != "" {
-				goLabel = l.T("tray.go", d.GoLabel)
-			}
-			items = append(items, &mygo.MenuItem{Label: d.Question, Subtitle: d.Task, Submenu: []*mygo.MenuItem{
-				{Label: goLabel, Click: decide("go")},
-				{Label: l.T("tray.hold"), Click: decide("hold")},
-				mygo.Separator(),
-				{Label: l.T("tray.reply"), Click: open(func() { app.Route = views.RouteConversation })},
-			}})
 		}
+		where := func() {
+			if task != "" {
+				app.OpenTask(task)
+				return
+			}
+			app.Route = views.RouteConversation
+		}
+		if d.InWindow {
+			// D233: a key or a security code is typed in the window, never from the menu.
+			items = append(items, &mygo.MenuItem{Label: d.Question, Subtitle: d.Task, Click: open(func() { app.Route = views.RouteConversation })})
+			continue
+		}
+		goLabel := l.T("decision.go")
+		if d.GoLabel != "" {
+			goLabel = l.T("tray.go", d.GoLabel)
+		}
+		sub := []*mygo.MenuItem{
+			{Label: goLabel, Click: decide("go")},
+			{Label: l.T("tray.hold"), Click: decide("hold")},
+			mygo.Separator(),
+			{Label: l.T("tray.reply"), Click: open(func() { app.Route = views.RouteConversation })},
+		}
+		if task != "" {
+			sub = append(sub, &mygo.MenuItem{Label: l.T("tray.task"), Click: open(where)})
+		}
+		items = append(items, &mygo.MenuItem{Label: d.Question, Subtitle: d.Task, Submenu: sub})
 	}
 	items = append(items,
 		mygo.Separator(),
 		&mygo.MenuItem{Label: l.T("tray.open"), Click: open(nil)},
 		&mygo.MenuItem{Label: l.T("menu.settings"), Click: open(app.OpenSettings)},
+		&mygo.MenuItem{Label: l.T("tray.hide"), Click: func(*mygo.MenuItem, *mygo.Window) {
+			tm.win.Update(func() { app.SetMenuBar(false) })
+		}},
 		mygo.Separator(),
 		&mygo.MenuItem{Role: mygo.RoleQuit},
 	)
 	tm.tray.SetMenu(mygo.NewMenu(items))
-	tm.tray.SetToolTip(l.T("face.idle", app.S.PersonaName))
+	tm.tray.SetToolTip(v.Say)
 }
 
 // buildVersion is this build's version and commit: from the app's link

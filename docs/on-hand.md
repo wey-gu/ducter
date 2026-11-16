@@ -89,6 +89,23 @@ With one errand on hand, all of this stays out of the way: one row, and four sma
   goes. A task that finishes while you're looking elsewhere keeps that smile in every list until
   you open it.
 
+## At a glance
+
+You don't have to open Ducter to know how things stand.
+
+- **On a Mac**, your partner sits in the menu bar as a small pebble. Its eyes look down while
+  something is at work. When something needs you, a small orange dot appears beside it. It never
+  shows a number. Click it for the same one sentence On hand starts with, what needs you (answer
+  **Go** or **Hold** right there, or **Open the Task**), and **Open Ducter**. If you'd rather not
+  have it, choose **Don't Show in the Menu Bar**; turn it back on in Settings › Look and sound ›
+  **Show in the menu bar**.
+- **On a phone**, open a task that's under way and tap **Show on the Lock Screen** (iPhone) or
+  **Show in notifications** (Android). Only whether it's working, waiting or needs you shows
+  there, and for how long, never what it says. It goes away by itself when it's done. A call
+  Ducter makes for you shows the same way while it's on. On iPhone this is coming soon; on
+  Android it stays up to date while the Ducter app is open or was just open, and goes away rather
+  than show something old.
+
 ## On a phone
 
 The same: the projects as a row of names you can swipe, the four numbers, and the list. Tap a

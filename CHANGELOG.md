@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.62
+
+<!-- whats-new
+zh: 需要时回答里有表格、图表和可点的选项
+en: Tables, charts and tap-to-answer choices when they help
+zh: 记得你的事，会说是从哪儿想起的
+en: When it remembers, it says where from
+-->
+
+**Rich answers**
+- When you ask for a comparison, numbers over time or a list, your partner can answer with a small
+  table, chart or checklist; when it asks you to pick, tap an answer. Chat apps and copies get
+  plain lines.
+
+**Nowledge Mem in the conversation**
+- When something it remembered changed the answer, one quiet line says where from (what you said,
+  or what Claude Code saved), with Forget one tap away.
+- Monday's note can offer this week's memories to check, fix or forget.
+- A task is told which of your other tools' memories may matter, and reads them itself.
+
 ## 0.0.61
 
 <!-- whats-new

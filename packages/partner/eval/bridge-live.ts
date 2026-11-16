@@ -132,6 +132,11 @@ async function preflightConnected(): Promise<boolean> {
   const recent = ver[0]! > 0 || ver[1]! > 10 || (ver[1] === 10 && ver[2]! >= 118);
   say(`  ${recent ? "✓" : "✗"} nmem ${m ? m[0] : "(unknown)"} has \`bridge connections\` (0.10.118+)`);
   if (!recent) return false;
+  // D294: Mem #10278 (sender, in_reply_to, mailbox_available) is on Mem Cloud since 2026-11-17 and
+  // reaches the CLI after 0.10.119 (released 11-14, before the merge). Said, never a stop: without it
+  // S2's "a reply to ours" check fails on Mem's side (B17), the rest runs.
+  const presents = ver[0]! > 0 || ver[1]! > 10 || (ver[1] === 10 && ver[2]! > 119);
+  say(`  ${presents ? "✓" : "–"} nmem ${m![0]} ${presents ? "carries" : "predates"} Mem's sender and in_reply_to (after 0.10.119)`);
   let space = arg("space-id");
   if (!space) {
     const s = await nm(["bridge", "setup"]); // passive, no context: the user's places
@@ -386,7 +391,8 @@ async function main() {
     await settle(partner);
     seq = show(core, seq);
     const card = openCard();
-    check("s2", "one send card at once, naming 你的 <agent>", !!card && /^发给你的/.test(card.question));
+    // D273: the agent by what it is ("发给 terminal-claude？", "发给一个 AI agent？"), never 你的 <agent>.
+    check("s2", "one send card at once, naming the agent by what it is (D273)", !!card && /^发给/.test(card.question) && !/^发给你的/.test(card.question));
     if (card) {
       say(`[${stamp()}] Weyl checks the recipient and taps 发送`);
       core.decisions.decide(card.decisionId, "go");
@@ -402,8 +408,8 @@ async function main() {
     await partner.checkBridge();
     await settle(partner);
     seq = show(core, seq);
-    // The answer arrived at all (Ducter's side), and Mem linked it to ours (Mem's side: nmem 0.10.118's
-    // `open` carries no in_reply_to, B17 in research/66 §7, so this one waits for Mem).
+    // The answer arrived at all (Ducter's side), and Mem linked it to ours (Mem's side: nmem 0.10.119's
+    // `open` carries no in_reply_to, B17 in research/66 §7–8; Mem #10278 is on Cloud, its CLI comes after 0.10.119).
     const answer = !!sent && ins().some((b) => b.messageId && core.log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 }).find((e) => (e.body as Bodies["bridge_msg"]).messageId === b.messageId)!.seq > before2);
     check("s2", "an answer came in after ours", answer);
     check("s2", "the answer came back as a reply to ours (Mem links it: B17)", !!sent && ins().some((b) => b.inReplyTo === sent.messageId));

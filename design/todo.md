@@ -1071,11 +1071,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## Nowledge Bridge (D105–D111, D162–D164, D170–D171, D205, D225, D249, `design/bridge.md`)
 
 - [x] Connect the persona in Only me (D205): connected 2026-11-13 by the author; the live trial ran (D249).
-- [ ] File B17 with the Nowledge team (research/66 §7; the draft text is ready): `open` names no sender and links
+- [x] File B17 with the Nowledge team (filed as nowledge-co/mem #10194; Cloud fixed by #10278, D294): `open` names no sender and links
       no reply; `contacts` lists an Agent with no registered mailbox; the 409's "previous unknown send" wording on
       a first send; native-session Agents all "Bridge agent". Trigger: the author's go.
-- [ ] When Mem names senders and links replies: drop D249 (5)'s maybe-answered rule, read the sender into
-      `agent`/`mine`, and make the live S2 check pass (5/5). Trigger: a newer nmem whose `open` has them.
+- [x] Read Mem #10278's `sender`, `in_reply_to` and `mailbox_available`, and retry Mem's "can't right now"
+      briefly (D294; over the fake's `presentation` shape).
+- [ ] Rerun `bridge:live -- --connected --real` and make the live S2 check pass (5/5); then drop D249 (5)'s
+      maybe-answered rule. Trigger: an nmem after 0.10.119 (the first to ask for #10278's representation), with
+      hel's Ducter stopped or 断开 for the trial (D258).
+- [ ] Post the five drafts in research/66 §8.4 (B17 release, local Bridge version, telling connections apart,
+      transient codes, native senders' names). Trigger: the author's go.
+- [ ] Local Bridge (Mem app or Vault): the live check on a Mem in local mode. Trigger: Mem names the version with
+      its local fixes (research/66 §8.3).
 - [ ] "%s 问你" (D273) puts a space before 问你 after a Chinese agent name ("Claude 收尾协调 问你"); join by D78's rule in the
       web, Mac and push templates. Trigger: the next touch of the asker card.
 - [ ] D273 in the words the partner model reads: `whoForModel` and the `ask`/`bridge_send` refusals still tell it

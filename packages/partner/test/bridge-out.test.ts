@@ -601,7 +601,7 @@ describe("nmem client: contacts, send, recovery (stub binary)", () => {
         { contact: "bc1:a", label: "Claude 收尾协调", agent: "Claude 收尾协调", mine: true, space: "personal-x" },
         { contact: "bc1:b", label: "Bridge pilot Claude", agent: "Bridge pilot Claude", space: "personal-x" },
         // A teammate's agent in a team Space: told by its team, since no member name comes (D162).
-        { contact: "bc1:c", label: "reviewer · dev team", agent: "reviewer", space: "team-x" },
+        { contact: "bc1:c", label: "reviewer (dev team)", agent: "reviewer", space: "team-x" },
       ],
       more: false,
     });

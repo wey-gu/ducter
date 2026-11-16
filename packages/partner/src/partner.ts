@@ -2256,10 +2256,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         logOut(op, "sent", { messageId: r.messageId ?? "", ...(r.operation ? { operation: r.operation } : {}) });
         return "sent";
       }
-      if (r.reason === "refused" || r.reason === "not_configured") {
+      if (r.reason === "refused" || r.reason === "not_configured" || r.reason === "busy") {
+        // D294: "busy" is Mem saying it couldn't take it right now and did not admit it, after a
+        // short bounded retry: definitely not sent, so the user may simply ask again.
         logOut(op, "failed");
         const o = foldOut(loggedBridge()).get(op.opId)!;
-        tellUser(lostLine(o, userZh() ?? true, "failed", outKind(o)));
+        tellUser(lostLine(o, userZh() ?? true, r.reason === "busy" ? "busy" : "failed", outKind(o)));
         return "failed";
       }
       logOut(op, "unknown", r.operation ? { operation: r.operation } : {});
@@ -2660,7 +2662,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const to = original.agent ?? original.from ?? "the sender";
         if (state === "sent") return { ok: true, note: `Sent to ${to}. The user sees a small line saying so; don't mention the reply. If you haven't told the user yet, do it now in one message; if you have, end your turn without repeating it.` };
         if (state === "unknown") return { ok: true, sent: "unknown", note: "Bridge didn't answer. Ducter checks whether it went out and never sends it twice: don't send it again, and don't mention it." };
-        return { ok: false, sent: false, note: "Not sent: Bridge refused it. Ducter has told the user." };
+        return { ok: false, sent: false, note: "Not sent. Ducter has already told the user why; don't repeat it, and end your turn." };
       },
     );
     bridgeTool(

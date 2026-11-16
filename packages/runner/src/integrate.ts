@@ -170,7 +170,7 @@ export async function openDraftPr(place: Place, opts: { gh?: string } = {}): Pro
  * before; at any depth, D198's <repo>/<slug> too) is removed, never with --force: uncommitted or
  * untracked files keep it, and the message says so. ok with removed false: nothing to remove.
  */
-export async function archiveWorktree(place: Place, dataDir: string): Promise<ActionResult & { removed: boolean }> {
+export async function archiveWorktree(place: Place, dataDir: string, o: { unstarted?: boolean } = {}): Promise<ActionResult & { removed: boolean }> {
   const p = repoOf(place);
   if (!p) return { ok: true, removed: false, message: "No worktree to remove." };
   const wt = resolve(p.worktree!);
@@ -191,6 +191,12 @@ export async function archiveWorktree(place: Place, dataDir: string): Promise<Ac
     try {
       if (readdirSync(parent).length === 0) rmdirSync(parent);
     } catch {}
+  }
+  // Never briefed: the branch Ducter made for it goes while it is still where its base is (no
+  // commit of its own; `-d` refuses anything else).
+  if (o.unstarted && p.branch?.startsWith("ducter/") && p.baseBranch) {
+    const [tip, base] = await Promise.all([git(p.repoPath, ["rev-parse", `refs/heads/${p.branch}`]), git(p.repoPath, ["rev-parse", `refs/heads/${p.baseBranch}`])]);
+    if (tip.ok && base.ok && tip.out === base.out && (await git(p.repoPath, ["branch", "-d", p.branch])).ok) return { ok: true, removed: true, message: `Removed the worktree and ${p.branch}.` };
   }
   return { ok: true, removed: true, message: `Removed the worktree; ${p.branch} stays.` };
 }

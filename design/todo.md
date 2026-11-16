@@ -1261,9 +1261,51 @@ Codex first, once OAR is near 1.0. See `research/17`.
   permission in the signed Mac app); then a PRC lawyer on research 60 §6 before offering it to
   mainland users at large.
 - [ ] **D218 on a worker** (trigger: a phone plugged into a computer other than the home): the
-  worker runs adb, ffmpeg and the voice loop and streams the call's state to the home (D157).
+  worker runs adb, ffmpeg and the voice loop and streams the call's state to the home (D157). Now part of D278 (a)-(c) below: the station by a live link, not by being plugged in.
 - [ ] **D218: Bluetooth HFP from a Linux computer** (no cable), and `gpt-realtime-2.1-mini` as a
   cheaper engine once the eval of a call in someone's name shows it holds the rails.
+- [ ] **D278 part 1 on a real phone** (trigger: the author's Pixel Fold with this build): research/89
+  §8 P1 (a sheet's 拨打 rings through `placeCall` with `CALL_PHONE`, to a +86 mobile and an E.164
+  foreign number, without the dialer's confirm; time to ringing), Android's permission prompt the
+  first time, refused → the dialer filled, the sheet's notification readable when pulled down over
+  the Pixel's in-call screen, 在 Pixel Fold 上拨打 from the Mac while Ducter on the Fold is (a) in
+  front, (b) behind another app (its page may be paused: then the 60 s timeout line), and the
+  partner's one line plus 通话结束 → how it went, on haiku (`bun run eval:partner`, a scenario for
+  `from=own` with nothing set up).
+- [ ] **D278 (a)-(c): the call station by a live link, control in the Ducter app, the voice on the
+  station** (trigger: the author's sign-off on D278's direction and the tests below passing). Each
+  computer reports `callLink { phone, kind: cable | bluetooth | continuity, checkedAt }`; the app
+  reports `dial` and dials, reads the state and hangs up (`READ_PHONE_STATE`, `ANSWER_PHONE_CALLS`);
+  adb leaves the user path; the voice loop runs on the station (D218 (7)'s worker step) and reports
+  to the home. The card: **电话从你的 {phone} 打出，声音走 {computer}** through the glossary first.
+  Device tests first, research/89 §8: on the Pixel Fold (Android 16) with the app, P2 the
+  `TelephonyCallback` states of an outgoing call (off-hook at dial, nothing at answer) and whether
+  the D238 service can read the in-call timer as answered; P3 `endCall()` with `ANSWER_PHONE_CALLS`
+  for an app targeting API 35/36; P4 keypad digits (post-dial `,` `;` through `placeCall`, and
+  accessibility taps on the dialer keypad); P5 Google's USB-C adapter + splitter + a USB sound card
+  on the MacBook: the call routes at once (`TYPE_USB_HEADSET`), both directions audible, the pad
+  value, whether uplink processing distorts TTS, crosstalk echo, 15 minutes without a dropout; P6
+  the chirp handshake with no call (the app records the headset mic and hears the Mac's code; the
+  Mac hears the app's tone); P7 a PD pass-through audio adapter charging and carrying call audio.
+- [ ] **D278 (d): the Mac as a Bluetooth hands-free unit, a one-day spike** (trigger: the author's
+  MacBook and Fold together, before any more cable UI). research/89 §8: B1 pair from the Fold: does
+  it offer "Phone calls" for the Mac (an HF SDP record, UUID 0x111E); B2 a 100-line Swift probe,
+  `IOBluetoothHandsFreeDevice initWithDevice:delegate:`, `connect`, the service-level connection up;
+  B3 `dialNumber:` places a call on the Fold, `+CIEV` shows alerting then active; B4 SCO up: does a
+  CoreAudio device appear, can AVAudioEngine or ffmpeg read and write it, which codec (CVSD / mSBC);
+  B5 `sendDTMF:` reaches a phone menu, `endCall` hangs up; B6 which TCC prompts appear (Bluetooth,
+  microphone) in the signed app. If B1-B4 pass, Android + Mac needs no hardware.
+- [ ] **D278 (d): Continuity for iPhone + Mac** (trigger: after the Android route): research/89 §8
+  M1 `open tel:+…` from the app (which app, what confirm, can computer use press it); M2 a virtual
+  input (BlackHole) as the call's mic, the far end hears injected audio; M3 a process tap on the
+  Phone/FaceTime process captures the far end and mutes it locally; M4 detect answered / ended and
+  hang up through AX.
+- [ ] **D278 (e): mainland China** (trigger: before own-number live calls are offered to mainland
+  users at large): a PRC lawyer on research/60 §6 (反诈法 Art. 14's reading of a computer beside the
+  phone; the disclosure wording); only while the station is linked and is a computer the person uses.
+- [ ] **D278: the sheet over the in-call screen** (trigger: the notification proves hard to read
+  during a call): a slim card over the call from the D238 accessibility service (research/89 §4.F),
+  and for iPhone a notification / Live Activity.
 - [ ] **A third calling provider** behind the same card (Twilio + a real-time model) if Tuwa's
   reach or terms stop fitting.
 
@@ -1362,12 +1404,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
       hand while the task watches and reports what it saw.
 
 ## From the author's review of 0.0.58 (2026-11-16, after the release)
-- [ ] **Calls with your own number when the home is a remote server.** The setup card says "手机插在
-      Hetzner Server 上" and asks for `brew install android-platform-tools` (a Mac command) while the
-      home is a datacenter Linux box no phone can be plugged into; the author installed adb on the Mac and
-      再找一次 seemed to do nothing. The phone belongs on a computer beside the person: offer the Macs
-      that do tasks (workers) as the place to plug it in, run the check there, and say the command for
-      that computer's OS. 再找一次 must answer visibly ("找过了，还是没看到手机：…"). Trigger: next.
+- [x] **Calls with your own number when the home is a remote server.** Done in D278 part 1 (2026-11-16):
+      a server home never offers itself, install lines for the home's own OS only, 再找一次 answers
+      (正在找…, then 看过了 · time · what it saw), and 你来打 / You call (the sheet, one tap on the phone).
 - [ ] **立即查看 / Look now says what it does.** On a waiting task it means "look now instead of at 20:51";
       the words don't say so. Name it by its result (e.g. 现在就看一眼, with when it looks by itself beside).
 - [ ] **A wait that feels alive, not "在等".** The state word and its line read cold. Through AGENTS.md's

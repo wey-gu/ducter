@@ -10,7 +10,7 @@
 // restart picks up where it was: live calls are polled again, a call waiting for its hour waits on.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, CallBody, CallPlan, CallState, CallView, CallWait, DraftRequest, DraftResult, LogEvent, PhoneView } from "@ducter/protocol";
+import type { Bodies, CallBody, CallPlan, CallSheet, CallState, CallView, CallWait, DraftRequest, DraftResult, LogEvent, PhoneView } from "@ducter/protocol";
 import { callEnded, e164, OWN_PHONE } from "@ducter/protocol";
 import type { LogStore, PhonePort } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -213,6 +213,8 @@ export interface Phone extends PhonePort {
   /** D208: 现在就打 / Call now on a Go card that waits for the callee's courtesy hours. */
   callNow(callId: string): { ok: true } | { ok: false; error: string };
   block(number: string, why?: string): { ok: true; number: string } | { ok: false; error: string };
+  /** D278: the number is on the do-not-call list (a sheet's one-tap dial refuses it too). */
+  blocked(number: string): boolean;
   get(callId: string): CallBody | undefined;
   /** On hand: live, waiting for Go, and ended today; newest first. */
   calls(): CallView[];
@@ -634,14 +636,21 @@ export function openPhone(deps: PhoneDeps): Phone {
    * they like). Needs no calling connection. When a provider that reaches the number exists (the
    * owner's own phone, later), draft() takes it before ever getting here.
    */
-  function sheet(to: string, req: DraftRequest, o: { lang: "zh" | "en" }): DraftResult {
+  function sheet(to: string, req: DraftRequest, o: { lang: "zh" | "en" }, why: CallSheet["why"] = "uncovered"): DraftResult {
     if ((file.doNotCall ?? []).some((x) => x.number === to)) return { ok: false, reason: "dnc", error: "That number is on the user's do-not-call list. Say so in one line; no sheet." };
     const name = (req.name ?? "").trim();
     const goal = (req.goal ?? "").trim();
     if (!name || !goal) return { ok: false, reason: "missing", error: "A call sheet needs who (name) and the one thing it is for (goal). Ask the user in one short line." };
     const open = (req.open ?? "").trim();
     if (!open)
-      return { ok: false, reason: "sheet", error: "No line Ducter has calls that country, so the card is a call sheet the user calls themselves: phone_call again with open (the first thing they say, in the call's language, in their own words), ask (the questions to ask) and note (what to write down)." };
+      return {
+        ok: false,
+        reason: "sheet",
+        error:
+          why === "own"
+            ? "Calls from the user's own number can't carry Ducter's voice yet (that needs a computer beside their phone), so the card is a call sheet the user calls themselves, with one tap to dial: phone_call again with from=own, open (the first thing they say, in the call's language, in their own words), ask (the questions to ask) and note (what to write down)."
+            : "No line Ducter has calls that country, so the card is a call sheet the user calls themselves: phone_call again with open (the first thing they say, in the call's language, in their own words), ask (the questions to ask) and note (what to write down).",
+      };
     const list = (v?: string[]) => (v ?? []).map((s) => clip(String(s).trim(), 200)).filter(Boolean).slice(0, 8);
     const mustNot = list(req.mustNot);
     const keep = req.keep?.trim() ? clip(req.keep.trim(), 300) : undefined;
@@ -660,7 +669,7 @@ export function openPhone(deps: PhoneDeps): Phone {
       costUsd: 0,
       perMinUsd: 0,
       calleeZone: calleeZones(to, req.calleeZone)?.[0] ?? deps.zone(),
-      sheet: { why: "uncovered", open: clip(open, 300), ask: list(req.ask), dont: [...mustNot, ...(keep ? [keep] : [])], note: list(req.note) },
+      sheet: { why, open: clip(open, 300), ask: list(req.ask), dont: [...mustNot, ...(keep ? [keep] : [])], note: list(req.note) },
     };
     const callId = newCallId();
     const decisionId = newDecisionId();
@@ -688,6 +697,10 @@ export function openPhone(deps: PhoneDeps): Phone {
       const n = !(o.callId && o.answers) ? e164(req.to ?? "") : undefined;
       const ownLine = req.from === "own" || (ownReady && req.from !== "tuwa");
       if (n && !neverCall(n) && !ownLine && !reaches(tuwa?.provider.name, n)) return sheet(n, req, o);
+      // D278: 你来打 / You call. Asked for their own number, and no computer beside their phone
+      // carries a live call (a server home never can): the person calls with the sheet, one tap
+      // to dial from the Ducter app on their phone. Never a dead end, never a silent Tuwa call.
+      if (n && !neverCall(n) && req.from === "own" && !ownReady) return sheet(n, req, o, "own");
       if (!tuwa && !ownReady)
         return { ok: false, reason: "no_phone", error: deps.own?.view().phone ? "Calls from the user's own phone aren't fully set up yet (Settings › Accounts › Call from your own number). Tell the user in one line which step is left." : "No calling connection yet. Tell the user in one line: they can connect calls (Tuwa) in Settings › Accounts; it takes a minute on their phone. Or call from their own Android phone and number, set up on the same page." };
       let f: NonNullable<typeof found> = (tuwa ?? ownFound())!;
@@ -869,6 +882,11 @@ export function openPhone(deps: PhoneDeps): Phone {
         deps.log.append({ stream: "channel", origin: "partner", kind: "decision_resolved", body: { decisionId: c.decisionId!, option: "go", by: "user" } });
       }
       return { ok: true };
+    },
+
+    blocked(number) {
+      const n = e164(number);
+      return !!n && (file.doNotCall ?? []).some((x) => x.number === n);
     },
 
     block(number, why) {

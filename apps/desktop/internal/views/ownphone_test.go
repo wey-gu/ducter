@@ -18,7 +18,7 @@ import (
 // core sends them.
 
 func ownView(step string) *protocol.OwnPhoneView {
-	v := &protocol.OwnPhoneView{Where: "Studio", ADB: true, Headset: "unknown", Today: 0, PerDay: 10}
+	v := &protocol.OwnPhoneView{Where: "Studio", Station: true, OS: "mac", ADB: true, Headset: "unknown", Today: 0, PerDay: 10}
 	v.Audio.Tool = true
 	v.Voice.Engine, v.Voice.Model, v.Voice.PerMinUSD = "openai", "gpt-realtime-2.1", 0.2
 	v.Test.State = "never"

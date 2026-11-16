@@ -1,4 +1,4 @@
-
+# Phone calls (D189, D193, D208, D215, D218, D278)
 # Phone calls (D189, D193, D208, D215, D218)
 
 **Status: settled and built (2026-11-11); the author's first real calls the same day changed the
@@ -168,6 +168,8 @@ marker, its choices), `tuwa_call_result`'s `outcome` / `outcomeSummary` / transc
 ## 10. From the owner's own number (D218)
 
 **Status: built 2026-11-12, verified with fakes and the Android emulator only** (`research/63-own-number-calls.md`).
+D278 (§10a) retires D218 (7)'s "the home only": a server home never offers itself as the place for
+the phone; this section holds for a home beside the phone (a Mac the person uses).
 The owner's own Android phone and SIM place the call; Ducter speaks through a real-time voice model
 on the computer the phone is plugged into. It reaches anywhere the SIM can call, mainland China
 included, and the callee sees the owner's own number.
@@ -205,3 +207,49 @@ owner's own call holding a Go; hanging up from the app; the line choice. Opt-in 
 emulator: `DUCTER_OWN_PHONE_EMULATOR=emulator-5580` (with `DUCTER_PHONE_ADB_PORT=5037` when it registered with the default adb server; Ducter otherwise uses its own phone's adb server, D217) (dial, idle → dialing → active, hang up → idle).
 Mac `apps/desktop/internal/views/ownphone_test.go`; demo home `apps/web/demo-own-phone.ts`. Shots:
 `.shots/own-number/`.
+
+## 10a. When no computer is beside the phone: 你来打 / You call (D278)
+
+**Status: part 1 built 2026-11-16, fakes only** (`research/89-own-number-calls.md`). The AI's voice
+can enter a cellular call only through a physical link at the phone (a cable, a Bluetooth
+hands-free link, Apple's relay); a third-party Android app can dial but never touch call audio. So
+the computer that carries a live call is the one beside the phone, never a server home.
+
+| | Heavy developer (VPS home, MacBook, Pixel Fold) | Consumer (iPhone + Mac) | Fresh user (a phone only) |
+|---|---|---|---|
+| **Before** | Told to plug the Fold into the VPS and run brew on Linux; 再找一次 looked dead | Nothing | Nothing |
+| **After (built)** | The card says the server isn't the place, and why; an own-number call is a sheet the Fold dials in one tap, from the Mac too | The sheet and a `tel:` link | The sheet, one tap, the sheet in the shade during the call |
+| **Later (direction)** | Bluetooth or a cable to the MacBook; control in the Ducter app; the voice on the MacBook | Continuity on the Mac | Unchanged |
+
+**The card** (`OwnPhoneView.station`, `os`, `looking`, `lookedAt`): a home of kind server with no
+phone plugged in shows no steps: the lede, which phone dials, why live calls need a computer beside
+the phone, coming soon. A station home keeps D218's five steps with install lines for its own OS
+only (brew on a Mac, apt on Linux with a note for other systems), and 再找一次 shows 正在找… (at
+least 700 ms) then 看过了 · {time} · {what it saw on which computer}.
+
+**The call** (`phone.ts`): `phone_call from=own` while D218's setup isn't done returns D215's sheet
+with `sheet.why = "own"` (the partner adds open, ask, note when told). The sheet's rails: the
+do-not-call list, emergency and short numbers, no hours, nothing charged; no AI line (the person
+speaks). The partner says one plain line (its tool result note), never describes the sheet, and
+after 通话结束 asks how it went and records it (`phone_call do=result`).
+
+**The dial** (D238's link): `HandsetState.dial` (granted · ask · denied) from the app; the home's
+`HandsetView.dial` per phone. On the phone, 自己拨打 calls the app's `phone.dial` (bridge):
+`CALL_PHONE` granted → `TelecomManager.placeCall`; first time → Android's prompt while Ducter is
+in front; refused → `ACTION_DIAL` filled; behind another screen without it → a notification whose
+tap opens the dialer. The sheet goes to a notification (channel 通话单 / Call sheets, 45 min). From
+another window, **在 {phone} 上拨打** sends `handset_dial {callId}`; the home checks the sheet is
+open and not blocked, sends `handset_dial_req` to that phone's page, waits 60 s for
+`handset_dial_res`, and answers `handset_dial_result {ok, phone, how | reason}`.
+
+**Checks:** `packages/core/test/you-call.test.ts` (the station rule, the look, the sheet and its
+rails, a dial through the real core with a fake app page), `apps/web/test/you-call.test.ts`,
+`apps/desktop/internal/views/youcall_test.go`, `apps/android/app/src/test/.../DialTest.kt`. Not
+verified: a real dial on a real phone (research/89 §8 P1), Android's permission prompt, the
+notification over the Pixel's in-call screen, a page in the background receiving the relay. Shots:
+`.shots/d278/`.
+
+**Direction (not built; `decisions.md` D278 (a)-(e), `todo.md`):** a station is the computer with
+a live audio link to the phone (a cable with a chirp check, Bluetooth HFP, Continuity), reported as
+`callLink`; control (dial, state, hang up) in the Ducter app so adb leaves the user path; the voice
+loop on the station.

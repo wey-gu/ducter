@@ -48,6 +48,15 @@
     <string name="handset_pill_you_line">做完以后，在卡片上点「好了」</string>
     <string name="handset_stop">停下</string>
     <string name="handset_stop_about">让正在用这台手机的任务停下</string>
+    <!-- D278: 你来打 / You call: 通话时在通知里看通话单 (Dial.kt). -->
+    <string name="sheet_channel">通话单</string>
+    <string name="sheet_channel_about">照着 Ducter 的通话单自己打电话时，在通知里看要说什么。</string>
+    <string name="sheet_title">打给 %1$s 的通话单</string>
+    <string name="sheet_tap">点一下拨给 %1$s</string>
+    <string name="sheet_open">开场白</string>
+    <string name="sheet_ask">要问的</string>
+    <string name="sheet_dont">不要透露</string>
+    <string name="sheet_note">需要记下</string>
     <string name="notify_loan_channel">在用这台手机</string>
     <string name="notify_loan_channel_about">任务借用这台手机时一直显示，带「停下」。</string>
     <!-- D255: Ducter 自己录下借出去的手机的屏幕；借出去时用它自己的连接。 -->

@@ -5,7 +5,7 @@
 // switch (a clay miniature of each settings page with the fingertip where to tap, research/74 §7),
 // the short demo of how a loan looks, the card that asks to borrow the phone, and 停下 rows.
 // The same rules as the Mac (apps/desktop/internal/views/handset.go).
-import type { HandsetServerFrame, HandsetState, TaskCard } from "@ducter/protocol";
+import type { CallPlan, DialHow, DialSheet, HandsetServerFrame, HandsetState, TaskCard } from "@ducter/protocol";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, Chip } from "./controls.tsx";
@@ -53,8 +53,56 @@ function took(s: HandsetState) {
   A.changed();
 }
 
+// ---------- D278: 你来打 / You call: a call sheet's number, dialled by the app on the person's phone ----------
+
+/** Where one sheet's dial stands, on this page: asking the phone, or how the phone took it. */
+export type DialNow = { phase: "asking"; phone: string } | { phase: "done"; phone: string; how: DialHow } | { phase: "failed"; phone: string; reason: "no_phone" | "no_sheet" | "failed" | "timeout" };
+export const DIAL = new Map<string, DialNow>();
+
+/** This page runs in the Ducter app on an Android phone that can dial (an app from D278 on). */
+export const dialsHere = () => androidHere() && !!H.state?.dial;
+
+/** The app dials the sheet's number itself, and keeps the sheet in a notification during the call. */
+async function appDial(d: { callId: string; to: string; name: string; sheet: DialSheet }): Promise<{ ok: boolean; how?: DialHow; error?: string }> {
+  const r = await nativeCall<{ ok?: boolean; how?: DialHow; error?: string }>({ t: "phone.dial", callId: d.callId, to: d.to, name: d.name, sheet: d.sheet, lang: A.L.lang });
+  // The permission may have changed with the answer: say so to the home on the next hello.
+  void handsetHello();
+  return r && r.ok === true ? { ok: true, how: r.how === "dialer" || r.how === "note" ? r.how : "rang" } : { ok: false, error: r?.error ?? "the Ducter app didn't answer" };
+}
+
+/** 拨打, tapped on the phone itself: the app dials (no round trip through the home). */
+export async function dialHere(callId: string, plan: CallPlan): Promise<void> {
+  const s = plan.sheet;
+  if (!s) return;
+  const phone = H.state?.model || "";
+  DIAL.set(callId, { phase: "asking", phone });
+  A.changed();
+  const r = await appDial({ callId, to: plan.to, name: plan.name, sheet: { goal: plan.goal, open: s.open, ask: s.ask, dont: s.dont, note: s.note } });
+  DIAL.set(callId, r.ok ? { phase: "done", phone, how: r.how ?? "rang" } : { phase: "failed", phone, reason: "failed" });
+  A.changed();
+}
+
+/** 在 Pixel Fold 上拨打, tapped in another window: the home asks that phone's app. */
+export function dialOn(callId: string, device: string, phone: string): void {
+  DIAL.set(callId, { phase: "asking", phone });
+  A.send({ t: "handset_dial", callId, device });
+  A.changed();
+}
+
 /** One of the home's calls, relayed to the app and answered. */
 export function handsetFrame(f: HandsetServerFrame): void {
+  // D278: dial a call sheet's number here (asked from another window), and answer how it went.
+  if (f.t === "handset_dial_req") {
+    if (!androidHere()) return void A.send({ t: "handset_dial_res", id: f.id, ok: false, error: "not the Android app" });
+    void appDial(f).then((r) => A.send({ t: "handset_dial_res", id: f.id, ok: r.ok, ...(r.how ? { how: r.how } : {}), ...(r.error ? { error: r.error } : {}) }));
+    return;
+  }
+  if (f.t === "handset_dial_result") {
+    const was = DIAL.get(f.callId);
+    const phone = f.phone ?? (was?.phone || "");
+    DIAL.set(f.callId, f.ok ? { phase: "done", phone, how: f.how ?? "rang" } : { phase: "failed", phone, reason: f.reason ?? "failed" });
+    return void A.changed();
+  }
   // D247: a task's card asked to turn 用这台手机 on here (tapped on this phone or in another window).
   if (f.t === "handset_guide") return void (androidHere() && openHandsetGuide());
   if (f.t === "handset_req") {

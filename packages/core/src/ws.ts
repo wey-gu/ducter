@@ -872,6 +872,23 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, connectionsFrame());
         return;
       }
+      // D278: 在 Pixel Fold 上拨打 / Call on Pixel Fold: a call sheet's own number, dialled by the
+      // Ducter app on the person's phone. Only a sheet still open; the do-not-call list holds.
+      case "handset_dial": {
+        const callId = String(f.callId ?? "");
+        const c = deps.phone?.get(callId);
+        const result = (r: Omit<Extract<import("@ducter/protocol").ServerFrame, { t: "handset_dial_result" }>, "t" | "callId">) => send(ws, { t: "handset_dial_result", callId, ...r });
+        if (!c || c.plan.from !== "self" || !c.plan.sheet || c.state !== "needs_go" || deps.phone?.blocked(c.plan.to)) return result({ ok: false, reason: "no_sheet" });
+        if (!deps.handsets) return result({ ok: false, reason: "no_phone" });
+        const sh = c.plan.sheet;
+        const r = await deps.handsets.dial(typeof f.device === "string" && f.device ? f.device : undefined, { callId, to: c.plan.to, name: c.plan.name, sheet: { goal: c.plan.goal, open: sh.open, ask: sh.ask, dont: sh.dont, note: sh.note } });
+        return result(r.ok ? { ok: true, phone: r.phone, how: r.how } : { ok: false, reason: r.reason, ...(r.phone ? { phone: r.phone } : {}), ...(r.error ? { error: r.error } : {}) });
+      }
+      case "handset_dial_res": {
+        const me = ws.data.device?.id;
+        if (me) deps.handsets?.dialed(me, { id: String(f.id ?? ""), ok: f.ok === true, ...(f.how === "rang" || f.how === "dialer" || f.how === "note" ? { how: f.how } : {}), ...(typeof f.error === "string" ? { error: f.error.slice(0, 200) } : {}) });
+        return;
+      }
       case "call_now": {
         if (!deps.phone) throw new Error("calls are not available");
         const r = deps.phone.callNow(String(f.callId ?? ""));
@@ -1245,6 +1262,8 @@ export function createWsHandler(deps: WsDeps) {
           ...(typeof s.boot === "string" && s.boot ? { boot: s.boot.slice(0, 40) } : {}),
           ...(s.link === "native" || s.link === "page" ? { link: s.link } : {}),
           ...(typeof s.gen === "number" ? { gen: s.gen } : {}),
+          // D278: whether its app can dial a call sheet's number.
+          ...(s.dial === "granted" || s.dial === "ask" || s.dial === "denied" ? { dial: s.dial } : {}),
           ...(rec && typeof rec.id === "string" && typeof rec.session === "string" && ["asking", "on", "saving", "saved", "declined", "failed"].includes(String(rec.state))
             ? {
                 recording: {

@@ -55,6 +55,17 @@ export interface OwnPhoneDeps {
   speak?: (text: string, rate: number, zh: boolean) => Promise<Int16Array | undefined>;
   /** How often the phone is read during a call (ms); tests go faster. */
   stepMs?: number;
+  /**
+   * D278: what kind of computer the home is (devices.ts localDeviceKind's rule: Linux is a server).
+   * A server is never offered as the place for the phone. Default: from the platform.
+   */
+  kind?: () => "laptop" | "mini" | "server" | "phone";
+  /** D278 (tests): where adb is, or undefined for a computer without it. */
+  findAdb?: () => string | undefined;
+  /** D278: the home's platform (tests); default process.platform. */
+  platform?: string;
+  /** D278: 再找一次 shows its busy state at least this long (ms), so a tap is seen; tests 0. */
+  lookMs?: number;
 }
 
 interface OwnCall {
@@ -116,7 +127,7 @@ export function openOwnPhone(deps: OwnPhoneDeps): OwnPhone {
     deps.onChange?.();
     for (const fn of listeners) fn();
   };
-  const adbBin = deps.exec ? "adb" : findAdb(process.env, deps.dataDir);
+  const adbBin = deps.exec ? "adb" : (deps.findAdb ?? (() => findAdb(process.env, deps.dataDir)))();
   const exec = deps.exec ?? (adbBin ? adbExec(adbBin) : undefined);
   const ffmpeg = findFfmpeg();
 
@@ -127,6 +138,12 @@ export function openOwnPhone(deps: OwnPhoneDeps): OwnPhone {
   let sound: { inputs: string[]; outputs: string[]; tool: boolean } = { inputs: [], outputs: [], tool: !!ffmpeg };
   let theirCall = false;
   let stopped = false;
+  // D278: 再找一次 answers visibly: looking while it looks, then when it looked.
+  let looking = false;
+  let lookedAt: string | undefined;
+  const platform = deps.platform ?? process.platform;
+  const os: OwnPhoneView["os"] = platform === "darwin" ? "mac" : platform === "linux" ? "linux" : "other";
+  const kind = () => deps.kind?.() ?? (platform === "linux" ? "server" : "laptop");
 
   const phone = (): AdbDevice | undefined => phones.find((p) => p.serial === file.serial) ?? phones.find((p) => p.usb) ?? phones[0];
   const adb = (): OwnPhoneAdb | undefined => {
@@ -142,6 +159,14 @@ export function openOwnPhone(deps: OwnPhoneDeps): OwnPhone {
   let testing = false;
 
   async function scan() {
+    try {
+      await look();
+    } finally {
+      lookedAt = new Date(clock.now()).toISOString();
+    }
+  }
+
+  async function look() {
     if (!exec) {
       phones = [];
       return changed();
@@ -184,6 +209,11 @@ export function openOwnPhone(deps: OwnPhoneDeps): OwnPhone {
     const e = engine();
     return {
       where: deps.where(),
+      // D278: a server home is never the place for the phone; one with a phone plugged in already is.
+      station: kind() !== "server" || !!p,
+      os,
+      ...(looking ? { looking: true } : {}),
+      ...(lookedAt ? { lookedAt } : {}),
       adb: !!exec,
       ...(p ? { phone: { serial: p.serial, model: info?.model ?? p.model, state: p.state, ...(info?.android ? { android: info.android } : {}) } } : {}),
       ...(info ? { sim: { state: info.sim, ...(info.carrier ? { carrier: info.carrier } : {}) } } : {}),
@@ -431,9 +461,22 @@ export function openOwnPhone(deps: OwnPhoneDeps): OwnPhone {
     scan,
     async act(a) {
       switch (a.action) {
-        case "scan":
-          await scan();
+        case "scan": {
+          // D278: the tap is answered visibly: looking (at least a moment), then 看过了 · time.
+          if (looking) return { ok: true };
+          looking = true;
+          changed();
+          const start = Date.now();
+          try {
+            await scan();
+            const left = (deps.lookMs ?? 700) - (Date.now() - start);
+            if (left > 0) await Bun.sleep(left);
+          } finally {
+            looking = false;
+            changed();
+          }
           return { ok: true };
+        }
         case "audio":
           if (a.input !== undefined) file.input = a.input || undefined;
           if (a.output !== undefined) file.output = a.output || undefined;

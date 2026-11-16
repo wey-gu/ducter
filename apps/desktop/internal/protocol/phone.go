@@ -72,7 +72,7 @@ type CallPlan struct {
 // Ducter has calls the number's country (D215): the first thing to say, the
 // questions, what not to share, what to note down.
 type CallSheet struct {
-	Why  string   `json:"why"` // uncovered
+	Why  string   `json:"why"` // uncovered | own (D278: 你来打 / You call)
 	Open string   `json:"open"`
 	Ask  []string `json:"ask"`
 	Dont []string `json:"dont"`
@@ -223,8 +223,15 @@ const OwnPhone = "own"
 // call, each a fact the home read. The voice key is only Key: true.
 type OwnPhoneView struct {
 	Where string `json:"where"`
-	ADB   bool   `json:"adb"`
-	Phone *struct {
+	// Station (D278): this home can be the computer beside the phone; a
+	// server never can (the card shows no steps there). OS is the home's
+	// system (mac | linux | other), so install lines are only ever its own.
+	Station  bool   `json:"station"`
+	OS       string `json:"os"`
+	Looking  bool   `json:"looking,omitempty"`
+	LookedAt string `json:"lookedAt,omitempty"`
+	ADB      bool   `json:"adb"`
+	Phone    *struct {
 		Serial  string `json:"serial"`
 		Model   string `json:"model"`
 		State   string `json:"state"` // ready | unauthorized | offline

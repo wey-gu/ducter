@@ -119,14 +119,48 @@ voice: never a family member's, a friend's or anyone else's.
 
 ## Call from your own number
 
-Your partner can also call from **your own Android phone and SIM**, so the other side sees your
-number. It needs a little hardware and one key, set up once on the **Call from your own number**
-card in **Settings › Accounts**. The card has five steps and ticks each one off by itself.
+Ask "用我自己的号码打给…" or "call them from my number", and the other side sees **your** number.
+There are two ways this works.
 
-1. **Phone.** Plug the Android phone into the computer Ducter lives on with a USB cable, and turn on
-   **USB debugging** in its Developer options. Tap **Allow** when the phone asks. If the computer
-   doesn't have adb yet, the card shows the one command to install it
-   (`brew install android-platform-tools`).
+### You call: works today, nothing to set up
+
+Your partner gets everything ready and you make the call. You get a **call sheet** (the same one as
+for a country it can't call): the number, what the call is for, **Open with**, the questions to
+**Ask**, what to keep back, what to **Note down**. Your partner says in one line why it's a sheet.
+
+- **On your Android phone, in the Ducter app:** tap **Call it yourself** and the phone calls the
+  number from your SIM. The first time, Android asks whether Ducter may make calls; if you say no,
+  the phone's dialer opens with the number filled in and you press call. During the call, pull down
+  the notification shade: the sheet is there (**Call sheet: …**), so you can read it while you talk.
+- **On your Mac or in a browser**, when the Ducter app on your Android phone is connected: tap
+  **Call on Pixel Fold** (your phone's name). The phone starts the call and shows the sheet in its
+  notifications. If Ducter on the phone is closed or in the background, open it and try again.
+- **Anywhere else:** **Call it yourself** hands the number to the phone app, or **Copy number**.
+- When you hang up, tap **Done calling** (or just say "打完了，周六上午可以"). Your partner asks how
+  it went in one line and keeps your answer with the call on **On hand**.
+
+Nothing is charged, there's no AI on the line (you're the one talking), and numbers you said not to
+call again stay blocked.
+
+### Your partner speaks on the call: needs a computer beside your phone
+
+For your partner to talk on a call from your number, the phone has to sit **beside a computer you
+use**, linked by a cable. The reason is the phone itself: a voice can only get into a phone call
+through the phone's own headset socket (or, later, Bluetooth). No app on the phone can put a voice
+into a call. So it can't be a server in a data center, or any computer away from you.
+
+If Ducter lives on a server, the **Call from your own number** card says exactly that, shows no
+setup steps, and offers **You call** instead. Live calls through a computer next to your phone
+(a Mac you use, by Bluetooth or a cable) are coming soon.
+
+If Ducter lives on a Mac beside your phone, the card has five steps and ticks each one off by
+itself. **Look again** always answers: it shows **Looking…**, then when it looked and what it saw
+("Looked at 20:14 · no phone on MacBook yet").
+
+1. **Phone.** Plug the Android phone into that Mac with a USB cable, and turn on **USB debugging**
+   in its Developer options. Tap **Allow** when the phone asks. If the Mac doesn't have adb yet, the
+   card shows the one command to install it on that computer (`brew install
+   android-platform-tools`).
 2. **SIM.** The card shows the carrier and the number they'll see (from Your details, or type it).
 3. **Cable.** The phone needs to think a headset is plugged in, and the computer needs to hear it
    and talk into it. You need, for about $15:
@@ -137,8 +171,8 @@ card in **Settings › Accounts**. The card has five steps and ticks each one of
 
    The phone's headphone side goes into the sound card's mic socket; the sound card's headphone
    socket goes through the attenuator into the phone's mic side. The card finds the sound card by
-   its name; pick another one if it guessed wrong. The computer needs ffmpeg
-   (`brew install ffmpeg`), and on a Mac, Ducter asks once to use the microphone.
+   its name; pick another one if it guessed wrong. The computer needs ffmpeg (the card shows the
+   command), and Ducter asks once to use the microphone.
 4. **Live voice.** Talking on a call in real time takes a voice model with its own API key. Your
    Claude or ChatGPT plan doesn't include live voice. Paste an **OpenAI** key (works worldwide,
    except mainland China; about $0.20 a minute of talking) or a **Qwen** key from Alibaba Cloud
@@ -147,10 +181,10 @@ card in **Settings › Accounts**. The card has five steps and ticks each one of
    plays a chime and one sentence, and hangs up. No AI is involved. Then tell the card whether you
    heard it.
 
-Then the card reads **Ready to call from your number**. Your partner uses your number when you ask
-("用我自己的号码打给…", "call them from my number"), and for numbers Tuwa can't reach. Turn on
-**Use my number for every call** to use it always. The **Call?** card shows **From: Your number …
-(your phone)**, and **About** counts only the voice model: the call itself is on your phone plan.
+Then the card reads **Ready to call from your number**. Your partner uses your number when you ask,
+and for numbers Tuwa can't reach. Turn on **Use my number for every call** to use it always. The
+**Call?** card shows **From: Your number … (your phone)**, and **About** counts only the voice
+model: the call itself is on your phone plan.
 
 Everything else is the same as any call: the card first, the line says it's an AI assistant calling
 for you, the hours, the outcome as heard. A few things are different:
@@ -167,5 +201,6 @@ for you, the hours, the outcome as heard. A few things are different:
 
 ## Coming soon
 
-Answering calls to your own number, listening in live, and a phone plugged into another of your
-computers instead of the one Ducter lives on.
+Your partner speaking on calls from your number through a computer beside your phone when Ducter
+itself lives elsewhere (a Mac you use, by Bluetooth or a cable), the same for an iPhone with a Mac,
+answering calls to your own number, and listening in live.

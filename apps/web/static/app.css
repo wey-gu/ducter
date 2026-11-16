@@ -5862,6 +5862,13 @@ dl.call-summary dd { margin: 0; }
 .own-card .center { text-align: center; }
 .own-card .phone-acts.left { justify-content: flex-start; }
 .own-busy { text-align: center; }
+/* D278: 再找一次 and what the last look saw, on one line that wraps. */
+.own-look { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.own-look .btn.text { align-self: flex-start; }
+/* D278: the card on a server home: what works today, then why live calls need a computer beside the phone. */
+.own-away { gap: 12px; }
+.own-away-dial { padding: 10px 14px; border-radius: var(--r-md); background: var(--surface-sunken); color: var(--ink); line-height: 1.5; }
+.call-dialed { padding: 0 2px; line-height: 1.5; }
 @media (max-width: 480px) { .own-body { padding-left: 14px; } }
 .signin-card { align-items: stretch; text-align: center; }
 .signin-code { align-self: center; padding: 10px 18px; border-radius: var(--r-md); background: var(--surface-sunken); font-family: var(--mono); font-size: 30px; font-weight: 700; letter-spacing: 0.12em; color: var(--ink); user-select: all; }

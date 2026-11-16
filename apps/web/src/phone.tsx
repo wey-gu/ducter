@@ -8,6 +8,8 @@ import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, Chev, DangerButton, Seg, Toggle } from "./controls.tsx";
 import type { DecisionState } from "./store.ts";
+import { DIAL, dialHere, dialOn, dialsHere } from "./handset.tsx";
+import { dialers } from "./own-phone.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 export { TUWA_MCP };
@@ -228,13 +230,20 @@ function SheetCard({ d }: { d: DecisionState }) {
   const [dialed, setDialed] = useState(false);
   const [copied, setCopied] = useState(false);
   const copy = () => void navigator.clipboard?.writeText(p.to).then(() => (setCopied(true), setTimeout(() => setCopied(false), 1800))).catch(() => undefined);
+  // D278: on the person's Android phone the Ducter app dials (and keeps the sheet in a notification);
+  // elsewhere a tel: link, and 在 Pixel Fold 上拨打 when the app on their phone is connected.
+  const here = dialsHere();
+  const away = here ? undefined : dialers()[0];
+  const awayName = away?.name.replace(/\s*·\s*Ducter$/, "");
+  const now = DIAL.get(d.call!.callId);
+  const said = dialWords(now);
   return (
     <div class="call-card callsheet">
       <div class="call-head">
         <CallArt size={56} />
         <div class="q">{d.question}</div>
       </div>
-      {open && <div class="small sub call-open">{t("call.sheet.why")}</div>}
+      {open && <div class="small sub call-open">{t(s.why === "own" ? "call.sheet.why.own" : "call.sheet.why")}</div>}
       <dl class="call-plan">
         <div>
           <dt>{t("call.row.number")}</dt>
@@ -260,18 +269,45 @@ function SheetCard({ d }: { d: DecisionState }) {
           <Btn kind="text" label={t("call.hold")} about={d.question} onClick={() => A.decide(d.decisionId, "hold")} />
           <span class="pair">
             <Btn kind={dialed ? "primary" : "secondary"} label={t("call.sheet.done")} about={d.question} onClick={() => A.decide(d.decisionId, "go")} />
-            <a class={`btn ${dialed ? "secondary" : "primary"}`} href={`tel:${p.to}`} aria-label={`${t("call.sheet.dial")} · ${p.name}`} onClick={() => setDialed(true)}>
-              <span class="lbl">{t("call.sheet.dial")}</span>
-            </a>
+            {away && awayName ? (
+              <Btn kind={dialed ? "secondary" : "primary"} label={t("call.sheet.dial.on", awayName)} about={p.name} disabled={now?.phase === "asking"} onClick={() => (setDialed(true), dialOn(d.call!.callId, away.id, awayName))} />
+            ) : (
+              <a
+                class={`btn ${dialed ? "secondary" : "primary"}`}
+                href={`tel:${p.to}`}
+                aria-label={`${t("call.sheet.dial")} · ${p.name}`}
+                onClick={(e) => {
+                  setDialed(true);
+                  if (here) e.preventDefault(), void dialHere(d.call!.callId, p);
+                }}
+              >
+                <span class="lbl">{t("call.sheet.dial")}</span>
+              </a>
+            )}
           </span>
         </div>
-      ) : (
+      ) : null}
+      {open && said && (
+        <div class={`small ${said.warn ? "warn" : "sub"} call-dialed`} role="status">
+          {said.text}
+        </div>
+      )}
+      {open ? null : (
         <div class="resolved small" role="status">
           {d.resolved?.option === "go" ? t("call.sheet.went") : d.resolved?.option === "hold" ? t("call.held") : t("call.replied")}
         </div>
       )}
     </div>
   );
+}
+
+/** D278: how the phone took a dial, in a line under the sheet's buttons. */
+export function dialWords(now: (typeof DIAL extends Map<string, infer V> ? V : never) | undefined): { text: string; warn?: boolean } | undefined {
+  if (!now) return undefined;
+  const name = now.phone || "Android";
+  if (now.phase === "asking") return { text: t("call.sheet.dialing", name) };
+  if (now.phase === "done") return { text: t(now.how === "dialer" ? "call.sheet.dialer" : now.how === "note" ? "call.sheet.noted" : "call.sheet.rang", name) };
+  return { text: t(now.reason === "timeout" ? "call.sheet.dialtimeout" : now.reason === "no_phone" ? "call.sheet.nophone" : "call.sheet.dialfail", name), warn: true };
 }
 
 /** A decision about a call: its Go card, a question from the line, or a call sheet (D215). */

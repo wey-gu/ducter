@@ -160,6 +160,8 @@ object Handset {
             }
         }
         .put("pictures", Build.VERSION.SDK_INT >= 30)
+        // D278: whether a call sheet's number can be dialled from here (and how).
+        .apply { Dial.state(c)?.let { put("dial", it) } }
         .apply { session?.let { put("session", it) } }
 
     internal fun changed(c: Context) {

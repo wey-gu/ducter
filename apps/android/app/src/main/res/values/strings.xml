@@ -52,6 +52,15 @@
     <string name="handset_pill_you_line">When you\'re done, tap Done on the card</string>
     <string name="handset_stop">Stop</string>
     <string name="handset_stop_about">Stop the task using this phone</string>
+    <!-- D278: 你来打 / You call: the call sheet in the shade during the call (Dial.kt). -->
+    <string name="sheet_channel">Call sheets</string>
+    <string name="sheet_channel_about">What to say on a call you make from a Ducter call sheet, while you\'re on it.</string>
+    <string name="sheet_title">Call sheet: %1$s</string>
+    <string name="sheet_tap">Tap to call %1$s</string>
+    <string name="sheet_open">Open with</string>
+    <string name="sheet_ask">Ask</string>
+    <string name="sheet_dont">Don\'t share</string>
+    <string name="sheet_note">Note down</string>
     <!-- D246: Android's notifications (Notify.kt): one channel, the loan's. -->
     <string name="notify_loan_channel">Using this phone</string>
     <string name="notify_loan_channel_about">Shown the whole time a task borrows this phone, with Stop.</string>

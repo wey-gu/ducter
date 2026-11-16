@@ -295,9 +295,11 @@ func (a *App) notifyPanel(c *ui.Context) {
 				q := &protocol.QuietHours{Start: "23:00", End: "08:00", TZ: localZone()}
 				st.Quiet = q
 				a.SetSettings(protocol.SettingsPatch{Quiet: q})
+				a.say("notify", a.L.T("said.quiet", q.Start, q.End))
 			} else {
 				st.Quiet = nil
 				a.SetSettings(protocol.SettingsPatch{ClearQuiet: true})
+				a.say("notify", a.L.T("said.quiet.off"))
 			}
 		}
 		if q := st.Quiet; q != nil {
@@ -313,10 +315,12 @@ func (a *App) notifyPanel(c *ui.Context) {
 					ps.qFrom = nq.Start + "-" + nq.End
 					st.Quiet = nq
 					a.SetSettings(protocol.SettingsPatch{Quiet: nq})
+					a.say("notify", a.L.T("said.quiet", nq.Start, nq.End))
 				}
 			})
 		}
 	})
+	a.saidLine(c, "notify") // D296
 	// D165: the same chips as on Accounts, once there is something to watch.
 	if (st.Proactive != "" && st.ProactiveBy != "default") || len(a.S.Connections) > 0 {
 		a.proactiveSection(c, "notify", true) // D289: a section like the others, 今天看了什么 its second row
@@ -338,9 +342,11 @@ func (a *App) notifyPanel(c *ui.Context) {
 			if i := a.choices(c, "default", a.L.T("partner.default.line"), labels, sel); i >= 0 {
 				st.DefaultAfterMin = protocol.DefaultAfterChoices[i]
 				a.SetSettings(protocol.SettingsPatch{DefaultAfterMin: st.DefaultAfterMin})
+				a.say("default", a.L.T("said.default", labels[i]))
 			}
 		})
 	})
+	a.saidLine(c, "default") // D296
 	// D283: iMessage (D277) moved to 聊天软件 / Chat apps.
 }
 
@@ -576,8 +582,10 @@ func (a *App) accountsPanel(c *ui.Context) {
 			a.ownPhoneCard(c)  // D218, D278: calls from the owner's own number
 		})
 	})
+	// D296: the AI accounts are a row like the others: their coins in the
+	// tile column, a plain title, where they are signed in as its line.
 	a.group(c, "ai-accounts", "", "", func() {
-		if a.linkRow(c, "ai-accounts", a.L.T("acct.ai.link"), a.L.T("acct.ai.link.help"), false) {
+		if a.tileLinkRow(c, "ai-accounts", a.coinsTile(c, "ai-accounts"), a.L.T("acct.ai.link"), a.L.T("acct.ai.link.help"), false) {
 			a.OpenDevices()
 		}
 	})
@@ -609,7 +617,7 @@ func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
 					app := app
 					ui.Row(c.Key("ooapp:" + app.Service)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
 						ui.Text(c, app.Title).FontSize(t.MD).FontWeight(700).Width(112).Shrink(0).SingleLine()
-						ui.Text(c, strings.Join(app.Accounts, " · ")).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0).SingleLine()
+						ui.Text(c, a.listWords(app.Accounts)).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0).SingleLine()
 					})
 				}
 			})
@@ -628,19 +636,6 @@ func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
 			})
 		}
 	})
-}
-
-// ooAppsLine is a connection's services in one line ("Gmail (2) · Slack").
-func ooAppsLine(apps []protocol.OoApp) string {
-	parts := make([]string, 0, len(apps))
-	for _, ap := range apps {
-		p := ap.Title
-		if len(ap.Accounts) > 1 {
-			p += " (" + itoa(int64(len(ap.Accounts))) + ")"
-		}
-		parts = append(parts, p)
-	}
-	return strings.Join(parts, " · ")
 }
 
 // acctField is one labelled input on the accounts card; a secret is masked,

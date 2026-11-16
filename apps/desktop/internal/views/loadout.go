@@ -204,13 +204,13 @@ func modelLabel(h *protocol.DeviceHarness, id string) string {
 
 func pct(f float64) int { return int(f*100 + 0.5) }
 
-// brainLine: "Claude Code · Opus".
+// brainLine: "Claude Code 的 Opus" / "Claude Code with Opus" (D296: a
+// phrase, never "Claude Code · Opus").
 func (a *App) brainLine(b protocol.Brain) string {
-	parts := []string{harnessName(b.Harness)}
 	if m := modelLabel(a.trayHarness(b.Harness), b.Model); m != "" {
-		parts = append(parts, m)
+		return a.L.T("loadout.brain.with", harnessName(b.Harness), m)
 	}
-	return strings.Join(parts, " · ")
+	return harnessName(b.Harness)
 }
 
 // tokenStatus is a tray token's one line under its name.
@@ -546,13 +546,12 @@ func (a *App) brainCard(c *ui.Context) {
 		ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 			a.socketWell(c, b)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				head := a.brainLine(b)
+				// D296: the head is the AI agent; the model is the choice under
+				// it, or, with none to pick, its own phrase on the line below.
+				ui.Text(c, harnessName(b.Harness)).Font(t.Display).FontSize(t.LG).FontWeight(800).SingleLine()
 				if b.Model == "" && len(a.brainModels(b, h)) == 0 {
-					// No model to pick: the AI agent's own default, said on the
-					// line it belongs to rather than as a stray note.
-					head += " · " + a.L.T("loadout.model.default")
+					ui.Text(c, a.L.T("loadout.model.default.line")).FontSize(t.SM).TextColor(t.InkSoft).SingleLine()
 				}
-				ui.Text(c, head).Font(t.Display).FontSize(t.LG).FontWeight(800).SingleLine()
 				if bn := a.S.BrainNow; bn != nil && bn.Why != "" && a.lo.pending == nil {
 					// D150/D177: core picked it, the user didn't: say so, and only what is true.
 					auto := a.L.T("loadout.brain.auto", harnessName(b.Harness))
@@ -563,7 +562,7 @@ func (a *App) brainCard(c *ui.Context) {
 				}
 				line := ""
 				if h != nil && h.Allowance != nil {
-					line = a.L.T("loadout.left", pct(h.Allowance.Left)) + " · " + a.L.T("loadout.brain.reserve", a.S.PersonaName)
+					line = a.L.T("loadout.left.kept", pct(h.Allowance.Left), a.S.PersonaName)
 					if h.Allowance.Left <= protocol.PartnerReserve {
 						line = a.L.T("loadout.left.reserve", pct(h.Allowance.Left), a.S.PersonaName)
 					}
@@ -588,22 +587,26 @@ func (a *App) brainCard(c *ui.Context) {
 			a.note(c, a.L.T("loadout.brain.onlymac", a.homeName()))
 		}
 		if ms := a.brainModels(b, h); len(ms) > 0 {
+			// D296: the choice says the model; what it is like is one phrase
+			// under it, for the one chosen (never "Opus · 最聪明").
 			sel := 0
 			labels := make([]string, len(ms))
 			for i, m := range ms {
-				word := a.L.T("loadout.model.smart")
-				if m.fast {
-					word = a.L.T("loadout.model.fast")
-				}
-				labels[i] = m.label + " · " + word
+				labels[i] = m.label
 				if m.id == b.Model {
 					sel = i
 				}
 			}
 			if i := a.choices(c, "brain-model", a.L.T("loadout.brain.model"), labels, sel); i >= 0 {
 				a.setBrain(protocol.Brain{Harness: b.Harness, Model: ms[i].id})
-				lo.toast, lo.toastAt = a.L.T("loadout.toast.brain", a.S.PersonaName, harnessName(b.Harness)+" · "+ms[i].label), a.Now()
+				lo.toast, lo.toastAt = a.L.T("loadout.toast.brain", a.S.PersonaName, a.L.T("loadout.brain.with", harnessName(b.Harness), ms[i].label)), a.Now()
+				sel = i
 			}
+			k := "loadout.model.line.smart"
+			if ms[sel].fast {
+				k = "loadout.model.line.fast"
+			}
+			a.note(c, a.L.T(k, ms[sel].label))
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
 			ui.Box(c).Size(18, 18).Draw(drawCheck(t.Done.Ink)).Shrink(0).Margin(2, 0, 0, 0)
@@ -707,30 +710,30 @@ func (a *App) acctLine(c *ui.Context) {
 		case !h.LoggedIn:
 			say(a.L.T("loadout.acct.signin", name))
 		default:
-			parts := []string{}
+			// D296: each fact its own line, each line a phrase.
 			if al := h.Allowance; al != nil {
-				if brain && al.Left <= protocol.PartnerReserve {
-					parts = append(parts, a.L.T("loadout.left.reserve", pct(al.Left), a.S.PersonaName))
-				} else {
-					parts = append(parts, a.L.T("loadout.left", pct(al.Left)))
+				at := store.ParseTime(al.ResetsAt)
+				switch {
+				case brain && al.Left <= protocol.PartnerReserve:
+					say(a.L.T("loadout.left.reserve", pct(al.Left), a.S.PersonaName))
+				case !at.IsZero():
+					say(a.L.T("loadout.left.back", pct(al.Left), a.when(at)))
+				default:
+					say(a.L.T("loadout.left", pct(al.Left)))
 				}
 				if al.SharedBy > 1 {
-					parts = append(parts, a.L.T("loadout.acct.shared", al.SharedBy))
+					say(a.L.T("loadout.acct.shared", al.SharedBy))
 				} else {
-					parts = append(parts, a.L.T("loadout.acct.only", a.homeName()))
-				}
-				if at := store.ParseTime(al.ResetsAt); !at.IsZero() {
-					parts = append(parts, a.L.T("loadout.acct.resets", a.when(at)))
+					say(a.L.T("loadout.acct.only", a.homeName()))
 				}
 			} else {
-				parts = append(parts, a.L.T("loadout.signed_in"))
+				say(a.L.T("loadout.signed_in"))
 			}
-			say(strings.Join(parts, " · "))
 			if brain {
 				say(a.L.T("loadout.acct.same", a.S.PersonaName))
 			}
 			if h.Billing == "usage" {
-				ui.Text(c, a.L.T("loadout.acct.paid")).FontSize(t.SM).FontWeight(700).LineHeight(1.5).TextColor(t.NeedsYou.Ink)
+				ui.Text(c, a.L.T("loadout.acct.paid")).FontSize(t.SM).FontWeight(600).LineHeight(1.5).TextColor(t.InkSoft)
 			}
 			on := a.taskReady(*h)
 			note := a.L.T("loadout.acct.tasks.on", a.S.PersonaName)

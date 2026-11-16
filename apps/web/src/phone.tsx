@@ -6,7 +6,7 @@ import type { CallPlan, CallView, ConnectionView, OwnPhoneView, SignInView } fro
 import { callEnded, prettyNumber, TUWA_MCP } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn, Chev, DangerButton, Seg, Toggle } from "./controls.tsx";
+import { Btn, Chev, DangerButton, RowSwitch, Seg } from "./controls.tsx";
 import type { DecisionState } from "./store.ts";
 import { DIAL, dialHere, dialOn, dialsHere } from "./handset.tsx";
 import { dialers } from "./own-phone.tsx";
@@ -536,7 +536,10 @@ export function PhoneCard({ c }: { c: ConnectionView }) {
         </div>
       )}
       {v?.enrolled ? (
-          <Toggle label={t("call.voice.use")} help={t("call.voice.use.help")} checked={v.on} onChange={(on) => A.phoneVoice(on ? "on" : "off")} />
+        // D296: a row on the text column like every other, its switch at the right edge.
+        <GRow title={t("call.voice.use")} line={t("call.voice.use.help")}>
+          <RowSwitch label={t("call.voice.use")} on={v.on} onChange={(on) => A.phoneVoice(on ? "on" : "off")} />
+        </GRow>
       ) : (
         <GRow title={t("call.voice.title")} line={t("call.voice.none")}>
           <Btn kind="text" size="sm" label={t("call.voice.done")} onClick={() => A.phoneVoice("refresh")} />

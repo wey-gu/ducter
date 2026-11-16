@@ -73,7 +73,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 				a.afForm(c, "signin", &x)
 				continue
 			}
-			a.afRow(c, "signin:"+x.ID, x.Label, x.Username, a.afUsed(x.UsedAt), func() { a.afEdit("signin", &x) }) // D291
+			a.afRow(c, "signin:"+x.ID, drawGlobe, x.Label, x.Username, a.afUsed(x.UsedAt), func() { a.afEdit("signin", &x) }) // D291
 		}
 		if s.editing == "signin:new" {
 			a.afForm(c, "signin", nil)
@@ -89,7 +89,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 				a.afForm(c, "card", &x)
 				continue
 			}
-			a.afRow(c, "card:"+x.ID, x.Label, a.L.T("af.card.line", x.Name, x.Exp), a.afUsed(x.UsedAt), func() { a.afEdit("card", &x) }) // D291
+			a.afRow(c, "card:"+x.ID, drawCardMark, x.Label, a.L.T("af.card.line", x.Name, x.Exp), a.afUsed(x.UsedAt), func() { a.afEdit("card", &x) }) // D291
 		}
 		if s.editing == "card:new" {
 			a.afForm(c, "card", nil)
@@ -133,7 +133,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 				title = a.L.T("af.d.kept", n)
 			}
 		}
-		a.afRow(c, "details", title, help, "", func() {
+		a.afRow(c, "details", drawPersonMark, title, help, "", func() {
 			s.editing, s.sure = "details", false
 			s.details = map[string]string{}
 			for _, d := range f.SavedDetails {
@@ -172,14 +172,25 @@ func (a *App) afUsed(at string) string {
 	return a.L.T("af.used", a.agoLong(at))
 }
 
-func (a *App) afRow(c *ui.Context, key, title, help, mark string, open func()) {
+// afRow is one saved thing (D296): its mark in the tile column, so its
+// words start on the text edge with the add row's under it; when it was
+// last used at the right edge; the whole row opens it.
+func (a *App) afRow(c *ui.Context, key string, glyph func(ui.Color) func(p *ui.Painter, r ui.Rect), title, help, mark string, open func()) {
 	t := a.T
 	a.sep(c)
-	r := ui.Row(c.Key("af-row:"+key)).Gap(t.S4).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title).Focusable()
-	if r.Hovered() {
-		r.Background(t.SurfaceSunken)
+	r := ui.Row(c.Key("af-row:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title).Focusable()
+	switch {
+	case r.Pressed():
+		r.Background(t.Ink.Alpha(0.06))
+	case r.Hovered():
+		r.Background(t.Ink.Alpha(0.03))
 	}
 	r.Children(func() {
+		a.tileCol(c, func() {
+			if glyph != nil {
+				a.glyph(c, 20, glyph(t.InkSoft))
+			}
+		})
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 			ui.Text(c, title).FontSize(t.MD).FontWeight(700).SingleLine()
 			if help != "" {

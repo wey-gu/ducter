@@ -280,11 +280,12 @@ func (a *App) updateReason(reason string) string {
 // 3 小时前查过 / Up to date · checked 3 h ago.
 func (a *App) upToDate(u *protocol.DeviceUpdate) string {
 	line := a.L.T("devup.current")
+	// D296: one phrase, never "已经是最新的 · 刚检查过".
 	if at := store.ParseTime(u.CheckedAt); !at.IsZero() {
 		if a.Now().Sub(at) < 2*time.Minute {
-			return line + " · " + a.L.T("devup.checked.now")
+			return a.L.T("settings.versions.current.now")
 		}
-		return line + " · " + a.L.T("devup.checked", a.agoLong(u.CheckedAt))
+		return a.L.T("settings.versions.current", a.agoLong(u.CheckedAt))
 	}
 	return line
 }
@@ -596,7 +597,17 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 		}
 	}
 	// Behind: the status says so in words (devup.available); no dot (D213).
-	a.valueRow(c, key, a.deviceName(dv), a.kindLine(dv), nil, v, status, below)
+	a.valueRow(c, key, a.deviceName(dv), a.versionSub(dv), nil, v, status, below)
+}
+
+// versionSub is a computer's line in the versions card: what it is to the
+// partner, as a phrase under its name (D296), never "这台 Mac · Ducter 住这儿"
+// under 这台 Mac.
+func (a *App) versionSub(dv *protocol.DeviceView) string {
+	if dv.Home {
+		return a.L.T("settings.versions.home", a.S.PersonaName)
+	}
+	return a.L.T("settings.versions.worker", a.S.PersonaName)
 }
 
 // homeDevice is the home among the devices shown, or nil.

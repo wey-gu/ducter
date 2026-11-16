@@ -1,7 +1,12 @@
 package views
 
 import (
+	"strings"
+	"time"
+
 	"github.com/egoist/mygo/ui"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
@@ -264,4 +269,151 @@ func (a *App) quietDanger(c *ui.Context, key, label, about string) bool {
 		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine().AccessHidden(true)
 	})
 	return b.Clicked()
+}
+
+// ---------- D296: pieces every pane shares ----------
+
+// tileLinkRow is a row that goes somewhere else in the app (or, out, to a
+// page outside it), with its tile in the tile column: the whole row is the
+// button, a chevron (or an arrow out) at its end. The row a pane points
+// elsewhere with (AI accounts to Devices, your details to their sheet) is
+// this one, never a bare link or a title with its list in brackets.
+func (a *App) tileLinkRow(c *ui.Context, key string, tile func(), title, line string, out bool) bool {
+	t := a.T
+	a.sep(c)
+	b := ui.Row(c.Key("tlink:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).
+		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(title).Focusable()
+	switch {
+	case b.Pressed():
+		b.Background(t.Ink.Alpha(0.06))
+	case b.Hovered():
+		b.Background(t.Ink.Alpha(0.03))
+	}
+	b.Children(func() {
+		a.tileCol(c, tile)
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
+			ui.Text(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+			if line != "" {
+				ui.Text(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			}
+		})
+		mark := drawChevron(t.InkMuted, false)
+		if out {
+			mark = drawOut(t.InkMuted)
+		}
+		a.glyph(c, 16, mark)
+	})
+	return b.Clicked()
+}
+
+// coinsTile is the AI agents' own coins, two overlapped in the tile
+// column: the literal things an AI accounts row is about.
+func (a *App) coinsTile(c *ui.Context, key string) func() {
+	return func() {
+		const s = float32(27) // as the Connected AI agents tab's two coins (D257)
+		ui.Box(c.Key("coins:"+key)).Size(40, 40).AccessHidden(true).Children(func() {
+			for i, h := range []string{"coin_claude_code", "coin_codex"} {
+				if bmp := theme.Clay(h); bmp != nil {
+					ui.Image(c, bmp).Size(s, s).Absolute().Left(float32(i) * (40 - s)).Top(float32(i) * (40 - s))
+				}
+			}
+		})
+	}
+}
+
+// listWords is a list of names of one kind in the reader's language
+// (Gmail、Slack / Gmail, Slack): a list, never facts joined with " · ".
+func (a *App) listWords(items []string) string {
+	if a.L != nil && a.L.Lang == i18n.EN {
+		return strings.Join(items, ", ")
+	}
+	return strings.Join(items, "、")
+}
+
+// saidFor is how long the partner's word after a change stays.
+const saidFor = 4 * time.Second
+
+// saidWord is one word the partner answers a change with: what, and when.
+type saidWord struct {
+	text string
+	at   time.Time
+}
+
+// say keeps the partner's word for a change, for saidLine to show.
+func (a *App) say(key, text string) {
+	if a.settings.said == nil {
+		a.settings.said = map[string]saidWord{}
+	}
+	a.settings.said[key] = saidWord{text, a.Now()}
+}
+
+// saidLine is the partner's one word after a change you made (D296): a
+// small clay pebble pops in on the done ink, then the line in its voice
+// in the soft ink, on the text edge; it settles away by itself after a
+// few seconds. Never a toast, never what a switch already shows: only
+// where the change has a consequence worth hearing.
+func (a *App) saidLine(c *ui.Context, key string) {
+	t := a.T
+	w, ok := a.settings.said[key]
+	text := w.text
+	if !ok || text == "" {
+		return
+	}
+	left := saidFor - a.Now().Sub(w.at)
+	if left <= 0 {
+		delete(a.settings.said, key)
+		return
+	}
+	c.After(left)
+	an := t.Nav.Across
+	row := ui.Row(c.Key("said:"+key)).Gap(t.S2).Padding(0, t.S5).AlignItems(ui.Center).
+		Transition(ui.ElementTransition{Animation: &an, ExitDuration: t.Nav.Leave, Enter: &ui.Motion{Y: 4}, Exit: &ui.Motion{}}).
+		Role(ui.RoleStatus).Label(text)
+	row.Children(func() {
+		dot := ui.Box(c.Key("said-dot:"+key)).Size(12, 12).Shrink(0).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
+			clayDot(p, r.X+r.W/2, r.Y+r.H/2, 4.5, t.Done.Ink, t.Done.Ink.Mix(t.Ink, 0.35), t.Done.Surface)
+		})
+		if !c.Preferences().ReduceMotion {
+			pop := t.Bouncy
+			dot.Transition(ui.ElementTransition{Animation: &pop, Enter: &ui.Motion{Scale: 0.2}})
+		}
+		ui.Text(c, text).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).AccessHidden(true)
+	})
+}
+
+// drawCardMark is a payment card: a rounded card with its stripe.
+func drawCardMark(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		l, rt, top, bot, k := cx-7, cx+7, cy-5, cy+5, float32(2)
+		m.MoveTo(l+k, top)
+		m.LineTo(rt-k, top)
+		m.QuadTo(rt, top, rt, top+k)
+		m.LineTo(rt, bot-k)
+		m.QuadTo(rt, bot, rt-k, bot)
+		m.LineTo(l+k, bot)
+		m.QuadTo(l, bot, l, bot-k)
+		m.LineTo(l, top+k)
+		m.QuadTo(l, top, l+k, top)
+		m.Close()
+		m.MoveTo(cx-7, cy-1.6)
+		m.LineTo(cx+7, cy-1.6)
+		m.MoveTo(cx-4, cy+2.4)
+		m.LineTo(cx-1, cy+2.4)
+		p.StrokePath(&m, glyphStroke, col)
+	}
+}
+
+// drawPersonMark is a person: a head and shoulders.
+func drawPersonMark(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.Circle(cx, cy-2.6, 3)
+		m.MoveTo(cx-6, cy+6.5)
+		m.QuadTo(cx-6, cy+1.6, cx, cy+1.6)
+		m.QuadTo(cx+6, cy+1.6, cx+6, cy+6.5)
+		p.StrokePath(&m, glyphStroke, col)
+	}
 }

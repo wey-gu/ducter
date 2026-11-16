@@ -181,12 +181,13 @@ function AfError() {
 
 const usedLine = (x: { usedAt?: string }) => (x.usedAt ? t("af.used", ago(A.L, x.usedAt)) : t("af.unused"));
 
-function useLine(u: SavedUse): string {
+/** A use's line and, apart, its site (D291, D296: each fact its own element, as on the Mac). */
+function useLine(u: SavedUse): [string, string] {
   // D233: a key has no site; it was given to the task named under it, or refused.
-  if (u.what === "given") return t(u.once ? "af.use.given.once" : "af.use.given", u.label);
-  if (u.what === "refused") return t("af.use.refused", u.label);
+  if (u.what === "given") return [t(u.once ? "af.use.given.once" : "af.use.given", u.label), ""];
+  if (u.what === "refused") return [t("af.use.refused", u.label), ""];
   const what = u.what === "approved" ? t("af.use.approved", u.amount ?? "", u.label) : u.what === "declined" ? t("af.use.declined", u.label) : u.what === "ok" ? t("af.use.ok", u.label) : t("af.use.filled", u.label);
-  return `${what} · ${u.site}`;
+  return [what, u.site ?? ""];
 }
 
 /** The Autofill page. */
@@ -309,8 +310,9 @@ export function AutofillSettings() {
                 </svg>
               </span>
               <span class="grow">
-                <b>{kept.length ? kept.filter((d) => d.value).slice(0, 3).map((d) => d.value).join(" · ") || t("af.d.kept", kept.length) : t("af.d.add")}</b>
-                <small>{kept.length ? kept.filter((d) => !d.value).map((d) => t(`af.d.${d.key}`)).join(" · ") || t("af.d.edit") : t("af.d.why")}</small>
+                {/* D296: a list said as one, never facts joined with " · " (the Mac's afRow). */}
+                <b>{kept.length ? kept.filter((d) => d.value).slice(0, 3).map((d) => d.value).join(t("acct.sep")) || t("af.d.kept", kept.length) : t("af.d.add")}</b>
+                <small>{kept.length ? (kept.some((d) => !d.value) ? t("af.d.also", kept.filter((d) => !d.value).map((d) => t(`af.d.${d.key}`)).join(t("acct.sep"))) : t("af.d.edit")) : t("af.d.why")}</small>
               </span>
             </button>
           )}
@@ -370,7 +372,8 @@ export function AutofillSettings() {
             {f.uses.slice(0, 30).map((u, i) => (
               <li key={i} class={u.what === "declined" ? "no" : undefined}>
                 <span class="grow">
-                  {useLine(u)}
+                  {useLine(u)[0]}
+                  {useLine(u)[1] && <small>{useLine(u)[1]}</small>}
                   {u.task && <small>{t("af.use.task", u.task)}</small>}
                 </span>
                 <time dateTime={u.at}>{ago(A.L, u.at)}</time>

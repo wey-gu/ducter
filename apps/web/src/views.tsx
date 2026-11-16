@@ -23,6 +23,7 @@ import { AddRow, Btn, Chev, Choice, DevicesMark, Gear, NavBtn, OnHandMark, Place
 import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
+import { Said, say } from "./set-grid.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
@@ -2283,14 +2284,14 @@ function NotifySettings() {
   const s = A.settings;
   if (!s) return <div class="small">{t("conn.connecting")}</div>;
   const quiet = s.quiet;
-  const setQuiet = (start: string, end: string) => A.setSettings({ quiet: { start, end, tz: quiet?.tz ?? tz() } });
+  const setQuiet = (start: string, end: string) => (A.setSettings({ quiet: { start, end, tz: quiet?.tz ?? tz() } }), say("notify", t("said.quiet", start, end)));
   return (
     <>
       <section class="set">
         <h3>{t("partner.notify.title")}</h3>
         <div class="set-card">
         <Toggle label={t("partner.notify.on")} help={t(s.notify ? "partner.notify.on.note" : "partner.notify.off.note")} checked={s.notify} onChange={(notify) => A.setSettings({ notify })} />
-        {s.notify && <Toggle label={t("partner.quiet")} help={t("partner.quiet.note")} checked={!!quiet} onChange={(on) => A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null })} />}
+        {s.notify && <Toggle label={t("partner.quiet")} help={t("partner.quiet.note")} checked={!!quiet} onChange={(on) => (A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null }), say("notify", on ? t("said.quiet", "23:00", "08:00") : t("said.quiet.off")))} />}
         {s.notify && quiet && (
           <div class="quiet-range">
             <input type="time" aria-label={t("partner.quiet")} value={quiet.start} onChange={(e) => setQuiet((e.target as HTMLInputElement).value || quiet.start, quiet.end)} />
@@ -2299,6 +2300,7 @@ function NotifySettings() {
           </div>
         )}
         </div>
+        <Said k="notify" />
       </section>
       {/* D165: the same chips as on Accounts, once there is something to watch. */}
       {((s.proactive && s.proactiveBy !== "default") || !!A.connections?.length) && (
@@ -2316,24 +2318,26 @@ function NotifySettings() {
               label={t("partner.default.line")}
               value={s.defaultAfterMin}
               options={[10, 30, 60, 120].map((v) => ({ v, label: v < 60 ? t("partner.default.min", v) : t("partner.default.hour", v / 60) }))}
-              onPick={(defaultAfterMin) => A.setSettings({ defaultAfterMin })}
+              onPick={(defaultAfterMin) => (A.setSettings({ defaultAfterMin }), say("default", t("said.default", defaultAfterMin < 60 ? t("partner.default.min", defaultAfterMin) : t("partner.default.hour", defaultAfterMin / 60))))}
             />
           </div>
         </div>
+        <Said k="default" />
       </section>
       {s.notify && <PhonePush />}
     </>
   );
 }
 
-function agentLine(h: DeviceHarness, brain: boolean): string {
-  if (!h.installed) return t("loadout.missing");
-  if (h.harness === "pi" && !h.loggedIn) return t("loadout.pi");
-  if (!h.loggedIn) return t("loadout.signed_out");
+/** An AI agent's lines (D296: each fact its own line, each line a phrase, never joined with " · "). */
+function agentLines(h: DeviceHarness, brain: boolean): string[] {
+  if (!h.installed) return [t("loadout.missing")];
+  if (h.harness === "pi" && !h.loggedIn) return [t("loadout.pi")];
+  if (!h.loggedIn) return [t("loadout.signed_out")];
   const al = h.allowance;
-  if (!al) return t("loadout.signed_in");
-  const left = brain && al.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(al.left), A.S.personaName) : t("loadout.left", pct(al.left));
-  return [left, al.sharedBy && al.sharedBy > 1 ? t("loadout.acct.shared", al.sharedBy) : t("loadout.acct.only", A.homeName ?? ""), al.resetsAt && t("loadout.acct.resets", when(A.L, al.resetsAt))].filter(Boolean).join(" · ");
+  if (!al) return [t("loadout.signed_in")];
+  const left = brain && al.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(al.left), A.S.personaName) : al.resetsAt ? t("loadout.left.back", pct(al.left), when(A.L, al.resetsAt)) : t("loadout.left", pct(al.left));
+  return [left, al.sharedBy && al.sharedBy > 1 ? t("loadout.acct.shared", al.sharedBy) : t("loadout.acct.only", A.homeName ?? "")];
 }
 
 
@@ -2353,9 +2357,11 @@ function Loadout() {
     const h = agents.find((x) => x.harness === harness);
     const m = model ?? h?.models?.[0]?.id;
     A.setSettings({ brain: { harness: harness as never, ...(m ? { model: m } : {}) } });
-    A.toast(t("loadout.toast.brain", name, harnessName(harness)));
+    const label = models.find((x) => x.id === m)?.label;
+    A.toast(t("loadout.toast.brain", name, label && harness === brain.harness ? t("loadout.brain.with", harnessName(harness), label) : harnessName(harness)));
   };
-  const reserve = b?.allowance ? (b.allowance.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(b.allowance.left), name) : `${t("loadout.left", pct(b.allowance.left))} · ${t("loadout.brain.reserve", name)}`) : t("loadout.signed_in"); // no limit reported: no reserve to claim (D133)
+  const reserve = b?.allowance ? (b.allowance.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(b.allowance.left), name) : t("loadout.left.kept", pct(b.allowance.left), name)) : t("loadout.signed_in"); // no limit reported: no reserve to claim (D133)
+  const model = models.find((m) => m.id === brain.model);
   return (
     <>
       <section class="set">
@@ -2376,10 +2382,12 @@ function Loadout() {
           <Seg
             label={t("loadout.brain.model")}
             value={brain.model}
-            options={models.map((m) => ({ v: m.id, label: `${m.label || m.id} · ${t(m.kind === "fast" ? "loadout.model.fast" : "loadout.model.smart")}` }))}
+            options={models.map((m) => ({ v: m.id, label: m.label || m.id }))}
             onPick={(m) => setBrain(brain.harness, m)}
           />
         )}
+        {/* D296: the choice says the model; what it is like is one phrase under it. */}
+        {model && <div class="small sub agent-model">{t(model.kind === "fast" ? "loadout.model.line.fast" : "loadout.model.line.smart", model.label || model.id)}</div>}
         </div>
         <div class="small sub">{t("loadout.brain.keep")}</div>
       </section>
@@ -2399,7 +2407,9 @@ function Loadout() {
                   <Coin harness={h.harness} size={40} off={!(h.installed && h.loggedIn)} />
                   <span class="grow">
                     <b>{harnessName(h.harness)}</b>
-                    <small>{agentLine(h, isBrain)}</small>
+                    {agentLines(h, isBrain).map((l) => (
+                      <small key={l}>{l}</small>
+                    ))}
                     {h.loggedIn && h.billing === "usage" && <small class="paid">{t("loadout.acct.paid")}</small>}
                   </span>
                   {h.installed && h.loggedIn && (
@@ -2760,7 +2770,7 @@ function PhoneSettings() {
           <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => A.setDetails(v)} />
         </div>
       </div>
-      <div class="small sub">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
+      <div class="small sub">{t("settings.phone.note")}</div>
     </section>
   );
 }

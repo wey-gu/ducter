@@ -93,6 +93,11 @@ type settingsState struct {
 	// cheer is when something on Look and sound was chosen: the partner
 	// on the preview smiles for a moment.
 	cheer int64
+	// said is when a change the partner answers was made (saidLine, D296).
+	said map[string]saidWord
+	// railFrom is the tab shown before this one, so the pane comes in
+	// from the way the rail's knob went (D296).
+	railFrom string
 	// sound is the intro's sound while its preview plays.
 	sound     TitleSound
 	soundFrom int64
@@ -143,6 +148,11 @@ func (a *App) OpenUpdate() {
 func (a *App) openTab(tab string) {
 	if tab == "" {
 		tab = TabPartner
+	}
+	if a.Route == RouteSettings || a.Route == RoutePartner {
+		a.settings.railFrom = a.settingsTab()
+	} else {
+		a.settings.railFrom = ""
 	}
 	a.Route, a.settings.tab = RouteSettings, tab
 	a.send(protocol.SettingsReq{T: "settings"})
@@ -198,8 +208,15 @@ func (a *App) SetInterfaceLanguage(choice string) {
 	}
 }
 
-// railW is the width of Settings' rail of tabs.
-const railW = 264
+// railW is the width of Settings' rail of tabs; railTabH a tab's height.
+const (
+	railW    = 264
+	railTabH = 56
+)
+
+// railKnob is the rail's chosen-tab knob's identity: it slides from the
+// tab left to the tab shown.
+type railKnob struct{}
 
 func (a *App) settingsView(c *ui.Context) {
 	t := a.T
@@ -216,7 +233,7 @@ func (a *App) settingsView(c *ui.Context) {
 			ui.Row(c).Justify(ui.Center).Padding(t.S6, t.S6, t.S7, t.S6).Children(func() {
 				// D289: 24 between sections, 8 within one (D273's rhythm).
 				panel := ui.Column(c.Key("panel:" + tab)).Grow(1).MaxWidth(820).Gap(t.S5)
-				a.routeEnter(c, panel)
+				a.paneEnter(c, panel, tab)
 				panel.Children(func() {
 					switch tab {
 					case TabPartner:
@@ -266,7 +283,21 @@ func (a *App) settingsRail(c *ui.Context, shown string) {
 	ui.Column(c.Key("settings-rail")).Width(railW).Shrink(0).Padding(t.S6, t.S4, t.S5, t.S5).Gap(t.S2).
 		Background(t.Chrome).BorderWidth(0, 1, 0, 0).BorderColor(t.ChromeLine).
 		Role(ui.RoleTabList).Label(a.L.T("nav.settings")).Children(func() {
-		for _, tab := range a.visibleTabs() {
+		tabs := a.visibleTabs()
+		// D296: the chosen tab's knob is its own piece under the tabs, so it
+		// slides from the tab left to the tab shown, as the places' knob
+		// does (D290), rather than blink from one row to the next.
+		for i, tab := range tabs {
+			if tab != shown {
+				continue
+			}
+			an := t.Nav.Across
+			k := ui.Box(c.Key("rail-knob")).Absolute().Left(t.S5).Top(t.S6 + float32(i)*(railTabH+t.S2)).
+				Width(railW - t.S5 - t.S4 - 1).Height(railTabH).Radius(t.RadiusMD).AccessHidden(true).IgnoreInput(true).
+				Transition(ui.ElementTransition{Animation: &an, Match: railKnob{}})
+			a.knob(k)
+		}
+		for _, tab := range tabs {
 			a.railTab(c, tab, tab == shown)
 		}
 		ui.Box(c).Grow(1)
@@ -278,12 +309,12 @@ func (a *App) settingsRail(c *ui.Context, shown string) {
 func (a *App) railTab(c *ui.Context, tab string, on bool) {
 	t := a.T
 	name := a.tabName(tab)
-	b := ui.Row(c.Key("tab:"+tab)).Height(56).Gap(t.S3).Padding(0, t.S3, 0, t.S2).Radius(t.RadiusMD).AlignItems(ui.Center).
-		Cursor(ui.CursorPointer).Role(ui.RoleTab).Label(name).AccessSelected(on).Focusable()
+	b := ui.Row(c.Key("tab:"+tab)).Height(railTabH).Gap(t.S3).Padding(0, t.S3, 0, t.S2).Radius(t.RadiusMD).AlignItems(ui.Center).
+		Cursor(ui.CursorPointer).Role(ui.RoleTab).Label(name).AccessSelected(on).Focusable().ZIndex(1) // over the knob
 	down := b.Pressed()
 	switch {
 	case on:
-		b.Background(t.Surface).Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color)
+		// The knob under it is the chosen look (settingsRail).
 	case down:
 		b.Background(t.SurfaceSunken)
 	case b.Hovered():
@@ -674,4 +705,40 @@ func hostOf(u string) string {
 		}
 	}
 	return u
+}
+
+// paneEnter is how a pane comes in (D296, D290's vocabulary): from
+// another place, the route's own entrance; from another tab, a short rise
+// from the side the rail's knob came from (down the rail it comes up from
+// below, up the rail from above), on Across's spring, as the knob slides.
+func (a *App) paneEnter(c *ui.Context, e ui.Element, tab string) {
+	from := a.settings.railFrom
+	if from == "" || from == tab {
+		a.routeEnter(c, e)
+		return
+	}
+	if c.Preferences().ReduceMotion {
+		return
+	}
+	shown := ui.Local(e, "entered", func() bool { return false })
+	p := ui.Pose{}
+	if !*shown {
+		dir := float32(1)
+		if a.tabIndex(tab) < a.tabIndex(from) {
+			dir = -1
+		}
+		p, *shown = ui.Pose{Y: dir * a.T.Nav.Rise * 2, Fade: 1}, true
+		c.Invalidate()
+	}
+	e.AnimatePose(p, a.T.Nav.Across)
+}
+
+// tabIndex is a tab's place in the rail.
+func (a *App) tabIndex(tab string) int {
+	for i, x := range a.visibleTabs() {
+		if x == tab {
+			return i
+		}
+	}
+	return 0
 }

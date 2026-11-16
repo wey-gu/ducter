@@ -35,7 +35,7 @@ func TestOoOfferIsTheDefault(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 2200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"你在 oo 里的账号", "Gmail", "wei@work.example · wei@home.example", "Slack", "用这些账号", "你的邮件和登录凭据会经过 OOMOL 的服务器。", "用地址和密钥添加"} {
+	for _, want := range []string{"你在 oo 里的账号", "Gmail", "wei@work.example、wei@home.example", "Slack", "用这些账号", "你的邮件和登录凭据会经过 OOMOL 的服务器。", "用地址和密钥添加"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q", want)
 		}

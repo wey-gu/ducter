@@ -43,7 +43,7 @@ func (a *App) keysGroup(c *ui.Context, f *protocol.ServerFrame) {
 				continue
 			}
 			// D291: the name a task asks for is its line; when it was used, its own element at the right.
-			a.afRow(c, "key:"+x.ID, x.Name, x.Env, a.afUsed(x.UsedAt), func() { a.keyEdit(&x) })
+			a.afRow(c, "key:"+x.ID, drawKey, x.Name, x.Env, a.afUsed(x.UsedAt), func() { a.keyEdit(&x) })
 		}
 		if s.editing == "key:new" {
 			a.keyForm(c, nil)

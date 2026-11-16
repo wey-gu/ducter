@@ -37,7 +37,7 @@ it.
 ## Partner
 
 At the top is your partner, its name and one line: where it lives and what it thinks with
-("Lives on hel · thinks with Codex").
+("Lives on hel, thinks with Codex").
 
 - **Its name.** Click **Rename**, type a new name, and press Return. The new name shows at once
   in every window and on your phone.
@@ -47,7 +47,8 @@ At the top is your partner, its name and one line: where it lives and what it th
   Claude Code, Codex, DeepSeek Harness or pi, whichever are signed in there. When you haven't
   picked one and Claude Code isn't signed in, your partner uses Codex if it is (**Picked for you:
   only Codex is signed in**), else DeepSeek Harness, else pi (**Picked for you: Claude Code isn't
-  signed in**). With Claude Code, pick **Opus · Smartest** or **Sonnet · Faster replies**; with
+  signed in**). With Claude Code, pick **Opus** or **Sonnet**; the line under the choice says what
+  the one you picked is like (Opus thinks the deepest, Sonnet answers faster); with
   DeepSeek Harness, or pi signed in to DeepSeek, pick DeepSeek's **V4 Pro** (smartest) or
   **Flash** (faster replies). **Switch** lets you drop another AI agent that is signed in there
   into the socket. Switching keeps its name, what it remembers and your conversation; the new
@@ -121,6 +122,9 @@ In the conversation each one is called by what it is and where it works, for exa
 - **If you don't answer** sets how long a decision waits before your partner goes with its
   suggested default: 10 minutes, 30 minutes, 1 hour or 2 hours. This applies only to things
   that can be undone. Anything that can't be undone always waits for you.
+- When you change quiet hours or how long it waits, your partner answers in one short line under
+  it (like *Got it: if you don't answer, I'll go with the default after 1 hour.*), which goes away
+  by itself.
 - **When it notices something** (once you have accounts): how your partner tells you what it
   noticed by itself: **Only urgent**, **Up to 3 a day** (until you choose), **Whenever useful** or **Only when I
   ask**. The same row sits on Accounts; see [When it notices something](accounts.md#when-it-notices-something).
@@ -142,7 +146,7 @@ one** takes an address and a key. Each place your accounts come from is one grou
 row for each app it can read and its switch; tap a row for what it reads, or to stop it reading.
 Reading just happens; sending or changing anything waits for your Go. All of it is in
 [Accounts your partner can read](accounts.md). The AI accounts
-(Claude Code, Codex) live on **Devices**; the last row goes there.
+(Claude Code, Codex, pi, DeepSeek Harness) live on **Devices**; the last row, **AI accounts**, goes there.
 
 ## Look and sound
 

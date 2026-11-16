@@ -11,7 +11,7 @@ import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { AddRow, Btn, DangerButton, OpenRow, Seg, Toggle } from "./controls.tsx";
-import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Tile } from "./set-grid.tsx";
+import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { ago } from "./format.ts";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { PhoneCard, PhoneOffer, SignInPanel } from "./phone.tsx";
@@ -402,9 +402,11 @@ export function SourceCard({ c }: { c: ConnectionView }) {
   for (const w of tiles) accts.set(w.service, [...(accts.get(w.service) ?? []), w.account ?? ""]);
   const key = (w: AppWatch) => `${w.service}:${w.account ?? ""}`;
   const watching = !!c.look?.watching && !c.look.paused;
+  const srcWatching = watching;
   // D289: one raised group: the connection, a row per app and account (whether Ducter reads it, its
   // switch; its detail in place), the add row, then the last line with its quiet actions.
   return (
+    <>
     <Group label={name}>
       <GHead tile={<Tile mark><Mailbox source={c.source} off={down(c)} /></Tile>} name={name} line={s.line} tone={s.warn ? "bad" : watching ? "done" : undefined}>
         {c.source === "oomol" && c.apps && !c.apps.length && !down(c) && <Btn kind="text" size="sm" chev label={t("acct.connect.oomol")} onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />}
@@ -413,9 +415,10 @@ export function SourceCard({ c }: { c: ConnectionView }) {
         const [title] = tileWords(w, accts.get(w.service));
         const k = kindOf(w.service);
         // D291: whether Ducter reads it is a state word of its own, never joined to the account.
+        // D296: and only where the row differs from what the group's first row says (its switch says the rest).
         const bad = !w.excluded && (!!w.unreachable || down(c));
         const watching = !w.excluded && !bad && k !== "other" && w.watch;
-        const state = w.excluded ? t("svc.excluded") : bad ? t("card.unreachable") : watching ? t("svc.watching") : t("svc.asked");
+        const state = w.excluded ? t("svc.excluded") : bad ? t("card.unreachable") : watching ? (srcWatching ? "" : t("svc.watching")) : srcWatching ? t("svc.asked") : "";
         const isOpen = open === key(w);
         return (
           <Fragment key={key(w)}>
@@ -423,10 +426,10 @@ export function SourceCard({ c }: { c: ConnectionView }) {
               tile={<Tile mark><AppMark service={w.service} /></Tile>}
               title={title}
               line={w.account}
-              state={{ text: state, tone: bad ? "bad" : watching ? "done" : undefined }}
+              state={state ? { text: state, tone: bad ? "bad" : watching ? "done" : undefined } : undefined}
               open={isOpen}
               onClick={() => (k === "calendar" && retireFirst(tiles.filter((x) => kindOf(x.service) === "calendar").map((x) => `${c.id}:${key(x)}`)), setOpen(isOpen ? "" : key(w)))}
-              sw={k !== "other" && !w.excluded && !down(c) ? { label: `${title} · ${t("tile.watch")}`, on: w.watch, onChange: (v) => A.setApp(c.id, w.service, w.account, { watch: v }) } : undefined}
+              sw={k !== "other" && !w.excluded && !down(c) ? { label: `${title} · ${t("tile.watch")}`, on: w.watch, onChange: (v) => (A.setApp(c.id, w.service, w.account, { watch: v }), say(`watch:${c.id}`, t(v ? "said.watch.on" : "said.watch.off", w.account || title))) } : undefined}
             />
             {isOpen && <TileDetail c={c} w={w} />}
           </Fragment>
@@ -448,6 +451,8 @@ export function SourceCard({ c }: { c: ConnectionView }) {
         <GConfirm ask={t("card.stop.ask")} keep={t("card.stop.keep")} go={t("card.stop.go")} about={name} onKeep={() => setStopping(false)} onGo={() => (setStopping(false), A.removeConnection(c.id))} />
       )}
     </Group>
+    <Said k={`watch:${c.id}`} />
+    </>
   );
 }
 

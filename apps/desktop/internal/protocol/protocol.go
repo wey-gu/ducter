@@ -1439,6 +1439,35 @@ type DeviceView struct {
 	// AlwaysOn: it doesn't sleep (a server, a desktop Mac), so long work
 	// keeps going there (D157).
 	AlwaysOn bool `json:"alwaysOn,omitempty"`
+	// Via is how a connected worker reaches the home now (D293).
+	Via *DeviceVia `json:"via,omitempty"`
+}
+
+// DeviceVia is how a device reaches the home now (D293): Kind is "local"
+// (the home's own computer), "lan", "tailnet", "domain" or "tunnel"; Sealed
+// says nobody in between can read it (false through Cloudflare, or plain
+// http on a network).
+type DeviceVia struct {
+	Kind   string `json:"kind"`
+	Sealed bool   `json:"sealed"`
+}
+
+// ReachWay is one way to reach the home (D293): its kind, its address,
+// whether pairing links lead with it, and whether it answers ("up", "down",
+// "unknown").
+type ReachWay struct {
+	Kind      string `json:"kind"`
+	URL       string `json:"url"`
+	Primary   bool   `json:"primary,omitempty"`
+	State     string `json:"state,omitempty"`
+	CheckedAt string `json:"checkedAt,omitempty"`
+}
+
+// HomeKey is the home's key as devices pin it (D293): the raw Ed25519
+// public key and its fingerprint, both base64url.
+type HomeKey struct {
+	Key string `json:"key"`
+	FP  string `json:"fp"`
 }
 
 // DeviceUpdate is a device's version against the latest release, and an
@@ -1555,6 +1584,8 @@ type ReachClient struct {
 	// Shape is what a handheld is shaped like (D263): "phone", "tablet" or
 	// "foldable", as it last said; absent from a home before D263.
 	Shape string `json:"shape,omitempty"`
+	// Via is how it reaches the home now, while connected (D293).
+	Via *DeviceVia `json:"via,omitempty"`
 }
 
 // ClientShape is the client's shape as the apps draw it (D263): what it
@@ -1577,6 +1608,10 @@ type Reach struct {
 	Clients []ReachClient `json:"clients"`
 	// Anywhere is 从外面连 / From outside on the home (D228); nil = off.
 	Anywhere *Anywhere `json:"anywhere,omitempty"`
+	// Ways is every way to reach the home, with up or down, and Home its key
+	// (D293); a home before D293 sends neither.
+	Ways []ReachWay `json:"ways,omitempty"`
+	Home *HomeKey   `json:"home,omitempty"`
 }
 
 // Anywhere is 从外面连 on the home (D228). How is "own" (an address set
@@ -1668,14 +1703,22 @@ type ClientFrame struct {
 // ServerFrame is any server -> client frame. Fields of all variants share
 // one struct; T tells which are set.
 type ServerFrame struct {
-	T           string     `json:"t"` // welcome | events | on_hand | task_history | sent | error
-	Persona     string     `json:"persona,omitempty"`
-	PersonaName string     `json:"personaName,omitempty"`
-	Machine     string     `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
-	HeadSeq     int64      `json:"headSeq,omitempty"`
-	Events      []LogEvent `json:"events,omitempty"`
-	OnHand      *OnHand    `json:"onHand,omitempty"`
-	TaskID      string     `json:"taskId,omitempty"`
+	T           string `json:"t"` // welcome | events | on_hand | task_history | sent | error
+	Persona     string `json:"persona,omitempty"`
+	PersonaName string `json:"personaName,omitempty"`
+	Machine     string `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
+	// Ping (welcome, D293): the home answers {t:"ping"} with {t:"pong"}, so
+	// a socket silent for 45 s may be closed and dialled again.
+	Ping bool `json:"ping,omitempty"`
+	// FP (welcome, ways) is the home's key fingerprint; HomeKey and Ways
+	// (ways) its public key and its ways to be reached (D293).
+	FP      string     `json:"fp,omitempty"`
+	HomeKey string     `json:"key,omitempty"`
+	Ways    []ReachWay `json:"ways,omitempty"`
+	HeadSeq int64      `json:"headSeq,omitempty"`
+	Events  []LogEvent `json:"events,omitempty"`
+	OnHand  *OnHand    `json:"onHand,omitempty"`
+	TaskID  string     `json:"taskId,omitempty"`
 	// task_history (D284): the beforeSeq the page was asked with (0 the
 	// newest window); More (below) says older events remain.
 	BeforeSeq int64    `json:"beforeSeq,omitempty"`
@@ -2048,7 +2091,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "channels", "channel_result",
-		"handset_dial_result":
+		"handset_dial_result", "ways", "pong":
 	case "past_result", "past_marked":
 		return decodePast(data, f)
 	case "ongoing_result":

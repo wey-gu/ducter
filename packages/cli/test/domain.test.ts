@@ -163,7 +163,7 @@ describe("ducter domain", () => {
     const j = JSON.parse(out.join("\n"));
     expect(j.ok).toBe(true);
     expect(j.address).toBe("https://ducter.example.com");
-    expect(j.pair.link).toBe(`https://ducter.example.com/pair#c=${j.pair.code}`);
+    expect(j.pair.link).toStartWith(`https://ducter.example.com/pair#c=${j.pair.code}&k=`); // D293: the home's key fingerprint rides beside the code
     expect(j.steps.map((s: { id: string }) => s.id)).toEqual(["ducter", "dns", "ports", "caddy", "site", "https", "address"]);
   });
   test("--remove takes only Ducter's site out, reloads, forgets the address; twice is fine", async () => {

@@ -10,7 +10,7 @@ import { Api, Connection, deviceName, myShape, type ConnStatus, type Me, wsUrl }
 import { detectLang, langOfText, strings, TABLE_LANGS, type Handheld, type Lang, type Strings, type TableLang } from "./i18n.ts";
 import { languageOfTexts, normalizeTag } from "@ducter/protocol/src/lang.ts";
 import { pushState, type PushState } from "./push-client.ts";
-import { haptic, inApp, nativeCall, nativeInfo, tellReach } from "./native.ts";
+import { haptic, inApp, nativeCall, nativeInfo, tellReach, tellWays } from "./native.ts";
 import { copy } from "./conv-copy.ts";
 import { attention, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
@@ -299,6 +299,8 @@ class AppState {
   savedFailed = false;
   private savedDone?: () => void;
   reach?: Reach;
+  /** D293: the ways to reach the home and its key, as it last said them (right after every welcome). */
+  ways?: Extract<ServerFrame, { t: "ways" }>;
   /** D224: 全部更新 / Update all: what it would do, and the plan the home runs (devices frame). */
   updateAll?: UpdateAllView;
   /** The last 全部更新 that didn't start, and why. */
@@ -643,6 +645,11 @@ class AppState {
     }
     if (f.t === "settings") return this.applySettings(f);
     if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
+    if (f.t === "ways") {
+      this.ways = f;
+      if (inApp()) tellWays({ ways: f.ways, ...(f.key ? { key: f.key } : {}), ...(f.fp ? { fp: f.fp } : {}) });
+      return void this.changed();
+    }
     if (f.t === "devices") {
       const home = f.devices.find((d) => d.home);
       // A failure the device (or the agent's copy) has moved past is dropped (D167, D156).

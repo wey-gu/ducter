@@ -7,6 +7,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
+import { fpFromLink, type ReachWay } from "@ducter/protocol/src/reach.ts";
 
 export const HOME_FILE = "home.json";
 
@@ -22,6 +23,9 @@ export interface HomeFile {
   deviceId?: string;
   /** Who wrote it: the Mac app (it follows the app) or `ducter connect`. */
   by?: "app" | "cli";
+  /** D293: every way to reach that home, and its key fingerprint (pinned at pairing). */
+  ways?: ReachWay[];
+  fp?: string;
 }
 
 export type Target = { kind: "local"; port: number } | { kind: "remote"; address: string; name: string; token?: string };
@@ -36,7 +40,7 @@ export function readHome(dataDir: string): HomeFile | undefined {
     if (!j || typeof j.address !== "string" || !j.address) return undefined;
     const base = parseAddress(j.address)?.base;
     if (!base) return undefined;
-    return { address: base, name: typeof j.name === "string" && j.name ? j.name : hostOf(base), since: String(j.since ?? ""), ...(typeof j.token === "string" && j.token ? { token: j.token } : {}), ...(j.deviceId ? { deviceId: String(j.deviceId) } : {}), ...(j.by === "app" || j.by === "cli" ? { by: j.by } : {}) };
+    return { address: base, name: typeof j.name === "string" && j.name ? j.name : hostOf(base), since: String(j.since ?? ""), ...(typeof j.token === "string" && j.token ? { token: j.token } : {}), ...(j.deviceId ? { deviceId: String(j.deviceId) } : {}), ...(j.by === "app" || j.by === "cli" ? { by: j.by } : {}), ...(Array.isArray(j.ways) ? { ways: j.ways } : {}), ...(typeof j.fp === "string" ? { fp: j.fp } : {}) };
   } catch {
     return undefined;
   }
@@ -136,7 +140,7 @@ export const homeJson = (t: Target) => (t.kind === "local" ? { kind: "local" as 
 
 export type CommandClass = "machine" | "home" | "self";
 
-const MACHINE = new Set(["up", "service", "uninstall", "worker", "doctor", "domain", "tailscale", "report"]);
+const MACHINE = new Set(["up", "service", "uninstall", "worker", "doctor", "domain", "tailscale", "reach", "report"]);
 const HOME = new Set(["status", "say", "task", "tail", "answer", "merge", "undo", "open", "pair", "devices", "ability", "browser"]);
 
 /**
@@ -238,7 +242,11 @@ export async function pairCli(o: { address: string; code?: string; name?: string
   if (r.status === 429) return { ok: false, error: "locked", base: p.base };
   const j: any = r.ok ? await r.json().catch(() => undefined) : undefined;
   if (!j?.token) return { ok: false, error: "notducter", base: p.base };
-  return { ok: true, home: { ...home, token: String(j.token), ...(j.deviceId ? { deviceId: String(j.deviceId) } : {}) } };
+  // D293: the link named the home's key; another key at that address isn't the home it named.
+  const linkFp = fpFromLink(o.address);
+  if (linkFp && typeof j.fp === "string" && j.fp !== linkFp) return { ok: false, error: "notducter", base: p.base };
+  const fp = typeof j.fp === "string" ? j.fp : linkFp;
+  return { ok: true, home: { ...home, token: String(j.token), ...(j.deviceId ? { deviceId: String(j.deviceId) } : {}), ...(fp ? { fp } : {}), ...(Array.isArray(j.ways) ? { ways: j.ways } : {}) } };
 }
 
 // ---------- doctor: what the CLI follows, and what it is ----------

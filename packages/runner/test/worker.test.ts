@@ -95,8 +95,50 @@ function fakeWorker(turn: (t: ScriptedTurn) => void | Promise<void>, seen: { opt
       host = makeHost(); // a restarted worker process: no sessions in memory
       for (const fn of onOnline) fn();
     },
+    /** D293: the socket drops but the worker keeps its sessions (its grace): the home says away. */
+    blip() {
+      online = false;
+      for (const [id, p] of pending) p.reject(Object.assign(new Error("gone"), { offline: true })), pending.delete(id);
+      for (const [key, fn] of sessions) fn({ t: "away", key });
+    },
+    /** D293: back within the grace, the same host and its sessions. */
+    reattach() {
+      online = true;
+      for (const [key, fn] of sessions) fn({ t: "back", key });
+      for (const fn of onOnline) fn();
+    },
   };
 }
+
+test("D293: a blip within the worker's grace says reconnecting, keeps the same session, and says it's back", async () => {
+  const seen = { options: [] as any[] };
+  let release!: () => void;
+  const hold = new Promise<void>((r) => (release = r));
+  const w = fakeWorker(async (t) => {
+    await t.tool("Bash", JSON.stringify({ command: "make" }), () => "building");
+    await hold;
+    await t.tool("mcp__ducter__report_to_main", "{}", () => core.call("report_to_main", { state: "done", summary: "Built" }, "tsk00003"));
+  }, seen);
+  core.workers = { link: (d) => (d === "vps-2" ? w.link : undefined), list: () => [] };
+  const runner = createRunner(core, { newId: () => "tsk00003", offlineGraceMs: 10_000 });
+  const card = await runner.openTask({ persona: "p1", title: "Long build", brief: "make", place: { kind: "none", device: "vps-2" } });
+  await runner.whenStarted(card.taskId);
+  await waitFor(() => core.events.some((e) => e.kind === "task_event" && (e.body as any).tool?.name === "Bash"), "working");
+  const notes = () => core.events.filter((e) => e.kind === "task_event" && (e.body as any).raw?.name !== undefined).map((e) => (e.body as any).raw);
+
+  w.blip();
+  await waitFor(() => core.tasks.get(card.taskId)?.residency === "offline", "offline");
+  expect(core.tasks.get(card.taskId)?.attention).toBe("working"); // never failed, never blocked: it is still working there
+  expect(notes()).toEqual([{ device: "w1", name: "vps-2", reconnecting: true }]);
+
+  w.reattach();
+  await waitFor(() => core.tasks.get(card.taskId)?.residency !== "offline", "back");
+  expect(notes()).toEqual([{ device: "w1", name: "vps-2", reconnecting: true }, { device: "w1", name: "vps-2", offline: false }]);
+  release();
+  await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "done in the same session");
+  expect(seen.options.length).toBe(1); // one session: nothing was resumed or started again
+  await runner.dispose();
+});
 
 const states = (id: string) => core.states(id);
 

@@ -23,16 +23,23 @@ import { createWorkerBrowse } from "@ducter/core/src/worker-browse.ts";
 import { createPhoneHost } from "@ducter/core/src/android/host.ts";
 import { packagesFor } from "@ducter/core/src/android/sdk.ts";
 import { inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
+import { createKeeper, fpFromLink, normalizeBase, race, type ReachWay } from "@ducter/protocol/src/reach.ts";
+import { proveHome } from "@ducter/protocol/src/reach-verify.ts";
+import { createHold, createPinger, realClock } from "./uplink.ts";
 
 /** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
 export const EXIT_REFUSED = 3;
 
 export interface WorkerSaved {
-  url: string; // http(s) base of the main
+  url: string; // http(s) base of the main: the way in use now (D293)
   token: string;
   deviceId: string;
   persona: string;
   name: string;
+  /** D293: every way to reach the home, as it last said them. */
+  ways?: ReachWay[];
+  /** D293: the home's key fingerprint, pinned when this worker joined (from the link, else the home's answer). */
+  fp?: string;
 }
 
 /** Address as typed or the whole pairing link (…/pair#c=CODE) → http(s) base and maybe a code. */
@@ -127,7 +134,11 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     if (res.status === 429) return console.log(t("worker.err.locked")), 1;
     if (res.status !== 200) return console.log(t("worker.err.code")), 1;
     const j: any = await res.json();
-    saved = { url: base, token: j.token, deviceId: j.deviceId, persona: j.personaName ?? "Ducter", name };
+    // D293: the link named the home's key; a home that answers with another isn't that home.
+    const linkFp = fpFromLink(args.join);
+    if (linkFp && typeof j.fp === "string" && j.fp !== linkFp) return console.log(t("worker.err.notHome", { url: base })), 1;
+    const fp = typeof j.fp === "string" ? j.fp : linkFp;
+    saved = { url: base, token: j.token, deviceId: j.deviceId, persona: j.personaName ?? "Ducter", name, ...(fp ? { fp } : {}), ...(Array.isArray(j.ways) ? { ways: j.ways } : {}) };
     save(file, saved);
     console.log(`  ${style.ok("✓")} ${t("worker.joined", { name, persona: saved.persona, url: base })}`);
   }
@@ -178,7 +189,9 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
   await agentUpdater.leftovers().catch(() => {});
   const makeHost = (send: (f: object) => void) => {
     sendUp = send;
-    const host = runnerMod.createWorkerHost({ dataDir, harness, mainBase: s.url, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null }, abilities: browse });
+    // D293: one host for the life of this process; its sessions outlive a dropped socket for the
+    // grace. mainBase follows the way in use, for the sessions started after a switch.
+    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null }, abilities: browse });
     // Nobody to drive Ducter's browser here once the socket is gone: quit it (sign-ins saved).
     const closeAll = host.closeAll;
     host.closeAll = async () => {
@@ -188,7 +201,7 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
   };
   let outcomeWatch: ReturnType<typeof setInterval> | undefined;
   let agentsTimer: ReturnType<typeof setInterval> | undefined;
-  const code = await stayConnected(s, hello, t, style, makeHost, updater, agentUpdater, () => {
+  const code = await stayConnected(s, hello, t, style, makeHost, updater, agentUpdater, file, () => {
     // Reached the main: a restart after an update is healthy now (update.ts waitHealthy).
     writeAlive(dataDir, pkg.version);
     lastOutcome(dataDir, { markReported: true, version: pkg.version });
@@ -229,50 +242,106 @@ export function refusedExit(code: number, env: Record<string, string | undefined
   return code === EXIT_REFUSED && env.DUCTER_SUPERVISOR === "launchd" ? 0 : code;
 }
 
-/** One outbound socket, reconnecting with backoff; exits only when the main refuses this worker. */
+/** D293: the way to dial now: the best way that proves it is the home, else the one in use. */
+export async function pickWay(s: Pick<WorkerSaved, "url" | "ways" | "fp">, probe?: (url: string) => Promise<boolean>): Promise<string> {
+  if (!s.fp || !s.ways?.length) return s.url;
+  const ways = s.ways.some((w) => normalizeBase(w.url) === normalizeBase(s.url)) ? s.ways : [...s.ways, { kind: "domain" as const, url: s.url }];
+  return (await race(ways, { probe: probe ?? proveHome(s.fp), sleep: (ms) => Bun.sleep(ms) })) ?? s.url;
+}
+
+/**
+ * One outbound socket, reconnecting with backoff; exits only when the main refuses this worker.
+ * D293: one host across sockets (its sessions held for the grace after a drop), a ping deadline,
+ * a redial at once after the computer slept, and the best way to the home re-checked every 30 s.
+ */
 async function stayConnected(
   s: WorkerSaved,
-  hello: object,
+  hello: Record<string, unknown>,
   t: T,
   style: Style,
   makeHost: (send: (f: object) => void) => runnerMod.WorkerHost,
-  updater?: WorkerUpdater,
-  agentUpdater?: ReturnType<typeof createWorkerAgentUpdater>,
+  updater: WorkerUpdater | undefined,
+  agentUpdater: ReturnType<typeof createWorkerAgentUpdater> | undefined,
+  file: string,
   onWelcome?: () => void,
 ): Promise<number> {
   let backoff = 1000;
   let announced = false;
+  let current: WebSocket | undefined;
+  const hold = createHold({ clock: realClock, expire: () => host.closeAll() });
+  // Nobody to report to past the grace: stop the sessions; the main resumes them by id when we're back.
+  const host = makeHost((f) => hold.send(f));
+  const keeper = createKeeper({ ways: () => s.ways ?? [], current: () => s.url, probe: (u) => (s.fp ? proveHome(s.fp)(u) : Promise.resolve(false)) });
+  let keepTimer: ReturnType<typeof setInterval> | undefined;
+  const persist = () => {
+    try {
+      save(file, s);
+    } catch {}
+  };
   for (;;) {
+    // D293: the best way that proves it is the home (only with a pinned key and more than one way).
+    const url = await pickWay(s);
+    if (url !== s.url) (s.url = url), persist();
+    let switching = false;
     const outcome = await new Promise<"closed" | "refused" | "app">((resolve) => {
       const ws = new WebSocket(`${wsBase(s.url)}/worker`, { headers: { authorization: `Bearer ${s.token}` } } as any);
-      let ping: ReturnType<typeof setInterval> | undefined;
-      const host = makeHost((f) => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(f));
+      current = ws;
+      const up = (x: object) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x));
+      const pinger = createPinger({
+        clock: realClock,
+        ping: () => up({ t: "ping" }),
+        // A half-open socket after a network change, or a wake from sleep: drop it and dial again.
+        kill: (why) => {
+          if (why === "woke") backoff = 1000;
+          try {
+            ws.close(4000, why);
+          } catch {}
+        },
       });
       ws.onopen = () => {
-        ws.send(JSON.stringify(hello));
-        ping = setInterval(() => ws.send(JSON.stringify({ t: "ping" })), 30_000);
+        ws.send(JSON.stringify({ ...hello, held: hold.held(host.held()) }));
+        pinger.start();
       };
       ws.onmessage = (m) => {
+        pinger.heard();
         const f = JSON.parse(String(m.data));
         // D148: the update op runs beside the host; it reports over whichever socket is up.
-        if (f.t === "req" && f.op === "update" && updater) return void updater.handle(f, (x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)), host);
+        if (f.t === "req" && f.op === "update" && updater) return void updater.handle(f, up, host);
         // D156: updating one of this machine's AI agents, the same way.
-        if (f.t === "req" && f.op === "agent_update" && agentUpdater) return void agentUpdater.handle(f, (x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)), host);
+        if (f.t === "req" && f.op === "agent_update" && agentUpdater) return void agentUpdater.handle(f, up, host);
         if (f.t === "req") return void host.handle(f);
+        // D293: the home's ways changed (a domain added, the tunnel turned off).
+        if (f.t === "ways" && Array.isArray(f.ways)) return void ((s.ways = f.ways), persist());
         if (f.t === "welcome") {
           backoff = 1000;
-          updater?.attach((x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)));
-          agentUpdater?.attach((x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)));
+          if (Array.isArray(f.ways)) s.ways = f.ways;
+          if (!s.fp && typeof f.fp === "string") s.fp = f.fp;
+          if (Array.isArray(f.ways) || f.fp) persist();
+          hold.up(up);
+          updater?.attach(up);
+          agentUpdater?.attach(up);
           onWelcome?.();
           if (!announced) console.log(`  ${style.ok("●")} ${t("worker.connected", { url: s.url, name: s.name })}`);
           announced = true;
+          clearInterval(keepTimer);
+          keepTimer = setInterval(async () => {
+            const next = await keeper.tick().catch(() => undefined);
+            if (!next || current !== ws || normalizeBase(next) === normalizeBase(s.url)) return;
+            console.log(style.dim(t("worker.moved", { url: next })));
+            s.url = next;
+            persist();
+            switching = true;
+            ws.close(4000, "another way");
+          }, 30_000);
+          (keepTimer as any).unref?.();
         }
       };
       ws.onclose = async () => {
-        clearInterval(ping);
-        // Nobody to report to: stop the sessions; the main resumes them by id when we're back.
-        await host.closeAll();
+        pinger.stop();
+        clearInterval(keepTimer);
+        // D293: the sessions wait for the grace; past it, they close (the hold's expire).
+        hold.down(host.sessions());
+        if (switching) return resolve("closed");
         // Was it the gate? A GET with the token answers 401 when the token is gone.
         try {
           const r = await fetch(`${s.url}/worker`, { headers: { authorization: `Bearer ${s.token}` }, signal: AbortSignal.timeout(5000) });
@@ -283,14 +352,12 @@ async function stayConnected(
         resolve("closed");
       };
     });
-    if (outcome === "app") {
-      console.log(t("worker.asApp", { url: s.url }));
+    if (outcome === "app" || outcome === "refused") {
+      await host.closeAll();
+      console.log(t(outcome === "app" ? "worker.asApp" : "worker.refused", { url: s.url }));
       return EXIT_REFUSED;
     }
-    if (outcome === "refused") {
-      console.log(t("worker.refused", { url: s.url }));
-      return EXIT_REFUSED;
-    }
+    if (switching) continue;
     console.log(style.dim(t("worker.lost", { url: s.url, s: Math.round(backoff / 1000) })));
     await Bun.sleep(backoff);
     backoff = Math.min(backoff * 2, 30_000);

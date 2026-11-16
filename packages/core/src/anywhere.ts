@@ -238,6 +238,11 @@ export interface AnywhereOptions {
   stepWaitMs?: number;
   /** The address set up some other way (D143's public-url, DUCTER_PUBLIC_URL), if any. */
   own?: () => string | undefined;
+  /**
+   * D293: the home's address book. With it the tunnel adds its own way (beside a domain or a
+   * tailnet) instead of writing public-url, and turning it off takes only that way out.
+   */
+  ways?: { add(url: string): void; remove(url: string): void };
   /** The guided setup's task and its Go card (core wires them to the runner and the Log). */
   setup?: SetupDeps;
   log?: (m: string) => void;
@@ -565,7 +570,10 @@ export function createAnywhere(o: AnywhereOptions): AnywhereCtl {
     // The home's public address: where `ducter domain` writes it, so pairing codes carry it.
     const u = url()!;
     const own = o.own?.();
-    if (!own || own === saved.wrotePublic) {
+    if (o.ways) {
+      o.ways.add(u);
+      saved.wrotePublic = u;
+    } else if (!own || own === saved.wrotePublic) {
       writeFileSync(publicFile(o.dataDir), u + "\n");
       saved.wrotePublic = u;
     }
@@ -690,7 +698,8 @@ export function createAnywhere(o: AnywhereOptions): AnywhereCtl {
         delete saved.since;
         delete saved.setup;
         // The address goes with it, unless the person put another one there meanwhile.
-        if (saved.wrotePublic && o.own?.() === saved.wrotePublic && !env.DUCTER_PUBLIC_URL) rmSync(publicFile(o.dataDir), { force: true });
+        if (saved.wrotePublic && o.ways) o.ways.remove(saved.wrotePublic);
+        else if (saved.wrotePublic && o.own?.() === saved.wrotePublic && !env.DUCTER_PUBLIC_URL) rmSync(publicFile(o.dataDir), { force: true });
         delete saved.wrotePublic;
         persist();
       }

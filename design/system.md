@@ -424,19 +424,35 @@ Ducter writes is Caddy's, which adds `X-Forwarded-For`.
   and HTTPS Certificates), refuses a 443 that serves something else, runs `tailscale serve --bg
   --https=443 http://127.0.0.1:7777` (access denied → `sudo tailscale set --operator=$USER`),
   waits for `https://<machine>.<tailnet>.ts.net/health` (no answer from the machine itself only
-  warns), writes `~/.ducter/public-url`, pairs. `--remove` runs `tailscale serve --https=443
-  off` only when 443 forwards to this Ducter, and clears only a `ts.net` `public-url`. Served
+  warns), adds its tailnet way to the address book (D293; `public-url` only when it is the first
+  way), pairs. `--remove` runs `tailscale serve --https=443 off` only when 443 forwards to this
+  Ducter, and takes out only the tailnet way. Served
   requests keep the ts.net Host and add `X-Forwarded-*` and `Tailscale-User-Login`, so they are
   remote (Who is local, above) and need a paired device; the phone must be in the tailnet.
   iPhone and Web Push leave the home outbound (relay, push service), so they still work.
 - *Own domain (for everyone with one, and for CN users per Q18):* `ducter domain <name>`
   (`packages/cli/src/domain.ts`; `scripts/caddy-setup.sh <domain>` for source users): checks
   DNS, installs Caddy from its apt repo, adds a site block (`reverse_proxy 127.0.0.1:7777`),
-  reloads, waits for `https://<domain>/health`, writes `~/.ducter/public-url`.
+  reloads, waits for `https://<domain>/health`, adds its domain way to the address book (D293).
   Mainland-China servers need an ICP filing for 80/443.
 - *Your own Cloudflare tunnel* (D228): `ducter anywhere on`.
 - *No domain, Mac only:* `ssh -N -L 7777:127.0.0.1:7777 user@server`, then the address is
   `http://127.0.0.1:7777`; no code is needed, SSH is the authentication.
+- *More than one way, and devices that follow (D293).* `ducter tailscale`, `ducter domain` and
+  the tunnel each add their own way to `<dataDir>/reach.json` (`core/src/reach-book.ts`) instead
+  of writing `public-url`, which stays the primary (the first way added; pairing links lead with
+  it; an older client knows only it). `ducter reach` lists (checked from here), adds, removes and
+  makes primary. The home's key (`<dataDir>/home-key.pem`, Ed25519, `core/src/home-key.ts`)
+  signs `GET /.well-known/ducter-home?n=<nonce>` before the gate; its fingerprint rides in pairing
+  links (`#c=<code>&k=<fp>`), the pairing answer and the welcome. The ways, each up/down/unknown
+  (the home's own 5-minute check, or a device connected through it now), go to every client and
+  worker after the welcome and on change (`{t:"ways"}`). Workers, the CLI, the Mac, iPhone and
+  Android apps race the ways they know (nearest first: same network, tailnet, domain, tunnel),
+  keep the best that proves it is the home with the pinned key, look again every 30 s and move
+  only after two misses (or, up, two answers) in a row (`protocol/src/reach.ts`, mirrored in
+  Go, Swift, Kotlin). The web page stays on its origin. How each device came in (`viaOf`: its
+  Host against the book, Tailscale serve's and Cloudflare's headers) is on its Devices card, with
+  whether anyone in between can read it.
 - *What's next:* `ducter pair` on a server with no address (the end of `service install` and of
   the installer too) leads with `ducter tailscale` when the machine is in a tailnet, else lists
   Cloudflare, a domain, Tailscale, then the tunnel.
@@ -512,8 +528,8 @@ hostname, zone, reason, next}` within ~100 s (the agent asks again while waiting
   transient user unit `ducter-anywhere-<port>`. `/ready`, then public DNS over HTTPS
   (`cloudflare-dns.com`; 25 s without it), then the check: `GET https://<host>/.well-known/ducter-anywhere`
   must answer the home's random check string, and a WebSocket to the same path must send it first
-  (core.ts answers both before the gate, nothing else). Then `https://<host>` goes to
-  `<dataDir>/public-url` and pairing codes carry it. Up to 3 min, else `unreachable` (connected)
+  (core.ts answers both before the gate, nothing else). Then `https://<host>` is added to
+  the address book as the tunnel way (D293; the primary only when it is the first way). Up to 3 min, else `unreachable` (connected)
   or `cloudflare` (never connected).
 
 **A dashboard tunnel.** `{t:"ability", ability:"remote", on:true, named:{token, hostname}}`
@@ -603,7 +619,17 @@ the worker only holds the place (disk, checkouts, worktrees) and runs the harnes
     `/mcp` (beside the task's HMAC role token) and `/worker`.
   - The worker's cwd is recorded in the task's `session started` event, so a restarted main
     resumes the right session on the right disk.
-- **The worker drops mid-task** (focus-window-states invariant 1, D52): the session ends with an
+- **Liveness (D293).** Every socket on the home is pinged every 15 s and cut after 45 s of
+  silence; a worker pings every 15 s, redials after 45 s without an answer and at once after its
+  computer slept (a ping timer far too late). The Mac app says `{t:"sleep"}` before system sleep
+  and dials again on wake; the home marks the worker on that computer asleep with it.
+- **A blip keeps the session (D293).** A worker holds its sessions for 2 minutes after its socket
+  drops, keeping what they say; its next hello names the sessions it still has (`held`), the home
+  (which held them 2 min 15 s, `away` frames to the runner) reattaches those and ends the rest,
+  and what was kept flushes after the welcome. The task reads **正在重新连上 {device}… /
+  Reconnecting to {device}…**, then **{device} 连回来了，接着做**; never failed or blocked. A worker
+  from before D293 names none, so the old path below applies.
+- **The worker drops mid-task** (focus-window-states invariant 1, D52) past that grace: the session ends with an
   *offline* frame; the task's residency becomes `offline` at once (silent); after the grace
   (2 min, `DUCTER_OFFLINE_GRACE_MS`) a working task becomes `blocked` with reason
   `device:unreachable:<name>`, which clients show as **在等 · <name> 连不上 / Waiting ·
@@ -613,7 +639,7 @@ the worker only holds the place (disk, checkouts, worktrees) and runs the harnes
   and started when the worker says hello. When the worker says hello again, the
   runner resumes the native session by id on the worker and tells it to carry on. A worker
   process that loses its socket closes its sessions (nobody to report to); idle tasks just go
-  `parked` when it's back.
+  `parked` when it's back. The 2-minute wait before 连不上 counts from the drop (D293).
 - **Partner.** When workers exist, each turn carries one context line
   (`[devices] local (Ducter's home) · MacBook (awake, darwin, sleeps when its lid closes, browses
   in the user's own Chrome (their sign-ins), signed in: claude-code, codex)`); without workers
@@ -638,8 +664,7 @@ the worker only holds the place (disk, checkouts, worktrees) and runs the harnes
 - **Revocation.** `ducter devices disconnect` (another process) closes live device sockets
   within 10 s (close 4401); a refused worker exits 3 and its unit has
   `RestartPreventExitStatus=3`.
-- **Not yet:** the A2-W confirm card ("vps-1 想加入 … 好，加上 / 不是我的"); reattaching a
-  session that survived a socket blip (today it's closed and resumed by id); a task waiting for
+- **Not yet:** the A2-W confirm card ("vps-1 想加入 … 好，加上 / 不是我的"); a task waiting for
   its computer across a restart of the home (it is recovered as a parked task, todo).
 
 ## Updating in place (D148, built 2026-11-10)

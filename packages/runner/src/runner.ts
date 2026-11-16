@@ -157,6 +157,11 @@ interface TaskRt {
   offlineTimer?: ReturnType<typeof setTimeout>;
   parkTimer?: ReturnType<typeof setTimeout>;
   offlineOff?: () => void;
+  /** D293: when its worker's socket dropped while the worker keeps the session (its grace). */
+  awaySince?: number;
+  /** D293: the reconnecting note was said for this drop (so "back" is said too). */
+  awaySaid?: boolean;
+  awayFrom?: Residency;
   /**
    * D266: the harness's own background work in this session (its background shells, Monitor,
    * background subagents), by its task id: what it is and when the harness last said anything
@@ -672,7 +677,34 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.bg?.clear(); // D266: a new process runs none of the old one's background work
     if (!spec.resumeSessionId) (t.context = undefined), (t.saveAsked = false); // a fresh context
     noteSessionId(t, session);
+    // D293: its worker dropped and holds the session for a while (away), or came back with it (back).
+    session.onLink?.((s) => (t.session === session ? (s === "away" ? linkAway(t) : linkBack(t)) : undefined));
     void pump(t, session);
+  }
+
+  /**
+   * D293: the worker's socket dropped but the worker keeps the session for its grace: the task is
+   * reconnecting, not lost. Work in flight says so in its transcript; nothing else changes yet.
+   */
+  function linkAway(t: TaskRt) {
+    const d = t.ops.device;
+    if (!d || t.dropped || t.awaySince !== undefined) return;
+    t.awaySince = Date.now();
+    t.awayFrom = t.residency;
+    const was = currentAttention(t);
+    setState(t, was, "offline");
+    t.awaySaid = t.running || was === "working" || was === "queued";
+    if (t.awaySaid) logEvent(t, { role: "system", from: "runner", text: `${d.name} dropped; reconnecting`, raw: { device: d.id, name: d.name, reconnecting: true } });
+  }
+
+  /** D293: back within the grace with the session still running: nothing was lost. */
+  function linkBack(t: TaskRt) {
+    const d = t.ops.device;
+    if (!d || t.awaySince === undefined) return;
+    t.awaySince = undefined;
+    if (t.awaySaid) logEvent(t, { role: "system", from: "runner", text: `${d.name} is back; carrying on`, raw: { device: d.id, name: d.name, offline: false } });
+    t.awaySaid = false;
+    if (!t.dropped) setState(t, currentAttention(t), t.awayFrom ?? "hot");
   }
 
   /** Every checkpoint the task saved, oldest first: what a new session is seeded with. */
@@ -889,6 +921,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const was = currentAttention(t);
     t.resumeOnBack = t.resumeOnBack || midTurn || was === "working" || was === "queued";
     setState(t, was, "offline");
+    // D293: the worker's grace already ran (it held the session and didn't come back): the wait
+    // before 连不上 counts from the drop, not from now.
+    const heldFor = t.awaySince !== undefined ? Date.now() - t.awaySince : 0;
+    t.awaySince = undefined;
+    t.awaySaid = false;
     // Only work in flight is said out loud; an idle task just shows its machine as away.
     if (t.resumeOnBack) logEvent(t, { role: "system", from: "runner", text: `${d.name} disconnected; the task carries on when it is back`, raw: { device: d.id, name: d.name, offline: true } });
     clearTimeout(t.offlineTimer);
@@ -896,7 +933,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (t.resumeOnBack)
       t.offlineTimer = setTimeout(() => {
         if (!d.online() && !t.dropped && !t.session) setState(t, "blocked", "offline", unreachableReason(d.name));
-      }, graceMs);
+      }, Math.max(0, graceMs - heldFor));
     t.offlineOff?.();
     t.offlineOff = d.onOnline(() => {
       t.offlineOff?.();

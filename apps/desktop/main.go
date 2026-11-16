@@ -340,6 +340,15 @@ func main() {
 				if im != nil {
 					im.Observe(f)
 				}
+				// D293: the home's ways and key, kept with the connection so the app
+				// can follow the home to its best way without pairing again.
+				if f.T == "ways" && os.Getenv("DUCTER_URL") == "" {
+					if p, err := remote.Path(); err == nil {
+						if _, err := remote.Learn(p, f.Ways, f.FP); err != nil {
+							log.Printf("ducter: could not keep the home's addresses: %v", err)
+						}
+					}
+				}
 				win.Update(func() {
 					app.Receive(f)
 					updateBadge()
@@ -402,6 +411,21 @@ func main() {
 			go followCLI(remote.Saved{URL: url, Token: token}, true)
 		}
 		go c.Run(context.Background())
+		// D293: the best way to the home that proves it is the home, at launch and
+		// every 30 s (leaving a way after two misses, moving up after two answers).
+		if os.Getenv("DUCTER_URL") == "" && token != "" {
+			if p, err := remote.Path(); err == nil {
+				go remote.Follow(context.Background(), p, c.URL, func(u string) {
+					log.Printf("ducter: reaching the home at %s now", remote.BaseOf(u))
+					_, tok := c.Target()
+					c.Retarget(u, tok)
+				})
+			}
+		}
+		// D293: say so before the Mac sleeps (its tasks read 睡着了 at once), and dial
+		// again at once when it wakes.
+		mygo.Power.OnSuspend(c.Sleep)
+		mygo.Power.OnResume(c.Wake)
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)

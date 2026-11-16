@@ -10,6 +10,8 @@ import { migrateKeys } from "@ducter/protocol/src/keys.ts";
 import { isCompiled, width, type Host, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 import type { Tailnet } from "./tailscale.ts";
+import { homeIdentity } from "@ducter/core/src/home-key.ts";
+import { pairFragment } from "@ducter/protocol/src/reach.ts";
 
 export const UNIT_NAME = "ducter.service";
 export const unitPath = (home = homedir()) => join(home, ".config", "systemd", "user", UNIT_NAME);
@@ -51,8 +53,9 @@ export function ducterCommand(o: { execPath?: string; which?: (c: string) => str
 }
 
 /** The one string a client can paste: the address plus the code in the fragment (never sent to a server). */
-export function pairLink(base: string, code: string): string {
-  return `${base}/pair#c=${code}`;
+/** D293: with the home's key fingerprint (k=), so a device can tell this home from any other at that address. */
+export function pairLink(base: string, code: string, fp?: string): string {
+  return `${base}/pair#${pairFragment(code, fp)}`;
 }
 
 export function isLoopback(host: string | undefined): boolean {
@@ -90,7 +93,7 @@ export function newPairing(dataDir: string, port: number, worker?: boolean): Pai
     const { code, expiresAt } = auth.createCode(worker ? { kind: "worker" } : {});
     const base = publicUrl(dataDir);
     const address = base ?? `http://127.0.0.1:${port}`;
-    return { code, expiresAt: new Date(expiresAt).toISOString(), address, link: pairLink(address, code), command: workerCommand(base ?? "<address>", code) };
+    return { code, expiresAt: new Date(expiresAt).toISOString(), address, link: pairLink(address, code, homeIdentity(dataDir).fp), command: workerCommand(base ?? "<address>", code) };
   } finally {
     auth.close();
   }

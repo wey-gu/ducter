@@ -135,10 +135,14 @@ test("WorkerLink over the real socket: requests, session frames, offline end on 
   link.onOnline(() => back++);
   s.ws!.close();
   await until(() => frames.length === 2);
-  expect(frames[1]).toMatchObject({ t: "end", key: "k1", offline: true });
+  // D293: held for the worker's grace first; a worker from before D293 says no held sessions in
+  // its hello, so they end then.
+  expect(frames[1]).toMatchObject({ t: "away", key: "k1" });
   expect(link.online()).toBe(false);
   s = await connect();
   await until(() => back === 1);
+  await until(() => frames.length === 3);
+  expect(frames[2]).toMatchObject({ t: "end", key: "k1", offline: true });
   s.ws!.close();
 });
 

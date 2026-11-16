@@ -53,6 +53,8 @@ export interface WorkerHost {
   /** The socket to the main is gone: close every session (the main resumes them by id later). */
   closeAll(): Promise<void>;
   sessions(): number;
+  /** D293: the keys of the sessions it holds (said in the hello after a drop, so the home reattaches them). */
+  held(): string[];
   /** D148: ops a restart mustn't cut short (merge, archive, folder undo/keep) running now. */
   critical(): number;
   /** Sessions in the middle of a turn. */
@@ -311,6 +313,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
       await Promise.all(all.map((s) => s.close().catch(() => {})));
     },
     sessions: () => sessions.size,
+    held: () => [...sessions.keys()],
     critical: () => inCritical,
     turning: () => [...sessions.values()].filter(busyOf).length,
     turningOn: (h) => [...sessions.entries()].filter(([k, s]) => harnessOf.get(k) === h && busyOf(s)).length,

@@ -21,6 +21,8 @@ export * from "./context-meter.ts";
 export * from "./handset.ts";
 export * from "./channels.ts";
 export * from "./past.ts";
+export * from "./reach.ts";
+import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
@@ -894,6 +896,9 @@ export type ClientFrame =
   // 远程打开 / Reach from outside (D54), answered with a pair_code frame.
   // refresh: probe the harness sign-ins again now (after signing in or out from the app).
   | { t: "devices"; refresh?: boolean }
+  // D293: liveness (a home from D293 on answers pong), and "this computer is going to sleep" (the Mac app, before system sleep).
+  | { t: "ping" }
+  | { t: "sleep" }
   // D228: on the home, "remote" off turns 从外面连 / From outside off (stops the tunnel, clears
   // the address; the tunnel stays in the person's Cloudflare account). On with named: a tunnel the
   // person made in Cloudflare's dashboard (its token and the hostname it serves). On without it is
@@ -1209,7 +1214,7 @@ export type NewTaskReason = "empty" | "no_agent" | "not_repo" | "offline" | "pas
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
   // the same hash is on that machine, so the place paths it sees are its own.
-  | { t: "welcome"; persona: string; personaName: string; headSeq: number; machine?: string; /** The home's Ducter version: a page built for another reloads (it would draw an older card). */ version?: string }
+  | { t: "welcome"; persona: string; personaName: string; headSeq: number; machine?: string; /** The home's Ducter version: a page built for another reloads (it would draw an older card). */ version?: string; /** D293: the home answers {t:"ping"} with {t:"pong"}, so a client may close a socket silent for 45 s. */ ping?: true; /** D293: the home's key fingerprint. */ fp?: string }
   | { t: "events"; events: LogEvent[] }
   | { t: "on_hand"; onHand: OnHand }
   // D284: a page of a task's stream, oldest first: the newest `limit` events, or those before
@@ -1222,6 +1227,9 @@ export type ServerFrame =
   | { t: "folder_changes"; taskId: string; changes: FolderChanges | null }
   | ({ t: "wb"; id: string; taskId: string } & ({ ok: true; answer: import("./workbench.ts").WbAnswer } | { ok: false; error: import("./workbench.ts").WbError; message?: string }))
   | { t: "devices"; devices: DeviceView[]; reach: Reach; updateAll?: UpdateAllView }
+  // D293: the ways to reach the home and its key, right after the welcome and whenever they change.
+  | { t: "ways"; ways: ReachWay[]; key?: string; fp?: string }
+  | { t: "pong" }
   | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
   | { t: "anywhere_setup_result"; ok: boolean; taskId?: string; step?: AnywhereStepResult; reason?: AnywhereReason | "own_address" | "no_agent" | "running" | "not_home"; detail?: string }
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
@@ -1573,6 +1581,8 @@ export interface DeviceView {
   computer?: string;
   /** D157: it doesn't sleep (a server, a desktop Mac), so long work keeps going there. */
   alwaysOn?: boolean;
+  /** D293: how a connected worker reaches the home now. */
+  via?: DeviceVia;
 }
 
 // ---------- Updating in place (D148, design/system.md "Updating in place") ----------
@@ -1752,7 +1762,10 @@ export interface Reach {
   /** form "cli": the command line on a computer, shown inside that computer's card (D155); computer: the host it runs on. */
   /** handset (D238): 用这台手机 / Use this phone on that phone (an Android app's card only). */
   /** shape (D263): a phone, tablet or foldable, as it last said (absent from a home before D263: clientShape reads the name). */
-  clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string; form?: "cli" | "app"; computer?: string; handset?: HandsetView; shape?: ClientShape }[];
+  clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string; form?: "cli" | "app"; computer?: string; handset?: HandsetView; shape?: ClientShape; via?: DeviceVia }[];
+  /** D293: every way to reach the home, with up or down, and its key (a home before D293 sends neither). */
+  ways?: ReachWay[];
+  home?: HomeKey;
 }
 
 // ---------- A handheld's shape (D263) ----------

@@ -36,6 +36,7 @@ import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
+import { ChatAppsSettings, ChatsArt } from "./channels.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
@@ -2641,6 +2642,8 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "peers", art: "coins", title: "settings.tab.peers" },
   { page: "notify", art: "wait_clock", title: "settings.tab.notify" },
   { page: "accounts", art: "wait_mail", title: "settings.tab.accounts" },
+  // D276: 聊天软件 / Chat apps (channels.tsx).
+  { page: "chats", art: "chats", title: "settings.tab.chats" },
   { page: "autofill", art: "set_autofill", title: "settings.tab.autofill" },
   { page: "devices", art: "mini_awake", title: "settings.tab.devices" },
   { page: "phone", art: "phone", title: "settings.phone" },
@@ -2649,6 +2652,7 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
 /** A section's art: its clay picture, or for 你的其他 AI two of the person's agents' coins (D257). */
 function SectionArt({ art, size }: { art: string; size: number }) {
   if (art === "notebook") return <Notebook size={size} />;
+  if (art === "chats") return <ChatsArt size={size} />;
   if (art === "coins")
     return (
       <span class="set-coins" style={{ width: size, height: size }} aria-hidden="true">
@@ -2732,6 +2736,7 @@ function SettingsSheet() {
           {page === "peers" && <PeersPage />}
           {page === "notify" && <NotifySettings />}
           {page === "accounts" && <Accounts />}
+          {page === "chats" && <ChatAppsSettings />}
           {page === "autofill" && <AutofillSettings />}
           {page === "devices" && <DevicesSection />}
           {page === "phone" && <PhoneSettings />}

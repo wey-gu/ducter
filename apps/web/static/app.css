@@ -9538,3 +9538,56 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   flex: none;
   max-width: 60%;
 }
+
+/* D276: 设置 › 聊天软件 / Settings › Chat apps (channels.tsx). Tokens only. */
+.chats-art {
+  flex: none;
+}
+.chats-steps {
+  margin: 0;
+  padding-inline-start: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  font-size: var(--sm);
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.chats-manifest {
+  margin: 0;
+  max-height: 9.5em;
+  overflow: auto;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  font-family: var(--mono);
+  font-size: var(--xs);
+  line-height: 1.45;
+  color: var(--ink-soft);
+  white-space: pre;
+}
+.chats-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+.chats-row.end {
+  justify-content: flex-end;
+}
+.chats-end {
+  gap: var(--s3);
+}
+.set-item small.chats-bad {
+  color: var(--failed-ink);
+}
+.chats-code {
+  font-family: var(--mono);
+  font-size: var(--t20);
+  letter-spacing: 0.08em;
+  user-select: all;
+}
+.chats-goes {
+  margin: var(--s2) var(--s1) 0;
+  line-height: 1.5;
+}

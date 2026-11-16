@@ -236,6 +236,7 @@ type App struct {
 	cu         computerUseState // D235: 用电脑
 	sites      sitesState
 	af         autofillState // D191: 设置 › 自动填充
+	chats      chatsState    // D276: 设置 › 聊天软件
 	winW, winH float32
 	slid       map[string]float32 // D244: a sliding pane's width when open (onhandrail.go)
 	// partner and settings are the Partner page's and Settings' own state.

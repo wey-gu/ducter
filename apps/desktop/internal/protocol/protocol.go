@@ -1790,6 +1790,12 @@ type ServerFrame struct {
 	Step *AnywhereStepResult `json:"step,omitempty"`
 	// D242: media_keys, fresh keys for media ids this app asked about.
 	MediaKeys map[string]string `json:"mediaKeys,omitempty"`
+	// D276: channels (聊天软件 / Chat apps, channels.go): each chat app and the
+	// Slack manifest; channel_result: ChannelKind, Op, OK, Reason, Code, Link, ExpiresAt.
+	Channels      []ChannelView `json:"channels,omitempty"`
+	SlackManifest string        `json:"slackManifest,omitempty"`
+	ChannelKind   string        `json:"kind,omitempty"`
+	Op            string        `json:"op,omitempty"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -1976,7 +1982,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
-		"connection_signin", "phone_voice_result", "own_phone_result", "wb":
+		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "channels", "channel_result":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

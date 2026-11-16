@@ -80,6 +80,7 @@ Design notes:
 - `use-this-phone.md`: 用这台手机 / Use this phone, a task borrows the person's own Android phone (D238).
 - `computer-use.md`: 用电脑 / Use the computer, tasks in the person's Mac apps (D235).
 - `on-hand.md`: 手头的事 / On hand, the conductor surface: projects as a lens, the strip, the folds (D261).
+- `channels.md`: 聊天软件 / Chat apps, the partner in the person's own Telegram bot and Slack app as more windows on the one conversation (D276).
 - `product-model.md`: see above.
 
 ## The change loop (run it for every new question or discovered problem)

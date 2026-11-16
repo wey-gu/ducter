@@ -10,6 +10,20 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 (eval only) · the partner eval (`bun run eval:partner`) · art cutouts with true alpha
 (`design/art/assets/alpha/`, 22 assets, `design/art/assets/tools/cut.swift`).
 
+## Chat apps (D276, `channels.md`)
+
+Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
+
+- [ ] **One live run on a real Telegram bot** (BotFather token, the deep link, a turn, a card's buttons, an edit to the end state, a picture both ways, an album, a 409 while a webhook is set). Trigger: before calling chat apps more than a preview.
+- [ ] **One live run in a real Slack workspace** (the manifest through Slack's importer, an admin-gated install, Socket Mode's refresh after hours, Block Kit buttons, `chat.update`, the files v2 upload with form encoding, a shared message). Trigger: the same.
+- [ ] **The 来自 Telegram / via Telegram mark under the person's bubble** in the app's conversation (web and Mac; the key `chats.via` is there). Trigger: the author's review of D276.
+- [ ] **The section's art through the metaphor process** (AGENTS.md: five candidates including no metaphor, a mapping table, the rubric, raters). The two drawn speech bubbles are a literal placeholder. Trigger: the same review.
+- [ ] **iMessage on a Mac home with a partner Apple ID** (research/88 §4: a Messages CLI over the partner's own Messages database, Full Disk Access, tapbacks for 好 / 先等等, no edits). Trigger: the author's go for the Mac app step.
+- [ ] **Slack's agent surface** (`agents.sessions.setStatus` for the waiting line, suggested prompts, streamed answers) where the workspace's plan has it. Trigger: a person on a paid Slack plan asks.
+- [ ] **Replies after a restart:** which chat message carried which Log seq is kept in memory only, so a reply to a message from before a restart is a plain message (nothing is lost). Keep the map in `channels.json` if people reply to old messages. Trigger: the first such report.
+- [ ] **Outgoing text never carries a saved value** (an Autofill detail that isn't key-shaped): refuse and have the partner reword, as one project does in code (research/88 §7.4). Key-shaped text is already hidden on the way out, as for clients (D152). Trigger: before a public release of chat apps.
+- [ ] **Telegram Mini App for the full card** (only for homes with an https address). Trigger: a card people keep opening in Ducter from Telegram.
+
 ## A harness's own background work (D266)
 
 - [ ] **One live Claude Code task with a `run_in_background` shell and a background subagent:** the steps show, no nudge at the turn's end, the card stays 在做, Claude Code's own turn arrives when the shell ends (the 60 s settle never fires), and the session isn't parked under it. Trigger: before the release that carries D266; so far fakes and OAR's scripted runtime.

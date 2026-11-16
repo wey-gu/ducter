@@ -393,6 +393,10 @@ type Store struct {
 	Phone PhoneState
 	// Saved is 设置 › 自动填充 / Autofill (D191): names, last four, where used; never a secret.
 	Saved *protocol.ServerFrame
+	// Channels is 设置 › 聊天软件 / Chat apps (D276); ChannelResults, the answers to
+	// connect and code (the views read and drop them). Never a token.
+	Channels       *protocol.ServerFrame
+	ChannelResults []protocol.ServerFrame
 	// PairCode is the newest pairing code the server minted for this app.
 	PairCode *protocol.ServerFrame
 	// Renamed is the server's answer to the last 改名字 / Rename.
@@ -521,6 +525,11 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.applyLive(f)
 	case "phone_view", "phone_frame", "phone_doing", "phone_did", "phone_terms", "phone_install_result", "phone_erase_result":
 		s.applyPhone(f)
+	case "channels":
+		fc := f
+		s.Channels = &fc
+	case "channel_result":
+		s.ChannelResults = append(s.ChannelResults, f)
 	case "saved":
 		fc := f
 		s.Saved = &fc

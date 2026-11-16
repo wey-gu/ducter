@@ -34,6 +34,8 @@ export interface WsData {
   rules?: boolean;
   /** Asked for connections: gets a fresh connections frame whenever they change. */
   connections?: boolean;
+  /** D276: asked for the chat apps: gets a fresh channels frame whenever they change. */
+  channels?: boolean;
   /** The paired device behind a remote socket (core.ts). */
   device?: { id: string };
   /** Settles when this socket's hello is handled: frames sent right behind it wait for it. */
@@ -92,6 +94,8 @@ export interface WsDeps {
   memPlugins?: () => import("./mem-plugins.ts").MemPlugins | undefined;
   /** D228: 从外面连's guided setup (anywhere.ts). */
   anywhere?: () => import("./anywhere.ts").AnywhereCtl | undefined;
+  /** D276: 聊天软件 / Chat apps (channels/); absent in tests that don't need it. */
+  channels?: import("./channels/index.ts").Channels;
   /** D151: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
   browser?: DucterBrowser;
   /** D214: the opened task's workbench (workbench.ts); absent in tests that don't need it. */
@@ -247,6 +251,10 @@ export function createWsHandler(deps: WsDeps) {
       for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
     });
   };
+  // D276: 聊天软件 / Chat apps: every subscriber gets a fresh frame on every change.
+  const offChannels = deps.channels?.onChange(() => {
+    for (const ws of sockets) if (ws.data.channels) send(ws, deps.channels!.frame());
+  });
   // D218: the own-number card follows the phone (plugged in, allowed, the test call, a live call).
   let ownTimer: ReturnType<typeof setTimeout> | undefined;
   const offOwn = deps.ownNumber?.onChange(() => {
@@ -1137,6 +1145,32 @@ export function createWsHandler(deps: WsDeps) {
         else await lv.close(sink, String(f.id ?? ""), !!f.done);
         return;
       }
+      // D276: 聊天软件 / Chat apps. Tokens come in once and never go back out.
+      case "channels":
+      case "channel_connect":
+      case "channel_code":
+      case "channel_unlink":
+      case "channel_forget": {
+        const ch = deps.channels;
+        if (!ch) throw new Error("chat apps aren't available here");
+        if (f.t === "channels") {
+          ws.data.channels = true;
+          return send(ws, ch.frame());
+        }
+        const kind = f.kind === "slack" ? "slack" : f.kind === "telegram" ? "telegram" : undefined;
+        if (!kind) throw new Error("which chat app?");
+        if (f.t === "channel_connect") {
+          const r = await ch.connect(kind, { token: f.token, botToken: f.botToken, appToken: f.appToken });
+          return send(ws, { t: "channel_result", kind, op: "connect", ok: r.ok, ...(r.reason ? { reason: r.reason } : {}) });
+        }
+        if (f.t === "channel_code") {
+          const r = ch.code(kind);
+          return send(ws, r.ok ? { t: "channel_result", kind, op: "code", ok: true, code: r.code, expiresAt: new Date(r.expiresAt).toISOString(), ...(r.link ? { link: r.link } : {}) } : { t: "channel_result", kind, op: "code", ok: false, reason: r.reason });
+        }
+        if (f.t === "channel_unlink") return send(ws, { t: "channel_result", kind, op: "unlink", ok: ch.unlink(kind) });
+        ch.forget(kind);
+        return send(ws, { t: "channel_result", kind, op: "forget", ok: true });
+      }
       // D235: 用电脑 / Use the computer: open the guide to macOS's two switches on that Mac; Stop a task in the person's apps.
       case "computer_grant": {
         const c = deps.computer;
@@ -1315,6 +1349,7 @@ export function createWsHandler(deps: WsDeps) {
       offRules?.();
       offConnections?.();
       offCalendar?.();
+      offChannels?.();
       offOwn?.();
       if (ownScan) clearInterval(ownScan);
       if (ownTimer) clearTimeout(ownTimer);

@@ -92,6 +92,7 @@ type mediaState struct {
 
 type taskWait struct {
 	taskID, text, clientID string
+	mode                   string // D268: steer | queue | ""
 	atts                   []*attach
 	at                     time.Time
 }
@@ -337,7 +338,7 @@ func (a *App) flushMediaSends() {
 	keep := m.taskWait[:0]
 	for _, w := range m.taskWait {
 		if allReady(w.atts) {
-			a.sendToTaskWith(w.taskID, w.text, w.clientID, w.atts)
+			a.sendToTaskWith(w.taskID, w.text, w.clientID, w.mode, w.atts)
 			continue
 		}
 		keep = append(keep, w)
@@ -926,14 +927,14 @@ func (a *App) dropHint(c *ui.Context) {
 // ---------- sending to a task ----------
 
 // sendToTaskWith sends words and pictures straight into a task.
-func (a *App) sendToTaskWith(id, text, cid string, atts []*attach) {
+func (a *App) sendToTaskWith(id, text, cid, mode string, atts []*attach) {
 	if cid == "" {
 		a.nextClient++
 		cid = fmt.Sprintf("t%d-%d", a.Now().UnixMilli(), a.nextClient)
 	}
 	sd := a.S.AddSend(id, text, cid)
 	sd.At, sd.Media = a.Now(), refsOf(atts)
-	a.send(protocol.TaskSend{T: "task_send", TaskID: id, Text: text, ClientID: cid, Media: idsOf(atts)})
+	a.send(protocol.TaskSend{T: "task_send", TaskID: id, Text: text, ClientID: cid, Media: idsOf(atts), Mode: mode})
 }
 
 // waitingTaskSends are a task's messages whose pictures are still going up.

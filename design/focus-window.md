@@ -181,11 +181,17 @@ What the window writes is what the user reads when they open the task, in one co
   answer in order (`turnsOf(blocksOf(…))`, `packages/protocol/src/transcript.ts`): its own words,
   and each tool call one line between them: a sentence (the agent's own words for it, with the
   command beside them, else a verb and a short summary, the same kinds on every harness:
-  `packages/protocol/src/steps.ts`), thinking as its headings, consecutive looks (reads,
-  searches, probes, a page read) folded into one line, a probe that found nothing in neutral
-  words; an edit carries its diff, read from the edit tool's own input
-  (`packages/protocol/src/editdiff.ts`, at most 60 lines); a real failure carries its telling
-  output line (`failLine`) and its output on a click (40 lines kept);
+  `packages/protocol/src/steps.ts`; a connected service's tool keeps its service as `via`),
+  thinking as its headings with how long it took, a probe that found nothing in neutral
+  words. D268: every run of steps between two things said is one line (`linesOf`: a group
+  with its tally, edits and commands first, then the rest by count); a failure, a subagent
+  (with how long it took) and thinking stand alone; output that says nothing ("Action
+  completed.") is dropped; the harness's plan (TodoWrite, update_plan) is one `plan` block
+  holding its latest items; a compaction and an interruption are notes drawn as dividers, a
+  retry a note kept only while it is the latest thing. An edit carries its diff, read from
+  the edit tool's own input (`packages/protocol/src/editdiff.ts`, at most 60 lines); a real
+  failure carries its words (`failOf`: the service's JSON message and its HTTP status, a stack
+  frame never the telling line) and its output on a click (40 lines kept);
 - the **runner's own lines** (D207) are said in the user's words from a key (`note.<say>`,
   `noteOf` in `transcript.ts` and its Go port): the stall (**它停下了，没交回结果 / It stopped
   without reporting back**), a computer going and coming back, a fresh session, a switch, an
@@ -194,8 +200,9 @@ What the window writes is what the user reads when they open the task, in one co
   memory recalled, a retry, archiving, a restart) says nothing;
 - a **message the user sends** carries a receipt only when it says something: **在发… /
   Sending…**, queued **它忙完手上的事就会看到 / It'll read this once it's done with what it's doing**,
-  or **没送到 / Didn't get through**; steered in or started at once, the foot over the composer
-  shows it at work (D207, D210); a queued one reads **排队中 / Queued** until the window answers;
+  or **没送到 / Didn't get through**; sent while it works it steers (`task_send` `mode:
+  "steer"`, read at its next step, D268) and the working line shows it at work; sent with
+  **做完再说 / After this** (`mode: "queue"`) it reads **排队中 / Queued** until the window answers;
 - **checkpoints** are the window's words said once, marked saved (D152);
 - **keys** in the brief, a command or its output never leave the home: the projection hides
   them in every frame and push it sends; the Log keeps them for the task (D152);

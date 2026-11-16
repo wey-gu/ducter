@@ -480,10 +480,10 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 		}
 		ui.Column(c.Key("main")).Grow(1).Shrink(1).MinWidth(0).Gap(t.S1).Children(func() {
 			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				title := ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(700).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
+				title := ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(14).FontWeight(500).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
 				// Finished rows recede, unless they are a new result.
 				if ((att == protocol.Done || att == protocol.DoneClaimed) && st != stNew) || (!rail && a.quietWait(task)) {
-					title.TextColor(t.InkSoft).FontWeight(600)
+					title.TextColor(t.Ink.Alpha(0.7)).FontWeight(400) // D268: settled rows recede
 				}
 				if quiet {
 					a.statusFace(c, task, st)
@@ -522,7 +522,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				if face {
 					a.statusFace(c, task, st)
 				}
-				ui.Text(c.Key("time"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).MinWidth(40).TextAlign(ui.End).SingleLine()
+				ui.Text(c.Key("time"), a.rowTime(task)).FontSize(t.XXS + 0.5).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).MinWidth(44).TextAlign(ui.End).SingleLine()
 			})
 			ui.Row(c.Key("l2")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				ink := t.InkSoft
@@ -543,7 +543,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 					}
 					a.glyph(c, 14, draw(mk))
 				}
-				ui.Text(c.Key("w"), keepWords(autospace(s.words))).FontSize(t.SM).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(s.words)
+				ui.Text(c.Key("w"), keepWords(autospace(s.words))).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(s.words)
 				if s.code != "" {
 					ui.Text(c.Key("code"), s.code).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(3).MinWidth(0)
 				}

@@ -1,12 +1,16 @@
 // A demo core for the phone client's screenshots and manual checks: real core (Log, decisions,
 // living message, auth, web), stub partner and runner, seeded with work like the author's.
 //   DUCTER_PORT=7797 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo.ts
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner, realClock } from "@ducter/core";
 import { noOo } from "./demo-oo.ts";
 import type { Bodies, Place } from "@ducter/protocol";
+import { conductEvents } from "@ducter/protocol/fixtures/transcript-cases.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
-const core = startCore({ ooSource: noOo, persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
+// The seed can log events in the past (a run that took minutes, D268), then time is real again.
+let skew = 0;
+const clock = { ...realClock, now: () => Date.now() + skew };
+const core = startCore({ ooSource: noOo, persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", clock });
 core.setRunner(stubRunner(core));
 // A quiet partner: the seed below writes its words, so a live reply would only be noise.
 core.setPartner({ onTrigger() {} });
@@ -125,6 +129,21 @@ report("t_tokio", {
   evidence: [{ kind: "test", label: zh ? "cargo build · 4 处报错" : "cargo build · 4 errors", ref: "cargo build --workspace" }],
 });
 await tick();
+
+// 4. D268: a long run through GitHub, a plan, a subagent, a 404, its next turn under way, logged
+// at the pace it ran (the last step a few seconds ago).
+{
+  const evs = conductEvents({ zh, id: "t_conduct" });
+  const t0 = Date.parse(evs[0]!.ts);
+  const span = Date.parse(evs.at(-1)!.ts) - t0;
+  for (const e of evs) {
+    skew = Date.parse(e.ts) - t0 - span - 20_000;
+    log.append({ stream: e.stream, origin: e.origin, kind: e.kind, body: e.body } as never);
+    if (e.kind === "task_open") core.tasks.setState("t_conduct", "working", "hot");
+  }
+  skew = 0;
+  await tick();
+}
 
 // After the seed, a scripted partner answers new messages the way a real one paces itself, so
 // the waiting moments can be seen and timed (D104): thinking at once, a look back at the Log at

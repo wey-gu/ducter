@@ -1,15 +1,15 @@
-// An opened task as a conversation with the agent, turn by turn (D210, after D152; handling after
-// egoist/lorca's agent page, research/58): each turn opens with what someone said to the agent
-// (the brief as a quiet folded card, your words, the partner's) and holds its answer in order: its
-// words at the reading measure, and its steps between them as compact lines (its words, the
-// command in mono, an edit's +n −n; a run of reads and searches folded into one; a failure red with
-// its error line in place), each opening to its output or its diff. The foot over the composer
-// says where it stands; Esc twice pauses it. @ducter/protocol's transcript.ts builds the turns
-// (keys hidden there too) and steps.ts names the steps, the same on every harness and on the Mac.
+// An opened task as a conversation with the agent, turn by turn (D210, after D152; D268): each
+// turn opens with what someone said to the agent (the brief as a quiet folded card, your words, the
+// partner's) and holds its answer in order: its words at the reading measure, and between them its
+// steps, a run of them as one line in words ("Read 9 files, ran 2 commands"), a failure said in
+// words, a subagent and thinking each their own line, each opening to what it holds. A finished
+// turn folds under how long it worked; while it works, the working line ends the transcript.
+// @ducter/protocol's transcript.ts builds the turns (keys hidden there too) and steps.ts names the
+// steps, the same on every harness and on the Mac.
 import type { Place } from "@ducter/protocol";
 import { HIDDEN, redact } from "@ducter/protocol/src/redact.ts";
 import { unwrapShell, type Step } from "@ducter/protocol/src/steps.ts";
-import { blocksOf, latestVoice, turnsOf, type Block, type Line, type StepRow, type Turn } from "@ducter/protocol/src/transcript.ts";
+import { blocksOf, lastSeq, latestVoice, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
 import type { MediaRef } from "@ducter/protocol";
 import { useEffect, useState } from "preact/hooks";
 import { Component, type JSX } from "preact";
@@ -129,6 +129,7 @@ const GLYPHS: Record<string, () => JSX.Element> = {
   flag: () => <G><path d="M4.5 14V2.5l8 2.5-8 2.5" /></G>,
   key: () => <G><circle cx="5" cy="8" r="2.8" /><path d="M7.8 8H14M12 8v2.6M14 8v2" /></G>,
   chev: () => <G><path d="M6 3.5 10.5 8 6 12.5" /></G>,
+  group: () => <G><path d="M3 4.5h10M3 8h10M3 11.5h6" /></G>,
 };
 
 /** A step's drawn mark by its kind (D216: On hand's latest line uses the transcript's marks). */
@@ -242,33 +243,102 @@ function Diff({ r }: { r: StepRow }) {
   );
 }
 
-/** One step: its mark, its words, the code it names in mono, an edit's counts, a failure's error
- *  line in place; it opens to its output or its diff. */
-function Row({ r }: { r: StepRow }) {
+// ---------- D268: a run in words, a failure in words, how long ----------
+
+/** A span of time as a person says it: "4 秒", "3 分 12 秒" / "4s", "3m 12s". */
+export function dur(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 60) return t("dur.s", s);
+  const m = Math.floor(s / 60);
+  if (m < 60) return s % 60 ? t("dur.ms", m, s % 60) : t("dur.m", m);
+  return t("dur.hm", Math.floor(m / 60), m % 60);
+}
+
+/** A run of steps in one line (D268): at most two phrases, in the tally's priority, the rest counted. */
+export function groupWords(tally: Tally[]): string {
+  const one = (x: Tally) => (x.kind === "used" ? (x.n === 1 ? t("tally.used.one", x.name ?? "") : t("tally.used", x.name ?? "", x.n)) : x.n === 1 ? t(`tally.${x.kind}.one`) : t(`tally.${x.kind}`, x.n));
+  const rest = tally.slice(2).reduce((a, x) => a + x.n, 0);
+  const s = tally.slice(0, 2).map(one).join(t("tally.and")) + (rest ? (rest === 1 ? t("tally.rest.one") : t("tally.rest", rest)) : "");
+  return capFirst(s);
+}
+
+/** What a step is doing now, present tense (D268): its words, and apart the subject it names (in mono). */
+export function liveRow(r: StepRow): [string, string] {
+  if (!r.step) return [t("live.thinking"), ""];
+  const st = r.step;
+  if (st.kind === "other" && st.via) return [t("live.used", serviceName(st.via)), ""];
+  const subject = st.kind === "ran" ? unwrapShell(r.command ?? "").split("\n")[0]! || st.target || "" : st.target ?? "";
+  if (subject && !st.act && ["ran", "read", "edited", "searched"].includes(st.kind)) return [t(`live.${st.kind}`, "\u0001").split("\u0001")[0]!.trimEnd(), subject];
+  return rowWords(r);
+}
+
+/** A failure in words (D268): what the service said, with its HTTP status, never its raw JSON. */
+export function failWords(r: StepRow): string {
+  const st = r.step;
+  const code = r.code;
+  const via = st?.kind === "other" && st.via ? serviceName(st.via) : "";
+  const file = /file|content|blob/i.test(st?.target ?? "");
+  const say = (base: string, f = false) => {
+    const k = `${base}${f ? ".file" : ""}${via ? ".via" : ""}`;
+    return via ? t(k, via, code) : t(k, code);
+  };
+  if (code === 404) return say("fail.404", file);
+  if (code === 401 || code === 403) return say("fail.403");
+  if (code === 429) return say("fail.429");
+  if (code && code >= 500) return say("fail.5xx");
+  if (code) return t("fail.code", r.hint ?? "", code);
+  return r.hint ?? "";
+}
+
+const HAN = /[⺀-⿿぀-ヿ㐀-䶿一-鿿豈-﫿]/;
+/** Reading text is 1.75 high when it holds Chinese, else 1.6: per text, not per app language (D268). */
+export const hanClass = (s: string) => (HAN.test(s) ? " han" : "");
+
+const Check = () => (
+  <svg class="g ok" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
+  </svg>
+);
+
+/** One step (D268): its mark, its words, the subject it names in ink (a command in mono), an
+ *  edit's counts; a failure keeps its words with a small × and says what went wrong in a line; it
+ *  opens to its output or its diff when it has something to show. Live, it says what it is doing. */
+function Row({ r, live }: { r: StepRow; live?: boolean }) {
   const [open, setOpen] = useState(false);
-  const [words, code] = rowWords(r);
-  const detail = r.step && !r.diff ? [r.command && `$ ${unwrapShell(r.command)}`, r.output].filter(Boolean).join("\n") : "";
+  if (!r.step) return <Thought r={r} live={live} />;
+  const st = r.step;
+  const delegated = st.kind === "delegated";
+  const [words, code] = live ? liveRow(r) : delegated ? [st.target ? t("step.delegated.to", st.target) : t("step.delegated.bare"), ""] : st.kind === "other" && st.via ? [r.outcome === "error" ? serviceName(st.via) : capFirst(r.n > 1 ? t("tally.used", serviceName(st.via), r.n) : t("tally.used.one", serviceName(st.via))), ""] : rowWords(r);
+  const detail = !r.diff ? [r.command && `$ ${unwrapShell(r.command)}`, r.output].filter(Boolean).join("\n") : "";
   const opens = !!detail || !!r.diff;
   const bad = r.outcome === "error";
-  const cls = `step${bad ? " bad" : ""}${r.outcome === "missing" || !r.step ? " quiet" : ""}${open ? " open" : ""}`;
+  const cls = `step${bad ? " bad" : ""}${r.outcome === "missing" ? " quiet" : ""}${open ? " open" : ""}${live ? " running" : ""}`;
+  const mono = st.kind === "ran" || (live && !!code);
   const inner = (
     <>
-      {(bad ? GLYPHS.error : GLYPHS[r.step?.kind ?? "thought"] ?? GLYPHS.other)!()}
-      <span class="sum" title={words}>
+      {live ? <span class="spin sm" aria-hidden="true" /> : (bad ? GLYPHS.error : GLYPHS[st.kind] ?? GLYPHS.other)!()}
+      <span class="sum" title={st.kind === "other" ? st.target : words}>
         {words}
       </span>
       {code && (
-        <span class="sum code" title={code}>
+        <code class={`subj${mono ? " mono" : ""}`} title={code}>
           {code}
-        </span>
+        </code>
       )}
-      {r.n > 1 && <span class="times">×{r.n}</span>}
+      {r.n > 1 && !st.via && <span class="times">×{r.n}</span>}
       {r.added ? <span class="plus">+{r.added}</span> : null}
       {r.removed ? <span class="minus">−{r.removed}</span> : null}
-      {bad && <b class="bad-tag">{t("step.label.error")}</b>}
+      {delegated && !live && (
+        <span class="took">
+          <Check />
+          {r.ms !== undefined && r.ms >= 1000 ? dur(r.ms) : ""}
+        </span>
+      )}
+      {bad && <span class="bad-tag">{t("step.label.error")}</span>}
       {opens && <span class="chev">{GLYPHS.chev!()}</span>}
     </>
   );
+  const hint = bad ? failWords(r) : "";
   return (
     <div class="sline">
       {opens ? (
@@ -278,43 +348,104 @@ function Row({ r }: { r: StepRow }) {
       ) : (
         <div class={cls}>{inner}</div>
       )}
-      {bad && r.hint && !open && (
-        <div class="errline" title={r.hint}>
-          {r.hint}
-        </div>
-      )}
+      {hint && <div class={`failline${hanClass(hint)}`}>{hint}</div>}
       {open && (r.diff ? <Diff r={r} /> : <Output text={detail} />)}
     </div>
   );
 }
 
-/** A fold of looks in words: "看了 3 个文件，搜了 2 次". */
-export function looksWords(reads: number, searches: number): string {
-  const parts: string[] = [];
-  if (reads) parts.push(reads === 1 ? t("look.files.one") : t("look.files", reads));
-  if (searches) parts.push(searches === 1 ? t("look.searches.one") : t("look.searches", searches));
-  return parts.join(t("look.and"));
-}
-
-/** A run of reads and searches as one line; open, each one. */
-function Looks({ l }: { l: Extract<Line, { k: "looks" }> }) {
+/** A stretch of thinking (D268): how long it thought; open, its headings. Live, its first heading. */
+function Thought({ r, live }: { r: StepRow; live?: boolean }) {
   const [open, setOpen] = useState(false);
-  const words = looksWords(l.reads, l.searches);
+  const heads = (r.thought ?? "").split(" · ").filter(Boolean);
+  const words = live ? heads[0] || t("live.thinking") : r.ms !== undefined && r.ms >= 1000 ? t("think.took", dur(r.ms)) : t("think.brief");
+  const opens = !live && heads.length > 0;
+  const inner = (
+    <>
+      {live ? <span class="spin sm" aria-hidden="true" /> : GLYPHS.thought!()}
+      <span class="sum">{words}</span>
+      {opens && <span class="chev">{GLYPHS.chev!()}</span>}
+    </>
+  );
   return (
     <div class="sline">
-      <button class={`step${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
-        {GLYPHS.searched!()}
-        <span class="sum">{words}</span>
+      {opens ? (
+        <button class={`step quiet${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
+          {inner}
+        </button>
+      ) : (
+        <div class={`step quiet${live ? " running" : ""}`}>{inner}</div>
+      )}
+      {open && (
+        <div class="thought-text">
+          {heads.map((h, i) => (
+            <p key={i}>{h}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A run of steps between two things said, as one line (D268): what it did, in at most two phrases;
+ *  open, each step. While it runs, only its latest step, in the present tense, with a small spinner. */
+function Group({ l, live }: { l: Extract<Line, { k: "group" }>; live?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const latest = l.rows.at(-1)!;
+  const [lw, lc] = live ? liveRow(latest) : ["", ""];
+  const words = live ? lw : groupWords(l.tally);
+  return (
+    <div class="sline">
+      <button class={`step steprun${open ? " open" : ""}${live ? " running" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
+        {live ? <span class="spin sm" aria-hidden="true" /> : GLYPHS.group!()}
+        <span class="sum" title={groupWords(l.tally)}>
+          {words}
+        </span>
+        {live && lc && (
+          <code class={`subj${latest.step?.kind === "ran" ? " mono" : ""}`} title={lc}>
+            {lc}
+          </code>
+        )}
         <span class="chev">{GLYPHS.chev!()}</span>
       </button>
       {open && (
-        <div class="looks">
+        <div class="group-rows">
           {l.rows.map((r) => (
             <Row key={r.seq} r={r} />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+/** The agent's plan (D268): its items, a ring to do, a dashed ring under way, a check once done. */
+function PlanCard({ b }: { b: Extract<Block, { k: "plan" }> }) {
+  const done = b.items.filter((i) => i.state === "done").length;
+  return (
+    <section class="plan" aria-label={t("plan.title")}>
+      <header>
+        <b>{t("plan.title")}</b>
+        <span>{t("plan.progress", done, b.items.length)}</span>
+      </header>
+      <ul>
+        {b.items.map((i, n) => (
+          <li key={n} class={i.state}>
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              {i.state === "done" ? (
+                <>
+                  <circle cx="8" cy="8" r="6.5" fill="currentColor" stroke="none" />
+                  <path d="M5 8.3 7 10.3 11 5.8" stroke="var(--surface)" stroke-width="1.7" />
+                </>
+              ) : (
+                <circle cx="8" cy="8" r="6" stroke-dasharray={i.state === "doing" ? "2.4 2.2" : undefined} />
+              )}
+            </svg>
+            <span>{i.text}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -325,12 +456,12 @@ function noteName(b: Extract<Block, { k: "note" }>): string {
   return b.name ?? "";
 }
 
-function BlockView({ task, b }: { task: Task; b: Block }) {
+function BlockView({ task, b, live }: { task: Task; b: Block; live?: boolean }) {
   switch (b.k) {
     case "voice":
       return (
         <div class="voice">
-          <div class="tx assistant md" dangerouslySetInnerHTML={{ __html: markdown(b.text, t("reply.copy")) }} />
+          <div class={`tx assistant md${hanClass(b.text)}`} dangerouslySetInnerHTML={{ __html: markdown(b.text, t("reply.copy")) }} />
           {b.saved && (
             <small class="saved">
               {GLYPHS.flag!()}
@@ -339,12 +470,16 @@ function BlockView({ task, b }: { task: Task; b: Block }) {
           )}
         </div>
       );
-    case "steps":
+    case "steps": {
+      const n = b.lines.length - 1;
       return (
         <div class="lines">
-          {b.lines.map((l) => (l.k === "looks" ? <Looks key={`l${l.seq}`} l={l} /> : <Row key={l.row.seq} r={l.row} />))}
+          {b.lines.map((l, i) => (l.k === "group" ? <Group key={`g${l.seq}`} l={l} live={live && b.live && i === n} /> : <Row key={l.row.seq} r={l.row} live={live && b.live && i === n} />))}
         </div>
       );
+    }
+    case "plan":
+      return <PlanCard b={b} />;
     case "report": {
       const k = { needs_input: "task.report.needs_input", done: "task.report.done", blocked: "task.report.blocked", failed: "task.report.failed" }[b.state as string] ?? "task.report";
       return (
@@ -356,12 +491,21 @@ function BlockView({ task, b }: { task: Task; b: Block }) {
       );
     }
     case "note": {
+      // D268: a compaction or an interruption is a hairline with its word; a retry is said only by
+      // the working line, while it is the latest thing.
+      if (b.say === "retry") return null;
+      if (b.say === "compacted" || b.say === "interrupted")
+        return (
+          <div class="tx-divider" role="separator">
+            <span>{t(`note.${b.say}`)}</span>
+          </div>
+        );
       // D207: the runner's lines in the user's words; the line as logged only on hover, for an error.
       const line = t(`note.${b.say}`, noteName(b));
       return (
         <div class={`step note${b.bad ? " bad" : ""}`}>
           {b.bad ? GLYPHS.error!() : GLYPHS.other!()}
-          {b.bad && <b>{t("step.label.error")}</b>}
+          {b.bad && <span class="bad-tag">{t("step.label.error")}</span>}
           <span class="sum" title={b.bad ? b.text : line}>
             {line}
           </span>
@@ -372,36 +516,72 @@ function BlockView({ task, b }: { task: Task; b: Block }) {
   return null;
 }
 
-/** Your words to the task, with what it waits for: 排队中 until it answers (D207, D210). */
+/** Your words to the task, with what it waits for: 排队中 until it answers (D207, D210, D268). */
 function YouBubble({ task, b, queued }: { task: Task; b: Extract<Block, { k: "you" }>; queued: boolean }) {
   const sd = task.sends.find((s) => s.seq === b.seq);
   const waits = queued && sd?.delivered === "queued";
   return (
-    <div class={`tx you${waits ? " waits" : ""}`}>
+    <div class={`tx you${waits ? " queued" : ""}`}>
       {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
+      {waits && <small class="qtag">{t("delivery.queued.tag")}</small>}
       {b.go !== undefined ? shortGo(b.go) : b.text}
-      {waits && <small>{`${t("delivery.queued.tag")} · ${t("delivery.queued")}`}</small>}
     </div>
+  );
+}
+
+// Each event's time by seq, for how long a turn worked (made again when the task's events change).
+const tsCache = new WeakMap<Task, { n: number; map: Map<number, string> }>();
+function tsOf(task: Task, seq: number): number {
+  let c = tsCache.get(task);
+  if (!c || c.n !== task.events.length) tsCache.set(task, (c = { n: task.events.length, map: new Map(task.events.map((e) => [e.seq, e.ts])) }));
+  return Date.parse(c.map.get(seq) ?? "");
+}
+
+/** A turn's body (D268): a finished turn folds its steps and interim words under "Worked for 3m
+ *  12s", keeping its last words in view; the live turn never folds. */
+function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean }) {
+  const [open, setOpen] = useState(false);
+  const body = turn.body;
+  let lastVoice = -1;
+  for (let i = body.length - 1; i >= 0; i--)
+    if (body[i]!.k === "voice") {
+      lastVoice = i;
+      break;
+    }
+  const head = lastVoice >= 0 ? body.slice(0, lastVoice) : body;
+  const foldable = !live && head.some((b) => b.k === "steps");
+  const draw = (bs: Block[]) => bs.map((b) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} />);
+  if (!foldable) return <>{draw(body)}</>;
+  const from = tsOf(task, turn.prompt?.seq ?? body[0]!.seq);
+  const to = tsOf(task, lastSeq(body.at(-1)!));
+  const took = dur(Number.isFinite(from) && Number.isFinite(to) ? Math.max(0, to - from) : 0);
+  return (
+    <>
+      <button class={`worked${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span>{t("turn.worked", took)}</span>
+        <span class="chev">{GLYPHS.chev!()}</span>
+      </button>
+      {open && <div class="worked-body">{draw(head)}</div>}
+      {draw(body.slice(head.length))}
+    </>
   );
 }
 
 /** A turn: what someone said to the agent, then its answer in order. Drawn again only when its
  *  own blocks changed (its key carries its last seq), or the language did. */
-class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; version: string }> {
-  shouldComponentUpdate(next: { version: string; queued: boolean }) {
-    return next.version !== this.props.version || next.queued !== this.props.queued;
+class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live: boolean; version: string }> {
+  shouldComponentUpdate(next: { version: string; queued: boolean; live: boolean }) {
+    return next.version !== this.props.version || next.queued !== this.props.queued || next.live !== this.props.live;
   }
   render() {
-    const { task, turn, queued } = this.props;
+    const { task, turn, queued, live } = this.props;
     const p = turn.prompt;
     return (
       <section class="turn">
         {p?.k === "brief" && <PromptCard task={task} b={p} label={p.by === "you" ? t("task.asked.you") : t("task.asked", A.S.personaName)} />}
         {p?.k === "partner" && <PromptCard task={task} b={p} label={t("task.from.partner", A.S.personaName)} />}
         {p?.k === "you" && <YouBubble task={task} b={p} queued={queued} />}
-        {turn.body.map((b) => (
-          <BlockView key={`${b.k}${b.seq}`} task={task} b={b} />
-        ))}
+        <TurnBody task={task} turn={turn} live={live} />
       </section>
     );
   }
@@ -411,7 +591,7 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; vers
 const TURN_BUDGET = 240;
 const turnLines = (tu: Turn) => (tu.prompt ? 1 : 0) + tu.body.reduce((n, b) => n + (b.k === "steps" ? b.lines.length : 1), 0);
 const turnSteps = (tu: Turn) =>
-  tu.body.reduce((n, b) => n + (b.k === "steps" ? b.lines.reduce((m, l) => m + (l.k === "looks" ? l.rows.reduce((a, r) => a + r.n, 0) : l.row.step ? l.row.n : 0), 0) : 0), 0);
+  tu.body.reduce((n, b) => n + (b.k === "steps" ? b.lines.reduce((m, l) => m + (l.k === "group" ? l.n : l.row.step ? l.row.n : 0), 0) : 0), 0);
 
 /** The first turn drawn and the steps the turns before it hold: the latest up to TURN_BUDGET lines. */
 export function turnWindow(turns: Turn[], all: boolean): [number, number] {
@@ -429,26 +609,30 @@ export function turnWindow(turns: Turn[], all: boolean): [number, number] {
   return hidden ? [from, hidden] : [0, 0];
 }
 
-const lastSeq = (tu: Turn) => (tu.body.at(-1) ?? tu.prompt)?.seq ?? tu.seq;
+const turnLast = (tu: Turn) => (tu.body.at(-1) ?? tu.prompt)?.seq ?? tu.seq;
 const lastLive = (tu: Turn) => tu.body.at(-1)?.k === "steps" && !!(tu.body.at(-1) as { live?: boolean }).live;
 
 /** The opened task's conversation with the agent (D210): its turns, then what you sent that the
- *  Log has yet to carry. */
+ *  Log has yet to carry, then while it works the working line (D268). */
 export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
   const [all, setAll] = useState(false);
   if (!task.historyLoaded && !task.events.length) return <div class="small">{t("task.loading")}</div>;
   const turns = turnsOf(blocks);
   const [from, hidden] = turnWindow(turns, all);
+  const moving = working(task);
   const items = turns.slice(from).map((tu, i, shown) => {
     const last = i === shown.length - 1;
-    return <TurnView key={tu.seq} task={task} turn={tu} queued={last && !tu.body.length} version={`${A.L.lang}:${lastSeq(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}`} />;
+    const live = last && moving;
+    return <TurnView key={tu.seq} task={task} turn={tu} queued={last && !tu.body.length} live={live} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}`} />;
   });
   // D207: a receipt only when it says something: sending, it waits its turn, or it failed.
   for (const sd of task.sends.filter((s) => !s.seq)) {
-    const receipt = sd.failed ? t("delivery.failed", sd.failed) : sd.delivered ? (sd.delivered === "queued" ? `${t("delivery.queued.tag")} · ${t("delivery.queued")}` : "") : t("delivery.sending");
+    const queued = sd.delivered === "queued";
+    const receipt = sd.failed ? t("delivery.failed", sd.failed) : sd.delivered ? "" : t("delivery.sending");
     items.push(
-      <div key={`s${sd.at}`} class={`tx you${sd.delivered === "queued" || !sd.delivered ? " waits" : ""}`}>
+      <div key={`s${sd.at}`} class={`tx you${queued ? " queued" : !sd.delivered ? " waits" : ""}`}>
         {sd.pics?.length ? <MediaBlock pics={sd.pics} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
+        {queued && <small class="qtag">{t("delivery.queued.tag")}</small>}
         {sd.text}
         {(receipt || (sd.failed && sd.retry)) && (
           <small>
@@ -471,85 +655,107 @@ export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
         </button>
       )}
       {items}
+      {moving && <WorkingLine task={task} blocks={blocks} />}
     </div>
   );
 }
 
-/** What the agent is on now, for the foot: its latest step in words, or "" when its latest is something it said. */
+/** The working line at the transcript's end (D268): what it is on, shimmering, and its clock at
+ *  the right; a retry takes its words while it is the latest thing. */
+function WorkingLine({ task, blocks }: { task: Task; blocks: Block[] }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const h = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(h);
+  }, []);
+  const last = blocks.at(-1);
+  // The live stretch already says its latest step; here, where it stands. After its words, it thinks.
+  const words =
+    last?.k === "note" && last.say === "retry" ? t("note.retry", last.name ?? "") : last?.k === "steps" && last.live ? t(`state.${attention(task)}`) : attention(task) === "queued" ? t("state.queued") : t("live.thinking");
+  const start = task.openedAt ? Date.parse(task.openedAt) : NaN;
+  return (
+    <div class="working-line" role="status">
+      <span class="shimmer">{words}</span>
+      {!Number.isNaN(start) && <span class="clock">{elapsed(Date.now() - start)}</span>}
+    </div>
+  );
+}
+
+/** What the agent is on now, in a few words (On hand's row): its latest step, or "" when its latest is something it said. */
 export function liveWords(blocks: Block[]): string {
   const b = blocks.at(-1);
   if (b?.k !== "steps") return "";
   const l = b.lines.at(-1);
   if (!l) return "";
-  if (l.k === "looks") return looksWords(l.reads, l.searches);
-  const [w, code] = rowWords(l.row);
-  return l.row.step && !l.row.step.says && code ? `${w} ${code}` : w;
+  const r = l.k === "group" ? l.rows.at(-1)! : l.row;
+  const [w, code] = b.live ? liveRow(r) : l.k === "group" ? [groupWords(l.tally), ""] : rowWords(r);
+  return code ? `${w} ${code}` : w;
 }
 
-/** Where the task stands, over the composer (D210): while it works, its clock and latest step, and
- *  Pause (Esc twice); when it's over to you, saying so. Cancel task sits at its end, beside Pause,
- *  while the task can still be cancelled (D213); with nothing else to say the foot holds only that.
- *  Gone once the task is over: the outcome is at the head. */
-export function TaskFoot({ task, blocks }: { task: Task; blocks: Block[] }) {
+/** Over the composer (D210, D268): when it's over to you, saying so; Esc pressed once, the second
+ *  that pauses it. Its clock and latest step are the working line's; Cancel task is in the header's
+ *  More menu, Stop beside Send. */
+export function TaskFoot({ task }: { task: Task; blocks?: Block[] }) {
   const a = attention(task);
-  const droppable = !finished(task) && !["dropped", "superseded", "done"].includes(a);
-  // Cancel task: undone from the toast it leaves (A.drop), as before.
-  const drop = droppable && <Btn kind="text" size="sm" label={t("task.action.drop")} about={title(task)} onClick={() => A.drop(task.id)} />;
-  const [, tick] = useState(0);
-  const moving = a === "working" || a === "queued";
-  useEffect(() => {
-    if (!moving) return;
-    const h = setInterval(() => tick((n) => n + 1), 1000);
-    return () => clearInterval(h);
-  }, [moving]);
   const yours = a === "needs_you" && !A.S.pendingDecision(task.id);
-  if (!moving && !yours)
-    return droppable ? (
-      <div class="task-foot only-end">
-        <span class="grow" />
-        {drop}
-      </div>
-    ) : null;
+  const armed = a === "working" && escArmed(task.id);
   if (yours)
     return (
       <div class="task-foot st-needs_you" role="status">
         <b>{t("task.your.turn")}</b>
         <span class="now">{t("task.your.turn.hint")}</span>
-        <span class="grow" />
-        {drop}
       </div>
     );
-  const start = task.openedAt ? Date.parse(task.openedAt) : NaN;
-  const now = liveWords(blocks);
-  const armed = escArmed(task.id);
+  if (!armed) return null;
   return (
     <div class="task-foot st-working" role="status">
-      <span class="spin" aria-hidden="true" />
-      <b>{t(`state.${a}`)}</b>
-      {!Number.isNaN(start) && <span class="clock">· {elapsed(Date.now() - start)}</span>}
-      {now && (
-        <span class="now" title={now}>
-          · {now}
-        </span>
-      )}
+      <span class="esc">{t("foot.esc")}</span>
       <span class="grow" />
-      {a === "working" &&
-        (armed ? (
-          <>
-            <span class="esc">{t("foot.esc")}</span>
-            <Btn kind="text" size="sm" label={t("foot.keep")} onClick={() => ((A.escAt = undefined), A.changed())} />
-            <Btn kind="secondary" size="sm" label={t("task.action.pause")} onClick={() => ((A.escAt = undefined), A.taskAction(task.id, "interrupt"))} />
-          </>
-        ) : (
-          <>
-            {drop}
-            <Btn kind="text" size="sm" label={t("task.action.pause")} onClick={() => A.taskAction(task.id, "interrupt")} />
-          </>
-        ))}
-      {a !== "working" && drop}
+      <Btn kind="text" size="sm" label={t("foot.keep")} onClick={() => ((A.escAt = undefined), A.changed())} />
+      <Btn kind="secondary" size="sm" label={t("task.action.pause")} onClick={() => ((A.escAt = undefined), A.taskAction(task.id, "interrupt"))} />
     </div>
   );
 }
+
+/** The task's More menu in its header (D268): Cancel task, while it can still be cancelled. */
+export function TaskMore({ task }: { task: Task }) {
+  const [open, setOpen] = useState(false);
+  const a = attention(task);
+  const droppable = !finished(task) && !["dropped", "superseded", "done"].includes(a);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => !(e.target as Element)?.closest?.(".more-menu") && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && (e.stopPropagation(), setOpen(false));
+    addEventListener("pointerdown", close, true);
+    addEventListener("keydown", esc, true);
+    return () => (removeEventListener("pointerdown", close, true), removeEventListener("keydown", esc, true));
+  }, [open]);
+  if (!droppable) return null;
+  return (
+    <span class="more-menu">
+      <button class="plus more-btn" aria-label={t("task.more")} title={t("task.more")} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
+          <circle cx="3.5" cy="8" r="1.4" />
+          <circle cx="8" cy="8" r="1.4" />
+          <circle cx="12.5" cy="8" r="1.4" />
+        </svg>
+      </button>
+      {open && (
+        <div class="menu" role="menu">
+          <button role="menuitem" class="danger" onClick={() => (setOpen(false), A.drop(task.id))}>
+            {t("task.action.drop")}
+          </button>
+        </div>
+      )}
+    </span>
+  );
+}
+
+/** The header's second line for an opened task (D268): who does it · where it stands · where. */
+export function taskSub(task: Task, stateLabel: string): string {
+  return [harnessName(harnessOf(task)), stateLabel, whereLine(placeOf(task))].filter(Boolean).join(" · ");
+}
+
 
 /** What the task said or saved after its latest report, its first line, or "" (keys hidden). */
 export function saidSince(task: Task): string {

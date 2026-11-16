@@ -505,7 +505,9 @@ export function createWsHandler(deps: WsDeps) {
         }
         // Answering the task directly answers its open question too (no later Go re-wakes it).
         decisions.answeredByMessage(f.taskId, f.text ?? "", "user");
-        const delivering = r.send(f.taskId, f.text ?? "", undefined, "user", f.clientId, media.length ? media : undefined).then((x) => x.delivered);
+        // D268: sent while it works, it steers by default; "queue" waits for the turn to end.
+        const mode = f.mode === "queue" || f.mode === "steer" ? f.mode : undefined;
+        const delivering = r.send(f.taskId, f.text ?? "", mode, "user", f.clientId, media.length ? media : undefined).then((x) => x.delivered);
         if (key) taskSending.set(key, delivering);
         try {
           send(ws, { t: "sent", taskId: f.taskId, delivered: await delivering });

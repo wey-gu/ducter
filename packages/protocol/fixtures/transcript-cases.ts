@@ -103,6 +103,56 @@ export const glanceEvents = (o: { zh?: boolean; upTo?: number; extra?: number; p
   return stream(id, items.filter(([sec]) => sec <= (o.upTo ?? Infinity)));
 };
 
+/**
+ * D268: a run the way a connected service makes one: a plan, thinking, twenty GitHub calls (one a
+ * JSON 404), prose that runs Chinese into Latin, a subagent, a compaction, an edit and a test; the
+ * user's next ask, its turn still under way. `zh` words it in Chinese.
+ */
+export const conductEvents = (o: { zh?: boolean; id?: string } = {}) => {
+  const L = (zh: string, en: string) => (o.zh ? zh : en);
+  const id = o.id ?? "cd1";
+  const gh = (tool: string, input: Record<string, unknown>, output = "Action completed.", ok = true) => ({ role: "tool", tool: { name: `mcp__github__${tool}`, input, output, ok } });
+  const plan = (states: string[]) => ({
+    role: "tool",
+    tool: {
+      name: "TodoWrite",
+      input: {
+        todos: [L("列出最近两周跟 compaction 有关的 issue", "List the last two weeks' compaction issues"), L("读每个 issue 的复现步骤", "Read each issue's repro steps"), L("修能顺手修的", "Fix what can be fixed on the way"), L("整理还没修的", "Sum up what's still open")].map((content, i) => ({ content, status: states[i], activeForm: content })),
+      },
+      output: "Todos have been modified successfully.",
+      ok: true,
+    },
+  });
+  const items: [number, string, LogEvent["origin"], unknown][] = [
+    [0, "task_open", "partner", { taskId: id, title: L("整理 hawdb 最近两周 compaction 相关的 issue，能顺手修的就修掉", "Sort out hawdb's compaction issues from the last two weeks, fixing the small ones on the way"), project: "HawDB", place: { kind: "repo", device: "MacBook", repoPath: "~/dev/hawdb", branch: "ducter/compaction-issues", baseBranch: "main" }, harness: "claude-code", model: "opus", brief: L("看一下 hawdb 仓库最近两周跟 compaction 有关的 issue 和 PR，整理出还没修的；能顺手修的小问题就修掉，测试要过。", "Look through hawdb's issues and PRs about compaction from the last two weeks and list what's still open; fix the small ones on the way, tests green.") }],
+    [2, "task_event", "runner", { role: "user", from: "runner", text: "<brief>…</brief>\nStart the task." }],
+    [6, "task_event", "task", { role: "assistant", thinking: [L("先找 compaction 相关的 issue 在哪", "Where the compaction issues are")] }],
+    [7, "task_event", "task", plan(["in_progress", "pending", "pending", "pending"])],
+    [9, "task_event", "task", { role: "assistant", text: L("先从GitHub上把最近两周的issue和PR拉下来。", "Pulling the last two weeks' issues and PRs from GitHub first.") }],
+    [11, "task_event", "task", gh("search_issues", { q: "repo:weyl/hawdb compaction created:>2026-11-02" }, '{"total_count":7}')],
+    [13, "task_event", "task", gh("search_pull_requests", { q: "repo:weyl/hawdb compaction" }, '{"total_count":3}')],
+    ...[1281, 1283, 1284, 1287, 1288, 1290, 1291].map((n, i): [number, string, LogEvent["origin"], unknown] => [15 + i * 3, "task_event", "task", gh("get_issue", { owner: "weyl", repo: "hawdb", issue_number: n })]),
+    ...["crates/storage/src/compaction.rs", "crates/storage/src/options.rs", "crates/storage/src/flush.rs", "crates/storage/src/version.rs", "docs/tuning.md"].map((p, i): [number, string, LogEvent["origin"], unknown] => [40 + i * 3, "task_event", "task", gh("get_file_contents", { owner: "weyl", repo: "hawdb", path: p })]),
+    [56, "task_event", "task", gh("get_file_contents", { owner: "weyl", repo: "hawdb", path: "crates/storage/src/l0_stall.rs" }, 'GitHub API error 404: {"message":"Not Found","documentation_url":"https://docs.github.com/rest/repos/contents#get-repository-content","status":"404"}', false)],
+    ...["crates/storage/src/stall.rs", "crates/storage/src/scheduler.rs", "crates/storage/tests/compaction.rs"].map((p, i): [number, string, LogEvent["origin"], unknown] => [58 + i * 3, "task_event", "task", gh("get_file_contents", { owner: "weyl", repo: "hawdb", path: p })]),
+    [68, "task_event", "task", plan(["completed", "in_progress", "pending", "pending"])],
+    [72, "task_event", "task", { role: "assistant", text: L("最近两周有7个issue提到compaction，其中3个已经有PR在修。剩下4个里 **#1287 最急**：在v0.9.2上，约04:10UTC开始requests涨了4倍，之后compaction就卡住了，L0文件数涨到180多个。\n\n原因是 `max_background_jobs` 默认只有2，flush和compaction抢同一个线程池；`l0_stall.rs` 在仓库里已经不存在了，issue里引用的是旧路径。", "Seven issues in the last two weeks mention compaction; three already have PRs. Of the other four, **#1287 is the urgent one**: on v0.9.2, from about 04:10 UTC requests grew 4×, then compaction stalled and L0 grew past 180 files.\n\nThe cause: `max_background_jobs` defaults to 2, so flush and compaction share one pool; `l0_stall.rs` no longer exists, the issue cites an old path.") }],
+    [80, "task_event", "task", { role: "assistant", thinking: [L("要不要先复现再改默认值", "Reproduce before changing the default?")] }],
+    [126, "task_event", "task", { role: "tool", tool: { name: "Task", input: { description: L("找能复现 #1287 的最小步骤", "Find the smallest repro for #1287"), prompt: "…" }, output: L("用 4 倍写入压 90 秒就能复现：L0 到 64 个文件后 compaction 不再推进。", "4× writes for 90 s reproduce it: past 64 L0 files compaction stops advancing."), ok: true } }],
+    [128, "task_event", "task", { role: "system", text: "compaction ok", raw: { kind: "compaction_ended", outcome: "ok", trigger: "auto" } }],
+    [134, "task_event", "task", { role: "tool", tool: { name: "Read", input: { file_path: "/Users/weyl/dev/hawdb/crates/storage/src/options.rs" }, ok: true } }],
+    [140, "task_event", "task", { role: "tool", tool: { name: "Edit", input: { file_path: "/Users/weyl/dev/hawdb/crates/storage/src/options.rs", old_string: "    max_background_jobs: 2,", new_string: "    // Flush and compaction each get their own: one pool starved compaction under load (#1287).\n    max_background_jobs: 4,\n    max_background_flushes: 1," }, output: "The file has been updated.", ok: true } }],
+    [176, "task_event", "task", { role: "tool", tool: { name: "Bash", input: { command: "cargo test -p hawdb-storage compaction", description: L("跑 compaction 的测试", "Run the compaction tests") }, output: "test result: ok. 38 passed; 0 failed", ok: true } }],
+    [180, "task_event", "task", plan(["completed", "completed", "completed", "in_progress"])],
+    [192, "task_event", "task", { role: "assistant", text: L("#1287 修好了：flush 和 compaction 各用各的线程，`max_background_jobs` 改成4。compaction 的38个测试全过。\n\n还没修的3个：#1283（Windows上的路径）、#1288（要先定接口）、#1291（复现不了，等作者回）。", "#1287 is fixed: flush and compaction each get their own threads, `max_background_jobs` is now 4. All 38 compaction tests pass.\n\nStill open: #1283 (Windows paths), #1288 (needs an API decision), #1291 (can't reproduce, waiting on the reporter).") }],
+    [400, "task_event", "user", { role: "user", from: "user", text: L("#1290 也看一下，能修就修", "Take a look at #1290 too; fix it if you can") }],
+    [404, "task_event", "task", gh("get_issue", { owner: "weyl", repo: "hawdb", issue_number: 1290 })],
+    [408, "task_event", "task", { role: "tool", tool: { name: "Read", input: { file_path: "/Users/weyl/dev/hawdb/crates/storage/src/scheduler.rs" }, ok: true } }],
+    [414, "task_event", "task", { role: "tool", tool: { name: "Bash", input: { command: "cargo test -p hawdb-storage scheduler" }, output: "running 12 tests", ok: true } }],
+  ];
+  return stream(id, items);
+};
+
 export const cases = [
   { name: "mem connect, finished", harness: "codex", working: false, events: memEvents() },
   { name: "mem connect, under way", harness: "codex", working: true, events: memEvents("mem1", 55) },
@@ -147,6 +197,8 @@ export const cases = [
   // D210: turns, looks folded, edits with their diffs, a failure's line, pictures on the prompts.
   { name: "a long claude code run, finished (zh)", harness: "claude-code", working: false, events: glanceEvents({ zh: true, pics: { brief: pic("a1", 688, 918), you: pic("b2", 688, 918), report: pic("b2", 688, 918) } }) },
   { name: "a long claude code run, under way", harness: "claude-code", working: true, events: glanceEvents({ upTo: 342 }) },
+  // D268: a summary line per run, a service said by its name, a 404 in words, a subagent, a plan, a turn under way.
+  { name: "a run through a connected service, under way (zh)", harness: "claude-code", working: true, events: conductEvents({ zh: true }) },
   {
     // D210: every shape an edit's input comes in.
     name: "edits of every shape",

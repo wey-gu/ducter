@@ -42,7 +42,7 @@ import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, forecast, FullTop } from "./board.tsx";
 import { OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
-import { safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
+import { safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, taskSub, TimerPie, WhatItDid } from "./transcript.tsx";
 import {
   attention,
   bodyReasonOf,
@@ -1309,27 +1309,56 @@ function Composer({ taskId }: { taskId?: string }) {
     else A.draft = v;
     A.changed();
   };
-  const submit = () => {
+  const submit = (queue = false) => {
     // What is typed now, not this render's copy (Enter can come before the next render).
     const now = taskId ? (A.taskDrafts.get(taskId) ?? "") : A.draft;
-    const ok = taskId ? A.sendToTask(taskId, now) : A.sendMessage(now);
+    const ok = taskId ? A.sendToTask(taskId, now, false, queue) : A.sendMessage(now);
     if (ok) set("");
   };
   const label = taskId ? t("composer.task") : t("composer.label", A.S.personaName);
+  // D268: while the task works, a message steers it at its next step; ⌥↩ or After this waits until
+  // it is done; Stop (its pause) sits beside Send.
+  const task = taskId ? A.S.tasks.get(taskId) : undefined;
+  const busy = !!task && attention(task) === "working";
+  const canSend = !!value.trim() || !!pics.length;
   return (
     <div class="composer-wrap" ref={wrap}>
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <DropHint on={over} />
       <Tray where={where} />
-      <div class={`composer${!taskId && A.replying ? " has-reply" : ""}`} onKeyDown={(ev) => !taskId && ev.key === "Escape" && A.replying && (ev.preventDefault(), A.cancelReply())}>
+      <div
+        class={`composer${!taskId && A.replying ? " has-reply" : ""}`}
+        onKeyDownCapture={(ev) => {
+          if (busy && ev.key === "Enter" && ev.altKey && !ev.isComposing) ev.preventDefault(), ev.stopPropagation(), submit(true);
+        }}
+        onKeyDown={(ev) => !taskId && ev.key === "Escape" && A.replying && (ev.preventDefault(), A.cancelReply())}
+      >
         {/* D236: what this replies to, pressed into the composer above the words. */}
         {!taskId && <ComposerReply />}
         <AddPictures where={where} />
-        <AutoText id={taskId ? "composer-task" : "composer"} value={value} onInput={set} onEnter={submit} label={label} placeholder={taskId ? t("composer.task") : A.replying ? `${t("reply.to", replyWho(A.replying.from))}…` : t("composer.placeholder", A.S.personaName)} />
-        <button class="btn accent icon send" aria-label={t("composer.send")} disabled={!value.trim() && !pics.length} onClick={submit}>
+        <AutoText id={taskId ? "composer-task" : "composer"} value={value} onInput={set} onEnter={() => submit()} label={label} placeholder={taskId ? t("composer.task") : A.replying ? `${t("reply.to", replyWho(A.replying.from))}…` : t("composer.placeholder", A.S.personaName)} />
+        {busy && canSend && (
+          <button type="button" class="btn text sm after" title={t("composer.queue.hint")} onClick={() => submit(true)}>
+            {t("composer.after")}
+          </button>
+        )}
+        {busy && (
+          <button type="button" class="btn secondary icon stop" aria-label={t("task.action.pause")} title={`${t("task.action.pause")} (Esc Esc)`} onClick={() => A.taskAction(taskId!, "interrupt")}>
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <rect x="3.5" y="3.5" width="9" height="9" rx="2" fill="currentColor" />
+            </svg>
+          </button>
+        )}
+        <button class="btn accent icon send" aria-label={t("composer.send")} disabled={!canSend} onClick={() => submit()}>
           <Arrow />
         </button>
       </div>
+      {busy && (
+        <div class="composer-hint">
+          <span>{t("composer.steer.hint")}</span>
+          {!coarse() && <span class="k">{t("composer.queue.hint")}</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -1923,9 +1952,10 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
       {full ? (
         // D184: the whole screen, as the Mac shows an opened task: the crumbs (Pause and Cancel
         // task are in the foot, D210, D213); D214: the workbench's toggle at the header's end.
-        <FullTop task={task}>
+        <FullTop task={task} sub={taskSub(task, yourTurn ? t("task.your.turn") : stateLabel(a))}>
           <TaskInfoButton task={task} />
           <BenchToggle task={task} />
+          <TaskMore task={task} />
         </FullTop>
       ) : (
         <Top
@@ -1934,6 +1964,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             <>
               <TaskInfoButton task={task} />
               <BenchToggle task={task} />
+              <TaskMore task={task} />
             </>
           }
         />

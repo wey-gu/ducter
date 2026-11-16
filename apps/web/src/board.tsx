@@ -67,10 +67,21 @@ export function FullTop({ task, sub, children }: { task?: Task; sub?: string; ch
             <span class="slash" aria-hidden="true">/</span>
           </>
         )}
-        <h1 class="here" title={task ? title(task) : undefined}>
-          {name}
-        </h1>
-        {sub && <span class="sum">{sub}</span>}
+        {task ? (
+          // D268: an opened task's title on one line (its whole title on hover), and under it who
+          // does it, where it stands and where, small.
+          <span class="here-col">
+            <h1 class="here task" title={title(task)}>
+              {name}
+            </h1>
+            {sub && <span class="sub">{sub}</span>}
+          </span>
+        ) : (
+          <>
+            <h1 class="here">{name}</h1>
+            {sub && <span class="sum">{sub}</span>}
+          </>
+        )}
       </nav>
       {/* D262: the bar's one anatomy: this place's own actions, then the way to the other places. */}
       <span class="acts">

@@ -125,6 +125,9 @@ or Codex in a terminal, reach your partner: **Connect**, and **Who can reach** y
 
 On a phone, this page also turns on notifications for that phone and sends a test.
 
+On a Mac, the last group is **iMessage**: text your partner from Messages on your iPhone, through
+this Mac. See [Talk to your partner in iMessage](imessage.md).
+
 ## Accounts
 
 Your partner can read your Gmail, calendar, Slack, GitHub and other accounts when you ask. If

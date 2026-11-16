@@ -69,6 +69,9 @@ type App struct {
 	// pasteboard, the home's address; nil hides adding pictures.
 	Media MediaHands
 	media mediaState
+	// IMessage is this Mac's iMessage bridge (D277); nil hides it.
+	IMessage IMessageBridge
+	imessage imessageState
 	// fileView is the file viewer while open (D239); fileToast and copyText
 	// a line or a copy it hands to the next frame.
 	fileView            *fileViewState

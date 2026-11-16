@@ -119,6 +119,9 @@ type UserMsg struct {
 	Media []MediaRef `json:"media,omitempty"`
 	// Reply (D236): the one message this answers, with its quote (core's).
 	Reply *ReplyRef `json:"reply,omitempty"`
+	// Via (D276/D277): the chat app the person wrote it in (slack |
+	// telegram | imessage); "" = a Ducter app or the CLI.
+	Via string `json:"via,omitempty"`
 }
 
 type AIMsg struct {
@@ -833,6 +836,17 @@ type Send struct {
 	Media []string `json:"media,omitempty"`
 	// Reply (D236): the one message this answers; core fills the quote.
 	Reply *ReplyWant `json:"reply,omitempty"`
+	// Via (D277): "imessage" when the Mac app's iMessage bridge relays it.
+	Via string `json:"via,omitempty"`
+}
+
+// ChannelStatus (D277) is how the Mac app's iMessage bridge stands: on |
+// needs_permission | not_signed_in | off | error. While one says on and the
+// person last wrote from iMessage, the home's push stays quiet.
+type ChannelStatus struct {
+	T       string `json:"t"`       // "channel_status"
+	Channel string `json:"channel"` // "imessage"
+	State   string `json:"state"`
 }
 
 type Decide struct {

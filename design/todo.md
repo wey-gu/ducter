@@ -16,6 +16,24 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] **Codex's background terminals:** OAR 0.95.1 reports only Codex subagents as tasks, so a Codex task's background terminal is still invisible (and dies at park). Trigger: an OAR release that reports them, or a Codex task that loses one.
 - [ ] **The card's wait sentence for background work** (D261: a wait says what it waits for): "在后台跑着：{x}" as the card's line while the task's turn is over. Trigger: the author's review of D266 on On hand.
 
+## iMessage through the Mac app (D277, `design/imessage.md`)
+
+- **The live check** (trigger: a Mac with Messages signed in to a test Apple ID, never the
+  author's own): link by code, a reply and a late result back, 好 and a Like on a card, a
+  stranger's silence, quiet hours, a restart of Messages and of the Mac, Full Disk Access and
+  Automation turned off and on again. Record what macOS 26 does with Full Disk Access for the
+  spawned `sqlite3` when the app runs as a login item, and whether the self thread holds one copy
+  or two.
+- **Pictures and files out** (trigger: the live check passes): AppleScript sends a file to the
+  same buddy; D206 media from the partner as attachments.
+- **One Mac per persona** (trigger: a second Mac turns it on): the home should know which socket
+  carries iMessage and tell the other Mac's Settings that another Mac answers there.
+- **A Chat apps tab** (trigger: D276 adds one): move the iMessage group there from Notifications.
+- **The 来自 iMessage / via iMessage mark** under the person's message on the Mac and the web
+  (D276's mark, the same `via`).
+- **Where to reach me** pinned to iMessage (research/88 §7.1), if the "last spoke" default proves
+  wrong.
+
 ## Server mode and remote access (D54, `research/29`)
 
 Built and verified in Ubuntu VMs: systemd user service, code pairing, token gate, Caddy and

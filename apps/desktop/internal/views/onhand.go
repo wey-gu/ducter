@@ -90,11 +90,14 @@ func (a *App) onHand(c *ui.Context) {
 								}
 							}
 						}
+						// D285: 做过的事 › is On hand's last line, under the list.
+						// research/109: as the row's third child it sat beside the
+						// day and ran out of the window on a 1280 Mac.
+						a.pastEndLine(c)
 					})
 					if day {
 						a.dayColumn(c, lb, lens)
 					}
-					a.pastEndLine(c) // D285: 做过的事 ›
 				})
 			})
 		})

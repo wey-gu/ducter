@@ -27,6 +27,7 @@
 #   Contents/Helpers/ducter        the ducter CLI (packages/cli), which the app runs as
 #                                  `ducter up --no-desktop` (a LaunchAgent; see design/build-and-run.md "The app")
 #   Contents/Resources/AppIcon.icns
+#   Contents/Resources/{en,zh-Hans}.lproj/InfoPlist.strings   the permission prompts' words
 #
 # For a local updater test only (design/release/README.md, "Testing an update"):
 #   DUCTER_BUNDLE_ID   another bundle id (its LaunchAgent, dev.env and updates are its own)
@@ -133,6 +134,18 @@ cat >"$APP/Contents/Info.plist" <<EOF
 </plist>
 EOF
 plutil -lint "$APP/Contents/Info.plist" >/dev/null
+# The permission prompts in the Mac's language (research/109: a Chinese Mac showed them in English;
+# the Info.plist strings above are the en fallback). Keep both in step with Info.plist.
+mkdir -p "$APP/Contents/Resources/en.lproj" "$APP/Contents/Resources/zh-Hans.lproj"
+cat >"$APP/Contents/Resources/en.lproj/InfoPlist.strings" <<'STRINGS'
+"NSMicrophoneUsageDescription" = "Ducter listens only while you hold to talk, to put your words in a message, and hears calls from your own number through the sound card your phone is plugged into. Nothing is recorded.";
+"NSSpeechRecognitionUsageDescription" = "Hold to talk: macOS turns what you say into words in your message, on this Mac whenever it can. Ducter keeps no sound.";
+STRINGS
+cat >"$APP/Contents/Resources/zh-Hans.lproj/InfoPlist.strings" <<'STRINGS'
+"NSMicrophoneUsageDescription" = "只在你按住说话时听，把你说的放进消息里；用你自己的号码打电话时，也通过手机插着的声卡听电话。不会录音。";
+"NSSpeechRecognitionUsageDescription" = "按住说话：macOS 把你说的话转成消息里的文字，能在这台 Mac 上转时就在这上面转。Ducter 不留声音。";
+STRINGS
+plutil -lint "$APP/Contents/Resources/en.lproj/InfoPlist.strings" "$APP/Contents/Resources/zh-Hans.lproj/InfoPlist.strings" >/dev/null
 
 ENT="$ROOT/scripts/macos/ducter-cli.entitlements"
 IDENTITY="${DUCTER_SIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null |

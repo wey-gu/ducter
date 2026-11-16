@@ -40,7 +40,7 @@ func imessageApp(t *testing.T, lang i18n.Lang, br *fakeIMessage) (*App, *ui.Test
 	app.Receive(settingsFrame())
 	app.Backend = &fakeBackend{}
 	app.IMessage = br
-	app.openTab(TabNotify)
+	app.openTab(TabChats)
 	tt := ui.NewTesterWith(app.View, 1280, 2400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
@@ -80,12 +80,12 @@ func TestIMessageConnectShowsTheCodeAndThePermissions(t *testing.T) {
 func TestIMessageStatesInWords(t *testing.T) {
 	br := (&fakeIMessage{}).set(imessage.Status{State: imessage.StateNeedsDisk, Mode: imessage.ModePartner, Handle: "+8613800000000", Automation: true, Disk: false})
 	app, tt := imessageApp(t, i18n.EN, br)
-	if !tt.HasText("Not allowed yet") || !tt.HasText("One permission to go; give it and it's on.") {
+	if !tt.HasText("Allow") || !tt.HasText("One permission to go") {
 		t.Fatalf("needs disk: %q", tt.Texts())
 	}
 	br.set(imessage.Status{State: imessage.StateOn, Mode: imessage.ModePartner, Handle: "+8613800000000", Automation: true, Disk: true, Stranger: time.Now()})
 	tt.Frame()
-	if !tt.HasText("On · connected to +8613800000000") || !tt.HasText("Someone else wrote to 小鸭 in iMessage. It didn't answer, and kept nothing of theirs.") {
+	if !tt.HasText("Connected · +8613800000000") || !tt.HasText("Someone else wrote to 小鸭 in iMessage. It didn't answer, and kept nothing of theirs.") {
 		t.Fatalf("on: %q", tt.Texts())
 	}
 	br.set(imessage.Status{State: imessage.StateOwnID, Mode: imessage.ModePartner, Handle: "+8613800000000", Automation: true, Disk: true})
@@ -97,4 +97,29 @@ func TestIMessageStatesInWords(t *testing.T) {
 		t.Error("the switch did nothing")
 	}
 	_ = app
+}
+
+// D283: iMessage lives on Chat apps, as the third group, and no longer on
+// Notifications; a chat app's name shows once (its group's first row).
+func TestIMessageOnChatApps(t *testing.T) {
+	br := (&fakeIMessage{}).set(imessage.Status{State: imessage.StateOff, Automation: true, Disk: true})
+	app, tt := imessageApp(t, i18n.ZH, br)
+	if !tt.HasText("iMessage") || !tt.HasText("经过这台 Mac 收发，这台 Mac 要开着。") {
+		t.Fatalf("no iMessage on Chat apps: %q", tt.Texts())
+	}
+	n := 0
+	for _, s := range tt.Texts() {
+		if s == "iMessage" {
+			n++
+		}
+	}
+	if n > 2 { // the visible name and the group's accessible label
+		t.Errorf("iMessage named %d times: %q", n, tt.Texts())
+	}
+	app.openTab(TabNotify)
+	tt.Frame()
+	tt.Frame()
+	if tt.HasText("iMessage") {
+		t.Errorf("iMessage still on Notifications: %q", tt.Texts())
+	}
 }

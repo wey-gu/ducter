@@ -19,9 +19,10 @@ gateway reads `chat.db`, decodes `attributedBody`, sends with AppleScript and ma
 - **Felt.** Before: to ask the partner anything from the phone they open another app. After: they
   text it like a friend, it answers in the same thread, under its own name (放心: it never speaks
   as them; 顺滑: no new app; 惊喜: the partner is a contact with a face).
-- **First time.** Settings › Notifications › **iMessage**. Two choices (whose Apple ID this Mac's
-  Messages is signed in to), **连上 / Connect**, then a six-digit code to text from the phone. The
-  two macOS permissions show as two rows that say what they allow, each opening its own pane.
+- **First time.** Settings › 聊天软件 / Chat apps › **iMessage**, the third group after Telegram
+  and Slack (D283; it was under Notifications). Two choices (whose Apple ID this Mac's Messages is
+  signed in to), **连上 / Connect**, then a six-digit code to text from the phone. The two macOS
+  permissions show as two rows that say what they allow, each with **允许 / Allow** until given.
 
 ## What goes where
 
@@ -109,14 +110,16 @@ answer, nothing relayed, nothing stored; Settings says **有人在 iMessage 找�
 
 ## Permissions and status
 
-Settings shows both permissions as rows, each with what it allows and **已允许 / 还没允许**:
+Settings shows both permissions as rows, each with what it allows, and at its right edge
+**已允许 / Allowed** (done ink) or **允许 / Allow** (D283: one button; it asks macOS where an app
+can, and opens the pane where it can't):
 
 - **完全磁盘访问权限 / Full Disk Access**: "让 Ducter 读到发给{name}的 iMessage。它只看连上以后的新
-  消息，不看以前的，也不看别人的对话。" **打开系统设置** opens
-  `x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles`.
+  消息，不看以前的，也不看别人的对话。" **允许** opens
+  `x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles` (no app can ask).
 - **自动化 › 信息 / Automation › Messages**: "让 Ducter 用「信息」回你。它只回给连上的那个号码，不给任何
-  别人发。" **允许** asks Messages once (macOS shows its own question then); **打开系统设置** opens
-  `…?Privacy_Automation`.
+  别人发。" **允许** asks Messages once (macOS shows its own question then), and opens
+  `…?Privacy_Automation` when macOS no longer asks.
 
 The status line, one of: **开着 · 连着 {handle}**; **还差一个权限，给了就好。**; **这台 Mac 的「信息」还没登录
 iMessage。**; **这台 Mac 还没用过「信息」。**; **iMessage 暂时连不上，它会自己再试。** On the wire
@@ -139,7 +142,7 @@ iMessage。**; **这台 Mac 还没用过「信息」。**; **iMessage 暂时连�
 ## Built and not
 
 Built 2026-11-16 with fakes (a fixture `chat.db` in a temp directory, a fake sender): the package
-`apps/desktop/internal/imessage`, Settings › Notifications › iMessage
+`apps/desktop/internal/imessage`, Settings › Chat apps › iMessage (D283)
 (`apps/desktop/internal/views/imessage.go`), the protocol's `via` and `channel_status`, and the
 home's push staying quiet. **Not seen live:** no real Messages database was read and no iMessage was
 sent. Unverified: whether the self thread really holds both a sent and a received copy; whether Full

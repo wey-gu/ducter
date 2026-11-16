@@ -42,7 +42,11 @@ Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
   same buddy; D206 media from the partner as attachments.
 - **One Mac per persona** (trigger: a second Mac turns it on): the home should know which socket
   carries iMessage and tell the other Mac's Settings that another Mac answers there.
-- **A Chat apps tab** (trigger: D276 adds one): move the iMessage group there from Notifications.
+- **iMessage's state on the web's Chat apps page** (trigger: a person sets it up from a phone):
+  the home already hears `channel_status`; show it in the web's iMessage group instead of only
+  "set up on a Mac" (D283).
+- **The chat apps' letter pebbles and the Chat apps clay with human raters** (trigger: the next
+  rater round; LLM raters only so far, D283).
 - **The 来自 iMessage / via iMessage mark** under the person's message on the Mac and the web
   (D276's mark, the same `via`).
 - **Where to reach me** pinned to iMessage (research/88 §7.1), if the "last spoke" default proves

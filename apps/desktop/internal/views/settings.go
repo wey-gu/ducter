@@ -353,8 +353,8 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 		box.Draw(a.drawSwatches())
 		return
 	case TabChats:
-		box.Draw(a.drawChats())
-		return
+		// D283: two clay speech bubbles, the cream one and the sky one.
+		bmp = theme.Clay("set_chats")
 	case TabAbout:
 		box.Draw(a.drawUpdatePebble())
 		return

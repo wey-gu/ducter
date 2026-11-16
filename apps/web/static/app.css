@@ -12603,3 +12603,21 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .pcard.did .pl1 { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { .did-empty img { animation: none; } }
+/* ---------- D301: WeChat in Settings › Chat apps (channels.tsx WechatCard) ---------- */
+.chat-tile.wechat {
+  background: var(--tint-sage);
+  color: var(--tint-ink);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--tint-ink) 16%, var(--tint-sage));
+}
+.chat-scan { align-items: flex-start; }
+.chat-scan .grow p { margin: 0 0 var(--s1); }
+.chat-qr { flex: none; transition: opacity 0.2s ease; }
+.chat-qr .call-qr { display: block; width: 168px; height: 168px; }
+.chat-qr.scanned { opacity: 0.45; }
+.chat-verify { display: flex; align-items: flex-end; gap: var(--s2); margin-top: var(--s3); flex-wrap: wrap; }
+.chat-verify .chat-field { max-width: 220px; }
+@media (max-width: 600px) {
+  .chat-scan { flex-direction: column; align-items: stretch; }
+  .chat-qr { align-self: center; }
+}
+@media (prefers-reduced-motion: reduce) { .chat-qr { transition: none; } }

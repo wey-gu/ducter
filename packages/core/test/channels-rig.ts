@@ -7,10 +7,11 @@ import { createDecisions } from "../src/decisions.ts";
 import { openLog } from "../src/log.ts";
 import { createMediaStore } from "../src/media.ts";
 import { createRegistry } from "../src/registry.ts";
-import { createChannels, createSlack, createTelegram, type Channels } from "../src/channels/index.ts";
+import { createChannels, createSlack, createTelegram, createWechat, type Channels } from "../src/channels/index.ts";
 import type { Quiet } from "../src/push.ts";
 import { fakeSlack } from "./fake-slack.ts";
 import { fakeTelegram } from "./fake-telegram.ts";
+import { fakeWechat } from "./fake-wechat.ts";
 import { tempDir } from "./helpers.ts";
 
 export const PERSON = 4242; // the person's Telegram id (and private chat id)
@@ -35,6 +36,7 @@ export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boo
   const media = createMediaStore(t.dir);
   const tg = fakeTelegram();
   const sl = fakeSlack();
+  const wx = fakeWechat();
   const sleeps: number[] = [];
   let quiet: Quiet | null = o.quiet ?? null;
   let off = false;
@@ -52,10 +54,13 @@ export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boo
       ...(o.openUrl ? { openUrl: () => o.openUrl } : {}),
       sleep: async (ms) => void sleeps.push(ms),
       gapMs: 0,
+      wechat: { api: wx.api, pollGapMs: 5 },
       make: (kind, rec, store) =>
         kind === "telegram"
           ? createTelegram({ token: rec.token, api: tg.api, pollSeconds: 1, backoffMs: 20, offset: () => store.get("telegram")?.offset, setOffset: (n) => store.patch("telegram", { offset: n }) })
-          : createSlack({ botToken: rec.token, appToken: rec.appToken ?? "", api: sl.api, backoffMs: 20 }),
+          : kind === "wechat"
+            ? createWechat({ token: rec.token, api: wx.api, ...(rec.base ? { base: rec.base } : {}), cdn: `${wx.api}/cdn`, botId: rec.bot?.id ?? "", pollMs: 400, backoffMs: 20, state: () => ({ ...(store.get("wechat")?.ctx ? { ctx: store.get("wechat")!.ctx } : {}), ...(store.get("wechat")?.buf ? { buf: store.get("wechat")!.buf } : {}) }), save: (p) => store.patch("wechat", p) })
+            : createSlack({ botToken: rec.token, appToken: rec.appToken ?? "", api: sl.api, backoffMs: 20 }),
     });
   const hub = make(t.dir);
   return {
@@ -67,6 +72,7 @@ export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boo
     media,
     tg,
     sl,
+    wx,
     hub,
     sleeps,
     make,
@@ -74,6 +80,12 @@ export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boo
     setOff: (v: boolean) => void (off = v),
     /** Connects and links a chat app the way the person does it. */
     async linked(kind: ChannelKind) {
+      if (kind === "wechat") {
+        expect((await hub.connect("wechat", {})).ok).toBe(true);
+        wx.confirm();
+        await waitFor(() => hub.view().find((v) => v.kind === "wechat")?.state === "linked");
+        return;
+      }
       if (kind === "telegram") {
         expect((await hub.connect("telegram", { token: tg.token })).ok).toBe(true);
         const c = hub.code("telegram");
@@ -101,6 +113,7 @@ export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boo
       hub.stop();
       tg.stop();
       sl.stop();
+      wx.stop();
       log.close();
       t.cleanup();
     },

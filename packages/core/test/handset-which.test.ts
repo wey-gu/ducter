@@ -221,3 +221,16 @@ describe("which phone a phone task uses (D251)", () => {
     p.ws.close();
   });
 });
+
+describe("D260: a phone task woken from done lists its phone tools as the turn starts", () => {
+  test("listed by need, whatever its state; a call while it isn't working is refused plainly", async () => {
+    const id = "wake1";
+    core.log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title: id, project: "", place: { kind: "none" }, harness: "codex", brief: id, needs: { phone: "mine" } } as any });
+    core.tasks.setState(id, "done", "cold");
+    expect(core.mcp.listed({ role: "task", taskId: id } as any)).toContain("phone_look");
+    const plain = "wake2";
+    core.log.append({ stream: `task:${plain}`, origin: "partner", kind: "task_open", body: { taskId: plain, title: plain, project: "", place: { kind: "none" }, harness: "codex", brief: plain } as any });
+    core.tasks.setState(plain, "working", "hot");
+    expect(core.mcp.listed({ role: "task", taskId: plain } as any)).not.toContain("phone_look");
+  });
+});

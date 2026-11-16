@@ -191,7 +191,7 @@ function toolsRig() {
 describe("the phone tools", () => {
   test("only a task that needs the phone sees them", async () => {
     const { call } = toolsRig();
-    await expect(call("phone_look", {}, "t2")).rejects.toThrow(/doesn't have Ducter's phone/);
+    await expect(call("phone_look", {}, "t2")).rejects.toThrow(/isn't this task's to use right now/);
   });
   test("a send waits for Go; the Go covers that one tap", async () => {
     const { call, phone, reports, tools } = toolsRig();

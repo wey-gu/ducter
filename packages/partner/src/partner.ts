@@ -1033,6 +1033,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         );
       else if (t && reports)
         deltas.push("[language] The user speaks Chinese: reply in Chinese (中文). A task's report above is its own words, often in English: say what came of it in your own Chinese words, short and plain; never paste, quote or translate it line by line.");
+      // D260: a tap with no words (先等等 on a card about another agent's English request) has no
+      // language either: on hel the partner answered it "Okay, I won't start it." to a Chinese user.
+      else if (t) deltas.push("[language] The user speaks Chinese: anything the user sees is in Chinese (中文), whatever language the other text above is in.");
     }
     if (note) deltas.unshift(note);
     // What Ducter's code told the user since the last turn (follow-through, a lost send), so the

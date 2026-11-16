@@ -26,6 +26,8 @@ export interface CoreMcpHub extends McpHub {
   setPort(port: number): void;
   verify(token: string): Ctx | undefined;
   tools(role: Role): string[];
+  /** What tools/list answers this caller now (a tool's `visible` decides). */
+  listed(ctx: Ctx): string[];
   /** A tool listed only while `visible` holds for the caller (e.g. connection tools for tasks). */
   registerWhen(role: Role, name: string, description: string, inputSchema: object | (() => object), handler: ToolHandler, visible: (ctx: Ctx) => boolean): void;
   /** Calls a tool in-process, exactly as an MCP client would (tests, stubs). */
@@ -141,6 +143,7 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
     setPort: (p) => void (port = p),
     verify,
     tools: (role) => [...registry[role].keys()],
+    listed: (ctx) => [...registry[ctx.role]].filter(([, t]) => !t.visible || t.visible(ctx)).map(([name]) => name),
     call,
     async handle(req) {
       const auth = req.headers.get("authorization") ?? "";

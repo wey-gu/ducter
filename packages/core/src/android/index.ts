@@ -217,6 +217,7 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
   const tools = registerPhoneTools({
     mcp: o.mcp,
     deviceFor,
+    wants: (taskId) => !!wantsPhone(taskId),
     log: o.log,
     tasks: o.tasks,
     // A task on the phone keeps it running until it stops working (task_state below lets go).

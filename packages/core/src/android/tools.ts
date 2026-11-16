@@ -37,6 +37,12 @@ export interface PhoneToolsDeps {
   tasks: TaskRegistry & { get(id: string): { persona?: string; residency?: string; title?: string } | undefined };
   /** The task may use the phone now (it needs it, and the phone is installed here). */
   attached(taskId: string): boolean;
+  /**
+   * D260: the task's work uses a phone at all, whatever its state now. The tools are listed by
+   * this (a harness lists tools once, as a turn starts: a done task woken by a message was still
+   * "done" then, and its turn had no phone tools); each call is still checked by `attached`.
+   */
+  wants?(taskId: string): boolean;
   /** The user holds the phone (their turn): the phone this task uses (D234: per computer). */
   blind(taskId?: string): boolean;
   /** A task tried while it was the user's turn (told on hand-back). */
@@ -89,7 +95,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
   const openWaitMs = d.openWaitMs ?? 3_000;
   const screens = new Map<string, Screen>();
   const allowed = new Map<string, Allowed>();
-  const visible = (ctx: { taskId?: string }) => !!ctx.taskId && d.attached(ctx.taskId);
+  const visible = (ctx: { taskId?: string }) => !!ctx.taskId && (d.wants ? d.wants(ctx.taskId) : d.attached(ctx.taskId));
   const note = (taskId: string, x: PhoneDoing) => d.note?.(taskId, x);
   /** D253: every step's answer says which phone it ran on. */
   const on = (taskId: string) => {
@@ -98,7 +104,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
   };
 
   const ready = async (taskId: string) => {
-    if (!d.attached(taskId)) throw new Error("this task doesn't have Ducter's phone");
+    if (!d.attached(taskId)) throw new Error("the phone isn't this task's to use right now (it isn't working, or no phone is ready here). Report blocked in one line; don't retry.");
     if (d.blind(taskId)) {
       d.tried?.(taskId);
       note(taskId, { kind: "waiting" });

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.56
+
+<!-- whats-new
+zh: 继续之前的手机任务时，它又能用你的手机了
+en: A phone task you pick up again can use your phone again
+zh: 点了卡片上的按钮，Ducter 也用中文回你
+en: After you tap a card, Ducter answers in your language
+-->
+
+**Phones**
+- A task that works on a phone and is picked up again after it finished now gets its phone tools
+  back at once (before, it could start a turn without them and say it was blocked).
+
+**Conversation**
+- Tapping a button on a card about another agent's request no longer gets an answer in that
+  agent's language.
+
 ## 0.0.55
 
 <!-- whats-new

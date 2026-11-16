@@ -21,7 +21,7 @@ const tmp = () => realpathSync(mkdtempSync(join(tmpdir(), "ducter-home-")));
 
 describe("command classes", () => {
   test("machine commands stay here; home commands follow; the CLI's own are neither", () => {
-    for (const c of ["up", "service", "uninstall", "worker", "doctor", "domain", "report"]) expect(commandClass(c)).toBe("machine");
+    for (const c of ["up", "service", "uninstall", "worker", "doctor", "domain", "tailscale", "report"]) expect(commandClass(c)).toBe("machine");
     for (const c of ["status", "say", "task", "tail", "answer", "merge", "undo", "open", "pair", "devices"]) expect(commandClass(c)).toBe("home");
     for (const c of ["help", "version", "connect", "disconnect"]) expect(commandClass(c)).toBe("self");
     expect(commandClass("update")).toBe("machine");

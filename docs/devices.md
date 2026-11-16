@@ -49,7 +49,7 @@ top to bottom like a character in a game:
     devices reach it from outside, at your own domain on Cloudflare. **+ From outside** says
     what you need and offers **Set it up for me**: a task does the steps, and the card ticks them
     off. Once on, its **i** shows the address, who can get in (only devices you connected) and
-    **Turn off**. On a server with your own domain it's simply on. See
+    **Turn off**. On a server with your own domain or a Tailscale address it's simply on. See
     [Your phone](phone.md#from-outside).
   - **Use a phone** is on the card of a Mac with Apple silicon, the one Ducter lives on or one
     that does tasks for it. It gives Ducter a phone of its own on that Mac: see
@@ -237,7 +237,7 @@ What a device can do:
 | | What it means | Status |
 |---|---|---|
 | **Browse the web** | The computer can get things done on the web: look things up, read pages, gather what it finds. In your Chrome when your AI agent has its own browser, otherwise in Ducter's own browser | Ready on every computer that does tasks (a Mac, or a server: see below) |
-| **Reach from outside** | Reach Ducter from your phone or another computer, with a one-time code | Ready (needs an address that works from outside: your own domain on a server, see [Install](install.md#a-linux-server-that-stays-on), or on Cloudflare, see [From outside](phone.md#from-outside)) |
+| **Reach from outside** | Reach Ducter from your phone or another computer, with a one-time code | Ready (needs an address that works from outside: your own domain or Tailscale on a server, see [Install](install.md#a-linux-server-that-stays-on), or on Cloudflare, see [From outside](phone.md#from-outside)) |
 | **Use the computer** | Tasks use the apps on the computer the way you do, asking before anything that sends, pays or deletes ([above](#tasks-in-your-macs-apps)) | Ready on a Mac (it needs CuaDriver and two macOS switches); a server uses a Mac's |
 | **Use a phone** | Ducter gets things done in apps on a phone of its own, running on your Mac ([above](#ducters-phone)) | Ready on a Mac with Apple silicon: the one Ducter lives on, or one that does tasks for it |
 | **Make calls** | Ducter makes phone calls for you, through Tuwa or from your own Android phone | Ready (needs a Tuwa account, or your own phone with a cable kit and a live-voice key; see [Phone calls](calls.md)) |

@@ -21,6 +21,13 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **A start at login without Ducter**: the tunnel comes back when Ducter starts (its own unit or a detached process), not as a launchd/systemd service of its own. Trigger: a person who wants the address up while Ducter is not.
 - [x] **The systemd-run path on a Linux home**: the tunnel's own unit survives `systemctl --user restart ducter` (`bun run e2e:linux` step 8).
 
+**Tailscale (D265, research/86)**
+- [ ] **One real run on a tailnet-only server** (hel joined to a tailnet, no public port): `ducter tailscale` as root and as a non-operator user, the first certificate, then pairing, a WebSocket that stays up, a reconnect after `systemctl --user restart ducter`, and a push to the iPhone app, from a phone in the tailnet. Trigger: before the release that carries D265; so far only a fake `tailscale`.
+- [ ] **`ducter uninstall --all` turns Ducter's serve off** (as it takes the Caddy site away). Trigger: the first report of a stale serve after uninstall; today it forwards to nothing and `ducter tailscale --remove` clears it.
+- [ ] **The Mac app's own Tailscale path**: a home Mac in a tailnet offered `ducter tailscale` from Devices' From outside chip, beside the Cloudflare tunnel. Trigger: a Mac home user asks; the CLI already works on a Mac.
+- [ ] **A status probe per address on Devices** (up / degraded / down, with a reason). Trigger: the live run above.
+- [ ] **Funnel** (`tailscale funnel`, public) is not offered. Trigger: someone without a domain who wants a public address and not Cloudflare.
+
 **Verify for real**
 - [ ] **Move your Ducter to another computer (`ducter move`)**: a Mac-first user moves the home to a server: one-time move code from the new (empty) home; moves the Log, persona, settings, rules, routines, connections and the Mem binding over HTTPS with a verified count; not harness sign-ins (re-sign on the server, guided); running tasks parked first; the old machine becomes a worker for its local repos, its app connects to the new home; old data kept 30 days with a one-tap move back. Trigger: the author's Mac → Hetzner case (2026-11-10); design first, then v0.0.4.
 - [x] **Phone opened task overflows horizontally**: not the layout. The shot was taken with headless Chrome's `--window-size=390,…`, which lays out at its minimum window width (~500 px) and crops to 390. With device emulation at 390 px (CDP `Emulation.setDeviceMetricsOverride`) the folder task and a long zh title + long brief with unbreakable paths and URLs wrap, and `scrollWidth` is 390. Take phone shots with device emulation, never `--window-size`.

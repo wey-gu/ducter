@@ -19,6 +19,7 @@ import { cmdDevices, cmdPair, cmdService, ducterCommand, fetchPublicIp, isLoopba
 import { cmdAnywhere } from "./anywhere-cmd.ts";
 import { stopSavedTunnel } from "@ducter/core/src/anywhere.ts";
 import { caddyfileFor, cmdDomain, realDomainSys, removeDucterSite } from "./domain.ts";
+import { cmdTailscale, detectTailnet, realTailscaleSys } from "./tailscale.ts";
 import { cmdWorker } from "./worker.ts";
 import { cmdUpdate } from "./update.ts";
 import { agentLabel, executeUninstall, formatPlan, planUninstall } from "./uninstall.ts";
@@ -66,6 +67,7 @@ export function helpText(t: T): string {
     cmd("browser", t("help.browser")),
     cmd("service", t("help.service")),
     cmd("anywhere", t("help.anywhere")),
+    cmd("tailscale", t("help.tailscale")),
     cmd("domain", t("help.domain")),
     cmd("worker", t("help.worker")),
     cmd("uninstall", t("help.uninstall")),
@@ -605,7 +607,7 @@ export async function run(argv: string[]): Promise<number | "running"> {
       return cmdUp(ctx);
     case "pair":
       if (ctx.target.kind === "remote") return cmdPairAt({ t, style, target: ctx.target, json: args.json });
-      return cmdPair({ t, style, dataDir, port, json: args.json, running: (await host.port(port)) === "ducter", wait: Boolean(process.stdout.isTTY) && !args.json, worker: args.worker, publicIp: fetchPublicIp, self: ducterCommand() });
+      return cmdPair({ t, style, dataDir, port, json: args.json, running: (await host.port(port)) === "ducter", wait: Boolean(process.stdout.isTTY) && !args.json, worker: args.worker, publicIp: fetchPublicIp, tailnet: () => detectTailnet(), self: ducterCommand() });
     case "anywhere":
       return cmdAnywhere({
         t,
@@ -631,6 +633,17 @@ export async function run(argv: string[]): Promise<number | "running"> {
         dnsCheck: args.dnsCheck,
         pair: () => cmdPair({ t, style, dataDir, port, json: false, running: true, wait: Boolean(process.stdout.isTTY) }),
       });
+    case "tailscale":
+      return cmdTailscale({
+        t,
+        style,
+        sys: realTailscaleSys(),
+        dataDir,
+        port,
+        json: args.json,
+        remove: args.remove,
+        pair: () => cmdPair({ t, style, dataDir, port, json: false, running: true, wait: Boolean(process.stdout.isTTY), self: ducterCommand() }),
+      });
     case "devices":
       if (ctx.target.kind === "remote") return cmdDevicesAt({ t, style, target: ctx.target, json: args.json, rest: args.rest ?? [] });
       return cmdDevices({ t, style, dataDir, json: args.json, rest: args.rest ?? [], port });
@@ -652,7 +665,7 @@ export async function run(argv: string[]): Promise<number | "running"> {
           const auth = openDeviceAuth(dataDir);
           const none = auth.list().length === 0;
           auth.close();
-          if (none) await cmdPair({ t, style, dataDir, port, json: false, running: true, wait: Boolean(process.stdout.isTTY), publicIp: fetchPublicIp, self: ducterCommand() });
+          if (none) await cmdPair({ t, style, dataDir, port, json: false, running: true, wait: Boolean(process.stdout.isTTY), publicIp: fetchPublicIp, tailnet: () => detectTailnet(), self: ducterCommand() });
         },
       });
     case "worker":

@@ -9,6 +9,7 @@ import { openDeviceAuth, CODE_TTL_MS, type Device } from "@ducter/core/src/auth.
 import { migrateKeys } from "@ducter/protocol/src/keys.ts";
 import { isCompiled, width, type Host, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
+import type { Tailnet } from "./tailscale.ts";
 
 export const UNIT_NAME = "ducter.service";
 export const unitPath = (home = homedir()) => join(home, ".config", "systemd", "user", UNIT_NAME);
@@ -17,6 +18,16 @@ export const unitPath = (home = homedir()) => join(home, ".config", "systemd", "
 export function ownUrl(dataDir: string, env: Record<string, string | undefined> = process.env): string | undefined {
   const raw = env.DUCTER_PUBLIC_URL?.trim() || (existsSync(join(dataDir, "public-url")) ? readFileSync(join(dataDir, "public-url"), "utf8").trim() : "");
   return raw ? raw.replace(/\/+$/, "") : undefined;
+}
+
+/** An address on a Tailscale tailnet (`ducter tailscale`, D265): https://<machine>.<tailnet>.ts.net. */
+export function isTailnetUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    return /\.ts\.net$/i.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
 }
 
 /** Where remote clients reach this Ducter (D228: 从外面连 writes its tunnel's address there too). */
@@ -100,7 +111,8 @@ export async function fetchPublicIp(): Promise<string | undefined> {
  * `ducter pair`: a fresh one-time code, both ways to use it (a phone or app window; another
  * computer), and (on a TTY) a wait for the device. One code serves either (D83); the hidden
  * `--worker` keeps the old code fixed to a computer and prints only that way. A server with no
- * public address yet leads with `ducter domain`, then the SSH tunnel for a Mac alone.
+ * public address yet leads with `ducter tailscale` when it is in a tailnet (D265), else
+ * `ducter anywhere`, `ducter domain` and Tailscale side by side, then the SSH tunnel for a Mac alone.
  */
 export async function cmdPair(o: {
   t: T;
@@ -113,6 +125,8 @@ export async function cmdPair(o: {
   worker?: boolean;
   /** This machine's public IP; only asked when there is no public address yet. */
   publicIp?: () => Promise<string | undefined>;
+  /** This machine's tailnet, when Tailscale is here; only asked when there is no public address yet. */
+  tailnet?: () => Promise<Tailnet | undefined>;
   /** A server (Linux, or reached over SSH) rather than the Mac in front of you. */
   server?: boolean;
   /** How to type ducter here (see ducterCommand); default "ducter". */
@@ -127,16 +141,22 @@ export async function cmdPair(o: {
     const expiresAt = Date.parse(p.expiresAt);
     const base = publicUrl(o.dataDir);
     const server = o.server ?? (process.platform === "linux" || Boolean(process.env.SSH_CONNECTION));
-    const ip = base ? undefined : await o.publicIp?.();
+    const [ip, tn] = base ? [undefined, undefined] : await Promise.all([o.publicIp?.(), o.tailnet?.()]);
+    // In a tailnet with HTTPS possible or not: `ducter tailscale` says what's missing.
+    const inTailnet = tn?.state === "Running" && tn.dnsName ? tn.dnsName : undefined;
     const tunnel = tunnelCommand(o.port, process.env, ip);
     if (o.json) {
       const out: Record<string, unknown> = { ...p, reachable: Boolean(base) };
       if (!base) {
         out.publicIp = ip ?? null;
         out.tunnel = tunnel;
+        out.tailnet = inTailnet ?? null;
+        const tsStep = { id: "tailscale", text: t("pair.json.tailscale"), command: `${o.self ?? "ducter"} tailscale` };
         out.steps = [
+          ...(inTailnet ? [tsStep] : []),
           { id: "anywhere", text: t("pair.json.anywhere"), command: `${o.self ?? "ducter"} anywhere on` },
           { id: "domain", text: t("pair.json.domain", { ip: ip ?? "<public IP>" }), command: "ducter domain <your domain>" },
+          ...(inTailnet ? [] : [tsStep]),
           { id: "tunnel", text: t("pair.json.tunnel"), command: tunnel },
         ];
       }
@@ -170,8 +190,11 @@ export async function cmdPair(o: {
       console.log(qr.split("\n").map((l) => "  " + l).join("\n"));
       console.log(computer().join("\n"));
     } else if (server) {
-      // D228: first your own domain through Cloudflare (set up by a task), then the domain on this
-      // server's public IP, then the SSH tunnel.
+      // D265: a server already in a tailnet leads with it (private, no public ports). Else D228:
+      // your own domain through Cloudflare (set up by a task), the domain on this server's public
+      // IP, Tailscale, then the SSH tunnel. None of them assumes a public IP.
+      const tsCmd = `    ${style.bold(`${o.self ?? "ducter"} tailscale`)}`;
+      if (inTailnet) lines.push(`  ${style.bold(t("pair.ts.lead", { name: inTailnet }))}`, tsCmd, `  ${style.dim(t("pair.ts.what"))}`, "");
       lines.push(`  ${style.bold(t("pair.anywhere.lead"))}`, `    ${style.bold(`${o.self ?? "ducter"} anywhere on`)}`, `  ${style.dim(t("pair.anywhere.what"))}`, "");
       lines.push(
         `  ${style.bold(t("pair.domain.lead"))}`,
@@ -179,6 +202,7 @@ export async function cmdPair(o: {
         `    ${style.bold(`${o.self ?? "ducter"} domain ducter.example.com`)}`,
         `  ${style.dim(t("pair.domain.what"))}`,
         "",
+        ...(inTailnet ? [] : [`  ${t("pair.ts.other")}`, tsCmd, ""]),
         `  ${t("pair.tunnel")}`,
         `    ${tunnel}`,
         `  ${t("pair.tunnel.then")}`,

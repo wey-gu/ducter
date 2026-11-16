@@ -1,5 +1,5 @@
 // The CLI follows the active home (D147). Commands come in two kinds: machine-local ones (up,
-// service, worker, doctor, domain, uninstall, report) always act on this machine; home commands
+// service, worker, doctor, domain, tailscale, uninstall, report) always act on this machine; home commands
 // (status, say, task, tail, answer, merge, undo, open, pair, devices) go to the Ducter the CLI
 // follows. That is <dataDir>/home.json (0600) when it exists, written by the Mac app when it
 // connects to a Ducter on a server, or by `ducter connect`; else the Ducter on this machine.
@@ -136,7 +136,7 @@ export const homeJson = (t: Target) => (t.kind === "local" ? { kind: "local" as 
 
 export type CommandClass = "machine" | "home" | "self";
 
-const MACHINE = new Set(["up", "service", "uninstall", "worker", "doctor", "domain", "report"]);
+const MACHINE = new Set(["up", "service", "uninstall", "worker", "doctor", "domain", "tailscale", "report"]);
 const HOME = new Set(["status", "say", "task", "tail", "answer", "merge", "undo", "open", "pair", "devices", "ability", "browser"]);
 
 /**

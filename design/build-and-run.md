@@ -156,13 +156,20 @@ scripts/install.sh --linux ducter-linux            # ducter-linux/linux-x64 and 
 scp -r ducter-linux/linux-x64 you@server:ducter    # pick the server's CPU (uname -m)
 
 # on the server
-sh ducter/install.sh --service   # systemd user service on 127.0.0.1:7777; ends with the public IP and `ducter domain`
+sh ducter/install.sh --service   # systemd user service on 127.0.0.1:7777; ends with what's next: `ducter tailscale` in a tailnet, else a domain, Tailscale, the tunnel
 ducter doctor                    # says how to sign in Claude Code / Codex without a browser there
 ```
 
-Reach it one of two ways:
+Reach it one of these ways (D265: none assumes a public IP):
 
-- **Your own domain (recommended):** point an A record at the server, open ports 80/443, then
+- **Tailscale (a server in a tailnet, no public port):** `ducter tailscale` on the server
+  (`packages/cli/src/tailscale.ts`, research/86). It reads `tailscale status --json` (Running,
+  `Self.DNSName`, `CertDomains`), refuses a 443 already serving something else, runs
+  `tailscale serve --bg --https=443 http://127.0.0.1:<port>`, waits for
+  `https://<machine>.<tailnet>.ts.net/health`, writes `<dataDir>/public-url` and pairs.
+  `--remove` runs `tailscale serve --https=443 off` when 443 is Ducter's. Tests use a fake CLI
+  (`packages/cli/test/tailscale.test.ts`); not yet run on a real tailnet.
+- **Your own domain:** point an A record at the server, open ports 80/443, then
   `ducter domain ducter.example.com` on the server (`packages/cli/src/domain.ts`). It checks the
   record against the server's public IP (api.ipify.org) and that nothing but Caddy holds 80/443,
   installs Caddy (apt, as root without sudo), writes a marked site block
@@ -197,7 +204,8 @@ it's back.
 |---|---|
 | `ducter up --headless` | Run as a server: no window. Binds 127.0.0.1 unless `--host` says otherwise |
 | `ducter service install \| uninstall \| status` | systemd user service with restart on failure; logs in `journalctl --user -u ducter`. With `--worker` on a Mac: the LaunchAgent `co.nowledge.ducter.worker` running `ducter worker` (login start, KeepAlive, `<dataDir>/worker.log`; D155) |
-| `ducter pair` | One-time pairing code (10 min) for any device: address, link and QR for a phone or app, and the `ducter worker` command for another computer (D83). With no public address on a server it leads with `ducter domain` and the public IP, then the SSH tunnel; `--json` adds `reachable`, `publicIp`, `tunnel` and `steps` |
+| `ducter pair` | One-time pairing code (10 min) for any device: address, link and QR for a phone or app, and the `ducter worker` command for another computer (D83). With no public address on a server it leads with `ducter tailscale` when the machine is in a tailnet, else Cloudflare (`ducter anywhere`), `ducter domain` with the public IP and Tailscale, then the SSH tunnel; `--json` adds `reachable`, `publicIp`, `tailnet`, `tunnel` and `steps` |
+| `ducter tailscale [--remove] [--json]` | HTTPS at this machine's Tailscale name through `tailscale serve`, private to the tailnet, then a pair code (D265) |
 | `ducter domain <name> [--remove \| --print \| --no-dns-check] [--json]` | HTTPS at that name with Caddy, DNS checked first, then a pair code |
 | `ducter devices` | Connected devices; `disconnect <id>` removes one, `rename <id> <name>` renames one (D84) |
 | `ducter worker <address> --code <code>` | Make this machine a worker of that Ducter, with the same one-time code a phone uses (D83; `service install --worker` keeps it running; `--join <address>` and `pair --worker` are hidden aliases) |

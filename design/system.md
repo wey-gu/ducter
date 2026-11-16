@@ -363,15 +363,31 @@ Ducter writes is Caddy's, which adds `X-Forwarded-For`.
   Remote `/mcp` needs `X-Ducter-Device` beside its HMAC role token. Remote `/health` answers
   `{ok:true}` only.
 
-**Reaching it**
-- *Own domain (default for everyone with one, and for CN users per Q18):*
-  `scripts/caddy-setup.sh <domain>`: checks DNS, installs Caddy from its apt repo, adds a site
-  block (`reverse_proxy 127.0.0.1:7777`), reloads, waits for `https://<domain>/health`, writes
-  `~/.ducter/public-url`. Mainland-China servers need an ICP filing for 80/443.
-- *No domain:* `ssh -N -L 7777:127.0.0.1:7777 user@server`, then the address is
+**Reaching it** (D265: a choice; nothing assumes a public IP or open ports)
+- *Tailscale (a server in a tailnet, no public port, no domain; research/86):* `ducter tailscale`
+  (`packages/cli/src/tailscale.ts`) reads `tailscale status --json` (`Running`,
+  `Self.DNSName`, `CertDomains` holding that name, else the admin console's DNS page for MagicDNS
+  and HTTPS Certificates), refuses a 443 that serves something else, runs `tailscale serve --bg
+  --https=443 http://127.0.0.1:7777` (access denied → `sudo tailscale set --operator=$USER`),
+  waits for `https://<machine>.<tailnet>.ts.net/health` (no answer from the machine itself only
+  warns), writes `~/.ducter/public-url`, pairs. `--remove` runs `tailscale serve --https=443
+  off` only when 443 forwards to this Ducter, and clears only a `ts.net` `public-url`. Served
+  requests keep the ts.net Host and add `X-Forwarded-*` and `Tailscale-User-Login`, so they are
+  remote (Who is local, above) and need a paired device; the phone must be in the tailnet.
+  iPhone and Web Push leave the home outbound (relay, push service), so they still work.
+- *Own domain (for everyone with one, and for CN users per Q18):* `ducter domain <name>`
+  (`packages/cli/src/domain.ts`; `scripts/caddy-setup.sh <domain>` for source users): checks
+  DNS, installs Caddy from its apt repo, adds a site block (`reverse_proxy 127.0.0.1:7777`),
+  reloads, waits for `https://<domain>/health`, writes `~/.ducter/public-url`.
+  Mainland-China servers need an ICP filing for 80/443.
+- *Your own Cloudflare tunnel* (D228): `ducter anywhere on`.
+- *No domain, Mac only:* `ssh -N -L 7777:127.0.0.1:7777 user@server`, then the address is
   `http://127.0.0.1:7777`; no code is needed, SSH is the authentication.
-- *Later (D39/D46):* the Ducter Edge on `workers.dev` for phone/web without a domain, and
-  Tailscale as the community adapter. Both keep this pairing.
+- *What's next:* `ducter pair` on a server with no address (the end of `service install` and of
+  the installer too) leads with `ducter tailscale` when the machine is in a tailnet, else lists
+  Cloudflare, a domain, Tailscale, then the tunnel.
+- *Later (D39):* the Ducter Edge on `workers.dev` for phone/web without a domain. It keeps this
+  pairing.
 
 **Desktop.** First run gains a quiet "我的 Ducter 在另一台机器上 / My Ducter is on another
 machine" that opens **连接到你的 Ducter / Connect to your Ducter**: address (or the whole link)

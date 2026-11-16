@@ -129,7 +129,7 @@ describe("Who does it, across computers (D202)", () => {
 describe("Model and effort (D202)", () => {
   test("defaults: the suggested model and its own default effort; the pill says them; nothing extra is sent", async () => {
     const { A, sent } = await sheet([helRepo, none], [atHel[0]!], [codexModels("local")]);
-    const whoLabel = (c: any) => A.ntWhoParts(c).join(" | ");
+    const whoLabel = (c: any) => A.ntWhoLabel(c);
     const c = A.chosenCandidate().c!;
     const tu = A.ntTune(c);
     expect(tu.model?.id).toBe("gpt-6.1-terra");
@@ -147,7 +147,7 @@ describe("Model and effort (D202)", () => {
 
   test("a picked model and effort go with the agent, and are remembered for that agent on the next sheet", async () => {
     const { A, sent } = await sheet([macRepo, none], atMac, [claudeModels, codexModels("dev_mac")]);
-    const whoLabel = (c: any) => A.ntWhoParts(c).join(" | ");
+    const whoLabel = (c: any) => A.ntWhoLabel(c);
     const c = A.chosenCandidate().c!;
     expect(c.harness).toBe("claude-code");
     // Claude Code lists no default effort: none is picked, and none is sent.

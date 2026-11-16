@@ -6,8 +6,8 @@ import type { OngoingAction, OngoingItem, OngoingRun, PastGlyph, PastItem, PastM
 import { PAST_GLYPHS, PAST_TAGS_MAX, PAST_TINTS } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn } from "./controls.tsx";
-import { harnessName } from "./format.ts";
+import { Btn, Facts } from "./controls.tsx";
+import { harnessName, spoken } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -217,11 +217,12 @@ function dateOf(iso: string, now = Date.now()): string {
   return zh ? `${d.getMonth() + 1}月${d.getDate()}日` : d.toLocaleDateString("en", { month: "short", day: "numeric" });
 }
 
-function rangeLine(r: NonNullable<Result["range"]>): string {
+/** The range a search read, said and dated apart ("上周", 11月9日–11月15日; D291). */
+function rangeLine(r: NonNullable<Result["range"]>): string[] {
   const a = new Date(r.since);
   const b = new Date(Date.parse(r.before) - 1);
   const f = (d: Date) => (A.L.lang === "zh" ? `${d.getMonth() + 1}月${d.getDate()}日` : d.toLocaleDateString("en", { month: "short", day: "numeric" }));
-  return `${r.words} · ${a.toDateString() === b.toDateString() ? f(a) : `${f(a)} – ${f(b)}`}`;
+  return [r.words, a.toDateString() === b.toDateString() ? f(a) : `${f(a)}–${f(b)}`];
 }
 
 // ---------- pieces ----------
@@ -302,7 +303,7 @@ function Card({ it }: { it: PastItem }) {
             it.outcome && <span class="pl2">{it.outcome}</span>
           )}
           <span class="pl3">
-            {meta.join(" · ")}
+            <Facts items={meta} />
             {ch && (ch.adds || ch.dels) ? (
               <span class="pdiff">
                 <span class="add">+{ch.adds}</span> <span class="del">−{ch.dels}</span>
@@ -552,7 +553,7 @@ export function PastSheet() {
           </svg>
           <input ref={ref} value={P.q} placeholder={t("past.find")} aria-label={t("past.find")} autocomplete="off" spellcheck={false} onInput={(e) => ((P.q = e.currentTarget.value), (P.focus = ""), ask(), A.changed())} />
         </label>
-        {P.res?.range && <div class="past-range">{rangeLine(P.res.range)}</div>}
+        {P.res?.range && <Facts class="past-range" items={rangeLine(P.res.range)} />}
         <Chips />
         <div class="past-list">
           {!loading && !items.length && <p class="past-none">{searching || P.filter.kind !== "all" ? t("past.none") : t("past.empty")}</p>}
@@ -605,16 +606,17 @@ function interval(ms: number): string {
   return zh ? `${h} 小时` : `${h} h`;
 }
 
-function stateLine(it: OngoingItem): string {
+/** An ongoing thing's line: its state, else how often it runs and when next, each its own fact (D291). */
+function stateLine(it: OngoingItem): string[] {
   if (it.state === "paused") {
-    if (it.pausedBy === "system" && it.pauseWhy) return t(`routine.paused.${it.pauseWhy}`);
-    return it.pausedUntil ? t("og.paused.until", soon(it.pausedUntil)) : t("og.paused");
+    if (it.pausedBy === "system" && it.pauseWhy) return [t(`routine.paused.${it.pauseWhy}`)];
+    return [it.pausedUntil ? t("og.paused.until", soon(it.pausedUntil)) : t("og.paused")];
   }
-  if (it.state === "running") return t("og.s.running");
-  if (it.state === "needs_you") return t("og.s.needs_you");
-  if (it.state === "proposed") return t("og.s.proposed");
+  if (it.state === "running") return [t("og.s.running")];
+  if (it.state === "needs_you") return [t("og.s.needs_you")];
+  if (it.state === "proposed") return [t("og.s.proposed")];
   const how = it.kind === "routine" ? (it.cadence ?? "") : it.everyMs ? t("og.every", interval(it.everyMs)) : "";
-  return [how, it.nextAt ? t("og.next", soon(it.nextAt)) : ""].filter(Boolean).join(" · ");
+  return [how, it.nextAt ? t("og.next", soon(it.nextAt)) : ""].filter(Boolean);
 }
 
 const RepeatGlyph = ({ task }: { task: boolean }) => (
@@ -633,7 +635,7 @@ function Runs({ runs }: { runs: OngoingRun[] }) {
   return (
     <span class="og-runs" role="list" aria-label={t("og.runs", runs.length)}>
       {runs.map((r, i) => {
-        const label = `${t(`og.run.${r.state}`)} · ${soon(r.at)}${r.line ? ` · ${r.line}` : ""}`;
+        const label = spoken(A.L, t(`og.run.${r.state}`), soon(r.at), r.line);
         return (
           <span
             key={i}
@@ -704,7 +706,7 @@ function OgCard({ it }: { it: OngoingItem }) {
           <span class="pl1">
             <span class="pt">{it.title}</span>
           </span>
-          <span class={`pl2 og-line${paused ? " paused" : ""}`}>{stateLine(it)}</span>
+          <span class={`pl2 og-line${paused ? " paused" : ""}`}><Facts items={stateLine(it)} /></span>
           <span class="pl3">
             {it.project && <span>{it.project}</span>}
             <Runs runs={it.runs} />

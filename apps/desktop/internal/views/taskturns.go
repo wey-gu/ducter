@@ -229,8 +229,8 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 			a.divider(c, a.noteLine(b))
 			return
 		case "switched", "retuned", "moved":
-			// D282: who does it changed inside the task: one hairline with its time.
-			a.divider(c, a.switchLine(task, b))
+			// D282: who does it changed inside the task: one hairline, its time apart (D291).
+			a.dividerTip(c, a.switchLine(task, b), clock(a.tsOf(task, b.Seq)), "")
 			return
 		}
 		ui.Row(c).Gap(6).MinHeight(24).AlignItems(ui.Center).MinWidth(0).Children(func() {

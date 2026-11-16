@@ -165,7 +165,7 @@ func (a *App) clientKind(cl *protocol.ReachClient) string {
 		if strings.HasPrefix(cl.Name, "iPad") {
 			kind = "ipad"
 		}
-		if strings.Contains(p, "safari") || strings.Contains(p, "web") {
+		if !strings.Contains(p, "app") { // D291: the app says "-app"
 			return a.L.T("device.kind." + kind + ".safari")
 		}
 		return a.L.T("device.kind." + kind + ".app")

@@ -49,29 +49,31 @@ var gos = []struct {
 	{regexp.MustCompile(`^The user said OK to use `), ""},
 }
 
-// switchLine is a switch inside the task with its time (D282): 换成 Codex
-// 接着做 · 21:40, 换成 Sonnet · 高 · 21:40, 换到 hel 接着做 · 21:40.
+// switchLine is a switch inside the task (D282): 换成 Codex 接着做,
+// 换成 Sonnet（高）, 换到 hel 接着做. Its time is drawn apart (D291).
 func (a *App) switchLine(task *store.Task, b *Block) string {
-	at := clock(a.tsOf(task, b.Seq))
 	if b.Say == "retuned" {
-		var parts []string
+		m, e := "", ""
 		if b.Name != "" {
-			parts = append(parts, modelLabel(a.trayHarness(task.Harness()), b.Name))
+			m = modelLabel(a.trayHarness(task.Harness()), b.Name)
 		}
 		if b.Effort != "" {
-			parts = append(parts, a.effortWord(b.Effort))
+			e = a.effortWord(b.Effort)
 		}
-		who := strings.Join(parts, " · ")
+		who := m + e
+		if m != "" && e != "" {
+			who = a.L.T("who.name", m, e)
+		}
 		if who == "" {
 			who = a.L.T("note.retuned.default")
 		}
-		return a.L.T("note.retuned", who, at)
+		return a.L.T("note.retuned", who)
 	}
 	name := b.Name
 	if name == "" {
 		name = a.L.T("note.computer")
 	}
-	return a.L.T("note."+b.Say, name, at)
+	return a.L.T("note."+b.Say, name)
 }
 
 // noteLine is a note in words: note.<say>, its name filled in (a

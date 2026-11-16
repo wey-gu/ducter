@@ -471,12 +471,14 @@ function PlanCard({ b }: { b: Extract<Block, { k: "plan" }> }) {
 }
 
 /** What fills a note's %s (D207): a computer, an agent, an effort; a computer it didn't name is said plainly. */
-/** D282: a switch inside the task, with its time: another agent, another model or effort, another computer. */
-export function switchLine(task: Task, b: Extract<Block, { k: "note" }>): string {
-  const ms = tsOf(task, b.seq);
-  const at = Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
-  if (b.say === "retuned") return t("note.retuned", [b.name && modelName(b.name), b.effort && effortWord(A.L, b.effort)].filter(Boolean).join(" · ") || t("note.retuned.default"), at);
-  return t(`note.${b.say}`, b.name || t("note.computer"), at);
+/** D282: a switch inside the task: another agent, another model or effort, another computer. Its
+ *  time is drawn apart (D291); a model with its effort reads "Sonnet（高）". */
+export function switchLine(b: Extract<Block, { k: "note" }>): string {
+  if (b.say === "retuned") {
+    const m = b.name && modelName(b.name), e = b.effort && effortWord(A.L, b.effort);
+    return t("note.retuned", m && e ? t("who.name", m, e) : m || e || t("note.retuned.default"));
+  }
+  return t(`note.${b.say}`, b.name || t("note.computer"));
 }
 
 function noteName(b: Extract<Block, { k: "note" }>): string {
@@ -538,15 +540,16 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
       if (b.say === "compacted" || b.say === "interrupted")
         return (
           <div class="tx-divider" role="separator">
-            {/* D288: with its size before and after when known (压缩了上下文 · 152k → 31k). */}
+            {/* D288: with its size before and after when known (上下文从 152k 压缩到了 31k). */}
             <span>{b.say === "compacted" && b.from && b.to ? t("note.compacted.size", tokensShort(b.from), tokensShort(b.to)) : b.say === "compacted" && b.from ? t("note.compacted.from", tokensShort(b.from)) : t(`note.${b.say}`)}</span>
           </div>
         );
-      // D282: who does it changed inside the task: one hairline with its time (换成 Codex 接着做 · 21:40).
+      // D282: who does it changed inside the task: one hairline, its time apart (D291).
       if (b.say === "switched" || b.say === "retuned" || b.say === "moved")
         return (
-          <div class="tx-divider" role="separator">
-            <span>{switchLine(task, b)}</span>
+          <div class="tx-divider wake" role="separator">
+            <span>{switchLine(b)}</span>
+            {seqClock(task, b.seq) && <span class="when">{seqClock(task, b.seq)}</span>}
           </div>
         );
       // D207: the runner's lines in the user's words; the line as logged only on hover, for an error.

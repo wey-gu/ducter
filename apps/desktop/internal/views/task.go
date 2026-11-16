@@ -422,7 +422,9 @@ func (a *App) decisionAnswered(c *ui.Context, d *store.DecisionState) {
 	msg := a.answeredWords(d)
 	ui.Row(c.Key("answered")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 		a.glyph(c, 16, drawCheck(t.InkMuted))
-		ui.Text(c, a.L.T("decision.answered", strings.TrimRight(msg, "：: "), d.AnsweredAt.Local().Format("15:04"))).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+		// D291: what was answered, then its time as its own muted element.
+		ui.Text(c, strings.TrimRight(msg, "：: ")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+		ui.Text(c, d.AnsweredAt.Local().Format("15:04")).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 		ui.Text(c, a.questionOf(d)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Grow(1).MinWidth(0)
 	})
 }

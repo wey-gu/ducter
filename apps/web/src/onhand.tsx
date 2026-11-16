@@ -627,7 +627,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const next = w ? waitNext(w) : undefined;
   const working = a === "working" || a === "queued";
   const finishedNow = a === "done" || a === "done_claimed" || a === "failed";
-  const meta = [L.showProj ? lensName(lensOf(task)) : "", manyComputers() && p.kind !== "none" ? computerName(p.device) : ""].filter(Boolean).join(" · ");
+  const meta = [L.showProj ? lensName(lensOf(task)) : "", manyComputers() && p.kind !== "none" ? computerName(p.device) : ""];
   const onClick = (e: MouseEvent) => {
     if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
     if (room === "full" && e.shiftKey) return void (e.preventDefault(), extend(task.id));
@@ -674,7 +674,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
             </span>
           )}
           {pr && <span class="pr">{pr}</span>}
-          {meta && <span class="meta">{meta}</span>}
+          <Facts class="meta" items={meta} />
         </span>
         {u && !finished(task) && <Goal u={u} />}
       </button>

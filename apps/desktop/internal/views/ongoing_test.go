@@ -91,16 +91,16 @@ func TestOngoingStateLines(t *testing.T) {
 		want map[string]string
 	}{
 		{i18n.ZH, map[string]string{
-			"r_ci":     "每天 09:00 · 下次明天 9:00",
-			"t_review": "每 32 分钟看一次 · 下次 15:32",
+			"r_ci":     "每天 09:00 | 下次明天 9:00",
+			"t_review": "每 32 分钟看一次 | 下次 15:32",
 			"r_weekly": "暂停到周一 10:00",
 			"r_mail":   "已暂停：连着 3 次没成",
 			"r_deps":   "正在跑",
 			"r_bench":  "等你",
-			"t_flight": "每 6 小时看一次 · 下次明天 17:00",
+			"t_flight": "每 6 小时看一次 | 下次明天 17:00",
 		}},
 		{i18n.EN, map[string]string{
-			"r_ci":     "Every day at 9:00 · Next tomorrow 9:00",
+			"r_ci":     "Every day at 9:00 | Next tomorrow 9:00",
 			"r_weekly": "Paused until Mon 10:00",
 			"r_deps":   "Running",
 		}},
@@ -110,7 +110,7 @@ func TestOngoingStateLines(t *testing.T) {
 		items[1].EveryMs = 32 * 60 * 1000
 		for _, it := range items {
 			if want, ok := tc.want[it.ID]; ok {
-				if got := app.ongoingLine(&it); got != want {
+				if got := strings.Join(app.ongoingLine(&it), " | "); got != want { // D291: separate facts
 					t.Errorf("%s %s: %q, want %q", tc.lang, it.ID, got, want)
 				}
 			}
@@ -118,7 +118,7 @@ func TestOngoingStateLines(t *testing.T) {
 	}
 	app, _ := pastApp(t, i18n.ZH)
 	open := protocol.OngoingItem{State: "paused", PausedBy: "user"}
-	if got := app.ongoingLine(&open); got != "暂停了，等你恢复" {
+	if got := strings.Join(app.ongoingLine(&open), " | "); got != "暂停了，等你恢复" {
 		t.Errorf("paused until resumed: %q", got)
 	}
 }
@@ -159,7 +159,7 @@ func TestOngoingPauseMenu(t *testing.T) {
 	// Through the menu: the card's Pause opens it; 暂停到明天早上 sends that until.
 	app.past.og.focus = "r_ci"
 	tt.Frame()
-	if err := tt.Click("暂停 · 每天早上看一眼 hawdb 的 CI"); err != nil {
+	if err := tt.Click("暂停，每天早上看一眼 hawdb 的 CI"); err != nil {
 		t.Fatalf("Pause: %v (%q)", err, tt.Texts())
 	}
 	tt.Frame()
@@ -174,7 +174,7 @@ func TestOngoingPauseMenu(t *testing.T) {
 	if !tt.HasText("暂停到明天 8:00") {
 		t.Errorf("the card did not settle as paused: %q", tt.Texts())
 	}
-	if err := tt.Click("恢复 · 每天早上看一眼 hawdb 的 CI"); err != nil {
+	if err := tt.Click("恢复，每天早上看一眼 hawdb 的 CI"); err != nil {
 		t.Fatalf("Resume: %v", err)
 	}
 	if a, _ := lastPast[protocol.OngoingAct](*sent); a.Action != "resume" || a.Until != "" {

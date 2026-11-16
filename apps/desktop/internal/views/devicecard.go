@@ -1374,7 +1374,9 @@ func connWay(cl *protocol.ReachClient) string {
 	case isCLI(cl):
 		return "cli"
 	case strings.Contains(p, "ios") || strings.Contains(p, "iphone"):
-		if strings.Contains(p, "safari") || strings.Contains(p, "web") {
+		// D291: the app says "-app" in its platform; any other iOS client
+		// is a browser ("ios-safari", or "ios" before D291).
+		if !strings.Contains(p, "app") {
 			return "safari"
 		}
 		return "app"

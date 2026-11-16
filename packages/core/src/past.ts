@@ -418,7 +418,7 @@ export function createPast(d: PastDeps): Past {
     const out: [PastField, string][] = [];
     if (it.mark?.name) out.push(["name", it.mark.name.toLowerCase()]);
     out.push(["title", (it.original ?? (it.mark?.name ? "" : it.title)).toLowerCase() || (c.original ?? c.title).toLowerCase()]);
-    if (it.mark?.tags?.length) out.push(["tag", it.mark.tags.join(" · ")]);
+    if (it.mark?.tags?.length) out.push(["tag", it.mark.tags.join("\n").toLowerCase()]);
     if (it.branch || it.integrated?.ref) out.push(["branch", `${it.branch ?? ""} ${it.integrated?.ref ?? ""}`.toLowerCase()]);
     out.push(["project", `${c.project} ${"repoPath" in c.place ? c.place.repoPath : "path" in c.place ? (c.place as { path: string }).path : ""}`.toLowerCase()]);
     if (doc?.files.length) out.push(["file", doc.files.join("\n").toLowerCase()]);
@@ -438,7 +438,7 @@ export function createPast(d: PastDeps): Past {
       case "title":
         return it.original ?? it.title;
       case "tag":
-        return (it.mark?.tags ?? []).join(" · ");
+        return (it.mark?.tags ?? []).join(", "); // a list of the person's own tags (D291: not a joined line of facts)
       case "branch":
         return `${it.branch ?? ""} ${it.integrated?.ref ?? ""}`.trim();
       case "project":
@@ -448,7 +448,7 @@ export function createPast(d: PastDeps): Past {
       case "words":
         return doc?.words.join("\n") ?? "";
       case "agent":
-        return `${harnessName(c.harness)}${c.model ? ` · ${c.model}` : ""}${it.computer ? ` · ${it.computer}` : ""}`;
+        return [`${harnessName(c.harness)}${c.model ? ` (${c.model})` : ""}`, it.computer].filter(Boolean).join(", "); // D291: who, then where
       case "report":
         return [...(doc?.reports ?? []), doc?.said ?? ""].join("\n");
       case "brief":

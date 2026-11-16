@@ -45,7 +45,8 @@ const cli = (cl: Client) => cl.form === "cli" || (!cl.form && cl.name.startsWith
 export function connWay(cl: Client): "app" | "cli" | "safari" | "browser" {
   const p = cl.platform.toLowerCase();
   if (cli(cl)) return "cli";
-  if (p.includes("ios") || p.includes("iphone")) return p.includes("safari") || p.includes("web") ? "safari" : "app";
+  // D291: the app says "-app" in its platform; any other iOS client is a browser ("ios-safari", or "ios" before D291).
+  if (p.includes("ios") || p.includes("iphone")) return p.includes("app") ? "app" : "safari";
   if (p.includes("android")) return androidApp(cl) ? "app" : "browser";
   if (p.startsWith("darwin") || p.includes("mac")) return "app";
   return "browser";

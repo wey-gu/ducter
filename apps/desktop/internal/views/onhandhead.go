@@ -277,7 +277,11 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				meta = append(meta, a.computerName(p.Device))
 			}
 			if len(meta) > 0 {
-				ui.Text(c.Key("meta"), strings.Join(meta, " · ")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).MaxWidth(w / 2)
+				ui.Row(c.Key("meta")).Gap(t.S3).AlignItems(ui.Center).Shrink(1).MinWidth(0).MaxWidth(w / 2).Children(func() { // D291: each its own element
+					for _, m := range meta {
+						ui.Text(c, m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+					}
+				})
 			}
 		})
 		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {

@@ -64,7 +64,7 @@ function clientKind(cl: Client): string {
   if (isCli(cl)) return t("device.kind.cli");
   if (p.includes("ios") || p.includes("iphone")) {
     const kind = cl.name.startsWith("iPad") ? "ipad" : "iphone"; // an iPad pairs as "iPad" (D176, D291)
-    return t(`device.kind.${kind}.${p.includes("safari") || p.includes("web") ? "safari" : "app"}`);
+    return t(`device.kind.${kind}.${p.includes("app") ? "app" : "safari"}`); // the app says "-app" (D291)
   }
   if (p.includes("android")) return t(androidApp(cl) ? "device.kind.android.app" : "device.kind.android"); // the Android app (D178)
   if (p.startsWith("darwin") || p.includes("mac")) return t("device.kind.mac.app");
@@ -708,7 +708,7 @@ function Via({ card, list, computer }: { card: string; list: Client[]; computer:
         <div class="dc-conns" id={`conns-${card}`}>
           {list.map((cl) => {
             const cli = isCli(cl);
-            const way = cli ? "cli" : /ios|iphone/i.test(cl.platform) && /safari|web/i.test(cl.platform) ? "safari" : /^(darwin|ios)/i.test(cl.platform) ? "app" : "browser";
+            const way = cli ? "cli" : /ios|iphone/i.test(cl.platform) && !/app/i.test(cl.platform) ? "safari" : /^(darwin|ios)/i.test(cl.platform) ? "app" : "browser";
             const name = computer ? t(cli ? "device.cli.name" : "device.app.name", computer) : clientName(cl);
             if (cutting === cl.id) return <Confirm key={cl.id} id={cl.id} name={name} means={cli ? "device.disconnect.means.cli" : "device.disconnect.means.client"} onDone={() => setCutting("")} />;
             return (

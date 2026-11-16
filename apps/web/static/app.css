@@ -12340,3 +12340,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .g-state { flex: none; font-size: var(--sm); font-weight: 600; color: var(--ink-muted); white-space: nowrap; }
 .g-state.tone-done { color: var(--done-ink); }
 .g-state.tone-bad { color: var(--failed-ink); }
+/* D291: when the context compacts is its own line under the meter's words. */
+.ctx-line .ctx-sub {
+  display: block;
+}

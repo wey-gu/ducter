@@ -29,11 +29,11 @@ sends there starts with its name, so it never reads as you.
 
 ## Connect it
 
-1. Open **Settings › Notifications** in the Ducter app on that Mac. At the bottom is **iMessage**.
+1. Open **Settings › Chat apps** in the Ducter app on that Mac. The third group is **iMessage**.
 2. Choose whose Apple ID this Mac's Messages is signed in to: your partner's own Apple ID (it
    shows your partner's name), or **Message yourself**. Tap **Connect**.
-3. Give the app the two macOS permissions it asks for. Each row says what it allows and opens the
-   right place in System Settings:
+3. Give the app the two macOS permissions it asks for. Each row says what it allows; its
+   **Allow** asks macOS or opens the right place in System Settings:
    - **Full Disk Access** lets Ducter read the iMessages sent to your partner. It reads only what
      arrives after you connect, never older messages.
    - **Automation › Messages** lets Ducter answer you in Messages. Tap **Allow** and say OK when
@@ -65,7 +65,7 @@ The code works for 10 minutes, once. **New code** makes another.
 
 ## If it stops working
 
-Settings › Notifications › iMessage says how it stands:
+Settings › Chat apps › iMessage says how it stands:
 
 - **One permission to go**: one of the two permissions is off. Use its row to turn it on again.
 - **This Mac's Messages isn't signed in to iMessage**: open Messages on the Mac and sign in.

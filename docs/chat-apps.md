@@ -18,11 +18,12 @@ Slack app. It never writes as you, and nobody else can talk to it.
 
 ## Connect Telegram
 
-1. In Ducter, open **Settings › Chat apps**.
-2. In Telegram, find **@BotFather**, send `/newbot`, and give your bot a name (your partner's
-   name is a good one). BotFather answers with a long key after "Use this token".
-3. Paste that key under **Telegram** and press **Connect**.
-4. Press **Link my account**, then **Open in Telegram**, and press **Start** there. You can
+1. In Ducter, open **Settings › Chat apps**. The **Telegram** group walks you through three
+   steps.
+2. In Telegram, open **BotFather** (**Open BotFather** takes you there) and send it `/newbot`.
+3. Give your bot a name (your partner's name is a good one).
+4. BotFather answers with a key. Paste it into **The bot's key** and press **Connect**.
+5. Press **Link my account**, then **Open in Telegram**, and press **Start** there. You can
    also send the bot `/start` and the code Settings shows.
 
 Your partner says **Linked. Talk to me here any time.** That's it.
@@ -31,15 +32,21 @@ Your partner says **Linked. Talk to me here any time.** That's it.
 
 Slack needs an app of your own in your workspace. Ducter gives you everything to paste:
 
-1. Open **Settings › Chat apps** and look under **Slack**.
-2. Open [api.slack.com/apps](https://api.slack.com/apps), choose **Create New App › From a
-   manifest**, and pick your workspace.
-3. Copy the text Settings shows (**Copy this**), paste it, create the app, and press **Install
-   to Workspace**. If your workspace asks an admin to approve apps, it waits for them.
-4. In the app's **Basic Information**, make an **App-Level Token** with `connections:write`. In
-   **OAuth & Permissions**, copy the **Bot User OAuth Token** (it starts with `xoxb-`).
-5. Paste both under **Slack** and press **Connect**.
+1. Open **Settings › Chat apps**. The **Slack** group walks you through five steps.
+2. Press **Copy the app manifest** (**View** shows what's in it).
+3. **Open Slack** takes you to [api.slack.com/apps](https://api.slack.com/apps): create a new
+   app **From a manifest**, pick your workspace, and paste it in.
+4. Choose **Install to Workspace**. If your workspace asks an admin to approve apps, it waits
+   for them.
+5. In the app's **Basic Information**, make an **App-Level Token** with `connections:write` and
+   paste it into its field. In **OAuth & Permissions**, copy the **Bot User OAuth Token** (it
+   starts with `xoxb-`) and paste it into the next one. Press **Connect**.
 6. Press **Link my account**, then send the code to your partner in a Slack direct message.
+
+## iMessage
+
+iMessage is the third group on the same page. It goes through a Mac, so you set it up in the
+Ducter app on that Mac; see [Talk to your partner in iMessage](imessage.md).
 
 ## What goes where
 
@@ -83,6 +90,5 @@ answer them; Settings tells you once that someone tried.
 
 ## Coming soon
 
-- **iMessage**, on a Mac, through a separate Apple ID for your partner.
 - Slack's own assistant view (the status line and suggested prompts) where your plan has it.
 - A small "via Telegram" mark under your message in the Ducter app.

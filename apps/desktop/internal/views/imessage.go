@@ -27,10 +27,12 @@ type imessageState struct {
 	busy bool
 }
 
-// imessageGroup is Settings › Notifications › iMessage (D277): talk to the
-// partner from Messages on the phone, through this Mac. The two macOS
-// permissions it needs, each with what it allows and a way to the right
-// pane; the one-time code; how it stands, in words.
+// imessageGroup is iMessage in Settings › 聊天软件 / Chat apps (D277, moved
+// there by D283): talk to the partner from Messages on the phone, through
+// this Mac. Its first row is the app and how it stands; then whose Apple ID
+// (before connecting), the two macOS permissions as rows each with its
+// Allow, the one-time code, who it is linked to; its last line says it goes
+// through this Mac, with Connect or Disconnect at the right edge.
 func (a *App) imessageGroup(c *ui.Context) {
 	br := a.IMessage
 	if br == nil {
@@ -40,26 +42,40 @@ func (a *App) imessageGroup(c *ui.Context) {
 	st := br.Status()
 	name := a.personaName()
 	is := &a.imessage
-	a.group(c, "imessage", a.L.T("imessage.title"), a.L.T("imessage.note", name), func() {
+	title := a.L.T("imessage.title")
+	a.chatGroup(c, "imessage", title, func() {
+		line, tone := a.imessageHead(st)
+		a.chatHead(c, "imessage", title, line, tone)
 		if st.State == imessage.StateOff {
-			a.row(c, "imessage-who", a.L.T("imessage.who"), a.L.T("imessage.who.note", name), nil)
-			a.rowBlock(c, "imessage-mode", func() {
-				labels := []string{a.L.T("imessage.mode.partner", name), a.L.T("imessage.mode.self")}
-				sel := 0
-				if is.self {
-					sel = 1
-				}
-				if i := a.choices(c, "imessage-mode", a.L.T("imessage.who"), labels, sel); i >= 0 {
-					is.self = i == 1
-				}
-				help := a.L.T("imessage.mode.partner.note", name)
-				if is.self {
-					help = a.L.T("imessage.mode.self.note", name)
-				}
-				a.infoText(c, help)
+			a.chatBody(c, "imessage-mode", func() {
+				ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
+					ui.Box(c).Width(40).Shrink(0)
+					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S3).Children(func() {
+						ui.Text(c, a.L.T("imessage.who")).FontSize(t.MD).FontWeight(700)
+						labels := []string{a.L.T("imessage.mode.partner", name), a.L.T("imessage.mode.self")}
+						sel := 0
+						if is.self {
+							sel = 1
+						}
+						ui.Row(c).Children(func() {
+							if i := a.choices(c, "imessage-mode", a.L.T("imessage.who"), labels, sel); i >= 0 {
+								is.self = i == 1
+							}
+						})
+						help := a.L.T("imessage.mode.partner.note", name)
+						if is.self {
+							help = a.L.T("imessage.mode.self.note", name)
+						}
+						ui.Text(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					})
+				})
 			})
-			a.actions(c, "imessage-connect", nil, func() {
-				if a.button(c, a.L.T("imessage.connect"), btnPrimary, t.ControlSM, t.Surface) && !is.busy {
+			a.chatFoot(c, "imessage-connect", a.L.T("imessage.via"), func() {
+				label := a.L.T("imessage.connect")
+				if is.busy {
+					label = a.L.T("chats.connecting")
+				}
+				if a.buttonFor(c, label, title, btnPrimary, t.ControlMD, t.Surface) && !is.busy {
 					mode := imessage.ModePartner
 					if is.self {
 						mode = imessage.ModeSelf
@@ -73,64 +89,97 @@ func (a *App) imessageGroup(c *ui.Context) {
 		a.imessagePermissions(c, st, name)
 		switch st.State {
 		case imessage.StatePairing:
-			a.rowBlock(c, "imessage-code", func() {
-				line := a.L.T("imessage.code.partner", name)
-				if st.Mode == imessage.ModeSelf {
-					line = a.L.T("imessage.code.self")
-				}
-				ui.Text(c, line).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
-				ui.Text(c, st.Code).Font(t.Mono).FontSize(t.XXL).FontWeight(700).Selectable()
-				left := int(time.Until(st.CodeUntil).Minutes()) + 1
-				if left < 1 {
-					left = 1
-				}
-				ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, a.L.T("imessage.code.left", left)).FontSize(t.SM).TextColor(t.InkMuted)
-					if a.button(c, a.L.T("imessage.code.new"), btnSecondary, t.ControlSM, t.Surface) {
-						br.NewCode()
-					}
+			a.chatBody(c, "imessage-code", func() {
+				ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
+					ui.Box(c).Width(40).Shrink(0)
+					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S2).Children(func() {
+						line := a.L.T("imessage.code.partner", name)
+						if st.Mode == imessage.ModeSelf {
+							line = a.L.T("imessage.code.self")
+						}
+						ui.Text(c, line).FontSize(t.MD).LineHeight(a.leading(1.5))
+						ui.Text(c, st.Code).Font(t.Mono).FontSize(t.XXL).FontWeight(700).LetterSpacing(2).Selectable()
+						left := int(time.Until(st.CodeUntil).Minutes()) + 1
+						if left < 1 {
+							left = 1
+						}
+						ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+							ui.Text(c, a.L.T("imessage.code.left", left)).FontSize(t.SM).TextColor(t.InkMuted)
+							if a.quietButton(c, "imessage-new-code", a.L.T("imessage.code.new"), title, true, 0) {
+								br.NewCode()
+							}
+						})
+					})
 				})
 			})
-		default:
-			a.row(c, "imessage-state", a.L.T("imessage.state"), a.imessageLine(st, name), nil)
-			if st.State == imessage.StateOwnID {
-				a.actions(c, "imessage-own", nil, func() {
-					if a.button(c, a.L.T("imessage.own.switch"), btnSecondary, t.ControlSM, t.Surface) {
-						br.SetMode(imessage.ModeSelf)
-					}
-				})
+		case imessage.StateOn:
+			who, note := a.L.T("chats.linked.who", st.Handle), a.L.T("imessage.where")
+			if st.Mode == imessage.ModeSelf {
+				who, note = a.L.T("imessage.linked.self"), a.L.T("imessage.linked.self.note", name)
 			}
+			a.chatRow(c, "imessage-linked", who, note, nil)
+		case imessage.StateNeedsDisk, imessage.StateNeedsAuto:
+		default:
+			a.chatRow(c, "imessage-state", a.imessageLine(st, name), "", func() {
+				if st.State == imessage.StateOwnID && a.buttonFor(c, a.L.T("imessage.own.switch"), title, btnSecondary, t.ControlSM, t.Surface) {
+					br.SetMode(imessage.ModeSelf)
+				}
+			})
 		}
 		if !st.Stranger.IsZero() && a.imessageNow().Sub(st.Stranger) < 24*time.Hour {
-			a.rowBlock(c, "imessage-stranger", func() { a.infoText(c, a.L.T("imessage.stranger", name)) })
+			a.chatRow(c, "imessage-stranger", a.L.T("imessage.stranger", name), "", nil)
 		}
-		a.actions(c, "imessage-off", func() {
-			ui.Text(c, a.L.T("imessage.where")).FontSize(t.SM).TextColor(t.InkMuted)
-		}, func() {
-			if a.dangerText(c, "imessage-disconnect", a.L.T("imessage.disconnect"), a.L.T("imessage.title")) {
+		a.chatFoot(c, "imessage-off", a.L.T("imessage.via"), func() {
+			if a.dangerText(c, "imessage-disconnect", a.L.T("imessage.disconnect"), title) {
 				br.Disable()
 			}
 		})
 	})
 }
 
-// imessagePermissions are the two macOS permissions, each saying what it
-// allows, whether it is on, and opening the pane where it is given.
+// imessageHead is the group's one line of how it stands.
+func (a *App) imessageHead(st imessage.Status) (string, sideTone) {
+	switch st.State {
+	case imessage.StateOff:
+		return a.L.T("chats.state.off"), sideMuted
+	case imessage.StatePairing:
+		return a.L.T("imessage.state.pairing"), sideInk
+	case imessage.StateOn:
+		if st.Mode == imessage.ModeSelf {
+			return a.L.T("imessage.state.self"), sideDone
+		}
+		return a.L.T("imessage.state.on", st.Handle), sideDone
+	case imessage.StateNeedsDisk, imessage.StateNeedsAuto:
+		return a.L.T("imessage.state.needs"), sideInk
+	}
+	return a.L.T("imessage.state.problem"), sideFailed
+}
+
+// imessagePermissions are the two macOS permissions as rows, each saying
+// what it allows and, until it is given, an Allow at its right edge that
+// asks macOS (Automation) or opens the pane where it is given (Full Disk
+// Access, which no app can ask for).
 func (a *App) imessagePermissions(c *ui.Context, st imessage.Status, name string) {
 	t := a.T
 	br := a.IMessage
 	perm := func(key, label, help string, on bool, pane string, ask bool) {
-		a.row(c, key, label, help, func() {
+		a.chatRow(c, key, label, help, func() {
 			if on {
-				ui.Text(c, a.L.T("imessage.perm.on")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+				ui.Text(c, a.L.T("imessage.perm.on")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).SingleLine()
 				return
 			}
-			ui.Text(c, a.L.T("imessage.perm.off")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).SingleLine()
-			if ask && a.buttonFor(c, a.L.T("imessage.perm.ask"), label, btnSecondary, t.ControlSM, t.Surface) {
-				a.async(func() { _ = br.Probe(context.Background()) }, func() {})
-			}
-			if a.buttonFor(c, a.L.T("imessage.perm.open"), label, btnSecondary, t.ControlSM, t.Surface) && a.Backend != nil {
-				_ = a.Backend.OpenURL(pane)
+			if a.buttonFor(c, a.L.T("imessage.perm.ask"), label, btnSecondary, t.ControlSM, t.Surface) {
+				if ask {
+					a.async(func() { _ = br.Probe(context.Background()) }, func() {
+						if !br.Status().Automation && a.Backend != nil {
+							_ = a.Backend.OpenURL(pane)
+						}
+					})
+					return
+				}
+				if a.Backend != nil {
+					_ = a.Backend.OpenURL(pane)
+				}
 				br.Kick()
 			}
 		})

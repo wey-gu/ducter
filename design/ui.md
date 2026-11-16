@@ -406,7 +406,7 @@ A new control is added to the set (and to this table) before it is used.
 | The button family: primary, secondary, accent, text (D76) | `button`, `buttonFor` (`components.go`); `iconButton`, `navButton` | `Btn` |
 | A bar button: a place's own action, the way to another place, Update (D262) | `navButton` (`components.go`), `placeNav`, `newTaskButton` (`chrome.go`) | `NavBtn` |
 | Quiet text button and link (检查更新, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
-| A button that opens a page elsewhere in a new tab (打开 Cloudflare, the sign-in link of 从外面连; D228) | `button` then `openLink` (`abilities.go`) | `LinkBtn` |
+| A button that opens a page elsewhere in a new tab (打开 Cloudflare, the sign-in link of 从外面连; D228; as a quiet text link with its chevron, 打开 BotFather, D283) | `button` then `openLink` (`abilities.go`); `quietLink` then `openLink` | `LinkBtn` (kind `text` for the quiet link) |
 | Switch | `switchControl` (`shared.go`), inside `switchRow`, `toggleRow` | `Toggle` |
 | Segmented choice | `choices` (`partner.go`) | `Seg` |
 | Choice row (a theme, Remove's plan) | `selectRow` (`shared.go`) | — |
@@ -479,6 +479,16 @@ One vocabulary on every tab:
   when (XS 700 muted day labels; each line an 8 pt accent pebble on its ledge, the title MD 600, its age XS;
   hairlines start past the pebble; the door to Mem last), then the **Nowledge Mem** card (where · version in mono ·
   a green **已连上** pill). No Mem: no switch; one gentle line and **了解 Nowledge Mem** (D169).
+- **Chat apps / 聊天软件** (D276; D283): its rail mark is clay art like its neighbours, two puffy
+  clay speech bubbles, a cream one behind and a sky one in front with three ink dots
+  (`set_chats`, made like `set_autofill`: `design/art/assets/batch_chats.json`, cut with
+  `tools/cut.swift`; Mac `art/clay/set_chats@256.png`, web `art/set_chats.webp`). The page is D273's
+  grid: the lede, then one raised group per chat app (Telegram, Slack, iMessage), whose first row is
+  the app (a letter pebble in a palette tint, the name 18/800 heading, its state 13 in the state's
+  ink), never a title on the paper above it; a setup's steps carry a 26 sunken step mark centred in
+  the tile column and one 15 sentence on the text column, with a mono chip, a quiet link or a field
+  (label 13/700 over a white input with a hairline) under it; the last line is the privacy note
+  (13 muted) and the group's one button at the right edge. `design/channels.md` §6.
 - **Connected AI agents / 连上的 AI agent** (D257, named by D273; two of the person's agents' coins): the tab's
   lede, then one card (the connection, who can reach it), then the learned rules and the muted in their own card.
   Shown once it means something (J6).

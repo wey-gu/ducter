@@ -117,10 +117,11 @@ export const UpdatePebble = () => {
 }
 
 /** A Btn that opens a page elsewhere (a sign-in, a vendor's site) in a new tab: the same look. */
-export function LinkBtn(p: { kind: "primary" | "secondary"; size?: "sm"; href: string; label: string }) {
+export function LinkBtn(p: { kind: "primary" | "secondary" | "text"; size?: "sm"; href: string; label: string }) {
   return (
     <a class={`btn ${p.kind}${p.size ? ` ${p.size}` : ""}`} href={p.href} target="_blank" rel="noopener noreferrer">
       <span class="lbl">{p.label}</span>
+      {p.kind === "text" && <Chev cls="btn-chev" />}
     </a>
   );
 }

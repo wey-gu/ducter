@@ -344,7 +344,7 @@ func (a *App) notifyPanel(c *ui.Context) {
 			}
 		})
 	})
-	a.imessageGroup(c) // D277: talk to the partner from iMessage, through this Mac
+	// D283: iMessage (D277) moved to 聊天软件 / Chat apps.
 }
 
 // notifyTurnedOn: on this Mac, turning notifications on is also the yes

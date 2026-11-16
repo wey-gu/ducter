@@ -1,0 +1,1 @@
+{"jobs": 1, "tasks": [{"id": "set_chats", "promptFiles": ["prompts/_style_abilities.md", "prompts/set_chats.md"], "image": "raw/set_chats.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/wait_mail.png", "alpha/wait_clock.png", "alpha/set_autofill.png"]}]}

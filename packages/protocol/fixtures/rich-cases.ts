@@ -67,6 +67,10 @@ const EDGES: { name: string; lang: string; src: string }[] = [
   { name: "unclosed", lang: "zh", src: `选一个：\n${fence({ type: "choices", options: ["好", "先不"] }).replace(/\n```$/, "")}` },
   { name: "negatives", lang: "en", src: fence({ type: "chart", kind: "line", title: "Tokyo lows", unit: "°C", summary: "From -3 °C on Monday up to 7 °C by Friday.", points: [{ label: "Mon", value: -3 }, { label: "Tue", value: -1.5 }, { label: "Wed", value: 2 }, { label: "Thu", value: 4.25 }, { label: "Fri", value: 7 }] }) },
   { name: "numbers-table", lang: "en", src: fence({ type: "table", columns: ["Plan", "Price", "Window", "Note"], rows: [["Pro", "$20", "200K", "for most days"], ["Max", "$100", "1M", ""], ["Team", 30, "200K", "per seat"]] }) },
+  // research/108 step 4: a cell's own end punctuation is never doubled by the separator after it.
+  { name: "sentence-cells-en", lang: "en", src: fence({ type: "table", title: "SQLite or Postgres", columns: ["", "Setup", "Concurrency", "Backups"], rows: [["SQLite", "Zero setup. It's a file inside your app.", "Single writer at a time.", "Copy the file"], ["Postgres", "A server to run!", "Many writers, \"row locks.\"", "pg_dump, or a managed service."]] }) },
+  { name: "sentence-cells-zh", lang: "zh", src: fence({ type: "table", columns: ["", "装起来", "并发"], rows: [["SQLite：", "不用装，就是一个文件。", "同一时间只能一个人写！"], ["Postgres", "要跑一个服务器", "可以很多人一起写。"]] }) },
+  { name: "sentence-cells-ja", lang: "ja", src: fence({ type: "table", columns: ["", "準備", "同時書き込み"], rows: [["SQLite", "ファイルひとつ。", "一度にひとつだけ。"], ["Postgres", "サーバーが要る", "たくさん書ける。"]] }) },
   { name: "big", lang: "en", src: fence({ type: "chart", kind: "bar", unit: "USD", summary: "Spend rose each month.", points: [{ label: "Sep", value: 1240 }, { label: "Oct", value: 2310.5 }, { label: "Nov", value: 3875 }] }) },
 ];
 

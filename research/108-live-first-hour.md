@@ -136,7 +136,7 @@ can't be resumed (a fresh session), nothing is compacted and the seed waits for 
 Live after the fix: `compaction completed {before: 40165, after: 12781}`, the task stayed `done`,
 no nudge, no report, no message.
 
-**B3: a routine run's tokens are counted as 0 on Claude Code.** **NOT FIXED** (needs a call on
+**B3: a routine run's tokens are counted as 0 on Claude Code.** **FIXED by D308** (the run closes at its turn's end; was: needs a call on
 when a run closes). Repro: any routine run on Claude Code. Its `report_to_main` (an MCP call inside
 the turn) arrives before the turn's usage, and `finishRun` (routines.ts) closes the run on the
 report, so the usage event that follows finds no running run: `routine_run {state: done, tokens:
@@ -149,7 +149,7 @@ report's seq; or count the usage that follows a closed run toward its month. The
 
 **N1 (minor): the table's plain fallback joins sentence cells with commas.** "Setup Zero setup.
 It's a file inside your app., Concurrency Single writer at a time. …" (rich.ts `plainOf`:
-`${column} ${cell}` joined by the comma). Reads oddly once a cell ends with a full stop. Not fixed.
+`${column} ${cell}` joined by the comma). Reads oddly once a cell ends with a full stop. Fixed with D308: a part's own end punctuation is never doubled.
 
 **N2 (minor, the partner's words): "The hourly check moved to Codex".** Only that run's task
 moved; the routine still runs on Claude Code haiku. Haiku as the partner; not fixed.
@@ -173,7 +173,7 @@ is attributable. No API key was used; no money was charged beyond the plans.
 - Compact now must be "not work" (B2); it now is, on every path a Claude Code task can be in.
 - D120's speculative open must leave nothing in the person's repo when it is replaced (B1). Whether a
   `needs`-only change should replace it is still open.
-- Routine budgets don't bind on Claude Code until B3 is decided.
+- Routine budgets didn't bind on Claude Code (B3); D308 closes a run at its turn's end, so they do.
 - A real run caught three bugs the fakes didn't: each fake emitted events in the order the code
   expected, not the order the agents send them. Worth a recorded-order fixture per harness.
 

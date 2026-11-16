@@ -3,7 +3,7 @@
 // says why. The same words and rules as the desktop's views/where.go.
 import type { Candidate, ClosingPlan, DeviceView, WhereAsk, WhereWhy } from "@ducter/protocol";
 import { A } from "./app.ts";
-import { harnessName } from "./format.ts";
+import { harnessName, shownDeviceName } from "./format.ts";
 import { placeOf, type Task } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -23,7 +23,8 @@ export function computerOf(d: string | undefined): DeviceView | undefined {
 
 /** A computer's own name (never "this Mac" once there are two: on a phone "this" means nothing). */
 export function computerName(d: string | undefined): string {
-  return computerOf(d)?.name || (!d || d === "local" ? (A.homeName ?? t("device.local")) : d);
+  // D310: a computer paired before by its host name reads without the network's domain.
+  return !d || d === "local" ? computerOf(d)?.name || A.homeName || t("device.local") : shownDeviceName(computerOf(d)?.name || d);
 }
 
 /** What it uses there when that is the point: the user's Chrome, Ducter's own browser, an app. */

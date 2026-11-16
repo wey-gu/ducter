@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/computer"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
@@ -196,13 +197,9 @@ func IsLoopback(raw string) bool {
 	return err == nil && isLoopbackHost(u.Hostname())
 }
 
-// DeviceName is how this Mac shows up in `ducter devices`.
-func DeviceName() string {
-	if h, err := os.Hostname(); err == nil && h != "" {
-		return strings.TrimSuffix(h, ".local")
-	}
-	return runtime.GOOS
-}
+// DeviceName is how this Mac shows up in `ducter devices`: its Computer
+// Name, else its host name without the network's domain (D310).
+func DeviceName() string { return computer.This() }
 
 // PairInfo is what a device says about itself as it pairs: its name, the
 // role it joins as ("worker" does tasks; else an app), and (D155) its form

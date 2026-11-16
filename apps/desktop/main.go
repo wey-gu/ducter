@@ -22,11 +22,13 @@ import (
 	_ "github.com/egoist/mygo/locales/zh-Hans"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
+	"github.com/wey-gu/ducter/apps/desktop/internal/computer"
 	"github.com/wey-gu/ducter/apps/desktop/internal/hints"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/imessage"
 	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 	"github.com/wey-gu/ducter/apps/desktop/internal/local"
+	"github.com/wey-gu/ducter/apps/desktop/internal/macax"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
 	"github.com/wey-gu/ducter/apps/desktop/internal/sound"
@@ -178,7 +180,7 @@ func main() {
 	// D155: Let this Mac do tasks for the Ducter the window talks to, as a
 	// LaunchAgent running the bundled helper (only from a settled app: the
 	// disk image's path goes away).
-	app.ThisComputer = remote.DeviceName()
+	app.ThisComputer, app.ThisHost = remote.DeviceName(), computer.Host()
 	if inApp && local.Settled(bundle.CLI) {
 		mw := local.NewMacWorker(bid, bundle.CLI, hints.DataDir(), string(lang))
 		app.MacWorker = appWorker{mw}
@@ -662,6 +664,10 @@ func (tm *trayMenu) refresh(force bool) {
 	)
 	tm.tray.SetMenu(mygo.NewMenu(items))
 	tm.tray.SetToolTip(v.Say)
+	// D310: a name for VoiceOver ("Ducter, Working"), read before the
+	// tooltip's sentence; mygo has no call for it, so AppKit's own.
+	label := v.Label
+	mygo.RunOnMain(func() { macax.LabelStatusItems(label) })
 }
 
 // buildVersion is this build's version and commit: from the app's link

@@ -207,9 +207,14 @@ func (a *App) day(at time.Time) string {
 }
 
 // tp is a.L.T with a time or name padded from the Chinese around it, and
-// no stray space at either end or before full-width punctuation.
+// no stray space at either end or before full-width punctuation. A table
+// line that already spaces its slot ("最早 %s 回来") keeps one space, never
+// two (research/109: 「最早  7:02  回来」).
 func (a *App) tp(key string, v string) string {
 	s := strings.TrimSpace(a.L.T(key, a.pad(v)))
+	for strings.Contains(s, "  ") {
+		s = strings.ReplaceAll(s, "  ", " ")
+	}
 	for _, p := range []string{"，", "。", "；", "："} {
 		s = strings.ReplaceAll(s, " "+p, p)
 	}

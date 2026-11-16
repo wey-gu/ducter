@@ -1,5 +1,6 @@
 // Time and place wording, the same rules as the desktop (views/app.go formatting).
 import type { DeviceHarness, DeviceUpdate, MemPluginView } from "@ducter/protocol";
+import { undomainedName } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import type { Strings } from "./i18n.ts";
 import { words } from "@ducter/protocol/src/lang.ts";
@@ -219,5 +220,7 @@ export function spoken(L: Pick<Strings, "t">, ...parts: (string | false | null |
 }
 
 /** A device's name as the person sees it (D291): a phone or iPad paired through the Ducter app
- *  before D291 was named "<model> · Ducter"; the art and the platform already say it is the app. */
-export const shownDeviceName = (name: string) => name.replace(/ · Ducter$/, "");
+ *  before D291 was named "<model> · Ducter"; the art and the platform already say it is the app.
+ *  A computer paired before D310 by its host name shows it without the network's domain ("Mac.lan"
+ *  → "Mac", D310). */
+export const shownDeviceName = (name: string) => undomainedName(name.replace(/ · Ducter$/, ""));

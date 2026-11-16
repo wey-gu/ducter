@@ -201,12 +201,13 @@ var zhIA = Table{
 	"menu.help":              "帮助",
 
 	// The menu bar extra: what needs you, while the window is closed.
-	"tray.open":  "打开 Ducter",
-	"tray.task":  "打开任务",
-	"tray.hide":  "不在菜单栏显示",
-	"tray.go":    "好：%s",
-	"tray.hold":  "先等等",
-	"tray.reply": "回复…",
+	"tray.open":        "打开 Ducter",
+	"tray.task":        "打开任务",
+	"tray.hide":        "不在菜单栏显示",
+	"tray.go":          "好：%s",
+	"tray.hold":        "先等等",
+	"tray.reply":       "回复…",
+	"tray.state.quiet": "没有要你定的事",
 
 	// Devices: AI accounts and connecting a phone.
 	"token.signin":       "登录",
@@ -411,12 +412,13 @@ var enIA = Table{
 	"menu.view.partner":      "Partner",
 	"menu.help":              "Help",
 
-	"tray.open":  "Open Ducter",
-	"tray.task":  "Open the Task",
-	"tray.hide":  "Don't Show in the Menu Bar",
-	"tray.go":    "Go: %s",
-	"tray.hold":  "Hold",
-	"tray.reply": "Reply…",
+	"tray.open":        "Open Ducter",
+	"tray.task":        "Open the Task",
+	"tray.hide":        "Don't Show in the Menu Bar",
+	"tray.go":          "Go: %s",
+	"tray.hold":        "Hold",
+	"tray.reply":       "Reply…",
+	"tray.state.quiet": "Nothing needs you",
 
 	"token.signin":       "Sign in",
 	"token.signout":      "Sign out",

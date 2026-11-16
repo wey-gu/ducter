@@ -2,7 +2,7 @@
 // clients fold the same events the same way: living messages revised in place, jobs folded into
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
-import { endedUnmet } from "@ducter/protocol";
+import { countDoneToday, endedUnmet } from "@ducter/protocol";
 import type { KeyResult } from "@ducter/protocol";
 import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
@@ -125,6 +125,11 @@ export function laneOf(a: Attention): Lane {
 // D285: the person's own name for it comes first, then the latest retitle.
 export const title = (t: Task) => t.card?.mark?.name || t.open?.title || t.card?.title || "";
 export const attention = (t: Task): Attention => t.state?.attention ?? t.card?.attention ?? "queued";
+/** D310: how many of these tasks are 今天做完 / Done today, by the one rule every surface uses
+ *  (`isDoneToday`: finished well, on today's local day; failed and missed waits are their own). */
+export function doneTodayOf(tasks: Task[], now = Date.now()): number {
+  return countDoneToday(tasks.map((t) => ({ attention: attention(t), at: [t.card?.updatedAt, t.events.at(-1)?.ts].filter(Boolean).sort().at(-1) })), now);
+}
 export const reasonOf = (t: Task) => t.state?.reason || t.card?.reason || "";
 export const placeOf = (t: Task): Place => t.open?.place ?? t.card?.place ?? { kind: "none" };
 /** The proof line counts the changes ("1 file changed"), except for a folder (D142): its own
@@ -709,7 +714,7 @@ export class Store {
       const l = laneOf(attention(t));
       if (l !== LANE.hidden) lanes[l]!.push(t);
     }
-    return { lanes, counts: { needs_you: lanes[0]!.length, working: lanes[1]!.length, waiting: lanes[2]!.length, done_today: lanes[3]!.length } };
+    return { lanes, counts: { needs_you: lanes[0]!.length, working: lanes[1]!.length, waiting: lanes[2]!.length, done_today: doneTodayOf(lanes[3]!) } }; // D310
   }
 
   unread(e: Entry) {

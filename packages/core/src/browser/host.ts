@@ -7,7 +7,7 @@
 // every task tool on it refuses before touching the page (tools.ts).
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { hostname as osHostname } from "node:os";
+import { thisComputer } from "../this-computer.ts";
 import type { BrowserAbout } from "@ducter/protocol";
 import { profileRoot } from "@ducter/protocol/src/browser-profile.ts";
 import { connectCdp, type CdpConn } from "./cdp.ts";
@@ -161,7 +161,7 @@ export function createBrowserHost(o: HostOptions): BrowserHost {
     return b;
   }
 
-  const device = o.device ?? (() => osHostname().replace(/\.local$/, ""));
+  const device = o.device ?? (() => thisComputer());
   const api: BrowserHost = {
     dataDir: o.dataDir,
     find,

@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/computer"
 	"github.com/wey-gu/ducter/apps/desktop/internal/local"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
@@ -219,9 +220,11 @@ func (a *App) workOn() (bool, string) {
 	return w.on, w.device
 }
 
-// isThisMac: the card's computer is the Mac this app runs on.
-func (a *App) isThisMac(computer string) bool {
-	return a.ThisComputer != "" && strings.EqualFold(strings.TrimSpace(computer), a.ThisComputer)
+// isThisMac: the card's computer is the Mac this app runs on, by any of
+// its names (its Computer Name, its host name with or without a domain;
+// D310).
+func (a *App) isThisMac(name string) bool {
+	return a.ThisComputer != "" && (computer.Same(name, a.ThisComputer) || computer.Same(name, a.ThisHost))
 }
 
 // setWork turns "this Mac does tasks" on or off. Off revokes the worker

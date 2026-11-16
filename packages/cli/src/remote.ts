@@ -3,6 +3,8 @@
 // running service, so these commands work whether or not it is up.
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, hostname, userInfo } from "node:os";
+import { sameComputer } from "@ducter/protocol";
+import { thisComputer, thisHost } from "@ducter/core/src/this-computer.ts";
 import { dirname, join, resolve } from "node:path";
 import QR from "qrcode";
 import { openDeviceAuth, CODE_TTL_MS, type Device } from "@ducter/core/src/auth.ts";
@@ -300,8 +302,8 @@ export async function cmdDevices(o: { t: T; style: Style; dataDir: string; json:
       const name = o.rest.slice(2).join(" ").trim();
       if (!what || !name) return console.log(t("devices.renameUsage")), 2;
       // The machine Ducter lives on answers to its own name and to "local" (tasks placed there).
-      const home = hostname().replace(/\.local$/, "").toLowerCase();
-      const r = [home, "local"].includes(name.toLowerCase()) ? ({ error: "name_taken" } as const) : auth.rename(what, name);
+      // D310: by its name as a person reads it, or its host name (what older pairings called it).
+      const r = name.toLowerCase() === "local" || sameComputer(name, thisComputer()) || sameComputer(name, thisHost()) ? ({ error: "name_taken" } as const) : auth.rename(what, name);
       if ("error" in r) return console.log(t(r.error === "name_taken" ? "devices.renameTaken" : r.error === "empty" ? "devices.renameUsage" : "devices.revokeNone", { what, name })), 1;
       console.log(t("devices.renamed", { device: r.device.name }));
       return 0;

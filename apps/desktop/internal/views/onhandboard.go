@@ -105,7 +105,7 @@ func lensBoard(b store.Board, lens string) store.Board {
 			}
 		}
 	}
-	out.Counts = protocol.Counts{NeedsYou: len(out.Lanes[store.LaneNeedsYou]), Working: len(out.Lanes[store.LaneWorking]), Waiting: len(out.Lanes[store.LaneWaiting]), DoneToday: len(out.Lanes[store.LaneDone])}
+	out.Counts = protocol.Counts{NeedsYou: len(out.Lanes[store.LaneNeedsYou]), Working: len(out.Lanes[store.LaneWorking]), Waiting: len(out.Lanes[store.LaneWaiting]), DoneToday: store.DoneToday(out.Lanes[store.LaneDone], time.Now())}
 	return out
 }
 
@@ -274,13 +274,14 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 
 // stateCounts are the strip's four counts in a lens: what needs you (the
 // partner's own asks too, in all and Other), working (live calls too),
-// waiting (task-less waits too), done today.
+// waiting (task-less waits too), done today (D310: tasks finished well
+// today, the one count every surface says; a failed task and a missed wait
+// are in the list with their own words, not counted here).
 func (a *App) stateCounts(b store.Board, lens string) [4]int {
-	n := [4]int{len(b.Lanes[store.LaneNeedsYou]), len(b.Lanes[store.LaneWorking]), len(b.Lanes[store.LaneWaiting]), len(b.Lanes[store.LaneDone])}
+	n := [4]int{len(b.Lanes[store.LaneNeedsYou]), len(b.Lanes[store.LaneWorking]), len(b.Lanes[store.LaneWaiting]), store.DoneToday(b.Lanes[store.LaneDone], a.Now().Local())}
 	if loose(lens) {
 		n[0] += len(a.partnerDecisions())
 		n[2] += len(a.looseWaiters())
-		n[3] += len(a.S.MissedToday(time.Now()))
 	}
 	return n
 }

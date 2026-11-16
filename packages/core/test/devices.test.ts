@@ -313,6 +313,9 @@ test("D84: 改名字 renames another computer; tasks placed by its old name stil
   expect(core.workers.list().map((x) => x.name)).toEqual(["Build box"]); // what the partner sees
   expect(core.workers.link("ip-172-31-4-9")?.id).toBe(w.device.id); // a task placed before the rename
   expect(core.workers.link("Build box")?.name).toBe("Build box");
+  // D310: the same computer by another of its names (case, punctuation, a DNS domain) still finds it.
+  expect(core.workers.link("build-box.lan")?.id).toBe(w.device.id);
+  expect(core.workers.link("Build boxes")).toBeUndefined();
 
   for (const [frame, reason] of [
     [{ device: "local", name: "iPhone" }, "name_taken"], // D155: the home renames, but never to a paired name

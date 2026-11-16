@@ -15,7 +15,7 @@ import { Database } from "bun:sqlite";
 import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
-import { CLIENT_SHAPES, type ClientShape } from "@ducter/protocol";
+import { CLIENT_SHAPES, computerName, undomainedName, type ClientShape } from "@ducter/protocol";
 
 export const CODE_TTL_MS = 10 * 60_000;
 /** No I, L, O, U, 0, 1: nothing to misread when typed from a terminal. */
@@ -141,6 +141,26 @@ function renameJoined(db: Database, at: number) {
   }
 }
 
+/** D310, once per database (user_version 1): a device named by its host name with a DNS domain
+ *  ("Mac.lan") is renamed to the name without it, the old one kept as a former name (D84) so a task
+ *  placed by it still finds the device; the computer it says it runs on loses the domain too. */
+function renameDomained(db: Database, at: number) {
+  if ((db.query("PRAGMA user_version").get() as { user_version: number }).user_version >= 1) return;
+  db.transaction(() => {
+    const rows = db.query("SELECT id, name, kind, computer FROM devices WHERE revoked_at IS NULL").all() as { id: string; name: string; kind: string; computer: string }[];
+    for (const r of rows) {
+      const computer = computerName(r.computer);
+      if (computer !== r.computer) db.run("UPDATE devices SET computer = ? WHERE id = ?", [computer, r.id]);
+      const want = undomainedName(r.name);
+      if (want === r.name) continue;
+      const taken = new Set((db.query("SELECT name FROM devices WHERE revoked_at IS NULL AND kind = ? AND id != ?").all(r.kind, r.id) as { name: string }[]).map((x) => x.name));
+      db.run("INSERT INTO former_names (name, device_id, renamed_at) VALUES (?, ?, ?)", [r.name, r.id, at]);
+      db.run("UPDATE devices SET name = ? WHERE id = ?", [numbered(want, taken), r.id]);
+    }
+    db.exec("PRAGMA user_version = 1");
+  })();
+}
+
 export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {}): DeviceAuth {
   const now = opts.now ?? Date.now;
   if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true, mode: 0o700 });
@@ -165,6 +185,7 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
   if (!cols.has("computer")) db.exec("ALTER TABLE devices ADD COLUMN computer TEXT NOT NULL DEFAULT ''");
   if (!cols.has("shape")) db.exec("ALTER TABLE devices ADD COLUMN shape TEXT NOT NULL DEFAULT ''"); // D263
   renameJoined(db, now());
+  renameDomained(db, now());
 
   const fails = new Map<string, number[]>();
   const seenAt = new Map<string, number>();
@@ -236,10 +257,11 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
       const id = newId();
       const secret = randomBytes(32).toString("base64url");
       // Names are printed in terminals (`ducter devices`) and shown to the partner.
-      const name = cleanName(info.name || "device").slice(0, 64) || "device";
+      // D310: a computer from an older Ducter may still say its host name with the network's domain.
+      const name = undomainedName(cleanName(info.name || "device")).slice(0, 64) || "device";
       const platform = cleanName(info.platform ?? "").slice(0, 32);
       const form = info.form === "cli" || info.form === "app" ? info.form : undefined;
-      const computer = cleanName(info.computer ?? "").slice(0, 64);
+      const computer = computerName(cleanName(info.computer ?? "")).slice(0, 64);
       const r = insertDevice(sha(raw), { id, name, platform, tokenHash: sha(secret), role: info.role, form, computer }) as { error: RedeemError } | { kind: DeviceKind };
       if ("error" in r) {
         fail(key);

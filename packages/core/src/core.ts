@@ -4,10 +4,11 @@ import { createWbFrames } from "./workbench.ts";
 import { effectiveBrain } from "./brain.ts";
 import { createMediaStore } from "./media.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { homedir, hostname as osHostname } from "node:os";
+import { homedir } from "node:os";
+import { thisComputer } from "./this-computer.ts";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { HARNESSES, fill, normalizeTag, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type Place } from "@ducter/protocol";
+import { HARNESSES, fill, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type Place } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, Partner, Runner } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
@@ -367,7 +368,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const persona = opts.persona ?? { id: "default", name: "Ducter", identity: DEFAULT_IDENTITY };
 
   const log = openLog({ path: join(dataDir, "ducter.db"), persona: persona.id, clock });
-  const tasks = createRegistry(log, clock);
+  const tasks = createRegistry(log, clock, () => settings.get().quiet?.tz ?? opts.work?.defaultZone);
   let runner: Runner | undefined;
   let partner: Partner | undefined;
   const push = openPushStore(dataDir);
@@ -425,7 +426,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D197: a folder on a worker (the user's Mac, for a home on a server) is read there.
   const computers: NewTaskComputers = opts.newTaskComputers ?? {
     nameOf: (dev) => workersRef?.link(dev)?.name,
-    homeName: () => savedHomeName(dataDir) ?? (opts.update?.homeName ?? osHostname()).replace(/\.local$/, ""),
+    homeName: () => savedHomeName(dataDir) ?? thisComputer(opts.update?.homeName),
     async folderInfo(dev, path, ms) {
       const link = workersRef?.link(dev);
       if (!link?.online()) return "offline";
@@ -511,7 +512,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const ownNumber = openOwnPhone({
     dataDir,
     clock,
-    where: () => savedHomeName(dataDir) ?? (opts.update?.homeName ?? osHostname()).replace(/\.local$/, ""),
+    where: () => savedHomeName(dataDir) ?? thisComputer(opts.update?.homeName),
     partnerName: () => persona.name,
     savedNumber: savedPhone,
     zone: callZone,
@@ -603,7 +604,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const browser =
     opts.browser === false
       ? undefined
-      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => { const l = settings.get().language; return intlLocale(l === "auto" ? undefined : l); }, workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief) => autofill.wants(brief !== undefined ? { brief } : log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string } | undefined), tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
+      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => thisComputer(opts.update?.homeName), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => { const l = settings.get().language; return intlLocale(l === "auto" ? undefined : l); }, workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief) => autofill.wants(brief !== undefined ? { brief } : log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string } | undefined), tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
   if (browser) autofill.attachBrowser(browser.host);
   if (browser) decorateBrowsing = (o) => browser.decorate(o);
   // D238: 用这台手机 / Use this phone: the person's own Android phones, through the Ducter app on each.
@@ -623,7 +624,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const ownPhone =
     opts.ownPhone === false
       ? undefined
-      : createDucterPhone({ dataDir, mcp, log, tasks, decisions, deviceName: () => savedHomeName(dataDir) ?? opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the phone is back:`, (e as Error).message)), workers: () => (workersRef ? { link: (d) => workersRef!.link(d), ability: (id) => workerAbility(id, "phone") } : undefined), handsets: () => handsets, ...(opts.ownPhone ?? {}) });
+      : createDucterPhone({ dataDir, mcp, log, tasks, decisions, deviceName: () => savedHomeName(dataDir) ?? thisComputer(opts.update?.homeName), ...(opts.platform ? { platform: opts.platform } : {}), tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the phone is back:`, (e as Error).message)), workers: () => (workersRef ? { link: (d) => workersRef!.link(d), ability: (id) => workerAbility(id, "phone") } : undefined), handsets: () => handsets, ...(opts.ownPhone ?? {}) });
   if (ownPhone) {
     const before = decorateBrowsing;
     decorateBrowsing = (o) => ownPhone.decorate(before(o));
@@ -825,7 +826,14 @@ export function startCore(opts: CoreOptions = {}): Core {
       const hit = (x: { id: string; name: string; kind: string }) => x.kind === "worker" && (x.id === d || x.name === d);
       // A renamed worker still answers to its old name (tasks placed before the rename, D84).
       const was = devices.formerly(d);
-      return devices.list().find(hit) ?? (was?.kind === "worker" ? was : undefined) ?? devices.list({ all: true }).reverse().find(hit);
+      // D310: a computer named by another of its names (its Computer Name, or its host name with or
+      // without the network's domain) is still that computer, when exactly one live worker is.
+      const alias = (x: { kind: string; name: string; computer?: string }) => x.kind === "worker" && (sameComputer(x.name, d) || sameComputer(x.computer, d));
+      const aliased = () => {
+        const all = devices.list().filter(alias);
+        return all.length === 1 ? all[0] : undefined;
+      };
+      return devices.list().find(hit) ?? (was?.kind === "worker" ? was : undefined) ?? aliased() ?? devices.list({ all: true }).reverse().find(hit);
     },
   });
   workersRef = workers;
@@ -843,7 +851,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     release,
     sys: u.sys ?? realSys,
     self: { execPath: u.execPath ?? process.execPath, how: selfHow, arch: process.arch, port: opts.port ?? Number(process.env.DUCTER_PORT || 7777), env: process.env },
-    name: () => u.homeName ?? osHostname().replace(/\.local$/, ""),
+    name: () => thisComputer(u.homeName),
     version,
     workers: () => ({
       online: () =>
@@ -878,7 +886,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     log,
     sys: agentSys,
     latest: agentLatest,
-    name: () => u.homeName ?? osHostname().replace(/\.local$/, ""),
+    name: () => thisComputer(u.homeName),
     detect: a.detect ?? ((h) => detectAgent(h, agentProbe)),
     loggedIn: a.loggedIn ?? (async (h) => (await probeHarnesses({ ...agentProbe, only: [h] }))[0]?.loggedIn ?? false),
     busy: (device, h) => agentBusy(device, h),
@@ -928,7 +936,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D228: 从外面连 / From outside: the person's own Cloudflare tunnel to their own domain, set
   // up by a task they start (its agent runs `ducter anywhere step …` against this home).
   let listening = 0;
-  const homeLabel = () => savedHomeName(dataDir) ?? u.homeName ?? osHostname().replace(/\.local$/, "");
+  const homeLabel = () => savedHomeName(dataDir) ?? thisComputer(u.homeName);
   const anywhere: AnywhereCtl = createAnywhere({
     dataDir,
     port: () => listening,

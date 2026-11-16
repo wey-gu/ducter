@@ -1,5 +1,6 @@
 // TaskRegistry: the TaskCard projection, rebuilt from the Log and kept live by subscription.
 import type { Attention, Bodies, LogEvent, OnHand, PastMark, Residency, TaskCard } from "@ducter/protocol";
+import { isDoneToday } from "@ducter/protocol/src/done-today.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 
@@ -53,7 +54,8 @@ export interface CoreRegistry extends TaskRegistry {
   setMarks(fn: (persona: string, taskId: string) => PastMark | undefined): void;
 }
 
-export function createRegistry(log: LogStore, clock: Clock = realClock): CoreRegistry {
+/** `zone` is the person's time zone for what "today" means (D310); the core's own when none. */
+export function createRegistry(log: LogStore, clock: Clock = realClock, zone: () => string | undefined = () => undefined): CoreRegistry {
   const cards = new Map<string, TaskCard>();
   const pending = new Map<string, string[]>(); // taskId -> unresolved decisionIds
   const decisionTask = new Map<string, string>(); // decisionId -> taskId
@@ -249,7 +251,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
     waiters: () => [...waiters.values()].map((w) => ({ ...w })),
     onHand(): OnHand {
       const now = clock.now();
-      const today = new Date(now).toDateString();
+      const day = zone();
       const counts = { needs_you: 0, working: 0, waiting: 0, done_today: 0 };
       const tasks: TaskCard[] = [];
       for (const c of cards.values()) {
@@ -259,7 +261,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
         if (c.attention === "needs_you") counts.needs_you++;
         else if (c.attention === "blocked") counts.waiting++;
         else if (c.attention === "working" || c.attention === "queued" || c.attention === "done_claimed") counts.working++;
-        else if (c.attention === "done" && new Date(c.updatedAt).toDateString() === today) counts.done_today++;
+        if (isDoneToday(c.attention, c.updatedAt, now, day)) counts.done_today++; // D310: one meaning, every surface
         if (isActive(c.attention) || age < DAY_MS) {
           const card = copy(c);
           const l = latestOf(c.taskId);

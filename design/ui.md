@@ -528,6 +528,8 @@ An opened task is the third zoom level under On hand. The **menu bar extra** (th
 is the handheld moment and the glance (D306): its mark is quiet (the pebble, a template), at work
 (its eyes look down, still a template) or needs you (the pebble in the bar's ink and a soft clay
 dot in the accent at its shoulder, drawn for a light or dark bar; never a number, never red). Its
+accessible name says Ducter and that state in On hand's words (**Ducter，在做 / Ducter, Working**;
+quiet: **没有要你定的事 / Nothing needs you**), its tooltip the sentence (D310). Its
 menu opens with On hand's one sentence, lists what needs you, each with Go / Hold / Reply… / Open
 the Task, then Open Ducter, Settings…, Don't Show in the Menu Bar (back from Settings › Look and
 sound). On the phone (D306) one thing the person chose, or a live call, shows on the iPhone's Lock

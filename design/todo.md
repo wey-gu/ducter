@@ -1148,7 +1148,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
       Android 16's promoted ongoing notification (Live Updates) for a live call.
 - [ ] Screenshot the menu bar extra's open menu natively (D306: its mark's three states too). On the test Mac it sat in the menu
       bar's overflow, so only its contents are covered by unit tests. Trigger: a Mac with room in
-      the menu bar.
+      the menu bar. Then hear it with VoiceOver: D310 gives the item its name ("Ducter, Working")
+      through AppKit on the status item's button; checked only by building, not read aloud yet.
 - [ ] Sign in, install and sign out from a Devices account card in the real Ducter.app (the
       card's sheet reuses the first run's jobs). Trigger: the same throwaway account as above.
 - [ ] Rules (F1) on the Partner page: let "On its own, or asks you first" be changed, not only

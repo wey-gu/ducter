@@ -1,0 +1,37 @@
+{
+  "_": "D310: a computer's name as a person reads it, and when two names are one computer. Read by packages/protocol/test/computer-name.test.ts and apps/desktop/internal/computer/computer_test.go.",
+  "name": [
+    ["Mac.lan", "Mac"],
+    ["Mac.local", "Mac"],
+    ["weys-mbp.local", "weys-mbp"],
+    ["hel.example.com", "hel"],
+    ["hel.example.com.", "hel"],
+    ["build-01.corp.internal", "build-01"],
+    ["MacBook-Pro.fritz.box", "MacBook-Pro"],
+    ["hel", "hel"],
+    ["  Mac.lan  ", "Mac"],
+    ["Siwei’s MacBook Pro", "Siwei’s MacBook Pro"],
+    ["Wey's MacBook Pro", "Wey's MacBook Pro"],
+    ["Mac mini.lan", "Mac mini.lan"],
+    ["192.168.1.20", "192.168.1.20"],
+    ["10.0.0.5", "10.0.0.5"],
+    ["fe80::1", "fe80::1"],
+    ["v1.2", "v1.2"],
+    ["魏的 Mac", "魏的 Mac"],
+    [".lan", ".lan"],
+    ["Mac.", "Mac."],
+    ["", ""]
+  ],
+  "same": [
+    ["Mac.lan", "Mac", true],
+    ["Mac.lan", "mac.local", true],
+    ["Siwei’s MacBook Pro", "Siweis-MacBook-Pro", true],
+    ["Siwei’s MacBook Pro", "Siweis-MacBook-Pro.local", true],
+    ["Wey's MacBook Pro", "weys-macbook-pro.lan", true],
+    ["hel", "hel.example.com", true],
+    ["hel", "helsinki", false],
+    ["Mac", "Mac mini", false],
+    ["", "", false],
+    ["", "Mac", false]
+  ]
+}

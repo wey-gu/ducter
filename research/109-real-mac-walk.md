@@ -51,14 +51,14 @@ CGEvent clicks don't reach MyGo's window; background wheel scrolls do). Shots in
    the microphone and speech prompts could only be English. The iPhone app has them. Fixed in
    `make-app.sh` with a test that every usage description has both lines. Not seen live: this
    Mac's first language is English, which correctly showed the English text.
-3. **"Mac.lan" in the UI (open, needs a decision).** The home's name falls back to
+3. **"Mac.lan" in the UI (fixed by D310).** The home's name falls back to
    `os.hostname()` with only `.local` stripped. On a network whose DHCP domain is `.lan` the
    person reads 「在 Mac.lan 上」 (Done for you), 「Mac.lan 上的 Claude Code」 (About) and
    「用 USB 线把安卓手机接到 Mac.lan 上」 (Accounts). Sixteen TypeScript sites and the Go app's
    `remote.DeviceName` share the rule, and names are compared across devices and stored, so this
    is not a one-line fix. Recommendation: one helper that drops any DNS domain (or, on macOS,
    uses the Computer Name), recorded as a Dn, with a migration note for names already saved.
-4. **Two "今天做完" counts disagree (open).** The conversation header said 今天做完 26 件 while
+4. **Two "今天做完" counts disagree (fixed by D310: one rule).** The conversation header said 今天做完 26 件 while
    On hand's sentence, strip and the tray said 32. The header (`doneToday`) leaves out failed
    tasks and anything not finished today; On hand's strip counts the whole done lane plus
    today's missed waits. Same words, different numbers, side by side: one rule should win.
@@ -67,7 +67,7 @@ CGEvent clicks don't reach MyGo's window; background wheel scrolls do). Shots in
    this Mac runs Dozer, which pushes it off screen, exactly as it does the installed Ducter's.
    So its menu could not be opened or shot; not an unbundled-app problem. Two small things seen
    in its accessibility: the item has a help text but no title (VoiceOver reads only the help),
-   and the help text has doubled spaces around the time (「最早  7:02  回来」).
+   and the help text has doubled spaces around the time (「最早  7:02  回来」). Both fixed by D310.
 6. **Demo-only artefacts, not product bugs:** the call card's outcome reads the raw word
    `booked` (the demo seeds an enum where Tuwa gives a sentence); the demo's seeded 早。 note
    and the proactive engine's own morning note both land when the demo starts after the quiet

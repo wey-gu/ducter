@@ -34,7 +34,11 @@ type TrayView struct {
 	Working, Needs int
 	// Say is On hand's head sentence over the whole (D287), the menu's first
 	// line and the icon's tooltip.
-	Say       string
+	Say string
+	// Label is the item's accessible name (D291 (9), D310): Ducter and how
+	// the whole stands, read before the sentence (VoiceOver read only the
+	// tooltip before, research/109).
+	Label     string
 	Decisions []TrayDecision
 }
 
@@ -55,18 +59,33 @@ func trayState(needs, working int) theme.TrayState {
 // Tray is what the menu bar extra shows now, with at most max decisions.
 func (a *App) Tray(max int) TrayView {
 	if !a.S.Welcomed {
-		return TrayView{State: theme.TrayQuiet, Say: a.L.T("onhand.say.none")}
+		return TrayView{State: theme.TrayQuiet, Say: a.L.T("onhand.say.none"), Label: a.trayLabel(theme.TrayQuiet)}
 	}
 	b := a.S.Board()
 	n := a.stateCounts(b, "")
 	needs := a.WaitingCount()
+	state := trayState(needs, n[1])
 	return TrayView{
-		State:     trayState(needs, n[1]),
+		State:     state,
+		Label:     a.trayLabel(state),
 		Working:   n[1],
 		Needs:     needs,
 		Say:       autospace(a.headSay(b, "", n)),
 		Decisions: a.TrayDecisions(max),
 	}
+}
+
+// trayLabel is the menu bar item's accessible name: Ducter, then its state
+// in the words On hand uses for it.
+func (a *App) trayLabel(s theme.TrayState) string {
+	word := a.L.T("tray.state.quiet")
+	switch s {
+	case theme.TrayNeedsYou:
+		word = a.L.T("lane.needs_you")
+	case theme.TrayWorking:
+		word = a.L.T("lane.working")
+	}
+	return spoken(a.L, "Ducter", word)
 }
 
 // TrayDecisions are the decisions open now, oldest first, at most max.

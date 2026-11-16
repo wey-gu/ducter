@@ -28,7 +28,7 @@ import { agentLabel, executeUninstall, formatPlan, planUninstall } from "./unins
 import { osText, versionsText, writeReport } from "./report.ts";
 import { parentPid, watchParent } from "./parent.ts";
 import { scriptedRunnerModule } from "./scripted.ts";
-import { hostname } from "node:os";
+import { thisComputer } from "@ducter/core/src/this-computer.ts";
 import { openDeviceAuth } from "@ducter/core/src/auth.ts";
 import { probeHarnesses } from "@ducter/core/src/harness-probe.ts";
 import { cmdKey } from "./key-cmd.ts";
@@ -530,7 +530,7 @@ function printHeadless(ctx: Ctx, name: string, port: number) {
   ];
   const pub = publicUrl(ctx.dataDir);
   if (pub) rows.splice(1, 0, [t("pair.address"), pub]);
-  console.log("\n" + box(t("headless.ready", { name, device: hostname() }), rows, style) + "\n");
+  console.log("\n" + box(t("headless.ready", { name, device: thisComputer() }), rows, style) + "\n");
   if (!isLoopback(bind)) console.log("  " + t("headless.public", { host: `${bind}:${port}` }));
   console.log("  " + t("headless.next") + "\n");
 }

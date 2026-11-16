@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/computer"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
@@ -1432,10 +1433,9 @@ func (s *Store) Board() Board {
 			b.Lanes[l] = append(b.Lanes[l], t)
 		}
 	}
-	b.Counts = protocol.Counts{NeedsYou: len(b.Lanes[LaneNeedsYou]), Working: len(b.Lanes[LaneWorking]), Waiting: len(b.Lanes[LaneWaiting]), DoneToday: len(b.Lanes[LaneDone])}
-	if s.OnHand != nil && len(extra) == 0 && s.OnHand.Counts.DoneToday > b.Counts.DoneToday {
-		b.Counts.DoneToday = s.OnHand.Counts.DoneToday
-	}
+	// D310: done today by the one rule, over the live lane (the snapshot's count
+	// is the same rule at the home, but older than what the stream says).
+	b.Counts = protocol.Counts{NeedsYou: len(b.Lanes[LaneNeedsYou]), Working: len(b.Lanes[LaneWorking]), Waiting: len(b.Lanes[LaneWaiting]), DoneToday: DoneToday(b.Lanes[LaneDone], time.Now())}
 	return b
 }
 
@@ -1534,9 +1534,10 @@ func firstOr(s, or string) string {
 // ShownDeviceName is a device's name as the person sees it (D291): a
 // phone or iPad paired through the Ducter app before D291 was named
 // "<model> · Ducter"; the art and the platform already say it is the
-// app, so the suffix is dropped.
+// app, so the suffix is dropped. A computer paired before D310 by its host
+// name shows it without the network's domain ("Mac.lan" → "Mac").
 func ShownDeviceName(name string) string {
-	return strings.TrimSuffix(name, " · Ducter")
+	return computer.Undomained(strings.TrimSuffix(name, " · Ducter"))
 }
 
 // AccountAnswer is the home's answer about an agent's account limits

@@ -12,7 +12,8 @@
 // step); without one (a worker machine, or Ducter stopped), this process does the staged update.
 import { existsSync } from "node:fs";
 import pkg from "../package.json" with { type: "json" };
-import { arch as osArch, hostname as osHostname, platform as osPlatform } from "node:os";
+import { arch as osArch, platform as osPlatform } from "node:os";
+import { thisComputer } from "@ducter/core/src/this-computer.ts";
 import { join } from "node:path";
 import type { DeviceUpdate, DeviceView, ServerFrame, UpdateAllItem, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { compareVersions } from "@ducter/protocol/src/version.ts";
@@ -485,7 +486,7 @@ async function direct(c: UpdateCtx, sys: UpdateSys, say: (s: string) => void): P
   }
   const latest = rel?.version;
   const available = Boolean(latest && compareVersions(latest, current) > 0);
-  const name = osHostname().replace(/\.local$/, "");
+  const name = thisComputer();
   const row: Row = { id: "local", name, home: !existsSync(join(c.dataDir, "worker.json")), online: true, update: { current, available, how, ...(latest ? { latest } : {}), ...(available && hasNotes(rel?.notes) ? { notesBy: rel!.notes } : {}), ...(rel?.security ? { security: true } : {}) } };
   if (args.check) {
     say(args.json ? JSON.stringify({ latest: latest ?? null, devices: [{ ...row, ...row.update }] }, null, 2) : formatRows([row], t, style));

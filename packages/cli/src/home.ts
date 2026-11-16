@@ -5,7 +5,7 @@
 // connects to a Ducter on a server, or by `ducter connect`; else the Ducter on this machine.
 // home.json holds the CLI's own device token (a device of its own, revocable apart from the app).
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { hostname } from "node:os";
+import { thisComputer } from "@ducter/core/src/this-computer.ts";
 import { join } from "node:path";
 import { fpFromLink, type ReachWay } from "@ducter/protocol/src/reach.ts";
 
@@ -200,7 +200,7 @@ export async function whyUnreached(t: Extract<Target, { kind: "remote" }>, fetch
 }
 
 /** This Mac as the home sees the command line: "CLI on weyl-mbp". */
-export const cliDeviceName = (host = hostname()) => `CLI on ${host.replace(/\.local$/, "")}`;
+export const cliDeviceName = (host?: string) => `CLI on ${thisComputer(host)}`;
 
 export type ConnectError = "code" | "locked" | "unreachable" | "notducter" | "nocode" | "address";
 
@@ -232,7 +232,7 @@ export async function pairCli(o: { address: string; code?: string; name?: string
       method: "POST",
       headers: { "content-type": "application/json" },
       // D155: form "cli" + the computer it runs on: the home shows it inside that computer's card.
-      body: JSON.stringify({ code, name: o.name ?? cliDeviceName(), platform: o.platform ?? process.platform, form: "cli", computer: hostname().replace(/\.local$/, "") }),
+      body: JSON.stringify({ code, name: o.name ?? cliDeviceName(), platform: o.platform ?? process.platform, form: "cli", computer: thisComputer() }),
       signal: AbortSignal.timeout(10_000),
     });
   } catch {

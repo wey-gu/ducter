@@ -41,6 +41,14 @@ type onHandState struct {
 	room   string
 	was    map[string]rowMark
 	handed map[string]bool
+	// D261: the strip's filter (0: none; 1–4: needs you, working,
+	// waiting, done today), the lens drawn this frame, whether rows name
+	// their project (all, with two groups or more), and whether the quiet
+	// waits are unfolded.
+	filter   int
+	lens     string
+	showProj bool
+	quietOn  bool
 }
 
 // latestStep is the task's latest step or words: the newest one this Mac
@@ -131,7 +139,19 @@ func (a *App) storyOf(task *store.Task) rowStory {
 		}
 		return rowStory{words: q, tone: "needs"}
 	case protocol.Blocked:
-		return rowStory{words: a.waitReason(task)}
+		// D261: a wait always says what it waits for. A waiter names it; else
+		// the state's reason; else what the task last reported; else that it
+		// stopped without saying (true, and worth a look).
+		if w := a.S.WaiterFor(task.ID); w != nil && strings.TrimSpace(w.Reason) != "" {
+			return rowStory{words: a.waitLine(w.Reason)}
+		}
+		if r := a.waitReason(task); r != "" {
+			return rowStory{words: r}
+		}
+		if rep != nil && strings.TrimSpace(rep.Summary) != "" {
+			return rowStory{words: strings.SplitN(strings.TrimSpace(rep.Summary), "\n", 2)[0]}
+		}
+		return rowStory{words: a.L.T("onhand.wait.unsaid")}
 	case protocol.Working, protocol.Queued:
 		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
 			return rowStory{words: a.untilLine(u.Until)}
@@ -181,7 +201,7 @@ func (a *App) rowTime(task *store.Task) string {
 	if task.Card == nil {
 		return ""
 	}
-	return a.ago(task.Card.UpdatedAt)
+	return a.agoLong(task.Card.UpdatedAt) // "2 天前", never "61 小时前"
 }
 
 // integrated says whether the user merged the task's branch or opened a
@@ -240,17 +260,53 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	working := keep(b.Lanes[store.LaneWorking])
 	waiting := keep(b.Lanes[store.LaneWaiting])
 	done := keep(b.Lanes[store.LaneDone])
-	a.oh.order = a.oh.order[:0]
-	for _, ts := range [][]*store.Task{needs, working, waiting, done} {
-		for _, x := range ts {
-			a.oh.order = append(a.oh.order, x.ID)
+	rail := a.oh.room == "rail"
+	f := a.oh.filter
+	if rail {
+		f = 0
+	}
+	show := func(i int) bool { return f == 0 || f == i }
+	// D261: a wait nothing has changed on for a day folds away under the
+	// fresh ones; a result you have seen folds under 今天做完, a new one
+	// never. Find and the strip's filter unfold them.
+	var fresh, quiet, newer, seen []*store.Task
+	for _, x := range waiting {
+		if !rail && a.quietWait(x) {
+			quiet = append(quiet, x)
+		} else {
+			fresh = append(fresh, x)
 		}
 	}
-	if q != "" && len(a.oh.order) == 0 {
+	for _, x := range done {
+		if !rail && a.rowMarkOf(x) != stNew {
+			seen = append(seen, x)
+		} else {
+			newer = append(newer, x)
+		}
+	}
+	quietOpen := a.oh.quietOn || f == 3 || q != ""
+	doneOpen := a.Local.Folded(doneOpenKey) || f == 4 || q != ""
+	a.oh.order = a.oh.order[:0]
+	add := func(ok bool, ts ...[]*store.Task) {
+		if !ok {
+			return
+		}
+		for _, l := range ts {
+			for _, x := range l {
+				a.oh.order = append(a.oh.order, x.ID)
+			}
+		}
+	}
+	add(show(1), needs)
+	add(show(2), working)
+	add(show(3), fresh)
+	add(show(3) && quietOpen, quiet)
+	add(show(4), newer)
+	add(show(4) && doneOpen, seen)
+	if q != "" && len(needs)+len(working)+len(waiting)+len(done) == 0 {
 		ui.Text(c.Key("none"), a.L.T("onhand.find.none")).FontSize(t.MD).TextColor(t.InkMuted)
 		return
 	}
-	rail := a.oh.room == "rail"
 	if rail {
 		// Beside an opened task (D244): every task is a row, and only tasks.
 		for _, s := range []struct {
@@ -263,21 +319,18 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 		}
 		return
 	}
-	nNeeds := len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
-	if nNeeds > 0 || q == "" {
-		a.listSection(c, "needs", a.L.T("lane.needs_you"), len(needs)+len(a.partnerDecisions()), func() {
-			if nNeeds == 0 {
-				line := a.L.T("onhand.calm")
-				if n := len(b.Lanes[store.LaneWorking]); n > 0 {
-					line = a.L.T("onhand.calm.working", a.S.PersonaName, n)
-				}
-				ui.Text(c.Key("calm"), line).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft)
-				return
-			}
-			if q == "" {
-				for _, d := range a.partnerDecisions() {
-					a.partnerDecisionCard(c.Key("pd:"+d.DecisionID), d)
-				}
+	// Only in all, and Other: what belongs to no task.
+	var pds []*store.DecisionState
+	var loose, missed []*protocol.Waiter
+	if q == "" && (a.oh.lens == "" || a.oh.lens == lensOther) {
+		pds, loose, missed = a.partnerDecisions(), a.looseWaiters(), a.S.MissedToday(time.Now())
+	}
+	// What needs you comes first and takes no room when there is none (the
+	// board's head says so in one calm sentence).
+	if len(needs)+len(pds) > 0 && show(1) {
+		a.listSection(c, "needs", a.L.T("lane.needs_you"), len(needs)+len(pds), func() {
+			for _, d := range pds {
+				a.partnerDecisionCard(c.Key("pd:"+d.DecisionID), d)
 			}
 			for _, task := range needs {
 				if a.S.PendingDecision(task.ID) != nil {
@@ -288,33 +341,61 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 			}
 		})
 	}
-	if len(working) > 0 {
+	if len(working) > 0 && show(2) {
 		a.listSection(c, "working", a.L.T("lane.working"), len(working), func() { a.taskRows(c, working, false) })
 	}
-	loose := a.looseWaiters()
-	if q != "" {
-		loose = nil
-	}
-	if len(waiting)+len(loose) > 0 {
+	if len(waiting)+len(loose) > 0 && show(3) {
 		a.listSection(c, "waiting", a.L.T("lane.waiting"), len(waiting)+len(loose), func() {
-			a.taskRows(c, waiting, false)
+			a.taskRows(c.Key("fresh"), fresh, false)
 			for _, w := range loose {
 				a.waiterRow(c.Key("w:"+w.WaiterID), w)
 			}
-		})
-	}
-	missed := a.S.MissedToday(time.Now())
-	if q != "" {
-		missed = nil
-	}
-	if len(done)+len(missed) > 0 {
-		a.listSection(c, "done", a.L.T("lane.done"), len(done)+len(missed), func() {
-			for _, w := range missed {
-				a.missedRow(c.Key("m:"+w.WaiterID), w)
+			if len(quiet) > 0 {
+				if f != 3 && q == "" && a.foldLine(c, "quiet", a.L.T("onhand.wait.quiet", len(quiet)), quietOpen) {
+					a.oh.quietOn = !a.oh.quietOn
+				}
+				if quietOpen {
+					a.taskRows(c.Key("quiet"), quiet, false)
+				}
 			}
-			a.taskRows(c, done, false)
 		})
 	}
+	if len(done)+len(missed) > 0 && show(4) {
+		a.listSection(c, "done", a.L.T("lane.done"), len(done)+len(missed), func() {
+			a.taskRows(c.Key("new"), newer, false)
+			if len(seen)+len(missed) == 0 {
+				return
+			}
+			if f != 4 && q == "" && a.foldLine(c, "seen", a.L.T("onhand.done.seen", len(seen)+len(missed)), doneOpen) {
+				a.Local.SetFolded(doneOpenKey, !doneOpen)
+			}
+			if doneOpen {
+				for _, w := range missed {
+					a.missedRow(c.Key("m:"+w.WaiterID), w)
+				}
+				a.taskRows(c.Key("seen"), seen, false)
+			}
+		})
+	}
+}
+
+// doneOpenKey is how this Mac remembers that 今天做完's seen results are
+// unfolded (kept with the folded groups; folded is the default).
+const doneOpenKey = "~done-open"
+
+// foldLine is a quiet line that folds what is under it away: its words and
+// a chevron (down when open).
+func (a *App) foldLine(c *ui.Context, key, words string, open bool) bool {
+	t := a.T
+	chev := 1
+	if open {
+		chev = 2
+	}
+	var hit bool
+	ui.Row(c.Key("fold:"+key)).Padding(0, t.S2).Children(func() {
+		hit = a.quietButton(c, "fold:"+key, words, "", false, chev)
+	})
+	return hit
 }
 
 // listSection is a section's name and count in muted ink, then its body.
@@ -345,7 +426,7 @@ func (a *App) taskRows(c *ui.Context, tasks []*store.Task, state bool) {
 	t := a.T
 	// Clipped: a hovered or focused row fills its band edge to edge and the
 	// card's own corners round it, never a tile inside a rim.
-	ui.Column(c.Key("rows")).Radius(t.RadiusLG).Clip().Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
+	ui.Column(c.Key("rows:"+tasks[0].ID)).Radius(t.RadiusLG).Clip().Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
 		Dividers(1, t.LineSoft).Children(func() {
 		for _, task := range tasks {
 			a.taskRow(c.Key(task.ID), task, state)
@@ -401,7 +482,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				title := ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(700).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
 				// Finished rows recede, unless they are a new result.
-				if (att == protocol.Done || att == protocol.DoneClaimed) && st != stNew {
+				if ((att == protocol.Done || att == protocol.DoneClaimed) && st != stNew) || (!rail && a.quietWait(task)) {
 					title.TextColor(t.InkSoft).FontWeight(600)
 				}
 				if quiet {
@@ -469,19 +550,34 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				if rail {
 					return // the rail is narrow: where and who are in the task beside it
 				}
-				ui.Spacer(c)
-				if p.Kind == "repo" && p.Branch != "" {
-					ui.Text(c.Key("br"), p.Branch).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(2).MinWidth(0).MaxWidth(260).Tooltip(p.Branch)
+				// D261: when a wait looks again, with a small ring of the
+				// interval gone by; a wait that has been quiet for a day says so.
+				if att == protocol.Blocked {
+					w := a.S.WaiterFor(task.ID)
+					if a.quietWait(task) {
+						since := a.agoLong(task.Card.UpdatedAt)
+						ui.Text(c.Key("quiet"), a.tp("onhand.wait.since", since)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+					} else if next, frac := a.waitNext(w); next != "" {
+						c.After(time.Minute)
+						ui.Row(c.Key("next")).Gap(t.S1 + 1).AlignItems(ui.Center).Shrink(0).Children(func() {
+							ui.Box(c).Size(12, 12).Shrink(0).Draw(drawRing(t.InkMuted.Alpha(0.5), t.Waiting.Ink, frac)).AccessHidden(true)
+							ui.Text(c, next).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+						})
+					}
 				}
+				ui.Spacer(c)
+				// Where, quietly: its project when the board shows all of them,
+				// and its computer when there are two or more. Who does it and
+				// its branch are in the task.
 				meta := []string{}
+				if a.oh.showProj {
+					meta = append(meta, a.lensName(lensOf(task)))
+				}
 				if a.manyComputers() && p.Kind != "none" && p.Device != "" {
 					meta = append(meta, a.computerName(p.Device))
 				}
-				if h := harnessName(task.Harness()); h != "" {
-					meta = append(meta, h)
-				}
 				if len(meta) > 0 {
-					ui.Text(c.Key("meta"), strings.Join(meta, " · ")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+					ui.Text(c.Key("meta"), strings.Join(meta, " · ")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(200)
 				}
 			})
 			if u := task.Card; !rail && u != nil && u.Until != nil && u.Until.State == "on" {
@@ -567,6 +663,8 @@ func (a *App) onHandKeys(c *ui.Context, find ui.Element) {
 		return
 	case c.Shortcut(0, ui.KeySlash) && find.Valid():
 		find.Focus()
+	case a.oh.filter != 0 && c.Shortcut(0, ui.KeyEscape):
+		a.oh.filter = 0 // D261: Esc lets go of the strip's filter first
 	case c.Shortcut(0, ui.KeyJ), c.Shortcut(0, ui.KeyDown):
 		a.moveFocus(1)
 	case c.Shortcut(0, ui.KeyK), c.Shortcut(0, ui.KeyUp):

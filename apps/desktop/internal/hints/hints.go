@@ -38,9 +38,10 @@ type state struct {
 	TitleSeenAt string `json:"titleSeenAt,omitempty"`
 	// SoundOff turns the app's sounds off (Settings); on by default.
 	SoundOff bool `json:"soundOff,omitempty"`
-	// OnHandBy is how On hand groups its tasks (D128): "project", or
-	// empty (by state, the default).
-	OnHandBy string `json:"onHandBy,omitempty"`
+	// OnHandLens is the project On hand is narrowed to (D261): a name,
+	// "~" for Other (no folder), "" for all. D128's by-state/by-project
+	// toggle (onHandBy) is retired: the lens replaced it.
+	OnHandLens string `json:"onHandLens,omitempty"`
 	// NewTaskWho is the agent last picked on the New task card (D185), a
 	// candidate key; empty: the suggested one.
 	NewTaskWho string `json:"newTaskWho,omitempty"`
@@ -191,20 +192,21 @@ func (l *Local) SetDetailsShown(on bool) {
 	l.save()
 }
 
-// ByProject says whether On hand groups its tasks by project (D128).
-func (l *Local) ByProject() bool {
-	return l != nil && l.st.OnHandBy == "project"
+// Lens is the project On hand is narrowed to on this Mac (D261): a
+// project's name, "~" for Other, "" for all.
+func (l *Local) Lens() string {
+	if l == nil {
+		return ""
+	}
+	return l.st.OnHandLens
 }
 
-// SetByProject remembers how On hand groups its tasks.
-func (l *Local) SetByProject(on bool) {
-	if l == nil {
+// SetLens remembers the project On hand is narrowed to.
+func (l *Local) SetLens(name string) {
+	if l == nil || l.st.OnHandLens == name {
 		return
 	}
-	l.st.OnHandBy = ""
-	if on {
-		l.st.OnHandBy = "project"
-	}
+	l.st.OnHandLens = name
 	l.save()
 }
 

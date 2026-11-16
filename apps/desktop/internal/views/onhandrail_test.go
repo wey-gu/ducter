@@ -184,7 +184,7 @@ func TestRailShots(t *testing.T) {
 		}
 		// By project with a folded group, and the launcher.
 		app := railApp(t, lang)
-		app.Local.SetByProject(true)
+		app.Local.SetLens("hawdb")
 		app.Local.SetFolded("hawdb", true)
 		app.Route = RouteOnHand
 		tt := ui.NewTesterWith(app.View, 1400, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
@@ -192,7 +192,7 @@ func TestRailShots(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		writeShot(t, tt, "onhand-rail-mac-folded-"+string(lang)+"")
-		app.Local.SetByProject(false)
+		app.Local.SetLens("")
 		app.OpenTask("t_hotel")
 		app.bench.open = true
 		app.bench.had = "t_hotel"

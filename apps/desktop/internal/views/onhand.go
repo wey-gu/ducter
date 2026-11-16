@@ -28,77 +28,83 @@ func (a *App) onHand(c *ui.Context) {
 		}
 	})
 	var find ui.Element
-	ui.Scroll(c).Grow(1).Children(func() {
-		ui.Column(c).Gap(t.S5).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
-			if a.boardEmpty(b) && len(a.partnerDecisions()) == 0 && len(a.shownCalls()) == 0 {
-				ui.Column(c.Key("empty")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
-					a.avatar(c, theme.Idle, 120)
-					ui.Text(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
-				})
-				return
-			}
-			// D216: one list on the wide measure, as the phone and the web draw it.
-			ui.Column(c.Key("list")).Gap(t.S5).Width(960).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
-				a.forecastBand(c, b)
-				n := 0
-				for _, l := range b.Lanes {
-					n += len(l)
-				}
-				canBy := boardProjects(b) >= projectsFrom
-				if n >= findFrom || canBy {
-					ui.Row(c.Key("tools")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-						if n >= findFrom {
-							find = a.findField(c)
-						} else {
-							ui.Spacer(c)
-						}
-						// 按状态 / 按项目 (D128): remembered on this Mac, not a setting.
-						if canBy {
-							by := 0
-							if a.Local.ByProject() {
-								by = 1
-							}
-							ui.Row(c.Key("onhand-by")).Shrink(0).Children(func() {
-								if i := a.choices(c, "onhand-by", a.L.T("onhand.by"), []string{a.L.T("onhand.by.state"), a.L.T("onhand.by.project")}, by); i >= 0 {
-									a.Local.SetByProject(i == 1)
-								}
-							})
-						}
+	empty := a.boardEmpty(b) && len(a.partnerDecisions()) == 0 && len(a.shownCalls()) == 0
+	// D261: the project lens (a column, or a row of names when narrow), then
+	// the board by state under its strip of counts.
+	groups := a.lensGroups(b)
+	lens := a.currentLens(groups)
+	a.oh.lens, a.oh.showProj = lens, lensOn(groups) && lens == ""
+	w := a.winW
+	if w <= 0 {
+		w = 1280
+	}
+	column := !empty && lensOn(groups) && w >= railFrom
+	ui.Row(c.Key("onhand-body")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
+		if column {
+			a.projectColumn(c, b, groups, lens)
+		}
+		ui.Scroll(c.Key("board")).Grow(1).MinWidth(0).Children(func() {
+			ui.Column(c).Gap(t.S5).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
+				if empty {
+					ui.Column(c.Key("empty")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
+						a.avatar(c, theme.Idle, 120)
+						ui.Text(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
 					})
-				}
-				a.callRows(c) // D193: the calls, live and today's
-				if canBy && a.Local.ByProject() {
-					a.oh.order = a.oh.order[:0]
-					a.byProject(c, b)
-					a.routineShelf(c, true)
 					return
 				}
-				a.onHandList(c, b)
-				a.routineShelf(c, false)
+				lb := lensBoard(b, lens)
+				ui.Column(c.Key("list")).Gap(t.S5).Width(960).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
+					if !column && lensOn(groups) {
+						a.lensTabs(c, groups, lens)
+					}
+					find = a.boardTop(c, lb, groups, lens)
+					if a.oh.filter == 0 {
+						a.forecastBand(c, lb)
+					}
+					if loose(lens) && (a.oh.filter == 0 || a.oh.filter == 2) {
+						a.callRows(c) // D193: the calls, live and today's
+					}
+					a.onHandList(c, lb)
+					if a.oh.filter == 0 {
+						switch lens {
+						case "":
+							a.routineShelf(c, false)
+						case lensOther:
+							a.routineShelf(c, true)
+						default:
+							if g := groupOf(groups, lens); g != nil {
+								a.lensRoutines(c, g)
+							}
+						}
+					}
+				})
 			})
 		})
 	})
 	a.onHandKeys(c, find)
 }
 
-// boardProjects is how many projects the board's tasks are in.
-func boardProjects(b store.Board) int {
-	seen := map[string]bool{}
-	for _, l := range b.Lanes {
-		for _, task := range l {
-			name := task.Project()
-			if p := task.Place(); name == "" && p.Kind == "repo" {
-				name = strings.TrimRight(p.RepoPath, "/")
-				if i := strings.LastIndex(name, "/"); i >= 0 {
-					name = name[i+1:]
-				}
-			}
-			if name != "" {
-				seen[name] = true
-			}
-		}
+// lensRoutines is what starts later or repeats in a project's folder
+// (D185), under its tasks, and Nothing here yet for a project added by
+// hand with neither.
+func (a *App) lensRoutines(c *ui.Context, g *lensGroup) {
+	t := a.T
+	if len(g.routines) == 0 && len(g.tasks) > 0 {
+		return
 	}
-	return len(seen)
+	a.listSection(c, "routines", a.L.T("lane.routines"), len(g.routines), func() {
+		ui.Column(c.Key("rows")).Radius(t.RadiusLG).Clip().Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
+			Dividers(1, t.LineSoft).Children(func() {
+			for i := range g.routines {
+				a.projectRoutineRow(c.Key("rt:"+g.routines[i].RoutineID), &g.routines[i])
+			}
+			if len(g.routines) == 0 {
+				ui.Row(c.Key("empty")).Height(56).Padding(0, t.S4+2).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, a.L.T("onhand.project.empty")).FontSize(t.SM).TextColor(t.InkMuted)
+				})
+			}
+		})
+	})
 }
 
 // partnerDecisions are the open decisions of no task: the partner's own

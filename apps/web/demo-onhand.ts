@@ -35,7 +35,11 @@ const runnerOf = (core: ReturnType<typeof startCore>) => ({
   },
 });
 
-const seed = startCore({ dataDir, port: 0, push: false, persona, ooSource });
+// D261: a clock the seed can move back, so the author's waits gone quiet for two and a half days
+// are logged when they really went quiet.
+let shift = 0;
+const clock = { now: () => Date.now() + shift, setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
+const seed = startCore({ dataDir, port: 0, push: false, persona, ooSource, clock });
 seed.setRunner(runnerOf(seed));
 seed.setPartner({ onTrigger() {} });
 const log = seed.log;
@@ -127,6 +131,24 @@ if (few) {
   report("t_readme", { state: "done", summary: w("README.zh-CN.md 写好了，和英文版一节一节对上。", "README.zh-CN.md is written, section for section with the English one."), evidence: [] });
   seed.tasks.setState("t_readme", "done", "parked");
   diffs.set("t_readme", { commits: 1, uncommitted: false, files: 1, adds: 120, dels: 0 });
+
+  // ---- the author's quiet waits (2026-11-16): nothing has changed on them for 58–61 hours ----
+  if (!process.env.DEMO_NO_QUIET) {
+    shift = -61 * 3600_000;
+    await open("t_rec", w("复测真机借用与外部录屏能力并更新复盘", "Retest borrowing a real phone and outside screen recording, and update the review"), "ducter", repo("ducter", "phone-retest"), "codex", "gpt-5.5");
+    report("t_rec", { state: "blocked", summary: w("真机借用复测完了，外部录屏还要等你把 Pixel Fold 连上。", "Borrowing the real phone is retested; outside recording waits for the Pixel Fold to be connected."), evidence: [] });
+    seed.tasks.setState("t_rec", "blocked", "parked");
+    shift = -59 * 3600_000;
+    await open("t_fold1", w("重新用 Pixel Fold 录屏访问官网并准备推文", "Record the Pixel Fold visiting the site again and draft the post"), "", { kind: "none" }, "claude-code", "sonnet");
+    report("t_fold1", { state: "blocked", summary: "", evidence: [] });
+    seed.tasks.setState("t_fold1", "blocked", "parked");
+    shift = -58 * 3600_000;
+    await open("t_fold2", w("用 Pixel Fold 录屏访问 Ducter 官网并发推", "Record the Pixel Fold visiting the Ducter site and post it"), "", { kind: "none" }, "claude-code", "sonnet");
+    seed.tasks.setState("t_fold2", "blocked", "parked");
+    shift = 0;
+    await open("t_review", w("你能帮我准备好能 review nowledge-co 这个 org 下所有打开的 PR 吗", "Get me ready to review every open PR in the nowledge-co org"), "", { kind: "none" }, "claude-code", "opus");
+    tool("t_review", "Bash", { command: "gh search prs --owner nowledge-co --state open" }, "38 results");
+  }
 
   // ---- errands ----
   await open("t_hotel", w("订 12 月 6 号京都的酒店，两晚，岚山附近", "Book a hotel in Kyoto for Dec 6, two nights, near Arashiyama"), "", { kind: "none" }, "claude-code", "sonnet");

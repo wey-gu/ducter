@@ -201,7 +201,12 @@ func TestNewTaskCard(t *testing.T) {
 			}
 		}
 		newTaskShot(t, tt, "card-where-"+string(lang))
+		// On hand behind the card names its projects too (D261): click the card's.
+		app.Route = RouteConversation
+		tt.Frame()
 		click(t, tt, "ducter") // the chosen one again: the list closes, the branch stays
+		app.Route = RouteOnHand
+		tt.Frame()
 		if app.nt.placeOpen {
 			t.Errorf("%s: Where's list stays open", lang)
 		}
@@ -499,25 +504,33 @@ func TestOnHandByProject(t *testing.T) {
 		app.Route = RouteOnHand
 		tt.Frame()
 		newTaskShot(t, tt, "onhand-by-state-"+string(lang))
-		if err := tt.Click(app.L.T("onhand.by.project")); err != nil {
-			t.Fatal(err)
-		}
-		tt.Frame()
-		tt.Frame()
-		if !app.Local.ByProject() {
-			t.Fatalf("%s: By project isn't remembered", lang)
-		}
+		// D261: projects are the lens beside the board, every one of them,
+		// the one added by hand with nothing yet too.
 		all := strings.Join(tt.Texts(), " ")
-		for _, want := range []string{"ducter", "HawDB", "tinycart", app.L.T("onhand.other"), "ducter/new-task-ui", "+412", "−38", "+42", "−7",
-			"notes", app.L.T("onhand.project.empty"), app.L.T("until.n", 3), on.Routines[0].Name, on.Routines[0].TriggerWords, on.Routines[1].Name, app.L.T("routine.cancel")} {
+		for _, want := range []string{"ducter", "HawDB", "tinycart", app.L.T("onhand.other"), "notes", "+412", app.L.T("until.n", 3), on.Routines[0].Name, on.Routines[1].Name} {
 			if !strings.Contains(all, want) {
-				t.Errorf("%s: no %q by project: %q", lang, want, all)
+				t.Errorf("%s: no %q on On hand: %q", lang, want, all)
 			}
 		}
 		if strings.Contains(all, "+0") {
 			t.Errorf("%s: an uncounted task shows +0", lang)
 		}
+		app.Local.SetLens("notes")
+		tt.Frame()
+		tt.Frame()
+		if all := strings.Join(tt.Texts(), " "); !strings.Contains(all, app.L.T("onhand.project.empty")) {
+			t.Errorf("%s: an added project with nothing yet: %q", lang, all)
+		}
+		app.Local.SetLens("ducter")
+		tt.Frame()
+		tt.Frame()
+		if all := strings.Join(tt.Texts(), " "); !strings.Contains(all, on.Routines[0].TriggerWords) {
+			t.Errorf("%s: ducter's routine isn't under its lens: %q", lang, all)
+		}
 		newTaskShot(t, tt, "onhand-by-project-"+string(lang))
+		app.Local.SetLens("tinycart")
+		tt.Frame()
+		tt.Frame()
 		if err := tt.Click(app.L.T("onhand.newhere") + " tinycart"); err != nil {
 			t.Fatal(err)
 		}
@@ -527,7 +540,7 @@ func TestOnHandByProject(t *testing.T) {
 			t.Fatalf("%s: New task here asked at %+v", lang, o.Place)
 		}
 		app.nt.open = false
-		app.Local.SetByProject(false)
+		app.Local.SetLens("")
 	}
 }
 

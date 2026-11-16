@@ -40,7 +40,7 @@ import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, rep
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, forecast, FullTop } from "./board.tsx";
-import { OnHandList, Switcher } from "./onhand.tsx";
+import { OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
 import { safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
 import {
@@ -1920,9 +1920,10 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           <div class="head-words">
             <TaskMeta task={task} stateLabel={yourTurn ? t("task.your.turn") : stateLabel(a)} mark={<StateMark a={a} />} onSwitch={canSwitch ? () => A.openSwitch(task.id) : undefined} />
             <h1 title={safe(title(task))}>{safe(shortTitle(title(task))) || t("task.unknown")}</h1>
-            {a === "blocked" && A.S.waiterFor(id) && (
-              <p class="waitline">{waitLine(A.S.waiterFor(id)!.reason)}</p>
-            )}
+            {/* D261: what it waits for, always (its waiter, its reason, what it last reported, or
+                that it stopped without saying), then when it looks again or since when it's quiet. */}
+            {a === "blocked" && <p class="waitline">{storyOf(task).words}</p>}
+            {a === "blocked" && taskNext(task) && <p class="waitnext">{taskNext(task)}</p>}
           </div>
           {headline && <p class="headline">{headline}</p>}
         </div>

@@ -286,8 +286,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   if (sc.noticed === "dots") writeDotsFacts(dataDir);
   // D222: two Google Calendar accounts (and Gmail) in a fake oo, on today's date here; never the real oo.
   const calOo = sc.calendar ? fakeOoCalendar({ day: new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()), ...(sc.calendarDown ? { listFails: true } : {}) }) : undefined;
-  const core = startCore({ dataDir, port: 0, persona, ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
+  // D312: the partner under test is a second partner (its own conversation, channel:p2); the seed is the default's.
+  const conv = sc.second ? "channel:p2" : "channel";
+  const core = startCore({ dataDir, port: 0, persona, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   if (calOo && !(await core.connections.addFromOo()).ok) throw new Error("fake oo calendar: not added");
+  if (sc.second && !core.partners.add({ name: sc.second.name }).ok) throw new Error("second partner: not added");
   if (tuwa) {
     const added = await core.connections.add({ url: tuwa.url, token: JSON.stringify({ accessToken: tuwa.access(), refreshToken: tuwa.refresh(), expires_in: 3600 }) });
     if (!added.ok) throw new Error(`fake Tuwa: ${JSON.stringify(added)}`);
@@ -378,7 +381,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   }
   await Bun.sleep(20);
 
-  const partner = createPartner(core, fr.runner, {
+  const partner = createPartner(sc.second ? core.partnerView("p2") : core, fr.runner, {
+    ...(sc.second ? { dir: join(dataDir, "partners", "p2") } : {}),
     harness: HARNESS,
     ...(MODEL ? { model: MODEL } : {}),
     persistState: false,
@@ -389,7 +393,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     ...(fb ? { bridge: fb.client, bridgeIntervalMs: 0, bridgeStartMark: false } : { bridge: null }),
     onError: (err) => console.error(`[${sc.id}]`, err instanceof Error ? err.message : err),
   });
-  core.setPartner(partner);
+  if (sc.second) core.setPartnerFactory(() => partner);
+  else core.setPartner(partner);
   const startSeq = core.log.head();
   const stepStarts: number[] = [];
   let error: string | undefined;
@@ -402,7 +407,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         if (!fb) throw new Error("a peer step needs scenario.bridge");
         fb.deliver(st.peer.from, st.peer.text, st.peer.answer);
         await partner.checkBridge();
-      } else applyStep(st, core, idOf, waiters, fr.opened);
+      } else applyStep(st, core, idOf, waiters, fr.opened, conv);
       await settle(partner);
     }
   } catch (err) {
@@ -423,7 +428,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const dayCards: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[] = [];
   const blocks: { step: number; seq: number; ui: RichUi }[] = [];
   let dropped = 0;
-  for (const e of core.log.read({ stream: "channel", fromSeq: startSeq + 1, limit: 10_000 })) {
+  for (const e of core.log.read({ stream: conv, fromSeq: startSeq + 1, limit: 10_000 })) {
     if (e.kind === "ai_msg") {
       const b = e.body as Bodies["ai_msg"];
       for (const ui of b.ui ?? []) blocks.push({ step: stepOf(e.seq), seq: e.seq, ui });
@@ -440,7 +445,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     routine: core.log.read({ fromSeq: startSeq + 1, kinds: ["routine"], limit: 100 }).some((e) => (e.body as Bodies["routine"]).state === "proposed"),
   };
   // Decisions made by the partner keep their full shape for the judge.
-  const decisions = core.log.read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["decision"], limit: 100 }).filter((e) => e.origin === "partner");
+  const decisions = core.log.read({ stream: conv, fromSeq: startSeq + 1, kinds: ["decision"], limit: 100 }).filter((e) => e.origin === "partner");
   const calKinds = decisions.map((e) => (e.body as Bodies["decision"]).cal?.kind).filter((k): k is NonNullable<typeof k> => !!k);
   const asks = decisions.map((e) => e.body as Bodies["decision"]).map((d) => ({ reversible: d.reversible, go: d.defaultOption === "go", timed: Boolean(d.defaultAt) }));
   const retitles = core.log
@@ -452,11 +457,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     });
   for (const t of tools) if (/(^|__)memory_add$/.test(t.name)) memAttempts.push({ input: t.input, step: t.step });
   const notedByStep = core.log
-    .read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["memory_noted"], limit: 100 })
+    .read({ stream: conv, fromSeq: startSeq + 1, kinds: ["memory_noted"], limit: 100 })
     .map((e) => ({ title: (e.body as Bodies["memory_noted"]).title, step: stepOf(e.seq) }));
   // D304: the source lines under the replies.
   const sources = core.log
-    .read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["memory_recalled"], limit: 100 })
+    .read({ stream: conv, fromSeq: startSeq + 1, kinds: ["memory_recalled"], limit: 100 })
     .map((e) => ({ ...(e.body as Bodies["memory_recalled"]), step: stepOf(e.seq) }));
   for (const o of fr.opened) keyOf.set(o.taskId, keyOf.get(o.taskId) ?? `$opened${fr.opened.indexOf(o)}`);
   const sent = fr.sent.map((s) => ({ ...s, key: keyOf.get(s.taskId) ?? s.taskId }));
@@ -472,6 +477,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("chatter" in s) lines.push(`(earlier) ${s.chatter} short exchanges about moving the stand-up (filler)`);
     else lines.push(`(earlier) reminder set: ${s.waiterArmed.reason}`);
   }
+  if (sc.second)
+    lines.push(`(the earlier lines, if any, were the user's conversation with their other partner, ${persona.name}. The partner under test is a second partner named ${sc.second.name}, in its own conversation; it never sees ${persona.name}'s. Every step below is the user talking to ${sc.second.name}.)`);
   for (const [i, st] of sc.steps.entries()) {
     lines.push(`--- step ${i + 1}: ${describeStep(st)}`);
     for (const v of visible.filter((x) => x.step === i)) {
@@ -548,7 +555,8 @@ function replyWant(core: Core, words: string): ReplyWant {
   throw new Error(`no message has "${words}" to reply to`);
 }
 
-function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<string, string>, waiters: Map<string, Bodies["waiter"]>, opened: Opened[]) {
+function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<string, string>, waiters: Map<string, Bodies["waiter"]>, opened: Opened[], conv = "channel") {
+  const to = conv === "channel" ? {} : { stream: conv }; // D312: words to a second partner
   const tid = (key: string) => (key.startsWith("$opened") ? opened[Number(key.slice(7))]?.taskId : idOf.get(key)) ?? key;
   const report = (r: { task: string; body: Omit<Bodies["report"], "taskId"> }) => {
     const taskId = tid(r.task);
@@ -557,9 +565,9 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
   if ("user" in st) {
     // D206: the pictures go through the home's media store, as an upload would.
     const media = (st.images ?? []).map((p) => core.media.putFile(join(import.meta.dir, "..", "..", "..", p)));
-    logUserMessage(core.log, core.decisions, { text: st.user, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}) });
+    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}) });
   } else if ("users" in st) {
-    for (const u of st.users) logUserMessage(core.log, core.decisions, { text: u.text, ...(u.replyTo ? { reply: replyWant(core, u.replyTo) } : {}) });
+    for (const u of st.users) logUserMessage(core.log, core.decisions, { text: u.text, ...to, ...(u.replyTo ? { reply: replyWant(core, u.replyTo) } : {}) });
   } else if ("callEnded" in st) {
     const x = st.callEnded;
     const plan = { to: x.to, name: x.name, goal: "", say: [], mustNot: [], voice: "ducter" as const, from: "provider" as const, provider: "Tuwa", minutes: 2, costUsd: 0.6, perMinUsd: 0.3, calleeZone: "America/New_York" };
@@ -568,7 +576,7 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
   } else if ("report" in st) report(st.report);
   else if ("reports" in st) st.reports.forEach(report);
   else if ("resolve" in st) {
-    const open = core.log.read({ stream: "channel", kinds: ["decision"], limit: 100 }).reverse().find((e) => core.decisions.isPending((e.body as Bodies["decision"]).decisionId));
+    const open = core.log.read({ stream: conv, kinds: ["decision"], limit: 100 }).reverse().find((e) => core.decisions.isPending((e.body as Bodies["decision"]).decisionId));
     if (!open) throw new Error("no open decision to resolve");
     core.decisions.decide((open.body as Bodies["decision"]).decisionId, st.resolve.option, st.resolve.text);
   } else {

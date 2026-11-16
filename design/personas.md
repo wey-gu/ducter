@@ -1,6 +1,6 @@
 # A second partner (伙伴们 / Your partners)
 
-D309. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
+D309, D312. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
 what is kept apart, how attention adds up, how the person switches, and what the first slice
 built. Builds on D18 (a persona is one Mem identity), D24 (attention aggregates per person,
 conversations separate), D31 (projects and devices are the user's) and principle 17.
@@ -30,7 +30,7 @@ stone beside the name; one click shows its conversation.
 |---|---|---|
 | Log | one database | its conversation: the default's is `channel`, another's `channel:<id>` (task streams are the tasks') |
 | Conversation | | yes: its words, questions, replies; another partner never reads them (isolated by default, D24) |
-| Memory (Mem) | | its own Mem identity (D18, D141); a second partner binds its own (not built yet, below) |
+| Memory (Mem) | | its own Mem identity (D18, D141); a second partner's is `ducter-<id>`, bound once Mem answers (D312) |
 | Tasks, routines | listed together in On hand | owned by the partner that opened them (D31: `card.persona`) |
 | Devices, projects, places | yes (D31) | |
 | Accounts (connections), keys, subscriptions | yes: they are the person's | which accounts a partner may use: later (below) |
@@ -52,7 +52,9 @@ A family that needs privacy from each other needs separate homes.
   partner's own questions (`needsAcross`, protocol). The Dock badge and the menu bar's mark use
   the same number.
 - **One On hand.** On hand stays one board for the person, never one per partner (D24). Each
-  card carries its partner's stone once there is more than one (later, below).
+  row and card carries its partner's small stone once there is more than one, and another
+  partner's own questions are listed under 等你 / Needs you as **{name} 问你 / {name} asks you**
+  with the question; a click shows that partner, where it is answered (D312).
 - **Whose it is, said where it matters.** A push names the partner when there is more than one:
   a task's title reads **小家：约牙医 / Home: Book the dentist**; a partner's own question carries
   its name as the title. The menu bar lists each other partner with something waiting:
@@ -106,19 +108,38 @@ Behind `DUCTER_PARTNERS=preview` on the home (off by default; `startCore({ partn
   the switch, the combined count, Settings › 伙伴's 伙伴们 (list, look, add; rename on the web).
   The Mac's menu bar lists the other partners with something waiting; its notice names whose.
 
+## A second partner answers (D312)
+
+Built, still in the preview:
+
+- **Its own session.** The same partner code on its own view of core (`core/src/partner-view.ts`):
+  `channel` and `partner` are its `channel:<id>` and `partner:<id>`; it sees only its own tasks,
+  conversation, waits and routines; its session state is in `<dataDir>/partners/<id>`; its digests
+  are in the one spine table under ids of its own; its activity shows only where it is shown. It
+  starts on its first message (at boot when it ran before) and parks itself when idle.
+- **Its own words.** Its L1 identity says its name and that the person has other partners whose
+  conversations it never sees (`otherIdentity`, core/src/persona.ts).
+- **Routing.** Core keeps writing to `channel`; with more than one partner the Log's append sends a
+  write that belongs to another partner to its conversation: by the task it is about (its card's
+  persona), by a question, wait, call, routine or note first seen in that partner's conversation,
+  or because core is handling that partner's tool call (`actAs`). An answer lands beside its
+  question; triggers wake the partner they belong to. Proactive notes, the first words, chat apps,
+  Bridge and the home's own questions stay the default's.
+- **Tasks and routines carry their partner** from creation (a New task or a routine made in its
+  conversation too); a routine's runs are its tasks; a task's brief names its partner, its
+  `memory_search` is its partner's, and it runs as its partner's Mem identity.
+- **One MCP hub, a partner role per partner** (`partner:<id>` token); log and task reads keep to
+  the caller's own.
+- **Its own Mem identity** (`ducter-<id>`), bound once Mem answers with memory on, in its own
+  folder; until then it neither recalls nor saves.
+- **On hand** shows whose (above).
+
 ## What's left
 
-1. **A second partner answers.** No partner session runs for a second partner yet: its
-   conversation is kept and shown, but nobody replies (the Settings section says so). Needs: one
-   partner session per persona (createPartner on a persona-scoped core view: its own `channel:<id>`
-   and `partner:<id>` streams), the MCP hub's partner role per persona (today one `partner` role,
-   one URL), and every core module that writes to `channel` for a task (decisions, living,
-   closing, waiters, routines, phone, calendar, connections, about 36 appends) writing to the
-   task's own partner's conversation (`channelOf(card.persona)`).
-2. **Its own Mem identity.** Bind a Mem identity per partner (D141) and pass it on its tasks
-   (NMEM_AGENT_ID); today only the default is bound.
-3. **On hand shows whose.** Each card carries its partner's stone with more than one partner;
-   another partner's own questions listed in On hand (today only counted).
+1. **Its L1 from Mem.** Its identity text is built by Ducter; reading its own Mem identity's bundle
+   (owner profile, rules) as the default does is left.
+2. **Bridge per partner.** Bridge stays the default's connection.
+3. **Forgetting and correcting** a second partner's memories from Settings (today the default's).
 4. **Per-partner settings.** How it talks, memory on or off, which accounts it may use.
 5. **Chat apps per partner.** A Telegram bot or Slack app bound to a chosen partner.
 6. **Removing a partner**, and what happens to its conversation and tasks (kept in the Log; its
@@ -128,5 +149,5 @@ Behind `DUCTER_PARTNERS=preview` on the home (off by default; `startCore({ partn
    device.
 9. **Linking partners** (one may ask another): product-model §8.
 10. **Comprehension test of the stone** with naive raters; the clay-character upgrade.
-11. **Persona text.** A second partner's L1 identity (its own name in DEFAULT_IDENTITY) and the
-    partner eval for it (D175) come with item 1.
+11. **The full partner eval** at merge (D175): D312 ran only its two scenarios
+    (`second-partner-name`, `second-partner-apart`) with `--only`.

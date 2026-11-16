@@ -441,7 +441,8 @@ export function createCalendar(deps: CalendarDeps): Calendar {
   const isCalDecision = (id: string) => {
     if (staged.has(id)) return true;
     // The newest decisions first: a card is answered soon after it is made.
-    const d = deps.log.read({ stream: "channel", kinds: ["decision"], beforeSeq: deps.log.head() + 1, limit: 2000 }).find((e) => (e.body as Bodies["decision"]).decisionId === id);
+    // D312: in whichever partner's conversation it was asked.
+    const d = deps.log.read({ kinds: ["decision"], beforeSeq: deps.log.head() + 1, limit: 2000 }).find((e) => (e.body as Bodies["decision"]).decisionId === id);
     return !!(d && (d.body as Bodies["decision"]).cal);
   };
   const off = deps.log.subscribe((e) => {

@@ -654,7 +654,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     logEvent(t, { role: "system", from: "runner", text: "session started", raw: { sessionId: id, harness: t.spec.harness, ...(t.ops.device ? { cwd: t.spec.cwd, device: t.ops.device.id } : {}) } });
   }
 
-  const partnerNameOf = () => opts.partnerName ?? core.persona.name ?? "Ducter";
+  // D312: the partner the task is for (another partner's name in its brief); else the default's.
+  const partnerNameOf = (persona?: string) => opts.partnerName ?? (persona !== undefined ? core.personaFor?.(persona).name : undefined) ?? core.persona.name ?? "Ducter";
 
   /**
    * Before every session start (open, recovery after a restart, reopen, resume, a switch of who
@@ -666,7 +667,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const h = t.base.harness;
     if (t.card.place?.kind === "browser" && (!t.sidecar || t.sidecarInput?.harness !== h)) {
       const prev = t.sidecarInput?.harness === h ? t.sidecarInput : undefined;
-      const input: SidecarInput = { place: t.card.place, persona: t.persona, taskId: t.id, dataDir: core.dataDir, partnerName: partnerNameOf(), harness: h, ...(prev?.forceCua ? { forceCua: true } : {}) };
+      const input: SidecarInput = { place: t.card.place, persona: t.persona, taskId: t.id, dataDir: core.dataDir, partnerName: partnerNameOf(t.persona), harness: h, ...(prev?.forceCua ? { forceCua: true } : {}) };
       const sc = await sidecarFor(t.ops, input);
       if (!sc) throw new Error("this browser place could not be prepared");
       await sc.ready();
@@ -674,7 +675,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.sidecarInput = input;
     }
     t.guard = h === "codex" ? (t.guard ?? computerUseGuard({ chromeOnly: true })) : undefined;
-    t.spec = withBrowser(t.base, t.sidecar, partnerNameOf());
+    t.spec = withBrowser(t.base, t.sidecar, partnerNameOf(t.persona));
   }
 
   async function startSession(t: TaskRt, resume: boolean) {
@@ -1301,7 +1302,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       harness: open.harness as HarnessId,
       cwd,
       appendSystemPrompt: taskBrief({
-        partnerName: opts.partnerName ?? core.persona.name ?? "Ducter",
+        partnerName: partnerNameOf(core.tasks.get(id)?.persona),
         taskId: id,
         title: open.title,
         brief: briefed ? open.brief : null,
@@ -1338,7 +1339,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // identity's own lane is left to Mem's plugin (it reads the profile's default Space itself);
     // NMEM_SPACE only when the user chose one. D229: NMEM_CLI_PATH too, when Ducter's nmem is
     // named there (one Ducter put in off PATH), so the plugin runs the same nmem (its own rule).
-    const mem = core.persona.mem;
+    const mem = core.personaFor ? core.personaFor(core.tasks.get(id)?.persona).mem : core.persona.mem; // D312: the partner the task is for
     if (mem) spec.env = { NMEM_AGENT_ID: mem.agentId, ...(mem.space ? { NMEM_SPACE: mem.space } : {}), ...(process.env.NMEM_CLI_PATH ? { NMEM_CLI_PATH: process.env.NMEM_CLI_PATH } : {}) };
     if (memoryOn()) {
       // D168: the user's Nowledge Mem plugin stays on in the task, as the persona's identity. Its
@@ -1399,7 +1400,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return named + turn;
     }
     logEvent(t, { role: "system", from: "runner", text: `recalled ${notes.length} from memory for the brief`, raw: { memory: "recall", ids: notes.map((n) => n.id ?? null), titles: notes.map((n) => n.title) } });
-    return knownTurn(notes, partnerNameOf()) + turn;
+    return knownTurn(notes, partnerNameOf(t.persona)) + turn;
   }
 
   function newRt(id: string, persona: string, card: TaskCard, spec: SessionSpec, ops: PlaceOps = localOps): TaskRt {
@@ -1409,7 +1410,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       persona,
       card,
       base: spec,
-      spec: withBrowser(spec, undefined, partnerNameOf()),
+      spec: withBrowser(spec, undefined, partnerNameOf(persona)),
       running: false,
       reportedThisTurn: false,
       nudged: false,
@@ -1544,7 +1545,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const away = ops.device && !ops.device.online() ? ops.device : undefined;
     const project = input.project ?? "";
     const persona = input.persona || core.persona.id;
-    const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
+    const partnerName = partnerNameOf(persona);
     let resolved: ResolvedPlace = { place: input.place ?? { kind: "none" }, cwd: "" };
     let sidecar: BrowserSidecar | undefined;
     let sidecarInput: SidecarInput | undefined;
@@ -2093,11 +2094,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.started = (async () => {
         await ops.provision(resolved);
         if (resolved.place.kind === "browser") {
-          const input: SidecarInput = { place: resolved.place, persona: t.persona, taskId, dataDir: core.dataDir, partnerName: partnerNameOf(), harness: h };
+          const input: SidecarInput = { place: resolved.place, persona: t.persona, taskId, dataDir: core.dataDir, partnerName: partnerNameOf(t.persona), harness: h };
           const sc = await sidecarFor(ops, input);
           if (sc) (t.sidecar = sc), (t.sidecarInput = input), await sc.ready();
         }
-        t.spec = withBrowser(t.base, t.sidecar, partnerNameOf());
+        t.spec = withBrowser(t.base, t.sidecar, partnerNameOf(t.persona));
         // Something left to do: carry on there now. A finished or waiting task keeps its state;
         // its next message starts it there from the brief and saved progress.
         if (!wasRunning && att !== "working" && att !== "queued") return setState(t, att, "parked");
@@ -2148,7 +2149,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // D202: another agent runs at its own default effort, unless one was picked with it (D282).
       if (effort) t.base.effort = effort;
       else delete t.base.effort;
-      t.spec = withBrowser(t.base, t.sidecarInput?.harness === harness ? t.sidecar : undefined, partnerNameOf());
+      t.spec = withBrowser(t.base, t.sidecarInput?.harness === harness ? t.sidecar : undefined, partnerNameOf(t.persona));
       t.card = { ...t.card, harness, ...(model ? { model } : {}) };
       if (!model) delete t.card.model;
       // raw.switched: recovery ignores the session ids logged before it (the old agent's), or

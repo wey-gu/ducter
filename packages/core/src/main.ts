@@ -4,6 +4,7 @@ import { startCore, type Core } from "./core.ts";
 import { DEFAULT_IDENTITY, loadPersona } from "./persona.ts";
 import { bindMemIdentity, nmemRunner, readMemIdentity, refreshLane, renameMemIdentity } from "./mem-identity.ts";
 import { homedir } from "node:os";
+import { mkdirSync } from "node:fs";
 
 /**
  * D141: binds the persona's Mem identity the first time Mem answers with memory on (enrolling
@@ -39,6 +40,26 @@ export function keepMemIdentity(core: Core, memConnected: boolean, run = nmemRun
     const mem = core.persona.mem;
     if (mem?.owned) void renameMemIdentity(run, mem, named).then((ok) => ok || console.warn("[ducter] Mem kept the partner's old name; it is updated on the next rename"));
   });
+}
+
+/**
+ * D312: another partner's own Mem identity (D18, D141): `ducter-<id>`, bound once Mem answers with
+ * memory on, kept in its own folder's persona.json. Never the identity Ducter itself runs with
+ * (NMEM_AGENT_ID is the default's choice), so the two partners' memories never mix.
+ */
+export function bindPartnerMem(core: Core, id: string, run = nmemRunner()) {
+  if (process.env.DUCTER_MEMORY === "off" || !core.settings.get().memory || core.settings.memMissing()) return;
+  const dir = core.partnerDir(id);
+  const saved = readMemIdentity(dir);
+  if (saved) return core.setPartnerMem(id, saved);
+  void bindMemIdentity({ dataDir: dir, personaId: id, name: core.partners.nameOf(id), run, env: {} }).then(
+    (mem) => {
+      if (!mem) return console.warn(`[ducter] Nowledge Mem didn't answer; partner ${id}'s Mem identity is bound on a later start`);
+      core.setPartnerMem(id, mem);
+      console.log(`[ducter] Mem identity for partner ${id}: ${mem.agentId}`);
+    },
+    (err) => console.warn(`[ducter] binding partner ${id}'s Mem identity failed:`, (err as Error).message),
+  );
 }
 
 async function loadModule(pkg: string, relative: string, factory: string): Promise<Record<string, any> | undefined> {
@@ -173,6 +194,21 @@ export async function main(mods: BootModules = {}) {
   }
   partner ??= stubPartner(core);
   core.setPartner(partner);
+  // D312: another partner answers in its own session, made on its first message (preview).
+  if (partnerMod && core.partners.on()) {
+    const make = partnerMod;
+    const runnerNow = runner;
+    core.setPartnerFactory(async (view, id, o) => {
+      mkdirSync(o.dir, { recursive: true });
+      bindPartnerMem(core, id);
+      // Its own Mem identity or nothing: until it is bound, it neither recalls nor saves.
+      const nmem = process.env.DUCTER_MEMORY === "off" ? undefined : make.createNmemClient?.({ identity: () => view.persona.mem });
+      const memory = nmem && make.noMemory
+        ? { search: (q: string, n: number) => (view.persona.mem ? nmem.search(q, n) : make.noMemory.search(q, n)), add: (m: unknown) => (view.persona.mem ? nmem.add(m) : make.noMemory.add(m)), ...(nmem.forget ? { forget: (x: string) => nmem.forget(x) } : {}) }
+        : undefined;
+      return make.createPartner(view, runnerNow, { dir: o.dir, prewarm: false, bridge: null, ...(memory ? { memory } : {}) });
+    });
+  }
 
   console.log(`[ducter] ${persona.name} is up at ${core.url} (identity: ${source}, data: ${core.dataDir})`);
   void identity.then((src) => src !== "default" && console.log(`[ducter] identity loaded from ${src}`));

@@ -234,6 +234,9 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			if fresh {
 				a.statusFace(c, task, st)
 			}
+			if task.Card != nil {
+				a.partnerMark(c, "c-"+task.ID, task.Card.Persona) // D312
+			}
 		})
 		ink := t.InkSoft
 		switch {

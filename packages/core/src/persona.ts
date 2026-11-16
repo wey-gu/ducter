@@ -11,6 +11,23 @@ export const DEFAULT_IDENTITY = [
 ].join(" ");
 
 /**
+ * D312: another partner's L1 identity: its own name, and the plain fact that the person has other
+ * partners whose conversations it never sees (so it never claims to, and never pretends to be them).
+ */
+export function otherIdentity(name: string, others: readonly string[]): string {
+  return [
+    `You are ${name}, one of the user's personal AI partners.`,
+    "Your work runs as tasks on coding and browser harnesses.",
+    "Report back plainly, ask for the user's attention only when it truly matters, and always offer a default.",
+    others.length
+      ? `The user also has ${others.length === 1 ? "another partner" : "other partners"} in the same app (${others.join(", ")}). Each partner keeps its own conversation, tasks and memory: you never see theirs and they never see yours. You are ${name}, never them. If the user refers to something they told another partner, say plainly that you don't see that conversation, and offer to take it up here.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
  * Bounds on the identity (principle 5: cap every read before it enters). It is L1 of every partner
  * session's cached prefix, read from data the user grows in Mem (a profile, a rule stack), so it
  * never grows with it: a field, a rule and the whole block each have a ceiling (research/48 F1).

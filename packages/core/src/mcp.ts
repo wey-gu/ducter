@@ -7,6 +7,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { McpHub, ToolHandler } from "@ducter/protocol/src/internal.ts";
 import { CLAUDE_SWITCHES } from "@ducter/protocol/src/harness-facts.ts";
+import { actAs } from "./acting.ts";
 
 type Role = "partner" | "task";
 interface Tool {
@@ -19,6 +20,8 @@ interface Tool {
 export interface Ctx {
   role: Role;
   taskId?: string;
+  /** D312: another partner than the default (its own partner role), or the partner a task is for. */
+  persona?: string;
 }
 
 export interface CoreMcpHub extends McpHub {
@@ -32,6 +35,14 @@ export interface CoreMcpHub extends McpHub {
   registerWhen(role: Role, name: string, description: string, inputSchema: object | (() => object), handler: ToolHandler, visible: (ctx: Ctx) => boolean): void;
   /** Calls a tool in-process, exactly as an MCP client would (tests, stubs). */
   call(ctx: Ctx, name: string, args: unknown): Promise<unknown>;
+  /**
+   * D312: the hub as another partner sees it: the tools it registers are its own (a partner-role
+   * tool of the same name as the default's is that partner's; a task-role one serves its tasks),
+   * and its partner role has a token of its own. Core's shared tools serve every partner.
+   */
+  forPersona(persona: string): McpHub;
+  /** D312: whose a task is (another partner's id; undefined for the default's). */
+  setTaskPersona(fn: (taskId: string) => string | undefined): void;
 }
 
 /**
@@ -73,6 +84,25 @@ const ALWAYS_LOAD = { [CLAUDE_SWITCHES.alwaysLoadMeta]: true } as const;
 export function createMcpHub(opts: { secret: string; port?: number; version?: string }): CoreMcpHub {
   let port = opts.port ?? 7777;
   const registry: Record<Role, Map<string, Tool>> = { partner: new Map(), task: new Map() };
+  // D312: tools another partner registered itself, by its id: they win over the shared ones for it.
+  const own = new Map<string, Record<Role, Map<string, Tool>>>();
+  const ownOf = (persona: string) => {
+    let r = own.get(persona);
+    if (!r) own.set(persona, (r = { partner: new Map(), task: new Map() }));
+    return r;
+  };
+  let taskPersona: (taskId: string) => string | undefined = () => undefined;
+  /** Every tool this caller may have: its partner's own over the shared ones. */
+  const toolsFor = (ctx: Ctx): Map<string, Tool> => {
+    const mine = ctx.persona ? own.get(ctx.persona)?.[ctx.role] : undefined;
+    return mine?.size ? new Map([...registry[ctx.role], ...mine]) : registry[ctx.role];
+  };
+  /** A task's calls carry its partner, read when the call comes (a task opened by another partner). */
+  const withPersona = (ctx: Ctx): Ctx => {
+    if (ctx.role !== "task" || !ctx.taskId || ctx.persona) return ctx;
+    const p = taskPersona(ctx.taskId);
+    return p ? { ...ctx, persona: p } : ctx;
+  };
   const mac = (payload: string) => createHmac("sha256", opts.secret).update(payload).digest("base64url");
   const tokenFor = (payload: string) => `dtk.${b64(payload)}.${mac(payload)}`;
 
@@ -84,17 +114,21 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
     const got = Buffer.from(sig);
     if (want.length !== got.length || !timingSafeEqual(want, got)) return;
     if (payload === "partner") return { role: "partner" };
+    if (payload.startsWith("partner:") && payload.length > 8) return { role: "partner", persona: payload.slice(8) };
     if (payload.startsWith("task:") && payload.length > 5) return { role: "task", taskId: payload.slice(5) };
   };
 
-  const call = async (ctx: Ctx, name: string, args: unknown) => {
-    const tool = registry[ctx.role].get(name);
+  const call = async (raw: Ctx, name: string, args: unknown) => {
+    const ctx = withPersona(raw);
+    const tool = toolsFor(ctx).get(name);
     if (!tool) throw new Error(`tool ${name} is not available to role ${ctx.role}`);
     checkArgs(name, schemaOf(tool), args ?? {});
-    return tool.handler(args ?? {}, ctx);
+    // D312: what core writes while it handles another partner's call is that partner's.
+    return actAs(ctx.persona, () => tool.handler(args ?? {}, ctx));
   };
 
-  const serverFor = (ctx: Ctx, sandboxed = false) => {
+  const serverFor = (raw: Ctx, sandboxed = false) => {
+    const ctx = withPersona(raw);
     const server = new Server({ name: "ducter", version: opts.version ?? "0.0.1" }, { capabilities: { tools: {} } });
     server.setRequestHandler(ListToolsRequestSchema, async () => {
       // Codex runs the partner in its read-only sandbox (principle 6, runner/oar.ts), where it
@@ -106,7 +140,7 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
       // declined, "approval policy is never", and could never report).
       const hint = sandboxed ? { annotations: { readOnlyHint: true } } : {};
       return {
-        tools: [...registry[ctx.role]]
+        tools: [...toolsFor(ctx)]
           .filter(([, t]) => !t.visible || t.visible(ctx))
           .map(([name, t]) => ({ name, description: t.description, inputSchema: schemaOf(t) as any, _meta: ALWAYS_LOAD, ...hint })),
       };
@@ -143,8 +177,26 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
     setPort: (p) => void (port = p),
     verify,
     tools: (role) => [...registry[role].keys()],
-    listed: (ctx) => [...registry[ctx.role]].filter(([, t]) => !t.visible || t.visible(ctx)).map(([name]) => name),
+    listed: (raw) => {
+      const ctx = withPersona(raw);
+      return [...toolsFor(ctx)].filter(([, t]) => !t.visible || t.visible(ctx)).map(([name]) => name);
+    },
     call,
+    setTaskPersona: (fn) => void (taskPersona = fn),
+    forPersona(persona) {
+      return {
+        register(role, name, description, inputSchema, handler) {
+          ownOf(persona)[role].set(name, { description, inputSchema, handler });
+        },
+        registerWhen(role, name, description, inputSchema, handler, visible) {
+          ownOf(persona)[role].set(name, { description, inputSchema, handler, visible });
+        },
+        configFor(role) {
+          const payload = role === "partner" ? `partner:${persona}` : `task:${role.taskId}`;
+          return { name: "ducter", url: `http://127.0.0.1:${port}/mcp`, headers: { Authorization: `Bearer ${tokenFor(payload)}` } };
+        },
+      };
+    },
     async handle(req) {
       const auth = req.headers.get("authorization") ?? "";
       const ctx = auth.startsWith("Bearer ") ? verify(auth.slice(7).trim()) : undefined;

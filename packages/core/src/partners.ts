@@ -3,12 +3,11 @@
 // conversation (channelOf(id) in the one Log), a name and a look; devices, projects, accounts
 // and On hand are the person's and shared (design/personas.md).
 //
-// Preview (D309): on only with DUCTER_PARTNERS=preview (or opts.on in tests). A second partner's
-// conversation is kept and shown, but no partner session answers in it yet (design/personas.md
-// "What's built").
+// Preview (D309): on only with DUCTER_PARTNERS=preview (or opts.on in tests). D312: a second
+// partner answers in its own session, on its own view of core (partner-view.ts).
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, LogEvent } from "@ducter/protocol";
+import type { Bodies, LogEvent, PartnerAsk } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { DEFAULT_PARTNER, PARTNERS_MAX, channelOf, isLook, nextLook, partnerNameProblem, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 
@@ -41,6 +40,8 @@ export interface Partners {
   set(id: string, patch: { name?: string; look?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
   /** The name to say for an event's partner (push, the menu bar): its conversation's, else the default's. */
   nameOf(persona: string | undefined): string;
+  /** D312: every partner's own open questions (On hand lists another partner's). */
+  questions(): PartnerAsk[];
   /** Called after every change (ws sends every socket a fresh partners frame). */
   onChange(fn: () => void): () => void;
 }
@@ -81,19 +82,20 @@ export function openPartners(opts: {
   };
 
   /** Open questions of a partner's own conversation: its decisions minus their resolutions (no task's). */
-  const asks = (id: string): number => {
+  const questions = (id: string): PartnerAsk[] => {
     const stream = channelOf(id);
-    const open = new Set<string>();
+    const open = new Map<string, PartnerAsk>();
     for (const e of opts.log.read({ stream, kinds: ["decision"], limit: 500 }) as LogEvent<"decision">[]) {
       const d = e.body as Bodies["decision"];
-      if (!d.taskId) open.add(d.decisionId);
+      if (!d.taskId) open.set(d.decisionId, { persona: id, decisionId: d.decisionId, question: d.question, at: e.ts });
     }
-    if (!open.size) return 0;
-    // A resolution lands in the default's conversation today (decisions.ts), or its own.
+    if (!open.size) return [];
+    // D312: a resolution lands in its question's own conversation; before D312 in the default's.
     const streams = stream === "channel" ? ["channel"] : [stream, "channel"];
     for (const s of streams) for (const e of opts.log.read({ stream: s, kinds: ["decision_resolved"], limit: 2000 })) open.delete((e.body as Bodies["decision_resolved"]).decisionId);
-    return open.size;
+    return [...open.values()];
   };
+  const asks = (id: string): number => questions(id).length;
 
   const defaultInfo = (): PartnerInfo => ({ id: DEFAULT_PARTNER, name: opts.persona.name, look: file.defaultLook ?? "sand", asks: asks(DEFAULT_PARTNER) });
   const info = (p: Kept): PartnerInfo => ({ id: p.id, name: p.name, look: p.look, asks: asks(p.id) });
@@ -155,6 +157,7 @@ export function openPartners(opts: {
       if (!persona || persona === DEFAULT_PARTNER) return opts.persona.name;
       return file.others.find((p) => p.id === persona)?.name ?? opts.persona.name;
     },
+    questions: () => (on && file.others.length ? [DEFAULT_PARTNER, ...file.others.map((p) => p.id)].flatMap(questions) : []),
     onChange(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);

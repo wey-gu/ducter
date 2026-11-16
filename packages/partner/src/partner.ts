@@ -88,6 +88,8 @@ export interface PartnerOptions {
   settleMs?: number; // a turn woken only by reports/timers waits this long for more, default 1500
   onError?: (err: unknown) => void;
   prewarm?: boolean; // start/resume the session at creation, default true
+  /** D312: its own folder (session state, Bridge mark); default <dataDir>/partner, another partner's <dataDir>/partners/<id>. */
+  dir?: string;
   ready?: Promise<unknown>; // sessions start after this settles (e.g. L1 identity from Mem)
   memory?: MemoryClient; // default: the nmem CLI (DUCTER_MEMORY=off: none); tests inject a fake
   // Nowledge Bridge requests from other agents (design/bridge.md). Default: DUCTER_BRIDGE=1 + DUCTER_BRIDGE_CONTEXT,
@@ -456,7 +458,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const bridgeAuto = opts.bridge === undefined;
   let bridge: BridgeClient | null = bridgeAuto ? bridgeFor(process.env, core.bridgeLink?.context()) : (opts.bridge ?? null);
 
-  const cwd = join(core.dataDir, "partner");
+  const cwd = opts.dir ?? join(core.dataDir, "partner");
+  // D312: with more than one partner, only its own tasks and events (a view's are already its own).
+  const myTasks = () => (core.mine ? core.tasks.list().filter(core.mine.task) : core.tasks.list());
   const stateFile = join(cwd, "state.json");
   try {
     mkdirSync(cwd, { recursive: true });
@@ -897,13 +901,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const who = { ...s("project"), ...s("harness"), ...s("model"), ...(needs ? { needs } : {}) };
     let place: Place;
     if (at === "title") {
-      place = resolvePlace(undefined, [title, ...t.userTexts], core.tasks.list(), fs);
+      place = resolvePlace(undefined, [title, ...t.userTexts], myTasks(), fs);
       if (place.kind === "none") return;
     } else {
       const given = head.place as Place | undefined;
       // Without a place in the head, where it works may only be in the brief: wait for the call.
       if (!given || typeof given !== "object" || typeof given.kind !== "string") return;
-      place = resolvePlace(given, [title, ...t.userTexts], core.tasks.list(), fs);
+      place = resolvePlace(given, [title, ...t.userTexts], myTasks(), fs);
     }
     if (dataPlace(place)) return; // the call itself is refused (D207)
     const prev = t.early.find((e) => !e.used && e.callId === callId);
@@ -1132,7 +1136,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (view) {
       const batchSeqs = new Set([...batch, ...queue].map((e) => e.seq)); // D236: what waits for its own turn is not history yet
       const window = view.window.filter((e) => !batchSeqs.has(e.seq));
-      const background = renderProjection(window, core.tasks.list(), ctx, { earlier: view.earlier, ledger: view.ledger, ...(view.gap ? { gap: view.gap } : {}) });
+      const background = renderProjection(window, myTasks(), ctx, { earlier: view.earlier, ledger: view.ledger, ...(view.gap ? { gap: view.gap } : {}) });
       return background ? `${background}\n\n${deltas.join("\n")}` : deltas.join("\n");
     }
     const batchSeqs = new Set([...batch, ...queue].map((e) => e.seq)); // D236: what waits for its own turn is not history yet
@@ -1146,7 +1150,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // the partner knows to look them up rather than take the window for the whole conversation.
     const first = isRecut && history.length ? core.log.read({ stream: "channel", fromSeq: 1, limit: 1, kinds })[0] : undefined;
     const gap = first && first.seq < history[0]!.seq ? { from: first.seq, to: history[0]!.seq - 1 } : undefined;
-    const background = renderProjection(history, core.tasks.list(), ctx, gap ? { earlier: "", ledger: "", gap } : undefined);
+    const background = renderProjection(history, myTasks(), ctx, gap ? { earlier: "", ledger: "", gap } : undefined);
     return background ? `${background}\n\n${deltas.join("\n")}` : deltas.join("\n");
   }
 
@@ -1456,7 +1460,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       let jobId: string;
       const userTexts = t?.userTexts ?? [];
-      const place = resolvePlace(args.place, [args.brief, args.title, ...userTexts], core.tasks.list(), fs);
+      const place = resolvePlace(args.place, [args.brief, args.title, ...userTexts], myTasks(), fs);
       // D207: refused before anything is said or opened, so the partner opens it again elsewhere.
       const refused = dataPlace(place);
       if (refused) return { ok: false, error: refused };
@@ -1818,7 +1822,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const text = `${title}\n${content}`;
       if (redactSecrets(text) !== text) return { ok: false, error: "That contains a secret. Never store secrets; nothing was saved." };
       const t = turn;
-      const taskIds = core.tasks.list().map((c) => c.taskId);
+      const taskIds = myTasks().map((c) => c.taskId);
       if (PLUMBING_RE.test(text) || taskIds.some((id) => text.includes(id)))
         return { ok: false, error: "That is task plumbing (ids, branches, worktrees, commits). Remember only durable things about the user and their work; nothing was saved." };
       if (t && t.noted.length >= 2) return { ok: false, error: "Enough remembered this turn." };
@@ -2563,7 +2567,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   };
 
   // ---------- B14 (D170): what was in the mailbox before Bridge was on isn't a request ----------
-  const markFile = join(core.dataDir, "partner", "bridge.json");
+  const markFile = join(cwd, "bridge.json");
   let mark: { since: string; skip: string[] } | undefined;
   async function startMark(): Promise<{ since: string; skip: string[] } | undefined> {
     if (mark) return mark;
@@ -2584,7 +2588,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     mark = { since: new Date(now()).toISOString(), skip };
     if (persist)
       try {
-        mkdirSync(join(core.dataDir, "partner"), { recursive: true });
+        mkdirSync(cwd, { recursive: true });
         writeFileSync(markFile, JSON.stringify(mark));
       } catch (err) {
         onError(err);
@@ -2892,6 +2896,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         for (const s of keep) seen.add(s);
       }
       if (e.origin === "partner") return; // never wake on our own output
+      if (core.mine && !core.mine.event(e)) return; // D312: another partner's
       // S2: the answer to a send card is Ducter's to carry out, never a partner turn (also when
       // it was carried out already, before a restart).
       if (bridge && e.kind === "decision_resolved" && sendOp((e.body as Bodies["decision_resolved"]).decisionId)) {
@@ -2977,7 +2982,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const from = handledSeq + 1;
     const missed = core.log
       .read({ fromSeq: from, limit: 200, kinds: ["user_msg", "decision_resolved", "report", "waiter", "until", "routine", "bridge_msg"] })
-      .filter(isTrigger);
+      .filter((e) => isTrigger(e) && (!core.mine || core.mine.event(e)));
     const replied = new Set(
       core.log
         .read({ stream: "channel", fromSeq: from, limit: 5000, kinds: ["ai_msg", "ack"] })

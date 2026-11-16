@@ -45,27 +45,35 @@ export interface Living {
   stop(): void;
 }
 
-export function createLiving(opts: { log: LogStore; tasks: CoreRegistry; decisions: Decisions; clock?: Clock }): Living {
+/**
+ * D312: with more than one partner, each partner's conversation has its own living message, of
+ * its own tasks (streamOf: a task's conversation; default: every task is the one conversation's).
+ */
+export function createLiving(opts: { log: LogStore; tasks: CoreRegistry; decisions: Decisions; clock?: Clock; streamOf?: (c: TaskCard) => string }): Living {
   const { log, tasks, decisions } = opts;
   const clock = opts.clock ?? realClock;
+  const streamOf = opts.streamOf ?? (() => "channel");
   const seen = new Set<string>(); // items already shown in a frozen (read) message
-  let open: { seq: number; key: string; items: LivingItem[] } | undefined;
+  const opens = new Map<string, { seq: number; key: string; items: LivingItem[] }>(); // by conversation
 
   // Rebuild open/seen from history.
   const history = log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["living_msg", "read_receipt"] });
-  const readUpTo = Math.max(0, ...history.filter((e) => e.kind === "read_receipt").map((e) => (e.body as Bodies["read_receipt"]).upToSeq));
+  const readUpTo = new Map<string, number>();
+  for (const e of history) if (e.kind === "read_receipt") readUpTo.set(e.stream, Math.max(readUpTo.get(e.stream) ?? 0, (e.body as Bodies["read_receipt"]).upToSeq));
   for (const e of history) {
     if (e.kind !== "living_msg") continue;
     const items = (e.body as Bodies["living_msg"]).items;
-    if (e.seq <= readUpTo) items.forEach((i) => seen.add(sig(i)));
-    else open = items.length ? { seq: e.seq, key: JSON.stringify(items), items } : undefined;
+    if (e.seq <= (readUpTo.get(e.stream) ?? 0)) items.forEach((i) => seen.add(sig(i)));
+    else if (items.length) opens.set(e.stream, { seq: e.seq, key: JSON.stringify(items), items });
+    else opens.delete(e.stream);
   }
 
-  const compute = (): LivingItem[] => {
+  const compute = (stream: string): LivingItem[] => {
     const now = clock.now();
     const items: LivingItem[] = [];
     for (const c of tasks.list()) {
       if (c.attention === "dropped" || c.attention === "superseded") continue;
+      if (streamOf(c) !== stream) continue;
       const pending = tasks.pendingDecisions(c.taskId);
       if (!pending.length && now - Date.parse(c.updatedAt) > WINDOW_MS) continue;
       for (const i of itemsFor(c, decisions, pending)) if (!seen.has(sig(i))) items.push(i);
@@ -73,29 +81,42 @@ export function createLiving(opts: { log: LogStore; tasks: CoreRegistry; decisio
     return items.sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
   };
 
-  const render = () => {
-    const items = compute();
+  const renderIn = (stream: string) => {
+    const open = opens.get(stream);
+    const items = compute(stream);
     const key = JSON.stringify(items);
     if (open ? open.key === key : !items.length) return undefined;
     const e = log.append({
-      stream: "channel",
+      stream,
       origin: "system",
       kind: "living_msg",
       body: { items },
       ...(open ? { supersedes: open.seq } : {}),
     });
     // An emptied message is retired; the next change starts a fresh one.
-    open = items.length ? { seq: e.seq, key, items } : undefined;
+    if (items.length) opens.set(stream, { seq: e.seq, key, items });
+    else opens.delete(stream);
     return e;
+  };
+  /** Every conversation that has a task or an open message; the default's result is returned. */
+  const render = () => {
+    const streams = new Set(["channel", ...opens.keys(), ...tasks.list().map(streamOf)]);
+    let out: LogEvent<"living_msg"> | undefined;
+    for (const s of streams) {
+      const e = renderIn(s);
+      if (s === "channel" || !out) out = e ?? out;
+    }
+    return out;
   };
 
   let scheduled = false;
   let stopped = false;
   const unsubscribe = log.subscribe((e) => {
     if (e.kind === "read_receipt") {
+      const open = opens.get(e.stream);
       if (open && (e.body as Bodies["read_receipt"]).upToSeq >= open.seq) {
         open.items.forEach((i) => seen.add(sig(i)));
-        open = undefined;
+        opens.delete(e.stream);
       }
       return;
     }
@@ -109,7 +130,7 @@ export function createLiving(opts: { log: LogStore; tasks: CoreRegistry; decisio
 
   return {
     render,
-    openSeq: () => open?.seq,
+    openSeq: () => opens.get("channel")?.seq,
     stop() {
       stopped = true;
       unsubscribe();

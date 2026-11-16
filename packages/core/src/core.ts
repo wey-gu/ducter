@@ -7,16 +7,16 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync
 import { homedir, hostname as osHostname } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { HARNESSES, fill, normalizeTag, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type Place } from "@ducter/protocol";
+import { HARNESSES, fill, normalizeTag, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
-import type { CoreApi, ListedModel, Partner, Runner } from "@ducter/protocol/src/internal.ts";
+import type { CoreApi, ListedModel, MemIdentity, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { createDecisions, forwardFrom, type Decisions } from "./decisions.ts";
 import { createLiving, type Living } from "./living.ts";
 import { openLog, type SqliteLog } from "./log.ts";
 import { createMcpHub, type CoreMcpHub } from "./mcp.ts";
-import { DEFAULT_IDENTITY, type Persona } from "./persona.ts";
+import { DEFAULT_IDENTITY, otherIdentity, type Persona } from "./persona.ts";
 import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
 import { createOutside } from "./outside.ts";
@@ -35,7 +35,8 @@ import { modelJudge, type FindJudge } from "./proactive/judge.ts";
 import { registerProactiveTools } from "./proactive/tools.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
 import { openPartners, type Partners } from "./partners.ts";
-import { isOtherChannel } from "@ducter/protocol/src/partners.ts";
+import { DEFAULT_PARTNER, channelOf, isOtherChannel } from "@ducter/protocol/src/partners.ts";
+import { asSeenBy, createWhose, partnerView } from "./partner-view.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
 import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
 import { createPusher, openPushStore, type Pusher, type PushStore } from "./push.ts";
@@ -48,7 +49,7 @@ import { callAbility, createDevicesView, publicAddress, qrRows, homeName as save
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { createMemGlance } from "./mem-glance.ts";
-import { identityIdFor } from "./mem-identity.ts";
+import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
@@ -274,7 +275,24 @@ export interface Core extends CoreApi {
   stop(): Promise<void>;
   /** D309: 伙伴们 / Partners. */
   partners: Partners;
+  /**
+   * D312: how another partner's session is made (main.ts: createPartner on its view). Each one
+   * starts on its first trigger (or at once when it ran before, so a restart picks up what it
+   * was doing) and parks itself when idle, like the default.
+   */
+  setPartnerFactory(make: PartnerFactory): void;
+  /** D312: the core another partner's session runs on (tests, the eval). */
+  partnerView(id: string): CoreApi;
+  /** D312: another partner's own folder (session state, its Mem identity): <dataDir>/partners/<id>. */
+  partnerDir(id: string): string;
+  /** D312: its Mem identity, once bound (main.ts binds it when Mem is on). */
+  setPartnerMem(id: string, mem: MemIdentity | undefined): void;
+  /** D312: the other partners' sessions running now, by id (tests). */
+  partnerSessions(): Map<string, Partner>;
 }
+
+/** D312: makes another partner's session on its own view of core. */
+export type PartnerFactory = (view: CoreApi, id: string, o: { dir: string; boot: boolean }) => Partner | Promise<Partner>;
 
 export const defaultDataDir = () => process.env.DUCTER_DATA_DIR || join(homedir(), ".ducter");
 
@@ -380,6 +398,16 @@ export function startCore(opts: CoreOptions = {}): Core {
   const settings = openSettings({ dataDir, log, push, persona, memoryPinnedOff: process.env.DUCTER_MEMORY === "off" });
   // D309: the partners on this home (the default is persona; more only in the preview).
   const partners = openPartners({ dataDir, log, persona, ...(opts.partners !== undefined ? { on: opts.partners } : {}) });
+  // D312: whose an event is, and where core's own writes to the conversation go: a write that
+  // belongs to another partner's task, question, wait, call or routine (or is made while that
+  // partner's tool call is handled) lands in that partner's conversation. One partner: as before.
+  const isOther = (id: string | undefined) => !!id && id !== DEFAULT_PARTNER && id !== persona.id && partners.has(id);
+  const whose = createWhose({ log, tasks, isOther });
+  if (partners.on()) {
+    const append = log.append.bind(log);
+    log.append = ((input: Parameters<typeof append>[0]) => append(whose.route(input))) as typeof log.append;
+    log.subscribe(whose.learn);
+  }
   let limitsDecorate = (o: OnHand) => o; // D297: set once the limit waits are made (below)
   /** D292: the conversation's language now (the setting, else what the person writes in, else English). */
   const langNow = (): LangTag => talkLang(settings, log) ?? "en";
@@ -398,9 +426,14 @@ export function startCore(opts: CoreOptions = {}): Core {
       await runner.send(taskId, text, undefined, forwardFrom(r)); // D284: a Go relayed is Ducter's words, a reply the person's
     },
   });
-  const living = createLiving({ log, tasks, decisions, clock });
+  const living = createLiving({ log, tasks, decisions, clock, ...(partners.on() ? { streamOf: (c: TaskCard) => channelOf(whose.ofTask(c.taskId)) } : {}) });
   const mcp = createMcpHub({ secret: loadSecret(dataDir) });
-  registerCoreTools(mcp, log, tasks);
+  registerCoreTools(mcp, log, tasks, partners.on() ? whose : undefined);
+  // D312: a task's tool calls carry the partner it is for (its memory_search is that partner's).
+  mcp.setTaskPersona((taskId) => {
+    const p = whose.ofTask(taskId);
+    return p === DEFAULT_PARTNER ? undefined : p;
+  });
   const rules = openRules(dataDir);
   registerRuleTools(mcp, rules);
   const connections = openConnections({ dataDir, log, linker: opts.connectionLinker, oo: opts.ooSource, fetcher: opts.work?.connectionFetch, oauthFetch: opts.oauthFetch, signInMsPerSec: opts.signInMsPerSec, clientName: "Ducter", knownName: (ts) => providerOf(ts)?.name });
@@ -554,7 +587,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     const on = decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))));
     const added = projects.list();
     const calls = phone.calls();
-    return { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}) };
+    // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
+    const asks: PartnerAsk[] = partners.questions();
+    return { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}) };
   });
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 
@@ -590,10 +625,45 @@ export function startCore(opts: CoreOptions = {}): Core {
       console.error(`[core] partner.onTrigger failed on ${e.kind}#${e.seq}:`, err);
     }
   };
+  // D312: the other partners' sessions, each started on its first trigger (others.ts below).
+  const sessions = new Map<string, Partner>();
+  const starting = new Map<string, LogEvent[]>(); // triggers that came while its session was being made
+  let factory: PartnerFactory | undefined;
+  const views = new Map<string, CoreApi>();
+  const partnerDir = (id: string) => join(dataDir, "partners", id);
+  const startOther = (id: string, boot: boolean) => {
+    if (!factory || sessions.has(id) || starting.has(id)) return;
+    starting.set(id, []);
+    void Promise.resolve()
+      .then(() => factory!(viewOf(id), id, { dir: partnerDir(id), boot }))
+      .then((p) => {
+        sessions.set(id, p);
+        for (const e of starting.get(id) ?? []) triggerOther(id, e);
+      })
+      .catch((err) => console.error(`[core] couldn't start partner ${id}:`, err))
+      .finally(() => starting.delete(id));
+  };
+  const triggerOther = (id: string, e: LogEvent) => {
+    const p = sessions.get(id);
+    if (!p) {
+      const q = starting.get(id);
+      if (q) return void (q.length < 100 && q.push(e));
+      if (!factory) return; // no way to answer yet (a stub home): its conversation is kept
+      startOther(id, false);
+      return void starting.get(id)?.push(e);
+    }
+    try {
+      p.onTrigger(asSeenBy(id, e));
+    } catch (err) {
+      console.error(`[core] partner ${id} onTrigger failed on ${e.kind}#${e.seq}:`, err);
+    }
+  };
   const unsubscribePartner = log.subscribe((e) => {
-    // D309: a second partner's conversation never wakes the default partner (no session answers there yet).
-    if (isOtherChannel(e.stream)) return;
     if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e))) return;
+    // D312: another partner's conversation, task, wait or routine wakes that partner, never the default.
+    const who = partners.on() ? whose.ofEvent(e) : DEFAULT_PARTNER;
+    if (who !== DEFAULT_PARTNER) return triggerOther(who, e);
+    if (isOtherChannel(e.stream)) return;
     if (partner) trigger(e);
     else if (early.length < 100) early.push(e);
   });
@@ -719,6 +789,51 @@ export function startCore(opts: CoreOptions = {}): Core {
   limitsDecorate = (o) => ({ ...o, waiters: o.waiters.map((w) => limitWaits.decorate(w)) });
   const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
   const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, spine: log.spine, bridgeLink, media, limits: accountUsage, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  // D312: with more than one partner, the default partner keeps to its own too, and a task's
+  // brief and Mem identity are those of the partner it is for.
+  const memOf = new Map<string, MemIdentity | undefined>();
+  const otherMem = (id: string) => {
+    if (!memOf.has(id)) memOf.set(id, process.env.DUCTER_MEMORY === "off" ? undefined : readMemIdentity(partnerDir(id)));
+    return memOf.get(id);
+  };
+  if (partners.on()) api.mine = { event: (e) => whose.ofEvent(e) === DEFAULT_PARTNER, task: (c) => whose.ofTask(c.taskId) === DEFAULT_PARTNER };
+  api.personaFor = (id) => (isOther(id) ? { name: partners.nameOf(id), ...(otherMem(id!) ? { mem: otherMem(id!) } : {}) } : { name: persona.name, ...(persona.mem ? { mem: persona.mem } : {}) });
+  // A task's memory is recalled by the partner it is for (each partner's own Mem client).
+  const taskMemOf = new Map<string, TaskMemoryPort>();
+  let defaultTaskMemory: TaskMemoryPort | undefined;
+  const taskMemory: TaskMemoryPort = {
+    on: () => defaultTaskMemory?.on() ?? [...taskMemOf.values()].some((p) => p.on()),
+    recall: (w) => (isOther(w.persona) ? taskMemOf.get(w.persona) : defaultTaskMemory)?.recall(w) ?? Promise.resolve(undefined),
+  };
+  Object.defineProperty(api, "taskMemory", {
+    enumerable: true,
+    get: () => (defaultTaskMemory || taskMemOf.size ? taskMemory : undefined),
+    set: (p: TaskMemoryPort | undefined) => void (defaultTaskMemory = p),
+  });
+  /** The L1 identity of another partner: its own name, and that the person has others. */
+  const identityOf = (id: string) => {
+    const name = partners.nameOf(id);
+    const others = partners.list().filter((p) => p.id !== id).map((p) => p.name);
+    return otherIdentity(name, others);
+  };
+  function viewOf(id: string): CoreApi {
+    let v = views.get(id);
+    if (!v) {
+      v = partnerView({
+        core: api,
+        id,
+        whose,
+        mcp,
+        name: () => partners.nameOf(id),
+        identity: () => identityOf(id),
+        mem: () => otherMem(id),
+        activity: { set: (a) => ws.setActivity(a, id) },
+        setTaskMemory: (p) => (p ? taskMemOf.set(id, p) : taskMemOf.delete(id)),
+      });
+      views.set(id, v);
+    }
+    return v;
+  }
   // D150: the one helper (brain.ts) the runner and the settings frame share.
   api.partnerFallback = () => {
     const e = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow());
@@ -1281,6 +1396,18 @@ export function startCore(opts: CoreOptions = {}): Core {
       partner = p;
       early.splice(0).forEach(trigger);
     },
+    setPartnerFactory(make) {
+      factory = make;
+      // One that ran before starts now (its session stays parked until it has something to do),
+      // so what it was in the middle of when Ducter stopped is picked up.
+      if (partners.on()) for (const p of partners.list()) if (isOther(p.id) && existsSync(partnerDir(p.id))) startOther(p.id, true);
+    },
+    partnerView: (id) => viewOf(id),
+    partnerDir,
+    setPartnerMem(id, mem) {
+      memOf.set(id, mem);
+    },
+    partnerSessions: () => sessions,
     async stop() {
       ws.stop();
       previews.close();
@@ -1296,6 +1423,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       reachRef?.stop();
       sockets.stop();
       unsubscribePartner();
+      for (const p of sessions.values()) await (p as { close?(): Promise<void> }).close?.().catch(() => {});
       phone.stop();
       ownNumber.stop();
       decisions.stop();

@@ -20,7 +20,7 @@ import { kindOf, navMove } from "./nav.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
 import { keepDraft, readDraft } from "./follow.ts";
-import type { AccountUsage, LogEvent, ReplyWant } from "@ducter/protocol";
+import type { AccountUsage, LogEvent, PartnerAsk, ReplyWant } from "@ducter/protocol";
 import { DEFAULT_PARTNER, needsAcross, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 
 /** D309: the partner whose conversation this device shows, kept on this device (another may show another). */
@@ -1647,6 +1647,13 @@ class AppState {
   /** D309: more than one partner, so the bar shows whose conversation this is and the others. */
   manyPartners(): boolean {
     return (this.partners?.length ?? 0) > 1;
+  }
+
+  /** D312: every other partner's own open questions, which On hand lists (the shown one's are in its conversation). */
+  otherAsks(): PartnerAsk[] {
+    if (!this.manyPartners()) return [];
+    const shown = this.S.persona || this.partnerShown;
+    return (this.S.onHand?.asks ?? []).filter((a) => a.persona !== shown && this.partners!.some((p) => p.id === a.persona));
   }
 
   /** D309: the partner shown, as the partners frame says it (undefined with one partner). */

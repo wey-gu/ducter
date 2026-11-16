@@ -10,16 +10,15 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 (eval only) · the partner eval (`bun run eval:partner`) · art cutouts with true alpha
 (`design/art/assets/alpha/`, 22 assets, `design/art/assets/tools/cut.swift`).
 
-## A second partner (D309, `personas.md`)
+## A second partner (D309, D312, `personas.md`)
 
-- **A second partner answers** (the preview's gap): a partner session per persona on a
-  persona-scoped core view, the MCP partner role per persona, and the core writes to `channel` for
-  a task routed to the task's own partner's conversation. Trigger: before the preview flag comes off.
-  Its persona text and tools then need D175's full eval.
-- Its own Mem identity (D141) and its tasks' NMEM_AGENT_ID; On hand's stones and another partner's
-  questions listed there; per-partner talk, memory and accounts; a chat app bound to a partner;
-  removing a partner; the Mac's rename of another partner; the stone's comprehension test with naive
-  raters, then a clay character per partner. Trigger: the author reviews the preview.
+- **D312 follow-ups:** the full partner eval at merge (only `second-partner-name` and
+  `second-partner-apart` ran, with `--only`); a live run with two real partner sessions on one home
+  before the preview flag comes off; its L1 from its own Mem identity's bundle; Bridge, forgetting
+  and correcting per partner. Trigger: before the preview flag comes off.
+- Per-partner talk, memory and accounts; a chat app bound to a partner; removing a partner; the
+  Mac's rename of another partner; the stone's comprehension test with naive raters, then a clay
+  character per partner. Trigger: the author reviews the preview.
 
 ## Deep Nowledge Mem integration (D295, `memory.md`)
 

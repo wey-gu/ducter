@@ -4,6 +4,8 @@
 import type { LogEvent } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import type { CoreMcpHub } from "./mcp.ts";
+import { DEFAULT_PARTNER, channelOf, partnerOfStream } from "@ducter/protocol/src/partners.ts";
+import type { Whose } from "./partner-view.ts";
 import { taskStream, type CoreRegistry } from "./registry.ts";
 
 const MAX_LIMIT = 200;
@@ -30,7 +32,21 @@ const hit = (e: LogEvent) => {
   return { ...c, body: clipStrings(c.body) };
 };
 
-export function registerCoreTools(mcp: CoreMcpHub, log: LogStore, tasks: CoreRegistry) {
+export function registerCoreTools(mcp: CoreMcpHub, log: LogStore, tasks: CoreRegistry, whose?: Whose) {
+  // D312: with more than one partner, a partner reads only its own: "channel" is its own
+  // conversation, another's conversation and another's tasks are out of reach, a wide search keeps
+  // only its own (one partner: everything, as before).
+  const who = (ctx: { persona?: string }) => ctx.persona ?? DEFAULT_PARTNER;
+  const mine = (p: string) => (e: LogEvent) => !whose || whose.ofEvent(e) === p;
+  const shown = (p: string) => (e: LogEvent) => (whose && e.stream === channelOf(p) ? { ...e, stream: "channel" } : e);
+  const streamFor = (p: string, s: string | undefined): string | undefined => {
+    if (s === undefined || !whose) return s;
+    if (s === "channel") return channelOf(p);
+    const conv = partnerOfStream(s);
+    if (conv !== undefined && s !== channelOf(p)) throw new Error(`${s} is out of reach: it is another partner's conversation.`);
+    if (s.startsWith("task:") && whose.ofTask(s.slice(5)) !== p) throw new Error(`unknown task ${s.slice(5)}`);
+    return s;
+  };
   const logSearch = {
     type: "object",
     properties: {
@@ -57,11 +73,18 @@ export function registerCoreTools(mcp: CoreMcpHub, log: LogStore, tasks: CoreReg
     "log_search",
     "Search the whole Ducter Log (the conversation, from its first day, and every task). Best matches first; each hit has its seq, and log_read from near that seq gives the context.",
     logSearch,
-    async (a) => log.search(String(a.query ?? ""), { stream: a.stream, limit: clampLimit(a.limit, 12) }).map(hit),
+    async (a, ctx) => {
+      const p = who(ctx);
+      const stream = streamFor(p, a.stream ? String(a.stream) : undefined);
+      const limit = clampLimit(a.limit, 12);
+      if (stream || !whose) return log.search(String(a.query ?? ""), { stream, limit }).map(shown(p)).map(hit);
+      return log.search(String(a.query ?? ""), { limit: MAX_LIMIT }).filter(mine(p)).slice(0, limit).map(shown(p)).map(hit);
+    },
   );
-  mcp.register("partner", "log_read", "Read events from one Log stream in order.", logRead, async (a) =>
-    log.read({ stream: String(a.stream), fromSeq: a.fromSeq, limit: clampLimit(a.limit, 50) }).map(compact),
-  );
+  mcp.register("partner", "log_read", "Read events from one Log stream in order.", logRead, async (a, ctx) => {
+    const p = who(ctx);
+    return log.read({ stream: streamFor(p, String(a.stream)), fromSeq: a.fromSeq, limit: clampLimit(a.limit, 50) }).map(shown(p)).map(compact);
+  });
 
   // A task reads only within its reach (focus-window.md "Pull tools"): its own stream, its
   // persona's channel, and its persona's other tasks. A browser task reads only its own stream
@@ -71,21 +94,23 @@ export function registerCoreTools(mcp: CoreMcpHub, log: LogStore, tasks: CoreReg
     if (!me) throw new Error("log tools need a task");
     const own = taskStream(me.taskId);
     const onlyOwn = me.place.kind === "browser";
+    // D312: "the conversation" is its own partner's.
+    const conv = whose ? channelOf(whose.ofTask(me.taskId)) : "channel";
     const ok = (e: LogEvent) => {
       if (e.stream === own) return true;
       if (onlyOwn || e.persona !== me.persona) return false;
-      if (e.stream === "channel") return true;
+      if (e.stream === conv) return true;
       if (!e.stream.startsWith("task:")) return false;
       return tasks.get(e.stream.slice("task:".length))?.persona === me.persona;
     };
     const streamOk = (s: string) => {
       if (s === own) return true;
       if (onlyOwn) return false;
-      if (s === "channel") return true;
+      if (s === "channel" || s === conv) return true;
       return s.startsWith("task:") && tasks.get(s.slice("task:".length))?.persona === me.persona;
     };
     const refuse = (s: string) => new Error(onlyOwn ? `${s} is out of reach: a browser task reads only its own stream (${own}).` : `${s} is out of reach: read ${own}, "channel", or another task of the same person.`);
-    return { own, ok, streamOk, refuse };
+    return { own, ok, streamOk, refuse, conv };
   };
   mcp.register(
     "task",
@@ -98,7 +123,7 @@ export function registerCoreTools(mcp: CoreMcpHub, log: LogStore, tasks: CoreReg
       if (stream && !r.streamOk(stream)) throw r.refuse(stream);
       const limit = clampLimit(a.limit, 12);
       // Search wide, then keep what is in reach (the store has no multi-stream filter).
-      const found = log.search(String(a.query ?? ""), { stream: stream ?? (r.streamOk("channel") ? undefined : r.own), limit: stream ? limit : MAX_LIMIT });
+      const found = log.search(String(a.query ?? ""), { stream: stream === "channel" ? r.conv : (stream ?? (r.streamOk("channel") ? undefined : r.own)), limit: stream ? limit : MAX_LIMIT });
       return found.filter(r.ok).slice(0, limit).map(hit);
     },
   );
@@ -106,7 +131,7 @@ export function registerCoreTools(mcp: CoreMcpHub, log: LogStore, tasks: CoreReg
     const r = reachOf(ctx.taskId);
     const stream = String(a.stream);
     if (!r.streamOk(stream)) throw r.refuse(stream);
-    return log.read({ stream, fromSeq: a.fromSeq, limit: clampLimit(a.limit, 50) }).filter(r.ok).map(compact);
+    return log.read({ stream: stream === "channel" ? r.conv : stream, fromSeq: a.fromSeq, limit: clampLimit(a.limit, 50) }).filter(r.ok).map(compact);
   });
 
   mcp.register(
@@ -122,9 +147,9 @@ export function registerCoreTools(mcp: CoreMcpHub, log: LogStore, tasks: CoreReg
       },
       required: ["taskId"],
     },
-    async (a) => {
+    async (a, ctx) => {
       const card = tasks.get(String(a.taskId));
-      if (!card) throw new Error(`unknown task ${a.taskId}`);
+      if (!card || (whose && whose.ofTask(card.taskId) !== who(ctx))) throw new Error(`unknown task ${a.taskId}`);
       if (a.level === "report") return { card, report: card.lastReport ?? null };
       if (a.level === "transcript")
         return { card, events: log.read({ stream: taskStream(card.taskId), limit: clampLimit(a.limit, 50) }).map(compact) };

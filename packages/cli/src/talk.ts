@@ -12,7 +12,7 @@ import { plainStyle, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 import { openDecisions, pickTask } from "./status.ts";
 import { homeJson, whyUnreached, type Target } from "./home.ts";
-import { hostname } from "node:os";
+import { thisComputer } from "@ducter/core/src/this-computer.ts";
 
 export interface TalkCtx {
   t: T;
@@ -103,7 +103,7 @@ export async function cmdTask(c: TalkCtx): Promise<number> {
     const dir = resolve(c.cwd ?? process.cwd(), c.repo ?? ".");
     const top = await repoTop(dir, git);
     if (!top) return p(t(c.repo ? "task.notRepo" : "task.notRepoHere", { dir })), 2;
-    place = { kind: "repo", device: remote ? hostname().replace(/\.local$/, "") : "local", repoPath: top, ...(c.base ? { baseBranch: c.base } : {}) };
+    place = { kind: "repo", device: remote ? thisComputer() : "local", repoPath: top, ...(c.base ? { baseBranch: c.base } : {}) };
   } else if (c.base) return p(t("task.baseNoRepo")), 2;
   const k = await conn(c);
   if (!k) return 1;

@@ -9,7 +9,7 @@ import { ComputerBlock, ComputerInfo } from "./computer-use.tsx";
 import { HandsetChip } from "./handset.tsx";
 import type { DeviceHarness, DeviceUpdate, DeviceVia, DeviceView, ReachWay } from "@ducter/protocol";
 import { inApp } from "./native.ts";
-import { clientShape, TRY_LIVE } from "@ducter/protocol";
+import { clientShape, computerKey, computerName, TRY_LIVE } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -31,15 +31,15 @@ const art = (n: string) => `app/art/${n}.webp`;
 // tasks) folds into its computer's card; alone, it stands as its computer, never "CLI on …".
 const isCli = (cl: Client) => cl.form === "cli" || (!cl.form && cl.name.startsWith("CLI on "));
 function clientComputer(cl: Client): string {
-  if (cl.computer) return cl.computer;
-  if (isCli(cl)) return cl.name.replace(/^CLI on /, "").trim();
-  return /^(darwin|linux|win)/i.test(cl.platform) ? cl.name : "";
+  if (cl.computer) return computerName(cl.computer); // D310: never "Mac.lan"
+  if (isCli(cl)) return computerName(cl.name.replace(/^CLI on /, ""));
+  return /^(darwin|linux|win)/i.test(cl.platform) ? computerName(cl.name) : "";
 }
 const clientName = (cl: Client) => (isCli(cl) && cl.name.startsWith("CLI on ") ? clientComputer(cl) || cl.name : cl.name);
 
 /** Which clients fold into which card ("dev:id" | "cl:id"), and which get none of their own. */
 export function foldClients(devices: DeviceView[], clients: Client[]): { hidden: Set<string>; members: Map<string, Client[]> } {
-  const key = (s: string) => s.trim().toLowerCase();
+  const key = computerKey; // D310: one computer by any of its names
   const workers = new Map<string, string>();
   for (const dv of devices) if (!dv.home) workers.set(key(dv.computer || dv.name), `dev:${dv.id}`);
   const apps = new Map<string, string>();

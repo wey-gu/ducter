@@ -3,11 +3,12 @@
 // has. Only what the server knows: probes on this machine (cua-driver, harness logins, a
 // battery = a laptop), and what workers said in their hello. No allowance is ever estimated.
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { hostname as osHostname, platform as osPlatform } from "node:os";
+import { platform as osPlatform } from "node:os";
+import { thisComputer, thisHost } from "./this-computer.ts";
 import { join } from "node:path";
 import QRCode from "qrcode";
 import type { AnywhereCtl } from "./anywhere.ts";
-import { deviceHarness, type AbilityId, type ClientShape, type AgentHow, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
+import { deviceHarness, sameComputer, type AbilityId, type ClientShape, type AgentHow, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
 import { readAbilitySettings, writeAbilitySettings } from "@ducter/protocol/src/abilities.ts";
 import { claudeInChromeConnected, codexNative } from "@ducter/protocol/src/native-browser.ts";
 import { deviceForm, type DeviceAuth } from "./auth.ts";
@@ -280,7 +281,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   const which = o.which ?? ((c: string) => Bun.which(c));
   const now = o.now ?? Date.now;
   const cacheMs = o.cacheMs ?? 60_000;
-  const host = (o.hostname ?? osHostname()).replace(/\.local$/, "");
+  // D310: this computer by its name as a person reads it, and by its host name (what a pairing
+  // from before D310 called it): a rename never takes either.
+  const host = thisComputer(o.hostname);
+  const hostAlias = thisHost(o.hostname);
 
   const probes: DeviceProbes = {
     cua: o.probes?.cua ?? defaultCuaProbe(env, exec, which),
@@ -567,7 +571,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     // The machine Ducter lives on answers to its own name, its display name and "local": a task
     // placed there must never land on another computer by a rename.
     const shown = homeName(o.dataDir)?.toLowerCase();
-    if (want === "local" || want === host.toLowerCase() || want === shown) return { t: "rename_result", device, ok: false, reason: "name_taken" };
+    if (want === "local" || sameComputer(name, host) || sameComputer(name, hostAlias) || want === shown) return { t: "rename_result", device, ok: false, reason: "name_taken" };
     const r = o.auth.rename(device, name);
     if ("error" in r) return { t: "rename_result", device, ok: false, reason: r.error };
     o.workers.renamed(r.device.id, r.device.name);

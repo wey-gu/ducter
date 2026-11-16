@@ -25,7 +25,8 @@ that, the rest:
 - **Working**: tasks under way.
 - **Waiting**: tasks waiting for something, such as a check to pass, an email, or a computer to
   wake up.
-- **Done today**: tasks finished today.
+- **Done today**: tasks that finished well today. A task that failed, or a wait that didn't happen, is
+  listed there too with its own words, but isn't counted.
 
 Tasks that are working, have just started waiting, or have a new result are small cards. Each
 shows which AI agent is doing it (its small clay coin, which rocks while it works), the title,

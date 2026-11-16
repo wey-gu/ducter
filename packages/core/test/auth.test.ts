@@ -1,6 +1,7 @@
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 // Pairing codes, device tokens, and the gate in front of core's routes. No model calls.
 import { afterEach, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { CODE_ALPHABET, createGate, isLocalRequest, normalizeCode, openDeviceAuth, rateKey, unjoinedName, type DeviceAuth } from "../src/auth.ts";
@@ -68,6 +69,51 @@ describe("device names without joins (D291)", () => {
     const r = b.redeem(b.createCode().code, { name: "iPad", platform: "ios-app" });
     if ("error" in r) throw new Error(r.error);
     expect(r.device.name).toBe("iPad 2");
+  });
+});
+
+describe("computer names without a DNS domain (D310)", () => {
+  test("a host name paired before D310 is renamed once, keeps resolving, and a later choice stays", () => {
+    const { a, dir } = auth();
+    const pair = (name: string, info: { role?: "worker"; form?: "cli"; computer?: string } = {}) => {
+      const r = a.redeem(a.createCode().code, { name, platform: "darwin-arm64", ...info });
+      if ("error" in r) throw new Error(r.error);
+      return r.device.id;
+    };
+    const worker = pair("box", { role: "worker", computer: "box" });
+    const cli = pair("CLI on box", { form: "cli", computer: "box" });
+    const taken = pair("Mac", { role: "worker", computer: "Mac" });
+    const other = pair("hel2", { role: "worker", computer: "hel2" });
+    const phone = pair("iPhone");
+    a.close();
+    // What a home from before D310 stored: the host name with the network's domain.
+    const db = new Database(join(dir, "devices.db"));
+    db.run("UPDATE devices SET name = 'Mac.lan', computer = 'Mac.lan' WHERE id = ?", [worker]);
+    db.run("UPDATE devices SET name = 'CLI on Mac.lan', computer = 'Mac.lan' WHERE id = ?", [cli]);
+    db.run("UPDATE devices SET name = 'hel.example.com', computer = 'hel.example.com' WHERE id = ?", [other]);
+    db.exec("PRAGMA user_version = 0");
+    db.close();
+    const b = openDeviceAuth(dir);
+    stops.push(() => b.close());
+    const byId = new Map(b.list().map((d) => [d.id, d]));
+    expect(byId.get(worker)).toMatchObject({ name: "Mac 2", computer: "Mac" }); // "Mac" was taken
+    expect(byId.get(taken)!.name).toBe("Mac");
+    expect(byId.get(cli)).toMatchObject({ name: "CLI on Mac", computer: "Mac" });
+    expect(byId.get(other)).toMatchObject({ name: "hel", computer: "hel" });
+    expect(byId.get(phone)!.name).toBe("iPhone");
+    expect(b.formerly("Mac.lan")?.id).toBe(worker); // a task placed by the old name still finds it
+    expect(b.formerly("hel.example.com")?.id).toBe(other);
+    // Once: a name the person chooses later, dotted or not, is theirs.
+    const r = b.rename(other, "hel.example.com");
+    if ("error" in r) throw new Error(r.error);
+    b.close();
+    const c = openDeviceAuth(dir);
+    stops.push(() => c.close());
+    expect(c.list().find((d) => d.id === other)!.name).toBe("hel.example.com");
+    // A computer from an older Ducter pairing now: its name loses the domain as it pairs.
+    const n = c.redeem(c.createCode().code, { name: "studio.lan", platform: "darwin", role: "worker", computer: "studio.lan" });
+    if ("error" in n) throw new Error(n.error);
+    expect(n.device).toMatchObject({ name: "studio", computer: "studio" });
   });
 });
 

@@ -449,26 +449,10 @@ func (a *App) thinking() bool {
 	return false
 }
 
-// doneToday counts the tasks handed back today.
+// doneToday is 今天做完 / Done today, the same count On hand's sentence,
+// its strip and the menu bar say (D310).
 func (a *App) doneToday(b store.Board) int {
-	n := 0
-	today := a.Now().Local().YearDay()
-	for _, t := range b.Lanes[store.LaneDone] {
-		if t.Attention() == protocol.Failed {
-			continue
-		}
-		at := time.Time{}
-		if t.Card != nil {
-			at = store.ParseTime(t.Card.UpdatedAt)
-		}
-		if at.IsZero() && len(t.Events) > 0 {
-			at = store.ParseTime(t.Events[len(t.Events)-1].TS)
-		}
-		if at.IsZero() || at.Local().YearDay() == today {
-			n++
-		}
-	}
-	return n
+	return store.DoneToday(b.Lanes[store.LaneDone], a.Now().Local())
 }
 
 // pendingRow is a message not echoed yet: its pictures (with the ring while

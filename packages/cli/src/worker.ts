@@ -4,7 +4,8 @@
 // connected. The main places tasks here over that socket; @ducter/runner's worker host runs
 // them on this disk with this machine's harnesses (design/system.md "Workers").
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { arch, hostname, platform } from "node:os";
+import { arch, platform } from "node:os";
+import { thisComputer } from "@ducter/core/src/this-computer.ts";
 import { dirname, join } from "node:path";
 import pkg from "../package.json" with { type: "json" };
 import type { Args } from "./args.ts";
@@ -117,7 +118,7 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     const { base, code: linkCode } = parseJoin(args.join);
     const code = args.code ?? linkCode;
     if (!code) return console.log(t("worker.usage")), 2;
-    const name = args.name || hostname().replace(/\.local$/, "");
+    const name = args.name || thisComputer();
     let res: Response;
     try {
       res = await fetch(`${base}/pair`, {
@@ -125,7 +126,7 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
         headers: { "content-type": "application/json" },
         // role: the code is open to any device (D83); this one joins to do tasks.
         // D155: computer = this host, so the app and the command line here fold into its card.
-        body: JSON.stringify({ code, name, platform: `${platform()}-${arch()}`, role: "worker", computer: hostname().replace(/\.local$/, "") }),
+        body: JSON.stringify({ code, name, platform: `${platform()}-${arch()}`, role: "worker", computer: thisComputer() }),
         signal: AbortSignal.timeout(10_000),
       });
     } catch {

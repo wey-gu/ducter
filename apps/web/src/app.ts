@@ -13,7 +13,7 @@ import { languageOfTexts, normalizeTag } from "@ducter/protocol/src/lang.ts";
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach, tellWays } from "./native.ts";
 import { copy } from "./conv-copy.ts";
-import { attention, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
+import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, shownDeviceName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { kindOf, navMove } from "./nav.ts";
@@ -2693,12 +2693,9 @@ class AppState {
     return "idle";
   }
 
+  /** 今天做完 / Done today over the whole board, the same count On hand and the menu bar say (D310). */
   doneToday(): number {
-    const today = new Date().toDateString();
-    return this.S.board().lanes[LANE.done]!.filter((t) => attention(t) !== "failed").filter((t) => {
-      const at = t.card?.updatedAt ?? t.events.at(-1)?.ts;
-      return !at || new Date(at).toDateString() === today;
-    }).length;
+    return doneTodayOf(this.S.board().lanes[LANE.done]!);
   }
 
   summary(): string {

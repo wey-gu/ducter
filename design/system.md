@@ -594,14 +594,26 @@ the worker only holds the place (disk, checkouts, worktrees) and runs the harnes
   window on its computer, an app window into a worker on its computer; each folded device keeps
   its own token and its own 断开 (a quiet line in the computer's card). A lone CLI shows as a
   computer named after its host.
-- **Name (D84).** A worker is known by its paired name (the machine's hostname unless `--name`),
-  never by what its hello says. The person can rename it: `rename_device` from the app (改名字 on
-  its card) or `ducter devices rename <id|name> <new name>`. Renamed names stay unique among live
-  devices and can't be this machine's host name or `local`. D155: a default name another live
-  device of the same kind already has gets ` · 2`, ` · 3`… at pairing (an app window and a worker
-  on one computer may share their computer's name). Phones and windows rename the same way, and
-  so does the home: its name is a display name in `<dataDir>/device-name`, while it still
-  answers to its host name and `local`. Former names are kept
+- **Name (D84, D310).** A worker is known by its paired name, never by what its hello says. A
+  computer names itself one way everywhere (`thisComputer` in `packages/core/src/this-computer.ts`,
+  the Go twin `apps/desktop/internal/computer`): the macOS Computer Name ("Wey’s MacBook Pro")
+  on a Mac, else the host name without its DNS domain ("Mac.lan" → "Mac", "hel.example.com" →
+  "hel"; `computerName` in `packages/protocol/src/computer-name.ts`, one fixture for both
+  languages); `--name` or a rename wins and is never rewritten. Two names are one computer when
+  `sameComputer` folds them to the same letters and digits ("Wey’s MacBook Pro" ≡
+  "Weys-MacBook-Pro.local"): a task placed by another of a worker's names finds it when exactly
+  one live worker matches, the app and the command line fold into their computer's card, and a
+  rename can't take any of the home's names. The home strips a domain from a name an older
+  Ducter pairs with, and once per `devices.db` (`user_version` 1) renames a device paired under
+  its host name with a domain, keeping the old name as a former name; clients show such a name
+  without the domain too (`shownDeviceName`, `store.ShownDeviceName`). The person can rename it:
+  `rename_device` from the app (改名字 on its card) or `ducter devices rename <id|name> <new name>`.
+  Renamed names stay unique among live devices and can't be this machine's name or `local`.
+  D291: a default name another live device of the same kind already has gets ` 2`, ` 3`… at
+  pairing (an app window and a worker on one computer may share their computer's name). Phones
+  and windows rename the same way, and so does the home: its name is a display name in
+  `<dataDir>/device-name` (the person's, never rewritten), while it still answers to its own
+  names and `local`. Former names are kept
   (`former_names` in `devices.db`), so a task placed by the old name still finds its worker; a
   rename from the CLI reaches the running main on its next device sweep (10 s).
 - **Hello.** Hostname, OS/arch, Ducter version, and which harnesses are installed and signed in.

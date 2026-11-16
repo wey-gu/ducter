@@ -17,7 +17,7 @@ import { openPast } from "./past.tsx";
 import { openDid } from "./did.tsx";
 import { ago, clock, day, harnessName, spoken, when } from "./format.ts";
 import { CallRow } from "./phone.tsx";
-import { attention, canIntegrate, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
+import { attention, canIntegrate, doneTodayOf, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
 import { liveRow, liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "./transcript.tsx";
 import { computerName, deviceWait, manyComputers } from "./where.ts";
 import { Avatar, DecisionCard, stateLabel } from "./views.tsx";
@@ -342,7 +342,7 @@ export function LensTabs({ inBoard }: { inBoard?: boolean }) {
   );
 }
 
-/** The strip's four counts in a lens: needs you, working, waiting, done today. */
+/** The strip's four counts in a lens: needs you, working, waiting, done today (D310). */
 function stateCounts(lens: string): number[] {
   const l = lensLanes(lens);
   const loose = looseIn(lens);
@@ -351,7 +351,9 @@ function stateCounts(lens: string): number[] {
     l[0]!.length + (loose ? A.S.partnerDecisions().length : 0),
     l[1]!.length + calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state)).length,
     l[2]!.length + (loose ? A.S.armedWaiters().filter((w) => !w.taskId).length : 0),
-    l[3]!.length + (loose ? A.S.missedToday().length + calls.filter((c) => callEnded(c.state) && c.state !== "held").length : 0),
+    // D310: done today is tasks finished well today, the one count every surface says; a failed
+    // task, a missed wait and an ended call are in the list with their own words, not counted here.
+    doneTodayOf(l[3]!),
   ];
 }
 

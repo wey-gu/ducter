@@ -25,6 +25,8 @@ export * from "./handset.ts";
 export * from "./channels.ts";
 export * from "./past.ts";
 export * from "./did.ts";
+export * from "./computer-name.ts";
+export * from "./done-today.ts";
 export * from "./rich.ts";
 export * from "./reach.ts";
 export * from "./mem-source.ts";

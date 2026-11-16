@@ -1,0 +1,14 @@
+{
+  "_": "D310: Done today, one meaning. Each case: a task's attention and when it finished, now, the zone, and whether it counts. Read by packages/protocol/test/done-today.test.ts and apps/desktop/internal/store/donetoday_test.go.",
+  "cases": [
+    { "_": "done this morning", "attention": "done", "at": "2026-11-17T01:00:00Z", "now": "2026-11-17T10:00:00Z", "zone": "Asia/Shanghai", "want": true },
+    { "_": "done late last night, local", "attention": "done", "at": "2026-11-16T15:30:00Z", "now": "2026-11-17T10:00:00Z", "zone": "Asia/Shanghai", "want": false },
+    { "_": "done in the early hours, local", "attention": "done", "at": "2026-11-16T16:30:00Z", "now": "2026-11-17T10:00:00Z", "zone": "Asia/Shanghai", "want": true },
+    { "_": "the same moment is yesterday in Los Angeles", "attention": "done", "at": "2026-11-17T07:30:00Z", "now": "2026-11-17T09:00:00Z", "zone": "America/Los_Angeles", "want": false },
+    { "_": "failed today is not done", "attention": "failed", "at": "2026-11-17T09:00:00Z", "now": "2026-11-17T10:00:00Z", "zone": "Asia/Shanghai", "want": false },
+    { "_": "a done only claimed is not done", "attention": "done_claimed", "at": "2026-11-17T09:00:00Z", "now": "2026-11-17T10:00:00Z", "zone": "Asia/Shanghai", "want": false },
+    { "_": "still working", "attention": "working", "at": "2026-11-17T09:00:00Z", "now": "2026-11-17T10:00:00Z", "zone": "Asia/Shanghai", "want": false },
+    { "_": "no time known", "attention": "done", "at": "", "now": "2026-11-17T10:00:00Z", "zone": "Asia/Shanghai", "want": false },
+    { "_": "a week ago", "attention": "done", "at": "2026-11-10T09:00:00Z", "now": "2026-11-17T10:00:00Z", "zone": "UTC", "want": false }
+  ]
+}

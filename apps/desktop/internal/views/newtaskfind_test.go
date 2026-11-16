@@ -46,13 +46,14 @@ func TestNewTaskFindAFolder(t *testing.T) {
 		rows, _ := app.ntCands(app.S.NewTaskOptions.Candidates)
 		app.pickAgent(rows[1], topCandidate(rows), true)
 		tt.Frame()
-		for _, s := range []string{L.T("newtask.find.empty", "Macbook Pro M3"), L.T("newtask.find")} {
+		for _, s := range []string{L.T("newtask.find.empty", "Macbook Pro M3"), L.T("newtask.add")} {
 			if !tt.HasText(s) {
 				t.Errorf("%s: the Mac's empty list: no %q: %q", lang, s, tt.Texts())
 			}
 		}
 		newTaskShot(t, tt, "find-empty-"+string(lang))
-		click(t, tt, L.T("newtask.find")+" · Macbook Pro M3")
+		click(t, tt, L.T("newtask.add")+" · Macbook Pro M3")
+		click(t, tt, L.T("newtask.choose", "Macbook Pro M3"))
 		f, ok := lastFrame[protocol.FolderBrowse](sent)
 		if !ok || f.Device != "dev_mac" || f.Path != "" {
 			t.Fatalf("%s: asked the Mac for its home folder: %+v", lang, f)
@@ -96,7 +97,8 @@ func TestNewTaskFindOnTheHome(t *testing.T) {
 	app, sent, tt := tuneAppUI(t, i18n.EN, []protocol.PlaceChoice{tuneHelRepo, tuneNone}, tuneCandsAtHel())
 	app.nt.shut("place")
 	tt.Frame()
-	click(t, tt, "Find a folder… · hel")
+	click(t, tt, "Add a folder… · hel")
+	click(t, tt, "Choose a folder on hel")
 	f, _ := lastFrame[protocol.FolderBrowse](sent)
 	if f.Device != "" {
 		t.Errorf("the home's own: no device: %+v", f)

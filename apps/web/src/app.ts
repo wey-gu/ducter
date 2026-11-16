@@ -1,6 +1,6 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
 import { onWbFrame } from "./workbench-ask.ts";
-import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GitLoginState, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/protocol";
 import { prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
@@ -9,6 +9,7 @@ import { Api, Connection, deviceName, myShape, type ConnStatus, type Me, wsUrl }
 import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach } from "./native.ts";
+import { copy } from "./conv-copy.ts";
 import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
@@ -108,8 +109,17 @@ export interface NewTaskDraft {
   adding?: string;
   // D204: 从 Git 地址加… / Add from a Git address… (list "clone"): the computer it clones on (a
   // device id), the address typed, the clientId of the clone in flight (busy), and why it failed.
-  clone?: { device: string; address: string; cid?: string; err?: string };
+  // D272: failedAccess: the last clone failed for access (a sign-in then retries it); signedIn: the
+  // one-time line after a sign-in there.
+  clone?: { device: string; address: string; cid?: string; err?: string; failedAccess?: boolean; signedIn?: string };
   wantBranch?: string;
+  // D272: 加一个文件夹… on that computer (list "add"): the three ways; 新建一个文件夹 (list "newfolder").
+  add?: { device: string };
+  newFolder?: { device: string; name: string; cid?: string; err?: string };
+  // D272: where each computer stands with GitHub (key: the frame's device, "" for the home), and the
+  // sign-in panel (list "gh"): its clientId, the code and link once gh gives them, the token mode.
+  gh?: Record<string, GitLoginState>;
+  ghPanel?: { device: string; cid: string; code?: string; url?: string; err?: string; nogh?: boolean; token?: boolean; tokenText?: string; copied?: boolean };
 }
 
 /** D185: the "every few hours" the sheet offers. */
@@ -139,6 +149,8 @@ export const placeKey = (p: Place): string =>
 /** A home path as ~/…: shorter, and no user name on screen. ~ is the home folder of the computer
  *  the path is on, read from the path itself (D197); the Mac app uses the same rule. */
 export const tilde = (p: string) => p.replace(/^\/(Users|home)\/[^/]+(?=\/|$)/, "~");
+/** D272: an address GitHub answers (or the field still empty): the GitHub sign-in line shows for it. */
+export const ntGitHubish = (a: string) => !a.trim() || /github\.com/i.test(a) || /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]+$/.test(a.trim());
 /** A place's second line in the New task list: its path, and its computer when the places span more than one (D197). */
 export const placeLine = (p: PlaceChoice) => {
   const path = p.place.kind === "repo" ? p.place.repoPath : p.place.kind === "folder" ? p.place.path : "";
@@ -653,6 +665,8 @@ class AppState {
     }
     if (f.t === "project_add_result") return this.folderAdded(f);
     if (f.t === "project_clone_result") return this.cloneDone(f);
+    if (f.t === "project_new_result") return this.newFolderDone(f);
+    if (f.t === "git_login_state") return this.ghState(f);
     if (f.t === "task_new_result") return this.newTaskResult(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
@@ -721,6 +735,13 @@ class AppState {
         const dev = this.ntDeviceArg(k.device);
         this.send({ t: "project_clone", address: k.address, clientId: k.cid, ...(dev ? { device: dev } : {}) });
       }
+      // D272: an open sign-in asks again on the new socket: the code in flight comes back (the
+      // computer answers the same sign-in) and its end reaches this socket; else where it stands.
+      const g = this.nt.ghPanel;
+      if (g && this.nt.list === "gh") {
+        const dev = this.ntDeviceArg(g.device);
+        this.send({ t: "git_login", action: g.code ? "start" : "status", clientId: g.cid, ...(dev ? { device: dev } : {}) });
+      } else if (k && this.nt.list === "clone") this.ntGhStatus(k.device);
       if (this.route.name === "task") this.history(this.route.id, true);
       // Settings are pushed only to sockets that asked: ask again on a new one.
       if (this.settings || this.sheet?.kind === "settings") this.askLoadout();
@@ -926,10 +947,12 @@ class AppState {
   /** D204: 从 Git 地址加… / Add from a Git address… on that computer: the field in place of the list. */
   ntCloneOpen(device: string) {
     const nt = this.nt;
-    nt.clone = { device, address: nt.clone?.address ?? "" };
+    nt.clone = { device, address: nt.clone?.device === device ? nt.clone.address : "" };
     nt.list = "clone";
     nt.branchOpen = nt.computerOpen = false;
     nt.err = "";
+    // D272: where that computer stands with GitHub, for the line under the address.
+    this.ntGhStatus(device);
     this.changed();
   }
 
@@ -947,6 +970,7 @@ class AppState {
     if (this.status !== "connected" || !this.S.welcomed) return (k.err = this.L.t("newtask.err.conn")), this.changed();
     this.nextClient++;
     k.cid = `k${Date.now()}-${this.nextClient}`;
+    k.signedIn = undefined;
     k.err = "";
     const dev = this.ntDeviceArg(k.device);
     this.send({ t: "project_clone", address: k.address.trim(), clientId: k.cid, ...(dev ? { device: dev } : {}) });
@@ -978,7 +1002,11 @@ class AppState {
     if (!k?.cid || f.clientId !== k.cid) return;
     k.cid = undefined;
     if (!f.ok || !f.place) {
-      k.err = this.cloneWhy(f.reason, f.message, this.ntComputerName(k.device));
+      const name = this.ntComputerName(k.device);
+      k.failedAccess = (f.reason === "no_access" || f.reason === "not_found") && ntGitHubish(k.address);
+      // D272: a GitHub repository this computer can't reach for want of a sign-in: say the way in.
+      k.err = k.failedAccess && this.ntGh(k.device)?.state !== "signed_in" ? this.L.t("newtask.clone.err.no_access.gh", name) : this.cloneWhy(f.reason, f.message, name);
+      if (k.failedAccess) this.ntGhStatus(k.device);
       return this.changed();
     }
     const p = f.place;
@@ -1023,7 +1051,8 @@ class AppState {
 
   /** D203: the folder list again, from the browser (an agent waiting for a folder keeps waiting). */
   ntBrowseBack() {
-    this.nt.list = "place";
+    // D272: the browser and the clone field are reached through 加一个文件夹…: back goes there.
+    this.nt.list = this.nt.add ? "add" : "place";
     this.changed();
   }
 
@@ -1052,6 +1081,223 @@ class AppState {
   /** D203: the name of the computer being looked through. */
   ntBrowseName(): string {
     return this.ntComputerName(this.nt.browse?.device ?? "");
+  }
+
+  /** D272: 加一个文件夹… on that computer: its three ways (new folder, choose one there, clone) in place of the list. */
+  ntAddOpen(device: string) {
+    const nt = this.nt;
+    nt.add = { device };
+    nt.list = "add";
+    nt.branchOpen = nt.computerOpen = false;
+    nt.err = "";
+    this.changed();
+  }
+
+  /** D272: back to that computer's three ways (from the new folder, the browser or the clone field). */
+  ntAddBack() {
+    this.nt.list = this.nt.add ? "add" : "place";
+    this.changed();
+  }
+
+  /** D272: that computer's <Ducter folder>/projects, as ~/… (where a new folder or a clone goes). */
+  ntProjectsPath(device: string): string {
+    const folder = this.ntFolder(device)?.path;
+    return folder ? tilde(folder.replace(/\/+$/, "") + "/projects") : "~/ducter/projects";
+  }
+
+  /** D272: 在 {computer} 上新建一个文件夹: the name field in place of the list. */
+  ntNewOpen(device: string) {
+    const nt = this.nt;
+    nt.newFolder = { device, name: nt.newFolder?.device === device && !nt.newFolder.cid ? nt.newFolder.name : "" };
+    nt.list = "newfolder";
+    nt.err = "";
+    this.changed();
+  }
+
+  ntNewInput(v: string) {
+    const n = this.nt.newFolder;
+    if (!n || n.cid) return;
+    n.name = v;
+    n.err = "";
+    this.changed();
+  }
+
+  /** D272: that computer makes the folder in its Ducter folder; the home adds it; it is the card's place. */
+  ntNewGo() {
+    const n = this.nt.newFolder;
+    if (!n || n.cid || !n.name.trim()) return;
+    if (this.status !== "connected" || !this.S.welcomed) return (n.err = this.L.t("newtask.err.conn")), this.changed();
+    this.nextClient++;
+    n.cid = `n${Date.now()}-${this.nextClient}`;
+    n.err = "";
+    const dev = this.ntDeviceArg(n.device);
+    this.send({ t: "project_new", name: n.name.trim(), clientId: n.cid, ...(dev ? { device: dev } : {}) });
+    this.changed();
+  }
+
+  newFolderDone(f: Extract<ServerFrame, { t: "project_new_result" }>) {
+    const nt = this.nt;
+    const n = nt.newFolder;
+    if (!n?.cid || f.clientId !== n.cid) return;
+    n.cid = undefined;
+    if (!f.ok || !f.place) {
+      const name = this.ntComputerName(n.device);
+      n.err =
+        f.reason === "invalid"
+          ? this.L.t("newtask.new.err.invalid")
+          : f.reason === "offline"
+            ? this.L.t("newtask.find.offline", name)
+            : f.reason === "old"
+              ? this.L.t("newtask.old", name)
+              : this.L.t("newtask.new.err.failed", (f.message || "").replace(/[.。]\s*$/, ""));
+      return this.changed();
+    }
+    const p = f.place;
+    nt.newFolder = nt.add = undefined;
+    this.pickPlace(p);
+    if (p.place.kind === "repo" || p.place.kind === "folder") nt.prefill = p.place;
+  }
+
+  /** D272: what that computer last said of its GitHub sign-in (undefined: not heard yet). */
+  ntGh(device: string): GitLoginState | undefined {
+    return this.nt.gh?.[this.ntDeviceArg(device) ?? ""];
+  }
+
+  /** D272: ask where that computer stands with GitHub. */
+  ntGhStatus(device: string) {
+    this.nextClient++;
+    const dev = this.ntDeviceArg(device);
+    this.send({ t: "git_login", action: "status", clientId: `g${Date.now()}-${this.nextClient}`, ...(dev ? { device: dev } : {}) });
+  }
+
+  /** D272: 在 {computer} 上登录 GitHub: the sign-in panel, and that computer's gh starts GitHub's device flow. */
+  ntGhStart(device: string) {
+    const nt = this.nt;
+    if (this.status !== "connected" || !this.S.welcomed) {
+      if (nt.clone) nt.clone.err = this.L.t("newtask.err.conn");
+      return this.changed();
+    }
+    this.nextClient++;
+    nt.ghPanel = { device, cid: `g${Date.now()}-${this.nextClient}` };
+    nt.list = "gh";
+    const dev = this.ntDeviceArg(device);
+    this.send({ t: "git_login", action: "start", clientId: nt.ghPanel.cid, ...(dev ? { device: dev } : {}) });
+    this.changed();
+  }
+
+  /** D272: the token fallback, shown or hidden; the token typed is never kept past sending it. */
+  ntGhTokenMode(on: boolean) {
+    const g = this.nt.ghPanel;
+    if (!g) return;
+    g.token = on;
+    g.tokenText = "";
+    g.err = "";
+    this.changed();
+  }
+
+  ntGhTokenInput(v: string) {
+    const g = this.nt.ghPanel;
+    if (!g) return;
+    g.tokenText = v;
+    g.err = "";
+    this.changed();
+  }
+
+  /** D272: the pasted token goes to gh on that computer, once; the field is cleared at once. */
+  ntGhTokenGo() {
+    const g = this.nt.ghPanel;
+    const tok = (g?.tokenText ?? "").trim();
+    if (!g || !tok) return;
+    this.nextClient++;
+    g.cid = `g${Date.now()}-${this.nextClient}`;
+    g.tokenText = "";
+    g.err = "";
+    g.code = undefined;
+    const dev = this.ntDeviceArg(g.device);
+    this.send({ t: "git_login", action: "token", token: tok, clientId: g.cid, ...(dev ? { device: dev } : {}) });
+    this.changed();
+  }
+
+  /** D272: stop the sign-in (its gh is stopped there) and go back to the clone field. */
+  ntGhCancel() {
+    const nt = this.nt;
+    const g = nt.ghPanel;
+    if (g) {
+      const dev = this.ntDeviceArg(g.device);
+      if (g.code) this.send({ t: "git_login", action: "cancel", clientId: g.cid, ...(dev ? { device: dev } : {}) });
+    }
+    nt.ghPanel = undefined;
+    nt.list = nt.clone ? "clone" : "place";
+    this.changed();
+  }
+
+  /** D272: GitHub's device page, in a new tab (the code can be entered on any device). */
+  ntGhOpen() {
+    const g = this.nt.ghPanel;
+    window.open(g?.url || "https://github.com/login/device", "_blank", "noopener");
+  }
+
+  /** D272: copy the one-time code (with the old way where the Clipboard API isn't there, research/83). */
+  async ntGhCopy() {
+    const g = this.nt.ghPanel;
+    if (!g?.code) return;
+    if (await copy(g.code)) {
+      g.copied = true;
+      this.changed();
+      setTimeout(() => ((g.copied = false), this.changed()), 1600);
+    }
+  }
+
+  /** D272: an answer about a computer's GitHub sign-in: kept for its line; the sign-in panel moves on. */
+  ghState(f: Extract<ServerFrame, { t: "git_login_state" }>) {
+    const nt = this.nt;
+    const key = f.device ?? "";
+    if (f.state === "signed_in" || f.state === "signed_out" || f.state === "no_gh") nt.gh = { ...(nt.gh ?? {}), [key]: { state: f.state, ...(f.account ? { account: f.account } : {}) } };
+    const g = nt.ghPanel;
+    if (!g || f.clientId !== g.cid) return this.changed();
+    const name = this.ntComputerName(g.device);
+    switch (f.state) {
+      case "code":
+        g.code = f.code;
+        g.url = f.url || "https://github.com/login/device";
+        g.err = "";
+        g.nogh = false;
+        break;
+      case "signed_in": {
+        nt.ghPanel = undefined;
+        const k = nt.clone;
+        nt.list = k ? "clone" : "place";
+        if (k) {
+          k.signedIn = this.L.t("newtask.gh.done", name, f.account ?? "");
+          k.err = "";
+          // The clone that failed for want of this sign-in goes again by itself.
+          if (k.failedAccess) (k.failedAccess = false), this.ntCloneGo();
+        }
+        break;
+      }
+      case "cancelled":
+        nt.ghPanel = undefined;
+        nt.list = nt.clone ? "clone" : "place";
+        break;
+      case "signed_out":
+        break; // a socket that came back before the code: the panel waits
+      default:
+        g.code = undefined;
+        g.nogh = f.state === "no_gh";
+        g.err =
+          f.state === "no_gh"
+            ? this.L.t("newtask.gh.nogh", name)
+            : f.state === "offline"
+              ? this.L.t("newtask.find.offline", name)
+              : f.state === "old"
+                ? this.L.t("newtask.old", name)
+                : f.reason === "expired" || f.reason === "denied"
+                  ? this.L.t(`newtask.gh.err.${f.reason}`)
+                  : f.reason === "bad_token"
+                    ? this.L.t("newtask.gh.err.bad_key", (f.message || "").replace(/[.。]\s*$/, ""))
+                    : this.L.t("newtask.gh.err.failed", (f.message || "").replace(/[.。]\s*$/, ""));
+    }
+    this.changed();
   }
 
   /** D202: the Model and Effort rows of an agent: its models, which is chosen, and the effort. */
@@ -1123,7 +1369,7 @@ class AppState {
   /** D202: the folder list closes (or opens): an agent waiting for a folder stops waiting. */
   togglePlaces() {
     const nt = this.nt;
-    nt.list = nt.list === "place" || nt.list === "browse" || nt.list === "clone" ? "" : "place";
+    nt.list = ["place", "browse", "clone", "add", "newfolder", "gh"].includes(nt.list ?? "") ? "" : "place";
     nt.pending = nt.placeOnly = undefined;
     nt.branchOpen = nt.computerOpen = false;
     this.changed();

@@ -371,8 +371,9 @@ going when MacBook closes*, *Needs your signed-in taobao.com*, *Only MacBook has
   it brings that computer along. For a folder on hel, that means the same project on the MacBook
   (the same repository, with its branch), or, when the MacBook has no copy, a folder you pick
   there. The projects in each computer's Ducter folder (`~/ducter/projects`) are in the folder
-  list; **Find a folder…** looks through any of your computers' folders, and **Add from a Git
-  address…** clones a repository onto any of them, from your phone too.
+  list; **Add a folder…** for each computer makes a new folder there, chooses one already there,
+  or clones a repository onto it, from your phone too. A computer signs in to GitHub itself:
+  see [How do I sign in to GitHub on my server?](faq.md#how-do-i-sign-in-to-github-on-my-server).
 - **About to close your laptop?** Say *"I'm closing my laptop"*, or choose **Move before closing**
   on its card in Devices. One card says what moves to a computer that stays awake and what can
   only run on the laptop; **Move them** is what happens if you don't answer, after a minute.

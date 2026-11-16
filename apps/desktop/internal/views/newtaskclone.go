@@ -21,6 +21,9 @@ import (
 type ntClone struct {
 	device, address, cid, err string
 	focus                     bool
+	// access: it failed for access to a GitHub repository (D272: the
+	// sign-in is offered, and the clone goes again once signed in).
+	access bool
 }
 
 // ntFolder is what that computer said of its Ducter folder on the last
@@ -68,36 +71,6 @@ func (a *App) reachable(only string, old bool) []protocol.DeviceView {
 		out = append(out, protocol.DeviceView{ID: "local", Name: a.workHome(), Home: true})
 	}
 	return out
-}
-
-// cloneRows are 从 Git 地址加… rows, one per computer that can clone
-// (this Mac too: the clone is git, not a picker).
-func (a *App) cloneRows(c *ui.Context, only string, named bool) {
-	t := a.T
-	for _, d := range a.reachable(only, false) {
-		d := d
-		label := a.L.T("newtask.clone")
-		if named {
-			label += " · " + d.Name
-		}
-		if a.menuRow(c, "nt-clone:"+d.ID, label, false, false, func() {
-			a.glyph(c, 16, drawPlus(t.InkSoft))
-			ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-				ui.Text(c, a.L.T("newtask.clone")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
-				if named {
-					ui.Text(c, a.L.T("newtask.find.on", d.Name)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
-				}
-			})
-		}) {
-			addr := ""
-			if a.nt.clone != nil {
-				addr = a.nt.clone.address
-			}
-			a.nt.clone = &ntClone{device: d.ID, address: addr, focus: true}
-			a.nt.browse = nil
-			a.nt.err, a.nt.errEmpty = "", false
-		}
-	}
 }
 
 // oldRows say, greyed, which computer needs an update before it can look
@@ -161,7 +134,15 @@ func (a *App) cloneDone(r protocol.ServerFrame) {
 	}
 	k.cid = ""
 	if !r.OK || r.Place == nil {
-		k.err = a.cloneWhy(r.Reason, r.Message, a.computerName(k.device))
+		name := a.computerName(k.device)
+		k.err = a.cloneWhy(r.Reason, r.Message, name)
+		// D272: no access to a GitHub repository and no GitHub sign-in there:
+		// say so, and offer the sign-in (the clone goes again after it).
+		k.access = (r.Reason == "no_access" || r.Reason == "not_found") && githubish(k.address)
+		if s := a.ghState(k.device); k.access && (s == nil || s.State != "signed_in") {
+			k.err = a.L.T("newtask.clone.err.no_access.gh", name)
+			a.askGitHub(k.device)
+		}
 		return
 	}
 	nt.clone = nil
@@ -184,13 +165,15 @@ func (a *App) cloneField(c *ui.Context) {
 		Height(t.ControlMD).Padding(0, t.S3).Radius(t.RadiusMD).Background(t.Bg).Border(1, t.LineSoft).
 		Font(t.Mono).FontSize(t.MonoSM).ReadOnly(busy).Margin(t.S1, t.S2, 0, t.S2).OnSubmit(func() { a.startClone() })
 	if in.Changed() {
-		k.err = ""
+		k.err, k.access = "", false
+		a.nt.ghDone = ""
 	}
 	if k.focus {
 		in.Focus()
 		k.focus = false
 	}
 	ui.Text(c.Key("nt-clone-where"), a.L.T("newtask.clone.where", into, name)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
+	a.githubLine(c, k)
 	if busy {
 		ui.Row(c.Key("nt-clone-busy")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, t.S3).Children(func() {
 			ui.Spinner(c).Size(12, 12)
@@ -199,13 +182,16 @@ func (a *App) cloneField(c *ui.Context) {
 	}
 	if k.err != "" {
 		ui.Text(c.Key("nt-clone-err"), k.err).FontSize(t.XS).TextColor(t.Failed.Ink).Padding(t.S1, t.S3)
+		if s := a.ghState(k.device); k.access && !busy && (s == nil || s.State == "signed_out") {
+			a.signInButton(c, k.device)
+		}
 	}
-	ui.Box(c.Key("nt-clone-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
-	ui.Row(c.Key("nt-clone-foot")).Gap(t.S2).AlignItems(ui.Center).Padding(0, t.S1).Children(func() {
+	a.panelFoot(c, "nt-clone-foot", func() {
 		if !busy && a.button(c, a.L.T("newtask.find.back"), btnText, t.ControlSM, t.Surface) {
 			a.nt.clone = nil
+			a.nt.add = &ntAdd{device: k.device}
 		}
-		ui.Box(c).Grow(1)
+	}, func() {
 		label := a.L.T("newtask.clone.go")
 		if busy {
 			label = a.L.T("newtask.clone.going")

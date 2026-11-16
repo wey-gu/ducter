@@ -1706,7 +1706,14 @@ type ServerFrame struct {
 	// it is too old to say (task_new_options).
 	DucterFolders []DucterFolderView `json:"ducterFolders,omitempty"`
 	// D204: project_clone_result: the project was already there (same origin).
-	Existed  bool      `json:"existed,omitempty"`
+	// D272: project_new_result too (a folder of that name was there).
+	Existed bool `json:"existed,omitempty"`
+	// D272: git_login_state: Host (github.com), State (signed_in |
+	// signed_out | no_gh | code | failed | cancelled | offline | old),
+	// Account, Code and URL (the one-time code and where to enter it),
+	// Reason (expired | denied | bad_token | failed), Message. Never a token.
+	Account  string    `json:"account,omitempty"`
+	GitHost  string    `json:"host,omitempty"`
 	ClientID string    `json:"clientId,omitempty"`
 	Card     *TaskCard `json:"card,omitempty"`
 	Apps     int       `json:"apps,omitempty"`
@@ -1975,6 +1982,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
+		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb":
 	default:
@@ -2082,6 +2090,27 @@ type DucterFolderView struct {
 	Device string `json:"device"`
 	Path   string `json:"path,omitempty"`
 	Old    bool   `json:"old,omitempty"`
+}
+
+// ProjectNew makes <Ducter folder>/projects/<Name> on that computer and
+// adds it as a project, git or not (D272, 新建一个文件夹). Answered with
+// project_new_result.
+type ProjectNew struct {
+	T        string `json:"t"` // "project_new"
+	Name     string `json:"name"`
+	Device   string `json:"device,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
+}
+
+// GitLogin is one step of a GitHub sign-in on that computer (D272):
+// Action status | start | token | cancel; Token only with token (it goes
+// to that computer's gh, never kept). Answered with git_login_state.
+type GitLogin struct {
+	T        string `json:"t"` // "git_login"
+	Action   string `json:"action"`
+	Device   string `json:"device,omitempty"`
+	Token    string `json:"token,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
 }
 
 // ProjectClone clones a Git address on that computer into its Ducter

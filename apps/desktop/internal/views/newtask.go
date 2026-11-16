@@ -82,6 +82,15 @@ type newTaskState struct {
 	// shows its field instead of the places); a clone in flight outlives
 	// the list closing, and its place is picked when it lands.
 	clone *ntClone
+	// D272: add is the add panel for one computer (new folder, choose,
+	// clone); newf the new-folder field; login a GitHub sign-in on a
+	// computer; gh the last word on each computer's GitHub sign-in (by
+	// devKey); ghDone the line after a sign-in just ended well.
+	add    *ntAdd
+	newf   *ntNew
+	login  *ntLogin
+	gh     map[string]protocol.ServerFrame
+	ghDone string
 	// sending is the clientId of the task_new in flight; err the line under
 	// Start when it didn't open.
 	sending string
@@ -412,6 +421,14 @@ func (a *App) drainNewTask() {
 			a.cloneDone(r)
 			continue
 		}
+		if r.T == "project_new_result" {
+			a.newFolderDone(r)
+			continue
+		}
+		if r.T == "git_login_state" {
+			a.gitLoginState(r)
+			continue
+		}
 		if r.T == "project_add_result" {
 			if r.ClientID == "" || r.ClientID != nt.adding {
 				continue
@@ -659,6 +676,14 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 		if nt.clone != nil && nt.clone.cid == "" {
 			nt.clone = nil
 		}
+		// D272: a sign-in waiting for its code to be entered stays (it goes on there).
+		nt.add, nt.ghDone = nil, ""
+		if nt.newf != nil && nt.newf.cid == "" {
+			nt.newf = nil
+		}
+		if g := nt.login; g != nil && g.phase != "code" && g.phase != "starting" && g.cid == "" {
+			nt.login = nil
+		}
 	}
 	if click {
 		nt.shut("place")
@@ -685,6 +710,14 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 	if nt.clone != nil {
 		title = a.L.T("newtask.clone.title", a.computerName(nt.clone.device))
 	}
+	switch {
+	case nt.login != nil:
+		title = a.L.T("newtask.gh.title", a.computerName(nt.login.device))
+	case nt.newf != nil:
+		title = a.L.T("newtask.new.title", a.computerName(nt.newf.device))
+	case nt.add != nil:
+		title = a.L.T("newtask.add.title", a.computerName(nt.add.device))
+	}
 	// D203: the repos computers reported fill the list after the used and
 	// added ones, up to 12 rows (all of one computer's while an agent
 	// waits there); 找一个文件夹… finds any other.
@@ -695,6 +728,17 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 		}
 	}
 	a.listPanel(c, e, &nt.placeOpen, title, 360, func() {
+		switch {
+		case nt.login != nil:
+			a.loginPanel(c)
+			return
+		case nt.newf != nil:
+			a.newFolderField(c)
+			return
+		case nt.add != nil:
+			a.addPanel(c)
+			return
+		}
 		if nt.clone != nil {
 			a.cloneField(c)
 			return
@@ -734,30 +778,18 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 		}
 		if shownN == 0 {
 			// D203, D204: nothing there yet (a first run): say so, and offer the ways
-			// to get one (this Mac's picker, Find a folder…, Add from a Git address…),
-			// never a bare No folder.
+			// to get one (加一个文件夹… on each computer, D272), never a bare No folder.
 			empty := a.L.T("newtask.empty")
 			if only != "" {
 				empty = a.L.T("newtask.find.empty", onlyName)
 			}
 			ui.Text(c.Key("nt-place-empty"), empty).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
 		}
-		mode, dev := a.folderAdd()
-		// Adding a folder there: only where the folder picked would be on that computer.
-		if only != "" && !((mode == "worker" && dev == only) || (mode == "here" && a.computerOf(only) != nil && a.computerOf(only).Home)) {
-			mode = ""
-		}
+		mode, _ := a.folderAdd()
 		ui.Box(c.Key("nt-add-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
-		if mode == "here" || mode == "worker" {
-			if a.menuRow(c, "nt-add-folder", a.L.T("newtask.addfolder"), false, false, func() {
-				a.glyph(c, 16, drawPlus(t.InkSoft))
-				ui.Text(c, a.L.T("newtask.addfolder")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
-			}) {
-				a.addFolder()
-			}
-		}
-		named := a.findRows(c, only)
-		a.cloneRows(c, only, named || len(a.reachable(only, false)) > 1)
+		// D272: one 加一个文件夹… per computer that can take a folder; macOS's own
+		// picker only behind this Mac's (the home's opens the home's folders).
+		a.addRows(c, only)
 		a.oldRows(c, only)
 		if only != "" {
 			// No folder on that computer works for the agent too.

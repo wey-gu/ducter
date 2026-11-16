@@ -126,7 +126,7 @@ test("a repo place says whether it has a remote; a failed PR stays on the task",
 test("open_pr without the GitHub CLI says exactly how to fix it, and pushes nothing", async () => {
   const p = repoWithTaskBranch();
   const r = await openDraftPr(p, { gh: join(dir, "no-such-gh") });
-  expect(r).toEqual({ ok: false, message: "GitHub CLI isn't installed. Install it (brew install gh), run gh auth login, then try again." });
+  expect(r).toEqual({ ok: false, message: "GitHub CLI isn't installed on this computer. Install it (macOS: brew install gh; Ubuntu: sudo apt install gh), run ducter git login here, then try again." });
 });
 
 test("open_pr with a signed-in gh pushes the branch and logs an outside effect", async () => {

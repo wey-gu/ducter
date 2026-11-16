@@ -121,6 +121,10 @@ export interface NewTaskFrames {
   browse?(device: string | undefined, path: string | undefined): Promise<Omit<Extract<ServerFrame, { t: "folder_browse_result" }>, "t" | "clientId" | "device">>;
   /** D204: clone a Git address on that computer (the home's own without device) and add it as a project. */
   clone?(device: string | undefined, address: string): Promise<Omit<Extract<ServerFrame, { t: "project_clone_result" }>, "t" | "clientId" | "device">>;
+  /** D272: make a folder in that computer's Ducter folder and add it as a project. */
+  newFolder?(device: string | undefined, name: string): Promise<Omit<Extract<ServerFrame, { t: "project_new_result" }>, "t" | "clientId" | "device">>;
+  /** D272: a GitHub sign-in step on that computer (git-login.ts); wait: the end of the one in flight. */
+  gitLogin?(device: string | undefined, action: "status" | "start" | "wait" | "token" | "cancel", token?: string): Promise<import("@ducter/protocol").GitLoginState>;
 }
 
 /** What the client frames for work over time do (core.ts wires them to waiters, untils, routines). */
@@ -1002,6 +1006,28 @@ export function createWsHandler(deps: WsDeps) {
           }
         }
         send(ws, { t: "project_clone_result", ...cid, ...dev, ...(await pending) });
+        return;
+      }
+      case "project_new": {
+        const cid = typeof f.clientId === "string" && f.clientId ? { clientId: f.clientId } : {};
+        const device = typeof f.device === "string" && f.device && f.device !== "local" ? f.device : undefined;
+        const dev = device ? { device } : {};
+        if (!deps.newTask?.newFolder) return send(ws, { t: "project_new_result", ok: false, ...cid, ...dev, reason: "failed", message: "Folders can't be made here." });
+        send(ws, { t: "project_new_result", ...cid, ...dev, ...(await deps.newTask.newFolder(device, typeof f.name === "string" ? f.name : "")) });
+        return;
+      }
+      case "git_login": {
+        // D272: the token (action token) goes to that computer's gh and nowhere else: never logged.
+        const cid = typeof f.clientId === "string" && f.clientId ? { clientId: f.clientId } : {};
+        const device = typeof f.device === "string" && f.device && f.device !== "local" ? f.device : undefined;
+        const head = { t: "git_login_state" as const, host: "github.com" as const, ...cid, ...(device ? { device } : {}) };
+        const g = deps.newTask?.gitLogin;
+        if (!g) return send(ws, { ...head, state: "failed", reason: "failed", message: "GitHub sign-in isn't available here." });
+        const action = f.action === "start" || f.action === "token" || f.action === "cancel" ? f.action : "status";
+        const first = await g(device, action, action === "token" && typeof f.token === "string" ? f.token : undefined);
+        send(ws, { ...head, ...first });
+        // A sign-in waiting for its code to be entered: its end goes to the same socket.
+        if (action === "start" && first.state === "code") send(ws, { ...head, ...(await g(device, "wait")) });
         return;
       }
       case "folder_browse": {

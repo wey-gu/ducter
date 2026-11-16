@@ -583,6 +583,37 @@ note and a `Dn`) before it is built.
 - [ ] **Linux check:** reflink on btrfs/xfs and the network/external mount detection were
       written from the mount table, not run on Linux. Trigger: the first Linux server user.
 
+## Folders anywhere and GitHub sign-in (D272, research/87)
+
+- [ ] **A live GitHub sign-in.** Only a fake gh has run the flow. Run 在 {computer} 上登录 GitHub
+      once against a scratch Linux server with a throwaway GitHub account (never this Mac's own
+      gh), check the code and link reach the phone, `gh auth setup-git` lands in its git config,
+      and a private clone then works; also `ducter git login` over SSH. Trigger: the next server
+      session, or the first report of a sign-in that doesn't finish.
+- [ ] **Sandboxed task environments.** `taskCredentials({kind: "sandbox"})` exists and is tested,
+      not wired: no sandbox runs tasks yet. When one does: mint a token scoped to the task's repo
+      (a GitHub App installation token or a fine-grained key the person approves, never the
+      person's own gh token copied in), pass it through the sandbox's starter, mount nothing of
+      `$HOME`, make sure gh is inside, and expire the token with the task. SSH-only remotes need
+      an agent forwarded per task or are refused there. Trigger: the first sandbox (container or
+      separate user) for tasks.
+- [ ] **Install gh in one tap.** Today the no-gh line says what to run (`brew install gh`,
+      `sudo apt install gh`). Default: a D225-style step on the home that uses the first route
+      present without sudo (Homebrew; the GitHub release tarball into `~/.local/bin`). Trigger:
+      a second person meets the no-gh line.
+- [ ] **GitHub Enterprise and other hosts.** Only github.com is offered; GitLab and the rest keep
+      "sign in to git on {computer}". Trigger: the first person whose repositories live elsewhere.
+- [ ] **A typed path outside the home folder** in Choose a folder on {computer}. D203's browser
+      stays inside ~ (links resolved first); a field for an absolute path (e.g. `/srv/data`) with
+      the same checks is the default. Trigger: the first folder someone needs outside ~.
+- [ ] **Sign in from Devices too.** Today the sign-in lives in New task's clone field and the
+      CLI; a push or draft PR that finds no sign-in names them. Default: the computer's card in
+      Devices shows its GitHub line with the same button. Trigger: a push failing for sign-in
+      more than once.
+- [ ] **A computer's new plain folders on other clients.** A computer's projects listed by
+      `repos` are its git repos in `projects/`; a new plain folder is listed because it was
+      added (projects.json). Trigger: a folder made on one home not showing after a reinstall.
+
 ## Autofill (D191, `design/autofill.md`)
 
 - [ ] **The author's review of D191** (draft): the three stores, never storing the security code,

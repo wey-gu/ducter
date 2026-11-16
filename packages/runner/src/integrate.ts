@@ -145,8 +145,8 @@ export async function openDraftPr(place: Place, opts: { gh?: string } = {}): Pro
     return {
       ok: false,
       message: missing
-        ? "GitHub CLI isn't installed. Install it (brew install gh), run gh auth login, then try again."
-        : "GitHub CLI isn't signed in. Run gh auth login in a terminal, then try again.",
+        ? "GitHub CLI isn't installed on this computer. Install it (macOS: brew install gh; Ubuntu: sudo apt install gh), run ducter git login here, then try again."
+        : "This computer isn't signed in to GitHub. Run ducter git login here, or Sign in to GitHub when you clone in New task, then try again.",
     };
   }
   const remote = await git(p.repoPath, ["remote", "get-url", "origin"]);

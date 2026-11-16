@@ -92,8 +92,8 @@ on the Mac (same origin, `PlaceChoice.remote`; when neither place knows an origi
 the Mac, and the card then moves to that copy (the same branch when it has one; for a repo the Mac
 reported, once its branches arrive, D203); else **文件夹要在
 Macbook Pro M3 上 / The folder must be on Macbook Pro M3**, and picking it opens the folder list on
-the Mac's places only: the projects in the Mac's Ducter folder, on the Mac itself **添加文件夹…**,
-**选择文件夹…**, **从 Git 地址添加…** and **不用文件夹** there; with none listed it says **还没有 Macbook
+the Mac's places only: the projects in the Mac's Ducter folder, **添加文件夹…** for the Mac (D272) and
+**不用文件夹** there; with none listed it says **还没有 Macbook
 Pro M3 上的文件夹。/ No folders on Macbook Pro M3 yet.** first (D203). A folder there (picked,
 found or cloned) picks the agent. For No folder it moves the computer, as D157.
 
@@ -112,9 +112,32 @@ files (origin, default branch; no git process). A worker answers the home's `rep
 none. They are listed after the folders tasks used and the projects added, as `found`; a found
 repo's branches are read when it is picked.
 
-**Adding from a Git address (D204).** **从 Git 地址添加… / Add from a Git address…**, one row per
-computer that can (the home and each reachable worker; on the Mac this Mac too), opens a field in
-place of the list: **从 Git 地址添加到 {computer} / Add from a Git address on {computer}**, the address
+**Adding a folder anywhere (D272).** A project is any folder on the computer that does the work;
+git is optional. After the folders used and added, the list has one **添加文件夹… / Add a folder…**
+per computer that can take one (the home, each reachable worker, and on the Mac this Mac when it is
+the home or a worker), with **在 {computer} 上 / on {computer}** under it when there are two or more.
+It opens, in place of the list, **添加文件夹到 {computer} / Add a folder on {computer}** with three ways,
+in this order:
+
+| Way | Second line | What it does |
+|---|---|---|
+| **在 {computer} 上新建一个文件夹 / New folder on {computer}** | **放在 {path} 里，不用 git / Goes in {path}; no git needed** | a name (**名字，比如：发票、旅行计划**), **会放在 {path}/{name}。**, **新建 / Create**; that computer makes `<Ducter folder>/projects/<name>` and the home adds it as a plain-folder project (`project_new`, worker op `newFolder`; one folder name, never a path) |
+| **选 {computer} 上已有的文件夹 / Choose a folder on {computer}** | **从主文件夹（~）一层层找** (this Mac: **用访达选 / Pick it in Finder**) | the folder browser below; macOS's picker only for this Mac itself |
+| **从 Git 地址克隆 / Clone from a Git address** | **用 {computer} 自己的 git 登录** | the clone field below |
+
+The clone field asks where that computer stands with GitHub and, for a GitHub address, says who it
+is signed in as, or offers **在 {computer} 上登录 GitHub / Sign in to GitHub on {computer}**: GitHub's
+one-time code and link shown in the sheet (**在任何设备上打开这个链接** · **输入这串码** with Copy),
+**在等你在 GitHub 上确认…**, **改用密钥 / Use a key instead** (a pasted key, masked, sent once to that
+computer's gh), **取消**. That computer runs `gh auth login --web` with no terminal, then
+`gh auth setup-git`; a clone that failed for access goes again once signed in. No gh there: the
+line says what to install, with **再看看 / Check again**. `ducter git login` is the same on the
+computer itself (research/87). Every panel's foot keeps room under its raised button (the clipped
+克隆 the author found).
+
+**Cloning from a Git address (D204, D272).** **从 Git 地址克隆 / Clone from a Git address**, in the
+add panel, opens a field in
+place of the list: **从 Git 地址克隆到 {computer} / Clone from a Git address on {computer}**, the address
 (**https://…、git@…:主人/仓库，或 主人/仓库 / https://…, git@…:owner/repo, or owner/repo**), where it
 goes and with whose sign-in (**会放在 ~/ducter/projects，用 {computer} 自己的 git 登录克隆。**, the real
 path from that computer), **返回 / Back** and **克隆 / Clone**. That computer runs `git clone` into its
@@ -122,19 +145,19 @@ path from that computer), **返回 / Back** and **克隆 / Clone**. That compute
 `<repo>-2`), never prompting, at most 10 minutes; meanwhile **在克隆…大的仓库要几分钟。/ Cloning… A
 big repository takes a few minutes.** Done, it is added there and is the card's place (picking the
 agent that waited). Failures are one line: not a Git address; not found or no access; no access
-(sign in to git on that computer); can't reach the address; over 10 minutes; that computer away; or
+(sign in to git on that computer; for GitHub, Sign in to GitHub there, D272); can't reach the address; over 10 minutes; that computer away; or
 git's own line. The address is checked strictly before git sees it (https, ssh, scp-like with a
 user, `host/owner/repo`, GitHub `owner/repo`; never an option, `ext::`, `file://`, a local path or
 credentials), passed after `--`, https and ssh only (`clone.ts`).
 
-**Finding a folder (D203).** **选择文件夹… / Find a folder…** looks through a computer's folders
+**Choosing a folder there (D203, D272).** **选 {computer} 上已有的文件夹 / Choose a folder on {computer}** looks through a computer's folders
 one level at a time, from its home folder (~): the head **{computer} 上的文件夹 / Folders on
 {computer}** and the path, **上一层 / Up one level**, the subfolders with repos first (the branch
 glyph) then by name; tap one to go in. **用这个文件夹 / Use this folder** (not at ~ itself) adds it
 there as a project, as 添加文件夹 does, so it is listed next time, and makes it the card's place
-(picking the agent that waited for a folder there); **返回 / Back** returns to the list. The phone and
+(picking the agent that waited for a folder there); **返回 / Back** returns to the add panel. The phone and
 the browser offer it for the home and each reachable worker; the Mac for every computer but this Mac,
-which keeps macOS's own picker. Listing is confined to that computer's home folder: the path and each
+whose row opens macOS's own picker. Listing is confined to that computer's home folder: the path and each
 link are resolved first and anything outside is refused or left out; hidden folders are skipped;
 file names are never sent; at most 200 folders (**只列出了前 200 个。/ Showing the first 200.**).
 
@@ -147,15 +170,14 @@ with **默认**, which sends nothing); no row when the model takes none. Unread 
 an old worker): the tier table's models, no effort row. The last model and effort are remembered
 per agent on this client.
 
-**Adding a folder (D186, D197).** 添加文件夹… opens macOS's folder picker. Where the window's
+**This Mac's folders (D186, D197, D272).** Choose a folder on this Mac opens macOS's folder picker. Where the window's
 Ducter runs on this Mac, the folder is the home's own. Where it runs elsewhere (a server) and this
 Mac does tasks for it (Settings › 住在哪儿 › 让这台 Mac 也替 {home} 做事), the folder is this Mac's:
 `project_add` carries this Mac's worker id and the home reads the folder through the worker
 (`folderInfo`). Where it runs elsewhere and this Mac doesn't, the row is greyed with one line:
 **在设置 › 住在哪儿打开「让这台 Mac 也替 {home} 做事」，就能加这台 Mac 上的文件夹。/ To add a folder on
-this Mac, turn on "Let this Mac do tasks for {home}" in Settings › Where it lives.** The phone and
-the browser (and the Mac, for another computer) add one with 选择文件夹… (D203), or clone one
-with 从 Git 地址添加… (D204).
+this Mac, turn on "Let this Mac do tasks for {home}" in Settings › Where it lives.** Every other
+computer's folders are added through its own 添加文件夹… (D272), never this Mac's picker.
 
 **Which computer (D197).** Only when the listed places span more than one computer does each row's
 second line end in **· {computer}**; the list keeps one order, most recent first. **~** is the home

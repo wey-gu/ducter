@@ -341,10 +341,21 @@ func TestNewTaskAddFolder(t *testing.T) {
 	app.Receive(newTaskOptions(i18n.EN))
 	tt.Frame()
 	click(t, tt, "Where · ducter")
-	if !tt.HasText(app.L.T("newtask.addfolder")) {
+	if !tt.HasText(app.L.T("newtask.add")) {
 		t.Fatalf("no Add a folder… in Where's list: %q", tt.Texts())
 	}
-	click(t, tt, app.L.T("newtask.addfolder"))
+	// D272: Add a folder… offers New folder, Choose and Clone; Choose on this Mac is macOS's picker.
+	click(t, tt, app.L.T("newtask.add"))
+	if app.nt.add == nil {
+		t.Fatalf("no add panel: %+v", app.nt)
+	}
+	home := app.computerName(app.nt.add.device)
+	for _, s := range []string{app.L.T("newtask.new", home), app.L.T("newtask.choose", home), app.L.T("newtask.clone"), app.L.T("newtask.choose.finder")} {
+		if !tt.HasText(s) {
+			t.Errorf("the add panel has no %q: %q", s, tt.Texts())
+		}
+	}
+	click(t, tt, app.L.T("newtask.choose", home))
 	add, ok := lastFrame[protocol.ProjectAdd](sent)
 	if !ok || add.Path != "/Users/someone/dev/notes" || add.ClientID == "" {
 		t.Fatalf("project_add %+v", add)
@@ -418,7 +429,21 @@ func TestNewTaskAddFolderOnThisMacForAHomeElsewhere(t *testing.T) {
 				if tt.HasText(why) {
 					t.Errorf("%s: the off line shows with the worker on", lang)
 				}
-				click(t, tt, L.T("newtask.addfolder"))
+				// D272: one Add a folder… per computer. The server's opens the server's
+				// folders (never this Mac's picker); this Mac's opens the picker.
+				click(t, tt, L.T("newtask.add")+" · Hetzner Server")
+				newTaskShot(t, tt, "card-add-panel-home-"+string(lang))
+				if tt.HasText(L.T("newtask.choose.finder")) {
+					t.Errorf("%s: the server's add panel offers Finder: %q", lang, tt.Texts())
+				}
+				click(t, tt, L.T("newtask.choose", "Hetzner Server"))
+				if b, ok := lastFrame[protocol.FolderBrowse](sent); !ok || b.Device != "" || picked != "" {
+					t.Fatalf("%s: choosing on the server looks through the server: %+v (picker asked: %q)", lang, b, picked)
+				}
+				click(t, tt, L.T("newtask.find.back"))
+				click(t, tt, L.T("newtask.find.back"))
+				click(t, tt, L.T("newtask.add")+" · Macbook Pro M3")
+				click(t, tt, L.T("newtask.choose", "Macbook Pro M3"))
 				add, ok := lastFrame[protocol.ProjectAdd](sent)
 				if !ok || add.Path != "/Users/weyl/dev/ducter" || add.Device != "dev_mac" || add.ClientID == "" || picked == "" {
 					t.Fatalf("%s: project_add %+v (picker asked: %q)", lang, add, picked)

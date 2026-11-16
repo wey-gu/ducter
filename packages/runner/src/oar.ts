@@ -24,6 +24,7 @@ import type { Runtime, Session, SessionOptions, McpServer } from "@botiverse/oar
 import { Normalizer } from "./normalize.ts";
 import { bridgeCommand, writeBridgeTarget } from "./mcp-bridge.ts";
 import { childEnvOverlay } from "./child-env.ts";
+import { taskCredentials } from "./task-credentials.ts";
 import { CODEX_NATIVE_MCP, CODEX_NATIVE_PLUGINS } from "@ducter/protocol/src/native-browser.ts";
 
 export type { HarnessId };
@@ -256,10 +257,17 @@ export function harnessKey(dataDir: string, name: string, env: Record<string, st
 
 export { readEnvFile };
 
-/** The env a harness process gets (D102): the allowlist, its own keys, then Ducter's explicit vars. */
-function harnessEnv(h: HarnessId, ctx: { env?: Record<string, string | null>; dataDir: string; inherited?: Record<string, string | undefined> }, explicit?: Record<string, string | null>): Record<string, string | null> {
+/**
+ * The env a harness process gets (D102): the allowlist, its own keys, the git/GitHub route
+ * (task-credentials.ts, D272), then Ducter's explicit vars.
+ */
+export function harnessEnv(h: HarnessId, ctx: { env?: Record<string, string | null>; dataDir: string; inherited?: Record<string, string | undefined> }, explicit?: Record<string, string | null>): Record<string, string | null> {
   const grants = h === "codex" ? codexKeyNames(readCodexConfig(ctx.env ?? {})) : [];
-  return childEnvOverlay(h, { inherited: ctx.inherited ?? process.env, overlay: ctx.env, keys: readKeys(ctx.dataDir), grants, explicit: { OO_CONFIG_DIR: ooSignedOut(ctx.dataDir), ...explicit } });
+  const inherited = ctx.inherited ?? process.env;
+  const seen: Record<string, string | undefined> = { ...inherited };
+  for (const [k, v] of Object.entries(ctx.env ?? {})) seen[k] = v ?? undefined;
+  const git = taskCredentials({ kind: "home" }, seen).env;
+  return childEnvOverlay(h, { inherited, overlay: ctx.env, keys: readKeys(ctx.dataDir), grants, explicit: { ...git, OO_CONFIG_DIR: ooSignedOut(ctx.dataDir), ...explicit } });
 }
 
 /**

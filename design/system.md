@@ -119,6 +119,32 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
   - Claude Code and Codex sign in from their own stored logins (Keychain or
     `~/.claude/.credentials.json`; `CODEX_HOME/auth.json`); the live task test passes on both.
   - A task no longer inherits tokens such as `GITHUB_TOKEN` from the shell Ducter started in.
+- **What a task inherits for git and GitHub is decided in one place** (D272,
+  `packages/runner/src/task-credentials.ts` `taskCredentials`, applied by `oar.ts` `harnessEnv`):
+  - *Today (`home`)*: a task runs as the person, on the computer that does the work. Its git reads
+    the person's git config from `$HOME` (or `GIT_CONFIG_GLOBAL`), which, after 在 {computer} 上登录
+    GitHub or `ducter git login` (`gh auth setup-git`), names gh as github.com's password helper; gh
+    reads its login from its config folder (`GH_CONFIG_DIR`, else `$XDG_CONFIG_HOME/gh`, else
+    `~/.config/gh`) or the keyring; ssh keys come through the agent. So the task keeps exactly that
+    route: `HOME`, `GH_CONFIG_DIR`, `GH_HOST`, `XDG_CONFIG_HOME`, `GIT_CONFIG_GLOBAL`,
+    `SSH_AUTH_SOCK` (only those set), and never a token (`GH_TOKEN`/`GITHUB_TOKEN` stay out).
+  - *A sandbox (`sandbox`, not built: a container or a separate user)* has no `$HOME` of the
+    person's. It gets the route made explicit, never the whole environment: a token scoped to it,
+    handed in by whoever starts the sandbox (never read from Ducter's own environment), as
+    `GH_TOKEN`, and git told through `GIT_CONFIG_COUNT/KEY/VALUE` (no file written) to clear other
+    helpers for `https://github.com` and ask `gh auth git-credential`. No token: nothing at all.
+    Test: `packages/runner/test/task-credentials.test.ts` (the route is carried, unrelated keys
+    are not).
+- **Signing a computer in to GitHub** (D272, `packages/protocol/src/git-login.ts`, research/87): the
+  home, or a worker through its `gitLogin` op, runs `gh auth login --hostname github.com
+  --git-protocol https --web` with no terminal (`GH_PROMPT_DISABLED`, `NO_COLOR`, no
+  `GH_TOKEN`), reads the one-time code and link from gh's stderr, answers them to the client
+  (`git_login_state` code), waits for gh to exit (16 minutes at most), runs `gh auth setup-git
+  --hostname github.com`, and reads the account back (`gh auth status --json hosts`, text on an
+  older gh). One sign-in per computer at a time. The fallback key goes to `gh auth login
+  --with-token` on stdin only. gh stores the login where it always does (keyring, else its
+  `hosts.yml`); Ducter keeps nothing and logs nothing. `ducter git login` runs the same module
+  on the computer it is typed on.
 - **Helpers Ducter runs itself get an allowlist too** (D102, `packages/protocol/src/tool-env.ts`):
   the basics (paths, user, locale, temp folder, proxies, CA bundles, `XDG_*`) plus the helper's own
   settings, and no other secret-shaped name.

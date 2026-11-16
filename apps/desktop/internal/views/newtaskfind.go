@@ -5,7 +5,9 @@ package views
 // home folder (~), repos first with the branch glyph; 用这个文件夹 / Use
 // this folder adds it there as a project (D186, D197) and makes it the
 // card's place (and picks the agent that waited for a folder there, D202).
-// For this Mac the card keeps macOS's own folder picker (加一个文件夹…).
+// D272: it is 选 {computer} 上已有的文件夹 / Choose a folder on {computer}
+// in the add panel (newtaskadd.go); for this Mac that row opens macOS's
+// own folder picker instead.
 
 import (
 	"fmt"
@@ -22,30 +24,6 @@ type ntBrowse struct {
 	device string
 	cid    string
 	res    *protocol.ServerFrame
-}
-
-// findComputers are the computers whose folders the card can look
-// through: the home and its reachable workers, but never this Mac (its
-// own picker does that), and only `only` while an agent waits there.
-func (a *App) findComputers(only string) []protocol.DeviceView {
-	mode, dev := a.folderAdd()
-	var out []protocol.DeviceView
-	for _, d := range a.computers() {
-		if only != "" && d.ID != only {
-			continue
-		}
-		if (mode == "here" && d.Home) || (mode == "worker" && d.ID == dev) {
-			continue
-		}
-		if !d.Home && d.State == "unreachable" {
-			continue
-		}
-		if a.isOld(d.ID) {
-			continue // D204: it says it needs an update instead (oldRows)
-		}
-		out = append(out, d)
-	}
-	return out
 }
 
 // startBrowse asks for a folder's subfolders on that computer ("" path:
@@ -105,34 +83,6 @@ func browsePath(p, home string) string {
 		return "~" + p[len(strings.TrimRight(home, "/")):]
 	}
 	return tildePath(p)
-}
-
-// findRows are 找一个文件夹… rows at the foot of the place list, one per
-// computer it can look through (with its name when there are two); it
-// says whether rows here name their computer.
-func (a *App) findRows(c *ui.Context, only string) bool {
-	t := a.T
-	cs := a.findComputers(only)
-	named := len(cs) > 1 || only != "" || a.manyComputers()
-	for _, d := range cs {
-		d := d
-		label := a.L.T("newtask.find")
-		if named {
-			label += " · " + d.Name
-		}
-		if a.menuRow(c, "nt-find:"+d.ID, label, false, false, func() {
-			a.glyph(c, 16, drawPlus(t.InkSoft))
-			ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-				ui.Text(c, a.L.T("newtask.find")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
-				if named {
-					ui.Text(c, a.L.T("newtask.find.on", d.Name)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
-				}
-			})
-		}) {
-			a.startBrowse(d.ID, "")
-		}
-	}
-	return named
 }
 
 // browseName is the name of the computer being looked through.
@@ -202,12 +152,12 @@ func (a *App) folderBrowser(c *ui.Context) {
 			line("nt-find-more", a.L.T("newtask.find.more", strconv.Itoa(len(r.Folders))), t.InkMuted)
 		}
 	}
-	ui.Box(c.Key("nt-find-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
-	ui.Row(c.Key("nt-find-foot")).Gap(t.S2).AlignItems(ui.Center).Padding(0, t.S1).Children(func() {
+	a.panelFoot(c, "nt-find-foot", func() {
 		if a.button(c, a.L.T("newtask.find.back"), btnText, t.ControlSM, t.Surface) {
 			nt.browse = nil
+			nt.add = &ntAdd{device: b.device} // D272: back to the ways to add a folder there
 		}
-		ui.Box(c).Grow(1)
+	}, func() {
 		switch {
 		case nt.adding != "":
 			ui.Text(c, a.L.T("newtask.find.adding")).FontSize(t.SM).TextColor(t.InkMuted)

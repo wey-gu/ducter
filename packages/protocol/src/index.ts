@@ -951,6 +951,16 @@ export type ClientFrame =
   // else a worker) clones `address` into its Ducter folder (<folder>/projects/<repo>) with its own
   // git sign-in, then adds it as a project. Answered with project_clone_result (it can take minutes).
   | { t: "project_clone"; address: string; device?: string; clientId?: string }
+  // D272: 在 {computer} 上新建一个文件夹 / New folder on {computer}: that computer (absent or
+  // "local": the home) makes <Ducter folder>/projects/<name> (one folder name, never a path) and
+  // the home adds it as a project, git or not. Answered with project_new_result.
+  | { t: "project_new"; name: string; device?: string; clientId?: string }
+  // D272: 在 {computer} 上登录 GitHub / Sign in to GitHub on {computer}, through that computer's own
+  // GitHub CLI. status: where it stands; start: a device-flow sign-in (answered with its code and
+  // link, then, when it ends, signed in with the account, or why not); token: the fallback, a token
+  // the person pasted (passed to gh on that computer only, never kept or logged); cancel. Every
+  // answer is a git_login_state.
+  | { t: "git_login"; action: "status" | "start" | "token" | "cancel"; device?: string; token?: string; clientId?: string }
   // open_task: show this task in the apps (`ducter open <task>`): pushed to every connected app
   // as an open_task frame; the sender gets open_result with how many apps were told.
   | { t: "open_task"; taskId: string }
@@ -1053,6 +1063,29 @@ export interface DucterFolderView {
   old?: true;
 }
 
+/** D272: where a computer stands with GitHub (git-login.ts), in words the clients put in their own language. */
+export type GitLoginWhere =
+  | "signed_in" // gh holds a login (account: who)
+  | "signed_out" // gh is there, no login for github.com
+  | "no_gh" // the GitHub CLI isn't on that computer
+  | "code" // a sign-in is waiting for the person to enter `code` at `url`
+  | "failed" // the sign-in didn't happen (reason)
+  | "cancelled"
+  | "offline" // the computer can't be reached (home side only)
+  | "old"; // its Ducter is too old to sign in (home side only)
+
+export type GitLoginWhy = "expired" | "denied" | "bad_token" | "failed";
+
+/** D272: one answer about a computer's GitHub sign-in. Never a token. */
+export interface GitLoginState {
+  state: GitLoginWhere;
+  account?: string;
+  code?: string;
+  url?: string;
+  reason?: GitLoginWhy;
+  message?: string;
+}
+
 /** D204: why a clone didn't happen, in a word the clients put in their own language. */
 export type CloneReason = "invalid" | "not_found" | "no_access" | "network" | "timeout" | "offline" | "old" | "failed";
 
@@ -1134,6 +1167,11 @@ export type ServerFrame =
   // D204: the clone asked for: the project it made (or the one already there with that origin:
   // existed), as the card's place; or why not.
   | { t: "project_clone_result"; ok: boolean; clientId?: string; device?: string; place?: PlaceChoice; existed?: true; reason?: CloneReason; message?: string }
+  // D272: the folder made (or the one already there of that name: existed), as the card's place; or why not.
+  | { t: "project_new_result"; ok: boolean; clientId?: string; device?: string; place?: PlaceChoice; existed?: true; reason?: "invalid" | "offline" | "old" | "failed"; message?: string }
+  // D272: where that computer stands with GitHub (git-login.ts): signed in as account, signed out,
+  // no GitHub CLI, a sign-in waiting for code at url, or why it failed. Never a token.
+  | ({ t: "git_login_state"; clientId?: string; device?: string; host: "github.com" } & GitLoginState)
   // D203: path is the folder listed (real, absolute), home that computer's home folder, parent the
   // folder above (absent at home); folders repos first (at most 200; more: there were more).
   | { t: "folder_browse_result"; ok: boolean; clientId?: string; device?: string; path?: string; home?: string; parent?: string; folders?: BrowseFolder[]; more?: true; reason?: "outside" | "not_found" | "offline" | "old" | "failed"; message?: string }

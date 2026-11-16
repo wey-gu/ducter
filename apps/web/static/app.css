@@ -4404,6 +4404,82 @@ ol.tries b {
   align-items: center;
   gap: var(--s2);
 }
+/* D272: Add a folder's three ways, a new folder's name, GitHub's line and the sign-in panel. */
+.nt-browse-foot > .nt-grow {
+  flex: 1;
+}
+.nt-gh-act {
+  display: flex;
+  padding: 0 10px 4px;
+}
+.nt-gh-ok {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--ink-soft);
+}
+.nt-gh .nt-field {
+  margin: 4px 6px 0;
+  font-family: var(--mono);
+  font-size: var(--sm);
+}
+.nt-gh-step {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: 8px 10px;
+  min-width: 0;
+}
+.nt-gh-n {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--ink-soft);
+  font-size: var(--xs);
+  font-weight: 700;
+  box-shadow: 0 0 0 1px var(--line-soft);
+}
+.nt-gh-what {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.nt-gh-what > small {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.nt-gh-url {
+  font-family: var(--mono);
+  font-size: var(--sm);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nt-gh-code {
+  font-family: var(--mono);
+  font-size: var(--t20);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  user-select: all;
+}
+.nt-gh-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.nt-gh-open .nt-glyph {
+  width: 13px;
+  height: 13px;
+}
 /* D202: under the chosen agent, its Model and Effort rows: short rows of chips that wrap. */
 .nt-agent {
   display: flex;

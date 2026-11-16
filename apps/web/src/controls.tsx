@@ -45,22 +45,22 @@ export function NavBtn(p: { label: string; onClick: () => void; glyph?: Componen
   );
 }
 
-/** D264: the places as one control: a sunk track, the place shown a raised knob in it, the others
- *  flat. words=false shows the drawn marks alone (each keeps its name as tooltip and label). */
-export function PlaceSeg(p: { words: boolean; segs: { key: string; label: string; about: string; glyph: ComponentChildren; on: boolean; go: () => void }[] }) {
+/** D264, D270: the places as one control: a small sunk track of drawn marks, the place shown a
+ *  raised knob in it, the others flat. Marks alone at every width: each says its name as tooltip
+ *  and accessible name. */
+export function PlaceSeg(p: { segs: { key: string; label: string; about: string; glyph: ComponentChildren; on: boolean; go: () => void }[] }) {
   return (
-    <nav class={`places${p.words ? "" : " marks"}`}>
+    <nav class="places">
       {p.segs.map((s) => (
         <button
           key={s.key}
           class={`place${s.on ? " on" : ""}`}
           aria-current={s.on ? "page" : undefined}
           aria-label={s.about}
-          title={p.words ? s.about : s.label}
+          title={s.label}
           onClick={() => !s.on && s.go()}
         >
           {s.glyph}
-          {p.words && <span class="lbl">{s.label}</span>}
         </button>
       ))}
     </nav>

@@ -24,6 +24,10 @@ import (
 const (
 	findFrom     = 10
 	projectsFrom = 2
+	// onHandMeasure is On hand's one reading column (D270).
+	onHandMeasure = 760
+	// rowH is every task row's height, so the list reads as an even rhythm.
+	rowH = 58
 )
 
 type onHandState struct {
@@ -398,14 +402,19 @@ func (a *App) foldLine(c *ui.Context, key, words string, open bool) bool {
 	return hit
 }
 
-// listSection is a section's name and count in muted ink, then its body.
+// listSection is a section's name and count, small and quiet (D270), then
+// its body.
 func (a *App) listSection(c *ui.Context, key, name string, n int, body func()) {
 	t := a.T
-	ui.Column(c.Key("sec:" + key)).Gap(t.S3).Children(func() {
-		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).MinHeight(32).Children(func() {
-			ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
+	padX := t.S3 + 2
+	if a.oh.room == "rail" {
+		padX = t.S3
+	}
+	ui.Column(c.Key("sec:" + key)).Gap(t.S1).Children(func() {
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).MinHeight(28).Padding(0, padX).Children(func() {
+			ui.Text(c, name).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
 			if n > 0 {
-				ui.Text(c, fmt.Sprint(n)).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).FontFeatures("tnum")
+				ui.Text(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
 			}
 			if key == "needs" && a.oh.room != "rail" {
 				ui.Spacer(c)
@@ -418,16 +427,14 @@ func (a *App) listSection(c *ui.Context, key, name string, n int, body func()) {
 	})
 }
 
-// taskRows is one clay card of rows, parted by a soft line.
+// taskRows is a run of rows lying flat on the ground (D270): no card
+// around them; the selected one rises as the knob.
 func (a *App) taskRows(c *ui.Context, tasks []*store.Task, state bool) {
 	if len(tasks) == 0 {
 		return
 	}
 	t := a.T
-	// Clipped: a hovered or focused row fills its band edge to edge and the
-	// card's own corners round it, never a tile inside a rim.
-	ui.Column(c.Key("rows:"+tasks[0].ID)).Radius(t.RadiusLG).Clip().Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
-		Dividers(1, t.LineSoft).Children(func() {
+	ui.Column(c.Key("rows:" + tasks[0].ID)).Gap(t.S1 - 2).Children(func() {
 		for _, task := range tasks {
 			a.taskRow(c.Key(task.ID), task, state)
 		}
@@ -451,34 +458,30 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 	face := st == stNew || (rail && st != stNone)
 	quiet := rail && st != stNone
 	opened := rail && a.Route == RouteTask && a.TaskID == task.ID
-	padX := t.S4 + 2
+	padX := t.S3 + 2
 	if rail {
-		padX = t.S3 + 2
+		padX = t.S3
 		focus = focus && !opened
 	}
-	row := ui.Row(c).Gap(t.S3).Padding(t.S3+1, padX-t.S1).Radius(t.RadiusLG - t.S1).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
+	// D270: selection is the knob (the card's white on its clay ledge), the
+	// same as the place shown in the bar; hover a faint tint. No bar at an
+	// edge for selection or for state.
+	row := ui.Row(c).Gap(t.S3).Padding(t.S2, padX).MinHeight(rowH).Radius(t.RadiusMD).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
 	hover := row.Hovered()
 	switch {
-	case opened:
-		row.Background(t.Sunken)
-	case focus:
-		row.Background(t.SurfaceRaised)
+	case opened, focus:
+		a.knob(row)
+		row.AccessSelected(true)
 	case hover:
-		row.Background(t.SurfaceRaised)
+		row.Background(t.Ink.Alpha(0.04))
 	}
 	row.Children(func() {
-		if focus {
-			ui.Box(c.Key("kf")).Absolute().Left(t.S1).Top(t.S3).Bottom(t.S3).Width(4).Radius(t.Pill).Background(t.Accent).AccessHidden(true)
-		}
-		if opened {
-			ui.Box(c.Key("open")).Absolute().Left(t.S1).Top(t.S3).Bottom(t.S3).Width(4).Radius(t.Pill).Background(t.Ink).AccessHidden(true)
-		}
 		if att == protocol.Blocked {
 			if w := a.S.WaiterFor(task.ID); w != nil {
 				a.waitBubble(c, waitGlyph(w.Check, w.Event), 32)
 			}
 		}
-		ui.Column(c.Key("main")).Grow(1).Shrink(1).MinWidth(0).Gap(t.S1).Children(func() {
+		ui.Column(c.Key("main")).Grow(1).Shrink(1).MinWidth(0).Gap(3).Children(func() {
 			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				title := ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(14).FontWeight(500).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
 				// Finished rows recede, unless they are a new result.
@@ -522,10 +525,10 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				if face {
 					a.statusFace(c, task, st)
 				}
-				ui.Text(c.Key("time"), a.rowTime(task)).FontSize(t.XXS + 0.5).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).MinWidth(44).TextAlign(ui.End).SingleLine()
+				ui.Text(c.Key("time"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).MinWidth(44).TextAlign(ui.End).SingleLine()
 			})
 			ui.Row(c.Key("l2")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				ink := t.InkSoft
+				ink := t.InkMuted
 				switch s.tone {
 				case "needs":
 					ink = t.NeedsYou.Ink

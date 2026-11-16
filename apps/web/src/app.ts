@@ -2188,24 +2188,32 @@ class AppState {
   }
 
   summary(): string {
+    return this.summaryParts().words;
+  }
+
+  /** The counts line, and where it leads (D270): link is false while it says connecting or
+   *  offline; filter is the strip's (1–4) when it names one thing only, else 0 (all of On hand). */
+  summaryParts(): { words: string; link: boolean; filter: number } {
     const L = this.L;
-    if (this.status === "offline") return L.t("conn.offline");
+    if (this.status === "offline") return { words: L.t("conn.offline"), link: false, filter: 0 };
     // D209: painted from the last screen, the line it showed then stands until the home answers
     // (a second at most), rather than "connecting" on every open.
-    if (!this.S.welcomed && !this.fromGlance) return L.t("conn.connecting");
+    if (!this.S.welcomed && !this.fromGlance) return { words: L.t("conn.connecting"), link: false, filter: 0 };
     const b = this.S.board();
     const parts: string[] = [];
+    const kinds: number[] = [];
+    const add = (kind: number, words: string) => (parts.push(words), kinds.push(kind));
     const needs = b.lanes[LANE.needs]!.length + this.S.partnerDecisions().length;
-    if (needs) parts.push(L.t("header.needs", needs));
+    if (needs) add(1, L.t("header.needs", needs));
     // Thinking is said where the reply will appear (Presence, D104), not here.
-    if (b.lanes[LANE.working]!.length) parts.push(L.t("header.working", b.lanes[LANE.working]!.length));
+    if (b.lanes[LANE.working]!.length) add(2, L.t("header.working", b.lanes[LANE.working]!.length));
     // What it waits for is felt here, not in the conversation (D104, D115).
     const waiting = b.lanes[LANE.waiting]!.length + this.S.armedWaiters().filter((w) => !w.taskId).length;
-    if (waiting && parts.length < 2) parts.push(L.t("header.waiting", waiting));
+    if (waiting && parts.length < 2) add(3, L.t("header.waiting", waiting));
     const done = this.doneToday();
     // A phone header has room for two things: what needs you and what's moving come first.
-    if (done && parts.length < 2) parts.push(L.t("header.done", done));
-    return parts.length ? parts.join(" · ") : L.t("header.summary.none");
+    if (done && parts.length < 2) add(4, L.t("header.done", done));
+    return { words: parts.length ? parts.join(" · ") : L.t("header.summary.none"), link: true, filter: kinds.length === 1 ? kinds[0]! : 0 };
   }
 
   /** The conversation's rows (desktop rows()): decisions inside a living message show once,

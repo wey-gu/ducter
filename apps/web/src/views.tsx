@@ -40,9 +40,9 @@ import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, rep
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, forecast, FullTop } from "./board.tsx";
-import { OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
+import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
-import { safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, taskSub, TimerPie, WhatItDid } from "./transcript.tsx";
+import { safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, WhatItDid } from "./transcript.tsx";
 import {
   attention,
   bodyReasonOf,
@@ -1204,10 +1204,9 @@ function Presence({ line }: { line?: string }) {
 // ---------- header, composer ----------
 
 /** D262: the way to the other places, at the end of every bar: 更新 while something waits to be
- *  updated, then the places (on a phone 手头的事 from the conversation and Settings' gear; wide, 设备
- *  · 手头的事 · 设置 as on the Mac). here: the place shown, pressed in. One per screen. */
+ *  updated, then the places (devices, On hand, Settings; on a phone's task and On hand without On
+ *  hand). D270: always the drawn marks, at every width; here: the place shown, the knob. */
 export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | "settings"; onHand?: boolean }) {
-  const wide = useWide();
   const ua = A.updateAll;
   const running = !!ua?.plan && !ua.plan.finishedAt;
   const n = ua?.offer.length ?? 0;
@@ -1222,7 +1221,6 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
         />
       )}
       <PlaceSeg
-        words={wide}
         segs={[
           { key: "devices", label: t("nav.devices"), about: t("nav.devices.label"), glyph: <DevicesMark />, on: here === "devices", go: () => A.openSettings("devices") },
           ...(onHand ? [{ key: "onhand", label: t("nav.onhand"), about: t("nav.onhand"), glyph: <OnHandMark />, on: here === "onhand", go: () => A.go({ name: "onhand" }) }] : []),
@@ -1258,28 +1256,44 @@ function Top({ back, plus, level, extra }: { back?: string; plus?: boolean; leve
         {extra}
         {/* D184: wide, the level can take the whole screen; the same button brings it back. */}
         {wide && <FillButton level={level ? "onhand" : "task"} />}
-        {!wide && (
-          <>
-            {(plus || extra) && <span class="bar-sep" aria-hidden="true" />}
-            <Places onHand={false} />
-          </>
-        )}
+        {/* D270: spacing alone parts this place's actions from the places. */}
+        {!wide && <Places onHand={false} />}
       </header>
     );
   return (
     <header class="top">
-      {/* The partner opens its own page: a second way in; Settings is the visible one (D262). */}
-      <button class="who" onClick={() => A.openSettings("partner")} aria-label={t("nav.partner.about", A.S.personaName)} title={t("nav.partner.about", A.S.personaName)}>
-        <Avatar size={52} />
-        <span style={{ minWidth: 0 }}>
-          <div class="name">{A.S.personaName}</div>
-          <div class="sum" role="status">
-            {A.summary() || " "}
-          </div>
+      {/* D270: two ways in. The face and the name open the partner's page (Settings is the visible
+          way, D262); the counts under the name open On hand, narrowed to what they name when they
+          name one thing. Each tints on its own under the pointer. */}
+      <div class="who">
+        <button class="who-face" tabIndex={-1} aria-hidden="true" title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
+          <Avatar size={44} />
+        </button>
+        <span class="who-words">
+          <button class="name" onClick={() => A.openSettings("partner")} aria-label={t("nav.partner.about", A.S.personaName)} title={t("nav.partner.about", A.S.personaName)}>
+            {A.S.personaName}
+          </button>
+          <Counts />
         </span>
-      </button>
+      </div>
       <Places onHand={!wide} />
     </header>
+  );
+}
+
+/** The conversation bar's counts line (D270): a quiet link to On hand while it says counts. */
+function Counts() {
+  const s = A.summaryParts();
+  if (!s.link)
+    return (
+      <div class="sum" role="status">
+        {s.words || " "}
+      </div>
+    );
+  return (
+    <button class="sum" role="status" title={t("nav.onhand")} onClick={() => ((OnHandState.filter = s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }))}>
+      {s.words}
+    </button>
   );
 }
 
@@ -1948,7 +1962,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
       {full ? (
         // D184: the whole screen, as the Mac shows an opened task: the crumbs (Pause and Cancel
         // task are in the foot, D210, D213); D214: the workbench's toggle at the header's end.
-        <FullTop task={task} sub={taskSub(task, yourTurn ? t("task.your.turn") : stateLabel(a))}>
+        <FullTop task={task}>
           <TaskInfoButton task={task} />
           <BenchToggle task={task} />
           <TaskMore task={task} />

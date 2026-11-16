@@ -187,9 +187,9 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
 	switch {
 	case on:
-		r.Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+		a.knob(r) // D270: the chosen one is the knob
 	case r.Hovered():
-		r.Background(t.Surface.Alpha(0.55))
+		r.Background(t.Ink.Alpha(0.04))
 	}
 	r.Children(func() {
 		ui.Column(c.Key("nm")).Grow(1).Shrink(1).MinWidth(0).Gap(1).Children(func() {
@@ -200,7 +200,7 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 			if other && !on {
 				ink = t.InkMuted
 			}
-			ui.Text(c, name).FontSize(t.MD).FontWeight(700).TextColor(ink).SingleLine().MinWidth(0).AccessHidden(true)
+			ui.Text(c, name).FontSize(14).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0).AccessHidden(true)
 			if adds, dels := groupStat(tasks); adds+dels > 0 {
 				ui.Row(c.Key("stat")).Gap(t.S1 + 2).Children(func() {
 					if adds > 0 {
@@ -239,7 +239,7 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 				Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(strings.Join(nonEmpty(name, words), " · ")).Focusable()
 			switch {
 			case on:
-				r.Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+				a.knob(r) // D270: the chosen one is the knob
 			case r.Hovered():
 				r.Background(t.Sunken)
 			}
@@ -305,7 +305,10 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 			ui.Text(c.Key("calm"), line).FontSize(t.MD).LineHeight(1.5).TextColor(t.InkSoft)
 		}
 		ui.Row(c.Key("strip-row")).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
-			ui.Row(c.Key("strip")).Gap(t.S1).AlignItems(ui.Center).Label(a.L.T("onhand.strip")).Children(func() {
+			// D270: the counts in a small sunk track, the filter chosen a
+			// raised knob in it, as the places are in the bar.
+			ui.Row(c.Key("strip")).Gap(2).Padding(3).Radius(t.RadiusSM).AlignItems(ui.Center).Background(t.SurfaceSunken).
+				InsetShadow(0, 1.5, 2, 0, t.Line).Label(a.L.T("onhand.strip")).Children(func() {
 				names := [4]string{"lane.needs_you", "lane.working", "lane.waiting", "lane.done"}
 				for i := range 4 {
 					a.stripCell(c, i+1, a.L.T(names[i]), n[i])
@@ -347,39 +350,40 @@ func groupOf(groups []lensGroup, key string) *lensGroup {
 	return nil
 }
 
-// stripCell is one count of the strip: the number over its state's name.
-// A count of none is quiet and does nothing; pressed, it narrows the
-// board to that state, and pressed again lets go (Esc too).
+// stripCell is one count of the strip: a calm numeral and its state's
+// name on one line. A count of none is faint and does nothing; pressed, it
+// narrows the board to that state (the knob), and pressed again lets go
+// (Esc too).
 func (a *App) stripCell(c *ui.Context, i int, name string, n int) {
 	t := a.T
 	on := a.oh.filter == i
-	cell := ui.Column(c.Key(fmt.Sprint("cell", i))).Gap(0).Padding(t.S2, t.S4, t.S2+1, t.S4).MinWidth(84).Radius(t.RadiusLG).AlignItems(ui.Start)
+	cell := ui.Row(c.Key(fmt.Sprint("cell", i))).Gap(t.S1+2).Height(28).Padding(0, t.S3).Radius(t.RadiusSM - 3).AlignItems(ui.Center)
 	if n > 0 {
 		label := fmt.Sprintf("%s %d", name, n)
 		cell.Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
 		switch {
 		case on:
-			cell.Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+			a.knob(cell)
+			cell.AccessSelected(true)
 		case cell.Hovered():
-			cell.Background(t.Sunken)
+			cell.Background(t.SurfaceSunken.Mix(t.Surface, 0.5))
 		}
 	} else {
 		cell.Label(fmt.Sprintf("%s 0", name))
 	}
 	cell.Children(func() {
-		ink := t.Ink
+		num, lab := t.Ink, t.InkMuted
 		switch {
 		case n == 0:
-			ink = t.Faint
+			num, lab = t.Faint, t.Faint
 		case i == 1:
-			ink = t.NeedsYou.Ink
+			num = t.NeedsYou.Ink
 		}
-		ui.Text(c, fmt.Sprint(n)).FontSize(t.XXL).FontWeight(800).TextColor(ink).FontFeatures("tnum").LineHeight(1.15).AccessHidden(true)
-		lab := t.InkMuted
 		if on {
 			lab = t.Ink
 		}
-		ui.Text(c, name).FontSize(t.XS).FontWeight(700).TextColor(lab).SingleLine().AccessHidden(true)
+		ui.Text(c, fmt.Sprint(n)).FontSize(t.SM + 1).FontWeight(600).TextColor(num).FontFeatures("tnum").AccessHidden(true)
+		ui.Text(c, name).FontSize(t.SM).FontWeight(500).TextColor(lab).SingleLine().AccessHidden(true)
 	})
 	if n > 0 && cell.Clicked() {
 		if on {

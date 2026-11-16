@@ -70,6 +70,10 @@
      on a 3px ledge in a darker shade of its fill, with a drop and a top highlight, and sinks
      into the ledge when pressed. */
   --base: 0 4px 0 var(--line);
+  /* D270: the bar's one type size, and the one "chosen" look (the place shown, the strip's
+     filter, the selected row): the card's white raised on a 2px clay ledge and a soft drop. */
+  --bar-text: 14px;
+  --knob: 0 2px 0 var(--line), 0 3px 8px rgb(0 0 0 / 0.06);
   --ledge: 3px;
   --press-primary: #140d07;
   --press-quiet: #cdae8c; /* secondary */
@@ -484,10 +488,8 @@ a {
   min-height: 44px;
   display: flex;
   align-items: center;
-  font-family: var(--head);
-  font-size: var(--lg);
-  font-weight: 800;
-  letter-spacing: -0.2px;
+  font-size: var(--bar-text);
+  font-weight: 600;
 }
 
 /* D262: a first open's calm ground while the home answers (at most 1.5 s). */
@@ -510,18 +512,52 @@ a {
 .top .who {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
   min-width: 0;
   text-align: left;
 }
+.top .who-face {
+  flex: none;
+  display: flex;
+  padding: 0;
+}
+.top .who-words {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+/* D270: the name and the counts are each a quiet button: no edge until the pointer comes over it,
+   then the crumbs' faint tint; pointing at the face tints the name, the face itself never changes. */
+.top .who .name,
+.top .who .sum {
+  max-width: 100%;
+  padding: 1px 6px;
+  border-radius: 8px;
+  text-align: left;
+  color: var(--ink);
+}
+.top .who .sum {
+  color: var(--ink-muted);
+}
+@media (hover: hover) {
+  .top .who .name:hover,
+  .top .who:has(.who-face:hover) .name,
+  .top .who button.sum:hover {
+    background: color-mix(in srgb, var(--surface-sunken) 55%, var(--bg));
+    color: var(--ink);
+  }
+}
 .top .name {
-  font-size: var(--t20);
-  letter-spacing: -0.3px;
-  line-height: 1.15;
+  font-family: var(--font);
+  font-size: var(--bar-text);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.25;
 }
 .top .sum {
-  font-size: var(--sm);
+  font-size: var(--xs);
   color: var(--ink-muted);
   line-height: 1.4;
   display: -webkit-box;
@@ -534,7 +570,8 @@ a {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
-  font-weight: 700;
+  font-size: var(--bar-text);
+  font-weight: 600;
   min-height: 44px;
   padding-right: 8px;
 }
@@ -905,30 +942,26 @@ a {
   display: flex;
   align-items: center;
   gap: 2px;
-  height: 36px;
+  height: 34px;
   padding: 3px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--surface-sunken);
   box-shadow: inset 0 1.5px 2px var(--line);
 }
+/* D270: three drawn marks, at every width; the words are the tooltip and the accessible name. */
 .places .place {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 12px 0 8px;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  padding: 0;
   border: 0;
-  border-radius: 11px;
+  border-radius: 9px;
   background: transparent;
   color: var(--ink-muted);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
   cursor: pointer;
   transition: background-color 0.16s, color 0.16s;
-}
-.places.marks .place {
-  padding: 0 7px;
 }
 .places .place:hover {
   color: var(--ink);
@@ -937,7 +970,7 @@ a {
 .places .place.on {
   color: var(--ink);
   background: var(--surface);
-  box-shadow: 0 2px 0 var(--line), 0 3px 8px rgb(0 0 0 / 0.06);
+  box-shadow: var(--knob);
   cursor: default;
 }
 .places .place:focus-visible {
@@ -949,12 +982,6 @@ a {
   height: 22px;
   border-radius: 6px;
   object-fit: contain;
-}
-.bar-sep {
-  flex: none;
-  width: 1px;
-  height: 20px;
-  background: var(--line);
 }
 /* A text button that opens something in place: a drawn chevron, turned down while open (D211). */
 .btn .btn-chev {
@@ -5010,7 +5037,7 @@ button.dev-name {
   white-space: nowrap;
 }
 .top.crumbs .crumb {
-  font-size: var(--md);
+  font-size: var(--bar-text);
   font-weight: 600;
   color: var(--ink-muted);
   min-height: 44px;
@@ -5020,31 +5047,25 @@ button.dev-name {
 }
 .top.crumbs .slash {
   color: var(--faint);
-  font-size: var(--md);
+  font-size: var(--bar-text);
   flex: none;
 }
+/* D270: the place you are in, at the crumbs' size and weight, in full ink; never bigger. */
 .top.crumbs .here {
   margin: 0;
-  font-family: var(--head);
-  font-size: var(--lg);
-  font-weight: 800;
-  letter-spacing: -0.2px;
+  font-size: var(--bar-text);
+  font-weight: 600;
+  color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
-}
-.top.crumbs .sum {
-  font-size: var(--xs);
-  color: var(--ink-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap;
   min-width: 0;
 }
 .top.crumbs .acts {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex: none;
 }
 .top.crumbs .seg {
@@ -5070,16 +5091,16 @@ button.dev-name {
 .board .next,
 .scroll > .next {
   margin: 0;
-  font-size: var(--sm);
+  font-size: var(--xs);
   color: var(--ink-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 4px;
+  padding: 0 14px;
 }
 .board .next b,
 .scroll > .next b {
-  font-weight: 700;
+  font-weight: 600;
   margin-right: 8px;
 }
 .board .calm-band {
@@ -6169,19 +6190,23 @@ dl.call-summary dd { margin: 0; }
 .tsec {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
 }
+/* D270: a section's name small and quiet, its count fainter. */
 .tsec h3 {
-  margin: 0 2px;
-  min-height: 32px;
-  font-size: var(--sm);
-  font-weight: 700;
+  margin: 0;
+  padding: 0 14px;
+  min-height: 28px;
+  font-size: var(--xs);
+  font-weight: 600;
   color: var(--ink-muted);
   display: flex;
   gap: 8px;
   align-items: center;
 }
 .tsec h3 .n {
+  font-weight: 500;
+  color: var(--faint);
   font-variant-numeric: tabular-nums;
 }
 .tsec h3 .end {
@@ -6195,40 +6220,34 @@ dl.call-summary dd { margin: 0; }
   line-height: var(--lh-read);
   color: var(--ink-soft);
 }
-/* A section's tasks are one clay card of rows: one shadow, rows parted by a soft line. */
+/* D270: a section's rows lie flat on the ground, one even rhythm; no card around them. */
 .trows {
   display: flex;
   flex-direction: column;
-  background: var(--surface);
-  border-radius: var(--r-lg);
-  box-shadow: var(--base);
-  overflow: hidden;
+  gap: 2px;
 }
 .trow {
   position: relative;
   display: flex;
   align-items: stretch;
   min-width: 0;
+  min-height: 58px;
+  border-radius: var(--r-md);
   /* Hundreds of rows stay smooth: rows off screen are not laid out or painted. */
   content-visibility: auto;
   contain-intrinsic-size: auto 66px;
 }
-.trows > .trow + .trow,
 .tsec > .trow.loose + .trow.loose {
-  border-top: 1px solid var(--line-soft);
-}
-.tsec > .trow.loose {
-  background: var(--surface);
-  border-radius: var(--r-lg);
-  box-shadow: var(--base);
+  margin-top: 2px;
 }
 .trow .tmain {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 13px 18px;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 14px;
   text-align: left;
   color: inherit;
   background: transparent;
@@ -6387,27 +6406,27 @@ dl.call-summary dd { margin: 0; }
 }
 @media (hover: hover) {
   .trow:hover {
-    background: var(--surface-raised);
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
   }
   .trow:hover .tacts,
   .trow:focus-within .tacts {
     display: flex;
   }
 }
-/* Where the keys are, what is selected, what is open beside the list. */
-.trow.kfocus {
-  background: var(--surface-raised);
-  box-shadow: inset 4px 0 0 var(--accent);
+/* Where the keys are and what is open beside the list (D270): the knob, never a bar at an edge;
+   what is selected for many at once, the working tint. */
+.trow.kfocus,
+.trow.opened,
+.trow.kfocus:hover,
+.trow.opened:hover {
+  background: var(--surface);
+  box-shadow: var(--knob);
 }
 .trow.sel {
   background: var(--working-surface);
 }
 .trow.sel .tacts {
   background: linear-gradient(to right, transparent, var(--working-surface) 24px);
-}
-.trow.opened {
-  background: var(--sunken);
-  box-shadow: inset 4px 0 0 var(--ink);
 }
 /* Many at once: one raised bar at the foot of the list, while something is selected. */
 .onhand-list .bulk {
@@ -6444,7 +6463,7 @@ dl.call-summary dd { margin: 0; }
 }
 /* The whole screen: the list on a wide measure. */
 .board-col {
-  width: min(960px, 100%);
+  width: min(760px, 100%);
   align-self: center;
   display: flex;
   flex-direction: column;
@@ -6492,9 +6511,9 @@ dl.call-summary dd { margin: 0; }
   white-space: nowrap;
 }
 .rail-head .crumb {
-  font-size: var(--lg);
-  font-weight: 800;
-  font-family: var(--head);
+  font-size: var(--bar-text);
+  font-weight: 600;
+  color: var(--ink-soft);
 }
 .rail-head .sum {
   font-size: var(--xs);
@@ -6503,10 +6522,16 @@ dl.call-summary dd { margin: 0; }
   text-overflow: ellipsis;
 }
 .rail-list {
-  padding: 16px 12px calc(var(--safe-bottom) + 24px);
+  padding: 12px 8px calc(var(--safe-bottom) + 24px);
+}
+.room-rail .trow {
+  min-height: 54px;
 }
 .room-rail .trow .tmain {
-  padding: 11px 14px;
+  padding: 8px 12px;
+}
+.room-rail .tsec h3 {
+  padding: 0 12px;
 }
 .room-rail .tsec h3 {
   min-height: 24px;
@@ -8793,8 +8818,9 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   gap: 32px;
   min-width: 0;
 }
+/* D270: one reading column, centered in what the lens column leaves. */
 .board-wrap > .board-col {
-  flex: 1 1 auto;
+  flex: 0 1 760px;
   min-width: 0;
   margin-inline: auto;
 }
@@ -8837,12 +8863,12 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 @media (hover: hover) {
   .lens-row:not(.on):hover {
-    background: color-mix(in srgb, var(--surface) 55%, transparent);
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
   }
 }
 .lens-row.on {
   background: var(--surface);
-  box-shadow: var(--base);
+  box-shadow: var(--knob);
   color: var(--ink);
 }
 .lens-row.other:not(.on) {
@@ -8856,8 +8882,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   gap: 1px;
 }
 .lens-row .nm b {
-  font-size: var(--md);
-  font-weight: 700;
+  font-size: var(--bar-text);
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -8945,33 +8971,37 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .strip-row .find {
   flex: 0 1 260px;
 }
+/* D270: the counts in a small sunk track, as the places are; the filter chosen is the knob. */
 .strip {
   display: flex;
-  gap: 4px;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 1.5px 2px var(--line);
 }
 .strip .cell {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 84px;
-  padding: 8px 16px 9px;
+  align-items: baseline;
+  gap: 6px;
+  height: 28px;
+  align-content: center;
+  padding: 5px 12px 0;
   border: 0;
-  border-radius: var(--r-lg);
+  border-radius: 9px;
   background: transparent;
   font: inherit;
   color: var(--ink);
   cursor: pointer;
 }
 .strip .cell b {
-  font-family: var(--head);
-  font-size: 28px;
-  line-height: 1.15;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .strip .cell span {
-  font-size: var(--xs);
-  font-weight: 700;
+  font-size: var(--sm);
+  font-weight: 500;
   color: var(--ink-muted);
   white-space: nowrap;
 }
@@ -8981,17 +9011,18 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .strip .cell.none {
   cursor: default;
 }
-.strip .cell.none b {
+.strip .cell.none b,
+.strip .cell.none span {
   color: var(--faint);
 }
 @media (hover: hover) {
   .strip .cell:not(.none):not(.on):hover {
-    background: var(--sunken);
+    background: color-mix(in srgb, var(--surface-sunken) 50%, var(--surface));
   }
 }
 .strip .cell.on {
   background: var(--surface);
-  box-shadow: var(--base);
+  box-shadow: var(--knob);
 }
 .strip .cell.on span {
   color: var(--ink);
@@ -9006,10 +9037,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .room-phone .strip .cell {
   flex: 1 1 0;
   min-width: 0;
-  padding: 6px 10px 7px;
-}
-.room-phone .strip .cell b {
-  font-size: 24px;
+  justify-content: center;
+  padding: 5px 4px 0;
 }
 /* A wait's next look, with its small ring; a quiet one says since when. */
 .trow .l2 .next {
@@ -9439,27 +9468,6 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .composer-hint .k {
   color: var(--faint);
 }
-/* The header: an opened task's title on one line, and who · state · where under it. */
-.top.crumbs .here-col {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.25;
-}
-.top.crumbs .here.task {
-  font-family: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-.top.crumbs .here-col .sub {
-  font-size: 12px;
-  color: var(--ink-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .more-menu {
   position: relative;
   display: inline-flex;
@@ -9505,7 +9513,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .trow .time {
   white-space: nowrap;
   min-width: 4em;
-  font-size: 11px;
+  font-size: 12px;
 }
 .trow .l2 {
   font-size: 12px;

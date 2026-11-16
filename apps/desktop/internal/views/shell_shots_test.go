@@ -54,6 +54,7 @@ func TestShellShots(t *testing.T) {
 	shot("conversation-narrow", 900, 700)
 	h.app.Route = RouteOnHand
 	shot("onhand", 1280, 820)
+	shot("onhand-narrow", 900, 700)
 	h.app.OpenTask("t_flaky")
 	h.until("history", func() bool { return s.Task("t_flaky").HistoryLoaded })
 	shot("task", 1280, 820)

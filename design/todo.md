@@ -160,9 +160,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       itself. (3) Thinking opens to its headings only (D127 keeps no body). (4) A plan longer than
       the 2 KB input preview is cut and not shown; raise the preview for plan tools if real plans
       hit it. (5) Code blocks in the agent's words are mono 13, not 12 (MyGo's Markdown sizes
-      spans and blocks from one CodeSize). (6) The head's meta line repeats the header's
-      subtitle (agent, state, where); fold them into one once the author has seen both.
-      Trigger: the author's review of D268.
+      spans and blocks from one CodeSize). (6) Closed by D270: the header's subtitle is gone,
+      the head's meta line says it once. Trigger: the author's review of D268.
 - [ ] **The opened task, after D210**: (1) a step under way: Ducter's Log has a
       tool call only once it is done, so the foot names the latest finished step; a "running"
       line needs the runner to log a tool's start (OAR's item started events). Trigger: a live

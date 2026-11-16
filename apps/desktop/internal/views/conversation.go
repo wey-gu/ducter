@@ -274,32 +274,50 @@ func (a *App) header(c *ui.Context) {
 		c.After(connectQuiet) // the quiet first second ends on its own
 	}
 	a.placeBar(c, "conversation", RouteConversation, func() {
-		// The partner itself opens its own page (Settings › 伙伴): a second
-		// way in, for whoever reaches for the character; the visible way is
-		// 设置 at the bar's end (D262). Pointing at it tints it and says
-		// where it goes; the face never changes for the pointer (a face says
-		// what the partner is doing, D77, D112).
-		who := ui.Row(c.Key("who")).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Padding(2, t.S2, 2, 2).Radius(t.RadiusMD).
-			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.partner") + " · " + a.S.PersonaName).Focusable().
-			Tooltip(a.L.T("nav.partner.about", a.S.PersonaName))
-		if who.Hovered() || who.Pressed() {
-			who.Background(t.SurfaceSunken.Mix(t.Chrome, 0.45))
-		}
-		who.Children(func() {
-			// The clay partner, 52 points: it breathes and blinks (D77).
-			a.partnerFace(c, "bar", a.presence(c), 52)
-			ui.Column(c).Gap(1).MinWidth(0).Children(func() {
-				a.heading(c, a.S.PersonaName, t.XL).LineHeight(1.1).SingleLine()
+		// D270: two things, each its own way in. The face and the name open
+		// the partner's own page (Settings › 伙伴; the visible way is the
+		// gear at the bar's end, D262); the counts under the name open On
+		// hand, narrowed to what they name when they name one thing. Each
+		// tints on its own under the pointer, as the crumbs do; the face
+		// never changes for the pointer (a face says what the partner is
+		// doing, D77, D112).
+		tint := t.SurfaceSunken.Mix(t.Chrome, 0.45)
+		about := a.L.T("nav.partner.about", a.S.PersonaName)
+		ui.Row(c.Key("who")).Gap(t.S3 - 2).AlignItems(ui.Center).MinWidth(0).Children(func() {
+			// The clay partner, 44 points: it breathes and blinks (D77).
+			face := ui.Box(c.Key("who-face")).Shrink(0).Cursor(ui.CursorPointer).AccessHidden(true).Tooltip(about)
+			face.Children(func() { a.partnerFace(c, "bar", a.presence(c), 44) })
+			ui.Column(c).Gap(0).MinWidth(0).Children(func() {
+				name := ui.Text(c.Key("who-name"), a.S.PersonaName).FontSize(barText).FontWeight(600).TextColor(t.Ink).LineHeight(1.25).SingleLine().
+					Padding(1, t.S1+2).Radius(t.RadiusXS).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.partner") + " · " + a.S.PersonaName).
+					Focusable().Tooltip(about).AlignSelf(ui.Start)
+				if name.Hovered() || name.Pressed() || face.Hovered() || face.Pressed() {
+					name.Background(tint)
+				}
+				if name.Clicked() || face.Clicked() {
+					a.OpenPartner()
+				}
 				// The line keeps its height while it has nothing to say, so
 				// the name never moves when it fills in (D262).
-				ui.Box(c).MinHeight(t.SM * 1.5).Children(func() {
-					ui.Text(c, a.summary(b)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+				ui.Box(c).MinHeight(t.XS*1.5 + 2).Children(func() {
+					words := a.summary(b)
+					if f, ok := a.summaryFilter(b); ok && words != "" {
+						l := ui.Text(c.Key("who-counts"), words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Padding(1, t.S1+2).Radius(t.RadiusXS).
+							Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(words).Focusable().Tooltip(a.L.T("nav.onhand"))
+						if l.Hovered() || l.Pressed() {
+							l.Background(tint).TextColor(t.Ink)
+						}
+						if l.Clicked() {
+							a.oh.filter, a.oh.focus = f, ""
+							a.Route = RouteOnHand
+							a.markRead()
+						}
+						return
+					}
+					ui.Text(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Padding(1, t.S1+2)
 				})
 			})
 		})
-		if who.Clicked() {
-			a.OpenPartner()
-		}
 	}, nil)
 }
 
@@ -310,6 +328,31 @@ func (a *App) WaitingCount() int {
 		return 0
 	}
 	return len(a.S.Board().Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
+}
+
+// summaryFilter is where the counts line leads (D270): ok when it says
+// counts (not connecting, not offline), and the strip's filter (1–4) when it
+// names one thing only, else 0 (the whole of On hand).
+func (a *App) summaryFilter(b store.Board) (filter int, ok bool) {
+	if a.Status == client.Connecting && a.S.Persona == "" || a.Status == client.Disconnected {
+		return 0, false
+	}
+	n := [4]int{
+		len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions()),
+		len(b.Lanes[store.LaneWorking]),
+		len(b.Lanes[store.LaneWaiting]) + len(a.looseWaiters()),
+		a.doneToday(b),
+	}
+	for i, v := range n {
+		if v == 0 {
+			continue
+		}
+		if filter != 0 {
+			return 0, true
+		}
+		filter = i + 1
+	}
+	return filter, true
 }
 
 // connectQuiet is how long a launch says nothing about connecting.

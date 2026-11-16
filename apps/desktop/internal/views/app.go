@@ -82,6 +82,10 @@ type App struct {
 	devicesAsked bool
 	// bridgeConfirm: 断开 was tapped once and asks before it runs (D205).
 	bridgeConfirm bool
+	// D295: memAsk is the noted line whose 忘掉 asks in place; memDetails
+	// and peersDetails show the raw facts behind 详情.
+	memAsk                   int64
+	memDetails, peersDetails bool
 	// bridgeLink: the connect link being pasted on the row (D225); never kept.
 	bridgeLink string
 	StatusErr  string

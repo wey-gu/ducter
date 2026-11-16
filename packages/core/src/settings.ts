@@ -54,6 +54,8 @@ export interface SettingsStore extends SettingsApi {
   set(patch: SettingsPatch): string[];
   /** D250: the mode set by Ducter for a reason the person gave (不再需要 to the morning note). */
   setProactive(mode: ProactiveMode, by: "chosen" | "keep_note"): void;
+  /** D295: the glance at Mem itself (mem-glance.ts), read on each view. */
+  setGlance(fn: () => MemView["glance"]): void;
   /** Forgets one noted line: in Mem when possible, else hidden here. */
   forget(seq: number): Promise<"mem" | "hidden" | undefined>;
   onChange(fn: () => void): () => void;
@@ -97,6 +99,7 @@ export function openSettings(opts: {
   const listeners = new Set<() => void>();
   const changed = () => listeners.forEach((fn) => fn());
   let forgetter: ((id: string) => Promise<boolean>) | undefined;
+  let glance: (() => MemView["glance"]) | undefined;
   let memSeen: "connected" | "missing" | undefined;
   // D135: checked once at start (env + file); a value out of range is said once, then its default runs.
   const windowsNow = () => resolveWindows(data.windows, opts.env ?? process.env);
@@ -172,6 +175,9 @@ export function openSettings(opts: {
     setForgetter(fn) {
       forgetter = fn;
     },
+    setGlance(fn) {
+      glance = fn;
+    },
     setMemState(s) {
       if (s === memSeen) return;
       memSeen = s;
@@ -190,7 +196,8 @@ export function openSettings(opts: {
       // An identity Ducter enrolled carries the partner's name (kept in step on rename, D141).
       const m = opts.persona.mem;
       const keptUnder = state === "connected" && m ? (m.owned ? opts.persona.name : m.label || m.agentId) : undefined;
-      return { settings: s, mem: { state, noted: noted(), ...(keptUnder ? { keptUnder } : {}) } };
+      const g = state !== "off" ? glance?.() : undefined;
+      return { settings: s, mem: { state, noted: noted(), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}) } };
     },
     set(patch) {
       const did: string[] = [];

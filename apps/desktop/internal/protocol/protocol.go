@@ -1206,6 +1206,24 @@ type MemView struct {
 	Noted []Noted `json:"noted"`
 	// KeptUnder is the name its memories are kept under in Mem (D141).
 	KeptUnder string `json:"keptUnder,omitempty"`
+	// D295: Glance is a look at Mem itself when it answers: how many
+	// memories it holds and the latest ones other AI tools saved there.
+	Glance *MemGlance `json:"glance,omitempty"`
+}
+
+// MemGlance is Mem's count and what the person's other AI tools saved
+// lately (titles only; From is the tool's own name, "Claude Code").
+type MemGlance struct {
+	Total  int        `json:"total"`
+	Others []MemOther `json:"others"`
+}
+
+// MemOther is one memory another AI tool saved.
+type MemOther struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	From  string `json:"from"`
+	At    string `json:"at,omitempty"`
 }
 
 // BridgeView is Settings › 伙伴's row for the persona's own connection with
@@ -1229,6 +1247,9 @@ type BridgeView struct {
 	Need     string       `json:"need,omitempty"`
 	SignIn   string       `json:"signIn,omitempty"`
 	Version  string       `json:"version,omitempty"`
+	// D295: Where Mem keeps the memories: cloud, local (the Mem app or a
+	// Vault on the home), or server (the person's own Mem server).
+	Where string `json:"where,omitempty"`
 	// D257: Newer is Mem's own word that a newer nmem is out: its version,
 	// or "" when Mem didn't name it; nil when none is.
 	Newer *string `json:"newer,omitempty"`

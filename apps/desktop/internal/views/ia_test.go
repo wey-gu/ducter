@@ -61,7 +61,7 @@ func TestPartnerPage(t *testing.T) {
 	}
 	tt.Click("记忆")
 	tt.Frame()
-	for _, want := range []string{"小鸭记得你", "记住事情", "它记下的", "测试统一用假时钟", "Nowledge Mem"} {
+	for _, want := range []string{"小鸭记得你", "记住事情", "更早记下的", "测试统一用假时钟", "Nowledge Mem"} {
 		if !tt.HasText(want) {
 			t.Errorf("Memory: no %q in %q", want, tt.Texts())
 		}
@@ -100,7 +100,7 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	app.openTab(TabMemory)
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"小鸭记得这次对话", "hel 上还没有 Nowledge Mem。", "了解 Nowledge Mem"} {
+	for _, want := range []string{"让小鸭记住你", "还没接上", "了解 Nowledge Mem"} {
 		if !tt.HasText(want) {
 			t.Errorf("Memory: no %q in %q", want, tt.Texts())
 		}
@@ -141,8 +141,8 @@ func TestMemoryTabKeptUnder(t *testing.T) {
 		lang i18n.Lang
 		want string
 	}{
-		{i18n.ZH, "它在 Nowledge Mem 里叫「小鸭」。"},
-		{i18n.EN, "In Nowledge Mem it goes by 小鸭."},
+		{i18n.ZH, "在 Nowledge Mem 里叫「小鸭」，它记的都署这个名字"},
+		{i18n.EN, "“小鸭” in Nowledge Mem; everything it saves carries that name"},
 	} {
 		app, _ := iaApp(t, tc.lang)
 		f := settingsFrame()

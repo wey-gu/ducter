@@ -76,7 +76,7 @@ describe("the link over a fake nmem", () => {
 
   test("ready: what 接上 will do, read passively", async () => {
     const r = rig();
-    expect(await r.link.view()).toEqual({ state: "ready", identity: "ducter", space: { id: "fake-space", label: "Only me" }, home: "hel", version: "0.10.118" });
+    expect(await r.link.view()).toEqual({ state: "ready", identity: "ducter", space: { id: "fake-space", label: "Only me" }, home: "hel", version: "0.10.118", where: "cloud" });
     expect(writes(r.calls())).toEqual([]);
     expect(r.calls().some((c) => c.includes("--enable"))).toBe(false);
     expect(r.link.context()).toBeUndefined();
@@ -90,7 +90,7 @@ describe("the link over a fake nmem", () => {
     const after = r.calls().slice(r.calls().findIndex((c) => c.includes("connect")) + 1);
     expect(after[0]).toEqual(["--json", "--agent-context", "ducter", "bridge", "setup"]);
     expect(r.link.context()).toBe("ducter");
-    expect(await r.link.view()).toEqual({ state: "connected", identity: "ducter", space: { id: "fake-space", label: "Only me" }, home: "hel", version: "0.10.118" });
+    expect(await r.link.view()).toEqual({ state: "connected", identity: "ducter", space: { id: "fake-space", label: "Only me" }, home: "hel", version: "0.10.118", where: "cloud" });
     expect(r.changes()).toBeGreaterThanOrEqual(2); // connecting…, then connected
     const kept = JSON.parse(readFileSync(join(r.data, BRIDGE_CONNECTION_FILE), "utf8"));
     expect(kept).toMatchObject({ context: "ducter", agentId: "ducter", spaceId: "fake-space", confirmed: true });
@@ -162,7 +162,7 @@ describe("the link over a fake nmem", () => {
   for (const which of ["none", "two"])
     test(`no single personal place (${which}): nothing offered, connect runs nothing`, async () => {
       const r = rig({ NMEM_FAKE_SPACES: which });
-      expect(await r.link.view()).toEqual({ state: "no_space", identity: "ducter", home: "hel", version: "0.10.118" });
+      expect(await r.link.view()).toEqual({ state: "no_space", identity: "ducter", home: "hel", version: "0.10.118", where: "cloud" });
       await r.link.connect();
       expect(writes(r.calls())).toEqual([]);
     });
@@ -243,7 +243,7 @@ describe("the link over a fake nmem", () => {
 
   test("D269: Mem on this computer that offers no place to connect: local_mem, after asking it", async () => {
     const r = rig({ NMEM_FAKE_BACKEND: "local", NMEM_FAKE_LOCAL_BRIDGE: "off" });
-    expect(await r.link.view()).toEqual({ state: "local_mem", identity: "ducter", home: "hel", version: "0.10.118" });
+    expect(await r.link.view()).toEqual({ state: "local_mem", identity: "ducter", home: "hel", version: "0.10.118", where: "local" });
     expect(r.calls().some((c) => c.includes("setup"))).toBe(true); // asked, never assumed
   });
 

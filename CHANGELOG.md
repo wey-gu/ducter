@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.0.57
+
+<!-- whats-new
+zh: 手头的事像指挥台：按项目看，一眼知道谁在等你、谁卡住了
+en: On hand is a conductor: by project, and at a glance what needs you
+zh: 每一页顶栏都一样，设置和更新随手可点；iPad 和折叠屏有了自己的样子
+en: Every page has the same header with Settings and updates; iPad and foldables get their own look
+-->
+
+**On hand**
+- Projects appear by themselves (from each task's repo or folder) in a column on the left; tap one
+  to see only its work. Nothing to set up or manage.
+- A strip of four counts on top (等你 · 在做 · 在等 · 今天做完) filters the board.
+- Every task says what is happening now in plain words; a wait says what it waits for and when it
+  looks again. Waits quiet for a day and results you've seen fold away by themselves.
+- An empty "needs you" no longer takes the top; one calm sentence does.
+
+**Everywhere**
+- Every page has the same header: where you are on the left; the page's own action, then
+  设备 · 手头的事 · 设置 on the right. 更新 appears when something can be updated.
+- The app opens in your language and with your partner's name from the first frame.
+
+**Devices**
+- An iPad shows as a tablet and a Pixel Fold (and other foldables) as a foldable, in the list, on
+  the islands and on their cards.
+
 ## 0.0.56
 
 <!-- whats-new

@@ -17,6 +17,8 @@ import { openLog, type SqliteLog } from "./log.ts";
 import { createMcpHub, type CoreMcpHub } from "./mcp.ts";
 import { DEFAULT_IDENTITY, type Persona } from "./persona.ts";
 import { createRegistry, type CoreRegistry } from "./registry.ts";
+import { createMarks, createPast } from "./past.ts";
+import { createOngoing } from "./ongoing.ts";
 import { registerCoreTools } from "./tools.ts";
 import type { Waiters } from "./waiters.ts";
 import { createWork, type Work } from "./work.ts";
@@ -47,7 +49,7 @@ import { registerConnectionTools } from "./connection-tools.ts";
 import { createCalendar, type Calendar } from "./calendar.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { createModelCatalog, type ModelCatalog } from "./models.ts";
-import { browseFolders, cloneProject, createFoundRepos, gitLoginOn, isOldOp, newFolderProject, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
+import { browseFolders, cloneProject, createFoundRepos, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
 import { projectRepos, realFs, type BrowseResult } from "@ducter/protocol/src/repos.ts";
 import { cloneRepo, type CloneResult } from "@ducter/protocol/src/clone.ts";
 import { newProjectFolder, type NewFolderResult } from "@ducter/protocol/src/new-folder.ts";
@@ -660,8 +662,15 @@ export function startCore(opts: CoreOptions = {}): Core {
   const newFolderHome = opts.newFolderHome ?? ((name: string) => newProjectFolder(name, { dataDir }));
   const gitLoginHome = opts.gitLoginHome ?? createGitLogin();
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, cloneHome, newFolderHome, gitLoginHome, ...(opts.browseHome ? { browseHome: opts.browseHome } : {}), ...(opts.git ? { git: opts.git } : {}) };
+  // D285: 做过的事 / Past tasks: the person's marks, and every task findable again.
+  const marks = createMarks({ dataDir });
+  tasks.setMarks((p, id) => marks.get(p, id));
+  const past = createPast({ log, tasks, marks, computerName: (dev) => computers.nameOf(dev) });
+  // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
+  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged() });
   const newTask = {
-    open: (i: NewTaskInput) => openYourTask(newTaskDeps, i),
+    // D285: 带着它开新任务 / New task from this: the brief carries what that task found.
+    open: (i: NewTaskInput) => openYourTask(newTaskDeps, i.from && tasks.get(i.from) ? { ...i, brief: past.seed(i.from, i.words, languageOf(i.words, settings) === "zh") } : i),
     options: (p?: Place) => newTaskOptions(newTaskDeps, p),
     // D186: a folder becomes a project; answered as the place the card then offers.
     async addProject(path: string, device?: string) {
@@ -687,7 +696,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
-  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets });
+  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing } });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.

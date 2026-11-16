@@ -12,6 +12,7 @@ import { Btn, Choice, MenuRow, Pill, Seg } from "./controls.tsx";
 import { candName, candReason, Check, coarse } from "./views.tsx";
 import { AddPictures, DropHint, Tray, useDropPaste } from "./media.tsx";
 import { harnessName } from "./format.ts";
+import { SeedChip } from "./past.tsx";
 import { computerApart, computerOf, computers, manyComputers } from "./where.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -194,6 +195,8 @@ export function NewTaskSheet() {
             onInput={(e) => ((nt.words = (e.target as HTMLTextAreaElement).value), (nt.err = ""), (nt.started = ""), A.changed())}
           />
           <Tray where="new" />
+          {/* D285: 带着它开新任务 / New task from this: what that task found goes with the words. */}
+          {nt.from && <SeedChip />}
           <div class="nt-what-foot">
             <div class="small sub">{t("newtask.verbatim")}</div>
             <AddPictures where="new" />

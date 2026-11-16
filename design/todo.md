@@ -10,6 +10,14 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 (eval only) · the partner eval (`bun run eval:partner`) · art cutouts with true alpha
 (`design/art/assets/alpha/`, 22 assets, `design/art/assets/tools/cut.swift`).
 
+## Past tasks and Ongoing (D285, `past.md`)
+
+- [ ] **The partner can search Past tasks** (a `past_search` tool beside `log_search`, so "continue last Tuesday's refactor" said in the conversation finds the card and offers 接着做). A tool change: run the D175 eval. Trigger: the author asks the partner for an old task by words.
+- [ ] **A human comprehension test of the ten pictures and six tints** (research/93 §5 rated by rubric only). Trigger: before calling the marks more than a preview.
+- [ ] **Semantic search** (embeddings over reports) for words that never appear as such. Trigger: a "can't find it" with words that are not in the task.
+- [ ] **Change when for every week picks the weekday** (today it keeps the routine's own day). Trigger: the first weekly routine moved to another day.
+- [ ] **On hand's rows draw the person's picture and name** (the name already is the title; the picture is not drawn on rows yet). Trigger: On hand's redesign settles.
+
 ## Chat apps (D276, `channels.md`)
 
 Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).

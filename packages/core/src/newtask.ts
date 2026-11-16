@@ -280,6 +280,10 @@ export interface NewTaskInput {
   when?: NewTaskWhen;
   /** D206: pictures dropped on the What row; they go to the task with the words (not to a routine yet). */
   media?: import("@ducter/protocol").MediaRef[];
+  /** D285: 带着它开新任务 / New task from this: the task it carries findings from. */
+  from?: string;
+  /** D285: the brief when it differs from the words (the words plus what that task found); the title stays the words'. */
+  brief?: string;
 }
 
 export type NewTaskResult = { ok: true; card: TaskCard } | { ok: true; routine: RoutineView } | { ok: false; reason: NewTaskReason; message: string };
@@ -417,7 +421,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
     card = await runner.openTask({
       persona: d.persona.id,
       title,
-      brief: when?.kind === "when" ? waitFirstBrief(condition, words, zh) : words,
+      brief: when?.kind === "when" ? waitFirstBrief(condition, input.brief ?? words, zh) : (input.brief ?? words),
       place,
       project,
       ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}) } : {}),
@@ -425,6 +429,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
       language: languageOf(words, d.settings),
       origin: "you",
       ...(input.media?.length ? { media: input.media } : {}),
+      ...(input.from && input.brief ? { from: input.from } : {}),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -52,6 +52,10 @@ same lens, whose head names it and goes back. The column never stands beside the
 
 What needs you never folds. Folded rows are not in the keys' walk.
 
+D285: under the sections, On hand's last line leads on: **一直在跑的 n 件 ›** (when something keeps
+going on its own) and **做过的事 ›**, where every finished task stays, findable and marked
+(`past.md`). A Find that matches nothing here offers **在做过的事里找「{q}」**.
+
 ## A row
 
 Two lines (one line cut the news to half a width):

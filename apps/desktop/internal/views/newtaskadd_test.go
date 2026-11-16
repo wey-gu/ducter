@@ -50,7 +50,7 @@ func TestNewTaskAddOnAServer(t *testing.T) {
 				t.Errorf("%s: says where it goes: %q", lang, tt.Texts())
 			}
 			newTaskShot(t, tt, "d272-new"+sz)
-			click(t, tt, L.T("newtask.new.go")+" · "+L.T("newtask.new.title", "Hetzner Server"))
+			click(t, tt, spoken(L, L.T("newtask.new.go"), L.T("newtask.new.title", "Hetzner Server")))
 			n, ok := lastFrame[protocol.ProjectNew](sent)
 			if !ok || n.Name != name || n.Device != "" || n.ClientID == "" {
 				t.Fatalf("%s: project_new %+v", lang, n)

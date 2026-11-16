@@ -478,7 +478,7 @@ func (a *App) serviceRows(c *ui.Context, cv protocol.ConnectionView) {
 			}
 			if sw {
 				v := w.Watch
-				if a.switchControl(c, "watch:"+cv.ID+"|"+k, title+" · "+a.L.T("tile.watch"), &v) {
+				if a.switchControl(c, "watch:"+cv.ID+"|"+k, title+", "+a.L.T("tile.watch"), &v) {
 					a.send(protocol.AppWatchSet{T: "app_watch", ID: cv.ID, Service: w.Service, Account: w.Account, Watch: &v})
 					// D296: the switch moved; the partner says what that means, once.
 					what := title

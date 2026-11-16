@@ -48,29 +48,45 @@ var gos = []struct {
 	{regexp.MustCompile(`^The user said OK to use `), ""},
 }
 
-// switchLine is a switch inside the task with its time (D282): 换成 Codex
-// 接着做 · 21:40, 换成 Sonnet · 高 · 21:40, 换到 hel 接着做 · 21:40.
+// earlierLine is where an outside session's earlier turns began (D299):
+// the agent and the day.
+func (a *App) earlierLine(b *Block) string {
+	agent := b.Name
+	if agent == "" {
+		agent = a.L.T("note.earlier.agent")
+	}
+	at := store.ParseTime(b.At)
+	if at.IsZero() {
+		return a.L.T("note.earlier.undated", agent)
+	}
+	return a.L.T("note.earlier", agent, at.Local().Format(a.L.T("note.earlier.day")))
+}
+
+// switchLine is a switch inside the task (D282): 换成 Codex 接着做,
+// 换成 Sonnet（高）, 换到 hel 接着做. Its time is drawn apart (D291).
 func (a *App) switchLine(task *store.Task, b *Block) string {
-	at := clock(a.tsOf(task, b.Seq))
 	if b.Say == "retuned" {
-		var parts []string
+		m, e := "", ""
 		if b.Name != "" {
-			parts = append(parts, modelLabel(a.trayHarness(task.Harness()), b.Name))
+			m = modelLabel(a.trayHarness(task.Harness()), b.Name)
 		}
 		if b.Effort != "" {
-			parts = append(parts, a.effortWord(b.Effort))
+			e = a.effortWord(b.Effort)
 		}
-		who := strings.Join(parts, " · ")
+		who := m + e
+		if m != "" && e != "" {
+			who = a.L.T("who.name", m, e)
+		}
 		if who == "" {
 			who = a.L.T("note.retuned.default")
 		}
-		return a.L.T("note.retuned", who, at)
+		return a.L.T("note.retuned", who)
 	}
 	name := b.Name
 	if name == "" {
 		name = a.L.T("note.computer")
 	}
-	return a.L.T("note."+b.Say, name, at)
+	return a.L.T("note."+b.Say, name)
 }
 
 // noteLine is a note in words: note.<say>, its name filled in (a
@@ -121,7 +137,7 @@ func (a *App) rowWords(r *StepRow) (string, string) {
 	case st.Kind == "delegated":
 		return a.L.T("step.delegated.bare"), ""
 	case st.Kind == "other" && st.Via != "" && r.Outcome != "missing":
-		return serviceName(st.Via) + " · " + st.Target, ""
+		return serviceName(st.Via), st.Target // D291: the service, and apart what it acted on
 	}
 	if r.Outcome == "missing" {
 		base := "step." + st.Kind
@@ -303,9 +319,9 @@ func (a *App) taskClock(c *ui.Context, task *store.Task) string {
 	return elapsed(a.Now().Sub(started))
 }
 
-// whereLine is where it runs, in a few words: the repo and its branch, the
+// whereLine is where it runs, as separate facts (D291): the repo and its branch, the
 // folder, or the machine when it isn't this one; nothing for no place.
-func (a *App) whereLine(p protocol.Place) string {
+func (a *App) whereLine(p protocol.Place) []string {
 	parts := []string{}
 	switch p.Kind {
 	case "repo":
@@ -330,30 +346,43 @@ func (a *App) whereLine(p protocol.Place) string {
 	if p.Device != "" && p.Device != "local" && !a.manyComputers() {
 		parts = append(parts, a.L.T("task.where.on", p.Device))
 	}
-	return strings.Join(parts, " · ")
+	return parts
+}
+
+// taskWhoParts is who does a task as separate facts (D291): the agent, the
+// model, the effort.
+func (a *App) taskWhoParts(task *store.Task) []string {
+	parts := []string{harnessName(task.Harness())}
+	if m := task.Model(); m != "" {
+		parts = append(parts, modelLabel(a.trayHarness(task.Harness()), m))
+	}
+	if e := task.Effort(); e != "" {
+		parts = append(parts, a.effortWord(e)) // D202
+	}
+	return nonEmpty(parts...)
 }
 
 // taskWho is the meta line's second half: who does it (the agent and the
 // model in words; no coin at this size, D213), where, and Switch who does
-// it as a small action.
+// it as a small action. D291: each fact its own small element, spaced by
+// the gap, never joined by "·".
 func (a *App) taskWho(c *ui.Context, task *store.Task) {
 	t := a.T
-	who := a.bodyLine(task)
-	where := a.whereLine(task.Place())
-	if on, _ := a.taskWhere(task); who == "" && where == "" && on == "" {
+	facts := append(a.taskWhoParts(task), a.whereLine(task.Place())...)
+	if on, _ := a.taskWhere(task); len(facts) == 0 && on == "" {
 		return
 	}
-	// Its own line under the state, never a wrapped tail that starts with "·".
-	ui.Row(c.Key("who")).Gap(t.S1).AlignItems(ui.Center).MinWidth(0).Shrink(1).Wrap().Children(func() {
-		line := strings.Join(nonEmpty(who, where), " · ")
-		tx := ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
+	ui.Row(c.Key("who")).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Shrink(1).Wrap().Children(func() {
 		p := task.Place()
-		if s := firstNonEmpty(p.RepoPath, p.Path); s != "" {
-			tx.Tooltip(s)
+		tip := firstNonEmpty(p.RepoPath, p.Path)
+		for i, f := range facts {
+			tx := ui.Text(c.Key(i), f).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
+			if tip != "" {
+				tx.Tooltip(tip)
+			}
 		}
 		// D157: which computer, and what it uses there; why on hover.
 		if on, why := a.taskWhere(task); on != "" {
-			ui.Text(c, "·").FontSize(t.SM).TextColor(t.InkMuted)
 			wt := ui.Text(c.Key("where"), on).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
 			if why != "" {
 				wt.Tooltip(why)

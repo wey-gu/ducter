@@ -2,12 +2,12 @@
 // what it changed, where it ran and when; the person's marks on it (a name, a star, a few tags,
 // a picture); and the ways back: 接着做 / Continue, 带着它开新任务 / New task from this, or just
 // open it. A sheet: a centred panel when wide, the whole screen on a phone.
-import type { OngoingAction, OngoingItem, OngoingRun, PastGlyph, PastItem, PastMarkPatch, PastQuery, PastTint, ServerFrame } from "@ducter/protocol";
+import type { OngoingAction, OngoingItem, OngoingRun, OutsideAgent, OutsideItem, PastGlyph, PastItem, PastMarkPatch, PastQuery, PastTint, ServerFrame } from "@ducter/protocol";
 import { PAST_GLYPHS, PAST_TAGS_MAX, PAST_TINTS } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn } from "./controls.tsx";
-import { harnessName } from "./format.ts";
+import { Btn, Facts } from "./controls.tsx";
+import { harnessName, spoken } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -33,6 +33,8 @@ export const P = {
   ogPause: "",
   ogEdit: "",
   settling: "",
+  /** D299: the outside session being carried on (agent:id), opened when its task is there. */
+  adopting: "",
 };
 
 const ACTIVE = new Set(["queued", "working", "needs_you", "blocked", "done_claimed"]);
@@ -70,8 +72,20 @@ function ask(now = false) {
 }
 
 /** past_result and past_marked from the home (app.ts hands them here). */
-export function onPastFrame(f: Extract<ServerFrame, { t: "past_result" } | { t: "past_marked" } | { t: "ongoing_result" }>) {
+export function onPastFrame(f: Extract<ServerFrame, { t: "past_result" } | { t: "past_marked" } | { t: "ongoing_result" } | { t: "outside_adopted" } | { t: "outside_hidden" }>) {
   if (f.t === "ongoing_result") return void ((P.og = f.items), A.changed());
+  // D299: a session from outside Ducter became a task: it opens (or why it couldn't).
+  if (f.t === "outside_adopted") {
+    const mine = P.adopting === `${f.agent}:${f.id}`;
+    P.adopting = mine ? "" : P.adopting;
+    if (!f.ok || !f.taskId) return void (mine && A.toast(f.message || t("past.out.failed")), A.changed());
+    if (mine) {
+      close();
+      A.go({ name: "task", id: f.taskId });
+    }
+    return void ask(true);
+  }
+  if (f.t === "outside_hidden") return void ask(true);
   if (f.t === "past_result") {
     if (f.id !== P.asked) return;
     P.res = f;
@@ -217,11 +231,12 @@ function dateOf(iso: string, now = Date.now()): string {
   return zh ? `${d.getMonth() + 1}月${d.getDate()}日` : d.toLocaleDateString("en", { month: "short", day: "numeric" });
 }
 
-function rangeLine(r: NonNullable<Result["range"]>): string {
+/** The range a search read, said and dated apart ("上周", 11月9日–11月15日; D291). */
+function rangeLine(r: NonNullable<Result["range"]>): string[] {
   const a = new Date(r.since);
   const b = new Date(Date.parse(r.before) - 1);
   const f = (d: Date) => (A.L.lang === "zh" ? `${d.getMonth() + 1}月${d.getDate()}日` : d.toLocaleDateString("en", { month: "short", day: "numeric" }));
-  return `${r.words} · ${a.toDateString() === b.toDateString() ? f(a) : `${f(a)} – ${f(b)}`}`;
+  return [r.words, a.toDateString() === b.toDateString() ? f(a) : `${f(a)}–${f(b)}`];
 }
 
 // ---------- pieces ----------
@@ -302,13 +317,14 @@ function Card({ it }: { it: PastItem }) {
             it.outcome && <span class="pl2">{it.outcome}</span>
           )}
           <span class="pl3">
-            {meta.join(" · ")}
+            <Facts items={meta} />
             {ch && (ch.adds || ch.dels) ? (
               <span class="pdiff">
                 <span class="add">+{ch.adds}</span> <span class="del">−{ch.dels}</span>
               </span>
             ) : null}
             {it.integrated && <span class="pint">{t(it.integrated.act === "merge" ? "onhand.pr.merged" : "onhand.pr.draft")}</span>}
+            {it.outside && <span class="pint">{t("past.out.from", harnessName(it.outside.agent))}</span>}
             {end && <span class={`pend${active ? " live" : ""}`}>{end}</span>}
           </span>
         </span>
@@ -552,10 +568,10 @@ export function PastSheet() {
           </svg>
           <input ref={ref} value={P.q} placeholder={t("past.find")} aria-label={t("past.find")} autocomplete="off" spellcheck={false} onInput={(e) => ((P.q = e.currentTarget.value), (P.focus = ""), ask(), A.changed())} />
         </label>
-        {P.res?.range && <div class="past-range">{rangeLine(P.res.range)}</div>}
+        {P.res?.range && <Facts class="past-range" items={rangeLine(P.res.range)} />}
         <Chips />
         <div class="past-list">
-          {!loading && !items.length && <p class="past-none">{searching || P.filter.kind !== "all" ? t("past.none") : t("past.empty")}</p>}
+          {!loading && !items.length && !P.res?.outside?.length && <p class="past-none">{searching || P.filter.kind !== "all" ? t("past.none") : t("past.empty")}</p>}
           {secs.map((s) => (
             <section key={s.key} class="past-sec">
               <h3>{s.label}</h3>
@@ -564,11 +580,124 @@ export function PastSheet() {
               ))}
             </section>
           ))}
+          <OutsideSection />
         </div>
           </>
         )}
       </div>
     </>
+  );
+}
+
+// ---------- D299: 也在这台电脑上 / Also on this computer ----------
+
+const outKey = (it: OutsideItem) => `out:${it.agent}:${it.id}`;
+
+/** 接着做: the same agent resumes that very session in a new task (or another agent takes it over there). */
+function carryOut(it: OutsideItem, harness?: string) {
+  if (it.gone) return void A.toast(t("past.out.gone.why", it.cwd));
+  P.adopting = `${it.agent}:${it.id}`;
+  A.send({ t: "outside_continue", agent: it.agent, id: it.id, ...(harness && harness !== it.agent ? { harness } : {}) });
+  A.toast(t("past.out.continued", it.title));
+  A.changed();
+}
+
+function hideAgent(agent: OutsideAgent, hidden: boolean) {
+  A.send({ t: "outside_hide", agent, hidden });
+  if (P.res) {
+    if (hidden) P.res.outside = (P.res.outside ?? []).filter((x) => x.agent !== agent);
+    P.res.sources = (P.res.sources ?? []).map((s) => (s.agent === agent ? { ...s, hidden } : s));
+  }
+  P.moreFor = "";
+  A.changed();
+}
+
+/** One session from outside Ducter: the same card as a task's, its picture guessed from its words. */
+function OutsideCard({ it }: { it: OutsideItem }) {
+  const key = outKey(it);
+  const on = P.focus === key;
+  const more = P.moreFor === key;
+  const busy = P.adopting === `${it.agent}:${it.id}`;
+  const hitLabel = it.hit ? t(`past.hit.${it.hit.field}`) : "";
+  const others = ["claude-code", "codex", "pi", "deepseek-harness"].filter((h) => h !== it.agent);
+  return (
+    <div class={`pcard out${on ? " on" : ""}${more ? " open" : ""}${it.gone ? " gone" : ""}`} data-id={key} onMouseEnter={() => P.focus !== key && ((P.focus = key), A.changed())}>
+      <button class="pmain" onClick={() => carryOut(it)} aria-label={it.title} disabled={busy}>
+        <Pebble it={{ kind: it.kind }} />
+        <span class="pbody">
+          <span class="pl1">
+            <span class="pt">{it.title}</span>
+          </span>
+          {it.hit ? (
+            <span class="pl2 hit">
+              <b>{hitLabel}</b>
+              <span>
+                <Marked text={it.hit.text} q={P.q} />
+              </span>
+            </span>
+          ) : (
+            it.ask && <span class="pl2">{it.ask}</span>
+          )}
+          <span class="pl3 pmeta">
+            <span>{it.project}</span>
+            <span>{harnessName(it.agent)}</span>
+            {it.branch && <span class="pbr">{it.branch}</span>}
+            <span>{dateOf(it.updatedAt)}</span>
+            {it.gone && <span class="pend">{t("past.out.gone")}</span>}
+          </span>
+        </span>
+      </button>
+      <span class="pacts">
+        <Btn kind="secondary" size="sm" label={t(busy ? "past.out.opening" : "past.continue")} disabled={busy || !!it.gone} onClick={() => carryOut(it)} />
+        <button class={`more-btn${more ? " open" : ""}`} aria-label={t("past.out.more")} aria-expanded={more} onClick={() => ((P.moreFor = more ? "" : key), A.changed())}>
+          ⋯
+        </button>
+      </span>
+      {more && (
+        <div class="pmenu" role="menu">
+          {!it.gone && <div class="pmenu-k">{t("past.other.agent")}</div>}
+          {!it.gone &&
+            others.map((h) => (
+              <button role="menuitem" class="sub" key={h} onClick={() => ((P.moreFor = ""), carryOut(it, h))}>
+                {t("past.with", harnessName(h))}
+              </button>
+            ))}
+          {!it.gone && <hr />}
+          <button role="menuitem" onClick={() => hideAgent(it.agent, true)}>
+            {t("past.out.hide", harnessName(it.agent))}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The quiet section under Ducter's own: sessions the person ran in their own agents here. */
+function OutsideSection() {
+  const items = P.res?.outside ?? [];
+  const hidden = (P.res?.sources ?? []).filter((s) => s.hidden);
+  if (!items.length && !hidden.length) return null;
+  return (
+    <section class="past-sec outside" aria-label={t("past.out.title")}>
+      <h3>
+        <span>{t("past.out.title")}</span>
+        {items.length > 0 && <span class="psec-n">{items.length}</span>}
+      </h3>
+      {items.length > 0 && <p class="past-out-sub">{t("past.out.sub")}</p>}
+      {items.map((it) => (
+        <OutsideCard key={outKey(it)} it={it} />
+      ))}
+      {hidden.length > 0 && (
+        <p class="past-out-hidden">
+          <span>{t("past.out.hidden", hidden.map((h) => harnessName(h.agent)).join(t("past.out.sep")))}</span>
+          {hidden.map((h) => (
+            <button key={h.agent} class="linkish" onClick={() => hideAgent(h.agent, false)}>
+              {hidden.length > 1 ? t("past.out.show.one", harnessName(h.agent)) : t("past.out.show")}
+            </button>
+          ))}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -605,16 +734,17 @@ function interval(ms: number): string {
   return zh ? `${h} 小时` : `${h} h`;
 }
 
-function stateLine(it: OngoingItem): string {
+/** An ongoing thing's line: its state, else how often it runs and when next, each its own fact (D291). */
+function stateLine(it: OngoingItem): string[] {
   if (it.state === "paused") {
-    if (it.pausedBy === "system" && it.pauseWhy) return t(`routine.paused.${it.pauseWhy}`);
-    return it.pausedUntil ? t("og.paused.until", soon(it.pausedUntil)) : t("og.paused");
+    if (it.pausedBy === "system" && it.pauseWhy) return [t(`routine.paused.${it.pauseWhy}`)];
+    return [it.pausedUntil ? t("og.paused.until", soon(it.pausedUntil)) : t("og.paused")];
   }
-  if (it.state === "running") return t("og.s.running");
-  if (it.state === "needs_you") return t("og.s.needs_you");
-  if (it.state === "proposed") return t("og.s.proposed");
+  if (it.state === "running") return [t("og.s.running")];
+  if (it.state === "needs_you") return [t("og.s.needs_you")];
+  if (it.state === "proposed") return [t("og.s.proposed")];
   const how = it.kind === "routine" ? (it.cadence ?? "") : it.everyMs ? t("og.every", interval(it.everyMs)) : "";
-  return [how, it.nextAt ? t("og.next", soon(it.nextAt)) : ""].filter(Boolean).join(" · ");
+  return [how, it.nextAt ? t("og.next", soon(it.nextAt)) : ""].filter(Boolean);
 }
 
 const RepeatGlyph = ({ task }: { task: boolean }) => (
@@ -633,7 +763,7 @@ function Runs({ runs }: { runs: OngoingRun[] }) {
   return (
     <span class="og-runs" role="list" aria-label={t("og.runs", runs.length)}>
       {runs.map((r, i) => {
-        const label = `${t(`og.run.${r.state}`)} · ${soon(r.at)}${r.line ? ` · ${r.line}` : ""}`;
+        const label = spoken(A.L, t(`og.run.${r.state}`), soon(r.at), r.line);
         return (
           <span
             key={i}
@@ -704,7 +834,7 @@ function OgCard({ it }: { it: OngoingItem }) {
           <span class="pl1">
             <span class="pt">{it.title}</span>
           </span>
-          <span class={`pl2 og-line${paused ? " paused" : ""}`}>{stateLine(it)}</span>
+          <span class={`pl2 og-line${paused ? " paused" : ""}`}><Facts items={stateLine(it)} /></span>
           <span class="pl3">
             {it.project && <span>{it.project}</span>}
             <Runs runs={it.runs} />

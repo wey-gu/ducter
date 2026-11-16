@@ -102,7 +102,7 @@ describe("New task: when it starts (D185)", () => {
       A.receive({ t: "task_new_result", ok: true, clientId: sent.at(-1).clientId, routineId: "rt1", routine: { routineId: "rt1", name: "Check the nightly", triggerWords: "Weekdays 9:00 · follows your time zone" } } as any);
       expect(A.sheet).toEqual({ kind: "newtask" });
       expect(A.nt.words).toBe("");
-      expect(A.nt.started).toBe("Scheduled: Weekdays 9:00 · follows your time zone · “Check the nightly”");
+      expect(A.nt.started).toBe("“Check the nightly” is scheduled, Weekdays 9:00 · follows your time zone");
       expect(A.nt.when).toBe("every"); // the next one starts the same way
       A.nt.words = "Check the nightly again.";
       A.startNewTask();
@@ -137,9 +137,9 @@ describe("New task: when it starts (D185)", () => {
     const { placeLine } = await import("../src/app.ts");
     const mac = { place: { kind: "repo", device: "dev_mac", repoPath: "/Users/weyl/dev/ducter" }, name: "ducter", defaultBranch: "main", branches: ["main", "worktree-x"], added: true, computer: "Macbook Pro M3" } as any;
     const hel = { place: { kind: "repo", device: "local", repoPath: "/root/ducter-server" }, name: "ducter-server", computer: "Hetzner Server" } as any;
-    expect(placeLine(mac)).toBe("~/dev/ducter · Macbook Pro M3");
-    expect(placeLine(hel)).toBe("/root/ducter-server · Hetzner Server");
-    expect(placeLine({ place: { kind: "folder", device: "local", path: "/home/wey/notes" }, name: "notes" } as any)).toBe("~/notes");
+    expect(placeLine(mac)).toEqual({ path: "~/dev/ducter", computer: "Macbook Pro M3" });
+    expect(placeLine(hel)).toEqual({ path: "/root/ducter-server", computer: "Hetzner Server" });
+    expect(placeLine({ place: { kind: "folder", device: "local", path: "/home/wey/notes" }, name: "notes" } as any)).toEqual({ path: "~/notes", computer: "" });
     A.receive({ ...options, places: [mac, hel, { place: { kind: "none" }, name: "" }] });
     A.nt.words = "Fix the card.";
     A.nt.branch = "worktree-x";

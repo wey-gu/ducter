@@ -31,9 +31,9 @@ class DialTest {
         val s = Dial.Sheet.from(msg("+862161234567"))!!
         assertEquals(listOf("要预约吗？"), s.ask) // blanks dropped
         val zh = Dial.text(s, Dial.Labels("开场白", "要问的", "不要透露", "需要记下", false))
-        assertEquals("开场白：你好，我想问一下小保养要多久。\n\n要问的：\n· 要预约吗？\n\n不要透露：\n· 车架号", zh)
+        assertEquals("开场白：你好，我想问一下小保养要多久。\n\n要问的：\n要预约吗？\n\n不要透露：\n车架号", zh)
         val en = Dial.text(s, Dial.Labels("Open with", "Ask", "Don't share", "Note down", true))
         assertTrue(en.startsWith("Open with: 你好"))
-        assertTrue(en.contains("Ask:\n· 要预约吗？"))
+        assertTrue(en.contains("Ask:\n要预约吗？"))
     }
 }

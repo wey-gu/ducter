@@ -140,7 +140,7 @@ func (a *App) cardName(c *ui.Context, id, name, real string, renamable bool) {
 			return
 		}
 		b := ui.Row(c.Key("name:"+id)).Gap(t.S1).AlignItems(ui.Center).Padding(2, t.S2).Radius(10).Cursor(ui.CursorText).Role(ui.RoleButton).
-			Label(a.L.T("device.rename") + " · " + name).Tooltip(a.L.T("card.rename.hint")).Focusable()
+			Label(spoken(a.L, a.L.T("device.rename"), name)).Tooltip(a.L.T("card.rename.hint")).Focusable()
 		hover := b.Hovered()
 		if hover {
 			b.Background(t.Sunken)
@@ -210,29 +210,15 @@ func (a *App) cardName(c *ui.Context, id, name, real string, renamable bool) {
 	})
 }
 
-// kindLine says what a device is and what it's for, in plain words:
-// 云上的电脑 · 小鸭住这儿, 这台 Mac · 小鸭住这儿, 另一台电脑 · 替小鸭做事.
+// kindLine says what a device is for, in one plain phrase: 小鸭住这儿 /
+// Ducter lives here, 替小鸭做事 / Does tasks for Ducter. What kind of
+// computer it is, the clay and its name already say (D291: no kind joined on).
 func (a *App) kindLine(dv *protocol.DeviceView) string {
 	who := a.S.PersonaName
-	what := a.L.T("device.what.computer")
-	switch {
-	case dv.Kind == "server":
-		what = a.L.T("device.what.cloud")
-	case dv.Home && a.onThisMac():
-		what = a.L.T("device.local")
-	case strings.HasPrefix(dv.Platform, "darwin") || dv.Kind == "laptop" || dv.Kind == "mini":
-		what = a.L.T("device.what.mac")
-	}
 	if dv.Home {
-		return a.L.T("device.what.home", what, who)
+		return a.L.T("card.status.home", who)
 	}
-	if !dv.Home && dv.Kind != "server" {
-		what = a.L.T("device.other")
-		if a.isThisMacDevice(dv) && !a.onThisMac() {
-			what = a.L.T("device.local") // D155: this Mac, doing tasks for a Ducter elsewhere
-		}
-	}
-	return a.L.T("device.what.worker", what, who)
+	return a.L.T("card.status.does", who)
 }
 
 // behind: an update is available and not under way: said in words by the
@@ -276,18 +262,18 @@ func (a *App) updateReason(reason string) string {
 	return a.L.T("devup.why.failed")
 }
 
-// upToDate never says "latest" without when it was read: 已经是最新的 ·
-// 3 小时前查过 / Up to date · checked 3 h ago.
-func (a *App) upToDate(u *protocol.DeviceUpdate) string {
+// upToDate never says "latest" without when it was read: 已经是最新的, and
+// beside it 3 小时前检查过 / Checked 3 hours ago, two facts (D291).
+func (a *App) upToDate(u *protocol.DeviceUpdate) (string, string) {
 	line := a.L.T("devup.current")
 	// D296: one phrase, never "已经是最新的 · 刚检查过".
 	if at := store.ParseTime(u.CheckedAt); !at.IsZero() {
 		if a.Now().Sub(at) < 2*time.Minute {
-			return a.L.T("settings.versions.current.now")
+			return a.L.T("settings.versions.current.now"), ""
 		}
-		return a.L.T("settings.versions.current", a.agoLong(u.CheckedAt))
+		return a.L.T("settings.versions.current", a.agoLong(u.CheckedAt)), ""
 	}
-	return line
+	return line, ""
 }
 
 // checkNow is the quiet 现在检查 / Check now after it: the home reads the
@@ -482,26 +468,6 @@ func (a *App) disconnectConfirm(c *ui.Context, id, name, means string) {
 	})
 }
 
-// clientWhat names a phone or a window elsewhere from its platform, for
-// short places (the isles): iPhone · Safari, a Mac app window, a browser.
-func (a *App) clientWhat(cl *protocol.ReachClient) string {
-	p := strings.ToLower(cl.Platform)
-	switch {
-	case strings.Contains(p, "ios") || strings.Contains(p, "iphone"):
-		if strings.Contains(p, "safari") || strings.Contains(p, "web") {
-			return "iPhone · Safari"
-		}
-		return a.L.T("device.client.iphone")
-	case strings.Contains(p, "android"):
-		return a.L.T("device.client.android")
-	case strings.Contains(p, "darwin") || strings.Contains(p, "mac"):
-		return a.L.T("device.client.mac")
-	case p != "":
-		return a.L.T("device.client.browser")
-	}
-	return a.L.T("device.client.other")
-}
-
 // updateSection is Settings' list of every computer's Ducter version
 // (D148 (9)): a self-contained card, so the Settings page can place it.
 // It shows only when the server says versions. Built from shared pieces
@@ -572,7 +538,11 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 				a.sideStatus(c, a.L.T("devup.checking"), sideMuted)
 				return
 			}
-			a.sideStatus(c, a.upToDate(u), sideMuted)
+			current, checked := a.upToDate(u)
+			a.sideStatus(c, current, sideMuted)
+			if checked != "" {
+				a.sideStatus(c, checked, sideMuted)
+			}
 			if home && a.sideLink(c, "check:"+dv.ID, a.L.T("devup.checknow"), "", sideMuted, 0) {
 				d.card.checking = true
 				a.send(protocol.DeviceUpdateReq{T: "device_update", Device: dv.ID, Check: true})

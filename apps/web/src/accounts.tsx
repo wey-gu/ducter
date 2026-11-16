@@ -429,7 +429,7 @@ export function SourceCard({ c }: { c: ConnectionView }) {
               state={state ? { text: state, tone: bad ? "bad" : watching ? "done" : undefined } : undefined}
               open={isOpen}
               onClick={() => (k === "calendar" && retireFirst(tiles.filter((x) => kindOf(x.service) === "calendar").map((x) => `${c.id}:${key(x)}`)), setOpen(isOpen ? "" : key(w)))}
-              sw={k !== "other" && !w.excluded && !down(c) ? { label: `${title} · ${t("tile.watch")}`, on: w.watch, onChange: (v) => (A.setApp(c.id, w.service, w.account, { watch: v }), say(`watch:${c.id}`, t(v ? "said.watch.on" : "said.watch.off", w.account || title))) } : undefined}
+              sw={k !== "other" && !w.excluded && !down(c) ? { label: `${title}, ${t("tile.watch")}`, on: w.watch, onChange: (v) => (A.setApp(c.id, w.service, w.account, { watch: v }), say(`watch:${c.id}`, t(v ? "said.watch.on" : "said.watch.off", w.account || title))) } : undefined}
             />
             {isOpen && <TileDetail c={c} w={w} />}
           </Fragment>

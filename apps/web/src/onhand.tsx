@@ -11,9 +11,9 @@ import { callEnded, type Bodies, type LogEvent, type Place } from "@ducter/proto
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
-import { Btn, Chev } from "./controls.tsx";
+import { Btn, Chev, Facts } from "./controls.tsx";
 import { openPast } from "./past.tsx";
-import { ago, clock, day, harnessName, when } from "./format.ts";
+import { ago, clock, day, harnessName, spoken, when } from "./format.ts";
 import { CallRow } from "./phone.tsx";
 import { attention, canIntegrate, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
 import { liveRow, liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "./transcript.tsx";
@@ -154,11 +154,11 @@ export function waitNext(w: ReturnType<typeof A.S.waiterFor>, now = Date.now()):
   return { text: "", frac: 0 };
 }
 
-/** What comes next for a waiting task, in one line, for the opened task's head. */
+/** What comes next for a waiting task, in one line, for the opened task's head: when it comes back,
+ *  or, with nothing to come back for, when it last moved (D291: one thought, not two joined). */
 export function taskNext(task: Task, now = Date.now()): string {
   if (attention(task) !== "blocked") return "";
-  const parts = [quietWait(task, now) ? t("onhand.wait.since", ago(A.L, task.card?.updatedAt, now)) : "", waitNext(A.S.waiterFor(task.id), now).text].filter(Boolean);
-  const s = parts.join(" · ");
+  const s = waitNext(A.S.waiterFor(task.id), now).text || (quietWait(task, now) ? t("onhand.wait.since", ago(A.L, task.card?.updatedAt, now)) : "");
   return !A.L.style.cased || !s ? s : s[0]!.toUpperCase() + s.slice(1);
 }
 
@@ -254,7 +254,7 @@ function LensEntry({ k, name, tasks, on, tab }: { k: string; name: string; tasks
   const counts = foldCounts(statuses);
   const st = tab ? { adds: 0, dels: 0 } : groupStat(tasks);
   return (
-    <button class={`lens-row${on ? " on" : ""}${k === OTHER ? " other" : ""}`} aria-pressed={on} aria-label={[name, counts].filter(Boolean).join(" · ")} title={counts || undefined} onClick={() => setLens(k)}>
+    <button class={`lens-row${on ? " on" : ""}${k === OTHER ? " other" : ""}`} aria-pressed={on} aria-label={spoken(A.L, name, counts)} title={counts || undefined} onClick={() => setLens(k)}>
       <span class="nm">
         <b>{name}</b>
         {st.adds + st.dels > 0 && (
@@ -555,7 +555,7 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   const wide = room !== "phone";
   // D261: where, quietly: its project when the board shows all of them, its computer with two or
   // more. Who does it and its branch are in the task.
-  const meta = room !== "rail" ? [L.showProj ? lensName(lensOf(task)) : "", wide && manyComputers() && p.kind !== "none" ? computerName(p.device) : ""].filter(Boolean).join(" · ") : "";
+  const meta = room !== "rail" ? [L.showProj ? lensName(lensOf(task)) : "", wide && manyComputers() && p.kind !== "none" ? computerName(p.device) : ""] : [];
   const quiet = a === "blocked" && room !== "rail" && quietWait(task);
   const next = a === "blocked" && room !== "rail" && !quiet ? waitNext(w) : undefined;
   const acts = wide ? <RowActs task={task} /> : null;
@@ -594,7 +594,7 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
               {next.text}
             </span>
           )}
-          {meta && <span class="meta">{meta}</span>}
+          <Facts class="meta" items={meta} />
         </span>
         {u && !finished(task) && room !== "rail" && <Goal u={u} />}
         {w && (w.check || w.event) && room !== "rail" && <Groove w={w} />}
@@ -627,7 +627,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const next = w ? waitNext(w) : undefined;
   const working = a === "working" || a === "queued";
   const finishedNow = a === "done" || a === "done_claimed" || a === "failed";
-  const meta = [L.showProj ? lensName(lensOf(task)) : "", manyComputers() && p.kind !== "none" ? computerName(p.device) : ""].filter(Boolean).join(" · ");
+  const meta = [L.showProj ? lensName(lensOf(task)) : "", manyComputers() && p.kind !== "none" ? computerName(p.device) : ""];
   const onClick = (e: MouseEvent) => {
     if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
     if (room === "full" && e.shiftKey) return void (e.preventDefault(), extend(task.id));
@@ -674,7 +674,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
             </span>
           )}
           {pr && <span class="pr">{pr}</span>}
-          {meta && <span class="meta">{meta}</span>}
+          <Facts class="meta" items={meta} />
         </span>
         {u && !finished(task) && <Goal u={u} />}
       </button>
@@ -758,11 +758,11 @@ type Fold = { shut: boolean; onToggle: () => void; mark: Status; counts: string 
 
 function Section({ name, n, children, end, fold }: { name: string; n?: number; children: ComponentChildren; end?: ComponentChildren; fold?: Fold }) {
   if (fold) {
-    const about = [fold.shut ? t("onhand.fold.open") : t("onhand.fold.close"), fold.counts].filter(Boolean).join(" · ");
+    const about = spoken(A.L, fold.shut ? t("onhand.fold.open") : t("onhand.fold.close"), fold.counts);
     return (
       <section class={`tsec fold${fold.shut ? " shut" : ""}`} aria-label={name}>
         <h3>
-          <button class="fold-name" aria-expanded={!fold.shut} title={about} aria-label={`${name}${fold.counts ? ` · ${fold.counts}` : ""}`} onClick={fold.onToggle}>
+          <button class="fold-name" aria-expanded={!fold.shut} title={about} aria-label={spoken(A.L, name, fold.counts)} onClick={fold.onToggle}>
             <Chevron open={!fold.shut} />
             <span class="nm">{name}</span> {n ? <span class="n">{n}</span> : null}
           </button>
@@ -791,15 +791,14 @@ const Chevron = ({ open }: { open: boolean }) => (
   </svg>
 );
 
-/** A folded group's counts in words, only the parts that are there: "1 needs you · 2 working". */
+/** A folded group's counts in words, only the parts that are there, read as a list (a tooltip and
+ *  an accessible name, D291): "1 needs you, 2 working". */
 export function foldCounts(statuses: Status[]): string {
   const n = (s: Status) => statuses.filter((x) => x === s).length;
   const needs = n("needs");
   const working = n("working");
   const fresh = n("new");
-  return [needs ? t("onhand.fold.needs", needs) : "", working ? t("onhand.fold.working", working) : "", fresh ? (fresh === 1 ? t("onhand.fold.new.one") : t("onhand.fold.new", fresh)) : ""]
-    .filter(Boolean)
-    .join(" · ");
+  return spoken(A.L, needs ? t("onhand.fold.needs", needs) : "", working ? t("onhand.fold.working", working) : "", fresh ? (fresh === 1 ? t("onhand.fold.new.one") : t("onhand.fold.new", fresh)) : "");
 }
 /** From how many tasks Find shows. */
 export const FIND_FROM = 10;
@@ -1151,12 +1150,12 @@ export function Switcher() {
         <div class="sw-list" role="listbox">
           {list.map((x, n) => {
             const p = placeOf(x);
-            const where = [projectOf(x) || (p.kind === "repo" ? p.repoPath.split("/").pop() : ""), p.kind === "repo" ? p.branch : ""].filter(Boolean).join(" · ");
+            const where = [projectOf(x) || (p.kind === "repo" ? p.repoPath.split("/").pop() : ""), p.kind === "repo" ? p.branch : ""];
             const a = attention(x);
             return (
               <button key={x.id} role="option" aria-selected={n === at} class={`sw-row${n === at ? " on" : ""}`} onMouseMove={() => n !== at && setI(n)} onClick={() => go(x)}>
                 <span class="t">{shortTitle(title(x))}</span>
-                {where && <span class="m">{where}</span>}
+                <Facts class="m" items={where} />
                 <b class={`st ${a === "needs_you" ? "needs" : a === "failed" ? "failed" : ""}`}>{stateLabel(a)}</b>
               </button>
             );

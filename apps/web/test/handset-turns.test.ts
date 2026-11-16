@@ -33,6 +33,7 @@ describe("a loan's end, as a hairline (D280)", () => {
     expect(toldOf("Your loan of Pixel Fold ended: the task finished, and the phone was returned to the user.", "ducter")?.say).toBe("given_back");
     expect(toldOf("Your loan of Pixel Fold ended: the phone couldn't reach the home for 15 s.", "ducter")?.say).toBe("loan_lost");
     for (const lang of ["zh", "en"] as const) for (const k of ["told.taken_back", "told.given_back", "told.loan_lost"]) expect(TABLES[lang][k], `${lang} ${k}`).toContain("%s");
-    expect(TABLES.zh["told.taken_back"]!.replace("%s", "Pixel Fold").replace("%s", "20:14")).toBe("你收回了 Pixel Fold · 20:14");
+    // D291: the time is its own element beside the words, never joined to them.
+    expect(TABLES.zh["told.taken_back"]!.replace("%s", "Pixel Fold")).toBe("你收回了 Pixel Fold");
   });
 });

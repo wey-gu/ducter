@@ -90,7 +90,7 @@ object Notify {
     fun quietNotification(c: Context, line: String? = null): android.app.Notification = build(c, c, c.getString(R.string.notify_loan_channel), line ?: c.getString(R.string.handset_link_fgs))
 
     private fun build(c: Context, words: Context, title: String, line0: String): android.app.Notification {
-        val line = rec?.let { "$it · $line0" } ?: line0
+        val line = line0
         // Made at launch in the app's language; only if it is missing, here, in the pill's (a service's own
         // resources may not follow the app's language: seen on the emulator).
         if (Build.VERSION.SDK_INT >= 26 && c.getSystemService(NotificationManager::class.java)?.getNotificationChannel(LOAN) == null) channels(words)
@@ -107,6 +107,8 @@ object Notify {
             .setColor(Pebble.color(c, R.color.accent))
             .setContentTitle(title)
             .setContentText(line)
+            // D291: recording is its own fact, the header's sub text, not glued to the line.
+            .setSubText(rec)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)

@@ -121,7 +121,7 @@ can, and opens the pane where it can't):
   别人发。" **允许** asks Messages once (macOS shows its own question then), and opens
   `…?Privacy_Automation` when macOS no longer asks.
 
-The status line, one of: **开着 · 连着 {handle}**; **还差一个权限，给了就好。**; **这台 Mac 的「信息」还没登录
+The status line, one of: **开着，连着 {handle}**; **还差一个权限，给了就好。**; **这台 Mac 的「信息」还没登录
 iMessage。**; **这台 Mac 还没用过「信息」。**; **iMessage 暂时连不上，它会自己再试。** On the wire
 (`channel_status`): `on`, `needs_permission`, `not_signed_in`, `error`, `off`.
 

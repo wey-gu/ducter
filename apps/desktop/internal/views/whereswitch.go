@@ -1,8 +1,6 @@
 package views
 
 import (
-	"strings"
-
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
@@ -54,24 +52,23 @@ func (a *App) whereCandReason(cd protocol.Candidate) string {
 	return ""
 }
 
-// computerState is a group header's state words: 醒着 · 一直醒着.
+// computerState is a group header's state word, drawn with its dot:
+// 睡着了, 连不上, 醒着, or 一直醒着 for one that never sleeps (D291: one
+// word, not two joined).
 func (a *App) computerState(dv *protocol.DeviceView) string {
 	if dv == nil {
 		return ""
 	}
-	parts := []string{}
 	switch dv.State {
 	case protocol.DeviceAsleep:
-		parts = append(parts, a.L.T("switch.computer.asleep"))
+		return a.L.T("switch.computer.asleep")
 	case protocol.DeviceUnreachable:
-		parts = append(parts, a.L.T("switch.computer.away"))
-	default:
-		parts = append(parts, a.L.T("switch.computer.awake"))
+		return a.L.T("switch.computer.away")
 	}
 	if dv.AlwaysOn {
-		parts = append(parts, a.L.T("switch.computer.on"))
+		return a.L.T("switch.computer.on")
 	}
-	return strings.Join(parts, " · ")
+	return a.L.T("switch.computer.awake")
 }
 
 // groupCands keeps the candidates' order and groups them by computer, the

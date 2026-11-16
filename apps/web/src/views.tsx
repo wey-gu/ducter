@@ -15,12 +15,12 @@ import { last as lastMove } from "./nav.ts";
 import type { JSX } from "preact";
 import { A, candKey, effortWord, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
-import { closingWords, computerApart, computerName, computerOf, computers, computerState, deviceWait, manyComputers, whereAsk, whereCandReason } from "./where.ts";
-import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
+import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, whereCandReason } from "./where.ts";
+import { ago, behind, cjkPad, deviceLabel, duration, harnessName, modelName, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { AddRow, Btn, Chev, Choice, DevicesMark, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, Btn, Chev, Choice, DevicesMark, Facts, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
@@ -44,15 +44,14 @@ import { ChatAppsSettings } from "./channels.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
-import { FillButton, forecast, FullTop } from "./board.tsx";
+import { FillButton, forecast, FullTop, NextLine } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
 import { PastSheet } from "./past.tsx";
 import { ContextButton } from "./context-meter.tsx";
-import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, waitCaption, waitLine, WatchCard } from "./work.tsx";
+import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, WatchCard } from "./work.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
   attention,
-  bodyReasonOf,
   browsing,
   editedFiles,
   finalAt,
@@ -70,7 +69,6 @@ import {
   canIntegrate,
   noRemote,
   countsChanges,
-  reasonOf,
   reportOf,
   sortEvidence,
   headlineEvidence,
@@ -493,18 +491,19 @@ function TaskLine({ task, detail }: { task: Task; detail?: string }) {
   const a = attention(task);
   const br = browsing(task);
   if (br) detail = browsingLine(br);
-  let d = (!sameWords(detail, title(task)) && detail) || stateLabel(a);
+  const d = (!sameWords(detail, title(task)) && detail) || stateLabel(a);
   // Who is doing it ends the line while it is under way, with why when it isn't the plain pick (D89).
+  // D291: each its own small element, spaced by the gap.
   const [who, why] = whoLine(task);
-  if (who && !finished(task) && a !== "dropped") d += ` · ${who}${why ? ` · ${why}` : ""}`;
+  const live = who.length > 0 && !finished(task) && a !== "dropped";
   return (
-    <button class="taskline" onClick={() => A.go({ name: "task", id: task.id })}>
+    <button class="taskline" aria-label={spoken(A.L, title(task) || t("task.unknown"), d, ...who)} onClick={() => A.go({ name: "task", id: task.id })}>
       <span class="ic">
         <StateMark a={a} />
       </span>
       <span class="t">{title(task) || t("task.unknown")}</span>
       <span class="s">
-        · {d}
+        <Facts items={[d, ...(live ? who : []), live && why]} />
         <Chev />
       </span>
     </button>
@@ -518,7 +517,7 @@ function openEvidence(ev: EvidenceRef, task?: Task) {
   if (ev.kind === "diff" && task) return A.go({ name: "task", id: task.id });
   if (/^https?:/.test(ev.ref)) return void window.open(ev.ref, "_blank", "noopener");
   navigator.clipboard?.writeText(ev.ref).catch(() => {});
-  A.toast(`${ev.label} · ${ev.ref}`);
+  A.toast(t("evidence.copied", ev.ref));
 }
 
 /** The changes in words: "2 files changed". A label that already counts them stands; else they
@@ -590,11 +589,11 @@ function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: Evidenc
 /** What the task sent out, in one line, from its log. Empty when nothing went out (a row
  * with nothing to say is left out; the task's Sent out card still says so), or until the log
  * is loaded. */
-function outsideLine(task: Task): string {
-  if (!task.historyLoaded) return "";
+function outsideLine(task: Task): { line: string; more: number } {
+  if (!task.historyLoaded) return { line: "", more: 0 };
   const acts = outsideActs(task);
-  if (!acts.length) return "";
-  return `${acts[0]!.command}${acts.length > 1 ? " · " + t("result.more", acts.length - 1) : ""}`;
+  if (!acts.length) return { line: "", more: 0 };
+  return { line: acts[0]!.command, more: acts.length - 1 };
 }
 
 /** Why the last Open draft PR didn't work, in words, or "". It stays on the task until the next
@@ -646,14 +645,16 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
 
 /** What went out, only when something did: a drawn ↗ and the literal action. */
 function SentLine({ task }: { task: Task }) {
-  const line = outsideLine(task);
+  const { line, more } = outsideLine(task);
   if (!line) return null;
+  // D291: how many more went out is its own muted count, not joined to the action.
   return (
     <div class="proof">
       <span class="mk">
         <Out />
         {line}
       </span>
+      {more > 0 && <span class="n">{t("result.more", more)}</span>}
     </div>
   );
 }
@@ -667,7 +668,7 @@ function SentLine({ task }: { task: Task }) {
 function DetailsToggle({ k, about }: { k: string; about?: string }) {
   const open = A.detailsOpen(k);
   return (
-    <button class="tb" aria-expanded={open} aria-label={about ? `${t(open ? "details.hide" : "details.show")} · ${about}` : undefined} onClick={() => A.toggleDetails(k)}>
+    <button class="tb" aria-expanded={open} aria-label={about ? spoken(A.L, t(open ? "details.hide" : "details.show"), about) : undefined} onClick={() => A.toggleDetails(k)}>
       {t(open ? "details.hide" : "details.show")}
       <Chev />
     </button>
@@ -688,7 +689,7 @@ function MergeAction({ task }: { task: Task }) {
         {t("result.merged", base)}
       </span>
     );
-  return <button class="tb act" aria-label={`${t("result.merge", base)} · ${title(task)}`} onClick={() => A.taskAction(task.id, "merge")}>{t("result.merge", base)}</button>;
+  return <button class="tb act" aria-label={spoken(A.L, t("result.merge", base), title(task))} onClick={() => A.taskAction(task.id, "merge")}>{t("result.merge", base)}</button>;
 }
 
 /** A task's lines inside Details: under way, its status line; finished, the proof with the
@@ -825,11 +826,14 @@ function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
 }
 
 function LivingLine({ it }: { it: LivingItem }) {
-  const text = it.title ? `${it.title} · ${it.text}` : it.text;
+  // D291: the task's name leads in its own weight, then what happened; never joined by a dot.
   return (
     <button class="line" onClick={() => it.taskId && A.go({ name: "task", id: it.taskId })}>
       <span class="ic">{it.kind === "done" ? <Check /> : it.kind === "blocked" ? <Clock /> : it.kind === "failed" ? <Cross /> : <Forward />}</span>
-      <span class="tx">{text}</span>
+      <span class="tx">
+        {it.title && <b class="lead">{it.title}</b>}
+        {it.text}
+      </span>
     </button>
   );
 }
@@ -1015,7 +1019,7 @@ function Living({ e, items, chipOwner }: { e: Entry; items: LivingItem[]; chipOw
   if (!asks.length && !news.length && !lines.length) return null;
   return (
     <section class="living" key={`${e.firstSeq}:${e.revision}`} aria-label={t("living.title")}>
-      {away && <div class="when">{t("living.away.at", clockOf(e.ev.ts))}</div>}
+      {away && <div class="when"><Facts items={[t("living.away"), clockOf(e.ev.ts)]} /></div>}
       {news.map((it, i) => (
         <News key={`n${i}`} it={it} k={`l${e.firstSeq}:${it.taskId}`} owns={chipOwner.get(it.taskId) === e.firstSeq} />
       ))}
@@ -1325,8 +1329,8 @@ function Counts() {
       </div>
     );
   return (
-    <button class="sum" role="status" title={t("nav.onhand")} onClick={() => ((OnHandState.filter = s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }))}>
-      {s.words}
+    <button class="sum" role="status" title={t("nav.onhand")} aria-label={s.words} onClick={() => ((OnHandState.filter = s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }))}>
+      {s.parts?.length ? <Facts items={s.parts} /> : s.words}
     </button>
   );
 }
@@ -1630,23 +1634,6 @@ function Hello() {
 
 // ---------- On hand ----------
 
-/** Where a task runs and why there, in one short muted line ("Codex · MacBook · Your rule …");
- *  the model, the repo, the branch and the rest of the reason are in the task's Details. */
-export function metaLine(task: Task): string {
-  const p = placeOf(task);
-  // D157: with two or more computers every row names its computer.
-  const where = manyComputers() ? computerName(p.device) : p.kind === "none" ? "" : deviceLabel(A.L, p.device);
-  return [harnessName(harnessOf(task)), where, firstClause(bodyReasonOf(task))].filter(Boolean).join(" · ");
-}
-
-/** What a waiting task waits for, said once: the lane already says it is waiting. */
-export function waitReason(task: Task): string {
-  const w = A.S.waiterFor(task.id);
-  if (w) return [waitLine(w.reason), waitCaption(w)].filter(Boolean).join(" · ");
-  const r = reasonOf(task);
-  return (r && (deviceWait(r) ?? r)) || metaLine(task);
-}
-
 
 export function OnHand() {
   const b = A.S.board();
@@ -1656,7 +1643,7 @@ export function OnHand() {
   const nothing = b.lanes.slice(0, 4).every((l) => !l.length) && !A.S.partnerDecisions().length && !loose.length && !A.S.missedToday().length && !routines.length && !calls.length;
   const wide = useWide();
   // Beside the conversation, 接下来 as the Mac shows it: one quiet grey line, only when more than one thing is coming (D184).
-  const next = wide && !nothing ? forecast() : "";
+  const next = wide && !nothing ? forecast() : [];
   // D216: the one list, as the phone or beside the conversation.
   return (
     <>
@@ -1667,12 +1654,7 @@ export function OnHand() {
           <div class="calm">{t("onhand.empty", A.S.personaName)}</div>
         ) : (
           <>
-            {next && (
-              <p class="next" title={next}>
-                <b>{t("onhand.next")}</b>
-                {next}
-              </p>
-            )}
+            <NextLine items={next} />
             <OnHandList room={wide ? "side" : "phone"} />
             <RoutineShelf />
           </>
@@ -1696,7 +1678,8 @@ function reportLabel(r: Bodies["report"]) {
  *  what went out. A row with nothing to say is left out. */
 /** Who does a task and why, as one sentence for Details (D89). */
 function whoSentence(task: Task): string {
-  const who = whoLine(task)[0];
+  const m = modelOf(task);
+  const who = whoName(harnessOf(task), m);
   if (!who) return "";
   const w = whoOf(task)?.why;
   if (w?.kind === "rule" && w.text) return t("who.sentence.rule", who, w.text);
@@ -1708,11 +1691,20 @@ function whoSentence(task: Task): string {
   return t("who.sentence", who);
 }
 
-/** Who does a task, in words ("Codex · gpt-5"), and why when it isn't Ducter's plain pick (D89). */
-function whoLine(task: Task): [string, string] {
+/** Who does it, as a name inside a sentence (D291): "Codex（gpt-5）" / "Codex (gpt-5)", never
+ *  the harness and the model joined by a dot. */
+export function whoName(harness: string | undefined, model: string | undefined): string {
+  const h = harness ? harnessName(harness) : "";
+  if (!h) return "";
+  return model ? t("who.name", h, modelName(model)) : h;
+}
+
+/** Who does a task, as separate facts (harness, model, effort; D291), and why when it isn't
+ *  Ducter's plain pick (D89). */
+function whoLine(task: Task): [string[], string] {
   const m = modelOf(task);
   const e = effortOf(task);
-  const who = [harnessName(harnessOf(task)), m && modelName(m), e && effortWord(A.L, e)].filter(Boolean).join(" · ");
+  const who = [harnessName(harnessOf(task)), m && modelName(m), e && effortWord(A.L, e)].filter((x): x is string => !!x);
   const w = whoOf(task)?.why;
   if (!w) return [who, ""];
   if (w.kind === "rule" && w.text) return [who, t("who.why.rule", w.text)];
@@ -1725,14 +1717,20 @@ function whoLine(task: Task): [string, string] {
 }
 
 const pct = (f: number) => Math.round(f * 100);
-export const candName = (c: Candidate) => [harnessName(c.harness), c.model && modelName(c.model)].filter(Boolean).join(" · ");
+/** A candidate's name inside a sentence ("换到 Codex（gpt-5.5）接着做"); a row draws the harness
+ *  and the model apart (D291). */
+export const candName = (c: Candidate) => whoName(c.harness, c.model);
 
-export function candReason(c: Candidate): string {
-  if (c.blocked === "reserve") return [t("cand.reserve", A.S.personaName), c.resetsAt && t("cand.resets", when(A.L, c.resetsAt))].filter(Boolean).join(" · ");
-  if (c.blocked) return t(`cand.${c.blocked}`);
+/** A candidate's why, then its limit, as separate facts (D291); drawn with Facts. */
+export function candFacts(c: Candidate): string[] {
+  if (c.blocked === "reserve") return [t("cand.reserve", A.S.personaName), c.resetsAt ? t("cand.resets", when(A.L, c.resetsAt)) : ""].filter(Boolean);
+  if (c.blocked) return [t(`cand.${c.blocked}`)];
   const why = { rule: t("cand.rule"), fit: t("cand.fit"), fast: t("cand.fast") }[c.reason.kind as string] ?? "";
-  return [why, c.left != null && t("cand.left", pct(c.left)), c.billing === "usage" && t("cand.paid")].filter(Boolean).join(" · ");
+  return [why, c.left != null ? t("cand.left", pct(c.left)) : "", c.billing === "usage" ? t("cand.paid") : ""].filter(Boolean);
 }
+
+/** A candidate's why as an accessible name or a tooltip: its facts read aloud. */
+export const candReason = (c: Candidate): string => spoken(A.L, ...candFacts(c));
 
 /** 换谁来做 / Switch who does it: who does it now, who else could with why and the limit each,
  *  the ones that can't greyed with why, and 换到 X 接着做 / Continue on X. */
@@ -1757,8 +1755,8 @@ function SwitchList({ task }: { task: Task }) {
       <button key={key} role="radio" aria-checked={pick === key} disabled={off || c.current} class={`cand${off ? " off" : ""}${pick === key ? " on" : ""}${c.waits ? " waits" : ""}`} onClick={() => setPick(key)}>
         <Coin harness={c.harness} size={36} off={off} />
         <span class="grow">
-          <b>{candName(c)}</b>
-          <small>{whereCandReason(c) || candReason(c)}</small>
+          <Facts class="nm" items={[<b>{harnessName(c.harness)}</b>, c.model && modelName(c.model)]} />
+          <small>{whereCandReason(c) || <Facts items={candFacts(c)} />}</small>
         </span>
         {c.current && <small class="now">{t("who.now")}</small>}
       </button>
@@ -1781,7 +1779,12 @@ function SwitchList({ task }: { task: Task }) {
                   {/* D161 (9): a group head is the device's mini card. */}
                   {dv && <img src={deviceArt(dv)} alt="" />}
                   <b>{dv?.name ?? g}</b>
-                  {dv && <span class={dv.state === "asleep" ? "asleep" : ""}>· {computerState(dv)}</span>}
+                  {dv && (
+                    <span class={`sw-state ${dv.state}`}>
+                      <i class="sdot" aria-hidden="true" />
+                      {computerState(dv)}
+                    </span>
+                  )}
                 </div>
                 {list.filter((c) => (c.device ?? "") === g).map(row)}
               </div>
@@ -1965,7 +1968,7 @@ function FolderChangesView({ task }: { task: Task }) {
                 <li key={x.kind + x.path} class={x.kind === "removed" ? "fail-line" : ""}>
                   <span class="mono-ish">{row(x)}</span>
                   {open && finished(task) && !x.dir && (
-                    <button class="qlink" aria-label={`${t("folder.row.restore")} · ${lastPart(x.path)}`} onClick={() => A.folderAction(task.id, "undo", { path: x.path })}>
+                    <button class="qlink" aria-label={spoken(A.L, t("folder.row.restore"), lastPart(x.path))} onClick={() => A.folderAction(task.id, "undo", { path: x.path })}>
                       {t("folder.row.restore")}
                     </button>
                   )}
@@ -2437,7 +2440,7 @@ function Loadout() {
                     <input
                       type="checkbox"
                       role="switch"
-                      aria-label={`${t("loadout.acct.tasks")} · ${harnessName(h.harness)}`}
+                      aria-label={`${t("loadout.acct.tasks")}, ${harnessName(h.harness)}`}
                       checked={on}
                       onChange={(e) => A.setSettings({ taskAccounts: { ...s.taskAccounts, [h.harness]: { enabled: (e.target as HTMLInputElement).checked } } })}
                     />
@@ -2525,7 +2528,7 @@ function OoOffer(p: { oo: OoDetect }) {
           {apps.map((a) => (
             <li key={a.service}>
               <b>{a.title}</b>
-              <span>{a.accounts.join(" · ")}</span>
+              <span>{a.accounts.join(t("acct.sep"))}</span>
             </li>
           ))}
         </ul>

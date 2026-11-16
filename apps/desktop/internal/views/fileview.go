@@ -382,7 +382,7 @@ func (a *App) fileHead(c *ui.Context, fv *fileViewState, kind, name string) {
 					meta = append(meta, a.L.T("file.pages", n))
 				}
 			}
-			ui.Text(c, strings.Join(nonEmpty(meta...), " · ")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+			a.facts(c, t.XS, t.InkMuted, meta...) // D291: kind, size, lines, pages apart
 		})
 		if fileFindable(fv) {
 			lens := ui.Box(c.Key("fv-find")).Size(t.ControlMD, t.ControlMD).Radius(t.RadiusSM).Role(ui.RoleButton).Shrink(0).

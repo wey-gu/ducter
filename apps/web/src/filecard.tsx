@@ -8,6 +8,7 @@ import { durationWords, fileBadge, fileFamily, fileView, parseTable, sizeWords, 
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { Facts } from "./controls.tsx";
 import { hlLines } from "./hl.ts";
 import { mediaFetch, mediaUrl } from "./media-fresh.ts";
 import { openFile, readHead } from "./fileview.tsx";
@@ -320,13 +321,13 @@ function AudioGlimpse({ g }: { g?: Glimpse }) {
 
 // ---------- the card ----------
 
-/** The words under a file's name: its size, and its pages or length once known. */
-function facts(m: Pick<MediaRef, "bytes">, g: Glimpse | undefined, len?: number): string {
+/** The facts under a file's name: its size, and its pages or length once known, each apart (D291). */
+function facts(m: Pick<MediaRef, "bytes">, g: Glimpse | undefined, len?: number): string[] {
   const parts = [sizeWords(m.bytes)];
   if (g?.kind === "pdf") parts.push(t("file.pages", g.page.pages));
   if (g?.kind === "audio") parts.push(durationWords(g.seconds));
   if (len !== undefined) parts.push(durationWords(len));
-  return parts.join(" · ");
+  return parts;
 }
 
 /**
@@ -378,7 +379,7 @@ export function FileCard({ m, pic, flight }: { m?: MediaRef; pic?: Pic; flight?:
           <span class="fn" title={meta.name}>
             {name}
           </span>
-          <span class="fs">{failed ? t("media.failed") : facts(meta, g, len)}</span>
+          {failed ? <span class="fs">{t("media.failed")}</span> : <Facts class="fs" items={facts(meta, g, len)} />}
         </span>
         {sending ? (
           failed ? null : (

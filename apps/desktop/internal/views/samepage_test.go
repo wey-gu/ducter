@@ -43,7 +43,7 @@ func TestThisMacsRowAndTheTopCardAgree(t *testing.T) {
 		if tt.HasText(L.T("devup.how.app", "Macbook Pro M3")) {
 			t.Errorf("%s: this Mac told to open Ducter on that Mac: %q", lang, tt.Texts())
 		}
-		if _, ok := tt.Find(L.T("devup.button") + " · Macbook Pro M3"); !ok {
+		if _, ok := tt.Find(spoken(L, L.T("devup.button"), "Macbook Pro M3")); !ok {
 			t.Errorf("%s: this Mac's 有新版本 row has no %s: %q", lang, L.T("devup.button"), tt.Texts())
 		}
 	}

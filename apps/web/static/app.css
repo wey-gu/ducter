@@ -837,6 +837,29 @@ a {
 .taskline:active .t {
   text-decoration: underline;
 }
+/* D291: its status, who does it and why: separate small facts, spaced by the gap, no dots. */
+.taskline .s {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.proof .n {
+  font-variant-numeric: tabular-nums;
+}
+/* D291: a living line's task name leads in its own weight, then what happened. */
+.line .tx .lead {
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-inline-end: 0.4em;
+}
+/* D291: a candidate's agent in bold, its model apart in muted ink. */
+.cand .facts.nm {
+  align-items: baseline;
+  column-gap: var(--s2, 8px);
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
 .status-line.failed {
   color: var(--failed-ink);
 }
@@ -1404,6 +1427,18 @@ a {
 .line .tx {
   color: var(--ink-soft);
 }
+/* D291: the task's name, its own element before what it said. */
+.line .lt {
+  flex: 0 2 auto;
+  max-width: 40%;
+  min-width: 0;
+  font-size: var(--md);
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ---------- composer ---------- */
 .composer-wrap {
@@ -1947,10 +1982,7 @@ a {
 .tx.assistant.md p + p {
   margin-top: 8px;
 }
-/* D152: the opened task as the agent tells it. */
-.standing .sep {
-  color: var(--ink-muted);
-}
+/* D152: the opened task as the agent tells it. D291: the state word, then each fact apart. */
 .standing .who {
   display: inline-flex;
   align-items: center;
@@ -1960,23 +1992,12 @@ a {
 .standing .when {
   font-variant-numeric: tabular-nums;
 }
-/* A group's leading dot sits in the gap before it, outside the group: when the group wraps to the
-   start of a line its dot falls past the line's left edge and is clipped, so no line starts with
-   "·" (D211, D213: no coin there to start the group any more). */
+/* D291: the facts are spaced by the gap, no dots between them (D211, D213: no coin to start a group). */
 .standing {
-  column-gap: 10px;
-  clip-path: inset(-12px -12px -12px 0);
-}
-.standing .who {
-  position: relative;
+  column-gap: var(--s3);
 }
 .standing > :first-child + b {
   margin-inline-start: -4px;
-}
-.standing .who > .sep:first-child {
-  position: absolute;
-  right: 100%;
-  margin-right: 3px;
 }
 .standing .inline-link {
   font-size: var(--sm);
@@ -2124,8 +2145,20 @@ a {
   font-weight: 600;
   color: var(--ink-soft);
 }
-.voice .vmeta.kept .saved + .hov::before {
-  content: "·";
+/* D291: saved, its time, how long it worked: separate small elements spaced by the gap, never a dot. */
+.voice .vmeta.kept {
+  gap: var(--s3);
+}
+/* D291: the hairline's time and the wait's "back at" are their own muted, tabular element. */
+.tx-divider.wake .when {
+  margin-inline-start: -4px;
+  opacity: 0.8;
+}
+.wait-end .step .when {
+  flex: none;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
 }
 /* D271: what Ducter woke it with or told it: a hairline with its time, the reason on hover. */
 .tx-divider.wake {
@@ -2314,6 +2347,26 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* D291: the brief's quiet label and each entry's time are their own elements. */
+.locator .loc-list .tag {
+  flex: none;
+  font-style: normal;
+  font-size: var(--xxs, 11px);
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--sunken);
+  color: var(--ink-muted);
+}
+.locator .loc-list .at {
+  flex: none;
+  margin-inline-start: auto;
+  padding-inline-start: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
 }
 @media (max-width: 900px) {
   .locator {
@@ -4580,6 +4633,14 @@ ol.tries b {
   text-overflow: ellipsis;
   min-width: 0;
 }
+/* D291: the who pill's model and effort, each its own word after the agent's name. */
+.pill .pill-fact {
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
 .pill code {
   font-family: var(--mono);
   font-size: var(--xs);
@@ -4887,6 +4948,14 @@ ol.tries b {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* D291: a place's path and its computer, two facts on one line. */
+.menu-row .mr-place {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.menu-row .mr-place > span:last-child:not(:first-child) {
+  flex: none;
+}
 .menu-row code.grow {
   flex: 1;
   min-width: 0;
@@ -5149,9 +5218,12 @@ button.dev-name {
 .li-row { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 10px; border: 0; border-radius: 14px; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
 .li-row:active { background: var(--sunken); }
 .li-row img { flex: none; width: 36px; height: 32px; object-fit: contain; }
-.li-row .t { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+/* D291: the name alone on its line; under it one short line, its facts as separate elements. */
+.li-row .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; white-space: nowrap; }
 .li-row .t b { font-size: var(--md); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.li-row .t small { flex: none; font-size: var(--sm); color: var(--ink-muted); }
+.li-row .li-line { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.li-row .t small { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--sm); color: var(--ink-muted); }
+.li-row .t small.update { flex: none; }
 .li-row .t small.working { color: var(--working-ink); }
 .li-row .t small.asleep { color: var(--dusk-ink); }
 .li-row .t small.away { color: var(--failed-ink); }
@@ -5197,6 +5269,13 @@ button.dev-name {
 .dc-status.working { color: var(--working-ink); font-weight: 700; }
 .dc-status.asleep { color: var(--dusk-ink); font-weight: 700; }
 .dc-status.away { color: var(--failed-ink); font-weight: 700; }
+/* D291: a state word in its color with its dot, its own element; the line under it is muted. */
+.dc-state { display: flex; justify-content: center; align-items: center; gap: 6px; margin: 0 0 var(--s4); font-size: var(--md); font-weight: 700; color: var(--ink-muted); }
+.dc-state:has(+ .dc-status) { margin-bottom: 2px; }
+.dc-state.working { color: var(--working-ink); }
+.dc-state.asleep { color: var(--dusk-ink); }
+.dc-state.away { color: var(--failed-ink); }
+.sdot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
 .dc-tray { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 12px 8px 8px; border-radius: 18px; background: var(--sunken); }
 .coin-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 70px; padding: 4px 0 2px; border: 0; border-radius: 14px; background: none; color: inherit; font: inherit; cursor: pointer; }
@@ -5312,7 +5391,11 @@ button.dev-name {
 .switch-sub { font-size: var(--sm); font-weight: 700; color: var(--ink-soft); }
 .switch-head { align-items: center; }
 .switch-head img { flex: none; width: 36px; height: 28px; object-fit: contain; }
-.switch-head span.asleep { color: var(--dusk-ink); font-weight: 700; }
+/* D291: the computer's state word with its dot, its own element beside the name. */
+.switch-head .sw-state { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-muted); }
+.switch-head .sw-state.awake { color: var(--working-ink); }
+.switch-head .sw-state.asleep { color: var(--dusk-ink); font-weight: 700; }
+.switch-head .sw-state.unreachable { color: var(--failed-ink); font-weight: 700; }
 
 /* D166: the accounts card as a character sheet (design/connectors.md §12; prototype accounts.html). */
 .src-cards { display: flex; flex-direction: column; gap: var(--s4); }
@@ -5462,6 +5545,17 @@ button.dev-name {
 .scroll > .next b {
   font-weight: 600;
   margin-right: 8px;
+}
+/* D291: each thing coming is its own element, its time in tabular figures. */
+.board .next .facts,
+.scroll > .next .facts {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  column-gap: var(--s4, 16px);
+}
+.next .facts .tm {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
 }
 .board .calm-band {
   display: flex;
@@ -5997,6 +6091,8 @@ dl.call-summary dd { margin: 0; }
 .call-row .chev { flex: none; color: var(--ink-muted); font-weight: 700; }
 .call-row > .btn { align-self: flex-start; margin-left: 48px; }
 .call-row > .call-result { margin-left: 48px; }
+.call-clock { flex: none; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.call-len { font-variant-numeric: tabular-nums; }
 .call-check { flex: none; color: var(--ink-muted); vertical-align: -2px; margin-right: 6px; }
 .call-result { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-sunken); }
 .call-result p, .call-result ul { margin: 0; color: var(--ink-soft); line-height: 1.5; }
@@ -6046,6 +6142,7 @@ dl.call-summary dd { margin: 0; }
 /* D278: 再找一次 and what the last look saw, on one line that wraps. */
 .own-look { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .own-look .btn.text { align-self: flex-start; }
+.own-looked-at { font-variant-numeric: tabular-nums; }
 /* D278: the card on a server home: what works today, then why live calls need a computer beside the phone. */
 .own-away { gap: 12px; }
 .own-away-dial { padding: 10px 14px; border-radius: var(--r-md); background: var(--surface-sunken); color: var(--ink); line-height: 1.5; }
@@ -6055,6 +6152,7 @@ dl.call-summary dd { margin: 0; }
 .signin-code { align-self: center; padding: 10px 18px; border-radius: var(--r-md); background: var(--surface-sunken); font-family: var(--mono); font-size: 30px; font-weight: 700; letter-spacing: 0.12em; color: var(--ink); user-select: all; }
 .call-qr { align-self: center; border-radius: 12px; box-shadow: 0 3px 0 var(--line); }
 .signin-wait { text-align: center; line-height: 1.5; }
+.signin-wait .facts { justify-content: center; }
 @media (max-width: 600px) { .call-qr { display: none; } }
 /* D190: a working card whose task uses Ducter's browser: 看看 / Watch at its corner (wide On hand). */
 .bwatch { position: relative; }
@@ -8200,7 +8298,7 @@ dl.call-summary dd { margin: 0; }
 .cal-dh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: var(--sm); font-weight: 700; color: var(--ink-soft); line-height: 1.35; }
 .cal-dh .none, .cal-none { font-size: var(--xs); font-weight: 500; color: var(--ink-muted); }
 .cal-day.empty .cal-dh { font-weight: 500; }
-.cal-marks { margin-top: -4px; font-size: var(--xs); color: var(--ink-muted); line-height: 1.4; }
+.cal-marks { display: flex; margin-top: -4px; font-size: var(--xs); color: var(--ink-muted); line-height: 1.4; }
 .cal-rows { display: flex; flex-direction: column; margin: 0 calc(-1 * var(--s2)); }
 .cal-row { position: relative; display: grid; grid-template-columns: 3.1em 3px minmax(0, 1fr); column-gap: var(--s3); align-items: stretch; padding: 7px var(--s2); border-radius: var(--r-xs); color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; transition: background var(--t-fast) ease-out; }
 a.cal-row { cursor: pointer; }
@@ -8219,7 +8317,8 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .cal-row.allday .cal-ti { font-size: var(--sm); }
 .cal-row.free .cal-ti { color: var(--ink-soft); font-weight: 500; }
 .cal-meta { font-size: var(--xs); color: var(--ink-muted); line-height: 1.45; overflow-wrap: anywhere; }
-.cal-meta .part { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre; vertical-align: bottom; }
+.cal-meta { display: flex; }
+.cal-meta > span { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre; vertical-align: bottom; }
 .cal-chip { flex: none; padding: 0 7px; border-radius: var(--pill); font-size: 11px; font-weight: 700; line-height: 18px; white-space: nowrap; }
 .cal-chip.ask { background: var(--waiting-surface); color: var(--waiting-ink); }
 .cal-chip.maybe { background: var(--sunken); color: var(--ink-soft); }
@@ -11086,6 +11185,19 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   }
 }
 
+/* D291: separate facts, each its own element, spaced by a gap token, never a dotted string. */
+.facts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--s3);
+  row-gap: 2px;
+  min-width: 0;
+}
+.facts > span {
+  min-width: 0;
+}
+
 /* ---------- D287: On hand with the partner at its head, the work as cards, the day beside ---------- */
 /* The partner over the board: its face says how the whole stands, its one sentence says it. */
 .oh-head {
@@ -12245,6 +12357,10 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .g-state { flex: none; font-size: var(--sm); font-weight: 600; color: var(--ink-muted); white-space: nowrap; }
 .g-state.tone-done { color: var(--done-ink); }
 .g-state.tone-bad { color: var(--failed-ink); }
+/* D291: when the context compacts is its own line under the meter's words. */
+.ctx-line .ctx-sub {
+  display: block;
+}
 /* D295: Settings › 记忆 and › 连上的 AI agent on the settings grid. Marks in the tile column: the
    notebook, an accent pebble, Mem's letter on a notebook-blue pebble, another tool's coin or letter,
    two agents' coins; the empty state on the paper; the raw facts behind 详情. Tokens only. */
@@ -12280,6 +12396,19 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .chat-head > .grow { flex: 1; min-width: 0; }
 .set-page .mem-first h3 { margin: var(--s1) 0 0; padding: 0; font-family: var(--head); font-size: var(--xl); font-weight: 800; color: var(--ink); }
+/* D299: 也在这台电脑上 / Also on this computer: the sessions the person ran in their own agents,
+   a quiet section under Ducter's own tasks; the same card, its picture guessed from its words. */
+.past-sec.outside { margin-top: 28px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.past-sec.outside h3 { display: flex; align-items: baseline; gap: 8px; }
+.psec-n { font-weight: 500; color: var(--faint); font-variant-numeric: tabular-nums; }
+.past-out-sub { margin: -2px 4px 12px; font-size: var(--sm); line-height: var(--lh-read); color: var(--ink-muted); max-width: 560px; }
+.past-out-hidden { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 10px 4px 0; font-size: var(--sm); color: var(--ink-muted); }
+.linkish { border: 0; padding: 0; background: none; font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.linkish:hover { text-decoration-color: currentColor; }
+.pcard.out .pbr { font-family: var(--mono); font-size: calc(var(--xs) - 1px); color: var(--ink-soft); }
+.pcard.gone .pt { color: var(--ink-soft); }
+.pmenu-k { padding: 6px 10px 2px; font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
+.tx-divider.earlier { align-self: stretch; width: 100%; margin: 6px 0 10px; }
 /* D296: a group's first row keeps its state at the right edge at any width. */
 .chat-head > .grow { flex: 1; min-width: 0; }
 .agent-model { margin-top: calc(-1 * var(--s1)); padding: 0 var(--set-in, var(--s4)) var(--s3); }

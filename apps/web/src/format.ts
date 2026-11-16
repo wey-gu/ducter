@@ -1,5 +1,5 @@
 // Time and place wording, the same rules as the desktop (views/app.go formatting).
-import type { DeviceHarness, DeviceUpdate, MemPluginView, Place } from "@ducter/protocol";
+import type { DeviceHarness, DeviceUpdate, MemPluginView } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import type { Strings } from "./i18n.ts";
 import { words } from "@ducter/protocol/src/lang.ts";
@@ -82,24 +82,12 @@ export function md(iso: string | undefined): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-const lastPath = (p: string) => p.replace(/\/+$/, "").split("/").pop() ?? p;
 
 export function deviceLabel(L: Strings, d: string | undefined): string {
   if (!d || d === "local" || d === "this") return L.t("device.local");
   return d;
 }
 
-export function placeLine(L: Strings, p: Place): string {
-  switch (p.kind) {
-    case "repo":
-      return [lastPath(p.repoPath), p.branch, deviceLabel(L, p.device)].filter(Boolean).join(" · ");
-    case "folder":
-      return `${lastPath(p.path)} · ${deviceLabel(L, p.device)}`;
-    case "browser":
-      return deviceLabel(L, p.device);
-  }
-  return L.t("place.none");
-}
 
 /** A reason's first clause: up to its first comma or full stop outside quotes. */
 export function firstClause(s: string): string {
@@ -214,3 +202,14 @@ export function memWords(L: Strings, m: MemPluginView): { line: string; action?:
       return { line: L.t(m.why === "multiple" ? "memp.review.multiple" : "memp.review.unclear"), action: L.t("memp.btn.review") };
   }
 }
+
+/** An accessible name made of several facts, said the way a person reads a list aloud (D291):
+ *  "，" in Chinese, ", " in English. Only for aria-label and title; on screen each fact is its own
+ *  element (Facts in controls.tsx), never one string joined by a separator. */
+export function spoken(L: Pick<Strings, "t">, ...parts: (string | false | null | undefined)[]): string {
+  return parts.filter((p): p is string => !!p && !!p.trim()).join(L.t("spoken.sep"));
+}
+
+/** A device's name as the person sees it (D291): a phone or iPad paired through the Ducter app
+ *  before D291 was named "<model> · Ducter"; the art and the platform already say it is the app. */
+export const shownDeviceName = (name: string) => name.replace(/ · Ducter$/, "");

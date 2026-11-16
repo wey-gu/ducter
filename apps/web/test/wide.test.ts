@@ -11,12 +11,12 @@ const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
 describe("iPad", () => {
   test("the app on an iPad pairs as an iPad", () => {
     const ua = "Mozilla/5.0 (iPad; CPU OS 26_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 DucterApp/0.1.0";
-    expect(deviceName(ua, 5)).toEqual({ name: "iPad · Ducter", platform: "ios-app" });
+    expect(deviceName(ua, 5)).toEqual({ name: "iPad", platform: "ios-app" });
   });
   test("Safari on an iPad, which asks as a Mac, is an iPad; a Mac is still a Mac", () => {
     const ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15";
-    expect(deviceName(ua, 5)).toEqual({ name: "iPad · Safari", platform: "ios" });
-    expect(deviceName(ua, 0)).toEqual({ name: "Browser · Safari", platform: "macos" });
+    expect(deviceName(ua, 5)).toEqual({ name: "iPad", platform: "ios-safari" });
+    expect(deviceName(ua, 0)).toEqual({ name: "Browser", platform: "macos-safari" });
   });
   test("an iPad's copy says this iPad, a phone's this phone", () => {
     expect(strings("zh", "ipad").t("settings.phone")).toBe("这台 iPad");

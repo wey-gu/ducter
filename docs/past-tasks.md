@@ -62,6 +62,26 @@ Your marks are kept on your home computer, so every device shows the same.
 Keys: `/` search, the arrow keys or j/k move, Enter opens, ⌘Enter continues, ⇧⌘Enter new task from this, `s`
 stars, `r` renames, Esc clears and then goes back.
 
+## Work you did yourself in your AI agents
+
+If you have used Claude Code, Codex or pi on your home computer yourself, those conversations are
+in Past tasks too, under **也在这台电脑上 / Also on this computer**, below Ducter's own tasks. The
+same search finds them: by their name, what you asked, the folder or project, the branch, the AI
+agent, or the day.
+
+- **接着做 / Continue:** the conversation becomes a task and opens, with what was said earlier at
+  the top. The same AI agent carries on that very conversation, in the folder it was in, as if you
+  had picked it up again in your terminal. Nothing is copied: it works in that folder directly.
+- **换一个 agent 接着做 / Continue with another agent** (in ⋯): another AI agent takes it over in the
+  same folder, starting from what was said.
+- **不再显示 … 的 / Don't show … here** (in ⋯): stops listing that AI agent's conversations. The last
+  line of the section brings them back with **再显示 / Show again**.
+
+Ducter reads these only on your home computer and only when you open Past tasks; they are never
+sent anywhere else. It never changes them; when you continue one, the AI agent adds to it as it
+would if you had continued it yourself. A conversation whose folder is gone is shown, but can't be
+continued. Conversations on your other computers are not listed yet.
+
 ## Ongoing: pause, resume, run now
 
 Each card in **一直在跑的 / Ongoing** says when it runs next and shows its recent runs as small

@@ -589,7 +589,7 @@ func (a *App) sideLink(c *ui.Context, key, text, about string, tone sideTone, ch
 	t := a.T
 	name := text
 	if about != "" {
-		name = text + " · " + about
+		name = text + ", " + about
 	}
 	b := ui.Row(c.Key("side:" + key)).Gap(3).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable()
 	if chevron != 0 {

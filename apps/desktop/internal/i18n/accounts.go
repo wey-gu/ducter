@@ -29,7 +29,7 @@ var zhAccounts = Table{
 	"kind.waiting_on_you":  "在等你回",
 	"kind.waiting_on_them": "你在等别人回",
 	"kind.promised":        "你答应过的",
-	"kind.deadline":        "快到期 · 要花钱",
+	"kind.deadline":        "快到期和要花钱的",
 	"kind.plan_changed":    "计划变了",
 	"kind.meeting":         "开会前",
 	"kind.coming_up":       "快到了",

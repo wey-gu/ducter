@@ -390,7 +390,7 @@ func (a *App) phoneInstallSheet(c *ui.Context) {
 
 // phoneButtons are a phone task's card: the user's own turn on the phone
 // (去手机上 / Open the phone, then Done in the live view), or a Go for one
-// tap (what it taps, where; 看看手机 · 先别 · 点吧).
+// tap (what it taps, where; 看看手机, 先别, 点吧).
 func (a *App) phoneButtons(c *ui.Context, d *store.DecisionState, st decisionStyle) {
 	t := a.T
 	ph := d.Phone
@@ -423,10 +423,7 @@ func (a *App) phoneButtons(c *ui.Context, d *store.DecisionState, st decisionSty
 		})
 		return
 	}
-	label := ph.Label
-	if i := strings.Index(label, " · "); i > 0 {
-		label = label[:i]
-	}
+	label := labelHead(ph.Label)
 	what := a.L.T("phoneuse.go.what.0", label)
 	if ph.Name != "" {
 		what = a.L.T("phoneuse.go.what", label, ph.Name)
@@ -447,13 +444,18 @@ func (a *App) phoneButtons(c *ui.Context, d *store.DecisionState, st decisionSty
 
 // ---------- the live view ----------
 
-func (a *App) phoneDoingWords(d *protocol.LiveDoing) string {
-	first := func(s string) string {
-		if i := strings.Index(s, " · "); i > 0 {
-			return s[:i]
-		}
-		return s
+// labelHead is a phone control's title: the core names a row by the words
+// inside it, "title | subtitle" (protocol's LABEL_PARTS); the model reads
+// all of it, a person only the title (D291).
+func labelHead(s string) string {
+	if i := strings.Index(s, " | "); i > 0 {
+		s = s[:i]
 	}
+	return strings.TrimSpace(s)
+}
+
+func (a *App) phoneDoingWords(d *protocol.LiveDoing) string {
+	first := labelHead
 	switch d.Kind {
 	case "tap":
 		if d.Label != "" {

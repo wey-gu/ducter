@@ -213,7 +213,7 @@ func (a *App) openRow(c *ui.Context, key string, tile func(), title, line string
 	clicked := false
 	ui.Row(c.Key("orow:"+key)).Gap(t.S3).Padding(t.S2, t.S5, t.S2, t.S4).MinHeight(64).AlignItems(ui.Center).Children(func() {
 		b := ui.Row(c.Key("orow-b:"+key)).Grow(1).Basis(0).MinWidth(0).Gap(t.S3).Padding(t.S2, t.S2).Radius(t.RadiusMD).AlignItems(ui.Center).
-			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title + " · " + line).Expanded(open).Focusable()
+			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title + ", " + line).Expanded(open).Focusable()
 		switch {
 		case b.Pressed():
 			b.Background(t.Ink.Alpha(0.06))
@@ -252,10 +252,7 @@ func (a *App) quietTag(c *ui.Context, text string) {
 // only under the pointer. Its confirmation is dangerText, in confirmRow.
 func (a *App) quietDanger(c *ui.Context, key, label, about string) bool {
 	t := a.T
-	acc := label
-	if about != "" {
-		acc += " · " + about
-	}
+	acc := spoken(a.L, label, about) // D291, as dangerText
 	b := ui.Row(c.Key(key)).Height(t.ControlSM-4).Padding(0, t.S2).Radius(t.RadiusSM).AlignItems(ui.Center).Cursor(ui.CursorPointer).
 		Role(ui.RoleButton).Label(acc).Focusable().Shrink(0)
 	ink := t.InkSoft

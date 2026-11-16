@@ -406,11 +406,14 @@ func (a *App) payButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 		if p.What != "" {
 			fact("pay.what", p.What)
 		}
-		where := p.Site
+		fact("pay.where", p.Site)
 		if p.FirstHere {
-			where += " · " + a.L.T("pay.first")
+			// D296: its own line under the merchant, never joined to it.
+			ui.Row(c).Gap(t.S3).Children(func() {
+				ui.Box(c).Width(72).Shrink(0)
+				ui.Text(c, a.L.T("pay.first")).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).Grow(1).MinWidth(0)
+			})
 		}
-		fact("pay.where", where)
 		fact("pay.card", p.Card)
 	})
 	if d.Resolved != nil || d.Pending != "" {

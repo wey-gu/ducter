@@ -30,7 +30,7 @@ func TestWatchItBrowse(t *testing.T) {
 		}}}})
 		app.Receive(protocol.ServerFrame{T: "browser_sites", Ready: true})
 		tt.Frame()
-		if err := tt.Click(pick("这是做什么的 · 上网", "What this does · Browse")); err != nil {
+		if err := tt.Click(pick("这是做什么的，上网", "What this does, Browse")); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()

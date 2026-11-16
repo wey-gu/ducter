@@ -105,7 +105,7 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
 - **Settings › 聊天软件 / Chat apps** (web `apps/web/src/channels.tsx`, Mac
   `apps/desktop/internal/views/chats.go`; the page's shape is D283, below): per chat app its state
   (**还没连上 / Not connected**, **正在连… / Connecting…**, **还差一步：连上你的账号 / One more
-  step: link your account**, **连上了 · {@bot or workspace} / Connected · {…}**, why it can't
+  step: link your account**, **在 {@bot or workspace} 等你 / Waiting for you at {…} (D296)**, why it can't
   connect in words), the steps and fields, **连上 / Connect**, **连上你的账号 / Link your account**
   with **让我的账号连上 / Link my account**, then **在 Telegram 里打开 / Open in Telegram** and the
   code, **和 {name} 连着 / Linked to {name}** with **解除连接 / Unlink**, **断开 {app} / Disconnect

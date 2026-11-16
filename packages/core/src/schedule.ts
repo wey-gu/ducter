@@ -119,6 +119,7 @@ const W = {
     ordinal: (n: number) => String(n),
     personal: "跟着你的时区",
     world: "按 {tz} 时间",
+    zoned: "{when}（{zone}）",
   },
   en: {
     days: ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"],
@@ -133,11 +134,12 @@ const W = {
     ordinal: (n: number) => `${n}${["th", "st", "nd", "rd"][n % 10 > 3 || [11, 12, 13].includes(n) ? 0 : n % 10]}`,
     personal: "follows your time zone",
     world: "{tz} time",
+    zoned: "{when} ({zone})",
   },
 };
 
 /** The trigger in words (D292: in the routine's language, through the fallback chain):
- *  "每周一 9:00 · 跟着你的时区" / "Mondays 9:00 · follows your time zone". */
+ *  "每周一 9:00（跟着你的时区）" / "Mondays 9:00 (follows your time zone)". */
 export function describeTrigger(t: RoutineTrigger, lang: LangTag): string {
   if (t.kind === "condition") return t.condition;
   const w = words(W, lang);
@@ -155,5 +157,6 @@ export function describeTrigger(t: RoutineTrigger, lang: LangTag): string {
     : t.every === "month" ? fill(w.month, { day: w.ordinal(t.dayOfMonth!), time })
     : fill(w.week, { days: (t.days ?? []).map((d) => w.days[d]).join(w.daysJoin), time });
   const zone = t.zone === "personal" ? w.personal : fill(w.world, { tz: t.tz });
-  return `${when} · ${zone}`;
+  // D291: the zone qualifies the time, in parentheses, never joined by a dot.
+  return fill(w.zoned, { when, zone });
 }

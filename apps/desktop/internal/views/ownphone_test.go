@@ -137,7 +137,7 @@ func TestOwnPhoneGoCard(t *testing.T) {
 	}})
 	tt := ui.NewTesterWith(app.View, 1280, 1000, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	for _, w := range []string{"你的号码 +86 139 1234 5678（Pixel 7）", "4 分钟 · 语音约 $0.80，话费走你的套餐"} {
+	for _, w := range []string{"你的号码 +86 139 1234 5678（Pixel 7）", "约 4 分钟，语音花 $0.80 左右，话费走你的套餐"} {
 		if !tt.HasText(w) {
 			t.Errorf("the Go card lacks %q: %q", w, tt.Texts())
 		}

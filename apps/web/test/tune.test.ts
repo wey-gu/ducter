@@ -134,7 +134,9 @@ describe("Model and effort (D202)", () => {
     const tu = A.ntTune(c);
     expect(tu.model?.id).toBe("gpt-6.1-terra");
     expect(tu.effort).toBe("low");
-    expect(whoLabel(c)).toBe("Codex · GPT-6.1 Terra · 低");
+    // D291: three facts, each its own word on the pill; read aloud as a list.
+    expect(A.ntWhoParts(c)).toEqual(["Codex", "GPT-6.1 Terra", "低"]);
+    expect(whoLabel(c)).toBe("Codex，GPT-6.1 Terra，低");
     A.nt.words = "x";
     A.startNewTask();
     expect(sent.at(-1).harness).toBeUndefined();
@@ -152,7 +154,7 @@ describe("Model and effort (D202)", () => {
     expect(A.ntTune(c).effort).toBe("");
     A.pickTune(c, "model", "sonnet");
     A.pickTune(c, "effort", "high");
-    expect(whoLabel(c)).toBe("Claude Code · Sonnet 5.5 · 高");
+    expect(whoLabel(c)).toBe("Claude Code，Sonnet 5.5，高");
     A.nt.words = "x";
     A.startNewTask();
     expect(sent.at(-1)).toMatchObject({ harness: "claude-code", model: "sonnet", effort: "high" });

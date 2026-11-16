@@ -1,6 +1,7 @@
 package views
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ func TestUpToDateSaysWhenItChecked(t *testing.T) {
 		ago       time.Duration
 		line, btn string
 	}{
+		// D296: one phrase in the partner's words (D291 allows one natural phrase).
 		{i18n.ZH, 3 * time.Hour, "3 小时前看过，已经是最新的", "检查更新"},
 		{i18n.EN, 3 * time.Hour, "Up to date, checked 3 h ago", "Check now"},
 		{i18n.ZH, 20 * time.Second, "刚看过，已经是最新的", "检查更新"},
@@ -41,8 +43,10 @@ func TestUpToDateSaysWhenItChecked(t *testing.T) {
 		}
 		tt := ui.NewTesterWith(app.View, 1280, 1600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
-		if !tt.HasText(tc.line) {
-			t.Errorf("%s: no %q in %q", tc.lang, tc.line, tt.Texts())
+		for _, part := range strings.Split(tc.line, "\n") {
+			if !tt.HasText(part) {
+				t.Errorf("%s: no %q in %q", tc.lang, part, tt.Texts())
+			}
 		}
 		*sent = nil
 		if err := tt.Click(tc.btn); err != nil {

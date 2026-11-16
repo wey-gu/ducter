@@ -300,7 +300,7 @@ func (a *App) socket(c *ui.Context) {
 	lo := &a.lo
 	b := a.brain()
 	flying := lo.fx != nil && !lo.fx.back
-	label := a.L.T("loadout.socket") + " · " + a.brainLine(b)
+	label := a.L.T("loadout.socket") + ", " + a.brainLine(b)
 	ui.Column(c.Key("socket")).Width(150).Shrink(0).AlignItems(ui.Center).Gap(t.S1).Role(ui.RoleGroup).Label(label).Children(func() {
 		ui.Text(c, a.L.T("loadout.socket")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).AccessHidden(true)
 		well := ui.Box(c.Key("well")).Size(112, 112).Radius(56).
@@ -334,7 +334,7 @@ func (a *App) socketWell(c *ui.Context, b protocol.Brain) {
 	well := ui.Box(c.Key("well")).Size(80, 80).Radius(40).Shrink(0).
 		LinearGradient(ui.LinearGradient{From: t.SurfaceSunken, To: t.Line2, Angle: 180}).
 		InsetShadow(0, 5, 8, 0, t.Ink.Alpha(0.2)).Shadow(0, 3, 0, 0, t.Surface.Alpha(0.8)).
-		Role(ui.RoleImage).Label(a.L.T("loadout.socket") + " · " + a.brainLine(b))
+		Role(ui.RoleImage).Label(a.L.T("loadout.socket") + ", " + a.brainLine(b))
 	well.Children(func() {
 		if !flying {
 			if bmp := theme.Clay(coinArt(b.Harness, false)); bmp != nil {
@@ -391,7 +391,7 @@ func (a *App) trayToken(c *ui.Context, h protocol.DeviceHarness, b protocol.Brai
 	}
 	name := harnessName(h.Harness)
 	tok := ui.Column(c.Key("tok:"+h.Harness)).Width(130).AlignItems(ui.Center).Gap(2).Padding(t.S1, 0).Radius(t.RadiusLG).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name + " · " + a.tokenStatus(h)).Focusable().AccessSelected(lo.acct == h.Harness)
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name + ", " + a.tokenStatus(h)).Focusable().AccessSelected(lo.acct == h.Harness)
 	why := ""
 	if lo.choosing {
 		switch {
@@ -902,12 +902,12 @@ func (a *App) tuneInPlace(c *ui.Context, task *store.Task, device string) {
 
 func candKey(cd protocol.Candidate) string { return cd.Harness + "/" + cd.Model }
 
+// candName is "Claude Code 的 Opus" / "Claude Code with Opus" (D296: a phrase).
 func (a *App) candName(cd protocol.Candidate) string {
-	parts := []string{harnessName(cd.Harness)}
 	if cd.Model != "" {
-		parts = append(parts, modelLabel(a.trayHarness(cd.Harness), cd.Model))
+		return a.L.T("loadout.brain.with", harnessName(cd.Harness), modelLabel(a.trayHarness(cd.Harness), cd.Model))
 	}
-	return strings.Join(parts, " · ")
+	return harnessName(cd.Harness)
 }
 
 // candReason is a row's why, then its limit.
@@ -920,7 +920,7 @@ func (a *App) candReason(cd protocol.Candidate) string {
 		if at := store.ParseTime(cd.ResetsAt); !at.IsZero() {
 			parts = append(parts, a.L.T("cand.resets", a.when(at)))
 		}
-		return strings.Join(parts, " · ")
+		return strings.Join(parts, a.L.T("phrase.sep"))
 	default:
 		return a.L.T("cand." + cd.Blocked)
 	}
@@ -938,7 +938,8 @@ func (a *App) candReason(cd protocol.Candidate) string {
 	if cd.Billing == "usage" {
 		parts = append(parts, a.L.T("cand.paid"))
 	}
-	return strings.Join(parts, " · ")
+	// D296: one phrase, its facts in a sentence, never joined with a dot.
+	return strings.Join(parts, a.L.T("phrase.sep"))
 }
 
 // drainSwitch takes the server's answer to a switch.
@@ -1055,7 +1056,7 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 							if dv != nil && dv.State == protocol.DeviceAsleep {
 								ink = t.Asleep.Ink
 							}
-							ui.Text(c, "· "+s).FontSize(t.SM).TextColor(ink)
+							ui.Text(c, s).FontSize(t.SM).TextColor(ink) // its own element (D296)
 						}
 					})
 				}

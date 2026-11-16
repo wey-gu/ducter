@@ -222,10 +222,9 @@ export function AutofillSettings() {
                 </span>
                 <span class="grow">
                   <b>{x.label}</b>
-                  <small>
-                    {x.username} · {usedLine(x)}
-                  </small>
+                  <small>{x.username}</small>
                 </span>
+                <span class="g-state">{usedLine(x)}</span>
                 <span class="af-dots" aria-hidden="true">
                   ••••••
                 </span>
@@ -267,10 +266,9 @@ export function AutofillSettings() {
                 </span>
                 <span class="grow">
                   <b>{x.label}</b>
-                  <small>
-                    {x.name} · {x.exp} · {usedLine(x)}
-                  </small>
+                  <small>{t("af.card.line", x.name, x.exp)}</small>
                 </span>
+                <span class="g-state">{usedLine(x)}</span>
               </button>
             ),
           )}
@@ -336,9 +334,10 @@ export function AutofillSettings() {
                 <span class="grow">
                   <b>{x.name}</b>
                   <small>
-                    <code class="af-env">{x.env}</code> · {usedLine(x)}
+                    <code class="af-env">{x.env}</code>
                   </small>
                 </span>
+                <span class="g-state">{usedLine(x)}</span>
                 <span class="af-dots" aria-hidden="true">
                   {x.hint ?? t("af.key.kept")}
                 </span>

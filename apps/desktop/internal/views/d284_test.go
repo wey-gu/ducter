@@ -44,7 +44,7 @@ func TestOldRelaysReadAsChips(t *testing.T) {
 	for _, e := range entries {
 		lines = append(lines, e.line)
 	}
-	if len(entries) != 3 || entries[0].quiet || !entries[1].quiet || entries[2].quiet || !strings.HasPrefix(entries[1].line, "5 条提示 · ") || entries[2].line != "热启动不用录了，收尾吧" {
+	if len(entries) != 3 || entries[0].quiet || !entries[1].quiet || entries[2].quiet || entries[1].line != "5 条提示" || !strings.Contains(entries[1].at, "–") || entries[2].line != "热启动不用录了，收尾吧" {
 		t.Fatalf("locator: %q", lines)
 	}
 	if !hoverLocator(app, tt) {

@@ -9,7 +9,7 @@ import type { BridgeView } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { Btn, DangerButton, LinkBtn, Seg, Switch } from "./controls.tsx";
+import { Btn, DangerButton, Facts, LinkBtn, Seg, Switch } from "./controls.tsx";
 import { ago } from "./format.ts";
 import { groupNoted, MEM_MIN, memPhase, memUpdate, peersShown, type MemPhase, type MemUpdate } from "./mem-view.ts";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Tile } from "./set-grid.tsx";
@@ -40,11 +40,11 @@ export function Notebook({ size }: { size: number }) {
 }
 
 /** D229: the detail behind a quiet disclosure: the main line stays in plain words. */
-export function MemMore({ label, text }: { label: string; text: string }) {
+export function MemMore({ label, text }: { label: string; text: string | string[] }) {
   return (
     <details class="mem-more">
       <summary>{label}</summary>
-      <small>{text}</small>
+      {typeof text === "string" ? <small>{text}</small> : text.map((x, i) => <small key={i} class="line">{x}</small>)}
     </details>
   );
 }

@@ -54,13 +54,14 @@ object Dial {
         }
     }
 
-    /** The notification's body: the first words set apart, then the questions, what not to share, what to note. */
+    /** The notification's body: the first words set apart, then the questions, what not to share, what to note,
+     *  each item a line of its own under its label (D291: plain text, no bullet glyphs). */
     fun text(s: Sheet, labels: Labels): String = buildList {
         val colon = if (labels.latin) ": " else "："
         if (s.open.isNotEmpty()) add("${labels.open}$colon${s.open}")
         fun group(label: String, items: List<String>) {
             if (items.isEmpty()) return
-            add(label + colon.trim() + items.joinToString("") { "\n· $it" })
+            add(label + colon.trim() + items.joinToString("") { "\n$it" })
         }
         group(labels.ask, s.ask)
         group(labels.dont, s.dont)

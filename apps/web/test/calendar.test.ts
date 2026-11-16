@@ -15,8 +15,8 @@ describe("calendar words", () => {
   });
 
   test("a day's head and a change's time, zh and en", () => {
-    expect(dayHead("zh", "2026-11-18", "2026-11-18")).toBe("今天 · 11月18日 周三");
-    expect(dayHead("en", "2026-11-18", "2026-11-18")).toBe("Today · Wed, Nov 18");
+    expect(dayHead("zh", "2026-11-18", "2026-11-18")).toBe("今天 11月18日 周三");
+    expect(dayHead("en", "2026-11-18", "2026-11-18")).toBe("Today, Wed, Nov 18");
     expect(dayHead("en", "2026-11-20", "2026-11-18")).toBe("Fri, Nov 20");
     expect(whenWords("zh", "2026-11-19T15:00:00+09:00", "2026-11-19T15:30:00+09:00", false, "2026-11-18", "全天")).toBe("明天 11月19日 周四 15:00–15:30");
     expect(whenWords("en", "2026-11-19T15:00:00+09:00", "2026-11-19T15:30:00+09:00", false, "2026-11-18", "All day")).toBe("Tomorrow, Thu Nov 19, 15:00–15:30");
@@ -25,7 +25,7 @@ describe("calendar words", () => {
   });
 
   test("the other side's zone, only when it differs", () => {
-    expect(otherZoneLine("zh", "America/Los_Angeles", "2026-11-18T14:00:00+09:00")).toBe("当地 11月17日 21:00 · 洛杉矶");
+    expect(otherZoneLine("zh", "America/Los_Angeles", "2026-11-18T14:00:00+09:00")).toBe("洛杉矶当地 11月17日 21:00");
     expect(otherZoneLine("en", "America/Los_Angeles", "2026-11-18T14:00:00+09:00")).toBe("21:00 Nov 17 in Los Angeles");
     expect(otherZoneLine("zh", "Asia/Tokyo", "2026-11-18T14:00:00+09:00")).toBe("");
     expect(theirSide("en", "America/Los_Angeles", "2026-11-19T17:00:00+09:00")).toEqual({ when: "00:00 Thu Nov 19", city: "Los Angeles" });

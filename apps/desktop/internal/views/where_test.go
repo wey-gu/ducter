@@ -1,6 +1,7 @@
 package views
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -71,9 +72,9 @@ func TestWhereLineOnEveryTaskWithTwoComputers(t *testing.T) {
 	}
 	app.Receive(whereDevices("awake"))
 	cases := map[string][2]string{
-		"t_hn":      {"在 hel 上 · 用 Ducter 自己的浏览器", "为什么在 hel 上：用不着你的登录，hel 自己的浏览器就够了"},
-		"t_order":   {"在 MacBook 上 · 用你的 Chrome", "为什么在 MacBook 上：要用你登录着的 taobao.com"},
-		"t_keynote": {"在 MacBook 上 · 用 Keynote", "为什么在 MacBook 上：只有 MacBook 有 Keynote"},
+		"t_hn":      {"在 hel 上用 Ducter 自己的浏览器", "为什么在 hel 上：用不着你的登录，hel 自己的浏览器就够了"},
+		"t_order":   {"在 MacBook 上用你的 Chrome", "为什么在 MacBook 上：要用你登录着的 taobao.com"},
+		"t_keynote": {"在 MacBook 上用 Keynote", "为什么在 MacBook 上：只有 MacBook 有 Keynote"},
 	}
 	for id, want := range cases {
 		on, why := app.taskWhere(app.S.Tasks[id])
@@ -82,13 +83,13 @@ func TestWhereLineOnEveryTaskWithTwoComputers(t *testing.T) {
 		}
 	}
 	// On hand names the computer on every row, the home by its own name.
-	if got := app.whereWhy(app.S.Tasks["t_hn"]); got != "Codex · hel" {
+	if got := app.whereWhy(app.S.Tasks["t_hn"]); strings.Join(got, "|") != "Codex|hel" {
 		t.Errorf("On hand row: %q", got)
 	}
 	en, _ := iaApp(t, i18n.EN)
 	whereTasks(en, false)
 	en.Receive(whereDevices("awake"))
-	if on, why := en.taskWhere(en.S.Tasks["t_order"]); on != "on MacBook · in your Chrome" || why != "Why MacBook: Needs your signed-in taobao.com" {
+	if on, why := en.taskWhere(en.S.Tasks["t_order"]); on != "on MacBook in your Chrome" || why != "Why MacBook: Needs your signed-in taobao.com" {
 		t.Errorf("en: %q / %q", on, why)
 	}
 }

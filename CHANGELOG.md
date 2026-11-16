@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.0.60
+
+<!-- whats-new
+zh: 等待会说几点回来，一圈圈记着看了几次
+en: A wait says when it's back and counts its looks
+zh: 打电话：你来打，它先写好要说的
+en: Calls: you dial, it writes what to say first
+-->
+
+**Waiting**
+- A task waiting on its own says when it comes back ("22:17 回来"), with a ring that fills until its
+  next look and one pebble per look. 现在就去看一次 / Check now and 不用再去看了 / Stop checking say
+  what they do. When the wait is over, the ring closes with a tick.
+
+**Calls with your own number**
+- A server is never asked to hold your phone. You call, your partner prepares: the call sheet, and
+  one tap on your phone (or from the Mac) dials. Live AI calls on your number need the phone beside a
+  computer and are coming later.
+
+**Use this phone**
+- When Android asks to allow recording, the Mac and the phone both say it's your turn, with the time
+  left and Skip recording.
+- The task hears when the phone is back with you; the screen stays on while it's lent, and a screen
+  timeout no longer ends the loan.
+
 ## 0.0.59
 
 <!-- whats-new

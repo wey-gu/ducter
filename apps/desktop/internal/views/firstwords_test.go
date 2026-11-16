@@ -84,12 +84,22 @@ func TestFirstWordsInTheConversation(t *testing.T) {
 		}
 		shotTester(t, tt, "first-words-"+string(lang))
 		// A start fills the composer; it never sends.
-		before := len(*sent)
+		// Only a message counts as sending: other frames (a ping on a slow runner) may come and go.
+		said := func() int {
+			n := 0
+			for _, f := range *sent {
+				if _, ok := f.(protocol.Send); ok {
+					n++
+				}
+			}
+			return n
+		}
+		before := said()
 		if err := tt.Click(autospace(map[i18n.Lang]string{i18n.ZH: "昨天你在 hawdb 里做「修 compaction 那个不稳定的测试」，要我接着看看吗？", i18n.EN: "Yesterday you were on “Fix the flaky compaction test” in hawdb. Want me to pick it up?"}[lang])); err == nil {
 			tt.Frame()
 		}
-		if !strings.Contains(app.draft, "hawdb") || len(*sent) != before {
-			t.Errorf("%s: draft %q, sent %d new", lang, app.draft, len(*sent)-before)
+		if !strings.Contains(app.draft, "hawdb") || said() != before {
+			t.Errorf("%s: draft %q, sent %d new messages", lang, app.draft, said()-before)
 		}
 		// 别再看了: said to the home, and what came from the records goes.
 		stop := map[i18n.Lang]string{i18n.ZH: "别再看了", i18n.EN: "Stop looking"}[lang]

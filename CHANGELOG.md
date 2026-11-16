@@ -30,6 +30,12 @@ en: Find earlier sessions and everything done for you
 - A task shows how full its context is, and Compact now works on every agent.
 - Devices say how each one is connected; a home keeps its addresses and devices pick the best one.
 
+**Dark and WeChat**
+- The Mac app follows the system's light and dark, in a warm dark Pebble; or pick one in Look and
+  sound.
+- WeChat joins Chat apps through WeChat's own ClawBot: scan once with your WeChat; Ducter never
+  signs in to your account. It can answer within a day of your last message.
+
 **First hour and Settings**
 - Your partner's first words offer to carry on with your own recent work; a pasted API key is
   enough to start.

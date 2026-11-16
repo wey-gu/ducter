@@ -84,7 +84,7 @@ func TestNewTaskTuneDrawn(t *testing.T) {
 		L := app.L
 		app.nt.words = map[i18n.Lang]string{i18n.ZH: "把登录页的闪退修掉", i18n.EN: "Fix the login page crash"}[lang]
 		cd, _ := app.chosenCandidate(app.S.NewTaskOptions.Candidates)
-		click(t, tt, L.T("newtask.who")+" · "+app.whoLabel(*cd))
+		click(t, tt, spoken(L, L.T("newtask.who"), app.whoLabel(*cd)))
 		for _, s := range []string{L.T("newtask.agent.elsewhere", "Macbook Pro M3"), L.T("newtask.agent.copy", "Macbook Pro M3", "ducter"), "GPT-6.1 Terra", L.T("newtask.effort")} {
 			if !tt.HasText(s) {
 				t.Errorf("%s: no %q: %q", lang, s, tt.Texts())
@@ -96,7 +96,7 @@ func TestNewTaskTuneDrawn(t *testing.T) {
 		app.Receive(protocol.ServerFrame{T: "task_new_options", Places: []protocol.PlaceChoice{tuneMacRepo, tuneHelRepo, tuneNone}, Candidates: tuneCandsAtMac(), Models: tuneModels()})
 		tt.Frame()
 		cd, _ = app.chosenCandidate(app.S.NewTaskOptions.Candidates)
-		click(t, tt, L.T("newtask.who")+" · "+app.whoLabel(*cd))
+		click(t, tt, spoken(L, L.T("newtask.who"), app.whoLabel(*cd)))
 		for _, s := range []string{L.T("newtask.model"), "Opus 5.5", "Sonnet 5.5", L.T("newtask.effort"), L.T("effort.xhigh")} {
 			if !tt.HasText(s) {
 				t.Errorf("%s: no %q under Claude Code: %q", lang, s, tt.Texts())
@@ -104,7 +104,7 @@ func TestNewTaskTuneDrawn(t *testing.T) {
 		}
 		click(t, tt, "Sonnet 5.5")
 		click(t, tt, L.T("effort.high"))
-		if got := app.whoLabel(*cd); got != "Claude Code · Sonnet 5.5 · "+L.T("effort.high") {
+		if got := app.whoLabel(*cd); got != spoken(L, "Claude Code", "Sonnet 5.5", L.T("effort.high")) {
 			t.Errorf("%s: picked by clicking: %q", lang, got)
 		}
 		newTaskShot(t, tt, "tune-mac-claude-"+string(lang))
@@ -199,7 +199,7 @@ func TestNewTaskModelAndEffort(t *testing.T) {
 		}
 		app.pickTune(*cd, "model", "sonnet")
 		app.pickTune(*cd, "effort", "high")
-		want := map[i18n.Lang]string{i18n.ZH: "Claude Code · Sonnet 5.5 · 高", i18n.EN: "Claude Code · Sonnet 5.5 · High"}[lang]
+		want := map[i18n.Lang]string{i18n.ZH: "Claude Code，Sonnet 5.5，高", i18n.EN: "Claude Code, Sonnet 5.5, High"}[lang]
 		if got := app.whoLabel(*cd); got != want {
 			t.Errorf("%s: the pill: %q", lang, got)
 		}
@@ -228,7 +228,7 @@ func TestNewTaskModelAndEffort(t *testing.T) {
 	// Codex lists its own default effort: that is the default, and isn't sent.
 	app, sent := tuneApp(t, i18n.ZH, []protocol.PlaceChoice{tuneHelRepo, tuneNone}, tuneCandsAtHel()[:1])
 	cd, _ := app.chosenCandidate(app.S.NewTaskOptions.Candidates)
-	if tu := app.ntTune(cd); tu.model == nil || tu.model.ID != "gpt-6.1-terra" || tu.effort != "low" || app.whoLabel(*cd) != "Codex · GPT-6.1 Terra · 低" {
+	if tu := app.ntTune(cd); tu.model == nil || tu.model.ID != "gpt-6.1-terra" || tu.effort != "low" || app.whoLabel(*cd) != "Codex，GPT-6.1 Terra，低" {
 		t.Fatalf("Codex's defaults: %+v %q", tu, app.whoLabel(*cd))
 	}
 	app.nt.words = "x"

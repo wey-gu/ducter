@@ -40,13 +40,12 @@ func ownInstall(os, tool string) string {
 }
 
 // ownLooked is what the last look saw, with when and on which computer.
-func (a *App) ownLooked(v *protocol.OwnPhoneView) string {
+func (a *App) ownLooked(v *protocol.OwnPhoneView) (saw, when string) {
 	at, err := time.Parse(time.RFC3339, v.LookedAt)
 	if err != nil {
-		return ""
+		return "", ""
 	}
 	at = at.Local()
-	var saw string
 	switch {
 	case !v.ADB:
 		saw = a.L.T("own.saw.noadb", v.Where)
@@ -57,7 +56,7 @@ func (a *App) ownLooked(v *protocol.OwnPhoneView) string {
 	default:
 		saw = a.L.T("own.saw.phone", v.Phone.Model)
 	}
-	return a.L.T("own.looked", fmt.Sprintf("%d:%02d", at.Hour(), at.Minute()), saw)
+	return saw, fmt.Sprintf("%d:%02d", at.Hour(), at.Minute())
 }
 
 // dialers are the person's phones whose Ducter app can dial a call sheet now (D278).
@@ -74,9 +73,9 @@ func (a *App) dialers() []protocol.ReachClient {
 	return out
 }
 
-// phoneName drops the app's " · Ducter" from a phone's client name.
+// phoneName is a phone's client name as shown (D291: no old suffix).
 func phoneName(name string) string {
-	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(name), "· Ducter"))
+	return shownDeviceName(strings.TrimSpace(name))
 }
 
 // ownAwayCard is the group on a home that can't be the computer beside
@@ -284,8 +283,9 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 			if a.buttonFor(c, a.L.T("own.scan"), a.L.T("own.title"), btnText, t.ControlSM, t.Surface) {
 				a.ownAct(protocol.OwnPhoneAct{Action: "scan"})
 			}
-			if line := a.ownLooked(v); line != "" {
-				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted).Grow(1).MinWidth(0)
+			if saw, at := a.ownLooked(v); saw != "" {
+				ui.Text(c, saw).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+				ui.Text(c, at).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
 			}
 		})
 	}

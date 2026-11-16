@@ -266,7 +266,9 @@ func (a *App) ongoingCard(c *ui.Context, it *protocol.OngoingItem) {
 				if it.State == "resting" || it.State == "paused" {
 					a.glyph(c, 14, drawClock(t.InkMuted))
 				}
-				ui.Text(c, a.ongoingLine(it)).FontSize(t.SM).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).FontFeatures("tnum")
+				for _, p := range a.ongoingLine(it) {
+					ui.Text(c, p).FontSize(t.SM).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).FontFeatures("tnum")
+				}
 			})
 			a.ongoingRuns(c, it)
 		})
@@ -291,25 +293,26 @@ func (a *App) ongoingWhen(at time.Time) string {
 	return i18n.When(a.L.Lang, at, a.Now())
 }
 
-// ongoingLine is the card's one state line.
-func (a *App) ongoingLine(it *protocol.OngoingItem) string {
+// ongoingLine is the card's one state line: its state, else how often
+// it runs and when next, each its own fact (D291).
+func (a *App) ongoingLine(it *protocol.OngoingItem) []string {
 	switch it.State {
 	case "running":
-		return a.L.T("og.s.running")
+		return []string{a.L.T("og.s.running")}
 	case "needs_you":
-		return a.L.T("og.s.needs_you")
+		return []string{a.L.T("og.s.needs_you")}
 	case "proposed":
-		return strings.Join(nonEmpty(it.Cadence, a.L.T("og.s.proposed")), " · ")
+		return nonEmpty(it.Cadence, a.L.T("og.s.proposed"))
 	case "paused":
 		if it.PausedBy == "system" && it.PauseWhy != "" {
 			if w := a.L.T("routine.paused." + it.PauseWhy); w != "routine.paused."+it.PauseWhy {
-				return w
+				return []string{w}
 			}
 		}
 		if at := store.ParseTime(it.PausedUntil); !at.IsZero() {
-			return a.L.T("og.paused.until", a.ongoingWhen(at))
+			return []string{a.L.T("og.paused.until", a.ongoingWhen(at))}
 		}
-		return a.L.T("og.paused")
+		return []string{a.L.T("og.paused")}
 	}
 	how := it.Cadence
 	if it.Kind == "task" && it.EveryMs > 0 {
@@ -319,7 +322,7 @@ func (a *App) ongoingLine(it *protocol.OngoingItem) string {
 	if at := store.ParseTime(it.NextAt); !at.IsZero() {
 		next = a.L.T("og.next", a.ongoingWhen(at))
 	}
-	return strings.Join(nonEmpty(how, next), " · ")
+	return nonEmpty(how, next)
 }
 
 // hanTight drops a space between two Chinese characters ("每 45 分钟 看一次"
@@ -360,7 +363,7 @@ func (a *App) ongoingRuns(c *ui.Context, it *protocol.OngoingItem) {
 			case "looked":
 				fill, edge = t.Waiting.Dot, t.Waiting.Strong
 			}
-			tip := strings.Join(nonEmpty(a.L.T("og.run."+run.State), a.ongoingAt(store.ParseTime(run.At)), run.Line), " · ")
+			tip := spoken(a.L, a.L.T("og.run."+run.State), a.ongoingAt(store.ParseTime(run.At)), run.Line)
 			b := ui.Box(c.Key("run:"+itoa(int64(i)))).Size(10, 10).Radius(3.5, 4, 3, 4).Shrink(0).Tooltip(tip).Label(tip)
 			if run.State == "skipped" {
 				b.Border(1.2, edge)
@@ -406,7 +409,7 @@ func (a *App) ogButton(c *ui.Context, key, label, about string, open bool) (ui.E
 	t := a.T
 	h := a.controlHeight(t.ControlSM)
 	b := ui.Row(c.Key("ogb:"+key)).Height(h).Padding(0, a.textPad(h)).Radius(a.buttonRadius(h)).AlignItems(ui.Center).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label + " · " + about).Expanded(open).Focusable().Shrink(0)
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, label, about)).Expanded(open).Focusable().Shrink(0)
 	fg := a.buttonLook(c, b, btnText, h, t.Surface)
 	if open {
 		b.Background(t.Ink.Alpha(0.08))
@@ -513,7 +516,7 @@ func (a *App) ongoingMore(c *ui.Context, it *protocol.OngoingItem) {
 	og := &a.past.og
 	ps := &a.past
 	open := og.moreOpen && og.moreFor == it.ID
-	b := ui.Box(c.Key("more")).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(a.L.T("past.more") + " · " + it.Title).
+	b := ui.Box(c.Key("more")).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(spoken(a.L, a.L.T("past.more"), it.Title)).
 		Tooltip(a.L.T("past.more")).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Expanded(open).Shrink(0)
 	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
 	b.Draw(drawMore(fg))

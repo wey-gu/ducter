@@ -197,7 +197,7 @@ func TestOnHandLensAndStrip(t *testing.T) {
 		t.Errorf("a wait that never said: %q", s.words)
 	}
 	// The lens narrows the board and is kept.
-	if err := tt.Click("hawdb · 1 needs you · 2 working · 1 new result"); err != nil {
+	if err := tt.Click("hawdb, 1 needs you, 2 working, 1 new result"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

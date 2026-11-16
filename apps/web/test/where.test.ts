@@ -29,13 +29,13 @@ describe("where a task runs (D157)", () => {
     expect(taskWhere(task)).toEqual({ line: "", why: "" });
     A.receive(devices(2));
     expect(computerName("local")).toBe("hel");
-    expect(taskWhere(task)).toEqual({ line: "在 MacBook 上 · 用你的 Chrome", why: "为什么在 MacBook 上：要用你登录着的 taobao.com" });
+    expect(taskWhere(task)).toEqual({ line: "在 MacBook 上用你的 Chrome", why: "为什么在 MacBook 上：要用你登录着的 taobao.com" });
     // Moved since: the reason was for the other computer, so only the place is said.
     task.card.place = { kind: "browser", device: "local", profile: "default" };
     expect(taskWhere(task)).toEqual({ line: "在 hel 上", why: "" });
     A.L = strings("en");
     task.card.place = { kind: "browser", device: "MacBook", profile: "default" };
-    expect(taskWhere(task).line).toBe("on MacBook · in your Chrome");
+    expect(taskWhere(task).line).toBe("on MacBook in your Chrome");
   });
 
   test("the sleeping-Mac ask: wait by default; now elsewhere says what it costs; a waiting task's line", async () => {

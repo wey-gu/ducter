@@ -20,8 +20,8 @@ func TestMemoryNotedLine(t *testing.T) {
 		said, title string
 		want        string
 	}{
-		{i18n.ZH, "以后测试都用假时钟", "测试统一用假时钟", "记下了 · 测试统一用假时钟"},
-		{i18n.EN, "I use pnpm, not npm, in all my JS projects", "Use pnpm, not npm", "Noted · Use pnpm, not npm"},
+		{i18n.ZH, "以后测试都用假时钟", "测试统一用假时钟", "记下了「测试统一用假时钟」"},
+		{i18n.EN, "I use pnpm, not npm, in all my JS projects", "Use pnpm, not npm", "Noted “Use pnpm, not npm”"},
 	} {
 		theme.LoadFonts()
 		app := New(store.New(), theme.Pebble(), i18n.New(tc.lang))

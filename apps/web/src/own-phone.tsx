@@ -12,9 +12,9 @@ import { prettyNumber } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Fragment } from "preact";
-import { Btn, DangerButton, OpenRow, Seg, Toggle } from "./controls.tsx";
+import { Btn, DangerButton, Facts, OpenRow, Seg, Toggle } from "./controls.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Tag, Tile } from "./set-grid.tsx";
-import { clock } from "./format.ts";
+import { clock, shownDeviceName } from "./format.ts";
 import { CallArt } from "./phone.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -81,11 +81,11 @@ export function installLine(os: OwnPhoneView["os"], tool: "adb" | "ffmpeg"): str
   return undefined;
 }
 
-/** D278: what the last look saw, said with when and on which computer ("看过了 · 20:14 · MacBook 上还没看到手机"). */
-export function lookedLine(v: OwnPhoneView): string | undefined {
+/** D278: what the last look saw, said with when and on which computer ("MacBook 上还没看到手机", and 20:14 as its own fact; D291). */
+export function lookedLine(v: OwnPhoneView): { saw: string; at: string } | undefined {
   if (!v.lookedAt) return undefined;
   const saw = !v.adb ? t("own.saw.noadb", v.where) : !v.phone ? t("own.saw.none", v.where) : v.phone.state === "unauthorized" ? t("own.saw.allow") : t("own.saw.phone", v.phone.model);
-  return t("own.looked", clock(v.lookedAt), saw);
+  return { saw, at: clock(v.lookedAt) };
 }
 
 function Cmd({ text }: { text: string }) {
@@ -110,7 +110,7 @@ function Look({ v }: { v: OwnPhoneView }) {
   return (
     <div class="own-look" aria-live="polite">
       <Btn kind="text" size="sm" label={t(v.looking ? "own.looking" : "own.scan")} disabled={!!v.looking} onClick={() => A.ownPhoneAct({ action: "scan" })} />
-      {!v.looking && line && <span class="small sub">{line}</span>}
+      {!v.looking && line && <Facts class="small sub own-looked" items={[line.saw, <time class="own-looked-at">{line.at}</time>]} />}
     </div>
   );
 }
@@ -312,7 +312,7 @@ function AwayCard({ v }: { v: OwnPhoneView }) {
   return (
     <Group id="acct-own-phone" label={t("own.title")}>
       <GHead tile={<Tile faded><CallArt off size={40} /></Tile>} name={t("own.title")} line={t("own.away.lede")} />
-      <GRow title={t("own.away.how")} line={d ? t("own.away.dial", d.name.replace(/\s*·\s*Ducter$/, "")) : t("own.away.nodial")} />
+      <GRow title={t("own.away.how")} line={d ? t("own.away.dial", shownDeviceName(d.name)) : t("own.away.nodial")} />
       <GFoot note={t("own.away.why", v.where)}>
         <Tag text={t("own.away.soon")} />
       </GFoot>

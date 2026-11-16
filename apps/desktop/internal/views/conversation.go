@@ -290,7 +290,7 @@ func (a *App) header(c *ui.Context) {
 			face.Children(func() { a.partnerFace(c, "bar", a.presence(c), 44) })
 			ui.Column(c).Gap(0).MinWidth(0).Children(func() {
 				name := ui.Text(c.Key("who-name"), a.S.PersonaName).FontSize(barText).FontWeight(600).TextColor(t.Ink).LineHeight(1.25).SingleLine().
-					Padding(1, t.S1+2).Radius(t.RadiusXS).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.partner") + " · " + a.S.PersonaName).
+					Padding(1, t.S1+2).Radius(t.RadiusXS).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, a.L.T("nav.partner"), a.S.PersonaName)).
 					Focusable().Tooltip(about).AlignSelf(ui.Start)
 				if name.Hovered() || name.Pressed() || face.Hovered() || face.Pressed() {
 					name.Background(tint)
@@ -303,11 +303,26 @@ func (a *App) header(c *ui.Context) {
 				ui.Box(c).MinHeight(t.XS*1.5 + 2).Children(func() {
 					words := a.summary(b)
 					if f, ok := a.summaryFilter(b); ok && words != "" {
-						l := ui.Text(c.Key("who-counts"), words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Padding(1, t.S1+2).Radius(t.RadiusXS).
+						// D291: each count its own element, spaced by a gap;
+						// read aloud as a list.
+						l := ui.Row(c.Key("who-counts")).AlignItems(ui.Center).Padding(1, t.S1+2).Radius(t.RadiusXS).
 							Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(words).Focusable().Tooltip(a.L.T("nav.onhand"))
+						ink := t.InkMuted
 						if l.Hovered() || l.Pressed() {
-							l.Background(tint).TextColor(t.Ink)
+							l.Background(tint)
+							ink = t.Ink
 						}
+						parts := a.countParts(b)
+						if len(parts) == 0 {
+							parts = []string{words}
+						}
+						l.Children(func() {
+							ui.Row(c).Gap(t.S3).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+								for _, p := range parts {
+									ui.Text(c, p).FontSize(t.XS).TextColor(ink).SingleLine()
+								}
+							})
+						})
 						if l.Clicked() {
 							a.oh.filter, a.oh.focus = f, ""
 							a.Route = RouteOnHand
@@ -377,7 +392,15 @@ func (a *App) summary(b store.Board) string {
 	case client.Disconnected:
 		return a.L.T("conn.offline")
 	}
-	// Live: what needs the user, what is being worked on, what came back.
+	if parts := a.countParts(b); len(parts) > 0 {
+		return spoken(a.L, parts...)
+	}
+	return a.L.T("header.summary.none")
+}
+
+// countParts is the counts line's facts, each said on its own (D291):
+// what needs the user, what is being worked on, what came back.
+func (a *App) countParts(b store.Board) []string {
 	var parts []string
 	if n := len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions()); n > 0 {
 		parts = append(parts, a.L.T("header.needs", n))
@@ -394,10 +417,7 @@ func (a *App) summary(b store.Board) string {
 	if n := a.doneToday(b); n > 0 {
 		parts = append(parts, a.L.T("header.done", n))
 	}
-	if len(parts) == 0 {
-		return a.L.T("header.summary.none")
-	}
-	return strings.Join(parts, " · ")
+	return parts
 }
 
 // thinking reports whether the partner owes an answer: the user's last
@@ -794,7 +814,9 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 		} else if said == "" {
 			text = a.L.T("living.it")
 		} else if it.Title != "" {
-			text = it.Title + " · " + said
+			// D291: the task's name is its own element, then what it said.
+			text = said
+			ui.Text(c, it.Title).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(2).MinWidth(0).MaxWidth(240)
 		}
 		tx := ui.Text(c, text).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).MinWidth(0).LineHeight(1.45).MaxLines(3).Tooltip(text)
 		if line.Hovered() {
@@ -841,7 +863,7 @@ func (a *App) openEvidence(c *ui.Context, ev protocol.EvidenceRef) {
 		c.OpenURL("file://" + ref)
 	default:
 		c.WriteClipboard(ev.Ref)
-		c.Toast(ev.Label + " · " + ev.Ref)
+		c.Toast(a.L.T("evidence.copied", ev.Ref)) // D291: one sentence
 	}
 }
 

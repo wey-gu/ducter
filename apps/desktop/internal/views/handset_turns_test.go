@@ -38,7 +38,7 @@ func TestToldLoanEnded(t *testing.T) {
 		}
 	}
 	zh, _ := iaApp(t, i18n.ZH)
-	if s := zh.L.T("told.taken_back", "Pixel Fold", "20:14"); s != "你收回了 Pixel Fold · 20:14" {
+	if s := zh.L.T("told.taken_back", "Pixel Fold"); s != "你收回了 Pixel Fold" { // D291: its time is drawn apart
 		t.Errorf("zh %q", s)
 	}
 }

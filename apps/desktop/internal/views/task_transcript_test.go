@@ -233,8 +233,8 @@ func TestOpenedTaskTranscript(t *testing.T) {
 			}
 		}
 		want := map[i18n.Lang][]string{
-			i18n.ZH: {"想了", "运行", "读取", "搜索", "出错", "xcrun altool", "在 Chrome 里打开 appstoreconnect.apple.com/login", "在 Chrome 里按 ⌘T", "好", "Codex · gpt-5.5", "在做", "Ducter 交给它的事", "保存了进度"},
-			i18n.EN: {"Thought for", "Ran", "Read", "Searched", "Error", "xcrun altool", "Opened appstoreconnect.apple.com/login in Chrome", "Pressed ⌘T in Chrome", "Go", "Codex · gpt-5.5", "Working", "What Ducter asked", "Progress saved"},
+			i18n.ZH: {"想了", "运行", "读取", "搜索", "出错", "xcrun altool", "在 Chrome 里打开 appstoreconnect.apple.com/login", "在 Chrome 里按 ⌘T", "好", "Codex\ngpt-5.5", "在做", "Ducter 交给它的事", "保存了进度"},
+			i18n.EN: {"Thought for", "Ran", "Read", "Searched", "Error", "xcrun altool", "Opened appstoreconnect.apple.com/login in Chrome", "Pressed ⌘T in Chrome", "Go", "Codex\ngpt-5.5", "Working", "What Ducter asked", "Progress saved"},
 		}[lang]
 		for _, w := range want {
 			if !strings.Contains(all, w) {
@@ -258,7 +258,7 @@ func TestOpenedTaskTranscript(t *testing.T) {
 		f.tt.Frame()
 		f.tt.Frame()
 		all = texts(f.tt)
-		for _, w := range []string{"cargo test", "tests/compaction.rs", "src/flush.rs", "cargo clippy", "git commit", "Claude Code · Opus"} {
+		for _, w := range []string{"cargo test", "tests/compaction.rs", "src/flush.rs", "cargo clippy", "git commit", "Claude Code\nOpus"} {
 			if !strings.Contains(all, w) {
 				t.Errorf("%s: no %q in the code task: %q", lang, w, all)
 			}

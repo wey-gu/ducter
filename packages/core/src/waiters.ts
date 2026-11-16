@@ -196,7 +196,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       if (!r.ok) return { ok: false, met: false, summary: r.error, data: "", error: r.error };
       const f = w.event.contains?.toLowerCase();
       const items = f ? r.items.filter((x) => x.text.toLowerCase().includes(f)) : r.items;
-      const summary = items.length ? clip(`${items.length} new · ${items[0]!.text.split("\n")[0]}`) : "nothing new";
+      const summary = items.length ? clip(`${items.length} new, the first: ${items[0]!.text.split("\n")[0]}`) : "nothing new";
       return { ok: true, met: items.length > 0, summary, data: items.map((x) => `- ${x.text}`).join("\n"), checkpoint: r.checkpoint };
     }
     return { ok: false, met: false, summary: "nothing to look at", data: "", error: "no check or event" };
@@ -228,7 +228,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     }
     const d = diffWatch(a.baseline, seen);
     if (!d.changed) {
-      a.lastSummary = n !== undefined ? `no change · ${n}` : "no change";
+      a.lastSummary = n !== undefined ? `no change, still ${n}` : "no change";
       record(a, { ok: true, met: false, summary: a.lastSummary });
       return scheduleLook(a, every(w));
     }
@@ -275,8 +275,8 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       if (w.judge && got.met) {
         // The code did the cheap part; the model does only the semantic part, and only on change.
         const h = hashOf(got.data);
-        if (h === a.judgedHash) (met = Boolean(a.judgedMet)), (summary = a.judgedReason ? clip(`${summary} · ${a.judgedReason}`) : summary);
-        else if (!judge) (met = false), (summary = clip(`${summary} · can't judge it yet`));
+        if (h === a.judgedHash) (met = Boolean(a.judgedMet)), (summary = a.judgedReason ? clip(`${summary}; the judge says ${a.judgedReason}`) : summary);
+        else if (!judge) (met = false), (summary = clip(`${summary}, but it can't be judged yet`));
         else if (a.lastJudgeAt !== undefined && clock.now() - a.lastJudgeAt < judgeMin) (met = false), (deferMs = judgeMin - (clock.now() - a.lastJudgeAt));
         else {
           a.lastJudgeAt = clock.now();
@@ -286,10 +286,10 @@ export function createWaiters(opts: WaiterDeps): Waiters {
             a.judgedMet = v.met;
             a.judgedReason = clip(v.reason, 120);
             met = v.met;
-            summary = clip(`${summary} · ${v.reason}`);
+            summary = clip(`${summary}; the judge says ${v.reason}`);
           } catch (err) {
             met = false;
-            summary = clip(`${summary} · couldn't judge (${(err as Error).message})`);
+            summary = clip(`${summary}, but the judge failed (${(err as Error).message})`);
           }
           if (!armed.has(w.waiterId)) return;
         }
@@ -484,7 +484,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       if (!got.ok || !got.met || !input.judge || !judge) return { met: got.ok && got.met && !input.judge, summary: got.summary };
       try {
         const v = await judge({ condition: input.reason, question: input.judge, data: got.data.slice(0, JUDGE_DATA_MAX) });
-        return { met: v.met, summary: clip(`${got.summary} · ${v.reason}`) };
+        return { met: v.met, summary: clip(`${got.summary}; the judge says ${v.reason}`) };
       } catch {
         return { met: false, summary: got.summary };
       }

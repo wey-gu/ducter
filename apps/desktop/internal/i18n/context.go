@@ -5,7 +5,7 @@ package i18n
 // the web client (apps/web/src/i18n-context.ts).
 
 var zhContext = Table{
-	"ctx.ring":            "上下文 · 已用 %s",
+	"ctx.ring":            "上下文已用 %s",
 	"ctx.ring.unknown":    "上下文",
 	"ctx.title":           "上下文",
 	"ctx.used":            "窗口已用 %s",
@@ -30,7 +30,7 @@ var zhContext = Table{
 	"ctx.limit.hours":     "%d 小时额度",
 	"ctx.limit.days":      "%d 天额度",
 	"ctx.limit.extra":     "额外用量",
-	"ctx.limit.model":     "%s · %s",
+	"ctx.limit.model":     "%s（%s）",
 	"ctx.left":            "还剩 %s",
 	"ctx.limited":         "用完了",
 	"ctx.resets":          "%s 重置",
@@ -38,13 +38,13 @@ var zhContext = Table{
 	"ctx.why.signed_out":  "%s 还没登录",
 	"ctx.why.unavailable": "这会儿读不到额度",
 	"ctx.loading":         "正在读额度…",
-	"note.compacted.size": "压缩了上下文 · %s → %s",
-	"note.compacted.from": "压缩了上下文 · 从 %s",
+	"note.compacted.size": "上下文从 %s 压缩到了 %s",
+	"note.compacted.from": "压缩了上下文，原来有 %s",
 	"note.compact_failed": "这次没压缩成",
 }
 
 var enContext = Table{
-	"ctx.ring":            "Context · %s used",
+	"ctx.ring":            "%s of the context used",
 	"ctx.ring.unknown":    "Context",
 	"ctx.title":           "Context",
 	"ctx.used":            "%s of the window used",
@@ -69,7 +69,7 @@ var enContext = Table{
 	"ctx.limit.hours":     "%d-hour limit",
 	"ctx.limit.days":      "%d-day limit",
 	"ctx.limit.extra":     "Extra usage",
-	"ctx.limit.model":     "%s · %s",
+	"ctx.limit.model":     "%s (%s)",
 	"ctx.left":            "%s left",
 	"ctx.limited":         "Used up",
 	"ctx.resets":          "resets %s",
@@ -77,8 +77,8 @@ var enContext = Table{
 	"ctx.why.signed_out":  "%s isn't signed in",
 	"ctx.why.unavailable": "Can't read the limits right now",
 	"ctx.loading":         "Reading the limits…",
-	"note.compacted.size": "Context compacted · %s → %s",
-	"note.compacted.from": "Context compacted · from %s",
+	"note.compacted.size": "Context compacted from %s to %s",
+	"note.compacted.from": "Context compacted from %s",
 	"note.compact_failed": "Couldn't compact this time",
 }
 

@@ -1,7 +1,7 @@
 // The facts ledger (D165 §9): typed facts with a pointer to where they came from, so two mails
 // weeks apart can meet without re-reading the inbox. Never a mail body, never a snippet: each fact
-// holds its type, a few typed fields (dates, amounts, who), the label it is known by (sender ·
-// subject, a header) and the pointer (source, app, message or event id). Each fact expires 30 days
+// holds its type, a few typed fields (dates, amounts, who), the label it is known by (a subject or
+// a header), who sent it, and the pointer (source, app, message or event id). Each fact expires 30 days
 // after its own date; removing an account drops its facts. <dataDir>/findings.json, 0600.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -22,8 +22,10 @@ export interface Pointer {
 interface Base {
   id: string;
   ref: Pointer;
-  /** How I know, in one line (a header: "Cloudflare · Your domain renews soon"), ≤ 80 chars. */
+  /** How I know, in one line (a header: "Your domain renews soon"), ≤ 80 chars. */
   label: string;
+  /** Who it came from ("Cloudflare"), its own fact (D291); absent for a calendar's own items. */
+  sender?: string;
   /** When the source item happened (ISO). */
   at: string;
   /** The date it stops mattering (ISO); the fact expires FACT_KEEP_DAYS after it. */
@@ -108,7 +110,7 @@ export function openLedger(dataDir: string): Ledger {
   if (existsSync(path)) {
     try {
       const raw = JSON.parse(readFileSync(path, "utf8")) as { facts?: Fact[] };
-      facts = Array.isArray(raw.facts) ? raw.facts : [];
+      facts = Array.isArray(raw.facts) ? raw.facts.map(splitSender) : [];
     } catch {
       facts = [];
     }
@@ -162,13 +164,25 @@ const iso = (v: unknown) => {
   return /^\d{4}-\d\d-\d\d$/.test(s) || /^\d{4}-\d\d-\d\dT\d\d:\d\d(:\d\d(\.\d+)?)?([+-]\d\d:\d\d|Z)$/.test(s) ? s : new Date(Date.parse(s)).toISOString();
 };
 
+/** A fact saved before D291 kept its sender inside its label ("Cloudflare · Your domain renews");
+ *  it is split once into its two facts, the sender and the label. */
+function splitSender<F extends { label?: string; sender?: string }>(f: F): F {
+  if (f.sender || typeof f.label !== "string") return f;
+  const i = f.label.indexOf(" · ");
+  return i > 0 ? { ...f, sender: f.label.slice(0, i), label: f.label.slice(i + 3) } : f;
+}
+
+/** Who a fact came from: its sender, else (a calendar's own item) the label it is known by. */
+export const senderOf = (f: { label: string; sender?: string }): string => f.sender || f.label || "";
+
 /** Keeps exactly the fields a fact type has; drops a fact whose dates don't parse. */
-export function sanitize(f: Fact): Fact | undefined {
+export function sanitize(fact: Fact): Fact | undefined {
+  const f = splitSender(fact);
   const ref: Pointer = { connectionId: String(f.ref?.connectionId ?? ""), service: String(f.ref?.service ?? ""), id: String(f.ref?.id ?? ""), ...(f.ref?.account ? { account: String(f.ref.account) } : {}), ...(f.ref?.thread ? { thread: String(f.ref.thread) } : {}) };
   const at = iso(f.at);
   const date = iso(f.date);
   if (!ref.connectionId || !ref.id || !at || !date) return;
-  const base = { id: f.id, ref, label: s80(f.label) ?? "", at, date };
+  const base = { id: f.id, ref, label: s80(f.label) ?? "", ...(s80(f.sender) ? { sender: s80(f.sender) } : {}), at, date };
   switch (f.type) {
     case "booking": {
       const start = iso(f.start);

@@ -15,6 +15,7 @@ var ProactiveModes = []string{"urgent", "three", "useful", "off"}
 // FindHow is one mail, event or thread a find rests on (怎么知道的).
 type FindHow struct {
 	What string `json:"what"`
+	From string `json:"from,omitempty"`
 	At   string `json:"at"`
 }
 

@@ -124,7 +124,7 @@ func TestPhoneFlow(t *testing.T) {
 		protocol.NewEvent(1, time.Now().UTC().Format(time.RFC3339), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: "打给 Sushi Saito？", GoLabel: "拨打", DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: sushiPlan(true, "")}}),
 	}})
 	tt.Frame()
-	for _, w := range []string{"+81 3 1234 5678", "可以说", "不透露", "Ducter 的声音", "Tuwa 的号码", "4 分钟 · 约 $1.60", "暂不拨打"} {
+	for _, w := range []string{"+81 3 1234 5678", "可以说", "不透露", "Ducter 的声音", "Tuwa 的号码", "约 4 分钟，花 $1.60 左右", "暂不拨打"} {
 		if !tt.HasText(w) {
 			t.Errorf("the Go card lacks %q: %q", w, tt.Texts())
 		}
@@ -145,7 +145,7 @@ func TestPhoneFlow(t *testing.T) {
 		protocol.NewEvent(2, time.Now().UTC().Format(time.RFC3339), "default", "channel", "system", protocol.KindDecision, protocol.Decision{DecisionID: "d2", Question: "7 点半可以吗？", GoLabel: "yes", DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "question", YesNo: true}}),
 	}})
 	tt.Frame()
-	if !tt.HasText("对方在问 · Sushi Saito") || !tt.HasText("电话那头在等；90 秒没回，就说回头再打。") {
+	if !tt.HasText("Sushi Saito 那边在问") || !tt.HasText("电话那头在等；90 秒没回，就说回头再打。") {
 		t.Fatalf("the question card: %q", tt.Texts())
 	}
 	if err := tt.Click("可以"); err != nil {
@@ -245,7 +245,7 @@ func TestCallD208(t *testing.T) {
 	}}})
 	app.Route = RouteOnHand
 	tt.Frame()
-	for _, w := range []string{"接通的是自动语音 · Sushi Saito", "是 Google Voice 的来电过滤", "没打通 · Sushi Saito", "Tuwa 没说原因", "没打出去 · Sushi Saito", "Tuwa 拒绝了：number not allowed"} {
+	for _, w := range []string{"Sushi Saito 那边是自动语音", "是 Google Voice 的来电过滤", "打给 Sushi Saito，没打通", "Tuwa 没说原因", "没能打给 Sushi Saito", "Tuwa 拒绝了：number not allowed"} {
 		found := false
 		for _, s := range tt.Texts() {
 			if strings.Contains(s, w) {

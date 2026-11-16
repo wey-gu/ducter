@@ -296,7 +296,7 @@ test("a watch on a folder: no model, nothing runs until it changes, and the run 
   await flush();
   expect(s.started()).toHaveLength(1);
   expect(s.briefs[0]).toContain("What changed since the last look");
-  expect(s.briefs[0]).toContain("1 new · 1 updated");
+  expect(s.briefs[0]).toContain("1 new and 1 updated");
   expect(s.briefs[0]).toContain(`New: ${inbox}/c.txt`);
   expect(s.briefs[0]).toContain(`Updated: ${inbox}/a.txt`);
   report(s.log, s.task(1), { state: "done", summary: "分好了。" });
@@ -345,7 +345,7 @@ test("a watch on a command's JSON list: keyed items, a fetch time doesn't count,
   s.clock.advance(10 * MIN);
   await flush();
   expect(s.started()).toHaveLength(1);
-  expect(s.briefs[0]).toContain("1 new · 1 updated · 1 gone");
+  expect(s.briefs[0]).toContain("1 new, 1 updated and 1 gone");
   expect(s.briefs[0]).toContain("New: 3");
   expect(s.briefs[0]).toContain("Gone: 2");
 });

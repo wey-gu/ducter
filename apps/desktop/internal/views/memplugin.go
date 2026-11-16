@@ -67,7 +67,7 @@ func (a *App) memPluginAction(c *ui.Context, dv *protocol.DeviceView, h protocol
 	d := a.devState()
 	key := dv.ID + ":" + h.Harness
 	agent := harnessName(h.Harness)
-	about := agent + " · Nowledge Mem"
+	about := spoken(a.L, agent, "Nowledge Mem")
 	if d.card.memAsk != key {
 		ui.Row(c.Key("memp:" + key)).Children(func() {
 			if a.buttonFor(c, action, about, btnSecondary, t.ControlSM, t.Surface) {

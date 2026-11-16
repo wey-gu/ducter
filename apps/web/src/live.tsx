@@ -9,7 +9,7 @@
 import type { LiveDoing, LiveKey } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn } from "./controls.tsx";
+import { Btn, Facts } from "./controls.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -194,7 +194,7 @@ export function LiveView({ embedded }: { embedded?: boolean } = {}) {
 
   // The small line under the address: whose tab it is (a watch), or whose browser and whose turn.
   const sub = (() => {
-    if (lv.try && lv.browser) return <span>{t("live.try.where", liveDevice(lv), `${lv.browser.name}${lv.browser.version ? ` ${lv.browser.version.split(".")[0]}` : ""}`)}</span>;
+    if (lv.try && lv.browser) return <Facts items={[t("live.try.where", liveDevice(lv)), `${lv.browser.name}${lv.browser.version ? ` ${lv.browser.version.split(".")[0]}` : ""}`]} />;
     if (lv.watch)
       return (
         <>
@@ -204,7 +204,7 @@ export function LiveView({ embedded }: { embedded?: boolean } = {}) {
     return (
       <>
         <EyeShut />
-        <span>{`${t("live.where")} · ${t("live.blind")}`}</span>
+        <span>{t("live.blind")}</span>
       </>
     );
   })();
@@ -391,9 +391,7 @@ export function LiveView({ embedded }: { embedded?: boolean } = {}) {
             ) : elsewhere ? (
               <span>{t("live.elsewhere")}</span>
             ) : (
-              <span>
-                {t("live.where")} · {t("live.on", liveDevice(lv))}
-              </span>
+              <span>{t("live.where.on", liveDevice(lv))}</span>
             )}
           </div>
         )}

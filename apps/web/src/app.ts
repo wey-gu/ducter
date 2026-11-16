@@ -13,7 +13,7 @@ import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach, tellWays } from "./native.ts";
 import { copy } from "./conv-copy.ts";
 import { attention, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
-import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
+import { harnessName, modelName, shownDeviceName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { kindOf, navMove } from "./nav.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
@@ -160,10 +160,10 @@ export const placeKey = (p: Place): string =>
 export const tilde = (p: string) => p.replace(/^\/(Users|home)\/[^/]+(?=\/|$)/, "~");
 /** D272: an address GitHub answers (or the field still empty): the GitHub sign-in line shows for it. */
 export const ntGitHubish = (a: string) => !a.trim() || /github\.com/i.test(a) || /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]+$/.test(a.trim());
-/** A place's second line in the New task list: its path, and its computer when the places span more than one (D197). */
-export const placeLine = (p: PlaceChoice) => {
+/** A place's second line in the New task list: its path, and its computer when the places span more than one (D197): two facts, drawn apart (D291). */
+export const placeLine = (p: PlaceChoice): { path: string; computer: string } => {
   const path = p.place.kind === "repo" ? p.place.repoPath : p.place.kind === "folder" ? p.place.path : "";
-  return path ? tilde(path) + (p.computer ? ` · ${p.computer}` : "") : "";
+  return path ? { path: tilde(path), computer: p.computer ?? "" } : { path: "", computer: "" };
 };
 export const candKey = (c: Candidate) => `${c.device ? c.device + "|" : ""}${c.harness}/${c.model ?? ""}`;
 /** D202: one agent on one computer (the Who list has one row each; its model is picked under it). */
@@ -653,10 +653,11 @@ class AppState {
     if (f.t === "devices") {
       const home = f.devices.find((d) => d.home);
       // A failure the device (or the agent's copy) has moved past is dropped (D167, D156).
-      const devices = f.devices.map((d) => ({ ...d, ...(d.update ? { update: withoutStaleFailure(d.update) } : {}), harnesses: d.harnesses.map(withoutStaleAgentUpdate) }));
+      // D291: a name from before shows as the model alone ("iPad · Ducter" → "iPad").
+      const devices = f.devices.map((d) => ({ ...d, name: shownDeviceName(d.name), ...(d.update ? { update: withoutStaleFailure(d.update) } : {}), harnesses: d.harnesses.map(withoutStaleAgentUpdate) }));
       this.updateAll = f.updateAll;
       this.afterUpdateAll(f.updateAll);
-      return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach), this.changed());
+      return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach && { ...f.reach, clients: f.reach.clients.map((c) => ({ ...c, name: shownDeviceName(c.name) })) }), this.changed());
     }
     if (f.t === "update_all_result") return void ((this.updateAllAnswer = f.ok || f.reason === "nothing" ? undefined : (f.reason ?? "failed")), this.changed());
     // D228: on with no tunnel made yet starts the guided setup; a setup that couldn't start says why.
@@ -1361,11 +1362,16 @@ class AppState {
     return { ...(model ? { model } : {}), ...(effort ? { effort } : {}), listed: tune.models.length > 0 };
   }
 
-  /** D202: who does it as the pill says it: the agent, its model and its effort ("Claude Code · Opus 5.5 · 高"); "" without a model list. */
-  ntWhoLabel(c: Candidate): string {
+  /** D202: who does it as the pill shows it: the agent, its model and its effort, each its own word (D291); without a model list, the agent and the model it would use. */
+  ntWhoParts(c: Candidate): string[] {
     const tu = this.ntTune(c);
-    if (!tu.models.length) return "";
-    return [harnessName(c.harness), tu.model?.label ?? (c.model && modelName(c.model)), tu.effort && effortWord(this.L, tu.effort)].filter(Boolean).join(" · ");
+    if (!tu.models.length) return [harnessName(c.harness), c.model && modelName(c.model)].filter((x): x is string => !!x);
+    return [harnessName(c.harness), tu.model?.label ?? (c.model && modelName(c.model)), tu.effort && effortWord(this.L, tu.effort)].filter((x): x is string => !!x);
+  }
+
+  /** The pill's facts read aloud (Claude Code，Opus 5.5，高): its accessible name. */
+  ntWhoLabel(c: Candidate): string {
+    return spoken(this.L, ...this.ntWhoParts(c));
   }
 
   /** D202: the model or effort picked under the chosen agent, remembered for this agent on this client. */
@@ -2529,7 +2535,7 @@ class AppState {
 
   /** The counts line, and where it leads (D270): link is false while it says connecting or
    *  offline; filter is the strip's (1–4) when it names one thing only, else 0 (all of On hand). */
-  summaryParts(): { words: string; link: boolean; filter: number } {
+  summaryParts(): { words: string; parts?: string[]; link: boolean; filter: number } {
     const L = this.L;
     if (this.status === "offline") return { words: L.t("conn.offline"), link: false, filter: 0 };
     // D209: painted from the last screen, the line it showed then stands until the home answers
@@ -2549,7 +2555,7 @@ class AppState {
     const done = this.doneToday();
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) add(4, L.t("header.done", done));
-    return { words: parts.length ? parts.join(" · ") : L.t("header.summary.none"), link: true, filter: kinds.length === 1 ? kinds[0]! : 0 };
+    return { words: parts.length ? spoken(L, ...parts) : L.t("header.summary.none"), parts, link: true, filter: kinds.length === 1 ? kinds[0]! : 0 };
   }
 
   /** The conversation's rows (desktop rows()): decisions inside a living message show once,

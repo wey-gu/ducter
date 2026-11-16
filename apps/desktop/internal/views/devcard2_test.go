@@ -165,14 +165,14 @@ func TestDevicesHelFolding(t *testing.T) {
 			// The command line's own 断开, inside the ⋯ in place, confirmed in place.
 			h.click(L.T("card.via.more"))
 			h.settle(100 * time.Millisecond)
-			h.click(L.T("device.disconnect") + " · " + L.T("device.cli.name", thisMac))
+			h.click(spoken(L, L.T("device.disconnect"), L.T("device.cli.name", thisMac)))
 			h.settle(100 * time.Millisecond)
 			ask := L.T("device.disconnect.ask", L.T("device.cli.name", thisMac))
 			if !h.tt.HasText(ask) || !h.tt.HasText(L.T("device.disconnect.means.cli")) {
 				t.Fatalf("cli confirm: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("mac-%s-cli-disconnect", lang))
-			h.click(L.T("device.disconnect.ok") + " · " + L.T("device.cli.name", thisMac))
+			h.click(spoken(L, L.T("device.disconnect.ok"), L.T("device.cli.name", thisMac)))
 			h.until("cli gone", func() bool {
 				for _, cl := range h.app.S.Reach.Clients {
 					if cl.ID == "cli1" {
@@ -238,7 +238,7 @@ func TestDevicesHelClientCard(t *testing.T) {
 			}
 			h.shotAs(fmt.Sprintf("phone-%s-card", lang))
 			// Rename in place: click the name; the field; keep it.
-			h.click(L.T("device.rename") + " · iPhone · Safari · 2")
+			h.click(spoken(L, L.T("device.rename"), "iPhone · Safari · 2"))
 			h.settle(100 * time.Millisecond)
 			d.rename.draft = "Wey 的 iPhone"
 			h.settle(100 * time.Millisecond)
@@ -258,7 +258,7 @@ func TestDevicesHelClientCard(t *testing.T) {
 			// The home renames in place too.
 			d.selClient, d.sel = "", "local"
 			h.settle(100 * time.Millisecond)
-			h.click(L.T("device.rename") + " · hel")
+			h.click(spoken(L, L.T("device.rename"), "hel"))
 			d.rename.draft = "hel 小鸭"
 			h.click(L.T("device.rename.ok"))
 			h.until("home renamed", func() bool { return h.app.S.Device("local").Name == "hel 小鸭" })

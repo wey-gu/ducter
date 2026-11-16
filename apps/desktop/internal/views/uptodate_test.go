@@ -1,6 +1,7 @@
 package views
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -18,9 +19,10 @@ func TestUpToDateSaysWhenItChecked(t *testing.T) {
 		ago       time.Duration
 		line, btn string
 	}{
-		{i18n.ZH, 3 * time.Hour, "已经是最新的 · 3 小时前检查过", "检查更新"},
-		{i18n.EN, 3 * time.Hour, "Up to date · checked 3 h ago", "Check now"},
-		{i18n.ZH, 20 * time.Second, "已经是最新的 · 刚检查过", "检查更新"},
+		// D291: two facts, each its own text.
+		{i18n.ZH, 3 * time.Hour, "已经是最新的\n3 小时前检查过", "检查更新"},
+		{i18n.EN, 3 * time.Hour, "Up to date\nChecked 3 h ago", "Check now"},
+		{i18n.ZH, 20 * time.Second, "已经是最新的\n刚检查过", "检查更新"},
 	} {
 		app, sent := iaApp(t, tc.lang)
 		at := time.Now().Add(-tc.ago).UTC().Format(time.RFC3339)
@@ -41,8 +43,10 @@ func TestUpToDateSaysWhenItChecked(t *testing.T) {
 		}
 		tt := ui.NewTesterWith(app.View, 1280, 1600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
-		if !tt.HasText(tc.line) {
-			t.Errorf("%s: no %q in %q", tc.lang, tc.line, tt.Texts())
+		for _, part := range strings.Split(tc.line, "\n") {
+			if !tt.HasText(part) {
+				t.Errorf("%s: no %q in %q", tc.lang, part, tt.Texts())
+			}
 		}
 		*sent = nil
 		if err := tt.Click(tc.btn); err != nil {

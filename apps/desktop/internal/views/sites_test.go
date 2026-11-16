@@ -54,7 +54,7 @@ func TestServerBrowseTheWeb(t *testing.T) {
 	// Ready: the sites signed in to, each with Sign out; Clear all asks first.
 	app, sent, tt := devicesApp(t, i18n.ZH, protocol.DeviceAbility{ID: "web", State: "on", Where: "ducter", Detail: "157.0.8103.38"})
 	// D161: Try it and the sites are in 上网's ⓘ, one tap away.
-	if err := tt.Click("这是做什么的 · 上网"); err != nil {
+	if err := tt.Click("这是做什么的，上网"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

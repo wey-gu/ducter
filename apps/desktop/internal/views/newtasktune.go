@@ -197,20 +197,31 @@ func (a *App) effortWord(e string) string {
 	return e
 }
 
-// whoLabel is who does it as the pill says it: "Claude Code · Opus 5.5 · 高".
-func (a *App) whoLabel(cd protocol.Candidate) string {
+// whoParts is who does it as the pill shows it: the agent, its model and
+// its effort, each its own word (Claude Code  Opus 5.5  高; D291); the
+// agent and the model it would use without a model list.
+func (a *App) whoParts(cd protocol.Candidate) []string {
 	tu := a.ntTune(&cd)
-	if len(tu.models) == 0 {
-		return a.candName(cd)
-	}
 	parts := []string{harnessName(cd.Harness)}
+	if len(tu.models) == 0 {
+		if cd.Model != "" {
+			parts = append(parts, modelLabel(a.trayHarness(cd.Harness), cd.Model))
+		}
+		return parts
+	}
 	if tu.model != nil {
 		parts = append(parts, tu.model.Label)
 	}
 	if tu.effort != "" {
 		parts = append(parts, a.effortWord(tu.effort))
 	}
-	return strings.Join(parts, " · ")
+	return parts
+}
+
+// whoLabel is the pill's facts read aloud, for its accessible name and its
+// hover (Claude Code，Opus 5.5，高).
+func (a *App) whoLabel(cd protocol.Candidate) string {
+	return spoken(a.L, a.whoParts(cd)...)
 }
 
 // tuneIsDefault: the agent's model and effort are Ducter's suggestion and

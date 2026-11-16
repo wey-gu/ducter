@@ -10,6 +10,7 @@ import type { Place } from "@ducter/protocol";
 import { HIDDEN, redact } from "@ducter/protocol/src/redact.ts";
 import { unwrapShell, type Step } from "@ducter/protocol/src/steps.ts";
 import { blocksOf, inTurn, lastSeq, latestVoice, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
+import { tokensShort } from "@ducter/protocol";
 import type { MediaRef, WaiterView } from "@ducter/protocol";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { RefObject } from "preact";
@@ -535,7 +536,8 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
       if (b.say === "compacted" || b.say === "interrupted")
         return (
           <div class="tx-divider" role="separator">
-            <span>{t(`note.${b.say}`)}</span>
+            {/* D288: with its size before and after when known (压缩了上下文 · 152k → 31k). */}
+            <span>{b.say === "compacted" && b.from && b.to ? t("note.compacted.size", tokensShort(b.from), tokensShort(b.to)) : b.say === "compacted" && b.from ? t("note.compacted.from", tokensShort(b.from)) : t(`note.${b.say}`)}</span>
           </div>
         );
       // D282: who does it changed inside the task: one hairline with its time (换成 Codex 接着做 · 21:40).

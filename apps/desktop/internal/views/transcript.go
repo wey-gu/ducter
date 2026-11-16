@@ -12,6 +12,7 @@ package views
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"sort"
 	"strings"
@@ -95,6 +96,9 @@ type Block struct {
 	Name string `json:"name,omitempty"`
 	// Effort is a retuned note's (D282): the effort it now runs at.
 	Effort string `json:"effort,omitempty"`
+	// From and To are a compaction's sizes, before and after (D288).
+	From int `json:"from,omitempty"`
+	To   int `json:"to,omitempty"`
 	// Media (D206): you: the pictures sent with it; report: what it showed.
 	Media []protocol.MediaRef `json:"media,omitempty"`
 	// Items is a plan's (D268).
@@ -242,7 +246,20 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 	switch {
 	// D268: a divider for a compaction or an interruption; a retry only while it is the latest thing.
 	case r["kind"] == "compaction_ended" && r["outcome"] != "failed":
-		return Block{Say: "compacted"}, true
+		// D288: with the size before and after when known.
+		size := func(v any) int {
+			if f, ok := v.(float64); ok && f > 0 {
+				return int(math.Round(f))
+			}
+			return 0
+		}
+		from := size(r["before"])
+		if from == 0 {
+			from = size(r["contextTokens"])
+		}
+		return Block{Say: "compacted", From: from, To: size(r["after"])}, true
+	case r["slash"] == "compact" && truthy(r["failed"]):
+		return Block{Say: "compact_failed", Bad: true}, true
 	case r["kind"] == "turn_ended" && r["outcome"] == "aborted":
 		return Block{Say: "interrupted"}, true
 	case r["kind"] == "retry":
@@ -820,6 +837,25 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 						outcome = "error"
 					}
 					addRow(ev.Seq, StepRow{Seq: ev.Seq, Step: &st, N: 1, Outcome: outcome})
+					continue
+				}
+				// D288: the first reading after a compaction is its size after.
+				var cx struct {
+					Kind          string  `json:"kind"`
+					After         bool    `json:"after"`
+					ContextTokens float64 `json:"contextTokens"`
+				}
+				if json.Unmarshal(b.Raw, &cx) == nil && cx.Kind == "context" {
+					if cx.After && cx.ContextTokens > 0 {
+						for i := len(out) - 1; i >= 0; i-- {
+							if out[i].K == "note" && out[i].Say == "compacted" {
+								if out[i].To == 0 {
+									out[i].To = int(math.Round(cx.ContextTokens))
+								}
+								break
+							}
+						}
+					}
 					continue
 				}
 				if n, ok := noteOf(text, b.Raw); ok {

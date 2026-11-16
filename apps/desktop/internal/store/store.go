@@ -456,9 +456,12 @@ type Store struct {
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
 	// shown (D89).
-	Rules         []protocol.RuleView
-	RulesAt       time.Time
-	Candidates    map[string][]protocol.Candidate
+	Rules      []protocol.RuleView
+	RulesAt    time.Time
+	Candidates map[string][]protocol.Candidate
+	// AccountUsage is each agent's account limits as the home last
+	// answered (D288), by harness.
+	AccountUsage  map[string]AccountAnswer
 	SwitchResults []protocol.ServerFrame
 
 	// Activity is what the partner is doing while the user waits on its
@@ -647,6 +650,11 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 			s.Candidates = map[string][]protocol.Candidate{}
 		}
 		s.Candidates[f.TaskID] = f.Candidates
+	case "account_usage":
+		if s.AccountUsage == nil {
+			s.AccountUsage = map[string]AccountAnswer{}
+		}
+		s.AccountUsage[f.Harness] = AccountAnswer{Usage: f.AccountUsage, Why: f.Why, At: time.Now()}
 	case "task_new_options":
 		fc := f
 		s.NewTaskOptions = &fc
@@ -1477,4 +1485,13 @@ func firstOr(s, or string) string {
 		return s
 	}
 	return or
+}
+
+// AccountAnswer is the home's answer about an agent's account limits
+// (D288): its usage, or Why it has none (unsupported, signed_out,
+// unavailable).
+type AccountAnswer struct {
+	Usage *protocol.AccountUsage
+	Why   string
+	At    time.Time
 }

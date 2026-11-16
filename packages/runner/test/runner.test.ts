@@ -555,7 +555,7 @@ describe("protocol v2: logging, usage, recovery", () => {
     fake.sessions[0]!.emit({ role: "system", text: "turn completed", turnEnd: true, usage: { inputTokens: 10, outputTokens: 3 } });
     await waitFor(() => taskEvents(card.taskId).some((e) => e.usage), "usage");
     const end = taskEvents(card.taskId).find((e) => e.usage)!;
-    expect(end.usage).toEqual({ inputTokens: 10, outputTokens: 3 });
+    expect(end.usage).toEqual({ inputTokens: 10, outputTokens: 3, contextWindow: 200_000, compactAt: 160_000 }); // D288: the window and compaction point ride with it
     expect(taskEvents(card.taskId).find((e) => e.role === "assistant")!.usage).toBeUndefined();
     expect(taskEvents(card.taskId).filter((e) => (e.raw as any)?.sessionId === "fake-1")).toHaveLength(1);
     await runner.dispose();

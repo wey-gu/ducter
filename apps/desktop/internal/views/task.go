@@ -498,6 +498,7 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 						ta.Focus()
 						a.focusComposer = false
 					}
+					a.contextRing(c, task) // D288: the context meter, a quiet ring by the composer
 					if working && strings.TrimSpace(draft) != "" {
 						if a.button(c, a.L.T("composer.after"), btnText, t.ControlSM, t.Surface) && a.SendToTaskMode(task.ID, draft, "queue") {
 							draft = ""

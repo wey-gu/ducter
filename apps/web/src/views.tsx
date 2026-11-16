@@ -43,6 +43,7 @@ import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, forecast, FullTop } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
 import { PastSheet } from "./past.tsx";
+import { ContextButton } from "./context-meter.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, waitCaption, waitLine, WatchCard } from "./work.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
@@ -1365,6 +1366,8 @@ function Composer({ taskId }: { taskId?: string }) {
         {!taskId && <ComposerReply />}
         <AddPictures where={where} />
         <AutoText id={taskId ? "composer-task" : "composer"} value={value} onInput={set} onEnter={() => submit()} label={label} placeholder={taskId ? t("composer.task") : A.replying ? `${t("reply.to", replyWho(A.replying.from))}…` : t("composer.placeholder", A.S.personaName)} />
+        {/* D288: the context meter, a quiet ring by the task's composer. */}
+        {task && <ContextButton task={task} />}
         {busy && canSend && (
           <button type="button" class="btn text sm after" title={t("composer.queue.hint")} onClick={() => submit(true)}>
             {t("composer.after")}

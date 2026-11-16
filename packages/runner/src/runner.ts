@@ -173,6 +173,12 @@ interface TaskRt {
   saveAsked: boolean;
   prefix: string[];
   context?: number; // the harness's last context reading
+  /** D288: the window the harness reads against; the last reading logged for the meter; the
+   *  first reading after a compaction is owed (its size after); a /compact asked mid-turn. */
+  window?: number;
+  loggedContext?: number;
+  afterOwed?: boolean;
+  compactAfterTurn?: boolean;
   /** D142: the folder couldn't be copied; the task asked first. text: the turn held until the answer. */
   gated?: { text: string };
   /** D142: the user let it change the folder without a copy. */
@@ -203,7 +209,9 @@ export function slashOf(text: string, harness: string): Slash | undefined {
   const m = /^\/(model|effort|compact)(?:[ \t]+(\S+))?[ \t]*$/i.exec(text.trim());
   if (!m) return undefined;
   const cmd = m[1]!.toLowerCase();
-  if (cmd === "compact") return !m[2] && harness === "codex" ? { cmd: "compact" } : undefined;
+  // D288: every agent but Claude Code (whose own /compact runs headless, instructions and all)
+  // compacts through OAR's manual compaction (Codex thread/compact/start, pi its compact()).
+  if (cmd === "compact") return !m[2] && harness !== "claude-code" ? { cmd: "compact" } : undefined;
   return m[2] ? { cmd: cmd as "model" | "effort", arg: m[2] } : undefined;
 }
 
@@ -709,14 +717,28 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   /** D282: runs the person's /model, /effort (and Codex's /compact) for them; the command shows as their words. */
+  /**
+   * D288: 现在压缩 / Compact now on an agent that takes no /compact of its own: OAR's manual
+   * compaction (each runtime takes it only between turns, so mid-turn it waits for the turn to end).
+   * The compaction itself logs as any other (its hairline, and the brief again after it).
+   */
+  async function compactNow(t: TaskRt) {
+    const fail = (why: string) => logEvent(t, { role: "system", from: "runner", text: `could not compact: ${why}`, raw: { slash: "compact", failed: why } });
+    const s = t.session;
+    if (!s) return void fail("its agent isn't running now");
+    if (!s.compact) return void fail("this agent can't be asked to compact here");
+    if (isBusy(t)) {
+      t.compactAfterTurn = true;
+      return;
+    }
+    await s.compact().catch((err) => fail(preview(String(err), 300) ?? "compaction failed"));
+  }
+
   async function runSlash(t: TaskRt, slash: Slash, text: string, clientId?: string): Promise<{ delivered: Delivery }> {
     logInput(t, text, "user", "turn", clientId);
     const fail = (why: string) => logEvent(t, { role: "system", from: "runner", text: `could not switch: ${why}`, raw: { slash: slash.cmd, failed: why } });
     if (slash.cmd === "compact") {
-      const s = t.session;
-      if (!s?.compact) fail("this agent can compact only while its session is open");
-      else if (isBusy(t)) fail("it is mid-turn; compact once the turn ends");
-      else await s.compact().catch((err) => fail(preview(String(err), 300) ?? "compaction failed"));
+      await compactNow(t);
       return { delivered: "prompted" };
     }
     const h = t.base.harness;
@@ -913,21 +935,47 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (early === "tool_call_started" || early === "tool_call_title" || early === "tool_call_head") return; // the ended event logs the call
     if (early === "background") return onBackground(t, ev);
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
+    // D288: the account's limits as the session said them, kept with the agent's last read.
+    if (ev.limits) return void core.limits?.seen(t.base.harness, ev.limits);
     // D135: save before the harness compacts; the brief and progress again after it.
+    const compactAt = t.spec.harnessCompactAt ?? taskWindows().compactAt;
+    if (ev.usage?.contextWindow) t.window = ev.usage.contextWindow;
+    const window = t.window ?? t.spec.contextWindow ?? taskWindows().window;
     if (ev.usage?.contextTokens) {
       t.context = ev.usage.contextTokens;
-      if (!t.saveAsked && t.context >= saveBeforeAt(t.spec.harnessCompactAt ?? taskWindows().compactAt)) {
+      const near = saveBeforeAt(compactAt);
+      if (!t.saveAsked && t.context >= near) {
         t.saveAsked = true;
         sayBeforeNextInput(t, SAVE_BEFORE_COMPACT);
       }
+      // D288: the reading for the task's context meter, logged as it moves (every 5% of the
+      // window, at the save point, and the first one after a compaction: its size after).
+      const was = t.loggedContext;
+      const moved = was === undefined || Math.abs(t.context - was) >= Math.max(2000, Math.round(window * 0.05)) || (was < near) !== (t.context < near);
+      // A turn end carries its reading in its own usage.
+      if (ev.turnEnd) t.loggedContext = t.afterOwed ? was : t.context;
+      if (t.afterOwed || (moved && !ev.turnEnd)) {
+        logEvent(t, { role: "system", raw: { kind: "context", contextTokens: t.context, contextWindow: window, compactAt, ...(t.afterOwed ? { after: true } : {}) } });
+        t.loggedContext = t.context;
+        t.afterOwed = false;
+      }
     }
-    const compaction = early === "compaction_ended" || early === "compaction_started" ? (ev.raw as { kind: string; outcome?: string; trigger?: string }) : undefined;
+    const compaction = early === "compaction_ended" || early === "compaction_started" ? (ev.raw as { kind: string; outcome?: string; trigger?: string; before?: number; after?: number }) : undefined;
     const compacted = compaction?.kind === "compaction_ended" && (compaction.outcome ?? "completed") === "completed";
     if (compaction) {
       // Logged first (with the count and the size it had reached), then the brief goes back in.
+      // D288: before and after, the agent's own sizes when it gives them (Claude Code), else the
+      // last reading before, and the first reading after (logged as a context line with after).
       const text = ev.text ?? (compaction.kind === "compaction_started" ? "compaction started" : `compaction ${compaction.outcome ?? "completed"}`);
-      logEvent(t, { role: "system", text, raw: { ...compaction, ...(compacted ? { compactions: t.compactions + 1 } : {}), ...(t.context ? { contextTokens: t.context } : {}) } });
-      if (compacted) onCompacted(t);
+      const before = compaction.before ?? t.context;
+      const sizes = compacted ? { ...(before ? { before } : {}), contextWindow: window, compactAt } : {};
+      logEvent(t, { role: "system", text, raw: { ...compaction, ...(compacted ? { compactions: t.compactions + 1 } : {}), ...(t.context ? { contextTokens: t.context } : {}), ...sizes } });
+      if (compacted) {
+        onCompacted(t);
+        t.loggedContext = compaction.after;
+        t.afterOwed = !compaction.after;
+        if (compaction.after) t.context = compaction.after;
+      }
       return;
     }
     if (!ev.text && !ev.tool && !ev.turnEnd && !ev.thinking?.length) return; // usage-only or empty
@@ -939,7 +987,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (ev.text != null) body.text = preview(ev.text, 16 * 1024);
     if (tool) body.tool = tool;
     if (ev.thinking?.length) body.thinking = ev.thinking.slice(0, 3).map((h) => h.slice(0, 120));
-    if (ev.turnEnd && ev.usage) body.usage = ev.usage;
+    if (ev.turnEnd && ev.usage) body.usage = { ...ev.usage, contextWindow: window, compactAt };
     if (raw) body.raw = raw;
     logEvent(t, body);
     if (ev.tool && (t.sidecar || t.guard)) browserChecks(t, ev.tool);
@@ -1010,6 +1058,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.running = busy;
     const reported = t.reportedThisTurn;
     t.reportedThisTurn = false;
+    // D288: a /compact asked mid-turn runs once the turn is over.
+    if (t.compactAfterTurn && !busy) {
+      t.compactAfterTurn = false;
+      void compactNow(t);
+    }
     const stopped = t.interruptRequested && outcome === "aborted";
     if (outcome) t.interruptRequested = false;
     // D266: a turn (its own, after a background task ended, or any other) settles what was owed.

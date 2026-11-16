@@ -17,7 +17,7 @@ import { canFillNow, wideNow } from "./fold.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
 import { keepDraft, readDraft } from "./follow.ts";
-import type { LogEvent, ReplyWant } from "@ducter/protocol";
+import type { AccountUsage, LogEvent, ReplyWant } from "@ducter/protocol";
 
 /** D236: what the composer replies to: the message (a find or a part of it) and how its imprint reads. */
 export interface Replying {
@@ -310,6 +310,8 @@ class AppState {
   /** D228: why 让 Ducter 帮我设好 didn't start (no agent signed in here, …). */
   anywhereAnswer?: string;
   candidates = new Map<string, Candidate[]>();
+  /** D288: each agent's account usage limits, as the home last answered (asked: when we asked). */
+  accountUsage = new Map<string, { usage?: AccountUsage; why?: string; asked: number }>();
   /** New task (D128): what the sheet offers (places, who could), as last sent; the draft. */
   newTaskOptions?: { places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[]; ducterFolders?: DucterFolderView[] };
   nt: NewTaskDraft = freshDraft();
@@ -658,6 +660,7 @@ class AppState {
     if (f.t === "update_result") return void ((this.checkingUpdates = false), (this.deviceAnswer = f.ok || f.update || f.reason === "no_release" ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "disconnect_result" || f.t === "rename_result") return void ((this.deviceAnswer = f.ok ? undefined : { device: f.device, reason: f.reason === "name_taken" ? "name_taken" : "failed" }), this.changed());
     if (f.t === "candidates") return void (this.candidates.set(f.taskId, f.candidates), this.changed());
+    if (f.t === "account_usage") return void (this.accountUsage.set(f.harness, { ...(f.usage ? { usage: f.usage } : {}), ...(f.why ? { why: f.why } : {}), asked: this.accountUsage.get(f.harness)?.asked ?? Date.now() }), this.changed());
     if (f.t === "task_new_options") {
       this.newTaskOptions = { places: f.places, candidates: f.candidates, ...(f.models ? { models: f.models } : {}), ...(f.ducterFolders ? { ducterFolders: f.ducterFolders } : {}) };
       // D203: the copy picked on another computer says its branches now: keep the branch it has.
@@ -808,6 +811,14 @@ class AppState {
   }
 
   /** 换谁来做 / Switch who does it: opens (or closes) the list for a task, asking who could. */
+  /** D288: the agent's account limits for the context card (the home reads them at most every few minutes). */
+  askAccountUsage(harness: string, fresh = false) {
+    const had = this.accountUsage.get(harness);
+    if (!fresh && had && Date.now() - had.asked < 60_000) return;
+    this.accountUsage.set(harness, { ...(had ?? {}), asked: Date.now() });
+    this.send({ t: "account_usage", harness, ...(fresh ? { fresh: true } : {}) });
+  }
+
   openSwitch(taskId: string) {
     if (this.switchFor === taskId) this.switchFor = "";
     // D282: and the agents' own model lists, for the in-place model and effort picker.

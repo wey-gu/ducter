@@ -359,6 +359,11 @@ type Usage struct {
 	OutputTokens int64 `json:"outputTokens,omitempty"`
 	CacheRead    int64 `json:"cacheRead,omitempty"`
 	CacheWrite   int64 `json:"cacheWrite,omitempty"`
+	// D135, D288: the context reading, the window it fills, where it compacts, this turn alone.
+	ContextTokens int64       `json:"contextTokens,omitempty"`
+	ContextWindow int64       `json:"contextWindow,omitempty"`
+	CompactAt     int64       `json:"compactAt,omitempty"`
+	Turn          *TurnTokens `json:"turn,omitempty"`
 }
 
 // Waiter is a cheap wait (D28, D112): a time (wait_until), or a condition
@@ -1780,6 +1785,9 @@ type ServerFrame struct {
 	// agent_update_result (D156): Device, Harness, OK, Reason, Detail.
 	// mem_plugin_result (D169): Device, Harness, OK, TaskID, Reason.
 	Harness string `json:"harness,omitempty"`
+	// account_usage (D288): Harness, its usage, or Why it has none.
+	AccountUsage *AccountUsage `json:"usage,omitempty"`
+	Why          string        `json:"why,omitempty"`
 	// first_screen (D149): the empty conversation's words from the home.
 	First *FirstScreen `json:"first,omitempty"`
 	// D151 live view: live (ID, DecisionID, State open|closed, Site, URL, Title,
@@ -2035,7 +2043,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// dropped here unseen (the live view's live / live_frame were, from D151 to
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
+		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",

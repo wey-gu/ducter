@@ -77,8 +77,23 @@ model, and its harness compacts it at 160K (`Settings.windows.tasks`, env `DUCTE
 2. **After.** On `compaction_ended` the runner sends the brief again and the latest
    checkpoint (steered, else as the next turn's prefix, logged as the runner's own input).
 3. **Logged.** Each compaction is a `task_event` (`raw.kind: "compaction_ended"`,
-   `compactions: n`, the size it had reached); the opened task's Details shows
-   **压缩过 n 次 / Compacted n times** under Saved progress, quietly.
+   `compactions: n`, `before`, and `after` when the agent says it: Claude Code's
+   `pre_tokens`/`post_tokens`, pi's `tokensBefore`); otherwise the first reading after it is a
+   `context` line with `after: true` (D288). The transcript's hairline says
+   **压缩了上下文 · 152k → 31k / Context compacted · 152k → 31k**.
+
+**The context meter (D288, research/94).** The runner logs a `context` reading
+(`contextTokens`, `contextWindow`, `compactAt`) as the context moves: every 5% of the window,
+across the save point, and the first after a compaction; each turn end's usage carries the
+window, the compaction point and `turn` (this turn alone, the running totals' difference). The
+clients read the task's Log into one meter (`protocol/context-meter.ts`, the Mac's port on the
+same fixture): a ring by the task's composer (the compaction point a tick; butter once past the
+save point, never red) and its card (window used, last turn, this task in all, compactions with
+the last sizes, **现在压缩 / Compact now**, the agent account's limits). Compact now is the
+person's `/compact`: Claude Code's own as typed; every other agent's is OAR's
+`Session.compact()`, run when the turn ends if one is running. Account limits come from the agent
+itself (OAR `accountUsage`, no model call), read on the home at most every 5 minutes and kept
+current by what sessions say (Claude Code `rate_limit_event`, Codex `account/rateLimits/updated`).
 
 Knobs per harness: Claude Code `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`,
 `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`, `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=88.8889`

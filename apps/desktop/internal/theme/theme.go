@@ -161,6 +161,9 @@ type Tokens struct {
 	// and the equip.
 	Bouncy, Snappy     ui.Animation
 	PressDur, EnterDur time.Duration
+	// Breathe is one breath of a waiting bead (D279), slower than any
+	// reading rhythm; Pop is the moment a wait comes true.
+	Breathe, Pop time.Duration
 	// Equip is the sticker peel-and-stick of an ability (research/26, 28).
 	Equip EquipMotion
 
@@ -332,6 +335,7 @@ func Pebble() *Tokens {
 		Bouncy:   ui.Animation{Spring: ui.SpringOptions{Duration: 420e6, Bounce: 0.35}},
 		Snappy:   ui.Snappy,
 		PressDur: 70 * time.Millisecond, EnterDur: 220 * time.Millisecond,
+		Breathe: 3200 * time.Millisecond, Pop: 560 * time.Millisecond,
 		Equip: EquipMotion{Flight: 820 * time.Millisecond, Snap: 0.62, Squash: 420 * time.Millisecond, DoneFace: 1800 * time.Millisecond, Fade: 200 * time.Millisecond},
 	}
 	t.Reply = replyTokens(t)

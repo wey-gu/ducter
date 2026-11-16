@@ -209,7 +209,7 @@ func (a *App) taskHead(c *ui.Context, task *store.Task, m *taskMemo) {
 				a.switchSheet(c, task) // 换谁来做 / Switch who does it (D89)
 			})
 		})
-		a.waitPanel(c, task)
+		a.watchCard(c, task, m)
 		a.tryStrip(c, task)
 		if len(m.blocks) == 0 && len(task.Sends) == 0 {
 			ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
@@ -281,10 +281,10 @@ func (a *App) waitWords(w *protocol.Waiter) string {
 	reason := strings.TrimSpace(w.Reason)
 	if w.Check != nil || w.Event != nil {
 		if next := store.ParseTime(w.NextLookAt); !next.IsZero() {
-			return a.L.T("end.wait", reason, hhmm(next))
+			return a.L.T("end.wait", a.waitLine(reason), hhmm(next))
 		}
 	} else if at := store.ParseTime(w.At); !at.IsZero() {
-		return a.L.T("end.wait.timer", reason, hhmm(at))
+		return a.L.T("end.wait.timer", a.waitLine(reason), hhmm(at))
 	}
 	return a.L.T("end.wait.bare", reason)
 }

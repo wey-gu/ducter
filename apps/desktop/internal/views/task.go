@@ -187,6 +187,11 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 	state := a.stateLabel(att)
 	if a.yourTurn(task) {
 		state = a.L.T("task.your.turn")
+	} else if att == protocol.Blocked {
+		// D279: a wait of its own says when it comes back.
+		if back := a.backWords(a.S.WaiterFor(task.ID)); back != "" {
+			state = back
+		}
 	}
 	// D210: while it works, the clock ticks in the foot over the composer;
 	// here it says how long it took once finished.
@@ -236,7 +241,8 @@ func (a *App) taskHeadline(c *ui.Context, task *store.Task) {
 // it looks again (or goes on), and, for a wait gone quiet, since when
 // nothing has changed. Deterministic: the waiter's own times, never a model.
 func (a *App) taskNext(task *store.Task) string {
-	if task.Attention() != protocol.Blocked {
+	// D279: a wait of its own says when it comes back in the state and the watch card.
+	if task.Attention() != protocol.Blocked || a.S.WaiterFor(task.ID) != nil {
 		return ""
 	}
 	var parts []string

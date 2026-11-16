@@ -496,7 +496,7 @@ class AppState {
     this.changed();
   }
 
-  /** Work over time (D112-D114): Look now / Stop waiting, Pause / Resume / End, Stop the loop. */
+  /** Work over time (D112-D114, D279): Check now / Stop checking, Pause / Resume / End, Stop the loop. */
   waiterAction(waiterId: string, action: "look" | "cancel" | "rearm") {
     this.send({ t: "waiter_action", waiterId, action });
   }

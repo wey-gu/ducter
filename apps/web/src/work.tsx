@@ -4,7 +4,7 @@
 // next runs. Time is drawn; words are its quiet caption. How a wait checks (the command, how
 // often, who judges) is only in the opened task, folded under How it checks. Copy: i18n.ts.
 import type { Bodies, CheckSpec, RoutineView, UntilView, WaiterView } from "@ducter/protocol";
-import { describeCheck, describePredicate } from "@ducter/protocol/src/checks.ts";
+import { DEFAULT_EVERY_MS, describeCheck, describePredicate } from "@ducter/protocol/src/checks.ts";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { cjkPad, clock, day, md, when } from "./format.ts";
@@ -12,7 +12,7 @@ import { cjkPad, clock, day, md, when } from "./format.ts";
 const pad = (s: string) => cjkPad(A.L, s);
 /** t with a time padded from the Chinese around it, without stray spaces at the ends or before punctuation. */
 const tp = (key: string, v: string) => t(key, pad(v)).trim().replace(/ ([，。；：])/g, "$1");
-import type { Task } from "./store.ts";
+import { attention, type Task } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -202,20 +202,139 @@ function CheckLine({ spec }: { spec: CheckSpec }) {
 
 const minutes = (ms?: number) => Math.max(1, Math.round((ms ?? 0) / 60_000));
 
-/** An opened task that waits: the groove, then Stop waiting and Look now. How it checks opens
- *  under the transcript's end line (D271). */
-export function WaitDetails({ task }: { task: Task }) {
-  const w = A.S.waiterFor(task.id);
-  if (!w || (!w.check && !w.event)) return null;
+/** D279: when a wait comes back on its own, from the waiter's own times, never a model: the next
+ *  look (a check, an event that is polled) or the time it wakes; how far along the stretch since
+ *  the last look (or since it was armed) it is; "" when it only comes back when something happens. */
+export function backOf(w: WaiterView | undefined, now = Date.now()): { at?: string; frac?: number; left?: number } {
+  if (!w) return {};
+  const watches = !!(w.check || w.event);
+  const at = watches ? w.nextLookAt : w.at;
+  const next = Date.parse(at ?? "");
+  if (!Number.isFinite(next) || next <= now) return {};
+  const from = Date.parse((watches ? (w.lastLookAt ?? w.armedAt) : w.armedAt) ?? "");
+  const frac = Number.isFinite(from) && next > from ? Math.min(1, Math.max(0, (now - from) / (next - from))) : undefined;
+  return { at, frac, left: next - now };
+}
+
+/** How long until then, in short words: "45 分" / "45 min", "2 小时" / "2 h". */
+function leftWords(ms: number): string {
+  const m = Math.max(1, Math.ceil(ms / 60_000));
+  return m < 60 ? t("watch.left.min", m) : m < 48 * 60 ? t("watch.left.hour", Math.round(m / 60)) : t("watch.left.day", Math.round(m / 1440));
+}
+
+/** The clock's ring (D279): a sunken clay groove bent into a circle; the stretch since the last
+ *  look fills it clockwise in the wait's ink as time passes (redrawn each half minute), a bead at
+ *  its edge breathes slowly (still under reduced motion), and how long is left sits inside. When
+ *  the wait comes true, it closes and pops once. Its words are its label. */
+export function LookRing({ frac, inside, label, met }: { frac?: number; inside?: string; label: string; met?: boolean }) {
+  const r = 22, c = 2 * Math.PI * r;
+  const f = met ? 1 : Math.max(0, Math.min(1, frac ?? 0));
+  const a = f * 2 * Math.PI;
+  const bx = 28 + r * Math.sin(a), by = 28 - r * Math.cos(a);
   return (
-    <section class="section">
-      <Groove w={w} big />
-      <div class="btns">
-        <button class="btn text" onClick={() => A.waiterAction(w.waiterId, "cancel")}>{t("wait.cancel")}</button>
-        <button class="btn secondary" onClick={() => A.waiterAction(w.waiterId, "look")}>{t("wait.look")}</button>
+    <span class={`lookring${met ? " met" : ""}${frac === undefined && !met ? " open" : ""}`} role="img" aria-label={label}>
+      <svg viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">
+        <circle class="track" cx="28" cy="28" r={r} />
+        {f > 0 && <circle class="gone" cx="28" cy="28" r={r} stroke-dasharray={`${(f * c).toFixed(2)} ${c.toFixed(2)}`} transform="rotate(-90 28 28)" />}
+        {!met && <circle class="bead" cx={bx.toFixed(2)} cy={by.toFixed(2)} r="4" />}
+        {met && <path class="tick" d="M19 29l6 6 12-13" />}
+      </svg>
+      {inside && <b>{inside}</b>}
+    </span>
+  );
+}
+
+/** Every look so far as a small pebble (D279), the newest at the right: the ones that came true
+ *  filled in the wait's ink, the ones that found nothing yet hollow. At most 12; the count is in
+ *  the words beside them. */
+function Pebbles({ came, empty }: { came: number; empty: number }) {
+  const all = [...Array(came).fill(true), ...Array(empty).fill(false)].slice(-12);
+  return (
+    <span class="pebbles" aria-hidden="true">
+      {all.map((x, i) => (
+        <i key={i} class={x ? "came" : ""} />
+      ))}
+    </span>
+  );
+}
+
+/** An opened task resting on its wait (D279): the ring and when it comes back, the looks so far,
+ *  then 现在就去看 (with when it would have looked) and 不再等了. A deadline keeps its groove.
+ *  When the wait comes true it shows the moment, then the task carries on. How it checks opens
+ *  under the transcript's end line (D271). */
+export function WatchCard({ task, wakes, wokeAt }: { task: Task; wakes: number; wokeAt: number }) {
+  const w = A.S.waiterFor(task.id);
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const h = setInterval(() => tick((n) => n + 1), 30_000);
+    return () => clearInterval(h);
+  }, []);
+  const met = !w && A.S.justArrived(task.id, Date.now(), 2600);
+  useEffect(() => {
+    if (!met) return;
+    const h = setTimeout(() => tick((n) => n + 1), 2700);
+    return () => clearTimeout(h);
+  }, [met]);
+  if (met)
+    return (
+      <section class="watch met" role="status">
+        <div class="watch-main">
+          <LookRing met label={t("watch.met")} />
+          <div class="watch-words">
+            <p class="back">{t("watch.met")}</p>
+          </div>
+        </div>
+      </section>
+    );
+  if (!w || attention(task) !== "blocked") return null;
+  const watches = !!(w.check || w.event);
+  const b = backOf(w);
+  const looks = wakes + (w.looks ?? 0);
+  const lastLook = Date.parse(w.lastLookAt ?? "");
+  const woke = Number.isFinite(wokeAt) ? wokeAt : 0;
+  const last = Math.max(Number.isFinite(lastLook) ? lastLook : 0, woke);
+  const notYet = Number.isFinite(lastLook) && lastLook >= woke;
+  const lastWords = last > 0 ? tp(notYet ? "watch.last.not" : "watch.last", clock(new Date(last).toISOString())) : "";
+  // How it comes back first, so a count reads as looks now and then, never as watching nonstop.
+  const rhythm = w.check ? t("wait.every", minutes(w.everyMs ?? DEFAULT_EVERY_MS)) : w.event ? t("wait.each_new") : t("watch.timer");
+  const tally = [looks > 0 ? (looks === 1 ? t("watch.tally.one") : t("watch.tally", looks)) : "", lastWords].filter(Boolean).join(" · ");
+  return (
+    <section class="watch">
+      <div class="watch-main">
+        <LookRing frac={b.frac} inside={b.left ? leftWords(b.left) : undefined} label={backWords(w)} />
+        <div class="watch-words">
+          <p class="rhythm">{rhythm}</p>
+          {tally && (
+            <p class="tally">
+              {looks > 0 && <Pebbles came={wakes} empty={w.looks ?? 0} />}
+              <span>{tally}</span>
+            </p>
+          )}
+        </div>
       </div>
+      {w.until && <Groove w={w} big />}
+      {watches && (
+        <div class="btns">
+          <button class="btn secondary" onClick={() => A.waiterAction(w.waiterId, "look")}>{t("wait.look")}</button>
+          <button class="btn text" onClick={() => A.waiterAction(w.waiterId, "cancel")}>{t("wait.cancel")}</button>
+        </div>
+      )}
     </section>
   );
+}
+
+/** When a wait comes back, as its state (D279): "21:59 回来" / "Back at 21:59", "有动静就回来" /
+ *  "Back when it happens"; "" for a wait that doesn't come back on its own. */
+export function backWords(w: WaiterView | undefined, now = Date.now()): string {
+  if (!w) return "";
+  const b = backOf(w, now);
+  if (b.at) return tp("watch.back", soonish(b.at, now));
+  return w.event ? t("watch.back.when") : "";
+}
+
+/** A time of day, with its day only when it isn't today. */
+function soonish(iso: string, now = Date.now()): string {
+  return day(A.L, iso, now) === day(A.L, new Date(now).toISOString(), now) ? clock(iso) : when(A.L, iso, now);
 }
 
 /** How a wait checks (D271, under the end line): the check itself and its judge, how often and

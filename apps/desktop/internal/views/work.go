@@ -7,6 +7,7 @@ package views
 
 import (
 	"fmt"
+	"math"
 	"path"
 	"strings"
 	"time"
@@ -386,24 +387,290 @@ func (a *App) waitRows(c *ui.Context, task *store.Task, until bool, row func(str
 	}
 }
 
-// waitPanel is an opened task's wait on the page: its deadline groove, then
-// Stop waiting and Look now. How it checks is in Details.
-func (a *App) waitPanel(c *ui.Context, task *store.Task) {
-	t := a.T
-	w := a.S.WaiterFor(task.ID)
-	if w == nil || task.Attention() != protocol.Blocked || (w.Check == nil && w.Event == nil) {
+// backOf is when a wait comes back on its own (D279), from the waiter's
+// own times, never a model: its next look (a check, a polled event) or the
+// time it wakes, how far along the stretch since its last look (or since
+// it was armed) it is, and how long is left. Zero when it only comes back
+// when something happens.
+func (a *App) backOf(w *protocol.Waiter) (at time.Time, frac float32, left time.Duration, ok bool) {
+	if w == nil {
 		return
 	}
-	ui.Column(c.Key("wait")).Gap(t.S2).MaxWidth(readMeasure).Children(func() {
-		a.groove(c, w, true)
-		ui.Row(c.Key("waitbtns")).Gap(t.S2).Children(func() {
-			if a.button(c, a.L.T("wait.cancel"), btnText, t.ControlSM, t.Bg) {
-				a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "cancel"})
+	watches := w.Check != nil || w.Event != nil
+	next := store.ParseTime(w.At)
+	from := store.ParseTime(w.ArmedAt)
+	if watches {
+		next = store.ParseTime(w.NextLookAt)
+		from = store.ParseTime(firstNonEmpty(w.LastLookAt, w.ArmedAt))
+	}
+	now := a.Now()
+	if next.IsZero() || !next.After(now) {
+		return
+	}
+	if !from.IsZero() && next.After(from) {
+		frac = min(1, max(0, float32(now.Sub(from))/float32(next.Sub(from))))
+	}
+	return next, frac, next.Sub(now), true
+}
+
+// backWords is a wait's state in words (D279): "21:59 回来" / "Back at
+// 21:59", "有动静就回来" / "Back when it happens"; "" when it doesn't come
+// back on its own.
+func (a *App) backWords(w *protocol.Waiter) string {
+	if w == nil {
+		return ""
+	}
+	if at, _, _, ok := a.backOf(w); ok {
+		return a.tp("watch.back", a.soon(at))
+	}
+	if w.Event != nil {
+		return a.L.T("watch.back.when")
+	}
+	return ""
+}
+
+// leftWords is how long until it comes back, short: "45 分" / "45 min".
+func (a *App) leftWords(d time.Duration) string {
+	m := int(math.Ceil(d.Minutes()))
+	switch {
+	case m < 60:
+		return a.L.T("watch.left.min", max(1, m))
+	case m < 48*60:
+		return a.L.T("watch.left.hour", int(math.Round(float64(m)/60)))
+	}
+	return a.L.T("watch.left.day", int(math.Round(float64(m)/1440)))
+}
+
+// wakesOf is how many times a task's own wait came true (each wake in its
+// transcript) and when the latest did: a loop's rounds, for the tally.
+func (a *App) wakesOf(task *store.Task, blocks []Block) (int, time.Time) {
+	n, last := 0, time.Time{}
+	for i := range blocks {
+		if blocks[i].K == "wake" {
+			n++
+			last = store.ParseTime(a.tsOf(task, blocks[i].Seq))
+		}
+	}
+	return n, last
+}
+
+// drawLookRing is the watch card's clock (D279): a sunken clay groove bent
+// into a circle on a clay disc; the stretch since the last look fills it
+// clockwise in the wait's clay, a bead at its edge (scaled by breath). Met,
+// it closes in the done clay with a drawn tick.
+func (a *App) drawLookRing(frac, breath float32, met bool, tick float32) func(p *ui.Painter, r ui.Rect) {
+	t := a.T
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		rad := min(r.W, r.H)/2 - 6
+		var disc ui.Path
+		disc.Circle(cx, cy+1, rad+4)
+		p.FillPath(&disc, t.Line2)
+		var top ui.Path
+		top.Circle(cx, cy, rad+4)
+		p.FillPath(&top, t.Surface)
+		var track ui.Path
+		track.Circle(cx, cy, rad)
+		p.StrokePath(&track, 8, t.Line2.Alpha(0.55))
+		col := t.Waiting.Dot
+		f := frac
+		if met {
+			col, f = t.Done.Dot, 1
+		}
+		if f > 0 {
+			var arc ui.Path
+			n := max(2, int(math.Ceil(float64(64*f))))
+			for i := 0; i <= n; i++ {
+				ang := -math.Pi/2 + 2*math.Pi*float64(f)*float64(i)/float64(n)
+				x, y := cx+rad*float32(math.Cos(ang)), cy+rad*float32(math.Sin(ang))
+				if i == 0 {
+					arc.MoveTo(x, y)
+				} else {
+					arc.LineTo(x, y)
+				}
 			}
-			if a.button(c, a.L.T("wait.look"), btnSecondary, t.ControlSM, t.Bg) {
-				a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "look"})
+			p.StrokePath(&arc, 8, col)
+			if f < 0.999 {
+				// Round ends.
+				p.Fill(ui.Rect{X: cx - 4, Y: cy - rad - 4, W: 8, H: 8}, col, 4)
 			}
+		}
+		if met {
+			if tick > 0 {
+				s := rad / 22
+				pts := [][2]float32{{-9, 1}, {-3, 7}, {9, -6}}
+				var tk ui.Path
+				tk.MoveTo(cx+pts[0][0]*s, cy+pts[0][1]*s)
+				// The first stroke, then the long one, drawn as it comes.
+				l1 := float32(0.35)
+				if tick < l1 {
+					q := tick / l1
+					tk.LineTo(cx+(pts[0][0]+(pts[1][0]-pts[0][0])*q)*s, cy+(pts[0][1]+(pts[1][1]-pts[0][1])*q)*s)
+				} else {
+					q := (tick - l1) / (1 - l1)
+					tk.LineTo(cx+pts[1][0]*s, cy+pts[1][1]*s)
+					tk.LineTo(cx+(pts[1][0]+(pts[2][0]-pts[1][0])*q)*s, cy+(pts[1][1]+(pts[2][1]-pts[1][1])*q)*s)
+				}
+				p.StrokePath(&tk, 3.5, t.Done.Ink)
+			}
+			return
+		}
+		ang := -math.Pi/2 + 2*math.Pi*float64(frac)
+		bx, by := cx+rad*float32(math.Cos(ang)), cy+rad*float32(math.Sin(ang))
+		br := 4 * breath
+		p.Fill(ui.Rect{X: bx - br - 1.25, Y: by - br - 1.25 + 1, W: 2*br + 2.5, H: 2*br + 2.5}, t.Line2, br+1.25)
+		p.Fill(ui.Rect{X: bx - br - 1.25, Y: by - br - 1.25, W: 2*br + 2.5, H: 2*br + 2.5}, col, br+1.25)
+		p.Fill(ui.Rect{X: bx - br + 1.25, Y: by - br + 1.25, W: 2*br - 2.5, H: 2*br - 2.5}, t.Surface, br-1.25)
+	}
+}
+
+// watchCard is an opened task resting on a wait of its own (D279): the
+// ring and how long until it comes back, how it comes back, every look so
+// far as a pebble, then 现在就去看一次 / Check now and 不用再去看了 / Stop
+// checking. A deadline keeps its groove. When the wait comes true it shows
+// the moment, then the task carries on. How it checks is under the end line.
+func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
+	t := a.T
+	still := c.Preferences().ReduceMotion
+	const size = 56
+	w := a.S.WaiterFor(task.ID)
+	if w == nil {
+		at, ok := a.S.Arrived[task.ID]
+		since := c.Now().Sub(at)
+		if !ok || since >= 2600*time.Millisecond {
+			return
+		}
+		c.After(min(16*time.Millisecond, 2600*time.Millisecond-since))
+		pop, tick := float32(1), float32(1)
+		if !still {
+			q := min(1, float32(since)/float32(t.Pop))
+			// One overshoot on the way to full size, the tick drawn as it lands.
+			pop = 0.86 + 0.14*float32(1-math.Pow(float64(1-q), 3)*math.Cos(float64(q)*math.Pi*1.6))
+			tick = q
+		}
+		label := a.L.T("watch.met")
+		ui.Row(c.Key("watch")).Gap(t.S3 + 2).AlignItems(ui.Center).MaxWidth(readMeasure).Role(ui.RoleStatus).Children(func() {
+			ui.Box(c.Key("ring")).Size(size, size).Shrink(0).Role(ui.RoleImage).Label(label).Draw(func(p *ui.Painter, r ui.Rect) {
+				d := r.W * pop
+				a.drawLookRing(1, 1, true, tick)(p, ui.Rect{X: r.X + (r.W-d)/2, Y: r.Y + (r.H-d)/2, W: d, H: d})
+			})
+			ui.Text(c, label).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).AccessHidden(true)
 		})
+		return
+	}
+	if task.Attention() != protocol.Blocked {
+		return
+	}
+	watches := w.Check != nil || w.Event != nil
+	_, frac, left, ok := a.backOf(w)
+	inside := ""
+	if ok {
+		inside = a.leftWords(left)
+	}
+	breath := float32(1)
+	if !still {
+		ph := float64(c.Now().UnixMilli()%t.Breathe.Milliseconds()) / float64(t.Breathe.Milliseconds())
+		breath = 1 + 0.3*0.5*float32(1-math.Cos(2*math.Pi*ph))
+		c.After(50 * time.Millisecond)
+	} else {
+		c.After(30 * time.Second) // the ring moves only as time does
+	}
+	wakes, woke := a.wakesOf(task, m.blocks)
+	looks := wakes + w.Looks
+	lastLook := store.ParseTime(w.LastLookAt)
+	last := woke
+	if lastLook.After(last) {
+		last = lastLook
+	}
+	var tally []string
+	if looks == 1 {
+		tally = append(tally, a.L.T("watch.tally.one"))
+	} else if looks > 1 {
+		tally = append(tally, a.L.T("watch.tally", looks))
+	}
+	if !last.IsZero() {
+		key := "watch.last"
+		if !lastLook.IsZero() && !lastLook.Before(woke) {
+			key = "watch.last.not"
+		}
+		tally = append(tally, a.tp(key, hhmm(last)))
+	}
+	// How it comes back first, so a count reads as looks now and then.
+	rhythm := a.L.T("watch.timer")
+	if w.Check != nil {
+		every := w.EveryMs
+		if every <= 0 {
+			every = 5 * 60_000
+		}
+		rhythm = a.L.T("wait.every", max(1, int(math.Round(float64(every)/60_000))))
+	} else if w.Event != nil {
+		rhythm = a.L.T("wait.each_new")
+	}
+	ui.Column(c.Key("watch")).Gap(t.S3 + 2).MaxWidth(readMeasure).Children(func() {
+		ui.Row(c.Key("watchmain")).Gap(t.S3 + 2).AlignItems(ui.Center).Children(func() {
+			ui.Box(c.Key("ring")).Size(size, size).Shrink(0).Role(ui.RoleImage).Label(a.backWords(w)).Draw(a.drawLookRing(frac, breath, false, 0)).Children(func() {
+				if inside != "" {
+					ui.Column(c).Grow(1).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, inside).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine().AccessHidden(true)
+					})
+				}
+			})
+			ui.Column(c.Key("words")).Gap(4).MinWidth(0).Children(func() {
+				ui.Text(c, rhythm).FontSize(t.MD).FontWeight(600).TextColor(t.Ink)
+				if len(tally) > 0 {
+					ui.Row(c.Key("tally")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+						if looks > 0 {
+							a.pebbles(c, wakes, w.Looks)
+						}
+						ui.Text(c, strings.Join(tally, " · ")).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+					})
+				}
+			})
+		})
+		if w.Until != "" {
+			a.groove(c, w, true)
+		}
+		if watches {
+			ui.Row(c.Key("waitbtns")).Gap(t.S2).Children(func() {
+				if a.button(c, a.L.T("wait.look"), btnSecondary, t.ControlSM, t.Bg) {
+					a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "look"})
+				}
+				if a.button(c, a.L.T("wait.cancel"), btnText, t.ControlSM, t.Bg) {
+					a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "cancel"})
+				}
+			})
+		}
+	})
+}
+
+// pebbles is every look so far (D279), the newest at the right: the ones
+// that came true filled in the wait's clay, the ones that found nothing
+// yet hollow; at most 12, the count is in the words beside them.
+func (a *App) pebbles(c *ui.Context, came, empty int) {
+	t := a.T
+	all := make([]bool, 0, came+empty)
+	for i := 0; i < came; i++ {
+		all = append(all, true)
+	}
+	for i := 0; i < empty; i++ {
+		all = append(all, false)
+	}
+	if len(all) > 12 {
+		all = all[len(all)-12:]
+	}
+	const d, gap = 7, 3
+	ui.Box(c.Key("pebbles")).Size(float32(len(all))*(d+gap)-gap, d).Shrink(0).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
+		for i, x := range all {
+			b := ui.Rect{X: r.X + float32(i)*(d+gap), Y: r.Y, W: d, H: d}
+			if x {
+				p.Fill(b, t.Waiting.Strong.Alpha(0.35), d/2)
+				p.Fill(ui.Rect{X: b.X, Y: b.Y, W: d, H: d - 1}, t.Waiting.Dot, d/2)
+				continue
+			}
+			var o ui.Path
+			o.Circle(b.X+d/2, b.Y+d/2, d/2-0.75)
+			p.StrokePath(&o, 1.5, t.Line2)
+		}
 	})
 }
 

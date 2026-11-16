@@ -13,7 +13,7 @@ import { blocksOf, inTurn, lastSeq, latestVoice, serviceName, turnsOf, type Bloc
 import type { MediaRef, WaiterView } from "@ducter/protocol";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { RefObject } from "preact";
-import { WaitHow } from "./work.tsx";
+import { WaitHow, waitLine } from "./work.tsx";
 import { clock } from "./format.ts";
 import { Component, type JSX } from "preact";
 import { Btn, Chev } from "./controls.tsx";
@@ -567,6 +567,14 @@ function tsOf(task: Task, seq: number): number {
   return Date.parse(c.map.get(seq) ?? "");
 }
 
+/** D279: how many times a task's own wait came true (each wake in its transcript), and when the
+ *  latest did: the rounds of a loop, for the watch card's tally. */
+export function wakesOf(task: Task): { n: number; lastAt: number } {
+  let n = 0, last = NaN;
+  for (const b of taskBlocks(task)) if (b.k === "wake") (n++, (last = tsOf(task, b.seq)));
+  return { n, lastAt: last };
+}
+
 /** A turn's body (D268): a finished turn folds its steps and interim words under "Worked for 3m
  *  12s", keeping its last words in view; the live turn never folds. */
 function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean }) {
@@ -684,7 +692,7 @@ function WaitLine({ task, w }: { task: Task; w: WaiterView }) {
   const [open, setOpen] = useState(false);
   const watches = !!(w.check || w.event);
   const next = watches ? w.nextLookAt : w.at;
-  const words = next ? t(watches ? "end.wait" : "end.wait.timer", w.reason, clock(next)) : t("end.wait.bare", w.reason);
+  const words = next ? t(watches ? "end.wait" : "end.wait.timer", waitLine(w.reason), clock(next)) : t("end.wait.bare", w.reason);
   const inner = (
     <>
       {GLYPHS.waited!()}

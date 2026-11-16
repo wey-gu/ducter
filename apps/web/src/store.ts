@@ -312,7 +312,7 @@ export class Store {
     if (ev.kind === "waiter") {
       const w = ev.body as Bodies["waiter"];
       // The moment a task's wait comes true (D115): its card pops and glides to Working.
-      if (w.state === "fired" && w.taskId && (w.check || w.event)) this.arrived.set(w.taskId, Date.now());
+      if (w.state === "fired" && w.taskId && (w.check || w.event || w.wakes === "task")) this.arrived.set(w.taskId, Date.now());
       // A routine's watch lives on its card (D114), not as a wait.
       if (w.state === "armed" && !w.routineId) this.waiters.set(w.waiterId, { ...this.waiters.get(w.waiterId), ...w });
       else this.waiters.delete(w.waiterId);
@@ -618,9 +618,9 @@ export class Store {
   }
 
   /** Whether a task's wait came true in the last moment: its card arrives with the pop and glide. */
-  justArrived(taskId: string, now = Date.now()): boolean {
+  justArrived(taskId: string, now = Date.now(), ms = 1600): boolean {
     const at = this.arrived.get(taskId);
-    return at !== undefined && now - at < 1600;
+    return at !== undefined && now - at < ms;
   }
 
   /** A task's `until` loop and its tries (D113). */

@@ -80,6 +80,8 @@ export function createDecisions(opts: {
   onDecision?: DecisionHook;
   /** A task whose done reports don't finish it (a keep-going loop that is still on, D113). */
   holds?: (taskId: string) => boolean;
+  /** D279: a task resting on a wait of its own: a progress report leaves it on Waiting. */
+  rests?: (taskId: string) => boolean;
 }): Decisions {
   const { log, tasks } = opts;
   const clock = opts.clock ?? realClock;
@@ -169,6 +171,9 @@ export function createDecisions(opts: {
         case "failed":
           return setAttention(r.taskId, "failed", r.summary.slice(0, 120));
         case "progress":
+          // D279: a progress report written after it armed its own wait (a loop's "back at
+          // 21:59") doesn't put it back on Working; the wake does.
+          if (opts.rests?.(r.taskId) && tasks.get(r.taskId)?.attention === "blocked") return;
           return setAttention(r.taskId, "working");
         case "done":
           // A try of a keep-going loop (D113): the loop decides when it is done, not the try.

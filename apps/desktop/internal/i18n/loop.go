@@ -5,8 +5,8 @@ package i18n
 // as the phone (apps/web/src/i18n.ts). Glossary: design/product-model.md
 // (在等 / Waiting, 等到了 / Wait over, 说过的话 / What was said).
 var zhLoop = Table{
-	"end.wait":           "在等：%s · 下次 %s",
-	"end.wait.timer":     "在等：%s · %s 叫醒",
+	"end.wait":           "%s · %s 回来",
+	"end.wait.timer":     "%s · %s 回来",
 	"end.wait.bare":      "在等：%s",
 	"wake.over":          "等到了 · %s",
 	"locator.wakes":      "等到了 %d 次 · %s–%s",
@@ -24,8 +24,8 @@ var zhLoop = Table{
 }
 
 var enLoop = Table{
-	"end.wait":           "Waiting: %s · next look %s",
-	"end.wait.timer":     "Waiting: %s · wakes at %s",
+	"end.wait":           "%s · back at %s",
+	"end.wait.timer":     "%s · back at %s",
 	"end.wait.bare":      "Waiting: %s",
 	"wake.over":          "Wait over · %s",
 	"locator.wakes":      "Wait over %d times · %s–%s",

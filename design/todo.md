@@ -202,10 +202,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       page is a `ui.List`). (4) Check the foot, Esc twice and Jump to latest on a real iPad and a
       real long run with the author.
 
-- [ ] **The opened task, after D271**: (1) a progress report after `wait_for` puts the card back
-      on working while the task rests on its wait (the end line says it waits, the head and
-      the header still say 在做); the card should stay on Waiting until a turn starts. Trigger:
-      the author's next look at a loop task. (2) An opened task loads its latest 2,000 events
+- [ ] **The opened task, after D271**: (1) done in D279: a progress report after `wait_for`
+      leaves the card on Waiting (core's `rests`). (2) An opened task loads its latest 2,000 events
       (the home's most per ask); older ones are not reachable from the page or the locator.
       Trigger: a loop that runs past a day. (3) In a loop, a finished round folds everything
       before its last words, so a review round's findings hide under "做了 8 分 21 秒" when its
@@ -1368,8 +1366,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
       再找一次 seemed to do nothing. The phone belongs on a computer beside the person: offer the Macs
       that do tasks (workers) as the place to plug it in, run the check there, and say the command for
       that computer's OS. 再找一次 must answer visibly ("找过了，还是没看到手机：…"). Trigger: next.
-- [ ] **立即查看 / Look now says what it does.** On a waiting task it means "look now instead of at 20:51";
-      the words don't say so. Name it by its result (e.g. 现在就看一眼, with when it looks by itself beside).
-- [ ] **A wait that feels alive, not "在等".** The state word and its line read cold. Through AGENTS.md's
-      metaphor process (≥5 candidates incl. none), make waiting read like a companion keeping watch
-      ("在盯着 nowledge-co 的新 review · 20:51 再看"), with a living ring; game-like, warm, literal labels.
+- [x] **立即查看 / Look now says what it does**, and **a wait that feels alive, not "在等"**. Done in
+      D279 (research/90): **{time} 回来 / Back at {time}**, the watch card's ring, looks and moment,
+      **现在就去看一次 / Check now**, **不用再去看了 / Stop checking**. Left: (1) human raters (the
+      author first) on the shots in `.shots/d279/`; (2) the watch card's tally counts wakes in the
+      loaded transcript (an opened task loads its latest 2,000 events), so a loop older than that
+      counts from there; core could log a look count on a waiter's end. Trigger: the author's
+      review of D279.

@@ -67,7 +67,8 @@ Two lines (one line cut the news to half a width):
 | Waiting | the waiter's reason (as 等 …); the state's reason; the first line of the last report; **停下了，没说在等什么** |
 | Done, didn't work | the result's first line |
 
-  A wait adds when it looks again with a 12-pt ring of the interval gone by (**11:39 再看一次**),
+  A wait adds when it comes back with a 12-pt ring of the interval gone by (**11:39 回来 / back at
+  11:39**, D279),
   or, once quiet, **上次有动静是 2 天前**. The right end says where: the project (under All, from
   two groups) and the computer (with two or more). The branch and the agent are in the task.
 

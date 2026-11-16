@@ -119,11 +119,11 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Partner and tasks (`design/plan/v1-tonight.md` "Known gaps", `research/30`)
 
-- [ ] **The workbench, after D214** (`design/workbench.md`, `research/59`): (1) a worker task end to
+- [ ] **The workbench, after D214** (`design/workbench.md`): (1) a worker task end to
   end (a second scratch Ducter as a worker; its page through the worker's socket), and hot reload
   for a worker's page (a websocket carried over the worker link). Trigger: the author's first
   coding task on hel with a dev server. (2) A terminal: a server-owned PTY per task with a bounded
-  tail any client reattaches to (t3code's shape), read-only first. Trigger: the author asks to run
+  tail any client reattaches to, read-only first. Trigger: the author asks to run
   a command beside the agent, or a task's dev server log is needed. (3) Comments on diff lines and
   on the preview, sent with the next words as chips (Conductor, Codex). Trigger: the first review
   of a real task's diff in the workbench. (4) Per-hunk revert and "this turn" as a scope (Codex).
@@ -133,7 +133,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
   through Ducter's browser on hel.
 - [ ] **D220, the simulator and the working copy**: (1) **Taps, swipes and typing on the
   simulator.** simctl has none; every route loads Xcode's private CoreSimulator / SimulatorKit
-  frameworks (idb, AXe, serve-sim; T3 Code installs npm tools after a consent step). Decide between
+  frameworks (idb, AXe, serve-sim; one route is installing npm tools after a consent step). Decide between
   a consented install like D217's phone and a small helper of Ducter's own built against the
   user's Xcode, with its version pinned per Xcode. Trigger: the author asks to tap in the
   simulator from Ducter, or an iOS task needs the user to drive the app while it watches.
@@ -153,13 +153,13 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       recommendation), and an audit of the CLI's long help lines with a native reader. Trigger:
       the author's review of D212.
 
-- [ ] **The opened task, after D210** (`research/58`): (1) a step under way: Ducter's Log has a
+- [ ] **The opened task, after D210**: (1) a step under way: Ducter's Log has a
       tool call only once it is done, so the foot names the latest finished step; a "running"
       line needs the runner to log a tool's start (OAR's item started events). Trigger: a live
       run where the foot lags a long command. (2) The agent's words appear whole, not streamed;
       streaming needs text deltas in the Log. Trigger: the same. (3) The Mac draws the whole
       window of turns each frame (7 ms with 423 events in the test renderer); if a real long
-      task stutters, move the transcript into `ui.List` (Lorca's chat does). (4) Check the
+      task stutters, move the transcript into `ui.List` (MyGo's virtual list). (4) Check the
       foot, Esc twice and Jump to latest on a real iPad and a real long run with the author.
 
 - [ ] **The eval's new gaps on haiku** (research/48 addendum, `eval/results/2026-11-10-haiku-d175.md`):
@@ -538,7 +538,7 @@ note and a `Dn`) before it is built.
       Trigger: two conversations a week where "that one" is ambiguous / a pasted link reads as noise.
 - [ ] **A routine's pictures.** A New task scheduled for later keeps its words only. Trigger: the
       first scheduled task that needs a picture.
-- [ ] **Office files drawn (D239).** docx/xlsx drawn as T3 Code does (`officeArchive.ts`).
+- [ ] **Office files drawn (D239).** docx/xlsx unzipped and drawn in the viewer.
       Trigger: a task hands over a spreadsheet or a document a person wants to read on the phone.
       (PDF pages, expiring keys and find were built by D242.)
 - [ ] **Find in a PDF, and a PDF's CJK fonts on the web (D242).** pdf.js's text layer for find;
@@ -1183,11 +1183,11 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - [ ] **A place-less task's scratch folder outside the data folder** (`<Ducter folder>/scratch/<taskId>`): today it is `<dataDir>/scratch/<taskId>`, Ducter-made and empty, the one way into the data folder. Trigger: a task seen reaching up out of its scratch into the data folder, or the Ducter folder gaining a third kind of thing.
 
-## On hand as a workspace, next phases (D216, research/61)
+## On hand as a workspace, next phases (D216)
 
-- [ ] **CI on the row**: a repo task's PR checks (passing, failing, running) next to **草稿 PR**. Needs a PR watcher per open PR (T3 Code polls every 2 min and wakes the agent on a failed check; Ducter's `wait_ci` check is the start). Trigger: the first time the author merges from On hand without opening the PR.
+- [ ] **CI on the row**: a repo task's PR checks (passing, failing, running) next to **草稿 PR**. Needs a PR watcher per open PR (polling every 2 min and waking the agent on a failed check; Ducter's `wait_ci` check is the start). Trigger: the first time the author merges from On hand without opening the PR.
 - [ ] **The Mac: the rail beside an opened task, and many at once.** The web has both; the Mac app has the list, Find, keys, hover actions and ⌘O. Trigger: the author's review of the web's rail.
-- [ ] **Done only while unread**: a read mark per task (synced like the conversation's), so a finished task the user already saw recedes further and an unseen failure stands out (T3 Code's watermark). Trigger: Done today holds more than ten.
+- [ ] **Done only while unread**: a read mark per task (synced like the conversation's), so a finished task the user already saw recedes further and an unseen failure stands out (a read watermark). Trigger: Done today holds more than ten.
 - [ ] **Cost on the row**: a task's tokens or money, quietly, for the heavy developer (the until loop already counts tokens). Trigger: a cost question from the author.
 - [ ] **Search past today**: the switcher sees every task the client holds; older finished tasks need a server search (the Log's FTS). Trigger: "where was that task from last week" (scenario I4).
 - [ ] **Live checks**: against a real home (hel) with 20+ real tasks; the iPad simulator with a keyboard (j/k, ⌘O from the menu); an Android phone.
@@ -1214,7 +1214,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## Reply to one message (D236)
 
 - [ ] **A human comprehension pass on the imprint**: five people who don't use Telegram, cold, on the phone shots (research/72 §6 is LLM raters only). Trigger: before calling the look settled.
-- [ ] **Reach an original that left the screen**: the clients hold the last 200 conversation events; a tap on an older imprint says so. Add a channel history frame (before a seq) and load toward it, as T3 Code does up to 20 pages. Trigger: the first "where was that" from the author.
+- [ ] **Reach an original that left the screen**: the clients hold the last 200 conversation events; a tap on an older imprint says so. Add a channel history frame (before a seq) and load toward it, up to 20 pages. Trigger: the first "where was that" from the author.
 - [ ] **Reply to a part on the phone and the Mac**: the wide web has 回复这段; the phone needs a selection toolbar, the Mac a text selection hook in MyGo. Trigger: a long partner answer the author wants to answer in pieces.
 - [ ] **Reply inside an opened task's conversation** (to one of the task's own messages, steered with the quote). Trigger: the heavy developer asks for it.
 - [ ] **The partner's answer chooses what it replies to**: today a turn's messages reply to its last user message (each reply has its own turn). Trigger: one turn that answers two things.

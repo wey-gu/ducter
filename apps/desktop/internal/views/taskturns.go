@@ -1,7 +1,7 @@
 package views
 
 // The opened task as a conversation with the agent, turn by turn (D210,
-// after D152; handling after egoist/lorca's agent page, research/58):
+// after D152; handling the way a coding agent's chat does it):
 // each turn opens with what someone said to the agent (the brief, your
 // words, the partner's) and holds its answer in order, its words at the
 // reading measure and its steps between them as compact lines: one line

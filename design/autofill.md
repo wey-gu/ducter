@@ -126,8 +126,8 @@ needs an API key they own; a fresh user has never set anything up. Before: paste
 chat and hope, or a task that stops at "I need DO_TOKEN". After: one card, paste, **保存，继续 /
 Save and continue**, and a receipt line. Easy (one field), smooth (the task carries on by itself,
 even after its run ended), trustworthy (the key never enters the conversation, the Log or Ducter's
-own model calls, and every use is listed). Unlike T3 Code's "Asked for a secret", whose card was
-cancelled with the run, the card stays until the person answers it.
+own model calls, and every use is listed). The card is not cancelled with the run: it stays until
+the person answers it.
 
 **The tool.** `ask_for_key({ env, name, why?, again? })`, for every task not in a browser place:
 

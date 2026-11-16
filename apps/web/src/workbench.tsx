@@ -180,7 +180,7 @@ export function showTab(task: Task, tab: BenchTab) {
 
 const wideNow = () => typeof matchMedia === "function" && matchMedia("(min-width: 1000px)").matches;
 
-/** ⌥⌘B (Ctrl+Alt+B elsewhere): the right-hand panel's key in VS Code, Zed, Codex and t3code. */
+/** ⌥⌘B (Ctrl+Alt+B elsewhere): the right-hand panel's key in VS Code, Zed and Codex. */
 export function benchKey(e: KeyboardEvent): boolean {
   const mod = e.metaKey || e.ctrlKey;
   if (!(mod && e.altKey && !e.shiftKey && (e.code === "KeyB" || e.key.toLowerCase() === "b"))) return false;

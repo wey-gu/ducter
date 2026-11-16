@@ -4,16 +4,15 @@ Asked (2026-11-12, the author's brief for GitHub issue #3): "The visual expressi
 out: our style's mechanism, emotional value and distinctive stylization, with matching animation."
 AGENTS.md requires the metaphor process before anything is prototyped: at least five genuinely
 different candidates including "no metaphor", a mapping table with every false implication, a
-rubric, and a comprehension test with naive raters. This note is that pass. The facts about other
-apps come from research/71.
+rubric, and a comprehension test with naive raters. This note is that pass.
 
-Tags: VERIFIED (measured here), DOCUMENTED (research/71's sources), INFERRED.
+Tags: VERIFIED (measured here), DOCUMENTED (the apps' own help pages), INFERRED.
 
 ## 1. The moment, from the user's side
 
 - **Who:** all three. The heavy multi-agent developer has three tasks reporting at once and wants
   to answer the second one, not the latest; the consumer-AI user knows swipe-to-reply from WeChat,
-  iMessage and WhatsApp (DOCUMENTED, research/71 §4); the fresh user has never heard of a task and
+  iMessage and WhatsApp (DOCUMENTED, Apple's Messages help); the fresh user has never heard of a task and
   only sees bubbles.
 - **Before:** "Which one will it think I mean?" They retype context ("关于刚才 TTL 那个…") or give
   up and wait for one thing to finish before raising the next.
@@ -29,7 +28,7 @@ Three places: the quote in the composer while writing, the quote on the sent bub
 back. It has to say, without a label: (a) this answers *that* message, (b) whose words those were,
 (c) tap to go back to it. And it must not say: a forwarded message, an attachment, a draft still
 being edited, a link preview, a pinned note, or a new thread or branch (a reply never forks
-anything, research/71 §5).
+anything).
 
 ## 3. Candidates
 
@@ -114,7 +113,7 @@ own words, never its imprint).
 
 Motion (tokens in `design/ui.md`): swipe right with the drawn mark easing in (opacity and scale 0.6
 → 1 with the drag), settling with a spring and a light haptic at the arming point (56pt,
-research/71's Lorca values); the swiped bubble springs home (`--t-back` 320 ms, `--spring`); the
+which matches iMessage and WhatsApp by feel); the swiped bubble springs home (`--t-back` 320 ms, `--spring`); the
 imprint rises into the composer (`--t-med`, spring); a sent imprint is pressed in (from 5pt above
 with a small raised shadow to sunken, `--t-press-in` 260 ms); tap → scroll the original to the
 centre and deepen its own tint once (1.4 s, the same "found you" as a decision's flash, never a

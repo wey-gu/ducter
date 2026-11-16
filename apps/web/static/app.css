@@ -9978,6 +9978,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .set-page.pushed .src-card .signin-wait,
 .set-page.pushed .signin-card {
   text-align: start;
+}
 /* D276: 设置 › 聊天软件 / Settings › Chat apps (channels.tsx). Tokens only. */
 .chats-art {
   flex: none;

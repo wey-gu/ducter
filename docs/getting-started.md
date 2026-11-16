@@ -78,7 +78,7 @@ printed and an edit the lines it changed. A step that went wrong says so in word
 with the time it has been at it; the square **Pause** button by **Send** stops it there (on a
 keyboard, press Esc twice). Write in the box to tell it something while it works: it reads your
 words at its next step. To have it read them only once it's done, choose **After this** (or press
-⌥↩); they wait as **Queued**. **Cancel task** is in the **⋯** at the top. Scrolled up while it
+Option-Return); they wait as **Queued**. **Cancel task** is in the **⋯** at the top. Scrolled up while it
 works? **Jump to latest** brings you back.
 
 To work on it by hand, open the task on the Mac and choose **Open** at its top right: **Show in

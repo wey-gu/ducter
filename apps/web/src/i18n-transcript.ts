@@ -58,7 +58,7 @@ export const transcriptWords: { zh: Record<string, string>; en: Record<string, s
     "plan.progress": "%d/%d 完成",
     "composer.steer.hint": "它会在下一步读到",
     "composer.after": "做完再说",
-    "composer.queue.hint": "⌥↩ 做完再说",
+    "composer.queue.hint": "⌥ 回车：做完再说",
     "task.more": "更多",
   },
   en: {
@@ -118,7 +118,7 @@ export const transcriptWords: { zh: Record<string, string>; en: Record<string, s
     "plan.progress": "%d of %d done",
     "composer.steer.hint": "It reads this at its next step",
     "composer.after": "After this",
-    "composer.queue.hint": "⌥↩ after this",
+    "composer.queue.hint": "⌥ Return: after this",
     "task.more": "More",
   },
 };

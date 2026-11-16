@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.0.58
+
+<!-- whats-new
+zh: 打开的任务更安静：一串步骤合成一行，出错说人话
+en: An opened task reads calm: steps fold to a line, errors in words
+zh: 服务器可以只在 Tailscale 里，不用公网和域名
+en: A server can live in Tailscale alone, no domain needed
+-->
+
+**An opened task**
+- One centered reading column; the agent's words at a calmer size, Chinese and English spaced.
+- Each run of steps is one line in words ("看了 9 个文件，跑了 2 条命令", "用了 GitHub 14 次"),
+  opening to the list. A failure says what went wrong ("GitHub 找不到这个文件（404）"); subagents,
+  thinking and the plan each get their own line. A finished turn folds under how long it worked.
+- What it is doing now is one line at the end with its clock. Stop sits beside Send; 取消任务 moved
+  to the ⋯ menu.
+- Sending while it works reaches it at its next step; 做完再说 (Option-Return on the Mac) waits until it's done.
+- Its own background work (a long command, a background subagent) keeps it working: no nudges, and
+  the session isn't closed under it. A task can also wait for a time ("look again in 45 minutes").
+
+**Servers**
+- `ducter tailscale`: reach a server inside your tailnet with HTTPS, no public ports or domain.
+  `ducter pair` suggests it when the server is already in a tailnet.
+
+**Everywhere**
+- 设备 · 手头的事 · 设置 are one control in the header; where you are is the raised one.
+
 ## 0.0.57
 
 <!-- whats-new

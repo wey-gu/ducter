@@ -81,24 +81,28 @@ The key is kept only in Ducter's own data folder, and is never shown again.
 - **Where your mail goes.** Through oo or Hosted by OOMOL, your mail and sign-ins pass through
   OOMOL's servers. What your partner reads is shown to your AI account to understand it; no one
   else gets it.
-- **Stop using …** at the foot of a card takes the accounts away from Ducter, after you confirm
+- **Stop using …** on the last line of a group takes the accounts away from Ducter, after you confirm
   it in place. Through oo, that doesn't sign you out of oo. What it noted stays in **What it
   remembers**, where you can forget it.
 
-## The card for each place
+## Each place, one group
 
-Each place your accounts come from (oo, OOMOL, your own OpenConnector, another service) has one
-card: its mailbox, its name and one line that says how it is (**Keeping an eye out**, **Paused**,
-**Reads only when you ask**, or what went wrong and how to fix it). Under it, a
-square for each app it can read. Tap one to see what it reads, what it always asks you first,
-when it last looked, and two choices:
+Under **What it can read**, each place your accounts come from (oo, OOMOL, your own
+OpenConnector, another service) is one group. Its first row is the place: a small mailbox, its
+name and one line that says how it is (**Keeping an eye out**, **Paused**, **Reads only when you
+ask**, or what went wrong and how to fix it). Then one row for each app and account it can read,
+saying whether Ducter reads it (**Watching**, **Only when you ask**, **Not read**), with a switch:
 
-- **Watch on its own**: on, Ducter looks at this app by itself (once you said yes, below). For
-  Discord and Slack it looks only at @-mentions and direct messages.
-- **Don't let Ducter read this one**: nothing reads that account, not even when you ask.
+- **Watch on its own** (the switch): on, Ducter looks at this app by itself (once you said yes,
+  below). For Discord and Slack it looks only at @-mentions and direct messages.
 
-**⋯** beside the line about where your mail passes shows **What it read** today, one line per
-look (how many, and what it looked at; never what the mail said).
+Tap a row to see what it reads, what it always asks you first, when it last looked, and **Don't
+let Ducter read this one**: nothing reads that account, not even when you ask.
+
+The group's last line says where your mail passes, with **What it read** (today, one line per
+look: how many, and what it looked at; never what the mail said) and **Stop using …**, which asks
+before it does anything. **Connect another account service** at the end of the groups adds
+another place.
 
 ## When it notices something
 
@@ -108,7 +112,7 @@ first time, it asks whether to look through the last two weeks for anything that
 things, with **Up to 3 a day** already chosen. If you don't answer, that's what it does; the
 first morning message shows the same choice under it, so you can change it there.
 
-The same choice sits above the cards, and under **Notifications**:
+The same choice is the first section of **Accounts**, and under **Notifications**:
 
 - **Only urgent**: only what costs you something if it waits until tomorrow: a flight or train
   in the next day or so, maintenance or an outage on your production systems, money that changes

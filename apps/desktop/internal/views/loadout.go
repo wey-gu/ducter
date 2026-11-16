@@ -368,9 +368,7 @@ func (a *App) tray(c *ui.Context) {
 	}
 	b := a.brain()
 	ui.Column(c.Key("tray")).Gap(t.S2).Children(func() {
-		ui.Row(c).Padding(0, t.S1, t.S1, t.S1).Children(func() {
-			a.heading(c, a.L.T("loadout.tray", a.homeName()), t.XL)
-		})
+		a.sectionHead(c, a.L.T("loadout.tray", a.homeName()), "") // D289: a section header like the others
 		ui.Row(c.Key("tray-bed")).Gap(t.S2).Wrap().Justify(ui.SpaceAround).Padding(t.S4, t.S4).Radius(t.RadiusXL).
 			LinearGradient(ui.LinearGradient{From: t.Sunken, To: t.SurfaceSunken, Angle: 180}).
 			InsetShadow(0, 3, 0, 0, t.Surface.Alpha(0.75)).Shadow(0, 6, 0, 0, t.Line2).Role(ui.RoleGroup).Label(a.L.T("loadout.tray", a.homeName())).

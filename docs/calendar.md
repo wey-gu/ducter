@@ -51,7 +51,7 @@ partner offers to reply to them instead.
 
 ## Which calendars it reads
 
-In **Settings › Accounts**, tap the **Calendar** tile of an account. **Calendars it reads** lists
+In **Settings › Accounts**, tap the **Calendar** row of an account. **Calendars it reads** lists
 every calendar in that account. At first it reads the ones you show in Google Calendar yourself;
 switch any of them on or off here. Holiday and birthday calendars only add the day's name, never
 busy time.

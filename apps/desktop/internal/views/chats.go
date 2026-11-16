@@ -37,7 +37,8 @@ type chatsState struct {
 	bad        map[string]string // the last connect's refusal: token | network
 	code       map[string]protocol.ServerFrame
 	copied     bool
-	manifest   bool // the manifest's View is open
+	manifest   bool   // the manifest's View is open
+	forgetting string // D289: the app whose Disconnect asks in place
 }
 
 var chatNames = map[string]string{"telegram": "Telegram", "slack": "Slack"}
@@ -79,7 +80,7 @@ func (a *App) chatsPanel(c *ui.Context) {
 		}
 	}
 	a.imessageGroup(c)
-	ui.Text(c, a.L.T("chats.goes")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Padding(0, t.S1)
+	a.paperNote(c, a.L.T("chats.goes"))
 }
 
 func (a *App) chatState(v protocol.ChannelView) (string, sideTone) {
@@ -282,9 +283,21 @@ func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 				}
 			})
 		}
-		a.chatFoot(c, "end:"+v.Kind, a.L.T(who), func() {
-			if a.dangerText(c, "chat-forget:"+v.Kind, a.L.T("chats.forget", name), name) {
+		// D289: a destructive action is quiet until hovered, and asks in place.
+		if a.chats.forgetting == v.Kind {
+			keep, forget := a.confirmRow(c, "chat-forget:"+v.Kind, a.L.T("chats.forget.ask", name), a.L.T("card.stop.keep"), a.L.T("chats.forget", name), name)
+			if keep {
+				a.chats.forgetting = ""
+			}
+			if forget {
+				a.chats.forgetting = ""
 				a.send(protocol.ChannelOpReq{T: "channel_forget", Kind: v.Kind})
+			}
+			return
+		}
+		a.chatFoot(c, "end:"+v.Kind, a.L.T(who), func() {
+			if a.quietDanger(c, "chat-forget:"+v.Kind, a.L.T("chats.forget", name), name) {
+				a.chats.forgetting = v.Kind
 			}
 		})
 	})

@@ -107,7 +107,7 @@ func TestPhoneFlow(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "connection_signin", SignIn: &protocol.SignInView{URL: protocol.TuwaMCP, Name: "Tuwa", State: "done", ID: "c2"}})
 	app.Receive(phoneConnFrame(false))
 	tt.Frame()
-	if !tt.HasText("打电话 · Tuwa") || !tt.HasText("能打电话了") {
+	if !tt.HasText("Tuwa") || !tt.HasText("能打电话了") || !tt.HasText("今天打了 1 通，花了 $1.60") {
 		t.Fatalf("the phone card: %q", tt.Texts())
 	}
 	if err := tt.Click("$20"); err != nil {

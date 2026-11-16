@@ -73,12 +73,14 @@ func (a *App) autofillPanel(c *ui.Context) {
 				a.afForm(c, "signin", &x)
 				continue
 			}
-			a.afRow(c, "signin:"+x.ID, x.Label, x.Username+" · "+a.afUsed(x.UsedAt), "••••••", func() { a.afEdit("signin", &x) })
+			a.afRow(c, "signin:"+x.ID, x.Label, x.Username, a.afUsed(x.UsedAt), func() { a.afEdit("signin", &x) }) // D291
 		}
 		if s.editing == "signin:new" {
 			a.afForm(c, "signin", nil)
 		} else {
-			a.afRow(c, "signin:add", "+  "+a.L.T("af.signin.add"), a.L.T("af.signin.why"), "", func() { a.afEdit("signin", nil) })
+			if a.addRow(c, "signin", a.L.T("af.signin.add"), a.L.T("af.signin.why")) { // D289: D273's add row
+				a.afEdit("signin", nil)
+			}
 		}
 	})
 	a.group(c, "af-cards", a.L.T("af.cards"), "", func() {
@@ -87,12 +89,14 @@ func (a *App) autofillPanel(c *ui.Context) {
 				a.afForm(c, "card", &x)
 				continue
 			}
-			a.afRow(c, "card:"+x.ID, x.Label, x.Name+" · "+x.Exp+" · "+a.afUsed(x.UsedAt), "", func() { a.afEdit("card", &x) })
+			a.afRow(c, "card:"+x.ID, x.Label, a.L.T("af.card.line", x.Name, x.Exp), a.afUsed(x.UsedAt), func() { a.afEdit("card", &x) }) // D291
 		}
 		if s.editing == "card:new" {
 			a.afForm(c, "card", nil)
 		} else {
-			a.afRow(c, "card:add", "+  "+a.L.T("af.card.add"), a.L.T("af.card.why"), "", func() { a.afEdit("card", nil) })
+			if a.addRow(c, "card", a.L.T("af.card.add"), a.L.T("af.card.why")) {
+				a.afEdit("card", nil)
+			}
 		}
 	})
 	a.group(c, "af-details", a.L.T("af.details"), a.L.T("af.d.note"), func() {
@@ -109,12 +113,12 @@ func (a *App) autofillPanel(c *ui.Context) {
 			n++
 			if d.Value != "" {
 				if read != "" {
-					read += " · "
+					read += a.L.T("acct.sep") // D291: a list, said as one
 				}
 				read += d.Value
 			} else {
 				if kept != "" {
-					kept += " · "
+					kept += a.L.T("acct.sep")
 				}
 				kept += a.L.T("af.d." + d.Key)
 			}
@@ -122,6 +126,9 @@ func (a *App) autofillPanel(c *ui.Context) {
 		title, help := a.L.T("af.d.add"), a.L.T("af.d.why")
 		if n > 0 {
 			title, help = read, kept
+			if kept != "" {
+				help = a.L.T("af.d.also", kept)
+			}
 			if title == "" {
 				title = a.L.T("af.d.kept", n)
 			}
@@ -135,24 +142,27 @@ func (a *App) autofillPanel(c *ui.Context) {
 		})
 	})
 	a.keysGroup(c, f)
-	ui.Column(c.Key("af-uses")).Gap(t.S2).Children(func() {
-		a.heading(c, a.L.T("af.uses"), t.XL)
-		if len(f.Uses) == 0 {
-			ui.Text(c, a.L.T("af.uses.none")).FontSize(t.SM).TextColor(t.InkMuted)
-			return
-		}
-		for i, u := range f.Uses {
-			if i >= 30 {
-				break
-			}
-			a.afUse(c, i, u)
-		}
-	})
+	// D289: the uses are a section like the others; none yet is its header's note.
+	if len(f.Uses) == 0 {
+		a.sectionHead(c, a.L.T("af.uses"), a.L.T("af.uses.none"))
+	} else {
+		a.group(c, "af-uses", a.L.T("af.uses"), "", func() {
+			a.sep(c)
+			ui.Column(c.Key("af-uses")).Gap(t.S2).Padding(t.S4, t.S5).Children(func() {
+				for i, u := range f.Uses {
+					if i >= 30 {
+						break
+					}
+					a.afUse(c, i, u)
+				}
+			})
+		})
+	}
 	where := "af.kept.file"
 	if f.KeptIn == "keychain" {
 		where = "af.kept.keychain"
 	}
-	ui.Text(c, a.L.T(where, a.homeName())).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+	a.paperNote(c, a.L.T(where, a.homeName()))
 }
 
 func (a *App) afUsed(at string) string {
@@ -349,16 +359,17 @@ func (a *App) afUse(c *ui.Context, i int, u protocol.SavedUse) {
 	default:
 		what = a.L.T("af.use.filled", u.Label)
 	}
-	if u.Site != "" {
-		what += " · " + u.Site
-	}
 	ink := t.Ink
 	if u.What == "declined" || u.What == "refused" {
 		ink = t.InkMuted
 	}
-	ui.Row(c.Key("af-use:"+strconv.Itoa(i))).Gap(t.S3).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
+	// D289: a line of the group, not a card in it; D291: the site its own element.
+	ui.Row(c.Key("af-use:"+strconv.Itoa(i))).Gap(t.S3).Padding(t.S1, 0).AlignItems(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 			ui.Text(c, what).FontSize(t.SM).FontWeight(700).TextColor(ink)
+			if u.Site != "" {
+				ui.Text(c, u.Site).FontSize(t.XS).TextColor(t.InkMuted)
+			}
 			if u.Task != "" {
 				ui.Text(c, a.L.T("af.use.task", u.Task)).FontSize(t.XS).TextColor(t.InkMuted)
 			}

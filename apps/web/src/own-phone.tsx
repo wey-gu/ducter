@@ -11,7 +11,9 @@ import type { OwnPhoneView } from "@ducter/protocol";
 import { prettyNumber } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn, DangerButton, Seg, Toggle } from "./controls.tsx";
+import { Fragment } from "preact";
+import { Btn, DangerButton, OpenRow, Seg, Toggle } from "./controls.tsx";
+import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Tag, Tile } from "./set-grid.tsx";
 import { clock } from "./format.ts";
 import { CallArt } from "./phone.tsx";
 
@@ -286,9 +288,10 @@ function doneLine(step: Step, v: OwnPhoneView): string {
     case "phone":
       return t("own.phone.ok", v.phone?.model ?? "Android", v.phone?.android ?? "");
     case "sim":
-      return [v.sim?.carrier, v.number ? prettyNumber(v.number) : ""].filter(Boolean).join(" · ");
+      // D291: a phrase, never facts joined with " · ".
+      return v.sim?.carrier && v.number ? t("own.sim.line", v.sim.carrier, prettyNumber(v.number)) : v.number ? prettyNumber(v.number) : (v.sim?.carrier ?? "");
     case "cable":
-      return v.audio.input === v.audio.output ? (v.audio.input ?? "") : `${v.audio.input} · ${v.audio.output}`;
+      return v.audio.input === v.audio.output ? (v.audio.input ?? "") : t("own.cable.both", v.audio.input, v.audio.output);
     case "voice":
       return t("own.voice.set", t(`own.voice.${v.voice.engine}`), v.voice.model, money(v.voice.perMinUsd));
     case "test":
@@ -300,22 +303,20 @@ function doneLine(step: Step, v: OwnPhoneView): string {
 export const dialers = () => (A.reach?.clients ?? []).filter((c) => c.connected && c.handset?.dial);
 
 /**
- * D278: the card on a home that can't be the computer beside the phone (a server): no steps, never
- * "plug it in here". What works today, which phone dials, and what live calls need, said plainly.
+ * D278, D289: the group on a home that can't be the computer beside the phone (a server): no steps,
+ * never "plug it in here". What works today (you call) in its first row, which phone dials in the
+ * next, and the last line: what speaking on your own number needs, with 即将推出 as a quiet tag.
  */
 function AwayCard({ v }: { v: OwnPhoneView }) {
   const d = dialers()[0];
   return (
-    <section id="acct-own-phone" class="src-card phone-card own-card own-away" aria-label={t("own.title")}>
-      <div class="src-who">
-        <CallArt off size={96} />
-        <h3>{t("own.title")}</h3>
-        <div class="small sub">{t("own.away.lede")}</div>
-      </div>
-      <div class="small own-away-dial">{d ? t("own.away.dial", d.name.replace(/\s*·\s*Ducter$/, "")) : t("own.away.nodial")}</div>
-      <div class="small sub">{t("own.away.why", v.where)}</div>
-      <div class="small sub center">{t("own.away.soon")}</div>
-    </section>
+    <Group id="acct-own-phone" label={t("own.title")}>
+      <GHead tile={<Tile faded><CallArt off size={40} /></Tile>} name={t("own.title")} line={t("own.away.lede")} />
+      <GRow title={t("own.away.how")} line={d ? t("own.away.dial", d.name.replace(/\s*·\s*Ducter$/, "")) : t("own.away.nodial")} />
+      <GFoot note={t("own.away.why", v.where)}>
+        <Tag text={t("own.away.soon")} />
+      </GFoot>
+    </Group>
   );
 }
 
@@ -328,58 +329,37 @@ export function OwnPhoneCard() {
   const { done, next } = ownSteps(v);
   const steps: Step[] = ["phone", "sim", "cable", "voice", "test"];
   const shown = open ?? next;
+  // D289: one group: how it stands, a row per step (its mark in the tile column, the open one's body
+  // on the text column), the switch once ready, and the last line with the quiet forget.
   return (
-    <section id="acct-own-phone" class="src-card phone-card own-card" aria-label={t("own.title")}>
-      <div class="src-who">
-        <CallArt off={!v.ready} size={96} />
-        <h3>{t("own.title")}</h3>
-        <div class="small sub">{v.ready ? t("own.ready") : t("own.lede")}</div>
-      </div>
+    <Group id="acct-own-phone" label={t("own.title")}>
+      <GHead tile={<Tile faded={!v.ready}><CallArt off={!v.ready} size={40} /></Tile>} name={t("own.title")} line={v.ready ? t("own.ready") : t("own.lede")} tone={v.ready ? "done" : undefined} />
       {v.live && (
-        <div class="own-live" role="status">
-          <span class="dot" aria-hidden="true" />
-          <span class="small grow">{t("own.live", v.live.name)}</span>
+        <GRow tile={<Tile><span class="own-live-dot" /></Tile>} title={t("own.live", v.live.name)}>
           <Btn kind="secondary" size="sm" label={t("call.hangup")} about={v.live.name} onClick={() => A.callCancel(v.live!.callId)} />
-        </div>
+        </GRow>
       )}
-      {v.busy && !v.live && <div class="small sub own-busy">{t("own.busy")}</div>}
-      <ol class="own-steps">
-        {steps.map((s, i) => {
-          const isOpen = shown === s;
-          const state = done[s] ? "done" : s === next ? "next" : "later";
-          return (
-            <li key={s} class={`own-step ${state}${isOpen ? " open" : ""}`}>
-              <button class="own-step-top" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? (next === s ? s : undefined) : s)}>
-                <Mark state={state} n={i + 1} />
-                <span class="grow">
-                  <span class="t">{t(`own.step.${s}`)}</span>
-                  {done[s] && !isOpen && <span class="s">{doneLine(s, v)}</span>}
-                </span>
-              </button>
-              {isOpen && body(s, v)}
-            </li>
-          );
-        })}
-      </ol>
-      {v.ready && <Toggle label={t("own.prefer")} help={t("own.prefer.help")} checked={v.prefer} onChange={(on) => A.ownPhoneAct({ action: "prefer", on })} />}
-      {v.ready && <div class="small sub center">{t("own.today", v.today, v.perDay)}</div>}
-      <div class="small sub center">{t("own.where", v.where)}</div>
-      <div class="small sub center">{t("own.rails")}</div>
-      {(v.phone || v.voice.key) && (
-        <div class="src-foot">
-          {!forgetting ? (
-            <DangerButton label={t("own.forget")} onClick={() => setForgetting(true)} />
-          ) : (
-            <div class="stop-ask" role="group">
-              <div class="small">{t("own.forget.ask")}</div>
-              <div class="acts">
-                <Btn kind="text" size="sm" label={t("card.stop.keep")} onClick={() => setForgetting(false)} />
-                <DangerButton label={t("own.forget.go")} onClick={() => (setForgetting(false), A.ownPhoneAct({ action: "forget" }))} />
-              </div>
-            </div>
-          )}
-        </div>
+      {v.busy && !v.live && (
+        <GBlock>
+          <div class="small sub">{t("own.busy")}</div>
+        </GBlock>
       )}
-    </section>
+      {steps.map((s, i) => {
+        const isOpen = shown === s;
+        const state = done[s] ? "done" : s === next ? "next" : "later";
+        return (
+          <Fragment key={s}>
+            <OpenRow tile={<Tile><Mark state={state} n={i + 1} /></Tile>} title={t(`own.step.${s}`)} line={done[s] && !isOpen ? doneLine(s, v) : undefined} open={isOpen} onClick={() => setOpen(isOpen ? (next === s ? s : undefined) : s)} />
+            {isOpen && <GBlock>{body(s, v)}</GBlock>}
+          </Fragment>
+        );
+      })}
+      {v.ready && <Toggle label={t("own.prefer")} help={`${t("own.prefer.help")} ${t("own.today", v.today, v.perDay)}`} checked={v.prefer} onChange={(on) => A.ownPhoneAct({ action: "prefer", on })} />}
+      {!forgetting ? (
+        <GFoot note={`${t("own.where", v.where)} ${t("own.rails")}`}>{(v.phone || v.voice.key) && <DangerButton quiet label={t("own.forget")} onClick={() => setForgetting(true)} />}</GFoot>
+      ) : (
+        <GConfirm ask={t("own.forget.ask")} keep={t("card.stop.keep")} go={t("own.forget.go")} onKeep={() => setForgetting(false)} onGo={() => (setForgetting(false), A.ownPhoneAct({ action: "forget" }))} />
+      )}
+    </Group>
   );
 }

@@ -24,6 +24,7 @@ type phoneState struct {
 	connecting bool                 // 连上 Tuwa was tapped; the sign-in frame is on its way
 	stopping   bool                 // 不用 Tuwa 打电话了 asks in place
 	deleting   bool                 // 删除我的声音 asks in place
+	voiceAbout bool                 // D289: 说明 under the voice row is open
 	summary    map[string]bool      // a Go card's provider summary, unfolded
 	open       map[string]bool      // an ended call's result, open in place
 	script     map[string]bool      // its transcript, unfolded
@@ -105,28 +106,23 @@ func (a *App) phoneOfferRow(c *ui.Context) {
 	}
 }
 
-// phoneOffer is 打电话 / Make calls before any calling connection: the
-// handset not yet lit, what it does, the price, and one button.
+// phoneOffer is 打电话 / Make calls before any calling connection (D289:
+// one group like the others): the handset not yet lit in the tile column,
+// what it does and the price, and Connect Tuwa at the right edge.
 func (a *App) phoneOffer(c *ui.Context) {
 	t := a.T
 	p := a.ph()
-	ui.Row(c.Key("phone-offer")).Gap(t.S4).Padding(t.S4, t.S5).Radius(t.RadiusLG).Background(t.Surface).
-		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Center).Wrap().Children(func() {
-		if bmp := theme.Clay("ab_call_later"); bmp != nil {
-			ui.Image(c, bmp).Size(46, 64).Shrink(0).AccessHidden(true)
-		}
-		ui.Column(c).Grow(1).Basis(260).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, a.L.T("phone.offer.title")).FontSize(t.MD).FontWeight(800)
-			a.note(c, a.L.T("phone.offer.lede"))
+	a.group(c, "phone-offer", "", "", func() {
+		a.headRow(c, "phone-offer", a.clayTile(c, "ab_call_later", false), a.L.T("phone.offer.title"), a.L.T("phone.offer.lede"), sideMuted, func() {
+			label := a.L.T("phone.offer.go")
+			if p.connecting {
+				label = a.L.T("phone.offer.going")
+			}
+			if a.buttonFor(c, label, a.L.T("phone.offer.title"), btnPrimary, t.ControlMD, t.Surface) && !p.connecting {
+				p.connecting = true
+				a.send(protocol.ConnectionAdd{T: "connection_add", URL: protocol.TuwaMCP})
+			}
 		})
-		label := a.L.T("phone.offer.go")
-		if p.connecting {
-			label = a.L.T("phone.offer.going")
-		}
-		if a.buttonFor(c, label, a.L.T("phone.offer.title"), btnPrimary, t.ControlMD, t.Surface) && !p.connecting {
-			p.connecting = true
-			a.send(protocol.ConnectionAdd{T: "connection_add", URL: protocol.TuwaMCP})
-		}
 	})
 }
 
@@ -228,54 +224,47 @@ func (a *App) drainVoice() {
 	}
 }
 
-// phoneCard is the calling connection's card (its own kind, beside the
-// mailboxes): the lit handset, whether it can call, today, the rails, the
-// owner's own voice, and the one destructive at the foot.
+// phoneCard is the calling connection as one raised group (D289; D193,
+// D208): its first row the handset, whether it can call and today's
+// calls; the daily limit as a row with its choice at the right edge; what
+// Ducter turned off on the provider as quiet check lines; the owner's own
+// voice as a row with its switch; and the last line: the rails, 说明 (the
+// consent and deleting the voice) and Disconnect, quiet until confirmed.
 func (a *App) phoneCard(c *ui.Context, cv protocol.ConnectionView) {
 	t := a.T
 	p := a.ph()
 	pv := cv.Phone
 	name := firstNonEmpty(pv.Provider, cv.Name)
-	title := a.L.T("phone.card.title", name)
 	down := sourceDown(cv)
-	card := ui.Column(c.Key("phone:"+cv.ID)).Width(400).MinWidth(0).Grow(1).MaxWidth(520).Radius(t.RadiusLG).Background(t.Surface).
-		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S5).Gap(t.S3).Role(ui.RoleGroup).Label(title)
-	card.Children(func() {
-		ui.Column(c).AlignItems(ui.Center).Gap(t.S1).Children(func() {
-			art := "ab_call"
-			if down {
-				art = "ab_call_later"
-			}
-			ui.Row(c).Size(220, 128).Justify(ui.Center).AlignItems(ui.End).AccessHidden(true).Draw(func(pt *ui.Painter, r ui.Rect) {
-				pt.FillPath(oval(r.X+r.W/2, r.Y+r.H-12, 84, 12), t.SurfaceSunken)
-			}).Children(func() {
-				if bmp := theme.Clay(art); bmp != nil {
-					ui.Image(c, bmp).Size(80, 110).Margin(0, 0, 8, 0)
-				}
-			})
-			ui.Text(c, title).FontSize(t.XL).FontWeight(800).SingleLine()
-			switch {
-			case cv.State == "unauthorized":
-				ui.Text(c, a.L.T("phone.card.signed_out", name)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink)
+	a.group(c, "phone:"+cv.ID, "", "", func() {
+		art := "ab_call"
+		if down {
+			art = "ab_call_later"
+		}
+		today := a.L.T("phone.card.today.none") // D208: none / one / many
+		if pv.Calls == 1 {
+			today = a.L.T("phone.card.today.one", money(pv.SpentTodayUSD))
+		} else if pv.Calls > 1 {
+			today = a.L.T("phone.card.today", pv.Calls, money(pv.SpentTodayUSD))
+		}
+		// D291: the state word in its ink; today's calls their own muted element at the right edge.
+		line, tone := a.L.T("phone.card.ready"), sideDone
+		control := func() {
+			ui.Text(c, today).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+		}
+		switch {
+		case cv.State == "unauthorized":
+			line, tone = a.L.T("phone.card.signed_out", name), sideFailed
+			control = func() {
 				if a.buttonFor(c, a.L.T("phone.signin.reauth"), name, btnSecondary, t.ControlSM, t.Surface) {
 					a.send(protocol.ConnectionReauth{T: "connection_reauth", ID: cv.ID})
 				}
-			case down:
-				ui.Text(c, a.L.T("phone.card.down", name)).FontSize(t.SM).TextColor(t.Failed.Ink)
-			default:
-				ui.Text(c, a.L.T("phone.card.ready")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 			}
-			today := a.L.T("phone.card.today.none") // D208: none / one / many
-			if pv.Calls == 1 {
-				today = a.L.T("phone.card.today.one", money(pv.SpentTodayUSD))
-			} else if pv.Calls > 1 {
-				today = a.L.T("phone.card.today", pv.Calls, money(pv.SpentTodayUSD))
-			}
-			ui.Text(c, today).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum")
-		})
-		a.note(c, a.L.T("phone.card.rails"))
-		ui.Row(c.Key("phone-cap")).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
-			ui.Text(c, a.L.T("phone.card.cap")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		case down:
+			line, tone = a.L.T("phone.card.down", name), sideFailed
+		}
+		a.headRow(c, "phone:"+cv.ID, a.clayTile(c, art, down), name, line, tone, control) // the section says 打电话; the group says who
+		a.tileRow(c, "phone-cap", nil, a.L.T("phone.card.cap"), a.L.T("phone.card.cap.help"), func() {
 			labels := make([]string, len(phoneCaps))
 			sel := -1
 			for i, v := range phoneCaps {
@@ -289,84 +278,99 @@ func (a *App) phoneCard(c *ui.Context, cv protocol.ConnectionView) {
 				a.send(protocol.PhoneCap{T: "phone_cap", USD: phoneCaps[i]})
 			}
 		})
-		ui.Text(c, a.L.T("phone.card.cap.help")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
-		// D208: what Ducter turned off on the provider, one plain line each (it was one cryptic line).
-		if r := pv.Rails; r != nil && (r.Sampling || r.Shared) {
-			ui.Box(c).Height(1).Background(t.LineSoft)
-			ui.Column(c.Key("phone-off")).Gap(t.S2).Children(func() {
-				ui.Text(c, a.L.T("phone.card.off")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
-				for _, k := range []struct {
-					on  bool
-					key string
-				}{{r.Sampling, "phone.card.sampling"}, {r.Shared, "phone.card.shared"}} {
-					if !k.on {
-						continue
-					}
-					k := k
-					ui.Row(c.Key(k.key)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-						a.glyph(c, 14, drawCheck(t.Done.Ink))
-						ui.Text(c, a.L.T(k.key)).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0)
-					})
-				}
-				if pv.DoNotCall > 0 {
-					ui.Row(c.Key("dnc")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-						a.glyph(c, 14, drawCheck(t.Done.Ink))
-						ui.Text(c, a.L.T("phone.card.dnc", pv.DoNotCall)).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0)
-					})
-				}
-			})
-		} else if pv.DoNotCall > 0 {
-			ui.Text(c, a.L.T("phone.card.dnc", pv.DoNotCall)).FontSize(t.XS).TextColor(t.InkMuted)
+		// D208: what Ducter turned off on the provider, one quiet check line each.
+		var off []string
+		if r := pv.Rails; r != nil {
+			if r.Sampling {
+				off = append(off, a.L.T("phone.card.sampling"))
+			}
+			if r.Shared {
+				off = append(off, a.L.T("phone.card.shared"))
+			}
 		}
-		ui.Box(c).Height(1).Background(t.LineSoft)
-		a.phoneVoice(c, cv)
-		ui.Box(c).Height(1).Background(t.LineSoft)
-		if !p.stopping {
-			ui.Row(c).Children(func() {
-				if a.dangerText(c, "phone-stop:"+cv.ID, a.L.T("phone.stop"), "") {
-					p.stopping = true
+		if pv.DoNotCall > 0 {
+			off = append(off, a.L.T("phone.card.dnc", pv.DoNotCall))
+		}
+		if len(off) > 0 {
+			a.sep(c)
+			ui.Column(c.Key("phone-off")).Gap(t.S2).Padding(t.S4, t.S5).Children(func() {
+				ui.Row(c).Gap(t.S3).Children(func() {
+					ui.Box(c).Width(40).Shrink(0)
+					ui.Text(c, a.L.T("phone.card.off")).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+				})
+				for i, s := range off {
+					ui.Row(c.Key("phone-off:" + strconv.Itoa(i))).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+						a.tileCol(c, func() { a.glyph(c, 14, drawCheck(t.Done.Ink)) })
+						ui.Text(c, s).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).Grow(1).MinWidth(0)
+					})
 				}
 			})
+		}
+		a.phoneVoice(c, cv)
+		if p.voiceAbout {
+			a.textBlock(c, "phone-voice-about", func() {
+				a.note(c, a.L.T("phone.voice.consent"))
+				if v := pv.Voice; v != nil && v.Enrolled && !p.deleting {
+					ui.Row(c).Children(func() {
+						if a.quietDanger(c, "phone-voice-del", a.L.T("phone.voice.delete"), "") {
+							p.deleting = true
+						}
+					})
+				}
+			})
+			if p.deleting {
+				keep, del := a.confirmRow(c, "phone-voice-del", a.L.T("phone.voice.delete.ask"), a.L.T("phone.voice.keep"), a.L.T("phone.voice.delete"), a.L.T("phone.voice.title"))
+				if keep {
+					p.deleting = false
+				}
+				if del {
+					p.deleting = false
+					a.send(protocol.PhoneVoice{T: "phone_voice", Action: "delete"})
+				}
+			}
+		}
+		if p.stopping {
+			keep, stop := a.confirmRow(c, "phone-stop:"+cv.ID, a.L.T("phone.stop.ask"), a.L.T("phone.voice.keep"), a.L.T("phone.stop.go"), name)
+			if keep {
+				p.stopping = false
+			}
+			if stop {
+				p.stopping = false
+				a.send(protocol.ConnectionRemove{T: "connection_remove", ID: cv.ID})
+			}
 			return
 		}
-		ui.Column(c.Key("phone-stop-ask")).Gap(t.S2).Children(func() {
-			ui.Text(c, a.L.T("phone.stop.ask")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
-			ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
-				if a.buttonFor(c, a.L.T("phone.voice.keep"), name, btnText, t.ControlSM, t.Surface) {
-					p.stopping = false
-				}
-				if a.dangerText(c, "phone-stop-go:"+cv.ID, a.L.T("phone.stop.go"), name) {
-					p.stopping = false
-					a.send(protocol.ConnectionRemove{T: "connection_remove", ID: cv.ID})
-				}
-			})
+		a.footRow(c, "phone:"+cv.ID, a.L.T("phone.card.rails"), func() {
+			if a.quietButton(c, "phone-voice-about", a.L.T("phone.voice.about"), a.L.T("phone.voice.title"), false, map[bool]int{true: 2, false: 1}[p.voiceAbout]) {
+				p.voiceAbout = !p.voiceAbout
+			}
+			if a.quietDanger(c, "phone-stop:"+cv.ID, a.L.T("phone.stop"), "") {
+				p.stopping = true
+			}
 		})
 	})
 }
 
-// phoneVoice is 你的声音 / Your voice: recorded on the provider's own page
-// (the owner agrees and reads aloud there; Ducter never touches audio), then
-// on or off here, and deleted with a confirmation in place.
+// phoneVoice is 你的声音 / Your voice as one row (D289): recorded on the
+// provider's own page (the owner agrees and reads aloud there; Ducter
+// never touches audio), then on or off here with its switch.
 func (a *App) phoneVoice(c *ui.Context, cv protocol.ConnectionView) {
 	t := a.T
-	p := a.ph()
 	v := cv.Phone.Voice
-	ui.Column(c.Key("phone-voice")).Gap(t.S2).Children(func() {
-		ui.Text(c, a.L.T("phone.voice.title")).FontSize(t.MD).FontWeight(800)
-		if v == nil || !v.Enrolled {
-			a.note(c, a.L.T("phone.voice.none"))
-			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
-				if a.quietLink(c, "phone-record", a.L.T("phone.voice.record"), a.L.T("phone.voice.record")) {
-					a.send(protocol.PhoneVoice{T: "phone_voice", Action: "record"})
-				}
-				if a.buttonFor(c, a.L.T("phone.voice.recorded"), a.L.T("phone.voice.title"), btnText, t.ControlSM, t.Surface) {
-					a.send(protocol.PhoneVoice{T: "phone_voice", Action: "refresh"})
-				}
-			})
-			ui.Text(c, a.L.T("phone.voice.consent")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
-			return
-		}
-		if on, changed := a.switchRow(c, "phone-voice-on", a.L.T("phone.voice.use"), a.L.T("phone.voice.use.help"), v.On); changed {
+	if v == nil || !v.Enrolled {
+		a.tileRow(c, "phone-voice", nil, a.L.T("phone.voice.title"), a.L.T("phone.voice.none"), func() {
+			if a.quietButton(c, "phone-voice-recorded", a.L.T("phone.voice.recorded"), a.L.T("phone.voice.title"), false, 0) {
+				a.send(protocol.PhoneVoice{T: "phone_voice", Action: "refresh"})
+			}
+			if a.buttonFor(c, a.L.T("phone.voice.record"), a.L.T("phone.voice.title"), btnSecondary, t.ControlSM, t.Surface) {
+				a.send(protocol.PhoneVoice{T: "phone_voice", Action: "record"})
+			}
+		})
+		return
+	}
+	a.tileRow(c, "phone-voice", nil, a.L.T("phone.voice.use"), a.L.T("phone.voice.use.help"), func() {
+		on := v.On
+		if a.switchControl(c, "phone-voice-on", a.L.T("phone.voice.use"), &on) {
 			v.On = on
 			action := "off"
 			if on {
@@ -374,27 +378,6 @@ func (a *App) phoneVoice(c *ui.Context, cv protocol.ConnectionView) {
 			}
 			a.send(protocol.PhoneVoice{T: "phone_voice", Action: action})
 		}
-		ui.Text(c, a.L.T("phone.voice.consent")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
-		if !p.deleting {
-			ui.Row(c).Children(func() {
-				if a.dangerText(c, "phone-voice-del", a.L.T("phone.voice.delete"), "") {
-					p.deleting = true
-				}
-			})
-			return
-		}
-		ui.Column(c.Key("phone-voice-del-ask")).Gap(t.S2).Children(func() {
-			ui.Text(c, a.L.T("phone.voice.delete.ask")).FontSize(t.SM).TextColor(t.InkSoft)
-			ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
-				if a.buttonFor(c, a.L.T("phone.voice.keep"), a.L.T("phone.voice.title"), btnText, t.ControlSM, t.Surface) {
-					p.deleting = false
-				}
-				if a.dangerText(c, "phone-voice-del-go", a.L.T("phone.voice.delete"), a.L.T("phone.voice.title")) {
-					p.deleting = false
-					a.send(protocol.PhoneVoice{T: "phone_voice", Action: "delete"})
-				}
-			})
-		})
 	})
 }
 

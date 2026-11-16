@@ -10,6 +10,7 @@ import { Btn, Chev, DangerButton, Seg, Toggle } from "./controls.tsx";
 import type { DecisionState } from "./store.ts";
 import { DIAL, dialHere, dialOn, dialsHere } from "./handset.tsx";
 import { dialers } from "./own-phone.tsx";
+import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Tile } from "./set-grid.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 export { TUWA_MCP };
@@ -438,18 +439,14 @@ export function CallRow({ c }: { c: CallView }) {
 export function PhoneOffer() {
   const s = A.signIn;
   if (s && (s.state === "waiting" || s.url === TUWA_MCP)) return <SignInPanel s={s} />;
+  // D289: one group like the others: the handset not yet lit, what it does, Connect at the right.
   return (
-    <section id="acct-phone" class="src-card phone-offer" aria-label={t("call.offer.title")}>
-      <div class="src-who">
-        <CallArt off size={96} />
-        <h3>{t("call.offer.title")}</h3>
-        <div class="small sub">{t("call.offer.lede")}</div>
-      </div>
-      <div class="phone-acts">
+    <Group id="acct-phone" label={t("call.offer.title")}>
+      <GHead tile={<Tile><CallArt off size={40} /></Tile>} name={t("call.offer.title")} line={t("call.offer.lede")}>
         <Btn kind="primary" size="sm" label={A.connecting ? t("acct.checking") : t("call.offer.go")} disabled={A.connecting} onClick={() => A.addConnection(TUWA_MCP, "")} />
-      </div>
-      <div class="small sub">{t("call.offer.how")}</div>
-    </section>
+      </GHead>
+      <GFoot note={t("call.offer.how")} />
+    </Group>
   );
 }
 
@@ -504,90 +501,72 @@ export function SignInPanel({ s }: { s: SignInView }) {
   );
 }
 
-/** The phone card: a calling connection, its day, its rails, and your voice. */
+/** The phone card as one raised group (D289; D193, D208): its first row the handset, whether it can
+ *  call and today's calls; the daily limit as a row with its choice; what Ducter turned off on the
+ *  provider as quiet check lines; your voice as a row with its switch; and the last line: the rails,
+ *  说明 (the consent and deleting the voice) and Disconnect, quiet until confirmed. */
 export function PhoneCard({ c }: { c: ConnectionView }) {
   const p = c.phone!;
   const [stopping, setStopping] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [about, setAbout] = useState(false);
   const out = c.state === "unauthorized";
   const v = p.voice;
-  const name = t("call.card.title", p.provider);
+  const today = p.calls === 0 ? t("call.card.today.none") : p.calls === 1 ? t("call.card.today.one", money(p.spentTodayUsd)) : t("call.card.today", p.calls, money(p.spentTodayUsd));
   if (A.signIn?.reconnect && A.signIn.id === c.id && A.signIn.state === "waiting") return <SignInPanel s={A.signIn} />;
+  const off = [p.rails?.sampling && t("call.card.sampling", p.provider), p.rails?.shared && t("call.card.shared", p.provider), p.doNotCall > 0 && t("call.card.dnc", p.doNotCall)].filter(Boolean) as string[];
   return (
-    <section id="acct-phone" class="src-card phone-card" aria-label={name}>
-      <div class="src-who">
-        <CallArt off={out} size={96} />
-        <h3>{name}</h3>
-        <div class={`small ${out ? "warn" : "sub"}`}>{out ? t("call.card.out", p.provider) : t("call.card.ok")}</div>
+    <Group id="acct-phone" label={t("call.card.title", p.provider)}>
+      <GHead tile={<Tile><CallArt off={out} size={40} /></Tile>} name={p.provider} line={out ? t("call.card.out", p.provider) : t("call.card.ok")} tone={out ? "bad" : "done"}>
+        {!out && <span class="g-state">{today}</span>}
         {out && <Btn kind="secondary" size="sm" label={t("call.card.signin")} onClick={() => A.reauth(c.id)} />}
-      </div>
-      <div class="phone-day small">{p.calls === 0 ? t("call.card.today.none") : p.calls === 1 ? t("call.card.today.one", money(p.spentTodayUsd)) : t("call.card.today", p.calls, money(p.spentTodayUsd))}</div>
-      <div class="small sub">{t("call.card.rails")}</div>
-      <div class="phone-cap">
-        <h4>{t("call.card.cap")}</h4>
+      </GHead>
+      <GRow title={t("call.card.cap")} line={t("call.card.cap.help")}>
         <Seg<number> label={t("call.card.cap")} value={[5, 10, 20, 50].includes(p.capUsd) ? p.capUsd : undefined} options={[5, 10, 20, 50].map((n) => ({ v: n, label: `$${n}` }))} onPick={(n) => A.phoneCap(n)} />
-        <div class="small sub">{t("call.card.cap.help")}</div>
-      </div>
-      {p.rails && (p.rails.sampling || p.rails.shared) && (
-        <div class="phone-rails">
-          <h4>{t("call.card.off", p.provider)}</h4>
-          {p.rails.sampling && (
-            <div class="small">
+      </GRow>
+      {off.length > 0 && (
+        <div class="g-checks">
+          <b>{t("call.card.off", p.provider)}</b>
+          {off.map((s) => (
+            <div class="g-check small" key={s}>
               <Check />
-              {t("call.card.sampling", p.provider)}
+              <span>{s}</span>
             </div>
-          )}
-          {p.rails.shared && (
-            <div class="small">
-              <Check />
-              {t("call.card.shared", p.provider)}
-            </div>
-          )}
-          {p.doNotCall > 0 && <div class="small sub">{t("call.card.dnc", p.doNotCall)}</div>}
+          ))}
         </div>
       )}
-      <div class="phone-voice">
-        <h4>{t("call.voice.title")}</h4>
-        {v?.enrolled ? (
-          <>
-            <Toggle label={t("call.voice.use")} help={t("call.voice.use.help")} checked={v.on} onChange={(on) => A.phoneVoice(on ? "on" : "off")} />
-            {!deleting ? (
-              <DangerButton label={t("call.voice.delete")} onClick={() => setDeleting(true)} />
-            ) : (
-              <div class="stop-ask" role="group">
-                <div class="small">{t("call.voice.delete.ask", p.provider)}</div>
-                <div class="acts">
-                  <Btn kind="text" size="sm" label={t("card.stop.keep")} onClick={() => setDeleting(false)} />
-                  <DangerButton label={t("call.voice.delete.go")} onClick={() => (setDeleting(false), A.phoneVoice("delete"))} />
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <div class="small">{t("call.voice.none")}</div>
-            <div class="phone-acts">
-              <Btn kind="secondary" size="sm" chev label={t("call.voice.record", p.provider)} onClick={() => A.phoneVoice("record")} />
-              <Btn kind="text" size="sm" label={t("call.voice.done")} onClick={() => A.phoneVoice("refresh")} />
-            </div>
-          </>
-        )}
-        <div class="small sub">{t("call.voice.consent", p.provider)}</div>
-        {A.voiceAnswer && <div class="small warn">{A.voiceAnswer}</div>}
-      </div>
-      <div class="src-foot">
-        {!stopping ? (
-          <DangerButton label={t("call.card.stop", p.provider)} onClick={() => setStopping(true)} />
-        ) : (
-          <div class="stop-ask" role="group">
-            <div class="small">{t("call.card.stop.ask")}</div>
-            <div class="acts">
-              <Btn kind="text" size="sm" label={t("card.stop.keep")} onClick={() => setStopping(false)} />
-              <DangerButton label={t("card.stop.go")} onClick={() => (setStopping(false), A.removeConnection(c.id))} />
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
+      {v?.enrolled ? (
+          <Toggle label={t("call.voice.use")} help={t("call.voice.use.help")} checked={v.on} onChange={(on) => A.phoneVoice(on ? "on" : "off")} />
+      ) : (
+        <GRow title={t("call.voice.title")} line={t("call.voice.none")}>
+          <Btn kind="text" size="sm" label={t("call.voice.done")} onClick={() => A.phoneVoice("refresh")} />
+          <Btn kind="secondary" size="sm" chev label={t("call.voice.record", p.provider)} onClick={() => A.phoneVoice("record")} />
+        </GRow>
+      )}
+      {A.voiceAnswer && (
+        <GBlock>
+          <div class="small warn">{A.voiceAnswer}</div>
+        </GBlock>
+      )}
+      {about && (
+        <GBlock>
+          <div class="small sub">{t("call.voice.consent", p.provider)}</div>
+          {v?.enrolled && !deleting && (
+            <span>
+              <DangerButton quiet label={t("call.voice.delete")} onClick={() => setDeleting(true)} />
+            </span>
+          )}
+        </GBlock>
+      )}
+      {about && deleting && <GConfirm ask={t("call.voice.delete.ask", p.provider)} keep={t("card.stop.keep")} go={t("call.voice.delete.go")} onKeep={() => setDeleting(false)} onGo={() => (setDeleting(false), A.phoneVoice("delete"))} />}
+      {!stopping ? (
+        <GFoot note={t("call.card.rails")}>
+          <Btn kind="text" size="sm" chev label={t("call.voice.about")} about={t("call.voice.title")} expanded={about} onClick={() => setAbout(!about)} />
+          <DangerButton quiet label={t("call.card.stop", p.provider)} onClick={() => setStopping(true)} />
+        </GFoot>
+      ) : (
+        <GConfirm ask={t("call.card.stop.ask")} keep={t("card.stop.keep")} go={t("card.stop.go")} about={p.provider} onKeep={() => setStopping(false)} onGo={() => (setStopping(false), A.removeConnection(c.id))} />
+      )}
+    </Group>
   );
 }

@@ -97,7 +97,7 @@ func TestKeysInSettings(t *testing.T) {
 	tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"密钥", "让任务向我要密钥", "DigitalOcean 部署密钥", "dop_v1_••••••", "+  添加密钥", "把 DigitalOcean 部署密钥交给了任务，只这一次"} {
+	for _, want := range []string{"密钥", "让任务向我要密钥", "DigitalOcean 部署密钥", "DO_TOKEN", "添加密钥", "把 DigitalOcean 部署密钥交给了任务，只这一次"} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}

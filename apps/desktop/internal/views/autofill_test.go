@@ -60,7 +60,7 @@ func autofillApp(t *testing.T, lang i18n.Lang, h int) (*App, *[]any, *ui.Tester)
 
 func TestAutofillPanel(t *testing.T) {
 	_, sent, tt := autofillApp(t, i18n.EN, 1500)
-	for _, want := range []string{"Autofill", "Sign-ins", "booking.com", "Visa ••4242", "Your details", "Where it was used", "You said Go to JPY 38,400 · Visa ••4242 · ryokan-kurashiki.jp"} {
+	for _, want := range []string{"Autofill", "Sign-ins", "booking.com", "Visa ••4242", "Your details", "Where it was used", "You said Go to JPY 38,400 · Visa ••4242", "ryokan-kurashiki.jp"} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
@@ -69,7 +69,7 @@ func TestAutofillPanel(t *testing.T) {
 		t.Errorf("the panel didn't ask for the list: %#v", *sent)
 	}
 	// Add a card: the form, then one saved_put with the number.
-	if err := tt.Click("+  Add a card"); err != nil {
+	if err := tt.Click("Add a card"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

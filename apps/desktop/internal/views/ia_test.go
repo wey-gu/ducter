@@ -88,7 +88,7 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"住在 hel 上 · 用 Codex 想事情", "自动选的：只有 Codex 登录了", "hel 上的 AI agent"} {
+	for _, want := range []string{"住在 hel 上，用 Codex 想事情", "自动选的：只有 Codex 登录了", "hel 上的 AI agent"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -124,7 +124,7 @@ func TestPartnerTabDeepSeekFallback(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"住在 hel 上 · 用 DeepSeek Harness 想事情", "自动选的：Claude Code 没登录"} {
+	for _, want := range []string{"住在 hel 上，用 DeepSeek Harness 想事情", "自动选的：Claude Code 没登录"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

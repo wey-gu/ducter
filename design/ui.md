@@ -468,7 +468,9 @@ A new control is added to the set (and to this table) before it is used.
 | One short choice in a row of them, the chosen one raised (New task's model and effort under the chosen agent; D202) | `choice` (`shared.go`) | `Choice` |
 | A group's name that folds it, with its count (By project; D244) | `foldHead` (`shared.go`) | the folding `Section` in `onhand.tsx` |
 | Back to the list | the chrome's crumb | `BackRow` |
-| A group's add row: a drawn ＋ in the tile column, title, one line (D273) | the + rows in `settings.go` | `AddRow` |
+| A group's add row: a drawn ＋ in the tile column, title, one line (D273) | `addRow` (`settings_rows.go`) | `AddRow` |
+| A destructive action before it is confirmed (停用 OOMOL, 断开 Tuwa, 断开 Telegram; D289): quiet text, the failed ink only under the pointer; it asks in place, and the confirmation is `dangerText` | `quietDanger` (`settings_rows.go`; the ask is `confirmRow`) | `DangerButton` with `quiet` |
+| A row that opens more under it, a switch apart at its right edge (a source's service, a setup's step; D289) | `openRow` (`settings_rows.go`) | `OpenRow` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 
 ## Places (D71)
@@ -501,9 +503,21 @@ slot, `updateSection`).
 
 One vocabulary on every tab:
 - **Type:** the tab's name 28 heading (or the hero card's name), a one-line lede 15 muted; a
-  group's title 20 heading on the paper, its note 13 muted; a row's label 15/700; its helper 13
-  muted (zh 1.75); captions 12.
-- **Groups:** the title on the paper, then a white card (radius 24, the 4pt clay base) of rows.
+  section's header 13/700 `ink-soft` on the text edge (D289, as D273 set for the phone; it was a
+  20 heading on the paper), its note 13 muted; a row's label 15/700; its helper 13 muted (zh
+  1.75); captions 12. 8 from a header to its group, 24 between sections.
+- **The grid (D289, `settings_rows.go`):** two edges only, the card's and the text edge 24 in;
+  one row anatomy (the 40 tile column, the title, one muted line, the control at the right edge):
+  `headRow` (a group that is one thing: its tile, its name 18/800, how it stands in the state's
+  ink), `tileRow`, `openRow` (opens more under it; a switch apart at its right), `textBlock`
+  (what a row opened, on the text column), `addRow`, `footRow` (the group's quiet note and quiet
+  actions) and `confirmRow` (a destructive action asking in place; before that it is
+  `quietDanger`). Art lives small in the tile column or in an empty state, never as a hero
+  inside a group. **Accounts** (D289): 发现了就说 as a section; under 它能看的 one group per
+  source (the connection, a row per app and account with whether Ducter reads it and its switch,
+  the add row, the last line); 再连一个账号服务 as an add row; under 打电话 Tuwa, its offer and
+  用你自己的号码打 as groups in the same flow; the AI accounts row last.
+- **Groups:** the header on the paper, then a white card (radius 24, the 4pt clay base) of rows.
   A row is 68 high at least, padded 16 × 24, its label and one-line helper on the left and the
   control at the right end: a switch, a segmented control, a small secondary button, or a ›
   (a link row: the whole row is the button; ↗ for a page outside the app). A 1pt `line-soft`

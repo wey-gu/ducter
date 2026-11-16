@@ -12185,3 +12185,46 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
     transition: none;
   }
 }
+
+/* D289: D273's grid for Settings › Accounts (accounts.tsx, phone.tsx, own-phone.tsx, set-grid.tsx),
+   on the chat apps' pieces (D283): each source and calling connection is one raised group whose first
+   row is the thing itself; services and steps are rows with their mark in the tile column; a group's
+   last line holds its quiet note and quiet actions; a destructive action is quiet until hovered and
+   asks in place. Tokens only. */
+.g-group { --chat-col: calc(40px + var(--s3)); }
+.src-cards > .g-group + .g-group,
+.src-cards > .g-group + .set-card,
+.calls-sec > .g-group + .g-group { margin-top: var(--s4); }
+.chat-row.tiled { padding-left: var(--set-in, var(--s4)); }
+.g-tile { flex: none; display: grid; place-items: center; width: 40px; height: 40px; }
+.g-tile.mark { border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line-soft); box-shadow: 0 2px 0 var(--line); }
+.g-tile img { width: 40px; height: 40px; object-fit: contain; }
+.g-tile.faded img { opacity: 0.5; }
+.g-open-row { display: flex; align-items: center; gap: var(--s3); min-height: 64px; padding: var(--s2) var(--set-in, var(--s4)) var(--s2) calc(var(--set-in, var(--s4)) - var(--s2)); }
+.g-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s3); padding: var(--s2); border: 0; border-radius: var(--r-md); background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.g-open:hover { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.g-open:active { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.g-open .grow { flex: 1; min-width: 0; }
+.g-open b { display: flex; align-items: center; gap: 4px; font-size: var(--md); font-weight: 700; line-height: 1.5; }
+.g-open small { display: block; font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-open small.warn { color: var(--failed-ink); }
+.switch.bare { flex: none; padding: 0; min-height: 0; background: none; border: 0; }
+.g-block { display: flex; flex-direction: column; gap: var(--s3); padding: var(--s3) var(--set-in, var(--s4)) var(--s4) calc(var(--set-in, var(--s4)) + var(--chat-col)); }
+.g-block.first { padding: var(--s4) var(--set-in, var(--s4)); }
+.g-group > .switch { min-height: 64px; padding: var(--s3) var(--set-in, var(--s4)) var(--s3) calc(var(--set-in, var(--s4)) + var(--chat-col)); }
+.g-acts { flex: none; display: flex; align-items: center; gap: 4px; }
+.g-tag { flex: none; padding: 4px var(--s2); border-radius: var(--r-xs); background: var(--surface-sunken); color: var(--ink-soft); font-size: var(--xs); font-weight: 700; white-space: nowrap; }
+.g-checks { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3) var(--set-in, var(--s4)) var(--s4) calc(var(--set-in, var(--s4)) + var(--chat-col)); }
+.g-checks b { font-size: var(--md); font-weight: 700; line-height: 1.5; }
+.g-check { display: flex; align-items: center; margin-left: calc(-1 * var(--chat-col)); color: var(--ink-soft); }
+.g-check svg { flex: none; width: 14px; height: 14px; margin: 0 calc(13px + var(--s3)) 0 13px; color: var(--done-ink); }
+.own-live-dot { width: 10px; height: 10px; border-radius: 5px; background: var(--working-dot); }
+.danger-text.quiet { color: var(--ink-soft); }
+.danger-text.quiet:hover,
+.danger-text.quiet:active { color: var(--failed-ink); }
+@media (max-width: 520px) {
+  .chat-row.tiled .grow { flex-basis: calc(100% - 40px - var(--s3)); }
+}
+.g-state { flex: none; font-size: var(--sm); font-weight: 600; color: var(--ink-muted); white-space: nowrap; }
+.g-state.tone-done { color: var(--done-ink); }
+.g-state.tone-bad { color: var(--failed-ink); }

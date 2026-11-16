@@ -15,21 +15,21 @@ to Tuwa once, and you pay Tuwa for the minutes, on Tuwa's own pages. Ducter neve
 
 ## Connect calling
 
-1. Open **Settings › Accounts** and tap **Connect Tuwa** on the **Make calls** card. (Or tap
+1. Open **Settings › Accounts** and tap **Connect Tuwa** beside **Make calls**, under **Phone calls**. (Or tap
    **+ Calls** on the card of the computer Ducter lives on, under
    [Your devices](devices.md): it takes you to the same place and starts the same sign-in.)
 2. A short code and a link appear (on a Mac, a QR code too). On your phone, open the link or scan the
    code, check that the code matches, and sign in with your Chekusu account (Tuwa's sign-in).
-3. The card turns into **Calls · Tuwa: Ready to call**.
+3. The row turns into **Tuwa** with **Ready to call**.
 
 When you connect, Ducter sets a few things on your Tuwa account for you:
 
-- a **daily limit** of $10 (Tuwa's own default is $50). Change it on the card: $5, $10, $20 or $50.
+- a **daily limit** of $10 (Tuwa's own default is $50). Change it under **Daily limit**: $5, $10, $20 or $50.
 - Tuwa's **voice sampling** paused, and its **Friends** updates off: Ducter shares nothing about your
   life there.
 - the phone agent's name: your partner's name.
 
-If Tuwa ever asks you to sign in again, the card says so, with **Sign in again**.
+If Tuwa ever asks you to sign in again, Tuwa's row says so, with **Sign in again**. **Disconnect Tuwa** on its last line asks before it does anything.
 
 ## Ask for a call
 
@@ -109,7 +109,7 @@ Ducter dials nothing and nothing is charged for a call sheet.
 
 Calls use your partner's voice. To use **your** voice instead:
 
-1. On the **Calls · Tuwa** card, under **Your voice**, tap **Record on Tuwa**. Tuwa's own page opens:
+1. Under **Tuwa**, in the **Your voice** row, tap **Record on Tuwa**. Tuwa's own page opens:
    you agree there and read a short text aloud.
 2. Back in Ducter, tap **I've recorded it**, then turn on **Call in my voice**.
 
@@ -149,7 +149,7 @@ use**, linked by a cable. The reason is the phone itself: a voice can only get i
 through the phone's own headset socket (or, later, Bluetooth). No app on the phone can put a voice
 into a call. So it can't be a server in a data center, or any computer away from you.
 
-If Ducter lives on a server, the **Call from your own number** card says exactly that, shows no
+If Ducter lives on a server, the **Call from your own number** group says exactly that, shows no
 setup steps, and offers **You call** instead. Live calls through a computer next to your phone
 (a Mac you use, by Bluetooth or a cable) are coming soon.
 

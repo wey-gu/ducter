@@ -725,10 +725,9 @@ func (a *App) calFirstLine(c *ui.Context, cv protocol.ConnectionView) {
 	if name == "" {
 		return
 	}
-	ui.Row(c.Key("calfirst:"+cv.ID)).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceRaised).Children(func() {
-		a.glyph(c, 18, drawCalendar(t.InkSoft))
-		ui.Text(c, a.L.T("cal.first")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).Grow(1).Basis(0).MinWidth(0)
-		if a.buttonFor(c, a.L.T("cal.first.try"), a.L.T("tile.calendar"), btnText, t.ControlSM, t.SurfaceRaised) {
+	// D289: a row of the source's group, the calendar in the tile column.
+	a.tileRow(c, "calfirst:"+cv.ID, a.glyphTile(c, 18, drawCalendar(t.InkSoft)), "", a.L.T("cal.first"), func() {
+		if a.buttonFor(c, a.L.T("cal.first.try"), a.L.T("tile.calendar"), btnText, t.ControlSM, t.Surface) {
 			for _, w := range tilesOf(cv) {
 				if kindOf(w.Service) == "calendar" {
 					a.setCalMemo("cal.first:"+cv.ID+"|"+tileKey(w), "done")
@@ -764,19 +763,14 @@ func (a *App) calNudge(c *ui.Context, cv protocol.ConnectionView) {
 	if st, _ := a.calMemo(n); st != "" {
 		return
 	}
-	ui.Column(c.Key("calnudge:"+cv.ID)).Gap(t.S1).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceRaised).Children(func() {
-		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			a.glyph(c, 18, drawCalendar(t.InkSoft))
-			ui.Text(c, a.L.T("cal.nudge")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).Grow(1).Basis(0).MinWidth(0)
-		})
-		ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Justify(ui.End).Children(func() {
-			if a.button(c, a.L.T("cal.nudge.later"), btnText, t.ControlSM, t.SurfaceRaised) {
-				a.setCalMemo(n, "later")
-			}
-			if a.button(c, a.L.T("cal.nudge.add."+cv.Source), btnSecondary, t.ControlSM, t.SurfaceRaised) {
-				a.openLink(oomolAccounts)
-			}
-		})
+	// D289: a row of the source's group, the calendar in the tile column.
+	a.tileRow(c, "calnudge:"+cv.ID, a.glyphTile(c, 18, drawCalendar(t.InkSoft)), "", a.L.T("cal.nudge"), func() {
+		if a.button(c, a.L.T("cal.nudge.later"), btnText, t.ControlSM, t.Surface) {
+			a.setCalMemo(n, "later")
+		}
+		if a.button(c, a.L.T("cal.nudge.add."+cv.Source), btnSecondary, t.ControlSM, t.Surface) {
+			a.openLink(oomolAccounts)
+		}
 	})
 }
 

@@ -48,9 +48,26 @@ export const KNOWN_MAX = { notes: 4, title: 80, content: 220, id: 40 } as const;
 const clipTo = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
 
 /** D168: the memories in front of a task's first turn (ids so it can look closer; the brief wins). */
-export function knownTurn(notes: { id?: string; title: string; content: string; date?: string }[], partnerName: string): string {
-  const lines = notes.slice(0, KNOWN_MAX.notes).map((n) => `- ${n.id ? `[${clipTo(n.id, KNOWN_MAX.id)}] ` : ""}${clipTo(n.title, KNOWN_MAX.title)}: ${clipTo(n.content, KNOWN_MAX.content)}${n.date ? ` (${n.date.slice(0, 10)})` : ""}`);
+export function knownTurn(notes: { id?: string; title: string; content: string; date?: string; from?: string }[], partnerName: string): string {
+  const lines = notes.slice(0, KNOWN_MAX.notes).map((n) => `- ${n.id ? `[${clipTo(n.id, KNOWN_MAX.id)}] ` : ""}${clipTo(n.title, KNOWN_MAX.title)}: ${clipTo(n.content, KNOWN_MAX.content)}${n.date || n.from ? ` (${[n.from ? `saved by ${clipTo(n.from, 30)}` : "", n.date ? n.date.slice(0, 10) : ""].filter(Boolean).join(", ")})` : ""}`);
   return `<what_i_know>\nFrom the user's memory, what ${partnerName} thinks matters for this task (background; the brief wins):\n${lines.join("\n")}\n</what_i_know>\n\n`;
+}
+
+/** D304: at most this many of the user's other AI tools' memories named in front of a task's first turn, titles only. */
+export const OTHERS_MAX = { notes: 3, title: 80, id: 40 } as const;
+
+/**
+ * D304: where the task has the user's own Nowledge Mem plugin, the memories other AI tools saved
+ * that fit this task, by title and id only: the agent reads any that matters through its plugin
+ * (the contents stay in Mem; the plugin's own context may already hold them).
+ */
+export function othersTurn(notes: { id?: string; title: string; from?: string }[]): string {
+  const lines = notes
+    .filter((n) => n.id && n.from)
+    .slice(0, OTHERS_MAX.notes)
+    .map((n) => `- [${clipTo(n.id!, OTHERS_MAX.id)}] ${clipTo(n.from!, 30)}: ${clipTo(n.title, OTHERS_MAX.title)}`);
+  if (!lines.length) return "";
+  return `<from_your_other_tools>\nThe user's other AI tools saved these to the same Nowledge Mem, and they may matter here. Read any you need with your Mem plugin (search, or show by id); the brief wins:\n${lines.join("\n")}\n</from_your_other_tools>\n\n`;
 }
 
 /** The report-language rule. Named when known: a haiku task with an English brief reported in

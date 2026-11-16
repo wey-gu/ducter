@@ -34,9 +34,9 @@ const tick = () => Bun.sleep(30);
 
 // What it noted over the past weeks (D295: this week / earlier on the Memory page).
 if (mem !== "none") {
-  for (const n of notedSeed(zh).reverse()) {
+  for (const [i, n] of [...notedSeed(zh).entries()].reverse()) {
     skew = -n.daysAgo * 86_400_000;
-    log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: { title: n.title } });
+    log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: { title: n.title, memoryId: `m_week${i + 1}` } });
   }
   skew = 0;
 }
@@ -237,6 +237,8 @@ if (process.env.DEMO_RICH === "1") {
     await tick();
   }
 }
+// D304: DEMO_RECALL=1 adds the week's what-it-learned note and two replies with their 想起了 line.
+if (process.env.DEMO_RECALL === "1" && memOn) (await import("./demo-mem.ts")).seedRecall(core as never, zh, (ms) => (skew = ms));
 
 // After the seed, a scripted partner answers new messages the way a real one paces itself, so
 // the waiting moments can be seen and timed (D104): thinking at once, a look back at the Log at

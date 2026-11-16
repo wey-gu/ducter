@@ -205,6 +205,8 @@ interface State {
   own?: OwnRec[];
   /** D281: the day the morning ran (any mode), so a home that missed its hour catches up once. */
   morningDay?: string;
+  /** D304: the week (its Monday) whose first morning note already offered 这周记下的 / What it learned this week. */
+  learnedWeek?: string;
   /** D281: decisions the morning note already named as waiting (each is named once, never again). */
   toldPending?: string[];
 }
@@ -697,6 +699,24 @@ export function createProactive(o: ProactiveOptions): Proactive {
   const urgentIn = (m: ProactiveMode, c: Candidate) => c.urgent || (m === "urgent" && c.kind === "promised");
   const todaysNote = () => st.mornings.find((m) => m.day === today() && m.finds > 0);
 
+  /**
+   * D304: the week's first morning note (Monday's, or the first one after a Monday it missed)
+   * offers once to show what it noted about the person in the last 7 days. Nothing noted, memory
+   * off, or offered already this week: nothing. Never in the notification.
+   */
+  function learnedOffer(): { count: number } | undefined {
+    const day = today();
+    const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+    const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0 = Sunday
+    const monday = new Date(Date.UTC(y, m - 1, d - ((wd + 6) % 7))).toISOString().slice(0, 10);
+    if (st.learnedWeek === monday) return undefined;
+    const s = o.settings as Partial<SettingsStore>;
+    const count = typeof s.learnedThisWeek === "function" ? s.learnedThisWeek(now()) : 0;
+    if (count < 1) return undefined;
+    st.learnedWeek = monday;
+    return { count };
+  }
+
   async function speak(why: "look" | "morning" | "tick"): Promise<void> {
     const m = mode();
     if (m === "off") return;
@@ -717,20 +737,25 @@ export function createProactive(o: ProactiveOptions): Proactive {
       const ownFinds = mine.filter((r) => r.asked || !muted(ownCandidate(r)));
       const pick = kept.slice(0, capLeft(m));
       const line = todayLine(z);
+      const learned = learnedOffer();
       // 有用就说: what the note had no room for is counted, never dropped silently (P2).
       if (m === "useful") st.more += kept.length - pick.length;
       const noteId = newId("note");
       // D173: what was left out is the partner's to say only when asked ("还有别的吗？"); no screen shows it.
       const leftOut = W.leftOut(z, { ...st.left, more: st.more });
       for (const r of mine) r.state = "said";
-      if (!pick.length && !ownFinds.length && !line) {
+      if (!pick.length && !ownFinds.length && !line && learned) {
+        // D304: a quiet morning that opens the week: only the offer, shown, never pushed (it can wait).
+        const e = note({ noteId, rung: "morning", opening: W.open(z), finds: [], learned, ...(leftOut ? { leftOut } : {}) });
+        st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
+      } else if (!pick.length && !ownFinds.length && !line) {
         // A quiet day (D173): nothing sent and nothing shown. The partner alone knows it looked.
         const e = note({ noteId, rung: "morning", opening: "", finds: [], quiet: true, ...(leftOut ? { leftOut } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
       } else if (!pick.length && !ownFinds.length) {
         // D281: nothing new noticed, but the day holds something of Ducter's own: the one line, passive.
         const opening = `${W.open(z)}${words(OWN, z).gap}${line}`;
-        const e = note({ noteId, rung: "morning", opening, finds: [], ...(leftOut ? { leftOut } : {}) });
+        const e = note({ noteId, rung: "morning", opening, finds: [], ...(learned ? { learned } : {}), ...(leftOut ? { leftOut } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
         notify("passive", line, noteId);
       } else {
@@ -740,7 +765,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
         if (askHow) (st.cadenceAsked = true), (st.cadenceNote = noteId);
         // D173: no "I read 214 emails": a one-word greeting, then the things themselves.
         const opening = line ? `${W.open(z)}${words(OWN, z).gap}${line}` : W.open(z);
-        const e = note({ noteId, rung: "morning", opening, finds, ...(leftOut ? { leftOut } : {}), ...(askHow ? { ask: "cadence" as const } : {}) });
+        const e = note({ noteId, rung: "morning", opening, finds, ...(learned ? { learned } : {}), ...(leftOut ? { leftOut } : {}), ...(askHow ? { ask: "cadence" as const } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: finds.length });
         st.day.said += pick.length;
         notify("passive", W.lockBody(z, finds.map((f) => f.text)), noteId);

@@ -245,14 +245,14 @@ export function createWsHandler(deps: WsDeps) {
   };
 
   // Settings: every subscriber gets a fresh frame on every change (another window, the phone).
-  const settingsFrame = async (forgot?: { seq: number; how: "mem" | "hidden" }): Promise<ServerFrame> => {
+  const settingsFrame = async (forgot?: { seq: number; how: "mem" | "hidden" }, corrected?: { seq: number; how: "mem" | "here" }): Promise<ServerFrame> => {
     const v = await deps.settings!.view();
     // D150: the brain actually in use (core's Codex-only fallback included), so no client claims one
     // the home doesn't have.
     const home = devicesView() ? (await devicesView()!.frame()).devices.find((d) => d.home)?.harnesses : undefined;
     const now = brainNow(v.settings.brain, deps.settings!.brainChosen(), home);
     const bridge = await deps.bridgeLink?.view().catch(() => undefined);
-    return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}), ...(bridge ? { bridge } : {}) };
+    return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}), ...(corrected ? { corrected } : {}), ...(bridge ? { bridge } : {}) };
   };
   const offSettings = deps.settings?.onChange(() => {
     const subs = [...sockets].filter((ws) => ws.data.settings);
@@ -894,6 +894,20 @@ export function createWsHandler(deps: WsDeps) {
         ws.data.settings = true;
         const how = await deps.settings.forget(f.seq);
         send(ws, await settingsFrame(how ? { seq: f.seq, how } : undefined));
+        return;
+      }
+      case "memory_confirm": {
+        if (!deps.settings) throw new Error("settings are not available");
+        ws.data.settings = true;
+        // A change pushes a fresh frame to every subscriber; nothing changed: answer this one.
+        if (!deps.settings.confirm(Number(f.seq))) send(ws, await settingsFrame());
+        return;
+      }
+      case "memory_correct": {
+        if (!deps.settings) throw new Error("settings are not available");
+        ws.data.settings = true;
+        const how = await deps.settings.correct(Number(f.seq), String(f.title ?? ""));
+        send(ws, await settingsFrame(undefined, how ? { seq: f.seq, how } : undefined));
         return;
       }
       case "rules": {

@@ -90,3 +90,19 @@ export function groupNoted<T extends { at: string }>(noted: T[], now: Date = new
   }
   return out;
 }
+
+/**
+ * D304: the 想起了 / Remembered line's key and arguments: who it is from (the person's words to the
+ * partner, another AI tool, the person's own note), and the day, when Mem has it.
+ */
+export function recallLine(r: { by: "said" | "tool" | "you"; from?: string }, date: string): { key: string; args: string[] } {
+  const by = r.by === "tool" && !r.from ? "you" : r.by;
+  const key = `recall.${by}${date ? "" : ".any"}`;
+  const args = by === "tool" ? [r.from!, ...(date ? [date] : [])] : date ? [date] : [];
+  return { key, args };
+}
+
+/** D304: 这周记下的: the noted lines of the last 7 days, newest first (as the Memory page's this week). */
+export function weekNoted<T extends { at: string }>(noted: T[], now: Date = new Date()): T[] {
+  return groupNoted(noted, now).filter((g) => g.when !== "earlier").flatMap((g) => g.items);
+}

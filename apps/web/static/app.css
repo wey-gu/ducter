@@ -12746,3 +12746,79 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .rich-card { padding: var(--s3) var(--s4); }
   .rich-chart .rc-plot { height: 128px; }
 }
+/* ---------- D304: the 想起了 line under a reply, its sheet, and 这周记下的 (recall.tsx) ---------- */
+.recall-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  max-width: 100%;
+  margin: 2px 0 0 2px;
+  padding: 3px 8px 3px 4px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--sm);
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+}
+.recall-line .notebook { flex: none; }
+.recall-line .recall-words { min-width: 0; overflow-wrap: anywhere; }
+.recall-line .chev { flex: none; opacity: 0.7; }
+.recall-line:hover, .recall-line:focus-visible { color: var(--ink-soft); background: var(--sunken); }
+.recall-sheet, .learned-sheet {
+  position: fixed;
+  z-index: 21;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(480px, calc(100vw - 32px));
+  max-height: min(640px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-radius: var(--r-xl);
+  box-shadow: var(--floating), var(--base);
+  overflow: hidden;
+  outline: none;
+  animation: recall-in 180ms var(--ease);
+}
+@keyframes recall-in { from { opacity: 0; transform: translate(-50%, calc(-50% + 10px)); } }
+@keyframes recall-up { from { opacity: 0; transform: translateY(24px); } }
+.learned-sheet { width: min(600px, calc(100vw - 32px)); max-height: min(720px, calc(100vh - 48px)); }
+.recall-body { display: flex; flex-direction: column; gap: 14px; padding: 12px 28px 24px; }
+.recall-card { display: flex; align-items: flex-start; gap: 14px; padding: 16px; border-radius: var(--r-lg); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); }
+.recall-mark { flex: none; display: grid; place-items: center; width: 40px; height: 40px; }
+.recall-mark .mem-tool-letter { width: 40px; height: 40px; }
+.recall-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.recall-t { margin: 0; font-weight: 700; line-height: var(--lh-read); overflow-wrap: anywhere; }
+.recall-facts, .learned-facts { font-size: var(--sm); color: var(--ink-muted); }
+.recall-why { margin: 0; font-size: var(--sm); color: var(--ink-muted); line-height: var(--lh-read); }
+.recall-ask p { margin: 0 0 8px; line-height: var(--lh-read); }
+.recall-acts, .learned-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 10px; }
+.learned-line { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.learned-line .ftext { flex: 1 1 16em; }
+.learned-lede { margin: 2px 28px 8px; font-size: var(--sm); color: var(--ink-muted); line-height: var(--lh-read); }
+.learned-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 6px 28px 24px; }
+.learned-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--r-lg); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); }
+.learned-row.asking { flex-direction: column; align-items: stretch; gap: 8px; }
+.learned-row .mem-dot { margin-top: 9px; }
+.learned-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.learned-t { margin: 0; line-height: var(--lh-read); overflow-wrap: anywhere; }
+.learned-ask { margin: 0; line-height: var(--lh-read); }
+.learned-ok { display: inline-flex; align-items: center; gap: 4px; color: var(--done-ink); }
+.learned-fix { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.learned-fix input { width: 100%; box-sizing: border-box; height: 40px; padding: 0 12px; border: 0; border-radius: var(--r-md); background: var(--bg); color: var(--ink); font: inherit; box-shadow: inset 0 0 0 1px var(--line); }
+.learned-fix input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+@media (max-width: 640px) {
+  .recall-sheet, .learned-sheet { top: auto; bottom: 0; left: 0; transform: none; width: 100vw; max-height: 88vh; border-radius: var(--r-xl) var(--r-xl) 0 0; padding-bottom: var(--safe-bottom, 0px); animation-name: recall-up; }
+  .learned-sheet { top: 0; max-height: none; border-radius: 0; padding-top: var(--safe-top); }
+  .recall-body, .learned-list { padding-left: 16px; padding-right: 16px; }
+  .learned-lede { margin-left: 16px; margin-right: 16px; }
+  .learned-row { flex-wrap: wrap; }
+  .learned-row .learned-acts { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .recall-sheet, .learned-sheet { animation: none; } }

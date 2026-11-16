@@ -12,18 +12,17 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## Deep Nowledge Mem integration (D295, `memory.md`)
 
-- **Recall said quietly in the conversation:** when a reply leans on a memory, the reply's Details carry
-  **想起了 · {title}** with its source tool, tappable to forget. Trigger: the partner's recall can name the
-  memory ids it used (a partner tool change: D175's eval applies).
-- **What it learned this week, to correct:** inside the morning note once a week, the week's noted lines
-  with 忘掉. Trigger: the morning note (D250) reviewed by the author.
+- **D304 follow-ups:** the full partner eval at merge (only the memory scenarios ran, with `--only`);
+  a link to the one memory in Nowledge Mem (Open in Nowledge Mem opens Mem's site; trigger: Mem documents
+  a per-memory URL or `nowledgemem://` form); the 想起了 line in chat apps (Telegram, Slack, WeChat show
+  none; trigger: the author asks); the CLI's `talk` shows none either; an eval case for a task brief's
+  `<from_your_other_tools>` actually read by the agent through its plugin (live, with a real plugin).
 - **Mem's health on Memory's head row:** a sign-in that expired or a link Mem refuses said there in the
   failed ink with its one step. Trigger: `nmem doctor --json` gives a stable shape for it.
-- **Other tools' memories in task briefs:** the brief says what Claude Code or Codex saved is there to
-  recall (tasks already use the real Mem plugin, D168). Trigger: a task eval case where it would have helped.
 - **Cloud or local in one flow:** when the home has the Mem app and a Cloud sign-in is offered, one calm
   choice. Trigger: a home where both exist (research first: what `nmem status` says then).
-- **Forget another tool's memory from Ducter:** read-only by default (D295). Trigger: the author asks.
+- **Forget another tool's memory from Settings:** read-only there (D295); from a 想起了 line it can be
+  forgotten, asking first (D304). Trigger: the author asks.
 
 ## Usage limits (D297, research/101)
 

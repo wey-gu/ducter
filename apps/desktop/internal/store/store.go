@@ -460,6 +460,11 @@ type Store struct {
 	// done (How: rang | dialer | note) or failed (Reason).
 	Dials  map[string]*Dial
 	Forgot *protocol.Forgot
+	// Corrected is how the last memory_correct went (D304), until shown.
+	Corrected *protocol.Forgot
+	// Recalled is the one 想起了 / Remembered line under a message, by the
+	// seq of the message it stands under (D304).
+	Recalled map[int64]*Recalled
 	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
@@ -612,6 +617,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.Bridge = f.Bridge
 		if f.Forgot != nil {
 			s.Forgot = f.Forgot
+		}
+		if f.Corrected != nil {
+			s.Corrected = f.Corrected
 		}
 	case "proactive_day":
 		s.Day = f.Day
@@ -1005,6 +1013,15 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		s.bySeq[ev.Seq] = nil
 	case *protocol.ReadReceipt:
 		s.ReadUpTo = max(s.ReadUpTo, b.UpToSeq)
+		s.bySeq[ev.Seq] = nil
+	case *protocol.MemoryRecalled:
+		// D304: not an entry: a quiet line under the message it names.
+		if s.Recalled == nil {
+			s.Recalled = map[int64]*Recalled{}
+		}
+		if _, had := s.Recalled[b.AboutSeq]; !had && b.MemoryID != "" && strings.TrimSpace(b.Title) != "" {
+			s.Recalled[b.AboutSeq] = &Recalled{Seq: ev.Seq, MemoryRecalled: *b}
+		}
 		s.bySeq[ev.Seq] = nil
 	case *protocol.MemoryNoted:
 		if strings.TrimSpace(b.Title) == "" {

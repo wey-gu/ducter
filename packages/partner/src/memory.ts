@@ -41,6 +41,7 @@ export interface MemoryHit {
   content: string; // clipped
   date?: string; // YYYY-MM-DD the memory was recorded
   kind?: string; // unit type: preference, decision, fact, …
+  source?: string; // D304: Mem's `source`: "ducter", an AI tool ("claude-code"), the person's own ("cli", …)
 }
 
 export interface Provenance {
@@ -66,6 +67,11 @@ export interface MemoryClient {
    * hides it from recall and from reads by id. Not a hard delete. True when Mem did it.
    */
   forget?(id: string): Promise<boolean>;
+  /**
+   * D304: the person corrected a noted line's words (这周记下的 / What it learned this week):
+   * `nmem m update` sets its title and text to them. True when Mem took it.
+   */
+  correct?(id: string, title: string): Promise<boolean>;
 }
 
 /** The Log pointer Ducter stores in Mem's source metadata (never in the memory text). */
@@ -85,6 +91,7 @@ export function compactHit(m: any, maxChars = 280): MemoryHit {
   const d = typeof m?.created_at === "string" ? m.created_at.slice(0, 10) : undefined;
   if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) hit.date = d;
   if (typeof m?.unit_type === "string" && m.unit_type) hit.kind = m.unit_type;
+  if (typeof m?.source === "string" && /^[A-Za-z0-9_.-]{1,40}$/.test(m.source)) hit.source = m.source;
   return hit;
 }
 
@@ -178,6 +185,13 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
     async forget(id) {
       if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return false;
       const r = await run(["m", "forget", "--force", "--reason", "Forgotten from Ducter's Partner page", "--", id]);
+      return !("missing" in r) && r.code === 0;
+    },
+    async correct(id, title) {
+      const words = title.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+      if (!/^[A-Za-z0-9_-]{1,80}$/.test(id) || !words) return false;
+      // The `--x=value` form: words starting with "-" would otherwise parse as a flag.
+      const r = await run(["m", "update", `--title=${words}`, `--content=${words}`, "--", id]);
       return !("missing" in r) && r.code === 0;
     },
   };

@@ -66,6 +66,14 @@ export function day(L: Strings, iso: string | undefined, now = Date.now()): stri
   return w.date(d, d.getFullYear() !== n.getFullYear());
 }
 
+/** D304: a calendar day always as a date, never "yesterday": "11 月 10 日" / "Nov 10" (the year only when not this one). YYYY-MM-DD is a local day. */
+export function calDay(L: Strings, ymd: string | undefined, now = Date.now()): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd ?? "");
+  if (!m) return "";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return words(DAY, L.lang).date(d, d.getFullYear() !== new Date(now).getFullYear());
+}
+
 /** A moment: "今天 18:00", "明天 9:00", "周五 9:00", "12 月 1 日 9:00" / "today 18:00", "Dec 1, 9:00". */
 export function when(L: Strings, iso: string | undefined, now = Date.now()): string {
   if (!iso) return "";

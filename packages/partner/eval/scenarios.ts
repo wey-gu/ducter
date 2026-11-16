@@ -111,6 +111,12 @@ export interface Expect {
   noRemember?: boolean;
   /** Text no memory_add call (even a refused one) may contain. */
   rememberForbid?: RegExp[];
+  /**
+   * D304: the 想起了 / Remembered source lines under the replies: exactly this many (0 = none), and,
+   * when given, the one line names this memory (by its seed title) and is by this kind of source.
+   */
+  sourceLines?: number;
+  sourceOf?: { title?: RegExp; by?: "said" | "tool" | "you" };
 
   /** Regexes the partner's own lines (messages and acks, not card text) may not match. */
   proseForbid?: RegExp[];
@@ -145,6 +151,8 @@ export interface SeedMemory {
   content: string;
   date?: string;
   kind?: string;
+  /** D304: Mem's `source` (default "ducter": the person's words to the partner); "claude-code": another AI tool. */
+  source?: string;
 }
 
 export interface Scenario {
@@ -221,6 +229,21 @@ const ALICE: SeedMemory = {
   content: "Alice Chen runs the HawDB load tests. She prefers email over Slack and reads it mornings Pacific time.",
   date: "2026-10-28",
   kind: "fact",
+};
+// D304: one the person said to the partner, and one another AI tool (Claude Code) saved.
+const WEEKLY_REPORT: SeedMemory = {
+  title: "周报每周五下午发，发给产品组",
+  content: "Weyl 说的：周报每周五下午发，收件人是产品组。",
+  date: "2026-11-10",
+  kind: "preference",
+  source: "ducter",
+};
+const RELEASE_CC: SeedMemory = {
+  title: "HawDB release: bump Cargo.toml and CHANGELOG.md together",
+  content: "Before tagging a HawDB release, bump the version in Cargo.toml and add the CHANGELOG.md entry in the same commit; the release check fails otherwise.",
+  date: "2026-11-15",
+  kind: "procedure",
+  source: "claude-code",
 };
 // A message to another agent is one question plus background, never numbered sub-questions.
 const OVER_ASK = /(?:^|[\s：:，,])(?:1[.)、）]|\(1\)|（1）|①)[\s\S]*?(?:2[.)、）]|\(2\)|（2）|②)|(^|\n)\s*[-*•]\s[\s\S]*\n\s*[-*•]\s/;
@@ -1154,6 +1177,37 @@ export const scenarios: Scenario[] = [
     expect: { opens: [0, 1], maxChars: 120, forbid: [NO_MEM_TALK, /不可用|连不上|没(有)?连接|出错|找不到.{0,8}(记录|上次)|没有.{0,6}记录|no record/i] },
     rubric:
       "Long-term memory is not installed, so the partner can't know how \"last time\" went. Pass if it carries on gracefully in Chinese: either asks in one short line how it ran last time (threads, runs), or opens a task that will look at how the benchmark was run before (e.g. bench/README.md). It must not mention memory, Mem, or anything being unavailable, and must not invent the previous settings.",
+  },
+  // D304: when a recall changed the answer, one quiet source line under it (the partner marks the
+  // memory's ref; code checks it against what the search returned); none when it didn't.
+  {
+    id: "mem-source-used-zh",
+    category: "memory",
+    lang: "zh",
+    memories: [...MEM_BACKGROUND, WEEKLY_REPORT],
+    steps: [{ user: "周报一般哪天发、发给谁来着？" }],
+    expect: { recall: true, opens: 0, msgs: [1, 1], maxChars: 80, require: [/周五/, /产品组/], forbid: [NO_MEM_TALK], sourceLines: 1, sourceOf: { title: /周报/, by: "said" } },
+    rubric:
+      "Only memory knows the answer: the weekly report goes out Friday afternoon, to the product team (产品组; the user said so on Nov 10). Pass if the partner answers in one short, natural Chinese line as someone who simply remembers, without saying it searched, checked or found a record. The app's quiet source line under the reply (if shown in the transcript) is not the partner's prose and is expected here.",
+  },
+  {
+    id: "mem-source-tool-en",
+    category: "memory",
+    lang: "en",
+    memories: [...MEM_BACKGROUND, RELEASE_CC],
+    steps: [{ user: "I'm cutting a HawDB release this afternoon. Anything I usually do first?" }],
+    expect: { recall: true, opens: [0, 1], maxChars: 220, require: [/CHANGELOG/i, /Cargo/i], forbid: [NO_MEM_TALK], sourceLines: 1, sourceOf: { title: /CHANGELOG/i, by: "tool" } },
+    rubric:
+      "Claude Code saved to the same memory that before tagging a HawDB release the user bumps the version in Cargo.toml and adds the CHANGELOG.md entry in the same commit. Pass if the partner says so (briefly, in English, as a partner who knows), without saying it searched memory or quoting a record. Offering to help with it is fine. The app's quiet source line under the reply is not the partner's prose and is expected here.",
+  },
+  {
+    id: "mem-source-none-en",
+    category: "memory",
+    lang: "en",
+    memories: [...MEM_BACKGROUND, WEEKLY_REPORT],
+    steps: [{ user: "In two sentences: what's a write-ahead log for?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 400, require: [/log|durab|crash/i], forbid: [NO_MEM_TALK], sourceLines: 0 },
+    rubric: "A general question memory has nothing to add to: answered directly in about two short English sentences (durability: changes are written to a log before the data files, so a crash can be recovered). No task, no talk about memory, and no source line under the reply.",
   },
 
   // ---------- K. other agents, through Bridge (design/bridge.md S1, S2; D105–D111) ----------

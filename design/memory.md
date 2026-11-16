@@ -223,14 +223,43 @@ contents never leave Mem. `BridgeView.where` (cloud / local / server) comes from
 
 ### Deep integration: the plan (D295)
 
-Built now: the glance, the panes, where-it's-kept, forget that asks. Next, each behind its own trigger
-(`todo.md`): (a) **recall said quietly in the conversation**: when a reply leans on a memory, the reply's
-Details carry **想起了 · {title} / Recalled · {title}** with its source tool, tappable to forget (a partner
-tool change: D175's eval applies); (b) **a weekly digest you can correct**: once a week, inside the morning
-note, "这周记下了 5 条" with each line's 忘掉; (c) **Mem's health on the first row**: a link Mem refuses or a
-sign-in that expired says so on the Memory head row in the failed ink, with the one step; (d) **other tools'
-memories as task context**: tasks already use the real Mem plugin (D168); the brief names that what Claude
-Code saved is there to recall; (e) **Cloud or local chosen in one calm flow** when both exist.
+Built with D295: the glance, the panes, where-it's-kept, forget that asks. Built with D304 (next
+section): (a) recall said quietly in the conversation, (b) the week's lines you can correct, (d) other
+tools' memories named in task briefs. Still behind their triggers (`todo.md`): (c) **Mem's health on the
+first row**: a link Mem refuses or a sign-in that expired says so on the Memory head row in the failed
+ink, with the one step; (e) **Cloud or local chosen in one calm flow** when both exist.
+
+### In the conversation (D304, built 2026-11-17)
+
+*Who and how it feels:* the developer whose Claude Code and Codex write to the same Mem sees whose words
+an answer leaned on; the consumer sees a preference they once stated is theirs, and fixable; the fresh
+user meets one quiet line under a message and a plain card, nothing to learn. Restraint holds: what it
+read is never shown; only the one memory that changed an answer is.
+
+- **想起了 / Remembered line.** Under the reply (or ack) a recall changed, once: **想起了你 {date} 说的** /
+  **想起了 {date} {tool} 记下的** / **想起了 {date} 你记下的** (Mem `source`: `ducter` → the person's words;
+  a known AI tool, `protocol/src/mem-source.ts` `AI_TOOLS` → the tool; anything else → the person's own
+  note). At most one per reply; titles only.
+- **Mechanism.** memory_search returns each hit with a ref (`m1`…) and who saved it, never Mem's id; its
+  note asks for `[[mN]]` at the end of a message only when that memory changed what it says. The partner
+  strips every mark before logging the words (`takeRecallMark`), resolves the first against this turn's
+  refs only, and logs `memory_recalled {memoryId, title, by, from?, date?, aboutSeq, replyTo?}` right
+  after the message. No new tool and no persona change (the tool list's fingerprint is unchanged).
+- **Tapped:** 它想起的这条 / What it remembered: title, source and date as separate facts, 忘掉 (asks; for
+  another tool's: "…，{tool} 那边也一样"), 在 Nowledge Mem 里打开 (Mem's site; a link to the one memory is
+  todo). A forgotten line is hidden everywhere (`MemView.forgotten`: the hidden seqs among `memory_recalled`).
+- **这周记下的 / What it learned this week.** The week's first morning note (Monday's, or the first after a
+  missed Monday; `ProactiveState.learnedWeek`) carries `learned: {count}` when anything was noted in the
+  last 7 days and memory is on; never in the push; on a quiet Monday the note is just 早。 and the line. The
+  sheet lists the week's noted lines: 对 (`memory_confirm`, kept as `confirmed`), 改 (`memory_correct` →
+  settings `corrected`, and `nmem m update <id> --title --content` through the partner's client; the frame
+  says `mem` or `here`), 忘掉 (asks).
+- **Task briefs.** At a task's start the recall (title + brief, 4 hits) runs in both modes. With the
+  person's Mem plugin there, only other AI tools' memories are named, ≤ 3 (`OTHERS_MAX`), as
+  `<from_your_other_tools>` with id, tool and title, for the agent to read through its plugin; contents
+  stay in Mem. Without the plugin, `<what_i_know>` says "saved by {tool}" per line.
+- **Measured** (partner eval, haiku, `--only`): `mem-source-used-zh`, `mem-source-tool-en`,
+  `mem-source-none-en` pass; the full eval is to be rerun at merge.
 
 ## Mem and tasks (D168, D169; built 2026-11-10)
 

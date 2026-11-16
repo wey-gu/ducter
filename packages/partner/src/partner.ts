@@ -56,7 +56,8 @@ import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage 
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeContextFor, bridgeFor, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
 import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, UNNAMED_OWN, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
-import { createNmemClient, noMemory, type MemoryClient } from "./memory.ts";
+import { createNmemClient, noMemory, type MemoryClient, type MemoryHit } from "./memory.ts";
+import { memSource } from "../../protocol/src/mem-source.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
@@ -148,6 +149,14 @@ interface TurnState {
   results?: number; // done reports in this turn (several = one combined message)
   lang: LangTag | undefined; // D292: the language the user reads, when known (any language)
   recalls: number; // memory_search calls this turn
+  /** D304: what memory_search returned this turn, by the ref the partner saw ("m1"); a reply names one it leaned on. */
+  recalled?: Map<string, MemoryHit>;
+  /** D304: the ref the pending text named (its mark already taken out of the words). */
+  pendingMark?: string;
+  /** D304: a 想起了 line went out this turn (at most one per reply). */
+  sourced?: boolean;
+  /** D304: the seq of the last words it said this turn (an ai_msg or ack). */
+  lastSaid?: number;
   noted: { title: string; memoryId?: string }[]; // memory_add successes, shown after the turn's text
   shows?: MediaRef[]; // D206: what the triggering reports showed, put under this turn's first message
   cal?: CalGlance; // D222: the day card calendar do=agenda show put under this turn's next message
@@ -291,6 +300,21 @@ const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先
  * reaches a task either. The one exception is D152's scenario: a Nowledge Mem connect code
  * (`nmem_ct_…`) the user pasted in their own words this turn, which the task needs to connect.
  */
+/** D304: a recall mark, [[m2]] (or a list, [[m1, m3]]: the first counts), wherever the partner put it. */
+const RECALL_MARK = /\s*\[\[\s*(m\d{1,2})(?:\s*[,，、]\s*m\d{1,2})*\s*\]\]/gi;
+/**
+ * D304: the words without any recall mark, and the first well-formed ref it named. The person never
+ * sees a mark; the ref is only a claim, checked against what memory_search returned this turn.
+ */
+export function takeRecallMark(text: string): { text: string; mark?: string } {
+  let mark: string | undefined;
+  const out = text.replace(RECALL_MARK, (_m, ref: string | undefined) => {
+    if (!mark && ref) mark = ref.toLowerCase();
+    return "";
+  });
+  return out === text ? { text } : { text: out.replace(/[ \t]+$/gm, "").trimEnd(), ...(mark ? { mark } : {}) };
+}
+
 const SECRET_REMOVED = "[secret removed: the user pasted it in the conversation; use a placeholder and let the user fill it in]";
 export function redactSecrets(text: string, userTexts: readonly string[] = []): string {
   return redactWith(text, (k) => (isConnectCode(k) && userTexts.some((u) => u.includes(k.key)) ? undefined : SECRET_REMOVED), { strict: true });
@@ -420,6 +444,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     add: (m) => (core.settings && !core.settings.get().memory ? noMemory.add(m) : memoryOn.add(m)),
   };
   if (memoryOn.forget) core.settings?.setForgetter((id) => memoryOn.forget!(id));
+  if (memoryOn.correct) core.settings?.setCorrector?.((id, title) => memoryOn.correct!(id, title));
   // What the Partner page says about memory follows what Mem actually answered.
   const noteMemState = (r: { ok: boolean; reason?: string }) => {
     if (!core.settings || !core.settings.get().memory) return;
@@ -611,7 +636,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   (spineTimer as { unref?: () => void } | null)?.unref?.();
 
   // ---------- channel output ----------
-  const appendAiMsg = (text: string, decisionId?: string) => {
+  const appendAiMsg = (text: string, decisionId?: string, mark?: string) => {
     const raw = text.trim();
     if (!raw) return;
     // Said already in the cut-off turn this one redoes: once is enough.
@@ -641,7 +666,23 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       body.cal = turn.cal;
       turn.cal = undefined;
     }
-    core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body });
+    const e = core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body });
+    if (turn && !decisionId) turn.lastSaid = e.seq;
+    if (!decisionId) recalledUnder(e.seq, mark);
+  };
+  /**
+   * D304: the one 想起了 / Remembered line under the words a recall changed. Only a ref this turn's
+   * memory_search returned (so a source can't be invented), only one per turn, only a memory with
+   * Mem's id (Forget needs it). The memory's text never goes in the line, only its title.
+   */
+  const recalledUnder = (aboutSeq: number, mark: string | undefined) => {
+    const t = turn;
+    if (!t || !mark || t.sourced) return;
+    const hit = t.recalled?.get(mark);
+    if (!hit?.id) return;
+    t.sourced = true;
+    const body: Bodies["memory_recalled"] = { memoryId: hit.id, title: hit.title, ...memSource(hit.source), aboutSeq, ...(hit.date ? { date: hit.date } : {}), ...(t.replyTo !== undefined ? { replyTo: t.replyTo } : {}) };
+    core.log.append({ stream: "channel", origin: "partner", kind: "memory_recalled", body });
   };
   /** The open task question a quiet turn's words say (D129): the oldest one the triggering
    *  reports opened that no message has said yet. */
@@ -716,15 +757,27 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const replyToFor = (t: TurnState) => t.replyTo ?? t.triggers[t.triggers.length - 1]?.seq ?? core.log.head();
   const appendAck = (t: TurnState, text: string): { jobId: string } => {
     const jobId = newId("job");
-    core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: parseRich(text.trim(), userLang()).text, replyTo: replyToFor(t) } });
+    const e = core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: parseRich(text.trim(), userLang()).text, replyTo: replyToFor(t) } });
     t.acked = true;
+    // D304: "像上次那样" opens a task the way it went last time: the ack carries what it remembered.
+    t.lastSaid = e.seq;
+    const mark = t.pendingMark;
+    t.pendingMark = undefined;
+    recalledUnder(e.seq, mark);
     endWaiting(); // D120: the ack is the reply the user waited for
     return { jobId };
   };
   const flushPending = () => {
     if (!turn || turn.pending === null) return;
     const p = turn.pending;
+    const mark = turn.pendingMark;
     turn.pending = null;
+    turn.pendingMark = undefined;
+    // D304: a mark said on its own after the answer belongs to the words just said.
+    if (!p.trim()) {
+      if (mark && turn.lastSaid !== undefined) recalledUnder(turn.lastSaid, mark);
+      return;
+    }
     // Silence after the ack (live: "Task opened.", "任务已开。" right after it). With a
     // single ask in the turn, a short line after the ack that asks nothing is dropped.
     if (turn.acked && turn.userTexts.length <= 1 && p.trim().length < 200 && !/[?？]/.test(p)) return;
@@ -743,7 +796,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // Several results at once: the app renders each one's evidence, Outside and Merge under
     // the message, so clauses about tests, commits, branches or merging only repeat or guess
     // (eval two-done-zh, 0/4 under the prompt alone).
-    appendAiMsg((turn.results ?? 0) >= 2 ? stripResultPlumbing(p) : p);
+    appendAiMsg((turn.results ?? 0) >= 2 ? stripResultPlumbing(p) : p, undefined, mark);
   };
   const claimAck = (t: TurnState): { jobId: string } | null => {
     if (t.unboundAck) return t.unboundAck;
@@ -786,7 +839,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
     if (ev.role === "assistant" && ev.text !== undefined && !ev.tool) {
       flushPending();
-      turn.pending = ev.text;
+      // D304: the [[m2]] that names the memory the words leaned on never reaches the person.
+      const { text, mark } = takeRecallMark(ev.text);
+      turn.pending = text;
+      turn.pendingMark = mark;
       return;
     }
     if (ev.tool) {
@@ -794,8 +850,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // it is the ack, and a short line after it is filler (live: "已经交给它去做了，做完会告诉您结果。").
       if (TASK_SEND_RE.test(ev.tool.name) && !turn.acked && turn.pending !== null && turn.pending.trim()) {
         const line = turn.pending;
+        const mark = turn.pendingMark;
         turn.pending = null;
-        appendAiMsg(line);
+        turn.pendingMark = undefined;
+        appendAiMsg(line, undefined, mark);
         turn.acked = true;
       }
       if (TASK_OPEN_RE.test(ev.tool.name) && turn.carried && carriedTask(turn.carried, (ev.tool.input as { title?: unknown } | undefined)?.title, false)) {
@@ -1722,10 +1780,20 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       noteMemState(r);
       if (!r.ok) return { ok: false, available: false, note: UNAVAILABLE };
       if (!r.hits.length) return { ok: true, results: [], note: "Nothing in memory fits. Carry on as someone who just doesn't remember: if you need it, ask the user plainly in one short line; never say you found no record." };
+      // D304: each result a short ref instead of Mem's id; the reply names the one it leaned on.
+      const refs = (t ? (t.recalled ??= new Map()) : new Map<string, MemoryHit>());
+      const results = r.hits.map(({ id, source, ...h }) => {
+        const from = memSource(source);
+        const said = from.by === "tool" ? { savedBy: from.from } : from.by === "said" ? { savedBy: "the user, telling you" } : { savedBy: "the user" };
+        if (!id) return { ...h, ...said };
+        const ref = `m${refs.size + 1}`;
+        refs.set(ref, { id, source, ...h });
+        return { ref, ...h, ...said };
+      });
       return {
         ok: true,
-        results: r.hits.map(({ id: _id, ...h }) => h), // the partner never needs Mem's ids
-        note: "Background for you, not for the user: use only what clearly fits, in your own words. Never paste or list these, never say you searched or checked memory. If none fits, carry on or ask.",
+        results,
+        note: "Background for you, not for the user: use only what clearly fits, in your own words. Never paste or list these, never say you searched or checked memory. If none fits, carry on or ask. Only if one of them changed what you say (the user would have got a different answer without it), end that message with its ref in double brackets, like [[m1]]: one ref at most, never for background you didn't need. The app hides the mark and shows a quiet source line.",
       };
     },
   );
@@ -1789,12 +1857,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const memOn = () => memoryOn !== noMemory && !(core.settings && !core.settings.get().memory);
   const TASK_SEARCHES = 6; // per task session start; a search is a pointer, not a dump
   const taskSearches = new Map<string, number>();
-  const toNote = (h: { id?: string; title: string; content: string; date?: string }, n: number) => ({
-    ...(h.id ? { id: h.id } : {}),
-    title: h.title,
-    content: h.content.length <= n ? h.content : h.content.slice(0, n - 1) + "…",
-    ...(h.date ? { date: h.date } : {}),
-  });
+  const toNote = (h: MemoryHit, n: number) => {
+    const by = memSource(h.source); // D304: another AI tool's memory is named as theirs
+    return {
+      ...(h.id ? { id: h.id } : {}),
+      title: h.title,
+      content: h.content.length <= n ? h.content : h.content.slice(0, n - 1) + "…",
+      ...(h.date ? { date: h.date } : {}),
+      ...(by.from ? { from: by.from } : {}),
+    };
+  };
   core.taskMemory = {
     on: memOn,
     async recall(w) {

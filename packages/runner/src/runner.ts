@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief, type CarryOver } from "./brief.ts";
+import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief, type CarryOver } from "./brief.ts";
 import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace, type ResolvedPlace } from "./places.ts";
@@ -1373,11 +1373,20 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
    */
   async function withKnown(t: TaskRt, turn: string, brief: string): Promise<string> {
     const port = core.taskMemory;
-    if (!port || memoryMode(t.card.place, t.card.harness) !== "ducter" || !brief.trim()) return turn;
+    const mode = memoryMode(t.card.place, t.card.harness);
+    if (!port || mode === "none" || !brief.trim()) return turn;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const late = new Promise<undefined>((r) => (timer = setTimeout(() => r(undefined), RECALL_MS)));
     const notes = await Promise.race([port.recall({ taskId: t.id, persona: t.persona, title: t.card.title, brief }).catch(() => undefined), late]).finally(() => clearTimeout(timer));
     if (!notes?.length) return turn;
+    if (mode === "plugin") {
+      // D304: the plugin gives its own context; only other tools' memories are named, by title.
+      const named = othersTurn(notes);
+      if (!named) return turn;
+      const others = notes.filter((n) => n.id && n.from).slice(0, OTHERS_MAX.notes);
+      logEvent(t, { role: "system", from: "runner", text: `named ${others.length} of your other tools' memories in the brief`, raw: { memory: "others", ids: others.map((n) => n.id ?? null), titles: others.map((n) => n.title) } });
+      return named + turn;
+    }
     logEvent(t, { role: "system", from: "runner", text: `recalled ${notes.length} from memory for the brief`, raw: { memory: "recall", ids: notes.map((n) => n.id ?? null), titles: notes.map((n) => n.title) } });
     return knownTurn(notes, partnerNameOf()) + turn;
   }

@@ -9,6 +9,7 @@ import { HoverReply, replyKey, replyOfFind } from "./reply.tsx";
 import { ProactiveChips } from "./accounts.tsx";
 import { Btn, Facts } from "./controls.tsx";
 import { openDid } from "./did.tsx";
+import { LearnedLine } from "./recall.tsx";
 import { ago } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -91,6 +92,8 @@ export function FindsNote({ n, join, seq, seqs }: { n: Bodies["finds"]; join?: b
         {n.finds.map((f) => (
           <Find key={f.findId} f={f} seq={seq} />
         ))}
+        {/* D304: the week's first note offers, in one line, what it noted about them. */}
+        {n.learned && n.learned.count > 0 && <LearnedLine count={n.learned.count} />}
         <Ask n={n} />
       </div>
       {/* D300: under the morning note, the quiet way to what it did for you. */}

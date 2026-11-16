@@ -15,6 +15,7 @@ export * from "./calendar.ts";
 export * from "./computer-use.ts";
 import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFrame } from "./computer-use.ts";
 export * from "./reply.ts";
+export * from "./context-meter.ts";
 export * from "./handset.ts";
 export * from "./channels.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
@@ -518,7 +519,58 @@ export interface Bodies {
   phone_call: CallBody;
 }
 
-export interface Usage { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }
+export interface Usage {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+  /** What the context holds at the turn's last model call, as the harness reported it (D135). */
+  contextTokens?: number;
+  /** D288: the window that reading fills (the harness's report, else the session's set window). */
+  contextWindow?: number;
+  /** D288: where the harness compacts on its own (the session's compaction point). */
+  compactAt?: number;
+  /** D288: this turn alone (input counts its cached part; output its reasoning). */
+  turn?: TurnTokens;
+}
+
+/** D288: one turn's tokens: input (cache reads included, `cached` that part) and output. */
+export interface TurnTokens {
+  input: number;
+  output: number;
+  cached?: number;
+}
+
+/**
+ * D288: an AI agent's account usage limits, as the agent itself reports them: read on demand
+ * (OAR accountUsage: Claude Code's get_usage, Codex's account/rateLimits/read) and kept current
+ * by what a running session says (Claude Code rate_limit_event, Codex account/rateLimits/updated).
+ */
+export interface AccountUsage {
+  harness: string;
+  /** The plan as the agent names it ("max", "pro", "plus"). */
+  plan?: string;
+  /** The signed-in account (an email or display name), when the agent says. */
+  account?: string;
+  /** A limit refuses requests now. */
+  limited?: boolean;
+  windows: UsageWindow[];
+  /** When this was read or last heard. */
+  at: string;
+}
+
+/** D288: one usage window of an account (a 5-hour, a weekly, a per-model weekly limit). */
+export interface UsageWindow {
+  /** The agent's own key ("five_hour", "seven_day", "codex:primary"). */
+  id?: string;
+  /** The agent's own name for it (English; clients word it from its span and model). */
+  label: string;
+  /** Used, 0..1. */
+  used: number;
+  resetsAt?: string;
+  /** Its length in ms when known (5 h, 7 days). */
+  durationMs?: number;
+}
 
 export type EventKind = keyof Bodies;
 
@@ -887,6 +939,9 @@ export type ClientFrame =
   // (action "switch"). After two switches the same way the partner asks once whether to make it
   // a rule (a partner-level decision).
   | { t: "candidates"; taskId: string }
+  // D288: an agent's account usage limits, for a task's context card (answered by account_usage;
+  // read at most every few minutes; fresh: true reads again now).
+  | { t: "account_usage"; harness: string; fresh?: boolean }
   | { t: "task_switch"; taskId: string; harness: string; model?: string; effort?: string; device?: string } // device (D157): continue on another computer; effort (D282): the same agent keeps its session
   // D157: 合上之前搬走 / Move before closing, from a computer's card: one decision (close_result answers;
   // none = nothing runs there, close it whenever).
@@ -1157,6 +1212,8 @@ export type ServerFrame =
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; bridge?: BridgeView }
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
+  // D288: no usage: the agent doesn't share it (unsupported), isn't signed in, or the read failed.
+  | { t: "account_usage"; harness: string; usage?: AccountUsage; why?: "unsupported" | "signed_out" | "unavailable" }
   | { t: "connections"; connections: ConnectionView[]; oo: OoDetect; ownPhone?: OwnPhoneView }
   // D218: an own-number step the home refused (number: not a full number; key: not a key; busy: a call is on).
   | { t: "own_phone_result"; ok: false; action: string; reason?: string }

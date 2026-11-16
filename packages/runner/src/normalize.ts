@@ -1,6 +1,7 @@
 // Pure projection: OAR Event -> Ducter HarnessEvent. Only structural OAR shapes are used here
 // (type imports are free; values stay in oar.ts), so no OAR type leaks out of this package.
 import type { HarnessEvent } from "@ducter/protocol/src/internal.ts";
+import type { NativeCompact, NativeUsage } from "./native-usage.ts";
 
 export const PREVIEW_MAX = 2048;
 
@@ -107,8 +108,32 @@ export class Normalizer {
   private tools = new Map<string, PendingTool>();
   private lastContext: number | undefined;
   private tasks = new Map<string, HarnessTask>();
+  /** D288: the session's totals at the previous turn end (a turn is their difference). */
+  private turnBase: { input: number; output: number; cached: number } | undefined;
+  /** D288: what the native frame said about a compaction about to be read (before / after). */
+  private compactNative: NativeCompact | undefined;
 
   constructor(private readonly usage: () => HarnessEvent["usage"] | undefined) {}
+
+  /**
+   * D288: what OAR leaves in the native frame, read before the frame's events are pushed: a
+   * compaction's sizes (stashed for its compaction_ended), and the account's limits as the
+   * session said them (an event of their own).
+   */
+  native(n: NativeUsage | undefined): HarnessEvent[] {
+    if (!n) return [];
+    if (n.compact) this.compactNative = n.compact;
+    return n.limits ? [{ role: "system", limits: n.limits, raw: { kind: "limits" } }] : [];
+  }
+
+  /** D288: this turn alone, from the session's running totals. */
+  private turnOf(u: HarnessEvent["usage"] | undefined): HarnessEvent["usage"] | undefined {
+    if (!u || (u.inputTokens === undefined && u.outputTokens === undefined)) return u;
+    const now = { input: u.inputTokens ?? 0, output: u.outputTokens ?? 0, cached: u.cacheRead ?? 0 };
+    const b = this.turnBase && now.input >= this.turnBase.input && now.output >= this.turnBase.output ? this.turnBase : { input: 0, output: 0, cached: 0 };
+    this.turnBase = now;
+    return { ...u, turn: { input: now.input - b.input, output: now.output - b.output, ...(u.cacheRead !== undefined ? { cached: Math.max(0, now.cached - b.cached) } : {}) } };
+  }
 
   push(ev: OarEventLike): HarnessEvent[] {
     const out: HarnessEvent[] = [];
@@ -151,10 +176,11 @@ export class Normalizer {
     if (ev.kind === "usage") {
       // Not logged (usage is folded into turnEnd), but the context size goes out as it grows, so
       // a task is asked to save its progress before its harness compacts (D135).
-      const c = this.usage()?.contextTokens;
+      const u = this.usage();
+      const c = u?.contextTokens;
       if (c && c !== this.lastContext) {
         this.lastContext = c;
-        out.push({ role: "system", usage: { contextTokens: c }, raw: { kind: "usage" } });
+        out.push({ role: "system", usage: { contextTokens: c, ...(u?.contextWindow ? { contextWindow: u.contextWindow } : {}) }, raw: { kind: "usage" } });
       }
       return out;
     }
@@ -219,7 +245,7 @@ export class Normalizer {
         for (const [id, task] of this.tasks) if (!task.ended && !task.shown) this.show(id, task, out);
         const o = ev.outcome ?? {};
         const text = o.kind === "completed" ? "turn completed" : o.kind === "aborted" ? "turn aborted" : `turn failed (${o.failure ?? "unknown"}): ${o.reason ?? ""}`;
-        out.push({ role: "system", text, turnEnd: true, usage: this.usage(), raw: { kind: "turn_ended", outcome: o.kind, failure: o.failure } });
+        out.push({ role: "system", text, turnEnd: true, usage: this.turnOf(this.usage()), raw: { kind: "turn_ended", outcome: o.kind, failure: o.failure } });
         break;
       }
       case "exited":
@@ -237,10 +263,15 @@ export class Normalizer {
       case "compaction_started":
         out.push({ role: "system", text: "compaction started", raw: { kind: "compaction_started", trigger: ev.trigger } });
         break;
-      case "compaction_ended":
+      case "compaction_ended": {
         this.lastContext = undefined;
-        out.push({ role: "system", text: `compaction ${ev.outcome}`, raw: { kind: "compaction_ended", outcome: ev.outcome, trigger: ev.trigger } });
+        // D288: the sizes the native frame gave (Claude Code's pre_tokens / post_tokens, pi's tokensBefore).
+        const n = this.compactNative;
+        this.compactNative = undefined;
+        const sizes = { ...(n?.before ? { before: n.before } : {}), ...(n?.after ? { after: n.after } : {}) };
+        out.push({ role: "system", text: `compaction ${ev.outcome}`, raw: { kind: "compaction_ended", outcome: ev.outcome, trigger: ev.trigger ?? n?.trigger, ...sizes } });
         break;
+      }
       default:
         break; // model/effort/turn_started/etc. are lifecycle noise for the Log
     }

@@ -59,6 +59,14 @@ func (a *App) switchLine(task *store.Task, b *Block) string {
 func (a *App) noteLine(b *Block) string {
 	name := b.Name
 	switch b.Say {
+	case "compacted":
+		// D288: with its size before and after when known.
+		if b.From > 0 && b.To > 0 {
+			return a.L.T("note.compacted.size", tokensShort(int64(b.From)), tokensShort(int64(b.To)))
+		}
+		if b.From > 0 {
+			return a.L.T("note.compacted.from", tokensShort(int64(b.From)))
+		}
 	case "effort_dropped":
 		if name != "" {
 			name = a.effortWord(name)

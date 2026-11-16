@@ -74,6 +74,8 @@ export interface WsDeps {
   /** Your rules and who does the tasks (D89); absent in tests that don't need them. */
   rules?: RulesStore;
   loadout?: Loadout;
+  /** D288: each agent's account usage limits (account-usage.ts); absent in tests that don't need it. */
+  accountUsage?: import("./account-usage.ts").AccountUsageBook;
   /** D157: Move before closing (closing.ts); absent in tests that don't need it. */
   closing?: import("./closing.ts").Closing;
   /** The user's connections (connections.ts); absent in tests that don't need it. */
@@ -791,6 +793,13 @@ export function createWsHandler(deps: WsDeps) {
       case "candidates": {
         if (!deps.loadout) throw new Error("candidates are not available");
         send(ws, { t: "candidates", taskId: f.taskId, candidates: await deps.loadout.candidates(f.taskId) });
+        return;
+      }
+      case "account_usage": {
+        // D288: the agent's own limits for a task's context card.
+        const h = String(f.harness ?? "");
+        const a = deps.accountUsage ? await deps.accountUsage.get(h, f.fresh === true) : { why: "unsupported" as const };
+        send(ws, { t: "account_usage", harness: h, ...(a.usage ? { usage: a.usage } : {}), ...(a.why ? { why: a.why } : {}) });
         return;
       }
       case "task_switch": {

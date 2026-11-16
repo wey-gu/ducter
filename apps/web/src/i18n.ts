@@ -18,6 +18,7 @@ import { updateAllWords } from "./i18n-updateall.ts";
 import { convWords } from "./i18n-conv.ts";
 import { transcriptWords } from "./i18n-transcript.ts";
 import { memoryWords } from "./i18n-memory.ts";
+import { contextWords } from "./i18n-context.ts";
 
 export type Lang = "zh" | "en";
 
@@ -2815,7 +2816,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en } };
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...contextWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...contextWords.en } };
 // D276: 聊天软件 / Chat apps (i18n-channels.ts).
 Object.assign(TABLES.zh, channelWords.zh);
 Object.assign(TABLES.en, channelWords.en);

@@ -1443,3 +1443,24 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **The model and effort rows on the phone's switch list** read the agents' model lists from
       New task's options frame, asked for when the list opens. Check on the iOS Simulator at 390 px.
       Trigger: the next phone review.
+
+## D288: a task's context, compactions and account limits (2026-11-16)
+- [ ] **On hand's tiny ring, only near the limit.** The task card would carry the latest reading
+      (`TaskCard.context: { tokens, window, compactAt }`, set by core from the `context` lines) so a
+      row on On hand can show the ring when a task is past its save point. Trigger: the On hand
+      redesign lands.
+- [ ] **The partner plans with the limits** ("Codex has 60% of its week left; I'll give this one to
+      Claude Code"): `fw_candidates`' quota pace reads the home's account book. A partner tool or
+      persona change: D175's eval with it. Trigger: the first limit hit in a real week.
+- [ ] **A worker's limits and Compact now on a worker's session.** The card shows the home's own
+      read; a worker's agents need a worker op (`account_usage`, like `models`) and its session's
+      `compact`. Trigger: the author running tasks on hel daily.
+- [ ] **Live checks**: a real Claude Code auto-compaction (its `post_tokens` present?), a real Codex
+      `account/rateLimits/updated` (its params as assumed), pi's `tokensBefore`, a real limit hit's
+      `rate_limit_event`, and Claude Code's `get_usage` on a Max account (the card's words).
+      Trigger: the author's first day of daily work in Ducter.
+- [ ] **OAR upstream**: the sizes on `compaction_ended`, a `rate_limit` event (Claude Code), the
+      Codex rate-limit update, per-turn usage. Trigger: the next OAR release window.
+- [ ] **A human comprehension pass** on the ring (does a fresh user read it as "how full", and the
+      butter as "soon, and fine"?) and on 压缩 / compact. LLM proxies first. Trigger: the next
+      comprehension round.

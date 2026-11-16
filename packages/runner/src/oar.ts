@@ -16,12 +16,13 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } 
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DSH_KEY_ENV, HARNESS_IDS, type HarnessId } from "@ducter/protocol";
+import { DSH_KEY_ENV, HARNESS_IDS, type AccountUsage, type HarnessId } from "@ducter/protocol";
 import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
 import { CLAUDE_SWITCHES, DSH_PROFILE, HARNESS_FACTS, PI_READ_ONLY_TOOLS, modelForWindow, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, ListedModel, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import type { Runtime, Session, SessionOptions, McpServer } from "@botiverse/oar/browser";
 import { Normalizer } from "./normalize.ts";
+import { nativeUsage } from "./native-usage.ts";
 import { bridgeCommand, writeBridgeTarget } from "./mcp-bridge.ts";
 import { childEnvOverlay } from "./child-env.ts";
 import { taskCredentials } from "./task-credentials.ts";
@@ -684,6 +685,43 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
         return undefined;
       }
     },
+
+    // D288: the account's usage limits, as the agent reads them itself with no model call (OAR
+    // accountUsage: Claude Code's get_usage control query in --safe-mode, Codex's
+    // account/rateLimits/read). Agents without a reader (pi, DeepSeek Harness) don't say.
+    async accountUsage(harness) {
+      if (!(HARNESS_IDS as readonly string[]).includes(harness)) return { why: "unsupported" };
+      try {
+        const h = harness as HarnessId;
+        const rt = await load(h);
+        const env = harnessEnv(h, { env: opts.env, dataDir });
+        const read = (rt as { accountUsage?: (i: unknown, o: unknown) => Promise<unknown> } | undefined)?.accountUsage;
+        if (!rt || !read) return { why: "unsupported" };
+        const inst = await rt.installation?.({ env });
+        if (!inst || inst.kind !== "available") return { why: "unsupported" };
+        return accountUsageOf(h, await read(inst, { env, timeoutMs: 30_000, limitResetDetails: false }), new Date().toISOString());
+      } catch {
+        return { why: "unavailable" };
+      }
+    },
+  };
+}
+
+/** D288: OAR's AccountUsageSnapshot as Ducter's AccountUsage (the reset credits left out). */
+export function accountUsageOf(harness: string, snap: unknown, at: string): { usage?: AccountUsage; why?: "unsupported" | "signed_out" | "unavailable" } {
+  const s = snap as { kind?: string; plan?: string; email?: string; displayName?: string; rateLimited?: boolean; windows?: { label: string; usedRatio: number; resetsAt?: string; id?: string; durationMs?: number }[] } | undefined;
+  if (s?.kind === "reauth_required") return { why: "signed_out" };
+  if (s?.kind !== "available") return { why: "unsupported" };
+  const account = s.email || s.displayName;
+  return {
+    usage: {
+      harness,
+      ...(s.plan ? { plan: s.plan } : {}),
+      ...(account ? { account } : {}),
+      ...(s.rateLimited ? { limited: true } : {}),
+      windows: (s.windows ?? []).map((w) => ({ label: w.label, used: w.usedRatio, ...(w.id ? { id: w.id } : {}), ...(w.resetsAt ? { resetsAt: w.resetsAt } : {}), ...(w.durationMs ? { durationMs: w.durationMs } : {}) })),
+      at,
+    },
   };
 }
 
@@ -735,9 +773,12 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId): Harnes
   // read in the turn_ended callback equals the usage record that follows it).
   const normalizer = new Normalizer(() => {
     const t = s.usage().value.total;
-    const contextTokens = contextTokensOf(s.contextUsage?.().value, harness);
+    const ctx = s.contextUsage?.().value;
+    const contextTokens = contextTokensOf(ctx, harness);
     if (!t && contextTokens === undefined) return undefined;
-    return { ...(t ? { inputTokens: t.input, outputTokens: t.output, cacheRead: t.cacheRead, cacheWrite: t.cacheWrite } : {}), ...(contextTokens !== undefined ? { contextTokens } : {}) };
+    // D288: the window the harness read it against (Claude Code's modelUsage.contextWindow, Codex's modelContextWindow).
+    const contextWindow = contextTokens !== undefined && ctx?.contextWindow && ctx.contextWindow > 0 ? ctx.contextWindow : undefined;
+    return { ...(t ? { inputTokens: t.input, outputTokens: t.output, cacheRead: t.cacheRead, cacheWrite: t.cacheWrite } : {}), ...(contextTokens !== undefined ? { contextTokens } : {}), ...(contextWindow ? { contextWindow } : {}) };
   });
   // One buffered queue feeding one async iterator; subscription starts at open (cursor 0).
   const buf: HarnessEvent[] = [];
@@ -749,7 +790,24 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId): Harnes
     buf.push(...evs);
     wake?.();
   };
+  // D288: the account's limits as the session says them live (frames OAR reads no events from).
+  const unRaw = s.rawEvents?.((r) => {
+    if (r.kind !== "frame" || r.agentPath.length) return;
+    const n = nativeUsage(r.body.type, r.body.native);
+    if (n?.limits) push(normalizer.native({ limits: n.limits }));
+  });
+  /** D288: a compaction's sizes, from the native frame its compaction_ended was read from. */
+  const nativeOf = (seq: number) => {
+    const rs = s.records?.() ?? [];
+    for (let i = rs.length - 1; i >= 0 && i >= rs.length - 64; i--) {
+      const r = rs[i]!;
+      if (r.seq === seq) return r.kind === "frame" ? nativeUsage(r.body.type, r.body.native) : undefined;
+      if (r.seq < seq) break;
+    }
+    return undefined;
+  };
   const unsubscribe = s.events((ev) => {
+    if (ev.kind === "compaction_ended" && !ev.agentPath.length) normalizer.native({ compact: nativeOf(ev.seq)?.compact });
     push(normalizer.push(ev as any));
     if (ev.kind === "exited") {
       push(normalizer.flush());
@@ -812,6 +870,7 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId): Harnes
         await s.dispose();
       } finally {
         unsubscribe();
+        unRaw?.();
         push(normalizer.flush());
         ended = true;
         wake?.();

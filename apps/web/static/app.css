@@ -10375,3 +10375,59 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
     animation: none;
   }
 }
+
+/* D288 · 上下文 / Context: a quiet ring by the task's composer (ink-muted, butter once it is close,
+   never red: compaction is ordinary), and the card it opens (the 工作副本 popover's shape). */
+.ctx-anchor { position: relative; display: inline-flex; flex: none; align-self: center; }
+.ctx-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; color: var(--ink-muted); transition: background var(--t-fast) var(--ease); }
+.ctx-btn.on { background: var(--surface-sunken); }
+@media (hover: hover), (any-hover: hover) { .ctx-btn:hover { background: var(--surface-sunken); } }
+.ctx-ring { display: block; }
+.ctx-ring .track { fill: none; stroke: var(--line-soft); stroke-width: 2.4; }
+.ctx-ring .fill { fill: none; stroke: var(--ink-muted); stroke-width: 2.4; stroke-linecap: round; transition: stroke-dasharray 400ms var(--ease), stroke 400ms var(--ease); }
+.ctx-ring.near .fill { stroke: var(--waiting-dot); }
+.ctx-ring .tick { stroke: var(--faint); stroke-width: 1.4; stroke-linecap: round; }
+@media (prefers-reduced-motion: reduce) { .ctx-ring .fill { transition: none; } }
+.ctx-pop:not(.as-sheet) {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: -8px;
+  z-index: 40;
+  width: min(340px, calc(100vw - 32px));
+  padding: 14px 16px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--floating), inset 0 0 0 1px var(--rim);
+  animation: info-in var(--t-fast) var(--ease);
+  text-align: left;
+}
+.ctx-pop.as-sheet { z-index: 60; text-align: left; }
+.ctx-pop:focus { outline: none; }
+.ctx-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.ctx-head .ttl { font-family: var(--head); font-size: var(--md); font-weight: 800; color: var(--ink); }
+.ctx-head .num { font-family: var(--mono); font-size: var(--sm); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.ctx-bar { position: relative; height: 6px; margin: 10px 0 8px; border-radius: 3px; background: var(--line-soft); overflow: visible; }
+.ctx-bar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--ink-muted); transition: width 400ms var(--ease); }
+.ctx-bar.near .fill { background: var(--waiting-dot); }
+.ctx-bar .tick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--faint); }
+.ctx-line { margin: 0; font-size: var(--sm); color: var(--ink); line-height: 1.5; }
+.ctx-pop .sub { color: var(--ink-muted); font-size: var(--xs); }
+.ctx-rows { margin: 10px 0 0; display: flex; flex-direction: column; }
+.ctx-row { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line-soft); }
+.ctx-row dt { font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
+.ctx-row dd { margin: 0; min-width: 0; font-size: var(--sm); color: var(--ink); }
+.ctx-tok { display: flex; flex-wrap: wrap; gap: 2px 10px; font-variant-numeric: tabular-nums; }
+.ctx-tok > span { white-space: nowrap; }
+.ctx-acts { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0 2px; border-top: 1px solid var(--line-soft); }
+.ctx-acts p { margin: 0; line-height: 1.45; }
+.ctx-acts .btn { flex: none; }
+.ctx-acct-sec { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.ctx-acct-sec h3 { margin: 0 0 6px; font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
+.ctx-limits { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.ctx-limits li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: var(--sm); color: var(--ink-soft); }
+.ctx-limits li.main { color: var(--ink); font-weight: 700; }
+.ctx-limits .left { font-variant-numeric: tabular-nums; }
+.ctx-limits .left.low { color: var(--waiting-ink); }
+.ctx-limits .left.out { color: var(--failed-ink); }
+.ctx-limits .at { font-size: var(--xs); font-weight: 500; color: var(--ink-muted); }
+.ctx-why, .ctx-acct { margin: 6px 0 0; font-size: var(--xs); color: var(--ink-muted); }

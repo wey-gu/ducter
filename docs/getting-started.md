@@ -94,7 +94,16 @@ A task is the AI agent as you run it yourself: Claude Code or Codex with your ow
 a task's box goes to the agent, slash commands too: in Claude Code, `/review`, `/compact`,
 `/context` and your own commands and skills work as they do in your terminal. On any agent,
 `/model sonnet` or `/effort high` changes the model or how hard it thinks; the task carries on
-in the same conversation from its next turn. In Codex, `/compact` makes room in its context.
+in the same conversation from its next turn. In Codex and pi, `/compact` makes room in its context
+too.
+
+The small ring by a task's box is how full the agent's context is: it fills as the agent reads and
+works, and turns yellow when the agent will soon compact it (sum up the conversation so far to make
+room; it saves its progress first and carries on). Click it to see the numbers: how much of the
+window is used, what the last turn and the whole task took, how many times it compacted, and how
+much of your Claude Code or Codex plan's limits is left and when they reset. **Compact now** there
+does the same as typing `/compact`; while the agent is mid-step it waits for the step to end. Each
+compaction shows in the task as a thin line, **Context compacted · 152k → 31k**.
 
 To work on it by hand, open the task on the Mac and choose **Open** at its top right: **Show in
 Finder**, **Open in** Cursor, Visual Studio Code or Zed, or **Open in** Terminal, iTerm2, Ghostty

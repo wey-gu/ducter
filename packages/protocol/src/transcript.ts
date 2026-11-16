@@ -86,7 +86,7 @@ export type Block =
    * word in their i18n (`note.<say>`, `name` filled in), never the English it was logged in; `text`
    * is that line as logged, keys hidden, shown only on a tap for an error; `bad` = something failed.
    */
-  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean; effort?: string }
+  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean; effort?: string; from?: number; to?: number }
   /** The agent's plan (D268): one per task, where it first wrote it, holding its latest items. */
   | { k: "plan"; seq: number; items: PlanItem[] }
   /**
@@ -106,18 +106,25 @@ export type Block =
 export type ToldSay = "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "other";
 
 /** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
-export type NoteSay = "compacted" | "interrupted" | "retry" | "stalled" | "offline" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
+export type NoteSay = "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
 
 const KICKOFF = /^(<brief>|Start the task ")/;
 
 /** A system line as a note, or undefined when it says nothing to a person (D207). Shared by the Go port. */
-export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: string; bad?: boolean; effort?: string } | undefined {
+export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: string; bad?: boolean; effort?: string; from?: number; to?: number } | undefined {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const o = (k: string) => (r[k] && typeof r[k] === "object" ? (r[k] as Record<string, unknown>) : undefined);
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
   const from = (re: RegExp) => re.exec(text)?.[1]?.trim() || undefined;
   // D268: a divider for a compaction or an interruption; a retry only while it is the latest thing.
-  if (r.kind === "compaction_ended" && r.outcome !== "failed") return { say: "compacted" };
+  // D288: with the size before and after when known (压缩了上下文 · 152k → 31k).
+  if (r.kind === "compaction_ended" && r.outcome !== "failed") {
+    const size = (v: unknown) => (typeof v === "number" && v > 0 ? Math.round(v) : undefined);
+    const from = size(r.before) ?? size(r.contextTokens);
+    const to = size(r.after);
+    return { say: "compacted", ...(from ? { from } : {}), ...(to ? { to } : {}) };
+  }
+  if (r.slash === "compact" && r.failed) return { say: "compact_failed", bad: true };
   if (r.kind === "turn_ended" && r.outcome === "aborted") return { say: "interrupted" };
   if (r.kind === "retry") return { say: "retry", ...((n) => (n ? { name: n } : {}))(from(/^retry (\d+)/)) };
   if (r.stall) return { say: "stalled" };
@@ -479,6 +486,19 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
           if (bg) {
             if (bg.step.target) bg.step.target = redact(bg.step.target);
             addRow(ev.seq, { seq: ev.seq, step: bg.step, n: 1, outcome: bg.failed ? "error" : "ok" });
+            break;
+          }
+          // D288: the first reading after a compaction is its size after.
+          const cx = b.raw as { kind?: string; after?: boolean; contextTokens?: number } | undefined;
+          if (cx?.kind === "context") {
+            if (cx.after && typeof cx.contextTokens === "number" && cx.contextTokens > 0) {
+              for (let i = out.length - 1; i >= 0; i--) {
+                const c = out[i]!;
+                if (c.k !== "note" || c.say !== "compacted") continue;
+                if (c.to === undefined) c.to = Math.round(cx.contextTokens);
+                break;
+              }
+            }
             break;
           }
           const n = noteOf(text, b.raw);

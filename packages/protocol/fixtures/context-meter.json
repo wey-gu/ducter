@@ -1,0 +1,77 @@
+{
+  "_": "D288: a task's context meter from its task_event bodies; the same cases for the web (packages/protocol/src/context-meter.ts) and the Mac (apps/desktop/internal/views/contextmeter.go). want lists every field the meter has; absent fields are absent. tokens: tokensShort cases.",
+  "cases": [
+    {
+      "name": "nothing reported yet",
+      "events": [{ "seq": 1, "body": { "role": "assistant", "text": "on it" } }],
+      "want": { "level": "calm", "compactions": 0 }
+    },
+    {
+      "name": "readings as it grows, then a turn end with its own turn",
+      "events": [
+        { "seq": 1, "body": { "role": "system", "raw": { "kind": "context", "contextTokens": 41000, "contextWindow": 200000, "compactAt": 160000 } } },
+        { "seq": 2, "body": { "role": "system", "raw": { "kind": "context", "contextTokens": 92000, "contextWindow": 200000, "compactAt": 160000 } } },
+        { "seq": 3, "body": { "role": "system", "text": "turn completed", "usage": { "inputTokens": 310000, "outputTokens": 4200, "cacheRead": 280000, "contextTokens": 96500, "contextWindow": 200000, "compactAt": 160000, "turn": { "input": 310000, "output": 4200, "cached": 280000 } }, "raw": { "turnEnd": true, "kind": "turn_ended" } } }
+      ],
+      "want": { "tokens": 96500, "window": 200000, "compactAt": 160000, "percent": 48, "level": "calm", "turn": { "input": 310000, "output": 4200, "cached": 280000 }, "total": { "input": 310000, "output": 4200, "cached": 280000 }, "compactions": 0 }
+    },
+    {
+      "name": "near the compaction point (past where it is asked to save)",
+      "events": [{ "seq": 1, "body": { "role": "system", "raw": { "kind": "context", "contextTokens": 146000, "contextWindow": 200000, "compactAt": 160000 } } }],
+      "want": { "tokens": 146000, "window": 200000, "compactAt": 160000, "percent": 73, "level": "near", "compactions": 0 }
+    },
+    {
+      "name": "a compaction: unknown until the first reading after, which is its size after",
+      "events": [
+        { "seq": 1, "body": { "role": "system", "raw": { "kind": "context", "contextTokens": 150000, "contextWindow": 200000, "compactAt": 160000 } } },
+        { "seq": 2, "body": { "role": "system", "text": "compaction completed", "raw": { "kind": "compaction_ended", "outcome": "completed", "trigger": "auto", "compactions": 1, "contextTokens": 150000, "before": 150000 } } },
+        { "seq": 3, "body": { "role": "system", "raw": { "kind": "context", "contextTokens": 30500, "contextWindow": 200000, "compactAt": 160000, "after": true } } }
+      ],
+      "want": { "tokens": 30500, "window": 200000, "compactAt": 160000, "percent": 15, "level": "calm", "compactions": 1, "last": { "seq": 2, "from": 150000, "to": 30500 } }
+    },
+    {
+      "name": "a compaction asked for, the agent's own sizes; nothing read since",
+      "events": [
+        { "seq": 1, "body": { "role": "system", "raw": { "kind": "context", "contextTokens": 90000, "contextWindow": 200000, "compactAt": 160000 } } },
+        { "seq": 2, "body": { "role": "system", "text": "compaction completed", "raw": { "kind": "compaction_ended", "outcome": "completed", "trigger": "manual", "compactions": 2, "before": 91000, "after": 22000 } } }
+      ],
+      "want": { "tokens": 22000, "window": 200000, "compactAt": 160000, "percent": 11, "level": "calm", "compactions": 2, "last": { "seq": 2, "from": 91000, "to": 22000, "manual": true } }
+    },
+    {
+      "name": "a compaction with no reading after yet: the size is unknown",
+      "events": [
+        { "seq": 1, "body": { "role": "system", "raw": { "kind": "context", "contextTokens": 150000, "contextWindow": 200000, "compactAt": 160000 } } },
+        { "seq": 2, "body": { "role": "system", "text": "compaction completed", "raw": { "kind": "compaction_ended", "outcome": "completed", "contextTokens": 150000 } } },
+        { "seq": 3, "body": { "role": "system", "text": "compaction failed", "raw": { "kind": "compaction_ended", "outcome": "failed" } } }
+      ],
+      "want": { "window": 200000, "compactAt": 160000, "level": "calm", "compactions": 1, "last": { "seq": 2, "from": 150000 } }
+    },
+    {
+      "name": "older turn ends without turn: the totals' difference; a total that went down is a new session",
+      "events": [
+        { "seq": 1, "body": { "role": "system", "text": "turn completed", "usage": { "inputTokens": 1000, "outputTokens": 100, "contextTokens": 1100 }, "raw": { "turnEnd": true } } },
+        { "seq": 2, "body": { "role": "system", "text": "turn completed", "usage": { "inputTokens": 3000, "outputTokens": 250, "contextTokens": 2400 }, "raw": { "turnEnd": true } } },
+        { "seq": 3, "body": { "role": "system", "text": "turn completed", "usage": { "inputTokens": 500, "outputTokens": 20, "contextTokens": 600 }, "raw": { "turnEnd": true } } }
+      ],
+      "want": { "tokens": 600, "level": "calm", "turn": { "input": 500, "output": 20 }, "total": { "input": 3500, "output": 270 }, "compactions": 0 }
+    },
+    {
+      "name": "another agent took over: its own context, unknown until it reads",
+      "events": [
+        { "seq": 1, "body": { "role": "system", "raw": { "kind": "context", "contextTokens": 80000, "contextWindow": 200000, "compactAt": 160000 } } },
+        { "seq": 2, "body": { "role": "system", "from": "runner", "text": "continued on Codex", "raw": { "switched": { "from": "claude-code", "to": "codex" } } } }
+      ],
+      "want": { "window": 200000, "compactAt": 160000, "level": "calm", "compactions": 0 }
+    }
+  ],
+  "tokens": [
+    [0, "0"],
+    [812, "812"],
+    [4210, "4.2k"],
+    [9999, "10k"],
+    [120400, "120k"],
+    [999400, "999k"],
+    [999600, "1M"],
+    [1250000, "1.3M"]
+  ]
+}

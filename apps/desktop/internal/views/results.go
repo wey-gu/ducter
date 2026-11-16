@@ -117,7 +117,7 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 		// and Keep: no count here too.
 		if len(changed) > 0 && task.Place().Kind != "folder" {
 			words := a.changesWords(task, changed)
-			if a.quietLink(c, "changes", words, words+" · "+task.Title()) {
+			if a.quietLink(c, "changes", words, spoken(a.L, words, task.Title())) {
 				a.openChanges(task.ID)
 			}
 		}
@@ -132,9 +132,18 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 // sentLine is what went out, only when something did: a drawn ↗ and the
 // literal action.
 func (a *App) sentLine(c *ui.Context, task *store.Task) {
-	if line := a.outsideLine(task); line != "" {
-		a.mark(c.Key("sent:"+task.ID), drawOut, line, a.T.InkMuted)
+	t := a.T
+	line, more := a.outsideLine(task)
+	if line == "" {
+		return
 	}
+	// D291: how many more went out is its own muted count, not joined to the action.
+	ui.Row(c.Key("sent:" + task.ID)).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() {
+		a.mark(c.Key("sentmk"), drawOut, line, t.InkMuted)
+		if more > 0 {
+			ui.Text(c, a.L.T("result.more", more)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+		}
+	})
 }
 
 // openChanges opens a task at its changes.
@@ -147,19 +156,15 @@ func (a *App) openChanges(id string) {
 // shows. Empty when nothing was sent out, or until the log is loaded: a
 // row with nothing to say is left out (the dossier's Sent out card still
 // says "Nothing sent out yet"; the actions say where the changes are).
-func (a *App) outsideLine(task *store.Task) string {
+func (a *App) outsideLine(task *store.Task) (line string, more int) {
 	if !task.HistoryLoaded {
-		return ""
+		return "", 0
 	}
 	acts := task.Outside()
 	if len(acts) == 0 {
-		return ""
+		return "", 0
 	}
-	s := acts[0].Command
-	if len(acts) > 1 {
-		s += " · " + a.L.T("result.more", len(acts)-1)
-	}
-	return s
+	return acts[0].Command, len(acts) - 1
 }
 
 // resultActions are the next steps a finished repo task offers. They go

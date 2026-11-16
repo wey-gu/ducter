@@ -8,8 +8,8 @@ import type { Bodies } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A, effortWord } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { Btn, Chev } from "./controls.tsx";
-import { harnessName, modelName } from "./format.ts";
+import { Btn, Chev, Facts } from "./controls.tsx";
+import { harnessName, modelName, spoken } from "./format.ts";
 import { attention, canIntegrate, finished, noRemote, placeOf, title, type Task } from "./store.ts";
 import { computerName, taskWhere } from "./where.ts";
 import { benchable, dataOf, openBenchAt } from "./workbench.tsx";
@@ -92,7 +92,7 @@ export function TaskInfoButton({ task }: { task: Task }) {
   const label = p.kind === "repo" ? p.branch || lastPart(p.repoPath ?? "") : lastPart(p.path ?? "");
   return (
     <span class="info-anchor">
-      <button ref={btn} class={`info-btn${open ? " on" : ""}`} aria-label={`${t("info.about")} · ${label}`} aria-expanded={open} aria-haspopup="dialog" title={label} onClick={() => setOpen(!open)}>
+      <button ref={btn} class={`info-btn${open ? " on" : ""}`} aria-label={spoken(A.L, t("info.about"), label)} aria-expanded={open} aria-haspopup="dialog" title={label} onClick={() => setOpen(!open)}>
         {p.kind === "repo" ? <BranchMark /> : <FolderMark />}
         <span class="info-label">{midCut(label)}</span>
         <Chev />
@@ -229,7 +229,7 @@ function TaskInfo({ task, onClose }: { task: Task; onClose: () => void }) {
             {who.map((b, i) => (
               <li key={b.ts + i}>
                 <Coin harness={b.harness} size={18} />
-                <span class="nm">{[harnessName(b.harness), b.model && modelName(b.model), b.effort && effortWord(A.L, b.effort)].filter(Boolean).join(" · ")}</span>
+                <Facts class="nm" items={[harnessName(b.harness), b.model && modelName(b.model), b.effort && effortWord(A.L, b.effort)]} />
                 <span class="when">{i === who.length - 1 ? t("info.who.now") : new Date(b.ts).toLocaleTimeString(A.L.lang === "zh" ? "zh-CN" : "en", { hour: "2-digit", minute: "2-digit" })}</span>
               </li>
             ))}

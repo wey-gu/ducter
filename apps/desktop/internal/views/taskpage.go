@@ -275,18 +275,19 @@ func (a *App) endLine(c *ui.Context, task *store.Task, m *taskMemo) {
 	}
 }
 
-// waitWords is the end line's words for a wait: its reason, and when it
-// looks again (a check, an event) or wakes (a time).
-func (a *App) waitWords(w *protocol.Waiter) string {
+// waitWords is the end line's words for a wait: its reason, and apart
+// (D291), when it looks again (a check, an event) or wakes (a time):
+// "21:59 回来" / "Back at 21:59", or "".
+func (a *App) waitWords(w *protocol.Waiter) (words, back string) {
 	reason := strings.TrimSpace(w.Reason)
+	next := store.ParseTime(w.At)
 	if w.Check != nil || w.Event != nil {
-		if next := store.ParseTime(w.NextLookAt); !next.IsZero() {
-			return a.L.T("end.wait", a.waitLine(reason), hhmm(next))
-		}
-	} else if at := store.ParseTime(w.At); !at.IsZero() {
-		return a.L.T("end.wait.timer", a.waitLine(reason), hhmm(at))
+		next = store.ParseTime(w.NextLookAt)
 	}
-	return a.L.T("end.wait.bare", reason)
+	if !next.IsZero() {
+		return a.waitLine(reason), a.L.T("end.wait", hhmm(next))
+	}
+	return a.L.T("end.wait.bare", reason), ""
 }
 
 func hhmm(t time.Time) string { return clock(t.UTC().Format(time.RFC3339)) }
@@ -296,14 +297,18 @@ func hhmm(t time.Time) string { return clock(t.UTC().Format(time.RFC3339)) }
 // with a click, how it checks (the check, the judge, how often, its looks).
 func (a *App) waitLine2(c *ui.Context, task *store.Task, w *protocol.Waiter) {
 	t := a.T
-	words := autospace(a.waitWords(w))
+	words, back := a.waitWords(w)
+	words = autospace(words)
 	key := "endwait:" + task.ID
 	open := a.open[key]
 	expandable := w.Check != nil || w.Event != nil
 	ui.Column(c.Key("waitline")).MinWidth(0).Role(ui.RoleStatus).Children(func() {
-		if a.stepLine(c, words, expandable, open, func(ui.Element) {
+		if a.stepLine(c, spoken(a.L, words, back), expandable, open, func(ui.Element) {
 			a.glyph(c, 16, drawClock(t.InkMuted))
 			ui.Text(c, words).FontSize(stepSize).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).Tooltip(words).AccessHidden(true)
+			if back != "" {
+				ui.Text(c, back).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0).AccessHidden(true)
+			}
 		}) {
 			a.open[key] = !open
 		}
@@ -320,48 +325,54 @@ func (a *App) waitLine2(c *ui.Context, task *store.Task, w *protocol.Waiter) {
 			ui.Text(c, s).FontSize(stepSize).LineHeight(leadingFor(s, 1.5)).TextColor(t.InkSoft).Selectable()
 		}
 		ui.Column(c.Key("waitdetail")).Gap(t.S3).Padding(t.S2, 0, t.S1, 22).MinWidth(0).Children(func() {
+			// When it last looked is said under how often (waitCadence).
 			a.waitRows(c, task, false, row, value)
-			if last := store.ParseTime(w.LastLookAt); !last.IsZero() {
-				row(a.L.T("wait.last", ""), func() { value(hhmm(last)) })
-			}
 		})
 	})
 }
 
-// promptLine is a wake's or what Ducter told it, as a hairline's words with
-// its time (D271).
-func (a *App) promptLine(task *store.Task, p *Block) string {
-	at := clock(a.tsOf(task, p.Seq))
+// promptLine is a wake's or what Ducter told it, as a hairline's words
+// (D271); its time is drawn apart (D291, promptAt).
+func (a *App) promptLine(p *Block) string {
 	if p.K == "wake" {
 		if p.Timer {
-			return a.L.T("wake.timer", at)
+			return a.L.T("wake.timer")
 		}
-		return a.L.T("wake.over", at)
+		return a.L.T("wake.over")
 	}
 	switch p.Say {
 	case "lent":
-		return a.L.T("told.lent", p.Name, at)
+		return a.L.T("told.lent", p.Name)
 	case "returned":
 		if p.Name != "" {
-			return a.L.T("told.returned.name", p.Name, at)
+			return a.L.T("told.returned.name", p.Name)
 		}
-		return a.L.T("told.returned", at)
+		return a.L.T("told.returned")
 	case "declined", "stopped", "reopened":
-		return a.L.T("told."+p.Say, at)
+		return a.L.T("told." + p.Say)
 	case "taken_back", "given_back", "loan_lost": // D280: the loan of the person's phone ended
-		return a.L.T("told."+p.Say, phoneShort(p.Name), at)
+		return a.L.T("told."+p.Say, phoneShort(p.Name))
 	}
-	return a.L.T("told.other", a.S.PersonaName, at)
+	return a.L.T("told.other", a.S.PersonaName)
 }
 
-// dividerTip is a hairline with a small label, its tip on hover.
-func (a *App) dividerTip(c *ui.Context, label, tip string) {
+// promptAt is when a turn's prompt came, as a clock ("21:59"), or "".
+func (a *App) promptAt(task *store.Task, p *Block) string {
+	return clock(a.tsOf(task, p.Seq))
+}
+
+// dividerTip is a hairline with a small label and, apart in muted tabular
+// figures, its time (D291); its tip on hover.
+func (a *App) dividerTip(c *ui.Context, label, at, tip string) {
 	t := a.T
-	ui.Row(c.Key("hair")).Gap(t.S2).MinHeight(24).AlignItems(ui.Center).Label(label).Children(func() {
+	ui.Row(c.Key("hair")).Gap(t.S2).MinHeight(24).AlignItems(ui.Center).Label(spoken(a.L, label, at)).Children(func() {
 		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
-		tx := ui.Text(c, label).FontSize(t.XXS).TextColor(t.InkMuted).SingleLine().Shrink(0).FontFeatures("tnum").AccessHidden(true)
+		tx := ui.Text(c, label).FontSize(t.XXS).TextColor(t.InkMuted).SingleLine().Shrink(0).AccessHidden(true)
 		if tip != "" {
 			tx.Tooltip(tip)
+		}
+		if at != "" {
+			ui.Text(c, at).FontSize(t.XXS).TextColor(t.InkMuted.Alpha(0.8)).SingleLine().Shrink(0).FontFeatures("tnum").AccessHidden(true)
 		}
 		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
 	})
@@ -393,18 +404,11 @@ func (a *App) voice(c *ui.Context, task *store.Task, b *Block) {
 			if !hover {
 				return
 			}
-			var parts []string
-			if at := clock(a.tsOf(task, b.Seq)); at != "" {
-				parts = append(parts, at)
-			}
-			if took != "" {
-				parts = append(parts, took)
-			}
-			if b.Saved && len(parts) > 0 {
-				ui.Text(c, "·").FontSize(t.XXS).TextColor(ink).Shrink(0)
-			}
-			if len(parts) > 0 {
-				ui.Text(c, strings.Join(parts, " · ")).FontSize(t.XXS).TextColor(ink).FontFeatures("tnum").Shrink(0)
+			// D291: its time and how long it worked, each its own small element.
+			for i, s := range []string{clock(a.tsOf(task, b.Seq)), took} {
+				if s != "" {
+					ui.Text(c.Key(i), s).FontSize(t.XXS).TextColor(ink).FontFeatures("tnum").Shrink(0)
+				}
 			}
 			label := a.L.T("reply.copy")
 			cp := ui.Text(c.Key("copy"), label).FontSize(t.XXS).FontWeight(600).TextColor(t.InkSoft).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(label)
@@ -435,31 +439,33 @@ func (a *App) jumpToLatest(c *ui.Context, ls *ui.ListState) {
 // ---------- the locator (D271) ----------
 
 // locatorLine is a turn's line in the locator: the first line of what was
-// said, or the hairline's words for a wake.
-func (a *App) locatorLine(task *store.Task, tu *Turn) string {
+// said, or the hairline's words for a wake; the brief carries its own quiet
+// label (D291), returned apart.
+func (a *App) locatorLine(tu *Turn) (line, tag string) {
 	p := tu.Prompt
 	if p == nil {
-		return ""
+		return "", ""
 	}
 	switch p.K {
 	case "wake", "told":
-		return a.promptLine(task, p)
+		return a.promptLine(p), ""
 	case "you":
 		if p.Go != nil {
-			return a.shortGo(*p.Go)
+			return a.shortGo(*p.Go), ""
 		}
 	case "brief":
-		return a.L.T("locator.brief") + " · " + firstLine(p.Text)
+		return firstLine(p.Text), a.L.T("locator.brief")
 	}
-	return firstLine(p.Text)
+	return firstLine(p.Text), ""
 }
 
 // locatorEntry is one line of the locator's list: a turn, or a run of
-// consecutive wakes said once ("等到了 24 次 · 1:51–19:06"), so a long loop
-// doesn't bury what was said to it (D271).
+// consecutive wakes said once ("等到了 24 次", 1:51–19:06), so a long loop
+// doesn't bury what was said to it (D271). Its time is drawn apart (D291).
 type locatorEntry struct {
 	from, to int
 	line     string
+	tag, at  string
 }
 
 func (a *App) locatorEntries(task *store.Task, turns []Turn) []locatorEntry {
@@ -475,9 +481,14 @@ func (a *App) locatorEntries(task *store.Task, turns []Turn) []locatorEntry {
 		if j > i {
 			first := clock(a.tsOf(task, turns[i].Prompt.Seq))
 			last := clock(a.tsOf(task, turns[j].Prompt.Seq))
-			out = append(out, locatorEntry{i, j, a.L.T("locator.wakes", j-i+1, first, last)})
+			out = append(out, locatorEntry{from: i, to: j, line: a.L.T("locator.wakes", j-i+1), at: first + "–" + last})
 		} else {
-			out = append(out, locatorEntry{i, i, a.locatorLine(task, &turns[i])})
+			line, tag := a.locatorLine(&turns[i])
+			at := ""
+			if p != nil {
+				at = a.promptAt(task, p)
+			}
+			out = append(out, locatorEntry{from: i, to: i, line: line, tag: tag, at: at})
 		}
 		i = j
 	}
@@ -534,7 +545,7 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 							}
 							i := e.to
 							row := ui.Row(c.Key(turns[e.from].Seq)).Gap(t.S2).MinHeight(26).Padding(0, t.S2).Radius(t.RadiusXS).AlignItems(ui.Center).MinWidth(0).
-								Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(line)
+								Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(spoken(a.L, e.tag, line, e.at))
 							if row.Hovered() {
 								row.Background(t.SurfaceSunken)
 							}
@@ -545,9 +556,19 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 									mark, ink = t.Ink.Alpha(0.75), t.Ink
 								}
 								ui.Box(c).Size(3, 12).Radius(1.5).Background(mark).Shrink(0)
+								// D291: the brief's quiet label, the words, and apart its time.
+								if e.tag != "" {
+									ui.Box(c.Key("tag")).Padding(1, 6).Radius(999).Background(t.SurfaceSunken).Shrink(0).Children(func() {
+										ui.Text(c, e.tag).FontSize(t.XXS).FontWeight(600).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+									})
+								}
 								tx := ui.Text(c, line).FontSize(stepSize).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
 								if here {
 									tx.FontWeight(600)
+								}
+								if e.at != "" {
+									ui.Box(c).Grow(1)
+									ui.Text(c, e.at).FontSize(t.XXS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0).AccessHidden(true)
 								}
 							})
 							if row.Clicked() {

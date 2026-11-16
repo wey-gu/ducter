@@ -840,7 +840,7 @@ func (a *App) openEvidence(c *ui.Context, ev protocol.EvidenceRef) {
 		c.OpenURL("file://" + ref)
 	default:
 		c.WriteClipboard(ev.Ref)
-		c.Toast(ev.Label + " · " + ev.Ref)
+		c.Toast(a.L.T("evidence.copied", ev.Ref)) // D291: one sentence
 	}
 }
 

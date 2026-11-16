@@ -569,7 +569,7 @@ func TestOnHandByProject(t *testing.T) {
 	}
 }
 
-// The opened task's Changes header: 改动 · 3 个文件 +42 −7.
+// The opened task's Changes header: 改动, 3 个文件 apart, +42 −7.
 func TestChangesHeader(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		app, _, tt := newTaskApp(t, lang)
@@ -577,7 +577,7 @@ func TestChangesHeader(t *testing.T) {
 		app.diffs["t_cart"] = &diffPane{files: []diffFile{{name: "src/cart/Checkout.tsx", added: 24, deleted: 5}, {name: "src/cart/useCart.ts", added: 9, deleted: 2}, {name: "src/cart/Checkout.test.tsx", added: 9}}}
 		tt.Frame()
 		tt.Frame()
-		want := map[i18n.Lang]string{i18n.ZH: "· 3 个文件", i18n.EN: "· 3 files"}[lang]
+		want := map[i18n.Lang]string{i18n.ZH: " 3 个文件 ", i18n.EN: " 3 files "}[lang]
 		all := strings.Join(tt.Texts(), " ")
 		if !strings.Contains(all, want) || !strings.Contains(all, "+42") || !strings.Contains(all, "−7") {
 			t.Errorf("%s: the Changes header: %q", lang, all)

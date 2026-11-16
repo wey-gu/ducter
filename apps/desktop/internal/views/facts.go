@@ -6,6 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
 // facts lays out a group of separate facts (D291): each its own small
@@ -32,6 +33,10 @@ func (a *App) facts(c *ui.Context, size float32, col ui.Color, parts ...string) 
 		}
 	})
 }
+
+// shownDeviceName is a device's name as the person sees it (D291):
+// "iPad · Ducter" from before shows as "iPad" (store.ShownDeviceName).
+func shownDeviceName(name string) string { return store.ShownDeviceName(name) }
 
 // spoken is an accessible name made of several facts, said the way a
 // person reads a list aloud (D291): "，" in Chinese, ", " in English.

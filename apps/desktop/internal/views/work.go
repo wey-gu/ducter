@@ -55,19 +55,19 @@ func (a *App) waitBubble(c *ui.Context, glyph string, size float32) ui.Element {
 	})
 }
 
-// waitCadence is how often it looks, for How it checks only: "每 5 分钟看一次 · 上次 11:40".
-func (a *App) waitCadence(w *protocol.Waiter) string {
-	var parts []string
+// waitCadence is how often it looks, for How it checks only ("每 5 分钟看一次"),
+// and apart, when it last looked ("上次是 11:40"), or "" (D291).
+func (a *App) waitCadence(w *protocol.Waiter) (often, last string) {
 	switch {
 	case w.Event != nil:
-		parts = append(parts, a.L.T("wait.each_new"))
+		often = a.L.T("wait.each_new")
 	case w.Check != nil:
-		parts = append(parts, a.L.T("wait.every", max(1, int((w.EveryMs+30_000)/60_000))))
+		often = a.L.T("wait.every", max(1, int((w.EveryMs+30_000)/60_000)))
 	}
 	if at := store.ParseTime(w.LastLookAt); !at.IsZero() {
-		parts = append(parts, a.tp("wait.last", (a.when(at))))
+		last = a.tp("wait.last", (a.when(at)))
 	}
-	return strings.Join(parts, " · ")
+	return often, last
 }
 
 // waitCaption is what a wait's card says in words: its deadline, or when a timer is due.
@@ -191,8 +191,9 @@ func (a *App) calendarBadge(c *ui.Context, r *protocol.Routine, size float32) {
 	})
 }
 
-// nextFew is a routine's next few runs in words: "11/16 · 11/23 · 11/30".
-func nextFew(r *protocol.Routine) string {
+// nextFew is a routine's next few runs, each date its own fact (D291):
+// 11/16, 11/23, 11/30 drawn apart by a.facts.
+func nextFew(r *protocol.Routine) []string {
 	var ds []string
 	for i, x := range r.Upcoming {
 		if i == 4 {
@@ -200,7 +201,7 @@ func nextFew(r *protocol.Routine) string {
 		}
 		ds = append(ds, i18n.MD(store.ParseTime(x)))
 	}
-	return strings.Join(ds, " · ")
+	return ds
 }
 
 // goal is a keep-going loop's goal as everyone reads it (D115): when it can
@@ -249,23 +250,28 @@ func (a *App) goal(c *ui.Context, u *protocol.Until, big bool) {
 					}
 				}
 			})
-			ui.Text(c, words+" · "+a.L.T("until.n", n)).FontSize(t.SM).TextColor(t.InkSoft).AccessHidden(true)
+			ui.Column(c).AccessHidden(true).Children(func() {
+				a.facts(c, t.SM, t.InkSoft, words, a.L.T("until.n", n))
+			})
 		})
 		return
 	}
-	line := a.L.T("until.met", len(u.Tries))
+	// D291: which try, and what the latest one says, each its own element.
+	try, line := "", a.L.T("until.met", len(u.Tries))
 	if !met {
-		latest := a.L.T("until.now")
+		try, line = a.L.T("until.n", n), a.L.T("until.now")
 		if k := len(u.Tries); k > 0 {
-			latest = u.Tries[k-1].Summary
+			line = u.Tries[k-1].Summary
 		}
-		line = a.L.T("until.n", n) + " · " + latest
 	}
 	ui.Row(c.Key("goal")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 		if !met {
 			if face := theme.Face(theme.Working, 26*scale*2); face != nil {
 				ui.Image(c, face).Size(26*scale, 26*scale).Shrink(0).AccessHidden(true)
 			}
+		}
+		if try != "" {
+			ui.Text(c, try).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").Shrink(0)
 		}
 		ui.Text(c, autospace(line)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
 	})
@@ -366,7 +372,13 @@ func (a *App) waitRows(c *ui.Context, task *store.Task, until bool, row func(str
 			ui.Text(c, a.L.T("wait.judge", w.Judge)).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 	})
-	row(a.L.T("wait.often"), func() { value(a.waitCadence(w)) })
+	row(a.L.T("wait.often"), func() {
+		often, last := a.waitCadence(w)
+		value(often)
+		if last != "" {
+			ui.Text(c, last).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
+		}
+	})
 	var looks []protocol.WaiterLook
 	for _, ev := range task.Events {
 		if ev.Kind != protocol.KindWaiterLook {
@@ -622,7 +634,9 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 						if looks > 0 {
 							a.pebbles(c, wakes, w.Looks)
 						}
-						ui.Text(c, strings.Join(tally, " · ")).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+						for i, s := range tally {
+							ui.Text(c.Key(i), s).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+						}
 					})
 				}
 			})
@@ -810,35 +824,33 @@ func (a *App) routineCard(c *ui.Context, r *protocol.Routine) {
 			if r.Trigger.Kind == "time" && !strings.Contains(r.Name, r.TriggerWords) {
 				ui.Text(c, r.TriggerWords).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 			}
-			line := ""
+			// D291: where it stands, when it runs next, how the last one went: each its own fact.
+			var lines []string
 			once := r.Trigger.Every == "once"
 			switch {
 			case paused:
-				line = a.pausedWhy(r)
+				lines = append(lines, a.pausedWhy(r))
 			case r.Running != "":
-				line = a.L.T("routine.running")
+				lines = append(lines, a.L.T("routine.running"))
 			case r.Backoff != nil:
 				// D245: kept from running by an account error; it tries again by itself.
-				line = strings.Join(nonEmpty(a.L.T("routine.cant."+r.Backoff.Trouble), a.tp("routine.retry", a.when(store.ParseTime(r.Backoff.NextTryAt)))), " · ")
+				lines = append(lines, a.L.T("routine.cant."+r.Backoff.Trouble), a.tp("routine.retry", a.when(store.ParseTime(r.Backoff.NextTryAt))))
 			case once:
-				line = a.L.T("routine.once.starts")
+				lines = append(lines, a.L.T("routine.once.starts"))
 			case r.LastRun != nil && r.LastRun.State == "failed" && r.LastRun.RetryAt != "":
-				line = a.tp("routine.retry", a.when(store.ParseTime(r.LastRun.RetryAt)))
+				lines = append(lines, a.tp("routine.retry", a.when(store.ParseTime(r.LastRun.RetryAt))))
 			case r.NextAt != "":
-				line = a.tp("routine.next", (a.when(store.ParseTime(r.NextAt))))
+				lines = append(lines, a.tp("routine.next", (a.when(store.ParseTime(r.NextAt)))))
 			}
 			if r.LastRun != nil && r.LastRun.At != "" {
-				last := a.tp("routine.last."+r.LastRun.State, (a.day(store.ParseTime(r.LastRun.At))))
+				lines = append(lines, a.tp("routine.last."+r.LastRun.State, (a.day(store.ParseTime(r.LastRun.At)))))
 				if m := r.LastRun.LateMin; m >= 90 {
-					last += " · " + a.L.T("routine.late.h", (m+30)/60)
+					lines = append(lines, a.L.T("routine.late.h", (m+30)/60))
 				} else if m > 0 {
-					last += " · " + a.L.T("routine.late.m", m)
+					lines = append(lines, a.L.T("routine.late.m", m))
 				}
-				line = strings.Join(nonEmpty(line, last), " · ")
 			}
-			if line != "" {
-				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
-			}
+			a.facts(c, t.XS, t.InkMuted, lines...)
 		})
 		if r.Trigger.Every == "once" && !paused {
 			// One start at a time (D185): nothing to pause; it can be called off.
@@ -889,9 +901,7 @@ func (a *App) routineFacts(c *ui.Context, id string, ink ui.Color) {
 			if r.Trigger.Kind == "time" {
 				ui.Row(c.Key("cal")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 					a.calendarBadge(c, r, 58)
-					if few := nextFew(r); few != "" {
-						ui.Text(c, few).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum")
-					}
+					a.facts(c, t.XS, t.InkMuted, nextFew(r)...)
 				})
 			}
 		})

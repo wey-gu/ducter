@@ -9,7 +9,7 @@ import { useEffect, useRef } from "preact/hooks";
 import { A, agentKey, effortWord, EVERY_HOURS, ntGitHubish, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { Btn, Choice, Facts, MenuRow, Pill, Seg } from "./controls.tsx";
-import { candReason, Check, coarse } from "./views.tsx";
+import { candFacts, candName, candReason, Check, coarse } from "./views.tsx";
 import { AddPictures, DropHint, Tray, useDropPaste } from "./media.tsx";
 import { harnessName, spoken } from "./format.ts";
 import { computerApart, computerOf, computers, manyComputers } from "./where.ts";
@@ -166,7 +166,7 @@ export function NewTaskSheet() {
   const onlyName = only ? (computerOf(only)?.name ?? "") : "";
   const folders = shown.filter((p) => p.place.kind !== "none");
   const awayLine = (c: Candidate) => {
-    if (chosen.place.kind === "none") return candReason({ ...c, blocked: undefined });
+    if (chosen.place.kind === "none") return <Facts items={candFacts({ ...c, blocked: undefined })} />;
     const name = c.deviceName ?? computerOf(c.device ?? "")?.name ?? "";
     const copy = c.device ? A.ntCopyOn(c.device, chosen) : undefined;
     return copy ? t("newtask.agent.copy", name, placeName(copy)) : t("newtask.agent.needsfolder", name);
@@ -335,7 +335,7 @@ export function NewTaskSheet() {
               const best = !!top && agentKey(top) === k;
               const on = !off && !!who && k === agentKey(who);
               // D206: with pictures on the card, an agent that can't see them says so.
-              const line = withPics && c.noImages && !off ? t("media.noImages") : away ? awayLine(c) : candReason(c);
+              const line = withPics && c.noImages && !off ? t("media.noImages") : away ? awayLine(c) : <Facts items={candFacts(c)} />;
               const name = harnessName(c.harness);
               return (
                 <div key={k} class="nt-agent">

@@ -278,14 +278,14 @@ export function evaluate(p: Predicate, exitCode: number, stdout: string): { met:
       for (const v of values) counts.set(show(v), (counts.get(show(v)) ?? 0) + 1);
       const seen = [...counts].map(([k, n]) => `${n} ${k}`).join(", ");
       const met = exitOk && (p.any ? ok > 0 : ok === values.length);
-      return { met, summary: clip(`${ok} of ${values.length} match · ${seen}`) };
+      return { met, summary: clip(`${ok} of ${values.length} match (${seen})`) };
     }
     return { met: exitOk && test(values[0]), summary: clip(`${p.path}: ${show(values[0])}`) };
   }
   const hasValueTest = p.equals !== undefined || p.oneOf || p.contains !== undefined || p.matches;
   if (!hasValueTest) {
     const want = p.exitCode ?? 0;
-    return { met: exitCode === want, summary: clip(`exit ${exitCode}${stdout.trim() ? ` · ${stdout.trim().split("\n")[0]}` : ""}`) };
+    return { met: exitCode === want, summary: clip(`exit ${exitCode}${stdout.trim() ? `: ${stdout.trim().split("\n")[0]}` : ""}`) };
   }
   return { met: exitOk && test(stdout.trim()), summary: clip(stdout.trim().split("\n").slice(0, 2).join(" ") || `exit ${exitCode}`) };
 }

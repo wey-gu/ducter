@@ -102,7 +102,7 @@ test("checks: the model's cwd stays inside the task's place", () => {
 });
 
 test("checks: the predicate reads JSON arrays, values, text and exit codes", () => {
-  expect(evaluate(prCheck.succeedWhen, 8, checksJson(["SUCCESS", "PENDING", "SUCCESS"]))).toEqual({ met: false, summary: "2 of 3 match · 2 SUCCESS, 1 PENDING" });
+  expect(evaluate(prCheck.succeedWhen, 8, checksJson(["SUCCESS", "PENDING", "SUCCESS"]))).toEqual({ met: false, summary: "2 of 3 match (2 SUCCESS, 1 PENDING)" });
   expect(evaluate(prCheck.succeedWhen, 0, checksJson(["SUCCESS", "SUCCESS"])).met).toBe(true);
   expect(evaluate({ path: "state", equals: "MERGED" }, 0, '{"state":"OPEN"}')).toEqual({ met: false, summary: "state: OPEN" });
   expect(evaluate({ exitCode: 0 }, 1, "").met).toBe(false);
@@ -130,7 +130,7 @@ test("a check waiter looks on its schedule with no model, logs only changes, and
   await flush();
   expect(calls.length).toBe(1);
   const view = tasks.onHand().waiters[0]!;
-  expect(view).toMatchObject({ kind: "check", reason: "PR #1592 的 CI 通过", lastSummary: "0 of 2 match · 2 PENDING", looks: 1 });
+  expect(view).toMatchObject({ kind: "check", reason: "PR #1592 的 CI 通过", lastSummary: "0 of 2 match (2 PENDING)", looks: 1 });
   clock.advance(5 * 60_000);
   await flush();
   expect(kinds(log, "waiter_look").length).toBe(1); // the same thing again: not logged
@@ -140,7 +140,7 @@ test("a check waiter looks on its schedule with no model, logs only changes, and
   clock.advance(5 * 60_000);
   await flush();
   const fired = log.read({ kinds: ["waiter"] }).at(-1)!;
-  expect(fired.body).toMatchObject({ state: "fired", observed: "2 of 2 match · 2 SUCCESS" });
+  expect(fired.body).toMatchObject({ state: "fired", observed: "2 of 2 match (2 SUCCESS)" });
   expect(triggersPartner(fired)).toBe(true);
   expect(calls.length).toBe(4);
   expect(tasks.onHand().waiters).toEqual([]);
@@ -299,7 +299,7 @@ test("an armed check survives a restart and looks again", async () => {
   const log = a.log;
   const tasks = createRegistry(log, clock);
   const work2 = createWork({ log, tasks, mcp: createMcpHub({ secret: "s" }), runner: () => undefined, clock, persona: "default", exec: async () => (looked++, { exitCode: 0, stdout: checksJson(["SUCCESS"]) }), minEveryMs: 1000, restartLookMs: 10 });
-  expect(work2.waiters.views()[0]).toMatchObject({ reason: "CI", lastSummary: "0 of 1 match · 1 PENDING" });
+  expect(work2.waiters.views()[0]).toMatchObject({ reason: "CI", lastSummary: "0 of 1 match (1 PENDING)" });
   clock.advance(10);
   await flush();
   expect(looked).toBe(1);
@@ -413,8 +413,8 @@ const monday9: RoutineTrigger = { kind: "time", every: "week", days: [1], time: 
 test("schedule: every Monday 9:00 in Shanghai, said in words", () => {
   const from = Date.parse("2026-11-09T02:00:00Z"); // Mon 10:00 in Shanghai
   expect(nextFirings(monday9, from, 3).map((t) => new Date(t).toISOString())).toEqual(["2026-11-16T01:00:00.000Z", "2026-11-23T01:00:00.000Z", "2026-11-30T01:00:00.000Z"]);
-  expect(describeTrigger(monday9, true)).toBe("每周一 9:00 · 跟着你的时区");
-  expect(describeTrigger(monday9, false)).toBe("Mondays 9:00 · follows your time zone");
+  expect(describeTrigger(monday9, true)).toBe("每周一 9:00（跟着你的时区）");
+  expect(describeTrigger(monday9, false)).toBe("Mondays 9:00 (follows your time zone)");
   const ny = nextFirings({ kind: "time", every: "weekday", time: "09:30", zone: "world", tz: "America/New_York" }, Date.parse("2026-11-07T00:00:00Z"), 1)[0]!;
   expect(new Date(ny).toISOString()).toBe("2026-11-09T14:30:00.000Z"); // Mon, after the DST change
   expect(nextFirings({ kind: "time", every: "month", dayOfMonth: 31, time: "08:00", zone: "world", tz: "UTC" }, Date.parse("2026-11-01T00:00:00Z"), 1).map((t) => new Date(t).toISOString())).toEqual(["2026-11-30T08:00:00.000Z"]);
@@ -426,7 +426,7 @@ test("a routine: proposal card, Go, it fires as a fresh task, the run closes fro
   expect(v.upcoming!.slice(0, 2)).toEqual(["2026-11-16T01:00:00.000Z", "2026-11-23T01:00:00.000Z"]);
   const card = s.log.read({ kinds: ["decision"] }).at(-1)!.body as Bodies["decision"];
   expect(card).toMatchObject({ routineId: v.routineId, goLabel: "开始", defaultOption: "hold" });
-  expect(s.tasks.onHand().routines![0]).toMatchObject({ state: "proposed", triggerWords: "每周一 9:00 · 跟着你的时区" });
+  expect(s.tasks.onHand().routines![0]).toMatchObject({ state: "proposed", triggerWords: "每周一 9:00（跟着你的时区）" });
   s.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: card.decisionId, option: "go", by: "user" } });
   expect(s.tasks.onHand().routines![0]).toMatchObject({ state: "active", nextAt: "2026-11-16T01:00:00.000Z" });
   s.clock.advance(7 * 86_400_000);
@@ -486,7 +486,7 @@ test("a condition routine: a live dry run on the card, and it fires on the chang
   const s = setup({ exec: async () => ({ exitCode: 0, stdout: JSON.stringify([{ conclusion: broken ? "failure" : "success" }]) }) });
   const check = { argv: ["gh", "run", "list", "--workflow", "nightly", "--limit", "1", "--json", "conclusion"], succeedWhen: { path: "[].conclusion", equals: "failure" } };
   const v = await s.work.routines.propose({ name: "nightly 挂了告诉我", trigger: { kind: "condition", condition: "hawdb 的 nightly 挂了", check, everyMs: 60_000 }, brief: "看 nightly 为什么挂了，告诉我。", reports: "on_change" });
-  expect(v.dryRun).toMatchObject({ met: false, summary: "0 of 1 match · 1 success" });
+  expect(v.dryRun).toMatchObject({ met: false, summary: "0 of 1 match (1 success)" });
   s.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: v.decisionId!, option: "go", by: "user" } });
   await flush();
   broken = true;
@@ -565,7 +565,7 @@ test("D185: a one-time start the user set is active at once (no card), opens the
 test("D185: every weekday, set by the user: each run carries their words and one line on when", async () => {
   const s = setup({ start: Date.parse("2026-11-09T02:00:00Z") });
   const v = s.work.routines.yours({ name: "看一眼 nightly", trigger: { kind: "time", every: "weekday", time: "09:00", zone: "personal", tz: "Asia/Shanghai" }, brief: "看一眼 hawdb 的 nightly，挂了就修。" });
-  expect(v.triggerWords).toBe("工作日 9:00 · 跟着你的时区");
+  expect(v.triggerWords).toBe("工作日 9:00（跟着你的时区）");
   s.clock.advance(86_400_000);
   await flush();
   expect(s.opened[0]!.startsWith("看一眼 hawdb 的 nightly，挂了就修。\n")).toBe(true);

@@ -14,9 +14,9 @@ import type { MediaRef, WaiterView } from "@ducter/protocol";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { RefObject } from "preact";
 import { WaitHow, waitLine } from "./work.tsx";
-import { clock } from "./format.ts";
+import { clock, shownDeviceName } from "./format.ts";
 import { Component, type JSX } from "preact";
-import { Btn, Chev } from "./controls.tsx";
+import { Btn, Chev, Facts } from "./controls.tsx";
 import { escArmed } from "./esc.ts";
 import { A, effortWord } from "./app.ts";
 import { duration, harnessName, modelName } from "./format.ts";
@@ -62,7 +62,7 @@ export function shortTitle(title: string): string {
       s = cut;
     }
   }
-  s = s.split(/\s+/).join(" ").replace(/[ ,，:：\-—·]+$/, "");
+  s = s.split(/\s+/).join(" ").replace(/[ ,，:：\-—]+$/, "");
   return s || title.trim();
 }
 
@@ -97,7 +97,8 @@ const codeLike = (st: Step) => !!st.target && !st.act && ["ran", "read", "edited
 /** A step's sentence and, apart, the code it names (in mono): the agent's own words when its
  *  harness gave them; "没找到 nmem" for a probe that found nothing; "运行 nmem doctor". */
 export function rowWords(r: StepRow): [string, string] {
-  if (!r.step) return [`${t("step.label.thought")} · ${r.thought ?? ""}`, ""];
+  // A thought says its first heading (D291: never the label joined to it).
+  if (!r.step) return [(r.thought ?? "").split("\n")[0] || t("step.label.thought"), ""];
   const st = r.step;
   if (r.outcome === "missing") {
     const base = `step.${st.kind}${st.act ? `.${st.act}` : ""}.missing`;
@@ -368,7 +369,7 @@ function Row({ r, live }: { r: StepRow; live?: boolean }) {
 /** A stretch of thinking (D268): how long it thought; open, its headings. Live, its first heading. */
 function Thought({ r, live }: { r: StepRow; live?: boolean }) {
   const [open, setOpen] = useState(false);
-  const heads = (r.thought ?? "").split(" · ").filter(Boolean);
+  const heads = (r.thought ?? "").split("\n").filter(Boolean);
   const words = live ? heads[0] || t("live.thinking") : r.ms !== undefined && r.ms >= 1000 ? t("think.took", dur(r.ms)) : t("think.brief");
   const opens = !live && heads.length > 0;
   const inner = (
@@ -486,7 +487,8 @@ function Voice({ task, b, took }: { task: Task; b: Extract<Block, { k: "voice" }
       <small class={`vmeta${b.saved ? " kept" : ""}`}>
         {b.saved && <span class="saved">{t("task.saved")}</span>}
         <span class="hov">
-          {[at, took].filter(Boolean).join(" · ")}
+          {at && <span>{at}</span>}
+          {took && <span>{took}</span>}
           <button type="button" class="qlink" onClick={() => void navigator.clipboard?.writeText(b.text)}>
             {t("reply.copy")}
           </button>
@@ -619,7 +621,8 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live
       <section class="turn" data-seq={turn.seq}>
         {(p?.k === "wake" || p?.k === "told") && (
           <div class="tx-divider wake" role="separator" title={p.text}>
-            <span>{promptLine(task, p)}</span>
+            <span>{promptLine(p)}</span>
+            {seqClock(task, p.seq) && <span class="when">{seqClock(task, p.seq)}</span>}
           </div>
         )}
         {p?.k === "brief" && <PromptCard task={task} b={p} label={p.by === "you" ? t("task.asked.you") : t("task.asked", A.S.personaName)} />}
@@ -692,13 +695,16 @@ function WaitLine({ task, w }: { task: Task; w: WaiterView }) {
   const [open, setOpen] = useState(false);
   const watches = !!(w.check || w.event);
   const next = watches ? w.nextLookAt : w.at;
-  const words = next ? t(watches ? "end.wait" : "end.wait.timer", waitLine(w.reason), clock(next)) : t("end.wait.bare", w.reason);
+  // D291: what it waits for, and apart, in muted tabular figures, when it comes back.
+  const words = next ? waitLine(w.reason) : t("end.wait.bare", w.reason);
+  const back = next ? t("end.wait", clock(next)) : "";
   const inner = (
     <>
       {GLYPHS.waited!()}
       <span class="sum" title={words}>
         {words}
       </span>
+      {back && <span class="when">{back}</span>}
       {watches && <span class="chev">{GLYPHS.chev!()}</span>}
     </>
   );
@@ -741,42 +747,50 @@ function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; tur
   );
 }
 
-/** A wake's or what Ducter told the agent, as a hairline's words with its time (D271). */
-function promptLine(task: Task, p: Extract<Block, { k: "wake" } | { k: "told" }>): string {
-  const ms = tsOf(task, p.seq);
-  const at = Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
-  if (p.k === "wake") return t(p.timer ? "wake.timer" : "wake.over", at);
-  if (p.say === "lent") return t("told.lent", p.name ?? "", at);
+/** When a turn's prompt came, as a clock ("21:59"), or "". */
+function seqClock(task: Task, seq: number): string {
+  const ms = tsOf(task, seq);
+  return Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
+}
+
+/** A wake's or what Ducter told the agent, as a hairline's words (D271); its time is drawn apart (D291). */
+function promptLine(p: Extract<Block, { k: "wake" } | { k: "told" }>): string {
+  if (p.k === "wake") return t(p.timer ? "wake.timer" : "wake.over");
+  if (p.say === "lent") return t("told.lent", p.name ?? "");
   // D280: the loan of the person's phone ended (taken back, given back, lost), named by the phone.
-  if (p.say === "taken_back" || p.say === "given_back" || p.say === "loan_lost") return t(`told.${p.say}`, (p.name ?? "").replace(/\s*·\s*Ducter$/, ""), at);
-  if (p.say === "returned") return p.name ? t("told.returned.name", p.name, at) : t("told.returned", at);
-  if (p.say === "other") return t("told.other", A.S.personaName, at);
-  return t(`told.${p.say}`, at);
+  if (p.say === "taken_back" || p.say === "given_back" || p.say === "loan_lost") return t(`told.${p.say}`, shownDeviceName(p.name ?? ""));
+  if (p.say === "returned") return p.name ? t("told.returned.name", p.name) : t("told.returned");
+  if (p.say === "other") return t("told.other", A.S.personaName);
+  return t(`told.${p.say}`);
 }
 
-/** A turn's line in the locator: the first line of what was said, or a hairline's words. */
-function locatorLine(task: Task, tu: Turn): string {
+type LocEntry = { seqs: number[]; line: string; tag?: string; at: string };
+
+/** A turn's entry in the locator: the first line of what was said, or a hairline's words; the
+ *  brief carries its own quiet label (D291), and every entry its time apart. */
+function locatorEntry(task: Task, tu: Turn): LocEntry {
   const p = tu.prompt;
-  if (!p) return "";
-  if (p.k === "wake" || p.k === "told") return promptLine(task, p);
-  if (p.k === "you" && p.go !== undefined) return shortGo(p.go);
+  const e: LocEntry = { seqs: [tu.seq], line: "", at: p ? seqClock(task, p.seq) : "" };
+  if (!p) return e;
+  if (p.k === "wake" || p.k === "told") return { ...e, line: promptLine(p) };
+  if (p.k === "you" && p.go !== undefined) return { ...e, line: shortGo(p.go) };
   const first = ("text" in p ? p.text : "").split("\n")[0]!;
-  return p.k === "brief" ? `${t("locator.brief")} · ${first}` : first;
+  return p.k === "brief" ? { ...e, line: first, tag: t("locator.brief") } : { ...e, line: first };
 }
 
-/** The locator's list: a turn, or a run of consecutive wakes said once ("等到了 24 次 · 1:51–19:06"),
+/** The locator's list: a turn, or a run of consecutive wakes said once ("等到了 24 次", 1:51–19:06),
  *  so a long loop doesn't bury what was said to it. */
-function locatorEntries(task: Task, turns: Turn[]): { seqs: number[]; line: string }[] {
-  const out: { seqs: number[]; line: string }[] = [];
-  const at = (seq: number) => {
-    const ms = tsOf(task, seq);
-    return Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
-  };
+function locatorEntries(task: Task, turns: Turn[]): LocEntry[] {
+  const out: LocEntry[] = [];
   for (let i = 0; i < turns.length; i++) {
     let j = i;
     if (turns[i]!.prompt?.k === "wake") while (j + 1 < turns.length && turns[j + 1]!.prompt?.k === "wake") j++;
     const run = turns.slice(i, j + 1);
-    out.push({ seqs: run.map((tu) => tu.seq), line: j > i ? t("locator.wakes", j - i + 1, at(run[0]!.prompt!.seq), at(run.at(-1)!.prompt!.seq)) : locatorLine(task, turns[i]!) });
+    out.push(
+      j > i
+        ? { seqs: run.map((tu) => tu.seq), line: t("locator.wakes", j - i + 1), at: `${seqClock(task, run[0]!.prompt!.seq)}–${seqClock(task, run.at(-1)!.prompt!.seq)}` }
+        : locatorEntry(task, turns[i]!),
+    );
     i = j;
   }
   return out;
@@ -827,7 +841,9 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
             <li key={e.seqs[0]}>
               <button class={e.seqs.some((s) => seen.has(s)) ? "here" : ""} onClick={() => go(e.seqs.at(-1)!)}>
                 <i />
+                {e.tag && <em class="tag">{e.tag}</em>}
                 <span>{e.line}</span>
+                {e.at && <small class="at">{e.at}</small>}
               </button>
             </li>
           ))}
@@ -907,11 +923,6 @@ export function TaskMore({ task }: { task: Task }) {
   );
 }
 
-/** The header's second line for an opened task (D268): who does it · where it stands · where. */
-export function taskSub(task: Task, stateLabel: string): string {
-  return [harnessName(harnessOf(task)), stateLabel, whereLine(placeOf(task))].filter(Boolean).join(" · ");
-}
-
 
 /** What the task said or saved after its latest report, its first line, or "" (keys hidden). */
 export function saidSince(task: Task): string {
@@ -926,8 +937,8 @@ function elapsed(ms: number): string {
   return s >= 3600 ? `${Math.floor(s / 3600)}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}` : `${Math.floor(s / 60)}:${p(s % 60)}`;
 }
 
-/** Where it runs, in a few words: the repo and branch, the folder, the machine when it isn't this one. */
-export function whereLine(p: Place): string {
+/** Where it runs, as separate facts (D291): the repo and its branch, the folder, the machine when it isn't this one. */
+export function whereParts(p: Place): string[] {
   const last = (s?: string) => (s ?? "").replace(/\/+$/, "").split("/").at(-1) ?? "";
   const parts: string[] = [];
   if (p.kind === "repo") parts.push(last(p.repoPath), p.branch ?? "");
@@ -936,7 +947,7 @@ export function whereLine(p: Place): string {
   const d = (p as { device?: string }).device;
   // D157: with two or more computers the computer is said apart (taskWhere), on every task.
   if (d && d !== "local" && d !== "this" && !manyComputers()) parts.push(t("task.where.on", d));
-  return parts.filter(Boolean).join(" · ");
+  return parts.filter(Boolean);
 }
 
 /** One quiet line (D152): where it stands, how long it took once finished (while it works the clock
@@ -949,8 +960,8 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
   const h = harnessOf(task);
   const m = modelOf(task);
   const e = effortOf(task);
-  const who = [harnessName(h), m && modelName(m), e && effortWord(A.L, e)].filter(Boolean).join(" · ");
-  const where = whereLine(placeOf(task));
+  // D291: who does it and where, each fact its own small element.
+  const facts = [harnessName(h), m && modelName(m), e && effortWord(A.L, e), ...whereParts(placeOf(task))].filter((x): x is string => !!x);
   const start = task.openedAt ? Date.parse(task.openedAt) : NaN;
   let when = "";
   if (!Number.isNaN(start)) {
@@ -968,16 +979,14 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
     <div class={`standing st-${a}`}>
       {mark}
       <b>{stateLabel}</b>
-      {when && <span class="when">· {when}</span>}
-      {(who || where) && (
-        <span class="who">
-          <span class="sep">·</span>
-          <span title={p.repoPath || p.path || undefined}>{[who, where].filter(Boolean).join(" · ")}</span>
+      {when && <span class="when">{when}</span>}
+      {facts.length > 0 && (
+        <span class="who" title={p.repoPath || p.path || undefined}>
+          <Facts items={facts} />
         </span>
       )}
       {on.line && (
         <span class="who where">
-          <span class="sep">·</span>
           {on.why ? (
             <button class="where-on" title={on.why} aria-expanded={why} onClick={() => setWhy(why ? "" : task.id)}>
               {on.line}

@@ -143,7 +143,8 @@ export function describeChange(d: WatchDiff, next: WatchSeen): { observed: strin
   const names = [...d.added, ...d.updated, ...d.gone].slice(0, 3).join(", ");
   const list = (label: string, xs: string[]) => (xs.length ? `${label}: ${xs.slice(0, 40).join("; ")}${xs.length > 40 ? ` (and ${xs.length - 40} more)` : ""}` : "");
   return {
-    observed: clip(`${parts.join(" · ")} · ${names}`, 200),
+    // D291: one plain sentence ("1 new and 1 updated: a, b"), never facts joined by a dot.
+    observed: clip(`${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0]}: ${names}`, 200),
     detail: clip([list("New", d.added), list("Updated", d.updated), list("Gone", d.gone)].filter(Boolean).join("\n"), 2000),
   };
 }

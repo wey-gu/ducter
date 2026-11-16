@@ -781,6 +781,29 @@ a {
 .taskline:active .t {
   text-decoration: underline;
 }
+/* D291: its status, who does it and why: separate small facts, spaced by the gap, no dots. */
+.taskline .s {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.proof .n {
+  font-variant-numeric: tabular-nums;
+}
+/* D291: a living line's task name leads in its own weight, then what happened. */
+.line .tx .lead {
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-inline-end: 0.4em;
+}
+/* D291: a candidate's agent in bold, its model apart in muted ink. */
+.cand .facts.nm {
+  align-items: baseline;
+  column-gap: var(--s2, 8px);
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
 .status-line.failed {
   color: var(--failed-ink);
 }
@@ -1889,10 +1912,7 @@ a {
 .tx.assistant.md p + p {
   margin-top: 8px;
 }
-/* D152: the opened task as the agent tells it. */
-.standing .sep {
-  color: var(--ink-muted);
-}
+/* D152: the opened task as the agent tells it. D291: the state word, then each fact apart. */
 .standing .who {
   display: inline-flex;
   align-items: center;
@@ -1902,23 +1922,12 @@ a {
 .standing .when {
   font-variant-numeric: tabular-nums;
 }
-/* A group's leading dot sits in the gap before it, outside the group: when the group wraps to the
-   start of a line its dot falls past the line's left edge and is clipped, so no line starts with
-   "·" (D211, D213: no coin there to start the group any more). */
+/* D291: the facts are spaced by the gap, no dots between them (D211, D213: no coin to start a group). */
 .standing {
-  column-gap: 10px;
-  clip-path: inset(-12px -12px -12px 0);
-}
-.standing .who {
-  position: relative;
+  column-gap: var(--s3);
 }
 .standing > :first-child + b {
   margin-inline-start: -4px;
-}
-.standing .who > .sep:first-child {
-  position: absolute;
-  right: 100%;
-  margin-right: 3px;
 }
 .standing .inline-link {
   font-size: var(--sm);
@@ -2066,8 +2075,20 @@ a {
   font-weight: 600;
   color: var(--ink-soft);
 }
-.voice .vmeta.kept .saved + .hov::before {
-  content: "·";
+/* D291: saved, its time, how long it worked: separate small elements spaced by the gap, never a dot. */
+.voice .vmeta.kept {
+  gap: var(--s3);
+}
+/* D291: the hairline's time and the wait's "back at" are their own muted, tabular element. */
+.tx-divider.wake .when {
+  margin-inline-start: -4px;
+  opacity: 0.8;
+}
+.wait-end .step .when {
+  flex: none;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
 }
 /* D271: what Ducter woke it with or told it: a hairline with its time, the reason on hover. */
 .tx-divider.wake {
@@ -2160,6 +2181,26 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* D291: the brief's quiet label and each entry's time are their own elements. */
+.locator .loc-list .tag {
+  flex: none;
+  font-style: normal;
+  font-size: var(--xxs, 11px);
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--sunken);
+  color: var(--ink-muted);
+}
+.locator .loc-list .at {
+  flex: none;
+  margin-inline-start: auto;
+  padding-inline-start: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
 }
 @media (max-width: 900px) {
   .locator {

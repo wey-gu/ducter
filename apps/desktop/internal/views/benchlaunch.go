@@ -58,7 +58,7 @@ func (a *App) benchLauncher(c *ui.Context, task *store.Task) {
 		mark             func(ui.Color) func(*ui.Painter, ui.Rect)
 	}
 	tiles := []tile{
-		{"changes", a.L.T("wb.launcher.changes"), a.L.T("wb.launcher.files"), drawFolder},
+		{"changes", a.L.T("wb.tab.changes_files"), a.L.T("wb.launcher.files"), drawFolder},
 		{"preview", a.L.T("wb.tab.preview"), a.L.T("wb.launcher.preview"), drawWindowMark},
 		{"browser", a.L.T("wb.tab.browser"), a.L.T("wb.launcher.browser"), drawGlobe},
 		{"phone", a.L.T("wb.tab.phone"), a.L.T("wb.launcher.phone"), drawPhoneMark},

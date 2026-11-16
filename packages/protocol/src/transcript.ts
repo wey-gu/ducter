@@ -434,7 +434,7 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
       case "task_event": {
         const b = ev.body as Bodies["task_event"];
         if (b.thinking?.length) {
-          addRow(ev.seq, { seq: ev.seq, thought: redact(b.thinking.join(" · ")), n: 1, outcome: "ok", ...took });
+          addRow(ev.seq, { seq: ev.seq, thought: redact(b.thinking.join("\n")), n: 1, outcome: "ok", ...took });
           break;
         }
         if (b.tool) {

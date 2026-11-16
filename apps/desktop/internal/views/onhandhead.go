@@ -213,7 +213,10 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		card.Border(2, t.Accent.Alpha(0.75))
 		card.AccessSelected(true)
 	}
-	// A new result's little moment, once: it pops on the spring.
+	// A new result's little moment, once: it pops, swelling a little and
+	// settling, once the page it is on has landed (navLanding), from its
+	// size at rest and back to it, so the card holds still and unscaled
+	// while the page comes in.
 	if fresh && !still {
 		if a.oh.cheered == nil {
 			a.oh.cheered = map[string]bool{}
@@ -222,8 +225,8 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			a.oh.cheered[task.ID] = true
 			card.Jump("cheer", 0)
 		}
-		if k := card.AnimateTo("cheer", 1, ui.Animation{Duration: 560 * time.Millisecond, Ease: ui.Linear}); k < 1 {
-			sc := 0.96 + 0.04*backOut(k)
+		if k := card.AnimateTo("cheer", 1, ui.Animation{Duration: a.T.Pop, Ease: ui.Linear, Delay: a.navLanding(c)}); k > 0 && k < 1 {
+			sc := cheerScale(k)
 			card.Scale(sc, sc)
 		}
 	}
@@ -507,4 +510,11 @@ func (a *App) dayRow(c *ui.Context, it dayItem, isNext bool) {
 	if it.id != "" && r.Clicked() {
 		a.OpenTask(it.id)
 	}
+}
+
+// cheerScale is a done card's size k of the way through its cheer: it
+// swells to about 1.02 a third of the way in and settles back to its size
+// at rest, which it starts from, so the cheer can wait for its page to land.
+func cheerScale(k float32) float32 {
+	return 1 + 0.035*float32(math.Sin(math.Pi*float64(k)))*(1-k)
 }

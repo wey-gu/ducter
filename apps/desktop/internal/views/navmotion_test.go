@@ -72,6 +72,21 @@ func TestNavMotionFrames(t *testing.T) {
 	}
 }
 
+// A done card's cheer starts and ends at its size at rest, so it can wait
+// for its page to land without a jump (navLanding), and swells only a little.
+func TestCheerScale(t *testing.T) {
+	if cheerScale(0) != 1 || cheerScale(1) != 1 {
+		t.Fatalf("the cheer starts at %v and ends at %v, not at rest", cheerScale(0), cheerScale(1))
+	}
+	var peak float32
+	for k := float32(0); k <= 1; k += 0.01 {
+		peak = max(peak, cheerScale(k))
+	}
+	if peak < 1.015 || peak > 1.025 {
+		t.Fatalf("the cheer swells to %v", peak)
+	}
+}
+
 func p95(all []time.Duration) time.Duration {
 	s := append([]time.Duration(nil), all...)
 	sort.Slice(s, func(i, j int) bool { return s[i] < s[j] })

@@ -140,6 +140,19 @@ func (a *App) navAnim(d navDir) ui.Animation {
 	return a.T.Nav.Across
 }
 
+// navLanding is how long until the page shown has come to rest from the
+// move that brought it, zero once it has (or when no move brought it). A
+// moment of the page's own (a done card's cheer) waits for it: played as
+// the page slides in, it is lost in the move, and its scaled card, shadows
+// and all, is what makes a moving frame slow to paint on the CPU.
+func (a *App) navLanding(c *ui.Context) time.Duration {
+	if a.nav.seq == 0 || c.Preferences().ReduceMotion {
+		return 0
+	}
+	land := a.navAnim(a.nav.dir).Spring.Duration
+	return max(0, land-c.Now().Sub(a.nav.at))
+}
+
 // pageTransition is the page's own. Its opacity comes in on a quick curve
 // (EnterDur, ease-out: a spring from rest starts slowly, and a page half
 // there reads as a wash); its way in is a pose on the move's spring

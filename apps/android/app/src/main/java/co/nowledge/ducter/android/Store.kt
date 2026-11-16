@@ -66,6 +66,11 @@ class Store(context: Context) {
         get() = p.getBoolean("notify.asked", false)
         set(v) = p.edit().putBoolean("notify.asked", v).apply()
 
+    /** D278: Android has asked once whether Ducter may make calls (a call sheet's 拨打). */
+    var dialAsked: Boolean
+        get() = p.getBoolean("dial.asked", false)
+        set(v) = p.edit().putBoolean("dial.asked", v).apply()
+
     /** D246: Ducter's accessibility switch has been on on this install, so restricted settings are allowed. */
     var handsetWasOn: Boolean
         get() = p.getBoolean("handset.wasOn", false)

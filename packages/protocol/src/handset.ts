@@ -63,6 +63,12 @@ export interface HandsetState {
   gen?: number;
   /** D255: Ducter's own recording of the screen, when one was asked for in a loan. */
   recording?: HandsetRecording;
+  /**
+   * D278: the app can dial a call sheet's number (handset_dial): granted (Android's Phone permission
+   * is on: it rings at once), ask (it asks once, on the phone, the first time), denied (it opens
+   * the dialer with the number filled). Absent: an app from before D278.
+   */
+  dial?: "granted" | "ask" | "denied";
 }
 
 /**
@@ -108,6 +114,8 @@ export interface HandsetView {
   state?: Pick<HandsetState, "sdk" | "model" | "service" | "restricted" | "pictures">;
   /** Its app is connected now, so a task can be started on it. */
   linked: boolean;
+  /** D278: its app is connected now and can dial a call sheet's number (在 Pixel Fold 上拨打). */
+  dial?: boolean;
   /** A task using it now. quiet (D253): the phone hasn't answered for a few seconds (nothing reaches it). */
   using?: { taskId: string; title: string; app?: string; quiet?: boolean };
 }
@@ -143,7 +151,12 @@ export type HandsetClientFrame =
   // The page's answer to one handset_req, relayed from its app.
   | { t: "handset_res"; id: string; ok: boolean; result?: unknown; error?: string }
   // 停下 / Stop from any window (taskId), or from the phone's own indicator (the page relays it, from: "phone").
-  | { t: "handset_stop"; taskId?: string; from?: "phone"; why?: "stop" | "locked" | "service" | "lost" | "network" };
+  | { t: "handset_stop"; taskId?: string; from?: "phone"; why?: "stop" | "locked" | "service" | "lost" | "network" }
+  // D278: 在 Pixel Fold 上拨打 / Call on Pixel Fold: a call sheet's number, dialled by the Ducter app on
+  // that phone (device; absent: the phone that last said hello). Answered with handset_dial_result.
+  | { t: "handset_dial"; callId: string; device?: string }
+  // D278: the page on that phone says how its app took it (rang, opened the dialer, or why not).
+  | { t: "handset_dial_res"; id: string; ok: boolean; how?: DialHow; error?: string };
 
 export type HandsetServerFrame =
   // One call into the phone's app, relayed by its page; answered with handset_res.
@@ -151,4 +164,21 @@ export type HandsetServerFrame =
   | { t: "handset_set_result"; device: string; on: boolean; ok: boolean; reason?: "not_android" | "service_off" | "unknown_device" | "old_app" }
   | { t: "handset_stop_result"; taskId?: string; ok: boolean }
   // D247: open the 用这台手机 guide on this phone now (a task's card asked for it, from any window).
-  | { t: "handset_guide"; taskId?: string };
+  | { t: "handset_guide"; taskId?: string }
+  // D278: to the page on the phone: dial this sheet's number through its app, and keep the sheet in
+  // a notification during the call. Answered with handset_dial_res.
+  | { t: "handset_dial_req"; id: string; callId: string; to: string; name: string; sheet: DialSheet }
+  // D278: to the window that asked: how it went on the phone (by its name), or why not.
+  | { t: "handset_dial_result"; callId: string; ok: boolean; phone?: string; how?: DialHow; reason?: "no_phone" | "no_sheet" | "failed" | "timeout"; error?: string };
+
+/** D278: how the phone took a dial: rang (placed at once), dialer (number filled, the person taps call), note (a notification to tap: the app was behind another without the permission). */
+export type DialHow = "rang" | "dialer" | "note";
+
+/** D278: the sheet as the phone keeps it during the call (a notification): what for, the first words, the questions, what not to share. */
+export interface DialSheet {
+  goal: string;
+  open: string;
+  ask: string[];
+  dont: string[];
+  note: string[];
+}

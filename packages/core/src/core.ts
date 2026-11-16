@@ -464,6 +464,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     savedNumber: savedPhone,
     zone: callZone,
     neverCall,
+    // D278: a Linux home is a server (devices.ts's rule): never offered as the place for the phone.
+    ...(opts.platform ? { platform: opts.platform } : {}),
     ...(opts.ownNumber ?? {}),
     onChange: () => onHandChanged(), // the live call's row in On hand
   });

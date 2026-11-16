@@ -3,11 +3,16 @@
 // phone, its SIM, the cable, the live voice, a test call. Only the first open step is unfolded,
 // so the card always says one next thing. Words from i18n-phone.ts (own.*); the Mac has the same
 // card (apps/desktop/internal/views/ownphone.go).
+// D278: a server home (a VPS) is never the place for the phone: the card there shows no steps, says
+// what works today (你来打 / You call: the sheet and one tap to dial) and plainly why a live call on
+// the person's own number needs a computer beside the phone. Install lines are only ever the home's
+// own system's, and 再找一次 always answers: a short busy state, then 看过了 · 20:14 with what it saw.
 import type { OwnPhoneView } from "@ducter/protocol";
 import { prettyNumber } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, DangerButton, Seg, Toggle } from "./controls.tsx";
+import { clock } from "./format.ts";
 import { CallArt } from "./phone.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -67,8 +72,45 @@ function Mark({ state, n }: { state: "done" | "next" | "later"; n: number }) {
   );
 }
 
+/** D278: the one install line for the home's own system; none where Ducter can't say it rightly. */
+export function installLine(os: OwnPhoneView["os"], tool: "adb" | "ffmpeg"): string | undefined {
+  if (os === "mac") return tool === "adb" ? "brew install android-platform-tools" : "brew install ffmpeg";
+  if (os === "linux") return tool === "adb" ? "sudo apt install adb" : "sudo apt install ffmpeg";
+  return undefined;
+}
+
+/** D278: what the last look saw, said with when and on which computer ("看过了 · 20:14 · MacBook 上还没看到手机"). */
+export function lookedLine(v: OwnPhoneView): string | undefined {
+  if (!v.lookedAt) return undefined;
+  const saw = !v.adb ? t("own.saw.noadb", v.where) : !v.phone ? t("own.saw.none", v.where) : v.phone.state === "unauthorized" ? t("own.saw.allow") : t("own.saw.phone", v.phone.model);
+  return t("own.looked", clock(v.lookedAt), saw);
+}
+
 function Cmd({ text }: { text: string }) {
   return <code class="own-cmd">{text}</code>;
+}
+
+/** The install line for this home's system, with the note for other Linux systems. */
+function Install({ v, tool }: { v: OwnPhoneView; tool: "adb" | "ffmpeg" }) {
+  const line = installLine(v.os, tool);
+  if (!line) return null;
+  return (
+    <>
+      <Cmd text={line} />
+      {v.os === "linux" && <div class="small sub">{t("own.cmd.distro", tool)}</div>}
+    </>
+  );
+}
+
+/** 再找一次 / Look again: busy while it looks, then when it looked and what it saw. */
+function Look({ v }: { v: OwnPhoneView }) {
+  const line = lookedLine(v);
+  return (
+    <div class="own-look" aria-live="polite">
+      <Btn kind="text" size="sm" label={t(v.looking ? "own.looking" : "own.scan")} disabled={!!v.looking} onClick={() => A.ownPhoneAct({ action: "scan" })} />
+      {!v.looking && line && <span class="small sub">{line}</span>}
+    </div>
+  );
 }
 
 function NumberField({ v }: { v: OwnPhoneView }) {
@@ -193,14 +235,14 @@ function body(step: Step, v: OwnPhoneView) {
         return (
           <div class="own-body">
             <div class="small">{t("own.adb")}</div>
-            <Cmd text="brew install android-platform-tools" />
-            <Btn kind="text" size="sm" label={t("own.scan")} onClick={() => A.ownPhoneAct({ action: "scan" })} />
+            <Install v={v} tool="adb" />
+            <Look v={v} />
           </div>
         );
       return (
         <div class="own-body" aria-live="polite">
           <div class="small">{!v.phone ? t("own.phone.none", v.where) : v.phone.state === "unauthorized" ? t("own.phone.allow") : t("own.phone.offline")}</div>
-          <Btn kind="text" size="sm" label={t("own.scan")} onClick={() => A.ownPhoneAct({ action: "scan" })} />
+          <Look v={v} />
         </div>
       );
     case "sim":
@@ -217,7 +259,7 @@ function body(step: Step, v: OwnPhoneView) {
           {!v.audio.tool ? (
             <>
               <div class="small">{t("own.audio.tool")}</div>
-              <Cmd text="brew install ffmpeg" />
+              <Install v={v} tool="ffmpeg" />
             </>
           ) : !v.audio.inputs.length ? (
             <div class="small">{t("own.audio.none")}</div>
@@ -228,7 +270,7 @@ function body(step: Step, v: OwnPhoneView) {
             </div>
           )}
           <Parts />
-          <Btn kind="text" size="sm" label={t("own.scan")} onClick={() => A.ownPhoneAct({ action: "scan" })} />
+          <Look v={v} />
         </div>
       );
     case "voice":
@@ -254,11 +296,35 @@ function doneLine(step: Step, v: OwnPhoneView): string {
   }
 }
 
+/** D278: the Ducter apps on the person's Android phones that can dial a call sheet now. */
+export const dialers = () => (A.reach?.clients ?? []).filter((c) => c.connected && c.handset?.dial);
+
+/**
+ * D278: the card on a home that can't be the computer beside the phone (a server): no steps, never
+ * "plug it in here". What works today, which phone dials, and what live calls need, said plainly.
+ */
+function AwayCard({ v }: { v: OwnPhoneView }) {
+  const d = dialers()[0];
+  return (
+    <section id="acct-own-phone" class="src-card phone-card own-card own-away" aria-label={t("own.title")}>
+      <div class="src-who">
+        <CallArt off size={96} />
+        <h3>{t("own.title")}</h3>
+        <div class="small sub">{t("own.away.lede")}</div>
+      </div>
+      <div class="small own-away-dial">{d ? t("own.away.dial", d.name.replace(/\s*·\s*Ducter$/, "")) : t("own.away.nodial")}</div>
+      <div class="small sub">{t("own.away.why", v.where)}</div>
+      <div class="small sub center">{t("own.away.soon")}</div>
+    </section>
+  );
+}
+
 export function OwnPhoneCard() {
   const v = A.ownPhone;
   const [forgetting, setForgetting] = useState(false);
   const [open, setOpen] = useState<Step | undefined>(undefined);
   if (!v) return null;
+  if (v.station === false) return <AwayCard v={v} />;
   const { done, next } = ownSteps(v);
   const steps: Step[] = ["phone", "sim", "cable", "voice", "test"];
   const shown = open ?? next;

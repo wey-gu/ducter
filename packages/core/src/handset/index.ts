@@ -33,7 +33,7 @@
 // a finished task's end is logged, never told; a screen that timed out (asleep) keeps the loan.
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, HandsetEnd, HandsetMethod, HandsetRecording, HandsetServerFrame, HandsetState, HandsetView, OnHand, Question } from "@ducter/protocol";
+import type { Bodies, DialHow, DialSheet, HandsetEnd, HandsetMethod, HandsetRecording, HandsetServerFrame, HandsetState, HandsetView, OnHand, Question } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { PhoneDevice, Raw } from "../android/device.ts";
 import { parseDump, type Screen } from "../android/screen.ts";
@@ -262,9 +262,22 @@ export interface Handsets {
   /** For phone_ask_go / phone_ask_user cards: the phone's id and name. */
   where(taskId: string): { device: string; name: string } | undefined;
   decorate(o: OnHand): OnHand;
+  /**
+   * D278: 在 Pixel Fold 上拨打 / Call on Pixel Fold: the Ducter app on that phone (or the one that
+   * last said hello and can dial) dials a call sheet's number and keeps the sheet in a notification.
+   * Only a number the person's own sheet holds; it never answers, records or reads a call.
+   */
+  dial(device: string | undefined, d: { callId: string; to: string; name: string; sheet: DialSheet }): Promise<{ ok: true; device: string; phone: string; how: DialHow } | { ok: false; reason: "no_phone" | "failed" | "timeout"; phone?: string; error?: string }>;
+  /** D278: the page on that phone says how its app took a dial. */
+  dialed(deviceId: string, r: { id: string; ok: boolean; how?: DialHow; error?: string }): void;
+  /** D278: the phones whose app can dial now, most recently heard first. */
+  dialers(): { device: string; name: string }[];
   onChange(fn: () => void): () => void;
   stopAll(): void;
 }
+
+/** D278: how long a dial waits for the phone's answer (it may be asking the person for the Phone permission). */
+export const DIAL_MS = 60_000;
 
 interface Link {
   sock: HandsetSocket;
@@ -360,6 +373,13 @@ export function createHandsets(o: HandsetsOptions): Handsets {
   /** D255: recordings, by task. */
   const recs = new Map<string, Rec>();
   const lastLinked = new Map<string, number>();
+  /** D278: dials sent to a phone's page, waiting for its handset_dial_res. */
+  const dials = new Map<string, { device: string; done: (r: { ok: boolean; how?: DialHow; error?: string }) => void; timer: ReturnType<typeof setTimeout> }>();
+  const dialers = () =>
+    [...pages.entries()]
+      .filter(([d, l]) => !!l.state.dial && o.deviceName(d) !== undefined)
+      .map(([d]) => d)
+      .sort((a, b) => (lastLinked.get(b) ?? 0) - (lastLinked.get(a) ?? 0));
   /** D253: when each phone last answered anything (a call, a beat, a hello). */
   const heard = new Map<string, number>();
   /** D253: phones that are quiet now (no answer for quietMs while lent). */
@@ -1031,10 +1051,39 @@ export function createHandsets(o: HandsetsOptions): Handsets {
         able: !!l && l.state.bridge >= HANDSET_BRIDGE,
         ...(l ? { state: { sdk: l.state.sdk, model: l.state.model, service: l.state.service, ...(l.state.restricted !== undefined ? { restricted: l.state.restricted } : {}), pictures: l.state.pictures } } : {}),
         linked: !!l,
+        ...(pages.get(deviceId)?.state.dial ? { dial: true } : {}),
         ...(loan ? { using: { taskId: loan.taskId, title: taskTitle(loan.taskId), ...(loan.app ? { app: loan.app } : {}), ...(quiet.has(deviceId) || !l ? { quiet: true } : {}) } } : {}),
       };
     },
     any: () => !!choose(),
+    async dial(device, d) {
+      const id = device && dialers().includes(device) ? device : device ? undefined : dialers()[0];
+      if (!id) return { ok: false, reason: "no_phone" };
+      const page = pages.get(id)!;
+      const rid = `dial_${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
+      const r = await new Promise<{ ok: boolean; how?: DialHow; error?: string }>((done) => {
+        const timer = setTimeout(() => (dials.delete(rid), done({ ok: false, error: "timeout" })), DIAL_MS);
+        (timer as { unref?: () => void }).unref?.();
+        dials.set(rid, { device: id, done, timer });
+        try {
+          page.sock.send({ t: "handset_dial_req", id: rid, callId: d.callId, to: d.to, name: d.name, sheet: d.sheet });
+        } catch (err) {
+          clearTimeout(timer);
+          dials.delete(rid);
+          done({ ok: false, error: (err as Error).message });
+        }
+      });
+      if (r.ok) return { ok: true, device: id, phone: name(id), how: r.how ?? "rang" };
+      return { ok: false, reason: r.error === "timeout" ? "timeout" : "failed", phone: name(id), ...(r.error && r.error !== "timeout" ? { error: r.error.slice(0, 200) } : {}) };
+    },
+    dialed(deviceId, r) {
+      const w = dials.get(String(r.id ?? ""));
+      if (!w || w.device !== deviceId) return;
+      clearTimeout(w.timer);
+      dials.delete(String(r.id));
+      w.done({ ok: r.ok === true, ...(r.how ? { how: r.how } : {}), ...(r.error ? { error: r.error } : {}) });
+    },
+    dialers: () => dialers().map((d) => ({ device: d, name: name(d) })),
     offer() {
       const list = [...links.keys()].filter(offerable);
       list.sort((a, b) => (lastLinked.get(b) ?? 0) - (lastLinked.get(a) ?? 0));

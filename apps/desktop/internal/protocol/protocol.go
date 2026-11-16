@@ -1805,6 +1805,11 @@ type ServerFrame struct {
 	// D193: connection_signin (the device sign-in); phone_voice_result uses
 	// Action, OK, URL, Reason, Message.
 	SignIn *SignInView `json:"signIn,omitempty"`
+	// handset_dial_result (D278): CallID, OK, DialPhone (the phone's name),
+	// How (rang | dialer | note), Reason (no_phone | no_sheet | failed | timeout).
+	CallID    string `json:"callId,omitempty"`
+	DialPhone string `json:"phone,omitempty"`
+	How       string `json:"how,omitempty"`
 	// D218: the own-number card (with connections); own_phone_result: Action, Reason.
 	OwnPhone *OwnPhoneView `json:"ownPhone,omitempty"`
 	// Step is one step's answer of 从外面连's setup (anywhere_setup_result, D228).
@@ -2004,7 +2009,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
-		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "channels", "channel_result":
+		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "channels", "channel_result",
+		"handset_dial_result":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

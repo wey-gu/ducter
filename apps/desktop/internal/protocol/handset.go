@@ -36,10 +36,21 @@ type HandsetUsing struct {
 
 // HandsetView is 用这台手机 on a phone's card.
 type HandsetView struct {
-	Added  bool          `json:"added"`
-	Able   bool          `json:"able"`
-	Linked bool          `json:"linked"`
-	Using  *HandsetUsing `json:"using,omitempty"`
+	Added  bool `json:"added"`
+	Able   bool `json:"able"`
+	Linked bool `json:"linked"`
+	// Dial (D278): its app is connected and can dial a call sheet's number.
+	Dial  bool          `json:"dial,omitempty"`
+	Using *HandsetUsing `json:"using,omitempty"`
+}
+
+// HandsetDialReq is 在 Pixel Fold 上拨打 / Call on Pixel Fold (D278): the
+// Ducter app on the person's phone dials a call sheet's number. Answered with
+// handset_dial_result (CallID, OK, DialPhone, How, Reason).
+type HandsetDialReq struct {
+	T      string `json:"t"` // "handset_dial"
+	CallID string `json:"callId"`
+	Device string `json:"device,omitempty"`
 }
 
 // HandsetSetReq adds (on the phone only) or removes 用这台手机.

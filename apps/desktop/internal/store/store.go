@@ -432,7 +432,10 @@ type Store struct {
 	// D218: the own-number card, and its last refusal (number, key, busy).
 	OwnPhone  *protocol.OwnPhoneView
 	OwnAnswer string
-	Forgot    *protocol.Forgot
+	// D278: a call sheet's dial on the person's phone, by call id: asking,
+	// done (How: rang | dialer | note) or failed (Reason).
+	Dials  map[string]*Dial
+	Forgot *protocol.Forgot
 	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
@@ -577,6 +580,23 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.ConnResult = &fc
 	case "connection_signin":
 		s.SignIn = f.SignIn
+	case "handset_dial_result":
+		if s.Dials == nil {
+			s.Dials = map[string]*Dial{}
+		}
+		d := s.Dials[f.CallID]
+		if d == nil {
+			d = &Dial{}
+			s.Dials[f.CallID] = d
+		}
+		if f.DialPhone != "" {
+			d.Phone = f.DialPhone
+		}
+		if f.OK {
+			d.Phase, d.How, d.Reason = "done", firstOr(f.How, "rang"), ""
+		} else {
+			d.Phase, d.Reason = "failed", firstOr(f.Reason, "failed")
+		}
 	case "own_phone_result":
 		s.OwnAnswer = f.Reason
 		if s.OwnAnswer == "" {
@@ -1386,4 +1406,19 @@ func (s *Store) Call(id string) *protocol.CallBody {
 		}
 	}
 	return nil
+}
+
+// Dial is where one call sheet's dial on the person's phone stands (D278).
+type Dial struct {
+	Phase  string // asking | done | failed
+	Phone  string
+	How    string // rang | dialer | note
+	Reason string // no_phone | no_sheet | failed | timeout
+}
+
+func firstOr(s, or string) string {
+	if s != "" {
+		return s
+	}
+	return or
 }

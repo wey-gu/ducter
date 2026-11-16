@@ -69,7 +69,13 @@ export interface CallPlan {
  * own phone) takes the Go card instead; the sheet is only for numbers nothing can call.
  */
 export interface CallSheet {
-  why: "uncovered"; // no calling provider Ducter has (or could connect) calls that country
+  /**
+   * uncovered: no calling provider Ducter has (or could connect) calls that country (D215).
+   * own (D278): 你来打 / You call: the person asked for their own number and no computer beside
+   * their phone carries a live call yet, so they call with the sheet; the Ducter app on their
+   * Android phone dials it in one tap (handset_dial), elsewhere a tel: link.
+   */
+  why: "uncovered" | "own";
   open: string; // 先说 / Open with
   ask: string[]; // 要问 / Ask
   dont: string[]; // 别说 / Don't share: the owner's don'ts and what stays private
@@ -287,6 +293,18 @@ export const OWN_PHONE = "own";
 export interface OwnPhoneView {
   /** The computer the phone is plugged into (D157: the call runs there). */
   where: string;
+  /**
+   * D278: this home can be the computer beside the phone (a Mac the person uses). A server home
+   * (a VPS, a box in a cupboard) never can: the card never asks to plug a phone into it, shows no
+   * steps, and says what works today (你来打 / You call) and what needs a computer beside the phone.
+   */
+  station: boolean;
+  /** D278: the home's system, so an install line is only ever the one for it (brew on a Mac). */
+  os: "mac" | "linux" | "other";
+  /** D278: 再找一次 / Look again is looking now (a short busy state on the card). */
+  looking?: boolean;
+  /** D278: when it last looked (ISO), said on the card as 看过了 · 20:14 with what it saw. */
+  lookedAt?: string;
   /** adb (Android's USB tool) on that computer; missing: the card says how to get it. */
   adb: boolean;
   /** The phone, when one is plugged in. unauthorized: tap Allow on the phone; offline: plug it in again. */

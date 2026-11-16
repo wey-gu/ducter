@@ -452,7 +452,11 @@ func (a *App) callSheetBody(c *ui.Context, d *store.DecisionState, why bool) {
 	s := pl.Sheet
 	p := a.ph()
 	if why && d.Resolved == nil && d.Pending == "" {
-		ui.Text(c, autospace(a.L.T("call.sheet.why"))).FontSize(t.SM).TextColor(t.NeedsYou.Ink).LineHeight(a.leading(1.45))
+		key := "call.sheet.why"
+		if s.Why == "own" {
+			key = "call.sheet.why.own" // D278: 你来打 / You call
+		}
+		ui.Text(c, autospace(a.L.T(key))).FontSize(t.SM).TextColor(t.NeedsYou.Ink).LineHeight(a.leading(1.45))
 	}
 	row := func(key, label string, lines []string) {
 		if len(lines) == 0 {
@@ -496,7 +500,72 @@ func (a *App) callSheetBody(c *ui.Context, d *store.DecisionState, why bool) {
 				row("note", a.L.T("call.sheet.note"), s.Note)
 			})
 		}
+		if d.Resolved == nil && d.Pending == "" {
+			a.callSheetDial(c, d)
+		}
 	})
+}
+
+// callSheetDial is 在 Pixel Fold 上拨打 / Call on Pixel Fold (D278): the Mac
+// can't dial, but the Ducter app on the person's Android phone can; the line
+// under it says how the phone took it.
+func (a *App) callSheetDial(c *ui.Context, d *store.DecisionState) {
+	t := a.T
+	pl := d.Call.Plan
+	cur := a.S.Dials[d.Call.CallID]
+	list := a.dialers()
+	if len(list) == 0 && cur == nil {
+		return
+	}
+	ui.Column(c.Key("sheet:dial")).Gap(t.S2).Children(func() {
+		if len(list) > 0 {
+			ph := list[0]
+			name := phoneName(ph.Name)
+			ui.Row(c).Children(func() {
+				if a.buttonFor(c.Key("dial"), a.L.T("call.sheet.dial.on", name), pl.Name, btnPrimary, t.ControlSM, t.NeedsYou.Surface) && (cur == nil || cur.Phase != "asking") {
+					if a.S.Dials == nil {
+						a.S.Dials = map[string]*store.Dial{}
+					}
+					a.S.Dials[d.Call.CallID] = &store.Dial{Phase: "asking", Phone: name}
+					a.send(protocol.HandsetDialReq{T: "handset_dial", CallID: d.Call.CallID, Device: ph.ID})
+				}
+			})
+		}
+		if line, warn := a.dialLine(cur); line != "" {
+			ink := t.InkSoft
+			if warn {
+				ink = t.Failed.Ink
+			}
+			ui.Text(c, line).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.45)).Role(ui.RoleStatus)
+		}
+	})
+}
+
+// dialLine says how the phone took a dial (the web's dialWords).
+func (a *App) dialLine(d *store.Dial) (string, bool) {
+	if d == nil {
+		return "", false
+	}
+	name := firstNonEmpty(phoneName(d.Phone), "Android")
+	switch d.Phase {
+	case "asking":
+		return a.L.T("call.sheet.dialing", name), false
+	case "done":
+		switch d.How {
+		case "dialer":
+			return a.L.T("call.sheet.dialer", name), false
+		case "note":
+			return a.L.T("call.sheet.noted", name), false
+		}
+		return a.L.T("call.sheet.rang", name), false
+	}
+	switch d.Reason {
+	case "timeout":
+		return a.L.T("call.sheet.dialtimeout", name), true
+	case "no_phone":
+		return a.L.T("call.sheet.nophone", name), true
+	}
+	return a.L.T("call.sheet.dialfail", name), true
 }
 
 // callPlanBody is the facts, a warning when there is one, the opening line

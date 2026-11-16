@@ -1,7 +1,10 @@
 package views
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -14,6 +17,98 @@ import (
 // home sees them (the phone, its SIM, the cable, the live voice, a test call);
 // only the first open one unfolds, so the card always says one next thing.
 // The same card and words as the phone (apps/web/src/own-phone.tsx).
+// D278: a server home is never the place for the phone: the card there shows
+// no steps, says what works today (你来打 / You call) and why a live call on
+// the person's own number needs a computer beside the phone. Install lines are
+// only ever the home's own system's, and 再找一次 always answers: a busy line,
+// then 看过了 · 20:14 with what it saw.
+
+// ownInstall is the one install line for the home's own system, or "".
+func ownInstall(os, tool string) string {
+	switch os {
+	case "mac":
+		if tool == "adb" {
+			return "brew install android-platform-tools"
+		}
+		return "brew install ffmpeg"
+	case "linux":
+		if tool == "adb" {
+			return "sudo apt install adb"
+		}
+		return "sudo apt install ffmpeg"
+	}
+	return ""
+}
+
+// ownLooked is what the last look saw, with when and on which computer.
+func (a *App) ownLooked(v *protocol.OwnPhoneView) string {
+	at, err := time.Parse(time.RFC3339, v.LookedAt)
+	if err != nil {
+		return ""
+	}
+	at = at.Local()
+	var saw string
+	switch {
+	case !v.ADB:
+		saw = a.L.T("own.saw.noadb", v.Where)
+	case v.Phone == nil:
+		saw = a.L.T("own.saw.none", v.Where)
+	case v.Phone.State == "unauthorized":
+		saw = a.L.T("own.saw.allow")
+	default:
+		saw = a.L.T("own.saw.phone", v.Phone.Model)
+	}
+	return a.L.T("own.looked", fmt.Sprintf("%d:%02d", at.Hour(), at.Minute()), saw)
+}
+
+// dialers are the person's phones whose Ducter app can dial a call sheet now (D278).
+func (a *App) dialers() []protocol.ReachClient {
+	var out []protocol.ReachClient
+	if a.S.Reach == nil {
+		return out
+	}
+	for _, cl := range a.S.Reach.Clients {
+		if cl.Connected && cl.Handset != nil && cl.Handset.Dial {
+			out = append(out, cl)
+		}
+	}
+	return out
+}
+
+// phoneName drops the app's " · Ducter" from a phone's client name.
+func phoneName(name string) string {
+	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(name), "· Ducter"))
+}
+
+// ownAwayCard is the card on a home that can't be the computer beside the
+// phone (a server): what works today, which phone dials, what live calls need.
+func (a *App) ownAwayCard(c *ui.Context, v *protocol.OwnPhoneView) {
+	t := a.T
+	title := a.L.T("own.title")
+	ui.Column(c.Key("own-phone")).Width(400).MinWidth(0).Grow(1).MaxWidth(520).Radius(t.RadiusLG).Background(t.Surface).
+		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S5).Gap(t.S3).Role(ui.RoleGroup).Label(title).Children(func() {
+		ui.Column(c).AlignItems(ui.Center).Gap(t.S1).Children(func() {
+			ui.Row(c).Size(220, 128).Justify(ui.Center).AlignItems(ui.End).AccessHidden(true).Draw(func(pt *ui.Painter, r ui.Rect) {
+				pt.FillPath(oval(r.X+r.W/2, r.Y+r.H-12, 84, 12), t.SurfaceSunken)
+			}).Children(func() {
+				if bmp := theme.Clay("ab_call_later"); bmp != nil {
+					ui.Image(c, bmp).Size(80, 110).Margin(0, 0, 8, 0)
+				}
+			})
+			ui.Text(c, title).FontSize(t.XL).FontWeight(800).SingleLine()
+			ui.Text(c, a.L.T("own.away.lede")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).TextAlign(ui.Center)
+		})
+		line := a.L.T("own.away.nodial")
+		if d := a.dialers(); len(d) > 0 {
+			line = a.L.T("own.away.dial", phoneName(d[0].Name))
+		}
+		ui.Column(c.Key("own-away-dial")).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
+			ui.Text(c, line).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
+		})
+		a.note(c, a.L.T("own.away.why", v.Where))
+		a.note(c, a.L.T("own.away.soon"))
+	})
+}
 
 type ownState struct {
 	open       string // a step opened by hand ("" = the next one)
@@ -53,6 +148,10 @@ func (a *App) ownAct(f protocol.OwnPhoneAct) {
 func (a *App) ownPhoneCard(c *ui.Context) {
 	v := a.S.OwnPhone
 	if v == nil {
+		return
+	}
+	if !v.Station {
+		a.ownAwayCard(c, v)
 		return
 	}
 	t := a.T
@@ -219,8 +318,25 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 	o := &a.own
 	warn := func(text string) { ui.Text(c, text).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(a.leading(1.5)) }
 	look := func() {
-		if a.buttonFor(c, a.L.T("own.scan"), a.L.T("own.title"), btnText, t.ControlSM, t.Surface) {
-			a.ownAct(protocol.OwnPhoneAct{Action: "scan"})
+		if v.Looking {
+			a.note(c, a.L.T("own.looking"))
+			return
+		}
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
+			if a.buttonFor(c, a.L.T("own.scan"), a.L.T("own.title"), btnText, t.ControlSM, t.Surface) {
+				a.ownAct(protocol.OwnPhoneAct{Action: "scan"})
+			}
+			if line := a.ownLooked(v); line != "" {
+				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted).Grow(1).MinWidth(0)
+			}
+		})
+	}
+	install := func(tool string) {
+		if line := ownInstall(v.OS, tool); line != "" {
+			a.ownCmd(c, line)
+			if v.OS == "linux" {
+				a.note(c, a.L.T("own.cmd.distro", tool))
+			}
 		}
 	}
 	switch s {
@@ -228,7 +344,7 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 		switch {
 		case !v.ADB:
 			a.note(c, a.L.T("own.adb"))
-			a.ownCmd(c, "brew install android-platform-tools")
+			install("adb")
 		case v.Phone == nil:
 			a.note(c, a.L.T("own.phone.none", v.Where))
 		case v.Phone.State == "unauthorized":
@@ -236,7 +352,7 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 		default:
 			a.note(c, a.L.T("own.phone.offline"))
 		}
-		ui.Row(c).Children(look)
+		look()
 	case "sim":
 		if v.SIM != nil && v.SIM.State != "ready" {
 			warn(a.L.T("own.sim." + v.SIM.State))
@@ -262,7 +378,7 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 		switch {
 		case !v.Audio.Tool:
 			a.note(c, a.L.T("own.audio.tool"))
-			a.ownCmd(c, "brew install ffmpeg")
+			install("ffmpeg")
 		case len(v.Audio.Inputs) == 0:
 			a.note(c, a.L.T("own.audio.none"))
 		default:
@@ -292,7 +408,7 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 			a.note(c, strconv.Itoa(i)+". "+a.L.T("own.parts."+strconv.Itoa(i)))
 		}
 		a.note(c, a.L.T("own.parts.how"))
-		ui.Row(c).Children(look)
+		look()
 	case "voice":
 		if v.Voice.Key {
 			a.note(c, a.L.T("own.voice.set", a.L.T("own.voice."+v.Voice.Engine), v.Voice.Model, "$"+money(v.Voice.PerMinUSD)))

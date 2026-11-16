@@ -65,6 +65,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var scanner: ActivityResultLauncher<ScanOptions>
     /** D206: the page's 加图片 / Add images and the viewer's Save. */
     private lateinit var pictures: Pictures
+    /** D278: the Phone permission's prompt, and the dial waiting for its answer. */
+    private lateinit var callAsk: ActivityResultLauncher<String>
+    private var callAsked: ((Boolean) -> Unit)? = null
 
     private var loaded: String? = null
     private var phase = "loading" // loading · ready · unreachable
@@ -86,6 +89,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         store = Store(this)
         scanner = registerForActivityResult(ScanContract()) { r -> r.contents?.let { connect?.take(it) } }
+        // D278: Android's one question before the first call a sheet dials; the dial waits for it.
+        callAsk = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok -> callAsked?.invoke(ok); callAsked = null }
         pictures = Pictures(this)
         // D246: Android's App info lists what Ducter shows from the first run.
         Notify.channels(this)
@@ -394,6 +399,9 @@ window.ducterNative=Object.freeze($info);})();"""
                 if (Build.VERSION.SDK_INT >= 26) web.setRendererPriorityPolicy(if (Handset.session != null) WebView.RENDERER_PRIORITY_IMPORTANT else WebView.RENDERER_PRIORITY_BOUND, Handset.session == null)
                 answer(r)
             }
+            // D278: 你来打 / You call: dial a call sheet's number (tapped here, or relayed from another
+            // window by the page), and keep the sheet in a notification during the call.
+            "phone.dial" -> dial(m) { how, error -> answer(JSONObject().put("ok", how != null).apply { how?.let { put("how", it) }; error?.let { put("error", it) } }) }
             // D209: a page opened from the cache whose home never answered: the can't-reach screen.
             "reach" -> {
                 if (m.optBoolean("ok", true)) reached = true
@@ -401,6 +409,37 @@ window.ducterNative=Object.freeze($info);})();"""
                 answer(null)
             }
             else -> reply.postMessage(JSONObject().put("id", id).put("error", "unknown").toString())
+        }
+    }
+
+    // MARK: D278, a call sheet's dial
+
+    /**
+     * Rings at once with the Phone permission; the first time, Android asks (only while Ducter is in
+     * front); refused, the dialer opens with the number filled; behind another screen without it, a
+     * notification to tap. Answers how (rang · dialer · note) or why not.
+     */
+    private fun dial(m: JSONObject, done: (String?, String?) -> Unit) {
+        val s = Dial.Sheet.from(m) ?: return done(null, "not a full number")
+        val front = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+        fun go(granted: Boolean) {
+            when {
+                granted && Dial.place(this, s.to) -> { Dial.show(this, s, false); done("rang", null) }
+                front && Dial.dialer(this, s.to) -> { Dial.show(this, s, false); done("dialer", null) }
+                Dial.show(this, s, true) -> done("note", null)
+                else -> done(null, "Android didn't let Ducter dial or show the sheet")
+            }
+            Handset.changed(this)
+        }
+        when (Dial.state(this)) {
+            null -> done(null, "this device can't make phone calls")
+            "granted" -> go(true)
+            "ask" -> if (front) {
+                store.dialAsked = true
+                callAsked = { ok -> go(ok) }
+                callAsk.launch(android.Manifest.permission.CALL_PHONE)
+            } else go(false)
+            else -> go(false)
         }
     }
 

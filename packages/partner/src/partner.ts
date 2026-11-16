@@ -2143,6 +2143,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (turn) (turn.asked = true), (turn.askedId = r.card.decisionId);
       // D215: no line calls that country: a call sheet the user calls themselves; Ducter dials nothing.
       if (r.plan.from === "self" && turn) turn.sheet = true;
+      // D278: 你来打 / You call: their own number, and no computer beside their phone carries a live call yet.
+      if (r.plan.from === "self" && r.plan.sheet?.why === "own")
+        return {
+          ok: true,
+          sheet: true,
+          callId: r.callId,
+          note: "Ducter can't speak on calls from the user's own number yet (that needs a computer beside their phone), so the card is 你来打 / You call: the sheet, and one tap dials from their phone. Say that plainly in one short sentence (about 15 words), in their language. Never describe the sheet. When they say they called, ask briefly how it went, then phone_call do=result with callId and text.",
+        };
       if (r.plan.from === "self")
         return {
           ok: true,

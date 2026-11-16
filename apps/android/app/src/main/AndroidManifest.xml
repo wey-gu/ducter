@@ -25,6 +25,12 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.TURN_SCREEN_ON" />
 
+    <!-- D278: 你来打 / You call: a call sheet's number, dialled on the person's tap. Asked once, the
+         first time (Android's own prompt); without it the dialer opens with the number filled.
+         Never answers, records or reads a call. -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+
     <!-- D238: a task opens apps on this phone by name (phone_apps): the launcher's list only. -->
     <queries>
         <intent>

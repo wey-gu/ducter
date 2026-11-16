@@ -11076,6 +11076,53 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   gap: 8px;
   flex-wrap: wrap;
 }
+/* D297: a task resting on its agent's usage limit: whose limit, when it carries on; the choice
+   to hand off right away next time is a quiet switch under the buttons. */
+.watch.limit .back {
+  font-size: var(--sm);
+  color: var(--ink-soft);
+}
+.watch.limit .switch {
+  background: none;
+  box-shadow: none;
+  padding: 0 4px;
+  min-height: 0;
+  max-width: 32rem;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+.watch.limit .switch > span {
+  font-weight: 500;
+}
+/* D297: tasks on one account's limit, together under one line: its small ring, whose limit and
+   when, and how many carry on then. */
+.limit-group {
+  display: flex;
+  flex-direction: column;
+}
+.limit-group .limit-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 2px;
+  padding: 0 14px;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.limit-group .limit-head .w {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.limit-group .limit-head .wring .fill {
+  fill: var(--waiting-ink);
+}
+.limit-group .limit-head .n {
+  margin-left: auto;
+}
+.tx-divider.limit span {
+  color: var(--ink-soft);
+}
 /* The ring: a sunken clay groove bent round; the stretch since the last look fills it in the
    wait's clay, a bead at its edge; how long is left inside. */
 .lookring {

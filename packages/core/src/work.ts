@@ -5,7 +5,7 @@ import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Bodies, CheckSpec, EventSpec, LogEvent, OnHand, Place, RoutineTrigger } from "@ducter/protocol";
-import { fill, words } from "@ducter/protocol";
+import { fill, harnessName, words } from "@ducter/protocol";
 import { langOfText } from "./lang.ts";
 import { urlArgv, WATCH_MAX_ITEMS } from "@ducter/protocol/src/watch.ts";
 import type { LogStore, Runner, WorkerLinks } from "@ducter/protocol/src/internal.ts";
@@ -91,6 +91,11 @@ const W = {
   },
 };
 const wordsOf = (reason: string) => words(W, langOfText(reason));
+
+/** D297: the words a task gets when its agent's limit has reset, in the language of the wait's
+ *  reason (protocol transcript.ts reads them back). */
+const LIMIT_WAKE = { zh: "{agent} 的额度恢复了，接着做刚才没做完的。", en: "{agent}'s usage limit has reset. Carry on where you left off." };
+export const limitWake = (harness: string, reason: string) => fill(words(LIMIT_WAKE, langOfText(reason)), { agent: harnessName(harness) });
 
 /** D261: a wait's reason written as an agent's notes, not words ("requests仍4+mentions7去重9…45minwait"):
  *  two or more words glued to numbers, or numbers glued to words, with no space ("mentions7",
@@ -195,7 +200,8 @@ export function createWork(o: WorkOptions): Work {
       const timer = kindOf(w) === "timer";
       // D271: a bare number (a clock's epoch a check printed) tells the agent nothing: left out.
       const seen = w.observed?.trim() && !/^\d+$/.test(w.observed.trim()) ? w.observed.trim() : "";
-      const text = fill(timer ? c.time : seen ? c.overSeen : c.over, { reason: w.reason, seen });
+      // D297: the agent's usage limit reset (or it is time to try again): the same session carries on.
+      const text = w.limit ? limitWake(w.limit.harness, w.reason) : fill(timer ? c.time : seen ? c.overSeen : c.over, { reason: w.reason, seen });
       void o.runner()?.send(w.taskId, text, undefined, "partner").catch((err) => console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`));
     } else if (w.state === "expired") {
       tasks.setState(w.taskId, "needs_you", card.residency, fill(wordsOf(w.reason).deadline, { reason: w.reason }));
@@ -432,7 +438,7 @@ export function createWork(o: WorkOptions): Work {
     routines,
     frames: {
       zone: (tz) => routines.setUserZone(tz),
-      waiter: (id, action) => (action === "look" ? waiters.look(id) : action === "rearm" ? Promise.resolve(waiters.rearm(id)) : Promise.resolve(waiters.cancel(id, { by: "user" }))),
+      waiter: (id, action) => (action === "look" ? waiters.look(id) : action === "rearm" ? Promise.resolve(waiters.rearm(id)) : action === "handoff" ? Promise.resolve(false) : Promise.resolve(waiters.cancel(id, { by: "user" }))),
       routine: (id, action) => (action === "pause" ? routines.pause(id, "user", "asked") : action === "resume" ? routines.resume(id) : routines.end(id)),
       until: (id) => untils.stop(id, "user"),
     },

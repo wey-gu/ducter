@@ -106,6 +106,24 @@ seems wrong (everything vanished at once), Ducter asks **Run it anyway?** before
 Some of this is still coming: a routine that runs on another of your computers, and editing a
 routine by just saying the change.
 
+## When an AI agent's limit runs out
+
+Claude Code, Codex and the other AI agents have usage limits that reset after a few hours or a
+week. When a task's agent reaches its limit, the task doesn't stop: it waits on its own and
+carries on, in the same session, once the limit is back. You'll see **额度 3:12 恢复 / Limit
+resets 3:12** on its card, and a ring that fills toward that time. Several tasks on the same
+account wait together and are shown under one line in On hand. If Ducter restarts meanwhile,
+they still carry on at the reset.
+
+If another AI agent is signed in on the same computer, the task's card offers **现在换 Codex 接着做 /
+Hand it to Codex now**: it picks up from where the task got to. **先停下 / Stop here** ends the wait
+and leaves the task for you. Under them, a switch lets you hand tasks over right away every time
+a limit runs out, instead of waiting.
+
+Ducter only tells you about a limit when it matters: when the agent doesn't say when it resets
+and nobody else can take the work. If a task carried on overnight, Ducter may mention it with
+the result.
+
 ## Without saying it: from New task
 
 You can set up all of this yourself, without the conversation. Open **New task** (**⌘N**),

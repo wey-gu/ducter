@@ -7466,5 +7466,158 @@
     ]
    }
   ]
+ },
+ {
+  "name": "a usage limit overnight, then carried on (zh)",
+  "harness": "claude-code",
+  "working": true,
+  "events": [
+   {
+    "seq": 100,
+    "ts": "2026-11-10T06:58:00.000Z",
+    "persona": "default",
+    "stream": "task:lim1",
+    "origin": "user",
+    "kind": "task_open",
+    "body": {
+     "taskId": "lim1",
+     "title": "跑完 WAL 基准测试",
+     "project": "",
+     "place": {
+      "kind": "none"
+     },
+     "harness": "claude-code",
+     "origin": "you",
+     "brief": "把 WAL 基准测试跑完，告诉我 p99。"
+    }
+   },
+   {
+    "seq": 101,
+    "ts": "2026-11-10T06:58:05.000Z",
+    "persona": "default",
+    "stream": "task:lim1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "lim1",
+     "role": "assistant",
+     "text": "开始跑第一轮。"
+    }
+   },
+   {
+    "seq": 102,
+    "ts": "2026-11-10T06:58:09.000Z",
+    "persona": "default",
+    "stream": "task:lim1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "lim1",
+     "role": "system",
+     "text": "turn failed (quota): You've hit your limit · resets 3am (Asia/Shanghai)",
+     "raw": {
+      "turnEnd": true,
+      "kind": "turn_ended",
+      "outcome": "failed",
+      "failure": "quota",
+      "resetsAt": "2026-11-10T19:00:00.000Z",
+      "reason": "You've hit your limit · resets 3am (Asia/Shanghai)"
+     }
+    }
+   },
+   {
+    "seq": 103,
+    "ts": "2026-11-10T06:58:10.000Z",
+    "persona": "default",
+    "stream": "task:lim1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "lim1",
+     "role": "system",
+     "from": "runner",
+     "text": "usage limit: claude-code resets 2026-11-10T19:00:00.000Z",
+     "raw": {
+      "limit": {
+       "harness": "claude-code",
+       "failure": "quota",
+       "resetsAt": "2026-11-10T19:00:00.000Z",
+       "source": "event"
+      }
+     }
+    }
+   },
+   {
+    "seq": 104,
+    "ts": "2026-11-10T19:01:20.000Z",
+    "persona": "default",
+    "stream": "task:lim1",
+    "origin": "partner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "lim1",
+     "role": "user",
+     "from": "partner",
+     "text": "Claude Code 的额度恢复了，接着做刚才没做完的。"
+    }
+   },
+   {
+    "seq": 105,
+    "ts": "2026-11-10T19:01:25.000Z",
+    "persona": "default",
+    "stream": "task:lim1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "lim1",
+     "role": "assistant",
+     "text": "接着跑第二轮。"
+    }
+   }
+  ],
+  "inTurn": true,
+  "want": [
+   {
+    "seq": 100,
+    "prompt": {
+     "k": "brief",
+     "seq": 100,
+     "text": "把 WAL 基准测试跑完，告诉我 p99。",
+     "by": "you"
+    },
+    "body": [
+     {
+      "k": "voice",
+      "seq": 101,
+      "text": "开始跑第一轮。"
+     },
+     {
+      "k": "note",
+      "seq": 103,
+      "say": "limit",
+      "name": "Claude Code",
+      "at": "2026-11-10T19:00:00.000Z",
+      "text": "usage limit: claude-code resets 2026-11-10T19:00:00.000Z"
+     }
+    ]
+   },
+   {
+    "seq": 104,
+    "prompt": {
+     "k": "wake",
+     "seq": 104,
+     "text": "Claude Code",
+     "timer": true,
+     "limit": true
+    },
+    "body": [
+     {
+      "k": "voice",
+      "seq": 105,
+      "text": "接着跑第二轮。"
+     }
+    ]
+   }
+  ]
  }
 ]

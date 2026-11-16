@@ -13,6 +13,7 @@ import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, localFolderOps, r
 import { createFolderStore, type CantKeep } from "./folder.ts";
 import { join } from "node:path";
 import { readShown } from "./shown.ts";
+import { limitHit, mergeLimits, type FailedOutcome } from "./limit-hit.ts";
 import { wbHost, WbFail } from "./workbench.ts";
 import { userEditsNote } from "./brief.ts";
 import { MEM_PLUGIN_IDS } from "@ducter/protocol/src/mem-plugins.ts";
@@ -176,6 +177,8 @@ interface TaskRt {
   // D135: the harness compacted this many times; asked to save before the next one; what the
   // next turn starts with (the save ask, the brief and progress again after a compaction).
   compactions: number;
+  /** D297: the account's limits as this session said them last (a limit hit reads its reset here). */
+  limitsSeen?: HarnessEvent["limits"];
   saveAsked: boolean;
   prefix: string[];
   context?: number; // the harness's last context reading
@@ -1008,7 +1011,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (early === "background") return onBackground(t, ev);
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
     // D288: the account's limits as the session said them, kept with the agent's last read.
-    if (ev.limits) return void core.limits?.seen(t.base.harness, ev.limits);
+    if (ev.limits) {
+      // D297: what the session said last, for the reset of a limit that refuses the next turn.
+      t.limitsSeen = mergeLimits(t.limitsSeen, ev.limits);
+      return void core.limits?.seen(t.base.harness, ev.limits);
+    }
     // D135: save before the harness compacts; the brief and progress again after it.
     const compactAt = t.spec.harnessCompactAt ?? taskWindows().compactAt;
     if (ev.usage?.contextWindow) t.window = ev.usage.contextWindow;
@@ -1152,6 +1159,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // D142: a finished folder task: what the folder looks like now, and its 7 days start.
     if (!busy && folderOf(t) && FINISHED.includes(currentAttention(t))) await t.ops.folder.finish(t.id).catch(() => {});
     if (t.dropped || busy) return;
+    // D297: the agent's usage limit ran out: no nudge, no failure. Core decides (wait for the
+    // reset and carry on in this same session, or hand it to another agent now; nothing for a
+    // task that already said it is done).
+    const hit = limitHit(t.spec.harness, ev.raw as FailedOutcome, t.limitsSeen, Date.now());
+    if (hit) {
+      logEvent(t, { role: "system", from: "runner", text: `usage limit: ${t.spec.harness}${hit.resetsAt ? ` resets ${hit.resetsAt}` : ""}`, raw: { limit: hit } });
+      t.limitsSeen = undefined;
+      t.nudged = false;
+      t.stallNoted = false;
+      return;
+    }
     if (reported) {
       t.nudged = false;
       t.stallNoted = false;

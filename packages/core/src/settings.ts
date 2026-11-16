@@ -34,6 +34,8 @@ interface SettingsFile {
   proactiveBy?: "chosen" | "keep_note";
   /** D170: who of the user's other agents may reach the partner; learned rules; muted senders. */
   peers?: PeersSettings;
+  /** D297: hand a task to another signed-in agent at once when a usage limit runs out (off by default). */
+  limitHandoff?: boolean;
 }
 
 /** A list of agent names as kept: trimmed, one line, at most 80 characters, 50 names, no repeats. */
@@ -118,6 +120,7 @@ export function openSettings(opts: {
       ...(data.taskAccounts ? { taskAccounts: data.taskAccounts } : {}),
       windows: windowsNow().windows,
       autoUpdate: data.autoUpdate === true,
+      ...(data.limitHandoff ? { limitHandoff: true } : {}),
       // D250: never chosen is the default (proactive with a morning note), said as such.
       ...(data.proactive ? { proactive: data.proactive, ...(data.proactiveBy ? { proactiveBy: data.proactiveBy } : {}) } : { proactive: DEFAULT_PROACTIVE, proactiveBy: "default" as const }),
       peers: { reach: data.peers?.reach ?? "own", trusted: data.peers?.trusted ?? [], muted: data.peers?.muted ?? [] },
@@ -217,6 +220,7 @@ export function openSettings(opts: {
       if (typeof patch.proactive === "string" && (PROACTIVE_MODES as readonly string[]).includes(patch.proactive) && (data.proactive !== patch.proactive || data.proactiveBy !== "chosen"))
         (data.proactive = patch.proactive), (data.proactiveBy = "chosen"), did.push("proactive");
       if (typeof patch.autoUpdate === "boolean" && (data.autoUpdate === true) !== patch.autoUpdate) (data.autoUpdate = patch.autoUpdate), did.push("autoUpdate");
+      if (typeof patch.limitHandoff === "boolean" && (data.limitHandoff === true) !== patch.limitHandoff) (data.limitHandoff = patch.limitHandoff), did.push("limitHandoff");
       if (setPeers(patch.peers as Partial<PeersSettings> | undefined)) did.push("peers");
       if (typeof patch.defaultAfterMin === "number" && (DEFAULT_AFTER_CHOICES as readonly number[]).includes(patch.defaultAfterMin)) {
         if ((data.defaultAfterMin ?? 30) !== patch.defaultAfterMin) (data.defaultAfterMin = patch.defaultAfterMin), did.push("defaultAfterMin");

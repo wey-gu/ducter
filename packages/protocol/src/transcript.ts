@@ -96,7 +96,7 @@ export type Block =
    * opens a turn, as the words that wake it do, but reads as a hairline with its time; `text` is
    * the wait's reason (shown on hover), `timer` a wait for a time ("到时间了").
    */
-  | { k: "wake"; seq: number; text: string; timer?: boolean }
+  | { k: "wake"; seq: number; text: string; timer?: boolean; limit?: boolean } // limit (D297): text is the agent whose limit came back
   /**
    * D271: something Ducter itself told the agent (the person's phone lent or back, Ducter's browser
    * handed back, a Stop): never words the person said, so never their bubble. A hairline the
@@ -108,7 +108,7 @@ export type Block =
 export type ToldSay = "adopted" | "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "other";
 
 /** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
-export type NoteSay = "earlier" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
+export type NoteSay = "earlier" | "limit" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
 
 const KICKOFF = /^(<brief>|Start the task ")/;
 
@@ -117,6 +117,11 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const o = (k: string) => (r[k] && typeof r[k] === "object" ? (r[k] as Record<string, unknown>) : undefined);
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  // D297: the agent's usage limit ran out: one calm line (when it resets, if it said), never an
+  // error; the turn that failed on it says nothing of its own.
+  const lim = o("limit");
+  if (lim && str(lim.harness)) return { say: "limit", name: harnessName(String(lim.harness)), ...(str(lim.resetsAt) ? { at: str(lim.resetsAt) } : {}) };
+  if (r.kind === "turn_ended" && r.outcome === "failed" && (r.failure === "quota" || r.failure === "rate_limited")) return undefined;
   const from = (re: RegExp) => re.exec(text)?.[1]?.trim() || undefined;
   // D299: a session the person ran outside Ducter: its earlier turns follow, said with the agent and the day it began.
   const out = o("outside");
@@ -158,7 +163,10 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
 }
 
 // D271: the words core's work.ts sends a task when its own wait ends (zh, en), timers first.
-const WAKES: [RegExp, boolean][] = [
+const WAKES: [RegExp, boolean, true?][] = [
+  // D297 (core work.ts limitWake): the agent's limit came back; the reason is the agent.
+  [/^(.+?) 的额度恢复了，接着做刚才没做完的。$/, true, true],
+  [/^(.+?)'s usage limit has reset\. Carry on where you left off\.$/, true, true],
   [/^到时间了：「([\s\S]+?)」。接着做。$/, true],
   [/^It's time: "([\s\S]+?)"\. Carry on\.$/, true],
   [/^等到了：「([\s\S]+?)」(?:（[^（）]*）)?。接着做。$/, false],
@@ -166,10 +174,10 @@ const WAKES: [RegExp, boolean][] = [
 ];
 
 /** A wake as Ducter sends it (D271): the wait's reason and whether it was a timer, or undefined. */
-export function wakeOf(text: string): { reason: string; timer: boolean } | undefined {
-  for (const [re, timer] of WAKES) {
+export function wakeOf(text: string): { reason: string; timer: boolean; limit?: true } | undefined {
+  for (const [re, timer, limit] of WAKES) {
     const m = re.exec(text.trim());
-    if (m) return { reason: m[1]!.trim(), timer };
+    if (m) return { reason: m[1]!.trim(), timer, ...(limit ? { limit } : {}) };
   }
   return undefined;
 }
@@ -544,7 +552,7 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
           // D284: the person's Go on a card, as Ducter relays it, is a quiet chip, never their bubble.
           const go = fromPartner ? undefined : goRelay(text);
           const told = fromPartner || go !== undefined ? undefined : toldOf(text, b.from);
-          if (wake) out.push({ k: "wake", seq: ev.seq, text: redact(wake.reason), ...(wake.timer ? { timer: true } : {}) });
+          if (wake) out.push({ k: "wake", seq: ev.seq, text: redact(wake.reason), ...(wake.timer ? { timer: true } : {}), ...(wake.limit ? { limit: true } : {}) });
           else if (go !== undefined) out.push({ k: "go", seq: ev.seq, label: redact(go), text: redact(text) });
           else if (told) out.push({ k: "told", seq: ev.seq, say: told.say, ...(told.name ? { name: redact(told.name) } : {}), text: redact(text) });
           else if (fromPartner) out.push({ k: "partner", seq: ev.seq, text: redact(text), ...media });

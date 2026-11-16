@@ -20,7 +20,7 @@ import { liveRow, liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "
 import { computerName, deviceWait, manyComputers } from "./where.ts";
 import { Avatar, DecisionCard, stateLabel } from "./views.tsx";
 import { Coin } from "./coin.tsx";
-import { Goal, Groove, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
+import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -79,6 +79,8 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     // D261: a wait always says what it waits for: its waiter, the state's reason, what the task
     // last reported, or that it stopped without saying (true, and worth a look).
     const w = A.S.waiterFor(task.id);
+    // D297: whose limit it waits for, in the viewer's own words.
+    if (w?.limit) return { words: t("limit.line", harnessName(w.limit.harness)) };
     if (w?.reason?.trim()) return { words: waitLine(w.reason) };
     const why = reasonOf(task);
     if (why && !why.startsWith("report:") && !why.endsWith("by user")) return { words: deviceWait(why) ?? why };
@@ -139,6 +141,10 @@ function soon(iso: string, now = Date.now()): string {
  *  small ring); "" when it doesn't look on its own. The waiter's own times, never a model. */
 export function waitNext(w: ReturnType<typeof A.S.waiterFor>, now = Date.now()): { text: string; frac: number } {
   if (!w) return { text: "", frac: 0 };
+  if (w.limit) {
+    const at = Date.parse(w.at ?? ""), from = Date.parse(w.armedAt ?? "");
+    return { text: limitState(w, now), frac: Number.isFinite(at) && Number.isFinite(from) && at > from ? Math.min(1, Math.max(0, (now - from) / (at - from))) : 0 };
+  }
   if (w.check || w.event) {
     const next = Date.parse(w.nextLookAt ?? "");
     if (!Number.isFinite(next) || next <= now) return { text: "", frac: 0 };
@@ -160,6 +166,39 @@ export function taskNext(task: Task, now = Date.now()): string {
   if (attention(task) !== "blocked") return "";
   const s = waitNext(A.S.waiterFor(task.id), now).text || (quietWait(task, now) ? t("onhand.wait.since", ago(A.L, task.card?.updatedAt, now)) : "");
   return !A.L.style.cased || !s ? s : s[0]!.toUpperCase() + s.slice(1);
+}
+
+/** D297: waiting tasks on the same agent's limit, two or more, as one group (the earliest wait first). */
+export function groupLimits(tasks: Task[]): { harness: string; tasks: Task[]; w: NonNullable<ReturnType<typeof A.S.waiterFor>> }[] {
+  const by = new Map<string, { harness: string; tasks: Task[]; w: NonNullable<ReturnType<typeof A.S.waiterFor>> }>();
+  for (const x of tasks) {
+    const w = A.S.waiterFor(x.id);
+    if (!w?.limit) continue;
+    const g = by.get(w.limit.harness) ?? { harness: w.limit.harness, tasks: [], w };
+    g.tasks.push(x);
+    // The group says the account's reset: a known one over a next try.
+    if (w.limit.resetKnown && !g.w.limit?.resetKnown) g.w = w;
+    by.set(w.limit.harness, g);
+  }
+  return [...by.values()].filter((g) => g.tasks.length >= 2);
+}
+
+/** D297: one account's limit, one line over its tasks: the small ring toward the reset, whose limit
+ *  and when, and that they carry on together. Each task stays its own row under it. */
+function LimitGroup({ g, room }: { g: ReturnType<typeof groupLimits>[number]; room: Room }) {
+  const next = waitNext(g.w);
+  const at = limitAt(g.w);
+  const name = harnessName(g.harness);
+  return (
+    <div class="limit-group" role="group" aria-label={g.w.limit?.resetKnown && at ? t("limit.group", name, soon(at)) : t("limit.group.unknown", name)}>
+      <p class="limit-head">
+        <Ring frac={next.frac} />
+        <span class="w">{g.w.limit?.resetKnown && at ? t("limit.group", name, soon(at)) : t("limit.group.unknown", name)}</span>
+        <span class="n">{t("limit.group.n", g.tasks.length)}</span>
+      </p>
+      <Rows tasks={g.tasks} room={room} cards />
+    </div>
+  );
 }
 
 /** A small ring: how far along a wait's interval is. */
@@ -864,7 +903,10 @@ export function OnHandList({ room }: { room: Room }) {
   const calls = loose ? (A.S.onHand?.calls ?? []) : [];
   const liveCalls = calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state));
   const endedCalls = calls.filter((c) => callEnded(c.state) && c.state !== "held");
-  const fresh = rail ? waiting : waiting.filter((x) => !quietWait(x));
+  // D297: tasks waiting on one account's limit share one reset: drawn together under one line.
+  const limitGroups = rail ? [] : groupLimits(waiting.filter((x) => !quietWait(x)));
+  const grouped = new Set(limitGroups.flatMap((g) => g.tasks.map((x) => x.id)));
+  const fresh = rail ? waiting : [...waiting.filter((x) => !quietWait(x) && !grouped.has(x.id)), ...limitGroups.flatMap((g) => g.tasks)];
   const quiet = rail ? [] : waiting.filter((x) => quietWait(x));
   const newer = rail ? done : done.filter((x) => statusOf(x.id, attention(x), x.card?.updatedAt) === "new");
   const seen = rail ? [] : done.filter((x) => statusOf(x.id, attention(x), x.card?.updatedAt) !== "new");
@@ -916,7 +958,10 @@ export function OnHandList({ room }: { room: Room }) {
       )}
       {waiting.length + looseWs.length > 0 && show(3) && (
         <Section name={t("lane.waiting")} n={waiting.length + looseWs.length}>
-          <Rows tasks={fresh} room={room} cards />
+          <Rows tasks={fresh.filter((x) => !grouped.has(x.id))} room={room} cards />
+          {limitGroups.map((g) => (
+            <LimitGroup key={g.harness} g={g} room={room} />
+          ))}
           {!rail && looseWs.map((w) => <LooseWait key={w.waiterId} w={w} />)}
           {quietFolds && f !== 3 && !q && <FoldLine words={t("onhand.wait.quiet", quiet.length)} open={quietOpen} onToggle={() => ((L.quietOn = !L.quietOn), A.changed())} />}
           {quiet.length > 0 && !quietFolds && !rail && fresh.length + looseWs.length > 0 && <p class="sub-h">{t("onhand.wait.quiet.head")}</p>}

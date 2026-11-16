@@ -14,8 +14,8 @@ import { tokensShort } from "@ducter/protocol";
 import type { MediaRef, WaiterView } from "@ducter/protocol";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { RefObject } from "preact";
-import { WaitHow, waitLine } from "./work.tsx";
-import { clock, shownDeviceName } from "./format.ts";
+import { limitAt, WaitHow, waitLine } from "./work.tsx";
+import { clock, day, shownDeviceName, when } from "./format.ts";
 import { Component, type JSX } from "preact";
 import { Btn, Chev, Facts } from "./controls.tsx";
 import { escArmed } from "./esc.ts";
@@ -470,6 +470,11 @@ function PlanCard({ b }: { b: Extract<Block, { k: "plan" }> }) {
   );
 }
 
+/** A time of day, with its day only when it isn't today (D297's reset). */
+function soonClock(iso: string, now = Date.now()): string {
+  return day(A.L, iso, now) === day(A.L, new Date(now).toISOString(), now) ? clock(iso) : when(A.L, iso, now);
+}
+
 /** What fills a note's %s (D207): a computer, an agent, an effort; a computer it didn't name is said plainly. */
 /** D282: a switch inside the task: another agent, another model or effort, another computer. Its
  *  time is drawn apart (D291); a model with its effort reads "Sonnet（高）". */
@@ -558,6 +563,14 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
         return (
           <div class="tx-divider earlier" role="separator">
             <span>{earlierLine(b)}</span>
+          </div>
+        );
+      // D297: the agent's limit ran out: a calm hairline, never an error; when it resets apart (D291).
+      if (b.say === "limit")
+        return (
+          <div class="tx-divider limit" role="separator">
+            <span>{t("note.limit", b.name ?? "")}</span>
+            {b.at && <span class="when">{t("limit.state", soonClock(b.at))}</span>}
           </div>
         );
       // D282: who does it changed inside the task: one hairline, its time apart (D291).
@@ -738,8 +751,10 @@ function WaitLine({ task, w }: { task: Task; w: WaiterView }) {
   const watches = !!(w.check || w.event);
   const next = watches ? w.nextLookAt : w.at;
   // D291: what it waits for, and apart, in muted tabular figures, when it comes back.
-  const words = next ? waitLine(w.reason) : t("end.wait.bare", w.reason);
-  const back = next ? t("end.wait", clock(next)) : "";
+  // D297: a wait on the agent's limit: whose, and the reset (or the next try).
+  const lim = w.limit ? limitAt(w) : undefined;
+  const words = w.limit ? t("limit.line", harnessName(w.limit.harness)) : next ? waitLine(w.reason) : t("end.wait.bare", w.reason);
+  const back = w.limit ? (lim ? t(w.limit.resetKnown ? "limit.state" : "end.wait", soonClock(lim)) : "") : next ? t("end.wait", clock(next)) : "";
   const inner = (
     <>
       {GLYPHS.waited!()}
@@ -797,6 +812,7 @@ function seqClock(task: Task, seq: number): string {
 
 /** A wake's or what Ducter told the agent, as a hairline's words (D271); its time is drawn apart (D291). */
 function promptLine(p: Extract<Block, { k: "wake" } | { k: "told" }>): string {
+  if (p.k === "wake" && p.limit) return t("wake.limit", p.text);
   if (p.k === "wake") return t(p.timer ? "wake.timer" : "wake.over");
   if (p.say === "lent") return t("told.lent", p.name ?? "");
   // D280: the loan of the person's phone ended (taken back, given back, lost), named by the phone.

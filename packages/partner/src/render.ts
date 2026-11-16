@@ -5,6 +5,7 @@
 // Nothing rendered here may say the session was reset, restarted, or lost.
 import type { Attention, Bodies, LogEvent, ReplyRef, TaskCard } from "../../protocol/src/index.ts";
 import { REPLY_QUOTE } from "../../protocol/src/index.ts";
+import { harnessName } from "../../protocol/src/harnesses.ts";
 import { renderCallEnded } from "../../protocol/src/phone.ts";
 import { isImage, kindWords, shortId, sizeWords, type MediaRef } from "../../protocol/src/media.ts";
 import { shownOut, whoForModel } from "./bridge-out.ts";
@@ -19,6 +20,24 @@ function hhmm(iso: string): string {
   if (Number.isNaN(d.getTime())) return iso;
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/**
+ * D297: a task waiting on its agent's usage limit, as the partner reads it. Silence is the rule:
+ * the task carries on by itself. The partner speaks only when the line says so (no reset time and
+ * nobody else to take it), and, once the task is done, may mention a wait that happened while the
+ * person was away ("昨晚 Claude Code 额度用完，3:12 恢复后接着做完了").
+ */
+export function limitLine(b: Bodies["waiter"], on: string, time: (iso: string) => string): string {
+  const l = b.limit!;
+  const who = harnessName(l.harness);
+  if (b.state === "armed") {
+    const when = b.at ? time(b.at) : "?";
+    if (l.tell) return `[limit] ${who}'s usage limit ran out${on}; it doesn't say when it resets and no other signed-in AI agent can take the task. It tries again by itself at ${when}. Tell the user once, in one short sentence: it will carry on by itself once the limit is back, or they can sign in another AI agent; no internals.`;
+    return `[limit] ${who}'s usage limit ran out${on}; ${l.resetKnown ? `it resets ${when}` : `it tries again ${when}`} and the task carries on by itself then (say nothing now)`;
+  }
+  if (b.state === "fired") return `[limit] ${who}'s usage limit came back${on}; the task carried on by itself. If it finishes while the user was away (overnight), mention it once with the result, e.g. "${who} 的额度昨晚用完了，${time(b.at ?? "")} 恢复后接着做完了"`;
+  return `[limit ${b.state}] the wait for ${who}'s limit ended${on}`;
 }
 
 export function renderTime(now: Date): string {
@@ -226,6 +245,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     case "waiter": {
       const b = e.body as Bodies["waiter"];
       const on = b.taskId ? ` (task ${b.taskId})` : "";
+      if (b.limit) return limitLine(b, on, hhmm);
       if (!b.check && !b.event) return `[timer ${b.state}] ${b.reason}${on}`;
       // D112: a condition wait. Tell the user once, in one short line, in their terms.
       if (b.state === "fired") return `[wait over] ${b.reason}${on}${b.observed ? ` · it saw: ${b.observed}` : ""}`;
@@ -307,6 +327,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
     case "waiter": {
       const b = e.body as Bodies["waiter"];
       if (b.routineId) return null;
+      if (b.limit) return `[${t} ${limitLine(b, b.taskId ? ` (task ${b.taskId})` : "", hhmm).slice(1)}`;
       if (b.check || b.event) return `[${t} wait] ${clip(b.reason, 200)} (${b.state === "armed" ? `looking every ${Math.round((b.everyMs ?? 0) / 60000)} min${b.until ? ` until ${hhmm(b.until)}` : ""}` : b.state})${b.taskId ? ` task ${b.taskId}` : ""}`;
       const st = b.state === "armed" ? `set for ${b.at ? hhmm(b.at) : "?"}` : b.state;
       return `[${t} timer] ${clip(b.reason, 200)} (${st})`;

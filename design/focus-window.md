@@ -105,6 +105,15 @@ brief + latest checkpoint + Log on the *same* environment, and the old one becom
 `superseded`. Triggers: quota exhausted, a failure, a machine going offline, or a deliberate
 switch.
 
+**A usage limit (D297, research/101).** The runner reads a failed turn OAR classes `quota` (or a
+throttle, `rate_limited`) as a limit and its reset (OAR's `resetsAt`, else the used-up window the
+session said, else the agent's words). By default the task waits for the reset on a timer of its
+own (D267) and carries on in the same session, resumed by id; tasks on one account share the
+reset; with no reset known it tries again (10 min after a throttle, else hourly, for a day).
+**Hand it to {agent} now** moves it through D282's in-task switch with its progress; the person
+can choose, on that card, to hand off right away every time (`Settings.limitHandoff`). The
+partner is told only when no reset is known and nobody else can take it.
+
 ## Choosing a body (principle 14)
 
 `fw_candidates(TaskSpec)` is deterministic:

@@ -236,6 +236,11 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 			// D299: an outside session's earlier turns follow (11月12日在 Claude Code 里开始的).
 			a.divider(c, a.earlierLine(b))
 			return
+		case "limit":
+			// D297: the agent's limit ran out: a calm hairline with when it resets, never an error.
+			words, at := a.limitNote(b)
+			a.dividerTip(c, words, at, "")
+			return
 		}
 		ui.Row(c).Gap(6).MinHeight(24).AlignItems(ui.Center).MinWidth(0).Children(func() {
 			if b.Bad {

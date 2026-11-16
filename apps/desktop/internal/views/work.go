@@ -422,6 +422,9 @@ func (a *App) backWords(w *protocol.Waiter) string {
 	if w == nil {
 		return ""
 	}
+	if w.Limit != nil {
+		return a.limitState(w)
+	}
 	if at, _, _, ok := a.backOf(w); ok {
 		return a.tp("watch.back", a.soon(at))
 	}
@@ -561,6 +564,10 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 		return
 	}
 	if task.Attention() != protocol.Blocked {
+		return
+	}
+	if w.Limit != nil {
+		a.limitCard(c, w)
 		return
 	}
 	watches := w.Check != nil || w.Event != nil

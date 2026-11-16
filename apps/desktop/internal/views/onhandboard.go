@@ -395,6 +395,9 @@ func (a *App) waitNext(w *protocol.Waiter) (string, float32) {
 	if w == nil {
 		return "", 0
 	}
+	if w.Limit != nil {
+		return a.limitNext(w)
+	}
 	if w.Check != nil || w.Event != nil {
 		next := store.ParseTime(w.NextLookAt)
 		if next.IsZero() || !next.After(a.Now()) {

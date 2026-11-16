@@ -329,6 +329,21 @@ export const cases = [
       [170, "task_event", "task", { role: "assistant", text: "好，收尾。" }],
     ]),
   },
+  {
+    // D297: the agent's usage limit ran out overnight: the failed turn says nothing, one calm line
+    // says it ran out and when it resets, and the wake in the morning is a hairline, never a bubble.
+    name: "a usage limit overnight, then carried on (zh)",
+    harness: "claude-code",
+    working: true,
+    events: stream("lim1", [
+      [0, "task_open", "user", { taskId: "lim1", title: "跑完 WAL 基准测试", project: "", place: { kind: "none" }, harness: "claude-code", origin: "you", brief: "把 WAL 基准测试跑完，告诉我 p99。" }],
+      [5, "task_event", "task", { role: "assistant", text: "开始跑第一轮。" }],
+      [9, "task_event", "task", { role: "system", text: "turn failed (quota): You've hit your limit · resets 3am (Asia/Shanghai)", raw: { turnEnd: true, kind: "turn_ended", outcome: "failed", failure: "quota", resetsAt: "2026-11-10T19:00:00.000Z", reason: "You've hit your limit · resets 3am (Asia/Shanghai)" } }],
+      [10, "task_event", "runner", { role: "system", from: "runner", text: "usage limit: claude-code resets 2026-11-10T19:00:00.000Z", raw: { limit: { harness: "claude-code", failure: "quota", resetsAt: "2026-11-10T19:00:00.000Z", source: "event" } } }],
+      [43_400, "task_event", "partner", { role: "user", from: "partner", text: "Claude Code 的额度恢复了，接着做刚才没做完的。" }],
+      [43_405, "task_event", "task", { role: "assistant", text: "接着跑第二轮。" }],
+    ]),
+  },
 ];
 
 if (import.meta.main) {

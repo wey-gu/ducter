@@ -509,7 +509,7 @@ class AppState {
   }
 
   /** Work over time (D112-D114, D279): Check now / Stop checking, Pause / Resume / End, Stop the loop. */
-  waiterAction(waiterId: string, action: "look" | "cancel" | "rearm") {
+  waiterAction(waiterId: string, action: "look" | "cancel" | "rearm" | "handoff") {
     this.send({ t: "waiter_action", waiterId, action });
   }
   routineAction(routineId: string, action: "pause" | "resume" | "end") {

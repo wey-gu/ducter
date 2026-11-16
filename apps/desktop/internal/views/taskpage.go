@@ -294,6 +294,18 @@ func (a *App) endLine(c *ui.Context, task *store.Task, m *taskMemo) {
 // (D291), when it looks again (a check, an event) or wakes (a time):
 // "21:59 回来" / "Back at 21:59", or "".
 func (a *App) waitWords(w *protocol.Waiter) (words, back string) {
+	// D297: a wait on the agent's limit: whose, and apart when it carries on
+	// (the reset, or the next try).
+	if w.Limit != nil {
+		words := a.L.T("limit.line", harnessName(w.Limit.Harness))
+		if at := a.limitAt(w); !at.IsZero() {
+			if w.Limit.ResetKnown {
+				return words, a.L.T("limit.state", hhmm(at))
+			}
+			return words, a.L.T("end.wait", hhmm(at))
+		}
+		return words, ""
+	}
 	reason := strings.TrimSpace(w.Reason)
 	next := store.ParseTime(w.At)
 	if w.Check != nil || w.Event != nil {
@@ -350,6 +362,9 @@ func (a *App) waitLine2(c *ui.Context, task *store.Task, w *protocol.Waiter) {
 // (D271); its time is drawn apart (D291, promptAt).
 func (a *App) promptLine(p *Block) string {
 	if p.K == "wake" {
+		if p.Limit {
+			return a.L.T("wake.limit", p.Text)
+		}
 		if p.Timer {
 			return a.L.T("wake.timer")
 		}

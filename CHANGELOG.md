@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.64
+
+<!-- whats-new
+zh: 设置里能贴密钥、管理记录，网页也能选深色
+en: Paste a key in Settings; dark on the web too
+zh: 真机实测后修好压缩和定期任务的用量
+en: Fixes from a live run: Compact now and routine budgets
+-->
+
+**Settings**
+- Paste an API key in Settings › Partner or on the home's card in Devices.
+- Partner shows what your AI agents keep: turn reading their records on or off, and show again an
+  agent you hid from Past tasks. "When a limit runs out" has its own switch.
+- On the web, This phone has light, dark or follow the system.
+- On the Mac, read aloud sits beside each reply when you hover it.
+
+**Fixes from a live run on real agents**
+- Compact now on a finished task keeps it finished: it no longer goes back to work and reports again.
+- A task the partner opened twice leaves no extra worktree, branch or card behind.
+- A routine run counts its tokens, so its per-run and monthly budgets now hold.
+- A table's plain text no longer doubles a cell's own full stop.
+
 ## 0.0.63
 
 <!-- whats-new

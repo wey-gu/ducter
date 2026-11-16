@@ -62,6 +62,8 @@ export function FirstAfter({ fw }: { fw: FirstWords }) {
 const SHOWN_MS = 10_000;
 let pending = "";
 let last: { r: KeyResult; at: number } | undefined;
+/** D307: where the key was pasted. One from Settings is answered there, not again in the conversation. */
+let from: "conv" | "settings" = "conv";
 
 function pickUp() {
   if (!pending) return;
@@ -75,13 +77,15 @@ function pickUp() {
 
 export function keyJustAdded(): boolean {
   pickUp();
-  return !!last?.r.ok && Date.now() - last.at < SHOWN_MS;
+  return from === "conv" && !!last?.r.ok && Date.now() - last.at < SHOWN_MS;
 }
 
 const say = (r: KeyResult) => (r.say ? words(r.say, A.L.lang) : r.ok ? t("key.paste.title") : t("key.paste.failed", r.detail ?? r.reason ?? ""));
 
-/** The card: what to paste and why it's safe, a masked field, 检查 / Check, the partner's words. */
-export function KeyCard() {
+/** The card: what to paste and why it's safe, a masked field, 检查 / Check, the partner's words.
+ *  In Settings (D307) the row above it already says what it is: no title, and its answer stays there. */
+export function KeyCard({ inSettings = false }: { inSettings?: boolean } = {}) {
+  const here = inSettings ? "settings" : "conv";
   const [key, setKey] = useState("");
   pickUp();
   const r = last?.r;
@@ -91,18 +95,20 @@ export function KeyCard() {
     if (!v || waiting) return;
     pending = `key-${Date.now()}`;
     last = undefined;
+    from = here;
     A.send({ t: "key_add", key: v, clientId: pending });
     A.changed();
   };
-  if (r?.ok && !r.needs && last && Date.now() - last.at < SHOWN_MS)
+  const mine = from === here;
+  if (mine && r?.ok && !r.needs && last && Date.now() - last.at < SHOWN_MS)
     return (
       <div class="key-card done" role="status">
         <p class="key-say">{say(r)}</p>
       </div>
     );
   return (
-    <div class="key-card">
-      <h3>{t("key.paste.title")}</h3>
+    <div class={`key-card${inSettings ? " in-settings" : ""}`}>
+      {!inSettings && <h3>{t("key.paste.title")}</h3>}
       <p>{t("key.paste.body")}</p>
       <form
         class="key-row"
@@ -122,12 +128,12 @@ export function KeyCard() {
         />
         <Btn kind="primary" label={waiting ? t("key.paste.checking") : t("key.paste.check")} onClick={submit} disabled={waiting} />
       </form>
-      {r && !waiting && (
+      {mine && r && !waiting && (
         <p class={`key-say${r.ok ? " ok" : " bad"}`} role={r.ok ? "status" : "alert"}>
           {say(r)}
         </p>
       )}
-      {r?.ok && r.needs === "pi" && r.install && <code class="key-install">{r.install}</code>}
+      {mine && r?.ok && r.needs === "pi" && r.install && <code class="key-install">{r.install}</code>}
     </div>
   );
 }

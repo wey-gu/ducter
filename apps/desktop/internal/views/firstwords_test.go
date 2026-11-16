@@ -65,7 +65,7 @@ func TestFirstWordsInTheConversation(t *testing.T) {
 		app.Status = client.Connected
 		name := map[i18n.Lang]string{i18n.ZH: "小鸭", i18n.EN: "Duckie"}[lang]
 		app.Receive(protocol.ServerFrame{T: "welcome", Persona: "default", PersonaName: name, HeadSeq: 1})
-		app.Receive(protocol.ServerFrame{T: "first_screen", First: &protocol.FirstScreen{Visit: "first", Looks: true}})
+		app.Receive(protocol.ServerFrame{T: "first_screen", First: &protocol.FirstScreen{Visit: "first"}})
 		app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{firstWordsEvent(lang)}})
 		tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{})
 		tt.SetScale(2)

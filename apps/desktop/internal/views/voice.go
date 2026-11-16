@@ -325,7 +325,16 @@ func (a *App) voiceAbove(c *ui.Context) {
 	vs := &a.vox
 	switch vs.phase {
 	case "listen", "finishing":
-		a.aboveComposer(c, func() { a.listeningStrip(c) })
+		// D305: in over 180 ms, out over 140 (its copy settling down and
+		// away as the composer comes back); at once under Reduce Motion.
+		t := a.T
+		tr := ui.ElementTransition{Duration: 180 * time.Millisecond, Ease: ui.EaseOut, ExitDuration: 140 * time.Millisecond, Enter: &ui.Motion{Y: 10}, Exit: &ui.Motion{Y: 10}}
+		if c.Preferences().ReduceMotion {
+			tr = ui.ElementTransition{Duration: -1, ExitDuration: -1}
+		}
+		ui.Row(c.Key("voice-strip-wrap")).Justify(ui.Center).Padding(0, t.S5, t.S2, t.S5).Transition(tr).Children(func() {
+			ui.Column(c).Grow(1).MaxWidth(convWidth).Children(func() { a.listeningStrip(c) })
+		})
 		return
 	case "ask":
 		a.aboveComposer(c, func() { a.voiceAskCard(c) })
@@ -367,15 +376,6 @@ func (a *App) listeningStrip(c *ui.Context) {
 	row := ui.Row(c.Key("voice-strip")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S3, t.S2, t.S2).
 		MinHeight(56).Radius(t.RadiusLG).Background(t.Surface).
 		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Role(ui.RoleStatus).Label(a.L.T("voice.listening"))
-	if !still {
-		in := ui.Local(row, "in", func() bool { return false })
-		p := ui.Pose{}
-		if !*in {
-			p, *in = ui.Pose{Y: 10, Fade: 1}, true
-			c.Invalidate()
-		}
-		row.AnimatePose(p, ui.Animation{Duration: 180 * time.Millisecond, Ease: ui.EaseOut})
-	}
 	row.Children(func() {
 		// The listening pose: tilted toward the mic, leaning in.
 		face := ui.Box(c.Key("voice-face")).Shrink(0).TransformOrigin(0.5, 1)
@@ -659,5 +659,104 @@ func drawMic(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 		m.MoveTo(at(8, 12.4))
 		m.LineTo(at(8, 14.6))
 		p.StrokePath(&m, 1.8*s, col)
+	}
+}
+
+// hoverRead is D305's second pebble on a partner's message: 朗读 / Read
+// aloud (停止朗读 / Stop reading while it reads), beside the reply's on the
+// Mac. Hidden, it keeps its place, so the bubble never shifts.
+func (a *App) hoverRead(c *ui.Context, r *replyTo, show bool) {
+	if r == nil || r.from != "partner" || a.Speaker == nil || a.rp.noPebble {
+		return
+	}
+	text := ""
+	for _, e := range a.S.Channel {
+		if e != nil && e.AI != nil && e.FirstSeq == r.seq {
+			text = e.AI.Text
+			break
+		}
+	}
+	if strings.TrimSpace(text) == "" {
+		return
+	}
+	on := a.vox.speaking == r.seq
+	if !show && !on {
+		ui.Box(c.Key("hover-read:"+r.key())).Size(pebbleSize, pebbleSize).Shrink(0).AccessHidden(true)
+		return
+	}
+	t := a.T
+	label := a.L.T("voice.read")
+	if on {
+		label = a.L.T("voice.read.stop")
+	}
+	b := ui.Row(c.Key("hover-read:" + r.key())).Height(pebbleSize).MinWidth(pebbleSize).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Gap(t.S1 + 1).
+		Radius(pebbleSize / 2).Background(t.Surface).
+		Role(ui.RoleButton).Focusable().Cursor(ui.CursorPointer).Label(label).Tooltip(label)
+	hov, down := b.Hovered() || b.FocusVisible(), b.Pressed()
+	if down {
+		b.Translate(0, 2).Shadow(0, 1, 0, 0, t.Line)
+	} else {
+		b.Shadow(0, 3, 0, 0, t.Line).Shadow(0, 4, 10, -3, t.Raised.Color)
+	}
+	if !c.Preferences().ReduceMotion {
+		in := ui.Local(b, "in", func() bool { return false })
+		p := ui.Pose{}
+		if !*in {
+			p, *in = ui.Pose{X: -6, Scale: 0.82, Fade: 1}, true
+			c.Invalidate()
+		}
+		b.AnimatePose(p, t.Bouncy)
+	}
+	ink := t.InkMuted
+	if hov || on {
+		ink = t.Accent
+	}
+	words := hov && a.winW >= 900
+	if words {
+		b.Padding(0, t.S3, 0, t.S2+2)
+	}
+	b.Children(func() {
+		ui.Box(c).Size(16, 16).Shrink(0).Draw(drawSpeaker(ink, on))
+		if words {
+			ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
+		}
+	})
+	if b.Clicked() {
+		if on {
+			a.speakStop()
+		} else {
+			a.readAloud(c, r.seq, text)
+		}
+	}
+}
+
+// drawSpeaker is the read-aloud mark: a small speaker and two waves, the
+// web's SpeakerGlyph on its 24 grid; while it reads, the waves in full.
+func drawSpeaker(col ui.Color, on bool) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		s := min(r.W, r.H) / 24
+		x0, y0 := r.X+(r.W-24*s)/2, r.Y+(r.H-24*s)/2
+		at := func(x, y float32) (float32, float32) { return x0 + x*s, y0 + y*s }
+		var body ui.Path
+		body.MoveTo(at(4, 9.5))
+		body.LineTo(at(7.5, 9.5))
+		body.LineTo(at(12, 5.5))
+		body.LineTo(at(12, 18.5))
+		body.LineTo(at(7.5, 14.5))
+		body.LineTo(at(4, 14.5))
+		body.Close()
+		p.FillPath(&body, col)
+		wave := col.Alpha(0.55)
+		if on {
+			wave = col
+		}
+		var w1 ui.Path
+		w1.MoveTo(at(15.5, 9))
+		w1.QuadTo(x0+18*s, y0+12*s, x0+15.5*s, y0+15*s)
+		p.StrokePath(w1.Cap(ui.RoundCap), 2*s, wave)
+		var w2 ui.Path
+		w2.MoveTo(at(18, 6.5))
+		w2.QuadTo(x0+22.5*s, y0+12*s, x0+18*s, y0+17.5*s)
+		p.StrokePath(w2.Cap(ui.RoundCap), 2*s, wave)
 	}
 }

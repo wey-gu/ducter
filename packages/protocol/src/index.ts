@@ -1441,6 +1441,8 @@ export interface FirstScreen {
   looks?: boolean;
   /** D298: nothing on the home can think yet (no agent signed in, no key): the clients offer to paste a key. */
   noBrain?: boolean;
+  /** D307: the agents whose own conversations Past tasks doesn't show (D299's 不再显示), for Settings' way back. */
+  outsideHidden?: import("./past.ts").OutsideAgent[];
 }
 
 /**

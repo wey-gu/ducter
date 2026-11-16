@@ -105,7 +105,10 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	a.tray(c)
 	a.brainCard(c)
 	a.tasksCard(c)
+	a.keyGroup(c)         // D307: a key instead of a subscription (D298)
+	a.handoffGroup(c, st) // D307: when a limit runs out (D297)
 	a.talkCard(c, st)
+	a.recordsGroup(c) // D307: their records (D298, D299)
 	a.trustCard(c)
 	// D257: what it remembers and the connected AI agents are tabs of their own (memory.go).
 }

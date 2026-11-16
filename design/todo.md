@@ -222,8 +222,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       right, Ducter's own sessions left out), and a real DeepSeek, Kimi and OpenAI key each (the
       balance read, a wrong key, no balance; OpenAI from mainland China without a proxy). Trigger:
       the author's next fresh Mac or the first friend install.
-- [ ] **D298: paste a key in Settings › Partner and Devices** (the card is the conversation's and
-      the first run's today; D296 owns those panes). Trigger: D296 lands.
+- [x] **D298: paste a key in Settings › Partner and Devices** (D307: a row on Partner and on the
+      home's card in Devices, Mac and web).
 - [ ] **D298: Mem's line in the first words** (`FirstWordsInput.memLine`). Trigger: D295 lands.
 - [ ] **D298: pi without node in the app.** A key for pi on a Mac without node opens pi's
       installer in Terminal (it asks before installing Node). Install it in the app (a Job that
@@ -232,8 +232,10 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **D298: Alibaba Model Studio (Qwen) keys** are recognised and checked but not usable (pi has
       no plain Model Studio provider). Trigger: pi adds one, or a user asks; else a pi custom
       provider in a Ducter-owned pi home.
-- [ ] **D298: a Settings switch for the first words' looking** (today 别再看了 / 还是看吧 under the
-      first words only). Trigger: D296 lands.
+- [x] **D298: a Settings switch for the first words' looking** (D307: Settings › Partner › 你的 AI
+      agent 留下的记录, with Past tasks' hidden agents and 再显示 beside it).
+- [ ] **D307: the keys kept** (`keys.env`): a list in Settings with which provider and a way to
+      remove one. Trigger: a person who pasted a key they want gone.
 - [ ] Rename the partner from the desktop (today the name is asked once, in the terminal or
       the app).
 
@@ -408,6 +410,11 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] A push for a task's question goes out with the task's wording, before the partner has said
       it (D129 holds only the conversation). Hold the push for the relay, up to the same 60 s.
       Trigger: push dogfood.
+- [ ] **D307: the web's forced paper in the iPhone and Android shells** (the page turns; check the
+      shells' own status bar and background under a light page on a dark system and back). Trigger:
+      the next iOS/Android build.
+- [ ] **D307: the web's 这台手机 / This phone on a desktop browser** (a wide browser is not a phone;
+      a name for it through the glossary). Trigger: the author's review of D307.
 - [ ] Watch D302's light-to-dark cross-fade on a real Mac at macOS's Auto switch, and the dark
       Devices sea and coins at full size. Trigger: the author's next evening session.
 
@@ -1087,7 +1094,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## App lifecycle (D72)
 
-- [ ] **Settings rows** for updates (the status line, 退出时自动更新, 现在检查) and for 彻底移除
+- [x] **Settings rows** for updates (the status line, 退出时自动更新, 现在检查) and for 彻底移除
+      (built: Updates and about's status, Check now and the night's updates; Where it runs' Remove
+      Ducter with its plan; closed by D307's walk)
       Ducter (the page with Removes / Keeps, the two options, the typed confirmation), on the API
       in `apps/desktop/internal/update` and `internal/local/lifecycle.go`. Trigger: the Settings
       window lands (branch `ia`).
@@ -1639,6 +1648,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
   Open Settings on a Mac, an iPhone, an Android phone and Chrome. Trigger: before the release that
   ships it. Everything so far ran with fakes.
 - **Hold to talk in a task's composer.** Trigger: a person who steers tasks by voice.
+- **A key to hold in a browser** (the Mac's 按住说话的键 on the web wide; which keys a browser tab can
+  watch without a global hook). Trigger: a person talking to the web on a computer.
 - **A full spoken conversation** (a call with the partner, hands-free, interruptible), reusing D218's
   realtime loop or an on-device one. Trigger: the first slice used daily.
 - **Chrome's language pack offer** (`SpeechRecognition.install`) so a browser can stay on the device.

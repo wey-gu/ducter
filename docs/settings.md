@@ -21,18 +21,19 @@ On the left is a row of tabs; the one you pick shows on the right:
 
 | Tab | What's in it |
 |---|---|
-| **Partner** | Its name, what it thinks with, who does the tasks, how it talks, and what it does on its own or asks you first |
+| **Partner** | Its name, what it thinks with, who does the tasks, a pasted API key, what happens when a limit runs out, how it talks, what your AI agents keep, and what it does on its own or asks you first |
 | **Memory** | What it remembers about you, and Nowledge Mem: its version and updates |
 | **Connected AI agents** | The AI agents you use elsewhere that can reach it (shown once Nowledge Mem is in) |
 | **Notifications** | When it comes to you, quiet hours, and how long it waits if you don't answer |
 | **Accounts** | The mail, calendars and other accounts it can read |
-| **Look and sound** | The look, light or dark, the window's language, Details in the conversation, the intro's sound |
+| **Look and sound** | The look, light or dark, the menu bar, the window's language, Details in the conversation, the intro's sound, voice |
 | **Where it runs** | Which computer Ducter lives on, stopping it, data and logs, and Remove Ducter |
 | **Updates and about** | The version, updates, help links and credits |
 
 On a phone, tap the gear at the top right (or your partner's face or name at the top of the conversation):
-Settings opens as a list of the same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **This phone**), and tapping one opens
-it.
+Settings opens as a list of the same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **Your devices**, **This phone**), and tapping one opens
+it. **This phone** holds what is this phone's own: **Light and dark** (**Follow the system**, **Light** or **Dark**),
+the language of its screens, Details in the conversation, and reading replies aloud when you talk by voice.
 
 ## Partner
 
@@ -62,12 +63,25 @@ At the top is your partner, its name and one line: where it lives and what it th
   partner repeats it back and keeps it. Your rules are listed here; **Remove** drops one. If you
   move the same kind of task to another AI agent twice, your partner asks once whether to make
   it a rule.
+- **Paste an API key.** No subscription needed: a key you pay for by use (DeepSeek, Kimi, Zhipu GLM,
+  OpenAI, Anthropic, OpenRouter) works too. **Paste a key**, then **Check**: your partner says in one
+  line whether it works, without spending anything. The key stays in Ducter on the computer it lives
+  on and is never shown again. The same row is on that computer's card in **Devices**.
+- **When a limit runs out.** A task whose AI agent used up its limit waits and carries on by itself
+  when the limit comes back. Turn on **Hand it to another AI agent right away** and another
+  signed-in AI agent on the same computer carries on at once instead. The same switch is under a
+  task's limit card.
 - **How it talks.** **Follow me** answers in whatever language you write in: Korean gets
   Korean, Spanish gets Spanish. A message with no language of its own, like "OK" or a thumbs-up,
   keeps the one you were using. Pick a language (简体中文, 繁體中文, English, 日本語, 한국어,
   Español and more under **Other language…**) and it always answers in that one. Ducter's own
   screens are in Chinese or English for now; a task's results are shown in the language you
   talk in.
+- **What your AI agents keep.** **Offer to pick up from their records**: when your partner first
+  says hello, it looks at what Claude Code and Codex did lately on this computer and offers to carry
+  it on. It reads them only there and shows them only to you; turn it off and it won't look again.
+  If you chose **Don't show {agent} here** in Past tasks, that agent is listed here with
+  **Show again**.
 - **On its own, or asks you first.** The rules Ducter keeps, in two lists. On its own: changing
   files in its own copy (your originals stay as they are), reading your projects and files,
   looking things up and reading web pages (in your own Chrome when it can), and going with the
@@ -181,6 +195,8 @@ something.
 - **Look:** Pebble, the warm paper and clay look. More looks will appear here once they work.
 - **Light and dark:** **Follow the system** (the default) turns the window dark when your Mac
   does, and back again, with a short fade. **Light** or **Dark** keeps it that way on this Mac.
+- **Show in the menu bar:** your partner in the macOS menu bar, so you see at a glance whether it's
+  at work or something needs you (a small dot when something does). On at first.
 - **Language:** the language of this window's own words. **Follow the system** uses your Mac's
   language. This is separate from how your partner talks.
 - **Details in the conversation:** **Folded** (the default) keeps the conversation to what your
@@ -189,6 +205,8 @@ something.
   waits for you. On a phone, the same choice is under **This phone**.
 - **The intro's sound:** the sound of the intro when Ducter opens for the first time. **Play**
   lets you hear it. **Replay the intro** shows the intro again.
+- **Voice:** **Key to hold** to talk (**Right Option**, **Fn** or **None**) and **Read replies aloud
+  when I talk by voice**. See [Voice](voice.md).
 
 ## Where it runs
 
@@ -217,13 +235,16 @@ behind the intro's sound.
 - **View:** Conversation ⌘1, On hand ⌘2, Devices ⌘3, Partner ⌘4 (Settings, on Partner).
 - **Help:** Ducter docs, Report a problem….
 
-With the window closed, your partner also sits in the macOS menu bar. Click it to see what needs
-you and answer each question with **Go** or **Hold**, or choose **Open Ducter**.
+Your partner also sits in the macOS menu bar, with a small dot when something needs you. Click it
+to see what needs you and answer each question with **Go** or **Hold**, or choose **Open Ducter**.
+**Don't Show in the Menu Bar** takes it away; **Show in the menu bar** under Look and sound brings
+it back.
 
 ## Devices: AI accounts and connecting a phone
 
 In **Devices**, the AI accounts under this Mac (Claude Code, Codex; pi and DeepSeek Harness when
 they're set up) open when you click them.
 From there you can install the AI agent, sign in with its own sign-in in your browser, or sign out.
-Ducter never sees your password. To add your phone or another computer, click **Connect a phone
+Ducter never sees your password. No subscription? **Or paste an API key** under the AI agents of the
+computer Ducter lives on takes a key you pay for by use. To add your phone or another computer, click **Connect a phone
 or computer**. The app shows a one-time code for it (see [Your phone](phone.md)).

@@ -100,14 +100,24 @@ export const clientArt = (cl: Client) =>
 const lastPhase = new Map<string, string>();
 const popped = new Map<string, number>();
 
-/** 你的设备 / Your devices: one line each; a tap pushes the device's sheet. */
-export function DevicesSection() {
+/**
+ * The card a 你的设备 tap opened (`dev:<id>` or `cl:<id>`), while it is still there to show (D311:
+ * the page's own ‹ 设置 and title step aside for it, so one way back shows, to the list it came from).
+ */
+export function deviceCardShown(open: string | null): boolean {
+  if (!open || !A.devices?.length) return false;
+  if (open.startsWith("dev:")) return A.devices.some((d) => `dev:${d.id}` === open);
+  const f = foldClients(A.devices, A.reach?.clients ?? []);
+  return !!A.reach?.clients.some((c) => `cl:${c.id}` === open && !f.hidden.has(c.id));
+}
+
+/** 你的设备 / Your devices: one line each; a tap pushes the device's sheet (the page holds which, D311). */
+export function DevicesSection({ open, setOpen }: { open: string | null; setOpen: (v: string | null) => void }) {
   // Every time it opens: the home also reads the latest release again when its answer is older
   // than 15 minutes, so "up to date" is never stale here.
   useEffect(() => {
     if (A.S.welcomed) A.send({ t: "devices" });
   }, []);
-  const [open, setOpen] = useState<string | null>(null);
   const list = A.devices;
   if (!list?.length) return null;
   const f = foldClients(list, A.reach?.clients ?? []);

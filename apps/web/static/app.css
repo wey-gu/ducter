@@ -13161,3 +13161,74 @@ svg .wave.w2.on {
   background: none;
   box-shadow: none;
 }
+/* ---------- D311: a finger's 44 on the phone (research/110's open list) ---------- */
+/* Each small link or chip keeps how it looks; an invisible box around it takes the tap, 44 tall
+   where the space around it allows. The boxes position at zero specificity (:where), so a rule
+   that places one of these elsewhere still wins. */
+:where(.top .who .name, .top .who button.sum, .recall-line, .inline-link, .turns .worked, .strip .cell, .lens-tabs .lens-row, .decision .asker, .fold-line, .past-link, .btn.sm, .pchip, .ach, .set-back, .info-btn, .bench-toggle) {
+  position: relative;
+}
+.top .who .name::before,
+.top .who button.sum::before,
+.recall-line::before,
+.inline-link::before,
+.turns .worked::before,
+.strip .cell::before,
+.lens-tabs .lens-row::before,
+.decision .asker::before,
+.fold-line::before,
+.past-link::before,
+.btn.sm::before,
+.pchip::before,
+.ach::before,
+.set-back::before,
+.info-btn::before,
+.bench-toggle::before {
+  content: "";
+  position: absolute;
+}
+/* The bar's name (20) reaches the bar's top; with the face beside it, which opens the same page,
+   the partner is a 44-tall target. The counts (19) reach the bar's bottom, and on a touch screen
+   12 more below it: the bar holds two lines, not 88 pt. The counts' clamp comes off the button
+   so its box is not clipped. */
+.top .who .name::before { inset: -13px -10px 0 -8px; }
+.top .who button.sum { overflow: visible; }
+.top .who button.sum::before { inset: 0 -10px -13px -8px; }
+@media (pointer: coarse) {
+  .top .who button.sum::before { bottom: -25px; }
+}
+.recall-line::before { inset: -10px 0; }
+/* 换谁来做 (19) reaches into the title under it, never into the line above (where it runs may be a link). */
+.inline-link::before { inset: -6px -8px -19px; }
+.turns .worked::before { inset: -16px 0 0; }
+.strip .cell::before { inset: -8px 0; }
+.lens-tabs .lens-row::before,
+.btn.sm::before,
+.pchip::before,
+.set-back::before { inset: -4px 0; }
+.decision .asker::before { inset: -10px 0; }
+.fold-line::before { inset: -6px 0; }
+.past-link::before { inset: -3px 0; }
+.ach::before,
+.info-btn::before,
+.bench-toggle::before { inset: -2px; }
+/* The chips of Past tasks and Done for you sit in a track that scrolls sideways, which clips any
+   box outside it: they grow to 36 (the lens chips' height), the track to 44. A visible change. */
+.pchip { height: 36px; }
+/* Done for you: a card whose last row holds only buttons (no "until" note) needs no band of its
+   own; the buttons sit right under the card's facts. */
+@media (max-width: 640px) {
+  .pcard.did:has(> .did-acts):not(:has(.did-until)) { row-gap: 0; }
+  .pcard.did:has(> .did-acts):not(:has(.did-until)) .did-main { padding-bottom: 0; }
+  .pcard.did:not(:has(.did-until)) .did-acts { margin-top: 0; padding-bottom: 6px; }
+}
+/* Routines on On hand: the title wraps to a second line before it is cut. */
+.row.routine .t {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+  line-height: 1.35;
+}

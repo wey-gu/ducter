@@ -43,3 +43,91 @@ test("a tile of agent coins keeps each coin's size", () => {
   // `.g-tile img` sizes a single tile image to 40; two 24-pt coins must not grow to 40 each.
   expect(blocks(".g-tile .coin-art img").join("")).toMatch(/width:\s*100%/);
 });
+
+// D311: research/110's open list. Each small target keeps its look; an invisible box takes the tap.
+/** Every declaration block whose selector list includes `selector` as one of its items. */
+function listed(selector: string): string[] {
+  const out: string[] = [];
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const items = m[1]!.replace(/\/\*[\s\S]*?\*\//g, "").split(",").map((s) => s.replace(/\s+/g, " ").trim());
+    if (items.includes(selector)) out.push(m[2]!);
+  }
+  return out;
+}
+/** The px of an `inset` shorthand as [top, right, bottom, left]. */
+function inset(body: string): [number, number, number, number] {
+  const m = /inset:\s*([^;]+);/.exec(body);
+  if (!m) return [0, 0, 0, 0];
+  const v = m[1]!.trim().split(/\s+/).map((x) => parseFloat(x));
+  const [t, r = t, b = t, l = r] = v as [number, number?, number?, number?];
+  return [t, r!, b!, l!];
+}
+
+describe("D311: the phone's small targets reach 44 tall", () => {
+  // The visible heights are research/110's 402-pt audit (and this change's own headless audit).
+  const targets: [string, number][] = [
+    [".recall-line", 24],
+    [".inline-link", 19],
+    [".turns .worked", 28],
+    [".strip .cell", 28],
+    [".lens-tabs .lens-row", 36],
+    [".decision .asker", 24],
+    [".fold-line", 32],
+    [".past-link", 39],
+    [".btn.sm", 36],
+    [".pchip", 36],
+    [".set-back", 36],
+    [".ach", 40],
+    [".info-btn", 40],
+    [".bench-toggle", 40],
+  ];
+  const positioned = css.match(/:where\(([^)]*)\)\s*\{\s*position:\s*relative;/)?.[1] ?? "";
+  for (const [sel, h] of targets) {
+    test(`${sel} (${h}) has a box at least 44 tall`, () => {
+      const [t, , b] = inset(listed(`${sel}::before`).find((x) => /inset:/.test(x)) ?? "");
+      expect(h - t - b).toBeGreaterThanOrEqual(44);
+      expect(positioned.split(",").map((s) => s.trim())).toContain(sel);
+    });
+  }
+  test("the bar's counts (19) reach 44 on a touch screen (bottom -25), and are not clipped", () => {
+    const [t, , b] = inset(blocks(".top .who button.sum::before")[0]!);
+    expect(t).toBe(0);
+    expect(b).toBe(-13);
+    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\.top \.who button\.sum::before \{ bottom: -25px; \}/);
+    expect(blocks(".top .who button.sum").join("")).toMatch(/overflow:\s*visible/);
+  });
+  test("the bar's name reaches the bar's top (the face beside it opens the same page)", () => {
+    expect(inset(blocks(".top .who .name::before")[0]!)[0]).toBeLessThanOrEqual(-12);
+  });
+  test("the chips' track is 44: the chips are 36 inside its 4", () => {
+    expect(blocks(".pchip").join("")).toMatch(/height:\s*36px/);
+    expect(blocks(".pchips").join("")).toMatch(/padding:\s*4px/);
+  });
+});
+
+describe("D311: the rest of research/110's list", () => {
+  test("no :has() inside a :has() (the browser drops the whole rule)", () => {
+    for (const m of css.matchAll(/([^{}]+)\{/g)) expect(m[1]).not.toMatch(/:has\([^)]*:has\(/);
+  });
+  test("Done for you: a last row of buttons only has no band of its own", () => {
+    expect(blocks(".pcard.did:has(> .did-acts):not(:has(.did-until)) .did-main").join("")).toMatch(/padding-bottom:\s*0/);
+    expect(blocks(".pcard.did:has(> .did-acts):not(:has(.did-until))").join("")).toMatch(/row-gap:\s*0/);
+  });
+  test("routine titles wrap to two lines before they are cut", () => {
+    const b = blocks(".row.routine .t").join("");
+    expect(b).toMatch(/-webkit-line-clamp:\s*2/);
+    expect(b).toMatch(/white-space:\s*normal/);
+  });
+  const src = (f: string) => readFileSync(join(import.meta.dir, "../src", f), "utf8");
+  test("the notification offer steps aside while voice's own card is up", () => {
+    const body = src("views.tsx").split("function NotifyAsk()")[1]!.split("\n}\n")[0]!;
+    expect(body).toMatch(/voice\(\)\.phase/);
+    for (const p of ["ask", "denied", "off"]) expect(body).toContain(`vp === "${p}"`);
+  });
+  test("a device's card shows one way back: the page's ‹ 设置 and title step aside", () => {
+    const v = src("views.tsx");
+    expect(v).toMatch(/const devPushed = page === "devices" && deviceCardShown\(dev\)/);
+    expect(v).toMatch(/\{!devPushed && \(\s*<>\s*<button class="set-back"/);
+    expect(src("devcard.tsx")).toMatch(/<BackRow label=\{t\("devices.title"\)\}/);
+  });
+});

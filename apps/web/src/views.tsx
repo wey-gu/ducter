@@ -22,7 +22,7 @@ import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
 import { AddRow, Btn, Chev, Choice, DevicesMark, Facts, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
-import { deviceArt, DevicesSection } from "./devcard.tsx";
+import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say } from "./set-grid.tsx";
@@ -1506,6 +1506,10 @@ function NotifyAsk() {
   if (asked() || !A.me) return null;
   const hasWork = A.S.board().lanes.some((l) => l.length > 0) || A.S.openDecisions().length > 0;
   if (!hasWork) return null; // asked at the moment it means something: once there's work out
+  // D311: one ask at a time. While voice's own card is over the composer, this one steps out of
+  // the way (its edge would peek out above it) and comes back when that card goes.
+  const vp = voice().phase;
+  if (vp === "ask" || vp === "denied" || vp === "off") return null;
   const dismiss = () => {
     try {
       localStorage.setItem(ASKED, "1");
@@ -2922,6 +2926,10 @@ function SettingsSheet() {
   const popped = !page && was.current !== "";
   useEffect(() => void (was.current = page), [page]);
   const sec = SECTIONS.find((x) => x.page === page);
+  // D311: a device's card pushed inside 你的设备 brings its own ‹ 你的设备, the one way back shown.
+  const [dev, setDev] = useState<string | null>(null);
+  useEffect(() => setDev(null), [page]);
+  const devPushed = page === "devices" && deviceCardShown(dev);
   const brain = A.brainNow ?? A.settings?.brain;
   return (
     <Sheet label={t("settings.title")}>
@@ -2951,16 +2959,20 @@ function SettingsSheet() {
         </div>
       ) : (
         <div class="set-page pushed" key={page}>
-          <button class="set-back" onClick={() => go("")} aria-label={t("settings.back")}>
-            <span class="back-chev" aria-hidden="true">
-              <Chev back />
-            </span>
-            {t("settings.back")}
-          </button>
-          <h2 class="set-title">
-            <SectionArt art={sec.art} size={32} />
-            {t(sec.title)}
-          </h2>
+          {!devPushed && (
+            <>
+              <button class="set-back" onClick={() => go("")} aria-label={t("settings.back")}>
+                <span class="back-chev" aria-hidden="true">
+                  <Chev back />
+                </span>
+                {t("settings.back")}
+              </button>
+              <h2 class="set-title">
+                <SectionArt art={sec.art} size={32} />
+                {t(sec.title)}
+              </h2>
+            </>
+          )}
           {page === "partner" && (
             <>
               <NameRow />
@@ -2983,7 +2995,7 @@ function SettingsSheet() {
           {page === "accounts" && <Accounts />}
           {page === "chats" && <ChatAppsSettings />}
           {page === "autofill" && <AutofillSettings />}
-          {page === "devices" && <DevicesSection />}
+          {page === "devices" && <DevicesSection open={dev} setOpen={setDev} />}
           {page === "phone" && <PhoneSettings />}
         </div>
       )}

@@ -169,7 +169,9 @@ object Recorder {
             r.no(false, "Android didn't open its recording dialog")
             return JSONObject().put("error", "Android didn't open its recording dialog")
         }
-        Handset.service?.pill?.doing(Handset.words(c, R.string.handset_record_asking))
+        // D280: Android's prompt shows only here, so the pill says it is the person's turn (and the home
+        // shows a card in every window with the same words and the countdown).
+        Handset.service?.pill?.yours(Handset.words(c, R.string.handset_record_yours), Handset.words(c, R.string.handset_record_asking))
         main.removeCallbacksAndMessages(ASK)
         main.postAtTime({ if (r.state == "asking") no(c, r, true, "no answer on the phone in 2 minutes") }, ASK, SystemClock.uptimeMillis() + RecordLife.ASK_MS)
         Handset.changed(c)
@@ -211,9 +213,18 @@ object Recorder {
         // Android's dialog still up (no answer, or the loan ended): closed, so nothing starts behind the person's back.
         asking?.let { a -> asking = null; try { @Suppress("DEPRECATION") a.finishActivity(255); a.finish() } catch (_: Exception) {} }
         if (r.no(declined, why)) {
-            Handset.service?.pill?.doing(Handset.task)
+            // D280: the person's turn is over: the pill is the task's again.
+            if (Handset.session != null) Handset.service?.pill?.show(Handset.task, Handset.turn)
             Handset.changed(c)
         }
+    }
+
+    /** D280: 不录了 / Skip recording on the home's card: Android's prompt closes, nothing starts. */
+    fun skip(c: Context): JSONObject {
+        val r = now ?: return JSONObject().put("error", "no recording")
+        if (r.state != "asking") return JSONObject().put("error", "not asking (${r.state})")
+        no(c, r, true, "the user skipped it")
+        return JSONObject().put("id", r.id).put("state", r.state)
     }
 
     private fun begin(c: Context, r: RecordLife) {
@@ -265,6 +276,8 @@ object Recorder {
         startedAt = SystemClock.elapsedRealtime()
         r.on(System.currentTimeMillis())
         r.file(name, 0, 0)
+        // D280: the person's turn is over (they allowed it): the pill is the task's again, recording.
+        Handset.service?.pill?.show(Handset.task, Handset.turn)
         Handset.service?.pill?.recording(true)
         Handset.changed(c)
     }

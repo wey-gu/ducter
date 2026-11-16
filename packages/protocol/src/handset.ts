@@ -37,6 +37,13 @@ export interface HandsetState {
   awake?: boolean;
   /** D253: the lock screen is up. A loan never runs on a locked phone: locking gives it back. */
   locked?: boolean;
+  /**
+   * D280: the screen went off by itself while lent (a screen timeout, never the person's own lock):
+   * the loan holds, nothing runs until the screen is on again, and the app wakes it. Told apart from a
+   * lock by the lock screen: Android shows it at once for the power key, and for a timeout only after
+   * its "lock after screen timeout" delay (5 s by default).
+   */
+  asleep?: boolean;
   /** D253: Android restricts Ducter in the background on this phone (Battery › Restricted). */
   limited?: boolean;
   /**
@@ -86,9 +93,10 @@ export interface HandsetRecording {
  * Android's switch for Ducter went off; removed: 用这台手机 taken off the phone's card; locked: the
  * person locked the phone (locking gives it back); lost: the phone stopped answering (its app was
  * closed or paused, or it lost its network); done: the task stopped working. After stop, service and
- * removed the task never has the phone again; after locked and lost a new loan is a new card.
+ * removed the task never has the phone again; after locked and lost a new loan is a new card. D280,
+ * given: the task gave it back itself (phone_give_back); its next phone tool asks with a new card.
  */
-export type HandsetEnd = "stop" | "service" | "removed" | "locked" | "lost" | "done";
+export type HandsetEnd = "stop" | "service" | "removed" | "locked" | "lost" | "done" | "given";
 
 /** On a phone's card (reach.clients): 用这台手机 there, as the home holds it. */
 export interface HandsetView {
@@ -110,13 +118,21 @@ export type HandsetMethod = "state" | "start" | "doing" | "stop" | "off" | "beat
 /**
  * A decision about the person's own phone: may this task use it now (use)? Or, D247: the task needs
  * a phone, and this one's app is connected but 用这台手机 isn't on yet (setup): Go opens the guide on
- * that phone, and once it is on the task uses it (the tap was for this task).
+ * that phone, and once it is on the task uses it (the tap was for this task). D280 (record): it is the
+ * person's turn on the phone, to allow a screen recording in Android's own prompt (「立即开始」 / Start
+ * now), which shows only there: the card says so in every window, with the 2-minute countdown.
  */
 export interface HandsetAsk {
-  kind: "use" | "setup";
+  kind: "use" | "setup" | "record";
   /** The phone's device id and its name as the person named it ("Pixel Fold"). */
   device: string;
   name: string;
+  /**
+   * D280 (record): when Android's own recording prompt on the phone gives up (ISO time, 2 minutes
+   * after it opened). The card counts down to it and resolves by itself when the person answers on
+   * the phone or the prompt gives up; its one button is 不录了 / Skip recording.
+   */
+  until?: string;
 }
 
 export type HandsetClientFrame =

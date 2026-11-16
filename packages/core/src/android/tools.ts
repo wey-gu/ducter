@@ -17,7 +17,7 @@ import type { PhoneDevice } from "./device.ts";
 import { blockedApp, consentDialog, effectOf, matches, systemSurface, toggleOf, type Allowed, type Effect } from "./gate.ts";
 import { nodeAt, screenText, type Screen } from "./screen.ts";
 
-export const PHONE_TOOL_NAMES = ["phone_look", "phone_tap", "phone_type", "phone_swipe", "phone_key", "phone_apps", "phone_open_app", "phone_screenshot", "phone_ask_go", "phone_ask_user", "phone_record_start", "phone_record_stop"] as const;
+export const PHONE_TOOL_NAMES = ["phone_look", "phone_tap", "phone_type", "phone_swipe", "phone_key", "phone_apps", "phone_open_app", "phone_screenshot", "phone_ask_go", "phone_ask_user", "phone_record_start", "phone_record_stop", "phone_give_back"] as const;
 
 export const PHONE_BLIND =
   "It's the user's turn on Ducter's phone: they're using it themselves right now (signing in, or they took it over). You can't see or use the phone until they're done. End your turn now; a message arrives when they hand it back.";
@@ -63,6 +63,8 @@ export interface PhoneToolsDeps {
   /** D255: recording the screen of the user's own phone (handsets). */
   record?(taskId: string): Promise<string>;
   recordStop?(taskId: string): Promise<string>;
+  /** D280: the task gives the user's own phone back (the loan ends now). */
+  giveBack?(taskId: string): Promise<string>;
   /** D255: how long phone_open_app waits for the app to be in front. */
   openWaitMs?: number;
 }
@@ -319,6 +321,21 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
     visible,
   );
 
+  // D280: the task says when it is done with the user's own phone, and hears it went back.
+  mcp.registerWhen(
+    "task",
+    "phone_give_back",
+    "Give the user's own phone back when you no longer need it (the loan also ends by itself when this task finishes). It answers once the loan has ended, so you can say the phone is theirs again.",
+    { type: "object", properties: {} },
+    async (_args, ctx) => {
+      const taskId = ctx.taskId!;
+      if (!d.giveBack || !d.on?.(taskId)) return "Ducter's own phone isn't lent from anyone: nothing to give back.";
+      // Not behind the loan's checks: giving back a phone that is quiet or in the user's turn still ends it.
+      return d.giveBack(taskId);
+    },
+    visible,
+  );
+
   reg(
     "phone_screenshot",
     "Save a picture of the phone's screen (JPEG in your evidence folder); returns its path. To let the user see it, put the path in your report's `show`.",
@@ -363,7 +380,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
 
   reg(
     "phone_ask_user",
-    "When the work needs the user on the phone (signing in to an app, a code, a CAPTCHA): ask them to do it themselves on Ducter's phone, in a live view (you can't see it while they do). `what` is one short sentence for them (\"在小红书里登录你的账号\"). Then end your turn; a message arrives when they're done.",
+    "When the work needs the user's own hands on the phone (signing in to an app, a code, a CAPTCHA; or, for a test, a step that takes the phone away from you: locking it, airplane mode, swiping Ducter away from recents): ask them to do it themselves (you can't see it while they do). `what` is one short sentence for them, with the exact steps (\"在小红书里登录你的账号\", \"按一下电源键锁屏，10 秒后再解锁\"). Then end your turn; a message arrives when they're done, or the loan ends if the step takes the phone away: report what you saw, never what you expected.",
     { type: "object", properties: { what: { type: "string" }, app: { type: "string", description: "The app it's in, when you know its id." } }, required: ["what"] },
     async (args, taskId) => {
       const what = String(args.what ?? "").trim().slice(0, 200);

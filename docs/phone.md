@@ -244,11 +244,18 @@ install an app on a clean phone, and it uses Ducter's own phone, never yours.
   yours again at once.
 - **Locking the phone gives it back.** The screen stays on while a task is using it; press the
   power key and the task stops using it right away. If it still needs the phone, you get a new card.
+  If the screen ever turns off by itself, that isn't a lock: the phone stays lent and the screen
+  comes back on.
+- However it ends (you tap **Stop**, lock the phone, the task finishes or gives it back), the task
+  knows at once, and the task's page says so in a thin line: **You took back your Pixel · 20:14**.
 - If the phone stops answering (it lost its network, or Android closed Ducter), the task says so
   at once instead of waiting, and gives it back after a few seconds. On the task you see
   **Pixel isn't answering right now**.
 - When a step is yours (signing in, a code), the card says exactly what to do. After you tap
   **Done**, the task checks the phone before it goes on.
+- Testing something that takes the phone away, like locking it, airplane mode or swiping Ducter
+  out of recent apps? The task never does that itself: a card asks you to do it by hand, with the
+  exact steps, and the task reports what it saw afterwards.
 - Switches that cut your phone off, like Wi-Fi, Bluetooth or airplane mode, wait for your Go too.
 
 Between tasks it reads nothing. To turn it off, tap **Use this phone** on the phone's card and
@@ -257,8 +264,11 @@ Ducter keeps its own connection to your Ducter (you see it in the notification, 
 the task can work in other apps with Ducter in the background.
 
 **Screen recordings.** Ask a task to record what it does ("record it and send me the video") and
-Ducter records the phone's screen itself. Android asks you once, with its own dialog (**Share
-entire screen** · **Share screen**); nothing is recorded until you allow it, and there's no sound.
+Ducter records the phone's screen itself. Android asks you once, with its own dialog on the phone
+(on a Pixel, **Start now**); nothing is recorded until you allow it, and there's no sound. Because
+that dialog shows only on the phone, it's your turn: a card on every device says **Tap Start now on
+Pixel so it can record the screen**, with the two minutes left and **Skip recording**, the pill
+says **Your turn: tap Start now**, and you get a notification if you're not looking.
 While it records, the pill shows a small red dot and **Recording the screen**. When the task stops
 it, the video is saved on your phone (Movies › Ducter, in Photos) and sent to your Ducter, which
 checks it before the task says it's done; you can play it in the conversation. Stopping the task or

@@ -9,10 +9,16 @@ package protocol
 // HandsetAsk is the card "may this task borrow your phone now" (no default),
 // or (D247, kind "setup") "turn on 用这台手机 there first": Go opens the guide
 // on that phone, and the task goes on once it is on.
+//
+// D280 (kind "record"): it is the person's turn on that phone, to allow a
+// screen recording in Android's own prompt there; the card counts down to
+// Until (when the prompt gives up) and resolves by itself; its one button is
+// 不录了 / Skip recording.
 type HandsetAsk struct {
-	Kind   string `json:"kind"` // "use" | "setup"
+	Kind   string `json:"kind"` // "use" | "setup" | "record"
 	Device string `json:"device"`
 	Name   string `json:"name"`
+	Until  string `json:"until,omitempty"` // D280 (record): ISO time the prompt gives up
 }
 
 // HandsetOn names the person's own phone a phone card happens on.

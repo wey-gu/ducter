@@ -88,6 +88,18 @@ class HandsetPill(private val c: Context) {
         Notify.loan(c, loc, words(turn), if (turn == "you") loc.getString(R.string.handset_pill_you_line) else task)
     }
 
+    /**
+     * D280: the person's turn for a step only they can do on this phone (Android's own prompt to allow a
+     * recording): the pill says so in its first line, in accent, with the accent rim; [show] puts it back.
+     */
+    fun yours(title: String, under: String) {
+        if (pill == null) build(title)
+        this.title?.let { fit(it, title) }
+        line?.text = under
+        (pill?.background as? GradientDrawable)?.setStroke(Pebble.dp(c, 2), Pebble.color(c, R.color.accent))
+        Notify.loan(c, loc, title, under)
+    }
+
     /** The name line at its whole width, up to a limit (a long partner name ends in "…"). */
     private fun fit(t: TextView, s: String) {
         t.text = s

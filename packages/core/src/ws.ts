@@ -1239,6 +1239,7 @@ export function createWsHandler(deps: WsDeps) {
           // D253: what the phone says of its screen, its background limits, and the loan it ended last.
           ...(typeof s.awake === "boolean" ? { awake: s.awake } : {}),
           ...(typeof s.locked === "boolean" ? { locked: s.locked } : {}),
+          ...(s.asleep === true ? { asleep: true } : {}),
           ...(typeof s.limited === "boolean" ? { limited: s.limited } : {}),
           ...(s.ended && typeof s.ended === "object" && typeof s.ended.session === "string" && ["stop", "service", "locked", "lost", "network"].includes(String(s.ended.why)) ? { ended: { session: s.ended.session, why: s.ended.why } } : {}),
           // D255: the app's run and link, and a recording asked for in a loan.

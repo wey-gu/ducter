@@ -20,6 +20,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- D280: a lent phone's screen stays on for the whole loan (HandsetAwake.kt), and a screen that
+         timed out anyway (never the person's own lock) is turned back on once. Both only while lent. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />
 
     <!-- D238: a task opens apps on this phone by name (phone_apps): the launcher's list only. -->
     <queries>

@@ -1356,3 +1356,16 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Tests that take the phone away need the person.** Lock, airplane mode and swiping Ducter away
       can't be done by the agent safely (it loses the phone); a test plan asks the person to do each by
       hand while the task watches and reports what it saw.
+
+## From the author's review of 0.0.58 (2026-11-16, after the release)
+- [ ] **Calls with your own number when the home is a remote server.** The setup card says "手机插在
+      Hetzner Server 上" and asks for `brew install android-platform-tools` (a Mac command) while the
+      home is a datacenter Linux box no phone can be plugged into; the author installed adb on the Mac and
+      再找一次 seemed to do nothing. The phone belongs on a computer beside the person: offer the Macs
+      that do tasks (workers) as the place to plug it in, run the check there, and say the command for
+      that computer's OS. 再找一次 must answer visibly ("找过了，还是没看到手机：…"). Trigger: next.
+- [ ] **立即查看 / Look now says what it does.** On a waiting task it means "look now instead of at 20:51";
+      the words don't say so. Name it by its result (e.g. 现在就看一眼, with when it looks by itself beside).
+- [ ] **A wait that feels alive, not "在等".** The state word and its line read cold. Through AGENTS.md's
+      metaphor process (≥5 candidates incl. none), make waiting read like a companion keeping watch
+      ("在盯着 nowledge-co 的新 review · 20:51 再看"), with a living ring; game-like, warm, literal labels.

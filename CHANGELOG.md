@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.0.65
+
+<!-- whats-new
+zh: 手机上每个按钮都好点了；电脑名不带网络后缀
+en: Easier to tap on the phone; computer names without network suffixes
+zh: 今天做完了几件，到处都是同一个数
+en: One count of what's done today, everywhere
+-->
+
+**Phone**
+- Small links and buttons get a full 44 pt to tap without changing how they look; one card at a
+  time over the composer; one way back from a device's card; routine names wrap instead of cutting.
+- Sentences wrap as they used to; coins in a tile keep their size.
+
+**Names and counts**
+- A computer is named as you'd say it: "Mac", never "Mac.lan"; on a Mac, its own Computer Name.
+  Names saved before are tidied once and the old one still finds its tasks.
+- "Done today" means tasks that finished well today, the same number in the conversation, On hand,
+  the menu bar and `ducter status`.
+
+**Mac**
+- The menu bar mark says its name and state to VoiceOver.
+- On hand's done cards cheer after the page lands, so moving into On hand stays smooth.
+- Permission prompts read in Chinese too.
+
 ## 0.0.64
 
 <!-- whats-new

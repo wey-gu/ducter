@@ -1733,3 +1733,9 @@ Superseded:
 
 - **D155's "a worker is known by … the machine's hostname unless `--name`" and every `.local`-only fallback.** Superseded by D310 (1): this computer's name as a person reads it.
 - **On hand's strip and sentence counting the whole done lane plus today's missed waits, and the header counting tasks with no time.** Superseded by D310 (2): one Done today.
+
+## 2026-11-17: On hand's cheer waits for the page to land (D313)
+
+| Dn | Decision |
+|---|---|
+| D313 | A done card's cheer on On hand (D287) starts only when the page that brought On hand has come to rest (`navLanding`: the move's spring time left; zero under reduced motion or with no move), and it swells from rest to about 1.02 and back over `T.Pop` instead of growing from 0.96. Why: every card cheering while the page slid in made each frame of the move re-rasterize scaled, shadowed cards (MyGo folds a translation but not a scale); the move into On hand went from ~40 ms to ~21 ms a frame on the test renderer, and a card already on screen never shrinks before it cheers. The look at rest is unchanged. The web's `oh-cheer` still dips from 0.96 first; matching it is in todo. |

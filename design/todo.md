@@ -1675,3 +1675,6 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **Autofill's uses are kept in the vault, capped**, not in the Log. Trigger: a person scrolling back past the cap. Then: log each use as a typed event.
 - **The day's money** (what was spent, per currency) and agent usage as one more fact on the day header. Trigger: a second payment kind (a subscription, a call's cost).
 - **The iPhone and Android apps** open the web's sheet; a native view when those apps get Past tasks natively.
+
+## D313: On hand's cheer (2026-11-17)
+- [ ] **The web's cheer matches the Mac's** (`oh-cheer`: wait for the view transition to finish, swell from rest to ~1.02 and back). Trigger: the next On hand pass.

@@ -60,7 +60,100 @@ async function open(id: string, title: string, project: string, place: Place, ha
   await tick();
 }
 
-if (few) {
+// D287: the moments On hand is opened in, each its own seed (DEMO_STATE):
+//   author  the author's evening (2026-11-16): four waits, two of them quiet for days, one done
+//   quiet   all quiet: two waits and what came back today
+//   one     one thing needs you, two at work
+//   busy    many at work at once
+//   waiting many waiting, fresh and quiet
+// Without it, the long day below (DEMO_MANY adds more).
+const state = process.env.DEMO_STATE ?? "";
+const done = (id: string, summary: string) => {
+  report(id, { state: "done", summary, evidence: [] });
+  seed.tasks.setState(id, "done", "parked");
+};
+const waitOn = (id: string, reason: string, everyMin: number, summary: string) => {
+  report(id, { state: "blocked", summary, evidence: [] });
+  seed.work.waiters.arm({ reason, taskId: id, check: { argv: ["gh", "pr", "checks", "1592", "--json", "state"], succeedWhen: { path: "[].state", equals: "SUCCESS" } }, everyMs: everyMin * 60_000, until: iso(12 * 3600_000) });
+  seed.tasks.setState(id, "blocked", "parked");
+};
+async function quietOnes() {
+  shift = -61 * 3600_000;
+  await open("t_rec", w("复测真机借用与外部录屏能力并更新复盘", "Retest borrowing a real phone and outside screen recording, and update the review"), "ducter", repo("ducter", "phone-retest"), "codex", "gpt-5.5");
+  report("t_rec", { state: "blocked", summary: w("真机借用复测完了，外部录屏还要等你把 Pixel Fold 连上。", "Borrowing the real phone is retested; outside recording waits for the Pixel Fold to be connected."), evidence: [] });
+  seed.tasks.setState("t_rec", "blocked", "parked");
+  shift = -58 * 3600_000;
+  await open("t_fold2", w("用 Pixel Fold 录屏访问 Ducter 官网并发推", "Record the Pixel Fold visiting the Ducter site and post it"), "", { kind: "none" }, "claude-code", "sonnet");
+  seed.tasks.setState("t_fold2", "blocked", "parked");
+  shift = 0;
+}
+async function reviewLoop() {
+  await open("t_loop", w("每 45 分钟看一次 nowledge-co 有没有要我 review 的 PR", "Every 45 minutes, look for PRs in nowledge-co that want my review"), "", { kind: "none" }, "codex", "gpt-5.5");
+  tool("t_loop", "commandExecution", "/bin/zsh -lc 'gh search prs --owner nowledge-co --review-requested @me --state open'", "0 results");
+  waitOn("t_loop", w("nowledge-co 有新的 review 请求", "a new review request in nowledge-co"), 45, w("这一轮没有新的。45 分钟后再看。", "Nothing new this round. Looking again in 45 minutes."));
+}
+async function prWait(every = 20) {
+  await open("t_pr", w("PR #1592：修 compaction 测试", "PR #1592: fix the compaction test"), "hawdb", repo("hawdb", "compaction-fix", "hel"), "claude-code", "opus");
+  tool("t_pr", "Bash", { command: "gh pr create --draft" }, "https://github.com/nowledge-co/hawdb/pull/1592");
+  waitOn("t_pr", w("PR #1592 的 CI 跑完", "PR #1592's CI finishes"), every, w("PR 开了，等 CI 跑完。", "The PR is open; waiting for CI."));
+  diffs.set("t_pr", { commits: 2, uncommitted: false, files: 2, adds: 23, dels: 8 });
+}
+async function movers() {
+  await open("t_movers", w("比较三家搬家公司的报价", "Compare three movers' quotes"), "", { kind: "none" }, "claude-code", "sonnet");
+  done("t_movers", w("日通最便宜，¥86,000，含打包；另外两家贵两到三成。", "Nippon Express is cheapest at ¥86,000 with packing; the other two are 20–30% more."));
+}
+async function working(id: string, title: string, project: string, place: Place, harness: string, words: string, step?: [string, unknown, string]) {
+  await open(id, title, project, place, harness, harness === "codex" ? "gpt-5.5" : "opus");
+  if (step) tool(id, step[0], step[1], step[2]);
+  say(id, words);
+}
+
+if (state === "author") {
+  await quietOnes();
+  await reviewLoop();
+  await prWait(20);
+  await movers();
+} else if (state === "quiet") {
+  await reviewLoop();
+  await prWait(35);
+  await movers();
+  await open("t_receipts", w("把 10 月的发票整理成表", "Put October's receipts in a spreadsheet"), w("发票", "Receipts"), { kind: "folder", device: "local", path: "/Users/weyl/Documents/Receipts" } as Place, "claude-code", "sonnet");
+  done("t_receipts", w("23 张发票整理进了 2026-10.xlsx，合计 ¥48,320。", "23 receipts are in 2026-10.xlsx, ¥48,320 in all."));
+} else if (state === "one") {
+  await open("t_asc", w("准备 Ducter iOS 在 App Store Connect 上的上架资料", "Get Ducter iOS ready in App Store Connect"), "ducter", repo("ducter", "app-store-connect"), "codex", "gpt-5.5");
+  report("t_asc", {
+    state: "needs_input",
+    evidence: [],
+    summary: w("App Store Connect 要登录。描述、关键词和截图都准备好了。", "App Store Connect needs a sign-in. The description, keywords and screenshots are ready."),
+    questions: [{ id: "q1", text: w("在 Chrome 里登录一下 App Store Connect？登好了我接着填。", "Could you sign in to App Store Connect in Chrome? I'll carry on once you have."), blocking: true, default: w("等你登录后继续。", "Wait for you to sign in, then continue."), reversible: true }],
+  });
+  seed.tasks.setState("t_asc", "needs_you", "hot");
+  await working("t_wamp", w("compaction 的写放大分析", "Write amplification in compaction"), "hawdb", repo("hawdb", "compaction-wamp", "hel"), "claude-code", w("L0 到 L1 的合并每次都把整个 L1 读出来，这是写放大的大头。", "Every L0 to L1 merge reads the whole of L1; that's most of the write amplification."), ["Read", { file_path: "/Users/weyl/dev/hawdb/crates/storage/src/compaction.rs" }, ""]);
+  await working("t_hotel", w("订 12 月 6 号京都的酒店，两晚，岚山附近", "Book a hotel in Kyoto for Dec 6, two nights, near Arashiyama"), "", { kind: "none" }, "claude-code", w("Booking 上岚山附近两晚有 11 家，在比早餐和退订条件。", "Eleven places near Arashiyama on Booking; comparing breakfast and cancellation."));
+  await movers();
+} else if (state === "busy") {
+  await working("t_keys", w("On hand 的键盘导航和任务切换", "Keyboard navigation and the task switcher on On hand"), "ducter", repo("ducter", "onhand-keys"), "claude-code", w("j/k 在列表里走，Enter 打开。先补测试。", "j/k walk the list, Enter opens. Tests first."), ["Bash", { command: "bun test apps/web/test/onhand.test.ts" }, "12 pass\n0 fail"]);
+  diffs.set("t_keys", { commits: 3, uncommitted: true, files: 6, adds: 184, dels: 41 });
+  await working("t_emoji", w("修 iOS 上新建任务里冒出来的 emoji", "Fix the emoji showing in New task on iOS"), "ducter", repo("ducter", "no-emoji"), "codex", w("找到了：⌘↩ 在 iOS 上画成了 emoji，换成画出来的键。", "Found it: ⌘↩ renders as an emoji on iOS; swapping in a drawn key."));
+  diffs.set("t_emoji", { commits: 1, uncommitted: false, files: 2, adds: 12, dels: 4 });
+  await working("t_wamp", w("compaction 的写放大分析", "Write amplification in compaction"), "hawdb", repo("hawdb", "compaction-wamp", "hel"), "claude-code", w("L0 到 L1 的合并每次都把整个 L1 读出来，这是写放大的大头。", "Every L0 to L1 merge reads the whole of L1; that's most of the write amplification."), ["Read", { file_path: "/Users/weyl/dev/hawdb/crates/storage/src/compaction.rs" }, ""]);
+  await working("t_tokio", w("把 tokio 升到 1.42", "Upgrade tokio to 1.42"), "hawdb", repo("hawdb", "tokio-1.42", "hel"), "claude-code", w("cargo update 完了，在跑全量测试。", "cargo update is done; running the full test suite."), ["Bash", { command: "cargo test --workspace" }, ""]);
+  await working("t_obsidian", w("导入 Obsidian 时保留双链", "Keep wiki links when importing from Obsidian"), "mem", repo("mem", "obsidian-links"), "codex", w("别名 [[页|别名]] 也要处理，正在补这一种。", "Aliases like [[page|alias]] need handling too; adding that case now."));
+  diffs.set("t_obsidian", { commits: 2, uncommitted: true, files: 4, adds: 66, dels: 9 });
+  await working("t_hotel", w("订 12 月 6 号京都的酒店，两晚，岚山附近", "Book a hotel in Kyoto for Dec 6, two nights, near Arashiyama"), "", { kind: "none" }, "claude-code", w("Booking 上岚山附近两晚有 11 家，在比早餐和退订条件。", "Eleven places near Arashiyama on Booking; comparing breakfast and cancellation."));
+  await working("t_review", w("你能帮我准备好能 review nowledge-co 这个 org 下所有打开的 PR 吗", "Get me ready to review every open PR in the nowledge-co org"), "", { kind: "none" }, "claude-code", w("38 个打开的 PR，按仓库分组，先看 mem 的 12 个。", "38 open PRs, grouped by repo; starting with mem's 12."), ["Bash", { command: "gh search prs --owner nowledge-co --state open" }, "38 results"]);
+  await prWait(15);
+  await movers();
+} else if (state === "waiting") {
+  await quietOnes();
+  await reviewLoop();
+  await prWait(20);
+  await open("t_flight", w("盯着 12 月 5 号去大阪的航班，降到 ¥9,000 以下就告诉我", "Watch the Dec 5 flight to Osaka and tell me when it drops under ¥9,000"), "", { kind: "none" }, "claude-code", "sonnet");
+  waitOn("t_flight", w("去大阪的航班降到 ¥9,000 以下", "the Osaka flight drops under ¥9,000"), 120, w("现在 ¥11,400。每两小时看一次。", "¥11,400 now. Checking every two hours."));
+  await open("t_mem_rel", w("等 Mem 0.10.120 发布后升级 Ducter 里的插件", "Upgrade the plugin in Ducter once Mem 0.10.120 is out"), "mem", repo("mem", "plugin-0.10.120"), "codex", "gpt-5.5");
+  waitOn("t_mem_rel", w("Mem 0.10.120 发布", "Mem 0.10.120 is released"), 60, w("还没发布。", "Not released yet."));
+  await movers();
+} else if (few) {
   await open("t_hotel", w("订 12 月 6 号京都的酒店，两晚，岚山附近", "Book a hotel in Kyoto for Dec 6, two nights, near Arashiyama"), "", { kind: "none" }, "claude-code", "sonnet");
   say("t_hotel", w("先在 Booking 上看岚山附近两晚的房，挑三家给你。", "Looking at two-night rooms near Arashiyama on Booking first; I'll pick three for you."));
   tool("t_hotel", "mcp__browser__navigate", { url: "https://www.booking.com/searchresults.html?ss=Arashiyama" }, "navigated");

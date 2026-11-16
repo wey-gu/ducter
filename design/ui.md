@@ -314,6 +314,16 @@ of it stops; the equip cross-fades; colors and words are unchanged.
 - Inline code in a zh line: JetBrains Mono at 0.86em on the same baseline, the same 1/4-em gap,
   short tokens never broken (D73).
 
+**On hand's head and task cards (D287).** The board opens with the partner's figure (76; 56 in the
+side pane and on the phone) in the pose for the whole and one sentence beside it (`--lg` 18/600,
+the display face, balanced). Working tasks, fresh waits and new results are task cards: `--surface`
+on a 2-pt `--line` ledge and a soft drop, radius 20, 14/16 padding, two to a row from 612; the
+coin 28, the title `--md` 15/600, two lines of `--sm` 13, the heartbeat foot `--xs` 12/600 in the
+state's ink (working bars in `--working-dot`, the wait ring in `--waiting-ink`, done in
+`--done-ink`). Washes: working blue and new-result green at the top only; a new result's glow and
+one pop on `--spring` for `--t-pop`. Hover lifts 2 pt (`--t-fast`); the keys' card has an accent
+outline. The day column (248) is a 2-pt `--line` rule with 10-pt beads.
+
 **On hand cards.** A task's ask is one clay card in the needs-you tint, the same as the ask in
 the conversation: the task's title as a small link in the needs-you ink at its top (no solid
 colored band), the question, the default and its bar, Reply… · Hold · Go. Working, Waiting

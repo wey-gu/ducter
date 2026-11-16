@@ -1390,6 +1390,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **The window header's counts vs the strip**: the header's 今天做完 counts successes today, the strip counts the section (failures and yesterday's late finishes too). One rule for both is the shell's call (the header is shared chrome).
 - [ ] **Quiet after 24 hours** and **seen results folded by default** are defaults to revisit with real use.
 
+## On hand with character (D287)
+
+- [ ] **People, not only LLM raters**: the author first on their real board, then a consumer who has never heard "agent" (research/91 is Haiku proxies only). Trigger: the next build the author installs.
+- [ ] **The iOS Simulator and Android** for the head and the cards (the phone's 56 figure, one card to a row). Trigger: the next phone release.
+- [ ] **A done card's moment on the Mac when it arrives live** (the web's pop plays the first time the card is drawn this session; the Mac's too, but neither ties it to the handover face). Trigger: the author's review.
+- [ ] **The fold threshold (3), two cards to a row from 612, the day column from 1280** are defaults to revisit with real use.
+
 ## From the author's phone-use run (2026-11-16)
 - [x] **Recording consent is the person's turn, said everywhere** (built 2026-11-16, D280 (1)): the
       card in every window with its countdown and 不录了, the pill's 轮到你：点「立即开始」.

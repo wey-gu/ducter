@@ -53,29 +53,45 @@ func (a *App) onHand(c *ui.Context) {
 					return
 				}
 				lb := lensBoard(b, lens)
-				ui.Column(c.Key("list")).Gap(t.S5).Width(onHandMeasure).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
-					if !column && lensOn(groups) {
-						a.lensTabs(c, groups, lens)
-					}
-					find = a.boardTop(c, lb, groups, lens)
-					if a.oh.filter == 0 {
-						a.forecastBand(c, lb)
-					}
-					if loose(lens) && (a.oh.filter == 0 || a.oh.filter == 2) {
-						a.callRows(c) // D193: the calls, live and today's
-					}
-					a.onHandList(c, lb)
-					if a.oh.filter == 0 {
-						switch lens {
-						case "":
-							a.routineShelf(c, false)
-						case lensOther:
-							a.routineShelf(c, true)
-						default:
-							if g := groupOf(groups, lens); g != nil {
-								a.lensRoutines(c, g)
+				// D287: the day beside the board on a wide window; the list's
+				// width is the cards' room.
+				day := w >= dayFrom
+				avail := w - 2*t.S6
+				if column {
+					avail -= lensColW
+				}
+				if day {
+					avail -= dayColW + t.S6
+				}
+				a.oh.listW = min(float32(onHandMeasure), avail)
+				ui.Row(c.Key("board-row")).Gap(t.S6).Justify(ui.Center).AlignItems(ui.Start).Children(func() {
+					ui.Column(c.Key("list")).Gap(t.S5).Width(a.oh.listW).Shrink(1).MinWidth(0).Children(func() {
+						if !column && lensOn(groups) {
+							a.lensTabs(c, groups, lens)
+						}
+						find = a.boardTop(c, lb, groups, lens)
+						if a.oh.filter == 0 && !day {
+							a.forecastBand(c, lb)
+						}
+						if loose(lens) && (a.oh.filter == 0 || a.oh.filter == 2) {
+							a.callRows(c) // D193: the calls, live and today's
+						}
+						a.onHandList(c, lb)
+						if a.oh.filter == 0 {
+							switch lens {
+							case "":
+								a.routineShelf(c, false)
+							case lensOther:
+								a.routineShelf(c, true)
+							default:
+								if g := groupOf(groups, lens); g != nil {
+									a.lensRoutines(c, g)
+								}
 							}
 						}
+					})
+					if day {
+						a.dayColumn(c, lb, lens)
 					}
 				})
 			})

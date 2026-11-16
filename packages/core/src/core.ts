@@ -738,7 +738,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged() });
   const newTask = {
     // D285: 带着它开新任务 / New task from this: the brief carries what that task found.
-    open: (i: NewTaskInput) => openYourTask(newTaskDeps, i.from && tasks.get(i.from) ? { ...i, brief: past.seed(i.from, i.words, languageOf(i.words, settings) === "zh") } : i),
+    open: (i: NewTaskInput) => openYourTask(newTaskDeps, i.from && tasks.get(i.from) ? { ...i, brief: past.seed(i.from, i.words, languageOf(i.words, settings)) } : i),
     options: (p?: Place) => newTaskOptions(newTaskDeps, p),
     // D186: a folder becomes a project; answered as the place the card then offers.
     async addProject(path: string, device?: string) {

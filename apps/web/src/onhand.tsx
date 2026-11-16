@@ -11,6 +11,7 @@ import { callEnded, type Bodies, type LogEvent, type Place } from "@ducter/proto
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
+import type { TableLang } from "./i18n.ts";
 import { Btn, Chev, Facts } from "./controls.tsx";
 import { openPast } from "./past.tsx";
 import { openDid } from "./did.tsx";
@@ -380,20 +381,26 @@ function waitsAhead(lens: string, now = Date.now()): { first: number; quiet: num
  *  model): whether anything needs you, then what works, what waits and when the first comes back,
  *  and what got done today. "现在没有要你定的。4 件在等：最早 22:40 回来，2 件一天多没有动静；今天做完 1 件。" */
 export function headSay(lens: string, n = stateCounts(lens), now = Date.now()): string {
-  const zh = A.L.lang === "zh";
+  const p = SAY_MARKS[A.L.lang];
   const first = n[0] ? (n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0])) : t("onhand.say.none");
   const parts: string[] = [];
   if (n[1]) parts.push(t("onhand.say.working", n[1]));
   if (n[2]) {
     const w = waitsAhead(lens, now);
     const more = [Number.isFinite(w.first) ? (n[2] === 1 ? t("onhand.wait.next", soon(new Date(w.first).toISOString(), now)) : t("onhand.say.first", soon(new Date(w.first).toISOString(), now))) : "", w.quiet ? (w.quiet >= n[2] ? t("onhand.say.quiet.all") : t("onhand.say.quiet", w.quiet)) : ""].filter(Boolean);
-    parts.push(t("onhand.say.waiting", n[2]) + (more.length ? (zh ? "：" : ": ") + more.join(zh ? "，" : ", ") : ""));
+    parts.push(t("onhand.say.waiting", n[2]) + (more.length ? p.colon + more.join(p.comma) : ""));
   }
   if (n[3]) parts.push(t("onhand.say.done", n[3]));
   if (!parts.length) return first;
-  const rest = parts.join(zh ? "；" : "; ") + (zh ? "。" : ".");
-  return `${first}${zh ? "" : " "}${zh ? rest : rest[0]!.toUpperCase() + rest.slice(1)}`;
+  const rest = parts.join(p.semi) + p.stop;
+  return `${first}${A.L.style.spaced ? " " : ""}${A.L.style.cased ? rest[0]!.toUpperCase() + rest.slice(1) : rest}`;
 }
+
+/** The head sentence's marks, per language (D292). */
+const SAY_MARKS: Record<TableLang, { colon: string; comma: string; semi: string; stop: string }> = {
+  zh: { colon: "：", comma: "，", semi: "；", stop: "。" },
+  en: { colon: ": ", comma: ", ", semi: "; ", stop: "." },
+};
 
 /** How the partner looks over the whole: its flag when something needs you, reading while anything
  *  works, on its bench while all of it waits, smiling when all that is left came back done. */

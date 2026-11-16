@@ -26,9 +26,27 @@ import type { Bodies, FindKind, FindView, LogEvent, ProactiveDay, ProactiveMode,
 import { DAILY_CAP, isFindKind, langName, normalizeTag, QUIET_REASONS, words, type LangTag } from "@ducter/protocol";
 import { talkLang } from "../lang.ts";
 
-/** D281's own lines (what you said, today's line) have zh and en words only; any other
- *  language reads the English ones (D292's fallback). */
-const zhWords = (tag: LangTag): boolean => words({ en: false, zh: true }, tag);
+/** D281's own lines (what you said, today's line), per language (D292: any other language reads
+ *  the English ones through the fallback chain). */
+const OWN_PICK = (tag: LangTag) => words(OWN, tag);
+const OWN = {
+  zh: {
+    gap: "",
+    join: "",
+    saidUser: (q: string) => `你说的：「${q}」`,
+    saidMe: (q: string) => `我说的：「${q}」`,
+    today: (at: string, reason: string, more: number) => zhSpace(`今天 ${at}：${reason}${more ? `，还有 ${more} 件` : ""}。`),
+    waiting: (n: number, days: number) => zhSpace(`还有 ${n} 件等你定，最早的是${days <= 1 ? "昨天" : `${days} 天前`}的。`),
+  },
+  en: {
+    gap: " ",
+    join: " ",
+    saidUser: (q: string) => `You said: "${q}"`,
+    saidMe: (q: string) => `I said: "${q}"`,
+    today: (at: string, reason: string, more: number) => `At ${at} today: ${reason[0]!.toLowerCase()}${reason.slice(1)}${more ? `, and ${more} more` : ""}.`,
+    waiting: (n: number, days: number) => `${n} ${n === 1 ? "thing is" : "things are"} waiting on you, the oldest since ${days <= 1 ? "yesterday" : `${days} days ago`}.`,
+  },
+};
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Clock } from "../clock.ts";
 import type { AppTarget, ConnectionsStore } from "../connections.ts";
@@ -698,7 +716,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       }
       const ownFinds = mine.filter((r) => r.asked || !muted(ownCandidate(r)));
       const pick = kept.slice(0, capLeft(m));
-      const line = todayLine(zhWords(z));
+      const line = todayLine(z);
       // 有用就说: what the note had no room for is counted, never dropped silently (P2).
       if (m === "useful") st.more += kept.length - pick.length;
       const noteId = newId("note");
@@ -711,17 +729,17 @@ export function createProactive(o: ProactiveOptions): Proactive {
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
       } else if (!pick.length && !ownFinds.length) {
         // D281: nothing new noticed, but the day holds something of Ducter's own: the one line, passive.
-        const opening = `${W.open(z)}${z ? "" : " "}${line}`;
+        const opening = `${W.open(z)}${words(OWN, z).gap}${line}`;
         const e = note({ noteId, rung: "morning", opening, finds: [], ...(leftOut ? { leftOut } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
         notify("passive", line, noteId);
       } else {
-        const finds = [...ownFinds.map((r) => ownCandidate(r)).map((c) => makeFind(c, zhWords(z) ? c.words.zh : c.words.en, noteId)), ...pick.map((x) => makeFind(x.c, x.text, noteId))];
+        const finds = [...ownFinds.map((r) => ownCandidate(r)).map((c) => makeFind(c, words(c.words, z), noteId)), ...pick.map((x) => makeFind(x.c, x.text, noteId))];
         // D250: the first note on the default (never chosen, never asked) says how it works, with the chips.
         const askHow = modeBy() === "default" && !st.cadenceAsked && !st.cadenceNote;
         if (askHow) (st.cadenceAsked = true), (st.cadenceNote = noteId);
         // D173: no "I read 214 emails": a one-word greeting, then the things themselves.
-        const opening = line ? `${W.open(z)}${z ? "" : " "}${line}` : W.open(z);
+        const opening = line ? `${W.open(z)}${words(OWN, z).gap}${line}` : W.open(z);
         const e = note({ noteId, rung: "morning", opening, finds, ...(leftOut ? { leftOut } : {}), ...(askHow ? { ask: "cadence" as const } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: finds.length });
         st.day.said += pick.length;
@@ -912,8 +930,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
         : r.by === "partner"
           ? { zh: zhSpace(`提醒你：${r.what}。${when.zh}我说过会提醒你。`), en: `Reminder: ${r.what}. I said ${when.en} I'd remind you.` }
           : { zh: zhSpace(`提醒你：${r.what}。${when.zh}你让我提醒的。`), en: `Reminder: ${r.what}. You asked me ${when.en}.` };
-    const z = zhWords(lang());
-    const said = r.by === "user" ? (z ? `你说的：「${r.quote}」` : `You said: "${r.quote}"`) : z ? `我说的：「${r.quote}」` : `I said: "${r.quote}"`;
+    const ow = OWN_PICK(lang());
+    const said = r.by === "user" ? ow.saidUser(r.quote) : ow.saidMe(r.quote);
     const due = ownAt(r);
     return { key: `own:${r.id}`, kind: "said", cost: r.asked ? 90 : 70, urgent: false, people: [], how: [{ what: plain(said, 80), at: new Date(r.at).toISOString() }], words, facts: [], ...(due ? { dueAt: new Date(due).toISOString() } : {}) };
   }
@@ -945,13 +963,13 @@ export function createProactive(o: ProactiveOptions): Proactive {
 
   /** Each due line said on its own (the "now" rung): outside NOW_MAX, their own ask is not Ducter's to ration. */
   function sayOwn(rs: OwnRec[]): void {
-    const z = zhWords(lang());
+    const z = lang();
     for (const r of rs) {
       const c = ownCandidate(r);
       r.state = "said";
       if (!r.asked && muted(c)) continue;
       const noteId = newId("note");
-      const f = makeFind(c, z ? c.words.zh : c.words.en, noteId);
+      const f = makeFind(c, words(c.words, z), noteId);
       note({ noteId, rung: "now", opening: "", finds: [f] });
       rollDay();
       notify(r.asked ? "time-sensitive" : "passive", f.text, noteId);
@@ -964,7 +982,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
    * reminders it set for today, and decisions waiting on the person for over half a day (each
    * named once, never again: a card left unanswered is their choice, not a thing to nag about).
    */
-  function todayLine(z: boolean): string {
+  function todayLine(z: LangTag): string {
+    const ow = words(OWN, z);
     const at = now();
     const day = today();
     const ws = new Map<string, Bodies["waiter"]>();
@@ -987,20 +1006,15 @@ export function createProactive(o: ProactiveOptions): Proactive {
       const first = later[0]!;
       const reason = plain(first.reason, 40).replace(/[。.]$/, "");
       const more = later.length - 1;
-      parts.push(
-        z
-          ? zhSpace(`今天 ${hm(first.at!, zone())}：${reason}${more ? `，还有 ${more} 件` : ""}。`)
-          : `At ${hm(first.at!, zone())} today: ${reason[0]!.toLowerCase()}${reason.slice(1)}${more ? `, and ${more} more` : ""}.`,
-      );
+      parts.push(ow.today(hm(first.at!, zone()), reason, more));
     }
     if (fresh.length) {
       const oldest = Math.min(...waiting.map((w) => w.at));
       const days = Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${dayKey(oldest, zone())}T00:00:00Z`)) / DAY);
-      const since = days <= 1 ? { zh: "昨天", en: "yesterday" } : { zh: `${days} 天前`, en: `${days} days ago` };
-      parts.push(z ? zhSpace(`还有 ${waiting.length} 件等你定，最早的是${since.zh}的。`) : `${waiting.length} ${waiting.length === 1 ? "thing is" : "things are"} waiting on you, the oldest since ${since.en}.`);
+      parts.push(ow.waiting(waiting.length, days));
       st.toldPending = [...told, ...fresh.map((w) => w.id)].slice(-200);
     }
-    return parts.join(z ? "" : " ");
+    return parts.join(ow.join);
   }
 
   /** A find untouched past its date quietly becomes 过了 / Passed: never "done" on its own. */
@@ -1577,7 +1591,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       for (const r of own()) {
         if (r.state !== "pending" && r.state !== "open") continue;
         const c = ownCandidate(r);
-        items.push({ kind: "said", text: zhWords(z) ? c.words.zh : c.words.en, urgent: false, ...(c.dueAt ? { when: c.dueAt } : {}), how: c.how.map((h) => `${h.what} (${h.at.slice(0, 10)})`), said: false });
+        items.push({ kind: "said", text: words(c.words, z), urgent: false, ...(c.dueAt ? { when: c.dueAt } : {}), how: c.how.map((h) => `${h.what} (${h.at.slice(0, 10)})`), said: false });
       }
       const cands = detect(ledger, { ...dctx(), now: at })
         .filter((c) => !muted(c))

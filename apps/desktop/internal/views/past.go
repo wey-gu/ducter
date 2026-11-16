@@ -19,6 +19,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
@@ -287,10 +288,7 @@ func (a *App) pastRange(r *protocol.PastRange) []string {
 	last := before.Add(-time.Second)
 	day := func(at time.Time) string {
 		at = at.Local()
-		if a.L.Lang == i18n.ZH {
-			return fmt.Sprintf("%d 月 %d 日", int(at.Month()), at.Day())
-		}
-		return fmt.Sprintf("%s %d", at.Month().String()[:3], at.Day())
+		return i18n.Pick(a.L, pastDates).day(at)
 	}
 	span := day(since)
 	if !before.IsZero() && day(last) != span {
@@ -442,17 +440,41 @@ func pastGroups(l *i18n.Strings, items []protocol.PastItem, now time.Time) []pas
 
 // monthName is a month as a group says it: 10 月, October; with the year
 // when it isn't this one.
-func monthName(lang i18n.Lang, at, now time.Time) string {
-	if lang == i18n.ZH {
-		if at.Year() != now.Year() {
-			return fmt.Sprintf("%d 年 %d 月", at.Year(), int(at.Month()))
-		}
-		return fmt.Sprintf("%d 月", int(at.Month()))
-	}
-	if at.Year() != now.Year() {
-		return fmt.Sprintf("%s %d", at.Month(), at.Year())
-	}
-	return at.Month().String()
+func monthName(l i18n.Lang, at, now time.Time) string {
+	return lang.Words(pastDates, string(l)).month(at, at.Year() != now.Year())
+}
+
+// pastDates is how Past writes its dates, per language (D292).
+var pastDates = map[string]struct {
+	day       func(at time.Time) string
+	month     func(at time.Time, year bool) string
+	yesterday string
+	weekday   func(d time.Weekday) string
+}{
+	"zh": {
+		day: func(at time.Time) string { return fmt.Sprintf("%d 月 %d 日", int(at.Month()), at.Day()) },
+		month: func(at time.Time, year bool) string {
+			if year {
+				return fmt.Sprintf("%d 年 %d 月", at.Year(), int(at.Month()))
+			}
+			return fmt.Sprintf("%d 月", int(at.Month()))
+		},
+		yesterday: "昨天",
+		weekday: func(d time.Weekday) string {
+			return [...]string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}[d]
+		},
+	},
+	"en": {
+		day: func(at time.Time) string { return fmt.Sprintf("%s %d", at.Month().String()[:3], at.Day()) },
+		month: func(at time.Time, year bool) string {
+			if year {
+				return fmt.Sprintf("%s %d", at.Month(), at.Year())
+			}
+			return at.Month().String()
+		},
+		yesterday: "Yesterday",
+		weekday:   func(d time.Weekday) string { return d.String()[:3] },
+	},
 }
 
 // pastSearching: words were typed, so the list is one ranked run.
@@ -778,20 +800,14 @@ func (a *App) pastDate(at time.Time) string {
 		return ""
 	}
 	now := a.Now()
-	zh := a.L.Lang == i18n.ZH
+	w := i18n.Pick(a.L, pastDates)
 	switch k := pastDayDiff(at, now); {
 	case k == 0:
 		return i18n.Clock(at)
 	case k == -1:
-		if zh {
-			return "昨天"
-		}
-		return "Yesterday"
+		return w.yesterday
 	case k <= -2 && k >= -6:
-		if zh {
-			return [...]string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}[at.Local().Weekday()]
-		}
-		return at.Local().Weekday().String()[:3]
+		return w.weekday(at.Local().Weekday())
 	}
 	return i18n.Day(a.L.Lang, at, now)
 }

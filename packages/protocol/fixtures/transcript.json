@@ -3610,5 +3610,267 @@
     ]
    }
   ]
+ },
+ {
+  "name": "background work in claude code",
+  "harness": "claude-code",
+  "working": true,
+  "events": [
+   {
+    "seq": 100,
+    "ts": "2026-11-10T06:58:00.000Z",
+    "persona": "default",
+    "stream": "task:bg1",
+    "origin": "user",
+    "kind": "task_open",
+    "body": {
+     "taskId": "bg1",
+     "title": "Soak the WAL bench",
+     "project": "",
+     "place": {
+      "kind": "none"
+     },
+     "harness": "claude-code",
+     "origin": "you",
+     "brief": "Run the WAL bench for an hour and tell me the p99."
+    }
+   },
+   {
+    "seq": 101,
+    "ts": "2026-11-10T06:58:01.000Z",
+    "persona": "default",
+    "stream": "task:bg1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "bg1",
+     "role": "tool",
+     "tool": {
+      "name": "Bash",
+      "input": {
+       "command": "bun run bench:wal --minutes 60 > bench.log",
+       "description": "Run the WAL bench for an hour",
+       "run_in_background": true
+      },
+      "output": "Command running in background with ID: b1",
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 102,
+    "ts": "2026-11-10T06:58:02.000Z",
+    "persona": "default",
+    "stream": "task:bg1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "bg1",
+     "role": "system",
+     "text": "running in the background: Run the WAL bench for an hour",
+     "raw": {
+      "background": {
+       "act": "started",
+       "type": "shell",
+       "what": "Run the WAL bench for an hour"
+      }
+     }
+    }
+   },
+   {
+    "seq": 103,
+    "ts": "2026-11-10T06:58:03.000Z",
+    "persona": "default",
+    "stream": "task:bg1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "bg1",
+     "role": "system",
+     "text": "running in the background",
+     "raw": {
+      "background": {
+       "act": "started",
+       "type": "agent"
+      }
+     }
+    }
+   },
+   {
+    "seq": 104,
+    "ts": "2026-11-10T06:58:04.000Z",
+    "persona": "default",
+    "stream": "task:bg1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "bg1",
+     "role": "system",
+     "text": "turn completed",
+     "raw": {
+      "turnEnd": true,
+      "kind": "turn_ended",
+      "outcome": "completed"
+     }
+    }
+   },
+   {
+    "seq": 105,
+    "ts": "2026-11-10T07:58:00.000Z",
+    "persona": "default",
+    "stream": "task:bg1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "bg1",
+     "role": "system",
+     "text": "failed in the background",
+     "raw": {
+      "background": {
+       "act": "failed",
+       "type": "agent"
+      }
+     }
+    }
+   },
+   {
+    "seq": 106,
+    "ts": "2026-11-10T07:58:01.000Z",
+    "persona": "default",
+    "stream": "task:bg1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "bg1",
+     "role": "system",
+     "text": "finished in the background: Run the WAL bench for an hour",
+     "raw": {
+      "background": {
+       "act": "ended",
+       "type": "shell",
+       "what": "Run the WAL bench for an hour"
+      }
+     }
+    }
+   },
+   {
+    "seq": 107,
+    "ts": "2026-11-10T07:58:02.000Z",
+    "persona": "default",
+    "stream": "task:bg1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "bg1",
+     "role": "tool",
+     "tool": {
+      "name": "Read",
+      "input": {
+       "file_path": "/w/bench.log"
+      },
+      "output": "p99 4.1ms",
+      "ok": true
+     }
+    }
+   }
+  ],
+  "want": [
+   {
+    "seq": 100,
+    "prompt": {
+     "k": "brief",
+     "seq": 100,
+     "text": "Run the WAL bench for an hour and tell me the p99.",
+     "by": "you"
+    },
+    "body": [
+     {
+      "k": "steps",
+      "seq": 101,
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 101,
+         "step": {
+          "kind": "ran",
+          "target": "bun run bench:wal",
+          "says": "Run the WAL bench for an hour"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "command": "bun run bench:wal --minutes 60 > bench.log",
+         "output": "Command running in background with ID: b1"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 102,
+         "step": {
+          "kind": "background",
+          "act": "start",
+          "target": "Run the WAL bench for an hour"
+         },
+         "n": 1,
+         "outcome": "ok"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 103,
+         "step": {
+          "kind": "background",
+          "act": "start"
+         },
+         "n": 1,
+         "outcome": "ok"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 105,
+         "step": {
+          "kind": "background",
+          "act": "end"
+         },
+         "n": 1,
+         "outcome": "error"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 106,
+         "step": {
+          "kind": "background",
+          "act": "end",
+          "target": "Run the WAL bench for an hour"
+         },
+         "n": 1,
+         "outcome": "ok"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 107,
+         "step": {
+          "kind": "read",
+          "target": "w/bench.log"
+         },
+         "n": 1,
+         "outcome": "ok",
+         "output": "p99 4.1ms"
+        }
+       }
+      ],
+      "live": true
+     }
+    ]
+   }
+  ]
  }
 ]

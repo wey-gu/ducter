@@ -9,7 +9,7 @@
 import type { Bodies, LogEvent } from "./index.ts";
 import type { MediaRef } from "./media.ts";
 import { redact } from "./redact.ts";
-import { stepOf, type Step } from "./steps.ts";
+import { backgroundStep, stepOf, type Step } from "./steps.ts";
 import { harnessName } from "./harnesses.ts";
 import { editDiff } from "./editdiff.ts";
 
@@ -241,6 +241,13 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
         }
         const text = (b.text ?? "").trim();
         if (b.role === "system") {
+          // D266: the harness's own background work, started and ended, as a step of the stretch.
+          const bg = backgroundStep(b.raw);
+          if (bg) {
+            if (bg.step.target) bg.step.target = redact(bg.step.target);
+            addRow(ev.seq, { seq: ev.seq, step: bg.step, n: 1, outcome: bg.failed ? "error" : "ok" });
+            break;
+          }
           const n = noteOf(text, b.raw);
           if (n) out.push({ k: "note", seq: ev.seq, ...n, text: redact(text) });
           break;

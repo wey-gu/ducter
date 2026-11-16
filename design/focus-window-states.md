@@ -59,6 +59,16 @@ partner sees it marked and sends the task back. A worker's refs are not checked 
 status"). If there is still no report, the window stays `working` and the stall rule applies.
 C never guesses `done`.
 
+**Background work (D266).** A harness can leave work running past its turn: Claude Code's
+background shells, Monitor and background subagents, Codex's subagents. C counts them from
+the harness's own task events (OAR `task_started` / `task_ended` at the root, ambient upkeep
+left out; a task still running when its turn ended counts, flagged or not). While any runs:
+a turn that ends without a report is neither nudged nor a miss, and the window stays `working`
+and `hot`; when the last one ends between turns, C waits `backgroundSettleMs` (60 s) for the
+harness's own turn (Claude Code takes one when a background task ends) before the one nudge.
+Each start and end is a step of the opened task. A background task the harness has said
+nothing of for 12 h (`DUCTER_BACKGROUND_CEILING_MS`) stops counting, said once in the task.
+
 ## Residency
 
 | From | To | Actor | Trigger |
@@ -66,9 +76,9 @@ C never guesses `done`.
 | (none) | `provisioning` | C | the window enters `queued`: wake or pick a machine, prepare the environment, take the write lease |
 | `provisioning` | `hot` | C | the process is up and the session has started |
 | `provisioning` | `offline` | C | the machine is unreachable after backoff |
-| `hot` | `warm` | C | the turn ended and the process is alive and idle |
+| `hot` | `warm` | C | the turn ended and the process is alive and idle: no turn and no background work (D266; with background work the window stays `hot` until its last task ends) |
 | `warm` | `hot` | C | input arrives: steer, queue, answer, follow-up |
-| `warm` | `parked` | C | idle ≥ max(cache TTL, 15 min) and no background work inside the window. Kill the process; keep the session ref and environment |
+| `warm` | `parked` | C | idle ≥ max(cache TTL, 15 min) and no background work inside the window (D266: counted from the harness's task events; the park timer re-arms while any runs). Kill the process; keep the session ref and environment |
 | `parked` | `hot` | C | input arrives. Resume by session ref. If the harness rejects the resume, start a new session in the *same* window from brief + checkpoint |
 | `parked` | `archived` | C | attention is terminal, after a grace period; or the window is `done` and idle ≥ the archive horizon (default 14 days). Reclaim the environment: remove the worktree directory, keep the branch, the transcript, and the Log. Blobs age out (1) |
 | `archived` | `provisioning` | C | a follow-up arrives. Rebuild the environment from the branch, then resume from brief + checkpoint |
@@ -83,7 +93,9 @@ checkpoint and then the waking message are its first turn, and a system line say
 (`raw.fresh: "resume_rejected"`). The archive horizon is a sweep at start and hourly: a
 `done`, `done?` or `failed` task idle 14 days (`DUCTER_ARCHIVE_IDLE_MS`) is archived; a
 worktree with leftovers is kept and the task stays parked, never force-removed. Dropped tasks
-keep their worktree for Undo and are not swept yet (`todo.md`).
+keep their worktree for Undo and are not swept yet (`todo.md`). Neither the horizon nor the
+archive after a merge closes a session with background work running (D266): the merge's archive
+says so in the task and happens when the last one ends (or at the next park).
 
 ## Cross-axis invariants
 

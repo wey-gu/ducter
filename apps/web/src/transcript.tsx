@@ -123,6 +123,8 @@ const GLYPHS: Record<string, () => JSX.Element> = {
   computer: () => <G><rect x="1.5" y="3" width="13" height="8" rx="1.6" /><path d="M8 11v3M5 14h6" /></G>,
   waited: () => <G><circle cx="8" cy="8" r="6" /><path d="M8 4.5V8l2.5 1.8" /></G>,
   delegated: () => <G><path d="M2.5 8h11M9.5 4l4 4-4 4" /></G>,
+  // D266: the clock of waiting, the work going on behind it.
+  background: () => <G><circle cx="8" cy="8" r="6" /><path d="M8 4.5V8l2.5 1.8" /></G>,
   other: () => <G><circle cx="8" cy="8" r="2.2" fill="currentColor" stroke="none" /></G>,
   thought: () => <G><circle cx="3.5" cy="8" r="1.3" fill="currentColor" stroke="none" /><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none" /><circle cx="12.5" cy="8" r="1.3" fill="currentColor" stroke="none" /></G>,
   error: () => <G><path d="M4 4l8 8M12 4l-8 8" /></G>,

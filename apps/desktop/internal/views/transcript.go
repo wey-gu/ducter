@@ -394,6 +394,16 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 			text := strings.TrimSpace(b.Text)
 			switch {
 			case b.Role == "system":
+				// D266: the harness's own background work, started and ended, as a step of the stretch.
+				if st, failed, ok := backgroundStep(b.Raw); ok {
+					st.Target = redact.Text(st.Target)
+					outcome := "ok"
+					if failed {
+						outcome = "error"
+					}
+					addRow(ev.Seq, StepRow{Seq: ev.Seq, Step: &st, N: 1, Outcome: outcome})
+					continue
+				}
 				if n, ok := noteOf(text, b.Raw); ok {
 					n.K, n.Seq, n.Text = "note", ev.Seq, redact.Text(text)
 					out = append(out, n)

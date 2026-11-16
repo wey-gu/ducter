@@ -26,6 +26,32 @@ export function previewInput(input: string | undefined): unknown {
 
 type OarEventLike = { kind: string; agentPath?: readonly string[]; [k: string]: any };
 
+/**
+ * D266: a task the harness runs beside its turn (OAR `task_started`: a Claude Code background
+ * shell, Monitor or background subagent; a Codex subagent thread). `shown` once it is known to
+ * run in the background: flagged so (`background`, at its start or by a later `task_updated`), or
+ * still live when the turn that started it ended (a foreground one always ends first).
+ */
+interface HarnessTask {
+  type: string;
+  description?: string;
+  background: boolean;
+  ambient: boolean;
+  shown: boolean;
+  ended: boolean;
+}
+
+/** A background act as the runner logs it (raw.background), and blocksOf reads it. */
+export type BackgroundAct = "started" | "ended" | "stopped" | "failed";
+
+/** What a background task is said as: its own description; a Codex subagent's last path part. */
+function taskWords(d: string | undefined): string | undefined {
+  const s = (d ?? "").split("\n")[0]!.trim();
+  if (!s) return undefined;
+  const tail = /^\/[\w/-]+$/.test(s) ? s.split("/").filter(Boolean).at(-1) : s;
+  return tail ? tail.slice(0, 160) : undefined;
+}
+
 interface PendingTool {
   name: string;
   input?: string;
@@ -80,6 +106,7 @@ export class Normalizer {
   private thought = "";
   private tools = new Map<string, PendingTool>();
   private lastContext: number | undefined;
+  private tasks = new Map<string, HarnessTask>();
 
   constructor(private readonly usage: () => HarnessEvent["usage"] | undefined) {}
 
@@ -132,6 +159,7 @@ export class Normalizer {
       return out;
     }
     if (ev.kind === "tool_call_progress") return out;
+    if (ev.kind === "task_updated" && !this.taskUpdated(ev)) return out;
     this.flushText(out);
     switch (ev.kind) {
       case "user_message":
@@ -166,7 +194,29 @@ export class Normalizer {
         });
         break;
       }
+      case "task_started": {
+        const id = String(ev.taskId ?? "");
+        if (!id) break;
+        const task: HarnessTask = { type: String(ev.taskType ?? "other"), description: ev.description, background: ev.background === true, ambient: ev.ambient === true, shown: false, ended: false };
+        this.tasks.set(id, task);
+        if (task.background) this.show(id, task, out);
+        break;
+      }
+      case "task_updated":
+        // taskUpdated() said it is shown now: it went to the background, or it runs again.
+        this.show(String(ev.taskId), this.tasks.get(String(ev.taskId))!, out);
+        break;
+      case "task_ended": {
+        const id = String(ev.taskId ?? "");
+        const task = this.tasks.get(id);
+        if (!task || task.ended) break;
+        task.ended = true;
+        if (task.shown) out.push(this.bgEvent(id, task, ev.status === "failed" ? "failed" : ev.status === "stopped" ? "stopped" : "ended"));
+        break;
+      }
       case "turn_ended": {
+        // A task still running when the turn that started it ended runs in the background, flagged or not.
+        for (const [id, task] of this.tasks) if (!task.ended && !task.shown) this.show(id, task, out);
         const o = ev.outcome ?? {};
         const text = o.kind === "completed" ? "turn completed" : o.kind === "aborted" ? "turn aborted" : `turn failed (${o.failure ?? "unknown"}): ${o.reason ?? ""}`;
         out.push({ role: "system", text, turnEnd: true, usage: this.usage(), raw: { kind: "turn_ended", outcome: o.kind, failure: o.failure } });
@@ -195,6 +245,40 @@ export class Normalizer {
         break; // model/effort/turn_started/etc. are lifecycle noise for the Log
     }
     return out;
+  }
+
+  /** D266: the background tasks the harness said it started and hasn't said ended. */
+  backgroundLive(): number {
+    let n = 0;
+    for (const t of this.tasks.values()) if (t.shown && !t.ended) n++;
+    return n;
+  }
+
+  /** A task_updated patch applied; true when the task is to be shown now. */
+  private taskUpdated(ev: OarEventLike): boolean {
+    const task = this.tasks.get(String(ev.taskId ?? ""));
+    if (!task) return false;
+    if (typeof ev.description === "string" && ev.description) task.description ??= ev.description;
+    if (ev.background === true) task.background = true;
+    // A Codex subagent given more work after it completed (OAR: a later task_updated says so).
+    if (task.ended && ev.status === "running") {
+      task.ended = false;
+      task.shown = false;
+      return !task.ambient;
+    }
+    return !task.ended && !task.shown && task.background && !task.ambient;
+  }
+
+  private show(id: string, task: HarnessTask, out: HarnessEvent[]) {
+    if (task.ambient || task.shown || task.ended) return; // ambient: the harness's own upkeep (OAR)
+    task.shown = true;
+    out.push(this.bgEvent(id, task, "started"));
+  }
+
+  private bgEvent(id: string, task: HarnessTask, act: BackgroundAct): HarnessEvent {
+    const what = taskWords(task.description);
+    const text = { started: "running in the background", ended: "finished in the background", stopped: "stopped in the background", failed: "failed in the background" }[act];
+    return { role: "system", text: what ? `${text}: ${what}` : text, raw: { kind: "background", background: { id, act, type: task.type, ...(what ? { what } : {}) } } };
   }
 
   /** Flush buffered text (e.g. on stream end). */

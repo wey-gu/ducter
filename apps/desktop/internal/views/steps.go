@@ -16,7 +16,7 @@ import (
 
 // Step is one tool call as a step line.
 type Step struct {
-	Kind   string `json:"kind"` // ran read edited searched browsed computer waited delegated other
+	Kind   string `json:"kind"` // ran read edited searched browsed computer waited delegated background other
 	Act    string `json:"act,omitempty"`
 	Target string `json:"target,omitempty"`
 	App    string `json:"app,omitempty"`
@@ -722,6 +722,27 @@ func editPaths(raw any) []string {
 }
 
 // ---------- the step ----------
+
+// backgroundStep is the harness's own background work as a step (D266): the
+// runner logs it as a system line with raw.background {act, what}; act
+// started · ended · stopped · failed becomes start · end · stop, and failed
+// says it ended in a failure. ok is false for any other line.
+func backgroundStep(raw json.RawMessage) (st Step, failed, ok bool) {
+	var r struct {
+		Background *struct {
+			Act  string `json:"act"`
+			What string `json:"what"`
+		} `json:"background"`
+	}
+	if len(raw) == 0 || json.Unmarshal(raw, &r) != nil || r.Background == nil {
+		return Step{}, false, false
+	}
+	act := map[string]string{"started": "start", "ended": "end", "stopped": "stop", "failed": "end"}[r.Background.Act]
+	if act == "" {
+		return Step{}, false, false
+	}
+	return Step{Kind: "background", Act: act, Target: strings.TrimSpace(r.Background.What)}, r.Background.Act == "failed", true
+}
 
 // stepOf is what one tool call was, as a step.
 func stepOf(harness string, t *protocol.ToolCall) Step {

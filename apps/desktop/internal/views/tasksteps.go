@@ -165,7 +165,7 @@ func stepGlyph(kind string) func(ui.Color) func(*ui.Painter, ui.Rect) {
 		return drawGlobe
 	case "computer":
 		return drawScreen
-	case "waited":
+	case "waited", "background":
 		return drawClock
 	case "delegated":
 		return drawArrow

@@ -53,6 +53,18 @@ export interface RunnerOptions {
    */
   archiveIdleMs?: number;
   archiveSweepMs?: number;
+  /**
+   * D266: after a turn ended without a report while background work ran, how long the last
+   * background task's end waits for the harness's own follow-up turn before the report nudge
+   * goes (Claude Code starts one when a background task ends). Default 60 s.
+   */
+  backgroundSettleMs?: number;
+  /**
+   * D266: a background task the harness says nothing more about for this long stops holding the
+   * session open (a shell that never ends must not pin a harness process forever). Default 12 h;
+   * env DUCTER_BACKGROUND_CEILING_MS.
+   */
+  backgroundCeilingMs?: number;
 }
 
 /** Runner plus test/ops helpers that are not part of the contract. */
@@ -134,6 +146,17 @@ interface TaskRt {
   offlineTimer?: ReturnType<typeof setTimeout>;
   parkTimer?: ReturnType<typeof setTimeout>;
   offlineOff?: () => void;
+  /**
+   * D266: the harness's own background work in this session (its background shells, Monitor,
+   * background subagents), by its task id: what it is and when the harness last said anything
+   * of it. Counted from the events, so a worker's session counts the same.
+   */
+  bg?: Map<string, { what?: string; seen: number }>;
+  /** D266: a turn ended without a report while background work ran: the nudge waits for it. */
+  bgOwed?: boolean;
+  bgSettle?: ReturnType<typeof setTimeout>;
+  /** D266: merged while background work ran: archived once it ends. */
+  archiveWhenQuiet?: Place;
   // D135: the harness compacted this many times; asked to save before the next one; what the
   // next turn starts with (the save ask, the brief and progress again after a compaction).
   compactions: number;
@@ -240,6 +263,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   const graceMs = opts.offlineGraceMs ?? Number(process.env.DUCTER_OFFLINE_GRACE_MS || 120_000);
   const parkMs = opts.parkIdleMs ?? Number(process.env.DUCTER_PARK_IDLE_MS || 15 * 60_000);
   const archiveIdleMs = opts.archiveIdleMs ?? Number(process.env.DUCTER_ARCHIVE_IDLE_MS ?? 14 * 24 * 3600_000);
+  const bgSettleMs = opts.backgroundSettleMs ?? 60_000;
+  const bgCeilingMs = opts.backgroundCeilingMs ?? Number(process.env.DUCTER_BACKGROUND_CEILING_MS || 12 * 3600_000);
   // D142: copies of non-git folders, kept 7 days after their task finished. Swept hourly.
   const folders = createFolderStore({ root: join(core.dataDir, "snapshots"), now: () => now().getTime() });
   const sweepFolders = () => {
@@ -326,6 +351,57 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     return t.running;
   }
 
+  /**
+   * D266: the harness's background work still running in this session. A task the harness has
+   * said nothing of for bgCeilingMs stops counting (said once in the task's log): a background
+   * job that never ends must not keep a harness process forever.
+   */
+  function bgLive(t: TaskRt): number {
+    if (!t.bg?.size) return 0;
+    const at = now().getTime();
+    for (const [id, b] of t.bg)
+      if (bgCeilingMs > 0 && at - b.seen >= bgCeilingMs) {
+        t.bg.delete(id);
+        logEvent(t, { role: "system", from: "runner", text: `background work quiet for ${Math.round(bgCeilingMs / 3600_000)} h${b.what ? ` (${b.what})` : ""}; no longer keeping the session open for it`, raw: { backgroundCeiling: true } });
+      }
+    return t.bg.size;
+  }
+
+  /** D266: one background report from the harness (normalize.ts): counted, logged as a step. */
+  function onBackground(t: TaskRt, ev: HarnessEvent) {
+    const b = (ev.raw as { background?: { id?: string; act?: string; what?: string; type?: string } }).background;
+    if (!b?.id) return;
+    const wasLive = bgLive(t);
+    if (b.act === "started") (t.bg ??= new Map()).set(b.id, { ...(b.what ? { what: b.what } : {}), seen: now().getTime() });
+    else t.bg?.delete(b.id);
+    logEvent(t, { role: "system", text: preview(ev.text ?? "", 500), raw: { background: { act: b.act, ...(b.type ? { type: b.type } : {}), ...(b.what ? { what: b.what } : {}) } } });
+    const live = bgLive(t);
+    if (live > 0 || wasLive === 0 || t.dropped || isBusy(t)) return;
+    // The last one ended between turns: the session may idle and park again.
+    if (t.archiveWhenQuiet) {
+      const place = t.archiveWhenQuiet;
+      t.archiveWhenQuiet = undefined;
+      void archiveAfterMerge(t, place);
+      return;
+    }
+    if (t.session) {
+      setState(t, currentAttention(t), "warm");
+      if (!t.bgOwed) armPark(t); // owed: the nudge's turn (or its own) parks it after
+    }
+    // Claude Code starts a turn of its own when a background task ends; that turn's end decides.
+    // Without one in bgSettleMs, the report it owes is asked for as after any silent turn.
+    if (t.bgOwed) {
+      clearTimeout(t.bgSettle);
+      t.bgSettle = setTimeout(() => {
+        t.bgSettle = undefined;
+        if (!t.bgOwed || t.dropped || isBusy(t) || bgLive(t) > 0 || !t.session) return;
+        t.bgOwed = false;
+        armPark(t);
+        void missedReport(t);
+      }, bgSettleMs);
+    }
+  }
+
   /** Idle and warm: park it after parkMs (the next input resumes it by session id). */
   function armPark(t: TaskRt) {
     clearTimeout(t.parkTimer);
@@ -338,6 +414,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const s = t.session;
     // Only a session that can be resumed: without its id, closing it would lose the task.
     if (!s || !t.sessionId || t.dropped || isBusy(t)) return;
+    // D266: closing it would kill its background shells and subagents with the process.
+    if (bgLive(t) > 0 || t.bgSettle) return armPark(t);
+    if (t.archiveWhenQuiet) {
+      const place = t.archiveWhenQuiet;
+      t.archiveWhenQuiet = undefined;
+      return archiveAfterMerge(t, place);
+    }
     t.session = undefined; // first: input arriving from now on resumes instead of using it
     t.running = false;
     setState(t, currentAttention(t), "parked");
@@ -518,6 +601,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
     const session = await t.ops.harness.start(spec);
     t.session = session;
+    t.bg?.clear(); // D266: a new process runs none of the old one's background work
     if (!spec.resumeSessionId) (t.context = undefined), (t.saveAsked = false); // a fresh context
     noteSessionId(t, session);
     void pump(t, session);
@@ -568,6 +652,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     } catch (err) {
       if (isOffline(err)) offline = true;
       else logEvent(t, { role: "system", text: `event stream error: ${preview(String(err), 500)}` });
+    }
+    // D266: its background work went with its process.
+    if (!t.session || t.session === session) {
+      t.bg?.clear();
+      t.bgOwed = false;
+      clearTimeout(t.bgSettle);
+      t.bgSettle = undefined;
     }
     if (t.session === session) {
       const wasRunning = t.running;
@@ -659,6 +750,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (status) logEvent(t, { role: "system", text: status.text, raw: { browser: { host: status.host, url: status.url, ...(status.own ? { own: true } : {}) } } });
     const early = (ev.raw as { kind?: string } | undefined)?.kind;
     if (early === "tool_call_started" || early === "tool_call_title" || early === "tool_call_head") return; // the ended event logs the call
+    if (early === "background") return onBackground(t, ev);
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
     // D135: save before the harness compacts; the brief and progress again after it.
     if (ev.usage?.contextTokens) {
@@ -759,8 +851,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.reportedThisTurn = false;
     const stopped = t.interruptRequested && outcome === "aborted";
     if (outcome) t.interruptRequested = false;
+    // D266: a turn (its own, after a background task ended, or any other) settles what was owed.
+    t.bgOwed = false;
+    clearTimeout(t.bgSettle);
+    t.bgSettle = undefined;
+    // D266: its background shells and subagents still run: the session is at work, not idle.
+    const bg = busy ? 0 : bgLive(t);
     // Stopped by the user: it is not working any more, it waits for them (truthful card).
-    if (!busy && !t.dropped) setState(t, stopped && currentAttention(t) === "working" ? "blocked" : currentAttention(t), "warm");
+    if (!busy && !t.dropped) setState(t, stopped && currentAttention(t) === "working" ? "blocked" : currentAttention(t), bg > 0 ? "hot" : "warm");
     if (!busy && !t.dropped) armPark(t);
     else clearTimeout(t.parkTimer);
     // A finished browser task quits its browser cleanly so sign-ins are saved (browser.ts).
@@ -774,6 +872,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return;
     }
     if (outcome && outcome !== "completed") return; // aborted/failed: no nudge
+    // D266: it ended its turn to let background work run, not to stop: no nudge, no miss. The
+    // last background task's end asks again (onBackground).
+    if (bg > 0) {
+      t.bgOwed = true;
+      return;
+    }
+    await missedReport(t);
+  }
+
+  /** A turn ended with no report (the stall rule): one nudge; a second miss leaves it to the user. */
+  async function missedReport(t: TaskRt) {
     if (!t.nudged) {
       t.nudged = true;
       try {
@@ -801,6 +910,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
    */
   async function archiveAfterMerge(t: TaskRt, place: Place) {
     if (place.kind !== "repo" || t.dropped || isBusy(t) || !["done_claimed", "done"].includes(currentAttention(t))) return;
+    // D266: closing the session would kill what still runs in its background: archived when it ends.
+    if (bgLive(t) > 0) {
+      if (!t.archiveWhenQuiet) logEvent(t, { role: "system", from: "runner", text: `merged; ${bgLive(t)} background job(s) still running, so the session stays open and the task is archived when they end`, raw: { archive: "waits_background" } });
+      t.archiveWhenQuiet = place;
+      return;
+    }
     clearTimeout(t.parkTimer);
     const s = t.session;
     t.session = undefined;
@@ -829,7 +944,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const archived: string[] = [];
     for (const t of tasks.values()) {
       const card = core.tasks.get(t.id);
-      if (!card || t.dropped || isBusy(t) || !["parked", "warm"].includes(card.residency)) continue;
+      if (!card || t.dropped || isBusy(t) || bgLive(t) > 0 || !["parked", "warm"].includes(card.residency)) continue;
       if (!["done", "done_claimed", "failed"].includes(card.attention)) continue;
       if (now().getTime() - Date.parse(card.updatedAt) < archiveIdleMs) continue;
       if (t.archiveKeptAt === card.updatedAt) continue; // kept last time and untouched since
@@ -1801,6 +1916,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       for (const t of tasks.values()) {
         clearTimeout(t.offlineTimer);
         clearTimeout(t.parkTimer);
+        clearTimeout(t.bgSettle);
         t.offlineOff?.();
       }
       await Promise.all([...tasks.values()].map((t) => t.session?.close().catch(() => {})));

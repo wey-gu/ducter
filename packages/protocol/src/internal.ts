@@ -7,6 +7,7 @@ import type { HarnessId } from "./harnesses.ts";
 import type { CallBody, DraftRequest, DraftResult } from "./phone.ts";
 import type { Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, PeersSettings, Settings, TaskCard, TaskNeeds } from "./index.ts";
 import type { MediaRef } from "./media.ts";
+import type { LangTag } from "./lang.ts";
 
 // ---------- core ----------
 
@@ -455,12 +456,12 @@ export interface Runner {
   // needs (D157): what the task needs of its computer; Ducter picks the computer (a place.device
   // the user named stays a pin).
   // media (D206): the pictures the brief carries; the first turn hands them to the agent.
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: "zh" | "en"; origin?: "you"; needs?: TaskNeeds; media?: MediaRef[] }): Promise<TaskCard>;
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; media?: MediaRef[] }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.
   // media (D206): settles with the brief (the call's last part), the pictures the brief carries.
-  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en"; needs?: TaskNeeds }, brief: Promise<string>, media?: Promise<MediaRef[]>): Promise<TaskCard>;
+  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: LangTag; needs?: TaskNeeds }, brief: Promise<string>, media?: Promise<MediaRef[]>): Promise<TaskCard>;
   // Logs the text as task_event {role:"user", from, clientId} before delivering it.
   // media (D206): pictures that go with the text (an agent that can't see them gets a line saying so).
   send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner" | "ducter", clientId?: string, media?: MediaRef[]): Promise<{ delivered: Delivery }>;
@@ -525,7 +526,7 @@ export function createPartnerSignature(_core: CoreApi, _runner: Runner): Partner
 /** D193: what the partner's phone_call tool reaches (core/src/phone.ts). */
 export interface PhonePort {
   available(): { connectionId: string; provider: string } | undefined;
-  draft(req: DraftRequest, o: { lang: "zh" | "en"; callId?: string; answers?: string }): Promise<DraftResult>;
+  draft(req: DraftRequest, o: { lang: LangTag; callId?: string; answers?: string }): Promise<DraftResult>;
   answer(text: string, callId?: string): { ok: true } | { ok: false; error: string };
   cancel(callId: string, by: "owner" | "ducter"): Promise<boolean>;
   block(number: string, why?: string): { ok: true; number: string } | { ok: false; error: string };

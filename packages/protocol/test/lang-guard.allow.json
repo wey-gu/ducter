@@ -1,0 +1,8 @@
+{
+  "_": "D292: per file, the inline zh/en branches still left: a ceiling that only shrinks (research/99 §7 says why each is left). LANG_GUARD_PRINT=1 bun test packages/protocol/test/lang-guard.test.ts prints the counts now.",
+  "files": {
+    "packages/protocol/src/lang.ts": 2,
+    "packages/partner/src/words.ts": 1,
+    "apps/desktop/internal/views/accounts.go": 1
+  }
+}

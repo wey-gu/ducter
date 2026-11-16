@@ -1425,3 +1425,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
       loaded transcript (an opened task loads its latest 2,000 events), so a loop older than that
       counts from there; core could log a look count on a waiter's end. Trigger: the author's
       review of D279.
+- [ ] **Languages beyond the two tables (D292, research/99).** Left: (1) tables for the code's own
+      lines (acks the model didn't write, cards Ducter builds, pushes, words to other agents) in
+      at least ko, ja, zh-Hant, es: today they read English through the fallback chain; (2) a
+      zh-Hant interface table (today zh-Hant reads Simplified); (3) the inline zh/en branches still
+      in `packages/protocol/test/lang-guard.allow.json`, shrunk file by file; (4) real users of
+      each language, especially short Latin messages the stopword score is unsure of. Trigger: the
+      next non-Chinese, non-English user report, or the first interface table after zh/en.

@@ -16,8 +16,9 @@ import { EyeShut } from "./live.tsx";
 import { finished, type Task } from "./store.ts";
 import { registerScreen } from "./workbench-screens.ts";
 
+import { words as byLang } from "@ducter/protocol/src/lang.ts";
+
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
-const zh = () => A.L.lang === "zh";
 
 // ---------- state (this module's own; app.ts hands it the phone_* frames) ----------
 
@@ -658,7 +659,6 @@ export function PhoneInstallSheet() {
   const close = () => ((PU.install = undefined), changed());
   const dv = (A.devices ?? []).find((d) => d.id === s.device);
   const tm = s.terms;
-  const lang = zh() ? "zh" : "en";
   return (
     <>
       <div class="scrim" onClick={close} />
@@ -688,7 +688,7 @@ export function PhoneInstallSheet() {
               {(tm.licenses ?? []).map((l) => (
                 <div class="phone-lic-one" key={l.id}>
                   <button class="phone-lic-head" aria-expanded={open === l.id} onClick={() => setOpen(open === l.id ? undefined : l.id)}>
-                    <span>{l.title[lang]}</span>
+                    <span>{byLang(l.title, A.L.lang)}</span>
                     <small>{open === l.id ? t("phoneuse.install.fold") : t("phoneuse.install.read")}</small>
                   </button>
                   {open === l.id && <pre class="phone-lic-text">{l.text}</pre>}

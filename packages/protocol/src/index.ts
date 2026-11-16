@@ -3,6 +3,8 @@
 // apps/desktop/internal/protocol (keep field names identical; JSON is the wire format).
 
 export * from "./harnesses.ts";
+export * from "./lang.ts";
+import type { LangTag } from "./lang.ts";
 import type { HarnessId } from "./harnesses.ts";
 export * from "./loadout.ts";
 export * from "./proactive.ts";
@@ -312,7 +314,9 @@ export interface Bodies {
     effort?: string;
     brief: string;
     bodyReason?: string; // why this harness/model
-    language?: "zh" | "en"; // the language the user reads its reports in (the brief says so)
+    // D292: the language the user reads its reports in, a BCP 47 tag ("ko", "zh-Hant"; the old
+    // "zh" | "en" are tags too). The brief says so; clients check its result against it.
+    language?: LangTag;
     // D206: the pictures the brief carries (the user's, handed on); the first turn gives them to the agent.
     media?: MediaRef[];
     // D128: "you" = the user opened it themselves (开一件事 / New task, `ducter task`); the brief
@@ -787,7 +791,7 @@ export type ClientFrame =
   // version: the Ducter version the client runs (the Mac app's); newer than the home's latest
   // release makes the home read GitHub again (its answer is stale).
   // shape (D263): what the device a page runs on is shaped like (shapeFromBrowser), for its clay.
-  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape }
+  | { t: "hello"; persona?: string; cursor?: number; locale?: LangTag; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape }
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
   // via (D277): the Mac app's iMessage bridge relays words the person wrote in iMessage.
@@ -1777,8 +1781,11 @@ export type ConnectionReason = "bad_url" | "unreachable" | "unauthorized" | "not
 // and quiet hours in push.json (shared with the phone's own endpoints), the rest in
 // settings.json. Interface language and theme are each client's own, not here.
 
-/** How the partner talks: "auto" follows the language of the user's message. */
-export type TalkLanguage = "auto" | "zh" | "en";
+/**
+ * How the partner talks: "auto" (跟着我 / Follow me) follows the language of the user's message;
+ * otherwise a BCP 47 tag it always replies in ("zh", "en", "ko", "zh-Hant", …; D292).
+ */
+export type TalkLanguage = "auto" | LangTag;
 
 export interface QuietHours {
   start: string; // "23:00", local to tz

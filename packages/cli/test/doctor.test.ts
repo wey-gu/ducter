@@ -226,6 +226,15 @@ describe("i18n", () => {
     expect(detectLocale({ LANG: "zh_CN.UTF-8", LC_ALL: "en_US.UTF-8" })).toBe("en");
     expect(detectLocale({ LANG: "en_US.UTF-8", DUCTER_LOCALE: "zh" })).toBe("zh");
     expect(detectLocale({ LC_ALL: "C", LANG: "zh_TW.UTF-8" })).toBe("zh");
+    // D292: a language without a table falls back to English, through its chain.
+    expect(detectLocale({ LANG: "ko_KR.UTF-8" })).toBe("en");
+    expect(detectLocale({ LANG: "ko_KR.UTF-8", DUCTER_LOCALE: "zh-Hant" })).toBe("zh");
+  });
+
+  test("D292: the translator takes any tag: ko speaks English, zh-Hant Chinese", () => {
+    expect(translator("ko")("doctor.optional")).toBe(STRINGS.en["doctor.optional"]);
+    expect(translator("zh-Hant")("doctor.optional")).toBe(STRINGS.zh["doctor.optional"]);
+    expect(translator("zh-TW")("doctor.optional")).toBe(STRINGS.zh["doctor.optional"]);
   });
 
   test("interpolation leaves unknown placeholders visible", () => {

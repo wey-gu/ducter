@@ -13,7 +13,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/redact"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
@@ -97,7 +96,7 @@ func (a *App) rowWords(r *StepRow) (string, string) {
 
 // capFirst starts an English step on a capital: a step is its own line (D210).
 func (a *App) capFirst(s string) string {
-	if a.L.Lang == i18n.ZH || s == "" {
+	if !a.L.Cased() || s == "" {
 		return s
 	}
 	r := []rune(s)
@@ -183,7 +182,7 @@ func (a *App) shortGo(label string) string {
 	if l == "" || !shortVerb(l) {
 		return a.L.T("decision.go")
 	}
-	if a.L.Lang != i18n.ZH {
+	if a.L.Cased() {
 		r := []rune(l)
 		r[0] = []rune(strings.ToUpper(string(r[0])))[0]
 		l = string(r)

@@ -7,7 +7,8 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync
 import { homedir, hostname as osHostname } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { HARNESSES, type Bodies, type HarnessId, type LogEvent, type OnHand, type Place } from "@ducter/protocol";
+import { HARNESSES, fill, normalizeTag, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type Place } from "@ducter/protocol";
+import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, Partner, Runner } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -79,6 +80,18 @@ declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
  *  Ducter still on the helper it replaced (the app dragged in by hand) and restart it. */
 const BUILD = typeof DUCTER_COMMIT === "string" ? DUCTER_COMMIT : "dev";
+
+/** D228: the Go card for a tunnel in the person's own Cloudflare account (D292: zh and en; ko → en). */
+const ANYWHERE_ASK = {
+  zh: {
+    question: "在你的 Cloudflare 账号里建一条通道，把 {hostname} 指到 {name}？以后在哪儿打开 {hostname}，都是这台电脑上的 Ducter。想用别的名字，直接回我。",
+    go: "建好它",
+  },
+  en: {
+    question: "Create a tunnel in your Cloudflare account and point {hostname} at {name}? Opening {hostname} anywhere will then reach Ducter on this computer. Want another name? Just reply with it.",
+    go: "Set it up",
+  },
+};
 
 export interface CoreOptions {
   dataDir?: string;
@@ -324,6 +337,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   let partner: Partner | undefined;
   const push = openPushStore(dataDir);
   const settings = openSettings({ dataDir, log, push, persona, memoryPinnedOff: process.env.DUCTER_MEMORY === "off" });
+  /** D292: the conversation's language now (the setting, else what the person writes in, else English). */
+  const langNow = (): LangTag => talkLang(settings, log) ?? "en";
   let workRef: Work | undefined; // set below: until loops hold their tries' done reports (D113)
   const decisions = createDecisions({
     log,
@@ -511,12 +526,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     clock,
     quiet: () => push.settings().quiet,
     notifyOff: () => push.settings().off === true,
-    zh: () => {
-      const l = settings.get().language;
-      if (l === "zh" || l === "en") return l === "zh";
-      const last = log.read({ stream: "channel", kinds: ["user_msg"], limit: 1 }).at(-1);
-      return last ? /[一-鿿]/.test((last.body as Bodies["user_msg"]).text) : /^zh/i.test(Intl.DateTimeFormat().resolvedOptions().locale);
-    },
+    // D292: the conversation's language, else this computer's (nothing said yet).
+    lang: () => talkLang(settings, log) ?? normalizeTag(Intl.DateTimeFormat().resolvedOptions().locale) ?? "en",
     personaName: () => persona.name,
     openUrl: opts.channels?.openUrl ?? (() => {
       const v = anywhereRef?.view();
@@ -555,7 +566,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const browser =
     opts.browser === false
       ? undefined
-      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief) => autofill.wants(brief !== undefined ? { brief } : log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string } | undefined), tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
+      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => { const l = settings.get().language; return intlLocale(l === "auto" ? undefined : l); }, workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief) => autofill.wants(brief !== undefined ? { brief } : log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string } | undefined), tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
   if (browser) autofill.attachBrowser(browser.host);
   if (browser) decorateBrowsing = (o) => browser.decorate(o);
   // D238: 用这台手机 / Use this phone: the person's own Android phones, through the Ducter app on each.
@@ -566,7 +577,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     tasks,
     deviceName: (id) => deviceAuthRef?.list().find((d) => d.id === id && d.kind === "client")?.name,
     interrupt: (taskId) => runner?.interrupt(taskId) ?? Promise.resolve(),
-    language: () => { const l = settings.get().language; return l === "zh" || l === "en" ? l : undefined; },
+    // The pill speaks the language of the lines the home sends it (zh and en tables; ko → en).
+    language: () => { const l = settings.get().language; return l === "auto" ? undefined : pickTag(l, ["zh", "en"]); },
     tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} about the phone:`, (e as Error).message)),
     ...(opts.handset ?? {}),
   });
@@ -627,7 +639,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any(), handsetOffer: () => handsets.offer() });
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
   const closing = createClosing({ log, tasks, loadout, runner: () => runner });
-  registerClosingTool(mcp, closing, () => settings.get().language === "zh");
+  registerClosingTool(mcp, closing, langNow);
   // D205: Settings › 伙伴's one-tap Bridge connection for the persona, run by the home's nmem.
   const bridgeLink = createBridgeLink({
     dataDir,
@@ -845,8 +857,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         const home = ((await devicesView?.frame())?.devices ?? []).find((d) => d.home);
         const body = home?.harnesses.find((h) => h.installed && h.loggedIn);
         if (!runner || !body) return console.warn(`[anywhere] no agent signed in on the home to set it up (${home ? home.harnesses.map((h) => `${h.harness}:${h.installed ? "installed" : "-"}/${h.loggedIn ? "signed in" : "-"}`).join(", ") || "none probed yet" : "no home"})`), undefined;
-        const zh = settings.get().language === "zh";
-        const card = await runner.openTask({ persona: persona.id, title, brief, place: { kind: "none" }, harness: body.harness, language: zh ? "zh" : "en", origin: "you" });
+        const card = await runner.openTask({ persona: persona.id, title, brief, place: { kind: "none" }, harness: body.harness, language: langNow(), origin: "you" });
         return card.taskId;
       },
       open: (taskId) => {
@@ -854,7 +865,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         return !!a && !["done", "done_claimed", "failed", "dropped"].includes(a);
       },
       ask(taskId, hostname) {
-        const zh = settings.get().language === "zh";
+        const w = words(ANYWHERE_ASK, langNow());
         const name = homeLabel();
         const decisionId = "d_" + crypto.randomUUID().replaceAll("-", "").slice(0, 10);
         log.append({
@@ -864,10 +875,8 @@ export function startCore(opts: CoreOptions = {}): Core {
           body: {
             decisionId,
             taskId,
-            question: zh
-              ? `在你的 Cloudflare 账号里建一条通道，把 ${hostname} 指到 ${name}？以后在哪儿打开 ${hostname}，都是这台电脑上的 Ducter。想用别的名字，直接回我。`
-              : `Create a tunnel in your Cloudflare account and point ${hostname} at ${name}? Opening ${hostname} anywhere will then reach Ducter on this computer. Want another name? Just reply with it.`,
-            goLabel: zh ? "建好它" : "Set it up",
+            question: fill(w.question, { hostname, name }),
+            goLabel: w.go,
             // Suggested, never applied by itself: it changes the person's own account (no timer).
             defaultOption: "go",
             reversible: false,
@@ -884,7 +893,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         return `${exe.split(" ").map(q).join(" ")} --port ${listening}`;
       },
       homeName: homeLabel,
-      zh: () => settings.get().language === "zh",
+      lang: langNow,
       qr: qrRows,
     },
   });
@@ -915,7 +924,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     persona,
     runner: () => runner,
     on: memOn,
-    zh: () => settings.get().language === "zh",
+    lang: langNow,
     inspectLocal:
       mp.inspectLocal ??
       (agentTesting ? async () => undefined : () => inspectMemPlugins(nmemInspectExec(process.env))),

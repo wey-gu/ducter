@@ -145,7 +145,7 @@ export interface SeedMemory {
 export interface Scenario {
   id: string;
   category: string;
-  lang: "zh" | "en"; // the language the visible replies must be in
+  lang: string; // the language the visible replies must be in, a BCP 47 tag (D292: any language)
   persona?: { name: string; identity?: string };
   seed?: Seed[];
   /** The fake Mem's contents. Omitted = an empty Mem; `memoryDown` = Mem not installed. */
@@ -241,6 +241,40 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "hi! what can you do?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 220, forbid: [/worktree|harness|subagent|Claude Code|Codex|^\s*[-•*\d]/m] },
     rubric: "At most 2 short English sentences: who it is by name (Ducter) and one concrete thing it can do on this machine now. No feature list or bullets, no explanation of tasks/worktrees/harnesses.",
+  },
+
+  // D292 (issue #5): Follow me is any language, not Chinese or else English.
+  {
+    id: "greet-ko",
+    category: "first_words",
+    lang: "ko",
+    steps: [{ user: "안녕하세요. 오늘 어떤 일을 도와줄 수 있나요?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/worktree|harness|subagent|Claude Code|Codex|^\s*[-•*\d]/m] },
+    rubric: "The user wrote Korean: the reply is in Korean (not English, not Chinese), at most 2 short sentences, saying who it is by name (Ducter) and one concrete thing it can do now. No feature list.",
+  },
+  {
+    id: "ok-keeps-ko",
+    category: "first_words",
+    lang: "ko",
+    steps: [{ user: "고마워요. 내일 아침에 다시 얘기해요." }, { user: "OK" }],
+    expect: { opens: 0, msgs: [1, 2], maxChars: 160 },
+    rubric: "Korean throughout: every visible reply is in Korean, including any answer to the bare \"OK\" (which must not switch the conversation to English). Short and warm; no task.",
+  },
+  {
+    id: "direct-ja",
+    category: "direct",
+    lang: "ja",
+    steps: [{ user: "一言で：TCP と UDP の一番の違いは何ですか？" }],
+    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 160 },
+    rubric: "Answers in Japanese (kana and kanji, not Chinese, not English) in one or two short sentences, correctly (connection-oriented and reliable vs connectionless). No task.",
+  },
+  {
+    id: "direct-es",
+    category: "direct",
+    lang: "es",
+    steps: [{ user: "En dos líneas: ¿cuándo debo hacer rebase en vez de merge?" }],
+    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 400 },
+    rubric: "Answers in Spanish (not English), at most 2-3 short lines, with a usable rule of thumb. No task, no headings.",
   },
 
   // ---------- A. small things answered directly ----------

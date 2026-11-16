@@ -8,6 +8,7 @@ import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import { logUserMessage } from "./reply.ts";
+import { talkLang } from "./lang.ts";
 import type { DevicesView } from "./devices.ts";
 import { redactDeep } from "@ducter/protocol/src/redact.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
@@ -806,8 +807,8 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "close_computer": {
         if (!deps.closing) throw new Error("closing is not available");
-        const lang = deps.settings?.get().language;
-        const r = await deps.closing.ask(String(f.device ?? ""), lang === "zh");
+        // D292: the conversation's language (the setting, else what the person writes in).
+        const r = await deps.closing.ask(String(f.device ?? ""), talkLang(deps.settings, deps.core.log) ?? "en");
         send(ws, r.ok ? { t: "close_result", device: String(f.device ?? ""), ok: true, ...(r.none ? { none: true } : {}), ...(r.decisionId ? { decisionId: r.decisionId } : {}) } : { t: "close_result", device: String(f.device ?? ""), ok: false, message: r.message });
         return;
       }

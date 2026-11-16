@@ -518,7 +518,7 @@ func (a *App) titlePrompt(p *ui.Painter, r ui.Rect, u float32, c ui.Color) {
 	size := max(11, 1.2*u)
 	font := a.T.Display
 	track := float32(0.22)
-	if a.L.Lang == "zh" {
+	if a.L.Han() {
 		font, track = a.T.Body, 0.35
 	}
 	text := []rune(a.L.T("title.prompt"))

@@ -7,7 +7,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
@@ -914,14 +913,14 @@ func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 	label := d.GoLabel
 	if d.Closing != nil { // D157: the closing card's Go, in the reader's words
 		label = a.L.T("move.closing.go")
-		if a.L.Lang != i18n.ZH {
+		if a.L.Cased() {
 			label = strings.ToLower(label[:1]) + label[1:]
 		}
 	}
 	if label == "" {
 		return a.L.T("decision.default.goon", a.duration(left+time.Second*59/60))
 	}
-	if a.L.Lang == i18n.ZH && label != "" && label[0] < 0x80 {
+	if a.L.Han() && label != "" && label[0] < 0x80 {
 		label = " " + label // a Latin word in Chinese text gets its space
 	}
 	return a.L.T("decision.default.go", a.duration(left+time.Second*59/60), label)

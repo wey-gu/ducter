@@ -8,7 +8,8 @@
 // never while the owner is on their own call; never answers a call; nothing recorded.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { e164, OWN_PHONE, type OwnPhoneAction, type OwnPhoneView } from "@ducter/protocol";
+import { e164, fill, OWN_PHONE, words, type LangTag, type OwnPhoneAction, type OwnPhoneView } from "@ducter/protocol";
+import { langOfText } from "../lang.ts";
 import { realClock, type Clock } from "../clock.ts";
 import type { CallProvider, DraftInput, ResultOut, StatusOut } from "../phone-provider.ts";
 import { adbExec, findAdb, listPhones, OwnPhoneAdb, type AdbDevice, type Exec, type PhoneCallState } from "./adb.ts";
@@ -21,6 +22,12 @@ const RING_LIMIT_MS = 55_000; // ringing this long: nobody's answering
 const DIAL_LIMIT_MS = 30_000; // the phone never started the call
 const STEP_MS = 700;
 const HEARD = 250; // RMS above the cable's hiss: the line was heard
+
+// The test call's one line, spoken by the computer (D292: zh and en; other languages hear English).
+const TEST_LINE = {
+  zh: "你好，这是 {name} 的测试电话。如果你听到了这句话，线就接好了。现在挂断。",
+  en: "Hello, this is a test call from {name}. If you can hear this, the cable works. Hanging up now.",
+};
 
 interface OwnFile {
   serial?: string;
@@ -52,7 +59,7 @@ export interface OwnPhoneDeps {
   ws?: ConstructorParameters<typeof VoiceLoop>[5];
   engineUrl?: string;
   listAudio?: () => Promise<{ inputs: string[]; outputs: string[]; tool: boolean }>;
-  speak?: (text: string, rate: number, zh: boolean) => Promise<Int16Array | undefined>;
+  speak?: (text: string, rate: number, lang: LangTag) => Promise<Int16Array | undefined>;
   /** How often the phone is read during a call (ms); tests go faster. */
   stepMs?: number;
   /**
@@ -271,10 +278,11 @@ export function openOwnPhone(deps: OwnPhoneDeps): OwnPhone {
       let loudest = 0;
       await audio.start((pcm) => (loudest = Math.max(loudest, rms(pcm))));
       await Bun.sleep(step * 2);
-      const zh = /^\+86|^\+886|^\+852|^\+853/.test(to) || /[一-鿿]/.test(deps.partnerName());
-      const line = zh ? `你好，这是 ${deps.partnerName()} 的测试电话。如果你听到了这句话，线就接好了。现在挂断。` : `Hello, this is a test call from ${deps.partnerName()}. If you can hear this, the cable works. Hanging up now.`;
+      // A Chinese-speaking number, else the language of the partner's name (D292; ko → en words).
+      const lang: LangTag = /^\+86|^\+886|^\+852|^\+853/.test(to) ? "zh" : langOfText(deps.partnerName());
+      const line = fill(words(TEST_LINE, lang), { name: deps.partnerName() });
       audio.play(chime(e.outRate));
-      const voice = await (deps.speak ?? ((t, r, z) => spoken(t, r, { ffmpeg, zh: z, dir: deps.dataDir })))(line, e.outRate, zh).catch(() => undefined);
+      const voice = await (deps.speak ?? ((t, r, l) => spoken(t, r, { ffmpeg, lang: l, dir: deps.dataDir })))(line, e.outRate, lang).catch(() => undefined);
       if (voice) audio.play(voice);
       await audio.drained();
       await Bun.sleep(step * 3.5); // their answer, if they say something back

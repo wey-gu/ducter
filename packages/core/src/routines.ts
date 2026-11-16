@@ -25,7 +25,9 @@
 //     first run that works clears it ("works_again").
 //   - A change watch that isn't sure of what it saw (all of it gone at once) asks before it runs.
 //   - The runner not wired yet (just after a restart): the firing waits a few seconds, not skipped.
-import type { Bodies, LogEvent, Place, RoutineBody, RoutineTrigger, RoutineTrouble, RoutineView, WatchBaseline } from "@ducter/protocol";
+import type { Bodies, LangTag, LogEvent, Place, RoutineBody, RoutineTrigger, RoutineTrouble, RoutineView, WatchBaseline } from "@ducter/protocol";
+import { fill, words } from "@ducter/protocol";
+import { intlLocale, langOfText } from "./lang.ts";
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { isActive, type CoreRegistry } from "./registry.ts";
@@ -85,7 +87,8 @@ export interface ProposeInput {
   reports?: RoutineBody["reports"];
   effect?: RoutineBody["effect"];
   monthTokens?: number;
-  zh?: boolean;
+  /** The routine's language (D292); else the language of its name and brief. */
+  language?: LangTag;
 }
 
 /** D185: a routine the user sets up themselves on the New task card: their words as the brief,
@@ -99,7 +102,7 @@ export interface YoursInput {
   harness?: string;
   model?: string;
   effort?: string;
-  zh?: boolean;
+  language?: LangTag;
 }
 
 export interface Routines {
@@ -161,6 +164,26 @@ const newId = (p: string) => `${p}_${crypto.randomUUID().replaceAll("-", "").sli
 const monthOf = (ms: number) => new Date(ms).toISOString().slice(0, 7);
 const iso = (ms: number) => new Date(ms).toISOString();
 const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
+
+// The routine's own cards (D292: in its language, through the fallback chain; ko → en).
+const W = {
+  zh: {
+    propose: "例行 · {name}",
+    start: "开始",
+    review: "例行「{name}」到期了，还要吗？",
+    keep: "保留",
+    unsure: "例行「{name}」这次看到的跟平时很不一样（{observed}），可能是没看对。要照样做一次吗？",
+    runAnyway: "照样做",
+  },
+  en: {
+    propose: "Routine · {name}",
+    start: "Start",
+    review: 'The routine "{name}" is up for review. Keep this?',
+    keep: "Keep it",
+    unsure: 'The routine "{name}" saw something unusual this time ({observed}); it may not have looked right. Run it anyway?',
+    runAnyway: "Run it anyway",
+  },
+};
 
 export function createRoutines(opts: {
   log: LogStore;
@@ -271,9 +294,9 @@ export function createRoutines(opts: {
         return void pause(r.routineId, "system", "unread");
       }
     }
-    const zh = /[一-鿿]/.test(r.name + r.brief);
-    const fmt = (ms: number, lang: "zh" | "en") => new Date(ms).toLocaleString(lang === "zh" ? "zh-CN" : "en-US", { timeZone: zoneOf(r), month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    const when = fmt(scheduledFor, zh ? "zh" : "en");
+    const lang = langOfText(r.name, r.brief);
+    const fmt = (ms: number, lang: LangTag) => new Date(ms).toLocaleString(intlLocale(lang), { timeZone: zoneOf(r), month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const when = fmt(scheduledFor, lang);
     const lateMs = clock.now() - scheduledFor;
     const lateMin = lateMs >= LATE_MS ? Math.round(lateMs / MIN) : 0;
     // D245: a late run knows it is late, in its brief (the task reads English instructions).
@@ -301,7 +324,7 @@ export function createRoutines(opts: {
           ...(r.place ? { place: r.place } : {}),
           project: r.project ?? "",
           ...(r.harness ? { harness: r.harness, ...(r.model ? { model: r.model } : {}), ...(r.effort ? { effort: r.effort } : {}) } : {}),
-          language: zh ? "zh" : "en",
+          language: lang,
           origin: "you",
         });
         started(card.taskId);
@@ -513,21 +536,21 @@ export function createRoutines(opts: {
 
   function review(s: State) {
     if (s.r.state !== "active") return;
-    const zh = /[一-鿿]/.test(s.r.name);
+    const w = words(W, langOfText(s.r.name));
     const decisionId = newId("d");
     pause(s.r.routineId, "system", "review");
     log.append({
       stream: "channel",
       origin: "schedule",
       kind: "decision",
-      body: { decisionId, question: zh ? `例行「${s.r.name}」到期了，还要吗？` : `The routine "${s.r.name}" is up for review. Keep this?`, goLabel: zh ? "保留" : "Keep it", defaultOption: "hold", reversible: true, routineId: s.r.routineId },
+      body: { decisionId, question: fill(w.review, { name: s.r.name }), goLabel: w.keep, defaultOption: "hold", reversible: true, routineId: s.r.routineId },
     });
   }
 
   /** D245 (6): a watch that isn't sure of what it saw asks before the routine runs on it. */
   function askUnsure(s: State, observed: string, at: string) {
     if (s.asking) return; // one open question per routine
-    const zh = /[一-鿿]/.test(s.r.name);
+    const w = words(W, langOfText(s.r.name));
     const decisionId = newId("d");
     s.asking = decisionId;
     unsureAsks.set(decisionId, { routineId: s.r.routineId, observed, at });
@@ -537,8 +560,8 @@ export function createRoutines(opts: {
       kind: "decision",
       body: {
         decisionId,
-        question: zh ? `例行「${s.r.name}」这次看到的跟平时很不一样（${observed}），可能是没看对。要照样做一次吗？` : `The routine "${s.r.name}" saw something unusual this time (${observed}); it may not have looked right. Run it anyway?`,
-        goLabel: zh ? "照样做" : "Run it anyway",
+        question: fill(w.unsure, { name: s.r.name, observed }),
+        goLabel: w.runAnyway,
         defaultOption: "hold",
         reversible: false,
         routineId: s.r.routineId,
@@ -753,13 +776,13 @@ export function createRoutines(opts: {
         if (bad) throw new Error(bad);
       } else if (!t.check && !t.event && !t.watch) throw new Error("a condition routine needs a check, an event or a watch to look at");
       else if (t.watch && (t.check || t.event || t.judge)) throw new Error("a watch stands alone: no check, event or judge with it");
-      const zh = input.zh ?? /[一-鿿]/.test(name + input.brief);
+      const lang = input.language ?? langOfText(name, input.brief);
       const now = clock.now();
       const r: RoutineBody = {
         routineId: newId("rt"),
         name: name.slice(0, 60),
         trigger: t,
-        triggerWords: input.triggerWords?.trim() || describeTrigger(t, zh),
+        triggerWords: input.triggerWords?.trim() || describeTrigger(t, lang),
         brief: input.brief.trim(),
         ...(input.place ? { place: input.place } : {}),
         reports: input.reports ?? "every",
@@ -783,7 +806,7 @@ export function createRoutines(opts: {
         stream: "channel",
         origin: "partner",
         kind: "decision",
-        body: { decisionId, question: zh ? `例行 · ${r.name}` : `Routine · ${r.name}`, goLabel: zh ? "开始" : "Start", defaultOption: "hold", reversible: false, routineId: r.routineId },
+        body: { decisionId, question: fill(words(W, lang).propose, { name: r.name }), goLabel: words(W, lang).start, defaultOption: "hold", reversible: false, routineId: r.routineId },
       });
       return view(s);
     },
@@ -797,14 +820,14 @@ export function createRoutines(opts: {
       const now = clock.now();
       const first = nextFirings(t, now, 1, t.zone === "personal" ? userZone : t.tz)[0];
       if (first === undefined) throw new Error("that time has already passed");
-      const zh = input.zh ?? /[一-鿿]/.test(name + input.brief);
+      const lang = input.language ?? langOfText(name, input.brief);
       // A one-time one far ahead is not "up for review" before it has run.
       const reviewAt = Math.max(now + REVIEW_DAYS * DAY, t.every === "once" ? first + DAY : 0);
       const r: RoutineBody = {
         routineId: newId("rt"),
         name: name.slice(0, 60),
         trigger: t,
-        triggerWords: describeTrigger(t, zh),
+        triggerWords: describeTrigger(t, lang),
         brief: input.brief.trim(),
         ...(input.place ? { place: input.place } : {}),
         reports: "every",

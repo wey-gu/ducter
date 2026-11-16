@@ -22,14 +22,22 @@ const ok: Script = (_i, s) => {
 };
 
 describe("live-run regressions", () => {
-  test("English message gets an explicit reply-in-English line; Chinese does not", async () => {
+  test("every message names its language (D292): English, Chinese, and Korean is never English", async () => {
     const { fr, partner, user } = setup(ok);
     user("Fix the flaky test in ~/dev/foo, then tell me.");
     await partner.idle();
     expect(fr.sessions[0]!.inputs[0]).toContain("[language] The user wrote this in English");
     user("修一下");
     await partner.idle();
-    expect(fr.sessions[0]!.inputs[1]).not.toContain("[language]");
+    expect(fr.sessions[0]!.inputs[1]).toContain("[language] The user wrote this in Chinese (简体中文): reply in Chinese (简体中文)");
+    user("안녕하세요. 오늘 어떤 일을 도와줄 수 있나요?");
+    await partner.idle();
+    expect(fr.sessions[0]!.inputs[2]).toContain("[language] The user wrote this in Korean (한국어): reply in Korean (한국어), including the first line.");
+    expect(fr.sessions[0]!.inputs[2]).not.toContain("English");
+    // A message with no language of its own keeps the conversation's.
+    user("OK");
+    await partner.idle();
+    expect(fr.sessions[0]!.inputs[3]).toContain("[language] This message has no language of its own; the user writes in Korean (한국어): reply in Korean (한국어).");
   });
 
   test("prewarm: the session starts at creation and the first turn still carries the seed", async () => {
@@ -285,7 +293,7 @@ describe("partner eval regressions", () => {
     await partner.idle();
     partner.onTrigger(report(fc, "t1", "测试修好了"));
     await partner.idle();
-    expect(fr.sessions[0]!.inputs[1]).toContain("[language] The user's last message was in English");
+    expect(fr.sessions[0]!.inputs[1]).toContain("[language] The user speaks English: reply in English.");
     user("好的");
     await partner.idle();
     partner.onTrigger(report(fc, "t1", "done"));

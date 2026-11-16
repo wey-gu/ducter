@@ -19,7 +19,13 @@ import { convWords } from "./i18n-conv.ts";
 import { transcriptWords } from "./i18n-transcript.ts";
 import { memoryWords } from "./i18n-memory.ts";
 
-export type Lang = "zh" | "en";
+import { fallbackChain, negotiate, detect, plural, UI_LANGS, type LangTag } from "@ducter/protocol/src/lang.ts";
+
+/** A BCP 47 tag (D292): the interface asks for any language and gets words from the nearest table. */
+export type Lang = LangTag;
+/** The languages with complete tables. Only these are offered as the interface's language. */
+export type TableLang = "zh" | "en";
+export const TABLE_LANGS: readonly TableLang[] = ["zh", "en"];
 
 const zh: Record<string, string> = {
   // Settings as one place (D150): the list of sections, each a pushed page.
@@ -168,6 +174,7 @@ const zh: Record<string, string> = {
   "peer.in.other": "%s 发来请求 · %s",
   "peer.replied": "已回复 %s",
   "peer.sent": "已发给 %s",
+  "peer.someone": "一个 AI agent",
   "peer.set_aside": "%s 今天又发来 %s 条，我先放着了",
   "peers.title": "连上的 AI agent",
   "peers.reach": "谁能找到 %s",
@@ -348,8 +355,8 @@ const zh: Record<string, string> = {
   "until.last": "上一次：%s",
   "until.title": "一直做到：%s",
   "until.n": "第 %d 次",
-  "until.lights": "%d 盏灯里亮了 %d 盏",
-  "until.items": "%d 处里好了 %d 处",
+  "until.lights": "%[2]d 盏灯里亮了 %[1]d 盏",
+  "until.items": "%[2]d 处里好了 %[1]d 处",
   "until.now": "在做",
   "until.stops": "会停下",
   "until.stops.v": "做到了 · 试满 %d 次 · 连着 3 次没进展 · 来回打转",
@@ -641,10 +648,11 @@ const zh: Record<string, string> = {
   "partner.rename.cancel": "取消",
   "partner.talk.title": "怎么说话",
   "partner.talk.auto": "跟着我",
-  "partner.talk.zh": "中文",
-  "partner.talk.en": "English",
+  "partner.talk.other": "其他语言…",
+  "partner.talk.other.label": "其他语言",
+  "partner.talk.other.pick": "选一种语言",
   "partner.talk.auto.note": "你用什么语言说，它就用什么语言回。",
-  "partner.talk.fixed.note": "不管你用什么语言说，它都用%s回。",
+  "partner.talk.fixed.note": "不管你用什么语言说，它都用 %s 回。",
   "partner.notify.title": "什么时候找你",
   "partner.notify.on": "通知",
   "partner.notify.on.note": "有事要你定的时候，通知你连上的手机和电脑。",
@@ -962,6 +970,7 @@ const en: Record<string, string> = {
   "peer.in.other": "Request from %s · %s",
   "peer.replied": "Replied to %s",
   "peer.sent": "Sent to %s",
+  "peer.someone": "an AI agent",
   "peer.set_aside": "%s sent %s more today; I've set them aside",
   "peers.title": "Connected AI agents",
   "peers.reach": "Who can reach %s",
@@ -1434,8 +1443,9 @@ const en: Record<string, string> = {
   "partner.rename.cancel": "Keep it",
   "partner.talk.title": "How it talks",
   "partner.talk.auto": "Follow me",
-  "partner.talk.zh": "中文",
-  "partner.talk.en": "English",
+  "partner.talk.other": "Other language…",
+  "partner.talk.other.label": "Other language",
+  "partner.talk.other.pick": "Choose a language",
   "partner.talk.auto.note": "It answers in whatever language you write in.",
   "partner.talk.fixed.note": "It always answers in %s, whatever you write in.",
   "partner.notify.title": "When it comes to you",
@@ -2807,7 +2817,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en } };
+export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en } };
 // D276: 聊天软件 / Chat apps (i18n-channels.ts).
 Object.assign(TABLES.zh, channelWords.zh);
 Object.assign(TABLES.en, channelWords.en);
@@ -2832,9 +2842,44 @@ export function format(fmt: string, args: unknown[]): string {
   });
 }
 
+/** How a table's language writes (D292): what code once asked with inline zh/en branches. */
+export interface Style {
+  /** The tag Intl formats this table's dates and numbers in ("zh-CN", "en"). */
+  intl: string;
+  /** Letters have case: a line starts upper case, a word inside one lower (English yes, Chinese no). */
+  cased: boolean;
+  /** Words stand apart with spaces; when false a Latin word beside the text gets one (D78). */
+  spaced: boolean;
+  /** After a label: "：" / ": ". */
+  colon: string;
+  /** Between items of a list: "、" / ", ". */
+  list: string;
+  /** A quoted title: 「…」 / “…”. */
+  quote(s: string): string;
+}
+export const STYLES: Record<TableLang, Style> = {
+  zh: { intl: "zh-CN", cased: false, spaced: false, colon: "：", list: "、", quote: (s) => `「${s}」` },
+  en: { intl: "en", cased: true, spaced: true, colon: ": ", list: ", ", quote: (s) => `“${s}”` },
+};
+
 export interface Strings {
-  lang: Lang;
+  /** The table answering, "zh" or "en": code reading it means "showing Chinese / English words". */
+  lang: TableLang;
+  /** How the shown words are written (STYLES). */
+  style: Style;
+  /** The requested tag ("ko", "zh-Hant"), for Intl formatting and the reader's default language. */
+  locale: Lang;
   t(key: string, ...args: unknown[]): string;
+  /** A count's words: key.one / key.other / key.few … by the shown language's plural rules, else key. */
+  n(key: string, count: number, ...args: unknown[]): string;
+  num(n: number, opts?: Intl.NumberFormatOptions): string;
+  date(d: Date | number, opts?: Intl.DateTimeFormatOptions): string;
+}
+
+/** The table a tag reads from: its fallback chain's first table language ("zh-Hant" → zh, "ko" → en). */
+export function tableLang(tag: Lang | undefined): TableLang {
+  for (const c of fallbackChain(tag)) if ((TABLE_LANGS as readonly string[]).includes(c)) return c as TableLang;
+  return "en";
 }
 
 /** Tests (test/guard.ts): hears every placeholder the copy prints filled with an empty string. */
@@ -2860,35 +2905,66 @@ export function usedArgs(fmt: string, n: number): boolean[] {
 export type Handheld = "phone" | "ipad";
 const onIpad = (s: string) => s.replace(/这台手机/g, "这台 iPad").replace(/\b([Tt])his phone\b/g, "$1his iPad");
 
-export function strings(lang: Lang, handheld: Handheld = "phone"): Strings {
+/** D78: what a table does to a filled-in line (the Chinese table's spacing around Latin names). */
+const TIDY: Partial<Record<TableLang, (s: string) => string>> = { zh: (s) => joinHan(spaceHan(s)) };
+
+export function strings(locale: Lang, handheld: Handheld = "phone"): Strings {
+  const lang = tableLang(locale);
   const table = TABLES[lang];
+  const style = STYLES[lang];
+  // Dates and numbers in the words' own language: the locale's region when it is that language
+  // (en-GB, zh-Hant), else the table's ("ko" shows English words, so English dates).
+  let intl = style.intl;
+  try {
+    const c = Intl.getCanonicalLocales(locale)[0];
+    if (c && c !== lang && c.split("-")[0] === lang) intl = c;
+  } catch {}
+  const t = (key: string, ...args: unknown[]): string => {
+    let v = table[key] ?? en[key] ?? key; // a missing key shows itself, so it gets fixed
+    if (handheld === "ipad") v = onIpad(v);
+    if (!args.length) return v;
+    if (onEmptyArg) {
+      const used = usedArgs(v, args.length);
+      args.forEach((a, i) => used[i] && (a === undefined || a === null || (typeof a === "string" && !a.trim())) && onEmptyArg!(key, i));
+    }
+    const out = format(v, args);
+    return TIDY[lang]?.(out) ?? out;
+  };
+  const has = (k: string) => k in table || k in en;
   return {
     lang,
-    t(key, ...args) {
-      let v = table[key] ?? en[key] ?? key; // a missing key shows itself, so it gets fixed
-      if (handheld === "ipad") v = onIpad(v);
-      if (!args.length) return v;
-      if (onEmptyArg) {
-        const used = usedArgs(v, args.length);
-        args.forEach((a, i) => used[i] && (a === undefined || a === null || (typeof a === "string" && !a.trim())) && onEmptyArg!(key, i));
+    style,
+    locale,
+    t,
+    n(key, count, ...args) {
+      // The words are the table's, so its language's rules pick the form ("1 task" even for ko).
+      const form = `${key}.${plural(lang, count)}`;
+      const k = has(form) ? form : has(`${key}.other`) ? `${key}.other` : key;
+      return t(k, ...(args.length ? args : [count]));
+    },
+    num(n, opts) {
+      try {
+        return new Intl.NumberFormat(intl, opts).format(n);
+      } catch {
+        return String(n);
       }
-      const out = format(v, args);
-      return lang === "zh" ? joinHan(spaceHan(out)) : out;
+    },
+    date(d, opts) {
+      try {
+        return new Intl.DateTimeFormat(intl, opts).format(d);
+      } catch {
+        return new Date(d).toISOString();
+      }
     },
   };
 }
 
-export function detectLang(langs: readonly string[] = (typeof navigator !== "undefined" && navigator.languages) || []): Lang {
-  for (const l of langs) {
-    const s = l.toLowerCase();
-    if (s.startsWith("zh")) return "zh";
-    if (s.startsWith("en")) return "en";
-  }
-  return "en";
+/** The interface language for the browser's preferred ones: the first with a table (["ko", "zh-CN"] → zh). */
+export function detectLang(langs: readonly string[] = (typeof navigator !== "undefined" && navigator.languages) || []): TableLang {
+  return negotiate(langs, UI_LANGS) as TableLang;
 }
 
-/** The language a person writes in: zh with any Han character, en with 3+ Latin letters and none. */
+/** The language a person writes in (lang.ts detect): any tag, or "" when the text has none of its own. */
 export function langOfText(text: string): Lang | "" {
-  if (/\p{Script=Han}/u.test(text)) return "zh";
-  return (text.match(/[A-Za-z]/g)?.length ?? 0) >= 3 ? "en" : "";
+  return detect(text)?.lang ?? "";
 }

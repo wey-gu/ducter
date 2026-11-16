@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
@@ -43,10 +42,7 @@ func peerHarness(agent string) string {
 // didn't say who sent it, 一个 AI agent / an AI agent.
 func (a *App) peerWho(agent string) string {
 	if agent == "" || agent == "another agent" {
-		if a.L.Lang == i18n.ZH {
-			return "一个 AI agent"
-		}
-		return "an AI agent"
+		return a.L.T("peer.someone")
 	}
 	return agent
 }

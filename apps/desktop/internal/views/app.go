@@ -15,6 +15,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/hints"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
@@ -193,6 +194,8 @@ type App struct {
 	// it follows the user's first message (localeSet once it did).
 	LocaleFixed bool
 	localeSet   bool
+	// talk caches the conversation's language (talkLang, D292).
+	talk talkCache
 	// focusComposer asks the shown composer to take the keyboard.
 	focusComposer bool
 	// rp is replying to one message (D236, reply.go).
@@ -903,7 +906,11 @@ func (a *App) Receive(f protocol.ServerFrame) {
 }
 
 // followUserLanguage speaks the language of the user's first message,
-// unless DUCTER_LOCALE pins one (LocaleFixed).
+// unless DUCTER_LOCALE pins one (LocaleFixed). Any language (D292): a
+// Korean first message keeps "ko" (and the next launch starts in it); the
+// words come from the first table on its chain (ko → English). The window's
+// language is the prior (lang.Resolve): a message that shows only its
+// script ("准备 App Store Connect", Latin with no telling word) keeps it.
 func (a *App) followUserLanguage() {
 	if a.LocaleFixed || a.localeSet {
 		return
@@ -912,12 +919,14 @@ func (a *App) followUserLanguage() {
 		if e.User == nil {
 			continue
 		}
-		if l := i18n.FromText(e.User.Text); l != "" {
+		if i18n.FromText(e.User.Text) != "" {
+			l := i18n.Lang(lang.Resolve(e.User.Text, string(a.L.Locale)))
 			a.localeSet = true
 			a.Local.SetSpokeLang(string(l)) // D262: the next launch starts in it
-			if l != a.L.Lang {
-				a.L = i18n.New(l)
-				if a.OnLanguage != nil {
+			if next := i18n.New(l); next.Locale != a.L.Locale {
+				words := next.Lang != a.L.Lang
+				a.L = next
+				if words && a.OnLanguage != nil {
 					a.OnLanguage(a.L) // the menus follow
 				}
 			}

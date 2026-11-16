@@ -17,7 +17,7 @@ import { MEDIA_LIMITS } from "@ducter/protocol";
 import type { Decisions } from "./decisions.ts";
 import type { Gate, GateResult } from "./auth.ts";
 import type { Pusher, PushStore, PushSub, Quiet } from "./push.ts";
-import { isPushEndpoint, testMessage } from "./push.ts";
+import { isPushEndpoint, pushLocale, testMessage } from "./push.ts";
 import { APNS_PREFIX, isApnsToken, isTopic, type ApnsSender } from "./apns.ts";
 import { isDeviceKey, isRelayHandle } from "./push-relay.ts";
 
@@ -316,7 +316,7 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
     }
     case "POST /api/push/subscribe": {
       const b = await body();
-      const locale = b.locale === "zh" ? "zh" : "en";
+      const locale = pushLocale(b.locale);
       if (b.apns !== undefined) {
         const a = b.apns as { token?: unknown; env?: unknown; topic?: unknown; relay?: unknown; key?: unknown };
         if (!isApnsToken(a?.token) || !isTopic(a.topic) || (a.env !== "sandbox" && a.env !== "production")) return json(400, { error: "invalid subscription" });

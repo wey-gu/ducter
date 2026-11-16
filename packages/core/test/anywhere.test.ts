@@ -135,7 +135,7 @@ function setupDeps() {
     },
     cli: () => "ducter --port 7777",
     homeName: () => "Wey's MacBook",
-    zh: () => false,
+    lang: () => "en",
     qr: (t) => [t.length > 0 ? "1010" : ""],
   };
   return { deps, asks, tasks, openTasks };
@@ -446,7 +446,7 @@ test("what cloudflared prints, read: the route's name, a taken name, the tunnel 
 });
 
 test("the setup brief: only Ducter's steps, never cloudflared by hand, never overwrite, no credentials printed", () => {
-  const b = setupBrief({ cli: "ducter --port 7777", device: "hel", zh: true });
+  const b = setupBrief({ cli: "ducter --port 7777", device: "hel", lang: "zh" });
   for (const s of ["login", "create", "run"]) expect(b).toContain(`\`ducter --port 7777 anywhere step ${s} --json\``);
   expect(b).toContain("Never run cloudflared yourself");
   expect(b).toContain("never delete or overwrite a DNS record");

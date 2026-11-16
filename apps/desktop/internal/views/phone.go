@@ -622,11 +622,7 @@ func (a *App) summaryRows(text string) [][2]string {
 				if m.prefix == "when" && lk != "when" {
 					// "When in UTC" → 什么时候（UTC） / When (UTC)
 					zone := strings.TrimPrefix(strings.TrimSpace(strings.Trim(k[4:], " ()")), "in ")
-					if a.L.Lang == "zh" {
-						label += "（" + zone + "）"
-					} else {
-						label += " (" + zone + ")"
-					}
+					label = fmt.Sprintf(a.L.T("words.paren"), label, zone)
 				}
 				break
 			}

@@ -57,6 +57,11 @@ describe("copy", () => {
     expect(langOfText("修一下这个测试")).toBe("zh");
     expect(langOfText("fix the test")).toBe("en");
     expect(langOfText("ok")).toBe("");
+    // D292: any language, not "Chinese or else English".
+    expect(langOfText("이 테스트 좀 고쳐줘")).toBe("ko");
+    expect(langOfText("このテストを直してください")).toBe("ja");
+    expect(langOfText("¿Puedes arreglar la prueba, por favor?")).toBe("es");
+    expect(langOfText("請幫我看一下這個測試")).toBe("zh-Hant");
   });
 });
 

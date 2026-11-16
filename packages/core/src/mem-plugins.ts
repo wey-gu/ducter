@@ -13,7 +13,7 @@
 // Memory off (Settings › 记得什么): no checks shown, no cards, no installs.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { harnessName, type Bodies, type DeviceHarness, type LogEvent, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
+import { fill, harnessName, langName, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
 import type { LogStore, Runner, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { MEM_HOSTS } from "@ducter/protocol/src/mem-plugins.ts";
 
@@ -27,7 +27,8 @@ export interface MemPluginsDeps {
   runner: () => Runner | undefined;
   /** Memory on (Settings › 记得什么 and the run). */
   on: () => boolean;
-  zh: () => boolean;
+  /** The conversation's language (D292): the task's reports, the card's words through the fallback chain. */
+  lang: () => LangTag;
   /** The check on the home; undefined when nmem isn't here or can't tell. */
   inspectLocal: () => Promise<Plugins | undefined>;
   /** The check on a worker (its `mem_plugins` op); undefined when it is away or too old to have it. */
@@ -68,11 +69,25 @@ interface Saved {
 }
 
 const DAY = 24 * 60 * 60 * 1000;
+
+// The card's and the task's own words (D292: zh and en; any other language falls back, ko → en).
+const W = {
+  zh: {
+    offer: "{device} 上的 {agent} 还没装 Nowledge Mem。装上以后，我在那儿做事和你自己用 {agent} 时都记得你；会改 {agent} 自己的设置。",
+    install: "安装",
+    title: "为 {device} 上的 {agent} 安装 Nowledge Mem",
+  },
+  en: {
+    offer: "{agent} on {device} doesn't have Nowledge Mem. With it, my work there and your own {agent} sessions both remember you; it changes {agent}'s own settings.",
+    install: "Install",
+    title: "Install Nowledge Mem for {agent} on {device}",
+  },
+};
 const FINISHED = new Set(["done_claimed", "done", "failed", "dropped", "blocked"]);
 
 /** D169: the brief of the task that puts Nowledge Mem into one of the user's own agents on a computer. */
-export function memSetupBrief(o: { agent: string; host: string; device: string; zh: boolean }): string {
-  const lang = o.zh ? "Write your report in Chinese (简体中文)." : "Write your report in English.";
+export function memSetupBrief(o: { agent: string; host: string; device: string; lang: LangTag }): string {
+  const lang = `Write your report in ${langName(o.lang)}.`;
   return `Set up Nowledge Mem for ${o.agent} on this computer (${o.device}), for the user's own use of ${o.agent} outside Ducter. The user tapped Install for this.
 
 1. Read Nowledge Mem's official setup guide at https://mem.nowledge.co/SKILL.md and follow it for the host "${o.host}". It is the only source of the steps; don't improvise others.
@@ -156,14 +171,12 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
   }
 
   function offer(device: string, deviceName: string, harness: string) {
-    const zh = d.zh();
+    const w = words(W, d.lang());
     const agent = harnessName(harness);
     const body: Bodies["decision"] = {
       decisionId: "d_" + crypto.randomUUID().replaceAll("-", "").slice(0, 10),
-      question: zh
-        ? `${deviceName} 上的 ${agent} 还没装 Nowledge Mem。装上以后，我在那儿做事和你自己用 ${agent} 时都记得你；会改 ${agent} 自己的设置。`
-        : `${agent} on ${deviceName} doesn't have Nowledge Mem. With it, my work there and your own ${agent} sessions both remember you; it changes ${agent}'s own settings.`,
-      goLabel: zh ? "安装" : "Install",
+      question: fill(w.offer, { device: deviceName, agent }),
+      goLabel: w.install,
       // Recommended, never applied by itself: Go is the suggestion, and it waits for the tap (no timer).
       defaultOption: "go",
       reversible: true,
@@ -187,16 +200,16 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     const body = signed.find((h) => h.harness === harness) ?? signed[0];
     const runner = d.runner();
     if (!body || !runner) return { ok: false, reason: "no_agent" };
-    const zh = d.zh();
+    const lang = d.lang();
     const agent = harnessName(harness);
     try {
       const card = await runner.openTask({
         persona: d.persona.id,
-        title: zh ? `为 ${dev.name} 上的 ${agent} 安装 Nowledge Mem` : `Install Nowledge Mem for ${agent} on ${dev.name}`,
-        brief: memSetupBrief({ agent, host, device: dev.name, zh }),
+        title: fill(words(W, lang).title, { device: dev.name, agent }),
+        brief: memSetupBrief({ agent, host, device: dev.name, lang }),
         place: dev.home ? { kind: "none" } : { kind: "none", device: dev.id },
         harness: body.harness,
-        language: zh ? "zh" : "en",
+        language: lang,
         origin: "you",
       });
       saved.setups[card.taskId] = { device: dev.id, harness };

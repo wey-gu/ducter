@@ -8,6 +8,7 @@ import type { AgentUpdate, Attention, Bodies, Candidate, DeviceHarness, DeviceUp
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
+import { autonym, LANGUAGES, words as byLang } from "@ducter/protocol/src/lang.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A, candKey, effortWord, placeKey, type SettingsPage } from "./app.ts";
@@ -250,7 +251,7 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
   if (left <= 0) return { line: t("decision.default.due"), frac: 0 };
   if (!d.goLabel) return { line: t("decision.default.goon", duration(A.L, left)) };
   let label = d.goLabel;
-  if (A.L.lang === "zh" && label.charCodeAt(0) < 0x80) label = " " + label;
+  if (!A.L.style.spaced && label.charCodeAt(0) < 0x80) label = " " + label;
   const asked = d.askedAt ? Date.parse(d.askedAt) : NaN;
   const frac = Number.isNaN(asked) || at <= asked ? undefined : Math.max(0, Math.min(1, left / (at - asked)));
   return { line: t("decision.default.go", duration(A.L, left), label), frac };
@@ -275,7 +276,7 @@ function DefaultRow({ d }: { d: DecisionState }) {
   if (!d.reversible || d.defaultOption !== "go" || Number.isNaN(at)) return <div class="dl">{defaultInfo(d, Date.now()).line}</div>;
   const left = at - Date.now();
   let g = (d.goLabel || t("decision.go")).trim().replace(/[.。]+$/, "");
-  if (A.L.lang !== "zh" && /^[A-Z][a-z]/.test(g)) g = g.charAt(0).toLowerCase() + g.slice(1);
+  if (A.L.style.cased && /^[A-Z][a-z]/.test(g)) g = g.charAt(0).toLowerCase() + g.slice(1);
   const asked = d.askedAt ? Date.parse(d.askedAt) : NaN;
   const frac = Number.isNaN(asked) || at <= asked ? 1 : left / (at - asked);
   const words = left <= 0 ? t("decision.default.due") : t("decision.default.in", duration(A.L, left), g);
@@ -520,7 +521,7 @@ function openEvidence(ev: EvidenceRef, task?: Task) {
  *  counts them (a bare "commit" or a hash says nothing to a person). */
 function changesLabel(task: Task, changed: EvidenceRef[]): string {
   const counted = changed.find((e) => e.kind === "diff" && /\d+\s*(files?\b|个文件)/i.test(e.label));
-  if (counted && inTongue(counted.label, A.L.lang)) return counted.label;
+  if (counted && inTongue(counted.label, A.readerLang(task))) return counted.label;
   // D154: a count in the task's language, said in the reader's.
   const k = counted ? Number(/(\d+)\s*(files?\b|个文件)/i.exec(counted.label)![1]) : 0;
   if (k) return k === 1 ? t("result.files.one") : t("result.files", k);
@@ -545,7 +546,7 @@ function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: Evidenc
       {rest.slice(0, max).map((ev, i) =>
         /^https?:/.test(ev.ref) ? (
           <button key={i} class="qlink" onClick={() => openEvidence(ev, task)}>
-            {proofLabel(ev, A.L.lang)}
+            {proofLabel(ev, A.readerLang(task))}
             <Chev />
           </button>
         ) : (
@@ -553,7 +554,7 @@ function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: Evidenc
             {/* A reproduction failed on purpose: a quiet ×, never a ✓ (the run after it carries the ✓). */}
             {failed ? <Cross /> : isRepro(ev) ? <span class="repro"><Cross /></span> : machineChecked(ev.kind) ? <span class="ok"><Check /></span> : null}
             {/* D154: the task's label when it is in the reader's language or a name, else neutral. */}
-            {proofLabel(ev, A.L.lang)}
+            {proofLabel(ev, A.readerLang(task))}
           </span>
         ),
       )}
@@ -758,11 +759,11 @@ function JobRow({ e, chipOwner, noted, join, rk, ans }: { e: Entry; chipOwner: M
       {j.ack && (ans ? (
         <div class="bubble has-reply">
           <Imprint from="you" quote={ans.quote} seq={ans.seq} />
-          <span class="words">{j.ack.text}</span>
+          <span class="words" dir="auto">{j.ack.text}</span>
           <HoverReply k={rk} />
         </div>
       ) : (
-        <div class="bubble">
+        <div class="bubble" dir="auto">
           {j.ack.text}
           <HoverReply k={rk} />
         </div>
@@ -801,12 +802,12 @@ function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
   if (wait > 0) return <Presence line={t("activity.result")} />;
   // D154: the task's own sentence only when it is in the reader's language; else just what came
   // of it, by its title (the opened task keeps its words).
-  const said = sayable(it.text, A.L.lang);
+  const said = sayable(it.text, A.readerLang(task));
   const kind = it.kind === "failed" ? "living.failed" : "living.done";
   const text = said ? (it.title ? t(kind, it.title, said) : said) : t(`${kind}.short`, it.title || t("living.it"));
   return (
     <div class="partner">
-      <div class="bubble">{text}</div>
+      <div class="bubble" dir="auto">{text}</div>
       {task ? (
         <Quiet k={k} tasks={owns ? [task] : []} />
       ) : (
@@ -872,21 +873,21 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
   if (d.handset)
     return (
       <div ref={ref} class={`partner askq pay handset${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
-        <div class="bubble">{d.said || handsetAskTitle(d)}</div>
+        <div class="bubble" dir="auto">{d.said || handsetAskTitle(d)}</div>
         {(buttons || !open) && <HandsetAskBody d={d} compact />}
       </div>
     );
   if (d.phone)
     return (
       <div ref={ref} class={`partner askq ${d.phone.kind === "user" ? "signin" : "pay"}${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
-        <div class="bubble">{d.said || d.question}</div>
+        <div class="bubble" dir="auto">{d.said || d.question}</div>
         {(buttons || !open) && <PhoneAskBody d={d} compact />}
       </div>
     );
   if (d.signIn)
     return (
       <div ref={ref} class={`partner askq signin${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
-        <div class="bubble">{d.said || t("signin.title", d.signIn.site)}</div>
+        <div class="bubble" dir="auto">{d.said || t("signin.title", d.signIn.site)}</div>
         {(buttons || !open) && <SignInBody d={d} compact />}
       </div>
     );
@@ -894,7 +895,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
   if (d.pay || d.fill)
     return (
       <div ref={ref} class={`partner askq pay${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
-        <div class="bubble">{d.said || (d.pay ? t("pay.title", d.pay.site) : fillTitle(d.fill!))}</div>
+        <div class="bubble" dir="auto">{d.said || (d.pay ? t("pay.title", d.pay.site) : fillTitle(d.fill!))}</div>
         {(buttons || !open) && (d.pay ? <PayBody d={d} compact /> : <FillBody d={d} compact />)}
       </div>
     );
@@ -902,14 +903,14 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
   if (d.key)
     return (
       <div ref={ref} class={`partner askq pay key${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
-        <div class="bubble">{t("key.title", keyTask(d))}</div>
+        <div class="bubble" dir="auto">{t("key.title", keyTask(d))}</div>
         {(buttons || !open) && <KeyBody d={d} compact />}
       </div>
     );
   return (
     <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
       {d.asker && <PeerAsker d={d} />}
-      <div class="bubble">{d.said || d.question}</div>
+      <div class="bubble" dir="auto">{d.said || d.question}</div>
       {/* D222: a calendar change: what, when, where and who hears, before one Go. */}
       {d.cal && <CalFacts c={d.cal} />}
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
@@ -1081,14 +1082,14 @@ function picsAspect(media: MediaRef[]): JSX.CSSProperties | undefined {
 }
 
 /** D236: the user's words, with the imprint of what they reply to pressed into the top of the bubble. */
-function UserWords({ text, reply, cls, rk, seq, peb }: { text: string; reply?: Bodies["user_msg"]["reply"]; cls: string; rk?: string; seq?: number; peb?: string }) {
+export function UserWords({ text, reply, cls, rk, seq, peb }: { text: string; reply?: Bodies["user_msg"]["reply"]; cls: string; rk?: string; seq?: number; peb?: string }) {
   // D256: under pictures (peb), the words carry the whole message's pebble, on its last line.
   const k = rk ?? peb;
-  if (!reply) return <div class={cls} data-reply={rk} data-seq={seq}>{text}<HoverReply k={k} /></div>;
+  if (!reply) return <div class={cls} dir="auto" data-reply={rk} data-seq={seq}>{text}<HoverReply k={k} /></div>;
   return (
     <div class={`${cls} has-reply`} data-reply={rk} data-seq={seq}>
       <SentImprint r={reply} />
-      {text && <span class="words">{text}</span>}
+      {text && <span class="words" dir="auto">{text}</span>}
       <HoverReply k={k} />
     </div>
   );
@@ -1123,12 +1124,12 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
         {(e.ai.text || !e.ai.cal) && (ans ? (
           <div class="bubble has-reply">
             <Imprint from="you" quote={ans.quote} seq={ans.seq} />
-            <div dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />
+            <div dir="auto" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />
             <HoverReply k={rk} />
           </div>
         ) : (
           <div class="bubble">
-            <div class="md" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />
+            <div class="md" dir="auto" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />
             <HoverReply k={rk} />
           </div>
         ))}
@@ -1173,7 +1174,7 @@ export function peerLineText(b: Bodies["bridge_msg"], ts: string, setAside?: num
 /** What an agent Ducter didn't start is called (D273): its own name, else 一个 AI agent / an AI agent. */
 export function peerName(b: { agent?: string; from?: string; to?: string }): string {
   const named = [b.agent, b.from, b.to].find((x) => x && x !== "another agent");
-  return named ?? (A.L.lang === "zh" ? "一个 AI agent" : "an AI agent");
+  return named ?? t("peer.someone");
 }
 
 /** "an AI agent asks you" starts a line as "An AI agent …"; an agent's own name stays as it is. */
@@ -1558,7 +1559,7 @@ export function sentences(s: string): string[] {
  *  waves once when it appears and leans toward the composer while there are words in it. */
 function Hello() {
   const f = A.S.first;
-  const words = (w: { zh: string; en: string }) => (A.L.lang === "zh" ? w.zh : w.en);
+  const words = (w: { zh: string; en: string }) => byLang(w, A.L.lang);
   const visit = f?.visit === "returning" ? "back" : "first";
   const hi = t(`hello.${visit}.${dayPart(new Date().getHours())}`, A.S.personaName);
   const starters = f?.starters.map((s) => words(s.words)).filter(Boolean) ?? [];
@@ -1573,7 +1574,7 @@ function Hello() {
       <h1>{hi}</h1>
       {news ? (
         <div class="hello-news">
-          <div class="bubble">{words(news.words)}</div>
+          <div class="bubble" dir="auto">{words(news.words)}</div>
           <button class="btn text" onClick={() => (news.taskId ? A.go({ name: "task", id: news.taskId }) : A.go({ name: "onhand" }))}>
             {t("hello.news.open")}
           </button>
@@ -2156,22 +2157,42 @@ function NameRow() {
   );
 }
 
+/** D292: 跟着我 / Follow me, the common languages by their own names, then 其他语言… / Other language… */
+const TALK_OTHER = "other";
+export function talkOptions(current: string): { v: string; label: string }[] {
+  const common = LANGUAGES.filter((l) => l.common).map((l) => l.tag);
+  const opts = [{ v: "auto", label: t("partner.talk.auto") }, ...common.map((tag) => ({ v: tag, label: autonym(tag) }))];
+  // A language chosen under Other stays in the list, selected, by its own name.
+  if (current !== "auto" && !common.includes(current)) opts.push({ v: current, label: autonym(current) });
+  return [...opts, { v: TALK_OTHER, label: t("partner.talk.other") }];
+}
+
 function TalkSettings() {
   const s = A.settings;
+  const [other, setOther] = useState(false);
   if (!s) return null;
+  const pick = (language: string) => (setOther(false), A.setSettings({ language }));
   return (
     <section class="set">
       <h3>{t("partner.talk.title")}</h3>
       <div class="set-card">
         <div class="set-item">
           <b>{t("settings.talk.row")}</b>
-          <small>{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", t(`partner.talk.${s.language}`))}</small>
-          <Seg
-            label={t("partner.talk.title")}
-            value={s.language}
-            options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`partner.talk.${v}`) }))}
-            onPick={(language) => A.setSettings({ language })}
-          />
+          <small>{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", autonym(s.language))}</small>
+          <Seg label={t("partner.talk.title")} value={other ? TALK_OTHER : s.language} options={talkOptions(s.language)} onPick={(v) => (v === TALK_OTHER ? setOther(true) : pick(v))} />
+          {other && (
+            <label class="acct-field own-pick">
+              <span class="small">{t("partner.talk.other.label")}</span>
+              <select value="" onChange={(e) => (e.target as HTMLSelectElement).value && pick((e.target as HTMLSelectElement).value)}>
+                <option value="">{t("partner.talk.other.pick")}</option>
+                {LANGUAGES.filter((l) => !l.common).map((l) => (
+                  <option key={l.tag} value={l.tag}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
       </div>
     </section>

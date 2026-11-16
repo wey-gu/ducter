@@ -1,5 +1,6 @@
 // Web Push on the phone: register the service worker, ask once, subscribe, and tell core.
 import type { Api } from "./conn.ts";
+import type { LangTag } from "@ducter/protocol/src/lang.ts";
 import { deviceName } from "./conn.ts";
 import { inApp, nativeCall, nativeInfo } from "./native.ts";
 
@@ -48,7 +49,7 @@ export const appPush: { why?: "relay" | "update" | "nokey" } = {};
 export const localQuiet =(start = "23:00", end = "08:00") => ({ start, end, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" });
 
 /** Asks for permission (must run from a tap), subscribes, and registers with core. */
-export async function enablePush(api: Api, base: URL, locale: "zh" | "en", publicKey: string): Promise<PushState> {
+export async function enablePush(api: Api, base: URL, locale: LangTag, publicKey: string): Promise<PushState> {
   const app = nativeInfo();
   if (app) {
     // D159: the app hands over its relay handle and the phone's key along with the token (an

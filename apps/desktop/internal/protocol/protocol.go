@@ -313,7 +313,7 @@ type TaskOpen struct {
 	Effort     string `json:"effort,omitempty"` // D202
 	Brief      string `json:"brief"`
 	BodyReason string `json:"bodyReason,omitempty"`
-	Language   string `json:"language,omitempty"` // "zh" | "en": the language the user reads its reports in
+	Language   string `json:"language,omitempty"` // D292: a BCP 47 tag ("ko", "zh-Hant"; old "zh" / "en" are tags too), the language the user reads its reports in
 	// Origin "you" (D128): the user opened it themselves (New task, `ducter task`);
 	// empty: the partner did.
 	Origin string `json:"origin,omitempty"`
@@ -1094,7 +1094,7 @@ type QuietHours struct {
 // Settings are the partner's settings, as the server keeps them.
 type Settings struct {
 	Name            string      `json:"name"`
-	Language        string      `json:"language"` // auto | zh | en
+	Language        string      `json:"language"` // TalkLanguage: "auto" (Follow me) or any BCP 47 tag it always replies in (D292)
 	Memory          bool        `json:"memory"`
 	Notify          bool        `json:"notify"`
 	Quiet           *QuietHours `json:"quiet"`

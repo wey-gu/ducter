@@ -34,7 +34,7 @@ export async function nativeCall<T>(m: { t: string } & Record<string, unknown>):
 export const haptic = (kind: "light" | "success" | "warning") => void nativeCall({ t: "haptic", kind });
 
 /** Hands the app what its notification buttons need (the token goes to the Keychain). */
-export const tellApp = (d: { token?: string; base: string; locale: "zh" | "en"; personaName?: string }) => void nativeCall({ t: "hello", ...d });
+export const tellApp = (d: { token?: string; base: string; locale: import("@ducter/protocol/src/lang.ts").LangTag; personaName?: string }) => void nativeCall({ t: "hello", ...d });
 
 /** D209: whether the home answered. The apps open the page from their cache, so a home they can't
  *  reach no longer fails the page's load: the page says so, and the app shows its can't-reach screen

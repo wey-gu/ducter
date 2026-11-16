@@ -5,7 +5,7 @@
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, MemView, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
-import { DEFAULT_AFTER_CHOICES, DEFAULT_PROACTIVE, HARNESSES, PROACTIVE_MODES, isHarnessId, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
+import { DEFAULT_AFTER_CHOICES, DEFAULT_PROACTIVE, HARNESSES, PROACTIVE_MODES, isHarnessId, normalizeTag, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
 import type { LogStore, MemIdentity, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
 import type { PushStore } from "./push.ts";
@@ -198,8 +198,10 @@ export function openSettings(opts: {
         const n = cleanName(patch.name);
         if (rename(n)) did.push("name");
       }
-      if (patch.language === "auto" || patch.language === "zh" || patch.language === "en") {
-        if ((data.language ?? "auto") !== patch.language) (data.language = patch.language), did.push("language");
+      // D292: "auto" or any language, stored as its canonical tag (zh-TW → zh-Hant); junk is refused.
+      const language: TalkLanguage | undefined = patch.language === "auto" ? "auto" : typeof patch.language === "string" ? normalizeTag(patch.language) : undefined;
+      if (language) {
+        if ((data.language ?? "auto") !== language) (data.language = language), did.push("language");
       }
       if (typeof patch.memory === "boolean" && !opts.memoryPinnedOff) {
         if ((data.memory !== false) !== patch.memory) (data.memory = patch.memory), did.push("memory");

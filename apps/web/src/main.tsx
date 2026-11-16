@@ -37,7 +37,7 @@ function App() {
     return () => void off();
   }, []);
   useEffect(() => {
-    document.documentElement.lang = A.L.lang === "zh" ? "zh-CN" : "en";
+    document.documentElement.lang = A.L.style.intl;
   });
   // The page's language settles after boot (it follows your first words): the app's own screens,
   // an update's card on Android (D181), follow it.
@@ -184,7 +184,7 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
           </form>
           <p class="small">{t("connect.phone.safe")}</p>
           <p class="small">
-            {t("connect.address")}{A.L.lang === "zh" ? "：" : ": "}<code>{base.host}</code>
+            {t("connect.address")}{A.L.style.colon}<code>{base.host}</code>
           </p>
         </>
       )}

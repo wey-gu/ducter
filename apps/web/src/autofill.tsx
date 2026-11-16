@@ -443,7 +443,7 @@ export function fillTitle(f: FillAsk): string {
   if (f.kind === "signin") return t("fill.title.signin", f.site);
   const key = f.handle.replace(/^me\./, "");
   const label = `af.d.${key}` in TABLES[A.L.lang] ? t(`af.d.${key}`) : f.label;
-  return t("fill.title.detail", f.site, A.L.lang === "en" ? label.toLowerCase() : label);
+  return t("fill.title.detail", f.site, A.L.style.cased ? label.toLowerCase() : label);
 }
 
 /** 第一次在 {site} 用 / First use on a site: OK or Not now. */

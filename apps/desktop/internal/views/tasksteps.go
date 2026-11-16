@@ -291,8 +291,8 @@ func (a *App) taskWho(c *ui.Context, task *store.Task) {
 	if on, _ := a.taskWhere(task); who == "" && where == "" && on == "" {
 		return
 	}
-	ui.Row(c.Key("who")).Gap(t.S1).AlignItems(ui.Center).MinWidth(0).Shrink(1).Children(func() {
-		ui.Text(c, "·").FontSize(t.SM).TextColor(t.InkMuted)
+	// Its own line under the state, never a wrapped tail that starts with "·".
+	ui.Row(c.Key("who")).Gap(t.S1).AlignItems(ui.Center).MinWidth(0).Shrink(1).Wrap().Children(func() {
 		line := strings.Join(nonEmpty(who, where), " · ")
 		tx := ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
 		p := task.Place()

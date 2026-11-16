@@ -754,6 +754,24 @@ function locatorLine(task: Task, tu: Turn): string {
   return p.k === "brief" ? `${t("locator.brief")} · ${first}` : first;
 }
 
+/** The locator's list: a turn, or a run of consecutive wakes said once ("等到了 24 次 · 1:51–19:06"),
+ *  so a long loop doesn't bury what was said to it. */
+function locatorEntries(task: Task, turns: Turn[]): { seqs: number[]; line: string }[] {
+  const out: { seqs: number[]; line: string }[] = [];
+  const at = (seq: number) => {
+    const ms = tsOf(task, seq);
+    return Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
+  };
+  for (let i = 0; i < turns.length; i++) {
+    let j = i;
+    if (turns[i]!.prompt?.k === "wake") while (j + 1 < turns.length && turns[j + 1]!.prompt?.k === "wake") j++;
+    const run = turns.slice(i, j + 1);
+    out.push({ seqs: run.map((tu) => tu.seq), line: j > i ? t("locator.wakes", j - i + 1, at(run[0]!.prompt!.seq), at(run.at(-1)!.prompt!.seq)) : locatorLine(task, turns[i]!) });
+    i = j;
+  }
+  return out;
+}
+
 /** The locator (D271, wide only): a thin rail at the transcript's right edge, one small bar per
  *  turn, those in view in ink; hovered, a clay card lists what was said, newest at the bottom,
  *  those in view marked; a click goes there. */
@@ -795,11 +813,11 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
       </div>
       {open && (
         <ol class="loc-list">
-          {turns.map((tu) => (
-            <li key={tu.seq}>
-              <button class={seen.has(tu.seq) ? "here" : ""} onClick={() => go(tu.seq)}>
+          {locatorEntries(task, turns).map((e) => (
+            <li key={e.seqs[0]}>
+              <button class={e.seqs.some((s) => seen.has(s)) ? "here" : ""} onClick={() => go(e.seqs.at(-1)!)}>
                 <i />
-                <span>{locatorLine(task, tu)}</span>
+                <span>{e.line}</span>
               </button>
             </li>
           ))}

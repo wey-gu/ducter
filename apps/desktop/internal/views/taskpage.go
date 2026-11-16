@@ -452,6 +452,36 @@ func (a *App) locatorLine(task *store.Task, tu *Turn) string {
 	return firstLine(p.Text)
 }
 
+// locatorEntry is one line of the locator's list: a turn, or a run of
+// consecutive wakes said once ("等到了 24 次 · 1:51–19:06"), so a long loop
+// doesn't bury what was said to it (D271).
+type locatorEntry struct {
+	from, to int
+	line     string
+}
+
+func (a *App) locatorEntries(task *store.Task, turns []Turn) []locatorEntry {
+	var out []locatorEntry
+	for i := 0; i < len(turns); i++ {
+		p := turns[i].Prompt
+		j := i
+		if p != nil && p.K == "wake" {
+			for j+1 < len(turns) && turns[j+1].Prompt != nil && turns[j+1].Prompt.K == "wake" {
+				j++
+			}
+		}
+		if j > i {
+			first := clock(a.tsOf(task, turns[i].Prompt.Seq))
+			last := clock(a.tsOf(task, turns[j].Prompt.Seq))
+			out = append(out, locatorEntry{i, j, a.L.T("locator.wakes", j-i+1, first, last)})
+		} else {
+			out = append(out, locatorEntry{i, i, a.locatorLine(task, &turns[i])})
+		}
+		i = j
+	}
+	return out
+}
+
 // locator is the rail at the transcript's right edge (wide windows): one
 // small bar per turn, the ones in view in ink, the rest faint; hovered, a
 // clay card lists what was said, newest at the bottom, the ones in view
@@ -494,10 +524,14 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 			pop.Children(func() {
 				ui.Scroll(c.Key("locscroll")).MaxHeight(420).Children(func() {
 					ui.Column(c).Gap(1).Children(func() {
-						for i := range turns {
-							line := autospace(a.locatorLine(task, &turns[i]))
-							here := inView(i)
-							row := ui.Row(c.Key(turns[i].Seq)).Gap(t.S2).MinHeight(26).Padding(0, t.S2).Radius(t.RadiusXS).AlignItems(ui.Center).MinWidth(0).
+						for _, e := range a.locatorEntries(task, turns) {
+							line := autospace(e.line)
+							here := false
+							for k := e.from; k <= e.to; k++ {
+								here = here || inView(k)
+							}
+							i := e.to
+							row := ui.Row(c.Key(turns[e.from].Seq)).Gap(t.S2).MinHeight(26).Padding(0, t.S2).Radius(t.RadiusXS).AlignItems(ui.Center).MinWidth(0).
 								Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(line)
 							if row.Hovered() {
 								row.Background(t.SurfaceSunken)

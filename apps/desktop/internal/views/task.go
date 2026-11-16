@@ -195,11 +195,13 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 		when = a.taskClock(c, task)
 	}
 	// One quiet line (D152): where it stands and its one clock, then who does it and where.
-	ui.Row(c.Key("meta")).Gap(t.S1).Wrap().AlignItems(ui.Center).Children(func() {
-		ui.Text(c, state).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
-		if when != "" {
-			ui.Text(c, "· "+when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
-		}
+	ui.Column(c.Key("meta")).Gap(2).Children(func() {
+		ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, state).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
+			if when != "" {
+				ui.Text(c, "· "+when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
+			}
+		})
 		a.taskWho(c, task)
 	})
 }

@@ -490,6 +490,12 @@ a {
   letter-spacing: -0.2px;
 }
 
+/* D262: a first open's calm ground while the home answers (at most 1.5 s). */
+.boot {
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
 /* ---------- header ---------- */
 .top {
   display: flex;
@@ -527,6 +533,7 @@ a {
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
   font-weight: 700;
   min-height: 44px;
   padding-right: 8px;
@@ -871,6 +878,38 @@ a {
 .btn.icon {
   width: 44px;
   padding: 0;
+}
+/* D262: the shell's bar buttons (NavBtn): the secondary clay at 36, a glyph close to the edge;
+   the place shown is pressed into the bar (sunken, no ledge, no drop) and does nothing. */
+.btn.nav {
+  flex: none;
+  gap: 6px;
+}
+.btn.nav:has(> .nav-g, > .nav-art) {
+  padding-left: 10px;
+}
+.btn.nav.icon {
+  width: 36px;
+  padding: 0;
+}
+.btn.nav.is-here {
+  --fill: var(--surface-sunken);
+  --fill-top: var(--surface-sunken);
+  box-shadow: none;
+  cursor: default;
+  transform: none;
+}
+.btn.nav .nav-art {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+.bar-sep {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  background: var(--line);
 }
 /* A text button that opens something in place: a drawn chevron, turned down while open (D211). */
 .btn .btn-chev {

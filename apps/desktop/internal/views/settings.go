@@ -201,7 +201,7 @@ func (a *App) settingsView(c *ui.Context) {
 	t := a.T
 	tab := a.settingsTab()
 	a.drainForgot()
-	a.chrome(c, "settings", func() {
+	a.placeBar(c, "settings", RouteSettings, func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.chromeTitle(c, a.L.T("nav.settings"))
 	}, nil)

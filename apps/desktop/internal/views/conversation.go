@@ -14,7 +14,6 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
 	"github.com/wey-gu/ducter/apps/desktop/internal/say"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
-	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 const convWidth = 760
@@ -271,11 +270,18 @@ func (a *App) helloNews(c *ui.Context, n *protocol.FirstNews) {
 func (a *App) header(c *ui.Context) {
 	t := a.T
 	b := a.S.Board()
-	a.chrome(c, "conversation", func() {
-		// The partner itself opens its page (伙伴 / Partner): its face and
-		// name are the way in, as a character in a game.
+	if a.Status == client.Connecting && a.S.Persona == "" {
+		c.After(connectQuiet) // the quiet first second ends on its own
+	}
+	a.placeBar(c, "conversation", RouteConversation, func() {
+		// The partner itself opens its own page (Settings › 伙伴): a second
+		// way in, for whoever reaches for the character; the visible way is
+		// 设置 at the bar's end (D262). Pointing at it tints it and says
+		// where it goes; the face never changes for the pointer (a face says
+		// what the partner is doing, D77, D112).
 		who := ui.Row(c.Key("who")).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Padding(2, t.S2, 2, 2).Radius(t.RadiusMD).
-			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.partner") + " · " + a.S.PersonaName).Focusable()
+			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.partner") + " · " + a.S.PersonaName).Focusable().
+			Tooltip(a.L.T("nav.partner.about", a.S.PersonaName))
 		if who.Hovered() || who.Pressed() {
 			who.Background(t.SurfaceSunken.Mix(t.Chrome, 0.45))
 		}
@@ -284,35 +290,17 @@ func (a *App) header(c *ui.Context) {
 			a.partnerFace(c, "bar", a.presence(c), 52)
 			ui.Column(c).Gap(1).MinWidth(0).Children(func() {
 				a.heading(c, a.S.PersonaName, t.XL).LineHeight(1.1).SingleLine()
-				ui.Text(c, a.summary(b)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+				// The line keeps its height while it has nothing to say, so
+				// the name never moves when it fills in (D262).
+				ui.Box(c).MinHeight(t.SM * 1.5).Children(func() {
+					ui.Text(c, a.summary(b)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+				})
 			})
 		})
 		if who.Clicked() {
 			a.OpenPartner()
 		}
-	}, func() {
-		a.devicesButton(c)
-		a.onHandButton(c, b)
-	})
-}
-
-// devicesButton opens Your devices and abilities: the clay device Ducter
-// lives on, and the word for it.
-func (a *App) devicesButton(c *ui.Context) {
-	t := a.T
-	if a.navButton(c, "devices", a.L.T("nav.devices"), a.L.T("nav.devices.label"), func() {
-		art := "laptop_awake"
-		if home := a.homeDevice(); home != nil {
-			art = deviceArt(home)
-		}
-		ui.Box(c).Size(22, 22).Radius(6).Background(t.Clay).Padding(1).Shrink(0).Children(func() {
-			if b := theme.Clay(art); b != nil {
-				ui.Image(c, b).Grow(1).AccessHidden(true)
-			}
-		})
-	}) {
-		a.OpenDevices()
-	}
+	}, nil)
 }
 
 // WaitingCount is how many things wait for the person (the header's
@@ -324,10 +312,22 @@ func (a *App) WaitingCount() int {
 	return len(a.S.Board().Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
 }
 
+// connectQuiet is how long a launch says nothing about connecting.
+const connectQuiet = time.Second
+
 func (a *App) summary(b store.Board) string {
 	switch a.Status {
 	case client.Connecting:
 		if a.S.Persona == "" {
+			// D262: the first second of a launch is quiet: the home on this
+			// Mac answers well within it, so the line never flashes
+			// 连接中… and then the counts.
+			if a.firstFrame.IsZero() {
+				a.firstFrame = a.Now()
+			}
+			if a.Now().Sub(a.firstFrame) < connectQuiet {
+				return ""
+			}
 			return a.L.T("conn.connecting")
 		}
 	case client.Disconnected:
@@ -399,16 +399,6 @@ func (a *App) doneToday(b store.Board) int {
 		}
 	}
 	return n
-}
-
-// onHandButton opens On hand.
-func (a *App) onHandButton(c *ui.Context, b store.Board) {
-	// Just the word: the header's line already says what needs you and
-	// what is being worked on, in words; no row of colored dots.
-	if a.navButton(c, "onhand", a.L.T("nav.onhand"), a.L.T("nav.onhand"), nil) {
-		a.Route = RouteOnHand
-		a.markRead()
-	}
 }
 
 // pendingRow is a message not echoed yet: its pictures (with the ring while

@@ -481,22 +481,38 @@ func (a *App) press(c *ui.Context, e ui.Element, press theme.Press) {
 
 // navButton is a button of the window's chrome (Devices, On hand): a
 // secondary button at the small height with a glyph before its word.
-func (a *App) navButton(c *ui.Context, key, label, name string, glyph func()) bool {
+// here draws it as the place shown (D262): pressed into the bar, sunken
+// with no ledge, its word in ink; a click on it does nothing new.
+func (a *App) navButton(c *ui.Context, key, label, name string, glyph func(), here bool) bool {
 	t := a.T
-	left := t.S3
+	left, right := t.S3, t.S3
 	if glyph != nil {
 		left = t.S2 - 2 // a glyph sits close to the edge, as in a chip
+		if label == "" {
+			right = left
+		}
 	}
-	b := ui.Row(c.Key("nav:"+key)).Gap(t.S2).Height(t.ControlSM).Padding(0, t.S3, 0, left).Radius(t.RadiusSM).
+	b := ui.Row(c.Key("nav:"+key)).Gap(t.S2).Height(t.ControlSM).Padding(0, right, 0, left).Radius(t.RadiusSM).
 		AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable().Shrink(0)
-	fg := a.buttonLook(c, b, btnSecondary, t.ControlSM, t.Chrome)
+	if label == "" {
+		b.Tooltip(name)
+	}
+	var fg ui.Color
+	if here {
+		b.Background(t.SurfaceSunken)
+		fg = t.Ink
+	} else {
+		fg = a.buttonLook(c, b, btnSecondary, t.ControlSM, t.Chrome)
+	}
 	b.Children(func() {
 		if glyph != nil {
 			glyph()
 		}
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+		if label != "" {
+			ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+		}
 	})
-	return b.Clicked()
+	return b.Clicked() && !here
 }
 
 // iconButton is a square button that draws its icon, in one of the

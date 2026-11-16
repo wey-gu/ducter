@@ -312,9 +312,50 @@ Details.
 two things one voice says, 24 where the turn passes; 12 inside a message (text → chip → sheet
 → actions); the composer 24 from the window's edges.
 
-**Chrome.** 60pt bar, the title region. Left: where you are (crumbs are text buttons, 15/700
-muted, the level's name 18/800). Right: what you can do (small secondary buttons). Metadata
-(model, place, project) is never in the chrome: it is in the task's Details (D74).
+**The shell: one bar for every place (D262).** Every place's top bar has the same anatomy, on the
+Mac (`placeBar`, `placeNav` in `views/chrome.go`) and the web (`Top`, `Places` in `views.tsx`,
+`FullTop` in `board.tsx`):
+
+| Slot | What goes there | Component |
+|---|---|---|
+| Left: where you are | the conversation: the partner (face 52, name 20, the counts line, which keeps its height while empty); elsewhere the crumbs (15/700 muted text buttons, `/` faint) and the level's name 18/800; a phone's inner page: **‹ 对话 / ‹ Conversation** | `crumb`, `chromeTitle` · `.back`, `.level`, `.trail` |
+| Right, first: this place's own actions | 新建 / New task (On hand); an opened task's working copy and workbench; 铺满 / Full screen | the bar button (secondary clay, 36, a drawn glyph before the word); a view toggle (working copy, workbench, full screen) is a quiet text or icon button that turns secondary while open |
+| a 1pt hairline | between the place's actions and the places | `bar-sep` |
+| Right, last: the way to the other places | **更新 / Update** only while something waits to update (the accent pebble with its arrow; *n 项更新 / n updates*; 正在更新 while 全部更新 runs; it opens 更新和关于 on the Mac, 你的设备 on the web); then **设备 · 手头的事 · 设置** in that order. The place shown is drawn pressed in (sunken, no ledge) and does nothing | `navButton(…, here)` · `NavBtn here` |
+
+One way to the places per screen: wide (the panes side by side) it is in the conversation's bar,
+whose 手头的事 is dropped because On hand stands beside it (D176); the side pane's bar holds only
+its own actions. A phone has room for **手头的事** (from the conversation) and Settings' drawn
+gear (a 36 clay square, its name the label); 设备 is Settings' first page there (deliberate, see
+"Mac and phone" below). A Mac window under 1060 pt draws 设备 as its clay device alone and
+Settings as its gear, and an opened task's branch cuts to 18 characters so the task's name keeps
+room. The partner's face and name are a second way into Settings › 伙伴 (pointing at them tints
+them and says "{name} 的设置"; the face never changes for the pointer: a face says what the
+partner is doing, D77, D112). Metadata (model, place, project) is never in the bar: it is in the
+task's Details (D74).
+
+**The button set (D262).** Exactly four kinds, and where each may stand:
+
+| Kind | Look | Allowed |
+|---|---|---|
+| Primary | ink clay | the one decision of a card or sheet (Go, Merge, Update all), last in its row, at most one per group; never in a bar |
+| Secondary | cream clay | the other choices of a card or sheet (Hold, Not now); **every bar button** (a place's action, the places, Update) at 36 |
+| Accent | orange clay | send, and the equip; nothing else |
+| Quiet text | flat ink, a tint under it on hover | crumbs, Reply…, Details, Cancel, 都按默认, a view toggle at rest; never the way to a place |
+
+**Mac and phone (D262).** The same places and the same bar on both, with these deliberate
+differences: Settings is a place with a rail on the Mac and a pushed sheet on the phone (D150);
+设备 is a place on the Mac and Settings' 你的设备 page on the phone, so a phone's bar has no 设备
+button (wide web has it, opening that page); the Mac has no dark theme yet (`todo.md`), the web
+follows the system's.
+
+**The first frame is the settled one (D262).** A launch never shows one state and then switches:
+the Mac starts in the language it last followed from the person's words (`hints.StartLang`,
+`SpokeLang`) and with the partner's name as last shown, its counts line says nothing for the
+first second (no 连接中… flash) and keeps its height, and the page does not replay its entrance
+when the home says welcome. The web starts in the language it followed last (`ducter.spoke`,
+`startLang`), its kept screen (D209) names its language before the first paint, and a first open
+with nothing kept shows only the calm ground until the home answers (at most 1.5 s, `settling`).
 
 **Decisions in the conversation (D104; was D73).** The living message has no card. When the
 user was away (it came before the window opened and was unread, or while the window was in the
@@ -345,6 +386,7 @@ A new control is added to the set (and to this table) before it is used.
 | Control | Mac (`apps/desktop/internal/views`) | Phone (`apps/web/src/controls.tsx`) |
 |---|---|---|
 | The button family: primary, secondary, accent, text (D76) | `button`, `buttonFor` (`components.go`); `iconButton`, `navButton` | `Btn` |
+| A bar button: a place's own action, the way to another place, Update (D262) | `navButton` (`components.go`), `placeNav`, `newTaskButton` (`chrome.go`) | `NavBtn` |
 | Quiet text button and link (检查更新, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
 | A button that opens a page elsewhere in a new tab (打开 Cloudflare, the sign-in link of 从外面连; D228) | `button` then `openLink` (`abilities.go`) | `LinkBtn` |
 | Switch | `switchControl` (`shared.go`), inside `switchRow`, `toggleRow` | `Toggle` |
@@ -374,10 +416,10 @@ v1 has five places, and every one is reachable from the menu bar, a shortcut and
 | Place | Reach it | What it is for |
 |---|---|---|
 | 对话 / Conversation | ⌘1, Esc from any other place | Home: talk, decide, see results |
-| 手头的事 / On hand | ⌘2, the button in the conversation's bar | Every task and what waits for you |
-| 设备 / Devices | ⌘3, the clay device button | The setup surface: devices, what they can do, AI accounts (sign in, install, sign out on this Mac), Connect a phone or computer |
+| 手头的事 / On hand | ⌘2, 手头的事 at the end of every bar (D262) | Every task and what waits for you |
+| 设备 / Devices | ⌘3, 设备 (the clay device) at the end of every bar | The setup surface: devices, what they can do, AI accounts (sign in, install, sign out on this Mac), Connect a phone or computer |
 | 伙伴 / Partner | ⌘4, the partner's own face and name | Settings' first tab (D150), below |
-| 设置 / Settings | ⌘, and Settings… in the app menu and the menu bar extra | One place for everything you can set (D150), below |
+| 设置 / Settings | ⌘, Settings… in the app menu and the menu bar extra, and **设置** at the end of every bar (D262) | One place for everything you can set (D150), below; an update waiting is **更新** in every bar |
 
 An opened task is the third zoom level under On hand. The **menu bar extra** (the clay partner
 as a template icon) is the handheld moment: with the window closed, its menu lists what needs
@@ -456,7 +498,7 @@ an 11" iPad upright, both displays of iPhone Duo. From 1000 (an iPad held across
 upright, a wide window) it is two panes: the conversation on the left at its 720 measure, and on
 a 1pt `line` hairline the side pane (40% of the width, 400–560: the width On hand and the opened
 task were drawn for) showing On hand, or the task opened from it. The side pane's header names
-the level (18/800, the chrome's rule) with New task's ＋; an opened task's crumb there is
+the level (18/800, the chrome's rule) with the bar button **＋ 新建** (D262); an opened task's crumb there is
 **‹ 手头的事 / On hand**. The conversation's header drops its On hand button; the face lives
 only in the conversation's header. Sheets from 700 × 640 stand centered as a card (radius 24 all
 round, no grab). Keys as on the Mac (⌘N, ⌘1–⌘4, ⌘,, ⌘K, Esc), in the iPad app's menu bar.
@@ -468,7 +510,7 @@ the level shown to the whole screen; there the same button with the arrows in (*
 Back beside the conversation**) brings it back, and so do ⌘2 (a toggle for On hand), the crumb
 **对话** and Esc (one level up: a whole-screen task goes to the whole-screen On hand). On hand at
 the whole screen is the Mac's On hand: a 60-high header on the chrome's hairline with the crumbs
-(15/600 muted, `/` faint, the title 18/800, the counts 12 muted) and **新建** (`Btn` text), then
+(15/600 muted, `/` faint, the title 18/800, the counts 12 muted) and **新建** (the bar button, `NavBtn`, D262), then
 the one list (D216, below) on a 960 measure. An opened task at the whole screen keeps its page on
 the 720 measure under the crumbs **对话 / 手头的事 / {task}**; **暂停 / 取消任务** are in its foot
 (D210, D213, D212); from 1120 CSS px On hand stands beside it as a rail (`clamp(300px, 22vw,

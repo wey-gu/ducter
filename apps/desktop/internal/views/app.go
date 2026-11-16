@@ -173,6 +173,9 @@ type App struct {
 	updAllAsked     bool
 	updAllMine      string
 	updAllRestarted string
+	// firstFrame is when the header was first drawn while connecting
+	// (D262: the connecting line waits connectQuiet).
+	firstFrame time.Time
 	// livingNewest is, per living line, the newest living message with it.
 	livingNewest map[string]int64
 	// resultShown marks the tasks whose result the partner gave.
@@ -834,6 +837,7 @@ func (a *App) Receive(f protocol.ServerFrame) {
 	a.noteResults(f)
 	a.S.Apply(f)
 	a.followUserLanguage()
+	a.Local.SetPersonaName(a.S.PersonaName) // D262: the next launch starts with it
 	switch f.T {
 	case "welcome":
 		a.Welcomed()
@@ -869,6 +873,7 @@ func (a *App) followUserLanguage() {
 		}
 		if l := i18n.FromText(e.User.Text); l != "" {
 			a.localeSet = true
+			a.Local.SetSpokeLang(string(l)) // D262: the next launch starts in it
 			if l != a.L.Lang {
 				a.L = i18n.New(l)
 				if a.OnLanguage != nil {

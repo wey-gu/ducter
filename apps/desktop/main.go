@@ -59,13 +59,14 @@ func main() {
 	theme.LoadFonts()
 	s := store.New()
 	system := i18n.Detect(mygo.App.PreferredLanguages())
-	lang := system
 	local0 := hints.Open(hints.DataDir())
-	// Settings › Language pins the window's language (DUCTER_LOCALE still wins).
-	chosen := false
-	if l := local0.Lang(); (l == "zh" || l == "en") && !i18n.Fixed() {
-		lang, chosen = i18n.Lang(l), true
-	}
+	// Settings › Language pins the window's language (DUCTER_LOCALE still
+	// wins); D262: else the language it followed from the person's words
+	// last time, so the first frame is already in it (it still follows).
+	l0, chosen := local0.StartLang(string(system), i18n.Fixed())
+	lang := i18n.Lang(l0)
+	// D262: the partner's name as last shown, before the home says it.
+	s.PersonaName = local0.PersonaName()
 	// MyGo's own menu items (Hide, Quit, Edit, Window…) and the text engine
 	// follow the window's language: without this they stayed English beside
 	// Ducter's Chinese menus.

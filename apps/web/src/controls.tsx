@@ -27,6 +27,53 @@ export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size
   );
 }
 
+/** D262: a button of the shell's bar (a place's own action, the way to another place): the
+ *  secondary clay at the small size, a drawn glyph before its word. here: the place shown, pressed
+ *  into the bar (sunken, no ledge). icon: the glyph alone, its name the tooltip and the label. */
+export function NavBtn(p: { label: string; onClick: () => void; glyph?: ComponentChildren; here?: boolean; icon?: boolean; about?: string }) {
+  return (
+    <button
+      class={`btn secondary sm nav${p.here ? " is-here" : ""}${p.icon ? " icon" : ""}`}
+      onClick={() => !p.here && p.onClick()}
+      aria-current={p.here ? "page" : undefined}
+      aria-label={p.icon ? p.label : p.about}
+      title={p.icon ? p.label : p.about}
+    >
+      {p.glyph}
+      {!p.icon && <span class="lbl">{p.label}</span>}
+    </button>
+  );
+}
+
+/** The drawn marks of the bar (D262): Settings' gear, New task's ＋, the update pebble. */
+export const Gear = () => {
+  return (
+    <svg class="nav-g" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+      <circle cx="10" cy="10" r="5.4" fill="none" stroke="currentColor" stroke-width="2.6" />
+      {[0, 1, 2, 3, 4, 5].map((i) => {
+        const a = (i * Math.PI) / 3 + Math.PI / 6;
+        return <path key={i} d={`M${10 + Math.cos(a) * 6} ${10 + Math.sin(a) * 6}L${10 + Math.cos(a) * 8.6} ${10 + Math.sin(a) * 8.6}`} stroke="currentColor" stroke-width="3.6" stroke-linecap="round" />;
+      })}
+    </svg>
+  );
+}
+export const PlusMark = () => {
+  return (
+    <svg class="nav-g" viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
+      <path d="M7 2v10M2 7h10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </svg>
+  );
+}
+export const UpdatePebble = () => {
+  return (
+    <svg class="nav-g up" viewBox="0 0 22 22" width="22" height="22" aria-hidden="true">
+      <circle cx="11" cy="12" r="9" fill="var(--press-accent, #C9642A)" />
+      <circle cx="11" cy="11" r="9" fill="var(--accent)" />
+      <path d="M11 15V7M7.6 10.2 11 6.8l3.4 3.4" fill="none" stroke="var(--surface)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
 /** A Btn that opens a page elsewhere (a sign-in, a vendor's site) in a new tab: the same look. */
 export function LinkBtn(p: { kind: "primary" | "secondary"; size?: "sm"; href: string; label: string }) {
   return (

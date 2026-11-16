@@ -6,9 +6,14 @@ order: 4
 
 # Your partner and settings
 
-Everything you can change is in one place, **Settings**. Open it with **⌘,** or **Ducter ›
-Settings…**. **⌘4**, **View › Partner** and clicking your partner's face and name at the top of
-the conversation open it on **Partner**.
+Everything you can change is in one place, **Settings**. Every screen has a **Settings** button
+at the top right, next to **Devices** and **On hand**, so you can get there from wherever you
+are; **⌘,** and **Ducter › Settings…** open it too. **⌘4**, **View › Partner** and clicking your
+partner's face and name at the top of the conversation open it on **Partner**.
+
+When there is something to update (Ducter on one of your computers, or an AI agent), an
+**Update** button appears at the top right of every screen, with how many there are. It opens the
+page where you update everything with one tap.
 
 On the left is a row of tabs; the one you pick shows on the right:
 
@@ -23,8 +28,8 @@ On the left is a row of tabs; the one you pick shows on the right:
 | **Where it runs** | Which computer Ducter lives on, stopping it, data and logs, and Remove Ducter |
 | **Updates and about** | The version, updates, help links and credits |
 
-On a phone, tap your partner at the top of the conversation: Settings opens as a list of the
-same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **This phone**), and tapping one opens
+On a phone, tap the gear at the top right (or your partner at the top of the conversation):
+Settings opens as a list of the same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **This phone**), and tapping one opens
 it.
 
 ## Partner

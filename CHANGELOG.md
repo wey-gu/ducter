@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.0.61
+
+<!-- whats-new
+zh: 用你写的语言回你；任务秒开，切换有方向
+en: Replies in the language you write; tasks open at once
+zh: 以前的会话、替你做过的事，都找得到
+en: Find earlier sessions and everything done for you
+-->
+
+**Any language**
+- Your partner replies in the language you write in, Korean, Japanese, Spanish or any other, and
+  keeps it when you send "OK" or a line of code. Replies in can be set to any language.
+
+**Faster, with a sense of place**
+- An opened task shows its newest turns at once and fills in the rest as you scroll up.
+- Moving between the conversation, On hand and a task now has a direction: the card you tap grows
+  into the task and goes back into its place. Swipe from the edge to go back on a phone.
+
+**Finding things again**
+- Past tasks: search by what it did or what you said, star, tag and pick a picture, then carry on.
+  Sessions you ran in Claude Code, Codex or pi on this computer appear there too.
+- Ongoing work can be paused until a time, resumed, run now or moved.
+- Done for you: every message sent, payment, call and change made on your behalf, day by day.
+
+**Steadier**
+- A usage limit no longer ends a task: it waits for the reset and carries on, or goes to another
+  agent now.
+- A task shows how full its context is, and Compact now works on every agent.
+- Devices say how each one is connected; a home keeps its addresses and devices pick the best one.
+
+**First hour and Settings**
+- Your partner's first words offer to carry on with your own recent work; a pasted API key is
+  enough to start.
+- Every Settings page was reworked: one column, quiet destructive actions that ask first, and a
+  line from your partner when you change something. Memory shows what it knows and where.
+- Pictures and files: a grid for many pictures, file cards with a look inside, a viewer that grows
+  from the picture.
+
 ## 0.0.60
 
 <!-- whats-new

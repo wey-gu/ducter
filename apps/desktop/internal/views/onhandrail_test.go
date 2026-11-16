@@ -203,3 +203,25 @@ func TestRailShots(t *testing.T) {
 		writeShot(t, tt, "onhand-rail-mac-launcher-"+string(lang)+"")
 	}
 }
+
+// D258 follow-up: a hovered and a focused row are rounded tiles inside the
+// clipped card, never square blocks past its corners.
+func TestOnHandRowHoverShots(t *testing.T) {
+	if os.Getenv("DUCTER_SHOTS_DIR") == "" {
+		t.Skip("DUCTER_SHOTS_DIR=<dir> to write the shots")
+	}
+	app := railApp(t, i18n.ZH)
+	app.Route = RouteOnHand
+	tt := ui.NewTesterWith(app.View, 1100, 760, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
+	tt.Frame()
+	tt.Move(400, 330)
+	tt.Frame()
+	tt.Frame()
+	writeShot(t, tt, "onhand-row-hover-zh")
+	app.oh.focus = "t_keys"
+	tt.Move(5, 5)
+	tt.Frame()
+	tt.Frame()
+	writeShot(t, tt, "onhand-row-focus-zh")
+}

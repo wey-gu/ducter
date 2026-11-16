@@ -343,7 +343,9 @@ func (a *App) taskRows(c *ui.Context, tasks []*store.Task, state bool) {
 		return
 	}
 	t := a.T
-	ui.Column(c.Key("rows")).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
+	// Clipped, with a small inset: a hovered or focused row is a rounded tile
+	// inside the card, never a square block poking past its corners.
+	ui.Column(c.Key("rows")).Radius(t.RadiusLG).Clip().Padding(t.S1, t.S1).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
 		Dividers(1, t.LineSoft).Children(func() {
 		for _, task := range tasks {
 			a.taskRow(c.Key(task.ID), task, state)
@@ -373,22 +375,22 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 		padX = t.S3 + 2
 		focus = focus && !opened
 	}
-	row := ui.Row(c).Gap(t.S3).Padding(t.S3+1, padX).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
+	row := ui.Row(c).Gap(t.S3).Padding(t.S3+1, padX-t.S1).Radius(t.RadiusLG - t.S1).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
 	hover := row.Hovered()
 	switch {
 	case opened:
 		row.Background(t.Sunken)
 	case focus:
-		row.Background(t.SurfaceRaised).Border(0, t.Accent)
+		row.Background(t.SurfaceRaised)
 	case hover:
 		row.Background(t.SurfaceRaised)
 	}
 	row.Children(func() {
 		if focus {
-			ui.Box(c.Key("kf")).Absolute().Left(0).Top(0).Bottom(0).Width(4).Background(t.Accent).AccessHidden(true)
+			ui.Box(c.Key("kf")).Absolute().Left(t.S1 / 2).Top(t.S3).Bottom(t.S3).Width(4).Radius(t.Pill).Background(t.Accent).AccessHidden(true)
 		}
 		if opened {
-			ui.Box(c.Key("open")).Absolute().Left(0).Top(0).Bottom(0).Width(4).Background(t.Ink).AccessHidden(true)
+			ui.Box(c.Key("open")).Absolute().Left(t.S1 / 2).Top(t.S3).Bottom(t.S3).Width(4).Radius(t.Pill).Background(t.Ink).AccessHidden(true)
 		}
 		if att == protocol.Blocked {
 			if w := a.S.WaiterFor(task.ID); w != nil {

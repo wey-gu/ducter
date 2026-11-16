@@ -236,7 +236,7 @@ func (a *App) phoneCard(c *ui.Context, cv protocol.ConnectionView) {
 	p := a.ph()
 	pv := cv.Phone
 	name := firstNonEmpty(pv.Provider, cv.Name)
-	title := a.L.T("phone.card.title", name)
+	title := a.L.T("phone.card.title")
 	down := sourceDown(cv)
 	card := ui.Column(c.Key("phone:"+cv.ID)).Width(400).MinWidth(0).Grow(1).MaxWidth(520).Radius(t.RadiusLG).Background(t.Surface).
 		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S5).Gap(t.S3).Role(ui.RoleGroup).Label(title)
@@ -254,6 +254,9 @@ func (a *App) phoneCard(c *ui.Context, cv protocol.ConnectionView) {
 				}
 			})
 			ui.Text(c, title).FontSize(t.XL).FontWeight(800).SingleLine()
+			if name != "" {
+				ui.Text(c, a.L.T("phone.card.via", name)).FontSize(t.SM).TextColor(t.InkMuted)
+			}
 			switch {
 			case cv.State == "unauthorized":
 				ui.Text(c, a.L.T("phone.card.signed_out", name)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink)
@@ -411,7 +414,7 @@ func (a *App) callBody(c *ui.Context, d *store.DecisionState) {
 	t := a.T
 	if d.Call.Kind == "sheet" && d.Call.Plan != nil && d.Call.Plan.Sheet != nil {
 		// D215: a call sheet: the question, why, the sheet (kept after it's answered: they may
-		// still read from it), then 先不打 · 打完了 (Copy number sits by the number).
+		// still read from it), then 先不打 and 打完了 (Copy number sits by the number).
 		a.heading(c, autospace(d.Question), t.XL).LineHeight(1.35)
 		a.callSheetBody(c, d, true)
 		ui.Column(c).Padding(t.S1, 0, 0, 0).Children(func() {
@@ -605,7 +608,7 @@ var summaryLabels = []struct{ prefix, key string }{
 func (a *App) summaryRows(text string) [][2]string {
 	var rows [][2]string
 	for _, ln := range strings.Split(strings.TrimSpace(text), "\n") {
-		ln = strings.TrimSpace(strings.TrimLeft(ln, "-•* "))
+		ln = strings.TrimSpace(strings.TrimLeft(ln, "-\u2022* ")) // a provider's Markdown list marker
 		if ln == "" {
 			continue
 		}
@@ -677,7 +680,7 @@ func (a *App) callAnswered(d *store.DecisionState) string {
 	if text == "" {
 		return a.L.T("call.q.sent")
 	}
-	return a.L.T("call.q.sent") + " · " + text
+	return a.L.T("call.q.sent.v", text)
 }
 
 // callWaitWords is why a call waits (D208), or "".
@@ -766,7 +769,7 @@ func (a *App) callQuestionBody(c *ui.Context, d *store.DecisionState) {
 		a.glyph(c, 18, drawAsk(t.NeedsYou.Ink))
 		head := a.L.T("call.q.title")
 		if who != "" {
-			head += " · " + who
+			head = a.L.T("call.q.title.who", who)
 		}
 		ui.Text(c, head).FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink)
 	})
@@ -908,21 +911,24 @@ func (a *App) callTitle(cl protocol.CallBody, now time.Time) string {
 			return a.L.T("call.row.call_failed", n) // D208: dialed, didn't connect
 		}
 		return a.L.T("call.row.failed", n)
-	case protocol.CallTalking:
-		since := store.ParseTime(cl.TalkingSince)
-		clock := ""
-		if !since.IsZero() {
-			s := int(now.Sub(since).Seconds())
-			if s < 0 {
-				s = 0
-			}
-			clock = fmt.Sprintf("%d:%02d", s/60, s%60)
-		}
-		return strings.TrimSpace(a.L.T("call.row.talking", n, clock))
-	case protocol.CallNeedsGo, protocol.CallCalling, protocol.CallAsking, protocol.CallDone, protocol.CallUncertain, protocol.CallAutomated, protocol.CallNoAnswer, protocol.CallCancelled:
+	case protocol.CallNeedsGo, protocol.CallCalling, protocol.CallTalking, protocol.CallAsking, protocol.CallDone, protocol.CallUncertain, protocol.CallAutomated, protocol.CallNoAnswer, protocol.CallCancelled:
 		return a.L.T("call.row."+cl.State, n)
 	}
 	return n
+}
+
+// callClock is how long a live call has run, its own muted element beside
+// the row's title (D291), or "".
+func callClock(cl protocol.CallBody, now time.Time) string {
+	since := store.ParseTime(cl.TalkingSince)
+	if cl.State != protocol.CallTalking || since.IsZero() {
+		return ""
+	}
+	s := int(now.Sub(since).Seconds())
+	if s < 0 {
+		s = 0
+	}
+	return fmt.Sprintf("%d:%02d", s/60, s%60)
 }
 
 // callFailWords is why a call failed (D208): the provider's own words when it
@@ -963,9 +969,9 @@ func (a *App) callSub(cl protocol.CallBody) string {
 		parts = append(parts, cl.Outcome)
 	case !ended:
 		if cl.Plan.From == protocol.OwnPhone {
-			parts = append(parts, a.L.T("call.sub.own", prettyNumber(cl.Plan.To))+" · "+cl.Plan.Goal)
+			parts = append(parts, a.L.T("call.sub.own", prettyNumber(cl.Plan.To)))
 		} else {
-			parts = append(parts, prettyNumber(cl.Plan.To)+" · "+cl.Plan.Goal)
+			parts = append(parts, prettyNumber(cl.Plan.To))
 		}
 	}
 	if cl.Hint == "screening" && (cl.State == protocol.CallAutomated || cl.State == protocol.CallNoAnswer || cl.State == protocol.CallFailed) {
@@ -1012,6 +1018,9 @@ func (a *App) callRow(c *ui.Context, cl protocol.CallBody) {
 					ui.Text(c, autospace(sub)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(5).LineHeight(a.leading(1.45))
 				}
 			})
+			if clock := callClock(cl, now); clock != "" {
+				ui.Text(c, clock).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+			}
 			switch {
 			case cl.State == protocol.CallWaiting:
 				if a.buttonFor(c, a.L.T("call.cancel"), cl.Plan.Name, btnText, t.ControlSM, bg) {
@@ -1078,17 +1087,13 @@ func (a *App) callResult(c *ui.Context, cl protocol.CallBody) {
 				})
 			}
 		}
-		var parts []string
 		if cl.DurationSec != nil {
 			s := int(*cl.DurationSec)
-			cost := 0.0
+			cost := ""
 			if cl.CostUSD != nil {
-				cost = *cl.CostUSD
+				cost = "$" + money(*cl.CostUSD)
 			}
-			parts = append(parts, a.L.T("call.length", s/60, s%60, money(cost)))
-		}
-		if len(parts) > 0 {
-			ui.Text(c, strings.Join(parts, " · ")).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum")
+			a.facts(c, t.XS, t.InkMuted, a.L.T("call.length", s/60, s%60), cost)
 		}
 	})
 }

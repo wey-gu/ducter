@@ -208,24 +208,25 @@ func (a *App) retryLive(lv *store.LiveView) {
 	a.OpenLive(lv.DecisionID, lv.Site)
 }
 
-// liveWhere is the view's small line: whose browser and that the partner
-// can't see it; for Try it, which browser on which machine (D154).
-func (a *App) liveWhere(lv *store.LiveView) string {
+// liveWhere is the view's small line: that the partner can't see this
+// browser; for a watch, the task's title; for Try it, whose browser on which
+// machine, and which browser as a fact of its own (D154, D291).
+func (a *App) liveWhere(lv *store.LiveView) []string {
 	if lv.Try() && lv.Browser != nil {
 		b := lv.Browser
 		name := b.Name
 		if b.Version != "" {
 			name += " " + strings.SplitN(b.Version, ".", 2)[0]
 		}
-		return a.L.T("live.try.where", a.liveDevice(lv), name)
+		return []string{a.L.T("live.try.where", a.liveDevice(lv)), name}
 	}
 	if lv.Watch() {
 		if lv.Task != nil && lv.Task.Title != "" {
-			return redact.Text(lv.Task.Title)
+			return []string{redact.Text(lv.Task.Title)}
 		}
-		return a.L.T("live.where")
+		return []string{a.L.T("live.where")}
 	}
-	return a.L.T("live.where") + " · " + a.L.T("live.blind")
+	return []string{a.L.T("live.blind")}
 }
 
 // liveSize is the page size the live view asks for: the window less its
@@ -366,7 +367,7 @@ func (a *App) liveView(c *ui.Context) {
 					if !lv.Try() && !watch {
 						a.glyph(c, 14, drawEyeShut(t.InkMuted))
 					}
-					ui.Text(c, a.liveWhere(lv)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+					a.facts(c, t.XS, t.InkMuted, a.liveWhere(lv)...)
 				})
 			})
 		}, func() {
@@ -467,7 +468,7 @@ func (a *App) liveView(c *ui.Context) {
 			switch {
 			case watch:
 				// What the task is doing, calm; or whose browser, where.
-				line, col := a.L.T("live.where")+" · "+a.L.T("live.on", a.liveDevice(lv)), t.InkMuted
+				line, col := a.L.T("live.where.on", a.liveDevice(lv)), t.InkMuted
 				if doing != nil {
 					line, col = a.doingWords(doing), t.InkSoft
 				} else if lv.Turn == "you" && !lv.Here {

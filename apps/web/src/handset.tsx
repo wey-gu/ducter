@@ -9,6 +9,7 @@ import type { CallPlan, DialHow, DialSheet, HandsetServerFrame, HandsetState, Ta
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, Chip } from "./controls.tsx";
+import { shownDeviceName } from "./format.ts";
 import { nativeCall, nativeInfo } from "./native.ts";
 import type { Client } from "./sheet.ts";
 import { finished, title, type DecisionState, type Task } from "./store.ts";
@@ -165,7 +166,7 @@ export function HandsetChip({ cl }: { cl: Client }) {
   const on = !!h?.added;
   const service = mine ? !!H.state?.service : !!h?.state?.service;
   const look = on ? (service ? "on" : "fail") : mine && H.state ? "add" : "off";
-  const name = cl.name.replace(/\s*·\s*Ducter$/, "");
+  const name = shownDeviceName(cl.name);
   return (
     <>
       <div class="dc-chips">
@@ -388,7 +389,7 @@ export function HandsetAskBody({ d, compact }: { d: DecisionState; compact?: boo
   if (h.kind === "record") return <HandsetRecordBody d={d} compact={compact} />;
   const open = !d.resolved;
   const cl = A.reach?.clients.find((c) => c.id === h.device);
-  const name = (cl?.name ?? h.name).replace(/\s*·\s*Ducter$/, "");
+  const name = shownDeviceName(cl?.name ?? h.name);
   const k = h.kind === "setup" ? "handset.setup" : "handset.ask";
   return (
     <>
@@ -460,15 +461,15 @@ function HandsetRecordBody({ d, compact }: { d: DecisionState; compact?: boolean
 /** The card's title line for the ask. */
 export const handsetAskTitle = (d: DecisionState): string => {
   const h = d.handset!;
-  if (h.kind === "record") return t("handset.record.title", ((A.reach?.clients.find((c) => c.id === h.device)?.name ?? h.name) || "").replace(/\s*·\s*Ducter$/, ""));
+  if (h.kind === "record") return t("handset.record.title", shownDeviceName(A.reach?.clients.find((c) => c.id === h.device)?.name ?? h.name ?? ""));
   const tk = d.taskId ? A.S.tasks.get(d.taskId) : undefined;
   const task = (tk && title(tk)) || "";
-  const name = ((A.reach?.clients.find((c) => c.id === h.device)?.name ?? h.name) || "").replace(/\s*·\s*Ducter$/, "");
+  const name = shownDeviceName(A.reach?.clients.find((c) => c.id === h.device)?.name ?? h.name ?? "");
   return task ? t(h.kind === "setup" ? "handset.setup.title" : "handset.ask.title", task, name) : d.question;
 };
 
 /** A phone task's name for the person's phone ("Pixel Fold"). */
-export const phoneName = (device: string, fallback = "") => ((A.reach?.clients.find((c) => c.id === device)?.name ?? fallback) || "").replace(/\s*·\s*Ducter$/, "");
+export const phoneName = (device: string, fallback = "") => shownDeviceName(A.reach?.clients.find((c) => c.id === device)?.name ?? fallback);
 
 /** On the opened task: it is on the person's phone now, with 停下 / Stop. */
 export function HandsetLine({ task }: { task: Task }) {

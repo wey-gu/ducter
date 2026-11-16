@@ -21,7 +21,7 @@ import (
 // no steps, says what works today (你来打 / You call) and why a live call on
 // the person's own number needs a computer beside the phone. Install lines are
 // only ever the home's own system's, and 再找一次 always answers: a busy line,
-// then 看过了 · 20:14 with what it saw.
+// then what it saw and, apart, when (20:14).
 
 // ownInstall is the one install line for the home's own system, or "".
 func ownInstall(os, tool string) string {
@@ -40,14 +40,14 @@ func ownInstall(os, tool string) string {
 	return ""
 }
 
-// ownLooked is what the last look saw, with when and on which computer.
-func (a *App) ownLooked(v *protocol.OwnPhoneView) string {
+// ownLooked is what the last look saw (on which computer) and, as its own
+// fact (D291), when.
+func (a *App) ownLooked(v *protocol.OwnPhoneView) (saw, when string) {
 	at, err := time.Parse(time.RFC3339, v.LookedAt)
 	if err != nil {
-		return ""
+		return "", ""
 	}
 	at = at.Local()
-	var saw string
 	switch {
 	case !v.ADB:
 		saw = a.L.T("own.saw.noadb", v.Where)
@@ -58,7 +58,7 @@ func (a *App) ownLooked(v *protocol.OwnPhoneView) string {
 	default:
 		saw = a.L.T("own.saw.phone", v.Phone.Model)
 	}
-	return a.L.T("own.looked", fmt.Sprintf("%d:%02d", at.Hour(), at.Minute()), saw)
+	return saw, fmt.Sprintf("%d:%02d", at.Hour(), at.Minute())
 }
 
 // dialers are the person's phones whose Ducter app can dial a call sheet now (D278).
@@ -75,9 +75,9 @@ func (a *App) dialers() []protocol.ReachClient {
 	return out
 }
 
-// phoneName drops the app's " · Ducter" from a phone's client name.
+// phoneName is a phone's client name as shown (shownDeviceName, D291).
 func phoneName(name string) string {
-	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(name), "· Ducter"))
+	return strings.TrimSpace(shownDeviceName(strings.TrimSpace(name)))
 }
 
 // ownAwayCard is the card on a home that can't be the computer beside the
@@ -221,7 +221,7 @@ func (a *App) ownPhoneCard(c *ui.Context) {
 						}
 						ui.Text(c, a.L.T("own.step."+s)).FontSize(t.MD).FontWeight(800).TextColor(ink)
 						if done[s] && !open {
-							ui.Text(c, a.ownDoneLine(s, v)).FontSize(t.SM).TextColor(t.InkMuted)
+							a.facts(c, t.SM, t.InkMuted, a.ownDoneFacts(s, v)...)
 						}
 					})
 				})
@@ -273,25 +273,37 @@ func (a *App) ownPhoneCard(c *ui.Context) {
 	})
 }
 
-func (a *App) ownDoneLine(s string, v *protocol.OwnPhoneView) string {
+// ownDoneFacts is a done step's facts, what the home saw, each its own
+// element (D291).
+func (a *App) ownDoneFacts(s string, v *protocol.OwnPhoneView) []string {
 	switch s {
 	case "phone":
-		return a.L.T("own.phone.ok", firstNonEmpty(v.Phone.Model, "Android"), v.Phone.Android)
-	case "sim":
-		line := prettyNumber(v.Number)
-		if v.SIM != nil && v.SIM.Carrier != "" {
-			line = v.SIM.Carrier + " · " + line
+		ver := ""
+		if v.Phone.Android != "" {
+			ver = a.L.T("own.phone.android", v.Phone.Android)
 		}
-		return line
+		return []string{firstNonEmpty(v.Phone.Model, "Android"), ver}
+	case "sim":
+		carrier := ""
+		if v.SIM != nil {
+			carrier = v.SIM.Carrier
+		}
+		return []string{carrier, prettyNumber(v.Number)}
 	case "cable":
 		if v.Audio.Input == v.Audio.Output {
-			return v.Audio.Input
+			return []string{v.Audio.Input}
 		}
-		return v.Audio.Input + " · " + v.Audio.Output
+		return []string{v.Audio.Input, v.Audio.Output}
 	case "voice":
-		return a.L.T("own.voice.set", a.L.T("own.voice."+v.Voice.Engine), v.Voice.Model, "$"+money(v.Voice.PerMinUSD))
+		return a.ownVoiceFacts(v)
 	}
-	return a.L.T("own.test.passed")
+	return []string{a.L.T("own.test.passed")}
+}
+
+// ownVoiceFacts is the live voice in use: its maker, its model, what a
+// minute costs.
+func (a *App) ownVoiceFacts(v *protocol.OwnPhoneView) []string {
+	return []string{a.L.T("own.voice." + v.Voice.Engine), v.Voice.Model, a.L.T("own.voice.permin", "$"+money(v.Voice.PerMinUSD))}
 }
 
 func (a *App) ownCmd(c *ui.Context, cmd string) {
@@ -326,8 +338,9 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 			if a.buttonFor(c, a.L.T("own.scan"), a.L.T("own.title"), btnText, t.ControlSM, t.Surface) {
 				a.ownAct(protocol.OwnPhoneAct{Action: "scan"})
 			}
-			if line := a.ownLooked(v); line != "" {
-				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted).Grow(1).MinWidth(0)
+			if saw, at := a.ownLooked(v); saw != "" {
+				ui.Text(c, saw).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+				ui.Text(c, at).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
 			}
 		})
 	}
@@ -411,7 +424,7 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 		look()
 	case "voice":
 		if v.Voice.Key {
-			a.note(c, a.L.T("own.voice.set", a.L.T("own.voice."+v.Voice.Engine), v.Voice.Model, "$"+money(v.Voice.PerMinUSD)))
+			a.facts(c, t.SM, t.InkSoft, a.ownVoiceFacts(v)...)
 			a.note(c, a.L.T("own.voice.kept", v.Where))
 			ui.Row(c).Children(func() {
 				if a.buttonFor(c, a.L.T("own.voice.remove"), a.L.T("own.step.voice"), btnText, t.ControlSM, t.Surface) {

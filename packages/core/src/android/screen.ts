@@ -2,6 +2,8 @@
 // screen turned into numbered lines, the way the browser tools number a page's links and fields.
 // Pure: the XML in, lines and targets out (unit-tested on real dumps).
 
+import { LABEL_PARTS } from "@ducter/protocol";
+
 export interface Node {
   ref: number;
   role: string; // button | field | switch | check | item | text | image
@@ -46,7 +48,7 @@ function roleOf(cls: string, t: { clickable: boolean; editable: boolean; checkab
 }
 
 /** Parses `uiautomator dump` XML. Nodes that do nothing and say nothing are left out; a tappable
- *  row with no words of its own is named by the words inside it ("Network & internet · Mobile,
+ *  row with no words of its own is named by the words inside it ("Network & internet | Mobile,
  *  Wi‑Fi, hotspot"), and those words aren't repeated as loose text. */
 export function parseDump(xml: string): Screen {
   type Raw = { tag: string; kids: Raw[]; parent?: Raw };
@@ -103,7 +105,7 @@ export function parseDump(xml: string): Screen {
     if (visible && acts(r)) {
       const sub = words ? [] : inner(r, []);
       const id = attr(tag, "resource-id").split("/").pop() ?? "";
-      const label = (words || [...new Set(sub)].slice(0, 2).join(" · ") || (password ? "password" : id.replace(/_/g, " "))).slice(0, 120);
+      const label = (words || [...new Set(sub)].slice(0, 2).join(LABEL_PARTS) || (password ? "password" : id.replace(/_/g, " "))).slice(0, 120);
       nodes.push({
         ref: nodes.length + 1,
         role: roleOf(attr(tag, "class"), t),

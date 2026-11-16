@@ -6,7 +6,8 @@ import type { CallPlan, CallView, ConnectionView, OwnPhoneView, SignInView } fro
 import { callEnded, prettyNumber, TUWA_MCP } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn, Chev, DangerButton, Seg, Toggle } from "./controls.tsx";
+import { Btn, Chev, DangerButton, Facts, Seg, Toggle } from "./controls.tsx";
+import { shownDeviceName, spoken } from "./format.ts";
 import type { DecisionState } from "./store.ts";
 import { DIAL, dialHere, dialOn, dialsHere } from "./handset.tsx";
 import { dialers } from "./own-phone.tsx";
@@ -175,8 +176,7 @@ function QuestionCard({ d }: { d: DecisionState }) {
   return (
     <div class={`call-card question${open ? " ringing" : ""}`}>
       <div class="call-q-head">
-        {t("call.asking")}
-        {c && <span class="sub"> · {c.plan.name}</span>}
+        {c ? t("call.asking.who", c.plan.name) : t("call.asking")}
       </div>
       <div class="q">{d.question}</div>
       {open ? (
@@ -234,7 +234,7 @@ function SheetCard({ d }: { d: DecisionState }) {
   // elsewhere a tel: link, and 在 Pixel Fold 上拨打 when the app on their phone is connected.
   const here = dialsHere();
   const away = here ? undefined : dialers()[0];
-  const awayName = away?.name.replace(/\s*·\s*Ducter$/, "");
+  const awayName = away && shownDeviceName(away.name);
   const now = DIAL.get(d.call!.callId);
   const said = dialWords(now);
   return (
@@ -275,7 +275,7 @@ function SheetCard({ d }: { d: DecisionState }) {
               <a
                 class={`btn ${dialed ? "secondary" : "primary"}`}
                 href={`tel:${p.to}`}
-                aria-label={`${t("call.sheet.dial")} · ${p.name}`}
+                aria-label={spoken(A.L, t("call.sheet.dial"), p.name)}
                 onClick={(e) => {
                   setDialed(true);
                   if (here) e.preventDefault(), void dialHere(d.call!.callId, p);
@@ -367,7 +367,7 @@ export function callLine(c: CallView): string {
     case "calling":
       return t("call.st.calling", n);
     case "talking":
-      return t("call.st.talking", n, c.talkingSince ? mmss((Date.now() - Date.parse(c.talkingSince)) / 1000) : "");
+      return t("call.st.talking", n);
     case "question":
       return t("call.st.question", n);
     case "failed":
@@ -376,6 +376,9 @@ export function callLine(c: CallView): string {
       return t(`call.st.${c.state}`, n);
   }
 }
+
+/** How long a live call has run (D291: its own muted element beside the row's line, not glued to it). */
+export const callClock = (c: CallView): string => (c.state === "talking" && c.talkingSince ? mmss(Math.max(0, Date.now() - Date.parse(c.talkingSince)) / 1000) : "");
 
 function Result({ c }: { c: CallView }) {
   const [lines, setLines] = useState(false);
@@ -404,7 +407,11 @@ function Result({ c }: { c: CallView }) {
           )}
         </>
       )}
-      {(c.durationSec !== undefined || c.costUsd !== undefined) && <div class="small sub">{[c.durationSec !== undefined ? (c.durationSec < 60 ? t("call.length.s", Math.round(c.durationSec)) : t("call.length", Math.floor(c.durationSec / 60), Math.round(c.durationSec % 60))) : "", c.costUsd !== undefined ? money(c.costUsd) : ""].filter(Boolean).join(" · ")}</div>}
+      {(c.durationSec !== undefined || c.costUsd !== undefined) && (
+        <div class="small sub call-len">
+          <Facts items={[c.durationSec !== undefined && (c.durationSec < 60 ? t("call.length.s", Math.round(c.durationSec)) : t("call.length", Math.floor(c.durationSec / 60), Math.round(c.durationSec % 60))), c.costUsd !== undefined && money(c.costUsd)]} />
+        </div>
+      )}
     </div>
   );
 }
@@ -414,6 +421,7 @@ export function CallRow({ c }: { c: CallView }) {
   const ended = callEnded(c.state);
   const live = ["calling", "talking", "question"].includes(c.state);
   const sub = callSub(c);
+  const clock = callClock(c);
   const more = ended && !!(c.summary || c.agreed?.length || c.transcript?.length || c.durationSec !== undefined || c.costUsd !== undefined || (c.state === "automated" && c.outcome));
   return (
     <div class={`bcard call-row ${c.state}`}>
@@ -423,6 +431,7 @@ export function CallRow({ c }: { c: CallView }) {
           <span class="t">{callLine(c)}</span>
           {sub && <span class={`s${sub.warn ? " warn" : ""}`}>{sub.text}</span>}
         </span>
+        {clock && <span class="call-clock small">{clock}</span>}
         {more && <span class="chev" aria-hidden="true"><Chev open={open} /></span>}
       </button>
       {c.state === "failed" && c.payUrl && <Btn kind="text" size="sm" label={t("call.pay", c.plan.provider)} onClick={() => window.open(c.payUrl, "_blank", "noopener")} />}
@@ -484,8 +493,7 @@ export function SignInPanel({ s }: { s: SignInView }) {
             <Btn kind="primary" label={t("call.signin.open", s.name)} onClick={() => window.open(s.verifyUrlComplete ?? s.verifyUrl, "_blank", "noopener")} />
           </div>
           <div class="signin-wait small sub">
-            {t("call.signin.waiting")}
-            {mins && ` · ${t("call.signin.valid", mins)}`}
+            <Facts items={[t("call.signin.waiting"), mins && t("call.signin.valid", mins)]} />
           </div>
           <Btn kind="text" size="sm" label={t("call.signin.cancel")} onClick={() => A.cancelSignIn()} />
         </>
@@ -511,13 +519,14 @@ export function PhoneCard({ c }: { c: ConnectionView }) {
   const [deleting, setDeleting] = useState(false);
   const out = c.state === "unauthorized";
   const v = p.voice;
-  const name = t("call.card.title", p.provider);
+  const name = t("call.card.title");
   if (A.signIn?.reconnect && A.signIn.id === c.id && A.signIn.state === "waiting") return <SignInPanel s={A.signIn} />;
   return (
     <section id="acct-phone" class="src-card phone-card" aria-label={name}>
       <div class="src-who">
         <CallArt off={out} size={96} />
         <h3>{name}</h3>
+        {p.provider && <div class="small sub call-via">{t("call.card.via", p.provider)}</div>}
         <div class={`small ${out ? "warn" : "sub"}`}>{out ? t("call.card.out", p.provider) : t("call.card.ok")}</div>
         {out && <Btn kind="secondary" size="sm" label={t("call.card.signin")} onClick={() => A.reauth(c.id)} />}
       </div>

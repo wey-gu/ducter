@@ -1345,3 +1345,12 @@ right; the extra choices are pills that say their value (现在 / Now), shown, n
 - **D210's foot over the composer saying where the task stands (spinner, 在做, the clock, its latest step) with 暂停 / Pause, and D213's 取消任务 / Cancel task in the foot.** Superseded by D268 (10)–(11): the working line at the transcript's end, Pause as a square button by Send, Cancel task in the header's ⋯.
 - **The opened task's transcript inside the conversation's 760 column, the agent's words at 15 led by the app's language.** Superseded by D268 (1).
 - **D210's queued words "lighter with 排队中 · 它忙完手上的事就会看到".** Superseded by D268 (12): sent while it works, words steer by default; only After this queues, drawn as a dashed outline.
+
+## 2026-11-16: Bridge for every Mem, not only the cloud's (the author: "我们不应该只支持 bridge for nowledge mem cloud，app 版本 vault 用户的 bridge 应该也支持才对，你没有写死就行")
+
+| # | Decision | Source | Reflected in |
+|---|---|---|---|
+| D269 | **Built 2026-11-16 (core), checked with the fake `nmem`; not yet against a real Mem app or Vault. Whether a Mem connects agents is Mem's answer, never Ducter's guess from where it runs.** D225 (4) showed `local_mem` ("a cloud workspace is needed") whenever `nmem status` said `backend: "local"`, without asking; that was inferred from `nmem bridge`'s "Cloud Agent communication" help line, while Nowledge's own goal for Bridge is the app and the cloud alike. Now the passive `bridge setup` runs for every signed-in Mem; a local Mem's one place is used whatever its kind (a cloud workspace still needs exactly one `personal` place, D205); `local_mem` shows only when that Mem offers no place, and says to update Mem or sign in to a cloud workspace. No address, host or backend is fixed anywhere in Ducter's Bridge: every call goes through the home's own `nmem` and its configuration | A | `packages/core/src/bridge-link.ts`, `design/bridge.md`, `docs/faq.md` |
+
+## Superseded
+- **D225 (4)'s `local_mem` whenever Mem answers from the computer itself.** Superseded by D269: asked, and only when it offers no place.

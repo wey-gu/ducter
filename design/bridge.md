@@ -59,7 +59,7 @@ with **去「记忆」 / Go to Memory**. The steps themselves, one tap each:
 | Mem says a newer `nmem` is out (`status.update`) | a quiet **更新 / Update** under the row | the copy's own source |
 | the app's copy, too old | the line: update the Nowledge Mem app | nothing |
 | not signed in | a link field, **登录 / Sign in** | `nmem connect --skip-tools <link>` (sign-in only); the link is never logged or kept |
-| Mem answers from the computer itself | one line: a cloud workspace is needed | nothing |
+| Mem answers from the computer itself (the app, a Vault) | asked like the cloud's (D269): its one place is used; only when it offers none, one line: update Mem or sign in to a cloud workspace | passive `bridge setup` |
 | ready | D205's **连接 / Connect** | D205's connect |
 
 Afterwards the new `nmem`'s folder joins Ducter's PATH and `NMEM_CLI_PATH`, and after a sign-in the persona's

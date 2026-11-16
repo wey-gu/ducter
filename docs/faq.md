@@ -167,7 +167,8 @@ Either way, your partner checks with you first. **Disconnect** turns it all off;
 
 What it needs, and what you can do today from that same section:
 
-- A [Nowledge Mem](https://mem.nowledge.co) cloud workspace (free to download and sign up).
+- [Nowledge Mem](https://mem.nowledge.co), the app on your computer or a cloud workspace, in a version that
+  connects agents (free to download and sign up). If yours doesn't yet, the section says so.
 - Nowledge Mem's command-line tool, 0.10.118 or later, on the computer Ducter lives on. If it's
   missing or older, the section shows **Install** or **Update**: one tap, done the way Nowledge
   Mem's own guide says (with pipx). On a Linux server where Ducter can't add pipx itself, it

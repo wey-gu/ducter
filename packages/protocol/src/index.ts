@@ -1840,8 +1840,8 @@ export type BridgeRefusal = "authority_missing" | "custody_birth_missing" | "lif
  * update_mem: canRun: one tap updates it from the source it came from (else need: "app", update the
  * Nowledge Mem app; "other", update it the way it was installed); installing / updating while it
  * runs; sign_in: `nmem` is here but not signed in to Nowledge Mem (paste a connect link; signIn says
- * why the last one didn't work); signing_in; local_mem: Mem here answers from this computer, not a
- * Nowledge Mem cloud workspace, which other AI agents need. detail, after a step that didn't work:
+ * why the last one didn't work); signing_in; local_mem: Mem here answers from this computer (the
+ * app, a Vault) and offered no place to connect in (D269: asked, never assumed). detail, after a step that didn't work:
  * what the installer or Mem said, clipped, never a secret.
  */
 export interface BridgeView {

@@ -241,10 +241,18 @@ describe("the link over a fake nmem", () => {
     expect(JSON.stringify(await r.link.view())).not.toContain("nmem_ct_");
   });
 
-  test("Mem answering from this computer, not a cloud workspace: local_mem, no setup run", async () => {
-    const r = rig({ NMEM_FAKE_BACKEND: "local" });
+  test("D269: Mem on this computer that offers no place to connect: local_mem, after asking it", async () => {
+    const r = rig({ NMEM_FAKE_BACKEND: "local", NMEM_FAKE_LOCAL_BRIDGE: "off" });
     expect(await r.link.view()).toEqual({ state: "local_mem", identity: "ducter", home: "hel", version: "0.10.118" });
-    expect(r.calls().some((c) => c.includes("setup"))).toBe(false);
+    expect(r.calls().some((c) => c.includes("setup"))).toBe(true); // asked, never assumed
+  });
+
+  test("D269: Mem on this computer (the app, a Vault) connects like the cloud's, in its one place", async () => {
+    const r = rig({ NMEM_FAKE_BACKEND: "local" });
+    expect(await r.link.view()).toMatchObject({ state: "ready", space: { label: "My vault" } });
+    await r.link.connect();
+    expect((await r.link.view())?.state).toBe("connected");
+    expect(r.calls().find((c) => c.includes("connections") && c.includes("connect"))).toContain("--space-id");
   });
 });
 

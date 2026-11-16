@@ -143,11 +143,13 @@ const detailIn = (out: string, err: string): string => {
  * The one personal place among passive setup's candidates ("Only me"), or undefined: none, or more
  * than one (never a guess between them).
  */
-export function personalSpace(setup: any): { id: string; label: string } | undefined {
-  const list = Array.isArray(setup?.candidates) ? setup.candidates : [];
-  const personal = list.filter((c: any) => c && c.kind === "personal" && typeof c.id === "string" && c.id);
-  if (personal.length !== 1) return undefined;
-  const c = personal[0];
+export function personalSpace(setup: any, local = false): { id: string; label: string } | undefined {
+  const list = (Array.isArray(setup?.candidates) ? setup.candidates : []).filter((c: any) => c && typeof c.id === "string" && c.id);
+  const personal = list.filter((c: any) => c.kind === "personal");
+  // D269: Mem on this computer (the app, a Vault) may hold one place of another kind: that one.
+  const pick = personal.length === 1 ? personal : local && list.length === 1 ? list : [];
+  if (pick.length !== 1) return undefined;
+  const c = pick[0];
   return { id: c.id, label: typeof c.label === "string" && c.label.trim() ? c.label.trim() : "Only me" };
 }
 
@@ -281,10 +283,12 @@ export function createBridgeLink(opts: {
       // D257: the newer version's number, when Mem names it (said beside 有新版本 / New version).
       const latest = updateAvailable && typeof sj?.update?.latest === "string" ? parseNmemVersion(sj.update.latest)?.join(".") : undefined;
       let space: { id: string; label: string } | undefined;
-      if (signedIn && backend !== "local") {
+      if (signedIn) {
         // Passive: no context, no Space, never --enable. It lists the user's places and picks none.
+        // D269: asked of every Mem, the cloud's and this computer's own (the app, a Vault): Mem says
+        // whether it connects agents, never Ducter's guess from where it runs.
         const s = await run(["bridge", "setup"]);
-        if (s && s.code === 0) space = personalSpace(jsonIn(s.out)[0]);
+        if (s && s.code === 0) space = personalSpace(jsonIn(s.out)[0], backend === "local");
       }
       return (probe = { at: now(), version: shortVersion, supported, signedIn, ...(backend ? { backend } : {}), ...(space ? { space } : {}), ...(updateAvailable ? { updateAvailable } : {}), ...(latest ? { latest } : {}) });
     })().finally(() => (probing = undefined));
@@ -412,7 +416,8 @@ export function createBridgeLink(opts: {
       return { state: "update_mem", identity: agent, home, version: p.version, canRun: !!plan, ...(plan?.how === "move" ? { upkeep: { kind: "move" as const } } : {}), ...(plan ? {} : { need: copy?.channel === "app" ? ("app" as const) : ("other" as const) }), ...failed };
     }
     if (!p.signedIn) return { state: "sign_in", identity: agent, home, version: p.version, ...(memDone && now() - memDone.at < DONE_SHOWN_MS ? { done: memDone.kind } : {}), ...(signIn ? { signIn } : {}), ...(signInDetail ? { detail: signInDetail } : {}) };
-    if (p.backend === "local") return { state: "local_mem", identity: agent, home, ...(await extras()) };
+    // D269: only when Mem on this computer offers no place to connect in does the row say so.
+    if (p.backend === "local" && !p.space) return { state: "local_mem", identity: agent, home, ...(await extras()) };
     if (outcome) return { ...outcome, ...base };
     if (!p.space) return { state: "no_space", identity: agent, ...(await extras()) };
     return { state: "ready", ...(await extras()), ...base };

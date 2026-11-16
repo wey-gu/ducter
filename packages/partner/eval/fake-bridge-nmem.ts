@@ -202,6 +202,13 @@ if (verb === "session") {
 if (verb === "setup" && !ctx) {
   // Passive, no context, no Space: the user's places, none chosen (0.10.116 shape, VERIFIED).
   const which = process.env.NMEM_FAKE_SPACES;
+  // D269: Mem on this computer: NMEM_FAKE_LOCAL_BRIDGE=off answers it doesn't connect agents; else
+  // its one place (the app's or a Vault's), of its own kind.
+  if (process.env.NMEM_FAKE_BACKEND === "local") {
+    if (process.env.NMEM_FAKE_LOCAL_BRIDGE === "off") fail("bridge_unavailable", "Bridge isn't available on this Mem.");
+    out({ state: "selection_needed", detail: "Choose the exact Space for Bridge.", candidates: [{ id: SPACE.id, label: "My vault", kind: "local", readers: 1, write_default: true }] });
+    process.exit(0);
+  }
   const personal = (id: string) => ({ id, label: "Only me", kind: "personal", readers: 1, write_default: true });
   const candidates = [
     { id: "fake-default", label: "Before the team", kind: "default", readers: 6, write_default: false },

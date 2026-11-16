@@ -269,6 +269,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	waiting := keep(b.Lanes[store.LaneWaiting])
 	done := keep(b.Lanes[store.LaneDone])
 	rail := a.oh.room == "rail"
+	a.nav.rows = 0
 	f := a.oh.filter
 	if rail {
 		f = 0
@@ -613,7 +614,16 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 			}
 		})
 	})
-	if row.Clicked() {
+	// D290: the card you open grows into the task's head, and the task
+	// you come back from goes back into its card; the list's rows come in
+	// one after another on its first paint.
+	clicked := row.Clicked()
+	a.heroRow(row, task.ID, clicked || focus)
+	if !rail {
+		a.stagger(c, row, a.nav.rows)
+		a.nav.rows++
+	}
+	if clicked {
 		a.oh.focus = task.ID
 		a.OpenTask(task.ID)
 	}

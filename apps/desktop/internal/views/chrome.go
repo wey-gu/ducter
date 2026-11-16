@@ -43,8 +43,10 @@ func chromeInset(c *ui.Context) (left, right float32) {
 func (a *App) chrome(c *ui.Context, key string, left, right func()) {
 	t := a.T
 	l, r := chromeInset(c)
-	ui.Row(c.Key("chrome:"+key)).Height(ChromeH).Shrink(0).Gap(t.S3).AlignItems(ui.Center).Padding(0, r, 0, l).
-		Background(t.Chrome).BorderWidth(0, 0, 1, 0).BorderColor(t.ChromeLine).DragWindow().Children(func() {
+	bar := ui.Row(c.Key("chrome:"+key)).Height(ChromeH).Shrink(0).Gap(t.S3).AlignItems(ui.Center).Padding(0, r, 0, l).
+		Background(t.Chrome).BorderWidth(0, 0, 1, 0).BorderColor(t.ChromeLine).DragWindow()
+	a.holdBar(c, bar) // D290: the bar stays while its page comes in
+	bar.Children(func() {
 		ui.Row(c).Gap(t.S3).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(left)
 		if right != nil {
 			ui.Row(c).Gap(t.S3).Shrink(0).AlignItems(ui.Center).Children(right)
@@ -99,10 +101,10 @@ func (a *App) routeEnter(c *ui.Context, e ui.Element) {
 	shown := ui.Local(e, "entered", func() bool { return false })
 	p := ui.Pose{}
 	if !*shown {
-		p, *shown = ui.Pose{Y: 6, Fade: 1}, true
+		p, *shown = ui.Pose{Y: a.T.Nav.Rise, Fade: 1}, true
 		c.Invalidate()
 	}
-	e.AnimatePose(p, ui.Animation{Duration: 220e6})
+	e.AnimatePose(p, ui.Animation{Duration: a.T.EnterDur})
 }
 
 // ---------- the shell (D262) ----------
@@ -169,14 +171,26 @@ func (a *App) placeSegments(c *ui.Context, here Route) {
 	const pad, seg = float32(3), float32(28)
 	ui.Row(c.Key("places")).Height(seg+2*pad).Padding(pad).Gap(2).Radius(t.RadiusSM).AlignItems(ui.Center).
 		Background(t.SurfaceSunken).InsetShadow(0, 1.5, 2, 0, t.Line).Role(ui.RoleTabList).Shrink(0).Children(func() {
+		// D290: the knob is its own piece under the marks, so it can slide
+		// from the place left to the place shown (its Match) rather than
+		// blink from one slot to the next.
+		for i, s := range segs {
+			if !s.on {
+				continue
+			}
+			an := a.T.Nav.Across
+			k := ui.Box(c.Key("knob")).Absolute().Left(pad+float32(i)*(seg+4+2)).Top(pad).Size(seg+4, seg).
+				Radius(t.RadiusSM - pad).AccessHidden(true).IgnoreInput(true).
+				Transition(ui.ElementTransition{Animation: &an, Match: placeKnob{}})
+			a.knob(k)
+		}
 		for _, s := range segs {
 			b := ui.Box(c.Key("nav:"+s.key)).Size(seg+4, seg).Radius(t.RadiusSM - pad).Cursor(ui.CursorPointer).
-				Role(ui.RoleTab).Label(s.name).Tooltip(s.word).Focusable().Shrink(0)
+				Role(ui.RoleTab).Label(s.name).Tooltip(s.word).Focusable().Shrink(0).ZIndex(1) // over the knob
 			fg := t.InkMuted
 			switch {
 			case s.on:
-				a.knob(b)
-				fg = t.Ink
+				fg = t.Ink // on the knob under it
 			case b.Pressed():
 				b.Background(t.SurfaceSunken.Mix(t.Ink, 0.06))
 				fg = t.Ink
@@ -288,19 +302,25 @@ func drawGear(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 }
 
 // page wraps the zoom level shown in a column keyed by it, so changing
-// level plays its entrance (routeEnter).
+// level plays the move's motion (D290, navmotion.go): the page comes in
+// as the move says inside a stage that stays, and the one left goes as
+// the move says too (the stage's ChildExit), its copy under the new one.
 func (a *App) page(c *ui.Context, body func()) func() {
 	return func() {
 		// Keyed by level only: a reconnect must not rebuild the
 		// conversation (and lose its scroll).
 		// D262: not keyed by the welcome either: the home answering must not
 		// replay the page's entrance (the launch's visible switch).
+		// D290: nor by the task: one task to the next keeps the page (the
+		// bar and the rail stay) and moves the task's own column alone.
 		key := fmt.Sprintf("page:%d", a.Route)
-		if a.Route == RouteTask {
-			key += ":" + a.TaskID
-		}
-		p := ui.Column(c.Key(key)).Grow(1).MinHeight(0)
-		a.routeEnter(c, p)
-		p.Children(body)
+		d := a.navStep(c)
+		_, exit := a.navMotions(d)
+		ui.Box(c.Key("stage")).Grow(1).MinHeight(0).ChildExit(exit).Children(func() {
+			// The page's own ground, so the one coming covers the one left.
+			p := ui.Column(c.Key(key)).Absolute().Fill().Background(a.T.Bg).Transition(a.pageTransition(d))
+			a.pagePose(c, p, 1)
+			p.Children(body)
+		})
 	}
 }

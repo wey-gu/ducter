@@ -838,6 +838,12 @@ const FoldLine = ({ words, open, onToggle }: { words: string; open: boolean; onT
  *  a result you have seen folded away. Beside an opened task (the rail) every task is a row. */
 export function OnHandList({ room }: { room: Room }) {
   useKeys(room);
+  // D290: on its first paint the rows come in one after another (app.css .entering), then never again.
+  const [entering, setEntering] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setEntering(false), 700);
+    return () => clearTimeout(t);
+  }, []);
   const groups = lensGroups();
   const lens = currentLens(groups);
   L.showProj = lensOn(groups) && !lens;
@@ -874,7 +880,7 @@ export function OnHandList({ room }: { room: Room }) {
   const openN = A.defaultable().length;
   const shown = needs.length + working.length + waiting.length + done.length;
   return (
-    <div class={`onhand-list room-${room}`}>
+    <div class={`onhand-list room-${room}${entering && room !== "rail" ? " entering" : ""}`}>
       {!rail && (
         <>
           {room !== "full" && <LensTabs />}

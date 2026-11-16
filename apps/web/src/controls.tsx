@@ -51,6 +51,8 @@ export function NavBtn(p: { label: string; onClick: () => void; glyph?: Componen
 export function PlaceSeg(p: { segs: { key: string; label: string; about: string; glyph: ComponentChildren; on: boolean; go: () => void }[] }) {
   return (
     <nav class="places">
+      {/* D290: the knob is its own piece under the marks, so it slides to the place shown. */}
+      {p.segs.some((s) => s.on) && <span class="knob" aria-hidden="true" style={{ "--i": p.segs.findIndex((s) => s.on) }} />}
       {p.segs.map((s) => (
         <button
           key={s.key}

@@ -286,6 +286,7 @@ func (a *App) header(c *ui.Context) {
 		ui.Row(c.Key("who")).Gap(t.S3 - 2).AlignItems(ui.Center).MinWidth(0).Children(func() {
 			// The clay partner, 44 points: it breathes and blinks (D77).
 			face := ui.Box(c.Key("who-face")).Shrink(0).Cursor(ui.CursorPointer).AccessHidden(true).Tooltip(about)
+			a.lookAround(c, face) // D290: it glances round as you come back
 			face.Children(func() { a.partnerFace(c, "bar", a.presence(c), 44) })
 			ui.Column(c).Gap(0).MinWidth(0).Children(func() {
 				name := ui.Text(c.Key("who-name"), a.S.PersonaName).FontSize(barText).FontWeight(600).TextColor(t.Ink).LineHeight(1.25).SingleLine().

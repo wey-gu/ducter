@@ -9,6 +9,8 @@ import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { useSheetMotion } from "./sheetmotion.ts";
+import { last as lastMove } from "./nav.ts";
 import type { JSX } from "preact";
 import { A, candKey, effortWord, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
@@ -1256,6 +1258,17 @@ function Top({ back, plus, level, extra }: { back?: string; plus?: boolean; leve
   // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
   // way to the other places (one per screen: the conversation's, when the panes stand side by side).
   const wide = useWide();
+  // D290: back at the conversation, the partner glances round at where you were (app.css .look).
+  const face = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const el = face.current;
+    if (!el || lastMove.kind !== "back" || Date.now() - lastMove.at > 1200) return;
+    el.classList.add("look");
+    const off = () => el.classList.remove("look");
+    el.addEventListener("animationend", off, { once: true });
+    const timer = setTimeout(off, 1200);
+    return () => clearTimeout(timer);
+  }, [!!(back || level)]);
   if (back || level)
     return (
       <header class="top">
@@ -1285,7 +1298,7 @@ function Top({ back, plus, level, extra }: { back?: string; plus?: boolean; leve
           way, D262); the counts under the name open On hand, narrowed to what they name when they
           name one thing. Each tints on its own under the pointer. */}
       <div class="who">
-        <button class="who-face" tabIndex={-1} aria-hidden="true" title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
+        <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
           <Avatar size={44} />
         </button>
         <span class="who-words">
@@ -2061,7 +2074,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
         />
       )}
       <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
-        <div class="task-head">
+        <div class="task-head" data-hero={id}>
           <span class="face">
             <Avatar size={96} state={faceOf(a)} still={stillFace(a)} />
             {a === "blocked" && A.S.waiterFor(id) && <WaitBubble w={A.S.waiterFor(id)} size="lg" />}
@@ -2138,7 +2151,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
 // ---------- sheets ----------
 
 function Sheet({ children, label }: { children: preact.ComponentChildren; label: string }) {
-  const close = () => ((A.sheet = null), A.changed());
+  // D290: it goes back down the way it came, and on a phone follows the finger down to close.
+  const { sheet, scrim, close } = useSheetMotion(() => ((A.sheet = null), A.changed()));
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && close();
     addEventListener("keydown", k);
@@ -2146,8 +2160,8 @@ function Sheet({ children, label }: { children: preact.ComponentChildren; label:
   }, []);
   return (
     <>
-      <div class="scrim" onClick={close} />
-      <div class="sheet" role="dialog" aria-modal="true" aria-label={label}>
+      <div class="scrim" ref={scrim} onClick={close} />
+      <div class="sheet" ref={sheet} role="dialog" aria-modal="true" aria-label={label}>
         <div class="grab" />
         {children}
         <Btn kind="secondary" class="sheet-close" label={t("sheet.close")} onClick={close} />
@@ -2797,12 +2811,16 @@ function SettingsSheet() {
   }, []);
   const page = (A.sheet?.kind === "settings" && A.sheet.page) || "";
   const go = (p: SettingsPage) => ((A.sheet = { kind: "settings", page: p }), A.changed());
+  // D290: the list comes back from the leading side, as a pushed page's way back.
+  const was = useRef(page);
+  const popped = !page && was.current !== "";
+  useEffect(() => void (was.current = page), [page]);
   const sec = SECTIONS.find((x) => x.page === page);
   const brain = A.brainNow ?? A.settings?.brain;
   return (
     <Sheet label={t("settings.title")}>
       {!sec ? (
-        <div class="set-page" key="list">
+        <div class={`set-page${popped ? " popped" : ""}`} key="list">
           <h2>{t("settings.title")}</h2>
           <button class="set-hero" onClick={() => go("partner")}>
             <Avatar size={64} />

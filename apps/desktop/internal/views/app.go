@@ -128,6 +128,8 @@ type App struct {
 
 	Route  Route
 	TaskID string
+	// nav is the last move between pages, for its motion (D290).
+	nav navState
 
 	draft      string
 	pending    []pendingMsg

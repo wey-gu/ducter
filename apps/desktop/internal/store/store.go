@@ -88,6 +88,10 @@ type CheckpointAt struct {
 
 // Task is what the client knows of one task.
 type Task struct {
+	outside   []OutsideAct // Outside(), kept until the events change
+	outsideAt outsideKey
+	outsideOK bool
+
 	ID          string
 	Open        *protocol.TaskOpen
 	State       *protocol.TaskState

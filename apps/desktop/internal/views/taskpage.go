@@ -196,7 +196,8 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 func (a *App) taskHead(c *ui.Context, task *store.Task, m *taskMemo) {
 	t := a.T
 	ui.Column(c.Key("headcol")).Gap(t.S6).MinWidth(0).Children(func() {
-		ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Children(func() {
+		// D290: the head is where the card you opened grows to (Hero).
+		ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Transition(a.heroTransition(task.ID)).Children(func() {
 			ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
 				a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
 				// What it waits for, in a bubble by its head (D112).

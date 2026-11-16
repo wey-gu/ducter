@@ -92,4 +92,5 @@ With one errand on hand, all of this stays out of the way: one row, and four sma
 ## On a phone
 
 The same: the projects as a row of names you can swipe, the four numbers, and the list. Tap a
-row to open it.
+row to open it: the row grows into the task's page. To go back, tap **‹** at the top left, or, in
+the app, swipe in from the left edge. A sheet (Settings, a new task) closes when you pull it down.

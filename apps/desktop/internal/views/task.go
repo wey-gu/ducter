@@ -54,7 +54,12 @@ func (a *App) task(c *ui.Context) {
 			rw = railWidth(w)
 		}
 		a.slide(c, "rail", rw, func(cw float32) { a.onHandRail(c, cw) })
-		ui.Column(c.Key("taskcol")).Grow(1).MinWidth(0).MinHeight(0).Children(func() { a.taskBody(c, task) })
+		// D290: keyed by the task, so one task to the next moves this
+		// column alone (the bar and the rail stay): the new one rises a
+		// little into place as the one left fades.
+		ui.Box(c.Key("taskstage")).Grow(1).MinWidth(0).MinHeight(0).ChildExit(ui.Motion{}).Children(func() {
+			ui.Column(c.Key("taskcol:" + task.ID)).Absolute().Fill().Transition(a.taskSwitch()).Children(func() { a.taskBody(c, task) })
+		})
 		bw := float32(0)
 		if bench {
 			bw = a.benchW(w)

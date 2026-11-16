@@ -14,6 +14,7 @@ import { copy } from "./conv-copy.ts";
 import { attention, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
+import { kindOf, navMove } from "./nav.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
 import { keepDraft, readDraft } from "./follow.ts";
@@ -1955,6 +1956,10 @@ class AppState {
     // Taking the whole screen, or going back beside the conversation, morphs rather than jumps
     // (a view transition where the browser has one; none under reduced motion).
     if (morphs(was, r)) return morph(() => this.applyRoute(r));
+    // D290: a level deeper, back, or one task to the next moves as its kind says (nav.ts).
+    // Wide, the conversation and On hand beside it look the same: nothing moves between them.
+    const k = wideNow() && was.name !== "task" && r.name !== "task" ? undefined : kindOf(was, r);
+    if (k) return navMove(k, () => this.applyRoute(r), r.name === "task" ? r.id : was.name === "task" ? was.id : undefined);
     this.applyRoute(r);
   }
 

@@ -311,7 +311,7 @@ func (a *App) onHandRail(c *ui.Context, w float32) {
 			})
 		}
 		ui.Scroll(c.Key("rail-scroll")).Grow(1).MinHeight(0).Children(func() {
-			ui.Column(c).Gap(t.S4).Padding(t.S3, t.S3, t.S6, t.S3).Children(func() {
+			ui.Column(c).Gap(t.S3).Padding(t.S3, t.S2, t.S6, t.S2).Children(func() {
 				prev := a.oh.room
 				a.oh.room = "rail"
 				a.onHandList(c, b)

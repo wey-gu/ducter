@@ -59,10 +59,15 @@ func (a *App) bareChrome(c *ui.Context) {
 	ui.Box(c.Key("chrome:bare")).Height(ChromeH).Shrink(0).DragWindow()
 }
 
-// crumb is one step of the breadcrumb: a button back up to a zoom level.
+// barText is the bar's one type size (D270): every crumb, the current one
+// included, at 14/600; the bar never says "you are here" by being bigger.
+const barText = 14
+
+// crumb is one step of the breadcrumb: a button back up to a zoom level,
+// in muted ink at the bar's one size.
 func (a *App) crumb(c *ui.Context, label string, to Route) {
 	t := a.T
-	l := ui.Text(c.Key("crumb:"+label), label).FontSize(t.MD).FontWeight(700).TextColor(t.InkMuted).Cursor(ui.CursorPointer).
+	l := ui.Text(c.Key("crumb:"+label), label).FontSize(barText).FontWeight(600).TextColor(t.InkMuted).Cursor(ui.CursorPointer).
 		Role(ui.RoleButton).Focusable().Padding(t.S1+2, t.S2).Radius(t.RadiusSM).SingleLine().Shrink(0)
 	// A text button of the chrome: muted ink, the secondary hover tint.
 	switch {
@@ -74,12 +79,15 @@ func (a *App) crumb(c *ui.Context, label string, to Route) {
 	if l.Clicked() {
 		a.Route = to
 	}
-	ui.Text(c, "/").FontSize(t.MD).TextColor(t.Faint).Shrink(0)
+	ui.Text(c, "/").FontSize(barText).TextColor(t.Faint).Shrink(0).AccessHidden(true)
 }
 
-// chromeTitle is the current level's name in the bar.
+// chromeTitle is the current level's name in the bar (D270): the same size
+// and weight as the crumbs before it, in full ink, and not a button.
 func (a *App) chromeTitle(c *ui.Context, title string) ui.Element {
-	return a.heading(c, autospace(title), a.T.XL).SingleLine().Shrink(1).MinWidth(0)
+	t := a.T
+	return ui.Text(c.Key("crumb:here"), autospace(title)).FontSize(barText).FontWeight(600).TextColor(t.Ink).
+		Padding(t.S1+2, t.S2).SingleLine().Shrink(1).MinWidth(0)
 }
 
 // routeEnter plays a zoom level's entrance as the route changes: a short
@@ -102,21 +110,21 @@ func (a *App) routeEnter(c *ui.Context, e ui.Element) {
 // placeBar is the one header every place has: where you are on the left
 // (the partner on the conversation, crumbs elsewhere); on the right the
 // place's own actions, then the way to the other places, always in the
-// same order and the same clay buttons. here is the place shown, drawn as
-// the chosen one.
+// same order. here is the place shown, drawn as the chosen one. D270: at
+// most one worded clay button (the place's primary action); spacing alone
+// parts the place's actions from the places, no hairline.
 func (a *App) placeBar(c *ui.Context, key string, here Route, left, actions func()) {
 	a.chrome(c, key, left, func() {
 		if actions != nil {
-			actions()
-			// A hairline between this place's own actions and the places.
-			ui.Box(c).Size(1, 20).Background(a.T.ChromeLine).Shrink(0)
+			ui.Row(c.Key("acts")).Gap(a.T.S2).AlignItems(ui.Center).Shrink(0).Children(actions)
+			ui.Box(c).Width(a.T.S2).Shrink(0)
 		}
 		a.placeNav(c, here)
 	})
 }
 
-// compactBar: a window too narrow for every word: Settings keeps only its
-// drawn gear (its name is its tooltip and its accessible name).
+// compactBar: a narrow window, where the task's branch label is cut
+// shorter to keep room for its name.
 func (a *App) compactBar() bool { return a.winW > 0 && a.winW < 1060 }
 
 // placeNav is the way to the other places: 更新 while something waits to
@@ -139,16 +147,14 @@ func (a *App) placeNav(c *ui.Context, here Route) {
 	a.placeSegments(c, here)
 }
 
-// placeSegments is the three places as one control (D264): a sunk track
-// holding 设备 · 手头的事 · 设置, the place you are in a raised knob in
-// it, the others flat. One object instead of three buttons, so the bar
-// stays calm, and "where you are" reads as a knob in its slot, not as a
-// button that went dead. Every segment has its drawn mark; a narrow window
-// drops all three words together (each keeps its name as tooltip and
-// accessible name), never one word alone.
+// placeSegments is the three places as one control (D264, D270): a small
+// sunk track holding three drawn marks (devices, on hand, settings), the
+// place you are in a raised white knob with the clay ledge, the others
+// flat. Always the marks alone, at every width: each says its name as
+// tooltip and accessible name. One object, so the bar stays calm, and
+// "where you are" reads as a knob in its slot.
 func (a *App) placeSegments(c *ui.Context, here Route) {
 	t := a.T
-	words := !a.compactBar()
 	inSettings := here == RouteSettings || here == RoutePartner
 	segs := []struct {
 		key, word, name string
@@ -160,44 +166,45 @@ func (a *App) placeSegments(c *ui.Context, here Route) {
 		{"onhand", a.L.T("nav.onhand"), a.L.T("nav.onhand"), drawOnHand, here == RouteOnHand, func() { a.Route = RouteOnHand; a.markRead() }},
 		{"settings", a.L.T("nav.settings"), a.L.T("nav.settings"), drawGear, inSettings, a.OpenSettings},
 	}
-	pad := float32(3)
-	ui.Row(c.Key("places")).Height(t.ControlSM).Padding(pad).Gap(2).Radius(t.RadiusSM+2).AlignItems(ui.Center).
+	const pad, seg = float32(3), float32(28)
+	ui.Row(c.Key("places")).Height(seg+2*pad).Padding(pad).Gap(2).Radius(t.RadiusSM).AlignItems(ui.Center).
 		Background(t.SurfaceSunken).InsetShadow(0, 1.5, 2, 0, t.Line).Role(ui.RoleTabList).Shrink(0).Children(func() {
 		for _, s := range segs {
-			seg := ui.Row(c.Key("nav:" + s.key)).Height(t.ControlSM - 2*pad).Gap(t.S1 + 2).AlignItems(ui.Center).
-				Radius(t.RadiusSM - 1).Cursor(ui.CursorPointer).Role(ui.RoleTab).Label(s.name).Focusable().Shrink(0)
-			if words {
-				seg.Padding(0, t.S3-2, 0, t.S2)
-			} else {
-				seg.Padding(0, t.S2-1, 0, t.S2-1).Tooltip(s.name)
-			}
+			b := ui.Box(c.Key("nav:"+s.key)).Size(seg+4, seg).Radius(t.RadiusSM - pad).Cursor(ui.CursorPointer).
+				Role(ui.RoleTab).Label(s.name).Tooltip(s.word).Focusable().Shrink(0)
 			fg := t.InkMuted
 			switch {
 			case s.on:
-				// The knob: the card's white with a 2-point clay ledge.
-				seg.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+				a.knob(b)
 				fg = t.Ink
-			case seg.Pressed():
-				seg.Background(t.SurfaceSunken.Mix(t.Ink, 0.06))
+			case b.Pressed():
+				b.Background(t.SurfaceSunken.Mix(t.Ink, 0.06))
 				fg = t.Ink
-			case seg.Hovered():
-				seg.Background(t.SurfaceSunken.Mix(t.Surface, 0.5))
+			case b.Hovered():
+				b.Background(t.SurfaceSunken.Mix(t.Surface, 0.5))
 				fg = t.Ink
 			}
 			if s.on {
-				seg.AccessSelected(true)
+				b.AccessSelected(true)
 			}
-			seg.Children(func() {
-				a.glyph(c, 18, s.draw(fg))
-				if words {
-					ui.Text(c, s.word).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
-				}
+			draw := s.draw(fg)
+			b.Draw(func(p *ui.Painter, r ui.Rect) {
+				const g = 18
+				draw(p, ui.Rect{X: r.X + (r.W-g)/2, Y: r.Y + (r.H-g)/2, W: g, H: g})
 			})
-			if seg.Clicked() && !s.on {
+			if b.Clicked() && !s.on {
 				s.open()
 			}
 		}
 	})
+}
+
+// knob is the one "chosen" look (D270): the card's white raised on a
+// 2-point clay ledge and a soft drop. The place shown, the strip's filter,
+// the selected row in a list: the same knob, never a bar at an edge.
+func (a *App) knob(e ui.Element) {
+	t := a.T
+	e.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 }
 
 // drawOnHand is On hand's mark: three things in hand, a dot and a line

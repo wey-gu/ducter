@@ -50,7 +50,7 @@ export function FillButton({ level }: { level: "onhand" | "task" }) {
 // ---------- the header at the whole screen: the Mac's crumbs ----------
 
 /** 对话 / 手头的事 [/ the task]: each crumb but the last goes there; the last is the title. */
-export function FullTop({ task, sub, children }: { task?: Task; sub?: string; children?: ComponentChildren }) {
+export function FullTop({ task, children }: { task?: Task; children?: ComponentChildren }) {
   const name = task ? shortTitle(title(task)) || t("task.unknown") : t("onhand.title");
   return (
     <header class="top crumbs">
@@ -67,27 +67,16 @@ export function FullTop({ task, sub, children }: { task?: Task; sub?: string; ch
             <span class="slash" aria-hidden="true">/</span>
           </>
         )}
-        {task ? (
-          // D268: an opened task's title on one line (its whole title on hover), and under it who
-          // does it, where it stands and where, small.
-          <span class="here-col">
-            <h1 class="here task" title={title(task)}>
-              {name}
-            </h1>
-            {sub && <span class="sub">{sub}</span>}
-          </span>
-        ) : (
-          <>
-            <h1 class="here">{name}</h1>
-            {sub && <span class="sum">{sub}</span>}
-          </>
-        )}
+        {/* D270: the current crumb at the bar's one size, in full ink, not a button; no line under
+            it (who does a task, where it stands and where are said once, in the task's head). */}
+        <h1 class="here" title={task ? title(task) : undefined}>
+          {name}
+        </h1>
       </nav>
       {/* D262: the bar's one anatomy: this place's own actions, then the way to the other places. */}
       <span class="acts">
         {children}
         <FillButton level={task ? "task" : "onhand"} />
-        <span class="bar-sep" aria-hidden="true" />
         <Places here={task ? undefined : "onhand"} />
       </span>
     </header>
@@ -96,16 +85,6 @@ export function FullTop({ task, sub, children }: { task?: Task; sub?: string; ch
 
 // ---------- On hand at the whole screen ----------
 
-
-/** The Mac's counts line beside the title: what needs you, what's working, what waits. */
-function boardSummary(): string {
-  const b = A.S.board();
-  const needs = b.lanes[LANE.needs]!.length + A.S.partnerDecisions().length;
-  const working = b.lanes[LANE.working]!.length;
-  const waiting = b.lanes[LANE.waiting]!.length + A.S.armedWaiters().filter((w) => !w.taskId).length;
-  const parts = [needs ? t("header.needs", needs) : "", working ? t("header.working", working) : "", waiting ? t("header.waiting", waiting) : ""].filter(Boolean);
-  return parts.join(" · ");
-}
 
 /** 接下来 / Next: what comes on its own, soonest first, only when more than one thing is coming (D127). */
 export function forecast(now = Date.now()): string {
@@ -142,7 +121,7 @@ export function Board() {
   const next = forecast();
   return (
     <>
-      <FullTop sub={boardSummary()}>
+      <FullTop>
         {/* 新建 / New task: a quiet text button, never a floating one (D128). */}
         <NavBtn label={t("newtask.button")} about={`${t("newtask.button")} (⌘N)`} glyph={<PlusMark />} onClick={() => A.openNewTask()} />
       </FullTop>
@@ -180,12 +159,14 @@ export function Rail() {
   const lens = currentLens(groups);
   return (
     <aside class="rail" aria-label={t("nav.onhand")}>
-      <div class="rail-head">
-        <button class="crumb" onClick={() => A.go({ name: "onhand", full: true })}>
-          {t("onhand.title")}
-        </button>
-        {lensOn(groups) ? <span class="lens-name">{lens ? lensName(lens) : t("onhand.lens.all")}</span> : <span class="sum">{boardSummary()}</span>}
-      </div>
+      {/* D270: the bar already says On hand; the rail names only its lens, when there is one. */}
+      {lensOn(groups) && (
+        <div class="rail-head">
+          <button class="crumb" onClick={() => A.go({ name: "onhand", full: true })}>
+            {lens ? lensName(lens) : t("onhand.lens.all")}
+          </button>
+        </div>
+      )}
       <div class="scroll rail-list">
         <OnHandList room="rail" />
       </div>

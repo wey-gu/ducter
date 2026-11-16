@@ -20,7 +20,6 @@ func (a *App) onHand(c *ui.Context) {
 	a.placeBar(c, "onhand", RouteOnHand, func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.chromeTitle(c, a.L.T("onhand.title"))
-		ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).Margin(0, 0, 0, 4)
 	}, func() {
 		// 新建 / New task: the place's own action, a clay button in the bar
 		// like every other (D262), never a FAB (D128).
@@ -54,7 +53,7 @@ func (a *App) onHand(c *ui.Context) {
 					return
 				}
 				lb := lensBoard(b, lens)
-				ui.Column(c.Key("list")).Gap(t.S5).Width(960).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
+				ui.Column(c.Key("list")).Gap(t.S5).Width(onHandMeasure).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
 					if !column && lensOn(groups) {
 						a.lensTabs(c, groups, lens)
 					}
@@ -94,8 +93,8 @@ func (a *App) lensRoutines(c *ui.Context, g *lensGroup) {
 		return
 	}
 	a.listSection(c, "routines", a.L.T("lane.routines"), len(g.routines), func() {
-		ui.Column(c.Key("rows")).Radius(t.RadiusLG).Clip().Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
-			Dividers(1, t.LineSoft).Children(func() {
+		// D270: flat on the ground, as the task rows are.
+		ui.Column(c.Key("rows")).Gap(t.S1 - 2).Children(func() {
 			for i := range g.routines {
 				a.projectRoutineRow(c.Key("rt:"+g.routines[i].RoutineID), &g.routines[i])
 			}
@@ -207,7 +206,9 @@ func (a *App) pad(s string) string {
 // waiterRow is a task-less waiter: one compact line in the Waiting lane.
 func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
 	t := a.T
-	ui.Row(c).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Start).
+	// D270: a row on the ground like the task rows, its wait's clay bubble
+	// the one picture.
+	ui.Row(c).Gap(t.S3).Padding(t.S2, t.S3+2).MinHeight(rowH).Radius(t.RadiusMD).AlignItems(ui.Center).
 		Label(w.Reason).Children(func() {
 		if w.Check != nil || w.Event != nil {
 			a.waitBubble(c, waitGlyph(w.Check, w.Event), 40)
@@ -221,7 +222,7 @@ func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
 			if w.Check != nil || w.Event != nil {
 				title = a.waitLine(w.Reason)
 			}
-			ui.Text(c, keepWords(autospace(title))).FontSize(t.MD).FontWeight(800).MaxLines(3).Balance()
+			ui.Text(c, keepWords(autospace(title))).FontSize(14).FontWeight(500).TextColor(t.Ink).MaxLines(2)
 			if w.Check != nil || w.Event != nil {
 				a.groove(c, w, false)
 			}
@@ -241,11 +242,11 @@ func (a *App) missedRow(c *ui.Context, w *protocol.Waiter) {
 	if why == "" {
 		why = a.L.T("wait.missed.ranout")
 	}
-	ui.Row(c).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).Border(1, t.LineSoft).AlignItems(ui.Center).
+	ui.Row(c).Gap(t.S3).Padding(t.S2, t.S3+2).MinHeight(rowH).Radius(t.RadiusMD).AlignItems(ui.Center).
 		Label(w.Reason).Children(func() {
 		a.waitBubble(c, waitGlyph(w.Check, w.Event), 32)
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-			ui.Text(c, keepWords(autospace(w.Reason))).FontSize(t.MD).FontWeight(700).MaxLines(2).Balance()
+			ui.Text(c, keepWords(autospace(w.Reason))).FontSize(14).FontWeight(500).TextColor(t.Ink).MaxLines(2)
 			ui.Text(c, a.L.T("wait.missed", why)).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 		})
 		if a.button(c, a.L.T("wait.rearm"), btnText, t.ControlSM, t.Bg) {
@@ -287,7 +288,7 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 		return
 	}
 	line := a.L.T("onhand.next") + "  " + strings.Join(items, " · ")
-	ui.Text(c.Key("forecast"), line).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Tooltip(line).Padding(0, t.S1)
+	ui.Text(c.Key("forecast"), line).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Tooltip(line).Padding(0, t.S3+2)
 }
 
 func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, basis float32) {

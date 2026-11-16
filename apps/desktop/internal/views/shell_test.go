@@ -20,6 +20,8 @@ import (
 // D262: one shell. Every place's bar ends in the same way to the other
 // places (设备 · 手头的事 · 设置), so going one level in never strands you;
 // Settings is a visible button, and an update waiting is said in the bar.
+// D270: the places are drawn marks only, so they are found by their
+// accessible names (the tester matches a label as it matches a text).
 func TestEveryPlaceHasTheWayOut(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		app, tt := tinycart(t, lang, 3*time.Minute)
@@ -39,9 +41,9 @@ func TestEveryPlaceHasTheWayOut(t *testing.T) {
 			p.go_()
 			tt.Frame()
 			tt.Frame()
-			for _, want := range []string{L.T("nav.devices"), L.T("nav.onhand"), L.T("nav.settings")} {
-				if !tt.HasText(want) {
-					t.Errorf("%s/%s: no %q in the bar", lang, p.name, want)
+			for _, want := range []string{L.T("nav.devices.label"), L.T("nav.onhand"), L.T("nav.settings")} {
+				if _, ok := tt.Find(want); !ok {
+					t.Errorf("%s/%s: no place named %q in the bar", lang, p.name, want)
 				}
 			}
 		}
@@ -97,14 +99,14 @@ func TestLaunchHasNoVisibleSwitch(t *testing.T) {
 	if tt.HasText("连接中") || tt.HasText("Connecting") {
 		t.Errorf("first frame says connecting: %q", first)
 	}
-	name0 := crop(tt.Image(), 150, 4, 260, 34)
+	name0 := crop(tt.Image(), 150, 4, 260, 28)
 	writeShotTo(t, tt, "shell", "mac-launch-first-frame")
 	now = now.Add(80 * time.Millisecond)
 	app.Receive(protocol.ServerFrame{T: "welcome", Persona: "default", PersonaName: "小鸭", HeadSeq: 0})
 	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{}})
 	tt.Frame()
 	tt.Advance(50 * time.Millisecond)
-	if name1 := crop(tt.Image(), 150, 4, 260, 34); !bytes.Equal(name0, name1) {
+	if name1 := crop(tt.Image(), 150, 4, 260, 28); !bytes.Equal(name0, name1) {
 		t.Errorf("the name moved or changed after the welcome (the entrance replayed?)")
 	}
 	if !tt.HasText("设置") {
@@ -131,6 +133,36 @@ func TestBarSaysAnUpdate(t *testing.T) {
 		t.Errorf("the update opened %v/%s, not Settings › 关于", app.Route, app.settings.tab)
 	}
 	writeShotTo(t, tt, "shell", "mac-update-zh")
+}
+
+// D270: the conversation's bar is two ways in. The name opens the
+// partner's page; the counts under it open On hand, narrowed to what they
+// name when they name one thing.
+func TestCountsOpenOnHand(t *testing.T) {
+	app, tt := tinycart(t, i18n.ZH, 3*time.Minute)
+	app.Route = RouteConversation
+	tt.Frame()
+	words := app.summary(app.S.Board())
+	f, ok := app.summaryFilter(app.S.Board())
+	if !ok || words == "" {
+		t.Fatalf("no counts line: %q", words)
+	}
+	if err := tt.Click(words); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if app.Route != RouteOnHand || app.oh.filter != f {
+		t.Errorf("the counts opened route %v filter %d, want On hand filter %d", app.Route, app.oh.filter, f)
+	}
+	app.Route = RouteConversation
+	tt.Frame()
+	if err := tt.Click(app.L.T("nav.partner") + " · " + app.S.PersonaName); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if app.Route != RoutePartner && app.Route != RouteSettings {
+		t.Errorf("the name opened route %v, want the partner's page", app.Route)
+	}
 }
 
 // writeShotTo writes a shot under .shots/<dir> when DUCTER_SHELL_SHOTS is set.

@@ -158,25 +158,16 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 	})
 }
 
-// taskTitle is the task's name in the bar (D268): one line at 15/600 in the
-// body face, its full title on hover, and under it at 12 who does it, where
-// it stands and where: "Codex · 在做 · hawdb · ducter/fix".
+// taskTitle is the task's name in the bar (D270): the last crumb, at the
+// bar's one size in full ink, its full title on hover. No line under it:
+// who does it, where it stands and where are said once, in the task's head.
 func (a *App) taskTitle(c *ui.Context, task *store.Task) {
-	t := a.T
 	full := task.Title()
 	title := shortTitle(full)
 	if title == "" {
 		title, full = a.L.T("task.unknown"), a.L.T("task.unknown")
 	}
-	state := a.stateLabel(task.Attention())
-	if a.yourTurn(task) {
-		state = a.L.T("task.your.turn")
-	}
-	sub := strings.Join(nonEmpty(harnessName(task.Harness()), state, a.whereLine(task.Place())), " · ")
-	ui.Column(c.Key("tasktitle")).Gap(1).MinWidth(0).Shrink(1).Children(func() {
-		ui.Text(c, autospace(title)).FontSize(15).FontWeight(600).LineHeight(1.25).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(full)
-		ui.Text(c, autospace(sub)).FontSize(t.XS).LineHeight(1.25).TextColor(t.InkMuted).SingleLine().MinWidth(0)
-	})
+	a.chromeTitle(c, title).Tooltip(full)
 }
 
 // taskActions are what the user can do to the task itself while it is
@@ -194,11 +185,15 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 		a.benchSims(task)
 	}
 	if a.benchOpenable(task) {
-		kind := btnText
+		// D270: a quiet text button; while the workbench shows, it stays
+		// pressed into the bar (sunken, no ledge), never a second clay button.
+		on := ui.Box(c.Key("wb-on")).Radius(a.buttonRadius(t.ControlSM)).Shrink(0)
 		if a.benchShown(task) {
-			kind = btnSecondary
+			on.Background(t.SurfaceSunken)
 		}
-		if a.button(c, a.L.T("wb.toggle"), kind, t.ControlSM, t.Chrome) {
+		clicked := false
+		on.Children(func() { clicked = a.button(c, a.L.T("wb.toggle"), btnText, t.ControlSM, t.Chrome) })
+		if clicked {
 			a.ToggleBench()
 		}
 	}
@@ -208,7 +203,7 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 		return
 	}
 	// D190: the page it is working on in Ducter's own browser, live.
-	if a.S.Browsing(task.ID) != "" && a.button(c, a.L.T("live.watch.title"), btnSecondary, t.ControlSM, t.Chrome) {
+	if a.S.Browsing(task.ID) != "" && a.button(c, a.L.T("live.watch.title"), btnText, t.ControlSM, t.Chrome) {
 		a.OpenWatch(task.ID)
 	}
 	// D235: it is using the person's apps: where, and 停下 / Stop.
@@ -216,7 +211,7 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	// D238: it is using the person's own phone: which, and 停下 / Stop.
 	a.handsetTaskLine(c, task)
 	// D217: it is using Ducter's phone: watch it, in the workbench's Phone page (D220).
-	if dev := a.S.Phoning(task.ID); dev != "" && a.button(c, a.L.T("phoneuse.watch"), btnSecondary, t.ControlSM, t.Chrome) {
+	if dev := a.S.Phoning(task.ID); dev != "" && a.button(c, a.L.T("phoneuse.watch"), btnText, t.ControlSM, t.Chrome) {
 		a.bench.open, a.bench.tab = true, "phone"
 		a.benchLoad(task)
 	}

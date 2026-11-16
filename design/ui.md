@@ -318,20 +318,24 @@ Mac (`placeBar`, `placeNav` in `views/chrome.go`) and the web (`Top`, `Places` i
 
 | Slot | What goes there | Component |
 |---|---|---|
-| Left: where you are | the conversation: the partner (face 52, name 20, the counts line, which keeps its height while empty); elsewhere the crumbs (15/700 muted text buttons, `/` faint) and the level's name 18/800; a phone's inner page: **‹ 对话 / ‹ Conversation** | `crumb`, `chromeTitle` · `.back`, `.level`, `.trail` |
-| Right, first: this place's own actions | 新建 / New task (On hand); an opened task's working copy and workbench; 铺满 / Full screen | the bar button (secondary clay, 36, a drawn glyph before the word); a view toggle (working copy, workbench, full screen) is a quiet text or icon button that turns secondary while open |
-| a 1pt hairline | between the place's actions and the places | `bar-sep` |
-| Right, last: the way to the other places | **更新 / Update** only while something waits to update (the accent pebble with its arrow; *n 项更新 / n updates*; 正在更新 while 全部更新 runs; it opens 更新和关于 on the Mac, 你的设备 on the web); then the places as **one segmented control** (D264): a sunk track holding **设备 · 手头的事 · 设置** in that order, each with its drawn mark (a laptop and phone; three things in hand; the gear). The place shown is the raised knob in the track (the card's white, a 2-pt clay ledge) and does nothing; the others lie flat and tint on hover. Words beside the marks while the bar has room (Mac ≥ 1060 pt, the web's wide layout); below that all three show their marks alone together, never one word alone | `placeSegments` · `PlaceSeg` |
+| Left: where you are | **One type size in the bar (D270): 14/600.** The conversation: the partner, two ways in: the face (44) and the name (14/600 ink) open its page, the counts line under it (12 muted, keeping its height while empty) is its own quiet link to On hand, narrowed to what it names when it names one thing; each tints on its own under the pointer. Elsewhere the crumbs (14/600 muted text buttons, `/` faint) and the current one at the same size and weight in full ink, not a button; no line under it (an opened task's agent · state · where is said once, in its head). A page's own large heading lives in its content, never in the bar. A phone's inner page: **‹ 对话 / ‹ Conversation** | `crumb`, `chromeTitle` · `.back`, `.level`, `.trail`, `.here` |
+| Right, first: this place's own actions | 新建 / New task (On hand); an opened task's working copy, workbench and ⋯; 铺满 / Full screen | **at most one worded clay button per bar** (D270): the place's primary action (新建), the bar button (secondary clay, 36, a drawn glyph before the word). Every other action is a quiet text or icon button with no ledge until hovered; a view toggle that is open stays pressed in (sunken, no ledge). Spacing alone parts these from the places: no hairline |
+| Right, last: the way to the other places | **更新 / Update** only while something waits to update (the accent pebble with its arrow; *n 项更新 / n updates*; 正在更新 while 全部更新 runs; it opens 更新和关于 on the Mac, 你的设备 on the web); then the places as **one segmented control** (D264, D270): a small sunk track (34) holding three drawn marks, each about 28 square: **设备 · 手头的事 · 设置** in that order (a laptop and phone; three things in hand; the gear). **Always the marks alone, at every width**; tooltips and accessible names give the words. The place shown is **the knob** (the card's white raised on a 2-pt clay ledge and a soft drop) and does nothing; the others lie flat and tint on hover | `placeSegments`, `knob` · `PlaceSeg` |
 
 One way to the places per screen: wide (the panes side by side) it is in the conversation's bar,
 whose 手头的事 is dropped because On hand stands beside it (D176); the side pane's bar holds only
 its own actions. A phone has room for **手头的事** (from the conversation) and Settings' drawn
-gear (a 36 clay square, its name the label); 设备 is Settings' first page there (deliberate, see
-"Mac and phone" below). A Mac window under 1060 pt draws 设备 as its clay device alone and
-Settings as its gear, and an opened task's branch cuts to 18 characters so the task's name keeps
-room. The partner's face and name are a second way into Settings › 伙伴 (pointing at them tints
-them and says "{name} 的设置"; the face never changes for the pointer: a face says what the
-partner is doing, D77, D112). Metadata (model, place, project) is never in the bar: it is in the
+gear, in the same track; 设备 is Settings' first page there (deliberate, see
+"Mac and phone" below). A Mac window under 1060 pt cuts an opened task's branch to 18 characters
+so the task's name keeps room. The partner's face and name are a second way into Settings › 伙伴
+(pointing at either tints the name and says "{name} 的设置"; the face never changes for the
+pointer: a face says what the partner is doing, D77, D112); the counts line is never part of that
+button (D270).
+
+**The knob (D270).** One look for "chosen", everywhere: the card's white raised on a 2-pt clay
+ledge and a soft drop (`knob` on the Mac, `--knob` on the web). The place shown in the bar, the
+strip's filter on On hand, the project chosen in the lens column, the row open beside the rail or
+under the keys. Never a vertical bar at an edge, for selection or for state. Metadata (model, place, project) is never in the bar: it is in the
 task's Details (D74).
 
 **The button set (D262).** Exactly four kinds, and where each may stand:
@@ -339,9 +343,9 @@ task's Details (D74).
 | Kind | Look | Allowed |
 |---|---|---|
 | Primary | ink clay | the one decision of a card or sheet (Go, Merge, Update all), last in its row, at most one per group; never in a bar |
-| Secondary | cream clay | the other choices of a card or sheet (Hold, Not now); **every bar button** (a place's action, the places, Update) at 36 |
+| Secondary | cream clay | the other choices of a card or sheet (Hold, Not now); in a bar, **at most one worded one** (the place's primary action, e.g. 新建) and Update, at 36 (D270) |
 | Accent | orange clay | send, and the equip; nothing else |
-| Quiet text | flat ink, a tint under it on hover | crumbs, Reply…, Details, Cancel, 都按默认, a view toggle at rest; never the way to a place |
+| Quiet text | flat ink, a tint under it on hover | crumbs, Reply…, Details, Cancel, 都按默认; every other action in a bar (branch, 工作台, ⋯, watch, full screen), pressed in while open; the conversation's counts link; never the way to a place |
 
 **Mac and phone (D262).** The same places and the same bar on both, with these deliberate
 differences: Settings is a place with a rail on the Mac and a pushed sheet on the phone (D150);
@@ -498,7 +502,7 @@ an 11" iPad upright, both displays of iPhone Duo. From 1000 (an iPad held across
 upright, a wide window) it is two panes: the conversation on the left at its 720 measure, and on
 a 1pt `line` hairline the side pane (40% of the width, 400–560: the width On hand and the opened
 task were drawn for) showing On hand, or the task opened from it. The side pane's header names
-the level (18/800, the chrome's rule) with the bar button **＋ 新建** (D262); an opened task's crumb there is
+the level (14/600, the bar's one size, D270) with the bar button **＋ 新建** (D262); an opened task's crumb there is
 **‹ 手头的事 / On hand**. The conversation's header drops its On hand button; the face lives
 only in the conversation's header. Sheets from 700 × 640 stand centered as a card (radius 24 all
 round, no grab). Keys as on the Mac (⌘N, ⌘1–⌘4, ⌘,, ⌘K, Esc), in the iPad app's menu bar.
@@ -510,8 +514,8 @@ the level shown to the whole screen; there the same button with the arrows in (*
 Back beside the conversation**) brings it back, and so do ⌘2 (a toggle for On hand), the crumb
 **对话** and Esc (one level up: a whole-screen task goes to the whole-screen On hand). On hand at
 the whole screen is the Mac's On hand: a 60-high header on the chrome's hairline with the crumbs
-(15/600 muted, `/` faint, the title 18/800, the counts 12 muted) and **新建** (the bar button, `NavBtn`, D262), then
-the one list (D216, below) on a 960 measure. An opened task at the whole screen keeps its page on
+(14/600 muted, `/` faint, the current one 14/600 ink; D270) and **新建** (the bar button, `NavBtn`, D262), then
+the one list (D216, below) on one 760 reading column. An opened task at the whole screen keeps its page on
 the 720 measure under the crumbs **对话 / 手头的事 / {task}**; **暂停 / 取消任务** are in its foot
 (D210, D213, D212); from 1120 CSS px On hand stands beside it as a rail (`clamp(300px, 22vw,
 340px)`, D244), and all three (rail, task, workbench) from 1560; narrower with the workbench open,
@@ -528,7 +532,7 @@ built it for the web alone; the Mac's opened task used to replace the window). T
 width), **rail | task | workbench (520)**: the rail `clamp(22% of the window, 300, 340)` pt on
 `bg-deep` with no hairline, from 1100 pt; all three from 1560; narrower with the workbench open,
 task | workbench; under 1100 the task alone. It stands beside any opened task when there is room;
-with no task open On hand stays the 960 list. Rail and workbench slide their widths (260 ms,
+with no task open On hand stays the 760 list. Rail and workbench slide their widths (260 ms,
 Pebble's ease; snap under reduced motion). **⌘⇧] / ⌘⇧[** (the View menu's **下一件事 / Next
 Task** · **上一件事 / Previous Task**) open the next and previous task in the rail's order from
 anywhere, the composer included; j/k when no field has the keys. **The rail row** is D216's
@@ -536,7 +540,7 @@ two-line row, narrower (13/16 padding; no branch, computer or agent on line two)
 in **one status place**, needs you > working > new result: the partner's own clay face at 24 pt,
 still (needs you: the raised flag; working: reading; new result: the done face, the flag for one
 that didn't work). An active row shows only its title and face; a resting row its `+a −d` and
-time (Draft PR stays off the narrow rail). The task open beside it: `sunken` with a 4pt ink bar. Elsewhere (the 960 list,
+time (Draft PR stays off the narrow rail). The rows lie flat on the rail's ground; the task open beside it is the knob (D270). Elsewhere (the 760 list,
 beside the conversation, the phone) only **新结果 / New result** takes the place, before the
 time, and that row does not recede. **The handover:** a row seen working that turns into a new
 result plays once: the reading face sinks 5pt and fades as the done face pops from 0.55 on a
@@ -546,17 +550,23 @@ task's face, its counts on hover (**1 件等你 · 2 件在做 · 3 个新结果
 
 **On hand is one list (D216).** The phone, the pane beside the conversation, the whole screen and
 the rail draw the same rows (`apps/web/src/onhand.tsx`, `apps/desktop/internal/views/onhandlist.go`).
-Sections at 13/700 muted with the count; what needs you is its decision card, answered in place
-(in the rail, a row); every other section's tasks are **one clay card of rows** (white, the card's
-base, radius 24) parted by a 1pt `line-soft`. A row is two lines, 13/18 padding: the title 15/700
-(finished: ink-soft, 600), then on the right `+a −d` (mono 12, the done and failed inks), **草稿 PR
+Sections small and quiet (D270): 12/600 muted, the count 12/500 faint; what needs you is its
+decision card, answered in place (in the rail, a row); every other section's rows **lie flat on
+the ground** (no card around them), 2 apart, each at least 58 high (54 in the rail) with radius
+16, so the list reads as one even rhythm. A row is two lines, 8/14 padding: the title 14/500
+(settled: 400 at 70% ink), then on the right `+a −d` (mono 12, the done and failed inks), **草稿 PR
 / 已合并** (12/700 soft), the state word only by project (12/700, needs and failed inks), the time
-(12 muted, tabular); line two 13 soft: the step's drawn mark (14, the transcript's) and the step
-in words, the command in mono 12 muted, then on wide the branch (mono 12, at most a third) and the
-computer · agent (12 muted). Waiting rows lead with their wait bubble and carry the groove; a
-keep-going loop its lights. Hover (pointer) puts the one next step in the time's place on a
-`surface-raised` fade. The row the keys are on: `surface-raised` with a 4pt accent bar inside its
-left edge; selected: `working-surface`; the task open beside the rail: `sunken` with a 4pt ink bar.
+(12 muted, tabular); line two one muted line at 12: the step's drawn mark (14, the transcript's)
+and what is happening now in words, the command in mono 12 muted, then on wide where (project,
+computer; 12 muted). State is said by the small glyph or face, never a bar. Waiting rows lead with
+their wait bubble and carry the groove; a keep-going loop its lights. Hover (pointer) is a faint
+ink tint (4%) and puts the one next step in the time's place. The row the keys are on, and the
+task open beside the rail: **the knob** (D270); selected for many at once: `working-surface`.
+The strip of counts over the list (D261, D270) is a small sunk track (as the places are) of four
+cells, each a calm numeral (14/600, tabular; what needs you in its ink) and its state's name
+(13/500 muted) on one line; a zero is faint and does nothing; the filter chosen is the knob. The
+partner's calm sentence over it keeps its voice (15, soft ink); **接下来 / Next** is one quiet
+12 line.
 Find is a 40-high `sunken` field (radius 12, a drawn lens) beside **按状态 · 按项目** (`Seg`). The
 bulk bar is a raised white card (radius 24, `floating` + base) stuck to the list's foot, rising
 8pt in 200 ms. The switcher (⌘O) is a white card (radius 28) 10vh from the top, at most 640 wide:
@@ -672,8 +682,8 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    in each terminal installed, Terminal / iTerm2 / Ghostty / Warp, and Rex or con once they
    open folders; a separator between the groups, the one used last first in each) in every state while its working copy is on this Mac;
    **取消任务 / Cancel task** is in the header's quiet **⋯ / More** (D268), **暂停 / Pause** by Send.
-   The header's title (D268): the task's name at 15/600 in the body face on one line, its full
-   title on hover, and under it at 12 muted **{agent} · {state} · {where}**. Over its changes, the working copy's path,
+   The header's title (D270): the task's name as the last crumb at the bar's one size (14/600, ink)
+   on one line, its full title on hover; no line under it (who, state and where are in the head). Over its changes, the working copy's path,
    `~/…`, mono, small and selectable (D198).
    **工作台 / Workbench** (D214, `design/workbench.md`): a drawn panel mark in the header (⌥⌘B),
    only when the task has something to show; wide, a column at the right (`--bench-w`, 42%,

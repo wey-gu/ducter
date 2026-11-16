@@ -25,18 +25,23 @@ What belongs to no task (the partner's own asks, task-less waits, calls) shows u
   result), D244's art, never a dot (D69);
 - its count.
 
-The chosen row is raised clay. Opening a task turns the board into the rail (D244), narrowed by the
+The chosen row is the knob (D270: the card's white on its clay ledge). Opening a task turns the board into the rail (D244), narrowed by the
 same lens, whose head names it and goes back. The column never stands beside the rail.
 
 ## The board
 
 1. When nothing needs you, one calm sentence (`onhand.calm`, `onhand.calm.working`). Otherwise
    nothing: the 等你 section comes first.
-2. The strip: **等你 · 在做 · 在等 · 今天做完**, counts within the lens; a count of none is quiet.
+2. The strip: **等你 · 在做 · 在等 · 今天做完**, counts within the lens; a count of none is faint.
+   D270: a small sunk track of calm numerals and names on one line, the filter chosen the knob.
    At its end, under a project, **在这儿新建 / New task here**; Find from ten tasks.
 3. 接下来 / Next, the forecast line (D127), when two or more things are coming.
 4. Sections by state. 等你 answers in place (decision cards). 在做 rows. 在等: fresh rows, task-less
-   waits, then the quiet fold. 今天做完: new results as rows, then the seen fold.
+   waits, then the quiet fold. 今天做完: new results as rows, then the seen fold. D270: one reading
+   column (760); section names small and quiet; rows lie flat on the ground with one anatomy (title
+   14/500, one muted line of what's happening now, the time and where on the right), at least 58
+   high; hover a faint tint; the row under the keys or open beside the rail is the knob; state is
+   said by the small glyph or face, never a bar at the row's edge.
 
 ### Folds
 

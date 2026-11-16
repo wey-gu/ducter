@@ -150,7 +150,7 @@ the same conversation in Ducter.** Where they live and what their records say: `
   Continue says why instead.
 - **接着做 / Continue:** a new task working in that folder directly (no copy), the same agent
   resuming that very session by its id, which appends to its own file as by hand. Its transcript
-  opens with **{day}在 {agent} 里开始的 / Began in {agent} on {day}**, the last 60 turns (the
+  opens with **在 {agent} 里开始的，{day} / Began in {agent} on {day}**, the last 60 turns (the
   person's words and the agent's), then **{time} 在 Ducter 里接着做 / Picked up in Ducter at
   {time}**. Again on the same session opens that task. Its Past card then says **从 {agent}
   接过来的 / Carried on from {agent}**.

@@ -3,7 +3,8 @@
 // the user speaks; what the app shows by itself (the living message's
 // fallback line, the proof line's labels) must not paste a sentence in
 // another language: the partner says the outcome in the user's, and the
-// opened task keeps the agent's own words (D152). The port of
+// opened task keeps the agent's own words (D152). The reader's language is
+// the report's (the task's Language), not the interface's (D292). The port of
 // packages/protocol/src/say.ts: both pass fixtures/say.json.
 package say
 
@@ -11,23 +12,30 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 )
 
-// isHan matches the ranges say.ts counts (CJK Ext A, Unified, Compatibility).
-func isHan(r rune) bool {
-	return (r >= 0x3400 && r <= 0x9fff) || (r >= 0xf900 && r <= 0xfaff)
+// InTongue says whether text is in the reader's language, any language
+// (lang.InLanguage: by script where scripts tell, never wrongly held back
+// where they don't).
+func InTongue(text, tag string) bool {
+	return lang.InLanguage(text, tag)
 }
 
-func hasHan(s string) bool {
-	return strings.IndexFunc(s, isHan) >= 0
+func hasCJK(s string) bool {
+	return strings.IndexFunc(s, func(r rune) bool {
+		return unicode.In(r, unicode.Han, unicode.Hangul, unicode.Hiragana, unicode.Katakana)
+	}) >= 0
 }
 
-// InTongue says whether text is in lang ("zh": any Han; "en": none).
-func InTongue(text, lang string) bool {
-	if lang == "zh" {
-		return hasHan(text)
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
+		}
 	}
-	return !hasHan(text)
+	return true
 }
 
 var codeLike = regexp.MustCompile(`(?i)[/\\#` + "`" + `=]|\.[a-z0-9]{1,5}\b|\bv?\d+(\.\d+)+`)
@@ -40,8 +48,8 @@ func ReadsAsName(label string) bool {
 	if s == "" {
 		return true
 	}
-	if hasHan(s) {
-		return false
+	if hasCJK(s) {
+		return false // words, in CJK
 	}
 	if strings.IndexFunc(s, unicode.IsSpace) < 0 {
 		return true
@@ -49,16 +57,12 @@ func ReadsAsName(label string) bool {
 	if codeLike.MatchString(s) {
 		return true
 	}
-	return len(strings.Fields(s)) <= 3 && s == strings.ToLower(s)
+	return len(strings.Fields(s)) <= 3 && s == strings.ToLower(s) && isASCII(s)
 }
 
-var kindWords = map[string][2]string{ // zh, en
-	"test": {"测试结果", "Test results"},
-	"ci":   {"CI 结果", "CI results"},
-	"log":  {"运行记录", "Output"},
-	"diff": {"改动", "Changes"},
-	"file": {"文件", "File"},
-	"url":  {"网页", "Web page"},
+var kindWords = map[string]map[string]string{
+	"zh": {"test": "测试结果", "ci": "CI 结果", "log": "运行记录", "diff": "改动", "file": "文件", "url": "网页"},
+	"en": {"test": "Test results", "ci": "CI results", "log": "Output", "diff": "Changes", "file": "File", "url": "Web page"},
 }
 
 var hostRe = regexp.MustCompile(`(?i)^https?://([^/?#:]+)`)
@@ -76,11 +80,11 @@ func baseName(ref string) string {
 }
 
 // ProofLabel is what a proof line shows for an evidence item to a reader
-// of lang: its label when it is in that language or reads as a name, else
+// of tag: its label when it is in that language or reads as a name, else
 // the page's host, the file's name, or what it is (测试结果 / Test results).
-func ProofLabel(kind, label, ref, lang string) string {
+func ProofLabel(kind, label, ref, tag string) string {
 	l := strings.TrimSpace(label)
-	if l != "" && (InTongue(l, lang) || ReadsAsName(l)) {
+	if l != "" && (InTongue(l, tag) || ReadsAsName(l)) {
 		return l
 	}
 	if m := hostRe.FindStringSubmatch(strings.TrimSpace(ref)); m != nil {
@@ -91,19 +95,16 @@ func ProofLabel(kind, label, ref, lang string) string {
 			return b
 		}
 	}
-	if w, ok := kindWords[kind]; ok {
-		if lang == "zh" {
-			return w[0]
-		}
-		return w[1]
+	if w, ok := lang.Words(kindWords, tag)[kind]; ok {
+		return w
 	}
 	return l
 }
 
-// Sayable is text the app may show as is to a reader of lang, or "".
-func Sayable(text, lang string) string {
+// Sayable is text the app may show as is to a reader of tag, or "".
+func Sayable(text, tag string) string {
 	t := strings.TrimSpace(text)
-	if t != "" && InTongue(t, lang) {
+	if t != "" && InTongue(t, tag) {
 		return t
 	}
 	return ""

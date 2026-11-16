@@ -6,6 +6,7 @@
 // Mac; PulseAudio on Linux), one process each way, raw 16-bit mono PCM on a pipe. Nothing is
 // written to disk: no recording is ever kept (D189 (9)). Tests use `loopbackBridge`.
 import { existsSync } from "node:fs";
+import { pickTag, type LangTag } from "@ducter/protocol";
 
 export interface AudioBridge {
   /** Starts listening: `onPcm` gets the line's audio as 16-bit mono at `inRate`. */
@@ -239,11 +240,15 @@ export function loopbackBridge(o: { inRate: number; outRate: number }): AudioBri
   return b;
 }
 
+const SAY_VOICE: Record<string, string | undefined> = { zh: "Tingting" };
+
 /** A line of speech for the test call, from the computer's own voice (macOS `say`), as PCM; else undefined. */
-export async function spoken(text: string, rate: number, o: { ffmpeg?: string; zh?: boolean; dir: string }): Promise<Int16Array | undefined> {
+export async function spoken(text: string, rate: number, o: { ffmpeg?: string; lang?: LangTag; dir: string }): Promise<Int16Array | undefined> {
   if (process.platform !== "darwin" || !o.ffmpeg) return undefined;
   const aiff = `${o.dir}/own-phone-test.aiff`;
-  const r = await run(["say", ...(o.zh ? ["-v", "Tingting"] : []), "-o", aiff, text], 15_000).catch(() => undefined);
+  // The voice of the words' table (the line exists in zh and en only); English is the default voice.
+  const voice = SAY_VOICE[pickTag(o.lang, ["zh", "en"])];
+  const r = await run(["say", ...(voice ? ["-v", voice] : []), "-o", aiff, text], 15_000).catch(() => undefined);
   if (!r || r.code !== 0) return undefined;
   const p = Bun.spawn([o.ffmpeg, "-hide_banner", "-loglevel", "error", "-i", aiff, "-ac", "1", "-ar", String(rate), "-f", "s16le", "-"], { stdout: "pipe", stderr: "ignore" });
   const buf = new Uint8Array(await new Response(p.stdout).arrayBuffer());

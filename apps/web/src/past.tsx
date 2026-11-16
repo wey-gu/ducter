@@ -688,7 +688,7 @@ function OutsideSection() {
       ))}
       {hidden.length > 0 && (
         <p class="past-out-hidden">
-          <span>{t("past.out.hidden", hidden.map((h) => harnessName(h.agent)).join(A.L.lang === "zh" ? "、" : ", "))}</span>
+          <span>{t("past.out.hidden", hidden.map((h) => harnessName(h.agent)).join(t("past.out.sep")))}</span>
           {hidden.map((h) => (
             <button key={h.agent} class="linkish" onClick={() => hideAgent(h.agent, false)}>
               {hidden.length > 1 ? t("past.out.show.one", harnessName(h.agent)) : t("past.out.show")}

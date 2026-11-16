@@ -9,12 +9,13 @@
 // listening on 127.0.0.1 only; `tailscale serve` connects from loopback but passes the ts.net
 // Host and adds X-Forwarded-For and Tailscale-User-Login, so its requests count as remote and
 // need a paired device (D54): tailnet identity adds to pairing, never replaces it.
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
+import { addWay, removeKind } from "@ducter/core/src/reach-book.ts";
 import { join } from "node:path";
 import type { Style } from "./doctor.ts";
 import { ensureLocalDucter, realDomainSys, type DomainSys } from "./domain.ts";
 import type { T } from "./i18n.ts";
-import { isTailnetUrl, newPairing, ownUrl, type Pairing } from "./remote.ts";
+import { newPairing, type Pairing } from "./remote.ts";
 
 /** Where the Mac App Store and standalone Tailscale apps keep their CLI (not on PATH by default). */
 export const MAC_APP_CLI = "/Applications/Tailscale.app/Contents/MacOS/Tailscale";
@@ -181,7 +182,8 @@ export async function cmdTailscale(o: Opts): Promise<number> {
       if (r.code !== 0 && !/not found|no serve config|nothing/i.test(r.out)) return fail(t("ts.serveFailed", { reason: firstLine(r.out) }), "tailscale serve status");
       step("remove", true, t("ts.removed", { name: name ?? "ts.net" }));
     }
-    if (isTailnetUrl(ownUrl(o.dataDir, {}))) rmSync(join(o.dataDir, "public-url"), { force: true });
+    // D293: only the tailnet's own way leaves the book; a domain or a tunnel stays.
+    removeKind(o.dataDir, "tailnet");
     res.ok = true;
     say("  " + style.dim(t("ts.removedNote")));
     return done();
@@ -260,8 +262,9 @@ export async function cmdTailscale(o: Opts): Promise<number> {
   }
 
   // 6. The address pairing hands out from now on.
+  // D293: a way of its own in the book, beside a domain or a tunnel (never over them).
   mkdirSync(o.dataDir, { recursive: true });
-  writeFileSync(join(o.dataDir, "public-url"), `${res.address}\n`);
+  addWay(o.dataDir, "tailnet", res.address);
   step("address", true, t("domain.saved"));
   say("  " + style.dim(t("ts.tailnetOnly")));
   res.ok = true;

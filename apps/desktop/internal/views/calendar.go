@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -116,16 +117,9 @@ func (a *App) calWhen(startS, endS string, allDay bool, loc *time.Location) stri
 	s, e := calTime(startS, loc), calTime(endS, loc)
 	date := a.calDateTight(s, now)
 	if r := a.calRel(s, now); r != "" {
-		if a.L.Lang == i18n.ZH {
-			date = r + " " + date
-		} else {
-			date = r + ", " + date
-		}
+		date = fmt.Sprintf(a.L.T("cal.rel.date"), r, date)
 	}
-	sep := " "
-	if a.L.Lang != i18n.ZH {
-		sep = ", "
-	}
+	sep := a.L.T("cal.when.sep")
 	if allDay {
 		return date + sep + a.L.T("cal.allday")
 	}
@@ -138,10 +132,10 @@ func (a *App) calWhen(startS, endS string, allDay bool, loc *time.Location) stri
 
 // calNames joins names the reader's way: Lina Chen、alice / Lina Chen and alice.
 func (a *App) calNames(names []string) string {
-	if a.L.Lang == i18n.ZH || len(names) < 2 {
+	if len(names) < 2 {
 		return strings.Join(names, a.L.T("cal.names.sep"))
 	}
-	return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
+	return fmt.Sprintf(a.L.T("words.and"), strings.Join(names[:len(names)-1], a.L.T("cal.names.sep")), names[len(names)-1])
 }
 
 // ---------- the day card (§6.1) ----------
@@ -172,7 +166,7 @@ func (a *App) calColor(hex string) ui.Color {
 
 // calTimeW is the time column: 全天 or 10:30 in zh, "All day" in en.
 func (a *App) calTimeW() float32 {
-	if a.L.Lang == i18n.ZH {
+	if a.L.Han() {
 		return 40
 	}
 	return 50
@@ -349,10 +343,7 @@ func (a *App) calMeta(e protocol.CalEvent, loc *time.Location, accts []string, a
 	if e.Zone != "" && !e.AllDay {
 		if zl := calLoc(e.Zone); zl != loc {
 			s := calTime(e.Start, zl)
-			when := i18n.CalMD(a.L.Lang, s) + " " + i18n.CalClock(s)
-			if a.L.Lang != i18n.ZH {
-				when = i18n.CalClock(s) + " " + i18n.CalMD(a.L.Lang, s)
-			}
+			when := fmt.Sprintf(a.L.T("cal.date.clock"), i18n.CalMD(a.L.Lang, s), i18n.CalClock(s))
 			parts = append(parts, a.L.T("cal.local", when, a.L.ZoneCity(e.Zone)))
 		}
 	}
@@ -502,10 +493,7 @@ func (a *App) calChangeBlock(c *ui.Context, d *store.DecisionState) {
 		if ch.TheirZone != "" && !ch.AllDay {
 			if zl := calLoc(ch.TheirZone); zl.String() != loc.String() {
 				s := calTime(ch.Start, zl)
-				at := a.calDateTight(s, now) + " " + i18n.CalClock(s)
-				if a.L.Lang != i18n.ZH {
-					at = i18n.CalClock(s) + " " + a.calDateTight(s, now)
-				}
+				at := fmt.Sprintf(a.L.T("cal.date.clock"), a.calDateTight(s, now), i18n.CalClock(s))
 				city := a.L.ZoneCity(ch.TheirZone)
 				if ch.TheirName != "" {
 					line(a.L.T("cal.change.their", ch.TheirName, at, city), t.InkSoft)

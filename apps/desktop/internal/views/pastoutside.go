@@ -59,10 +59,7 @@ func (a *App) pastOutside(c *ui.Context, res *protocol.PastFrame, terms []string
 			for i, h := range hidden {
 				names[i] = harnessName(h)
 			}
-			sep := ", "
-			if a.L.Lang == "zh" {
-				sep = "、"
-			}
+			sep := a.L.T("past.out.sep")
 			ui.Row(c.Key("hidden")).Gap(t.S3).AlignItems(ui.Center).Wrap().Padding(t.S2, t.S2, 0, t.S2).Children(func() {
 				ui.Text(c, a.L.T("past.out.hidden", strings.Join(names, sep))).FontSize(t.SM).TextColor(t.InkMuted)
 				for _, h := range hidden {

@@ -25,6 +25,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/hints"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/imessage"
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 	"github.com/wey-gu/ducter/apps/desktop/internal/local"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
@@ -339,6 +340,15 @@ func main() {
 				if im != nil {
 					im.Observe(f)
 				}
+				// D293: the home's ways and key, kept with the connection so the app
+				// can follow the home to its best way without pairing again.
+				if f.T == "ways" && os.Getenv("DUCTER_URL") == "" {
+					if p, err := remote.Path(); err == nil {
+						if _, err := remote.Learn(p, f.Ways, f.FP); err != nil {
+							log.Printf("ducter: could not keep the home's addresses: %v", err)
+						}
+					}
+				}
 				win.Update(func() {
 					app.Receive(f)
 					updateBadge()
@@ -401,6 +411,21 @@ func main() {
 			go followCLI(remote.Saved{URL: url, Token: token}, true)
 		}
 		go c.Run(context.Background())
+		// D293: the best way to the home that proves it is the home, at launch and
+		// every 30 s (leaving a way after two misses, moving up after two answers).
+		if os.Getenv("DUCTER_URL") == "" && token != "" {
+			if p, err := remote.Path(); err == nil {
+				go remote.Follow(context.Background(), p, c.URL, func(u string) {
+					log.Printf("ducter: reaching the home at %s now", remote.BaseOf(u))
+					_, tok := c.Target()
+					c.Retarget(u, tok)
+				})
+			}
+		}
+		// D293: say so before the Mac sleeps (its tasks read 睡着了 at once), and dial
+		// again at once when it wakes.
+		mygo.Power.OnSuspend(c.Sleep)
+		mygo.Power.OnResume(c.Wake)
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
@@ -414,11 +439,9 @@ func main() {
 // lc adds the update line (after About) and Help's Report a problem (D72);
 // Stop Ducter only when this app runs the Ducter of this Mac.
 // mygoLocale is the language tag MyGo knows a window language by.
+// It has words for these two; any other tag reads its fallback chain.
 func mygoLocale(l i18n.Lang) string {
-	if l == i18n.ZH {
-		return "zh-Hans"
-	}
-	return "en"
+	return lang.Words(map[string]string{"zh": "zh-Hans", "en": "en"}, string(l))
 }
 
 func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *mygo.Menu {

@@ -5,6 +5,11 @@
 import type { ServerWebSocket } from "bun";
 import type { WorkerInfo, WorkerLink, WorkerLinks, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
 import type { Device } from "./auth.ts";
+import type { DeviceVia, ReachWay } from "@ducter/protocol/src/reach.ts";
+
+/** D293: a worker keeps its sessions this long after its socket drops; the home waits a little longer. */
+export const HOLD_MS = 120_000;
+const HOLD_SLACK_MS = 15_000;
 
 /** A request to a worker that is (or went) offline. The runner turns it into 连不上 / Can't reach. */
 export class WorkerOfflineError extends Error {
@@ -37,6 +42,11 @@ export interface WorkerHello {
   boot?: string;
   /** D227: the agents this process is updating now. */
   agentUpdates?: string[];
+  /**
+   * D293: the sessions this worker still holds after its socket dropped (its grace, 2 min): the
+   * home reattaches these and ends the rest. Absent (a worker before D293): every session ended.
+   */
+  held?: string[];
 }
 
 /** What the main last knew of a worker that isn't connected now. */
@@ -52,12 +62,16 @@ export interface OnlineWorker {
   name: string;
   since: string;
   hello?: WorkerHello;
+  /** D293: how it reaches the home now. */
+  via?: DeviceVia & { url?: string };
 }
 
 export interface WorkerSocketData {
   worker: true;
   device: Device;
   since: string;
+  /** D293: how it reached the home (core reads it off the upgrade request). */
+  via?: DeviceVia & { url?: string };
 }
 
 export interface Workers extends WorkerLinks {
@@ -68,6 +82,10 @@ export interface Workers extends WorkerLinks {
   onChange(fn: () => void): () => void;
   /** A paired worker got a new name (D84): links, tasks and frames use it from now on. */
   renamed(deviceId: string, name: string): void;
+  /** D293: its computer is going to sleep (the Mac app said so on its own socket). */
+  sleeping(deviceId: string): void;
+  /** D293: the ways to reach the home changed: every connected worker hears them. */
+  ways(frame: { t: "ways"; ways: ReachWay[]; key?: string; fp?: string }): void;
   websocket: {
     open(ws: ServerWebSocket<WorkerSocketData>): void;
     close(ws: ServerWebSocket<WorkerSocketData>): void;
@@ -76,7 +94,44 @@ export interface Workers extends WorkerLinks {
   stop(): void;
 }
 
-type Handlers = { open(ws: any): void; close(ws: any, code?: number, reason?: string): void; message(ws: any, m: string | Buffer): void | Promise<void> };
+type Handlers = { open(ws: any): void; close(ws: any, code?: number, reason?: string): void; message(ws: any, m: string | Buffer): void | Promise<void>; pong?(ws: any): void };
+
+/** D293: every socket is pinged this often, and closed when nothing came from it for DEAD_MS. */
+export const PING_MS = 15_000;
+export const DEAD_MS = 45_000;
+/** Close code for a socket that stopped answering. */
+export const CLOSE_SILENT = 4408;
+
+/**
+ * D293: liveness for the home's side of every socket. heard() on anything that arrives (a frame,
+ * a pong to the WebSocket ping every client answers by itself); sweep() pings the live ones and
+ * cuts the ones silent for deadMs (a laptop that changed Wi-Fi leaves its socket half-open).
+ */
+export function createLiveness(o: { now?: () => number; deadMs?: number } = {}) {
+  const now = o.now ?? Date.now;
+  const heardAt = new Map<any, number>();
+  return {
+    heard: (ws: any) => void heardAt.set(ws, now()),
+    /** A pong: counts only for a socket this tracks. */
+    touch: (ws: any) => void (heardAt.has(ws) && heardAt.set(ws, now())),
+    forget: (ws: any) => void heardAt.delete(ws),
+    sweep() {
+      for (const [ws, at] of heardAt) {
+        if (now() - at > (o.deadMs ?? DEAD_MS)) {
+          heardAt.delete(ws);
+          try {
+            if (typeof ws.terminate === "function") ws.terminate();
+            else ws.close(CLOSE_SILENT, "no answer");
+          } catch {}
+        } else
+          try {
+            ws.ping?.();
+          } catch {}
+      }
+    },
+    size: () => heardAt.size,
+  };
+}
 
 /** Close code sent to a socket whose device was disconnected (`ducter devices disconnect`). */
 export const CLOSE_REVOKED = 4401;
@@ -90,8 +145,11 @@ export const CLOSE_REVOKED = 4401;
 export function splitSockets(
   client: Handlers,
   workers: Workers,
-  opts: { isLive?: (deviceId: string) => boolean; nameOf?: (deviceId: string) => string | undefined; sweepMs?: number } = {},
-): Handlers & { stop(): void } {
+  opts: { isLive?: (deviceId: string) => boolean; nameOf?: (deviceId: string) => string | undefined; sweepMs?: number; pingMs?: number } = {},
+): Handlers & { stop(): void; pong(ws: any): void } {
+  const alive = createLiveness();
+  const pinger = setInterval(() => alive.sweep(), opts.pingMs ?? PING_MS);
+  (pinger as any).unref?.();
   const isWorker = (ws: any) => ws.data?.worker === true;
   const withDevice = new Set<any>();
   const timer = opts.isLive
@@ -108,15 +166,18 @@ export function splitSockets(
     : undefined;
   return {
     open: (ws) => {
+      alive.heard(ws);
       if (ws.data?.device) withDevice.add(ws);
       return isWorker(ws) ? workers.websocket.open(ws) : client.open(ws);
     },
     close: (ws, code, reason) => {
+      alive.forget(ws);
       withDevice.delete(ws);
       return isWorker(ws) ? workers.websocket.close(ws) : client.close(ws, code, reason);
     },
-    message: (ws, m) => (isWorker(ws) ? workers.websocket.message(ws, m) : client.message(ws, m)),
-    stop: () => clearInterval(timer),
+    message: (ws, m) => (alive.heard(ws), isWorker(ws) ? workers.websocket.message(ws, m) : client.message(ws, m)),
+    pong: (ws) => alive.touch(ws),
+    stop: () => (clearInterval(timer), clearInterval(pinger)),
   };
 }
 
@@ -126,11 +187,12 @@ type Gated = { pass: true; via: "local" } | { pass: true; via: "device"; device:
  * Routes that concern devices, after the gate let the request through. Returns undefined when
  * the path isn't one of them. A worker token opens only /worker; a client token never does.
  */
-export function deviceRoutes(req: Request, g: Gated, srv: { upgrade(req: Request, o: { data: WorkerSocketData }): boolean }, workers: Workers): Response | "upgraded" | undefined {
+export function deviceRoutes(req: Request, g: Gated, srv: { upgrade(req: Request, o: { data: WorkerSocketData }): boolean }, workers: Workers, via?: () => DeviceVia & { url?: string }): Response | "upgraded" | undefined {
   const path = new URL(req.url).pathname;
   if (path === "/worker") {
     if (g.via !== "device" || g.device.kind !== "worker") return new Response("this device joined as an app; to run tasks here, join with: ducter worker <address> --code <code>", { status: 403 });
-    return srv.upgrade(req, { data: { worker: true, device: g.device, since: new Date().toISOString() } }) ? "upgraded" : new Response("upgrade failed", { status: 400 });
+    const v = via?.();
+    return srv.upgrade(req, { data: { worker: true, device: g.device, since: new Date().toISOString(), ...(v ? { via: v } : {}) } }) ? "upgraded" : new Response("upgrade failed", { status: 400 });
   }
   if (g.via === "device" && g.device.kind === "worker" && path !== "/mcp") return new Response("workers only use /worker and /mcp", { status: 403 });
   if (path === "/devices/online") {
@@ -153,6 +215,10 @@ export function createWorkers(opts: {
    * boot id, or for a worker from before D227 another version than it said last).
    */
   onHello?: (deviceId: string, name: string, hello: WorkerHello, o: { restarted: boolean }) => void;
+  /** D293: what the welcome carries besides: the ways to reach the home and its key. */
+  welcome?: () => { ways?: ReachWay[]; key?: string; fp?: string };
+  /** D293: how long a dropped worker's sessions are held for it (HOLD_MS plus a little). */
+  holdMs?: number;
 }): Workers {
   const now = opts.now ?? (() => new Date());
   type Live = { ws: ServerWebSocket<WorkerSocketData>; hello?: WorkerHello };
@@ -175,6 +241,8 @@ export function createWorkers(opts: {
     /** The last hello's boot id and version (D227), kept across reconnects. */
     boot?: string;
     version?: string;
+    /** D293: its socket dropped with sessions open; they end when this fires unless it is back. */
+    hold?: ReturnType<typeof setTimeout>;
   }
   const states = new Map<string, State>();
   let nextId = 0;
@@ -223,17 +291,38 @@ export function createWorkers(opts: {
     return s;
   }
 
-  /** The socket is gone: fail what was in flight and end every remote session (offline). */
-  function lost(st: State) {
+  /** Fail what was in flight: its answer, if any, went with the socket. */
+  function failPending(st: State) {
     for (const [id, p] of st.pending) {
       clearTimeout(p.timer);
       p.reject(new WorkerOfflineError(nameOf(st)));
       st.pending.delete(id);
     }
+  }
+
+  /** The sessions are gone for good: end every remote session (offline), but those in keep. */
+  function lost(st: State, keep?: Set<string>) {
+    clearTimeout(st.hold);
+    st.hold = undefined;
+    failPending(st);
     for (const [key, fn] of [...st.sessions]) {
+      if (keep?.has(key)) continue;
       st.sessions.delete(key);
       fn({ t: "end", key, offline: true, error: `${nameOf(st)} disconnected` });
     }
+  }
+
+  /**
+   * D293: the socket is gone, but the worker may be back within its grace with its sessions still
+   * running: say so to each session (away), and end them only if it isn't back in time.
+   */
+  function away(st: State) {
+    failPending(st);
+    if (!st.sessions.size) return;
+    for (const [key, fn] of st.sessions) fn({ t: "away", key });
+    clearTimeout(st.hold);
+    st.hold = setTimeout(() => lost(st), opts.holdMs ?? HOLD_MS + HOLD_SLACK_MS);
+    (st.hold as any).unref?.();
   }
 
   return {
@@ -243,6 +332,7 @@ export function createWorkers(opts: {
         name: ws.data.device.name,
         since: ws.data.since,
         ...(hello ? { hello } : {}),
+        ...(ws.data.via ? { via: ws.data.via } : {}),
       })),
     away: () => new Map(gone),
     renamed(deviceId, name) {
@@ -258,6 +348,14 @@ export function createWorkers(opts: {
     onChange(fn) {
       changeFns.add(fn);
       return () => changeFns.delete(fn);
+    },
+    sleeping(deviceId) {
+      if (!live.has(deviceId) || sleeping.has(deviceId)) return;
+      sleeping.add(deviceId);
+      changed();
+    },
+    ways(frame) {
+      for (const { ws, hello } of live.values()) if (hello) send(ws, frame);
     },
     link(device) {
       const byLive = [...live.values()].find((l) => l.ws.data.device.id === device || l.ws.data.device.name === device);
@@ -293,7 +391,9 @@ export function createWorkers(opts: {
         sleeping.delete(ws.data.device.id);
         if (old) {
           old.ws.close(4000, "replaced");
-          lost(stateFor(ws.data.device));
+          // D293: the same worker on a new socket (it changed networks before the old one died):
+          // its sessions wait for the hello, which says which it still has.
+          away(stateFor(ws.data.device));
         }
       },
       close(ws) {
@@ -301,7 +401,7 @@ export function createWorkers(opts: {
         if (entry?.ws !== ws) return;
         live.delete(ws.data.device.id);
         gone.set(ws.data.device.id, { lastSeen: now().toISOString(), asleep: sleeping.delete(ws.data.device.id), ...(entry.hello ? { hello: entry.hello } : {}) });
-        lost(stateFor(ws.data.device));
+        away(stateFor(ws.data.device));
         changed();
       },
       message(ws, raw) {
@@ -320,7 +420,14 @@ export function createWorkers(opts: {
           const restarted = typeof f.boot === "string" && st.boot !== undefined ? st.boot !== f.boot : st.version !== undefined && typeof f.version === "string" && st.version !== f.version;
           st.boot = typeof f.boot === "string" ? f.boot : undefined;
           st.version = typeof f.version === "string" ? f.version : undefined;
-          send(ws, { t: "welcome", personaName: opts.personaName(), deviceId: ws.data.device.id, at: now().toISOString() });
+          // D293: back within its grace: the sessions it still holds carry on, the rest end. A
+          // worker from before D293 says nothing of them: it closed them all when it dropped.
+          if (st.hold || st.sessions.size) {
+            const held = Array.isArray(f.held) ? new Set<string>(f.held.filter((k: unknown) => typeof k === "string")) : undefined;
+            lost(st, held);
+            if (held) for (const [key, fn] of st.sessions) fn({ t: "back", key });
+          }
+          send(ws, { t: "welcome", personaName: opts.personaName(), deviceId: ws.data.device.id, at: now().toISOString(), ...(opts.welcome?.() ?? {}) });
           for (const fn of st.onOnline) queueMicrotask(fn);
           changed();
           if (f.update?.t === "update") opts.onUpdate?.(ws.data.device.id, nameOf(st), f.update);
@@ -358,6 +465,7 @@ export function createWorkers(opts: {
     stop() {
       for (const { ws } of live.values()) ws.close(1001, "shutting down");
       live.clear();
+      for (const st of states.values()) clearTimeout(st.hold);
     },
   };
 }

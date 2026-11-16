@@ -299,6 +299,9 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 			to = harnessName(str(sw["to"]))
 		}
 		return Block{Say: "switched", Name: to}, true
+	// D293: its worker dropped and holds the session for its grace.
+	case hasDevice && r["reconnecting"] == true:
+		return Block{Say: "reconnecting", Name: str(r["name"])}, true
 	case hasDevice && r["offline"] == true:
 		return Block{Say: "offline", Name: or(str(r["name"]), from(disconnectRe))}, true
 	case hasDevice && r["offline"] == false:

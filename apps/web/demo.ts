@@ -3,6 +3,7 @@
 //   DUCTER_PORT=7797 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo.ts
 import { startCore, stubRunner, realClock } from "@ducter/core";
 import { noOo } from "./demo-oo.ts";
+import { demoMem, fakeNmem, notedSeed, seedConnection } from "./demo-mem.ts";
 import type { Bodies, Place } from "@ducter/protocol";
 import { conductEvents, loopEvents } from "@ducter/protocol/fixtures/transcript-cases.ts";
 
@@ -12,12 +13,33 @@ let skew = 0;
 const clock = { ...realClock, now: () => Date.now() + skew };
 // D299: the demo reads its own scratch "this computer", never the real home's agent sessions.
 const localAgents = (await import("./demo-outside.ts")).outsideAgents(zh, process.env.DEMO_PAST === "1");
-const core = startCore({ localAgents, ooSource: noOo, persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", clock });
+// D295: a pretend Nowledge Mem (DEMO_MEM: cloud, local, ready, signin, install, none); never the machine's own.
+const mem = demoMem();
+const memOn = mem === "cloud" || mem === "local" || mem === "ready";
+const core = startCore({
+  localAgents,
+  ooSource: noOo,
+  persona: { id: "default", name: "Ducter", identity: "", ...(memOn ? { mem: { agentId: "ducter", owned: true } } : {}) },
+  hostname: process.env.DUCTER_HOST || "127.0.0.1",
+  clock,
+  bridgeLink: { run: fakeNmem(mem, zh), exec: async () => ({ code: 1, out: "", err: "" }) },
+});
 core.setRunner(stubRunner(core));
+seedConnection(core.dataDir, mem);
+if (memOn) core.settings.setMemState("connected");
 // A quiet partner: the seed below writes its words, so a live reply would only be noise.
 core.setPartner({ onTrigger() {} });
 const log = core.log;
 const tick = () => Bun.sleep(30);
+
+// What it noted over the past weeks (D295: this week / earlier on the Memory page).
+if (mem !== "none") {
+  for (const n of notedSeed(zh).reverse()) {
+    skew = -n.daysAgo * 86_400_000;
+    log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: { title: n.title } });
+  }
+  skew = 0;
+}
 
 const repo = (repoPath: string, branch: string): Place => ({ kind: "repo", device: "MacBook", repoPath, branch, baseBranch: "main" });
 

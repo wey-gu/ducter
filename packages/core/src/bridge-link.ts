@@ -154,6 +154,9 @@ export function personalSpace(setup: any, local = false): { id: string; label: s
 }
 
 
+/** D295: `nmem status`.backend in the person's words: the cloud, this computer, or their own server. */
+export const whereOf = (backend: string): "cloud" | "local" | "server" => (backend === "cloud" ? "cloud" : backend === "local" ? "local" : "server");
+
 export interface BridgeLink extends BridgeLinkApi {
   /** The row for Settings › 伙伴; undefined when memory is off (nothing shows). */
   view(): Promise<BridgeView | undefined>;
@@ -393,7 +396,7 @@ export function createBridgeLink(opts: {
     // D257: on every working state, the home's Mem version and Mem's own word that a newer one is
     // out (newer: its number, "" when Mem didn't name it), so Settings › 记忆 says so even for a
     // copy Ducter can't update (the Nowledge Mem app's).
-    const said = (q: Probe): Partial<BridgeView> => ({ home, ...(q.version ? { version: q.version } : {}), ...(q.updateAvailable ? { newer: q.latest ?? "" } : {}) });
+    const said = (q: Probe): Partial<BridgeView> => ({ home, ...(q.version ? { version: q.version } : {}), ...(q.backend ? { where: whereOf(q.backend) } : {}), ...(q.updateAvailable ? { newer: q.latest ?? "" } : {}) });
     const extras = async (): Promise<Partial<BridgeView>> => {
       if (!p) return {};
       if (memDone && now() - memDone.at < DONE_SHOWN_MS) return { ...said(p), done: memDone.kind };

@@ -161,3 +161,109 @@ preparation answer 503 `cloud_bridge_setup_unavailable` today, so the live trial
 says; nothing was created. Ducter now says that plainly, and on a home without a new enough Mem (hel has 0.10.116
 by pip) one tap updates or installs it with Mem's own route, a pasted link signs it in, and the same row goes on
 to Connect. Verified in a Linux container for install, update past PEP 668, and the sign-in refusals.
+
+## 8. Addendum 2026-11-17: the rerun after Mem's sender fix (feeds D294)
+
+Weizhen (Mem) said on 2026-11-17 that Mem Cloud now runs nowledge-co/mem #10278 (sender attribution and
+`in_reply_to` on Bridge IM, bounded Native admission; tracked in #10194 = B17, deploy in #7595), and that the
+App/Vault's local Bridge still needs a few bugfixes. This section reruns what could be rerun, with the author's
+existing nmem login and the approved `ducter` context only; nothing was created, enabled or revoked. Raw output:
+`~/dev/ducter-evidence/bridge/raw-2026-11-16T16-0*` (UTC stamps; local 2026-11-17).
+
+| Fact | Tag |
+|---|---|
+| nmem 0.10.119 is the newest `nmem-cli` (PyPI upload 2026-11-14 23:56 UTC; `status` says `update_available: false`). #10278 merged 2026-11-15 20:41 UTC, so no released CLI carries it. | VERIFIED (PyPI, `status`), DOCUMENTED (the PR's merge time) |
+| The fix is an opt-in read representation the CLI asks for; an old CLI keeps getting the old shape. The new CLI's `inbox` messages and `open` carry `sender: {actor_id, member?, agent?, agent_id?}` and `in_reply_to` (the actual parent, null on an original; `reply_to` stays the message itself). Contact cards carry `agent_id` and `mailbox_available`; an unavailable card has `send_args_prefix: null`. A Native session's journal contention gets `bridge_session_journal_busy` and a 250 ms admission window. | DOCUMENTED (the PR's description of its interface) |
+| Re-opening, with the persona's context, the S2 answer the peer sent with `bridge reply` on 2026-11-16 (already read then): `{message, body, reply_to: <itself>, outgoing, status_observed_at_us}`. No `sender`, no `in_reply_to`. | VERIFIED |
+| `bridge:live --connected` (dry): ✓ nmem 0.10.119 has connections; ✓ one personal place among 8; ✓ an active connection for `ducter` saved as `ducter`; **✗ a second active connection for `ducter`, also labelled `ducter`**: another home reads the persona's mailbox (D258), so the trial stops before anything is sent. `connections list` gives no host or device per connection, so which one is this Mac's can't be told. | VERIFIED |
+| That other home is hel's Ducter (D258 found it connected as the same identity on 2026-11-16). A read-only look at hel was not permitted in this session. | INFERRED |
+| The Mac's Nowledge Mem app is running but in remote mode (Mem Cloud); `nmem status` says `backend: cloud`; nothing listens on Mem's local API port. A local Bridge can't be tried here without switching the app's mode, which Ducter never does. | VERIFIED |
+
+**Per scenario.** Before (2026-11-16 01:20 UTC, nmem 0.10.119, Cloud before the deploy, the last full run):
+S1 5/6 (haiku's card named the user: "Weyl 的另一个 Claude…", from the request's own words "Task request from
+Weyl"), S2 4/5 (the reply came in but unlinked: B17), S3 3/3, X1 3/3. Today: **not rerun live**; the preflight
+stops at the second connection, and the trial is not allowed to share that mailbox (`--share-mailbox` not
+passed). Even with the mailbox free, S2's linked-reply check would still fail until a CLI after 0.10.119 asks for
+the new representation (the re-open above). Over the fake Bridge in the #10278 shape, Ducter's side passes (the
+unit tests in `bridge-presentation.test.ts`, and `bun run bridge:live` with real haiku on both sides, §8.2).
+
+### 8.1 What Ducter changes (D294)
+
+1. **Read the new fields when they come.** `sender.agent` names the agent; Mem's generic "Bridge agent" (every
+   native session's Agent) is treated as unnamed, so the user reads 一个 AI agent and the partner calls it by
+   what it says it is. In the user's "Only me" place every sender is theirs whatever `sender.member` says (a
+   display name never equals the custodian id); elsewhere the member must be the user's own. `in_reply_to`
+   links the answer to Ducter's message, so follow-through stops on its own.
+2. **Never offer a card with no mailbox.** `mailbox_available: false` cards are left out of `bridge_contacts`
+   (the 2026-11-13 409, where haiku picked a stale card by name, can't recur).
+3. **A short, bounded retry when Mem can't take it right now.** 503/429, `_busy`, `_unavailable`, `_capacity` or
+   `retryable: true`: reads (`inbox`, `open`, `contacts`, `outbox`, `inspect`) are tried again after 0.4 s and
+   1.2 s. A send or reply is tried again only when Mem says it was not admitted (`outcome_unknown: false`); when
+   Mem says it may have gone, it stays unknown and is recovered, never resent (D106). Still busy: the message
+   is failed (not sent) and the user hears one line in the partner's voice: "你让我发的消息没发给 Claude Code：
+   Nowledge Mem 那边这会儿收不了，不是你这边的问题。这次什么都没发出去，过一会儿再跟我说一声，我重新发。"
+4. **Mem's own word on the outcome first.** `outcome_unknown: true` is never shown as refused;
+   `outcome_unknown: false` with a registered code is refused (not sent), not unknown.
+5. **No " · " joins** in the conversation's request line or a teammate's agent name (D291):
+   **Claude Code 发来请求：「…」 / Request from Claude Code: "…"**; **reviewer (dev team)**.
+6. The trial's preflight says whether the installed nmem carries the new fields, without stopping.
+
+### 8.2 The fake run after D294
+
+`bun run bridge:live` (fake Bridge, real haiku partner and real haiku peer), 2026-11-17:
+
+| Fake shape | S1 | S2 | S3 | X1 | J-Q6 |
+|---|---|---|---|---|---|
+| nmem 0.10.118/0.10.119 (default), before the check fix | 6/6 | 4/5 | 3/3 | 3/3 | 2/2 |
+| the same, S2 only, after the check fix | | 5/5 | | | |
+| #10278 (`NMEM_FAKE_SHAPE=presentation`) | 6/6 | 5/5 | 3/3 | 3/3 | 2/2 |
+
+The one S2 miss was the driver's own check, still looking for D108's 发给你的 <agent> after D273 changed the card
+to the agent's own name ("发给 terminal-claude？"); the check now follows D273. VERIFIED (transcripts
+`live-2026-11-16T16-1*-fake-haiku.md` in the evidence folder).
+
+### 8.3 Still blocked upstream
+
+1. **A released nmem with #10278** (after 0.10.119). Until then no client sees `sender` or `in_reply_to` from
+   Cloud, so S2's linked reply and the named sender can't pass live.
+2. **Local Bridge (App/Vault)**: the bugfixes Weizhen named; no version or changelog line yet says when a local
+   `bridge setup` answers with a place. Ducter asks Mem and assumes nothing (D269).
+3. **Telling connections apart**: `connections list` has two active `ducter` entries and nothing to say which
+   home each is; the trial can only say "another home".
+4. **Native senders' names**: whether the owner's native-session label (`sender.agent` for the owner's own
+   Claude Code or Codex session) says which terminal or folder it is, or stays "Bridge agent".
+
+### 8.4 Drafts for Mem (not posted; the author decides)
+
+**#10194 (B17), a comment.**
+> Thanks, confirmed the Cloud side is deployed. One gap for clients: nmem-cli 0.10.119 (newest on PyPI,
+> uploaded 2026-11-14) predates #10278, so against Cloud today `nmem --json --agent-context <ctx> bridge open
+> <id>` on a message sent with `bridge reply` still returns `{message, body, reply_to, outgoing,
+> status_observed_at_us}` with no `sender` and no `in_reply_to` (checked 2026-11-17). Could you cut a CLI
+> release with #10278 and note its version here? Two small questions for that release: (1) in a personal Space,
+> is `sender.member` the "Member <id>" label (as on contact cards) or a display name? A `sender.member_id` (or
+> the custodian id) would let a client tell its owner's agents from a teammate's without parsing a label.
+> (2) Are messages stored before the deploy shown with their sender and parent too?
+
+**#8376 (umbrella), a comment on local Bridge.**
+> For the App/Vault local Bridge: once the bugfixes land, which nmem/App version is the first that works, and
+> what does a passive `nmem --json bridge setup` (no context) answer on a local backend: one candidate place,
+> and of which `kind`? Ducter asks Mem and connects to whatever single place it offers (it never assumes
+> Cloud), so a changelog line with the version is all it needs to start the live check.
+
+**#8376, a comment on connections.**
+> `bridge connections list --space-id <personal> --agent-id ducter` shows two active connections, both with
+> `client_label: "ducter"` (one per computer running the same app). Nothing in the entry says which computer
+> holds it, so a client can't tell "mine" from "another home's" (or offer to revoke the stale one). Could the
+> entry carry a host/device label set at `connect` time?
+
+**#8376, a comment on transient errors.**
+> For the logical mailbox verbs (`inbox`, `open`, `contacts`, `send`, `reply`): could the docs list the
+> registered 503/busy codes and confirm that `outcome_unknown: false` on a 503 means the send was definitely
+> not admitted? Ducter retries reads twice (0.4 s, 1.2 s) and a send or reply only on `outcome_unknown:
+> false`; anything else goes to outbox → inspect → resume.
+
+**#10194, a comment on native senders.**
+> With #10278, what does `sender.agent` say for a message from the owner's own native Claude Code session:
+> still "Bridge agent", or the host/session display label the PR mentions? A label that says which terminal or
+> folder wrote it is what a user needs to tell two of their sessions apart.

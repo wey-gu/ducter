@@ -14,7 +14,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/redact"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
@@ -62,11 +61,7 @@ func (a *App) earlierLine(b *Block) string {
 	if at.IsZero() {
 		return a.L.T("note.earlier.undated", agent)
 	}
-	at = at.Local()
-	if a.L.Lang == i18n.ZH {
-		return a.L.T("note.earlier", fmt.Sprintf("%d月%d日", int(at.Month()), at.Day()), agent)
-	}
-	return a.L.T("note.earlier", agent, at.Format("Jan 2"))
+	return a.L.T("note.earlier", agent, at.Local().Format(a.L.T("note.earlier.day")))
 }
 
 func (a *App) switchLine(task *store.Task, b *Block) string {
@@ -109,7 +104,7 @@ func (a *App) noteLine(b *Block) string {
 		if name != "" {
 			name = a.effortWord(name)
 		}
-	case "offline", "back", "waiting_device":
+	case "offline", "reconnecting", "back", "waiting_device":
 		if name == "" {
 			name = a.L.T("note.computer")
 		}
@@ -168,7 +163,7 @@ func (a *App) rowWords(r *StepRow) (string, string) {
 
 // capFirst starts an English step on a capital: a step is its own line (D210).
 func (a *App) capFirst(s string) string {
-	if a.L.Lang == i18n.ZH || s == "" {
+	if !a.L.Cased() || s == "" {
 		return s
 	}
 	r := []rune(s)
@@ -254,7 +249,7 @@ func (a *App) shortGo(label string) string {
 	if l == "" || !shortVerb(l) {
 		return a.L.T("decision.go")
 	}
-	if a.L.Lang != i18n.ZH {
+	if a.L.Cased() {
 		r := []rune(l)
 		r[0] = []rune(strings.ToUpper(string(r[0])))[0]
 		l = string(r)

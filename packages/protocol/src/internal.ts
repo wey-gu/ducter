@@ -7,6 +7,7 @@ import type { HarnessId } from "./harnesses.ts";
 import type { CallBody, DraftRequest, DraftResult } from "./phone.ts";
 import type { AccountUsage, Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, PeersSettings, Settings, TaskCard, TaskNeeds } from "./index.ts";
 import type { MediaRef } from "./media.ts";
+import type { LangTag } from "./lang.ts";
 
 // ---------- core ----------
 
@@ -277,6 +278,10 @@ export interface SettingsApi {
 export type WorkerSessionFrame =
   | { t: "ev"; key: string; ev: HarnessEvent; busy: boolean; sessionId?: string }
   | { t: "end"; key: string; error?: string; offline?: boolean }
+  // D293: the worker's socket dropped and the worker keeps the session for a grace (away), or it
+  // came back within it and still has the session (back). Made by the home; never on the wire.
+  | { t: "away"; key: string }
+  | { t: "back"; key: string }
   // D157: Ducter's own browser on a worker. One CDP message (an event) from the browser there,
   // or the browser's connection closed (closed: true); the main drives it with cdpSend.
   | { t: "cdp"; key: string; msg?: { method: string; params?: unknown; sessionId?: string }; closed?: boolean };
@@ -437,6 +442,8 @@ export interface HarnessSession {
   events(): AsyncIterable<HarnessEvent>;
   /** D282: the agent's own manual compaction, where the runtime has one (Codex through OAR). */
   compact?(): Promise<void>;
+  /** D293: a session on a worker: its worker dropped and holds it (away), or came back with it (back). */
+  onLink?(fn: (state: "away" | "back") => void): void;
 }
 
 export interface HarnessPort {
@@ -478,12 +485,12 @@ export interface Runner {
   // adopt (D299): a session the person ran in their own agent outside Ducter, carried on as this
   // task in its own folder: its conversation (the person's words and the agent's) goes into the
   // task's history; the same agent resumes it by id, another agent starts from what it said.
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: "zh" | "en"; origin?: "you"; needs?: TaskNeeds; media?: MediaRef[]; from?: string; adopt?: AdoptSession }): Promise<TaskCard>;
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; media?: MediaRef[]; from?: string; adopt?: AdoptSession }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.
   // media (D206): settles with the brief (the call's last part), the pictures the brief carries.
-  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en"; needs?: TaskNeeds }, brief: Promise<string>, media?: Promise<MediaRef[]>): Promise<TaskCard>;
+  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: LangTag; needs?: TaskNeeds }, brief: Promise<string>, media?: Promise<MediaRef[]>): Promise<TaskCard>;
   // Logs the text as task_event {role:"user", from, clientId} before delivering it.
   // media (D206): pictures that go with the text (an agent that can't see them gets a line saying so).
   send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner" | "ducter", clientId?: string, media?: MediaRef[]): Promise<{ delivered: Delivery }>;
@@ -550,7 +557,7 @@ export function createPartnerSignature(_core: CoreApi, _runner: Runner): Partner
 /** D193: what the partner's phone_call tool reaches (core/src/phone.ts). */
 export interface PhonePort {
   available(): { connectionId: string; provider: string } | undefined;
-  draft(req: DraftRequest, o: { lang: "zh" | "en"; callId?: string; answers?: string }): Promise<DraftResult>;
+  draft(req: DraftRequest, o: { lang: LangTag; callId?: string; answers?: string }): Promise<DraftResult>;
   answer(text: string, callId?: string): { ok: true } | { ok: false; error: string };
   cancel(callId: string, by: "owner" | "ducter"): Promise<boolean>;
   block(number: string, why?: string): { ok: true; number: string } | { ok: false; error: string };

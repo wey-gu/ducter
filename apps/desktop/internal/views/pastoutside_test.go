@@ -114,7 +114,7 @@ func TestOutsideSection(t *testing.T) {
 }
 
 func TestOutsideEarlierLine(t *testing.T) {
-	for lang, want := range map[i18n.Lang]string{i18n.ZH: "11 月 12 日在 Claude Code 里开始的", i18n.EN: "Began in Claude Code on Nov 12"} {
+	for lang, want := range map[i18n.Lang]string{i18n.ZH: "在 Claude Code 里开始的，11 月 12 日", i18n.EN: "Began in Claude Code on Nov 12"} {
 		app, _ := pastApp(t, lang)
 		b, ok := noteBlock(app, `{"outside":{"agent":"claude-code","at":"2026-11-12T09:00:00+08:00","turns":4},"sessionId":"942e","harness":"claude-code"}`, 5)
 		if !ok || b.Say != "earlier" {

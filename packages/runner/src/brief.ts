@@ -1,5 +1,6 @@
 // Every model-visible string the runner produces lives in this file (snapshot-tested).
 import type { Place } from "@ducter/protocol";
+import { LANGUAGES, langName, normalizeTag, baseTag, type LangTag } from "@ducter/protocol/src/lang.ts";
 
 export interface BriefInput {
   partnerName: string; // e.g. "Ducter"
@@ -10,8 +11,8 @@ export interface BriefInput {
   cwd: string;
   project?: string;
   mcpServerName: string; // the Ducter MCP server name, e.g. "ducter"
-  /** The language the user reads reports in; absent: the brief's own words decide. */
-  language?: "zh" | "en";
+  /** The language the user reads reports in, a BCP 47 tag (D292); absent: the brief's own words decide. */
+  language?: LangTag;
   /** D168: plugin = the user's Nowledge Mem plugin is on in this session; ducter = Ducter's own read-only memory stands in. Absent: none (off, or a browser). */
   memory?: "plugin" | "ducter";
   /** D217: the work uses a phone (needs.phone): its tools are on the Ducter MCP server. D251: which one. */
@@ -53,12 +54,14 @@ export function knownTurn(notes: { id?: string; title: string; content: string; 
 }
 
 /** The report-language rule. Named when known: a haiku task with an English brief reported in
- *  Chinese, and its evidence label became the On hand card's subtitle (fresh-user QA). */
+ *  Chinese, and its evidence label became the On hand card's subtitle (fresh-user QA). Any
+ *  language by name (D292): a Korean user's task is told Korean, never English by default. */
 function languageLine(lang: BriefInput["language"]): string {
   const what = "write `summary`, question `text` and `default`, and evidence `label`s";
-  if (lang === "en") return `- **Language: English.** The user reads English: ${what} in English, whatever language the code, files or tool output are in. They may read them as they are.`;
-  if (lang === "zh") return `- **Language: Chinese (简体中文).** The user reads Chinese: ${what} in Chinese, whatever language the code, files or tool output are in. Code, commands and names stay as they are. They may read them as they are.`;
-  return `- **Language:** ${what} in the language of the user's own words in the brief (Chinese words → Chinese). The user may read them as they are.`;
+  const tag = normalizeTag(lang);
+  if (!tag) return `- **Language:** ${what} in the language of the user's own words in the brief, whatever language that is. The user may read them as they are.`;
+  const short = LANGUAGES.find((l) => l.tag === tag || l.tag === baseTag(tag))?.en ?? langName(tag);
+  return `- **Language: ${langName(tag)}.** The user reads ${short}: ${what} in ${short}, whatever language the code, files or tool output are in. Code, commands and names stay as they are. They may read them as they are.`;
 }
 
 function placeLine(p: Place, cwd: string): string {

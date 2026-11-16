@@ -5,7 +5,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
@@ -91,7 +90,7 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 				break
 			}
 			if isLink(ev.Ref) {
-				if a.quietLink(c.Key(i), "ev", a.proofLabel(ev), a.proofLabel(ev)) {
+				if a.quietLink(c.Key(i), "ev", a.proofLabel(task, ev), a.proofLabel(task, ev)) {
 					a.openEvidence(c, ev)
 				}
 				continue
@@ -108,7 +107,7 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 				draw = drawCheck
 				glyph = t.Done.Ink // a passed check's ✓ in the done ink (D76)
 			}
-			m := a.markIn(c.Key(i), draw, glyph, a.proofLabel(ev), t.InkMuted).Tooltip(ev.Ref)
+			m := a.markIn(c.Key(i), draw, glyph, a.proofLabel(task, ev), t.InkMuted).Tooltip(ev.Ref)
 			if ev.Ref != "" && m.Clicked() {
 				a.openEvidence(c, ev)
 			}
@@ -230,7 +229,7 @@ func summaryLine(s string) string {
 // cjkPad spaces a Latin word apart from the Chinese around it, and leaves
 // Chinese and English text as is.
 func (a *App) cjkPad(s string) string {
-	if a.L.Lang != i18n.ZH || s == "" {
+	if !a.L.Han() || s == "" {
 		return s
 	}
 	if s[0] < 0x80 {

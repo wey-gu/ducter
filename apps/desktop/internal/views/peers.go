@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
@@ -43,10 +42,7 @@ func peerHarness(agent string) string {
 // didn't say who sent it, 一个 AI agent / an AI agent.
 func (a *App) peerWho(agent string) string {
 	if agent == "" || agent == "another agent" {
-		if a.L.Lang == i18n.ZH {
-			return "一个 AI agent"
-		}
-		return "an AI agent"
+		return a.L.T("peer.someone")
 	}
 	return agent
 }
@@ -123,89 +119,6 @@ func (a *App) bridgeNote(b *protocol.BridgeView) string {
 	return a.L.T("bridge.failed", b.Detail)
 }
 
-// bridgeRow is the persona's own connection with the user's other AI agents
-// (D205; Nowledge Bridge underneath, never named): 连上 runs the home's
-// nmem on this tap; 断开 asks once, then runs. D257: the home's Mem steps
-// (put in, sign in, update) live in Settings › 记忆; this row says which
-// and goes there.
-func (a *App) bridgeRow(c *ui.Context, st *protocol.Settings, b *protocol.BridgeView) {
-	t := a.T
-	title := a.L.T("bridge.title", st.Name)
-	toMemory := func() {
-		if a.button(c, a.L.T("peers.mem.go"), btnSecondary, t.ControlSM, t.Surface) {
-			a.openTab(TabMemory)
-		}
-	}
-	switch b.State {
-	case "install_mem", "installing", "sign_in", "signing_in":
-		a.row(c, "bridge", title, a.L.T("peers.mem.first", a.memHome(), st.Name), toMemory)
-		return
-	case "update_mem":
-		a.row(c, "bridge", title, a.L.T("peers.mem.update", a.memHome(), memMin), toMemory)
-		return
-	case "updating":
-		a.row(c, "bridge", title, a.L.T("bridge.mem.updating", a.memHome()), nil)
-		return
-	case "local_mem":
-		a.row(c, "bridge", title, a.L.T("bridge.mem.local", a.memHome()), nil)
-		return
-	}
-	help := a.bridgeNote(b)
-	if b.State == "connected" && b.Detail != "" {
-		help += "\n" + a.L.T("bridge.undo.failed", b.Detail)
-	}
-	// When it doesn't connect and Mem says a newer one is out, that's the first thing to try (D257).
-	tryNewer := b.Newer != nil && (b.State == "refused" || b.State == "failed" || b.State == "unconfirmed")
-	if tryNewer {
-		help += "\n" + a.L.T("peers.mem.newer")
-	}
-	canUndo := (b.State == "connected" && !b.Pinned) || b.State == "unconfirmed"
-	if canUndo && a.bridgeConfirm {
-		help += "\n" + a.L.T("bridge.undo.ask")
-	}
-	canTry := b.State == "ready" || b.State == "refused" || b.State == "failed" || b.State == "unconfirmed"
-	busy := b.State == "connecting" || b.State == "disconnecting"
-	a.row(c, "bridge", title, help, func() {
-		if tryNewer {
-			toMemory()
-		}
-		if canUndo && a.bridgeConfirm && a.buttonFor(c, a.L.T("bridge.undo.keep"), b.Identity, btnText, t.ControlSM, t.Surface) {
-			a.bridgeConfirm = false
-		}
-		if canUndo && a.buttonFor(c, a.L.T("bridge.undo"), b.Identity, btnSecondary, t.ControlSM, t.Surface) {
-			if !a.bridgeConfirm {
-				a.bridgeConfirm = true
-			} else {
-				a.bridgeConfirm = false
-				b.State = "disconnecting"
-				a.send(protocol.BridgeAction{T: "bridge_disconnect"})
-			}
-		}
-		if canTry {
-			label, kind := a.L.T("bridge.retry"), btnSecondary
-			if b.State == "ready" {
-				label, kind = a.L.T("bridge.connect"), btnPrimary
-			}
-			if a.buttonFor(c, label, b.Identity, kind, t.ControlSM, t.Surface) {
-				b.State = "connecting"
-				a.send(protocol.BridgeAction{T: "bridge_connect"})
-			}
-		}
-		if busy {
-			label := a.L.T("bridge.connecting")
-			if b.State == "disconnecting" {
-				label = a.L.T("bridge.disconnecting")
-			}
-			ui.Text(c, label).FontSize(t.SM).TextColor(t.InkMuted)
-		}
-	})
-	// The exact identity, place and id it uses, said literally, quietly (D205).
-	if b.Space != nil && (b.State == "ready" || b.State == "connected") {
-		ui.Text(c.Key("bridge-ids"), b.Identity+" · "+b.Space.Label+" · "+b.Space.ID).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).
-			Padding(0, t.S5, t.S4, t.S5).Margin(-t.S3, 0, 0, 0).Selectable()
-	}
-}
-
 // memFailed is D229's failed install or update: one plain sentence, whether
 // the old copy still works, and the installer's own words last.
 func (a *App) memFailed(install bool, home, detail string, kept bool) string {
@@ -226,81 +139,6 @@ func memSetup(state string) bool {
 		return true
 	}
 	return false
-}
-
-// peersCard is 连上的 AI agent / Connected AI agents (D170, its own tab since
-// D257): the connection, who may reach the partner, the rules it learned
-// about them, and whom the user stopped listening to. 断开 ends it all;
-// 谁都不行 lets no other agent reach the partner while what the user sends
-// on a card still goes.
-func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
-	if st == nil || st.Peers == nil {
-		return
-	}
-	p := st.Peers
-	b := a.S.Bridge
-	seen := a.peersSeen()
-	if b != nil && b.State != "connected" {
-		a.bridgeConfirm = false
-	}
-	reachShown := seen || len(p.Trusted) > 0 || len(p.Muted) > 0 || (b != nil && !memSetup(b.State))
-	t := a.T
-	set := func(next protocol.Peers) {
-		*p = next
-		a.SetSettings(protocol.SettingsPatch{Peers: &next})
-	}
-	a.group(c, "peers", "", "", func() {
-		if b != nil {
-			a.bridgeRow(c, st, b)
-		}
-		if !reachShown {
-			return
-		}
-		reaches := []string{"own", "team", "off"}
-		labels := []string{a.L.T("peers.reach.own"), a.L.T("peers.reach.team"), a.L.T("peers.reach.off")}
-		sel := 0
-		for i, r := range reaches {
-			if r == p.Reach {
-				sel = i
-			}
-		}
-		reachNote := a.L.T("peers.reach.note")
-		if p.Reach == "off" {
-			reachNote = a.L.T("peers.reach.off.note", st.Name)
-		}
-		a.row(c, "reach", a.L.T("peers.reach", st.Name), reachNote, func() {
-			if i := a.choices(c, "reach", a.L.T("peers.reach", st.Name), labels, sel); i >= 0 {
-				next := *p
-				next.Reach = reaches[i]
-				set(next)
-			}
-		})
-	})
-	if len(p.Trusted) == 0 && len(p.Muted) == 0 {
-		return
-	}
-	a.group(c, "peer-rules", "", "", func() {
-		for _, agent := range p.Trusted {
-			agent := agent
-			a.row(c, "trusted:"+agent, a.L.T("peers.trusted", agent), a.L.T("peers.trusted.why"), func() {
-				if a.buttonFor(c, a.L.T("peers.trusted.stop"), agent, btnText, t.ControlSM, t.Surface) {
-					next := *p
-					next.Trusted = without(p.Trusted, agent)
-					set(next)
-				}
-			})
-		}
-		for _, agent := range p.Muted {
-			agent := agent
-			a.row(c, "muted:"+agent, a.L.T("peers.muted", agent), "", func() {
-				if a.buttonFor(c, a.L.T("peers.muted.undo"), agent, btnText, t.ControlSM, t.Surface) {
-					next := *p
-					next.Muted = without(p.Muted, agent)
-					set(next)
-				}
-			})
-		}
-	})
 }
 
 // without is list less one name.

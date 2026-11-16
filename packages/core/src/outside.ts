@@ -9,6 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
+import { fill, words, type LangTag } from "@ducter/protocol/src/lang.ts";
 import { harnessName, OUTSIDE_AGENTS, type Bodies, type LogEvent, type OutsideAgent, type OutsideField, type OutsideItem, type OutsideSource, type PastQuery } from "@ducter/protocol";
 import type { LogStore, Runner, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { LocalAgents, SessionSummary } from "./local-agents/index.ts";
@@ -23,8 +24,8 @@ export interface OutsideDeps {
   ducterFolder?: () => string;
   home?: string;
   now?: () => number;
-  /** The language the person reads in (the task's reports, the brief). */
-  language?: () => "zh" | "en";
+  /** The language the person reads in (the task's reports, what a refusal says). */
+  language?: () => LangTag;
 }
 
 export interface Outside {
@@ -37,6 +38,12 @@ export interface Outside {
 }
 
 const DAY = 24 * 3600_000;
+
+/** What a refusal says, per language (D292). */
+const SAY = {
+  en: { noRunner: "Tasks can't run right now.", missing: "I can't find that session any more.", gone: "Its folder {path} isn't there any more." },
+  zh: { noRunner: "现在开不了任务。", missing: "找不到这段对话了。", gone: "它的文件夹 {path} 不在了。" },
+};
 const WEIGHT: Record<OutsideField, number> = { title: 5, branch: 4, project: 4, words: 3, agent: 2.5 };
 
 export function createOutside(d: OutsideDeps): Outside {
@@ -192,14 +199,15 @@ export function createOutside(d: OutsideDeps): Outside {
     },
     hidden: () => [...hidden],
     async adopt(runner, persona, agent, id, harness, model) {
-      const zh = (d.language?.() ?? "en") === "zh";
+      const lang = d.language?.() ?? "en";
+      const say = words(SAY, lang);
       // Carried on before: that task is the one to open (the person continues it there).
       const had = d.tasks.list().find((c) => c.outside?.agent === agent && c.outside.sessionId === id);
       if (had) return { ok: true, taskId: had.taskId };
-      if (!runner) return { ok: false, message: zh ? "现在开不了任务。" : "Tasks can't run right now." };
+      if (!runner) return { ok: false, message: say.noRunner };
       const s = d.reader.summary(agent, id);
-      if (!s) return { ok: false, message: zh ? "找不到这段对话了。" : "I can't find that session any more." };
-      if (!existsSync(s.cwd)) return { ok: false, message: zh ? `它的文件夹 ${tilde(s.cwd)} 不在了。` : `Its folder ${tilde(s.cwd)} isn't there any more.` };
+      if (!s) return { ok: false, message: say.missing };
+      if (!existsSync(s.cwd)) return { ok: false, message: fill(say.gone, { path: tilde(s.cwd) }) };
       const to = harness && harness !== agent ? harness : agent;
       const it = itemOf(s);
       const title = [...it.title].length > 80 ? `${[...it.title].slice(0, 79).join("")}…` : it.title || harnessName(agent);
@@ -216,7 +224,7 @@ export function createOutside(d: OutsideDeps): Outside {
           harness: to,
           // The same agent keeps the session's own model unless the person picked one.
           ...(model ? { model } : to === agent && s.model ? { model: s.model } : {}),
-          language: zh ? "zh" : "en",
+          language: lang,
           origin: "you",
           adopt: { agent, sessionId: id, startedAt: s.startedAt, turns: d.reader.history(agent, id, { turns: 60 }) },
         });

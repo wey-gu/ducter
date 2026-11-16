@@ -119,6 +119,7 @@ var zhPast = Table{
 	"past.out.show":       "再显示",
 	"past.out.show.one":   "再显示 %s",
 	"past.out.more":       "更多",
+	"past.out.sep":        "、",
 }
 
 var enPast = Table{
@@ -237,6 +238,7 @@ var enPast = Table{
 	"past.out.show":       "Show again",
 	"past.out.show.one":   "Show %s again",
 	"past.out.more":       "More",
+	"past.out.sep":        ", ",
 }
 
 func init() {

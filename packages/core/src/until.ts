@@ -7,7 +7,9 @@
 // A stop short of the condition puts the task on needs-you with the reason, and wakes the partner;
 // met wakes the partner too (core suppresses the task's own done report while the loop runs, so
 // the user hears the outcome once).
-import type { Attention, Bodies, CheckSpec, LogEvent } from "@ducter/protocol";
+import type { Attention, Bodies, CheckSpec, LangTag, LogEvent } from "@ducter/protocol";
+import { fill, words } from "@ducter/protocol";
+import { langOfText } from "./lang.ts";
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import { validateCheck } from "@ducter/protocol/src/checks.ts";
 import type { CheckResult } from "@ducter/protocol/src/checks-run.ts";
@@ -39,11 +41,14 @@ const progressOf = (s: string) => {
   return m ? Number(m[1]) / Math.max(1, Number(m[2])) : undefined;
 };
 
-export function nextTryText(n: number, condition: string, summary: string, zh: boolean): string {
-  return zh
-    ? `第 ${n} 次：「${condition}」还没做到（${summary}）。接着朝它做，这一次做完照常报告。`
-    : `Try ${n}: "${condition}" isn't true yet (${summary}). Keep going toward it, and report when this try is done.`;
+export function nextTryText(n: number, condition: string, summary: string, lang: LangTag): string {
+  return fill(words(NEXT_TRY, lang), { n, condition, summary });
 }
+// D292: zh and en; any other language falls back (ko → en).
+const NEXT_TRY = {
+  zh: "第 {n} 次：「{condition}」还没做到（{summary}）。接着朝它做，这一次做完照常报告。",
+  en: 'Try {n}: "{condition}" isn\'t true yet ({summary}). Keep going toward it, and report when this try is done.',
+};
 
 export function createUntils(opts: {
   log: LogStore;
@@ -135,8 +140,7 @@ export function createUntils(opts: {
         return end(l, "oscillation", `going back and forth: "${t.summary}" again`);
       const runner = opts.runner();
       if (!runner) return;
-      const zh = /[一-鿿]/.test(l.u.condition);
-      await runner.send(l.u.taskId, nextTryText(n + 1, l.u.condition, t.summary, zh), "queue", "partner").catch((err) => {
+      await runner.send(l.u.taskId, nextTryText(n + 1, l.u.condition, t.summary, langOfText(l.u.condition)), "queue", "partner").catch((err) => {
         console.warn(`[until] could not start try ${n + 1} of ${l.u.taskId}: ${(err as Error).message}`);
       });
     } finally {

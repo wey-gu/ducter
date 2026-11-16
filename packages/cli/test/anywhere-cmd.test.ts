@@ -128,7 +128,7 @@ test("the setup task's flow: sign in, the Go on the card, create and point, run;
   pc!.send({ t: "pair_code" });
   const code = (await pc!.next((f: ServerFrame) => f.t === "pair_code", 5000)) as Extract<ServerFrame, { t: "pair_code" }>;
   pc!.close();
-  expect(code.link).toBe(`https://ducter.example.com/pair#c=${code.code}`);
+  expect(code.link).toStartWith(`https://ducter.example.com/pair#c=${code.code}&k=`); // D293: the home's key fingerprint rides beside the code
 
   const off = await run(c, ["off"], { lang: "zh" });
   expect(off.out).toContain("通道和地址还留在你的 Cloudflare 账号里");

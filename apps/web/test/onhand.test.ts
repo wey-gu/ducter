@@ -26,6 +26,7 @@ async function home() {
   const { A } = await import("../src/app.ts");
   const o = await import("../src/onhand.tsx");
   A.L = strings("en");
+  A.S.channel.splice(0); // D292: a result is read in the conversation's language; no earlier file's words
   A.send = () => {};
   A.S.welcomed = true;
   A.receive({

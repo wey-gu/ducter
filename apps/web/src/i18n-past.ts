@@ -113,6 +113,7 @@ export const pastWords: { zh: Record<string, string>; en: Record<string, string>
     "past.out.show": "再显示",
     "past.out.show.one": "再显示 %s",
     "past.out.more": "更多",
+    "past.out.sep": "、",
   },
   en: {
     "og.tab": "Ongoing",
@@ -227,5 +228,6 @@ export const pastWords: { zh: Record<string, string>; en: Record<string, string>
     "past.out.show": "Show again",
     "past.out.show.one": "Show %s again",
     "past.out.more": "More",
+    "past.out.sep": ", ",
   },
 };

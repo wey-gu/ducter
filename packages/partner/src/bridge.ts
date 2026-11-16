@@ -25,6 +25,10 @@
 // 2026-11-13, research/66 §7): `bridge inbox` lists `messages[]` of `{message}` only; `bridge open`
 // returns `{message, body, reply_to, outgoing}` with no sender at all, `reply_to` being the message's
 // own handle. Sender fields read below come from older shapes and stay as fallbacks (research/31).
+// Mem PR #10278 (merged 2026-11-15, deployed on Mem Cloud; in the CLI after 0.10.119, research/66 §8):
+// `inbox` messages and `open` add `sender: {actor_id, member?, agent?, agent_id?}` and `in_reply_to`
+// (the actual parent; `reply_to` stays the message itself); contact cards add `agent_id` and
+// `mailbox_available` (false = no registered mailbox now: no send arguments). Read below (D294).
 import { nmemEnv } from "./memory.ts";
 
 export interface BridgeMessage {
@@ -56,7 +60,12 @@ export interface BridgeOp {
   body?: string;
 }
 
-export type BridgeFailure = { ok: false; reason: "not_configured" | "unavailable" | "refused"; message: string; operation?: string };
+/**
+ * "busy": Mem's side couldn't take it right now and said it was NOT admitted (`outcome_unknown:
+ * false`), after a short bounded retry (D294); nothing went out, so a later send is no replacement.
+ * "unavailable": no answer, or Mem doesn't know; for a send or reply the outcome is UNKNOWN (D106).
+ */
+export type BridgeFailure = { ok: false; reason: "not_configured" | "unavailable" | "busy" | "refused"; message: string; operation?: string };
 export type BridgeResult<T> = ({ ok: true } & T) | BridgeFailure;
 
 export interface BridgeClient {
@@ -98,7 +107,50 @@ export interface NmemBridgeOptions {
    */
   me?: string;
   env?: Record<string, string | undefined>;
+  /**
+   * D294: the waits before each retry of a call Mem answered "can't right now" (503, 429, `_busy`,
+   * `_unavailable`, `_capacity`, `retryable`). Reads retry; a send or reply only when Mem said it was
+   * not admitted (`outcome_unknown: false`), so a retry can never be a second copy. Default [400, 1200].
+   */
+  retryDelaysMs?: number[];
 }
+
+/** Mem's error answer, flat (`{error_code, http_status, retryable, outcome_unknown}`) or under
+ *  `upstream` (a send's 409/503, VERIFIED 2026-11-13), from stdout or stderr JSON. */
+export interface MailboxError {
+  code?: string;
+  http?: number;
+  retryable?: boolean;
+  unknown?: boolean; // Mem's own `outcome_unknown`
+}
+export function mailboxError(text: string): MailboxError {
+  for (const chunk of [text, ...text.split("\n")]) {
+    let j: any;
+    try {
+      j = JSON.parse(chunk);
+    } catch {
+      continue;
+    }
+    const e = j && typeof j === "object" ? (j.upstream && typeof j.upstream === "object" ? j.upstream : j) : undefined;
+    if (!e) continue;
+    const code = str(e.error_code) ?? str(e.code) ?? str(e.error);
+    const http = typeof e.http_status === "number" ? e.http_status : undefined;
+    if (!code && http === undefined && typeof e.outcome_unknown !== "boolean") continue;
+    return {
+      ...(code ? { code } : {}),
+      ...(http !== undefined ? { http } : {}),
+      ...(typeof e.retryable === "boolean" ? { retryable: e.retryable } : {}),
+      ...(typeof e.outcome_unknown === "boolean" ? { unknown: e.outcome_unknown } : {}),
+    };
+  }
+  const http = /\b(?:HTTP|status)\s*(\d{3})\b/i.exec(text)?.[1];
+  return http ? { http: Number(http) } : {};
+}
+/** Mem's side can't take it right now: worth a short wait and one more try (D294). */
+export const transient = (e: MailboxError) => e.http === 503 || e.http === 429 || /_(unavailable|busy|capacity)$/.test(e.code ?? "") || e.retryable === true;
+
+/** Agents Mem names only generically: every native session's Agent is "Bridge agent" (research/66 §7). */
+const GENERIC_AGENT = /^bridge agent$/i;
 
 const MAX_TEXT = 4000;
 const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
@@ -109,7 +161,12 @@ const pickName = (o: any): string | undefined => {
   if (typeof o === "string") return o;
   return str(o.display_name) ?? str(o.displayName) ?? str(o.name) ?? str(o.label) ?? str(o.agent_id) ?? str(o.id);
 };
-const agentOf = (m: any): string | undefined => pickName(m?.agent) ?? pickName(m?.sender?.agent) ?? pickName(m?.from?.agent) ?? str(m?.sender_agent_id) ?? str(m?.agent_id);
+const agentOf = (m: any): string | undefined => {
+  const a = pickName(m?.agent) ?? pickName(m?.sender?.agent) ?? pickName(m?.from?.agent);
+  // A generic label says nothing about which agent it is, and its id reads no better (D294).
+  if (a && GENERIC_AGENT.test(a)) return undefined;
+  return a ?? str(m?.sender_agent_id) ?? str(m?.agent_id);
+};
 
 /** The id in an id-only member label ("Member 4e74…"), as real contact cards carry it. */
 export function memberIdLabel(v: string): string | undefined {
@@ -176,13 +233,13 @@ export function outgoingReads(j: any): Record<string, boolean> | undefined {
 
 /**
  * A teammate's agent whose card names no member (the real CLI, B11) is told by its team instead:
- * "reviewer · dev team" (D162). The user's own agents and personal Spaces keep the bare name.
+ * "reviewer (dev team)" (D162; D291: never a " · " join). The user's own agents and personal Spaces keep the bare name.
  */
 function teamLabel(c: any, label: string, mine: boolean): string {
   const team = str(c?.space?.label);
   const kind = str(c?.space?.kind);
   if (mine || !team || kind === "personal" || label !== (agentOf(c) ?? label)) return label;
-  return `${label} · ${team}`;
+  return `${label} (${team})`;
 }
 
 /** Recipient cards from `bridge contacts --json`: `contacts[]` (or `cards[]`) with an opaque `contact`. */
@@ -195,6 +252,9 @@ export function contactsOf(j: any, me?: string): BridgeContact[] {
     const description = str(c?.agent?.description) ?? str(c?.description);
     const space = str(c?.space_id) ?? str(c?.resolved_space_id) ?? str(c?.space?.id);
     const agent = agentOf(c);
+    // Mem #10278: a card whose agent has no registered mailbox now can't be sent to (the 409 of
+    // 2026-11-13: a stale card picked by name, every send unknown). Left out, never offered.
+    if (c?.mailbox_available === false) continue;
     out.push({
       contact,
       label: teamLabel(c, senderOf(c), isMine(c, me)),
@@ -266,11 +326,36 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       clearTimeout(timer);
     }
   };
-  const failure = (r: { code: number; err: string; out: string } | { missing: true }): BridgeFailure => {
+  const delays = opts.retryDelaysMs ?? [400, 1200];
+  type Ran = { code: number; out: string; err: string } | { missing: true };
+  /**
+   * D294: a call Mem answered "can't right now" is tried again after a short wait, at most
+   * `delays.length` more times (about 1.6 s). `write`: a send or reply, retried only when Mem said
+   * it was not admitted (`outcome_unknown: false`), so a retry is never a second copy.
+   */
+  const retried = async (call: () => Promise<Ran>, write: boolean): Promise<Ran> => {
+    let r = await call();
+    for (const ms of delays) {
+      if ("missing" in r || r.code === 0) return r;
+      const e = mailboxError(`${r.out}\n${r.err}`);
+      if (!transient(e) || (write && e.unknown !== false)) return r;
+      await Bun.sleep(ms);
+      r = await call();
+    }
+    return r;
+  };
+  const read = (args: string[]) => retried(() => run(args), false);
+  const write = (args: string[], input: string) => retried(() => run(args, input), true);
+  const failure = (r: Ran): BridgeFailure => {
     if ("missing" in r) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
     const text = `${r.err}\n${r.out}`;
     const operation = operationIn(r.out) ?? operationIn(r.err);
     const op = operation ? { operation } : {};
+    const e = mailboxError(text);
+    // Mem's own word on the outcome first: unknown is recovered, never called refused (D106).
+    if (e.unknown === true) return { ok: false, reason: "unavailable", message: "Nowledge Mem didn't say whether it went out.", ...op };
+    if (e.unknown === false && transient(e)) return { ok: false, reason: "busy", message: "Nowledge Mem can't take messages right now; nothing went out.", ...op };
+    if (e.unknown === false && e.code && !/agent_context|not_configured/.test(e.code)) return { ok: false, reason: "refused", message: "Nowledge Mem didn't take it; nothing went out.", ...op };
     if (/not admitted|denied|forbidden|role_insufficient|403|refus/i.test(text)) return { ok: false, reason: "refused", message: "Bridge refused this connection.", ...op };
     if (/agent context|not configured|api key|401|unknown context/i.test(text)) return { ok: false, reason: "not_configured", message: "Bridge isn't set up for this partner.", ...op };
     return { ok: false, reason: "unavailable", message: `Bridge didn't answer (${clip((r.err || r.out || `exit ${r.code}`).trim(), 120)}).`, ...op };
@@ -321,7 +406,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   };
   return {
     async check(known) {
-      const r = await run(["inbox"]);
+      const r = await read(["inbox"]);
       if ("missing" in r || r.code !== 0) return failure(r);
       const j = parse(r.out);
       if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
@@ -330,7 +415,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       const mine = fresh.length ? await self() : undefined;
       for (const id of fresh) {
         // `open` records this recipient's first read: Ducter has the body in its Log from here on.
-        const o = await run(["open", id]);
+        const o = await read(["open", id]);
         if ("missing" in o || o.code !== 0) continue; // left unread; the next check tries again
         const b = parse(o.out);
         const body = str(b?.body) ?? str(b?.message?.body) ?? str(b?.text);
@@ -343,8 +428,11 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         const who = b?.message && typeof b.message === "object" ? { ...b, ...b.message } : b;
         const agent = agentOf(who);
         // No sender at all (the released CLI): in the user's "Only me" place it is one of theirs (D249).
+        // In the user's "Only me" place every sender is one of their own agents, named or not
+        // (D249; D294: Mem #10278's `sender.member` may be a display name, not the custodian id).
+        // Elsewhere, only a sender whose member is the user's own.
         const said = memberOf(who);
-        const own = said.id || said.name ? isMine(who, mine) : (await place()).personal;
+        const own = (!!(said.id || said.name) && isMine(who, mine)) || (await place()).personal;
         messages.push({
           messageId: id,
           from: senderOf(who),
@@ -359,7 +447,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       return { ok: true, messages, ...(reads ? { reads } : {}) };
     },
     async inboxIds() {
-      const r = await run(["inbox"]);
+      const r = await read(["inbox"]);
       if ("missing" in r || r.code !== 0) return failure(r);
       const j = parse(r.out);
       if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
@@ -367,22 +455,22 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     },
     async reply(messageId, text) {
       // Body through stdin (--body-file -): text starting with "-" can't parse as a flag.
-      return sent(await run(["reply", "--body-file", "-", messageId], text));
+      return sent(await write(["reply", "--body-file", "-", messageId], text));
     },
     // Read-only discovery, then a send the user confirmed (design/bridge.md, S2).
     async contacts(query) {
-      const r = await run(["contacts", "--query", query]);
+      const r = await read(["contacts", "--query", query]);
       if ("missing" in r || r.code !== 0) return failure(r);
       const j = parse(r.out);
       if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
       return { ok: true, contacts: contactsOf(j, await self()), more: Array.isArray(j?.next_args) && j.next_args.length > 0 };
     },
     async send(contact, text) {
-      return sent(await run(["send", "--to", contact, "--body-file", "-"], text));
+      return sent(await write(["send", "--to", contact, "--body-file", "-"], text));
     },
     // Recovery of an unknown outcome (D106): read-only, then resume the same original.
     async outbox() {
-      const r = await run(["outbox"]);
+      const r = await read(["outbox"]);
       if ("missing" in r || r.code !== 0) return failure(r);
       const j = parse(r.out);
       if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
@@ -390,7 +478,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       return { ok: true, ops: list.map(opOf).filter((o: BridgeOp | undefined): o is BridgeOp => !!o) };
     },
     async inspect(operation) {
-      const r = await run(["inspect", operation]);
+      const r = await read(["inspect", operation]);
       if ("missing" in r || r.code !== 0) return failure(r);
       const op = opOf({ operation, ...(parse(r.out) ?? {}) });
       return op ? { ok: true, op } : { ok: false, reason: "unavailable", message: "Bridge gave no answer." };

@@ -108,7 +108,7 @@ export type Block =
 export type ToldSay = "adopted" | "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "other";
 
 /** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
-export type NoteSay = "earlier" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
+export type NoteSay = "earlier" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
 
 const KICKOFF = /^(<brief>|Start the task ")/;
 
@@ -145,6 +145,8 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
   // D157: another computer ("换到 hel 接着做"); D282: another agent ("换成 Codex 接着做"), both with their time.
   if (mv) return { say: "moved", ...(str(mv.to) ? { name: str(mv.to) } : {}) };
   if (sw) return { say: "switched", ...(str(sw.to) ? { name: harnessName(String(sw.to)) } : {}) };
+  // D293: its worker dropped and holds the session for its grace.
+  if (r.device !== undefined && r.reconnecting === true) return { say: "reconnecting", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^(.+?) dropped/)) };
   if (r.device !== undefined && r.offline === true) return { say: "offline", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^(.+?) disconnected/)) };
   if (r.device !== undefined && r.offline === false) return { say: "back", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^(.+?) is back/)) };
   if (r.waits === "asleep" || r.waits === "unreachable") return { say: "waiting_device", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^waiting for (.+?):/)) };

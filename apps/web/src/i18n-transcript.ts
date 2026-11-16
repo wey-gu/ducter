@@ -52,7 +52,7 @@ export const transcriptWords: { zh: Record<string, string>; en: Record<string, s
     "fail.5xx": "对方出了问题（%d）",
     "fail.code": "%s（%d）",
     "note.compacted": "压缩了上下文",
-    "note.earlier": "%s在 %s 里开始的",
+    "note.earlier": "在 %s 里开始的，%s",
     "note.earlier.undated": "之前在 %s 里做的",
     "note.earlier.agent": "你的 AI",
     "told.adopted": "%s 在 Ducter 里接着做",

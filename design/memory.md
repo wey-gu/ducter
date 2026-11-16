@@ -161,24 +161,76 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   a stated preference (zh and en), no save of a task result or a pasted key, no recall for a
   general question, Mem down.
 
-## Settings › 记忆 / Memory (D257, built 2026-11-14)
+## Settings › 记忆 / Memory and › 连上的 AI agent (D295, built 2026-11-17; was D257)
 
-Memory has its own Settings tab after 伙伴, marked by the partner's own blue notebook (research/84). In order:
+### Who, what they feel, how it starts
 
-- **The partner and one sentence.** Its face says where memory stands: done (hugging its notebook) when it
-  remembers, napping when off, idle when Mem is missing, working while Mem goes in. **{name} 记得你** and why it
-  matters (a new conversation or another AI tool picks up); nothing noted yet: how to start ("记住，周报每周五下午
-  发"). **记住事情 / Remember things** is on this card.
-- **它记下的 / What it noted:** the Log's `memory_noted` lines (the partner's own saves, up to 12, newest first),
-  grouped **今天 / 这一周 / 更早** by this computer's day, each forgettable as before; **在 Nowledge Mem 里看全部**
-  opens Mem for everything else. No heading when there is nothing.
-- **Nowledge Mem:** where it runs and its version, **已连上**, the display name it goes by there; every D225/D229
-  step (install, sign in, move, local-only) with its words. An update gets its own card in the highlight (Mem's
-  `status.update`, carried as `BridgeView.newer` with `version` on every working state): **Nowledge Mem 有新版本
-  {v}** · **更新**, or **要更新一下** when Bridge needs it, or "update it in the Nowledge Mem app" for the app's
-  copy. The Settings entry (Mac rail, web list) says **Nowledge Mem 有新版本** under 记忆 in the highlight's ink.
+- **A fresh user without Mem.** Before: they never thought about "memory"; repeating themselves is a
+  quiet tax they accept. After: a small partner holding its notebook says **让 {name} 记住你 / Let
+  {name} remember you** and one sentence of what it gives (never repeating yourself; it knows what
+  Claude Code or Codex saved too). How it starts: two steps on one card, **装上 Nowledge Mem** (one
+  tap on the home) and **登录你的 Nowledge Mem** (a one-time link), and the app's way as its note
+  (already have the Nowledge Mem app? open it). No concept to learn: no "CLI", "Space", "identity".
+- **A Mem user (Cloud, or the local app / Vault).** Before: Mem is theirs, and they want to see that
+  Ducter treats it as theirs, not as a private store. After: the page leads with what it learned
+  this week, then **你别的 AI 记下的 / Saved by your other AI tools** (Claude Code, Codex, Cursor…
+  by their own names and coins), then where it's kept in their words (**Nowledge Mem Cloud，换哪台电脑都是同一份**,
+  or **{home} 上的 Nowledge Mem 应用里，不离开那台电脑**) and the name it signs with. How it starts: nothing
+  to do; it is already connected, and it shows the count Mem holds (**一共有 1,284 条记忆**).
+- **The heavy multi-agent developer.** Before: a raw `ducter · Only me · personal-…` line and a loud
+  断开 made the link feel fragile. After: **你的 AI agent 能找到 {name}** in the done ink, its identity and
+  place as two plain rows, who may reach it as one choice, the raw ids behind a quiet **详情 / Details**
+  for support, 断开 quiet until reached for and asking in place. How it starts: **连接 / Connect** once.
 
-Rules in `apps/web/src/mem-view.ts` and `apps/desktop/internal/views/memory.go` (the same cases tested on both).
+North star: 好用 (one switch, one tap to forget, two setup steps); 顺滑 (asks in place, no dialogs);
+赏心悦目 (the clay grid, small marks in the tile column, no hero card); 放心 (forget asks first and says
+whether Mem forgets or the line only leaves the list; nothing another tool saved can be deleted here);
+惊喜 (the memory is shared: what Claude Code saved shows up, by name).
+
+### The panes (both clients, wide and phone; D289's grid)
+
+**Memory, on:** (1) one group: the notebook in the tile column, **{name} 记得你**, **这周新记了 N 条** in
+the done ink (or **这周还没有新记的**), the switch at the right edge; its foot says what the switch does.
+(2) **这周记下的** and **更早记下的** as sections, one group each: an accent pebble in the tile column,
+the title, its age; **忘掉** quiet at the right edge; tapped, the row asks in place (**忘掉「…」？它以后
+不会再想起。** or, without a Mem id, **从这里拿掉「…」？Nowledge Mem 里那条还在。**) with **留着** and **忘掉**.
+The last group's foot: Mem's count and **去 Nowledge Mem 看**. (3) **你别的 AI 记下的**, with its note
+(**…{name} 也想得起来。**): one row per memory another AI tool saved, its coin (or its letter), the
+title, **{tool} 记的**, its age at the right; read-only (another tool's memory is forgotten in Mem).
+(4) **Nowledge Mem** as one group: Mem's letter on a notebook-blue pebble, **已连上**; **记在哪儿**,
+**它的名字**, the one update worth a tap as a row (D229's words), the raw facts behind **详情**, the
+version as the foot's note. **Off:** only the first group, its foot what stays. **Before Mem:** the
+partner at 84–96 on the paper (an empty state, never inside a group), then one group: Mem's faded
+letter, how it stands (**还没接上 / {home} 上还没装 / 装好了，还差登录**), the two steps (D283's step
+marks) with D225's words, and the app's way as the foot.
+
+**Connected AI agents:** one group: two agents' coins in the tile column; connected: **你的 AI agent
+能找到 {name}** · **已连上**, **它的身份** (**「ducter」，你的 agent 按这个名字找它**), **在哪儿** (**你自己的空间，
+只有你的 agent 在里面**; a named place: **「{label}」空间**), **谁能找到 {name}** with its choice under its
+words, the foot **断开后它不再收，也不再发。** with **详情** and a quiet **断开** that asks in place
+(**断开？你的 AI agent 就找不到它了；…**). Other states keep D205/D225's words in the first row (ready:
+**连接** at its right edge). **它记住的规矩 / What it has learned** is a section of its own, a row per
+agent with its coin.
+
+### The glance at Mem (core, `mem-glance.ts`)
+
+`MemView.glance` carries `{ total, others[] }` from one read-only `nmem --json m list -n 40`, at most every
+2 minutes, in the background (a fresh settings frame follows), only while memory is on and Mem answers,
+never on a test without a fake nmem. `others` holds at most 6 memories whose `source` is a known AI tool
+(`AI_TOOLS`: claude-code → Claude Code, codex → Codex, cursor, gemini-cli, openclaw, …); Ducter's own
+(`ducter`) and the person's own (`cli`, the app, a clip) are left out. Titles, sources and dates only;
+contents never leave Mem. `BridgeView.where` (cloud / local / server) comes from `nmem status`.backend.
+
+### Deep integration: the plan (D295)
+
+Built now: the glance, the panes, where-it's-kept, forget that asks. Next, each behind its own trigger
+(`todo.md`): (a) **recall said quietly in the conversation**: when a reply leans on a memory, the reply's
+Details carry **想起了 · {title} / Recalled · {title}** with its source tool, tappable to forget (a partner
+tool change: D175's eval applies); (b) **a weekly digest you can correct**: once a week, inside the morning
+note, "这周记下了 5 条" with each line's 忘掉; (c) **Mem's health on the first row**: a link Mem refuses or a
+sign-in that expired says so on the Memory head row in the failed ink, with the one step; (d) **other tools'
+memories as task context**: tasks already use the real Mem plugin (D168); the brief names that what Claude
+Code saved is there to recall; (e) **Cloud or local chosen in one calm flow** when both exist.
 
 ## Mem and tasks (D168, D169; built 2026-11-10)
 

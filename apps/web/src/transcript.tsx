@@ -38,7 +38,7 @@ const has = (key: string) => A.L.t(key) !== key;
 export function shortGo(label: string | undefined): string {
   const l = (label ?? "").trim().replace(/[.。!！]+$/, "").trim();
   if (!l || !shortVerb(l)) return t("decision.go");
-  return t("decision.go.label", A.L.lang === "zh" ? l : l.charAt(0).toUpperCase() + l.slice(1));
+  return t("decision.go.label", !A.L.style.cased ? l : l.charAt(0).toUpperCase() + l.slice(1));
 }
 
 /** At most 6 Chinese characters or 3 English words, and no sentence in it. */
@@ -90,7 +90,7 @@ export function stepWords(st: Step): string {
 }
 
 /** An English step starts on a capital: a step is its own line (D210). */
-const capFirst = (s: string) => (A.L.lang === "zh" || !s ? s : s.charAt(0).toUpperCase() + s.slice(1));
+const capFirst = (s: string) => (!A.L.style.cased || !s ? s : s.charAt(0).toUpperCase() + s.slice(1));
 
 /** A command, a path, a pattern: it reads in mono on the inline code tint. */
 const codeLike = (st: Step) => !!st.target && !st.act && ["ran", "read", "edited", "searched"].includes(st.kind);
@@ -483,14 +483,13 @@ export function earlierLine(b: Extract<Block, { k: "note" }>): string {
   const agent = b.name || t("note.earlier.agent");
   const ms = b.at ? Date.parse(b.at) : NaN;
   if (!Number.isFinite(ms)) return t("note.earlier.undated", agent);
-  const d = new Date(ms);
-  const day = A.L.lang === "zh" ? `${d.getMonth() + 1}月${d.getDate()}日` : d.toLocaleDateString("en", { month: "short", day: "numeric" });
-  return A.L.lang === "zh" ? t("note.earlier", day, agent) : t("note.earlier", agent, day);
+  const day = new Date(ms).toLocaleDateString(A.L.lang, { month: "short", day: "numeric" });
+  return t("note.earlier", agent, day);
 }
 
 function noteName(b: Extract<Block, { k: "note" }>): string {
   if (b.say === "effort_dropped") return b.name ? effortWord(A.L, b.name) : "";
-  if (b.say === "offline" || b.say === "back" || b.say === "waiting_device") return b.name || t("note.computer");
+  if (b.say === "offline" || b.say === "reconnecting" || b.say === "back" || b.say === "waiting_device") return b.name || t("note.computer");
   return b.name ?? "";
 }
 
@@ -501,7 +500,7 @@ function Voice({ task, b, took }: { task: Task; b: Extract<Block, { k: "voice" }
   const at = Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
   return (
     <div class="voice">
-      <div class={`tx assistant md${hanClass(b.text)}`} dangerouslySetInnerHTML={{ __html: markdown(b.text, t("reply.copy")) }} />
+      <div class={`tx assistant md${hanClass(b.text)}`} dir="auto" dangerouslySetInnerHTML={{ __html: markdown(b.text, t("reply.copy")) }} />
       <small class={`vmeta${b.saved ? " kept" : ""}`}>
         {b.saved && <span class="saved">{t("task.saved")}</span>}
         <span class="hov">
@@ -532,7 +531,7 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
     case "report": {
       const k = { needs_input: "task.report.needs_input", done: "task.report.done", blocked: "task.report.blocked", failed: "task.report.failed" }[b.state as string] ?? "task.report";
       return (
-        <div class="tx said">
+        <div class="tx said" dir="auto">
           <small>{t(k, A.S.personaName)}</small>
           {b.text}
           {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
@@ -550,7 +549,7 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
             <span>{b.say === "compacted" && b.from && b.to ? t("note.compacted.size", tokensShort(b.from), tokensShort(b.to)) : b.say === "compacted" && b.from ? t("note.compacted.from", tokensShort(b.from)) : t(`note.${b.say}`)}</span>
           </div>
         );
-      // D299: a session from outside Ducter: its earlier turns follow (11月12日在 Claude Code 里开始的).
+      // D299: a session from outside Ducter: its earlier turns follow (在 Claude Code 里开始的，11月12日).
       if (b.say === "earlier")
         return (
           <div class="tx-divider earlier" role="separator">
@@ -585,7 +584,7 @@ function YouBubble({ task, b, queued }: { task: Task; b: Extract<Block, { k: "yo
   const sd = task.sends.find((s) => s.seq === b.seq);
   const waits = queued && sd?.delivered === "queued";
   return (
-    <div class={`tx you${waits ? " queued" : ""}`}>
+    <div class={`tx you${waits ? " queued" : ""}`} dir="auto">
       {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
       {waits && <small class="qtag">{t("delivery.queued.tag")}</small>}
       {b.text}
@@ -692,7 +691,7 @@ export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
     const queued = sd.delivered === "queued";
     const receipt = sd.failed ? t("delivery.failed", sd.failed) : sd.delivered ? "" : t("delivery.sending");
     items.push(
-      <div key={`s${sd.at}`} class={`tx you${queued ? " queued" : !sd.delivered ? " waits" : ""}`}>
+      <div key={`s${sd.at}`} class={`tx you${queued ? " queued" : !sd.delivered ? " waits" : ""}`} dir="auto">
         {sd.pics?.length ? <MediaBlock pics={sd.pics} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
         {queued && <small class="qtag">{t("delivery.queued.tag")}</small>}
         {sd.text}

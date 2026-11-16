@@ -428,6 +428,8 @@ export interface HarnessSession {
   interrupt(): Promise<void>;
   close(): Promise<void>;
   events(): AsyncIterable<HarnessEvent>;
+  /** D282: the agent's own manual compaction, where the runtime has one (Codex through OAR). */
+  compact?(): Promise<void>;
 }
 
 export interface HarnessPort {
@@ -473,9 +475,11 @@ export interface Runner {
   merge?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   openPr?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   // Optional (D89): move a task to another AI agent. A running task is handed off: its session
-  // closes and the new one starts from the brief and the saved progress. ok:false with a
-  // user-facing message when it can't.
-  switchBody?(taskId: string, harness: string, model?: string): Promise<{ ok: boolean; message?: string }>;
+  // closes and the new one starts from the brief, the saved progress and the task's own history
+  // condensed (D282), or resumes that agent's own earlier session on the task. The same agent
+  // with another model or effort (D282) keeps its native session: it reopens with them for the
+  // next turn. ok:false with a user-facing message when it can't.
+  switchBody?(taskId: string, harness: string, model?: string, effort?: string): Promise<{ ok: boolean; message?: string }>;
   // Optional (D157, E3): move a task to another computer (to.device: its name, "local" for the
   // home), with who does it there. A repo task's branch is pushed first; a folder never moves.
   moveTask?(taskId: string, to: { device: string; name: string; homeName?: string }, harness?: string, model?: string): Promise<{ ok: boolean; message?: string }>;

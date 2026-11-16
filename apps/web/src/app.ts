@@ -800,7 +800,8 @@ class AppState {
   /** 换谁来做 / Switch who does it: opens (or closes) the list for a task, asking who could. */
   openSwitch(taskId: string) {
     if (this.switchFor === taskId) this.switchFor = "";
-    else (this.switchFor = taskId), this.send({ t: "candidates", taskId });
+    // D282: and the agents' own model lists, for the in-place model and effort picker.
+    else (this.switchFor = taskId), this.send({ t: "candidates", taskId }), this.send({ t: "task_new_options" });
     this.changed();
   }
 
@@ -1524,6 +1525,12 @@ class AppState {
         : f.message
           ? this.L.t("newtask.err.failed", f.message.replace(/[.\s]+$/, ""))
           : this.L.t("newtask.err.unknown");
+    this.changed();
+  }
+
+  /** D282: the same agent with another model or effort, in place (its own session carries on). */
+  retuneTask(taskId: string, harness: string, model: string, effort?: string) {
+    this.send({ t: "task_switch", taskId, harness, model, ...(effort ? { effort } : {}) });
     this.changed();
   }
 

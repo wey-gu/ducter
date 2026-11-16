@@ -225,6 +225,10 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 		case "compacted", "interrupted":
 			a.divider(c, a.noteLine(b))
 			return
+		case "switched", "retuned", "moved":
+			// D282: who does it changed inside the task: one hairline with its time.
+			a.divider(c, a.switchLine(task, b))
+			return
 		}
 		ui.Row(c).Gap(6).MinHeight(24).AlignItems(ui.Center).MinWidth(0).Children(func() {
 			if b.Bad {

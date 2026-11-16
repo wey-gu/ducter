@@ -887,7 +887,7 @@ export type ClientFrame =
   // (action "switch"). After two switches the same way the partner asks once whether to make it
   // a rule (a partner-level decision).
   | { t: "candidates"; taskId: string }
-  | { t: "task_switch"; taskId: string; harness: string; model?: string; device?: string } // device (D157): continue on another computer
+  | { t: "task_switch"; taskId: string; harness: string; model?: string; effort?: string; device?: string } // device (D157): continue on another computer; effort (D282): the same agent keeps its session
   // D157: 合上之前搬走 / Move before closing, from a computer's card: one decision (close_result answers;
   // none = nothing runs there, close it whenever).
   | { t: "close_computer"; device: string }

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief } from "./brief.ts";
+import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief, type CarryOver } from "./brief.ts";
 import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace, type ResolvedPlace } from "./places.ts";
@@ -101,6 +101,10 @@ export interface RunnerExt extends Runner {
 /** What starting a task needs once its place is ready (open, or a computer that came back). */
 /** D168: how long a task's first turn waits for its memories (a Cloud search takes ~4 s). */
 const RECALL_MS = 6_000;
+/** D282: how much of a task's own history a switch to another agent carries (the rest is in the Log). */
+const CARRY_CHECKPOINTS = 6;
+const CARRY_SAID = 5;
+const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
 
 interface StartCtx {
   body: Bodies["task_open"];
@@ -126,6 +130,12 @@ interface TaskRt {
   loggedSessionId?: string;
   /** Moved to another agent (D89) and no session there yet: the harness it came from. */
   handedFrom?: string;
+  /** D282: each agent's last native session on this task, in this place: switching back resumes it. */
+  past?: Record<string, string>;
+  /** D282: switched back to an agent whose own session resumes: its first turn says what happened since. */
+  backFrom?: string;
+  /** D282: the model or effort changed mid-turn: the session reopens (resumed) before the next turn. */
+  retune?: boolean;
   /** The archive horizon kept its worktree (leftovers) at this card updatedAt: don't retry until it changes. */
   archiveKeptAt?: string;
   running: boolean; // our view: a turn is in flight
@@ -177,6 +187,25 @@ interface TaskRt {
 /** The turn after a browser driver switch (D130): same task, now on Ducter's own browser. */
 export const SWITCHED_TO_CUA =
   "Claude in Chrome is not connected, so Ducter moved you to its own browser: the `browser` MCP server, as \"Your browser\" in your instructions now describes. Do not use the Claude in Chrome tools again. Carry on with the task from where you were.";
+
+/** D282: a slash command in the task's composer that Ducter itself runs. */
+export type Slash = { cmd: "model"; arg: string } | { cmd: "effort"; arg: string } | { cmd: "compact" };
+
+/**
+ * D282: which of the person's slash commands Ducter runs, by agent. `/model <name>` and
+ * `/effort <level>` everywhere (Ducter's in-place switch, so the card stays true and the meaning
+ * is the same on every agent); a bare `/compact` on Codex, whose app-server takes no slash
+ * commands (its compaction is OAR's). Everything else, Claude Code's own `/compact`, `/review`,
+ * `/context`, the person's commands and skills among them, goes to the agent as typed (Claude
+ * Code runs them headless: research/92 §4).
+ */
+export function slashOf(text: string, harness: string): Slash | undefined {
+  const m = /^\/(model|effort|compact)(?:[ \t]+(\S+))?[ \t]*$/i.exec(text.trim());
+  if (!m) return undefined;
+  const cmd = m[1]!.toLowerCase();
+  if (cmd === "compact") return !m[2] && harness === "codex" ? { cmd: "compact" } : undefined;
+  return m[2] ? { cmd: cmd as "model" | "effort", arg: m[2] } : undefined;
+}
 
 /**
  * A task's spec with its browser's parts (D62, D126, D130): the browser brief (its Go, untrusted
@@ -567,8 +596,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.sessionId = id;
     t.loggedSessionId = id;
     t.handedFrom = undefined; // the new agent has its own session now
+    (t.past ??= {})[t.spec.harness] = id; // D282: switching back to this agent resumes it
     // On a worker, the cwd was planned there: record it, a restarted main resumes from it.
-    logEvent(t, { role: "system", from: "runner", text: "session started", raw: { sessionId: id, ...(t.ops.device ? { cwd: t.spec.cwd, device: t.ops.device.id } : {}) } });
+    logEvent(t, { role: "system", from: "runner", text: "session started", raw: { sessionId: id, harness: t.spec.harness, ...(t.ops.device ? { cwd: t.spec.cwd, device: t.ops.device.id } : {}) } });
   }
 
   const partnerNameOf = () => opts.partnerName ?? core.persona.name ?? "Ducter";
@@ -623,21 +653,152 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
    */
   async function resumeOrSeed(t: TaskRt): Promise<string> {
     if (t.sessionId) {
+      const back = t.backFrom;
       try {
         await startSession(t, true);
-        return "";
+        t.backFrom = undefined;
+        // D282: back in this agent's own earlier session: it hears what happened since.
+        return back ? handedBack(harnessName(back), progressOf(t).slice(-CARRY_CHECKPOINTS), await carryOver(t)) : "";
       } catch (err) {
         if (isOffline(err)) throw err;
         const why = preview(err instanceof Error ? err.message : String(err), 300);
         logEvent(t, { role: "system", from: "runner", text: `could not resume the session (${why}); started a new one from the brief and saved progress`, raw: { fresh: "resume_rejected" } });
         t.sessionId = undefined;
+        t.backFrom = undefined;
       }
     }
     const progress = progressOf(t);
-    const seed = t.movedFrom ? movedOver(t.movedFrom.from, t.movedFrom.to, progress, t.movedFrom.repo) : t.handedFrom ? handedOver(t.handedFrom, progress) : startedAfresh(progress);
+    const seed = t.movedFrom
+      ? movedOver(t.movedFrom.from, t.movedFrom.to, progress, t.movedFrom.repo)
+      : t.handedFrom
+        ? handedOver(harnessName(t.handedFrom), progress.slice(-CARRY_CHECKPOINTS), await carryOver(t))
+        : startedAfresh(progress);
     t.movedFrom = undefined;
     await startSession(t, false);
     return seed;
+  }
+
+  /**
+   * D282: the same agent with another model or effort. The spec changes now; the native session
+   * reopens (resumed by its id) before the next turn: at once when idle, after the running turn
+   * otherwise (send closes it then), so nothing the harness holds for this turn is lost.
+   */
+  async function retune(t: TaskRt, model: string | undefined, effort: string | undefined): Promise<{ ok: boolean; message?: string }> {
+    const was = { model: t.base.model, effort: t.base.effort };
+    const nextModel = model ?? t.base.model;
+    // D202: the effort moves with the same model; another model runs at its own default unless one is picked.
+    const nextEffort = effort ?? (nextModel === was.model ? was.effort : undefined);
+    if (nextModel === was.model && nextEffort === was.effort) return { ok: true };
+    t.base = { ...t.base };
+    if (nextModel) t.base.model = nextModel;
+    else delete t.base.model;
+    if (nextEffort) t.base.effort = nextEffort;
+    else delete t.base.effort;
+    t.spec = { ...t.spec, ...(nextModel ? { model: nextModel } : {}), ...(nextEffort ? { effort: nextEffort } : {}) };
+    if (!nextModel) delete t.spec.model;
+    if (!nextEffort) delete t.spec.effort;
+    t.card = { ...t.card, ...(nextModel ? { model: nextModel } : {}) };
+    logEvent(t, { role: "system", from: "runner", text: `now on ${[nextModel, nextEffort].filter(Boolean).join(" · ") || "the default model"}`, raw: { retuned: { harness: t.base.harness, ...(nextModel ? { model: nextModel } : {}), ...(nextEffort ? { effort: nextEffort } : {}) } } });
+    if (!t.session) return { ok: true }; // the next start opens with them
+    if (isBusy(t)) {
+      t.retune = true;
+      return { ok: true };
+    }
+    await reopenForRetune(t);
+    return { ok: true };
+  }
+
+  /** D282: runs the person's /model, /effort (and Codex's /compact) for them; the command shows as their words. */
+  async function runSlash(t: TaskRt, slash: Slash, text: string, clientId?: string): Promise<{ delivered: Delivery }> {
+    logInput(t, text, "user", "turn", clientId);
+    const fail = (why: string) => logEvent(t, { role: "system", from: "runner", text: `could not switch: ${why}`, raw: { slash: slash.cmd, failed: why } });
+    if (slash.cmd === "compact") {
+      const s = t.session;
+      if (!s?.compact) fail("this agent can compact only while its session is open");
+      else if (isBusy(t)) fail("it is mid-turn; compact once the turn ends");
+      else await s.compact().catch((err) => fail(preview(String(err), 300) ?? "compaction failed"));
+      return { delivered: "prompted" };
+    }
+    const h = t.base.harness;
+    const listed = await Promise.race([t.ops.harness.models?.(h).catch(() => undefined), Bun.sleep(20_000).then(() => undefined)]);
+    let model = t.base.model;
+    if (slash.cmd === "model") {
+      const want = slash.arg.toLowerCase();
+      const hits = listed?.filter((m) => m.id.toLowerCase() === want || m.label.toLowerCase() === want);
+      const near = listed?.filter((m) => m.id.toLowerCase().includes(want) || m.label.toLowerCase().includes(want));
+      const pick = hits?.[0] ?? (near?.length === 1 ? near[0] : undefined);
+      if (listed?.length && !pick) {
+        fail(`${harnessName(h)} here has no model "${slash.arg}" (${listed.map((m) => m.id).join(", ")})`);
+        return { delivered: "prompted" };
+      }
+      model = pick?.id ?? slash.arg;
+    }
+    const effort = slash.cmd === "effort" ? slash.arg.toLowerCase() : undefined;
+    const entry = listed?.find((m) => m.id === model) ?? (model ? undefined : listed?.find((m) => m.default));
+    const levels = entry?.efforts;
+    if (effort && levels && !levels.includes(effort)) {
+      fail(`${model ?? harnessName(h)} takes effort ${levels.join(", ")}`);
+      return { delivered: "prompted" };
+    }
+    if (effort && entry && !levels) {
+      fail(`${model ?? harnessName(h)} has no effort levels here`);
+      return { delivered: "prompted" };
+    }
+    await retune(t, slash.cmd === "model" ? model : undefined, effort);
+    core.log.append({ persona: t.persona, stream: stream(t.id), origin: "user", kind: "body_selected", body: { taskId: t.id, harness: h, ...(t.base.model ? { model: t.base.model } : {}), ...(t.base.effort ? { effort: t.base.effort } : {}), why: { kind: "you" } } });
+    return { delivered: "prompted" };
+  }
+
+  /** D282: closes the session on purpose, keeping its id, so the next turn resumes it with the new options. */
+  async function reopenForRetune(t: TaskRt) {
+    t.retune = false;
+    const s = t.session;
+    if (!s) return;
+    t.retired = s;
+    t.session = undefined;
+    t.running = false;
+    await s.close().catch(() => {});
+    setState(t, currentAttention(t), "parked");
+  }
+
+  /**
+   * D282: the task's own history, condensed for another agent: its last report and its questions,
+   * the person's words since, the agent's last words, and what the branch holds. From the Log, so
+   * it holds after a restart too; the branch only when it answers within two seconds.
+   */
+  async function carryOver(t: TaskRt): Promise<CarryOver> {
+    const evs = core.log.read({ stream: stream(t.id), kinds: ["report", "task_event"], limit: 50_000 });
+    const out: CarryOver = {};
+    let after = -1;
+    for (let i = evs.length - 1; i >= 0; i--) {
+      const e = evs[i]!;
+      if (e.kind !== "report") continue;
+      const r = e.body as Bodies["report"];
+      if (r.state === "progress") continue;
+      out.report = { state: r.state, summary: clip(r.summary, 600), questions: (r.questions ?? []).map((q) => clip(`${q.text}${q.default ? ` (default: ${q.default})` : ""}`, 300)) };
+      after = e.seq;
+      break;
+    }
+    const said: string[] = [];
+    for (const e of evs) {
+      if (e.kind !== "task_event" || e.seq <= after) continue;
+      const b = e.body as Bodies["task_event"];
+      if (b.role === "user" && b.from === "user" && b.text?.trim()) said.push(clip(b.text.trim(), 400));
+    }
+    if (said.length) out.said = said.slice(-CARRY_SAID);
+    for (let i = evs.length - 1; i >= 0; i--) {
+      const b = evs[i]!.body as Bodies["task_event"];
+      if (evs[i]!.kind === "task_event" && b.role === "assistant" && b.text?.trim()) {
+        out.lastWords = clip(b.text.trim(), 600);
+        break;
+      }
+    }
+    const place = core.tasks.get(t.id)?.place ?? t.card.place;
+    if (place?.kind === "repo") {
+      const b = await Promise.race([t.ops.changes(place).catch(() => undefined), Bun.sleep(2000).then(() => undefined)]);
+      if (b) out.branch = { commits: b.commits, uncommitted: b.uncommitted, ...(b.files !== undefined ? { files: b.files, adds: b.adds, dels: b.dels } : {}) };
+    }
+    return out;
   }
 
   async function pump(t: TaskRt, session: HarnessSession) {
@@ -1124,17 +1285,23 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (open.language) t.lang = open.language;
     let asked = false; // D142: it asked before changing a folder it couldn't copy
     for (const ev of core.log.read({ stream: stream(open.taskId), kinds: ["task_event"], limit: 50_000 })) {
-      const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; cwd?: string; kind?: string; compactions?: number; switched?: { from: string }; folder?: { ask?: string; direct?: boolean } } | undefined;
+      const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; harness?: string; cwd?: string; kind?: string; compactions?: number; switched?: { from: string; to?: string; back?: boolean }; moved?: unknown; folder?: { ask?: string; direct?: boolean } } | undefined;
       if (raw?.sessionId) {
         t.sessionId = t.loggedSessionId = raw.sessionId;
-        t.handedFrom = undefined;
+        t.handedFrom = t.backFrom = undefined;
+        if (raw.harness) (t.past ??= {})[raw.harness] = raw.sessionId;
       }
       if (raw?.sessionId && raw.cwd && ops.device) t.spec.cwd = t.base.cwd = raw.cwd;
       if (raw?.kind === "compaction_ended" && raw.compactions) t.compactions = raw.compactions;
       // Moved to another agent (D89): the session ids before it are the old agent's; ignore them.
+      // D282: switched back to an agent whose own session it had: that one resumes.
       if (raw?.switched) {
-        t.sessionId = t.loggedSessionId = undefined;
+        if (raw.moved) t.past = undefined; // another computer: the old sessions stayed there
+        const back = raw.switched.back && raw.switched.to ? t.past?.[raw.switched.to] : undefined;
+        t.sessionId = back;
+        t.loggedSessionId = undefined;
         t.handedFrom = raw.switched.from;
+        t.backFrom = back ? raw.switched.from : undefined;
       }
       if (raw?.folder?.ask) asked = true;
       if (raw?.folder?.direct) (asked = false), (t.direct = true);
@@ -1567,8 +1734,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if (typeof text !== "string" || (!text.trim() && !media?.length)) throw new Error("send needs non-empty text");
       if (t.dropped) throw new Error(`task ${taskId} was dropped`);
       await t.started.catch(() => {});
+      // D282: the person's own /model and /effort in the task's composer: Ducter's switch, the same
+      // meaning on every agent, the card kept true. Every other slash command goes to the harness.
+      const slash = from === "user" && !media?.length ? slashOf(text, t.base.harness) : undefined;
+      if (slash) return runSlash(t, slash, text, clientId);
       t.nudged = false;
       t.stallNoted = false;
+      // D282: a model or effort changed during the last turn: reopen with them before this one.
+      if (t.retune && t.session && !isBusy(t)) await reopenForRetune(t);
       if (t.gated) {
         // D142: the answer to "change this folder without a copy?". Go, or a reply the task
         // reads, sends the turn held for it; from here on it doesn't ask again.
@@ -1696,6 +1869,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.card = { ...t.card, place: resolved.place, harness: h, ...(model ? { model } : {}) };
       t.base = { ...specFor(taskId, body, resolved.cwd, true), harness: h };
       t.movedFrom = { from: here === "local" ? (to.homeName ?? "the home") : here, to: to.name, repo: place.kind === "repo" };
+      t.past = t.backFrom = undefined; // D282: the sessions it had stay on the computer it left
       if (fromHarness !== h) t.handedFrom = fromHarness;
       logEvent(t, { role: "system", from: "runner", text: `moved from ${t.movedFrom.from} to ${to.name}`, raw: { switched: { from: fromHarness, to: h }, moved: { from: t.movedFrom.from, to: to.name } } });
       t.started = (async () => {
@@ -1724,29 +1898,44 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return { ok: true };
     },
 
-    async switchBody(taskId, harness, model) {
+    async switchBody(taskId, harness, model, effort) {
       const t = get(taskId);
       if (!HARNESSES.includes(harness as HarnessId)) return { ok: false, message: `${harness} can't do tasks here yet.` };
       if (t.dropped) return { ok: false, message: "That task was dropped. Undo the drop first." };
       await t.started.catch(() => {});
       const from = t.spec.harness;
+      // D282: the same agent, another model or effort: the same native session, reopened with them
+      // for the next turn (Claude Code `--resume <id> --model --effort`; Codex thread/resume with the
+      // model, its effort set on the loaded thread). Nothing is condensed.
+      if (harness === from) return retune(t, model, effort);
       const wasRunning = !!t.session && isBusy(t);
       const att = currentAttention(t);
-      // The old session closes; its native session can't carry over to another harness.
+      // The old session closes; its native session can't carry over to another harness. It is
+      // kept by agent: switching back resumes it (D282).
       const old = t.session;
       t.session = undefined;
       t.running = false;
-      t.sessionId = t.loggedSessionId = undefined;
+      t.retune = false;
+      if (t.sessionId) (t.past ??= {})[from] = t.sessionId;
+      const back = t.past?.[harness];
+      t.sessionId = back;
+      t.loggedSessionId = undefined;
       t.handedFrom = from;
+      t.backFrom = back ? from : undefined;
       await old?.close().catch(() => {});
       // The next session start rebuilds the spec (and a browser place's browser) for it.
       t.base = { ...t.base, harness: harness as HarnessId };
       if (model) t.base.model = model;
       else delete t.base.model;
-      delete t.base.effort; // D202: another agent or model runs at its own default effort
+      // D202: another agent runs at its own default effort, unless one was picked with it (D282).
+      if (effort) t.base.effort = effort;
+      else delete t.base.effort;
       t.spec = withBrowser(t.base, t.sidecarInput?.harness === harness ? t.sidecar : undefined, partnerNameOf());
-      // raw.switched: recovery ignores the session ids logged before it (the old agent's).
-      logEvent(t, { role: "system", from: "runner", text: `moved from ${from} to ${harness}${model ? ` (${model})` : ""}`, raw: { switched: { from, to: harness } } });
+      t.card = { ...t.card, harness, ...(model ? { model } : {}) };
+      if (!model) delete t.card.model;
+      // raw.switched: recovery ignores the session ids logged before it (the old agent's), or
+      // resumes the new agent's own earlier one (back).
+      logEvent(t, { role: "system", from: "runner", text: `moved from ${from} to ${harness}${model ? ` (${model})` : ""}`, raw: { switched: { from, to: harness, ...(model ? { model } : {}), ...(effort ? { effort } : {}), ...(back ? { back: true } : {}) } } });
       // Something left to do: carry on there now, from the saved progress. A finished or waiting
       // task keeps its state; the next message (an answer, a follow-up) starts the new session
       // from the brief + saved progress (send -> resumeOrSeed).

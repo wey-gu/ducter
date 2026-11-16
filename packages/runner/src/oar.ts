@@ -30,15 +30,33 @@ import { CODEX_NATIVE_MCP, CODEX_NATIVE_PLUGINS } from "@ducter/protocol/src/nat
 export type { HarnessId };
 
 /**
- * Native features that compete with Ducter (it owns waits, wakes, talking to the human, starting
- * work and fanning it out). D241 (research/76 §6): PushNotification (a push to the person's terminal
- * and phone, around Ducter), RemoteTrigger (scheduled remote agents on the person's claude.ai
- * account, outliving the task) and Workflow (a scripted fan-out of agents that never see the
- * brief; ~2.0K tokens a request). Agent stays outside browser places (browser.ts).
+ * Native features that compete with Ducter, each re-justified in D282 (research/92 §3):
+ *   - EnterPlanMode / ExitPlanMode: a plan's approval is the person's turn, which Ducter owns (a
+ *     report_to_main with the plan and a default); headless, no one is at Claude Code's prompt.
+ *   - ScheduleWakeup, CronCreate / CronList / CronDelete: a second, invisible clock that dies when
+ *     Ducter parks the session; the task's own timer is wait_for with a time (D267).
+ *   - AskUserQuestion: the person is never at the harness's prompt; report_to_main asks instead.
+ *   - PushNotification (a push to the person's terminal and phone, around Ducter) and
+ *     RemoteTrigger (scheduled remote agents on the person's claude.ai account, outliving the task).
+ * Allowed since D282: Workflow, like Agent. A workflow's agents report back to the task, which
+ * holds the brief (D241's own reason for keeping Agent); only a browser place, whose tools enforce
+ * none of D62's rules, denies both (browser.ts), and the read-only partner denies it (READ_ONLY_DENY).
  */
 export const DISALLOWED: Partial<Record<HarnessId, string[]>> = {
-  "claude-code": ["EnterPlanMode", "ExitPlanMode", "ScheduleWakeup", "CronCreate", "CronList", "CronDelete", "AskUserQuestion", "PushNotification", "RemoteTrigger", "Workflow"],
+  "claude-code": ["EnterPlanMode", "ExitPlanMode", "ScheduleWakeup", "CronCreate", "CronList", "CronDelete", "AskUserQuestion", "PushNotification", "RemoteTrigger"],
 };
+
+/**
+ * D282: the skill listing a task sends, as large as in the person's own session. Claude Code
+ * 2.1.325 gives the listing a fraction of the context window (default 0.01 x window x 4 chars):
+ * Ducter's small window (D135, CLAUDE_CODE_DISABLE_1M_CONTEXT) cut it from 40K to 8K chars, and a
+ * person with many skills got their names without descriptions (measured, research/92 §2). 0.05 of
+ * 200K is the 40K of a 1M window. Codex 0.169 sizes it at 2% of model_context_window (measured:
+ * 18.0K chars at its default, 13.8K at Ducter's 200K); skills.max_context_tokens puts back the
+ * default 272K window's share.
+ */
+export const CLAUDE_SKILL_LISTING = { skillListingBudgetFraction: 0.05 } as const;
+export const CODEX_SKILL_TOKENS = 5440;
 
 /** pi's own CLI flags that leave the user's pi setup out (pi --help, 1.4.0+). Login and models stay. */
 export const PI_CLEAN_FLAGS = ["--no-skills", "--no-context-files", "--no-prompt-templates", "--no-extensions", "--no-themes"];
@@ -388,7 +406,7 @@ export interface Adapted {
  *     file and ran a command.
  */
 export const READ_ONLY_DENY: Partial<Record<HarnessId, string[]>> = {
-  "claude-code": ["Bash", "BashOutput", "KillShell", "KillBash", "Edit", "MultiEdit", "Write", "NotebookEdit", "Task", "Agent"],
+  "claude-code": ["Bash", "BashOutput", "KillShell", "KillBash", "Edit", "MultiEdit", "Write", "NotebookEdit", "Task", "Agent", "Workflow"],
   pi: ["bash", "edit", "write"],
 };
 export const PARTNER_READ_MAX_TOKENS = 8_000;
@@ -451,7 +469,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
           const settings = { idleCompaction: false, hooks: preCompactHooks(spec.preCompactNote) };
           // OAR owns --settings under "exclude"; there the task's folder holds them.
           if (clean || spec.userConfiguration === "exclude") writeClaudeSettings(spec.cwd, settings);
-          else launchArgs = [...(launchArgs ?? []), "--settings", JSON.stringify({ ...settings, ...pluginsOff(spec) })];
+          else launchArgs = [...(launchArgs ?? []), "--settings", JSON.stringify({ ...settings, ...CLAUDE_SKILL_LISTING, ...pluginsOff(spec) })];
         }
       }
       // D168: the user's own Mem plugin stays out of a task that keeps the user's setup (memory
@@ -474,6 +492,8 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
         // Only ids the user's config.toml has: an override for a plugin Codex doesn't know is never sent.
         launchArgs = spec.disablePlugins.filter((id) => /^[A-Za-z0-9_@-]+$/.test(id) && readCodexConfig(ctx.env ?? {})?.plugins?.[id]).flatMap((id) => ["-c", `plugins.${id}.enabled=false`]);
       if (knobs) launchArgs = [...(launchArgs ?? []), ...knobs.args];
+      // D282: a task that keeps the person's setup lists their skills as their own Codex would.
+      if (knobs && spec.preCompactNote !== undefined && !clean && spec.userConfiguration !== "exclude") launchArgs = [...(launchArgs ?? []), "-c", `skills.max_context_tokens=${CODEX_SKILL_TOKENS}`];
       // D142: a folder task writes only inside its folder (and the temp folders). OAR passes
       // its own sandbox_mode first; a later -c wins (checked with codex 0.167 config/read, and
       // `codex sandbox` refused a write in the home folder). Network stays on.
@@ -778,6 +798,15 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId): Harnes
     async interrupt() {
       await s.abort();
     },
+    // D282: the runtime's own manual compaction (Codex; Claude Code takes `/compact` as typed).
+    ...(typeof s.compact === "function"
+      ? {
+          async compact() {
+            const r = (await s.compact!()) as { kind?: string; reason?: string } | undefined;
+            if (r && (r.kind === "rejected" || r.kind === "failed")) throw new Error(`compaction ${r.kind}: ${r.reason ?? "unknown"}`);
+          },
+        }
+      : {}),
     async close() {
       try {
         await s.dispose();

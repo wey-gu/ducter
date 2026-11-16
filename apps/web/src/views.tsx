@@ -17,7 +17,7 @@ import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, m
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { AddRow, Btn, Chev, DevicesMark, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, Btn, Chev, Choice, DevicesMark, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
@@ -1748,6 +1748,8 @@ function SwitchList({ task }: { task: Task }) {
   const go = moving ? t("switch.move.go", chosen!.deviceName ?? "") : chosen ? t("who.go", candName(chosen)) : "";
   return (
     <div class="switch-list" role="radiogroup" aria-label={t("who.switch")}>
+      {/* D282: the same agent, another model or effort, in place: its own session carries on. */}
+      <TuneInPlace task={task} device={cur} />
       {/* D161 (6): with two or more computers the sheet says it covers where too. */}
       {multi && <div class="switch-sub">{t("switch.sub")}</div>}
       <div class="small sub">{t(running ? "who.switch.note" : "who.switch.note.idle")}</div>
@@ -1781,6 +1783,50 @@ function SwitchList({ task }: { task: Task }) {
         ) : (
           <Btn kind="primary" label={go} about={title(task)} onClick={() => A.switchTask(task.id, chosen.harness, chosen.model, candName(chosen), moving ? chosen.device : undefined)} />
         ))}
+    </div>
+  );
+}
+
+/**
+ * D282: the model and effort of the agent doing it, changed in place. A pick goes at once; the
+ * agent's own session carries on with it from the next turn, nothing condensed. Only where the
+ * agent lists its own models (live).
+ */
+function TuneInPlace({ task, device }: { task: Task; device?: string }) {
+  const h = harnessOf(task);
+  const rows = A.newTaskOptions?.models ?? [];
+  const row = rows.find((m) => m.harness === h && (m.device ?? "") === (device ?? "")) ?? rows.find((m) => m.harness === h);
+  if (!row?.models.length || row.from !== "live") return null;
+  const now = modelOf(task);
+  const model = row.models.find((m) => m.id === now) ?? (now ? undefined : row.models.find((m) => m.default));
+  const effort = effortOf(task) || model?.defaultEffort || "";
+  const pick = (m: string, e?: string) => A.retuneTask(task.id, h, m, e);
+  return (
+    <div class="nt-tune switch-tune">
+      <div class="nt-chips">
+        <small>{t("newtask.model")}</small>
+        <div class="nt-chip-row" role="radiogroup" aria-label={t("newtask.model")}>
+          {row.models.map((m) => (
+            <Choice key={m.id} label={m.label} on={m.id === model?.id} onClick={() => m.id !== model?.id && pick(m.id)}>
+              {m.label}
+            </Choice>
+          ))}
+        </div>
+      </div>
+      {model?.efforts?.length ? (
+        <div class="nt-chips">
+          <small>{t("newtask.effort")}</small>
+          <div class="nt-chip-row" role="radiogroup" aria-label={t("newtask.effort")}>
+            {model.efforts.map((e) => (
+              <Choice key={e} label={effortWord(A.L, e)} on={e === effort} onClick={() => e !== effort && pick(model.id, e)}>
+                {effortWord(A.L, e)}
+                {e === model.defaultEffort && <small class="nt-dflt">{t("newtask.effort.default")}</small>}
+              </Choice>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <div class="small sub">{t("switch.tune.note", harnessName(h))}</div>
     </div>
   );
 }

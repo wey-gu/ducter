@@ -93,6 +93,8 @@ type Block struct {
 	// Say is what a note says, worded from note.<say> (D207); Name fills it in.
 	Say  string `json:"say,omitempty"`
 	Name string `json:"name,omitempty"`
+	// Effort is a retuned note's (D282): the effort it now runs at.
+	Effort string `json:"effort,omitempty"`
 	// Media (D206): you: the pictures sent with it; report: what it showed.
 	Media []protocol.MediaRef `json:"media,omitempty"`
 	// Items is a plan's (D268).
@@ -249,14 +251,19 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 		return Block{Say: "guard"}, true
 	case obj("browser") != nil && obj("browser")["driver"] == "cua":
 		return Block{Say: "to_own_browser"}, true
-	case obj("switched") != nil || obj("moved") != nil:
+	// D282: the same agent with another model or effort.
+	case obj("retuned") != nil:
+		rt := obj("retuned")
+		return Block{Say: "retuned", Name: str(rt["model"]), Effort: str(rt["effort"])}, true
+	// D157: another computer; D282: another agent.
+	case obj("moved") != nil:
+		return Block{Say: "moved", Name: str(obj("moved")["to"])}, true
+	case obj("switched") != nil:
 		to := ""
-		if sw := obj("switched"); sw != nil && str(sw["to"]) != "" {
+		if sw := obj("switched"); str(sw["to"]) != "" {
 			to = harnessName(str(sw["to"]))
-		} else if mv := obj("moved"); mv != nil {
-			to = str(mv["to"])
 		}
-		return Block{Say: "moved", Name: to}, true
+		return Block{Say: "switched", Name: to}, true
 	case hasDevice && r["offline"] == true:
 		return Block{Say: "offline", Name: or(str(r["name"]), from(disconnectRe))}, true
 	case hasDevice && r["offline"] == false:

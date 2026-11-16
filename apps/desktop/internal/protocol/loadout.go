@@ -143,5 +143,7 @@ type TaskSwitch struct {
 	TaskID  string `json:"taskId"`
 	Harness string `json:"harness"`
 	Model   string `json:"model,omitempty"`
-	Device  string `json:"device,omitempty"`
+	// Effort (D282): with the same agent, its session carries on with it.
+	Effort string `json:"effort,omitempty"`
+	Device string `json:"device,omitempty"`
 }

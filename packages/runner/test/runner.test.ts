@@ -410,7 +410,7 @@ describe("send: steer vs queue", () => {
     expect(fake.specs[1]).toMatchObject({ harness: "claude-code", model: "opus" });
     expect(fake.specs[1]!.resumeSessionId).toBeUndefined();
     const first = fake.sessions[1]!.sent[0]!.text;
-    expect(first).toContain("started by codex");
+    expect(first).toContain("started by Codex");
     expect(first).toContain("found the failing test");
     expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "working", residency: "hot" });
     expect(await runner.switchBody!(card.taskId, "nope")).toMatchObject({ ok: false });
@@ -431,7 +431,7 @@ describe("send: steer vs queue", () => {
     expect(fake.specs[1]).toMatchObject({ harness: "claude-code" });
     expect(fake.specs[1]!.resumeSessionId).toBeUndefined();
     const first = fake.sessions[1]!.sent[0]!.text;
-    expect(first).toContain("started by codex");
+    expect(first).toContain("started by Codex");
     expect(first).toContain("found the failing test");
     expect(first).toEndWith("src/a.ts");
     // The transcript shows the user's words, not the seed.
@@ -449,7 +449,7 @@ describe("send: steer vs queue", () => {
     await runner.switchBody!(card.taskId, "claude-code", "sonnet");
     expect(await runner.reopen(card.taskId)).toEqual({ delivered: "prompted" });
     expect(fake.specs[1]).toMatchObject({ harness: "claude-code", model: "sonnet" });
-    expect(fake.sessions[1]!.sent[0]!.text).toContain("started by codex");
+    expect(fake.sessions[1]!.sent[0]!.text).toContain("started by Codex");
     expect(fake.sessions[1]!.sent[0]!.text).toEndWith(REOPENED);
     await runner.dispose();
   });
@@ -471,7 +471,7 @@ describe("send: steer vs queue", () => {
     expect(await r2.send(card.taskId, "src/a.ts", undefined, "user")).toEqual({ delivered: "prompted" });
     expect(fake2.specs[0]).toMatchObject({ harness: "claude-code" });
     expect(fake2.specs[0]!.resumeSessionId).toBeUndefined();
-    expect(fake2.sessions[0]!.sent[0]!.text).toContain("started by codex");
+    expect(fake2.sessions[0]!.sent[0]!.text).toContain("started by Codex");
     await r2.dispose();
     // Once the new agent has its own session, a later restart resumes that one.
     const fake3 = new FakePort();

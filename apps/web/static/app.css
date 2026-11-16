@@ -4674,6 +4674,12 @@ ol.tries b {
     padding-left: 10px;
   }
 }
+/* D282: the doing agent's model and effort, in place, at the top of Switch who does it. */
+.nt-tune.switch-tune {
+  padding: 0 0 var(--s3);
+  margin-bottom: var(--s2);
+  border-bottom: 1px solid var(--line);
+}
 /* The shared MenuRow (controls.tsx). */
 .menu-row {
   display: flex;

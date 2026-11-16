@@ -831,6 +831,72 @@ func (a *App) openSwitch(id string) {
 	}
 	lo.switchFor, lo.pick, lo.switchMsg = id, "", ""
 	a.send(protocol.CandidatesReq{T: "candidates", TaskID: id})
+	// D282: and the agents' own model lists, for the in-place model and effort rows.
+	a.send(protocol.TaskNewOptions{T: "task_new_options"})
+}
+
+// tuneInPlace is the model and effort of the agent doing the task, changed
+// in place (D282): a pick goes at once, and the agent's own session carries
+// on with it from its next turn. Only where the agent lists its own models.
+func (a *App) tuneInPlace(c *ui.Context, task *store.Task, device string) {
+	if a.S.NewTaskOptions == nil {
+		return
+	}
+	h := task.Harness()
+	var row *protocol.AgentModels
+	for i := range a.S.NewTaskOptions.Models {
+		m := &a.S.NewTaskOptions.Models[i]
+		if m.Harness == h && (row == nil || m.Device == device) {
+			row = m
+		}
+	}
+	if row == nil || len(row.Models) == 0 || row.From != "live" {
+		return
+	}
+	var model *protocol.ModelChoice
+	for i := range row.Models {
+		if m := &row.Models[i]; (task.Model() != "" && m.ID == task.Model()) || (task.Model() == "" && m.Default) {
+			model = m
+		}
+	}
+	effort := task.Effort()
+	if effort == "" && model != nil {
+		effort = model.DefaultEffort
+	}
+	t := a.T
+	pick := func(m, e string) {
+		a.send(protocol.TaskSwitch{T: "task_switch", TaskID: task.ID, Harness: h, Model: m, Effort: e})
+	}
+	line := func(key, name string, body func()) {
+		ui.Row(c.Key(key)).Gap(t.S2).AlignItems(ui.Start).Children(func() {
+			ui.Text(c, name).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Width(64).Shrink(0).Padding(6, 0, 0, 0).SingleLine()
+			ui.Row(c).Grow(1).MinWidth(0).Gap(t.S1 + 2).Wrap().AlignItems(ui.Center).Role(ui.RoleRadioGroup).Label(name).Children(body)
+		})
+	}
+	ui.Column(c.Key("switch-tune")).Gap(t.S1 + 2).Children(func() {
+		line("sw-models", a.L.T("newtask.model"), func() {
+			for _, m := range row.Models {
+				on := model != nil && m.ID == model.ID
+				if a.choice(c, "sw-model:"+m.ID, m.Label, on, "") && !on {
+					pick(m.ID, "")
+				}
+			}
+		})
+		if model != nil && len(model.Efforts) > 0 {
+			line("sw-efforts", a.L.T("newtask.effort"), func() {
+				for _, e := range model.Efforts {
+					tag := ""
+					if e == model.DefaultEffort {
+						tag = "default"
+					}
+					if a.choice(c, "sw-effort:"+e, a.effortWord(e), e == effort, tag) && e != effort {
+						pick(model.ID, e)
+					}
+				}
+			})
+		}
+		a.note(c, a.L.T("switch.tune.note", harnessName(h)))
+	})
 }
 
 func candKey(cd protocol.Candidate) string { return cd.Harness + "/" + cd.Model }
@@ -938,6 +1004,14 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 				lo.switchFor = ""
 			}
 		})
+		// D282: the same agent, another model or effort, in place.
+		curDev := ""
+		for _, cd := range cands {
+			if cd.Current {
+				curDev = cd.Device
+			}
+		}
+		a.tuneInPlace(c, task, curDev)
 		if running {
 			a.note(c, a.L.T("who.switch.note"))
 		} else {

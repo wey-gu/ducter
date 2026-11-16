@@ -28,11 +28,29 @@ const task = (harness: SessionSpec["harness"], over: Partial<SessionSpec> = {}):
 const sidecar = (brief = "\n\nBrowser rules.") => ({ brief, driver: "cua", claude: { disallowedTools: [...BROWSER_DENIED_BUILTINS], launchArgs: [], userConfiguration: "exclude" } }) as any;
 
 describe("Claude Code: what every task denies", () => {
-  test("PushNotification, RemoteTrigger and Workflow join Ducter's seven; Agent stays outside a browser place", () => {
+  test("D282: Ducter's nine; Agent and Workflow stay outside a browser place", () => {
     const o = adaptSpec(task("claude-code"), { dataDir: dir }).options;
     expect(o.disallowedTools).toEqual([...DISALLOWED["claude-code"]!]);
-    expect(o.disallowedTools).toEqual(expect.arrayContaining(["AskUserQuestion", "CronCreate", "PushNotification", "RemoteTrigger", "Workflow"]));
+    expect(o.disallowedTools).toEqual(["EnterPlanMode", "ExitPlanMode", "ScheduleWakeup", "CronCreate", "CronList", "CronDelete", "AskUserQuestion", "PushNotification", "RemoteTrigger"]);
     expect(o.disallowedTools).not.toContain("Agent");
+    expect(o.disallowedTools).not.toContain("Workflow");
+  });
+
+  test("D282: the read-only partner still denies Workflow", () => {
+    const o = adaptSpec(task("claude-code", { readOnly: true, isolateUserConfig: true }), { dataDir: dir }).options;
+    expect(o.disallowedTools).toEqual(expect.arrayContaining(["Agent", "Workflow"]));
+  });
+
+  test("D282: a task's skill listing is as large as in the person's own session (Claude Code and Codex)", () => {
+    const knobs = { contextWindow: 200_000, harnessCompactAt: 160_000, preCompactNote: "note" };
+    const cc = adaptSpec(task("claude-code", knobs), { dataDir: dir }).options;
+    const at = cc.launchArgs!.indexOf("--settings");
+    expect(JSON.parse(cc.launchArgs![at + 1]!).skillListingBudgetFraction).toBe(0.05);
+    const cx = adaptSpec(task("codex", knobs), { dataDir: dir, env: { CODEX_HOME: dir } }).options;
+    expect(cx.launchArgs).toContain("skills.max_context_tokens=5440");
+    // A browser place leaves the person's skills out anyway: nothing to size.
+    const br = adaptSpec(withBrowser(task("codex", knobs), sidecar(), "Ducter"), { dataDir: dir, env: { CODEX_HOME: dir } }).options;
+    expect(br.launchArgs!.join(" ")).not.toContain("skills.max_context_tokens");
   });
 
   test("a browser place adds Agent, and no tool is named twice", () => {

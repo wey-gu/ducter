@@ -29,6 +29,31 @@ func goRelay(text string) (string, bool) {
 	return strings.TrimRight(strings.TrimSpace(rest), ".。"), true
 }
 
+// switchLine is a switch inside the task with its time (D282): 换成 Codex
+// 接着做 · 21:40, 换成 Sonnet · 高 · 21:40, 换到 hel 接着做 · 21:40.
+func (a *App) switchLine(task *store.Task, b *Block) string {
+	at := clock(a.tsOf(task, b.Seq))
+	if b.Say == "retuned" {
+		var parts []string
+		if b.Name != "" {
+			parts = append(parts, modelLabel(a.trayHarness(task.Harness()), b.Name))
+		}
+		if b.Effort != "" {
+			parts = append(parts, a.effortWord(b.Effort))
+		}
+		who := strings.Join(parts, " · ")
+		if who == "" {
+			who = a.L.T("note.retuned.default")
+		}
+		return a.L.T("note.retuned", who, at)
+	}
+	name := b.Name
+	if name == "" {
+		name = a.L.T("note.computer")
+	}
+	return a.L.T("note."+b.Say, name, at)
+}
+
 // noteLine is a note in words: note.<say>, its name filled in (a
 // computer it didn't name is said plainly; an effort in its own word).
 func (a *App) noteLine(b *Block) string {

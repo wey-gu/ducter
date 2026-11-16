@@ -472,6 +472,8 @@ export function createPusher(opts: {
   /** D277: the chat app the person last wrote from carries Ducter's own items now (its bridge is
    * on), so the push stays quiet for them: each thing reaches the person once. */
   channelUp?: (via: string) => boolean;
+  /** D276: a chat app already carried this item (d:<decisionId>): it is not pushed too. */
+  claimed?: (key: string) => boolean;
 }): Pusher {
   const clock = opts.clock ?? realClock;
   const hold = opts.holdMs ?? PUSH_HOLD_MS;
@@ -533,7 +535,7 @@ export function createPusher(opts: {
 
   const tick = async () => {
     const now = clock.now();
-    for (const [k, it] of items) if (seen(it) || pushed.has(k)) items.delete(k);
+    for (const [k, it] of items) if (seen(it) || pushed.has(k) || opts.claimed?.(k)) items.delete(k);
     const open = [...items.values()];
     if (!open.length) return;
     const ready = open.filter((it) => now - it.at >= hold);

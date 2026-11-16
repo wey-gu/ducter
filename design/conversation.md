@@ -54,6 +54,11 @@ named action), 在看它想问你什么…, 它的原话：{x}.
 time, 10 min unless the work suggests otherwise; only effect-ladder asks (`flows/G-safety.md`
 §0) may wait without one.
 
+**In a chat app (D276, `channels.md`).** Telegram and Slack are more windows on this one
+conversation: a turn started there gets its ack, result and asks there, the job as one status
+message edited in place, and anything new as a new message; what Ducter starts itself goes only
+to where the person last spoke.
+
 **Executors.** All three return the same report, so they look the same to the human.
 
 *As built, only two executors run: the main AI in turn, and a task (Focus Window). Forks and

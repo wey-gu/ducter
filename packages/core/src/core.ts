@@ -73,6 +73,7 @@ import { readSites } from "./browser/sites.ts";
 import { createClosing, registerClosingTool } from "./closing.ts";
 import { workerProfile } from "./browser/remote.ts";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
+import { createChannels, type ChannelDeps, type Channels } from "./channels/index.ts";
 
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
@@ -152,6 +153,8 @@ export interface CoreOptions {
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
   /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
   proactive?: { triage?: Triage; judge?: FindJudge; monthTokens?: number; zone?: string };
+  /** D276 test seams for 聊天软件 / Chat apps: the adapters against fake servers, the outbox's sleep. */
+  channels?: Pick<ChannelDeps, "make" | "sleep" | "gapMs" | "openUrl">;
 }
 
 export interface Core extends CoreApi {
@@ -173,6 +176,8 @@ export interface Core extends CoreApi {
   work: Work;
   push: PushStore;
   pusher: Pusher;
+  /** D276: 聊天软件 / Chat apps (channels/). */
+  channels: Channels;
   /** The partner's settings (D71). */
   settings: SettingsStore;
   /** D205: the persona's Bridge connection (bridge-link.ts). */
@@ -493,6 +498,31 @@ export function startCore(opts: CoreOptions = {}): Core {
 
   let proactiveRef: Proactive | undefined;
   let calendarRef: Calendar | undefined;
+  // D276: 聊天软件 / Chat apps: the person's own Telegram bot and Slack app, more windows on this
+  // one conversation (channels/hub.ts). Their quiet hours and "notifications off" are push's.
+  const channels = createChannels({
+    dataDir,
+    log,
+    decisions,
+    media: { put: (b, o) => media.put(b, o), path: (id) => media.path(id) },
+    clock,
+    quiet: () => push.settings().quiet,
+    notifyOff: () => push.settings().off === true,
+    zh: () => {
+      const l = settings.get().language;
+      if (l === "zh" || l === "en") return l === "zh";
+      const last = log.read({ stream: "channel", kinds: ["user_msg"], limit: 1 }).at(-1);
+      return last ? /[一-鿿]/.test((last.body as Bodies["user_msg"]).text) : /^zh/i.test(Intl.DateTimeFormat().resolvedOptions().locale);
+    },
+    personaName: () => persona.name,
+    openUrl: opts.channels?.openUrl ?? (() => {
+      const v = anywhereRef?.view();
+      return v?.state === "on" && v.hostname ? `https://${v.hostname}/` : undefined;
+    }),
+    ...(opts.channels?.make ? { make: opts.channels.make } : {}),
+    ...(opts.channels?.sleep ? { sleep: opts.channels.sleep } : {}),
+    ...(opts.channels?.gapMs !== undefined ? { gapMs: opts.channels.gapMs } : {}),
+  });
   const early: LogEvent[] = []; // triggers that arrive before the partner is wired
   const trigger = (e: LogEvent) => {
     try {
@@ -654,7 +684,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
-  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets });
+  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -662,6 +692,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   api.activity = {
     set: (a) => {
       partnerTurn = !!a;
+      if (!a) channels.turnEnded();
       ws.setActivity(a);
     },
   };
@@ -941,6 +972,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     apns,
     alive: (s) => s.deviceId === "local" || devices.isLive(s.deviceId),
     channelUp: (via) => ws.channelUp(via), // D277
+    claimed: (k) => channels.claimed(k),
   });
   // D165: the person's zone: their quiet hours', else (D243) the one their app last said, else the server's.
   const zone = () => opts.proactive?.zone ?? settings.get().quiet?.tz ?? proactiveRef?.clientZone() ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
@@ -957,6 +989,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     settings,
     push,
     pusher,
+    claimed: (k) => channels.claimed(k),
     rules,
     decisions,
     runner: () => runner,
@@ -1026,6 +1059,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   const port = server.port!;
   listening = port;
   void anywhere.resume().catch((e) => console.warn("[anywhere]", e));
+  // D276: the chat apps connected before (their sockets and long polls) start once the home listens.
+  void channels.start();
   // Up and listening: an update's helper waiting on this restart knows it's this version (update.ts
   // waitHealthy), also when /health doesn't name the version to it.
   try {
@@ -1048,6 +1083,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     work,
     push,
     pusher,
+    channels,
     settings,
     bridgeLink,
     rules,
@@ -1121,6 +1157,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       calendar.stop();
       changes.stop();
       pusher.stop();
+      channels.stop();
       updates.stop();
       agents.stop();
       updateAll.stop_();

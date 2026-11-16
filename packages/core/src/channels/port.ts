@@ -1,0 +1,119 @@
+// D276: the Channel port. A chat app (Telegram, Slack) is a window on the one conversation, so an
+// adapter only moves words: inbound messages and taps up, outbound parts down. What goes where,
+// pairing, decisions and quiet hours live in hub.ts, once for every chat app.
+import type { ChannelKind } from "@ducter/protocol";
+
+/** What a chat app can do; the hub shapes what it sends by these, never by the app's name. */
+export interface ChannelCaps {
+  /** Native buttons under a message (Telegram inline keyboard, Slack Block Kit actions). */
+  buttons: boolean;
+  /** A sent message can be edited (status lines, a card's end state). */
+  edit: boolean;
+  /** A typing indicator a bot may show. */
+  typing: boolean;
+  /** Pictures and files both ways. */
+  files: boolean;
+  /** The longest text one message may carry (UTF-16 units of the formatted words). */
+  maxText: number;
+  /** The largest file the bot may fetch from the app / send to it, in bytes. */
+  maxDownload: number;
+  maxUpload: number;
+  /** A message may be sent without a sound (Telegram's disable_notification). */
+  silent: boolean;
+}
+
+export type OutButton = { label: string; data: string; style?: "primary" | "danger" } | { label: string; url: string };
+
+/** One part of what the partner says. text is the partner's own (light Markdown) words. */
+export interface OutPart {
+  text: string;
+  buttons?: OutButton[];
+  /** The service's id of a message this part answers (shown as a reply there). */
+  replyTo?: string;
+  silent?: boolean;
+}
+
+export interface InFile {
+  name?: string;
+  bytes?: number;
+  fetch(): Promise<Uint8Array>;
+}
+
+export interface InMessage {
+  /** The service's own message id (Telegram message_id, Slack ts). */
+  id: string;
+  /** Where to answer: the private chat (Telegram) or the DM channel (Slack). */
+  chat: string;
+  from: { id: string; name: string };
+  /** A one-to-one chat with the bot (groups and channels are never the person's window). */
+  direct: boolean;
+  text: string;
+  /** The service's id of the message this one replies to. */
+  replyTo?: string;
+  /** Forwarded or shared from someone else: outside data. */
+  forwarded?: { from?: string };
+  files?: InFile[];
+}
+
+export interface InTap {
+  id: string;
+  chat: string;
+  /** The service's id of the message the button was under. */
+  message: string;
+  from: { id: string };
+  data: string;
+}
+
+export interface BotInfo {
+  id: string;
+  name: string;
+  handle?: string;
+  team?: string;
+}
+
+export type Trouble = "token" | "blocked" | "conflict" | "network";
+
+export interface ChannelEvents {
+  message(m: InMessage): Promise<void>;
+  tap(t: InTap): Promise<void>;
+  /** The adapter can't go on (a refused token, another reader), or is back (undefined). */
+  trouble(t: Trouble | undefined): void;
+}
+
+export interface Channel {
+  kind: ChannelKind;
+  caps: ChannelCaps;
+  /** Checks the token(s) and starts reading. Throws ChannelError when the token is refused. */
+  start(on: ChannelEvents): Promise<BotInfo>;
+  stop(): void;
+  /** One part, already short enough (caps.maxText). Returns the service's id of the message. */
+  send(chat: string, part: OutPart): Promise<string>;
+  edit(chat: string, id: string, part: OutPart): Promise<void>;
+  typing(chat: string): Promise<void>;
+  /** Telegram's small toast for a tap; Slack has none. */
+  answerTap(t: InTap, text?: string): Promise<void>;
+  sendFile(chat: string, f: { path: string; name: string; type: string; caption?: string }): Promise<string>;
+}
+
+/** The service asked to wait (Telegram's retry_after, Slack's Retry-After). */
+export class RetryAfter extends Error {
+  constructor(public ms: number) {
+    super(`rate limited for ${ms} ms`);
+  }
+}
+
+/**
+ * Something the service said that sending again won't fix (permanent), or that the network did
+ * (not). Messages never carry a token or a URL holding one.
+ */
+export class ChannelError extends Error {
+  constructor(
+    public trouble: Trouble | "refused",
+    message: string,
+  ) {
+    super(message);
+  }
+  get permanent() {
+    return this.trouble !== "network";
+  }
+}

@@ -64,7 +64,7 @@ export function morph(apply: () => void) {
   });
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
-export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "autofill" | "devices" | "phone";
+export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "chats" | "autofill" | "devices" | "phone";
 export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
@@ -411,6 +411,8 @@ class AppState {
   }
   /** D217: set by phone-use.tsx; takes every phone_* frame. */
   onPhoneFrame?: (f: import("@ducter/protocol").PhoneServerFrame) => void;
+  /** D276: set by channels.tsx; takes the channels and channel_result frames. */
+  onChannelFrame?: (f: import("@ducter/protocol").ChannelServerFrame) => void;
   /** D238: this page as its phone's link (handset.tsx). */
   onHandsetFrame?: (f: import("@ducter/protocol").HandsetServerFrame) => void;
   onHandsetWelcome?: () => void;
@@ -615,6 +617,8 @@ class AppState {
     if (f.t === "live" || f.t === "live_frame" || f.t === "live_turn" || f.t === "live_doing") return this.liveFrame(f);
     // D217: Ducter's phone (phone-use.tsx keeps its own state).
     if (f.t.startsWith("phone_")) return void this.onPhoneFrame?.(f as import("@ducter/protocol").PhoneServerFrame);
+    // D276: 聊天软件 / Chat apps (channels.tsx keeps its own state).
+    if (f.t === "channels" || f.t === "channel_result") return void this.onChannelFrame?.(f);
     // D238: the person's own phone (handset.tsx relays the home's calls to this phone's app).
     if (f.t.startsWith("handset_")) return void this.onHandsetFrame?.(f as import("@ducter/protocol").HandsetServerFrame);
     if (f.t === "browser_sites") {
@@ -1951,7 +1955,7 @@ class AppState {
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
     if (hash === "#onhand/full") return this.applyRoute({ name: "onhand", full: true });
     this.route = { name: "conv" };
-    const set = /^#settings(?:=(partner|memory|peers|notify|accounts|autofill|devices|phone))?$/.exec(hash);
+    const set = /^#settings(?:=(partner|memory|peers|notify|accounts|chats|autofill|devices|phone))?$/.exec(hash);
     if (set) {
       history.replaceState(null, "", location.pathname);
       return this.openSettings((set[1] ?? "") as SettingsPage);

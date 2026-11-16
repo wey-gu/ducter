@@ -275,7 +275,8 @@ changes.
   included.
 - **Why that is acceptable on your own Mac:** under D16 a task already runs with your account's
   full power, so local trust adds nothing it couldn't do anyway. The data dir is 0700 and the
-  Log, `devices.db`, `mcp.secret`, `push.json`, `env` and `keys.env` are 0600, so other accounts can't
+  Log, `devices.db`, `mcp.secret`, `push.json`, `channels.json` (the chat apps' tokens, D276), `env` and
+  `keys.env` are 0600, so other accounts can't
   read them.
 - **Shared hosts (a VPS with other human users, a multi-user Linux box): the caveat.** Other
   accounts can't read your files, but they can connect to `127.0.0.1:7777` and are local: they

@@ -16,6 +16,8 @@ export * from "./computer-use.ts";
 import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFrame } from "./computer-use.ts";
 export * from "./reply.ts";
 export * from "./handset.ts";
+export * from "./channels.ts";
+import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
@@ -243,8 +245,11 @@ export interface ReplyWant {
 export interface Bodies {
   // D206: media = the pictures the user sent with it (text may be empty then).
   // reply (D236): the one message this answers, with its quote.
-  // via (D276/D277): the chat app the person wrote it in; absent = a Ducter app or the CLI.
-  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: "slack" | "telegram" | "imessage" };
+  // via (D276): said in a chat app (the linked account there), not in a Ducter app.
+  // forwarded (D276): the words are something the person forwarded or shared from someone else:
+  // outside data, never the person's own words or instructions.
+  // via "imessage" (D277): through the Mac app's iMessage bridge.
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string } };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
@@ -998,6 +1003,8 @@ export type ClientFrame =
   | PhoneClientFrame
   // D235: 用电脑 / Use the computer (computer-use.ts).
   | ComputerClientFrame
+  // D276: 聊天软件 / Chat apps (channels.ts).
+  | ChannelClientFrame
   | HandsetClientFrame
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" }
@@ -1205,6 +1212,7 @@ export type ServerFrame =
   | PhoneServerFrame
   | ComputerServerFrame
   | HandsetServerFrame
+  | ChannelServerFrame
   | { t: "error"; message: string };
 
 /** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */

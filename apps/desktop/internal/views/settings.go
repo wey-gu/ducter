@@ -75,7 +75,7 @@ const (
 	TabAbout    = "about"
 )
 
-var settingsTabs = []string{TabPartner, TabMemory, TabPeers, TabNotify, TabAccounts, TabAutofill, TabLook, TabRun, TabAbout}
+var settingsTabs = []string{TabPartner, TabMemory, TabPeers, TabNotify, TabAccounts, TabChats, TabAutofill, TabLook, TabRun, TabAbout}
 
 type settingsState struct {
 	// tab is the section shown ("" is the first).
@@ -158,6 +158,10 @@ func (a *App) openTab(tab string) {
 	if tab == TabNotify {
 		a.send(protocol.ProactiveDayReq{T: "proactive_day"})
 	}
+	// D276: 聊天软件 / Chat apps (the socket stays subscribed after).
+	if tab == TabChats {
+		a.send(protocol.ChannelsReq{T: "channels"})
+	}
 }
 
 // settingsTab is the tab shown.
@@ -222,6 +226,8 @@ func (a *App) settingsView(c *ui.Context) {
 						a.peersPanel(c)
 					case TabNotify:
 						a.notifyPanel(c)
+					case TabChats:
+						a.chatsPanel(c)
 					case TabAutofill:
 						a.autofillPanel(c)
 					case TabAccounts:
@@ -345,6 +351,9 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 		bmp = theme.Clay("mini_awake")
 	case TabLook:
 		box.Draw(a.drawSwatches())
+		return
+	case TabChats:
+		box.Draw(a.drawChats())
 		return
 	case TabAbout:
 		box.Draw(a.drawUpdatePebble())

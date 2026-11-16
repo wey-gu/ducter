@@ -226,6 +226,8 @@ export interface ProactiveOptions {
   settings: SettingsStore;
   push: PushStore;
   pusher?: Pusher;
+  /** D276: a chat app already carried this note (n:<noteId>): no push for it. */
+  claimed?: (key: string) => boolean;
   rules: RulesStore;
   decisions: Decisions;
   runner: () => Runner | undefined;
@@ -636,7 +638,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
   const note = (b: Bodies["finds"]) => o.log.append({ stream: "channel", origin: "partner", kind: "finds", body: b });
 
   const notify = (level: "passive" | "time-sensitive", body: string, noteId: string) => {
-    if (!o.pusher || o.push.settings().off) return;
+    if (!o.pusher || o.push.settings().off || o.claimed?.(`n:${noteId}`)) return;
     void o.pusher.sendNow(() => ({ title: o.persona.name, body, tag: `n:${noteId}`, url: "app", level })).catch(() => {});
   };
 

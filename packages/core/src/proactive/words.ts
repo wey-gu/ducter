@@ -14,6 +14,7 @@ export const KIND_WORDS: Record<FindKind, { zh: string; en: string }> = {
   coming_up: { zh: "快到了", en: "Coming up" },
   service: { zh: "你用的服务", en: "A service you use" },
   update: { zh: "之前说的有变", en: "An update to what I told you" },
+  said: { zh: "你说过的", en: "Something you said" },
 };
 
 const join = (xs: string[], zh: boolean) => (zh ? xs.join("、") : xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);

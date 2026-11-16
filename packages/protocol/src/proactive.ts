@@ -14,9 +14,10 @@
  *   coming_up        快到了 / Coming up (a flight or a train in the next day and a half: when, where, when to leave)
  *   service          你用的服务 / A service you use (maintenance, an outage, a job that keeps failing, a shutdown)
  *   update           之前说的有变 / An update to what I told you (a later notice changes a find already said)
+ *   said             你说过的 / Something you said (D281: a reminder they asked for, a thing they said they would do on a day, the partner's own promise to remind; from the conversation, said once at its moment)
  */
-export type FindKind = "mismatch" | "waiting_on_you" | "waiting_on_them" | "promised" | "deadline" | "plan_changed" | "meeting" | "coming_up" | "service" | "update";
-export const FIND_KINDS: readonly FindKind[] = ["mismatch", "waiting_on_you", "waiting_on_them", "promised", "deadline", "plan_changed", "meeting", "coming_up", "service", "update"];
+export type FindKind = "mismatch" | "waiting_on_you" | "waiting_on_them" | "promised" | "deadline" | "plan_changed" | "meeting" | "coming_up" | "service" | "update" | "said";
+export const FIND_KINDS: readonly FindKind[] = ["mismatch", "waiting_on_you", "waiting_on_them", "promised", "deadline", "plan_changed", "meeting", "coming_up", "service", "update", "said"];
 export const isFindKind = (k: unknown): k is FindKind => typeof k === "string" && (FIND_KINDS as readonly string[]).includes(k);
 
 /**

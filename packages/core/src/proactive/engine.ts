@@ -31,12 +31,13 @@ import type { Decisions } from "../decisions.ts";
 import { DEFAULT_QUIET, inQuiet, quietEndsAt, type Pusher, type PushStore } from "../push.ts";
 import type { RulesStore } from "../rules.ts";
 import type { SettingsStore } from "../settings.ts";
-import { dayKey, daysUntil, detect, meetingPrep, type Candidate, type SaidFind } from "./detect.ts";
+import { dayKey, daysUntil, detect, hm, meetingPrep, zhSpace, type Candidate, type SaidFind } from "./detect.ts";
 import type { Item } from "./items.ts";
 import { barJudge, DEFAULT_BAR, JUDGE_MAX, type FindJudge, type Verdict } from "./judge.ts";
 import { openLedger, type Ledger } from "./ledger.ts";
 import { backfillWorthy, NOTICE_DAY_MAX, stage1, type Left } from "./stage1.ts";
 import { BATCH, eventFact, factsOf, type Triage } from "./triage.ts";
+import { atLocal, ownWords } from "./said.ts";
 import { createWatchers, lookFor, type Watchers } from "./watch.ts";
 import { KIND_WORDS, W } from "./words.ts";
 
@@ -82,6 +83,12 @@ export const NOTE_MAX = 5;
  * the morning note took the day's 3 is still said, at most this many a day.
  */
 export const NOW_MAX = 3;
+/** D281: a morning the home missed at its hour is still made this long after it (else skipped for the day). */
+export const MORNING_LATE_MS = 4 * 3_600_000;
+/** D281: the turn a line is said in: a wait the partner arms within it keeps the line instead. */
+export const OWN_GRACE_MS = 10 * 60_000;
+/** D281: a kept line not said within this of its moment (the home was off) is let go, never said stale. */
+export const OWN_LATE_MS = 12 * 3_600_000;
 const VERDICT_DAYS = 7;
 /** Items whose triage failed, retried on the next look (in memory only: nothing on disk keeps mail). */
 const RETRY_MAX = 100;
@@ -171,6 +178,30 @@ interface State {
    * (hel): without it "today", the morning note's 08:00 and every date it said were the server's.
    */
   clientZone?: string;
+  /** D281: the person's own words held for later (你说过的 / Something you said), and what came of each. */
+  own?: OwnRec[];
+  /** D281: the day the morning ran (any mode), so a home that missed its hour catches up once. */
+  morningDay?: string;
+  /** D281: decisions the morning note already named as waiting (each is named once, never again). */
+  toldPending?: string[];
+}
+
+/**
+ * D281: one thing the person said they'd do, asked to be reminded of, or the partner promised to
+ * remind them of. pending: inside its turn (a wait the partner arms covers it); open: kept, said
+ * when due; covered: a wait of the partner's keeps it; said: told once; gone: it never came due.
+ */
+interface OwnRec {
+  id: string;
+  asked: boolean;
+  by: "user" | "partner";
+  what: string;
+  /** Their line (or the partner's), clipped: the "How I know" line. */
+  quote: string;
+  at: number;
+  dueAt?: string;
+  timed: boolean;
+  state: "pending" | "open" | "covered" | "said" | "gone";
 }
 
 /** The look back that reads dated mail (fetch_emails) and leaves pending what triage couldn't read. */
@@ -659,27 +690,43 @@ export function createProactive(o: ProactiveOptions): Proactive {
     const night = inQuiet(at, holding());
     const kept = await judged(detect(ledger, { ...dctx(), now: at }), why === "morning" ? "morning" : "day");
     if (why === "morning") {
+      st.morningDay = today();
+      // D281: what they asked or said they'd do today comes first, outside the day's 3 (their words, not Ducter's pick).
+      const mine = ownDue(Math.max(now(), morningOf(today())));
       // 只说急的: no morning note; anything urgent waiting through the night goes now.
-      if (m === "urgent") return sayNow(kept.filter((x) => urgentIn(m, x.c)), false);
+      if (m === "urgent") {
+        sayOwn(mine);
+        return sayNow(kept.filter((x) => urgentIn(m, x.c)), false);
+      }
+      const ownFinds = mine.filter((r) => r.asked || !muted(ownCandidate(r)));
       const pick = kept.slice(0, capLeft(m));
+      const line = todayLine(z);
       // 有用就说: what the note had no room for is counted, never dropped silently (P2).
       if (m === "useful") st.more += kept.length - pick.length;
       const noteId = newId("note");
       // D173: what was left out is the partner's to say only when asked ("还有别的吗？"); no screen shows it.
       const leftOut = W.leftOut(z, { ...st.left, more: st.more });
-      if (!pick.length) {
+      for (const r of mine) r.state = "said";
+      if (!pick.length && !ownFinds.length && !line) {
         // A quiet day (D173): nothing sent and nothing shown. The partner alone knows it looked.
         const e = note({ noteId, rung: "morning", opening: "", finds: [], quiet: true, ...(leftOut ? { leftOut } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
+      } else if (!pick.length && !ownFinds.length) {
+        // D281: nothing new noticed, but the day holds something of Ducter's own: the one line, passive.
+        const opening = `${W.open(z)}${z ? "" : " "}${line}`;
+        const e = note({ noteId, rung: "morning", opening, finds: [], ...(leftOut ? { leftOut } : {}) });
+        st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
+        notify("passive", line, noteId);
       } else {
-        const finds = pick.map((x) => makeFind(x.c, x.text, noteId));
+        const finds = [...ownFinds.map((r) => ownCandidate(r)).map((c) => makeFind(c, z ? c.words.zh : c.words.en, noteId)), ...pick.map((x) => makeFind(x.c, x.text, noteId))];
         // D250: the first note on the default (never chosen, never asked) says how it works, with the chips.
         const askHow = modeBy() === "default" && !st.cadenceAsked && !st.cadenceNote;
         if (askHow) (st.cadenceAsked = true), (st.cadenceNote = noteId);
         // D173: no "I read 214 emails": a one-word greeting, then the things themselves.
-        const e = note({ noteId, rung: "morning", opening: W.open(z), finds, ...(leftOut ? { leftOut } : {}), ...(askHow ? { ask: "cadence" as const } : {}) });
+        const opening = line ? `${W.open(z)}${z ? "" : " "}${line}` : W.open(z);
+        const e = note({ noteId, rung: "morning", opening, finds, ...(leftOut ? { leftOut } : {}), ...(askHow ? { ask: "cadence" as const } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: finds.length });
-        st.day.said += finds.length;
+        st.day.said += pick.length;
         notify("passive", W.lockBody(z, finds.map((f) => f.text)), noteId);
       }
       st.mornings = st.mornings.slice(-10);
@@ -744,6 +791,218 @@ export function createProactive(o: ProactiveOptions): Proactive {
       if (!o.present()) notify("passive", f.text, noteId);
     }
     save();
+  }
+
+  // ---------- D281: what the person said, and the morning's own hour ----------
+
+  /** A day's morning: the end of quiet hours on that local day (08:00 when none end that day). */
+  const mornings = new Map<string, number>();
+  function morningOf(day: string): number {
+    const q = quiet();
+    const z = zone();
+    const key = `${day}|${z}|${q.start}|${q.end}|${q.tz}`;
+    const hit = mornings.get(key);
+    if (hit !== undefined) return hit;
+    if (mornings.size > 50) mornings.clear();
+    const t = morningScan(day, q, z);
+    mornings.set(key, t);
+    return t;
+  }
+  function morningScan(day: string, q: ReturnType<typeof quiet>, z: string): number {
+    const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+    const mid = atLocal(y, m, d, 0, 0, z);
+    for (let t = mid + 5 * MIN; t < mid + DAY; t += 5 * MIN) if (inQuiet(t - 5 * MIN, q) && !inQuiet(t, q)) return t;
+    return atLocal(y, m, d, 8, 0, z);
+  }
+
+  /**
+   * D281: the morning note runs at its hour, or, when the home wasn't running or awake then (a
+   * restart, a Mac asleep at 08:00: its timers fire late or never), at the next tick up to
+   * MORNING_LATE_MS after it. Past that, the day's note is skipped (its finds still go "now" or
+   * tomorrow): a "morning" note at 15:00 reads as noise.
+   */
+  function missedMorning(): boolean {
+    const m = mode();
+    if (m === "off" || st.morningDay === today() || st.mornings.some((x) => x.day === today())) return false;
+    // A home that never had a morning (just set up, mid-morning) starts with tomorrow's, not a late one.
+    if (st.morningDay === undefined && !st.mornings.length) return false;
+    const at = now();
+    const hour = morningOf(today());
+    return at >= hour && at - hour <= MORNING_LATE_MS && !inQuiet(at, quiet());
+  }
+
+  const own = (): OwnRec[] => (st.own ??= []);
+
+  /** A line kept for an exact time is said at that minute, not at the next tick. */
+  let ownTimer: unknown;
+  function armOwn(): void {
+    if (ownTimer !== undefined) o.clock.clearTimeout(ownTimer);
+    ownTimer = undefined;
+    if (stopped) return;
+    const at = now();
+    const next = own()
+      .filter((r) => (r.state === "pending" || r.state === "open") && r.timed && r.dueAt)
+      .map((r) => Date.parse(r.dueAt!))
+      .filter((t) => t > at)
+      .sort((a, b) => a - b)[0];
+    if (next === undefined) return;
+    ownTimer = o.clock.setTimeout(() => {
+      ownTimer = undefined;
+      void serial(() => mine()).finally(armOwn);
+    }, Math.min(next - at, MAX_DELAY));
+  }
+
+  /** A line from the person or the partner: anything in it for later is kept, pending its turn. */
+  let lastUserAt = 0;
+  function heard(e: LogEvent): void {
+    const by = e.kind === "user_msg" ? "user" : "partner";
+    if ((e.body as { forwarded?: unknown }).forwarded) return;
+    const text = (e.body as { text?: string }).text ?? "";
+    const at = Date.parse(e.ts) || now();
+    if (by === "user") lastUserAt = at;
+    // A promise is the partner answering the person; a line it says on its own (a reminder firing,
+    // a heads-up about tomorrow) promises nothing.
+    else if (at - lastUserAt > OWN_GRACE_MS) return;
+    const w = ownWords(text, at, zone(), by);
+    if (!w) return;
+    const list = own();
+    // The partner's "好，明天提醒你" to what the person just asked is the same thing: it may give it a day.
+    const asked = by === "partner" ? list.findLast((r) => r.by === "user" && at - r.at < OWN_GRACE_MS && (r.state === "pending" || r.state === "open")) : undefined;
+    if (asked) {
+      if (!asked.dueAt && w.dueAt) (asked.dueAt = w.dueAt), (asked.timed = w.timed);
+      return save();
+    }
+    list.push({ id: newId("own"), asked: w.asked, by, what: w.what, quote: plain(text, 60), at, ...(w.dueAt ? { dueAt: w.dueAt } : {}), timed: w.timed, state: "pending" });
+    st.own = list.slice(-50);
+    save();
+  }
+
+  /** A wait the partner armed in the same turn keeps it: Ducter's own reminder, never two. */
+  function covered(e: LogEvent<"waiter">): void {
+    const b = e.body;
+    if (b.state !== "armed" || b.routineId || b.wakes === "task") return;
+    const at = Date.parse(e.ts) || now();
+    let hit = false;
+    for (const r of own()) if (r.state === "pending" && at >= r.at && at - r.at < OWN_GRACE_MS) (r.state = "covered"), (hit = true);
+    if (hit) save();
+  }
+
+  /** When a kept line is said: its time; else the morning of its day (or of the next day, undated). */
+  function ownAt(r: OwnRec): number | undefined {
+    if (r.timed && r.dueAt) return Date.parse(r.dueAt);
+    const day = dayKey(r.dueAt ? Date.parse(r.dueAt) : r.at + DAY, zone());
+    const hour = morningOf(day);
+    if (r.at < hour) return hour;
+    // Said that same day after its morning: an ask they made for today comes back at 16:00 when there
+    // is time; a thing they'll do today, just said, needs no echo.
+    const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+    const four = atLocal(y, m, d, 16, 0, zone());
+    return r.asked && four - r.at >= 60 * MIN ? four : undefined;
+  }
+
+  /** Words for one kept line, in both languages: their words, said back once. */
+  function ownCandidate(r: OwnRec): Candidate {
+    const at = now();
+    const gap = Math.round((Date.parse(`${dayKey(at, zone())}T00:00:00Z`) - Date.parse(`${dayKey(r.at, zone())}T00:00:00Z`)) / DAY);
+    const wd = new Intl.DateTimeFormat("en-US", { timeZone: zone(), weekday: "long" }).format(new Date(r.at));
+    const zhWd = `周${"日一二三四五六"[["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(wd)]}`;
+    const when = gap <= 0 ? { zh: "今天早些时候", en: "earlier today" } : gap === 1 ? { zh: "昨天", en: "yesterday" } : { zh: zhWd, en: `on ${wd}` };
+    const words = !r.asked
+      ? { zh: zhSpace(`你${when.zh}说今天要${r.what}。`), en: `${when.en[0]!.toUpperCase()}${when.en.slice(1)} you said you'd ${r.what} today.` }
+      : r.timed
+        ? { zh: zhSpace(`提醒你：${r.what}。`), en: `Reminder: ${r.what}.` }
+        : r.by === "partner"
+          ? { zh: zhSpace(`提醒你：${r.what}。${when.zh}我说过会提醒你。`), en: `Reminder: ${r.what}. I said ${when.en} I'd remind you.` }
+          : { zh: zhSpace(`提醒你：${r.what}。${when.zh}你让我提醒的。`), en: `Reminder: ${r.what}. You asked me ${when.en}.` };
+    const z = zh();
+    const said = r.by === "user" ? (z ? `你说的：「${r.quote}」` : `You said: "${r.quote}"`) : z ? `我说的：「${r.quote}」` : `I said: "${r.quote}"`;
+    const due = ownAt(r);
+    return { key: `own:${r.id}`, kind: "said", cost: r.asked ? 90 : 70, urgent: false, people: [], how: [{ what: plain(said, 80), at: new Date(r.at).toISOString() }], words, facts: [], ...(due ? { dueAt: new Date(due).toISOString() } : {}) };
+  }
+
+  /**
+   * Kept lines whose moment has come, oldest first. Their own asks go in every mode (they asked);
+   * what they said they'd do is a proactive find, never with 不用主动找我. Lines more than
+   * OWN_LATE_MS past their moment (the home was off) are let go, not said late.
+   */
+  function ownDue(upTo = now()): OwnRec[] {
+    const at = now();
+    const out: OwnRec[] = [];
+    let changed = false;
+    for (const r of own()) {
+      if (r.state === "pending" && (at - r.at >= OWN_GRACE_MS || (ownAt(r) ?? Infinity) <= at)) (r.state = "open"), (changed = true);
+      if (r.state !== "open") continue;
+      if (!r.asked && mode() === "off") continue;
+      const when = ownAt(r);
+      if (when === undefined || at - when > OWN_LATE_MS) {
+        r.state = "gone";
+        changed = true;
+        continue;
+      }
+      if (when <= upTo && (!r.timed || when <= at)) out.push(r);
+    }
+    if (changed) save();
+    return out;
+  }
+
+  /** Each due line said on its own (the "now" rung): outside NOW_MAX, their own ask is not Ducter's to ration. */
+  function sayOwn(rs: OwnRec[]): void {
+    const z = zh();
+    for (const r of rs) {
+      const c = ownCandidate(r);
+      r.state = "said";
+      if (!r.asked && muted(c)) continue;
+      const noteId = newId("note");
+      const f = makeFind(c, z ? c.words.zh : c.words.en, noteId);
+      note({ noteId, rung: "now", opening: "", finds: [f] });
+      rollDay();
+      notify(r.asked ? "time-sensitive" : "passive", f.text, noteId);
+    }
+    if (rs.length) save();
+  }
+
+  /**
+   * D281: the morning's one line about Ducter's own side, said only when it holds something: the
+   * reminders it set for today, and decisions waiting on the person for over half a day (each
+   * named once, never again: a card left unanswered is their choice, not a thing to nag about).
+   */
+  function todayLine(z: boolean): string {
+    const at = now();
+    const day = today();
+    const ws = new Map<string, Bodies["waiter"]>();
+    for (const e of o.log.read({ stream: "channel", kinds: ["waiter"], limit: 2000 })) ws.set((e.body as Bodies["waiter"]).waiterId, e.body as Bodies["waiter"]);
+    const later = [...ws.values()]
+      .filter((w) => w.state === "armed" && (w.kind ?? "timer") === "timer" && !w.taskId && !w.routineId && w.at && Date.parse(w.at) > at && dayKey(Date.parse(w.at), zone()) === day)
+      .sort((a, b) => Date.parse(a.at!) - Date.parse(b.at!));
+    const findDecisions = new Set(Object.values(st.finds).map((f) => f.decisionId).filter(Boolean));
+    const told = new Set(st.toldPending ?? []);
+    const waiting: { id: string; at: number }[] = [];
+    for (const e of o.log.read({ stream: "channel", kinds: ["decision"], limit: 500 })) {
+      const id = (e.body as Bodies["decision"]).decisionId;
+      const t = Date.parse(e.ts);
+      if (findDecisions.has(id) || !o.decisions.isPending(id) || at - t < 12 * 3_600_000) continue;
+      waiting.push({ id, at: t });
+    }
+    const fresh = waiting.filter((w) => !told.has(w.id));
+    const parts: string[] = [];
+    if (later.length) {
+      const first = later[0]!;
+      const reason = plain(first.reason, 40).replace(/[。.]$/, "");
+      const more = later.length - 1;
+      parts.push(
+        z
+          ? zhSpace(`今天 ${hm(first.at!, zone())}：${reason}${more ? `，还有 ${more} 件` : ""}。`)
+          : `At ${hm(first.at!, zone())} today: ${reason[0]!.toLowerCase()}${reason.slice(1)}${more ? `, and ${more} more` : ""}.`,
+      );
+    }
+    if (fresh.length) {
+      const oldest = Math.min(...waiting.map((w) => w.at));
+      const days = Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${dayKey(oldest, zone())}T00:00:00Z`)) / DAY);
+      const since = days <= 1 ? { zh: "昨天", en: "yesterday" } : { zh: `${days} 天前`, en: `${days} days ago` };
+      parts.push(z ? zhSpace(`还有 ${waiting.length} 件等你定，最早的是${since.zh}的。`) : `${waiting.length} ${waiting.length === 1 ? "thing is" : "things are"} waiting on you, the oldest since ${since.en}.`);
+      st.toldPending = [...told, ...fresh.map((w) => w.id)].slice(-200);
+    }
+    return parts.join(z ? "" : " ");
   }
 
   /** A find untouched past its date quietly becomes 过了 / Passed: never "done" on its own. */
@@ -820,6 +1079,11 @@ export function createProactive(o: ProactiveOptions): Proactive {
 
   let afterReply = false; // D274: an offer waits for the partner's answer to the person's words
   const onEvent = (e: LogEvent) => {
+    // D281: the person's lines (and the partner's promises) for later; a wait the partner arms keeps them.
+    if (e.stream === "channel" && ((e.kind === "user_msg" && e.origin === "user") || (e.kind === "ai_msg" && e.origin === "partner"))) {
+      heard(e);
+      armOwn();
+    } else if (e.kind === "waiter") covered(e as LogEvent<"waiter">);
     if (e.kind === "decision_resolved") {
       const r = e.body as Bodies["decision_resolved"];
       const hit = byDecision(r.decisionId);
@@ -1053,11 +1317,24 @@ export function createProactive(o: ProactiveOptions): Proactive {
   async function morningRun(): Promise<void> {
     if (mode() === "off") return;
     if (st.mornings.some((m) => m.day === today())) return; // assembled already (opened early)
+    st.morningDay = today();
     ledger.sweep(now());
     passDue();
     checkUnread();
-    if (st.paused) return;
+    if (st.paused) return save();
     await speak("morning");
+  }
+
+  /**
+   * D281, every tick: a morning the home missed (asleep or restarting at its hour) runs now, within
+   * MORNING_LATE_MS; then the person's own lines whose moment came. A line kept for the morning waits
+   * for the note it belongs in, unless there is none today (只说急的, off, paused, or too late for one).
+   */
+  async function mine(): Promise<void> {
+    if (missedMorning()) await morningRun();
+    const m = mode();
+    const noteDay = (m === "three" || m === "useful") && !st.paused && now() - morningOf(today()) <= MORNING_LATE_MS;
+    sayOwn(ownDue().filter((r) => r.timed || !noteDay || st.morningDay === today()));
   }
 
   /**
@@ -1083,6 +1360,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
         catchUpAll();
         await meetings();
         await ripen();
+        await mine();
       }).finally(armTick);
     }, TICK_MS);
   }
@@ -1177,6 +1455,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
   watchers.sync();
   armMorning();
   armTick();
+  armOwn();
   // A look back a restart cut short picks up where it was (P5).
   resumeBackfills();
   catchUpAll();
@@ -1296,6 +1575,12 @@ export function createProactive(o: ProactiveOptions): Proactive {
       const at = now();
       const seen = new Set<string>();
       const items: Noticed["items"] = [];
+      // D281: what they asked to be reminded of, or said they'd do, still ahead: first, in their words.
+      for (const r of own()) {
+        if (r.state !== "pending" && r.state !== "open") continue;
+        const c = ownCandidate(r);
+        items.push({ kind: "said", text: z ? c.words.zh : c.words.en, urgent: false, ...(c.dueAt ? { when: c.dueAt } : {}), how: c.how.map((h) => `${h.what} (${h.at.slice(0, 10)})`), said: false });
+      }
       const cands = detect(ledger, { ...dctx(), now: at })
         .filter((c) => !muted(c))
         .sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.cost - a.cost);
@@ -1372,6 +1657,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
         catchUpAll();
         await meetings();
         await ripen();
+        await mine();
       }),
     stop() {
       stopped = true;
@@ -1382,6 +1668,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       offRemove();
       if (morningTimer !== undefined) o.clock.clearTimeout(morningTimer);
       if (tickTimer !== undefined) o.clock.clearTimeout(tickTimer);
+      if (ownTimer !== undefined) o.clock.clearTimeout(ownTimer);
     },
   };
 }

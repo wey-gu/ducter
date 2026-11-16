@@ -470,6 +470,24 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Read-fold and late fold (principle 5) are still not built.
 - [ ] Meter the digest writer's cost (the eval records answer cost only).
 
+## What you said comes back (D281, research/91)
+
+- [ ] **Live on the author's homes:** a week of real conversation with the morning note on; count
+      (only counts) the lines kept, said, covered by a wait, let go, and muted. Trigger: the next
+      release that reaches the author's Mac and hel.
+- [ ] **A held-out precision set** from the author's real conversation (his own lines, read with
+      his yes, counts and verdicts only in git): the rules were tuned on the corpus they are scored
+      on. Trigger: the first wrong "you said…" he reports, or the live week above.
+- [ ] **A cheap model's pass over a turn** for phrasings the rules miss ("周五之前把报告交了", "别忘了…"
+      said without 我), at most once a turn and only on lines with a day or time word. Trigger: the
+      live week shows misses.
+- [ ] **Pin the language when it is unset:** `zh()` follows the last message, so one English line
+      flips the next morning note. Trigger: a mixed-language week on any home.
+- [ ] **A trust number per kind** ("of what it said this month you acted on n"), from Go, 有用 and
+      这类不用告诉我, under 今天看了什么. Trigger: the author asks how often it was right.
+- [ ] **"Done" for a kept line:** a reply that says it was done ("交了") quietly drops what is still
+      ahead. Trigger: a reminder said after it was done.
+
 ## Your accounts and connected AI agents (promised as "coming soon" on the site)
 
 The site, README and `docs/faq.md` say these are coming. Each needs the change loop (a design

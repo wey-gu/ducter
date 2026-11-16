@@ -469,6 +469,14 @@ function PlanCard({ b }: { b: Extract<Block, { k: "plan" }> }) {
 }
 
 /** What fills a note's %s (D207): a computer, an agent, an effort; a computer it didn't name is said plainly. */
+/** D282: a switch inside the task, with its time: another agent, another model or effort, another computer. */
+export function switchLine(task: Task, b: Extract<Block, { k: "note" }>): string {
+  const ms = tsOf(task, b.seq);
+  const at = Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
+  if (b.say === "retuned") return t("note.retuned", [b.name && modelName(b.name), b.effort && effortWord(A.L, b.effort)].filter(Boolean).join(" · ") || t("note.retuned.default"), at);
+  return t(`note.${b.say}`, b.name || t("note.computer"), at);
+}
+
 function noteName(b: Extract<Block, { k: "note" }>): string {
   if (b.say === "effort_dropped") return b.name ? effortWord(A.L, b.name) : "";
   if (b.say === "offline" || b.say === "back" || b.say === "waiting_device") return b.name || t("note.computer");
@@ -528,6 +536,13 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
         return (
           <div class="tx-divider" role="separator">
             <span>{t(`note.${b.say}`)}</span>
+          </div>
+        );
+      // D282: who does it changed inside the task: one hairline with its time (换成 Codex 接着做 · 21:40).
+      if (b.say === "switched" || b.say === "retuned" || b.say === "moved")
+        return (
+          <div class="tx-divider" role="separator">
+            <span>{switchLine(task, b)}</span>
           </div>
         );
       // D207: the runner's lines in the user's words; the line as logged only on hover, for an error.

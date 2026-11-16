@@ -243,6 +243,15 @@ test("socket: a new task says who and why; candidates list the top with reasons;
   const no = await c.until<Res>((f) => f.t === "action_result" && !f.ok);
   expect(no.message).toContain("pi");
   expect(core.tasks.get("t1")!.harness).toBe("claude-code");
+  // D282: the same agent with another model and an effort: no candidate check, the effort kept,
+  // and the partner isn't woken for it.
+  c.send({ t: "task_switch", taskId: "t1", harness: "claude-code", model: "sonnet", effort: "high" });
+  await c.until<Res>((f) => f.t === "action_result" && f.ok && core.tasks.get("t1")!.body?.effort === "high");
+  expect(core.tasks.get("t1")!.body).toEqual({ harness: "claude-code", model: "sonnet", effort: "high", why: { kind: "you", from: "claude-code" } });
+  // The effort alone: the model stays.
+  c.send({ t: "task_switch", taskId: "t1", harness: "claude-code", model: "sonnet", effort: "low" });
+  await c.until<Res>((f) => f.t === "action_result" && f.ok && core.tasks.get("t1")!.body?.effort === "low");
+  expect(core.tasks.get("t1")!.body).toMatchObject({ model: "sonnet", effort: "low" });
 });
 
 test("the second switch the same way wakes the partner once to offer a rule", async () => {

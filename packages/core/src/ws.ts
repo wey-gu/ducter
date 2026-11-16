@@ -797,7 +797,7 @@ export function createWsHandler(deps: WsDeps) {
         if (!deps.loadout) throw new Error("switching is not available");
         let r: { ok: boolean; message?: string };
         try {
-          r = await deps.loadout.switchTask(f.taskId, String(f.harness ?? ""), f.model || undefined, deps.runner(), typeof f.device === "string" && f.device ? f.device : undefined);
+          r = await deps.loadout.switchTask(f.taskId, String(f.harness ?? ""), f.model || undefined, deps.runner(), typeof f.device === "string" && f.device ? f.device : undefined, typeof f.effort === "string" && f.effort ? f.effort : undefined);
         } catch (err) {
           r = { ok: false, message: (err as Error).message };
         }

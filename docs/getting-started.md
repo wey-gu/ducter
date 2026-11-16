@@ -89,6 +89,13 @@ you lent it your phone, it's a thin line in your words too, never one of your me
 window, the small marks at the right edge are everything said to the agent: hover them for the
 list, click one to go there. Hover the agent's words for their time and **Copy**.
 
+A task is the AI agent as you run it yourself: Claude Code or Codex with your own instructions
+(`CLAUDE.md`, `AGENTS.md`), skills, commands, hooks, subagents and MCP servers. What you type in
+a task's box goes to the agent, slash commands too: in Claude Code, `/review`, `/compact`,
+`/context` and your own commands and skills work as they do in your terminal. On any agent,
+`/model sonnet` or `/effort high` changes the model or how hard it thinks; the task carries on
+in the same conversation from its next turn. In Codex, `/compact` makes room in its context.
+
 To work on it by hand, open the task on the Mac and choose **Open** at its top right: **Show in
 Finder**, **Open in** Cursor, Visual Studio Code or Zed, or **Open in** Terminal, iTerm2, Ghostty
 or Warp, whichever you have. **Open** shows when the copy is on this Mac.

@@ -245,6 +245,8 @@ export const cases = [
       [9, "task_event", "runner", { role: "system", from: "runner", text: "hel disconnected; the task carries on when it is back", raw: { device: "d-hel", offline: true } }],
       [12, "task_event", "runner", { role: "system", from: "runner", text: "hel is back; resuming the session", raw: { device: "d-hel", name: "hel", offline: false } }],
       [14, "task_event", "runner", { role: "system", from: "runner", text: "moved from claude-code to codex", raw: { switched: { from: "claude-code", to: "codex" } } }],
+      [14, "task_event", "runner", { role: "system", from: "runner", text: "now on gpt-5.5 · high", raw: { retuned: { harness: "codex", model: "gpt-5.5", effort: "high" } } }],
+      [14, "task_event", "runner", { role: "system", from: "runner", text: "moved from hel to MacBook", raw: { switched: { from: "codex", to: "codex" }, moved: { from: "hel", to: "MacBook" } } }],
       [15, "task_event", "task", { role: "system", text: "harness exited (code 0)", raw: { kind: "exited" } }],
       [16, "task_event", "runner", { role: "system", from: "runner", text: "delivery failed: socket closed" }],
       [20, "task_event", "task", { role: "system", text: "no report after one nudge; leaving the task idle (stall rule)", raw: { stall: true } }],

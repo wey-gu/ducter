@@ -75,9 +75,14 @@ At the top is your partner, its name and one line: where it lives and what it th
 Every task says who is doing it. In the conversation its line ends with the AI agent's name,
 and the reason when it isn't your partner's plain pick ("Claude Code's limit is low", or your
 rule). Open the task and look under **Details › Who's doing it**: one sentence says who and
-why. **Switch who does it** lists who else could do it, with why and how much limit each has
-left; the ones that can't say why. **Continue on …** moves the task: a task that is still
-working carries on there from its saved progress; it doesn't start over.
+why. **Switch who does it** first shows the **Model** and **Effort** of the agent doing it: pick
+another and the same agent carries on with this task from its next turn, remembering everything
+said so far. Below, it lists who else could do it, with why and how much limit each has left;
+the ones that can't say why. **Continue on …** moves the task to another agent, in the same task
+and the same copy of your project: the new one starts from the brief, the saved progress, the
+last report and what you said since; it doesn't start over. Switch back later and the first
+agent picks up its own conversation again, told what happened meanwhile. The task's page marks
+each switch with one thin line and its time, such as **Continued on Codex · 21:40**.
 
 ## Memory
 

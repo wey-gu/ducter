@@ -1,5 +1,5 @@
 // @ducter/runner: HarnessPort over OAR, task places (worktrees), task sessions, event normalization.
-export { createRunner, shortId } from "./runner.ts";
+export { createRunner, shortId, slashOf, type Slash } from "./runner.ts";
 export type { RunnerExt, RunnerOptions } from "./runner.ts";
 export { createOarHarnessPort } from "./oar.ts";
 export type { OarPortOptions, HarnessSessionExt, RuntimeLoader } from "./oar.ts";

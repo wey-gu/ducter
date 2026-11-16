@@ -1225,7 +1225,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
       sessions (OAR usage) to replace principle 4's heuristic. Trigger: the cost-model work.
 - [ ] **Before merging D165/D166 and D168/D169**: their highs in research/48 §2 (P1, P2, M1, M2).
 - [ ] **D240/D241's open items (research/76 §4, §6):** the rest were decided in D241 (Codex
-      subagents inherit the brief; PushNotification, RemoteTrigger, Workflow denied in every task;
+      subagents inherit the brief; PushNotification, RemoteTrigger denied in every task, Workflow since D282 only in browser places;
       pi's project AGENTS.md appended under the clean setup; DSH browser tasks in a home of Ducter's).
   - a live rerun of the HN browser lookup with D240's built-ins, to replace the INFERRED ~190K. Not
     done in D241: it needs the author's Chrome and a running instance (a session must not touch
@@ -1425,3 +1425,17 @@ Codex first, once OAR is near 1.0. See `research/17`.
       loaded transcript (an opened task loads its latest 2,000 events), so a loop older than that
       counts from there; core could log a look count on a waiter's end. Trigger: the author's
       review of D279.
+
+## D282: a task is the person's own agent, switching inside one task (2026-11-16)
+- [ ] **pi and DeepSeek Harness on the same switch paths.** Resume by id with a new model, and an
+      agent switched back resuming its own session, are verified on Claude Code and Codex only
+      (research/92 §5); on pi and DSH a rejected resume falls back to the condensed start. Trigger: pi
+      or DSH doing the author's tasks.
+- [ ] **A real-model run of a switch** (Claude Code → Codex → back, Sonnet ↔ Opus in place) on the
+      author's setup, and Codex's `/compact` through OAR live. Trigger: the author's first day of
+      daily work in Ducter.
+- [ ] **The Ducter task tools' own cost per request** with the real core (research/92 measured
+      with report_to_main and checkpoint only). Trigger: the next token audit.
+- [ ] **The model and effort rows on the phone's switch list** read the agents' model lists from
+      New task's options frame, asked for when the list opens. Check on the iOS Simulator at 390 px.
+      Trigger: the next phone review.

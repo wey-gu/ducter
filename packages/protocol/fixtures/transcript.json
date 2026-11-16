@@ -1616,6 +1616,51 @@
    },
    {
     "seq": 109,
+    "ts": "2026-11-10T06:58:14.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "from": "runner",
+     "text": "now on gpt-5.5 · high",
+     "raw": {
+      "retuned": {
+       "harness": "codex",
+       "model": "gpt-5.5",
+       "effort": "high"
+      }
+     }
+    }
+   },
+   {
+    "seq": 110,
+    "ts": "2026-11-10T06:58:14.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "from": "runner",
+     "text": "moved from hel to MacBook",
+     "raw": {
+      "switched": {
+       "from": "codex",
+       "to": "codex"
+      },
+      "moved": {
+       "from": "hel",
+       "to": "MacBook"
+      }
+     }
+    }
+   },
+   {
+    "seq": 111,
     "ts": "2026-11-10T06:58:15.000Z",
     "persona": "default",
     "stream": "task:hel1",
@@ -1631,7 +1676,7 @@
     }
    },
    {
-    "seq": 110,
+    "seq": 112,
     "ts": "2026-11-10T06:58:16.000Z",
     "persona": "default",
     "stream": "task:hel1",
@@ -1645,7 +1690,7 @@
     }
    },
    {
-    "seq": 111,
+    "seq": 113,
     "ts": "2026-11-10T06:58:20.000Z",
     "persona": "default",
     "stream": "task:hel1",
@@ -1750,20 +1795,35 @@
      {
       "k": "note",
       "seq": 108,
-      "say": "moved",
+      "say": "switched",
       "name": "Codex",
       "text": "moved from claude-code to codex"
      },
      {
       "k": "note",
+      "seq": 109,
+      "say": "retuned",
+      "name": "gpt-5.5",
+      "effort": "high",
+      "text": "now on gpt-5.5 · high"
+     },
+     {
+      "k": "note",
       "seq": 110,
+      "say": "moved",
+      "name": "MacBook",
+      "text": "moved from hel to MacBook"
+     },
+     {
+      "k": "note",
+      "seq": 112,
       "say": "error_delivery",
       "bad": true,
       "text": "delivery failed: socket closed"
      },
      {
       "k": "note",
-      "seq": 111,
+      "seq": 113,
       "say": "stalled",
       "text": "no report after one nudge; leaving the task idle (stall rule)"
      }

@@ -149,14 +149,20 @@ moves: the open fails with one line, "Codex can't take this task: it isn't signe
 another AI agent, or fix that first." Nobody left: the open fails with one line the partner
 says, never a silent fallback.
 
-**Switching (换谁来做 / Switch who does it).** The list is the one doing it now, the top three
-others with why and the limit each, and the ones that can't, greyed with why. **换到 X 接着做 /
-Continue on X** closes the old session and starts the new agent from the brief and the saved
-progress (a handoff; the native session can't carry across harnesses); a waiting or finished
-task keeps its state and the next message (an answer, a follow-up, reopen) starts it there,
-seeded from the brief + every checkpoint and then that message. As built, the switch is logged
-as a system line with `raw.switched {from, to}`, and a restarted runner ignores the session ids
-logged before it, so the new agent never resumes the old one's session. Each switch leaves a hidden note
+**Switching (换谁来做 / Switch who does it).** First the agent doing it, its **模型 / Model** and
+**思考深度 / Effort** (D282): a pick changes them in place. The native session reopens by its id
+with them before the next turn (at once when idle, after the running turn otherwise): Claude
+Code `--resume <id> --model --effort`, Codex `thread/resume` with the model; lossless, logged as
+`raw.retuned {harness, model, effort}`. `/model` and `/effort` typed in the task do the same.
+Then the list: the top three others with why and the limit each, and the ones that can't, greyed
+with why. **换到 X 接着做 / Continue on X** closes the old session (kept by agent) and starts the
+new agent from the brief, the last six checkpoints and the carry-over (the last report and its
+questions, the person's words since, the agent's last words, what the branch holds; D282); a
+waiting or finished task keeps its state and the next message (an answer, a follow-up, reopen)
+starts it there, the seed and then that message. Switching back to an agent that worked on the
+task resumes its own session, told what happened since. The switch is logged as
+`raw.switched {from, to, model?, effort?, back?}`; a restarted runner resumes the new agent's own
+earlier session when `back`, never the old agent's. Each switch of agent leaves a hidden note
 for the partner; after the second switch the same way (from → to), the partner is woken once
 to offer a rule: it names the kind of work in a few words and asks with Go / Hold, default
 hold, and saves it with `rule_save` on Go.

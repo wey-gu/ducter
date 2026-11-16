@@ -285,9 +285,45 @@ export const NUDGE = "Report status via report_to_main.";
  * First turn of a task handed to another AI agent (D89, 换到 X 接着做 / Continue on X): the new
  * session has the same brief and worktree; this says where the work stood.
  */
-export function handedOver(from: string, progress: string[]): string {
+export function handedOver(from: string, progress: string[], carry?: CarryOver): string {
   const where = progress.length ? `\n\nWhere it stood (saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
-  return `This task was started by ${from}; the user moved it to you to carry on. The worktree has its changes so far. Check where the work stands (git status, git log, the files), then continue with the brief from there. Don't start over.${where}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
+  return `This task was started by ${from}; the user moved it to you to carry on. The worktree has its changes so far. Check where the work stands (git status, git log, the files), then continue with the brief from there. Don't start over.${where}${carryLines(carry)}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
+}
+
+/**
+ * D282: what a task carries to another agent beside the brief (in its instructions) and the
+ * saved progress: its last report and the questions in it, the person's words to it since, the
+ * last thing the agent said, and what the branch holds. All read from the task's own Log.
+ */
+export interface CarryOver {
+  report?: { state: string; summary: string; questions: string[] };
+  /** The person's messages into the task since that report, oldest first. */
+  said?: string[];
+  /** The last thing the agent said (its last assistant text). */
+  lastWords?: string;
+  branch?: { commits: number; files?: number; adds?: number; dels?: number; uncommitted: boolean };
+}
+
+function carryLines(c: CarryOver | undefined): string {
+  if (!c) return "";
+  const out: string[] = [];
+  if (c.report) out.push([`Its last report (${c.report.state}): ${c.report.summary}`, ...c.report.questions.map((q) => `- It asked: ${q}`)].join("\n"));
+  if (c.said?.length) out.push(`What the user said to it since (oldest first):\n${c.said.map((x) => `- ${x}`).join("\n")}`);
+  if (c.lastWords) out.push(`The last thing it said: ${c.lastWords}`);
+  if (c.branch) {
+    const diff = c.branch.files !== undefined ? `, ${c.branch.files} file${c.branch.files === 1 ? "" : "s"} changed (+${c.branch.adds ?? 0} -${c.branch.dels ?? 0})` : "";
+    out.push(`The branch holds ${c.branch.commits} commit${c.branch.commits === 1 ? "" : "s"}${diff}${c.branch.uncommitted ? ", and uncommitted work" : ""}.`);
+  }
+  return out.length ? `\n\n${out.join("\n\n")}` : "";
+}
+
+/**
+ * D282: the first turn back in an agent's own earlier session on this task after another agent
+ * worked on it. The session remembers its own part; this says what happened since.
+ */
+export function handedBack(from: string, progress: string[], carry?: CarryOver): string {
+  const where = progress.length ? `\n\nWhere it stands now (saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
+  return `You are back on this task. While you were away, ${from} worked on it in the same worktree. Check what changed since your last turn (git status, git log, the files), then continue with the brief from there. Don't redo what is done.${where}${carryLines(carry)}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
 }
 
 /**

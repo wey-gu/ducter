@@ -38,7 +38,8 @@ import { webApi, webStatic } from "./web.ts";
 import { CHECK_PATH, createAnywhere, type AnywhereCtl, type TunnelSys } from "./anywhere.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
-import { createBridgeLink, type NmemCall } from "./bridge-link.ts";
+import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
+import { createMemGlance } from "./mem-glance.ts";
 import { identityIdFor } from "./mem-identity.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
@@ -661,6 +662,13 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(opts.bridgeLink ?? {}),
   });
   bridgeLink.onChange(() => settings.bridgeChanged());
+  // D295: a glance at Mem itself for Settings › 记忆 (its count, what other AI tools saved), gated like the row.
+  const memGlance = createMemGlance({
+    run: opts.bridgeLink?.run ?? nmemCall({ env: opts.bridgeLink?.env }),
+    on: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && process.env.DUCTER_BRIDGE !== "0" && !settings.memMissing() && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),
+    changed: () => settings.bridgeChanged(),
+  });
+  settings.setGlance(() => memGlance.get());
   // D206: pictures and files, content-addressed on the home (media.ts).
   const media = createMediaStore(dataDir);
   // D293: the home's own key, and its ways to be reached (the address book, reach-book.ts).

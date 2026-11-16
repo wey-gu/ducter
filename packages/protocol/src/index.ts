@@ -1959,6 +1959,11 @@ export interface MemView {
   noted: { seq: number; title: string; at: string; memoryId?: string }[];
   /** The name its memories are kept under in Mem (D141): the persona's AI Identity, once bound. */
   keptUnder?: string;
+  /**
+   * D295: a glance at Mem itself, when it answers: how many memories it holds, and the latest ones the
+   * person's other AI tools saved there (titles only; from: the tool's own name, "Claude Code").
+   */
+  glance?: { total: number; others: { id: string; title: string; from: string; at?: string }[] };
 }
 
 /**
@@ -1999,6 +2004,11 @@ export interface BridgeView {
   signIn?: "used" | "bad" | "failed";
   /** The home's nmem version, when it answered (D257: on every state where it did). */
   version?: string;
+  /**
+   * D295: where Mem keeps the memories, from `nmem status`: Nowledge Mem Cloud, the Mem app or a
+   * Vault on the home itself (local), or a Mem server of the person's own (server).
+   */
+  where?: "cloud" | "local" | "server";
   /**
    * D257: Mem's own word (`nmem status`.update) that a newer nmem is out: its version, or "" when
    * Mem didn't name it. Sent whether or not Ducter can update this copy (the app's it can't).

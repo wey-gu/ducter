@@ -8,9 +8,9 @@ import type { ComponentChildren } from "preact";
 import { Btn, DangerButton } from "./controls.tsx";
 
 /** One raised group whose first row is the thing itself. */
-export function Group(p: { label: string; id?: string; children: ComponentChildren }) {
+export function Group(p: { label: string; id?: string; class?: string; children: ComponentChildren }) {
   return (
-    <section id={p.id} class="set-card chat-app g-group" aria-label={p.label}>
+    <section id={p.id} class={`set-card chat-app g-group${p.class ? ` ${p.class}` : ""}`} aria-label={p.label}>
       {p.children}
     </section>
   );

@@ -126,7 +126,7 @@ export function ComposerReply() {
 
 // ---------- gestures ----------
 
-/** The swipe's numbers (research/71: Lorca's, which match iMessage and WhatsApp by feel). */
+/** The swipe's numbers, which match iMessage and WhatsApp by feel. */
 const START = 14; // px right before it is a swipe
 const GIVE_UP = 10; // px up, down or left before it is a scroll instead
 const ARM = 56; // px: past this, letting go replies

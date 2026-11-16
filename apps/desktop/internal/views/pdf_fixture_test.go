@@ -13,14 +13,14 @@ func researchPDF() []byte { return researchPDFTimes(1) }
 func researchPDFTimes(n int) []byte {
 	one := []string{
 		"# 75. Opening a file a task made",
-		"## What Ducter did, what T3 Code does",
+		"## What Ducter did, and what a file viewer needs",
 		"Open sent the person's browser to the home's address with a per-file key that never expires: not the device token, but a capability that lands in synced browser history.",
 		"## 1. What Open did, per client",
 		"Mac: Open called OpenURL(home + /media/<id>?k=<key>&dl=1), which hands the address to the default browser. Phone and web: a link with target=_blank and download.",
 		"What the home answered: every non-picture got content-disposition inline even with &dl=1, under a sandboxing CSP. The browser showed a Markdown file as a bare page of raw text.",
 		"## 2. What leaked",
 		"The device token: no. The file's key: yes. It opens that one file, never expires, and can't be revoked short of rotating the secret, which breaks every picture in the Log.",
-		"## 3. T3 Code",
+		"## 3. A viewer per kind",
 		"Files open in the app, in a viewer per kind: rendered Markdown with a source toggle, a virtual table for CSV, large text in a worker, PDF through pdf.js with zoom and find, Office files unzipped and drawn.",
 		"Assets are signed URLs with an expiry in the signed payload. A PDF frame is left unsandboxed: Chromium's PDF plugin requires an unsandboxed frame.",
 		"## 4. What Ducter already has to reuse",

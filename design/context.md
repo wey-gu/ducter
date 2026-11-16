@@ -100,8 +100,8 @@ The design:
 
 A reply (`conversation.md` "Replies") points at one earlier message. The reference must hold
 when that message has left the window, after a re-cut, a digest and a restart, and must cost the
-same however long the message was (research/71 §6: T3 Code sends 300 characters and a pointer,
-Lorca 280 characters).
+same however long the message was: a bounded quote of a few hundred characters plus a pointer
+names the message without re-sending it.
 
 - **The Log keeps the quote with the reply.** The client names only the message (`ReplyWant`:
   its seq, and a find or a part of its words); core reads that event and logs a `ReplyRef` inside

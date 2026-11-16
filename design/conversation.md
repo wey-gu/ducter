@@ -93,7 +93,7 @@ promotion are not built.*
 
 ## Replies: answering one message (D236)
 
-Evidence: `research/71` (T3 Code, Lorca, messaging apps), `research/72` (the look). Context:
+Evidence: `research/72` (the look, and the gestures messaging apps already taught people). Context:
 `context.md` "Replies".
 
 **The moment.** Three things came back at once, or the user wants to answer something from this

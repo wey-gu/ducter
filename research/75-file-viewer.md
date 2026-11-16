@@ -1,4 +1,4 @@
-# 75. Opening a file a task made: what Ducter did, what T3 Code does
+# 75. Opening a file a task made: what Ducter did, and what a file viewer needs
 
 > 2026-11-13 · Feeds D239, D242 (§5) · Trigger: the author tapped **打开** on a task's
 > `investigation.md · 5 KB` card in the Mac app and got a page on his home server (hel) in the
@@ -45,35 +45,30 @@ downloading it. VERIFIED (code; fixed by D239 and covered by a test).
   that file. Scope: one file per link, no other access. VERIFIED (code). A bug: D239 fixes it by
   never navigating to the link. The `<img src>` fetches pictures already use are a different
   case: they don't enter history.
-- **Not fixed by D239:** keys don't expire. T3 Code's signed asset URLs carry an `expiresAt`
+- **Not fixed by D239:** keys don't expire. Signed asset URLs can carry an expiry
   (§3). Expiring keys would need clients to refresh refs held in the Log. Recorded in todo.
 
-## 3. T3 Code (clone `pingdotgg/t3code` at `6d35d09`, 2026-11-11, read only, not run)
+## 3. What a file viewer needs
 
-- **Files open in the app.** A right-side panel (`apps/web/src/components/files/`) with a viewer
-  per kind: rendered Markdown through the chat's own renderer, front matter masked
-  (`FileMarkdownPreview.tsx`); CSV/TSV as a virtual table (`DelimitedTablePreview` →
-  `LargeTextViewer` → `VirtualTablePreview`); large text in a worker, with a first screen
-  (16 KB) shown at once; PDF through `pdfjs-dist` 6.4 (`PdfViewer.tsx`: zoom, find, page
-  layout); Office files unzipped and drawn (`officeArchive.ts`, 1.4 k lines); fonts, audio,
-  video, Mermaid, notebooks; a hex view for binaries. VERIFIED (source).
-- **Rendered and source.** One toggle per file: "Show markdown source" / "Show rendered
-  markdown", the same for tables, HTML and Mermaid (`AttachmentFilePreview.tsx`). VERIFIED.
-- **Bounded reads.** `readBoundedDocument` streams the body and stops at a limit; text previews
-  ask for a `Range` up to `FILE_TEXT_PREVIEW_MAX_BYTES`. VERIFIED.
-- **Assets.** Signed URLs under `/api/assets` with an `expiresAt` in the signed payload
-  (`apps/server/src/assets/AssetAccess.ts`, `AssetSigner.ts`). VERIFIED.
-- **PDF and HTML frames.** HTML runs in a sandboxed frame with an opaque origin; a PDF frame is
-  left unsandboxed with the comment "Chromium's PDF plugin requires an unsandboxed frame; src is
-  an exact-file asset grant" (`BrowserDocumentFrame.tsx`). DOCUMENTED (their comment). It means a
-  PDF served under Ducter's `sandbox` CSP won't render in Chromium's viewer; drawing PDFs needs
-  pdf.js (about 1 MB of worker and fonts) or a native view. INFERRED for Ducter.
-- **Where T3 Code differs from Ducter's case.** Its files are a developer's working copy, beside
-  the thread, for someone who knows what a file is. Ducter's are a task's result handed to a
-  person in a messaging app, usually a report, and the reader may be a fresh user. A
-  resizable side panel would be the wrong shape there. A sheet that grows out of the card, read
-  and closed, fits the conversation's zoom level. The opened task's workbench (D214) already
-  gives the developer the working-copy view.
+- **Files open in the app, a viewer per kind:** rendered Markdown through the chat's own
+  renderer with front matter masked; CSV/TSV as a virtual table; large text with a first screen
+  shown at once; PDF with zoom, find and page layout; Office files unzipped and drawn; a hex view
+  for binaries. INFERRED (what a person expects from a document app).
+- **Rendered and source.** One toggle per file between the rendered view and the source, the
+  same for tables and HTML. INFERRED.
+- **Bounded reads.** Stream the body and stop at a limit; text previews ask for a `Range`.
+  INFERRED.
+- **Assets.** Signed URLs with an expiry in the signed payload would let a link stop working.
+  INFERRED.
+- **PDF and HTML frames.** HTML belongs in a sandboxed frame with an opaque origin. Chromium's PDF
+  plugin needs an unsandboxed frame, so a PDF served under Ducter's `sandbox` CSP won't render in
+  Chromium's viewer; drawing PDFs needs pdf.js (about 1 MB of worker and fonts) or a native view.
+  INFERRED for Ducter.
+- **Ducter's case.** A developer's working copy, beside the thread, suits a resizable side panel.
+  Ducter's files are a task's result handed to a person in a messaging app, usually a report, and
+  the reader may be a fresh user. A side panel would be the wrong shape there. A sheet that grows
+  out of the card, read and closed, fits the conversation's zoom level. The opened task's
+  workbench (D214) already gives the developer the working-copy view.
 
 ## 4. What Ducter already has to reuse
 
@@ -129,7 +124,7 @@ downloading it. VERIFIED (code; fixed by D239 and covered by a test).
 6. Later: pdf.js or a native PDF view; expiring media keys; a find bar in long files.
 
 **Summary.** Open sent the person's browser to the home's address with a per-file key that never
-expires: not the device token, but a capability that lands in (synced) history. T3 Code reads
-every kind in its own panel with bounded reads and expiring signed URLs. D239 opens files inside
+expires: not the device token, but a capability that lands in (synced) history. A good viewer
+reads every kind in place, with bounded reads and expiring links. D239 opens files inside
 Ducter in a sheet that grows out of the card, reusing the workbench's highlighter and MyGo's
 Markdown, and keeps PDF rendering and key expiry for later.

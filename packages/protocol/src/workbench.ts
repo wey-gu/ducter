@@ -96,7 +96,7 @@ export interface WbSim {
 
 export type SimAct = "home" | "appearance" | "text" | "url" | "shot";
 
-/** Text size in four steps (T3 Code's, research/64), each a content size category of iOS's own. */
+/** Text size in four steps (research/64), each a content size category of iOS's own. */
 export type SimText = "small" | "default" | "large" | "xlarge";
 export const SIM_TEXT: Record<SimText, string> = { small: "small", default: "large", large: "extra-extra-large", xlarge: "accessibility-large" };
 

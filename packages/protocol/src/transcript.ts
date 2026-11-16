@@ -126,7 +126,7 @@ export function failLine(output: string): string {
   return [...l].length > 160 ? [...l].slice(0, 159).join("") + "…" : l;
 }
 
-/** A stretch's rows as lines: two or more looks in a row fold into one (D210, Lorca's "Explored"). */
+/** A stretch's rows as lines: two or more looks in a row fold into one (D210, one "Explored" line). */
 export function linesOf(rows: StepRow[]): Line[] {
   const out: Line[] = [];
   let run: StepRow[] = [];

@@ -1,6 +1,6 @@
 # The workbench (工作台 / Workbench)
 
-> Design note for D214 and D220 · Evidence: `research/59`, `research/64` · Code: `apps/web/src/workbench.tsx`,
+> Design note for D214 and D220 · Evidence: `research/64` · Code: `apps/web/src/workbench.tsx`,
 > `apps/desktop/internal/views/workbench.go`, `packages/runner/src/workbench.ts`,
 > `packages/core/src/{preview,workbench}.ts`, `packages/protocol/src/workbench.ts`.
 
@@ -9,7 +9,7 @@ with while an agent works, hidden until asked for.
 
 ## Who, what they feel, how it starts
 
-- **The heavy developer** opens a coding task and wants what Conductor, Codex or t3code give
+- **The heavy developer** opens a coding task and wants what Conductor or Codex give
   beside the agent: the diff, the files, the page it is building. Before, the task showed counts
   and an inline diff per edit (D210) but not the whole change, nothing to open or fix by hand, and
   no way to see the site the agent runs, least of all when it runs on a server abroad. After, one
@@ -143,8 +143,8 @@ harness reports one Ducter can show faithfully yet), comments on diff lines sent
 - **When the device can't reach that port** (a home behind one HTTPS address, an SSH tunnel of
   one port): the client checks first (a ping with a 2.5 s limit; an https page never tries) and
   offers **用 Ducter 的浏览器看 / View in Ducter's browser**: Ducter's browser on the task's
-  computer opens `http://localhost:<port>/` and the live view (D190) streams it, the screencast
-  approach t3code takes (research/59). Fidelity is a screencast's, but it reaches anywhere.
+  computer opens `http://localhost:<port>/` and the live view (D190) streams it, a
+  screencast. Fidelity is a screencast's, but it reaches anywhere.
 
 ## Performance
 
@@ -159,5 +159,5 @@ harness reports one Ducter can show faithfully yet), comments on diff lines sent
 
 ## Keys
 
-⌥⌘B (Ctrl+Alt+B elsewhere) shows or hides it: the right panel's key in VS Code, Zed, Codex and
-t3code (research/59). ⌘S saves in the editor. Esc in the editor doesn't leave the task.
+⌥⌘B (Ctrl+Alt+B elsewhere) shows or hides it: the right panel's key in VS Code, Zed and
+Codex. ⌘S saves in the editor. Esc in the editor doesn't leave the task.

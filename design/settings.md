@@ -44,7 +44,7 @@ with the author's accounts laid over it (`.shots/d296/before`, `.shots/d296/afte
 | Piece | Mac | Web | Use |
 |---|---|---|---|
 | A row that goes elsewhere, with its tile | `tileLinkRow` (`settings_rows.go`) | the list rows of the phone's Settings | AI accounts → Devices (the agents' coins); Your devices and AI accounts (a clay laptop) |
-| A switch alone at a row's right edge | `switchControl` in `tileRow` | `RowSwitch` (`controls.tsx`) | Use my voice; a service's 自己留意 |
+| A switch alone at a row's right edge | `switchControl` in `tileRow` | `Switch` (`controls.tsx`, D295) | Use my voice; a service's 自己留意 |
 | The partner's one word after a change | `say` / `saidLine` (`settings_rows.go`) | `say` / `Said` (`set-grid.tsx`) | Quiet hours, the default wait, a service's watch switch |
 | A list of names of one kind | `listWords` (、 / , ) | `t("acct.sep")` | oo's accounts; your details |
 | The rail's chosen tab | the knob under the tabs, sliding (`railKnob`, `Nav.Across`) | — (the phone's list pushes, D290) | Every move between panes |

@@ -4,9 +4,9 @@
 
 <!-- whats-new
 zh: 手头的事像指挥台：按项目看，一眼知道谁在等你、谁卡住了
-en: On hand is a conductor: by project, and at a glance what needs you
+en: On hand is a conductor: by project, what needs you at a glance
 zh: 每一页顶栏都一样，设置和更新随手可点；iPad 和折叠屏有了自己的样子
-en: Every page has the same header with Settings and updates; iPad and foldables get their own look
+en: One header everywhere, Settings in reach; iPad and foldables drawn
 -->
 
 **On hand**

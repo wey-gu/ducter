@@ -10193,3 +10193,16 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
     animation: none;
   }
 }
+
+/* D291: separate facts, each its own element, spaced by a gap token, never a dotted string. */
+.facts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--s3);
+  row-gap: 2px;
+  min-width: 0;
+}
+.facts > span {
+  min-width: 0;
+}

@@ -427,6 +427,44 @@ A new control is added to the set (and to this table) before it is used.
 | Back to the list | the chrome's crumb | `BackRow` |
 | A group's add row: a drawn ＋ in the tile column, title, one line (D273) | the + rows in `settings.go` | `AddRow` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
+| A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
+
+### No joined text (D291)
+
+The author, on the Mac's device cards ("iPhone · Ducter", "14 小时前" under it): "不能有这样的文本拼接的
+UI 设计". A line built by gluing facts together with a separator ("连不上 · 最后在线 3 小时前",
+`[harness, model, effort].join(" · ")`) hands the reader a string to take apart again, and it reads
+as a database row, not as a partner talking. **The UI never encodes structure by joining strings
+with a separator.** Each fact is its own element with its own role:
+
+| The fact | Its element | Example |
+|---|---|---|
+| The thing's name | The title, alone. Never a kind or brand appended to it | iPhone (not "iPhone · Ducter") |
+| What it is doing, said | One secondary line, only when it reads as a natural phrase or sentence in the partner's voice | 14 小时前在线 / Online 14 hours ago; 在 hel 上跑 / Running on hel |
+| State | A state word in its color with its dot, its own element (`StateTag`, a dot) | 连不上 / Can't reach in the failed ink |
+| A count or a time | Its own muted element, right-aligned in a row or after the line, tabular figures | 3 件 / 3; 21:59 |
+| A kind | The icon or the art (a device's art already says it is the Ducter app) | the iPad art, no "Ducter app" words |
+| A group of metadata | Separate small elements spaced by a gap token (`facts` / `Facts`, S3), free to wrap | Claude Code  Opus  深入 |
+| Provenance, a source | A quiet chip or a small label of its own | 经过 oo |
+| A plain-text surface (a push, a notification, a copied or shared line, a toast) | One natural sentence | 修好了 compaction 测试，连跑 50 遍全过。 |
+| An accessible name (aria-label, a Mac control's Label) | Spoken: the facts read as a list aloud, "，" / ", " (`spoken`) | 打开，iPhone，14 小时前在线 |
+
+Decide case by case which of these a line needs; never swap "·" for another glyph, a slash, "|",
+or "，" and call it done. A secondary line that would need two clauses usually means one of them
+is a state (a dot) or a time (its own element), or should not be there at all.
+
+Allowed, because they are typography, not joiners: an en dash in a range (23:03–23:04, 3–5 次);
+"/" inside a path or a name the world spells that way; a separator inside a third party's own
+name or a quoted string the person wrote. Out of scope: the CLI's terminal output
+(`packages/cli`), logs and exported debug text, the site's page titles, the partner's own
+messages (model-written), and words only a model reads (a tool result, a brief). The guard is
+`scripts/check-joins.ts` (`scripts/joins.test.ts` runs it in every test run): it fails on a
+separator in any client's words or view code, the protocol and core words that reach a screen
+or a push, with a short, commented allowlist.
+
+Devices are named by their model ("iPhone", "iPad", "Pixel Fold"); the platform (`ios-app`,
+`android-app`) says it is the app. Names paired before D291 ("iPad · Ducter") are renamed once by
+the core (the old name kept as a former name, D84) and shown without the suffix by both clients.
 
 ## Places (D71)
 

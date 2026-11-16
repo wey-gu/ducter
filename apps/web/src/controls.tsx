@@ -415,3 +415,12 @@ export function MenuRow(p: { label: string; on: boolean; off?: boolean; why?: st
     </button>
   );
 }
+
+/** A group of separate facts (D291): each its own small element, spaced by a gap token and free to
+ *  wrap, never one string joined by "·". Empty facts drop out; nothing renders when none is left.
+ *  A fact with a role of its own (a state word with its dot, a time) is passed as an element. */
+export function Facts(p: { items: (ComponentChildren | false | null | undefined)[]; class?: string }) {
+  const xs = p.items.filter((x) => x !== false && x != null && x !== "");
+  if (!xs.length) return null;
+  return <span class={`facts${p.class ? ` ${p.class}` : ""}`}>{xs.map((x, i) => <span key={i}>{x}</span>)}</span>;
+}

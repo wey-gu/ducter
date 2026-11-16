@@ -198,3 +198,14 @@ export function memWords(L: Strings, m: MemPluginView): { line: string; action?:
       return { line: L.t(m.why === "multiple" ? "memp.review.multiple" : "memp.review.unclear"), action: L.t("memp.btn.review") };
   }
 }
+
+/** An accessible name made of several facts, said the way a person reads a list aloud (D291):
+ *  "，" in Chinese, ", " in English. Only for aria-label and title; on screen each fact is its own
+ *  element (Facts in controls.tsx), never one string joined by a separator. */
+export function spoken(L: Pick<Strings, "lang">, ...parts: (string | false | null | undefined)[]): string {
+  return parts.filter((p): p is string => !!p && !!p.trim()).join(L.lang === "zh" ? "，" : ", ");
+}
+
+/** A device's name as the person sees it (D291): a phone or iPad paired through the Ducter app
+ *  before D291 was named "<model> · Ducter"; the art and the platform already say it is the app. */
+export const shownDeviceName = (name: string) => name.replace(/ · Ducter$/, "");

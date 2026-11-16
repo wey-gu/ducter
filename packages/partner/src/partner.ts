@@ -210,6 +210,7 @@ export function activityStep(tool: string): ActivityStep | undefined {
     case "wait_for": // D112: it takes a first look before it arms
       return "looking";
     case "routine_list":
+    case "did_list": // D300
       return "recalling";
     case "ToolSearch":
     case "memory_add":

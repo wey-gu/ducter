@@ -523,6 +523,8 @@ eyes while paused). The pay card has no countdown ring at all, which is itself t
 
 ## G5 · What did Ducter do today (the record)
 
+> Built as **替你做过的 / Done for you** (D300, `../did.md`); where this draft and that note differ, the note holds.
+
 ### 1. Scenario card
 
 - **Who:** the developer at the end of a day of eight tasks ("did anything touch the org

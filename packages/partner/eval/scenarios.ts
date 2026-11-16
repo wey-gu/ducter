@@ -185,6 +185,8 @@ export interface Scenario {
   calendar?: true;
   /** With `calendar`: the calendar tool can't read (hel, 2026-11-12); the default account still answers a generic read. */
   calendarDown?: true;
+  /** D300: a day of things Ducter did for the person (packages/core/test/did-day.ts), logged now: the `did_list` tool answers from it. */
+  did?: true;
 }
 
 // Under a result message the app renders, from the task's typed report: the task chip, the
@@ -1404,6 +1406,25 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Anything I should know about today?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 700, called: [{ tool: "noticed" }], require: [/19:40/, /13:00/], forbid: [/I (just )?(checked|read|scanned|went through)|\b\d+ (e-?mails|messages)\b|haven't (told|mentioned)/i] },
     rubric: "The user asks if there's anything they should know today. It calls noticed and answers in short English with the few things that matter, time-bound first: tomorrow's 19:40 NH 920 flight (airport by 17:40), PlanetScale maintenance on two production databases tomorrow at 13:00 and 15:00, the nightly-stats job failing repeatedly, Cloudflare AI Search starting to charge, Mia waiting about onboarding. The carpet cleaning is left out or last. One line each with when and what to do. Never says what it read or checked, or that it hadn't told them before. No task opened.",
+  },
+  // ---------- D300: "what did you send for me today?" from the Done for you record ----------
+  {
+    id: "did-today-zh",
+    category: "accounts",
+    lang: "zh",
+    did: true,
+    steps: [{ user: "你今天替我发了什么？" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 260, called: [{ tool: "did_list" }], require: [/Zhang Wei|zhang\.wei|张伟/i], forbid: [/我(刚|先)?(查|看|翻)了(一下)?(记录|日志)|Log|did_list/] },
+    rubric: "The user asks what Ducter sent for them today. It calls did_list and answers in short Chinese from it only: two things went out today: the Q4 budget draft (sheet attached) mailed to Zhang Wei after they agreed, and a message to their own Claude Code (an AI agent) about HawDB's benchmarks, in the list's own words; times are whatever the list says (the eval logs everything just now). It may add in one short line that it also paid the Okura hotel (USD 312) and called Sushi Saito, or offer the 替你做过的 page, but it invents nothing the list lacks, never quotes mail it read, and never says how it looked it up. It should not list every other kind of action; reads are counts of looks, never emails read. Two short lines or a two-item list; no task opened.",
+  },
+  {
+    id: "did-today-en",
+    category: "accounts",
+    lang: "en",
+    did: true,
+    steps: [{ user: "Did you pay for anything for me today?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 320, called: [{ tool: "did_list" }], require: [/312/, /Okura/i], forbid: [/I (just )?(checked|looked (it )?up) (the )?(log|record)|did_list/i] },
+    rubric: "The user asks whether Ducter paid for anything today. It calls did_list and answers in short English from it only: one payment, USD 312.00 to the Okura hotel (hotelokura.co.jp), after the user agreed, for the Tokyo hotel task; the card, the stay and the time from the list may be named or not. Nothing else was paid; it doesn't list the other kinds unless briefly. It invents nothing, never says how it looked it up, and opens no task. One or two short lines; one more honest line that the booking itself is not confirmed yet is fine.",
   },
   // ---------- calendars (D222): two accounts merged, changes behind a card ----------
   {

@@ -1603,3 +1603,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
       in `packages/protocol/test/lang-guard.allow.json`, shrunk file by file; (4) real users of
       each language, especially short Latin messages the stopword score is unsure of. Trigger: the
       next non-Chinese, non-English user report, or the first interface table after zh/en.
+
+## Done for you (D300)
+
+- **Commands a harness ran itself** (a `git push` with its own approvals off) are not in the record. Trigger: the first real case, or the gate covering shell effects. Then: list outside-looking commands seen in transcripts in their own group (`flows/G-safety.md` G5).
+- **Autofill's uses are kept in the vault, capped**, not in the Log. Trigger: a person scrolling back past the cap. Then: log each use as a typed event.
+- **The day's money** (what was spent, per currency) and agent usage as one more fact on the day header. Trigger: a second payment kind (a subscription, a call's cost).
+- **The iPhone and Android apps** open the web's sheet; a native view when those apps get Past tasks natively.

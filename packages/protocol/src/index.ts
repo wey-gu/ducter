@@ -23,9 +23,11 @@ export * from "./context-meter.ts";
 export * from "./handset.ts";
 export * from "./channels.ts";
 export * from "./past.ts";
+export * from "./did.ts";
 export * from "./reach.ts";
 import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
+import type { DidClientFrame, DidServerFrame } from "./did.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
@@ -1115,6 +1117,8 @@ export type ClientFrame =
   | ChannelClientFrame
   // D285: 做过的事 / Past tasks (past.ts).
   | PastClientFrame
+  // D300: 替你做过的 / Done for you (did.ts).
+  | DidClientFrame
   | HandsetClientFrame
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" }
@@ -1332,6 +1336,7 @@ export type ServerFrame =
   | HandsetServerFrame
   | ChannelServerFrame
   | PastServerFrame
+  | DidServerFrame
   | { t: "error"; message: string };
 
 /** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */

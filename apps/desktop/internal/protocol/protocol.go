@@ -1955,6 +1955,8 @@ type ServerFrame struct {
 	Op            string        `json:"op,omitempty"`
 	// D285: past_result and past_marked (past.go), decoded on their own.
 	Past *PastFrame `json:"-"`
+	// D300: did_result (did.go), decoded on its own.
+	DidFor *DidFrame `json:"-"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -2152,6 +2154,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodePast(data, f)
 	case "ongoing_result":
 		return decodeOngoing(data, f)
+	case "did_result":
+		return decodeDid(data, f)
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

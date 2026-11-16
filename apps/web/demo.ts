@@ -215,6 +215,13 @@ if (process.env.DEMO_PAST === "1") {
   await (await import("./demo-outside.ts")).seedAdopted(core, zh);
 }
 
+// D300: DEMO_DID=1 adds a day of things Ducter did for the person (and the day before);
+// DEMO_DID=empty moves them all a day back, so today is the reassuring empty day.
+if (process.env.DEMO_DID) {
+  const { seedDidDay } = await import("../../packages/core/test/did-day.ts");
+  seedDidDay(core, { zh, setSkew: (ms) => (skew = ms), yesterday: true, ...(process.env.DEMO_DID === "empty" ? { shift: -86_400_000 } : {}) });
+}
+
 // After the seed, a scripted partner answers new messages the way a real one paces itself, so
 // the waiting moments can be seen and timed (D104): thinking at once, a look back at the Log at
 // 0.4 s, a task being set up at 1.5 s, the ack at 2.3 s, then the turn ends.

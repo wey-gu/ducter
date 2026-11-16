@@ -21,6 +21,8 @@ import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
 import { createOutside } from "./outside.ts";
 import { createLocalAgents, type LocalAgents } from "./local-agents/index.ts";
+import { createDid } from "./did.ts";
+import { registerDidTool } from "./did-tool.ts";
 import { recentFolders } from "./first-words.ts";
 import { createOngoing } from "./ongoing.ts";
 import { registerCoreTools } from "./tools.ts";
@@ -729,6 +731,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D298: the first words read the same records (D299's reader), or a scratch home's in tests.
   const firstReader = opts.firstWords?.home ? createLocalAgents({ home: opts.firstWords.home, env: opts.firstWords.env ?? {} }) : outsideReader;
   const outside = createOutside({ reader: outsideReader, dataDir, log, tasks, ducterFolder: homeFolder, language: () => languageOf("", settings) });
+  // D300: 替你做过的 / Done for you: every outward action, read from the Log and Autofill's uses.
+  const did = createDid({ log, tasks, uses: () => autofill.store.view().uses, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), folder: (id) => changes.folder(id), now: () => clock.now() });
+  registerDidTool(mcp, did, () => clock.now());
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
   const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged() });
   const newTask = {
@@ -774,7 +779,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       },
       socketsChanged: () => reachRef?.refresh(),
     },
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(opts.firstWords ? { firstWords: { projects: () => recentFolders(firstReader, { exclude: [dataDir, homeFolder()], ...(opts.firstWords?.home ? { home: opts.firstWords.home } : {}) }), ...(opts.firstWords.home ? { home: opts.firstWords.home } : {}) } } : {}) });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(opts.firstWords ? { firstWords: { projects: () => recentFolders(firstReader, { exclude: [dataDir, homeFolder()], ...(opts.firstWords?.home ? { home: opts.firstWords.home } : {}) }), ...(opts.firstWords.home ? { home: opts.firstWords.home } : {}) } } : {}) , did });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.

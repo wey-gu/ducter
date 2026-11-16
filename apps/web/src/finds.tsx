@@ -8,6 +8,7 @@ import { A } from "./app.ts";
 import { HoverReply, replyKey, replyOfFind } from "./reply.tsx";
 import { ProactiveChips } from "./accounts.tsx";
 import { Btn, Facts } from "./controls.tsx";
+import { openDid } from "./did.tsx";
 import { ago } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -92,6 +93,10 @@ export function FindsNote({ n, join, seq, seqs }: { n: Bodies["finds"]; join?: b
         ))}
         <Ask n={n} />
       </div>
+      {/* D300: under the morning note, the quiet way to what it did for you. */}
+      {n.rung === "morning" && !n.quiet && (
+        <Btn kind="text" size="sm" chev class="did-morning" label={t("did.link")} onClick={() => openDid()} />
+      )}
     </div>
   );
 }

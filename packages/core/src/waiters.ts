@@ -35,6 +35,8 @@ export interface ArmInput {
   decisionId?: string;
   routineId?: string;
   at?: string;
+  /** D267: a task's own timer wakes the task (taskId), not the partner. */
+  wakes?: "task";
   check?: CheckSpec;
   event?: EventSpec;
   judge?: string;
@@ -438,6 +440,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       if (input.taskId) body.taskId = input.taskId;
       if (input.decisionId) body.decisionId = input.decisionId;
       if (input.routineId) body.routineId = input.routineId;
+      if (input.wakes === "task" && input.taskId && body.at) body.wakes = "task";
       if (input.held) body.held = true;
       if (input.unmetSays?.trim()) body.unmetSays = clip(input.unmetSays.trim(), 160);
       log.append({ stream: "channel", origin: "waiter", kind: "waiter", body });

@@ -228,6 +228,7 @@ export function triggersPartner(e: LogEvent): boolean {
     const w = e.body as Bodies["waiter"];
     // A routine's watch starts a run; a task's own check wakes that task, not the partner.
     if (w.routineId) return false;
+    if (w.wakes === "task") return false; // D267: the task's own timer wakes the task
     if (w.state === "expired") return true;
     // D145: it can no longer come true (a check failed): said once, by the partner.
     if (w.state === "cancelled" && w.unmet && e.origin === "waiter" && !w.taskId) return true;

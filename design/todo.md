@@ -1237,7 +1237,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## On hand as a conductor (D261)
 
 - [ ] **Against a live home with the author's real board** (the 3 quiet waits, 30+ tasks): so far the Mac's view tests and headless web shots from a demo core.
-- [ ] **A task's own timer** (`wait_for` with a time): a task can only wait on a check or an event, which is why one used `date` as a clock; D261 refuses that, and a time-only wait for a task needs the waiter to wake the task, not the partner (a task's timer is the partner's today). Trigger: a task asks for "look again in 45 minutes" twice in a week.
+- [x] **A task's own timer** (`wait_for` with a time; built 2026-11-16, D267): a task can only wait on a check or an event, which is why one used `date` as a clock; D261 refuses that, and a time-only wait for a task needs the waiter to wake the task, not the partner (a task's timer is the partner's today). Trigger: a task asks for "look again in 45 minutes" twice in a week.
 - [ ] **The shorthand guard on a task's reports and checkpoints**, not only a wait's reason (D261 (10)). Trigger: a row's line shows notes again; the rule then belongs in the task's brief.
 - [ ] **The web's routine shelf under a project's lens** (the Mac shows only that project's routines; the web still shows all). Trigger: the next pass on routines.
 - [ ] **The window header's counts vs the strip**: the header's 今天做完 counts successes today, the strip counts the section (failures and yesterday's late finishes too). One rule for both is the shell's call (the header is shared chrome).

@@ -234,6 +234,7 @@ function isTrigger(e: LogEvent): boolean {
   if (e.kind === "waiter") {
     const w = e.body as Bodies["waiter"];
     if (w.routineId) return false;
+    if (w.wakes === "task") return false; // D267: the task's own timer wakes the task
     if (w.state === "expired") return true;
     return w.state === "fired" && !(w.taskId && (w.check || w.event));
   }

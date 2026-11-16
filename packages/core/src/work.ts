@@ -9,7 +9,7 @@ import { urlArgv, WATCH_MAX_ITEMS } from "@ducter/protocol/src/watch.ts";
 import type { LogStore, Runner, WorkerLinks } from "@ducter/protocol/src/internal.ts";
 import { CHECK_MAX_OUTPUT, describeCheck, describePredicate, validateCheck } from "@ducter/protocol/src/checks.ts";
 import { runCheck, type CheckResult, type Exec } from "@ducter/protocol/src/checks-run.ts";
-import type { Clock } from "./clock.ts";
+import { realClock, type Clock } from "./clock.ts";
 import type { ConnectionsStore } from "./connections.ts";
 import type { CoreMcpHub } from "./mcp.ts";
 import { isActive, type CoreRegistry } from "./registry.ts";
@@ -164,7 +164,8 @@ export function createWork(o: WorkOptions): Work {
   const unsubscribe = log.subscribe((e) => {
     if (e.kind !== "waiter") return;
     const w = e.body as Bodies["waiter"];
-    if (!w.taskId || kindOf(w) === "timer") return;
+    // D267: a timer wakes a task only when it is the task's own (wait_for with a time).
+    if (!w.taskId || (kindOf(w) === "timer" && w.wakes !== "task")) return;
     const card = tasks.get(w.taskId);
     if (!card || !isActive(card.attention)) return;
     if (w.state === "armed") {
@@ -172,7 +173,10 @@ export function createWork(o: WorkOptions): Work {
     } else if (w.state === "fired") {
       if (card.attention === "blocked") tasks.setState(w.taskId, "working", card.residency);
       const zh = zhOf(w.reason);
-      const text = zh ? `等到了：「${w.reason}」${w.observed ? `（${w.observed}）` : ""}。接着做。` : `The wait is over: "${w.reason}"${w.observed ? ` (${w.observed})` : ""}. Carry on.`;
+      const timer = kindOf(w) === "timer";
+      const text = timer
+        ? zh ? `到时间了：「${w.reason}」。接着做。` : `It's time: "${w.reason}". Carry on.`
+        : zh ? `等到了：「${w.reason}」${w.observed ? `（${w.observed}）` : ""}。接着做。` : `The wait is over: "${w.reason}"${w.observed ? ` (${w.observed})` : ""}. Carry on.`;
       void o.runner()?.send(w.taskId, text, undefined, "partner").catch((err) => console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`));
     } else if (w.state === "expired") {
       const zh = zhOf(w.reason);
@@ -227,11 +231,35 @@ export function createWork(o: WorkOptions): Work {
     required: ["connection", "service", "trigger"],
   };
 
-  const waitFor = async (a: { reason?: string; taskId?: string; check?: CheckSpec; event?: EventSpec; judge?: string; everyMinutes?: number; untilISO?: string; unmetSays?: string }, ctx: { role: string; taskId?: string }) => {
+  const timerFor = (taskId: string, reason: string, a: { afterMinutes?: number; atISO?: string }) => {
+    const notes = shorthand(reason);
+    if (notes) return { ok: false, error: `reason is shown to the person as written, after 等 / Waiting until: write it as plain words in their language (再看一轮评审 / look at the reviews again), not notes like "${notes}".` };
+    if (!tasks.get(taskId)) return { ok: false, error: `unknown task ${taskId}` };
+    const now = (o.clock ?? realClock).now();
+    let at: number;
+    if (a.atISO) {
+      at = Date.parse(a.atISO);
+      if (Number.isNaN(at)) return { ok: false, error: `could not read the time: ${a.atISO}` };
+    } else at = now + Math.max(1, Number(a.afterMinutes)) * 60_000;
+    if (at <= now) return { ok: false, error: "that time is already past" };
+    if (at - now > 7 * 86_400_000) return { ok: false, error: "at most 7 days ahead; for longer, report blocked with what you wait for" };
+    try {
+      const w = waiters.arm({ reason, taskId, at: new Date(at).toISOString(), wakes: "task" });
+      return { ok: true, waiterId: w.waiterId, at: w.at, note: "Armed. End your turn now; you will be woken then. To repeat, call wait_for again when you wake." };
+    } catch (err) {
+      return { ok: false, error: (err as Error).message };
+    }
+  };
+
+  const waitFor = async (a: { reason?: string; taskId?: string; check?: CheckSpec; event?: EventSpec; judge?: string; everyMinutes?: number; untilISO?: string; unmetSays?: string; afterMinutes?: number; atISO?: string }, ctx: { role: string; taskId?: string }) => {
     const taskId = ctx.role === "task" ? ctx.taskId : a.taskId;
     const reason = String(a.reason ?? "").trim();
     if (!reason) return { ok: false, error: "wait_for needs reason: the condition in the user's words (在等 PR #1592 通过 / PR #1592 passes)." };
-    if (!a.check && !a.event) return { ok: false, error: "wait_for needs a check (a command) or an event (a connection's trigger). For a time, use wait_until." };
+    // D267: a task's own timer ("look again in 45 minutes"): the task rests on Waiting and this
+    // wakes it, durable across restarts; it is what a harness's own /loop or wakeup would do.
+    if (!a.check && !a.event && ctx.role === "task" && taskId && (a.afterMinutes || a.atISO)) return timerFor(taskId, reason, a);
+    if (!a.check && !a.event)
+      return { ok: false, error: ctx.role === "task" ? "wait_for needs a check (a command), an event (a connection's trigger), or a time (afterMinutes / atISO)." : "wait_for needs a check (a command) or an event (a connection's trigger). For a time, use wait_until." };
     // D261: the reason is shown to the person as it is, on On hand and in the task.
     const notes = shorthand(reason);
     if (notes) return { ok: false, error: `reason is shown to the person as written, after 等 / Waiting until: write it as plain words in their language (PR #1592 的 CI 通过 / PR #1592's CI passes), not notes like "${notes}".` };
@@ -294,8 +322,16 @@ export function createWork(o: WorkOptions): Work {
   mcp.register(
     "task",
     "wait_for",
-    "Wait for something outside before going on (CI to finish, a deploy to be up, a file to appear): give the condition and a check. You rest on Waiting with no turns spent, and a message wakes you when it holds. Never sleep or poll in a loop yourself.",
-    { type: "object", properties: waitForProps, required: ["reason"] },
+    "Wait for something outside before going on (CI to finish, a deploy to be up, a file to appear): give the condition and a check. Or just a time (afterMinutes or atISO, no check): \"look at the reviews again in 45 minutes\"; call it again when you wake to repeat. You rest on Waiting with no turns spent, and a message wakes you, even after a restart. Use this instead of sleeping, polling in a loop, or your own wakeup or loop tools.",
+    {
+      type: "object",
+      properties: {
+        ...waitForProps,
+        afterMinutes: { type: "number", description: "A time instead of a condition: wake me this many minutes from now (1 to 10080)" },
+        atISO: { type: "string", description: "A time instead of a condition: wake me at this time (ISO)" },
+      },
+      required: ["reason"],
+    },
     (a, ctx) => waitFor(a, ctx),
   );
   mcp.register(

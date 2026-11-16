@@ -146,6 +146,36 @@ test("a check waiter looks on its schedule with no model, logs only changes, and
   expect(tasks.onHand().waiters).toEqual([]);
 });
 
+test("D267: a task's own timer: Waiting until then, wakes the task (not the partner), survives a restart", async () => {
+  const s = setup();
+  openTask(s.log, "t1");
+  s.tasks.setState("t1", "working", "hot");
+  const T = { role: "task", taskId: "t1" } as const;
+  const bad = (await s.mcp.call(T, "wait_for", { reason: "再看一轮评审" })) as { ok: boolean; error?: string };
+  expect(bad.ok).toBe(false);
+  expect(bad.error).toContain("afterMinutes");
+  const r = (await s.mcp.call(T, "wait_for", { reason: "再看一轮评审", afterMinutes: 45 })) as { ok: boolean; at?: string };
+  expect(r.ok).toBe(true);
+  await flush();
+  expect(s.tasks.get("t1")).toMatchObject({ attention: "blocked", reason: "再看一轮评审" });
+  const armed = s.log.read({ kinds: ["waiter"] }).at(-1)!;
+  expect(armed.body).toMatchObject({ wakes: "task", taskId: "t1", state: "armed" });
+  s.clock.advance(44 * 60_000);
+  await flush();
+  expect(s.sent).toEqual([]);
+  s.clock.advance(60_000);
+  await flush();
+  const fired = s.log.read({ kinds: ["waiter"] }).at(-1)!;
+  expect(fired.body).toMatchObject({ state: "fired", wakes: "task" });
+  expect(triggersPartner(fired)).toBe(false);
+  expect(s.tasks.get("t1")!.attention).toBe("working");
+  expect(s.sent[0]).toMatchObject({ taskId: "t1" });
+  expect(s.sent[0]!.text).toContain("到时间了");
+  // Only for a task: the partner keeps wait_until for its own timers.
+  const p = (await s.mcp.call({ role: "partner" }, "wait_for", { reason: "再看看", afterMinutes: 5 })) as { ok: boolean };
+  expect(p.ok).toBe(false);
+});
+
 test("a task's own check: it rests on Waiting, wakes the task (not the partner) when it holds", async () => {
   let ok = false;
   const { clock, log, tasks, work, sent } = setup({ exec: async () => ({ exitCode: 0, stdout: checksJson([ok ? "SUCCESS" : "PENDING"]) }) });

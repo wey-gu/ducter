@@ -364,6 +364,7 @@ export interface Bodies {
     taskId?: string;
     decisionId?: string;
     routineId?: string; // a condition routine's watch (D114): firing starts a run, then it re-arms
+    wakes?: "task"; // D267: a task's own timer: when due it wakes that task, not the partner
     at?: string;
     reason: string;
     state: "armed" | "fired" | "cancelled" | "expired";

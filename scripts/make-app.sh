@@ -149,10 +149,13 @@ else
   # JavaScriptCore maps MAP_JIT pages, and without it a Bun binary dies with "Ran out of
   # executable memory" once code gets hot (tested with Bun 1.4.4). D218 adds audio-input: the
   # helper starts ffmpeg to hear an own-number call through the sound card. The CLI loads no native
-  # addons, so library validation stays on; the desktop binary needs no entitlements.
+  # addons, so library validation stays on. The app itself takes one entitlement, audio-input
+  # (D305: hold to talk listens through the Speech framework in the app's own process); under the
+  # hardened runtime without it macOS denies the microphone without ever asking.
   codesign --force --timestamp --options runtime --sign "$IDENTITY" \
     --identifier "$ID.cli" --entitlements "$ENT" "$APP/Contents/Helpers/ducter"
-  codesign --force --timestamp --options runtime --sign "$IDENTITY" --identifier "$ID" "$APP"
+  codesign --force --timestamp --options runtime --sign "$IDENTITY" --identifier "$ID" \
+    --entitlements "$ROOT/scripts/macos/ducter-app.entitlements" "$APP"
   SIGNED="signed by $(codesign -dvv "$APP" 2>&1 | sed -n 's/^Authority=Developer ID Application: //p')"
 fi
 codesign --verify --strict --deep "$APP"

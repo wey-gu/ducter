@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.63
+
+<!-- whats-new
+zh: 按住说话，松开就是文字；也能读给你听
+en: Hold to talk; let go and it's words. It can read aloud
+zh: 菜单栏一眼看出有没有事要你定
+en: The menu bar shows at a glance if anything needs you
+-->
+
+**Voice**
+- Hold the microphone in the composer (or a key on the Mac) and speak; let go and the words wait in
+  the box. Slide up to send at once, left to drop. It listens in the language you write in, on the
+  device where your system can.
+- Read aloud is in each reply's menu; it can also read replies to messages you spoke.
+
+**At a glance**
+- The menu bar mark stays quiet, looks down while work goes on, and gets a soft dot only when
+  something needs you; its menu answers a decision right there.
+- On Android, a task you follow or a live call can stay in your notifications while the app is open.
+
 ## 0.0.62
 
 <!-- whats-new

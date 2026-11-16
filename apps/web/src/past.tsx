@@ -6,6 +6,7 @@ import type { OngoingAction, OngoingItem, OngoingRun, OutsideAgent, OutsideItem,
 import { PAST_GLYPHS, PAST_TAGS_MAX, PAST_TINTS } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
+import type { TableLang } from "./i18n.ts";
 import { Btn, Facts } from "./controls.tsx";
 import { harnessName, spoken } from "./format.ts";
 
@@ -218,24 +219,24 @@ export function groupOf(iso: string, now = Date.now()): { key: string; label: st
   const d = new Date(at);
   const n = new Date(now);
   if (d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth()) return { key: "month", label: t("past.g.month") };
-  const label = A.L.lang === "zh" ? `${d.getFullYear() !== n.getFullYear() ? `${d.getFullYear()} 年 ` : ""}${d.getMonth() + 1} 月` : d.toLocaleDateString("en", { month: "long", ...(d.getFullYear() !== n.getFullYear() ? { year: "numeric" } : {}) });
+  const label = DATES[A.L.lang].month(d, d.getFullYear() !== n.getFullYear());
   return { key: `m${d.getFullYear()}-${d.getMonth()}`, label };
 }
 
 /** A card's date: a time today, a weekday this week, else the day of the month. */
 function dateOf(iso: string, now = Date.now()): string {
   const d = new Date(iso);
-  const zh = A.L.lang === "zh";
-  if (Date.parse(iso) >= startOfDay(now)) return d.toLocaleTimeString(zh ? "zh-CN" : "en", { hour: "2-digit", minute: "2-digit", hour12: false });
-  if (Date.parse(iso) >= startOfWeek(now)) return d.toLocaleDateString(zh ? "zh-CN" : "en", { weekday: "short" });
-  return zh ? `${d.getMonth() + 1}月${d.getDate()}日` : d.toLocaleDateString("en", { month: "short", day: "numeric" });
+  const f = DATES[A.L.lang];
+  if (Date.parse(iso) >= startOfDay(now)) return d.toLocaleTimeString(f.intl, { hour: "2-digit", minute: "2-digit", hour12: false });
+  if (Date.parse(iso) >= startOfWeek(now)) return d.toLocaleDateString(f.intl, { weekday: "short" });
+  return f.day(d);
 }
 
 /** The range a search read, said and dated apart ("上周", 11月9日–11月15日; D291). */
 function rangeLine(r: NonNullable<Result["range"]>): string[] {
   const a = new Date(r.since);
   const b = new Date(Date.parse(r.before) - 1);
-  const f = (d: Date) => (A.L.lang === "zh" ? `${d.getMonth() + 1}月${d.getDate()}日` : d.toLocaleDateString("en", { month: "short", day: "numeric" }));
+  const f = DATES[A.L.lang].day;
   return [r.words, a.toDateString() === b.toDateString() ? f(a) : `${f(a)}–${f(b)}`];
 }
 
@@ -717,22 +718,42 @@ function og(it: OngoingItem, a: OngoingAction) {
 /** A time in a card's words: 21:40 today, 周三 09:00 this week, else 11月20日 09:00. */
 function soon(iso: string): string {
   const d = new Date(iso);
-  const zh = A.L.lang === "zh";
-  const hm = d.toLocaleTimeString(zh ? "zh-CN" : "en", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const f = DATES[A.L.lang];
+  const hm = d.toLocaleTimeString(f.intl, { hour: "2-digit", minute: "2-digit", hour12: false });
   const now = Date.now();
   if (Date.parse(iso) < startOfDay(now) + DAY) return hm;
-  if (Date.parse(iso) < startOfDay(now) + 2 * DAY) return `${zh ? "明天" : "tomorrow"} ${hm}`;
-  if (Date.parse(iso) < startOfDay(now) + 6 * DAY) return `${d.toLocaleDateString(zh ? "zh-CN" : "en", { weekday: "short" })} ${hm}`;
-  return `${zh ? `${d.getMonth() + 1}月${d.getDate()}日` : d.toLocaleDateString("en", { month: "short", day: "numeric" })} ${hm}`;
+  if (Date.parse(iso) < startOfDay(now) + 2 * DAY) return `${f.tomorrow} ${hm}`;
+  if (Date.parse(iso) < startOfDay(now) + 6 * DAY) return `${d.toLocaleDateString(f.intl, { weekday: "short" })} ${hm}`;
+  return `${f.day(d)} ${hm}`;
 }
 
 function interval(ms: number): string {
   const m = Math.round(ms / 60_000);
-  const zh = A.L.lang === "zh";
-  if (m < 60) return zh ? `${m} 分钟` : `${m} min`;
+  const f = DATES[A.L.lang];
+  if (m < 60) return f.min(m);
   const h = Math.round(m / 60);
-  return zh ? `${h} 小时` : `${h} h`;
+  return f.hours(h);
 }
+
+/** How Past and Ongoing write dates and spans, per language (D292). */
+const DATES: Record<TableLang, { intl: string; month(d: Date, year: boolean): string; day(d: Date): string; tomorrow: string; min(m: number): string; hours(h: number): string }> = {
+  zh: {
+    intl: "zh-CN",
+    month: (d, year) => `${year ? `${d.getFullYear()} 年 ` : ""}${d.getMonth() + 1} 月`,
+    day: (d) => `${d.getMonth() + 1}月${d.getDate()}日`,
+    tomorrow: "明天",
+    min: (m) => `${m} 分钟`,
+    hours: (h) => `${h} 小时`,
+  },
+  en: {
+    intl: "en",
+    month: (d, year) => d.toLocaleDateString("en", { month: "long", ...(year ? { year: "numeric" } : {}) }),
+    day: (d) => d.toLocaleDateString("en", { month: "short", day: "numeric" }),
+    tomorrow: "tomorrow",
+    min: (m) => `${m} min`,
+    hours: (h) => `${h} h`,
+  },
+};
 
 /** An ongoing thing's line: its state, else how often it runs and when next, each its own fact (D291). */
 function stateLine(it: OngoingItem): string[] {

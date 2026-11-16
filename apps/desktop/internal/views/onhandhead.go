@@ -95,7 +95,7 @@ func (a *App) waitsAhead(b store.Board, lens string) (first time.Time, quiet int
 // needs you, then what works, what waits and when the first comes back,
 // and what got done today. Never a model: the Log's counts and times.
 func (a *App) headSay(b store.Board, lens string, n [4]int) string {
-	zh := a.L.Lang == "zh"
+	p := i18n.Pick(a.L, sayMarks)
 	first := a.L.T("onhand.say.none")
 	switch {
 	case n[0] == 1:
@@ -125,11 +125,7 @@ func (a *App) headSay(b store.Board, lens string, n [4]int) string {
 		}
 		s := a.L.T("onhand.say.waiting", n[2])
 		if len(more) > 0 {
-			if zh {
-				s += "：" + strings.Join(more, "，")
-			} else {
-				s += ": " + strings.Join(more, ", ")
-			}
+			s += p.colon + strings.Join(more, p.comma)
 		}
 		parts = append(parts, s)
 	}
@@ -139,11 +135,17 @@ func (a *App) headSay(b store.Board, lens string, n [4]int) string {
 	if len(parts) == 0 {
 		return first
 	}
-	if zh {
-		return first + strings.Join(parts, "；") + "。"
+	rest := strings.Join(parts, p.semi) + p.stop
+	if a.L.Cased() {
+		rest = strings.ToUpper(rest[:1]) + rest[1:]
 	}
-	rest := strings.Join(parts, "; ") + "."
-	return first + " " + strings.ToUpper(rest[:1]) + rest[1:]
+	return first + p.gap + rest
+}
+
+// sayMarks are the head sentence's marks, per language (D292).
+var sayMarks = map[string]struct{ colon, comma, semi, stop, gap string }{
+	"zh": {"：", "，", "；", "。", ""},
+	"en": {": ", ", ", "; ", ".", " "},
 }
 
 // boardHead is the partner and its sentence.

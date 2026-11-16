@@ -27,6 +27,7 @@ import {
   type PastQuery,
   type TaskCard,
 } from "@ducter/protocol";
+import { fill, words, type LangTag } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 
 // ---------- marks ----------
@@ -334,7 +335,7 @@ export interface Past {
   query(persona: string, q: PastQuery): { items: PastItem[]; total: number; facets: PastFacets; suggestions: string[]; range?: { since: string; before: string; words: string } };
   item(taskId: string): PastItem | undefined;
   /** D285: what a new task opened from this one carries, put after the person's words. */
-  seed(taskId: string, words: string, zh: boolean): string;
+  seed(taskId: string, words: string, lang: LangTag): string;
 }
 
 const ACTIVE = new Set(["queued", "working", "needs_you", "blocked", "done_claimed"]);
@@ -562,32 +563,49 @@ export function createPast(d: PastDeps): Past {
       const c = d.tasks.get(taskId);
       return c ? itemOf(c) : undefined;
     },
-    seed(taskId, words, zh) {
+    seed(taskId, said, lang) {
       build();
       const c = d.tasks.get(taskId);
-      if (!c) return words;
+      if (!c) return said;
       const doc = docs.get(taskId);
       const it = itemOf(c);
       const date = new Date(c.updatedAt).toISOString().slice(0, 10);
       const reports = (doc?.reports ?? []).slice(-3).reverse();
       const files = (doc?.files ?? []).slice(-12);
       const lines: string[] = [];
-      if (zh) {
-        lines.push(`这件事接着之前的一件：「${it.title}」（${date}，${harnessName(c.harness)}${c.project ? `，${c.project}` : ""}）。它当时发现和做到的：`);
-        if (reports.length) for (const r of reports) lines.push(`- ${r.replace(/\s+/g, " ").slice(0, 600)}`);
-        else lines.push("- 它没有留下报告。");
-        if (it.branch) lines.push(`它的分支：${it.branch}${it.integrated?.act === "merge" ? "（已合并）" : ""}`);
-        if (files.length) lines.push(`它动过的文件：${files.join("、")}`);
-        lines.push("先用这些，不必从头再查一遍；需要时自己核对一下现在的样子。");
-      } else {
-        lines.push(`This picks up from an earlier task: "${it.title}" (${date}, ${harnessName(c.harness)}${c.project ? `, ${c.project}` : ""}). What it found and did:`);
-        if (reports.length) for (const r of reports) lines.push(`- ${r.replace(/\s+/g, " ").slice(0, 600)}`);
-        else lines.push("- It left no report.");
-        if (it.branch) lines.push(`Its branch: ${it.branch}${it.integrated?.act === "merge" ? " (merged)" : ""}`);
-        if (files.length) lines.push(`Files it touched: ${files.join(", ")}`);
-        lines.push("Start from this rather than finding it all again; check how things stand now where it matters.");
-      }
-      return `${words.trim()}\n\n---\n${lines.join("\n")}`;
+      const w = words(SEED, lang);
+      const where = [date, harnessName(c.harness), ...(c.project ? [c.project] : [])].join(w.sep);
+      lines.push(fill(w.head, { title: it.title, where }));
+      if (reports.length) for (const r of reports) lines.push(`- ${r.replace(/\s+/g, " ").slice(0, 600)}`);
+      else lines.push(w.noReport);
+      if (it.branch) lines.push(fill(w.branch, { branch: it.branch, merged: it.integrated?.act === "merge" ? w.merged : "" }));
+      if (files.length) lines.push(fill(w.files, { files: files.join(w.list) }));
+      lines.push(w.start);
+      return `${said.trim()}\n\n---\n${lines.join("\n")}`;
     },
   };
 }
+
+/** The brief a continued task carries about the one it picks up from (D285), per language (D292). */
+const SEED = {
+  zh: {
+    head: "这件事接着之前的一件：「{title}」（{where}）。它当时发现和做到的：",
+    sep: "，",
+    noReport: "- 它没有留下报告。",
+    branch: "它的分支：{branch}{merged}",
+    merged: "（已合并）",
+    files: "它动过的文件：{files}",
+    list: "、",
+    start: "先用这些，不必从头再查一遍；需要时自己核对一下现在的样子。",
+  },
+  en: {
+    head: 'This picks up from an earlier task: "{title}" ({where}). What it found and did:',
+    sep: ", ",
+    noReport: "- It left no report.",
+    branch: "Its branch: {branch}{merged}",
+    merged: " (merged)",
+    files: "Files it touched: {files}",
+    list: ", ",
+    start: "Start from this rather than finding it all again; check how things stand now where it matters.",
+  },
+};

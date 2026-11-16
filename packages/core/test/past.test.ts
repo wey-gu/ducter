@@ -160,12 +160,12 @@ test("marks persist per persona, rename the task everywhere, and keep the old ti
 
 test("a new task from an earlier one carries what it found", () => {
   const s = seed();
-  const en = s.past.seed("flaky", "Add the same fence to the WAL snapshot", false);
+  const en = s.past.seed("flaky", "Add the same fence to the WAL snapshot", "en");
   expect(en).toStartWith("Add the same fence to the WAL snapshot\n\n---\nThis picks up from an earlier task: \"Why does TestRaftSnapshot fail sometimes\"");
   expect(en).toContain("the snapshot timer races the leader step-down");
   expect(en).toContain("Its branch: ducter/flaky-snapshot");
   expect(en).toContain("/src/hawdb/raft/snapshot_test.go");
-  const zh = s.past.seed("dropped", "再试一次", true);
+  const zh = s.past.seed("dropped", "再试一次", "zh");
   expect(zh).toContain("它没有留下报告。");
   s.cleanup();
 });

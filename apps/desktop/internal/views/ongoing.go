@@ -328,7 +328,7 @@ func (a *App) ongoingLine(it *protocol.OngoingItem) []string {
 // hanTight drops a space between two Chinese characters ("每 45 分钟 看一次"
 // → "每 45 分钟看一次"): Chinese words run on.
 func (a *App) hanTight(s string) string {
-	if a.L.Lang != i18n.ZH {
+	if !a.L.Han() {
 		return s
 	}
 	r := []rune(s)

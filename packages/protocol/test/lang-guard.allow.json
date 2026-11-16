@@ -3,13 +3,6 @@
   "files": {
     "packages/protocol/src/lang.ts": 2,
     "packages/partner/src/words.ts": 1,
-    "apps/desktop/internal/views/accounts.go": 1,
-    "packages/core/src/core.ts": 1,
-    "apps/web/src/onhand.tsx": 7,
-    "apps/web/src/past.tsx": 14,
-    "apps/desktop/internal/views/ongoing.go": 1,
-    "apps/desktop/internal/views/onhandhead.go": 4,
-    "apps/desktop/internal/views/past.go": 6
-  },
-  "_todo": "Merged after D292's sweep (D285 past/ongoing, D287 On hand head, core): convert to tables, then drop these lines."
+    "apps/desktop/internal/views/accounts.go": 1
+  }
 }

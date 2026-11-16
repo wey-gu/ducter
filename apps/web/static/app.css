@@ -13114,3 +13114,39 @@ svg .wave.w2.on {
     justify-content: center;
   }
 }
+/* ---------- D307: Settings rows left on their own surfaces ---------- */
+/* This device's light and dark (D302's row on the web): every colour moves at once, 360 ms. */
+@media (prefers-reduced-motion: no-preference) {
+  :root.paper-turning,
+  :root.paper-turning *,
+  :root.paper-turning *::before,
+  :root.paper-turning *::after {
+    transition: background-color 360ms ease-in-out, color 360ms ease-in-out, border-color 360ms ease-in-out, box-shadow 360ms ease-in-out, fill 360ms ease-in-out, stroke 360ms ease-in-out !important;
+  }
+}
+/* A pasted key in Settings and on the home's card: the D298 card inside its row, no title. */
+.key-open .key-card.in-settings {
+  padding: 0;
+  background: none;
+}
+/* On the home's card: a flat row under the AI agents' tray, never a card in the card (D273). */
+.dc .key-set {
+  margin: var(--s2) 0 0;
+  text-align: start;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+.dc .key-set .set-row,
+.dc .key-set .set-item {
+  padding-left: var(--s2);
+  padding-right: var(--s2);
+}
+/* This device's voice row (D305): its switch is a row of the card, never a card in the card (D273). */
+.set-page.pushed .set-item.voice-set .switch {
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}

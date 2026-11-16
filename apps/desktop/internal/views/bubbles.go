@@ -57,6 +57,7 @@ func (a *App) partnerBubble(c *ui.Context, join bool, body func()) {
 			})
 		}
 		a.hoverReply(c, rt, hov, 1)
+		a.hoverRead(c, rt, hov) // D305: 朗读 / Read aloud beside it
 		ui.Spacer(c)
 	})
 }

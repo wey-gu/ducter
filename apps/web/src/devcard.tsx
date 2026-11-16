@@ -3,6 +3,7 @@
 // status line, its AI agents as coins whose detail opens in place, its abilities as chips, one
 // line of how it is connected (⋯ opens the connections in place), Ducter's version only with an
 // update, one 断开这台 {device}. Every control here is a shared one (controls.tsx).
+import { KeyRow } from "./settings-more.tsx";
 import { PhoneBlock, PhoneInfo, startInstall } from "./phone-use.tsx";
 import { ComputerBlock, ComputerInfo } from "./computer-use.tsx";
 import { HandsetChip } from "./handset.tsx";
@@ -209,6 +210,8 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       )}
       {s.text && <div class={`dc-status${s.state ? "" : ` ${s.tone}`}`}>{s.text}</div>}
       <CoinTray dv={dv} />
+      {/* D307: on the home's card, a key instead of a subscription (D298), beside its AI agents. */}
+      {dv.home && <KeyRow instead />}
       <Chips dv={dv} go={go} />
       {!dv.home && dv.state === "awake" && <HowConnected via={dv.via} />}
       {dv.home && <Ways home={dv.name} />}

@@ -25,6 +25,7 @@ import { memoryWords } from "./i18n-memory.ts";
 import { contextWords } from "./i18n-context.ts";
 import { limitWords } from "./i18n-limits.ts";
 import { firstWords } from "./i18n-first.ts";
+import { settingsMore } from "./i18n-settings.ts";
 
 import { fallbackChain, negotiate, detect, plural, UI_LANGS, type LangTag } from "@ducter/protocol/src/lang.ts";
 
@@ -44,7 +45,7 @@ const zh: Record<string, string> = {
   "settings.list.accounts": "它能看的邮件、日历和别的账号",
   "settings.tab.devices": "你的设备",
   "settings.list.devices": "每台电脑上的 Ducter、版本和更新",
-  "settings.list.phone": "界面语言、对话里的细节",
+  "settings.list.phone": "浅色和深色、界面语言、对话里的细节、语音",
   "settings.back": "设置",
   "partner.header": "住在 %s 上，用 %s 想事情",
   "loadout.brain.auto": "自动选的：只有 %s 登录了",
@@ -848,7 +849,7 @@ const en: Record<string, string> = {
   "settings.list.accounts": "The mail, calendars and other accounts it can read",
   "settings.tab.devices": "Your devices",
   "settings.list.devices": "Ducter on each computer, its version and updates",
-  "settings.list.phone": "Language, Details in the conversation",
+  "settings.list.phone": "Light and dark, language, Details in the conversation, voice",
   "settings.back": "Settings",
   "partner.header": "Lives on %s and thinks with %s",
   "loadout.brain.auto": "Picked for you: only %s is signed in",
@@ -2903,7 +2904,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...didWords.zh, ...richWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...didWords.en, ...richWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en } };
+export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...didWords.zh, ...richWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh, ...settingsMore.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...didWords.en, ...richWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en, ...settingsMore.en } };
 // D276: 聊天软件 / Chat apps (i18n-channels.ts).
 Object.assign(TABLES.zh, channelWords.zh);
 Object.assign(TABLES.en, channelWords.en);

@@ -19,7 +19,8 @@ func TestReplyLanguageAnyLanguage(t *testing.T) {
 	f := settingsFrame()
 	f.Settings.Language = "auto"
 	app.Receive(f)
-	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	// D307: the key, the hand-off and the records groups sit above it now.
+	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	if err := tt.Click("How it talks, Follow me"); err != nil {
 		t.Fatalf("no reply-language pill: %v in %q", err, tt.Texts())

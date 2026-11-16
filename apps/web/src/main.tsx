@@ -23,6 +23,9 @@ import { walkKey } from "./onhand.tsx";
 import { markSeen } from "./seen.ts";
 import { edgeSwipe, navBusy, popMove } from "./nav.ts";
 import { wideNow } from "./fold.ts";
+import { applyPaper } from "./settings-more.tsx";
+
+applyPaper(); // D307: this device's own light or dark, before the first paint
 
 const base = baseUrl();
 const token = () => storage.get()?.token;

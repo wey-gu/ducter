@@ -72,7 +72,26 @@ differs from that: under 在留意, a row with its switch off says **你问起�
 under 你问起来才去看, a row watched on its own says **自己留意着 / Watching**; **不看 / Not read** and
 **连不上 / Can't reach** always speak. The switch says the rest.
 
+## The rows other choices left behind (D307)
+
+A choice made on a card (a limit card's hand-off, 别再看了 under the first words, 不再显示 in Past
+tasks) or a thing that had only one door (a pasted key: the first run and an empty conversation)
+also lives in Settings, so it can be seen and undone in one place:
+
+| Where | Row | Same setting as |
+|---|---|---|
+| 伙伴 / Partner, under who does the tasks | **贴一个 API 密钥 / Paste an API key**, its button opening D298's card in place (no title, no card in the card) | the first run's and the conversation's key card |
+| 伙伴 / Partner | **额度用完的时候 / When a limit runs out**: **直接换别的 AI agent 接着做** and its one line | the switch under a task's limit card (D297) |
+| 伙伴 / Partner | **你的 AI agent 留下的记录 / What your AI agents keep**: **从记录里找接着做的事** and each hidden agent with **再显示** | 别再看了 / 还是看吧 (D298), Past tasks' 不再显示 (D299) |
+| Devices, the home's card | **或者，贴一个 API 密钥 / Or paste an API key**, a flat row under the AI agents' tray | the same card |
+| 这台手机 / This phone (web) | **浅色和深色 / Light and dark** | the Mac's row under Look (D302) |
+
+Each change gets the partner's one word (D296) where it has a consequence the switch doesn't show:
+the hand-off, the looking, an agent shown again. A key pasted in Settings is answered there only.
+
 ## Not done
+
+- The web's This phone is still called that on a desktop browser.
 
 - A comprehension pass with people on the said lines and on a row with no state word.
 - The web has no AI accounts row on Accounts (the phone has no Devices page of its own there);

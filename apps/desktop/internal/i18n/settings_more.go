@@ -1,0 +1,53 @@
+package i18n
+
+// D307: the Settings rows the last lanes left on their own surfaces: a
+// pasted key in Settings › Partner and on the home's card in Devices
+// (D298), when a limit runs out (D297), and what the person's own AI
+// agents keep: the first words' looking and Past tasks' hidden agents
+// (D298, D299). The same keys and words as the web
+// (apps/web/src/i18n-settings.ts). No " · " joins (D291).
+
+var zhSettingsMore = Table{
+	"key.settings.row":   "贴一个 API 密钥",
+	"records.title":      "你的 AI agent 留下的记录",
+	"records.look":       "从记录里找接着做的事",
+	"records.look.help":  "打招呼时，看看 Claude Code 和 Codex 最近在这台电脑上做的事，问你要不要接着来。只在这里读，只给你看。",
+	"records.past.note":  "它们在这台电脑上的对话也在「做过的事」里，点一下就能接着做。",
+	"records.hidden":     "%s 的对话不在「做过的事」里显示",
+	"records.show":       "再显示",
+	"said.records.on":    "好，打招呼时我会看看这些记录。",
+	"said.records.off":   "好，以后不再看这些记录。",
+	"said.records.shown": "好，%s 的对话又会在「做过的事」里了。",
+	"handoff.title":      "额度用完的时候",
+	"handoff.row":        "直接换别的 AI agent 接着做",
+	"handoff.help":       "不等额度恢复：同一台电脑上另一个登录了的 AI agent 从做到的地方接着做。关着的话，等恢复后接着做。",
+	"said.handoff.on":    "好，额度用完时我直接换别的 AI agent 接着做。",
+	"said.handoff.off":   "好，额度用完时我等它恢复，再接着做。",
+}
+
+var enSettingsMore = Table{
+	"key.settings.row":   "Paste an API key",
+	"records.title":      "What your AI agents keep",
+	"records.look":       "Offer to pick up from their records",
+	"records.look.help":  "When I say hello, I look at what Claude Code and Codex did lately on this computer and offer to carry it on. Read here, shown only to you.",
+	"records.past.note":  "Their conversations on this computer are in Past tasks too, ready to carry on.",
+	"records.hidden":     "%s's conversations aren't shown in Past tasks",
+	"records.show":       "Show again",
+	"said.records.on":    "Got it: I'll look at those records when I say hello.",
+	"said.records.off":   "Fine, I won't look at those records again.",
+	"said.records.shown": "Got it: %s's conversations are back in Past tasks.",
+	"handoff.title":      "When a limit runs out",
+	"handoff.row":        "Hand it to another AI agent right away",
+	"handoff.help":       "No waiting for the reset: another signed-in AI agent on the same computer carries on from where it got to. Off, it waits and carries on then.",
+	"said.handoff.on":    "Got it: when a limit runs out, I'll hand the task to another AI agent right away.",
+	"said.handoff.off":   "Got it: when a limit runs out, I'll wait for it to come back and carry on.",
+}
+
+func init() {
+	for k, v := range zhSettingsMore {
+		zh[k] = v
+	}
+	for k, v := range enSettingsMore {
+		en[k] = v
+	}
+}

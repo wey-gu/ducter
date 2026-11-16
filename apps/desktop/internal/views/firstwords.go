@@ -30,6 +30,11 @@ type keyPaste struct {
 	busy    bool   // the first run's `ducter key add` is running
 	result  *protocol.KeyResult
 	at      time.Time // when the result came
+	// from (D307): where the key was pasted; one from Settings is answered
+	// there, not again over the composer. "" is the conversation's.
+	from string
+	// setOpen: the Settings rows whose card is open, by where they are.
+	setOpen map[string]bool
 }
 
 // KeyShownFor is how long a key's good result stays on its card.
@@ -55,7 +60,7 @@ func (a *App) firstWordsHead(c *ui.Context) {
 func (a *App) firstWordsAfter(c *ui.Context, e *store.Entry) {
 	t := a.T
 	fw := e.AI.First
-	looks := a.S.First == nil || a.S.First.Looks
+	looks := a.S.First.Looking()
 	var starts []protocol.FirstStart
 	for _, s := range fw.Starts {
 		if s.From != "everyday" && !looks {
@@ -92,7 +97,7 @@ func (a *App) firstWordsAfter(c *ui.Context, e *store.Entry) {
 				if a.button(c, a.L.T("first.stop"), btnText, t.ControlSM, t.Bg) {
 					a.send(protocol.LocalAgents{T: "local_agents", On: false})
 					if a.S.First != nil {
-						a.S.First.Looks = false
+						a.S.First.SetLooking(false)
 					}
 				}
 				return
@@ -101,7 +106,7 @@ func (a *App) firstWordsAfter(c *ui.Context, e *store.Entry) {
 			if a.button(c, a.L.T("first.again"), btnText, t.ControlSM, t.Bg) {
 				a.send(protocol.LocalAgents{T: "local_agents", On: true})
 				if a.S.First != nil {
-					a.S.First.Looks = true
+					a.S.First.SetLooking(true)
 				}
 			}
 		})
@@ -139,7 +144,7 @@ func (a *App) keyNoticeAboveComposer(c *ui.Context) bool {
 func (a *App) keyJustAdded() bool {
 	a.keyResultNow() // the answer may come with the frame that ends NoBrain
 	k := &a.kp
-	return k.result != nil && k.result.OK && a.Now().Sub(k.at) < KeyShownFor
+	return k.from == "" && k.result != nil && k.result.OK && a.Now().Sub(k.at) < KeyShownFor
 }
 
 // sendKey hands the key to the home (key_add); the answer comes as
@@ -147,7 +152,7 @@ func (a *App) keyJustAdded() bool {
 func (a *App) sendKey(key string) {
 	k := &a.kp
 	k.pending = fmt.Sprintf("key-%d", a.Now().UnixNano())
-	k.result = nil
+	k.result, k.from = nil, ""
 	a.send(protocol.KeyAdd{T: "key_add", Key: key, ClientID: k.pending})
 }
 
@@ -170,18 +175,43 @@ func (a *App) keyResultNow() {
 // field, 检查 / Check, then the partner's words for the result. submit
 // sends the key (to the home, or to `ducter key add` before Ducter runs).
 func (a *App) keyCard(c *ui.Context, submit func(key string)) {
+	a.keyCardIn(c, submit, "")
+}
+
+// keyCardIn is the card for a place: "" the conversation's and the first
+// run's (its own sunken card, its title); in Settings (D307) the row over
+// it already says what it is: no title, no card in the card, and only the
+// answer to a key pasted there.
+func (a *App) keyCardIn(c *ui.Context, submit func(key string), from string) {
 	t := a.T
 	k := &a.kp
 	a.keyResultNow()
-	waiting := k.pending != "" || k.busy
+	mine := k.from == from
+	waiting := mine && (k.pending != "" || k.busy)
 	r := k.result
-	ui.Column(c.Key("key-card")).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
+	if !mine {
+		r = nil
+	}
+	bg := t.SurfaceSunken
+	card := ui.Column(c.Key("key-card")).Gap(t.S3)
+	if from == "" {
+		card.Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(bg)
+	} else {
+		bg = t.Surface
+	}
+	field := t.Surface // on the sunken card; in Settings, sunken as Settings' other fields
+	if from != "" {
+		field = t.SurfaceSunken
+	}
+	card.Children(func() {
 		if r != nil && r.OK && r.Needs == "" && a.Now().Sub(k.at) < KeyShownFor {
 			c.After(KeyShownFor - a.Now().Sub(k.at))
 			ui.Text(c, a.keySay(r)).FontSize(t.MD).LineHeight(1.5).TextColor(t.Done.Ink).FontWeight(700)
 			return
 		}
-		ui.Text(c, a.L.T("key.paste.title")).FontSize(t.LG).FontWeight(800)
+		if from == "" {
+			ui.Text(c, a.L.T("key.paste.title")).FontSize(t.LG).FontWeight(800)
+		}
 		ui.Text(c, a.L.T("key.paste.body")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		submitNow := func() {
 			if v := strings.TrimSpace(k.key); v != "" && !waiting {
@@ -190,7 +220,7 @@ func (a *App) keyCard(c *ui.Context, submit func(key string)) {
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			in := ui.TextInput(c.Key("input:apikey"), &k.key).Placeholder(a.L.T("key.paste.eg")).Label(a.L.T("key.paste.field")).
-				Font(t.Mono).FontSize(t.SM).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.LineSoft).
+				Font(t.Mono).FontSize(t.SM).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(field).Border(1, t.LineSoft).
 				Height(t.ControlMD).Grow(1).MinWidth(0).OnSubmit(submitNow)
 			in.Password()
 			label := a.L.T("key.paste.check")
@@ -198,7 +228,7 @@ func (a *App) keyCard(c *ui.Context, submit func(key string)) {
 				label = a.L.T("key.paste.checking")
 				c.After(250 * time.Millisecond)
 			}
-			if a.button(c, label, btnPrimary, t.ControlMD, t.SurfaceSunken) {
+			if a.button(c, label, btnPrimary, t.ControlMD, bg) {
 				submitNow()
 			}
 		})
@@ -212,7 +242,7 @@ func (a *App) keyCard(c *ui.Context, submit func(key string)) {
 		ui.Text(c, a.keySay(r)).FontSize(t.SM).LineHeight(1.5).TextColor(ink)
 		if r.OK && r.Needs == "pi" && r.Install != "" {
 			a.commandBoxSized(c, r.Install, 13)
-			if a.Backend != nil && a.button(c, a.L.T("key.paste.install"), btnSecondary, t.ControlMD, t.SurfaceSunken) {
+			if a.Backend != nil && a.button(c, a.L.T("key.paste.install"), btnSecondary, t.ControlMD, bg) {
 				_ = a.Backend.RunInTerminal("pi", r.Install)
 			}
 		}

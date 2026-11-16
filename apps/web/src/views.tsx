@@ -45,6 +45,7 @@ import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
 import { ChatAppsSettings } from "./channels.tsx";
+import { HandoffSettings, KeyRow, PaperRow, RecordsSettings } from "./settings-more.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
@@ -2852,6 +2853,7 @@ function PhoneSettings() {
   return (
     <section class="set">
       <div class="set-card">
+        <PaperRow />
         <div class="set-item">
           <b>{t("settings.lang.title")}</b>
           <Seg label={t("settings.lang.title")} value={A.uiLang} options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`settings.lang.${v}`) }))} onPick={(v) => A.setUiLang(v)} />
@@ -2963,7 +2965,15 @@ function SettingsSheet() {
             <>
               <NameRow />
               <Loadout />
+              {/* D307: a key instead of a subscription (D298), the hand-off (D297), their records (D298, D299). */}
+              {A.settings && (
+                <section class="set">
+                  <KeyRow />
+                </section>
+              )}
+              <HandoffSettings />
               <TalkSettings />
+              <RecordsSettings />
               <TrustSettings />
             </>
           )}

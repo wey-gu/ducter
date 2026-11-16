@@ -423,7 +423,8 @@ export function createWsHandler(deps: WsDeps) {
       ...(tz ? { tz } : {}),
     });
     const nb = noBrain();
-    return { ...fs, ...(deps.firstWords && deps.settings ? { looks: deps.settings.localAgents() } : {}), ...(nb ? { noBrain: true } : {}) };
+    const hidden = deps.past?.outside?.hidden() ?? [];
+    return { ...fs, ...(deps.firstWords && deps.settings ? { looks: deps.settings.localAgents() } : {}), ...(nb ? { noBrain: true } : {}), ...(hidden.length ? { outsideHidden: hidden } : {}) };
   };
 
   /** D298: nothing on the home can think: its agents were probed and none is signed in. */
@@ -1282,6 +1283,7 @@ export function createWsHandler(deps: WsDeps) {
         o.hide(f.agent, !!f.hidden);
         for (const s of sockets) if (s.data.live && s.data.client !== "cli") send(s, { t: "outside_hidden", agent: f.agent, hidden: !!f.hidden });
         if (!sockets.has(ws)) send(ws, { t: "outside_hidden", agent: f.agent, hidden: !!f.hidden });
+        refreshFirstScreens(); // D307: Settings shows what is not shown, and its way back
         return;
       }
       case "past_continue": {

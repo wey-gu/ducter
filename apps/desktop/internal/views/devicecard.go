@@ -88,6 +88,9 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 			ui.Row(c).Justify(ui.Center).Margin(0, 0, t.S3, 0).Children(func() { a.closingRow(c, dv) })
 		}
 		a.coinTray(c, dv)
+		if dv.Home {
+			a.deviceKeyRow(c) // D307: a key instead of a subscription (D298), beside its AI agents
+		}
 		a.chipRow(c, "dev:"+dv.ID, dv, nil)
 		// D293: how a worker is connected; the home's addresses.
 		if dv.Home {

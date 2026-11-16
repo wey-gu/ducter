@@ -2016,9 +2016,19 @@ type FirstScreen struct {
 	Today *CalToday `json:"today,omitempty"`
 	// Looks (D298): the home may read this computer's agents' records for
 	// its first words; NoBrain: nothing there can think yet (offer a key).
-	Looks   bool `json:"looks,omitempty"`
-	NoBrain bool `json:"noBrain,omitempty"`
+	Looks   *bool `json:"looks,omitempty"`
+	NoBrain bool  `json:"noBrain,omitempty"`
+	// OutsideHidden (D307): the agents whose own conversations Past tasks
+	// doesn't show (D299), for Settings' way back.
+	OutsideHidden []string `json:"outsideHidden,omitempty"`
 }
+
+// Looking is whether the home may read the agents' records (D298): on
+// unless the home said off, as the web reads it.
+func (f *FirstScreen) Looking() bool { return f == nil || f.Looks == nil || *f.Looks }
+
+// SetLooking keeps the person's choice until the home says it again.
+func (f *FirstScreen) SetLooking(on bool) { f.Looks = &on }
 
 // FirstNews is one timely line for a returning person: needs_you | missed
 // | done. It opens TaskID, else On hand.

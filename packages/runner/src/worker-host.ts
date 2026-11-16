@@ -19,6 +19,8 @@ import { readShown } from "./shown.ts";
 import { listFolders, projectRepos, realFs, type FsLike } from "@ducter/protocol/src/repos.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { cloneRepo, type GitSpawn } from "@ducter/protocol/src/clone.ts";
+import { newProjectFolder } from "@ducter/protocol/src/new-folder.ts";
+import { createGitLogin, type GhRun } from "@ducter/protocol/src/git-login.ts";
 
 export interface WorkerHostOptions {
   dataDir: string; // the worker's own ~/.ducter (worktrees, scratch)
@@ -35,6 +37,8 @@ export interface WorkerHostOptions {
   fs?: FsLike;
   /** D204 test seam: how the clone op runs git here (no network in tests). */
   gitSpawn?: GitSpawn;
+  /** D272 test seam: how the gitLogin op runs gh here (never a real sign-in in tests). */
+  ghRun?: GhRun;
   /** D157: this computer's browsers for browser places (its Chrome and the agents' own tools,
    *  cua-driver, Ducter's own browser), as the home's runner has them. */
   browser?: BrowserOptions;
@@ -160,6 +164,8 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     return s;
   };
 
+  // D272: this computer's GitHub sign-in (one in flight at a time; the home asks start, then wait).
+  const gitLogin = createGitLogin(o.ghRun ? { run: o.ghRun } : {});
   const ops: Record<string, (a: any) => Promise<unknown>> = {
     plan: (a) => planPlace(a.place, a.taskId, a.title, o.dataDir),
     provision: (a) => provisionPlace(a.resolved),
@@ -227,6 +233,23 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     // D204: 从 Git 地址加… / Add from a Git address…: clone into this computer's Ducter folder with
     // its own git sign-in. Only the address comes from the home, checked here again (clone.ts).
     clone: (a: { address?: unknown }) => cloneRepo(a.address, { home: o.home ?? homedir(), dataDir: o.dataDir, ...(o.gitSpawn ? { spawn: o.gitSpawn } : {}), ...(o.fs ? { repoFs: o.fs } : {}) }),
+    // D272: 新建一个文件夹 here: <Ducter folder>/projects/<name> (one folder name, checked here again).
+    newFolder: async (a: { name?: unknown }) => newProjectFolder(a.name, { home: o.home ?? homedir(), dataDir: o.dataDir }),
+    // D272: 登录 GitHub here, through this computer's own gh. The token (action token) goes to gh's stdin only.
+    gitLogin: async (a: { action?: unknown; token?: unknown }) => {
+      switch (a.action) {
+        case "start":
+          return gitLogin.start();
+        case "wait":
+          return gitLogin.wait();
+        case "cancel":
+          return gitLogin.cancel();
+        case "token":
+          return gitLogin.token(typeof a.token === "string" ? a.token : "");
+        default:
+          return gitLogin.status();
+      }
+    },
     // D203: a folder's subfolders here (never its files), for 找一个文件夹… / Find a folder…;
     // confined to this computer's home folder, links resolved first. Read-only.
     browse: async (a: { path?: unknown }) => listFolders(typeof a.path === "string" ? a.path : undefined, o.home ?? homedir(), o.fs ?? realFs),

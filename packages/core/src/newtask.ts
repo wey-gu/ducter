@@ -15,6 +15,8 @@ import type { Untils } from "./until.ts";
 import { agentModels, agentsOf, MODELS_WAIT_MS, type ModelCatalog } from "./models.ts";
 import { listFolders, type BrowseResult, type RepoHint as FoundRepo } from "@ducter/protocol/src/repos.ts";
 import type { CloneResult } from "@ducter/protocol/src/clone.ts";
+import type { NewFolderResult } from "@ducter/protocol/src/new-folder.ts";
+import type { GitLogin, GitLoginState } from "@ducter/protocol/src/git-login.ts";
 
 // D197: the git reads are shared with a worker's folderInfo op (protocol/src/folder-info.ts).
 export { realGit, repoBranches, repoTop, type GitRun };
@@ -36,7 +38,13 @@ export interface NewTaskComputers {
   browse?(device: string, path: string | undefined, timeoutMs: number): Promise<BrowseResult | "offline" | "old">;
   /** D204: clone a Git address into that worker's Ducter folder, there; "old": too old to. */
   clone?(device: string, address: string, timeoutMs: number): Promise<CloneResult | "offline" | "old">;
+  /** D272: make <Ducter folder>/projects/<name> on that worker, there; "old": too old to. */
+  newFolder?(device: string, name: string, timeoutMs: number): Promise<NewFolderResult | "offline" | "old">;
+  /** D272: that worker's GitHub sign-in, there (git-login.ts); "offline" / "old" as the state. */
+  gitLogin?(device: string, action: GitLoginAction, token: string | undefined, timeoutMs: number): Promise<GitLoginState>;
 }
+
+export type GitLoginAction = "status" | "start" | "wait" | "token" | "cancel";
 
 /** D203: how long a computer's reported repos are kept before they are asked again. */
 export const REPOS_KEEP_MS = 10 * 60_000;
@@ -164,6 +172,10 @@ export interface NewTaskDeps {
   browseHome?: (path: string | undefined) => BrowseResult;
   /** D204: clone into the home's own Ducter folder (default: none, the card offers no clone here). */
   cloneHome?: (address: string) => Promise<CloneResult>;
+  /** D272: make a folder in the home's own Ducter folder (default: none, the card offers no new folder here). */
+  newFolderHome?: (name: string) => NewFolderResult;
+  /** D272: the home's own GitHub sign-in. */
+  gitLoginHome?: GitLogin;
 }
 
 /** D204: how long a clone may take on a worker before the home stops waiting (its own limit is 10 minutes). */
@@ -201,6 +213,58 @@ export async function cloneProject(
   const added = await add(r.path, isLocal(device) ? undefined : device);
   if (!added.ok) return { ok: false, reason: added.reason === "offline" ? "offline" : "failed", message: added.message ?? "The clone is there, but it couldn't be added." };
   return { ok: true, place: added.place, ...(r.existed ? { existed: true as const } : {}) };
+}
+
+/**
+ * D272: 在 {computer} 上新建一个文件夹 / New folder on {computer}: that computer makes
+ * <Ducter folder>/projects/<name>, then the home adds it as a project there (D186, D197), git or
+ * not, and answers the place the card then offers.
+ */
+export async function newFolderProject(
+  d: Pick<NewTaskDeps, "computers" | "newFolderHome">,
+  device: string | undefined,
+  name: string,
+  add: (path: string, device?: string) => Promise<{ ok: true; place: PlaceChoice } | { ok: false; reason?: string; message?: string }>,
+): Promise<{ ok: true; place: PlaceChoice; existed?: true } | { ok: false; reason: "invalid" | "offline" | "old" | "failed"; message: string }> {
+  let r: NewFolderResult | "offline" | "old";
+  const label = isLocal(device) ? (d.computers?.homeName() ?? "") : (d.computers?.nameOf(device!) ?? device!);
+  try {
+    if (isLocal(device)) {
+      if (!d.newFolderHome) return { ok: false, reason: "failed", message: "Folders can't be made here." };
+      r = d.newFolderHome(name);
+    } else {
+      const c = d.computers;
+      if (!c?.newFolder || !c.nameOf(device!)) return { ok: false, reason: "failed", message: "That computer isn't one of this home's." };
+      r = await c.newFolder(device!, name, 15_000);
+    }
+  } catch (err) {
+    return { ok: false, reason: "failed", message: (err as Error).message };
+  }
+  if (r === "offline") return { ok: false, reason: "offline", message: `${label} can't be reached right now.` };
+  if (r === "old") return { ok: false, reason: "old", message: `${label} runs an older Ducter that can't make folders yet; update it first.` };
+  if (!r.ok) return { ok: false, reason: r.reason, message: r.message };
+  const added = await add(r.path, isLocal(device) ? undefined : device);
+  if (!added.ok) return { ok: false, reason: added.reason === "offline" ? "offline" : "failed", message: added.message ?? "The folder is there, but it couldn't be added." };
+  return { ok: true, place: added.place, ...(r.existed ? { existed: true as const } : {}) };
+}
+
+/** D272: how long each step of a GitHub sign-in may take through a worker. */
+export const GIT_LOGIN_WAIT_MS: Record<GitLoginAction, number> = { status: 30_000, start: 60_000, wait: 17 * 60_000, token: 60_000, cancel: 30_000 };
+
+/** D272: a GitHub sign-in step on that computer (the home's own, or a worker's, there). */
+export async function gitLoginOn(d: Pick<NewTaskDeps, "computers" | "gitLoginHome">, device: string | undefined, action: GitLoginAction, token?: string): Promise<GitLoginState> {
+  try {
+    if (isLocal(device)) {
+      const g = d.gitLoginHome;
+      if (!g) return { state: "failed", reason: "failed", message: "GitHub sign-in isn't available here." };
+      return await (action === "token" ? g.token(token ?? "") : g[action]());
+    }
+    const c = d.computers;
+    if (!c?.gitLogin || !c.nameOf(device!)) return { state: "failed", reason: "failed", message: "That computer isn't one of this home's." };
+    return await c.gitLogin(device!, action, token, GIT_LOGIN_WAIT_MS[action]);
+  } catch (err) {
+    return { state: "failed", reason: "failed", message: (err as Error).message };
+  }
 }
 
 /** D197: how long the card waits for a worker's branches before it shows the list without them. */

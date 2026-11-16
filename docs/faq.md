@@ -103,32 +103,60 @@ CI passes") or **Keep going until…** (it tries again until what you write hold
 On the Mac, **On hand** can also group tasks **By project**: each folder you work in is a
 project, with each task's branch, what it waits for or which try it is on, and how many lines it
 changed; what starts later or repeats there sits in the same group. The **+** on a project
-starts a new task there. To make a project yourself, choose **Add a folder** (at the bottom of
-**By project**, or in the card's folder list) and pick a folder on your Mac; it becomes a
-project with the folder's name, before any task runs there. If your Ducter lives on a server,
-this works once your Mac does tasks for it (Settings › Where it lives › **Let this Mac do tasks
-for …**): the folder stays on your Mac and tasks there run on your Mac. When your folders are on
-more than one computer, the list says which computer each one is on.
+starts a new task there.
 
-Ducter doesn't go looking for your code: the list shows the folders you used and added, and the
-projects in each computer's Ducter folder (`~/ducter/projects`). To bring in a folder you already
-have, choose **Find a folder…** at the bottom of the list, on your phone or in the browser too: it
-shows that computer's folders one level at a time, starting from its home folder (repositories
-first); go in, then **Use this folder**. It becomes a project there, like **Add a folder**. Only
-folders inside that computer's home folder are shown, never the files in them.
+### Does a project have to be a Git repository?
+
+No. A project is any folder on the computer that does the work: your invoices, a trip plan, a
+book draft. To make one, choose **Add a folder…** in the card's folder list (there is one for
+each of your computers, saying which). It offers three ways, on that computer:
+
+- **New folder on …**: type a name (like *Invoices*). Ducter makes the folder in that computer's
+  Ducter folder (`~/ducter/projects`) and the card starts there. No Git needed.
+- **Choose a folder on …**: look through that computer's folders one level at a time, starting
+  from its home folder (repositories first); go in, then **Use this folder**. On your Mac, for the
+  Mac itself, this is Finder's own picker. If your Ducter lives on a server, the server's row
+  shows the server's folders, never your Mac's. To add a folder on your Mac for a Ducter on a
+  server, your Mac does tasks for it (Settings › Where it lives › **Let this Mac do tasks for
+  …**), and the Mac's own **Add a folder…** row appears.
+- **Clone from a Git address**: below.
+
+Each becomes a project with the folder's name, before any task runs there. Ducter doesn't go
+looking for your code: the list shows the folders you used and added, and the projects in each
+computer's Ducter folder. Only folders inside a computer's home folder are shown, never the files
+in them. When your folders are on more than one computer, the list says which computer each one
+is on.
 
 ### Can I start from a repository I don't have yet?
 
-Yes. In the folder list choose **Add from a Git address…** on the computer you want it on, from
-your phone too, and paste its address: `https://github.com/owner/repo`, `git@github.com:owner/repo`
+Yes. In the folder list choose **Add a folder…** for the computer you want it on, then **Clone
+from a Git address**, from your phone too, and paste its address: `https://github.com/owner/repo`, `git@github.com:owner/repo`
 or just `owner/repo` for GitHub. That computer clones it into `~/ducter/projects`, using its own
 git sign-in (so a private repository works where you're signed in to git), and the card starts
 there. It shows **Cloning…** while it works (a big repository takes a few minutes, at most ten),
 and says plainly if the repository isn't there, that computer has no access to it, or it can't
 reach the address. If the same repository is already in `~/ducter/projects`, it simply uses it.
 
+### How do I sign in to GitHub on my server?
+
+Right where you clone. For a GitHub address, the clone field says whether that computer is signed
+in to GitHub, and if it isn't, offers **Sign in to GitHub on …**. Tap it: Ducter shows a link
+(`github.com/login/device`) and a short code. Open the link on any device (your phone is fine),
+enter the code, and confirm it on GitHub. A few seconds later the field says who it signed in as,
+and a clone that failed for access tries again by itself. From then on that computer's own git,
+and every task there, can reach your private repositories.
+
+Prefer a key? Choose **Use a key instead** and paste one you made in GitHub's Settings ›
+Developer settings (it needs at least *repo* and *read:org*). It goes to that computer only;
+Ducter doesn't keep it.
+
+This uses GitHub's own command-line tool, `gh`, on that computer. If it isn't installed there,
+the field says so: install it (`brew install gh` on macOS, `sudo apt install gh` on Ubuntu), then
+**Check again**. In a terminal on that computer (over SSH, say), `ducter git login` does the same;
+`ducter git login --with-token < key.txt` uses a key, and `ducter git status` says who is signed in.
+
 If a computer says **Ducter on … needs an update**, update it in Devices first: an older Ducter
-can't look through folders or clone there.
+can't add folders or clone there.
 
 ### What does uninstalling remove?
 

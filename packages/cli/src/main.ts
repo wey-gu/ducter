@@ -10,6 +10,7 @@ import { ansiStyle, formatBlocked, formatReport, formatSummary, realHost, runDoc
 import { cleanName, readPersonaFile, removeOldHints, writePersonaFile } from "./firstrun.ts";
 import { commandsFor, commandWith, detectLocale, translator, type T } from "./i18n.ts";
 import { cmdAnswer, cmdOpenTask, cmdSay, cmdTail, cmdTask, notReached, type TalkCtx } from "./talk.ts";
+import { cmdGit } from "./git-cmd.ts";
 import { commandClass, homeJson, resolveTarget, type Target } from "./home.ts";
 import { cliChecks, cmdConnect, cmdDevicesAt, cmdDisconnect, cmdPairAt, targetLine } from "./homecmds.ts";
 import { realpathSync } from "node:fs";
@@ -57,6 +58,7 @@ export function helpText(t: T): string {
     cmd("task", t("help.task")),
     cmd("say", t("help.say")),
     cmd("tail", t("help.tail")),
+    cmd("git login", t("help.git")),
     cmd("answer", t("help.answer")),
     cmd("version", t("help.version")),
     cmd("pair", t("help.pair")),
@@ -601,6 +603,8 @@ export async function run(argv: string[]): Promise<number | "running"> {
       return cmdSay(talk(ctx));
     case "tail":
       return cmdTail(talk(ctx));
+    case "git":
+      return cmdGit({ t, json: args.json, rest: args.rest ?? [], ...(args.withToken ? { withToken: true } : {}) });
     case "answer":
       return cmdAnswer(talk(ctx));
     case "up":

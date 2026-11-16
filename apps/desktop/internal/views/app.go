@@ -811,6 +811,7 @@ func (a *App) Welcomed() {
 	a.Status = client.Connected // a welcome means the socket is up
 	// D204: a clone in flight asks again on the new socket (the same clone, by its id).
 	a.resendClone()
+	a.resendGitLogin()
 	// What the old socket left unanswered: messages go again (deduped by
 	// the server), actions are settled from the Log after the replay.
 	if len(a.actSent) > 0 {

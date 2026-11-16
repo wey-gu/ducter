@@ -65,7 +65,7 @@ and the branch, in the Ducter folder: such as `~/ducter/worktrees/hawdb/fix-flak
 Mac, an opened task shows its path over its changes.
 
 Each computer has one **Ducter folder**, `~/ducter`, that holds what Ducter makes there for you:
-`projects` (repositories it cloned for you) and `worktrees` (tasks' copies). If you already have a
+`projects` (folders it made and repositories it cloned for you) and `worktrees` (tasks' copies). If you already have a
 `~/ducter` of your own, Ducter leaves it alone and uses `~/ducter-work`. To use another place, set
 `DUCTER_FOLDER` before starting Ducter.
 

@@ -25,13 +25,20 @@ func TestNewTaskCloneOnTheMac(t *testing.T) {
 		rows, _ := app.ntCands(app.S.NewTaskOptions.Candidates)
 		app.pickAgent(rows[1], topCandidate(rows), true) // Claude Code on the Mac: no copy there
 		tt.Frame()
-		for _, s := range []string{L.T("newtask.find.empty", "Macbook Pro M3"), L.T("newtask.find"), L.T("newtask.clone"), L.T("newtask.nowhere")} {
+		for _, s := range []string{L.T("newtask.find.empty", "Macbook Pro M3"), L.T("newtask.add"), L.T("newtask.nowhere")} {
 			if !tt.HasText(s) {
 				t.Errorf("%s: the Mac's empty list offers a way on: no %q: %q", lang, s, tt.Texts())
 			}
 		}
 		newTaskShot(t, tt, "clone-row-"+string(lang))
-		click(t, tt, L.T("newtask.clone")+" · Macbook Pro M3")
+		click(t, tt, L.T("newtask.add")+" · Macbook Pro M3")
+		for _, s := range []string{L.T("newtask.add.title", "Macbook Pro M3"), L.T("newtask.new", "Macbook Pro M3"), L.T("newtask.choose", "Macbook Pro M3"), L.T("newtask.clone")} {
+			if !tt.HasText(s) {
+				t.Errorf("%s: the add panel: no %q: %q", lang, s, tt.Texts())
+			}
+		}
+		newTaskShot(t, tt, "add-panel-"+string(lang))
+		click(t, tt, L.T("newtask.clone"))
 		if app.nt.clone == nil || app.nt.clone.device != "dev_mac" {
 			t.Fatalf("%s: the field for the Mac: %+v", lang, app.nt.clone)
 		}
@@ -62,13 +69,46 @@ func TestNewTaskCloneOnTheMac(t *testing.T) {
 		app.Receive(protocol.ServerFrame{T: "project_clone_result", OK: false, ClientID: k.ClientID, Device: "dev_mac", Reason: "no_access", Message: "could not read Username"})
 		app.drainNewTask()
 		tt.Frame()
-		why := L.T("newtask.clone.err.no_access", "Macbook Pro M3")
+		// D272: a GitHub repository and no GitHub sign-in on the Mac: say so, offer it.
+		why := L.T("newtask.clone.err.no_access.gh", "Macbook Pro M3")
 		if !tt.HasText(why) {
 			t.Errorf("%s: the failure in words: %q", lang, tt.Texts())
 		}
+		st, _ := lastFrame[protocol.GitLogin](sent)
+		if st.Action != "status" || st.Device != "dev_mac" {
+			t.Errorf("%s: asked where the Mac stands with GitHub: %+v", lang, st)
+		}
+		app.Receive(protocol.ServerFrame{T: "git_login_state", ClientID: st.ClientID, Device: "dev_mac", GitHost: "github.com", State: "signed_out"})
+		app.drainNewTask()
+		tt.Frame()
 		newTaskShot(t, tt, "clone-failed-"+string(lang))
-		click(t, tt, L.T("newtask.clone.go")+" · "+L.T("newtask.clone.title", "Macbook Pro M3"))
+		click(t, tt, L.T("newtask.gh.signin", "Macbook Pro M3"))
+		g, _ := lastFrame[protocol.GitLogin](sent)
+		if g.Action != "start" || g.Device != "dev_mac" || g.ClientID == "" {
+			t.Fatalf("%s: the sign-in starts on the Mac: %+v", lang, g)
+		}
+		app.Receive(protocol.ServerFrame{T: "git_login_state", ClientID: g.ClientID, Device: "dev_mac", GitHost: "github.com", State: "code", Code: "AB12-CD34", URL: "https://github.com/login/device"})
+		app.drainNewTask()
+		tt.Frame()
+		for _, s := range []string{L.T("newtask.gh.title", "Macbook Pro M3"), "AB12-CD34", "github.com/login/device", L.T("newtask.gh.waiting"), L.T("newtask.gh.key")} {
+			if !tt.HasText(s) {
+				t.Errorf("%s: the sign-in shows %q: %q", lang, s, tt.Texts())
+			}
+		}
+		newTaskShot(t, tt, "gh-code-"+string(lang))
+		before, _ := lastFrame[protocol.ProjectClone](sent)
+		app.Receive(protocol.ServerFrame{T: "git_login_state", ClientID: g.ClientID, Device: "dev_mac", GitHost: "github.com", State: "signed_in", Account: "wey-gu"})
+		app.drainNewTask()
+		tt.Frame()
+		// Signed in: back at the clone, which goes again by itself.
 		k, _ = lastFrame[protocol.ProjectClone](sent)
+		if app.nt.login != nil || k.ClientID == before.ClientID || k.Address != "nowledge-co/con" {
+			t.Fatalf("%s: the clone goes again after the sign-in: %+v %+v", lang, k, app.nt.login)
+		}
+		if !tt.HasText(L.T("newtask.gh.done", "Macbook Pro M3", "wey-gu")) {
+			t.Errorf("%s: says who it signed in as: %q", lang, tt.Texts())
+		}
+		newTaskShot(t, tt, "gh-done-"+string(lang))
 		con := protocol.PlaceChoice{Place: protocol.Place{Kind: "repo", Device: "dev_mac", RepoPath: "/Users/weyl/ducter-work/projects/con"}, Name: "con", Added: true, DefaultBranch: "main", Branches: []string{"main"}}
 		app.Receive(protocol.ServerFrame{T: "project_clone_result", OK: true, ClientID: k.ClientID, Device: "dev_mac", Place: &con})
 		app.drainNewTask()
@@ -92,7 +132,7 @@ func TestNewTaskCloneOlderWorker(t *testing.T) {
 		if !tt.HasText(L.T("newtask.old.row", "Macbook Pro M3")) || !tt.HasText(L.T("newtask.old.why")) {
 			t.Errorf("%s: the older Mac says to update it: %q", lang, tt.Texts())
 		}
-		for _, s := range []string{L.T("newtask.find") + " · Macbook Pro M3", L.T("newtask.clone") + " · Macbook Pro M3"} {
+		for _, s := range []string{L.T("newtask.add") + " · Macbook Pro M3"} {
 			if tt.Click(s) == nil {
 				t.Errorf("%s: no %q row for an older Mac", lang, s)
 			}
@@ -123,12 +163,16 @@ func TestNewTaskCloneFirstRun(t *testing.T) {
 		L := app.L
 		app.nt.shut("place")
 		tt.Frame()
-		for _, s := range []string{L.T("newtask.empty"), L.T("newtask.addfolder"), L.T("newtask.clone"), L.T("newtask.nowhere")} {
+		for _, s := range []string{L.T("newtask.empty"), L.T("newtask.add"), L.T("newtask.nowhere")} {
 			if !tt.HasText(s) {
 				t.Errorf("%s: first run: no %q: %q", lang, s, tt.Texts())
 			}
 		}
 		newTaskShot(t, tt, "clone-firstrun-"+string(lang))
+		click(t, tt, L.T("newtask.add"))
+		if !tt.HasText(L.T("newtask.choose.finder")) {
+			t.Errorf("%s: this Mac's own folders are picked in Finder: %q", lang, tt.Texts())
+		}
 		click(t, tt, L.T("newtask.clone"))
 		if !tt.HasText(L.T("newtask.clone.where", "~/ducter/projects", "Ana's MacBook")) {
 			t.Errorf("%s: this Mac's folder: %q", lang, tt.Texts())

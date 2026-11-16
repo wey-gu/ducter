@@ -6,7 +6,7 @@
 // ⇧⌘⏎ starts and keeps the sheet for the next one.
 import type { Candidate } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
-import { A, agentKey, effortWord, EVERY_HOURS, parseClock, placeKey, placeLine, tilde } from "./app.ts";
+import { A, agentKey, effortWord, EVERY_HOURS, ntGitHubish, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { Btn, Choice, MenuRow, Pill, Seg } from "./controls.tsx";
 import { candName, candReason, Check, coarse } from "./views.tsx";
@@ -248,20 +248,12 @@ export function NewTaskSheet() {
             ))}
             {/* D203, D204: nothing there yet (a first run): say so, and offer the ways to get one, never No folder alone. */}
             {!folders.length && <div class="nt-empty small sub">{only ? t("newtask.find.empty", onlyName) : t("newtask.empty")}</div>}
+            {/* D272: one 加一个文件夹… per computer that can take one; its three ways open in place. */}
             {finders.map((d) => (
-              <MenuRow key={`find:${d.id}`} label={named ? `${t("newtask.find")} · ${d.name}` : t("newtask.find")} on={false} onClick={() => A.ntBrowse(d.id)}>
+              <MenuRow key={`add:${d.id}`} label={named ? `${t("newtask.add")} · ${d.name}` : t("newtask.add")} on={false} onClick={() => A.ntAddOpen(d.id)}>
                 <Plus />
                 <span class="mr-t">
-                  <b>{t("newtask.find")}</b>
-                  {named && <small>{t("newtask.find.on", d.name)}</small>}
-                </span>
-              </MenuRow>
-            ))}
-            {finders.map((d) => (
-              <MenuRow key={`clone:${d.id}`} label={named ? `${t("newtask.clone")} · ${d.name}` : t("newtask.clone")} on={false} onClick={() => A.ntCloneOpen(d.id)}>
-                <Plus />
-                <span class="mr-t">
-                  <b>{t("newtask.clone")}</b>
+                  <b>{t("newtask.add")}</b>
                   {named && <small>{t("newtask.find.on", d.name)}</small>}
                 </span>
               </MenuRow>
@@ -295,6 +287,9 @@ export function NewTaskSheet() {
         )}
         {nt.list === "browse" && nt.browse && <FolderBrowser />}
         {nt.list === "clone" && nt.clone && <CloneField />}
+        {nt.list === "add" && nt.add && <AddPanel />}
+        {nt.list === "newfolder" && nt.newFolder && <NewFolderField />}
+        {nt.list === "gh" && nt.ghPanel && <SignInPanel />}
         {nt.branchOpen && chosen.branches && (
           <div class="nt-list" role="radiogroup" aria-label={t("newtask.branch.title")}>
             <small>{t("newtask.branch.title")}</small>
@@ -474,9 +469,16 @@ function FolderBrowser() {
 function CloneField() {
   const k = A.nt.clone!;
   const name = A.ntComputerName(k.device);
-  const folder = A.ntFolder(k.device)?.path;
-  const into = folder ? tilde(folder.replace(/\/+$/, "") + "/projects") : "~/ducter/projects";
+  const into = A.ntProjectsPath(k.device);
   const busy = !!k.cid;
+  // D272: where this computer stands with GitHub, for a GitHub address (or none typed yet).
+  const gh = A.ntGh(k.device);
+  const hub = ntGitHubish(k.address);
+  const signIn = (
+    <div class="nt-gh-act">
+      <Btn kind="secondary" size="sm" label={t("newtask.gh.signin", name)} disabled={busy} onClick={() => A.ntGhStart(k.device)} />
+    </div>
+  );
   return (
     <div class="nt-list nt-browse nt-clone" role="group" aria-label={t("newtask.clone.title", name)}>
       <div class="nt-browse-head">
@@ -498,6 +500,34 @@ function CloneField() {
         onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && (e.preventDefault(), A.ntCloneGo())}
       />
       <div class="nt-empty small sub">{t("newtask.clone.where", into, name)}</div>
+      {k.signedIn ? (
+        <div class="nt-empty small nt-gh-ok" role="status">
+          <Check />
+          {k.signedIn}
+        </div>
+      ) : (
+        hub &&
+        !k.err &&
+        gh && (
+          <>
+            {gh.state === "signed_in" && <div class="nt-empty small sub">{t("newtask.gh.as", name, gh.account ?? "")}</div>}
+            {gh.state === "signed_out" && (
+              <>
+                <div class="nt-empty small sub">{t("newtask.gh.out", name)}</div>
+                {signIn}
+              </>
+            )}
+            {gh.state === "no_gh" && (
+              <>
+                <div class="nt-empty small sub">{t("newtask.gh.nogh", name)}</div>
+                <div class="nt-gh-act">
+                  <Btn kind="secondary" size="sm" label={t("newtask.gh.recheck")} onClick={() => A.ntGhStatus(k.device)} />
+                </div>
+              </>
+            )}
+          </>
+        )
+      )}
       {busy && (
         <div class="nt-empty small sub nt-cloning" role="status">
           <span class="spin" aria-hidden="true" />
@@ -509,9 +539,185 @@ function CloneField() {
           {k.err}
         </div>
       )}
+      {k.err && k.failedAccess && gh?.state !== "signed_in" && !busy && (gh?.state === "no_gh" ? <div class="nt-empty small sub">{t("newtask.gh.nogh", name)}</div> : signIn)}
       <div class="nt-browse-foot">
         <Btn kind="text" size="sm" label={t("newtask.find.back")} disabled={busy} onClick={() => A.ntBrowseBack()} />
         <Btn kind="primary" size="sm" label={busy ? t("newtask.clone.going") : t("newtask.clone.go")} disabled={busy || !k.address.trim()} onClick={() => A.ntCloneGo()} />
+      </div>
+    </div>
+  );
+}
+
+const NewGlyph = () => (
+  <svg class="nt-glyph" viewBox="0 0 16 16" aria-hidden="true">
+    <path d="M2 4h4l1.5 1.5H14v7H2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+    <path d="M8 7.3v3.8M6.1 9.2h3.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+  </svg>
+);
+
+/**
+ * D272: 加一个文件夹… on one computer: the three ways, in this order: a new folder there (the
+ * default for people who don't use git), a folder already there (the D203 browser, through the
+ * home; the web never opens this device's own picker), and a clone from a Git address.
+ */
+function AddPanel() {
+  const d = A.nt.add!.device;
+  const name = A.ntComputerName(d);
+  return (
+    <div class="nt-list nt-browse nt-add" role="group" aria-label={t("newtask.add.title", name)}>
+      <div class="nt-browse-head">
+        <small>{t("newtask.add.title", name)}</small>
+      </div>
+      <MenuRow key="new" label={t("newtask.new", name)} on={false} onClick={() => A.ntNewOpen(d)}>
+        <NewGlyph />
+        <span class="mr-t">
+          <b>{t("newtask.new", name)}</b>
+          <small>{t("newtask.new.line", A.ntProjectsPath(d))}</small>
+        </span>
+      </MenuRow>
+      <MenuRow key="choose" label={t("newtask.choose", name)} on={false} onClick={() => A.ntBrowse(d)}>
+        <Folder />
+        <span class="mr-t">
+          <b>{t("newtask.choose", name)}</b>
+          <small>{t("newtask.choose.line")}</small>
+        </span>
+      </MenuRow>
+      <MenuRow key="clone" label={t("newtask.clone")} on={false} onClick={() => A.ntCloneOpen(d)}>
+        <Branch />
+        <span class="mr-t">
+          <b>{t("newtask.clone")}</b>
+          <small>{t("newtask.clone.line", name)}</small>
+        </span>
+      </MenuRow>
+      <div class="nt-browse-foot">
+        <Btn kind="text" size="sm" label={t("newtask.find.back")} onClick={() => ((A.nt.add = undefined), (A.nt.list = "place"), A.changed())} />
+        <span class="nt-grow" />
+      </div>
+    </div>
+  );
+}
+
+/** D272: 在 {computer} 上新建一个文件夹: a name; it goes in that computer's <Ducter folder>/projects. */
+function NewFolderField() {
+  const n = A.nt.newFolder!;
+  const name = A.ntComputerName(n.device);
+  const into = A.ntProjectsPath(n.device);
+  const busy = !!n.cid;
+  return (
+    <div class="nt-list nt-browse nt-clone" role="group" aria-label={t("newtask.new.title", name)}>
+      <div class="nt-browse-head">
+        <small>{t("newtask.new.title", name)}</small>
+      </div>
+      <input
+        class="nt-field nt-name"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck={false}
+        maxLength={80}
+        aria-label={t("newtask.new.title", name)}
+        placeholder={t("newtask.new.placeholder")}
+        value={n.name}
+        disabled={busy}
+        ref={(el) => void (el && !busy && !n.name && !coarse() && el.focus())}
+        onInput={(e) => A.ntNewInput((e.target as HTMLInputElement).value)}
+        onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && (e.preventDefault(), A.ntNewGo())}
+      />
+      <div class="nt-empty small sub">{t("newtask.new.where", n.name.trim() ? `${into}/${n.name.trim()}` : into)}</div>
+      {n.err && (
+        <div class="nt-empty nt-err-line small" role="status">
+          {n.err}
+        </div>
+      )}
+      <div class="nt-browse-foot">
+        <Btn kind="text" size="sm" label={t("newtask.find.back")} disabled={busy} onClick={() => A.ntAddBack()} />
+        <Btn kind="primary" size="sm" label={busy ? t("newtask.new.going") : t("newtask.new.go")} disabled={busy || !n.name.trim()} onClick={() => A.ntNewGo()} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * D272: 在 {computer} 上登录 GitHub: that computer's gh runs GitHub's device flow; the link opens on
+ * any device and the code is copied; it waits until the person authorizes it on GitHub. The
+ * fallback is a token pasted here, sent once to that computer's gh and never kept.
+ */
+function SignInPanel() {
+  const g = A.nt.ghPanel!;
+  const name = A.ntComputerName(g.device);
+  const url = g.url ?? "https://github.com/login/device";
+  return (
+    <div class="nt-list nt-browse nt-gh" role="group" aria-label={t("newtask.gh.title", name)}>
+      <div class="nt-browse-head">
+        <small>{t("newtask.gh.title", name)}</small>
+      </div>
+      {g.token ? (
+        <>
+          <input
+            class="nt-field nt-token"
+            type="password"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck={false}
+            aria-label={t("newtask.gh.key")}
+            placeholder="ghp_… / github_pat_…"
+            value={g.tokenText ?? ""}
+            ref={(el) => void (el && !g.tokenText && !coarse() && el.focus())}
+            onInput={(e) => A.ntGhTokenInput((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), A.ntGhTokenGo())}
+          />
+          <div class="nt-empty small sub">{t("newtask.gh.key.line", name)}</div>
+        </>
+      ) : g.code ? (
+        <>
+          <div class="nt-gh-step">
+            <span class="nt-gh-n">1</span>
+            <span class="nt-gh-what">
+              <small>{t("newtask.gh.step1")}</small>
+              <code class="nt-gh-url">{url.replace(/^https:\/\//, "")}</code>
+            </span>
+            <Btn kind="secondary" size="sm" label={t("newtask.gh.open")} onClick={() => A.ntGhOpen()} />
+          </div>
+          <div class="nt-gh-step">
+            <span class="nt-gh-n">2</span>
+            <span class="nt-gh-what">
+              <small>{t("newtask.gh.step2")}</small>
+              <code class="nt-gh-code">{g.code}</code>
+            </span>
+            <Btn kind="secondary" size="sm" label={g.copied ? t("newtask.gh.copied") : t("newtask.gh.copy")} onClick={() => void A.ntGhCopy()} />
+          </div>
+          <div class="nt-empty small sub nt-cloning" role="status">
+            <span class="spin" aria-hidden="true" />
+            {t("newtask.gh.waiting")}
+          </div>
+        </>
+      ) : (
+        !g.err && (
+          <div class="nt-empty small sub nt-cloning" role="status">
+            <span class="spin" aria-hidden="true" />
+            {t("newtask.gh.starting")}
+          </div>
+        )
+      )}
+      {g.err && (
+        <div class={`nt-empty small ${g.nogh ? "sub" : "nt-err-line"}`} role="status">
+          {g.err}
+        </div>
+      )}
+      <div class="nt-browse-foot">
+        {g.token ? (
+          <>
+            <Btn kind="text" size="sm" label={t("newtask.find.back")} onClick={() => A.ntGhTokenMode(false)} />
+            <span class="nt-grow" />
+            <Btn kind="primary" size="sm" label={t("newtask.gh.key.go")} disabled={!(g.tokenText ?? "").trim()} onClick={() => A.ntGhTokenGo()} />
+          </>
+        ) : (
+          <>
+            <Btn kind="text" size="sm" label={t("newtask.gh.key")} onClick={() => A.ntGhTokenMode(true)} />
+            <span class="nt-grow" />
+            <Btn kind="text" size="sm" label={t("newtask.gh.cancel")} onClick={() => A.ntGhCancel()} />
+            {g.err && <Btn kind="primary" size="sm" label={g.nogh ? t("newtask.gh.recheck") : t("newtask.gh.again")} onClick={() => A.ntGhStart(g.device)} />}
+          </>
+        )}
       </div>
     </div>
   );

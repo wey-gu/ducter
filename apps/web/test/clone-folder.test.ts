@@ -71,7 +71,7 @@ describe("Add from a Git address (D204)", () => {
   test("on hel (the home) the frame names no device; failures say why in words; the socket coming back asks again with the same id", async () => {
     const { A, sent } = await sheet();
     A.ntCloneOpen("local");
-    A.ntCloneInput("git@github.com:acme/private.git");
+    A.ntCloneInput("git@gitlab.com:acme/private.git"); // not GitHub: git's own sign-in words (D272 has its own for GitHub)
     A.ntCloneGo();
     const ask = sent.at(-1);
     expect(ask.t).toBe("project_clone");
@@ -101,7 +101,7 @@ describe("Add from a Git address (D204)", () => {
 
   test("English words", async () => {
     const { A } = await sheet({ lang: "en" });
-    expect(A.L.t("newtask.clone")).toBe("Add from a Git address…");
+    expect(A.L.t("newtask.clone")).toBe("Clone from a Git address");
     expect(A.L.t("newtask.clone.err.no_access", "Macbook Pro M3")).toBe("Macbook Pro M3 has no access to it: sign in to git on Macbook Pro M3, then try again.");
     expect(A.L.t("newtask.old.row", "Macbook Pro M3")).toBe("Ducter on Macbook Pro M3 needs an update");
     A.sheet = null;

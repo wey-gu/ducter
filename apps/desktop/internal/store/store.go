@@ -599,7 +599,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "task_new_options":
 		fc := f
 		s.NewTaskOptions = &fc
-	case "task_new_result", "project_add_result", "project_clone_result":
+	case "task_new_result", "project_add_result", "project_clone_result", "project_new_result", "git_login_state":
 		s.NewTaskResults = append(s.NewTaskResults, f)
 	case "folder_browse_result":
 		fc := f

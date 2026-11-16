@@ -47,9 +47,11 @@ import { registerConnectionTools } from "./connection-tools.ts";
 import { createCalendar, type Calendar } from "./calendar.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { createModelCatalog, type ModelCatalog } from "./models.ts";
-import { browseFolders, cloneProject, createFoundRepos, isOldOp, newTaskOptions, openYourTask, type FolderProjects, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
+import { browseFolders, cloneProject, createFoundRepos, gitLoginOn, isOldOp, newFolderProject, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
 import { projectRepos, realFs, type BrowseResult } from "@ducter/protocol/src/repos.ts";
 import { cloneRepo, type CloneResult } from "@ducter/protocol/src/clone.ts";
+import { newProjectFolder, type NewFolderResult } from "@ducter/protocol/src/new-folder.ts";
+import { createGitLogin, type GitLogin, type GitLoginState } from "@ducter/protocol/src/git-login.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { createProjects } from "./projects.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
@@ -118,6 +120,10 @@ export interface CoreOptions {
   cloneHome?: (address: string) => Promise<CloneResult>;
   /** D203 test seam: the home's own subfolders for 找一个文件夹… (default: this computer's home folder). */
   browseHome?: (path: string | undefined) => BrowseResult;
+  /** D272 test seam: make a folder in the home's own Ducter folder (default: <Ducter folder>/projects here). */
+  newFolderHome?: (name: string) => NewFolderResult;
+  /** D272 test seam: the home's own GitHub sign-in (default: this computer's gh). */
+  gitLoginHome?: GitLogin;
   /** D202 test seam: each agent's models on each computer (else read from the agents themselves). */
   models?: ModelCatalog;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
@@ -395,6 +401,29 @@ export function startCore(opts: CoreOptions = {}): Core {
         throw err;
       }
     },
+    // D272: a new folder in that worker's Ducter folder, and its GitHub sign-in, there.
+    async newFolder(dev, name, ms) {
+      const link = workersRef?.link(dev);
+      if (!link?.online()) return "offline";
+      try {
+        return await link.call<NewFolderResult>("newFolder", { name }, ms);
+      } catch (err) {
+        if ((err as { offline?: boolean }).offline) return "offline";
+        if (isOldOp(err)) return "old";
+        throw err;
+      }
+    },
+    async gitLogin(dev, action, token, ms) {
+      const link = workersRef?.link(dev);
+      if (!link?.online()) return { state: "offline" };
+      try {
+        return await link.call<GitLoginState>("gitLogin", { action, ...(token !== undefined ? { token } : {}) }, ms);
+      } catch (err) {
+        if ((err as { offline?: boolean }).offline) return { state: "offline" };
+        if (isOldOp(err)) return { state: "old" };
+        throw err;
+      }
+    },
     // D204: 从 Git 地址加… on that worker: it clones into its own Ducter folder, with its own git.
     async clone(dev, address, ms) {
       const link = workersRef?.link(dev);
@@ -592,7 +621,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   const homeFolder = () => ducterFolder({ dataDir }).path;
   const found = createFoundRepos({ computers, home: opts.homeRepos ?? (() => ({ folder: homeFolder(), repos: projectRepos(realFs.real(join(homeFolder(), "projects"))) })) });
   const cloneHome = opts.cloneHome ?? ((address: string) => cloneRepo(address, { dataDir }));
-  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, cloneHome, ...(opts.browseHome ? { browseHome: opts.browseHome } : {}), ...(opts.git ? { git: opts.git } : {}) };
+  // D272: a new folder in the home's own Ducter folder, and the home's own GitHub sign-in.
+  const newFolderHome = opts.newFolderHome ?? ((name: string) => newProjectFolder(name, { dataDir }));
+  const gitLoginHome = opts.gitLoginHome ?? createGitLogin();
+  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, cloneHome, newFolderHome, gitLoginHome, ...(opts.browseHome ? { browseHome: opts.browseHome } : {}), ...(opts.git ? { git: opts.git } : {}) };
   const newTask = {
     open: (i: NewTaskInput) => openYourTask(newTaskDeps, i),
     options: (p?: Place) => newTaskOptions(newTaskDeps, p),
@@ -609,6 +641,10 @@ export function startCore(opts: CoreOptions = {}): Core {
     browse: (device: string | undefined, path: string | undefined) => browseFolders(newTaskDeps, device, path),
     // D204: 从 Git 地址加… / Add from a Git address…, cloned on that computer, then added there.
     clone: (device: string | undefined, address: string) => cloneProject(newTaskDeps, device, address, (path, dev) => newTask.addProject(path, dev)),
+    // D272: 在 {computer} 上新建一个文件夹 / New folder on {computer}, made there, then added there.
+    newFolder: (device: string | undefined, name: string) => newFolderProject(newTaskDeps, device, name, (path, dev) => newTask.addProject(path, dev)),
+    // D272: 在 {computer} 上登录 GitHub / Sign in to GitHub on {computer}.
+    gitLogin: (device: string | undefined, action: GitLoginAction, token?: string) => gitLoginOn(newTaskDeps, device, action, token),
   };
   // D214: the workbench, and the previews of the pages tasks serve (each on a port of its own,
   // on the interface the home listens on).

@@ -212,7 +212,7 @@ there). Picking one moves the computer part with it (the chip's text slides to *
 combined pick. For a folder (D202) it moves the folder: to the same repo's copy on that computer
 (same origin; neither knowing one, the exact folder name; D204: among the projects in that
 computer's Ducter folder, `~/ducter/projects`, too), else the folder list on that computer's places,
-with 找一个文件夹… to find one there and 从 Git 地址加… to clone one there (D204). If that computer is asleep, the chip says **睡着了 · 醒了就开始** and Start still works (the
+with 添加文件夹… for that computer: a new folder there, one chosen there, or a clone there (D204, D272; never this Mac's picker for another computer). If that computer is asleep, the chip says **睡着了 · 醒了就开始** and Start still works (the
 task waits).
 
 New task never parses the words for needs (it is the power path, words unchanged, D128); the

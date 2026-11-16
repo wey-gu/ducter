@@ -243,6 +243,8 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
     // D255: the user's own phone records its screen itself (handsets); Ducter's phone has no recorder yet.
     record: (taskId) => o.handsets!()!.record(taskId),
     recordStop: (taskId) => o.handsets!()!.recordStop(taskId),
+    // D280: the task gives the user's own phone back itself.
+    giveBack: (taskId) => o.handsets!()!.giveBack(taskId),
     ...(o.openWaitMs !== undefined ? { openWaitMs: o.openWaitMs } : {}),
   });
 

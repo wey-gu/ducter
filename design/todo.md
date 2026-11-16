@@ -1351,15 +1351,28 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Quiet after 24 hours** and **seen results folded by default** are defaults to revisit with real use.
 
 ## From the author's phone-use run (2026-11-16)
-- [ ] **Recording consent is the person's turn, said everywhere.** Android's screen-capture consent
-      ("Start now") shows only on the phone; on the author's Pixel Fold it timed out after 2 minutes
-      because nothing on the Mac said to tap it. Show it as the person's turn (D248's "their hands are
-      needed") on the Mac and in the phone pill, with the 2-minute countdown. Trigger: next phone work.
-- [ ] **The task hears the loan ended.** At the task's end the agent wrote "借用是否结束还没确认":
-      tell the task in one line when the loan ends (task finished, Stop, the phone locked).
-- [ ] **Tests that take the phone away need the person.** Lock, airplane mode and swiping Ducter away
-      can't be done by the agent safely (it loses the phone); a test plan asks the person to do each by
-      hand while the task watches and reports what it saw.
+- [x] **Recording consent is the person's turn, said everywhere** (built 2026-11-16, D280 (1)): the
+      card in every window with its countdown and 不录了, the pill's 轮到你：点「立即开始」.
+- [x] **The task hears the loan ended** (built 2026-11-16, D280 (2)): "Your loan of {phone} ended: …",
+      the tools refusing after, `phone_give_back`, the hairlines.
+- [x] **Tests that take the phone away need the person** (built 2026-11-16, D280 (4)): the brief and
+      `phone_ask_user` say to ask the person with exact steps and report what was seen.
+- [x] **The screen went dark during an idle loan** (built 2026-11-16, D280 (3)): the app's own screen
+      hold beside the pill's flag; a timeout is told from a lock and never ends the loan.
+- [ ] **D280 on the author's Pixel Fold.** Not yet run on a real phone: (a) a recording task: the card
+      on the Mac with its countdown, a Mac notification with the window behind, the pill's 轮到你 with
+      the accent rim, Start now resolving the card, 不录了 closing Android's dialog, 2 minutes with no
+      answer resolving it as not recorded; (b) an idle loan for longer than the phone's screen timeout:
+      the screen stays on (`adb shell dumpsys power | grep -i ducter` shows `ducter:loan`, `dumpsys
+      window | grep mHoldScreenWindow` the pill); (c) with the timeout forced (Settings › Display ›
+      Screen timeout 15 s and the hold released by a debug build, or a lent phone left in a drawer), the
+      screen comes back on and the loan holds; (d) the power key ends the loan within about 2.5 s; (e)
+      Stop, a lock and the task finishing each show their hairline on the Mac and the web. Trigger: the
+      next errand on the Pixel.
+- [ ] **Android's button word read from its dialog.** The card says 「立即开始」 (the author's Pixel
+      Fold); other versions say 共享屏幕 / Share screen. The accessibility service could read the
+      dialog's positive button and send it with the recording's state. Trigger: a person on another
+      Android version reads the card wrong.
 
 ## From the author's review of 0.0.58 (2026-11-16, after the release)
 - [ ] **Calls with your own number when the home is a remote server.** The setup card says "手机插在

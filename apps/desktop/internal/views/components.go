@@ -749,6 +749,10 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		a.keyButtons(c, d, st) // D233: what and why, the masked field, remember or once
 		return
 	}
+	if d.Handset != nil && d.Handset.Kind == "record" {
+		a.handsetRecordButtons(c, d, st) // D280: the person's turn on the phone, to allow a recording
+		return
+	}
 	if d.Resolved != nil || d.Pending != "" {
 		msg := a.answeredWords(d)
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
@@ -827,6 +831,8 @@ func (a *App) holdLabel(d *store.DecisionState) string {
 		return a.calHold(d.Cal) // D222: 暂不添加 / 保留日程 …
 	case d.Handset != nil && d.Handset.Kind == "setup":
 		return a.L.T("handset.setup.hold") // D247: 先不用 / Not now
+	case d.Handset != nil && d.Handset.Kind == "record":
+		return a.L.T("handset.record.hold") // D280: 不录了 / Skip recording
 	case d.Handset != nil:
 		return a.L.T("handset.ask.hold") // D238: 不借 / Not now
 	}
@@ -879,6 +885,9 @@ func (a *App) goLabel(d *store.DecisionState) string {
 func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 	if d.Call != nil || d.Cal != nil {
 		return "" // D189 (4), D222: it waits for the owner; no default, no countdown
+	}
+	if d.Handset != nil && d.Handset.Kind == "record" {
+		return a.handsetRecordLeft(c, d) // D280: how long Android's prompt on the phone still waits
 	}
 	if d.Asker != nil {
 		return a.L.T("peer.default") // silence never answers for the user (D164)

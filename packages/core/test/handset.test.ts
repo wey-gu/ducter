@@ -264,8 +264,8 @@ describe("用这台手机 / Use this phone, through the real core", () => {
     expect(got.find((f) => f.t === "handset_stop_result")).toMatchObject({ ok: true });
     expect(await until(() => app.session() === undefined)).toBe(true);
     expect(interrupted).toContain("t1");
-    expect(told.some(([t, s]) => t === "t1" && s === HANDSET_STOPPED)).toBe(true);
-    expect(await rejection(call("t1", "phone_look"))).toMatch(/stopped you/);
+    expect(told.some(([t, s]) => t === "t1" && s === HANDSET_STOPPED("Pixel Fold · Ducter"))).toBe(true);
+    expect(await rejection(call("t1", "phone_look"))).toMatch(/The phone was returned/);
     expect(core.tasks.onHand().tasks.find((c) => c.taskId === "t1")?.handset).toBeUndefined();
     other.close();
     p.ws.close();
@@ -281,8 +281,8 @@ describe("用这台手机 / Use this phone, through the real core", () => {
     app.restart(); // the pill's Stop: the phone ended it itself
     p.send({ t: "handset_stop", from: "phone" });
     expect(await p.until((f) => f.t === "handset_stop_result")).toMatchObject({ ok: true });
-    expect(told.some(([t, s]) => t === "t2" && s === HANDSET_STOPPED)).toBe(true);
-    expect(await rejection(call("t2", "phone_look"))).toMatch(/stopped you/);
+    expect(told.some(([t, s]) => t === "t2" && s === HANDSET_STOPPED("Pixel Fold · Ducter"))).toBe(true);
+    expect(await rejection(call("t2", "phone_look"))).toMatch(/The phone was returned/);
     p.ws.close();
   });
 
@@ -299,7 +299,7 @@ describe("用这台手机 / Use this phone, through the real core", () => {
     app.restart();
     p = await pixel();
     await until(async () => !!(await clientCard()).handset?.linked);
-    expect(await until(() => told.some(([t, s]) => t === "t3" && s === HANDSET_STOPPED))).toBe(true);
+    expect(await until(() => told.some(([t, s]) => t === "t3" && s === HANDSET_STOPPED("Pixel Fold · Ducter")))).toBe(true);
     expect(interrupted).toContain("t3");
     p.ws.close();
   });

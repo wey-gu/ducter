@@ -337,6 +337,7 @@ export function HandsetGuideSheet() {
  */
 export function HandsetAskBody({ d, compact }: { d: DecisionState; compact?: boolean }) {
   const h = d.handset!;
+  if (h.kind === "record") return <HandsetRecordBody d={d} compact={compact} />;
   const open = !d.resolved;
   const cl = A.reach?.clients.find((c) => c.id === h.device);
   const name = (cl?.name ?? h.name).replace(/\s*·\s*Ducter$/, "");
@@ -361,9 +362,57 @@ export function HandsetAskBody({ d, compact }: { d: DecisionState; compact?: boo
   );
 }
 
+/** D280: how long Android's recording prompt on the phone still waits ("1:42"), or "" once it gave up. */
+export function recordLeft(until: string | undefined, now = Date.now()): string {
+  const at = until ? Date.parse(until) : NaN;
+  if (!Number.isFinite(at) || at <= now) return "";
+  const s = Math.floor((at - now) / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/**
+ * D280: Android's prompt to allow a recording shows only on the phone, so it is the person's turn
+ * there: every window says to tap Start now on it, counts down its 2 minutes, and offers only 不录了 /
+ * Skip recording. It resolves by itself when the phone answers or gives up.
+ */
+function HandsetRecordBody({ d, compact }: { d: DecisionState; compact?: boolean }) {
+  const h = d.handset!;
+  const open = !d.resolved && !d.pending;
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    const iv = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(iv);
+  }, [open]);
+  const left = open ? recordLeft(h.until) : "";
+  const done = d.resolved?.option === "go" ? "handset.record.on" : d.resolved?.by === "default" ? "handset.record.gave_up" : "handset.record.skipped";
+  return (
+    <>
+      {!compact && <div class="q">{handsetAskTitle(d)}</div>}
+      {open && <div class="dl">{t("handset.record.what")}</div>}
+      {open ? (
+        <div class={compact ? "tray" : "btns decide"}>
+          {left && (
+            <span class="small sub" role="timer">
+              {t("handset.record.left", left)}
+            </span>
+          )}
+          <span class="grow" />
+          <Btn kind="secondary" size={compact ? "sm" : undefined} label={t("handset.record.hold")} onClick={() => A.decide(d.decisionId, "hold")} />
+        </div>
+      ) : (
+        <div class={compact ? "said" : "resolved"} role="status">
+          {t(done)}
+        </div>
+      )}
+    </>
+  );
+}
+
 /** The card's title line for the ask. */
 export const handsetAskTitle = (d: DecisionState): string => {
   const h = d.handset!;
+  if (h.kind === "record") return t("handset.record.title", ((A.reach?.clients.find((c) => c.id === h.device)?.name ?? h.name) || "").replace(/\s*·\s*Ducter$/, ""));
   const tk = d.taskId ? A.S.tasks.get(d.taskId) : undefined;
   const task = (tk && title(tk)) || "";
   const name = ((A.reach?.clients.find((c) => c.id === h.device)?.name ?? h.name) || "").replace(/\s*·\s*Ducter$/, "");

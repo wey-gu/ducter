@@ -739,6 +739,8 @@ function promptLine(task: Task, p: Extract<Block, { k: "wake" } | { k: "told" }>
   const at = Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
   if (p.k === "wake") return t(p.timer ? "wake.timer" : "wake.over", at);
   if (p.say === "lent") return t("told.lent", p.name ?? "", at);
+  // D280: the loan of the person's phone ended (taken back, given back, lost), named by the phone.
+  if (p.say === "taken_back" || p.say === "given_back" || p.say === "loan_lost") return t(`told.${p.say}`, (p.name ?? "").replace(/\s*·\s*Ducter$/, ""), at);
   if (p.say === "returned") return p.name ? t("told.returned.name", p.name, at) : t("told.returned", at);
   if (p.say === "other") return t("told.other", A.S.personaName, at);
   return t(`told.${p.say}`, at);

@@ -190,13 +190,13 @@ describe("the loan's life (D253)", () => {
     // Stop from another window while that start hangs.
     expect(await core.handsets.stop("s1")).toBe(true);
     expect(interrupted).toContain("s1");
-    expect(toldTo("s1")).toContain(HANDSET_STOPPED);
+    expect(toldTo("s1")).toContain(HANDSET_STOPPED("Pixel Fold"));
     // The page wakes: the start it queued answers late; the phone says hello still holding s1.
     p.wake();
     await Bun.sleep(300);
     expect(toldTo("s1").filter((s) => MAY.test(s)).length).toBe(1); // only the first, real loan
     expect(await until(() => app.session() === undefined)).toBe(true); // the home stopped the stale loan there
-    expect(await rejection(call("s1", "phone_look"))).toBe(HANDSET_STOPPED);
+    expect(await rejection(call("s1", "phone_look"))).toBe(HANDSET_STOPPED("Pixel Fold"));
     core.tasks.setState("s1", "done", "parked");
     p.ws.close();
   });

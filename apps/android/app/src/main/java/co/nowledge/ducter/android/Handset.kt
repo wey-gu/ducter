@@ -80,6 +80,15 @@ object Handset {
     @Volatile var ended: Pair<String, String>? = null
         private set
     /** D253: when the home last said anything about the loan (elapsed ms), and its clock minus ours. */
+    /**
+     * D280: the screen went off by itself while lent (a timeout, not the person's lock): the loan holds,
+     * nothing runs, and the app wakes the screen; said to the home as `asleep`.
+     */
+    @Volatile var asleep = false
+        private set
+    /** D280: when the watch first saw the screen off (0: on), and when Ducter last woke it in this loan (0: never). */
+    private var offAt = 0L
+    private var wokeAt = 0L
     @Volatile private var heard = 0L
     @Volatile private var skew = 0L
     @Volatile private var skewKnown = false
@@ -146,6 +155,7 @@ object Handset {
         // D253: what the home may know of why the phone doesn't answer: its screen, its lock, Android's background limit.
         .put("awake", (c.getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive)
         .put("locked", (c.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isKeyguardLocked)
+        .apply { if (asleep) put("asleep", true) }
         .apply { if (Build.VERSION.SDK_INT >= 28) put("limited", (c.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).isBackgroundRestricted) }
         .apply { ended?.let { (s, why) -> put("ended", JSONObject().put("session", s).put("why", why)) } }
         .put("sdk", Build.VERSION.SDK_INT)
@@ -227,6 +237,14 @@ object Handset {
                 turn = if (a.optString("turn") == "you") "you" else "agent"
                 s.pill.lang = a.optString("lang").takeIf { it == "zh" || it == "en" } ?: ""
                 s.pill.show(task, turn)
+                // D280: the screen stays on for the whole loan, held by the app itself (the pill's
+                // FLAG_KEEP_SCREEN_ON lapses whenever its window isn't drawn).
+                if (other == null) {
+                    asleep = false
+                    offAt = 0L
+                    wokeAt = 0L
+                }
+                Awake.hold(c)
                 changed(c)
                 watch(c)
                 // D255: the loan's own link to the home (a foreground service with the loan's notification).
@@ -255,11 +273,14 @@ object Handset {
             return if (r.has("error")) no(r.getString("error")) else ok(r)
         }
         if (m == "record_stop") {
-            val r = Recorder.stop(c.applicationContext, partial = false)
+            // D280: 不录了 on the home's card while Android still asks: its prompt closes, nothing starts.
+            val r = if (a.optBoolean("skip")) Recorder.skip(c.applicationContext) else Recorder.stop(c.applicationContext, partial = false)
             return if (r.has("error")) no(r.getString("error")) else ok(r)
         }
         // D253: a step that arrives after its deadline (a paused page's queue) never runs.
         if (HandsetLife.late(m, a.optLong("exp"), skew, local)) return no("too late: that step came after its deadline, so it didn't run")
+        // D280: nothing runs with the screen off (a timeout Ducter is waking, or the person's lock about to end the loan).
+        if (asleep || !(c.getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive) return no("the screen is off right now, so nothing ran")
         s.act(m, a, ::ok, ::no)
     }
 
@@ -272,9 +293,29 @@ object Handset {
         val app = c.applicationContext
         val pm = app.getSystemService(Context.POWER_SERVICE) as PowerManager
         main.removeCallbacksAndMessages(WATCH)
+        val km = app.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         fun tick() {
             if (session == null) return
-            if (!pm.isInteractive) return stopTapped(app, "locked")
+            // D280: the screen went off. The person's own lock gives the phone back; a screen timeout never
+            // does: told apart by the lock screen a moment later (at once for the power key, after Android's
+            // lock delay for a timeout), and the app wakes a screen that timed out.
+            val t = SystemClock.elapsedRealtime()
+            if (!pm.isInteractive) {
+                if (offAt == 0L) offAt = t
+                if (!asleep && t - offAt >= HandsetLife.OFF_SETTLE_MS) {
+                    if (HandsetLife.offWhy(km.isKeyguardLocked, if (wokeAt > 0) t - wokeAt else -1) == "locked") return stopTapped(app, "locked")
+                    asleep = true
+                    wokeAt = t
+                    Awake.wake(app)
+                    changed(app)
+                }
+            } else {
+                offAt = 0L
+                if (asleep) {
+                    asleep = false
+                    changed(app)
+                }
+            }
             // D255: said as the network when the app's own link had been up and is down (the phone couldn't
             // reach the home), else as a home gone quiet.
             if (HandsetLife.silent(heard, SystemClock.elapsedRealtime())) return stopTapped(app, HandsetLife.quietWhy(HandsetLinkService.running?.wasUp == true, HandsetLinkService.running?.linkUp == true))
@@ -292,6 +333,10 @@ object Handset {
         session = null
         task = ""
         turn = "agent"
+        asleep = false
+        offAt = 0L
+        wokeAt = 0L
+        Awake.release()
         service?.pill?.hide()
         changed(c)
         // Its own link goes once what is queued (and a recording being sent) is out.
@@ -321,12 +366,14 @@ class HandsetService : AccessibilityService() {
     internal lateinit var pill: HandsetPill
     private val main = Handler(Looper.getMainLooper())
 
-    /** D253: the screen going off (the person locked it; the pill keeps it on otherwise) gives the phone back. */
+    /**
+     * D253: the screen going off gives the phone back when the person locked it. D280: the loan's watch
+     * decides (within a second or two, by the lock screen), so a screen timeout never ends it; this only
+     * says an unlock to the home (a Go given while it was locked starts now).
+     */
     private val screenOff = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
-            if (i.action == Intent.ACTION_SCREEN_OFF && Handset.session != null) Handset.stopTapped(this@HandsetService, "locked")
-            // Unlocked again: the home hears it (a Go given while it was locked starts now).
-            else Handset.changed(this@HandsetService)
+            if (i.action != Intent.ACTION_SCREEN_OFF || Handset.session == null) Handset.changed(this@HandsetService)
         }
     }
 

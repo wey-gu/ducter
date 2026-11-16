@@ -1,7 +1,9 @@
 package views
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -74,4 +76,53 @@ func (a *App) handsetTaskLine(c *ui.Context, task *store.Task) {
 	if a.buttonFor(c, a.L.T("handset.stop"), line, btnSecondary, t.ControlSM, t.Chrome) {
 		a.send(protocol.HandsetStopReq{T: "handset_stop", TaskID: task.ID})
 	}
+}
+
+// handsetRecordLeft is how long Android's recording prompt on the phone
+// still waits (D280): "还剩 1:42", ticking each second; "" once it gave up
+// or was answered.
+func (a *App) handsetRecordLeft(c *ui.Context, d *store.DecisionState) string {
+	until := store.ParseTime(d.Handset.Until)
+	if until.IsZero() || d.Resolved != nil || d.Pending != "" {
+		return ""
+	}
+	left := until.Sub(a.Now())
+	if left <= 0 {
+		return ""
+	}
+	c.After(time.Second)
+	s := int(left.Seconds())
+	return a.L.T("handset.record.left", fmt.Sprintf("%d:%02d", s/60, s%60))
+}
+
+// handsetRecordButtons is the card that makes Android's recording prompt
+// the person's turn (D280): the prompt shows only on the phone, so every
+// window says to tap Start now there, counts down, and offers only 不录了 /
+// Skip recording. It resolves by itself when the phone answers or gives up.
+func (a *App) handsetRecordButtons(c *ui.Context, d *store.DecisionState, st decisionStyle) {
+	t := a.T
+	if d.Resolved != nil || d.Pending != "" {
+		msg := a.L.T("handset.record.skipped")
+		switch {
+		case d.Resolved != nil && d.Resolved.Option == "go":
+			msg = a.L.T("handset.record.on")
+		case d.Resolved != nil && d.Resolved.By == "default":
+			msg = a.L.T("handset.record.gave_up")
+		}
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+			a.glyph(c, 16, drawCheck(t.InkMuted))
+			ui.Text(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		})
+		return
+	}
+	ui.Text(c, a.L.T("handset.record.what")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+	ui.Row(c.Key("handset-record:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
+		if left := a.handsetRecordLeft(c, d); left != "" {
+			ui.Text(c, left).FontSize(t.SM).TextColor(t.NeedsYou.Ink).FontFeatures("tnum")
+		}
+		ui.Spacer(c)
+		if a.buttonFor(c, a.L.T("handset.record.hold"), a.decisionAbout(d), btnSecondary, st.height, st.quietBg) {
+			a.Decide(d.DecisionID, "hold", "")
+		}
+	})
 }

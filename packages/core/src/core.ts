@@ -144,7 +144,7 @@ export interface CoreOptions {
   /** D217: Ducter's phone (用手机); false leaves it out (tests). */
   ownPhone?: false | Partial<Omit<DucterPhoneOptions, "mcp" | "log" | "tasks" | "decisions" | "dataDir">>;
   /** D253: test seams for the person's own phone's loan (its timings). */
-  handset?: Partial<Pick<import("./handset/index.ts").HandsetsOptions, "callMs" | "beatMs" | "quietMs" | "lostMs" | "graceMs" | "idleMs">>;
+  handset?: Partial<Pick<import("./handset/index.ts").HandsetsOptions, "callMs" | "beatMs" | "quietMs" | "lostMs" | "graceMs" | "idleMs" | "recordWaitMs" | "recordAskMs" | "endedMs">>;
   /** D235: 用电脑 / Use the computer test seams (a fake cua-driver; false leaves it out). */
   computer?: false | Partial<Omit<ComputerUseOptions, "mcp" | "log" | "tasks" | "dataDir">>;
   /** The machine's platform as Devices sees it (tests: "linux"). */

@@ -19,6 +19,14 @@ var zhHandset = Table{
 	"handset.setup.go":     "去打开",
 	"handset.setup.hold":   "先不用",
 	"handset.user.done":    "好了",
+	// D280: Android's recording prompt is the person's turn, said in every window.
+	"handset.record.title":   "在 %s 上点「立即开始」，它才能录屏",
+	"handset.record.what":    "这是安卓自己的确认，只在手机上出现，只有你能点。录整个屏幕，不录声音。",
+	"handset.record.left":    "还剩 %s",
+	"handset.record.hold":    "不录了",
+	"handset.record.on":      "开始录了",
+	"handset.record.skipped": "这次不录",
+	"handset.record.gave_up": "手机上没点，这次没录",
 }
 
 var enHandset = Table{
@@ -36,6 +44,14 @@ var enHandset = Table{
 	"handset.setup.go":     "Turn it on",
 	"handset.setup.hold":   "Not now",
 	"handset.user.done":    "Done",
+	// D280: Android's recording prompt is the person's turn, said in every window.
+	"handset.record.title":   "Tap Start now on %s so it can record the screen",
+	"handset.record.what":    "It's Android's own question: it shows only on the phone, and only you can answer it. The whole screen, no sound.",
+	"handset.record.left":    "%s left",
+	"handset.record.hold":    "Skip recording",
+	"handset.record.on":      "Recording started",
+	"handset.record.skipped": "Not recording this time",
+	"handset.record.gave_up": "No answer on the phone; not recorded",
 }
 
 func init() {

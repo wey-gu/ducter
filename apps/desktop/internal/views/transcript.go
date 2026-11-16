@@ -138,6 +138,11 @@ var tolds = []struct {
 	{regexp.MustCompile(`^The user (?:said no to lending you their phone|said not now to using their own phone)`), "declined"},
 	{regexp.MustCompile(`^The user pressed 停下 / Stop`), "stopped"},
 	{regexp.MustCompile(`^The user reopened this task\.`), "reopened"},
+	// D280: a loan of the person's own phone ended: taken back, given back
+	// (or the task finished), or lost.
+	{regexp.MustCompile(`^Your loan of (.+?) ended: (?:the user |Android's switch for Ducter went off)`), "taken_back"},
+	{regexp.MustCompile(`^Your loan of (.+?) ended: (?:you gave it back|the task finished)`), "given_back"},
+	{regexp.MustCompile(`^Your loan of (.+?) ended: `), "loan_lost"},
 }
 
 // toldOf is what Ducter told the agent (D271), from a user-role line:

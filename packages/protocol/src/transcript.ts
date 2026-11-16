@@ -103,7 +103,7 @@ export type Block =
   | { k: "told"; seq: number; say: ToldSay; name?: string; text: string };
 
 /** What Ducter told the agent (D271). */
-export type ToldSay = "lent" | "returned" | "stopped" | "declined" | "reopened" | "other";
+export type ToldSay = "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "other";
 
 /** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
 export type NoteSay = "compacted" | "interrupted" | "retry" | "stalled" | "offline" | "back" | "waiting_device" | "fresh" | "moved" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
@@ -166,6 +166,11 @@ const TOLD: [RegExp, ToldSay][] = [
   [/^The user (?:said no to lending you their phone|said not now to using their own phone)/, "declined"],
   [/^The user pressed 停下 \/ Stop/, "stopped"],
   [/^The user reopened this task\./, "reopened"],
+  // D280: a loan of the person's own phone ended: they took it back (Stop, a lock, Android's switch,
+  // the chip removed), the task gave it back or finished, or it was lost.
+  [/^Your loan of (.+?) ended: (?:the user |Android's switch for Ducter went off)/, "taken_back"],
+  [/^Your loan of (.+?) ended: (?:you gave it back|the task finished)/, "given_back"],
+  [/^Your loan of (.+?) ended: /, "loan_lost"],
 ];
 
 /**

@@ -37,4 +37,22 @@ object HandsetLife {
      * been up and is down now (the phone couldn't reach the home), else a home gone quiet.
      */
     fun quietWhy(linkWasUp: Boolean, linkUp: Boolean): String = if (linkWasUp && !linkUp) "network" else "lost"
+
+    /**
+     * D280: how long after the screen goes off the lock screen is read. Android's keyguard comes at once
+     * for the power key ("Power button instantly locks", on by default, or no secure lock), but for a
+     * screen timeout only after "Lock after screen timeout" (5 s by default; SystemUI's
+     * KeyguardViewMediator.KEYGUARD_LOCK_AFTER_DELAY_DEFAULT).
+     */
+    const val OFF_SETTLE_MS = 1_500L
+    /** D280: the screen going off again this soon after Ducter woke it is the person's (they pressed the key again). */
+    const val WOKE_RECENTLY_MS = 120_000L
+
+    /**
+     * D280: why the screen went off while lent: "locked" (the person: the lock screen came at once, or
+     * it went off again right after Ducter woke it), which gives the phone back; else "timeout", which
+     * never ends the loan (the app wakes the screen). [sinceWoke] < 0: Ducter hasn't woken it in this loan.
+     */
+    fun offWhy(keyguardLocked: Boolean, sinceWoke: Long): String =
+        if (keyguardLocked || (sinceWoke in 0 until WOKE_RECENTLY_MS)) "locked" else "timeout"
 }

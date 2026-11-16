@@ -32,4 +32,16 @@ class HandsetLifeTest {
         assertTrue(HandsetLife.silent(lastHeard = 100_000, localNow = 115_001))
         assertFalse(HandsetLife.silent(lastHeard = 0, localNow = 115_001))
     }
+
+    // D280: a screen timeout never ends a loan; the person's own lock does.
+    @Test fun theLockScreenAtOnceIsThePersonsLockATimeoutIsNot() {
+        // The power key: Android shows the lock screen at once.
+        assertEquals("locked", HandsetLife.offWhy(keyguardLocked = true, sinceWoke = -1))
+        // A timeout: the lock screen waits for "Lock after screen timeout", so it isn't up 1.5 s later.
+        assertEquals("timeout", HandsetLife.offWhy(keyguardLocked = false, sinceWoke = -1))
+        // Off again right after Ducter woke it: the person pressed the key again.
+        assertEquals("locked", HandsetLife.offWhy(keyguardLocked = false, sinceWoke = 30_000))
+        assertEquals("timeout", HandsetLife.offWhy(keyguardLocked = false, sinceWoke = HandsetLife.WOKE_RECENTLY_MS))
+        assertTrue(HandsetLife.OFF_SETTLE_MS < 5_000) // read before the default lock delay
+    }
 }

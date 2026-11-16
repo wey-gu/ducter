@@ -118,7 +118,7 @@ func TestSignInCardAndLiveView(t *testing.T) {
 				t.Fatalf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
-		if tt.HasText(pick("先等等", "Hold")) {
+		if _, held := tt.Find(pick("先等等", "Hold")); held { // the button, not "Hold … to talk" (D305)
 			t.Errorf("%s: a sign-in card has no Go / Hold / Reply", lang)
 		}
 		shoot(t, tt, "desktop-signin-card-"+string(lang)+".png")

@@ -103,6 +103,10 @@ promotion are not built.*
   pattern). A fast decision model (e.g. Jev/Kev class) may run the gates: attention tagging,
   the recall precision gate, and the voice escalation gate.
 
+## Voice (D305)
+
+Hold to talk in the composer and 朗读 / Read aloud on a partner's message: `voice.md`.
+
 ## Rich answers (D303)
 
 *Who:* the consumer who asks "compare these two" or "how did last week go" and gets a paragraph of

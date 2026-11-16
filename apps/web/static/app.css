@@ -12822,3 +12822,295 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .learned-row .learned-acts { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .recall-sheet, .learned-sheet { animation: none; } }
+
+/* ---------- D305: hold to talk, read aloud (design/voice.md) ---------- */
+/* The microphone: a quiet round button before Send; it sinks while held, in the accent's ink. */
+.composer .mic {
+  flex-shrink: 0;
+  color: var(--ink-muted);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.composer .mic.hearing {
+  color: var(--needs-ink);
+  background: var(--needs-surface);
+  transform: translateY(2px);
+}
+.composer .mic.off {
+  opacity: 0.5;
+}
+/* Over the composer, never in its place: the words typed stay where they are. */
+.voice-strip,
+.voice-card,
+.voice-note {
+  position: absolute;
+  bottom: calc(100% - 4px);
+  z-index: 6;
+}
+.voice-strip,
+.voice-card {
+  left: 12px;
+  right: 12px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 12px 14px 10px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--base), var(--floating);
+  animation: voice-in 180ms var(--ease) both;
+}
+.voice-note {
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: var(--sm);
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: var(--base);
+  animation: fade-in var(--t-fast) var(--ease);
+}
+@keyframes voice-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+.voice-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+/* The partner listens: its clay face tilted toward the microphone, leaning in, breathing with the voice. */
+.voice-face {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  transform-origin: 50% 100%;
+  transform: rotate(-9deg) translate(3px, 1px) scale(calc(1 + var(--lv, 0) * 0.05));
+  transition: transform 160ms var(--ease);
+}
+.voice-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.voice-heard {
+  flex: 1;
+  min-width: 0;
+  max-height: 4.4em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  font-size: var(--body);
+  line-height: 1.45;
+  color: var(--ink);
+}
+.voice-heard.none {
+  color: var(--ink-muted);
+}
+.voice-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.voice-mid {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: var(--sm);
+  min-width: 0;
+}
+.voice-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.voice-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.voice-cue.send.on {
+  background: var(--needs-surface);
+  color: var(--needs-ink);
+}
+.voice-cue.drop.on {
+  background: var(--failed-surface);
+  color: var(--failed-ink);
+}
+.voice-strip.armed-drop .voice-heard {
+  opacity: 0.45;
+  text-decoration: line-through;
+  text-decoration-color: var(--faint);
+}
+.voice-strip.finishing .voice-meter {
+  opacity: 0.4;
+}
+/* Five clay bars, the middle tallest; they rise quickly and fall slowly (smoothLevel). */
+.voice-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+}
+.voice-meter i {
+  width: 4px;
+  height: calc(var(--h, 0.2) * 20px);
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: inset 0 1px 0 var(--hi-accent);
+  transition: height 90ms linear;
+}
+.voice-meter.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.35;
+}
+.voice-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--md);
+}
+.voice-card-head b {
+  flex: 1;
+}
+.voice-card-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--needs-surface);
+  color: var(--needs-ink);
+  box-shadow: 0 2px 0 var(--needs-ledge);
+}
+.voice-card p {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: var(--sm);
+  line-height: 1.5;
+}
+.voice-card p.voice-privacy,
+.voice-set .voice-privacy {
+  color: var(--ink-muted);
+}
+.voice-card .btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.voice-x {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.voice-x:hover {
+  color: var(--ink);
+  background: var(--sunken);
+}
+.voice-set .voice-privacy {
+  display: block;
+  margin-top: 6px;
+  font-size: var(--xs);
+  line-height: 1.5;
+}
+/* Read aloud: under the message while it reads, a moving speaker and Stop reading. */
+.reading-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin: 2px 0 0 2px;
+  padding: 3px 9px 3px 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--needs-surface);
+  color: var(--needs-ink);
+  font: inherit;
+  font-size: var(--sm);
+  font-weight: 700;
+  cursor: pointer;
+  animation: fade-in var(--t-fast) var(--ease);
+}
+svg .wave {
+  opacity: 0.55;
+}
+svg .wave.on {
+  animation: voice-wave 1.2s var(--ease) infinite;
+}
+svg .wave.w2.on {
+  animation-delay: 0.2s;
+}
+@keyframes voice-wave {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+/* On a wide screen, a second pebble over the reply's. */
+.partner > .bubble > .hover-read {
+  bottom: 39px;
+}
+.hover-read.on {
+  color: var(--needs-ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-strip,
+  .voice-card,
+  .voice-note,
+  .reading-line {
+    animation: none;
+  }
+  .voice-face {
+    transform: rotate(-9deg) translate(3px, 1px);
+    transition: none;
+  }
+  .voice-meter i {
+    transition: none;
+  }
+  svg .wave.on {
+    animation: none;
+    opacity: 1;
+  }
+}
+@media (max-width: 420px) {
+  .voice-strip,
+  .voice-card {
+    left: 8px;
+    right: 8px;
+  }
+  .voice-foot {
+    flex-wrap: wrap;
+  }
+  .voice-mid {
+    order: -1;
+    width: 100%;
+    justify-content: center;
+  }
+}

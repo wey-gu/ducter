@@ -29,6 +29,11 @@
          first time (Android's own prompt); without it the dialer opens with the number filled.
          Never answers, records or reads a call. -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
+
+    <!-- D305: hold to talk. Asked the first time the person holds the composer's microphone;
+         heard only while held, never recorded. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <!-- D238: a task opens apps on this phone by name (phone_apps): the launcher's list only. -->
@@ -36,6 +41,13 @@
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- D305: the phone's speech recognizer and its voices (Android 11+ package visibility). -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
     </queries>
 

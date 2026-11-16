@@ -417,6 +417,7 @@ func (a *App) replyMenu(c *ui.Context, e ui.Element, r *replyTo, text string) {
 		if r != nil && m.Item(a.L.T("reply.action")).Chosen() {
 			a.StartReply(r)
 		}
+		a.readMenuItem(c, m, r, text) // D305: Read aloud, a partner's message
 		if len(e.SelectedTexts()) > 0 {
 			m.EditItems()
 			return

@@ -13,6 +13,7 @@ import { when } from "./format.ts";
 import { copyText, COPY_GLYPH, forReading } from "./markdown.ts";
 import { haptic } from "./native.ts";
 import type { Entry } from "./store.ts";
+import { readingNow, SpeakerGlyph, toggleRead } from "./voice.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -318,7 +319,7 @@ let closeMenu = () => {};
 export function ReplyMenu({ menu }: { menu?: Menu }) {
   if (!menu) return null;
   const r = targets.get(menu.key);
-  const items = 1 + (r ? 1 : 0) + (menu.link ? 1 : 0) + (coarse() ? 1 : 0);
+  const items = 1 + (r ? 1 : 0) + (r?.from === "partner" ? 1 : 0) + (menu.link ? 1 : 0) + (coarse() ? 1 : 0);
   const x = Math.min(menu.x, window.innerWidth - 196);
   const y = Math.min(menu.y + 8, window.innerHeight - 24 - items * 44 - (menu.ts ? 28 : 0));
   const said = (ok: boolean) => A.toast(t(ok ? "conv.copied" : "conv.copy.failed"));
@@ -339,6 +340,13 @@ export function ReplyMenu({ menu }: { menu?: Menu }) {
         <span class="menu-glyph" dangerouslySetInnerHTML={{ __html: COPY_GLYPH }} />
         <span>{t("reply.copy")}</span>
       </button>
+      {/* D305: 朗读 / Read aloud, a partner's words in their own language. */}
+      {r?.from === "partner" && (
+        <button type="button" role="menuitem" onClick={() => (closeMenu(), toggleRead(r.seq, menu.text))}>
+          <SpeakerGlyph size={18} on={readingNow(r.seq)} />
+          <span>{t(readingNow(r.seq) ? "voice.read.stop" : "voice.read")}</span>
+        </button>
+      )}
       {menu.link && (
         <button type="button" role="menuitem" onClick={() => (closeMenu(), void copyAndSay(menu.link!, said))}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -398,7 +406,10 @@ export function SelectText() {
  *  itself it says 回复 / Reply. Touch has the swipe and the long-press menu instead. */
 export function HoverReply({ k }: { k?: string }) {
   if (!k) return null;
+  const r = targets.get(k);
   return (
+    <>
+    {r?.from === "partner" && !r.findId && <HoverRead seq={r.seq} k={k} />}
     <button
       type="button"
       class="hover-reply"
@@ -412,6 +423,31 @@ export function HoverReply({ k }: { k?: string }) {
       <ReplyGlyph />
       <span class="w" aria-hidden="true">
         {t("reply.action")}
+      </span>
+    </button>
+    </>
+  );
+}
+
+/** D305: a second pebble over the reply's, on a partner's message: 朗读 / Read aloud (or its stop). */
+function HoverRead({ seq }: { seq: number; k: string }) {
+  const text = A.S.channel.find((e) => e.firstSeq === seq)?.ai?.text;
+  if (!text) return null;
+  const on = readingNow(seq);
+  const label = t(on ? "voice.read.stop" : "voice.read");
+  return (
+    <button
+      type="button"
+      class={`hover-reply hover-read${on ? " on" : ""}`}
+      aria-label={label}
+      onClick={(ev) => {
+        ev.stopPropagation();
+        toggleRead(seq, text);
+      }}
+    >
+      <SpeakerGlyph size={16} on={on} />
+      <span class="w" aria-hidden="true">
+        {label}
       </span>
     </button>
   );

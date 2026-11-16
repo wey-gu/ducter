@@ -11,6 +11,7 @@
 		239F5A35418876FE9B40D017 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF0A95EBBD9D8AB9E7F38931 /* NotificationService.swift */; };
 		24AAD08DDA66090595E2BA8A /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08C5B880B5BEE0A2A05E3B60 /* Store.swift */; };
 		2B8826AE33539926AC1E4ABC /* Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF24A8D192017C97A5783A0B /* Push.swift */; };
+		30FC2EF738C26CA47C534022 /* Voice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FCFF81082AA3BFF2B7A7EF8 /* Voice.swift */; };
 		45C67028072AECABD8CFE461 /* BricolageGrotesque.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5C1AA35A18761F27CAB058C4 /* BricolageGrotesque.ttf */; };
 		5BB00299EF14494B05764666 /* DucterNotify.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7F13E0FF5AD5B5FA5A4F165D /* DucterNotify.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		71627E4184D1E53396F4ACC5 /* HomeVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBBE7F91E3393AE65BB6ABF7 /* HomeVersion.swift */; };
@@ -66,6 +67,7 @@
 		7E75A9097C852D0731F100D3 /* WebShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebShell.swift; sourceTree = "<group>"; };
 		7F13E0FF5AD5B5FA5A4F165D /* DucterNotify.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = DucterNotify.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		8923DEFAF6516B2F2BB862A6 /* HomeOlder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOlder.swift; sourceTree = "<group>"; };
+		8FCFF81082AA3BFF2B7A7EF8 /* Voice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Voice.swift; sourceTree = "<group>"; };
 		A2509E21008EBA71C43F73C2 /* DucterNotify.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DucterNotify.entitlements; sourceTree = "<group>"; };
 		AF0A95EBBD9D8AB9E7F38931 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		B916A5E27898761A81FEB28D /* DucterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DucterApp.swift; sourceTree = "<group>"; };
@@ -96,6 +98,7 @@
 				DF24A8D192017C97A5783A0B /* Push.swift */,
 				08C5B880B5BEE0A2A05E3B60 /* Store.swift */,
 				CE70874634C0BE491CD57671 /* Theme.swift */,
+				8FCFF81082AA3BFF2B7A7EF8 /* Voice.swift */,
 				7E75A9097C852D0731F100D3 /* WebShell.swift */,
 				534714C6F9B225B7C1F0B9C8 /* Fonts */,
 				B2D299316F9F82A05F46D56F /* InfoPlist.strings */,
@@ -268,6 +271,7 @@
 				7798E0851BCB793E7A4C4D0A /* PushCrypto.swift in Sources */,
 				24AAD08DDA66090595E2BA8A /* Store.swift in Sources */,
 				AD4ED5462FD2005D72767E67 /* Theme.swift in Sources */,
+				30FC2EF738C26CA47C534022 /* Voice.swift in Sources */,
 				F45B4A8E95DFC82D8EB3A735 /* WebShell.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

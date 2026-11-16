@@ -40,6 +40,11 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<!-- D305: hold to talk (the composer's microphone) and turning the words into text. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>To hear you while you hold the microphone button. Nothing is recorded.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>To turn what you say into text in your message, on this iPhone whenever it can.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>To scan the QR code from ducter pair, and to take a photo you send to Ducter.</string>
 	<!-- D206: the conversation's 加图片 / Add images (the page's file input: library, camera) and

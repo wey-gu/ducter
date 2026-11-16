@@ -19,6 +19,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
+	"github.com/wey-gu/ducter/apps/desktop/internal/voice"
 )
 
 // Route is the zoom level shown.
@@ -74,6 +75,14 @@ type App struct {
 	// pasteboard, the home's address; nil hides adding pictures.
 	Media MediaHands
 	media mediaState
+	// Voice and Speaker are this Mac's own speech engines (D305): hold to
+	// talk and Read aloud; nil says voice isn't available here.
+	Voice   voice.Recognizer
+	Speaker voice.Speaker
+	// PreferredLocales are macOS's preferred languages, for the locale a
+	// recognizer or a voice is asked for (voice.SpeechLocale).
+	PreferredLocales []string
+	vox              voiceState
 	// IMessage is this Mac's iMessage bridge (D277); nil hides it.
 	IMessage IMessageBridge
 	imessage imessageState

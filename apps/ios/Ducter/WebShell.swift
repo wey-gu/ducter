@@ -11,6 +11,15 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
     @Published var phase: Phase = .loading
     let web: WKWebView
     private var loaded: URL?
+    /// D305: hold to talk and read aloud (Voice.swift); events go to window.ducterVoice.
+    private lazy var voice: Voice = {
+        let v = Voice()
+        v.emit = { [weak self] e in
+            guard let self, let d = try? JSONSerialization.data(withJSONObject: e), let js = String(data: d, encoding: .utf8) else { return }
+            self.web.evaluateJavaScript("window.ducterVoice && window.ducterVoice(\(js))")
+        }
+        return v
+    }()
 
     override init() {
         let config = WKWebViewConfiguration()
@@ -21,7 +30,7 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         // D176: on an iPad too, the page as it is, laid out from the width it has (WebKit would
         // otherwise ask for it as a Mac's desktop page, and the pairing would name a "Browser").
         config.defaultWebpagePreferences.preferredContentMode = .mobile
-        let info = "window.ducterNative = Object.freeze({platform: 'ios', version: '\(Native.version)', bundleId: '\(Native.bundleId)', apnsEnv: '\(Native.apnsEnv)'});"
+        let info = "window.ducterNative = Object.freeze({platform: 'ios', version: '\(Native.version)', bundleId: '\(Native.bundleId)', apnsEnv: '\(Native.apnsEnv)', voice: 1});"
         config.userContentController.addUserScript(WKUserScript(source: info, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         #if DEBUG
         // Page errors and warnings in the app's log (`xcrun simctl spawn booted log stream`).
@@ -240,6 +249,8 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
             AppState.shared.apnsToken = nil
             await Relay.drop()
             return (tok.map { ["token": $0] } ?? [:], nil)
+        case "voice.can", "voice.start", "voice.stop", "voice.cancel", "voice.settings", "speak", "speak.stop":
+            return (await voice.handle(t, m), nil)
         default:
             return (nil, "unknown")
         }

@@ -1626,6 +1626,19 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **The full eval with the persona's "Rich answers"** (D175): only the `rich-*` scenarios ran, with
   `--only`. Trigger: the merge; rerun all and commit LATEST.json then.
 
+## Voice (D305)
+
+- **A real run on every platform**: a microphone, the recognizer, a voice, the permission prompts and
+  Open Settings on a Mac, an iPhone, an Android phone and Chrome. Trigger: before the release that
+  ships it. Everything so far ran with fakes.
+- **Hold to talk in a task's composer.** Trigger: a person who steers tasks by voice.
+- **A full spoken conversation** (a call with the partner, hands-free, interruptible), reusing D218's
+  realtime loop or an on-device one. Trigger: the first slice used daily.
+- **Chrome's language pack offer** (`SpeechRecognition.install`) so a browser can stay on the device.
+  Trigger: a person who asks why Chrome isn't on the device.
+- **Android's level scale** is inferred (`(rmsdB + 2) / 12`). Trigger: a real phone's meter that sits
+  low or pinned.
+
 ## Done for you (D300)
 
 - **Commands a harness ran itself** (a `git push` with its own approvals off) are not in the record. Trigger: the first real case, or the gate covering shell effects. Then: list outside-looking commands seen in transcripts in their own group (`flows/G-safety.md` G5).

@@ -94,7 +94,7 @@ func TestDeviceCards(t *testing.T) {
 			cardWorld(h)
 			d.sel = "local"
 			h.settle(100 * time.Millisecond)
-			h.click(L.T("devup.button") + " · vps-1")
+			h.click(spoken(L, L.T("devup.button"), "vps-1"))
 			h.until("back", func() bool { return h.tt.HasText(L.T("devup.phase.done", "0.0.4")) })
 			shot("home-done")
 
@@ -107,13 +107,13 @@ func TestDeviceCards(t *testing.T) {
 			shot("mac-worker")
 
 			// Rename in place: click the name, type, Enter (here: the keep button).
-			h.click(L.T("device.rename") + " · Mac mini")
+			h.click(spoken(L, L.T("device.rename"), "Mac mini"))
 			h.settle(100 * time.Millisecond)
 			d.rename.draft = "Studio"
 			h.click(L.T("device.rename.ok"))
 			h.until("renamed", func() bool { x := h.app.S.Device("a3f9c2d1e0"); return x != nil && x.Name == "Studio" })
 			// Esc cancels an edit instead of leaving the page.
-			h.click(L.T("device.rename") + " · Studio")
+			h.click(spoken(L, L.T("device.rename"), "Studio"))
 			if !h.app.escDevice() || d.rename.device != "" || h.app.Route != RouteDevices {
 				t.Fatalf("esc: %+v route %v", d.rename, h.app.Route)
 			}
@@ -131,7 +131,7 @@ func TestDeviceCards(t *testing.T) {
 				t.Fatalf("confirm: %q", h.tt.Texts())
 			}
 			shot("phone-disconnect")
-			h.click(L.T("device.disconnect.ok") + " · Wey 的 iPhone")
+			h.click(spoken(L, L.T("device.disconnect.ok"), "Wey 的 iPhone"))
 			h.until("gone", func() bool { return len(h.app.S.Reach.Clients) == 0 })
 			for _, s := range h.tt.Texts() {
 				if s == L.T("ability.remote.how") {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/local"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
@@ -305,8 +306,13 @@ func (a *App) setupReady(c *ui.Context) {
 			ready = append(ready, k.Label)
 		}
 	}
-	sep := " · "
-	ui.Text(c, a.L.T("setup.ready.body", strings.Join(ready, sep), a.personaName())).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
+	// One sentence (D291): "Claude Code 和 Codex 都可以用了" / "Claude Code
+	// and Codex are ready to use", never a dotted list.
+	key := "setup.ready.body"
+	if len(ready) > 1 {
+		key = "setup.ready.body.many"
+	}
+	ui.Text(c, a.L.T(key, andList(a.L, ready), a.personaName())).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 	left := a.setup.readyAt.Add(ReadyFor).Sub(a.Now())
 	if left > 0 {
 		c.After(left)
@@ -419,4 +425,17 @@ func (a *App) anyWorking() bool {
 type bgState struct {
 	closed, allowed, busy, moving bool
 	checkedAt                     time.Time
+}
+
+// andList says a few names as a sentence does (D291): "A 和 B", "A、B 和 C";
+// "A and B", "A, B and C".
+func andList(l *i18n.Strings, xs []string) string {
+	if len(xs) < 2 {
+		return strings.Join(xs, "")
+	}
+	head, last := xs[:len(xs)-1], xs[len(xs)-1]
+	if l == nil {
+		return strings.Join(head, ", ") + " and " + last
+	}
+	return l.T("list.and", strings.Join(head, l.T("list.sep")), last)
 }

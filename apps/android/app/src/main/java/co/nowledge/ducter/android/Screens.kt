@@ -3,6 +3,9 @@ package co.nowledge.ducter.android
 import android.content.ClipboardManager
 import android.content.Context
 import android.text.InputType
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.BulletSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -266,7 +269,15 @@ class UpdateCard(c: Context) : FrameLayout(c) {
     fun show(t: String, lines: List<String>, st: String?, goLabel: String?, laterLabel: String?) {
         title.visibility = VISIBLE
         title.text = t
-        notes.text = lines.joinToString("\n") { "· $it" }
+        // D291: each note its own paragraph with a drawn bullet (a span, not a glyph glued to the words).
+        notes.text = SpannableStringBuilder().apply {
+            lines.forEachIndexed { i, l ->
+                if (i > 0) append("\n")
+                val start = length
+                append(l)
+                setSpan(BulletSpan(dp(context, 10)), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
         notes.visibility = if (lines.isEmpty()) GONE else VISIBLE
         status.text = st ?: ""
         status.visibility = if (st.isNullOrEmpty()) GONE else VISIBLE

@@ -105,10 +105,10 @@ export type Block =
   | { k: "told"; seq: number; say: ToldSay; name?: string; text: string };
 
 /** What Ducter told the agent (D271). */
-export type ToldSay = "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "other";
+export type ToldSay = "adopted" | "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "other";
 
 /** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
-export type NoteSay = "limit" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
+export type NoteSay = "earlier" | "limit" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
 
 const KICKOFF = /^(<brief>|Start the task ")/;
 
@@ -123,6 +123,9 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
   if (lim && str(lim.harness)) return { say: "limit", name: harnessName(String(lim.harness)), ...(str(lim.resetsAt) ? { at: str(lim.resetsAt) } : {}) };
   if (r.kind === "turn_ended" && r.outcome === "failed" && (r.failure === "quota" || r.failure === "rate_limited")) return undefined;
   const from = (re: RegExp) => re.exec(text)?.[1]?.trim() || undefined;
+  // D299: a session the person ran outside Ducter: its earlier turns follow, said with the agent and the day it began.
+  const out = o("outside");
+  if (out) return { say: "earlier", ...(str(out.agent) ? { name: harnessName(String(out.agent)) } : {}), ...(str(out.at) ? { at: str(out.at) } : {}) };
   // D268: a divider for a compaction or an interruption; a retry only while it is the latest thing.
   // D288: with the size before and after when known (压缩了上下文 · 152k → 31k).
   if (r.kind === "compaction_ended" && r.outcome !== "failed") {
@@ -187,6 +190,8 @@ const TOLD: [RegExp, ToldSay][] = [
   [/^The user (?:said no to lending you their phone|said not now to using their own phone)/, "declined"],
   [/^The user pressed 停下 \/ Stop/, "stopped"],
   [/^The user reopened this task\./, "reopened"],
+  // D299: a session from outside Ducter, carried on here.
+  [/^The user picked this session up again in Ducter/, "adopted"],
   // D280: a loan of the person's own phone ended: they took it back (Stop, a lock, Android's switch,
   // the chip removed), the task gave it back or finished, or it was lost.
   [/^Your loan of (.+?) ended: (?:the user |Android's switch for Ducter went off)/, "taken_back"],
@@ -475,7 +480,7 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
       case "task_event": {
         const b = ev.body as Bodies["task_event"];
         if (b.thinking?.length) {
-          addRow(ev.seq, { seq: ev.seq, thought: redact(b.thinking.join(" · ")), n: 1, outcome: "ok", ...took });
+          addRow(ev.seq, { seq: ev.seq, thought: redact(b.thinking.join("\n")), n: 1, outcome: "ok", ...took });
           break;
         }
         if (b.tool) {

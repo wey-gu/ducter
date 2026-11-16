@@ -249,10 +249,7 @@ func (a *App) quietTag(c *ui.Context, text string) {
 // only under the pointer. Its confirmation is dangerText, in confirmRow.
 func (a *App) quietDanger(c *ui.Context, key, label, about string) bool {
 	t := a.T
-	acc := label
-	if about != "" {
-		acc += " · " + about
-	}
+	acc := spoken(a.L, label, about) // D291, as dangerText
 	b := ui.Row(c.Key(key)).Height(t.ControlSM-4).Padding(0, t.S2).Radius(t.RadiusSM).AlignItems(ui.Center).Cursor(ui.CursorPointer).
 		Role(ui.RoleButton).Label(acc).Focusable().Shrink(0)
 	ink := t.InkSoft

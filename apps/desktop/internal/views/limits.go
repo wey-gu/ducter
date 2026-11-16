@@ -177,10 +177,11 @@ func (a *App) limitGroupHead(c *ui.Context, g limitGroup) {
 }
 
 // limitNote is the transcript's line where the agent's limit ran out: whose,
-// and when it resets when the agent said.
-func (a *App) limitNote(b *Block) string {
-	if at := store.ParseTime(b.At); !at.IsZero() {
-		return a.L.T("note.limit", b.Name, a.soon(at))
+// and apart (D291), when it resets when the agent said.
+func (a *App) limitNote(b *Block) (words, at string) {
+	words = a.L.T("note.limit", b.Name)
+	if t := store.ParseTime(b.At); !t.IsZero() {
+		at = a.L.T("limit.state", a.soon(t))
 	}
-	return a.L.T("note.limit.unknown", b.Name)
+	return words, at
 }

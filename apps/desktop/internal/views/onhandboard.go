@@ -12,7 +12,6 @@ package views
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -181,7 +180,7 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 	st, of, words := a.foldMark(tasks)
 	label := name
 	if words != "" {
-		label += " · " + words
+		label = spoken(a.L, name, words)
 	}
 	r := ui.Row(c.Key("lens:"+key)).Gap(t.S2).Padding(t.S2+1, t.S3).MinHeight(44).Radius(t.RadiusMD).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
@@ -236,7 +235,7 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 			on := key == lens
 			st, of, words := a.foldMark(tasks)
 			r := ui.Row(c.Key("tab:"+key)).Gap(t.S1+2).Height(34).Padding(0, t.S3).Radius(t.RadiusMD).AlignItems(ui.Center).
-				Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(strings.Join(nonEmpty(name, words), " · ")).Focusable()
+				Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, name, words)).Focusable()
 			switch {
 			case on:
 				a.knob(r) // D270: the chosen one is the knob

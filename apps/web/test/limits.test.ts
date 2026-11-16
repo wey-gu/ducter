@@ -37,8 +37,9 @@ test("every limit word in zh and en, the same keys, never a dot join", () => {
   expect(zh.t("limit.handoff", "Codex")).toBe("现在换 Codex 接着做");
   expect(en.t("limit.handoff", "Codex")).toBe("Hand it to Codex now");
   expect(zh.t("limit.cancel")).toBe("先停下");
-  expect(en.t("note.limit", "Claude Code", "3:12")).toBe("Claude Code's limit ran out; it carries on after it resets at 3:12");
-  expect(zh.t("wake.limit", "Claude Code", "3:13")).toBe("Claude Code 的额度恢复了，3:13 接着做");
+  // D291: the hairlines say the fact; their times are drawn apart.
+  expect(en.t("note.limit", "Claude Code")).toBe("Claude Code's limit ran out");
+  expect(zh.t("wake.limit", "Claude Code")).toBe("Claude Code 的额度恢复了，接着做");
 });
 
 describe("a limit wait's words", () => {

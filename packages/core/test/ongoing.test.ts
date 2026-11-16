@@ -98,7 +98,7 @@ test("a routine: listed with its schedule; pause until a time, resume, run now, 
   expect(items.find((i) => i.id === rid)!.pausedUntil).toBeUndefined();
   items = await c.ask({ t: "ongoing_action", kind: "routine", id: rid, action: "retime", trigger: { kind: "time", every: "weekday", time: "08:30", zone: "personal", tz: "Asia/Shanghai" } });
   expect(items.find((i) => i.id === rid)!.trigger).toMatchObject({ every: "weekday", time: "08:30" });
-  expect(items.find((i) => i.id === rid)!.cadence).toBe("工作日 8:30 · 跟着你的时区");
+  expect(items.find((i) => i.id === rid)!.cadence).toBe("工作日 8:30（跟着你的时区）");
   items = await c.ask({ t: "ongoing_action", kind: "routine", id: rid, action: "end" });
   expect(items.find((i) => i.id === rid)).toBeUndefined();
 });

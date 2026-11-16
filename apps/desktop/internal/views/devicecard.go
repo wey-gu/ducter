@@ -60,7 +60,7 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 			if cl.ID != d.selClient || a.fold().hidden[cl.ID] {
 				continue
 			}
-			card.Role(ui.RoleGroup).Label(a.clientName(cl) + ", " + a.clientKind(cl)).Children(func() { a.clientCard(c, cl) })
+			card.Role(ui.RoleGroup).Label(spoken(a.L, a.clientName(cl), a.clientKind(cl))).Children(func() { a.clientCard(c, cl) })
 			return
 		}
 		d.selClient = ""
@@ -69,13 +69,20 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		return
 	}
 	name := a.deviceName(dv)
-	card.Role(ui.RoleGroup).Label(name + ", " + a.kindLine(dv)).Children(func() {
+	card.Role(ui.RoleGroup).Label(spoken(a.L, name, a.kindLine(dv))).Children(func() {
 		// D155: every device renames in place, the home too; the title says "this Mac"
 		// for the Mac this app runs Ducter on, and the field edits its real name.
 		a.sheetHero(c, "dev:"+dv.ID, deviceArt(dv), deviceIdle(dv), dv.State == protocol.DeviceUnreachable)
 		a.sheetName(c, dv.ID, name, dv.Name, true)
-		line, ink, strong := a.sheetStatus(dv)
-		a.statusLine(c, line, ink, strong)
+		state, line, ink, strong := a.sheetStatus(dv)
+		if state != "" {
+			// D291: the state word with its dot, and its line (最后在线 3 小时前) under it, muted.
+			a.sheetState(c, state, ink, line != "")
+			ink, strong = t.InkMuted, false
+		}
+		if line != "" {
+			a.statusLine(c, line, ink, strong)
+		}
 		// D157: a laptop doing tasks, with another computer to carry them: one tap before closing it.
 		if dv.Kind == "laptop" && dv.State == protocol.DeviceAwake && a.runningOn(dv) > 0 && a.manyComputers() {
 			ui.Row(c).Justify(ui.Center).Margin(0, 0, t.S3, 0).Children(func() { a.closingRow(c, dv) })
@@ -174,41 +181,66 @@ func (a *App) sheetName(c *ui.Context, id, name, real string, renamable bool) {
 	})
 }
 
-// sheetStatus is the one status line under a device's name (§3.2): the
-// role or the state, never the kind and never how it connects.
-func (a *App) sheetStatus(dv *protocol.DeviceView) (string, ui.Color, bool) {
+// sheetStatus is the status under a device's name (§3.2): the role or
+// what it is doing, as one line, never the kind and never how it
+// connects. Asleep or out of reach, state is the state word (drawn with
+// its dot, in ink) and line the one under it (最后在线 3 小时前 / Last seen
+// 3 hours ago), never one string joined by a separator (D291).
+func (a *App) sheetStatus(dv *protocol.DeviceView) (state, line string, ink ui.Color, strong bool) {
 	t := a.T
 	switch dv.State {
 	case protocol.DeviceUnreachable:
 		if ago := a.agoLong(dv.LastSeen); ago != "" {
-			return a.L.T("card.status.unreachable", ago), t.Failed.Ink, true
+			line = a.L.T("device.last_seen", ago)
 		}
-		return a.L.T("card.status.unreachable.none"), t.Failed.Ink, true
+		return a.L.T("card.status.away"), line, t.Failed.Ink, true
 	case protocol.DeviceAsleep:
-		return a.L.T("device.state.asleep"), t.Asleep.Ink, true
+		return a.L.T("device.state.asleep"), a.L.T("device.asleep.after"), t.Asleep.Ink, true
 	}
 	n := a.runningOn(dv)
 	if dv.Home {
 		who := a.S.PersonaName
 		switch {
 		case n == 1:
-			return a.L.T("card.status.home.working.one", who), t.InkMuted, false
+			return "", a.L.T("card.status.home.working.one", who), t.InkMuted, false
 		case n > 1:
-			return a.L.T("card.status.home.working", who, n), t.InkMuted, false
+			return "", a.L.T("card.status.home.working", who, n), t.InkMuted, false
 		}
-		return a.L.T("card.status.home", who), t.InkMuted, false
+		return "", a.L.T("card.status.home", who), t.InkMuted, false
 	}
 	if dv.Kind == "phone" {
-		return a.L.T("device.client.now"), t.InkMuted, false
+		return "", a.L.T("device.client.now"), t.InkMuted, false
 	}
 	home := a.workHome()
 	switch {
 	case n == 1:
-		return a.L.T("card.status.working.one", home), t.Working.Ink, true
+		return "", a.L.T("card.status.working.one", home), t.Working.Ink, true
 	case n > 1:
-		return a.L.T("card.status.working", home, n), t.Working.Ink, true
+		return "", a.L.T("card.status.working", home, n), t.Working.Ink, true
 	}
-	return a.L.T("card.status.does", home), t.InkMuted, false
+	return "", a.L.T("card.status.does", home), t.InkMuted, false
+}
+
+// sheetState is a device's state word under its name, centered, in its
+// color with its dot (D291); more is the line under it, close by.
+func (a *App) sheetState(c *ui.Context, word string, ink ui.Color, more bool) {
+	t := a.T
+	bottom := t.S4
+	if more {
+		bottom = 2
+	}
+	ui.Row(c).Justify(ui.Center).Margin(2, 0, bottom, 0).Children(func() {
+		a.stateWord(c, word, ink, t.MD, 700)
+	})
+}
+
+// stateWord is a state in words, its own element: the word in its color
+// with its dot before it (连不上, 睡着了; D291).
+func (a *App) stateWord(c *ui.Context, word string, ink ui.Color, size float32, weight int) {
+	ui.Row(c).Gap(5).AlignItems(ui.Center).MinWidth(0).Shrink(1).Children(func() {
+		ui.Box(c).Size(7, 7).Radius(3.5).Background(ink).Shrink(0).AccessHidden(true)
+		ui.Text(c, word).FontSize(size).FontWeight(weight).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
+	})
 }
 
 func (a *App) statusLine(c *ui.Context, line string, ink ui.Color, strong bool) {
@@ -312,13 +344,14 @@ func (a *App) coinTile(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 	name := harnessName(h.Harness)
 	off := !h.LoggedIn || dv.State != protocol.DeviceAwake
 	dot := agentBehind(&h)
-	label := name + " · " + a.deviceNameIn(dv)
+	out, avail := "", ""
 	if !h.LoggedIn {
-		label += " · " + a.L.T("coin.signed_out")
+		out = a.L.T("coin.signed_out")
 	}
 	if dot {
-		label += " · " + a.L.T("agentv.available", h.Latest)
+		avail = a.L.T("agentv.available", h.Latest)
 	}
+	label := spoken(a.L, name, a.deviceNameIn(dv), out, avail)
 	key := coinKey(dv.ID, h.Harness)
 	tile := ui.Column(c.Key("coin:"+key)).Width(coinTileW).AlignItems(ui.Center).Gap(2).Padding(t.S1, 0, 2, 0).Radius(14).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable().AccessSelected(sel)
@@ -513,24 +546,23 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 			}
 			return
 		}
-		title := name
+		// The agent's name, then the partner's model on it as a fact of its own (D291).
+		model := ""
 		if dv.Home && a.brain().Harness == h.Harness {
-			if m := modelLabel(&h, a.brain().Model); m != "" {
-				title += " · " + m
-			}
+			model = modelLabel(&h, a.brain().Model)
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-			ui.Text(c, title).FontSize(t.MD).FontWeight(800)
+			ui.Text(c, name).FontSize(t.MD).FontWeight(800)
+			if model != "" {
+				ui.Text(c, model).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+			}
 			if m := a.BrainMark(dv, h.Harness); m != "" {
 				ui.Text(c, m).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
 		if h.Version != "" {
-			line := a.L.T("agentv.version", h.Version)
-			if how := a.coinHow(h); how != "" {
-				line = a.L.T("coin.version", h.Version, how)
-			}
-			ui.Text(c, line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Selectable()
+			// Its version and how it was installed: two facts, side by side (D291).
+			a.facts(c, t.SM, t.InkSoft, a.L.T("agentv.version", h.Version), a.coinHow(h))
 		}
 		if h.How == "unknown" {
 			ui.Text(c, a.L.T("agentv.how.unknown")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
@@ -1072,19 +1104,20 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 	if sp.look == chipAdd {
 		label = "+ " + label
 	}
-	acc := label
+	state := ""
 	switch sp.look {
 	case chipOn:
-		acc += " · " + a.L.T("chip.state.on")
+		state = a.L.T("chip.state.on")
 	case chipOff:
-		acc += " · " + a.L.T("chip.state.off")
+		state = a.L.T("chip.state.off")
 	case chipFail:
-		acc += " · " + firstNonEmpty(sp.state, a.L.T("chip.failed"))
+		state = firstNonEmpty(sp.state, a.L.T("chip.failed"))
 	case chipLater:
-		acc += " · " + a.L.T("chip.state.later")
+		state = a.L.T("chip.state.later")
 	case chipElsewhere:
-		acc += " · " + sp.where
+		state = sp.where
 	}
+	acc := spoken(a.L, label, state)
 	chip := ui.Row(c.Key("chip:" + key)).Height(chipH).Gap(6).Radius(t.ButtonRadius[1]).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(acc).Focusable().AccessSelected(sp.look == chipOn).Shrink(0)
 	if sp.look == chipAdd {
@@ -1206,7 +1239,7 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 		if sp.info != nil {
 			// ⓘ sits on the chip's corner, shown on hover, so nothing moves.
 			i := ui.Box(c.Key("chip-i:"+key)).Absolute().Right(-6).Top(-7).Size(18, 18).Radius(9).Background(t.Surface).
-				InsetShadow(0, 0, 0, 1.2, t.Faint).Role(ui.RoleButton).Label(a.L.T("chip.info") + " · " + sp.label).Cursor(ui.CursorPointer)
+				InsetShadow(0, 0, 0, 1.2, t.Faint).Role(ui.RoleButton).Label(spoken(a.L, a.L.T("chip.info"), sp.label)).Cursor(ui.CursorPointer)
 			if !hover {
 				i.Opacity(0)
 			}
@@ -1289,9 +1322,8 @@ func (a *App) chipNotes(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 			note("busy", false, func() { a.infoText(c, a.L.T("work.mac.stopping")) })
 		case w.failed != "":
 			note("failed", true, func() {
-				ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Wrap().Children(func() {
+				ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
 					ui.Text(c, w.failed).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).LineHeight(1.5)
-					ui.Text(c, "·").FontSize(t.SM).TextColor(t.Failed.Ink)
 					if a.quietButton(c, "worker-log", a.L.T("chip.log"), "", true, 0) {
 						s.log = !s.log
 					}
@@ -1351,7 +1383,9 @@ func connWay(cl *protocol.ReachClient) string {
 	case isCLI(cl):
 		return "cli"
 	case strings.Contains(p, "ios") || strings.Contains(p, "iphone"):
-		if strings.Contains(p, "safari") || strings.Contains(p, "web") {
+		// D291: the app says "-app" in its platform; any other iOS client
+		// is a browser ("ios-safari", or "ios" before D291).
+		if !strings.Contains(p, "app") {
 			return "safari"
 		}
 		return "app"

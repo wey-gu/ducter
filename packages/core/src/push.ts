@@ -285,6 +285,7 @@ const COPY = {
     test: "通知设好了。需要你的时候，我会这样告诉你。",
     hold: "先等等",
     asking: "对方在问",
+    askingTitle: "电话那头在问",
     onTheLine: "电话那头在等。",
     peerWaits: "没回就让它先等着。",
     goWith: "好，{label}",
@@ -305,6 +306,7 @@ const COPY = {
     test: "Notifications work. This is how I'll call you when something needs you.",
     hold: "Hold",
     asking: "They're asking",
+    askingTitle: "They're asking on the call",
     onTheLine: "They're waiting on the line.",
     peerWaits: "If you don't answer, it keeps waiting.",
     goWith: "Go: {label}",
@@ -360,9 +362,12 @@ export function decisionMessage(d: Bodies["decision"], o: { persona: string; tas
   // D193: a question from a live call: someone is waiting on the line. No buttons (the answer is
   // the owner's own words or a choice on the card), time-sensitive so it comes through.
   if (d.call?.kind === "question")
-    return { title: `${o.persona} · ${c.asking}`, body: `${d.question} ${c.onTheLine}`, tag: `d:${d.decisionId}`, url: `app#d=${encodeURIComponent(d.decisionId)}`, decisionId: d.decisionId, level: "time-sensitive" };
+    // D291: the title says what it is about on its own; the app's name already says it comes from Ducter.
+    return { title: c.askingTitle, body: `${d.question} ${c.onTheLine}`, tag: `d:${d.decisionId}`, url: `app#d=${encodeURIComponent(d.decisionId)}`, decisionId: d.decisionId, level: "time-sensitive" };
+  // D291: the title says what it is about on its own (who asks, or the task); the app's own name
+  // already says it comes from Ducter, so the partner's name is the title only when nothing else is.
   const msg: PushMessage = {
-    title: peer ? `${o.persona} · ${peer}` : o.task ? `${o.persona} · ${o.task}` : o.persona,
+    title: peer ?? o.task ?? o.persona,
     body: `${d.question} ${d.asker ? c.peerWaits : defaultLine(d, o.locale, o.now)}`,
     tag: `d:${d.decisionId}`,
     url: `app#d=${encodeURIComponent(d.decisionId)}`,
@@ -378,7 +383,7 @@ export function decisionMessage(d: Bodies["decision"], o: { persona: string; tas
 export function doneMessage(t: { taskId: string; title: string; summary?: string; failed?: boolean }, o: { persona: string; locale: LangTag }): PushMessage {
   const c = copy(o.locale);
   const line = (t.summary ?? "").split("\n")[0]!.trim().slice(0, 140) || t.title;
-  return { title: `${o.persona} · ${t.title}`, body: t.failed ? c.failed(line) : c.done(line), tag: `t:${t.taskId}`, url: `app#task=${encodeURIComponent(t.taskId)}` };
+  return { title: t.title || o.persona, body: t.failed ? c.failed(line) : c.done(line), tag: `t:${t.taskId}`, url: `app#task=${encodeURIComponent(t.taskId)}` };
 }
 
 export function coalescedMessage(n: number, o: { persona: string; locale: LangTag; morning?: boolean }): PushMessage {

@@ -73,6 +73,9 @@ type pastState struct {
 	// tab is the collection shown: "" 做过的事, "ongoing" 一直在跑的 (ongoing.go).
 	tab string
 	og  ongoingState
+	// D299: adopting is the outside session being carried on (agent:id),
+	// opened when its task is there; outMsg why one couldn't be.
+	adopting, outMsg string
 }
 
 // ---------- ways in ----------
@@ -266,7 +269,7 @@ func (a *App) pastField(c *ui.Context, res *protocol.PastFrame) ui.Element {
 		if res != nil && res.Range != nil && strings.TrimSpace(ps.q) != "" {
 			ui.Row(c.Key("range")).Gap(t.S2).Padding(0, t.S4).AlignItems(ui.Center).Children(func() {
 				a.glyph(c, 14, drawClock(t.InkMuted))
-				ui.Text(c, a.pastRange(res.Range)).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
+				a.facts(c, t.SM, t.InkSoft, a.pastRange(res.Range)...)
 			})
 		}
 	})
@@ -275,10 +278,11 @@ func (a *App) pastField(c *ui.Context, res *protocol.PastFrame) ui.Element {
 
 // pastRange says the dates time words meant: "上周二 · 11 月 10 日",
 // "上周 · 11 月 9 日 – 11 月 15 日".
-func (a *App) pastRange(r *protocol.PastRange) string {
+// D291: the range a search read, said and dated apart.
+func (a *App) pastRange(r *protocol.PastRange) []string {
 	since, before := store.ParseTime(r.Since), store.ParseTime(r.Before)
 	if since.IsZero() {
-		return r.Words
+		return nonEmpty(r.Words)
 	}
 	last := before.Add(-time.Second)
 	day := func(at time.Time) string {
@@ -290,9 +294,9 @@ func (a *App) pastRange(r *protocol.PastRange) string {
 	}
 	span := day(since)
 	if !before.IsZero() && day(last) != span {
-		span += " – " + day(last)
+		span += "–" + day(last)
 	}
-	return strings.Join(nonEmpty(r.Words, span), " · ")
+	return nonEmpty(r.Words, span)
 }
 
 // pastChips is the one row of filters on a sunk track: All, Starred, then
@@ -461,6 +465,11 @@ func (a *App) pastList(c *ui.Context, res *protocol.PastFrame) {
 	if res == nil {
 		return
 	}
+	terms := pastTerms(ps.q)
+	if len(res.Items) == 0 && len(res.Outside) > 0 {
+		a.pastOutside(c, res, terms)
+		return
+	}
 	if len(res.Items) == 0 {
 		words, key := a.L.T("past.none"), "none"
 		if !a.pastSearching() && ps.filter.kind == "" {
@@ -473,18 +482,18 @@ func (a *App) pastList(c *ui.Context, res *protocol.PastFrame) {
 		})
 		return
 	}
-	terms := pastTerms(ps.q)
 	if a.pastSearching() {
 		items := make([]*protocol.PastItem, len(res.Items))
 		for i := range res.Items {
 			items[i] = &res.Items[i]
 		}
 		a.pastSection(c, "found", a.L.T("past.n", res.Total), 0, items, terms)
-		return
+	} else {
+		for _, g := range pastGroups(a.L, res.Items, a.Now()) {
+			a.pastSection(c, g.key, g.name, len(g.items), g.items, terms)
+		}
 	}
-	for _, g := range pastGroups(a.L, res.Items, a.Now()) {
-		a.pastSection(c, g.key, g.name, len(g.items), g.items, terms)
-	}
+	a.pastOutside(c, res, terms) // D299 (pastoutside.go)
 }
 
 func (a *App) pastSection(c *ui.Context, key, name string, n int, items []*protocol.PastItem, terms []string) {
@@ -719,7 +728,11 @@ func (a *App) pastMeta(c *ui.Context, it *protocol.PastItem) {
 	}
 	parts := nonEmpty(proj, harnessName(it.Harness), it.Computer, a.pastDate(store.ParseTime(it.UpdatedAt)))
 	ui.Row(c.Key("l3")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
-		ui.Text(c.Key("where"), strings.Join(parts, " · ")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+		ui.Row(c.Key("where")).Gap(t.S3).AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() { // D291: each fact apart
+			for _, p := range parts {
+				ui.Text(c, p).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+			}
+		})
 		if ch := it.Changes; ch != nil && (ch.Adds > 0 || ch.Dels > 0) {
 			ui.Row(c.Key("stat")).Gap(t.S1 + 1).Shrink(0).Children(func() {
 				if ch.Adds > 0 {
@@ -736,6 +749,10 @@ func (a *App) pastMeta(c *ui.Context, it *protocol.PastItem) {
 				key = "onhand.pr.merged"
 			}
 			ui.Text(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
+		}
+		if o := it.Outside; o != nil {
+			// D299: carried on from a session the person ran outside Ducter.
+			ui.Text(c.Key("outside"), a.L.T("past.out.from", harnessName(o.Agent))).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 		}
 		end, ink := "", t.InkMuted
 		switch {
@@ -811,7 +828,7 @@ func (a *App) pastActs(c *ui.Context, it *protocol.PastItem) {
 func (a *App) pastMore(c *ui.Context, it *protocol.PastItem) {
 	t := a.T
 	ps := &a.past
-	b := ui.Box(c.Key("more")).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(a.L.T("past.more") + " · " + it.Title).
+	b := ui.Box(c.Key("more")).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(spoken(a.L, a.L.T("past.more"), it.Title)).
 		Tooltip(a.L.T("past.more")).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
 	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
 	b.Draw(drawMore(fg))

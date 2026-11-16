@@ -133,17 +133,12 @@ func (a *App) taskLine(c *ui.Context, t *store.Task, detail string) {
 		detail = a.stateLabel(att)
 	}
 	// Who is doing it ends the line while it is under way, with why when it
-	// isn't Ducter's plain pick (D89).
-	if who, why := a.whoLine(t); who != "" && !finished(t) && att != protocol.Dropped {
-		detail += " · " + who
-		if why != "" {
-			detail += " · " + why
-		}
+	// isn't Ducter's plain pick (D89): each its own muted element (D291).
+	var who []string
+	if w, why := a.whoLine(t); w != "" && !finished(t) && att != protocol.Dropped {
+		who = append(a.bodyParts(t), why)
 	}
-	name := title
-	if detail != "" {
-		name += " · " + detail
-	}
+	name := spoken(a.L, append([]string{title, detail}, who...)...)
 	row := ui.Row(c.Key("task:" + t.ID)).Gap(th.S2).Wrap().AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).
 		Label(name).Focusable().MinWidth(0)
 	hover := row.Hovered()
@@ -153,8 +148,10 @@ func (a *App) taskLine(c *ui.Context, t *store.Task, detail string) {
 		if hover {
 			tl.TextColor(th.Ink).Underline()
 		}
-		if detail != "" {
-			ui.Text(c, "· "+detail).FontSize(th.SM).TextColor(th.InkMuted).AccessHidden(true)
+		for _, f := range append([]string{detail}, who...) {
+			if f != "" {
+				ui.Text(c, f).FontSize(th.SM).TextColor(th.InkMuted).AccessHidden(true)
+			}
 		}
 		a.glyph(c, 12, drawChevron(th.InkMuted, false))
 	})
@@ -323,10 +320,7 @@ func (a *App) textRow(c *ui.Context, h float32) ui.Element {
 // by screen readers and automation; the visible text stays label.
 func (a *App) buttonFor(c *ui.Context, label, about string, kind btnKind, height float32, onSurface ui.Color) bool {
 	t := a.T
-	name := label
-	if about != "" {
-		name = label + " · " + about
-	}
+	name := spoken(a.L, label, about)
 	h := a.controlHeight(height)
 	size, padX := t.MD, t.S5-4 // 15 / 20
 	switch h {

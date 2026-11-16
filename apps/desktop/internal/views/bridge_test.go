@@ -178,7 +178,7 @@ func TestBridgeRow(t *testing.T) {
 					}
 				case "connected":
 					// The first tap asks; the second disconnects.
-					if err := tt.Click(L.T("bridge.undo") + " · ducter"); err != nil {
+					if err := tt.Click(spoken(L, L.T("bridge.undo"), "ducter")); err != nil {
 						t.Fatal(err)
 					}
 					tt.Frame()
@@ -186,7 +186,7 @@ func TestBridgeRow(t *testing.T) {
 						t.Fatalf("断开 ran without asking: %v", (*sent)[n:])
 					}
 					bridgeShot(t, tt, fmt.Sprintf("mac-%s-disconnect-ask", lang))
-					if err := tt.Click(L.T("bridge.undo") + " · ducter"); err != nil {
+					if err := tt.Click(spoken(L, L.T("bridge.undo"), "ducter")); err != nil {
 						t.Fatal(err)
 					}
 					if len(*sent) != n+1 || (*sent)[n].(protocol.BridgeAction).T != "bridge_disconnect" {

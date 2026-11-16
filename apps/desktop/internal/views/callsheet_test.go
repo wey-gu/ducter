@@ -74,7 +74,7 @@ func TestCallSheet(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Calls: []protocol.CallBody{{CallID: "call_s", State: "done", Plan: pl, Outcome: "订上了：明晚 7 点两位，靠窗"}}}})
 	app.Route = RouteOnHand
 	tt.Frame()
-	if !tt.HasText("打完了 · 金玉楼") || !tt.HasText("订上了：明晚 7 点两位，靠窗") {
+	if !tt.HasText("已打给金玉楼") || !tt.HasText("订上了：明晚 7 点两位，靠窗") {
 		t.Errorf("the row: %q", tt.Texts())
 	}
 }

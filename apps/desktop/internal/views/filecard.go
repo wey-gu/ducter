@@ -241,11 +241,11 @@ func (a *App) fileCard(c *ui.Context, ref *protocol.MediaRef) {
 			a.fileBadge(c, *ref, 30)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 				ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(name)
-				facts := protocol.SizeWords(ref.Bytes)
+				pages := ""
 				if g.pages > 0 {
-					facts += " · " + a.L.T("file.pages", g.pages)
+					pages = a.L.T("file.pages", g.pages)
 				}
-				ui.Text(c, facts).FontSize(t.XS).TextColor(t.InkMuted)
+				a.facts(c, t.XS, t.InkMuted, protocol.SizeWords(ref.Bytes), pages) // D291
 			})
 			ui.Text(c, a.L.T("media.open")).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft).Shrink(0)
 		})

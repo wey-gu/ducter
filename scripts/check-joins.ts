@@ -1,0 +1,129 @@
+// No joined text (D291): nothing a person reads is built by joining words with a separator.
+//
+// "iPhone · Ducter", "连不上 · 最后在线 3 小时前", [harness, model, effort].join(" · "): each says
+// several facts by gluing strings together with a dot, and the reader has to take them apart again.
+// The rule (design/ui.md "No joined text"): each fact is its own element with its own role (a title,
+// one secondary line that reads as a phrase, a state word with its dot, a muted time or count, an
+// icon for a kind, a quiet chip for a source); plain-text surfaces (a push, a copied line) say one
+// natural sentence. So a separator glyph in a client's words or view code is a mistake by default.
+//
+// Scanned: the web client, the Mac app, the iOS and Android shells, and the protocol and core words
+// that reach a screen or a push. Comments are skipped; tests, fixtures and evals aren't scanned. Out
+// of scope: the CLI's terminal output (packages/cli), logs, and the site's page titles.
+// Run: bun scripts/check-joins.ts (bun test runs it too: scripts/joins.test.ts).
+import { Glob } from "bun";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { codeLines } from "./check-glyphs.ts";
+
+const ROOT = join(import.meta.dir, "..");
+
+const TREES: { dir: string; glob: string }[] = [
+  { dir: "apps/web/src", glob: "**/*.{ts,tsx}" },
+  { dir: "apps/desktop", glob: "**/*.go" },
+  { dir: "apps/ios", glob: "**/*.{swift,strings,stringsdict}" },
+  { dir: "apps/android/app/src/main", glob: "**/*.{kt,xml}" },
+  { dir: "packages/protocol/src", glob: "**/*.ts" },
+  { dir: "packages/core/src", glob: "**/*.ts" },
+];
+const SKIP = /(^|\/)(test|tests|fixtures|testdata|node_modules|build|eval)\/|_test\.go$|\.test\.tsx?$/;
+
+/** Separators that join facts into one string: the middle dot, the bullet, the katakana dot. */
+const JOINER = /[·•・]/u;
+
+/**
+ * Deliberate exceptions, each with its reason. A line matches when its file is `file` and, if
+ * `has` is given, the line contains it. Keep this short: a new entry needs a reason a reviewer
+ * would accept, not "it was already there".
+ */
+export const ALLOW: { file: string; has?: string; why: string }[] = [
+  // The pre-D291 device name suffix is matched (to strip it), never shown.
+  { file: "apps/web/src/format.ts", has: '/ · Ducter$/', why: "strips the old suffix" },
+  { file: "apps/desktop/internal/store/store.go", has: '" · Ducter"', why: "strips the old suffix" },
+  { file: "packages/core/src/auth.ts", has: " · (?:Ducter|", why: "the one-time rename of devices paired before D291" },
+  { file: "packages/core/src/auth.ts", has: "LIKE '% · %'", why: "finds the devices to rename once (D291)" },
+  { file: "packages/core/src/auth.ts", has: 'endsWith(" · Ducter")', why: "an app paired before D178 keeps being known as the app" },
+  { file: "packages/core/src/candidates.ts", has: "·\\s*Ducter$", why: "strips the old suffix in words only a model reads" },
+  // Someone's Markdown list bullet, recognised while parsing; never written.
+  { file: "apps/web/src/markdown.ts", has: "[*•]", why: "parses a list bullet" },
+  { file: "apps/web/src/markdown.ts", has: "[-*•]", why: "parses a list bullet" },
+  { file: "apps/web/src/markdown-doc.ts", has: "[-*+•]", why: "parses a list bullet" },
+  { file: "apps/desktop/internal/views/follow.go", has: "[*•]", why: "parses a list bullet" },
+  { file: "apps/desktop/internal/views/phone.go", has: '"•"', why: "strips a provider's Markdown list marker" },
+  // The secret mask itself, and the rule that never masks a mask again.
+  { file: "packages/protocol/src/redact.ts", why: "the secret mask (HIDDEN) and its exclusion" },
+  { file: "apps/desktop/internal/redact/redact.go", why: "the secret mask (Hidden) and its exclusion" },
+  // Words only a model reads: a watcher item's fields for the partner.
+  { file: "packages/core/src/connections.ts", has: 'pick.join(" · ")', why: "a watcher item for the model, never shown" },
+  // TODO(D175): a partner tool's parameter example; changing it needs the partner eval run (research/98).
+  { file: "packages/core/src/work.ts", has: "每周一 9:00 · 跟着你的时区", why: "partner tool description, waits for its eval" },
+  // TODO(D296): the Settings panes belong to the settings pass (D289 merged, D296 in flight); listed in research/98.
+  { file: "apps/desktop/internal/i18n/accounts.go", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/i18n/autofill.go", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/i18n/channels.go", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/i18n/ia.go", has: "acct.src.", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/i18n/imessage.go", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/i18n/loadout.go", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/views/accounts.go", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/views/autofill.go", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/views/keys.go", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/views/loadout.go", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/views/settings.go", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/views/settings_panels.go", why: "TODO D296: Settings" },
+  { file: "apps/desktop/internal/views/settings_rows.go", why: "TODO D296: Settings" },
+  { file: "apps/web/src/accounts.tsx", why: "TODO D296: Settings" },
+  { file: "apps/web/src/autofill.tsx", why: "TODO D296: Settings" },
+  { file: "apps/web/src/i18n-autofill.ts", why: "TODO D296: Settings" },
+  { file: "apps/web/src/i18n-channels.ts", why: "TODO D296: Settings" },
+  { file: "apps/web/src/i18n.ts", has: '"acct.src.', why: "TODO D296: Settings" },
+  { file: "apps/web/src/i18n.ts", has: '"loadout.', why: "TODO D296: Settings" },
+  { file: "apps/web/src/i18n.ts", has: '"card.oo_out"', why: "TODO D296: Settings" },
+  { file: "apps/web/src/i18n.ts", has: '"card.key_bad"', why: "TODO D296: Settings" },
+  { file: "apps/web/src/i18n.ts", has: '"card.empty"', why: "TODO D296: Settings" },
+  { file: "apps/web/src/views.tsx", has: "loadout.", why: "TODO D296: Settings (the loadout pane)" },
+  { file: "apps/web/src/views.tsx", has: 'a.accounts.join(" · ")', why: "TODO D296: Settings (the loadout pane)" },
+  // A fact saved before D291 kept its sender inside its label: split once on load, never shown.
+  { file: "packages/core/src/proactive/ledger.ts", has: 'indexOf(" · ")', why: "splits facts saved before D291" },
+  // The partner's own Markdown list (model-written) as plain text: a marker at a line's start, one item per line.
+  { file: "packages/core/src/channels/format.ts", has: "• ${li2[2]}", why: "a list marker, not a joiner" },
+  { file: "apps/desktop/internal/imessage/words.go", has: 'mdBullet.ReplaceAllString(s, "· ")', why: "a list marker, not a joiner" },
+  // Masking dots hide a secret or a card number; they join nothing.
+  { file: "packages/protocol/src/saved.ts", has: "••${last4}", why: "a masked card number" },
+  { file: "packages/core/src/saved/index.ts", has: '"•••"', why: "masks a one-time code" },
+  { file: "packages/core/src/saved/fill.ts", has: '"••••••"', why: "masks a secret in an error" },
+  { file: "packages/core/src/saved/store.ts", has: "•••", why: "masks a secret or its hint" },
+];
+
+export function joins(text: string, ext: string): { line: number; text: string }[] {
+  const out: { line: number; text: string }[] = [];
+  codeLines(text, ext).forEach((c, i) => {
+    if (JOINER.test(c)) out.push({ line: i + 1, text: c.trim() });
+  });
+  return out;
+}
+
+export function scan(allow = ALLOW): string[] {
+  const bad: string[] = [];
+  for (const { dir, glob } of TREES) {
+    for (const f of new Glob(glob).scanSync({ cwd: join(ROOT, dir) })) {
+      const rel = `${dir}/${f}`;
+      if (SKIP.test(rel) || /static\/app\.js$/.test(rel)) continue;
+      const ext = f.split(".").pop()!;
+      const text = readFileSync(join(ROOT, rel), "utf8");
+      for (const j of joins(text, ext)) {
+        if (allow.some((a) => a.file === rel && (!a.has || j.text.includes(a.has)))) continue;
+        bad.push(`${rel}:${j.line}: ${j.text.slice(0, 160)}`);
+      }
+    }
+  }
+  return bad;
+}
+
+if (import.meta.main) {
+  const bad = scan();
+  if (bad.length) {
+    console.error(`Joined text (D291; design/ui.md "No joined text"), ${bad.length} lines:\n${bad.join("\n")}`);
+    process.exit(1);
+  }
+  console.log("joins: ok");
+}

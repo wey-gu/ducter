@@ -911,6 +911,10 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		a.Welcomed()
 	case "action_result":
 		delete(a.actSent, f.TaskID)
+	case "outside_adopted":
+		a.outsideAdopted(f.Past) // D299 (pastoutside.go)
+	case "outside_hidden":
+		a.askPast()
 	case "media_keys":
 		a.keysCame(f.MediaKeys)
 	case "devices":
@@ -1063,7 +1067,9 @@ func harnessBadge(h string) string {
 	return h
 }
 
-func (a *App) bodyLine(t *store.Task) string {
+// bodyParts is who does a task as separate facts: the agent, its model,
+// its effort (D202), each its own element on screen (D291, `facts`).
+func (a *App) bodyParts(t *store.Task) []string {
 	parts := []string{}
 	if h := harnessName(t.Harness()); h != "" {
 		parts = append(parts, h)
@@ -1074,27 +1080,13 @@ func (a *App) bodyLine(t *store.Task) string {
 	if e := t.Effort(); e != "" {
 		parts = append(parts, a.effortWord(e)) // D202
 	}
-	return strings.Join(parts, " · ")
+	return parts
 }
 
-func (a *App) placeLine(p protocol.Place) string {
-	switch p.Kind {
-	case "repo":
-		parts := []string{}
-		if r := lastPath(p.RepoPath); r != "" {
-			parts = append(parts, r)
-		}
-		parts = append(parts, a.device(p.Device))
-		if p.Branch != "" {
-			parts = append(parts, p.Branch)
-		}
-		return strings.Join(parts, " · ")
-	case "folder":
-		return lastPath(p.Path) + " · " + a.device(p.Device)
-	case "browser":
-		return p.Profile + " · " + a.device(p.Device)
-	}
-	return a.L.T("place.none")
+// bodyLine is bodyParts read as a list, for an accessible name or a
+// sentence's slot; on screen draw bodyParts with `facts` (D291).
+func (a *App) bodyLine(t *store.Task) string {
+	return spoken(a.L, a.bodyParts(t)...)
 }
 
 // device names a device; the main process's own is "this Mac".

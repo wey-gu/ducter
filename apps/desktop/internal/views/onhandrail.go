@@ -11,7 +11,6 @@ package views
 import (
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -297,7 +296,7 @@ func (a *App) onHandRail(c *ui.Context, w float32) {
 			}
 			ui.Row(c.Key("rail-lens")).Padding(t.S4, t.S4, 0, t.S4).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				h := ui.Row(c.Key("lens-back")).Gap(t.S1).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).
-					Label(a.L.T("onhand.lens") + " · " + name).Focusable().MinWidth(0).Shrink(1)
+					Label(spoken(a.L, a.L.T("onhand.lens"), name)).Focusable().MinWidth(0).Shrink(1)
 				ink := t.InkSoft
 				if h.Hovered() {
 					ink = t.Ink
@@ -353,7 +352,7 @@ func (a *App) foldMark(tasks []*store.Task) (st rowMark, of *store.Task, words s
 	case fresh > 1:
 		parts = append(parts, a.L.T("onhand.fold.new", fresh))
 	}
-	return st, of, strings.Join(parts, " · ")
+	return st, of, spoken(a.L, parts...)
 }
 
 // railKeys: ⌘⇧] and ⌘⇧[ walk the tasks from anywhere, the composer

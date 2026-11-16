@@ -206,10 +206,11 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 	}
 	// One quiet line (D152): where it stands and its one clock, then who does it and where.
 	ui.Column(c.Key("meta")).Gap(2).Children(func() {
-		ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
+		// D291: the state word in its ink, and apart, its clock in muted figures.
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, state).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
 			if when != "" {
-				ui.Text(c, "· "+when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
+				ui.Text(c, when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
 			}
 		})
 		a.taskWho(c, task)
@@ -237,19 +238,22 @@ func (a *App) taskHeadline(c *ui.Context, task *store.Task) {
 		line = shortTitle(task.Title())
 	}
 	a.heading(c, autospace(redact.Text(line)), t.XXL).LineHeight(1.25).Balance().MaxWidth(headMeasure).Selectable()
-	if next := a.taskNext(task); next != "" {
-		ui.Text(c.Key("next"), next).FontSize(t.MD).TextColor(t.InkSoft).FontFeatures("tnum").MaxWidth(headMeasure)
+	if next := a.taskNext(task); len(next) > 0 {
+		ui.Column(c.Key("next")).MaxWidth(headMeasure).Children(func() {
+			a.facts(c, t.MD, t.InkSoft, next...)
+		})
 	}
 }
 
 // taskNext is what comes next for a waiting task, in one line (D261): when
 // it looks again (or goes on), and, for a wait gone quiet, since when
 // nothing has changed. Deterministic: the waiter's own times, never a model.
-func (a *App) taskNext(task *store.Task) string {
+func (a *App) taskNext(task *store.Task) []string {
 	// D279: a wait of its own says when it comes back in the state and the watch card.
 	if task.Attention() != protocol.Blocked || a.S.WaiterFor(task.ID) != nil {
-		return ""
+		return nil
 	}
+	// D291: each its own fact, never joined by "·".
 	var parts []string
 	if a.quietWait(task) && task.Card != nil {
 		parts = append(parts, a.tp("onhand.wait.since", a.agoLong(task.Card.UpdatedAt)))
@@ -257,11 +261,12 @@ func (a *App) taskNext(task *store.Task) string {
 	if next, _ := a.waitNext(a.S.WaiterFor(task.ID)); next != "" {
 		parts = append(parts, next)
 	}
-	s := strings.Join(parts, " · ")
-	if a.L.Cased() && s != "" {
-		s = strings.ToUpper(s[:1]) + s[1:]
+	if a.L.Cased() {
+		for i, s := range parts {
+			parts[i] = strings.ToUpper(s[:1]) + s[1:]
+		}
 	}
-	return s
+	return parts
 }
 
 // lastSaid is where the work stands in a sentence: the latest progress it
@@ -417,7 +422,9 @@ func (a *App) decisionAnswered(c *ui.Context, d *store.DecisionState) {
 	msg := a.answeredWords(d)
 	ui.Row(c.Key("answered")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 		a.glyph(c, 16, drawCheck(t.InkMuted))
-		ui.Text(c, a.L.T("decision.answered", strings.TrimRight(msg, "：: "), d.AnsweredAt.Local().Format("15:04"))).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+		// D291: what was answered, then its time as its own muted element.
+		ui.Text(c, strings.TrimRight(msg, "：: ")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+		ui.Text(c, d.AnsweredAt.Local().Format("15:04")).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 		ui.Text(c, a.questionOf(d)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Grow(1).MinWidth(0)
 	})
 }
@@ -535,7 +542,7 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 // was delivered: steered into this turn, as the next turn, or queued.
 func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, queued bool, media ...protocol.MediaRef) {
 	t := a.T
-	note, failed, waiting := "", false, false
+	note, tip, failed, waiting := "", "", false, false
 	queued = queued && sd != nil && sd.Delivered == "queued" && sd.Failed == ""
 	if sd != nil {
 		switch {
@@ -545,7 +552,7 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, queued bool
 			// D207: said only while it waits its turn (D210: 排队中, and
 			// when it will see it); steered in or started at once, the
 			// foot shows it at work.
-			note = a.L.T("delivery.queued.tag") + " · " + a.L.T("delivery.queued")
+			note, tip = a.L.T("delivery.queued.tag"), a.L.T("delivery.queued") // D291: the tag, why on hover
 		case sd.Delivered != "":
 		case sd.Seq == 0 && a.Now().Sub(sd.At) < 4*time.Second:
 			// No ack yet. A server without "sent" acks never says; after a
@@ -591,7 +598,10 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, queued bool
 			} else if !waiting {
 				ui.Box(c).Size(16, 16).Draw(drawCheck(t.InkMuted))
 			}
-			ui.Text(c, note).FontSize(t.XS).FontWeight(700).TextColor(col)
+			nt := ui.Text(c, note).FontSize(t.XS).FontWeight(700).TextColor(col)
+			if tip != "" {
+				nt.Tooltip(tip)
+			}
 		})
 	})
 }
@@ -793,7 +803,7 @@ func (a *App) changes(c *ui.Context, task *store.Task) {
 				files, added, deleted = counted.Files, counted.Adds, counted.Dels
 			}
 			if files > 0 {
-				ui.Text(c, "· "+a.filesLabel(files)).FontSize(t.SM).TextColor(t.InkMuted)
+				ui.Text(c, a.filesLabel(files)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
 				ui.Text(c, fmt.Sprintf("+%d", added)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink).Margin(0, 0, 0, t.S1)
 				ui.Text(c, fmt.Sprintf("−%d", deleted)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Failed.Ink)
 			}
@@ -911,12 +921,4 @@ func (a *App) filesLabel(n int) string {
 		return a.L.T("task.files.one")
 	}
 	return a.L.T("task.files", n)
-}
-
-// changesLabel counts changed files, singular for one.
-func (a *App) changesLabel(n int) string {
-	if n == 1 {
-		return a.L.T("task.changes.one")
-	}
-	return a.L.T("task.changes", n)
 }

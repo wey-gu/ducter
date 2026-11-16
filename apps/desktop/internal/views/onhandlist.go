@@ -631,8 +631,8 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				if a.manyComputers() && p.Kind != "none" && p.Device != "" {
 					meta = append(meta, a.computerName(p.Device))
 				}
-				if len(meta) > 0 {
-					ui.Text(c.Key("meta"), strings.Join(meta, " · ")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(200)
+				for _, m := range meta {
+					ui.Text(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(200)
 				}
 			})
 			if u := task.Card; !rail && u != nil && u.Until != nil && u.Until.State == "on" {
@@ -889,15 +889,15 @@ func (a *App) switcher(c *ui.Context) {
 func (a *App) switcherRow(c *ui.Context, x *store.Task, on bool, pick func()) {
 	t := a.T
 	p := x.Place()
-	where := strings.Join(nonEmpty(x.Project(), p.Branch), " · ")
+	where := nonEmpty(x.Project(), p.Branch)
 	r := ui.Row(c).Gap(t.S3).Padding(t.S3-2, t.S4).Radius(t.RadiusMD).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(x.Title())
 	if on || r.Hovered() {
 		r.Background(t.Sunken)
 	}
 	r.Children(func() {
 		ui.Text(c, keepWords(autospace(shortTitle(x.Title())))).FontSize(t.MD).FontWeight(700).SingleLine().Grow(1).Shrink(1).MinWidth(0)
-		if where != "" {
-			ui.Text(c.Key("m"), where).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(2).MinWidth(0)
+		for _, w := range where {
+			ui.Text(c.Key("m:"+w), w).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(2).MinWidth(0)
 		}
 		att := x.Attention()
 		ink := t.InkMuted

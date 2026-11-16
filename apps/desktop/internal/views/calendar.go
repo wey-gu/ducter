@@ -95,11 +95,12 @@ func (a *App) calRel(at, now time.Time) string {
 	return ""
 }
 
-// calDayHead is a day's head: 今天 · 11 月 18 日 周三 / Today · Wed, Nov 18.
+// calDayHead is a day's head, read as one date (D291): 今天 11 月 18 日 周三 /
+// Today, Wed, Nov 18.
 func (a *App) calDayHead(at, now time.Time) string {
 	d := i18n.CalDate(a.L.Lang, at, now)
 	if r := a.calRel(at, now); r != "" {
-		return r + " · " + d
+		return a.L.T("cal.dated", r, d)
 	}
 	return d
 }
@@ -256,7 +257,7 @@ func (a *App) calDay(c *ui.Context, d protocol.CalDay, loc *time.Location, now t
 		ui.Column(c).Gap(2).Padding(0, 0, t.S2, 0).Children(func() {
 			ui.Text(c, a.calDayHead(at, now)).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
 			if len(d.Marks) > 0 {
-				ui.Text(c, strings.Join(d.Marks, " · ")).FontSize(t.XS).TextColor(t.InkMuted)
+				a.facts(c, t.XS, t.InkMuted, d.Marks...)
 			}
 		})
 		if len(evs) == 0 {
@@ -435,8 +436,10 @@ func (a *App) calRow(c *ui.Context, e protocol.CalEvent, loc *time.Location, now
 				}
 			})
 			if len(meta) > 0 {
-				line := autospace(strings.Join(meta, " · "))
-				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0)
+				for i := range meta {
+					meta[i] = autospace(meta[i])
+				}
+				a.facts(c, t.XS, t.InkMuted, meta...)
 			}
 		})
 	})
@@ -514,10 +517,10 @@ func (a *App) calChangeBlock(c *ui.Context, d *store.DecisionState) {
 			if cal == "" {
 				cal = a.L.T("cal.main")
 			}
-			if ch.Account != "" {
-				cal += " · " + mailShort(ch.Account)
-			}
 			ui.Text(c, autospace(cal)).FontSize(t.SM).TextColor(t.Ink)
+			if ch.Account != "" {
+				ui.Text(c, mailShort(ch.Account)).FontSize(t.SM).TextColor(t.InkMuted)
+			}
 		})
 		// 5. who hears.
 		line(a.calWhoHears(ch), t.InkSoft)
@@ -602,7 +605,7 @@ func (a *App) calSettled(c *ui.Context, d *store.DecisionState) {
 			}
 			ui.Text(c, text).FontSize(t.SM).FontWeight(700).TextColor(ink)
 			if link != "" {
-				if a.quietLink(c, "calopen:"+d.DecisionID, a.L.T("cal.open"), a.L.T("cal.open")+" · "+d.Cal.Title) {
+				if a.quietLink(c, "calopen:"+d.DecisionID, a.L.T("cal.open"), spoken(a.L, a.L.T("cal.open"), d.Cal.Title)) {
 					a.openLink(link)
 				}
 			}

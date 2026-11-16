@@ -5,6 +5,7 @@ import type { ComponentChildren } from "preact";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
+import { spoken } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -17,7 +18,7 @@ export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size
       class={`btn ${p.kind}${p.size ? ` ${p.size}` : ""}${p.grow ? " grow" : ""}${p.class ? ` ${p.class}` : ""}`}
       onClick={p.onClick}
       title={p.kind === "primary" ? p.label : undefined}
-      aria-label={p.about ? `${p.label} · ${p.about}` : undefined}
+      aria-label={p.about ? spoken(A.L, p.label, p.about) : undefined}
       disabled={p.disabled}
       aria-expanded={p.expanded}
     >
@@ -176,7 +177,7 @@ export function Toggle(p: { label: string; help?: string; checked: boolean; onCh
  *  (D289): before it is confirmed, the soft ink, the failed ink only under the pointer. */
 export function DangerButton(p: { label: string; about?: string; quiet?: boolean; onClick: () => void }) {
   return (
-    <button class={`danger-text${p.quiet ? " quiet" : ""}`} aria-label={p.about ? `${p.label} · ${p.about}` : undefined} onClick={p.onClick}>
+    <button class={`danger-text${p.quiet ? " quiet" : ""}`} aria-label={p.about ? spoken(A.L, p.label, p.about) : undefined} onClick={p.onClick}>
       {p.label}
     </button>
   );
@@ -201,7 +202,7 @@ export function RenameTitle({ id, name, renamable }: { id: string; name: string;
   };
   if (draft === null)
     return renamable ? (
-      <button class="dev-name" aria-label={`${t("device.rename")} · ${name}`} onClick={() => setDraft(name)}>
+      <button class="dev-name" aria-label={spoken(A.L, t("device.rename"), name)} onClick={() => setDraft(name)}>
         {name}
         <span class="pen" aria-hidden="true" />
       </button>
@@ -268,7 +269,7 @@ export function Chip(p: { label: string; art?: string; look: "on" | "off" | "add
         key={squish}
         class={`ach ${p.look}${squish ? " squish" : ""}`}
         aria-pressed={still ? undefined : p.look === "on"}
-        aria-label={p.look === "add" ? `+ ${p.label}` : `${p.label} · ${state}`}
+        aria-label={p.look === "add" ? `+ ${p.label}` : spoken(A.L, p.label, state)}
         onClick={() => (still || setSquish(squish + 1), p.onClick())}
       >
         {p.art && <img src={p.art} alt="" />}
@@ -286,7 +287,7 @@ export function Chip(p: { label: string; art?: string; look: "on" | "off" | "add
         )}
       </button>
       {p.onInfo && (
-        <button class={`chip-i${p.infoOpen ? " open" : ""}`} aria-label={`${t("chip.info")} · ${p.label}`} aria-expanded={!!p.infoOpen} onClick={p.onInfo}>
+        <button class={`chip-i${p.infoOpen ? " open" : ""}`} aria-label={spoken(A.L, t("chip.info"), p.label)} aria-expanded={!!p.infoOpen} onClick={p.onInfo}>
           i
         </button>
       )}
@@ -294,15 +295,28 @@ export function Chip(p: { label: string; art?: string; look: "on" | "off" | "add
   );
 }
 
-/** One line in a list of devices: clay, name, one word of state; never wraps. */
+/**
+ * One line in a list of devices: clay, the name alone, and under it one short line: what it is
+ * doing (14 小时前在线 / Online 14 hours ago), or a state word in its color with its dot; 有更新 a
+ * fact of its own beside it (D291: never "iPhone · 14 小时前"). Each line ellipsizes on its own.
+ */
 export function ListRow(p: { art: string; name: string; word: string; tone?: string; update?: string; onClick: () => void; children?: ComponentChildren }) {
   return (
-    <button class="li-row" aria-label={[p.name, p.word, p.update].filter(Boolean).join(" · ")} onClick={p.onClick}>
+    <button class="li-row" aria-label={spoken(A.L, p.name, p.word, p.update)} onClick={p.onClick}>
       <img src={p.art} alt="" />
       <span class="t">
         <b>{p.name}</b>
-        <small class={p.tone ?? ""}>· {p.word}</small>
-        {p.update && <small class="update">· {p.update}</small>}
+        {(p.word || p.update) && (
+          <span class="li-line">
+            {p.word && (
+              <small class={p.tone ?? ""}>
+                {p.tone && <i class="sdot" aria-hidden="true" />}
+                {p.word}
+              </small>
+            )}
+            {p.update && <small class="update">{p.update}</small>}
+          </span>
+        )}
       </span>
       <span class="chev" aria-hidden="true">
         <Chev />
@@ -363,7 +377,7 @@ export function Seg<V extends string | number>(p: { label: string; value: V | un
  */
 export function AppTile(p: { label: string; sub?: string; about?: string; sel?: boolean; off?: boolean; grey?: boolean; add?: boolean; onClick: () => void; children?: ComponentChildren }) {
   // about is the whole name (Slack · Nowledge Labs, Inc): what it is called aloud, and on hover when a line is cut short (D192).
-  const acc = p.about || [p.label, p.sub].filter(Boolean).join(" · ");
+  const acc = p.about || spoken(A.L, p.label, p.sub);
   return (
     <button class={`app-tile${p.sel ? " sel" : ""}${p.off ? " off" : ""}${p.grey ? " grey" : ""}${p.add ? " add" : ""}`} aria-label={acc} title={acc} aria-pressed={p.add ? undefined : !!p.sel} onClick={p.onClick}>
       <span class="sq" aria-hidden="true">
@@ -388,7 +402,7 @@ export function AppTile(p: { label: string; sub?: string; about?: string; sel?: 
  */
 export function Pill(p: { label: string; about: string; open: boolean; onClick: () => void; children: ComponentChildren }) {
   return (
-    <button class={`pill${p.open ? " open" : ""}`} aria-label={`${p.about} · ${p.label}`} aria-expanded={p.open} onClick={p.onClick}>
+    <button class={`pill${p.open ? " open" : ""}`} aria-label={spoken(A.L, p.about, p.label)} aria-expanded={p.open} onClick={p.onClick}>
       {p.children}
       <svg class="caret" viewBox="0 0 10 10" aria-hidden="true">
         <path d="M2 3.5 5 6.7 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
@@ -418,6 +432,15 @@ export function MenuRow(p: { label: string; on: boolean; off?: boolean; why?: st
       )}
     </button>
   );
+}
+
+/** A group of separate facts (D291): each its own small element, spaced by a gap token and free to
+ *  wrap, never one string joined by "·". Empty facts drop out; nothing renders when none is left.
+ *  A fact with a role of its own (a state word with its dot, a time) is passed as an element. */
+export function Facts(p: { items: (ComponentChildren | false | null | undefined)[]; class?: string }) {
+  const xs = p.items.filter((x) => x !== false && x != null && x !== "");
+  if (!xs.length) return null;
+  return <span class={`facts${p.class ? ` ${p.class}` : ""}`}>{xs.map((x, i) => <span key={i}>{x}</span>)}</span>;
 }
 
 /** D289: a row that opens more under it (a source's service, a setup's step): its tile, words and

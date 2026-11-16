@@ -19,6 +19,8 @@ import { createMcpHub, type CoreMcpHub } from "./mcp.ts";
 import { DEFAULT_IDENTITY, type Persona } from "./persona.ts";
 import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
+import { createOutside } from "./outside.ts";
+import { createLocalAgents, type LocalAgents } from "./local-agents/index.ts";
 import { createOngoing } from "./ongoing.ts";
 import { registerCoreTools } from "./tools.ts";
 import type { Waiters } from "./waiters.ts";
@@ -103,6 +105,10 @@ const ANYWHERE_ASK = {
 };
 
 export interface CoreOptions {
+  /** D299: the reader of the person's own agents' sessions (Past tasks' 也在这台电脑上). Default:
+   *  this computer's, at DUCTER_OUTSIDE_HOME or the home folder; none under `bun test` or with
+   *  DUCTER_OUTSIDE=0 (tests never read a real person's sessions). */
+  localAgents?: LocalAgents;
   dataDir?: string;
   port?: number; // 0 = random (tests)
   hostname?: string; // default env DUCTER_HOST or 127.0.0.1; anything else is an explicit choice
@@ -708,6 +714,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   const marks = createMarks({ dataDir });
   tasks.setMarks((p, id) => marks.get(p, id));
   const past = createPast({ log, tasks, marks, computerName: (dev) => computers.nameOf(dev) });
+  // D299: the sessions the person ran in their own agents here (read only when Past tasks asks).
+  const outside = createOutside({ reader: opts.localAgents ?? (process.env.NODE_ENV === "test" || process.env.DUCTER_OUTSIDE === "0" ? createLocalAgents({ home: join(dataDir, "no-outside"), env: {} }) : createLocalAgents(process.env.DUCTER_OUTSIDE_HOME ? { home: process.env.DUCTER_OUTSIDE_HOME, env: {} } : {})), dataDir, log, tasks, ducterFolder: homeFolder, language: () => languageOf("", settings) });
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
   const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged() });
   const newTask = {
@@ -753,7 +761,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       },
       socketsChanged: () => reachRef?.refresh(),
     },
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing } });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside } });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.

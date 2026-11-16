@@ -93,7 +93,7 @@ describe("the relay client and the way out", () => {
     expect(clear).not.toContain("rebase");
     expect(clear).not.toContain("d1");
     const opened = JSON.parse(dec.decode(await decryptForDevice(KEY, c.body.d)));
-    expect(opened).toMatchObject({ title: "Ducter · 修 fix-ci", decisionId: "d1", url: "app#d=d1" });
+    expect(opened).toMatchObject({ title: "修 fix-ci", decisionId: "d1", url: "app#d=d1" });
     expect(opened.body).toContain("要 rebase 吗？");
   });
 

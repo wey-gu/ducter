@@ -108,7 +108,8 @@ type Block struct {
 	Timer bool `json:"timer,omitempty"`
 	// Limit is a wake's (D297): the agent's usage limit came back; Text is the agent.
 	Limit bool `json:"limit,omitempty"`
-	// At is a limit note's (D297): when the limit resets, when the agent said.
+	// At is an earlier note's (D299): when the outside session began; a
+	// limit note's (D297): when the limit resets, when the agent said.
 	At string `json:"at,omitempty"`
 }
 
@@ -159,6 +160,8 @@ var tolds = []struct {
 	{regexp.MustCompile(`^The user (?:said no to lending you their phone|said not now to using their own phone)`), "declined"},
 	{regexp.MustCompile(`^The user pressed 停下 / Stop`), "stopped"},
 	{regexp.MustCompile(`^The user reopened this task\.`), "reopened"},
+	// D299: a session from outside Ducter, carried on here.
+	{regexp.MustCompile(`^The user picked this session up again in Ducter`), "adopted"},
 	// D280: a loan of the person's own phone ended: taken back, given back
 	// (or the task finished), or lost.
 	{regexp.MustCompile(`^Your loan of (.+?) ended: (?:the user |Android's switch for Ducter went off)`), "taken_back"},
@@ -265,6 +268,14 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 	}
 	if r["kind"] == "turn_ended" && r["outcome"] == "failed" && (r["failure"] == "quota" || r["failure"] == "rate_limited") {
 		return Block{}, false
+	}
+	// D299: a session the person ran outside Ducter: its earlier turns follow.
+	if out := obj("outside"); out != nil {
+		name := ""
+		if ag := str(out["agent"]); ag != "" {
+			name = harnessName(ag)
+		}
+		return Block{Say: "earlier", Name: name, At: str(out["at"])}, true
 	}
 	switch {
 	// D268: a divider for a compaction or an interruption; a retry only while it is the latest thing.
@@ -786,7 +797,7 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 			out = append(out, Block{K: "report", Seq: ev.Seq, State: b.State, Text: redact.Text(b.Summary), Media: b.Media})
 		case *protocol.TaskEvent:
 			if len(b.Thinking) > 0 {
-				addRow(ev.Seq, StepRow{Seq: ev.Seq, Thought: redact.Text(strings.Join(b.Thinking, " · ")), N: 1, Outcome: "ok", Ms: took})
+				addRow(ev.Seq, StepRow{Seq: ev.Seq, Thought: redact.Text(strings.Join(b.Thinking, "\n")), N: 1, Outcome: "ok", Ms: took})
 				continue
 			}
 			if b.Tool != nil {

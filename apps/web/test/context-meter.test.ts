@@ -10,10 +10,10 @@ test("every context word in zh and en, the same keys", () => {
   expect(Object.keys(contextWords.zh).sort()).toEqual(Object.keys(contextWords.en).sort());
   const zh = strings("zh");
   const en = strings("en");
-  expect(zh.t("ctx.ring", "48%")).toBe("上下文 · 已用 48%");
-  expect(en.t("ctx.ring", "48%")).toBe("Context · 48% used");
-  expect(zh.t("note.compacted.size", "152k", "31k")).toBe("压缩了上下文 · 152k → 31k");
-  expect(en.t("note.compacted.size", "152k", "31k")).toBe("Context compacted · 152k → 31k");
+  expect(zh.t("ctx.ring", "48%")).toBe("上下文已用 48%");
+  expect(en.t("ctx.ring", "48%")).toBe("48% of the context used");
+  expect(zh.t("note.compacted.size", "152k", "31k")).toBe("上下文从 152k 压缩到了 31k");
+  expect(en.t("note.compacted.size", "152k", "31k")).toBe("Context compacted from 152k to 31k");
   expect(zh.t("ctx.why.unsupported", "pi")).toBe("pi 不提供额度信息");
   expect(en.t("ctx.compact")).toBe("Compact now");
   expect(zh.t("ctx.compact")).toBe("现在压缩");
@@ -25,7 +25,7 @@ test("a usage window in words", async () => {
   A.L = strings("zh");
   expect(limitName({ id: "codex:secondary", label: "Codex", used: 0.4, durationMs: 604_800_000 })).toBe("7 天额度");
   expect(limitName({ id: "five_hour", label: "Current session", used: 0.1 })).toBe("5 小时额度");
-  expect(limitName({ id: "model_scoped:Opus", label: "Current week (Opus)", used: 0.2, durationMs: 604_800_000 })).toBe("7 天额度 · Opus");
+  expect(limitName({ id: "model_scoped:Opus", label: "Current week (Opus)", used: 0.2, durationMs: 604_800_000 })).toBe("7 天额度（Opus）");
   A.L = strings("en");
   expect(limitName({ id: "five_hour", label: "Current session", used: 0.1 })).toBe("5-hour limit");
   expect(limitName({ label: "Usage limit", used: 0.1 })).toBe("Usage limit");

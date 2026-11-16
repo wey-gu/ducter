@@ -109,7 +109,7 @@ func TestRailStatusAndNewResults(t *testing.T) {
 	}
 	// A folded group keeps its most urgent mark, and says the counts.
 	st, of, words := app.foldMark([]*store.Task{app.S.Task("t_bench"), app.S.Task("t_compact"), app.S.Task("t_iter")})
-	if st != stNeeds || of.ID != "t_iter" || words != "1 needs you · 1 working · 1 new result" {
+	if st != stNeeds || of.ID != "t_iter" || words != "1 needs you, 1 working, 1 new result" {
 		t.Errorf("fold mark %q %v %q", st, of.ID, words)
 	}
 	// ⌘⇧] walks in the rail's order: needs you, working, waiting, done.

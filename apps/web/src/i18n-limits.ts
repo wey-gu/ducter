@@ -18,9 +18,8 @@ export const limitWords: { zh: Record<string, string>; en: Record<string, string
     "limit.group": "%s 的额度 %s 恢复",
     "limit.group.unknown": "%s 的额度用完了",
     "limit.group.n": "这 %d 件到时一起接着做",
-    "note.limit": "%s 的额度用完了，%s 恢复后接着做",
-    "note.limit.unknown": "%s 的额度用完了",
-    "wake.limit": "%s 的额度恢复了，%s 接着做",
+    "note.limit": "%s 的额度用完了",
+    "wake.limit": "%s 的额度恢复了，接着做",
   },
   en: {
     "limit.state": "Limit resets %s",
@@ -36,8 +35,7 @@ export const limitWords: { zh: Record<string, string>; en: Record<string, string
     "limit.group": "%s's limit resets %s",
     "limit.group.unknown": "%s's limit ran out",
     "limit.group.n": "These %d carry on together then",
-    "note.limit": "%s's limit ran out; it carries on after it resets at %s",
-    "note.limit.unknown": "%s's limit ran out",
-    "wake.limit": "%s's limit came back at %s, carrying on",
+    "note.limit": "%s's limit ran out",
+    "wake.limit": "%s's limit came back, carrying on",
   },
 };

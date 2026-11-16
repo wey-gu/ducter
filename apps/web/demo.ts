@@ -11,10 +11,13 @@ const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 // The seed can log events in the past (a run that took minutes, D268), then time is real again.
 let skew = 0;
 const clock = { ...realClock, now: () => Date.now() + skew };
+// D299: the demo reads its own scratch "this computer", never the real home's agent sessions.
+const localAgents = (await import("./demo-outside.ts")).outsideAgents(zh, process.env.DEMO_PAST === "1");
 // D295: a pretend Nowledge Mem (DEMO_MEM: cloud, local, ready, signin, install, none); never the machine's own.
 const mem = demoMem();
 const memOn = mem === "cloud" || mem === "local" || mem === "ready";
 const core = startCore({
+  localAgents,
   ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "", ...(memOn ? { mem: { agentId: "ducter", owned: true } } : {}) },
   hostname: process.env.DUCTER_HOST || "127.0.0.1",
@@ -209,6 +212,7 @@ if (process.env.DEMO_LIMIT === "1") await (await import("./demo-limits.ts")).see
 if (process.env.DEMO_PAST === "1") {
   await (await import("./demo-past.ts")).seedPast(core, zh, (ms) => (skew = ms));
   await (await import("./demo-ongoing.ts")).seedOngoing(core, zh);
+  await (await import("./demo-outside.ts")).seedAdopted(core, zh);
 }
 
 // After the seed, a scripted partner answers new messages the way a real one paces itself, so

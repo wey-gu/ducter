@@ -6,7 +6,7 @@
 import { contextMeter, limitSpan, tightest, tokensShort, type AccountUsage, type ContextMeter, type UsageWindow } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn } from "./controls.tsx";
+import { Btn, Facts } from "./controls.tsx";
 import { harnessName, when } from "./format.ts";
 import { attention, finished, harnessOf, type Task } from "./store.ts";
 
@@ -102,7 +102,7 @@ function Limits({ harness }: { harness: string }) {
         {tight && row(tight, true)}
         {rest.map((w) => row(w, false))}
       </ul>
-      {(u.plan || u.account) && <p class="ctx-acct">{[u.plan && planWord(u.plan), u.account].filter(Boolean).join(" · ")}</p>}
+      {(u.plan || u.account) && <Facts class="ctx-acct" items={[u.plan && planWord(u.plan), u.account]} />}
     </>
   );
 }
@@ -154,7 +154,8 @@ export function ContextCard({ task, m, onClose }: { task: Task; m: ContextMeter;
       </div>
       <p class="ctx-line">
         {m.percent !== undefined ? t("ctx.used", `${m.percent}%`) : m.compactions ? t("ctx.unknown") : t("ctx.none")}
-        {m.compactAt ? <span class="sub"> · {m.level === "near" ? t("ctx.near") : t("ctx.auto", tokensShort(m.compactAt))}</span> : null}
+        {/* D291: when it compacts is its own line, as on the Mac. */}
+        {m.compactAt ? <span class="sub ctx-sub">{m.level === "near" ? t("ctx.near") : t("ctx.auto", tokensShort(m.compactAt))}</span> : null}
       </p>
       <dl class="ctx-rows">
         {m.turn && (

@@ -253,14 +253,14 @@ export const SCREENING_HINT =
 export function renderCallEnded(c: CallBody, taskTitle?: string): string {
   const who = `${c.plan.name} (${c.plan.to})`;
   const cost = [c.durationSec !== undefined ? `${Math.max(1, Math.round(c.durationSec / 60))} min` : "", c.costUsd !== undefined ? `$${c.costUsd.toFixed(2)}` : ""].filter(Boolean).join(", ");
-  const task = c.taskId ? ` · task ${c.taskId}${taskTitle ? ` "${taskTitle}"` : ""} asked for this call: task_send it the outcome in one line` : "";
-  const facts = `${c.outcome ? ` · reported: "${c.outcome}"` : ""}${c.agreed?.length ? ` · agreed: ${c.agreed.join("; ")}` : ""}${cost ? ` · ${cost}` : ""}`;
-  const hint = c.hint === "screening" ? ` · ${SCREENING_HINT}` : "";
+  const task = c.taskId ? `; task ${c.taskId}${taskTitle ? ` "${taskTitle}"` : ""} asked for this call: task_send it the outcome in one line` : "";
+  const facts = `${c.outcome ? `; reported: "${c.outcome}"` : ""}${c.agreed?.length ? `; agreed: ${c.agreed.join("; ")}` : ""}${cost ? `; ${cost}` : ""}`;
+  const hint = c.hint === "screening" ? `; ${SCREENING_HINT}` : "";
   const fix = c.hint ? ", then that fix, briefly" : "";
   // D215: a call sheet the user called themselves: no provider, nothing reported but what they said.
   if (c.plan.from === "self")
     return c.outcome
-      ? `[call sheet: the user called it themselves] ${who} · they said: "${c.outcome}"${task}. Already recorded; nothing more to say unless they ask.`
+      ? `[call sheet: the user called it themselves] ${who}; they said: "${c.outcome}"${task}. Already recorded; nothing more to say unless they ask.`
       : `[call sheet: the user says they called] ${who}${task}. Ask them in one short line, in their language, how it went; then record it: phone_call do=result, callId ${c.callId}, outcome in their words.`;
   switch (c.state) {
     case "done":
@@ -303,7 +303,7 @@ export interface OwnPhoneView {
   os: "mac" | "linux" | "other";
   /** D278: 再找一次 / Look again is looking now (a short busy state on the card). */
   looking?: boolean;
-  /** D278: when it last looked (ISO), said on the card as 看过了 · 20:14 with what it saw. */
+  /** D278: when it last looked (ISO), said on the card as what it saw, then the time (20:14). */
   lookedAt?: string;
   /** adb (Android's USB tool) on that computer; missing: the card says how to get it. */
   adb: boolean;

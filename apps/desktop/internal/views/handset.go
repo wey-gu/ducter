@@ -20,7 +20,7 @@ import (
 // (apps/web/src/handset.tsx).
 
 func phoneShort(name string) string {
-	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(name), "· Ducter"))
+	return strings.TrimSpace(shownDeviceName(strings.TrimSpace(name)))
 }
 
 // handsetCard is 用这台手机 on an Android phone's card.

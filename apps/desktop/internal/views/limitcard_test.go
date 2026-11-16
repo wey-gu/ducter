@@ -79,8 +79,9 @@ func TestLimitCard(t *testing.T) {
 		if s := app.backWords(app.S.WaiterFor("t_l1")); s != app.L.T("limit.state", when) {
 			t.Errorf("%s: the state is %q", lang, s)
 		}
-		if w := app.waitWords(app.S.WaiterFor("t_l1")); w != app.L.T("limit.back", when) {
-			t.Errorf("%s: end line %q", lang, w)
+		// D291: whose limit, and apart, when it resets.
+		if w, back := app.waitWords(app.S.WaiterFor("t_l1")); w != app.L.T("limit.line", "Claude Code") || back != app.L.T("limit.state", hhmm(reset)) {
+			t.Errorf("%s: end line %q / %q", lang, w, back)
 		}
 		if err := tt.Click(app.L.T("limit.handoff", "Codex")); err != nil {
 			t.Fatal(err)

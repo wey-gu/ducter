@@ -91,7 +91,7 @@ describe("where the fold is", () => {
 describe("the Android app", () => {
   test("pairs as an Android phone through Ducter (apps/android sets DucterApp/ in its user agent)", () => {
     const ua = "Mozilla/5.0 (Linux; Android 16; Pixel Fold Build/BP2A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/140.0 Mobile Safari/537.36 DucterApp/0.0.10";
-    expect(deviceName(ua, 5)).toEqual({ name: "Android phone · Ducter", platform: "android-app" });
+    expect(deviceName(ua, 5)).toEqual({ name: "Android phone", platform: "android-app" }); // D291: the model alone
   });
   test("its card says the app, not the browser, renamed or paired before the platform said so (2026-11-11)", () => {
     const at = { id: "c1", form: "", lastSeen: "" } as unknown as Client;
@@ -102,6 +102,6 @@ describe("the Android app", () => {
   test("says plainly it can't notify in this version, in both languages", () => {
     expect(strings("zh").t("notify.android.later")).toContain("安卓 App");
     expect(strings("en").t("notify.android.later")).toContain("Android app");
-    expect(strings("en").t("device.kind.android.app")).toBe("Your Android phone · through the Ducter app");
+    expect(strings("en").t("device.kind.android.app")).toBe("An Android phone with the Ducter app");
   });
 });

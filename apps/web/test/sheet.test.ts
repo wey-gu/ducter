@@ -4,7 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { strings, TABLES } from "../src/i18n.ts";
-import { agentBehind, chipsFor, listWord, statusLine, versionLine, viaText } from "../src/sheet.ts";
+import { agentBehind, chipsFor, listWord, statusLine, versionFacts, viaText } from "../src/sheet.ts";
 
 const zh = strings("zh");
 const en = strings("en");
@@ -14,19 +14,22 @@ describe("the character sheet (D161)", () => {
   test("one status line: the role or the state, never the kind", () => {
     const home = dev({ id: "local", name: "hel", kind: "server", home: true });
     expect(statusLine(zh, home, { persona: "小鸭", home: "hel", running: 0 })).toEqual({ text: "小鸭住这儿", tone: "" });
-    expect(statusLine(zh, home, { persona: "小鸭", home: "hel", running: 3 }).text).toBe("小鸭住这儿 · 在做 3 件事");
+    expect(statusLine(zh, home, { persona: "小鸭", home: "hel", running: 3 }).text).toBe("小鸭在这儿做着 3 件事");
     expect(statusLine(zh, dev({}), { persona: "小鸭", home: "hel", running: 2 })).toEqual({ text: "在替 hel 做 2 件事", tone: "working" });
     expect(statusLine(en, dev({}), { persona: "Ducter", home: "hel", running: 2 }).text).toBe("Doing 2 tasks for hel");
     expect(statusLine(zh, dev({}), { persona: "小鸭", home: "hel", running: 0 }).text).toBe("替 hel 做事");
-    expect(statusLine(zh, dev({ state: "asleep" }), { persona: "小鸭", home: "hel", running: 2 })).toEqual({ text: "睡着了 · 醒来就接着做", tone: "asleep" });
-    expect(statusLine(en, dev({ state: "unreachable" }), { persona: "Ducter", home: "hel", running: 0, ago: "2 h ago" })).toEqual({ text: "Can't reach · last seen 2 h ago", tone: "away" });
+    // D291: the state is its own word (drawn with its dot), the line under it its own element.
+    expect(statusLine(zh, dev({ state: "asleep" }), { persona: "小鸭", home: "hel", running: 2 })).toEqual({ state: "睡着了", text: "醒来就接着做", tone: "asleep" });
+    expect(statusLine(en, dev({ state: "unreachable" }), { persona: "Ducter", home: "hel", running: 0, ago: "2 hours ago" })).toEqual({ state: "Can't reach", text: "Last seen 2 hours ago", tone: "away" });
+    expect(statusLine(zh, dev({ state: "unreachable" }), { persona: "小鸭", home: "hel", running: 0 })).toEqual({ state: "连不上", text: "", tone: "away" });
   });
 
   test("the list says one word of state", () => {
-    expect(listWord(zh, dev({}), { home: "hel", running: 2 })).toEqual({ text: "在做 2 件", tone: "working" });
+    expect(listWord(zh, dev({}), { home: "hel", running: 2 })).toEqual({ text: "在做 2 件事", tone: "working" });
+    expect(listWord(en, dev({}), { home: "hel", running: 1 }).text).toBe("Doing 1 task");
     expect(listWord(zh, dev({ home: true }), { home: "hel", running: 0 }).text).toBe("住这儿");
-    expect(listWord(en, dev({ state: "asleep" }), { home: "hel", running: 0 }).text).toBe("asleep");
-    expect(listWord(en, dev({ update: { current: "0.0.6", how: "app", available: true, phase: "downloading" } }), { home: "hel", running: 0 }).text).toBe("updating");
+    expect(listWord(en, dev({ state: "asleep" }), { home: "hel", running: 0 }).text).toBe("Asleep");
+    expect(listWord(en, dev({ update: { current: "0.0.6", how: "app", available: true, phase: "downloading" } }), { home: "hel", running: 0 }).text).toBe("Updating");
   });
 
   test("how it is connected, in one line", () => {
@@ -38,11 +41,12 @@ describe("the character sheet (D161)", () => {
     expect(viaText(zh, [])).toBe("");
   });
 
-  test("a coin's version line names its channel in words; the dot only when it can update", () => {
-    expect(versionLine(zh, { harness: "pi", installed: true, loggedIn: true, version: "1.4.0", how: "installer" } as any)).toBe("版本 1.4.0 · 它自己装的");
-    expect(versionLine(en, { harness: "codex", installed: true, loggedIn: true, version: "0.167.0", how: "npm" } as any)).toBe("Version 0.167.0 · installed with npm");
-    expect(versionLine(zh, { harness: "codex", installed: true, loggedIn: true, version: "0.166.0", how: "app" } as any)).toBe("版本 0.166.0 · 随 Codex app 更新");
-    expect(versionLine(zh, { harness: "x", installed: true, loggedIn: true, version: "1.0", how: "unknown" } as any)).toBe("版本 1.0");
+  test("a coin's version and its channel in words, two facts (D291); the dot only when it can update", () => {
+    expect(versionFacts(zh, { harness: "pi", installed: true, loggedIn: true, version: "1.4.0", how: "installer" } as any)).toEqual(["版本 1.4.0", "它自己装的"]);
+    expect(versionFacts(en, { harness: "codex", installed: true, loggedIn: true, version: "0.167.0", how: "npm" } as any)).toEqual(["Version 0.167.0", "Installed with npm"]);
+    expect(versionFacts(zh, { harness: "codex", installed: true, loggedIn: true, version: "0.166.0", how: "app" } as any)).toEqual(["版本 0.166.0", "随 Codex app 更新"]);
+    expect(versionFacts(zh, { harness: "x", installed: true, loggedIn: true, version: "1.0", how: "unknown" } as any)).toEqual(["版本 1.0"]);
+    expect(versionFacts(zh, { harness: "x", installed: true, loggedIn: true, how: "npm" } as any)).toEqual([]);
     const pi = { harness: "pi", installed: true, loggedIn: true, latest: "1.4.2", available: true } as any;
     expect(agentBehind(pi)).toBe(true);
     expect(agentBehind({ ...pi, update: { phase: "updating", from: "1.4.0" } })).toBe(false);

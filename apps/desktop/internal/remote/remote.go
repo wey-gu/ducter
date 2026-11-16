@@ -20,6 +20,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
 // Saved is the connection the app reopens on launch.
@@ -30,6 +32,11 @@ type Saved struct {
 	Persona  string `json:"persona,omitempty"`
 	// Name is what the home calls this device (it may add " · 2" to a name it has).
 	Name string `json:"name,omitempty"`
+	// Ways is every way to reach the home and FP its key fingerprint, pinned
+	// when this Mac paired (D293): the app follows the home to its best way
+	// without pairing again. Absent for a home before D293.
+	Ways []protocol.ReachWay `json:"ways,omitempty"`
+	FP   string              `json:"fp,omitempty"`
 }
 
 // Errors the connect screen turns into words.
@@ -263,13 +270,15 @@ func PairWith(ctx context.Context, base, code string, info PairInfo) (Saved, err
 		return Saved{}, ErrNotDucter
 	}
 	var r struct {
-		Token       string `json:"token"`
-		DeviceID    string `json:"deviceId"`
-		PersonaName string `json:"personaName"`
-		Name        string `json:"name"`
+		Token       string              `json:"token"`
+		DeviceID    string              `json:"deviceId"`
+		PersonaName string              `json:"personaName"`
+		Name        string              `json:"name"`
+		FP          string              `json:"fp"`
+		Ways        []protocol.ReachWay `json:"ways"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&r); err != nil || r.Token == "" {
 		return Saved{}, ErrNotDucter
 	}
-	return Saved{URL: WSURL(base), Token: r.Token, DeviceID: r.DeviceID, Persona: r.PersonaName, Name: r.Name}, nil
+	return Saved{URL: WSURL(base), Token: r.Token, DeviceID: r.DeviceID, Persona: r.PersonaName, Name: r.Name, FP: r.FP, Ways: r.Ways}, nil
 }

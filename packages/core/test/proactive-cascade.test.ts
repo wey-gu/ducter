@@ -100,7 +100,7 @@ test("the partner's model judges what code passed, in one call; it may shorten o
     prompts.push(p);
     return { text: '[{"key":"a","keep":true,"text":"ducter.dev 11/16 到期，卡过期了。"},{"key":"b","keep":false,"why":"they know"},{"key":"c","keep":true,"text":"这是一段非常非常长的话，远远超过了手机一屏的预算。第二句话也很长。第三句话还在继续说个不停。"}]', tokens: 900 };
   });
-  const r = await j([cand({ key: "a" }), cand({ key: "b" }), cand({ key: "c" }), cand({ key: "d", cost: 10 })], { zh: true, today: "2026-11-10", bars: {} });
+  const r = await j([cand({ key: "a" }), cand({ key: "b" }), cand({ key: "c" }), cand({ key: "d", cost: 10 })], { lang: "zh", today: "2026-11-10", bars: {} });
   expect(prompts).toHaveLength(1);
   expect(prompts[0]).not.toContain('"d"'); // code's tests ran first
   const by = Object.fromEntries(r.verdicts.map((v) => [v.key, v]));
@@ -109,10 +109,10 @@ test("the partner's model judges what code passed, in one call; it may shorten o
   expect(by.c!.text).toBe(cand({}).words.zh); // over budget: the detector's own words
   expect(by.d).toMatchObject({ keep: false, why: "costs too little" });
   expect(r.tokens).toBe(900);
-  expect(fitsBudget("ducter.dev 11/16 到期（$10.44）。自动续费那张卡已经过期了。", true)).toBe(true);
+  expect(fitsBudget("ducter.dev 11/16 到期（$10.44）。自动续费那张卡已经过期了。", "zh")).toBe(true);
 });
 
 test("code alone (no model yet) uses the detector's words in the person's language", async () => {
-  const r = await barJudge([cand({})], { zh: false, today: "2026-11-10", bars: {} });
+  const r = await barJudge([cand({})], { lang: "en", today: "2026-11-10", bars: {} });
   expect(r.verdicts[0]).toMatchObject({ keep: true, text: "ducter.dev is due 11/16 ($10.44). The card on file has expired." });
 });

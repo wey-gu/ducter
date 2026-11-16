@@ -10,10 +10,11 @@
 // With no reset known, it tries again on its own (in 10 minutes for a throttle, else every hour,
 // at most a day), and the partner says it once when nobody else can take it (it matters then).
 // Hand it to {agent} now (`handoff`) and Stop waiting (`cancel`) are the card's two actions.
-import { harnessName, type Bodies, type Candidate, type LimitWait, type LogEvent, type WaiterView } from "@ducter/protocol";
+import { fill, harnessName, words, type Bodies, type Candidate, type LimitWait, type LogEvent, type WaiterView } from "@ducter/protocol";
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { AccountUsageBook } from "./account-usage.ts";
 import { realClock, type Clock } from "./clock.ts";
+import { langOfText } from "./lang.ts";
 import type { Loadout } from "./loadout.ts";
 import { isActive, taskStream, type CoreRegistry } from "./registry.ts";
 import type { SettingsStore } from "./settings.ts";
@@ -58,7 +59,12 @@ export interface LimitDeps {
   clock?: Clock;
 }
 
-const zhOf = (s: string) => /[一-鿿]/.test(s);
+// What the task card and its wait say, in the language of the task's title (D292; ko → en).
+const W = {
+  zh: { reason: "{agent} 的额度恢复", gaveUp: "{agent} 的额度一直没恢复", stopped: "没等 {agent} 的额度，先停下了" },
+  en: { reason: "{agent}'s limit resets", gaveUp: "{agent}'s limit hasn't come back", stopped: "Stopped instead of waiting for {agent}'s limit" },
+};
+const say = (title: string, key: keyof (typeof W)["en"], harness: string) => fill(words(W, langOfText(title))[key], { agent: harnessName(harness) });
 
 /** The limit a task_event says the runner saw, or undefined. */
 export function limitOf(e: LogEvent): (LimitSeen & { taskId: string }) | undefined {
@@ -132,8 +138,7 @@ export function createLimitWaits(o: LimitDeps): LimitWaits {
       if (shared) (at = Date.parse(shared.at!) - RESET_GRACE_MS), (known = true);
     }
     if (!known && tries > MAX_UNKNOWN_TRIES) {
-      const zh = zhOf(card.title);
-      o.tasks.setState(hit.taskId, "needs_you", card.residency, zh ? `${harnessName(hit.harness)} 的额度一直没恢复` : `${harnessName(hit.harness)}'s limit hasn't come back`);
+      o.tasks.setState(hit.taskId, "needs_you", card.residency, say(card.title, "gaveUp", hit.harness));
       return;
     }
     // One wait per task: a new hit replaces the old one (a newer reset, or one more try).
@@ -154,8 +159,7 @@ export function createLimitWaits(o: LimitDeps): LimitWaits {
       ...(!known && !to && hit.failure === "quota" && tries === 1 ? { tell: true } : {}),
       ...(tries > 1 ? { tries } : {}),
     };
-    const zh = zhOf(card.title);
-    arm(hit.taskId, limit, wakeAt, zh ? `${harnessName(hit.harness)} 的额度恢复` : `${harnessName(hit.harness)}'s limit resets`);
+    arm(hit.taskId, limit, wakeAt, say(card.title, "reason", hit.harness));
   }
 
   function arm(taskId: string, limit: LimitWait, at: number, reason: string) {
@@ -188,8 +192,7 @@ export function createLimitWaits(o: LimitDeps): LimitWaits {
           if (!o.waiters.cancel(waiterId, { by: "user" })) return false;
           const card = o.tasks.get(taskId);
           if (card && isActive(card.attention)) {
-            const zh = zhOf(card.title);
-            o.tasks.setState(taskId, "needs_you", card.residency, zh ? `没等 ${harnessName(w.limit!.harness)} 的额度，先停下了` : `Stopped instead of waiting for ${harnessName(w.limit!.harness)}'s limit`);
+            o.tasks.setState(taskId, "needs_you", card.residency, say(card.title, "stopped", w.limit!.harness));
           }
           return true;
         }

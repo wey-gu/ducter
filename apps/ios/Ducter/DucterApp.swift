@@ -95,6 +95,16 @@ struct Root: View {
         .onChange(of: state.base) { _, _ in home.clear() }
         // Back to the app: the home may have updated meanwhile (or fallen behind a new app).
         .onChange(of: scene) { _, p in if p == .active, shell.phase == .ready { Task { await home.check() } } }
+        // D293: the best of the home's ways that proves it is the home: on coming to the front, when
+        // the way in use can't be reached, and every 30 s while open (leaving only after two misses).
+        .onChange(of: scene) { _, p in if p == .active { Task { await state.lookForBetterWay(up: true) } } }
+        .onChange(of: shell.phase) { _, p in if p == .unreachable { Task { await state.lookForBetterWay(up: true) } } }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                if scene == .active { await state.lookForBetterWay(up: false) }
+            }
+        }
         .onChange(of: state.open) { _, path in
             guard let path else { return }
             shell.open(path)

@@ -4,6 +4,7 @@
 // next runs. Time is drawn; words are its quiet caption. How a wait checks (the command, how
 // often, who judges) is only in the opened task, folded under How it checks. Copy: i18n.ts.
 import type { Bodies, CheckSpec, RoutineView, UntilView, WaiterView } from "@ducter/protocol";
+import { words as byLang } from "@ducter/protocol/src/lang.ts";
 import { DEFAULT_EVERY_MS, describeCheck, describePredicate } from "@ducter/protocol/src/checks.ts";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -42,8 +43,8 @@ export function WaitBubble({ w, size = "sm" }: { w?: Pick<WaiterView, "check" | 
 export function waitLine(reason: string): string {
   let r = reason.trim();
   // "Waiting until the domain renewal email arrives": a capital that only starts the sentence goes.
-  if (A.L.lang !== "zh" && /^[A-Z][a-z]/.test(r)) r = r[0]!.toLowerCase() + r.slice(1);
-  return t("wait.line", A.L.lang === "zh" && /^[A-Za-z0-9#]/.test(r) ? ` ${r}` : r);
+  if (A.L.style.cased && /^[A-Z][a-z]/.test(r)) r = r[0]!.toLowerCase() + r.slice(1);
+  return t("wait.line", !A.L.style.spaced && /^[A-Za-z0-9#]/.test(r) ? ` ${r}` : r);
 }
 
 /** What a wait's card says under it, in words: its deadline, or when a timer is due. */
@@ -147,7 +148,7 @@ export function Goal({ u, big }: { u: UntilView; big?: boolean }) {
 /** "6 盏灯里亮了 4 盏" / "4 of 6 lights on", or for items a judge counted "16 处里好了 12 处" / "12 of 16 done". */
 function countWords(done: number, total: number, unit?: "checks" | "items"): string {
   const key = unit === "items" ? "until.items" : "until.lights";
-  return A.L.lang === "zh" ? t(key, total, done) : t(key, done, total);
+  return t(key, done, total);
 }
 
 /** A keep-going loop's line under its goal: only how it ended (while it runs, the goal says it). */
@@ -414,6 +415,11 @@ export function WaitHow({ task }: { task: Task }) {
   );
 }
 
+/** The desk calendar's words: under the date, its month or weekday; a monthly date as "1 号" / 1. */
+const BADGE: Record<"zh" | "en", { month(d: Date): string; weekday(d: Date): string; monthDay(d: Date): string | number }> = {
+  zh: { month: (d) => `${d.getMonth() + 1} 月`, weekday: (d) => ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][d.getDay()]!, monthDay: (d) => `${d.getDate()} 号` },
+  en: { month: (d) => d.toLocaleString("en", { month: "short" }), weekday: (d) => d.toLocaleString("en", { weekday: "short" }), monthDay: (d) => d.getDate() },
+};
 /** A routine's next run on a clay tear-off desk calendar (D115): the date big, its weekday (or
  *  "1 号" for a monthly one) under it, a few pages behind to say it comes again. */
 export function CalendarBadge({ r, big }: { r: RoutineView; big?: boolean }) {
@@ -422,12 +428,12 @@ export function CalendarBadge({ r, big }: { r: RoutineView; big?: boolean }) {
   const d = new Date(next);
   // A monthly one, and a one-time start (D185), say the month under the date.
   const monthly = r.trigger.kind === "time" && (r.trigger.every === "month" || r.trigger.every === "once");
-  const zh = A.L.lang === "zh";
-  const sub = monthly ? (zh ? `${d.getMonth() + 1} 月` : d.toLocaleString("en", { month: "short" })) : zh ? ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][d.getDay()] : d.toLocaleString("en", { weekday: "short" });
+  const w = byLang(BADGE, A.L.lang);
+  const sub = monthly ? w.month(d) : w.weekday(d);
   return (
     <span class={`cal-badge${big ? " big" : ""}`} role="img" aria-label={when(A.L, next)}>
       <img src="app/art/routine_calendar.webp" alt="" draggable={false} />
-      <b>{monthly && zh ? `${d.getDate()} 号` : d.getDate()}</b>
+      <b>{monthly ? w.monthDay(d) : d.getDate()}</b>
       <em>{sub}</em>
     </span>
   );

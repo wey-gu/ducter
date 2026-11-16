@@ -51,7 +51,7 @@ function setup(o: { on?: boolean; worker?: Record<string, MemPluginView> | "old"
     persona: { id: "p" },
     runner: () => ({ openTask: async (i: any) => (opened.push(i), { taskId: `tsk${opened.length}` } as TaskCard) }) as any,
     on: () => on,
-    zh: () => true,
+    lang: () => "zh",
     inspectLocal: async () => (calls.push("local"), fx("mac-2026-11-10.json")),
     inspectWorker: async (id) => {
       calls.push(id);
@@ -199,7 +199,7 @@ test("Go on the card opens the same task; Hold does nothing", async () => {
 });
 
 test("the setup brief: Mem's guide is the only source of steps, never guess a key, verify with the check", () => {
-  const b = memSetupBrief({ agent: "Claude Code", host: "claude-code", device: "hel", zh: false });
+  const b = memSetupBrief({ agent: "Claude Code", host: "claude-code", device: "hel", lang: "en" });
   expect(b).toContain("only source of the steps");
   expect(b).toContain("Never guess a server address, an API key");
   expect(b).toContain("Nothing of Ducter's");

@@ -22,11 +22,14 @@ func TestSayFixture(t *testing.T) {
 			ZH               string `json:"zh"`
 			EN               string `json:"en"`
 		} `json:"proof"`
+		ProofOther []struct {
+			Kind, Label, Ref, Lang, Want string
+		} `json:"proofOther"`
 	}
 	if err := json.Unmarshal(data, &f); err != nil {
 		t.Fatal(err)
 	}
-	if len(f.Tongue) == 0 || len(f.Proof) == 0 {
+	if len(f.Tongue) == 0 || len(f.Proof) == 0 || len(f.ProofOther) == 0 {
 		t.Fatal("no cases")
 	}
 	for _, c := range f.Tongue {
@@ -43,6 +46,11 @@ func TestSayFixture(t *testing.T) {
 		}
 		if got := ProofLabel(c.Kind, c.Label, c.Ref, "en"); got != c.EN {
 			t.Errorf("ProofLabel(%q, en) = %q, want %q", c.Label, got, c.EN)
+		}
+	}
+	for _, c := range f.ProofOther {
+		if got := ProofLabel(c.Kind, c.Label, c.Ref, c.Lang); got != c.Want {
+			t.Errorf("ProofLabel(%q, %s) = %q, want %q", c.Label, c.Lang, got, c.Want)
 		}
 	}
 	if Sayable("Nowledge Mem is connected.", "zh") != "" || Sayable("Mem 连上了", "zh") != "Mem 连上了" {

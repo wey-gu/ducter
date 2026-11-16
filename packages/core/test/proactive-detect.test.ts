@@ -40,8 +40,8 @@ test("a busy week: the trip that doesn't join up, the renewal on an expired card
 
   expect(by.waiting_on_them!.words.zh).toBe("你 11/3 问 ops「invoice 1182 amount」，到现在没回。");
   for (const c of found) {
-    expect(fitsBudget(c.words.zh, true)).toBe(true);
-    expect(fitsBudget(c.words.en, false)).toBe(true);
+    expect(fitsBudget(c.words.zh, "zh")).toBe(true);
+    expect(fitsBudget(c.words.en, "en")).toBe(true);
     expect(c.how.length).toBeGreaterThan(0);
   }
   // The mail that tried to give orders produced nothing at all.

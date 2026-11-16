@@ -413,8 +413,8 @@ const monday9: RoutineTrigger = { kind: "time", every: "week", days: [1], time: 
 test("schedule: every Monday 9:00 in Shanghai, said in words", () => {
   const from = Date.parse("2026-11-09T02:00:00Z"); // Mon 10:00 in Shanghai
   expect(nextFirings(monday9, from, 3).map((t) => new Date(t).toISOString())).toEqual(["2026-11-16T01:00:00.000Z", "2026-11-23T01:00:00.000Z", "2026-11-30T01:00:00.000Z"]);
-  expect(describeTrigger(monday9, true)).toBe("每周一 9:00 · 跟着你的时区");
-  expect(describeTrigger(monday9, false)).toBe("Mondays 9:00 · follows your time zone");
+  expect(describeTrigger(monday9, "zh")).toBe("每周一 9:00 · 跟着你的时区");
+  expect(describeTrigger(monday9, "en")).toBe("Mondays 9:00 · follows your time zone");
   const ny = nextFirings({ kind: "time", every: "weekday", time: "09:30", zone: "world", tz: "America/New_York" }, Date.parse("2026-11-07T00:00:00Z"), 1)[0]!;
   expect(new Date(ny).toISOString()).toBe("2026-11-09T14:30:00.000Z"); // Mon, after the DST change
   expect(nextFirings({ kind: "time", every: "month", dayOfMonth: 31, time: "08:00", zone: "world", tz: "UTC" }, Date.parse("2026-11-01T00:00:00Z"), 1).map((t) => new Date(t).toISOString())).toEqual(["2026-11-30T08:00:00.000Z"]);
@@ -546,8 +546,8 @@ test("the judge's verdict: counts only when given as whole numbers", () => {
 test("D185: a one-time start the user set is active at once (no card), opens their words at its time, then it's over", async () => {
   const s = setup({ start: Date.parse("2026-11-09T02:00:00Z") }); // Mon 10:00 in Shanghai
   const once: RoutineTrigger = { kind: "time", every: "once", date: "2026-11-10", time: "09:00", zone: "world", tz: "Asia/Shanghai" };
-  expect(describeTrigger(once, true)).toBe("11月10日 9:00");
-  expect(describeTrigger(once, false)).toBe("Nov 10, 9:00");
+  expect(describeTrigger(once, "zh")).toBe("11月10日 9:00");
+  expect(describeTrigger(once, "en")).toBe("Nov 10, 9:00");
   const words = "跑一遍发布清单，把没勾的列出来。";
   const v = s.work.routines.yours({ name: "跑一遍发布清单", trigger: once, brief: words, project: "ducter", harness: "codex" });
   expect(v).toMatchObject({ state: "active", by: "you", triggerWords: "11月10日 9:00", nextAt: "2026-11-10T01:00:00.000Z", effect: "local_writes", harness: "codex" });

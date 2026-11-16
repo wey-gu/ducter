@@ -8,6 +8,7 @@ import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import { logUserMessage } from "./reply.ts";
+import { talkLang } from "./lang.ts";
 import type { DevicesView } from "./devices.ts";
 import { redactDeep } from "@ducter/protocol/src/redact.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
@@ -52,6 +53,8 @@ export interface WsData {
   handset?: import("./handset/index.ts").HandsetSocket;
   /** D277: this Mac app's iMessage bridge, as it last said (channel_status). */
   imessage?: "on" | "needs_permission" | "not_signed_in" | "off" | "error";
+  /** D293: how this socket reached the home (core reads it off the upgrade request). */
+  via?: import("@ducter/protocol").DeviceVia & { url?: string };
 }
 
 const ON_HAND_KINDS = new Set<string>([...PROJECTED_KINDS, "phone_call"]);
@@ -66,6 +69,11 @@ const TASK_SEEN_WINDOW = 500; // task_event lines scanned for a task_send resend
 const DELIVERED: Record<string, Delivery> = { turn: "prompted", steer: "steered", queue: "queued" };
 
 export interface WsDeps {
+  /**
+   * D293: the home's key fingerprint and its ways (sent after every welcome), and what to do when a
+   * Mac app says its computer is going to sleep. Absent in tests that don't need them.
+   */
+  home?: { fp: string; ways(): ServerFrame & { t: "ways" }; sleeping?(device: { id: string }): void; socketsChanged?(): void };
   core: CoreApi;
   decisions: Decisions;
   runner: () => Runner | undefined;
@@ -406,7 +414,7 @@ export function createWsHandler(deps: WsDeps) {
   const handle = async (ws: ServerWebSocket<WsData>, f: ClientFrame) => {
     // D255: the Android app's own link while its phone is lent speaks only handset frames, and is never
     // "live" (no conversation, no presence: the person isn't in Ducter because their phone is lent).
-    if (f.t !== "hello" && !ws.data.live && !(ws.data.client === "handset" && f.t.startsWith("handset_"))) throw new Error("send hello first");
+    if (f.t !== "hello" && f.t !== "ping" && !ws.data.live && !(ws.data.client === "handset" && f.t.startsWith("handset_"))) throw new Error("send hello first");
     switch (f.t) {
       case "hello": {
         if (f.gzip === true) ws.data.gzip = true;
@@ -417,7 +425,9 @@ export function createWsHandler(deps: WsDeps) {
           return;
         }
         const machine = machineId();
-        send(ws, { t: "welcome", persona: core.persona.id, personaName: core.persona.name, headSeq: log.head(), ...(machine ? { machine } : {}), version: DUCTER_VERSION });
+        send(ws, { t: "welcome", persona: core.persona.id, personaName: core.persona.name, headSeq: log.head(), ...(machine ? { machine } : {}), version: DUCTER_VERSION, ping: true, ...(deps.home ? { fp: deps.home.fp } : {}) });
+        // D293: the ways to reach the home, so a device can follow it to another one.
+        if (deps.home) send(ws, deps.home.ways());
         // Channel only: task streams are pulled with task_history.
         const events =
           f.cursor != null && f.cursor >= 0
@@ -829,8 +839,8 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "close_computer": {
         if (!deps.closing) throw new Error("closing is not available");
-        const lang = deps.settings?.get().language;
-        const r = await deps.closing.ask(String(f.device ?? ""), lang === "zh");
+        // D292: the conversation's language (the setting, else what the person writes in).
+        const r = await deps.closing.ask(String(f.device ?? ""), talkLang(deps.settings, deps.core.log) ?? "en");
         send(ws, r.ok ? { t: "close_result", device: String(f.device ?? ""), ok: true, ...(r.none ? { none: true } : {}), ...(r.decisionId ? { decisionId: r.decisionId } : {}) } : { t: "close_result", device: String(f.device ?? ""), ok: false, message: r.message });
         return;
       }
@@ -1443,6 +1453,13 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "browser_sites", ready, sites, ...(f.t !== "browser_sites" ? { ok } : {}), ...(message ? { message } : {}) });
         return;
       }
+      // D293: liveness, and the Mac app's "going to sleep" (its socket closes right after).
+      case "ping":
+        send(ws, { t: "pong" });
+        return;
+      case "sleep":
+        if (ws.data.device) deps.home?.sleeping?.(ws.data.device);
+        return;
       default:
         throw new Error(`unknown frame ${(f as { t?: string }).t}`);
     }
@@ -1472,6 +1489,7 @@ export function createWsHandler(deps: WsDeps) {
       open(ws: ServerWebSocket<WsData>) {
         sockets.add(ws);
         if (ws.data.device) devicesView()?.changed();
+        deps.home?.socketsChanged?.();
       },
       close(ws: ServerWebSocket<WsData>) {
         sockets.delete(ws);
@@ -1479,6 +1497,7 @@ export function createWsHandler(deps: WsDeps) {
         if (ws.data.phoneSink) void deps.ownPhone?.drop(ws.data.phoneSink);
         if (ws.data.handset && ws.data.device) deps.handsets?.gone(ws.data.device.id, ws.data.handset);
         if (ws.data.device) devicesView()?.changed();
+        deps.home?.socketsChanged?.();
       },
       async message(ws: ServerWebSocket<WsData>, raw: string | Buffer) {
         let f: ClientFrame;
@@ -1512,6 +1531,16 @@ export function createWsHandler(deps: WsDeps) {
       if (via !== "imessage") return false;
       for (const ws of sockets) if (ws.data.imessage === "on") return true;
       return false;
+    },
+    /** D293: every greeted socket hears that the ways to reach the home changed. */
+    broadcast(f: ServerFrame) {
+      for (const ws of sockets) if (ws.data.live && ws.data.client !== "handset") send(ws, f);
+    },
+    /** D293: how each connected client device reaches the home (its newest socket). */
+    vias(): Map<string, import("@ducter/protocol").DeviceVia & { url?: string }> {
+      const out = new Map<string, import("@ducter/protocol").DeviceVia & { url?: string }>();
+      for (const ws of sockets) if (ws.data.device && ws.data.via) out.set(ws.data.device.id, ws.data.via);
+      return out;
     },
     /** Paired client devices with a live socket now. */
     connected(): Set<string> {

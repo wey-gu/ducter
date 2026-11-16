@@ -118,7 +118,7 @@ describe("ducter tailscale", () => {
     const j = JSON.parse(out.join("\n"));
     expect(j.ok).toBe(true);
     expect(j.address).toBe(`https://${NAME}`);
-    expect(j.pair.link).toBe(`https://${NAME}/pair#c=${j.pair.code}`);
+    expect(j.pair.link).toStartWith(`https://${NAME}/pair#c=${j.pair.code}&k=`); // D293: the home's key fingerprint rides beside the code
   });
   test("no CLI: says how to install it, changes nothing", async () => {
     const { sys, calls } = fakeSys({ bin: null });

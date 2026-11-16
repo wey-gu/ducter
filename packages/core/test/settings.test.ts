@@ -79,8 +79,22 @@ test("a change goes to every subscriber and persists where each setting lives", 
 
 test("invalid values are ignored", async () => {
   const { core } = boot();
-  expect(core.settings.set({ defaultAfterMin: 7, language: "fr" as any, quiet: { start: "25:00", end: "08:00", tz: "UTC" }, name: "   " })).toEqual([]);
+  expect(core.settings.set({ defaultAfterMin: 7, language: "xx-invalid!!", quiet: { start: "25:00", end: "08:00", tz: "UTC" }, name: "   " })).toEqual([]);
   expect(core.settings.get()).toMatchObject({ name: "Ducter", language: "auto", defaultAfterMin: 30, quiet: { start: "23:00", end: "08:00" } });
+});
+
+test("D292: the partner can talk in any language, kept as its canonical tag", async () => {
+  const { core } = boot();
+  expect(core.settings.set({ language: "ko" })).toEqual(["language"]);
+  expect(core.settings.get().language).toBe("ko");
+  expect(core.settings.set({ language: "zh-TW" })).toEqual(["language"]);
+  expect(core.settings.get().language).toBe("zh-Hant");
+  expect(core.settings.set({ language: "zh_hant" })).toEqual([]); // the same language, nothing changed
+  expect(core.settings.set({ language: "xx-invalid!!" })).toEqual([]);
+  expect(core.settings.set({ language: 42 as any })).toEqual([]);
+  expect(core.settings.get().language).toBe("zh-Hant");
+  expect(core.settings.set({ language: "auto" })).toEqual(["language"]);
+  expect(core.settings.get().language).toBe("auto");
 });
 
 test("D59: quiet hours default on; the user's off is kept, through a restart and a later phone's subscribe", async () => {

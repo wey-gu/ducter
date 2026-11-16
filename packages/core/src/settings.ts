@@ -5,7 +5,7 @@
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, MemView, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
-import { DEFAULT_AFTER_CHOICES, DEFAULT_PROACTIVE, HARNESSES, PROACTIVE_MODES, isHarnessId, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
+import { DEFAULT_AFTER_CHOICES, DEFAULT_PROACTIVE, HARNESSES, PROACTIVE_MODES, isHarnessId, normalizeTag, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
 import type { LogStore, MemIdentity, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
 import type { PushStore } from "./push.ts";
@@ -56,6 +56,8 @@ export interface SettingsStore extends SettingsApi {
   set(patch: SettingsPatch): string[];
   /** D250: the mode set by Ducter for a reason the person gave (不再需要 to the morning note). */
   setProactive(mode: ProactiveMode, by: "chosen" | "keep_note"): void;
+  /** D295: the glance at Mem itself (mem-glance.ts), read on each view. */
+  setGlance(fn: () => MemView["glance"]): void;
   /** Forgets one noted line: in Mem when possible, else hidden here. */
   forget(seq: number): Promise<"mem" | "hidden" | undefined>;
   onChange(fn: () => void): () => void;
@@ -99,6 +101,7 @@ export function openSettings(opts: {
   const listeners = new Set<() => void>();
   const changed = () => listeners.forEach((fn) => fn());
   let forgetter: ((id: string) => Promise<boolean>) | undefined;
+  let glance: (() => MemView["glance"]) | undefined;
   let memSeen: "connected" | "missing" | undefined;
   // D135: checked once at start (env + file); a value out of range is said once, then its default runs.
   const windowsNow = () => resolveWindows(data.windows, opts.env ?? process.env);
@@ -175,6 +178,9 @@ export function openSettings(opts: {
     setForgetter(fn) {
       forgetter = fn;
     },
+    setGlance(fn) {
+      glance = fn;
+    },
     setMemState(s) {
       if (s === memSeen) return;
       memSeen = s;
@@ -193,7 +199,8 @@ export function openSettings(opts: {
       // An identity Ducter enrolled carries the partner's name (kept in step on rename, D141).
       const m = opts.persona.mem;
       const keptUnder = state === "connected" && m ? (m.owned ? opts.persona.name : m.label || m.agentId) : undefined;
-      return { settings: s, mem: { state, noted: noted(), ...(keptUnder ? { keptUnder } : {}) } };
+      const g = state !== "off" ? glance?.() : undefined;
+      return { settings: s, mem: { state, noted: noted(), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}) } };
     },
     set(patch) {
       const did: string[] = [];
@@ -201,8 +208,10 @@ export function openSettings(opts: {
         const n = cleanName(patch.name);
         if (rename(n)) did.push("name");
       }
-      if (patch.language === "auto" || patch.language === "zh" || patch.language === "en") {
-        if ((data.language ?? "auto") !== patch.language) (data.language = patch.language), did.push("language");
+      // D292: "auto" or any language, stored as its canonical tag (zh-TW → zh-Hant); junk is refused.
+      const language: TalkLanguage | undefined = patch.language === "auto" ? "auto" : typeof patch.language === "string" ? normalizeTag(patch.language) : undefined;
+      if (language) {
+        if ((data.language ?? "auto") !== language) (data.language = language), did.push("language");
       }
       if (typeof patch.memory === "boolean" && !opts.memoryPinnedOff) {
         if ((data.memory !== false) !== patch.memory) (data.memory = patch.memory), did.push("memory");

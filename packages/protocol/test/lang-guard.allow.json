@@ -1,0 +1,15 @@
+{
+  "_": "D292: per file, the inline zh/en branches still left: a ceiling that only shrinks (research/99 §7 says why each is left). LANG_GUARD_PRINT=1 bun test packages/protocol/test/lang-guard.test.ts prints the counts now.",
+  "files": {
+    "packages/protocol/src/lang.ts": 2,
+    "packages/partner/src/words.ts": 1,
+    "apps/desktop/internal/views/accounts.go": 1,
+    "packages/core/src/core.ts": 1,
+    "apps/web/src/onhand.tsx": 7,
+    "apps/web/src/past.tsx": 14,
+    "apps/desktop/internal/views/ongoing.go": 1,
+    "apps/desktop/internal/views/onhandhead.go": 4,
+    "apps/desktop/internal/views/past.go": 6
+  },
+  "_todo": "Merged after D292's sweep (D285 past/ongoing, D287 On hand head, core): convert to tables, then drop these lines."
+}

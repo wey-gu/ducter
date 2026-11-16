@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 )
 
 // StateFile is the client's own.
@@ -61,24 +63,26 @@ type state struct {
 	// side (D244).
 	Screens string `json:"screens,omitempty"`
 	// D262: the first frame is the settled one. SpokeLang is the language
-	// the window last followed from the person's words ("zh", "en"), and
-	// PersonaName the partner's name as last said, so the next launch
-	// starts in them instead of switching once the home answers.
+	// the window last followed from the person's words (any BCP 47 tag,
+	// "zh", "ko", D292), and PersonaName the partner's name as last said,
+	// so the next launch starts in them instead of switching once the home
+	// answers.
 	SpokeLang   string `json:"spokeLang,omitempty"`
 	PersonaName string `json:"personaName,omitempty"`
 }
 
-// StartLang is the window's language at launch: the one chosen in
-// Settings (chosen), else the one last followed from the person's words,
-// else system. fixed (DUCTER_LOCALE) keeps system.
-func (l *Local) StartLang(system string, fixed bool) (lang string, chosen bool) {
+// StartLang is the window's language at launch (a BCP 47 tag the strings
+// resolve through their fallback chain): the one chosen in Settings
+// (chosen), else the one last followed from the person's words, else
+// system. fixed (DUCTER_LOCALE) keeps system. "auto" is no tag.
+func (l *Local) StartLang(system string, fixed bool) (tag string, chosen bool) {
 	if fixed {
 		return system, false
 	}
-	if v := l.Lang(); v == "zh" || v == "en" {
+	if v := lang.NormalizeTag(l.Lang()); v != "" {
 		return v, true
 	}
-	if v := l.SpokeLang(); v == "zh" || v == "en" {
+	if v := lang.NormalizeTag(l.SpokeLang()); v != "" {
 		return v, false
 	}
 	return system, false

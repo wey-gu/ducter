@@ -10,11 +10,6 @@ import { renderCallEnded } from "../../protocol/src/phone.ts";
 import { isImage, kindWords, shortId, sizeWords, type MediaRef } from "../../protocol/src/media.ts";
 import { shownOut, whoForModel } from "./bridge-out.ts";
 
-const CJK = /[㐀-鿿豈-﫿]/;
-export function isChinese(text: string): boolean {
-  return CJK.test(text);
-}
-
 function clip(s: string, n: number): string {
   const t = s.replace(/\s+\n/g, "\n").trim();
   return t.length <= n ? t : t.slice(0, n - 1) + "…";

@@ -17,6 +17,7 @@ import { limitHit, mergeLimits, type FailedOutcome } from "./limit-hit.ts";
 import { wbHost, WbFail } from "./workbench.ts";
 import { userEditsNote } from "./brief.ts";
 import { MEM_PLUGIN_IDS } from "@ducter/protocol/src/mem-plugins.ts";
+import { fill, words, type LangTag } from "@ducter/protocol/src/lang.ts";
 
 /** task_state reason for a task whose worker dropped; clients render it as "<device> 连不上 / Can't reach <device>". */
 export const unreachableReason = (device: string) => `device:unreachable:${device}`;
@@ -157,6 +158,11 @@ interface TaskRt {
   offlineTimer?: ReturnType<typeof setTimeout>;
   parkTimer?: ReturnType<typeof setTimeout>;
   offlineOff?: () => void;
+  /** D293: when its worker's socket dropped while the worker keeps the session (its grace). */
+  awaySince?: number;
+  /** D293: the reconnecting note was said for this drop (so "back" is said too). */
+  awaySaid?: boolean;
+  awayFrom?: Residency;
   /**
    * D266: the harness's own background work in this session (its background shells, Monitor,
    * background subagents), by its task id: what it is and when the harness last said anything
@@ -186,7 +192,7 @@ interface TaskRt {
   gated?: { text: string };
   /** D142: the user let it change the folder without a copy. */
   direct?: boolean;
-  lang?: "zh" | "en"; // the language the user reads its reports in
+  lang?: LangTag; // the language the user reads its reports in (D292: any tag)
   /** D157: waiting for its computer (asleep or can't be reached) before it ever started. */
   waiting?: StartCtx;
   /** D157: the user moved it to another computer; its next session starts with movedOver. */
@@ -252,30 +258,59 @@ export function placeOn(p: Place | undefined, device: string, needs?: TaskNeeds)
 }
 
 /** D142: the ask before a task changes a folder Ducter couldn't copy (a report from the runner). */
-export function askBeforeWriting(why: CantKeep, detail: string | undefined, lang: "zh" | "en" | undefined): { summary: string; question: string } {
-  if (lang === "zh") {
-    const where = {
-      cloud: `这个文件夹在${detail ? ` ${detail} ` : "网盘"}里同步`,
+const WRITE_WORDS = {
+  zh: {
+    where: {
+      cloud: "这个文件夹在{detail}里同步",
       network: "这个文件夹在网络盘上",
       external: "这个文件夹在外接硬盘上",
-      too_big: `这个文件夹太大了${detail ? `（${detail}）` : ""}`,
+      too_big: "这个文件夹太大了{detail}",
       missing: "这个文件夹找不到了",
       copy_failed: "这个文件夹复制不了",
       holds_ducter: "这个文件夹里装着 Ducter 自己的数据",
-    }[why];
-    return { summary: `动手之前先问你：${where}，没法先留一份，改了就改不回去。`, question: "直接改这个文件夹里的文件吗？改完没法改回去。" };
-  }
-  const where = {
-    cloud: `this folder syncs with ${detail ?? "a cloud drive"}`,
-    network: "this folder is on a network drive",
-    external: "this folder is on an external drive",
-    too_big: `this folder is too big to copy${detail ? ` (${detail})` : ""}`,
-    missing: "the folder isn't there",
-    copy_failed: "the folder couldn't be copied",
-    holds_ducter: "this folder holds Ducter's own data",
-  }[why];
-  return { summary: `Before changing anything: ${where}, so Ducter can't keep a copy to undo with. Changes made there can't be undone.`, question: "Change the files in this folder directly, with no way to undo?" };
+    },
+    cloudNone: "网盘",
+    cloudDetail: " {detail} ",
+    bigDetail: "（{detail}）",
+    summary: "动手之前先问你：{where}，没法先留一份，改了就改不回去。",
+    question: "直接改这个文件夹里的文件吗？改完没法改回去。",
+  },
+  en: {
+    where: {
+      cloud: "this folder syncs with {detail}",
+      network: "this folder is on a network drive",
+      external: "this folder is on an external drive",
+      too_big: "this folder is too big to copy{detail}",
+      missing: "the folder isn't there",
+      copy_failed: "the folder couldn't be copied",
+      holds_ducter: "this folder holds Ducter's own data",
+    },
+    cloudNone: "a cloud drive",
+    cloudDetail: "{detail}",
+    bigDetail: " ({detail})",
+    summary: "Before changing anything: {where}, so Ducter can't keep a copy to undo with. Changes made there can't be undone.",
+    question: "Change the files in this folder directly, with no way to undo?",
+  },
+};
+export function askBeforeWriting(why: CantKeep, detail: string | undefined, lang: LangTag | undefined): { summary: string; question: string } {
+  const w = words(WRITE_WORDS, lang);
+  const d = why === "cloud" ? (detail ? fill(w.cloudDetail, { detail }) : w.cloudNone) : why === "too_big" && detail ? fill(w.bigDetail, { detail }) : "";
+  return { summary: fill(w.summary, { where: fill(w.where[why], { detail: d }) }), question: w.question };
 }
+
+/** D157: the where ask's one line (askWhere). */
+const WHERE_WORDS = {
+  zh: {
+    pin: "{agent} 只在 {dev} 上，它现在连不上。等它，还是换个来做？",
+    asleep: "{dev} 睡着了。等它醒了{chrome}做，还是现在在 {other} 上做？",
+    chrome: "用你的 Chrome ",
+  },
+  en: {
+    pin: "{agent} is only on {dev}, and it can't be reached. Wait, or have someone else do it?",
+    asleep: "{dev} is asleep. Wait{chrome}, or do it on {other} now?",
+    chrome: " and use your Chrome there",
+  },
+};
 
 const FINISHED: Attention[] = ["done_claimed", "done", "failed", "dropped"];
 
@@ -645,7 +680,34 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.bg?.clear(); // D266: a new process runs none of the old one's background work
     if (!spec.resumeSessionId) (t.context = undefined), (t.saveAsked = false); // a fresh context
     noteSessionId(t, session);
+    // D293: its worker dropped and holds the session for a while (away), or came back with it (back).
+    session.onLink?.((s) => (t.session === session ? (s === "away" ? linkAway(t) : linkBack(t)) : undefined));
     void pump(t, session);
+  }
+
+  /**
+   * D293: the worker's socket dropped but the worker keeps the session for its grace: the task is
+   * reconnecting, not lost. Work in flight says so in its transcript; nothing else changes yet.
+   */
+  function linkAway(t: TaskRt) {
+    const d = t.ops.device;
+    if (!d || t.dropped || t.awaySince !== undefined) return;
+    t.awaySince = Date.now();
+    t.awayFrom = t.residency;
+    const was = currentAttention(t);
+    setState(t, was, "offline");
+    t.awaySaid = t.running || was === "working" || was === "queued";
+    if (t.awaySaid) logEvent(t, { role: "system", from: "runner", text: `${d.name} dropped; reconnecting`, raw: { device: d.id, name: d.name, reconnecting: true } });
+  }
+
+  /** D293: back within the grace with the session still running: nothing was lost. */
+  function linkBack(t: TaskRt) {
+    const d = t.ops.device;
+    if (!d || t.awaySince === undefined) return;
+    t.awaySince = undefined;
+    if (t.awaySaid) logEvent(t, { role: "system", from: "runner", text: `${d.name} is back; carrying on`, raw: { device: d.id, name: d.name, offline: false } });
+    t.awaySaid = false;
+    if (!t.dropped) setState(t, currentAttention(t), t.awayFrom ?? "hot");
   }
 
   /** Every checkpoint the task saved, oldest first: what a new session is seeded with. */
@@ -862,6 +924,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const was = currentAttention(t);
     t.resumeOnBack = t.resumeOnBack || midTurn || was === "working" || was === "queued";
     setState(t, was, "offline");
+    // D293: the worker's grace already ran (it held the session and didn't come back): the wait
+    // before 连不上 counts from the drop, not from now.
+    const heldFor = t.awaySince !== undefined ? Date.now() - t.awaySince : 0;
+    t.awaySince = undefined;
+    t.awaySaid = false;
     // Only work in flight is said out loud; an idle task just shows its machine as away.
     if (t.resumeOnBack) logEvent(t, { role: "system", from: "runner", text: `${d.name} disconnected; the task carries on when it is back`, raw: { device: d.id, name: d.name, offline: true } });
     clearTimeout(t.offlineTimer);
@@ -869,7 +936,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (t.resumeOnBack)
       t.offlineTimer = setTimeout(() => {
         if (!d.online() && !t.dropped && !t.session) setState(t, "blocked", "offline", unreachableReason(d.name));
-      }, graceMs);
+      }, Math.max(0, graceMs - heldFor));
     t.offlineOff?.();
     t.offlineOff = d.onOnline(() => {
       t.offlineOff?.();
@@ -1614,7 +1681,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   function askWhere(t: TaskRt, pick: NonNullable<Awaited<ReturnType<NonNullable<CoreApi["bodies"]>["choose"]>>> & { harness: string }, you: boolean) {
     if (!("now" in pick) || !pick.now || !pick.waits) return;
     const now = pick.now;
-    const zh = t.lang === "zh";
+    const w = words(WHERE_WORDS, t.lang);
     const dev = pick.why.where?.device ?? pick.device ?? "";
     const other = now.name;
     const site = (t.waiting?.body.needs?.site ?? "") || undefined;
@@ -1634,12 +1701,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     };
     pendingWhere.set(t.id, { now });
     const text = pin
-      ? zh
-        ? `${harnessName(pick.harness)} 只在 ${dev} 上，它现在连不上。等它，还是换个来做？`
-        : `${harnessName(pick.harness)} is only on ${dev}, and it can't be reached. Wait, or have someone else do it?`
-      : zh
-        ? `${dev} 睡着了。等它醒了${pick.uses === "chrome" ? "用你的 Chrome " : ""}做，还是现在在 ${other} 上做？`
-        : `${dev} is asleep. Wait${pick.uses === "chrome" ? " and use your Chrome there" : ""}, or do it on ${other} now?`;
+      ? fill(w.pin, { agent: harnessName(pick.harness), dev })
+      : fill(w.asleep, { dev, other, chrome: pick.uses === "chrome" ? w.chrome : "" });
     const q: Question = { id: "where", text, blocking: true, reversible: false, where };
     core.log.append({ persona: t.persona, stream: stream(t.id), origin: "task", kind: "report", body: { taskId: t.id, state: "needs_input", summary: text, questions: [q], evidence: [] } });
     // A card that waits on you, not a task that waits on a computer: the decision says both.

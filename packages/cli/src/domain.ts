@@ -9,11 +9,12 @@
 // listening on 127.0.0.1 only; requests through Caddy carry X-Forwarded-For, so they count as
 // remote and need a paired device (D54). scripts/caddy-setup.sh is the same for source users.
 import { promises as dns } from "node:dns";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { addWay, removeKind } from "@ducter/core/src/reach-book.ts";
 import { join } from "node:path";
 import type { Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
-import { isTailnetUrl, newPairing, ownUrl, unitPath } from "./remote.ts";
+import { newPairing, unitPath } from "./remote.ts";
 
 export const MARK_BEGIN = "# ducter: begin";
 export const MARK_END = "# ducter: end";
@@ -180,7 +181,8 @@ export async function cmdDomain(o: Opts): Promise<number> {
     if (r.error) return fail(t("domain.writeFailed", { file: cf, reason: r.error }), "sudo ducter domain --remove");
     step("remove", true, r.domains.length ? t("domain.removed", { domains: r.domains.join(", "), file: cf }) : t("domain.nothingToRemove", { file: cf }));
     // An address `ducter tailscale` saved isn't Caddy's to take away.
-    if (!isTailnetUrl(ownUrl(o.dataDir, {}))) rmSync(join(o.dataDir, "public-url"), { force: true });
+    // D293: only the domain's own way leaves the book.
+    removeKind(o.dataDir, "domain");
     res.ok = true;
     say("  " + style.dim(t("domain.removedNote")));
     return done();
@@ -302,8 +304,9 @@ export async function cmdDomain(o: Opts): Promise<number> {
   step("https", true, t("domain.httpsOk", { domain }));
 
   // 7. The address pairing hands out from now on.
+  // D293: a way of its own in the book, beside a tailnet or a tunnel.
   mkdirSync(o.dataDir, { recursive: true });
-  writeFileSync(join(o.dataDir, "public-url"), `https://${domain}\n`);
+  addWay(o.dataDir, "domain", `https://${domain}`);
   step("address", true, t("domain.saved"));
   res.ok = true;
   if (o.json) {

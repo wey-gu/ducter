@@ -16,6 +16,14 @@ describe("say (D154)", () => {
       expect(proofLabel(ev, "zh")).toBe(c.zh);
       expect(proofLabel(ev, "en")).toBe(c.en);
     });
+  for (const c of cases.proofOther)
+    test(`proof label for a ${c.lang} reader: ${c.label}`, () => {
+      expect(proofLabel({ kind: c.kind as "log", label: c.label, ref: c.ref }, c.lang)).toBe(c.want);
+    });
+  test("sayable (D292): a Korean reader sees Korean, not the task's English", () => {
+    expect(sayable("All tests pass now.", "ko")).toBeUndefined();
+    expect(sayable("테스트를 모두 통과했어요.", "ko")).toBe("테스트를 모두 통과했어요.");
+  });
   test("sayable: the task's English sentence isn't, for a Chinese reader", () => {
     expect(sayable("Nowledge Mem is connected.", "zh")).toBeUndefined();
     expect(sayable("Mem 连上了", "zh")).toBe("Mem 连上了");

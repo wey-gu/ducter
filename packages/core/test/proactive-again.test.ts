@@ -3,7 +3,7 @@
 // keeps 只说急的; either answer is a choice (never offered again). A mode the person chose in
 // Settings is never re-offered. D258: neither is one set before D250 left out any more.
 import { afterEach, expect, test } from "bun:test";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PROACTIVE_FILE } from "../src/proactive/engine.ts";
 import { SETTINGS_FILE } from "../src/settings.ts";
@@ -33,7 +33,7 @@ const say = async (r: Rig, text: string) => {
  * A home as a core before D250 left it: 只说急的 with no source kept, the state file from before
  * NOTES_REV, and (when `saidNo`) 不再需要 answered to 早上那条还要吗？ in the Log.
  */
-async function before(saidNo: boolean, language: "zh" | "en" = "zh"): Promise<string> {
+async function before(saidNo: boolean, language: import("@ducter/protocol").TalkLanguage = "zh"): Promise<string> {
   const t = tempDir();
   dirs.push(t.cleanup);
   const r = rig({ dir: t.dir, language });
@@ -43,7 +43,7 @@ async function before(saidNo: boolean, language: "zh" | "en" = "zh"): Promise<st
   }
   r.stop();
   const sp = join(t.dir, SETTINGS_FILE);
-  writeFileSync(sp, JSON.stringify({ ...JSON.parse(readFileSync(sp, "utf8")), proactive: "urgent" }));
+  writeFileSync(sp, JSON.stringify({ ...(existsSync(sp) ? JSON.parse(readFileSync(sp, "utf8")) : {}), proactive: "urgent" }));
   const pp = join(t.dir, PROACTIVE_FILE);
   const st = JSON.parse(readFileSync(pp, "utf8"));
   delete st.notesRev;
@@ -105,4 +105,15 @@ test("a choice made before they next write cancels the offer", async () => {
   await say(r, "帮我看看日程");
   expect(r.notes().filter((e) => e.body.ask === "note_again")).toHaveLength(0);
   expect(r.settings.get()).toMatchObject({ proactive: "useful", proactiveBy: "chosen" });
+});
+
+test("D292: a Korean conversation hears the offer in English (no Korean table yet), never in Chinese; zh-Hant hears Chinese", async () => {
+  const ko = make({ dir: await before(true, "auto"), language: "auto" });
+  await say(ko, "오늘 일정 좀 봐줘");
+  expect(ko.lastNote()).toMatchObject({ ask: "note_again", opening: "I can now tell you about flights, maintenance and billing changes ahead of time. Want a few each morning?" });
+  ko.stop();
+
+  const hant = make({ dir: await before(true, "zh-Hant"), language: "zh-Hant" });
+  await say(hant, "幫我看看行程");
+  expect(hant.lastNote()).toMatchObject({ ask: "note_again", opening: "现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几件吗？" });
 });

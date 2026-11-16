@@ -328,7 +328,7 @@ textarea {
 .decision .q,
 .ask .q,
 .task-head .headline {
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 :lang(zh) .top .name,
 :lang(zh) .living h2,
@@ -1425,7 +1425,7 @@ a {
   color: var(--ink-soft);
   font-size: var(--lg);
   line-height: var(--lh-voice);
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 /* What it can do, then its promise: a line each (D149). */
 .hello p > span {
@@ -2990,7 +2990,7 @@ a {
   font-size: var(--sm);
   line-height: var(--lh-read);
   color: var(--ink-soft);
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 /* The switch belongs to the card: no card of its own, a hairline above it. */
 .mem-hero .switch {
@@ -4341,7 +4341,7 @@ ol.tries b {
 /* A question is a sentence in a bubble: it fills the measure (D78), never balanced. */
 .partner > .bubble {
   line-break: strict;
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 
 /* ---------- 开一件事 / New task (D128): a quiet ＋ on On hand, a bottom sheet ---------- */
@@ -10374,4 +10374,453 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .lookring .tick {
     animation: none;
   }
+}
+
+/* ---------- D287: On hand with the partner at its head, the work as cards, the day beside ---------- */
+/* The partner over the board: its face says how the whole stands, its one sentence says it. */
+.oh-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 4px 2px 0;
+}
+.oh-face {
+  flex: none;
+  display: flex;
+  filter: drop-shadow(0 6px 8px rgb(43 33 24 / 0.1));
+}
+.oh-say {
+  margin: 0;
+  max-width: 34em;
+  font-family: var(--head);
+  font-size: var(--lg);
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.room-phone .oh-head,
+.room-side .oh-head {
+  gap: 12px;
+}
+.room-phone .oh-say,
+.room-side .oh-say {
+  font-size: var(--md);
+}
+/* The cards: two to a row where there is room, one on a phone. */
+.tcards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 12px;
+  padding: 2px 0 6px;
+}
+.tcard {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--line), 0 8px 18px -12px rgb(43 33 24 / 0.28);
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.tcard .cmain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 12px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tcard .c1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.tcard .c1 .t {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--md);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* What it is on, waits for, asks or came to: two lines, so every card keeps one rhythm. */
+.tcard .c2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-height: calc(2 * 1.5em);
+  font-size: var(--sm);
+  line-height: 1.5;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+.tcard .c2 > .g {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-right: 6px;
+  color: var(--ink-muted);
+}
+.tcard .c2 .c {
+  margin-left: 6px;
+  font-family: var(--mono);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.tcard .c2.result {
+  color: var(--ink);
+}
+.tcard .c2.needs {
+  color: var(--needs-ink);
+}
+.tcard .c2.failed {
+  color: var(--failed-ink);
+}
+/* The foot: the heartbeat on the left, where and what changed on the right. */
+.tcard .c3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 20px;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tcard .c3 .beat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+}
+.tcard .c3 .beat.wait {
+  color: var(--waiting-ink);
+  font-weight: 600;
+}
+.tcard .c3 .beat.wait .wring {
+  width: 16px;
+  height: 16px;
+}
+.tcard .c3 .beat.wait .wring .fill {
+  fill: var(--waiting-ink);
+}
+.tcard .c3 .beat.done {
+  color: var(--done-ink);
+  font-weight: 600;
+}
+.tcard .c3 .stat {
+  display: flex;
+  gap: 6px;
+  font-family: var(--mono);
+}
+.tcard .c3 .stat i {
+  font-style: normal;
+}
+.tcard .c3 .stat .add {
+  color: var(--done-ink);
+}
+.tcard .c3 .stat .del {
+  color: var(--failed-ink);
+}
+.tcard .c3 .pr {
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.tcard .c3 .meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50%;
+}
+/* Working: three soft bars that rise and fall, out of step, in the working ink. */
+.tcard .pulse {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.tcard .pulse i {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--working-dot);
+  transform-origin: bottom;
+  animation: oh-pulse 1.6s var(--ease) infinite;
+}
+.tcard .pulse i:nth-child(2) {
+  animation-delay: -0.55s;
+}
+.tcard .pulse i:nth-child(3) {
+  animation-delay: -1.1s;
+}
+@keyframes oh-pulse {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.tcard.a-working .c3 .beat,
+.tcard.a-queued .c3 .beat {
+  color: var(--working-ink);
+  font-weight: 600;
+}
+/* Each state its faint wash at the top of the card: working blue, a new result green. */
+.tcard.a-working,
+.tcard.a-queued {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--working-surface) 55%, var(--surface)), var(--surface) 64%);
+}
+.tcard.unseen {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--done-surface) 70%, var(--surface)), var(--surface) 72%);
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--done-dot) 45%, var(--line)), 0 8px 22px -12px color-mix(in srgb, var(--done-dot) 60%, transparent);
+}
+.tcard.unseen.a-failed {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--failed-surface) 70%, var(--surface)), var(--surface) 72%);
+  box-shadow: 0 2px 0 var(--line), 0 8px 18px -12px rgb(43 33 24 / 0.28);
+}
+/* A new result's little moment, once: it pops on the spring and its glow swells and settles. */
+.tcard.cheer {
+  animation: oh-cheer var(--t-pop) var(--spring) both, oh-glow 1.4s var(--ease) both;
+}
+@keyframes oh-cheer {
+  0% {
+    transform: scale(0.96);
+  }
+  60% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes oh-glow {
+  0% {
+    box-shadow: 0 2px 0 var(--line), 0 0 0 0 color-mix(in srgb, var(--done-dot) 70%, transparent);
+  }
+  40% {
+    box-shadow: 0 2px 0 var(--line), 0 0 0 8px color-mix(in srgb, var(--done-dot) 0%, transparent);
+  }
+}
+.tcard.arrived {
+  animation: oh-cheer var(--t-pop) var(--spring) both;
+}
+@media (hover: hover) {
+  .tcard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 var(--line), 0 14px 26px -14px rgb(43 33 24 / 0.32);
+  }
+  .tcard:hover .tacts,
+  .tcard:focus-within .tacts {
+    display: flex;
+  }
+}
+.tcard:active {
+  transform: translateY(0);
+}
+.tcard.kfocus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 75%, transparent);
+  outline-offset: 2px;
+}
+.tcard.sel {
+  outline: 2px solid var(--working-dot);
+  outline-offset: 2px;
+}
+.tcard .tacts {
+  position: absolute;
+  right: 12px;
+  bottom: 9px;
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding-left: 24px;
+  border-radius: 10px;
+  background: linear-gradient(to right, transparent, var(--surface) 24px);
+}
+.tcard .tacts.on {
+  display: flex;
+}
+.tcard .tacts .busy {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  padding: 0 4px;
+}
+.tcard .goal {
+  margin-top: 2px;
+}
+/* The day beside the board, on a wide screen: what comes back next, now, what came back today. */
+.day-col {
+  display: none;
+}
+@media (min-width: 1280px) {
+  .board-wrap > .day-col {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 0 0 248px;
+    min-width: 0;
+    padding-top: 8px;
+  }
+  .board-col:has(~ .day-col) > .next {
+    display: none;
+  }
+}
+.day-col h3 {
+  margin: 8px 0 2px;
+  padding-left: 22px;
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.day-l {
+  list-style: none;
+  margin: 0 0 0 5px;
+  padding: 0 0 0 9px;
+  border-left: 2px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.day-i {
+  position: relative;
+}
+.day-i .bead,
+.day-now .bead {
+  position: absolute;
+  left: -15px;
+  top: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.day-i.next .bead {
+  border: 2px solid var(--waiting-ink);
+  background: var(--bg);
+}
+.day-i.back .bead {
+  background: var(--done-dot);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+.day-b {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.day-b:disabled {
+  cursor: default;
+}
+@media (hover: hover) {
+  .day-b:not(:disabled):hover {
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
+  }
+}
+.day-b .tm,
+.day-now .tm {
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.day-i.next .tm {
+  color: var(--waiting-ink);
+}
+.day-b .tx {
+  font-size: var(--sm);
+  font-weight: 500;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.day-b .sb {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--xs);
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+.day-now {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0 14px;
+  padding: 4px 0 4px 10px;
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--accent);
+}
+.day-now .bead {
+  left: -9px;
+  top: 8px;
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  animation: oh-now var(--t-breathe) ease-in-out infinite;
+}
+.day-now .tm {
+  color: var(--accent);
+}
+@keyframes oh-now {
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+}
+.day-none {
+  margin: 0 0 0 22px;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tcard,
+  .tcard.cheer,
+  .tcard.arrived,
+  .tcard .pulse i,
+  .day-now .bead {
+    animation: none;
+    transition: none;
+  }
+  .tcard:hover {
+    transform: none;
+  }
+  .tcard .pulse i {
+    transform: scaleY(0.7);
+  }
+}
+/* D287: a quiet caption over the few quiet waits or seen results kept in sight (no fold from three). */
+.tsec .sub-h {
+  margin: 10px 0 0;
+  padding: 0 14px;
+  font-size: var(--xs);
+  font-weight: 500;
+  color: var(--ink-muted);
 }

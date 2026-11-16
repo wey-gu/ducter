@@ -41,6 +41,8 @@ const argv = new Set(process.argv.slice(2));
 const KEEP = argv.has("--keep");
 const SKIP_BUILD = argv.has("--skip-build");
 const REUSE_VM = argv.has("--reuse-vm"); // iterate on a kept VM (with --keep before)
+// Where the VM's apt is too slow for Chrome's libraries (a proxied link): every other step still runs.
+const SKIP_BROWSE = argv.has("--skip-browse");
 const PROFILE = process.env.DUCTER_E2E_PROFILE ?? "ducter-e2e";
 const DIR = resolve(process.env.DUCTER_E2E_DIR ?? mkdtempSync(join(tmpdir(), "ducter-e2e-")));
 const PORT = 47777; // never 7777: lima forwards the VM's ports to this Mac's loopback
@@ -507,7 +509,8 @@ try {
   await install();
   await selfUpdate(VERSIONS[1], "第二版：更新后卡片不会再说没更新成", "Second: the card never says it didn't update");
   await selfUpdate(VERSIONS[2], "第三版：连着两次原地更新", "Third: two updates in place in a row");
-  await browse();
+  if (SKIP_BROWSE) say("  上网: skipped (--skip-browse)");
+  else await browse();
   await agent();
   await updateAll();
   await anywhere();

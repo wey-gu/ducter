@@ -75,7 +75,7 @@ func TestBenchSimulatorAndInfo(t *testing.T) {
 		answerBench(app, sent, reply) // the sims looked for when the task opened
 		tt.Frame()
 		// 工作副本: the branch in the title bar opens the panel.
-		if err := tt.Click(L.T("info.about") + " · ducter/oolong"); err != nil {
+		if err := tt.Click(spoken(L, L.T("info.about"), "ducter/oolong")); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()
@@ -106,7 +106,7 @@ func TestBenchSimulatorAndInfo(t *testing.T) {
 		}
 		tt.Frame()
 		all = texts(tt)
-		for _, w := range []string{"iPhone 16e", "iOS 26.3", L.T("wb.sim.viewonly", app.taskComputerName(app.S.Task("t_tea")))} {
+		for _, w := range []string{"iPhone 16e\niOS 26.3", L.T("wb.sim.viewonly", app.taskComputerName(app.S.Task("t_tea")))} {
 			if !strings.Contains(all, w) {
 				t.Errorf("%s: no %q on the Phone page: %q", lang, w, all)
 			}

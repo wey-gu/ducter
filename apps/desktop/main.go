@@ -34,6 +34,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 	"github.com/wey-gu/ducter/apps/desktop/internal/views"
+	"github.com/wey-gu/ducter/apps/desktop/internal/voice"
 )
 
 // version and commit are set by scripts/make-app.sh (-ldflags -X).
@@ -241,6 +242,11 @@ func main() {
 		})
 		app.Win = win
 		app.Desktop = desktop{win}
+		// D305: hold to talk and Read aloud with the Mac's own engines; Fn
+		// is watched while a window of this app is in front.
+		app.Voice, app.Speaker = voice.NewSystem(), voice.NewSpeaker()
+		app.PreferredLocales = mygo.App.PreferredLanguages()
+		voice.WatchFn(func(down bool) { win.Update(func() { app.FnKey(down) }) })
 		// D198, D201: 打开 / Open on an opened task: Finder, and the editors and terminals found here.
 		app.OpenFolder = local.OpenFolder
 		go func() {

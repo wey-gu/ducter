@@ -30,6 +30,7 @@ import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
 import { LearnedSheet, RecallLine, RecallSheet } from "./recall.tsx";
+import { MicButton, ReadingLine, useReadback, voice, VoiceSettings, VoiceStrip } from "./voice.tsx";
 import { FirstAfter, firstOpening, KeyCard, keyJustAdded } from "./first-words.tsx";
 import { CalFacts, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx";
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
@@ -1197,6 +1198,7 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chi
         {e.ai.media?.length ? <MediaBlock media={e.ai.media} side="partner" ctx={{ kind: "conv" }} /> : null}
         {e.ai.first && <FirstAfter fw={e.ai.first} />}
         <RecallLine seq={e.firstSeq} />
+        <ReadingLine seq={e.firstSeq} />
         <Quiet k={`m${e.firstSeq}`} tasks={replyTasks(e, chipOwner)} noted={A.notedFor(e)} />
       </div>
     );
@@ -1405,14 +1407,18 @@ function Composer({ taskId }: { taskId?: string }) {
   const value = taskId ? (A.taskDrafts.get(taskId) ?? "") : A.draft;
   const set = (v: string) => {
     if (taskId) A.taskDrafts.set(taskId, v);
-    else A.draft = v;
+    else (A.draft = v), voice().typed();
     A.changed();
   };
   const submit = (queue = false) => {
     // What is typed now, not this render's copy (Enter can come before the next render).
     const now = taskId ? (A.taskDrafts.get(taskId) ?? "") : A.draft;
     const ok = taskId ? A.sendToTask(taskId, now, false, queue) : A.sendMessage(now);
-    if (ok) set("");
+    if (ok) {
+      // D305: words that came by voice went: their reply may be read aloud.
+      if (!taskId) voice().sentDraft();
+      set("");
+    }
   };
   const label = taskId ? t("composer.task") : t("composer.label", A.S.personaName);
   // D268: while the task works, a message steers it at its next step; ⌥↩ or After this waits until
@@ -1424,6 +1430,8 @@ function Composer({ taskId }: { taskId?: string }) {
     <div class="composer-wrap" ref={wrap}>
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <DropHint on={over} />
+      {/* D305: hold to talk, over the conversation's composer. */}
+      {!taskId && <VoiceStrip />}
       <Tray where={where} />
       <div
         class={`composer${!taskId && A.replying ? " has-reply" : ""}`}
@@ -1450,6 +1458,7 @@ function Composer({ taskId }: { taskId?: string }) {
             </svg>
           </button>
         )}
+        {!taskId && <MicButton />}
         <button class="btn accent icon send" aria-label={t("composer.send")} disabled={!canSend} onClick={() => submit()}>
           <Arrow />
         </button>
@@ -1556,6 +1565,9 @@ export function Conversation() {
   const follow = useFollow(scroller, rows, A.pending.length);
   const divider = dividerSeq();
   const empty = rows.length === 0 && A.pending.length === 0 && A.S.welcomed;
+  // D305: the reply to a message sent by voice, read aloud (with the setting on).
+  const lastRow = rows.at(-1);
+  useReadback(lastRow ? { seq: lastRow.firstSeq, ts: lastRow.ev.ts, text: lastRow.ai?.text ?? "", partner: !!lastRow.ai } : undefined);
   return (
     <>
       {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
@@ -2848,6 +2860,7 @@ function PhoneSettings() {
           <b>{t("settings.details.title")}</b>
           <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => A.setDetails(v)} />
         </div>
+        <VoiceSettings />
       </div>
       <div class="small sub">{t("settings.phone.note")}</div>
     </section>

@@ -119,6 +119,7 @@ func (a *App) lookPanel(c *ui.Context) {
 			a.ShowTitle()
 		}
 	})
+	a.voiceSettings(c) // D305
 }
 
 // soundRow is the intro's sound: a quiet Play beside its switch, so you

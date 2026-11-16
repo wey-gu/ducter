@@ -11,6 +11,7 @@
 		239F5A35418876FE9B40D017 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF0A95EBBD9D8AB9E7F38931 /* NotificationService.swift */; };
 		24AAD08DDA66090595E2BA8A /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08C5B880B5BEE0A2A05E3B60 /* Store.swift */; };
 		2B8826AE33539926AC1E4ABC /* Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF24A8D192017C97A5783A0B /* Push.swift */; };
+		30FC2EF738C26CA47C534022 /* Voice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FCFF81082AA3BFF2B7A7EF8 /* Voice.swift */; };
 		3BF33CE99B1B378892ED9FCA /* Glance.swift in Sources */ = {isa = PBXBuildFile; fileRef = E66220192402AFDA88FDBEEC /* Glance.swift */; };
 		3C7CA7C0C771493667A2DC7B /* Glance.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2D381E652CD49B804B2D626D /* Glance.strings */; };
 		45C67028072AECABD8CFE461 /* BricolageGrotesque.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5C1AA35A18761F27CAB058C4 /* BricolageGrotesque.ttf */; };
@@ -85,6 +86,7 @@
 		7E75A9097C852D0731F100D3 /* WebShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebShell.swift; sourceTree = "<group>"; };
 		7F13E0FF5AD5B5FA5A4F165D /* DucterNotify.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = DucterNotify.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		8923DEFAF6516B2F2BB862A6 /* HomeOlder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOlder.swift; sourceTree = "<group>"; };
+		8FCFF81082AA3BFF2B7A7EF8 /* Voice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Voice.swift; sourceTree = "<group>"; };
 		A1ABADBC4D4A99F18CC3BE68 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A2509E21008EBA71C43F73C2 /* DucterNotify.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DucterNotify.entitlements; sourceTree = "<group>"; };
 		A5311C8E594CA50AA0781FD6 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Glance.strings; sourceTree = "<group>"; };
@@ -131,6 +133,7 @@
 				DF24A8D192017C97A5783A0B /* Push.swift */,
 				08C5B880B5BEE0A2A05E3B60 /* Store.swift */,
 				CE70874634C0BE491CD57671 /* Theme.swift */,
+				8FCFF81082AA3BFF2B7A7EF8 /* Voice.swift */,
 				7E75A9097C852D0731F100D3 /* WebShell.swift */,
 				534714C6F9B225B7C1F0B9C8 /* Fonts */,
 				B2D299316F9F82A05F46D56F /* InfoPlist.strings */,
@@ -360,6 +363,7 @@
 				7798E0851BCB793E7A4C4D0A /* PushCrypto.swift in Sources */,
 				24AAD08DDA66090595E2BA8A /* Store.swift in Sources */,
 				AD4ED5462FD2005D72767E67 /* Theme.swift in Sources */,
+				30FC2EF738C26CA47C534022 /* Voice.swift in Sources */,
 				F45B4A8E95DFC82D8EB3A735 /* WebShell.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

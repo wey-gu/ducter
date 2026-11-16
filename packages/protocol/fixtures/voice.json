@@ -1,0 +1,253 @@
+{
+  "locale": [
+    {
+      "tag": "zh",
+      "preferred": [],
+      "want": "zh-CN"
+    },
+    {
+      "tag": "zh",
+      "preferred": [
+        "zh-TW"
+      ],
+      "want": "zh-CN"
+    },
+    {
+      "tag": "zh-Hant",
+      "preferred": [
+        "zh-CN",
+        "zh-HK"
+      ],
+      "want": "zh-TW"
+    },
+    {
+      "tag": "zh-Hant",
+      "preferred": [],
+      "want": "zh-TW"
+    },
+    {
+      "tag": "en",
+      "preferred": [
+        "zh-CN",
+        "en-AU"
+      ],
+      "want": "en-AU"
+    },
+    {
+      "tag": "en",
+      "preferred": [],
+      "want": "en-US"
+    },
+    {
+      "tag": "ko",
+      "preferred": [
+        "en-US"
+      ],
+      "want": "ko-KR"
+    },
+    {
+      "tag": "fr-CA",
+      "preferred": [],
+      "want": "fr-CA"
+    },
+    {
+      "tag": "ja",
+      "preferred": [
+        "ja-JP"
+      ],
+      "want": "ja-JP"
+    },
+    {
+      "tag": "",
+      "preferred": [],
+      "want": "en-US"
+    },
+    {
+      "tag": "es",
+      "preferred": [
+        "es-MX",
+        "en-US"
+      ],
+      "want": "es-MX"
+    }
+  ],
+  "speakable": [
+    {
+      "text": "## 今天\n\n- **三件事**做完了\n- 看 [报告](https://x.y)\n\n```ts\ncode\n```\n还有 `ducter up`",
+      "want": "今天。三件事做完了。看 报告。还有 ducter up"
+    },
+    {
+      "text": "Here's the plan:\n1. Fix the *build*\n2. Ship it\nSee https://a.b/c for more",
+      "want": "Here's the plan: Fix the build. Ship it. See for more"
+    },
+    {
+      "text": "| A | B |\n|---|---|\n| 1 | 2 |",
+      "want": "A B. 1 2"
+    },
+    {
+      "text": "> quoted\n\n---\n\n- [x] done item\n- [ ] open item",
+      "want": "quoted. done item. open item"
+    },
+    {
+      "text": "好的，我来看看。",
+      "want": "好的，我来看看。"
+    },
+    {
+      "text": "Just one line",
+      "want": "Just one line"
+    }
+  ],
+  "hold": [
+    {
+      "dx": 0,
+      "dy": -60,
+      "want": "send"
+    },
+    {
+      "dx": -80,
+      "dy": 0,
+      "want": "drop"
+    },
+    {
+      "dx": -80,
+      "dy": -60,
+      "want": "drop"
+    },
+    {
+      "dx": -100,
+      "dy": -60,
+      "want": "drop"
+    },
+    {
+      "dx": 10,
+      "dy": -20,
+      "want": "keep"
+    },
+    {
+      "dx": 0,
+      "dy": -55,
+      "want": "keep"
+    },
+    {
+      "dx": -71,
+      "dy": 0,
+      "want": "keep"
+    },
+    {
+      "dx": 30,
+      "dy": -200,
+      "want": "send"
+    }
+  ],
+  "join": [
+    {
+      "draft": "",
+      "heard": "你好 ",
+      "want": "你好"
+    },
+    {
+      "draft": "Hi",
+      "heard": " there",
+      "want": "Hi there"
+    },
+    {
+      "draft": "今天",
+      "heard": "去哪",
+      "want": "今天去哪"
+    },
+    {
+      "draft": "ok ",
+      "heard": "",
+      "want": "ok "
+    },
+    {
+      "draft": "看看",
+      "heard": "PR",
+      "want": "看看PR"
+    },
+    {
+      "draft": "Fix it.",
+      "heard": "then ship",
+      "want": "Fix it. then ship"
+    },
+    {
+      "draft": "a  ",
+      "heard": " b",
+      "want": "a b"
+    }
+  ],
+  "meter": [
+    {
+      "level": 0,
+      "want": [
+        0.18,
+        0.18,
+        0.18,
+        0.18,
+        0.18
+      ]
+    },
+    {
+      "level": 0.5,
+      "want": [
+        0.32,
+        0.45,
+        0.59,
+        0.45,
+        0.32
+      ]
+    },
+    {
+      "level": 1,
+      "want": [
+        0.45,
+        0.73,
+        1,
+        0.73,
+        0.45
+      ]
+    },
+    {
+      "level": 1.4,
+      "want": [
+        0.45,
+        0.73,
+        1,
+        0.73,
+        0.45
+      ]
+    },
+    {
+      "level": -1,
+      "want": [
+        0.18,
+        0.18,
+        0.18,
+        0.18,
+        0.18
+      ]
+    }
+  ],
+  "smooth": [
+    {
+      "prev": 0,
+      "next": 1,
+      "want": 0.6
+    },
+    {
+      "prev": 1,
+      "next": 0,
+      "want": 0.82
+    },
+    {
+      "prev": 0.5,
+      "next": 0.5,
+      "want": 0.5
+    },
+    {
+      "prev": 0.2,
+      "next": 0.9,
+      "want": 0.62
+    }
+  ]
+}

@@ -78,6 +78,12 @@ type state struct {
 	// answers.
 	SpokeLang   string `json:"spokeLang,omitempty"`
 	PersonaName string `json:"personaName,omitempty"`
+	// D305: voice. VoiceKey is the key held to talk ("fn", "none", or empty
+	// for right Option); VoiceAsked is set once the first hold's card was
+	// answered; ReadBack reads the reply to a message sent by voice aloud.
+	VoiceKey   string `json:"voiceKey,omitempty"`
+	VoiceAsked bool   `json:"voiceAsked,omitempty"`
+	ReadBack   bool   `json:"readBack,omitempty"`
 }
 
 // StartLang is the window's language at launch (a BCP 47 tag the strings
@@ -476,4 +482,49 @@ func CleanName(raw string) string {
 		s = string(rs[:24])
 	}
 	return s
+}
+
+// VoiceKey is the key held to talk (D305): "ropt" (right Option, the
+// default), "fn" or "none".
+func (l *Local) VoiceKey() string {
+	if l == nil || (l.st.VoiceKey != "fn" && l.st.VoiceKey != "none") {
+		return "ropt"
+	}
+	return l.st.VoiceKey
+}
+
+// SetVoiceKey remembers it.
+func (l *Local) SetVoiceKey(k string) {
+	if l == nil {
+		return
+	}
+	if k != "fn" && k != "none" {
+		k = ""
+	}
+	l.st.VoiceKey = k
+	l.save()
+}
+
+// VoiceAsked reports whether the first hold's card was answered.
+func (l *Local) VoiceAsked() bool { return l != nil && l.st.VoiceAsked }
+
+// SetVoiceAsked remembers that it was.
+func (l *Local) SetVoiceAsked() {
+	if l == nil {
+		return
+	}
+	l.st.VoiceAsked = true
+	l.save()
+}
+
+// ReadBack reports whether a reply to a message sent by voice is read aloud.
+func (l *Local) ReadBack() bool { return l != nil && l.st.ReadBack }
+
+// SetReadBack turns it on or off.
+func (l *Local) SetReadBack(on bool) {
+	if l == nil {
+		return
+	}
+	l.st.ReadBack = on
+	l.save()
 }

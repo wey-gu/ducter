@@ -2,3 +2,5 @@
 "NSPhotoLibraryUsageDescription" = "To send photos from your library to Ducter.";
 "NSPhotoLibraryAddUsageDescription" = "To save a picture from the conversation to your Photos.";
 "NSLocalNetworkUsageDescription" = "To reach your Ducter when it runs on a computer at home.";
+"NSMicrophoneUsageDescription" = "To hear you while you hold the microphone button. Nothing is recorded.";
+"NSSpeechRecognitionUsageDescription" = "To turn what you say into text in your message, on this iPhone whenever it can.";

@@ -137,7 +137,8 @@ func (a *App) conversation(c *ui.Context) {
 	// same voice says sit 12 apart, and 16 where the turn passes.
 	userTurn := func(i int) bool { return rows[i].pending != nil || (rows[i].entry != nil && rows[i].entry.User != nil) }
 	// D254: the list and the pebble over its foot share one pane.
-	ui.Column(c.Key("convpane")).Grow(1).MinHeight(0).Children(func() {
+	a.readBack() // D305: the reply to a message sent by voice, read aloud
+	ui.Column(c.Key("convpane")).Grow(1).MinHeight(0).ObserveInput(a.voiceObserve).Children(func() {
 		ui.List(c, &a.list, len(rows), func(i int) {
 			e := rows[i].entry
 			var prev *store.Entry
@@ -605,6 +606,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 					box.Children(func() { markdown.View(c, autospace(e.AI.Text), &a.md) })
 				})
 			}
+			a.readingLine(c, e.FirstSeq) // D305: Stop while it is read aloud
 			// D222: the day glance the partner put under its words.
 			if e.AI.Cal != nil {
 				a.dayCard(c, itoa(e.FirstSeq), e.AI.Cal)
@@ -883,7 +885,10 @@ func (a *App) composer(c *ui.Context) {
 	if a.held != nil && a.held.taskID == "" {
 		a.aboveComposer(c, func() { a.heldLine(c) })
 	}
-	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
+	// D305: listening, its first card, or why not. Its own keyed place,
+	// so the mic held under it stays the same element as the strip comes.
+	ui.Column(c.Key("voice-above")).Children(func() { a.voiceAbove(c) })
+	ui.Row(c.Key("composer-row")).ObserveInput(a.voiceObserve).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
 		box := ui.Column(c.Key("composer-box")).Grow(1).MaxWidth(convWidth).Padding(t.S2, t.S2, t.S2, t.S3).
 			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 		over := a.takeDrops(box, "conv") // D206: pictures dropped on the composer
@@ -907,11 +912,17 @@ func (a *App) composer(c *ui.Context) {
 						if a.pictureKeys("conv", k) {
 							return true
 						}
+						if k.Key == ui.KeyEscape && k.Mods == 0 && a.vox.phase == "listen" {
+							a.voiceDrop() // D305: Esc drops what is being heard
+							return true
+						}
 						if k.Key == ui.KeyEscape && k.Mods == 0 && a.CancelReply() {
 							return true // D236: Esc puts the reply away
 						}
+						a.speakStop() // D305: typing stops a reply being read
 						if k.Key == ui.KeyEnter && k.Mods == 0 {
-							if a.SendMessage(k.Text()) {
+							if text := k.Text(); a.SendMessage(text) {
+								a.voiceSent(text)
 								k.SetText("")
 							}
 							return true
@@ -922,8 +933,10 @@ func (a *App) composer(c *ui.Context) {
 					ta.Focus()
 					a.focusComposer = false
 				}
+				a.micButton(c) // D305: hold to talk
 				if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
-					if a.SendMessage(a.draft) {
+					if text := a.draft; a.SendMessage(text) {
+						a.voiceSent(text)
 						a.draft = ""
 					}
 				}

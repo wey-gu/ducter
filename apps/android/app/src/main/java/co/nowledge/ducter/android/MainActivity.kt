@@ -80,6 +80,10 @@ class MainActivity : ComponentActivity() {
     private val quietBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private var insets = IntArray(4) // top, right, bottom, left, in CSS px
     private var connect: ConnectView? = null
+    // D305: hold to talk and read aloud (Voice.kt).
+    private lateinit var voice: Voice
+    private lateinit var micAsk: androidx.activity.result.ActivityResultLauncher<String>
+    private var micAsked: ((Boolean) -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
@@ -91,6 +95,12 @@ class MainActivity : ComponentActivity() {
         scanner = registerForActivityResult(ScanContract()) { r -> r.contents?.let { connect?.take(it) } }
         // D278: Android's one question before the first call a sheet dials; the dial waits for it.
         callAsk = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok -> callAsked?.invoke(ok); callAsked = null }
+        // D305: the microphone, asked the first time the person holds to talk (the page said why).
+        micAsk = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok -> micAsked?.invoke(ok); micAsked = null }
+        voice = Voice(this, { e -> js("window.ducterVoice&&window.ducterVoice(${e})") }) { done ->
+            micAsked = done
+            micAsk.launch(android.Manifest.permission.RECORD_AUDIO)
+        }
         pictures = Pictures(this)
         // D246: Android's App info lists what Ducter shows from the first run.
         Notify.channels(this)
@@ -344,6 +354,12 @@ class MainActivity : ComponentActivity() {
         web.removeCallbacks(lookEvery)
     }
 
+    override fun onDestroy() {
+        // D305: the recognizer and the voice go with the window.
+        if (::voice.isInitialized) voice.release()
+        super.onDestroy()
+    }
+
     private fun unreachable() {
         lookForBetterWay(up = true)
         phase = "unreachable"
@@ -409,7 +425,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun shim(): String {
-        val info = JSONObject().put("platform", "android").put("version", Versions.bare(BuildConfig.VERSION_NAME)).put("appId", packageName)
+        val info = JSONObject().put("platform", "android").put("version", Versions.bare(BuildConfig.VERSION_NAME)).put("appId", packageName).put("voice", 1)
         return """(()=>{const b=window.ducterAndroid;if(!b||window.ducterBridge)return;const p=new Map();let n=0;
 b.onmessage=(e)=>{try{const d=JSON.parse(e.data);const f=p.get(d.id);if(!f)return;p.delete(d.id);d.error?f[1](new Error(d.error)):f[0](d.r)}catch{}};
 window.ducterBridge=Object.freeze({postMessage:(m)=>new Promise((res,rej)=>{const id=++n;p.set(id,[res,rej]);b.postMessage(JSON.stringify({id,m}))})});
@@ -497,6 +513,7 @@ window.ducterNative=Object.freeze($info);})();"""
                 else if (!reached && phase == "ready") unreachable()
                 answer(null)
             }
+            "voice.can", "voice.start", "voice.stop", "voice.cancel", "voice.settings", "speak", "speak.stop" -> voice.handle(m) { answer(it) }
             else -> reply.postMessage(JSONObject().put("id", id).put("error", "unknown").toString())
         }
     }

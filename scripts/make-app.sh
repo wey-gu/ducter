@@ -124,7 +124,9 @@ cat >"$APP/Contents/Info.plist" <<EOF
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Calls from your own number: Ducter hears the call through the sound card your phone is plugged into. Nothing is recorded.</string>
+	<string>Ducter listens only while you hold to talk, to put your words in a message, and hears calls from your own number through the sound card your phone is plugged into. Nothing is recorded.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Hold to talk: macOS turns what you say into words in your message, on this Mac whenever it can. Ducter keeps no sound.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Ducter, open source. Runs on your own Mac.</string>
 </dict>

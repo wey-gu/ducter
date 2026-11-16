@@ -51,6 +51,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   drawing, and look through every picture in the conversation.
 - **[Tables, charts, lists and choices](tables-and-charts.md):** when a reply reads better as a
   table, a chart, a list to tick or a few answers to tap, and how it reads in your chat apps.
+- **[Talk by voice](voice.md):** hold the microphone and speak instead of typing, have your
+  partner's messages read aloud, and where the sound goes on each device.
 - **[Waiting, keep going, routines](waiting-and-routines.md):** "tell me when…", "keep fixing
   until it works", and "every Monday…".
 - **[Phone calls](calls.md):** let your partner ring a restaurant, a clinic or a shop for you, only

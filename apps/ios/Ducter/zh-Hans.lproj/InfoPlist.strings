@@ -2,3 +2,5 @@
 "NSPhotoLibraryUsageDescription" = "用来把相册里的照片发给 Ducter。";
 "NSPhotoLibraryAddUsageDescription" = "用来把对话里的图片存到你的相册。";
 "NSLocalNetworkUsageDescription" = "你的 Ducter 在家里的电脑上运行时，用来连上它。";
+"NSMicrophoneUsageDescription" = "只在你按住麦克风按钮时听你说话，不会录音。";
+"NSSpeechRecognitionUsageDescription" = "把你说的话转成消息里的文字，能在这台 iPhone 上转时就在这上面转。";

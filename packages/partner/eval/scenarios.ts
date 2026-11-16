@@ -1191,13 +1191,13 @@ export const scenarios: Scenario[] = [
       ask: true,
       opens: 0,
       maxChars: 160,
-      require: [/你的 ?terminal-claude/],
+      require: [/terminal-claude/],
       forbid: [/msg-\d{3}/],
       proseForbid: [/Weyl/],
       bridgeSent: { to: "terminal-claude", count: [1, 1], forbid: [OVER_ASK] },
     },
     rubric:
-      "The user asks the partner to ask their own terminal Claude a question. Pass if: the partner puts up one send card right away (no offer in prose first) naming the recipient as the user's own (你的 terminal-claude); the message carries what the user asked (status and tonight's PR) plus the background needed, and adds no numbered list of extra sub-questions; after the answer arrives the partner tells the user what it says in one or two short Chinese lines, speaking to the user as 你 (never 'Weyl' in the third person).",
+      "The user asks the partner to ask their own terminal Claude a question. Pass if: the partner puts up one send card right away (no offer in prose first) naming the recipient by what it is (terminal-claude; D273: no 你的 / 'your other' framing); the message carries what the user asked (status and tonight's PR) plus the background needed, and adds no numbered list of extra sub-questions; after the answer arrives the partner tells the user what it says in one or two short Chinese lines, speaking to the user as 你 (never 'Weyl' in the third person).",
   },
   {
     id: "bridge-ask-en",
@@ -1213,13 +1213,13 @@ export const scenarios: Scenario[] = [
       ask: true,
       opens: 0,
       maxChars: 260,
-      require: [/your terminal-claude/i],
+      require: [/terminal-claude/i],
       forbid: [/msg-\d{3}/],
       proseForbid: [/Weyl/],
       bridgeSent: { to: "terminal-claude", count: [1, 1], forbid: [OVER_ASK] },
     },
     rubric:
-      "English version of asking the user's own terminal Claude. Pass if: one send card at once naming the recipient as the user's own (your terminal-claude); the message carries what the user asked plus background, with no numbered list of extra sub-questions; after the answer the partner tells the user in one or two short English lines, addressing the user as 'you' (never 'Weyl').",
+      "English version of asking the user's own terminal Claude. Pass if: one send card at once naming the recipient by what it is (terminal-claude; D273); the message carries what the user asked plus background, with no numbered list of extra sub-questions; after the answer the partner tells the user in one or two short English lines, addressing the user as 'you' (never 'Weyl').",
   },
 
   // ---------- consumer voice (D129): the App Store Connect run the author tested ----------
@@ -1580,7 +1580,7 @@ export const scenarios: Scenario[] = [
     phone: true,
     steps: [{ user: "用我自己的号码打给鼎泰丰（+86 21 6123 4567），问问周六晚上 7 点还有没有 4 位的位子" }],
     expect: { opens: 0, maxChars: 160, called: [{ tool: "phone_call", args: { from: "own" } }], forbid: [/打过去了|打好了|订好了|已经打|booked/i] },
-    rubric: "D218: the user asks for the call to go from their own number. It drafts it with phone_call and from=own. Here their own phone isn't set up (only Tuwa is connected, which can't call mainland China), so the tool refuses: it then says in one short Chinese line that calls from their own number need their Android phone set up first, and where (Settings › Accounts). It never claims a call was made or booked, never switches silently to another line, opens no task, no lecture.",
+    rubric: "D218: the user asks for the call to go from their own number. It drafts it with phone_call and from=own. Here no live call station exists (D278: only a computer beside the phone can carry the voice; Tuwa can't call mainland China), so the tool returns the call sheet for the user to dial (why: own): it says in one short Chinese line that it wrote what to say and the user can dial it with one tap on their phone (你来打). It never claims a call was made or booked, never switches silently to another line, opens no task, no lecture.",
   },
   {
     id: "call-never-the-owner-zh",

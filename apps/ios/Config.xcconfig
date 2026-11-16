@@ -7,4 +7,7 @@ DEVELOPMENT_TEAM = JMU55RJW2K
 // The notification relay the app registers with (D159). A self-signed build with its own APNs key
 // on its home can leave it: the home sends straight to Apple. ("/$()/" keeps "//" from being a comment.)
 DUCTER_PUSH_RELAY = https:/$()/ducter.ai/api/push
+// D306: the Lock Screen glance (Live Activities). Off until its push path is checked on a real
+// iPhone; 1 turns it on (the Simulator shots build with it on).
+DUCTER_LIVE_ACTIVITIES = 0
 #include? "Local.xcconfig"

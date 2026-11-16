@@ -71,4 +71,19 @@
     <string name="handset_record_asking">Android is asking to record the screen</string>
     <string name="handset_record_sending">Sending the recording to Ducter</string>
     <string name="handset_link_fgs">Keeps the link to your Ducter while a task borrows this phone</string>
+    <!-- D306: the glance (packages/protocol/src/ambient.ts AMBIENT_WORDS). -->
+    <string name="glance_channel">Tasks and calls you follow</string>
+    <string name="glance_channel_about">A task you chose to keep in sight, and a call in progress: only where it\'s at.</string>
+    <string name="glance_working">Working</string>
+    <string name="glance_waiting">Waiting</string>
+    <string name="glance_needs_you">Needs you</string>
+    <string name="glance_done">Done</string>
+    <string name="glance_failed">Didn\'t work</string>
+    <string name="glance_cancelled">Cancelled</string>
+    <string name="glance_calling">Calling</string>
+    <string name="glance_talking">On the call</string>
+    <string name="glance_asking">They\'re asking</string>
+    <string name="glance_called">Called</string>
+    <string name="glance_no_answer">No answer</string>
+    <string name="glance_not_connected">Didn\'t connect</string>
 </resources>

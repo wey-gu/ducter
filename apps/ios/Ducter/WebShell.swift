@@ -242,6 +242,20 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
                 if Relay.unreachable { out["relay"] = "unreachable" }
             }
             return (out, nil)
+        case "glance.shown":
+            // D306: which tasks and calls are on the Lock Screen now; off: the page shows no switch.
+            return (["on": GlanceLive.enabled, "shown": GlanceLive.shown()], nil)
+        case "glance.start":
+            guard let kind = m["kind"] as? String, let id = m["id"] as? String, let title = m["title"] as? String, let phase = m["phase"] as? String else { return (nil, "invalid") }
+            return (await GlanceLive.start(kind: kind, id: id, title: title, phase: phase, since: m["since"] as? Int ?? Int(Date().timeIntervalSince1970)), nil)
+        case "glance.update":
+            if let kind = m["kind"] as? String, let id = m["id"] as? String, let phase = m["phase"] as? String {
+                await GlanceLive.update(kind: kind, id: id, phase: phase, since: m["since"] as? Int ?? Int(Date().timeIntervalSince1970))
+            }
+            return (nil, nil)
+        case "glance.end":
+            if let kind = m["kind"] as? String, let id = m["id"] as? String { await GlanceLive.end(kind: kind, id: id) }
+            return (nil, nil)
         case "push.disable":
             AppState.shared.pushOn = false
             let tok = AppState.shared.apnsToken

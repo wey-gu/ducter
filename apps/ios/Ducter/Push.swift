@@ -11,6 +11,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         Self.shared = self
+        #if DEBUG
+        // D306: `-glanceDemo needs_you` starts a local glance (Simulator check, no home needed).
+        if let p = UserDefaults.standard.string(forKey: "glanceDemo") { Task { @MainActor in await GlanceLive.demo(p) } }
+        #endif
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         // Go acts, so it asks for Face ID on a locked phone; Hold only waits.
@@ -140,8 +144,21 @@ enum API {
         return a
     }
 
+    /// D306: a call whose answer the app reads (the Lock Screen glance's follow id).
     @MainActor
-    private static func post(_ path: String, _ body: [String: Any]) async -> Int {
+    static func postJSON(_ path: String, _ body: [String: Any]) async -> [String: Any]? {
+        guard let base = AppState.shared.base, let url = URL(string: path, relativeTo: base) else { return nil }
+        var r = URLRequest(url: url, timeoutInterval: 15)
+        r.httpMethod = "POST"
+        r.setValue("application/json", forHTTPHeaderField: "content-type")
+        if let t = Keychain.token { r.setValue("Bearer \(t)", forHTTPHeaderField: "authorization") }
+        r.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        guard let (data, res) = try? await URLSession.shared.data(for: r), (res as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+
+    @MainActor
+    static func post(_ path: String, _ body: [String: Any]) async -> Int {
         guard let base = AppState.shared.base, let url = URL(string: path, relativeTo: base) else { return 0 }
         var r = URLRequest(url: url, timeoutInterval: 15)
         r.httpMethod = "POST"

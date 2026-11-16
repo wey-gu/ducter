@@ -58,6 +58,15 @@ func (a *App) lookPanel(c *ui.Context) {
 				a.cheer()
 			}
 		})
+		// D306: the menu bar extra, on by default; the way back after Don't
+		// show in the menu bar.
+		a.row(c, "menubar", a.L.T("settings.menubar"), a.L.T("settings.menubar.help"), func() {
+			on := a.MenuBarOn()
+			if a.switchControl(c, "menubar", a.L.T("settings.menubar"), &on) {
+				a.SetMenuBar(on)
+				a.cheer()
+			}
+		})
 	})
 	a.group(c, "lang", a.L.T("settings.lang.group"), "", func() {
 		opts := []string{"auto", "zh", "en"}

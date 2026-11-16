@@ -26,9 +26,13 @@ import type { FirstScreen } from "@ducter/protocol";
 import type { DucterBrowser } from "./browser/index.ts";
 import type { LiveSink } from "./browser/live.ts";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
+import { DEFAULT_PARTNER, channelOf, partnerOfStream } from "@ducter/protocol/src/partners.ts";
+import type { Partners } from "./partners.ts";
 
 export interface WsData {
   live: boolean;
+  /** D309: the partner whose conversation this socket shows (hello.persona); absent: the default. */
+  partner?: string;
   buf: LogEvent[];
   onHandDirty: boolean;
   /** Asked for devices: gets a fresh devices frame whenever one changes. */
@@ -136,6 +140,8 @@ export interface WsDeps {
   /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
+  /** D309: 伙伴们 / Partners (partners.ts); absent in tests that don't need them. */
+  partners?: Partners;
   past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside };
   /** D300: 替你做过的 / Done for you (did.ts); absent in tests that don't need it. */
   did?: import("./did.ts").Did;
@@ -370,16 +376,46 @@ export function createWsHandler(deps: WsDeps) {
       .read({ stream: taskStream(taskId), kinds: ["task_event"], limit: TASK_SEEN_WINDOW })
       .find((e) => (e.body as Bodies["task_event"]).clientId === clientId);
 
+  /**
+   * D309: an event as this socket sees it: a conversation only when it is the partner the socket
+   * shows (as "channel"), another partner's never; everything else (tasks, On hand) as it is.
+   */
+  const forSocket = (ws: ServerWebSocket<WsData>, e: LogEvent): LogEvent | undefined => {
+    const of = partnerOfStream(e.stream);
+    if (of === undefined) return e;
+    if (of !== (ws.data.partner ?? DEFAULT_PARTNER)) return undefined;
+    return e.stream === "channel" ? e : { ...e, stream: "channel" };
+  };
+  const partnersFrame = (ws: ServerWebSocket<WsData>): ServerFrame & { t: "partners" } => ({ t: "partners", partners: deps.partners?.list() ?? [], shown: ws.data.partner ?? DEFAULT_PARTNER });
+  let partnersTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Every live socket gets a fresh partners frame (soon, once for a burst). */
+  const partnersChanged = () => {
+    if (partnersTimer) return;
+    partnersTimer = setTimeout(() => {
+      partnersTimer = undefined;
+      for (const s of sockets) {
+        if (!s.data.live) continue;
+        if (s.data.buf.length) send(s, { t: "events", events: s.data.buf.splice(0) });
+        send(s, partnersFrame(s));
+      }
+    }, batchMs);
+  };
+  const offPartners = deps.partners?.onChange(partnersChanged);
+
   const unsubscribe = log.subscribe((e) => {
     if (e.kind === "user_msg") remember((e.body as Bodies["user_msg"]).clientId, e.seq);
     let any = false;
     for (const ws of sockets) {
       if (!ws.data.live) continue;
       // Channel events and live task events (task_event/task_state/...) for every task.
-      ws.data.buf.push(e), (any = true);
+      // D309: a conversation only to the sockets showing that partner, as its "channel".
+      const shown = forSocket(ws, e);
+      if (shown) ws.data.buf.push(shown), (any = true);
       if (ON_HAND_KINDS.has(e.kind)) (ws.data.onHandDirty = true), (any = true);
     }
     if (any && !flushTimer) flushTimer = setTimeout(flush, batchMs);
+    // D309: a question opened or answered in any conversation changes the partners' counts.
+    if (deps.partners?.on() && (e.kind === "decision" || e.kind === "decision_resolved") && partnerOfStream(e.stream)) partnersChanged();
   });
 
   // What the partner is doing while the user waits (D104). Presence, not history: never logged.
@@ -483,6 +519,10 @@ export function createWsHandler(deps: WsDeps) {
           return;
         }
         const machine = machineId();
+        // D309: which partner's conversation this socket shows (one it may show, else the default's).
+        const asked = typeof f.persona === "string" && f.persona !== DEFAULT_PARTNER && deps.partners?.has(f.persona) ? f.persona : undefined;
+        if (asked) ws.data.partner = asked;
+        else delete ws.data.partner;
         const tag = typeof f.locale === "string" ? normalizeTag(f.locale) : undefined;
         if (tag) ws.data.locale = tag;
         if (typeof f.tz === "string" && f.tz) ws.data.tz = f.tz;
@@ -494,15 +534,20 @@ export function createWsHandler(deps: WsDeps) {
             console.warn("[ws] first words:", (err as Error).message);
           }
         }
-        send(ws, { t: "welcome", persona: core.persona.id, personaName: core.persona.name, headSeq: log.head(), ...(machine ? { machine } : {}), version: DUCTER_VERSION, ping: true, ...(deps.home ? { fp: deps.home.fp } : {}) });
+        const shownId = ws.data.partner ?? core.persona.id;
+        const shownName = ws.data.partner ? (deps.partners?.nameOf(ws.data.partner) ?? core.persona.name) : core.persona.name;
+        ws.data.buf.length = 0; // a hello again (a switch, D309): what was queued was for the other conversation
+        send(ws, { t: "welcome", persona: shownId, personaName: shownName, headSeq: log.head(), ...(machine ? { machine } : {}), version: DUCTER_VERSION, ping: true, ...(deps.home ? { fp: deps.home.fp } : {}) });
+        if (deps.partners?.on()) send(ws, partnersFrame(ws));
         // D293: the ways to reach the home, so a device can follow it to another one.
         if (deps.home) send(ws, deps.home.ways());
         // Channel only: task streams are pulled with task_history.
+        const stream = channelOf(ws.data.partner);
         const events =
           f.cursor != null && f.cursor >= 0
-            ? log.read({ stream: "channel", fromSeq: f.cursor + 1, limit: REPLAY_MAX })
-            : log.read({ stream: "channel", limit: REPLAY_FRESH });
-        send(ws, { t: "events", events: dropSuperseded(events) });
+            ? log.read({ stream, fromSeq: f.cursor + 1, limit: REPLAY_MAX })
+            : log.read({ stream, limit: REPLAY_FRESH });
+        send(ws, { t: "events", events: dropSuperseded(events).map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })) });
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
         if (activity) send(ws, { t: "activity", activity });
         ws.data.live = true; // synchronous since the read: no event can be missed in between
@@ -539,7 +584,7 @@ export function createWsHandler(deps: WsDeps) {
         const dup = f.clientId ? seen.get(f.clientId) : undefined;
         if (dup != null) {
           // A resend (the client never saw its echo): don't append again, echo the original.
-          send(ws, { t: "events", events: log.read({ fromSeq: dup, limit: 1 }) });
+          send(ws, { t: "events", events: log.read({ fromSeq: dup, limit: 1 }).flatMap((e) => forSocket(ws, e) ?? []) });
           return;
         }
         // D206: pictures come as ids the upload answered; words may be empty then.
@@ -548,8 +593,28 @@ export function createWsHandler(deps: WsDeps) {
         // D236: a reply carries its quote from the Log; one to an open question answers it.
         // D277: only the Mac app's iMessage bridge says via (a desktop socket); anything else is dropped.
         const via = f.via === "imessage" && (ws.data.client ?? "desktop") === "desktop" ? f.via : undefined;
+        // D309: words to a second partner go into its own conversation (no reply quotes across).
+        if (ws.data.partner) {
+          logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, stream: channelOf(ws.data.partner) });
+          return;
+        }
         logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}) });
         return; // the partner is triggered by core's user_msg subscription
+      }
+      case "partners": {
+        if (!deps.partners) throw new Error("partners unavailable");
+        return send(ws, partnersFrame(ws));
+      }
+      case "partner_add": {
+        if (!deps.partners) throw new Error("partners unavailable");
+        const r = deps.partners.add({ name: String(f.name ?? ""), look: f.look });
+        // A made one: every socket hears it (onChange); this one also gets its clientId back.
+        return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
+      }
+      case "partner_set": {
+        if (!deps.partners) throw new Error("partners unavailable");
+        const r = deps.partners.set(String(f.id ?? ""), { ...(f.name !== undefined ? { name: String(f.name) } : {}), ...(f.look !== undefined ? { look: f.look } : {}) });
+        return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
       }
       case "channel_status": {
         // D277: how this Mac app's iMessage bridge stands; gone with the socket.
@@ -1702,6 +1767,8 @@ export function createWsHandler(deps: WsDeps) {
       if (lookTimer) clearTimeout(lookTimer);
       offNoted();
       unsubscribe();
+      offPartners?.();
+      if (partnersTimer) clearTimeout(partnersTimer);
       if (flushTimer) clearTimeout(flushTimer);
       for (const ws of sockets) ws.close(1001, "shutting down");
     },

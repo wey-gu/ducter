@@ -1,0 +1,163 @@
+// D309: 伙伴们 / Partners. The partners on this home: the default (its name is persona.json's,
+// Settings › 伙伴's rename) and up to three more, kept in partners.json. Each has its own
+// conversation (channelOf(id) in the one Log), a name and a look; devices, projects, accounts
+// and On hand are the person's and shared (design/personas.md).
+//
+// Preview (D309): on only with DUCTER_PARTNERS=preview (or opts.on in tests). A second partner's
+// conversation is kept and shown, but no partner session answers in it yet (design/personas.md
+// "What's built").
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import type { Bodies, LogEvent } from "@ducter/protocol";
+import type { LogStore } from "@ducter/protocol/src/internal.ts";
+import { DEFAULT_PARTNER, PARTNERS_MAX, channelOf, isLook, nextLook, partnerNameProblem, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+
+export const PARTNERS_FILE = "partners.json";
+
+interface Kept {
+  id: string;
+  name: string;
+  look: PartnerLook;
+  createdAt: string;
+}
+interface File {
+  defaultLook?: PartnerLook;
+  others: Kept[];
+}
+
+export type PartnerError = "empty" | "long" | "taken" | "full" | "unknown";
+
+export interface Partners {
+  /** Whether more than one partner is offered on this home (the preview flag). */
+  on(): boolean;
+  /** Every partner, the default first, with its conversation's open questions. */
+  list(): PartnerInfo[];
+  /** A partner by id (the default included). */
+  get(id: string): PartnerInfo | undefined;
+  /** Whether a client may show this partner's conversation. */
+  has(id: string): boolean;
+  add(input: { name: string; look?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
+  /** A rename or a new look. The default's rename goes through settings (persona.json), not here. */
+  set(id: string, patch: { name?: string; look?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
+  /** The name to say for an event's partner (push, the menu bar): its conversation's, else the default's. */
+  nameOf(persona: string | undefined): string;
+  /** Called after every change (ws sends every socket a fresh partners frame). */
+  onChange(fn: () => void): () => void;
+}
+
+export function openPartners(opts: {
+  dataDir: string;
+  log: LogStore;
+  /** The default partner (core's persona): its name is read live (a rename shows at once). */
+  persona: { id: string; name: string };
+  on?: boolean;
+  now?: () => Date;
+}): Partners {
+  const path = join(opts.dataDir, PARTNERS_FILE);
+  const now = opts.now ?? (() => new Date());
+  const on = opts.on ?? process.env.DUCTER_PARTNERS === "preview";
+  const listeners = new Set<() => void>();
+
+  const read = (): File => {
+    try {
+      if (!existsSync(path)) return { others: [] };
+      const raw = JSON.parse(readFileSync(path, "utf8"));
+      const others = (Array.isArray(raw?.others) ? raw.others : [])
+        .filter((p: any) => typeof p?.id === "string" && /^[a-z0-9-]{1,40}$/.test(p.id) && p.id !== DEFAULT_PARTNER && typeof p?.name === "string" && p.name.trim())
+        .slice(0, PARTNERS_MAX - 1)
+        .map((p: any): Kept => ({ id: p.id, name: String(p.name).trim(), look: isLook(p.look) ? p.look : "sage", createdAt: typeof p.createdAt === "string" ? p.createdAt : now().toISOString() }));
+      return { ...(isLook(raw?.defaultLook) ? { defaultLook: raw.defaultLook } : {}), others };
+    } catch (err) {
+      console.warn("[partners] couldn't read partners.json:", (err as Error).message);
+      return { others: [] };
+    }
+  };
+  let file = read();
+  const save = () => {
+    const tmp = `${path}.tmp`;
+    writeFileSync(tmp, JSON.stringify(file, null, 2), { mode: 0o600 });
+    renameSync(tmp, path);
+    for (const fn of listeners) fn();
+  };
+
+  /** Open questions of a partner's own conversation: its decisions minus their resolutions (no task's). */
+  const asks = (id: string): number => {
+    const stream = channelOf(id);
+    const open = new Set<string>();
+    for (const e of opts.log.read({ stream, kinds: ["decision"], limit: 500 }) as LogEvent<"decision">[]) {
+      const d = e.body as Bodies["decision"];
+      if (!d.taskId) open.add(d.decisionId);
+    }
+    if (!open.size) return 0;
+    // A resolution lands in the default's conversation today (decisions.ts), or its own.
+    const streams = stream === "channel" ? ["channel"] : [stream, "channel"];
+    for (const s of streams) for (const e of opts.log.read({ stream: s, kinds: ["decision_resolved"], limit: 2000 })) open.delete((e.body as Bodies["decision_resolved"]).decisionId);
+    return open.size;
+  };
+
+  const defaultInfo = (): PartnerInfo => ({ id: DEFAULT_PARTNER, name: opts.persona.name, look: file.defaultLook ?? "sand", asks: asks(DEFAULT_PARTNER) });
+  const info = (p: Kept): PartnerInfo => ({ id: p.id, name: p.name, look: p.look, asks: asks(p.id) });
+  const names = (except?: string) => [opts.persona.name, ...file.others.map((p) => p.name)].filter((_, i) => (i === 0 ? except !== DEFAULT_PARTNER : file.others[i - 1]!.id !== except));
+  const takenLooks = () => [file.defaultLook ?? "sand", ...file.others.map((p) => p.look)];
+  const newId = () => {
+    for (let n = file.others.length + 2; ; n++) {
+      const id = `p${n}`;
+      if (!file.others.some((p) => p.id === id)) return id;
+    }
+  };
+
+  return {
+    on: () => on,
+    list: () => [defaultInfo(), ...(on ? file.others.map(info) : [])],
+    get(id) {
+      if (id === DEFAULT_PARTNER) return defaultInfo();
+      const p = on ? file.others.find((o) => o.id === id) : undefined;
+      return p && info(p);
+    },
+    has: (id) => id === DEFAULT_PARTNER || (on && file.others.some((p) => p.id === id)),
+    add(input) {
+      if (!on || file.others.length >= PARTNERS_MAX - 1) return { ok: false, error: "full" };
+      const name = String(input.name ?? "").trim();
+      const why = partnerNameProblem(name, names());
+      if (why) return { ok: false, error: why };
+      const kept: Kept = { id: newId(), name, look: isLook(input.look) ? input.look : nextLook(takenLooks()), createdAt: now().toISOString() };
+      file = { ...file, others: [...file.others, kept] };
+      save();
+      return { ok: true, partner: info(kept) };
+    },
+    set(id, patch) {
+      if (id === DEFAULT_PARTNER) {
+        if (patch.name !== undefined) return { ok: false, error: "unknown" }; // settings_set renames the default
+        if (!isLook(patch.look)) return { ok: false, error: "unknown" };
+        file = { ...file, defaultLook: patch.look };
+        save();
+        return { ok: true, partner: defaultInfo() };
+      }
+      const at = on ? file.others.findIndex((p) => p.id === id) : -1;
+      if (at < 0) return { ok: false, error: "unknown" };
+      const was = file.others[at]!;
+      let next = was;
+      if (patch.name !== undefined) {
+        const name = String(patch.name).trim();
+        const why = partnerNameProblem(name, names(id));
+        if (why) return { ok: false, error: why };
+        next = { ...next, name };
+      }
+      if (patch.look !== undefined) {
+        if (!isLook(patch.look)) return { ok: false, error: "unknown" };
+        next = { ...next, look: patch.look };
+      }
+      file = { ...file, others: file.others.map((p, i) => (i === at ? next : p)) };
+      save();
+      return { ok: true, partner: info(next) };
+    },
+    nameOf(persona) {
+      if (!persona || persona === DEFAULT_PARTNER) return opts.persona.name;
+      return file.others.find((p) => p.id === persona)?.name ?? opts.persona.name;
+    },
+    onChange(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  };
+}

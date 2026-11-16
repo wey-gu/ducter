@@ -78,6 +78,8 @@ type state struct {
 	// answers.
 	SpokeLang   string `json:"spokeLang,omitempty"`
 	PersonaName string `json:"personaName,omitempty"`
+	// D309: the partner whose conversation this Mac shows (empty: the default).
+	Partner string `json:"partner,omitempty"`
 	// D305: voice. VoiceKey is the key held to talk ("fn", "none", or empty
 	// for right Option); VoiceAsked is set once the first hold's card was
 	// answered; ReadBack reads the reply to a message sent by voice aloud.
@@ -135,6 +137,26 @@ func (l *Local) SetPersonaName(name string) {
 		return
 	}
 	l.st.PersonaName = name
+	l.save()
+}
+
+// Partner is the partner this Mac shows (D309): "" or "default" for the default.
+func (l *Local) Partner() string {
+	if l == nil {
+		return ""
+	}
+	return l.st.Partner
+}
+
+// SetPartner remembers which partner this Mac shows.
+func (l *Local) SetPartner(id string) {
+	if id == "default" {
+		id = ""
+	}
+	if l == nil || l.st.Partner == id {
+		return
+	}
+	l.st.Partner = id
 	l.save()
 }
 

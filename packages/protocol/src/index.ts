@@ -16,6 +16,7 @@ export * from "./phone.ts";
 export * from "./media.ts";
 export * from "./phone-use.ts";
 export * from "./calendar.ts";
+export * from "./partners.ts";
 export * from "./computer-use.ts";
 import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFrame } from "./computer-use.ts";
 export * from "./reply.ts";
@@ -997,6 +998,13 @@ export type ClientFrame =
   // some of them. "memory_forget" forgets one 记下了 / Noted line: in Nowledge Mem when it has the
   // memory's id and Mem forgets it, otherwise only hidden from this list (the frame says which).
   | { t: "settings" }
+  // D309: 伙伴们 / Partners (packages/protocol/src/partners.ts). A home that has them on answers with
+  // a "partners" frame (to this socket, and to every socket on a change). partner_add makes one
+  // (name, look); partner_set renames one or changes its look (the default's name is settings_set's).
+  // Switching is a new hello with persona: the socket then shows that partner's conversation.
+  | { t: "partners" }
+  | { t: "partner_add"; name: string; look?: import("./partners.ts").PartnerLook; clientId?: string }
+  | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; clientId?: string }
   | { t: "settings_set"; patch: SettingsPatch }
   | { t: "memory_forget"; seq: number }
   // D304: 这周记下的 / What it learned this week, line by line: confirm one as right, or correct its
@@ -1296,6 +1304,9 @@ export type ServerFrame =
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; bridge?: BridgeView }
   | { t: "rules"; rules: RuleView[] }
+  // D309: every partner on the home, the default first; shown: the one this socket's conversation is.
+  // error (to the asking socket only): why a partner_add or partner_set didn't happen.
+  | { t: "partners"; partners: import("./partners.ts").PartnerInfo[]; shown: string; clientId?: string; error?: "empty" | "long" | "taken" | "full" | "unknown" }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
   // D288: no usage: the agent doesn't share it (unsupported), isn't signed in, or the read failed.
   | { t: "account_usage"; harness: string; usage?: AccountUsage; why?: "unsupported" | "signed_out" | "unavailable" }

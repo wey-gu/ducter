@@ -291,6 +291,7 @@ const COPY = {
     goWith: "好，{label}",
     askerAt: "{agent}（{where}）问你",
     asker: "{agent} 问你",
+    partnerTask: "{who}：{task}",
   },
   en: {
     go: "Go",
@@ -312,6 +313,7 @@ const COPY = {
     goWith: "Go: {label}",
     askerAt: "{agent} ({where}) asks you",
     asker: "{agent} asks you",
+    partnerTask: "{who}: {task}",
   },
 };
 
@@ -354,7 +356,12 @@ export function askerLine(agent: string, where: string | undefined, locale: Lang
   return c === COPY.en && s.startsWith("an ") ? "A" + s.slice(1) : s;
 }
 
-export function decisionMessage(d: Bodies["decision"], o: { persona: string; task?: string; locale: LangTag; platform: string; now: number }): PushMessage {
+/** D309: with more than one partner, a task's title says whose task it is ("Mia: Book the dentist"). */
+function partnerTitle(task: string | undefined, who: string | undefined, locale: LangTag): string | undefined {
+  return task && who ? fill(copy(locale).partnerTask, { who, task }) : task;
+}
+
+export function decisionMessage(d: Bodies["decision"], o: { persona: string; task?: string; locale: LangTag; platform: string; now: number; /** D309: whose (only with more than one partner). */ who?: string }): PushMessage {
   const c = copy(o.locale);
   // X1 (D170): a question one of the user's own agents asked: who asks is the title, and silence
   // never answers for the user (the card's own default line).
@@ -367,7 +374,7 @@ export function decisionMessage(d: Bodies["decision"], o: { persona: string; tas
   // D291: the title says what it is about on its own (who asks, or the task); the app's own name
   // already says it comes from Ducter, so the partner's name is the title only when nothing else is.
   const msg: PushMessage = {
-    title: peer ?? o.task ?? o.persona,
+    title: peer ?? partnerTitle(o.task, o.who, o.locale) ?? o.who ?? o.persona,
     body: `${d.question} ${d.asker ? c.peerWaits : defaultLine(d, o.locale, o.now)}`,
     tag: `d:${d.decisionId}`,
     url: `app#d=${encodeURIComponent(d.decisionId)}`,
@@ -380,10 +387,10 @@ export function decisionMessage(d: Bodies["decision"], o: { persona: string; tas
   return msg;
 }
 
-export function doneMessage(t: { taskId: string; title: string; summary?: string; failed?: boolean }, o: { persona: string; locale: LangTag }): PushMessage {
+export function doneMessage(t: { taskId: string; title: string; summary?: string; failed?: boolean }, o: { persona: string; locale: LangTag; who?: string }): PushMessage {
   const c = copy(o.locale);
   const line = (t.summary ?? "").split("\n")[0]!.trim().slice(0, 140) || t.title;
-  return { title: t.title || o.persona, body: t.failed ? c.failed(line) : c.done(line), tag: `t:${t.taskId}`, url: `app#task=${encodeURIComponent(t.taskId)}` };
+  return { title: partnerTitle(t.title, o.who, o.locale) || o.who || o.persona, body: t.failed ? c.failed(line) : c.done(line), tag: `t:${t.taskId}`, url: `app#task=${encodeURIComponent(t.taskId)}` };
 }
 
 export function coalescedMessage(n: number, o: { persona: string; locale: LangTag; morning?: boolean }): PushMessage {
@@ -467,6 +474,8 @@ interface Item {
   kind: "decision" | "done";
   decision?: Bodies["decision"];
   done?: { taskId: string; title: string; summary?: string; failed?: boolean };
+  /** D309: whose it is, said only on a home with more than one partner. */
+  who?: string;
 }
 
 export interface Pusher {
@@ -483,6 +492,8 @@ export function createPusher(opts: {
   log: LogStore;
   store: PushStore;
   personaName: () => string;
+  /** D309: the partner an event is for, by name, only when the home has more than one. */
+  partnerOf?: (e: LogEvent) => string | undefined;
   taskTitle: (taskId: string) => string | undefined;
   lastSummary?: (taskId: string) => string | undefined;
   clock?: Clock;
@@ -541,7 +552,9 @@ export function createPusher(opts: {
     const subs = liveSubs();
     if (!subs.length || !list.length) return;
     const v = await opts.store.vapid();
-    const persona = opts.personaName();
+    // D309: a coalesced push names the partner when every item in it is that partner's.
+    const whos = new Set(list.map((it) => it.who));
+    const persona = (whos.size === 1 ? list[0]!.who : undefined) ?? opts.personaName();
     for (const it of list) pushed.add(it.key);
     lastPushAt = clock.now();
     const results = await Promise.all(
@@ -550,8 +563,8 @@ export function createPusher(opts: {
         if (list.length > 1 || morning) msg = coalescedMessage(list.length, { persona, locale: s.locale, morning });
         else if (list[0]!.kind === "decision") {
           const d = list[0]!.decision!;
-          msg = decisionMessage(d, { persona, task: d.taskId ? opts.taskTitle(d.taskId) : undefined, locale: s.locale, platform: s.platform, now: clock.now() });
-        } else msg = doneMessage(list[0]!.done!, { persona, locale: s.locale });
+          msg = decisionMessage(d, { persona, task: d.taskId ? opts.taskTitle(d.taskId) : undefined, locale: s.locale, platform: s.platform, now: clock.now(), ...(list[0]!.who ? { who: list[0]!.who } : {}) });
+        } else msg = doneMessage(list[0]!.done!, { persona, locale: s.locale, ...(list[0]!.who ? { who: list[0]!.who } : {}) });
         return sendPush(s, msg, v, opts.fetcher, "high", opts.apns);
       }),
     );
@@ -604,15 +617,17 @@ export function createPusher(opts: {
         if (d.call?.kind === "question") {
           const key = `d:${d.decisionId}`;
           if (!enabled || pushed.has(key)) return;
-          const it: Item = { key, seq: e.seq, at: clock.now(), kind: "decision", decision: d };
+          const who = opts.partnerOf?.(e);
+          const it: Item = { key, seq: e.seq, at: clock.now(), kind: "decision", decision: d, ...(who ? { who } : {}) };
           running = running.then(() => deliver([it], false, true)).catch((err) => console.warn(`[push] call question: ${(err as Error).message}`));
           return;
         }
-        add({ key: `d:${d.decisionId}`, seq: e.seq, kind: "decision", decision: d });
+        const who = opts.partnerOf?.(e);
+        add({ key: `d:${d.decisionId}`, seq: e.seq, kind: "decision", decision: d, ...(who ? { who } : {}) });
         return;
       }
       case "user_msg":
-        lastVia = (e.body as Bodies["user_msg"]).via;
+        if (e.stream === "channel") lastVia = (e.body as Bodies["user_msg"]).via; // D309: the default's conversation is the one a chat app carries
         return;
       case "decision_resolved": {
         const r = e.body as Bodies["decision_resolved"];
@@ -626,7 +641,9 @@ export function createPusher(opts: {
       case "task_state": {
         const s = e.body as Bodies["task_state"];
         if ((s.attention !== "done" && s.attention !== "failed") || !opts.store.settings().done) return;
+        const who = opts.partnerOf?.(e);
         add({
+          ...(who ? { who } : {}),
           key: `t:${s.taskId}`,
           seq: e.seq,
           kind: "done",

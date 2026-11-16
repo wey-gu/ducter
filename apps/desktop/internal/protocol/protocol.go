@@ -1142,6 +1142,55 @@ type SettingsReq struct {
 	T string `json:"t"` // "settings"
 }
 
+// PartnerInfo is one partner (D309, packages/protocol/src/partners.ts):
+// Look is a token ("sand", "sage", "sky", "plum", "apricot"), never a
+// colour; Asks its own conversation's open questions.
+type PartnerInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Look string `json:"look"`
+	Asks int    `json:"asks"`
+}
+
+// PartnerLooks are the looks, in the order the pickers show them.
+var PartnerLooks = []string{"sand", "sage", "sky", "plum", "apricot"}
+
+// DefaultPartner is the partner every home starts with.
+const DefaultPartner = "default"
+
+// PartnersAsk asks for the partners frame (D309).
+type PartnersAsk struct {
+	T string `json:"t"` // "partners"
+}
+
+// PartnerAdd makes a partner (D309): a name and a look.
+type PartnerAdd struct {
+	T        string `json:"t"` // "partner_add"
+	Name     string `json:"name"`
+	Look     string `json:"look,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
+}
+
+// PartnerSet renames a partner or changes its look (D309).
+type PartnerSet struct {
+	T        string `json:"t"` // "partner_set"
+	ID       string `json:"id"`
+	Name     string `json:"name,omitempty"`
+	Look     string `json:"look,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
+}
+
+// NeedsAcross is the one needs-you count across partners (D309): what this
+// window counts already plus every other partner's own open questions.
+func NeedsAcross(here int, partners []PartnerInfo, shown string) int {
+	for _, p := range partners {
+		if p.ID != shown {
+			here += p.Asks
+		}
+	}
+	return here
+}
+
 // SettingsSet changes some settings; the server answers with a fresh
 // settings frame (to every subscriber).
 type SettingsSet struct {
@@ -1846,6 +1895,10 @@ type ServerFrame struct {
 	Address   string   `json:"address,omitempty"`
 	Link      string   `json:"link,omitempty"`
 	QR        []string `json:"qr,omitempty"`
+	// partners (D309): every partner on the home, the default first, and
+	// the one this socket shows; a refused add or set says why in WbError.
+	Partners []PartnerInfo `json:"partners,omitempty"`
+	Shown    string        `json:"shown,omitempty"`
 	// settings: the partner's settings, its memory, and how a forget went.
 	Settings *Settings `json:"settings,omitempty"`
 	Mem      *MemView  `json:"mem,omitempty"`
@@ -2198,7 +2251,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "channels", "channel_result",
-		"handset_dial_result", "ways", "pong", "key_add_result":
+		"handset_dial_result", "ways", "pong", "key_add_result", "partners":
 	case "past_result", "past_marked", "outside_adopted", "outside_hidden":
 		return decodePast(data, f)
 	case "ongoing_result":

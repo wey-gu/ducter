@@ -40,6 +40,7 @@ import { MemoryPage, Notebook, PeersPage, peersPageShown } from "./memory.tsx";
 import { memBadge, memUpdate } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
+import { PartnersSection, PartnerSwitch } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
@@ -1358,7 +1359,8 @@ function Top({ back, plus, level, extra }: { back?: string; plus?: boolean; leve
           way, D262); the counts under the name open On hand, narrowed to what they name when they
           name one thing. Each tints on its own under the pointer. */}
       <div class="who">
-        <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
+        {/* D309: with more than one partner, the face sits on its partner's own clay stone. */}
+        <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
           <Avatar size={44} />
         </button>
         <span class="who-words">
@@ -1367,6 +1369,7 @@ function Top({ back, plus, level, extra }: { back?: string; plus?: boolean; leve
           </button>
           <Counts />
         </span>
+        <PartnerSwitch />
       </div>
       <Places onHand={!wide} />
     </header>
@@ -2273,7 +2276,7 @@ function NameRow() {
   const [draft, setDraft] = useState("");
   const save = () => {
     const n = draft.trim();
-    if (n && n !== A.S.personaName) A.setSettings({ name: n });
+    if (n && n !== A.defaultName()) A.setSettings({ name: n });
     setEditing(false);
   };
   return (
@@ -2298,8 +2301,8 @@ function NameRow() {
         </>
       ) : (
         <>
-          <h2 class="grow">{A.S.personaName}</h2>
-          {A.settings && <Btn kind="text" label={t("partner.rename")} onClick={() => (setDraft(A.S.personaName), setEditing(true))} />}
+          <h2 class="grow">{A.defaultName()}</h2>
+          {A.settings && <Btn kind="text" label={t("partner.rename")} onClick={() => (setDraft(A.defaultName()), setEditing(true))} />}
         </>
       )}
     </div>
@@ -2964,6 +2967,8 @@ function SettingsSheet() {
           {page === "partner" && (
             <>
               <NameRow />
+              {/* D309: 伙伴们 / Your partners, on a home that offers more than one. */}
+              <PartnersSection />
               <Loadout />
               {/* D307: a key instead of a subscription (D298), the hand-off (D297), their records (D298, D299). */}
               {A.settings && (

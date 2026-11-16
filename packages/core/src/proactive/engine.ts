@@ -1144,7 +1144,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
         save();
         o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "held" } });
       }
-    } else if (e.kind === "user_msg" && (st.keepAsk === "pending" || st.again === "pending")) {
+    } else if (e.kind === "user_msg" && e.stream === "channel" && (st.keepAsk === "pending" || st.again === "pending")) {
       // D274: asked once, the next time the person writes, but only after the partner has answered
       // what they wrote: the offer never comes before (or instead of) the reply to their words.
       afterReply = true;

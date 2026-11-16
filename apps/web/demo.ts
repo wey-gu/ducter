@@ -23,6 +23,8 @@ const core = startCore({
   hostname: process.env.DUCTER_HOST || "127.0.0.1",
   clock,
   bridgeLink: { run: fakeNmem(mem, zh), exec: async () => ({ code: 1, out: "", err: "" }) },
+  // D309: DEMO_PARTNERS=1 offers more than one partner (the preview), with a second one seeded below.
+  ...(process.env.DEMO_PARTNERS === "1" ? { partners: true } : {}),
 });
 core.setRunner(stubRunner(core));
 seedConnection(core.dataDir, mem);
@@ -239,6 +241,19 @@ if (process.env.DEMO_RICH === "1") {
 }
 // D304: DEMO_RECALL=1 adds the week's what-it-learned note and two replies with their 想起了 line.
 if (process.env.DEMO_RECALL === "1" && memOn) (await import("./demo-mem.ts")).seedRecall(core as never, zh, (ms) => (skew = ms));
+
+// D309: DEMO_PARTNERS=1: a second partner for home, with its own conversation and one question
+// waiting there (the bar's count is one across partners; its stone carries a dot).
+if (process.env.DEMO_PARTNERS === "1") {
+  const home = core.partners.add({ name: zh ? "小家" : "Home", look: "sage" });
+  if (home.ok) {
+    const s = `channel:${home.partner.id}`;
+    const m = log.append({ stream: s, origin: "user", kind: "user_msg", body: { text: zh ? "周六上午带小米去看牙，帮我约一下社区那家诊所" : "Book Mia a dentist appointment at the clinic down the road, Saturday morning" } });
+    log.append({ stream: s, origin: "partner", kind: "ai_msg", body: { text: zh ? "诊所周六上午还有 9:30 和 10:45 两个号。9:30 那个离游泳课近一点。" : "The clinic has 9:30 and 10:45 open on Saturday morning. 9:30 sits closer to her swimming lesson.", replyTo: m.seq } });
+    log.append({ stream: s, origin: "partner", kind: "decision", body: { decisionId: "d_home_dentist", question: zh ? "约周六 9:30 吗？" : "Book Saturday at 9:30?", goLabel: zh ? "约 9:30" : "Book 9:30", defaultOption: "hold", reversible: true } });
+    await tick();
+  }
+}
 
 // After the seed, a scripted partner answers new messages the way a real one paces itself, so
 // the waiting moments can be seen and timed (D104): thinking at once, a look back at the Log at

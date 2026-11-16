@@ -82,6 +82,10 @@ type Tokens struct {
 
 	// Clay is the surface clay art sits on (the renders' own cream).
 	Clay ui.Color
+	// Looks are the partners' stones (D309), by look token (sand, sage,
+	// sky, plum, apricot); LookRim their hairline. The web's --look-*.
+	Looks   map[string]ui.Color
+	LookRim ui.Color
 	// Notebook is the partner's own blue notebook (its clay art's), drawn as
 	// Settings › 记忆 / Memory's mark (D257); the web's --notebook-*.
 	Notebook NotebookTokens
@@ -346,6 +350,8 @@ func Pebble() *Tokens {
 		Asleep:   StateColors{Dot: hex("#6C63A8"), Surface: hex("#ECE9F8"), Ink: hex("#4B3F70"), Strong: hex("#574F8F")},
 		Away:     StateColors{Dot: hex("#A99C8B"), Surface: hex("#EFEAE3"), Ink: hex("#5E5448"), Strong: hex("#8C7F6E")},
 		Clay:     hex("#FFF4E6"),
+		Looks:    map[string]ui.Color{"sand": hex("#F1DCC0"), "sage": hex("#D3E6CB"), "sky": hex("#CFE2F3"), "plum": hex("#EAD5EA"), "apricot": hex("#FFD9B8")},
+		LookRim:  hex("#2B2118").Alpha(0.08),
 		Notebook: NotebookTokens{Cover: hex("#5FA6E4"), Ledge: hex("#3A78B0"), Pages: hex("#FFF6EA"), Shine: hex("#FFFFFF").Alpha(0.55), Strap: hex("#9A6236"), Clasp: hex("#F0C879")},
 		Isles: IslesTokens{
 			Sky: hex("#FCEBD6"), SeaFar: hex("#C4E6DF"), Sea: hex("#A6D8D0"), SeaNear: hex("#86C4BC"),

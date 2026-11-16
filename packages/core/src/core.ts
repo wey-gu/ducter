@@ -34,6 +34,8 @@ import { modelTriage, type Triage } from "./proactive/triage.ts";
 import { modelJudge, type FindJudge } from "./proactive/judge.ts";
 import { registerProactiveTools } from "./proactive/tools.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
+import { openPartners, type Partners } from "./partners.ts";
+import { isOtherChannel } from "@ducter/protocol/src/partners.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
 import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
 import { createPusher, openPushStore, type Pusher, type PushStore } from "./push.ts";
@@ -117,6 +119,8 @@ export interface CoreOptions {
   port?: number; // 0 = random (tests)
   hostname?: string; // default env DUCTER_HOST or 127.0.0.1; anything else is an explicit choice
   persona?: Persona;
+  /** D309: more than one partner (tests); default: DUCTER_PARTNERS=preview. */
+  partners?: boolean;
   clock?: Clock;
   defaultDelayMs?: number;
   /** D233: how long ask_for_key waits in the call for the person (tests); default per harness. */
@@ -268,6 +272,8 @@ export interface Core extends CoreApi {
   anywhere: AnywhereCtl;
   setPartner(p: Partner): void;
   stop(): Promise<void>;
+  /** D309: 伙伴们 / Partners. */
+  partners: Partners;
 }
 
 export const defaultDataDir = () => process.env.DUCTER_DATA_DIR || join(homedir(), ".ducter");
@@ -372,6 +378,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   let partner: Partner | undefined;
   const push = openPushStore(dataDir);
   const settings = openSettings({ dataDir, log, push, persona, memoryPinnedOff: process.env.DUCTER_MEMORY === "off" });
+  // D309: the partners on this home (the default is persona; more only in the preview).
+  const partners = openPartners({ dataDir, log, persona, ...(opts.partners !== undefined ? { on: opts.partners } : {}) });
   let limitsDecorate = (o: OnHand) => o; // D297: set once the limit waits are made (below)
   /** D292: the conversation's language now (the setting, else what the person writes in, else English). */
   const langNow = (): LangTag => talkLang(settings, log) ?? "en";
@@ -583,6 +591,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     }
   };
   const unsubscribePartner = log.subscribe((e) => {
+    // D309: a second partner's conversation never wakes the default partner (no session answers there yet).
+    if (isOtherChannel(e.stream)) return;
     if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e))) return;
     if (partner) trigger(e);
     else if (early.length < 100) early.push(e);
@@ -783,6 +793,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       },
       socketsChanged: () => reachRef?.refresh(),
     },
+    partners,
     core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(opts.firstWords ? { firstWords: { projects: () => recentFolders(firstReader, { exclude: [dataDir, homeFolder()], ...(opts.firstWords?.home ? { home: opts.firstWords.home } : {}) }), ...(opts.firstWords.home ? { home: opts.firstWords.home } : {}) } } : {}) , did });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
@@ -1080,6 +1091,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     store: push,
     clock,
     personaName: () => persona.name,
+    // D309: with more than one partner, each notification names whose it is.
+    partnerOf: (e) => (partners.on() && partners.list().length > 1 ? partners.nameOf(e.stream.startsWith("channel:") ? e.stream.slice(8) : e.stream.startsWith("task:") ? tasks.get(e.stream.slice(5))?.persona : e.persona) : undefined),
     taskTitle: (id) => tasks.get(id)?.title,
     lastSummary: (id) => tasks.get(id)?.lastReport?.summary,
     holdMs: opts.pushHoldMs ?? (Number(process.env.DUCTER_PUSH_HOLD_MS) || undefined),
@@ -1216,6 +1229,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     work,
     push,
     pusher,
+    partners,
     channels,
     settings,
     bridgeLink,

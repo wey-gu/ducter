@@ -139,7 +139,7 @@ export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get
 export function logUserMessage(
   log: LogStore,
   decisions: ReplyDecisions,
-  m: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyWant; via?: Bodies["user_msg"]["via"]; forwarded?: Bodies["user_msg"]["forwarded"] },
+  m: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyWant; via?: Bodies["user_msg"]["via"]; forwarded?: Bodies["user_msg"]["forwarded"]; /** D309: a second partner's conversation (channelOf); absent: the default's. */ stream?: string },
 ): LogEvent<"user_msg"> {
   let reply: ReplyRef | undefined;
   if (m.reply) {
@@ -162,7 +162,7 @@ export function logUserMessage(
     ...(m.via ? { via: m.via } : {}),
     ...(m.forwarded ? { forwarded: m.forwarded } : {}),
   };
-  const e = log.append({ stream: "channel", origin: "user", kind: "user_msg", body });
+  const e = log.append({ stream: m.stream ?? "channel", origin: "user", kind: "user_msg", body });
   if (answers) {
     try {
       decisions.decide(id!, "reply", m.text.trim(), { msgSeq: e.seq });

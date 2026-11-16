@@ -348,6 +348,12 @@ func main() {
 			Locale:  string(lang),
 			Version: app.Version,
 			Cursor:  cursor,
+			// D309: the partner this Mac shows, read at each hello.
+			PersonaOf: func() string {
+				var p string
+				mygo.RunOnMain(func() { p = app.PartnerFor() })
+				return p
+			},
 			OnFrame: func(f protocol.ServerFrame) {
 				if im != nil {
 					im.Observe(f)
@@ -649,6 +655,11 @@ func (tm *trayMenu) refresh(force bool) {
 			sub = append(sub, &mygo.MenuItem{Label: l.T("tray.task"), Click: open(where)})
 		}
 		items = append(items, &mygo.MenuItem{Label: d.Question, Subtitle: d.Task, Submenu: sub})
+	}
+	// D309: another partner with its own questions waiting: a click shows it.
+	for _, p := range v.Partners {
+		id := p.ID
+		items = append(items, &mygo.MenuItem{Label: p.Label, Click: open(func() { app.SwitchPartner(id) })})
 	}
 	items = append(items,
 		mygo.Separator(),

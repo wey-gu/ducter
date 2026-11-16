@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -584,5 +585,85 @@ func TestMediaShots(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		shot(tt, "mac-"+l+"-6-viewer")
+
+		// D286: five, seven and nine in rows, every picture shown.
+		app, _, h = mediaApp(t, lang)
+		var evs []protocol.LogEvent
+		for k, n := range []int{5, 7, 9} {
+			var refs []protocol.MediaRef
+			for i := 0; i < n; i++ {
+				refs = append(refs, h.ref(t, photo(1200+i*40, 900+i*30, float64(i+k)/9), ""))
+			}
+			evs = append(evs, mev(int64(k+1), time.Duration(9-k)*time.Minute, "channel", protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: pick([]string{"再来五张", "第二天", "这些都放进相册"}[k], []string{"Five more", "The second day", "Put these in the album"}[k]), Media: refs}))
+		}
+		app.Receive(protocol.ServerFrame{T: "events", Events: evs})
+		gt := mediaTester(app, 1000, 1400)
+		shot(gt, "mac-"+l+"-7-rows-5-7-9")
+
+		// D286: a file of each kind, drawn as the thing it is (DUCTER_MEDIA_ASSETS: real files).
+		app, _, h = mediaApp(t, lang)
+		asset := func(name string, fallback []byte) []byte {
+			if d := os.Getenv("DUCTER_MEDIA_ASSETS"); d != "" {
+				if b, err := os.ReadFile(filepath.Join(d, name)); err == nil {
+					return b
+				}
+			}
+			return fallback
+		}
+		file := func(b []byte, name, typ string) protocol.MediaRef {
+			r := h.put(b, "", name)
+			r.Type = typ
+			return r
+		}
+		code := []byte("// D206: pictures and files in the conversation and in a task.\nexport const MEDIA_LIMITS = {\n  perMessage: 10,\n  bytes: 25 * 1024 * 1024,\n  file: 50 * 1024 * 1024,\n};\n\nexport function sizeWords(bytes: number): string {\n")
+		files := []protocol.MediaRef{
+			file(asset("report.pdf", []byte("%PDF-1.7 report")), "report.pdf", "application/pdf"),
+			file(asset("media.ts", code), "media.ts", "text/plain"),
+			file(asset("季度计划.docx", []byte("PK docx")), pick("季度计划.docx", "Q3 plan.docx"), "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+			file(asset("hawdb-logs.zip", []byte("PK zip")), "hawdb-logs.zip", "application/zip"),
+			file(asset("语音备忘.m4a", []byte("m4a")), pick("语音备忘.m4a", "Voice memo.m4a"), "audio/mp4"),
+			file(asset("箱根.mp4", []byte("mp4")), pick("箱根.mp4", "Hakone.mp4"), "video/mp4"),
+		}
+		evs = nil
+		for i, f := range files {
+			evs = append(evs, mev(int64(i+1), time.Duration(9-i)*time.Minute, "channel", protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Media: []protocol.MediaRef{f}}))
+		}
+		app.Receive(protocol.ServerFrame{T: "events", Events: evs})
+		ft := mediaTester(app, 1000, 1300)
+		shot(ft, "mac-"+l+"-8-file-kinds")
+
+		// D286: the viewer grows out of its tile, and shrinks back into it.
+		app, _, h = mediaApp(t, lang)
+		var trip []protocol.MediaRef
+		for i := 0; i < 3; i++ {
+			trip = append(trip, h.ref(t, photo(1600, 1100, float64(i)/4), ""))
+		}
+		app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
+			mev(1, 3*time.Minute, "channel", protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: pick("海边那天", "The day at the coast"), Media: trip}),
+		}})
+		vt := mediaTester(app, 1000, 900)
+		vt.SetPreferences(ui.Preferences{}) // motion on: the frames show it
+		vt.Advance(time.Second)
+		vt.Frame()
+		from := app.med().tileAt[trip[1].ID]
+		app.OpenViewerFrom("conv", trip[1].ID, from)
+		frames := func(name string, n int) {
+			for i := 0; i < n; i++ {
+				vt.Advance(40 * time.Millisecond)
+				vt.Frame()
+				f, err := os.Create(filepath.Join(dir, fmt.Sprintf("%s-%02d.png", name, i)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				png.Encode(f, vt.Image())
+				f.Close()
+			}
+		}
+		frames("mac-"+l+"-9-open", 8)
+		app.med().viewer.step(1)
+		frames("mac-"+l+"-10-step", 6)
+		app.Now = vt.Now // the close lands on the frames' own clock
+		app.med().viewer.closing = app.Now()
+		frames("mac-"+l+"-11-close", 8)
 	}
 }

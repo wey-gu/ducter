@@ -1,6 +1,25 @@
 // D206: the grid rules every client draws a message's pictures by, and the refs on the wire.
 import { expect, test } from "bun:test";
-import { gridLayout, mediaPath, SINGLE_MAX_ASPECT, SINGLE_MIN_ASPECT, sizeWords, thumbPath, type MediaRef } from "../src/media.ts";
+import { durationWords, fileBadge, fileFamily, fileView, gridLayout, kindWords, mediaPath, SINGLE_MAX_ASPECT, SINGLE_MIN_ASPECT, sizeWords, thumbPath, type MediaRef } from "../src/media.ts";
+
+test("a file card's family, badge and length (D286)", () => {
+  expect(fileFamily({ type: "application/pdf", name: "报告.pdf" })).toBe("pdf");
+  expect(fileFamily({ type: "text/plain", name: "media.ts" })).toBe("code");
+  expect(fileFamily({ type: "text/markdown", name: "investigation.md" })).toBe("text");
+  expect(fileFamily({ type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", name: "季度计划.docx" })).toBe("doc");
+  expect(fileFamily({ type: "text/csv", name: "eval.csv" })).toBe("sheet");
+  expect(fileFamily({ type: "application/zip", name: "logs.zip" })).toBe("archive");
+  expect(fileFamily({ type: "audio/mp4", name: "语音备忘.m4a" })).toBe("audio");
+  expect(fileFamily({ type: "video/mp4", name: "箱根.mp4" })).toBe("video");
+  expect(fileFamily({ type: "application/octet-stream", name: "blob" })).toBe("other");
+  expect(fileBadge({ type: "text/plain", name: "media.ts" })).toBe("TS");
+  expect(fileBadge({ type: "application/pdf" })).toBe("PDF");
+  expect(fileView({ type: "audio/mp4", name: "a.m4a" })).toBe("audio");
+  expect(kindWords({ type: "audio/mpeg", name: "a.mp3" })).toBe("audio");
+  expect(durationWords(7)).toBe("0:07");
+  expect(durationWords(205)).toBe("3:25");
+  expect(durationWords(3729)).toBe("1:02:09");
+});
 import { redactDeep } from "../src/redact.ts";
 import { blocksOf } from "../src/transcript.ts";
 
@@ -23,13 +42,20 @@ test("two side by side, three as one tall and two stacked, four as 2×2", () => 
   expect(four.tiles.some((t) => t.more)).toBe(false);
 });
 
-test("more than four: the first four, +n on the last", () => {
-  const g = gridLayout(Array.from({ length: 7 }, () => ({})));
-  expect(g.tiles).toHaveLength(4);
-  expect(g.tiles[3]!.more).toBe(3);
-  // The tiles cover the box without overlap.
-  const area = g.tiles.reduce((s, t) => s + t.w * t.h, 0);
-  expect(area).toBeCloseTo(g.aspect);
+test("five to nine in rows, every picture shown; past nine, +n on the last (D286)", () => {
+  for (const n of [5, 6, 7, 8, 9]) {
+    const g = gridLayout(Array.from({ length: n }, () => ({})));
+    expect(g.tiles).toHaveLength(n);
+    expect(g.tiles.some((t) => t.more)).toBe(false);
+    // The tiles cover the box without overlap, each row edge to edge.
+    expect(g.tiles.reduce((s, t) => s + t.w * t.h, 0)).toBeCloseTo(g.aspect);
+    for (const t of g.tiles) expect(t.x + t.w).toBeLessThanOrEqual(1 + 1e-9);
+  }
+  expect(gridLayout(Array.from({ length: 7 }, () => ({}))).tiles[0]).toMatchObject({ x: 0, w: 1, h: 0.5 }); // a banner over 3+3
+  expect(gridLayout(Array.from({ length: 9 }, () => ({}))).aspect).toBeCloseTo(1);
+  const ten = gridLayout(Array.from({ length: 10 }, () => ({})));
+  expect(ten.tiles).toHaveLength(9);
+  expect(ten.tiles[8]!.more).toBe(1);
 });
 
 const ref: MediaRef = { id: "a".repeat(64), type: "image/png", bytes: 1234, w: 10, h: 10, k: "K".repeat(22), preview: "data:image/jpeg;base64,/9j/AIzaSyD-fake-looking-key0000000000", thumb: { id: "b".repeat(64), k: "T".repeat(22) } };

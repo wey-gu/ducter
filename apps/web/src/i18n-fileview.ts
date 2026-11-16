@@ -3,6 +3,11 @@
 export const fileWords: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {
     "media.fileOpen": "打开 %s",
+    // D286: a sound plays in its card; the viewer steps through pictures.
+    "media.play": "播放",
+    "media.pause": "暂停",
+    "media.prev": "上一张",
+    "media.next": "下一张",
     "file.save": "存一份",
     "file.source": "看原文",
     "file.formatted": "看排版",
@@ -29,6 +34,10 @@ export const fileWords: { zh: Record<string, string>; en: Record<string, string>
   },
   en: {
     "media.fileOpen": "Open %s",
+    "media.play": "Play",
+    "media.pause": "Pause",
+    "media.prev": "Previous picture",
+    "media.next": "Next picture",
     "file.save": "Save a copy",
     "file.source": "Show source",
     "file.formatted": "Show formatted",

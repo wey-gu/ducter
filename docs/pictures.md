@@ -18,8 +18,9 @@ works, a picture, a file), it shows up in the conversation.
   picture you copied.
 - **On your Mac:** click the paperclip, paste (⌘V), or drag pictures and files onto the
   conversation. A file you copied in Finder pastes as that file.
-- **Up to 10 at a time.** Each one starts going up the moment you pick it, so Send is instant.
-  Type words with them, or send them alone.
+- **Up to 10 at a time.** Each one starts going up the moment you pick it, under a small ring
+  that ticks when it's there, so Send is instant. Type words with them, or send them alone. Up to
+  nine show in your message at once, laid out in rows.
 - **To a task:** open the task and send it pictures the same way, or drop them on the words when
   you start a **New task**. If an AI agent on the list can't see pictures, it says **Can't see
   images** there.
@@ -33,7 +34,11 @@ are, with **Didn't send · Retry**. Nothing you typed is lost.
 ## Send a file
 
 Any file goes the same way as a picture: a PDF, a Word document, a spreadsheet, a log, some code,
-a zip. It shows in your message as one line with its name and size, and you can tap it to read it
+a zip. It shows in your message as a card with its name and size and a small page marked with
+what kind it is (PDF, DOCX, ZIP…). Where it can, the card shows a glimpse: a PDF's first page and
+how many pages it has, the first lines of code or text, the first rows of a table. On your phone and in a browser, a video
+also shows its first frame and length, and a voice memo or a song plays right in its card (in the
+Mac app, coming soon). Tap the card to read the file
 right there, like a file a task made (below).
 
 - **Your partner reads it.** Ask about it in the same message ("summarise this", "what's wrong
@@ -54,12 +59,15 @@ ready. If none of your computers has Codex signed in, your partner tells you so.
 
 ## Look at pictures
 
-- **Tap a picture** to open it big. Pinch or double-tap to zoom, swipe left and right through
-  every picture in the conversation (or in the task), and swipe down to close.
+- **Tap a picture** to open it big: it grows out of where it was. Pinch or double-tap to zoom
+  (and drag to look around), swipe left and right through every picture in the conversation (or
+  in the task) with the next one peeking in, and swipe down to close; it goes back into its place.
+- **On a computer:** the arrows at the sides or ← and → move between pictures, a two-finger swipe
+  does too, and pinching or ⌘ / Ctrl with the scroll wheel zooms where the pointer is.
 - **Save**, **Share** and **Copy** are along the bottom. A picture a task made says **From**
   and the task's name: tap it to open that task.
-- **On your Mac:** Space opens and closes a picture, ← and → move between them, ⌘C copies it, and
-  you can drag it to Finder.
+- **On your Mac:** Space opens and closes a picture, ← and → move between them, a pinch or the
+  scroll wheel zooms, ⌘C copies it, and you can drag it to Finder.
 
 ## Read a file a task made
 

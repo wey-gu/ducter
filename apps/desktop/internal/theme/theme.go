@@ -152,8 +152,12 @@ type Tokens struct {
 	// the bar's words and marks on it, MediaGap the hairline between tiles.
 	Lightbox, LightboxInk ui.Color
 	// PDFPage is a PDF page's paper (D242): printed matter, white in every theme.
-	PDFPage           ui.Color
-	MediaGap          float32
+	PDFPage  ui.Color
+	MediaGap float32
+	// Family is a file's family colour (D286, --fam-* on the web): its
+	// badge's band and mark; FamilyOn the extension written on the band.
+	Family            map[string]ui.Color
+	FamilyOn          ui.Color
 	Drop, DropPressed Elevation
 
 	// motion: Snappy for hover and lift, PressDur for a press, EnterDur
@@ -329,8 +333,14 @@ func Pebble() *Tokens {
 		PDFPage:        hex("#FFFFFF"),
 		LightboxInk:    hex("#FFF6EA"),
 		MediaGap:       3,
-		Drop:           Elevation{Y: 7, Blur: 12, Color: hex("#2B2118").Alpha(0.28)},
-		DropPressed:    Elevation{Y: 1, Blur: 3, Color: hex("#2B2118").Alpha(0.22)},
+		Family: map[string]ui.Color{
+			"pdf": hex("#D65A40"), "code": hex("#5469A3"), "text": hex("#8C7458"), "doc": hex("#3F74C2"),
+			"sheet": hex("#3C8F57"), "slides": hex("#D9772C"), "archive": hex("#9A7A50"), "audio": hex("#8659BD"),
+			"video": hex("#2F8A92"), "picture": hex("#C1648A"), "other": hex("#9A8670"),
+		},
+		FamilyOn:    hex("#FFFFFF"),
+		Drop:        Elevation{Y: 7, Blur: 12, Color: hex("#2B2118").Alpha(0.28)},
+		DropPressed: Elevation{Y: 1, Blur: 3, Color: hex("#2B2118").Alpha(0.22)},
 
 		Bouncy:   ui.Animation{Spring: ui.SpringOptions{Duration: 420e6, Bounce: 0.35}},
 		Snappy:   ui.Snappy,

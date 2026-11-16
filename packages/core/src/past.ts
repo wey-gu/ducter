@@ -29,6 +29,7 @@ import {
 } from "@ducter/protocol";
 import { fill, words, type LangTag } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
+import { neverStarted } from "./registry.ts";
 
 // ---------- marks ----------
 
@@ -471,7 +472,7 @@ export function createPast(d: PastDeps): Past {
       const terms = queryTerms(tw ? tw.rest : raw);
       const since = Math.max(tw?.since ?? -Infinity, q.since ? Date.parse(q.since) : -Infinity);
       const before = Math.min(tw?.before ?? Infinity, q.before ? Date.parse(q.before) : Infinity);
-      const all = d.tasks.list().filter((c) => c.persona === persona || !persona);
+      const all = d.tasks.list().filter((c) => (c.persona === persona || !persona) && !neverStarted(c));
       const facets: PastFacets = { projects: [], harnesses: [], tags: d.marks.tags(persona) };
       const pn = new Map<string, number>();
       const hn = new Map<string, number>();

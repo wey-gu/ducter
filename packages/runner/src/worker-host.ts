@@ -206,7 +206,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     push: (a) => pushForMove(a.place),
     openPr: (a) => openDraftPr(a.place, { gh: o.gh }),
     changes: (a) => branchChanges(a.place),
-    archive: (a) => archiveWorktree(a.place, o.dataDir),
+    archive: (a) => archiveWorktree(a.place, o.dataDir, { unstarted: a.unstarted === true }),
     folderPrepare: (a) => folders.prepare(String(a.taskId), String(a.folder)),
     folderFinish: async (a) => {
       folders.finish(String(a.taskId));

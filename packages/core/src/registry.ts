@@ -3,6 +3,9 @@ import type { Attention, Bodies, LogEvent, OnHand, PastMark, Residency, TaskCard
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 
+/** D120: the partner's call changed before its brief arrived, so this early open was dropped unstarted (runner.ts). */
+export const neverStarted = (c: Pick<TaskCard, "attention" | "reason">) => c.attention === "dropped" && c.reason === "not started";
+
 export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status"] as const;
 
 /** D216: a step or the agent's words, the kind On hand's latest line is made from. */
@@ -250,6 +253,8 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
       const counts = { needs_you: 0, working: 0, waiting: 0, done_today: 0 };
       const tasks: TaskCard[] = [];
       for (const c of cards.values()) {
+        // A speculative open the partner replaced before it was briefed never was a task (D120).
+        if (neverStarted(c)) continue;
         const age = now - Date.parse(c.updatedAt);
         if (c.attention === "needs_you") counts.needs_you++;
         else if (c.attention === "blocked") counts.waiting++;

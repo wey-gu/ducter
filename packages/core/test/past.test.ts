@@ -179,3 +179,15 @@ test("the picture Ducter guesses, and the query's words", () => {
   expect(queryTerms("show me everything about hawdb compaction")).toEqual(["hawdb", "compaction"]);
   expect(queryTerms("那个找到 flaky 原因的任务")).toEqual(["flaky", "原因"]);
 });
+
+test("an early open the partner replaced before its brief never shows, in Past or On hand (research/108)", () => {
+  const s = seed();
+  const st = "task:early1";
+  s.log.append({ persona: "ann", stream: st, origin: "partner", kind: "task_open", body: { taskId: "early1", title: "Fix the failing test", project: "", place: { kind: "none" }, harness: "claude-code", brief: "" } });
+  s.log.append({ persona: "ann", stream: st, origin: "system", kind: "task_state", body: { taskId: "early1", attention: "dropped", residency: "archived", reason: "not started" } });
+  expect(ids(s.past.query("ann", {}))).not.toContain("early1");
+  expect(s.tasks.onHand().tasks.map((c) => c.taskId)).not.toContain("early1");
+  // A task the person dropped stays findable.
+  expect(ids(s.past.query("ann", {}))).toContain("dropped");
+  s.cleanup();
+});

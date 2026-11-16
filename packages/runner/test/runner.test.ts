@@ -829,6 +829,28 @@ describe("ack and go (D120): open before the brief is written", () => {
   });
 });
 
+describe("ack and go (D120): a replaced early open leaves nothing behind (research/108)", () => {
+  test("its worktree and branch go, so the task opened instead gets the plain branch name", async () => {
+    const repo = await makeRepo();
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    let drop!: (e: Error) => void;
+    const first = await runner.openTaskEarly!({ persona: "p1", title: "Fix the test", place: { kind: "repo", repoPath: repo } }, new Promise<string>((_, r) => (drop = r)));
+    const wt = (core.tasks.get(first.taskId)!.place as { worktree: string }).worktree;
+    await waitFor(() => fake.sessions.length === 1);
+    expect(existsSync(wt)).toBe(true);
+    drop(new Error("the call names another place"));
+    await runner.whenStarted(first.taskId);
+    expect(core.tasks.get(first.taskId)).toMatchObject({ attention: "dropped", reason: "not started" });
+    expect(existsSync(wt)).toBe(false);
+    const branches = Bun.spawnSync(["git", "-C", repo, "branch", "--format=%(refname:short)"]).stdout.toString().trim().split("\n");
+    expect(branches).toEqual(["main"]);
+    const second = await runner.openTask({ persona: "p1", title: "Fix the test", brief: "b", place: { kind: "repo", repoPath: repo } });
+    expect((core.tasks.get(second.taskId)!.place as { branch: string }).branch).toBe("ducter/fix-the-test");
+    await runner.dispose();
+  });
+});
+
 describe("small windows (D135): save before a compaction, the brief and progress again after it", () => {
   const usage = (contextTokens: number): HarnessEvent => ({ role: "system", usage: { contextTokens }, raw: { kind: "usage" } });
   const compacted: HarnessEvent = { role: "system", text: "compaction completed", raw: { kind: "compaction_ended", outcome: "completed", trigger: "auto" } };

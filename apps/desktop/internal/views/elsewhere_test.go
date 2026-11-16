@@ -28,7 +28,7 @@ func TestHomeAbilitiesElsewhere(t *testing.T) {
 			app.devState().sel = "local"
 			return app
 		}
-		chip := func(id, where string) string { return L.T("chip."+id) + " · " + where }
+		chip := func(id, where string) string { return spoken(L, L.T("chip."+id), where) }
 
 		app := world(protocol.DeviceAbility{ID: "phone", State: "on"})
 		tt := sheetTester(app, 1280, 860, true)
@@ -52,7 +52,7 @@ func TestHomeAbilitiesElsewhere(t *testing.T) {
 			}
 		}
 		// Its ⓘ says the work goes there.
-		if err := tt.Click(L.T("chip.info") + " · " + L.T("chip.phone")); err != nil {
+		if err := tt.Click(spoken(L, L.T("chip.info"), L.T("chip.phone"))); err != nil {
 			t.Fatalf("%s: ⓘ: %v", lang, err)
 		}
 		tt.Frame()

@@ -4,7 +4,7 @@ package i18n
 // device card, 装上 / Install with its confirm, and Ducter's one card.
 // Glossary: design/product-model.md.
 var zhMemPlugin = Table{
-	"memp.installed":       "Nowledge Mem 已装 · %s",
+	"memp.installed":       "装着 Nowledge Mem %s",
 	"memp.installed.bare":  "Nowledge Mem 已装",
 	"memp.absent":          "Nowledge Mem 没装",
 	"memp.update":          "Nowledge Mem 有新版本",

@@ -58,7 +58,7 @@ func TestAgentVersions(t *testing.T) {
 			d.sel = "local"
 			h.settle(200 * time.Millisecond)
 			// D161: the card shows one dot; the versions are in each coin's detail.
-			if h.tt.HasText(L.T("agentv.unverified")) || h.tt.HasText(L.T("coin.version", "0.167.0", L.T("coin.how.npm"))) {
+			if h.tt.HasText(L.T("agentv.unverified")) || h.tt.HasText(L.T("agentv.version", "0.167.0")) {
 				t.Fatalf("per-version facts on the card itself: %q", h.tt.Texts())
 			}
 			open := func(name string, wants ...string) {
@@ -72,14 +72,14 @@ func TestAgentVersions(t *testing.T) {
 					}
 				}
 			}
-			open("Codex · hel · "+L.T("agentv.available", "0.168.0"),
-				L.T("coin.version", "0.167.0", L.T("coin.how.npm")),
+			open(spoken(L, "Codex", "hel", L.T("agentv.available", "0.168.0")),
+				L.T("agentv.version", "0.167.0"), L.T("coin.how.npm"),
 				L.T("agentv.available", "0.168.0"),
 				L.T("agentv.latest.unverified", "0.168.0"))
 			shot("home-behind")
-			open("Claude Code · hel", L.T("coin.version", "2.1.321", L.T("coin.how.installer")), L.T("agentv.unverified"))
-			open("pi · hel", L.T("coin.version", "1.5.0", L.T("agentv.how.ducter")))
-			open("Codex · hel · " + L.T("agentv.available", "0.168.0"))
+			open(spoken(L, "Claude Code", "hel"), L.T("agentv.version", "2.1.321"), L.T("coin.how.installer"), L.T("agentv.unverified"))
+			open(spoken(L, "pi", "hel"), L.T("agentv.version", "1.5.0"), L.T("agentv.how.ducter"))
+			open(spoken(L, "Codex", "hel", L.T("agentv.available", "0.168.0")))
 
 			// Each step in words.
 			for _, step := range []struct{ phase, want string }{
@@ -97,7 +97,7 @@ func TestAgentVersions(t *testing.T) {
 			d.sel = "local"
 			h.settle(100 * time.Millisecond)
 			if d.card.sheet.coin != "local|codex" {
-				h.click("Codex · hel · " + L.T("agentv.available", "0.168.0"))
+				h.click(spoken(L, "Codex", "hel", L.T("agentv.available", "0.168.0")))
 			}
 			h.settle(100 * time.Millisecond)
 			h.click(L.T("agentv.button") + " · Codex")
@@ -107,9 +107,9 @@ func TestAgentVersions(t *testing.T) {
 			// A copy inside the Codex app: where its update comes from, never a button.
 			d.sel = "a3f9c2d1e0"
 			h.settle(200 * time.Millisecond)
-			h.click("Codex · Mac mini")
+			h.click(spoken(L, "Codex", "Mac mini"))
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("coin.version", "0.166.0", L.T("agentv.how.app", "Codex"))) || h.tt.HasText(L.T("agentv.button")+" · Codex") {
+			if !h.tt.HasText(L.T("agentv.version", "0.166.0")) || !h.tt.HasText(L.T("agentv.how.app", "Codex")) || h.tt.HasText(L.T("agentv.button")+" · Codex") {
 				t.Fatalf("mac card: %q", h.tt.Texts())
 			}
 			shot("mac-app-copy")

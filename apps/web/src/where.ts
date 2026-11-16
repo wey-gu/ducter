@@ -102,10 +102,11 @@ export function closingWords(p: ClosingPlan): { question: string; go: string; ho
   return { question, go: t("move.closing.go"), hold: t("move.closing.hold") };
 }
 
-/** A computer group's state words: 醒着 · 一直醒着. */
+/** A computer group's state word, drawn with its dot: 睡着了, 连不上, 醒着, or 一直醒着 for one that never sleeps (D291: one word, not two joined). */
 export function computerState(d: DeviceView): string {
-  const s = d.state === "asleep" ? t("switch.computer.asleep") : d.state === "unreachable" ? t("switch.computer.away") : t("switch.computer.awake");
-  return [s, d.alwaysOn ? t("switch.computer.on") : ""].filter(Boolean).join(" · ");
+  if (d.state === "asleep") return t("switch.computer.asleep");
+  if (d.state === "unreachable") return t("switch.computer.away");
+  return d.alwaysOn ? t("switch.computer.on") : t("switch.computer.awake");
 }
 
 /** A task waiting on its computer, in words (the runner's device:asleep / device:unreachable reasons). */
@@ -144,7 +145,9 @@ export function taskWhere(task: Task): { line: string; why: string } {
   let w = task.body?.why.where;
   // A move or a re-pick since: the place says where it is now; the reason is for there only.
   if (w && computerName(w.device) !== name) w = undefined;
-  const line = [t("where.on", name), whereUses(w)].filter(Boolean).join(" · ");
+  const uses = whereUses(w);
+  // One phrase (D291): 在 MacBook 上用你的 Chrome / on MacBook in your Chrome.
+  const line = uses ? t("where.on.uses", name, uses) : t("where.on", name);
   const r = whereReason(w);
   return { line, why: r ? t("where.why", name, r) : "" };
 }

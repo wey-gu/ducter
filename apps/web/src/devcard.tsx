@@ -11,10 +11,10 @@ import { clientShape, TRY_LIVE } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { BackRow, Btn, Chip, LinkBtn, CoinButton, DangerButton, ListRow, MoreButton, RenameTitle, SocketButton, Toggle } from "./controls.tsx";
+import { BackRow, Btn, Chip, LinkBtn, CoinButton, DangerButton, Facts, ListRow, MoreButton, RenameTitle, SocketButton, Toggle } from "./controls.tsx";
 import { Coin } from "./coin.tsx";
-import { ago, behind, harnessName, memWords, phaseLine as phaseWords } from "./format.ts";
-import { agentBehind, agentRunning, androidApp, chipsFor, type ChipLook, type Client, listWord, statusLine, versionLine, viaText } from "./sheet.ts";
+import { ago, behind, harnessName, memWords, phaseLine as phaseWords, spoken } from "./format.ts";
+import { agentBehind, agentRunning, androidApp, chipsFor, type ChipLook, type Client, listWord, statusLine, versionFacts, viaText } from "./sheet.ts";
 import { attention, placeOf } from "./store.ts";
 import { disablePush } from "./push-client.ts";
 import { turnOnPush } from "./views.tsx";
@@ -63,7 +63,7 @@ function clientKind(cl: Client): string {
   const p = cl.platform.toLowerCase();
   if (isCli(cl)) return t("device.kind.cli");
   if (p.includes("ios") || p.includes("iphone")) {
-    const kind = cl.name.startsWith("iPad") ? "ipad" : "iphone"; // "iPad · Ducter" (D176)
+    const kind = cl.name.startsWith("iPad") ? "ipad" : "iphone"; // an iPad pairs as "iPad" (D176, D291)
     return t(`device.kind.${kind}.${p.includes("safari") || p.includes("web") ? "safari" : "app"}`);
   }
   if (p.includes("android")) return t(androidApp(cl) ? "device.kind.android.app" : "device.kind.android"); // the Android app (D178)
@@ -142,7 +142,7 @@ export function DevicesSection() {
               key={cl.id}
               art={clientArt(cl)}
               name={clientName(cl)}
-              word={cl.connected ? t("list.state.now") : cl.lastSeen ? ago(A.L, cl.lastSeen) : t("device.client.never")}
+              word={cl.connected ? t("list.state.now") : cl.lastSeen ? t("list.state.seen", ago(A.L, cl.lastSeen)) : t("device.client.never")}
               onClick={() => setOpen(`cl:${cl.id}`)}
             />
           ))}
@@ -157,11 +157,11 @@ export function DevicesSection() {
   );
 }
 
-/** Never "latest" without when it was read: 已经是最新的 · 3 小时前查过 / Up to date · checked 3 h ago. */
-function upToDate(u: DeviceUpdate): string {
-  if (!u.checkedAt) return t("devup.current");
+/** Never "latest" without when it was read: 已经是最新的, and beside it 3 小时前检查过 (D291: two facts, two elements). */
+function upToDate(u: DeviceUpdate): string[] {
+  if (!u.checkedAt) return [t("devup.current")];
   const age = Date.now() - Date.parse(u.checkedAt);
-  return `${t("devup.current")} · ${age < 2 * 60_000 ? t("devup.checked.now") : t("devup.checked", ago(A.L, u.checkedAt))}`;
+  return [t("devup.current"), age < 2 * 60_000 ? t("devup.checked.now") : t("devup.checked", ago(A.L, u.checkedAt))];
 }
 
 /**
@@ -174,7 +174,7 @@ function Versions() {
   if (!home || !u || !u.latest || u.available || u.phase) return null;
   return (
     <div class="dc-versions">
-      <span class="small sub">{upToDate(u)}</span>
+      <Facts class="small sub" items={upToDate(u)} />
       {A.checkingUpdates ? <span class="small sub">{t("devup.checking")}</span> : <Btn kind="text" size="sm" label={t("devup.checknow")} onClick={() => A.checkUpdates(home.id)} />}
     </div>
   );
@@ -200,7 +200,13 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       <div class="dc-name">
         <RenameTitle id={dv.id} name={dv.name} renamable />
       </div>
-      <div class={`dc-status ${s.tone}`}>{s.text}</div>
+      {s.state && (
+        <div class={`dc-state ${s.tone}`}>
+          <i class="sdot" aria-hidden="true" />
+          {s.state}
+        </div>
+      )}
+      {s.text && <div class={`dc-status${s.state ? "" : ` ${s.tone}`}`}>{s.text}</div>}
       <CoinTray dv={dv} />
       <Chips dv={dv} go={go} />
       {!dv.home && <Via card={`dev:${dv.id}`} list={folded} computer={dv.computer || dv.name} />}
@@ -216,7 +222,7 @@ function ClientSheet({ cl, folded }: { cl: Client; folded: Client[] }) {
   const line = mine ? t("card.status.this") : cl.connected ? t("device.client.now") : cl.lastSeen ? t("device.client.seen", ago(A.L, cl.lastSeen)) : t("device.client.never");
   const src = clientArt(cl);
   return (
-    <div class="dc" role="group" aria-label={`${name}, ${clientKind(cl)}`}>
+    <div class="dc" role="group" aria-label={spoken(A.L, name, clientKind(cl))}>
       <Hero src={src} tall={src.endsWith("dev_phone.webp")} shape={/dev_(tablet|foldable)\.webp$/.exec(src)?.[1]} motion={cl.connected ? "float" : ""} />
       <div class="dc-name">
         <RenameTitle id={cl.id} name={name} renamable />
@@ -273,7 +279,7 @@ function CoinTray({ dv }: { dv: DeviceView }) {
         {shown.map((h) => {
           const name = harnessName(h.harness);
           const dot = agentBehind(h);
-          const label = `${name} · ${dv.name}${!h.loggedIn ? ` · ${t("coin.signed_out")}` : ""}${dot ? ` · ${t("agentv.available", h.latest)}` : ""}`;
+          const label = spoken(A.L, name, dv.name, !h.loggedIn && t("coin.signed_out"), dot && t("agentv.available", h.latest));
           const k = `${dv.id}|${h.harness}`;
           return (
             <CoinButton
@@ -360,7 +366,11 @@ function CoinDetail({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
       <div class="dh">
         <b>{name}</b>
       </div>
-      {versionLine(A.L, h) && <div class="ln soft">{versionLine(A.L, h)}</div>}
+      {h.version && (
+        <div class="ln soft">
+          <Facts items={versionFacts(A.L, h)} />
+        </div>
+      )}
       {h.how === "unknown" && <div class="ln">{t("agentv.how.unknown")}</div>}
       {(h.standing === "newer" || h.standing === "older") && <div class="ln">{t("agentv.unverified")}</div>}
       {shared && <div class="ln">{t("coin.shared", others.join(t("card.via.and")))}</div>}
@@ -642,7 +652,7 @@ function MemAction({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   const w = memWords(A.L, h.mem);
   if (!w.action || dv.state !== "awake") return null;
   const agent = harnessName(h.harness);
-  const about = `${agent} · Nowledge Mem`;
+  const about = spoken(A.L, agent, "Nowledge Mem");
   const answer = A.memAnswer?.device === dv.id && A.memAnswer.harness === h.harness ? A.memAnswer.reason : undefined;
   return (
     <>

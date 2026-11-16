@@ -331,18 +331,20 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 }
 
 // listRow is one row in the left list (D161 (7)): the clay at 32, the
-// name, and under it one short word of state, then 有更新 when an update
-// is available (words in the highlight's ink, never a dot: D213). Each
+// name alone, and under it one short line: what it is doing (14 小时前在线
+// / Online 14 hours ago), or a state word in its color with its dot; then
+// 有更新 when an update is available, a fact of its own beside it (words in
+// the highlight's ink, D213; never joined by a separator, D291). Each
 // line ellipsizes on its own, the state word before 有更新. 52 high, all
 // equal.
 func (a *App) listRow(c *ui.Context, key, name, word string, ink ui.Color, update, sel bool, width float32, clay func()) bool {
 	t := a.T
-	label := name + " · " + word
+	upd := ""
 	if update {
-		label += " · " + a.L.T("devices.update_word")
+		upd = a.L.T("devices.update_word")
 	}
 	row := ui.Row(c.Key(key)).Height(52).Gap(t.S2+2).Padding(0, t.S2+2).Radius(14).AlignItems(ui.Center).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).AccessSelected(sel).Focusable()
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, name, word, upd)).AccessSelected(sel).Focusable()
 	if width > 0 {
 		row.Width(width)
 	}
@@ -362,15 +364,17 @@ func (a *App) listRow(c *ui.Context, key, name, word string, ink ui.Color, updat
 			if word == "" && !update {
 				return
 			}
-			ui.Row(c).Gap(4).AlignItems(ui.Center).MinWidth(0).Children(func() {
+			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).AccessHidden(true).Children(func() {
 				if word != "" {
-					ui.Text(c, word).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
+					// A state (asleep, can't reach, at work) is its word in its color with its dot.
+					if ink != t.InkMuted {
+						a.stateWord(c, word, ink, t.XS, 600)
+					} else {
+						ui.Text(c, word).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
+					}
 				}
 				if update {
-					if word != "" {
-						ui.Text(c, "·").FontSize(t.XS).TextColor(t.InkMuted).Shrink(0).AccessHidden(true)
-					}
-					ui.Text(c, a.L.T("devices.update_word")).FontSize(t.XS).FontWeight(800).TextColor(t.HighlightInk).SingleLine().Shrink(0).AccessHidden(true)
+					ui.Text(c, upd).FontSize(t.XS).FontWeight(800).TextColor(t.HighlightInk).SingleLine().Shrink(0)
 				}
 			})
 		})
@@ -394,20 +398,23 @@ func (a *App) listWord(dv *protocol.DeviceView) (string, ui.Color) {
 	case dv.Kind == "phone":
 		return a.L.T("list.state.now"), t.InkMuted
 	}
-	if n := a.runningOn(dv); n > 0 {
+	if n := a.runningOn(dv); n == 1 {
+		return a.L.T("list.state.tasks.one"), t.Working.Ink
+	} else if n > 1 {
 		return a.L.T("list.state.tasks", n), t.Working.Ink
 	}
 	return a.L.T("list.state.does", a.workHome()), t.InkMuted
 }
 
-// clientWord is a phone's or a window's word: connected now, or when.
+// clientWord is a phone's or a window's line: connected now, or when it
+// was last online (14 小时前在线 / Online 14 hours ago), never a bare time.
 func (a *App) clientWord(cl *protocol.ReachClient) (string, ui.Color) {
 	t := a.T
 	if cl.Connected {
 		return a.L.T("list.state.now"), t.InkMuted
 	}
 	if ago := a.agoLong(cl.LastSeen); ago != "" {
-		return ago, t.InkMuted
+		return a.L.T("list.state.seen", ago), t.InkMuted
 	}
 	return a.L.T("device.client.never"), t.InkMuted
 }
@@ -423,20 +430,15 @@ func (a *App) connectEntry(c *ui.Context) {
 	}
 }
 
-// deviceChip is a device's state in words, with its colors.
+// deviceChip is a device's state word, with its colors: 睡着了, 连不上 or
+// 醒着; one word, never with a time or a role joined on (D291).
 func (a *App) deviceChip(dv *protocol.DeviceView) (string, theme.StateColors) {
 	t := a.T
 	switch dv.State {
 	case protocol.DeviceAsleep:
 		return a.L.T("device.state.asleep"), t.Asleep
 	case protocol.DeviceUnreachable:
-		if ago := a.agoLong(dv.LastSeen); ago != "" {
-			return a.L.T("device.state.unreachable", ago), t.Away
-		}
-		return a.L.T("device.state.unreachable.never"), t.Away
-	}
-	if dv.Home {
-		return a.L.T("device.home", a.S.PersonaName), t.Awake
+		return a.L.T("card.status.away"), t.Away
 	}
 	return a.L.T("device.state.awake"), t.Awake
 }
@@ -618,7 +620,7 @@ func (a *App) reachList(c *ui.Context) {
 					line = a.L.T("reach.client.seen", name, ago)
 				}
 			}
-			// The words say it (online / seen 2 h ago); no status dot.
+			// One phrase says it (iPhone 在线 / iPhone was online 2 hours ago); no status dot.
 			ui.Text(c.Key("cl:"+cl.ID), line).FontSize(t.SM).FontWeight(700).SingleLine()
 		}
 		ui.Text(c, a.L.T("ability.remote.cut")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
@@ -975,11 +977,13 @@ func (a *App) accountSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float3
 			ui.Column(c).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() { a.optionRow(c, k, true) })
 			return
 		}
-		status := a.L.T("token.signed_in")
-		if h.Allowance != nil {
-			status += " · " + a.L.T("token.allowance", int(h.Allowance.Left*100+0.5))
-		}
-		ui.Text(c, status).FontSize(t.MD).FontWeight(700)
+		// Signed in, and what is left of the allowance: two facts, two elements (D291).
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Baseline).Wrap().Children(func() {
+			ui.Text(c, a.L.T("token.signed_in")).FontSize(t.MD).FontWeight(700)
+			if h.Allowance != nil {
+				ui.Text(c, a.L.T("token.allowance", int(h.Allowance.Left*100+0.5))).FontSize(t.SM).TextColor(t.InkMuted)
+			}
+		})
 		j := a.Backend.Job(id + ".signout")
 		switch {
 		case j != nil && j.Running():

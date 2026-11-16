@@ -11,7 +11,7 @@ import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach } from "./native.ts";
 import { copy } from "./conv-copy.ts";
 import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
-import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
+import { harnessName, modelName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
@@ -151,10 +151,10 @@ export const placeKey = (p: Place): string =>
 export const tilde = (p: string) => p.replace(/^\/(Users|home)\/[^/]+(?=\/|$)/, "~");
 /** D272: an address GitHub answers (or the field still empty): the GitHub sign-in line shows for it. */
 export const ntGitHubish = (a: string) => !a.trim() || /github\.com/i.test(a) || /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]+$/.test(a.trim());
-/** A place's second line in the New task list: its path, and its computer when the places span more than one (D197). */
-export const placeLine = (p: PlaceChoice) => {
+/** A place's second line in the New task list: its path, and its computer when the places span more than one (D197): two facts, drawn apart (D291). */
+export const placeLine = (p: PlaceChoice): { path: string; computer: string } => {
   const path = p.place.kind === "repo" ? p.place.repoPath : p.place.kind === "folder" ? p.place.path : "";
-  return path ? tilde(path) + (p.computer ? ` · ${p.computer}` : "") : "";
+  return path ? { path: tilde(path), computer: p.computer ?? "" } : { path: "", computer: "" };
 };
 export const candKey = (c: Candidate) => `${c.device ? c.device + "|" : ""}${c.harness}/${c.model ?? ""}`;
 /** D202: one agent on one computer (the Who list has one row each; its model is picked under it). */
@@ -1329,11 +1329,16 @@ class AppState {
     return { ...(model ? { model } : {}), ...(effort ? { effort } : {}), listed: tune.models.length > 0 };
   }
 
-  /** D202: who does it as the pill says it: the agent, its model and its effort ("Claude Code · Opus 5.5 · 高"); "" without a model list. */
-  ntWhoLabel(c: Candidate): string {
+  /** D202: who does it as the pill shows it: the agent, its model and its effort, each its own word (D291); without a model list, the agent and the model it would use. */
+  ntWhoParts(c: Candidate): string[] {
     const tu = this.ntTune(c);
-    if (!tu.models.length) return "";
-    return [harnessName(c.harness), tu.model?.label ?? (c.model && modelName(c.model)), tu.effort && effortWord(this.L, tu.effort)].filter(Boolean).join(" · ");
+    if (!tu.models.length) return [harnessName(c.harness), c.model && modelName(c.model)].filter((x): x is string => !!x);
+    return [harnessName(c.harness), tu.model?.label ?? (c.model && modelName(c.model)), tu.effort && effortWord(this.L, tu.effort)].filter((x): x is string => !!x);
+  }
+
+  /** The pill's facts read aloud (Claude Code，Opus 5.5，高): its accessible name. */
+  ntWhoLabel(c: Candidate): string {
+    return spoken(this.L, ...this.ntWhoParts(c));
   }
 
   /** D202: the model or effort picked under the chosen agent, remembered for this agent on this client. */

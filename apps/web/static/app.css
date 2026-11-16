@@ -4425,6 +4425,14 @@ ol.tries b {
   text-overflow: ellipsis;
   min-width: 0;
 }
+/* D291: the who pill's model and effort, each its own word after the agent's name. */
+.pill .pill-fact {
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
 .pill code {
   font-family: var(--mono);
   font-size: var(--xs);
@@ -4726,6 +4734,14 @@ ol.tries b {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* D291: a place's path and its computer, two facts on one line. */
+.menu-row .mr-place {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.menu-row .mr-place > span:last-child:not(:first-child) {
+  flex: none;
+}
 .menu-row code.grow {
   flex: 1;
   min-width: 0;
@@ -4988,9 +5004,12 @@ button.dev-name {
 .li-row { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 10px; border: 0; border-radius: 14px; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
 .li-row:active { background: var(--sunken); }
 .li-row img { flex: none; width: 36px; height: 32px; object-fit: contain; }
-.li-row .t { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+/* D291: the name alone on its line; under it one short line, its facts as separate elements. */
+.li-row .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; white-space: nowrap; }
 .li-row .t b { font-size: var(--md); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.li-row .t small { flex: none; font-size: var(--sm); color: var(--ink-muted); }
+.li-row .li-line { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.li-row .t small { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--sm); color: var(--ink-muted); }
+.li-row .t small.update { flex: none; }
 .li-row .t small.working { color: var(--working-ink); }
 .li-row .t small.asleep { color: var(--dusk-ink); }
 .li-row .t small.away { color: var(--failed-ink); }
@@ -5036,6 +5055,13 @@ button.dev-name {
 .dc-status.working { color: var(--working-ink); font-weight: 700; }
 .dc-status.asleep { color: var(--dusk-ink); font-weight: 700; }
 .dc-status.away { color: var(--failed-ink); font-weight: 700; }
+/* D291: a state word in its color with its dot, its own element; the line under it is muted. */
+.dc-state { display: flex; justify-content: center; align-items: center; gap: 6px; margin: 0 0 var(--s4); font-size: var(--md); font-weight: 700; color: var(--ink-muted); }
+.dc-state:has(+ .dc-status) { margin-bottom: 2px; }
+.dc-state.working { color: var(--working-ink); }
+.dc-state.asleep { color: var(--dusk-ink); }
+.dc-state.away { color: var(--failed-ink); }
+.sdot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
 .dc-tray { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 12px 8px 8px; border-radius: 18px; background: var(--sunken); }
 .coin-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 70px; padding: 4px 0 2px; border: 0; border-radius: 14px; background: none; color: inherit; font: inherit; cursor: pointer; }
@@ -5135,7 +5161,11 @@ button.dev-name {
 .switch-sub { font-size: var(--sm); font-weight: 700; color: var(--ink-soft); }
 .switch-head { align-items: center; }
 .switch-head img { flex: none; width: 36px; height: 28px; object-fit: contain; }
-.switch-head span.asleep { color: var(--dusk-ink); font-weight: 700; }
+/* D291: the computer's state word with its dot, its own element beside the name. */
+.switch-head .sw-state { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-muted); }
+.switch-head .sw-state.awake { color: var(--working-ink); }
+.switch-head .sw-state.asleep { color: var(--dusk-ink); font-weight: 700; }
+.switch-head .sw-state.unreachable { color: var(--failed-ink); font-weight: 700; }
 
 /* D166: the accounts card as a character sheet (design/connectors.md §12; prototype accounts.html). */
 .src-cards { display: flex; flex-direction: column; gap: var(--s4); }

@@ -238,7 +238,7 @@ func TestDevicesHelClientCard(t *testing.T) {
 			}
 			h.shotAs(fmt.Sprintf("phone-%s-card", lang))
 			// Rename in place: click the name; the field; keep it.
-			h.click(L.T("device.rename") + " · iPhone · Safari · 2")
+			h.click(spoken(L, L.T("device.rename"), "iPhone · Safari · 2"))
 			h.settle(100 * time.Millisecond)
 			d.rename.draft = "Wey 的 iPhone"
 			h.settle(100 * time.Millisecond)
@@ -258,7 +258,7 @@ func TestDevicesHelClientCard(t *testing.T) {
 			// The home renames in place too.
 			d.selClient, d.sel = "", "local"
 			h.settle(100 * time.Millisecond)
-			h.click(L.T("device.rename") + " · hel")
+			h.click(spoken(L, L.T("device.rename"), "hel"))
 			d.rename.draft = "hel 小鸭"
 			h.click(L.T("device.rename.ok"))
 			h.until("home renamed", func() bool { return h.app.S.Device("local").Name == "hel 小鸭" })

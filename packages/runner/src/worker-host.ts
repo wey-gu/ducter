@@ -110,6 +110,24 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     if (!existsSync(path)) writeFileSync(path, Buffer.from(String(i.data ?? ""), "base64"), { mode: 0o600 });
     return { path, mediaType: String(i.mediaType ?? "image/png") };
   };
+  /**
+   * D259: a file the user sent, kept here under its own name (one folder per file on the home), and
+   * the text's mention of the home's path turned into this worker's.
+   */
+  const keepFiles = (text: string, files: unknown): string => {
+    if (!Array.isArray(files)) return text;
+    for (const f of files as { name?: unknown; home?: unknown; data?: unknown }[]) {
+      const home = String(f.home ?? "");
+      const name = basename(String(f.name ?? "").replace(/\\/g, "/")).replace(/[\u0000-\u001f:]/g, "_").replace(/^\.+/, "").slice(0, 120) || "file";
+      const slot = basename(home.slice(0, home.length - basename(home).length - 1)).replace(/[^A-Za-z0-9_-]/g, "") || "f";
+      const dir = join(o.dataDir, "media-in", "files", slot);
+      mkdirSync(dir, { recursive: true, mode: 0o700 });
+      const path = join(dir, name);
+      if (!existsSync(path)) writeFileSync(path, Buffer.from(String(f.data ?? ""), "base64"), { mode: 0o600 });
+      if (home) text = text.split(home).join(path);
+    }
+    return text;
+  };
   const busyOf = (s: HarnessSession) => {
     try {
       return Boolean(s.busy());
@@ -157,7 +175,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
       const s = need(a.key);
       // D206: pictures from the home, written here once (by their content-addressed name).
       const images = Array.isArray(a.images) ? a.images.map((i: { name?: unknown; mediaType?: unknown; data?: unknown }) => keepPicture(i)) : undefined;
-      await s.send(a.text, a.mode, images?.length ? images : undefined);
+      await s.send(keepFiles(a.text, a.files), a.mode, images?.length ? images : undefined);
       return { busy: busyOf(s) };
     },
     // D206: a file a task here shows the user (only from its own folders, shown.ts).

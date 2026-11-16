@@ -142,6 +142,15 @@ func TestUploadShape(t *testing.T) {
 	if _, err := h.Upload(context.Background(), p, "", nil); err != ErrNotImage {
 		t.Errorf("415: %v", err)
 	}
+	// D259: a file goes as it is, with its own name and no renditions.
+	status, got.thumb = http.StatusOK, 0
+	doc := []byte("name,qty\nbolts,4\n")
+	if _, err := h.UploadFile(context.Background(), doc, "parts.csv", nil); err != nil || got.file != len(doc) || got.thumb != 0 || got.name != "parts.csv" || got.preview != "" {
+		t.Errorf("file: %v %+v", err, got)
+	}
+	if _, err := h.UploadFile(context.Background(), make([]byte, protocol.MediaFileMax+1), "big.bin", nil); err != ErrTooBig {
+		t.Errorf("over the cap: %v", err)
+	}
 }
 
 func TestHTTPBase(t *testing.T) {

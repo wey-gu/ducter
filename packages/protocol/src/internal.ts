@@ -148,6 +148,8 @@ export interface MediaApi {
   get(id: string): import("./media.ts").MediaRef | undefined;
   /** The file the bytes are in, on the home. */
   path(id: string): string | undefined;
+  /** D259: the same bytes under the file's own name, for an agent to read (falls back to path). */
+  named?(id: string): string | undefined;
   /** A file on the home (a task's report): copied in. files: besides pictures. Throws when it isn't one Ducter shows. */
   putFile(path: string, o?: { name?: string; from?: { taskId: string }; files?: boolean }): import("./media.ts").MediaRef;
   put(bytes: Uint8Array, o?: { name?: string; from?: { taskId: string }; files?: boolean }): import("./media.ts").MediaRef;
@@ -405,13 +407,24 @@ export interface SendImage {
   mediaType: string;
 }
 
+/**
+ * D259: one file (not a picture) the user sent, handed to an agent: the text names `path`; an agent
+ * on the home reads it there, and a worker's session gets the bytes, writes them on its side and
+ * says its own path in the text instead.
+ */
+export interface SendFile {
+  path: string;
+  name: string;
+}
+
 export interface HarnessSession {
   id: string; // native session id, resumable
   readonly canSteer: boolean; // harness accepts input mid-turn
   busy(): boolean; // a turn is in progress
   // D206: images ride with the text as the runtime's own image input (OAR InputOptions.images):
-  // files on the home; a worker's session gets their bytes and writes them on its side.
-  send(text: string, mode?: "turn" | "steer" | "queue", images?: SendImage[]): Promise<void>;
+  // files on the home; a worker's session gets their bytes and writes them on its side. D259:
+  // files are named in the text; `files` only lets a worker's session bring them across.
+  send(text: string, mode?: "turn" | "steer" | "queue", images?: SendImage[], files?: SendFile[]): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
   events(): AsyncIterable<HarnessEvent>;

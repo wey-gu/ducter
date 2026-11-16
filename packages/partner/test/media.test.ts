@@ -41,6 +41,36 @@ test("the user's screenshot reaches the partner as an image of its turn, named i
   expect(s.inputs.at(-1)).not.toContain("base64");
 });
 
+// D259: a file the user sends is named with its kind, size and where it is under its own name; a
+// short text comes along whole; a PDF or a long one is read there with the partner's own read
+// tool. It is never an image input, and a task gets it by its id.
+test("a file the user sends: named with where it is; a short text whole; a task gets it by id", async () => {
+  let opened: any;
+  const { fc, fr, partner, user, media } = setup(async (_i, s) => {
+    s.say("好，我交给一个任务去按清单发版。");
+    opened = await fc.callTool("task_open", { title: "按清单发版", place: { kind: "none" }, brief: "User's words: 按这个发版", media: [shortId(pdf.id)] });
+    s.end();
+  });
+  const notes = media.put(new TextEncoder().encode("# 发版清单\n- 打 tag\n- 发公告\n"), { sent: true, name: "release.md" });
+  const pdf = media.put(new TextEncoder().encode(`%PDF-1.7 ${"x".repeat(40_000)}`), { sent: true, name: "季度报告.pdf" });
+  const shot = media.put(png(640, 480));
+  user("按这个发版", [notes, pdf, shot]);
+  await partner.idle();
+  const s = fr.sessions[0]!;
+  const input = s.inputs.at(-1)!;
+  // The picture keeps its own line and its image input; the files are not images.
+  expect(input).toContain(`[with a picture: picture ${shortId(shot.id)} (640×480); you see them with this message]`);
+  expect(s.images.at(-1)).toEqual([{ path: media.path(shot.id)!, mediaType: "image/png" }]);
+  expect(input).toContain(`file ${shortId(notes.id)} "release.md" (Markdown, 37 B) at ${media.named(notes.id)}, its whole text:\n<<<\n# 发版清单\n- 打 tag\n- 发公告\n>>>`);
+  expect(input).toContain(`file ${shortId(pdf.id)} "季度报告.pdf" (PDF, 39 KB) at ${media.named(pdf.id)}`);
+  expect(input).not.toContain("xxxxxxxx");
+  expect(input).toContain("Read the others with your file tools");
+  expect(input).toContain("Never say a path to the user");
+  expect(media.named(pdf.id)!.endsWith("/季度报告.pdf")).toBe(true);
+  expect(opened.ok).toBe(true);
+  expect(fr.opened[0]!.media?.map((m) => m.name)).toEqual(["季度报告.pdf"]);
+});
+
 test("an AI that can't see pictures gets none, and its line says so", async () => {
   const { fr, partner, user, media } = setup(
     (_i, s) => {

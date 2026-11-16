@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, type MediaRef, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
-import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
+import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
+import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief } from "./brief.ts";
 import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
@@ -423,6 +423,29 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     return { images };
   }
 
+  /**
+   * D259: the files (not pictures) the user sent, as one line naming each with its kind, size and
+   * where it is: a copy under its own name on the home (a worker's session brings the bytes over
+   * and names its own path). Every agent reads them with its own tools, whatever it can see.
+   */
+  function filesFor(media: MediaRef[] | undefined): { files: SendFile[]; note?: string } {
+    const docs = (media ?? []).filter((m) => !isImage(m));
+    if (!docs.length) return { files: [] };
+    const files: SendFile[] = [];
+    const words: string[] = [];
+    for (const m of docs) {
+      const path = core.media?.named?.(m.id) ?? core.media?.path(m.id);
+      const name = m.name ?? `file-${m.id.slice(0, 12)}`;
+      if (path) files.push({ path, name });
+      words.push(`"${name}" (${kindWords(m)}, ${sizeWords(m.bytes)})${path ? ` at ${path}` : " (not on this computer any more)"}`);
+    }
+    const one = docs.length === 1;
+    return {
+      files,
+      note: `(The user sent ${one ? "a file" : `${docs.length} files`} with this message: ${words.join("; ")}. Read ${one ? "it" : "them"} there with your own tools when the work needs ${one ? "it" : "them"}; ${one ? "it is a copy" : "they are copies"}: anything you change or make goes in your own folder.)`,
+    };
+  }
+
   /** Logs the text first (the Log is the record even if delivery fails), then delivers it. */
   async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue", from: From, logged = false, media?: MediaRef[]) {
     // D135: what waits for the next turn (the save ask; the brief and progress after a
@@ -436,8 +459,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (!logged) logInput(t, text, from, mode, undefined, media);
     const pics = picturesFor(t, media);
     if (pics.note) sent = `${sent}\n\n${pics.note}`;
+    const docs = filesFor(media);
+    if (docs.note) sent = `${sent}\n\n${docs.note}`;
     try {
-      await t.session!.send(sent, mode, pics.images.length ? pics.images : undefined);
+      await t.session!.send(sent, mode, pics.images.length ? pics.images : undefined, docs.files.length ? docs.files : undefined);
     } catch (err) {
       if (mode === "turn") t.running = false;
       logEvent(t, { role: "system", from: "runner", text: `delivery failed: ${preview(String(err), 500)}` });

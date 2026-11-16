@@ -6,7 +6,7 @@
 import type { Attention, Bodies, LogEvent, ReplyRef, TaskCard } from "../../protocol/src/index.ts";
 import { REPLY_QUOTE } from "../../protocol/src/index.ts";
 import { renderCallEnded } from "../../protocol/src/phone.ts";
-import { isImage, shortId, type MediaRef } from "../../protocol/src/media.ts";
+import { isImage, kindWords, shortId, sizeWords, type MediaRef } from "../../protocol/src/media.ts";
 import { shownOut, whoForModel } from "./bridge-out.ts";
 
 const CJK = /[㐀-鿿豈-﫿]/;
@@ -36,6 +36,31 @@ export function mediaWords(media: MediaRef[]): string {
   return media
     .map((m) => (isImage(m) ? `picture ${shortId(m.id)}${m.w && m.h ? ` (${m.w}×${m.h})` : ""}` : `file ${shortId(m.id)} "${clip(m.name ?? "file", 80)}"`))
     .join(", ");
+}
+
+/** D259: a short text file the user sent comes along whole (at most this many characters). */
+export const FILE_INLINE_CHARS = 6000;
+
+/**
+ * D259: the files (not pictures) a user's message carries: each by its id, name, kind and size,
+ * where it is on this computer, and the whole text of a short one. The partner reads a longer
+ * one (or a PDF) there with its own read tool, in parts; a task gets it by its id in media.
+ */
+export function filesLine(media: MediaRef[], ctx: RenderCtx): string {
+  const docs = media.filter((m) => !isImage(m));
+  if (!docs.length) return "";
+  let toRead = 0;
+  const parts = docs.map((m) => {
+    const at = ctx.fileAt?.(m);
+    const head = `file ${shortId(m.id)} "${m.name ? clip(m.name, 80) : "file"}" (${kindWords(m)}, ${sizeWords(m.bytes)})${at ? ` at ${at}` : ""}`;
+    const text = ctx.fileText?.(m);
+    if (text === undefined) toRead++;
+    return text !== undefined ? `${head}, its whole text:\n<<<\n${text.replace(/\n+$/, "")}\n>>>` : head;
+  });
+  const one = docs.length === 1;
+  const it = one ? "it" : "them";
+  const read = toRead ? ` Read ${one ? "it" : toRead < docs.length ? "the others" : "them"} with your file tools when the message needs ${it} (a long one in parts).` : "";
+  return ` [with ${one ? "a file" : `${docs.length} files`}: ${parts.join("; ")}.${read} A task that needs ${it} gets ${it} by id in task_open's or task_send's media. Never say a path to the user]`;
 }
 
 function renderReport(r: Bodies["report"], title?: string): string {
@@ -72,6 +97,10 @@ function renderReport(r: Bodies["report"], title?: string): string {
 export interface RenderCtx {
   /** D206: false when the AI the partner thinks with can't see pictures. */
   seesPictures?: boolean;
+  /** D259: where a file the user sent is on the home, under its own name. */
+  fileAt?(m: MediaRef): string | undefined;
+  /** D259: the whole text of a short text file the user sent (≤ FILE_INLINE_CHARS), else undefined. */
+  fileText?(m: MediaRef): string | undefined;
   taskTitle(taskId: string): string | undefined;
   decision(decisionId: string): Bodies["decision"] | undefined;
   /** A repo task's base branch, so "merged into its base branch" names it (eval: "can't tell if that's main"). */
@@ -117,7 +146,11 @@ export function replyAbout(r: ReplyRef, ctx: RenderCtx): string[] {
   }
   if (r.kind === "question" && r.decisionId) out.push("  (that question was already answered or has its own buttons: answer the user from what they say now)");
   if (r.kind === "find") out.push(`  (a find from their accounts${r.decisionId ? " with a next step offered" : ""}: answer about that one; if they want it done, it is work like any other (rule 2))`);
-  if (r.media?.length) out.push(`  (it had ${mediaWords(r.media)}; you see ${r.media.length === 1 ? "it" : "them"} again with this message)`);
+  const pics = (r.media ?? []).filter(isImage);
+  if (pics.length) out.push(`  (it had ${mediaWords(pics)}; you see ${pics.length === 1 ? "it" : "them"} again with this message)`);
+  // D259: a file it had is named with where it is, read there when the reply needs it.
+  const docs = (r.media ?? []).filter((m) => !isImage(m));
+  if (docs.length) out.push(`  (it had ${docs.map((m) => `${mediaWords([m])}${ctx.fileAt?.(m) ? ` at ${ctx.fileAt(m)}` : ""}`).join(", ")}; read ${docs.length === 1 ? "it" : "them"} there if the reply needs ${docs.length === 1 ? "it" : "them"})`);
   if (r.clipped) out.push(`  (the quote is cut; log_read stream "channel" fromSeq ${r.seq} limit 1 gives the whole message)`);
   return out;
 }
@@ -132,8 +165,10 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
   switch (e.kind) {
     case "user_msg": {
       const b = e.body as Bodies["user_msg"];
-      // D206: the pictures ride as the turn's own image input; here they are only named.
-      const pics = b.media?.length ? ` [with ${b.media.length === 1 ? "a picture" : `${b.media.length} pictures`}: ${mediaWords(b.media)}${ctx.seesPictures === false ? "; you can't see pictures on this AI" : "; you see them with this message"}]` : "";
+      // D206: the pictures ride as the turn's own image input; here they are only named. D259:
+      // files are named with where they are, and a short text comes along whole.
+      const images = (b.media ?? []).filter(isImage);
+      const pics = (images.length ? ` [with ${images.length === 1 ? "a picture" : `${images.length} pictures`}: ${mediaWords(images)}${ctx.seesPictures === false ? "; you can't see pictures on this AI" : "; you see them with this message"}]` : "") + filesLine(b.media ?? [], ctx);
       // D236: a reply names the one message it answers, with its quote: it is about that one.
       if (b.reply?.answers && b.reply.decisionId) {
         // An open question answered by a reply reads as that question answered (rule 8): Ducter

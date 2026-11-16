@@ -2,7 +2,8 @@
 // fake WorkerLink (the socket in production is core/src/workers.ts ↔ cli/src/worker.ts).
 // OAR's scripted runtime stands in for the model. No network, no real harness.
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createMediaStore } from "../../core/src/media.ts";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
@@ -122,6 +123,30 @@ test("a task placed on a worker runs there: worker cwd, MCP pointed at the main 
   expect(evs.some((e) => e.role === "assistant" && e.text === "On the worker.")).toBe(true);
   const started = evs.find((e) => e.text === "session started")!;
   expect(started.raw).toMatchObject({ cwd: opts.cwd, device: "w1" });
+  await runner.dispose();
+});
+
+// D259: a file the user sent reaches a task on a worker: its bytes go down with the words, the
+// worker keeps it under its own name, and the line names the worker's path, never the home's.
+test("a file the user sent reaches a task on a worker under its own name, at the worker's path", async () => {
+  const seen = { options: [] as any[] };
+  let input = "";
+  const w = fakeWorker(async (t) => {
+    input = t.input;
+    await t.tool("mcp__ducter__report_to_main", "{}", () => core.call("report_to_main", { state: "done", summary: "read it" }, "tsk00009"));
+  }, seen);
+  core.workers = { link: (d) => (d === "vps-2" || d === "w1" ? w.link : undefined), list: () => [] };
+  core.media = createMediaStore(join(dir, "main"));
+  const csv = core.media.put(new TextEncoder().encode("part,qty\nbolt,4\n"), { sent: true, name: "parts.csv" });
+  const ids = ["tsk00009"];
+  const runner = createRunner(core, { newId: () => ids.shift()! });
+  const card = await runner.openTask({ persona: "p1", title: "Count parts", brief: "count them", place: { kind: "none", device: "vps-2" }, media: [csv] });
+  await runner.whenStarted(card.taskId);
+  await waitFor(() => input !== "", "turn");
+  const there = join(dir, "worker", "media-in", "files", csv.id.slice(0, 12), "parts.csv");
+  expect(input).toContain(`"parts.csv" (table (CSV), 16 B) at ${there}`);
+  expect(input).not.toContain(join(dir, "main"));
+  expect(readFileSync(there, "utf8")).toBe("part,qty\nbolt,4\n");
   await runner.dispose();
 });
 

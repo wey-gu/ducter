@@ -31,11 +31,14 @@ type MediaHands interface {
 	// Home is where pictures go and come from (the home's http base and
 	// this device's token).
 	Home() media.Home
-	// PickImages asks macOS for pictures (an open panel, several at once).
-	PickImages(title string) ([]string, error)
-	// PastedImage is a picture on the pasteboard: PNG bytes, or a picture
-	// file copied in Finder (its path); ok false when there is none.
+	// PickFiles asks macOS for pictures or any other files (an open panel,
+	// several at once; D259).
+	PickFiles(title string) ([]string, error)
+	// PastedImage is a picture on the pasteboard as PNG bytes; ok false
+	// when there is none.
 	PastedImage() (data []byte, name string, ok bool)
+	// PastedFiles are files copied in Finder, of any kind (D259).
+	PastedFiles() []string
 	// CopyImage puts a picture on the pasteboard (PNG).
 	CopyImage(png []byte) error
 	// Save keeps a picture in the user's Downloads; returns where.
@@ -46,10 +49,12 @@ type MediaHands interface {
 	OpenLocal(name string, data []byte) error
 }
 
-// attach is one picture in a composer's tray, or of a message on its way.
+// attach is one picture in a composer's tray, or of a message on its way;
+// D259: or any other file, which goes up as it is (file holds its bytes).
 type attach struct {
 	key      string
 	name     string
+	file     []byte
 	prep     *media.Prepared
 	bmp      *ui.Bitmap
 	progress float64
@@ -123,15 +128,66 @@ func (a *App) later(work func(), done func()) {
 
 // ---------- adding pictures ----------
 
-// AddPictureFiles adds picture files to a composer's tray (a pick or a drop).
+// pictureExt says whether a file's name is a picture the Mac makes ready
+// (scales and re-encodes); anything else goes as the file it is (D259).
+func pictureExt(name string) bool {
+	switch strings.TrimPrefix(strings.ToLower(filepath.Ext(name)), ".") {
+	case "png", "jpg", "jpeg", "gif", "webp":
+		return true
+	}
+	return false
+}
+
+// AddPictureFiles adds files to a composer's tray (a pick, a drop, files
+// copied in Finder): a picture made ready, any other file as it is (D259).
+// A file over the home's cap is said in the tray's line, never added.
 func (a *App) AddPictureFiles(tray string, paths []string) {
 	for _, p := range paths {
+		st, err := os.Stat(p)
+		if err != nil || st.IsDir() {
+			continue
+		}
+		if st.Size() > protocol.MediaFileMax {
+			a.med().note[tray] = a.tooBigLine()
+			continue
+		}
 		data, err := os.ReadFile(p)
 		if err != nil {
 			continue
 		}
-		a.AddPicture(tray, data, filepath.Base(p))
+		if pictureExt(p) {
+			a.AddPicture(tray, data, filepath.Base(p))
+		} else {
+			a.AddFile(tray, data, filepath.Base(p))
+		}
 	}
+}
+
+// tooBigLine says the cap (D259).
+func (a *App) tooBigLine() string {
+	return a.L.T("media.tooBig", protocol.MediaFileMax/(1024*1024))
+}
+
+// AddFile adds a file that isn't a picture to a tray; it starts going up at
+// once, as it is (D259).
+func (a *App) AddFile(tray string, data []byte, name string) {
+	m := a.med()
+	if len(m.trays[tray]) >= protocol.MediaPerMessage {
+		m.note[tray] = a.L.T("media.tooMany")
+		return
+	}
+	if len(data) > protocol.MediaFileMax {
+		m.note[tray] = a.tooBigLine()
+		return
+	}
+	if name == "" {
+		name = a.L.T("media.file")
+	}
+	m.n++
+	x := &attach{key: fmt.Sprintf("a%d", m.n), name: name, file: data}
+	m.trays[tray] = append(m.trays[tray], x)
+	delete(m.note, tray)
+	a.upload(x)
 }
 
 // AddPicture adds one picture's bytes to a tray: it is made small and
@@ -150,12 +206,18 @@ func (a *App) AddPicture(tray string, data []byte, name string) {
 	var err error
 	a.later(func() { prep, err = media.Prepare(data) }, func() {
 		if err != nil {
-			a.dropAttach(tray, x)
-			if err == media.ErrTooBig {
-				m.note[tray] = a.L.T("media.tooBig")
-			} else {
-				m.note[tray] = a.L.T("media.notImage")
+			// D259: what the Mac can't read as a picture (HEIC, a broken one)
+			// goes as the file it is, in the same place in the tray.
+			if len(data) > protocol.MediaFileMax {
+				a.dropAttach(tray, x)
+				m.note[tray] = a.tooBigLine()
+				return
 			}
+			x.file = data
+			if x.name == "" {
+				x.name = a.L.T("media.file")
+			}
+			a.upload(x)
 			return
 		}
 		x.prep = prep
@@ -177,7 +239,7 @@ func (a *App) dropAttach(tray string, x *attach) {
 
 // upload sends one picture up; what waits for it goes when it lands.
 func (a *App) upload(x *attach) {
-	if a.Media == nil || x.prep == nil {
+	if a.Media == nil || (x.prep == nil && x.file == nil) {
 		x.err = fmt.Errorf("pictures can't be sent here")
 		return
 	}
@@ -186,11 +248,16 @@ func (a *App) upload(x *attach) {
 	var ref protocol.MediaRef
 	var err error
 	a.later(func() {
-		ref, err = home.Upload(context.Background(), x.prep, x.name, func(f float64) {
+		progress := func(f float64) {
 			if a.Win != nil {
 				a.Win.Update(func() { x.progress = f })
 			}
-		})
+		}
+		if x.file != nil {
+			ref, err = home.UploadFile(context.Background(), x.file, x.name, progress)
+		} else {
+			ref, err = home.Upload(context.Background(), x.prep, x.name, progress)
+		}
 	}, func() {
 		if err != nil {
 			x.err = err
@@ -284,6 +351,11 @@ func (a *App) pasteInto(tray string) bool {
 	if a.Media == nil {
 		return false
 	}
+	// D259: files copied in Finder go as themselves (a picture among them made ready).
+	if files := a.Media.PastedFiles(); len(files) > 0 {
+		a.AddPictureFiles(tray, files)
+		return true
+	}
 	data, name, ok := a.Media.PastedImage()
 	if !ok {
 		return false
@@ -292,13 +364,13 @@ func (a *App) pasteInto(tray string) bool {
 	return true
 }
 
-// pickInto asks macOS for pictures and adds them to a tray.
+// pickInto asks macOS for pictures or files and adds them to a tray.
 func (a *App) pickInto(tray string) {
 	if a.Media == nil {
 		return
 	}
 	var paths []string
-	a.later(func() { paths, _ = a.Media.PickImages(a.L.T("media.add")) }, func() { a.AddPictureFiles(tray, paths) })
+	a.later(func() { paths, _ = a.Media.PickFiles(a.L.T("media.add")) }, func() { a.AddPictureFiles(tray, paths) })
 }
 
 // pictureKeys is ⌘V in a composer: a picture on the pasteboard goes to the
@@ -493,10 +565,15 @@ func (a *App) messageMedia(c *ui.Context, key string, refs []protocol.MediaRef, 
 	for i := range pics {
 		items = append(items, mediaItem{ref: &pics[i]})
 	}
+	var sending []*attach
 	for _, x := range atts {
+		if x.file != nil {
+			sending = append(sending, x)
+			continue
+		}
 		items = append(items, mediaItem{att: x})
 	}
-	if len(items) == 0 && len(files) == 0 {
+	if len(items) == 0 && len(files) == 0 && len(sending) == 0 {
 		return
 	}
 	ui.Column(c.Key("media:" + key)).Gap(t.S1).AlignItems(alignOf(end)).Children(func() {
@@ -505,6 +582,40 @@ func (a *App) messageMedia(c *ui.Context, key string, refs []protocol.MediaRef, 
 		}
 		for i := range files {
 			a.fileCard(c, &files[i])
+		}
+		for _, x := range sending {
+			a.sendingFileCard(c, x)
+		}
+	})
+}
+
+// attRef is the ref a file on its way stands for: its kind from its name
+// (the home reads the bytes once it lands).
+func attRef(x *attach) protocol.MediaRef {
+	if x.ref != nil {
+		return *x.ref
+	}
+	return protocol.MediaRef{ID: x.key, Type: "application/octet-stream", Bytes: int64(len(x.file)), Name: x.name}
+}
+
+// sendingFileCard is a file of the person's own message on its way (D259):
+// the same card, the ring where Open will be; once it lands, the card itself.
+func (a *App) sendingFileCard(c *ui.Context, x *attach) {
+	if x.ref != nil {
+		a.fileCard(c, x.ref)
+		return
+	}
+	t := a.T
+	ui.Row(c.Key("sending:"+x.key)).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S3).MinWidth(280).MaxWidth(420).
+		Radius(t.RadiusMD).Background(t.Surface).Shadow(0, t.Raised.Y-1, 0, 0, t.Raised.Color).Label(x.name).Children(func() {
+		a.glyph(c, 22, drawFileKind(t.InkSoft, fileKind(attRef(x))))
+		ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
+			ui.Text(c, x.name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(x.name)
+			ui.Text(c, protocol.SizeWords(int64(len(x.file)))).FontSize(t.XS).TextColor(t.InkMuted)
+		})
+		ui.Box(c).Size(26, 26).Shrink(0).Draw(drawUploadRing(x.progress, x.failed(), t.Ink, t.SurfaceSunken, t.Failed.Ink))
+		if !x.failed() && a.Win != nil {
+			c.After(120 * time.Millisecond)
 		}
 	})
 }
@@ -735,22 +846,43 @@ func (a *App) picTray(c *ui.Context, tray string) {
 // trayTileSize is a tray tile's edge.
 const trayTileSize = 64
 
+// trayFileWidth is a file's tile in the tray (D259).
+const trayFileWidth = 128
+
 func (a *App) trayTile(c *ui.Context, tray string, x *attach) {
 	t := a.T
 	s := float32(trayTileSize)
-	ui.Box(c.Key("tt:"+x.key)).Size(s, s).Shrink(0).Children(func() {
-		ui.Box(c).Size(s, s).Radius(t.RadiusSM).Background(t.SurfaceSunken).Clip().Children(func() {
+	w := s
+	if x.file != nil {
+		w = trayFileWidth // D259: a file is its drawn kind over its name, a little wider
+	}
+	ui.Box(c.Key("tt:"+x.key)).Size(w, s).Shrink(0).Children(func() {
+		bg := t.SurfaceSunken
+		if x.file != nil {
+			bg = t.Surface
+		}
+		ui.Box(c).Size(w, s).Radius(t.RadiusSM).Background(bg).Clip().Children(func() {
 			if x.bmp != nil {
 				ui.Image(c, x.bmp).Size(s, s).Fit(ui.Cover).AccessHidden(true)
 			}
+			if x.file != nil {
+				ui.Column(c).Size(w, s).Padding(t.S2, t.S2, t.S2, t.S2).Gap(2).Justify(ui.Center).Label(x.name).Children(func() {
+					a.glyph(c, 20, drawFileKind(t.InkMuted, fileKind(attRef(x))))
+					ui.Text(c, x.name).FontSize(t.XS).FontWeight(700).TextColor(t.Ink).MaxLines(2).MinWidth(0).Tooltip(x.name)
+				})
+			}
 			if !x.ready() || x.failed() {
-				ui.Box(c).Absolute().Left(s/2-13).Top(s/2-13).Size(26, 26).Draw(drawUploadRing(x.progress, x.failed(), t.LightboxInk, t.Lightbox, t.Failed.Ink))
+				if x.file != nil {
+					ui.Box(c).Absolute().Left(w-24).Top(4).Size(20, 20).Draw(drawUploadRing(x.progress, x.failed(), t.Ink, t.SurfaceSunken, t.Failed.Ink))
+				} else {
+					ui.Box(c).Absolute().Left(s/2-13).Top(s/2-13).Size(26, 26).Draw(drawUploadRing(x.progress, x.failed(), t.LightboxInk, t.Lightbox, t.Failed.Ink))
+				}
 				if !x.failed() && a.Win != nil {
 					c.After(120 * time.Millisecond)
 				}
 			}
 		})
-		rm := ui.Box(c.Key("rm")).Absolute().Left(s-18).Top(-4).Size(22, 22).Radius(11).Background(t.Ink).
+		rm := ui.Box(c.Key("rm")).Absolute().Left(w-18).Top(-4).Size(22, 22).Radius(11).Background(t.Ink).
 			Role(ui.RoleButton).Label(a.L.T("media.remove")).Cursor(ui.CursorPointer).Focusable().Draw(drawCross(t.Surface))
 		if rm.Clicked() {
 			a.dropAttach(tray, x)

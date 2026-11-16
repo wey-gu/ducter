@@ -117,16 +117,36 @@ export function FileCard({ m }: { m: MediaRef }) {
   );
 }
 
+/** D259: a file of a message still on its way: the same card, its ring where Open will be; once up, the card itself. */
+function SendingFile({ p }: { p: Pic }) {
+  if (p.ref) return <FileCard m={p.ref} />;
+  const m = { id: p.key, type: p.file.type || "application/octet-stream", bytes: p.file.size, name: p.name, k: "" };
+  return (
+    <div class={`filecard sending${p.state === "failed" ? " failed" : ""}`} data-file={p.key}>
+      <FileGlyph m={m} />
+      <span class="fn" title={p.name}>
+        {p.name}
+      </span>
+      <span class="fs">{sizeWords(p.file.size)}</span>
+      {p.state === "failed" ? null : <Ring f={p.progress} />}
+    </div>
+  );
+}
+
 /** Pictures as tiles, files as cards: everything a message or a report carries. */
 export function MediaBlock({ media, pics, side, ctx }: { media?: MediaRef[]; pics?: Pic[]; side: "user" | "partner" | "task"; ctx: ViewCtx }) {
-  const shown: Shown[] = [...(media ?? []).filter(isImage).map((ref) => ({ ref })), ...(pics ?? []).map((pic) => ({ pic }))];
+  const shown: Shown[] = [...(media ?? []).filter(isImage).map((ref) => ({ ref })), ...(pics ?? []).filter((p) => p.kind !== "file").map((pic) => ({ pic }))];
   const files = (media ?? []).filter((m) => !isImage(m));
-  if (!shown.length && !files.length) return null;
+  const sending = (pics ?? []).filter((p) => p.kind === "file");
+  if (!shown.length && !files.length && !sending.length) return null;
   return (
     <div class={`media on-${side}`}>
       <Pictures items={shown} side={side} onOpen={(s, el) => s.ref && openViewer(ctx, s.ref, el)} />
       {files.map((m) => (
         <FileCard key={m.id} m={m} />
+      ))}
+      {sending.map((p) => (
+        <SendingFile key={p.key} p={p} />
       ))}
     </div>
   );
@@ -140,8 +160,15 @@ export function Tray({ where }: { where: string }) {
   return (
     <div class="tray-pics" role="list">
       {pics.map((p) => (
-        <div key={p.key} class={`chosen${p.state === "failed" ? " failed" : ""}`} role="listitem">
-          <img src={p.local} alt="" draggable={false} />
+        <div key={p.key} class={`chosen${p.kind === "file" ? " doc" : ""}${p.state === "failed" ? " failed" : ""}`} role="listitem" title={p.kind === "file" ? `${p.name} · ${sizeWords(p.file.size)}` : undefined}>
+          {p.kind === "file" ? (
+            <span class="doc-face" aria-label={p.name}>
+              <FileGlyph m={{ id: p.key, type: p.file.type || "application/octet-stream", bytes: p.file.size, name: p.name, k: "" }} size={22} />
+              <span class="doc-name">{p.name}</span>
+            </span>
+          ) : (
+            <img src={p.local} alt="" draggable={false} />
+          )}
           {(p.state === "preparing" || p.state === "uploading") && <Ring f={p.state === "preparing" ? 0 : p.progress} />}
           {p.state === "failed" && (
             <button type="button" class="retry" onClick={() => A.retryPic(where, p.key)} aria-label={t("media.retry")}>
@@ -159,7 +186,8 @@ export function Tray({ where }: { where: string }) {
   );
 }
 
-/** The composer's 加图片 / Add images button: the phone's own sheet (library, camera, files). */
+/** The composer's 添加图片或文件 / Add images or files button: the phone's own sheet (library,
+ *  camera, files), any kind of file (D259). */
 export function AddPictures({ where }: { where: string }) {
   const input = useRef<HTMLInputElement>(null);
   return (
@@ -174,7 +202,6 @@ export function AddPictures({ where }: { where: string }) {
       <input
         ref={input}
         type="file"
-        accept="image/*"
         multiple
         hidden
         onChange={(e) => {
@@ -216,8 +243,6 @@ export function useDropPaste(ref: { current: HTMLElement | null }, where: string
     const paste = (e: ClipboardEvent) => {
       const files = [...(e.clipboardData?.files ?? [])];
       if (!files.length) return;
-      const { pics } = picturesIn(files);
-      if (!pics.length) return;
       e.preventDefault();
       A.addFiles(where, files);
     };

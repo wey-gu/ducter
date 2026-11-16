@@ -1,14 +1,17 @@
 // D206: the parts of the picture code that need no page (media.tsx uses them; tests read them).
 
-/** Files a person dropped, pasted or picked: the pictures among them (HEIC included). */
-export function picturesIn(files: Iterable<File>): { pics: File[]; other: number } {
+/** A picture this device makes ready (scaled, re-encoded); anything else goes as the file it is (D259). */
+export function isPictureFile(f: { type: string; name: string }): boolean {
+  if (/^image\/(jpeg|png|gif|webp|heic|heif|avif)$/.test(f.type)) return true;
+  return !f.type && /\.(heic|heif|jpe?g|png|gif|webp|avif)$/i.test(f.name);
+}
+
+/** Files a person dropped, pasted or picked: the pictures among them (HEIC included), and every other file (D259). */
+export function picturesIn(files: Iterable<File>): { pics: File[]; other: number; files: File[] } {
   const pics: File[] = [];
-  let other = 0;
-  for (const f of files) {
-    if (f.type.startsWith("image/") || /\.(heic|heif|jpe?g|png|gif|webp)$/i.test(f.name)) pics.push(f);
-    else other++;
-  }
-  return { pics, other };
+  const rest: File[] = [];
+  for (const f of files) (isPictureFile(f) ? pics : rest).push(f);
+  return { pics, other: rest.length, files: rest };
 }
 
 /** The keys of the viewer: Esc closes, ←/→ move and stop at the ends. */

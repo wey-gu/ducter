@@ -5,7 +5,7 @@
 // it (its own tint deepens once). Gestures: swipe right on the phone (a drawn reply mark eases in
 // and settles at the arming point, with a light tap), hover Reply on a wide screen, long press or
 // right click for Reply / Copy, and on a wide screen a selected part of the partner's words.
-import { clipQuote, plainWords, type ReplyRef } from "@ducter/protocol";
+import { clipQuote, isImage, plainWords, type MediaRef, type ReplyRef } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A, type Replying } from "./app.ts";
 import { copyAndSay } from "./conv-copy.ts";
@@ -84,10 +84,17 @@ export function replyKey(r: Replying | undefined): string | undefined {
   return k;
 }
 
+/** D259: a message's words, or the names of its files when it has none; its pictures counted. */
+function quoteOf(text: string, media: MediaRef[] | undefined): { quote: string; pics?: number } {
+  const pics = (media ?? []).filter(isImage).length;
+  const words = plainWords(text) || (media ?? []).filter((m) => !isImage(m)).map((m) => m.name ?? "").filter(Boolean).join("、");
+  return { quote: words, ...(pics ? { pics } : {}) };
+}
+
 /** What replying to this row of the conversation names. */
 export function replyOf(e: Entry): Replying | undefined {
-  if (e.user) return { seq: e.firstSeq, from: "you", quote: plainWords(e.user.text), ...(e.user.media?.length ? { pics: e.user.media.length } : {}) };
-  if (e.ai && (e.ai.text.trim() || e.ai.media?.length)) return { seq: e.firstSeq, from: "partner", quote: plainWords(e.ai.text), ...(e.ai.media?.length ? { pics: e.ai.media.length } : {}) };
+  if (e.user) return { seq: e.firstSeq, from: "you", ...quoteOf(e.user.text, e.user.media) };
+  if (e.ai && (e.ai.text.trim() || e.ai.media?.length)) return { seq: e.firstSeq, from: "partner", ...quoteOf(e.ai.text, e.ai.media) };
   if (e.job?.ack) return { seq: e.firstSeq, from: "partner", quote: e.job.ack.text };
   if (e.decision) {
     const d = A.S.decisions.get(e.decision.decisionId);

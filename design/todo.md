@@ -161,7 +161,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       partner's list passes 30 tools or 32K JSON chars (`tool-budget.test.ts` G2 forces it).
 
 - [x] **New task: attachments (D128).** Done by D206 for pictures (drop, paste or 加图片 on the
-      What row; they go to the task with the words). Files follow phase 2 below.
+      What row; they go to the task with the words), and by D259 for any file.
 - [ ] **Projects: rename and remove (D186).** Defaults: click the name in By project to rename
       (the `cardName` control; every task carrying it follows); remove from the group's ⋯, its
       tasks untouched. Trigger: the first time a folder's name isn't the name the author wants.
@@ -505,10 +505,18 @@ note and a `Dn`) before it is built.
 
 ## Pictures and files, phases 2 and 3 (D206, `design/media.md`)
 
-- [ ] **Phase 2: files and PDFs from the user.** The same tray, a file card in the message, the
-      file handed to a task as a path in its place (an agent reads it there; a PDF to a model that
-      takes documents through OAR when it does). Trigger: the first time the user wants to send a
-      PDF or a log file.
+- [x] **Phase 2: files and PDFs from the user.** Built by D259: one button, the same tray, the file
+      card in the message, the partner's line with its path (a short text whole), a task's line
+      with its path, a worker gets the bytes.
+- [ ] **A sent PDF as a model's own document input** (OAR, where the runtime takes documents), and
+      **PDF text on the home** for a partner or agent with no PDF reader (Codex, pi, DSH on a machine
+      without one). Trigger: the first sent PDF a partner couldn't read (D259).
+- [ ] **The composer's picture mark for pictures and files** (D259 kept the picture mark; the label
+      says both). Through the metaphor process (AGENTS.md) before changing it. Trigger: the
+      author's review of D259, or a fresh user who doesn't find where to send a file.
+- [ ] **Try D259 for real:** a PDF and a 40 MB deck from a real iPhone and Android over the
+      tunnel, a real partner (haiku) answering from a sent PDF and a long log. Trigger: the next
+      release with D259.
 - [ ] **Phase 2: a share sheet into Ducter.** An iOS share extension and an Android share intent
       that open the conversation with the picture (or file) in the tray. Trigger: phase 2 files,
       or the first time a picture has to be saved first to be sent.

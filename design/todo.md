@@ -897,7 +897,11 @@ HawDB `strict_append`: partition, gapless commit sequence, cursor reads. Once th
 land in HawDB, the self-hosted control plane moves to HawDB. Cloudflare keeps Durable Object
 SQLite until HawDB has persistent WASM. See `research/09-hawdb-evaluation.md`.
 
-- [ ] HawDB Bun/Node binding (blocking; owned by our team)
+- [x] HawDB Bun binding: `@nowledge/hawdb-bun` (0.34.0 on npm, 2026-11-16; Bun FFI over the C ABI,
+      Cypher and SQL, transactions). The switch waits (the author, 2026-11-16: "等 hawdb 稳定再切"):
+      HawDB's on-disk format carries no compatibility promise yet, so a Log could need recreating
+      after an upgrade. Trigger: HawDB declares format stability, or Ducter can export and re-import
+      a home. Then: a `DUCTER_STORE=hawdb` spike running the whole suite, and the items below checked
 - [ ] Declarative FTS index on SQL / append tables
 - [ ] Multi-key reads on append tables (per-window and per-persona-since-cursor without a dual
       write)

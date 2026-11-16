@@ -10,6 +10,12 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 (eval only) · the partner eval (`bun run eval:partner`) · art cutouts with true alpha
 (`design/art/assets/alpha/`, 22 assets, `design/art/assets/tools/cut.swift`).
 
+## A harness's own background work (D266)
+
+- [ ] **One live Claude Code task with a `run_in_background` shell and a background subagent:** the steps show, no nudge at the turn's end, the card stays 在做, Claude Code's own turn arrives when the shell ends (the 60 s settle never fires), and the session isn't parked under it. Trigger: before the release that carries D266; so far fakes and OAR's scripted runtime.
+- [ ] **Codex's background terminals:** OAR 0.95.1 reports only Codex subagents as tasks, so a Codex task's background terminal is still invisible (and dies at park). Trigger: an OAR release that reports them, or a Codex task that loses one.
+- [ ] **The card's wait sentence for background work** (D261: a wait says what it waits for): "在后台跑着：{x}" as the card's line while the task's turn is over. Trigger: the author's review of D266 on On hand.
+
 ## Server mode and remote access (D54, `research/29`)
 
 Built and verified in Ubuntu VMs: systemd user service, code pairing, token gate, Caddy and

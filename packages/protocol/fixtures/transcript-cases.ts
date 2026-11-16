@@ -162,6 +162,22 @@ export const cases = [
       [6, "task_event", "task", { role: "assistant", text: "Done." }],
     ]),
   },
+  {
+    // D266: the harness's own background work: started, ended, one that failed; a bare one.
+    name: "background work in claude code",
+    harness: "claude-code",
+    working: true,
+    events: stream("bg1", [
+      [0, "task_open", "user", { taskId: "bg1", title: "Soak the WAL bench", project: "", place: { kind: "none" }, harness: "claude-code", origin: "you", brief: "Run the WAL bench for an hour and tell me the p99." }],
+      [1, "task_event", "task", { role: "tool", tool: { name: "Bash", input: { command: "bun run bench:wal --minutes 60 > bench.log", description: "Run the WAL bench for an hour", run_in_background: true }, output: "Command running in background with ID: b1", ok: true } }],
+      [2, "task_event", "task", { role: "system", text: "running in the background: Run the WAL bench for an hour", raw: { background: { act: "started", type: "shell", what: "Run the WAL bench for an hour" } } }],
+      [3, "task_event", "task", { role: "system", text: "running in the background", raw: { background: { act: "started", type: "agent" } } }],
+      [4, "task_event", "task", { role: "system", text: "turn completed", raw: { turnEnd: true, kind: "turn_ended", outcome: "completed" } }],
+      [3600, "task_event", "task", { role: "system", text: "failed in the background", raw: { background: { act: "failed", type: "agent" } } }],
+      [3601, "task_event", "task", { role: "system", text: "finished in the background: Run the WAL bench for an hour", raw: { background: { act: "ended", type: "shell", what: "Run the WAL bench for an hour" } } }],
+      [3602, "task_event", "task", { role: "tool", tool: { name: "Read", input: { file_path: "/w/bench.log" }, output: "p99 4.1ms", ok: true } }],
+    ]),
+  },
 ];
 
 if (import.meta.main) {

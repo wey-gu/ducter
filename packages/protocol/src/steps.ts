@@ -4,7 +4,7 @@
 // in their i18n. The Go port (apps/desktop/internal/views/steps.go) reads the same cases from
 // fixtures/steps.json, so both say a step alike.
 
-export type StepKind = "ran" | "read" | "edited" | "searched" | "browsed" | "computer" | "waited" | "delegated" | "other";
+export type StepKind = "ran" | "read" | "edited" | "searched" | "browsed" | "computer" | "waited" | "delegated" | "background" | "other";
 
 export interface Step {
   kind: StepKind;
@@ -436,6 +436,20 @@ function editPaths(input: unknown): string[] {
 function saysOf(o: Record<string, unknown>): string {
   const d = firstStr(o, ["description", "justification"]).split("\n")[0]!.trim().replace(/[.。]$/, "");
   return d.length >= 3 && [...d].length <= 80 ? d : "";
+}
+
+/**
+ * D266: the harness's own background work as a step (the runner logs it as a system line with
+ * `raw.background`: `act` started · ended · stopped · failed, `what` its own description):
+ * act start · end · stop, the target what it is; `failed` = it ended in a failure.
+ */
+export function backgroundStep(raw: unknown): { step: Step; failed: boolean } | undefined {
+  const b = obj(obj(raw).background);
+  const act = str(b.act);
+  if (!["started", "ended", "stopped", "failed"].includes(act)) return undefined;
+  const what = str(b.what).trim();
+  const step: Step = { kind: "background", act: act === "started" ? "start" : act === "stopped" ? "stop" : "end", ...(what ? { target: what } : {}) };
+  return { step, failed: act === "failed" };
 }
 
 /** What one tool call was, as a step. `harness` is the task's (claude-code, codex, pi, deepseek-harness). */

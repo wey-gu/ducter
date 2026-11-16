@@ -675,7 +675,15 @@ export function listedModels(models: readonly { id: string; displayName?: string
 /** Extra members beyond the contract's HarnessSession (see the runner's contract requests). */
 export interface HarnessSessionExt extends HarnessSession {
   readonly canSteer: boolean;
+  /** A turn is running or a prompt is pending. Background work is apart: backgroundLive(). */
   busy(): boolean;
+  /**
+   * D266: background tasks the harness reported started and not yet ended (OAR task_started /
+   * task_ended at the root: a Claude Code background shell, Monitor or background subagent, a
+   * Codex subagent; ambient upkeep left out). The runner counts the same from the events, so a
+   * worker's session (whose events cross the wire) needs nothing more.
+   */
+  backgroundLive(): number;
 }
 
 /** How instructions ride on the first message when the harness has no channel for them. */
@@ -742,6 +750,7 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId): Harnes
       const st = s.status().value;
       return st.kind === "running" || st.pendingPrompt != null;
     },
+    backgroundLive: () => (ended ? 0 : normalizer.backgroundLive()),
     async send(text, mode = "turn", pics) {
       const input = framed(text);
       // D206: the runtime's own image input; a runtime that takes none gets the words only (the

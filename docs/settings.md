@@ -138,8 +138,8 @@ On a phone, this page also turns on notifications for that phone and sends a tes
 
 Your partner can read your Gmail, calendar, Slack, GitHub and other accounts when you ask. If
 you use OOMOL's `oo` and are signed in, it's one tap on **Use these accounts**; otherwise **Add
-one** takes an address and a key. Each place your accounts come from has its own card, with a
-square for each app it can read; tap one for what it reads and to stop it watching or reading.
+one** takes an address and a key. Each place your accounts come from is one group, with a
+row for each app it can read and its switch; tap a row for what it reads, or to stop it reading.
 Reading just happens; sending or changing anything waits for your Go. All of it is in
 [Accounts your partner can read](accounts.md). The AI accounts
 (Claude Code, Codex) live on **Devices**; the last row goes there.

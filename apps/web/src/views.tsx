@@ -19,7 +19,7 @@ import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
 import { AddRow, Btn, Chev, Choice, DevicesMark, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
-import { ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
+import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
@@ -2271,10 +2271,9 @@ function NotifySettings() {
       </section>
       {/* D165: the same chips as on Accounts, once there is something to watch. */}
       {((s.proactive && s.proactiveBy !== "default") || !!A.connections?.length) && (
-        <section class="set">
-          <ProactiveChips />
+        <ProactiveChips>
           <QuietDay />
-        </section>
+        </ProactiveChips>
       )}
       <section class="set">
         <h3>{t("partner.default.title")}</h3>
@@ -2519,17 +2518,21 @@ function Accounts() {
   };
   const refusal = A.connRefusal && A.connRefusal !== "no_key" ? A.connRefusal : undefined;
   const showNoKey = noKey || (adding && A.connRefusal === "no_key");
-  // D166: with a source, a character sheet per source and the chips above them; adding another
-  // steps back to a quiet text button.
-  if (list?.length && !adding && !offer)
+  // D289: with a source, 发现了就说, a group per source and the add row at the end of them, then
+  // 打电话 / Phone calls; every group in the same flow.
+  if (list?.some((c) => !c.phone) && !adding && !offer)
     return (
-      <>
-        <SourceCards list={list} />
-        <section class="set accounts quiet-add">
-          <Btn kind="text" chev label={t("acct.add")} onClick={() => setAdding(true)} />
-          {refusal && <AcctRefusal reason={refusal} hosted={false} />}
-        </section>
-      </>
+      <SourceCards
+        list={list}
+        add={
+          <>
+            <div class="set-card">
+              <AddRow label={t("acct.add.title")} help={t("acct.add.line")} onClick={() => setAdding(true)} />
+            </div>
+            {refusal && <AcctRefusal reason={refusal} hosted={false} />}
+          </>
+        }
+      />
     );
   return (
     <section class="set accounts">
@@ -2635,9 +2638,8 @@ function Accounts() {
       )}
       {!adding && refusal && <AcctRefusal reason={refusal} hosted={false} />}
       <div class="small sub">{t("acct.honest")}</div>
-      {/* D193: calls are their own card, offered beside the accounts. */}
-      {list && (list.some((c) => c.phone) ? list.filter((c) => c.phone).map((c) => <PhoneCard key={c.id} c={c} />) : <PhoneOffer />)}
-      {list && <OwnPhoneCard />}
+      {/* D193, D289: calls are their own section, in the same flow. */}
+      {list && <CallsSection list={list} />}
     </section>
   );
 }

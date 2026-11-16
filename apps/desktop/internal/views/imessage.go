@@ -129,9 +129,21 @@ func (a *App) imessageGroup(c *ui.Context) {
 		if !st.Stranger.IsZero() && a.imessageNow().Sub(st.Stranger) < 24*time.Hour {
 			a.chatRow(c, "imessage-stranger", a.L.T("imessage.stranger", name), "", nil)
 		}
-		a.chatFoot(c, "imessage-off", a.L.T("imessage.via"), func() {
-			if a.dangerText(c, "imessage-disconnect", a.L.T("imessage.disconnect"), title) {
+		// D289: quiet until hovered, and it asks in place.
+		if a.chats.forgetting == "imessage" {
+			keep, off := a.confirmRow(c, "imessage-disconnect", a.L.T("imessage.disconnect.ask"), a.L.T("card.stop.keep"), a.L.T("imessage.disconnect"), title)
+			if keep {
+				a.chats.forgetting = ""
+			}
+			if off {
+				a.chats.forgetting = ""
 				br.Disable()
+			}
+			return
+		}
+		a.chatFoot(c, "imessage-off", a.L.T("imessage.via"), func() {
+			if a.quietDanger(c, "imessage-disconnect", a.L.T("imessage.disconnect"), title) {
+				a.chats.forgetting = "imessage"
 			}
 		})
 	})

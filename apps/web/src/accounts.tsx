@@ -1,13 +1,17 @@
-// Settings › 账号 as character sheets (D166, design/connectors.md §12), the phone's one column:
-// the proactive chips once above the cards (D165 §5), then one card per source: its clay mailbox
-// on the sunken oval, its name, one status line, a tray of app tiles (tap one: its detail in
-// place), the connection line with ⋯ (看了哪些 and the honest line, in place), and one destructive
-// confirmed in place. Only shared controls (controls.tsx; test/controls.test.ts).
+// Settings › 账号 / Accounts on D273's grid (D289; after D166's character sheets,
+// design/connectors.md §12): 发现了就说 as a section of its own (D165 §5), then each source as one
+// raised group whose first row is the connection (its clay mailbox small in the tile column, its
+// name, how it stands in that state's ink), a row per app and account it can read (whether Ducter
+// reads it, its switch; its detail in place), the add row, and its last line: where what it reads
+// passes, and its quiet actions; a destructive one asks in place. Then 打电话 / Phone calls. The
+// Mac's accounts.go. Only shared controls (controls.tsx; test/controls.test.ts).
 import type { AppWatch, ConnectionView, ProactiveMode } from "@ducter/protocol";
 import { PROACTIVE_MODES } from "@ducter/protocol";
+import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { AppTile, Btn, DangerButton, Seg, Toggle } from "./controls.tsx";
+import { AddRow, Btn, DangerButton, OpenRow, Seg, Toggle } from "./controls.tsx";
+import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Tile } from "./set-grid.tsx";
 import { ago } from "./format.ts";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { PhoneCard, PhoneOffer, SignInPanel } from "./phone.tsx";
@@ -15,8 +19,10 @@ import { PhoneCard, PhoneOffer, SignInPanel } from "./phone.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const OOMOL_ACCOUNTS = "https://console.oomol.com/app-connections";
 
-/** 发现了就说: one row, single choice; never answered shows none chosen. */
-export function ProactiveChips(p: { inNote?: boolean }) {
+/** 发现了就说: the choice and its note; never answered shows none chosen. In Settings (D289) a
+ *  section of its own: its header on the text edge, one group holding the choice and the note, and
+ *  on Notifications 今天看了什么 (QuietDay) as the group's next row. */
+export function ProactiveChips(p: { inNote?: boolean; children?: preact.ComponentChildren }) {
   const st = A.settings;
   useEffect(() => {
     // In the conversation (the first-add question) the settings may not be asked for yet.
@@ -24,13 +30,22 @@ export function ProactiveChips(p: { inNote?: boolean }) {
   }, []);
   if (!st) return null;
   const v = st.proactive;
-  return (
-    <div class="proactive">
-      {!p.inNote && <h4>{t("proactive.title")}</h4>}
+  const body = (
+    <>
       <Seg<ProactiveMode> label={t("proactive.title")} value={v} options={PROACTIVE_MODES.map((m) => ({ v: m, label: t(`proactive.${m}`) }))} onPick={(m) => A.setSettings({ proactive: m })} />
       {/* D250: never chosen is the default, and says so. */}
       <div class="small sub">{t(!v ? "proactive.note.never" : st.proactiveBy === "default" ? "proactive.note.default" : `proactive.note.${v}`)}</div>
-    </div>
+    </>
+  );
+  if (p.inNote) return <div class="proactive">{body}</div>;
+  return (
+    <section class="set proactive-sec">
+      <h3>{t("proactive.title")}</h3>
+      <div class="set-card chat-app g-group">
+        <div class="proactive g-block first">{body}</div>
+        {p.children}
+      </div>
+    </section>
   );
 }
 
@@ -49,7 +64,7 @@ export function QuietDay() {
   const d = A.proactiveDay;
   const p = d?.problem;
   return (
-    <div class="quiet-day">
+    <div class="quiet-day g-block first">
       {p && <div class="small warn">{t(`day.problem.${p.why}`, p.agent ?? t("day.agent"))}</div>}
       <Btn kind="text" size="sm" chev label={t("day.title")} expanded={open} onClick={() => (setOpen(!open), !open && A.askDay())} />
       {open && d && (
@@ -197,49 +212,35 @@ export function AppMark({ service }: { service: string }) {
   );
 }
 
-/** The source's clay mailbox at 104 on its sunken oval; grey when signed out or refused. */
-function MailboxHero({ source, off }: { source: ConnectionView["source"]; off: boolean }) {
+/** The source's clay mailbox, small in the tile column (D289); grey when signed out or refused. */
+function Mailbox({ source, off }: { source: ConnectionView["source"]; off: boolean }) {
   const body = off ? "var(--ink-muted)" : source === "oomol" || source === "oo" ? "var(--accent)" : source === "self" ? "var(--working-dot)" : "var(--ink-muted)";
   return (
-    <svg class="mailbox-hero" width="200" height="112" viewBox="0 0 200 112" aria-hidden="true">
-      <ellipse cx="100" cy="98" rx="84" ry="12" fill="var(--surface-sunken)" />
-      <ellipse cx="100" cy="97" rx="60" ry="8" fill="var(--line)" opacity=".5" />
-      <g transform="translate(66 0) scale(1.3)">
-        <rect x="22" y="44" width="8" height="37" rx="3" fill="var(--line-2)" />
-        <path d="M6 46 V26 a20 18 0 0 1 40 0 V46 Z" fill={body} />
-        <path d="M10 44 V28 a16 14 0 0 1 32 0 V44 Z" fill="var(--surface)" opacity=".92" />
-        <rect x="15" y="27" width="22" height="15" rx="2.5" fill={body} />
-        <path d="M15.5 28l10.5 8 10.5-8" fill="none" stroke="var(--surface)" stroke-width="1.6" stroke-linejoin="round" />
-        <path d="M12 12 q6 -5 14 -5" stroke="rgba(255,255,255,.55)" stroke-width="3" stroke-linecap="round" fill="none" />
-      </g>
+    <svg width="22" height="34" viewBox="0 0 52 84" aria-hidden="true">
+      <rect x="22" y="44" width="8" height="37" rx="3" fill="var(--line-2)" />
+      <path d="M6 46 V26 a20 18 0 0 1 40 0 V46 Z" fill={body} />
+      <path d="M10 44 V28 a16 14 0 0 1 32 0 V44 Z" fill="var(--surface)" opacity=".92" />
+      <rect x="15" y="27" width="22" height="15" rx="2.5" fill={body} />
+      <path d="M15.5 28l10.5 8 10.5-8" fill="none" stroke="var(--surface)" stroke-width="1.6" stroke-linejoin="round" />
     </svg>
   );
 }
 
 /**
- * A tile's detail, in place under the tray, in three bands (D192): who (the app, the whole account,
- * when it last looked); what it may do (会看 and 先问你 as a label column and the words); the person's
- * two choices: 自己留意 and, quiet at the foot, 不让 Ducter 看这个. A tile it doesn't read says only that.
+ * A service's detail, in place under its row on the text column (D289; D192's bands): what it may
+ * read and what it asks first, why it isn't looking now, the calendars it reads, and the one quiet
+ * choice 不让 Ducter 看这个. A service it doesn't read says only that.
  */
 function TileDetail({ c, w }: { c: ConnectionView; w: AppWatch }) {
   const k = kindOf(w.service);
   const [title] = tileWords(w);
   const mode = A.settings?.proactive;
   const held = w.watch && (!mode || mode === "off") ? t(`tile.watch.held.${mode ? "off" : "never"}`) : "";
-  const budget = !held && c.look?.watching && w.watch ? t("card.budget", c.look.budgetPct) : "";
-  const note = [k === "chat" ? t("tile.mentions") : "", budget].filter(Boolean).join(" · ");
-  const sub = [w.account, w.lastReadAt && !w.excluded ? t("tile.last", ago(A.L, w.lastReadAt)) : ""].filter(Boolean).join(" · ");
+  const budget = !held && c.look?.watching && w.watch && k !== "other" ? t("card.budget", c.look.budgetPct) : "";
+  const last = w.lastReadAt && !w.excluded ? t("tile.last", ago(A.L, w.lastReadAt)) : "";
+  const notes = [k === "chat" ? t("tile.mentions") : "", held, budget, last].filter(Boolean); // D291: each its own line
   return (
-    <div class="tile-detail">
-      <div class="td-name">
-        <span class="sq" aria-hidden="true">
-          <AppMark service={w.service} />
-        </span>
-        <div>
-          <b>{title}</b>
-          {sub && <div class="small sub">{sub}</div>}
-        </div>
-      </div>
+    <GBlock>
       {w.excluded ? (
         <div class="small sub">{t("tile.excluded.note")}</div>
       ) : (
@@ -250,11 +251,11 @@ function TileDetail({ c, w }: { c: ConnectionView; w: AppWatch }) {
             <dt>{t("tile.asks.label")}</dt>
             <dd>{t(`tile.asks.${k}`)}</dd>
           </dl>
-          {k !== "other" && (
-            <div class="td-watch">
-              <Toggle label={t("tile.watch")} help={[note, held].filter(Boolean).join("\n") || undefined} checked={w.watch} onChange={(v) => A.setApp(c.id, w.service, w.account, { watch: v })} />
+          {notes.map((n) => (
+            <div class="small sub" key={n}>
+              {n}
             </div>
-          )}
+          ))}
           {k === "calendar" && <CalendarsBand c={c} w={w} />}
         </>
       )}
@@ -262,7 +263,7 @@ function TileDetail({ c, w }: { c: ConnectionView; w: AppWatch }) {
         <Btn kind="text" size="sm" label={t(w.excluded ? "tile.include" : "tile.exclude")} about={title} onClick={() => A.setApp(c.id, w.service, w.account, { excluded: !w.excluded })} />
         {c.source === "oo" && <span class="small sub">{t("tile.signout_oo")}</span>}
       </div>
-    </div>
+    </GBlock>
   );
 }
 
@@ -274,13 +275,14 @@ function ReadsList({ c }: { c: ConnectionView }) {
       {!reads.length && <div class="small sub">{t("card.read.none")}</div>}
       {reads.slice(0, 8).map((r, i) => {
         const w = tiles.find((x) => x.service === r.service);
-        let app = w ? tileWords(w)[0] : r.service;
+        const app = w ? tileWords(w)[0] : r.service;
         const sibs = tiles.filter((x) => x.service === r.service).map((x) => x.account ?? "");
-        if (r.account && sibs.length > 1) app += ` · ${shortAccount(r.account, sibs)}`;
+        const acct = r.account && sibs.length > 1 ? shortAccount(r.account, sibs) : ""; // D291: its own muted element
         return (
           <div class="read" key={i}>
             <span class="at">{new Date(r.at).toTimeString().slice(0, 5)}</span>
             <span>{t(`read.${r.what}`, app, r.items)}</span>
+            {acct && <span class="sub">{acct}</span>}
           </div>
         );
       })}
@@ -355,33 +357,37 @@ function newCalendars(c: ConnectionView, tiles: AppWatch[]): string[] {
   return cal.map((w) => calKey(c, w)).filter((k) => !(m.done ?? []).includes(k) && Date.now() - seen[k]! < WEEK);
 }
 
-/** Under the tray: the first-time line with Try it, or, for a card with Gmail and no calendar, the nudge to add one. */
+/** Rows of the source's group (D289): the first-time line with Try it, or, for a source with Gmail and no calendar, the nudge to add one. */
 function CalLines({ c, tiles }: { c: ConnectionView; tiles: AppWatch[] }) {
   const [, bump] = useState(0);
   const fresh = newCalendars(c, tiles);
+  const cal = (
+    <Tile>
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <rect x="2.5" y="3.5" width="13" height="12" rx="2.5" fill="none" stroke="var(--ink-soft)" stroke-width="1.6" />
+        <path d="M2.5 7.5h13M6 2v3M12 2v3" stroke="var(--ink-soft)" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+    </Tile>
+  );
   if (fresh.length)
     return (
-      <div class="cal-line">
-        <span class="small soft">{t("cal.first")}</span>
+      <GRow tile={cal} line={t("cal.first")}>
         <Btn kind="text" size="sm" label={t("cal.first.try")} onClick={() => (retireFirst(fresh), A.fillComposer(t("cal.first.ask")))} />
-      </div>
+      </GRow>
     );
   const hosted = c.source === "oo" || c.source === "oomol";
   const mail = tiles.some((w) => w.service === "gmail");
-  const cal = tiles.some((w) => kindOf(w.service) === "calendar");
-  if (!hosted || !mail || cal || down(c) || (calMem().later ?? []).includes(c.id)) return null;
+  const hasCal = tiles.some((w) => kindOf(w.service) === "calendar");
+  if (!hosted || !mail || hasCal || down(c) || (calMem().later ?? []).includes(c.id)) return null;
   return (
-    <div class="cal-line nudge">
-      <span class="small soft">{t("cal.nudge")}</span>
-      <span class="acts">
-        <Btn kind="text" size="sm" label={t("cal.nudge.later")} onClick={() => {
-          const m = calMem();
-          saveCalMem({ ...m, later: [...(m.later ?? []), c.id] });
-          bump((n) => n + 1);
-        }} />
-        <Btn kind="secondary" size="sm" label={t(c.source === "oo" ? "cal.nudge.oo" : "cal.nudge.oomol")} onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />
-      </span>
-    </div>
+    <GRow tile={cal} line={t("cal.nudge")}>
+      <Btn kind="text" size="sm" label={t("cal.nudge.later")} onClick={() => {
+        const m = calMem();
+        saveCalMem({ ...m, later: [...(m.later ?? []), c.id] });
+        bump((n) => n + 1);
+      }} />
+      <Btn kind="secondary" size="sm" label={t(c.source === "oo" ? "cal.nudge.oo" : "cal.nudge.oomol")} onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />
+    </GRow>
   );
 }
 
@@ -395,62 +401,86 @@ export function SourceCard({ c }: { c: ConnectionView }) {
   const accts = new Map<string, string[]>();
   for (const w of tiles) accts.set(w.service, [...(accts.get(w.service) ?? []), w.account ?? ""]);
   const key = (w: AppWatch) => `${w.service}:${w.account ?? ""}`;
-  const sel = tiles.find((w) => key(w) === open);
+  const watching = !!c.look?.watching && !c.look.paused;
+  // D289: one raised group: the connection, a row per app and account (whether Ducter reads it, its
+  // switch; its detail in place), the add row, then the last line with its quiet actions.
   return (
-    <section class="src-card" aria-label={name}>
-      <div class="src-who">
-        <MailboxHero source={c.source} off={down(c)} />
-        <h3>{name}</h3>
-        <div class={`small ${s.warn ? "warn" : "sub"}`}>{s.line}</div>
+    <Group label={name}>
+      <GHead tile={<Tile mark><Mailbox source={c.source} off={down(c)} /></Tile>} name={name} line={s.line} tone={s.warn ? "bad" : watching ? "done" : undefined}>
         {c.source === "oomol" && c.apps && !c.apps.length && !down(c) && <Btn kind="text" size="sm" chev label={t("acct.connect.oomol")} onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />}
-      </div>
-      <div class="tray">
-        {tiles.map((w) => {
-          const [label, short] = tileWords(w, accts.get(w.service));
-          // Not read: the tile says so in words, not only in grey (D192).
-          const sub = w.excluded ? t("tile.excluded") : short;
-          const full = [label, w.account, w.excluded ? sub : ""].filter(Boolean).join(" · ");
-          return (
-            <AppTile key={key(w)} label={label} sub={sub || undefined} about={full} sel={open === key(w)} off={!w.watch} grey={w.excluded || !!w.unreachable || down(c)} onClick={() => (kindOf(w.service) === "calendar" && retireFirst(tiles.filter((x) => kindOf(x.service) === "calendar").map((x) => `${c.id}:${key(x)}`)), setOpen(open === key(w) ? "" : key(w)))}>
-              <AppMark service={w.service} />
-            </AppTile>
-          );
-        })}
-        {(c.source === "oo" || c.source === "oomol") && <AppTile label={t("tile.more")} about={t(`tile.more.${c.source}`)} add onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />}
-      </div>
-      {!sel && <CalLines c={c} tiles={tiles} />}
-      {sel && <TileDetail c={c} w={sel} />}
-      {/* The connection itself, last and quiet (D192): where what it reads passes, then one row of its two actions. */}
-      <div class="src-foot">
-        <div class="small soft">{connLine(c)}</div>
-        {reads && <ReadsList c={c} />}
-        {!stopping ? (
-          <div class="src-acts">
-            <Btn kind="text" size="sm" chev label={t("card.read_list")} expanded={reads} onClick={() => (setReads(!reads), !reads && A.askReads(c.id))} />
-            <DangerButton label={t("card.stop", name)} onClick={() => setStopping(true)} />
-          </div>
-        ) : (
-          <div class="stop-ask" role="group">
-            <div class="small">{t("card.stop.ask")}</div>
-            <div class="acts">
-              <Btn kind="text" size="sm" label={t("card.stop.keep")} about={name} onClick={() => setStopping(false)} />
-              <DangerButton label={t("card.stop.go")} about={name} onClick={() => (setStopping(false), A.removeConnection(c.id))} />
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
+      </GHead>
+      {tiles.map((w) => {
+        const [title] = tileWords(w, accts.get(w.service));
+        const k = kindOf(w.service);
+        // D291: whether Ducter reads it is a state word of its own, never joined to the account.
+        const bad = !w.excluded && (!!w.unreachable || down(c));
+        const watching = !w.excluded && !bad && k !== "other" && w.watch;
+        const state = w.excluded ? t("svc.excluded") : bad ? t("card.unreachable") : watching ? t("svc.watching") : t("svc.asked");
+        const isOpen = open === key(w);
+        return (
+          <Fragment key={key(w)}>
+            <OpenRow
+              tile={<Tile mark><AppMark service={w.service} /></Tile>}
+              title={title}
+              line={w.account}
+              state={{ text: state, tone: bad ? "bad" : watching ? "done" : undefined }}
+              open={isOpen}
+              onClick={() => (k === "calendar" && retireFirst(tiles.filter((x) => kindOf(x.service) === "calendar").map((x) => `${c.id}:${key(x)}`)), setOpen(isOpen ? "" : key(w)))}
+              sw={k !== "other" && !w.excluded && !down(c) ? { label: `${title} · ${t("tile.watch")}`, on: w.watch, onChange: (v) => A.setApp(c.id, w.service, w.account, { watch: v }) } : undefined}
+            />
+            {isOpen && <TileDetail c={c} w={w} />}
+          </Fragment>
+        );
+      })}
+      <CalLines c={c} tiles={tiles} />
+      {(c.source === "oo" || c.source === "oomol") && <AddRow label={t(`tile.more.${c.source}`)} help={t("acct.more.line")} onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />}
+      {reads && (
+        <GBlock>
+          <ReadsList c={c} />
+        </GBlock>
+      )}
+      {!stopping ? (
+        <GFoot note={connLine(c)}>
+          <Btn kind="text" size="sm" chev label={t("card.read_list")} about={name} expanded={reads} onClick={() => (setReads(!reads), !reads && A.askReads(c.id))} />
+          <DangerButton quiet label={t("card.stop", name)} onClick={() => setStopping(true)} />
+        </GFoot>
+      ) : (
+        <GConfirm ask={t("card.stop.ask")} keep={t("card.stop.keep")} go={t("card.stop.go")} about={name} onKeep={() => setStopping(false)} onGo={() => (setStopping(false), A.removeConnection(c.id))} />
+      )}
+    </Group>
   );
 }
 
-/** The cards with the chips above them. */
-export function SourceCards({ list }: { list: ConnectionView[] }) {
+/** D289: 发现了就说 as a section, the sources one group each under 它能看的, then 打电话 with the calls. */
+export function SourceCards({ list, add }: { list: ConnectionView[]; add?: preact.ComponentChildren }) {
+  const sources = list.filter((c) => !c.phone);
   return (
-    <div class="src-cards">
+    <>
       <ProactiveChips />
-      {list.map((c) => (c.phone ? <PhoneCard key={c.id} c={c} /> : <SourceCard key={c.id} c={c} />))}
-      {!list.some((c) => c.phone) ? <PhoneOffer /> : A.signIn && !A.signIn.reconnect && <SignInPanel s={A.signIn} />}
+      {sources.length > 0 && (
+        <section class="set src-cards">
+          <h3>{t("acct.sec.read")}</h3>
+          {sources.map((c) => (
+            <SourceCard key={c.id} c={c} />
+          ))}
+          {add}
+        </section>
+      )}
+      {!sources.length && add}
+      <CallsSection list={list} />
+    </>
+  );
+}
+
+/** 打电话 / Phone calls: Tuwa (or its offer, or its sign-in) and calls from your own number. */
+export function CallsSection({ list }: { list: ConnectionView[] }) {
+  const phones = list.filter((c) => c.phone);
+  return (
+    <section class="set calls-sec">
+      <h3>{t("acct.sec.calls")}</h3>
+      {phones.length ? phones.map((c) => <PhoneCard key={c.id} c={c} />) : <PhoneOffer />}
+      {phones.length > 0 && A.signIn && !A.signIn.reconnect && <SignInPanel s={A.signIn} />}
       <OwnPhoneCard />
-    </div>
+    </section>
   );
 }

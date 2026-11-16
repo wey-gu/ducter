@@ -93,7 +93,7 @@ func TestOwnPhoneFlow(t *testing.T) {
 	// The phone, SIM and cable are done: the live voice is the one open step.
 	app.Receive(ownFrame("voice"))
 	tt.Frame()
-	for _, w := range []string{"Pixel 7 · Android 15", "中国移动 · +86 139 1234 5678", "电话里实时说话要用一个语音模型，得单独有个 Key：Claude 和 ChatGPT 的订阅都不含实时语音。"} {
+	for _, w := range []string{"Pixel 7（Android 15）", "中国移动的卡，号码 +86 139 1234 5678", "电话里实时说话要用一个语音模型，得单独有个 Key：Claude 和 ChatGPT 的订阅都不含实时语音。"} {
 		if !tt.HasText(w) {
 			t.Errorf("the voice step lacks %q: %q", w, tt.Texts())
 		}

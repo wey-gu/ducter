@@ -26,6 +26,8 @@ var sharedControls = map[string]bool{
 	"appTile": true,
 	// D185: a card's property that opens a list, and the list's rows (New task)
 	"pill": true, "menuRow": true, "choice": true, "foldHead": true,
+	// D289: a group's add row, and a destructive action before it is confirmed
+	"addRow": true, "quietDanger": true, "openRow": true,
 }
 
 // controlFiles are the cards and settings pages the rule covers.
@@ -33,6 +35,7 @@ var controlFiles = []string{
 	"devicecard.go", "devupdate.go", "computers.go", "sites.go", "abilities.go", "agentversion.go",
 	"settings.go", "settings_panels.go", "settings_update.go", "partner.go", "loadout.go", "whereswitch.go", "shared.go", "memplugin.go",
 	"accounts.go", "finds.go", "newtask.go", "newtaskwhere.go", "byproject.go", "phone.go", "chats.go", "imessage.go",
+	"settings_rows.go", "ownphone.go",
 }
 
 // adHoc reports a call that makes a control by hand.

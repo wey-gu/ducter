@@ -319,10 +319,7 @@ func (a *App) notifyPanel(c *ui.Context) {
 	})
 	// D165: the same chips as on Accounts, once there is something to watch.
 	if (st.Proactive != "" && st.ProactiveBy != "default") || len(a.S.Connections) > 0 {
-		ui.Column(c.Key("notify-proactive")).Gap(t.S2).Children(func() {
-			a.proactiveChips(c, "notify")
-			a.quietDay(c)
-		})
+		a.proactiveSection(c, "notify", true) // D289: a section like the others, 今天看了什么 its second row
 	}
 	a.group(c, "default", a.L.T("partner.default.title"), "", func() {
 		sel := 1
@@ -418,25 +415,29 @@ func (a *App) accountsPanel(c *ui.Context) {
 	t := a.T
 	ps := &a.partner
 	a.drainConnResult()
-	a.panelHead(c, TabAccounts, a.L.T("settings.lede.accounts"))
+	a.panelHead(c, TabAccounts, a.L.T("settings.lede.accounts", a.personaName()))
 	a.partnerToast(c)
 	a.phoneSignInRow(c) // D193: the device sign-in, on top while it waits
 	list := a.S.Connections
+	sources := false
+	for _, cv := range list {
+		sources = sources || cv.Phone == nil
+	}
 	if len(list) > 0 {
-		// D166: the chips once above the cards, then a character sheet per source.
-		a.proactiveChips(c, "acct")
+		// D289: 发现了就说 as a section, then one raised group per source.
+		a.proactiveSection(c, "acct", false)
+	}
+	if sources {
 		a.sourceCards(c, list)
 	}
-	a.phoneOfferRow(c) // D193: calls, before a calling connection (then its card is among the cards)
-	a.ownPhoneCard(c)  // D218: calls from the owner's own phone and number
 	title, lede := a.L.T("acct.title"), a.L.T("acct.lede")
-	if len(list) > 0 {
+	if sources {
 		title, lede = "", ""
 	}
-	if len(list) > 0 && !ps.acctAdding && !(a.S.Oo != nil && a.S.Oo.Account && !usedOoOf(list)) {
-		// Adding a second source is rare: 加一个 steps back to a quiet text button.
-		ui.Row(c).Children(func() {
-			if a.quietButton(c, "acct-add", a.L.T("acct.add"), "", false, 1) {
+	if sources && !ps.acctAdding && !(a.S.Oo != nil && a.S.Oo.Account && !usedOoOf(list)) {
+		// Adding a second source is rare: the add row at the end of the sources.
+		a.group(c, "acct-add", "", "", func() {
+			if a.addRow(c, "acct-add", a.L.T("acct.add.title"), a.L.T("acct.add.line")) {
 				ps.acctAdding, ps.acctWhere, ps.acctURL, ps.acctToken = true, 0, hostedConnector, ""
 				ps.acctErr, ps.acctNoKey, ps.acctShow = "", false, false
 			}
@@ -560,8 +561,21 @@ func (a *App) accountsPanel(c *ui.Context) {
 				}
 			})
 		})
-		ui.Text(c, a.L.T("acct.honest")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Padding(0, t.S1).Margin(-t.S3, 0, 0, 0)
+		a.paperNote(c, a.L.T("acct.honest"))
 	}
+	// D289: calls are their own section, every group in the same flow.
+	ui.Column(c.Key("acct-calls")).Gap(t.S2).Children(func() {
+		a.sectionHead(c, a.L.T("acct.sec.calls"), "")
+		ui.Column(c).Gap(t.S5).Children(func() {
+			for _, cv := range list {
+				if cv.Phone != nil {
+					a.phoneCard(c, cv) // D193
+				}
+			}
+			a.phoneOfferRow(c) // D193: before any calling connection
+			a.ownPhoneCard(c)  // D218, D278: calls from the owner's own number
+		})
+	})
 	a.group(c, "ai-accounts", "", "", func() {
 		if a.linkRow(c, "ai-accounts", a.L.T("acct.ai.link"), a.L.T("acct.ai.link.help"), false) {
 			a.OpenDevices()
@@ -576,7 +590,7 @@ func (a *App) accountsPanel(c *ui.Context) {
 func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
 	t := a.T
 	ps := &a.partner
-	ui.Column(c.Key("acct-oo")).Gap(t.S3).Padding(t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
+	ui.Column(c.Key("acct-oo")).Gap(t.S3).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			ui.Box(c).Size(36, 58).Draw(a.drawMailbox("oo")).Shrink(0).AccessHidden(true)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
@@ -590,7 +604,7 @@ func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
 		case len(oo.Apps) == 0:
 			a.note(c, a.L.T("acct.oo.empty"))
 		default:
-			ui.Column(c).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.Surface).Children(func() {
+			ui.Column(c).Gap(t.S2).Children(func() {
 				for _, app := range oo.Apps {
 					app := app
 					ui.Row(c.Key("ooapp:" + app.Service)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
@@ -607,7 +621,7 @@ func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
 				if ps.acctWaiting {
 					label = a.L.T("acct.oo.using")
 				}
-				if a.button(c, label, btnPrimary, t.ControlMD, t.SurfaceSunken) && !ps.acctWaiting {
+				if a.button(c, label, btnPrimary, t.ControlMD, t.Surface) && !ps.acctWaiting {
 					ps.acctWaiting = true
 					a.send(protocol.ConnectionOo{T: "connection_oo"})
 				}

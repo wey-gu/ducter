@@ -3,6 +3,7 @@
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
 import { endedUnmet } from "@ducter/protocol";
+import type { KeyResult } from "@ducter/protocol";
 import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
 
@@ -171,6 +172,8 @@ export class Store {
   personaName = "Ducter";
   /** The empty conversation's words from the home (D149); undefined from an older Ducter. */
   first?: FirstScreen;
+  /** D298: key_add_result answers by clientId (first-words.tsx picks its own up). */
+  keyResults = new Map<string, KeyResult>();
   headSeq = 0;
   cursor = 0;
   readUpTo = 0;
@@ -242,6 +245,9 @@ export class Store {
         return;
       case "first_screen":
         this.first = f.first;
+        return;
+      case "key_add_result":
+        this.keyResults.set(f.clientId, f.result);
         return;
       case "sent": {
         const sd = this.tasks.get(f.taskId)?.sends.find((s) => !s.delivered && !s.failed);

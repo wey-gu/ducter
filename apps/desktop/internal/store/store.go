@@ -351,7 +351,9 @@ type Store struct {
 	ActionResults []protocol.ServerFrame
 	// First is the empty conversation's words from the home (D149); nil
 	// from an older Ducter, which gets the client's own everyday ones.
-	First       *protocol.FirstScreen
+	First *protocol.FirstScreen
+	// KeyResults are key_add_result answers by clientId (D298).
+	KeyResults  map[string]*protocol.KeyResult
 	Persona     string
 	PersonaName string
 	// Machine is the welcome's hash of the machine the main runs on ("" from
@@ -542,6 +544,13 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 	case "first_screen":
 		s.First = f.First
+	case "key_add_result":
+		if s.KeyResults == nil {
+			s.KeyResults = map[string]*protocol.KeyResult{}
+		}
+		if f.KeyResult != nil {
+			s.KeyResults[f.ClientID] = f.KeyResult
+		}
 	case "devices":
 		for i := range f.Devices {
 			dropStaleFailure(f.Devices[i].Update)

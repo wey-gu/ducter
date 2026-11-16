@@ -291,6 +291,7 @@ func (a *App) setupOptions(c *ui.Context, blocking []local.Check) {
 	}
 	ui.Text(c, a.L.T(body)).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft)
 	a.optionRows(c, rows)
+	a.setupKeyRow(c) // D298: no subscription needed
 	ui.Text(c, a.L.T("setup.auto.app")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 }
 
@@ -301,7 +302,7 @@ func (a *App) setupReady(c *ui.Context) {
 	a.avatar(c, theme.Done, 120)
 	a.heading(c, a.L.T("setup.ready"), t.XXL)
 	var ready []string
-	for _, id := range []string{"claude", "codex"} {
+	for _, id := range []string{"claude", "codex", "dsh", "pi"} {
 		if k, ok := a.setup.report.Get(id); ok && k.Status == "ok" {
 			ready = append(ready, k.Label)
 		}

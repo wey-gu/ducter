@@ -168,7 +168,7 @@ func (a *App) conversation(c *ui.Context) {
 						a.presenceRow(c)
 						return
 					}
-					if e.FirstSeq == a.fl.divider {
+					if e.FirstSeq == a.fl.divider && (e.AI == nil || e.AI.First == nil) { // D298: no "new" line over the first words
 						a.newDivider(c)
 					}
 					if when {
@@ -188,7 +188,7 @@ func (a *App) conversation(c *ui.Context) {
 	a.firstResultLine(c)
 	// One card at a time under the conversation: Ducter can't run in the
 	// background, else a gentle ask, else the Terminal offer.
-	if !a.backgroundLine(c) && !a.askLine(c) {
+	if !a.backgroundLine(c) && !a.keyNoticeAboveComposer(c) && !a.askLine(c) {
 		a.cliOfferLine(c)
 	}
 	a.callQuestionsAboveComposer(c) // D189 (5): someone is waiting on the line
@@ -589,6 +589,10 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			if ans := a.answerOf(e); ans != nil {
 				a.rp.tab = ans // pressed into the top of the bubble below
 			}
+			// D298: the clay partner over its first words, while nothing else was said.
+			if e.AI.First != nil && a.firstWordsOpening() {
+				a.firstWordsHead(c)
+			}
 			if strings.TrimSpace(e.AI.Text) != "" || e.AI.Cal == nil {
 				rt := a.rp.next // D254: Reply and Copy on a right click, as the user's bubbles have
 				a.partnerBubble(c, a.takeJoin(), func() {
@@ -605,6 +609,9 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			}
 			// D206: what a task showed, under the partner's words about it.
 			a.messageMedia(c, fmt.Sprint("a", e.FirstSeq), e.AI.Media, nil, false, "conv")
+			if e.AI.First != nil {
+				a.firstWordsAfter(c, e) // D298: what they offer, where they were read, a key
+			}
 			a.quiet(c, "m"+itoa(e.FirstSeq), a.replyTasks(e), "", a.notedFor(e))
 		})
 	case e.Job != nil:

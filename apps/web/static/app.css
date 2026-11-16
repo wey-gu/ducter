@@ -12464,3 +12464,105 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .chat-row:has(> .switch.bare) { flex-wrap: nowrap; }
   .chat-row:has(> .switch.bare) .grow { flex-basis: auto; }
 }
+
+/* ---------- D298: the partner's first words, and a pasted key ---------- */
+/* The clay partner over its first words waves once (the empty screen's wave); still under reduced motion. */
+.partner.first {
+  flex-wrap: wrap;
+}
+.first-face {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 8px 0 16px;
+  transform-origin: 50% 100%;
+  animation: hello-wave 1.6s var(--ease) 0.2s backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .first-face { animation: none; }
+}
+.first-after {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+.first-starts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (max-width: 600px) {
+  .first-starts { grid-template-columns: minmax(0, 1fr); }
+}
+.first-from {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+.first-from > span {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.key-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface-sunken);
+  width: 100%;
+  box-sizing: border-box;
+}
+.key-card h3 {
+  margin: 0;
+  font-size: var(--lg);
+  font-weight: 800;
+}
+.key-card p {
+  margin: 0;
+  font-size: var(--sm);
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+.key-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.key-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-soft);
+  background: var(--surface);
+  color: inherit;
+  font-family: var(--mono);
+  font-size: var(--sm);
+}
+.key-card .key-say.ok,
+.key-card.done .key-say {
+  color: var(--done-ink);
+  font-weight: 700;
+}
+.key-card .key-say.bad {
+  color: var(--failed-ink);
+}
+.key-install {
+  font-family: var(--mono);
+  font-size: var(--xs);
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+.key-row .btn {
+  flex: 0 0 auto;
+}

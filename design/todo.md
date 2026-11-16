@@ -207,8 +207,24 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Walk a really blocked Mac through the app (blocked, name and failed screens are verified
       headless only), and check an ad-hoc build's helper loses its quarantine flag after
       Open Anyway. Trigger: the first friend install.
-- [ ] The partner's real first words: the greeting is the client's empty state today, not a
-      Log message, and the partner knows no repos at first run (D204: no scan, no `firstrun.json`).
+- [x] The partner's real first words (D298): a Log message from the home, offers from the
+      person's own Claude Code and Codex records, 别再看了 in place.
+- [ ] **D298 live:** a real first install with Claude Code and Codex records (the titles read
+      right, Ducter's own sessions left out), and a real DeepSeek, Kimi and OpenAI key each (the
+      balance read, a wrong key, no balance; OpenAI from mainland China without a proxy). Trigger:
+      the author's next fresh Mac or the first friend install.
+- [ ] **D298: paste a key in Settings › Partner and Devices** (the card is the conversation's and
+      the first run's today; D296 owns those panes). Trigger: D296 lands.
+- [ ] **D298: Mem's line in the first words** (`FirstWordsInput.memLine`). Trigger: D295 lands.
+- [ ] **D298: pi without node in the app.** A key for pi on a Mac without node opens pi's
+      installer in Terminal (it asks before installing Node). Install it in the app (a Job that
+      answers the installer, or Ducter's own Node) when the first consumer hits it. Trigger: a
+      first-run report of it.
+- [ ] **D298: Alibaba Model Studio (Qwen) keys** are recognised and checked but not usable (pi has
+      no plain Model Studio provider). Trigger: pi adds one, or a user asks; else a pi custom
+      provider in a Ducter-owned pi home.
+- [ ] **D298: a Settings switch for the first words' looking** (today 别再看了 / 还是看吧 under the
+      first words only). Trigger: D296 lands.
 - [ ] Rename the partner from the desktop (today the name is asked once, in the terminal or
       the app).
 

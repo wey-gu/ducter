@@ -1,5 +1,6 @@
 // `ducter doctor`: what this Mac has, what's missing, and the one command that fixes it.
 // Every probe goes through `Host`, so tests fake the machine (no real logins, no model calls).
+import { PI_INSTALL } from "@ducter/protocol/src/api-keys.ts";
 import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { MsgKey, T } from "./i18n.ts";
@@ -250,9 +251,13 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
   const pi = more.find((h) => h.harness === "pi");
   const ds = more.find((h) => h.harness === "deepseek-harness");
   const extra: Check[] = [];
-  if (pi?.loggedIn) extra.push(c("pi", "check.pi", "ok", false, "check.pi.ok"));
+  // D298: a key pi can use is only a way in once pi can run here (node, or pi itself).
+  const piReady = !!pi?.loggedIn && !!pi?.installed;
+  const dsReady = !!ds?.installed && !!ds?.loggedIn;
+  const anyReady = harnessReady || piReady || dsReady;
+  if (piReady) extra.push(c("pi", "check.pi", "ok", false, "check.pi.ok"));
+  else if (pi?.loggedIn) extra.push(c("pi", "check.pi", "missing", !anyReady, "check.pi.notInstalled", {}, PI_INSTALL));
   if (ds?.installed) extra.push(ds.loggedIn ? c("dsh", "check.dsh", "ok", false, "check.dsh.ok") : c("dsh", "check.dsh", "missing", false, "check.dsh.nokey", {}, FIX.dshKey));
-  const anyReady = harnessReady || !!pi?.loggedIn || !!ds?.loggedIn;
   if (anyReady && !harnessReady) {
     claudeCheck.required = false;
   }

@@ -17,7 +17,11 @@ import type { SettingsStore } from "./settings.ts";
 import type { RulesStore } from "./rules.ts";
 import type { Loadout } from "./loadout.ts";
 import type { ConnectionsStore } from "./connections.ts";
-import { firstScreen, type FirstScreenInput } from "./first-screen.ts";
+import { firstScreen, starters, type FirstScreenInput } from "./first-screen.ts";
+import { firstWords } from "./first-words.ts";
+import { addKey } from "./api-key.ts";
+import { keyWords, normalizeTag } from "@ducter/protocol";
+import type { FirstFolder } from "./first-words.ts";
 import type { FirstScreen } from "@ducter/protocol";
 import type { DucterBrowser } from "./browser/index.ts";
 import type { LiveSink } from "./browser/live.ts";
@@ -45,6 +49,9 @@ export interface WsData {
   client?: ClientKind;
   /** D284: the client reads a large frame as one binary message, its JSON gzipped (hello.gzip). */
   gzip?: boolean;
+  /** D298: the language and zone the client said in its hello (the first words, a key's result). */
+  locale?: import("@ducter/protocol").LangTag;
+  tz?: string;
   /** D151: this socket's end of its live views (frames go only to the socket that opened one). */
   sink?: LiveSink;
   /** D217: this socket's end of its phone views. */
@@ -130,6 +137,14 @@ export interface WsDeps {
   calendar?: () => import("./calendar.ts").Calendar | undefined;
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
   past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside };
+  /**
+   * D298: the partner's first words, said once when an app first opens a fresh conversation;
+   * projects: the person's recent folders from their own agents' records (local-agents/), read
+   * only while settings.localAgents() is on. Absent: no first words (tests that don't need them).
+   */
+  firstWords?: { projects: () => FirstFolder[]; home?: string };
+  /** D298: pasted API keys (api-key.ts): where they are kept, and the network and agent seams for tests. */
+  keys?: { dataDir: string; fetch?: typeof fetch; canRun?: (h: import("@ducter/protocol").HarnessId) => boolean };
   batchMs?: number;
 }
 
@@ -395,7 +410,7 @@ export function createWsHandler(deps: WsDeps) {
       .filter((d) => (d.kind === "laptop" || d.kind === "mini") && d.state !== "unreachable")
       .sort((a, b) => Number(b.home) - Number(a.home))
       .map((d) => ({ name: d.name, home: d.home }));
-    return firstScreen({
+    const fs = firstScreen({
       tasks: tasks.list(),
       onHand: tasks.onHand(),
       noted,
@@ -405,6 +420,46 @@ export function createWsHandler(deps: WsDeps) {
       now: new Date(),
       ...(tz ? { tz } : {}),
     });
+    const nb = noBrain();
+    return { ...fs, ...(deps.firstWords && deps.settings ? { looks: deps.settings.localAgents() } : {}), ...(nb ? { noBrain: true } : {}) };
+  };
+
+  /** D298: nothing on the home can think: its agents were probed and none is signed in. */
+  const noBrain = (): boolean => {
+    const h = devicesView()?.harnessesNow();
+    return !!h && !h.some((x) => x.loggedIn);
+  };
+
+  /**
+   * D298: the partner's first words, once, when an app opens a conversation that has never had a
+   * word in it. Synchronous, so the events the hello sends already hold them.
+   */
+  const sayFirstWords = (lang: import("@ducter/protocol").LangTag, tz: string | undefined) => {
+    const fw = deps.firstWords;
+    if (!fw) return;
+    if (log.read({ stream: "channel", kinds: ["user_msg", "ai_msg"], limit: 1 }).length) return;
+    let projects: FirstFolder[] = [];
+    if (!deps.settings || deps.settings.localAgents()) {
+      try {
+        projects = fw.projects();
+      } catch (err) {
+        console.warn("[ws] first words: the agents' records:", (err as Error).message);
+      }
+    }
+    const now = new Date();
+    const everyday = starters({ tasks: [], onHand: { missed: [] }, noted: [], apps: [], computers: [{ name: "", home: true }], talked: false, now, ...(tz ? { tz } : {}) }).map((s) => s.words);
+    const out = firstWords({ name: core.persona.name, lang, now, ...(tz ? { tz } : {}), projects, everyday, noBrain: noBrain(), ...(fw.home ? { home: fw.home } : {}) });
+    log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: out.text, first: out.first } });
+  };
+
+  /** Every app's first screen again (the key made it able to think, or looking was turned off). */
+  const refreshFirstScreens = () => {
+    for (const ws of sockets) {
+      if (!ws.data.live || ws.data.client === "cli" || ws.data.client === "handset") continue;
+      void firstScreenFor(ws.data.tz)
+        .then((first) => sockets.has(ws) && send(ws, { t: "first_screen", first }))
+        .catch(() => undefined);
+    }
   };
 
   // Computed once, now: on macOS it shells out (ioreg) with Bun.spawnSync, which runs the event
@@ -425,6 +480,17 @@ export function createWsHandler(deps: WsDeps) {
           return;
         }
         const machine = machineId();
+        const tag = typeof f.locale === "string" ? normalizeTag(f.locale) : undefined;
+        if (tag) ws.data.locale = tag;
+        if (typeof f.tz === "string" && f.tz) ws.data.tz = f.tz;
+        // D298: the first words go in before the read below, so this hello already carries them.
+        if (f.client === "desktop" || f.client === "web") {
+          try {
+            sayFirstWords(ws.data.locale ?? "en", ws.data.tz);
+          } catch (err) {
+            console.warn("[ws] first words:", (err as Error).message);
+          }
+        }
         send(ws, { t: "welcome", persona: core.persona.id, personaName: core.persona.name, headSeq: log.head(), ...(machine ? { machine } : {}), version: DUCTER_VERSION, ping: true, ...(deps.home ? { fp: deps.home.fp } : {}) });
         // D293: the ways to reach the home, so a device can follow it to another one.
         if (deps.home) send(ws, deps.home.ways());
@@ -505,6 +571,33 @@ export function createWsHandler(deps: WsDeps) {
           pay.holdCvc(f.decisionId, f.cvc);
         }
         decisions.decide(f.decisionId, f.option, f.text);
+        return;
+      }
+      case "key_add": {
+        // D298: the one frame that carries a pasted key. Never logged; the answer never carries it.
+        const k = deps.keys;
+        const clientId = typeof f.clientId === "string" ? f.clientId.slice(0, 80) : "";
+        if (!k) throw new Error("Keys can't be added here");
+        const lang = ws.data.locale ?? "en";
+        const wasBlind = noBrain();
+        const result = await addKey(typeof f.key === "string" ? f.key : "", { dataDir: k.dataDir, lang, ...(k.fetch ? { fetch: k.fetch } : {}), ...(k.canRun ? { canRun: k.canRun } : {}) });
+        if (result.ok && result.harness && !result.needs) {
+          // The person's own choice stays; with nothing chosen and nothing signed in, think with this.
+          if (wasBlind) deps.settings?.brainFromKey(result.harness, result.model);
+          devicesView()?.refresh();
+        }
+        send(ws, { t: "key_add_result", clientId, result: { ...result, say: keyWords(result) } });
+        if (result.ok) {
+          void devicesView()
+            ?.frame()
+            .catch(() => undefined)
+            .finally(refreshFirstScreens);
+        }
+        return;
+      }
+      case "local_agents": {
+        deps.settings?.setLocalAgents(f.on === true);
+        refreshFirstScreens();
         return;
       }
       case "saved":

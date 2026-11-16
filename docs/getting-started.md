@@ -13,11 +13,11 @@ write to a colleague.
 ## What you need
 
 - **A Mac with Apple silicon** (M1 or later).
-- **An AI agent:** Claude Code or Codex signed in with your own account, or pi or DeepSeek
-  Harness with your DeepSeek account
+- **An AI agent:** Claude Code or Codex signed in with your own account, or an API key from
+  DeepSeek, Kimi, Zhipu GLM, OpenAI, Anthropic or OpenRouter
   ([which agents](faq.md#which-ai-agents-does-it-work-with)). Ducter does its work through
-  the plan you already have. If neither is set up yet, Ducter installs one for you in the next
-  step.
+  the plan or key you already have. If neither is set up yet, Ducter installs one for you in the
+  next step, or you paste a key.
 - **The Ducter app.** In Terminal, `curl -fsSL https://ducter.ai/install.sh | sh` installs it,
   puts the `ducter` command in `~/.local/bin`, and opens the app. You can also download the `.dmg` from the
   [latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest), or build it
@@ -39,6 +39,10 @@ Ducter then looks around your Mac for a few seconds:
   **Sign in** and finish in your browser. *"This continues by itself"*: when it's done, you see
   **All set**. If something goes wrong, the row says what happened in plain words, with **Try
   again** and **Do it in Terminal**.
+- **No subscription?** Under the two rows, choose **Paste a key**, paste an API key and click
+  **Check**. Ducter says in a second or two whether it works (or why not: the key is wrong, the
+  account is empty, or the provider can't be reached from here), and goes on by itself when it does.
+  [More about keys](faq.md#can-i-use-it-without-a-claude-or-chatgpt-subscription).
 - **"What should I be called?"** Give your partner a name, or keep Ducter. (If you use
   [Nowledge Mem](https://mem.nowledge.co), your partner already has a name and this is skipped.)
 - **"Getting Ducter ready…"** From now on Ducter keeps working when you close the window. To
@@ -47,12 +51,14 @@ Ducter then looks around your Mac for a few seconds:
 
 ## 2. Say one thing
 
-The conversation opens with a greeting and three suggestions. If you keep code on this Mac, the
-suggestions are about the projects you touched most recently, for example *"Find the failing
-tests in my-app, fix them, and tell me"*. Ducter found them from the folder names only; it
-didn't open anything inside.
+Your partner says hello first, in its own words. If you use Claude Code or Codex on this Mac, it
+names two or three things you were doing in them lately, for example *"Yesterday you were on 'Fix
+the flaky compaction test' in hawdb. Want me to pick it up?"*. It found them in what those agents
+keep about your recent work, read only on this Mac and shown only to you; it didn't open your
+folders. **Stop looking**, right under them, turns that off. Otherwise it offers a few everyday
+things to try.
 
-Tap a suggestion to put it in the box (it never sends by itself), change it if you like, and
+Tap one to put it in the box (it never sends by itself), change it if you like, and
 press Return. Or write anything of your own:
 
 - A quick question gets a quick answer, right there.

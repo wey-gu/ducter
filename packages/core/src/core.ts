@@ -21,6 +21,7 @@ import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
 import { createOutside } from "./outside.ts";
 import { createLocalAgents, type LocalAgents } from "./local-agents/index.ts";
+import { recentFolders } from "./first-words.ts";
 import { createOngoing } from "./ongoing.ts";
 import { registerCoreTools } from "./tools.ts";
 import type { Waiters } from "./waiters.ts";
@@ -145,6 +146,15 @@ export interface CoreOptions {
   git?: GitRun;
   /** D197 test seam: the workers as New task and projects see them (names, a folder read there). */
   newTaskComputers?: NewTaskComputers;
+  /**
+   * D298: the partner's first words. Present: said once when an app opens a fresh conversation
+   * (main.ts turns them on); `home` and `env` say whose agents' records to read (tests: a scratch
+   * home with fake Claude Code and Codex folders). Absent: no first words.
+   */
+  firstWords?: { home?: string; env?: Record<string, string | undefined> };
+  /** D298 test seams for a pasted key: the network, and which agents this computer can run. */
+  keyFetch?: typeof fetch;
+  keyCanRun?: (h: HarnessId) => boolean;
   /** D204 test seam: the home's own Ducter folder and its projects (default: <Ducter folder>/projects here). */
   homeRepos?: () => FolderProjects;
   /** D204 test seam: clone into the home's own Ducter folder (default: git, with this computer's sign-in). */
@@ -715,7 +725,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   tasks.setMarks((p, id) => marks.get(p, id));
   const past = createPast({ log, tasks, marks, computerName: (dev) => computers.nameOf(dev) });
   // D299: the sessions the person ran in their own agents here (read only when Past tasks asks).
-  const outside = createOutside({ reader: opts.localAgents ?? (process.env.NODE_ENV === "test" || process.env.DUCTER_OUTSIDE === "0" ? createLocalAgents({ home: join(dataDir, "no-outside"), env: {} }) : createLocalAgents(process.env.DUCTER_OUTSIDE_HOME ? { home: process.env.DUCTER_OUTSIDE_HOME, env: {} } : {})), dataDir, log, tasks, ducterFolder: homeFolder, language: () => languageOf("", settings) });
+  const outsideReader = opts.localAgents ?? (process.env.NODE_ENV === "test" || process.env.DUCTER_OUTSIDE === "0" ? createLocalAgents({ home: join(dataDir, "no-outside"), env: {} }) : createLocalAgents(process.env.DUCTER_OUTSIDE_HOME ? { home: process.env.DUCTER_OUTSIDE_HOME, env: {} } : {}));
+  // D298: the first words read the same records (D299's reader), or a scratch home's in tests.
+  const firstReader = opts.firstWords?.home ? createLocalAgents({ home: opts.firstWords.home, env: opts.firstWords.env ?? {} }) : outsideReader;
+  const outside = createOutside({ reader: outsideReader, dataDir, log, tasks, ducterFolder: homeFolder, language: () => languageOf("", settings) });
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
   const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged() });
   const newTask = {
@@ -761,7 +774,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       },
       socketsChanged: () => reachRef?.refresh(),
     },
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside } });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(opts.firstWords ? { firstWords: { projects: () => recentFolders(firstReader, { exclude: [dataDir, homeFolder()], ...(opts.firstWords?.home ? { home: opts.firstWords.home } : {}) }), ...(opts.firstWords.home ? { home: opts.firstWords.home } : {}) } } : {}) });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.

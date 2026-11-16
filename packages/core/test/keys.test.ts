@@ -90,7 +90,7 @@ test("starting core moves the keys and takes the ones a unit loaded out of its e
   }
 });
 
-test("the probes read keys.env: DeepSeek Harness's key, Claude Code's token; pi is not signed in by the DeepSeek key", async () => {
+test("the probes read keys.env: DeepSeek Harness's key, Claude Code's token; pi signs in with the DeepSeek key too (D298)", async () => {
   const files: Record<string, string> = { "/d/keys.env": "DEEPSEEK_API_KEY=sk-x\nCLAUDE_CODE_OAUTH_TOKEN=t\n" };
   const r = await probeHarnesses({
     which: (c) => (["claude", "node", "dsh"].includes(c) ? `/bin/${c}` : null),
@@ -103,7 +103,7 @@ test("the probes read keys.env: DeepSeek Harness's key, Claude Code's token; pi 
   });
   expect(r.map((h) => [h.harness, h.loggedIn])).toEqual([
     ["claude-code", true],
-    ["pi", false],
+    ["pi", true],
     ["deepseek-harness", true],
   ]);
 });

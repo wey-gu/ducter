@@ -323,7 +323,7 @@ export interface Bodies {
   task_event: {
     taskId: string;
     role: "assistant" | "user" | "tool" | "system";
-    from?: "user" | "partner" | "runner";
+    from?: "user" | "partner" | "runner" | "ducter"; // D271: "ducter" = Ducter's own note to the task (a phone lent, a Stop), not anyone's words
     text?: string;
     clientId?: string; // a user's task_send carries the client's id (resends are deduped by it)
     media?: MediaRef[]; // D206: pictures sent into the task with the text

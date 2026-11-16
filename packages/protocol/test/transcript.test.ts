@@ -4,13 +4,29 @@ import { expect, test } from "bun:test";
 import cases from "../fixtures/transcript.json";
 import { cases as source } from "../fixtures/transcript-cases.ts";
 import type { LogEvent } from "../src/index.ts";
-import { blocksOf, failLine, failOf, lastSeq, latestVoice, linesOf, serviceName, trivialOutput, turnsOf, type Block } from "../src/transcript.ts";
+import { blocksOf, failLine, failOf, inTurn, lastSeq, latestVoice, linesOf, serviceName, trivialOutput, turnsOf, wakeOf, type Block } from "../src/transcript.ts";
 import { editDiff, linesDiff } from "../src/editdiff.ts";
 
 for (const c of cases)
   test(`transcript: ${c.name}`, () => {
     expect(turnsOf(blocksOf(c.harness, c.events as LogEvent[], c.working))).toEqual(c.want as never);
+    expect(inTurn(c.events as LogEvent[])).toBe(c.inTurn);
   });
+
+// D271: a wake is a turn's opening of its own, never the partner's card; a rest is no turn.
+test("a wake opens a turn as a hairline; a task resting on its wait is in no turn", () => {
+  expect(wakeOf("等到了：「约45分钟后继续检查」（1794807944）。接着做。")).toEqual({ reason: "约45分钟后继续检查", timer: false });
+  expect(wakeOf("等到了：「CI（main）跑完」。接着做。")).toEqual({ reason: "CI（main）跑完", timer: false });
+  expect(wakeOf('The wait is over: "CI to finish" (green). Carry on.')).toEqual({ reason: "CI to finish", timer: false });
+  expect(wakeOf("到时间了：「看一眼部署」。接着做。")).toEqual({ reason: "看一眼部署", timer: true });
+  expect(wakeOf('It\'s time: "look at the deploy". Carry on.')).toEqual({ reason: "look at the deploy", timer: true });
+  expect(wakeOf("没等到：「CI 跑完」，它被取消了。看看接下来怎么做。")).toBeUndefined();
+  const c = cases.find((x) => x.name === "a review loop on its own wait (zh)")!;
+  const turns = turnsOf(blocksOf(c.harness, c.events as LogEvent[], c.working));
+  expect(turns.map((t) => t.prompt?.k)).toEqual(["brief", "wake", "wake", "wake"]);
+  expect(JSON.stringify(turns)).not.toContain("1794807944");
+  expect(c.inTurn).toBe(false);
+});
 
 test("the fixture is what the cases file says", () => {
   expect(JSON.parse(JSON.stringify(source.map((c) => c.events)))).toEqual(cases.map((c) => c.events));

@@ -76,19 +76,17 @@ func TestTaskRedesignShots(t *testing.T) {
 					tt.Frame()
 				}
 				t.Logf("%s long (%d events): %v a frame", lang, len(evs), time.Since(start)/20)
-				app.taskScroll["gl1"].Y = 1 << 30
+				scrollTaskTo(app, "gl1", 1)
 				tt.Frame()
-				app.taskScroll["gl1"].Y = app.taskScroll["gl1"].MaxY - 900
+				scrollTaskTo(app, "gl1", 0.5)
 				shot("task-long-" + string(lang) + "-scrolled")
 				continue
 			}
-			if sc := app.taskScroll["gl1"]; sc != nil {
-				sc.Y = 1 << 30
-			}
+			scrollTaskTo(app, "gl1", 1)
 			shot("task-" + phase + "-" + string(lang) + "-end")
 			if phase == "running" {
 				// Scrolled up: Jump to latest over the foot.
-				app.taskScroll["gl1"].Y = 200
+				scrollTaskTo(app, "gl1", 0)
 				shot("task-" + phase + "-" + string(lang) + "-scrolled")
 				// The edit and the failed test, opened.
 				for _, b := range app.blocks(app.S.Task("gl1")) {
@@ -98,7 +96,7 @@ func TestTaskRedesignShots(t *testing.T) {
 						}
 					}
 				}
-				app.taskScroll["gl1"].Y = 300
+				scrollTaskTo(app, "gl1", 0.3)
 				shot("task-" + phase + "-" + string(lang) + "-open")
 			}
 		}

@@ -647,8 +647,8 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
       ›** (13 muted over a hairline), keeping its last words; the live one never folds. While it
       works, the transcript ends on the working line: what it is on at 13 with a light sweeping
       across it, the turn's clock right-aligned in tabular figures. A queued message is a dashed
-      outline, no fill, muted words, **排队中 / Queued**. Past 240 lines the older turns wait
-      behind **显示更早的 n 步 / Show n earlier steps**.
+      outline, no fill, muted words, **排队中 / Queued**. Every turn is drawn (D271: the Mac
+      builds only the turns near the view; the web skips settled turns off screen).
    6. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff
       in place, full width, under a quiet header. No diff shows by default; a task in no repo,
       or with nothing changed yet, has no section (D127). The phone names the changes in the proof line and shows no diff.
@@ -667,7 +667,20 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    the hint muted. Where it is at is the working line at the transcript's end. A task that works or waits on you opens
    at its latest, a finished one at its head; while it works a reader at the end follows the
    newest step, one who scrolled up gets **回到最新 / Jump to latest**, a 40 pt round raised
-   button (Surface, the floating shadow) centred over the transcript's foot. Header actions: **打开 / Open** (D198: a menu, Show in
+   button (Surface, the floating shadow) centred over the transcript's foot. D271: the Mac's
+   page is one `ui.List` (MyGo's virtual list) of rows (the head, each turn, the tail), keyed
+   by the turn's seq, `FollowEnd` while it works or waits, so only turns near the view are built
+   and the end is followed only while the reader is at it; the transcript is made once per
+   change of the events, never per frame (1,501 events: 69 ms a frame before, 2.7 ms after, in
+   the test renderer). Nothing inside the page scrolls on its own: an opened run grows in place,
+   60 steps then **还有 n 步**. A task resting on its wait opens at its end too. The **locator**
+   (wide windows only, the Mac's task column ≥ 760 pt, the web's full view over 900 px): a rail
+   18 pt in from the right edge, one 8×2.5 rounded bar per turn evenly spaced (at most 360
+   tall), faint ink, the turns in view 10 wide in ink; hovered or focused, a clay card (Surface,
+   the floating shadow, 300 wide, at most 420 tall) lists each turn's first line, newest at the
+   bottom, those in view in ink at 600 with a mark; a click goes to that turn. The agent's
+   words carry one quiet line at 11: **保存了进度** when saved (no icon), and on hover their time ·
+   how long the turn worked · **拷贝**, drawn over the gap below so nothing moves. Header actions: **打开 / Open** (D198: a menu, Show in
    Finder; then Open in each of Cursor / Visual Studio Code / Zed installed; then, D201, Open
    in each terminal installed, Terminal / iTerm2 / Ghostty / Warp, and Rex or con once they
    open folders; a separator between the groups, the one used last first in each) in every state while its working copy is on this Mac;

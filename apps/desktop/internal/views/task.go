@@ -3,7 +3,6 @@ package views
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -41,6 +40,14 @@ func (a *App) task(c *ui.Context) {
 		w = 1280
 	}
 	rail, bench := panes(w, a.bench.open && a.benchOpenable(task))
+	// D271: the task's own column, for the locator (wide only).
+	a.tpage.colW = w
+	if rail {
+		a.tpage.colW -= railWidth(w)
+	}
+	if bench {
+		a.tpage.colW -= a.benchW(w)
+	}
 	ui.Row(c.Key("benchrow")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 		rw := float32(0)
 		if rail {
@@ -54,95 +61,6 @@ func (a *App) task(c *ui.Context) {
 		}
 		a.slide(c, "bench", bw, func(cw float32) { a.workbench(c, task, cw) })
 	})
-}
-
-// taskBody is the task's page under its header: the transcript, its foot and its composer.
-func (a *App) taskBody(c *ui.Context, task *store.Task) {
-	t := a.T
-	if a.taskScroll == nil {
-		a.taskScroll = map[string]*ui.ScrollState{}
-	}
-	sc := a.taskScroll[task.ID]
-	if sc == nil {
-		sc = &ui.ScrollState{}
-		a.taskScroll[task.ID] = sc
-	}
-	att := task.Attention()
-	live := att == protocol.Working || att == protocol.Queued || att == protocol.NeedsYou
-	// D210: it opens at its latest while it works or waits on the user, at
-	// its head once finished (the outcome is there). While it works, a
-	// reader at the end follows the newest step; one who scrolled up stays,
-	// with Jump to latest.
-	if a.taskOpened != task.ID && task.HistoryLoaded {
-		a.taskOpened = task.ID
-		if live {
-			sc.Y = math.MaxFloat32
-		}
-	}
-	if (att == protocol.Working || att == protocol.Queued) && sc.MaxY > 0 && sc.Y >= sc.MaxY-4 {
-		sc.Y = math.MaxFloat32
-	}
-	blocks := a.blocks(task)
-	ui.Column(c.Key("taskpane")).Grow(1).MinHeight(0).Children(func() {
-		ui.Scroll(c.Key("taskpage:" + task.ID)).TrackScroll(sc).Grow(1).MinHeight(0).Children(func() {
-			ui.Row(c).Justify(ui.Center).Padding(t.S5, t.S5, t.S6, t.S5).Children(func() {
-				// D268: one centered reading measure for the whole task.
-				ui.Column(c).Grow(1).MaxWidth(readMeasure).MinWidth(0).Gap(t.S6).Children(func() {
-					// The head (D74, D89 layout): the clay partner's state face
-					// beside one block that reads top to bottom: one quiet meta
-					// line (state · when · who), the headline (what it is doing
-					// now, or the outcome), then a pending ask and what to do.
-					ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Children(func() {
-						ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
-							a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
-							// What it waits for, in a bubble by its head (D112).
-							if w := a.S.WaiterFor(task.ID); w != nil && task.Attention() == protocol.Blocked && (w.Check != nil || w.Event != nil) {
-								ui.Box(c.Key("bubble")).Absolute().Left(taskFaceW - 30).Top(-12).Children(func() {
-									a.waitBubble(c, waitGlyph(w.Check, w.Event), 46)
-								})
-							}
-						})
-						ui.Column(c).Grow(1).MinWidth(0).Gap(t.S4).Children(func() {
-							// The meta line sits 8 above the headline, the outcome's
-							// included: one block whatever the state.
-							ui.Column(c).Gap(t.S2).Children(func() {
-								a.taskStanding(c, task)
-								if finished(task) {
-									a.outcome(c, task)
-								} else {
-									a.taskHeadline(c, task)
-								}
-							})
-							// An answered ask is one line here; a pending one sits over
-							// the composer, where the answer is typed (D152).
-							if d := a.S.PendingDecision(task.ID); d != nil && (d.Resolved != nil || d.Pending != "") {
-								a.decisionAnswered(c, d)
-							}
-							a.switchSheet(c, task) // 换谁来做 / Switch who does it (D89)
-						})
-					})
-					a.waitPanel(c, task)
-					a.tryStrip(c, task)
-					a.whatItDid(c, task, blocks)
-					if workFolder(task.Place()) != "" {
-						ui.Column(c.Key("work")).Gap(t.S2).Children(func() {
-							a.workFolderLine(c, task) // D198: where its files are, over its changes
-							a.changes(c, task)
-						})
-					} else {
-						a.changes(c, task)
-					}
-					a.outsideActs(c, task)
-					a.waitFacts(c, task)
-				})
-			})
-		})
-		if live {
-			a.jumpToLatest(c, sc)
-		}
-	})
-	a.taskFoot(c, task, blocks)
-	a.taskComposer(c, task)
 }
 
 // taskHeader is the breadcrumb and the task's title; at its end, what can
@@ -942,7 +860,7 @@ func (a *App) waitFacts(c *ui.Context, task *store.Task) {
 	value := func(s string) {
 		ui.Text(c, s).FontSize(t.SM).LineHeight(leadingFor(s, 1.5)).TextColor(t.InkSoft).Selectable()
 	}
-	ui.Column(c.Key("waitfacts")).Gap(t.S3).Children(func() { a.waitRows(c, task, row, value) })
+	ui.Column(c.Key("waitfacts")).Gap(t.S3).Children(func() { a.waitRows(c, task, true, row, value) })
 }
 
 // aboutTokens is a rough token count in the reader's own units, one token as one

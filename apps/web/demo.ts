@@ -4,7 +4,7 @@
 import { startCore, stubRunner, realClock } from "@ducter/core";
 import { noOo } from "./demo-oo.ts";
 import type { Bodies, Place } from "@ducter/protocol";
-import { conductEvents } from "@ducter/protocol/fixtures/transcript-cases.ts";
+import { conductEvents, loopEvents } from "@ducter/protocol/fixtures/transcript-cases.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 // The seed can log events in the past (a run that took minutes, D268), then time is real again.
@@ -142,6 +142,42 @@ await tick();
     if (e.kind === "task_open") core.tasks.setState("t_conduct", "working", "hot");
   }
   skew = 0;
+  await tick();
+}
+
+// 5. D271: a review loop on Codex that wakes itself every 45 minutes: 24 rounds since this
+// morning (about 1,500 events), each wake → look → (now and then a review) → its next wait, its
+// last turn ended a minute ago and a check with a judge armed now.
+{
+  const evs = loopEvents({ zh, id: "t_loop", rounds: 24, reads: 210 });
+  const t0 = Date.parse(evs[0]!.ts);
+  const span = Date.parse(evs.at(-1)!.ts) - t0;
+  for (const e of evs) {
+    skew = Date.parse(e.ts) - t0 - span - 60_000;
+    log.append({ stream: e.stream, origin: e.origin, kind: e.kind, body: e.body } as never);
+    if (e.kind === "task_open") core.tasks.setState("t_loop", "working", "hot");
+  }
+  skew = 0;
+  const reason = zh ? "约45分钟后继续检查 nowledge-co 的 review 请求与提及" : "Check nowledge-co's review requests and mentions again in about 45 minutes";
+  log.append({
+    stream: "channel",
+    origin: "task",
+    kind: "waiter",
+    body: {
+      waiterId: "w_loop",
+      taskId: "t_loop",
+      reason,
+      state: "armed",
+      kind: "check",
+      check: { argv: ["curl", "-fsSL", "https://api.github.com/search/issues?q=org:nowledge-co+review-requested:weyl+is:open"], succeedWhen: { matches: '"total_count":\\s*[1-9]' } },
+      judge: zh ? "有新的 review 请求或提到我的地方吗？" : "Is there a new review request or a mention of me?",
+      everyMs: 2_700_000,
+    },
+  } as never);
+  await tick();
+  // What the author saw: its progress report after arming put the card back on working, though
+  // its turn has ended and it rests on the wait.
+  core.tasks.setState("t_loop", "working", "warm");
   await tick();
 }
 

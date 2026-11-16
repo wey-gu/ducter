@@ -42,7 +42,7 @@ import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, forecast, FullTop } from "./board.tsx";
 import { OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
-import { safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, taskSub, TimerPie, WhatItDid } from "./transcript.tsx";
+import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, taskSub, TimerPie, WhatItDid } from "./transcript.tsx";
 import {
   attention,
   bodyReasonOf,
@@ -1901,7 +1901,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   const [away, setAway] = useState(false);
   const opened = useRef("");
   const moving = !!task && ["working", "queued"].includes(attention(task));
-  const live = moving || (!!task && attention(task) === "needs_you");
+  // D271: a task resting on its wait opens at its end too, where its end line says what it waits for.
+  const live = moving || (!!task && ["needs_you", "blocked"].includes(attention(task)));
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el || !task?.historyLoaded || opened.current === id) return;
@@ -2017,6 +2018,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
         <WhatItDid task={task} blocks={blocks} />
         <OutsideActs task={task} />
       </main>
+      {full && <Locator task={task} scroller={scroller} />}
       {live && away && (
         <div class="jump-dock">
           <button class="jump" aria-label={t("jump.latest")} title={t("jump.latest")} onClick={() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}>

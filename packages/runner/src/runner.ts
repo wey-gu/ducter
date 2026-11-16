@@ -1629,7 +1629,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const t = get(taskId);
       await t.started.catch(() => {});
       t.dropped = false;
-      if (t.session || t.sessionId || t.handedFrom) return runner.send(taskId, REOPENED, undefined, "user");
+      if (t.session || t.sessionId || t.handedFrom) return runner.send(taskId, REOPENED, undefined, "ducter");
       // Never got a session (e.g. failed to start): start one from the brief.
       t.started = (async () => {
         await t.ops.provision({ place: t.card.place, cwd: t.spec.cwd });

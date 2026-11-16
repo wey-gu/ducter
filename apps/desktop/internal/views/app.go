@@ -141,14 +141,9 @@ type App struct {
 	taskLists     map[string]*ui.ListState
 	md, mdTask    markdown.Options
 	mdTaskHan     markdown.Options // D268: the task's words when they hold Chinese
-	// taskScroll is where each opened task's page is scrolled to: it
-	// follows the newest step while the task works and the reader is at
-	// the end (D152).
-	taskScroll map[string]*ui.ScrollState
-	// taskOpened is the task whose page was scrolled to where it opens:
-	// at its latest while it works or waits on the user, at its head once
-	// it is finished (D210).
-	taskOpened string
+	// tp is the opened task's page (D271): its transcript made once per
+	// change of its events, the locator's state, the turn being drawn.
+	tpage taskPage
 	// escAt is when Esc asked to pause the opened task (D210): a second
 	// Esc within escWindow pauses it.
 	escAt   time.Time
@@ -679,7 +674,7 @@ func (a *App) OpenTask(id string) {
 	a.Route, a.TaskID = RouteTask, id
 	a.markRead()
 	if t := a.S.Task(id); t == nil || !t.HistoryLoaded {
-		a.send(protocol.TaskHistoryReq{T: "task_history", TaskID: id, Limit: 500})
+		a.send(protocol.TaskHistoryReq{T: "task_history", TaskID: id, Limit: historyLimit})
 	}
 	a.refreshDiff(id)
 }
@@ -830,7 +825,7 @@ func (a *App) Welcomed() {
 	a.resendUnechoed()
 	a.flushOutbox()
 	if a.Route == RouteTask && a.TaskID != "" {
-		a.send(protocol.TaskHistoryReq{T: "task_history", TaskID: a.TaskID, Limit: 500})
+		a.send(protocol.TaskHistoryReq{T: "task_history", TaskID: a.TaskID, Limit: historyLimit})
 	}
 	// Devices are pushed only to sockets that asked: ask again on a new one.
 	inSettings := a.Route == RoutePartner || a.Route == RouteSettings

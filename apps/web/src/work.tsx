@@ -202,17 +202,30 @@ function CheckLine({ spec }: { spec: CheckSpec }) {
 
 const minutes = (ms?: number) => Math.max(1, Math.round((ms ?? 0) / 60_000));
 
-/** An opened task that waits: the groove, then How it checks folded (the check itself, how
- *  often, what it saw, who does it), then Stop waiting and Look now. */
+/** An opened task that waits: the groove, then Stop waiting and Look now. How it checks opens
+ *  under the transcript's end line (D271). */
 export function WaitDetails({ task }: { task: Task }) {
+  const w = A.S.waiterFor(task.id);
+  if (!w || (!w.check && !w.event)) return null;
+  return (
+    <section class="section">
+      <Groove w={w} big />
+      <div class="btns">
+        <button class="btn text" onClick={() => A.waiterAction(w.waiterId, "cancel")}>{t("wait.cancel")}</button>
+        <button class="btn secondary" onClick={() => A.waiterAction(w.waiterId, "look")}>{t("wait.look")}</button>
+      </div>
+    </section>
+  );
+}
+
+/** How a wait checks (D271, under the end line): the check itself and its judge, how often and
+ *  when it last looked, what it saw. */
+export function WaitHow({ task }: { task: Task }) {
   const w = A.S.waiterFor(task.id);
   if (!w || (!w.check && !w.event)) return null;
   const looks = A.S.looksOf(task);
   return (
-    <section class="section">
-      <Groove w={w} big />
-      <details class="how">
-        <summary>{t("wait.how.title")}</summary>
+    <>
         <div class="kv">
           <span class="k">{t("wait.looks.at")}</span>
           <span class="v">
@@ -233,12 +246,7 @@ export function WaitDetails({ task }: { task: Task }) {
             </>
           )}
         </div>
-      </details>
-      <div class="btns">
-        <button class="btn text" onClick={() => A.waiterAction(w.waiterId, "cancel")}>{t("wait.cancel")}</button>
-        <button class="btn secondary" onClick={() => A.waiterAction(w.waiterId, "look")}>{t("wait.look")}</button>
-      </div>
-    </section>
+    </>
   );
 }
 

@@ -97,6 +97,98 @@ type Block struct {
 	Media []protocol.MediaRef `json:"media,omitempty"`
 	// Items is a plan's (D268).
 	Items []PlanItem `json:"items,omitempty"`
+	// Timer is a wake's (D271): its wait was for a time. A wake's Text is
+	// the wait's reason.
+	Timer bool `json:"timer,omitempty"`
+}
+
+// The words core's work.ts sends a task when its own wait ends (D271),
+// timers first.
+var wakes = []struct {
+	re    *regexp.Regexp
+	timer bool
+}{
+	{regexp.MustCompile(`^到时间了：「([\s\S]+?)」。接着做。$`), true},
+	{regexp.MustCompile(`^It's time: "([\s\S]+?)"\. Carry on\.$`), true},
+	{regexp.MustCompile(`^等到了：「([\s\S]+?)」(?:（[^（）]*）)?。接着做。$`), false},
+	{regexp.MustCompile(`^The wait is over: "([\s\S]+?)"(?: \([^()]*\))?\. Carry on\.$`), false},
+}
+
+// wakeOf is a wake as Ducter sends it (D271): the wait's reason and
+// whether it was a timer; ok=false for anything else.
+func wakeOf(text string) (reason string, timer, ok bool) {
+	text = strings.TrimSpace(text)
+	for _, w := range wakes {
+		if m := w.re.FindStringSubmatch(text); m != nil {
+			return strings.TrimSpace(m[1]), w.timer, true
+		}
+	}
+	return "", false, false
+}
+
+// Ducter's own words to a task (D271), logged before they carried from
+// "ducter" (as from the user).
+var tolds = []struct {
+	re  *regexp.Regexp
+	say string
+}{
+	{regexp.MustCompile(`^You may use (.+?) now: the user's own phone`), "lent"},
+	{regexp.MustCompile(`^(?:Ducter's (?:browser|phone) is yours again|The user handed Ducter's browser back)`), "returned"},
+	{regexp.MustCompile(`^(.+?) (?:is back\. If the work still needs it|answers again and is still lent to you)`), "returned"},
+	{regexp.MustCompile(`^The user (?:said no to lending you their phone|said not now to using their own phone)`), "declined"},
+	{regexp.MustCompile(`^The user pressed 停下 / Stop`), "stopped"},
+	{regexp.MustCompile(`^The user reopened this task\.`), "reopened"},
+}
+
+// toldOf is what Ducter told the agent (D271), from a user-role line:
+// from "ducter" always is; an older line from the user is when its words
+// are one of Ducter's own. ok=false for the person's words.
+func toldOf(text, from string) (say, name string, ok bool) {
+	text = strings.TrimSpace(text)
+	for _, x := range tolds {
+		if m := x.re.FindStringSubmatch(text); m != nil {
+			if len(m) > 1 {
+				name = strings.TrimSpace(m[1])
+			}
+			return x.say, name, true
+		}
+	}
+	if from == "ducter" {
+		return "other", "", true
+	}
+	return "", "", false
+}
+
+// inTurn reports whether the agent is in a turn now (D271): it did or
+// heard something since its last turn ended, or no turn has ended yet. A
+// task resting on a wait after its turn ended is not. The port of inTurn
+// in packages/protocol/src/transcript.ts.
+func inTurn(events []protocol.LogEvent) bool {
+	for i := len(events) - 1; i >= 0; i-- {
+		if events[i].Kind != protocol.KindTaskEvent {
+			continue
+		}
+		body, _ := events[i].Typed()
+		te, ok := body.(*protocol.TaskEvent)
+		if !ok {
+			continue
+		}
+		if te.Role == "system" {
+			var r map[string]any
+			_ = json.Unmarshal(te.Raw, &r)
+			if r["turnEnd"] == true || r["kind"] == "turn_ended" {
+				return false
+			}
+			continue
+		}
+		return true
+	}
+	for i := range events {
+		if events[i].Kind == protocol.KindTaskOpen {
+			return true
+		}
+	}
+	return false
 }
 
 var (
@@ -530,7 +622,7 @@ func turnsOf(blocks []Block) []Turn {
 	for i := range blocks {
 		b := blocks[i]
 		switch b.K {
-		case "brief", "you", "partner":
+		case "brief", "you", "partner", "wake", "told":
 			out = append(out, Turn{Seq: b.Seq, Prompt: &b, Body: []Block{}})
 			continue
 		}
@@ -722,7 +814,17 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 					continue // the runner's kickoff, not something anyone said
 				}
 				if b.From == "partner" || ev.Origin == protocol.OriginPartner {
+					// D271: a wake of its own wait reads as a hairline, never the partner's card.
+					if reason, timer, ok := wakeOf(text); ok {
+						out = append(out, Block{K: "wake", Seq: ev.Seq, Text: redact.Text(reason), Timer: timer})
+						continue
+					}
 					out = append(out, Block{K: "partner", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media})
+					continue
+				}
+				// D271: what Ducter itself told it is never the person's bubble.
+				if say, name, ok := toldOf(text, b.From); ok {
+					out = append(out, Block{K: "told", Seq: ev.Seq, Say: say, Name: redact.Text(name), Text: redact.Text(text)})
 					continue
 				}
 				blk := Block{K: "you", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media}

@@ -2000,17 +2000,140 @@ a {
 .voice .tx {
   color: var(--ink);
 }
-.voice .saved {
+/* D271: one quiet line under the agent's words: 保存了进度 when saved; on hover its time, how long
+   its turn worked and Copy. It sits over the gap below, so nothing moves when it shows. */
+.voice {
+  position: relative;
+}
+.voice .vmeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 16px;
+  font-size: 11px;
+  color: var(--ink-muted);
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+.voice .vmeta:not(.kept) {
+  position: absolute;
+  left: 0;
+  bottom: -16px;
+}
+.voice .vmeta .hov {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: var(--xs);
-  color: var(--ink-muted);
+  gap: 8px;
+  visibility: hidden;
 }
-.voice .saved .g {
+.voice:hover .vmeta .hov,
+.voice:focus-within .vmeta .hov {
+  visibility: visible;
+}
+.voice .vmeta .qlink {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.voice .vmeta.kept .saved + .hov::before {
+  content: "·";
+}
+/* D271: what Ducter woke it with or told it: a hairline with its time, the reason on hover. */
+.tx-divider.wake {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+/* D271: a task resting on its wait, at the transcript's end; how it checks opens under it. */
+.wait-end .wait-how {
+  padding: 6px 0 4px 22px;
+  font-size: 13px;
+}
+/* D271: the locator, wide only: one bar per turn at the transcript's right edge. */
+.locator {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  gap: 0;
+}
+.locator .rail {
+  position: relative;
   width: 14px;
-  height: 14px;
-  color: var(--faint);
+  cursor: pointer;
+  outline-offset: 4px;
+}
+.locator .rail i {
+  position: absolute;
+  right: 0;
+  width: 8px;
+  height: 2.5px;
+  margin-top: -1px;
+  border-radius: 2px;
+  background: var(--faint);
+  opacity: 0.7;
+}
+.locator .rail i.here {
+  width: 10px;
+  background: var(--ink);
+  opacity: 0.75;
+}
+.locator .loc-list {
+  list-style: none;
+  margin: 0 6px 0 0;
+  padding: 6px;
+  width: 300px;
+  max-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--floating);
+}
+.locator .loc-list button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: left;
+}
+.locator .loc-list button:hover {
+  background: var(--sunken);
+}
+.locator .loc-list button i {
+  flex: none;
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--faint);
+}
+.locator .loc-list button.here {
+  color: var(--ink);
+  font-weight: 600;
+}
+.locator .loc-list button.here i {
+  background: var(--ink);
+  opacity: 0.75;
+}
+.locator .loc-list span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 900px) {
+  .locator {
+    display: none;
+  }
 }
 .spin {
   flex: none;
@@ -9236,15 +9359,17 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   margin: 2.5px;
   border-width: 1.4px;
 }
-/* A run opened: its steps, set in, scrolling past about twelve. */
+/* A run opened: its steps, set in. D271: it grows in place, never a scroller inside the page. */
 .turns .group-rows {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: 288px;
-  overflow-y: auto;
   padding: 2px 0 6px 22px;
-  overscroll-behavior: contain;
+}
+.turns .group-rows .more {
+  align-self: flex-start;
+  margin-top: 4px;
+  font-size: var(--xs);
 }
 .turns .thought-text {
   padding: 2px 0 6px 22px;

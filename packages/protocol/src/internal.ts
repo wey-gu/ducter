@@ -463,7 +463,7 @@ export interface Runner {
   openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en"; needs?: TaskNeeds }, brief: Promise<string>, media?: Promise<MediaRef[]>): Promise<TaskCard>;
   // Logs the text as task_event {role:"user", from, clientId} before delivering it.
   // media (D206): pictures that go with the text (an agent that can't see them gets a line saying so).
-  send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner", clientId?: string, media?: MediaRef[]): Promise<{ delivered: Delivery }>;
+  send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner" | "ducter", clientId?: string, media?: MediaRef[]): Promise<{ delivered: Delivery }>;
   interrupt(taskId: string): Promise<void>;
   // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
   reopen?(taskId: string): Promise<{ delivered: Delivery }>;

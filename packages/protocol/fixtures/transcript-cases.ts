@@ -3,7 +3,7 @@
 // (review the diff: it is the expected output both ports must match).
 import { writeFileSync } from "node:fs";
 import type { LogEvent, MediaRef } from "../src/index.ts";
-import { blocksOf, turnsOf } from "../src/transcript.ts";
+import { blocksOf, inTurn, turnsOf } from "../src/transcript.ts";
 
 const KEY = "nmem_ct_8fK2pQx7Lm4vRz9TbW3y";
 const T0 = Date.parse("2026-11-10T06:58:00Z");
@@ -153,6 +153,62 @@ export const conductEvents = (o: { zh?: boolean; id?: string } = {}) => {
   return stream(id, items);
 };
 
+/**
+ * D271: the author's review loop on Codex: every 45 minutes Ducter wakes it ("等到了：「…」。接着做。"),
+ * it looks for review requests and mentions, reviews what came in, arms its next wait and ends its
+ * turn. `rounds` wakes after the first turn; round 3 reviews a PR in full (`reads` files), the
+ * others look and find little. `oldWake` words the second wake the way core did before D271, its
+ * observation a bare epoch. The last turn has ended: the task rests on its wait.
+ */
+export const loopEvents = (o: { zh?: boolean; id?: string; rounds?: number; reads?: number; oldWake?: boolean } = {}) => {
+  const L = (zh: string, en: string) => (o.zh ? zh : en);
+  const id = o.id ?? "lp1";
+  const rounds = o.rounds ?? 3;
+  const reads = o.reads ?? 6;
+  type Item = [number, string, LogEvent["origin"], unknown];
+  const reason = L("约45分钟后继续检查 nowledge-co 的 review 请求与提及", "Check nowledge-co's review requests and mentions again in about 45 minutes");
+  const ex = (cmd: string, output: string, ok = true) => ({ role: "tool", tool: { name: "exec_command", input: { cmd: ["bash", "-lc", cmd] }, output, ok } });
+  const items: Item[] = [
+    [0, "task_open", "partner", { taskId: id, title: L("盯着 nowledge-co 的 review 请求，来了就看", "Watch nowledge-co's review requests and review what comes in"), project: "", place: { kind: "folder", device: "MacBook", path: "~/dev/nowledge" }, harness: "codex", model: "gpt-6-luna", brief: L("今天帮我盯着 nowledge-co 组织里请我 review 的 PR 和提到我的地方。来了就先看一遍，能直接给意见的写好意见草稿给我；每 45 分钟看一次。", "Today, watch nowledge-co for PRs that ask for my review and anywhere I'm mentioned. When something comes in, read it first and draft review comments I can send; look every 45 minutes.") }],
+    [2, "task_event", "runner", { role: "user", from: "runner", text: "<brief>…</brief>\nStart the task." }],
+  ];
+  const round = (at: number, n: number) => {
+    let s = at;
+    const add = (dt: number, kind: string, origin: LogEvent["origin"], body: unknown) => items.push([(s += dt), kind, origin, body]);
+    if (n > 0) {
+      const old = o.oldWake && n === 2;
+      add(0, "task_event", "partner", { role: "user", from: "partner", text: L(`等到了：「${reason}」${old ? "（1794807944）" : ""}。接着做。`, `The wait is over: "${reason}"${old ? " (1794807944)" : ""}. Carry on.`) });
+    }
+    add(6, "task_event", "task", { role: "assistant", thinking: [L("先看有没有新的 review 请求", "Any new review requests")] });
+    // Every fourth round from the third, a PR came in: #1612, then #1621, #1630, ….
+    const review = n % 4 === 3;
+    const pr = 1612 + ((n - 3) / 4) * 9;
+    add(3, "task_event", "task", ex("gh search prs --review-requested=@me --owner nowledge-co --state open --json number,title,url", review ? `[{"number":${pr},"title":"mem: batch the embedding writes","url":"https://github.com/nowledge-co/mem/pull/${pr}"}]` : "[]"));
+    add(2, "task_event", "task", ex("curl -fsSL https://api.github.com/notifications?participating=true", n === 1 ? '[{"reason":"mention","subject":{"title":"bridge: handshake timeout on Vault"}}]' : "[]"));
+    if (review) {
+      add(4, "task_event", "task", { role: "assistant", text: L(`有一个新的 review 请求：**#${pr} mem: batch the embedding writes**。我先把改动读一遍。`, `One new review request: **#${pr} mem: batch the embedding writes**. Reading the change first.`) });
+      add(3, "task_event", "task", ex(`gh pr view ${pr} --repo nowledge-co/mem --json files,additions,deletions`, '{"additions":214,"deletions":61,"files":[{"path":"crates/embed/src/batch.rs"}]}'));
+      add(3, "task_event", "task", ex(`gh pr diff ${pr} --repo nowledge-co/mem`, "diff --git a/crates/embed/src/batch.rs b/crates/embed/src/batch.rs\n+pub struct Batcher { max: usize, wait: Duration }"));
+      const files = ["crates/embed/src/batch.rs", "crates/embed/src/lib.rs", "crates/embed/src/queue.rs", "crates/store/src/vectors.rs", "crates/store/src/wal.rs", "crates/embed/tests/batch.rs", "crates/embed/Cargo.toml", "docs/embedding.md"];
+      for (let i = 0; i < reads; i++) add(2, "task_event", "task", ex(`sed -n ${1 + (i % 7) * 80},${80 + (i % 7) * 80}p ${files[i % files.length]}`, "    let mut pending = Vec::with_capacity(self.max);"));
+      add(5, "task_event", "task", ex("rg -n \"flush_every|max_batch\" crates", "crates/embed/src/batch.rs:41:    flush_every: Duration::from_millis(250),"));
+      add(40, "task_event", "task", ex("cargo test -p mem-embed batch", "test result: ok. 17 passed; 0 failed"));
+      add(9, "task_event", "task", { role: "assistant", text: L(`#${pr} 看完了，整体可以合，有两处意见：\n\n1. \`Batcher::push\` 在满了之后直接 \`flush\`，但 \`wait\` 的计时没有重置，下一批会提前写出去。\n2. \`queue.rs\` 里 \`max_batch\` 默认 512，跟 \`docs/embedding.md\` 写的 256 不一致。\n\n意见草稿放在 \`~/dev/nowledge/review-${pr}.md\`，你看过再发。`, `#${pr} is read; it can merge, with two comments:\n\n1. \`Batcher::push\` flushes when full but doesn't reset the \`wait\` timer, so the next batch goes out early.\n2. \`max_batch\` defaults to 512 in \`queue.rs\`, while \`docs/embedding.md\` says 256.\n\nThe draft is in \`~/dev/nowledge/review-${pr}.md\`; send it once you've read it.`) });
+      add(2, "checkpoint", "task", { taskId: id, text: L(`#${pr} 的意见草稿写好了：review-${pr}.md`, `Drafted the #${pr} review: review-${pr}.md`) });
+    } else if (n === 1) {
+      add(4, "task_event", "task", ex("gh issue view 88 --repo nowledge-co/bridge --comments", "bridge: handshake timeout on Vault\n@weyl can you look at the 10s timeout?"));
+      add(6, "task_event", "task", { role: "assistant", text: L("bridge#88 里有人 @ 你，问 Vault 上握手 10 秒超时的事。这不是 review，我记下了，等你回来看。", "Someone mentioned you in bridge#88 about the 10 s handshake timeout on Vault. Not a review; noted for when you're back.") });
+    } else {
+      add(4, "task_event", "task", { role: "assistant", text: L("这一轮没有新的 review 请求，也没有新的提及。", "Nothing new this round: no review requests, no mentions.") });
+    }
+    add(2, "task_event", "task", { role: "tool", tool: { name: "mcp__ducter__wait_for", input: { reason, everyMs: 2_700_000 }, output: "armed", ok: true } });
+    add(2, "task_event", "task", { role: "assistant", text: L("45 分钟后再看。", "Looking again in 45 minutes.") });
+    add(1, "task_event", "task", { role: "system", text: "turn completed", raw: { turnEnd: true, kind: "turn_ended", outcome: "completed" } });
+  };
+  for (let n = 0; n <= rounds; n++) round(10 + n * 2700, n);
+  return stream(id, items);
+};
+
 export const cases = [
   { name: "mem connect, finished", harness: "codex", working: false, events: memEvents() },
   { name: "mem connect, under way", harness: "codex", working: true, events: memEvents("mem1", 55) },
@@ -230,10 +286,30 @@ export const cases = [
       [3602, "task_event", "task", { role: "tool", tool: { name: "Read", input: { file_path: "/w/bench.log" }, output: "p99 4.1ms", ok: true } }],
     ]),
   },
+  // D271: a review loop woken by its own wait, resting on the next one (its turn has ended).
+  { name: "a review loop on its own wait (zh)", harness: "codex", working: true, events: loopEvents({ zh: true, rounds: 3, oldWake: true }) },
+  { name: "a review loop, its turn under way", harness: "codex", working: true, events: loopEvents({ rounds: 1 }).slice(0, -3) },
+  {
+    // D271: what Ducter itself tells a task (a phone lent, a Stop) is never the person's bubble:
+    // the line of an older run (logged as from the user) and one from "ducter" alike.
+    name: "the person's phone lent and stopped",
+    harness: "claude-code",
+    working: true,
+    events: stream("ph1", [
+      [0, "task_open", "user", { taskId: "ph1", title: "看一下 Chrome 前台驻留", project: "", place: { kind: "none" }, harness: "claude-code", origin: "you", brief: "在我手机上开 Chrome，看它在前台待多久会被系统收走。" }],
+      [5, "task_event", "user", { role: "user", from: "user", text: 'You may use Pixel Fold now: the user\'s own phone, with their own apps, accounts and messages on it. It shows "Ducter 正在用这台手机" with a Stop button while you work; locking the phone gives it back. Take only the steps this task needs; anything that sends, pays or deletes still waits for their Go. Start with phone_look.' }],
+      [8, "task_event", "task", { role: "tool", tool: { name: "mcp__ducter__phone_look", input: {}, output: "home screen", ok: true } }],
+      [12, "task_event", "task", { role: "assistant", text: "Chrome 已在前台，开始计时。" }],
+      [300, "task_event", "user", { role: "user", from: "ducter", text: "The user said no to lending you their phone for this. Carry on without it, or report in one line what you'd need it for." }],
+      [302, "task_event", "user", { role: "user", from: "ducter", text: "Something new Ducter says." }],
+      [303, "task_event", "user", { role: "user", from: "user", text: "好的，先停一下" }],
+    ]),
+  },
 ];
 
 if (import.meta.main) {
-  const out = cases.map((c) => ({ ...c, want: turnsOf(blocksOf(c.harness, c.events, c.working)) }));
+  // D271: `inTurn`, whether a turn is under way, both ports alike.
+  const out = cases.map((c) => ({ ...c, inTurn: inTurn(c.events), want: turnsOf(blocksOf(c.harness, c.events, c.working)) }));
   writeFileSync(new URL("./transcript.json", import.meta.url), JSON.stringify(out, null, 1) + "\n");
   console.log(`wrote ${out.length} cases`);
 }

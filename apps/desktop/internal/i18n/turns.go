@@ -6,7 +6,6 @@ package i18n
 // D268: 子 agent / subagent, 做完再说 / After this).
 var zhTurns = Table{
 	"step.lines.more":     "还有 %d 行",
-	"turn.earlier":        "显示更早的 %d 步",
 	"foot.esc":            "再按一次 Esc 就暂停",
 	"foot.keep":           "继续",
 	"jump.latest":         "回到最新",
@@ -75,7 +74,6 @@ var zhTurns = Table{
 
 var enTurns = Table{
 	"step.lines.more":     "%d more lines",
-	"turn.earlier":        "Show %d earlier steps",
 	"foot.esc":            "Press Esc again to pause",
 	"foot.keep":           "Keep going",
 	"jump.latest":         "Jump to latest",

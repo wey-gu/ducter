@@ -195,6 +195,18 @@ test("a task's own check: it rests on Waiting, wakes the task (not the partner) 
   expect(sent[0]!.text).toContain("等到了");
 });
 
+test("D271: a wake leaves out what the check saw when it is only a number (a clock's epoch)", async () => {
+  const { clock, log, tasks, work, sent } = setup({ exec: async () => ({ exitCode: 0, stdout: "1794807944\n" }) });
+  openTask(log, "t1");
+  tasks.setState("t1", "working", "hot");
+  work.waiters.arm({ reason: "约45分钟后继续检查", taskId: "t1", check: { argv: ["date", "+%s"], succeedWhen: { matches: "^\\d+$" } }, everyMs: 60_000 });
+  await flush();
+  clock.advance(60_000);
+  await flush();
+  expect(log.read({ kinds: ["waiter"] }).at(-1)!.body).toMatchObject({ state: "fired" });
+  expect(sent[0]!.text).toBe("等到了：「约45分钟后继续检查」。接着做。");
+});
+
 test("a deadline: the wait runs out, the task needs you, the partner is told", async () => {
   const { clock, log, tasks, work } = setup({ exec: async () => ({ exitCode: 0, stdout: checksJson(["PENDING"]) }) });
   openTask(log, "t1");

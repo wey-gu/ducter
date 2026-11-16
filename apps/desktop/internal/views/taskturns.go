@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/markdown"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/redact"
@@ -28,134 +27,27 @@ import (
 )
 
 const (
-	// turnBudget is how many lines of the latest turns are drawn before
-	// older turns wait behind "Show n earlier steps" (the web's is the same).
-	turnBudget = 240
+	// historyLimit is how many of a task's latest events an opened task asks
+	// for (D271): a long loop's day, as many as the home sends at once.
+	historyLimit = 2000
 	// outputLines of a step's output show before "n more lines".
 	outputLines = 12
 	// escWindow is how long a first Esc waits for the second (D210).
 	escWindow = 3 * time.Second
-	// groupMax is how tall an opened run of steps grows before it scrolls (D268).
-	groupMax = 288
+	// groupMax is how many of an opened run's steps show before "n more
+	// steps" (D271: it grows in place, never a scroller of its own).
+	groupMax = 60
 	// stepSize is a step line's words (D268): 13, secondary ink.
 	stepSize = 13
 )
 
-// blocks is the opened task's transcript as blocks.
-func (a *App) blocks(task *store.Task) []Block {
-	return blocksOf(task.Harness(), task.Events, isWorking(task))
-}
+// blocks is the opened task's transcript as blocks, made once per change
+// of its events (D271).
+func (a *App) blocks(task *store.Task) []Block { return a.memoOf(task).blocks }
 
 func isWorking(task *store.Task) bool {
 	att := task.Attention()
 	return att == protocol.Working || att == protocol.Queued
-}
-
-// turnLines is how many lines a turn draws: its prompt, each step line,
-// each other block.
-func turnLines(tu *Turn) int {
-	n := 0
-	if tu.Prompt != nil {
-		n++
-	}
-	for i := range tu.Body {
-		if tu.Body[i].K == "steps" {
-			n += len(tu.Body[i].Lines)
-		} else {
-			n++
-		}
-	}
-	return n
-}
-
-// turnSteps is how many steps a turn holds.
-func turnSteps(tu *Turn) int {
-	n := 0
-	for i := range tu.Body {
-		for _, l := range tu.Body[i].Lines {
-			if l.K == "group" {
-				n += l.N
-			} else if l.Row != nil && l.Row.Step != nil {
-				n += l.Row.N
-			}
-		}
-	}
-	return n
-}
-
-// turnWindow is the first turn drawn and how many steps the turns before
-// it hold: the latest turns up to turnBudget lines (the last one whole).
-func turnWindow(turns []Turn, all bool) (from, hidden int) {
-	if all {
-		return 0, 0
-	}
-	n := 0
-	for i := len(turns) - 1; i >= 0; i-- {
-		n += turnLines(&turns[i])
-		if n > turnBudget && i < len(turns)-1 {
-			from = i + 1
-			break
-		}
-	}
-	for i := 0; i < from; i++ {
-		hidden += turnSteps(&turns[i])
-	}
-	if hidden == 0 {
-		from = 0 // only words would wait: draw them
-	}
-	return from, hidden
-}
-
-// whatItDid is the transcript: its turns, what the user sent that the Log
-// has yet to carry, then the working line while it works.
-func (a *App) whatItDid(c *ui.Context, task *store.Task, blocks []Block) {
-	t := a.T
-	turns := turnsOf(blocks)
-	from, hidden := turnWindow(turns, a.open["earlier:"+task.ID])
-	working := isWorking(task)
-	ui.Column(c.Key("did")).Gap(t.S5).AlignSelf(ui.Stretch).MinWidth(0).Children(func() {
-		if len(blocks) == 0 && len(task.Sends) == 0 {
-			ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
-		}
-		if from > 0 {
-			label := a.L.T("turn.earlier", hidden)
-			if a.quietLink(c.Key("earlier"), "earlier:"+task.ID, label, label) {
-				a.open["earlier:"+task.ID] = true
-			}
-		}
-		for i := from; i < len(turns); i++ {
-			tu := &turns[i]
-			// Your words wait their turn while nothing came after them.
-			queued := i == len(turns)-1 && len(tu.Body) == 0
-			live := working && i == len(turns)-1
-			ui.Column(c.Key(fmt.Sprintf("turn:%d", tu.Seq))).Gap(t.S3).MinWidth(0).Children(func() { a.turn(c, task, tu, queued, live) })
-		}
-		for _, sd := range task.Sends {
-			if sd.Seq == 0 {
-				a.sentBubble(c, sd.Text, sd, true)
-			}
-		}
-		// D206: words with pictures still going up: shown, sent when they land.
-		for _, w := range a.waitingTaskSends(task.ID) {
-			ui.Column(c.Key("tw:" + w.clientID)).Gap(t.S1).AlignItems(ui.End).Children(func() {
-				a.messageMedia(c, "tw"+w.clientID, nil, w.atts, true, "task:"+task.ID)
-				if w.text != "" {
-					a.sentBubble(c, w.text, nil, false)
-				}
-				if anyFailed(w.atts) {
-					ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, a.L.T("media.failed")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink)
-						if a.button(c, a.L.T("media.retry"), btnText, t.ControlSM, t.Bg) {
-							a.retryPictures(w.atts)
-						}
-					})
-				}
-			})
-		}
-		if working {
-			a.workingLine(c, task, turns, blocks)
-		}
-	})
 }
 
 // turnFold is where a finished turn's work ends: the blocks before its
@@ -212,13 +104,22 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 				text = a.shortGo(*p.Go) // the user's Go, said as they said it
 			}
 			a.sentBubble(c, text, task.SendFor(p.Seq), queued, p.Media...)
+		case "wake", "told":
+			// D271: Ducter woke it, or told it something itself: a hairline
+			// with its time, the reason (or what was sent) on hover.
+			a.dividerTip(c, a.promptLine(task, p), p.Text)
 		}
+	}
+	took := a.turnTook(task, tu)
+	a.tpage.took = ""
+	if !live && took > 0 {
+		a.tpage.took = a.L.T("turn.worked", a.shortDur(took))
 	}
 	from := 0
 	if fold := turnFold(tu, live); fold > 0 {
 		key := fmt.Sprintf("turn:%s:%d", task.ID, tu.Seq)
 		open := a.open[key]
-		if a.workedFold(c, key, a.L.T("turn.worked", a.shortDur(a.turnTook(task, tu))), open) {
+		if a.workedFold(c, key, a.L.T("turn.worked", a.shortDur(took)), open) {
 			a.open[key] = !open
 		}
 		if !open {
@@ -300,14 +201,7 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 	t := a.T
 	switch b.K {
 	case "voice":
-		markdown.View(c, autospace(b.Text), a.mdFor(b.Text))
-		if b.Saved {
-			// Saved progress: its words were said once, above; a small mark under them.
-			ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
-				a.glyph(c, 14, drawFlag(t.Faint))
-				ui.Text(c, a.L.T("task.saved")).FontSize(t.XS).TextColor(t.InkMuted).Tooltip(clock(a.tsOf(task, b.Seq)))
-			})
-		}
+		a.voice(c, task, b)
 	case "steps":
 		ui.Column(c.Key("lines")).Gap(2).MinWidth(0).Children(func() {
 			for i := range b.Lines {
@@ -466,12 +360,23 @@ func (a *App) groupLine(c *ui.Context, task *store.Task, l *Line, live bool) {
 			a.open[key] = !open
 		}
 		if open {
-			ui.Scroll(c.Key("steps")).MaxHeight(groupMax).Children(func() {
-				ui.Column(c).Gap(2).Padding(2, 0, t.S1, 22).MinWidth(0).Children(func() {
-					for i := range l.Rows {
-						a.stepRow(c.Key(fmt.Sprintf("r%d", l.Rows[i].Seq)), task, &l.Rows[i], false)
+			// D271: it grows in place; a long run shows its first steps and
+			// the rest on a click, never a scroller inside the page.
+			all := a.open[key+":all"]
+			n := len(l.Rows)
+			if !all && n > groupMax {
+				n = groupMax
+			}
+			ui.Column(c.Key("steps")).Gap(2).Padding(2, 0, t.S1, 22).MinWidth(0).Children(func() {
+				for i := 0; i < n; i++ {
+					a.stepRow(c.Key(fmt.Sprintf("r%d", l.Rows[i].Seq)), task, &l.Rows[i], false)
+				}
+				if n < len(l.Rows) {
+					more := a.L.T("group.more", len(l.Rows)-n)
+					if a.quietLink(c.Key("more"), key+":more", more, more) {
+						a.open[key+":all"] = true
 					}
-				})
+				}
 			})
 		}
 	})
@@ -763,11 +668,10 @@ func (a *App) workingLine(c *ui.Context, task *store.Task, turns []Turn, blocks 
 	t := a.T
 	words := a.stateLabel(task.Attention())
 	if n := len(blocks); n > 0 {
-		switch last := &blocks[n-1]; {
-		case last.K == "note" && last.Say == "retry":
+		// D271: only what the state proves: a retry, else that it works.
+		// Never "thinking" after its words: it may be doing anything.
+		if last := &blocks[n-1]; last.K == "note" && last.Say == "retry" {
 			words = a.noteLine(last)
-		case last.K == "voice" || last.K == "plan":
-			words = a.L.T("live.thinking")
 		}
 	}
 	since := ""
@@ -880,24 +784,6 @@ func (a *App) taskFoot(c *ui.Context, task *store.Task, blocks []Block) {
 			})
 		})
 	}
-}
-
-// jumpToLatest is the round button over the transcript's foot when the
-// reader scrolled up from the end: back to the newest.
-func (a *App) jumpToLatest(c *ui.Context, sc *ui.ScrollState) {
-	t := a.T
-	if sc.MaxY <= 0 || sc.Y >= sc.MaxY-160 {
-		return
-	}
-	ui.Row(c.Key("jump")).Absolute().Left(0).Right(0).Bottom(t.S3).Justify(ui.Center).Children(func() {
-		label := a.L.T("jump.latest")
-		b := ui.Box(c.Key("jumpbtn")).Size(t.ControlMD, t.ControlMD).Radius(t.ControlMD/2).Background(t.Surface).
-			Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(label).Tooltip(label)
-		b.Draw(drawDown(t.InkSoft))
-		if b.Clicked() {
-			sc.Y = 1 << 30
-		}
-	})
 }
 
 // drawDown is an arrow pointing down: to the newest.

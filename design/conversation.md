@@ -103,6 +103,61 @@ promotion are not built.*
   pattern). A fast decision model (e.g. Jev/Kev class) may run the gates: attention tagging,
   the recall precision gate, and the voice escalation gate.
 
+## Rich answers (D303)
+
+*Who:* the consumer who asks "compare these two" or "how did last week go" and gets a paragraph of
+numbers; the developer who asks which repo and answers by typing its name; the fresh user, who
+should never meet a wall of markup. *Felt:* 好用 and 赏心悦目: a comparison reads at a glance; a
+choice is one tap; nothing extra when a sentence will do.
+
+- **When:** only when the person asked for a comparison (table), numbers over time or across a few
+  items that came from a tool, a report or the person (chart, bar or line, one series), a list to
+  tick (checklist), or when the partner asks a question with 2-5 short answers (choices). Never for
+  one fact, a yes/no, a greeting, a task's result, or anything needing Go (that stays a decision
+  card). At most one block in the usual reply; the words around it are one or two short lines and
+  never restate it. The persona carries this ("Rich answers"); the eval's `rich-*` scenarios hold it.
+- **The format the partner writes:** a fenced block with the info string `ducter-ui` holding one
+  JSON object:
+  - `{"type":"table","title"?,"columns":[...2-6],"rows":[[...]...1-12]}`: the first column is the
+    row labels (its head may be blank); a cell at most 80 characters;
+  - `{"type":"chart","kind":"bar"|"line","title"?,"unit"?,"summary","points":[{"label","value"}...2-14]}`:
+    `summary` (one sentence, at most 200) is required; values are real numbers;
+  - `{"type":"checklist","title"?,"items":[...1-12],"tell"?:true}`;
+  - `{"type":"choices","options":[...2-5]}`, each at most 40 characters, no two alike.
+  A block is at most 4000 characters; at most three in a message and one of them choices.
+- **The home validates it** (`packages/protocol/src/rich.ts` `parseRich`, in the partner's
+  `appendAiMsg`): each valid block is stored on the message (`ai_msg.ui`, the block and its `plain`
+  text) and replaced in `text` by that plain text; an invalid one is left out and counted
+  (`uiDropped`), which the partner reads in its history ("not valid and not shown"); a message that
+  would be empty keeps its JSON as an ordinary code block. Acks and a task's question carry plain
+  text only.
+- **One text that always reads:** a table is one line per row (`- {label}: {head} {cell}, ...`), a
+  chart its title, its sentence and its points on one line, a checklist or choices lines starting
+  with `- `, with the reply language's punctuation (a `words()` table). Chat apps, pushes, Copy,
+  memory and older clients get exactly this.
+- **Drawing it:** a client splits `text` at each block's plain text (`splitRich`; a block whose text
+  is missing goes last, a kind it doesn't know stays as its text) and draws the block there, from
+  one model (`richModel` / Go `ModelOf`: a table's numeric columns, the chart's scale from zero to a
+  round top in at most five steps, every number with at most two decimals and grouped thousands).
+  `fixtures/rich.json` holds the cases the web and the Mac both pass.
+- **The look (Pebble, tokens only, light and dark):** each block on the day card's white with its
+  clay base; the table's head small and muted, row labels bold, numbers right-aligned in even
+  figures; a wide table scrolls sideways in its card on a phone with the row labels kept; bars in
+  the accent clay with a lighter top and a darker ledge, a line in the accent with hollow points,
+  dashed lines at each step and the zero line solid, the value over each bar or point when there
+  are eight or fewer; a checklist's boxes on a ledge, ticked ones in the done tint with the item
+  struck through; choices as clay pills under the question.
+- **Choices:** a tap sends the option's words as the person's message (no pictures, no reply-to),
+  exactly as if typed. They work while nothing from the person came after the message; then they
+  stay as a record, the one they said in the accent, the rest faded and not tappable.
+- **Ticks** stay on the device (web `localStorage`, the Mac's `desktop.json`), keyed by the
+  message and the block. Only `tell: true` adds **报一下进度 / Send progress**, which sends what is
+  ticked and what is left as the person's reply, at any time.
+- **Accessibility:** a table is a real table (web `<table>` with column and row headers; Mac roles
+  table, row, column header, row header, cell); a chart is an image whose words are its sentence
+  then each label and value (the web adds a hidden table of the values); a checklist item is a
+  checkbox; choices are a labelled group of buttons.
+
 ## Replies: answering one message (D236)
 
 Evidence: `research/72` (the look, and the gestures messaging apps already taught people). Context:

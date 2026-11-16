@@ -40,6 +40,9 @@ type state struct {
 	TitleSeenAt string `json:"titleSeenAt,omitempty"`
 	// SoundOff turns the app's sounds off (Settings); on by default.
 	SoundOff bool `json:"soundOff,omitempty"`
+	// Ticks are a checklist's ticks in the conversation (D303), by
+	// "<seq>.<block>": they stay on this Mac.
+	Ticks map[string][]int `json:"ticks,omitempty"`
 	// Appearance is 外观 / Look's light or dark (D302): "light", "dark", or
 	// empty (follow macOS).
 	Appearance string `json:"appearance,omitempty"`

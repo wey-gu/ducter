@@ -136,6 +136,9 @@ type AIMsg struct {
 	Cal *CalGlance `json:"cal,omitempty"`
 	// First (D298): the partner's first words, with what they offer.
 	First *FirstWords `json:"first,omitempty"`
+	// UI (D303): the blocks the partner put in its words, each standing in
+	// for its plain text in Text.
+	UI []RichUI `json:"ui,omitempty"`
 }
 
 type Ack struct {

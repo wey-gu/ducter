@@ -593,7 +593,9 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			if e.AI.First != nil && a.firstWordsOpening() {
 				a.firstWordsHead(c)
 			}
-			if strings.TrimSpace(e.AI.Text) != "" || e.AI.Cal == nil {
+			if len(e.AI.UI) > 0 {
+				a.richWords(c, e, a.rp.next) // D303: its words with the blocks it drew
+			} else if strings.TrimSpace(e.AI.Text) != "" || e.AI.Cal == nil {
 				rt := a.rp.next // D254: Reply and Copy on a right click, as the user's bubbles have
 				a.partnerBubble(c, a.takeJoin(), func() {
 					// The view shares its selection with this box (ShareSelection), whose

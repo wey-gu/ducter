@@ -31,7 +31,7 @@ const big = (n: number, word = "细节 detail ") => word.repeat(Math.ceil(n / wo
 
 /** Ceilings, in characters or estimated tokens. */
 const CEILING = {
-  systemPromptChars: 22_500, // 22.4K today (D300: the "what did you do for me?" rule, 0.17K; D243: the "anything for me?" rule, 0.43K; D157 rules, D206 pictures, D215 the call sheet, D222 the calendar line, D236 replies); the persona is tuned against the eval
+  systemPromptChars: 24_200, // 23.9K today (D303: rich answers, 1.5K; D300: the "what did you do for me?" rule, 0.17K; D243: the "anything for me?" rule, 0.43K; D157 rules, D206 pictures, D215 the call sheet, D222 the calendar line, D236 replies); the persona is tuned against the eval
   identityChars: IDENTITY_MAX + 200,
   reportChars: 11_000, // one report with every field at its bound (~2.7K tokens)
   devicesChars: 3_000, // the [devices] line with DEVICES_MAX computers

@@ -130,6 +130,11 @@ export interface Expect {
   /** D222: a calendar change card of this kind was made / none was. */
   calCard?: "create" | "move" | "cancel" | "respond";
   noCalCard?: boolean;
+  /** D303: a ducter-ui block of this type was drawn / none was; a chart of this kind; what the blocks' JSON must match. */
+  ui?: "table" | "chart" | "checklist" | "choices";
+  noUi?: boolean;
+  uiKind?: "bar" | "line";
+  uiRequire?: RegExp[];
   /** Bridge: what Ducter sent through the (fake) Bridge, all messages joined. */
   bridgeSent?: { to?: string; count?: [number, number]; require?: RegExp[]; forbid?: RegExp[] };
 }
@@ -1406,6 +1411,79 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Anything I should know about today?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 700, called: [{ tool: "noticed" }], require: [/19:40/, /13:00/], forbid: [/I (just )?(checked|read|scanned|went through)|\b\d+ (e-?mails|messages)\b|haven't (told|mentioned)/i] },
     rubric: "The user asks if there's anything they should know today. It calls noticed and answers in short English with the few things that matter, time-bound first: tomorrow's 19:40 NH 920 flight (airport by 17:40), PlanetScale maintenance on two production databases tomorrow at 13:00 and 15:00, the nightly-stats job failing repeatedly, Cloudflare AI Search starting to charge, Mia waiting about onboarding. The carpet cleaning is left out or last. One line each with when and what to do. Never says what it read or checked, or that it hadn't told them before. No task opened.",
+  },
+  // ---------- D303: rich answers, a block only when it truly helps ----------
+  {
+    id: "rich-compare-en",
+    category: "rich",
+    lang: "en",
+    steps: [{ user: "Put these side by side for me. Mac mini M4: $599, 16 GB, always plugged in, stays at home. MacBook Air M4: $999, 16 GB, runs on battery, comes with me. Which is the better always-on home for you?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 260, ui: "table", uiRequire: [/599/, /999/, /Mac mini/i, /Air/i] },
+    rubric: "The user asks for a side-by-side of two Macs they described, and which is the better always-on home. The partner answers in one or two short English sentences (the Mac mini, because it's cheaper and always plugged in; the Air only if they want it with them) and puts the comparison in a small table block compared on what the user named (price, memory, power, where it lives); its prices and numbers are the ones the user gave, none invented; a row or two of well-known, stable facts about these Macs is fine. Its words don't repeat the table row by row. No task, no web look-up.",
+  },
+  {
+    id: "rich-week-zh",
+    category: "rich",
+    lang: "zh",
+    seed: [
+      { user: "看一下 HawDB 上周每天 CI 平均跑多久" },
+      {
+        task: {
+          key: "ci",
+          title: "HawDB：上周 CI 每天平均时长",
+          ack: "我去看看 HawDB 上周的 CI 时长。",
+          state: "done",
+          report: { state: "done", summary: "HawDB main CI, average wall time per day last week (Mon–Fri): Mon 18.5 min, Tue 21.0, Wed 19.2, Thu 26.4 (the new integration suite landed that day), Fri 22.1.", questions: [], evidence: [{ kind: "url", label: "CI runs", ref: "https://github.com/hawdb/hawdb/actions" }] },
+        },
+      },
+      { ai: "看完了：周四最慢，那天加了集成测试。" },
+    ],
+    steps: [{ user: "给我看看上周每天的变化" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, ui: "chart", uiRequire: [/18\.5/, /26\.4/, /22\.1/, /"summary"/] },
+    rubric: "The task already reported the five numbers. The user asks to see the day-by-day change. The partner shows them as a small chart block (bar or line) with exactly the reported values (18.5, 21, 19.2, 26.4, 22.1; minutes), a one-sentence summary, and one or two short Chinese sentences of its own (e.g. Thursday was slowest, and why, as the report said). It invents no numbers and no days, opens no task, and doesn't list all five numbers again in prose.",
+  },
+  {
+    id: "rich-pick-zh",
+    category: "rich",
+    lang: "zh",
+    seed: [
+      { task: { key: "foo", title: "foo: 修不稳定的 TTL 测试", repo: "~/dev/foo", ack: "我去看看 foo 里那个不稳定的 TTL 测试。", state: "done", report: { state: "done", summary: "Fixed with a fake clock; bun test 20/20.", questions: [], evidence: [{ kind: "test", label: "20/20", ref: "bun test --rerun-each 20" }] } } },
+      { ai: "修好了：TTL 测试改用假时钟，不再抢时间。" },
+      { task: { key: "hawdb", title: "HawDB：lru 测试偶尔超时", repo: "~/dev/hawdb", ack: "我去查 HawDB 里那个偶尔超时的 lru 测试。", state: "done", report: { state: "done", summary: "lru eviction test no longer races; cargo test 50/50.", questions: [], evidence: [{ kind: "test", label: "50/50", ref: "cargo test lru" }] } } },
+      { ai: "HawDB 的 lru 测试也稳了。" },
+    ],
+    steps: [{ user: "又有一个测试时好时坏的，帮我修一下" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 40, ui: "choices", uiRequire: [/foo/i, /hawdb/i] },
+    rubric: "The user has worked in two repos (foo and HawDB) and asks to fix another flaky test without saying where. The partner can't act without guessing, so it asks one short Chinese question (which repo) and offers the repos as choices the user can tap (foo, HawDB; another option such as 'another repo' is fine). It opens no task yet and lists no options in prose.",
+  },
+  {
+    id: "rich-list-en",
+    category: "rich",
+    lang: "en",
+    steps: [{ user: "I'll do these myself before I ship 0.0.62: rerun the full partner eval, check the iPhone build in TestFlight, tag it, update the release notes. Make me a list I can tick off as I go, and I'll tell you when it's done" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, ui: "checklist", uiRequire: [/eval/i, /TestFlight/i, /tag/i, /release notes/i] },
+    rubric: "The user asks for a list to tick off of the four things they named. The partner gives it as a checklist block with those four items (its own short wording is fine, nothing added that they didn't say) and one short English line. It opens no task and does nothing else.",
+  },
+  {
+    id: "rich-plain-zh",
+    category: "rich",
+    lang: "zh",
+    seed: [
+      { user: "看一下 HawDB 上周每天 CI 平均跑多久" },
+      {
+        task: {
+          key: "ci",
+          title: "HawDB：上周 CI 每天平均时长",
+          ack: "我去看看 HawDB 上周的 CI 时长。",
+          state: "done",
+          report: { state: "done", summary: "HawDB main CI, average wall time per day last week (Mon–Fri): Mon 18.5 min, Tue 21.0, Wed 19.2, Thu 26.4 (the new integration suite landed that day), Fri 22.1.", questions: [], evidence: [{ kind: "url", label: "CI runs", ref: "https://github.com/hawdb/hawdb/actions" }] },
+        },
+      },
+      { ai: "看完了：周四最慢，那天加了集成测试。" },
+    ],
+    steps: [{ user: "上周四那天跑了多久？" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 80, noUi: true, require: [/26\.4|26 分钟|二十六/] },
+    rubric: "One number is asked. The partner answers in plain Chinese, one or two short sentences: about 26.4 minutes last Thursday (that the integration suite landed that day may be said; reading it as the likely reason is fine). What is graded is that a plain answer is right here: no table, chart, checklist or choices, and no task.",
   },
   // ---------- D300: "what did you send for me today?" from the Done for you record ----------
   {

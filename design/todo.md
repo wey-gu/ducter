@@ -1614,6 +1614,19 @@ Codex first, once OAR is near 1.0. See `research/17`.
       each language, especially short Latin messages the stopword score is unsure of. Trigger: the
       next non-Chinese, non-English user report, or the first interface table after zh/en.
 
+## Rich answers (D303)
+
+- **More kinds:** a chart with two series, a pie or a progress ring, a small form. Trigger: three
+  real asks the four kinds can't answer, or the "your own small apps" work (roadmap Later).
+- **Ticks across devices:** a list ticked on the phone shows unticked on the Mac. Trigger: a person
+  who ticks on one and looks on the other; then keep them on the home, per message.
+- **Choices in chat apps as buttons** (Telegram inline keyboard, Slack buttons) instead of typed
+  lines. Trigger: the first real use of choices in a chat app.
+- **The iPhone and Android apps' own views** draw the web's blocks inside the web client; a native
+  view when those apps draw the conversation natively.
+- **The full eval with the persona's "Rich answers"** (D175): only the `rich-*` scenarios ran, with
+  `--only`. Trigger: the merge; rerun all and commit LATEST.json then.
+
 ## Done for you (D300)
 
 - **Commands a harness ran itself** (a `git push` with its own approvals off) are not in the record. Trigger: the first real case, or the gate covering shell effects. Then: list outside-looking commands seen in transcripts in their own group (`flows/G-safety.md` G5).

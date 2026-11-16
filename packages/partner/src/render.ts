@@ -6,6 +6,7 @@
 import type { Attention, Bodies, LogEvent, ReplyRef, TaskCard } from "../../protocol/src/index.ts";
 import { REPLY_QUOTE } from "../../protocol/src/index.ts";
 import { harnessName } from "../../protocol/src/harnesses.ts";
+import { richShownWords } from "../../protocol/src/rich.ts";
 import { renderCallEnded } from "../../protocol/src/phone.ts";
 import { isImage, kindWords, shortId, sizeWords, type MediaRef } from "../../protocol/src/media.ts";
 import { shownOut, whoForModel } from "./bridge-out.ts";
@@ -316,7 +317,8 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       const card = b.cal ? ` [the day card for ${b.cal.from === b.cal.to ? b.cal.from : `${b.cal.from} to ${b.cal.to}`} was shown under it]` : "";
       // D298: your first words, said by the home, with what they offered (a tap fills the user's box).
       const offered = b.first?.starts.length ? ` [your first words to the user; offered: ${b.first.starts.map((s) => `“${clip(s.draft, 160)}”`).join("; ")}]` : "";
-      return `[${t} you] ${clip(b.text, 800)}${card}${offered}`.replace("] [", "] ");
+      // D303: the blocks it drew (their plain text is in the words).
+      return `[${t} you] ${clip(b.text, 800)}${card}${offered}${richShownWords(b.ui, b.uiDropped)}`.replace("] [", "] ");
     }
     case "ack":
       return `[${t} you] ${clip((e.body as Bodies["ack"]).text, 300)}`;

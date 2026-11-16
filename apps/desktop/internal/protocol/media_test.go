@@ -35,9 +35,23 @@ func TestGridLayout(t *testing.T) {
 	if four.Aspect != 1 || len(four.Tiles) != 4 || four.Tiles[3].More != 0 || four.Tiles[3].X != 0.5 || four.Tiles[3].Y != 0.5 {
 		t.Errorf("four: %+v", four)
 	}
-	six := Grid(make([]Size, 6))
-	if len(six.Tiles) != 4 || six.Tiles[3].More != 2 {
-		t.Errorf("six: %+v", six)
+	// D286: five to nine in rows, every picture shown; past nine, "+n".
+	for n := 5; n <= 9; n++ {
+		g := Grid(make([]Size, n))
+		area := 0.0
+		for _, tl := range g.Tiles {
+			area += tl.W * tl.H
+		}
+		if len(g.Tiles) != n || math.Abs(area-g.Aspect) > 1e-9 {
+			t.Errorf("%d: %+v", n, g)
+		}
+	}
+	if seven := Grid(make([]Size, 7)); seven.Tiles[0].W != 1 || seven.Tiles[0].H != 0.5 {
+		t.Errorf("seven: a banner over 3+3, got %+v", seven.Tiles[0])
+	}
+	ten := Grid(make([]Size, 10))
+	if len(ten.Tiles) != 9 || ten.Tiles[8].More != 1 {
+		t.Errorf("ten: %+v", ten)
 	}
 }
 

@@ -12,6 +12,7 @@ package views
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"sort"
 	"strings"
@@ -87,12 +88,17 @@ type Block struct {
 	Rows  []StepRow `json:"-"`
 	Lines []Line    `json:"lines,omitempty"`
 	Live  bool      `json:"live,omitempty"`
-	Go    *string   `json:"go,omitempty"`    // you: their Go relayed, its label
+	Label *string   `json:"label,omitempty"` // go (D284): the label of the Go relayed ("" its plain Go)
 	State string    `json:"state,omitempty"` // report
 	Bad   bool      `json:"bad,omitempty"`   // note: something failed
 	// Say is what a note says, worded from note.<say> (D207); Name fills it in.
 	Say  string `json:"say,omitempty"`
 	Name string `json:"name,omitempty"`
+	// Effort is a retuned note's (D282): the effort it now runs at.
+	Effort string `json:"effort,omitempty"`
+	// From and To are a compaction's sizes, before and after (D288).
+	From int `json:"from,omitempty"`
+	To   int `json:"to,omitempty"`
 	// Media (D206): you: the pictures sent with it; report: what it showed.
 	Media []protocol.MediaRef `json:"media,omitempty"`
 	// Items is a plan's (D268).
@@ -143,6 +149,12 @@ var tolds = []struct {
 	{regexp.MustCompile(`^Your loan of (.+?) ended: (?:the user |Android's switch for Ducter went off)`), "taken_back"},
 	{regexp.MustCompile(`^Your loan of (.+?) ended: (?:you gave it back|the task finished)`), "given_back"},
 	{regexp.MustCompile(`^Your loan of (.+?) ended: `), "loan_lost"},
+	// D284: Ducter's words about the person's phone logged as from the user
+	// before D271/D280, and any other line that names the person as "the
+	// user": a person never calls themself that to their own agent.
+	{regexp.MustCompile(`^The user stopped you using their phone`), "stopped"},
+	{regexp.MustCompile(`^(?:Recording .+?'s screen now|The recording (?:of .+?'s screen didn't start|is saved|stopped early)|.+?'s screen (?:is on again and it is still lent to you|went off by itself \(a screen timeout))`), "other"},
+	{regexp.MustCompile(`^The user\b`), "other"},
 }
 
 // toldOf is what Ducter told the agent (D271), from a user-role line:
@@ -234,7 +246,20 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 	switch {
 	// D268: a divider for a compaction or an interruption; a retry only while it is the latest thing.
 	case r["kind"] == "compaction_ended" && r["outcome"] != "failed":
-		return Block{Say: "compacted"}, true
+		// D288: with the size before and after when known.
+		size := func(v any) int {
+			if f, ok := v.(float64); ok && f > 0 {
+				return int(math.Round(f))
+			}
+			return 0
+		}
+		from := size(r["before"])
+		if from == 0 {
+			from = size(r["contextTokens"])
+		}
+		return Block{Say: "compacted", From: from, To: size(r["after"])}, true
+	case r["slash"] == "compact" && truthy(r["failed"]):
+		return Block{Say: "compact_failed", Bad: true}, true
 	case r["kind"] == "turn_ended" && r["outcome"] == "aborted":
 		return Block{Say: "interrupted"}, true
 	case r["kind"] == "retry":
@@ -249,14 +274,19 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 		return Block{Say: "guard"}, true
 	case obj("browser") != nil && obj("browser")["driver"] == "cua":
 		return Block{Say: "to_own_browser"}, true
-	case obj("switched") != nil || obj("moved") != nil:
+	// D282: the same agent with another model or effort.
+	case obj("retuned") != nil:
+		rt := obj("retuned")
+		return Block{Say: "retuned", Name: str(rt["model"]), Effort: str(rt["effort"])}, true
+	// D157: another computer; D282: another agent.
+	case obj("moved") != nil:
+		return Block{Say: "moved", Name: str(obj("moved")["to"])}, true
+	case obj("switched") != nil:
 		to := ""
-		if sw := obj("switched"); sw != nil && str(sw["to"]) != "" {
+		if sw := obj("switched"); str(sw["to"]) != "" {
 			to = harnessName(str(sw["to"]))
-		} else if mv := obj("moved"); mv != nil {
-			to = str(mv["to"])
 		}
-		return Block{Say: "moved", Name: to}, true
+		return Block{Say: "switched", Name: to}, true
 	case hasDevice && r["offline"] == true:
 		return Block{Say: "offline", Name: or(str(r["name"]), from(disconnectRe))}, true
 	case hasDevice && r["offline"] == false:
@@ -627,7 +657,7 @@ func turnsOf(blocks []Block) []Turn {
 	for i := range blocks {
 		b := blocks[i]
 		switch b.K {
-		case "brief", "you", "partner", "wake", "told":
+		case "brief", "you", "partner", "wake", "told", "go":
 			out = append(out, Turn{Seq: b.Seq, Prompt: &b, Body: []Block{}})
 			continue
 		}
@@ -809,6 +839,25 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 					addRow(ev.Seq, StepRow{Seq: ev.Seq, Step: &st, N: 1, Outcome: outcome})
 					continue
 				}
+				// D288: the first reading after a compaction is its size after.
+				var cx struct {
+					Kind          string  `json:"kind"`
+					After         bool    `json:"after"`
+					ContextTokens float64 `json:"contextTokens"`
+				}
+				if json.Unmarshal(b.Raw, &cx) == nil && cx.Kind == "context" {
+					if cx.After && cx.ContextTokens > 0 {
+						for i := len(out) - 1; i >= 0; i-- {
+							if out[i].K == "note" && out[i].Say == "compacted" {
+								if out[i].To == 0 {
+									out[i].To = int(math.Round(cx.ContextTokens))
+								}
+								break
+							}
+						}
+					}
+					continue
+				}
 				if n, ok := noteOf(text, b.Raw); ok {
 					n.K, n.Seq, n.Text = "note", ev.Seq, redact.Text(text)
 					out = append(out, n)
@@ -827,16 +876,18 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 					out = append(out, Block{K: "partner", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media})
 					continue
 				}
+				// D284: the person's Go on a card, as Ducter relays it, is a quiet chip.
+				if label, ok := goRelay(text); ok {
+					label = redact.Text(label)
+					out = append(out, Block{K: "go", Seq: ev.Seq, Label: &label, Text: redact.Text(text)})
+					continue
+				}
 				// D271: what Ducter itself told it is never the person's bubble.
 				if say, name, ok := toldOf(text, b.From); ok {
 					out = append(out, Block{K: "told", Seq: ev.Seq, Say: say, Name: redact.Text(name), Text: redact.Text(text)})
 					continue
 				}
-				blk := Block{K: "you", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media}
-				if label, ok := goRelay(text); ok {
-					blk.Go = &label
-				}
-				out = append(out, blk)
+				out = append(out, Block{K: "you", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media})
 			case b.Role == "assistant":
 				out = append(out, Block{K: "voice", Seq: ev.Seq, Text: redact.Text(text)})
 			}

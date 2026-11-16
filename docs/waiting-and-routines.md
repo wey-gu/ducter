@@ -35,6 +35,27 @@ how many times it has looked so far. **Check now** has it look right away instea
 closes with a tick and the task carries on. To see how a wait checks, click the line at the end
 of the task, which says what it waits for and when it is back.
 
+## "Remind me …" and what you said you'd do
+
+> Remind me at 3 this afternoon to pay the landlord.
+> I need to renew the passport on Wednesday.
+
+Ask for a reminder and it comes at that time, in your own words: **Reminder: pay the landlord.**
+Name a day without a time and it comes that morning; with no day at all, the next morning. This holds even if you chose **Only when I ask** in [Settings](settings.md), because you
+asked.
+
+When you mention something you'll do on a given day, the morning message that day starts with it:
+**On Monday you said you'd renew the passport today.** **How I know** shows the line you wrote.
+It brings back only lines like that, never a question, a guess, or something that repeats. For
+something every week, ask for a routine (below). It says each one once. If you'd rather it
+didn't, **Don't tell me this kind** is under it.
+
+The morning message also says what is coming back today and what has been waiting on you since
+yesterday or longer, in one line: **At 15:00 today: remind you to pay the utility bill.** It
+mentions each waiting card once. If your computer was asleep or restarting when your quiet hours
+ended, the morning message comes when it is back, up to a few hours late. Later than that, it
+waits for the next morning.
+
 ## "Keep going until …"
 
 > main's CI is red; keep fixing until it's green.

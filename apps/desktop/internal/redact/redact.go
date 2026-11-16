@@ -8,6 +8,7 @@ package redact
 import (
 	"regexp"
 	"strings"
+	"sync"
 )
 
 // Hidden stands where a key was. Language-neutral: the views say "a key
@@ -69,30 +70,90 @@ func Text(s string) string {
 	if len(s) < 8 {
 		return s
 	}
-	out := pem.ReplaceAllString(s, "-----BEGIN PRIVATE KEY-----"+Hidden+"-----END PRIVATE KEY-----")
-	// D191: a card number that passes Luhn keeps its last four; a named security code is hidden.
-	out = replace(card, out, func(m []string, _ int) string {
-		d := strings.Map(func(r rune) rune {
-			if r >= '0' && r <= '9' {
-				return r
+	// D284: a task's transcript is made again as older pages land; the
+	// same long outputs come through each time, so their answer is kept.
+	if len(s) < 256 {
+		return text(s)
+	}
+	memo.Lock()
+	out, ok := memo.m[s]
+	memo.Unlock()
+	if ok {
+		return out
+	}
+	out = text(s)
+	memo.Lock()
+	if len(memo.m) >= memoMax {
+		memo.m = map[string]string{}
+	}
+	memo.m[s] = out
+	memo.Unlock()
+	return out
+}
+
+// memo holds Text's answers for long texts, at most memoMax of them.
+var memo = struct {
+	sync.Mutex
+	m map[string]string
+}{m: map[string]string{}}
+
+const memoMax = 8192
+
+func text(s string) string {
+	// D284: each pattern runs only where the text holds what it needs (a
+	// necessary substring), so a long output with no key in it costs a few
+	// scans instead of nine regexps: the opened task builds 2,000 of them.
+	lower := strings.ToLower(s)
+	has := func(in string, subs ...string) bool {
+		for _, x := range subs {
+			if strings.Contains(in, x) {
+				return true
 			}
-			return -1
-		}, m[0])
-		if !luhn(d) {
+		}
+		return false
+	}
+	out := s
+	if strings.Contains(out, "PRIVATE KEY-----") {
+		out = pem.ReplaceAllString(out, "-----BEGIN PRIVATE KEY-----"+Hidden+"-----END PRIVATE KEY-----")
+	}
+	// D191: a card number that passes Luhn keeps its last four; a named security code is hidden.
+	if digitRun(out, 4) {
+		out = replace(card, out, func(m []string, _ int) string {
+			d := strings.Map(func(r rune) rune {
+				if r >= '0' && r <= '9' {
+					return r
+				}
+				return -1
+			}, m[0])
+			if !luhn(d) {
+				return m[0]
+			}
+			return Hidden + d[len(d)-4:]
+		})
+	}
+	if has(lower, "cvc", "cvv", "csc", "cvn", "security code", "安全码", "验证码", "校验码") {
+		out = replace(cvc, out, func(m []string, _ int) string { return m[1] + Hidden })
+	}
+	if has(out, "nmem_", "sk-", "gh", "glpat-", "xox", "AKIA", "ASIA", "AIza", "hf_", "npm_", "_live_", "whsec_", "shpat_", "dop_v1_") {
+		out = replace(prefixed, out, func(m []string, _ int) string {
+			if digit.MatchString(m[0][len(m[1]):]) {
+				return m[1] + Hidden
+			}
 			return m[0]
-		}
-		return Hidden + d[len(d)-4:]
-	})
-	out = replace(cvc, out, func(m []string, _ int) string { return m[1] + Hidden })
-	out = replace(prefixed, out, func(m []string, _ int) string {
-		if digit.MatchString(m[0][len(m[1]):]) {
-			return m[1] + Hidden
-		}
-		return m[0]
-	})
-	out = jwt.ReplaceAllString(out, Hidden)
-	out = replace(bearer, out, func(m []string, _ int) string { return m[1] + Hidden })
-	out = replace(urlCred, out, func(m []string, _ int) string { return m[1] + Hidden + "@" })
+		})
+	}
+	if strings.Contains(out, "eyJ") {
+		out = jwt.ReplaceAllString(out, Hidden)
+	}
+	if has(out, "earer", "asic", "oken") {
+		out = replace(bearer, out, func(m []string, _ int) string { return m[1] + Hidden })
+	}
+	if strings.Contains(out, "://") {
+		out = replace(urlCred, out, func(m []string, _ int) string { return m[1] + Hidden + "@" })
+	}
+	if !has(lower, "key", "secret", "token", "passw", "pwd", "credential", "connect") {
+		return out
+	}
 	src := out
 	out = replace(field, src, func(m []string, end int) string {
 		if keyLike(m[2]) && !strings.HasPrefix(src[end:], Hidden) {
@@ -101,6 +162,21 @@ func Text(s string) string {
 		return m[0]
 	})
 	return out
+}
+
+// digitRun reports whether s holds n ASCII digits in a row.
+func digitRun(s string, n int) bool {
+	run := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] >= '0' && s[i] <= '9' {
+			if run++; run >= n {
+				return true
+			}
+		} else {
+			run = 0
+		}
+	}
+	return false
 }
 
 // luhn: a 15- or 16-digit card number's checksum.

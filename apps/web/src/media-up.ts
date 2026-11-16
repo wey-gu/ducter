@@ -159,6 +159,34 @@ export function upload(p: Prepared | Blob, name: string, onProgress: (f: number)
 }
 
 
+// ---------- D286: a picture never blinks on its way ----------
+
+/** This device's own copy of a picture it sent (ref id → object URL): the bubble shows it at once,
+ *  never fading in a second time when the home's copy would load. */
+export const localOf = new Map<string, string>();
+
+/** Keeps a sent picture's own copy for its ref (and the tile's). */
+export function keepLocal(p: Pic) {
+  if (!p.ref || !p.local) return;
+  localOf.set(p.ref.id, p.local);
+  if (p.ref.thumb) localOf.set(p.ref.thumb.id, p.local);
+}
+
+/** Where each picture of a message sat in the tray when Send was pressed (pic key → rect): its tile
+ *  in the bubble flies from there (a shared element). Taken once. */
+export const flights = new Map<string, DOMRect>();
+
+/** Notes the tray's tiles of `where` before they leave it. */
+export function noteFlights(pics: Pic[]) {
+  if (typeof document === "undefined") return;
+  for (const p of pics) {
+    const el = document.querySelector<HTMLElement>(`.tray-pics [data-key="${p.key}"]`);
+    const r = el?.getBoundingClientRect();
+    if (r && r.width) flights.set(p.key, r);
+  }
+  setTimeout(() => flights.clear(), 1500);
+}
+
 /** Where a picture was opened: every picture of the conversation, or of one task. */
 export type ViewCtx = { kind: "conv" } | { kind: "task"; taskId: string };
 

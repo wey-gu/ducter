@@ -19,6 +19,7 @@ import { PdfBody } from "./fileview-pdf.tsx";
 import { mediaFetch, mediaUrl } from "./media-fresh.ts";
 import { title } from "./store.ts";
 import { Facts } from "./controls.tsx";
+import { FileBadge } from "./filecard.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -39,7 +40,7 @@ export function fileName(m: MediaRef): string {
 const kindWord = (m: MediaRef) => (fileName(m).split(".").pop() ?? "").toUpperCase().slice(0, 5);
 
 /** The first `limit` bytes of a file (all of it when it is smaller), and its whole size. */
-async function readHead(m: MediaRef, limit: number, signal: AbortSignal): Promise<Uint8Array> {
+export async function readHead(m: MediaRef, limit: number, signal: AbortSignal): Promise<Uint8Array> {
   const res = await mediaFetch(m, { signal });
   if (!res.ok || !res.body) throw new Error(String(res.status));
   const reader = res.body.getReader();
@@ -97,7 +98,7 @@ type Loaded = { state: "loading" } | { state: "failed" } | { state: "ready"; tex
 
 function useFile(m: MediaRef, again: number): Loaded {
   const kind = fileView(m);
-  const own = kind === "video" || kind === "none" || kind === "pdf";
+  const own = kind === "video" || kind === "audio" || kind === "none" || kind === "pdf";
   const [got, setGot] = useState<Loaded>({ state: own ? "ready" : "loading" });
   useEffect(() => {
     if (own) return;
@@ -145,22 +146,6 @@ const Chevron = ({ up }: { up?: boolean }) => (
     <path d={up ? "M5.5 12.5L10 8l4.5 4.5" : "M5.5 7.5L10 12l4.5-4.5"} />
   </svg>
 );
-
-/** A sheet with a folded corner; a document's lines on it, or a grid for a table. */
-export function FileGlyph({ m, size = 24 }: { m: MediaRef; size?: number }) {
-  const k = fileView(m);
-  return (
-    <svg class="fi" viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M6 2.8h8l4.2 4.2v14.2H6z" />
-      <path d="M14 2.8V7h4.2" />
-      {(k === "markdown" || k === "text") && <path d="M8.8 11.6h6.4M8.8 14.6h6.4M8.8 17.6h3.8" stroke-width="1.4" />}
-      {k === "table" && <path d="M8.6 11.2h6.8v6.6H8.6zM8.6 14.5h6.8M12 11.2v6.6" stroke-width="1.3" />}
-      {k === "video" && <path d="M10.4 11.4v5.6l4.6-2.8z" stroke-width="1.4" />}
-      {k === "picture" && <path d="M8.6 17.4l2.4-2.6 1.7 1.6 1.2-1.1 1.9 2.1" stroke-width="1.4" />}
-      {k === "pdf" && <path d="M8.8 11.4h6.4v3.4H8.8zM8.8 17.6h6.4" stroke-width="1.35" />}
-    </svg>
-  );
-}
 
 // ---------- the bodies ----------
 
@@ -231,7 +216,7 @@ function NoneBody({ m, said }: { m: MediaRef; said?: string }) {
   return (
     <div class="fv-none">
       <div class="fv-paper" aria-hidden="true">
-        <FileGlyph m={m} size={56} />
+        <FileBadge m={m} size={48} />
         <span class="kind">{kindWord(m)}</span>
       </div>
       <p>{said ?? t(m.type === ANY_FILE ? "file.none.kept" : "file.none")}</p>
@@ -406,6 +391,11 @@ export function FileViewer() {
       <div class="fv-media">
         <video src={mediaUrl(m)} controls playsInline preload="metadata" />
       </div>
+    ) : kind === "audio" ? (
+      <div class="fv-media fv-audio">
+        <FileBadge m={m} size={56} />
+        <audio src={mediaUrl(m)} controls preload="metadata" />
+      </div>
     ) : kind === "picture" ? (
       <div class="fv-media">
         <img src={got.pic} alt={name} draggable={false} />
@@ -423,7 +413,7 @@ export function FileViewer() {
       <article class={`fv-sheet fv-k-${kind}${source ? " fv-src" : ""}`} ref={sheet} style={drag ? { transform: `translateY(${drag}px)`, transition: "none" } : undefined}>
         <header class="fv-head" onPointerDown={onDown as any} onPointerMove={onMove as any} onPointerUp={onUp} onPointerCancel={onUp}>
           <span class="fv-grab" aria-hidden="true" />
-          <FileGlyph m={m} size={26} />
+          <FileBadge m={m} size={24} />
           <div class="fv-title">
             <span class="nm" title={name}>
               {name}

@@ -1414,10 +1414,10 @@
    {
     "seq": 108,
     "prompt": {
-     "k": "you",
+     "k": "go",
      "seq": 108,
-     "text": "User says Go: commit.",
-     "go": "commit"
+     "label": "commit",
+     "text": "User says Go: commit."
     },
     "body": [
      {
@@ -1616,6 +1616,51 @@
    },
    {
     "seq": 109,
+    "ts": "2026-11-10T06:58:14.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "from": "runner",
+     "text": "now on gpt-5.5 · high",
+     "raw": {
+      "retuned": {
+       "harness": "codex",
+       "model": "gpt-5.5",
+       "effort": "high"
+      }
+     }
+    }
+   },
+   {
+    "seq": 110,
+    "ts": "2026-11-10T06:58:14.000Z",
+    "persona": "default",
+    "stream": "task:hel1",
+    "origin": "runner",
+    "kind": "task_event",
+    "body": {
+     "taskId": "hel1",
+     "role": "system",
+     "from": "runner",
+     "text": "moved from hel to MacBook",
+     "raw": {
+      "switched": {
+       "from": "codex",
+       "to": "codex"
+      },
+      "moved": {
+       "from": "hel",
+       "to": "MacBook"
+      }
+     }
+    }
+   },
+   {
+    "seq": 111,
     "ts": "2026-11-10T06:58:15.000Z",
     "persona": "default",
     "stream": "task:hel1",
@@ -1631,7 +1676,7 @@
     }
    },
    {
-    "seq": 110,
+    "seq": 112,
     "ts": "2026-11-10T06:58:16.000Z",
     "persona": "default",
     "stream": "task:hel1",
@@ -1645,7 +1690,7 @@
     }
    },
    {
-    "seq": 111,
+    "seq": 113,
     "ts": "2026-11-10T06:58:20.000Z",
     "persona": "default",
     "stream": "task:hel1",
@@ -1750,20 +1795,35 @@
      {
       "k": "note",
       "seq": 108,
-      "say": "moved",
+      "say": "switched",
       "name": "Codex",
       "text": "moved from claude-code to codex"
      },
      {
       "k": "note",
+      "seq": 109,
+      "say": "retuned",
+      "name": "gpt-5.5",
+      "effort": "high",
+      "text": "now on gpt-5.5 · high"
+     },
+     {
+      "k": "note",
       "seq": 110,
+      "say": "moved",
+      "name": "MacBook",
+      "text": "moved from hel to MacBook"
+     },
+     {
+      "k": "note",
+      "seq": 112,
       "say": "error_delivery",
       "bad": true,
       "text": "delivery failed: socket closed"
      },
      {
       "k": "note",
-      "seq": 111,
+      "seq": 113,
       "say": "stalled",
       "text": "no report after one nudge; leaving the task idle (stall rule)"
      }
@@ -7128,6 +7188,282 @@
      "text": "好的，先停一下"
     },
     "body": []
+   }
+  ]
+ },
+ {
+  "name": "a phone task's old relays, from the user (zh)",
+  "harness": "claude-code",
+  "working": false,
+  "events": [
+   {
+    "seq": 100,
+    "ts": "2026-11-10T06:58:00.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "partner",
+    "kind": "task_open",
+    "body": {
+     "taskId": "ph2",
+     "title": "录一段 Chrome 冷启动",
+     "project": "",
+     "place": {
+      "kind": "none"
+     },
+     "harness": "claude-code",
+     "brief": "在我的手机上录一段 Chrome 冷启动的视频。"
+    }
+   },
+   {
+    "seq": 101,
+    "ts": "2026-11-10T06:58:04.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ph2",
+     "role": "assistant",
+     "text": "要你先在手机上把 Chrome 的数据清掉，好了点做完了。"
+    }
+   },
+   {
+    "seq": 102,
+    "ts": "2026-11-10T06:59:00.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "user",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ph2",
+     "role": "user",
+     "from": "user",
+     "text": "The user says they're done on the phone (清掉 Chrome 的数据). That is their word, not something you saw: phone_look first and check it really happened (the right app and screen; for a recording, that it is running or saved) before you go on. If it didn't, say what you see in one line and ask again."
+    }
+   },
+   {
+    "seq": 103,
+    "ts": "2026-11-10T06:59:04.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ph2",
+     "role": "assistant",
+     "text": "看到了，数据已清。开始录。"
+    }
+   },
+   {
+    "seq": 104,
+    "ts": "2026-11-10T06:59:10.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "user",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ph2",
+     "role": "user",
+     "from": "user",
+     "text": "Recording Pixel Fold's screen now (the whole screen, no sound; the phone shows it is recording). Carry on with the work; call phone_record_stop when what should be in the video is done."
+    }
+   },
+   {
+    "seq": 105,
+    "ts": "2026-11-10T06:59:30.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "user",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ph2",
+     "role": "user",
+     "from": "user",
+     "text": "The user stopped you using their phone (停下 / Stop). Don't use it again in this task. Report what you finished and what is left, in one or two lines."
+    }
+   },
+   {
+    "seq": 106,
+    "ts": "2026-11-10T06:59:34.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ph2",
+     "role": "assistant",
+     "text": "录到一半停了：冷启动录到了，热启动还没录。"
+    }
+   },
+   {
+    "seq": 107,
+    "ts": "2026-11-10T07:00:00.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "user",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ph2",
+     "role": "user",
+     "from": "user",
+     "text": "User says Go: Continue."
+    }
+   },
+   {
+    "seq": 108,
+    "ts": "2026-11-10T07:00:04.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ph2",
+     "role": "assistant",
+     "text": "接着录热启动。"
+    }
+   },
+   {
+    "seq": 109,
+    "ts": "2026-11-10T07:00:30.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "user",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ph2",
+     "role": "user",
+     "from": "user",
+     "text": "The user said Go: pay USD 9.99 at example.com with Visa ••4242. Within 15 minutes, fill the card with browser_fill."
+    }
+   },
+   {
+    "seq": 110,
+    "ts": "2026-11-10T07:00:40.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "user",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ph2",
+     "role": "user",
+     "from": "user",
+     "text": "热启动不用录了，收尾吧"
+    }
+   },
+   {
+    "seq": 111,
+    "ts": "2026-11-10T07:00:50.000Z",
+    "persona": "default",
+    "stream": "task:ph2",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "ph2",
+     "role": "assistant",
+     "text": "好，收尾。"
+    }
+   }
+  ],
+  "inTurn": true,
+  "want": [
+   {
+    "seq": 100,
+    "prompt": {
+     "k": "brief",
+     "seq": 100,
+     "text": "在我的手机上录一段 Chrome 冷启动的视频。",
+     "by": "partner"
+    },
+    "body": [
+     {
+      "k": "voice",
+      "seq": 101,
+      "text": "要你先在手机上把 Chrome 的数据清掉，好了点做完了。"
+     }
+    ]
+   },
+   {
+    "seq": 102,
+    "prompt": {
+     "k": "go",
+     "seq": 102,
+     "label": "Done",
+     "text": "The user says they're done on the phone (清掉 Chrome 的数据). That is their word, not something you saw: phone_look first and check it really happened (the right app and screen; for a recording, that it is running or saved) before you go on. If it didn't, say what you see in one line and ask again."
+    },
+    "body": [
+     {
+      "k": "voice",
+      "seq": 103,
+      "text": "看到了，数据已清。开始录。"
+     }
+    ]
+   },
+   {
+    "seq": 104,
+    "prompt": {
+     "k": "told",
+     "seq": 104,
+     "say": "other",
+     "text": "Recording Pixel Fold's screen now (the whole screen, no sound; the phone shows it is recording). Carry on with the work; call phone_record_stop when what should be in the video is done."
+    },
+    "body": []
+   },
+   {
+    "seq": 105,
+    "prompt": {
+     "k": "told",
+     "seq": 105,
+     "say": "stopped",
+     "text": "The user stopped you using their phone (停下 / Stop). Don't use it again in this task. Report what you finished and what is left, in one or two lines."
+    },
+    "body": [
+     {
+      "k": "voice",
+      "seq": 106,
+      "text": "录到一半停了：冷启动录到了，热启动还没录。"
+     }
+    ]
+   },
+   {
+    "seq": 107,
+    "prompt": {
+     "k": "go",
+     "seq": 107,
+     "label": "Continue",
+     "text": "User says Go: Continue."
+    },
+    "body": [
+     {
+      "k": "voice",
+      "seq": 108,
+      "text": "接着录热启动。"
+     }
+    ]
+   },
+   {
+    "seq": 109,
+    "prompt": {
+     "k": "go",
+     "seq": 109,
+     "label": "",
+     "text": "The user said Go: pay USD 9.99 at example.com with Visa ••4242. Within 15 minutes, fill the card with browser_fill."
+    },
+    "body": []
+   },
+   {
+    "seq": 110,
+    "prompt": {
+     "k": "you",
+     "seq": 110,
+     "text": "热启动不用录了，收尾吧"
+    },
+    "body": [
+     {
+      "k": "voice",
+      "seq": 111,
+      "text": "好，收尾。"
+     }
+    ]
    }
   ]
  }

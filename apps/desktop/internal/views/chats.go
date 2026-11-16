@@ -1,6 +1,7 @@
 package views
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -13,9 +14,22 @@ import (
 // the one conversation. Paste the token(s) once, link the account with a
 // one-time code, see who is linked, unlink. A token goes to the home once,
 // in channel_connect, and never comes back.
+//
+// D283: the page is D273's grid. Each chat app is one raised group whose
+// first row is the app itself (its letter pebble, its name, how it stands),
+// never a title repeated above it; a setup is a short guided path, a step
+// mark in the tile column and one sentence beside it; Connect is the
+// group's one primary at the right edge of its last line, where its privacy
+// note sits on the left. iMessage (D277) is the third group (imessage.go).
 
 // TabChats is 聊天软件 / Chat apps.
 const TabChats = "chats"
+
+// Where a setup's links go.
+const (
+	botFatherURL = "https://t.me/BotFather"
+	slackAppsURL = "https://api.slack.com/apps?new_app=1"
+)
 
 type chatsState struct {
 	token, app map[string]string // what is typed into each card's fields
@@ -23,6 +37,8 @@ type chatsState struct {
 	bad        map[string]string // the last connect's refusal: token | network
 	code       map[string]protocol.ServerFrame
 	copied     bool
+	manifest   bool   // the manifest's View is open
+	forgetting string // D289: the app whose Disconnect asks in place
 }
 
 var chatNames = map[string]string{"telegram": "Telegram", "slack": "Slack"}
@@ -58,23 +74,20 @@ func (a *App) chatsPanel(c *ui.Context) {
 	f := a.S.Channels
 	if f == nil {
 		ui.Text(c, a.L.T("chats.state.starting")).FontSize(t.MD).TextColor(t.InkMuted)
-		return
+	} else {
+		for _, v := range f.Channels {
+			a.chatCard(c, v, f.SlackManifest)
+		}
 	}
-	for _, v := range f.Channels {
-		a.chatCard(c, v, f.SlackManifest)
-	}
-	ui.Text(c, a.L.T("chats.goes")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Padding(0, t.S1)
+	a.imessageGroup(c)
+	a.paperNote(c, a.L.T("chats.goes"))
 }
 
 func (a *App) chatState(v protocol.ChannelView) (string, sideTone) {
 	name := chatNames[v.Kind]
 	switch v.State {
 	case "linked":
-		name := ""
-		if v.Linked != nil {
-			name = v.Linked.Name
-		}
-		return a.L.T("chats.state.linked", name), sideDone
+		return a.L.T("chats.state.linked", botLine(v)), sideDone
 	case "unlinked":
 		return a.L.T("chats.state.unlinked"), sideInk
 	case "starting":
@@ -91,6 +104,152 @@ func (a *App) chatState(v protocol.ChannelView) (string, sideTone) {
 	return a.L.T("chats.state.off"), sideMuted
 }
 
+// botLine is the partner's own bot there: @handle on Telegram, the
+// workspace on Slack, else its name.
+func botLine(v protocol.ChannelView) string {
+	if v.Bot == nil {
+		return chatNames[v.Kind]
+	}
+	switch {
+	case v.Bot.Handle != "":
+		return "@" + v.Bot.Handle
+	case v.Bot.Team != "":
+		return v.Bot.Team
+	}
+	return v.Bot.Name
+}
+
+// chatGroup is one chat app's raised group: no title on the paper, the app
+// is its first row.
+func (a *App) chatGroup(c *ui.Context, key, name string, body func()) {
+	a.group(c, key, "", "", func() {
+		ui.Column(c).Role(ui.RoleGroup).Label(name).Children(body)
+	})
+}
+
+// chatHead is a chat app's first row: its letter pebble in the tile
+// column, its name, and one line of how it stands.
+func (a *App) chatHead(c *ui.Context, kind, name, line string, tone sideTone) {
+	t := a.T
+	a.sep(c)
+	ui.Row(c.Key("chat-head:"+kind)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(72).AlignItems(ui.Center).Children(func() {
+		a.chatTile(c, kind)
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+			ui.Text(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).LineHeight(1.3)
+			w := 600
+			if tone == sideMuted {
+				w = 500
+			}
+			ui.Text(c, line).FontSize(t.SM).FontWeight(w).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
+		})
+	})
+}
+
+// chatTile is a chat app's mark: its first letter on a clay pebble in a
+// tint of the palette (never the service's own logo).
+func (a *App) chatTile(c *ui.Context, kind string) {
+	t := a.T
+	letter, fill, ledge, ink := "T", t.Working.Surface, t.Working.Ledge, t.Working.Ink
+	switch kind {
+	case "slack":
+		letter, fill, ledge, ink = "S", t.Waiting.Surface, t.Waiting.Ledge, t.Waiting.Ink
+	case "imessage":
+		letter, fill, ledge, ink = "M", t.Done.Surface, t.Done.Ledge, t.Done.Ink
+	}
+	ui.Row(c.Key("chat-tile:"+kind)).Size(40, 40).Shrink(0).Radius(t.RadiusSM).Background(fill).
+		Shadow(0, 3, 0, 0, ledge).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+		ui.Text(c, letter).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(ink).LineHeight(1)
+	})
+}
+
+// chatBody is a block of a group's rows set on the text column (past the
+// tile column), the hairline above.
+func (a *App) chatBody(c *ui.Context, key string, body func()) {
+	t := a.T
+	a.sep(c)
+	ui.Column(c.Key("chat-body:"+key)).Gap(t.S4).Padding(t.S4, t.S5).Children(body)
+}
+
+// chatStep is one step of a setup: its mark centred in the tile column,
+// one sentence beside it, and what the step needs (a command, a link, a
+// field) under the sentence.
+func (a *App) chatStep(c *ui.Context, n int, text string, aside func()) {
+	t := a.T
+	ui.Row(c.Key("chat-step:" + strconv.Itoa(n) + text)).Gap(t.S3).AlignItems(ui.Start).Children(func() {
+		ui.Row(c).Width(40).Shrink(0).Justify(ui.Center).Padding(1, 0, 0, 0).Children(func() {
+			ui.Row(c).Size(26, 26).Radius(13).Background(t.Sunken).Shadow(0, 2, 0, 0, t.Line2).
+				Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+				ui.Text(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft).LineHeight(1)
+			})
+		})
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S2).Children(func() {
+			ui.Text(c, text).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+			if aside != nil {
+				aside()
+			}
+		})
+	})
+}
+
+// chatRow is a row on the text column: a title, one muted line, its
+// control at the right edge.
+func (a *App) chatRow(c *ui.Context, key, title, line string, control func()) {
+	t := a.T
+	a.sep(c)
+	ui.Row(c.Key("chat-row:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
+		ui.Box(c).Width(40).Shrink(0)
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+			ui.Text(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+			if line != "" {
+				ui.Text(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			}
+		})
+		if control != nil {
+			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(control)
+		}
+	})
+}
+
+// chatFoot is a group's last line: its one quiet note on the text column,
+// its button(s) at the right edge.
+func (a *App) chatFoot(c *ui.Context, key, note string, buttons func()) {
+	t := a.T
+	a.sep(c)
+	ui.Row(c.Key("chat-foot:"+key)).Gap(t.S3).Padding(t.S3, t.S5, t.S4, t.S5).MinHeight(60).AlignItems(ui.Center).Children(func() {
+		ui.Box(c).Width(40).Shrink(0)
+		ui.Text(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
+		if buttons != nil {
+			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(buttons)
+		}
+	})
+}
+
+// chatChip is a command or a code set apart from the sentence: mono, on a
+// sunken chip, selectable.
+func (a *App) chatChip(c *ui.Context, text string, size float32) {
+	t := a.T
+	ui.Row(c).Children(func() {
+		ui.Text(c, text).Font(t.Mono).FontSize(size).FontWeight(600).TextColor(t.Ink).
+			Padding(t.S1, t.S2).Radius(t.RadiusXS).Background(t.SurfaceSunken).Selectable()
+	})
+}
+
+// chatField is a real field: its label over it, a white input with a
+// hairline that turns ink while typing in it.
+func (a *App) chatField(c *ui.Context, key, label string, v *string, placeholder string) {
+	t := a.T
+	ui.Column(c.Key("chat-field:" + key)).Gap(t.S1).MaxWidth(460).Children(func() {
+		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		in := ui.TextInput(c.Key("chat-input:"+key), v).Placeholder(placeholder).Label(label).Password().
+			FontSize(t.MD).Height(t.ControlMD).Padding(0, t.S4).Radius(t.RadiusSM).Background(t.Surface)
+		edge := t.Line2
+		if in.Focused() {
+			edge = t.InkSoft
+		}
+		in.Border(1, edge)
+	})
+}
+
 func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 	t := a.T
 	name := chatNames[v.Kind]
@@ -98,51 +257,49 @@ func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 	if v.Kind == "slack" {
 		who = "chats.sl.who"
 	}
-	a.group(c, "chat-"+v.Kind, name, a.L.T(who), func() {
-		title := name
-		if v.Bot != nil {
-			title = v.Bot.Name
-			if v.Bot.Handle != "" {
-				title += " · @" + v.Bot.Handle
-			} else if v.Bot.Team != "" {
-				title += " · " + v.Bot.Team
-			}
-		}
+	a.chatGroup(c, "chat-"+v.Kind, name, func() {
 		line, tone := a.chatState(v)
-		a.rowBlock(c, "state:"+v.Kind, func() {
-			ui.Text(c, title).FontSize(t.MD).FontWeight(800)
-			ui.Text(c, line).FontSize(t.SM).FontWeight(600).TextColor(a.sideInk(tone))
-			if v.StrangerAt != "" {
-				if at, err := time.Parse(time.RFC3339, v.StrangerAt); err == nil && a.Now().Sub(at) < 24*time.Hour {
-					ui.Text(c, a.L.T("chats.stranger", name, a.personaName())).FontSize(t.SM).TextColor(t.InkMuted)
-				}
+		a.chatHead(c, v.Kind, name, line, tone)
+		if v.StrangerAt != "" {
+			if at, err := time.Parse(time.RFC3339, v.StrangerAt); err == nil && a.Now().Sub(at) < 24*time.Hour {
+				a.chatRow(c, "stranger:"+v.Kind, a.L.T("chats.stranger", name, a.personaName()), "", nil)
 			}
-		})
-		if v.State == "off" || (v.State == "cant_connect" && v.Reason == "token") {
+		}
+		switch {
+		case v.State == "off" || (v.State == "cant_connect" && v.Reason == "token"):
 			a.chatConnect(c, v.Kind, manifest)
-		}
-		if v.State == "unlinked" {
+			a.chatFoot(c, "connect:"+v.Kind, a.L.T(who), func() { a.chatConnectButton(c, v.Kind) })
+			return
+		case v.State == "unlinked":
 			a.chatLink(c, v)
-		}
-		if v.State != "off" {
-			a.actions(c, "chat-end:"+v.Kind, func() {
-				if a.buttonFor(c, a.L.T("chats.forget", name), name, btnText, t.ControlSM, t.Surface) {
-					a.send(protocol.ChannelOpReq{T: "channel_forget", Kind: v.Kind})
-				}
-			}, func() {
-				if v.State == "linked" && a.buttonFor(c, a.L.T("chats.unlink"), name, btnSecondary, t.ControlSM, t.Surface) {
+		case v.State == "linked":
+			person := ""
+			if v.Linked != nil {
+				person = v.Linked.Name
+			}
+			a.chatRow(c, "linked:"+v.Kind, a.L.T("chats.linked.who", person), a.L.T("chats.linked.goes", name), func() {
+				if a.buttonFor(c, a.L.T("chats.unlink"), name, btnText, t.ControlSM, t.Surface) {
 					a.send(protocol.ChannelOpReq{T: "channel_unlink", Kind: v.Kind})
 				}
 			})
 		}
-	})
-}
-
-func (a *App) chatStep(c *ui.Context, n, text string) {
-	t := a.T
-	ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
-		ui.Text(c, n).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft).Shrink(0)
-		ui.Text(c, text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft).Grow(1).MinWidth(0)
+		// D289: a destructive action is quiet until hovered, and asks in place.
+		if a.chats.forgetting == v.Kind {
+			keep, forget := a.confirmRow(c, "chat-forget:"+v.Kind, a.L.T("chats.forget.ask", name), a.L.T("card.stop.keep"), a.L.T("chats.forget", name), name)
+			if keep {
+				a.chats.forgetting = ""
+			}
+			if forget {
+				a.chats.forgetting = ""
+				a.send(protocol.ChannelOpReq{T: "channel_forget", Kind: v.Kind})
+			}
+			return
+		}
+		a.chatFoot(c, "end:"+v.Kind, a.L.T(who), func() {
+			if a.quietDanger(c, "chat-forget:"+v.Kind, a.L.T("chats.forget", name), name) {
+				a.chats.forgetting = v.Kind
+			}
+		})
 	})
 }
 
@@ -150,30 +307,57 @@ func (a *App) chatConnect(c *ui.Context, kind, manifest string) {
 	t := a.T
 	s := &a.chats
 	tok, app := s.token[kind], s.app[kind]
-	a.rowBlock(c, "connect:"+kind, func() {
+	a.chatBody(c, "connect:"+kind, func() {
 		if kind == "telegram" {
-			a.chatStep(c, "1", a.L.T("chats.tg.step1", a.personaName()))
-			a.chatStep(c, "2", a.L.T("chats.tg.step2"))
-			a.afInput(c, "chat-tg", a.L.T("chats.tg.key"), &tok, "", true)
+			a.chatStep(c, 1, a.L.T("chats.tg.step1"), func() {
+				ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
+					a.chatChip(c, "/newbot", t.MonoSM)
+					if a.quietLink(c, "botfather", a.L.T("chats.tg.botfather"), a.L.T("chats.tg.botfather")) {
+						a.openLink(botFatherURL)
+					}
+				})
+			})
+			a.chatStep(c, 2, a.L.T("chats.tg.step2", a.personaName()), nil)
+			a.chatStep(c, 3, a.L.T("chats.tg.step3"), func() {
+				a.chatField(c, "chat-tg", a.L.T("chats.tg.key"), &tok, "123456789:AA…")
+			})
 		} else {
-			a.chatStep(c, "1", a.L.T("chats.sl.step1"))
-			a.chatStep(c, "2", a.L.T("chats.sl.step2"))
-			ui.Scroll(c.Key("chat-manifest")).MaxHeight(150).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
-				ui.Text(c, manifest).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Padding(t.S2, t.S3).Selectable()
-			})
-			ui.Row(c).Children(func() {
-				label := a.L.T("chats.sl.copy")
-				if s.copied {
-					label = a.L.T("chats.sl.copied")
+			a.chatStep(c, 1, a.L.T("chats.sl.step1"), func() {
+				ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+					label := a.L.T("chats.sl.copy")
+					if s.copied {
+						label = a.L.T("chats.sl.copied")
+					}
+					if a.buttonFor(c, label, "Slack", btnSecondary, t.ControlSM, t.Surface) {
+						c.WriteClipboard(manifest)
+						s.copied = true
+					}
+					view, chev := a.L.T("chats.sl.view"), 1
+					if s.manifest {
+						view, chev = a.L.T("chats.sl.hide"), 2
+					}
+					if a.quietButton(c, "chat-manifest", view, a.L.T("chats.sl.copy"), false, chev) {
+						s.manifest = !s.manifest
+					}
+				})
+				if s.manifest {
+					ui.Scroll(c.Key("chat-manifest")).MaxHeight(180).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
+						ui.Text(c, manifest).Font(t.Mono).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft).Padding(t.S3, t.S4).Selectable()
+					})
 				}
-				if a.button(c, label, btnSecondary, t.ControlSM, t.Surface) {
-					c.WriteClipboard(manifest)
-					s.copied = true
+			})
+			a.chatStep(c, 2, a.L.T("chats.sl.step2"), func() {
+				if a.quietLink(c, "slack-apps", a.L.T("chats.sl.open"), a.L.T("chats.sl.open")) {
+					a.openLink(slackAppsURL)
 				}
 			})
-			a.chatStep(c, "3", a.L.T("chats.sl.step3"))
-			a.afInput(c, "chat-sl-bot", a.L.T("chats.sl.bot"), &tok, "xoxb-…", true)
-			a.afInput(c, "chat-sl-app", a.L.T("chats.sl.app"), &app, "xapp-…", true)
+			a.chatStep(c, 3, a.L.T("chats.sl.step3"), nil)
+			a.chatStep(c, 4, a.L.T("chats.sl.step4"), func() {
+				a.chatField(c, "chat-sl-app", a.L.T("chats.sl.app"), &app, "xapp-…")
+			})
+			a.chatStep(c, 5, a.L.T("chats.sl.step5"), func() {
+				a.chatField(c, "chat-sl-bot", a.L.T("chats.sl.bot"), &tok, "xoxb-…")
+			})
 		}
 		s.token[kind], s.app[kind] = tok, app
 		if r := s.bad[kind]; r != "" {
@@ -181,34 +365,43 @@ func (a *App) chatConnect(c *ui.Context, kind, manifest string) {
 			if r == "token" {
 				key = "chats.bad.key"
 			}
-			ui.Text(c, a.L.T(key)).FontSize(t.SM).TextColor(t.Failed.Ink)
+			ui.Row(c).Gap(t.S3).Children(func() {
+				ui.Box(c).Width(40).Shrink(0)
+				ui.Text(c, a.L.T(key)).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink)
+			})
 		}
-		ready := tok != "" && (kind == "telegram" || app != "")
-		ui.Row(c).Children(func() {
-			ui.Box(c).Grow(1)
-			label := a.L.T("chats.connect")
-			if s.busy[kind] {
-				label = a.L.T("chats.connecting")
-			}
-			if a.button(c, label, btnPrimary, t.ControlSM, t.Surface) && ready && !s.busy[kind] {
-				req := protocol.ChannelConnectReq{T: "channel_connect", Kind: kind}
-				if kind == "telegram" {
-					req.Token = tok
-				} else {
-					req.BotToken, req.AppToken = tok, app
-				}
-				a.send(req)
-				s.busy[kind] = true
-				delete(s.bad, kind)
-				s.token[kind], s.app[kind] = "", ""
-			}
-		})
 	})
+}
+
+// chatConnectButton is the group's one primary: Connect, at the right
+// edge of its last line.
+func (a *App) chatConnectButton(c *ui.Context, kind string) {
+	t := a.T
+	s := &a.chats
+	tok, app := s.token[kind], s.app[kind]
+	ready := tok != "" && (kind == "telegram" || app != "")
+	label := a.L.T("chats.connect")
+	if s.busy[kind] {
+		label = a.L.T("chats.connecting")
+	}
+	if a.buttonFor(c, label, chatNames[kind], btnPrimary, t.ControlMD, t.Surface) && ready && !s.busy[kind] {
+		req := protocol.ChannelConnectReq{T: "channel_connect", Kind: kind}
+		if kind == "telegram" {
+			req.Token = tok
+		} else {
+			req.BotToken, req.AppToken = tok, app
+		}
+		a.send(req)
+		s.busy[kind] = true
+		delete(s.bad, kind)
+		s.token[kind], s.app[kind] = "", ""
+	}
 }
 
 func (a *App) chatLink(c *ui.Context, v protocol.ChannelView) {
 	t := a.T
 	s := &a.chats
+	name := chatNames[v.Kind]
 	code, ok := s.code[v.Kind]
 	live := false
 	if ok {
@@ -216,60 +409,36 @@ func (a *App) chatLink(c *ui.Context, v protocol.ChannelView) {
 			live = true
 		}
 	}
-	a.rowBlock(c, "link:"+v.Kind, func() {
-		if !live {
-			ui.Row(c).Children(func() {
-				if a.button(c, a.L.T("chats.code.get"), btnPrimary, t.ControlSM, t.Surface) {
-					a.send(protocol.ChannelOpReq{T: "channel_code", Kind: v.Kind})
+	if !live {
+		a.chatRow(c, "link:"+v.Kind, a.L.T("chats.link.title"), a.L.T("chats.link.note", a.personaName()), func() {
+			if a.buttonFor(c, a.L.T("chats.code.get"), name, btnPrimary, t.ControlMD, t.Surface) {
+				a.send(protocol.ChannelOpReq{T: "channel_code", Kind: v.Kind})
+			}
+		})
+		return
+	}
+	a.chatBody(c, "code:"+v.Kind, func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Width(40).Shrink(0)
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S2).Children(func() {
+				if v.Kind == "telegram" {
+					ui.Text(c, a.L.T("chats.tg.code")).FontSize(t.MD).LineHeight(a.leading(1.5))
+					a.chatChip(c, "/start "+code.Code, t.MonoSM)
+				} else {
+					bot := a.personaName()
+					if v.Bot != nil && v.Bot.Name != "" {
+						bot = v.Bot.Name
+					}
+					ui.Text(c, a.L.T("chats.sl.code", bot)).FontSize(t.MD).LineHeight(a.leading(1.5))
+					ui.Text(c, code.Code).Font(t.Mono).FontSize(t.XL).FontWeight(700).LetterSpacing(1).Selectable()
 				}
+				ui.Text(c, a.L.T("chats.code.ttl")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
-			return
-		}
-		if v.Kind == "telegram" && code.Link != "" {
-			ui.Row(c).Children(func() {
-				if a.button(c, a.L.T("chats.tg.open"), btnPrimary, t.ControlSM, t.Surface) {
+			if v.Kind == "telegram" && code.Link != "" {
+				if a.buttonFor(c, a.L.T("chats.tg.open"), name, btnPrimary, t.ControlMD, t.Surface) {
 					a.openLink(code.Link)
 				}
-			})
-			ui.Text(c, a.L.T("chats.tg.code", "/start "+code.Code)).FontSize(t.SM).TextColor(t.InkSoft)
-		} else {
-			bot := ""
-			if v.Bot != nil {
-				bot = v.Bot.Name
 			}
-			ui.Text(c, a.L.T("chats.sl.code", bot, code.Code)).FontSize(t.SM).TextColor(t.InkSoft)
-		}
-		ui.Text(c, code.Code).Font(t.Mono).FontSize(t.XL).FontWeight(700).Selectable()
-		ui.Text(c, a.L.T("chats.code.ttl", a.personaName())).FontSize(t.SM).TextColor(t.InkMuted)
+		})
 	})
-}
-
-// drawChats is Chat apps' icon: two clay speech bubbles, drawn (no service
-// marks), the partner's on the paper, the person's in the accent.
-func (a *App) drawChats() func(p *ui.Painter, r ui.Rect) {
-	t := a.T
-	return func(p *ui.Painter, r ui.Rect) {
-		s := r.W / 40
-		x := func(v float32) float32 { return r.X + v*s }
-		y := func(v float32) float32 { return r.Y + v*s }
-		p.Fill(ui.Rect{X: x(5), Y: y(7), W: 23 * s, H: 16 * s}, t.Line2, 6*s)
-		p.Fill(ui.Rect{X: x(5), Y: y(5), W: 23 * s, H: 16 * s}, t.Surface, 6*s)
-		var tail ui.Path
-		tail.MoveTo(x(9), y(20))
-		tail.LineTo(x(8), y(26))
-		tail.LineTo(x(15), y(20.5))
-		p.FillPath(&tail, t.Surface)
-		p.Fill(ui.Rect{X: x(15), Y: y(18), W: 20 * s, H: 14 * s}, t.PressAccent.Color, 6*s)
-		p.Fill(ui.Rect{X: x(15), Y: y(16), W: 20 * s, H: 14 * s}, t.Accent, 6*s)
-		var tail2 ui.Path
-		tail2.MoveTo(x(29), y(29))
-		tail2.LineTo(x(32), y(35))
-		tail2.LineTo(x(25), y(29.5))
-		p.FillPath(&tail2, t.Accent)
-		for i := 0; i < 3; i++ {
-			var d ui.Path
-			d.Circle(x(20.5+float32(i)*4.5), y(23), 1.4*s)
-			p.FillPath(&d, t.Surface)
-		}
-	}
 }

@@ -52,6 +52,8 @@ export function NavBtn(p: { label: string; onClick: () => void; glyph?: Componen
 export function PlaceSeg(p: { segs: { key: string; label: string; about: string; glyph: ComponentChildren; on: boolean; go: () => void }[] }) {
   return (
     <nav class="places">
+      {/* D290: the knob is its own piece under the marks, so it slides to the place shown. */}
+      {p.segs.some((s) => s.on) && <span class="knob" aria-hidden="true" style={{ "--i": p.segs.findIndex((s) => s.on) }} />}
       {p.segs.map((s) => (
         <button
           key={s.key}
@@ -118,10 +120,11 @@ export const UpdatePebble = () => {
 }
 
 /** A Btn that opens a page elsewhere (a sign-in, a vendor's site) in a new tab: the same look. */
-export function LinkBtn(p: { kind: "primary" | "secondary"; size?: "sm"; href: string; label: string }) {
+export function LinkBtn(p: { kind: "primary" | "secondary" | "text"; size?: "sm"; href: string; label: string }) {
   return (
     <a class={`btn ${p.kind}${p.size ? ` ${p.size}` : ""}`} href={p.href} target="_blank" rel="noopener noreferrer">
       <span class="lbl">{p.label}</span>
+      {p.kind === "text" && <Chev cls="btn-chev" />}
     </a>
   );
 }
@@ -170,10 +173,11 @@ export function Toggle(p: { label: string; help?: string; checked: boolean; onCh
   );
 }
 
-/** The destructive text button: failed ink, flat (断开这台 MacBook, a connection's 断开). */
-export function DangerButton(p: { label: string; about?: string; onClick: () => void }) {
+/** The destructive text button: failed ink, flat (断开这台 MacBook, a connection's 断开). `quiet`
+ *  (D289): before it is confirmed, the soft ink, the failed ink only under the pointer. */
+export function DangerButton(p: { label: string; about?: string; quiet?: boolean; onClick: () => void }) {
   return (
-    <button class="danger-text" aria-label={p.about ? spoken(A.L, p.label, p.about) : undefined} onClick={p.onClick}>
+    <button class={`danger-text${p.quiet ? " quiet" : ""}`} aria-label={p.about ? spoken(A.L, p.label, p.about) : undefined} onClick={p.onClick}>
       {p.label}
     </button>
   );
@@ -437,4 +441,29 @@ export function Facts(p: { items: (ComponentChildren | false | null | undefined)
   const xs = p.items.filter((x) => x !== false && x != null && x !== "");
   if (!xs.length) return null;
   return <span class={`facts${p.class ? ` ${p.class}` : ""}`}>{xs.map((x, i) => <span key={i}>{x}</span>)}</span>;
+}
+
+/** D289: a row that opens more under it (a source's service, a setup's step): its tile, words and
+ *  chevron are the button; a switch may stand apart at its right edge. The Mac's `openRow`. */
+export function OpenRow(p: { tile: ComponentChildren; title: string; line?: string; warn?: boolean; state?: { text: string; tone?: "done" | "bad" }; open: boolean; onClick: () => void; sw?: { label: string; on: boolean; onChange: (v: boolean) => void } }) {
+  return (
+    <div class="g-open-row">
+      <button class="g-open" aria-expanded={p.open} onClick={p.onClick}>
+        {p.tile}
+        <span class="grow">
+          <b>
+            {p.title}
+            <Chev open={p.open} />
+          </b>
+          {p.line && <small class={p.warn ? "warn" : undefined}>{p.line}</small>}
+        </span>
+      </button>
+      {p.state && <span class={`g-state${p.state.tone ? ` tone-${p.state.tone}` : ""}`}>{p.state.text}</span>}
+      {p.sw && (
+        <label class="switch bare">
+          <input type="checkbox" role="switch" aria-label={p.sw.label} checked={p.sw.on} onChange={(e) => p.sw!.onChange((e.target as HTMLInputElement).checked)} />
+        </label>
+      )}
+    </div>
+  );
 }

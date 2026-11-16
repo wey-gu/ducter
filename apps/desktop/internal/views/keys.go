@@ -42,11 +42,8 @@ func (a *App) keysGroup(c *ui.Context, f *protocol.ServerFrame) {
 				a.keyForm(c, &x)
 				continue
 			}
-			mark := x.Hint
-			if mark == "" {
-				mark = a.L.T("af.key.kept")
-			}
-			a.afRow(c, "key:"+x.ID, x.Name, x.Env+" · "+a.afUsed(x.UsedAt), mark, func() { a.keyEdit(&x) })
+			// D291: the name a task asks for is its line; when it was used, its own element at the right.
+			a.afRow(c, "key:"+x.ID, x.Name, x.Env, a.afUsed(x.UsedAt), func() { a.keyEdit(&x) })
 		}
 		if s.editing == "key:new" {
 			a.keyForm(c, nil)
@@ -55,7 +52,9 @@ func (a *App) keysGroup(c *ui.Context, f *protocol.ServerFrame) {
 			if len(f.SavedKeys) == 0 {
 				help = a.L.T("af.key.why")
 			}
-			a.afRow(c, "key:add", "+  "+a.L.T("af.key.add"), help, "", func() { a.keyEdit(nil) })
+			if a.addRow(c, "key", a.L.T("af.key.add"), help) { // D289: D273's add row
+				a.keyEdit(nil)
+			}
 		}
 	})
 }

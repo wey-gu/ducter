@@ -89,6 +89,10 @@ type mediaState struct {
 	n        int
 	// asked is when fresh keys were last asked for, per id (D242).
 	asked map[string]time.Time
+	// tileAt is where each picture's tile sat last frame (D286).
+	tileAt map[string]ui.Rect
+	// glimpses are the file cards' glimpses, per id (D286).
+	glimpses map[string]*glimpse
 }
 
 type taskWait struct {
@@ -528,6 +532,9 @@ const mediaMaxH = 360
 // 70% of it (and 440); a single picture also fits under mediaMaxH.
 func gridSize(g protocol.GridLayout, colW float32) (float32, float32) {
 	w := min(colW*0.7, 440)
+	if len(g.Tiles) >= 5 {
+		w = min(colW*0.78, 500) // D286: every picture of a trip shows
+	}
 	h := w * float32(g.Aspect)
 	if g.Single && h > mediaMaxH {
 		h = mediaMaxH
@@ -600,28 +607,6 @@ func attRef(x *attach) protocol.MediaRef {
 	return protocol.MediaRef{ID: x.key, Type: "application/octet-stream", Bytes: int64(len(x.file)), Name: x.name}
 }
 
-// sendingFileCard is a file of the person's own message on its way (D259):
-// the same card, the ring where Open will be; once it lands, the card itself.
-func (a *App) sendingFileCard(c *ui.Context, x *attach) {
-	if x.ref != nil {
-		a.fileCard(c, x.ref)
-		return
-	}
-	t := a.T
-	ui.Row(c.Key("sending:"+x.key)).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S3).MinWidth(280).MaxWidth(420).
-		Radius(t.RadiusMD).Background(t.Surface).Shadow(0, t.Raised.Y-1, 0, 0, t.Raised.Color).Label(x.name).Children(func() {
-		a.glyph(c, 22, drawFileKind(t.InkSoft, fileKind(attRef(x))))
-		ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-			ui.Text(c, x.name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(x.name)
-			ui.Text(c, protocol.SizeWords(int64(len(x.file)))).FontSize(t.XS).TextColor(t.InkMuted)
-		})
-		ui.Box(c).Size(26, 26).Shrink(0).Draw(drawUploadRing(x.progress, x.failed(), t.Ink, t.SurfaceSunken, t.Failed.Ink))
-		if !x.failed() && a.Win != nil {
-			c.After(120 * time.Millisecond)
-		}
-	})
-}
-
 func alignOf(end bool) ui.Align {
 	if end {
 		return ui.End
@@ -674,9 +659,9 @@ func (a *App) mediaGrid(c *ui.Context, key string, items []mediaItem, end bool, 
 			} else if tl.Y+tl.H < float64(g.Aspect)-0.001 {
 				th -= gap / 2
 			}
-			a.mediaTile(c, fmt.Sprintf("%s:%d", key, tl.I), it, x0, y0, tw, th, tl.More, func() {
+			a.mediaTile(c, fmt.Sprintf("%s:%d", key, tl.I), it, x0, y0, tw, th, tl.More, func(from ui.Rect) {
 				if it.ref != nil {
-					a.OpenViewer(scope, it.ref.ID)
+					a.OpenViewerFrom(scope, it.ref.ID, from)
 				}
 			})
 		}
@@ -685,12 +670,26 @@ func (a *App) mediaGrid(c *ui.Context, key string, items []mediaItem, end bool, 
 
 // mediaTile is one tile: the preview (or the sunken paper) under the
 // picture, which fades in; "+n" over the last; the ring while it goes up.
-func (a *App) mediaTile(c *ui.Context, key string, it mediaItem, x, y, w, h float32, more int, open func()) {
+func (a *App) mediaTile(c *ui.Context, key string, it mediaItem, x, y, w, h float32, more int, open func(from ui.Rect)) {
 	t := a.T
 	label := a.L.T("media.image")
 	tile := ui.Box(c.Key("tile:"+key)).Absolute().Left(x).Top(y).Size(w, h).Background(t.SurfaceSunken).Clip().Label(label)
 	if it.ref != nil {
 		tile.Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable()
+		// D286: where it sits, for the viewer to grow out of and shrink back into.
+		m := a.med()
+		if m.tileAt == nil {
+			m.tileAt = map[string]ui.Rect{}
+		}
+		if b := tile.Bounds(); b.W > 0 {
+			m.tileAt[it.ref.ID] = b
+		}
+		// A gentle press: the picture sinks into its clay a little.
+		if tile.Pressed() {
+			tile.AnimatePose(ui.Pose{Scale: 0.965}, t.Snappy)
+		} else {
+			tile.AnimatePose(ui.Pose{}, t.Snappy)
+		}
 	}
 	tile.Children(func() {
 		var bmp *ui.Bitmap
@@ -726,7 +725,7 @@ func (a *App) mediaTile(c *ui.Context, key string, it mediaItem, x, y, w, h floa
 		}
 	})
 	if tile.Clicked() && open != nil {
-		open()
+		open(tile.Bounds())
 	}
 }
 
@@ -765,49 +764,6 @@ func ringFromTop(cx, cy, r float32) ui.Path {
 	p.CubeTo(cx-r*k, cy+r, cx-r, cy+r*k, cx-r, cy)
 	p.CubeTo(cx-r, cy-r*k, cx-r*k, cy-r, cx, cy-r)
 	return p
-}
-
-// fileCard is a file a task showed: one line with its kind, name, size and
-// Open. D239: the whole card is a clay button; it opens the file inside
-// Ducter, the viewer growing out of it (never the home's address).
-func (a *App) fileCard(c *ui.Context, ref *protocol.MediaRef) {
-	t := a.T
-	name := firstNonEmpty(ref.Name, a.L.T("media.file"))
-	card := ui.Row(c.Key("file:"+ref.ID)).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S3).MinWidth(280).MaxWidth(420).
-		Radius(t.RadiusMD).Background(t.Surface).Role(ui.RoleButton).Label(a.L.T("media.fileOpen", name)).Cursor(ui.CursorPointer).Focusable()
-	lift, sink := t.Raised.Y-1, float32(0)
-	if card.Pressed() {
-		lift, sink = 1, t.Raised.Y-2
-	} else if card.Hovered() {
-		card.Background(t.SurfaceRaised)
-	}
-	card.Shadow(0, lift, 0, 0, t.Raised.Color).AnimatePose(ui.Pose{Y: sink}, t.Snappy)
-	open := card.Clicked()
-	card.Children(func() {
-		a.glyph(c, 22, drawFileKind(t.InkSoft, fileKind(*ref)))
-		ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-			ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(name)
-			ui.Text(c, protocol.SizeWords(ref.Bytes)).FontSize(t.XS).TextColor(t.InkMuted)
-		})
-		if a.buttonFor(c, a.L.T("media.open"), name, btnSecondary, t.ControlSM, t.Surface) {
-			open = true
-		}
-	})
-	if open {
-		a.OpenFile(*ref, card.Bounds())
-	}
-}
-
-// drawFile is a sheet with a folded corner.
-func drawFile(col ui.Color) func(p *ui.Painter, r ui.Rect) {
-	return func(p *ui.Painter, r ui.Rect) {
-		x, y, w, h := r.X+r.W*0.2, r.Y+r.H*0.1, r.W*0.6, r.H*0.8
-		f := w * 0.35
-		var s ui.Path
-		s.MoveTo(x, y).LineTo(x+w-f, y).LineTo(x+w, y+f).LineTo(x+w, y+h).LineTo(x, y+h).Close()
-		s.MoveTo(x+w-f, y).LineTo(x+w-f, y+f).LineTo(x+w, y+f)
-		p.StrokePath(&s, 1.8, col)
-	}
 }
 
 // ---------- the composer's tray ----------
@@ -868,14 +824,19 @@ func (a *App) trayTile(c *ui.Context, tray string, x *attach) {
 				ui.Image(c, x.bmp).Size(s, s).Fit(ui.Cover).AccessHidden(true)
 			}
 			if x.file != nil {
-				ui.Column(c).Size(w, s).Padding(t.S2, t.S2, t.S2, t.S2).Gap(2).Justify(ui.Center).Label(x.name).Children(func() {
-					a.glyph(c, 20, drawFileKind(t.InkMuted, fileKind(attRef(x))))
+				ui.Column(c).Size(w, s).Padding(t.S2, t.S2, t.S2, t.S2).Gap(3).Justify(ui.Center).Label(x.name).Children(func() {
+					a.fileBadge(c, attRef(x), 17)
 					ui.Text(c, x.name).FontSize(t.XS).FontWeight(700).TextColor(t.Ink).MaxLines(2).MinWidth(0).Tooltip(x.name)
 				})
 			}
 			if !x.ready() || x.failed() {
 				if x.file != nil {
-					ui.Box(c).Absolute().Left(w-24).Top(4).Size(20, 20).Draw(drawUploadRing(x.progress, x.failed(), t.Ink, t.SurfaceSunken, t.Failed.Ink))
+					// D286: a file goes up under a calm bar along its foot.
+					if x.failed() {
+						ui.Box(c).Absolute().Left(w-24).Top(4).Size(20, 20).Draw(drawUploadRing(x.progress, true, t.Ink, t.SurfaceSunken, t.Failed.Ink))
+					} else {
+						ui.Box(c).Absolute().Left(t.S2).Top(s - 9).Children(func() { a.calmBar(c, w-2*t.S2, x.progress, t.Family[attRef(x).Family()]) })
+					}
 				} else {
 					ui.Box(c).Absolute().Left(s/2-13).Top(s/2-13).Size(26, 26).Draw(drawUploadRing(x.progress, x.failed(), t.LightboxInk, t.Lightbox, t.Failed.Ink))
 				}
@@ -884,8 +845,19 @@ func (a *App) trayTile(c *ui.Context, tray string, x *attach) {
 				}
 			}
 		})
-		rm := ui.Box(c.Key("rm")).Absolute().Left(w-18).Top(-4).Size(22, 22).Radius(11).Background(t.Ink).
-			Role(ui.RoleButton).Label(a.L.T("media.remove")).Cursor(ui.CursorPointer).Focusable().Draw(drawCross(t.Surface))
+		// D286: Remove is a small clay pebble on the corner, not a black hole.
+		rm := ui.Box(c.Key("rm")).Absolute().Left(w-15).Top(-5).Size(20, 20).Radius(10).Background(t.Surface).
+			Shadow(0, 2, 0, 0, t.Line).Role(ui.RoleButton).Label(a.L.T("media.remove")).Cursor(ui.CursorPointer).Focusable()
+		col := t.InkSoft
+		if rm.Hovered() {
+			col = t.Ink
+		}
+		rm.Draw(drawCrossSmall(col))
+		if rm.Pressed() {
+			rm.AnimatePose(ui.Pose{Scale: 0.88}, t.Snappy)
+		} else {
+			rm.AnimatePose(ui.Pose{}, t.Snappy)
+		}
 		if rm.Clicked() {
 			a.dropAttach(tray, x)
 		}
@@ -998,6 +970,15 @@ type viewerState struct {
 	items []protocol.MediaRef
 	i     int
 	zoom  bool
+	// D286: the tile it grew out of (once), the way it last stepped (the
+	// next picture slides in from that side), when it started closing (it
+	// shrinks back into its tile), and the zoom and pan of the picture.
+	from    ui.Rect
+	dir     int
+	closing time.Time
+	scale   float32
+	panX    float32
+	panY    float32
 }
 
 // mediaOf is every picture of a scope, in order: "conv" or "task:<id>".
@@ -1037,6 +1018,15 @@ func (a *App) mediaOf(scope string) []protocol.MediaRef {
 	return out
 }
 
+// OpenViewerFrom opens the viewer on one picture of a scope, growing out
+// of its tile at from (D286).
+func (a *App) OpenViewerFrom(scope, id string, from ui.Rect) {
+	a.OpenViewer(scope, id)
+	if v := a.med().viewer; v != nil {
+		v.from = from
+	}
+}
+
 // OpenViewer opens the viewer on one picture of a scope.
 func (a *App) OpenViewer(scope, id string) {
 	items := a.mediaOf(scope)
@@ -1054,8 +1044,13 @@ func (a *App) OpenViewer(scope, id string) {
 
 // viewerStep moves through the pictures (no wrap).
 func (v *viewerState) step(d int) {
-	v.i = max(0, min(len(v.items)-1, v.i+d))
+	n := max(0, min(len(v.items)-1, v.i+d))
+	if n != v.i {
+		v.dir = d
+	}
+	v.i = n
 	v.zoom = false
+	v.scale, v.panX, v.panY = 1, 0, 0
 }
 
 // viewer is the picture over the dimmed page, fitted; its bar: where it
@@ -1076,25 +1071,28 @@ func (a *App) viewer(c *ui.Context) {
 		w, h = 1100, 800
 	}
 	ref := v.items[v.i]
+	still := c.Preferences().ReduceMotion
+	closing := !v.closing.IsZero()
+	if closing && (still || a.Now().Sub(v.closing) >= closeDur) {
+		m.viewer = nil
+		return
+	}
 	ui.DialogBase(c, &v.open, func(back, panel ui.Element) {
 		back.Background(t.Lightbox)
 		panel.Width(w).Height(h).Label(a.L.T("media.image"))
-		if !c.Preferences().ReduceMotion {
-			shown := ui.Local(panel, "shown", func() bool { return false })
-			p := ui.Pose{}
-			if !*shown {
-				p, *shown = ui.Pose{Scale: 0.96, Fade: 1}, true
-				c.Invalidate()
-			}
-			panel.AnimatePose(p, t.Snappy)
+		// D286: the dimmed page comes and goes with the picture.
+		bp := ui.Pose{}
+		if closing {
+			bp = ui.Pose{Fade: 1}
 		}
+		back.AnimatePose(bp, t.Snappy)
 		switch {
 		case c.Shortcut(0, ui.KeyLeft):
 			v.step(-1)
 		case c.Shortcut(0, ui.KeyRight):
 			v.step(1)
 		case c.Shortcut(0, ui.KeySpace):
-			v.open = false
+			a.closeViewer(c, v)
 		case c.Shortcut(ui.Cmd, ui.KeyC):
 			a.copyPicture(c, ref)
 		}
@@ -1108,7 +1106,7 @@ func (a *App) viewer(c *ui.Context) {
 				cl := ui.Box(c.Key("v-close")).Size(t.ControlMD, t.ControlMD).Radius(t.ControlMD / 2).Role(ui.RoleButton).
 					Label(a.L.T("media.close")).Cursor(ui.CursorPointer).Focusable().Draw(drawCross(t.LightboxInk))
 				if cl.Clicked() {
-					v.open = false
+					a.closeViewer(c, v)
 				}
 			})
 			// The picture, fitted (a double-click shows it at its own size).
@@ -1141,8 +1139,30 @@ func (a *App) viewer(c *ui.Context) {
 		})
 	})
 	if !v.open {
-		m.viewer = nil
+		// Esc or a click outside: shrink back into the tile first.
+		v.open = true
+		a.closeViewer(c, v)
 	}
+	if !v.closing.IsZero() && a.Win != nil {
+		c.After(closeDur)
+	}
+}
+
+// closeDur is how long the picture takes to shrink back into its tile.
+const closeDur = 260 * time.Millisecond
+
+// closeViewer starts closing: the picture goes back into its tile (or
+// fades), and the viewer is gone when it lands.
+func (a *App) closeViewer(c *ui.Context, v *viewerState) {
+	if !v.closing.IsZero() {
+		return
+	}
+	if c.Preferences().ReduceMotion {
+		a.med().viewer = nil
+		return
+	}
+	v.closing = a.Now()
+	c.Invalidate()
 }
 
 func (a *App) viewerButton(c *ui.Context, label string) bool {
@@ -1208,7 +1228,11 @@ func (a *App) viewerPicture(c *ui.Context, v *viewerState, ref protocol.MediaRef
 	if v.zoom {
 		fit = ui.ScaleDown
 	}
+	if v.scale < 1 {
+		v.scale = 1
+	}
 	img := ui.Image(c.Key("v-img:"+ref.ID), bmp).Fill().Fit(fit).Label(a.L.T("media.image"))
+	a.viewerPose(c, v, ref, img)
 	if full.data != nil {
 		data, name := full.data, fileName(ref)
 		img.DragDataFrom(func() transfer.Data {

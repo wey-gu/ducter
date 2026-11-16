@@ -25,7 +25,7 @@ test("pictures among what was dropped or pasted, HEIC included; D259: every othe
 test("every picture word exists in zh and en", () => {
   const zh = strings("zh");
   const en = strings("en");
-  for (const k of ["media.add", "media.retry", "media.failed", "media.tooMany", "media.tooBig", "media.save", "media.share", "media.copy", "media.from", "media.noImages", "media.drop", "switch.cant.draw"]) {
+  for (const k of ["media.add", "media.retry", "media.failed", "media.tooMany", "media.tooBig", "media.save", "media.share", "media.copy", "media.from", "media.noImages", "media.drop", "switch.cant.draw", "media.play", "media.pause", "media.prev", "media.next"]) {
     expect(zh.t(k)).not.toBe(k);
     expect(en.t(k)).not.toBe(k);
   }

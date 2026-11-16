@@ -14,11 +14,11 @@ var zhSettings = Table{
 	"settings.tab.about.only": "关于",
 
 	"settings.lede.notify":   "有事要你定的时候它怎么找你，什么时候别打扰你。",
-	"settings.lede.accounts": "你让它能看的邮件、日历和别的账号。",
+	"settings.lede.accounts": "%s 能看的邮件、日程和消息，还有替你打的电话。",
 	"settings.lede.look":     "这个窗口的外观、语言和声音。只影响这台 Mac。",
 	"settings.lede.run":      "Ducter 住在哪台电脑上，关掉窗口以后它怎样。",
 
-	"partner.header":           "住在 %s 上 · 用 %s 想事情",
+	"partner.header":           "住在 %s 上，用 %s 想事情",
 	"loadout.brain.auto":       "自动选的：只有 %s 登录了",
 	"loadout.brain.auto_other": "自动选的：Claude Code 没登录",
 	"settings.talk.row":        "回你用的语言",
@@ -70,11 +70,11 @@ var enSettings = Table{
 	"settings.tab.about.only": "About",
 
 	"settings.lede.notify":   "How it reaches you when something needs you, and when to leave you alone.",
-	"settings.lede.accounts": "The mail, calendars and other accounts you let it read.",
+	"settings.lede.accounts": "The mail, calendars and messages %s can read, and the calls it makes for you.",
 	"settings.lede.look":     "How this window looks, which language it speaks, and whether it makes a sound. This Mac only.",
 	"settings.lede.run":      "Which computer Ducter lives on, and what happens when you close the window.",
 
-	"partner.header":           "Lives on %s · thinks with %s",
+	"partner.header":           "Lives on %s and thinks with %s",
 	"loadout.brain.auto":       "Picked for you: only %s is signed in",
 	"loadout.brain.auto_other": "Picked for you: Claude Code isn't signed in",
 	"settings.talk.row":        "Replies in",

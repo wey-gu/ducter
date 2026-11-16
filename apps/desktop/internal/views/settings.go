@@ -214,7 +214,8 @@ func (a *App) settingsView(c *ui.Context) {
 		a.settingsRail(c, tab)
 		ui.Scroll(c.Key("settings-scroll:" + tab)).Grow(1).Basis(0).MinWidth(0).Children(func() {
 			ui.Row(c).Justify(ui.Center).Padding(t.S6, t.S6, t.S7, t.S6).Children(func() {
-				panel := ui.Column(c.Key("panel:" + tab)).Grow(1).MaxWidth(820).Gap(t.S6)
+				// D289: 24 between sections, 8 within one (D273's rhythm).
+				panel := ui.Column(c.Key("panel:" + tab)).Grow(1).MaxWidth(820).Gap(t.S5)
 				a.routeEnter(c, panel)
 				panel.Children(func() {
 					switch tab {
@@ -353,8 +354,8 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 		box.Draw(a.drawSwatches())
 		return
 	case TabChats:
-		box.Draw(a.drawChats())
-		return
+		// D283: two clay speech bubbles, the cream one and the sky one.
+		bmp = theme.Clay("set_chats")
 	case TabAbout:
 		box.Draw(a.drawUpdatePebble())
 		return
@@ -445,17 +446,9 @@ func (a *App) panelHead(c *ui.Context, tab, lede string) {
 // paper, then a white card on the clay base holding its rows.
 func (a *App) group(c *ui.Context, key, title, note string, body func()) {
 	t := a.T
-	ui.Column(c.Key("group:" + key)).Gap(t.S3).Children(func() {
-		if title != "" || note != "" {
-			ui.Column(c).Gap(2).Padding(0, t.S1).Children(func() {
-				if title != "" {
-					a.heading(c, title, t.XL)
-				}
-				if note != "" {
-					ui.Text(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
-				}
-			})
-		}
+	// D289: the header is small and on the rows' text edge (D273), 8 above the card.
+	ui.Column(c.Key("group:" + key)).Gap(t.S2).Children(func() {
+		a.sectionHead(c, title, note)
 		a.settings.rows = 0
 		ui.Column(c.Key("card:"+key)).Radius(t.RadiusLG).Background(t.Surface).Clip().
 			Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Role(ui.RoleGroup).Label(title).Children(body)

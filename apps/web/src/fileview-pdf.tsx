@@ -136,3 +136,47 @@ function PdfPageView({ doc, n, aspect, on }: { doc: PdfDoc; n: number; aspect: n
   }, [on, doc, n]);
   return <div class={`fv-page${drawn ? " in" : ""}`} data-page={n} role="img" aria-label={A.L.t("file.page", n)} style={{ aspectRatio: `1 / ${ratio}` }} ref={holder} />;
 }
+
+// ---------- D286: a PDF card's first page ----------
+
+/** A PDF's first page drawn once, for its card: a picture of it, its page count, its shape. */
+export interface FirstPage {
+  url: string;
+  pages: number;
+  aspect: number;
+}
+const firsts = new Map<string, Promise<FirstPage | undefined>>();
+// One at a time: a conversation of PDFs draws them in turn, never all at once.
+let queue: Promise<unknown> = Promise.resolve();
+
+/** The first page of the PDF in `bytes` (cached by `id`), drawn `width` CSS pixels wide. */
+export function pdfFirstPage(id: string, bytes: () => Promise<ArrayBuffer>, width: number): Promise<FirstPage | undefined> {
+  let p = firsts.get(id);
+  if (p) return p;
+  p = queue.then(async () => {
+    let d: PdfDoc | undefined;
+    try {
+      const [l, b] = await Promise.all([loadLib(), bytes()]);
+      d = await l.getDocument({ data: new Uint8Array(b), isEvalSupported: false, disableAutoFetch: true, enableXfa: false }).promise;
+      const page = await d.getPage(1);
+      const one = page.getViewport({ scale: 1 });
+      const dpr = Math.min(2, devicePixelRatio || 1);
+      const vp = page.getViewport({ scale: (width * dpr) / one.width });
+      const c = document.createElement("canvas");
+      c.width = Math.round(vp.width);
+      c.height = Math.round(vp.height);
+      await page.render({ canvasContext: c.getContext("2d")!, viewport: vp }).promise;
+      const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.86));
+      c.width = c.height = 0;
+      if (!blob) return undefined;
+      return { url: URL.createObjectURL(blob), pages: d.numPages, aspect: one.height / one.width };
+    } catch {
+      return undefined;
+    } finally {
+      void d?.destroy();
+    }
+  });
+  queue = p;
+  firsts.set(id, p);
+  return p;
+}

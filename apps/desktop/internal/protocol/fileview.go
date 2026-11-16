@@ -15,7 +15,8 @@ const (
 	FileText     = "text"
 	FilePicture  = "picture"
 	FileVideo    = "video"
-	FilePDF      = "pdf" // D242: drawn page by page
+	FileAudio    = "audio" // D286: a voice memo or a song
+	FilePDF      = "pdf"   // D242: drawn page by page
 	FileNone     = "none"
 )
 
@@ -50,6 +51,8 @@ func (m MediaRef) FileView() string {
 		return FilePDF
 	case strings.HasPrefix(m.Type, "video/"):
 		return FileVideo
+	case strings.HasPrefix(m.Type, "audio/"):
+		return FileAudio
 	}
 	return FileNone
 }

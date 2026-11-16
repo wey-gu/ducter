@@ -1,8 +1,9 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
 import { onWbFrame } from "./workbench-ask.ts";
+import { onPastFrame, openPast } from "./past.tsx";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GitLoginState, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/protocol";
-import { prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
+import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { Api, Connection, deviceName, myShape, type ConnStatus, type Me, wsUrl } from "./conn.ts";
@@ -10,13 +11,14 @@ import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach } from "./native.ts";
 import { copy } from "./conv-copy.ts";
-import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
+import { attention, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, shownDeviceName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
+import { kindOf, navMove } from "./nav.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
 import { keepDraft, readDraft } from "./follow.ts";
-import type { LogEvent, ReplyWant } from "@ducter/protocol";
+import type { AccountUsage, LogEvent, ReplyWant } from "@ducter/protocol";
 
 /** D236: what the composer replies to: the message (a find or a part of it) and how its imprint reads. */
 export interface Replying {
@@ -31,6 +33,10 @@ export const wantOf = (r: Replying): ReplyWant => ({ seq: r.seq, ...(r.findId ? 
 
 /** The most a cursor replay sends at once (core's ws.ts REPLAY_MAX). */
 const REPLAY_MAX = 5000;
+/** D284: an opened task's newest window, each older page after it, and how far the background pages. */
+export const HISTORY_FIRST = 200;
+export const HISTORY_PAGE = 300;
+export const HISTORY_LIMIT = 2000;
 
 /** An iPad says "this iPad" where a phone says "this phone" (D176). */
 const HANDHELD: Handheld = typeof navigator !== "undefined" && deviceName().name.startsWith("iPad") ? "ipad" : "phone";
@@ -65,11 +71,13 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "chats" | "autofill" | "devices" | "phone";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {
   words: string;
+  /** D285: 带着它开新任务 / New task from this: the earlier task its brief carries findings from. */
+  from?: { taskId: string; title: string };
   placeKey: string; // "" = the first offered; "none" = no particular place
   prefill?: Place;
   branch: string; // "" = the repo's default
@@ -303,6 +311,8 @@ class AppState {
   /** D228: why 让 Ducter 帮我设好 didn't start (no agent signed in here, …). */
   anywhereAnswer?: string;
   candidates = new Map<string, Candidate[]>();
+  /** D288: each agent's account usage limits, as the home last answered (asked: when we asked). */
+  accountUsage = new Map<string, { usage?: AccountUsage; why?: string; asked: number }>();
   /** New task (D128): what the sheet offers (places, who could), as last sent; the draft. */
   newTaskOptions?: { places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[]; ducterFolders?: DucterFolderView[] };
   nt: NewTaskDraft = freshDraft();
@@ -652,6 +662,7 @@ class AppState {
     if (f.t === "update_result") return void ((this.checkingUpdates = false), (this.deviceAnswer = f.ok || f.update || f.reason === "no_release" ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "disconnect_result" || f.t === "rename_result") return void ((this.deviceAnswer = f.ok ? undefined : { device: f.device, reason: f.reason === "name_taken" ? "name_taken" : "failed" }), this.changed());
     if (f.t === "candidates") return void (this.candidates.set(f.taskId, f.candidates), this.changed());
+    if (f.t === "account_usage") return void (this.accountUsage.set(f.harness, { ...(f.usage ? { usage: f.usage } : {}), ...(f.why ? { why: f.why } : {}), asked: this.accountUsage.get(f.harness)?.asked ?? Date.now() }), this.changed());
     if (f.t === "task_new_options") {
       this.newTaskOptions = { places: f.places, candidates: f.candidates, ...(f.models ? { models: f.models } : {}), ...(f.ducterFolders ? { ducterFolders: f.ducterFolders } : {}) };
       // D203: the copy picked on another computer says its branches now: keep the branch it has.
@@ -673,6 +684,8 @@ class AppState {
     if (f.t === "project_new_result") return this.newFolderDone(f);
     if (f.t === "git_login_state") return this.ghState(f);
     if (f.t === "task_new_result") return this.newTaskResult(f);
+    // D285: 做过的事 / Past tasks (past.tsx).
+    if (f.t === "past_result" || f.t === "past_marked" || f.t === "ongoing_result") return onPastFrame(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
     if (f.t === "open_result") return;
@@ -717,6 +730,7 @@ class AppState {
     }
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
     this.S.apply(f);
+    if (f.t === "task_history") this.pageHistory(f.taskId);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
     if (f.t === "action_result") this.actSent.delete(f.taskId);
     if (f.t === "welcome") {
@@ -799,9 +813,18 @@ class AppState {
   }
 
   /** 换谁来做 / Switch who does it: opens (or closes) the list for a task, asking who could. */
+  /** D288: the agent's account limits for the context card (the home reads them at most every few minutes). */
+  askAccountUsage(harness: string, fresh = false) {
+    const had = this.accountUsage.get(harness);
+    if (!fresh && had && Date.now() - had.asked < 60_000) return;
+    this.accountUsage.set(harness, { ...(had ?? {}), asked: Date.now() });
+    this.send({ t: "account_usage", harness, ...(fresh ? { fresh: true } : {}) });
+  }
+
   openSwitch(taskId: string) {
     if (this.switchFor === taskId) this.switchFor = "";
-    else (this.switchFor = taskId), this.send({ t: "candidates", taskId });
+    // D282: and the agents' own model lists, for the in-place model and effort picker.
+    else (this.switchFor = taskId), this.send({ t: "candidates", taskId }), this.send({ t: "task_new_options" });
     this.changed();
   }
 
@@ -843,6 +866,8 @@ class AppState {
     if (c === "conv") return (this.sheet = null), this.go({ name: c });
     // D244: ⌘⇧] / ⌘⇧[, 下一件事 / 上一件事: the next or the previous task in On hand's order.
     if (c === "next" || c === "prev") return void this.walk?.(c === "next" ? 1 : -1);
+    // D285: 做过的事 / Past tasks (the Mac's ⌘Y).
+    if (c === "past") return void (this.sheet?.kind === "past" ? ((this.sheet = null), this.changed()) : openPast());
     // D216: ⌘O, 打开一件事 / Open a task: the switcher (pressed again, closed).
     if (c === "switch") {
       if (this.sheet?.kind === "newtask") return;
@@ -1497,7 +1522,7 @@ class AppState {
     // D206: the pictures on the What row go with the words, once they are up.
     this.afterUpload(
       this.picks.get("new") ?? [],
-      (media) => nt.sending === sending && this.send({ t: "task_new", words, ...(place ? { place } : {}), ...who, clientId: sending, ...(when ? { when } : {}), ...(media.length ? { media } : {}) }),
+      (media) => nt.sending === sending && this.send({ t: "task_new", words, ...(place ? { place } : {}), ...who, clientId: sending, ...(when ? { when } : {}), ...(media.length ? { media } : {}), ...(nt.from ? { from: nt.from.taskId } : {}) }),
       () => nt.sending === sending && ((nt.sending = ""), (nt.err = this.L.t("media.failed")), this.changed()),
     );
     this.changed();
@@ -1530,6 +1555,12 @@ class AppState {
         : f.message
           ? this.L.t("newtask.err.failed", f.message.replace(/[.\s]+$/, ""))
           : this.L.t("newtask.err.unknown");
+    this.changed();
+  }
+
+  /** D282: the same agent with another model or effort, in place (its own session carries on). */
+  retuneTask(taskId: string, harness: string, model: string, effort?: string) {
+    this.send({ t: "task_switch", taskId, harness, model, ...(effort ? { effort } : {}) });
     this.changed();
   }
 
@@ -1931,6 +1962,10 @@ class AppState {
     // Taking the whole screen, or going back beside the conversation, morphs rather than jumps
     // (a view transition where the browser has one; none under reduced motion).
     if (morphs(was, r)) return morph(() => this.applyRoute(r));
+    // D290: a level deeper, back, or one task to the next moves as its kind says (nav.ts).
+    // Wide, the conversation and On hand beside it look the same: nothing moves between them.
+    const k = wideNow() && was.name !== "task" && r.name !== "task" ? undefined : kindOf(was, r);
+    if (k) return navMove(k, () => this.applyRoute(r), r.name === "task" ? r.id : was.name === "task" ? was.id : undefined);
     this.applyRoute(r);
   }
 
@@ -1974,12 +2009,36 @@ class AppState {
     this.changed();
   }
 
+  /**
+   * D284: a task's history, newest first. What the store holds shows at once; the newest window
+   * (HISTORY_FIRST events) is asked when it was never loaded or a new socket may have left a gap;
+   * older pages follow in the background up to HISTORY_LIMIT (D271: a long loop's day), then as
+   * the reader scrolls up to the head (moreAtHead).
+   */
   history(id: string, force = false) {
     const t = this.S.tasks.get(id);
-    if (!force && (this.historyAsked.has(id) || t?.historyLoaded)) return;
-    if (!this.S.welcomed) return;
+    if (!this.S.welcomed || t?.histPending) return;
+    if (!force && (this.historyAsked.has(id) || t?.historyLoaded) && !t?.histStale) return;
     this.historyAsked.add(id);
-    this.send({ t: "task_history", taskId: id, limit: 2000 }); // D271: a long loop's day, as much as the home sends
+    this.askHistory(id, 0);
+  }
+
+  private askHistory(id: string, beforeSeq: number) {
+    const limit = beforeSeq ? HISTORY_PAGE : HISTORY_FIRST;
+    this.S.historyAsked(id, limit);
+    this.send({ t: "task_history", taskId: id, limit, ...(beforeSeq ? { beforeSeq } : {}) });
+  }
+
+  /** D284: the next older page of the opened task, while it holds fewer than HISTORY_LIMIT events. */
+  private pageHistory(id: string) {
+    const before = olderPage(this.S.tasks.get(id), HISTORY_LIMIT);
+    if (this.route.name === "task" && this.route.id === id && before) this.askHistory(id, before);
+  }
+
+  /** D284: the reader reached the head of a task the background stopped paging: an older page. */
+  moreAtHead(id: string) {
+    const before = olderPage(this.S.tasks.get(id));
+    if (before) this.askHistory(id, before);
   }
 
   // ---------- actions ----------
@@ -2027,6 +2086,7 @@ class AppState {
     const reply = this.replying;
     this.replying = undefined;
     const p: AppState["pending"][number] = { clientId, text, ...(pics.length ? { pics } : {}), ...(reply ? { reply } : {}) };
+    noteFlights(pics);
     this.picks.delete("");
     this.pending.push(p);
     this.thinkingSince = Date.now();
@@ -2111,6 +2171,7 @@ class AppState {
       pic.ref = await upload(pic.prepared, name, (f) => ((pic.progress = f), this.changed()));
       pic.progress = 1;
       pic.state = "done";
+      keepLocal(pic);
     } catch (err) {
       pic.state = "failed";
       pic.error = (err as Error).message;
@@ -2179,7 +2240,7 @@ class AppState {
     this.held = undefined;
     const clientId = `t${Date.now()}-${++this.nextClient}`;
     const sd = this.S.addSend(id, text, Date.now(), clientId);
-    if (pics.length) (sd.pics = pics), this.picks.delete(id);
+    if (pics.length) noteFlights(pics), (sd.pics = pics), this.picks.delete(id);
     const task = this.S.tasks.get(id);
     const busy = !!task && ["working", "queued"].includes(attention(task));
     const mode = queue ? "queue" : busy ? "steer" : undefined;

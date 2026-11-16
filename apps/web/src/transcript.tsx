@@ -10,6 +10,7 @@ import type { Place } from "@ducter/protocol";
 import { HIDDEN, redact } from "@ducter/protocol/src/redact.ts";
 import { unwrapShell, type Step } from "@ducter/protocol/src/steps.ts";
 import { blocksOf, inTurn, lastSeq, latestVoice, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
+import { tokensShort } from "@ducter/protocol";
 import type { MediaRef, WaiterView } from "@ducter/protocol";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { RefObject } from "preact";
@@ -470,6 +471,14 @@ function PlanCard({ b }: { b: Extract<Block, { k: "plan" }> }) {
 }
 
 /** What fills a note's %s (D207): a computer, an agent, an effort; a computer it didn't name is said plainly. */
+/** D282: a switch inside the task, with its time: another agent, another model or effort, another computer. */
+export function switchLine(task: Task, b: Extract<Block, { k: "note" }>): string {
+  const ms = tsOf(task, b.seq);
+  const at = Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
+  if (b.say === "retuned") return t("note.retuned", [b.name && modelName(b.name), b.effort && effortWord(A.L, b.effort)].filter(Boolean).join(" · ") || t("note.retuned.default"), at);
+  return t(`note.${b.say}`, b.name || t("note.computer"), at);
+}
+
 function noteName(b: Extract<Block, { k: "note" }>): string {
   if (b.say === "effort_dropped") return b.name ? effortWord(A.L, b.name) : "";
   if (b.say === "offline" || b.say === "back" || b.say === "waiting_device") return b.name || t("note.computer");
@@ -529,7 +538,15 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
       if (b.say === "compacted" || b.say === "interrupted")
         return (
           <div class="tx-divider" role="separator">
-            <span>{t(`note.${b.say}`)}</span>
+            {/* D288: with its size before and after when known (压缩了上下文 · 152k → 31k). */}
+            <span>{b.say === "compacted" && b.from && b.to ? t("note.compacted.size", tokensShort(b.from), tokensShort(b.to)) : b.say === "compacted" && b.from ? t("note.compacted.from", tokensShort(b.from)) : t(`note.${b.say}`)}</span>
+          </div>
+        );
+      // D282: who does it changed inside the task: one hairline with its time (换成 Codex 接着做 · 21:40).
+      if (b.say === "switched" || b.say === "retuned" || b.say === "moved")
+        return (
+          <div class="tx-divider" role="separator">
+            <span>{switchLine(task, b)}</span>
           </div>
         );
       // D207: the runner's lines in the user's words; the line as logged only on hover, for an error.
@@ -556,7 +573,7 @@ function YouBubble({ task, b, queued }: { task: Task; b: Extract<Block, { k: "yo
     <div class={`tx you${waits ? " queued" : ""}`}>
       {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
       {waits && <small class="qtag">{t("delivery.queued.tag")}</small>}
-      {b.go !== undefined ? shortGo(b.go) : b.text}
+      {b.text}
     </div>
   );
 }
@@ -628,6 +645,12 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live
         {p?.k === "brief" && <PromptCard task={task} b={p} label={p.by === "you" ? t("task.asked.you") : t("task.asked", A.S.personaName)} />}
         {p?.k === "partner" && <PromptCard task={task} b={p} label={t("task.from.partner", A.S.personaName)} />}
         {p?.k === "you" && <YouBubble task={task} b={p} queued={queued} />}
+        {p?.k === "go" && (
+          <div class="tx go-chip" title={p.text}>
+            <span>{goWords(p)}</span>
+            <time>{atOf(task, p.seq)}</time>
+          </div>
+        )}
         <TurnBody task={task} turn={turn} live={live} />
       </section>
     );
@@ -764,41 +787,99 @@ function promptLine(p: Extract<Block, { k: "wake" } | { k: "told" }>): string {
   return t(`told.${p.say}`);
 }
 
-type LocEntry = { seqs: number[]; line: string; tag?: string; at: string };
+/** D284: a turn opened by what someone said (the brief, the person's own words, the partner's). */
+const saidTurn = (tu: Turn) => tu.prompt?.k === "brief" || tu.prompt?.k === "you" || tu.prompt?.k === "partner";
 
-/** A turn's entry in the locator: the first line of what was said, or a hairline's words; the
- *  brief carries its own quiet label (D291), and every entry its time apart. */
-function locatorEntry(task: Task, tu: Turn): LocEntry {
+/** D284: the person's Go on a card, said as they pressed it: 你点了「好，Done」. */
+export function goWords(p: Extract<Block, { k: "go" }>): string {
+  return t("turn.go", shortGo(p.label));
+}
+
+function atOf(task: Task, seq: number): string {
+  const ms = tsOf(task, seq);
+  return Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
+}
+
+type LocEntry = { seqs: number[]; line: string; tag?: string; at: string; quiet: boolean };
+
+/** A turn's entry in the locator: the first line of what was said, or a quiet item's own words; the
+ *  brief carries its own quiet label, and every entry its time apart (D291). */
+function locatorEntry(task: Task, tu: Turn, quiet: boolean): LocEntry {
   const p = tu.prompt;
-  const e: LocEntry = { seqs: [tu.seq], line: "", at: p ? seqClock(task, p.seq) : "" };
+  const e: LocEntry = { seqs: [tu.seq], line: "", at: p ? atOf(task, p.seq) : "", quiet };
   if (!p) return e;
   if (p.k === "wake" || p.k === "told") return { ...e, line: promptLine(p) };
-  if (p.k === "you" && p.go !== undefined) return { ...e, line: shortGo(p.go) };
+  if (p.k === "go") return { ...e, line: goWords(p) };
   const first = ("text" in p ? p.text : "").split("\n")[0]!;
   return p.k === "brief" ? { ...e, line: first, tag: t("locator.brief") } : { ...e, line: first };
 }
 
-/** The locator's list: a turn, or a run of consecutive wakes said once ("等到了 24 次", 1:51–19:06),
- *  so a long loop doesn't bury what was said to it. */
-function locatorEntries(task: Task, turns: Turn[]): LocEntry[] {
+/**
+ * The locator's list (D284): each turn where someone said something, and between them each run of
+ * quiet turns (a wake, Ducter's note, a Go relayed) said once in muted ink ("等到了 24 次" with
+ * 1:51–19:06 apart, "3 条提示" with 9:02–9:40, or the one item's words), so only what people said
+ * reads as said.
+ */
+export function locatorEntries(task: Task, turns: Turn[]): LocEntry[] {
   const out: LocEntry[] = [];
   for (let i = 0; i < turns.length; i++) {
+    if (saidTurn(turns[i]!)) {
+      out.push(locatorEntry(task, turns[i]!, false));
+      continue;
+    }
     let j = i;
-    if (turns[i]!.prompt?.k === "wake") while (j + 1 < turns.length && turns[j + 1]!.prompt?.k === "wake") j++;
+    while (j + 1 < turns.length && !saidTurn(turns[j + 1]!)) j++;
     const run = turns.slice(i, j + 1);
-    out.push(
-      j > i
-        ? { seqs: run.map((tu) => tu.seq), line: t("locator.wakes", j - i + 1), at: `${seqClock(task, run[0]!.prompt!.seq)}–${seqClock(task, run.at(-1)!.prompt!.seq)}` }
-        : locatorEntry(task, turns[i]!),
-    );
+    // A history's first page may start mid-turn: a turn with nothing that opened it says nothing.
+    const items = run.filter((tu) => tu.prompt);
+    const wakes = items.every((tu) => tu.prompt!.k === "wake");
+    if (items.length === 1) out.push(locatorEntry(task, items[0]!, true));
+    else if (items.length > 1)
+      out.push({ seqs: items.map((tu) => tu.seq), line: t(wakes ? "locator.wakes" : "locator.quiet", items.length), at: `${atOf(task, items[0]!.prompt!.seq)}–${atOf(task, items.at(-1)!.prompt!.seq)}`, quiet: true });
     i = j;
   }
   return out;
 }
 
+const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+
+/**
+ * D284: the locator's jump, calm: an eased glide to the turn (280–640 ms by distance; from more
+ * than three screens away it lands a screen short first, then glides), at once under reduced
+ * motion; then the turn's soft clay tint fades (`.turn.flash`).
+ */
+export function glideTo(scroller: HTMLElement, target: HTMLElement) {
+  const goal = Math.max(0, Math.min(scroller.scrollHeight - scroller.clientHeight, scroller.scrollTop + target.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8));
+  const flash = () => {
+    target.classList.remove("flash");
+    void target.offsetWidth; // the tint starts again on a second jump
+    target.classList.add("flash");
+    setTimeout(() => target.classList.remove("flash"), 1700);
+  };
+  if (reduced()) {
+    scroller.scrollTop = goal;
+    return flash();
+  }
+  const view = scroller.clientHeight;
+  let from = scroller.scrollTop;
+  if (Math.abs(goal - from) > 3 * view) from = scroller.scrollTop = goal - Math.sign(goal - from) * view;
+  const span = goal - from;
+  const ms = Math.min(640, Math.max(280, 200 + Math.abs(span) / 4));
+  const t0 = performance.now();
+  const step = (now: number) => {
+    const k = Math.min(1, (now - t0) / ms);
+    scroller.scrollTop = from + span * easeInOut(k);
+    if (k < 1) requestAnimationFrame(step);
+    else flash();
+  };
+  requestAnimationFrame(step);
+}
+
 /** The locator (D271, wide only): a thin rail at the transcript's right edge, one small bar per
- *  turn, those in view in ink; hovered, a clay card lists what was said, newest at the bottom,
- *  those in view marked; a click goes there. */
+ *  turn (a quiet one's shorter), a soft clay thumb behind those in view that glides as the page
+ *  moves; hovered, a clay card rises out of the rail listing what was said, newest at the bottom,
+ *  those in view marked; a click glides there (D284). */
 export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HTMLElement> }) {
   const turns = taskTurns(task);
   const [seen, setSeen] = useState<Set<number>>(new Set());
@@ -824,22 +905,27 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
   }, [scroller.current, turns.length]);
   if (turns.length < 3) return null;
   const go = (seq: number) => {
-    scroller.current?.querySelector(`.turns > .turn[data-seq="${seq}"]`)?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    const el = scroller.current;
+    const target = el?.querySelector<HTMLElement>(`.turns > .turn[data-seq="${seq}"]`);
+    if (el && target) glideTo(el, target);
     setOpen(false);
   };
   const h = Math.min(Math.max(turns.length * 8, 64), 360);
+  const pos = (i: number) => (turns.length > 1 ? (i / (turns.length - 1)) * 100 : 0);
+  const lit = turns.map((tu, i) => (seen.has(tu.seq) ? i : -1)).filter((i) => i >= 0);
   return (
     <nav class={`locator${open ? " open" : ""}`} aria-label={t("locator.name")} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} onFocusCapture={() => setOpen(true)} onBlurCapture={(e) => !(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node) && setOpen(false)}>
       <div class="rail" style={{ height: `${h}px` }} tabIndex={0} aria-hidden="true">
+        {lit.length > 0 && <b class="thumb" style={{ top: `${pos(lit[0]!)}%`, height: `${pos(lit.at(-1)!) - pos(lit[0]!)}%` }} />}
         {turns.map((tu, i) => (
-          <i key={tu.seq} class={seen.has(tu.seq) ? "here" : ""} style={{ top: `${turns.length > 1 ? (i / (turns.length - 1)) * 100 : 0}%` }} />
+          <i key={tu.seq} class={`${seen.has(tu.seq) ? "here" : ""}${saidTurn(tu) ? "" : " quiet"}`} style={{ top: `${pos(i)}%` }} />
         ))}
       </div>
-      {open && (
-        <ol class="loc-list">
-          {locatorEntries(task, turns).map((e) => (
+      <ol class="loc-list" aria-hidden={!open} inert={!open}>
+        {
+          locatorEntries(task, turns).map((e) => (
             <li key={e.seqs[0]}>
-              <button class={e.seqs.some((s) => seen.has(s)) ? "here" : ""} onClick={() => go(e.seqs.at(-1)!)}>
+              <button class={`${e.seqs.some((s) => seen.has(s)) ? "here" : ""}${e.quiet ? " quiet" : ""}`} onClick={() => go(e.seqs.at(-1)!)}>
                 <i />
                 {e.tag && <em class="tag">{e.tag}</em>}
                 <span>{e.line}</span>
@@ -847,8 +933,7 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
               </button>
             </li>
           ))}
-        </ol>
-      )}
+      </ol>
     </nav>
   );
 }

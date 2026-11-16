@@ -77,8 +77,8 @@ export const BROWSER_TOOLS = [
  * two that start another model session: a subagent or workflow agent never sees the task's
  * brief (its Go, untrusted-page and own-window rules; verified on 2.1.322, research/76) but does
  * get the browser's tools. The user's own config stays out (`userConfiguration: "exclude"`).
- * Workflow is named here too, though every task denies it since D241 (oar.ts DISALLOWED), so the
- * browser's rule doesn't hang on that list.
+ * An ordinary task keeps both since D282 (their agents report back to the task, which holds the
+ * brief); here they stay denied.
  */
 export const BROWSER_DENIED_BUILTINS = ["Agent", "Workflow"];
 

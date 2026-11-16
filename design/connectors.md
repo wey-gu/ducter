@@ -193,9 +193,9 @@ first three are Draft 3's bar, the fourth is new):
   shown, and the first morning message on the default carries the chips. Restraint is in what is
   said (D243), never in whether it looks.
 
-## 4. What it notices: ten kinds
+## 4. What it notices: eleven kinds
 
-Each find is typed (stage 2 extracts, stage 3 judges). The kind is what the person reacts to
+Each find is typed (stage 2 extracts, stage 3 judges; 你说过的 is read by code from the conversation, D281). The kind is what the person reacts to
 ("这类不用告诉我"), so each kind has a plain name.
 
 | Kind (zh / en) | What it is | Sources | When it is said | Next step it offers | On by default |
@@ -210,6 +210,7 @@ Each find is typed (stage 2 extracts, stage 3 judges). The kind is what the pers
 | **快到了 / Coming up** (D243) | A flight or a train within 36 hours: when, from where, when to be there (2 h for a flight); a booking confirmed by mail for a time today | mail + calendar (a flight in the calendar is a booking) | the morning note; **now** within 30 h | check the flight's status (Go) | yes |
 | **你用的服务 / A service you use** (D243) | Maintenance on their production within 48 h, joined with their trip that day; an outage now; a job failing twice in three days, or once on production; a product they use shutting down within six weeks; a security alert (the bar decides). A building's or a shop's routine notice stays below the bar; one CI run failing on a branch is not a find | service notices in mail | the morning note; **now** for production within 30 h, an outage, a job failing three times | read the notice and say what to prepare / what is failing (Go) | yes |
 | **之前说的有变 / An update to what I told you** (D243) | A later notice undoes or changes something already said (a shutdown called off, a flight moved after the heads-up) | mail + the finds already said | **now** | — | yes |
+| **你说过的 / Something you said** (D281) | In the conversation, not the accounts: a reminder they asked for (提醒我… / remind me…) that no wait of the partner's keeps; something they said they'd do on a day (我明天要… / I need to … on Friday); the partner's own promise to remind, in answer to the person, with no wait behind it. Never: a recurring ask (a routine's), a question, a guess or a state, the past, a forwarded message | the person's own lines and the partner's (`proactive/said.ts`, code, no model) | at its minute when it has a time (**提醒你：{what}。 / Reminder: {what}.**); else first in that day's morning note, outside the 3 (**你昨天说今天要{what}。 / Yesterday you said you'd {what} today.**); an ask with no day the next morning. An ask goes in every mode, 不用主动找我 too; a thing they'd do never with it. Not said within 12 h of its moment: let go | — (How I know is their own line: **你说的：「…」 / You said: "…"**) | yes |
 
 Kinds left out on purpose: newsletters, receipts, shipping updates that say it all in the
 subject, "you have N unread", social notifications, anything GitHub or the calendar already
@@ -286,8 +287,19 @@ is broken. *First time:* under the chips in Settings › 通知 / Notifications,
      its one next step as a Go button (D73 labels), **先等等 / Hold**, and **怎么知道的** folded;
   3. no **没说的** line: what was left out is the partner's to say when asked (D173).
 - **Length:** the whole note fits one phone screen at 390 × 844 without scrolling.
-- **Silent days:** when nothing clears the bar there is **no message, no notification and no
-  line anywhere** (D173): silence means success. The partner knows it looked, and says so if asked.
+- **Silent days:** when nothing clears the bar and Ducter holds nothing for today there is **no
+  message, no notification and no line anywhere** (D173): silence means success. The partner knows
+  it looked, and says so if asked.
+- **Ducter's own side (D281):** after the greeting, one line only when it holds something: the
+  reminders the partner set for today (**今天 15:00：提醒你交水电费。 / At 15:00 today: remind you to
+  pay the utility bill.**) and cards waiting on the person for over 12 hours (**还有 {n} 件等你定，最早的是
+  {when}的。 / {n} things are waiting on you, the oldest since {when}.**), each card named once,
+  never again. A day with only this line still sends the note (passive). What finished overnight is
+  not repeated: the partner said it when it happened.
+- **It always comes, once (D281):** a home that wasn't running or awake at the hour (a restart, a
+  night update, a Mac asleep at 08:00) makes the note at its next tick, up to 4 hours late; later
+  than that the day is skipped rather than sent as a "morning" note in the afternoon. A home that
+  never had a morning (just set up) starts with tomorrow's.
 - **On the lock screen:** the notification's title is the partner's name, its body the finds'
   own first clauses ("ducter.dev 11/16 到期还没续费；11/21 那晚还没订到住处"), never an "N things"
   summary (D173). It goes

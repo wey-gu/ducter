@@ -88,6 +88,10 @@ type CheckpointAt struct {
 
 // Task is what the client knows of one task.
 type Task struct {
+	outside   []OutsideAct // Outside(), kept until the events change
+	outsideAt outsideKey
+	outsideOK bool
+
 	ID          string
 	Open        *protocol.TaskOpen
 	State       *protocol.TaskState
@@ -98,8 +102,19 @@ type Task struct {
 	// Events is the task's stream, in seq order.
 	Events []protocol.LogEvent
 	seqs   map[int64]bool
-	// HistoryLoaded is set once a task_history frame arrived.
+	// HistoryLoaded is set once its newest window arrived (D284: the
+	// first ~200 events; older pages follow).
 	HistoryLoaded bool
+	// D284: HistFrom is the oldest seq from which every event of the task
+	// up to its newest is held; HistMore, that the home has older ones.
+	// HistStale: the socket was replaced since, so a gap may have opened
+	// (live events go only to a socket that is up); the next open asks again.
+	HistFrom  int64
+	HistMore  bool
+	HistStale bool
+	// HistPending: a task_history request is on its way (histAsk events).
+	HistPending bool
+	histAsk     int
 	// Body is who does it now and why (the latest body_selected, D89).
 	Body    *protocol.TaskBody
 	bodySeq int64
@@ -180,6 +195,8 @@ func (t *Task) SendFor(seq int64) *Send {
 // Title is the task's title.
 func (t *Task) Title() string {
 	switch {
+	case t.Card != nil && t.Card.Mark != nil && t.Card.Mark.Name != "":
+		return t.Card.Mark.Name // D285: the person's own name for it, everywhere
 	case t.Open != nil && t.Open.Title != "":
 		return t.Open.Title
 	case t.Card != nil:
@@ -324,6 +341,9 @@ func deviceOfPlace(p protocol.Place) string {
 
 // Store is the client's state.
 type Store struct {
+	// Past is 做过的事 / Past tasks (D285, past.go).
+	Past PastState
+
 	// SetAside counts, per sender and day ("from|2026-11-10"), the messages
 	// over its daily quota (D163); one quiet line says how many.
 	SetAside map[string]int
@@ -440,9 +460,12 @@ type Store struct {
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
 	// shown (D89).
-	Rules         []protocol.RuleView
-	RulesAt       time.Time
-	Candidates    map[string][]protocol.Candidate
+	Rules      []protocol.RuleView
+	RulesAt    time.Time
+	Candidates map[string][]protocol.Candidate
+	// AccountUsage is each agent's account limits as the home last
+	// answered (D288), by harness.
+	AccountUsage  map[string]AccountAnswer
 	SwitchResults []protocol.ServerFrame
 
 	// Activity is what the partner is doing while the user waits on its
@@ -508,6 +531,12 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "welcome":
 		s.Persona, s.HeadSeq, s.Machine = f.Persona, f.HeadSeq, f.Machine
 		s.Welcomed = true
+		// D284: a new socket: what a task's history missed meanwhile is asked
+		// again when it opens, and a request the old socket carried is gone.
+		for _, t := range s.Tasks {
+			t.HistStale = t.HistStale || t.HistoryLoaded
+			t.HistPending, t.histAsk = false, 0
+		}
 		if f.PersonaName != "" {
 			s.PersonaName = f.PersonaName
 		}
@@ -635,6 +664,11 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 			s.Candidates = map[string][]protocol.Candidate{}
 		}
 		s.Candidates[f.TaskID] = f.Candidates
+	case "account_usage":
+		if s.AccountUsage == nil {
+			s.AccountUsage = map[string]AccountAnswer{}
+		}
+		s.AccountUsage[f.Harness] = AccountAnswer{Usage: f.AccountUsage, Why: f.Why, At: time.Now()}
 	case "task_new_options":
 		fc := f
 		s.NewTaskOptions = &fc
@@ -669,10 +703,35 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 	case "task_history":
 		t := s.task(f.TaskID)
+		var newest int64
+		if n := len(t.Events); n > 0 {
+			newest = t.Events[n-1].Seq
+		}
+		hadFrom, hadMore := t.HistFrom, t.HistMore
 		for _, ev := range f.Events {
 			s.ApplyEvent(ev)
 		}
-		t.HistoryLoaded = true
+		// A home before D284 says nothing of more: a full page may have more
+		// (at worst one more page comes back empty).
+		more := f.More || (t.histAsk > 0 && len(f.Events) >= t.histAsk)
+		t.HistPending, t.histAsk = false, 0
+		switch {
+		case f.BeforeSeq == 0:
+			t.HistoryLoaded, t.HistStale = true, false
+			switch {
+			case len(f.Events) == 0:
+				t.HistFrom, t.HistMore = 0, false
+			case hadFrom > 0 && hadFrom <= f.Events[0].Seq && f.Events[0].Seq <= newest:
+				// The window meets what was held: the cache is whole again.
+				t.HistFrom, t.HistMore = hadFrom, hadMore
+			default:
+				t.HistFrom, t.HistMore = f.Events[0].Seq, more
+			}
+		case len(f.Events) > 0 && (t.HistFrom == 0 || f.Events[0].Seq < t.HistFrom):
+			t.HistFrom, t.HistMore = f.Events[0].Seq, more
+		default:
+			t.HistMore = false
+		}
 	case "activity":
 		switch {
 		case f.Activity == nil:
@@ -681,6 +740,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		case s.Activity == nil || s.Activity.Step != f.Activity.Step:
 			s.Activity, s.ActivityAt = f.Activity, time.Now()
 		}
+	case "past_result", "past_marked", "ongoing_result":
+		s.applyPast(f) // D285 (past.go)
 	case "error":
 		s.Errors = append(s.Errors, f.Message)
 		// A refused task_send fails the oldest unacked send.
@@ -712,6 +773,12 @@ func (s *Store) task(id string) *Task {
 		s.Tasks[id] = t
 	}
 	return t
+}
+
+// HistoryAsked notes a task_history request on its way for limit events (D284).
+func (s *Store) HistoryAsked(id string, limit int) {
+	t := s.task(id)
+	t.HistPending, t.histAsk = true, limit
 }
 
 // Task returns a task, or nil.
@@ -1142,6 +1209,7 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 	i := sort.Search(len(t.Events), func(i int) bool { return t.Events[i].Seq > ev.Seq })
 	t.Events = append(t.Events, protocol.LogEvent{})
 	copy(t.Events[i+1:], t.Events[i:])
+	ev.KeepTyped(body)
 	t.Events[i] = ev
 	t.Version++
 	switch b := body.(type) {
@@ -1439,4 +1507,13 @@ func firstOr(s, or string) string {
 // app, so the suffix is dropped.
 func ShownDeviceName(name string) string {
 	return strings.TrimSuffix(name, " · Ducter")
+}
+
+// AccountAnswer is the home's answer about an agent's account limits
+// (D288): its usage, or Why it has none (unsupported, signed_out,
+// unavailable).
+type AccountAnswer struct {
+	Usage *protocol.AccountUsage
+	Why   string
+	At    time.Time
 }

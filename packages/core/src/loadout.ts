@@ -30,7 +30,8 @@ export interface Loadout {
   /** D157: the computers that run tasks, as the ranking sees them (undefined without device info). */
   computers(needs?: TaskNeeds): Promise<Computer[] | undefined>;
   /** 换到 X 接着做 / Continue on X; D157: on another computer (device: its id or name), the task moves there. */
-  switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined, device?: string): Promise<{ ok: boolean; message?: string }>;
+  // effort (D282): the same agent with another model or effort keeps its native session.
+  switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined, device?: string, effort?: string): Promise<{ ok: boolean; message?: string }>;
 }
 
 export function createLoadout(o: {
@@ -173,7 +174,7 @@ export function createLoadout(o: {
       });
     },
 
-    async switchTask(taskId, harness, model, runner, device) {
+    async switchTask(taskId, harness, model, runner, device, effort) {
       const card = o.tasks.get(taskId);
       if (!card) return { ok: false, message: "I can't find that task." };
       if (card.attention === "dropped") return { ok: false, message: "That task was dropped. Undo the drop first." };
@@ -201,7 +202,18 @@ export function createLoadout(o: {
           return { ok: true };
         }
       }
-      if (card.harness === harness && (card.model ?? "") === (model ?? "")) return { ok: true };
+      const effortNow = o.log.read({ stream: taskStream(taskId), kinds: ["body_selected"], limit: 1000 }).at(-1)?.body as Bodies["body_selected"] | undefined;
+      if (card.harness === harness && (card.model ?? "") === (model ?? "") && (!effort || effort === effortNow?.effort)) return { ok: true };
+      // D282: the same agent, another model or effort: no candidate check (it is the one doing it).
+      if (card.harness === harness) {
+        if (runner?.switchBody) {
+          const r = await runner.switchBody(taskId, harness, model, effort);
+          if (!r.ok) return r;
+        }
+        const keep = effort ?? ((model ?? "") === (card.model ?? "") ? effortNow?.effort : undefined);
+        o.log.append({ stream: taskStream(taskId), origin: "user", kind: "body_selected", body: { taskId, harness, ...(model ? { model } : {}), ...(keep ? { effort: keep } : {}), why: { kind: "you", from: harness } } });
+        return { ok: true };
+      }
       const list = await api.candidates(taskId);
       const c = list.find((x) => x.harness === harness && (x.model ?? "") === (model ?? "")) ?? list.find((x) => x.harness === harness);
       if (!c) return { ok: false, message: `${harnessName(harness)} can't take this task here.` };
@@ -209,10 +221,10 @@ export function createLoadout(o: {
       const from = card.harness;
       // A running task continues on the new one from its saved progress (the runner's handoff).
       if (runner?.switchBody) {
-        const r = await runner.switchBody(taskId, harness, model);
+        const r = await runner.switchBody(taskId, harness, model, effort);
         if (!r.ok) return r;
       }
-      o.log.append({ stream: taskStream(taskId), origin: "user", kind: "body_selected", body: { taskId, harness, ...(model ? { model } : {}), why: { kind: "you", from } } });
+      o.log.append({ stream: taskStream(taskId), origin: "user", kind: "body_selected", body: { taskId, harness, ...(model ? { model } : {}), ...(effort ? { effort } : {}), why: { kind: "you", from } } });
       // The partner must know (it read the old harness on the card); the note is hidden from clients.
       const prior = o.log
         .read({ stream: "channel", kinds: ["job_status"], limit: 500 })

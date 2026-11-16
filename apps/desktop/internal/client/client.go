@@ -5,10 +5,13 @@
 package client
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/url"
@@ -204,7 +207,7 @@ func (c *Client) session(ctx context.Context) error {
 	stop := context.AfterFunc(ctx, func() { conn.Close() })
 	defer stop()
 
-	hello := protocol.Hello{T: "hello", Persona: c.opt.Persona, Locale: c.opt.Locale, Client: "desktop", Version: c.opt.Version}
+	hello := protocol.Hello{T: "hello", Persona: c.opt.Persona, Locale: c.opt.Locale, Client: "desktop", Version: c.opt.Version, Gzip: true}
 	if c.opt.Cursor != nil {
 		if cur := c.opt.Cursor(); cur > 0 {
 			hello.Cursor = &cur
@@ -224,11 +227,16 @@ func (c *Client) session(ctx context.Context) error {
 	c.status(Connected, nil)
 
 	for {
-		var msg string
+		var msg []byte
 		if err := websocket.Message.Receive(conn, &msg); err != nil {
 			return err
 		}
-		f, err := protocol.DecodeServerFrame([]byte(msg))
+		data, err := Unzip(msg)
+		if err != nil {
+			log.Printf("ducter: bad frame: %v", err)
+			continue
+		}
+		f, err := protocol.DecodeServerFrame(data)
 		if err != nil {
 			log.Printf("ducter: bad frame: %v", err)
 			continue
@@ -237,6 +245,20 @@ func (c *Client) session(ctx context.Context) error {
 			c.opt.OnFrame(f)
 		}
 	}
+}
+
+// Unzip is a frame's JSON: a large one comes gzipped (D284, hello.gzip),
+// told by gzip's magic bytes (JSON never starts with them).
+func Unzip(msg []byte) ([]byte, error) {
+	if len(msg) < 2 || msg[0] != 0x1f || msg[1] != 0x8b {
+		return msg, nil
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(msg))
+	if err != nil {
+		return nil, err
+	}
+	defer zr.Close()
+	return io.ReadAll(zr)
 }
 
 func isLoopback(h string) bool {

@@ -54,6 +54,9 @@ func TestWaitWatchCard(t *testing.T) {
 		tt.Frame()
 		got := texts(tt)
 		back := app.tp("watch.back", i18n.Clock(next))
+		if next.Day() != now.Day() {
+			back = i18n.Clock(next) // run from 23:30, the card says tomorrow's time its own way
+		}
 		for _, want := range []string{back, app.L.T("wait.look"), app.L.T("wait.cancel"), app.L.T("watch.tally", 2), app.L.T("wait.every", 45)} {
 			if !strings.Contains(got, want) {
 				t.Errorf("%s: the watch card lacks %q in:\n%s", lang, want, got)

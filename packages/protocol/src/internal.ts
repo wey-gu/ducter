@@ -5,7 +5,7 @@
 //   partner owns: the main AI (persona prompt, projection, turn loop) on any first-wave harness (D85) via runner's HarnessPort.
 import type { HarnessId } from "./harnesses.ts";
 import type { CallBody, DraftRequest, DraftResult } from "./phone.ts";
-import type { Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, PeersSettings, Settings, TaskCard, TaskNeeds } from "./index.ts";
+import type { AccountUsage, Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, PeersSettings, Settings, TaskCard, TaskNeeds } from "./index.ts";
 import type { MediaRef } from "./media.ts";
 
 // ---------- core ----------
@@ -141,6 +141,8 @@ export interface CoreApi {
   bridgeLink?: BridgeLinkApi;
   /** D206: pictures and files on the home (core/src/media.ts); absent in tests and stubs. */
   media?: MediaApi;
+  /** D288: account limits a running session said, kept with the agent's last read (core/src/account-usage.ts); absent in tests and stubs. */
+  limits?: { seen(harness: string, limits: NonNullable<HarnessEvent["limits"]>): void };
 }
 
 /** D206: the home's media store as the runner and the partner use it. */
@@ -396,7 +398,12 @@ export interface HarnessEvent {
   thinking?: string[]; // the headings of a stretch of thinking (D127)
   // Totals are the session's running bill. contextTokens is what the context held at the turn's
   // last model call, as the harness reported it (input + cache read + cache write), when it did.
-  usage?: { inputTokens?: number; cacheRead?: number; cacheWrite?: number; outputTokens?: number; contextTokens?: number };
+  // D288: contextWindow, the window the harness read it against; turn, this turn alone (on a
+  // turn end: the totals' difference since the previous one, in this session).
+  usage?: { inputTokens?: number; cacheRead?: number; cacheWrite?: number; outputTokens?: number; contextTokens?: number; contextWindow?: number; turn?: { input: number; output: number; cached?: number } };
+  // D288: the account's usage limits as a running session said them (Claude Code
+  // rate_limit_event, Codex account/rateLimits/updated): the windows it named.
+  limits?: Pick<AccountUsage, "windows" | "limited" | "plan">;
   turnEnd?: boolean;
   raw?: unknown;
 }
@@ -428,6 +435,8 @@ export interface HarnessSession {
   interrupt(): Promise<void>;
   close(): Promise<void>;
   events(): AsyncIterable<HarnessEvent>;
+  /** D282: the agent's own manual compaction, where the runtime has one (Codex through OAR). */
+  compact?(): Promise<void>;
 }
 
 export interface HarnessPort {
@@ -436,6 +445,9 @@ export interface HarnessPort {
   /** D202: the models this account offers here now (the agent's own list, token-free), or
    *  undefined when it can't say (not installed, signed out, no listing). Never throws. */
   models?(harness: string): Promise<ListedModel[] | undefined>;
+  /** D288: the account's usage limits as the agent reports them (OAR accountUsage, no model
+   *  call), or why not. Never throws. */
+  accountUsage?(harness: string): Promise<{ usage?: AccountUsage; why?: "unsupported" | "signed_out" | "unavailable" }>;
 }
 
 /** D202: one model as an AI agent lists it (OAR listModels), the disabled ones left out. */
@@ -455,7 +467,7 @@ export interface Runner {
   // needs (D157): what the task needs of its computer; Ducter picks the computer (a place.device
   // the user named stays a pin).
   // media (D206): the pictures the brief carries; the first turn hands them to the agent.
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: "zh" | "en"; origin?: "you"; needs?: TaskNeeds; media?: MediaRef[] }): Promise<TaskCard>;
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: "zh" | "en"; origin?: "you"; needs?: TaskNeeds; media?: MediaRef[]; from?: string }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.
@@ -473,9 +485,11 @@ export interface Runner {
   merge?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   openPr?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   // Optional (D89): move a task to another AI agent. A running task is handed off: its session
-  // closes and the new one starts from the brief and the saved progress. ok:false with a
-  // user-facing message when it can't.
-  switchBody?(taskId: string, harness: string, model?: string): Promise<{ ok: boolean; message?: string }>;
+  // closes and the new one starts from the brief, the saved progress and the task's own history
+  // condensed (D282), or resumes that agent's own earlier session on the task. The same agent
+  // with another model or effort (D282) keeps its native session: it reopens with them for the
+  // next turn. ok:false with a user-facing message when it can't.
+  switchBody?(taskId: string, harness: string, model?: string, effort?: string): Promise<{ ok: boolean; message?: string }>;
   // Optional (D157, E3): move a task to another computer (to.device: its name, "local" for the
   // home), with who does it there. A repo task's branch is pushed first; a folder never moves.
   moveTask?(taskId: string, to: { device: string; name: string; homeName?: string }, harness?: string, model?: string): Promise<{ ok: boolean; message?: string }>;

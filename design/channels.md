@@ -16,9 +16,10 @@
   own name and face. 顺滑: it reads as a person in that app, never a webhook dump. 放心: nobody
   else can talk to *my* partner there, and nothing it says there spends money or speaks as me.
   惊喜: the partner's name, and the same conversation everywhere.
-- **How it starts.** Settings › **聊天软件 / Chat apps** › Telegram: three steps (BotFather,
-  paste, open the link). Slack: paste a manifest Ducter gives, install, paste two tokens, DM the
-  code. Nothing to learn first; the card says what goes there and who else can see it.
+- **How it starts.** Settings › **聊天软件 / Chat apps** › Telegram: three steps (open BotFather and
+  send `/newbot`, name the bot, paste its key). Slack: five (copy the app manifest, create the app
+  from it, install, paste the two tokens, each under its own step), then DM the code. Nothing to
+  learn first; the group says what goes there and who else can see it (D283).
 
 ## 2. One conversation, many windows (D276 (1))
 
@@ -102,13 +103,28 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   didn't answer.** at most once a day. Wrong codes lock a sender out after 5 tries in 10
   minutes; 30 wrong tries from anyone void every pending code.
 - **Settings › 聊天软件 / Chat apps** (web `apps/web/src/channels.tsx`, Mac
-  `apps/desktop/internal/views/chats.go`): per chat app its state (**还没连上 / Not connected**,
-  **正在连… / Connecting…**, **还差一步：让你的账号连上它 / One more step: link your account to
-  it**, **连着：{name} / Linked: {name}**, **连不上了 / Can't connect** with why in words), the steps
-  and fields, **连上 / Connect**, **让我的账号连上 / Link my account** then **在 Telegram 里打开 /
-  Open in Telegram** and the code, **解除连接 / Unlink**, **断开 {app} / Disconnect {app}**, the
-  one line of who else can see it (**Telegram 会存一份你们的聊天记录。** · **这个工作区的管理员可能
-  看得到你在这儿说的话。**), and one line of what goes there.
+  `apps/desktop/internal/views/chats.go`; the page's shape is D283, below): per chat app its state
+  (**还没连上 / Not connected**, **正在连… / Connecting…**, **还差一步：连上你的账号 / One more
+  step: link your account**, **连上了 · {@bot or workspace} / Connected · {…}**, why it can't
+  connect in words), the steps and fields, **连上 / Connect**, **连上你的账号 / Link your account**
+  with **让我的账号连上 / Link my account**, then **在 Telegram 里打开 / Open in Telegram** and the
+  code, **和 {name} 连着 / Linked to {name}** with **解除连接 / Unlink**, **断开 {app} / Disconnect
+  {app}**, the one line of who else can see it (**Telegram 会存一份你们的聊天记录。** · **这个工作区的
+  管理员可能看得到你在这儿说的话。**), and one line under the groups of what goes there.
+- **The page (D283).** D273's grid on the Mac and the web: the page's heading and a one-line lede;
+  then one raised group per chat app, **Telegram**, **Slack**, **iMessage** (D277, the third; on
+  the web it says it is set up on a Mac). A group's first row is the app: its mark (the app's first
+  letter on a clay pebble in a palette tint, Telegram sky, Slack butter, iMessage mint, never the
+  service's logo; iMessage's is **M** for the Messages app it lives in, since an **i** reads as
+  "info"), its name, one line of how it stands; never a title on the paper above it. A setup is a
+  short guided path: a numbered step mark (a 26 sunken pebble) centred in the tile column, one
+  sentence a step on the text column, what the step needs under the sentence (a command as a mono
+  chip, **打开 BotFather / Open BotFather** and **打开 Slack / Open Slack** as quiet links, a field
+  with its label: white, a hairline that turns ink while typing). The Slack manifest is behind
+  **拷贝 App 配置 / Copy the app manifest** (secondary) with **看看内容 / View** (a quiet disclosure),
+  never a raw JSON block. A group's last line is its privacy note on the text column and its one
+  button at the right edge: **连上** (primary) while setting up, **断开 {app}** (destructive text)
+  once connected; **解除连接** is quiet text at the right of the **和 {name} 连着** row.
 
 ## 7. Architecture (D276 (7))
 

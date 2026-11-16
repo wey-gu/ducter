@@ -286,8 +286,8 @@ func (a *App) stateCounts(b store.Board, lens string) [4]int {
 	return n
 }
 
-// boardTop is the board's head: one calm sentence when nothing needs you,
-// the strip of four counts (each one a filter), Find from ten tasks, and
+// boardTop is the board's head: the partner and its sentence (D287), the
+// strip of four counts (each one a filter), Find from ten tasks, and
 // New task here under a project's lens.
 func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens string) ui.Element {
 	t := a.T
@@ -297,13 +297,8 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 	}
 	var find ui.Element
 	ui.Column(c.Key("top")).Gap(t.S4).Children(func() {
-		if n[0] == 0 {
-			line := a.L.T("onhand.calm")
-			if n[1] > 0 {
-				line = a.L.T("onhand.calm.working", a.S.PersonaName, n[1])
-			}
-			ui.Text(c.Key("calm"), line).FontSize(t.MD).LineHeight(1.5).TextColor(t.InkSoft)
-		}
+		// D287: the partner at the head, its pose and its one sentence.
+		a.boardHead(c, b, lens, n)
 		ui.Row(c.Key("strip-row")).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
 			// D270: the counts in a small sunk track, the filter chosen a
 			// raised knob in it, as the places are in the bar.

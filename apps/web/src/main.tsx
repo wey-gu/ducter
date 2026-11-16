@@ -21,6 +21,8 @@ import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
 import { liveInBench } from "./live.tsx";
 import { walkKey } from "./onhand.tsx";
 import { markSeen } from "./seen.ts";
+import { edgeSwipe, navBusy, popMove } from "./nav.ts";
+import { wideNow } from "./fold.ts";
 
 const base = baseUrl();
 const token = () => storage.get()?.token;
@@ -251,8 +253,22 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   addEventListener("keydown", escUp);
   addEventListener("keydown", openKey);
   addEventListener("keydown", walkKey);
-  addEventListener("popstate", () => A.fromHash());
-  addEventListener("hashchange", () => A.fromHash());
+  // D290: back and forward move as a level does (nav.ts), unless the browser drew its own; a
+  // hashchange that follows a pop lands after the move has its old picture.
+  addEventListener("popstate", (e) => popMove(e, A.route, () => A.fromHash()));
+  addEventListener("hashchange", () => !navBusy() && A.fromHash());
+  const page = document.getElementById("app");
+  if (page)
+    edgeSwipe(
+      page,
+      () => !wideNow() && A.route.name !== "conv" && !A.sheet && !A.viewer && !A.fileView,
+      () => {
+        if (history.length > 1 && location.hash) return history.back();
+        history.replaceState(null, "", location.pathname);
+        A.applyRoute({ name: "conv" });
+      },
+      { inApp: inApp() },
+    );
   navigator.serviceWorker?.addEventListener("message", (e: MessageEvent) => {
     if (e.data?.t === "open") location.href = e.data.url;
   });

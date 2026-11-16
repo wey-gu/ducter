@@ -77,8 +77,23 @@ model, and its harness compacts it at 160K (`Settings.windows.tasks`, env `DUCTE
 2. **After.** On `compaction_ended` the runner sends the brief again and the latest
    checkpoint (steered, else as the next turn's prefix, logged as the runner's own input).
 3. **Logged.** Each compaction is a `task_event` (`raw.kind: "compaction_ended"`,
-   `compactions: n`, the size it had reached); the opened task's Details shows
-   **压缩过 n 次 / Compacted n times** under Saved progress, quietly.
+   `compactions: n`, `before`, and `after` when the agent says it: Claude Code's
+   `pre_tokens`/`post_tokens`, pi's `tokensBefore`); otherwise the first reading after it is a
+   `context` line with `after: true` (D288). The transcript's hairline says
+   **压缩了上下文 · 152k → 31k / Context compacted · 152k → 31k**.
+
+**The context meter (D288, research/94).** The runner logs a `context` reading
+(`contextTokens`, `contextWindow`, `compactAt`) as the context moves: every 5% of the window,
+across the save point, and the first after a compaction; each turn end's usage carries the
+window, the compaction point and `turn` (this turn alone, the running totals' difference). The
+clients read the task's Log into one meter (`protocol/context-meter.ts`, the Mac's port on the
+same fixture): a ring by the task's composer (the compaction point a tick; butter once past the
+save point, never red) and its card (window used, last turn, this task in all, compactions with
+the last sizes, **现在压缩 / Compact now**, the agent account's limits). Compact now is the
+person's `/compact`: Claude Code's own as typed; every other agent's is OAR's
+`Session.compact()`, run when the turn ends if one is running. Account limits come from the agent
+itself (OAR `accountUsage`, no model call), read on the home at most every 5 minutes and kept
+current by what sessions say (Claude Code `rate_limit_event`, Codex `account/rateLimits/updated`).
 
 Knobs per harness: Claude Code `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`,
 `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`, `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=88.8889`
@@ -149,14 +164,20 @@ moves: the open fails with one line, "Codex can't take this task: it isn't signe
 another AI agent, or fix that first." Nobody left: the open fails with one line the partner
 says, never a silent fallback.
 
-**Switching (换谁来做 / Switch who does it).** The list is the one doing it now, the top three
-others with why and the limit each, and the ones that can't, greyed with why. **换到 X 接着做 /
-Continue on X** closes the old session and starts the new agent from the brief and the saved
-progress (a handoff; the native session can't carry across harnesses); a waiting or finished
-task keeps its state and the next message (an answer, a follow-up, reopen) starts it there,
-seeded from the brief + every checkpoint and then that message. As built, the switch is logged
-as a system line with `raw.switched {from, to}`, and a restarted runner ignores the session ids
-logged before it, so the new agent never resumes the old one's session. Each switch leaves a hidden note
+**Switching (换谁来做 / Switch who does it).** First the agent doing it, its **模型 / Model** and
+**思考深度 / Effort** (D282): a pick changes them in place. The native session reopens by its id
+with them before the next turn (at once when idle, after the running turn otherwise): Claude
+Code `--resume <id> --model --effort`, Codex `thread/resume` with the model; lossless, logged as
+`raw.retuned {harness, model, effort}`. `/model` and `/effort` typed in the task do the same.
+Then the list: the top three others with why and the limit each, and the ones that can't, greyed
+with why. **换到 X 接着做 / Continue on X** closes the old session (kept by agent) and starts the
+new agent from the brief, the last six checkpoints and the carry-over (the last report and its
+questions, the person's words since, the agent's last words, what the branch holds; D282); a
+waiting or finished task keeps its state and the next message (an answer, a follow-up, reopen)
+starts it there, the seed and then that message. Switching back to an agent that worked on the
+task resumes its own session, told what happened since. The switch is logged as
+`raw.switched {from, to, model?, effort?, back?}`; a restarted runner resumes the new agent's own
+earlier session when `back`, never the old agent's. Each switch of agent leaves a hidden note
 for the partner; after the second switch the same way (from → to), the partner is woken once
 to offer a rule: it names the kind of work in a few words and asks with Go / Hold, default
 hold, and saves it with `rule_save` on Go.

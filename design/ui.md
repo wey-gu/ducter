@@ -80,7 +80,7 @@ components and tokens; a value not in the scales below needs a token first.
 | radius | 8 · 12 · 14 · 16 · 18 · 24 · 28 | inline code, diff boxes · small buttons, fields · buttons · sheets, notices · large buttons · cards · hero cards, the composer |
 | controls | 36 · 44 · 52 | chrome and inline lines · cards and the conversation · setup screens and the equip |
 | chips | 24 · 28 · 32 (`ChipSM/Chip/ChipLG`) | a state tag · evidence and metadata · a task in the conversation |
-| motion | press 70 ms · hover/lift `Snappy` · enter 220 ms (6-pt rise + fade) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
+| motion | press 70 ms · hover/lift `Snappy` · enter 220 ms (6-pt rise + fade: a Settings panel, a notice) · moving between views by D290's vocabulary (below) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
 
 **Depth: one clay (D76).** Every solid thing stands on clay; how it stands says what it does.
 - A **card** (the living message, the composer, On hand cards, Devices cards, a page's cards)
@@ -120,6 +120,14 @@ partner's. A file is a white card on the clay base, one line. The upload ring is
 `--ring-back`. The viewer lies on the theme's paper (`--viewer-scrim`: Pebble's paper at 97%, the
 dark ground at 96%), its controls text buttons in ink; it grows out of the tile and shrinks back,
 and only fades under reduced motion. Mac: `Lightbox`, `LightboxInk`, `MediaGap`.
+D286: five to nine in rows (2+3, 3+3, a 2:1 banner over 3+3, 2+3+3, 3×3), inner corners
+`--r-tile` (4); a picture clears out of its blurred preview (blur, scale 1.04, opacity over
+`t-med`); a pressed tile sinks to .965 over `t-press`; a landed picture's ring closes, ticks and
+lets go, its tile settles over `t-pop` on `--spring`. A file's badge is a page whose band is the
+family's colour, `--fam-{pdf,code,text,doc,sheet,slides,archive,audio,video,picture,other}` with
+`--fam-on` for the extension on it (muted clay tints; lighter ones in dark); Mac `Family`,
+`FamilyOn`. The viewer's strip slides over `t-med` on `ease`; Remove on a tray tile is a small
+surface pebble, never an ink disc.
 
 **Replies: the imprint (D236, research/72).** The message replied to as a small copy of its own
 bubble pressed into the reply: `--r-imprint` (14/14/14/4, the partner's tail bottom-left;
@@ -290,6 +298,31 @@ selection, **全部拷贝** (secondary) and **完成** (primary) under them.
 | the equip | peel (14%) → arc (50%) → snap (62–69%), 0.82 s, a tock and a 10 ms haptic |
 | the title moment (D87) | once per Mac: dawn rises, a 3% push-in with parallax, the eyes open on the tone, the logotype lit by a passing light; see `onboarding.md` |
 
+**Moving between views (D290, research/96).** A move says where you went; it is never waited on.
+Tokens (Mac `theme.Nav`; web `:root`): push 380 ms (`--t-push`, `--ease-push`, Mac a spring of 380
+ms, bounce 0.08), across 300 ms (`--t-across`), hero 440 ms (`--t-hero` on `--ease-push`, Mac bounce
+0.06: a long flight must not overshoot its place), leave 260 ms (`--t-leave`), stagger 22 ms (`--t-stagger`, 8 rows at most), look 620 ms
+(`--t-look`, tilt 7°, Mac bounce 0.45); depth 28 · recede 10 · shift 14 · rise 6 (`--nav-*`).
+
+| Move | Mac (toned down) | Phone web | Wide web (the pane) |
+|---|---|---|---|
+| go deeper (conversation → On hand → task) | page in from 28 pt on the push spring, its fade on a quick ease-out (`EnterDur`); the page left recedes 10, opaque under it | a full push from the trailing edge; the page left recedes a third and dims | the pane's page in from 28px; the one left recedes and fades |
+| come back | the reverse | the page left slides off the trailing edge on top | the reverse |
+| the card you opened | On hand's row (held on hover or focus) grows into the task's head (`Match` + `Fly`), and the head goes back into it | the row's `.tmain` and the head share `hero` | the same |
+| one task to the next (rail, ⌘⇧], j/k) | the task's column alone rises 9 into place; bar and rail stay | the page rises 9 as the old fades | the same |
+| a place beside another | page 14 toward its mark; the knob (its own piece under the marks) slides there | — | the knob goes to Devices or Settings while their sheet is over the board |
+| the bar | held still against its page (a pose turned back); its words cross-fade | named `bar`: stays, cross-fades | — (two bars) |
+| sheets | the New task card springs in (unchanged) | spring up; close back down; drag down from the grab or a top-scrolled sheet (past a quarter or a flick), else spring home | centred: sink 4% and fade |
+| Settings pages | panels rise 6 (enter) | a pushed page from the trailing side; the list back from the leading side | the same |
+| a list's first paint | On hand's rows rise 6 one after another | the same (CSS, per group) | the same |
+| the partner, back at the conversation | glances round (−7°) and settles on a clay wobble | the same (`look-round`) | — |
+| edge swipe back | — | from the leading 24px where the browser has none (the app's web view, an installed page, Chrome); the browser's own back never doubled (`hasUAVisualTransition`) | — |
+
+Overshoot only on small objects (the knob on `--spring-soft`, the face), never a page of text or a long flight. Transform and opacity only.
+Reduced motion: MyGo fades in place by itself; the web skips view transitions and the CSS stops
+every animation; the knob jumps, the face is still. Frames: `.shots/d290/` (Mac tester and headless
+Chrome, zh and en); `navmotion_test.go` logs a move's frame time.
+
 Delays are staggered so nothing moves in unison. A device that can't be reached is still and a
 little grey. One exception (D87): the title moment's "Press any key" breathes (60–100%, 3.4 s); it
 is an invitation, not a status. Status, chips, lines and buttons never animate on their own. Reduced motion: all
@@ -314,6 +347,16 @@ of it stops; the equip cross-fades; colors and words are unchanged.
 - Inline code in a zh line: JetBrains Mono at 0.86em on the same baseline, the same 1/4-em gap,
   short tokens never broken (D73).
 
+**On hand's head and task cards (D287).** The board opens with the partner's figure (76; 56 in the
+side pane and on the phone) in the pose for the whole and one sentence beside it (`--lg` 18/600,
+the display face, balanced). Working tasks, fresh waits and new results are task cards: `--surface`
+on a 2-pt `--line` ledge and a soft drop, radius 20, 14/16 padding, two to a row from 612; the
+coin 28, the title `--md` 15/600, two lines of `--sm` 13, the heartbeat foot `--xs` 12/600 in the
+state's ink (working bars in `--working-dot`, the wait ring in `--waiting-ink`, done in
+`--done-ink`). Washes: working blue and new-result green at the top only; a new result's glow and
+one pop on `--spring` for `--t-pop`. Hover lifts 2 pt (`--t-fast`); the keys' card has an accent
+outline. The day column (248) is a 2-pt `--line` rule with 10-pt beads.
+
 **On hand cards.** A task's ask is one clay card in the needs-you tint, the same as the ask in
 the conversation: the task's title as a small link in the needs-you ink at its top (no solid
 colored band), the question, the default and its bar, Reply… · Hold · Go. Working, Waiting
@@ -334,7 +377,7 @@ Mac (`placeBar`, `placeNav` in `views/chrome.go`) and the web (`Top`, `Places` i
 |---|---|---|
 | Left: where you are | **One type size in the bar (D270): 14/600.** The conversation: the partner, two ways in: the face (44) and the name (14/600 ink) open its page, the counts line under it (12 muted, keeping its height while empty) is its own quiet link to On hand, narrowed to what it names when it names one thing; each tints on its own under the pointer. Elsewhere the crumbs (14/600 muted text buttons, `/` faint) and the current one at the same size and weight in full ink, not a button; no line under it (an opened task's agent · state · where is said once, in its head). A page's own large heading lives in its content, never in the bar. A phone's inner page: **‹ 对话 / ‹ Conversation** | `crumb`, `chromeTitle` · `.back`, `.level`, `.trail`, `.here` |
 | Right, first: this place's own actions | 新建 / New task (On hand); an opened task's working copy, workbench and ⋯; 铺满 / Full screen | **at most one worded clay button per bar** (D270): the place's primary action (新建), the bar button (secondary clay, 36, a drawn glyph before the word). Every other action is a quiet text or icon button with no ledge until hovered; a view toggle that is open stays pressed in (sunken, no ledge). Spacing alone parts these from the places: no hairline |
-| Right, last: the way to the other places | **更新 / Update** only while something waits to update (the accent pebble with its arrow; *n 项更新 / n updates*; 正在更新 while 全部更新 runs; it opens 更新和关于 on the Mac, 你的设备 on the web); then the places as **one segmented control** (D264, D270): a small sunk track (34) holding three drawn marks, each about 28 square: **设备 · 手头的事 · 设置** in that order (a laptop and phone; three things in hand; the gear). **Always the marks alone, at every width**; tooltips and accessible names give the words. The place shown is **the knob** (the card's white raised on a 2-pt clay ledge and a soft drop) and does nothing; the others lie flat and tint on hover | `placeSegments`, `knob` · `PlaceSeg` |
+| Right, last: the way to the other places | **更新 / Update** only while something waits to update (the accent pebble with its arrow; *n 项更新 / n updates*; 正在更新 while 全部更新 runs; it opens 更新和关于 on the Mac, 你的设备 on the web); then the places as **one segmented control** (D264, D270): a small sunk track (34) holding three drawn marks, each about 28 square: **设备 · 手头的事 · 设置** in that order (a laptop and phone; three things in hand; the gear). **Always the marks alone, at every width**; tooltips and accessible names give the words. The place shown is **the knob** (the card's white raised on a 2-pt clay ledge and a soft drop), its own piece under the marks that slides to the place shown (D290), and does nothing; the others lie flat and tint on hover | `placeSegments`, `knob` · `PlaceSeg` |
 
 One way to the places per screen: wide (the panes side by side) it is in the conversation's bar,
 whose 手头的事 is dropped because On hand stands beside it (D176); the side pane's bar holds only
@@ -406,7 +449,7 @@ A new control is added to the set (and to this table) before it is used.
 | The button family: primary, secondary, accent, text (D76) | `button`, `buttonFor` (`components.go`); `iconButton`, `navButton` | `Btn` |
 | A bar button: a place's own action, the way to another place, Update (D262) | `navButton` (`components.go`), `placeNav`, `newTaskButton` (`chrome.go`) | `NavBtn` |
 | Quiet text button and link (检查更新, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
-| A button that opens a page elsewhere in a new tab (打开 Cloudflare, the sign-in link of 从外面连; D228) | `button` then `openLink` (`abilities.go`) | `LinkBtn` |
+| A button that opens a page elsewhere in a new tab (打开 Cloudflare, the sign-in link of 从外面连; D228; as a quiet text link with its chevron, 打开 BotFather, D283) | `button` then `openLink` (`abilities.go`); `quietLink` then `openLink` | `LinkBtn` (kind `text` for the quiet link) |
 | Switch | `switchControl` (`shared.go`), inside `switchRow`, `toggleRow` | `Toggle` |
 | Segmented choice | `choices` (`partner.go`) | `Seg` |
 | Choice row (a theme, Remove's plan) | `selectRow` (`shared.go`) | — |
@@ -425,7 +468,9 @@ A new control is added to the set (and to this table) before it is used.
 | One short choice in a row of them, the chosen one raised (New task's model and effort under the chosen agent; D202) | `choice` (`shared.go`) | `Choice` |
 | A group's name that folds it, with its count (By project; D244) | `foldHead` (`shared.go`) | the folding `Section` in `onhand.tsx` |
 | Back to the list | the chrome's crumb | `BackRow` |
-| A group's add row: a drawn ＋ in the tile column, title, one line (D273) | the + rows in `settings.go` | `AddRow` |
+| A group's add row: a drawn ＋ in the tile column, title, one line (D273) | `addRow` (`settings_rows.go`) | `AddRow` |
+| A destructive action before it is confirmed (停用 OOMOL, 断开 Tuwa, 断开 Telegram; D289): quiet text, the failed ink only under the pointer; it asks in place, and the confirmation is `dangerText` | `quietDanger` (`settings_rows.go`; the ask is `confirmRow`) | `DangerButton` with `quiet` |
+| A row that opens more under it, a switch apart at its right edge (a source's service, a setup's step; D289) | `openRow` (`settings_rows.go`) | `OpenRow` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
 
@@ -496,9 +541,21 @@ slot, `updateSection`).
 
 One vocabulary on every tab:
 - **Type:** the tab's name 28 heading (or the hero card's name), a one-line lede 15 muted; a
-  group's title 20 heading on the paper, its note 13 muted; a row's label 15/700; its helper 13
-  muted (zh 1.75); captions 12.
-- **Groups:** the title on the paper, then a white card (radius 24, the 4pt clay base) of rows.
+  section's header 13/700 `ink-soft` on the text edge (D289, as D273 set for the phone; it was a
+  20 heading on the paper), its note 13 muted; a row's label 15/700; its helper 13 muted (zh
+  1.75); captions 12. 8 from a header to its group, 24 between sections.
+- **The grid (D289, `settings_rows.go`):** two edges only, the card's and the text edge 24 in;
+  one row anatomy (the 40 tile column, the title, one muted line, the control at the right edge):
+  `headRow` (a group that is one thing: its tile, its name 18/800, how it stands in the state's
+  ink), `tileRow`, `openRow` (opens more under it; a switch apart at its right), `textBlock`
+  (what a row opened, on the text column), `addRow`, `footRow` (the group's quiet note and quiet
+  actions) and `confirmRow` (a destructive action asking in place; before that it is
+  `quietDanger`). Art lives small in the tile column or in an empty state, never as a hero
+  inside a group. **Accounts** (D289): 发现了就说 as a section; under 它能看的 one group per
+  source (the connection, a row per app and account with whether Ducter reads it and its switch,
+  the add row, the last line); 再连一个账号服务 as an add row; under 打电话 Tuwa, its offer and
+  用你自己的号码打 as groups in the same flow; the AI accounts row last.
+- **Groups:** the header on the paper, then a white card (radius 24, the 4pt clay base) of rows.
   A row is 68 high at least, padded 16 × 24, its label and one-line helper on the left and the
   control at the right end: a switch, a segmented control, a small secondary button, or a ›
   (a link row: the whole row is the button; ↗ for a page outside the app). A 1pt `line-soft`
@@ -517,6 +574,16 @@ One vocabulary on every tab:
   when (XS 700 muted day labels; each line an 8 pt accent pebble on its ledge, the title MD 600, its age XS;
   hairlines start past the pebble; the door to Mem last), then the **Nowledge Mem** card (where · version in mono ·
   a green **已连上** pill). No Mem: no switch; one gentle line and **了解 Nowledge Mem** (D169).
+- **Chat apps / 聊天软件** (D276; D283): its rail mark is clay art like its neighbours, two puffy
+  clay speech bubbles, a cream one behind and a sky one in front with three ink dots
+  (`set_chats`, made like `set_autofill`: `design/art/assets/batch_chats.json`, cut with
+  `tools/cut.swift`; Mac `art/clay/set_chats@256.png`, web `art/set_chats.webp`). The page is D273's
+  grid: the lede, then one raised group per chat app (Telegram, Slack, iMessage), whose first row is
+  the app (a letter pebble in a palette tint, the name 18/800 heading, its state 13 in the state's
+  ink), never a title on the paper above it; a setup's steps carry a 26 sunken step mark centred in
+  the tile column and one 15 sentence on the text column, with a mono chip, a quiet link or a field
+  (label 13/700 over a white input with a hairline) under it; the last line is the privacy note
+  (13 muted) and the group's one button at the right edge. `design/channels.md` §6.
 - **Connected AI agents / 连上的 AI agent** (D257, named by D273; two of the person's agents' coins): the tab's
   lede, then one card (the connection, who can reach it), then the learned rules and the muted in their own card.
   Shown once it means something (J6).
@@ -753,7 +820,7 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    18 pt in from the right edge, one 8×2.5 rounded bar per turn evenly spaced (at most 360
    tall), faint ink, the turns in view 10 wide in ink; hovered or focused, a clay card (Surface,
    the floating shadow, 300 wide, at most 420 tall) lists each turn's first line, newest at the
-   bottom, those in view in ink at 600 with a mark; a click goes to that turn. The agent's
+   bottom, those in view in ink at 600 with a mark; a click goes to that turn. D284: the page opens from what the client holds and asks the home for its newest 200 events, painted the moment they land, older pages of 300 following in the background up to 2,000, then at the head. The locator lists only what was said (the brief, the person's, the partner's); a run of quiet turns between them is one muted line at 12 with a 7×1 hairline mark, and on the rail a quiet turn is a 4-wide tick; the turns in view sit on a clay thumb (the accent at 12–13%, 12 wide) that glides (Smooth / 260 ms) as the page moves; the card rises out of the rail (scale 0.94 → 1 and fade from its bottom right, 180–200 ms in, 120 ms out); a click eases to the turn (the Mac row by row, ease-in-out 260–520 ms; the web 280–640 ms, landing a screen short first from afar), at once under reduced motion, and the turn wears the accent at 14–16% that rises fast and fades over 1.6 s. A Go the person gave on a card is a pill on their side (the sunken clay, 13 secondary ink, its time at 11 muted), never their bubble. The agent's
    words carry one quiet line at 11: **保存了进度** when saved (no icon), and on hover their time ·
    how long the turn worked · **拷贝**, drawn over the gap below so nothing moves. Header actions: **打开 / Open** (D198: a menu, Show in
    Finder; then Open in each of Cursor / Visual Studio Code / Zed installed; then, D201, Open

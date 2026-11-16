@@ -205,7 +205,7 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     expect(Math.floor(180_000 * (Number(env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE) / 100))).toBe(160_000);
     const args = t.options.launchArgs!;
     const settings = JSON.parse(args[args.indexOf("--settings") + 1]!);
-    expect(settings).toMatchObject({ idleCompaction: false, hooks: { PreCompact: [{ matcher: "auto" }] } });
+    expect(settings).toMatchObject({ idleCompaction: false, skillListingBudgetFraction: 0.05, hooks: { PreCompact: [{ matcher: "auto" }] } });
     const cmd = settings.hooks.PreCompact[0].hooks[0].command as string;
     expect(Bun.spawnSync(["sh", "-c", cmd]).stdout.toString()).toBe("keep it's brief\n"); // shell-safe quoting
     expect(() => readFileSync(join(taskDir, ".claude", "settings.local.json"))).toThrow();
@@ -215,7 +215,8 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     expect(JSON.parse(readFileSync(join(taskDir, ".claude", "settings.local.json"), "utf8"))).toMatchObject({ idleCompaction: false, hooks: { PreCompact: [{ matcher: "auto" }] } });
 
     const cx = adaptSpec(spec("codex", { isolateUserConfig: false, contextWindow: 200_000, harnessCompactAt: 160_000, preCompactNote: "n" }), { dataDir: dir });
-    expect(cx.options.launchArgs).toEqual(["-c", "model_context_window=200000", "-c", "model_auto_compact_token_limit=160000"]);
+    // D282: and the person's skill listing at its own size.
+    expect(cx.options.launchArgs).toEqual(["-c", "model_context_window=200000", "-c", "model_auto_compact_token_limit=160000", "-c", "skills.max_context_tokens=5440"]);
     // pi has no per-session knob: nothing is passed (design/todo.md).
     const p = adaptSpec(spec("pi", { isolateUserConfig: false, contextWindow: 200_000, harnessCompactAt: 160_000 }), { dataDir: dir });
     expect(p.options.launchArgs).toBeUndefined();

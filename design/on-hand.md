@@ -1,8 +1,8 @@
 # On hand (手头的事): the conductor surface
 
 How On hand lets one person take in 3 or 50 tasks at a glance and step into any of them. Decided
-in D216 (one list), D244 (the rail beside an opened task) and D261 (projects as a lens, the strip,
-the folds). Words are the glossary's (`product-model.md`); the visuals are Pebble's (`ui.md`).
+in D216 (one list), D244 (the rail beside an opened task), D261 (projects as a lens, the strip,
+the folds) and D287 (the partner at its head, the work as cards, the day beside it). Words are the glossary's (`product-model.md`); the visuals are Pebble's (`ui.md`).
 
 ## The two axes
 
@@ -30,18 +30,42 @@ same lens, whose head names it and goes back. The column never stands beside the
 
 ## The board
 
-1. When nothing needs you, one calm sentence (`onhand.calm`, `onhand.calm.working`). Otherwise
-   nothing: the 等你 section comes first.
+1. D287: the partner at the head, always: its clay figure (76; 56 in the side pane and on the
+   phone) in the pose for the whole (its flag when anything needs you > reading while anything
+   works > on its bench while all waits > smiling when what is left came back done > idle), and
+   one sentence from counts and times only (`onhand.say.*`): **现在没有要你定的。4 件在等：最早
+   22:40 回来，2 件一天多没有动静；今天做完 1 件。** (18/600, the display face).
 2. The strip: **等你 · 在做 · 在等 · 今天做完**, counts within the lens; a count of none is faint.
    D270: a small sunk track of calm numerals and names on one line, the filter chosen the knob.
    At its end, under a project, **在这儿新建 / New task here**; Find from ten tasks.
-3. 接下来 / Next, the forecast line (D127), when two or more things are coming.
+3. 接下来 / Next, the forecast line (D127), when two or more things are coming and the day column
+   isn't drawn.
 4. Sections by state. 等你 answers in place (decision cards). 在做 rows. 在等: fresh rows, task-less
    waits, then the quiet fold. 今天做完: new results as rows, then the seen fold. D270: one reading
    column (760); section names small and quiet; rows lie flat on the ground with one anatomy (title
    14/500, one muted line of what's happening now, the time and where on the right), at least 58
    high; hover a faint tint; the row under the keys or open beside the rail is the knob; state is
    said by the small glyph or face, never a bar at the row's edge.
+5. D287: what is alive stands as **cards** (below); quiet waits, seen results and the rail stay rows.
+6. D287: **the day beside the board** (Mac ≥ 1280 pt, web ≥ 1280 px, 248 wide): 接下来 / Next (the
+   waits' next looks and defaults, soonest first, ≤ 5, hollow beads), {time} 现在 / Now, 今天回来的
+   / Back today (today's finished tasks, newest first, ≤ 6, with their result's first line, filled
+   beads); each opens its task.
+
+### Cards (D287)
+
+Working tasks, fresh waits and new results: white on a 2-pt ledge, radius 20, two to a row from 612
+of list width. The agent's coin (28; rocks while working), the title 15/600, what it is on in two
+lines (the sources below), and the **heartbeat** at its foot, always true:
+
+| State | Heartbeat | Wash |
+|---|---|---|
+| Working | three soft bars rising and falling, **在做 12 分钟** (**刚开始做** under a minute) | faint working blue at the top |
+| Waiting | the 16-pt ring filling toward **22:40 回来** (D279) | none |
+| New result | **14:10 做完**, the result in full ink, the smiling face; pops once the first time it is drawn | done green and a glow |
+
+On the right of the foot: +a −d, 草稿 PR / 已合并, where. Hover lifts it 2 pt and offers its one
+next step; the card under the keys has the accent outline.
 
 ### Folds
 
@@ -50,7 +74,13 @@ same lens, whose head names it and goes back. The column never stands beside the
 | Quiet waits | A waiting task whose card and looks haven't changed for 24 h | 还有 n 件，一天多没有动静 / n more, quiet for over a day | Tap (this session), Find, or 在等 in the strip |
 | Seen results | Done today that isn't a new result, missed waits, ended calls | 还有 n 件，你都看过了 / n more you've seen | Tap (kept per device), Find, or 今天做完 in the strip |
 
-What needs you never folds. Folded rows are not in the keys' walk.
+What needs you never folds. Folded rows are not in the keys' walk. D287: a fold folds from three;
+one or two stay in sight under a quiet caption (**一天多没有动静 / Quiet for over a day**, **你看过的 /
+Seen**).
+
+D285: under the sections, On hand's last line leads on: **一直在跑的 n 件 ›** (when something keeps
+going on its own) and **做过的事 ›**, where every finished task stays, findable and marked
+(`past.md`). A Find that matches nothing here offers **在做过的事里找「{q}」**.
 
 ## A row
 

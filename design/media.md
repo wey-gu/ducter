@@ -1,6 +1,6 @@
 # Pictures and Files (media)
 
-> Design note for D206, D239, D242 and D259 · Principles 5, 6, 7 · Evidence: `research/56`, `research/75` · Screens: `.shots/media/`
+> Design note for D206, D239, D242, D259 and D286 · Principles 5, 6, 7 · Evidence: `research/56`, `research/75` · Screens: `.shots/media/`, `.shots/d286/`
 > (D75: never in git)
 
 The author: "要优雅一些，极度顺滑方便用户浏览查看，体验拉满". A partner you message has to see what
@@ -33,10 +33,15 @@ only what a task chose to show comes back · 惊喜 "画一张…" gives you the
   re-encoded (JPEG ~0.85; a screenshot stays a crisp PNG, a GIF stays moving), which turns it
   upright by its EXIF and drops all of its metadata, location included. HEIC becomes JPEG on the
   way. The device also makes the 720 px tile rendition and a ~16 px preview.
-- **Up at once.** The upload starts the moment a picture is picked, with a thin progress ring on
-  its thumbnail, so Send is instant. A message waits for its pictures; one that didn't go up
-  stays with its words and its picture: **没发出去 · 重试 / Didn't send · Retry**. Words are never
-  lost.
+- **Up at once.** The upload starts the moment a picture is picked, with a thin, calm ring on
+  its thumbnail (white over a blurred dim), so Send is instant. When it lands the ring closes, ticks
+  and lets go (D286). A message waits for its pictures; one that didn't go up stays with its words
+  and its picture, a drawn circling arrow over the picture and **重试 / Retry** under the words.
+  Words are never lost.
+- **Into the bubble (D286).** On Send the tray's pictures fly into their bubble (one shared
+  element: the bubble's box from the rect the tray tiles took together) and a file flies from its
+  tray tile into its card; when a picture lands, its tile settles (a pebble set down). A picture
+  this device sent shows its own copy in the bubble, so nothing loads or fades in a second time.
 - **Wire.** `POST /api/media` (behind the gate, same origin; 25 MB a picture, 50 MB a file): multipart `file`, `thumb?`,
   `preview?`, `name?` → `{media: MediaRef}`. Frames name ids: `send.media`, `task_send.media`,
   `task_new.media`; the home turns them into refs (an id it doesn't hold is refused: **A picture
@@ -51,10 +56,11 @@ and nothing in it can run.
 
 - **As it is.** A picture the device can read is made ready (above); anything else, and a picture
   it can't read (HEIC on the Mac, TIFF in Chrome), goes up unchanged: no canvas, nothing stripped.
-- **The tray:** a file is a wider clay tile (128 pt), its drawn kind over its name (two lines), the
-  ring in its corner while it goes up, Remove and Retry as for a picture. **The bubble:** the file
-  card (drawn kind, name, size), its ring where **打开 / Open** will be until it lands; then the card
-  itself, which opens the file in the viewer (D239).
+- **The tray:** a file is a wider clay tile (128 pt), its badge over its name (two lines), a calm
+  bar in its family's colour along its foot while it goes up (D286), Remove and Retry as for a
+  picture. Remove is a small clay pebble on the tile's corner; the tile shrinks away. **The
+  bubble:** the file card (below), the same bar where **打开 / Open** will be until it lands; then
+  the card itself, which opens the file in the viewer (D239).
 - **Limit: 50 MB a file** (`MEDIA_LIMITS.file`; pictures stay at 25 MB, they are scaled first).
   Under Cloudflare's 100 MB request cap on a From-anywhere tunnel (D228) and Bun's 128 MB, held in
   memory once while stored. Checked on the device before a byte leaves, and on the home (413 with
@@ -156,21 +162,47 @@ drawing needs Codex signed in on one of their computers. The picture comes back 
 
 - **Layout (`gridLayout`, the same on web, phone and Mac):** one picture at its own shape (clamped
   21:9…1:3), sized to fit both ~70% of the column and a little over a third of the screen; two side
-  by side; three as one tall and two stacked; four as 2×2; more than four shows four with **+n**
-  on the last. 2 px apart inside one rounded box (radius 18). The box is sized from the ref's
-  pixel size before any byte loads; the preview, blurred, fades to the picture.
+  by side; three as one tall and two stacked; four as 2×2; five to nine in rows (D286,
+  `GRID_ROWS`): 2+3, 3+3, a 2:1 banner over 3+3, 2+3+3, 3×3, taking a little more of the column
+  (78%), so every picture of a trip shows; more than nine (a message holds ten) shows nine with
+  **+n** on the last. 2 px apart inside one rounded box (radius 18); inside it the tiles' own
+  corners stay soft (`--r-tile`, 4). The box is sized from the ref's pixel size before any byte
+  loads; the preview, blurred, holds the place and the picture clears out of it (blur, a little
+  scale, opacity over `--t-med`); a tile drawn once is simply there when shown again. A tile sinks
+  a little when pressed.
 - **Where:** the user's pictures stand above their words, right-aligned; what a task showed sits
   under the partner's words; in a task, with your lines, the partner's, the brief and each report.
   A file is one line on a card, a clay button: its drawn kind, name, size, **打开 / Open**. A tap
   reads it inside Ducter (below, D239).
-- **The viewer:** a tap grows the picture out of its tile (shared element; a fade under reduced
-  motion) onto the theme's paper; pinch and double-tap zoom; swipe through every picture of the
-  conversation (or the task); swipe down or Esc shrinks it back into its tile. Bottom bar: **保存
-  / Save** (the share sheet on a phone), **分享 / Share** where the device can, **拷贝 / Copy**,
-  and **来自「{task}」/ From {task}** to the task that made it. The Mac: Space opens and closes, ←/→,
-  Esc, ⌘C copies, drag out to Finder.
-- Tokens only (`--pics-w`, `--pics-h`, `--pic-gap`, `--r-pics`, `--viewer-scrim`, `--pic-dim`,
-  `--ring-back`; Mac `Lightbox`, `LightboxInk`, `MediaGap`). No pills, no dots (D69, D73).
+- **The viewer:** a tap grows the picture out of its tile, clipped to the tile's own crop and
+  round corners so it is one continuous picture (the tile stays empty while it flies; a fade under
+  reduced motion), onto the theme's paper; the tile's rendition shows under the full picture while
+  it loads. The pictures sit on a strip: a swipe shows the next one peeking in and lets go into it
+  (an end gives a little); ←/→, the side buttons on a wide screen (**上一张 / Previous picture**,
+  **下一张 / Next picture**) and a sideways two-finger swipe slide too. Pinch, ⌘/Ctrl and the
+  wheel zoom where the fingers or the pointer are (up to 5×); a zoomed picture pans, lets go with
+  its speed and comes back inside its edges; a double tap zooms where it was tapped. Swipe down or
+  Esc shrinks it back into its tile. Bottom bar: **保存 / Save** (the share sheet on a phone),
+  **分享 / Share** where the device can, **拷贝 / Copy**, and **来自「{task}」/ From {task}** to
+  the task that made it. The Mac: Space opens and closes, ←/→ (the next picture comes in from that
+  side), Esc, ⌘C copies, a pinch, ⌘ and the wheel or a mouse wheel zoom at the pointer, a
+  two-finger scroll pans or steps, a double click zooms, drag out to Finder; it grows from the
+  tile and shrinks back into it.
+- **A file card (D286)** is drawn as the thing it is. Its badge is a little page whose band is
+  the family's colour and says the extension (PDF, TS, DOCX, ZIP, M4A, MP4), the family's mark on
+  it (`fileFamily`, `fileBadge`: pdf, code, text, doc, sheet, slides, archive, audio, video,
+  picture, other). Above its line, a glimpse where the file has one: a PDF's first page on white
+  paper (the line adds **{n} 页**), code's and text's first lines in their colours, a table's first
+  rows, a video's frame with its length, a sound's waveform that plays in the card (**播放 /
+  Play**, **暂停 / Pause**; a tap on the wave seeks). A glimpse is made once, when the card comes
+  within a screen, one PDF at a time, and kept by the file's id; one that can't be made leaves the
+  card plain. A file on its way makes it from this device's copy. The Mac draws the PDF page and
+  the first lines; a video's frame and a waveform are the web's for now.
+- **Sounds (D286):** `.m4a`, `.mp3`, `.wav`, `.aac` are files Ducter knows (`FILE_TYPES`,
+  `fileView` "audio", the partner's line says "audio"); the viewer plays one; the Mac offers
+  **在 Mac 上打开**.
+- Tokens only (`--pics-w`, `--pics-h`, `--pic-gap`, `--r-pics`, `--r-tile`, `--fam-*`, `--fam-on`, `--viewer-scrim`, `--pic-dim`,
+  `--ring-back`; Mac `Lightbox`, `LightboxInk`, `MediaGap`, `Family`, `FamilyOn`). No pills, no dots (D69, D73).
 
 ## Reading a file (D239, research/75)
 

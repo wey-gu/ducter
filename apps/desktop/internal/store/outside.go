@@ -44,6 +44,26 @@ func IsOutside(cmd string) bool {
 // first. It knows only the events loaded (HistoryLoaded says whether that
 // is all of them).
 func (t *Task) Outside() []OutsideAct {
+	// Kept until the events change: a frame asks for it, and decoding every
+	// event each frame held a long task's page (D290 paints more frames).
+	key := outsideKey{n: len(t.Events)}
+	if key.n > 0 {
+		key.first, key.last = t.Events[0].Seq, t.Events[key.n-1].Seq
+	}
+	if t.outsideOK && t.outsideAt == key {
+		return t.outside
+	}
+	out := t.outsideScan()
+	t.outside, t.outsideAt, t.outsideOK = out, key, true
+	return out
+}
+
+type outsideKey struct {
+	n           int
+	first, last int64
+}
+
+func (t *Task) outsideScan() []OutsideAct {
 	var out []OutsideAct
 	for _, ev := range t.Events {
 		if ev.Kind != protocol.KindTaskEvent {

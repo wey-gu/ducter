@@ -56,16 +56,24 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
   persona (D168; off in the task only when memory is off in Ducter); a browser place runs clean. The cost (slower start, extra context) is off the
   user's attention path, since the ack comes from the partner. Turn it on for untrusted or
   shared-machine setups.
-- **What every task leaves out of the harness's own tools** (D241, research/76 §6): only what
-  competes with Ducter. Claude Code: plan mode, Cron ×3, ScheduleWakeup and AskUserQuestion (Ducter
-  owns waits, wakes and talking to the person), **PushNotification** (a push to the person's
-  terminal and phone, around Ducter), **RemoteTrigger** (scheduled remote agents on the person's
-  claude.ai account, which outlive the task) and **Workflow** (a scripted fan-out of agents that
-  never see the brief; Ducter owns fanning work out as tasks the person sees; ~2.0K tokens a
-  request). The partner's session gets the same list. **Agent stays** outside browser places: a
-  subagent returns to the task, which keeps the brief, and the tools that act for the person
-  outside a browser (the phone, the person's apps) are Ducter's own, with the Go gate enforced by
-  the tool and written in its description. Codex: an ordinary task keeps the person's
+- **What every task leaves out of the harness's own tools** (D241, re-justified in D282,
+  research/92 §3): only what competes with Ducter. Claude Code: plan mode and AskUserQuestion (the
+  person's turn is Ducter's report_to_main), Cron ×3 and ScheduleWakeup (D267's `wait_for` time is
+  the task's clock), **PushNotification** (a push to the person's terminal and phone, around
+  Ducter) and **RemoteTrigger** (scheduled remote agents on the person's claude.ai account, which
+  outlive the task). The partner's session gets the same list, and Workflow with Agent (read-only).
+  **Agent and Workflow stay** outside browser places (D282): their agents report back to the task,
+  which keeps the brief, and the tools that act for the person outside a browser (the phone, the
+  person's apps) are Ducter's own, with the Go gate enforced by the tool and written in its
+  description.
+- **A task lists the person's skills as their own session would** (D282, research/92 §2): D135's
+  small window would shrink the listing (Claude Code: names only), so a task sends
+  `skillListingBudgetFraction: 0.05` (Claude Code `--settings`) and
+  `-c skills.max_context_tokens=5440` (Codex). The brief is appended (Claude Code's appended
+  system prompt, Codex's developer instructions), never replacing the harness's own prompt.
+- **Slash commands typed in a task** (D282): Claude Code runs them headless (the person's commands
+  and skills, `/review`, `/compact`, `/context`), so they go as typed; `/model` and `/effort` are
+  Ducter's in-place switch on every agent; Codex's bare `/compact` is OAR's manual compaction. Codex: an ordinary task keeps the person's
   `multi_agent`; its subagents inherit the brief (`developerInstructions`, codex 0.167.2 source)
   unless an agent role of the person's replaces it.
 
@@ -1039,8 +1047,8 @@ What runs today, before sandboxes and spacesd:
   `DUCTER_BROWSER` (0 / 1 / unset = auto).
 - **env-gate, first slice (no proxy yet):** a browser task sees 10 cua-driver tools.
   Everything else the driver offers, including `page` and `end_session`, is denied.
-  - Claude built-ins: Claude Code's own, less Ducter's denials for every task (Workflow among
-    them since D241) and **Agent** (D240). A subagent gets the parent's MCP tools but not its
+  - Claude built-ins: Claude Code's own, less Ducter's denials for every task and **Agent** and
+    **Workflow** (D240; an ordinary task keeps both since D282). A subagent gets the parent's MCP tools but not its
     appended brief (measured, research/76), so it would use the browser without the Go,
     untrusted-page and own-window rules. No `--tools` allowlist: one rots as Claude Code
     renames tools. Cost, per request (haiku, research/76): 12.2K tokens of built-ins against

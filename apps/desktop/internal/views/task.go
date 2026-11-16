@@ -54,7 +54,12 @@ func (a *App) task(c *ui.Context) {
 			rw = railWidth(w)
 		}
 		a.slide(c, "rail", rw, func(cw float32) { a.onHandRail(c, cw) })
-		ui.Column(c.Key("taskcol")).Grow(1).MinWidth(0).MinHeight(0).Children(func() { a.taskBody(c, task) })
+		// D290: keyed by the task, so one task to the next moves this
+		// column alone (the bar and the rail stay): the new one rises a
+		// little into place as the one left fades.
+		ui.Box(c.Key("taskstage")).Grow(1).MinWidth(0).MinHeight(0).ChildExit(ui.Motion{}).Children(func() {
+			ui.Column(c.Key("taskcol:" + task.ID)).Absolute().Fill().Transition(a.taskSwitch()).Children(func() { a.taskBody(c, task) })
+		})
 		bw := float32(0)
 		if bench {
 			bw = a.benchW(w)
@@ -503,6 +508,7 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 						ta.Focus()
 						a.focusComposer = false
 					}
+					a.contextRing(c, task) // D288: the context meter, a quiet ring by the composer
 					if working && strings.TrimSpace(draft) != "" {
 						if a.button(c, a.L.T("composer.after"), btnText, t.ControlSM, t.Surface) && a.SendToTaskMode(task.ID, draft, "queue") {
 							draft = ""

@@ -15,8 +15,11 @@ export * from "./calendar.ts";
 export * from "./computer-use.ts";
 import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFrame } from "./computer-use.ts";
 export * from "./reply.ts";
+export * from "./context-meter.ts";
 export * from "./handset.ts";
 export * from "./channels.ts";
+export * from "./past.ts";
+import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
@@ -318,6 +321,8 @@ export interface Bodies {
     // D128: "you" = the user opened it themselves (开一件事 / New task, `ducter task`); the brief
     // is their words as they are. Absent = the partner opened it.
     origin?: "you";
+    // D285: opened with 带着它开新任务 / New task from this: the task its brief carries findings from.
+    from?: string;
     // D157: what the task needs of its computer (kept so a move or a switch keeps them).
     needs?: TaskNeeds;
   };
@@ -518,7 +523,58 @@ export interface Bodies {
   phone_call: CallBody;
 }
 
-export interface Usage { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }
+export interface Usage {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+  /** What the context holds at the turn's last model call, as the harness reported it (D135). */
+  contextTokens?: number;
+  /** D288: the window that reading fills (the harness's report, else the session's set window). */
+  contextWindow?: number;
+  /** D288: where the harness compacts on its own (the session's compaction point). */
+  compactAt?: number;
+  /** D288: this turn alone (input counts its cached part; output its reasoning). */
+  turn?: TurnTokens;
+}
+
+/** D288: one turn's tokens: input (cache reads included, `cached` that part) and output. */
+export interface TurnTokens {
+  input: number;
+  output: number;
+  cached?: number;
+}
+
+/**
+ * D288: an AI agent's account usage limits, as the agent itself reports them: read on demand
+ * (OAR accountUsage: Claude Code's get_usage, Codex's account/rateLimits/read) and kept current
+ * by what a running session says (Claude Code rate_limit_event, Codex account/rateLimits/updated).
+ */
+export interface AccountUsage {
+  harness: string;
+  /** The plan as the agent names it ("max", "pro", "plus"). */
+  plan?: string;
+  /** The signed-in account (an email or display name), when the agent says. */
+  account?: string;
+  /** A limit refuses requests now. */
+  limited?: boolean;
+  windows: UsageWindow[];
+  /** When this was read or last heard. */
+  at: string;
+}
+
+/** D288: one usage window of an account (a 5-hour, a weekly, a per-model weekly limit). */
+export interface UsageWindow {
+  /** The agent's own key ("five_hour", "seven_day", "codex:primary"). */
+  id?: string;
+  /** The agent's own name for it (English; clients word it from its span and model). */
+  label: string;
+  /** Used, 0..1. */
+  used: number;
+  resetsAt?: string;
+  /** Its length in ms when known (5 h, 7 days). */
+  durationMs?: number;
+}
 
 export type EventKind = keyof Bodies;
 
@@ -583,6 +639,11 @@ export interface TaskCard {
   computing?: { device: string; app?: string };
   /** D238: the task is using the person's own phone (its device id; app: the one in front, by id), so it can be stopped. */
   handset?: { device: string; app?: string; quiet?: boolean };
+  /** D285: the person's marks (their name for it is already its title; original keeps the task's own). */
+  mark?: PastMark;
+  original?: string;
+  /** D285: seeded from that task (New task from this). */
+  from?: { taskId: string; title: string };
 }
 
 export interface OnHand {
@@ -787,7 +848,9 @@ export type ClientFrame =
   // version: the Ducter version the client runs (the Mac app's); newer than the home's latest
   // release makes the home read GitHub again (its answer is stale).
   // shape (D263): what the device a page runs on is shaped like (shapeFromBrowser), for its clay.
-  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape }
+  // gzip (D284): the client reads a frame over 16 KB sent as one binary message, its JSON gzipped
+  // (the Mac app; a browser has the socket's own deflate).
+  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape; gzip?: boolean }
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
   // via (D277): the Mac app's iMessage bridge relays words the person wrote in iMessage.
@@ -817,6 +880,8 @@ export type ClientFrame =
   // frame carrying the same id.
   | { t: "wb"; id: string; taskId: string; req: import("./workbench.ts").WbRequest }
   | { t: "read"; upToSeq: number }
+  // D284: an opened task asks for its newest window first (limit ~200), then older pages with
+  // beforeSeq = the oldest seq it holds; limit is at most 2,000.
   | { t: "task_history"; taskId: string; beforeSeq?: number; limit?: number }
   // Devices and abilities (D43, D51): "devices" answers with a devices frame and keeps the
   // socket subscribed (a fresh frame whenever a device or an ability changes). "ability" adds
@@ -887,7 +952,10 @@ export type ClientFrame =
   // (action "switch"). After two switches the same way the partner asks once whether to make it
   // a rule (a partner-level decision).
   | { t: "candidates"; taskId: string }
-  | { t: "task_switch"; taskId: string; harness: string; model?: string; device?: string } // device (D157): continue on another computer
+  // D288: an agent's account usage limits, for a task's context card (answered by account_usage;
+  // read at most every few minutes; fresh: true reads again now).
+  | { t: "account_usage"; harness: string; fresh?: boolean }
+  | { t: "task_switch"; taskId: string; harness: string; model?: string; effort?: string; device?: string } // device (D157): continue on another computer; effort (D282): the same agent keeps its session
   // D157: 合上之前搬走 / Move before closing, from a computer's card: one decision (close_result answers;
   // none = nothing runs there, close it whenever).
   | { t: "close_computer"; device: string }
@@ -949,7 +1017,8 @@ export type ClientFrame =
   // (task_new_result carries routineId, no taskId); when / until open it now with its wait or loop.
   // D202: model and effort only when the user picked other than the defaults (an effort the model
   // doesn't list is dropped, with a line in the task, never sent).
-  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen; media?: string[] }
+  // D285: from, 带着它开新任务 / New task from this: the brief carries what that task found.
+  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen; media?: string[]; from?: string }
   // D186: add a folder on the home's computer as a project (a repo or not). Answered with
   // project_add_result; On hand's projects and the card's places then include it. device (D197):
   // the folder is on that worker (the Mac app's own, when the home is elsewhere), read there.
@@ -1005,6 +1074,8 @@ export type ClientFrame =
   | ComputerClientFrame
   // D276: 聊天软件 / Chat apps (channels.ts).
   | ChannelClientFrame
+  // D285: 做过的事 / Past tasks (past.ts).
+  | PastClientFrame
   | HandsetClientFrame
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" }
@@ -1137,7 +1208,9 @@ export type ServerFrame =
   | { t: "welcome"; persona: string; personaName: string; headSeq: number; machine?: string; /** The home's Ducter version: a page built for another reloads (it would draw an older card). */ version?: string }
   | { t: "events"; events: LogEvent[] }
   | { t: "on_hand"; onHand: OnHand }
-  | { t: "task_history"; taskId: string; events: LogEvent[] }
+  // D284: a page of a task's stream, oldest first: the newest `limit` events, or those before
+  // beforeSeq (echoed). more: older events remain (absent from a home before D284).
+  | { t: "task_history"; taskId: string; events: LogEvent[]; more?: boolean; beforeSeq?: number }
   | { t: "sent"; taskId: string; delivered: Delivery } // ack for task_send
   // ref: merge commit or PR URL. confirm (D142 undo): the folder changed after the task finished;
   // these would be lost (count, the first few paths).
@@ -1157,6 +1230,8 @@ export type ServerFrame =
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; bridge?: BridgeView }
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
+  // D288: no usage: the agent doesn't share it (unsupported), isn't signed in, or the read failed.
+  | { t: "account_usage"; harness: string; usage?: AccountUsage; why?: "unsupported" | "signed_out" | "unavailable" }
   | { t: "connections"; connections: ConnectionView[]; oo: OoDetect; ownPhone?: OwnPhoneView }
   // D218: an own-number step the home refused (number: not a full number; key: not a key; busy: a call is on).
   | { t: "own_phone_result"; ok: false; action: string; reason?: string }
@@ -1213,6 +1288,7 @@ export type ServerFrame =
   | ComputerServerFrame
   | HandsetServerFrame
   | ChannelServerFrame
+  | PastServerFrame
   | { t: "error"; message: string };
 
 /** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */

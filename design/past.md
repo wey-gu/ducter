@@ -1,0 +1,130 @@
+# Past tasks (做过的事): finding earlier work and picking it up again
+
+How a person finds a task they had before, marks it so they find it faster next time, and gets
+back to work from it. Decided in D285; the scenarios and the evidence are in
+`research/93-past-work.md`. Words are the glossary's (`product-model.md`); visuals are Pebble's
+(`ui.md`).
+
+## Who and how it starts
+
+- **The heavy developer** comes back to "the refactor from last Tuesday", "the task that found
+  the flaky test's cause", "everything about hawdb compaction". They type a few words, a file
+  name or a branch and get the card first.
+- **The consumer** comes back to "the hotel booking in Kyoto" or "that call to the dentist". They
+  never need a filter or a tag: words and dates find it.
+- **The fresh user** meets it with no setup. On hand's last line says **做过的事 ›**, and an empty
+  Find in On hand offers **在做过的事里找「…」**. Nothing has to be learned first.
+
+## The place
+
+A view, **做过的事 / Past tasks**: on the Mac a whole-window place (like On hand at the whole
+screen); on the web a sheet, a centred 920-wide panel when wide, the whole screen on a phone.
+
+Ways in:
+
+| From | How |
+|---|---|
+| On hand | Its last line, **做过的事 ›**, under every section (the seen fold leads to it: what you have seen today is also there, with everything before) |
+| On hand's Find | No match: **在做过的事里找「{q}」 / Look for "{q}" in Past tasks**, which opens it with the words |
+| The switcher (⌘O) | Its last row, the same line, while words are typed |
+| The Mac's menu | **做过的事… / Past Tasks…** (⌘Y) |
+
+Esc clears the field, then goes back to where it came from.
+
+## The field and the filters
+
+One large field: **找以前的事：说过的话、文件、分支、哪天… / Find earlier work: what was said, a file, a branch, a day…**.
+It searches as you type (no Enter), across, in this order of weight: the person's name for a task,
+its title, its tags, its branch and PR, its project, the files it touched, the person's own words
+in it, its agent and computer, its reports, its brief, the agent's words. Every word must match
+somewhere; when nothing has them all, the closest show instead. Time words become a date range
+on when it was worked on, said under the field (**上周二 · 11月10日**): 今天, 昨天, 前天, 这周, 上周,
+上周二, 周二, 这个月, 上个月, 最近 7 天, 3 天前, 11月10日, and the English ones.
+
+Under the field, one row of chips, each a filter (the chosen one the knob, D270): **全部 / All**,
+**标了星的 / Starred**, then the projects, the agents and the tags in use, most used first.
+
+## The list
+
+Without words: **标了星的 / Starred** first, then **今天 · 昨天 · 这周 · 上周 · 这个月** and months.
+What is still on hand is not listed (it lives in On hand) unless starred. With words: one list,
+best first, every task included, those still on hand said so.
+
+A card, at a glance what it was and how it ended:
+
+- the **picture**: a 36 clay pebble with a drawn glyph: the person's glyph on their tint, or
+  Ducter's guess from the task's own words in muted ink on the sunken ground;
+- line one: its **name** (the person's, else its title), the star, its tags as small chips;
+- line two: **how it ended**, the first line of its last report; while searching, **where the
+  words matched** instead: **你说过 / You said**, **它说过 / It said**, **文件 / File**,
+  **分支 / Branch**, **标签 / Tag**, **最初的要求 / The ask**, **原名 / Was**, with the words marked;
+- line three, small: project · agent · date · **+a −d** · 已合并 / 草稿 PR, and an ending other
+  than done: **没做成 / Didn't work**, **取消了 / Cancelled**, **还在手头 / Still on hand**.
+
+Hover (or the keys on it) lifts the card 2 pt with a deeper drop, and shows its actions.
+
+## Actions
+
+| Action | What it does |
+|---|---|
+| Open (click the card) | The task as it is, read-only until you write to it (the opened task, D152) |
+| **接着做 / Continue** | The same task goes back to work and opens: its own session resumed when the agent still has it; otherwise a new session in the same task from its brief and saved progress (the runner's resume-or-seed); a worktree removed after a merge comes back from its branch; a task on a computer that is away says so and starts when it is back. Still on hand: **打开 / Open** instead |
+| **换一个 agent 接着做 / Continue with another agent** | The ⋯ menu: the same, with another agent; the saved progress goes over (D89's switch) |
+| **带着它开新任务 / New task from this** | New task opens at the same place with a chip **带着「{name}」的发现 / With what "{name}" found**; the new task's brief is the person's words, then that task's reports, branch and files. The chip can be removed |
+| **标记 / Mark** | The marks popover |
+
+## Marks
+
+Kept per persona on the home (`marks.json`), the same on every device, changed from any.
+
+- **改名字 / Rename**: the person's name becomes the task's title everywhere (On hand, the task,
+  the switcher); the old title stays findable and is shown as **原名 / Was** when it matched.
+- **标星 / Star**: the star pops (scale 1 → 1.3 → 1, 220 ms, the clay tock); starred tasks lead.
+- **标签 / Tags**: up to five, free words with suggestions (tags in use, the task's project). A
+  chip drops in on add; × removes.
+- **图案 / Picture**: ten drawn glyphs of kinds of work, **修问题 / Fix · 做东西 / Build ·
+  查原因 / Look into · 审一审 / Review · 写东西 / Write · 发布 / Ship · 数据 / Data · 沟通 / Talk ·
+  跑腿 / Errand · 想法 / Idea**, on six clay tints (陶土 · 沙 · 苔 · 雾 · 藕 · 石). The tints are the
+  person's own grouping and never a state's colour. **不用图案 / No picture** goes back to the guess.
+
+## Keys (Mac and wide web)
+
+`/` the field; ↑↓ or j/k walk the cards; Enter opens; ⌘Enter continues; ⇧⌘Enter new task from
+this; `s` stars; `r` renames; Esc clears, then goes back.
+
+## 一直在跑的 / Ongoing
+
+The second tab: what keeps going on its own. Two kinds, one set of gestures.
+
+| Kind | What it is | Its runs |
+|---|---|---|
+| A routine (D114) | on a schedule or a condition, each firing a run (a task) | each run, done, didn't work or skipped |
+| A task resting on its own wait (D267/D279) | it looks again every so often | each look that changed something, and its reports |
+
+A card: the picture (a drawn repeat for a routine, a clock for a task, or the person's mark), the
+name, one state line (**{cadence} · 下次 {time}**, **每 45 分钟看一次 · 下次 {time}**, **暂停到 {time}**,
+**暂停了，等你恢复**, Ducter's own reason when it paused one), and the last twelve runs as 10-pt
+pebbles in the state colours (done and it happened green, didn't work red, skipped an outline,
+looked yellow, running blue and breathing); a pebble opens its run. Sections: 等你, 正在跑,
+**等下一次 / Up next** (soonest first), **暂停了 / Paused**. A paused card is calmer: muted ink, its
+pebble settled 2 pt; it lifts back on resume.
+
+| Gesture | Routine | Task resting on a wait |
+|---|---|---|
+| **暂停 / Pause** ▾ 1 小时 · 明天早上 · 一周 · 直到我恢复 | the routine's own pause; the time kept beside it | its waits end and are kept as they were (`paused.json`) |
+| **恢复 / Resume** | resumes; also by itself at the time | the same waits armed again |
+| **现在跑一次 / Run now** · **现在就去看一次 / Check now** | one run now (also while paused) | one look now |
+| **改时间 / Change when** | every day, weekdays, every week, every few hours, and the time | (a wait keeps its own pace) |
+| **结束 / End** · **不用再去看了 / Stop checking** | ends it | ends the waits |
+
+## Edge cases
+
+- **The agent's session is gone** (an old Claude Code session pruned, another computer): Continue
+  still works; the task says **之前的记录接不上了，从保存的进度接着做** (D207's line).
+- **The worktree was removed** (merged, or idle past the archive horizon): it is added back from
+  the kept branch; a branch deleted since makes Continue fail with the runner's words.
+- **On another computer**: the card says which; Continue on a computer that is away answers with
+  its line, and the person can pick another agent (or Move, D157) from the opened task.
+- **A dropped task**: Continue brings it back (it is no longer dropped).
+- **Hundreds of tasks**: the index is built from the Log on first use and kept live; a query
+  reads memory only.

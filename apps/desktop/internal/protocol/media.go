@@ -158,10 +158,18 @@ const (
 // Size is a picture's pixel size (0 when unknown).
 type Size struct{ W, H int }
 
+// GridRows is the rows of 5 to 9 pictures (D286, GRID_ROWS in media.ts):
+// how many sit side by side in each row, top to bottom.
+var GridRows = map[int][]int{5: {2, 3}, 6: {3, 3}, 7: {1, 3, 3}, 8: {2, 3, 3}, 9: {3, 3, 3}}
+
+// GridMax is the most tiles a message shows; more shows "+n" on the last.
+const GridMax = 9
+
 // Grid lays out n pictures (gridLayout in media.ts, the same rules): one
 // at its own aspect ratio (clamped to 21:9…1:3); two side by side; three
-// as one tall and two stacked; four as 2×2; more than four shows the first
-// four with "+n" on the last.
+// as one tall and two stacked; four as 2×2; five to nine in rows
+// (GridRows: a row of one is a 2:1 banner, else squares); more than nine
+// shows nine with "+n" on the last (D286).
 func Grid(sizes []Size) GridLayout {
 	n := len(sizes)
 	switch {
@@ -183,15 +191,29 @@ func Grid(sizes []Size) GridLayout {
 			{I: 1, X: 2.0 / 3.0, W: 1.0 / 3.0, H: a / 2},
 			{I: 2, X: 2.0 / 3.0, Y: a / 2, W: 1.0 / 3.0, H: a / 2},
 		}, Aspect: a}
+	case n == 4:
+		tiles := make([]Tile, 4)
+		for i := range tiles {
+			tiles[i] = Tile{I: i, X: float64(i%2) / 2, Y: float64(i/2) / 2, W: 0.5, H: 0.5}
+		}
+		return GridLayout{Tiles: tiles, Aspect: 1}
 	}
-	tiles := make([]Tile, 4)
-	for i := range tiles {
-		tiles[i] = Tile{I: i, X: float64(i%2) / 2, Y: float64(i/2) / 2, W: 0.5, H: 0.5}
+	var tiles []Tile
+	y := 0.0
+	for _, k := range GridRows[min(n, GridMax)] {
+		h := 1 / float64(k)
+		if k == 1 {
+			h = 0.5
+		}
+		for j := range k {
+			tiles = append(tiles, Tile{I: len(tiles), X: float64(j) / float64(k), Y: y, W: 1 / float64(k), H: h})
+		}
+		y += h
 	}
-	if n > 4 {
-		tiles[3].More = n - 4
+	if n > GridMax {
+		tiles[len(tiles)-1].More = n - GridMax
 	}
-	return GridLayout{Tiles: tiles, Aspect: 1}
+	return GridLayout{Tiles: tiles, Aspect: y}
 }
 
 // SizeWords is a file's size as a person reads it: 820 KB, 3.4 MB.

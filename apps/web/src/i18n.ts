@@ -7,6 +7,7 @@
 import { starts } from "./i18n-starts.ts";
 import { phone } from "./i18n-phone.ts";
 import { onhandWords } from "./i18n-onhand.ts";
+import { pastWords } from "./i18n-past.ts";
 import { workbench } from "./i18n-workbench.ts";
 import { phoneuse } from "./i18n-phoneuse.ts";
 import { computeruse } from "./i18n-computeruse.ts";
@@ -18,6 +19,7 @@ import { updateAllWords } from "./i18n-updateall.ts";
 import { convWords } from "./i18n-conv.ts";
 import { transcriptWords } from "./i18n-transcript.ts";
 import { memoryWords } from "./i18n-memory.ts";
+import { contextWords } from "./i18n-context.ts";
 
 export type Lang = "zh" | "en";
 
@@ -33,7 +35,7 @@ const zh: Record<string, string> = {
   "settings.list.devices": "每台电脑上的 Ducter、版本和更新",
   "settings.list.phone": "界面语言、对话里的细节",
   "settings.back": "设置",
-  "partner.header": "住在 %s 上 · 用 %s 想事情",
+  "partner.header": "住在 %s 上，用 %s 想事情",
   "loadout.brain.auto": "自动选的：只有 %s 登录了",
   "loadout.brain.auto_other": "自动选的：Claude Code 没登录",
   "settings.talk.row": "回你用的语言",
@@ -422,7 +424,10 @@ const zh: Record<string, string> = {
   "note.waiting_device": "在等 %s 连上，连上就开始",
   "note.computer": "那台电脑",
   "note.fresh": "之前的记录接不上了，从保存的进度接着做",
-  "note.moved": "换到 %s 接着做了",
+  "note.moved": "换到 %s 接着做 · %s",
+  "note.switched": "换成 %s 接着做 · %s",
+  "note.retuned": "换成 %s · %s",
+  "note.retuned.default": "默认模型",
   "note.effort_dropped": "这里没有「%s」这档思考深度，改用默认的",
   "note.guard": "拦下了一步输入：它还没打开自己的 Chrome 窗口",
   "note.to_own_browser": "Claude in Chrome 没连上，换成 Ducter 自己的浏览器接着做",
@@ -792,6 +797,7 @@ const zh: Record<string, string> = {
   "who.go": "换到 %s 接着做",
   "who.name": "%s（%s）",
   "evidence.copied": "已复制 %s",
+  "switch.tune.note": "换模型或思考深度，%s 还是接着这件事做，从下一轮开始。",
   "who.done": "换到 %s 接着做了",
   "who.failed": "没能更换：%s",
   "who.loading": "在看谁能做…",
@@ -827,7 +833,7 @@ const en: Record<string, string> = {
   "settings.list.devices": "Ducter on each computer, its version and updates",
   "settings.list.phone": "Language, Details in the conversation",
   "settings.back": "Settings",
-  "partner.header": "Lives on %s · thinks with %s",
+  "partner.header": "Lives on %s and thinks with %s",
   "loadout.brain.auto": "Picked for you: only %s is signed in",
   "loadout.brain.auto_other": "Picked for you: Claude Code isn't signed in",
   "settings.talk.row": "Replies in",
@@ -1214,7 +1220,10 @@ const en: Record<string, string> = {
   "note.waiting_device": "Waiting for %s; it starts when it's back",
   "note.computer": "its computer",
   "note.fresh": "Couldn't pick up where it was; carrying on from its saved progress",
-  "note.moved": "Continued on %s",
+  "note.moved": "Continued on %s · %s",
+  "note.switched": "Continued on %s · %s",
+  "note.retuned": "Now on %s · %s",
+  "note.retuned.default": "the default model",
   "note.effort_dropped": "Effort %s isn't offered here, so it uses the default",
   "note.guard": "Stopped a typing step: it hadn't opened a Chrome window of its own yet",
   "note.to_own_browser": "Claude in Chrome isn't connected, so it carries on in Ducter's own browser",
@@ -1582,6 +1591,7 @@ const en: Record<string, string> = {
   "who.go": "Continue on %s",
   "who.name": "%s (%s)",
   "evidence.copied": "Copied %s",
+  "switch.tune.note": "A new model or effort: %s carries on with this task from its next turn.",
   "who.done": "Continued on %s",
   "who.failed": "Didn't switch: %s",
   "who.loading": "Looking at who can do it…",
@@ -2568,6 +2578,7 @@ const accounts: Record<Lang, Record<string, string>> = {
     "kind.coming_up": "快到了",
     "kind.service": "你用的服务",
     "kind.update": "之前说的有变",
+    "kind.said": "你说过的",
     "first.go": "好，看一眼",
     "first.no": "以后再说",
     "first.ask": "以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？",
@@ -2585,10 +2596,10 @@ const accounts: Record<Lang, Record<string, string>> = {
     "card.key_bad": "密钥失效了 · 换一个",
     "card.unreachable": "连不上",
     "card.empty": "这里还没连账号 · 去连一个",
-    "card.conn.oo": "经过 oo · %s会经过 OOMOL 的服务器",
-    "card.conn.oomol": "OOMOL 托管 · %s会经过 OOMOL 的服务器",
-    "card.conn.self": "自己部署的 · 留在你自己的服务器上",
-    "card.conn.mcp": "另一个账号服务 · 它没标「只读」的事都先问你",
+    "card.conn.oo": "你的%s会经过 oo 和 OOMOL 的服务器。",
+    "card.conn.oomol": "你的%s会经过 OOMOL 的服务器。",
+    "card.conn.self": "都留在你自己的服务器上。",
+    "card.conn.mcp": "它没标「只读」的事，都会先问你。",
     "card.read_list": "看了哪些",
     "card.read.none": "今天还没看过。",
     "day.title": "今天看了什么",
@@ -2628,6 +2639,15 @@ const accounts: Record<Lang, Record<string, string>> = {
     "card.more": "更多",
     "tile.more.oo": "在 oo 里再连接一个",
     "tile.more.oomol": "在 OOMOL 里再连接一个",
+    // D289: the page on the settings grid.
+    "acct.sec.read": "它能看的",
+    "acct.sec.calls": "打电话",
+    "acct.more.line": "邮箱、日历、Slack……连好就会出现在这里。",
+    "acct.add.title": "再连一个账号服务",
+    "acct.add.line": "OOMOL、自己部署的 OpenConnector，或别的 MCP 服务",
+    "svc.watching": "自己留意着",
+    "svc.asked": "你问起来才看",
+    "svc.excluded": "不看",
     "tile.more": "再连接一个",
     "tile.watch": "自己留意",
     "tile.mentions": "只看 @你 和私信",
@@ -2694,6 +2714,7 @@ const accounts: Record<Lang, Record<string, string>> = {
     "kind.coming_up": "Coming up",
     "kind.service": "A service you use",
     "kind.update": "An update to what I told you",
+    "kind.said": "Something you said",
     "first.go": "Take a look",
     "first.no": "Not now",
     "first.ask": "From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK?",
@@ -2711,10 +2732,10 @@ const accounts: Record<Lang, Record<string, string>> = {
     "card.key_bad": "The key stopped working · get a new one",
     "card.unreachable": "Can't reach it",
     "card.empty": "No accounts connected there yet · connect one",
-    "card.conn.oo": "Through oo · your %s pass through OOMOL's servers",
-    "card.conn.oomol": "Hosted by OOMOL · your %s pass through OOMOL's servers",
-    "card.conn.self": "Self-hosted · stays on your own server",
-    "card.conn.mcp": "Another account service · asks before anything not marked read-only",
+    "card.conn.oo": "Your %s pass through oo and OOMOL's servers.",
+    "card.conn.oomol": "Your %s pass through OOMOL's servers.",
+    "card.conn.self": "Everything stays on your own server.",
+    "card.conn.mcp": "It asks before anything not marked read-only.",
     "card.read_list": "What it read",
     "card.read.none": "Nothing read yet today.",
     "day.title": "What it looked at today",
@@ -2754,6 +2775,15 @@ const accounts: Record<Lang, Record<string, string>> = {
     "card.more": "More",
     "tile.more.oo": "Connect another in oo",
     "tile.more.oomol": "Connect another in OOMOL",
+    // D289: the page on the settings grid.
+    "acct.sec.read": "What it can read",
+    "acct.sec.calls": "Phone calls",
+    "acct.more.line": "Mail, calendars, Slack… they show up here once connected.",
+    "acct.add.title": "Connect another account service",
+    "acct.add.line": "OOMOL, your own OpenConnector, or another MCP service",
+    "svc.watching": "Watching",
+    "svc.asked": "Only when you ask",
+    "svc.excluded": "Not read",
     "tile.more": "Connect",
     "tile.watch": "Watch on its own",
     "tile.mentions": "Only @-mentions and DMs",
@@ -2793,7 +2823,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en } };
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...contextWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...contextWords.en } };
 // D276: 聊天软件 / Chat apps (i18n-channels.ts).
 Object.assign(TABLES.zh, channelWords.zh);
 Object.assign(TABLES.en, channelWords.en);

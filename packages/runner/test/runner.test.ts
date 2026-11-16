@@ -410,7 +410,7 @@ describe("send: steer vs queue", () => {
     expect(fake.specs[1]).toMatchObject({ harness: "claude-code", model: "opus" });
     expect(fake.specs[1]!.resumeSessionId).toBeUndefined();
     const first = fake.sessions[1]!.sent[0]!.text;
-    expect(first).toContain("started by codex");
+    expect(first).toContain("started by Codex");
     expect(first).toContain("found the failing test");
     expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "working", residency: "hot" });
     expect(await runner.switchBody!(card.taskId, "nope")).toMatchObject({ ok: false });
@@ -431,7 +431,7 @@ describe("send: steer vs queue", () => {
     expect(fake.specs[1]).toMatchObject({ harness: "claude-code" });
     expect(fake.specs[1]!.resumeSessionId).toBeUndefined();
     const first = fake.sessions[1]!.sent[0]!.text;
-    expect(first).toContain("started by codex");
+    expect(first).toContain("started by Codex");
     expect(first).toContain("found the failing test");
     expect(first).toEndWith("src/a.ts");
     // The transcript shows the user's words, not the seed.
@@ -449,7 +449,7 @@ describe("send: steer vs queue", () => {
     await runner.switchBody!(card.taskId, "claude-code", "sonnet");
     expect(await runner.reopen(card.taskId)).toEqual({ delivered: "prompted" });
     expect(fake.specs[1]).toMatchObject({ harness: "claude-code", model: "sonnet" });
-    expect(fake.sessions[1]!.sent[0]!.text).toContain("started by codex");
+    expect(fake.sessions[1]!.sent[0]!.text).toContain("started by Codex");
     expect(fake.sessions[1]!.sent[0]!.text).toEndWith(REOPENED);
     await runner.dispose();
   });
@@ -471,7 +471,7 @@ describe("send: steer vs queue", () => {
     expect(await r2.send(card.taskId, "src/a.ts", undefined, "user")).toEqual({ delivered: "prompted" });
     expect(fake2.specs[0]).toMatchObject({ harness: "claude-code" });
     expect(fake2.specs[0]!.resumeSessionId).toBeUndefined();
-    expect(fake2.sessions[0]!.sent[0]!.text).toContain("started by codex");
+    expect(fake2.sessions[0]!.sent[0]!.text).toContain("started by Codex");
     await r2.dispose();
     // Once the new agent has its own session, a later restart resumes that one.
     const fake3 = new FakePort();
@@ -555,7 +555,7 @@ describe("protocol v2: logging, usage, recovery", () => {
     fake.sessions[0]!.emit({ role: "system", text: "turn completed", turnEnd: true, usage: { inputTokens: 10, outputTokens: 3 } });
     await waitFor(() => taskEvents(card.taskId).some((e) => e.usage), "usage");
     const end = taskEvents(card.taskId).find((e) => e.usage)!;
-    expect(end.usage).toEqual({ inputTokens: 10, outputTokens: 3 });
+    expect(end.usage).toEqual({ inputTokens: 10, outputTokens: 3, contextWindow: 200_000, compactAt: 160_000 }); // D288: the window and compaction point ride with it
     expect(taskEvents(card.taskId).find((e) => e.role === "assistant")!.usage).toBeUndefined();
     expect(taskEvents(card.taskId).filter((e) => (e.raw as any)?.sessionId === "fake-1")).toHaveLength(1);
     await runner.dispose();

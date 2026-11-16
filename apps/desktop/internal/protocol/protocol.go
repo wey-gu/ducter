@@ -359,6 +359,11 @@ type Usage struct {
 	OutputTokens int64 `json:"outputTokens,omitempty"`
 	CacheRead    int64 `json:"cacheRead,omitempty"`
 	CacheWrite   int64 `json:"cacheWrite,omitempty"`
+	// D135, D288: the context reading, the window it fills, where it compacts, this turn alone.
+	ContextTokens int64       `json:"contextTokens,omitempty"`
+	ContextWindow int64       `json:"contextWindow,omitempty"`
+	CompactAt     int64       `json:"compactAt,omitempty"`
+	Turn          *TurnTokens `json:"turn,omitempty"`
 }
 
 // Waiter is a cheap wait (D28, D112): a time (wait_until), or a condition
@@ -627,6 +632,17 @@ type LogEvent struct {
 	Kind       string          `json:"kind"`
 	Body       json.RawMessage `json:"body"`
 	Supersedes int64           `json:"supersedes,omitempty"`
+	// typed is a task_event's body decoded once (D284: a task's transcript
+	// is made again as older pages land; decoding each event every time
+	// was a fifth of it). Read-only once kept.
+	typed any
+}
+
+// KeepTyped keeps a task_event's decoded body with the event, for Typed.
+func (e *LogEvent) KeepTyped(v any) {
+	if e.Kind == KindTaskEvent {
+		e.typed = v
+	}
 }
 
 // Decode decodes the event's body into v.
@@ -640,6 +656,9 @@ func (e LogEvent) Decode(v any) error {
 // Typed returns the body decoded into its Go type, by kind, or nil for an
 // unknown kind.
 func (e LogEvent) Typed() (any, error) {
+	if e.typed != nil {
+		return e.typed, nil
+	}
 	var v any
 	switch e.Kind {
 	case KindUserMsg:
@@ -755,6 +774,11 @@ type TaskCard struct {
 	Phoning    *Browsing   `json:"phoning,omitempty"`   // D217: is using Ducter's phone there
 	Computing  *Computing  `json:"computing,omitempty"` // D235: is using the person's apps there
 	Handset    *Computing  `json:"handset,omitempty"`   // D238: is using the person's own phone (device id, app id)
+	// D285: the person's marks (their name is already Title; Original keeps
+	// the task's own), and the task it was seeded from.
+	Mark     *PastMark `json:"mark,omitempty"`
+	Original string    `json:"original,omitempty"`
+	From     *PastFrom `json:"from,omitempty"`
 }
 
 // Integrated is what the user did with a task's branch from Ducter (D216):
@@ -828,6 +852,9 @@ type Hello struct {
 	// Version is the app's own Ducter version: newer than the home's latest
 	// release, the home reads GitHub again.
 	Version string `json:"version,omitempty"`
+	// Gzip (D284): this client reads a frame over 16 KB sent as one binary
+	// message, its JSON gzipped (a task's history over a slow link).
+	Gzip bool `json:"gzip,omitempty"`
 }
 
 type Send struct {
@@ -1649,8 +1676,11 @@ type ServerFrame struct {
 	Events      []LogEvent `json:"events,omitempty"`
 	OnHand      *OnHand    `json:"onHand,omitempty"`
 	TaskID      string     `json:"taskId,omitempty"`
-	Delivered   Delivery   `json:"delivered,omitempty"` // sent: how a task_send was delivered
-	Message     string     `json:"message,omitempty"`
+	// task_history (D284): the beforeSeq the page was asked with (0 the
+	// newest window); More (below) says older events remain.
+	BeforeSeq int64    `json:"beforeSeq,omitempty"`
+	Delivered Delivery `json:"delivered,omitempty"` // sent: how a task_send was delivered
+	Message   string   `json:"message,omitempty"`
 	// action_result: the outcome of a task_action (merge, open_pr, ...).
 	Action string `json:"action,omitempty"`
 	OK     bool   `json:"ok,omitempty"`
@@ -1747,13 +1777,17 @@ type ServerFrame struct {
 	HomeDir string         `json:"home,omitempty"`
 	Parent  string         `json:"parent,omitempty"`
 	Folders []BrowseFolder `json:"folders,omitempty"`
-	More    bool           `json:"more,omitempty"`
+	// More: browse, more folders; task_history (D284), older events remain.
+	More bool `json:"more,omitempty"`
 	// update_result (D148): Device, OK, Reason, Detail, and with a check the
 	// device's Update. disconnect_result: Device, OK, Reason.
 	Update *DeviceUpdate `json:"update,omitempty"`
 	// agent_update_result (D156): Device, Harness, OK, Reason, Detail.
 	// mem_plugin_result (D169): Device, Harness, OK, TaskID, Reason.
 	Harness string `json:"harness,omitempty"`
+	// account_usage (D288): Harness, its usage, or Why it has none.
+	AccountUsage *AccountUsage `json:"usage,omitempty"`
+	Why          string        `json:"why,omitempty"`
 	// first_screen (D149): the empty conversation's words from the home.
 	First *FirstScreen `json:"first,omitempty"`
 	// D151 live view: live (ID, DecisionID, State open|closed, Site, URL, Title,
@@ -1824,6 +1858,8 @@ type ServerFrame struct {
 	SlackManifest string        `json:"slackManifest,omitempty"`
 	ChannelKind   string        `json:"kind,omitempty"`
 	Op            string        `json:"op,omitempty"`
+	// D285: past_result and past_marked (past.go), decoded on their own.
+	Past *PastFrame `json:"-"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -2007,12 +2043,16 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// dropped here unseen (the live view's live / live_frame were, from D151 to
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
+		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "channels", "channel_result",
 		"handset_dial_result":
+	case "past_result", "past_marked":
+		return decodePast(data, f)
+	case "ongoing_result":
+		return decodeOngoing(data, f)
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}
@@ -2190,6 +2230,7 @@ type TaskNew struct {
 	ClientID string       `json:"clientId,omitempty"`
 	When     *NewTaskWhen `json:"when,omitempty"`
 	Media    []string     `json:"media,omitempty"` // D206: pictures dropped on the What row
+	From     string       `json:"from,omitempty"`  // D285: New task from this: that task's id
 }
 
 // OpenTask asks the apps to show a task (`ducter open <task>`).

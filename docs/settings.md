@@ -75,9 +75,14 @@ At the top is your partner, its name and one line: where it lives and what it th
 Every task says who is doing it. In the conversation its line ends with the AI agent's name,
 and the reason when it isn't your partner's plain pick ("Claude Code's limit is low", or your
 rule). Open the task and look under **Details › Who's doing it**: one sentence says who and
-why. **Switch who does it** lists who else could do it, with why and how much limit each has
-left; the ones that can't say why. **Continue on …** moves the task: a task that is still
-working carries on there from its saved progress; it doesn't start over.
+why. **Switch who does it** first shows the **Model** and **Effort** of the agent doing it: pick
+another and the same agent carries on with this task from its next turn, remembering everything
+said so far. Below, it lists who else could do it, with why and how much limit each has left;
+the ones that can't say why. **Continue on …** moves the task to another agent, in the same task
+and the same copy of your project: the new one starts from the brief, the saved progress, the
+last report and what you said since; it doesn't start over. Switch back later and the first
+agent picks up its own conversation again, told what happened meanwhile. The task's page marks
+each switch with one thin line and its time, such as **Continued on Codex · 21:40**.
 
 ## Memory
 
@@ -129,15 +134,12 @@ In the conversation each one is called by what it is and where it works, for exa
 
 On a phone, this page also turns on notifications for that phone and sends a test.
 
-On a Mac, the last group is **iMessage**: text your partner from Messages on your iPhone, through
-this Mac. See [Talk to your partner in iMessage](imessage.md).
-
 ## Accounts
 
 Your partner can read your Gmail, calendar, Slack, GitHub and other accounts when you ask. If
 you use OOMOL's `oo` and are signed in, it's one tap on **Use these accounts**; otherwise **Add
-one** takes an address and a key. Each place your accounts come from has its own card, with a
-square for each app it can read; tap one for what it reads and to stop it watching or reading.
+one** takes an address and a key. Each place your accounts come from is one group, with a
+row for each app it can read and its switch; tap a row for what it reads, or to stop it reading.
 Reading just happens; sending or changing anything waits for your Go. All of it is in
 [Accounts your partner can read](accounts.md). The AI accounts
 (Claude Code, Codex) live on **Devices**; the last row goes there.

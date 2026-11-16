@@ -53,7 +53,7 @@ describe("the own-number card (D278)", () => {
       for (const k of ["own.away.lede", "own.away.why", "own.away.dial", "own.away.nodial"]) expect(s[k]).not.toMatch(/USB|brew|插到|Plug/);
     }
     expect(strings("zh").t("own.away.why", "hel")).toContain("hel 是服务器");
-    expect(strings("en").t("own.away.soon")).toContain("coming soon");
+    expect(strings("en").t("own.away.soon")).toBe("Coming soon");
   });
 });
 

@@ -54,8 +54,8 @@ func TestOwnPhoneServerHome(t *testing.T) {
 			}
 		}
 		want := map[i18n.Lang][]string{
-			i18n.ZH: {"你来打，要说的我先写好：都在通话单上，在手机上点一下就打出去。", "用你的号码、由我在电话里说话：即将推出。"},
-			i18n.EN: {"You call, I prepare: what to say is on a call sheet, and one tap on your phone places the call.", "Me speaking on calls from your number: coming soon."},
+			i18n.ZH: {"你来打：要说的，它先写在通话单上。", "即将推出"},
+			i18n.EN: {"You call: it writes what to say on a call sheet first.", "Coming soon"},
 		}[lang]
 		for _, w := range want {
 			if !tt.HasText(w) {

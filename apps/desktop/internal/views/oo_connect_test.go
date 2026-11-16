@@ -64,7 +64,7 @@ func TestOoOfferIsTheDefault(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	// D166: a character sheet: the name, its tiles, where mail passes, and 加一个 stepped back.
-	for _, want := range []string{"oo 里的账号", "Gmail", "Slack", "Discord bot", "经过 oo · 邮件和消息会经过 OOMOL 的服务器", "添加"} {
+	for _, want := range []string{"oo 里的账号", "Gmail", "Slack", "Discord bot", "你的邮件和消息会经过 oo 和 OOMOL 的服务器。", "添加"} {
 		if !tt.HasText(want) {
 			t.Errorf("after adding: no %q", want)
 		}

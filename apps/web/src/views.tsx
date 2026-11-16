@@ -9,6 +9,8 @@ import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { useSheetMotion } from "./sheetmotion.ts";
+import { last as lastMove } from "./nav.ts";
 import type { JSX } from "preact";
 import { A, candKey, effortWord, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
@@ -17,9 +19,9 @@ import { ago, behind, cjkPad, deviceLabel, duration, harnessName, modelName, pha
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { AddRow, Btn, Chev, DevicesMark, Facts, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, Btn, Chev, Choice, DevicesMark, Facts, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
-import { ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
+import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
@@ -36,12 +38,14 @@ import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
-import { ChatAppsSettings, ChatsArt } from "./channels.tsx";
+import { ChatAppsSettings } from "./channels.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, forecast, FullTop } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
+import { PastSheet } from "./past.tsx";
+import { ContextButton } from "./context-meter.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, WatchCard } from "./work.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
@@ -1258,6 +1262,17 @@ function Top({ back, plus, level, extra }: { back?: string; plus?: boolean; leve
   // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
   // way to the other places (one per screen: the conversation's, when the panes stand side by side).
   const wide = useWide();
+  // D290: back at the conversation, the partner glances round at where you were (app.css .look).
+  const face = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const el = face.current;
+    if (!el || lastMove.kind !== "back" || Date.now() - lastMove.at > 1200) return;
+    el.classList.add("look");
+    const off = () => el.classList.remove("look");
+    el.addEventListener("animationend", off, { once: true });
+    const timer = setTimeout(off, 1200);
+    return () => clearTimeout(timer);
+  }, [!!(back || level)]);
   if (back || level)
     return (
       <header class="top">
@@ -1287,7 +1302,7 @@ function Top({ back, plus, level, extra }: { back?: string; plus?: boolean; leve
           way, D262); the counts under the name open On hand, narrowed to what they name when they
           name one thing. Each tints on its own under the pointer. */}
       <div class="who">
-        <button class="who-face" tabIndex={-1} aria-hidden="true" title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
+        <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
           <Avatar size={44} />
         </button>
         <span class="who-words">
@@ -1368,6 +1383,8 @@ function Composer({ taskId }: { taskId?: string }) {
         {!taskId && <ComposerReply />}
         <AddPictures where={where} />
         <AutoText id={taskId ? "composer-task" : "composer"} value={value} onInput={set} onEnter={() => submit()} label={label} placeholder={taskId ? t("composer.task") : A.replying ? `${t("reply.to", replyWho(A.replying.from))}…` : t("composer.placeholder", A.S.personaName)} />
+        {/* D288: the context meter, a quiet ring by the task's composer. */}
+        {task && <ContextButton task={task} />}
         {busy && canSend && (
           <button type="button" class="btn text sm after" title={t("composer.queue.hint")} onClick={() => submit(true)}>
             {t("composer.after")}
@@ -1751,6 +1768,8 @@ function SwitchList({ task }: { task: Task }) {
   const go = moving ? t("switch.move.go", chosen!.deviceName ?? "") : chosen ? t("who.go", candName(chosen)) : "";
   return (
     <div class="switch-list" role="radiogroup" aria-label={t("who.switch")}>
+      {/* D282: the same agent, another model or effort, in place: its own session carries on. */}
+      <TuneInPlace task={task} device={cur} />
       {/* D161 (6): with two or more computers the sheet says it covers where too. */}
       {multi && <div class="switch-sub">{t("switch.sub")}</div>}
       <div class="small sub">{t(running ? "who.switch.note" : "who.switch.note.idle")}</div>
@@ -1789,6 +1808,50 @@ function SwitchList({ task }: { task: Task }) {
         ) : (
           <Btn kind="primary" label={go} about={title(task)} onClick={() => A.switchTask(task.id, chosen.harness, chosen.model, candName(chosen), moving ? chosen.device : undefined)} />
         ))}
+    </div>
+  );
+}
+
+/**
+ * D282: the model and effort of the agent doing it, changed in place. A pick goes at once; the
+ * agent's own session carries on with it from the next turn, nothing condensed. Only where the
+ * agent lists its own models (live).
+ */
+function TuneInPlace({ task, device }: { task: Task; device?: string }) {
+  const h = harnessOf(task);
+  const rows = A.newTaskOptions?.models ?? [];
+  const row = rows.find((m) => m.harness === h && (m.device ?? "") === (device ?? "")) ?? rows.find((m) => m.harness === h);
+  if (!row?.models.length || row.from !== "live") return null;
+  const now = modelOf(task);
+  const model = row.models.find((m) => m.id === now) ?? (now ? undefined : row.models.find((m) => m.default));
+  const effort = effortOf(task) || model?.defaultEffort || "";
+  const pick = (m: string, e?: string) => A.retuneTask(task.id, h, m, e);
+  return (
+    <div class="nt-tune switch-tune">
+      <div class="nt-chips">
+        <small>{t("newtask.model")}</small>
+        <div class="nt-chip-row" role="radiogroup" aria-label={t("newtask.model")}>
+          {row.models.map((m) => (
+            <Choice key={m.id} label={m.label} on={m.id === model?.id} onClick={() => m.id !== model?.id && pick(m.id)}>
+              {m.label}
+            </Choice>
+          ))}
+        </div>
+      </div>
+      {model?.efforts?.length ? (
+        <div class="nt-chips">
+          <small>{t("newtask.effort")}</small>
+          <div class="nt-chip-row" role="radiogroup" aria-label={t("newtask.effort")}>
+            {model.efforts.map((e) => (
+              <Choice key={e} label={effortWord(A.L, e)} on={e === effort} onClick={() => e !== effort && pick(model.id, e)}>
+                {effortWord(A.L, e)}
+                {e === model.defaultEffort && <small class="nt-dflt">{t("newtask.effort.default")}</small>}
+              </Choice>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <div class="small sub">{t("switch.tune.note", harnessName(h))}</div>
     </div>
   );
 }
@@ -1953,6 +2016,19 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
     const el = scroller.current;
     if (el && moving && atEnd.current) el.scrollTop = el.scrollHeight;
   }, [task?.events.length, task?.sends.length, moving]);
+  // D284: an older page lands above the reader: they stay on what they were reading (WebKit has
+  // no scroll anchoring); at the end, the end stays.
+  const held = useRef({ from: 0, height: 0 });
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const from = task?.histFrom ?? 0;
+    if (held.current.from && from && from < held.current.from) {
+      if (atEnd.current) el.scrollTop = el.scrollHeight;
+      else el.scrollTop += el.scrollHeight - held.current.height;
+    }
+    held.current = { from, height: el.scrollHeight };
+  });
   useEffect(() => A.history(id), [id, A.S.welcomed]);
   // D142: a folder task's list, again whenever its count or an undo / keep moved on.
   const isFolder = !!task && placeOf(task).kind === "folder";
@@ -2005,8 +2081,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           }
         />
       )}
-      <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); }}>
-        <div class="task-head">
+      <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
+        <div class="task-head" data-hero={id}>
           <span class="face">
             <Avatar size={96} state={faceOf(a)} still={stillFace(a)} />
             {a === "blocked" && A.S.waiterFor(id) && <WaitBubble w={A.S.waiterFor(id)} size="lg" />}
@@ -2083,7 +2159,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
 // ---------- sheets ----------
 
 function Sheet({ children, label }: { children: preact.ComponentChildren; label: string }) {
-  const close = () => ((A.sheet = null), A.changed());
+  // D290: it goes back down the way it came, and on a phone follows the finger down to close.
+  const { sheet, scrim, close } = useSheetMotion(() => ((A.sheet = null), A.changed()));
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && close();
     addEventListener("keydown", k);
@@ -2091,8 +2168,8 @@ function Sheet({ children, label }: { children: preact.ComponentChildren; label:
   }, []);
   return (
     <>
-      <div class="scrim" onClick={close} />
-      <div class="sheet" role="dialog" aria-modal="true" aria-label={label}>
+      <div class="scrim" ref={scrim} onClick={close} />
+      <div class="sheet" ref={sheet} role="dialog" aria-modal="true" aria-label={label}>
         <div class="grab" />
         {children}
         <Btn kind="secondary" class="sheet-close" label={t("sheet.close")} onClick={close} />
@@ -2233,10 +2310,9 @@ function NotifySettings() {
       </section>
       {/* D165: the same chips as on Accounts, once there is something to watch. */}
       {((s.proactive && s.proactiveBy !== "default") || !!A.connections?.length) && (
-        <section class="set">
-          <ProactiveChips />
+        <ProactiveChips>
           <QuietDay />
-        </section>
+        </ProactiveChips>
       )}
       <section class="set">
         <h3>{t("partner.default.title")}</h3>
@@ -2481,17 +2557,21 @@ function Accounts() {
   };
   const refusal = A.connRefusal && A.connRefusal !== "no_key" ? A.connRefusal : undefined;
   const showNoKey = noKey || (adding && A.connRefusal === "no_key");
-  // D166: with a source, a character sheet per source and the chips above them; adding another
-  // steps back to a quiet text button.
-  if (list?.length && !adding && !offer)
+  // D289: with a source, 发现了就说, a group per source and the add row at the end of them, then
+  // 打电话 / Phone calls; every group in the same flow.
+  if (list?.some((c) => !c.phone) && !adding && !offer)
     return (
-      <>
-        <SourceCards list={list} />
-        <section class="set accounts quiet-add">
-          <Btn kind="text" chev label={t("acct.add")} onClick={() => setAdding(true)} />
-          {refusal && <AcctRefusal reason={refusal} hosted={false} />}
-        </section>
-      </>
+      <SourceCards
+        list={list}
+        add={
+          <>
+            <div class="set-card">
+              <AddRow label={t("acct.add.title")} help={t("acct.add.line")} onClick={() => setAdding(true)} />
+            </div>
+            {refusal && <AcctRefusal reason={refusal} hosted={false} />}
+          </>
+        }
+      />
     );
   return (
     <section class="set accounts">
@@ -2597,9 +2677,8 @@ function Accounts() {
       )}
       {!adding && refusal && <AcctRefusal reason={refusal} hosted={false} />}
       <div class="small sub">{t("acct.honest")}</div>
-      {/* D193: calls are their own card, offered beside the accounts. */}
-      {list && (list.some((c) => c.phone) ? list.filter((c) => c.phone).map((c) => <PhoneCard key={c.id} c={c} />) : <PhoneOffer />)}
-      {list && <OwnPhoneCard />}
+      {/* D193, D289: calls are their own section, in the same flow. */}
+      {list && <CallsSection list={list} />}
     </section>
   );
 }
@@ -2701,8 +2780,8 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "peers", art: "coins", title: "settings.tab.peers" },
   { page: "notify", art: "wait_clock", title: "settings.tab.notify" },
   { page: "accounts", art: "wait_mail", title: "settings.tab.accounts" },
-  // D276: 聊天软件 / Chat apps (channels.tsx).
-  { page: "chats", art: "chats", title: "settings.tab.chats" },
+  // D276: 聊天软件 / Chat apps (channels.tsx); D283: two clay speech bubbles.
+  { page: "chats", art: "set_chats", title: "settings.tab.chats" },
   { page: "autofill", art: "set_autofill", title: "settings.tab.autofill" },
   { page: "devices", art: "mini_awake", title: "settings.tab.devices" },
   { page: "phone", art: "phone", title: "settings.phone" },
@@ -2711,7 +2790,6 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
 /** A section's art: its clay picture, or for 连上的 AI agent two of the person's agents' coins (D257). */
 function SectionArt({ art, size }: { art: string; size: number }) {
   if (art === "notebook") return <Notebook size={size} />;
-  if (art === "chats") return <ChatsArt size={size} />;
   if (art === "coins")
     return (
       <span class="set-coins" style={{ width: size, height: size }} aria-hidden="true">
@@ -2743,12 +2821,16 @@ function SettingsSheet() {
   }, []);
   const page = (A.sheet?.kind === "settings" && A.sheet.page) || "";
   const go = (p: SettingsPage) => ((A.sheet = { kind: "settings", page: p }), A.changed());
+  // D290: the list comes back from the leading side, as a pushed page's way back.
+  const was = useRef(page);
+  const popped = !page && was.current !== "";
+  useEffect(() => void (was.current = page), [page]);
   const sec = SECTIONS.find((x) => x.page === page);
   const brain = A.brainNow ?? A.settings?.brain;
   return (
     <Sheet label={t("settings.title")}>
       {!sec ? (
-        <div class="set-page" key="list">
+        <div class={`set-page${popped ? " popped" : ""}`} key="list">
           <h2>{t("settings.title")}</h2>
           <button class="set-hero" onClick={() => go("partner")}>
             <Avatar size={64} />
@@ -2813,6 +2895,7 @@ export function Sheets() {
   if (!A.sheet) return null;
   if (A.sheet.kind === "newtask") return <NewTaskSheet />;
   if (A.sheet.kind === "switch") return <Switcher />;
+  if (A.sheet.kind === "past") return <PastSheet />;
   return A.sheet.kind === "decision" ? <DecisionSheet id={A.sheet.id} /> : <SettingsSheet />;
 }
 

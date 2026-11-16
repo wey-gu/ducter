@@ -42,6 +42,8 @@ export interface WsData {
   greeting?: Promise<void>;
   /** What connected (hello.client); absent = an app. */
   client?: ClientKind;
+  /** D284: the client reads a large frame as one binary message, its JSON gzipped (hello.gzip). */
+  gzip?: boolean;
   /** D151: this socket's end of its live views (frames go only to the socket that opened one). */
   sink?: LiveSink;
   /** D217: this socket's end of its phone views. */
@@ -53,6 +55,8 @@ export interface WsData {
 }
 
 const ON_HAND_KINDS = new Set<string>([...PROJECTED_KINDS, "phone_call"]);
+/** D284: frames longer than this go gzipped to a client that asked (hello.gzip). */
+const GZIP_MIN = 16 * 1024;
 const REDACTED = new Set<string>(["events", "task_history", "on_hand", "task_new_result", "action_result"]);
 const REPLAY_FRESH = 200; // channel events replayed when hello has no cursor
 const REPLAY_MAX = 5000; // cap for a cursor replay
@@ -74,6 +78,8 @@ export interface WsDeps {
   /** Your rules and who does the tasks (D89); absent in tests that don't need them. */
   rules?: RulesStore;
   loadout?: Loadout;
+  /** D288: each agent's account usage limits (account-usage.ts); absent in tests that don't need it. */
+  accountUsage?: import("./account-usage.ts").AccountUsageBook;
   /** D157: Move before closing (closing.ts); absent in tests that don't need it. */
   closing?: import("./closing.ts").Closing;
   /** The user's connections (connections.ts); absent in tests that don't need it. */
@@ -114,6 +120,8 @@ export interface WsDeps {
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
   /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
+  /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
+  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing };
   batchMs?: number;
 }
 
@@ -166,7 +174,13 @@ export function createWsHandler(deps: WsDeps) {
   // D242: and with every media ref signed afresh: a client gets keys that open for about a day,
   // whatever key the Log kept.
   const fresh = <T>(v: T): T => (core.media?.fresh ? core.media.fresh(v) : v);
-  const send = (ws: ServerWebSocket<WsData>, f: ServerFrame) => ws.send(JSON.stringify(fresh(REDACTED.has(f.t) ? redactDeep(f) : f)));
+  const send = (ws: ServerWebSocket<WsData>, f: ServerFrame) => {
+    const s = JSON.stringify(fresh(REDACTED.has(f.t) ? redactDeep(f) : f));
+    // D284: a task's history over a slow link (a VPS behind a tunnel) is mostly tool output that
+    // gzips several times over; a client that asked for it gets a large frame gzipped.
+    if (ws.data.gzip && s.length > GZIP_MIN) ws.sendBinary(Bun.gzipSync(Buffer.from(s)));
+    else ws.send(s);
+  };
 
   const flush = () => {
     flushTimer = undefined;
@@ -394,6 +408,7 @@ export function createWsHandler(deps: WsDeps) {
     if (f.t !== "hello" && !ws.data.live && !(ws.data.client === "handset" && f.t.startsWith("handset_"))) throw new Error("send hello first");
     switch (f.t) {
       case "hello": {
+        if (f.gzip === true) ws.data.gzip = true;
         if (f.client === "handset") {
           if (!ws.data.device) throw new Error("a paired phone only");
           ws.data.client = "handset";
@@ -793,11 +808,18 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "candidates", taskId: f.taskId, candidates: await deps.loadout.candidates(f.taskId) });
         return;
       }
+      case "account_usage": {
+        // D288: the agent's own limits for a task's context card.
+        const h = String(f.harness ?? "");
+        const a = deps.accountUsage ? await deps.accountUsage.get(h, f.fresh === true) : { why: "unsupported" as const };
+        send(ws, { t: "account_usage", harness: h, ...(a.usage ? { usage: a.usage } : {}), ...(a.why ? { why: a.why } : {}) });
+        return;
+      }
       case "task_switch": {
         if (!deps.loadout) throw new Error("switching is not available");
         let r: { ok: boolean; message?: string };
         try {
-          r = await deps.loadout.switchTask(f.taskId, String(f.harness ?? ""), f.model || undefined, deps.runner(), typeof f.device === "string" && f.device ? f.device : undefined);
+          r = await deps.loadout.switchTask(f.taskId, String(f.harness ?? ""), f.model || undefined, deps.runner(), typeof f.device === "string" && f.device ? f.device : undefined, typeof f.effort === "string" && f.effort ? f.effort : undefined);
         } catch (err) {
           r = { ok: false, message: (err as Error).message };
         }
@@ -1003,6 +1025,7 @@ export function createWsHandler(deps: WsDeps) {
             ...(typeof f.effort === "string" && f.effort ? { effort: f.effort } : {}),
             ...(f.when && typeof f.when === "object" && typeof f.when.kind === "string" ? { when: f.when } : {}),
             ...(f.media?.length ? { media: mediaOf(f.media) } : {}),
+            ...(typeof f.from === "string" && f.from ? { from: f.from } : {}),
           });
         if (id && !prior) {
           newTaskSeen.set(id, pending);
@@ -1073,6 +1096,81 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "folder_browse_result", ...cid, ...dev, ...(await deps.newTask.browse(device, path)) });
         return;
       }
+      // D285: 做过的事 / Past tasks.
+      case "past": {
+        if (!deps.past) throw new Error("past tasks are not available");
+        const r = deps.past.query(deps.past.persona(), f.query && typeof f.query === "object" ? f.query : {});
+        send(ws, { t: "past_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), ...r });
+        return;
+      }
+      case "past_mark": {
+        if (!deps.past) throw new Error("past tasks are not available");
+        // A task's marks, or (D285, Ongoing) a routine's: the persona's own.
+        const card = tasks.get(f.taskId);
+        const routine = !card && deps.past.ongoing?.list(deps.past.persona()).some((i) => i.kind === "routine" && i.id === f.taskId);
+        if (!card && !routine) throw new Error("I can't find that task.");
+        const mark = deps.past.marks.set(card?.persona ?? deps.past.persona(), f.taskId, f.patch && typeof f.patch === "object" ? f.patch : {});
+        // Every window: the card here, the same task's title in On hand and the task's head.
+        for (const s of sockets) if (s.data.live && s.data.client !== "cli") send(s, { t: "past_marked", taskId: f.taskId, mark: mark ?? null });
+        if (!sockets.has(ws)) send(ws, { t: "past_marked", taskId: f.taskId, mark: mark ?? null });
+        if (routine) ongoingChanged();
+        else {
+          for (const s of sockets) if (s.data.live) s.data.onHandDirty = true;
+          if (!flushTimer) flushTimer = setTimeout(flush, batchMs);
+        }
+        return;
+      }
+      case "ongoing": {
+        const o = deps.past?.ongoing;
+        if (!o) throw new Error("ongoing work is not available");
+        send(ws, { t: "ongoing_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), items: o.list(deps.past!.persona()) });
+        return;
+      }
+      case "ongoing_action": {
+        const o = deps.past?.ongoing;
+        if (!o) throw new Error("ongoing work is not available");
+        const { t: _t, kind, id, ...a } = f;
+        const r = await o.act(kind === "routine" ? "routine" : "task", String(id ?? ""), a as import("@ducter/protocol").OngoingAction).catch((err: Error) => ({ ok: false, message: err.message }));
+        send(ws, { t: "action_result", taskId: String(id ?? ""), action: a.action, ok: r.ok, ...(r.message ? { message: r.message } : {}) });
+        ongoingChanged();
+        return;
+      }
+      case "past_continue": {
+        // 接着做 / Continue: the same task goes back to work. Another agent first when picked
+        // (its saved progress carries over, D89); then the person's words, or Ducter's own
+        // "carry on". A session that can't be resumed, or a worktree removed after a merge, is
+        // the runner's to handle (resumeOrSeed, provision).
+        const result = (ok: boolean, message?: string) => send(ws, { t: "action_result", taskId: f.taskId, action: "continue", ok, ...(message ? { message } : {}) });
+        const card = tasks.get(f.taskId);
+        if (!card) return result(false, "I can't find that task.");
+        const r = deps.runner();
+        if (!r?.reopen) return result(false, "Tasks can't run right now.");
+        const reopen = r.reopen.bind(r);
+        try {
+          const harness = typeof f.harness === "string" && f.harness ? f.harness : "";
+          const words = typeof f.words === "string" ? f.words.trim() : "";
+          const active = ["queued", "working", "needs_you", "blocked", "done_claimed"].includes(card.attention);
+          // A dropped task comes back first (a switch refuses a dropped one).
+          const reopened = card.attention === "dropped";
+          if (reopened) send(ws, { t: "sent", taskId: f.taskId, delivered: (await reopen(f.taskId)).delivered });
+          if (harness && (harness !== card.harness || (f.model && f.model !== card.model))) {
+            if (!deps.loadout) return result(false, "Switching isn't available.");
+            const sw = await deps.loadout.switchTask(f.taskId, harness, f.model || undefined, r);
+            if (!sw.ok) return result(false, sw.message);
+          }
+          if (words) {
+            const { delivered } = await r.send(f.taskId, words, reopened ? "queue" : undefined, "user", `past_${Date.now().toString(36)}`);
+            send(ws, { t: "sent", taskId: f.taskId, delivered });
+          } else if (!active && !reopened) {
+            send(ws, { t: "sent", taskId: f.taskId, delivered: (await reopen(f.taskId)).delivered });
+          }
+          // The partner knows (it never wakes for this): the person took up an earlier task.
+          log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: `act_${f.taskId}_continue`, taskId: f.taskId, state: "running", text: `the user took this earlier task up again from Past tasks${harness && harness !== card.harness ? ` with ${harness}` : ""}` } });
+          return result(true);
+        } catch (err) {
+          return result(false, (err as Error).message);
+        }
+      }
       case "open_task": {
         // `ducter open <task>`: every connected app shows it; a CLI socket never does.
         if (!tasks.get(f.taskId)) return send(ws, { t: "open_result", taskId: f.taskId, ok: false, apps: 0, message: "I can't find that task." });
@@ -1087,9 +1185,14 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "task_history": {
+        // D284: a page of the task's stream, newest first by its index (stream, seq): the newest
+        // window when the task opens, then older pages before beforeSeq. `more`: older ones remain.
         const stream = taskStream(f.taskId);
-        const events = log.read({ stream, beforeSeq: f.beforeSeq, limit: Math.min(f.limit ?? 200, 2000) });
-        send(ws, { t: "task_history", taskId: f.taskId, events });
+        const limit = Math.max(1, Math.min(f.limit ?? 200, 2000));
+        const page = log.read({ stream, beforeSeq: f.beforeSeq, limit: limit + 1 });
+        const more = page.length > limit;
+        const events = more ? page.slice(1) : page;
+        send(ws, { t: "task_history", taskId: f.taskId, events, more, ...(f.beforeSeq != null ? { beforeSeq: f.beforeSeq } : {}) });
         return;
       }
       case "wb": {
@@ -1344,8 +1447,19 @@ export function createWsHandler(deps: WsDeps) {
     }
   };
 
+  /** D285: every window's Ongoing, fresh after a change (a pause, a resume, a run). */
+  function ongoingChanged() {
+    const o = deps.past?.ongoing;
+    if (!o) return;
+    const items = o.list(deps.past!.persona());
+    for (const s of sockets) if (s.data.live && s.data.client !== "cli") send(s, { t: "ongoing_result", items });
+    for (const s of sockets) if (s.data.live) s.data.onHandDirty = true;
+    if (!flushTimer) flushTimer = setTimeout(flush, batchMs);
+  }
+
   return {
     setActivity,
+    ongoingChanged,
     /** Something On hand shows changed outside the Log (D128: a task's diff stat): push it. */
     onHandChanged() {
       let any = false;

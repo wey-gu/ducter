@@ -8,6 +8,7 @@ package views
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,14 +20,58 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// goRelay is the label of a Go the user gave, from the text Ducter relays
-// to the task ("User says Go: …."), or false.
+// goRelay is the label of a Go the person gave on a card, from the text
+// Ducter relays to the task ("User says Go: …."; the longer relays of a
+// payment, a sign-in or a phone step name none: ""), or false. The port of
+// goRelay in packages/protocol/src/transcript.ts.
 func goRelay(text string) (string, bool) {
-	rest, ok := strings.CutPrefix(text, "User says Go: ")
-	if !ok {
-		return "", false
+	text = strings.TrimSpace(text)
+	if rest, ok := strings.CutPrefix(text, "User says Go: "); ok {
+		return strings.TrimRight(strings.TrimSpace(rest), ".。"), true
 	}
-	return strings.TrimRight(strings.TrimSpace(rest), ".。"), true
+	for _, g := range gos {
+		if g.re.MatchString(text) {
+			return g.label, true
+		}
+	}
+	return "", false
+}
+
+// gos are the words core's decisions.ts relays a Go in (D284), and the
+// label the card's Go carried when the words don't name it.
+var gos = []struct {
+	re    *regexp.Regexp
+	label string
+}{
+	{regexp.MustCompile(`^The user says they're done on the phone \(`), "Done"},
+	{regexp.MustCompile(`^The user says they're signed in to `), ""},
+	{regexp.MustCompile(`^The user said Go: `), ""},
+	{regexp.MustCompile(`^The user said OK to use `), ""},
+}
+
+// switchLine is a switch inside the task with its time (D282): 换成 Codex
+// 接着做 · 21:40, 换成 Sonnet · 高 · 21:40, 换到 hel 接着做 · 21:40.
+func (a *App) switchLine(task *store.Task, b *Block) string {
+	at := clock(a.tsOf(task, b.Seq))
+	if b.Say == "retuned" {
+		var parts []string
+		if b.Name != "" {
+			parts = append(parts, modelLabel(a.trayHarness(task.Harness()), b.Name))
+		}
+		if b.Effort != "" {
+			parts = append(parts, a.effortWord(b.Effort))
+		}
+		who := strings.Join(parts, " · ")
+		if who == "" {
+			who = a.L.T("note.retuned.default")
+		}
+		return a.L.T("note.retuned", who, at)
+	}
+	name := b.Name
+	if name == "" {
+		name = a.L.T("note.computer")
+	}
+	return a.L.T("note."+b.Say, name, at)
 }
 
 // noteLine is a note in words: note.<say>, its name filled in (a
@@ -34,6 +79,14 @@ func goRelay(text string) (string, bool) {
 func (a *App) noteLine(b *Block) string {
 	name := b.Name
 	switch b.Say {
+	case "compacted":
+		// D288: with its size before and after when known.
+		if b.From > 0 && b.To > 0 {
+			return a.L.T("note.compacted.size", tokensShort(int64(b.From)), tokensShort(int64(b.To)))
+		}
+		if b.From > 0 {
+			return a.L.T("note.compacted.from", tokensShort(int64(b.From)))
+		}
 	case "effort_dropped":
 		if name != "" {
 			name = a.effortWord(name)

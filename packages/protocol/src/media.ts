@@ -22,6 +22,11 @@ export const FILE_TYPES: Record<string, string> = {
   zip: "application/zip",
   mp4: "video/mp4",
   mov: "video/quicktime",
+  // D286: a voice memo or a song plays in its card and in the viewer.
+  m4a: "audio/mp4",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  aac: "audio/aac",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -179,10 +184,19 @@ export const SINGLE_MAX_ASPECT = 3;
 /** How wide a single picture may lie (a panorama keeps at least this much height). */
 export const SINGLE_MIN_ASPECT = 9 / 21;
 
+/** D286: the rows of 5 to 9 pictures, top to bottom: how many sit side by side in each row. */
+export const GRID_ROWS: Record<number, number[]> = { 5: [2, 3], 6: [3, 3], 7: [1, 3, 3], 8: [2, 3, 3], 9: [3, 3, 3] };
+/** D286: the most tiles a message shows; more shows "+n" on the last (a message holds at most 10). */
+export const GRID_MAX = 9;
+
+/** How tall a row of k pictures stands, over the grid's width: one alone is a 2:1 banner, else squares. */
+const rowH = (k: number) => (k === 1 ? 1 / 2 : 1 / k);
+
 /**
- * The tiles of n pictures (D206): one at its own aspect ratio (clamped to 21:9…1:3); two side by
- * side; three as one tall and two stacked; four as 2×2; more than four shows the first four with
- * "+n" on the last. Gaps are the client's (a token); this gives proportions only.
+ * The tiles of n pictures (D206, D286): one at its own aspect ratio (clamped to 21:9…1:3); two side
+ * by side; three as one tall and two stacked; four as 2×2; five to nine in rows (GRID_ROWS: 2+3,
+ * 3+3, a banner over 3+3, 2+3+3, 3×3), so every picture of a trip shows; more than nine shows nine
+ * with "+n" on the last. Gaps are the client's (a token); this gives proportions only.
  */
 export function gridLayout(sizes: { w?: number; h?: number }[]): GridLayout {
   const n = sizes.length;
@@ -216,16 +230,26 @@ export function gridLayout(sizes: { w?: number; h?: number }[]): GridLayout {
       single: false,
     };
   }
-  const aspect = 1;
-  const tiles: Tile[] = [0, 1, 2, 3].map((i) => ({ i, x: (i % 2) / 2, y: Math.floor(i / 2) / 2, w: 0.5, h: 0.5 }));
-  if (n > 4) tiles[3]!.more = n - 4;
-  return { tiles, aspect, single: false };
+  if (n === 4) {
+    const tiles: Tile[] = [0, 1, 2, 3].map((i) => ({ i, x: (i % 2) / 2, y: Math.floor(i / 2) / 2, w: 0.5, h: 0.5 }));
+    return { tiles, aspect: 1, single: false };
+  }
+  const rows = GRID_ROWS[Math.min(n, GRID_MAX)]!;
+  const tiles: Tile[] = [];
+  let y = 0;
+  for (const k of rows) {
+    const h = rowH(k);
+    for (let j = 0; j < k; j++) tiles.push({ i: tiles.length, x: j / k, y, w: 1 / k, h });
+    y += h;
+  }
+  if (n > GRID_MAX) tiles[tiles.length - 1]!.more = n - GRID_MAX;
+  return { tiles, aspect: y, single: false };
 }
 
 // ---------- The file viewer (D239) ----------
 
 /** How a file a task showed opens inside Ducter. */
-export type FileView = "markdown" | "table" | "text" | "picture" | "video" | "pdf" | "none";
+export type FileView = "markdown" | "table" | "text" | "picture" | "video" | "audio" | "pdf" | "none";
 
 /** The text the viewer reads of a file: more is cut at a line, and Save a copy has all of it. */
 export const FILE_VIEW_BYTES = 1024 * 1024;
@@ -245,6 +269,7 @@ export function fileView(m: { type: string; name?: string }): FileView {
   if (m.type === "text/plain" || m.type === "application/json" || m.type === "text/html") return "text";
   if (m.type === "image/svg+xml" || isImageType(m.type)) return "picture";
   if (m.type.startsWith("video/")) return "video";
+  if (m.type.startsWith("audio/")) return "audio";
   if (m.type === "application/pdf") return "pdf";
   return "none";
 }
@@ -311,6 +336,8 @@ export function kindWords(m: { type: string; name?: string }): string {
       return "PDF";
     case "video":
       return "video";
+    case "audio":
+      return "audio";
     case "picture":
       return m.type === "image/svg+xml" ? "SVG picture" : "picture";
     case "text":
@@ -318,6 +345,54 @@ export function kindWords(m: { type: string; name?: string }): string {
   }
   if (m.type === "application/zip" || ext === "zip") return "zip archive";
   return ext ? `.${ext} file` : "file";
+}
+
+/**
+ * D286: the family a file card is drawn as: its badge's colour and mark, and which preview it
+ * shows (a PDF's first page, code's first lines, a video's frame, a sound's waveform). By name
+ * first (a .ts is code even as text/plain), then by type.
+ */
+export type FileFamily = "pdf" | "code" | "text" | "doc" | "sheet" | "slides" | "archive" | "audio" | "video" | "picture" | "other";
+
+const FAMILY_EXT: Record<string, FileFamily> = {
+  pdf: "pdf",
+  md: "text", markdown: "text", mdx: "text", txt: "text", log: "text", rst: "text", tex: "text",
+  doc: "doc", docx: "doc", pages: "doc", rtf: "doc", odt: "doc",
+  csv: "sheet", tsv: "sheet", xls: "sheet", xlsx: "sheet", numbers: "sheet", ods: "sheet",
+  ppt: "slides", pptx: "slides", key: "slides", odp: "slides",
+  zip: "archive", tar: "archive", gz: "archive", tgz: "archive", bz2: "archive", xz: "archive", "7z": "archive", rar: "archive", dmg: "archive",
+};
+
+export function fileFamily(m: { type: string; name?: string }): FileFamily {
+  const ext = extOf(m.name);
+  const byExt = FAMILY_EXT[ext];
+  if (byExt) return byExt;
+  if (m.type === "application/pdf") return "pdf";
+  if (m.type.startsWith("audio/")) return "audio";
+  if (m.type.startsWith("video/")) return "video";
+  if (m.type.startsWith("image/")) return "picture";
+  if (m.type === "text/markdown") return "text";
+  if (m.type === "text/csv") return "sheet";
+  if (m.type === "application/zip") return "archive";
+  if (m.type.startsWith("text/") || m.type === "application/json" || TEXT_EXTS.has(ext)) return "code";
+  return "other";
+}
+
+/** D286: the few letters on a file's badge: its extension as a person knows it (PDF, TS, DOCX), at most 4. */
+export function fileBadge(m: { type: string; name?: string }): string {
+  const ext = extOf(m.name);
+  if (ext && ext.length <= 4) return ext.toUpperCase();
+  return (EXT_OF[m.type] ?? ext ?? "").toUpperCase().slice(0, 4);
+}
+
+/** D286: a sound's or a video's length as a person reads it: 0:07, 3:25, 1:02:09. */
+export function durationWords(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return "";
+  const s = Math.round(sec);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = String(s % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${r}` : `${m}:${r}`;
 }
 
 /** A file's size in words a person reads: 820 KB, 3.4 MB. */

@@ -53,6 +53,10 @@ type onHandState struct {
 	lens     string
 	showProj bool
 	quietOn  bool
+	// D287: the list's width this frame (the cards' room), and the new
+	// results whose card has had its little moment.
+	listW   float32
+	cheered map[string]bool
 }
 
 // latestStep is the task's latest step or words: the newest one this Mac
@@ -265,6 +269,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	waiting := keep(b.Lanes[store.LaneWaiting])
 	done := keep(b.Lanes[store.LaneDone])
 	rail := a.oh.room == "rail"
+	a.nav.rows = 0
 	f := a.oh.filter
 	if rail {
 		f = 0
@@ -288,8 +293,11 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 			newer = append(newer, x)
 		}
 	}
-	quietOpen := a.oh.quietOn || f == 3 || q != ""
-	doneOpen := a.Local.Folded(doneOpenKey) || f == 4 || q != ""
+	// D287: a fold earns its line from three; fewer stay in sight.
+	quietFolds := !rail && len(quiet) >= foldFrom
+	quietOpen := !quietFolds || a.oh.quietOn || f == 3 || q != ""
+	seenFolds := rail || len(seen) >= foldFrom
+	doneOpen := !seenFolds || a.Local.Folded(doneOpenKey) || f == 4 || q != ""
 	a.oh.order = a.oh.order[:0]
 	add := func(ok bool, ts ...[]*store.Task) {
 		if !ok {
@@ -309,6 +317,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	add(show(4) && doneOpen, seen)
 	if q != "" && len(needs)+len(working)+len(waiting)+len(done) == 0 {
 		ui.Text(c.Key("none"), a.L.T("onhand.find.none")).FontSize(t.MD).TextColor(t.InkMuted)
+		a.pastFindLink(c, q) // D285
 		return
 	}
 	if rail {
@@ -346,16 +355,19 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 		})
 	}
 	if len(working) > 0 && show(2) {
-		a.listSection(c, "working", a.L.T("lane.working"), len(working), func() { a.taskRows(c, working, false) })
+		a.listSection(c, "working", a.L.T("lane.working"), len(working), func() { a.taskCards(c, working) })
 	}
 	if len(waiting)+len(loose) > 0 && show(3) {
 		a.listSection(c, "waiting", a.L.T("lane.waiting"), len(waiting)+len(loose), func() {
-			a.taskRows(c.Key("fresh"), fresh, false)
+			a.taskCards(c.Key("fresh"), fresh)
 			for _, w := range loose {
 				a.waiterRow(c.Key("w:"+w.WaiterID), w)
 			}
 			if len(quiet) > 0 {
-				if f != 3 && q == "" && a.foldLine(c, "quiet", a.L.T("onhand.wait.quiet", len(quiet)), quietOpen) {
+				if !quietFolds && len(fresh)+len(loose) > 0 {
+					a.subHead(c, "quiet", a.L.T("onhand.wait.quiet.head"))
+				}
+				if quietFolds && f != 3 && q == "" && a.foldLine(c, "quiet", a.L.T("onhand.wait.quiet", len(quiet)), quietOpen) {
 					a.oh.quietOn = !a.oh.quietOn
 				}
 				if quietOpen {
@@ -366,11 +378,18 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	}
 	if len(done)+len(missed) > 0 && show(4) {
 		a.listSection(c, "done", a.L.T("lane.done"), len(done)+len(missed), func() {
-			a.taskRows(c.Key("new"), newer, false)
+			a.taskCards(c.Key("new"), newer)
 			if len(seen)+len(missed) == 0 {
 				return
 			}
-			if f != 4 && q == "" && a.foldLine(c, "seen", a.L.T("onhand.done.seen", len(seen)+len(missed)), doneOpen) {
+			seenFolds := seenFolds || len(seen)+len(missed) >= foldFrom
+			if !seenFolds {
+				doneOpen = true
+				if len(newer) > 0 {
+					a.subHead(c, "seen", a.L.T("onhand.done.seen.head"))
+				}
+			}
+			if seenFolds && f != 4 && q == "" && a.foldLine(c, "seen", a.L.T("onhand.done.seen", len(seen)+len(missed)), doneOpen) {
 				a.Local.SetFolded(doneOpenKey, !doneOpen)
 			}
 			if doneOpen {
@@ -525,7 +544,9 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				if face {
 					a.statusFace(c, task, st)
 				}
-				ui.Text(c.Key("time"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).MinWidth(44).TextAlign(ui.End).SingleLine()
+				if rail || !a.quietWait(task) {
+					ui.Text(c.Key("time"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).MinWidth(44).TextAlign(ui.End).SingleLine()
+				}
 			})
 			ui.Row(c.Key("l2")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				ink := t.InkMuted
@@ -593,7 +614,16 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 			}
 		})
 	})
-	if row.Clicked() {
+	// D290: the card you open grows into the task's head, and the task
+	// you come back from goes back into its card; the list's rows come in
+	// one after another on its first paint.
+	clicked := row.Clicked()
+	a.heroRow(row, task.ID, clicked || focus)
+	if !rail {
+		a.stagger(c, row, a.nav.rows)
+		a.nav.rows++
+	}
+	if clicked {
 		a.oh.focus = task.ID
 		a.OpenTask(task.ID)
 	}
@@ -819,6 +849,7 @@ func (a *App) switcher(c *ui.Context) {
 						pick(nil)
 					}
 				}
+				a.pastSwitchRow(c, strings.TrimSpace(a.oh.swQuery)) // D285
 			})
 		})
 	})

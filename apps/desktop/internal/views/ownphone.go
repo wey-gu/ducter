@@ -9,7 +9,6 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
-	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 // D218: 用你自己的号码打 / Call from your own number on the Mac, in Settings ›
@@ -21,7 +20,7 @@ import (
 // no steps, says what works today (你来打 / You call) and why a live call on
 // the person's own number needs a computer beside the phone. Install lines are
 // only ever the home's own system's, and 再找一次 always answers: a busy line,
-// then what it saw and, apart, when (20:14).
+// then 看过了 · 20:14 with what it saw.
 
 // ownInstall is the one install line for the home's own system, or "".
 func ownInstall(os, tool string) string {
@@ -40,8 +39,7 @@ func ownInstall(os, tool string) string {
 	return ""
 }
 
-// ownLooked is what the last look saw (on which computer) and, as its own
-// fact (D291), when.
+// ownLooked is what the last look saw, with when and on which computer.
 func (a *App) ownLooked(v *protocol.OwnPhoneView) (saw, when string) {
 	at, err := time.Parse(time.RFC3339, v.LookedAt)
 	if err != nil {
@@ -75,38 +73,24 @@ func (a *App) dialers() []protocol.ReachClient {
 	return out
 }
 
-// phoneName is a phone's client name as shown (shownDeviceName, D291).
+// phoneName is a phone's client name as shown (D291: no old suffix).
 func phoneName(name string) string {
-	return strings.TrimSpace(shownDeviceName(strings.TrimSpace(name)))
+	return shownDeviceName(strings.TrimSpace(name))
 }
 
-// ownAwayCard is the card on a home that can't be the computer beside the
-// phone (a server): what works today, which phone dials, what live calls need.
+// ownAwayCard is the group on a home that can't be the computer beside
+// the phone (a server; D278, D289): what works today (you call) in its
+// first row, which phone dials in the next, and the last line: what
+// speaking on the person's own number needs, with 即将推出 as a quiet tag.
 func (a *App) ownAwayCard(c *ui.Context, v *protocol.OwnPhoneView) {
-	t := a.T
-	title := a.L.T("own.title")
-	ui.Column(c.Key("own-phone")).Width(400).MinWidth(0).Grow(1).MaxWidth(520).Radius(t.RadiusLG).Background(t.Surface).
-		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S5).Gap(t.S3).Role(ui.RoleGroup).Label(title).Children(func() {
-		ui.Column(c).AlignItems(ui.Center).Gap(t.S1).Children(func() {
-			ui.Row(c).Size(220, 128).Justify(ui.Center).AlignItems(ui.End).AccessHidden(true).Draw(func(pt *ui.Painter, r ui.Rect) {
-				pt.FillPath(oval(r.X+r.W/2, r.Y+r.H-12, 84, 12), t.SurfaceSunken)
-			}).Children(func() {
-				if bmp := theme.Clay("ab_call_later"); bmp != nil {
-					ui.Image(c, bmp).Size(80, 110).Margin(0, 0, 8, 0)
-				}
-			})
-			ui.Text(c, title).FontSize(t.XL).FontWeight(800).SingleLine()
-			ui.Text(c, a.L.T("own.away.lede")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).TextAlign(ui.Center)
-		})
+	a.group(c, "own-phone", "", "", func() {
+		a.headRow(c, "own-phone", a.clayTile(c, "ab_call_later", true), a.L.T("own.title"), a.L.T("own.away.lede"), sideMuted, nil)
 		line := a.L.T("own.away.nodial")
 		if d := a.dialers(); len(d) > 0 {
 			line = a.L.T("own.away.dial", phoneName(d[0].Name))
 		}
-		ui.Column(c.Key("own-away-dial")).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-			ui.Text(c, line).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
-		})
-		a.note(c, a.L.T("own.away.why", v.Where))
-		a.note(c, a.L.T("own.away.soon"))
+		a.tileRow(c, "own-away-dial", nil, a.L.T("own.away.how"), line, nil)
+		a.footRow(c, "own-away", a.L.T("own.away.why", v.Where), func() { a.quietTag(c, a.L.T("own.away.soon")) })
 	})
 }
 
@@ -162,148 +146,109 @@ func (a *App) ownPhoneCard(c *ui.Context) {
 	if o.open != "" {
 		shown = o.open
 	}
-	card := ui.Column(c.Key("own-phone")).Width(400).MinWidth(0).Grow(1).MaxWidth(520).Radius(t.RadiusLG).Background(t.Surface).
-		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S5).Gap(t.S3).Role(ui.RoleGroup).Label(title)
-	card.Children(func() {
-		ui.Column(c).AlignItems(ui.Center).Gap(t.S1).Children(func() {
-			art := "ab_call"
-			if !v.Ready {
-				art = "ab_call_later"
-			}
-			ui.Row(c).Size(220, 128).Justify(ui.Center).AlignItems(ui.End).AccessHidden(true).Draw(func(pt *ui.Painter, r ui.Rect) {
-				pt.FillPath(oval(r.X+r.W/2, r.Y+r.H-12, 84, 12), t.SurfaceSunken)
-			}).Children(func() {
-				if bmp := theme.Clay(art); bmp != nil {
-					ui.Image(c, bmp).Size(80, 110).Margin(0, 0, 8, 0)
-				}
-			})
-			ui.Text(c, title).FontSize(t.XL).FontWeight(800).SingleLine()
-			if v.Ready {
-				ui.Text(c, a.L.T("own.ready")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
-			} else {
-				ui.Text(c, a.L.T("own.lede")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).TextAlign(ui.Center)
-			}
-		})
+	// D289: one group: the first row how it stands, a row per step (its
+	// mark in the tile column; the open one's body on the text column),
+	// the switch once ready, and the last line with the quiet forget.
+	a.group(c, "own-phone", "", "", func() {
+		art, line, tone := "ab_call_later", a.L.T("own.lede"), sideMuted
+		if v.Ready {
+			art, line, tone = "ab_call", a.L.T("own.ready"), sideDone
+		}
+		a.headRow(c, "own-phone", a.clayTile(c, art, !v.Ready), title, line, tone, nil)
 		if v.Live != nil {
 			live := v.Live
-			ui.Row(c.Key("own-live")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Working.Surface).Role(ui.RoleStatus).Children(func() {
-				ui.Box(c).Size(10, 10).Radius(5).Background(t.Working.Dot)
-				ui.Text(c, a.L.T("own.live", live.Name)).FontSize(t.SM).FontWeight(700).TextColor(t.Working.Ink).Grow(1).MinWidth(0)
-				if a.buttonFor(c, a.L.T("call.hangup"), live.Name, btnSecondary, t.ControlSM, t.Working.Surface) {
+			a.tileRow(c, "own-live", func() { ui.Box(c).Size(10, 10).Radius(5).Background(t.Working.Dot) }, a.L.T("own.live", live.Name), "", func() {
+				if a.buttonFor(c, a.L.T("call.hangup"), live.Name, btnSecondary, t.ControlSM, t.Surface) {
 					a.send(protocol.CallCancel{T: "call_cancel", CallID: live.CallID})
 				}
 			})
 		} else if v.Busy {
-			a.note(c, a.L.T("own.busy"))
+			a.textBlock(c, "own-busy", func() { a.note(c, a.L.T("own.busy")) })
 		}
 		for i, s := range ownSteps {
 			i, s := i, s
 			open := s == shown
-			ui.Column(c.Key("own-step:"+s)).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Border(1, t.LineSoft).Children(func() {
-				head := ui.Row(c.Key("own-head:" + s)).Gap(t.S3).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("own.step." + s)).Focusable()
-				head.Children(func() {
-					switch {
-					case done[s]:
-						a.glyph(c, 18, drawCheck(t.Done.Ink))
-					case s == next:
-						ui.Row(c).Size(22, 22).Radius(11).Background(t.Accent).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-							ui.Text(c, strconv.Itoa(i+1)).FontSize(t.XS).FontWeight(800).TextColor(t.OnAccent)
-						})
-					default:
-						ui.Row(c).Size(22, 22).Radius(11).Border(1.5, t.Faint).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-							ui.Text(c, strconv.Itoa(i+1)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
-						})
-					}
-					ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-						ink := t.Ink
-						if !done[s] && s != next {
-							ink = t.InkMuted
-						}
-						ui.Text(c, a.L.T("own.step."+s)).FontSize(t.MD).FontWeight(800).TextColor(ink)
-						if done[s] && !open {
-							a.facts(c, t.SM, t.InkMuted, a.ownDoneFacts(s, v)...)
-						}
+			sub, ink := "", t.InkMuted
+			if done[s] {
+				sub = a.ownDoneLine(s, v)
+			}
+			mark := func() {
+				switch {
+				case done[s]:
+					a.glyph(c, 18, drawCheck(t.Done.Ink))
+				case s == next:
+					ui.Row(c).Size(26, 26).Radius(13).Background(t.Accent).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, strconv.Itoa(i+1)).FontSize(t.SM).FontWeight(800).TextColor(t.OnAccent).LineHeight(1)
 					})
-				})
-				if head.Clicked() {
-					if open && s != next {
-						o.open = ""
-					} else {
-						o.open = s
-					}
+				default:
+					ui.Row(c).Size(26, 26).Radius(13).Background(t.Sunken).Shadow(0, 2, 0, 0, t.Line2).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, strconv.Itoa(i+1)).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft).LineHeight(1)
+					})
 				}
-				if open {
-					ui.Column(c).Gap(t.S2).Padding(0, 0, 0, 34).Children(func() { a.ownBody(c, s, v) })
+			}
+			if a.openRow(c, "own-step:"+s, mark, a.L.T("own.step."+s), sub, ink, open, nil) {
+				if open && s != next {
+					o.open = ""
+				} else {
+					o.open = s
 				}
-			})
+			}
+			if open {
+				a.textBlock(c, "own-body:"+s, func() { a.ownBody(c, s, v) })
+			}
 		}
 		if v.Ready {
-			if on, changed := a.switchRow(c, "own-prefer", a.L.T("own.prefer"), a.L.T("own.prefer.help"), v.Prefer); changed {
-				v.Prefer = on
-				a.ownAct(protocol.OwnPhoneAct{Action: "prefer", On: &on})
-			}
-			a.note(c, a.L.T("own.today", v.Today, v.PerDay))
+			a.tileRow(c, "own-prefer", nil, a.L.T("own.prefer"), a.L.T("own.prefer.help")+" "+a.L.T("own.today", v.Today, v.PerDay), func() {
+				on := v.Prefer
+				if a.switchControl(c, "own-prefer", a.L.T("own.prefer"), &on) {
+					v.Prefer = on
+					a.ownAct(protocol.OwnPhoneAct{Action: "prefer", On: &on})
+				}
+			})
 		}
-		a.note(c, a.L.T("own.where", v.Where))
-		a.note(c, a.L.T("own.rails"))
-		if v.Phone == nil && !v.Voice.Key {
+		note := a.L.T("own.where", v.Where) + " " + a.L.T("own.rails")
+		if o.forgetting {
+			keep, forget := a.confirmRow(c, "own-forget", a.L.T("own.forget.ask"), a.L.T("phone.voice.keep"), a.L.T("own.forget.go"), title)
+			if keep {
+				o.forgetting = false
+			}
+			if forget {
+				o.forgetting = false
+				a.ownAct(protocol.OwnPhoneAct{Action: "forget"})
+			}
 			return
 		}
-		ui.Box(c).Height(1).Background(t.LineSoft)
-		if !o.forgetting {
-			ui.Row(c).Children(func() {
-				if a.dangerText(c, "own-forget", a.L.T("own.forget"), "") {
+		var actions func()
+		if v.Phone != nil || v.Voice.Key {
+			actions = func() {
+				if a.quietDanger(c, "own-forget", a.L.T("own.forget"), "") {
 					o.forgetting = true
 				}
-			})
-			return
+			}
 		}
-		ui.Column(c.Key("own-forget-ask")).Gap(t.S2).Children(func() {
-			ui.Text(c, a.L.T("own.forget.ask")).FontSize(t.SM).TextColor(t.InkSoft)
-			ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
-				if a.buttonFor(c, a.L.T("phone.voice.keep"), title, btnText, t.ControlSM, t.Surface) {
-					o.forgetting = false
-				}
-				if a.dangerText(c, "own-forget-go", a.L.T("own.forget.go"), title) {
-					o.forgetting = false
-					a.ownAct(protocol.OwnPhoneAct{Action: "forget"})
-				}
-			})
-		})
+		a.footRow(c, "own-phone", note, actions)
 	})
 }
 
-// ownDoneFacts is a done step's facts, what the home saw, each its own
-// element (D291).
-func (a *App) ownDoneFacts(s string, v *protocol.OwnPhoneView) []string {
+func (a *App) ownDoneLine(s string, v *protocol.OwnPhoneView) string {
 	switch s {
 	case "phone":
-		ver := ""
-		if v.Phone.Android != "" {
-			ver = a.L.T("own.phone.android", v.Phone.Android)
-		}
-		return []string{firstNonEmpty(v.Phone.Model, "Android"), ver}
+		return a.L.T("own.phone.ok", firstNonEmpty(v.Phone.Model, "Android"), v.Phone.Android)
 	case "sim":
-		carrier := ""
-		if v.SIM != nil {
-			carrier = v.SIM.Carrier
+		// D291: a phrase, never facts joined with " · ".
+		if v.SIM != nil && v.SIM.Carrier != "" {
+			return a.L.T("own.sim.line", v.SIM.Carrier, prettyNumber(v.Number))
 		}
-		return []string{carrier, prettyNumber(v.Number)}
+		return prettyNumber(v.Number)
 	case "cable":
 		if v.Audio.Input == v.Audio.Output {
-			return []string{v.Audio.Input}
+			return v.Audio.Input
 		}
-		return []string{v.Audio.Input, v.Audio.Output}
+		return a.L.T("own.cable.both", v.Audio.Input, v.Audio.Output)
 	case "voice":
-		return a.ownVoiceFacts(v)
+		return a.L.T("own.voice.set", a.L.T("own.voice."+v.Voice.Engine), v.Voice.Model, "$"+money(v.Voice.PerMinUSD))
 	}
-	return []string{a.L.T("own.test.passed")}
-}
-
-// ownVoiceFacts is the live voice in use: its maker, its model, what a
-// minute costs.
-func (a *App) ownVoiceFacts(v *protocol.OwnPhoneView) []string {
-	return []string{a.L.T("own.voice." + v.Voice.Engine), v.Voice.Model, a.L.T("own.voice.permin", "$"+money(v.Voice.PerMinUSD))}
+	return a.L.T("own.test.passed")
 }
 
 func (a *App) ownCmd(c *ui.Context, cmd string) {
@@ -424,7 +369,7 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 		look()
 	case "voice":
 		if v.Voice.Key {
-			a.facts(c, t.SM, t.InkSoft, a.ownVoiceFacts(v)...)
+			a.note(c, a.L.T("own.voice.set", a.L.T("own.voice."+v.Voice.Engine), v.Voice.Model, "$"+money(v.Voice.PerMinUSD)))
 			a.note(c, a.L.T("own.voice.kept", v.Where))
 			ui.Row(c).Children(func() {
 				if a.buttonFor(c, a.L.T("own.voice.remove"), a.L.T("own.step.voice"), btnText, t.ControlSM, t.Surface) {

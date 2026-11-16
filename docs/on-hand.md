@@ -11,34 +11,46 @@ in the conversation's header, or press ⌘2.
 
 ## What you see
 
-At the top are four numbers: **Needs you**, **Working**, **Waiting** and **Done today**. Tap
+At the top is your partner, and one sentence that sums everything up: "Nothing needs you. 4
+waiting: the first back at 22:40, 2 quiet for over a day; 1 done today." Its pose tells you the
+same at a glance: a little flag when something needs you, reading while work is under way,
+resting on its bench while everything waits, smiling when the day's work came back done.
+
+Under it are four numbers: **Needs you**, **Working**, **Waiting** and **Done today**. Tap
 one to see only those tasks; tap it again (or press **Esc**) to see everything.
 
-When nothing needs you, On hand says so in one sentence. When something does, it comes first,
-and each one is the question itself, answered right there. Below that, the rest:
+What needs you comes first, and each one is the question itself, answered right there. Below
+that, the rest:
 
 - **Working**: tasks under way.
 - **Waiting**: tasks waiting for something, such as a check to pass, an email, or a computer to
   wake up.
 - **Done today**: tasks finished today.
 
-Each task is one row:
+Tasks that are working, have just started waiting, or have a new result are small cards. Each
+shows which AI agent is doing it (its small clay coin, which rocks while it works), the title,
+what it is doing right now in words ("Running the tests", "Opened booking.com in Chrome"), and
+at the bottom a live sign:
 
-- **The first line** is its title. On the right is how long it has been working, or when it
-  last changed.
-- **The second line** says what it is doing right now, in words: "Running the tests",
-  "Opened booking.com in Chrome". A waiting task always says what it waits for and when it
-  comes back ("back at 11:39"). Once it's done, the line shows its result instead.
+- working: how long it has been at it;
+- waiting: a ring that fills up toward when it comes back ("back at 11:39"); there's nothing for
+  you to do until then;
+- done: when it finished, with its result right on the card.
+
+Older waits and results you've already seen are plain rows, with the same words.
+
+On a wide window, a column on the right shows your day: what comes back next, now, and what came
+back today with its result. Click any of them to open the task.
 
 A task in a code folder also shows the lines it added and removed (**+42 −7**), and **Draft PR**
 or **Merged** once you've done either from Ducter.
 
 ### Calm when there is a lot
 
-- A wait that hasn't changed for over a day folds under one line, **3 more, quiet for over a
-  day**. Tap it to see them; each says when it last changed. A task that stopped without saying
+- Three or more waits that haven't changed for over a day fold under one line, **3 more, quiet
+  for over a day** (one or two stay in view). Tap it to see them; each says when it last changed. A task that stopped without saying
   what it waits for says that too, so you know to look.
-- Results you've already opened fold under **9 more you've seen**. A new result stays in view
+- Three or more results you've already opened fold under **9 more you've seen**. A new result stays in view
   until you open it.
 - What needs you never folds.
 
@@ -80,4 +92,5 @@ With one errand on hand, all of this stays out of the way: one row, and four sma
 ## On a phone
 
 The same: the projects as a row of names you can swipe, the four numbers, and the list. Tap a
-row to open it.
+row to open it: the row grows into the task's page. To go back, tap **‹** at the top left, or, in
+the app, swipe in from the left edge. A sheet (Settings, a new task) closes when you pull it down.

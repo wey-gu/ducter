@@ -1,6 +1,6 @@
 package i18n
 
-// D277: Settings › Notifications › iMessage, the Mac app's iMessage bridge.
+// D277: the Mac app's iMessage bridge, in Settings › 聊天软件 / Chat apps since D283.
 // The words the partner itself says in iMessage live with the bridge
 // (internal/imessage/words.go). Glossary: design/product-model.md, "iMessage".
 
@@ -38,6 +38,15 @@ var zhIMessage = Table{
 	"imessage.stranger":          "有人在 iMessage 找过%s。它没有回，也没有留下那些消息。",
 	"imessage.where":             "你在 iMessage 里说的也会出现在 Ducter 的对话里，别的都留在「信息」里。",
 	"imessage.disconnect":        "断开",
+	"imessage.disconnect.ask":    "断开以后，iMessage 里就找不到它了；你们的对话还在这里。",
+	"imessage.state.pairing":     "还差一步：从手机发一串数字",
+	"imessage.state.on":          "连上了 · %s",
+	"imessage.state.self":        "连上了 · 给自己发信息",
+	"imessage.state.needs":       "还差一个权限",
+	"imessage.state.problem":     "暂时用不了",
+	"imessage.linked.self":       "在你和自己的对话里",
+	"imessage.linked.self.note":  "%s的每句话都以它的名字开头。你在 iMessage 里说的也会出现在 Ducter 的对话里。",
+	"imessage.via":               "经过这台 Mac 收发，这台 Mac 要开着。",
 }
 
 var enIMessage = Table{
@@ -74,6 +83,15 @@ var enIMessage = Table{
 	"imessage.stranger":          "Someone else wrote to %s in iMessage. It didn't answer, and kept nothing of theirs.",
 	"imessage.where":             "What you say in iMessage also shows in your Ducter conversation; nothing else leaves Messages.",
 	"imessage.disconnect":        "Disconnect",
+	"imessage.disconnect.ask":    "Once disconnected, it can't be reached in iMessage; your conversation stays here.",
+	"imessage.state.pairing":     "One more step: text a code from your phone",
+	"imessage.state.on":          "Connected · %s",
+	"imessage.state.self":        "Connected · Message yourself",
+	"imessage.state.needs":       "One permission to go",
+	"imessage.state.problem":     "Not working right now",
+	"imessage.linked.self":       "In your thread with yourself",
+	"imessage.linked.self.note":  "Everything %s says starts with its name. What you say in iMessage also shows in your Ducter conversation.",
+	"imessage.via":               "It goes through this Mac, so this Mac stays on.",
 }
 
 func init() {

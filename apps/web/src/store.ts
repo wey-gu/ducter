@@ -65,6 +65,14 @@ export interface Task {
   events: LogEvent[];
   seqs: Set<number>;
   historyLoaded: boolean;
+  /** D284: every event from this seq to the newest is held; histMore: the home has older ones. */
+  histFrom?: number;
+  histMore?: boolean;
+  /** D284: the socket was replaced since it loaded: a gap may have opened, so the next open asks again. */
+  histStale?: boolean;
+  /** D284: a task_history request is on its way, for histAsk events. */
+  histPending?: boolean;
+  histAsk?: number;
   openedAt?: string;
   openSeq?: number; // seq of the task_open in `open` (a retitle is a later one)
   sends: Send[];
@@ -113,7 +121,8 @@ export function laneOf(a: Attention): Lane {
   return LANE.hidden;
 }
 
-export const title = (t: Task) => t.open?.title || t.card?.title || "";
+// D285: the person's own name for it comes first, then the latest retitle.
+export const title = (t: Task) => t.card?.mark?.name || t.open?.title || t.card?.title || "";
 export const attention = (t: Task): Attention => t.state?.attention ?? t.card?.attention ?? "queued";
 export const reasonOf = (t: Task) => t.state?.reason || t.card?.reason || "";
 export const placeOf = (t: Task): Place => t.open?.place ?? t.card?.place ?? { kind: "none" };
@@ -146,6 +155,15 @@ function taskOf(ev: LogEvent): string {
   const b = ev.body as { taskId?: string };
   if (["task_open", "task_state", "task_event", "report", "checkpoint", "body_selected"].includes(ev.kind) && b.taskId) return b.taskId;
   return ev.stream.startsWith("task:") ? ev.stream.slice(5) : "";
+}
+
+/**
+ * D284: the seq an opened task's next older page comes before, or undefined: none is on its way,
+ * the home has older ones, and it holds fewer than `limit` events (the background's reach).
+ */
+export function olderPage(t: Task | undefined, limit = Infinity): number | undefined {
+  if (!t?.historyLoaded || t.histPending || !t.histMore || !t.histFrom || t.events.length >= limit) return undefined;
+  return t.histFrom;
 }
 
 export class Store {
@@ -192,6 +210,13 @@ export class Store {
     return f.t === "welcome" && this.cursor > 0 && f.headSeq < this.cursor;
   }
 
+  /** D284: a task_history request for `limit` events is on its way. */
+  historyAsked(id: string, limit: number) {
+    const t = this.task(id);
+    t.histPending = true;
+    t.histAsk = limit;
+  }
+
   task(id: string): Task {
     let t = this.tasks.get(id);
     if (!t) {
@@ -208,6 +233,12 @@ export class Store {
         this.headSeq = f.headSeq;
         this.welcomed = true;
         if (f.personaName) this.personaName = f.personaName;
+        // D284: a new socket: what a task's history missed meanwhile is asked again when it opens.
+        for (const t of this.tasks.values()) {
+          t.histStale = t.histStale || t.historyLoaded;
+          t.histPending = false;
+          t.histAsk = 0;
+        }
         return;
       case "first_screen":
         this.first = f.first;
@@ -246,9 +277,24 @@ export class Store {
         return;
       }
       case "task_history": {
+        // D284: the newest window first, then older pages; HistFrom..newest is held whole.
         const t = this.task(f.taskId);
+        const newest = t.events.at(-1)?.seq ?? 0;
+        const had = { from: t.histFrom ?? 0, more: !!t.histMore };
         for (const ev of f.events) this.applyEvent(ev);
-        t.historyLoaded = true;
+        // A home before D284 says nothing of more: a full page may have more (at worst one comes back empty).
+        const more = f.more ?? (!!t.histAsk && f.events.length >= t.histAsk);
+        const first = f.events[0]?.seq;
+        t.histPending = false;
+        t.histAsk = 0;
+        if (!f.beforeSeq) {
+          t.historyLoaded = true;
+          t.histStale = false;
+          if (first == null) (t.histFrom = 0), (t.histMore = false);
+          else if (had.from && had.from <= first && first <= newest) (t.histFrom = had.from), (t.histMore = had.more);
+          else (t.histFrom = first), (t.histMore = more);
+        } else if (first != null && (!t.histFrom || first < t.histFrom)) (t.histFrom = first), (t.histMore = more);
+        else t.histMore = false;
         return;
       }
       case "activity":

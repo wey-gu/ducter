@@ -10,6 +10,14 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 (eval only) · the partner eval (`bun run eval:partner`) · art cutouts with true alpha
 (`design/art/assets/alpha/`, 22 assets, `design/art/assets/tools/cut.swift`).
 
+## Past tasks and Ongoing (D285, `past.md`)
+
+- [ ] **The partner can search Past tasks** (a `past_search` tool beside `log_search`, so "continue last Tuesday's refactor" said in the conversation finds the card and offers 接着做). A tool change: run the D175 eval. Trigger: the author asks the partner for an old task by words.
+- [ ] **A human comprehension test of the ten pictures and six tints** (research/93 §5 rated by rubric only). Trigger: before calling the marks more than a preview.
+- [ ] **Semantic search** (embeddings over reports) for words that never appear as such. Trigger: a "can't find it" with words that are not in the task.
+- [ ] **Change when for every week picks the weekday** (today it keeps the routine's own day). Trigger: the first weekly routine moved to another day.
+- [ ] **On hand's rows draw the person's picture and name** (the name already is the title; the picture is not drawn on rows yet). Trigger: On hand's redesign settles.
+
 ## Chat apps (D276, `channels.md`)
 
 Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
@@ -42,7 +50,11 @@ Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
   same buddy; D206 media from the partner as attachments.
 - **One Mac per persona** (trigger: a second Mac turns it on): the home should know which socket
   carries iMessage and tell the other Mac's Settings that another Mac answers there.
-- **A Chat apps tab** (trigger: D276 adds one): move the iMessage group there from Notifications.
+- **iMessage's state on the web's Chat apps page** (trigger: a person sets it up from a phone):
+  the home already hears `channel_status`; show it in the web's iMessage group instead of only
+  "set up on a Mac" (D283).
+- **The chat apps' letter pebbles and the Chat apps clay with human raters** (trigger: the next
+  rater round; LLM raters only so far, D283).
 - **The 来自 iMessage / via iMessage mark** under the person's message on the Mac and the web
   (D276's mark, the same `via`).
 - **Where to reach me** pinned to iMessage (research/88 §7.1), if the "last spoke" default proves
@@ -203,13 +215,20 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       real long run with the author.
 
 - [ ] **The opened task, after D271**: (1) done in D279: a progress report after `wait_for`
-      leaves the card on Waiting (core's `rests`). (2) An opened task loads its latest 2,000 events
-      (the home's most per ask); older ones are not reachable from the page or the locator.
-      Trigger: a loop that runs past a day. (3) In a loop, a finished round folds everything
+      leaves the card on Waiting (core's `rests`). (2) Done in D284: the newest window first, pages
+      in the background up to 2,000, then as the reader reaches the head. (3) In a loop, a finished round folds everything
       before its last words, so a review round's findings hide under "做了 8 分 21 秒" when its
       last words are "45 分钟后再看"; consider keeping the round's longest words in view. Trigger:
       the author's review of D271. (4) The web's locator marks the turns in view by scroll
       position (no virtual list); the Mac's by the list's rows. Check both on a real loop.
+
+- [ ] **The opened task, after D284**: (1) check the opening time against the author's own VPS
+      home (the perf tests simulate a 4 Mbit/s link) and the locator's glide and tint on the real
+      Mac and in Safari on an iPhone (the web keeps the reader's place itself when older pages
+      land; WebKit has no scroll anchoring). (2) The web unzips a gzipped frame only where the
+      browser has DecompressionStream (Safari 16.4+); older ones take text as before. (3) The
+      socket's own deflate (permessage-deflate) for every client if the phone app's or a
+      worker's link is slow too. Trigger: the author's review of D284.
 
 - [ ] **The eval's new gaps on haiku** (research/48 addendum, `eval/results/2026-11-10-haiku-d175.md`):
       (1) it says a rule is kept without calling `rule_save` / `notice_rule` (an honesty gap: a
@@ -470,6 +489,24 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Read-fold and late fold (principle 5) are still not built.
 - [ ] Meter the digest writer's cost (the eval records answer cost only).
 
+## What you said comes back (D281, research/91)
+
+- [ ] **Live on the author's homes:** a week of real conversation with the morning note on; count
+      (only counts) the lines kept, said, covered by a wait, let go, and muted. Trigger: the next
+      release that reaches the author's Mac and hel.
+- [ ] **A held-out precision set** from the author's real conversation (his own lines, read with
+      his yes, counts and verdicts only in git): the rules were tuned on the corpus they are scored
+      on. Trigger: the first wrong "you said…" he reports, or the live week above.
+- [ ] **A cheap model's pass over a turn** for phrasings the rules miss ("周五之前把报告交了", "别忘了…"
+      said without 我), at most once a turn and only on lines with a day or time word. Trigger: the
+      live week shows misses.
+- [ ] **Pin the language when it is unset:** `zh()` follows the last message, so one English line
+      flips the next morning note. Trigger: a mixed-language week on any home.
+- [ ] **A trust number per kind** ("of what it said this month you acted on n"), from Go, 有用 and
+      这类不用告诉我, under 今天看了什么. Trigger: the author asks how often it was right.
+- [ ] **"Done" for a kept line:** a reply that says it was done ("交了") quietly drops what is still
+      ahead. Trigger: a reminder said after it was done.
+
 ## Your accounts and connected AI agents (promised as "coming soon" on the site)
 
 The site, README and `docs/faq.md` say these are coming. Each needs the change loop (a design
@@ -565,6 +602,13 @@ note and a `Dn`) before it is built.
   the three actions there. Fit the input per action from its guide. Trigger: D223 on hel.
 
 ## Pictures and files, phases 2 and 3 (D206, `design/media.md`)
+
+- [ ] **D286 on the Mac: a video's frame and a sound's waveform in their cards** (AVFoundation
+      through purego, as Core Graphics is reached for PDFs), and playing a sound inside the app.
+      Trigger: the author sends a voice memo or a clip from the Mac.
+- [ ] **D286 on real devices:** the strip, pinch and drag-down on the author's iPhone and Pixel
+      Fold; a light haptic when a picture lands (`haptic("light")` exists). Trigger: the next
+      phone build.
 
 - [x] **Phase 2: files and PDFs from the user.** Built by D259: one button, the same tray, the file
       card in the message, the partner's line with its path (a short text whole), a task's line
@@ -1225,7 +1269,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
       sessions (OAR usage) to replace principle 4's heuristic. Trigger: the cost-model work.
 - [ ] **Before merging D165/D166 and D168/D169**: their highs in research/48 §2 (P1, P2, M1, M2).
 - [ ] **D240/D241's open items (research/76 §4, §6):** the rest were decided in D241 (Codex
-      subagents inherit the brief; PushNotification, RemoteTrigger, Workflow denied in every task;
+      subagents inherit the brief; PushNotification, RemoteTrigger denied in every task, Workflow since D282 only in browser places;
       pi's project AGENTS.md appended under the clean setup; DSH browser tasks in a home of Ducter's).
   - a live rerun of the HN browser lookup with D240's built-ins, to replace the INFERRED ~190K. Not
     done in D241: it needs the author's Chrome and a running instance (a session must not touch
@@ -1390,6 +1434,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **The window header's counts vs the strip**: the header's 今天做完 counts successes today, the strip counts the section (failures and yesterday's late finishes too). One rule for both is the shell's call (the header is shared chrome).
 - [ ] **Quiet after 24 hours** and **seen results folded by default** are defaults to revisit with real use.
 
+## On hand with character (D287)
+
+- [ ] **People, not only LLM raters**: the author first on their real board, then a consumer who has never heard "agent" (research/95 is Haiku proxies only). Trigger: the next build the author installs.
+- [ ] **The iOS Simulator and Android** for the head and the cards (the phone's 56 figure, one card to a row). Trigger: the next phone release.
+- [ ] **A done card's moment on the Mac when it arrives live** (the web's pop plays the first time the card is drawn this session; the Mac's too, but neither ties it to the handover face). Trigger: the author's review.
+- [ ] **The fold threshold (3), two cards to a row from 612, the day column from 1280** are defaults to revisit with real use.
+
 ## From the author's phone-use run (2026-11-16)
 - [x] **Recording consent is the person's turn, said everywhere** (built 2026-11-16, D280 (1)): the
       card in every window with its countdown and 不录了, the pill's 轮到你：点「立即开始」.
@@ -1425,3 +1476,49 @@ Codex first, once OAR is near 1.0. See `research/17`.
       loaded transcript (an opened task loads its latest 2,000 events), so a loop older than that
       counts from there; core could log a look count on a waiter's end. Trigger: the author's
       review of D279.
+
+## D282: a task is the person's own agent, switching inside one task (2026-11-16)
+- [ ] **pi and DeepSeek Harness on the same switch paths.** Resume by id with a new model, and an
+      agent switched back resuming its own session, are verified on Claude Code and Codex only
+      (research/92 §5); on pi and DSH a rejected resume falls back to the condensed start. Trigger: pi
+      or DSH doing the author's tasks.
+- [ ] **A real-model run of a switch** (Claude Code → Codex → back, Sonnet ↔ Opus in place) on the
+      author's setup, and Codex's `/compact` through OAR live. Trigger: the author's first day of
+      daily work in Ducter.
+- [ ] **The Ducter task tools' own cost per request** with the real core (research/92 measured
+      with report_to_main and checkpoint only). Trigger: the next token audit.
+- [ ] **The model and effort rows on the phone's switch list** read the agents' model lists from
+      New task's options frame, asked for when the list opens. Check on the iOS Simulator at 390 px.
+      Trigger: the next phone review.
+
+## D288: a task's context, compactions and account limits (2026-11-16)
+- [ ] **On hand's tiny ring, only near the limit.** The task card would carry the latest reading
+      (`TaskCard.context: { tokens, window, compactAt }`, set by core from the `context` lines) so a
+      row on On hand can show the ring when a task is past its save point. Trigger: the On hand
+      redesign lands.
+- [ ] **The partner plans with the limits** ("Codex has 60% of its week left; I'll give this one to
+      Claude Code"): `fw_candidates`' quota pace reads the home's account book. A partner tool or
+      persona change: D175's eval with it. Trigger: the first limit hit in a real week.
+- [ ] **A worker's limits and Compact now on a worker's session.** The card shows the home's own
+      read; a worker's agents need a worker op (`account_usage`, like `models`) and its session's
+      `compact`. Trigger: the author running tasks on hel daily.
+- [ ] **Live checks**: a real Claude Code auto-compaction (its `post_tokens` present?), a real Codex
+      `account/rateLimits/updated` (its params as assumed), pi's `tokensBefore`, a real limit hit's
+      `rate_limit_event`, and Claude Code's `get_usage` on a Max account (the card's words).
+      Trigger: the author's first day of daily work in Ducter.
+- [ ] **OAR upstream**: the sizes on `compaction_ended`, a `rate_limit` event (Claude Code), the
+      Codex rate-limit update, per-turn usage. Trigger: the next OAR release window.
+- [ ] **A human comprehension pass** on the ring (does a fresh user read it as "how full", and the
+      butter as "soon, and fine"?) and on 压缩 / compact. LLM proxies first. Trigger: the next
+      comprehension round.
+## Moving between views (D290, 2026-11-16)
+- [ ] **Real devices.** The motion was tuned on the Mac tester's frames and headless Chrome; not yet
+      on the iPhone app (WKWebView: View Transitions need iOS 18; the edge swipe and the sheet's
+      drag), Safari in a tab (its own edge swipe, `hasUAVisualTransition`), a Pixel (the system's
+      predictive back), or a real Mac window on a 120 Hz display. Trigger: the next release run on
+      the author's phone and Mac.
+- [ ] **Human eyes on the feel.** Durations and curves were judged from frame sequences only
+      (`.shots/d290/`). Trigger: the author's review; tune `theme.Nav` and `--t-*` together.
+- [ ] **The hero from places other than On hand's rows** (a task chip in the conversation, a
+      notification's card, the rail beside an open task on the web). Trigger: after the review, if
+      the row's hero reads well.

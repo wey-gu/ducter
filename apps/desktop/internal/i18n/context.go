@@ -1,0 +1,92 @@
+package i18n
+
+// D288, 上下文 / Context: a task's context meter by its composer, the card
+// it opens, and the compaction hairline's sizes. The same keys and words as
+// the web client (apps/web/src/i18n-context.ts).
+
+var zhContext = Table{
+	"ctx.ring":            "上下文 · 已用 %s",
+	"ctx.ring.unknown":    "上下文",
+	"ctx.title":           "上下文",
+	"ctx.used":            "窗口已用 %s",
+	"ctx.unknown":         "刚压缩过，下一步就知道有多满",
+	"ctx.none":            "还没开始用",
+	"ctx.auto":            "到 %s 会自动压缩",
+	"ctx.near":            "快满了：它会先存一下进度，再自动压缩",
+	"ctx.turn":            "上一轮",
+	"ctx.total":           "这件事合计",
+	"ctx.in":              "输入 %s",
+	"ctx.cached":          "其中缓存 %s",
+	"ctx.out":             "输出 %s",
+	"ctx.compacted":       "压缩过 %d 次",
+	"ctx.compacted.one":   "压缩过 1 次",
+	"ctx.last":            "上次 %s → %s",
+	"ctx.last.from":       "上次从 %s 压下来",
+	"ctx.compact":         "现在压缩",
+	"ctx.compact.what":    "把前面的对话总结成一段，任务和进度都留着，接着做。",
+	"ctx.compact.later":   "这一轮做完就压缩",
+	"ctx.compact.asked":   "要它压缩了",
+	"ctx.account":         "%s 账号",
+	"ctx.limit.hours":     "%d 小时额度",
+	"ctx.limit.days":      "%d 天额度",
+	"ctx.limit.extra":     "额外用量",
+	"ctx.limit.model":     "%s · %s",
+	"ctx.left":            "还剩 %s",
+	"ctx.limited":         "用完了",
+	"ctx.resets":          "%s 重置",
+	"ctx.why.unsupported": "%s 不提供额度信息",
+	"ctx.why.signed_out":  "%s 还没登录",
+	"ctx.why.unavailable": "这会儿读不到额度",
+	"ctx.loading":         "正在读额度…",
+	"note.compacted.size": "压缩了上下文 · %s → %s",
+	"note.compacted.from": "压缩了上下文 · 从 %s",
+	"note.compact_failed": "这次没压缩成",
+}
+
+var enContext = Table{
+	"ctx.ring":            "Context · %s used",
+	"ctx.ring.unknown":    "Context",
+	"ctx.title":           "Context",
+	"ctx.used":            "%s of the window used",
+	"ctx.unknown":         "Just compacted; its next step shows how full",
+	"ctx.none":            "Nothing in it yet",
+	"ctx.auto":            "Compacts on its own at %s",
+	"ctx.near":            "Nearly full: it saves its progress, then compacts on its own",
+	"ctx.turn":            "Last turn",
+	"ctx.total":           "This task in all",
+	"ctx.in":              "Input %s",
+	"ctx.cached":          "%s cached",
+	"ctx.out":             "Output %s",
+	"ctx.compacted":       "Compacted %d times",
+	"ctx.compacted.one":   "Compacted once",
+	"ctx.last":            "last %s → %s",
+	"ctx.last.from":       "last from %s",
+	"ctx.compact":         "Compact now",
+	"ctx.compact.what":    "Sums up the conversation so far, keeps the task and its progress, and carries on.",
+	"ctx.compact.later":   "Compacts once this turn is done",
+	"ctx.compact.asked":   "Asked it to compact",
+	"ctx.account":         "%s account",
+	"ctx.limit.hours":     "%d-hour limit",
+	"ctx.limit.days":      "%d-day limit",
+	"ctx.limit.extra":     "Extra usage",
+	"ctx.limit.model":     "%s · %s",
+	"ctx.left":            "%s left",
+	"ctx.limited":         "Used up",
+	"ctx.resets":          "resets %s",
+	"ctx.why.unsupported": "%s doesn't share its limits",
+	"ctx.why.signed_out":  "%s isn't signed in",
+	"ctx.why.unavailable": "Can't read the limits right now",
+	"ctx.loading":         "Reading the limits…",
+	"note.compacted.size": "Context compacted · %s → %s",
+	"note.compacted.from": "Context compacted · from %s",
+	"note.compact_failed": "Couldn't compact this time",
+}
+
+func init() {
+	for k, v := range zhContext {
+		zh[k] = v
+	}
+	for k, v := range enContext {
+		en[k] = v
+	}
+}

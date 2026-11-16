@@ -79,6 +79,8 @@ export const transcriptWords: { zh: Record<string, string>; en: Record<string, s
     "told.loan_lost": "%s 断开了，借用结束了",
     "locator.name": "这件事里说过的话",
     "locator.brief": "交给它的事",
+    "locator.quiet": "%s 条提示",
+    "turn.go": "你点了「%s」",
     "group.more": "还有 %d 步",
   },
   en: {
@@ -157,6 +159,8 @@ export const transcriptWords: { zh: Record<string, string>; en: Record<string, s
     "told.loan_lost": "Lost your %s; the loan ended",
     "locator.name": "What was said in this task",
     "locator.brief": "The task it was given",
+    "locator.quiet": "%s notes",
+    "turn.go": "You chose “%s”",
     "group.more": "%d more steps",
   },
 };

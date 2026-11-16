@@ -3,7 +3,7 @@ import { afterEach, expect, test } from "bun:test";
 import { join } from "node:path";
 import type { Bodies } from "@ducter/protocol";
 import { FakeClock } from "../src/clock.ts";
-import { createDecisions } from "../src/decisions.ts";
+import { createDecisions, forwardFrom } from "../src/decisions.ts";
 import { createLiving } from "../src/living.ts";
 import { openLog } from "../src/log.ts";
 import { createRegistry } from "../src/registry.ts";
@@ -97,6 +97,9 @@ test("blocking question -> decision + needs_you; reversible default auto-resolve
   expect(tasks.get("t1")!.pendingDecisionId).toBeUndefined();
   await tick();
   expect(forwarded).toEqual([["t1", "User says Go: Rebase."]]);
+  // D284: a Go is relayed in Ducter's words (the page draws a chip); a reply is the person's own.
+  expect(forwardFrom(r!.body)).toBe("ducter");
+  expect(forwardFrom({ decisionId: body.decisionId, option: "reply", text: "rebase onto main first", by: "user" })).toBe("user");
 });
 
 test("irreversible questions wait for the user; reply text is forwarded, hold is not", async () => {

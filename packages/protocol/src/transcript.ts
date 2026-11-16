@@ -76,8 +76,10 @@ export type Block =
   | { k: "voice"; seq: number; text: string; saved?: boolean }
   /** A stretch of steps between two things said; `live` = the one under way. */
   | { k: "steps"; seq: number; lines: Line[]; live?: boolean }
-  /** The user's words to the task; `go` = their Go relayed (its label, may be ""). */
-  | { k: "you"; seq: number; text: string; go?: string; media?: MediaRef[] }
+  /** The person's own words to the task. */
+  | { k: "you"; seq: number; text: string; media?: MediaRef[] }
+  /** D284: the person's Go on a card, relayed to the task: `label` the Go's ("" its plain Go), `text` what was sent (on hover). A quiet chip, never their bubble; it opens a turn. */
+  | { k: "go"; seq: number; label: string; text: string }
   | { k: "partner"; seq: number; text: string; media?: MediaRef[] }
   /** An earlier report to the partner (the latest is the outcome, said above the transcript). */
   | { k: "report"; seq: number; state: Bodies["report"]["state"]; text: string; media?: MediaRef[] }
@@ -86,7 +88,7 @@ export type Block =
    * word in their i18n (`note.<say>`, `name` filled in), never the English it was logged in; `text`
    * is that line as logged, keys hidden, shown only on a tap for an error; `bad` = something failed.
    */
-  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean }
+  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean; effort?: string; from?: number; to?: number }
   /** The agent's plan (D268): one per task, where it first wrote it, holding its latest items. */
   | { k: "plan"; seq: number; items: PlanItem[] }
   /**
@@ -106,18 +108,25 @@ export type Block =
 export type ToldSay = "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "other";
 
 /** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
-export type NoteSay = "compacted" | "interrupted" | "retry" | "stalled" | "offline" | "back" | "waiting_device" | "fresh" | "moved" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
+export type NoteSay = "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
 
 const KICKOFF = /^(<brief>|Start the task ")/;
 
 /** A system line as a note, or undefined when it says nothing to a person (D207). Shared by the Go port. */
-export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: string; bad?: boolean } | undefined {
+export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: string; bad?: boolean; effort?: string; from?: number; to?: number } | undefined {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const o = (k: string) => (r[k] && typeof r[k] === "object" ? (r[k] as Record<string, unknown>) : undefined);
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
   const from = (re: RegExp) => re.exec(text)?.[1]?.trim() || undefined;
   // D268: a divider for a compaction or an interruption; a retry only while it is the latest thing.
-  if (r.kind === "compaction_ended" && r.outcome !== "failed") return { say: "compacted" };
+  // D288: with the size before and after when known (压缩了上下文 · 152k → 31k).
+  if (r.kind === "compaction_ended" && r.outcome !== "failed") {
+    const size = (v: unknown) => (typeof v === "number" && v > 0 ? Math.round(v) : undefined);
+    const from = size(r.before) ?? size(r.contextTokens);
+    const to = size(r.after);
+    return { say: "compacted", ...(from ? { from } : {}), ...(to ? { to } : {}) };
+  }
+  if (r.slash === "compact" && r.failed) return { say: "compact_failed", bad: true };
   if (r.kind === "turn_ended" && r.outcome === "aborted") return { say: "interrupted" };
   if (r.kind === "retry") return { say: "retry", ...((n) => (n ? { name: n } : {}))(from(/^retry (\d+)/)) };
   if (r.stall) return { say: "stalled" };
@@ -125,12 +134,14 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
   if (r.effortDropped) return { say: "effort_dropped", ...(str(r.effortDropped) ? { name: str(r.effortDropped) } : {}) };
   if (o("browser")?.guard) return { say: "guard" };
   if (o("browser")?.driver === "cua") return { say: "to_own_browser" };
+  // D282: the same agent with another model or effort: its model (the clients word it) and effort.
+  const rt = o("retuned");
+  if (rt) return { say: "retuned", ...(str(rt.model) ? { name: str(rt.model) } : {}), ...(str(rt.effort) ? { effort: str(rt.effort) } : {}) };
   const sw = o("switched");
   const mv = o("moved");
-  if (sw || mv) {
-    const to = str(sw?.to) ? harnessName(String(sw!.to)) : str(mv?.to);
-    return { say: "moved", ...(to ? { name: to } : {}) };
-  }
+  // D157: another computer ("换到 hel 接着做"); D282: another agent ("换成 Codex 接着做"), both with their time.
+  if (mv) return { say: "moved", ...(str(mv.to) ? { name: str(mv.to) } : {}) };
+  if (sw) return { say: "switched", ...(str(sw.to) ? { name: harnessName(String(sw.to)) } : {}) };
   if (r.device !== undefined && r.offline === true) return { say: "offline", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^(.+?) disconnected/)) };
   if (r.device !== undefined && r.offline === false) return { say: "back", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^(.+?) is back/)) };
   if (r.waits === "asleep" || r.waits === "unreachable") return { say: "waiting_device", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^waiting for (.+?):/)) };
@@ -171,6 +182,12 @@ const TOLD: [RegExp, ToldSay][] = [
   [/^Your loan of (.+?) ended: (?:the user |Android's switch for Ducter went off)/, "taken_back"],
   [/^Your loan of (.+?) ended: (?:you gave it back|the task finished)/, "given_back"],
   [/^Your loan of (.+?) ended: /, "loan_lost"],
+  // D284: Ducter's words about the person's phone logged as from the user before D271/D280
+  // (D238's first Stop; its recording, its screen waking), and any other line that names the
+  // person as "the user": a person never calls themself that to their own agent.
+  [/^The user stopped you using their phone/, "stopped"],
+  [/^(?:Recording .+?'s screen now|The recording (?:of .+?'s screen didn't start|is saved|stopped early)|.+?'s screen (?:is on again and it is still lent to you|went off by itself \(a screen timeout))/, "other"],
+  [/^The user\b/, "other"],
 ];
 
 /**
@@ -210,9 +227,23 @@ export function inTurn(events: LogEvent[]): boolean {
   return events.some((e) => e.kind === "task_open");
 }
 
-/** The user's Go as Ducter relays it to the task ("User says Go: …."), or undefined. */
+// D284: the words core's decisions.ts relays a Go on a card in (forwardText), and the label the
+// card's Go carried when the words don't name it ("" = the card's plain Go).
+const GOS: [RegExp, string][] = [
+  [/^The user says they're done on the phone \(/, "Done"],
+  [/^The user says they're signed in to /, ""],
+  [/^The user said Go: /, ""],
+  [/^The user said OK to use /, ""],
+];
+
+/**
+ * The person's Go on a card as Ducter relays it to the task, its label ("User says Go: …."; the
+ * longer relays of a payment, a sign-in, a phone step say no label: ""), or undefined.
+ */
 export function goRelay(text: string): string | undefined {
-  return text.startsWith("User says Go: ") ? text.slice("User says Go: ".length).trim().replace(/[.。]+$/, "") : undefined;
+  const s = text.trim();
+  if (s.startsWith("User says Go: ")) return s.slice("User says Go: ".length).trim().replace(/[.。]+$/, "");
+  return GOS.find(([re]) => re.test(s))?.[1];
 }
 
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
@@ -362,7 +393,7 @@ export function lastSeq(b: Block): number {
 export function turnsOf(blocks: Block[]): Turn[] {
   const out: Turn[] = [];
   for (const b of blocks) {
-    if (b.k === "brief" || b.k === "you" || b.k === "partner" || b.k === "wake" || b.k === "told") out.push({ seq: b.seq, prompt: b, body: [] });
+    if (b.k === "brief" || b.k === "you" || b.k === "partner" || b.k === "wake" || b.k === "told" || b.k === "go") out.push({ seq: b.seq, prompt: b, body: [] });
     else {
       if (!out.length) out.push({ seq: b.seq, body: [] });
       out.at(-1)!.body.push(b);
@@ -479,6 +510,19 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
             addRow(ev.seq, { seq: ev.seq, step: bg.step, n: 1, outcome: bg.failed ? "error" : "ok" });
             break;
           }
+          // D288: the first reading after a compaction is its size after.
+          const cx = b.raw as { kind?: string; after?: boolean; contextTokens?: number } | undefined;
+          if (cx?.kind === "context") {
+            if (cx.after && typeof cx.contextTokens === "number" && cx.contextTokens > 0) {
+              for (let i = out.length - 1; i >= 0; i--) {
+                const c = out[i]!;
+                if (c.k !== "note" || c.say !== "compacted") continue;
+                if (c.to === undefined) c.to = Math.round(cx.contextTokens);
+                break;
+              }
+            }
+            break;
+          }
           const n = noteOf(text, b.raw);
           if (n) out.push({ k: "note", seq: ev.seq, ...n, text: redact(text) });
           break;
@@ -490,14 +534,14 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
           if (b.from === "runner" || (!b.from && KICKOFF.test(text))) break;
           const fromPartner = b.from === "partner" || ev.origin === "partner";
           const wake = fromPartner ? wakeOf(text) : undefined;
-          const told = fromPartner ? undefined : toldOf(text, b.from);
+          // D284: the person's Go on a card, as Ducter relays it, is a quiet chip, never their bubble.
+          const go = fromPartner ? undefined : goRelay(text);
+          const told = fromPartner || go !== undefined ? undefined : toldOf(text, b.from);
           if (wake) out.push({ k: "wake", seq: ev.seq, text: redact(wake.reason), ...(wake.timer ? { timer: true } : {}) });
+          else if (go !== undefined) out.push({ k: "go", seq: ev.seq, label: redact(go), text: redact(text) });
           else if (told) out.push({ k: "told", seq: ev.seq, say: told.say, ...(told.name ? { name: redact(told.name) } : {}), text: redact(text) });
           else if (fromPartner) out.push({ k: "partner", seq: ev.seq, text: redact(text), ...media });
-          else {
-            const go = goRelay(text);
-            out.push({ k: "you", seq: ev.seq, text: redact(text), ...(go !== undefined ? { go } : {}), ...media });
-          }
+          else out.push({ k: "you", seq: ev.seq, text: redact(text), ...media });
           break;
         }
         if (b.role === "assistant") out.push({ k: "voice", seq: ev.seq, text: redact(text) });

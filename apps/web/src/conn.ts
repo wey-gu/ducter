@@ -124,6 +124,11 @@ const KEEP = new Set(["decide", "task_action"]);
 const MSG = new Set(["send", "task_send"]);
 const BACKOFF = [500, 1000, 2000, 4000, 8000, 15000];
 
+/** D284: the page can unzip a gzipped frame (Safari 16.4+, every current browser). */
+const CAN_GUNZIP = typeof DecompressionStream !== "undefined";
+/** A gzipped frame's JSON. */
+export const gunzip = (buf: ArrayBuffer): Promise<string> => new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+
 export class Connection {
   status: ConnStatus = "connecting";
   private ws?: WebSocket;
@@ -178,21 +183,21 @@ export class Connection {
     const ws = tok ? new WebSocket(this.url, ["ducter", tok]) : new WebSocket(this.url);
     this.ws = ws;
     this.welcomed = false;
-    ws.onopen = () => ws.send(JSON.stringify(this.hello()));
+    // D284: a large frame (a task's history) comes gzipped where the page can unzip it.
+    ws.binaryType = "arraybuffer";
+    ws.onopen = () => ws.send(JSON.stringify({ ...this.hello(), ...(CAN_GUNZIP ? { gzip: true } : {}) }));
     ws.onmessage = (m) => {
-      let f: ServerFrame;
-      try {
-        f = JSON.parse(String(m.data));
-      } catch {
-        return;
-      }
-      if (f.t === "welcome") {
-        this.welcomed = true;
-        this.attempt = 0;
-        this.setStatus("connected");
-      }
-      this.onFrame(f);
-      if (f.t === "welcome") this.flush();
+      const data = m.data as string | ArrayBuffer;
+      if (typeof data === "string" && !this.unzipping) return this.take(data);
+      // In order: a frame behind a gzipped one waits for it.
+      this.unzipping++;
+      this.inOrder = this.inOrder
+        .then(async () => {
+          const text = typeof data === "string" ? data : await gunzip(data);
+          if (this.ws === ws) this.take(text);
+        })
+        .catch(() => {})
+        .finally(() => void this.unzipping--);
     };
     ws.onclose = () => {
       if (this.ws !== ws) return;
@@ -202,6 +207,25 @@ export class Connection {
       const wait = BACKOFF[Math.min(this.attempt++, BACKOFF.length - 1)]!;
       this.timer = setTimeout(() => this.open(), wait);
     };
+  }
+
+  private unzipping = 0;
+  private inOrder: Promise<void> = Promise.resolve();
+
+  private take(text: string) {
+    let f: ServerFrame;
+    try {
+      f = JSON.parse(text);
+    } catch {
+      return;
+    }
+    if (f.t === "welcome") {
+      this.welcomed = true;
+      this.attempt = 0;
+      this.setStatus("connected");
+    }
+    this.onFrame(f);
+    if (f.t === "welcome") this.flush();
   }
 
   /** Re-says hello on the open socket (a Log that started over). */

@@ -316,6 +316,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	add(show(4) && doneOpen, seen)
 	if q != "" && len(needs)+len(working)+len(waiting)+len(done) == 0 {
 		ui.Text(c.Key("none"), a.L.T("onhand.find.none")).FontSize(t.MD).TextColor(t.InkMuted)
+		a.pastFindLink(c, q) // D285
 		return
 	}
 	if rail {
@@ -838,6 +839,7 @@ func (a *App) switcher(c *ui.Context) {
 						pick(nil)
 					}
 				}
+				a.pastSwitchRow(c, strings.TrimSpace(a.oh.swQuery)) // D285
 			})
 		})
 	})

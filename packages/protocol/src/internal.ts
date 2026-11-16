@@ -457,7 +457,7 @@ export interface Runner {
   // needs (D157): what the task needs of its computer; Ducter picks the computer (a place.device
   // the user named stays a pin).
   // media (D206): the pictures the brief carries; the first turn hands them to the agent.
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: "zh" | "en"; origin?: "you"; needs?: TaskNeeds; media?: MediaRef[] }): Promise<TaskCard>;
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: "zh" | "en"; origin?: "you"; needs?: TaskNeeds; media?: MediaRef[]; from?: string }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.

@@ -50,6 +50,7 @@ func (a *App) onHand(c *ui.Context) {
 						a.avatar(c, theme.Idle, 120)
 						ui.Text(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
 					})
+					ui.Column(c.Key("past")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() { a.pastEndLine(c) }) // D285
 					return
 				}
 				lb := lensBoard(b, lens)
@@ -93,6 +94,7 @@ func (a *App) onHand(c *ui.Context) {
 					if day {
 						a.dayColumn(c, lb, lens)
 					}
+					a.pastEndLine(c) // D285: 做过的事 ›
 				})
 			})
 		})

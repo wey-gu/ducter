@@ -191,6 +191,8 @@ func (t *Task) SendFor(seq int64) *Send {
 // Title is the task's title.
 func (t *Task) Title() string {
 	switch {
+	case t.Card != nil && t.Card.Mark != nil && t.Card.Mark.Name != "":
+		return t.Card.Mark.Name // D285: the person's own name for it, everywhere
 	case t.Open != nil && t.Open.Title != "":
 		return t.Open.Title
 	case t.Card != nil:
@@ -335,6 +337,9 @@ func deviceOfPlace(p protocol.Place) string {
 
 // Store is the client's state.
 type Store struct {
+	// Past is 做过的事 / Past tasks (D285, past.go).
+	Past PastState
+
 	// SetAside counts, per sender and day ("from|2026-11-10"), the messages
 	// over its daily quota (D163); one quiet line says how many.
 	SetAside map[string]int
@@ -713,6 +718,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		case s.Activity == nil || s.Activity.Step != f.Activity.Step:
 			s.Activity, s.ActivityAt = f.Activity, time.Now()
 		}
+	case "past_result", "past_marked", "ongoing_result":
+		s.applyPast(f) // D285 (past.go)
 	case "error":
 		s.Errors = append(s.Errors, f.Message)
 		// A refused task_send fails the oldest unacked send.

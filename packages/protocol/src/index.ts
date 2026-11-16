@@ -17,6 +17,8 @@ import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFra
 export * from "./reply.ts";
 export * from "./handset.ts";
 export * from "./channels.ts";
+export * from "./past.ts";
+import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
@@ -318,6 +320,8 @@ export interface Bodies {
     // D128: "you" = the user opened it themselves (开一件事 / New task, `ducter task`); the brief
     // is their words as they are. Absent = the partner opened it.
     origin?: "you";
+    // D285: opened with 带着它开新任务 / New task from this: the task its brief carries findings from.
+    from?: string;
     // D157: what the task needs of its computer (kept so a move or a switch keeps them).
     needs?: TaskNeeds;
   };
@@ -583,6 +587,11 @@ export interface TaskCard {
   computing?: { device: string; app?: string };
   /** D238: the task is using the person's own phone (its device id; app: the one in front, by id), so it can be stopped. */
   handset?: { device: string; app?: string; quiet?: boolean };
+  /** D285: the person's marks (their name for it is already its title; original keeps the task's own). */
+  mark?: PastMark;
+  original?: string;
+  /** D285: seeded from that task (New task from this). */
+  from?: { taskId: string; title: string };
 }
 
 export interface OnHand {
@@ -953,7 +962,8 @@ export type ClientFrame =
   // (task_new_result carries routineId, no taskId); when / until open it now with its wait or loop.
   // D202: model and effort only when the user picked other than the defaults (an effort the model
   // doesn't list is dropped, with a line in the task, never sent).
-  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen; media?: string[] }
+  // D285: from, 带着它开新任务 / New task from this: the brief carries what that task found.
+  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen; media?: string[]; from?: string }
   // D186: add a folder on the home's computer as a project (a repo or not). Answered with
   // project_add_result; On hand's projects and the card's places then include it. device (D197):
   // the folder is on that worker (the Mac app's own, when the home is elsewhere), read there.
@@ -1009,6 +1019,8 @@ export type ClientFrame =
   | ComputerClientFrame
   // D276: 聊天软件 / Chat apps (channels.ts).
   | ChannelClientFrame
+  // D285: 做过的事 / Past tasks (past.ts).
+  | PastClientFrame
   | HandsetClientFrame
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" }
@@ -1219,6 +1231,7 @@ export type ServerFrame =
   | ComputerServerFrame
   | HandsetServerFrame
   | ChannelServerFrame
+  | PastServerFrame
   | { t: "error"; message: string };
 
 /** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */

@@ -1,5 +1,5 @@
 // TaskRegistry: the TaskCard projection, rebuilt from the Log and kept live by subscription.
-import type { Attention, Bodies, LogEvent, OnHand, Residency, TaskCard } from "@ducter/protocol";
+import type { Attention, Bodies, LogEvent, OnHand, PastMark, Residency, TaskCard } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 
@@ -46,6 +46,8 @@ export interface CoreRegistry extends TaskRegistry {
   waiters(): Bodies["waiter"][];
   /** Adds what only live parts of core know (waiter looks, routine views) to On hand. */
   setDecorator(fn: (o: OnHand) => OnHand): void;
+  /** D285: the person's marks per task (their name for it becomes its title everywhere). */
+  setMarks(fn: (persona: string, taskId: string) => PastMark | undefined): void;
 }
 
 export function createRegistry(log: LogStore, clock: Clock = realClock): CoreRegistry {
@@ -60,6 +62,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
   const latest = new Map<string, LogEvent<"task_event">>();
   const lookedUp = new Set<string>();
   let decorate: (o: OnHand) => OnHand = (o) => o;
+  let markOf: (persona: string, taskId: string) => PastMark | undefined = () => undefined;
 
   const apply = (e: LogEvent) => {
     switch (e.kind) {
@@ -101,6 +104,8 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
           ...((prev?.fromRoutine ?? runOf.get(b.taskId)) ? { fromRoutine: prev?.fromRoutine ?? runOf.get(b.taskId) } : {}),
           // D128: the user opened it themselves (a retitle copies the body, so it stays).
           ...(b.origin === "you" || prev?.openedBy ? { openedBy: "you" as const } : {}),
+          // D285: seeded from another task (New task from this).
+          ...(b.from ? { from: { taskId: b.from, title: cards.get(b.from)?.title ?? "" } } : prev?.from ? { from: prev.from } : {}),
         });
         break;
       }
@@ -207,7 +212,19 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
   for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: [...PROJECTED_KINDS] })) apply(e);
   log.subscribe(apply);
 
-  const copy = (c: TaskCard): TaskCard => structuredClone(c);
+  const copy = (c: TaskCard): TaskCard => {
+    const out = structuredClone(c);
+    const m = markOf(c.persona, c.taskId);
+    if (m) {
+      out.mark = m;
+      if (m.name && m.name !== c.title) (out.original = c.title), (out.title = m.name);
+    }
+    if (out.from) {
+      const f = cards.get(out.from.taskId);
+      if (f) out.from.title = markOf(f.persona, f.taskId)?.name ?? f.title;
+    }
+    return out;
+  };
   const latestOf = (taskId: string): LogEvent<"task_event"> | undefined => {
     if (!lookedUp.has(taskId)) {
       lookedUp.add(taskId);
@@ -250,6 +267,9 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
     },
     setDecorator(fn) {
       decorate = fn;
+    },
+    setMarks(fn) {
+      markOf = fn;
     },
     setState(taskId: string, attention: Attention, residency: Residency, reason?: string) {
       if (!cards.has(taskId)) throw new Error(`unknown task ${taskId}`);

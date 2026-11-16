@@ -107,6 +107,10 @@ export interface Routines {
   yours(input: YoursInput): RoutineView;
   pause(routineId: string, by: "user" | "partner" | "system", reason?: RoutineBody["pauseReason"]): boolean;
   resume(routineId: string): boolean;
+  /** D285: 现在跑一次 / Run now: one run at once, outside the schedule (active or paused; a paused one stays paused). */
+  runNow(routineId: string): boolean;
+  /** D285: 改时间 / Change when: a new time trigger for a time routine; its next firing follows it. */
+  retime(routineId: string, trigger: Extract<RoutineTrigger, { kind: "time" }>): boolean;
   end(routineId: string): boolean;
   get(routineId: string): RoutineView | undefined;
   views(): RoutineView[];
@@ -836,6 +840,25 @@ export function createRoutines(opts: {
       setState(s, { state: "active", reviewAt, backoff: undefined });
       s.lastScheduled = Math.max(s.lastScheduled ?? 0, clock.now());
       arm(s);
+      return true;
+    },
+    runNow(id) {
+      const s = states.get(id);
+      if (!s || (s.r.state !== "active" && s.r.state !== "paused")) return false;
+      void startRun(s, clock.now());
+      return true;
+    },
+    retime(id, trigger) {
+      const s = states.get(id);
+      if (!s || s.r.trigger.kind !== "time" || trigger?.kind !== "time" || !trigger.time || !trigger.every) return false;
+      if (s.r.state === "ended" || s.r.state === "dismissed") return false;
+      const next = { ...s.r.trigger, ...trigger };
+      if (validateTimeTrigger(next)) return false;
+      disarm(s);
+      s.pending = undefined;
+      setState(s, { trigger: next, triggerWords: describeTrigger(next, /[一-鿿]/.test(s.r.triggerWords + s.r.name)) });
+      s.lastScheduled = clock.now();
+      if (s.r.state === "active") arm(s);
       return true;
     },
     end(id) {

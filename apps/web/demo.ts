@@ -181,6 +181,12 @@ await tick();
   await tick();
 }
 
+// D285: DEMO_PAST=1 adds ~40 earlier tasks for 做过的事 / Past tasks.
+if (process.env.DEMO_PAST === "1") {
+  await (await import("./demo-past.ts")).seedPast(core, zh, (ms) => (skew = ms));
+  await (await import("./demo-ongoing.ts")).seedOngoing(core, zh);
+}
+
 // After the seed, a scripted partner answers new messages the way a real one paces itself, so
 // the waiting moments can be seen and timed (D104): thinking at once, a look back at the Log at
 // 0.4 s, a task being set up at 1.5 s, the ack at 2.3 s, then the turn ends.

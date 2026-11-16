@@ -11,7 +11,8 @@ import { callEnded, type Bodies, type LogEvent, type Place } from "@ducter/proto
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
-import { Btn } from "./controls.tsx";
+import { Btn, Chev } from "./controls.tsx";
+import { openPast } from "./past.tsx";
 import { ago, clock, day, harnessName, when } from "./format.ts";
 import { CallRow } from "./phone.tsx";
 import { attention, canIntegrate, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
@@ -882,6 +883,8 @@ export function OnHandList({ room }: { room: Room }) {
         </>
       )}
       {q && !shown && <p class="none">{t("onhand.find.none")}</p>}
+      {/* D285: a Find that matches nothing here leads to every earlier task. */}
+      {q && !rail && <PastLink words={t("past.find.in", q)} q={q} />}
       {needs.length + partnerDs.length > 0 && show(1) && (
         <Section name={t("lane.needs_you")} n={needs.length + partnerDs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
           {/* What needs you is answered in place: its card, not a row (beside a task, a row). */}
@@ -947,8 +950,33 @@ export function OnHandList({ room }: { room: Room }) {
           )}
         </Section>
       )}
+      {/* D285: 做过的事 / Past tasks: what you have seen, and everything before it. */}
+      {!rail && !q && (
+        <div class="past-links">
+          {ongoingCount() > 0 && <PastLink words={t("og.link", ongoingCount())} tab="ongoing" />}
+          <PastLink words={t("past.link")} />
+        </div>
+      )}
       {room === "full" && L.sel.size > 0 && <BulkBar />}
     </div>
+  );
+}
+
+/** D285: On hand's one quiet way to 做过的事 / Past tasks. */
+/** D285: what keeps going on its own: routines that are on or paused, and tasks resting on their own wait. */
+function ongoingCount(): number {
+  const o = A.S.onHand;
+  const routines = (o?.routines ?? []).filter((r) => r.state !== "ended" && r.state !== "dismissed").length;
+  const tasks = new Set((o?.waiters ?? []).filter((w) => w.taskId && !w.routineId && w.state === "armed").map((w) => w.taskId)).size;
+  return routines + tasks;
+}
+
+function PastLink({ words, q, tab }: { words: string; q?: string; tab?: "ongoing" }) {
+  return (
+    <button class="past-link" onClick={() => openPast(q ?? "", tab ?? "past")}>
+      <span>{words}</span>
+      <Chev />
+    </button>
   );
 }
 
@@ -1133,6 +1161,12 @@ export function Switcher() {
             </button>
           )}
           {!q.trim() && !list.length && <p class="none">{t("onhand.empty", A.S.personaName)}</p>}
+          {/* D285: the words in every earlier task too. */}
+          {q.trim() && (
+            <button class="sw-row past" onClick={() => openPast(q.trim())}>
+              <span class="t">{t("past.find.in", q.trim())}</span>
+            </button>
+          )}
         </div>
       </div>
     </>

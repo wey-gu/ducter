@@ -34,6 +34,8 @@ const (
 	// RouteSettings is 设置 / Settings: one place for everything you can
 	// set, a rail of tabs (D150).
 	RouteSettings
+	// RoutePast is 做过的事 / Past tasks (D285, past.go).
+	RoutePast
 )
 
 // Updater runs a function on the UI thread and draws a frame
@@ -297,6 +299,7 @@ type App struct {
 	infoOpen   bool
 	moreOpen   bool // D268: the opened task's ⋯
 	infoCopied time.Time
+	past       pastState // D285: 做过的事 / Past tasks (past.go)
 }
 
 // UndoWindow is how long a drop can be undone (D52).
@@ -469,6 +472,8 @@ func (a *App) View(c *ui.Context) {
 			a.devicesView(c)
 		case a.Route == RoutePartner, a.Route == RouteSettings:
 			a.settingsView(c)
+		case a.Route == RoutePast:
+			a.pastView(c)
 		default:
 			a.conversation(c)
 		}
@@ -503,6 +508,8 @@ func (a *App) shortcuts(c *ui.Context) {
 		a.OpenSwitcher()
 	case c.Shortcut(ui.Cmd, ui.KeyN):
 		a.NewTaskShortcut()
+	case c.Shortcut(ui.Cmd, ui.KeyY):
+		a.OpenPast("") // D285
 	case c.Shortcut(ui.Cmd, ui.Key1):
 		a.Route = RouteConversation
 	case c.Shortcut(ui.Cmd, ui.Key2):
@@ -523,6 +530,10 @@ func (a *App) shortcuts(c *ui.Context) {
 	case a.Route == RouteConversation && c.Shortcut(ui.Cmd, ui.KeyDown):
 		a.ToLatest() // D254: to the newest message
 	case c.Shortcut(0, ui.KeyEscape):
+		if a.Route == RoutePast {
+			a.pastEsc() // D285: clears, then goes back
+			break
+		}
 		if a.Route == RouteConversation && a.CancelReply() {
 			break // D236: Esc puts a reply away first
 		}
@@ -553,6 +564,8 @@ func (a *App) Up() {
 		a.Route = RouteOnHand
 	case RouteOnHand, RouteDevices, RoutePartner, RouteSettings:
 		a.Route = RouteConversation
+	case RoutePast:
+		a.pastBack()
 	}
 }
 

@@ -121,7 +121,8 @@ export function laneOf(a: Attention): Lane {
   return LANE.hidden;
 }
 
-export const title = (t: Task) => t.open?.title || t.card?.title || "";
+// D285: the person's own name for it comes first, then the latest retitle.
+export const title = (t: Task) => t.card?.mark?.name || t.open?.title || t.card?.title || "";
 export const attention = (t: Task): Attention => t.state?.attention ?? t.card?.attention ?? "queued";
 export const reasonOf = (t: Task) => t.state?.reason || t.card?.reason || "";
 export const placeOf = (t: Task): Place => t.open?.place ?? t.card?.place ?? { kind: "none" };

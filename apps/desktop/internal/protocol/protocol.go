@@ -769,6 +769,11 @@ type TaskCard struct {
 	Phoning    *Browsing   `json:"phoning,omitempty"`   // D217: is using Ducter's phone there
 	Computing  *Computing  `json:"computing,omitempty"` // D235: is using the person's apps there
 	Handset    *Computing  `json:"handset,omitempty"`   // D238: is using the person's own phone (device id, app id)
+	// D285: the person's marks (their name is already Title; Original keeps
+	// the task's own), and the task it was seeded from.
+	Mark     *PastMark `json:"mark,omitempty"`
+	Original string    `json:"original,omitempty"`
+	From     *PastFrom `json:"from,omitempty"`
 }
 
 // Integrated is what the user did with a task's branch from Ducter (D216):
@@ -1845,6 +1850,8 @@ type ServerFrame struct {
 	SlackManifest string        `json:"slackManifest,omitempty"`
 	ChannelKind   string        `json:"kind,omitempty"`
 	Op            string        `json:"op,omitempty"`
+	// D285: past_result and past_marked (past.go), decoded on their own.
+	Past *PastFrame `json:"-"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -2034,6 +2041,10 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "channels", "channel_result",
 		"handset_dial_result":
+	case "past_result", "past_marked":
+		return decodePast(data, f)
+	case "ongoing_result":
+		return decodeOngoing(data, f)
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}
@@ -2211,6 +2222,7 @@ type TaskNew struct {
 	ClientID string       `json:"clientId,omitempty"`
 	When     *NewTaskWhen `json:"when,omitempty"`
 	Media    []string     `json:"media,omitempty"` // D206: pictures dropped on the What row
+	From     string       `json:"from,omitempty"`  // D285: New task from this: that task's id
 }
 
 // OpenTask asks the apps to show a task (`ducter open <task>`).

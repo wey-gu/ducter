@@ -148,6 +148,7 @@ func (a *App) OpenNewTask(at *protocol.Place) {
 		return
 	}
 	words := nt.words
+	a.past.from = nil // D285: New task from this sets it after
 	*nt = newTaskState{open: true, words: words, focus: true, seq: nt.seq, atDay: 1, atTime: "9:00", weekday: 1, hours: 1}
 	nt.pick = asAgentKey(a.Local.NewTaskWho())
 	var ask *protocol.Place
@@ -391,6 +392,7 @@ func (a *App) StartNewTask(again ...bool) bool {
 	a.nextClient++
 	nt.sending = fmt.Sprintf("n%d-%d", a.Now().UnixMilli(), a.nextClient)
 	f.ClientID = nt.sending
+	f.From = a.pastFromID() // D285
 	nt.again = len(again) > 0 && again[0]
 	nt.err, nt.errEmpty, nt.started, nt.startedTask = "", false, "", ""
 	nt.placeOpen, nt.branchOpen, nt.whoOpen, nt.whenOpen, nt.computerOpen = false, false, false, false, false
@@ -617,6 +619,7 @@ func (a *App) newTaskCard(c *ui.Context) {
 		a.enter(c, panel)
 		a.heading(c, a.L.T("newtask.title"), t.XL)
 		a.wordsField(c)
+		a.pastFromChip(c) // D285: 带着「…」的发现
 		a.newTaskPills(c)
 		if nt.when != "" {
 			a.whenDetail(c)

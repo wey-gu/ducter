@@ -169,6 +169,8 @@ type Tokens struct {
 
 	// Reply is 回复 / Reply to one message (D236): the imprint.
 	Reply ReplyTokens
+	// Tints are a past task's picture tints (D285, tints.go).
+	Tints Tints
 }
 
 // ReplyTokens are the imprint's (D236, research/72): the message replied to,
@@ -339,6 +341,7 @@ func Pebble() *Tokens {
 		Equip: EquipMotion{Flight: 820 * time.Millisecond, Snap: 0.62, Squash: 420 * time.Millisecond, DoneFace: 1800 * time.Millisecond, Fade: 200 * time.Millisecond},
 	}
 	t.Reply = replyTokens(t)
+	t.Tints = pebbleTints()
 	return t
 }
 

@@ -42,6 +42,7 @@ import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, forecast, FullTop } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
+import { PastSheet } from "./past.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, waitCaption, waitLine, WatchCard } from "./work.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
@@ -2863,6 +2864,7 @@ export function Sheets() {
   if (!A.sheet) return null;
   if (A.sheet.kind === "newtask") return <NewTaskSheet />;
   if (A.sheet.kind === "switch") return <Switcher />;
+  if (A.sheet.kind === "past") return <PastSheet />;
   return A.sheet.kind === "decision" ? <DecisionSheet id={A.sheet.id} /> : <SettingsSheet />;
 }
 

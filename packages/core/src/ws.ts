@@ -118,6 +118,8 @@ export interface WsDeps {
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
   /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
+  /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
+  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing };
   batchMs?: number;
 }
 
@@ -1014,6 +1016,7 @@ export function createWsHandler(deps: WsDeps) {
             ...(typeof f.effort === "string" && f.effort ? { effort: f.effort } : {}),
             ...(f.when && typeof f.when === "object" && typeof f.when.kind === "string" ? { when: f.when } : {}),
             ...(f.media?.length ? { media: mediaOf(f.media) } : {}),
+            ...(typeof f.from === "string" && f.from ? { from: f.from } : {}),
           });
         if (id && !prior) {
           newTaskSeen.set(id, pending);
@@ -1083,6 +1086,81 @@ export function createWsHandler(deps: WsDeps) {
         const path = typeof f.path === "string" && f.path ? f.path : undefined;
         send(ws, { t: "folder_browse_result", ...cid, ...dev, ...(await deps.newTask.browse(device, path)) });
         return;
+      }
+      // D285: 做过的事 / Past tasks.
+      case "past": {
+        if (!deps.past) throw new Error("past tasks are not available");
+        const r = deps.past.query(deps.past.persona(), f.query && typeof f.query === "object" ? f.query : {});
+        send(ws, { t: "past_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), ...r });
+        return;
+      }
+      case "past_mark": {
+        if (!deps.past) throw new Error("past tasks are not available");
+        // A task's marks, or (D285, Ongoing) a routine's: the persona's own.
+        const card = tasks.get(f.taskId);
+        const routine = !card && deps.past.ongoing?.list(deps.past.persona()).some((i) => i.kind === "routine" && i.id === f.taskId);
+        if (!card && !routine) throw new Error("I can't find that task.");
+        const mark = deps.past.marks.set(card?.persona ?? deps.past.persona(), f.taskId, f.patch && typeof f.patch === "object" ? f.patch : {});
+        // Every window: the card here, the same task's title in On hand and the task's head.
+        for (const s of sockets) if (s.data.live && s.data.client !== "cli") send(s, { t: "past_marked", taskId: f.taskId, mark: mark ?? null });
+        if (!sockets.has(ws)) send(ws, { t: "past_marked", taskId: f.taskId, mark: mark ?? null });
+        if (routine) ongoingChanged();
+        else {
+          for (const s of sockets) if (s.data.live) s.data.onHandDirty = true;
+          if (!flushTimer) flushTimer = setTimeout(flush, batchMs);
+        }
+        return;
+      }
+      case "ongoing": {
+        const o = deps.past?.ongoing;
+        if (!o) throw new Error("ongoing work is not available");
+        send(ws, { t: "ongoing_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), items: o.list(deps.past!.persona()) });
+        return;
+      }
+      case "ongoing_action": {
+        const o = deps.past?.ongoing;
+        if (!o) throw new Error("ongoing work is not available");
+        const { t: _t, kind, id, ...a } = f;
+        const r = await o.act(kind === "routine" ? "routine" : "task", String(id ?? ""), a as import("@ducter/protocol").OngoingAction).catch((err: Error) => ({ ok: false, message: err.message }));
+        send(ws, { t: "action_result", taskId: String(id ?? ""), action: a.action, ok: r.ok, ...(r.message ? { message: r.message } : {}) });
+        ongoingChanged();
+        return;
+      }
+      case "past_continue": {
+        // 接着做 / Continue: the same task goes back to work. Another agent first when picked
+        // (its saved progress carries over, D89); then the person's words, or Ducter's own
+        // "carry on". A session that can't be resumed, or a worktree removed after a merge, is
+        // the runner's to handle (resumeOrSeed, provision).
+        const result = (ok: boolean, message?: string) => send(ws, { t: "action_result", taskId: f.taskId, action: "continue", ok, ...(message ? { message } : {}) });
+        const card = tasks.get(f.taskId);
+        if (!card) return result(false, "I can't find that task.");
+        const r = deps.runner();
+        if (!r?.reopen) return result(false, "Tasks can't run right now.");
+        const reopen = r.reopen.bind(r);
+        try {
+          const harness = typeof f.harness === "string" && f.harness ? f.harness : "";
+          const words = typeof f.words === "string" ? f.words.trim() : "";
+          const active = ["queued", "working", "needs_you", "blocked", "done_claimed"].includes(card.attention);
+          // A dropped task comes back first (a switch refuses a dropped one).
+          const reopened = card.attention === "dropped";
+          if (reopened) send(ws, { t: "sent", taskId: f.taskId, delivered: (await reopen(f.taskId)).delivered });
+          if (harness && (harness !== card.harness || (f.model && f.model !== card.model))) {
+            if (!deps.loadout) return result(false, "Switching isn't available.");
+            const sw = await deps.loadout.switchTask(f.taskId, harness, f.model || undefined, r);
+            if (!sw.ok) return result(false, sw.message);
+          }
+          if (words) {
+            const { delivered } = await r.send(f.taskId, words, reopened ? "queue" : undefined, "user", `past_${Date.now().toString(36)}`);
+            send(ws, { t: "sent", taskId: f.taskId, delivered });
+          } else if (!active && !reopened) {
+            send(ws, { t: "sent", taskId: f.taskId, delivered: (await reopen(f.taskId)).delivered });
+          }
+          // The partner knows (it never wakes for this): the person took up an earlier task.
+          log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: `act_${f.taskId}_continue`, taskId: f.taskId, state: "running", text: `the user took this earlier task up again from Past tasks${harness && harness !== card.harness ? ` with ${harness}` : ""}` } });
+          return result(true);
+        } catch (err) {
+          return result(false, (err as Error).message);
+        }
       }
       case "open_task": {
         // `ducter open <task>`: every connected app shows it; a CLI socket never does.
@@ -1360,8 +1438,19 @@ export function createWsHandler(deps: WsDeps) {
     }
   };
 
+  /** D285: every window's Ongoing, fresh after a change (a pause, a resume, a run). */
+  function ongoingChanged() {
+    const o = deps.past?.ongoing;
+    if (!o) return;
+    const items = o.list(deps.past!.persona());
+    for (const s of sockets) if (s.data.live && s.data.client !== "cli") send(s, { t: "ongoing_result", items });
+    for (const s of sockets) if (s.data.live) s.data.onHandDirty = true;
+    if (!flushTimer) flushTimer = setTimeout(flush, batchMs);
+  }
+
   return {
     setActivity,
+    ongoingChanged,
     /** Something On hand shows changed outside the Log (D128: a task's diff stat): push it. */
     onHandChanged() {
       let any = false;

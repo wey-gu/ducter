@@ -121,7 +121,7 @@ const clientCard = async () => (await core.devicesView.frame()).reach.clients.fi
 
 beforeAll(async () => {
   td = tempDir();
-  core = startCore({ dataDir: join(td.dir, "home"), port: 0, batchMs: 5, sweepMs: 50, push: false, platform: "linux", deviceProbes: { cua: async () => ({ missing: "no" }), native: async () => undefined, harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }], kind: async () => "server" } });
+  core = startCore({ dataDir: join(td.dir, "home"), port: 0, batchMs: 5, sweepMs: 50, push: false, platform: "linux", handset: { idleMs: 300 }, deviceProbes: { cua: async () => ({ missing: "no" }), native: async () => undefined, harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }], kind: async () => "server" } });
   const r = stubRunner(core);
   r.send = async (taskId, text) => (told.push([taskId, text]), { delivered: "prompted" });
   r.interrupt = async (taskId) => void interrupted.push(taskId);
@@ -196,6 +196,8 @@ describe("用这台手机 / Use this phone, through the real core", () => {
     expect(look).toContain('[2] button "发送"');
     expect(look).toContain("[3] password field");
     expect(await until(() => app.doing.includes("在看屏幕"))).toBe(true);
+    // D275: no step for a while, and the pill says it is waiting, never a stale "在看屏幕".
+    expect(await until(() => app.doing.includes("在等下一步"))).toBe(true);
     // On hand: the task is on the person's phone (so Stop shows), not on Ducter's phone.
     const card = core.tasks.onHand().tasks.find((c) => c.taskId === "t1");
     expect(card?.handset).toEqual({ device: phoneId, app: "com.tencent.mm" });

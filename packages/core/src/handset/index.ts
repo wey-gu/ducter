@@ -107,6 +107,9 @@ const CALL_MS = 10_000;
 const BEAT_MS = 3_000;
 /** D253: no answer for this long: the phone is quiet, and tools say so at once. */
 const QUIET_MS = 6_000;
+/** D275: no phone step for this long and the pill's line says it is waiting. */
+const IDLE_MS = 20_000;
+export const IDLE_LINE = "在等下一步";
 /** D253: quiet this long (or its app gone this long): the loan ends, said to the task as lost. */
 const LOST_MS = 15_000;
 const GRACE_MS = 3_000;
@@ -179,6 +182,7 @@ export interface HandsetsOptions {
   /** D253 (tests): the beat, when a phone is quiet, when a quiet or gone phone's loan ends. */
   beatMs?: number;
   quietMs?: number;
+  idleMs?: number;
   lostMs?: number;
   graceMs?: number;
   /** D255 (tests): how long phone_record_stop waits for the video to arrive. */
@@ -291,6 +295,8 @@ export function createHandsets(o: HandsetsOptions): Handsets {
   const callMs = o.callMs ?? CALL_MS;
   const beatMs = o.beatMs ?? BEAT_MS;
   const quietMs = o.quietMs ?? QUIET_MS;
+  const idleMs = o.idleMs ?? IDLE_MS;
+  const idleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const lostMs = o.lostMs ?? LOST_MS;
   const graceMs = o.graceMs ?? GRACE_MS;
   const recordWaitMs = o.recordWaitMs ?? 90_000;
@@ -1020,6 +1026,17 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       // The pill's second line says what it is doing now, in the person's words (never awaited).
       const line = doingLine(d);
       if (line) void call(l.device, "doing", { session: taskId, line }).catch(() => {});
+      // D275: the line says what it is doing *now*: after a while with no step it says it's waiting,
+      // never a stale "在看屏幕" while the agent sits still (a timed wait, thinking, a long test).
+      const prev = idleTimers.get(taskId);
+      if (prev) clearTimeout(prev);
+      const t = setTimeout(() => {
+        idleTimers.delete(taskId);
+        const still = loanOf(taskId);
+        if (still && !quiet.has(still.device)) void call(still.device, "doing", { session: taskId, line: IDLE_LINE }).catch(() => {});
+      }, idleMs);
+      (t as { unref?: () => void }).unref?.();
+      idleTimers.set(taskId, t);
     },
     where(taskId) {
       const d = bound.get(taskId);
@@ -1040,6 +1057,8 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       offLog();
       for (const p of pending.values()) clearTimeout(p.timer);
       pending.clear();
+      for (const t of idleTimers.values()) clearTimeout(t);
+      idleTimers.clear();
       for (const l of loans.values()) if (l.beat) clearInterval(l.beat);
       for (const g of graces.values()) clearTimeout(g);
       graces.clear();

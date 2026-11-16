@@ -1,6 +1,6 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-12 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-16 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
 > real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
@@ -11,8 +11,13 @@
 > outgoing ledger and recovery (D106) and follow-through (S3, D110). It is proven with real models over a fake
 > Bridge (research/37 §3, §3.2). It is on once the user connects the persona in Settings › 伙伴 (D205, with nmem
 > 0.10.118+ on the home; "Connecting the persona" below), or forced with `DUCTER_BRIDGE=1`. It is not on by
-> default until `bun run bridge:live -- --connected --real` passes (D170 (9), roadmap). On 2026-11-12 that run
-> stopped at Connect: Mem's Cloud answers 503 `cloud_bridge_setup_unavailable` for this workspace (research/66 §3).
+> default until `bun run bridge:live -- --connected --real` passes (D170 (9), roadmap). The 2026-11-12 503 at
+> Connect is gone: on 2026-11-13 (nmem 0.10.118, Mem Cloud) the live run passed S1 6/6, S3 3/3, X1 3/3 and S2 4/5
+> (research/66 §7); the S2 miss is Mem's: `open` returns neither the sender nor `in_reply_to`, so an answer can't be
+> tied to its question (asked of Nowledge as B17; D249 reads an unnamed sender as one of the person's own agents
+> meanwhile). nmem 0.10.119 (2026-11-16) reports the custodian under `endpoint.address` (D258 reads it) and still
+> lacks both fields; the trial reruns when a release carries them, with the other connection of the same identity
+> stopped or `--share-mailbox` (D258).
 
 ## Connecting the persona (D205)
 

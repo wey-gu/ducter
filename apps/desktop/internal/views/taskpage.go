@@ -14,6 +14,7 @@ package views
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -34,6 +35,9 @@ type taskPage struct {
 	took string
 	// locOpen: the locator's list is open (the rail or the list is hovered).
 	locOpen bool
+	// jump is a locator click on its way; flash, the turn it last reached (D284).
+	jump  *jumpTo
+	flash flash
 }
 
 // taskMemo is a task's transcript as of its events: rebuilt when they or
@@ -132,6 +136,7 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 	}
 	// D271: the last turn is live only while a turn is under way; resting on a wait, it folds.
 	working := isWorking(task) && m.inTurn
+	land := a.jumpRow(c, task, turns, ls)
 	ui.Column(c.Key("taskpane")).Grow(1).MinHeight(0).Children(func() {
 		ui.List(c, ls, n, func(i int) {
 			top, bottom := float32(0), float32(0)
@@ -157,7 +162,12 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 						last := i == len(turns)
 						// Your words wait their turn while nothing came after them.
 						queued := last && len(tu.Body) == 0
-						ui.Column(c.Key(fmt.Sprintf("turn:%d", tu.Seq))).Gap(t.S3).MinWidth(0).Children(func() {
+						col := ui.Column(c.Key(fmt.Sprintf("turn:%d", tu.Seq))).Gap(t.S3).MinWidth(0)
+						if i == land {
+							a.jumpLands(c, col, task, tu.Seq)
+						}
+						col.Children(func() {
+							a.turnTint(c, task, tu.Seq)
 							a.turn(c, task, tu, queued, working && last)
 						})
 					default:
@@ -166,6 +176,10 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 				})
 			})
 		}).Grow(1)
+		// D284: past what the background pages, older history comes as the reader reaches the head.
+		if first, last := ls.Visible(); last >= first {
+			a.moreAtHead(task.ID, first)
+		}
 		a.locator(c, task, turns, ls)
 		if opensAtEnd(att) && n > 2 && !ls.AtEnd() {
 			a.jumpToLatest(c, ls)
@@ -354,6 +368,31 @@ func (a *App) promptLine(task *store.Task, p *Block) string {
 	return a.L.T("told.other", a.S.PersonaName, at)
 }
 
+// goWords is a relayed Go said as the person pressed it (D284): 你点了「好，Done」.
+func (a *App) goWords(p *Block) string {
+	label := ""
+	if p.Label != nil {
+		label = *p.Label
+	}
+	return a.L.T("turn.go", a.shortGo(label))
+}
+
+// goChip is the person's Go on a card, relayed to the task (D284): a quiet
+// pill on their side of the page (13, secondary ink on the sunken clay)
+// with its time, never their orange bubble; what was sent on hover.
+func (a *App) goChip(c *ui.Context, task *store.Task, p *Block) {
+	t := a.T
+	words := a.goWords(p)
+	ui.Row(c.Key("go")).Justify(ui.End).MinWidth(0).Children(func() {
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Padding(4, 10).Radius(999).Background(t.SurfaceSunken).Label(words).Tooltip(p.Text).Children(func() {
+			ui.Text(c, words).FontSize(stepSize).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
+			if at := clock(a.tsOf(task, p.Seq)); at != "" {
+				ui.Text(c, at).FontSize(t.XXS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().AccessHidden(true)
+			}
+		})
+	})
+}
+
 // dividerTip is a hairline with a small label, its tip on hover.
 func (a *App) dividerTip(c *ui.Context, label, tip string) {
 	t := a.T
@@ -432,10 +471,17 @@ func (a *App) jumpToLatest(c *ui.Context, ls *ui.ListState) {
 	}
 }
 
-// ---------- the locator (D271) ----------
+// ---------- the locator (D271, D284) ----------
+
+// said: a turn opened by what someone said (the brief, the person's own
+// words, the partner's), the locator's lines; anything else (a wake, a
+// note of Ducter's, a Go relayed) is a quiet item it collapses (D284).
+func said(tu *Turn) bool {
+	return tu.Prompt != nil && (tu.Prompt.K == "brief" || tu.Prompt.K == "you" || tu.Prompt.K == "partner")
+}
 
 // locatorLine is a turn's line in the locator: the first line of what was
-// said, or the hairline's words for a wake.
+// said, or a quiet item's own words (its hairline's, a Go's chip).
 func (a *App) locatorLine(task *store.Task, tu *Turn) string {
 	p := tu.Prompt
 	if p == nil {
@@ -444,50 +490,175 @@ func (a *App) locatorLine(task *store.Task, tu *Turn) string {
 	switch p.K {
 	case "wake", "told":
 		return a.promptLine(task, p)
-	case "you":
-		if p.Go != nil {
-			return a.shortGo(*p.Go)
-		}
+	case "go":
+		return a.goWords(p) + " · " + clock(a.tsOf(task, p.Seq))
 	case "brief":
 		return a.L.T("locator.brief") + " · " + firstLine(p.Text)
 	}
 	return firstLine(p.Text)
 }
 
-// locatorEntry is one line of the locator's list: a turn, or a run of
-// consecutive wakes said once ("等到了 24 次 · 1:51–19:06"), so a long loop
-// doesn't bury what was said to it (D271).
+// locatorEntry is one line of the locator's list: a turn where someone
+// said something, or a run of quiet turns said once in muted ink (D284:
+// "等到了 24 次 · 1:51–19:06", "3 条提示 · 9:02–9:40", or the one item's
+// own words), so nothing but what people said reads as said.
 type locatorEntry struct {
 	from, to int
 	line     string
+	quiet    bool
 }
 
 func (a *App) locatorEntries(task *store.Task, turns []Turn) []locatorEntry {
 	var out []locatorEntry
 	for i := 0; i < len(turns); i++ {
-		p := turns[i].Prompt
+		if said(&turns[i]) {
+			out = append(out, locatorEntry{i, i, a.locatorLine(task, &turns[i]), false})
+			continue
+		}
 		j := i
-		if p != nil && p.K == "wake" {
-			for j+1 < len(turns) && turns[j+1].Prompt != nil && turns[j+1].Prompt.K == "wake" {
-				j++
+		for j+1 < len(turns) && !said(&turns[j+1]) {
+			j++
+		}
+		// The turns that open with something (a history's first page may start mid-turn).
+		var items []*Turn
+		wakes := true
+		for k := i; k <= j; k++ {
+			if turns[k].Prompt != nil {
+				items = append(items, &turns[k])
+				wakes = wakes && turns[k].Prompt.K == "wake"
 			}
 		}
-		if j > i {
-			first := clock(a.tsOf(task, turns[i].Prompt.Seq))
-			last := clock(a.tsOf(task, turns[j].Prompt.Seq))
-			out = append(out, locatorEntry{i, j, a.L.T("locator.wakes", j-i+1, first, last)})
-		} else {
-			out = append(out, locatorEntry{i, i, a.locatorLine(task, &turns[i])})
+		switch {
+		case len(items) == 1:
+			out = append(out, locatorEntry{i, j, a.locatorLine(task, items[0]), true})
+		case len(items) > 1:
+			first := clock(a.tsOf(task, items[0].Prompt.Seq))
+			last := clock(a.tsOf(task, items[len(items)-1].Prompt.Seq))
+			key := "locator.quiet"
+			if wakes {
+				key = "locator.wakes"
+			}
+			out = append(out, locatorEntry{i, j, a.L.T(key, len(items), first, last), true})
 		}
 		i = j
 	}
 	return out
 }
 
+// jumpTo is a locator click on its way (D284): it eases to the turn, and
+// the turn's clay tint fades in place.
+type jumpTo struct {
+	task string
+	seq  int64
+	// from is the row the page showed first when the jump began; at, when.
+	from int
+	at   time.Time
+}
+
+// flashFor is how long a turn the locator went to keeps its tint (D284).
+const flashFor = 1600 * time.Millisecond
+
+// jumpRow moves a jump on its way (D284) and says the row to glide the
+// last stretch to (-1 for none). The list shows rows, not pixels, so a far
+// turn is reached row by row on an ease-in-out curve over 260–520 ms (as a
+// fast, settling scroll), and the near one glides; under reduced motion
+// the page is there at once. The turn's tint starts as it arrives.
+func (a *App) jumpRow(c *ui.Context, task *store.Task, turns []Turn, ls *ui.ListState) int {
+	j := a.tpage.jump
+	if j == nil || j.task != task.ID {
+		return -1
+	}
+	row := -1
+	for i := range turns {
+		if turns[i].Seq == j.seq {
+			row = i + 1
+		}
+	}
+	if row < 0 {
+		a.tpage.jump = nil
+		return -1
+	}
+	arrive := func() {
+		a.tpage.jump = nil
+		a.tpage.flash = flash{task: task.ID, seq: j.seq, at: c.Now()}
+	}
+	first, last := ls.Visible()
+	if c.Preferences().ReduceMotion {
+		ls.ScrollTo(row, ui.Start)
+		arrive()
+		return -1
+	}
+	if j.at.IsZero() {
+		j.from, j.at = first, c.Now()
+		if row >= first-1 && row <= last+1 {
+			// Near: one glide, pixel by pixel.
+			arrive()
+			return row
+		}
+	}
+	span := row - j.from
+	d := time.Duration(min(520, 260+8*abs(span))) * time.Millisecond
+	k := float64(c.Now().Sub(j.at)) / float64(d)
+	if k >= 1 {
+		ls.ScrollTo(row, ui.Start)
+		arrive()
+		return -1
+	}
+	e := 4 * k * k * k
+	if k >= 0.5 {
+		e = 1 - math.Pow(-2*k+2, 3)/2
+	}
+	ls.ScrollTo(j.from+int(math.Round(float64(span)*e)), ui.Start)
+	c.After(16 * time.Millisecond)
+	return -1
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+
+// jumpLands is a near jump arriving at its turn's column: it glides there.
+func (a *App) jumpLands(c *ui.Context, col ui.Element, task *store.Task, seq int64) {
+	col.ScrollIntoView(ui.ScrollIntoViewOptions{Block: ui.ScrollStart, Animation: &ui.Smooth})
+}
+
+// flash is the turn the locator last went to, and when.
+type flash struct {
+	task string
+	seq  int64
+	at   time.Time
+}
+
+// turnTint is the soft clay a turn the locator went to wears as it fades
+// (D284): it rises fast, then eases out over flashFor.
+func (a *App) turnTint(c *ui.Context, task *store.Task, seq int64) {
+	f := a.tpage.flash
+	if f.task != task.ID || f.seq != seq {
+		return
+	}
+	k := float64(c.Now().Sub(f.at)) / float64(flashFor)
+	if k >= 1 || k < 0 {
+		return
+	}
+	in := math.Min(1, k/0.12)
+	out := 1 - (k-0.12)/0.88
+	if k < 0.12 {
+		out = 1
+	}
+	alpha := float32(0.16 * in * out * out)
+	t := a.T
+	ui.Box(c.Key("tint")).Absolute().Left(-14).Right(-14).Top(-10).Bottom(-10).Radius(t.RadiusMD).Background(t.Accent.Alpha(alpha)).AccessHidden(true)
+	c.After(16 * time.Millisecond)
+}
+
 // locator is the rail at the transcript's right edge (wide windows): one
-// small bar per turn, the ones in view in ink, the rest faint; hovered, a
-// clay card lists what was said, newest at the bottom, the ones in view
-// marked; a click goes to that turn.
+// small bar per turn (a said turn's longer, a quiet one's a short tick),
+// a soft clay thumb behind the ones in view that glides as the page
+// moves; hovered, a clay card rises out of the rail listing what was said,
+// newest at the bottom, the ones in view marked; a click glides there.
 func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.ListState) {
 	t := a.T
 	if len(turns) < 3 || a.tpage.colW < locatorMin {
@@ -503,15 +674,32 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 	rail := ui.Box(c.Key("locrail")).Absolute().Right(18).TopPercent(50).Margin(-h/2, 0, 0, 0).Size(railW, h).
 		Role(ui.RoleNavigation).Focusable().Label(name).Cursor(ui.CursorPointer)
 	n := len(turns)
+	yOf := func(i int) float32 {
+		if n <= 1 {
+			return 2
+		}
+		return 2 + (h-4)*float32(i)/float32(n-1)
+	}
+	// The thumb's ends glide (Smooth) as the rows in view change.
+	lo, hi := max(first-1, 0), min(max(last-1, first-1), n-1)
+	top := rail.AnimateTo("thumbTop", yOf(lo), ui.Smooth)
+	bot := rail.AnimateTo("thumbBot", yOf(hi), ui.Smooth)
+	quiet := make([]bool, n)
+	for i := range turns {
+		quiet[i] = !said(&turns[i])
+	}
 	rail.Draw(func(p *ui.Painter, r ui.Rect) {
+		if last >= first {
+			p.Fill(ui.Rect{X: r.X + r.W - 12, Y: r.Y + top - 4, W: 12, H: bot - top + 8}, t.Accent.Alpha(0.12), 6)
+		}
 		for i := 0; i < n; i++ {
-			y := r.Y + 2
-			if n > 1 {
-				y += (r.H - 4) * float32(i) / float32(n-1)
-			}
+			y := r.Y + yOf(i)
 			col, w := t.Faint.Alpha(0.7), float32(8)
+			if quiet[i] {
+				col, w = t.Faint.Alpha(0.45), 4
+			}
 			if inView(i) {
-				col, w = t.Ink.Alpha(0.75), 10
+				col, w = t.Ink.Alpha(0.75), w+2
 			}
 			p.Fill(ui.Rect{X: r.X + r.W - w, Y: y - 1, W: w, H: 2.5}, col, 1.25)
 		}
@@ -519,9 +707,15 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 	hovered := rail.Hovered() || rail.Focused()
 	if open || hovered {
 		ui.Overlay(c, func() {
+			// D284: the card rises out of the rail (its bottom right), scale and fade, and goes back into it.
+			enter := &ui.Motion{Opacity: 0, Scale: 0.94, X: 6}
+			tr := ui.ElementTransition{Duration: 180 * time.Millisecond, Enter: enter, Exit: enter, ExitDuration: 120 * time.Millisecond}
+			if c.Preferences().ReduceMotion {
+				tr = ui.ElementTransition{Duration: 120 * time.Millisecond, Enter: &ui.Motion{Opacity: 0, Scale: 1}, Exit: &ui.Motion{Opacity: 0, Scale: 1}}
+			}
 			pop := ui.Column(c.Key("locpop")).AttachTo(rail, ui.AnchorBottomLeft, ui.AnchorBottomRight).Width(300).
 				Radius(t.RadiusMD).Background(t.Surface).Border(1, t.LineSoft).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
-				Padding(t.S2).Role(ui.RoleList).Label(name)
+				Padding(t.S2).Role(ui.RoleList).Label(name).TransformOrigin(1, 1).Transition(tr)
 			hovered = hovered || pop.Hovered()
 			pop.Children(func() {
 				ui.Scroll(c.Key("locscroll")).MaxHeight(420).Children(func() {
@@ -532,26 +726,39 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 							for k := e.from; k <= e.to; k++ {
 								here = here || inView(k)
 							}
-							i := e.to
 							row := ui.Row(c.Key(turns[e.from].Seq)).Gap(t.S2).MinHeight(26).Padding(0, t.S2).Radius(t.RadiusXS).AlignItems(ui.Center).MinWidth(0).
 								Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(line)
+							if e.quiet {
+								row.MinHeight(22)
+							}
 							if row.Hovered() {
 								row.Background(t.SurfaceSunken)
 							}
 							row.Children(func() {
-								mark := t.Faint.Alpha(0.6)
-								ink := t.InkSoft
+								mark, ink, size := t.Faint.Alpha(0.6), t.InkSoft, float32(stepSize)
+								if e.quiet {
+									mark, ink, size = t.Faint.Alpha(0.4), t.InkMuted, t.XS
+								}
 								if here {
 									mark, ink = t.Ink.Alpha(0.75), t.Ink
 								}
-								ui.Box(c).Size(3, 12).Radius(1.5).Background(mark).Shrink(0)
-								tx := ui.Text(c, line).FontSize(stepSize).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
-								if here {
+								if e.quiet {
+									ui.Box(c).Size(7, 1).Background(mark).Shrink(0)
+								} else {
+									ui.Box(c).Size(3, 12).Radius(1.5).Background(mark).Shrink(0)
+								}
+								tx := ui.Text(c, line).FontSize(size).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+								if here && !e.quiet {
 									tx.FontWeight(600)
 								}
 							})
 							if row.Clicked() {
-								ls.ScrollTo(i+1, ui.Start)
+								// The last of a run: where the run ends, as it reads.
+								at := e.to
+								for at > e.from && turns[at].Prompt == nil {
+									at--
+								}
+								a.tpage.jump = &jumpTo{task: task.ID, seq: turns[at].Seq}
 								hovered = false
 							}
 						}

@@ -87,7 +87,7 @@ type Block struct {
 	Rows  []StepRow `json:"-"`
 	Lines []Line    `json:"lines,omitempty"`
 	Live  bool      `json:"live,omitempty"`
-	Go    *string   `json:"go,omitempty"`    // you: their Go relayed, its label
+	Label *string   `json:"label,omitempty"` // go (D284): the label of the Go relayed ("" its plain Go)
 	State string    `json:"state,omitempty"` // report
 	Bad   bool      `json:"bad,omitempty"`   // note: something failed
 	// Say is what a note says, worded from note.<say> (D207); Name fills it in.
@@ -145,6 +145,12 @@ var tolds = []struct {
 	{regexp.MustCompile(`^Your loan of (.+?) ended: (?:the user |Android's switch for Ducter went off)`), "taken_back"},
 	{regexp.MustCompile(`^Your loan of (.+?) ended: (?:you gave it back|the task finished)`), "given_back"},
 	{regexp.MustCompile(`^Your loan of (.+?) ended: `), "loan_lost"},
+	// D284: Ducter's words about the person's phone logged as from the user
+	// before D271/D280, and any other line that names the person as "the
+	// user": a person never calls themself that to their own agent.
+	{regexp.MustCompile(`^The user stopped you using their phone`), "stopped"},
+	{regexp.MustCompile(`^(?:Recording .+?'s screen now|The recording (?:of .+?'s screen didn't start|is saved|stopped early)|.+?'s screen (?:is on again and it is still lent to you|went off by itself \(a screen timeout))`), "other"},
+	{regexp.MustCompile(`^The user\b`), "other"},
 }
 
 // toldOf is what Ducter told the agent (D271), from a user-role line:
@@ -634,7 +640,7 @@ func turnsOf(blocks []Block) []Turn {
 	for i := range blocks {
 		b := blocks[i]
 		switch b.K {
-		case "brief", "you", "partner", "wake", "told":
+		case "brief", "you", "partner", "wake", "told", "go":
 			out = append(out, Turn{Seq: b.Seq, Prompt: &b, Body: []Block{}})
 			continue
 		}
@@ -834,16 +840,18 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 					out = append(out, Block{K: "partner", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media})
 					continue
 				}
+				// D284: the person's Go on a card, as Ducter relays it, is a quiet chip.
+				if label, ok := goRelay(text); ok {
+					label = redact.Text(label)
+					out = append(out, Block{K: "go", Seq: ev.Seq, Label: &label, Text: redact.Text(text)})
+					continue
+				}
 				// D271: what Ducter itself told it is never the person's bubble.
 				if say, name, ok := toldOf(text, b.From); ok {
 					out = append(out, Block{K: "told", Seq: ev.Seq, Say: say, Name: redact.Text(name), Text: redact.Text(text)})
 					continue
 				}
-				blk := Block{K: "you", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media}
-				if label, ok := goRelay(text); ok {
-					blk.Go = &label
-				}
-				out = append(out, blk)
+				out = append(out, Block{K: "you", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media})
 			case b.Role == "assistant":
 				out = append(out, Block{K: "voice", Seq: ev.Seq, Text: redact.Text(text)})
 			}

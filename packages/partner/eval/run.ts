@@ -476,7 +476,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     }
     for (const n of notedByStep.filter((x) => x.step === i)) lines.push(`  [the app shows a small line: "Noted · ${n.title}"]`);
     for (const o of r_opened(fr.opened, i)) lines.push(`  [opened a task] title: ${o.title} | place: ${JSON.stringify(o.place ?? null)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
-    for (const x of fr.sent.filter((x) => x.step === i)) lines.push(`  [${x.from === "user" ? "Ducter passed the user's answer to task" : "sent to task"} ${keyOf.get(x.taskId) ?? "?"}] ${x.text.slice(0, 400)}`);
+    for (const x of fr.sent.filter((x) => x.step === i)) lines.push(`  [${x.from === "user" || x.from === "ducter" ? "Ducter passed the user's answer to task" : "sent to task"} ${keyOf.get(x.taskId) ?? "?"}] ${x.text.slice(0, 400)}`);
     for (const x of retitles.filter((x) => x.step === i)) lines.push(`  [retitled task ${x.key}] ${x.title}`);
     const other = [...new Set(tools.filter((x) => x.step === i).map((x) => x.name.replace(/^mcp__ducter__/, "")).filter((n) => !["task_open", "task_send", "task_retitle", "ask", "wait_until", "ToolSearch", "memory_search", "memory_add"].includes(n)))];
     if (other.length) lines.push(`  [also used tools] ${other.join(", ")}`);
@@ -608,8 +608,8 @@ function check(r: RunResult): string[] {
   const sentTo = (key: string) => r.sent.filter((s) => s.taskId === r.idOf.get(key)).map((s) => s.text).join("\n");
   for (const [key, res] of Object.entries(e.sentRequire ?? {})) for (const re of res) if (!re.test(sentTo(key))) fails.push(`what went to ${key} lacks ${re}`);
   for (const [key, res] of Object.entries(e.sentForbid ?? {})) for (const re of res) if (re.test(sentTo(key))) fails.push(`what went to ${key} has ${re}`);
-  // The partner sends nothing (an answer core forwards from the user, D236, is not the partner's).
-  const bySelf = r.sent.filter((s) => (s as { from?: string }).from !== "user");
+  // The partner sends nothing (an answer core forwards, the user's reply or their Go relayed by Ducter, D236/D284, is not the partner's).
+  const bySelf = r.sent.filter((s) => !["user", "ducter"].includes((s as { from?: string }).from ?? ""));
   if (e.noSend && bySelf.length) fails.push(`task_send ×${bySelf.length} (want none)`);
   if (e.noSendTo && r.sent.some((s) => s.taskId === r.idOf.get(e.noSendTo!))) fails.push(`task_send to ${e.noSendTo} (want a new task)`);
   if (e.retitled && !r.retitles.some((x) => x.key === e.retitled)) fails.push(`${e.retitled} not retitled`);

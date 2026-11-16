@@ -1991,6 +1991,19 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
     const el = scroller.current;
     if (el && moving && atEnd.current) el.scrollTop = el.scrollHeight;
   }, [task?.events.length, task?.sends.length, moving]);
+  // D284: an older page lands above the reader: they stay on what they were reading (WebKit has
+  // no scroll anchoring); at the end, the end stays.
+  const held = useRef({ from: 0, height: 0 });
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const from = task?.histFrom ?? 0;
+    if (held.current.from && from && from < held.current.from) {
+      if (atEnd.current) el.scrollTop = el.scrollHeight;
+      else el.scrollTop += el.scrollHeight - held.current.height;
+    }
+    held.current = { from, height: el.scrollHeight };
+  });
   useEffect(() => A.history(id), [id, A.S.welcomed]);
   // D142: a folder task's list, again whenever its count or an undo / keep moved on.
   const isFolder = !!task && placeOf(task).kind === "folder";
@@ -2043,7 +2056,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           }
         />
       )}
-      <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); }}>
+      <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
         <div class="task-head">
           <span class="face">
             <Avatar size={96} state={faceOf(a)} still={stillFace(a)} />

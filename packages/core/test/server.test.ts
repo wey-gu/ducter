@@ -105,6 +105,19 @@ test("ws: hello -> welcome, channel replay since cursor, on_hand, live push of e
   c.send({ t: "task_history", taskId: "t1" });
   const h = await c.until<Extract<ServerFrame, { t: "task_history" }>>((f) => f.t === "task_history");
   expect(h.events.map((e) => e.kind)).toEqual(["task_open", "task_event", "task_event"]);
+  expect(h.more).toBe(false);
+
+  // D284: the newest window first, then older pages before it, each saying whether more remain.
+  c.frames = [];
+  c.send({ t: "task_history", taskId: "t1", limit: 2 });
+  const w = await c.until<Extract<ServerFrame, { t: "task_history" }>>((f) => f.t === "task_history");
+  expect(w.events.map((e) => e.seq)).toEqual(h.events.slice(1).map((e) => e.seq));
+  expect(w.more).toBe(true);
+  c.frames = [];
+  c.send({ t: "task_history", taskId: "t1", limit: 2, beforeSeq: w.events[0]!.seq });
+  const older = await c.until<Extract<ServerFrame, { t: "task_history" }>>((f) => f.t === "task_history");
+  expect(older.events.map((e) => e.kind)).toEqual(["task_open"]);
+  expect(older).toMatchObject({ more: false, beforeSeq: w.events[0]!.seq });
 
   c.send({ t: "task_send", taskId: "t1", text: "also check CI" });
   const ack = await c.until<Extract<ServerFrame, { t: "sent" }>>((f) => f.t === "sent");
@@ -113,6 +126,32 @@ test("ws: hello -> welcome, channel replay since cursor, on_hand, live push of e
   const err = await c.until<Extract<ServerFrame, { t: "error" }>>((f) => f.t === "error");
   expect(err.message).toContain("unknown decision");
   expect(sent).toEqual([["t1", "also check CI", "user"]]);
+});
+
+test("ws: a client that says hello.gzip gets a large frame gzipped, a small one as text (D284)", async () => {
+  const core = boot();
+  core.log.append({ stream: "task:t1", origin: "partner", kind: "task_open", body: { taskId: "t1", title: "A long one", project: "", place: { kind: "none" }, harness: "claude-code", brief: "Read the code." } });
+  const output = Array.from({ length: 40 }, (_, i) => `line ${i}: const page = await read({ stream, beforeSeq, limit });`).join("\n");
+  for (let i = 0; i < 60; i++) core.log.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "tool", tool: { name: "Read", input: { file_path: `/src/f${i}.ts` }, output, ok: true } } });
+  const ws = new WebSocket(core.url);
+  ws.binaryType = "arraybuffer";
+  stops.push(() => ws.close());
+  const got: (string | ArrayBuffer)[] = [];
+  ws.onmessage = (m) => got.push(m.data as string | ArrayBuffer);
+  await new Promise<void>((res, rej) => ((ws.onopen = () => res()), (ws.onerror = rej)));
+  ws.send(JSON.stringify({ t: "hello", gzip: true }));
+  ws.send(JSON.stringify({ t: "task_history", taskId: "t1" }));
+  const end = Date.now() + 2000;
+  while (!got.some((d) => typeof d !== "string") && Date.now() < end) await Bun.sleep(20);
+  const bin = got.find((d) => typeof d !== "string") as ArrayBuffer;
+  expect(bin).toBeDefined();
+  const json = new TextDecoder().decode(Bun.gunzipSync(new Uint8Array(bin)));
+  const f = JSON.parse(json) as Extract<ServerFrame, { t: "task_history" }>;
+  expect(f.t).toBe("task_history");
+  expect(f.events).toHaveLength(61);
+  expect(bin.byteLength * 5).toBeLessThan(json.length);
+  // The welcome is small: text, as before.
+  expect(JSON.parse(got.find((d) => typeof d === "string") as string).t).toBe("welcome");
 });
 
 test("ws: a key in the Log never leaves the home: history, live events and On hand come out hidden (D152)", async () => {

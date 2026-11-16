@@ -24,11 +24,20 @@ export interface Decisions {
    * Answers resolved before a restart that never reached their task (the process died between
    * decision_resolved and the forward). Returned once; core hands them over when the runner is wired.
    */
-  takeUnforwarded(): { taskId: string; text: string; decisionId: string }[];
+  takeUnforwarded(): { taskId: string; text: string; decisionId: string; from: "user" | "ducter" }[];
   stop(): void;
 }
 
 export const DEFAULT_DELAY_MS = 30 * 60 * 1000;
+
+/**
+ * D284: who an answer's forward is from: a reply is the person's own words ("user"); a Go (and
+ * a key given or refused) is Ducter relaying their press in its own words ("ducter"), which the
+ * task's page draws as a quiet chip, never as the person's bubble.
+ */
+export function forwardFrom(r: Bodies["decision_resolved"]): "user" | "ducter" {
+  return r.option === "reply" ? "user" : "ducter";
+}
 
 export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"]): string {
   // D151: the user signed in themselves in the live view; the task checks the page again.
@@ -231,7 +240,7 @@ export function createDecisions(opts: {
   // whose forward text never shows up as task input after the question was asked. The runner
   // logs every input before delivering it, and a task answered by message (silent) has that
   // message as input, so both count as handed over.
-  const unforwarded: { taskId: string; text: string; decisionId: string }[] = [];
+  const unforwarded: { taskId: string; text: string; decisionId: string; from: "user" | "ducter" }[] = [];
   for (const [taskId, e] of lastAnswer) {
     const d = all.get(e.body.decisionId)!;
     const text = forwardText(d, e.body);
@@ -244,7 +253,7 @@ export function createDecisions(opts: {
       const b = x.body as Bodies["task_event"];
       return b.role === "user" && (b.text === text || (e.body.option === "reply" && b.text === e.body.text));
     });
-    if (!handed) unforwarded.push({ taskId, text, decisionId: d.decisionId });
+    if (!handed) unforwarded.push({ taskId, text, decisionId: d.decisionId, from: forwardFrom(e.body) });
   }
 
   const unsubscribe = log.subscribe((e) => {

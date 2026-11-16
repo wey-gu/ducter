@@ -27,8 +27,12 @@ import (
 )
 
 const (
-	// historyLimit is how many of a task's latest events an opened task asks
-	// for (D271): a long loop's day, as many as the home sends at once.
+	// historyFirst is the newest window an opened task asks for first
+	// (D284): what paints at once; historyPage, each older page after it,
+	// in the background up to historyLimit events (D271: a long loop's
+	// day), then as the reader scrolls up to its head.
+	historyFirst = 200
+	historyPage  = 300
 	historyLimit = 2000
 	// outputLines of a step's output show before "n more lines".
 	outputLines = 12
@@ -99,11 +103,10 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 		case "partner":
 			a.promptCard(c, task, p, a.L.T("task.from.partner", a.S.PersonaName))
 		case "you":
-			text := p.Text
-			if p.Go != nil {
-				text = a.shortGo(*p.Go) // the user's Go, said as they said it
-			}
-			a.sentBubble(c, text, task.SendFor(p.Seq), queued, p.Media...)
+			a.sentBubble(c, p.Text, task.SendFor(p.Seq), queued, p.Media...)
+		case "go":
+			// D284: their Go on a card, relayed: a quiet chip on their side, what was sent on hover.
+			a.goChip(c, task, p)
 		case "wake", "told":
 			// D271: Ducter woke it, or told it something itself: a hairline
 			// with its time, the reason (or what was sent) on hover.

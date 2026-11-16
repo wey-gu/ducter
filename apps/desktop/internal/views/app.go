@@ -677,8 +677,10 @@ func (a *App) Decide(id, option, text string) {
 func (a *App) OpenTask(id string) {
 	a.Route, a.TaskID = RouteTask, id
 	a.markRead()
-	if t := a.S.Task(id); t == nil || !t.HistoryLoaded {
-		a.send(protocol.TaskHistoryReq{T: "task_history", TaskID: id, Limit: historyLimit})
+	// D284: what the store holds shows at once; the newest window is asked
+	// only when it was never loaded or a reconnect may have left a gap.
+	if t := a.S.Task(id); t == nil || !t.HistoryLoaded || t.HistStale {
+		a.askHistory(id, 0)
 	}
 	a.refreshDiff(id)
 }
@@ -830,7 +832,7 @@ func (a *App) Welcomed() {
 	a.resendUnechoed()
 	a.flushOutbox()
 	if a.Route == RouteTask && a.TaskID != "" {
-		a.send(protocol.TaskHistoryReq{T: "task_history", TaskID: a.TaskID, Limit: historyLimit})
+		a.askHistory(a.TaskID, 0)
 	}
 	// Devices are pushed only to sockets that asked: ask again on a new one.
 	inSettings := a.Route == RoutePartner || a.Route == RouteSettings
@@ -877,6 +879,9 @@ func (a *App) Receive(f protocol.ServerFrame) {
 	}
 	a.noteResults(f)
 	a.S.Apply(f)
+	if f.T == "task_history" {
+		a.pageHistory(f.TaskID)
+	}
 	a.followUserLanguage()
 	a.Local.SetPersonaName(a.S.PersonaName) // D262: the next launch starts with it
 	switch f.T {

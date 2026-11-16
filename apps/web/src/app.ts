@@ -10,7 +10,7 @@ import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach } from "./native.ts";
 import { copy } from "./conv-copy.ts";
-import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
+import { attention, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
@@ -31,6 +31,10 @@ export const wantOf = (r: Replying): ReplyWant => ({ seq: r.seq, ...(r.findId ? 
 
 /** The most a cursor replay sends at once (core's ws.ts REPLAY_MAX). */
 const REPLAY_MAX = 5000;
+/** D284: an opened task's newest window, each older page after it, and how far the background pages. */
+export const HISTORY_FIRST = 200;
+export const HISTORY_PAGE = 300;
+export const HISTORY_LIMIT = 2000;
 
 /** An iPad says "this iPad" where a phone says "this phone" (D176). */
 const HANDHELD: Handheld = typeof navigator !== "undefined" && deviceName().name.startsWith("iPad") ? "ipad" : "phone";
@@ -716,6 +720,7 @@ class AppState {
     }
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
     this.S.apply(f);
+    if (f.t === "task_history") this.pageHistory(f.taskId);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
     if (f.t === "action_result") this.actSent.delete(f.taskId);
     if (f.t === "welcome") {
@@ -1975,12 +1980,36 @@ class AppState {
     this.changed();
   }
 
+  /**
+   * D284: a task's history, newest first. What the store holds shows at once; the newest window
+   * (HISTORY_FIRST events) is asked when it was never loaded or a new socket may have left a gap;
+   * older pages follow in the background up to HISTORY_LIMIT (D271: a long loop's day), then as
+   * the reader scrolls up to the head (moreAtHead).
+   */
   history(id: string, force = false) {
     const t = this.S.tasks.get(id);
-    if (!force && (this.historyAsked.has(id) || t?.historyLoaded)) return;
-    if (!this.S.welcomed) return;
+    if (!this.S.welcomed || t?.histPending) return;
+    if (!force && (this.historyAsked.has(id) || t?.historyLoaded) && !t?.histStale) return;
     this.historyAsked.add(id);
-    this.send({ t: "task_history", taskId: id, limit: 2000 }); // D271: a long loop's day, as much as the home sends
+    this.askHistory(id, 0);
+  }
+
+  private askHistory(id: string, beforeSeq: number) {
+    const limit = beforeSeq ? HISTORY_PAGE : HISTORY_FIRST;
+    this.S.historyAsked(id, limit);
+    this.send({ t: "task_history", taskId: id, limit, ...(beforeSeq ? { beforeSeq } : {}) });
+  }
+
+  /** D284: the next older page of the opened task, while it holds fewer than HISTORY_LIMIT events. */
+  private pageHistory(id: string) {
+    const before = olderPage(this.S.tasks.get(id), HISTORY_LIMIT);
+    if (this.route.name === "task" && this.route.id === id && before) this.askHistory(id, before);
+  }
+
+  /** D284: the reader reached the head of a task the background stopped paging: an older page. */
+  moreAtHead(id: string) {
+    const before = olderPage(this.S.tasks.get(id));
+    if (before) this.askHistory(id, before);
   }
 
   // ---------- actions ----------

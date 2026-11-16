@@ -1362,6 +1362,7 @@ func (a *App) pastEndLine(c *ui.Context) {
 		if a.quietButton(c, "past", a.L.T("past.link"), "", false, 1) {
 			a.OpenPast("")
 		}
+		a.didLink(c, "did") // D300: 替你做过的 ›
 		if n > 0 && a.quietButton(c, "ongoing", a.L.T("og.link", n), "", false, 1) {
 			a.OpenOngoing()
 		}

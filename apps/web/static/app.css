@@ -12566,3 +12566,40 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .key-row .btn {
   flex: 0 0 auto;
 }
+/* ---------- D300: 替你做过的 / Done for you (did.tsx, design/did.md) ---------- */
+/* Day sections like a diary: the day, its counts as separate facts, then one card per action. */
+.did-dayhead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 20px 4px 10px; }
+.did-dayhead h3 { display: inline-flex; align-items: baseline; gap: 8px; margin: 0; font-family: var(--head); font-size: var(--md); font-weight: 700; color: var(--ink); letter-spacing: 0; }
+.did-date { font-size: var(--xs); font-weight: 600; color: var(--ink-muted); }
+.did-dayhead .did-facts { font-size: var(--xs); font-weight: 600; color: var(--ink-muted); }
+.did-day:first-child .did-dayhead { margin-top: 10px; }
+.pcard.did { cursor: default; align-items: stretch; }
+.did-main { cursor: default; padding-right: 16px; }
+.pcard.did .pl1 { align-items: baseline; gap: 10px; }
+.pcard.did .pt { white-space: normal; overflow: visible; }
+.did-amount { flex: none; padding: 1px 8px; border-radius: var(--pill); background: var(--tint-sand); color: var(--tint-ink); font-size: var(--sm); font-weight: 700; font-variant-numeric: tabular-nums; }
+.did-time { flex: none; width: 40px; padding-top: 9px; text-align: right; font-size: var(--xs); font-weight: 600; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.did-what { color: var(--ink-soft); line-height: var(--lh-read); overflow-wrap: anywhere; }
+.did-facts { margin-top: 3px; font-size: var(--xs); color: var(--ink-muted); }
+.did-facts .unsure { font-weight: 700; color: var(--waiting-ink); }
+.pcard.did .did-acts { opacity: 1; flex: none; display: grid; grid-auto-flow: column; align-content: center; justify-items: end; column-gap: 4px; row-gap: 2px; padding: 12px 14px 12px 0; }
+.did-until { grid-row: 2; grid-column: 1 / -1; font-size: var(--xs); color: var(--ink-muted); white-space: nowrap; }
+.did-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 6px 0 14px; padding: 22px 20px 24px; border-radius: var(--r-lg); background: var(--surface); box-shadow: 0 2px 0 var(--line); text-align: center; }
+.did-empty img { width: 112px; height: auto; filter: drop-shadow(0 8px 10px rgb(43 33 24 / 0.14)); animation: did-breathe 4.8s ease-in-out infinite; }
+.did-empty p { margin: 4px 0 0; max-width: 26em; font-family: var(--head); font-size: var(--md); font-weight: 600; color: var(--ink); line-height: var(--lh-read); }
+.did-facts.center { justify-content: center; }
+@keyframes did-breathe { 50% { transform: translateY(-2px); } }
+.pchip .did-n { min-width: 18px; padding: 0 5px; border-radius: var(--pill); background: var(--sunken); color: var(--ink-muted); font-size: 11px; font-weight: 700; text-align: center; }
+.pchip.on .did-n { background: var(--bg); color: var(--ink); }
+.did-foot { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 8px; }
+.did-coverage { margin: 0 auto; max-width: 34em; text-align: center; font-size: var(--xs); color: var(--ink-muted); line-height: var(--lh-read); }
+.did-morning { margin: 4px 0 0 2px; }
+@media (max-width: 640px) {
+  .pcard.did { flex-wrap: wrap; }
+  .pcard.did .did-acts { width: 100%; grid-auto-flow: row; display: flex; flex-wrap: wrap; justify-content: flex-end; padding: 0 12px 10px 12px; margin-top: -4px; }
+  .did-time { width: 32px; }
+  .did-main { gap: 10px; }
+  .did-until { margin-right: auto; }
+  .pcard.did .pl1 { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { .did-empty img { animation: none; } }

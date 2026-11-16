@@ -84,6 +84,7 @@ Design notes:
 - `imessage.md`: the partner in iMessage through the Mac app: chat.db, AppleScript, identity, pairing (D277).
 - `settings.md`: Settings pane by pane: who is in each, the flows walked, the shared pieces and the partner's word after a change (D296).
 - `channels.md`: 聊天软件 / Chat apps, the partner in the person's own Telegram bot and Slack app as more windows on the one conversation (D276).
+- `did.md`: 替你做过的 / Done for you, every outward action on the person's behalf, day by day (D300).
 - `product-model.md`: see above.
 
 ## The change loop (run it for every new question or discovered problem)

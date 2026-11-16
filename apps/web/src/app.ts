@@ -1,6 +1,7 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
 import { onWbFrame } from "./workbench-ask.ts";
 import { onPastFrame, openPast } from "./past.tsx";
+import { onDidFrame, openDid } from "./did.tsx";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GitLoginState, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/protocol";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
@@ -72,7 +73,7 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "chats" | "autofill" | "devices" | "phone";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {
@@ -692,6 +693,8 @@ class AppState {
     if (f.t === "git_login_state") return this.ghState(f);
     if (f.t === "task_new_result") return this.newTaskResult(f);
     // D285: 做过的事 / Past tasks (past.tsx).
+    // D300: 替你做过的 / Done for you (did.tsx).
+    if (f.t === "did_result") return onDidFrame(f);
     if (f.t === "past_result" || f.t === "past_marked" || f.t === "ongoing_result" || f.t === "outside_adopted" || f.t === "outside_hidden") return onPastFrame(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
@@ -873,6 +876,8 @@ class AppState {
     if (c === "conv") return (this.sheet = null), this.go({ name: c });
     // D244: ⌘⇧] / ⌘⇧[, 下一件事 / 上一件事: the next or the previous task in On hand's order.
     if (c === "next" || c === "prev") return void this.walk?.(c === "next" ? 1 : -1);
+    // D300: 替你做过的 / Done for you (the Mac menu).
+    if (c === "did") return void (this.sheet?.kind === "did" ? ((this.sheet = null), this.changed()) : openDid());
     // D285: 做过的事 / Past tasks (the Mac's ⌘Y).
     if (c === "past") return void (this.sheet?.kind === "past" ? ((this.sheet = null), this.changed()) : openPast());
     // D216: ⌘O, 打开一件事 / Open a task: the switcher (pressed again, closed).

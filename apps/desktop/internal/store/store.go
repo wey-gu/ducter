@@ -343,6 +343,8 @@ func deviceOfPlace(p protocol.Place) string {
 type Store struct {
 	// Past is 做过的事 / Past tasks (D285, past.go).
 	Past PastState
+	// Did is 替你做过的 / Done for you (D300, did.go).
+	Did DidState
 
 	// SetAside counts, per sender and day ("from|2026-11-10"), the messages
 	// over its daily quota (D163); one quiet line says how many.
@@ -751,6 +753,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 	case "past_result", "past_marked", "ongoing_result", "outside_adopted", "outside_hidden":
 		s.applyPast(f) // D285 (past.go)
+	case "did_result":
+		s.applyDid(f) // D300 (did.go)
 	case "error":
 		s.Errors = append(s.Errors, f.Message)
 		// A refused task_send fails the oldest unacked send.

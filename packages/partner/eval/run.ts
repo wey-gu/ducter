@@ -26,6 +26,7 @@ import { scenarios, type Expect, type Scenario, type Step } from "./scenarios.ts
 import { fakeMemory } from "../test/fakes.ts";
 import { fakeTuwa } from "../../core/test/fake-tuwa.ts";
 import { fakeOoCalendar } from "../../core/test/fake-oo-calendar.ts";
+import { seedDidDay } from "../../core/test/did-day.ts";
 import { partnerFingerprint } from "../test/fingerprint.ts";
 import type { MemoryAdd } from "../src/memory.ts";
 
@@ -284,6 +285,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     if (!added.ok) throw new Error(`fake Tuwa: ${JSON.stringify(added)}`);
   }
   for (const item of sc.saved ?? []) core.autofill.store.put(item);
+  // D300: a day of things Ducter did for the person (a mail, a payment, a call, a merge…), logged now.
+  if (sc.did) seedDidDay(core, { zh: sc.lang.startsWith("zh") });
   const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheRead: 0, cacheWrite: 0 };
   const perSession = new Map<number, Usage>();
   const tools: ToolCall[] = [];

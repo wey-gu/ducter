@@ -137,6 +137,8 @@ export interface WsDeps {
   calendar?: () => import("./calendar.ts").Calendar | undefined;
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
   past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside };
+  /** D300: 替你做过的 / Done for you (did.ts); absent in tests that don't need it. */
+  did?: import("./did.ts").Did;
   /**
    * D298: the partner's first words, said once when an app first opens a fresh conversation;
    * projects: the person's recent folders from their own agents' records (local-agents/), read
@@ -1198,6 +1200,13 @@ export function createWsHandler(deps: WsDeps) {
         if (!deps.newTask?.browse) return send(ws, { t: "folder_browse_result", ok: false, ...cid, ...dev, reason: "failed", message: "Folders can't be looked through here." });
         const path = typeof f.path === "string" && f.path ? f.path : undefined;
         send(ws, { t: "folder_browse_result", ...cid, ...dev, ...(await deps.newTask.browse(device, path)) });
+        return;
+      }
+      // D300: 替你做过的 / Done for you.
+      case "did": {
+        if (!deps.did) throw new Error("the record is not available");
+        const q = f.query && typeof f.query === "object" ? f.query : {};
+        send(ws, { t: "did_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), ...deps.did.query(q) });
         return;
       }
       // D285: 做过的事 / Past tasks.

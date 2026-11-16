@@ -492,6 +492,7 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 			{Label: l.T("newtask.menu"), Accelerator: "CmdOrCtrl+N", Click: show(app.NewTaskShortcut)},
 			{Label: l.T("switch.menu"), Accelerator: "CmdOrCtrl+O", Click: show(app.OpenSwitcher)},
 			{Label: l.T("past.menu"), Accelerator: "CmdOrCtrl+Y", Click: show(func() { app.OpenPast("") })},
+			{Label: l.T("did.menu"), Accelerator: "CmdOrCtrl+Shift+Y", Click: show(app.OpenDid)}, // D300
 			// D244: the next and the previous task, in On hand's order.
 			{Label: l.T("onhand.walk.next"), Accelerator: "CmdOrCtrl+Shift+]", Click: show(func() { app.WalkTask(1) })},
 			{Label: l.T("onhand.walk.prev"), Accelerator: "CmdOrCtrl+Shift+[", Click: show(func() { app.WalkTask(-1) })},

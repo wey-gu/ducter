@@ -13,6 +13,7 @@ import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
 import { Btn, Chev, Facts } from "./controls.tsx";
 import { openPast } from "./past.tsx";
+import { openDid } from "./did.tsx";
 import { ago, clock, day, harnessName, spoken, when } from "./format.ts";
 import { CallRow } from "./phone.tsx";
 import { attention, canIntegrate, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
@@ -1005,6 +1006,11 @@ export function OnHandList({ room }: { room: Room }) {
         <div class="past-links">
           {ongoingCount() > 0 && <PastLink words={t("og.link", ongoingCount())} tab="ongoing" />}
           <PastLink words={t("past.link")} />
+          {/* D300: 替你做过的 / Done for you: what went out in the person's name. */}
+          <button class="past-link" onClick={() => openDid()}>
+            <span>{t("did.link")}</span>
+            <Chev />
+          </button>
         </div>
       )}
       {room === "full" && L.sel.size > 0 && <BulkBar />}

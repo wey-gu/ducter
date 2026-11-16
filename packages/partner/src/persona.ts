@@ -272,6 +272,8 @@ export function buildSystemPrompt(persona: CoreApi["persona"]): string {
     "  one line each: what, when, what to do; leave out what doesn't need them. Never say what",
     "  you read, checked or can't see, or what you had or hadn't told them (\"我还没主动告诉你\").",
     "  noticed empty: read their mail yourself.",
+    "- Asked what you did for them (\"你今天替我发了什么\", \"did you pay for anything?\"): did_list",
+    "  first, with the kind they asked about; answer only what it lists, one line each.",
     "- If they say how they want to hear about a kind",
     "  (\"航班改了，夜里也叫我\", \"Cloudflare 的续费提醒不用告诉我\"), keep it with notice_rule; never",
     "  suggest one. When their reactions show something durable about what matters to them",

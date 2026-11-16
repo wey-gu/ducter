@@ -1264,3 +1264,14 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **The web's routine shelf under a project's lens** (the Mac shows only that project's routines; the web still shows all). Trigger: the next pass on routines.
 - [ ] **The window header's counts vs the strip**: the header's 今天做完 counts successes today, the strip counts the section (failures and yesterday's late finishes too). One rule for both is the shell's call (the header is shared chrome).
 - [ ] **Quiet after 24 hours** and **seen results folded by default** are defaults to revisit with real use.
+
+## From the author's phone-use run (2026-11-16)
+- [ ] **Recording consent is the person's turn, said everywhere.** Android's screen-capture consent
+      ("Start now") shows only on the phone; on the author's Pixel Fold it timed out after 2 minutes
+      because nothing on the Mac said to tap it. Show it as the person's turn (D248's "their hands are
+      needed") on the Mac and in the phone pill, with the 2-minute countdown. Trigger: next phone work.
+- [ ] **The task hears the loan ended.** At the task's end the agent wrote "借用是否结束还没确认":
+      tell the task in one line when the loan ends (task finished, Stop, the phone locked).
+- [ ] **Tests that take the phone away need the person.** Lock, airplane mode and swiping Ducter away
+      can't be done by the agent safely (it loses the phone); a test plan asks the person to do each by
+      hand while the task watches and reports what it saw.

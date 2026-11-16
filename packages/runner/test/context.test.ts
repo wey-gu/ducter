@@ -251,4 +251,52 @@ describe("the runner", () => {
     expect(cc.s.sent.at(-1)).toBe("/compact");
     await cc.runner.dispose();
   });
+
+  test("Compact now on a finished Claude Code task: no nudge, it stays done, the brief again waits for the next words (research/108)", async () => {
+    const { runner, id, s } = await open("claude-code");
+    await core.call("report_to_main", { state: "done", summary: "fixed", evidence: [{ kind: "test", label: "t", ref: "1 pass" }] }, id);
+    s.emit({ role: "system", text: "turn completed", turnEnd: true, raw: { kind: "turn_ended", outcome: "completed" } });
+    const was = await waitFor(() => { const a = core.tasks.get(id)?.attention; return a === "done" || a === "done_claimed" ? a : undefined; }, "done");
+    await runner.send(id, "/compact", undefined, "user", "c1");
+    expect(s.sent.at(-1)).toBe("/compact");
+    expect(core.tasks.get(id)?.attention).toBe(was);
+    s.busyFlag = true;
+    s.emit({ role: "system", text: "compaction completed", raw: { kind: "compaction_ended", outcome: "completed", trigger: "manual", before: 39_332, after: 11_144 } });
+    await waitFor(() => raws(id, "compaction_ended").length, "compaction");
+    await Bun.sleep(20);
+    s.busyFlag = false;
+    s.emit({ role: "system", text: "turn completed", turnEnd: true, raw: { kind: "turn_ended", outcome: "completed" } });
+    await Bun.sleep(50);
+    // Nothing steered into the compacting turn, no "Report status" after it, and still done.
+    expect(s.sent).toEqual([s.sent[0]!, "/compact"]);
+    expect(core.tasks.get(id)?.attention).toBe(was);
+    // The person's next words carry the brief again.
+    await runner.send(id, "one more thing", undefined, "user", "c2");
+    await waitFor(() => s.sent.length === 3, "next turn");
+    expect(s.sent[2]).toContain("Your context was just compacted");
+    expect(s.sent[2]).toContain("one more thing");
+    await runner.dispose();
+  });
+
+  test("Compact now on a parked Claude Code task resumes it for the /compact alone; what waits stays for the next words", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: () => "tsk00002", parkIdleMs: 20 });
+    const card = await runner.openTask({ persona: "p1", title: "Fix CI", brief: "b", harness: "claude-code" });
+    await runner.whenStarted(card.taskId);
+    const id = card.taskId;
+    const s = fake.sessions[0]!;
+    await core.call("report_to_main", { state: "done", summary: "fixed", evidence: [{ kind: "test", label: "t", ref: "1 pass" }] }, id);
+    s.emit({ role: "system", text: "turn completed", turnEnd: true, raw: { kind: "turn_ended", outcome: "completed" } });
+    const was = await waitFor(() => { const a = core.tasks.get(id)?.attention; return a === "done" || a === "done_claimed" ? a : undefined; }, "done");
+    await waitFor(() => core.tasks.get(id)?.residency === "parked", "parked");
+    await runner.send(id, "/compact", undefined, "user", "c1");
+    const again = await waitFor(() => fake.sessions[1], "resumed");
+    expect(again.sent).toEqual(["/compact"]);
+    expect(core.tasks.get(id)?.attention).toBe(was);
+    again.emit({ role: "system", text: "turn completed", turnEnd: true, raw: { kind: "turn_ended", outcome: "completed" } });
+    await Bun.sleep(50);
+    expect(again.sent).toEqual(["/compact"]); // no "Report status" after it
+    expect(core.tasks.get(id)?.attention).toBe(was);
+    await runner.dispose();
+  });
 });

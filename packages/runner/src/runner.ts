@@ -188,6 +188,10 @@ interface TaskRt {
   loggedContext?: number;
   afterOwed?: boolean;
   compactAfterTurn?: boolean;
+  /** D288: this turn is the person's own Compact now on Claude Code (`/compact` typed as a turn):
+   *  it owes no report, so no nudge after it, and a finished task stays finished (live run,
+   *  research/108: the nudge made a done task redo its work and the partner say it again). */
+  compactTurn?: boolean;
   /** D142: the folder couldn't be copied; the task asked first. text: the turn held until the answer. */
   gated?: { text: string };
   /** D142: the user let it change the folder without a copy. */
@@ -372,7 +376,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     push: (place) => pushForMove(place),
     openPr: (place) => openDraftPr(place, { gh: opts.gh }),
     changes: (place) => branchChanges(place),
-    archive: (place) => archiveWorktree(place, core.dataDir),
+    archive: (place, o) => archiveWorktree(place, core.dataDir, o),
     folder: localFolderOps(folders),
     shown: async (a) => readShown(a, { dataDir: core.dataDir }),
     wb: (a) => bench.op(a),
@@ -557,7 +561,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       }
     }
     t.running = true;
-    setState(t, "working", "hot");
+    setState(t, t.compactTurn ? currentAttention(t) : "working", "hot");
     await deliver(t, text, "turn", from, logged, media);
     return true;
   }
@@ -609,9 +613,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   /** Logs the text first (the Log is the record even if delivery fails), then delivers it. */
   async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue", from: From, logged = false, media?: MediaRef[]) {
     // D135: what waits for the next turn (the save ask; the brief and progress after a
-    // compaction) goes first, logged as the runner's own words.
+    // compaction) goes first, logged as the runner's own words. Never before a /compact (D288): it
+    // has to stay the message's first word to be a command; it waits for the words after.
     let sent = text;
-    if (mode === "turn" && t.prefix.length) {
+    if (mode === "turn" && t.prefix.length && !t.compactTurn) {
       const pre = t.prefix.splice(0).join("\n\n");
       logInput(t, pre, "runner", "prefix");
       sent = `${pre}\n\n---\n\n${text}`;
@@ -1000,7 +1005,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.context = undefined; // unknown until the harness's next call
     t.prefix = t.prefix.filter((p) => p !== SAVE_BEFORE_COMPACT); // too late for it now
     const { brief, progress } = briefAndProgress(t);
-    sayBeforeNextInput(t, afterCompaction(brief, progress));
+    // The person's own Compact now: the brief again goes before their next words, never into
+    // the compacting turn itself (steered in, it reads as "carry on" and the agent redoes the work).
+    if (t.compactTurn) t.prefix.push(afterCompaction(brief, progress));
+    else sayBeforeNextInput(t, afterCompaction(brief, progress));
   }
 
   function handleEvent(t: TaskRt, ev: HarnessEvent) {
@@ -1137,6 +1145,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.running = busy;
     const reported = t.reportedThisTurn;
     t.reportedThisTurn = false;
+    const compactTurn = !busy && !!t.compactTurn;
+    if (!busy) t.compactTurn = false;
     // D288: a /compact asked mid-turn runs once the turn is over.
     if (t.compactAfterTurn && !busy) {
       t.compactAfterTurn = false;
@@ -1176,6 +1186,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return;
     }
     if (outcome && outcome !== "completed") return; // aborted/failed: no nudge
+    if (compactTurn) return; // Compact now owes no report
     // D266: it ended its turn to let background work run, not to stop: no nudge, no miss. The
     // last background task's end asks again (onBackground).
     if (bg > 0) {
@@ -1660,6 +1671,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
           t.session = undefined;
           await s?.close().catch(() => {});
           await t.sidecar?.close().catch(() => false);
+          // Its worktree and branch go too: nothing was done there (live run, research/108: an
+          // early open replaced by the partner's full call left both in the person's repo).
+          if (resolved.place.kind === "repo") await t.ops.archive(resolved.place, { unstarted: true }).catch(() => undefined);
           return;
         }
         if (t.dropped) return;
@@ -1927,6 +1941,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // meaning on every agent, the card kept true. Every other slash command goes to the harness.
       const slash = from === "user" && !media?.length ? slashOf(text, t.base.harness) : undefined;
       if (slash) return runSlash(t, slash, text, clientId);
+      // D288: the person's own Compact now on Claude Code (its /compact runs as typed): not work, so
+      // a finished or waiting task keeps its state and owes no report after it (research/108).
+      const compacting = from === "user" && !media?.length && t.base.harness === "claude-code" && text.trim() === "/compact";
       t.nudged = false;
       t.stallNoted = false;
       // D282: a model or effort changed during the last turn: reopen with them before this one.
@@ -1963,8 +1980,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
           logEvent(t, { role: "system", from: "runner", text: `delivery failed: could not start the session: ${preview(String(err), 400)}` });
           throw err;
         }
-        setState(t, "working", "hot");
-        await sendTurn(t, seed ? seedThen(seed, takeEdits(taskId, text)) : takeEdits(taskId, text), from, true, media);
+        if (compacting && seed) {
+          // A fresh session (the old one couldn't be resumed): nothing to compact. What it was
+          // to hear goes before the person's next words.
+          t.prefix.push(seed);
+          setState(t, currentAttention(t), "warm");
+          logEvent(t, { role: "system", from: "runner", text: "nothing to compact: its agent started a fresh session", raw: { slash: "compact", failed: "fresh session" } });
+          return { delivered: "prompted" };
+        }
+        if (compacting) t.compactTurn = true;
+        else setState(t, "working", "hot");
+        await sendTurn(t, compacting ? text : seed ? seedThen(seed, takeEdits(taskId, text)) : takeEdits(taskId, text), from, true, media);
         return { delivered: "prompted" };
       }
       if (isBusy(t)) {
@@ -1977,11 +2003,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         await deliver(t, takeEdits(taskId, text), "queue", from, true, media);
         return { delivered: "queued" };
       }
-      // Idle: the text becomes the next turn. A finished or held task goes back to work.
+      // Idle: the text becomes the next turn. A finished or held task goes back to work, except
+      // for the person's own Compact now on Claude Code (D288), which is not work: it keeps its state.
       const a = currentAttention(t);
-      if (a !== "working") setState(t, "working", "hot");
-      // D214: what the user changed in its files goes to the agent, never into their own words in the Log.
-      const out = takeEdits(taskId, text);
+      if (compacting) t.compactTurn = true;
+      else if (a !== "working") setState(t, "working", "hot");
+      // D214: what the user changed in its files goes to the agent, never into their own words in
+      // the Log (after a /compact: with the next words, so the command stays a command).
+      const out = compacting ? text : takeEdits(taskId, text);
       if (clientId || out !== text) logInput(t, text, from, "turn", clientId, media);
       await sendTurn(t, out, from, !!clientId || out !== text, media);
       return { delivered: "prompted" };

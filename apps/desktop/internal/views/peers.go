@@ -201,8 +201,12 @@ func (a *App) bridgeRow(c *ui.Context, st *protocol.Settings, b *protocol.Bridge
 	})
 	// The exact identity, place and id it uses, said literally, quietly (D205).
 	if b.Space != nil && (b.State == "ready" || b.State == "connected") {
-		ui.Text(c.Key("bridge-ids"), b.Identity+" · "+b.Space.Label+" · "+b.Space.ID).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).
-			Padding(0, t.S5, t.S4, t.S5).Margin(-t.S3, 0, 0, 0).Selectable()
+		// Each its own line (D291): who it is, the place, its id.
+		ui.Column(c.Key("bridge-ids")).Gap(2).Padding(0, t.S5, t.S4, t.S5).Margin(-t.S3, 0, 0, 0).Children(func() {
+			for _, s := range nonEmpty(b.Identity, b.Space.Label, b.Space.ID) {
+				ui.Text(c, s).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).Selectable()
+			}
+		})
 	}
 }
 

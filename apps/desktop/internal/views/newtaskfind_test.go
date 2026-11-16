@@ -77,7 +77,7 @@ func TestNewTaskFindAFolder(t *testing.T) {
 		if !tt.HasText(L.T("newtask.find.none")) {
 			t.Errorf("%s: an empty folder says so: %q", lang, tt.Texts())
 		}
-		click(t, tt, L.T("newtask.find.use")+" · ~/Sites/blog")
+		click(t, tt, spoken(L, L.T("newtask.find.use"), "~/Sites/blog"))
 		add, ok := lastFrame[protocol.ProjectAdd](sent)
 		if !ok || add.Path != "/Users/weyl/Sites/blog" || add.Device != "dev_mac" {
 			t.Fatalf("%s: added on the Mac: %+v", lang, add)

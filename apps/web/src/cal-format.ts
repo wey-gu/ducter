@@ -77,13 +77,14 @@ export function dateWords(lang: CalLang, ymd: string, today?: string): string {
   return `${EN_WD[p.wd]} ${EN_MON[p.m - 1]} ${p.d}${year ? `, ${p.y}` : ""}`;
 }
 
-/** A day card's head: "今天 · 11月18日 周三" / "Today · Wed, Nov 18"; another day "11月20日 周五" / "Fri, Nov 20". */
+/** A day card's head, read as one date (D291): "今天 11月18日 周三" / "Today, Wed, Nov 18"; another day
+ *  "11月20日 周五" / "Fri, Nov 20". */
 export function dayHead(lang: CalLang, ymd: string, today: string): string {
   const p = parts(ymd);
   const rel = relDay(lang, ymd, today);
   const year = today.slice(0, 4) !== ymd.slice(0, 4);
   const date = lang === "zh" ? `${year ? `${p.y}年` : ""}${p.m}月${p.d}日\u00a0${ZH_WD[p.wd]}` : `${EN_WD[p.wd]}, ${EN_MON[p.m - 1]} ${p.d}${year ? `, ${p.y}` : ""}`;
-  return rel ? `${rel} · ${date}` : date;
+  return rel ? (lang === "zh" ? `${rel} ${date}` : `${rel}, ${date}`) : date;
 }
 
 /** A short date for a run of days: "11月21日–22日" / "Nov 21–22"; across months both in full. */
@@ -98,14 +99,14 @@ export const span = (start: string, end: string) => `${hmOf(start)}–${hmOf(end
 
 /**
  * When a change happens, in full: "明天 11月19日 周四 15:00–15:30" / "Tomorrow, Thu Nov 19, 15:00–15:30";
- * all day: "明天 11月19日 周四 · 全天" / "Tomorrow, Thu Nov 19, all day". today: the person's date.
+ * all day: "明天 11月19日 周四 全天" / "Tomorrow, Thu Nov 19, all day". today: the person's date.
  */
 export function whenWords(lang: CalLang, start: string, end: string, allDay: boolean | undefined, today: string, allDayWord: string): string {
   const ymd = ymdOf(start);
   const rel = relDay(lang, ymd, today);
   const date = dateWords(lang, ymd, today);
   const time = allDay ? allDayWord : span(start, end);
-  if (lang === "zh") return `${rel ? `${rel} ` : ""}${date}${allDay ? " · " : " "}${time}`;
+  if (lang === "zh") return `${rel ? `${rel} ` : ""}${date} ${time}`;
   return `${rel ? `${rel}, ` : ""}${date}, ${allDay ? time.toLowerCase() : time}`;
 }
 
@@ -165,13 +166,13 @@ export function zoneDiffers(zone: string, iso: string): boolean {
   return !!w && (w.ymd !== ymdOf(iso) || w.hm !== hmOf(iso));
 }
 
-/** "当地 11月17日 21:00 · 洛杉矶" / "21:00 Nov 17 in Los Angeles", or "" when the zone says the same. */
+/** "洛杉矶当地 11月17日 21:00" / "21:00 Nov 17 in Los Angeles", or "" when the zone says the same. */
 export function otherZoneLine(lang: CalLang, zone: string, iso: string): string {
   if (!zoneDiffers(zone, iso)) return "";
   const w = wallIn(zone, iso)!;
   const p = parts(w.ymd);
   const city = cityOf(lang, zone);
-  return lang === "zh" ? `当地 ${p.m}月${p.d}日 ${w.hm} · ${city}` : `${w.hm} ${EN_MON[p.m - 1]} ${p.d} in ${city}`;
+  return lang === "zh" ? `${city}当地 ${p.m}月${p.d}日 ${w.hm}` : `${w.hm} ${EN_MON[p.m - 1]} ${p.d} in ${city}`;
 }
 
 /** The other side's time on a change card, as { when, city }: "11月19日 周四 00:00" / "00:00 Thu Nov 19". */

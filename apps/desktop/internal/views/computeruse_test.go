@@ -68,7 +68,7 @@ func TestWorkerMacPhoneAndComputer(t *testing.T) {
 		if !tt.HasText(L.T("computeruse.using", "回张三的邮件", "Mail")) {
 			t.Fatalf("%s: the card doesn't say the task is in Mail: %q", lang, tt.Texts())
 		}
-		click(t, tt, L.T("computeruse.stop")+" · 回张三的邮件")
+		click(t, tt, spoken(L, L.T("computeruse.stop"), "回张三的邮件"))
 		if r, ok := lastSent[protocol.ComputerStopReq](sent); !ok || r.TaskID != "t9" {
 			t.Fatalf("%s: 停下 sent %#v", lang, sent)
 		}

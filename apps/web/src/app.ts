@@ -2510,7 +2510,7 @@ class AppState {
 
   /** The counts line, and where it leads (D270): link is false while it says connecting or
    *  offline; filter is the strip's (1–4) when it names one thing only, else 0 (all of On hand). */
-  summaryParts(): { words: string; link: boolean; filter: number } {
+  summaryParts(): { words: string; parts?: string[]; link: boolean; filter: number } {
     const L = this.L;
     if (this.status === "offline") return { words: L.t("conn.offline"), link: false, filter: 0 };
     // D209: painted from the last screen, the line it showed then stands until the home answers
@@ -2530,7 +2530,7 @@ class AppState {
     const done = this.doneToday();
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) add(4, L.t("header.done", done));
-    return { words: parts.length ? parts.join(" · ") : L.t("header.summary.none"), link: true, filter: kinds.length === 1 ? kinds[0]! : 0 };
+    return { words: parts.length ? spoken(L, ...parts) : L.t("header.summary.none"), parts, link: true, filter: kinds.length === 1 ? kinds[0]! : 0 };
   }
 
   /** The conversation's rows (desktop rows()): decisions inside a living message show once,

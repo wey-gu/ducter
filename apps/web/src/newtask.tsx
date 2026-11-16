@@ -415,7 +415,7 @@ export function NewTaskSheet() {
             {nt.startedTask && <Btn kind="text" size="sm" label={t("newtask.open")} about={nt.started} onClick={() => ((A.sheet = null), A.go({ name: "task", id: nt.startedTask! }))} />}
           </div>
         ) : (
-          !coarse() && <div class="nt-keys small sub">{t("newtask.keys", start)}</div>
+          !coarse() && <Facts class="nt-keys small sub" items={[t("newtask.keys", start), t("newtask.keys.more")]} />
         )}
         <div class="btns">
           <Btn kind="text" label={t("newtask.cancel")} onClick={close} />

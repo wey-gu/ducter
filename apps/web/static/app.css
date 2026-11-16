@@ -1427,6 +1427,18 @@ a {
 .line .tx {
   color: var(--ink-soft);
 }
+/* D291: the task's name, its own element before what it said. */
+.line .lt {
+  flex: 0 2 auto;
+  max-width: 40%;
+  min-width: 0;
+  font-size: var(--md);
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ---------- composer ---------- */
 .composer-wrap {
@@ -5517,6 +5529,17 @@ button.dev-name {
   font-weight: 600;
   margin-right: 8px;
 }
+/* D291: each thing coming is its own element, its time in tabular figures. */
+.board .next .facts,
+.scroll > .next .facts {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  column-gap: var(--s4, 16px);
+}
+.next .facts .tm {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
 .board .calm-band {
   display: flex;
   align-items: center;
@@ -8258,7 +8281,7 @@ dl.call-summary dd { margin: 0; }
 .cal-dh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: var(--sm); font-weight: 700; color: var(--ink-soft); line-height: 1.35; }
 .cal-dh .none, .cal-none { font-size: var(--xs); font-weight: 500; color: var(--ink-muted); }
 .cal-day.empty .cal-dh { font-weight: 500; }
-.cal-marks { margin-top: -4px; font-size: var(--xs); color: var(--ink-muted); line-height: 1.4; }
+.cal-marks { display: flex; margin-top: -4px; font-size: var(--xs); color: var(--ink-muted); line-height: 1.4; }
 .cal-rows { display: flex; flex-direction: column; margin: 0 calc(-1 * var(--s2)); }
 .cal-row { position: relative; display: grid; grid-template-columns: 3.1em 3px minmax(0, 1fr); column-gap: var(--s3); align-items: stretch; padding: 7px var(--s2); border-radius: var(--r-xs); color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; transition: background var(--t-fast) ease-out; }
 a.cal-row { cursor: pointer; }
@@ -8277,7 +8300,8 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .cal-row.allday .cal-ti { font-size: var(--sm); }
 .cal-row.free .cal-ti { color: var(--ink-soft); font-weight: 500; }
 .cal-meta { font-size: var(--xs); color: var(--ink-muted); line-height: 1.45; overflow-wrap: anywhere; }
-.cal-meta .part { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre; vertical-align: bottom; }
+.cal-meta { display: flex; }
+.cal-meta > span { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre; vertical-align: bottom; }
 .cal-chip { flex: none; padding: 0 7px; border-radius: var(--pill); font-size: 11px; font-weight: 700; line-height: 18px; white-space: nowrap; }
 .cal-chip.ask { background: var(--waiting-surface); color: var(--waiting-ink); }
 .cal-chip.maybe { background: var(--sunken); color: var(--ink-soft); }

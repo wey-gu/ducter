@@ -7,7 +7,7 @@ import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { HoverReply, replyKey, replyOfFind } from "./reply.tsx";
 import { ProactiveChips } from "./accounts.tsx";
-import { Btn } from "./controls.tsx";
+import { Btn, Facts } from "./controls.tsx";
 import { ago } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -54,9 +54,7 @@ function Find({ f, seq }: { f: FindView; seq?: number }) {
       {how && (
         <div class="fhow">
           {f.how.map((h, i) => (
-            <div key={i} class="small">
-              <span class="sub">{ago(A.L, h.at)}</span> {h.what}
-            </div>
+            <Facts key={i} class="small" items={[<span class="sub">{ago(A.L, h.at)}</span>, h.from && <span class="sub">{h.from}</span>, h.what]} />
           ))}
         </div>
       )}

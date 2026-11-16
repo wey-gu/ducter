@@ -50,7 +50,7 @@ func TestNewTaskCloneOnTheMac(t *testing.T) {
 		tt.Type("nowledge-co/con")
 		tt.Frame()
 		newTaskShot(t, tt, "clone-field-"+string(lang))
-		click(t, tt, L.T("newtask.clone.go")+" · "+L.T("newtask.clone.title", "Macbook Pro M3"))
+		click(t, tt, spoken(L, L.T("newtask.clone.go"), L.T("newtask.clone.title", "Macbook Pro M3")))
 		k, ok := lastFrame[protocol.ProjectClone](sent)
 		if !ok || k.Address != "nowledge-co/con" || k.Device != "dev_mac" || k.ClientID == "" {
 			t.Fatalf("%s: cloned on the Mac: %+v", lang, k)

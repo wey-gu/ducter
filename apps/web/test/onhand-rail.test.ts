@@ -68,11 +68,11 @@ describe("folded groups (D244)", () => {
     const { A } = await import("../src/app.ts");
     const o = await import("../src/onhand.tsx");
     A.L = strings("en");
-    expect(o.foldCounts(["needs", "working", "working", "new"])).toBe("1 needs you · 2 working · 1 new result");
+    expect(o.foldCounts(["needs", "working", "working", "new"])).toBe("1 needs you, 2 working, 1 new result");
     expect(o.foldCounts(["new", "new", ""])).toBe("2 new results");
     expect(o.foldCounts(["", ""])).toBe("");
     A.L = strings("zh");
-    expect(o.foldCounts(["needs", "new", "new"])).toBe("1 件等你 · 2 个新结果");
+    expect(o.foldCounts(["needs", "new", "new"])).toBe("1 件等你，2 个新结果");
   });
 });
 

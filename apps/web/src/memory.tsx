@@ -7,7 +7,7 @@
 import type { BridgeView } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn, LinkBtn, Seg, Toggle } from "./controls.tsx";
+import { Btn, Facts, LinkBtn, Seg, Toggle } from "./controls.tsx";
 import { ago } from "./format.ts";
 import { groupNoted, MEM_MIN, memPhase, memUpdate, peersShown, type MemPhase, type MemUpdate } from "./mem-view.ts";
 import { Avatar } from "./views.tsx";
@@ -39,11 +39,11 @@ export function Notebook({ size }: { size: number }) {
 }
 
 /** D229: the detail behind a quiet disclosure: the main line stays in plain words. */
-export function MemMore({ label, text }: { label: string; text: string }) {
+export function MemMore({ label, text }: { label: string; text: string | string[] }) {
   return (
     <details class="mem-more">
       <summary>{label}</summary>
-      <small>{text}</small>
+      {typeof text === "string" ? <small>{text}</small> : text.map((x, i) => <small key={i} class="line">{x}</small>)}
     </details>
   );
 }
@@ -240,9 +240,7 @@ function MemApp({ phase, b }: { phase: MemPhase; b: BridgeView | undefined }) {
       <>
         <div class="mem-app-head">
           <small class="mem-meta">
-            {where}
-            {where && b?.version && " · "}
-            {b?.version && <span class="mono">{b.version}</span>}
+            <Facts items={[where, b?.version && <span class="mono">{b.version}</span>]} />
           </small>
           {pill}
         </div>
@@ -339,7 +337,7 @@ function BridgeRow() {
   // When it doesn't connect and Mem says a newer one is out, that's the first thing to try (D257).
   const tryNewer = b.newer !== undefined && (b.state === "refused" || b.state === "failed" || b.state === "unconfirmed");
   // The exact identity, place and id it uses, said literally but behind 细节 (D205's line, D257).
-  const ids = b.space && (b.state === "ready" || b.state === "connected") ? `${b.identity} · ${space} · ${b.space.id}` : "";
+  const ids = b.space && (b.state === "ready" || b.state === "connected") ? [b.identity, space, b.space.id] : undefined;
   return (
     <div class="set-item">
       <b>{t("bridge.title", name)}</b>

@@ -1683,10 +1683,10 @@ const plain = (s: string, n: number) => s.replace(/[\u0000-\u001f\u007f<>]/g, " 
  * first; every word that came from someone's mail (the find as said, the headers it knows by, the
  * names and asks in it) is fenced in <data> as JSON, after the line that says it is data.
  */
-export function followBrief(f: { text: string; how: { what: string; at: string }[]; step?: Candidate["step"] }, zh: boolean): string {
+export function followBrief(f: { text: string; how: { what: string; from?: string; at: string }[]; step?: Candidate["step"] }, zh: boolean): string {
   const data = {
     noticed: plain(f.text, 300),
-    evidence: f.how.slice(0, 6).map((h) => `${plain(h.what, 120)} (${h.at.slice(0, 10)})`),
+    evidence: f.how.slice(0, 6).map((h) => `${plain(h.what, 120)} (${h.from ? `${plain(h.from, 60)}, ` : ""}${h.at.slice(0, 10)})`),
     ...Object.fromEntries(Object.entries(f.step?.data ?? {}).map(([k, v]) => [k, plain(v, 200)])),
   };
   return [

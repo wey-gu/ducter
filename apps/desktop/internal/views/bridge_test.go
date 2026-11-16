@@ -84,7 +84,7 @@ func TestBridgeRow(t *testing.T) {
 			}, nil},
 		{"ready", TabPeers, protocol.BridgeView{State: "ready", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("bridge.title", "小鸭"), L.T("bridge.connect"), L.T("peers.reach", "小鸭"), "ducter · Only me · 6f1c0d2e-personal"}
+				return []string{L.T("bridge.title", "小鸭"), L.T("bridge.connect"), L.T("peers.reach", "小鸭"), "6f1c0d2e-personal"}
 			}, nil},
 		{"connecting", TabPeers, protocol.BridgeView{State: "connecting", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connecting")} },

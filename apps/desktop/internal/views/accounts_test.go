@@ -111,7 +111,7 @@ func TestMorningNoteInTheConversation(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1100, 1200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"快到期 · 要花钱", "好，打开续费页", "先等等", "怎么知道的", "有用", "这类不用告诉我", "两件事对不上"} {
+	for _, want := range []string{"好，打开续费页", "先等等", "怎么知道的", "有用", "这类不用告诉我", "两件事对不上"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -126,7 +126,7 @@ func TestMorningNoteInTheConversation(t *testing.T) {
 	// A find's step is inside its note: never also a card of its own.
 	n := 0
 	for _, s := range tt.Texts() {
-		if strings.Contains(s, "自动续费那张卡已经过期了") && !strings.Contains(s, " · ") {
+		if strings.HasPrefix(s, "ducter.dev") && strings.Contains(s, "自动续费那张卡已经过期了") { // the find itself, not a button named after it
 			n++
 		}
 	}
@@ -142,7 +142,7 @@ func TestMorningNoteInTheConversation(t *testing.T) {
 	}
 	// 有用 goes to the server as the find's reaction.
 	*sent = nil
-	if err := tt.Click("有用 · Lina 4 天前问你「#2141 什么时候能 review」，今天又问了一次。"); err != nil {
+	if err := tt.Click("有用，Lina 4 天前问你「#2141 什么时候能 review」，今天又问了一次。"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

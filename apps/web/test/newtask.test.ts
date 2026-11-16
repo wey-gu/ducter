@@ -102,7 +102,7 @@ describe("New task: when it starts (D185)", () => {
       A.receive({ t: "task_new_result", ok: true, clientId: sent.at(-1).clientId, routineId: "rt1", routine: { routineId: "rt1", name: "Check the nightly", triggerWords: "Weekdays 9:00 · follows your time zone" } } as any);
       expect(A.sheet).toEqual({ kind: "newtask" });
       expect(A.nt.words).toBe("");
-      expect(A.nt.started).toBe("Scheduled: Weekdays 9:00 · follows your time zone · “Check the nightly”");
+      expect(A.nt.started).toBe("“Check the nightly” is scheduled, Weekdays 9:00 · follows your time zone");
       expect(A.nt.when).toBe("every"); // the next one starts the same way
       A.nt.words = "Check the nightly again.";
       A.startNewTask();

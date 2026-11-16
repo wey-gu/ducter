@@ -108,7 +108,7 @@ func TestMemoryTab(t *testing.T) {
 			t.Fatalf("no updating line after the tap: %q", tt.Texts())
 		}
 		n = len(*sent)
-		if err := tt.Click(L.T("partner.memory.forget") + " · " + memNotes(lang)[0]); err != nil {
+		if err := tt.Click(spoken(L, L.T("partner.memory.forget"), memNotes(lang)[0])); err != nil {
 			t.Fatal(err)
 		}
 		if len(*sent) != n+1 || (*sent)[n].(protocol.MemoryForget).T != "memory_forget" {

@@ -169,7 +169,7 @@ func TestCharacterSheet(t *testing.T) {
 
 		// The update lands: the coin pops once (the motion is time-boxed).
 		click(tt, spoken(L, "pi", "MacBook", L.T("agentv.available", "1.4.2")))
-		click(tt, L.T("agentv.button")+" · pi")
+		click(tt, spoken(L, L.T("agentv.button"), "pi"))
 		mac := app.S.Device("dev_mac")
 		mac.Harnesses[2].Update = &protocol.AgentUpdate{Phase: "updating", From: "1.4.0", To: "1.4.2"}
 		tt.Advance(100 * time.Millisecond)
@@ -218,7 +218,7 @@ func TestCharacterSheet(t *testing.T) {
 		// The connections open in place, each with its own 断开 and an inline confirm.
 		click(tt, L.T("card.via.more"))
 		has(tt, L.T("card.conn.app"), L.T("card.conn.cli"))
-		click(tt, L.T("device.disconnect")+" · "+L.T("device.cli.name", "MacBook"))
+		click(tt, spoken(L, L.T("device.disconnect"), L.T("device.cli.name", "MacBook")))
 		has(tt, L.T("device.disconnect.ask", L.T("device.cli.name", "MacBook")))
 		shot(tt, "connections")
 		// The foot: one 断开这台 MacBook, confirmed in place.

@@ -15,7 +15,7 @@ import type { JSX } from "preact";
 import { A, candKey, effortWord, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, whereCandReason } from "./where.ts";
-import { ago, behind, cjkPad, deviceLabel, duration, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, spoken, when } from "./format.ts";
+import { ago, behind, cjkPad, deviceLabel, duration, harnessName, modelName, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
@@ -42,7 +42,7 @@ import { ChatAppsSettings } from "./channels.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
-import { FillButton, forecast, FullTop } from "./board.tsx";
+import { FillButton, forecast, FullTop, NextLine } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
 import { PastSheet } from "./past.tsx";
 import { ContextButton } from "./context-meter.tsx";
@@ -495,7 +495,7 @@ function TaskLine({ task, detail }: { task: Task; detail?: string }) {
   const [who, why] = whoLine(task);
   const live = who.length > 0 && !finished(task) && a !== "dropped";
   return (
-    <button class="taskline" onClick={() => A.go({ name: "task", id: task.id })}>
+    <button class="taskline" aria-label={spoken(A.L, title(task) || t("task.unknown"), d, ...who)} onClick={() => A.go({ name: "task", id: task.id })}>
       <span class="ic">
         <StateMark a={a} />
       </span>
@@ -1017,7 +1017,7 @@ function Living({ e, items, chipOwner }: { e: Entry; items: LivingItem[]; chipOw
   if (!asks.length && !news.length && !lines.length) return null;
   return (
     <section class="living" key={`${e.firstSeq}:${e.revision}`} aria-label={t("living.title")}>
-      {away && <div class="when">{t("living.away.at", clockOf(e.ev.ts))}</div>}
+      {away && <div class="when"><Facts items={[t("living.away"), clockOf(e.ev.ts)]} /></div>}
       {news.map((it, i) => (
         <News key={`n${i}`} it={it} k={`l${e.firstSeq}:${it.taskId}`} owns={chipOwner.get(it.taskId) === e.firstSeq} />
       ))}
@@ -1327,8 +1327,8 @@ function Counts() {
       </div>
     );
   return (
-    <button class="sum" role="status" title={t("nav.onhand")} onClick={() => ((OnHandState.filter = s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }))}>
-      {s.words}
+    <button class="sum" role="status" title={t("nav.onhand")} aria-label={s.words} onClick={() => ((OnHandState.filter = s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }))}>
+      {s.parts?.length ? <Facts items={s.parts} /> : s.words}
     </button>
   );
 }
@@ -1641,7 +1641,7 @@ export function OnHand() {
   const nothing = b.lanes.slice(0, 4).every((l) => !l.length) && !A.S.partnerDecisions().length && !loose.length && !A.S.missedToday().length && !routines.length && !calls.length;
   const wide = useWide();
   // Beside the conversation, 接下来 as the Mac shows it: one quiet grey line, only when more than one thing is coming (D184).
-  const next = wide && !nothing ? forecast() : "";
+  const next = wide && !nothing ? forecast() : [];
   // D216: the one list, as the phone or beside the conversation.
   return (
     <>
@@ -1652,12 +1652,7 @@ export function OnHand() {
           <div class="calm">{t("onhand.empty", A.S.personaName)}</div>
         ) : (
           <>
-            {next && (
-              <p class="next" title={next}>
-                <b>{t("onhand.next")}</b>
-                {next}
-              </p>
-            )}
+            <NextLine items={next} />
             <OnHandList room={wide ? "side" : "phone"} />
             <RoutineShelf />
           </>

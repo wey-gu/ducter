@@ -6,7 +6,7 @@ import type { CalChange, CalDay, CalEvent, CalGlance, CalToday } from "@ducter/p
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { shortAccount } from "./accounts.tsx";
-import { Btn } from "./controls.tsx";
+import { Btn, Facts } from "./controls.tsx";
 import { dateRun, dayHead, daysBetween, hmOf, minutesOf, nameList, nowMinutesIn, offsetOf, otherZoneLine, peopleWords, theirSide, todayIn, whenWords, ymdOf, type CalLang } from "./cal-format.ts";
 import type { DecisionState } from "./store.ts";
 
@@ -111,17 +111,9 @@ function EventRow({ e, look, accounts, many }: { e: CalEvent; look: RowLook; acc
             </span>
           ))}
         </span>
-        {meta.length > 0 && !e.allDay && (
-          <span class="cal-meta">
-            {/* Each part keeps together; a long one (the other zone's time) moves to the next line whole. */}
-            {meta.map((m, i) => (
-              <span key={i} class="part">
-                {m}
-                {i < meta.length - 1 ? " · " : ""}
-              </span>
-            ))}
-          </span>
-        )}
+        {/* Each part is its own element and keeps together; a long one (the other zone's time) moves
+            to the next line whole (D291: spaced by a gap, never dotted). */}
+        {meta.length > 0 && !e.allDay && <Facts class="cal-meta" items={meta} />}
       </span>
     </>
   );
@@ -222,7 +214,7 @@ export function DayCard({ g }: { g: CalGlance }) {
               <span>{dayHead(L, day.date, today)}</span>
               {!one && !day.events.length && <span class="none">{t("cal.nothing")}</span>}
             </div>
-            {day.marks?.length ? <div class="cal-marks">{day.marks.join(" · ")}</div> : null}
+            {day.marks?.length ? <Facts class="cal-marks" items={day.marks} /> : null}
             {day.events.length ? <DayRows day={day} g={g} today={today} clashes={clashes} accounts={accounts} /> : one ? <div class="cal-none">{t("cal.nothing")}</div> : null}
           </div>
         );
@@ -281,10 +273,8 @@ export function CalFacts({ c }: { c: CalChange }) {
       <div class="cc-line">
         <span class="cc-k">{t(c.kind === "create" ? "cal.in.create" : "cal.in")}</span>
         <span class="cal-dot" style={tint(c.color)} aria-hidden="true" />
-        <span>
-          {cal}
-          {whose && <span class="cc-whose"> · {whose}</span>}
-        </span>
+        <span>{cal}</span>
+        {whose && <span class="cc-whose">{whose}</span>}
       </div>
       <div class="cc-line notify">{notify}</div>
       {c.clash && <div class="cc-line clash">{t("cal.clash", c.clash)}</div>}

@@ -27,7 +27,7 @@ test("这类不用告诉我 becomes a Rule worded in the kind and the sender; th
   expect(r.p.react(money.findId, "mute")).toBe(true);
   expect(r.p.react(money.findId, "mute")).toBe(false); // once
   const rule = r.rules.list().find((x) => x.notice)!;
-  expect(rule).toMatchObject({ text: "Cloudflare 的「快到期 · 要花钱」不用告诉我", notice: { kind: "deadline", sender: "Cloudflare" } });
+  expect(rule).toMatchObject({ text: "Cloudflare 的「到期和花钱的事」不用告诉我", notice: { kind: "deadline", sender: "Cloudflare" } });
   expect(r.states().at(-1)).toMatchObject({ findId: money.findId, state: "muted", ruleId: rule.id });
   // A new reminder from Cloudflare next week: not said. Removing the rule (不要这条) lets it through.
   r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id: "m_cf2" }, label: "Cloudflare · Final reminder", at: "2026-11-11T09:00:00+08:00", type: "renewal", name: "ducter.dev", due: "2026-11-16", amount: "$10.44" }]);

@@ -1,6 +1,7 @@
 package views
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -82,7 +83,7 @@ func TestWhereLineOnEveryTaskWithTwoComputers(t *testing.T) {
 		}
 	}
 	// On hand names the computer on every row, the home by its own name.
-	if got := app.whereWhy(app.S.Tasks["t_hn"]); got != "Codex · hel" {
+	if got := app.whereWhy(app.S.Tasks["t_hn"]); strings.Join(got, "|") != "Codex|hel" {
 		t.Errorf("On hand row: %q", got)
 	}
 	en, _ := iaApp(t, i18n.EN)

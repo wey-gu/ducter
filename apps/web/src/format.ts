@@ -1,5 +1,5 @@
 // Time and place wording, the same rules as the desktop (views/app.go formatting).
-import type { DeviceHarness, DeviceUpdate, MemPluginView, Place } from "@ducter/protocol";
+import type { DeviceHarness, DeviceUpdate, MemPluginView } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import type { Strings } from "./i18n.ts";
 
@@ -66,24 +66,12 @@ export function md(iso: string | undefined): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-const lastPath = (p: string) => p.replace(/\/+$/, "").split("/").pop() ?? p;
 
 export function deviceLabel(L: Strings, d: string | undefined): string {
   if (!d || d === "local" || d === "this") return L.t("device.local");
   return d;
 }
 
-export function placeLine(L: Strings, p: Place): string {
-  switch (p.kind) {
-    case "repo":
-      return [lastPath(p.repoPath), p.branch, deviceLabel(L, p.device)].filter(Boolean).join(" · ");
-    case "folder":
-      return `${lastPath(p.path)} · ${deviceLabel(L, p.device)}`;
-    case "browser":
-      return deviceLabel(L, p.device);
-  }
-  return L.t("place.none");
-}
 
 /** A reason's first clause: up to its first comma or full stop outside quotes. */
 export function firstClause(s: string): string {

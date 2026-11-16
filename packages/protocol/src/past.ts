@@ -69,6 +69,48 @@ export interface PastItem {
   hit?: { field: PastField; text: string };
   /** A task seeded from another one (New task from this): that task's id and title. */
   from?: { taskId: string; title: string };
+  /** D299: carried on from a session the person ran in their own agent outside Ducter. */
+  outside?: { agent: OutsideAgent; startedAt: string };
+}
+
+// ---------- D299: 也在这台电脑上 / Also on this computer ----------
+
+/** The AI agents whose own sessions Past tasks lists: what the person ran by hand, outside Ducter. */
+export const OUTSIDE_AGENTS = ["claude-code", "codex", "pi"] as const;
+export type OutsideAgent = (typeof OUTSIDE_AGENTS)[number];
+
+/** Where an outside session matched the words. */
+export type OutsideField = "title" | "words" | "project" | "branch" | "agent";
+
+/** One session the person ran in their own agent on the home, outside Ducter, as a card. */
+export interface OutsideItem {
+  agent: OutsideAgent;
+  /** The agent's own session id (what it resumes by). */
+  id: string;
+  /** Its name (the person's /rename, or the agent's own title), else the person's first words. */
+  title: string;
+  /** The person's first words, when the title is a name. */
+  ask?: string;
+  /** The folder's name. */
+  project: string;
+  /** The folder it ran in, with ~ for the home folder. */
+  cwd: string;
+  branch?: string;
+  model?: string;
+  startedAt: string;
+  updatedAt: string;
+  /** The picture Ducter draws from its words (the same guess as a task's). */
+  kind: PastGlyph;
+  hit?: { field: OutsideField; text: string };
+  /** Its folder isn't there any more: it can't be carried on in place. */
+  gone?: true;
+}
+
+/** Each agent Past tasks reads, how many sessions it showed, and whether the person hid it. */
+export interface OutsideSource {
+  agent: OutsideAgent;
+  n: number;
+  hidden: boolean;
 }
 
 /** What narrows Past tasks. Every field optional; together they AND. */
@@ -152,6 +194,12 @@ export type PastClientFrame =
   // 接着做 / Continue: the same task goes back to work; harness (and model) when the person picked
   // another agent; words, what they say to it first. Answered with action_result (action "continue").
   | { t: "past_continue"; taskId: string; harness?: string; model?: string; words?: string }
+  // D299: carry on a session the person ran outside Ducter: the same agent resumes it in a new
+  // task (harness absent or the same), or another agent starts from what it said. Answered with
+  // outside_adopted (and the new task's events like any task's).
+  | { t: "outside_continue"; agent: OutsideAgent; id: string; harness?: string; model?: string }
+  // D299: stop (or start again) showing one agent's own sessions; every window is told.
+  | { t: "outside_hide"; agent: OutsideAgent; hidden: boolean }
   // 一直在跑的 / Ongoing: answered with ongoing_result; every window gets a fresh one after an action.
   | { t: "ongoing"; id?: string }
   // Answered with action_result (taskId: the id, action: the action's name), then ongoing_result.
@@ -159,6 +207,10 @@ export type PastClientFrame =
 
 export type PastServerFrame =
   // range: the dates the time words in q meant, so the field can say them (上周二 → 11月10日).
-  | { t: "past_result"; id?: string; items: PastItem[]; total: number; facets: PastFacets; suggestions: string[]; range?: { since: string; before: string; words: string } }
+  // D299: outside, the sessions the person ran in their own agents on the home (also on this
+  // computer), best first, filtered and searched like the tasks; sources, each agent read.
+  | { t: "past_result"; id?: string; items: PastItem[]; total: number; facets: PastFacets; suggestions: string[]; range?: { since: string; before: string; words: string }; outside?: OutsideItem[]; sources?: OutsideSource[] }
+  | { t: "outside_adopted"; agent: OutsideAgent; id: string; ok: boolean; taskId?: string; message?: string }
+  | { t: "outside_hidden"; agent: OutsideAgent; hidden: boolean }
   | { t: "past_marked"; taskId: string; mark: PastMark | null }
   | { t: "ongoing_result"; id?: string; items: OngoingItem[] };

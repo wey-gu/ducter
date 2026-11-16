@@ -88,7 +88,7 @@ export type Block =
    * word in their i18n (`note.<say>`, `name` filled in), never the English it was logged in; `text`
    * is that line as logged, keys hidden, shown only on a tap for an error; `bad` = something failed.
    */
-  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean; effort?: string; from?: number; to?: number }
+  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string }
   /** The agent's plan (D268): one per task, where it first wrote it, holding its latest items. */
   | { k: "plan"; seq: number; items: PlanItem[] }
   /**
@@ -105,19 +105,22 @@ export type Block =
   | { k: "told"; seq: number; say: ToldSay; name?: string; text: string };
 
 /** What Ducter told the agent (D271). */
-export type ToldSay = "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "other";
+export type ToldSay = "adopted" | "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "other";
 
 /** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
-export type NoteSay = "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
+export type NoteSay = "earlier" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
 
 const KICKOFF = /^(<brief>|Start the task ")/;
 
 /** A system line as a note, or undefined when it says nothing to a person (D207). Shared by the Go port. */
-export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: string; bad?: boolean; effort?: string; from?: number; to?: number } | undefined {
+export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string } | undefined {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const o = (k: string) => (r[k] && typeof r[k] === "object" ? (r[k] as Record<string, unknown>) : undefined);
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
   const from = (re: RegExp) => re.exec(text)?.[1]?.trim() || undefined;
+  // D299: a session the person ran outside Ducter: its earlier turns follow, said with the agent and the day it began.
+  const out = o("outside");
+  if (out) return { say: "earlier", ...(str(out.agent) ? { name: harnessName(String(out.agent)) } : {}), ...(str(out.at) ? { at: str(out.at) } : {}) };
   // D268: a divider for a compaction or an interruption; a retry only while it is the latest thing.
   // D288: with the size before and after when known (压缩了上下文 · 152k → 31k).
   if (r.kind === "compaction_ended" && r.outcome !== "failed") {
@@ -179,6 +182,8 @@ const TOLD: [RegExp, ToldSay][] = [
   [/^The user (?:said no to lending you their phone|said not now to using their own phone)/, "declined"],
   [/^The user pressed 停下 \/ Stop/, "stopped"],
   [/^The user reopened this task\./, "reopened"],
+  // D299: a session from outside Ducter, carried on here.
+  [/^The user picked this session up again in Ducter/, "adopted"],
   // D280: a loan of the person's own phone ended: they took it back (Stop, a lock, Android's switch,
   // the chip removed), the task gave it back or finished, or it was lost.
   [/^Your loan of (.+?) ended: (?:the user |Android's switch for Ducter went off)/, "taken_back"],

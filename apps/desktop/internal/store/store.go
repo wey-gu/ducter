@@ -730,7 +730,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		case s.Activity == nil || s.Activity.Step != f.Activity.Step:
 			s.Activity, s.ActivityAt = f.Activity, time.Now()
 		}
-	case "past_result", "past_marked", "ongoing_result":
+	case "past_result", "past_marked", "ongoing_result", "outside_adopted", "outside_hidden":
 		s.applyPast(f) // D285 (past.go)
 	case "error":
 		s.Errors = append(s.Errors, f.Message)

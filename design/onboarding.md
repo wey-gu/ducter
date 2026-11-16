@@ -6,7 +6,7 @@
 ## Scenario card
 
 **Who**
-- *Primary (v1):* a heavy multi-agent developer moving off conductor or herdr. Claude Code
+- *Primary (v1):* a heavy multi-agent developer moving off another agent workbench. Claude Code
   and/or Codex are already logged in, and dozens of repos sit under `~/dev`.
 - *Secondary:* a curious person who has one AI subscription and has never heard the words
   "subagent" or "worktree".
@@ -483,8 +483,9 @@ Setup: cua-driver 0.44.0, Chrome 157, macOS 15, partner and task on Sonnet.
 
 ## Ideas to decide (heavy-user delight)
 
-- ~~Adopt running sessions~~: not in v1 (D45). Users start fresh and grow into it.
-- **Conductor import:** read its workspaces/worktrees, if any are left on disk.
+- Earlier sessions come along (D299, superseding D45): the person's own Claude Code, Codex and pi
+  sessions are in Past tasks under 也在这台电脑上 / Also on this computer from the first open, and
+  one tap carries one on. A worktree another agent workbench made counts as its repo's project.
 
 ## Open
 

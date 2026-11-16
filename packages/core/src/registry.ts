@@ -106,6 +106,8 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
           ...(b.origin === "you" || prev?.openedBy ? { openedBy: "you" as const } : {}),
           // D285: seeded from another task (New task from this).
           ...(b.from ? { from: { taskId: b.from, title: cards.get(b.from)?.title ?? "" } } : prev?.from ? { from: prev.from } : {}),
+          // D299: carried on from a session the person ran outside Ducter.
+          ...((b.outside ?? prev?.outside) ? { outside: b.outside ?? prev!.outside! } : {}),
         });
         break;
       }

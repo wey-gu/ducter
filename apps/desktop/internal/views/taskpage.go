@@ -361,7 +361,7 @@ func (a *App) promptLine(task *store.Task, p *Block) string {
 			return a.L.T("told.returned.name", p.Name, at)
 		}
 		return a.L.T("told.returned", at)
-	case "declined", "stopped", "reopened":
+	case "declined", "stopped", "reopened", "adopted":
 		return a.L.T("told."+p.Say, at)
 	case "taken_back", "given_back", "loan_lost": // D280: the loan of the person's phone ended
 		return a.L.T("told."+p.Say, phoneShort(p.Name), at)

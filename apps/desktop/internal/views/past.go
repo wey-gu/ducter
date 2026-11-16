@@ -73,6 +73,9 @@ type pastState struct {
 	// tab is the collection shown: "" 做过的事, "ongoing" 一直在跑的 (ongoing.go).
 	tab string
 	og  ongoingState
+	// D299: adopting is the outside session being carried on (agent:id),
+	// opened when its task is there; outMsg why one couldn't be.
+	adopting, outMsg string
 }
 
 // ---------- ways in ----------
@@ -461,6 +464,11 @@ func (a *App) pastList(c *ui.Context, res *protocol.PastFrame) {
 	if res == nil {
 		return
 	}
+	terms := pastTerms(ps.q)
+	if len(res.Items) == 0 && len(res.Outside) > 0 {
+		a.pastOutside(c, res, terms)
+		return
+	}
 	if len(res.Items) == 0 {
 		words, key := a.L.T("past.none"), "none"
 		if !a.pastSearching() && ps.filter.kind == "" {
@@ -473,18 +481,18 @@ func (a *App) pastList(c *ui.Context, res *protocol.PastFrame) {
 		})
 		return
 	}
-	terms := pastTerms(ps.q)
 	if a.pastSearching() {
 		items := make([]*protocol.PastItem, len(res.Items))
 		for i := range res.Items {
 			items[i] = &res.Items[i]
 		}
 		a.pastSection(c, "found", a.L.T("past.n", res.Total), 0, items, terms)
-		return
+	} else {
+		for _, g := range pastGroups(a.L, res.Items, a.Now()) {
+			a.pastSection(c, g.key, g.name, len(g.items), g.items, terms)
+		}
 	}
-	for _, g := range pastGroups(a.L, res.Items, a.Now()) {
-		a.pastSection(c, g.key, g.name, len(g.items), g.items, terms)
-	}
+	a.pastOutside(c, res, terms) // D299 (pastoutside.go)
 }
 
 func (a *App) pastSection(c *ui.Context, key, name string, n int, items []*protocol.PastItem, terms []string) {
@@ -736,6 +744,10 @@ func (a *App) pastMeta(c *ui.Context, it *protocol.PastItem) {
 				key = "onhand.pr.merged"
 			}
 			ui.Text(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
+		}
+		if o := it.Outside; o != nil {
+			// D299: carried on from a session the person ran outside Ducter.
+			ui.Text(c.Key("outside"), a.L.T("past.out.from", harnessName(o.Agent))).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 		}
 		end, ink := "", t.InkMuted
 		switch {

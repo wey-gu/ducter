@@ -691,7 +691,7 @@ class AppState {
     if (f.t === "git_login_state") return this.ghState(f);
     if (f.t === "task_new_result") return this.newTaskResult(f);
     // D285: 做过的事 / Past tasks (past.tsx).
-    if (f.t === "past_result" || f.t === "past_marked" || f.t === "ongoing_result") return onPastFrame(f);
+    if (f.t === "past_result" || f.t === "past_marked" || f.t === "ongoing_result" || f.t === "outside_adopted" || f.t === "outside_hidden") return onPastFrame(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
     if (f.t === "open_result") return;

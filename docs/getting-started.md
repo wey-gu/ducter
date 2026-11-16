@@ -70,12 +70,16 @@ Each computer has one **Ducter folder**, `~/ducter`, that holds what Ducter make
 `DUCTER_FOLDER` before starting Ducter.
 
 Open a task to read it like a conversation with the agent doing it: what was asked, then what it
-said and every step it took, one line each. A line with **›** opens: a command shows what it
-printed, an edit shows the lines it changed, and a step that went wrong shows its error right
-under it. The line over the box says what it's doing now; **Pause** stops it there (on a
-keyboard, press Esc twice). Write in the box to tell it something; if it's busy, your words wait
-as **Queued** until it gets to them. Scrolled up while it works? **Jump to latest** brings you
-back.
+said, and between its words one line for each run of steps ("Read 9 files, ran 2 commands",
+"Used GitHub 14 times"). A line with **›** opens: the steps in it, then a command shows what it
+printed and an edit the lines it changed. A step that went wrong says so in words right under it
+("GitHub couldn't find this file (404)"). Once a turn is done, its work folds under **Worked for
+3m 12s**, keeping what it said last. While it works, the last line says what it's doing now,
+with the time it has been at it; the square **Pause** button by **Send** stops it there (on a
+keyboard, press Esc twice). Write in the box to tell it something while it works: it reads your
+words at its next step. To have it read them only once it's done, choose **After this** (or press
+⌥↩); they wait as **Queued**. **Cancel task** is in the **⋯** at the top. Scrolled up while it
+works? **Jump to latest** brings you back.
 
 To work on it by hand, open the task on the Mac and choose **Open** at its top right: **Show in
 Finder**, **Open in** Cursor, Visual Studio Code or Zed, or **Open in** Terminal, iTerm2, Ghostty

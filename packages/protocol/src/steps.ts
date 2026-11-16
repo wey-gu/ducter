@@ -24,6 +24,9 @@ export interface Step {
   /** What the agent said the step is for, when its harness carries it (Claude Code's Bash
    *  `description`, Codex's `justification`): the row's words before any summary (D152). */
   says?: string;
+  /** The connected service an `other` step went through (an MCP server: "github"), so a run of
+   *  them is said by the service, never by a raw tool id (D268). */
+  via?: string;
 }
 
 export interface ToolLike {
@@ -504,5 +507,9 @@ export function stepOf(harness: string, t: ToolLike): Step {
   const srv = server.toLowerCase();
   if (srv === "browser" || /playwright|puppeteer|chrome|browser/.test(srv) || tool.startsWith("browser_") || tool === "get_browser_state") return browserStep(tool, o);
   if (/cua|computer/.test(srv) || COMPUTER_TOOLS.includes(tool)) return computerStep(tool, o);
-  return { kind: "other", target: tool.replace(/_/g, " ") };
+  // D268: a service's tool, mcp__github__fetch_file or github.fetch_file, keeps its service apart.
+  const dotted = server ? null : /^([a-z][\w-]*)\.([a-z_][\w.]*)$/i.exec(tool);
+  const via = server || dotted?.[1] || "";
+  const name = dotted ? dotted[2]! : tool;
+  return { kind: "other", target: name.replace(/_/g, " "), ...(via ? { via } : {}) };
 }

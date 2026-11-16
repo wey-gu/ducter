@@ -46,6 +46,8 @@ export interface Send {
   retry?: () => void;
   /** The id it was sent with; a resend after a reconnect uses the same one (core dedupes). */
   clientId?: string;
+  /** D268: sent while it works: steered into its next step, or queued until it is done. */
+  mode?: "steer" | "queue";
   delivered?: Delivery;
   failed?: string;
   seq?: number;
@@ -543,7 +545,7 @@ export class Store {
     const out: ClientFrame[] = pending.filter((p) => !echoed.has(p.clientId)).map((p) => ({ t: "send", text: p.text, clientId: p.clientId, ...(p.media?.length ? { media: p.media } : {}), ...(p.reply ? { reply: p.reply } : {}) }));
     for (const t of this.tasks.values())
       for (const sd of t.sends)
-        if (sd.clientId && !sd.delivered && !sd.failed && (!sd.pics || sd.media)) out.push({ t: "task_send", taskId: t.id, text: sd.text, clientId: sd.clientId, ...(sd.media?.length ? { media: sd.media } : {}) });
+        if (sd.clientId && !sd.delivered && !sd.failed && (!sd.pics || sd.media)) out.push({ t: "task_send", taskId: t.id, text: sd.text, clientId: sd.clientId, ...(sd.media?.length ? { media: sd.media } : {}), ...(sd.mode ? { mode: sd.mode } : {}) });
     return out;
   }
 

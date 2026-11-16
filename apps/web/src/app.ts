@@ -1909,7 +1909,9 @@ class AppState {
     return { ready: pics.every((p) => p.state === "done" && p.ref), ids: pics.flatMap((p) => (p.ref ? [p.ref.id] : [])) };
   }
 
-  sendToTask(id: string, text: string, force = false): boolean {
+  /** D268: while the task works a message steers it (it reads it at its next step) unless `mode`
+   *  `queue` (After this, ⌥↩: it waits until the task is done). */
+  sendToTask(id: string, text: string, force = false, queue = false): boolean {
     text = text.trim();
     const pics = this.picks.get(id) ?? [];
     if (!text && !pics.length) return false;
@@ -1922,13 +1924,17 @@ class AppState {
     const clientId = `t${Date.now()}-${++this.nextClient}`;
     const sd = this.S.addSend(id, text, Date.now(), clientId);
     if (pics.length) (sd.pics = pics), this.picks.delete(id);
+    const task = this.S.tasks.get(id);
+    const busy = !!task && ["working", "queued"].includes(attention(task));
+    const mode = queue ? "queue" : busy ? "steer" : undefined;
+    if (mode) sd.mode = mode;
     const go = () =>
       this.afterUpload(
         pics,
         (media) => {
           sd.failed = undefined;
           if (media.length) sd.media = media;
-          this.send({ t: "task_send", taskId: id, text, clientId, ...(media.length ? { media } : {}) });
+          this.send({ t: "task_send", taskId: id, text, clientId, ...(media.length ? { media } : {}), ...(mode ? { mode } : {}) });
         },
         () => ((sd.failed = this.L.t("media.failed")), (sd.retry = () => (pics.forEach((p) => p.state === "failed" && void this.lift(p)), (sd.failed = undefined), go(), this.changed())), this.changed()),
       );

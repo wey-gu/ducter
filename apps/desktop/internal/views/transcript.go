@@ -2,17 +2,20 @@ package views
 
 // An opened task as turns (D210, after D152): each opens with what someone
 // said to the agent (the brief, your words, the partner's) and holds the
-// agent's answer in order: its words, and its steps as compact lines (a run
-// of looks folded into one, an edit with its diff, a failure with its
-// error line). The Go port of
+// agent's answer in order: its words, and between them its steps, a run of
+// them as one summary line (D268), a failure, a subagent and thinking each
+// its own. The Go port of
 // packages/protocol/src/transcript.ts; both pass fixtures/transcript.json.
 // Every text has its keys hidden (internal/redact): the home already hides
 // them in what it sends; this is the second wall.
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/redact"
@@ -27,8 +30,12 @@ type StepRow struct {
 	Outcome string `json:"outcome"` // ok | error | missing (a probe that found nothing)
 	Command string `json:"command,omitempty"`
 	Output  string `json:"output,omitempty"`
-	// Hint is a real failure's telling line (D210).
+	// Hint is a real failure in words (D268): the service's message
+	// unwrapped from its JSON, else the telling line; Code the HTTP status.
 	Hint string `json:"hint,omitempty"`
+	Code int    `json:"code,omitempty"`
+	// Ms is how long it took (thinking, a subagent), from the event before.
+	Ms *int64 `json:"ms,omitempty"`
 	// Diff is an edit's lines (editdiff.go); DiffMore past them.
 	Diff     []string `json:"diff,omitempty"`
 	DiffMore int      `json:"diffMore,omitempty"`
@@ -36,15 +43,29 @@ type StepRow struct {
 	Removed  int      `json:"removed,omitempty"`
 }
 
-// Line is a line of a stretch (D210): one step (K "row"), or a run of two
-// or more looks folded into one (K "looks").
+// Line is a line of a stretch (D268): one step (K "row"), or a run of two
+// or more steps as one summary line (K "group"), its tally in priority
+// order (edits, commands, then the rest by count).
 type Line struct {
-	K        string    `json:"k"`
-	Row      *StepRow  `json:"row,omitempty"`
-	Seq      int64     `json:"seq,omitempty"`
-	Rows     []StepRow `json:"rows,omitempty"`
-	Reads    *int      `json:"reads,omitempty"`
-	Searches *int      `json:"searches,omitempty"`
+	K     string    `json:"k"`
+	Row   *StepRow  `json:"row,omitempty"`
+	Seq   int64     `json:"seq,omitempty"`
+	Rows  []StepRow `json:"rows,omitempty"`
+	N     int       `json:"n,omitempty"`
+	Tally []Tally   `json:"tally,omitempty"`
+}
+
+// Tally is one kind of step in a group: how many, and a service's name.
+type Tally struct {
+	Kind string `json:"kind"` // edited ran used read searched web browsed computer waited other
+	N    int    `json:"n"`
+	Name string `json:"name,omitempty"`
+}
+
+// PlanItem is an item of the agent's plan, as its harness last wrote it.
+type PlanItem struct {
+	Text  string `json:"text"`
+	State string `json:"state"` // todo | doing | done
 }
 
 // Turn is what someone said to the agent, then everything up to the next
@@ -74,6 +95,8 @@ type Block struct {
 	Name string `json:"name,omitempty"`
 	// Media (D206): you: the pictures sent with it; report: what it showed.
 	Media []protocol.MediaRef `json:"media,omitempty"`
+	// Items is a plan's (D268).
+	Items []PlanItem `json:"items,omitempty"`
 }
 
 var (
@@ -81,6 +104,7 @@ var (
 	disconnectRe  = regexp.MustCompile(`^(.+?) disconnected`)
 	isBackRe      = regexp.MustCompile(`^(.+?) is back`)
 	waitingForRe  = regexp.MustCompile(`^waiting for (.+?):`)
+	retryRe       = regexp.MustCompile(`^retry (\d+)`)
 	deliveryRe    = regexp.MustCompile(`(?i)^delivery failed`)
 	startFailRe   = regexp.MustCompile(`(?i)^failed to start`)
 	resumeFailRe  = regexp.MustCompile(`(?i)^(failed to resume|could not switch|Claude in Chrome isn't connected, and)`)
@@ -111,6 +135,13 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 	}
 	_, hasDevice := r["device"]
 	switch {
+	// D268: a divider for a compaction or an interruption; a retry only while it is the latest thing.
+	case r["kind"] == "compaction_ended" && r["outcome"] != "failed":
+		return Block{Say: "compacted"}, true
+	case r["kind"] == "turn_ended" && r["outcome"] == "aborted":
+		return Block{Say: "interrupted"}, true
+	case r["kind"] == "retry":
+		return Block{Say: "retry", Name: from(retryRe)}, true
 	case truthy(r["stall"]):
 		return Block{Say: "stalled"}, true
 	case truthy(r["fresh"]):
@@ -148,11 +179,6 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 }
 
 func normSpace(s string) string { return strings.TrimSpace(spaceRe.ReplaceAllString(s, " ")) }
-
-// looks: a step that only looks (reading, searching, a probe, a request).
-func looks(s *Step) bool {
-	return s.Kind == "read" || s.Kind == "searched" || s.Probe || s.Kind == "browsed" && (s.Act == "request" || s.Act == "fetch")
-}
 
 func shellCommand(raw json.RawMessage) string {
 	var v any
@@ -216,6 +242,13 @@ func failLine(output string) string {
 			break
 		}
 	}
+	// The last line that says something; a stack frame ("at f (x.js:8)")
+	// says nothing to a person (D268).
+	for i := len(ls) - 1; l == "" && i >= 0; i-- {
+		if !strings.HasPrefix(ls[i], "at ") && !strings.HasPrefix(ls[i], "at\t") {
+			l = ls[i]
+		}
+	}
 	if l == "" && len(ls) > 0 {
 		l = ls[len(ls)-1]
 	}
@@ -225,22 +258,181 @@ func failLine(output string) string {
 	return l
 }
 
-// linesOf is a stretch's rows as lines: two or more looks in a row fold
-// into one (D210).
+var (
+	trivialRe    = regexp.MustCompile(`(?i)^(action completed|completed|ok|done|success|succeeded|true|null|\{\}|\[\])?[.!]?$`)
+	statusCodeRe = regexp.MustCompile(`(?i)\b(?:HTTP|status|error|code)\b[^\d\n]{0,12}([1-5]\d\d)\b`)
+	threeDigits  = regexp.MustCompile(`^\d{3}$`)
+	trailColonRe = regexp.MustCompile(`[:：]\s*$`)
+)
+
+// trivialOutput is output that says nothing ("Action completed."): its step
+// has nothing to open (D268).
+func trivialOutput(s string) bool { return trivialRe.MatchString(strings.TrimSpace(s)) }
+
+// failOf is a failure in words (D268): the message inside a service's JSON
+// and the HTTP status it names.
+func failOf(output string) (string, int) {
+	raw := strings.TrimSpace(output)
+	hint, code := "", 0
+	status := func(v any) int {
+		n := 0
+		switch x := v.(type) {
+		case float64:
+			n = int(x)
+		case string:
+			if threeDigits.MatchString(x) {
+				fmt.Sscan(x, &n)
+			}
+		}
+		if n >= 100 && n < 600 {
+			return n
+		}
+		return 0
+	}
+	s := func(v any) string { x, _ := v.(string); return strings.TrimSpace(x) }
+	j, k := strings.Index(raw, "{"), strings.LastIndex(raw, "}")
+	if j >= 0 && k > j {
+		var o map[string]any
+		if json.Unmarshal([]byte(raw[j:k+1]), &o) == nil && o != nil {
+			e, _ := o["error"].(map[string]any)
+			for _, h := range []string{s(o["message"]), s(e["message"]), s(o["error"]), s(o["detail"])} {
+				if h != "" {
+					hint = h
+					break
+				}
+			}
+			for _, c := range []int{status(o["status"]), status(e["code"]), status(o["code"]), status(e["status"])} {
+				if c != 0 {
+					code = c
+					break
+				}
+			}
+			if hint == "" {
+				hint = trailColonRe.ReplaceAllString(failLine(raw[:j]), "")
+			}
+		}
+	}
+	if hint == "" {
+		hint = failLine(raw)
+	}
+	if code == 0 {
+		if m := statusCodeRe.FindStringSubmatch(raw); m != nil {
+			fmt.Sscan(m[1], &code)
+		}
+	}
+	if r := []rune(hint); len(r) > 160 {
+		hint = string(r[:159]) + "…"
+	}
+	return hint, code
+}
+
+var knownServices = map[string]string{
+	"github": "GitHub", "gitlab": "GitLab", "linear": "Linear", "slack": "Slack", "notion": "Notion", "figma": "Figma", "sentry": "Sentry",
+	"jira": "Jira", "stripe": "Stripe", "vercel": "Vercel", "supabase": "Supabase", "nowledge-mem": "Nowledge Mem", "gmail": "Gmail",
+}
+
+var (
+	claudeAIRe = regexp.MustCompile(`(?i)^claude_ai_`)
+	pluginRe   = regexp.MustCompile(`(?i)^plugin_[^_]+_`)
+	wordSepRe  = regexp.MustCompile(`[-_.\s]+`)
+)
+
+// serviceName is a connected service's name as a person says it: github →
+// GitHub, claude_ai_Gmail → Gmail.
+func serviceName(server string) string {
+	s := pluginRe.ReplaceAllString(claudeAIRe.ReplaceAllString(server, ""), "")
+	if k, ok := knownServices[strings.ToLower(s)]; ok {
+		return k
+	}
+	var words []string
+	for _, w := range wordSepRe.Split(s, -1) {
+		if w != "" {
+			words = append(words, strings.ToUpper(w[:1])+w[1:])
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+var tallyOrder = []string{"edited", "ran", "used", "read", "searched", "web", "browsed", "computer", "waited", "other"}
+
+func indexOf(list []string, s string) int {
+	for i, x := range list {
+		if x == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// tallyOf is what a run of steps did, by kind: edits first, then commands,
+// then the rest, most first.
+func tallyOf(rows []StepRow) []Tally {
+	var out []Tally
+	at := map[string]int{}
+	for _, r := range rows {
+		st := r.Step
+		kind, name := "other", ""
+		switch st.Kind {
+		case "edited", "ran", "read", "browsed", "computer", "waited":
+			kind = st.Kind
+		case "searched":
+			kind = "searched"
+			if st.Act == "web" {
+				kind = "web"
+			}
+		case "other":
+			if st.Via != "" {
+				kind, name = "used", serviceName(st.Via)
+			}
+		}
+		key := kind + ":" + name
+		if i, ok := at[key]; ok {
+			out[i].N += r.N
+			continue
+		}
+		at[key] = len(out)
+		out = append(out, Tally{Kind: kind, N: r.N, Name: name})
+	}
+	rank := func(t Tally) int {
+		switch t.Kind {
+		case "edited":
+			return 0
+		case "ran":
+			return 1
+		}
+		return 2
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if rank(a) != rank(b) {
+			return rank(a) < rank(b)
+		}
+		if rank(a) == 2 && a.N != b.N {
+			return a.N > b.N
+		}
+		return indexOf(tallyOrder, a.Kind) < indexOf(tallyOrder, b.Kind)
+	})
+	return out
+}
+
+// alone is a row that stands on its own line: thinking, a failure, a
+// subagent (D268).
+func alone(r *StepRow) bool {
+	return r.Step == nil || r.Outcome == "error" || r.Step.Kind == "delegated" || r.Step.Kind == "background"
+}
+
+// linesOf is a stretch's rows as lines (D268): a run of two or more steps
+// is one summary line.
 func linesOf(rows []StepRow) []Line {
 	var out []Line
 	var run []StepRow
 	flush := func() {
-		if len(run) >= 2 {
-			reads, all := 0, 0
-			for _, r := range run {
-				all += r.N
-				if r.Step.Kind == "read" {
-					reads += r.N
-				}
-			}
-			searches := all - reads
-			out = append(out, Line{K: "looks", Seq: run[0].Seq, Rows: run, Reads: &reads, Searches: &searches})
+		n := 0
+		for _, r := range run {
+			n += r.N
+		}
+		if n >= 2 {
+			out = append(out, Line{K: "group", Seq: run[0].Seq, Rows: run, N: n, Tally: tallyOf(run)})
 		} else {
 			for i := range run {
 				r := run[i]
@@ -251,16 +443,86 @@ func linesOf(rows []StepRow) []Line {
 	}
 	for i := range rows {
 		r := rows[i]
-		if r.Step != nil && looks(r.Step) && r.Outcome != "error" {
-			run = append(run, r)
+		if alone(&r) {
+			flush()
+			out = append(out, Line{K: "row", Row: &r})
 			continue
 		}
-		flush()
-		out = append(out, Line{K: "row", Row: &r})
+		run = append(run, r)
 	}
 	flush()
 	return out
 }
+
+var (
+	planDoneRe  = regexp.MustCompile(`complete|done`)
+	planDoingRe = regexp.MustCompile(`progress|doing|active|running`)
+)
+
+// planOf is a harness's plan (Claude Code's TodoWrite, Codex's update_plan)
+// as items, or nil.
+func planOf(name string, input json.RawMessage) []PlanItem {
+	_, tool := splitTool(name)
+	key := ""
+	switch tool {
+	case "TodoWrite", "todo_write", "todowrite":
+		key = "todos"
+	case "update_plan":
+		key = "plan"
+	default:
+		return nil
+	}
+	var o map[string]any
+	if len(input) == 0 || json.Unmarshal(input, &o) != nil {
+		return nil
+	}
+	list, ok := o[key].([]any)
+	if !ok {
+		return nil
+	}
+	s := func(v any) string { x, _ := v.(string); return strings.TrimSpace(x) }
+	var items []PlanItem
+	for _, x := range list {
+		e, _ := x.(map[string]any)
+		text := ""
+		for _, k := range []string{"content", "step", "text", "title"} {
+			if text = s(e[k]); text != "" {
+				break
+			}
+		}
+		if text == "" {
+			continue
+		}
+		st, state := strings.ToLower(s(e["status"])), "todo"
+		switch {
+		case planDoneRe.MatchString(st):
+			state = "done"
+		case planDoingRe.MatchString(st):
+			state = "doing"
+		}
+		items = append(items, PlanItem{Text: redact.Text(text), State: state})
+	}
+	return items
+}
+
+// lastSeq is the seq of the last event a block holds (a stretch's last
+// step): how long a turn took (D268).
+func lastSeq(b *Block) int64 {
+	s := b.Seq
+	for _, l := range b.Lines {
+		if l.Row != nil && l.Row.Seq > s {
+			s = l.Row.Seq
+		}
+		for _, r := range l.Rows {
+			if r.Seq > s {
+				s = r.Seq
+			}
+		}
+	}
+	return s
+}
+
+func isRetry(b *Block) bool { return b != nil && b.K == "note" && b.Say == "retry" }
 
 // turnsOf is blocks as turns: a brief, your words or the partner's open one.
 func turnsOf(blocks []Block) []Turn {
@@ -304,8 +566,37 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 		}
 		s.Rows = append(s.Rows, row)
 	}
+	plan := -1
+	// How long since the event before (thinking ends when what follows
+	// begins; a subagent's call is logged when it ends).
+	var prevAt time.Time
 	for _, ev := range events {
+		at, perr := time.Parse(time.RFC3339Nano, ev.TS)
+		var took *int64
+		if perr == nil && !prevAt.IsZero() && !at.Before(prevAt) {
+			ms := at.Sub(prevAt).Milliseconds()
+			took = &ms
+		}
+		if perr == nil {
+			prevAt = at
+		} else {
+			prevAt = time.Time{}
+		}
 		body, _ := ev.Typed()
+		// A retry is said only while it is the latest thing: whatever comes next takes its place.
+		if n := len(out); n > 0 && isRetry(&out[n-1]) {
+			quiet := false
+			if te, ok := body.(*protocol.TaskEvent); ok && te.Role == "system" {
+				_, said := noteOf(strings.TrimSpace(te.Text), te.Raw)
+				quiet = !said
+			}
+			if !quiet {
+				out = out[:n-1]
+				if plan >= len(out) {
+					plan = -1
+				}
+			}
+		}
 		switch b := body.(type) {
 		case *protocol.TaskOpen:
 			if briefed || strings.TrimSpace(b.Brief) == "" {
@@ -342,10 +633,20 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 			out = append(out, Block{K: "report", Seq: ev.Seq, State: b.State, Text: redact.Text(b.Summary), Media: b.Media})
 		case *protocol.TaskEvent:
 			if len(b.Thinking) > 0 {
-				addRow(ev.Seq, StepRow{Seq: ev.Seq, Thought: redact.Text(strings.Join(b.Thinking, " · ")), N: 1, Outcome: "ok"})
+				addRow(ev.Seq, StepRow{Seq: ev.Seq, Thought: redact.Text(strings.Join(b.Thinking, " · ")), N: 1, Outcome: "ok", Ms: took})
 				continue
 			}
 			if b.Tool != nil {
+				// D268: the agent's plan, one per task, its latest items where it first wrote it.
+				if items := planOf(b.Tool.Name, b.Tool.Input); len(items) > 0 {
+					if plan >= 0 {
+						out[plan].Items = items
+					} else {
+						plan = len(out)
+						out = append(out, Block{K: "plan", Seq: ev.Seq, Items: items})
+					}
+					continue
+				}
 				st := stepOf(harness, b.Tool)
 				if st.Hidden {
 					continue
@@ -372,9 +673,16 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 					}
 				}
 				full := strings.TrimRight(b.Tool.Output, " \t\r\n")
-				row := StepRow{Seq: ev.Seq, Step: &st, N: 1, Outcome: outcome, Output: redact.Text(clipLines(full, 40))}
+				row := StepRow{Seq: ev.Seq, Step: &st, N: 1, Outcome: outcome}
+				if !trivialOutput(full) {
+					row.Output = redact.Text(clipLines(full, 40))
+				}
 				if outcome == "error" {
-					row.Hint = redact.Text(failLine(full))
+					h, code := failOf(full)
+					row.Hint, row.Code = redact.Text(h), code
+				}
+				if st.Kind == "delegated" {
+					row.Ms = took
 				}
 				if st.Kind == "edited" && st.Act != "mkdir" {
 					if d := editDiff(b.Tool.Input); d != nil {
@@ -432,8 +740,13 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 			out[i].Lines = linesOf(out[i].Rows)
 		}
 	}
-	if n := len(out); working && n > 0 && out[n-1].K == "steps" {
-		out[n-1].Live = true
+	// A retry says itself only as the latest thing; the stretch before it is still the live one.
+	tail := len(out) - 1
+	if tail >= 0 && isRetry(&out[tail]) {
+		tail--
+	}
+	if working && tail >= 0 && out[tail].K == "steps" {
+		out[tail].Live = true
 	}
 	return out
 }

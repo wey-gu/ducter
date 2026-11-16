@@ -849,6 +849,9 @@ type TaskSend struct {
 	// ClientID makes a resend safe: the server delivers it once.
 	ClientID string   `json:"clientId,omitempty"`
 	Media    []string `json:"media,omitempty"` // D206
+	// Mode (D268): "steer" (sent while it works, read at its next step) or
+	// "queue" (after this turn); empty for the runner's own choice.
+	Mode string `json:"mode,omitempty"`
 }
 
 type TaskAction struct {

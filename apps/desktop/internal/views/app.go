@@ -140,6 +140,7 @@ type App struct {
 	folderConfirm map[string]*protocol.UndoConfirm
 	taskLists     map[string]*ui.ListState
 	md, mdTask    markdown.Options
+	mdTaskHan     markdown.Options // D268: the task's words when they hold Chinese
 	// taskScroll is where each opened task's page is scrolled to: it
 	// follows the newest step while the task works and the reader is at
 	// the end (D152).
@@ -295,6 +296,7 @@ type App struct {
 	openFailed string
 	// D220: 工作副本 / Working copy: its panel open, and when its path was copied.
 	infoOpen   bool
+	moreOpen   bool // D268: the opened task's ⋯
 	infoCopied time.Time
 }
 
@@ -433,9 +435,12 @@ func (a *App) View(c *ui.Context) {
 		// Chinese reading text is 1.75 high (D78).
 		a.mdLang = a.L.Lang
 		a.md.Theme = a.markdownTheme(a.T.PartnerSize, a.leading(1.65))
-		a.md.ShareSelection = true                                    // D254: the bubble holds the selection and its menu (Reply, Copy)
-		a.md.CodeBlock, a.mdTask.CodeBlock = a.codeBlock, a.codeBlock // Ducter's own 拷贝 (D242)
-		a.mdTask.Theme = a.markdownTheme(a.T.MD, a.leading(1.55))
+		a.md.ShareSelection = true   // D254: the bubble holds the selection and its menu (Reply, Copy)
+		a.md.CodeBlock = a.codeBlock // Ducter's own 拷贝 (D242)
+		// D268: an agent's words in a task at 14, led by what the text holds
+		// (1.6 Latin, 1.75 with Chinese), never by the app's language.
+		a.mdTask.CodeBlock, a.mdTaskHan.CodeBlock = a.codeBlockTask, a.codeBlockTask
+		a.mdTask.Theme, a.mdTaskHan.Theme = a.taskMarkdownTheme(1.6), a.taskMarkdownTheme(1.75)
 	}
 	c.SetTheme(a.uiTheme)
 	a.winW, a.winH = c.Size()
@@ -573,6 +578,37 @@ func (a *App) markdownTheme(size, leading float32) *markdown.Theme {
 	return th
 }
 
+// taskProse is the size of an agent's words in an opened task (D268).
+const taskProse = 14
+
+// taskMarkdownTheme is an agent's words in an opened task (D268): 14 on the
+// reading measure, paragraphs 10 apart and list items 4, headings one and
+// three steps up at 600, code a step down in mono on a faint fill.
+func (a *App) taskMarkdownTheme(leading float32) *markdown.Theme {
+	th := a.markdownTheme(taskProse, leading)
+	th.BlockSpacing = 10.0 / taskProse
+	th.ItemSpacing = 4.0 / taskProse
+	th.CodeSize = (taskProse - 1.0) / taskProse
+	th.CodeBlockRadius = 8
+	sizes := [6]float32{taskProse + 3, taskProse + 1, taskProse, taskProse, taskProse, taskProse}
+	for i := range th.Headings {
+		th.Headings[i].Size = sizes[i] / taskProse
+		th.Headings[i].Weight = 600
+		th.Headings[i].Top = 16.0 / taskProse
+		th.Headings[i].Bottom = 6.0 / taskProse
+		th.Headings[i].Rule = false
+	}
+	return th
+}
+
+// mdFor is the task's Markdown options for a text: its leading by what it holds.
+func (a *App) mdFor(text string) *markdown.Options {
+	if hasHan(text) {
+		return &a.mdTaskHan
+	}
+	return &a.mdTask
+}
+
 // ---------- actions ----------
 
 // secretRE finds what looks like a credential: GitHub, Anthropic, OpenAI,
@@ -650,7 +686,12 @@ func (a *App) OpenTask(id string) {
 
 // SendToTask talks to a task directly; the transcript shows the text at
 // once, then how it was delivered.
-func (a *App) SendToTask(id, text string) bool {
+func (a *App) SendToTask(id, text string) bool { return a.SendToTaskMode(id, text, "") }
+
+// SendToTaskMode is SendToTask with how it lands while the task works
+// (D268): "steer" (read at its next step), "queue" (after this turn), or ""
+// for the runner's own choice.
+func (a *App) SendToTaskMode(id, text, mode string) bool {
 	text = strings.TrimSpace(text)
 	if text == "" && len(a.med().trays["task:"+id]) == 0 {
 		return false
@@ -660,21 +701,21 @@ func (a *App) SendToTask(id, text string) bool {
 		return false
 	}
 	a.held = nil
-	a.sendToTask(id, text)
+	a.sendToTask(id, text, mode)
 	return true
 }
 
-func (a *App) sendToTask(id, text string) {
+func (a *App) sendToTask(id, text, mode string) {
 	a.nextClient++
 	cid := fmt.Sprintf("t%d-%d", a.Now().UnixMilli(), a.nextClient)
 	// D206: pictures still going up hold the message (shown) until they land.
 	atts := a.takeTray("task:" + id)
 	if !allReady(atts) {
 		m := a.med()
-		m.taskWait = append(m.taskWait, &taskWait{taskID: id, text: text, clientID: cid, atts: atts, at: a.Now()})
+		m.taskWait = append(m.taskWait, &taskWait{taskID: id, text: text, clientID: cid, mode: mode, atts: atts, at: a.Now()})
 		return
 	}
-	a.sendToTaskWith(id, text, cid, atts)
+	a.sendToTaskWith(id, text, cid, mode, atts)
 }
 
 // SendHeld sends the held message after all, and empties its composer.
@@ -689,7 +730,7 @@ func (a *App) SendHeld() {
 		a.draft = ""
 		return
 	}
-	a.sendToTask(h.taskID, h.text)
+	a.sendToTask(h.taskID, h.text, "")
 	a.taskDrafts[h.taskID] = ""
 }
 

@@ -9084,3 +9084,457 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- D268: the opened task's transcript, typeset ---------- */
+/* One reading column, centered: prose at 14, 1.6 for Latin and 1.75 when it holds Chinese. */
+.task-page .turns {
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  gap: 28px;
+}
+.task-page .turn {
+  gap: 12px;
+}
+.turns .tx.assistant.md {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.turns .tx.assistant.md.han {
+  line-height: 1.75;
+}
+.turns .tx.assistant.md p + p,
+.turns .tx.assistant.md p + ul,
+.turns .tx.assistant.md p + ol,
+.turns .tx.assistant.md ul + p,
+.turns .tx.assistant.md ol + p,
+.turns .tx.assistant.md .codeblock + p,
+.turns .tx.assistant.md pre + p {
+  margin-top: 10px;
+}
+.turns .tx.assistant.md ul,
+.turns .tx.assistant.md ol {
+  margin: 0;
+  padding-left: 1.3em;
+}
+.turns .tx.assistant.md li + li {
+  margin-top: 4px;
+}
+.turns .tx.assistant.md h1,
+.turns .tx.assistant.md h2,
+.turns .tx.assistant.md h3,
+.turns .tx.assistant.md h4 {
+  margin: 14px 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.turns .tx.assistant.md h1 {
+  font-size: 17px;
+}
+.turns .tx.assistant.md > :first-child {
+  margin-top: 0;
+}
+.turns .tx.assistant.md code {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 1px 0.3em;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  overflow-wrap: anywhere;
+}
+.turns .tx.assistant.md pre {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--sunken);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+.turns .tx.assistant.md pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+/* Steps: one quiet line each, 2 apart; 12 between words and a run of steps. */
+.turns .lines {
+  gap: 2px;
+}
+.turns .step {
+  min-height: 24px;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+.turns .step .sum {
+  color: var(--ink-soft);
+}
+.turns .step.quiet .sum {
+  color: var(--ink-muted);
+}
+.turns .step .subj {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  color: var(--ink);
+}
+.turns .step .subj.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.turns .step .chev .g {
+  width: 12px;
+  height: 12px;
+}
+/* A failure keeps its ink: a small × and its word, then what went wrong in one line of prose. */
+.turns .step.bad .g,
+.turns .step.bad .sum {
+  color: var(--ink-soft);
+}
+.turns .step.bad > .g {
+  width: 12px;
+  height: 12px;
+  margin: 2px;
+  color: var(--failed-ink);
+}
+.turns .step .bad-tag {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--failed-ink);
+}
+.turns .failline {
+  margin: 0 0 4px 22px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+.turns .step .took {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.turns .step .took .g {
+  width: 12px;
+  height: 12px;
+  color: var(--done-ink);
+}
+.spin.sm {
+  width: 11px;
+  height: 11px;
+  margin: 2.5px;
+  border-width: 1.4px;
+}
+/* A run opened: its steps, set in, scrolling past about twelve. */
+.turns .group-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 288px;
+  overflow-y: auto;
+  padding: 2px 0 6px 22px;
+  overscroll-behavior: contain;
+}
+.turns .thought-text {
+  padding: 2px 0 6px 22px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+.turns .thought-text p {
+  margin: 0;
+}
+.turns .raw,
+.turns .diff {
+  margin-left: 22px;
+}
+/* The plan: a ring to do, a dashed accent ring under way, a check once done (faded). */
+.turns .plan {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--line);
+}
+.turns .plan header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.turns .plan header b {
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.turns .plan header span {
+  font-variant-numeric: tabular-nums;
+}
+.turns .plan ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.turns .plan li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.turns .plan li svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--faint);
+}
+.turns .plan li.doing svg {
+  color: var(--accent);
+}
+.turns .plan li.done {
+  color: var(--ink-muted);
+}
+.turns .plan li.done svg {
+  color: var(--done-ink);
+  opacity: 0.7;
+}
+/* A compaction, an interruption: a hairline with its word. */
+.tx-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+.tx-divider::before,
+.tx-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+/* A finished turn folds its work under how long it took. */
+.turns .worked {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink-muted);
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.turns .worked .chev .g {
+  width: 12px;
+  height: 12px;
+  color: var(--faint);
+  transition: transform 0.15s ease;
+}
+.turns .worked.open .chev .g {
+  transform: rotate(90deg);
+}
+.turns .worked-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* The working line: what it is on, shimmering, its clock at the right. */
+.working-line {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.working-line .shimmer {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: linear-gradient(90deg, var(--ink-muted) 0%, var(--ink-muted) 40%, var(--ink) 50%, var(--ink-muted) 60%, var(--ink-muted) 100%);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: tx-shimmer 2.2s linear infinite;
+}
+@keyframes tx-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .working-line .shimmer {
+    animation: none;
+    color: var(--ink-muted);
+    background: none;
+  }
+}
+.working-line .clock {
+  flex: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+/* Your words waiting their turn: a dashed outline, no fill, muted, and 排队中. */
+.tx.you.queued {
+  background: transparent;
+  color: var(--ink-muted);
+  box-shadow: none;
+  outline: 1.5px dashed var(--faint);
+  outline-offset: -1.5px;
+}
+.tx.you .qtag {
+  display: block;
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 1;
+  color: var(--ink-muted);
+}
+.turns .tx.you {
+  font-size: 14px;
+  line-height: 1.55;
+}
+/* The composer while it works: Stop beside Send, After this, and how a message lands. */
+.composer .after {
+  flex: none;
+  align-self: center;
+  white-space: nowrap;
+}
+.composer .stop {
+  flex: none;
+  color: var(--ink);
+}
+.composer-hint {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 0 18px 4px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.composer-hint .k {
+  color: var(--faint);
+}
+/* The header: an opened task's title on one line, and who · state · where under it. */
+.top.crumbs .here-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.top.crumbs .here.task {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.top.crumbs .here-col .sub {
+  font-size: 12px;
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.more-menu {
+  position: relative;
+  display: inline-flex;
+}
+.more-menu .menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 160px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--floating), 0 0 0 1px var(--line);
+  display: flex;
+  flex-direction: column;
+}
+.more-menu .menu button {
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.more-menu .menu button:hover {
+  background: var(--surface-sunken);
+}
+.more-menu .menu .danger {
+  color: var(--failed-ink);
+}
+/* Task rows: the title at 14/500 (400, softer, once settled), the time in a fixed column, one meta line at 12. */
+.trow .l1 .t {
+  font-size: 14px;
+  font-weight: 500;
+}
+.trow.a-done .l1 .t,
+.trow.a-done_claimed .l1 .t,
+.trow.a-dropped .l1 .t,
+.trow.a-superseded .l1 .t {
+  font-weight: 400;
+  color: color-mix(in srgb, var(--ink) 70%, transparent);
+}
+.trow .time {
+  white-space: nowrap;
+  min-width: 4em;
+  font-size: 11px;
+}
+.trow .l2 {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+/* The latest turn is always laid out (the working line follows it, so it isn't the last child). */
+.turns > .turn:last-of-type {
+  content-visibility: visible;
+  contain-intrinsic-size: none;
+}
+/* The header's actions give way to More: the branch label shrinks first. */
+.top .info-anchor {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.top .info-anchor .info-btn {
+  max-width: 100%;
+  min-width: 0;
+}
+.top .info-anchor .info-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.top .more-btn {
+  width: 40px;
+}
+.trow .l2 .w:has(+ .c) {
+  flex: none;
+  max-width: 60%;
+}

@@ -84,22 +84,32 @@ func TestOpenedTaskMem(t *testing.T) {
 	}
 }
 
-// D210: a run of looks folds into one line ("看了 1 个文件，搜了 4 次") that
-// opens on a click; the probes in it say "not there" in plain words, never
-// 出错; every other step is its own line, a real failure red with its
-// error line in place.
+// D268: a finished turn folds its work under how long it took, keeping its
+// last words; opened, each run of steps is one line ("搜了 3 次，看了 1 个文
+// 件，还做了 1 件别的") that opens on a click; the probes in it say "not
+// there" in plain words, never 出错; a real failure is its own line with
+// its words under it.
 func TestOpenedTaskMemStretches(t *testing.T) {
 	want := map[i18n.Lang][]string{
 		i18n.ZH: {"没找到 nmem", "没全找到：python3 pip3 uv", "还没有 .nowledge-mem/config.json", "请求 cloud.nowledge.co", "隐藏了一段密钥", "你交给它的事"},
 		i18n.EN: {"No nmem here", "Not all found: python3 pip3 uv", "No .nowledge-mem/config.json yet", "Requested cloud.nowledge.co", "A key is hidden", "What you asked"},
 	}
-	fold := map[i18n.Lang]string{i18n.ZH: "看了 1 个文件，搜了 4 次", i18n.EN: "Read 1 file, 4 searches"}
+	fold := map[i18n.Lang]string{i18n.ZH: "搜了 3 次，看了 1 个文件，还做了 1 件别的", i18n.EN: "Searched 3 times, read a file, and 1 other thing"}
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
-		_, tt := memTask(t, lang, "done")
+		app, tt := memTask(t, lang, "done")
 		all := texts(tt)
 		folded := map[i18n.Lang]string{i18n.ZH: "没找到 nmem", i18n.EN: "No nmem here"}[lang]
+		if strings.Contains(all, folded) || strings.Contains(all, "error: unknown command") {
+			t.Errorf("%s: the finished turn isn't folded: %q", lang, all)
+		}
+		for _, tu := range turnsOf(app.blocks(app.S.Task("mem1"))) {
+			app.open[fmt.Sprintf("turn:mem1:%d", tu.Seq)] = true
+		}
+		tt.Frame()
+		tt.Frame()
+		all = texts(tt)
 		if strings.Contains(all, folded) {
-			t.Errorf("%s: the looks aren't folded", lang)
+			t.Errorf("%s: the run isn't one line", lang)
 		}
 		// The plugin step that really failed is its own line, in the agent's words, with its error.
 		for _, w := range []string{"Install the Mem plugin into Codex", "error: unknown command 'plugin' for 'codex'"} {
@@ -128,11 +138,15 @@ func TestOpenedTaskMemStretches(t *testing.T) {
 
 // openStretches opens every folded stretch of a task, as clicks would.
 func openStretches(app *App, id string) {
-	for _, b := range app.blocks(app.S.Task(id)) {
+	blocks := app.blocks(app.S.Task(id))
+	for _, tu := range turnsOf(blocks) {
+		app.open[fmt.Sprintf("turn:%s:%d", id, tu.Seq)] = true // D268: a finished turn's fold
+	}
+	for _, b := range blocks {
 		if b.K == "steps" {
 			for _, l := range b.Lines {
-				if l.K == "looks" {
-					app.open[fmt.Sprintf("looks:%s:%d", id, l.Seq)] = true
+				if l.K == "group" {
+					app.open[fmt.Sprintf("group:%s:%d", id, l.Seq)] = true
 				}
 			}
 		}

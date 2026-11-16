@@ -28,6 +28,9 @@ type Step struct {
 	// Says is what the agent said the step is for, when its harness
 	// carries it (Claude Code's description, Codex's justification).
 	Says string `json:"says,omitempty"`
+	// Via is the connected service an "other" step went through (an MCP
+	// server), so a run of them is said by the service (D268).
+	Via string `json:"via,omitempty"`
 }
 
 func in(list []string, s string) bool {
@@ -846,8 +849,15 @@ func stepOf(harness string, t *protocol.ToolCall) Step {
 	if strings.Contains(srv, "cua") || strings.Contains(srv, "computer") || in(computerList, tool) {
 		return computerStep(tool, o)
 	}
-	return Step{Kind: "other", Target: strings.ReplaceAll(tool, "_", " ")}
+	// D268: a service's tool, mcp__github__fetch_file or github.fetch_file, keeps its service apart.
+	via, name := server, tool
+	if m := dottedToolRe.FindStringSubmatch(tool); server == "" && m != nil {
+		via, name = m[1], m[2]
+	}
+	return Step{Kind: "other", Target: strings.ReplaceAll(name, "_", " "), Via: via}
 }
+
+var dottedToolRe = regexp.MustCompile(`(?i)^([a-z][\w-]*)\.([a-z_][\w.]*)$`)
 
 // saysOf is the agent's own short words for a shell step, when its harness
 // carries them (D152).

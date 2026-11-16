@@ -86,7 +86,8 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 	ui.Column(c.Key("taskpane")).Grow(1).MinHeight(0).Children(func() {
 		ui.Scroll(c.Key("taskpage:" + task.ID)).TrackScroll(sc).Grow(1).MinHeight(0).Children(func() {
 			ui.Row(c).Justify(ui.Center).Padding(t.S5, t.S5, t.S6, t.S5).Children(func() {
-				ui.Column(c).Grow(1).MaxWidth(convWidth).MinWidth(0).Gap(t.S6).Children(func() {
+				// D268: one centered reading measure for the whole task.
+				ui.Column(c).Grow(1).MaxWidth(readMeasure).MinWidth(0).Gap(t.S6).Children(func() {
 					// The head (D74, D89 layout): the clay partner's state face
 					// beside one block that reads top to bottom: one quiet meta
 					// line (state · when · who), the headline (what it is doing
@@ -151,19 +152,36 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 	a.placeBar(c, "task", RouteTask, func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.crumb(c, a.L.T("nav.onhand"), RouteOnHand)
-		title := shortTitle(task.Title())
-		if title == "" {
-			title = a.L.T("task.unknown")
-		}
-		a.chromeTitle(c, title)
+		a.taskTitle(c, task)
 	}, func() {
 		a.taskActions(c, task)
 	})
 }
 
+// taskTitle is the task's name in the bar (D268): one line at 15/600 in the
+// body face, its full title on hover, and under it at 12 who does it, where
+// it stands and where: "Codex · 在做 · hawdb · ducter/fix".
+func (a *App) taskTitle(c *ui.Context, task *store.Task) {
+	t := a.T
+	full := task.Title()
+	title := shortTitle(full)
+	if title == "" {
+		title, full = a.L.T("task.unknown"), a.L.T("task.unknown")
+	}
+	state := a.stateLabel(task.Attention())
+	if a.yourTurn(task) {
+		state = a.L.T("task.your.turn")
+	}
+	sub := strings.Join(nonEmpty(harnessName(task.Harness()), state, a.whereLine(task.Place())), " · ")
+	ui.Column(c.Key("tasktitle")).Gap(1).MinWidth(0).Shrink(1).Children(func() {
+		ui.Text(c, autospace(title)).FontSize(15).FontWeight(600).LineHeight(1.25).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(full)
+		ui.Text(c, autospace(sub)).FontSize(t.XS).LineHeight(1.25).TextColor(t.InkMuted).SingleLine().MinWidth(0)
+	})
+}
+
 // taskActions are what the user can do to the task itself while it is
-// open: open its working copy (D198, any state) and watch its page (D190).
-// Pause and Cancel task sit in the foot over the composer (D210, D213);
+// open: open its working copy (D198, any state) and watch its page (D190);
+// Cancel task in the ⋯ at the end (D268). Stop sits by Send while it works;
 // Try again for a task that ended sits with its outcome.
 func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	t := a.T
@@ -202,21 +220,47 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 		a.bench.open, a.bench.tab = true, "phone"
 		a.benchLoad(task)
 	}
+	a.moreMenu(c, task)
 }
 
-// dropButton is Cancel task (不做了), in the foot beside Pause while the task
-// can still be cancelled (D213): it drops the task, undoable from its toast
-// for UndoWindow.
-func (a *App) dropButton(c *ui.Context, task *store.Task) {
+// moreMenu is the header's quiet ⋯ (D268): Cancel task, while the task can
+// still be cancelled. Never by the composer, where a slip would cost the work.
+func (a *App) moreMenu(c *ui.Context, task *store.Task) {
+	t := a.T
+	b := ui.Box(c.Key("more:"+task.ID)).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(a.L.T("task.more")).
+		Tooltip(a.L.T("task.more")).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
+	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Chrome)
+	b.Draw(drawMore(fg))
+	if b.Clicked() {
+		a.moreOpen = !a.moreOpen
+	}
+	ui.PopoverBase(c, b, &a.moreOpen, func(panel ui.Element) {
+		panel.Margin(t.S2, 0, 0, 0).MinWidth(160).Padding(t.S1).Radius(t.RadiusMD).Background(t.Surface).
+			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Border(1, t.LineSoft).Label(a.L.T("task.more"))
+		a.dropItem(c, task)
+	})
+}
+
+// dropItem is Cancel task (不做了) in the ⋯ while the task can still be
+// cancelled (D213, D268): it drops the task, undoable from its toast for
+// UndoWindow.
+func (a *App) dropItem(c *ui.Context, task *store.Task) {
 	t := a.T
 	switch task.Attention() {
 	case protocol.Failed, protocol.Dropped, protocol.Done, protocol.DoneClaimed, protocol.Superseded:
+		ui.Text(c, a.L.T("task.more")).FontSize(t.SM).TextColor(t.InkMuted).Padding(t.S2, t.S3)
 		return
 	}
-	if a.button(c, a.L.T("task.action.drop"), btnText, t.ControlSM, t.Bg) {
+	label := a.L.T("task.action.drop")
+	it := ui.Text(c.Key("drop"), label).FontSize(t.SM).TextColor(t.Failed.Ink).Padding(t.S2, t.S3).Radius(t.RadiusXS).
+		Role(ui.RoleButton).Focusable().Cursor(ui.CursorPointer).Label(label)
+	if it.Hovered() {
+		it.Background(t.Failed.Surface.Alpha(0.6))
+	}
+	if it.Clicked() {
+		a.moreOpen = false
 		a.DropTask(task.ID)
-		title := task.Title()
-		c.AddToast(ui.Toast{ID: "undo:" + task.ID, Title: a.L.T("undo.dropped", title), Timeout: UndoWindow,
+		c.AddToast(ui.Toast{ID: "undo:" + task.ID, Title: a.L.T("undo.dropped", task.Title()), Timeout: UndoWindow,
 			Action: a.L.T("undo.action"), OnAction: a.UndoDrop})
 	}
 }
@@ -486,46 +530,75 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	}
 	draft := a.taskDrafts[task.ID]
 	tray := "task:" + task.ID
-	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
-		box := ui.Column(c.Key("taskcomposer-box")).Grow(1).MaxWidth(convWidth).Padding(t.S2, t.S2, t.S2, t.S3).
-			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
-		over := a.takeDrops(box, tray) // D206
-		box.Children(func() {
-			if over {
-				a.dropHint(c)
-			}
-			a.picTray(c, tray)
-			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				a.addPicturesButton(c, tray)
-				ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task")).
-					Label(a.L.T("composer.task")).
-					Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
-					OnTextKey(func(k ui.TextKey) bool {
-						if a.pictureKeys(tray, k) {
-							return true
-						}
-						if k.Key == ui.KeyEnter && k.Mods == 0 {
-							if a.SendToTask(task.ID, k.Text()) {
-								k.SetText("")
-								// D207: the key runs after this frame's draft was
-								// stored; empty the stored one too, or the next
-								// frame puts the sent words back.
-								a.taskDrafts[task.ID] = ""
+	// D268: while it works, what is sent steers it (read at its next step);
+	// ⌥↩ or 做完再说 / After this waits for its turn to end. Stop sits by Send.
+	working := task.Attention() == protocol.Working
+	mode := func(queue bool) string {
+		switch {
+		case !working:
+			return ""
+		case queue:
+			return "queue"
+		}
+		return "steer"
+	}
+	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S4, t.S5).Children(func() {
+		ui.Column(c).Grow(1).MaxWidth(readMeasure).MinWidth(0).Gap(t.S1).Children(func() {
+			box := ui.Column(c.Key("taskcomposer-box")).Padding(t.S2, t.S2, t.S2, t.S3).
+				Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+			over := a.takeDrops(box, tray) // D206
+			box.Children(func() {
+				if over {
+					a.dropHint(c)
+				}
+				a.picTray(c, tray)
+				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+					a.addPicturesButton(c, tray)
+					ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task")).
+						Label(a.L.T("composer.task")).
+						Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
+						OnTextKey(func(k ui.TextKey) bool {
+							if a.pictureKeys(tray, k) {
+								return true
 							}
-							return true
-						}
-						return false
-					})
-				if a.focusComposer {
-					ta.Focus()
-					a.focusComposer = false
-				}
-				if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
-					if a.SendToTask(task.ID, draft) {
-						draft = ""
+							if k.Key == ui.KeyEnter && (k.Mods == 0 || k.Mods == ui.Alt) {
+								if a.SendToTaskMode(task.ID, k.Text(), mode(k.Mods == ui.Alt)) {
+									k.SetText("")
+									// D207: the key runs after this frame's draft was
+									// stored; empty the stored one too, or the next
+									// frame puts the sent words back.
+									a.taskDrafts[task.ID] = ""
+								}
+								return true
+							}
+							return false
+						})
+					if a.focusComposer {
+						ta.Focus()
+						a.focusComposer = false
 					}
-				}
+					if working && strings.TrimSpace(draft) != "" {
+						if a.button(c, a.L.T("composer.after"), btnText, t.ControlSM, t.Surface) && a.SendToTaskMode(task.ID, draft, "queue") {
+							draft = ""
+						}
+					}
+					if working && a.iconButton(c, a.L.T("task.action.pause"), t.ControlLG, btnSecondary, drawStop) {
+						a.TaskAction(task.ID, "interrupt")
+					}
+					if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
+						if a.SendToTaskMode(task.ID, draft, mode(false)) {
+							draft = ""
+						}
+					}
+				})
 			})
+			if working {
+				ui.Row(c).Gap(t.S2).Padding(0, t.S4).Children(func() {
+					ui.Text(c, a.L.T("composer.steer.hint")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
+					ui.Spacer(c)
+					ui.Text(c, a.L.T("composer.queue.hint")).FontSize(t.XS).TextColor(t.Faint).SingleLine().Shrink(0)
+				})
+			}
 		})
 	})
 	a.taskDrafts[task.ID] = draft
@@ -570,9 +643,13 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, queued bool
 		}
 		{
 			r := t.BubbleRadius
-			b := ui.Text(c, text).FontSize(t.MD).LineHeight(1.5).TextColor(t.OnUserBubble).Background(t.UserBubble).
+			b := ui.Text(c, autospace(text)).FontSize(taskProse).LineHeight(leadingFor(text, 1.5)).TextColor(t.OnUserBubble).Background(t.UserBubble).
 				Padding(9, t.S3).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80).Selectable()
-			if waiting || queued {
+			switch {
+			case queued:
+				// D268: waiting its turn: a dashed outline, no fill, muted words.
+				b.Background(ui.Transparent).Border(1.5, t.Line2).BorderStyle(ui.BorderDashed).TextColor(t.InkMuted)
+			case waiting:
 				b.Opacity(0.7)
 			}
 		}

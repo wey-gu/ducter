@@ -791,7 +791,7 @@ export type ClientFrame =
   // once; never logged, never sent back) and whether it is for this task only.
   | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string; key?: string; once?: boolean }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
-  | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[] }
+  | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[]; /** D268: steer (default while it works) or queue for after this turn. */ mode?: "steer" | "queue" }
   // merge: integrate the task branch into its base branch (local, reversible by revert);
   // open_pr: push the branch and open a draft PR (an intent: external effect, see G-safety).
   // The server acks every task_action with {t:"action_result"}.

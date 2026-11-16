@@ -599,11 +599,11 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    - On mobile, decisions are a swipeable stack: swipe left takes the default, swipe right
      means later.
    - Routines appear as one card each, with the next firing time.
-3. **An opened task** (conductor depth; D74, D90). One centered column on the conversation's
-   measure and rhythm, read top to bottom; the window's header is the breadcrumb and the title only.
+3. **An opened task** (conductor depth; D74, D90). One centered column on the reading measure
+   (D268: 640 pt on the Mac, 40 em on the web, head, transcript, changes and composer alike), read top to bottom; the window's header is the breadcrumb and the title only.
    1. **The head is one block** (D90): the state face (96 pt) beside one quiet meta line
       (D152): the state in its ink, the task's one clock once finished ("用了 18 分钟 / took 18
-      min"; while it works the clock ticks in the foot, D210), the agent and the model (no coin, D213), where
+      min"; while it works the clock ticks on the working line, D268), the agent and the model (no coin, D213), where
       (repo · branch, a folder, "在 hel 上 / on hel" for another machine; nothing for no
       place), and **换谁来做 / Switch who does it** with the drawn chevron as a small action; a group that wraps to a new line never starts with "·"; then a headline that is always there (D152: the task's short title, or where a browser or a wait stands; never the agent's latest sentence, which the transcript says): before D152, while it works, what it is doing now in a
       sentence (why it waits, its latest report, its latest saved progress, else its title)
@@ -620,21 +620,34 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
       **展开 / Show all**, a hidden key saying **隐藏了一段密钥 / A key is hidden** with a small
       drawn key; your words as your bubble (the user's Go too); the partner's passed-on words
       on the same sunken card under **{name} 对它说**. Pictures in a turn stay small (about 15
-      rem / 240 pt). Then the agent's answer in order, items 12 apart: its messages and saved
-      progress (said once, a small flag and **保存了进度 / Progress saved**) in body ink at the
-      reading measure, and its steps between them, **one line each**, consecutive lines tight
-      (26–28 pt, padding 0/6 bleeding past the column so a hover background reads as a row):
-      a drawn mark in muted ink; the sentence (the agent's own words, else a verb and a
-      summary, SM, InkSoft); the command or path in mono, muted, cut first (no inline-code
-      tile); an edit's **+n** in the done ink and **−n** in the failed ink; ×n; a chevron in
-      Faint only when the line opens. Consecutive looks fold into **看了 3 个文件，搜了 2 次 /
-      Read 3 files, 2 searches**. A probe that found nothing in muted ink. A real failure in
-      the failed ink with **出错 / Error**, and its telling output line under it in mono XS,
-      failed ink, indented 24. Opened, a step shows `$ command` and its output on Sunken (mono
-      XS, 12 lines then **还有 n 行 / n more lines**), an edit its diff on Sunken: put-in lines
-      on the done surface in the done ink, taken-out lines on the failed surface in the failed
-      ink, context plain, "@@ path" headers bold muted, ⋯ between hunks. Your words while it
-      is busy are lighter with **排队中 · 它忙完手上的事就会看到**. Past 240 lines the older turns wait
+      rem / 240 pt). Then the agent's answer in order, items 12 apart (D268): its messages and
+      saved progress (said once, a small flag and **保存了进度 / Progress saved**) at 14, leading
+      1.6, or 1.75 when the text holds Han, autospaced (paragraphs 10 apart, list items 4, h1/h2
+      body+3/body+1 at 600, inline code a step down in mono on a faint fill, code blocks radius
+      8), and between them **each run of steps as one summary line**: the tally in at most two
+      phrases by priority, then the rest counted (**看了 9 个文件，跑了 2 条命令，还做了 3 件别的 /
+      Read 9 files, ran 2 commands, and 3 other things**; a service by its name, **用了 GitHub 9 次
+      / Used GitHub 9 times**); a single step keeps its own line. A step line: min 24, gap 6,
+      a 16 glyph in muted ink, the words at 13 in InkSoft, its subject (command, path) in mono
+      in ink, an edit's **+n** / **−n**, ×n, a 12 chevron in Faint only when it opens; 2 between
+      step lines, padding 1/6 bleeding past the column so a hover reads as a row. While the
+      run is live its line shows only its latest step in the present tense (**正在跑 bun test /
+      Running bun test**) with an 11 spinner. Opened, its steps indented 22, scrolling past 288.
+      A failure, a subagent and thinking stand alone: a failure with a small × and **出错 /
+      Error** in secondary ink, its words under it at 13 soft ink (**GitHub 找不到这个文件（404）**),
+      never red mono; a subagent **交给一个子 agent：{what}** with a check and how long; thinking
+      **想了 4 秒 / Thought for 4s**, opening to its headings at 13/1.5 muted. The plan is one card
+      (Surface, a LineSoft hairline, radius MD): an empty ring, a dashed accent ring, a check
+      (done faded), **计划 · n/m 完成**. A compaction or an interruption is a hairline with an 11
+      label. A step whose output says nothing doesn't open. Opened, a step shows `$ command` and
+      its output on Sunken (mono 12, radius 8, 12 lines then **还有 n 行 / n more lines**), an
+      edit its diff on Sunken: put-in lines on the done surface in the done ink, taken-out lines
+      on the failed surface in the failed ink, context plain, "@@ path" headers bold muted, ⋯
+      between hunks. A finished turn folds its work under **做了 3 分 12 秒 › / Worked for 3m 12s
+      ›** (13 muted over a hairline), keeping its last words; the live one never folds. While it
+      works, the transcript ends on the working line: what it is on at 13 with a light sweeping
+      across it, the turn's clock right-aligned in tabular figures. A queued message is a dashed
+      outline, no fill, muted words, **排队中 / Queued**. Past 240 lines the older turns wait
       behind **显示更早的 n 步 / Show n earlier steps**.
    6. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff
       in place, full width, under a quiet header. No diff shows by default; a task in no repo,
@@ -646,20 +659,21 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    24 / 32; a headline or paragraph at most about 68 Latin or 36 Chinese characters a line
    (D78 Chinese rules: leading 1.75, no tracking).
    The box to talk to the task stays at the bottom of the window, as the conversation's
-   composer does; a pending ask sits over it (D152). Over it, **the foot** (D210): while the task
-   works, a spinner (the only thing that moves), **在做 / Working** in the working ink, the clock
-   in tabular figures, its latest step in InkSoft, and **取消任务 / Cancel task** then **暂停 / Pause**
-   at the end (Esc twice: the first turns it into **再按一次 Esc 就暂停** with **继续** and
-   **暂停**); over to you, **等你回复** in the needs ink and the hint muted, **取消任务** at the end;
-   otherwise, until it finishes, the foot holds only **取消任务** at its end (D213); gone once it
-   finishes. A task that works or waits on you opens
+   composer does, on the same 640 measure (D268); a pending ask sits over it (D152). While it
+   works, a square **暂停 / Pause** button sits beside Send, ⌥↩ or **做完再说 / After this** queues
+   the words, and under the box **它会在下一步读到 / It reads this at its next step** with **⌥↩
+   做完再说** faint at the right. Over it, **the foot** says only the moment (D268): Esc once,
+   **再按一次 Esc 就暂停** with **继续** and **暂停**; over to you, **等你回复** in the needs ink and
+   the hint muted. Where it is at is the working line at the transcript's end. A task that works or waits on you opens
    at its latest, a finished one at its head; while it works a reader at the end follows the
    newest step, one who scrolled up gets **回到最新 / Jump to latest**, a 40 pt round raised
    button (Surface, the floating shadow) centred over the transcript's foot. Header actions: **打开 / Open** (D198: a menu, Show in
    Finder; then Open in each of Cursor / Visual Studio Code / Zed installed; then, D201, Open
    in each terminal installed, Terminal / iTerm2 / Ghostty / Warp, and Rex or con once they
    open folders; a separator between the groups, the one used last first in each) in every state while its working copy is on this Mac;
-   **暂停 / Pause** (D210) and **取消任务 / Cancel task** (D213) are in the foot. Over its changes, the working copy's path,
+   **取消任务 / Cancel task** is in the header's quiet **⋯ / More** (D268), **暂停 / Pause** by Send.
+   The header's title (D268): the task's name at 15/600 in the body face on one line, its full
+   title on hover, and under it at 12 muted **{agent} · {state} · {where}**. Over its changes, the working copy's path,
    `~/…`, mono, small and selectable (D198).
    **工作台 / Workbench** (D214, `design/workbench.md`): a drawn panel mark in the header (⌥⌘B),
    only when the task has something to show; wide, a column at the right (`--bench-w`, 42%,

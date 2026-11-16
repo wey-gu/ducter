@@ -65,9 +65,22 @@ func (a *App) tsOf(task *store.Task, seq int64) string {
 // probe that found nothing; "运行 nmem doctor" for a command.
 func (a *App) rowWords(r *StepRow) (string, string) {
 	if r.Step == nil {
-		return a.L.T("step.label.thought") + " · " + r.Thought, ""
+		// D268: how long it thought; the thinking itself opens under it.
+		if r.Ms == nil || *r.Ms < 1000 {
+			return a.L.T("think.brief"), ""
+		}
+		return a.L.T("think.took", a.shortDur(time.Duration(*r.Ms)*time.Millisecond)), ""
 	}
 	st := *r.Step
+	// D268: a subagent says what it was handed; a service's step by the service's name.
+	switch {
+	case st.Kind == "delegated" && st.Target != "":
+		return a.L.T("step.delegated.to", st.Target), ""
+	case st.Kind == "delegated":
+		return a.L.T("step.delegated.bare"), ""
+	case st.Kind == "other" && st.Via != "" && r.Outcome != "missing":
+		return serviceName(st.Via) + " · " + st.Target, ""
+	}
 	if r.Outcome == "missing" {
 		base := "step." + st.Kind
 		if st.Act != "" {

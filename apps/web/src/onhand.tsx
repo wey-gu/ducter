@@ -15,7 +15,7 @@ import { Btn } from "./controls.tsx";
 import { ago, clock, day, harnessName, when } from "./format.ts";
 import { CallRow } from "./phone.tsx";
 import { attention, canIntegrate, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
-import { liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "./transcript.tsx";
+import { liveRow, liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "./transcript.tsx";
 import { computerName, deviceWait, manyComputers } from "./where.ts";
 import { DecisionCard, stateLabel } from "./views.tsx";
 import { Goal, Groove, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
@@ -58,8 +58,8 @@ export function nowLine(task: Task): { mark: string; words: string; code: string
   if (b?.k !== "steps") return undefined;
   const l = b.lines.at(-1);
   if (!l) return undefined;
-  if (l.k === "looks") return { mark: l.searches && !l.reads ? "searched" : "read", words: liveWords(blocks), code: "" };
-  const [words, code] = rowWords(l.row);
+  if (l.k === "group") return { mark: l.rows.at(-1)!.step?.kind ?? "other", words: liveWords(blocks), code: "" };
+  const [words, code] = b.live ? liveRow(l.row) : rowWords(l.row);
   const bad = l.row.outcome === "error";
   return { mark: bad ? "error" : (l.row.step?.kind ?? "thought"), words, code, bad };
 }

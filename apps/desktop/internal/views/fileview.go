@@ -792,9 +792,14 @@ func drawStep(col ui.Color, up bool) func(p *ui.Painter, r ui.Rect) {
 
 // codeBlock is a code block in Ducter's words: its language, and Ducter's
 // own 拷贝 / Copy (MyGo's says "Copy code" in its own words and language).
-func (a *App) codeBlock(c *ui.Context, b *markdown.CodeBlockView) {
+func (a *App) codeBlock(c *ui.Context, b *markdown.CodeBlockView) { a.codeBlockR(c, b, a.T.RadiusSM) }
+
+// codeBlockTask is a code block in an opened task's words: smaller corners (D268).
+func (a *App) codeBlockTask(c *ui.Context, b *markdown.CodeBlockView) { a.codeBlockR(c, b, 8) }
+
+func (a *App) codeBlockR(c *ui.Context, b *markdown.CodeBlockView, radius float32) {
 	t := a.T
-	ui.Column(c).AlignSelf(ui.Stretch).Background(t.SurfaceRaised).Border(1, t.Line).Radius(t.RadiusSM).Clip().
+	ui.Column(c).AlignSelf(ui.Stretch).Background(t.SurfaceRaised).Border(1, t.Line).Radius(radius).Clip().
 		Role(ui.RoleGroup).Label(firstNonEmpty(b.Language, a.L.T("code.block"))).Children(func() {
 		head := ui.Row(c).AlignItems(ui.Center).Padding(t.S1, t.S1, 0, t.S3)
 		head.Children(func() {

@@ -7,7 +7,8 @@ import type { Bodies, CheckSpec, RoutineView, UntilView, WaiterView } from "@duc
 import { DEFAULT_EVERY_MS, describeCheck, describePredicate } from "@ducter/protocol/src/checks.ts";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { cjkPad, clock, day, md, when } from "./format.ts";
+import { cjkPad, clock, day, harnessName, md, when } from "./format.ts";
+import { Toggle } from "./controls.tsx";
 
 const pad = (s: string) => cjkPad(A.L, s);
 /** t with a time padded from the Chinese around it, without stray spaces at the ends or before punctuation. */
@@ -287,6 +288,7 @@ export function WatchCard({ task, wakes, wokeAt }: { task: Task; wakes: number; 
       </section>
     );
   if (!w || attention(task) !== "blocked") return null;
+  if (w.limit) return <LimitCard w={w} />;
   const watches = !!(w.check || w.event);
   const b = backOf(w);
   const looks = wakes + (w.looks ?? 0);
@@ -327,9 +329,52 @@ export function WatchCard({ task, wakes, wokeAt }: { task: Task; wakes: number; 
  *  "Back when it happens"; "" for a wait that doesn't come back on its own. */
 export function backWords(w: WaiterView | undefined, now = Date.now()): string {
   if (!w) return "";
+  if (w.limit) return limitState(w, now);
   const b = backOf(w, now);
   if (b.at) return tp("watch.back", soonish(b.at, now));
   return w.event ? t("watch.back.when") : "";
+}
+
+/** D297: when a limit wait comes back: the reset itself (its grace minute left out), or the next try. */
+export function limitAt(w: WaiterView): string | undefined {
+  const at = Date.parse(w.at ?? "");
+  if (!Number.isFinite(at)) return undefined;
+  return new Date(w.limit?.resetKnown ? at - LIMIT_GRACE_MS : at).toISOString();
+}
+
+/** D297: a task waiting on its agent's limit, as its state: 额度 3:12 恢复 / Limit resets 3:12. */
+export function limitState(w: WaiterView, now = Date.now()): string {
+  const at = limitAt(w);
+  return w.limit?.resetKnown && at && Date.parse(at) > now ? t("limit.state", soonish(at, now)) : t("limit.state.unknown");
+}
+
+/** D297: the reset's grace minute (core/src/limits.ts RESET_GRACE_MS). */
+const LIMIT_GRACE_MS = 60_000;
+
+/** D297: a task resting on its agent's usage limit. The ring fills toward the reset; it says whose
+ *  limit and when it carries on; Hand it to {agent} now when another signed-in agent can take it,
+ *  Stop waiting, and under them the choice to hand off right away next time. */
+export function LimitCard({ w }: { w: WaiterView }) {
+  const l = w.limit!;
+  const b = backOf(w);
+  const at = limitAt(w);
+  const to = l.handTo;
+  return (
+    <section class="watch limit">
+      <div class="watch-main">
+        <LookRing frac={b.frac} inside={b.left ? leftWords(b.left) : undefined} label={limitState(w)} />
+        <div class="watch-words">
+          <p class="rhythm">{t("limit.head", harnessName(l.harness))}</p>
+          {at && <p class="back">{l.resetKnown ? t("limit.back", soonish(at)) : t("limit.back.unknown", soonish(at))}</p>}
+        </div>
+      </div>
+      <div class="btns">
+        {to && <button class="btn secondary" onClick={() => A.waiterAction(w.waiterId, "handoff")}>{t("limit.handoff", harnessName(to.harness))}</button>}
+        <button class="btn text" onClick={() => A.waiterAction(w.waiterId, "cancel")}>{t("limit.cancel")}</button>
+      </div>
+      {(to || w.limitAuto) && <Toggle label={t("limit.auto")} checked={!!w.limitAuto} onChange={(v) => A.setSettings({ limitHandoff: v })} />}
+    </section>
+  );
 }
 
 /** A time of day, with its day only when it isn't today. */

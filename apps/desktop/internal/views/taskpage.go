@@ -293,6 +293,15 @@ func (a *App) endLine(c *ui.Context, task *store.Task, m *taskMemo) {
 // waitWords is the end line's words for a wait: its reason, and when it
 // looks again (a check, an event) or wakes (a time).
 func (a *App) waitWords(w *protocol.Waiter) string {
+	// D297: a wait on the agent's limit says when it carries on.
+	if w.Limit != nil {
+		if at := a.limitAt(w); !at.IsZero() {
+			if w.Limit.ResetKnown {
+				return a.L.T("limit.back", a.soon(at))
+			}
+			return a.L.T("limit.back.unknown", a.soon(at))
+		}
+	}
 	reason := strings.TrimSpace(w.Reason)
 	if w.Check != nil || w.Event != nil {
 		if next := store.ParseTime(w.NextLookAt); !next.IsZero() {
@@ -348,6 +357,9 @@ func (a *App) waitLine2(c *ui.Context, task *store.Task, w *protocol.Waiter) {
 func (a *App) promptLine(task *store.Task, p *Block) string {
 	at := clock(a.tsOf(task, p.Seq))
 	if p.K == "wake" {
+		if p.Limit {
+			return a.L.T("wake.limit", p.Text, at)
+		}
 		if p.Timer {
 			return a.L.T("wake.timer", at)
 		}

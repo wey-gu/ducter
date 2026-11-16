@@ -150,6 +150,10 @@ func (a *App) storyOf(task *store.Task) rowStory {
 		// D261: a wait always says what it waits for. A waiter names it; else
 		// the state's reason; else what the task last reported; else that it
 		// stopped without saying (true, and worth a look).
+		// D297: whose limit it waits for, in the viewer's own words.
+		if w := a.S.WaiterFor(task.ID); w != nil && w.Limit != nil {
+			return rowStory{words: a.L.T("limit.line", harnessName(w.Limit.Harness))}
+		}
 		if w := a.S.WaiterFor(task.ID); w != nil && strings.TrimSpace(w.Reason) != "" {
 			return rowStory{words: a.waitLine(w.Reason)}
 		}
@@ -286,6 +290,29 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 			fresh = append(fresh, x)
 		}
 	}
+	// D297: tasks waiting on one account's limit share one reset: drawn
+	// together under one line, after the other fresh waits.
+	var groups []limitGroup
+	if !rail {
+		groups = a.groupLimits(fresh)
+		grouped := map[string]bool{}
+		for _, g := range groups {
+			for _, x := range g.tasks {
+				grouped[x.ID] = true
+			}
+		}
+		rest := fresh[:0:0]
+		for _, x := range fresh {
+			if !grouped[x.ID] {
+				rest = append(rest, x)
+			}
+		}
+		fresh = rest
+	}
+	var inGroups []*store.Task
+	for _, g := range groups {
+		inGroups = append(inGroups, g.tasks...)
+	}
 	for _, x := range done {
 		if !rail && a.rowMarkOf(x) != stNew {
 			seen = append(seen, x)
@@ -311,7 +338,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	}
 	add(show(1), needs)
 	add(show(2), working)
-	add(show(3), fresh)
+	add(show(3), fresh, inGroups)
 	add(show(3) && quietOpen, quiet)
 	add(show(4), newer)
 	add(show(4) && doneOpen, seen)
@@ -360,11 +387,15 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	if len(waiting)+len(loose) > 0 && show(3) {
 		a.listSection(c, "waiting", a.L.T("lane.waiting"), len(waiting)+len(loose), func() {
 			a.taskCards(c.Key("fresh"), fresh)
+			for _, g := range groups {
+				a.limitGroupHead(c, g)
+				a.taskCards(c.Key("limit:"+g.harness), g.tasks)
+			}
 			for _, w := range loose {
 				a.waiterRow(c.Key("w:"+w.WaiterID), w)
 			}
 			if len(quiet) > 0 {
-				if !quietFolds && len(fresh)+len(loose) > 0 {
+				if !quietFolds && len(fresh)+len(inGroups)+len(loose) > 0 {
 					a.subHead(c, "quiet", a.L.T("onhand.wait.quiet.head"))
 				}
 				if quietFolds && f != 3 && q == "" && a.foldLine(c, "quiet", a.L.T("onhand.wait.quiet", len(quiet)), quietOpen) {

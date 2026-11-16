@@ -53,6 +53,7 @@
 | `body_selected` (who does a task, and why) | **谁在做 / Who's doing it**: "{agent} 在做，按你的规则「…」/ {agent} is doing it, by your rule "…"" · "…，因为 {agent} 额度不多了 / …, because {agent}'s limit is low" · "…，是你换的 / …; you switched it"; switching **换谁来做 / Switch who does it** · **现在 / Now** · reasons **你的规则 / Your rule** · **最适合这件事 / Best fit for this** · **快，省额度 / Fast, uses less of the limit** · "额度不够了 · 剩下的给 {name} 留着 / Not enough limit · the rest is kept for {name}" · **你关了「用它做事」/ Use it for tasks is off** · the button is the handoff's **换到 X 接着做 / Continue on X** | D89, D90. The conversation's task line ends with who (and why when it isn't the plain pick); the opened task's head says who in its meta line; the reason is a sentence in Details |
 | device states | **醒着 / Awake · 睡着了 / Asleep · 连不上 / Can't reach** · wake = **叫醒 / Wake** | Never "broken" or "offline" wording for sleep |
 | quota | **额度 / limit** ("额度还剩 80% / 80% of the limit left") | One per AI account, shared across its devices |
+| a task waiting on its agent's limit (D297) | **额度 {time} 恢复 / Limit resets {time}** (the state) · **等 {agent} 的额度恢复 / Waiting until {agent}'s limit resets** · **{agent} 的额度用完了 / {agent}'s limit is used up** · **额度 {time} 恢复，到时接着做 / The limit resets at {time}, and it carries on then** · **额度恢复后接着做，{time} 先去试一次 / It carries on once the limit is back, and tries again at {time}** · **等额度恢复 / Waiting for the limit** · **现在换 {agent} 接着做 / Hand it to {agent} now** · **先停下 / Stop here** · **以后额度用完，直接换别的 AI agent 接着做 / Next time a limit runs out, hand it to another AI agent right away** · On hand **{agent} 的额度 {time} 恢复 / {agent}'s limit resets {time}** with **这 {n} 件到时一起接着做 / These {n} carry on together then** · the transcript **{agent} 的额度用完了，{time} 恢复后接着做 / {agent}'s limit ran out; it carries on after it resets at {time}** · **{agent} 的额度恢复了，{time} 接着做 / {agent}'s limit came back at {time}, carrying on** | A limit is a wait, never a failure: the task carries on by itself in the same session. Never "quota", "rate limit" or "429" on screen |
 | screen place controls | **画面 / Screen** tab · **接手 / Take over** · **还给它 / Give it back** | |
 | loop iteration | **第 n 次 / Try n** | |
 | checkpoint | **保存了进度 · {time} / Progress saved · {time}**; in the dossier **保存的进度 / Saved progress** | Describes what happened; no noun to learn |
@@ -415,8 +416,9 @@ Two primitives plus one property cover every case.
 - **Recognizable at a glance:** its own face, accent color, and optionally theme.
 - **Creating one is light:** a name plus one sentence. Mem's birth-draft flow does the rest.
 - **Quota:** subscriptions belong to the user. The main-AI reserve is kept per subscription,
-  shared by all personas' main turns. *Not built (D133): no harness reports its limit yet, so
-  the reserve and limit-based picking are on the roadmap.*
+  shared by all personas' main turns. A task whose agent's limit runs out waits for the reset
+  and carries on in the same session, or goes to another signed-in agent (D297). *Not built
+  (D133): the partner's reserve and limit-based picking are on the roadmap.*
 
 ## 6. Scenario catalog
 

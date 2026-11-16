@@ -37,6 +37,8 @@ export interface ArmInput {
   at?: string;
   /** D267: a task's own timer wakes the task (taskId), not the partner. */
   wakes?: "task";
+  /** D297: the timer is a wait on the agent's usage limit (core/src/limits.ts). */
+  limit?: Bodies["waiter"]["limit"];
   check?: CheckSpec;
   event?: EventSpec;
   judge?: string;
@@ -441,6 +443,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       if (input.decisionId) body.decisionId = input.decisionId;
       if (input.routineId) body.routineId = input.routineId;
       if (input.wakes === "task" && input.taskId && body.at) body.wakes = "task";
+      if (input.limit && body.wakes === "task") body.limit = input.limit;
       if (input.held) body.held = true;
       if (input.unmetSays?.trim()) body.unmetSays = clip(input.unmetSays.trim(), 160);
       log.append({ stream: "channel", origin: "waiter", kind: "waiter", body });

@@ -74,6 +74,7 @@ import { createComputerUse, type ComputerUse, type ComputerUseOptions } from "./
 import { readSites } from "./browser/sites.ts";
 import { createClosing, registerClosingTool } from "./closing.ts";
 import { createAccountUsage } from "./account-usage.ts";
+import { createLimitWaits } from "./limits.ts";
 import { workerProfile } from "./browser/remote.ts";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 import { createChannels, type ChannelDeps, type Channels } from "./channels/index.ts";
@@ -244,6 +245,9 @@ export function triggersPartner(e: LogEvent): boolean {
     const w = e.body as Bodies["waiter"];
     // A routine's watch starts a run; a task's own check wakes that task, not the partner.
     if (w.routineId) return false;
+    // D297: a task waiting on its agent's limit is the task's own wait; the partner hears it only
+    // when it matters (no reset time and nobody else to take it), once.
+    if (w.limit) return w.state === "armed" && !!w.limit.tell;
     if (w.wakes === "task") return false; // D267: the task's own timer wakes the task
     if (w.state === "expired") return true;
     // D145: it can no longer come true (a check failed): said once, by the partner.
@@ -327,6 +331,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   let partner: Partner | undefined;
   const push = openPushStore(dataDir);
   const settings = openSettings({ dataDir, log, push, persona, memoryPinnedOff: process.env.DUCTER_MEMORY === "off" });
+  let limitsDecorate = (o: OnHand) => o; // D297: set once the limit waits are made (below)
   let workRef: Work | undefined; // set below: until loops hold their tries' done reports (D113)
   const decisions = createDecisions({
     log,
@@ -495,7 +500,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     onCalling: () => devicesView?.changed(), // D199: the home's 打电话
   });
   tasks.setDecorator((o) => {
-    const on = decorateBrowsing(changes.decorate(work.decorate(o)));
+    const on = decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))));
     const added = projects.list();
     const calls = phone.calls();
     return { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}) };
@@ -647,6 +652,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   const media = createMediaStore(dataDir);
   // D288: each agent's account usage limits on the home, read by the agent itself and kept current by its sessions.
   const accountUsage = createAccountUsage({ read: async (h) => (await runner?.harness.accountUsage?.(h)) ?? { why: "unsupported" } });
+  // D297: a task whose agent hits its usage limit waits for the reset (or is handed on) and carries on.
+  const limitWaits = createLimitWaits({ log, tasks, waiters: work.waiters, loadout, settings, usage: accountUsage, runner: () => runner, clock });
+  limitsDecorate = (o) => ({ ...o, waiters: o.waiters.map((w) => limitWaits.decorate(w)) });
+  const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
   const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, spine: log.spine, bridgeLink, media, limits: accountUsage, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D150: the one helper (brain.ts) the runner and the settings frame share.
   api.partnerFallback = () => {
@@ -699,7 +708,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
-  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing } });
+  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing } });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1168,6 +1177,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       decisions.stop();
       living.stop();
       work.stop();
+      limitWaits.stop();
       proactive.stop();
       calendar.stop();
       changes.stop();

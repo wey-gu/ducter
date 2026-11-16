@@ -382,10 +382,16 @@ type Waiter struct {
 	Event     *EventSpec `json:"event,omitempty"`
 	Judge     string     `json:"judge,omitempty"`
 	// Wakes is "task" when a timer wakes its task (D267), not the partner.
-	Wakes    string `json:"wakes,omitempty"`
-	EveryMs  int64  `json:"everyMs,omitempty"`
-	Until    string `json:"until,omitempty"`
-	Observed string `json:"observed,omitempty"`
+	Wakes string `json:"wakes,omitempty"`
+	// Limit (D297): the task's agent hit its usage limit; the task rests
+	// until At (the reset, plus a minute's grace, or the next try).
+	Limit *LimitWait `json:"limit,omitempty"`
+	// LimitAuto (D297, from the On hand snapshot): the person chose to hand
+	// a task to another agent right away when a limit runs out.
+	LimitAuto bool   `json:"limitAuto,omitempty"`
+	EveryMs   int64  `json:"everyMs,omitempty"`
+	Until     string `json:"until,omitempty"`
+	Observed  string `json:"observed,omitempty"`
 	// Unmet (D145): it ended without its condition, and why, in the
 	// user's words ("cancelled" with Unmet: it can't come true).
 	Unmet string `json:"unmet,omitempty"`
@@ -398,6 +404,23 @@ type Waiter struct {
 	Looks       int    `json:"looks,omitempty"`
 	Changes     int    `json:"changes,omitempty"`
 	NextLookAt  string `json:"nextLookAt,omitempty"`
+}
+
+// LimitWait is a wait on an AI agent's usage limit (D297): whose limit,
+// whether At is the reset it named, another signed-in agent that could take
+// the task now, and how many times in a row it met the limit.
+type LimitWait struct {
+	Harness    string  `json:"harness"`
+	ResetKnown bool    `json:"resetKnown"`
+	HandTo     *HandTo `json:"handTo,omitempty"`
+	Tell       bool    `json:"tell,omitempty"`
+	Tries      int     `json:"tries,omitempty"`
+}
+
+// HandTo is who a limit wait's task could go to now (D297).
+type HandTo struct {
+	Harness string `json:"harness"`
+	Model   string `json:"model,omitempty"`
 }
 
 // CheckSpec is a condition compiled into one read-only command and what
@@ -1141,6 +1164,9 @@ type Settings struct {
 	ProactiveBy string `json:"proactiveBy,omitempty"`
 	// Peers: who of the user's other agents may reach the partner (D170).
 	Peers *Peers `json:"peers,omitempty"`
+	// LimitHandoff (D297): hand a task to another agent right away when a
+	// usage limit runs out (chosen on the task's limit card).
+	LimitHandoff bool `json:"limitHandoff,omitempty"`
 }
 
 // SettingsPatch is a change to some settings. Quiet is sent as given, so
@@ -1158,6 +1184,7 @@ type SettingsPatch struct {
 	AutoUpdate      *bool                  `json:"autoUpdate,omitempty"`
 	Proactive       string                 `json:"proactive,omitempty"`
 	Peers           *Peers                 `json:"peers,omitempty"`
+	LimitHandoff    *bool                  `json:"limitHandoff,omitempty"`
 }
 
 // Peers is who of the user's other agents may reach the partner (D170):

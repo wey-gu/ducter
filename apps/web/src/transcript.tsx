@@ -14,8 +14,8 @@ import { tokensShort } from "@ducter/protocol";
 import type { MediaRef, WaiterView } from "@ducter/protocol";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { RefObject } from "preact";
-import { WaitHow, waitLine } from "./work.tsx";
-import { clock } from "./format.ts";
+import { limitAt, WaitHow, waitLine } from "./work.tsx";
+import { clock, day, when } from "./format.ts";
 import { Component, type JSX } from "preact";
 import { Btn, Chev } from "./controls.tsx";
 import { escArmed } from "./esc.ts";
@@ -469,6 +469,11 @@ function PlanCard({ b }: { b: Extract<Block, { k: "plan" }> }) {
   );
 }
 
+/** A time of day, with its day only when it isn't today (D297's reset). */
+function soonClock(iso: string, now = Date.now()): string {
+  return day(A.L, iso, now) === day(A.L, new Date(now).toISOString(), now) ? clock(iso) : when(A.L, iso, now);
+}
+
 /** What fills a note's %s (D207): a computer, an agent, an effort; a computer it didn't name is said plainly. */
 /** D282: a switch inside the task, with its time: another agent, another model or effort, another computer. */
 export function switchLine(task: Task, b: Extract<Block, { k: "note" }>): string {
@@ -538,6 +543,13 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
           <div class="tx-divider" role="separator">
             {/* D288: with its size before and after when known (压缩了上下文 · 152k → 31k). */}
             <span>{b.say === "compacted" && b.from && b.to ? t("note.compacted.size", tokensShort(b.from), tokensShort(b.to)) : b.say === "compacted" && b.from ? t("note.compacted.from", tokensShort(b.from)) : t(`note.${b.say}`)}</span>
+          </div>
+        );
+      // D297: the agent's limit ran out: a calm hairline with when it resets, never an error.
+      if (b.say === "limit")
+        return (
+          <div class="tx-divider limit" role="separator">
+            <span>{b.at ? t("note.limit", b.name ?? "", soonClock(b.at)) : t("note.limit.unknown", b.name ?? "")}</span>
           </div>
         );
       // D282: who does it changed inside the task: one hairline with its time (换成 Codex 接着做 · 21:40).
@@ -715,7 +727,9 @@ function WaitLine({ task, w }: { task: Task; w: WaiterView }) {
   const [open, setOpen] = useState(false);
   const watches = !!(w.check || w.event);
   const next = watches ? w.nextLookAt : w.at;
-  const words = next ? t(watches ? "end.wait" : "end.wait.timer", waitLine(w.reason), clock(next)) : t("end.wait.bare", w.reason);
+  // D297: a wait on the agent's limit says when it carries on, in the viewer's own words.
+  const lim = w.limit ? limitAt(w) : undefined;
+  const words = w.limit && lim ? t(w.limit.resetKnown ? "limit.back" : "limit.back.unknown", soonClock(lim)) : next ? t(watches ? "end.wait" : "end.wait.timer", waitLine(w.reason), clock(next)) : t("end.wait.bare", w.reason);
   const inner = (
     <>
       {GLYPHS.waited!()}
@@ -768,6 +782,7 @@ function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; tur
 function promptLine(task: Task, p: Extract<Block, { k: "wake" } | { k: "told" }>): string {
   const ms = tsOf(task, p.seq);
   const at = Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
+  if (p.k === "wake" && p.limit) return t("wake.limit", p.text, at);
   if (p.k === "wake") return t(p.timer ? "wake.timer" : "wake.over", at);
   if (p.say === "lent") return t("told.lent", p.name ?? "", at);
   // D280: the loan of the person's phone ended (taken back, given back, lost), named by the phone.

@@ -245,7 +245,9 @@ export class Normalizer {
         for (const [id, task] of this.tasks) if (!task.ended && !task.shown) this.show(id, task, out);
         const o = ev.outcome ?? {};
         const text = o.kind === "completed" ? "turn completed" : o.kind === "aborted" ? "turn aborted" : `turn failed (${o.failure ?? "unknown"}): ${o.reason ?? ""}`;
-        out.push({ role: "system", text, turnEnd: true, usage: this.turnOf(this.usage()), raw: { kind: "turn_ended", outcome: o.kind, failure: o.failure } });
+        // D297: a usage limit's reset, when the agent named it (OAR's quota resetsAt), and its own words.
+        const limit = o.kind === "failed" && (o.failure === "quota" || o.failure === "rate_limited");
+        out.push({ role: "system", text, turnEnd: true, usage: this.turnOf(this.usage()), raw: { kind: "turn_ended", outcome: o.kind, failure: o.failure, ...(limit && o.resetsAt ? { resetsAt: o.resetsAt } : {}), ...(limit && o.reason ? { reason: String(o.reason).slice(0, 300) } : {}) } });
         break;
       }
       case "exited":

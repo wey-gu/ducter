@@ -232,6 +232,10 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 			// D282: who does it changed inside the task: one hairline with its time.
 			a.divider(c, a.switchLine(task, b))
 			return
+		case "limit":
+			// D297: the agent's limit ran out: a calm hairline with when it resets, never an error.
+			a.divider(c, a.limitNote(b))
+			return
 		}
 		ui.Row(c).Gap(6).MinHeight(24).AlignItems(ui.Center).MinWidth(0).Children(func() {
 			if b.Bad {

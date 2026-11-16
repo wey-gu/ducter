@@ -106,6 +106,10 @@ type Block struct {
 	// Timer is a wake's (D271): its wait was for a time. A wake's Text is
 	// the wait's reason.
 	Timer bool `json:"timer,omitempty"`
+	// Limit is a wake's (D297): the agent's usage limit came back; Text is the agent.
+	Limit bool `json:"limit,omitempty"`
+	// At is a limit note's (D297): when the limit resets, when the agent said.
+	At string `json:"at,omitempty"`
 }
 
 // The words core's work.ts sends a task when its own wait ends (D271),
@@ -113,23 +117,34 @@ type Block struct {
 var wakes = []struct {
 	re    *regexp.Regexp
 	timer bool
+	limit bool
 }{
-	{regexp.MustCompile(`^到时间了：「([\s\S]+?)」。接着做。$`), true},
-	{regexp.MustCompile(`^It's time: "([\s\S]+?)"\. Carry on\.$`), true},
-	{regexp.MustCompile(`^等到了：「([\s\S]+?)」(?:（[^（）]*）)?。接着做。$`), false},
-	{regexp.MustCompile(`^The wait is over: "([\s\S]+?)"(?: \([^()]*\))?\. Carry on\.$`), false},
+	// D297 (core work.ts limitWake): the agent's limit came back; the reason is the agent.
+	{regexp.MustCompile(`^(.+?) 的额度恢复了，接着做刚才没做完的。$`), true, true},
+	{regexp.MustCompile(`^(.+?)'s usage limit has reset\. Carry on where you left off\.$`), true, true},
+	{regexp.MustCompile(`^到时间了：「([\s\S]+?)」。接着做。$`), true, false},
+	{regexp.MustCompile(`^It's time: "([\s\S]+?)"\. Carry on\.$`), true, false},
+	{regexp.MustCompile(`^等到了：「([\s\S]+?)」(?:（[^（）]*）)?。接着做。$`), false, false},
+	{regexp.MustCompile(`^The wait is over: "([\s\S]+?)"(?: \([^()]*\))?\. Carry on\.$`), false, false},
 }
 
 // wakeOf is a wake as Ducter sends it (D271): the wait's reason and
 // whether it was a timer; ok=false for anything else.
 func wakeOf(text string) (reason string, timer, ok bool) {
+	reason, timer, _, ok = wakeOfLimit(text)
+	return
+}
+
+// wakeOfLimit is wakeOf that also says whether the wake was the agent's
+// limit coming back (D297).
+func wakeOfLimit(text string) (reason string, timer, limit, ok bool) {
 	text = strings.TrimSpace(text)
 	for _, w := range wakes {
 		if m := w.re.FindStringSubmatch(text); m != nil {
-			return strings.TrimSpace(m[1]), w.timer, true
+			return strings.TrimSpace(m[1]), w.timer, w.limit, true
 		}
 	}
-	return "", false, false
+	return "", false, false, false
 }
 
 // Ducter's own words to a task (D271), logged before they carried from
@@ -243,6 +258,14 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 		return b
 	}
 	_, hasDevice := r["device"]
+	// D297: the agent's usage limit ran out: one calm line (when it resets, if
+	// it said), never an error; the turn that failed on it says nothing.
+	if lim := obj("limit"); lim != nil && str(lim["harness"]) != "" {
+		return Block{Say: "limit", Name: harnessName(str(lim["harness"])), At: str(lim["resetsAt"])}, true
+	}
+	if r["kind"] == "turn_ended" && r["outcome"] == "failed" && (r["failure"] == "quota" || r["failure"] == "rate_limited") {
+		return Block{}, false
+	}
 	switch {
 	// D268: a divider for a compaction or an interruption; a retry only while it is the latest thing.
 	case r["kind"] == "compaction_ended" && r["outcome"] != "failed":
@@ -869,8 +892,8 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 				}
 				if b.From == "partner" || ev.Origin == protocol.OriginPartner {
 					// D271: a wake of its own wait reads as a hairline, never the partner's card.
-					if reason, timer, ok := wakeOf(text); ok {
-						out = append(out, Block{K: "wake", Seq: ev.Seq, Text: redact.Text(reason), Timer: timer})
+					if reason, timer, limit, ok := wakeOfLimit(text); ok {
+						out = append(out, Block{K: "wake", Seq: ev.Seq, Text: redact.Text(reason), Timer: timer, Limit: limit})
 						continue
 					}
 					out = append(out, Block{K: "partner", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media})

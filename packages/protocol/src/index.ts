@@ -376,6 +376,8 @@ export interface Bodies {
     decisionId?: string;
     routineId?: string; // a condition routine's watch (D114): firing starts a run, then it re-arms
     wakes?: "task"; // D267: a task's own timer: when due it wakes that task, not the partner
+    /** D297: the task's agent hit its usage limit: the task rests until `at` (the reset, or the next try when it is unknown) and carries on in the same session. */
+    limit?: LimitWait;
     at?: string;
     reason: string;
     state: "armed" | "fired" | "cancelled" | "expired";
@@ -679,7 +681,22 @@ export type NewTaskWhen =
   | { kind: "until"; condition: string };
 
 /** An armed waiter plus what it has seen so far (kept by core, not logged per look). */
-export type WaiterView = Bodies["waiter"] & { armedAt?: string; lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number };
+export type WaiterView = Bodies["waiter"] & { armedAt?: string; lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number; limitAuto?: boolean };
+
+/**
+ * D297: a wait on an AI agent's usage limit. `harness` is whose limit; every task on that account
+ * shares the one reset (On hand groups them). resetKnown: `at` is the reset the agent named;
+ * otherwise `at` is the next try. handTo: another signed-in agent that could take the task now
+ * (Hand it to {agent} now). tell: the partner says it once (it matters: no reset time and nobody
+ * else to take it). tries: how many times it has met the limit in a row.
+ */
+export interface LimitWait {
+  harness: string;
+  resetKnown: boolean;
+  handTo?: { harness: string; model?: string };
+  tell?: boolean;
+  tries?: number;
+}
 
 // ---------- Work over time (D112-D115, design/product-model.md section 4) ----------
 
@@ -1002,7 +1019,7 @@ export type ClientFrame =
   // Work over time (D112-D114), each answered with action_result (taskId = the waiter or routine
   // id). waiter_action look: look now; cancel: 不等了 / Stop waiting. routine_action pause, resume
   // (only a person resumes), end. waiter_action rearm: 接着等 / Keep waiting, on a missed wait (D144). until_action stop: stop the loop after this try.
-  | { t: "waiter_action"; waiterId: string; action: "look" | "cancel" | "rearm" }
+  | { t: "waiter_action"; waiterId: string; action: "look" | "cancel" | "rearm" | "handoff" } // handoff (D297): a limit wait's task goes to its handTo agent now
   | { t: "routine_action"; routineId: string; action: "pause" | "resume" | "end" }
   | { t: "until_action"; taskId: string; action: "stop" }
   // 开一件事 / New task (D128). task_new_options: what the card offers (places, recent first,
@@ -1889,6 +1906,8 @@ export interface Settings {
   proactiveBy?: ProactiveSource;
   /** D170: who of the user's other agents may reach the partner (through Nowledge Bridge). */
   peers?: PeersSettings;
+  /** D297: when an agent's usage limit runs out, hand the task to another signed-in agent at once instead of waiting for the reset. Off by default; chosen on the task's own limit card. */
+  limitHandoff?: boolean;
 }
 
 /**

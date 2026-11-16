@@ -144,7 +144,8 @@ export interface NewTaskFrames {
 /** What the client frames for work over time do (core.ts wires them to waiters, untils, routines). */
 export interface WorkFrames {
   zone(tz: string): void;
-  waiter(waiterId: string, action: "look" | "cancel" | "rearm"): Promise<boolean>;
+  /** handoff (D297): a limit wait's task goes to another agent now. */
+  waiter(waiterId: string, action: "look" | "cancel" | "rearm" | "handoff"): Promise<boolean>;
   routine(routineId: string, action: "pause" | "resume" | "end"): boolean;
   until(taskId: string, action: "stop"): boolean;
 }

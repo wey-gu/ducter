@@ -10,6 +10,16 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 (eval only) · the partner eval (`bun run eval:partner`) · art cutouts with true alpha
 (`design/art/assets/alpha/`, 22 assets, `design/art/assets/tools/cut.swift`).
 
+## Usage limits (D297, research/101)
+
+- Prove it on a real limit hit: Claude Code's 5-hour window and Codex's, the reset read, the
+  wait, the resume in the same session, and the hand-off (all checked only with fakes).
+- The partner's own harness hitting its limit (the partner is not a task: no wait today).
+- A task on a worker: its agent's limits are read on the home today; read them where it runs.
+- An eval scenario for the morning line ("昨晚 Claude Code 额度用完，3:12 恢复后接着做完了").
+- OAR upstream: carry Codex's reset on the `quota` failure, and `rate_limit_event` as an event.
+- A comprehension pass with people on 先停下 / Stop here and the hand-off switch.
+
 ## Past tasks and Ongoing (D285, `past.md`)
 
 - [ ] **The partner can search Past tasks** (a `past_search` tool beside `log_search`, so "continue last Tuesday's refactor" said in the conversation finds the card and offers 接着做). A tool change: run the D175 eval. Trigger: the author asks the partner for an old task by words.

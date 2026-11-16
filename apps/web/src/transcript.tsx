@@ -676,7 +676,7 @@ function WorkingLine({ task, blocks }: { task: Task; blocks: Block[] }) {
   return (
     <div class="working-line" role="status">
       <span class="shimmer">{words}</span>
-      {!Number.isNaN(start) && <span class="clock">{elapsed(Date.now() - start)}</span>}
+      {!Number.isNaN(start) && <span class="clock">{dur(Date.now() - start)}</span>}
     </div>
   );
 }

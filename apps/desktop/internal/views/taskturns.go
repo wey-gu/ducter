@@ -779,7 +779,7 @@ func (a *App) workingLine(c *ui.Context, task *store.Task, turns []Turn, blocks 
 		ui.Spacer(c)
 		if at := store.ParseTime(since); !at.IsZero() {
 			c.After(time.Second)
-			ui.Text(c, elapsed(a.Now().Sub(at))).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+			ui.Text(c, a.shortDur(a.Now().Sub(at))).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 		}
 	})
 }

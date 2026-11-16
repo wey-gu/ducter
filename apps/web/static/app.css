@@ -4710,6 +4710,8 @@ button.dev-name {
 .dc-hero .ground { position: absolute; bottom: 6px; left: 50%; width: 200px; height: 36px; margin-left: -100px; border-radius: 50%; background: radial-gradient(closest-side, var(--line), var(--sunken) 70%, transparent); }
 .dc-hero .art { position: relative; width: 128px; margin-bottom: 14px; filter: drop-shadow(0 6px 5px rgb(60 50 20 / 0.16)); }
 .dc-hero .art.tall { width: 64px; }
+.dc-hero .art.tablet { width: 90px; } /* D263: the phone's height, an iPad's width */
+.dc-hero .art.foldable { width: 110px; } /* D263: a book-style fold, half open */
 .dc-hero .art.grey { filter: grayscale(0.7) opacity(0.7); }
 .dc-hero .mist { position: absolute; inset: 30% 18% 4%; border-radius: 50%; background: radial-gradient(closest-side, rgb(255 255 255 / 0.75), transparent); }
 .dc-hero .float { animation: dc-float 5.6s ease-in-out infinite; }

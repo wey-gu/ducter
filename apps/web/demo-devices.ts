@@ -63,6 +63,13 @@ ws.send(
 core.devices.redeem(core.devices.createCode().code, { name: "MacBook", platform: "darwin", form: "app", computer: "MacBook" } as any);
 core.devices.redeem(core.devices.createCode().code, { name: "CLI on MacBook", platform: "darwin", form: "cli", computer: "MacBook" } as any);
 core.devices.redeem(core.devices.createCode().code, { name: "iPhone", platform: "ios-safari" });
+// D263: DEMO_HANDHELDS=1 adds an iPad and a Pixel Fold, each in its own shape.
+if (process.env.DEMO_HANDHELDS) {
+  for (const [name, platform, shape] of [["iPad · Ducter", "ios-app", "tablet"], ["Pixel Fold · Ducter", "android-app", "foldable"]] as const) {
+    const r = core.devices.redeem(core.devices.createCode().code, { name, platform }) as { device: { id: string } };
+    core.devices.setShape?.(r.device.id, shape);
+  }
+}
 await Bun.sleep(100);
 await core.agents.check();
 

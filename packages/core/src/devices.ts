@@ -7,7 +7,7 @@ import { hostname as osHostname, platform as osPlatform } from "node:os";
 import { join } from "node:path";
 import QRCode from "qrcode";
 import type { AnywhereCtl } from "./anywhere.ts";
-import { deviceHarness, type AbilityId, type AgentHow, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
+import { deviceHarness, type AbilityId, type ClientShape, type AgentHow, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
 import { readAbilitySettings, writeAbilitySettings } from "@ducter/protocol/src/abilities.ts";
 import { claudeInChromeConnected, codexNative } from "@ducter/protocol/src/native-browser.ts";
 import { deviceForm, type DeviceAuth } from "./auth.ts";
@@ -101,6 +101,8 @@ export interface DevicesView {
   rename(device: string, name: string): RenameResult;
   /** 断开 / Disconnect a paired device (D148 (11)): the same revoke as `ducter devices disconnect`. */
   disconnect(device: string): DisconnectResult;
+  /** D263: a paired client said what it is shaped like (its hello, or its Android app's model). */
+  shaped(device: string, shape: ClientShape): void;
   onChange(fn: () => void): () => void;
   /** Something changed (a device paired, a socket came or went): tell the subscribers. */
   changed(): void;
@@ -327,6 +329,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         connected: live.has(d.id),
         ...(d.lastSeenAt ? { lastSeen: d.lastSeenAt } : {}),
         ...deviceForm(d), // D155: a CLI says so, and which computer it belongs to
+        ...(d.shape ? { shape: d.shape } : {}), // D263: a tablet or a foldable gets its own clay
         ...((): { handset?: import("@ducter/protocol").HandsetView } => {
           const h = o.handsets?.view(d.id, d.platform ?? "");
           return h ? { handset: h } : {};
@@ -577,6 +580,12 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     pairCode,
     rename,
     disconnect,
+    shaped(id, shape) {
+      // A device never changes shape: a page's "phone" (Chrome hides an Android model) never
+      // undoes a tablet or foldable its app's model said.
+      if (shape === "phone" && o.auth.list().find((d) => d.id === id)?.shape) return;
+      if (o.auth.setShape?.(id, shape)) changed();
+    },
     onChange(fn) {
       fns.add(fn);
       return () => fns.delete(fn);

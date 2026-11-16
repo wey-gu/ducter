@@ -1,0 +1,4 @@
+{"jobs": 4, "tasks": [
+ {"id": "tablet", "promptFiles": ["prompts/_style.md", "prompts/tablet.md"], "image": "raw/tablet.png", "ar": "1:1", "ref": ["raw/ref_phone.png", "../concepts/r2/r2_char_clay.jpg"]},
+ {"id": "foldable", "promptFiles": ["prompts/_style.md", "prompts/foldable.md"], "image": "raw/foldable.png", "ar": "1:1", "ref": ["raw/ref_phone.png", "../concepts/r2/r2_char_clay.jpg"]}
+]}

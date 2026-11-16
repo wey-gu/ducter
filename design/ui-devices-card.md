@@ -66,7 +66,7 @@ slots = stronger"). The metaphor process does not apply.
 
 - The device's clay at 140 (desktop) / 120 (phone), standing on a soft sunken oval (the card's
   own `sunken` tone, no new art). The art already says what kind of thing it is: `server_*`,
-  `laptop_*`, `mini_*`, `phone`. So **the kind line goes away**; the accessible name keeps it
+  `laptop_*`, `mini_*`, `phone`, `tablet`, `foldable` (D263). So **the kind line goes away**; the accessible name keeps it
   ("hel, 云上的电脑").
 - The art carries the state D77 already allows: awake floats 5pt (5.6 s); asleep wears its
   blanket; can't reach is a little grey in mist (`device_unreachable`). Reduced motion: still.

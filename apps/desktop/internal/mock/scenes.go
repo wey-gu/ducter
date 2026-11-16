@@ -18,7 +18,8 @@ import (
 //	phone          this Mac, cloud-1 and an iPhone that reaches Ducter
 //	joined         as phone, and a Mac mini that just joined
 //	six            six devices round home, three AI accounts on the Mac
-var Scenes = []string{"one", "cloud-working", "cloud-asleep", "cloud-away", "phone", "joined", "six", "update-all", "update-all-running", "update-all-done"}
+//	handhelds      this Mac, cloud-1, an iPhone, an iPad and a Pixel Fold (D263)
+var Scenes = []string{"one", "cloud-working", "cloud-asleep", "cloud-away", "phone", "joined", "six", "handhelds", "update-all", "update-all-running", "update-all-done"}
 
 func macHome(accounts ...string) protocol.DeviceView {
 	var hs []protocol.DeviceHarness
@@ -89,6 +90,11 @@ func (h *hub) Scene(name string) bool {
 			worker("air1", "MacBook Air", "laptop", protocol.DeviceUnreachable, "claude-code")}
 		clients = []protocol.ReachClient{iphone, {ID: "c-ipad", Name: "iPad", Platform: "ios", Connected: false, LastSeen: time.Now().Add(-26 * time.Hour).UTC().Format(time.RFC3339)}}
 		working = true
+	case "handhelds": // D263: each handheld in its own shape
+		list = []protocol.DeviceView{macHome("claude-code", "codex"), cloud(protocol.DeviceAwake)}
+		clients = []protocol.ReachClient{iphone,
+			{ID: "c-ipad", Name: "iPad · Ducter", Platform: "ios-app", Connected: true, Shape: "tablet"},
+			{ID: "c-fold", Name: "Pixel Fold · Ducter", Platform: "android-app", Connected: true, Shape: "foldable"}}
 	case "update-all", "update-all-running", "update-all-done":
 		list, clients = updateAllScene(name)
 	default:

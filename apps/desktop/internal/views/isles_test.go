@@ -146,3 +146,46 @@ func TestIslesPhone(t *testing.T) {
 	}
 	_ = protocol.AbilityWeb
 }
+
+// D263: an iPad and a Pixel Fold are drawn as a tablet and a foldable, in
+// the list, on their islands and on their cards; an iPhone stays a phone.
+//
+//	DUCTER_SHOTS=1 go test ./internal/views -run IslesHandhelds
+func TestIslesHandhelds(t *testing.T) {
+	h := openDevices(t, i18n.EN, false)
+	h.tt.SetSize(1280, 800)
+	h.scene("handhelds")
+	want := map[string]string{"c-iphone": "phone", "c-ipad": "tablet", "c-fold": "foldable"}
+	for i := range h.app.S.Reach.Clients {
+		cl := &h.app.S.Reach.Clients[i]
+		if got := clientArt(cl); got != want[cl.ID] {
+			t.Errorf("%s: art %q, want %q", cl.ID, got, want[cl.ID])
+		}
+	}
+	isles := map[string]string{}
+	for _, is := range h.app.isles() {
+		isles[is.key] = is.art
+	}
+	for id, art := range want {
+		if isles["cl:"+id] != art {
+			t.Errorf("island %s: %q, want %q", id, isles["cl:"+id], art)
+		}
+	}
+	// An iPad paired before D263 (no shape) is still a tablet by its name.
+	if got := clientArt(&protocol.ReachClient{Name: "iPad · Safari", Platform: "ios"}); got != "tablet" {
+		t.Errorf("legacy iPad: %q", got)
+	}
+	h.shotAs("handhelds-en-1280")
+	for _, name := range []string{"iPad · Ducter", "Pixel Fold · Ducter"} {
+		for i := range h.app.S.Reach.Clients {
+			cl := &h.app.S.Reach.Clients[i]
+			if cl.Name != name {
+				continue
+			}
+			line, _ := h.app.clientWord(cl)
+			h.click(name + " · " + line)
+			h.settle(300 * time.Millisecond)
+			h.shotAs("handhelds-en-card-" + cl.ID)
+		}
+	}
+}

@@ -34,15 +34,16 @@ type sheetState struct {
 }
 
 const (
-	sheetW      = 380 // the card's width beside the stage (the prototype's)
-	heroH       = 168
-	heroArt     = 150
-	heroArtTall = 92 // a phone's clay is tall
-	coinTileW   = 76
-	coinTileGap = 2
-	coinSize    = 52
-	chipH       = 40
-	chipArt     = 30
+	sheetW        = 380 // the card's width beside the stage (the prototype's)
+	heroH         = 168
+	heroArt       = 150
+	heroArtTall   = 92  // a phone's clay is tall
+	heroArtTablet = 112 // D263: an iPad's, as tall and wider
+	coinTileW     = 76
+	coinTileGap   = 2
+	coinSize      = 52
+	chipH         = 40
+	chipArt       = 30
 )
 
 // deviceDetail is the chosen island's card beside the stage (D161).
@@ -127,8 +128,11 @@ func (a *App) clientCard(c *ui.Context, cl *protocol.ReachClient) {
 func (a *App) sheetHero(c *ui.Context, key, art string, kind idleKind, grey bool) {
 	t := a.T
 	w := float32(heroArt)
-	if art == "phone" {
+	switch art {
+	case "phone":
 		w = heroArtTall
+	case "tablet":
+		w = heroArtTablet
 	}
 	bmp := theme.Clay(art)
 	phase := phaseOf(key)

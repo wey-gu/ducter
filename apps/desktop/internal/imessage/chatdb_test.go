@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -90,9 +89,8 @@ INSERT INTO chat (guid, style, chat_identifier, service_name) VALUES ('iMessage;
 }
 
 func TestSQLiteStoreReadsAFixture(t *testing.T) {
-	// The store runs the sqlite3 that ships with macOS (/usr/bin/sqlite3); Messages exists only there.
-	if runtime.GOOS != "darwin" {
-		t.Skip("the Messages database is macOS only")
+	if _, err := os.Stat("/usr/bin/sqlite3"); err != nil {
+		t.Skip("no /usr/bin/sqlite3 here")
 	}
 	path, run := fixture(t)
 	now := time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC)

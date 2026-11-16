@@ -127,10 +127,22 @@ func (s SQLiteStore) query(ctx context.Context, sql string) ([]map[string]any, e
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, s.bin(), "-readonly", "-json", s.Path, sql)
 	var out, errb bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &out, &errb
-	if err := cmd.Run(); err != nil {
+	run := func(target string) error {
+		out.Reset()
+		errb.Reset()
+		cmd := exec.CommandContext(ctx, s.bin(), "-readonly", "-json", target, sql)
+		cmd.Stdout, cmd.Stderr = &out, &errb
+		return cmd.Run()
+	}
+	err := run(s.Path)
+	if err != nil && strings.Contains(errb.String(), "unable to open") && !exists(s.Path+"-wal") {
+		// A WAL database with no -shm beside it (Messages not running) can't be
+		// opened read-only the ordinary way; with no -wal either, the file alone
+		// is the whole database, so read it as immutable.
+		err = run("file:" + s.Path + "?immutable=1")
+	}
+	if err != nil {
 		msg := strings.TrimSpace(errb.String())
 		if strings.Contains(msg, "authorization denied") || strings.Contains(msg, "unable to open") {
 			return nil, ErrNoDiskAccess
@@ -278,4 +290,9 @@ func ExpandPath(p string) string {
 		return filepath.Join(home, p[2:])
 	}
 	return p
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

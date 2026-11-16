@@ -23,10 +23,7 @@ func (a *App) switchControl(c *ui.Context, key, label string, v *bool) bool {
 // on hover (断开这台 MacBook, a connection's 断开).
 func (a *App) dangerText(c *ui.Context, key, label, about string) bool {
 	t := a.T
-	acc := label
-	if about != "" {
-		acc += " · " + about
-	}
+	acc := spoken(a.L, label, about)
 	b := ui.Row(c.Key(key)).Height(t.ControlSM-4).Padding(0, t.S2).Radius(t.RadiusSM).AlignItems(ui.Center).Cursor(ui.CursorPointer).
 		Role(ui.RoleButton).Label(acc).Focusable().Shrink(0)
 	if b.Hovered() || b.Pressed() {
@@ -110,7 +107,7 @@ func (a *App) disclosureRow(c *ui.Context, key, label, help string, open bool) b
 func (a *App) candRow(c *ui.Context, key, harness, name, reason string, off, current, on bool) bool {
 	t := a.T
 	row := ui.Row(c.Key("cand:"+key)).Gap(t.S3).Padding(t.S2, t.S3).Radius(t.RadiusMD).Background(t.Bg).
-		Shadow(0, 3, 0, 0, t.Line).AlignItems(ui.Center).Role(ui.RoleRadio).Label(name + " · " + reason).AccessSelected(on)
+		Shadow(0, 3, 0, 0, t.Line).AlignItems(ui.Center).Role(ui.RoleRadio).Label(spoken(a.L, name, reason)).AccessSelected(on)
 	if off || current {
 		row.Opacity(map[bool]float32{true: 0.55, false: 1}[off])
 	} else {
@@ -149,10 +146,7 @@ func (a *App) candRow(c *ui.Context, key, harness, name, reason string, off, cur
 // short (D192). It reports a tap.
 func (a *App) appTile(c *ui.Context, key, label, sub, about string, mark func(p *ui.Painter, r ui.Rect), sel, off, grey, add bool) bool {
 	t := a.T
-	acc := label
-	if sub != "" {
-		acc += " · " + sub
-	}
+	acc := spoken(a.L, label, sub)
 	if about != "" {
 		acc = about
 	}

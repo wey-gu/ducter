@@ -155,13 +155,15 @@ export function recordedTriage(fixtures: Record<string, { person: boolean; needs
   return f;
 }
 
-const label = (i: Item) => [i.fromName ?? i.from ?? i.repo ?? i.app, i.subject ?? i.title].filter(Boolean).join(" · ").slice(0, 80);
+/** What a fact is known by (its subject, else who sent it) and who sent it: two facts (D291). */
+const label = (i: Item) => (i.subject ?? i.title ?? i.fromName ?? i.from ?? i.repo ?? i.app ?? "").slice(0, 80);
+const sender = (i: Item) => (i.fromName ?? i.from ?? i.repo ?? i.app ?? "").slice(0, 80);
 
 /** Typed facts for the ledger from one item and what triage said of it (never the snippet). */
 export function factsOf(i: Item, t: TriageOut | undefined): NewFact[] {
   const ref = { connectionId: i.connectionId, service: i.service, ...(i.account ? { account: i.account } : {}), id: i.id, ...(i.thread ? { thread: i.thread } : {}) };
   const at = new Date(i.at).toISOString();
-  const base = { ref, label: label(i), at };
+  const base = { ref, label: label(i), ...(sender(i) ? { sender: sender(i) } : {}), at };
   const out: NewFact[] = [];
   // Every message in a thread settles asks in it: the person answered (out) or was answered (in).
   if (i.thread && (i.out || t?.person)) out.push({ ...base, type: "reply", out: Boolean(i.out), with: (i.out ? i.to?.[0] : i.from) ?? "" });

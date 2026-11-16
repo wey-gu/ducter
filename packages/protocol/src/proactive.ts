@@ -8,7 +8,7 @@
  *   waiting_on_you   在等你回 / Waiting on you (people only; 2 working days, or asked again)
  *   waiting_on_them  你在等别人回 / You're waiting on someone (3 working days, when it mattered)
  *   promised         你答应过的 / Something you promised (said on the due morning)
- *   deadline         快到期 · 要花钱 / Deadlines and money
+ *   deadline         到期和花钱的事 / Deadlines and money
  *   plan_changed     计划变了 / A plan changed
  *   meeting          开会前 / Before a meeting (10 min before, only with something open)
  *   coming_up        快到了 / Coming up (a flight or a train in the next day and a half: when, where, when to leave)
@@ -46,7 +46,8 @@ export const DAILY_CAP = 3;
 
 /** 怎么知道的 / How I know: one mail, event or thread it rests on, with its date. Never a quote. */
 export interface FindHow {
-  what: string; // "Cloudflare · 续费通知" (sender · subject), ≤ 80 chars
+  what: string; // "续费通知" (its subject or header), ≤ 80 chars
+  from?: string; // "Cloudflare": who it came from, its own element (D291)
   at: string; // ISO date of that mail or event
 }
 

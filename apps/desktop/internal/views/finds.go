@@ -108,6 +108,9 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 				for i, h := range f.How {
 					ui.Row(c.Key("h" + itoa(int64(i)))).Gap(t.S2).Children(func() {
 						ui.Text(c, a.whenOf(h.At)).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0)
+						if h.From != "" {
+							ui.Text(c, h.From).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0).MaxWidth(160).SingleLine()
+						}
 						ui.Text(c, h.What).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0).MaxLines(2)
 					})
 				}

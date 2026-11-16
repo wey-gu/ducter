@@ -251,7 +251,7 @@ func (h *hub) seed() {
 	open(past(35), "t-deps", "升级 bun 到 1.3", "Ducter", "claude-code", "sonnet", "改动小，用便宜的模型", protocol.Place{Kind: "repo", Device: "MacBook", RepoPath: "~/dev/ducter", Branch: "ducter/bun-1.3", BaseBranch: "main"})
 	state(past(35), "t-deps", protocol.Working, protocol.Hot, "")
 	say(past(30), "t-deps", "升级完了，测试全过。lockfile 变了 41 行。")
-	report(past(12), "t-deps", "needs_input", "bun 升到 1.3.2，bun test 全过；lockfile 变化 41 行", []protocol.EvidenceRef{{Kind: "test", Label: "bun test · 212 通过", Ref: "212 pass, 0 fail"}})
+	report(past(12), "t-deps", "needs_input", "bun 升到 1.3.2，bun test 全过；lockfile 变化 41 行", []protocol.EvidenceRef{{Kind: "test", Label: "212 个测试全过", Ref: "212 pass, 0 fail"}})
 	h.emitAt(past(12), ch, protocol.OriginPartner, protocol.KindDecision, protocol.Decision{DecisionID: "d-deps", TaskID: "t-deps", Question: "lockfile 一起提交吗？",
 		GoLabel: "提交", DefaultOption: "go", DefaultAt: time.Now().Add(48 * time.Minute).UTC().Format(time.RFC3339), Reversible: true}, 0)
 	state(past(12), "t-deps", protocol.NeedsYou, protocol.Warm, "")
@@ -330,7 +330,7 @@ func (r *run) first(brief string) {
 		place = protocol.Place{Kind: "repo", Device: "MacBook", RepoPath: r.repo, Worktree: r.repo, Branch: "ducter/fix-ci", BaseBranch: "main"}
 	}
 	h.sleep(500 * time.Millisecond)
-	h.emit(r.stream(), protocol.OriginSystem, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: r.task, Title: h.l("修 CI · #1592", "Fix CI · #1592"), Project: "HawDB",
+	h.emit(r.stream(), protocol.OriginSystem, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: r.task, Title: h.l("修 CI #1592", "Fix CI #1592"), Project: "HawDB",
 		Place: place, Harness: "codex", Model: "gpt-5", Brief: brief,
 		BodyReason: h.l("你的规则「后端用 Codex」，额度剩 64%，这台 Mac 上已有 hawdb 的缓存。", "Your rule \"backend goes to Codex\"; 64% quota left; this Mac has hawdb cached.")}, 0)
 	r.status(h.l("在做", "working"), "running")
@@ -407,8 +407,8 @@ func (r *run) decided(option, text string) {
 	r.tool("Bash", map[string]string{"command": "git push -u origin ducter/fix-ci"}, "branch 'ducter/fix-ci' set up to track 'origin/ducter/fix-ci'.\n", true)
 	h.sleep(900 * time.Millisecond)
 	ev := []protocol.EvidenceRef{
-		{Kind: "ci", Label: h.l("CI run #48219 · 绿", "CI run #48219 · green"), Ref: "https://example.com/ci/48219"},
-		{Kind: "diff", Label: h.l("改动 · 2 个文件", "Diff · 2 files"), Ref: r.repo},
+		{Kind: "ci", Label: h.l("CI #48219 通过了", "CI run #48219 passed"), Ref: "https://example.com/ci/48219"},
+		{Kind: "diff", Label: h.l("改了 2 个文件", "2 files changed"), Ref: r.repo},
 	}
 	h.emit(r.stream(), protocol.OriginTask, protocol.KindReport, protocol.Report{TaskID: r.task, State: "done",
 		Summary:   h.l("rebase 完了，全量测试 412 个都过，CI 绿了。根因是测试里固定的 sleep，已改成等待落盘。", "Rebased; all 412 tests pass and CI is green. The cause was a fixed sleep in the test, now a wait for durability."),

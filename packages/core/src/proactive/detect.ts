@@ -4,7 +4,7 @@
 // sentences at most (zh ≤ ~60 characters).
 import type { FindHow, FindKind } from "@ducter/protocol";
 import type { Candidate } from "./candidate.ts";
-import type { Fact, Ledger } from "./ledger.ts";
+import { senderOf, type Fact, type Ledger } from "./ledger.ts";
 import { FLIGHT_NO, type BillingWhat } from "./triage.ts";
 
 export type { Candidate, StepKind } from "./candidate.ts";
@@ -85,7 +85,7 @@ export function workingDaysSince(from: number, now: number, zone: string): numbe
 }
 
 const nameOf = (addr: string, name?: string) => name?.split(/\s+/)[0] || addr.split("@")[0] || addr;
-const howOf = (f: Fact): FindHow => ({ what: f.label || f.type, at: f.at });
+const howOf = (f: Fact): FindHow => ({ what: f.label || f.type, ...(f.sender && f.sender !== f.label ? { from: f.sender } : {}), at: f.at });
 const sameName = (a: string, b: string) => {
   const words = (x: string) => new Set(x.toLowerCase().split(/[^\p{L}\p{N}.]+/u).filter((w) => w.length >= 4));
   const A = words(a);
@@ -115,7 +115,7 @@ function mismatches(facts: Fact[], c: DetectCtx): Candidate[] {
         cost: 85,
         urgent: aIdx <= 1,
         dueAt: arrive,
-        ...(next.label ? { sender: next.label.split(" · ")[0] } : {}),
+        ...(senderOf(next) ? { sender: senderOf(next) } : {}),
         people: [],
         how: [howOf(fl), howOf(next)],
         words: { zh, en },
@@ -163,7 +163,7 @@ function mismatches(facts: Fact[], c: DetectCtx): Candidate[] {
       const mIdx = daysUntil(m.start, c.now, c.zone);
       if (mIdx < 0 || mIdx > 14 || mIdx === bIdx || !sameName(m.title, b.name)) continue;
       const first = Math.min(bIdx, mIdx);
-      const sender = b.label.split(" · ")[0] || "";
+      const sender = senderOf(b);
       out.push({
         key: `mismatch:${b.id}:${m.id}`,
         kind: "mismatch",
@@ -220,7 +220,7 @@ function deadlines(facts: Fact[], c: DetectCtx): Candidate[] {
   for (const r of facts.filter((f): f is Extract<Fact, { type: "renewal" }> => f.type === "renewal")) {
     const d = daysUntil(r.due, c.now, c.zone);
     if (d < 0 || d > 7) continue;
-    const paid = payments.some((p) => Date.parse(p.at) >= Date.parse(r.at) && (sameName(p.name, r.name) || p.label.split(" · ")[0] === r.label.split(" · ")[0]));
+    const paid = payments.some((p) => Date.parse(p.at) >= Date.parse(r.at) && (sameName(p.name, r.name) || senderOf(p) === senderOf(r)));
     if (paid) continue;
     const amt = r.amount ? `（${r.amount}）` : "";
     const extraZh = r.cardExpired ? "自动续费那张卡已经过期了。" : r.autopay ? "" : "之后没有付款收据。";
@@ -231,7 +231,7 @@ function deadlines(facts: Fact[], c: DetectCtx): Candidate[] {
       cost: Math.min(95, 55 + (7 - d) * 4 + (r.cardExpired ? 20 : 0) + (r.autopay && !r.cardExpired ? -20 : 0)),
       urgent: d <= 1 && !(r.autopay && !r.cardExpired),
       dueAt: r.due,
-      sender: r.label.split(" · ")[0],
+      sender: senderOf(r),
       people: [],
       how: [howOf(r)],
       words: { zh: `${r.name} ${md(r.due, c.zone)} 到期${amt}。${extraZh}`, en: `${r.name} is due ${md(r.due, c.zone)}${r.amount ? ` (${r.amount})` : ""}.${extraEn}` },
@@ -261,7 +261,7 @@ function changes(facts: Fact[], c: DetectCtx): Candidate[] {
         cost: d <= 1 ? 90 : 70,
         urgent: d <= 1,
         dueAt: f.on,
-        sender: f.label.split(" · ")[0],
+        sender: senderOf(f),
         people: [],
         how: [howOf(f)],
         words: cancelled ? { zh: `${f.name}（${md(f.on, c.zone)}）取消了。`, en: `${f.name} on ${md(f.on, c.zone)} was cancelled.` } : { zh: `${f.name} 改了：现在是 ${when}。`, en: `${f.name} changed: now ${when}.` },
@@ -444,7 +444,7 @@ const HOUR = 3_600_000;
 export const COMING_MS = 36 * HOUR;
 /** Within this, a trip or a maintenance window is urgent (只说急的 says it). */
 export const URGENT_AHEAD_MS = 30 * HOUR;
-const senderOf = (f: Fact) => f.label.split(" · ")[0] || "";
+
 /** D78: a space between Chinese and Latin words or numbers. */
 export const zhSpace = (t: string) => t.replace(/([㐀-鿿])([A-Za-z0-9$€¥£])/g, "$1 $2").replace(/([A-Za-z0-9%)])([㐀-鿿])/g, "$1 $2");
 const hmAt = (ms: number, zone: string) => hm(new Date(ms).toISOString(), zone);
@@ -712,7 +712,7 @@ function services(facts: Fact[], c: DetectCtx): Candidate[] {
   return out;
 }
 
-/** 快到期 · 要花钱 / Deadlines and money (D243): what they are charged is about to change. */
+/** 到期和花钱的事 / Deadlines and money (D243): what they are charged is about to change. */
 function billing(facts: Fact[], c: DetectCtx): Candidate[] {
   const out: Candidate[] = [];
   for (const f of facts.filter((x): x is Extract<Fact, { type: "billing" }> => x.type === "billing")) {

@@ -167,7 +167,7 @@ describe("push copy", () => {
     expect(defaultLine(d, "en", now)).toBe("If you don't answer, I'll rebase in 30 min. It can be undone.");
     expect(defaultLine({ ...d, reversible: false }, "zh", now)).toBe("你说好，我再做。");
     const m = decisionMessage(d, { persona: "Ducter", task: "修 fix-ci", locale: "zh", platform: "android", now });
-    expect(m.title).toBe("Ducter · 修 fix-ci");
+    expect(m.title).toBe("修 fix-ci");
     expect(m.body).toBe("要 rebase 吗？ 30 分钟后你没回，我就 rebase，之后还能改回来。");
     expect(m.url).toBe("app#d=d1");
   });
@@ -184,9 +184,9 @@ describe("push copy", () => {
   test("D170: another agent's question says who asks, waits on silence, and has no Hold button", () => {
     const q: Bodies["decision"] = { decisionId: "d2", question: "现在推，还是等 macOS？", goLabel: "等 macOS 跑完", defaultOption: "hold", reversible: false, asker: { messageId: "m", agent: "terminal-claude", mine: true } };
     const m = decisionMessage(q, { persona: "小鸭", locale: "zh", platform: "android", now });
-    expect(m.title).toBe("小鸭 · terminal-claude 问你");
+    expect(m.title).toBe("terminal-claude 问你");
     // D273: by what it is and where it works.
-    expect(decisionMessage({ ...q, asker: { ...q.asker!, where: "~/dev/ducter" } }, { persona: "D", locale: "en", platform: "ios", now }).title).toBe("D · terminal-claude (~/dev/ducter) asks you");
+    expect(decisionMessage({ ...q, asker: { ...q.asker!, where: "~/dev/ducter" } }, { persona: "D", locale: "en", platform: "ios", now }).title).toBe("terminal-claude (~/dev/ducter) asks you");
     expect(m.body).toBe("现在推，还是等 macOS？ 没回就让它先等着。");
     expect(m.actions).toBeUndefined();
   });
@@ -266,7 +266,7 @@ describe("the pusher", () => {
     await s.pusher.idle();
     expect(s.sent.length).toBe(1);
     const msg = JSON.parse(await decrypt(s.sent[0]!.body, r));
-    expect(msg).toMatchObject({ title: "Ducter · 修 fix-ci", url: "app#d=d1" });
+    expect(msg).toMatchObject({ title: "修 fix-ci", url: "app#d=d1" });
     expect(msg.actions).toBeUndefined(); // the phone is an iPhone
 
     const seen = decision(s.log, "d2");

@@ -100,7 +100,7 @@ func TestAgentVersions(t *testing.T) {
 				h.click("Codex · hel · " + L.T("agentv.available", "0.168.0"))
 			}
 			h.settle(100 * time.Millisecond)
-			h.click(L.T("agentv.button") + " · Codex")
+			h.click(spoken(L, L.T("agentv.button"), "Codex"))
 			h.until("done", func() bool { return h.tt.HasText(L.T("agentv.phase.done", "0.168.0")) })
 			shot("codex-done")
 
@@ -109,7 +109,7 @@ func TestAgentVersions(t *testing.T) {
 			h.settle(200 * time.Millisecond)
 			h.click("Codex · Mac mini")
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("coin.version", "0.166.0", L.T("agentv.how.app", "Codex"))) || h.tt.HasText(L.T("agentv.button")+" · Codex") {
+			if !h.tt.HasText(L.T("coin.version", "0.166.0", L.T("agentv.how.app", "Codex"))) || h.tt.HasText(spoken(L, L.T("agentv.button"), "Codex")) {
 				t.Fatalf("mac card: %q", h.tt.Texts())
 			}
 			shot("mac-app-copy")

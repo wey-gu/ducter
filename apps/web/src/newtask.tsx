@@ -8,7 +8,7 @@ import type { Candidate } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
 import { A, agentKey, effortWord, EVERY_HOURS, ntGitHubish, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { Btn, Choice, MenuRow, Pill, Seg } from "./controls.tsx";
+import { Btn, Choice, Facts, MenuRow, Pill, Seg } from "./controls.tsx";
 import { candName, candReason, Check, coarse } from "./views.tsx";
 import { AddPictures, DropHint, Tray, useDropPaste } from "./media.tsx";
 import { harnessName } from "./format.ts";
@@ -225,7 +225,7 @@ export function NewTaskSheet() {
             </Pill>
           ) : (
             <Pill label={whoLabel(who)} about={t("newtask.who")} open={nt.list === "who"} onClick={() => toggle("who")}>
-              <b>{whoLabel(who)}</b>
+              {A.ntWhoParts(who).length ? <Facts class="who" items={A.ntWhoParts(who).map((x, i) => (i ? x : <b>{x}</b>))} /> : <b>{candName(who)}</b>}
               {!picked && !A.ntSendTune(who).model && !A.ntSendTune(who).effort && <Suggested />}
             </Pill>
           )}
@@ -243,6 +243,7 @@ export function NewTaskSheet() {
                 <span class="mr-t">
                   <b>{placeName(p)}</b>
                   {placeLine(p) && <code>{placeLine(p)}</code>}
+                  {placeLine(p) && p.computer && <small>{p.computer}</small>}
                 </span>
               </MenuRow>
             ))}
@@ -401,7 +402,7 @@ export function NewTaskSheet() {
             {nt.startedTask && <Btn kind="text" size="sm" label={t("newtask.open")} about={nt.started} onClick={() => ((A.sheet = null), A.go({ name: "task", id: nt.startedTask! }))} />}
           </div>
         ) : (
-          !coarse() && <div class="nt-keys small sub">{t("newtask.keys", start)}</div>
+          !coarse() && <Facts class="nt-keys small sub" items={[t("newtask.keys", start), t("newtask.keys.more")]} />
         )}
         <div class="btns">
           <Btn kind="text" label={t("newtask.cancel")} onClick={close} />

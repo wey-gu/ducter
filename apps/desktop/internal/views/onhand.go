@@ -139,16 +139,23 @@ func (a *App) looseWaiters() []*protocol.Waiter {
 	return out
 }
 
+// waitBack is when a waiter on a time comes back ("21:59 再看" / "back
+// at 21:59"), its own muted element beside the reason (D291); "" else.
+func (a *App) waitBack(task *store.Task) string {
+	if w := a.S.WaiterFor(task.ID); w != nil && w.Check == nil && w.Event == nil {
+		if at := store.ParseTime(w.At); !at.IsZero() {
+			return a.L.T("waiter.at", a.when(at))
+		}
+	}
+	return ""
+}
+
 // waitReason is what a waiting task waits for, in words: its waiter's
 // reason, else the state's reason (internal ones, as "report: blocked",
-// are not words for people).
+// are not words for people). When it comes back is waitBack.
 func (a *App) waitReason(task *store.Task) string {
 	if w := a.S.WaiterFor(task.ID); w != nil {
-		r := w.Reason
-		if at := store.ParseTime(w.At); !at.IsZero() && w.Check == nil && w.Event == nil {
-			r += " · " + a.L.T("waiter.at", a.when(at))
-		}
-		return r
+		return w.Reason
 	}
 	r := task.Reason()
 	// The task's machine dropped (runner: unreachableReason); glossary 连不上 / Can't reach.
@@ -260,7 +267,8 @@ func (a *App) missedRow(c *ui.Context, w *protocol.Waiter) {
 // when more than one thing is coming (one is already its own card, D127).
 func (a *App) forecastBand(c *ui.Context, b store.Board) {
 	t := a.T
-	var items []string
+	type coming struct{ when, text string }
+	var items []coming
 	for _, task := range b.Lanes[store.LaneNeedsYou] {
 		d := a.S.PendingDecision(task.ID)
 		if d == nil {
@@ -270,25 +278,39 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 		if at.IsZero() || !d.Reversible || d.DefaultOption != "go" {
 			continue
 		}
-		items = append(items, a.when(at)+" "+shortTitle(task.Title()))
+		items = append(items, coming{a.when(at), shortTitle(task.Title())})
 	}
 	for _, task := range b.Lanes[store.LaneWaiting] {
 		if w := a.S.WaiterFor(task.ID); w != nil {
 			if at := store.ParseTime(firstNonEmpty(w.Until, w.At)); !at.IsZero() {
-				items = append(items, a.when(at)+" "+shortTitle(task.Title()))
+				items = append(items, coming{a.when(at), shortTitle(task.Title())})
 			}
 		}
 	}
 	for _, w := range a.looseWaiters() {
 		if at := store.ParseTime(w.At); !at.IsZero() {
-			items = append(items, a.when(at)+" "+w.Reason)
+			items = append(items, coming{a.when(at), w.Reason})
 		}
 	}
 	if len(items) < 2 {
 		return
 	}
-	line := a.L.T("onhand.next") + "  " + strings.Join(items, " · ")
-	ui.Text(c.Key("forecast"), line).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Tooltip(line).Padding(0, t.S3+2)
+	// D291: each thing coming is its own element, its time in tabular
+	// figures, spaced by a gap; never one dotted line.
+	ui.Row(c.Key("forecast")).Gap(t.S4).AlignItems(ui.Center).Padding(0, t.S3+2).MinWidth(0).Clip().
+		Tooltip(spoken(a.L, func() []string {
+			out := []string{}
+			for _, it := range items {
+				out = append(out, it.when+" "+it.text)
+			}
+			return out
+		}()...)).Children(func() {
+		ui.Text(c, a.L.T("onhand.next")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().Shrink(0)
+		// Each one reads as a phrase: its time, then what it is.
+		for _, it := range items {
+			ui.Text(c, it.when+" "+it.text).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(1).MinWidth(0)
+		}
+	})
 }
 
 func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, basis float32) {
@@ -359,10 +381,11 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 	})
 }
 
-// whereWhy is where a task runs and why there, in one short muted line
-// ("Codex · MacBook · 你的规则「后端用 Codex」"). The model, the repo, the
-// branch and the rest of the reason are in the opened task's Details.
-func (a *App) whereWhy(task *store.Task) string {
+// whereWhy is where a task runs and why there, as separate short facts
+// (Codex, MacBook, 你的规则「后端用 Codex」), each its own muted element
+// (D291). The model, the repo, the branch and the rest of the reason are
+// in the opened task's Details.
+func (a *App) whereWhy(task *store.Task) []string {
 	where := ""
 	if p := task.Place(); a.manyComputers() {
 		// D157: with two or more computers every row names its computer.
@@ -370,7 +393,7 @@ func (a *App) whereWhy(task *store.Task) string {
 	} else if p.Kind != "" {
 		where = a.device(p.Device)
 	}
-	return strings.Join(nonEmpty(harnessName(task.Harness()), where, firstClause(task.BodyReason())), " · ")
+	return nonEmpty(harnessName(task.Harness()), where, firstClause(task.BodyReason()))
 }
 
 // firstClause is a reason's first clause: up to its first comma or full
@@ -438,7 +461,7 @@ func (a *App) askerRow(c *ui.Context, task *store.Task) {
 	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 		title := shortTitle(task.Title())
 		tip := task.Title()
-		if why := a.whereWhy(task); why != "" {
+		for _, why := range a.whereWhy(task) {
 			tip += "\n" + why
 		}
 		l := ui.Row(c.Key("asker")).Gap(2).AlignItems(ui.Center).Grow(1).MinWidth(0).Cursor(ui.CursorPointer).
@@ -491,7 +514,7 @@ func shortTitle(title string) string {
 		}
 	}
 	s = strings.Join(strings.Fields(s), " ")
-	s = strings.TrimRight(s, " ,，:：-—·")
+	s = strings.TrimRight(s, " ,，:：-—")
 	if s == "" {
 		return strings.TrimSpace(title)
 	}
@@ -618,16 +641,14 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 		} else if r := a.waitReason(task); r != "" {
 			ui.Text(c, r).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		}
-		meta := []string{a.whereWhy(task)}
+		meta := a.whereWhy(task)
 		if task.Card != nil && task.Card.FromRoutine != nil {
 			meta = append([]string{a.L.T("routine.from", task.Card.FromRoutine.Name)}, meta...)
 		}
 		if task.Card != nil && task.Card.UpdatedAt != "" {
 			meta = append(meta, a.L.T("onhand.reported", a.ago(task.Card.UpdatedAt)))
 		}
-		if line := strings.Join(nonEmpty(meta...), " · "); line != "" {
-			ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
-		}
+		a.facts(c, t.XS, t.InkMuted, meta...)
 	})
 }
 
@@ -637,12 +658,14 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 	a.cardLink(c, card, task)
 	card.Children(func() {
 		ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(800).Balance()
+		// What it waits for, said alone: the clock or the wait's bubble
+		// already says it is waiting (D291); when it comes back is its own
+		// muted time.
 		reason := a.waitReason(task)
 		if reason == "" {
 			reason = a.stateLabel(protocol.Blocked)
-		} else {
-			reason = a.L.T("onhand.waiting.for", reason)
 		}
+		back := a.waitBack(task)
 		w := a.S.WaiterFor(task.ID)
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			if w != nil && (w.Check != nil || w.Event != nil) {
@@ -651,6 +674,9 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 				a.glyph(c, 18, drawClock(t.InkMuted))
 			}
 			ui.Text(c, reason).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Grow(1).MinWidth(0)
+			if back != "" {
+				ui.Text(c, back).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
+			}
 		})
 		if w != nil && (w.Check != nil || w.Event != nil) {
 			a.groove(c, w, false)

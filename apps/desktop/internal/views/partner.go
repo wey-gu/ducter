@@ -120,7 +120,7 @@ func (a *App) partnerHero(c *ui.Context) {
 		a.avatar(c, shown, 112)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.S2).Children(func() {
 			a.partnerName(c)
-			ui.Text(c, a.L.T("partner.header", a.homeName(), a.brainLine(a.brain()))).FontSize(t.LG).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
+			ui.Text(c, a.L.T("partner.header", a.homeName(), harnessName(a.brain().Harness))).FontSize(t.LG).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
 		})
 	})
 }
@@ -307,7 +307,7 @@ func (a *App) notifyPanel(c *ui.Context) {
 			a.row(c, "quiet-range", a.L.T("settings.quiet.hours"), "", func() {
 				s := ui.TimeInput(c.Key("quiet-start"), &ps.qStart).Label(a.L.T("partner.quiet"))
 				ui.Text(c, a.L.T("partner.quiet.to")).FontSize(t.MD).TextColor(t.InkMuted)
-				e := ui.TimeInput(c.Key("quiet-end"), &ps.qEnd).Label(a.L.T("partner.quiet") + " · " + a.L.T("partner.quiet.to"))
+				e := ui.TimeInput(c.Key("quiet-end"), &ps.qEnd).Label(spoken(a.L, a.L.T("partner.quiet"), a.L.T("partner.quiet.to")))
 				if s.Changed() || e.Changed() {
 					nq := &protocol.QuietHours{Start: ps.qStart.Format("15:04"), End: ps.qEnd.Format("15:04"), TZ: q.TZ}
 					ps.qFrom = nq.Start + "-" + nq.End
@@ -595,7 +595,7 @@ func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
 					app := app
 					ui.Row(c.Key("ooapp:" + app.Service)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
 						ui.Text(c, app.Title).FontSize(t.MD).FontWeight(700).Width(112).Shrink(0).SingleLine()
-						ui.Text(c, strings.Join(app.Accounts, " · ")).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0).SingleLine()
+						ui.Row(c).Grow(1).MinWidth(0).Children(func() { a.facts(c, t.SM, t.InkSoft, app.Accounts...) })
 					})
 				}
 			})
@@ -614,19 +614,6 @@ func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
 			})
 		}
 	})
-}
-
-// ooAppsLine is a connection's services in one line ("Gmail (2) · Slack").
-func ooAppsLine(apps []protocol.OoApp) string {
-	parts := make([]string, 0, len(apps))
-	for _, ap := range apps {
-		p := ap.Title
-		if len(ap.Accounts) > 1 {
-			p += " (" + itoa(int64(len(ap.Accounts))) + ")"
-		}
-		parts = append(parts, p)
-	}
-	return strings.Join(parts, " · ")
 }
 
 // acctField is one labelled input on the accounts card; a secret is masked,

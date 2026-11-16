@@ -35,7 +35,7 @@ func TestOoOfferIsTheDefault(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 2200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"你在 oo 里的账号", "Gmail", "wei@work.example · wei@home.example", "Slack", "用这些账号", "你的邮件和登录凭据会经过 OOMOL 的服务器。", "用地址和密钥添加"} {
+	for _, want := range []string{"你在 oo 里的账号", "Gmail", "wei@work.example", "wei@home.example", "Slack", "用这些账号", "你的邮件和登录凭据会经过 OOMOL 的服务器。", "用地址和密钥添加"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q", want)
 		}
@@ -165,14 +165,14 @@ func TestAccountRemoveAsksFirst(t *testing.T) {
 	if !tt.HasText("停用以后，它就看不到这些账号了；记下的事还在「记忆」里，可以忘掉。") || !tt.HasText("取消") {
 		t.Fatalf("the card asks first; texts: %v", tt.Texts())
 	}
-	tt.Click("取消 · oo 里的账号")
+	tt.Click("取消，oo 里的账号")
 	tt.Frame()
 	if tt.HasText("停用以后，它就看不到这些账号") || len(*sent) != n {
 		t.Fatalf("Keep it closes the ask and sends nothing")
 	}
 	tt.Click(stop)
 	tt.Frame()
-	tt.Click("停用 · oo 里的账号")
+	tt.Click("停用，oo 里的账号")
 	tt.Frame()
 	if len(*sent) != n+1 {
 		t.Fatalf("the second Remove sends one frame, got %d", len(*sent)-n)

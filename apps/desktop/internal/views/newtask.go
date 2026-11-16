@@ -1233,7 +1233,11 @@ func (a *App) newTaskFoot(c *ui.Context) {
 					a.openFromElsewhere(id)
 				}
 			default:
-				ui.Text(c, a.L.T("newtask.keys", start)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
+				// Two shortcuts, two elements spaced by a gap (D291); the buttons say them aloud.
+				ui.Row(c).Gap(t.S3).Shrink(1).MinWidth(0).AccessHidden(true).Children(func() {
+					ui.Text(c, a.L.T("newtask.keys", start)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+					ui.Text(c, a.L.T("newtask.keys.more")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+				})
 			}
 		})
 		if nt.sending != "" {

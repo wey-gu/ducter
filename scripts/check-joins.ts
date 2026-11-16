@@ -43,6 +43,16 @@ export const ALLOW: { file: string; has?: string; why: string }[] = [
   { file: "apps/web/src/sheet.ts", has: '"· Ducter"', why: "recognises a device paired before D178/D291" },
   { file: "packages/protocol/src/devices.ts", has: "· Ducter", why: "strips the old suffix" },
   { file: "packages/core/src/auth.ts", has: "· Ducter", why: "the one-time rename of devices paired before D291" },
+  // A fact saved before D291 kept its sender inside its label: split once on load, never shown.
+  { file: "packages/core/src/proactive/ledger.ts", has: 'indexOf(" · ")', why: "splits facts saved before D291" },
+  // The partner's own Markdown list (model-written) as plain text: a marker at a line's start, one item per line.
+  { file: "packages/core/src/channels/format.ts", has: "• ${li2[2]}", why: "a list marker, not a joiner" },
+  { file: "apps/desktop/internal/imessage/words.go", has: 'mdBullet.ReplaceAllString(s, "· ")', why: "a list marker, not a joiner" },
+  // Masking dots hide a secret or a card number; they join nothing.
+  { file: "packages/protocol/src/saved.ts", has: "••${last4}", why: "a masked card number" },
+  { file: "packages/core/src/saved/index.ts", has: '"•••"', why: "masks a one-time code" },
+  { file: "packages/core/src/saved/fill.ts", has: '"••••••"', why: "masks a secret in an error" },
+  { file: "packages/core/src/saved/store.ts", has: "•••", why: "masks a secret or its hint" },
 ];
 
 export function joins(text: string, ext: string): { line: number; text: string }[] {

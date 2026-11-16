@@ -467,7 +467,8 @@ export function createChannels(deps: ChannelDeps): Channels {
           if (b.quiet || b.revises || !b.finds.length) return;
           const place = placeNow();
           if (!place) return;
-          const text = [b.opening, ...b.finds.map((f) => `• ${f.text}`), ...(b.leftOut ? [b.leftOut] : [])].filter(Boolean).join("\n");
+          // Each find is a sentence of its own, a paragraph as a person writes it, not a bulleted list (D291).
+          const text = [b.opening, ...b.finds.map((f) => f.text), ...(b.leftOut ? [b.leftOut] : [])].filter(Boolean).join("\n\n");
           if (own(() => void say(place, text + openLine(place), { seq: e.seq, buttons: openButton() }))) claims.add(`n:${b.noteId}`);
           return;
         }

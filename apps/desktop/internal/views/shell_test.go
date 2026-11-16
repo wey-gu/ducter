@@ -156,7 +156,7 @@ func TestCountsOpenOnHand(t *testing.T) {
 	}
 	app.Route = RouteConversation
 	tt.Frame()
-	if err := tt.Click(app.L.T("nav.partner") + " · " + app.S.PersonaName); err != nil {
+	if err := tt.Click(spoken(app.L, app.L.T("nav.partner"), app.S.PersonaName)); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

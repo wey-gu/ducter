@@ -196,7 +196,7 @@ var zhIA = Table{
 	// The menu bar extra: what needs you, while the window is closed.
 	"tray.open":  "打开 Ducter",
 	"tray.none":  "没有要你定的事",
-	"tray.needs": "等你 · %d",
+	"tray.needs": "%d 件事等你",
 	"tray.go":    "好：%s",
 	"tray.hold":  "先等等",
 	"tray.reply": "回复…",
@@ -399,7 +399,7 @@ var enIA = Table{
 
 	"tray.open":  "Open Ducter",
 	"tray.none":  "Nothing Needs You",
-	"tray.needs": "Needs You · %d",
+	"tray.needs": "%d Need You",
 	"tray.go":    "Go: %s",
 	"tray.hold":  "Hold",
 	"tray.reply": "Reply…",

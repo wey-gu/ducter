@@ -3,6 +3,7 @@ package views
 import (
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -32,10 +33,7 @@ func (a *App) detailsOpen(key string) bool {
 // Details. It never truncates.
 func (a *App) quietButton(c *ui.Context, key, label, about string, strong bool, chevron int) bool {
 	t := a.T
-	name := label
-	if about != "" {
-		name = label + " · " + about
-	}
+	name := spoken(a.L, label, about)
 	b := ui.Row(c.Key("qb:" + key)).Gap(4).AlignItems(ui.Center).MinHeight(28).Cursor(ui.CursorPointer).
 		Role(ui.RoleButton).Label(name).Focusable().Shrink(0)
 	hover := b.Hovered() || b.Pressed()
@@ -225,7 +223,7 @@ func (a *App) resultDetails(c *ui.Context, task *store.Task, detail string) {
 	a.proofLine(c, task, evs, true)
 	merged := task.Acted != nil && task.Acted.OK && task.Acted.Action == "merge"
 	if task.CanIntegrate() && task.Acting == "" && !merged && !noRemote(task) {
-		if a.quietLink(c, "pr:"+task.ID, a.L.T("result.pr"), a.L.T("result.pr")+" · "+task.Title()) {
+		if a.quietLink(c, "pr:"+task.ID, a.L.T("result.pr"), spoken(a.L, a.L.T("result.pr"), task.Title())) {
 			task.Acting = "open_pr"
 			a.TaskAction(task.ID, "open_pr")
 		}
@@ -424,7 +422,7 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 	}
 	ui.Column(c.Key("living")).Gap(t.S4).Label(a.L.T("living.title")).Children(func() {
 		if away {
-			a.timeLine(c, a.L.T("living.away.at", clockOf(e.Event.TS)))
+			a.timeLine(c, a.L.T("living.away"), clockOf(e.Event.TS))
 		}
 		for i, it := range news {
 			a.news(c.Key(i), "l"+itoa(e.FirstSeq)+":"+it.TaskID, it, a.chipOwner[it.TaskID] == e.FirstSeq)
@@ -456,10 +454,15 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 }
 
 // timeLine is a messaging app's time line: small, centered, muted.
-func (a *App) timeLine(c *ui.Context, text string) {
+func (a *App) timeLine(c *ui.Context, parts ...string) {
 	t := a.T
-	ui.Row(c.Key("when:"+text)).Justify(ui.Center).Padding(t.S3, 0, t.S2, 0).Children(func() {
-		ui.Text(c, text).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+	ui.Row(c.Key("when:"+strings.Join(parts, "|"))).Justify(ui.Center).Gap(t.S2).Padding(t.S3, 0, t.S2, 0).Children(func() {
+		// Each part its own element, a time in tabular figures (D291).
+		for _, p := range parts {
+			if p != "" {
+				ui.Text(c, p).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+			}
+		}
 	})
 }
 

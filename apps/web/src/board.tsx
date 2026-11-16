@@ -6,8 +6,8 @@
 // (apps/desktop/internal/views/onhand.go).
 import type { ComponentChildren } from "preact";
 import { A } from "./app.ts";
-import { NavBtn, PlusMark } from "./controls.tsx";
-import { when } from "./format.ts";
+import { Facts, NavBtn, PlusMark } from "./controls.tsx";
+import { spoken, when } from "./format.ts";
 import { LANE, title } from "./store.ts";
 import { shortTitle } from "./transcript.tsx";
 import { Avatar, Places } from "./views.tsx";
@@ -86,13 +86,16 @@ export function FullTop({ task, children }: { task?: Task; children?: ComponentC
 // ---------- On hand at the whole screen ----------
 
 
+/** One thing coming on its own: its time and what it is, two elements (D291). */
+export type Coming = { at: number; when: string; text: string };
+
 /** 接下来 / Next: what comes on its own, soonest first, only when more than one thing is coming (D127). */
-export function forecast(now = Date.now()): string {
+export function forecast(now = Date.now()): Coming[] {
   const b = A.S.board();
-  const items: { at: number; text: string }[] = [];
+  const items: Coming[] = [];
   const add = (iso: string | undefined, text: string) => {
     const at = iso ? Date.parse(iso) : NaN;
-    if (Number.isFinite(at) && at > now - 60_000) items.push({ at, text: `${when(A.L, iso, now)} ${text}` });
+    if (Number.isFinite(at) && at > now - 60_000) items.push({ at, when: when(A.L, iso, now), text });
   };
   for (const task of b.lanes[LANE.needs]!) {
     const d = A.S.pendingDecision(task.id);
@@ -103,11 +106,26 @@ export function forecast(now = Date.now()): string {
     if (w) add(w.until || w.at, shortTitle(title(task)));
   }
   for (const w of A.S.armedWaiters().filter((w) => !w.taskId)) add(w.at, w.reason);
-  if (items.length < 2) return "";
-  return items
-    .sort((a, b) => a.at - b.at)
-    .map((i) => i.text)
-    .join(" · ");
+  if (items.length < 2) return [];
+  return items.sort((a, b) => a.at - b.at);
+}
+
+/** The Next line: its label, then each thing coming as its own element, its time muted and in
+ *  tabular figures before its name, spaced by a gap, never one dotted string (D291). */
+export function NextLine({ items }: { items: Coming[] }) {
+  if (!items.length) return null;
+  return (
+    <p class="next" title={spoken(A.L, ...items.map((i) => `${i.when} ${i.text}`))}>
+      <b>{t("onhand.next")}</b>
+      <Facts
+        items={items.map((i) => (
+          <>
+            <span class="tm">{i.when}</span> {i.text}
+          </>
+        ))}
+      />
+    </p>
+  );
 }
 
 /** On hand at the whole screen (D216): the crumbs and counts, Next, then the one list on a wide
@@ -135,12 +153,7 @@ export function Board() {
           <div class="board-wrap">
           <LensColumn />
           <div class="board-col">
-            {next && (
-              <p class="next" title={next}>
-                <b>{t("onhand.next")}</b>
-                {next}
-              </p>
-            )}
+            <NextLine items={next} />
             <OnHandList room="full" />
             <RoutineShelf />
           </div>

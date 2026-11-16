@@ -165,14 +165,14 @@ func TestDevicesHelFolding(t *testing.T) {
 			// The command line's own 断开, inside the ⋯ in place, confirmed in place.
 			h.click(L.T("card.via.more"))
 			h.settle(100 * time.Millisecond)
-			h.click(L.T("device.disconnect") + " · " + L.T("device.cli.name", thisMac))
+			h.click(spoken(L, L.T("device.disconnect"), L.T("device.cli.name", thisMac)))
 			h.settle(100 * time.Millisecond)
 			ask := L.T("device.disconnect.ask", L.T("device.cli.name", thisMac))
 			if !h.tt.HasText(ask) || !h.tt.HasText(L.T("device.disconnect.means.cli")) {
 				t.Fatalf("cli confirm: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("mac-%s-cli-disconnect", lang))
-			h.click(L.T("device.disconnect.ok") + " · " + L.T("device.cli.name", thisMac))
+			h.click(spoken(L, L.T("device.disconnect.ok"), L.T("device.cli.name", thisMac)))
 			h.until("cli gone", func() bool {
 				for _, cl := range h.app.S.Reach.Clients {
 					if cl.ID == "cli1" {

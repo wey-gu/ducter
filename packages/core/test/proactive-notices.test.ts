@@ -168,7 +168,7 @@ test("之前说的有变: a later notice on something already said is a correcti
   expect(u!.words.zh).toBe("更正：之前说的「Conductor 说 12/1 停止服务」不算数了。");
   expect(u!.words.en).toBe('Correction: "Conductor 说 12/1 停止服务" no longer holds: it is staying open.');
   expect(u!.urgent).toBe(true);
-  expect(u!.how.map((h) => h.what)).toEqual(["Conductor · Update: Conductor is staying open", "Conductor · Conductor is shutting down on December 1"]);
+  expect(u!.how.map((h) => [h.from, h.what])).toEqual([["Conductor", "Update: Conductor is staying open"], ["Conductor", "Conductor is shutting down on December 1"]]);
   // A find already passed is not corrected.
   expect(detect(l, { now: NOW, zone: ZONE, said: [{ ...said[0]!, passed: true }] }).filter((c) => c.kind === "update")).toHaveLength(0);
 });

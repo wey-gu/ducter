@@ -13,11 +13,11 @@ import type { JSX } from "preact";
 import { A, candKey, effortWord, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
 import { closingWords, computerApart, computerName, computerOf, computers, computerState, deviceWait, manyComputers, whereAsk, whereCandReason } from "./where.ts";
-import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
+import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { AddRow, Btn, Chev, DevicesMark, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, Btn, Chev, DevicesMark, Facts, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
@@ -40,7 +40,7 @@ import { ChatAppsSettings, ChatsArt } from "./channels.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
-import { FillButton, forecast, FullTop } from "./board.tsx";
+import { FillButton, forecast, FullTop, NextLine } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, waitCaption, waitLine, WatchCard } from "./work.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
@@ -487,18 +487,18 @@ function TaskLine({ task, detail }: { task: Task; detail?: string }) {
   const a = attention(task);
   const br = browsing(task);
   if (br) detail = browsingLine(br);
-  let d = (!sameWords(detail, title(task)) && detail) || stateLabel(a);
-  // Who is doing it ends the line while it is under way, with why when it isn't the plain pick (D89).
-  const [who, why] = whoLine(task);
-  if (who && !finished(task) && a !== "dropped") d += ` · ${who}${why ? ` · ${why}` : ""}`;
+  const d = (!sameWords(detail, title(task)) && detail) || stateLabel(a);
+  // Who is doing it ends the line while it is under way, with why when it isn't the plain pick (D89):
+  // each its own muted element after the status, never one dotted tail (D291).
+  const who = !finished(task) && a !== "dropped" ? [...whoParts(task), whoLine(task)[1]] : [];
   return (
-    <button class="taskline" onClick={() => A.go({ name: "task", id: task.id })}>
+    <button class="taskline" aria-label={spoken(A.L, title(task) || t("task.unknown"), d, ...who)} onClick={() => A.go({ name: "task", id: task.id })}>
       <span class="ic">
         <StateMark a={a} />
       </span>
       <span class="t">{title(task) || t("task.unknown")}</span>
       <span class="s">
-        · {d}
+        <Facts items={[d, ...who]} />
         <Chev />
       </span>
     </button>
@@ -512,7 +512,7 @@ function openEvidence(ev: EvidenceRef, task?: Task) {
   if (ev.kind === "diff" && task) return A.go({ name: "task", id: task.id });
   if (/^https?:/.test(ev.ref)) return void window.open(ev.ref, "_blank", "noopener");
   navigator.clipboard?.writeText(ev.ref).catch(() => {});
-  A.toast(`${ev.label} · ${ev.ref}`);
+  A.toast(t("evidence.copied", ev.ref));
 }
 
 /** The changes in words: "2 files changed". A label that already counts them stands; else they
@@ -819,11 +819,12 @@ function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
 }
 
 function LivingLine({ it }: { it: LivingItem }) {
-  const text = it.title ? `${it.title} · ${it.text}` : it.text;
+  // D291: the task's name is its own element, then what it said, never "title · words".
   return (
     <button class="line" onClick={() => it.taskId && A.go({ name: "task", id: it.taskId })}>
       <span class="ic">{it.kind === "done" ? <Check /> : it.kind === "blocked" ? <Clock /> : it.kind === "failed" ? <Cross /> : <Forward />}</span>
-      <span class="tx">{text}</span>
+      {it.title && <b class="lt">{it.title}</b>}
+      <span class="tx">{it.text}</span>
     </button>
   );
 }
@@ -1009,7 +1010,7 @@ function Living({ e, items, chipOwner }: { e: Entry; items: LivingItem[]; chipOw
   if (!asks.length && !news.length && !lines.length) return null;
   return (
     <section class="living" key={`${e.firstSeq}:${e.revision}`} aria-label={t("living.title")}>
-      {away && <div class="when">{t("living.away.at", clockOf(e.ev.ts))}</div>}
+      {away && <div class="when"><Facts items={[t("living.away"), clockOf(e.ev.ts)]} /></div>}
       {news.map((it, i) => (
         <News key={`n${i}`} it={it} k={`l${e.firstSeq}:${it.taskId}`} owns={chipOwner.get(it.taskId) === e.firstSeq} />
       ))}
@@ -1308,8 +1309,8 @@ function Counts() {
       </div>
     );
   return (
-    <button class="sum" role="status" title={t("nav.onhand")} onClick={() => ((OnHandState.filter = s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }))}>
-      {s.words}
+    <button class="sum" role="status" title={t("nav.onhand")} aria-label={s.words} onClick={() => ((OnHandState.filter = s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }))}>
+      {s.parts?.length ? <Facts items={s.parts} /> : s.words}
     </button>
   );
 }
@@ -1637,7 +1638,7 @@ export function OnHand() {
   const nothing = b.lanes.slice(0, 4).every((l) => !l.length) && !A.S.partnerDecisions().length && !loose.length && !A.S.missedToday().length && !routines.length && !calls.length;
   const wide = useWide();
   // Beside the conversation, 接下来 as the Mac shows it: one quiet grey line, only when more than one thing is coming (D184).
-  const next = wide && !nothing ? forecast() : "";
+  const next = wide && !nothing ? forecast() : [];
   // D216: the one list, as the phone or beside the conversation.
   return (
     <>
@@ -1648,12 +1649,7 @@ export function OnHand() {
           <div class="calm">{t("onhand.empty", A.S.personaName)}</div>
         ) : (
           <>
-            {next && (
-              <p class="next" title={next}>
-                <b>{t("onhand.next")}</b>
-                {next}
-              </p>
-            )}
+            <NextLine items={next} />
             <OnHandList room={wide ? "side" : "phone"} />
             <RoutineShelf />
           </>
@@ -1690,6 +1686,13 @@ function whoSentence(task: Task): string {
 }
 
 /** Who does a task, in words ("Codex · gpt-5"), and why when it isn't Ducter's plain pick (D89). */
+/** Who does a task as separate facts: the agent, its model, its effort (D202, D291). */
+function whoParts(task: Task): string[] {
+  const m = modelOf(task);
+  const e = effortOf(task);
+  return [harnessName(harnessOf(task)), m && modelName(m), e && effortWord(A.L, e)].filter((x): x is string => !!x);
+}
+
 function whoLine(task: Task): [string, string] {
   const m = modelOf(task);
   const e = effortOf(task);

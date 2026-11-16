@@ -81,7 +81,7 @@ func TestLivingQuiet(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"Rebase it?", "Rebase", "1 more waiting on you", "Go on all defaults · 2", "Bump tokio to 1.41 didn't work: 4 places don't build."} {
+	for _, want := range []string{"Rebase it?", "Rebase", "1 more waiting on you", "Go on all 2 defaults", "Bump tokio to 1.41 didn't work: 4 places don't build."} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -102,7 +102,7 @@ func TestLivingQuiet(t *testing.T) {
 	app.Local.SetDetailsShown(true)
 	defer app.Local.SetDetailsShown(false)
 	tt.Frame()
-	if !tt.HasText("Review this week's PRs · Read 2") {
+	if !tt.HasText("Review this week's PRs") || !tt.HasText("Read 2") {
 		t.Errorf("Details shown doesn't list work under way: %q", tt.Texts())
 	}
 }

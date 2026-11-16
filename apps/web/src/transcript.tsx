@@ -9,9 +9,12 @@
 import type { Place } from "@ducter/protocol";
 import { HIDDEN, redact } from "@ducter/protocol/src/redact.ts";
 import { unwrapShell, type Step } from "@ducter/protocol/src/steps.ts";
-import { blocksOf, lastSeq, latestVoice, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
-import type { MediaRef } from "@ducter/protocol";
-import { useEffect, useState } from "preact/hooks";
+import { blocksOf, inTurn, lastSeq, latestVoice, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
+import type { MediaRef, WaiterView } from "@ducter/protocol";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import type { RefObject } from "preact";
+import { WaitHow } from "./work.tsx";
+import { clock } from "./format.ts";
 import { Component, type JSX } from "preact";
 import { Btn, Chev } from "./controls.tsx";
 import { escArmed } from "./esc.ts";
@@ -154,16 +157,24 @@ export function TimerPie({ frac }: { frac: number }) {
 const working = (task: Task) => ["working", "queued"].includes(attention(task));
 // Blocks are made once per change of the task's events (D210): a frame that changes nothing in
 // the task (the clock's tick, another task's event) reuses them, and so do the turns' memo.
-const blockCache = new WeakMap<Task, { n: number; last: number; live: boolean; blocks: Block[] }>();
-export const taskBlocks = (task: Task): Block[] => {
+const blockCache = new WeakMap<Task, { n: number; last: number; live: boolean; blocks: Block[]; turns: Turn[]; inTurn: boolean }>();
+const memo = (task: Task) => {
   const live = working(task);
   const last = task.events.at(-1)?.seq ?? 0;
   const c = blockCache.get(task);
-  if (c && c.n === task.events.length && c.last === last && c.live === live) return c.blocks;
-  const blocks = blocksOf(harnessOf(task), task.events, live);
-  blockCache.set(task, { n: task.events.length, last, live, blocks });
-  return blocks;
+  if (c && c.n === task.events.length && c.last === last && c.live === live) return c;
+  // D271: its last stretch is live only while a turn is under way.
+  const now = inTurn(task.events);
+  const blocks = blocksOf(harnessOf(task), task.events, live && now);
+  const m = { n: task.events.length, last, live, blocks, turns: turnsOf(blocks), inTurn: now };
+  blockCache.set(task, m);
+  return m;
 };
+export const taskBlocks = (task: Task): Block[] => memo(task).blocks;
+/** The task's turns, made with its blocks (D271). */
+export const taskTurns = (task: Task): Turn[] => memo(task).turns;
+/** Whether a turn is under way now: something since its last turn ended (D271). */
+export const taskInTurn = (task: Task): boolean => working(task) && memo(task).inTurn;
 
 /** The brief, or what the partner passed on: a quiet card under who said it, three lines until
  *  opened; a hidden key said so; its pictures small under the words. */
@@ -389,8 +400,10 @@ function Thought({ r, live }: { r: StepRow; live?: boolean }) {
 
 /** A run of steps between two things said, as one line (D268): what it did, in at most two phrases;
  *  open, each step. While it runs, only its latest step, in the present tense, with a small spinner. */
+const GROUP_MAX = 60;
 function Group({ l, live }: { l: Extract<Line, { k: "group" }>; live?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [all, setAll] = useState(false);
   const latest = l.rows.at(-1)!;
   const [lw, lc] = live ? liveRow(latest) : ["", ""];
   const words = live ? lw : groupWords(l.tally);
@@ -408,11 +421,17 @@ function Group({ l, live }: { l: Extract<Line, { k: "group" }>; live?: boolean }
         )}
         <span class="chev">{GLYPHS.chev!()}</span>
       </button>
+      {/* D271: it grows in place, never a scroller of its own; a long run shows its first steps. */}
       {open && (
         <div class="group-rows">
-          {l.rows.map((r) => (
+          {(all ? l.rows : l.rows.slice(0, GROUP_MAX)).map((r) => (
             <Row key={r.seq} r={r} />
           ))}
+          {!all && l.rows.length > GROUP_MAX && (
+            <button class="qlink more" onClick={() => setAll(true)}>
+              {t("group.more", l.rows.length - GROUP_MAX)}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -456,20 +475,31 @@ function noteName(b: Extract<Block, { k: "note" }>): string {
   return b.name ?? "";
 }
 
-function BlockView({ task, b, live }: { task: Task; b: Block; live?: boolean }) {
+/** The agent's words (D271): then one quiet line, 保存了进度 when it saved them, and on hover its
+ *  time, how long its turn worked and Copy. */
+function Voice({ task, b, took }: { task: Task; b: Extract<Block, { k: "voice" }>; took?: string }) {
+  const ms = tsOf(task, b.seq);
+  const at = Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
+  return (
+    <div class="voice">
+      <div class={`tx assistant md${hanClass(b.text)}`} dangerouslySetInnerHTML={{ __html: markdown(b.text, t("reply.copy")) }} />
+      <small class={`vmeta${b.saved ? " kept" : ""}`}>
+        {b.saved && <span class="saved">{t("task.saved")}</span>}
+        <span class="hov">
+          {[at, took].filter(Boolean).join(" · ")}
+          <button type="button" class="qlink" onClick={() => void navigator.clipboard?.writeText(b.text)}>
+            {t("reply.copy")}
+          </button>
+        </span>
+      </small>
+    </div>
+  );
+}
+
+function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boolean; took?: string }) {
   switch (b.k) {
     case "voice":
-      return (
-        <div class="voice">
-          <div class={`tx assistant md${hanClass(b.text)}`} dangerouslySetInnerHTML={{ __html: markdown(b.text, t("reply.copy")) }} />
-          {b.saved && (
-            <small class="saved">
-              {GLYPHS.flag!()}
-              {t("task.saved")}
-            </small>
-          )}
-        </div>
-      );
+      return <Voice task={task} b={b} took={took} />;
     case "steps": {
       const n = b.lines.length - 1;
       return (
@@ -550,11 +580,12 @@ function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean 
     }
   const head = lastVoice >= 0 ? body.slice(0, lastVoice) : body;
   const foldable = !live && head.some((b) => b.k === "steps");
-  const draw = (bs: Block[]) => bs.map((b) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} />);
-  if (!foldable) return <>{draw(body)}</>;
-  const from = tsOf(task, turn.prompt?.seq ?? body[0]!.seq);
-  const to = tsOf(task, lastSeq(body.at(-1)!));
+  const from = body.length ? tsOf(task, turn.prompt?.seq ?? body[0]!.seq) : NaN;
+  const to = body.length ? tsOf(task, lastSeq(body.at(-1)!)) : NaN;
   const took = dur(Number.isFinite(from) && Number.isFinite(to) ? Math.max(0, to - from) : 0);
+  const worked = !live && Number.isFinite(from) && Number.isFinite(to) && to > from ? t("turn.worked", took) : "";
+  const draw = (bs: Block[]) => bs.map((b) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} took={worked} />);
+  if (!foldable) return <>{draw(body)}</>;
   return (
     <>
       <button class={`worked${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -577,7 +608,12 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live
     const { task, turn, queued, live } = this.props;
     const p = turn.prompt;
     return (
-      <section class="turn">
+      <section class="turn" data-seq={turn.seq}>
+        {(p?.k === "wake" || p?.k === "told") && (
+          <div class="tx-divider wake" role="separator" title={p.text}>
+            <span>{promptLine(task, p)}</span>
+          </div>
+        )}
         {p?.k === "brief" && <PromptCard task={task} b={p} label={p.by === "you" ? t("task.asked.you") : t("task.asked", A.S.personaName)} />}
         {p?.k === "partner" && <PromptCard task={task} b={p} label={t("task.from.partner", A.S.personaName)} />}
         {p?.k === "you" && <YouBubble task={task} b={p} queued={queued} />}
@@ -587,40 +623,18 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live
   }
 }
 
-/** How many lines of the latest turns are drawn before older turns wait behind one link (the Mac's is the same). */
-const TURN_BUDGET = 240;
-const turnLines = (tu: Turn) => (tu.prompt ? 1 : 0) + tu.body.reduce((n, b) => n + (b.k === "steps" ? b.lines.length : 1), 0);
-const turnSteps = (tu: Turn) =>
-  tu.body.reduce((n, b) => n + (b.k === "steps" ? b.lines.reduce((m, l) => m + (l.k === "group" ? l.n : l.row.step ? l.row.n : 0), 0) : 0), 0);
-
-/** The first turn drawn and the steps the turns before it hold: the latest up to TURN_BUDGET lines. */
-export function turnWindow(turns: Turn[], all: boolean): [number, number] {
-  if (all) return [0, 0];
-  let n = 0;
-  let from = 0;
-  for (let i = turns.length - 1; i >= 0; i--) {
-    n += turnLines(turns[i]!);
-    if (n > TURN_BUDGET && i < turns.length - 1) {
-      from = i + 1;
-      break;
-    }
-  }
-  const hidden = turns.slice(0, from).reduce((a, tu) => a + turnSteps(tu), 0);
-  return hidden ? [from, hidden] : [0, 0];
-}
-
 const turnLast = (tu: Turn) => (tu.body.at(-1) ?? tu.prompt)?.seq ?? tu.seq;
 const lastLive = (tu: Turn) => tu.body.at(-1)?.k === "steps" && !!(tu.body.at(-1) as { live?: boolean }).live;
 
 /** The opened task's conversation with the agent (D210): its turns, then what you sent that the
  *  Log has yet to carry, then while it works the working line (D268). */
 export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
-  const [all, setAll] = useState(false);
   if (!task.historyLoaded && !task.events.length) return <div class="small">{t("task.loading")}</div>;
-  const turns = turnsOf(blocks);
-  const [from, hidden] = turnWindow(turns, all);
-  const moving = working(task);
-  const items = turns.slice(from).map((tu, i, shown) => {
+  // D271: every turn is drawn (a settled one off screen costs nothing: content-visibility); the
+  // last is live only while a turn is under way.
+  const turns = blocks === taskBlocks(task) ? taskTurns(task) : turnsOf(blocks);
+  const moving = taskInTurn(task);
+  const items = turns.map((tu, i, shown) => {
     const last = i === shown.length - 1;
     const live = last && moving;
     return <TurnView key={tu.seq} task={task} turn={tu} queued={last && !tu.body.length} live={live} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}`} />;
@@ -649,35 +663,149 @@ export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
   }
   return (
     <div class="turns">
-      {from > 0 && (
-        <button class="qlink earlier" onClick={() => setAll(true)}>
-          {t("turn.earlier", hidden)}
-        </button>
-      )}
       {items}
-      {moving && <WorkingLine task={task} blocks={blocks} />}
+      <EndLine task={task} blocks={blocks} turns={turns} />
     </div>
   );
 }
 
-/** The working line at the transcript's end (D268): what it is on, shimmering, and its clock at
- *  the right; a retry takes its words while it is the latest thing. */
-function WorkingLine({ task, blocks }: { task: Task; blocks: Block[] }) {
+/** The transcript's last line (D271), from state, never a guess: a turn under way says what it
+ *  does; a task resting on its wait says what it waits for and when it looks again, how it checks
+ *  a click away; anything else, nothing (the head says the state). */
+function EndLine({ task, blocks, turns }: { task: Task; blocks: Block[]; turns: Turn[] }) {
+  if (taskInTurn(task)) return <WorkingLine task={task} blocks={blocks} turns={turns} />;
+  const w = A.S.waiterFor(task.id);
+  if (w && attention(task) !== "needs_you" && !finished(task)) return <WaitLine task={task} w={w} />;
+  return null;
+}
+
+/** The end line of a task resting on its wait: what it waits for and when it looks next. */
+function WaitLine({ task, w }: { task: Task; w: WaiterView }) {
+  const [open, setOpen] = useState(false);
+  const watches = !!(w.check || w.event);
+  const next = watches ? w.nextLookAt : w.at;
+  const words = next ? t(watches ? "end.wait" : "end.wait.timer", w.reason, clock(next)) : t("end.wait.bare", w.reason);
+  const inner = (
+    <>
+      {GLYPHS.waited!()}
+      <span class="sum" title={words}>
+        {words}
+      </span>
+      {watches && <span class="chev">{GLYPHS.chev!()}</span>}
+    </>
+  );
+  return (
+    <div class="sline wait-end" role="status">
+      {watches ? (
+        <button class={`step${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
+          {inner}
+        </button>
+      ) : (
+        <div class="step">{inner}</div>
+      )}
+      {open && (
+        <div class="wait-how">
+          <WaitHow task={task} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The working line at the transcript's end (D268): what it is on, shimmering, and the turn's
+ *  clock at the right; a retry takes its words while it is the latest thing. D271: never
+ *  "thinking" after its words, only that it works. */
+function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; turns: Turn[] }) {
   const [, tick] = useState(0);
   useEffect(() => {
     const h = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(h);
   }, []);
   const last = blocks.at(-1);
-  // The live stretch already says its latest step; here, where it stands. After its words, it thinks.
-  const words =
-    last?.k === "note" && last.say === "retry" ? t("note.retry", last.name ?? "") : last?.k === "steps" && last.live ? t(`state.${attention(task)}`) : attention(task) === "queued" ? t("state.queued") : t("live.thinking");
-  const start = task.openedAt ? Date.parse(task.openedAt) : NaN;
+  const words = last?.k === "note" && last.say === "retry" ? t("note.retry", last.name ?? "") : t(`state.${attention(task)}`);
+  const tu = turns.at(-1);
+  const start = tu ? tsOf(task, tu.seq) : NaN;
   return (
     <div class="working-line" role="status">
       <span class="shimmer">{words}</span>
-      {!Number.isNaN(start) && <span class="clock">{dur(Date.now() - start)}</span>}
+      {Number.isFinite(start) && <span class="clock">{dur(Date.now() - start)}</span>}
     </div>
+  );
+}
+
+/** A wake's or what Ducter told the agent, as a hairline's words with its time (D271). */
+function promptLine(task: Task, p: Extract<Block, { k: "wake" } | { k: "told" }>): string {
+  const ms = tsOf(task, p.seq);
+  const at = Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
+  if (p.k === "wake") return t(p.timer ? "wake.timer" : "wake.over", at);
+  if (p.say === "lent") return t("told.lent", p.name ?? "", at);
+  if (p.say === "returned") return p.name ? t("told.returned.name", p.name, at) : t("told.returned", at);
+  if (p.say === "other") return t("told.other", A.S.personaName, at);
+  return t(`told.${p.say}`, at);
+}
+
+/** A turn's line in the locator: the first line of what was said, or a hairline's words. */
+function locatorLine(task: Task, tu: Turn): string {
+  const p = tu.prompt;
+  if (!p) return "";
+  if (p.k === "wake" || p.k === "told") return promptLine(task, p);
+  if (p.k === "you" && p.go !== undefined) return shortGo(p.go);
+  const first = ("text" in p ? p.text : "").split("\n")[0]!;
+  return p.k === "brief" ? `${t("locator.brief")} · ${first}` : first;
+}
+
+/** The locator (D271, wide only): a thin rail at the transcript's right edge, one small bar per
+ *  turn, those in view in ink; hovered, a clay card lists what was said, newest at the bottom,
+ *  those in view marked; a click goes there. */
+export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HTMLElement> }) {
+  const turns = taskTurns(task);
+  const [seen, setSeen] = useState<Set<number>>(new Set());
+  const [open, setOpen] = useState(false);
+  const frame = useRef(0);
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const look = () => {
+      frame.current = 0;
+      const top = el.getBoundingClientRect().top, bottom = top + el.clientHeight;
+      const s = new Set<number>();
+      for (const n of el.querySelectorAll<HTMLElement>(".turns > .turn[data-seq]")) {
+        const r = n.getBoundingClientRect();
+        if (r.bottom > top && r.top < bottom) s.add(Number(n.dataset.seq));
+      }
+      setSeen((o) => (o.size === s.size && [...s].every((x) => o.has(x)) ? o : s));
+    };
+    const onScroll = () => void (frame.current ||= requestAnimationFrame(look));
+    look();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => (el.removeEventListener("scroll", onScroll), cancelAnimationFrame(frame.current));
+  }, [scroller.current, turns.length]);
+  if (turns.length < 3) return null;
+  const go = (seq: number) => {
+    scroller.current?.querySelector(`.turns > .turn[data-seq="${seq}"]`)?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    setOpen(false);
+  };
+  const h = Math.min(Math.max(turns.length * 8, 64), 360);
+  return (
+    <nav class={`locator${open ? " open" : ""}`} aria-label={t("locator.name")} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} onFocusCapture={() => setOpen(true)} onBlurCapture={(e) => !(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node) && setOpen(false)}>
+      <div class="rail" style={{ height: `${h}px` }} tabIndex={0} aria-hidden="true">
+        {turns.map((tu, i) => (
+          <i key={tu.seq} class={seen.has(tu.seq) ? "here" : ""} style={{ top: `${turns.length > 1 ? (i / (turns.length - 1)) * 100 : 0}%` }} />
+        ))}
+      </div>
+      {open && (
+        <ol class="loc-list">
+          {turns.map((tu) => (
+            <li key={tu.seq}>
+              <button class={seen.has(tu.seq) ? "here" : ""} onClick={() => go(tu.seq)}>
+                <i />
+                <span>{locatorLine(task, tu)}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+    </nav>
   );
 }
 

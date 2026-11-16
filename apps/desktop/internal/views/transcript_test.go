@@ -22,11 +22,15 @@ func TestTranscriptFixture(t *testing.T) {
 		Working bool                `json:"working"`
 		Events  []protocol.LogEvent `json:"events"`
 		Want    json.RawMessage     `json:"want"`
+		InTurn  bool                `json:"inTurn"`
 	}
 	if err := json.Unmarshal(data, &cases); err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range cases {
+		if got := inTurn(c.Events); got != c.InTurn {
+			t.Errorf("%s: inTurn = %v, want %v", c.Name, got, c.InTurn)
+		}
 		got, _ := json.Marshal(turnsOf(blocksOf(c.Harness, c.Events, c.Working)))
 		var g, w any
 		_ = json.Unmarshal(got, &g)

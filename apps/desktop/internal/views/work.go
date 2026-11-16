@@ -330,11 +330,13 @@ func (a *App) tryStrip(c *ui.Context, task *store.Task) {
 	})
 }
 
-// waitRows are the opened task's Details for a wait: what, how (the check
-// itself), how often, what it saw; Stop waiting and Look now.
-func (a *App) waitRows(c *ui.Context, task *store.Task, row func(string, func()), value func(string)) {
+// waitRows are the opened task's Details for a keep-going loop (until) or
+// for its wait: how (the check itself), how often, what it saw. D271: a
+// wait's are opened under the transcript's end line, an until's under the
+// page.
+func (a *App) waitRows(c *ui.Context, task *store.Task, until bool, row func(string, func()), value func(string)) {
 	t := a.T
-	if u := task.Card; u != nil && u.Until != nil {
+	if u := task.Card; until && u != nil && u.Until != nil {
 		row(a.L.T("wait.how.title"), func() {
 			if u.Until.Check != nil {
 				ui.Text(c, strings.Join(u.Until.Check.Argv, " ")).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
@@ -345,7 +347,7 @@ func (a *App) waitRows(c *ui.Context, task *store.Task, row func(string, func())
 		})
 	}
 	w := a.S.WaiterFor(task.ID)
-	if w == nil || (w.Check == nil && w.Event == nil) {
+	if until || w == nil || (w.Check == nil && w.Event == nil) {
 		return
 	}
 	row(a.L.T("wait.how.title"), func() {

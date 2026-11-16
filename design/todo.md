@@ -166,10 +166,20 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       tool call only once it is done, so the foot names the latest finished step; a "running"
       line needs the runner to log a tool's start (OAR's item started events). Trigger: a live
       run where the foot lags a long command. (2) The agent's words appear whole, not streamed;
-      streaming needs text deltas in the Log. Trigger: the same. (3) The Mac draws the whole
-      window of turns each frame (7 ms with 423 events in the test renderer); if a real long
-      task stutters, move the transcript into `ui.List` (MyGo's virtual list). (4) Check the
-      foot, Esc twice and Jump to latest on a real iPad and a real long run with the author.
+      streaming needs text deltas in the Log. Trigger: the same. (3) Done in D271 (the Mac's
+      page is a `ui.List`). (4) Check the foot, Esc twice and Jump to latest on a real iPad and a
+      real long run with the author.
+
+- [ ] **The opened task, after D271**: (1) a progress report after `wait_for` puts the card back
+      on working while the task rests on its wait (the end line says it waits, the head and
+      the header still say 在做); the card should stay on Waiting until a turn starts. Trigger:
+      the author's next look at a loop task. (2) An opened task loads its latest 2,000 events
+      (the home's most per ask); older ones are not reachable from the page or the locator.
+      Trigger: a loop that runs past a day. (3) In a loop, a finished round folds everything
+      before its last words, so a review round's findings hide under "做了 8 分 21 秒" when its
+      last words are "45 分钟后再看"; consider keeping the round's longest words in view. Trigger:
+      the author's review of D271. (4) The web's locator marks the turns in view by scroll
+      position (no virtual list); the Mac's by the list's rows. Check both on a real loop.
 
 - [ ] **The eval's new gaps on haiku** (research/48 addendum, `eval/results/2026-11-10-haiku-d175.md`):
       (1) it says a rule is kept without calling `rule_save` / `notice_rule` (an honesty gap: a

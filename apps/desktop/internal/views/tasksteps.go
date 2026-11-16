@@ -50,16 +50,6 @@ func (a *App) noteLine(b *Block) string {
 	return a.L.T(key, name)
 }
 
-// tsOf is when the event with seq happened.
-func (a *App) tsOf(task *store.Task, seq int64) string {
-	for _, ev := range task.Events {
-		if ev.Seq == seq {
-			return ev.TS
-		}
-	}
-	return ""
-}
-
 // rowWords is a step's sentence and, apart, the code it names (in mono):
 // the agent's own words when its harness gave them; "没找到 nmem" for a
 // probe that found nothing; "运行 nmem doctor" for a command.

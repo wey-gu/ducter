@@ -1723,7 +1723,7 @@ class AppState {
     if (!force && (this.historyAsked.has(id) || t?.historyLoaded)) return;
     if (!this.S.welcomed) return;
     this.historyAsked.add(id);
-    this.send({ t: "task_history", taskId: id, limit: 500 });
+    this.send({ t: "task_history", taskId: id, limit: 2000 }); // D271: a long loop's day, as much as the home sends
   }
 
   // ---------- actions ----------

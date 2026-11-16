@@ -88,7 +88,22 @@ export type Block =
    */
   | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean }
   /** The agent's plan (D268): one per task, where it first wrote it, holding its latest items. */
-  | { k: "plan"; seq: number; items: PlanItem[] };
+  | { k: "plan"; seq: number; items: PlanItem[] }
+  /**
+   * D271: a wait of the task's own came true and Ducter woke it ("等到了：「…」。接着做。"). It
+   * opens a turn, as the words that wake it do, but reads as a hairline with its time; `text` is
+   * the wait's reason (shown on hover), `timer` a wait for a time ("到时间了").
+   */
+  | { k: "wake"; seq: number; text: string; timer?: boolean }
+  /**
+   * D271: something Ducter itself told the agent (the person's phone lent or back, Ducter's browser
+   * handed back, a Stop): never words the person said, so never their bubble. A hairline the
+   * clients word from `told.<say>` (`name` filled in); `text` is what was sent, on hover only.
+   */
+  | { k: "told"; seq: number; say: ToldSay; name?: string; text: string };
+
+/** What Ducter told the agent (D271). */
+export type ToldSay = "lent" | "returned" | "stopped" | "declined" | "reopened" | "other";
 
 /** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
 export type NoteSay = "compacted" | "interrupted" | "retry" | "stalled" | "offline" | "back" | "waiting_device" | "fresh" | "moved" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
@@ -124,6 +139,70 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
   if (/^(failed to resume|could not switch|Claude in Chrome isn't connected, and)/i.test(text)) return { say: "error_resume", bad: true };
   if (/^(turn failed|event stream error|nudge failed|failed to)/i.test(text)) return { say: "error", bad: true };
   return undefined;
+}
+
+// D271: the words core's work.ts sends a task when its own wait ends (zh, en), timers first.
+const WAKES: [RegExp, boolean][] = [
+  [/^到时间了：「([\s\S]+?)」。接着做。$/, true],
+  [/^It's time: "([\s\S]+?)"\. Carry on\.$/, true],
+  [/^等到了：「([\s\S]+?)」(?:（[^（）]*）)?。接着做。$/, false],
+  [/^The wait is over: "([\s\S]+?)"(?: \([^()]*\))?\. Carry on\.$/, false],
+];
+
+/** A wake as Ducter sends it (D271): the wait's reason and whether it was a timer, or undefined. */
+export function wakeOf(text: string): { reason: string; timer: boolean } | undefined {
+  for (const [re, timer] of WAKES) {
+    const m = re.exec(text.trim());
+    if (m) return { reason: m[1]!.trim(), timer };
+  }
+  return undefined;
+}
+
+// D271: Ducter's own words to a task, logged before they carried from "ducter" (as from the user).
+const TOLD: [RegExp, ToldSay][] = [
+  [/^You may use (.+?) now: the user's own phone/, "lent"],
+  [/^(?:Ducter's (?:browser|phone) is yours again|The user handed Ducter's browser back)/, "returned"],
+  [/^(.+?) (?:is back\. If the work still needs it|answers again and is still lent to you)/, "returned"],
+  [/^The user (?:said no to lending you their phone|said not now to using their own phone)/, "declined"],
+  [/^The user pressed 停下 \/ Stop/, "stopped"],
+  [/^The user reopened this task\./, "reopened"],
+];
+
+/**
+ * What Ducter told the agent (D271), from a user-role line: `from` "ducter" always is; an older
+ * line from "user" is when its words are one of Ducter's own. Undefined for the person's words.
+ */
+export function toldOf(text: string, from?: string): { say: ToldSay; name?: string } | undefined {
+  for (const [re, say] of TOLD) {
+    const m = re.exec(text.trim());
+    if (m) return { say, ...(m[1] ? { name: m[1].trim() } : {}) };
+  }
+  return from === "ducter" ? { say: "other" } : undefined;
+}
+
+const turnEnded = (raw: unknown) => {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  return r.turnEnd === true || r.kind === "turn_ended";
+};
+
+/**
+ * D271: whether the agent is in a turn now: it did or heard something since its last turn ended
+ * (or no turn has ended yet). A task resting on a wait after its turn ended is not, so its end
+ * line says what it waits for, never that it is thinking. Shared by the Go port.
+ */
+export function inTurn(events: LogEvent[]): boolean {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]!;
+    if (e.kind !== "task_event") continue;
+    const b = e.body as Bodies["task_event"];
+    // A runner's note or the harness's background work says nothing about the turn.
+    if (b.role === "system") {
+      if (turnEnded(b.raw)) return false;
+      continue;
+    }
+    return true;
+  }
+  return events.some((e) => e.kind === "task_open");
 }
 
 /** The user's Go as Ducter relays it to the task ("User says Go: …."), or undefined. */
@@ -278,7 +357,7 @@ export function lastSeq(b: Block): number {
 export function turnsOf(blocks: Block[]): Turn[] {
   const out: Turn[] = [];
   for (const b of blocks) {
-    if (b.k === "brief" || b.k === "you" || b.k === "partner") out.push({ seq: b.seq, prompt: b, body: [] });
+    if (b.k === "brief" || b.k === "you" || b.k === "partner" || b.k === "wake" || b.k === "told") out.push({ seq: b.seq, prompt: b, body: [] });
     else {
       if (!out.length) out.push({ seq: b.seq, body: [] });
       out.at(-1)!.body.push(b);
@@ -404,7 +483,12 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
           const media = b.media?.length ? { media: b.media } : {};
           // The runner's kickoff (the brief again in tags) is not what anyone said.
           if (b.from === "runner" || (!b.from && KICKOFF.test(text))) break;
-          if (b.from === "partner" || ev.origin === "partner") out.push({ k: "partner", seq: ev.seq, text: redact(text), ...media });
+          const fromPartner = b.from === "partner" || ev.origin === "partner";
+          const wake = fromPartner ? wakeOf(text) : undefined;
+          const told = fromPartner ? undefined : toldOf(text, b.from);
+          if (wake) out.push({ k: "wake", seq: ev.seq, text: redact(wake.reason), ...(wake.timer ? { timer: true } : {}) });
+          else if (told) out.push({ k: "told", seq: ev.seq, say: told.say, ...(told.name ? { name: redact(told.name) } : {}), text: redact(text) });
+          else if (fromPartner) out.push({ k: "partner", seq: ev.seq, text: redact(text), ...media });
           else {
             const go = goRelay(text);
             out.push({ k: "you", seq: ev.seq, text: redact(text), ...(go !== undefined ? { go } : {}), ...media });

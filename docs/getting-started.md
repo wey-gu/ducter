@@ -81,6 +81,14 @@ words at its next step. To have it read them only once it's done, choose **After
 Option-Return); they wait as **Queued**. **Cancel task** is in the **⋯** at the top. Scrolled up while it
 works? **Jump to latest** brings you back.
 
+A task that checks on something over time (a review queue every 45 minutes, a build until it's
+green) rests between looks: its last line says **Waiting: …** and when it looks next; click it to
+see how it checks. Each time the wait comes true, a thin line says **Wait over** with the time,
+and that round's work folds under it. When Ducter itself tells the agent something, such as that
+you lent it your phone, it's a thin line in your words too, never one of your messages. On a wide
+window, the small marks at the right edge are everything said to the agent: hover them for the
+list, click one to go there. Hover the agent's words for their time and **Copy**.
+
 To work on it by hand, open the task on the Mac and choose **Open** at its top right: **Show in
 Finder**, **Open in** Cursor, Visual Studio Code or Zed, or **Open in** Terminal, iTerm2, Ghostty
 or Warp, whichever you have. **Open** shows when the copy is on this Mac.

@@ -174,9 +174,11 @@ export function createWork(o: WorkOptions): Work {
       if (card.attention === "blocked") tasks.setState(w.taskId, "working", card.residency);
       const zh = zhOf(w.reason);
       const timer = kindOf(w) === "timer";
+      // D271: a bare number (a clock's epoch a check printed) tells the agent nothing: left out.
+      const seen = w.observed?.trim() && !/^\d+$/.test(w.observed.trim()) ? w.observed.trim() : "";
       const text = timer
         ? zh ? `到时间了：「${w.reason}」。接着做。` : `It's time: "${w.reason}". Carry on.`
-        : zh ? `等到了：「${w.reason}」${w.observed ? `（${w.observed}）` : ""}。接着做。` : `The wait is over: "${w.reason}"${w.observed ? ` (${w.observed})` : ""}. Carry on.`;
+        : zh ? `等到了：「${w.reason}」${seen ? `（${seen}）` : ""}。接着做。` : `The wait is over: "${w.reason}"${seen ? ` (${seen})` : ""}. Carry on.`;
       void o.runner()?.send(w.taskId, text, undefined, "partner").catch((err) => console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`));
     } else if (w.state === "expired") {
       const zh = zhOf(w.reason);

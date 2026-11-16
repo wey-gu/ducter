@@ -65,23 +65,17 @@ func TestShellShots(t *testing.T) {
 		h.until("history", func() bool { return s.Task("t_conduct").HistoryLoaded })
 		shot("conduct", 1280, 900)
 		shot("conduct-wide", 1680, 1000)
-		if sc := h.app.taskScroll["t_conduct"]; sc != nil {
-			sc.Y = 0
-		}
+		scrollTaskTo(h.app, "t_conduct", 0)
 		shot("conduct-top", 1280, 900)
 		// Its finished turn opened, each run of steps opened.
 		for _, tu := range turnsOf(h.app.blocks(s.Task("t_conduct"))) {
 			h.app.open[fmt.Sprintf("turn:t_conduct:%d", tu.Seq)] = true
 		}
 		shot("conduct-open", 1280, 900)
-		if sc := h.app.taskScroll["t_conduct"]; sc != nil {
-			sc.Y = 520
-		}
+		scrollTaskTo(h.app, "t_conduct", 0.5)
 		shot("conduct-mid", 1280, 900)
 		openStretches(h.app, "t_conduct")
-		if sc := h.app.taskScroll["t_conduct"]; sc != nil {
-			sc.Y = 700
-		}
+		scrollTaskTo(h.app, "t_conduct", 0.5)
 		shot("conduct-groups", 1280, 1100)
 	}
 	h.app.OpenDevices()

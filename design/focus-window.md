@@ -203,6 +203,18 @@ What the window writes is what the user reads when they open the task, in one co
   or **没送到 / Didn't get through**; sent while it works it steers (`task_send` `mode:
   "steer"`, read at its next step, D268) and the working line shows it at work; sent with
   **做完再说 / After this** (`mode: "queue"`) it reads **排队中 / Queued** until the window answers;
+- **what Ducter itself says to the window** (D271) is never the user's words: a wake of its own
+  wait opens a turn as a `wake` block (`wakeOf`, the text core's `work.ts` sends), drawn as a
+  hairline with its time and the reason on hover; everything else Ducter tells it (the user's
+  phone lent or back, its browser handed back, a Stop, a reopen) goes with `from: "ducter"` and
+  is a `told` block (`toldOf`; older lines logged as from the user are known by their words),
+  a hairline in the user's language. A wake's text leaves out what the check saw when it is a
+  bare number;
+- **the end line** (D271) says only what the state proves: `inTurn` (something happened since
+  the last `turn_ended`) and a working card is a turn under way (what it is on, the turn's
+  clock); no turn and an armed wait of its own is **在等：{reason} · 下次 {time}**, how it checks
+  opened under it; otherwise nothing. A progress report after `wait_for` can leave the card
+  on working: the end line still says it waits;
 - **checkpoints** are the window's words said once, marked saved (D152);
 - **keys** in the brief, a command or its output never leave the home: the projection hides
   them in every frame and push it sends; the Log keeps them for the task (D152);

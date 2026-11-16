@@ -23,8 +23,9 @@ Where you can use it:
 
 ## Connect your phone
 
-Your phone needs an address it can reach from outside. If Ducter runs on a server with your own
-domain (see [Install](install.md#a-linux-server-that-stays-on)), it has one already. If not (a Mac
+Your phone needs an address it can reach. If Ducter runs on a server with your own domain or
+on your Tailscale network (see [Install](install.md#a-linux-server-that-stays-on)), it has one
+already; with Tailscale, the phone needs the Tailscale app on, in the same Tailscale network. If not (a Mac
 at home, say), set up **From outside** with your own domain on Cloudflare: see
 [From outside](#from-outside) below.
 

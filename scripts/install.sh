@@ -214,7 +214,7 @@ fi
 if [ "$SERVICE" = 1 ]; then
   if [ "$(uname)" = "Linux" ]; then
     step "让 Ducter 作为服务一直运行" "Running Ducter as a service"
-    # Its last lines say what's next (a domain, or an SSH tunnel), with `ducter` as this shell types it.
+    # Its last lines say what's next (Tailscale, a domain, or an SSH tunnel), with `ducter` as this shell types it.
     exec "$BIN/ducter" service install
   fi
   m "--service 是给 Linux 服务器用的；在 Mac 上，ducter up 就会一直运行。" \
@@ -226,8 +226,8 @@ if [ "$(uname)" = "Darwin" ]; then
   printf '  %s up\n' "$DUCTER"
 else
   printf '  %s service install\n' "$DUCTER"
-  m "  （让它一直运行，开机自动启动；之后用 ducter domain <你的域名> 从手机和 Mac 连上它）" \
-    "  (keeps it running and starts it at boot; then ducter domain <your domain> to reach it from your phone and Mac)"
+  m "  （让它一直运行，开机自动启动；之后用 ducter tailscale 或 ducter domain <你的域名> 从手机和 Mac 连上它）" \
+    "  (keeps it running and starts it at boot; then ducter tailscale or ducter domain <your domain> to reach it from your phone and Mac)"
 fi
 printf '\n'
 if [ "$(uname)" = "Darwin" ]; then

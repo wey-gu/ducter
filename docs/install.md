@@ -106,6 +106,7 @@ run the one command it prints.
 | `ducter open <part of a task's title>` | Show that task in the app (or, if the app isn't open, where it is) |
 | `ducter doctor` | The check-up (see [Troubleshooting](troubleshooting.md)) |
 | `ducter pair` | A code to connect your phone or another computer: one device, once, for 10 minutes. Run it again for the next device |
+| `ducter tailscale` | On a computer in your Tailscale network: HTTPS at its Tailscale name, only for your own devices, then a code. `--remove` undoes it |
 | `ducter domain <your domain>` | On a server: HTTPS at your domain, then a code to connect your devices from outside. `--remove` undoes it |
 | `ducter devices` | The devices connected to your Ducter; `ducter devices disconnect <name>` removes one |
 | `ducter devices rename <name> <new name>` | Give a device a name you'll recognize |
@@ -120,8 +121,8 @@ Messages follow your system language. Set `DUCTER_LOCALE=zh` or `DUCTER_LOCALE=e
 **Which Ducter do they talk to?** `status`, `say`, `task`, `tail`, `answer`, `merge`, `undo`,
 `open`, `pair` and `devices` talk to the Ducter you use: the one on this computer, or the one on
 a server once you've connected to it (see [below](#using-the-command-line-with-a-ducter-on-a-server)).
-Each one says where first: `→ this computer`, `→ hel.example.com`. `up`, `doctor`, `domain`,
-`service`, `worker`, `report` and `uninstall` always act on this computer.
+Each one says where first: `→ this computer`, `→ hel.example.com`. `up`, `doctor`, `tailscale`,
+`domain`, `service`, `worker`, `report` and `uninstall` always act on this computer.
 
 **Started on another port?** Add `--port 7790` (or set `DUCTER_PORT`) to every command, for
 example `ducter status --port 7790`. A `--port` always means this computer.
@@ -158,15 +159,18 @@ copy that won't.
 A Mac sleeps; a small server doesn't. Put Ducter on a Linux server you own and your partner
 keeps working through the night, while your Mac and phone connect to it.
 
-In short, in this order:
+The server doesn't need to be on the public internet. In short, in this order:
 
-1. **DNS:** an A record for your name (say `ducter.example.com`) → the server's public IP.
-2. **Firewall:** allow TCP 22, 80 and 443 in. Never 7777.
-3. **Install:** `curl -fsSL https://ducter.ai/install.sh | sh -s -- --service`. It checks that
+1. **Install:** `curl -fsSL https://ducter.ai/install.sh | sh -s -- --service`. It checks that
    Ducter answers on the server before it says what's next.
-4. **Domain:** `ducter domain ducter.example.com`: HTTPS, then a code.
-5. **Sign in an AI agent** on the server: `codex login --device-auth` or `claude auth login`.
-6. **Connect** your Mac with the code, then your phone with a new one: each code works once, for
+2. **Choose how your devices reach it:**
+   - **Tailscale** (no public ports, private to your devices): `ducter tailscale`.
+   - **Your own domain:** an A record to the server's public IP, TCP 80 and 443 open, then
+     `ducter domain ducter.example.com`.
+
+   Either one ends with HTTPS and a code. Never open port 7777.
+3. **Sign in an AI agent** on the server: `codex login --device-auth` or `claude auth login`.
+4. **Connect** your Mac with the code, then your phone with a new one: each code works once, for
    10 minutes (`ducter pair` gives the next).
 
 **1. On the server, install it as a service** (x64 or arm64 Linux):
@@ -184,13 +188,15 @@ copy the folder over.
 
 Ducter now starts with the server and restarts if it ever crashes. It only listens on the
 server itself (`127.0.0.1`), so nobody reaches it from outside until you choose how. The
-install ends with this server's public IP address and the next step:
+install ends with the next step. On a server that's already in your Tailscale network, it says
+so first:
 
 ```
-To use it from your phone and Mac anywhere:
-point a domain at this server's public IP 203.0.113.7 (an A record), then run:
-  ducter domain ducter.example.com
+This server is in your tailnet (hel.tail1234.ts.net). To reach it from your phone and Mac, privately, with no public ports:
+  ducter tailscale
 ```
+
+Otherwise it lists your own domain and Tailscale, then an SSH tunnel for your Mac alone.
 
 As `root` the data lives in `/root/.ducter`, and `ducter` works in the same shell right away.
 
@@ -212,7 +218,33 @@ DeepSeek Harness and nothing else. Other keys and tokens on the server, such as 
 shell, aren't passed to tasks either. If an older Ducter had you put keys in `~/.ducter/env`,
 Ducter moves them to `keys.env` the next time it starts.
 
-**2. Give it your domain** (recommended; it's also how your phone reaches it):
+**2. Choose how your devices reach it.** Pick one; you can switch later.
+
+**Tailscale** (no public ports, private to your devices). For a server that has no public
+address, or that you'd rather keep off the internet:
+
+1. Put the server in your Tailscale network:
+   `curl -fsSL https://tailscale.com/install.sh | sh`, then `sudo tailscale up`.
+2. On the [DNS page](https://login.tailscale.com/admin/dns) of Tailscale's admin console, turn
+   on **MagicDNS** and **HTTPS Certificates** (once for your whole network). Tailscale notes
+   there that your machine names appear in a public certificate log.
+3. On the server:
+
+   ```sh
+   ducter tailscale
+   ```
+
+It checks Tailscale is connected and can give this server a certificate (if not, it says which
+switch to turn on and stops), serves Ducter over HTTPS at the server's Tailscale name (like
+`https://hel.tail1234.ts.net`), and ends with a code, a link and a QR code. Only devices in
+your Tailscale network can open that address, and each still needs a code. Not running as root?
+If Tailscale says you aren't allowed, run `sudo tailscale set --operator=$USER` once, then
+`ducter tailscale` again. `ducter tailscale --remove` takes Ducter off that address.
+
+Your phone and Mac need the Tailscale app on, signed in to the same Tailscale network.
+Notifications still reach your phone: they go out from the server, nothing comes in.
+
+**Your own domain** (reachable from anywhere, with no app on your phone):
 
 1. At your domain's DNS provider, add an **A record** for a name such as
    `ducter.example.com`, pointing at the server's public IP (the install printed it). If your
@@ -231,11 +263,14 @@ stops), checks nothing else holds ports 80 and 443, installs [Caddy](https://cad
 minute), and ends with a code, a link and a QR code to connect your devices. Running it again
 is safe. `ducter domain --remove` takes Ducter's site out of Caddy again.
 
+Another private network (ZeroTier, NetBird, your own WireGuard)? Give Ducter the HTTPS address
+you set up for it: put it in `~/.ducter/public-url` and run `ducter pair`.
+
 Already run a web server such as nginx on 80 and 443? `ducter domain ducter.example.com --print`
 shows what to forward to Ducter (`127.0.0.1:7777`, WebSocket upgrades included); after you've
 set that up, put `https://ducter.example.com` in `~/.ducter/public-url` and run `ducter pair`.
 
-**No domain?** Your Mac alone can reach it through an SSH tunnel. On the Mac (leave it
+**Neither yet?** Your Mac alone can reach it through an SSH tunnel. On the Mac (leave it
 running):
 
 ```sh
@@ -245,14 +280,15 @@ ssh -N -L 7777:127.0.0.1:7777 root@203.0.113.7
 The address is then `http://127.0.0.1:7777`. This works for your Mac, not your phone.
 
 **3. Connect your Mac.** Open the Mac app and choose **My Ducter is on another computer**, then
-**Connect to your Ducter**. Type the **Address** and **Code** that `ducter domain` (or
-`ducter pair`) showed, or paste the whole link. Each code works once, for one device, for 10 minutes.
+**Connect to your Ducter**. Type the **Address** and **Code** that `ducter tailscale` or
+`ducter domain` (or `ducter pair`) showed, or paste the whole link. Each code works once, for one device, for 10 minutes.
 For your phone or another computer, get a new one: `ducter pair` on the computer Ducter lives on, or **Devices › Connect a phone or computer** in the Mac app (it works when the app is connected to a Ducter on a server, too).
 
 Ducter's own messages on the server go to the system journal:
 `journalctl --user -u ducter`.
 
-**Which part isn't working?** Ask your domain from any computer:
+**Which part isn't working?** Ask the address from any computer (with Tailscale, one in your
+Tailscale network):
 `curl -sS -o /dev/null -w '%{http_code}\n' https://ducter.example.com/health`
 
 | You get | What it means | What to do |
@@ -261,13 +297,14 @@ Ducter's own messages on the server go to the system journal:
 | `502`, `503` or `504` | HTTPS works, but Ducter behind it isn't answering | On the server: `systemctl --user status ducter`, then `ducter doctor`; `systemctl --user restart ducter` |
 | `308` or `301` for `http://…` | Caddy is there and sends you to HTTPS: normal | Ask the `https://` address |
 | `000`, or a certificate error | No HTTPS yet: the DNS record, ports 80 and 443, or the firewall | Check the A record points at the server and 80 and 443 are open, then `ducter domain ducter.example.com` again; Caddy's log: `journalctl -u caddy -n 50` |
+| `000` at a `.ts.net` address | This computer isn't in your Tailscale network, or Tailscale is off on it | Turn Tailscale on here; on the server, `tailscale serve status` should show Ducter, else `ducter tailscale` again |
 
 ### Already using Ducter on your Mac, and want it on a server
 
 Start the server as a fresh Ducter: your conversation and tasks on the Mac stay on the Mac (moving
 them over is on the roadmap).
 
-1. Set up the server as above: install, `ducter domain`, sign in an AI agent.
+1. Set up the server as above: install, `ducter tailscale` or `ducter domain`, sign in an AI agent.
 2. On the Mac, open **Settings** and choose **Connect to a Ducter on another computer**. Paste
    the link from `ducter pair` (or type the address and the code). The app now uses the server.
    It asks once whether to stop the Ducter on this Mac; its data in `~/.ducter` stays either way.
@@ -303,7 +340,9 @@ carries on when it's back.
 
 ## Your phone or iPad
 
-Your phone connects to the Ducter on your server through your own domain. On the server, run
+Your phone connects to the Ducter on your server at the address you chose: your domain, or,
+with Tailscale, the server's Tailscale name (the phone needs the Tailscale app on, in the same
+Tailscale network). On the server, run
 `ducter pair` and scan the QR code it shows, or open the link. The phone opens Ducter in its
 browser, connects, and asks whether to notify you when something needs you.
 

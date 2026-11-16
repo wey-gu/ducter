@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { plainStyle } from "../src/doctor.ts";
 import { translator } from "../src/i18n.ts";
 import { openDeviceAuth } from "@ducter/core/src/auth.ts";
+import type { Tailnet } from "../src/tailscale.ts";
 import { cmdDevices, cmdPair, cmdService, ducterCommand, formatDevices, isLoopback, launchAgentPath, launchdWorkerPlist, pairLink, publicUrl, servicePath, systemdUnit, tunnelCommand, WORKER_LABEL } from "../src/remote.ts";
 import { refusedExit, EXIT_REFUSED } from "../src/worker.ts";
 import type { Host } from "../src/doctor.ts";
@@ -80,7 +81,7 @@ describe("pairing text", () => {
 });
 
 describe("ducter pair without a public address", () => {
-  const run = async (env: { SSH_CONNECTION?: string; DUCTER_PUBLIC_URL?: string }, o: { worker?: boolean; t?: typeof en; json?: boolean; server?: boolean; ip?: string } = {}) => {
+  const run = async (env: { SSH_CONNECTION?: string; DUCTER_PUBLIC_URL?: string }, o: { worker?: boolean; t?: typeof en; json?: boolean; server?: boolean; ip?: string; tailnet?: Tailnet } = {}) => {
     const dir = mkdtempSync(join(tmpdir(), "ducter-pair-"));
     const saved = { ssh: process.env.SSH_CONNECTION, pub: process.env.DUCTER_PUBLIC_URL };
     const out: string[] = [];
@@ -91,7 +92,7 @@ describe("ducter pair without a public address", () => {
       else delete process.env.SSH_CONNECTION;
       if (env.DUCTER_PUBLIC_URL) process.env.DUCTER_PUBLIC_URL = env.DUCTER_PUBLIC_URL;
       else delete process.env.DUCTER_PUBLIC_URL;
-      await cmdPair({ t: o.t ?? en, style: plainStyle, dataDir: dir, port: 7777, json: o.json ?? false, running: true, wait: false, worker: o.worker, server: o.server ?? Boolean(env.SSH_CONNECTION), publicIp: async () => o.ip });
+      await cmdPair({ t: o.t ?? en, style: plainStyle, dataDir: dir, port: 7777, json: o.json ?? false, running: true, wait: false, worker: o.worker, server: o.server ?? Boolean(env.SSH_CONNECTION), publicIp: async () => o.ip, tailnet: async () => o.tailnet });
     } finally {
       console.log = log;
       if (saved.ssh === undefined) delete process.env.SSH_CONNECTION;
@@ -127,12 +128,39 @@ describe("ducter pair without a public address", () => {
     const j = JSON.parse((await run({}, { json: true, server: true, ip: "203.0.113.7" })).trim());
     expect(j.reachable).toBe(false);
     expect(j.publicIp).toBe("203.0.113.7");
-    expect(j.steps.map((x: { command: string }) => x.command)).toEqual(["ducter anywhere on", "ducter domain <your domain>", j.tunnel]);
+    expect(j.steps.map((x: { command: string }) => x.command)).toEqual(["ducter anywhere on", "ducter domain <your domain>", "ducter tailscale", j.tunnel]);
+    expect(j.tailnet).toBeNull();
     expect(j.code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
     const k = JSON.parse((await run({ DUCTER_PUBLIC_URL: "https://d.example.com" }, { json: true })).trim());
     expect(k.reachable).toBe(true);
     expect(k.link).toBe(`https://d.example.com/pair#c=${k.code}`);
     expect(k.steps).toBeUndefined();
+  });
+  test("D265: a server in a tailnet leads with ducter tailscale; one without lists Tailscale beside the domain", async () => {
+    const tn: Tailnet = { state: "Running", dnsName: "hel.tail1234.ts.net", magicDNS: true, https: true };
+    const out = await run({}, { server: true, ip: "203.0.113.7", tailnet: tn });
+    const lead = out.indexOf("This server is in your tailnet (hel.tail1234.ts.net).");
+    expect(lead).toBeGreaterThan(0);
+    expect(out.slice(lead)).toContain("privately, with no public ports:\n    ducter tailscale");
+    expect(out.indexOf("point a domain at this server's public IP")).toBeGreaterThan(lead);
+    expect(out).not.toContain("install Tailscale here");
+    // No tailnet: the domain, then Tailscale as the other way, then the tunnel.
+    const plain = await run({}, { server: true });
+    const dom = plain.indexOf("point a domain at this server's public IP (an A record)");
+    const ts = plain.indexOf("Or with Tailscale (no domain, no public ports; your phone joins your tailnet)");
+    expect(dom).toBeGreaterThan(0);
+    expect(ts).toBeGreaterThan(dom);
+    expect(plain.indexOf("Just your Mac, no domain:")).toBeGreaterThan(ts);
+    // Tailscale there but signed out: not led with, still offered.
+    expect(await run({}, { server: true, tailnet: { state: "NeedsLogin", magicDNS: false, https: false } })).toContain("Or with Tailscale");
+    const j = JSON.parse((await run({}, { json: true, server: true, tailnet: tn })).trim());
+    expect(j.tailnet).toBe("hel.tail1234.ts.net");
+    expect(j.steps[0].command).toBe("ducter tailscale");
+    // A ts.net address saved by ducter tailscale is the address pairing hands out, with its QR.
+    const k = JSON.parse((await run({ DUCTER_PUBLIC_URL: "https://hel.tail1234.ts.net" }, { json: true })).trim());
+    expect(k.reachable).toBe(true);
+    expect(k.link).toBe(`https://hel.tail1234.ts.net/pair#c=${k.code}`);
+    expect(await run({ DUCTER_PUBLIC_URL: "https://hel.tail1234.ts.net" }, { server: true })).toContain("scan this with your phone");
   });
   test("D83: one code, both ways to use it: a phone or app window, and another computer's one command", async () => {
     const pub = { DUCTER_PUBLIC_URL: "https://d.example.com" };

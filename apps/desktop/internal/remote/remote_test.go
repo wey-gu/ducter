@@ -21,6 +21,8 @@ func TestParse(t *testing.T) {
 		{"localhost:7420", "", "http://localhost:7420", ""},
 		{"wss://d.example.com/ws", "x", "https://d.example.com", "X"},
 		{"https://example.com/ducter/pair#c=K7QM-4XPA", "", "https://example.com/ducter", "K7QM-4XPA"},
+		{"hel.tail1234.ts.net", "K7QM-4XPA", "https://hel.tail1234.ts.net", "K7QM-4XPA"}, // tailscale serve (D265)
+		{"https://hel.tail1234.ts.net/pair#c=K7QM-4XPA", "", "https://hel.tail1234.ts.net", "K7QM-4XPA"},
 	}
 	for _, c := range cases {
 		base, code, err := Parse(c.addr, c.code)

@@ -35,8 +35,9 @@ heard of a subagent.
 - A Mac app (Apple silicon, signed and notarized), a phone web client, and an
   [iPhone app in public beta](https://testflight.apple.com/join/Z4GvWt7t) with Go / Hold / Reply
   on notifications.
-- Server mode on Linux: a systemd service, HTTPS on your own domain, and other computers that do
-  tasks for your Ducter.
+- Server mode on Linux: a systemd service, reached through Tailscale (private to your devices,
+  no public ports: `ducter tailscale`, D265) or HTTPS on your own domain, and other computers
+  that do tasks for your Ducter.
 - Read your mail, calendar and other accounts with one tap through OOMOL's `oo`, or any
   OpenConnector / MCP server. Reads are logged; anything that sends or changes waits for Go.
 - One-line install: `curl -fsSL https://ducter.ai/install.sh | sh`, and
@@ -66,8 +67,10 @@ heard of a subagent.
 - **Mac dark mode** through the Midnight theme. Web and iPhone already follow the system.
 - **Quota awareness.** Keep a reserve for your partner, prefer the account with the most limit
   left, and fall back gracefully when one runs low.
-- **Remote access without a domain.** A small relay on your own Cloudflare account, or
-  Tailscale, so a phone reaches a home Mac behind NAT with a stable HTTPS address.
+- **Remote access without a domain.** Built for a server: your own Cloudflare tunnel
+  (`ducter anywhere`, D228) and Tailscale (`ducter tailscale`, D265). Still to do: a live
+  tailnet check of pairing, push and reconnect from a phone, and a status probe per address
+  (up / degraded / down, with a reason) on the Devices page.
 - **Device keys and passkeys** on top of today's one-time pairing codes.
 
 ## Later
@@ -90,15 +93,8 @@ heard of a subagent.
 
 ## Help wanted
 
-**Tailscale remote access.** Make Ducter reachable through `tailscale serve` (private to your
-tailnet) or `tailscale funnel` (public), as an alternative to a domain:
-1. A stable HTTPS origin for the web client and WebSocket (installs, push and passkeys are tied
-   to it).
-2. That origin reported to Ducter, so pairing codes and push use it.
-3. Ducter's own device auth kept: a one-time code, then a revocable per-device key; tailnet
-   identity may add to it, never replace it.
-4. A status probe (up / degraded / down, with a reason) for the Devices page.
-
-Done when onboarding offers Tailscale when the CLI is present, and phone pairing, push and
-reconnect all work. Start with [`research/21`](../research/21-v1-topology-remote-access.md) and
-[`system.md`](system.md).
+**Other private networks.** `ducter tailscale` covers Tailscale (research/86). Headscale, ZeroTier,
+NetBird or plain WireGuard work today by saving the address you set up in `~/.ducter/public-url`;
+a one-command path for one of them, shaped like `ducter tailscale` (the address checked, then a
+code), is welcome. Start with [`research/86`](../research/86-tailscale-reach.md) and
+[`system.md`](system.md) ("Reaching it").

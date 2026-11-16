@@ -85,7 +85,16 @@ wrong codes Ducter stops accepting them for 10 minutes; wait, or get a new code.
 
 Check that the address is right. If you use an SSH tunnel, make sure it's still open on your Mac
 (`ssh -N -L 7777:127.0.0.1:7777 you@server`). On a server, check that Ducter is running:
-`ducter service status`.
+`ducter service status`. An address ending in `.ts.net` (Tailscale) opens only on a device with
+the Tailscale app on, in the same Tailscale network.
+
+### `ducter tailscale` stops
+
+It says why and what to run next. Usually one of these: Tailscale isn't signed in on the server
+(`sudo tailscale up`); HTTPS certificates are off for your Tailscale network (turn on **MagicDNS**
+and **HTTPS Certificates** on the [DNS page](https://login.tailscale.com/admin/dns) of the admin
+console); or Tailscale won't let your user change what it serves (`sudo tailscale set
+--operator=$USER` once). Then run `ducter tailscale` again.
 
 ### From outside didn't finish setting up
 
@@ -205,6 +214,7 @@ example `root`):
 ducter uninstall --all --yes     # the service, the ducter command, ~/.ducter, the PATH lines, Ducter's site in Caddy
 curl -fsSL https://ducter.ai/install.sh | sh -s -- --service
 ducter domain ducter.example.com # if you use a domain: HTTPS again, and a new code
+ducter tailscale                 # or, with Tailscale: HTTPS at its Tailscale name, and a new code
 ```
 
 It says what it removed and what it kept: Caddy stays installed, and so do your Claude Code and

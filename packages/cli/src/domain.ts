@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import type { Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
-import { newPairing, unitPath } from "./remote.ts";
+import { isTailnetUrl, newPairing, ownUrl, unitPath } from "./remote.ts";
 
 export const MARK_BEGIN = "# ducter: begin";
 export const MARK_END = "# ducter: end";
@@ -179,7 +179,8 @@ export async function cmdDomain(o: Opts): Promise<number> {
     if (r.error === "root") return fail(t("domain.needsRoot"), "sudo ducter domain --remove");
     if (r.error) return fail(t("domain.writeFailed", { file: cf, reason: r.error }), "sudo ducter domain --remove");
     step("remove", true, r.domains.length ? t("domain.removed", { domains: r.domains.join(", "), file: cf }) : t("domain.nothingToRemove", { file: cf }));
-    rmSync(join(o.dataDir, "public-url"), { force: true });
+    // An address `ducter tailscale` saved isn't Caddy's to take away.
+    if (!isTailnetUrl(ownUrl(o.dataDir, {}))) rmSync(join(o.dataDir, "public-url"), { force: true });
     res.ok = true;
     say("  " + style.dim(t("domain.removedNote")));
     return done();
@@ -197,20 +198,10 @@ export async function cmdDomain(o: Opts): Promise<number> {
 
   // 1. Ducter answers here: Caddy only forwards to it. An installed service that isn't running
   // is started (and enabled at boot) first.
-  const local = `http://127.0.0.1:${o.port}/health`;
-  let alive = (await sys.status(local)) === 200;
-  const unit = sys.platform === "linux" ? (sys.unitPath ?? unitPath()) : undefined;
-  if (!alive && unit && sys.read(unit) !== undefined) {
-    say("  " + style.dim(t("domain.ducterStarting")));
-    await sys.run(["systemctl", "--user", "enable", "--now", "ducter.service"]);
-    for (let i = 0; i < 10 && !alive; i++) {
-      await sys.sleep(1500);
-      alive = (await sys.status(local)) === 200;
-    }
-  }
-  if (!alive) {
+  const here = await ensureLocalDucter(sys, o.port, () => say("  " + style.dim(t("domain.ducterStarting"))));
+  if (!here.alive) {
     step("ducter", false, t("domain.ducterDown", { port: o.port }));
-    if (unit && sys.read(unit) !== undefined) return fail(t("domain.ducterBroken"), "journalctl --user -u ducter -n 50 --no-pager");
+    if (here.installed) return fail(t("domain.ducterBroken"), "journalctl --user -u ducter -n 50 --no-pager");
     return fail(t("domain.ducterDown.why"), sys.platform === "linux" ? "ducter service install" : "ducter up");
   }
   step("ducter", true, t("domain.ducterUp", { port: o.port }));
@@ -321,6 +312,28 @@ export async function cmdDomain(o: Opts): Promise<number> {
   }
   console.log("");
   return o.pair ? o.pair() : 0;
+}
+
+/** Ducter answers on 127.0.0.1:<port>; an installed service that isn't running is started (and
+ *  enabled at boot) first. Shared by `ducter domain` and `ducter tailscale`: both only forward. */
+export async function ensureLocalDucter(
+  sys: Pick<DomainSys, "platform" | "status" | "read" | "run" | "sleep" | "unitPath">,
+  port: number,
+  onStart: () => void,
+): Promise<{ alive: boolean; installed: boolean }> {
+  const local = `http://127.0.0.1:${port}/health`;
+  let alive = (await sys.status(local)) === 200;
+  const unit = sys.platform === "linux" ? (sys.unitPath ?? unitPath()) : undefined;
+  const installed = Boolean(unit && sys.read(unit) !== undefined);
+  if (!alive && installed) {
+    onStart();
+    await sys.run(["systemctl", "--user", "enable", "--now", "ducter.service"]);
+    for (let i = 0; i < 10 && !alive; i++) {
+      await sys.sleep(1500);
+      alive = (await sys.status(local)) === 200;
+    }
+  }
+  return { alive, installed };
 }
 
 /** Takes Ducter's site out of the Caddyfile and reloads Caddy; other sites stay as they are. */

@@ -221,6 +221,9 @@ describe("isLocalRequest", () => {
     ["127.0.0.1", "127.0.0.1:7777", { forwarded: "for=8.8.8.8" }, false],
     ["127.0.0.1", "127.0.0.1:7777", { "X-Forwarded-Proto": "https" }, false], // a proxy that only says the scheme
     ["127.0.0.1", "127.0.0.1:7777", { "true-client-ip": "8.8.8.8" }, false],
+    // tailscale serve (D265): the tailnet name as Host, X-Forwarded-*, and the user's login
+    ["127.0.0.1", "hel.tail1234.ts.net", { "x-forwarded-for": "100.64.0.7", "x-forwarded-host": "hel.tail1234.ts.net", "x-forwarded-proto": "https", "tailscale-user-login": "alice@example.com" }, false],
+    ["127.0.0.1", "127.0.0.1:7777", { "Tailscale-User-Login": "alice@example.com" }, false], // the identity header alone
   ] as const)("%s Host %s %j → %p", (ip, host, headers, want) => {
     expect(isLocalRequest(req(host, headers as Record<string, string>), ip)).toBe(want);
   });

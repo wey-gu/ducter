@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect" | "update" | "ability" | "browser" | "anywhere";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "tailscale" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect" | "update" | "ability" | "browser" | "anywhere";
 
 export interface Args {
   command: Command;
@@ -25,7 +25,7 @@ export interface Args {
   effort?: string; // task --effort <level>: how hard it thinks (D202; one of the model's own levels)
   base?: string; // task --base <branch>: what it starts from
   timeout?: number; // say --timeout <seconds>
-  remove?: boolean; // domain --remove: take Ducter's site out of Caddy
+  remove?: boolean; // domain --remove: take Ducter's site out of Caddy; tailscale --remove: stop serving it
   print?: boolean; // domain <name> --print: only print the Caddy block
   dnsCheck?: boolean; // false with domain --no-dns-check
   local?: boolean; // --local: a home command acts on this machine's Ducter (D147)
@@ -40,7 +40,7 @@ export interface Args {
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout"; vars: Record<string, string> } };
 
-const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect", "update", "ability", "browser", "anywhere"]);
+const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "tailscale", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect", "update", "ability", "browser", "anywhere"]);
 /** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
 const WITH_REST = new Set<Command>(["devices", "service", "domain", "merge", "undo", "open", "task", "say", "tail", "answer", "connect", "ability", "browser", "anywhere"]);
 const ALIASES: Record<string, Command> = {

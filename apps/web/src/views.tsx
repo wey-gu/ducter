@@ -17,7 +17,7 @@ import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, m
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { Btn, Chev, Gear, NavBtn, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { Btn, Chev, DevicesMark, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
@@ -1211,7 +1211,6 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
   const ua = A.updateAll;
   const running = !!ua?.plan && !ua.plan.finishedAt;
   const n = ua?.offer.length ?? 0;
-  const home = (A.devices ?? []).find((d) => d.home);
   return (
     <>
       {(n > 0 || running) && (
@@ -1222,17 +1221,14 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
           onClick={() => A.openSettings("devices")}
         />
       )}
-      {wide && (
-        <NavBtn
-          label={t("nav.devices")}
-          about={t("nav.devices.label")}
-          here={here === "devices"}
-          glyph={<img class="nav-art" src={home ? deviceArt(home) : "app/art/dev_laptop_awake.webp"} alt="" />}
-          onClick={() => A.openSettings("devices")}
-        />
-      )}
-      {onHand && <NavBtn label={t("nav.onhand")} here={here === "onhand"} onClick={() => A.go({ name: "onhand" })} />}
-      <NavBtn label={t("nav.settings")} icon={!wide} here={here === "settings"} glyph={wide ? undefined : <Gear />} onClick={() => A.openSettings()} />
+      <PlaceSeg
+        words={wide}
+        segs={[
+          { key: "devices", label: t("nav.devices"), about: t("nav.devices.label"), glyph: <DevicesMark />, on: here === "devices", go: () => A.openSettings("devices") },
+          ...(onHand ? [{ key: "onhand", label: t("nav.onhand"), about: t("nav.onhand"), glyph: <OnHandMark />, on: here === "onhand", go: () => A.go({ name: "onhand" }) }] : []),
+          { key: "settings", label: t("nav.settings"), about: t("nav.settings"), glyph: <Gear />, on: here === "settings", go: () => A.openSettings() },
+        ]}
+      />
     </>
   );
 }

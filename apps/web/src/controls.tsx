@@ -45,6 +45,48 @@ export function NavBtn(p: { label: string; onClick: () => void; glyph?: Componen
   );
 }
 
+/** D264: the places as one control: a sunk track, the place shown a raised knob in it, the others
+ *  flat. words=false shows the drawn marks alone (each keeps its name as tooltip and label). */
+export function PlaceSeg(p: { words: boolean; segs: { key: string; label: string; about: string; glyph: ComponentChildren; on: boolean; go: () => void }[] }) {
+  return (
+    <nav class={`places${p.words ? "" : " marks"}`}>
+      {p.segs.map((s) => (
+        <button
+          key={s.key}
+          class={`place${s.on ? " on" : ""}`}
+          aria-current={s.on ? "page" : undefined}
+          aria-label={s.about}
+          title={p.words ? s.about : s.label}
+          onClick={() => !s.on && s.go()}
+        >
+          {s.glyph}
+          {p.words && <span class="lbl">{s.label}</span>}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+/** On hand's mark: three things in hand, a dot and a line each. */
+export const OnHandMark = () => (
+  <svg class="nav-g" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+    {[9, 7, 8].map((w, i) => (
+      <g key={i}>
+        <circle cx="3" cy={4 + i * 5} r="1.4" fill="currentColor" />
+        <path d={`M6.4 ${4 + i * 5}h${w}`} stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      </g>
+    ))}
+  </svg>
+);
+/** Devices' mark: a laptop with a phone standing in front. */
+export const DevicesMark = () => (
+  <svg class="nav-g" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+    <path d="M4 11.5V4h10v3" />
+    <path d="M1.5 13.5h8.5" stroke-linecap="round" />
+    <path d="M12 8.5h4.5V16H12z" />
+  </svg>
+);
+
 /** The drawn marks of the bar (D262): Settings' gear, New task's ＋, the update pebble. */
 export const Gear = () => {
   return (

@@ -6,7 +6,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
 
@@ -123,7 +122,6 @@ func (a *App) compactBar() bool { return a.winW > 0 && a.winW < 1060 }
 // placeNav is the way to the other places: 更新 while something waits to
 // be updated, then 设备 · 手头的事 · 设置, the place shown chosen.
 func (a *App) placeNav(c *ui.Context, here Route) {
-	t := a.T
 	if n, running := a.updatesWaiting(); n > 0 || running {
 		label := a.L.T("nav.update")
 		switch {
@@ -138,38 +136,103 @@ func (a *App) placeNav(c *ui.Context, here Route) {
 			a.OpenAbout()
 		}
 	}
-	devWord := a.L.T("nav.devices")
-	if a.compactBar() {
-		devWord = "" // its clay device says it; the name is the tooltip
-	}
-	if a.navButton(c, "devices", devWord, a.L.T("nav.devices.label"), func() {
-		art := "laptop_awake"
-		if home := a.homeDevice(); home != nil {
-			art = deviceArt(home)
-		}
-		ui.Box(c).Size(22, 22).Radius(6).Background(t.Clay).Padding(1).Shrink(0).Children(func() {
-			if b := theme.Clay(art); b != nil {
-				ui.Image(c, b).Grow(1).AccessHidden(true)
-			}
-		})
-	}, here == RouteDevices) {
-		a.OpenDevices()
-	}
-	if a.navButton(c, "onhand", a.L.T("nav.onhand"), a.L.T("nav.onhand"), nil, here == RouteOnHand) {
-		a.Route = RouteOnHand
-		a.markRead()
-	}
+	a.placeSegments(c, here)
+}
+
+// placeSegments is the three places as one control (D264): a sunk track
+// holding 设备 · 手头的事 · 设置, the place you are in a raised knob in
+// it, the others flat. One object instead of three buttons, so the bar
+// stays calm, and "where you are" reads as a knob in its slot, not as a
+// button that went dead. Every segment has its drawn mark; a narrow window
+// drops all three words together (each keeps its name as tooltip and
+// accessible name), never one word alone.
+func (a *App) placeSegments(c *ui.Context, here Route) {
+	t := a.T
+	words := !a.compactBar()
 	inSettings := here == RouteSettings || here == RoutePartner
-	var gear func()
-	if a.compactBar() {
-		gear = func() { a.glyph(c, 18, drawGear(t.Ink)) }
+	segs := []struct {
+		key, word, name string
+		draw            func(ui.Color) func(p *ui.Painter, r ui.Rect)
+		on              bool
+		open            func()
+	}{
+		{"devices", a.L.T("nav.devices"), a.L.T("nav.devices.label"), drawDevices, here == RouteDevices, a.OpenDevices},
+		{"onhand", a.L.T("nav.onhand"), a.L.T("nav.onhand"), drawOnHand, here == RouteOnHand, func() { a.Route = RouteOnHand; a.markRead() }},
+		{"settings", a.L.T("nav.settings"), a.L.T("nav.settings"), drawGear, inSettings, a.OpenSettings},
 	}
-	label := a.L.T("nav.settings")
-	if gear != nil {
-		label = ""
+	pad := float32(3)
+	ui.Row(c.Key("places")).Height(t.ControlSM).Padding(pad).Gap(2).Radius(t.RadiusSM+2).AlignItems(ui.Center).
+		Background(t.SurfaceSunken).InsetShadow(0, 1.5, 2, 0, t.Line).Role(ui.RoleTabList).Shrink(0).Children(func() {
+		for _, s := range segs {
+			seg := ui.Row(c.Key("nav:" + s.key)).Height(t.ControlSM - 2*pad).Gap(t.S1 + 2).AlignItems(ui.Center).
+				Radius(t.RadiusSM - 1).Cursor(ui.CursorPointer).Role(ui.RoleTab).Label(s.name).Focusable().Shrink(0)
+			if words {
+				seg.Padding(0, t.S3-2, 0, t.S2)
+			} else {
+				seg.Padding(0, t.S2-1, 0, t.S2-1).Tooltip(s.name)
+			}
+			fg := t.InkMuted
+			switch {
+			case s.on:
+				// The knob: the card's white with a 2-point clay ledge.
+				seg.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+				fg = t.Ink
+			case seg.Pressed():
+				seg.Background(t.SurfaceSunken.Mix(t.Ink, 0.06))
+				fg = t.Ink
+			case seg.Hovered():
+				seg.Background(t.SurfaceSunken.Mix(t.Surface, 0.5))
+				fg = t.Ink
+			}
+			if s.on {
+				seg.AccessSelected(true)
+			}
+			seg.Children(func() {
+				a.glyph(c, 18, s.draw(fg))
+				if words {
+					ui.Text(c, s.word).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+				}
+			})
+			if seg.Clicked() && !s.on {
+				s.open()
+			}
+		}
+	})
+}
+
+// drawOnHand is On hand's mark: three things in hand, a dot and a line
+// each, the first one longest.
+func drawOnHand(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		s := r.W / 18
+		for i, w := range []float32{9, 7, 8} {
+			y := cy + float32(i-1)*5*s
+			var d ui.Path
+			d.Circle(cx-6*s, y, 1.4*s)
+			p.FillPath(&d, col)
+			var m ui.Path
+			m.MoveTo(cx-2.6*s, y).LineTo(cx-2.6*s+w*s, y).Cap(ui.RoundCap)
+			p.StrokePath(&m, 1.8*s, col)
+		}
 	}
-	if a.navButton(c, "settings", label, a.L.T("nav.settings"), gear, inSettings) {
-		a.OpenSettings()
+}
+
+// drawDevices is Devices' mark: a laptop with a phone standing in front.
+func drawDevices(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		s := r.W / 18
+		w := float32(1.6) * s
+		var lap ui.Path
+		lap.MoveTo(cx-5*s, cy+2.5*s).LineTo(cx-5*s, cy-5*s).LineTo(cx+5*s, cy-5*s).LineTo(cx+5*s, cy-2*s)
+		p.StrokePath(&lap, w, col)
+		var base ui.Path
+		base.MoveTo(cx-7.5*s, cy+4.5*s).LineTo(cx+1*s, cy+4.5*s).Cap(ui.RoundCap)
+		p.StrokePath(&base, w, col)
+		var ph ui.Path
+		ph.MoveTo(cx+3*s, cy-0.5*s).LineTo(cx+7.5*s, cy-0.5*s).LineTo(cx+7.5*s, cy+7*s).LineTo(cx+3*s, cy+7*s).Close()
+		p.StrokePath(&ph, w, col)
 	}
 }
 

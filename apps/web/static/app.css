@@ -899,6 +899,51 @@ a {
   cursor: default;
   transform: none;
 }
+/* D264: the places, one segmented control: a sunk track, the place shown a raised knob. */
+.places {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  padding: 3px;
+  border-radius: 14px;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 1.5px 2px var(--line);
+}
+.places .place {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px 0 8px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.16s, color 0.16s;
+}
+.places.marks .place {
+  padding: 0 7px;
+}
+.places .place:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface-sunken) 50%, var(--surface));
+}
+.places .place.on {
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--line), 0 3px 8px rgb(0 0 0 / 0.06);
+  cursor: default;
+}
+.places .place:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 .btn.nav .nav-art {
   width: 22px;
   height: 22px;

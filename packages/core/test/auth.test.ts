@@ -3,7 +3,7 @@ import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { CODE_ALPHABET, createGate, isLocalRequest, normalizeCode, openDeviceAuth, rateKey, type DeviceAuth } from "../src/auth.ts";
+import { CODE_ALPHABET, createGate, isLocalRequest, normalizeCode, openDeviceAuth, rateKey, unjoinedName, type DeviceAuth } from "../src/auth.ts";
 import { startCore, type Core } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -32,7 +32,42 @@ describe("a handheld's shape (D263)", () => {
     a.close();
     const b = openDeviceAuth(dir);
     stops.push(() => b.close());
-    expect(b.list()[0]).toMatchObject({ name: "iPad · Ducter", shape: "tablet" });
+    expect(b.list()[0]).toMatchObject({ name: "iPad", shape: "tablet" }); // renamed once on reopen (D291)
+  });
+});
+
+describe("device names without joins (D291)", () => {
+  test("old joined names are renamed once, keep resolving, and a person's own name stays", () => {
+    expect(unjoinedName("iPad · Ducter")).toBe("iPad");
+    expect(unjoinedName("iPhone · Safari")).toBe("iPhone");
+    expect(unjoinedName("iPhone · Safari · 2")).toBe("iPhone 2");
+    expect(unjoinedName("Lima box · 2")).toBe("Lima box 2");
+    expect(unjoinedName("Work · Home")).toBe("Work · Home");
+    expect(unjoinedName("iPhone")).toBe("iPhone");
+    const { a, dir } = auth();
+    const pair = (name: string, platform: string) => {
+      const r = a.redeem(a.createCode().code, { name, platform });
+      if ("error" in r) throw new Error(r.error);
+      return r.device.id;
+    };
+    const ipad = pair("iPad · Ducter", "ios-app");
+    pair("iPhone", "ios-safari");
+    const phone = pair("iPhone · Safari", "ios");
+    const old = pair("Android phone · Ducter", "android"); // before D178 said "-app"
+    pair("Work · Home", "web");
+    a.close();
+    const b = openDeviceAuth(dir);
+    stops.push(() => b.close());
+    const byId = new Map(b.list().map((d) => [d.id, d]));
+    expect(byId.get(ipad)!.name).toBe("iPad");
+    expect(byId.get(phone)!.name).toBe("iPhone 2"); // "iPhone" was taken
+    expect(byId.get(old)).toMatchObject({ name: "Android phone", platform: "android-app" });
+    expect(b.list().some((d) => d.name === "Work · Home")).toBe(true);
+    expect(b.formerly("iPad · Ducter")?.id).toBe(ipad);
+    // A new pair of the same model gets a number, never " · 2".
+    const r = b.redeem(b.createCode().code, { name: "iPad", platform: "ios-app" });
+    if ("error" in r) throw new Error(r.error);
+    expect(r.device.name).toBe("iPad 2");
   });
 });
 
@@ -99,8 +134,8 @@ describe("pairing codes and device tokens", () => {
     const mac = pair("mac");
     const p1 = pair("phone");
     const p2 = pair("phone");
-    // D155: a second default name of the same kind gets " · 2"; a worker may share a client's.
-    expect(a.list().map((d) => d.name)).toEqual(["mac", "phone", "phone · 2"]);
+    // D155: a second default name of the same kind gets " 2" (D291); a worker may share a client's.
+    expect(a.list().map((d) => d.name)).toEqual(["mac", "phone", "phone 2"]);
     const w = a.redeem(a.createCode().code, { name: "mac", role: "worker" }) as { device: { id: string } };
     expect(a.revoke("mac")).toEqual([]); // ambiguous name: nothing revoked
     expect(a.revoke(w.device.id)).toHaveLength(1);

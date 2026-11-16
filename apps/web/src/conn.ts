@@ -59,11 +59,12 @@ export function deviceName(ua = navigator.userAgent, touch = navigator.maxTouchP
   if (/Macintosh/.test(ua) && touch > 1) ua = ua.replace("Macintosh", "iPad");
   const platform = /iPhone|iPad|iPod/.test(ua) ? "ios" : /Android/.test(ua) ? "android" : /Macintosh/.test(ua) ? "macos" : "web";
   const model = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android phone" : "Browser";
-  // The iPhone and Android apps (apps/ios, apps/android) say so in the platform, not only the name
-  // (a name is renamed): "ios-app", "android-app".
-  if (/DucterApp\//.test(ua)) return { name: `${model} · Ducter`, platform: `${platform}-app` };
-  const browser = /CriOS|Chrome\//.test(ua) && !/Edg\//.test(ua) ? "Chrome" : /FxiOS|Firefox\//.test(ua) ? "Firefox" : /Edg\//.test(ua) ? "Edge" : /Safari\//.test(ua) ? "Safari" : "";
-  return { name: browser ? `${model} · ${browser}` : model, platform };
+  // The name is the model alone (D291): the iPhone and Android apps (apps/ios, apps/android) say
+  // they are the app in the platform ("ios-app", "android-app"), a browser names itself there
+  // ("ios-safari"); the card's art and its one line show which, never words glued to the name.
+  if (/DucterApp\//.test(ua)) return { name: model, platform: `${platform}-app` };
+  const browser = /CriOS|Chrome\//.test(ua) && !/Edg\//.test(ua) ? "chrome" : /FxiOS|Firefox\//.test(ua) ? "firefox" : /Edg\//.test(ua) ? "edge" : /Safari\//.test(ua) ? "safari" : "";
+  return { name: model, platform: browser && platform !== "web" ? `${platform}-${browser}` : platform };
 }
 
 /** D263: a phone, tablet or foldable, said in the hello of a page on an iPhone, iPad or Android (never a computer's). */

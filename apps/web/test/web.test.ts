@@ -24,8 +24,8 @@ describe("pairing link", () => {
     expect(wsUrl(new URL("http://127.0.0.1:7797/"))).toBe("ws://127.0.0.1:7797/ws");
   });
   test("a phone names itself for `ducter devices`", () => {
-    expect(deviceName("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1")).toEqual({ name: "iPhone · Safari", platform: "ios" });
-    expect(deviceName("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36")).toEqual({ name: "Android phone · Chrome", platform: "android" });
+    expect(deviceName("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1")).toEqual({ name: "iPhone", platform: "ios-safari" });
+    expect(deviceName("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36")).toEqual({ name: "Android phone", platform: "android-chrome" });
   });
 });
 

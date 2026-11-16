@@ -109,6 +109,38 @@ const newId = () => randomBytes(5).toString("hex"); // 10 hex chars, shown in `d
 /** Control and format characters (ANSI escapes, newlines, bidi overrides) out, whitespace collapsed. */
 const cleanName = (s: string) => s.replace(/[\p{Cc}\p{Cf}]+/gu, " ").replace(/\s+/g, " ").trim();
 
+/** A name not yet taken: the name itself, else "<name> 2", "<name> 3"… (D155, D291). */
+export function numbered(name: string, taken: Set<string>): string {
+  let out = name;
+  for (let n = 2; taken.has(out); n++) out = `${name.slice(0, 56)} ${n}`;
+  return out;
+}
+
+/** The name a client paired before D291 should have: "iPad · Ducter" → "iPad", "iPhone · Safari"
+ *  → "iPhone", "iPhone · Safari · 2" → "iPhone 2". Only the suffixes Ducter's own pairing added; a
+ *  name the person chose is theirs and stays. */
+export function unjoinedName(name: string): string {
+  const m = /^(.+?)(?: · (?:Ducter|Safari|Chrome|Firefox|Edge))?(?: · (\d+))?$/.exec(name);
+  if (!m || m[1] === name) return name;
+  return m[2] ? `${m[1]} ${m[2]}` : m[1]!;
+}
+
+/** D291, once per database: rename devices named by the old joined pattern. The old name stays a
+ *  former name (D84), so anything that still says it finds the device. */
+function renameJoined(db: Database, at: number) {
+  const rows = db.query("SELECT id, name, kind, platform FROM devices WHERE revoked_at IS NULL AND name LIKE '% · %'").all() as { id: string; name: string; kind: string; platform: string }[];
+  for (const r of rows) {
+    const want = unjoinedName(r.name);
+    if (want === r.name) continue;
+    // An app paired before its platform said so (D178) was known by the name alone: keep that.
+    if (r.name.endsWith(" · Ducter") && !r.platform.includes("app")) db.run("UPDATE devices SET platform = ? WHERE id = ?", [`${r.platform || "ios"}-app`, r.id]);
+    const taken = new Set((db.query("SELECT name FROM devices WHERE revoked_at IS NULL AND kind = ? AND id != ?").all(r.kind, r.id) as { name: string }[]).map((x) => x.name));
+    const name = numbered(want, taken);
+    db.run("INSERT INTO former_names (name, device_id, renamed_at) VALUES (?, ?, ?)", [r.name, r.id, at]);
+    db.run("UPDATE devices SET name = ? WHERE id = ?", [name, r.id]);
+  }
+}
+
 export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {}): DeviceAuth {
   const now = opts.now ?? Date.now;
   if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true, mode: 0o700 });
@@ -132,6 +164,7 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
   if (!cols.has("form")) db.exec("ALTER TABLE devices ADD COLUMN form TEXT NOT NULL DEFAULT ''");
   if (!cols.has("computer")) db.exec("ALTER TABLE devices ADD COLUMN computer TEXT NOT NULL DEFAULT ''");
   if (!cols.has("shape")) db.exec("ALTER TABLE devices ADD COLUMN shape TEXT NOT NULL DEFAULT ''"); // D263
+  renameJoined(db, now());
 
   const fails = new Map<string, number[]>();
   const seenAt = new Map<string, number>();
@@ -174,12 +207,11 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
     if (c.expires_at <= now()) return { error: "expired" as const };
     // An open code takes the role the device asked for; a fixed one (pair --worker) keeps its own.
     const kind: DeviceKind = c.kind === "any" ? (d.role === "worker" ? "worker" : "client") : c.kind;
-    // D155: a default name another live device of the same kind already has gets " · 2", " · 3"…
-    // (two phones both "iPhone · Safari"). An app window and a worker on one computer may share
-    // their computer's name: they show as one computer.
+    // D155: a default name another live device of the same kind already has gets a number, the
+    // way people tell two of a thing apart ("iPhone 2", D291: never "iPhone · 2"). An app window
+    // and a worker on one computer may share their computer's name: they show as one computer.
     const taken = new Set((db.query("SELECT name FROM devices WHERE revoked_at IS NULL AND kind = ?").all(kind) as { name: string }[]).map((r) => r.name));
-    let name = d.name;
-    for (let n = 2; taken.has(name); n++) name = `${d.name.slice(0, 56)} · ${n}`;
+    const name = numbered(d.name, taken);
     db.run("INSERT INTO devices (id, name, kind, platform, token_hash, created_at, form, computer) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [
       d.id, name, kind, d.platform, d.tokenHash, now(), d.form ?? "", d.computer ?? "",
     ]);

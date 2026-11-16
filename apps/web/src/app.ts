@@ -11,7 +11,7 @@ import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach } from "./native.ts";
 import { copy } from "./conv-copy.ts";
 import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
-import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
+import { harnessName, modelName, shownDeviceName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
@@ -636,10 +636,11 @@ class AppState {
     if (f.t === "devices") {
       const home = f.devices.find((d) => d.home);
       // A failure the device (or the agent's copy) has moved past is dropped (D167, D156).
-      const devices = f.devices.map((d) => ({ ...d, ...(d.update ? { update: withoutStaleFailure(d.update) } : {}), harnesses: d.harnesses.map(withoutStaleAgentUpdate) }));
+      // D291: a name from before shows as the model alone ("iPad · Ducter" → "iPad").
+      const devices = f.devices.map((d) => ({ ...d, name: shownDeviceName(d.name), ...(d.update ? { update: withoutStaleFailure(d.update) } : {}), harnesses: d.harnesses.map(withoutStaleAgentUpdate) }));
       this.updateAll = f.updateAll;
       this.afterUpdateAll(f.updateAll);
-      return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach), this.changed());
+      return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach && { ...f.reach, clients: f.reach.clients.map((c) => ({ ...c, name: shownDeviceName(c.name) })) }), this.changed());
     }
     if (f.t === "update_all_result") return void ((this.updateAllAnswer = f.ok || f.reason === "nothing" ? undefined : (f.reason ?? "failed")), this.changed());
     // D228: on with no tunnel made yet starts the guided setup; a setup that couldn't start says why.

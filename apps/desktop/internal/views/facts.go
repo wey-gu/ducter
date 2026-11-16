@@ -48,11 +48,3 @@ func spoken(l *i18n.Strings, parts ...string) string {
 	}
 	return strings.Join(keep, ", ")
 }
-
-// shownDeviceName is a device's name as the person sees it (D291): a
-// phone or iPad paired through the Ducter app before D291 was named
-// "<model> · Ducter"; the art and the platform already say it is the
-// app, so the suffix is dropped. The core renames them once, too.
-func shownDeviceName(name string) string {
-	return strings.TrimSuffix(name, " · Ducter")
-}

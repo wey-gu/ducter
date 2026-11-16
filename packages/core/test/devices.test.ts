@@ -392,9 +392,9 @@ test("D155: a CLI says it's a CLI and which computer it's on; a default name nev
   await pair({ name: "CLI on Siweis-MacBook-Pro", platform: "darwin", form: "cli", computer: "Siweis-MacBook-Pro" });
   // Paired before D155: only its name says so.
   core.devices.redeem(core.devices.createCode().code, { name: "CLI on mini", platform: "darwin" });
-  const a = await pair({ name: "iPhone · Safari", platform: "ios-safari" });
-  const b = await pair({ name: "iPhone · Safari", platform: "ios-safari" });
-  expect([a.name, b.name]).toEqual(["iPhone · Safari", "iPhone · Safari · 2"]);
+  const a = await pair({ name: "iPhone", platform: "ios-safari" });
+  const b = await pair({ name: "iPhone", platform: "ios-safari" });
+  expect([a.name, b.name]).toEqual(["iPhone", "iPhone 2"]); // D291: a number, never " · 2"
   // A worker on the same Mac keeps its computer's name (another kind).
   const w = await pair({ name: "Siweis-MacBook-Pro", platform: "darwin-arm64", role: "worker", computer: "Siweis-MacBook-Pro" });
   expect(w.name).toBe("Siweis-MacBook-Pro");
@@ -404,7 +404,7 @@ test("D155: a CLI says it's a CLI and which computer it's on; a default name nev
   expect(by("Siweis-MacBook-Pro")).toMatchObject({ form: "app", computer: "Siweis-MacBook-Pro" });
   expect(by("CLI on Siweis-MacBook-Pro")).toMatchObject({ form: "cli", computer: "Siweis-MacBook-Pro" });
   expect(by("CLI on mini")).toMatchObject({ form: "cli", computer: "mini" });
-  expect(by("iPhone · Safari").form).toBeUndefined();
+  expect(by("iPhone").form).toBeUndefined();
   expect(f.devices.find((d) => d.id === w.deviceId)).toMatchObject({ computer: "Siweis-MacBook-Pro" });
 });
 

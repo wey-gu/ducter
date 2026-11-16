@@ -39,10 +39,9 @@ const JOINER = /[·•・]/u;
 export const ALLOW: { file: string; has?: string; why: string }[] = [
   // The pre-D291 device name suffix is matched (to strip it), never shown.
   { file: "apps/web/src/format.ts", has: '/ · Ducter$/', why: "strips the old suffix" },
-  { file: "apps/desktop/internal/views/facts.go", has: '" · Ducter"', why: "strips the old suffix" },
-  { file: "apps/web/src/sheet.ts", has: '"· Ducter"', why: "recognises a device paired before D178/D291" },
-  { file: "packages/protocol/src/devices.ts", has: "· Ducter", why: "strips the old suffix" },
-  { file: "packages/core/src/auth.ts", has: "· Ducter", why: "the one-time rename of devices paired before D291" },
+  { file: "apps/desktop/internal/store/store.go", has: '" · Ducter"', why: "strips the old suffix" },
+  { file: "packages/core/src/auth.ts", has: " · (?:Ducter|", why: "the one-time rename of devices paired before D291" },
+  { file: "packages/core/src/auth.ts", has: "LIKE '% · %'", why: "finds the devices to rename once (D291)" },
 ];
 
 export function joins(text: string, ext: string): { line: number; text: string }[] {

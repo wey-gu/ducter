@@ -173,7 +173,7 @@ class MainActivity : ComponentActivity() {
         settings.javaScriptCanOpenWindowsAutomatically = false
         settings.allowFileAccess = false
         settings.allowContentAccess = false
-        // The pairing names this phone "Android phone · Ducter" (apps/web/src/conn.ts deviceName).
+        // The pairing names this phone "Android phone", platform "android-app" (apps/web/src/conn.ts deviceName; D291).
         settings.userAgentString = "${settings.userAgentString} DucterApp/${BuildConfig.VERSION_NAME}"
         overScrollMode = View.OVER_SCROLL_NEVER
         webViewClient = Client()

@@ -520,6 +520,16 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 				dropStaleAgentUpdate(&f.Devices[i].Harnesses[j])
 			}
 		}
+		// D291: a name from before shows as the model alone
+		// ("iPad · Ducter" → "iPad"); the core renames them once too.
+		for i := range f.Devices {
+			f.Devices[i].Name = ShownDeviceName(f.Devices[i].Name)
+		}
+		if f.Reach != nil {
+			for i := range f.Reach.Clients {
+				f.Reach.Clients[i].Name = ShownDeviceName(f.Reach.Clients[i].Name)
+			}
+		}
 		s.Devices, s.Reach, s.DevicesAt = f.Devices, f.Reach, time.Now()
 		s.UpdateAll = f.UpdateAll
 	case "ability_result":
@@ -1421,4 +1431,12 @@ func firstOr(s, or string) string {
 		return s
 	}
 	return or
+}
+
+// ShownDeviceName is a device's name as the person sees it (D291): a
+// phone or iPad paired through the Ducter app before D291 was named
+// "<model> · Ducter"; the art and the platform already say it is the
+// app, so the suffix is dropped.
+func ShownDeviceName(name string) string {
+	return strings.TrimSuffix(name, " · Ducter")
 }

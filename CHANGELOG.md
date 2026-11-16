@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.55
+
+<!-- whats-new
+zh: 现在可以把任何文件发给 Ducter，不只是图片
+en: Send Ducter any file, not just pictures
+zh: 手头的事里，指到的任务是圆润的一块
+en: On hand: the row under the pointer is a rounded tile
+-->
+
+**Files**
+- Paste, drop or tap 添加图片或文件 / Add images or files: PDFs, logs, Markdown, spreadsheets, code,
+  zips, anything up to 50 MB each. A file shows as a card in your message and opens inside Ducter.
+- Ducter and its tasks read what you sent: a short text file comes along whole, a longer one or a
+  PDF they open themselves. On a worker the file goes along with the task.
+- A file of a kind Ducter can't show is kept as it is and never run; you can save a copy.
+
+**On hand (Mac)**
+- The row under the pointer, or the one you moved to with the keys, is a rounded tile inside its
+  card, with a rounded marker.
+
 ## 0.0.54
 
 <!-- whats-new

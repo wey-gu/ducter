@@ -69,4 +69,4 @@ test("Hold holds; untouched past its date a find quietly becomes 过了, never d
   const res = r.log.read({ stream: "channel", kinds: ["decision_resolved"] }).map((e) => e.body as { decisionId: string; by: string; option: string });
   expect(res.find((x) => x.decisionId === money.decisionId)).toMatchObject({ option: "hold", by: "default" });
   expect(r.opened).toHaveLength(0);
-});
+}, 30_000); // fake-clock days: ~1 s here, 7 s on a loaded CI runner (main CI 2026-11-16)

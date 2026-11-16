@@ -64,7 +64,10 @@ afterEach(async () => {
 
 function noSecretAnywhere(extra: string[] = []) {
   const all = JSON.stringify(core.log.read({ fromSeq: 0, limit: 100_000 })) + answers.join("\n") + extra.join("\n");
-  for (const s of [PAN, PASSWORD, CVC, "E12345678"]) expect(all).not.toContain(s);
+  for (const s of [PAN, PASSWORD, "E12345678"]) expect(all).not.toContain(s);
+  // Three digits turn up in any timestamp's milliseconds ("…50.737Z", main CI 2026-11-16): the
+  // code itself is never a number of its own.
+  expect(all).not.toMatch(new RegExp(`(^|[^0-9.])${CVC}([^0-9Z]|$)`));
 }
 
 describe("listing", () => {

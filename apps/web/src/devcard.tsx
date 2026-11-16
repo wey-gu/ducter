@@ -6,7 +6,8 @@
 import { PhoneBlock, PhoneInfo, startInstall } from "./phone-use.tsx";
 import { ComputerBlock, ComputerInfo } from "./computer-use.tsx";
 import { HandsetChip } from "./handset.tsx";
-import type { DeviceHarness, DeviceUpdate, DeviceView } from "@ducter/protocol";
+import type { DeviceHarness, DeviceUpdate, DeviceVia, DeviceView, ReachWay } from "@ducter/protocol";
+import { inApp } from "./native.ts";
 import { clientShape, TRY_LIVE } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
@@ -209,6 +210,8 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       {s.text && <div class={`dc-status${s.state ? "" : ` ${s.tone}`}`}>{s.text}</div>}
       <CoinTray dv={dv} />
       <Chips dv={dv} go={go} />
+      {!dv.home && dv.state === "awake" && <HowConnected via={dv.via} />}
+      {dv.home && <Ways home={dv.name} />}
       {!dv.home && <Via card={`dev:${dv.id}`} list={folded} computer={dv.computer || dv.name} />}
       <DucterLine dv={dv} />
       {!dv.home && <Foot id={dv.id} name={dv.name} means="device.disconnect.means" />}
@@ -230,8 +233,68 @@ function ClientSheet({ cl, folded }: { cl: Client; folded: Client[] }) {
       <div class="dc-status">{line}</div>
       {mine && <NotifyChip />}
       <HandsetChip cl={cl} />
+      {cl.connected && <HowConnected via={cl.via} />}
       <Via card={`cl:${cl.id}`} list={[cl, ...folded]} computer={clientComputer(cl)} />
       <Foot id={cl.id} name={name} confirm={isCli(cl) ? t("device.cli.name", clientComputer(cl)) : name} means={isCli(cl) ? "device.disconnect.means.cli" : "device.disconnect.means.client"} />
+    </div>
+  );
+}
+
+/**
+ * D293: how a connected device reaches the home now, and whether anyone in between can read it.
+ * Two facts, each its own line (D291); nothing when the home is too old to say.
+ */
+function HowConnected({ via }: { via?: DeviceVia }) {
+  if (!via) return null;
+  const line = via.kind === "local" ? "reach.private.local" : via.sealed ? "reach.private" : via.kind === "lan" ? "reach.open.plain" : "reach.open.cloudflare";
+  return (
+    <div class="dc-reach" role="group" aria-label={t("reach.how")}>
+      <div class="dc-reach-h">{t("reach.how")}</div>
+      <div class="dc-reach-list">
+        <div class="rw">
+          <span class="t">
+            <b>{t(`reach.via.${via.kind}`)}</b>
+            <small class={via.sealed ? "" : "open"}>{t(line)}</small>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The page's own origin is this way (the web client stays where it was opened, D293). */
+const isHere = (url: string) => {
+  try {
+    return typeof location === "object" && new URL(url).origin === location.origin;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * D293: on the home's card, every address that reaches it: what kind, the address, and whether it
+ * answers (the home's own check, or a device connected through it now).
+ */
+function Ways({ home }: { home: string }) {
+  const ways = A.reach?.ways;
+  if (!ways?.length) return null;
+  const here = (w: ReachWay) => !inApp() && isHere(w.url);
+  return (
+    <div class="dc-reach" role="group" aria-label={t("reach.ways", home)}>
+      <div class="dc-reach-h">{t("reach.ways", home)}</div>
+      <div class="dc-reach-list" role="list">
+        {ways.map((w) => (
+          <div class="rw" role="listitem" key={w.url}>
+            <span class="t">
+              <b>{t(`reach.kind.${w.kind}`)}</b>
+              <small>{w.url.replace(/^https?:\/\//, "")}</small>
+            </span>
+            <span class={`st ${here(w) ? "up" : (w.state ?? "unknown")}`}>{t(here(w) ? "reach.state.here" : `reach.state.${w.state ?? "unknown"}`)}</span>
+          </div>
+        ))}
+      </div>
+      {ways.some((w) => w.kind === "tunnel") && <div class="small sub dc-reach-note">{t("reach.note.tunnel")}</div>}
+      {!inApp() && ways.length > 1 && <div class="small sub dc-reach-note">{t("reach.note.web")}</div>}
     </div>
   );
 }

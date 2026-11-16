@@ -434,8 +434,8 @@ func andList(l *i18n.Strings, xs []string) string {
 		return strings.Join(xs, "")
 	}
 	head, last := xs[:len(xs)-1], xs[len(xs)-1]
-	if l != nil && l.Lang == i18n.ZH {
-		return strings.Join(head, "、") + " 和 " + last
+	if l == nil {
+		return strings.Join(head, ", ") + " and " + last
 	}
-	return strings.Join(head, ", ") + " and " + last
+	return l.T("list.and", strings.Join(head, l.T("list.sep")), last)
 }

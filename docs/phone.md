@@ -41,6 +41,15 @@ remembers the connection. For a second phone or another computer, get a new code
 new one. To disconnect it, run `ducter devices disconnect <name>` on the computer Ducter
 lives on.
 
+**More than one address.** Your Ducter can have several: your Tailscale network, your domain,
+your Cloudflare tunnel. The iPhone and Android apps learn all of them and open Ducter at the best
+one that works, checking that it really is your Ducter before using it. With Tailscale on, the
+phone uses its Tailscale address; with Tailscale off, it moves to your domain by itself, with
+nothing to connect again. In **Devices**, your phone's card says which way it is connected and
+whether anyone in between can read it. (On Android this needs Android 13 or later; before that,
+the app stays on the address it was connected with.) Safari and other browsers stay on the address
+the page was opened at.
+
 ### From outside
 
 **From outside** gives the computer Ducter lives on an address at your own domain, for example

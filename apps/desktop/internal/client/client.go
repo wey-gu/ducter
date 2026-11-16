@@ -77,6 +77,43 @@ type Client struct {
 	next time.Time
 	// url and token are what the next attempt dials (Retarget changes them).
 	url, token string
+	// asleep: the Mac is going to sleep (D293); no dialling until Wake.
+	asleep bool
+}
+
+// Liveness (D293): with a home that answers pings, one every PingEvery, and
+// a socket silent for DeadAfter is closed and dialled again (a Mac that
+// changed Wi-Fi keeps a dead socket open otherwise).
+var (
+	PingEvery = 15 * time.Second
+	DeadAfter = 45 * time.Second
+)
+
+// Sleep tells the home this Mac is going to sleep and closes the socket, so
+// its tasks say 睡着了 / Asleep at once instead of 连不上 / Can't reach later;
+// nothing is dialled until Wake (D293).
+func (c *Client) Sleep() {
+	_ = c.Send(map[string]string{"t": "sleep"})
+	c.mu.Lock()
+	c.asleep = true
+	conn := c.conn
+	c.mu.Unlock()
+	if conn != nil {
+		conn.Close()
+	}
+}
+
+// Wake dials again at once after the Mac woke (D293).
+func (c *Client) Wake() {
+	c.mu.Lock()
+	c.asleep = false
+	conn := c.conn
+	c.mu.Unlock()
+	// A socket from before the sleep is dead whatever it says: start over.
+	if conn != nil {
+		conn.Close()
+	}
+	c.RetryNow()
 }
 
 // New makes a client; Run connects it.
@@ -150,12 +187,17 @@ func (c *Client) Run(ctx context.Context) {
 		}
 		c.mu.Lock()
 		c.next = time.Now().Add(backoff)
+		asleep := c.asleep
 		c.mu.Unlock()
 		c.status(Disconnected, err)
+		wait := time.After(backoff)
+		if asleep {
+			wait = nil // asleep: only Wake (a kick) dials again
+		}
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(backoff):
+		case <-wait:
 		case <-c.kick:
 			backoff = 250 * time.Millisecond
 		}
@@ -226,7 +268,14 @@ func (c *Client) session(ctx context.Context) error {
 	}()
 	c.status(Connected, nil)
 
+	// D293: pings once the home said it answers them (welcome.ping).
+	pinging := false
+	stopPing := make(chan struct{})
+	defer close(stopPing)
 	for {
+		if pinging {
+			_ = conn.SetReadDeadline(time.Now().Add(DeadAfter))
+		}
 		var msg []byte
 		if err := websocket.Message.Receive(conn, &msg); err != nil {
 			return err
@@ -240,6 +289,30 @@ func (c *Client) session(ctx context.Context) error {
 		if err != nil {
 			log.Printf("ducter: bad frame: %v", err)
 			continue
+		}
+		if f.T == "pong" {
+			continue
+		}
+		if f.T == "welcome" && f.Ping && !pinging {
+			pinging = true
+			go func() {
+				t := time.NewTicker(PingEvery)
+				defer t.Stop()
+				for {
+					select {
+					case <-stopPing:
+						return
+					case <-t.C:
+						c.mu.Lock()
+						same := c.conn == conn
+						c.mu.Unlock()
+						if !same {
+							return
+						}
+						_ = c.Send(map[string]string{"t": "ping"})
+					}
+				}
+			}()
 		}
 		if c.opt.OnFrame != nil {
 			c.opt.OnFrame(f)

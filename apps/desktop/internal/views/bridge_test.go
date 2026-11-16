@@ -42,7 +42,7 @@ func TestBridgeRow(t *testing.T) {
 		// D225: the home's own Mem command line, put in, updated and signed in, in Memory.
 		{"install", TabMemory, protocol.BridgeView{State: "install_mem", Identity: "ducter", Home: "hel", CanRun: true},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("bridge.mem.install", "hel"), L.T("bridge.mem.install.go"), L.T("mem.hero.missing", "小鸭")}
+				return []string{L.T("bridge.mem.install", "hel"), L.T("bridge.mem.install.go"), L.T("mem.first.title", "小鸭")}
 			},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"install-need-pipx", TabMemory, protocol.BridgeView{State: "install_mem", Identity: "ducter", Home: "hel", Need: "pipx"},
@@ -62,7 +62,7 @@ func TestBridgeRow(t *testing.T) {
 				return []string{L.T("bridge.mem.signin", "hel"), L.T("bridge.mem.signin.used"), L.T("bridge.mem.signin.go")}
 			}, nil},
 		{"local", TabMemory, protocol.BridgeView{State: "local_mem", Identity: "ducter", Home: "hel"},
-			func(L *i18n.Strings) []string { return []string{L.T("mem.app.local", "hel")} },
+			func(L *i18n.Strings) []string { return []string{L.T("mem.app.kept.local", "hel")} },
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"local-peers", TabPeers, protocol.BridgeView{State: "local_mem", Identity: "ducter", Home: "hel"},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.local", "hel")} },
@@ -84,14 +84,14 @@ func TestBridgeRow(t *testing.T) {
 			}, nil},
 		{"ready", TabPeers, protocol.BridgeView{State: "ready", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("bridge.title", "小鸭"), L.T("bridge.connect"), L.T("peers.reach", "小鸭"), "6f1c0d2e-personal"}
+				return []string{L.T("bridge.title", "小鸭"), L.T("bridge.connect"), L.T("peers.reach", "小鸭"), L.T("peers.head.ready")}
 			}, nil},
 		{"connecting", TabPeers, protocol.BridgeView{State: "connecting", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connecting")} },
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"connected", TabPeers, protocol.BridgeView{State: "connected", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("bridge.connected", "ducter", "Only me"), L.T("bridge.undo")}
+				return []string{L.T("peers.head.on", "小鸭"), L.T("peers.as.line", "ducter"), L.T("peers.space.own"), L.T("bridge.undo")}
 			},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"no-space", TabPeers, protocol.BridgeView{State: "no_space", Identity: "ducter"},
@@ -178,15 +178,15 @@ func TestBridgeRow(t *testing.T) {
 					}
 				case "connected":
 					// The first tap asks; the second disconnects.
-					if err := tt.Click(L.T("bridge.undo")); err != nil {
+					if err := tt.Click(spoken(L, L.T("bridge.undo"), "ducter")); err != nil {
 						t.Fatal(err)
 					}
 					tt.Frame()
-					if len(*sent) != n || !tt.HasText(L.T("bridge.undo.ask")) {
+					if len(*sent) != n || !tt.HasText(L.T("peers.undo.ask")) {
 						t.Fatalf("断开 ran without asking: %v", (*sent)[n:])
 					}
 					bridgeShot(t, tt, fmt.Sprintf("mac-%s-disconnect-ask", lang))
-					if err := tt.Click(L.T("bridge.undo")); err != nil {
+					if err := tt.Click(spoken(L, L.T("bridge.undo"), "ducter")); err != nil {
 						t.Fatal(err)
 					}
 					if len(*sent) != n+1 || (*sent)[n].(protocol.BridgeAction).T != "bridge_disconnect" {

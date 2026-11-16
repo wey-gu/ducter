@@ -1,12 +1,12 @@
 package views
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
@@ -138,12 +138,7 @@ func (a *App) whereReason(w *protocol.WhereWhy) string {
 // closingQuestion is the closing card in the user's words (where.md §7):
 // what moves where, and what stays until it wakes.
 func (a *App) closingQuestion(p *protocol.ClosingPlan) string {
-	q := func(s string) string {
-		if a.L.Lang == i18n.ZH {
-			return "「" + s + "」"
-		}
-		return "\u201c" + s + "\u201d"
-	}
+	q := func(s string) string { return fmt.Sprintf(a.L.T("words.quote"), s) }
 	var moved, stay []string
 	for _, m := range p.Moves {
 		moved = append(moved, q(m.Title))
@@ -151,10 +146,7 @@ func (a *App) closingQuestion(p *protocol.ClosingPlan) string {
 	for _, s := range p.Stays {
 		stay = append(stay, q(s.Title))
 	}
-	sep := ", "
-	if a.L.Lang == i18n.ZH {
-		sep = ""
-	}
+	sep := a.L.T("words.quote.sep")
 	switch {
 	case len(moved) > 0 && len(stay) > 0:
 		return a.L.T("move.closing.line", strings.Join(moved, sep), p.Moves[0].ToName, strings.Join(stay, sep), p.Name)

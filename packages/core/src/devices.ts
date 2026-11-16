@@ -12,6 +12,7 @@ import { readAbilitySettings, writeAbilitySettings } from "@ducter/protocol/src/
 import { claudeInChromeConnected, codexNative } from "@ducter/protocol/src/native-browser.ts";
 import { deviceForm, type DeviceAuth } from "./auth.ts";
 import type { Workers } from "./workers.ts";
+import { pairFragment, type DeviceVia, type HomeKey, type ReachWay } from "@ducter/protocol/src/reach.ts";
 import { probeHarnesses } from "./harness-probe.ts";
 import type { BrowserSetup } from "./browser/index.ts";
 
@@ -49,6 +50,11 @@ export interface DevicesOptions {
   hostname?: string;
   /** Client device ids with a live socket right now (ws.ts). */
   connected?: () => Set<string>;
+  /** D293: how each connected client reaches the home now (by device id). */
+  viaOf?: (deviceId: string) => DeviceVia | undefined;
+  /** D293: the ways to reach the home, with up or down, and its key. */
+  ways?: () => ReachWay[];
+  homeKey?: HomeKey;
   /** How long probe results are reused (default 60 s); `refresh` drops them. */
   cacheMs?: number;
   now?: () => number;
@@ -319,14 +325,18 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     // D228: the person's tunnel writes the address where `ducter domain` does, once it answers.
     const address = publicAddress(o.dataDir, env);
     const anywhere = o.anywhere?.view() ?? (address ? { how: "own" as const, state: "on" as const } : undefined);
+    const ways = o.ways?.();
     return {
       ...(address ? { address } : {}),
       ...(anywhere ? { anywhere } : {}),
+      ...(ways ? { ways } : {}),
+      ...(o.homeKey ? { home: { key: o.homeKey.key, fp: o.homeKey.fp } } : {}),
       clients: clients().map((d) => ({
         id: d.id,
         name: d.name,
         platform: d.platform,
         connected: live.has(d.id),
+        ...((v) => (v && live.has(d.id) ? { via: { kind: v.kind, sealed: v.sealed } } : {}))(o.viaOf?.(d.id)),
         ...(d.lastSeenAt ? { lastSeen: d.lastSeenAt } : {}),
         ...deviceForm(d), // D155: a CLI says so, and which computer it belongs to
         ...(d.shape ? { shape: d.shape } : {}), // D263: a tablet or a foldable gets its own clay
@@ -404,6 +414,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           // Ducter there from before says neither: they stay 以后会有 until it is updated).
           abilities: [hello?.abilities?.find((a) => a.id === "web") ?? { id: "web", state: "unavailable", reason: "worker_old" }, hello?.abilities?.find((a) => a.id === "computer") ?? later("computer"), hello?.abilities?.find((a) => a.id === "phone") ?? later("phone")], // D199: no 打电话 here (the home's)
           alwaysOn: hello?.alwaysOn ?? alwaysOnKind(kind),
+          ...(on?.via ? { via: { kind: on.via.kind, sealed: on.via.sealed } } : {}),
         } satisfies DeviceView;
       });
     const devices = [home, ...workers];
@@ -530,7 +541,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   async function pairCode(): Promise<PairCodeFrame> {
     const { code, expiresAt } = o.auth.createCode(); // one code for a phone, an app window or a computer (D83)
     const address = publicAddress(o.dataDir, env);
-    const link = address ? `${address}/pair#c=${code}` : undefined;
+    const link = address ? `${address}/pair#${pairFragment(code, o.homeKey?.fp)}` : undefined;
     return {
       t: "pair_code",
       code,

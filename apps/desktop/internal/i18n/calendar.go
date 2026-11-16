@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 )
 
 // D222 (design/calendar.md): the day card, the change card, the calendars
@@ -244,40 +246,29 @@ const calNBSP = " "
 
 // CalDate is a date with its weekday: "11 月 18 日 周三" / "Wed, Nov 18";
 // the year only when it isn't now's.
-func CalDate(lang Lang, at, now time.Time) string {
-	other := at.Year() != now.Year()
-	if lang == ZH {
-		d := fmt.Sprintf("%d 月 %d 日", int(at.Month()), at.Day())
-		if other {
-			d = fmt.Sprintf("%d 年 ", at.Year()) + d
-		}
-		return d + calNBSP + zhWeekday[at.Weekday()]
+func CalDate(l Lang, at, now time.Time) string {
+	w := lang.Words(dayTables, string(l))
+	f := w.calDate
+	if at.Year() != now.Year() {
+		f = w.calDateYear
 	}
-	d := fmt.Sprintf("%s, %s %d", enWeekday[at.Weekday()], enMonth[at.Month()-1], at.Day())
-	if other {
-		d += fmt.Sprintf(", %d", at.Year())
-	}
-	return d
+	return fmt.Sprintf(f, w.month[at.Month()-1], at.Day(), at.Year(), w.weekday[at.Weekday()])
 }
 
 // CalMD is a date without its weekday: "11 月 17 日" / "Nov 17".
-func CalMD(lang Lang, at time.Time) string {
-	if lang == ZH {
-		return fmt.Sprintf("%d 月 %d 日", int(at.Month()), at.Day())
-	}
-	return fmt.Sprintf("%s %d", enMonth[at.Month()-1], at.Day())
+func CalMD(l Lang, at time.Time) string {
+	w := lang.Words(dayTables, string(l))
+	return fmt.Sprintf(w.date, w.month[at.Month()-1], at.Day())
 }
 
 // CalRange is a run of days: "11 月 14 日–18 日" / "Nov 14–18"; across a
 // month, both months.
-func CalRange(lang Lang, from, to time.Time) string {
+func CalRange(l Lang, from, to time.Time) string {
 	if from.Month() == to.Month() {
-		if lang == ZH {
-			return fmt.Sprintf("%d 月 %d 日–%d 日", int(from.Month()), from.Day(), to.Day())
-		}
-		return fmt.Sprintf("%s %d–%d", enMonth[from.Month()-1], from.Day(), to.Day())
+		w := lang.Words(dayTables, string(l))
+		return fmt.Sprintf(w.calRange, w.month[from.Month()-1], from.Day(), to.Day())
 	}
-	return CalMD(lang, from) + "–" + CalMD(lang, to)
+	return CalMD(l, from) + "–" + CalMD(l, to)
 }
 
 // CalClock is a time of day on a calendar: "9:00", "15:30".

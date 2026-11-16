@@ -11,7 +11,7 @@ import { cleanName, readPersonaFile, removeOldHints, writePersonaFile } from "./
 import { commandsFor, commandWith, detectLocale, translator, type T } from "./i18n.ts";
 import { cmdAnswer, cmdOpenTask, cmdSay, cmdTail, cmdTask, notReached, type TalkCtx } from "./talk.ts";
 import { cmdGit } from "./git-cmd.ts";
-import { commandClass, homeJson, resolveTarget, type Target } from "./home.ts";
+import { commandClass, homeJson, hostOf, resolveTarget, writeHome, type Target } from "./home.ts";
 import { cliChecks, cmdConnect, cmdDevicesAt, cmdDisconnect, cmdPairAt, targetLine } from "./homecmds.ts";
 import { realpathSync } from "node:fs";
 import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./status.ts";
@@ -21,7 +21,8 @@ import { cmdAnywhere } from "./anywhere-cmd.ts";
 import { stopSavedTunnel } from "@ducter/core/src/anywhere.ts";
 import { caddyfileFor, cmdDomain, realDomainSys, removeDucterSite } from "./domain.ts";
 import { cmdTailscale, detectTailnet, realTailscaleSys } from "./tailscale.ts";
-import { cmdWorker } from "./worker.ts";
+import { cmdReach } from "./reach-cmd.ts";
+import { cmdWorker, pickWay } from "./worker.ts";
 import { cmdUpdate } from "./update.ts";
 import { agentLabel, executeUninstall, formatPlan, planUninstall } from "./uninstall.ts";
 import { osText, versionsText, writeReport } from "./report.ts";
@@ -70,6 +71,7 @@ export function helpText(t: T): string {
     cmd("service", t("help.service")),
     cmd("anywhere", t("help.anywhere")),
     cmd("tailscale", t("help.tailscale")),
+    cmd("reach", t("help.reach")),
     cmd("domain", t("help.domain")),
     cmd("worker", t("help.worker")),
     cmd("uninstall", t("help.uninstall")),
@@ -569,7 +571,16 @@ export async function run(argv: string[]): Promise<number | "running"> {
       return 1;
     }
     ctx.target = r.target;
-    if (!args.json) console.log(targetLine(t, r.target, style));
+    // D293: a home with more than one way and a pinned key: the best way that proves it is the
+    // home (a laptop on the home's own Tailscale network uses it; outside, the domain).
+    if (r.target.kind === "remote" && r.home?.fp && (r.home.ways?.length ?? 0) > 1 && !args.home) {
+      const best = await pickWay({ url: r.home.address, ways: r.home.ways, fp: r.home.fp });
+      if (best !== r.home.address) {
+        ctx.target = { ...r.target, address: best, name: hostOf(best) };
+        writeHome(dataDir, { ...r.home, address: best, name: hostOf(best) });
+      }
+    }
+    if (!args.json) console.log(targetLine(t, ctx.target, style));
   }
   // Neither creates the data folder: one takes it away, the other only reads it.
   if (args.command === "uninstall") return cmdUninstall(ctx);
@@ -637,6 +648,8 @@ export async function run(argv: string[]): Promise<number | "running"> {
         dnsCheck: args.dnsCheck,
         pair: () => cmdPair({ t, style, dataDir, port, json: false, running: true, wait: Boolean(process.stdout.isTTY) }),
       });
+    case "reach":
+      return cmdReach({ t, style, dataDir, json: args.json, rest: args.rest ?? [], ...(args.kind ? { kind: args.kind } : {}) });
     case "tailscale":
       return cmdTailscale({
         t,

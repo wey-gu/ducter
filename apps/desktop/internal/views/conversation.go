@@ -809,7 +809,7 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 		a.glyph(c, 18, icon(t.InkMuted))
 		// D154: the task's words only in the reader's language; else its title.
 		text := it.Text
-		if said := say.Sayable(it.Text, a.tongue()); said == "" && it.Title != "" {
+		if said := say.Sayable(it.Text, a.tongueOf(it.TaskID)); said == "" && it.Title != "" {
 			text = it.Title
 		} else if said == "" {
 			text = a.L.T("living.it")
@@ -825,7 +825,7 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 		if len(it.Evidence) > 0 {
 			ev := it.Evidence[0]
 			// A text button like every other one: flat, no underline.
-			if a.buttonFor(c.Key("ev"), a.L.T("living.evidence"), a.proofLabel(ev), btnText, t.ControlSM, t.Surface) {
+			if a.buttonFor(c.Key("ev"), a.L.T("living.evidence"), a.proofLabel(a.S.Task(it.TaskID), ev), btnText, t.ControlSM, t.Surface) {
 				a.openEvidence(c, ev)
 			}
 		}

@@ -48,8 +48,8 @@ func spoken(l *i18n.Strings, parts ...string) string {
 			keep = append(keep, p)
 		}
 	}
-	if l != nil && l.Lang == i18n.ZH {
-		return strings.Join(keep, "，")
+	if l == nil {
+		return strings.Join(keep, ", ")
 	}
-	return strings.Join(keep, ", ")
+	return strings.Join(keep, l.T("spoken.sep"))
 }

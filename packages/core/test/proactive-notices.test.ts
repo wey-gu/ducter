@@ -87,7 +87,7 @@ test("快到了: a flight in the next day and a half: when, from where, when to 
   expect(rest).toHaveLength(0);
   expect(c!.words.zh).toBe("明天 19:40 NH 920 从 Shanghai Pudong T2 起飞，飞 Tokyo Haneda；17:40 前到机场。");
   expect(c!.words.en).toBe("NH 920 leaves Shanghai Pudong T2 at 19:40 tomorrow for Tokyo Haneda, landing 23:30. Be at the airport by 17:40.");
-  expect(fitsBudget(c!.words.zh, true)).toBe(true);
+  expect(fitsBudget(c!.words.zh, "zh")).toBe(true);
   expect(c!.how).toHaveLength(2);
   expect(c!.urgent).toBe(false); // 34.7 h out
   expect(c!.sender).toBe("ANA");
@@ -155,7 +155,7 @@ test("快到期 · 要花钱: money about to change, with the day it takes effec
   const pf = d.find((c) => c.sender === "Fly")!;
   expect(pf.words.zh).toBe("Fly.io 的扣款没成功（$29）。");
   expect(pf.urgent).toBe(true);
-  for (const c of d) expect(fitsBudget(c.words.zh, true)).toBe(true);
+  for (const c of d) expect(fitsBudget(c.words.zh, "zh")).toBe(true);
 });
 
 test("之前说的有变: a later notice on something already said is a correction, said at once", () => {

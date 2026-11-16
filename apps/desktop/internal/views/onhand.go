@@ -216,7 +216,7 @@ func (a *App) tp(key string, v string) string {
 // pad spaces a time or name that starts or ends in Latin letters or digits
 // from the Chinese around it ("最多等到" + "12 月 1 日 9:00" + "，…").
 func (a *App) pad(s string) string {
-	if a.L.Lang != i18n.ZH || s == "" {
+	if !a.L.Han() || s == "" {
 		return s
 	}
 	if s[0] < 0x80 {
@@ -572,7 +572,7 @@ func (a *App) defaultRow(c *ui.Context, d *store.DecisionState) {
 		g = a.L.T("decision.go")
 	}
 	// "In 6 min: wait for you…": a capital that only starts its own sentence goes.
-	if a.L.Lang != i18n.ZH && len(g) > 1 && g[0] >= 'A' && g[0] <= 'Z' && g[1] >= 'a' && g[1] <= 'z' {
+	if a.L.Cased() && len(g) > 1 && g[0] >= 'A' && g[0] <= 'Z' && g[1] >= 'a' && g[1] <= 'z' {
 		g = strings.ToLower(g[:1]) + g[1:]
 	}
 	frac := float32(1)

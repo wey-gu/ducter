@@ -2,6 +2,7 @@
 import type { DeviceHarness, DeviceUpdate, MemPluginView } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import type { Strings } from "./i18n.ts";
+import { words } from "@ducter/protocol/src/lang.ts";
 
 export function duration(L: Strings, ms: number): string {
   const min = Math.max(1, Math.ceil(ms / 60_000));
@@ -23,9 +24,28 @@ export function ago(L: Strings, iso: string | undefined, now = Date.now()): stri
 // i18n/when.go): a time of day without a leading zero; today / tomorrow / yesterday by name; the
 // next six days by weekday; else the date in words ("12 月 1 日" / "Dec 1"), with the year only
 // when it isn't this one. Never "12-01 09:00".
-const ZH_WD = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-const EN_WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const EN_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+interface DayWords {
+  rel: Record<"0" | "1" | "-1", string>;
+  wd: string[];
+  date(d: Date, year: boolean): string;
+  /** Between a far day and its time: " " / ", ". */
+  farSep: string;
+}
+const DAY: { en: DayWords; zh: DayWords } = {
+  zh: {
+    rel: { "0": "今天", "1": "明天", "-1": "昨天" },
+    wd: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
+    date: (d, year) => `${year ? `${d.getFullYear()} 年 ` : ""}${d.getMonth() + 1} 月 ${d.getDate()} 日`,
+    farSep: " ",
+  },
+  en: {
+    rel: { "0": "today", "1": "tomorrow", "-1": "yesterday" },
+    wd: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    date: (d, year) => `${EN_MON[d.getMonth()]} ${d.getDate()}${year ? ` ${d.getFullYear()}` : ""}`,
+    farSep: ", ",
+  },
+};
 const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 const dayDiff = (d: Date, now: Date) => Math.round((midnight(d) - midnight(now)) / 86_400_000);
 
@@ -38,16 +58,12 @@ export function clock(iso: string | undefined): string {
 /** The date in words: 今天 / 明天 / 昨天, a weekday within six days ahead, else "12 月 1 日" / "Dec 1". */
 export function day(L: Strings, iso: string | undefined, now = Date.now()): string {
   if (!iso) return "";
-  const zh = L.lang === "zh";
+  const w = words(DAY, L.lang);
   const d = new Date(iso), n = new Date(now);
   const k = dayDiff(d, n);
-  if (k === 0) return zh ? "今天" : "today";
-  if (k === 1) return zh ? "明天" : "tomorrow";
-  if (k === -1) return zh ? "昨天" : "yesterday";
-  if (k > 1 && k < 7) return (zh ? ZH_WD : EN_WD)[d.getDay()]!;
-  const year = d.getFullYear() !== n.getFullYear();
-  if (zh) return `${year ? `${d.getFullYear()} 年 ` : ""}${d.getMonth() + 1} 月 ${d.getDate()} 日`;
-  return `${EN_MON[d.getMonth()]} ${d.getDate()}${year ? ` ${d.getFullYear()}` : ""}`;
+  if (k === 0 || k === 1 || k === -1) return w.rel[String(k) as "0" | "1" | "-1"];
+  if (k > 1 && k < 7) return w.wd[d.getDay()]!;
+  return w.date(d, d.getFullYear() !== n.getFullYear());
 }
 
 /** A moment: "今天 18:00", "明天 9:00", "周五 9:00", "12 月 1 日 9:00" / "today 18:00", "Dec 1, 9:00". */
@@ -55,7 +71,7 @@ export function when(L: Strings, iso: string | undefined, now = Date.now()): str
   if (!iso) return "";
   const dd = day(L, iso, now);
   const named = dayDiff(new Date(iso), new Date(now));
-  const sep = L.lang !== "zh" && (named > 6 || named < -1) ? ", " : " ";
+  const sep = named > 6 || named < -1 ? words(DAY, L.lang).farSep : " ";
   return `${dd}${sep}${clock(iso)}`;
 }
 
@@ -97,7 +113,7 @@ export function modelName(m: string): string {
 
 /** A Latin word in Chinese text gets a space on each side ("在 MacBook 上"). */
 export function cjkPad(L: Strings, s: string): string {
-  if (L.lang !== "zh" || !s) return s;
+  if (L.style.spaced || !s) return s;
   if (s.charCodeAt(0) < 0x80) s = " " + s;
   if (s.charCodeAt(s.length - 1) < 0x80) s += " ";
   return s;
@@ -190,8 +206,8 @@ export function memWords(L: Strings, m: MemPluginView): { line: string; action?:
 /** An accessible name made of several facts, said the way a person reads a list aloud (D291):
  *  "，" in Chinese, ", " in English. Only for aria-label and title; on screen each fact is its own
  *  element (Facts in controls.tsx), never one string joined by a separator. */
-export function spoken(L: Pick<Strings, "lang">, ...parts: (string | false | null | undefined)[]): string {
-  return parts.filter((p): p is string => !!p && !!p.trim()).join(L.lang === "zh" ? "，" : ", ");
+export function spoken(L: Pick<Strings, "t">, ...parts: (string | false | null | undefined)[]): string {
+  return parts.filter((p): p is string => !!p && !!p.trim()).join(L.t("spoken.sep"));
 }
 
 /** A device's name as the person sees it (D291): a phone or iPad paired through the Ducter app

@@ -89,6 +89,12 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		}
 		a.coinTray(c, dv)
 		a.chipRow(c, "dev:"+dv.ID, dv, nil)
+		// D293: how a worker is connected; the home's addresses.
+		if dv.Home {
+			a.homeWays(c, dv)
+		} else if dv.State == protocol.DeviceAwake {
+			a.howConnected(c, "dev:"+dv.ID, dv.Via)
+		}
 		if !dv.Home {
 			a.viaLine(c, "dev:"+dv.ID, deviceComputer(dv), nil)
 		}
@@ -119,6 +125,9 @@ func (a *App) clientCard(c *ui.Context, cl *protocol.ReachClient) {
 	a.statusLine(c, line, t.InkMuted, false)
 	a.chipRow(c, "cl:"+cl.ID, nil, cl)
 	a.handsetCard(c, cl)
+	if cl.Connected {
+		a.howConnected(c, "cl:"+cl.ID, cl.Via) // D293
+	}
 	a.viaLine(c, "cl:"+cl.ID, computer, cl)
 	if isCLI(cl) {
 		a.sheetFoot(c, cl.ID, name, a.L.T("device.cli.name", computer), "device.disconnect.means.cli")

@@ -9,7 +9,8 @@ import kotlin.math.roundToInt
 // (app/src/test).
 
 /** Where to connect: a base URL ("https://h/", ending in /) and, from a `ducter pair` link, its code. */
-data class PairTarget(val base: String, val code: String?) {
+/** D293: fp is the home's key fingerprint from the link (…#c=…&k=<fp>), pinned at pairing. */
+data class PairTarget(val base: String, val code: String?, val fp: String? = null) {
     companion object {
         private val CODE = Regex("""(?:^|&)c=([A-Za-z0-9-]+)""")
 
@@ -32,6 +33,7 @@ data class PairTarget(val base: String, val code: String?) {
             if (scheme != "http" && scheme != "https") return null
             val host = u.host?.takeIf { it.isNotEmpty() } ?: return null
             var code = u.rawFragment?.let { CODE.find(it)?.groupValues?.get(1)?.uppercase() }
+            val fp = u.rawFragment?.let { Regex("""(?:^|&)k=([A-Za-z0-9_-]{16,64})""").find(it)?.groupValues?.get(1) }
             val t = typed.trim().uppercase()
             if (t.isNotEmpty()) code = t
             // The directory of the page: /pair, /app and / all mean the base.
@@ -40,7 +42,7 @@ data class PairTarget(val base: String, val code: String?) {
             if (!path.endsWith("/")) path += "/"
             val port = if (u.port == -1) "" else ":${u.port}"
             val h = if (host.contains(':') && !host.startsWith("[")) "[$host]" else host
-            return PairTarget("$scheme://${h.lowercase()}$port$path", code?.takeIf { it.isNotEmpty() })
+            return PairTarget("$scheme://${h.lowercase()}$port$path", code?.takeIf { it.isNotEmpty() }, fp)
         }
 
         /** "http://h:7797/x/" → "http://h:7797": what the page's origin is, for the bridge's rule. */

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Every key has both languages, and the same verbs in each.
@@ -122,6 +123,64 @@ func TestDetect(t *testing.T) {
 	}
 	if got := New(EN).T("decision.default.go", "5 min", "rebase"); got != "If you don't answer, I'll rebase in 5 min. It can be undone." {
 		t.Errorf("en order: %q", got)
+	}
+}
+
+// D292: any tag reads the first table on its chain; Locale keeps the tag.
+func TestLocaleChain(t *testing.T) {
+	for tag, want := range map[Lang]Lang{"ko": EN, "zh-TW": ZH, "zh-Hant": ZH, "en-GB": EN, "": EN, "xx-bogus!": EN} {
+		if s := New(tag); s.Lang != want {
+			t.Errorf("New(%q).Lang = %q, want %q", tag, s.Lang, want)
+		}
+	}
+	if s := New("ko_KR"); s.Locale != "ko-KR" {
+		t.Errorf("Locale = %q", s.Locale)
+	}
+	t.Setenv("DUCTER_LOCALE", "")
+	t.Setenv("LANG", "C")
+	if l := Detect([]string{"ko-KR", "zh-CN"}); l != ZH {
+		t.Errorf("ko, zh: %v", l)
+	}
+	if l := Detect([]string{"ko-KR"}); l != EN {
+		t.Errorf("ko: %v", l)
+	}
+	t.Setenv("LANG", "zh_CN.UTF-8")
+	if l := Detect(nil); l != ZH {
+		t.Errorf("LANG: %v", l)
+	}
+	if got := FromText("안녕하세요, 도와줄 수 있나요?"); got != "ko" {
+		t.Errorf("FromText ko: %q", got)
+	}
+}
+
+func TestCalDates(t *testing.T) {
+	at := time.Date(2026, 11, 18, 9, 0, 0, 0, time.Local)
+	now := time.Date(2026, 11, 16, 9, 0, 0, 0, time.Local)
+	next := now.AddDate(1, 0, 0)
+	for _, c := range []struct{ got, want string }{
+		{CalDate(ZH, at, now), "11 月 18 日" + calNBSP + "周三"},
+		{CalDate(ZH, at, next), "2026 年 11 月 18 日" + calNBSP + "周三"},
+		{CalDate(EN, at, now), "Wed, Nov 18"},
+		{CalDate("ko", at, next), "Wed, Nov 18, 2026"},
+		{CalMD(ZH, at), "11 月 18 日"},
+		{CalMD(EN, at), "Nov 18"},
+		{CalRange(ZH, now, at), "11 月 16 日–18 日"},
+		{CalRange(EN, now, at), "Nov 16–18"},
+		{CalRange(EN, now, at.AddDate(0, 1, 0)), "Nov 16–Dec 18"},
+	} {
+		if c.got != c.want {
+			t.Errorf("got %q, want %q", c.got, c.want)
+		}
+	}
+}
+
+func TestPluralKeys(t *testing.T) {
+	en := New(EN)
+	if got := en.N("conv.new", 1); got != en.T("conv.new.one") {
+		t.Errorf("N one: %q", got)
+	}
+	if got := en.N("no.such.key", 2); got != "no.such.key" {
+		t.Errorf("N missing: %q", got)
 	}
 }
 

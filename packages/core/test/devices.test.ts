@@ -342,7 +342,7 @@ test("a pairing code with a public address carries the link and a QR", async () 
   stops.push(t.cleanup, () => core.stop());
   const p = await core.devicesView.pairCode();
   expect(p.address).toBe("https://ducter.example.com");
-  expect(p.link).toBe(`https://ducter.example.com/pair#c=${p.code}`);
+  expect(p.link).toBe(`https://ducter.example.com/pair#c=${p.code}&k=${(await core.devicesView.frame()).reach.home!.fp}`);
   expect(p.qr!.length).toBeGreaterThan(20);
   expect(p.qr!.every((r) => r.length === p.qr!.length && /^[01]+$/.test(r))).toBe(true);
 });

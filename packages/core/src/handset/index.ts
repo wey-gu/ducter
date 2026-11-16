@@ -33,7 +33,7 @@
 // a finished task's end is logged, never told; a screen that timed out (asleep) keeps the loan.
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { labelHead, type Bodies, type DialHow, type DialSheet, type HandsetEnd, type HandsetMethod, type HandsetRecording, type HandsetServerFrame, type HandsetState, type HandsetView, type OnHand, type Question } from "@ducter/protocol";
+import { labelHead, type Bodies, type DialHow, type DialSheet, type HandsetEnd, type HandsetMethod, type HandsetRecording, type HandsetServerFrame, type HandsetState, type HandsetView, type LangTag, type OnHand, type Question } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { PhoneDevice, Raw } from "../android/device.ts";
 import { parseDump, type Screen } from "../android/screen.ts";
@@ -201,7 +201,7 @@ export interface HandsetsOptions {
   /** Interrupt a task's turn now (Stop). */
   interrupt?(taskId: string): unknown;
   /** Ducter's language: the pill on the phone speaks it, one language with the lines the home sends. */
-  language?(): "zh" | "en" | undefined;
+  language?(): LangTag | undefined;
   now?: () => number;
   callMs?: number;
   /** D253 (tests): the beat, when a phone is quiet, when a quiet or gone phone's loan ends. */

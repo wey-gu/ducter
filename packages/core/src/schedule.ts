@@ -1,6 +1,7 @@
 // Time triggers for routines (D114): the next firings of "every Monday at 9:00" in a time zone,
 // and the trigger said in words. Pure; tested with fixed instants.
-import type { RoutineTrigger } from "@ducter/protocol";
+import type { LangTag, RoutineTrigger } from "@ducter/protocol";
+import { fill, words } from "@ducter/protocol";
 
 type TimeTrigger = Extract<RoutineTrigger, { kind: "time" }>;
 const DAY = 86_400_000;
@@ -104,26 +105,58 @@ export function periodMs(t: TimeTrigger): number {
   return 30 * DAY;
 }
 
-const ZH_DAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-const EN_DAYS = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+const W = {
+  zh: {
+    days: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
+    daysJoin: "、",
+    months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+    once: "{month}{day}日 {time}",
+    day: "每天 {time}",
+    weekday: "工作日 {time}",
+    hours: "从 {time} 起每 {hours} 小时",
+    month: "每月 {day} 号 {time}",
+    week: "每{days} {time}",
+    ordinal: (n: number) => String(n),
+    personal: "跟着你的时区",
+    world: "按 {tz} 时间",
+    zoned: "{when}（{zone}）",
+  },
+  en: {
+    days: ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"],
+    daysJoin: ", ",
+    months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    once: "{month} {day}, {time}",
+    day: "Every day {time}",
+    weekday: "Weekdays {time}",
+    hours: "Every {hours} h from {time}",
+    month: "Monthly on the {day} {time}",
+    week: "{days} {time}",
+    ordinal: (n: number) => `${n}${["th", "st", "nd", "rd"][n % 10 > 3 || [11, 12, 13].includes(n) ? 0 : n % 10]}`,
+    personal: "follows your time zone",
+    world: "{tz} time",
+    zoned: "{when} ({zone})",
+  },
+};
 
-/** The trigger in words: "每周一 9:00 · 跟着你的时区" / "Mondays 9:00 · follows your time zone". */
-export function describeTrigger(t: RoutineTrigger, zh: boolean): string {
+/** The trigger in words (D292: in the routine's language, through the fallback chain):
+ *  "每周一 9:00（跟着你的时区）" / "Mondays 9:00 (follows your time zone)". */
+export function describeTrigger(t: RoutineTrigger, lang: LangTag): string {
   if (t.kind === "condition") return t.condition;
+  const w = words(W, lang);
   const time = t.time.replace(/^0(\d)/, "$1");
   if (t.every === "once") {
     // One firing: the day and the time, no time zone line (it is the user's own clock now).
     const d = parseDate(t.date);
     if (!d) return time;
-    return zh ? `${d.m}月${d.d}日 ${time}` : `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.m - 1]} ${d.d}, ${time}`;
+    return fill(w.once, { month: w.months[d.m - 1]!, day: d.d, time });
   }
   const when =
-    t.every === "day" ? (zh ? `每天 ${time}` : `Every day ${time}`)
-    : t.every === "weekday" ? (zh ? `工作日 ${time}` : `Weekdays ${time}`)
-    : t.every === "hours" ? (zh ? `从 ${time} 起每 ${t.hours} 小时` : `Every ${t.hours} h from ${time}`)
-    : t.every === "month" ? (zh ? `每月 ${t.dayOfMonth} 号 ${time}` : `Monthly on the ${t.dayOfMonth}${["th", "st", "nd", "rd"][t.dayOfMonth! % 10 > 3 || [11, 12, 13].includes(t.dayOfMonth!) ? 0 : t.dayOfMonth! % 10]} ${time}`)
-    : zh ? `每${(t.days ?? []).map((d) => ZH_DAYS[d]).join("、")} ${time}` : `${(t.days ?? []).map((d) => EN_DAYS[d]).join(", ")} ${time}`;
-  const zone = t.zone === "personal" ? (zh ? "跟着你的时区" : "follows your time zone") : zh ? `按 ${t.tz} 时间` : `${t.tz} time`;
+    t.every === "day" ? fill(w.day, { time })
+    : t.every === "weekday" ? fill(w.weekday, { time })
+    : t.every === "hours" ? fill(w.hours, { time, hours: String(t.hours) })
+    : t.every === "month" ? fill(w.month, { day: w.ordinal(t.dayOfMonth!), time })
+    : fill(w.week, { days: (t.days ?? []).map((d) => w.days[d]).join(w.daysJoin), time });
+  const zone = t.zone === "personal" ? w.personal : fill(w.world, { tz: t.tz });
   // D291: the zone qualifies the time, in parentheses, never joined by a dot.
-  return zh ? `${when}（${zone}）` : `${when} (${zone})`;
+  return fill(w.zoned, { when, zone });
 }

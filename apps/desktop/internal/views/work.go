@@ -84,11 +84,11 @@ func (a *App) waitCaption(w *protocol.Waiter) string {
 // waitLine names what it waits for as awaited: "等 PR #1592 通过".
 func (a *App) waitLine(reason string) string {
 	r := strings.TrimSpace(reason)
-	if a.L.Lang == "zh" && r != "" && (r[0] < 0x80) {
+	if a.L.Han() && r != "" && (r[0] < 0x80) {
 		r = " " + r
 	}
 	// "Waiting until the domain renewal email arrives": a capital that only starts the sentence goes.
-	if a.L.Lang != "zh" && len(r) > 1 && r[0] >= 'A' && r[0] <= 'Z' && r[1] >= 'a' && r[1] <= 'z' {
+	if a.L.Cased() && len(r) > 1 && r[0] >= 'A' && r[0] <= 'Z' && r[1] >= 'a' && r[1] <= 'z' {
 		r = strings.ToLower(r[:1]) + r[1:]
 	}
 	return a.L.T("wait.line", r)
@@ -165,20 +165,13 @@ func (a *App) calendarBadge(c *ui.Context, r *protocol.Routine, size float32) {
 		return
 	}
 	at = at.Local()
-	zh := a.L.Lang == i18n.ZH
 	big := fmt.Sprint(at.Day())
 	var sub string
 	if r.Trigger.Every == "month" || r.Trigger.Every == "once" {
-		if zh {
-			big += " 号"
-			sub = fmt.Sprintf("%d 月", int(at.Month()))
-		} else {
-			sub = at.Format("Jan")
-		}
-	} else if zh {
-		sub = [...]string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}[at.Weekday()]
+		big = a.L.T("routine.cal.day", at.Day())
+		sub = i18n.Month(a.L.Lang, at.Month())
 	} else {
-		sub = at.Format("Mon")
+		sub = i18n.Weekday(a.L.Lang, at.Weekday())
 	}
 	w, h := size, size*1.13
 	ui.Box(c.Key("cal")).Size(w, h).Shrink(0).Role(ui.RoleImage).Label(a.when(at)).Children(func() {
@@ -284,10 +277,7 @@ func (a *App) countWords(done, total int, unit string) string {
 	if unit == "items" {
 		key = "until.items"
 	}
-	if a.L.Lang == i18n.ZH {
-		return a.L.T(key, total, done)
-	}
-	return a.L.T(key, done, total)
+	return a.L.T(key, done, total) // each table orders them (%[2]d)
 }
 
 // untilLine is a keep-going loop's line under its goal: only how it ended

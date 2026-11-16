@@ -21,10 +21,10 @@ const money = (n: number) => `$${n.toFixed(2)}`;
 function when(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
-  const hm = d.toLocaleTimeString(A.L.lang === "zh" ? "zh-CN" : "en-US", { hour: "numeric", minute: "2-digit" });
+  const hm = A.L.date(d, { hour: "numeric", minute: "2-digit" });
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toDateString() === d.toDateString();
   const today = now.toDateString() === d.toDateString();
-  return today ? hm : tomorrow ? t("call.tomorrow", hm) : `${d.toLocaleDateString(A.L.lang === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" })} ${hm}`;
+  return today ? hm : tomorrow ? t("call.tomorrow", hm) : `${A.L.date(d, { month: "short", day: "numeric" })} ${hm}`;
 }
 
 const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;

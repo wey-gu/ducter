@@ -3,12 +3,35 @@
 // string itself, never from this device's zone (a phone abroad still shows the person's day).
 // Pure: tested in test/calendar.test.ts.
 
+import { words, type LangTag } from "@ducter/protocol/src/lang.ts";
+
 /** zh joins a date and its weekday with a no-break space: t() drops a plain space between Han (D78). */
 const ZH_WD = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const EN_WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const EN_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export type CalLang = "zh" | "en";
+/** Any tag (D292); the words come from the nearest table below (words(): "ko" → en, "zh-Hant" → zh). */
+export type CalLang = LangTag;
+
+type Parts = { y: number; m: number; d: number; wd: number };
+/** One language's calendar words: every shape the functions below put a date in. */
+interface CalWords {
+  rel: Record<"0" | "1" | "-1", string>;
+  date(p: Parts, year: boolean): string;
+  head(p: Parts, year: boolean): string;
+  run(a: Parts, b: Parts): string;
+  when(rel: string, date: string, time: string, allDay: boolean): string;
+  /** A day head: "今天 11月18日 周三" / "Today, Wed, Nov 18" (D291: one date phrase, never joined by a dot). */
+  dated(rel: string, date: string): string;
+  city: Record<string, string>;
+  otherZone(p: Parts, hm: string, city: string): string;
+  their(date: string, hm: string): string;
+  list: string;
+  andList(names: string[]): string;
+  people(n: number): string;
+  named(names: string, n: number, more: number): string;
+}
+const zhDate = (p: Parts, year: boolean) => `${year ? `${p.y}年` : ""}${p.m}月${p.d}日\u00a0${ZH_WD[p.wd]}`;
 
 /** "2026-11-19" of an ISO time or date. */
 export const ymdOf = (iso: string) => iso.slice(0, 10);
@@ -63,18 +86,14 @@ export function nowMinutesIn(zone: string, now = Date.now()): number {
 /** 今天 / 明天 / 昨天 (Today / Tomorrow / Yesterday) or "". */
 export function relDay(lang: CalLang, ymd: string, today: string): string {
   const k = daysBetween(today, ymd);
-  if (k === 0) return lang === "zh" ? "今天" : "Today";
-  if (k === 1) return lang === "zh" ? "明天" : "Tomorrow";
-  if (k === -1) return lang === "zh" ? "昨天" : "Yesterday";
-  return "";
+  return k === 0 || k === 1 || k === -1 ? cal(lang).rel[String(k) as "0" | "1" | "-1"] : "";
 }
 
 /** "11月19日 周四" / "Thu Nov 19" (the year only when it isn't this one). */
 export function dateWords(lang: CalLang, ymd: string, today?: string): string {
   const p = parts(ymd);
   const year = today && today.slice(0, 4) !== ymd.slice(0, 4);
-  if (lang === "zh") return `${year ? `${p.y}年` : ""}${p.m}月${p.d}日\u00a0${ZH_WD[p.wd]}`;
-  return `${EN_WD[p.wd]} ${EN_MON[p.m - 1]} ${p.d}${year ? `, ${p.y}` : ""}`;
+  return cal(lang).date(p, !!year);
 }
 
 /** A day card's head, read as one date (D291): "今天 11月18日 周三" / "Today, Wed, Nov 18"; another day
@@ -83,15 +102,14 @@ export function dayHead(lang: CalLang, ymd: string, today: string): string {
   const p = parts(ymd);
   const rel = relDay(lang, ymd, today);
   const year = today.slice(0, 4) !== ymd.slice(0, 4);
-  const date = lang === "zh" ? `${year ? `${p.y}年` : ""}${p.m}月${p.d}日\u00a0${ZH_WD[p.wd]}` : `${EN_WD[p.wd]}, ${EN_MON[p.m - 1]} ${p.d}${year ? `, ${p.y}` : ""}`;
-  return rel ? (lang === "zh" ? `${rel} ${date}` : `${rel}, ${date}`) : date;
+  const date = cal(lang).head(p, year);
+  return rel ? cal(lang).dated(rel, date) : date;
 }
 
 /** A short date for a run of days: "11月21日–22日" / "Nov 21–22"; across months both in full. */
 export function dateRun(lang: CalLang, a: string, b: string): string {
   const pa = parts(a), pb = parts(b);
-  if (lang === "zh") return pa.m === pb.m ? `${pa.m}月${pa.d}日–${pb.d}日` : `${pa.m}月${pa.d}日–${pb.m}月${pb.d}日`;
-  return pa.m === pb.m ? `${EN_MON[pa.m - 1]} ${pa.d}–${pb.d}` : `${EN_MON[pa.m - 1]} ${pa.d} – ${EN_MON[pb.m - 1]} ${pb.d}`;
+  return cal(lang).run(pa, pb);
 }
 
 /** "15:00–15:30". */
@@ -106,8 +124,7 @@ export function whenWords(lang: CalLang, start: string, end: string, allDay: boo
   const rel = relDay(lang, ymd, today);
   const date = dateWords(lang, ymd, today);
   const time = allDay ? allDayWord : span(start, end);
-  if (lang === "zh") return `${rel ? `${rel} ` : ""}${date} ${time}`;
-  return `${rel ? `${rel}, ` : ""}${date}, ${allDay ? time.toLowerCase() : time}`;
+  return cal(lang).when(rel, date, time, !!allDay);
 }
 
 /** Common cities by their zone, in Chinese; anything else by the zone's own city name. */
@@ -145,7 +162,8 @@ const ZH_CITY: Record<string, string> = {
 };
 
 export function cityOf(lang: CalLang, zone: string): string {
-  if (lang === "zh" && ZH_CITY[zone]) return ZH_CITY[zone]!;
+  const own = cal(lang).city[zone];
+  if (own) return own;
   return (zone.split("/").pop() ?? zone).replace(/_/g, " ");
 }
 
@@ -172,7 +190,7 @@ export function otherZoneLine(lang: CalLang, zone: string, iso: string): string 
   const w = wallIn(zone, iso)!;
   const p = parts(w.ymd);
   const city = cityOf(lang, zone);
-  return lang === "zh" ? `${city}当地 ${p.m}月${p.d}日 ${w.hm}` : `${w.hm} ${EN_MON[p.m - 1]} ${p.d} in ${city}`;
+  return cal(lang).otherZone(p, w.hm, city);
 }
 
 /** The other side's time on a change card, as { when, city }: "11月19日 周四 00:00" / "00:00 Thu Nov 19". */
@@ -180,19 +198,56 @@ export function theirSide(lang: CalLang, zone: string, iso: string): { when: str
   if (!zoneDiffers(zone, iso)) return undefined;
   const w = wallIn(zone, iso)!;
   const date = dateWords(lang, w.ymd);
-  return { when: lang === "zh" ? `${date} ${w.hm}` : `${w.hm} ${date}`, city: cityOf(lang, zone) };
+  return { when: cal(lang).their(date, w.hm), city: cityOf(lang, zone) };
 }
 
 /** Names in a list: "Lina Chen、alice" / "Lina Chen, alice". */
-export const nameList = (lang: CalLang, names: string[]) => names.join(lang === "zh" ? "、" : ", ");
+export const nameList = (lang: CalLang, names: string[]) => names.join(cal(lang).list);
+
+/** Names as a sentence says them: "Lina、alice" / "Lina and alice", "a, b and c". */
+export const andList = (lang: CalLang, names: string[]) => cal(lang).andList(names);
 
 /** Who else is on it: "和 Lina Chen、alice" / "with Lina Chen, alice"; more than named: "等 5 人" / "+3". */
 export function peopleWords(lang: CalLang, people: number | undefined, names: string[] | undefined): string {
   const n = people ?? names?.length ?? 0;
   const w = names ?? [];
   if (!n) return "";
-  if (!w.length) return lang === "zh" ? `和 ${n} 个人` : n === 1 ? "with 1 other" : `with ${n} others`;
-  const more = n - w.length;
-  if (lang === "zh") return `和 ${nameList(lang, w)}${more > 0 ? ` 等 ${n} 人` : ""}`;
-  return `with ${nameList(lang, w)}${more > 0 ? ` +${more}` : ""}`;
+  if (!w.length) return cal(lang).people(n);
+  return cal(lang).named(nameList(lang, w), n, n - w.length);
+}
+
+const CAL: { en: CalWords; zh: CalWords } = {
+  zh: {
+    rel: { "0": "今天", "1": "明天", "-1": "昨天" },
+    date: zhDate,
+    head: zhDate,
+    run: (a, b) => (a.m === b.m ? `${a.m}月${a.d}日–${b.d}日` : `${a.m}月${a.d}日–${b.m}月${b.d}日`),
+    when: (rel, date, time) => `${rel ? `${rel} ` : ""}${date} ${time}`,
+    dated: (rel, date) => `${rel} ${date}`,
+    city: ZH_CITY,
+    otherZone: (p, hm, city) => `${city}当地 ${p.m}月${p.d}日 ${hm}`,
+    their: (date, hm) => `${date} ${hm}`,
+    list: "、",
+    andList: (names) => names.join("、"),
+    people: (n) => `和 ${n} 个人`,
+    named: (names, n, more) => `和 ${names}${more > 0 ? ` 等 ${n} 人` : ""}`,
+  },
+  en: {
+    rel: { "0": "Today", "1": "Tomorrow", "-1": "Yesterday" },
+    date: (p, year) => `${EN_WD[p.wd]} ${EN_MON[p.m - 1]} ${p.d}${year ? `, ${p.y}` : ""}`,
+    head: (p, year) => `${EN_WD[p.wd]}, ${EN_MON[p.m - 1]} ${p.d}${year ? `, ${p.y}` : ""}`,
+    run: (a, b) => (a.m === b.m ? `${EN_MON[a.m - 1]} ${a.d}–${b.d}` : `${EN_MON[a.m - 1]} ${a.d} – ${EN_MON[b.m - 1]} ${b.d}`),
+    when: (rel, date, time, allDay) => `${rel ? `${rel}, ` : ""}${date}, ${allDay ? time.toLowerCase() : time}`,
+    dated: (rel, date) => `${rel}, ${date}`,
+    city: {},
+    otherZone: (p, hm, city) => `${hm} ${EN_MON[p.m - 1]} ${p.d} in ${city}`,
+    their: (date, hm) => `${hm} ${date}`,
+    list: ", ",
+    andList: (names) => (names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names.join(", ")),
+    people: (n) => (n === 1 ? "with 1 other" : `with ${n} others`),
+    named: (names, _n, more) => `with ${names}${more > 0 ? ` +${more}` : ""}`,
+  },
+};
+function cal(lang: CalLang): CalWords {
+  return words(CAL, lang);
 }

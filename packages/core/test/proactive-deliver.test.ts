@@ -29,7 +29,7 @@ test("the morning note: at the end of quiet hours, at most 3, most costly first,
   // What was left out is the partner's to say when asked; no screen shows it.
   expect(n.leftOut).toBe("没说的：3 封通知和收据，看标题就知道；1 封像推销，没理它。");
   for (const f of n.finds) {
-    expect(fitsBudget(f.text, true)).toBe(true);
+    expect(fitsBudget(f.text, "zh")).toBe(true);
     expect(f.how.length).toBeGreaterThan(0);
     expect(f.decisionId).toBeString(); // its one next step
   }

@@ -1,24 +1,25 @@
-// D257: Settings › 记忆 / Memory and › 连上的 AI agent / Connected AI agents, each its own page.
-// Memory is what the partner remembers about the person, first, in their words: the partner with
-// its notebook and one sentence, then what it noted grouped by when (each one forgettable), then
-// Nowledge Mem itself (where it is, its version, a newer one, putting it in, signing in). Your
-// other AI agents is the persona's connection with the person's other agents (D205) and who may
-// reach it (D170); it shows once Mem is in (peersShown), and points to Memory for Mem's own steps.
+// D257: Settings › 记忆 / Memory and › 连上的 AI agent / Connected AI agents, each its own page;
+// D295: both on the settings grid (D289). Memory shows the value first: the partner remembers you
+// (what's new this week, the switch), what it noted this week and earlier (each forgettable, asking
+// in place), what your other AI tools saved to Mem, then Nowledge Mem in human words (where it's
+// kept, its name there, the raw ids behind 详情). Before Mem: a small empty state and the setup as
+// steps. Connected AI agents is the persona's link with the person's other agents (D205) and who
+// may reach it (D170); it shows once Mem is in (peersShown). The Mac's: memory_pane.go, peers_pane.go.
 import type { BridgeView } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn, Facts, LinkBtn, Seg, Toggle } from "./controls.tsx";
+import { Coin } from "./coin.tsx";
+import { Btn, DangerButton, Facts, LinkBtn, Seg, Switch } from "./controls.tsx";
 import { ago } from "./format.ts";
 import { groupNoted, MEM_MIN, memPhase, memUpdate, peersShown, type MemPhase, type MemUpdate } from "./mem-view.ts";
-import { Avatar } from "./views.tsx";
+import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Tile } from "./set-grid.tsx";
+import { Avatar, Check } from "./views.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const MEM_SITE = "https://mem.nowledge.co";
 
 const homeOf = (b: BridgeView | undefined) => b?.home || A.homeName || "";
 
-/** The partner's face for where its memory stands: hugging its notebook when it remembers. */
-const FACE = { on: "done", off: "napping", missing: "idle", install: "idle", installing: "working", sign_in: "waiting", signing_in: "working" } as const;
 
 /**
  * The partner's own notebook, the blue one it always carries (its clay art), drawn in the same
@@ -61,213 +62,301 @@ function MemFailed({ detail, kept, install }: { detail: string; kept?: boolean; 
   );
 }
 
-// ---------- 记忆 / Memory ----------
+// ---------- 记忆 / Memory (D295: on the settings grid) ----------
 
-function heroWords(phase: MemPhase, name: string, noted: number): [string, string] {
-  switch (phase) {
-    case "on":
-      return [t("mem.hero.on", name), noted ? t("mem.hero.on.body") : t("mem.hero.empty.body")];
-    case "off":
-      return [t("mem.hero.off", name), t("partner.memory.off")];
-    case "sign_in":
-      return [t("mem.hero.signin"), t("mem.hero.signin.body")];
-    case "installing":
-    case "signing_in":
-      return [t("mem.hero.busy"), t("mem.hero.missing.body")];
-    default:
-      return [t("mem.hero.missing", name), t("mem.hero.missing.body")];
-  }
+/** What it noted in the last 7 days. */
+const weekCount = (noted: { at: string }[]) => groupNoted(noted).filter((g) => g.when !== "earlier").reduce((n, g) => n + g.items.length, 0);
+
+/** 1284 → "1,284". */
+const thousands = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+const NotebookTile = () => (
+  <Tile>
+    <Notebook size={40} />
+  </Tile>
+);
+
+/** A noted line's mark: a small accent clay pebble on its ledge. */
+const PebbleTile = () => (
+  <Tile>
+    <span class="mem-dot" />
+  </Tile>
+);
+
+/** Nowledge Mem's mark: its letter on a clay pebble in the notebook's blue (literal, never its logo). */
+const MemTile = ({ faded }: { faded?: boolean }) => (
+  <Tile>
+    <span class={`mem-letter${faded ? " faded" : ""}`}>N</span>
+  </Tile>
+);
+
+const TOOL_COINS: Record<string, string> = { "Claude Code": "claude-code", Codex: "codex", pi: "pi" };
+
+/** Another AI tool's mark: its clay coin when Ducter has one, else its first letter on a sunken pebble. */
+const ToolTile = ({ from }: { from: string }) => {
+  const h = TOOL_COINS[from];
+  return <Tile>{h ? <Coin harness={h} size={36} /> : <span class="mem-tool-letter">{[...from][0]?.toUpperCase()}</span>}</Tile>;
+};
+
+/** The first group: the partner remembers you, what's new this week, the switch. */
+function MemHead() {
+  const s = A.settings!;
+  const n = weekCount(A.mem?.noted ?? []);
+  const on = s.memory;
+  return (
+    <Group class="mem-g" label={t("settings.tab.memory")}>
+      <GHead tile={<NotebookTile />} name={on ? t("mem.hero.on", s.name) : t("mem.hero.off", s.name)} line={!on ? t("mem.off.line") : n ? t("mem.week.count", String(n)) : t("mem.week.none")} tone={on && n ? "done" : undefined}>
+        <Switch label={t("partner.memory.switch")} on={on} onChange={(memory) => A.setSettings({ memory })} />
+      </GHead>
+      <GFoot note={on ? t("mem.switch.note") : t("partner.memory.off")} />
+    </Group>
+  );
 }
 
-/** The partner with its notebook, one sentence of what it remembers, and the switch. */
-function MemHero({ phase }: { phase: MemPhase }) {
-  const s = A.settings!;
-  const noted = A.mem?.noted.length ?? 0;
-  const [title, body] = heroWords(phase, s.name, noted);
-  const switchable = phase === "on" || phase === "off";
+type Noted = NonNullable<typeof A.mem>["noted"][number];
+
+/** What it noted, this week and earlier; 忘掉 asks in place; the last group's foot is the door to Mem. */
+function MemNoted() {
+  const [ask, setAsk] = useState(0);
+  const noted = A.mem?.noted ?? [];
+  const groups = groupNoted(noted);
+  const week = groups.filter((g) => g.when !== "earlier").flatMap((g) => g.items);
+  const earlier = groups.filter((g) => g.when === "earlier").flatMap((g) => g.items);
+  const total = A.mem?.glance?.total;
+  const foot = (
+    <GFoot note={total ? t("mem.all.count", thousands(total)) : t("mem.all.note")}>
+      <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
+    </GFoot>
+  );
+  const row = (n: Noted) =>
+    ask === n.seq ? (
+      <GConfirm key={n.seq} ask={n.memoryId ? t("mem.forget.ask", n.title) : t("mem.forget.ask.hide", n.title)} keep={t("mem.forget.keep")} go={t("partner.memory.forget")} about={n.title} onKeep={() => setAsk(0)} onGo={() => (setAsk(0), A.forget(n.seq))} />
+    ) : (
+      <GRow key={n.seq} tile={<PebbleTile />} title={n.title} line={ago(A.L, n.at)}>
+        <DangerButton quiet label={t("partner.memory.forget")} about={n.title} onClick={() => setAsk(n.seq)} />
+      </GRow>
+    );
+  if (!noted.length)
+    return (
+      <section class="set mem-sec">
+        <h3>{t("mem.sec.week")}</h3>
+        <Group class="mem-g" label={t("mem.sec.week")}>
+          <GRow tile={<PebbleTile />} title={t("mem.empty.title")} line={t("mem.hero.empty.body")} />
+          {foot}
+        </Group>
+      </section>
+    );
   return (
-    <section class={`mem-hero ${phase}`} aria-label={t("settings.tab.memory")}>
-      <div class="mem-hero-top">
-        <Avatar size={84} state={FACE[phase]} />
-        <div class="grow">
-          <h3>{title}</h3>
-          <p>{body}</p>
-        </div>
-      </div>
-      {switchable && <Toggle label={t("partner.memory.switch")} help={s.memory ? t("mem.switch.note") : undefined} checked={s.memory} onChange={(memory) => A.setSettings({ memory })} />}
+    <>
+      {week.length > 0 && (
+        <section class="set mem-sec">
+          <h3>{t("mem.sec.week")}</h3>
+          <Group class="mem-g" label={t("mem.sec.week")}>
+            {week.map(row)}
+            {!earlier.length && foot}
+          </Group>
+        </section>
+      )}
+      {earlier.length > 0 && (
+        <section class="set mem-sec">
+          <h3>{t("mem.sec.earlier")}</h3>
+          <Group class="mem-g" label={t("mem.sec.earlier")}>
+            {earlier.map(row)}
+            {foot}
+          </Group>
+        </section>
+      )}
+    </>
+  );
+}
+
+/** What the person's other AI tools saved to Mem lately: the memory is shared. Read-only here. */
+function MemOthers() {
+  const others = A.mem?.glance?.others ?? [];
+  if (!others.length) return null;
+  return (
+    <section class="set mem-sec">
+      <h3>{t("mem.others.title")}</h3>
+      <p class="g-note">{t("mem.others.note", A.settings!.name)}</p>
+      <Group class="mem-g" label={t("mem.others.title")}>
+        {others.map((o) => (
+          <GRow key={o.id} tile={<ToolTile from={o.from} />} title={o.title} line={t("mem.others.by", o.from)}>
+            {o.at && <span class="g-state">{ago(A.L, o.at)}</span>}
+          </GRow>
+        ))}
+      </Group>
     </section>
   );
 }
 
-/** The update worth the person's tap, in the highlight (D213, D224): Bridge needs it, or Mem says a newer one is out. */
-function MemUpdateCard({ u, b }: { u: MemUpdate; b: BridgeView }) {
+/** Where the memories are kept, in the person's words. */
+function memWhere(b: BridgeView | undefined): string {
   const home = homeOf(b);
-  if (u.kind === "updating")
-    return (
-      <div class="mem-update busy" role="status">
-        <div class="grow">
-          <b>{u.move ? t("bridge.mem.moving", home) : t("bridge.mem.updating", home)}</b>
-        </div>
-        <Btn kind="secondary" size="sm" disabled label={t(u.move ? "bridge.mem.busy.move" : "bridge.mem.busy.update")} onClick={() => {}} />
-      </div>
-    );
-  if (u.kind === "needed") {
-    const line = u.canRun
-      ? t(u.move ? "bridge.mem.update.move" : "bridge.mem.update", home, u.version ?? "", MEM_MIN)
-      : u.app
-        ? t("bridge.update", home)
-        : t("bridge.mem.update.other", home, u.version ?? "", MEM_MIN);
-    return (
-      <div class="mem-update">
-        <div class="grow">
-          <b>{t("mem.update.needed")}</b>
-          <small>{line}</small>
-          {u.detail && <MemFailed detail={u.detail} kept={u.kept} install={false} />}
-        </div>
-        {u.canRun && <Btn kind="primary" size="sm" label={u.detail ? t("bridge.retry") : t("bridge.mem.update.go")} about={home} onClick={() => A.installBridgeMem()} />}
-      </div>
-    );
-  }
-  if (u.kind === "newer" || u.kind === "app")
-    return (
-      <div class="mem-update">
-        <div class="grow">
-          <b>{u.newer ? t("mem.update.newer", u.newer) : t("mem.update.newer.any")}</b>
-          <small>{u.kind === "app" ? t("mem.update.app.body", home) : u.version ? t("mem.update.newer.body", home, u.version) : t("mem.update.newer.body.any")}</small>
-          {u.kind === "newer" && u.detail && <MemFailed detail={u.detail} kept={u.kept} install={false} />}
-        </div>
-        {u.kind === "newer" && <Btn kind="primary" size="sm" label={u.detail ? t("bridge.retry") : t("bridge.mem.update.go")} about={home} onClick={() => A.installBridgeMem()} />}
-      </div>
-    );
-  return null;
+  if (b?.where === "cloud") return t("mem.app.kept.cloud");
+  if (b?.where === "local" || b?.state === "local_mem") return t("mem.app.kept.local", home);
+  if (b?.where === "server") return t("mem.app.kept.server");
+  return home ? t("mem.app.where", home) : "";
 }
 
-/** What it noted, by when; each line can be forgotten (in Mem when it has the id, D150). */
-function MemNotes() {
-  const noted = A.mem?.noted ?? [];
-  if (!noted.length) return null;
+/** The literal facts for support, behind 详情. */
+function MemFacts({ b }: { b: BridgeView }) {
+  const rows: [string, string | undefined][] = [
+    ["mem.details.home", homeOf(b)],
+    ["mem.details.version", b.version],
+    ["mem.details.identity", b.identity],
+    ["mem.details.space", b.space?.label],
+    ["mem.details.spaceid", b.space?.id],
+  ];
   return (
-    <section class="set">
-      <h3>{t("mem.notes.title")}</h3>
-      <div class="set-card mem-notes">
-        {groupNoted(noted).map((g) => (
-          <div class="mem-group" key={g.when}>
-            <h4>{t(`mem.when.${g.when}`)}</h4>
-            {g.items.map((n) => (
-              <div class="mem-note" key={n.seq}>
-                <span class="mem-dot" aria-hidden="true" />
-                <span class="grow">
-                  <span class="mem-title">{n.title}</span>
-                  <small>{ago(A.L, n.at)}</small>
-                </span>
-                <Btn kind="text" size="sm" label={t("partner.memory.forget")} about={n.title} onClick={() => A.forget(n.seq)} />
-              </div>
-            ))}
+    <dl class="mem-facts">
+      {rows
+        .filter(([, v]) => v)
+        .map(([k, v]) => (
+          <div key={k}>
+            <dt>{t(k)}</dt>
+            <dd class="mono">{v}</dd>
           </div>
         ))}
-        <a class="mem-door" href={MEM_SITE} target="_blank" rel="noopener noreferrer">
-          <span>{t("mem.notes.all")}</span>
-          <OutMark />
-        </a>
-      </div>
-    </section>
+    </dl>
   );
 }
 
-const OutMark = () => (
-  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M6 3.5H3.5v9h9V10" />
-    <path d="M9 3h4v4M13 3 7.5 8.5" />
+/** A drawn arrow up: a newer Mem (never a font's arrow). */
+const UpMark = () => (
+  <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 13V3.5M4 7.5 8 3.5l4 4" />
   </svg>
 );
 
-/** Nowledge Mem itself: where it is and its version, putting it in, signing in, a move worth making. */
-function MemApp({ phase, b }: { phase: MemPhase; b: BridgeView | undefined }) {
-  const [link, setLink] = useState("");
-  const mem = A.mem;
+/** The one thing about Mem's own version worth saying, as a row. */
+function MemUpdateRow({ u, b }: { u: MemUpdate; b: BridgeView }) {
   const home = homeOf(b);
-  const u = memUpdate(b);
-  const pill = phase === "on" ? <span class="mem-pill on">{t("mem.app.on")}</span> : null;
-  let body: preact.ComponentChildren;
-  if (phase === "off") body = <small>{t("mem.app.off")}</small>;
-  else if (phase === "install" || phase === "installing") {
-    const busy = phase === "installing";
-    body = (
-      <>
-        <small>{busy ? t("bridge.mem.installing", home) : b?.canRun ? t("bridge.mem.install", home) : t("bridge.mem.install.need", home)}</small>
-        {b?.detail && !busy && <MemFailed detail={b.detail} kept={b.kept} install />}
-        {!b?.canRun && !busy && <MemMore label={t("bridge.mem.how")} text={t("bridge.mem.install.need.how")} />}
-        <div class="mem-acts">
-          {busy ? <Btn kind="secondary" size="sm" disabled label={t("bridge.mem.busy.install")} onClick={() => {}} /> : <Btn kind={b?.canRun ? "primary" : "secondary"} size="sm" label={b?.canRun ? t("bridge.mem.install.go") : t("bridge.retry")} about={home} onClick={() => A.installBridgeMem()} />}
-        </div>
-      </>
-    );
-  } else if (phase === "sign_in" || phase === "signing_in") {
-    const busy = phase === "signing_in";
-    const why = b?.signIn === "used" ? t("bridge.mem.signin.used") : b?.signIn === "bad" ? t("bridge.mem.signin.bad") : b?.signIn === "failed" ? t("bridge.mem.signin.failed", b.detail ?? "") : "";
-    const go = () => {
-      if (!link.trim() || busy) return;
-      A.signInBridgeMem(link.trim());
-      setLink("");
-    };
-    body = (
-      <>
-        {b?.done && <small class="mem-done">{t(`bridge.mem.done.${b.done}`, home)}</small>}
-        <small>{t("bridge.mem.signin", home)}</small>
-        {why && <small class="mem-why">{why}</small>}
-        <label class="acct-field">
-          <span class="small">{t("bridge.mem.signin.link")}</span>
-          <input type="url" inputMode="url" autoComplete="off" autoCapitalize="off" autoCorrect="off" spellcheck={false} enterKeyHint="go" placeholder="https://…?nmem_connect=…" value={link} disabled={busy} onInput={(e) => setLink((e.target as HTMLInputElement).value)} onKeyDown={(e) => e.key === "Enter" && go()} />
-        </label>
-        <div class="mem-acts">
-          <Btn kind="primary" size="sm" disabled={busy || !link.trim()} label={busy ? t("bridge.mem.signin.busy") : t("bridge.mem.signin.go")} about={home} onClick={go} />
-        </div>
-      </>
-    );
-  } else if (phase === "missing")
-    body = (
-      <>
-        <small>{home ? t("mem.app.missing", home) : t("mem.app.missing.here")}</small>
-        <small>{t("mem.app.what")}</small>
-        <div class="mem-acts">
-          <LinkBtn kind="secondary" size="sm" href={MEM_SITE} label={t("mem.app.learn")} />
-        </div>
-      </>
-    );
-  else {
-    const where = b?.state === "local_mem" ? t("mem.app.local", home) : home ? t("mem.app.where", home) : "";
-    body = (
-      <>
-        <div class="mem-app-head">
-          <small class="mem-meta">
-            <Facts items={[where, b?.version && <span class="mono">{b.version}</span>]} />
-          </small>
-          {pill}
-        </div>
-        {mem?.keptUnder && <small>{t("mem.app.name", mem.keptUnder)}</small>}
-        {u?.kind === "done" && <small class="mem-done">{t(`bridge.mem.done.${u.done}`, home)}</small>}
-        {u?.kind === "move" && (
-          <div class="mem-upkeep">
-            <small>{t("bridge.mem.upkeep.move", home)}</small>
-            {u.detail && <MemFailed detail={u.detail} kept={u.kept} install={false} />}
-            <div class="mem-acts split">
-              {u.detail ? <span /> : <MemMore label={t("bridge.mem.more")} text={t("bridge.mem.upkeep.move.how")} />}
-              <Btn kind="secondary" size="sm" label={u.detail ? t("bridge.retry") : t("bridge.mem.upkeep.move.go")} about={home} onClick={() => A.installBridgeMem()} />
-            </div>
-          </div>
-        )}
-      </>
-    );
+  const retry = (def: string) => ("detail" in u && u.detail ? t("bridge.retry") : def);
+  let title = "";
+  let line = "";
+  let go: preact.ComponentChildren = null;
+  if (u.kind === "updating") title = u.move ? t("bridge.mem.moving", home) : t("bridge.mem.updating", home);
+  else if (u.kind === "done") title = t(`bridge.mem.done.${u.done}`, home);
+  else if (u.kind === "needed") {
+    title = t("mem.update.needed");
+    line = u.canRun ? t(u.move ? "bridge.mem.update.move" : "bridge.mem.update", home, u.version ?? "", MEM_MIN) : u.app ? t("bridge.update", home) : t("bridge.mem.update.other", home, u.version ?? "", MEM_MIN);
+    if (u.canRun) go = <Btn kind="primary" size="sm" label={retry(t("bridge.mem.update.go"))} about={home} onClick={() => A.installBridgeMem()} />;
+  } else if (u.kind === "move") {
+    title = t("bridge.mem.upkeep.move", home);
+    line = t("bridge.mem.upkeep.move.how");
+    go = <Btn kind="secondary" size="sm" label={retry(t("bridge.mem.upkeep.move.go"))} about={home} onClick={() => A.installBridgeMem()} />;
+  } else {
+    title = u.newer ? t("mem.update.newer", u.newer) : t("mem.update.newer.any");
+    line = u.kind === "app" ? t("mem.update.app.body", home) : u.version ? t("mem.update.newer.body", home, u.version) : t("mem.update.newer.body.any");
+    if (u.kind === "newer") go = <Btn kind="primary" size="sm" label={retry(t("bridge.mem.update.go"))} about={home} onClick={() => A.installBridgeMem()} />;
   }
   return (
-    <section class="set">
-      <h3>Nowledge Mem</h3>
-      <div class="set-card mem-app">
-        <div class="set-item">
-          {body}
-        </div>
+    <>
+      <GRow tile={<Tile>{u.kind === "done" ? <span class="mem-glyph done"><Check /></span> : <span class="mem-glyph"><UpMark /></span>}</Tile>} title={title} line={line}>
+        {go}
+      </GRow>
+      {"detail" in u && u.detail && (
+        <GBlock>
+          <MemFailed detail={u.detail} kept={"kept" in u ? u.kept : undefined} install={false} />
+        </GBlock>
+      )}
+    </>
+  );
+}
+
+/** Nowledge Mem itself: connected, where it's kept, its name there, the one update worth a tap, the raw facts behind 详情. */
+function MemLink({ b }: { b: BridgeView | undefined }) {
+  const [more, setMore] = useState(false);
+  const mem = A.mem;
+  const u = memUpdate(b);
+  const where = memWhere(b);
+  return (
+    <Group class="mem-g" label="Nowledge Mem">
+      <GHead tile={<MemTile />} name="Nowledge Mem" line={t("mem.app.on")} tone="done" />
+      {where && <GRow title={t("mem.app.kept.title")} line={where} />}
+      {mem?.keptUnder && <GRow title={t("mem.app.name.title")} line={t("mem.app.name.line", mem.keptUnder)} />}
+      {u && b && <MemUpdateRow u={u} b={b} />}
+      {more && b && (
+        <GBlock>
+          <MemFacts b={b} />
+        </GBlock>
+      )}
+      <GFoot note={b?.version ? t("mem.app.version", b.version) : ""}>
+        <Btn kind="text" size="sm" label={t("mem.details")} about="Nowledge Mem" expanded={more} onClick={() => setMore(!more)} />
+      </GFoot>
+    </Group>
+  );
+}
+
+const FACE = { missing: "idle", install: "idle", installing: "working", sign_in: "waiting", signing_in: "working" } as const;
+
+/** Memory before Mem is there: a small empty state, then the setup as one group of steps. */
+function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off">; b: BridgeView | undefined }) {
+  const [link, setLink] = useState("");
+  const name = A.settings!.name;
+  const home = homeOf(b);
+  const line = { missing: t("mem.setup.missing"), install: t("mem.setup.install", home), installing: t("mem.setup.installing"), sign_in: t("mem.setup.signin"), signing_in: t("mem.setup.signing") }[phase];
+  const installed = phase === "sign_in" || phase === "signing_in";
+  const busyIn = phase === "installing";
+  const busySign = phase === "signing_in";
+  const why = b?.signIn === "used" ? t("bridge.mem.signin.used") : b?.signIn === "bad" ? t("bridge.mem.signin.bad") : b?.signIn === "failed" ? t("bridge.mem.signin.failed", b.detail ?? "") : "";
+  const go = () => {
+    if (!link.trim() || busySign) return;
+    A.signInBridgeMem(link.trim());
+    setLink("");
+  };
+  return (
+    <>
+      <div class="mem-first">
+        <Avatar size={84} state={FACE[phase]} />
+        <h3>{t("mem.first.title", name)}</h3>
+        <p>{t("mem.first.body")}</p>
       </div>
-    </section>
+      <Group class="mem-g" label="Nowledge Mem">
+        <GHead tile={<MemTile faded />} name="Nowledge Mem" line={line} />
+        {phase === "missing" ? (
+          <GRow title={t("mem.app.learn")} line={t("mem.app.what")}>
+            <LinkBtn kind="secondary" size="sm" href={MEM_SITE} label={t("mem.app.open")} />
+          </GRow>
+        ) : (
+          <ol class="chat-steps">
+            <li class="chat-step">
+              <span class="chat-mark" aria-hidden="true">1</span>
+              <span class="grow">
+                <p>{installed ? t("mem.step.done") : t("mem.step.install")}</p>
+                {!installed && (
+                  <>
+                    <small>{busyIn ? t("bridge.mem.installing", home) : b?.canRun ? t("bridge.mem.install", home) : t("bridge.mem.install.need", home)}</small>
+                    {b?.detail && !busyIn && <MemFailed detail={b.detail} kept={b.kept} install />}
+                    {!b?.canRun && !busyIn && <MemMore label={t("bridge.mem.how")} text={t("bridge.mem.install.need.how")} />}
+                    {!busyIn && <Btn kind={b?.canRun ? "primary" : "secondary"} size="sm" label={b?.canRun ? t("bridge.mem.install.go") : t("bridge.retry")} about={home} onClick={() => A.installBridgeMem()} />}
+                  </>
+                )}
+              </span>
+            </li>
+            <li class="chat-step">
+              <span class="chat-mark" aria-hidden="true">2</span>
+              <span class="grow">
+                <p>{t("mem.step.signin")}</p>
+                {installed && (
+                  <>
+                    {b?.done && <small class="mem-done">{t(`bridge.mem.done.${b.done}`, home)}</small>}
+                    <small>{t("bridge.mem.signin", home)}</small>
+                    {why && <small class="mem-why">{why}</small>}
+                    <label class="acct-field">
+                      <span class="small">{t("bridge.mem.signin.link")}</span>
+                      <input type="url" inputMode="url" autoComplete="off" autoCapitalize="off" autoCorrect="off" spellcheck={false} enterKeyHint="go" placeholder="https://…?nmem_connect=…" value={link} disabled={busySign} onInput={(e) => setLink((e.target as HTMLInputElement).value)} onKeyDown={(e) => e.key === "Enter" && go()} />
+                    </label>
+                    <Btn kind="primary" size="sm" disabled={busySign || !link.trim()} label={busySign ? t("bridge.mem.signin.busy") : t("bridge.mem.signin.go")} about={home} onClick={go} />
+                  </>
+                )}
+              </span>
+            </li>
+          </ol>
+        )}
+        <GFoot note={t("mem.setup.local", name)} />
+      </Group>
+    </>
   );
 }
 
@@ -276,144 +365,134 @@ export function MemoryPage() {
   if (!s) return null;
   const b = A.bridge;
   const phase = memPhase(s.memory, A.mem, b);
-  const u = memUpdate(b);
-  const loud = u && (u.kind === "updating" || u.kind === "needed" || u.kind === "newer" || u.kind === "app");
+  if (phase === "off") return <MemHead />;
+  if (phase !== "on") return <MemFirst phase={phase} b={b} />;
   return (
     <>
-      <MemHero phase={phase} />
-      {loud && b && phase === "on" && <MemUpdateCard u={u} b={b} />}
-      {s.memory && <MemNotes />}
-      <MemApp phase={phase} b={b} />
+      <MemHead />
+      <MemNoted />
+      <MemOthers />
+      <MemLink b={b} />
     </>
   );
 }
 
-// ---------- 连上的 AI agent / Connected AI agents ----------
+// ---------- 连上的 AI agent / Connected AI agents (D295: on the settings grid) ----------
 
-/** The persona's own connection (D205; Nowledge Bridge underneath, never named). Mem's own steps live in Memory. */
-function BridgeRow() {
-  const b = A.bridge;
-  const s = A.settings;
-  if (!b || !s) return null;
-  const name = s.name;
-  const space = b.space?.label ?? "Only me";
-  const home = homeOf(b);
+/** Two of the person's agents' coins, overlapping: this page's mark. */
+const CoinsTile = ({ faded }: { faded?: boolean }) => (
+  <Tile>
+    <span class="mem-coins">
+      <Coin harness="claude-code" size={24} off={faded} />
+      <Coin harness="codex" size={24} off={faded} />
+    </span>
+  </Tile>
+);
+
+/** The place it receives in, in the person's words. */
+const spaceWords = (b: BridgeView) => (!b.space?.label || b.space.label === "Only me" ? t("peers.space.own") : t("peers.space.named", b.space.label));
+
+/** The link's first row in its state (D205; Nowledge Bridge underneath, never named). */
+function PeersHead({ b, name }: { b: BridgeView; name: string }) {
   const toMemory = <Btn kind="secondary" size="sm" label={t("peers.mem.go")} onClick={() => A.openSettings("memory")} />;
+  const home = homeOf(b);
+  const title = t("bridge.title", name);
   if (b.state === "install_mem" || b.state === "installing" || b.state === "sign_in" || b.state === "signing_in")
     return (
-      <div class="set-item">
-        <b>{t("bridge.title", name)}</b>
-        <small>{t("peers.mem.first", home, name)}</small>
-        <div class="mem-acts">{toMemory}</div>
-      </div>
+      <GHead tile={<CoinsTile faded />} name={title} line={t("peers.mem.first", home, name)}>
+        {toMemory}
+      </GHead>
     );
-  if (b.state === "update_mem" || b.state === "updating")
+  if (b.state === "update_mem") return <GHead tile={<CoinsTile faded />} name={title} line={t("peers.mem.update", home, MEM_MIN)}>{toMemory}</GHead>;
+  if (b.state === "updating") return <GHead tile={<CoinsTile faded />} name={title} line={t("bridge.mem.updating", home)} />;
+  if (b.state === "local_mem") return <GHead tile={<CoinsTile faded />} name={title} line={t("bridge.mem.local", home)} />;
+  if (b.state === "connected") return <GHead tile={<CoinsTile />} name={t("peers.head.on", name)} line={b.pinned ? t("bridge.pinned") : t("mem.app.on")} tone="done" />;
+  if (b.state === "ready")
     return (
-      <div class="set-item">
-        <b>{t("bridge.title", name)}</b>
-        <small>{b.state === "updating" ? t("bridge.mem.updating", home) : t("peers.mem.update", home, MEM_MIN)}</small>
-        {b.state === "update_mem" && <div class="mem-acts">{toMemory}</div>}
-      </div>
+      <GHead tile={<CoinsTile faded />} name={title} line={t("peers.head.ready")}>
+        <Btn kind="primary" size="sm" label={t("bridge.connect")} about={b.identity} onClick={() => A.connectBridge()} />
+      </GHead>
     );
-  if (b.state === "local_mem")
-    return (
-      <div class="set-item">
-        <b>{t("bridge.title", name)}</b>
-        <small>{t("bridge.mem.local", home)}</small>
-      </div>
-    );
-  const note =
-    b.state === "ready" ? t("bridge.ready", b.identity, space)
-    : b.state === "connecting" ? t("bridge.connecting")
-    : b.state === "disconnecting" ? t("bridge.disconnecting")
-    : b.state === "connected" ? (b.pinned ? t("bridge.pinned") : t("bridge.connected", b.identity, space))
-    : b.state === "no_space" ? t("bridge.no_space")
-    : b.state === "refused" ? t(`bridge.refused.${b.reason ?? "control_denied"}`, b.identity)
-    : b.state === "unconfirmed" ? t("bridge.unconfirmed", b.identity)
-    : t("bridge.failed", b.detail ?? "");
-  const busy = b.state === "connecting" || b.state === "disconnecting";
-  const canUndo = (b.state === "connected" && !b.pinned) || b.state === "unconfirmed";
-  const canTry = b.state === "ready" || b.state === "refused" || b.state === "failed" || b.state === "unconfirmed";
-  // When it doesn't connect and Mem says a newer one is out, that's the first thing to try (D257).
+  if (b.state === "connecting" || b.state === "disconnecting") return <GHead tile={<CoinsTile faded />} name={title} line={t(b.state === "connecting" ? "bridge.connecting" : "bridge.disconnecting")} />;
+  const note = b.state === "no_space" ? t("bridge.no_space") : b.state === "refused" ? t(`bridge.refused.${b.reason ?? "control_denied"}`, b.identity) : b.state === "unconfirmed" ? t("bridge.unconfirmed", b.identity) : t("bridge.failed", b.detail ?? "");
   const tryNewer = b.newer !== undefined && (b.state === "refused" || b.state === "failed" || b.state === "unconfirmed");
-  // The exact identity, place and id it uses, said literally but behind 细节 (D205's line, D257).
-  const ids = b.space && (b.state === "ready" || b.state === "connected") ? [b.identity, space, b.space.id] : undefined;
   return (
-    <div class="set-item">
-      <b>{t("bridge.title", name)}</b>
-      <small>{note}</small>
-      {b.state === "connected" && b.detail && <small>{t("bridge.undo.failed", b.detail)}</small>}
-      {tryNewer && <small class="mem-why">{t("peers.mem.newer")}</small>}
-      {canUndo && A.bridgeConfirm && <small>{t("bridge.undo.ask")}</small>}
-      {(canTry || canUndo || busy || tryNewer || ids) && (
-        <div class="mem-acts split">
-          {ids ? <MemMore label={t("bridge.mem.more")} text={ids} /> : <span />}
-          <span class="mem-acts">
-          {tryNewer && toMemory}
-          {canUndo && A.bridgeConfirm && <Btn kind="text" size="sm" label={t("bridge.undo.keep")} onClick={() => ((A.bridgeConfirm = false), A.changed())} />}
-          {canUndo && <Btn kind="secondary" size="sm" label={t("bridge.undo")} about={b.identity} onClick={() => A.disconnectBridge()} />}
-          {canTry && <Btn kind={b.state === "ready" ? "primary" : "secondary"} size="sm" label={b.state === "ready" ? t("bridge.connect") : t("bridge.retry")} about={b.identity} onClick={() => A.connectBridge()} />}
-          {busy && <Btn kind="secondary" size="sm" disabled label={b.state === "connecting" ? t("bridge.connecting") : t("bridge.disconnecting")} onClick={() => {}} />}
-          </span>
-        </div>
-      )}
-    </div>
+    <GHead tile={<CoinsTile faded />} name={title} line={tryNewer ? `${note}\n${t("peers.mem.newer")}` : note} tone={b.state === "no_space" ? undefined : "bad"}>
+      {tryNewer && toMemory}
+      {b.state === "unconfirmed" && <DangerButton quiet label={t("bridge.undo")} about={b.identity} onClick={() => ((A.bridgeConfirm = true), A.disconnectBridge())} />}
+      {b.state !== "no_space" && <Btn kind="secondary" size="sm" label={t("bridge.retry")} about={b.identity} onClick={() => A.connectBridge()} />}
+    </GHead>
   );
 }
 
 /** Whether 连上的 AI agent has anything to show yet (J6). */
 export const peersPageShown = () => peersShown(A.settings?.peers, A.bridge, A.S.channel.some((e) => e.peer));
 
+const peerTool = (agent: string) => (/claude/i.test(agent) ? "Claude Code" : /codex/i.test(agent) ? "Codex" : /\bpi\b/i.test(agent) ? "pi" : agent);
+
 /**
- * D170: who of the person's other AI agents may reach the partner, what it learned about them, and
- * whom they stopped listening to; D205's connection on top. Two levels: 断开 ends it all;
- * 谁都不行 lets no other agent reach the partner, while what the person sends on a card still goes.
+ * D170, D205, D295: the link as one group (its state, its identity and place in human words, who may
+ * reach it, the raw ids behind 详情, a quiet 断开 that asks in place), then what it learned.
  */
 export function PeersPage() {
+  const [more, setMore] = useState(false);
   const s = A.settings;
   const p = s?.peers;
   if (!s || !p) return null;
   const b = A.bridge;
   const name = s.name;
   const set = (patch: Partial<typeof p>) => A.setSettings({ peers: { ...p, ...patch } });
-  const setup = !b || ["install_mem", "installing", "sign_in", "signing_in", "update_mem", "updating"].includes(b.state);
+  const setup = !b || ["install_mem", "installing", "sign_in", "signing_in", "update_mem", "updating", "local_mem"].includes(b.state);
   const reachShown = A.S.channel.some((e) => e.peer) || !!p.trusted.length || !!p.muted.length || !setup;
+  const connected = b?.state === "connected";
   return (
     <>
       <p class="set-lede">{t("settings.lede.peers", name)}</p>
-      <section class="set">
-        <div class="set-card">
-          <BridgeRow />
-          {reachShown && (
-            <div class="set-item">
+      <Group class="mem-g" label={t("settings.tab.peers")}>
+        {b && <PeersHead b={b} name={name} />}
+        {connected && b && <GRow title={t("peers.as.title")} line={t("peers.as.line", b.identity)} />}
+        {connected && b && <GRow title={t("peers.space.title")} line={spaceWords(b)} />}
+        {reachShown && (
+          <GBlock>
+            <span class="mem-reach">
               <b>{t("peers.reach", name)}</b>
               <small>{p.reach === "off" ? t("peers.reach.off.note", name) : t("peers.reach.note")}</small>
-              <Seg label={t("peers.reach", name)} value={p.reach} options={(["own", "team", "off"] as const).map((v) => ({ v, label: t(`peers.reach.${v}`) }))} onPick={(reach) => set({ reach })} />
-            </div>
-          )}
-        </div>
-      </section>
+            </span>
+            <Seg label={t("peers.reach", name)} value={p.reach} options={(["own", "team", "off"] as const).map((v) => ({ v, label: t(`peers.reach.${v}`) }))} onPick={(reach) => set({ reach })} />
+          </GBlock>
+        )}
+        {connected && b && more && (
+          <GBlock>
+            <MemFacts b={b} />
+          </GBlock>
+        )}
+        {connected && b && !b.pinned && A.bridgeConfirm ? (
+          <GConfirm ask={t("peers.undo.ask")} keep={t("bridge.undo.keep")} go={t("bridge.undo")} about={b.identity} onKeep={() => ((A.bridgeConfirm = false), A.changed())} onGo={() => A.disconnectBridge()} />
+        ) : (
+          connected &&
+          b && (
+            <GFoot note={b.detail ? t("bridge.undo.failed", b.detail) : t("peers.foot")}>
+              <Btn kind="text" size="sm" label={t("mem.details")} about={b.identity} expanded={more} onClick={() => setMore(!more)} />
+              {!b.pinned && <DangerButton quiet label={t("bridge.undo")} about={b.identity} onClick={() => A.disconnectBridge()} />}
+            </GFoot>
+          )
+        )}
+      </Group>
       {(p.trusted.length > 0 || p.muted.length > 0) && (
-        <section class="set">
-          <div class="set-card">
+        <section class="set mem-sec">
+          <h3>{t("peers.rules.title")}</h3>
+          <Group class="mem-g" label={t("peers.rules.title")}>
             {p.trusted.map((a) => (
-              <div class="set-item peer-rule" key={`t-${a}`}>
-                <b>{t("peers.trusted", a)}</b>
-                <small>{t("peers.trusted.why")}</small>
-                <div class="mem-acts">
-                  <Btn kind="text" size="sm" label={t("peers.trusted.stop")} about={a} onClick={() => set({ trusted: p.trusted.filter((x) => x !== a) })} />
-                </div>
-              </div>
+              <GRow key={`t-${a}`} tile={<ToolTile from={peerTool(a)} />} title={t("peers.trusted", a)} line={t("peers.trusted.why")}>
+                <Btn kind="text" size="sm" label={t("peers.trusted.stop")} about={a} onClick={() => set({ trusted: p.trusted.filter((x) => x !== a) })} />
+              </GRow>
             ))}
             {p.muted.map((a) => (
-              <div class="set-item peer-rule" key={`m-${a}`}>
-                <b>{t("peers.muted", a)}</b>
-                <div class="mem-acts">
-                  <Btn kind="text" size="sm" label={t("peers.muted.undo")} about={a} onClick={() => set({ muted: p.muted.filter((x) => x !== a) })} />
-                </div>
-              </div>
+              <GRow key={`m-${a}`} tile={<ToolTile from={peerTool(a)} />} title={t("peers.muted", a)}>
+                <Btn kind="text" size="sm" label={t("peers.muted.undo")} about={a} onClick={() => set({ muted: p.muted.filter((x) => x !== a) })} />
+              </GRow>
             ))}
-          </div>
+          </Group>
         </section>
       )}
     </>

@@ -230,7 +230,7 @@ function TaskInfo({ task, onClose }: { task: Task; onClose: () => void }) {
               <li key={b.ts + i}>
                 <Coin harness={b.harness} size={18} />
                 <Facts class="nm" items={[harnessName(b.harness), b.model && modelName(b.model), b.effort && effortWord(A.L, b.effort)]} />
-                <span class="when">{i === who.length - 1 ? t("info.who.now") : new Date(b.ts).toLocaleTimeString(A.L.lang === "zh" ? "zh-CN" : "en", { hour: "2-digit", minute: "2-digit" })}</span>
+                <span class="when">{i === who.length - 1 ? t("info.who.now") : A.L.date(new Date(b.ts), { hour: "2-digit", minute: "2-digit" })}</span>
               </li>
             ))}
           </ol>

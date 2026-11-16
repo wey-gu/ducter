@@ -7,9 +7,10 @@ import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type Vi
 import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { Api, Connection, deviceName, myShape, type ConnStatus, type Me, wsUrl } from "./conn.ts";
-import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
+import { detectLang, langOfText, strings, TABLE_LANGS, type Handheld, type Lang, type Strings, type TableLang } from "./i18n.ts";
+import { languageOfTexts, normalizeTag } from "@ducter/protocol/src/lang.ts";
 import { pushState, type PushState } from "./push-client.ts";
-import { haptic, inApp, nativeCall, nativeInfo, tellReach } from "./native.ts";
+import { haptic, inApp, nativeCall, nativeInfo, tellReach, tellWays } from "./native.ts";
 import { copy } from "./conv-copy.ts";
 import { attention, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, shownDeviceName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
@@ -212,12 +213,12 @@ export interface Toast {
 export const READ_AFTER_MS = 1200;
 
 /** This phone's own interface language (Settings sheet): "auto" follows the system, then the user's words. */
-export type UiLang = "auto" | Lang;
+export type UiLang = "auto" | TableLang;
 const UI_LANG = "ducter.lang";
 export function savedUiLang(): UiLang {
   try {
     const v = localStorage.getItem(UI_LANG);
-    return v === "zh" || v === "en" ? v : "auto";
+    return (TABLE_LANGS as readonly (string | null)[]).includes(v) ? (v as TableLang) : "auto";
   } catch {
     return "auto";
   }
@@ -231,8 +232,7 @@ export const SETTLE_MS = 1500;
 const SPOKE = "ducter.spoke";
 export function savedSpoke(): Lang | undefined {
   try {
-    const v = localStorage.getItem(SPOKE);
-    return v === "zh" || v === "en" ? v : undefined;
+    return normalizeTag(localStorage.getItem(SPOKE)); // D292: any language
   } catch {
     return undefined;
   }
@@ -299,6 +299,8 @@ class AppState {
   savedFailed = false;
   private savedDone?: () => void;
   reach?: Reach;
+  /** D293: the ways to reach the home and its key, as it last said them (right after every welcome). */
+  ways?: Extract<ServerFrame, { t: "ways" }>;
   /** D224: 全部更新 / Update all: what it would do, and the plan the home runs (devices frame). */
   updateAll?: UpdateAllView;
   /** The last 全部更新 that didn't start, and why. */
@@ -482,7 +484,7 @@ class AppState {
     this.conn = new Connection(
       wsUrl(base),
       token,
-      () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.lang, ...(zone() ? { tz: zone() } : {}), client: "web", ...((s) => (s ? { shape: s } : {}))(myShape()) }),
+      () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.locale, ...(zone() ? { tz: zone() } : {}), client: "web", ...((s) => (s ? { shape: s } : {}))(myShape()) }),
       (f) => this.receive(f),
       (s) => {
         this.status = s;
@@ -643,6 +645,11 @@ class AppState {
     }
     if (f.t === "settings") return this.applySettings(f);
     if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
+    if (f.t === "ways") {
+      this.ways = f;
+      if (inApp()) tellWays({ ways: f.ways, ...(f.key ? { key: f.key } : {}), ...(f.fp ? { fp: f.fp } : {}) });
+      return void this.changed();
+    }
     if (f.t === "devices") {
       const home = f.devices.find((d) => d.home);
       // A failure the device (or the agent's copy) has moved past is dropped (D167, D156).
@@ -1896,8 +1903,26 @@ class AppState {
     if (l) {
       this.localeSet = true;
       saveSpoke(l); // D262: the next open starts in it
-      if (l !== this.L.lang) this.L = strings(l, HANDHELD);
+      if (l !== this.L.locale) this.L = strings(l, HANDHELD); // D292: any tag; its table by the fallback chain
     }
+  }
+
+  private convKey = "";
+  private convVal?: Lang;
+  /** D292: the conversation's language, from the person's own messages (oldest first). */
+  get convLang(): Lang | undefined {
+    const ch = this.S.channel;
+    const key = `${ch.length}:${ch[0]?.firstSeq ?? 0}:${ch[ch.length - 1]?.firstSeq ?? 0}:${ch[ch.length - 1]?.revision ?? 0}`;
+    if (key !== this.convKey) {
+      this.convKey = key;
+      this.convVal = languageOfTexts(ch.flatMap((e) => (e.user?.text ? [e.user.text] : [])));
+    }
+    return this.convVal;
+  }
+
+  /** D292: the language a task's report is read in: the task's, else the conversation's, else the interface's. */
+  readerLang(task?: { open?: { language?: Lang } }): Lang {
+    return task?.open?.language ?? this.convLang ?? this.L.locale;
   }
 
   private drainActionResults() {

@@ -131,7 +131,7 @@ func (a *App) cardName(c *ui.Context, id, name, real string, renamable bool) {
 		}
 	}
 	size := t.XXL
-	if a.L.Lang == "zh" {
+	if a.L.Han() {
 		size = 26 // the zh heading face reads larger (D78)
 	}
 	if r.device != id {

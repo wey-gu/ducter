@@ -12,7 +12,8 @@
 //   POST /api/decide by the service worker.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, LogEvent } from "@ducter/protocol";
+import type { Bodies, LangTag, LogEvent } from "@ducter/protocol";
+import { fill, normalizeTag, words } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { redactDeep } from "@ducter/protocol/src/redact.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -99,7 +100,7 @@ export interface PushSub {
   endpoint: string;
   keys: { p256dh: string; auth: string };
   deviceId: string; // "local" for a browser on this machine
-  locale: "zh" | "en";
+  locale: LangTag; // the phone's language (D292): its words come through the fallback chain (ko → en)
   platform: string; // ios | android | macos | web
   createdAt: string;
   /**
@@ -283,6 +284,13 @@ const COPY = {
     morning: (n: number) => `早上好。${n} 件等你。`,
     test: "通知设好了。需要你的时候，我会这样告诉你。",
     hold: "先等等",
+    asking: "对方在问",
+    askingTitle: "电话那头在问",
+    onTheLine: "电话那头在等。",
+    peerWaits: "没回就让它先等着。",
+    goWith: "好，{label}",
+    askerAt: "{agent}（{where}）问你",
+    asker: "{agent} 问你",
   },
   en: {
     go: "Go",
@@ -297,6 +305,13 @@ const COPY = {
     morning: (n: number) => `Morning. ${n} need you.`,
     test: "Notifications work. This is how I'll call you when something needs you.",
     hold: "Hold",
+    asking: "They're asking",
+    askingTitle: "They're asking on the call",
+    onTheLine: "They're waiting on the line.",
+    peerWaits: "If you don't answer, it keeps waiting.",
+    goWith: "Go: {label}",
+    askerAt: "{agent} ({where}) asks you",
+    asker: "{agent} asks you",
   },
 };
 
@@ -311,14 +326,21 @@ export interface PushMessage {
   level?: "passive" | "active" | "time-sensitive";
 }
 
+/** A phone's language as it subscribed: any tag (D292); junk is English. */
+export function pushLocale(raw: unknown): LangTag {
+  return (typeof raw === "string" && normalizeTag(raw)) || "en";
+}
+
+const copy = (locale: LangTag | undefined) => words(COPY, locale);
+
 function inWords(ms: number, c: (typeof COPY)["zh"]) {
   const m = Math.max(1, Math.ceil(ms / 60_000));
   return m < 60 ? c.min(m) : c.hour(Math.round(m / 60));
 }
 
 /** The default line, the same words the cards use (decision.default.*). */
-export function defaultLine(d: Bodies["decision"], locale: "zh" | "en", now: number): string {
-  const c = COPY[locale];
+export function defaultLine(d: Bodies["decision"], locale: LangTag, now: number): string {
+  const c = copy(locale);
   if (!d.reversible) return c.noDefault;
   const at = d.defaultAt ? Date.parse(d.defaultAt) : NaN;
   if (d.defaultOption !== "go" || Number.isNaN(at)) return c.defaultHold;
@@ -326,26 +348,27 @@ export function defaultLine(d: Bodies["decision"], locale: "zh" | "en", now: num
 }
 
 /** D273: who asks, by what it is and where it works: "Claude Code（~/dev/ducter）问你". */
-export function askerLine(agent: string, where: string | undefined, locale: "zh" | "en"): string {
-  if (locale === "zh") return where ? `${agent}（${where}）问你` : `${agent} 问你`;
-  const s = where ? `${agent} (${where}) asks you` : `${agent} asks you`;
-  return s.startsWith("an ") ? "A" + s.slice(1) : s;
+export function askerLine(agent: string, where: string | undefined, locale: LangTag): string {
+  const c = copy(locale);
+  const s = where ? fill(c.askerAt, { agent, where }) : fill(c.asker, { agent });
+  return c === COPY.en && s.startsWith("an ") ? "A" + s.slice(1) : s;
 }
 
-export function decisionMessage(d: Bodies["decision"], o: { persona: string; task?: string; locale: "zh" | "en"; platform: string; now: number }): PushMessage {
-  const c = COPY[o.locale];
+export function decisionMessage(d: Bodies["decision"], o: { persona: string; task?: string; locale: LangTag; platform: string; now: number }): PushMessage {
+  const c = copy(o.locale);
   // X1 (D170): a question one of the user's own agents asked: who asks is the title, and silence
   // never answers for the user (the card's own default line).
   const peer = d.asker ? askerLine(d.asker.agent, d.asker.where, o.locale) : undefined;
   // D193: a question from a live call: someone is waiting on the line. No buttons (the answer is
   // the owner's own words or a choice on the card), time-sensitive so it comes through.
   if (d.call?.kind === "question")
-    return { title: o.locale === "zh" ? "电话那头在问" : "They're asking on the call", body: `${d.question} ${o.locale === "zh" ? "电话那头在等。" : "They're waiting on the line."}`, tag: `d:${d.decisionId}`, url: `app#d=${encodeURIComponent(d.decisionId)}`, decisionId: d.decisionId, level: "time-sensitive" };
+    // D291: the title says what it is about on its own; the app's name already says it comes from Ducter.
+    return { title: c.askingTitle, body: `${d.question} ${c.onTheLine}`, tag: `d:${d.decisionId}`, url: `app#d=${encodeURIComponent(d.decisionId)}`, decisionId: d.decisionId, level: "time-sensitive" };
   // D291: the title says what it is about on its own (who asks, or the task); the app's own name
   // already says it comes from Ducter, so the partner's name is the title only when nothing else is.
   const msg: PushMessage = {
     title: peer ?? o.task ?? o.persona,
-    body: `${d.question} ${d.asker ? (o.locale === "zh" ? "没回就让它先等着。" : "If you don't answer, it keeps waiting.") : defaultLine(d, o.locale, o.now)}`,
+    body: `${d.question} ${d.asker ? c.peerWaits : defaultLine(d, o.locale, o.now)}`,
     tag: `d:${d.decisionId}`,
     url: `app#d=${encodeURIComponent(d.decisionId)}`,
     decisionId: d.decisionId,
@@ -353,23 +376,23 @@ export function decisionMessage(d: Bodies["decision"], o: { persona: string; tas
   // iOS shows no action buttons on web push (D52 Q11): tap opens the decision.
   // An outside agent's question is answered on its card (its options are its own), never "Hold".
   // A call's Go card is answered on the card, after seeing who, what and the cost (D189 (4)).
-  if (o.platform !== "ios" && !d.asker && !d.call) msg.actions = [{ action: "go", title: d.goLabel && o.locale === "zh" ? `好，${d.goLabel}` : d.goLabel ? `Go: ${d.goLabel}` : c.go }, { action: "hold", title: c.hold }];
+  if (o.platform !== "ios" && !d.asker && !d.call) msg.actions = [{ action: "go", title: d.goLabel ? fill(c.goWith, { label: d.goLabel }) : c.go }, { action: "hold", title: c.hold }];
   return msg;
 }
 
-export function doneMessage(t: { taskId: string; title: string; summary?: string; failed?: boolean }, o: { persona: string; locale: "zh" | "en" }): PushMessage {
-  const c = COPY[o.locale];
+export function doneMessage(t: { taskId: string; title: string; summary?: string; failed?: boolean }, o: { persona: string; locale: LangTag }): PushMessage {
+  const c = copy(o.locale);
   const line = (t.summary ?? "").split("\n")[0]!.trim().slice(0, 140) || t.title;
   return { title: t.title || o.persona, body: t.failed ? c.failed(line) : c.done(line), tag: `t:${t.taskId}`, url: `app#task=${encodeURIComponent(t.taskId)}` };
 }
 
-export function coalescedMessage(n: number, o: { persona: string; locale: "zh" | "en"; morning?: boolean }): PushMessage {
-  const c = COPY[o.locale];
+export function coalescedMessage(n: number, o: { persona: string; locale: LangTag; morning?: boolean }): PushMessage {
+  const c = copy(o.locale);
   return { title: o.persona, body: o.morning ? c.morning(n) : c.many(n), tag: "ducter:many", url: "app#onhand" };
 }
 
-export function testMessage(o: { persona: string; locale: "zh" | "en" }): PushMessage {
-  return { title: o.persona, body: COPY[o.locale].test, tag: "ducter:test", url: "app" };
+export function testMessage(o: { persona: string; locale: LangTag }): PushMessage {
+  return { title: o.persona, body: copy(o.locale).test, tag: "ducter:test", url: "app" };
 }
 
 // ---------- sending ----------

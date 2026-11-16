@@ -19,11 +19,56 @@ class Store(context: Context) {
 
     /** The first URL the web view loads: the pairing link once, then base/app. */
     fun connect(t: PairTarget): String {
+        if (base != t.base) {
+            // D293: another pairing: the new home says its own ways; a link names its key.
+            p.edit().remove("ways").remove("device.token").remove("device.id").remove("device.name").apply()
+            fp = t.fp
+        }
         base = t.base
         return if (t.code != null) "${t.base}pair#c=${t.code}" else "${t.base}app"
     }
 
-    fun forget() = p.edit().remove("base").apply()
+    fun forget() = p.edit().remove("base").remove("ways").remove("fp").remove("device.token").remove("device.id").remove("device.name").apply()
+
+    // D293: following the home to its best way, without pairing again.
+
+    /** The home's ways, as the page last handed them over. */
+    var ways: List<Way>
+        get() = try {
+            val a = org.json.JSONArray(p.getString("ways", "[]"))
+            (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { o -> o.optString("url").takeIf { it.isNotEmpty() }?.let { Way(o.optString("kind"), it, o.optBoolean("primary")) } } }
+        } catch (_: Exception) {
+            emptyList()
+        }
+        set(v) = p.edit().putString("ways", org.json.JSONArray(v.map { org.json.JSONObject().put("kind", it.kind).put("url", it.url).put("primary", it.primary) }).toString()).apply()
+
+    /** The home's key fingerprint, pinned at pairing (the link's k, else the first ways frame). */
+    var fp: String?
+        get() = p.getString("fp", null)
+        set(v) = p.edit().putString("fp", v).apply()
+
+    /**
+     * The device record a page at another of the home's addresses needs (its storage is per
+     * origin). App-private storage, as the page's own copy is.
+     */
+    var deviceToken: String?
+        get() = p.getString("device.token", null)
+        set(v) = p.edit().putString("device.token", v).apply()
+
+    var deviceId: String?
+        get() = p.getString("device.id", null)
+        set(v) = p.edit().putString("device.id", v).apply()
+
+    var deviceName: String?
+        get() = p.getString("device.name", null)
+        set(v) = p.edit().putString("device.name", v).apply()
+
+    /** The same home at another of its ways: the device stays (no pairing). Returns the page to load. */
+    fun follow(url: String): String {
+        val b = if (url.endsWith("/")) url else "$url/"
+        base = b
+        return "${b}app"
+    }
 
     var locale: String
         get() = p.getString("locale", null) ?: if (Locale.getDefault().language == "zh") "zh" else "en"

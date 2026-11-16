@@ -91,7 +91,7 @@ func TestMemoryTab(t *testing.T) {
 		tt.Frame()
 		L := app.L
 		for _, w := range []string{L.T("mem.hero.on", app.personaName()), L.T("mem.update.newer", "0.10.121"), L.T("mem.update.newer.body", "hel", "0.10.118"), L.T("mem.badge.newer"),
-			L.T("mem.when.today"), L.T("mem.when.week"), L.T("mem.when.earlier"), L.T("mem.notes.all"), L.T("mem.app.on"), L.T("mem.app.where", "hel")} {
+			L.T("mem.sec.week"), L.T("mem.sec.earlier"), L.T("mem.all.open"), L.T("mem.app.on"), L.T("mem.app.where", "hel"), L.T("mem.week.count", "5")} {
 			if !tt.HasText(w) {
 				t.Fatalf("%s: no %q in %q", lang, w, tt.Texts())
 			}
@@ -108,6 +108,14 @@ func TestMemoryTab(t *testing.T) {
 			t.Fatalf("no updating line after the tap: %q", tt.Texts())
 		}
 		n = len(*sent)
+		// D295: 忘掉 is quiet and asks in place; only the answer forgets.
+		if err := tt.Click(spoken(L, L.T("partner.memory.forget"), memNotes(lang)[0])); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		if len(*sent) != n || !tt.HasText(L.T("mem.forget.ask", memNotes(lang)[0])) {
+			t.Fatalf("忘掉 didn't ask first: %v %q", (*sent)[n:], tt.Texts())
+		}
 		if err := tt.Click(spoken(L, L.T("partner.memory.forget"), memNotes(lang)[0])); err != nil {
 			t.Fatal(err)
 		}

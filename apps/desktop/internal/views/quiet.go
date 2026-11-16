@@ -263,7 +263,7 @@ func (a *App) livingWords(it protocol.LivingItem) string {
 	if it.Kind == "failed" {
 		k = "living.failed"
 	}
-	said := say.Sayable(it.Text, a.tongue())
+	said := say.Sayable(it.Text, a.tongueOf(it.TaskID))
 	switch {
 	case said != "" && it.Title != "":
 		return a.L.T(k, it.Title, said)

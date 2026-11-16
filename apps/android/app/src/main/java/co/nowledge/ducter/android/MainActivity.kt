@@ -159,6 +159,10 @@ class MainActivity : ComponentActivity() {
         if (phase == "ready") Notify.askOnce(this, store)
         // Back to the app: the home may have updated meanwhile (or fallen behind a new app).
         if (helloed && phase == "ready") homeCheck()
+        // D293: the best of the home's ways, now and every 30 s while open.
+        lookForBetterWay(up = true)
+        web.removeCallbacks(lookEvery)
+        web.postDelayed(lookEvery, 30_000)
     }
 
     // MARK: the page
@@ -281,7 +285,66 @@ class MainActivity : ComponentActivity() {
     /** The page has heard from its home since it loaded. */
     private var reached = false
 
+    // MARK: D293, the best of the home's ways
+
+    private var keeper: Keeper? = null
+    private var looking = false
+
+    /** Asks base to prove it is the home with the pinned key (off the main thread). */
+    private fun proves(base: String, pinned: String): Boolean = try {
+        val nonce = Reach.nonce()
+        val c = java.net.URL("${base.trimEnd('/')}/.well-known/ducter-home?n=$nonce").openConnection() as java.net.HttpURLConnection
+        c.connectTimeout = 4000
+        c.readTimeout = 4000
+        try {
+            if (c.responseCode != 200) false
+            else {
+                val j = JSONObject(c.inputStream.bufferedReader().readText())
+                Reach.check(j.optString("key"), j.optString("sig"), nonce, pinned)
+            }
+        } finally {
+            c.disconnect()
+        }
+    } catch (_: Exception) {
+        false
+    }
+
+    /**
+     * On coming to the front and when the way in use can't be reached (up: moving to a better way is
+     * fine, the page reloads anyway), and every 30 s while open (only leaving a way that stopped
+     * answering). Needs Android 13 (Ed25519); before it the app stays on its one address.
+     */
+    private fun lookForBetterWay(up: Boolean) {
+        val pinned = store.fp ?: return
+        val base = store.base ?: return
+        val ways = store.ways
+        if (ways.size < 2 || looking || Build.VERSION.SDK_INT < 33) return
+        looking = true
+        lifecycleScope.launch {
+            val k = keeper ?: Keeper { proves(it, pinned) }.also { keeper = it }
+            val next = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { k.tick(ways, base.trimEnd('/'), up) }
+            looking = false
+            if (next != null && !next.trimEnd('/').equals(base.trimEnd('/'), ignoreCase = true)) {
+                loaded = null
+                load(store.follow(next))
+            }
+        }
+    }
+
+    private val lookEvery = object : Runnable {
+        override fun run() {
+            lookForBetterWay(up = false)
+            web.postDelayed(this, 30_000)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        web.removeCallbacks(lookEvery)
+    }
+
     private fun unreachable() {
+        lookForBetterWay(up = true)
         phase = "unreachable"
         web.alpha = 0f
         val host = store.base?.let { Uri.parse(it).host } ?: ""
@@ -362,6 +425,10 @@ window.ducterNative=Object.freeze($info);})();"""
                 m.optString("locale").takeIf { it == "zh" || it == "en" }?.let { store.locale = it }
                 m.optString("personaName").takeIf { it.isNotEmpty() }?.let { store.personaName = it }
                 token = m.optString("token").takeIf { it.isNotEmpty() }
+                // D293: what a page at another of the home's addresses needs to be this same device.
+                token?.let { store.deviceToken = it }
+                m.optString("deviceId").takeIf { it.isNotEmpty() }?.let { store.deviceId = it }
+                m.optString("name").takeIf { it.isNotEmpty() }?.let { store.deviceName = it }
                 // D255: the lent phone's own link and its recording uploads speak as this device (memory only).
                 token?.let { Handset.token = it }
                 helloed = true
@@ -388,6 +455,19 @@ window.ducterNative=Object.freeze($info);})();"""
             "push.state", "push.enable" -> answer(JSONObject().put("state", "unsupported"))
             "push.disable" -> answer(JSONObject())
             "update.check" -> { checkNow(); answer(null) }
+            // D293: the home's ways and key; the fingerprint is kept from the first one (or the link).
+            "ways" -> {
+                val a = m.optJSONArray("ways")
+                if (a != null) store.ways = (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { o -> o.optString("url").takeIf { it.isNotEmpty() }?.let { Way(o.optString("kind"), it, o.optBoolean("primary")) } } }
+                if (store.fp == null) m.optString("fp").takeIf { it.isNotEmpty() }?.let { store.fp = it }
+                answer(null)
+            }
+            // D293: the page opened at another of the home's addresses has empty storage.
+            "device" -> {
+                val tok = store.deviceToken
+                val id = store.deviceId
+                answer(if (tok != null && id != null) JSONObject().put("token", tok).put("deviceId", id).put("name", store.deviceName ?: "").put("personaName", store.personaName) else JSONObject())
+            }
             "log" -> answer(null)
             // D238: 用这台手机 / Use this phone. What the app can do, the guide's settings pages,
             // and one call from the home (relayed by the page), answered when it is done.

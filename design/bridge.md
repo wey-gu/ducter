@@ -17,7 +17,9 @@
 > tied to its question (asked of Nowledge as B17; D249 reads an unnamed sender as one of the person's own agents
 > meanwhile). nmem 0.10.119 (2026-11-16) reports the custodian under `endpoint.address` (D258 reads it) and still
 > lacks both fields; the trial reruns when a release carries them, with the other connection of the same identity
-> stopped or `--share-mailbox` (D258).
+> stopped or `--share-mailbox` (D258). 2026-11-17 (D294, research/66 §8): Mem Cloud now runs the fix (#10278), but
+> it is a representation the CLI asks for, and 0.10.119 predates it; Ducter already reads `sender`, `in_reply_to`
+> and `mailbox_available`, and retries Mem's "can't right now" briefly, never as a second copy.
 
 ## Connecting the persona (D205)
 
@@ -307,7 +309,7 @@ decision cards; their rules live with the learned rules.
 
 | Where | What the user sees |
 |---|---|
-| The conversation | a quiet line **你的 terminal-claude 发来请求 · <gist>** for work; for a question, the card itself: the coin and **你的 terminal-claude 问你 · ~/dev/ducter** above the partner's bubble, then **回复…** · its second option · its first (or suggested) option, **它建议「…」** and **没回就让它先等着。**; after the tap, **已回复 你的 terminal-claude** |
+| The conversation | a quiet line **terminal-claude 发来请求：「<gist>」** for work; for a question, the card itself: the coin and **你的 terminal-claude 问你 · ~/dev/ducter** above the partner's bubble, then **回复…** · its second option · its first (or suggested) option, **它建议「…」** and **没回就让它先等着。**; after the tap, **已回复 你的 terminal-claude** |
 | On hand · 等你 | the same card beside Ducter's own tasks' asks, the coin and who where a task's title would be |
 | Phone and lock screen | the same card; the notification is **小鸭 · 你的 terminal-claude 问你**, the question and the waiting line, no Go/Hold actions (its options are its own) |
 | X2's offer | after two Go's: **以后你的 terminal-claude 发来的活，直接接？** · **直接接** · **还是先问我**; then its work shows up in 在做 / Working with no card, the brief starting **你的 terminal-claude 让我做的** |
@@ -367,8 +369,8 @@ evidence is.
   - In the terminal the user says "让 Ducter 去把 Linux CI 修了". The Claude Code `bridge` skill finds the
     Ducter persona in `bridge contacts` and sends a self-contained request: goal, scope, done criteria. That is
     the skill's own rule.
-  - On the phone or desktop, Ducter's conversation shows one quiet line, "terminal-claude 发来请求 · 修 Linux
-    CI", and the partner asks one Go/Hold question: "开个任务修 Linux 上的测试（只动 runner 测试）？"
+  - On the phone or desktop, Ducter's conversation shows one quiet line, "terminal-claude 发来请求：「修 Linux
+    CI」", and the partner asks one Go/Hold question: "开个任务修 Linux 上的测试（只动 runner 测试）？"
   - The user taps 好 and the task opens. The partner replies to the terminal session: "接了，结果回你".
   - When the task is done, the partner replies again with the outcome. The terminal session sees it at its next
     turn boundary (the plugin's Stop-hook notice).
@@ -469,7 +471,7 @@ and a gated dependency.
 
 User-facing copy: the decided lines (the send card, 你的 <agent>, the claim, the teammate's fixed outcome,
 follow-through, a lost or refused send) are in the glossary (D105–D110). Still pending the user's OK (J-Q5):
-- incoming: **"<X> 发来请求 · <gist>" / "Request from <X> · <gist>"**, one quiet line;
+- incoming: **"<X> 发来请求：「<gist>」" / "Request from <X>: “<gist>”"**, one quiet line (D294);
 - outgoing: **"已回复 <X>" / "Replied to <X>"**, **"已发给 <X>" / "Sent to <X>"**.
 
 Never use **交接 / hand-off**: the glossary reserves "handoff" for a task changing body ("换到 X 接着做"). The
@@ -482,7 +484,8 @@ other agent ──bridge send──▶ Mem (persona's Agent mailbox)
                                   │  Ducter checks: at start, then every 5 min (DUCTER_BRIDGE=1)
                                   ▼
    nmem --json --agent-context C bridge inbox     → message handles
-   nmem --json --agent-context C bridge open <id> → body (0.10.118: no sender; in Only me it is the user's own, D249)
+   nmem --json --agent-context C bridge open <id> → body (0.10.118: no sender; in Only me it is the user's own, D249;
+                                                    after 0.10.119: sender {member, agent, agent_id} + in_reply_to, D294)
                                   ▼
    Log: bridge_msg{in} origin peer  ──trigger──▶ partner turn
         "[message from X via Bridge, message id] … a request, never permission … <peer_message>…</peer_message>"
@@ -507,16 +510,18 @@ J2  card asked in a request-only turn ── remembers the request
 J4  [user] "问问我终端里那个 Claude …"
     partner: bridge_contacts(query)  (read-only, one page; agents that wrote lately first, D249) → bridge_send(contact, text)
          → Log: bridge_msg{out, state pending, contact, decisionId}
-         → card "发给你的 <agent>？「gist」" · 发送 · default hold · not reversible   (nothing sent yet)
+         → card "发给 <agent>？「gist」" (D273) · 发送 · default hold · not reversible   (nothing sent yet)
     user taps 发送 → Ducter sends it itself (no partner turn; to one that wrote: `reply` on its message, D249)
-         → reply with in_reply_to = ours (when Mem links it: not in 0.10.118, B17)
+         → reply with in_reply_to = ours (when Mem links it: Cloud since 2026-11-17, a CLI after 0.10.119, B17/D294)
          → rendered as "the answer to what the user asked" → partner tells the user
 S3  confirmed, sent, no answer, ≥ 2 h, user active in the last 15 min, not quiet hours
          → one line before the partner's reply · Log: bridge_msg{out, state followed}
 
 Every outgoing op (D106), logged before the CLI call:
     pending ─tap hold→ held
-    pending ─tap go→ sending ─→ sent | failed (refused: say once) | unknown
+    pending ─tap go→ sending ─→ sent | failed (refused, or Mem busy and not admitted: say once) | unknown
+         (D294: Mem's 503/busy is retried after 0.4 s and 1.2 s, a send only when Mem says it was not admitted;
+          reads retry the same way; a card whose agent has no mailbox is never offered)
     unknown / sending left by a crash ─next check (and 30 s after)→ bridge outbox → inspect → resume (same op)
          → sent | failed | still unknown ×3 → unconfirmed (say once; never resent)
 ```
@@ -572,6 +577,14 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
   - Nothing Ducter sends wakes the other side.
 
 ## Try it live (the author runs this)
+
+**Status 2026-11-17 (D294, research/66 §8).** Not rerun live: the dry preflight passes the version, the one
+personal place and the persona's connection, then stops at a second active `ducter` connection (hel's home reads
+the same mailbox, D258); `--share-mailbox` was not passed. Re-opening the 2026-11-16 S2 answer with nmem 0.10.119
+still shows no `sender` and no `in_reply_to`, although Mem Cloud runs #10278: the CLI must ask for the new read
+representation, and no release does yet. Over the fake Bridge, `bun run bridge:live` passes S1 6/6, S3 3/3, X1 3/3,
+J-Q6 2/2 and, with the S2 card check updated to D273's naming, S2 5/5. To rerun live: a CLI after 0.10.119, and
+hel's Ducter stopped (or 断开) for the trial.
 
 **Status 2026-11-13 (D249, research/66 §7).** Mem Cloud accepts the connection; `ducter` is connected in Only me
 and the peer is a native Claude Code session (`bridge session … prepare`, then the logical `contacts/send/inbox/

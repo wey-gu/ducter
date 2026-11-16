@@ -123,6 +123,8 @@ export type ConnStatus = "connecting" | "connected" | "offline";
 const KEEP = new Set(["decide", "task_action"]);
 const MSG = new Set(["send", "task_send"]);
 const BACKOFF = [500, 1000, 2000, 4000, 8000, 15000];
+const LIVE_EVERY = 15_000;
+const LIVE_DEAD = 45_000;
 
 /** D284: the page can unzip a gzipped frame (Safari 16.4+, every current browser). */
 const CAN_GUNZIP = typeof DecompressionStream !== "undefined";
@@ -137,6 +139,10 @@ export class Connection {
   private attempt = 0;
   private timer?: ReturnType<typeof setTimeout>;
   private stopped = false;
+  /** D293: liveness, only with a home that answers pings (welcome.ping). */
+  private live?: ReturnType<typeof setInterval>;
+  private heardAt = 0;
+  private dueAt = 0;
   /** Called with each frame written to a welcomed socket (the app tracks actions in flight). */
   onWritten?: (f: ClientFrame) => void;
 
@@ -187,6 +193,7 @@ export class Connection {
     ws.binaryType = "arraybuffer";
     ws.onopen = () => ws.send(JSON.stringify({ ...this.hello(), ...(CAN_GUNZIP ? { gzip: true } : {}) }));
     ws.onmessage = (m) => {
+      this.heardAt = Date.now();
       const data = m.data as string | ArrayBuffer;
       if (typeof data === "string" && !this.unzipping) return this.take(data);
       // In order: a frame behind a gzipped one waits for it.
@@ -202,6 +209,7 @@ export class Connection {
     ws.onclose = () => {
       if (this.ws !== ws) return;
       this.welcomed = false;
+      clearInterval(this.live);
       if (this.stopped) return;
       this.setStatus(this.attempt === 0 && this.status === "connecting" ? "connecting" : "offline");
       const wait = BACKOFF[Math.min(this.attempt++, BACKOFF.length - 1)]!;
@@ -223,9 +231,31 @@ export class Connection {
       this.welcomed = true;
       this.attempt = 0;
       this.setStatus("connected");
+      if (f.ping) this.keepAlive();
     }
+    if (f.t === "pong") return;
     this.onFrame(f);
     if (f.t === "welcome") this.flush();
+  }
+
+  /**
+   * D293: a ping every 15 s; a socket the home hasn't answered for 45 s is closed and dialled again
+   * (a phone that changed networks keeps a dead socket open). A tick that comes far too late is a
+   * page the browser paused (a hidden tab, a sleeping phone): it gets one more interval first.
+   */
+  private keepAlive() {
+    clearInterval(this.live);
+    const ws = this.ws;
+    this.heardAt = this.dueAt = Date.now();
+    this.live = setInterval(() => {
+      if (this.ws !== ws || ws?.readyState !== WebSocket.OPEN) return clearInterval(this.live);
+      const now = Date.now();
+      const late = now - this.dueAt > LIVE_EVERY + 10_000;
+      this.dueAt = now;
+      if (late) this.heardAt = now;
+      else if (now - this.heardAt > LIVE_DEAD) return ws.close();
+      ws.send(JSON.stringify({ t: "ping" }));
+    }, LIVE_EVERY);
   }
 
   /** Re-says hello on the open socket (a Log that started over). */

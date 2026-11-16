@@ -87,7 +87,13 @@ function remoteSession(link: WorkerLink, key: string, init: { sessionId?: string
   const queue: HarnessEvent[] = [];
   let done: { error?: string; offline?: boolean } | undefined;
   let wake: (() => void) | undefined;
+  const linkFns = new Set<(s: "away" | "back") => void>();
   const off = link.onSession(key, (f: WorkerSessionFrame) => {
+    // D293: the worker dropped and holds this session, or is back with it: no event, no end.
+    if (f.t === "away" || f.t === "back") {
+      for (const fn of linkFns) fn(f.t);
+      return;
+    }
     if (f.t === "ev") {
       busy = f.busy;
       if (f.sessionId) id = f.sessionId;
@@ -106,6 +112,9 @@ function remoteSession(link: WorkerLink, key: string, init: { sessionId?: string
     },
     canSteer: init.canSteer,
     busy: () => busy,
+    onLink(fn) {
+      linkFns.add(fn);
+    },
     async send(text, mode, images, files) {
       busy = busy || mode === "turn" || mode === undefined;
       // D206: the pictures are files on the home; their bytes go down with the words.

@@ -20,5 +20,14 @@
     { "kind": "log", "label": "nmem doctor", "ref": "nmem doctor", "zh": "nmem doctor", "en": "nmem doctor" },
     { "kind": "diff", "label": "Two files changed", "ref": "abc1234", "zh": "改动", "en": "Two files changed" },
     { "kind": "url", "label": "example.com", "ref": "https://www.example.com/", "zh": "example.com", "en": "example.com" }
+  ],
+  "proofOther": [
+    { "kind": "test", "label": "All tests pass", "ref": "bun test", "lang": "ko", "want": "Test results" },
+    { "kind": "test", "label": "테스트 모두 통과", "ref": "bun test", "lang": "ko", "want": "테스트 모두 통과" },
+    { "kind": "test", "label": "테스트 모두 통과", "ref": "bun test", "lang": "zh", "want": "测试结果" },
+    { "kind": "log", "label": "Todas las pruebas pasan", "ref": "bun test", "lang": "es", "want": "Todas las pruebas pasan" },
+    { "kind": "log", "label": "All the tests and checks pass", "ref": "bun test", "lang": "es", "want": "Output" },
+    { "kind": "diff", "label": "Two files changed", "ref": "abc1234", "lang": "zh-Hant", "want": "改动" },
+    { "kind": "url", "label": "Отчёт за неделю", "ref": "https://example.com/r", "lang": "ru", "want": "Отчёт за неделю" }
   ]
 }

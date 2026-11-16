@@ -17,7 +17,7 @@ import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, m
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { Btn, Chev, DevicesMark, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, Btn, Chev, DevicesMark, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
@@ -400,10 +400,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
 function PeerAsker({ d }: { d: DecisionState }) {
   return (
     <div class="asker peer">
-      <span>
-        {t("peer.asks", d.asker!.agent)}
-        {d.asker!.where && <small> · {d.asker!.where}</small>}
-      </span>
+      <span>{askerText(d.asker!)}</span>
     </div>
   );
 }
@@ -1154,18 +1151,31 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
 
 /** One quiet line about the user's other agents (D170, J-Q5): who, and what, never Bridge words. */
 export function peerLineText(b: Bodies["bridge_msg"], ts: string, setAside?: number): string {
-  const zh = A.L.lang === "zh";
-  // Mem may not say who sent it (nmem stores "another agent"): one of their own is 你的另一个 AI.
-  const named = [b.agent, b.from, b.to].find((x) => x && x !== "another agent") ?? "";
-  const agent = named || (b.mine ? (zh ? "另一个 AI" : "other AI agent") : zh ? "另一个 AI" : "another AI agent");
-  const who = b.mine ? (zh ? (named ? `你的 ${agent}` : `你的${agent}`) : `your ${agent}`) : agent;
-  if (b.direction === "in" && b.state === "set_aside") return t("peer.set_aside", b.mine ? who : agent, String(setAside ?? 1));
+  // D273: an agent is named by what it is ("Claude Code"), never 你的 / other; Mem may not say
+  // who sent it (nmem stores "another agent"): then 一个 AI agent / an AI agent.
+  const who = peerName(b);
+  if (b.direction === "in" && b.state === "set_aside") return capFirst(t("peer.set_aside", who, String(setAside ?? 1)));
   if (b.direction === "in") {
     const gist = b.text.replace(/\s+/g, " ").trim();
-    return t(b.mine && named ? "peer.in" : "peer.in.other", b.mine ? who : agent, gist.length > 40 ? gist.slice(0, 39) + "…" : gist);
+    return capFirst(t("peer.in.other", who, gist.length > 40 ? gist.slice(0, 39) + "…" : gist));
   }
   void ts;
   return t(b.decisionId ? "peer.sent" : "peer.replied", who);
+}
+
+/** What an agent Ducter didn't start is called (D273): its own name, else 一个 AI agent / an AI agent. */
+export function peerName(b: { agent?: string; from?: string; to?: string }): string {
+  const named = [b.agent, b.from, b.to].find((x) => x && x !== "another agent");
+  return named ?? (A.L.lang === "zh" ? "一个 AI agent" : "an AI agent");
+}
+
+/** "an AI agent asks you" starts a line as "An AI agent …"; an agent's own name stays as it is. */
+const capFirst = (s: string) => (s.startsWith("an AI agent") ? "A" + s.slice(1) : s);
+
+/** Who asks on a card (D273): "Claude Code（~/dev/ducter）问你" / "Claude Code (~/dev/ducter) asks you". */
+export function askerText(a: { agent: string; where?: string }): string {
+  const who = a.agent === "another agent" ? peerName({}) : a.agent;
+  return capFirst(a.where ? t("peer.asks.where", who, a.where) : t("peer.asks", who));
 }
 
 function PeerLine({ b, ts }: { b: Bodies["bridge_msg"]; ts: string }) {
@@ -2177,6 +2187,7 @@ function NotifySettings() {
     <>
       <section class="set">
         <h3>{t("partner.notify.title")}</h3>
+        <div class="set-card">
         <Toggle label={t("partner.notify.on")} help={t(s.notify ? "partner.notify.on.note" : "partner.notify.off.note")} checked={s.notify} onChange={(notify) => A.setSettings({ notify })} />
         {s.notify && <Toggle label={t("partner.quiet")} help={t("partner.quiet.note")} checked={!!quiet} onChange={(on) => A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null })} />}
         {s.notify && quiet && (
@@ -2186,6 +2197,7 @@ function NotifySettings() {
             <input type="time" aria-label={`${t("partner.quiet")} ${t("partner.quiet.to")}`} value={quiet.end} onChange={(e) => setQuiet(quiet.start, (e.target as HTMLInputElement).value || quiet.end)} />
           </div>
         )}
+        </div>
       </section>
       {/* D165: the same chips as on Accounts, once there is something to watch. */}
       {((s.proactive && s.proactiveBy !== "default") || !!A.connections?.length) && (
@@ -2248,6 +2260,7 @@ function Loadout() {
     <>
       <section class="set">
         <h3>{t("loadout.brain.title")}</h3>
+        <div class="set-card">
         <div class="agent">
           <Coin harness={brain.harness} size={40} />
           <span class="grow">
@@ -2267,6 +2280,7 @@ function Loadout() {
             onPick={(m) => setBrain(brain.harness, m)}
           />
         )}
+        </div>
         <div class="small sub">{t("loadout.brain.keep")}</div>
       </section>
       <section class="set">
@@ -2276,6 +2290,7 @@ function Loadout() {
         ) : (
           <>
             <div class="small sub">{t("loadout.tasks.default", name)}</div>
+            <div class="set-card">
             {agents.map((h) => {
               const on = (s.taskAccounts as Record<string, { enabled: boolean }> | undefined)?.[h.harness]?.enabled !== false;
               const isBrain = h.harness === brain.harness;
@@ -2299,16 +2314,18 @@ function Loadout() {
                 </div>
               );
             })}
+            </div>
             {b && <div class="small sub">{t("loadout.acct.same", name)}</div>}
             <h3>{t("loadout.rules")}</h3>
-            {!(A.rules ?? []).length && <div class="small sub">{t("loadout.rules.none")}</div>}
-            {(A.rules ?? []).map((r) => (
-              <div class="noted-row" key={r.id}>
-                <span>{r.text}</span>
-                <Btn kind="text" label={t("loadout.rule.remove")} about={r.text} onClick={() => (A.send({ t: "rule_remove", id: r.id }), A.toast(t("loadout.rule.removed", r.text)))} />
-              </div>
-            ))}
-            <Btn kind="text" label={t("loadout.rule.add", name)} onClick={() => A.tellRule()} />
+            <div class="set-card">
+              {(A.rules ?? []).map((r) => (
+                <div class="noted-row" key={r.id}>
+                  <span>{r.text}</span>
+                  <Btn kind="text" label={t("loadout.rule.remove")} about={r.text} onClick={() => (A.send({ t: "rule_remove", id: r.id }), A.toast(t("loadout.rule.removed", r.text)))} />
+                </div>
+              ))}
+              <AddRow label={t("loadout.rule.add", name)} help={(A.rules ?? []).length ? undefined : t("loadout.rules.none")} onClick={() => A.tellRule()} />
+            </div>
           </>
         )}
       </section>
@@ -2448,7 +2465,6 @@ function Accounts() {
     <section class="set accounts">
       <h3>{t("acct.title")}</h3>
       <div class="small sub">{t("acct.lede")}</div>
-      {list && !list.length && !offer && <div class="small sub">{t("acct.none")}</div>}
       {offer && <OoOffer oo={oo!} />}
       {!offer && oo?.selfHosted && !usedOo && (
         <div class="acct-oo">
@@ -2463,7 +2479,9 @@ function Accounts() {
             <Chev />
           </button>
         ) : (
-          <Btn kind="secondary" label={t("acct.add")} onClick={() => setAdding(true)} />
+          <div class="set-card">
+            <AddRow label={t("acct.add")} help={list && !list.length ? t("acct.none") : undefined} onClick={() => setAdding(true)} />
+          </div>
         )
       ) : (
         <form class="acct-form" onSubmit={check} noValidate>
@@ -2570,14 +2588,24 @@ function PhonePush() {
       {inApp() && A.push === "on" && !appPush.why && A.me?.push.relay === "unreachable" && <div class="hint">{t("notify.app.relaydown")}</div>}
       {A.push === "denied" && <div class="hint">{t("notify.denied")}</div>}
       {A.push === "off" && A.me?.push.publicKey && (!inApp() || A.me.push.apns) && (
-        <Btn
-          kind="primary"
-          label={t("notify.on")}
-          onClick={async () => {
-            A.push = await turnOnPush();
-            A.changed();
-          }}
-        />
+        // D273: a row like every other (title, one line, the button at the right edge), not a bar.
+        <div class="set-card">
+          <div class="set-row">
+            <span class="grow">
+              <b>{t("notify.here")}</b>
+              <small>{t("notify.here.note")}</small>
+            </span>
+            <Btn
+              kind="primary"
+              size="sm"
+              label={t("notify.here.on")}
+              onClick={async () => {
+                A.push = await turnOnPush();
+                A.changed();
+              }}
+            />
+          </div>
+        </div>
       )}
       {A.push === "on" && (
         <>
@@ -2619,7 +2647,6 @@ function PhonePush() {
 function PhoneSettings() {
   return (
     <section class="set">
-      <div class="small sub">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
       <div class="set-card">
         <div class="set-item">
           <b>{t("settings.lang.title")}</b>
@@ -2630,6 +2657,7 @@ function PhoneSettings() {
           <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => A.setDetails(v)} />
         </div>
       </div>
+      <div class="small sub">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
     </section>
   );
 }
@@ -2646,7 +2674,7 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "phone", art: "phone", title: "settings.phone" },
 ];
 
-/** A section's art: its clay picture, or for 你的其他 AI two of the person's agents' coins (D257). */
+/** A section's art: its clay picture, or for 连上的 AI agent two of the person's agents' coins (D257). */
 function SectionArt({ art, size }: { art: string; size: number }) {
   if (art === "notebook") return <Notebook size={size} />;
   if (art === "coins")

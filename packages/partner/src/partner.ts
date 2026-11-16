@@ -2464,7 +2464,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const zh = userZh() ?? true;
     const body: Bodies["decision"] = {
       decisionId: newId("d"),
-      question: zh ? zhJoin("以后你的", agent, "发来的事，直接接下？") : `Take work from your ${agent} without asking from now on?`,
+      question: zh ? zhJoin("以后", agent, "发来的事，直接接下？") : `Take work from ${agent} without asking from now on?`,
       goLabel: zh ? "直接接下" : "Take it directly",
       defaultOption: "hold",
       reversible: false,

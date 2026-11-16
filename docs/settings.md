@@ -21,7 +21,7 @@ On the left is a row of tabs; the one you pick shows on the right:
 |---|---|
 | **Partner** | Its name, what it thinks with, who does the tasks, how it talks, and what it does on its own or asks you first |
 | **Memory** | What it remembers about you, and Nowledge Mem: its version and updates |
-| **Your other AI agents** | How your other AI agents reach it (shown once Nowledge Mem is in) |
+| **Connected AI agents** | The AI agents you use elsewhere that can reach it (shown once Nowledge Mem is in) |
 | **Notifications** | When it comes to you, quiet hours, and how long it waits if you don't answer |
 | **Accounts** | The mail, calendars and other accounts it can read |
 | **Look and sound** | The look, the window's language, Details in the conversation, the intro's sound |
@@ -98,10 +98,12 @@ What your partner remembers about you has its own section, **Memory**.
   download and runs on your own computer), with **About Nowledge Mem**. It is the only place
   Ducter mentions it.
 
-## Your other AI agents
+## Connected AI agents
 
-Once Nowledge Mem is in, **Your other AI agents** lets the AI you use elsewhere, like Claude Code
-or Codex in a terminal, reach your partner: **Connect**, and **Who can reach** your partner.
+Once Nowledge Mem is in, **Connected AI agents** lets the AI agents you use elsewhere, like Claude
+Code or Codex in a terminal, reach your partner: **Connect**, and **Who can reach** your partner.
+In the conversation each one is called by what it is and where it works, for example **Claude Code
+(~/dev/ducter) asks you** or **Replied to Claude Code**; one that gives no name is **An AI agent**.
 
 ## Notifications
 

@@ -302,6 +302,12 @@ export function AutofillSettings() {
             </div>
           ) : (
             <button class="set-row" onClick={() => edit({ kind: "details" })}>
+              <span class="af-mark" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 18 18">
+                  <circle cx="9" cy="6.2" r="3" fill="none" stroke="currentColor" stroke-width="1.7" />
+                  <path d="M3.4 15.2c.8-3 3-4.4 5.6-4.4s4.8 1.4 5.6 4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                </svg>
+              </span>
               <span class="grow">
                 <b>{kept.length ? kept.filter((d) => d.value).slice(0, 3).map((d) => d.value).join(" · ") || t("af.d.kept", kept.length) : t("af.d.add")}</b>
                 <small>{kept.length ? kept.filter((d) => !d.value).map((d) => t(`af.d.${d.key}`)).join(" · ") || t("af.d.edit") : t("af.d.why")}</small>
@@ -314,9 +320,7 @@ export function AutofillSettings() {
       <section class="set">
         <h3>{t("af.keys")}</h3>
         <div class="set-card">
-          <div class="set-item">
-            <Toggle label={t("af.keys.ask")} help={t("af.keys.ask.help")} checked={f.askKeys !== false} onChange={(v) => A.setAskKeys(v)} />
-          </div>
+          <Toggle label={t("af.keys.ask")} help={t("af.keys.ask.help")} checked={f.askKeys !== false} onChange={(v) => A.setAskKeys(v)} />
           {(f.keys ?? []).map((x) =>
             editing?.kind === "key" && editing.item?.id === x.id ? (
               <div class="set-item" key={x.id}>

@@ -184,7 +184,9 @@ describe("push copy", () => {
   test("D170: another agent's question says who asks, waits on silence, and has no Hold button", () => {
     const q: Bodies["decision"] = { decisionId: "d2", question: "现在推，还是等 macOS？", goLabel: "等 macOS 跑完", defaultOption: "hold", reversible: false, asker: { messageId: "m", agent: "terminal-claude", mine: true } };
     const m = decisionMessage(q, { persona: "小鸭", locale: "zh", platform: "android", now });
-    expect(m.title).toBe("小鸭 · 你的 terminal-claude 问你");
+    expect(m.title).toBe("小鸭 · terminal-claude 问你");
+    // D273: by what it is and where it works.
+    expect(decisionMessage({ ...q, asker: { ...q.asker!, where: "~/dev/ducter" } }, { persona: "D", locale: "en", platform: "ios", now }).title).toBe("D · terminal-claude (~/dev/ducter) asks you");
     expect(m.body).toBe("现在推，还是等 macOS？ 没回就让它先等着。");
     expect(m.actions).toBeUndefined();
   });

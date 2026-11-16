@@ -407,6 +407,7 @@ A new control is added to the set (and to this table) before it is used.
 | One short choice in a row of them, the chosen one raised (New task's model and effort under the chosen agent; D202) | `choice` (`shared.go`) | `Choice` |
 | A group's name that folds it, with its count (By project; D244) | `foldHead` (`shared.go`) | the folding `Section` in `onhand.tsx` |
 | Back to the list | the chrome's crumb | `BackRow` |
+| A group's add row: a drawn ＋ in the tile column, title, one line (D273) | the + rows in `settings.go` | `AddRow` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 
 ## Places (D71)
@@ -460,8 +461,9 @@ One vocabulary on every tab:
   when (XS 700 muted day labels; each line an 8 pt accent pebble on its ledge, the title MD 600, its age XS;
   hairlines start past the pebble; the door to Mem last), then the **Nowledge Mem** card (where · version in mono ·
   a green **已连上** pill). No Mem: no switch; one gentle line and **了解 Nowledge Mem** (D169).
-- **Your other AI agents** (D257; two of the person's agents' coins): the tab's lede, then one card (the connection,
-  who can reach it), then the learned rules and the muted in their own card. Shown once it means something (J6).
+- **Connected AI agents / 连上的 AI agent** (D257, named by D273; two of the person's agents' coins): the tab's
+  lede, then one card (the connection, who can reach it), then the learned rules and the muted in their own card.
+  Shown once it means something (J6).
 - **Look and sound** opens on a preview stage: the partner, one message of yours and its answer
   in this window's language, and Details folded or shown as set. The partner smiles (its done
   face, cross-faded) for 1.6 s after any choice there, and while **试听 / Play** plays the
@@ -471,6 +473,17 @@ One vocabulary on every tab:
   280 ms; none under reduced motion) with **‹ 设置** to go back. Its fourth section is **这台手机 /
   This phone** (language, Details); its Notifications page also holds this phone's own push.
   `#settings=<section>` deep-links a page.
+- **A pushed page on the phone keeps the list's discipline (D273).** Two edges only: the page edge
+  (‹ 设置, the title, every group) and the text edge one row inset (16) in: section headers (13/700
+  `ink-soft`, not the 20 heading), notes and ledes (13 muted), and every row's 40 icon tile and
+  words. One row anatomy everywhere: an optional 40 tile (clay art, a coin, a letter pebble, or an
+  add row's drawn ＋ with no tile under it), the title 15/700, one muted line, the control or › at
+  the right edge. The rows of one section sit in one raised group (radius 24, the clay base) with
+  `line-soft` hairlines; a switch alone is its own one-row group; never a card inside a card, never
+  a centred poster (a source, 打电话 and 用你自己的号码打 show their art in the tile column, name and
+  line beside it, actions at the right). Rhythm: 8 within a section, 24 between sections. A
+  composer's attach button is the drawn paperclip (D273), the picture mark only where it means a
+  picture.
 
 Screenshots: `.shots/settings/` (desktop 1280 every tab zh/en, the Partner tab on a Mac and on a
 Codex-only server; phone 390 every page light/dark).

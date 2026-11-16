@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -891,14 +892,55 @@ func (a *App) trayTile(c *ui.Context, tray string, x *attach) {
 	})
 }
 
-// addButton is the composer's 加图片 / Add images: a picture mark.
+// addPicturesButton is the composer's 添加文件或图片 / Add files or pictures:
+// the attach mark (D273), since D259 it takes any file.
 func (a *App) addPicturesButton(c *ui.Context, tray string) {
 	t := a.T
 	if a.Media == nil {
 		return
 	}
-	if a.iconButton(c, a.L.T("media.add"), t.ControlMD, btnText, drawPicture) {
+	if a.iconButton(c, a.L.T("media.add"), t.ControlMD, btnText, drawAttach) {
 		a.pickInto(tray)
+	}
+}
+
+// drawAttach is the attach mark (D273): a paperclip of three legs, tilted
+// 40°, the same shape as the web's AttachMark. The picture mark stays for
+// where it means a picture.
+func drawAttach(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		const s = 0.92
+		sin, cos := float32(math.Sin(40*math.Pi/180)), float32(math.Cos(40*math.Pi/180))
+		pt := func(x, y float32) (float32, float32) {
+			x, y = x*s, y*s
+			return cx + x*cos - y*sin, cy + x*sin + y*cos
+		}
+		const k = 0.5523
+		var f ui.Path
+		f.MoveTo(pt(-3.6, 5.6))
+		f.LineTo(pt(-3.6, -4.6))
+		// over the top: centre (0,-4.6), r 3.6
+		x1, y1 := pt(-3.6, -4.6-k*3.6)
+		x2, y2 := pt(-k*3.6, -8.2)
+		x3, y3 := pt(0, -8.2)
+		f.CubeTo(x1, y1, x2, y2, x3, y3)
+		x1, y1 = pt(k*3.6, -8.2)
+		x2, y2 = pt(3.6, -4.6-k*3.6)
+		x3, y3 = pt(3.6, -4.6)
+		f.CubeTo(x1, y1, x2, y2, x3, y3)
+		f.LineTo(pt(3.6, 5.8))
+		// round the bottom: centre (1.8,5.8), r 1.8
+		x1, y1 = pt(3.6, 5.8+k*1.8)
+		x2, y2 = pt(1.8+k*1.8, 7.6)
+		x3, y3 = pt(1.8, 7.6)
+		f.CubeTo(x1, y1, x2, y2, x3, y3)
+		x1, y1 = pt(1.8-k*1.8, 7.6)
+		x2, y2 = pt(0, 5.8+k*1.8)
+		x3, y3 = pt(0, 5.8)
+		f.CubeTo(x1, y1, x2, y2, x3, y3)
+		f.LineTo(pt(0, -2.6))
+		p.StrokePath(&f, 1.8, col)
 	}
 }
 

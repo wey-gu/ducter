@@ -1,4 +1,4 @@
-// A demo core for Settings › 记忆 / Memory and › 你的其他 AI (D257), in one state. No nmem runs: a
+// A demo core for Settings › 记忆 / Memory and › 连上的 AI agent (D257), in one state. No nmem runs: a
 // scripted stand-in answers the read-only checks. Noted lines are seeded into the Log across a few
 // days (realistic, not anyone's own memories). For pictures, web and phone.
 //   DUCTER_PORT=7864 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_MEM=newer bun apps/web/demo-memory.ts

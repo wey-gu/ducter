@@ -266,8 +266,8 @@ describe("Copy (D108, D109)", () => {
   });
 
   test("labels: your own agent by its name, a teammate's with theirs", () => {
-    expect(whoForUser(CODEX, true)).toBe("你的 codex-mem");
-    expect(whoForUser(CODEX, false)).toBe("your codex-mem");
+    expect(whoForUser(CODEX, true)).toBe("codex-mem");
+    expect(whoForUser(CODEX, false)).toBe("codex-mem");
     expect(whoForUser(ALEX, true)).toBe("reviewer (Alex)");
   });
 
@@ -311,7 +311,7 @@ describe("S2: message an agent the user named, only after the user taps go", () 
     expect(r[2].ok).toBe(true);
     expect(w.sends.length).toBe(0); // nothing out before Go
     const c = card();
-    expect(c.question.split("\n")[0]).toBe("发给你的 codex-mem？");
+    expect(c.question.split("\n")[0]).toBe("发给 codex-mem？");
     expect(c).toMatchObject({ goLabel: "发送", defaultOption: "hold", reversible: false });
     tap(c.decisionId);
     await partner.idle();
@@ -444,7 +444,7 @@ describe("J-Q6 / D106: an outgoing message is never lost or sent twice", () => {
     await Bun.sleep(5);
     for (let i = 0; i < 4; i++) await a.partner.checkBridge();
     expect(a.outs().map((b) => b.state)).toEqual(["pending", "sending", "unknown", "unconfirmed"]);
-    expect(a.said()).toEqual(["没能确认你让我发的消息是否到了你的 codex-mem 那里。我没有重发；需要的话再跟我说一次。"]);
+    expect(a.said()).toEqual(["没能确认你让我发的消息是否到了 codex-mem 那里。我没有重发；需要的话再跟我说一次。"]);
     expect(w.sends.length).toBe(0);
   });
 
@@ -461,7 +461,7 @@ describe("J-Q6 / D106: an outgoing message is never lost or sent twice", () => {
     tap((fc.events.find((e) => e.kind === "decision")!.body as Bodies["decision"]).decisionId);
     await partner.idle();
     expect(outs().map((b) => b.state)).toEqual(["sending", "failed"]);
-    expect(said()).toEqual(["「接了」的回复没能发给你的 terminal-claude：被拒绝了。"]);
+    expect(said()).toEqual(["「接了」的回复没能发给 terminal-claude：被拒绝了。"]);
   });
 
   test("a crash between 'sending' and the answer is recovered at the next check", async () => {
@@ -497,7 +497,7 @@ describe("J-Q6 / D106: an outgoing message is never lost or sent twice", () => {
     user("问问我那个 Codex bridge 写到哪了");
     await partner.idle();
     // The member came from passive setup: the card says 你的.
-    expect(card().question.split("\n")[0]).toBe("发给你的 codex-mem？");
+    expect(card().question.split("\n")[0]).toBe("发给 codex-mem？");
     partner.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: card().decisionId, option: "go", by: "user" } }));
     for (let i = 0; i < 100 && outs().length < 3; i++) await Bun.sleep(50);
     expect(outs().map((b) => b.state)).toEqual(["pending", "sending", "unknown"]);
@@ -540,8 +540,8 @@ describe("S3 / D110: follow-through on silence", () => {
     t.user("CI 怎么样了");
     await t.partner.idle();
     // Said before this turn's reply, in the user's own words, so the turn knows it was said.
-    expect(t.said()).toEqual(["好。", "你的 codex-mem 还没回你 2 小时前问的「问问我那个 Codex bridge 写到哪了，今晚能不能提 PR」，它可能停了。回了我马上告诉你。", "好。"]);
-    expect(t.fr.sessions.at(-1)!.inputs.at(-1)).toContain("[Ducter told the user, for you] 你的 codex-mem 还没回你");
+    expect(t.said()).toEqual(["好。", "codex-mem 还没回你 2 小时前问的「问问我那个 Codex bridge 写到哪了，今晚能不能提 PR」，它可能停了。回了我马上告诉你。", "好。"]);
+    expect(t.fr.sessions.at(-1)!.inputs.at(-1)).toContain("[Ducter told the user, for you] codex-mem 还没回你");
     t.clock.advance(HOUR);
     t.user("嗯");
     await t.partner.idle();
@@ -573,8 +573,8 @@ describe("S3 / D110: follow-through on silence", () => {
     const sentTs = "2026-11-09T10:00:00.000Z";
     const op = { opId: "o", state: "sent" as const, seq: 1, first: 1, ts: sentTs, sentTs, last: { direction: "out" as const, messageId: "m", to: "codex-mem (Weyl)", agent: "codex-mem", mine: true, text: "bridge 那块写到哪了？", decisionId: "d" } };
     const at = Date.parse(sentTs) + 3 * HOUR;
-    expect(followLine(op, at, true, true)).toBe("你的 codex-mem 看过你 3 小时前问的「bridge 那块写到哪了？」，还没回。回了我马上告诉你。");
-    expect(followLine(op, at, false)).toBe('Your codex-mem hasn\'t answered what you asked 3 hours ago ("bridge 那块写到哪了？"); it may have stopped. I\'ll tell you as soon as it does.');
+    expect(followLine(op, at, true, true)).toBe("codex-mem 看过你 3 小时前问的「bridge 那块写到哪了？」，还没回。回了我马上告诉你。");
+    expect(followLine(op, at, false)).toBe('codex-mem hasn\'t answered what you asked 3 hours ago ("bridge 那块写到哪了？"); it may have stopped. I\'ll tell you as soon as it does.');
     const alex = { ...op, last: { ...op.last, to: "reviewer (Alex)", agent: "reviewer", mine: undefined } };
     expect(followLine(alex, at + 24 * HOUR, true)).toBe("reviewer (Alex) 还没回你昨天问的「bridge 那块写到哪了？」，它可能停了。回了我马上告诉你。");
     expect(inQuiet(Date.parse("2026-11-09T23:30:00Z"), { start: "23:00", end: "08:00", tz: "UTC" })).toBe(true);
@@ -770,7 +770,7 @@ describe("X1 / D164, D170: the user's own agents ask the user through the partne
       await t.partner.idle();
     }
     expect(offers().length).toBe(1);
-    expect((offers()[0]!.body as Bodies["decision"]).question).toBe("以后你的 terminal-claude 发来的事，直接接下？");
+    expect((offers()[0]!.body as Bodies["decision"]).question).toBe("以后 terminal-claude 发来的事，直接接下？");
     t.tap((offers()[0]!.body as Bodies["decision"]).decisionId, "go");
     await t.partner.idle();
     expect(peers.trusted).toEqual(["terminal-claude"]);

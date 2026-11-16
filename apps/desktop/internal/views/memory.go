@@ -10,7 +10,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// Settings › 记忆 / Memory and › 你的其他 AI / Your other AI agents (D257),
+// Settings › 记忆 / Memory and › 连上的 AI agent / Connected AI agents (D257),
 // each its own tab. Memory is what the partner remembers about the person,
 // first, in their words: the partner hugging its notebook and one sentence,
 // then what it noted grouped by when (each one forgettable), then Nowledge
@@ -94,7 +94,7 @@ func memBadge(u *memUpd) string {
 	return ""
 }
 
-// peersShown: 你的其他 AI shows once it means something (J6): another agent
+// peersShown: 连上的 AI agent shows once it means something (J6): another agent
 // wrote, the person trusted or muted one, or Mem is on the home and signed in.
 func peersShown(p *protocol.Peers, b *protocol.BridgeView, seen bool) bool {
 	if p == nil {
@@ -154,7 +154,7 @@ func (a *App) peersSeen() bool {
 	return false
 }
 
-// visibleTabs is the rail: 你的其他 AI only once it means something.
+// visibleTabs is the rail: 连上的 AI agent only once it means something.
 func (a *App) visibleTabs() []string {
 	var p *protocol.Peers
 	if a.S.Settings != nil {
@@ -551,7 +551,7 @@ func (a *App) drawNotebook() func(p *ui.Painter, r ui.Rect) {
 	}
 }
 
-// ---------- 你的其他 AI / Your other AI agents ----------
+// ---------- 连上的 AI agent / Connected AI agents ----------
 
 // peersPanel is the persona's connection with the person's other agents
 // (D205) and who may reach it (D170). Mem's own steps live in Memory.

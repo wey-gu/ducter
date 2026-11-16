@@ -15,7 +15,7 @@ import (
 )
 
 // D257: where the memory stands, the one update worth saying, the rail's
-// line, when 你的其他 AI shows, and the noted lines by when. The same cases
+// line, when 连上的 AI agent shows, and the noted lines by when. The same cases
 // as the web's (apps/web/test/memory.test.ts).
 func TestMemRules(t *testing.T) {
 	conn := &protocol.MemView{State: "connected"}
@@ -62,10 +62,10 @@ func TestMemRules(t *testing.T) {
 	}
 	none := &protocol.Peers{Reach: "own", Trusted: []string{}, Muted: []string{}}
 	if peersShown(none, nil, false) || peersShown(none, &protocol.BridgeView{State: "install_mem"}, false) || peersShown(none, &protocol.BridgeView{State: "sign_in"}, false) {
-		t.Errorf("你的其他 AI shows before Mem is in")
+		t.Errorf("连上的 AI agent shows before Mem is in")
 	}
 	if !peersShown(none, &protocol.BridgeView{State: "ready"}, false) || !peersShown(none, &protocol.BridgeView{State: "update_mem"}, false) || !peersShown(none, nil, true) {
-		t.Errorf("你的其他 AI hidden once it means something")
+		t.Errorf("连上的 AI agent hidden once it means something")
 	}
 	now := time.Date(2026, 11, 14, 15, 0, 0, 0, time.Local)
 	at := func(d time.Duration) string { return now.Add(-d).UTC().Format(time.RFC3339) }
@@ -175,7 +175,7 @@ func memApp(t *testing.T, lang i18n.Lang, state string) (*App, *[]any) {
 	return app, sent
 }
 
-// Pictures of Memory and Your other AI agents in each state, zh and en:
+// Pictures of Memory and Connected AI agents in each state, zh and en:
 //
 //	DUCTER_MEM_SHOTS=/path/to/.shots/mem-settings go test ./internal/views -run MemShots
 func TestMemShots(t *testing.T) {

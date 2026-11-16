@@ -147,13 +147,12 @@ export function DevicesSection() {
             />
           ))}
       </div>
-      <Versions />
-      {A.settings && (
-        <>
-          <Toggle label={t("settings.versions.night")} checked={!!A.settings.autoUpdate} onChange={(v) => A.setSettings({ autoUpdate: v })} />
-          <div class="small sub">{t("settings.versions.night.note")}</div>
-        </>
-      )}
+      {/* D273: the version line and the night's updates, one group, the control at the right edge. */}
+      <div class="set-card">
+        <Versions />
+        {A.settings && <Toggle label={t("settings.versions.night")} checked={!!A.settings.autoUpdate} onChange={(v) => A.setSettings({ autoUpdate: v })} />}
+      </div>
+      {A.settings && <div class="small sub">{t("settings.versions.night.note")}</div>}
     </section>
   );
 }

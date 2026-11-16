@@ -1,4 +1,4 @@
-// D257: what Settings › 记忆 / Memory and › 你的其他 AI / Your other AI agents show, from the
+// D257: what Settings › 记忆 / Memory and › 连上的 AI agent / Connected AI agents show, from the
 // settings frame (settings.memory, mem, bridge). Pure, so the phone, the wide page and the tests
 // read it the same way; the Mac has the same rules (apps/desktop/internal/views/memory.go).
 import type { BridgeView, MemView, PeersSettings } from "@ducter/protocol";
@@ -64,7 +64,7 @@ export function memBadge(u: MemUpdate | undefined): "" | "mem.badge.newer" | "me
 }
 
 /**
- * 你的其他 AI shows once it means something (J6: a fresh user never meets it): another agent wrote,
+ * 连上的 AI agent shows once it means something (J6: a fresh user never meets it): another agent wrote,
  * the person trusted or muted one, or Mem is on the home and signed in (older counts: one line says
  * to update it). Before Mem is there, Memory is where it goes in.
  */

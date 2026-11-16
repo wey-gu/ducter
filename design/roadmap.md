@@ -61,7 +61,7 @@ heard of a subagent.
 - **Real-world checks.** A long-conversation replay on real models, live runs of folder undo
   and native browser use, and the Nowledge Bridge live trial (today behind a flag; Mem's side
   answers since 2026-11-10, and the trial waits on the persona's context and a second identity).
-- **Your other AI tools reach you through Ducter** (draft): a terminal Claude Code or Codex sends
+- **The AI tools you use elsewhere reach you through Ducter** (draft): a terminal Claude Code or Codex sends
   its questions for you to your partner and gets your answer back; work from your own agents can
   start without asking once you say so; a team's agents can reach your partner when you let them.
 - **Mac dark mode** through the Midnight theme. Web and iPhone already follow the system.

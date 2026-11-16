@@ -174,7 +174,7 @@ async function preflightConnected(): Promise<boolean> {
   if (!conn || !same) {
     say(
       [
-        "\nNot ready. In Ducter: Settings › 伙伴 › 你的其他 AI › 连上. Or by hand (the same command Ducter runs):",
+        "\nNot ready. In Ducter: Settings › 伙伴 › 连上的 AI agent › 连上. Or by hand (the same command Ducter runs):",
         `  nmem bridge connections connect --space-id ${space} --agent-id ${PERSONA_AGENT} --context ${CTX}`,
         "Then run this again.",
       ].join("\n"),

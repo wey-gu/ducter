@@ -140,7 +140,7 @@ anything says so.
 ### Does it remember me?
 
 It remembers your conversation. With [Nowledge Mem](https://mem.nowledge.co) it also starts out
-knowing who you are and what you're working on, from the same memory your other AI tools use,
+knowing who you are and what you're working on, from the memory it shares with the AI tools you use elsewhere,
 and its reply's **Details** shows **Noted** when it saves something.
 See [Privacy and safety](privacy-and-safety.md#memory-with-nowledge-mem).
 
@@ -159,8 +159,8 @@ your **Go**. See [Accounts your partner can read](accounts.md).
 
 ### Can it work with the AI agent in my terminal?
 
-Coming soon: Nowledge Mem is still opening this up on its side. When it does, **Partner › Your
-other AI agents › Connect** lets the Claude Code or Codex session you have open in a terminal hand
+Coming soon: Nowledge Mem is still opening this up on its side. When it does, **Settings ›
+Connected AI agents › Connect** lets the Claude Code or Codex session you have open in a terminal hand
 your partner a job or ask for your call, and lets your partner ask that session what it knows.
 Either way, your partner checks with you first. **Disconnect** turns it all off; **Who can reach it
 › Nobody** keeps other agents out while what you ask your partner to send still gets its answer.

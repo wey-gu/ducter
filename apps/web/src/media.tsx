@@ -186,18 +186,24 @@ export function Tray({ where }: { where: string }) {
   );
 }
 
-/** The composer's 添加图片或文件 / Add images or files button: the phone's own sheet (library,
- *  camera, files), any kind of file (D259). */
+/** The attach mark (D273): a paperclip of three legs, tilted, at the composer's 1.8 stroke. It
+ *  reads "attach" for any file; the picture mark stays where it means a picture. */
+export function AttachMark({ size = 22 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path transform="rotate(40 12 12)" d="M8.4 17.6V7.4a3.6 3.6 0 0 1 7.2 0v10.4a1.8 1.8 0 0 1-3.6 0V9.4" />
+    </svg>
+  );
+}
+
+/** The composer's 添加文件或图片 / Add files or pictures button (D273: the attach mark): the
+ *  phone's own sheet (library, camera, files), any kind of file (D259). */
 export function AddPictures({ where }: { where: string }) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
       <button type="button" class="btn text icon add-pic" aria-label={t("media.add")} title={t("media.add")} onClick={() => input.current?.click()}>
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3.2" y="4.6" width="17.6" height="14.8" rx="3.4" />
-          <circle cx="9" cy="10" r="1.7" />
-          <path d="M4 17.2l4.8-4.6 3.4 3.1 2.6-2.3 5.2 4.6" />
-        </svg>
+        <AttachMark />
       </button>
       <input
         ref={input}

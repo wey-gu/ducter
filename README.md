@@ -132,7 +132,7 @@ Building from source, the walkthroughs and every command: [Install](docs/install
   over the last two weeks, then a morning message with at most three things, and right away only
   when waiting would cost you ([Accounts it can read](docs/accounts.md)).
 - **What you already decided.** With [Nowledge Mem](https://mem.nowledge.co) (optional), your
-  partner and its tasks share one memory with your other AI tools.
+  partner and its tasks share one memory with the AI tools you use elsewhere.
 
 > **Early preview.** Expect rough edges and breaking changes. See the
 > [changelog](CHANGELOG.md).

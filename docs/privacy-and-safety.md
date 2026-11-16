@@ -107,7 +107,7 @@ place, Settings › Memory. Nowledge Mem is free to download and runs on your ow
 computer.
 
 If you use [Nowledge Mem](https://mem.nowledge.co), your partner starts out knowing who you are
-and what you're working on, from the same memory your other AI tools share. When it saves
+and what you're working on, from the same memory the AI tools you use elsewhere share. When it saves
 something worth keeping, its reply's **Details** shows one quiet line: **Noted · <what it
 saved>**, with **Forget**. **Settings › Memory** lists them under **What it noted**.
 Its tasks know you too. A task runs with your Nowledge Mem plugin, under your partner's name in

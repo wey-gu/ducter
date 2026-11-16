@@ -1,4 +1,4 @@
-// D257: Settings › 记忆 / Memory and › 你的其他 AI / Your other AI agents, each its own page.
+// D257: Settings › 记忆 / Memory and › 连上的 AI agent / Connected AI agents, each its own page.
 // Memory is what the partner remembers about the person, first, in their words: the partner with
 // its notebook and one sentence, then what it noted grouped by when (each one forgettable), then
 // Nowledge Mem itself (where it is, its version, a newer one, putting it in, signing in). Your
@@ -7,7 +7,6 @@
 import type { BridgeView } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Coin } from "./coin.tsx";
 import { Btn, LinkBtn, Seg, Toggle } from "./controls.tsx";
 import { ago } from "./format.ts";
 import { groupNoted, MEM_MIN, memPhase, memUpdate, peersShown, type MemPhase, type MemUpdate } from "./mem-view.ts";
@@ -291,7 +290,7 @@ export function MemoryPage() {
   );
 }
 
-// ---------- 你的其他 AI / Your other AI agents ----------
+// ---------- 连上的 AI agent / Connected AI agents ----------
 
 /** The persona's own connection (D205; Nowledge Bridge underneath, never named). Mem's own steps live in Memory. */
 function BridgeRow() {
@@ -364,7 +363,7 @@ function BridgeRow() {
   );
 }
 
-/** Whether 你的其他 AI has anything to show yet (J6). */
+/** Whether 连上的 AI agent has anything to show yet (J6). */
 export const peersPageShown = () => peersShown(A.settings?.peers, A.bridge, A.S.channel.some((e) => e.peer));
 
 /**
@@ -383,13 +382,7 @@ export function PeersPage() {
   const reachShown = A.S.channel.some((e) => e.peer) || !!p.trusted.length || !!p.muted.length || !setup;
   return (
     <>
-      <div class="peers-hero">
-        <span class="peers-coins" aria-hidden="true">
-          <Coin harness="claude-code" size={44} />
-          <Coin harness="codex" size={44} />
-        </span>
-        <p>{t("settings.lede.peers", name)}</p>
-      </div>
+      <p class="set-lede">{t("settings.lede.peers", name)}</p>
       <section class="set">
         <div class="set-card">
           <BridgeRow />

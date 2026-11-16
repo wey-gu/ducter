@@ -1,5 +1,5 @@
-// D257: Settings › 记忆 / Memory and › 你的其他 AI: where the memory stands, the one update worth
-// saying, the Settings entry's line, when 你的其他 AI shows, the noted lines by when, and the words
+// D257: Settings › 记忆 / Memory and › 连上的 AI agent: where the memory stands, the one update worth
+// saying, the Settings entry's line, when 连上的 AI agent shows, the noted lines by when, and the words
 // equal to the Mac's (apps/desktop/internal/i18n/memory.go). The same cases as the Mac's
 // (apps/desktop/internal/views/memtab_test.go).
 import { describe, expect, test } from "bun:test";
@@ -42,7 +42,7 @@ describe("Memory (D257)", () => {
     expect(kind(b({ state: "ready", done: "updated" }))).toBe("done");
   });
 
-  test("你的其他 AI shows once it means something (J6)", () => {
+  test("连上的 AI agent shows once it means something (J6)", () => {
     const none = { reach: "own" as const, trusted: [], muted: [] };
     expect(peersShown(undefined, b({}), true)).toBe(false);
     expect(peersShown(none, undefined, false)).toBe(false);

@@ -137,6 +137,24 @@ export function Chev(p: { open?: boolean; back?: boolean; cls?: string }) {
   );
 }
 
+/** D273: a group's "add" row, the row anatomy of every Settings row: a plus in its icon tile, the
+ *  title, one muted line. */
+export function AddRow(p: { label: string; help?: string; onClick: () => void }) {
+  return (
+    <button class="set-row set-add" onClick={p.onClick}>
+      <span class="set-tile" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 14 14">
+          <path d="M7 2.5v9M2.5 7h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+      </span>
+      <span class="grow">
+        <b>{p.label}</b>
+        {p.help && <small>{p.help}</small>}
+      </span>
+    </button>
+  );
+}
+
 /** The one switch, with its words and an optional note. */
 export function Toggle(p: { label: string; help?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; lead?: ComponentChildren }) {
   return (

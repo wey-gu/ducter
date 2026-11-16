@@ -56,10 +56,10 @@ esac`;
     expect(outgoingReads({ outgoing: [{ message: "a", status: "delivered", read_recipients: 0, recipients: 1 }, { message: "b", status: "read", read_recipients: 1, recipients: 1 }] })).toEqual({ a: false, b: true });
   });
 
-  test("an own agent Mem doesn't name: 你的另一个 AI to the user, told to the model as the user's own", () => {
-    expect(whoForUser({ mine: true, from: "another agent" }, true)).toBe("你的另一个 AI");
-    expect(whoForUser({ mine: true, label: "" }, false)).toBe("your other AI agent");
-    expect(whoForUser({ from: "another agent" }, true)).toBe("another agent");
+  test("an own agent Mem doesn't name: 一个 AI agent to the user (D273), told to the model as the user's own", () => {
+    expect(whoForUser({ mine: true, from: "another agent" }, true)).toBe("一个 AI agent");
+    expect(whoForUser({ mine: true, label: "" }, false)).toBe("an AI agent");
+    expect(whoForUser({ from: "another agent" }, true)).toBe("一个 AI agent");
     expect(whoForModel({ mine: true, from: "another agent" })).toContain("one of the user's own AI agents");
   });
 });
@@ -120,7 +120,7 @@ describe("D249: reaching the agent that wrote, over the released shapes", () => 
     expect(got[0].wroteLately[0]).toMatchObject({ contact: "reply:msg-001" });
     expect(got[0].wroteLately[0].who).toContain("Task: fix the Linux failure");
     expect(got[0].contacts.map((c: { who: string }) => c.who)).toContain("Claude 收尾协调 (the user's own agent: call it 你的 Claude 收尾协调 / your Claude 收尾协调, never by the user's name)");
-    expect(t.card().question.split("\n")[0]).toBe("发给你的另一个 AI？");
+    expect(t.card().question.split("\n")[0]).toBe("发给一个 AI agent？");
     expect(t.card().question).toContain("（就是发来「Task: fix the Linux failure in the runne…」的那个）");
     t.tap(t.card().decisionId);
     await t.partner.idle();

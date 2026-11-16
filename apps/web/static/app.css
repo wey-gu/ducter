@@ -3046,26 +3046,6 @@ a {
 .peer-rule .mem-acts {
   margin-top: calc(-1 * var(--s1));
 }
-/* 你的其他 AI / Your other AI agents (D257): two of the person's own agents' coins, overlapped. */
-.peers-hero {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  padding: var(--s2) var(--s1) 0;
-}
-.peers-hero p {
-  margin: 0;
-  font-size: var(--sm);
-  line-height: var(--lh-read);
-  color: var(--ink-soft);
-}
-.peers-coins {
-  display: inline-flex;
-  flex: none;
-}
-.peers-coins .coin-art + .coin-art {
-  margin-left: -14px;
-}
 .set-coins {
   position: relative;
   display: inline-block;
@@ -5843,7 +5823,7 @@ dl.call-summary dd { margin: 0; }
   color: var(--ink);
   font-weight: 700;
 }
-/* The composer: 加图片 / Add images first, the tray of what is picked above it. */
+/* The composer: 添加文件或图片 / Add files or pictures (the attach mark, D273) first, the tray of what is picked above it. */
 .composer .add-pic {
   flex-shrink: 0;
   align-self: flex-end;
@@ -9537,4 +9517,256 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .trow .l2 .w:has(+ .c) {
   flex: none;
   max-width: 60%;
+}
+
+/* D273: a pushed Settings page keeps the top-level list's discipline. Two edges only: the page
+   edge (back, title, every group) and the text edge one row-inset in (section headers, notes, and
+   every row's icon tile and words). One row anatomy: an optional 40px icon tile, the title, one
+   muted line, the control or chevron at the right edge. Rows sit in one raised group with hairline
+   dividers; no card inside a card, no centred block. Spacing is the tokens': 8 within a section,
+   24 between sections. */
+.set-page.pushed {
+  --set-in: var(--s4);
+  gap: var(--s2);
+}
+.set-page.pushed .set {
+  gap: var(--s2);
+}
+.set-page.pushed > .set + .set,
+.set-page.pushed > * + .set,
+.set-page.pushed .devices > .set-card {
+  margin-top: var(--s3);
+}
+.set-page.pushed .set > h3,
+.set-page.pushed > h3,
+.set-page.pushed > section > h3 {
+  margin: var(--s3) 0 0;
+  padding: 0 var(--set-in);
+  font-family: inherit;
+  font-size: var(--sm);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+.set-page.pushed > .small,
+.set-page.pushed .set > .small,
+.set-page.pushed .set > .small.sub,
+.set-page.pushed .set-lede,
+.set-page.pushed .af-lede {
+  margin: 0;
+  padding: 0 var(--set-in);
+  font-size: var(--sm);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+.set-page.pushed .set-lede,
+.set-page.pushed .af-lede {
+  color: var(--ink-soft);
+}
+.set-page.pushed .set-card {
+  margin: 0;
+  border-radius: var(--r-lg);
+}
+.set-page.pushed .set-card > * + * {
+  border-top: 1px solid var(--line-soft);
+}
+.set-page.pushed .set-row,
+.set-page.pushed .set-item {
+  padding-left: var(--set-in);
+  padding-right: var(--set-in);
+}
+/* A switch is a row: alone, it is its own group; in a group, a flat row of it. */
+.set-page.pushed .switch {
+  margin: 0;
+  min-height: 56px;
+  padding: var(--s3) var(--set-in);
+  border-radius: var(--r-lg);
+  gap: var(--s3);
+}
+.set-page.pushed .set-card > .switch,
+.set-page.pushed .set-card > .quiet-range {
+  margin: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.set-page.pushed .set-card > .quiet-range {
+  padding: var(--s3) var(--set-in);
+}
+.set-page.pushed .switch small {
+  margin-top: 2px;
+  font-weight: 400;
+}
+/* The memory hero's switch sits under its hairline on the hero's own inset. */
+.set-page.pushed .mem-hero .switch {
+  min-height: 0;
+  padding: var(--s3) 0 var(--s1);
+  border-radius: 0;
+}
+/* The icon tile's column, also for an add row's drawn ＋ (no tile under it, D211). */
+.set-tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: var(--ink-soft);
+}
+.set-add b {
+  font-size: var(--md);
+  font-weight: 700;
+}
+.set-page.pushed .set-card > .agent {
+  min-height: 64px;
+  padding: var(--s2) var(--set-in);
+}
+.set-page.pushed .set-card > .seg,
+.set-page.pushed .set-card > div > .seg {
+  margin: 0;
+}
+.set-page.pushed .set-card > .seg {
+  margin: var(--s2) var(--set-in) var(--s3);
+  border-top: 0;
+}
+.set-page.pushed .set-card > .seg + .seg {
+  margin-top: 0;
+}
+.set-page.pushed .set-card > .noted-row {
+  min-height: 52px;
+  padding: 0 var(--s2) 0 var(--set-in);
+}
+/* The agents' switches are the one switch's pill, never a checkbox. */
+.agent input[role="switch"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--line-2);
+  cursor: pointer;
+  transition: background 160ms ease-out;
+}
+.agent input[role="switch"]::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.22);
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.agent input[role="switch"]:checked {
+  background: var(--accent);
+}
+.agent input[role="switch"]:checked::before {
+  transform: translateX(18px);
+}
+.agent input[role="switch"]:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent input[role="switch"],
+  .agent input[role="switch"]::before {
+    transition: none;
+  }
+}
+/* The partner's name: a raised row like the list's hero, not loose on the paper. */
+.set-page.pushed > .partner-head {
+  padding: var(--s3) var(--s2) var(--s3) var(--set-in);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--base);
+}
+.set-page.pushed > .partner-head h2 {
+  font-size: var(--t20);
+}
+/* 你的设备: the version line is a row, its button at the right edge. */
+.set-card > .dc-versions {
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  min-height: 52px;
+  margin: 0;
+  padding: var(--s1) var(--s2) var(--s1) var(--set-in, var(--s4));
+}
+.set-card > .dc-versions .small {
+  margin: 0;
+  color: var(--ink-soft);
+}
+/* Accounts: a source, the calls and your own number read as rows: the art in the tile column,
+   the name and its line beside it, the actions at the right edge; never a centred poster. */
+.set-page.pushed .src-card {
+  gap: var(--s3);
+  padding: var(--s3) var(--set-in) var(--s4);
+  border-radius: var(--r-lg);
+}
+.set-page.pushed .src-who {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  column-gap: var(--s3);
+  row-gap: 2px;
+  align-items: center;
+  justify-items: start;
+  text-align: start;
+}
+.set-page.pushed .src-who > :first-child {
+  grid-row: 1 / span 4;
+  align-self: start;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  object-fit: contain;
+}
+.set-page.pushed .src-who > :not(:first-child) {
+  grid-column: 2;
+}
+.set-page.pushed .src-who h3 {
+  font-family: inherit;
+  font-size: var(--md);
+  font-weight: 700;
+}
+.set-page.pushed .src-card .phone-acts {
+  justify-content: flex-end;
+}
+.set-page.pushed .src-card .center {
+  text-align: start;
+}
+.set-page.pushed .own-steps {
+  gap: 0;
+  border-top: 1px solid var(--line-soft);
+}
+.set-page.pushed .own-step,
+.set-page.pushed .own-step.open {
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.set-page.pushed .own-step + .own-step {
+  border-top: 1px solid var(--line-soft);
+}
+.set-page.pushed .own-step-top {
+  gap: var(--s3);
+  padding: var(--s3) 0;
+}
+/* The step's mark centred in the 40 tile column, its words on the text column. */
+.set-page.pushed .own-step-top .own-mark {
+  margin: 0 9px;
+}
+.set-page.pushed .own-body {
+  padding: 0 0 var(--s3) 52px;
+}
+.set-page.pushed .own-body .btn.text {
+  align-self: flex-start;
+}
+.set-page.pushed .src-card > .small,
+.set-page.pushed .src-card > .small.sub,
+.set-page.pushed .src-card .signin-wait,
+.set-page.pushed .signin-card {
+  text-align: start;
 }

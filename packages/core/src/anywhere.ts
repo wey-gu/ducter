@@ -25,7 +25,8 @@ import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Anywhere, AnywhereReason, AnywhereSetup, AnywhereStepCmd, AnywhereStepId, AnywhereStepResult } from "@ducter/protocol";
+import type { Anywhere, AnywhereReason, AnywhereSetup, AnywhereStepCmd, AnywhereStepId, AnywhereStepResult, LangTag } from "@ducter/protocol";
+import { fill, langName, words } from "@ducter/protocol";
 
 /** The cloudflared Ducter downloads when the computer has none: pinned, each file's SHA-256 checked. */
 export const CLOUDFLARED = {
@@ -237,6 +238,11 @@ export interface AnywhereOptions {
   stepWaitMs?: number;
   /** The address set up some other way (D143's public-url, DUCTER_PUBLIC_URL), if any. */
   own?: () => string | undefined;
+  /**
+   * D293: the home's address book. With it the tunnel adds its own way (beside a domain or a
+   * tailnet) instead of writing public-url, and turning it off takes only that way out.
+   */
+  ways?: { add(url: string): void; remove(url: string): void };
   /** The guided setup's task and its Go card (core wires them to the runner and the Log). */
   setup?: SetupDeps;
   log?: (m: string) => void;
@@ -252,7 +258,8 @@ export interface SetupDeps {
   /** The command the task's agent types to reach this home ("ducter --port 7777"). */
   cli(): string;
   homeName(): string;
-  zh(): boolean;
+  /** The conversation's language (D292): the task's reports; its title through the fallback chain. */
+  lang(): LangTag;
   /** A QR code's rows for the sign-in link (devices.ts qrRows). */
   qr?(text: string): string[];
 }
@@ -308,7 +315,7 @@ export function createAnywhere(o: AnywhereOptions): AnywhereCtl {
   const persist = () => saved && writeSaved(o.dataDir, saved);
   const fresh = (): Saved => ({ on: false, check: randomBytes(16).toString("hex"), port: port() });
   const url = () => (saved?.hostname ? `https://${saved.hostname}` : undefined);
-  const zh = () => o.setup?.zh() ?? false;
+  const lang = (): LangTag => o.setup?.lang() ?? "en";
 
   /** Ours: the address in public-url is the one this home wrote for its tunnel. */
   const ownOther = () => {
@@ -563,7 +570,10 @@ export function createAnywhere(o: AnywhereOptions): AnywhereCtl {
     // The home's public address: where `ducter domain` writes it, so pairing codes carry it.
     const u = url()!;
     const own = o.own?.();
-    if (!own || own === saved.wrotePublic) {
+    if (o.ways) {
+      o.ways.add(u);
+      saved.wrotePublic = u;
+    } else if (!own || own === saved.wrotePublic) {
       writeFileSync(publicFile(o.dataDir), u + "\n");
       saved.wrotePublic = u;
     }
@@ -688,7 +698,8 @@ export function createAnywhere(o: AnywhereOptions): AnywhereCtl {
         delete saved.since;
         delete saved.setup;
         // The address goes with it, unless the person put another one there meanwhile.
-        if (saved.wrotePublic && o.own?.() === saved.wrotePublic && !env.DUCTER_PUBLIC_URL) rmSync(publicFile(o.dataDir), { force: true });
+        if (saved.wrotePublic && o.ways) o.ways.remove(saved.wrotePublic);
+        else if (saved.wrotePublic && o.own?.() === saved.wrotePublic && !env.DUCTER_PUBLIC_URL) rmSync(publicFile(o.dataDir), { force: true });
         delete saved.wrotePublic;
         persist();
       }
@@ -724,9 +735,9 @@ export function createAnywhere(o: AnywhereOptions): AnywhereCtl {
       // Again after a stop: what is done stays done (the sign-in, the tunnel), the rest starts over.
       for (const id of STEPS) if (s.steps[id]?.state !== "done") delete s.steps[id];
       delete s.asked;
-      const z = zh();
+      const l = lang();
       const taskId = await o.setup
-        .openTask(setupBrief({ cli: o.setup.cli(), device: o.setup.homeName(), zh: z }), z ? `让 ${o.setup.homeName()} 能从外面连` : `Make ${o.setup.homeName()} reachable from outside`)
+        .openTask(setupBrief({ cli: o.setup.cli(), device: o.setup.homeName(), lang: l }), fill(words(SETUP_TITLE, l), { device: o.setup.homeName() }))
         .catch((e) => (log(`couldn't open the setup task: ${(e as Error).message}`), undefined));
       if (!taskId) {
         if (!Object.keys(s.steps).length && !s.taskId) delete saved.setup;
@@ -792,10 +803,13 @@ const slug = (s: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 24) || "home";
 
+/** The setup task's title (D292: zh and en; any other language falls back, ko → en). */
+const SETUP_TITLE = { zh: "让 {device} 能从外面连", en: "Make {device} reachable from outside" };
+
 /** D228: the brief of the task that sets up From outside with the person's own domain. */
-export function setupBrief(o: { cli: string; device: string; zh: boolean }): string {
+export function setupBrief(o: { cli: string; device: string; lang: LangTag }): string {
   const step = (s: string) => `\`${o.cli} anywhere step ${s} --json\``;
-  const lang = o.zh ? "Write every report in Chinese (简体中文), in plain words a person who has never heard of a tunnel understands." : "Write every report in English, in plain words a person who has never heard of a tunnel understands.";
+  const lang = `Write every report in ${langName(o.lang)}, in plain words a person who has never heard of a tunnel understands.`;
   return `Make this computer (${o.device}) reachable from outside at the user's own domain, through their own Cloudflare account. The user tapped "Set it up for me" for this. Ducter does each step with Cloudflare's own program (cloudflared) and shows its progress on the card; you run the steps, read what each answers, and talk to the user only when it matters.
 
 The steps (each prints one JSON line: state done | waiting | failed, and "next", which says what to do; one can take up to two minutes, so give each command a timeout of at least 3 minutes):

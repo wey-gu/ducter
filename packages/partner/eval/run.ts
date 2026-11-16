@@ -20,7 +20,8 @@ import { startCore, type Core } from "../../core/src/index.ts";
 import { writeDotsFacts } from "./noticed-facts.ts";
 import { logUserMessage } from "../../core/src/reply.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
-import { buildSystemPrompt, createNmemBridge, createPartner, isChinese } from "../src/index.ts";
+import { buildSystemPrompt, createNmemBridge, createPartner } from "../src/index.ts";
+import { inLanguage, langName } from "../../protocol/src/lang.ts";
 import { scenarios, type Expect, type Scenario, type Step } from "./scenarios.ts";
 import { fakeMemory } from "../test/fakes.ts";
 import { fakeTuwa } from "../../core/test/fake-tuwa.ts";
@@ -578,8 +579,8 @@ function check(r: RunResult): string[] {
   // Global: language, 你 not 您.
   for (const v of r.visible) {
     if (v.kind === "waiter") continue;
-    if (r.sc.lang === "zh" && !isChinese(v.text)) fails.push(`not Chinese: "${clip(v.text)}"`);
-    if (r.sc.lang === "en" && CJK.test(v.text)) fails.push(`not English: "${clip(v.text)}"`);
+    // D292: any language, by script and (inside Latin) by its words; English also never has CJK.
+    if (!inLanguage(v.text, r.sc.lang) || (r.sc.lang === "en" && CJK.test(v.text))) fails.push(`not ${r.sc.lang}: "${clip(v.text)}"`);
     if (r.sc.lang === "zh" && /您/.test(v.text)) fails.push("uses 您");
     if (e.maxChars && v.kind !== "decision" && [...v.text].length > e.maxChars) fails.push(`too long (${[...v.text].length} > ${e.maxChars} chars)`);
   }
@@ -720,7 +721,7 @@ Grade ONLY against the scenario rubric and these rules. Be strict but not pedant
 Think it through in "reason" first, then decide. Answer with one JSON object and nothing else: {"reason": "<one or two short sentences>", "pass": true|false}`;
 
 async function judge(r: RunResult, cwd: string): Promise<{ pass: boolean; reason: string; cost: number }> {
-  const prompt = `Scenario: ${r.sc.id} (user language: ${r.sc.lang === "zh" ? "Chinese" : "English"}; partner's name: ${r.sc.persona?.name ?? "Ducter"})\n\nRubric: ${r.sc.rubric}\n\nWhat happened (lines in [brackets] are what the partner did; only ack lines, messages and decision cards are visible to the user):\n${r.transcript}\n\nNote: silence (no message) is a valid output where the rubric allows it. For a decision card only its "question text" is prose written by the partner; the (field …) part is structured data the app turns into buttons and a default line.`;
+  const prompt = `Scenario: ${r.sc.id} (user language: ${langName(r.sc.lang)}; partner's name: ${r.sc.persona?.name ?? "Ducter"})\n\nRubric: ${r.sc.rubric}\n\nWhat happened (lines in [brackets] are what the partner did; only ack lines, messages and decision cards are visible to the user):\n${r.transcript}\n\nNote: silence (no message) is a valid output where the rubric allows it. For a decision card only its "question text" is prose written by the partner; the (field …) part is structured data the app turns into buttons and a default line.`;
   for (let attempt = 0; attempt < 2; attempt++) {
     const proc = Bun.spawn(
       ["claude", "-p", prompt, "--model", JUDGE, "--system-prompt", JUDGE_SYSTEM, "--strict-mcp-config", "--setting-sources", "", "--tools", "", "--no-session-persistence", "--output-format", "json"],

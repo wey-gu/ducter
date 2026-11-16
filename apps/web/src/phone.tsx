@@ -6,7 +6,7 @@ import type { CallPlan, CallView, ConnectionView, OwnPhoneView, SignInView } fro
 import { callEnded, prettyNumber, TUWA_MCP } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn, Chev, DangerButton, RowSwitch, Seg } from "./controls.tsx";
+import { Btn, Chev, DangerButton, Seg, Switch } from "./controls.tsx";
 import type { DecisionState } from "./store.ts";
 import { DIAL, dialHere, dialOn, dialsHere } from "./handset.tsx";
 import { dialers } from "./own-phone.tsx";
@@ -20,10 +20,10 @@ const money = (n: number) => `$${n.toFixed(2)}`;
 function when(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
-  const hm = d.toLocaleTimeString(A.L.lang === "zh" ? "zh-CN" : "en-US", { hour: "numeric", minute: "2-digit" });
+  const hm = A.L.date(d, { hour: "numeric", minute: "2-digit" });
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toDateString() === d.toDateString();
   const today = now.toDateString() === d.toDateString();
-  return today ? hm : tomorrow ? t("call.tomorrow", hm) : `${d.toLocaleDateString(A.L.lang === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" })} ${hm}`;
+  return today ? hm : tomorrow ? t("call.tomorrow", hm) : `${A.L.date(d, { month: "short", day: "numeric" })} ${hm}`;
 }
 
 const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
@@ -538,7 +538,7 @@ export function PhoneCard({ c }: { c: ConnectionView }) {
       {v?.enrolled ? (
         // D296: a row on the text column like every other, its switch at the right edge.
         <GRow title={t("call.voice.use")} line={t("call.voice.use.help")}>
-          <RowSwitch label={t("call.voice.use")} on={v.on} onChange={(on) => A.phoneVoice(on ? "on" : "off")} />
+          <Switch label={t("call.voice.use")} on={v.on} onChange={(on) => A.phoneVoice(on ? "on" : "off")} />
         </GRow>
       ) : (
         <GRow title={t("call.voice.title")} line={t("call.voice.none")}>

@@ -2,7 +2,8 @@
 // Go (the default: the user stated the intent) moves what can move to a computer that stays awake,
 // from its saved progress; what can only run there (a folder, a Mac app, the user's Chrome when
 // nothing else has it) stays and continues when it wakes. Nothing moves toward more access.
-import type { Bodies, ClosingPlan, LogEvent } from "@ducter/protocol";
+import type { Bodies, ClosingPlan, LangTag, LogEvent } from "@ducter/protocol";
+import { fill, words as wordsIn } from "@ducter/protocol";
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Loadout } from "./loadout.ts";
 import type { CoreRegistry } from "./registry.ts";
@@ -13,11 +14,17 @@ export const CLOSING_DEFAULT_MS = 90_000;
 
 const ACTIVE = new Set(["working", "queued", "needs_you", "blocked"]);
 
+// The card's words (D292: zh and en; any other language falls back, ko → en).
+const W = {
+  zh: { quote: "「{t}」", list: "", moved: "合上之前：{moved}转到 {dst} 上接着做", stay: "{stay}只能在 {name} 上做，醒了接着", join: "；", end: "。", go: "转移" },
+  en: { quote: '"{t}"', list: ", ", moved: "Before you close it: {moved} move to {dst} and carry on", stay: "{stay} can only run on {name} and continue when it wakes", join: "; ", end: ".", go: "Move them" },
+};
+
 export interface Closing {
   /** What would move where, and what stays, for one computer (by id or name). */
   plan(device: string): Promise<ClosingPlan | undefined>;
   /** Asks the one decision (or says there's nothing to move). */
-  ask(device: string, zh: boolean): Promise<{ ok: true; decisionId?: string; none?: boolean; plan?: ClosingPlan } | { ok: false; message: string }>;
+  ask(device: string, lang: LangTag): Promise<{ ok: true; decisionId?: string; none?: boolean; plan?: ClosingPlan } | { ok: false; message: string }>;
   stop(): void;
 }
 
@@ -48,13 +55,13 @@ export function createClosing(o: { log: LogStore; tasks: CoreRegistry; loadout: 
     return out;
   }
 
-  const words = (p: ClosingPlan, zh: boolean) => {
-    const q = (t: string) => (zh ? `「${t}」` : `"${t}"`);
-    const moved = p.moves.map((m) => q(m.title)).join(zh ? "" : ", ");
-    const stay = p.stays.map((s) => q(s.title)).join(zh ? "" : ", ");
+  const words = (p: ClosingPlan, lang: LangTag) => {
+    const w = wordsIn(W, lang);
+    const q = (t: string) => fill(w.quote, { t });
+    const moved = p.moves.map((m) => q(m.title)).join(w.list);
+    const stay = p.stays.map((s) => q(s.title)).join(w.list);
     const dst = p.moves[0]?.toName ?? "";
-    if (zh) return [moved && `合上之前：${moved}转到 ${dst} 上接着做`, stay && `${stay}只能在 ${p.name} 上做，醒了接着`].filter(Boolean).join("；") + "。";
-    return [moved && `Before you close it: ${moved} move to ${dst} and carry on`, stay && `${stay} can only run on ${p.name} and continue when it wakes`].filter(Boolean).join("; ") + ".";
+    return [moved && fill(w.moved, { moved, dst }), stay && fill(w.stay, { stay, name: p.name })].filter(Boolean).join(w.join) + w.end;
   };
 
   // Go (by the user, or the default) moves them, each from its saved progress (E3).
@@ -74,7 +81,7 @@ export function createClosing(o: { log: LogStore; tasks: CoreRegistry; loadout: 
 
   return {
     plan,
-    async ask(device, zh) {
+    async ask(device, lang) {
       const p = await plan(device);
       if (!p) return { ok: false, message: `No computer called ${device}.` };
       if (!p.moves.length && !p.stays.length) return { ok: true, none: true, plan: p };
@@ -82,8 +89,8 @@ export function createClosing(o: { log: LogStore; tasks: CoreRegistry; loadout: 
       const movable = p.moves.length > 0;
       const body: Bodies["decision"] = {
         decisionId,
-        question: words(p, zh),
-        goLabel: zh ? "转移" : "Move them",
+        question: words(p, lang),
+        goLabel: wordsIn(W, lang).go,
         // Nothing to move (all of it can only run there): no default, it just says so.
         defaultOption: movable ? "go" : "hold",
         reversible: movable,
@@ -98,14 +105,14 @@ export function createClosing(o: { log: LogStore; tasks: CoreRegistry; loadout: 
 }
 
 /** The partner's way in: the user said 我要合电脑了 (or "I'm closing my laptop"). */
-export function registerClosingTool(mcp: CoreMcpHub, closing: Closing, zh: () => boolean) {
+export function registerClosingTool(mcp: CoreMcpHub, closing: Closing, lang: () => LangTag) {
   mcp.register(
     "partner",
     "move_before_closing",
     "The user is about to close (or sleep) one of their computers: \"我要合电脑了\", \"I'm closing my laptop\". Ducter puts one card up for that computer: what moves to a computer that stays awake (the default, from saved progress), and what can only run there and waits. Call it with the computer's name from the [devices] line, then say nothing more about it unless the result says there's nothing running there.",
     { type: "object", properties: { device: { type: "string", description: "The computer's name (\"MacBook\")" } }, required: ["device"] },
     async (a: { device?: unknown }) => {
-      const r = await closing.ask(String(a.device ?? ""), zh());
+      const r = await closing.ask(String(a.device ?? ""), lang());
       if (!r.ok) return { ok: false, error: r.message };
       if (r.none) return { ok: true, note: `Nothing is running on ${r.plan?.name ?? a.device}: tell the user in one short line that they can close it.` };
       return { ok: true, note: "The card is up. Don't repeat it.", moves: r.plan?.moves.length ?? 0, stays: r.plan?.stays.length ?? 0 };

@@ -98,5 +98,10 @@ describe("writeReport", () => {
     const long = issueUrl("x".repeat(20_000), doctor, "zh");
     expect(long.length).toBeLessThanOrEqual(MAX_ISSUE_URL);
     expect(decodeURIComponent(new URL(long).searchParams.get("body")!)).toContain("桌面");
+    // D292: a Korean terminal gets the English issue, a zh-Hant one the Chinese.
+    const ko = new URL(issueUrl("v", doctor, "ko"));
+    expect(ko.searchParams.get("title")).toBe("Problem: ");
+    expect(ko.searchParams.get("body")).toContain("## What happened");
+    expect(new URL(issueUrl("v", doctor, "zh-Hant")).searchParams.get("title")).toBe("问题：");
   });
 });

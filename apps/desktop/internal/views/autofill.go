@@ -258,7 +258,7 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 		} else {
 			ph := "4242 4242 4242 4242"
 			if x != nil {
-				ph = "•••• " + x.Last4 + " · " + keep
+				ph = a.L.T("af.keep.with", "•••• "+x.Last4) // D296: a phrase
 			}
 			a.afInput(c, "number", a.L.T("af.card.number"), &s.number, ph, false)
 			a.afInput(c, "exp", a.L.T("af.card.exp"), &s.exp, "08/29", false)
@@ -320,7 +320,7 @@ func (a *App) afDetails(c *ui.Context, details []protocol.DetailView) {
 				if ph == "" {
 					ph = "••••"
 				}
-				ph += " · " + a.L.T("af.keep")
+				ph = a.L.T("af.keep.with", ph)
 			}
 			a.afInput(c, "d:"+k, a.L.T("af.d."+k), &v, ph, false)
 			s.details[k] = v

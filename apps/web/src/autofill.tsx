@@ -73,7 +73,7 @@ function CardForm({ item, done }: { item?: SavedView; done: () => void }) {
   const save = () => m && A.savedPut({ kind: "card", ...(item ? { id: item.id } : {}), name, ...(num ? { number: num } : {}), expMonth: Number(m[1]), expYear: Number(m[2]) }, done);
   return (
     <div class="acct-form af-form">
-      <Field id="af-num" label={t("af.card.number")} value={num} onInput={setNum} mode="numeric" auto="off" placeholder={item ? `•••• ${item.last4} · ${t("af.keep")}` : "4242 4242 4242 4242"} />
+      <Field id="af-num" label={t("af.card.number")} value={num} onInput={setNum} mode="numeric" auto="off" placeholder={item ? t("af.keep.with", `•••• ${item.last4}`) : "4242 4242 4242 4242"} />
       <div class="af-pair">
         <Field id="af-exp" label={t("af.card.exp")} value={exp} onInput={setExp} mode="numeric" placeholder="08/29" wrong={!!exp && !m} />
         <Field id="af-name" label={t("af.card.name")} value={name} onInput={setName} />
@@ -102,7 +102,7 @@ function KeyForm({ item, done }: { item?: KeyView; done: () => void }) {
     <div class="acct-form af-form">
       <Field id="af-key-name" label={t("af.key.name")} value={name} onInput={setName} placeholder={t("af.key.name.eg")} />
       <Field id="af-key-env" label={t("af.key.env")} value={env} onInput={(v) => setEnv(v.toUpperCase().replace(/[^A-Z0-9_]/g, "_"))} placeholder="DO_TOKEN" wrong={!!env && !envOk} />
-      <Field id="af-key-value" label={t("af.key.value")} value={value} onInput={setValue} type="password" auto="off" placeholder={item ? `${item.hint ?? t("af.key.kept")} · ${t("af.keep")}` : ""} />
+      <Field id="af-key-value" label={t("af.key.value")} value={value} onInput={setValue} type="password" auto="off" placeholder={item ? t("af.keep.with", item.hint ?? t("af.key.kept")) : ""} />
       <AfError />
       <div class="row">
         {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.name} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.name} onClick={() => setSure(true)} />)}
@@ -148,7 +148,7 @@ function DetailsForm({ details, done }: { details: DetailView[]; done: () => voi
         const priv = DETAIL_CLASS[k] === "fill";
         return (
           <div key={k}>
-            <Field id={`af-${k}`} label={t(`af.d.${k}`)} value={vals[k] ?? ""} onInput={(v) => setVals({ ...vals, [k]: v })} mode={k === "email" ? "email" : k === "phone" ? "tel" : "text"} placeholder={priv && d?.kept && !cleared.has(k) ? `${d.hint ?? "••••"} · ${t("af.keep")}` : t(`af.d.${k}.eg`)} />
+            <Field id={`af-${k}`} label={t(`af.d.${k}`)} value={vals[k] ?? ""} onInput={(v) => setVals({ ...vals, [k]: v })} mode={k === "email" ? "email" : k === "phone" ? "tel" : "text"} placeholder={priv && d?.kept && !cleared.has(k) ? t("af.keep.with", d.hint ?? "••••") : t(`af.d.${k}.eg`)} />
             {priv && d?.kept && !cleared.has(k) && (
               <button type="button" class="qlink af-clear" onClick={() => setCleared(new Set([...cleared, k]))}>
                 {t("af.d.clear")}
@@ -446,7 +446,7 @@ export function fillTitle(f: FillAsk): string {
   if (f.kind === "signin") return t("fill.title.signin", f.site);
   const key = f.handle.replace(/^me\./, "");
   const label = `af.d.${key}` in TABLES[A.L.lang] ? t(`af.d.${key}`) : f.label;
-  return t("fill.title.detail", f.site, A.L.lang === "en" ? label.toLowerCase() : label);
+  return t("fill.title.detail", f.site, A.L.style.cased ? label.toLowerCase() : label);
 }
 
 /** 第一次在 {site} 用 / First use on a site: OK or Not now. */

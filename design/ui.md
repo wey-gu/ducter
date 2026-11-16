@@ -472,7 +472,7 @@ A new control is added to the set (and to this table) before it is used.
 | A destructive action before it is confirmed (停用 OOMOL, 断开 Tuwa, 断开 Telegram; D289): quiet text, the failed ink only under the pointer; it asks in place, and the confirmation is `dangerText` | `quietDanger` (`settings_rows.go`; the ask is `confirmRow`) | `DangerButton` with `quiet` |
 | A row that opens more under it, a switch apart at its right edge (a source's service, a setup's step; D289) | `openRow` (`settings_rows.go`) | `OpenRow` |
 | A row that goes elsewhere with its tile in the tile column (AI accounts → Devices with the agents' coins; D296) | `tileLinkRow` (`settings_rows.go`) | the phone's Settings list rows |
-| A switch alone at a row's right edge, the row saying what it is (用我的声音打; D296) | `switchControl` in `tileRow` | `RowSwitch` |
+| The one switch alone at a row's right edge, its words the row's own (Memory's head row, D295; 用我的声音打, D296) | `switchControl` inside the row's control | `Switch` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 
 ## Places (D71)
@@ -542,13 +542,14 @@ One vocabulary on every tab:
   hel 上，用 Codex 想事情"; with a model, "用 Claude Code 的 Opus 想事情", D296), then the tray titled **{device} 上的 AI agent**, What it thinks with
   (the clay well holding the token; the token flies into it on Switch), Who does the tasks, How it
   talks, On its own or asks you first (two lists side by side in one card). Single column; the faces strip is gone.
-- **Memory** (D257; its mark the partner's own blue notebook, drawn in clay from `--notebook-*` / `Tokens.Notebook`):
-  a raised clay hero (the partner's face for where memory stands at 112 on the Mac, 84 on the phone; one 24/20
-  title; one sentence; the switch under a hairline), an update card in the highlight (title LG/MD 800, one line,
-  the ink **更新** at its end; the working colour while it runs; it rises in with the spring), **它记下的** grouped by
-  when (XS 700 muted day labels; each line an 8 pt accent pebble on its ledge, the title MD 600, its age XS;
-  hairlines start past the pebble; the door to Mem last), then the **Nowledge Mem** card (where · version in mono ·
-  a green **已连上** pill). No Mem: no switch; one gentle line and **了解 Nowledge Mem** (D169).
+- **Memory** (D257; D295 on D289's grid; its mark the partner's own blue notebook, drawn in clay from `--notebook-*` / `Tokens.Notebook`):
+  one group (the notebook in the tile column, **{name} 记得你**, **这周新记了 N 条** in the done ink, the switch at
+  the right edge, its foot what the switch does); **这周记下的** and **更早记下的** as sections (an accent pebble
+  in the tile column, the title, its age, a quiet **忘掉** that asks in place; the last foot Mem's count and
+  **去 Nowledge Mem 看**); **你别的 AI 记下的** (the tool's coin or letter, the title, **{tool} 记的**, its age at
+  the right; read-only); **Nowledge Mem** as one group (its letter on a notebook-blue pebble, **已连上**, **记在哪儿**,
+  **它的名字**, an update as a row, the raw facts behind **详情**, the version as the foot). Before Mem: the partner
+  small on the paper (an empty state), then one group with the two setup steps. `design/memory.md`.
 - **Chat apps / 聊天软件** (D276; D283): its rail mark is clay art like its neighbours, two puffy
   clay speech bubbles, a cream one behind and a sky one in front with three ink dots
   (`set_chats`, made like `set_autofill`: `design/art/assets/batch_chats.json`, cut with
@@ -559,9 +560,11 @@ One vocabulary on every tab:
   the tile column and one 15 sentence on the text column, with a mono chip, a quiet link or a field
   (label 13/700 over a white input with a hairline) under it; the last line is the privacy note
   (13 muted) and the group's one button at the right edge. `design/channels.md` §6.
-- **Connected AI agents / 连上的 AI agent** (D257, named by D273; two of the person's agents' coins): the tab's
-  lede, then one card (the connection, who can reach it), then the learned rules and the muted in their own card.
-  Shown once it means something (J6).
+- **Connected AI agents / 连上的 AI agent** (D257, named by D273; D295 on D289's grid; two of the person's agents'
+  coins): the lede, then one group (two coins in the tile column; **你的 AI agent 能找到 {name}** · **已连上**; **它的身份**,
+  **在哪儿** in plain words; **谁能找到 {name}** with its choice under its words; the foot's quiet **详情** (the raw
+  identity and space id) and quiet **断开** asking in place), then **它记住的规矩** as a section. Shown once it means
+  something (J6).
 - **Look and sound** opens on a preview stage: the partner, one message of yours and its answer
   in this window's language, and Details folded or shown as set. The partner smiles (its done
   face, cross-faded) for 1.6 s after any choice there, and while **试听 / Play** plays the
@@ -591,6 +594,15 @@ tray tokens that can go in (the others step back and say why: Install first, Pic
 first, Coming later), a tap flies the token into the socket with the equip's lift → arc →
 tock (`research/26`; reduced motion: a cross-fade), then one line: "{name} thinks with {agent}
 now". Nothing blinks; only the partner breathes.
+
+**Languages (D292).** The interface language is a BCP 47 tag resolved to a table through a
+fallback chain (zh-TW → zh-Hant → zh → en; ko → en), so a system set to Korean shows English words,
+never a key; only zh and en have tables and only they are offered. A task's report, summary and
+proof labels are shown against that task's own language (then the conversation's), never the
+interface's alone. Every bubble with the person's or the partner's words carries `dir="auto"`, and
+list indents use logical properties, so Arabic and Hebrew read right to left in a left-to-right
+app. The reply-language choice lists languages by their own names (한국어, Español), never
+translated.
 
 **Choices** (talk language, interface language, the default wait) are a segmented clay control
 (D76): a sunken track (`#F3E6D3`, radius 16, 4pt inset), the chosen one a white surface on a 2pt

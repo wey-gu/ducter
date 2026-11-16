@@ -34,7 +34,19 @@ export async function nativeCall<T>(m: { t: string } & Record<string, unknown>):
 export const haptic = (kind: "light" | "success" | "warning") => void nativeCall({ t: "haptic", kind });
 
 /** Hands the app what its notification buttons need (the token goes to the Keychain). */
-export const tellApp = (d: { token?: string; base: string; locale: "zh" | "en"; personaName?: string }) => void nativeCall({ t: "hello", ...d });
+export const tellApp = (d: { token?: string; base: string; locale: import("@ducter/protocol/src/lang.ts").LangTag; personaName?: string; deviceId?: string; name?: string }) => void nativeCall({ t: "hello", ...d });
+
+/**
+ * D293: the ways to reach the home and its key, for the iPhone and Android apps: they keep them
+ * and open the home at the best way that proves it is the home, without pairing again.
+ */
+export const tellWays = (w: { ways: unknown[]; key?: string; fp?: string }) => void nativeCall({ t: "ways", ...w });
+
+/**
+ * D293: the app opened this page at another of the home's addresses: this origin's storage is
+ * empty, so the device record comes from the app (it kept it in the Keychain or its own storage).
+ */
+export const deviceFromApp = () => nativeCall<{ token?: string; deviceId?: string; name?: string; personaName?: string }>({ t: "device" });
 
 /** D209: whether the home answered. The apps open the page from their cache, so a home they can't
  *  reach no longer fails the page's load: the page says so, and the app shows its can't-reach screen

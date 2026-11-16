@@ -184,6 +184,9 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
             if let token = m["token"] as? String, !token.isEmpty { Keychain.token = token }
             if let l = m["locale"] as? String { AppState.shared.locale = l }
             if let n = m["personaName"] as? String, !n.isEmpty, n != AppState.shared.personaName { AppState.shared.personaName = n }
+            // D293: what a page at another of the home's addresses needs to be this same device.
+            if let d = m["deviceId"] as? String, !d.isEmpty { AppState.shared.deviceId = d }
+            if let n = m["name"] as? String, !n.isEmpty { AppState.shared.deviceName = n }
             // Notifications were on before: make sure the main has this phone's current token.
             if AppState.shared.pushOn, let tok = AppState.shared.apnsToken { await API.subscribe(token: tok) }
             // D200: the page is up and paired; is its home older than this app?
@@ -197,6 +200,20 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
                 withAnimation(.easeOut(duration: 0.25)) { phase = .unreachable }
             }
             return (nil, nil)
+        case "ways":
+            // D293: the home's ways and key; the fingerprint is kept from the first one (or the link).
+            if let list = m["ways"] as? [[String: Any]] {
+                AppState.shared.ways = list.compactMap { w in
+                    guard let k = w["kind"] as? String, let u = w["url"] as? String else { return nil }
+                    return Way(kind: k, url: u, primary: w["primary"] as? Bool)
+                }
+            }
+            if AppState.shared.fp == nil, let fp = m["fp"] as? String, !fp.isEmpty { AppState.shared.fp = fp }
+            return (nil, nil)
+        case "device":
+            // D293: the page opened at another of the home's addresses has empty storage.
+            guard let tok = Keychain.token, let id = AppState.shared.deviceId else { return ([:], nil) }
+            return (["token": tok, "deviceId": id, "name": AppState.shared.deviceName ?? "", "personaName": AppState.shared.personaName], nil)
         case "log":
             NSLog("[ducter page] %@: %@", m["k"] as? String ?? "", m["m"] as? String ?? "")
             return (nil, nil)

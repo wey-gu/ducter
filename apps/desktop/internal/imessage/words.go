@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 )
 
 // What the bridge itself says in iMessage, in the language of the app
@@ -21,12 +23,9 @@ var words = map[string][2]string{ // zh, en
 	"did.hold":  {"好，先放着。", "OK, holding it."},
 }
 
-func say(lang, key string, args ...any) string {
+func say(tag, key string, args ...any) string {
 	w := words[key]
-	s := w[0]
-	if lang == "en" {
-		s = w[1]
-	}
+	s := lang.Words(map[string]string{"zh": w[0], "en": w[1]}, tag)
 	if len(args) > 0 {
 		return fmt.Sprintf(s, args...)
 	}

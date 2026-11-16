@@ -436,13 +436,13 @@ export function OpenRow(p: { tile: ComponentChildren; title: string; line?: stri
         </span>
       </button>
       {p.state && <span class={`g-state${p.state.tone ? ` tone-${p.state.tone}` : ""}`}>{p.state.text}</span>}
-      {p.sw && <RowSwitch label={p.sw.label} on={p.sw.on} onChange={p.sw.onChange} />}
+      {p.sw && <Switch label={p.sw.label} on={p.sw.on} onChange={p.sw.onChange} />}
     </div>
   );
 }
 
-/** D296: a switch alone at a row's right edge (the row says what it is): the Mac's `switchControl` in a `tileRow`. */
-export function RowSwitch(p: { label: string; on: boolean; onChange: (v: boolean) => void }) {
+/** The one switch alone at a row's right edge, its words being the row's own (D289, D295). */
+export function Switch(p: { label: string; on: boolean; onChange: (v: boolean) => void }) {
   return (
     <label class="switch bare">
       <input type="checkbox" role="switch" aria-label={p.label} checked={p.on} onChange={(e) => p.onChange((e.target as HTMLInputElement).checked)} />

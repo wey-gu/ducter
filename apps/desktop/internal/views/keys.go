@@ -86,7 +86,7 @@ func (a *App) keyForm(c *ui.Context, x *protocol.KeyView) {
 			if ph == "" {
 				ph = a.L.T("af.key.kept")
 			}
-			ph += " · " + a.L.T("af.keep")
+			ph = a.L.T("af.keep.with", ph) // D296: a phrase
 		}
 		a.afInput(c, "key-value", a.L.T("af.key.value"), &s.password, ph, true)
 		ok := keyEnvRe.MatchString(s.keyEnv) && (x != nil || strings.TrimSpace(s.password) != "")

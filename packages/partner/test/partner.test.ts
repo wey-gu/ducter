@@ -199,7 +199,7 @@ describe("results in the user's language (D154)", () => {
     await s.partner.idle();
     const input = s.fr.sessions[0]!.inputs[1]!;
     expect(input).toContain(REPORT); // the partner reads the task's words…
-    expect(input).toContain("[language] The user speaks Chinese: reply in Chinese (中文). A task's report above is its own words");
+    expect(input).toContain("[language] The user speaks Chinese (简体中文): reply in Chinese (简体中文). A task's report above is its own words");
     expect(input).toContain("never paste");
     const said = s.channel().filter((e) => e.kind === "ai_msg").map((e) => e.body as Bodies["ai_msg"]);
     expect(said.map((b) => b.text)).toEqual(["Mem 连上了，检查都过了。"]); // …and the user reads the partner's
@@ -215,7 +215,7 @@ describe("results in the user's language (D154)", () => {
     const said = s.channel().filter((e) => e.kind === "ai_msg").map((e) => e.body as Bodies["ai_msg"]);
     expect(said.map((b) => b.text)).toEqual(["Mem 连上了：命令行和 Codex 插件都装好了，检查全过。"]);
     expect(said[0]!.replyTo).toBe(u.seq); // still the answer to the ask, so its chips sit under it
-    expect(s.fr.sessions[0]!.inputs[2]).toContain("The user reads Chinese. Say it again now in Chinese (中文)");
+    expect(s.fr.sessions[0]!.inputs[2]).toContain("The user reads Chinese (简体中文). Say it again now in Chinese (简体中文)");
   });
 
   test("never a loop: the second try stands even if it is still in English", async () => {
@@ -234,7 +234,7 @@ describe("results in the user's language (D154)", () => {
     await s.partner.idle();
     report(s);
     await s.partner.idle();
-    expect(s.fr.sessions[0]!.inputs[1]).toContain("[language] The user's last message was in English: reply in English. A task's report above is its own words");
+    expect(s.fr.sessions[0]!.inputs[1]).toContain("[language] The user speaks English: reply in English. A task's report above is its own words");
     expect(s.channel().filter((e) => e.kind === "ai_msg")).toHaveLength(1);
     expect(s.fr.sessions[0]!.inputs).toHaveLength(2);
   });
@@ -317,7 +317,7 @@ describe("turn loop", () => {
     expect(seed).toContain("you] 在做，还没报告。");
     expect(seed).toContain('<tasks>\nOpen:\n- t1 "Fix flaky test" · working · repo /x/foo');
     // the triggering message is the delta at the end, not in the background
-    expect(seed.trimEnd().split("\n").slice(-2)[0]).toBe("[user] 现在怎么样了？");
+    expect(seed.trimEnd().split("\n").slice(-3)[0]).toBe("[user] 现在怎么样了？");
     expect(seed.match(/现在怎么样了/g)!.length).toBe(1);
     expect(seed).not.toMatch(/reset|restart|new session|fresh session|lost|重置|重启|新会话/i);
     expect(partner.stats.freshStarts).toBe(2);

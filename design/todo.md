@@ -10,6 +10,21 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 (eval only) · the partner eval (`bun run eval:partner`) · art cutouts with true alpha
 (`design/art/assets/alpha/`, 22 assets, `design/art/assets/tools/cut.swift`).
 
+## Deep Nowledge Mem integration (D295, `memory.md`)
+
+- **Recall said quietly in the conversation:** when a reply leans on a memory, the reply's Details carry
+  **想起了 · {title}** with its source tool, tappable to forget. Trigger: the partner's recall can name the
+  memory ids it used (a partner tool change: D175's eval applies).
+- **What it learned this week, to correct:** inside the morning note once a week, the week's noted lines
+  with 忘掉. Trigger: the morning note (D250) reviewed by the author.
+- **Mem's health on Memory's head row:** a sign-in that expired or a link Mem refuses said there in the
+  failed ink with its one step. Trigger: `nmem doctor --json` gives a stable shape for it.
+- **Other tools' memories in task briefs:** the brief says what Claude Code or Codex saved is there to
+  recall (tasks already use the real Mem plugin, D168). Trigger: a task eval case where it would have helped.
+- **Cloud or local in one flow:** when the home has the Mem app and a Cloud sign-in is offered, one calm
+  choice. Trigger: a home where both exist (research first: what `nmem status` says then).
+- **Forget another tool's memory from Ducter:** read-only by default (D295). Trigger: the author asks.
+
 ## Past tasks and Ongoing (D285, `past.md`)
 
 - [ ] **The partner can search Past tasks** (a `past_search` tool beside `log_search`, so "continue last Tuesday's refactor" said in the conversation finds the card and offers 接着做). A tool change: run the D175 eval. Trigger: the author asks the partner for an old task by words.
@@ -75,7 +90,20 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **One real run on a tailnet-only server** (hel joined to a tailnet, no public port): `ducter tailscale` as root and as a non-operator user, the first certificate, then pairing, a WebSocket that stays up, a reconnect after `systemctl --user restart ducter`, and a push to the iPhone app, from a phone in the tailnet. Trigger: before the release that carries D265; so far only a fake `tailscale`.
 - [ ] **`ducter uninstall --all` turns Ducter's serve off** (as it takes the Caddy site away). Trigger: the first report of a stale serve after uninstall; today it forwards to nothing and `ducter tailscale --remove` clears it.
 - [ ] **The Mac app's own Tailscale path**: a home Mac in a tailnet offered `ducter tailscale` from Devices' From outside chip, beside the Cloudflare tunnel. Trigger: a Mac home user asks; the CLI already works on a Mac.
-- [ ] **A status probe per address on Devices** (up / degraded / down, with a reason). Trigger: the live run above.
+- [x] **A status probe per address on Devices**: up / can't reach / not checked per way, from the home's own check and the devices connected through it (D293). Still open: a reason per way (DNS, certificate, Tailscale off). Trigger: the live run above.
+
+**How the machines reach each other (D293, research/97)**
+- [ ] **Step 4: the same-network path** (research/97 §5.2 C): the home also listens on its LAN addresses with HTTPS from its own key, announces itself by DNS-SD with a signed record, and adds the `lan` way (reserved, nothing adds it yet); native clients and workers pin the key; together with D57's local token so loopback stops being special. Fixes the Mac home and the phone on the same Wi-Fi, and the mini beside it. Trigger: the next round after D293 is checked live, or the first person whose phone can't see a Mac home at home.
+- [ ] **Step 5: the Mac app's Tailscale chip** on top of the address book (with the todo above). Trigger: as above.
+- [ ] **One live run of D293**: a home with a tailnet and a domain (or a tunnel) side by side; a phone and a MacBook worker leaving and joining the tailnet; a MacBook worker closing its lid mid-task and opening it within 2 minutes (the same session carries on) and after (resumed by id); a Mac app that sleeps (睡着了 at once). Trigger: before the release that carries D293.
+- [ ] **Remove a way only when no device depends on it alone** ("2 devices still reach it only this way"), research/97 §5.2 A. Trigger: the first person stranded by `ducter domain --remove` or turning the tunnel off.
+- [ ] **A device that can't reach says which ways it tried and the one fix** ("turn Tailscale on"; "this phone isn't in your Tailscale network: use your domain"). Trigger: the live run above.
+- [ ] **Running sessions on a worker follow a switch for their tool calls**: a session's MCP address is fixed when it starts; after the worker moves to another way, a session started before still calls the old one. Trigger: a task whose tool calls fail after its worker moved.
+- [ ] **A CLI or Mac app paired before D293 learns the ways** only from a welcome (the Mac app) or by connecting again (the CLI); the CLI could keep them from its own sockets too. Trigger: a person whose CLI stays on an old address.
+- [ ] **Android before 13 follows the home** (no Ed25519 in the platform there): a small verifier in the app. Trigger: an Android 12 user who moves between networks.
+- [ ] **China** (research/97 §5.3): an entry in the book the person controls and that is reachable from China (their own domain on a Hong Kong or Japan server forwarding to the home, later a tiny relay of their own that forwards only end-to-end-encrypted frames: D39's Ducter Edge generalised); Android notifications through a UnifiedPush distributor that doesn't use FCM. Trigger: a person in mainland China whose home is abroad (or the reverse) asks.
+- [ ] **End-to-end frames for workers over a tunnel** (research/97 gap 7): a worker's frames and MCP calls pass Cloudflare in clear today; Devices says so on its card. Trigger: a worker that only reaches its home through a tunnel.
+- [ ] **Two homes in one app, and moving the home** (research/97 §5.4): the key makes both possible. Trigger: a person who asks.
 - [ ] **Funnel** (`tailscale funnel`, public) is not offered. Trigger: someone without a domain who wants a public address and not Cloudflare.
 
 **Verify for real**
@@ -1115,11 +1143,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## Nowledge Bridge (D105–D111, D162–D164, D170–D171, D205, D225, D249, `design/bridge.md`)
 
 - [x] Connect the persona in Only me (D205): connected 2026-11-13 by the author; the live trial ran (D249).
-- [ ] File B17 with the Nowledge team (research/66 §7; the draft text is ready): `open` names no sender and links
+- [x] File B17 with the Nowledge team (filed as nowledge-co/mem #10194; Cloud fixed by #10278, D294): `open` names no sender and links
       no reply; `contacts` lists an Agent with no registered mailbox; the 409's "previous unknown send" wording on
       a first send; native-session Agents all "Bridge agent". Trigger: the author's go.
-- [ ] When Mem names senders and links replies: drop D249 (5)'s maybe-answered rule, read the sender into
-      `agent`/`mine`, and make the live S2 check pass (5/5). Trigger: a newer nmem whose `open` has them.
+- [x] Read Mem #10278's `sender`, `in_reply_to` and `mailbox_available`, and retry Mem's "can't right now"
+      briefly (D294; over the fake's `presentation` shape).
+- [ ] Rerun `bridge:live -- --connected --real` and make the live S2 check pass (5/5); then drop D249 (5)'s
+      maybe-answered rule. Trigger: an nmem after 0.10.119 (the first to ask for #10278's representation), with
+      hel's Ducter stopped or 断开 for the trial (D258).
+- [ ] Post the five drafts in research/66 §8.4 (B17 release, local Bridge version, telling connections apart,
+      transient codes, native senders' names). Trigger: the author's go.
+- [ ] Local Bridge (Mem app or Vault): the live check on a Mem in local mode. Trigger: Mem names the version with
+      its local fixes (research/66 §8.3).
 - [ ] "%s 问你" (D273) puts a space before 问你 after a Chinese agent name ("Claude 收尾协调 问你"); join by D78's rule in the
       web, Mac and push templates. Trigger: the next touch of the asker card.
 - [ ] D273 in the words the partner model reads: `whoForModel` and the `ask`/`bridge_send` refusals still tell it
@@ -1522,3 +1557,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **The hero from places other than On hand's rows** (a task chip in the conversation, a
       notification's card, the rail beside an open task on the web). Trigger: after the review, if
       the row's hero reads well.
+- [ ] **Languages beyond the two tables (D292, research/99).** Left: (1) tables for the code's own
+      lines (acks the model didn't write, cards Ducter builds, pushes, words to other agents) in
+      at least ko, ja, zh-Hant, es: today they read English through the fallback chain; (2) a
+      zh-Hant interface table (today zh-Hant reads Simplified); (3) the inline zh/en branches still
+      in `packages/protocol/test/lang-guard.allow.json`, shrunk file by file; (4) real users of
+      each language, especially short Latin messages the stopword score is unsure of. Trigger: the
+      next non-Chinese, non-English user report, or the first interface table after zh/en.

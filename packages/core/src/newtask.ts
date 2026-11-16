@@ -5,7 +5,8 @@
 // hidden note ("the user opened this themselves") and reports the result like any task (D124).
 import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import type { AgentModels, Candidate, CloneReason, DucterFolderView, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
+import type { AgentModels, Candidate, CloneReason, DucterFolderView, LangTag, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
+import { detect, fill, words as wordsIn } from "@ducter/protocol";
 import { expandHome, type FolderInfo, type GitRun, realGit, repoBranches, repoRemote, repoTop } from "@ducter/protocol/src/folder-info.ts";
 import type { LogStore, Runner, SettingsApi, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { BODY_NOTE_PREFIX, type Loadout } from "./loadout.ts";
@@ -289,11 +290,13 @@ export interface NewTaskInput {
 export type NewTaskResult = { ok: true; card: TaskCard } | { ok: true; routine: RoutineView } | { ok: false; reason: NewTaskReason; message: string };
 
 /** D185: what the task is told first when it starts by waiting (its own wait_for, D112 (4)). */
-export function waitFirstBrief(condition: string, words: string, zh: boolean): string {
-  return zh
-    ? `先等到：${condition}\n然后：${words}\n\n（等的时候用 wait_for 和一个检查来等，别自己轮询；等到了会叫醒你。）`
-    : `First wait until: ${condition}\nThen: ${words}\n\n(Wait with wait_for and a check, never by polling yourself; you are woken when it holds.)`;
+export function waitFirstBrief(condition: string, words: string, lang: LangTag): string {
+  return fill(wordsIn(WAIT_FIRST, lang), { condition, words });
 }
+const WAIT_FIRST = {
+  zh: "先等到：{condition}\n然后：{words}\n\n（等的时候用 wait_for 和一个检查来等，别自己轮询；等到了会叫醒你。）",
+  en: "First wait until: {condition}\nThen: {words}\n\n(Wait with wait_for and a check, never by polling yourself; you are woken when it holds.)",
+};
 
 /** D185: a when of the card as a routine's time trigger (at and every), else undefined. */
 export function triggerOf(when: NewTaskWhen | undefined): Extract<RoutineTrigger, { kind: "time" }> | undefined {
@@ -346,11 +349,11 @@ export function titleFromWords(words: string, max = TITLE_WIDTH): string {
   return head.replace(/[，,;；:：、\s]+$/, "") + "…";
 }
 
-/** The language the task reports in: the partner's setting, else the words themselves. */
-export function languageOf(words: string, settings?: SettingsApi): "zh" | "en" {
+/** The language the task reports in (D292): the partner's setting, else the words themselves, else English. */
+export function languageOf(words: string, settings?: SettingsApi): LangTag {
   const l = settings?.get().language;
-  if (l === "zh" || l === "en") return l;
-  return CJK.test(words) ? "zh" : "en";
+  if (l && l !== "auto") return l;
+  return detect(words)?.lang ?? "en";
 }
 
 const isLocal = (device: string | undefined) => !device || device === "local";
@@ -392,7 +395,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
   project = d.projects?.of(place)?.name ?? project;
   const title = titleFromWords(words);
   const when = input.when;
-  const zh = languageOf(words, d.settings) === "zh";
+  const language = languageOf(words, d.settings);
   // D185: at a time, or every …: a routine of the user's own, active at once.
   const trigger = triggerOf(when);
   if (trigger) {
@@ -405,7 +408,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
         ...(place.kind !== "none" || place.device ? { place } : {}),
         ...(project ? { project } : {}),
         ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}), ...(input.effort ? { effort: input.effort } : {}) } : {}),
-        zh,
+        language,
       });
       return { ok: true, routine };
     } catch (err) {
@@ -421,12 +424,12 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
     card = await runner.openTask({
       persona: d.persona.id,
       title,
-      brief: when?.kind === "when" ? waitFirstBrief(condition, input.brief ?? words, zh) : (input.brief ?? words),
+      brief: when?.kind === "when" ? waitFirstBrief(condition, input.brief ?? words, language) : (input.brief ?? words),
       place,
       project,
       ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}) } : {}),
       ...(input.effort ? { effort: input.effort } : {}),
-      language: languageOf(words, d.settings),
+      language,
       origin: "you",
       ...(input.media?.length ? { media: input.media } : {}),
       ...(input.from && input.brief ? { from: input.from } : {}),

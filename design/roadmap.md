@@ -59,8 +59,18 @@ heard of a subagent.
   in the Mac app makes the Mac a worker of the server (its AI agents and repos), kept running by
   a LaunchAgent; browser and computer use on that worker are still the home's only.
 - **Real-world checks.** A long-conversation replay on real models, live runs of folder undo
-  and native browser use, and the Nowledge Bridge live trial (today behind a flag; Mem's side
-  answers since 2026-11-10, and the trial waits on the persona's context and a second identity).
+  and native browser use, and the Nowledge Bridge live trial (still behind a flag; see below).
+- **Nowledge Bridge live trial** (your terminal agents reaching your partner, against Mem Cloud):
+  - Last full run (2026-11-16): handing work over (S1) 5 of 6 checks, asking an agent (S2) 4 of 5,
+    following up on silence (S3) 3 of 3, an agent asking for your call (X1) 3 of 3. The misses: a card
+    once named you in the third person (model wording), and an answer that Mem didn't yet link to the
+    question it answers.
+  - 2026-11-17: Mem Cloud now links answers and names senders, but the newest Mem command line
+    (0.10.119) predates that, so the live rerun waits on Mem's next release. The rerun also stops
+    before sending while a second home (the server) is connected to the same mailbox.
+  - Ducter is ready for Mem's new fields, never offers an agent Mem can't deliver to, and retries
+    Mem's "can't right now" briefly without ever sending twice.
+  - Mem running on your own computer (the app or a Vault): waits on Mem's local fixes.
 - **The AI tools you use elsewhere reach you through Ducter** (draft): a terminal Claude Code or Codex sends
   its questions for you to your partner and gets your answer back; work from your own agents can
   start without asking once you say so; a team's agents can reach your partner when you let them.

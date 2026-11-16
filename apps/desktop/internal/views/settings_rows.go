@@ -6,8 +6,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
-
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
@@ -306,28 +304,10 @@ func (a *App) tileLinkRow(c *ui.Context, key string, tile func(), title, line st
 	return b.Clicked()
 }
 
-// coinsTile is the AI agents' own coins, two overlapped in the tile
-// column: the literal things an AI accounts row is about.
-func (a *App) coinsTile(c *ui.Context, key string) func() {
-	return func() {
-		const s = float32(27) // as the Connected AI agents tab's two coins (D257)
-		ui.Box(c.Key("coins:"+key)).Size(40, 40).AccessHidden(true).Children(func() {
-			for i, h := range []string{"coin_claude_code", "coin_codex"} {
-				if bmp := theme.Clay(h); bmp != nil {
-					ui.Image(c, bmp).Size(s, s).Absolute().Left(float32(i) * (40 - s)).Top(float32(i) * (40 - s))
-				}
-			}
-		})
-	}
-}
-
 // listWords is a list of names of one kind in the reader's language
 // (Gmail、Slack / Gmail, Slack): a list, never facts joined with " · ".
 func (a *App) listWords(items []string) string {
-	if a.L != nil && a.L.Lang == i18n.EN {
-		return strings.Join(items, ", ")
-	}
-	return strings.Join(items, "、")
+	return strings.Join(items, a.L.T("acct.sep"))
 }
 
 // saidFor is how long the partner's word after a change stays.

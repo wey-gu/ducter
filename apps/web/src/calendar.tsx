@@ -7,11 +7,11 @@ import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { shortAccount } from "./accounts.tsx";
 import { Btn } from "./controls.tsx";
-import { dateRun, dayHead, daysBetween, hmOf, minutesOf, nameList, nowMinutesIn, offsetOf, otherZoneLine, peopleWords, theirSide, todayIn, whenWords, ymdOf, type CalLang } from "./cal-format.ts";
+import { andList, dateRun, dayHead, daysBetween, hmOf, minutesOf, nameList, nowMinutesIn, offsetOf, otherZoneLine, peopleWords, theirSide, todayIn, whenWords, ymdOf, type CalLang } from "./cal-format.ts";
 import type { DecisionState } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
-const lang = (): CalLang => (A.L.lang === "zh" ? "zh" : "en");
+const lang = (): CalLang => A.L.lang;
 
 /** Re-renders every minute (the now line and the faded past move with the clock). */
 function useMinute() {
@@ -256,7 +256,7 @@ export function CalFacts({ c }: { c: CalChange }) {
       ? t("cal.notify.organizer", c.organizer || nameList(L, c.notify))
       : c.kind === "create"
         ? t("cal.notify.invite", nameList(L, c.notify))
-        : t(c.notify.length === 1 ? "cal.notify.told.one" : "cal.notify.told", L === "en" && c.notify.length > 1 ? c.notify.slice(0, -1).join(", ") + " and " + c.notify[c.notify.length - 1] : nameList(L, c.notify));
+        : t(c.notify.length === 1 ? "cal.notify.told.one" : "cal.notify.told", andList(L, c.notify));
   return (
     <div class={`cal-change ${c.kind}`}>
       <div class="cc-title">

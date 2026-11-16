@@ -142,10 +142,10 @@ func TestTaskWordsInTheReadersLanguage(t *testing.T) {
 	if got := app.livingWords(it); got != "连上 Nowledge Mem 做完了：装好了，检查都过了。" {
 		t.Errorf("zh words kept: %q", got)
 	}
-	if got := app.proofLabel(protocol.EvidenceRef{Kind: "log", Label: "Connection verification", Ref: "nmem status"}); got != "运行记录" {
+	if got := app.proofLabel(nil, protocol.EvidenceRef{Kind: "log", Label: "Connection verification", Ref: "nmem status"}); got != "运行记录" {
 		t.Errorf("zh proof: %q", got)
 	}
-	if got := app.proofLabel(protocol.EvidenceRef{Kind: "url", Label: "Live MCP Context Bundle", Ref: "https://mem.nowledge.co/mcp"}); got != "mem.nowledge.co" {
+	if got := app.proofLabel(nil, protocol.EvidenceRef{Kind: "url", Label: "Live MCP Context Bundle", Ref: "https://mem.nowledge.co/mcp"}); got != "mem.nowledge.co" {
 		t.Errorf("zh proof url: %q", got)
 	}
 	en, _ := iaApp(t, i18n.EN)

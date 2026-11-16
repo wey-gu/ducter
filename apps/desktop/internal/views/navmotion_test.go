@@ -52,16 +52,44 @@ func TestNavKinds(t *testing.T) {
 // few of them saved to $DUCTER_SHOTS_DIR/d290 when set:
 //
 //	DUCTER_SHOTS_DIR=$PWD/../../.shots go test ./internal/views -run TestNavMotionFrames -v
+//
+// D290_STILL is gone: each run measures the still baseline itself.
 func TestNavMotionFrames(t *testing.T) {
+	// The same moves under reduced motion are the baseline: the moves may cost
+	// more than a still page, but not much more. Wall-clock limits alone fail on a
+	// shared CI runner that paints every frame on the CPU several times slower.
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		moving := navMotionRun(t, lang, false)
+		still := navMotionRun(t, lang, true)
+		if testing.Short() {
+			continue
+		}
+		m, s := p95(moving), p95(still)
+		t.Logf("%s: p95 frame %v moving, %v still", lang, m, s)
+		if limit := max(50*time.Millisecond, 3*s+10*time.Millisecond); m > limit {
+			t.Errorf("%s: p95 frame %v moving against %v still (limit %v)", lang, m, s, limit)
+		}
+	}
+}
+
+func p95(all []time.Duration) time.Duration {
+	s := append([]time.Duration(nil), all...)
+	sort.Slice(s, func(i, j int) bool { return s[i] < s[j] })
+	return s[len(s)*95/100]
+}
+
+// navMotionRun plays every move and returns each in-flight frame's build and
+// paint time; still runs the same moves under reduced motion.
+func navMotionRun(t *testing.T, lang i18n.Lang, still bool) []time.Duration {
+	t.Helper()
+	{
 		app := railApp(t, lang)
-		// D290_STILL=1: the same moves under reduced motion, the baseline.
-		tt := ui.NewTesterWith(app.View, 1400, 1200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: os.Getenv("D290_STILL") != ""}})
+		tt := ui.NewTesterWith(app.View, 1400, 1200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: still}})
 		tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
 		tt.Frame()
 		tt.Advance(time.Second)
 		dir := os.Getenv("DUCTER_SHOTS_DIR")
-		if os.Getenv("D290_STILL") != "" {
+		if still {
 			dir = ""
 		}
 		if dir != "" {
@@ -116,11 +144,6 @@ func TestNavMotionFrames(t *testing.T) {
 		play("5-across-settings", func() { app.OpenSettings() })
 		play("6-across-devices", func() { app.OpenDevices() })
 		play("7-back-conversation", func() { app.Route = RouteConversation })
-		if !testing.Short() {
-			sort.Slice(all, func(i, j int) bool { return all[i] < all[j] })
-			if p := all[len(all)*95/100]; p > 50*time.Millisecond {
-				t.Errorf("%s: p95 frame %v", lang, p)
-			}
-		}
+		return all
 	}
 }

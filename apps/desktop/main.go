@@ -74,7 +74,11 @@ func main() {
 	// Ducter's Chinese menus.
 	mygo.App.SetLanguages("en", "zh-Hans")
 	mygo.App.SetLocale(mygoLocale(lang))
+	// D302: light or dark as Settings › Look and sound says (macOS's by
+	// default), from the first frame; the menus and title bar follow it too.
+	mygo.Theme.SetSource(mygo.ThemeSource(local0.Appearance()))
 	app := views.New(s, theme.Pebble(), i18n.New(lang))
+	app.ApplyAppearance = func(v string) { mygo.Theme.SetSource(mygo.ThemeSource(v)) }
 	app.LocaleFixed = i18n.Fixed() || chosen
 	app.Local = local0
 	app.SystemLang = system
@@ -231,7 +235,9 @@ func main() {
 			TitleBarStyle:        mygo.TitleBarHidden,
 			TrafficLightPosition: &mygo.Point{X: int(views.TrafficLights.X), Y: int(views.TrafficLights.Y)},
 			TitleBarHeight:       views.ChromeH,
-			Content:              ui.View(app.View),
+			// The paper until the first frame paints, light or dark (D302).
+			BackgroundColor: "light-dark(#FFF6EA, #17120E)",
+			Content:         ui.View(app.View),
 		})
 		app.Win = win
 		app.Desktop = desktop{win}

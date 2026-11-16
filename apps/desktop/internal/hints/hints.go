@@ -40,6 +40,9 @@ type state struct {
 	TitleSeenAt string `json:"titleSeenAt,omitempty"`
 	// SoundOff turns the app's sounds off (Settings); on by default.
 	SoundOff bool `json:"soundOff,omitempty"`
+	// Appearance is 外观 / Look's light or dark (D302): "light", "dark", or
+	// empty (follow macOS).
+	Appearance string `json:"appearance,omitempty"`
 	// OnHandLens is the project On hand is narrowed to (D261): a name,
 	// "~" for Other (no folder), "" for all. D128's by-state/by-project
 	// toggle (onHandBy) is retired: the lens replaced it.
@@ -203,6 +206,27 @@ func (l *Local) SetSound(on bool) {
 		return
 	}
 	l.st.SoundOff = !on
+	l.save()
+}
+
+// Appearance is the window's light or dark chosen in Settings (D302):
+// "light", "dark" or "system" (follow macOS, the default).
+func (l *Local) Appearance() string {
+	if l == nil || (l.st.Appearance != "light" && l.st.Appearance != "dark") {
+		return "system"
+	}
+	return l.st.Appearance
+}
+
+// SetAppearance remembers it ("system" forgets it).
+func (l *Local) SetAppearance(v string) {
+	if l == nil {
+		return
+	}
+	if v != "light" && v != "dark" {
+		v = ""
+	}
+	l.st.Appearance = v
 	l.save()
 }
 

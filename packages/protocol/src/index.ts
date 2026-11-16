@@ -779,7 +779,8 @@ export type ClientFrame =
   // client: what is connecting (D128: `open_task` goes to the apps, never to a CLI); absent = an app.
   // version: the Ducter version the client runs (the Mac app's); newer than the home's latest
   // release makes the home read GitHub again (its answer is stale).
-  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string }
+  // shape (D263): what the device a page runs on is shaped like (shapeFromBrowser), for its clay.
+  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape }
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
   | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant }
@@ -1617,7 +1618,52 @@ export interface Reach {
   anywhere?: Anywhere; // D228: absent = off
   /** form "cli": the command line on a computer, shown inside that computer's card (D155); computer: the host it runs on. */
   /** handset (D238): 用这台手机 / Use this phone on that phone (an Android app's card only). */
-  clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string; form?: "cli" | "app"; computer?: string; handset?: HandsetView }[];
+  /** shape (D263): a phone, tablet or foldable, as it last said (absent from a home before D263: clientShape reads the name). */
+  clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string; form?: "cli" | "app"; computer?: string; handset?: HandsetView; shape?: ClientShape }[];
+}
+
+// ---------- A handheld's shape (D263) ----------
+
+/** What a phone-like client is shaped like, for its clay: an iPad or Android tablet, a book-style foldable (Pixel Fold), else a phone. */
+export type ClientShape = "phone" | "tablet" | "foldable";
+export const CLIENT_SHAPES: readonly ClientShape[] = ["phone", "tablet", "foldable"];
+
+/**
+ * A shape from a model name as Android or a browser names it ("Pixel Fold", "SM-F946B", "Pixel
+ * Tablet", "iPad"); undefined when the name says nothing. Only book-style folds are foldables: a
+ * flip (Galaxy Z Flip, Razr) opens into a phone.
+ */
+export function shapeOfModel(model: string | undefined): ClientShape | undefined {
+  const m = (model ?? "").trim();
+  if (!m) return undefined;
+  if (/\bflip\d*\b|razr|SM-F7\d\d/i.test(m)) return "phone";
+  if (/\bfold\b|Fold\d|SM-F9\d\d|\bFind N\d?\b|Magic ?V\d?\b|Mate ?X|OnePlus Open|X ?Fold/i.test(m)) return "foldable";
+  if (/\biPad\b|\btablet\b|\bTab\b|\bPad\b|MatePad|SM-[TXP]\d|Nexus (7|9|10)\b/i.test(m)) return "tablet";
+  return undefined;
+}
+
+/**
+ * The shape a browser page knows of its own device: the Android model in its user agent, an iPad
+ * (also Safari's "Macintosh" with a touch screen, D176), an Android screen 600 px or more on both
+ * sides (a tablet; a foldable is told by its model first). Else a phone.
+ */
+export function shapeFromBrowser(ua: string, touch: number, screen: { width: number; height: number }): ClientShape {
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && touch > 1)) return "tablet";
+  if (/Android/.test(ua)) {
+    const model = /Android[^;)]*;\s*([^;)]+?)(?:\s+Build\/[^;)]*)?[;)]/.exec(ua)?.[1];
+    const byModel = model && model !== "K" ? shapeOfModel(model) : undefined;
+    if (byModel) return byModel;
+    if (Math.min(screen.width, screen.height) >= 600) return "tablet";
+  }
+  return "phone";
+}
+
+/**
+ * A client's shape as the apps draw it: the model its Android app reported (the most exact), else
+ * what it said of itself, else an "iPad …" name (D176), else a phone.
+ */
+export function clientShape(c: { name: string; shape?: ClientShape; handset?: { state?: { model?: string } } }): ClientShape {
+  return shapeOfModel(c.handset?.state?.model) ?? (c.shape && CLIENT_SHAPES.includes(c.shape) ? c.shape : undefined) ?? (/^iPad\b/.test(c.name) ? "tablet" : "phone");
 }
 
 // ---------- Connections (D96, design/connectors.md) ----------

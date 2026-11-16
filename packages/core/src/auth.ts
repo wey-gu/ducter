@@ -15,6 +15,7 @@ import { Database } from "bun:sqlite";
 import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
+import { CLIENT_SHAPES, type ClientShape } from "@ducter/protocol";
 
 export const CODE_TTL_MS = 10 * 60_000;
 /** No I, L, O, U, 0, 1: nothing to misread when typed from a terminal. */
@@ -41,6 +42,8 @@ export interface Device {
   form?: DeviceForm;
   /** D155: the computer it runs on (its host name), when it said. A CLI belongs to its computer's card. */
   computer?: string;
+  /** D263: a phone, tablet or foldable, as it last said (its page's hello, its Android app's model). */
+  shape?: ClientShape;
 }
 
 /** What kind of client a device is (D155). Only "cli" changes how it shows; the rest are apps. */
@@ -77,6 +80,8 @@ export interface DeviceAuth {
   rename(idOrName: string, name: string): { device: Device } | { error: RenameError };
   /** The device (live or revoked) that was once called `name`, newest rename first. */
   formerly(name: string): Device | undefined;
+  /** D263: keeps what a client said it is shaped like; true when that changed. */
+  setShape?(id: string, shape: ClientShape): boolean;
   pendingCodes(): number;
   /** The device exists and isn't revoked (cheap; used to close live sockets after a revoke). */
   isLive(id: string): boolean;
@@ -126,6 +131,7 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
   const cols = new Set((db.query("PRAGMA table_info(devices)").all() as { name: string }[]).map((c) => c.name));
   if (!cols.has("form")) db.exec("ALTER TABLE devices ADD COLUMN form TEXT NOT NULL DEFAULT ''");
   if (!cols.has("computer")) db.exec("ALTER TABLE devices ADD COLUMN computer TEXT NOT NULL DEFAULT ''");
+  if (!cols.has("shape")) db.exec("ALTER TABLE devices ADD COLUMN shape TEXT NOT NULL DEFAULT ''"); // D263
 
   const fails = new Map<string, number[]>();
   const seenAt = new Map<string, number>();
@@ -140,6 +146,7 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
     ...(r.revoked_at != null ? { revokedAt: iso(r.revoked_at) } : {}),
     ...(r.form === "cli" || r.form === "app" ? { form: r.form } : {}),
     ...(r.computer ? { computer: r.computer } : {}),
+    ...(CLIENT_SHAPES.includes(r.shape) ? { shape: r.shape as ClientShape } : {}),
   });
 
   const recentFails = (key: string) => {
@@ -268,6 +275,10 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
         .query("SELECT d.* FROM former_names f JOIN devices d ON d.id = f.device_id WHERE f.name = ? ORDER BY d.revoked_at IS NOT NULL, f.renamed_at DESC LIMIT 1")
         .get(name);
       return r ? row(r) : undefined;
+    },
+    setShape(id, shape) {
+      if (!CLIENT_SHAPES.includes(shape)) return false;
+      return db.run("UPDATE devices SET shape = ? WHERE id = ? AND shape != ?", [shape, id, shape]).changes > 0;
     },
     isLive: (id) => db.query("SELECT 1 FROM devices WHERE id = ? AND revoked_at IS NULL").get(id) != null,
     pendingCodes() {

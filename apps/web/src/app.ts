@@ -5,7 +5,7 @@ import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/proto
 import { prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
-import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
+import { Api, Connection, deviceName, myShape, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach } from "./native.ts";
@@ -421,7 +421,7 @@ class AppState {
     this.conn = new Connection(
       wsUrl(base),
       token,
-      () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.lang, ...(zone() ? { tz: zone() } : {}), client: "web" }),
+      () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.lang, ...(zone() ? { tz: zone() } : {}), client: "web", ...((s) => (s ? { shape: s } : {}))(myShape()) }),
       (f) => this.receive(f),
       (s) => {
         this.status = s;

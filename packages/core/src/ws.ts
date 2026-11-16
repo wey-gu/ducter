@@ -1,7 +1,7 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { brainNow } from "./brain.ts";
-import { harnessName, isHarnessId, isProactiveYesNo, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
+import { CLIENT_SHAPES, harnessName, isHarnessId, isProactiveYesNo, shapeOfModel, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
 import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, MediaRef, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
@@ -398,6 +398,8 @@ export function createWsHandler(deps: WsDeps) {
         if (activity) send(ws, { t: "activity", activity });
         ws.data.live = true; // synchronous since the read: no event can be missed in between
         if (f.client === "desktop" || f.client === "web" || f.client === "cli") ws.data.client = f.client;
+        // D263: a paired page says what its device is shaped like (a tablet, a foldable), for its clay.
+        if (ws.data.device && (CLIENT_SHAPES as readonly unknown[]).includes(f.shape)) devicesView()?.shaped(ws.data.device.id, f.shape!);
         if (typeof f.tz === "string" && f.tz) deps.work?.zone(f.tz);
         // An app newer than the latest release the home knows: that answer is stale.
         if (typeof f.version === "string") deps.updates?.()?.sawVersion(f.version);
@@ -1149,6 +1151,9 @@ export function createWsHandler(deps: WsDeps) {
         const me = ws.data.device?.id;
         if (!h || !me || !f.state || typeof f.state !== "object") return;
         const s = f.state;
+        // D263: the model Android names (a Pixel Fold) says the phone's shape more exactly than its page can.
+        const byModel = shapeOfModel(String(s.model ?? "").slice(0, 60));
+        if (byModel) devicesView()?.shaped(me, byModel);
         // D255: the app's own link (hello.client "handset") is preferred over its page's while it is up.
         ws.data.handset ??= { send: (fr) => sockets.has(ws) && send(ws, fr), ...(ws.data.client === "handset" ? { native: true } : {}) };
         const rec = s.recording && typeof s.recording === "object" ? s.recording : undefined;

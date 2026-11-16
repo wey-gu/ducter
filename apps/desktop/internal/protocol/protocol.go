@@ -7,6 +7,7 @@ package protocol
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // Version is PROTOCOL_VERSION.
@@ -1505,6 +1506,23 @@ type ReachClient struct {
 	Computer string `json:"computer,omitempty"`
 	// Handset is 用这台手机 / Use this phone on an Android phone (D238).
 	Handset *HandsetView `json:"handset,omitempty"`
+	// Shape is what a handheld is shaped like (D263): "phone", "tablet" or
+	// "foldable", as it last said; absent from a home before D263.
+	Shape string `json:"shape,omitempty"`
+}
+
+// ClientShape is the client's shape as the apps draw it (D263): what it
+// said, else an "iPad …" name (D176), else a phone. The web's clientShape
+// (packages/protocol) is the same rule.
+func (c *ReachClient) ClientShape() string {
+	switch c.Shape {
+	case "phone", "tablet", "foldable":
+		return c.Shape
+	}
+	if c.Name == "iPad" || strings.HasPrefix(c.Name, "iPad ") {
+		return "tablet"
+	}
+	return "phone"
 }
 
 // Reach is who can reach this Ducter from elsewhere, and the address.

@@ -7,7 +7,7 @@ import { PhoneBlock, PhoneInfo, startInstall } from "./phone-use.tsx";
 import { ComputerBlock, ComputerInfo } from "./computer-use.tsx";
 import { HandsetChip } from "./handset.tsx";
 import type { DeviceHarness, DeviceUpdate, DeviceView } from "@ducter/protocol";
-import { TRY_LIVE } from "@ducter/protocol";
+import { clientShape, TRY_LIVE } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -90,7 +90,9 @@ export function deviceArt(dv: DeviceView): string {
   const kind = dv.kind === "mini" || dv.kind === "server" ? dv.kind : "laptop";
   return art(`dev_${kind}_${dv.state === "asleep" ? "asleep" : "awake"}`);
 }
-const clientArt = (cl: Client) => (/^(darwin|linux|win)/i.test(cl.platform) && !/ios|iphone|android|web/i.test(cl.platform) ? art(cl.connected ? "dev_laptop_awake" : "dev_laptop_asleep") : art("dev_phone"));
+/** A client's clay: a computer for an app window, else its handheld's shape (D263: a tablet, a foldable, a phone). */
+export const clientArt = (cl: Client) =>
+  /^(darwin|linux|win)/i.test(cl.platform) && !/ios|iphone|android|web/i.test(cl.platform) ? art(cl.connected ? "dev_laptop_awake" : "dev_laptop_asleep") : art(`dev_${clientShape(cl)}`);
 
 // The coins whose update just landed pop once (§7); the phase seen last time, per coin.
 const lastPhase = new Map<string, string>();
@@ -180,11 +182,11 @@ function Versions() {
 }
 
 /** The clay, big, standing on its own little ground. */
-function Hero({ src, grey, tall, motion }: { src: string; grey?: boolean; tall?: boolean; motion: string }) {
+function Hero({ src, grey, tall, shape, motion }: { src: string; grey?: boolean; tall?: boolean; shape?: string; motion: string }) {
   return (
     <div class="dc-hero" aria-hidden="true">
       <div class="ground" />
-      <img class={`art${tall ? " tall" : ""}${grey ? " grey" : ""} ${motion}`} src={src} alt="" />
+      <img class={`art${tall ? " tall" : ""}${shape ? ` ${shape}` : ""}${grey ? " grey" : ""} ${motion}`} src={src} alt="" />
       {grey && <div class="mist" />}
     </div>
   );
@@ -216,7 +218,7 @@ function ClientSheet({ cl, folded }: { cl: Client; folded: Client[] }) {
   const src = clientArt(cl);
   return (
     <div class="dc" role="group" aria-label={`${name}, ${clientKind(cl)}`}>
-      <Hero src={src} tall={src.endsWith("dev_phone.webp")} motion={cl.connected ? "float" : ""} />
+      <Hero src={src} tall={src.endsWith("dev_phone.webp")} shape={/dev_(tablet|foldable)\.webp$/.exec(src)?.[1]} motion={cl.connected ? "float" : ""} />
       <div class="dc-name">
         <RenameTitle id={cl.id} name={name} renamable />
       </div>

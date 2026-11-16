@@ -20,6 +20,22 @@ function auth(now?: () => number): { a: DeviceAuth; dir: string } {
   return { a, dir: t.dir };
 }
 
+describe("a handheld's shape (D263)", () => {
+  test("kept across a reopen, changed only to a known shape", () => {
+    const { a, dir } = auth();
+    const r = a.redeem(a.createCode().code, { name: "iPad · Ducter", platform: "ios-app" });
+    if ("error" in r) throw new Error(r.error);
+    expect(a.list()[0]!.shape).toBeUndefined();
+    expect(a.setShape!(r.device.id, "tablet")).toBe(true);
+    expect(a.setShape!(r.device.id, "tablet")).toBe(false); // nothing changed
+    expect(a.setShape!(r.device.id, "round" as any)).toBe(false);
+    a.close();
+    const b = openDeviceAuth(dir);
+    stops.push(() => b.close());
+    expect(b.list()[0]).toMatchObject({ name: "iPad · Ducter", shape: "tablet" });
+  });
+});
+
 describe("pairing codes and device tokens", () => {
   test("a code is 8 unambiguous characters, works once, and yields a token that verifies", () => {
     const { a } = auth();

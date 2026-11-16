@@ -703,6 +703,18 @@ are clay renders (`design/art/assets/alpha/island_big.png`, `island_small.png`, 
 runtime @1280); the sea, sky, foam, reflections, bridges and parcels are drawn from the
 `Isles` tokens (`theme.go`).
 
+A handheld stands on its island in its own shape (D263): `phone` (an iPhone, an Android phone,
+anything unknown), `tablet` (an iPad, an Android tablet: the phone's bezel and face, 3 : 4, a head
+taller on the island) and `foldable` (a book-style fold such as a Pixel Fold: drawn half open
+like a book, one screen across the crease, Ducter on its right half). The same art is the list's
+icon and the card's hero, on the Mac and the web. The shape comes from `clientShape`
+(`packages/protocol`): the model its Android app reports, else what its page said in its hello
+(`shapeFromBrowser`: an iPad, an Android model in the user agent, an Android screen 600 px wide
+or more), else an "iPad …" name, else a phone. Flips (Galaxy Z Flip, Razr) open into a phone and
+stay one. Masters `design/art/assets/alpha/tablet.png`, `foldable.png` (prompts
+`prompts/tablet.md`, `foldable.md`, batch `batch_forms.json`, the phone as the first reference);
+`python3 tools/art/devices.py` writes the Mac's @640 and the web's `dev_*.webp`.
+
 ## Art direction (D53)
 
 - **Medium:** puffy matte clay 3D illustrations, pre-rendered as assets and composed in a 2D

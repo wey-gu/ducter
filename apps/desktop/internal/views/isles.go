@@ -102,15 +102,20 @@ func deviceSize(art string, home bool) (float32, float32) {
 		return 0.66, 546.0 / 640
 	case "phone":
 		return 0.3, 640.0 / 416
+	case "tablet": // D263: an iPad stands a head taller and wider than the phone
+		return 0.46, 640.0 / 495
+	case "foldable": // D263: half open like a book
+		return 0.56, 594.0 / 640
 	}
 	return 0.7, 0.77
 }
 
-// clientArt is a client's clay: a phone, or a computer for an app window.
+// clientArt is a client's clay: a phone, a tablet or a foldable (its
+// shape, D263), or a computer for an app window.
 func clientArt(cl *protocol.ReachClient) string {
 	p := strings.ToLower(cl.Platform)
 	if p == "" || strings.Contains(p, "ios") || strings.Contains(p, "iphone") || strings.Contains(p, "android") || strings.Contains(p, "web") {
-		return "phone"
+		return cl.ClientShape()
 	}
 	if cl.Connected {
 		return "laptop_awake"

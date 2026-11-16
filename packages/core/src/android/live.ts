@@ -9,7 +9,7 @@
 // Wake, or until a task starts it); My turn asked mid-step is the person's when that step ends;
 // and each view gets what the task did (taps, typing, apps; never what it read), kept in memory.
 import { createHash } from "node:crypto";
-import type { PhoneDidView, PhoneDoingView, PhoneInput, PhoneMode, PhoneServerFrame } from "@ducter/protocol";
+import { labelHead, type PhoneDidView, type PhoneDoingView, type PhoneInput, type PhoneMode, type PhoneServerFrame } from "@ducter/protocol";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import type { PhoneDevice } from "./device.ts";
 
@@ -363,7 +363,7 @@ export function createPhoneLive(d: PhoneLiveDeps): PhoneLive {
       // D248: what it did (never what it read: looks and pictures aren't kept), labels only.
       if (DID_KINDS.has(doing.kind)) {
         const list = didOf.get(taskId) ?? [];
-        list.push({ kind: doing.kind as PhoneDidView["kind"], ...(doing.label ? { label: doing.label.split(" · ")[0] } : {}), ...(doing.app ? { app: doing.app } : {}), at: Date.now() });
+        list.push({ kind: doing.kind as PhoneDidView["kind"], ...(doing.label ? { label: labelHead(doing.label) } : {}), ...(doing.app ? { app: doing.app } : {}), at: Date.now() });
         if (list.length > DID_KEEP) list.splice(0, list.length - DID_KEEP);
         didOf.set(taskId, list);
         for (const v of views.values()) if (!v.closed && v.mode === "watch" && v.taskId === taskId) sendDid(v);

@@ -25,6 +25,14 @@ export interface PhoneTerms {
 /** A decision a phone task asked for: one tap that commits (go), or the user's own turn (user). */
 /** app: the app's id (com.…, never shown); name: the app as the user knows it (信息, 小红书), from the task. */
 /** on (D238): the person's own phone it happens on (its device id and name); absent = Ducter's phone. */
+/**
+ * A control on the phone named by the words inside it: its title, then its subtitle ("Network &
+ * internet | Mobile, Wi-Fi, hotspot"). The model reads the whole label; a person is shown the title
+ * alone (D291: never the joined line).
+ */
+export const LABEL_PARTS = " | ";
+export const labelHead = (label: string): string => (label.split(LABEL_PARTS)[0] ?? "").trim();
+
 export type PhoneAsk = ({ kind: "go"; app: string; name?: string; label: string; effect: string } | { kind: "user"; app?: string }) & { on?: { device: string; name: string } };
 
 /** Who the live view is for: watching a task, taking the phone yourself, or a card's own turn. */

@@ -6,13 +6,13 @@
 // D278: a server home (a VPS) is never the place for the phone: the card there shows no steps, says
 // what works today (你来打 / You call: the sheet and one tap to dial) and plainly why a live call on
 // the person's own number needs a computer beside the phone. Install lines are only ever the home's
-// own system's, and 再找一次 always answers: a short busy state, then 看过了 · 20:14 with what it saw.
+// own system's, and 再找一次 always answers: a short busy state, then what it saw and, apart, when (20:14).
 import type { OwnPhoneView } from "@ducter/protocol";
 import { prettyNumber } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn, DangerButton, Seg, Toggle } from "./controls.tsx";
-import { clock } from "./format.ts";
+import { Btn, DangerButton, Facts, Seg, Toggle } from "./controls.tsx";
+import { clock, shownDeviceName } from "./format.ts";
 import { CallArt } from "./phone.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -79,11 +79,11 @@ export function installLine(os: OwnPhoneView["os"], tool: "adb" | "ffmpeg"): str
   return undefined;
 }
 
-/** D278: what the last look saw, said with when and on which computer ("看过了 · 20:14 · MacBook 上还没看到手机"). */
-export function lookedLine(v: OwnPhoneView): string | undefined {
+/** D278: what the last look saw, on which computer ("MacBook 上还没看到手机"), and when, as its own fact (D291). */
+export function lookedLine(v: OwnPhoneView): { saw: string; at: string } | undefined {
   if (!v.lookedAt) return undefined;
   const saw = !v.adb ? t("own.saw.noadb", v.where) : !v.phone ? t("own.saw.none", v.where) : v.phone.state === "unauthorized" ? t("own.saw.allow") : t("own.saw.phone", v.phone.model);
-  return t("own.looked", clock(v.lookedAt), saw);
+  return { saw, at: clock(v.lookedAt) };
 }
 
 function Cmd({ text }: { text: string }) {
@@ -108,7 +108,7 @@ function Look({ v }: { v: OwnPhoneView }) {
   return (
     <div class="own-look" aria-live="polite">
       <Btn kind="text" size="sm" label={t(v.looking ? "own.looking" : "own.scan")} disabled={!!v.looking} onClick={() => A.ownPhoneAct({ action: "scan" })} />
-      {!v.looking && line && <span class="small sub">{line}</span>}
+      {!v.looking && line && <Facts class="small sub own-looked" items={[line.saw, <time class="own-looked-at">{line.at}</time>]} />}
     </div>
   );
 }
@@ -169,7 +169,7 @@ function VoiceStep({ v }: { v: OwnPhoneView }) {
   if (v.voice.key)
     return (
       <div class="own-body">
-        <div class="small">{t("own.voice.set", t(`own.voice.${v.voice.engine}`), v.voice.model, money(v.voice.perMinUsd))}</div>
+        <Facts class="small" items={voiceFacts(v)} />
         <div class="small sub">{t("own.voice.kept", v.where)}</div>
         <Btn kind="text" size="sm" label={t("own.voice.remove")} onClick={() => A.ownPhoneAct({ action: "key_remove" })} />
       </div>
@@ -280,19 +280,22 @@ function body(step: Step, v: OwnPhoneView) {
   }
 }
 
-/** One done step's line: what the home saw. */
-function doneLine(step: Step, v: OwnPhoneView): string {
+/** The live voice in use: its maker, its model, what a minute costs; each its own fact (D291). */
+const voiceFacts = (v: OwnPhoneView) => [t(`own.voice.${v.voice.engine}`), v.voice.model, t("own.voice.permin", money(v.voice.perMinUsd))];
+
+/** One done step's facts: what the home saw, each its own element (D291). */
+function doneFacts(step: Step, v: OwnPhoneView): string[] {
   switch (step) {
     case "phone":
-      return t("own.phone.ok", v.phone?.model ?? "Android", v.phone?.android ?? "");
+      return [v.phone?.model ?? "Android", v.phone?.android ? t("own.phone.android", v.phone.android) : ""];
     case "sim":
-      return [v.sim?.carrier, v.number ? prettyNumber(v.number) : ""].filter(Boolean).join(" · ");
+      return [v.sim?.carrier ?? "", v.number ? prettyNumber(v.number) : ""];
     case "cable":
-      return v.audio.input === v.audio.output ? (v.audio.input ?? "") : `${v.audio.input} · ${v.audio.output}`;
+      return v.audio.input === v.audio.output ? [v.audio.input ?? ""] : [v.audio.input ?? "", v.audio.output ?? ""];
     case "voice":
-      return t("own.voice.set", t(`own.voice.${v.voice.engine}`), v.voice.model, money(v.voice.perMinUsd));
+      return voiceFacts(v);
     case "test":
-      return t("own.test.passed");
+      return [t("own.test.passed")];
   }
 }
 
@@ -312,7 +315,7 @@ function AwayCard({ v }: { v: OwnPhoneView }) {
         <h3>{t("own.title")}</h3>
         <div class="small sub">{t("own.away.lede")}</div>
       </div>
-      <div class="small own-away-dial">{d ? t("own.away.dial", d.name.replace(/\s*·\s*Ducter$/, "")) : t("own.away.nodial")}</div>
+      <div class="small own-away-dial">{d ? t("own.away.dial", shownDeviceName(d.name)) : t("own.away.nodial")}</div>
       <div class="small sub">{t("own.away.why", v.where)}</div>
       <div class="small sub center">{t("own.away.soon")}</div>
     </section>
@@ -353,7 +356,7 @@ export function OwnPhoneCard() {
                 <Mark state={state} n={i + 1} />
                 <span class="grow">
                   <span class="t">{t(`own.step.${s}`)}</span>
-                  {done[s] && !isOpen && <span class="s">{doneLine(s, v)}</span>}
+                  {done[s] && !isOpen && <Facts class="s" items={doneFacts(s, v)} />}
                 </span>
               </button>
               {isOpen && body(s, v)}

@@ -39,17 +39,17 @@ describe("the own-number card (D278)", () => {
     A.L = strings("zh");
     const at = new Date(2026, 10, 16, 20, 14).toISOString();
     expect(lookedLine(view())).toBeUndefined(); // never looked: nothing to say yet
-    expect(lookedLine(view({ station: true, os: "mac", where: "MacBook", lookedAt: at }))).toBe("看过了 · 20:14 · MacBook 上还没有 adb");
-    expect(lookedLine(view({ station: true, os: "mac", where: "MacBook", adb: true, lookedAt: at }))).toBe("看过了 · 20:14 · MacBook 上还没看到手机");
-    expect(lookedLine(view({ station: true, os: "mac", where: "MacBook", adb: true, lookedAt: at, phone: { serial: "x", model: "Pixel Fold", state: "ready" } }))).toBe("看过了 · 20:14 · 看到 Pixel Fold");
+    expect(lookedLine(view({ station: true, os: "mac", where: "MacBook", lookedAt: at }))).toEqual({ saw: "MacBook 上还没有 adb", at: "20:14" });
+    expect(lookedLine(view({ station: true, os: "mac", where: "MacBook", adb: true, lookedAt: at }))).toEqual({ saw: "MacBook 上还没看到手机", at: "20:14" });
+    expect(lookedLine(view({ station: true, os: "mac", where: "MacBook", adb: true, lookedAt: at, phone: { serial: "x", model: "Pixel Fold", state: "ready" } }))).toEqual({ saw: "看到 Pixel Fold", at: "20:14" });
     A.L = strings("en");
-    expect(lookedLine(view({ station: true, os: "mac", where: "MacBook", adb: true, lookedAt: at }))).toBe("Looked at 20:14 · no phone on MacBook yet");
+    expect(lookedLine(view({ station: true, os: "mac", where: "MacBook", adb: true, lookedAt: at }))).toEqual({ saw: "No phone on MacBook yet", at: "20:14" });
   });
 
   test("a server home's words never ask to plug a phone into it; they say what works today and why", () => {
     for (const lang of ["zh", "en"] as const) {
       const s = TABLES[lang];
-      for (const k of ["own.away.lede", "own.away.why", "own.away.soon", "own.away.dial", "own.away.nodial", "own.looking", "own.looked", "own.saw.none", "own.saw.noadb", "own.saw.phone", "own.saw.allow", "own.cmd.distro"]) expect(s[k], `${lang} ${k}`).toBeTruthy();
+      for (const k of ["own.away.lede", "own.away.why", "own.away.soon", "own.away.dial", "own.away.nodial", "own.looking", "own.saw.none", "own.saw.noadb", "own.saw.phone", "own.saw.allow", "own.cmd.distro"]) expect(s[k], `${lang} ${k}`).toBeTruthy();
       for (const k of ["own.away.lede", "own.away.why", "own.away.dial", "own.away.nodial"]) expect(s[k]).not.toMatch(/USB|brew|插到|Plug/);
     }
     expect(strings("zh").t("own.away.why", "hel")).toContain("hel 是服务器");

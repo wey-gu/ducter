@@ -54,7 +54,8 @@ func TestTryItOnTheBrowserBlock(t *testing.T) {
 		tt.Frame()
 		for _, want := range []string{
 			"example.com",
-			pick("Ducter 自己的浏览器 · 在 hetzner-1 上 · Chrome for Testing 157", "Ducter's own browser · on hetzner-1 · Chrome for Testing 157"),
+			pick("Ducter 在 hetzner-1 上自己的浏览器", "Ducter's own browser on hetzner-1"),
+			"Chrome for Testing 157",
 			pick("这是 hetzner-1 上的浏览器看到的网页，不是你的 Chrome。可以点一点、滚动看看。", "This is the page as the browser on hetzner-1 sees it, not your Chrome. Click and scroll as you like."),
 			pick("完成", "Done"),
 		} {

@@ -8,10 +8,12 @@
 // The live view is D190's browser live view for the phone: the same classes, bars, band and calm
 // line, so it reads as the same thing. Nothing here is kept: frames are shown and dropped.
 import type { DeviceView, PhoneDidView, PhoneDoingView, PhoneInput, PhoneKey, PhoneMode, PhoneServerFrame, PhoneTerms } from "@ducter/protocol";
+import { labelHead } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { Btn } from "./controls.tsx";
+import { shownDeviceName } from "./format.ts";
 import { EyeShut } from "./live.tsx";
 import { finished, type Task } from "./store.ts";
 import { registerScreen } from "./workbench-screens.ts";
@@ -277,9 +279,9 @@ const DOING_MS = 6_000;
 export function doingPhoneWords(d: PhoneDoingView): string {
   switch (d.kind) {
     case "tap":
-      return d.label ? t("phoneuse.doing.tap", d.label.split(" · ")[0]) : t("phoneuse.doing.tap.0");
+      return d.label ? t("phoneuse.doing.tap", labelHead(d.label)) : t("phoneuse.doing.tap.0");
     case "type":
-      return d.label ? t("phoneuse.doing.type", d.label.split(" · ")[0]) : t("phoneuse.doing.type.0");
+      return d.label ? t("phoneuse.doing.type", labelHead(d.label)) : t("phoneuse.doing.type.0");
     case "open":
       return t("phoneuse.doing.open", d.app ?? "");
     case "key":
@@ -732,7 +734,7 @@ export function PhoneAskBody({ d, compact }: { d: Ask; compact?: boolean }) {
   // D234: the phone of the computer the task runs on (empty: the home finds it from the task).
   const home = (d.taskId ? A.S.onHand?.tasks.find((c) => c.taskId === d.taskId)?.phoning?.device : undefined) ?? (d.taskId ? "" : ((A.devices ?? []).find((x) => x.home)?.id ?? "local"));
   // D238: on the person's own phone there is no live view: they do it in their hand, then 好了.
-  const mine = ph.on ? ph.on.name.replace(/\s*·\s*Ducter$/, "") : "";
+  const mine = ph.on ? shownDeviceName(ph.on.name) : "";
   if (ph.kind === "user" && mine)
     return (
       <>
@@ -779,7 +781,7 @@ export function PhoneAskBody({ d, compact }: { d: Ask; compact?: boolean }) {
     <>
       {!compact && <div class="q">{d.question}</div>}
       {open && mine && <div class="dl">{t("handset.go.on", mine)}</div>}
-      {open && <div class="dl">{ph.name ? t("phoneuse.go.what", ph.label.split(" · ")[0], ph.name) : t("phoneuse.go.what.0", ph.label.split(" · ")[0])}</div>}
+      {open && <div class="dl">{ph.name ? t("phoneuse.go.what", labelHead(ph.label), ph.name) : t("phoneuse.go.what.0", labelHead(ph.label))}</div>}
       {open ? (
         <div class={compact ? "tray" : "btns decide"}>
           {d.taskId && !mine && <Btn kind="text" size={compact ? "sm" : undefined} label={t("phoneuse.go.look")} onClick={() => openPhone({ device: home, taskId: d.taskId, mode: "watch" })} />}

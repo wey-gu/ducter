@@ -33,7 +33,7 @@
 // a finished task's end is logged, never told; a screen that timed out (asleep) keeps the loan.
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, DialHow, DialSheet, HandsetEnd, HandsetMethod, HandsetRecording, HandsetServerFrame, HandsetState, HandsetView, OnHand, Question } from "@ducter/protocol";
+import { labelHead, type Bodies, type DialHow, type DialSheet, type HandsetEnd, type HandsetMethod, type HandsetRecording, type HandsetServerFrame, type HandsetState, type HandsetView, type OnHand, type Question } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { PhoneDevice, Raw } from "../android/device.ts";
 import { parseDump, type Screen } from "../android/screen.ts";
@@ -51,7 +51,7 @@ export const RECORD_MAX_MS = 8 * 60_000;
 
 /**
  * D280: every end of a loan is said to the task in one line that starts "Your loan of {phone} ended:"
- * and says the phone was returned (the clients draw it as a hairline, D271: 你收回了 Pixel Fold · 20:14);
+ * and says the phone was returned (the clients draw it as a hairline, D271: 你收回了 Pixel Fold, its time apart);
  * the same words are what its phone tools answer afterwards.
  */
 export const HANDSET_STOPPED = (phone: string) =>
@@ -313,7 +313,7 @@ const isAndroidApp = (platform: string) => /android/i.test(platform);
 
 /** The pill's step line (zh: the phone's people mostly read Chinese here; the pill itself is localized on the phone). */
 export function doingLine(d: PhoneDoing): string {
-  const l = (d.label ?? "").split(" · ")[0]!.trim().slice(0, 24);
+  const l = labelHead(d.label ?? "").slice(0, 24);
   switch (d.kind) {
     case "look":
       return "在看屏幕";

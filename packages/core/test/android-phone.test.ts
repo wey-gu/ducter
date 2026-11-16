@@ -25,7 +25,7 @@ describe("the screen in words", () => {
   test("a real Settings dump: rows named by the words inside them, nothing repeated", () => {
     const s = parseDump(settingsXml);
     expect(s.app).toBe("com.android.settings");
-    expect(s.nodes.map((n) => n.label)).toContain("Network & internet · Mobile, Wi‑Fi, hotspot");
+    expect(s.nodes.map((n) => n.label)).toContain("Network & internet | Mobile, Wi‑Fi, hotspot");
     expect(s.lines).not.toContain("Network & internet");
     const text = screenText(s);
     expect(text).toContain("[1] item \"Search Settings\"");
@@ -44,8 +44,8 @@ describe("the screen in words", () => {
 describe("the gate at the effect", () => {
   test("commit verbs in zh, en and ja ask; reading and moving around don't", () => {
     for (const l of ["Send", "发送", "立即支付", "Place order", "Delete", "删除", "发布", "Install", "Sign out", "購入"]) expect(effectOf(l)).toBeDefined();
-    for (const l of ["Network & internet · Mobile, Wi‑Fi, hotspot", "Search Settings", "Back", "设置", "Profile"]) expect(effectOf(l)).toBeUndefined();
-    expect(effectOf("Send feedback · Tell us what you think")).toBe("send");
+    for (const l of ["Network & internet | Mobile, Wi‑Fi, hotspot", "Search Settings", "Back", "设置", "Profile"]) expect(effectOf(l)).toBeUndefined();
+    expect(effectOf("Send feedback | Tell us what you think")).toBe("send");
   });
   test("banks, wallets and password managers are out of reach", () => {
     for (const p of ["com.eg.android.AlipayGphone", "com.paypal.android.p2pmobile", "com.x8bit.bitwarden", "com.google.android.apps.authenticator2", "com.chase.sig.android.bank"]) expect(blockedApp(p)).toBe(true);
@@ -53,8 +53,8 @@ describe("the gate at the effect", () => {
   });
   test("D253: a quick-settings tile that cuts the phone off waits for Go; in Settings only a switch does", () => {
     // The tile a task tapped on hel looking for the screen recorder (with Android's non-breaking hyphen).
-    expect(toggleOf("com.android.systemui", "Wi\u2011Fi · Networks available")).toBe("setting");
-    for (const l of ["Internet", "Bluetooth · Off", "Airplane mode", "飞行模式", "蓝牙", "移动数据", "Hotspot", "Location"]) expect(toggleOf("com.android.systemui", l)).toBe("setting");
+    expect(toggleOf("com.android.systemui", "Wi\u2011Fi | Networks available")).toBe("setting");
+    for (const l of ["Internet", "Bluetooth | Off", "Airplane mode", "飞行模式", "蓝牙", "移动数据", "Hotspot", "Location"]) expect(toggleOf("com.android.systemui", l)).toBe("setting");
     for (const l of ["Flashlight", "Edit"]) expect(toggleOf("com.android.systemui", l)).toBeUndefined();
     // D255: the recorder's tile and its Stop start or stop a recording: they wait for Go.
     for (const l of ["Screen record", "屏幕录制", "Stop recording", "停止录制"]) expect(toggleOf("com.android.systemui", l)).toBe("record");
@@ -327,7 +327,7 @@ describe("the live view", () => {
     live.note("t1", { kind: "look" });
     live.note("t1", { kind: "shot" });
     live.note("t1", { kind: "open", app: "com.chat" });
-    live.note("t1", { kind: "type", label: "消息 · 输入框" });
+    live.note("t1", { kind: "type", label: "消息 | 输入框" });
     for (let i = 0; i < 8; i++) live.note("t1", { kind: "tap", label: `按钮${i}` });
     const did = live.did("t1");
     expect(did.length).toBe(8);

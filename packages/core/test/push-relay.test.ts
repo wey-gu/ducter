@@ -88,8 +88,9 @@ describe("the relay client and the way out", () => {
     expect(c.url).toBe("https://relay.test/api/push/send");
     expect(Object.keys(c.body).sort()).toEqual(["category", "collapse", "d", "handle"]);
     expect(c.body.collapse).toBe(await collapseId(KEY, "d:d1"));
-    // The words never travel in the clear; `d` is ciphertext (random base64 may contain any two letters).
-    const clear = JSON.stringify({ ...c.body, d: undefined });
+    // The words never travel in the clear; `d` is ciphertext and `collapse` a keyed hash (checked
+    // above): random base64 may contain any two letters, "d1" included.
+    const clear = JSON.stringify({ ...c.body, d: undefined, collapse: undefined });
     expect(clear).not.toContain("rebase");
     expect(clear).not.toContain("d1");
     const opened = JSON.parse(dec.decode(await decryptForDevice(KEY, c.body.d)));

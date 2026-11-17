@@ -214,13 +214,13 @@ Yes, when you ask. On **Partner › Accounts it can read**, tap **Use these acco
 oo, or add an address and key. Reading just happens; sending or changing anything waits for
 your **Go**. See [Accounts your partner can read](accounts.md).
 
-### Can it work with the AI agent in my terminal?
+### Can it work with my own Claude Code or Codex?
 
-Coming soon: Nowledge Mem is still opening this up on its side. When it does, **Settings ›
-Connected AI agents › Connect** lets the Claude Code or Codex session you have open in a terminal hand
-your partner a job or ask for your call, and lets your partner ask that session what it knows.
-Either way, your partner checks with you first. **Disconnect** turns it all off; **Who can reach it
-› Nobody** keeps other agents out while what you ask your partner to send still gets its answer.
+Coming soon: Nowledge Mem is still opening this up on its side. When it does, **Settings › Talk
+with your other agents** lets the Claude Code or Codex session you have open hand your partner
+a job or ask for your call, and lets your partner ask that session what it knows. Either way, your
+partner checks with you first. Once Nowledge Mem is signed in, it connects by itself; one switch on
+that page turns it all off.
 
 What it needs, and what you can do today from that same section:
 

@@ -6,9 +6,9 @@ import { createMediaStore } from "./media.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { HARNESSES, fill, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard } from "@ducter/protocol";
+import { HARNESSES, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
@@ -22,6 +22,7 @@ import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
 import { createOutside } from "./outside.ts";
 import { createLocalAgents, type LocalAgents } from "./local-agents/index.ts";
+import { bridgeOnWords, createBridgeAuto } from "./bridge-auto.ts";
 import { createDid } from "./did.ts";
 import { registerDidTool } from "./did-tool.ts";
 import { recentFolders } from "./first-words.ts";
@@ -878,6 +879,50 @@ export function startCore(opts: CoreOptions = {}): Core {
         ...(opts.firstWords.home ? { home: opts.firstWords.home } : {}),
       }
     : undefined;
+  // D332: whether the person runs their own AI agents here (Claude Code, Codex, pi): the agents with a
+  // record changed in the last 14 days, by file times alone (D327's rule), Ducter's own and temporary
+  // folders left out (unless the records read are themselves in one: a test's, the demo's). Settings
+  // shows 和你的其他 agent 通信 / Talk with your other agents to them; read only while looking at records is on; a minute's cache.
+  let ownCache: { at: number; agents: import("./local-agents/index.ts").LocalAgent[] } | undefined;
+  const ownAgents = () => {
+    if (!settings.localAgents()) return [];
+    if (ownCache && Date.now() - ownCache.at < 60_000) return ownCache.agents;
+    const roots = Object.values(outsideReader.roots()).map((r) => resolve(r));
+    const under = (p: string, root: string) => p === root || p.startsWith(root.endsWith(sep) ? root : root + sep);
+    const skip = [dataDir, homeFolder(), tmpdir(), "/tmp", "/private/tmp", "/var/folders", "/private/var/folders"].map((p) => resolve(p)).filter((t) => !roots.some((r) => under(r, t)));
+    let agents: import("./local-agents/index.ts").LocalAgent[] = [];
+    try {
+      agents = outsideReader.active({ since: Date.now() - 14 * 86_400_000, skip });
+    } catch {
+      /* unreadable records: nothing to say */
+    }
+    ownCache = { at: Date.now(), agents };
+    return agents;
+  };
+  // D332: the partner connects with the person's own agents by itself once Mem is ready (no tap), says so
+  // once, and the one switch (peers.reach) connects or revokes.
+  const bridgeAuto = createBridgeAuto({
+    link: bridgeLink,
+    on: () => settings.get().peers?.reach !== "off",
+    own: () => ownAgents().map((a) => harnessName(a)),
+    dataDir,
+    say: (agents) => log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: bridgeOnWords(langNow(), agents) } }),
+  });
+  let reachWas = settings.get().peers?.reach;
+  settings.onChange(() => {
+    const r = settings.get().peers?.reach;
+    if (r === reachWas) return;
+    reachWas = r;
+    void bridgeAuto.switched(r !== "off");
+  });
+  let autoAt: ReturnType<typeof setTimeout> | undefined;
+  const autoSoon = () => {
+    clearTimeout(autoAt);
+    autoAt = setTimeout(() => void bridgeAuto.tick(), 1500);
+    (autoAt as { unref?: () => void }).unref?.();
+  };
+  bridgeLink.onChange(autoSoon);
+  autoSoon();
   // D300: 替你做过的 / Done for you: every outward action, read from the Log and Autofill's uses.
   const did = createDid({ log, tasks, uses: () => autofill.store.view().uses, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), folder: (id) => changes.folder(id), now: () => clock.now() });
   registerDidTool(mcp, did, () => clock.now());
@@ -927,7 +972,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.

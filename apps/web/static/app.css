@@ -13917,3 +13917,33 @@ svg .wave.w2.on {
 /* D329: the Nowledge Mem app closed: its sentence, then the one way to open it, under the head. */
 .mem-closed-line { color: var(--ink-muted); line-height: 1.5; }
 .mem-closed-act { display: flex; }
+
+/* D332: 终端里的 AI / AI in your terminal. The picture, literal: the person's agents' coins, the partner,
+   and the two ways between them in words; the Partner page's one quiet invitation line. */
+.peers-pic { display: flex; align-items: center; justify-content: center; gap: var(--s3); margin: 0 0 var(--s4); padding: var(--s4) var(--s5); border-radius: var(--r-lg); background: var(--surface-sunken); box-shadow: inset 0 2px 0 var(--line); }
+.pp-end { display: flex; flex: none; flex-direction: column; align-items: center; gap: var(--s2); }
+.pp-end small,
+.pp-way small { font-size: var(--sm); font-weight: 600; line-height: 1.4; color: var(--ink-soft); text-align: center; }
+.pp-end .mem-coins > * + * { margin-left: -16px; }
+.pp-ways { display: flex; flex: 1; flex-direction: column; gap: var(--s3); min-width: 0; max-width: 260px; }
+.pp-way { display: flex; flex-direction: column; gap: 2px; }
+.pp-arrow { width: 100%; height: 14px; color: var(--ink-muted); }
+.set-invite { display: flex; align-items: center; gap: var(--s3); padding: 0 var(--set-in, var(--s4)); color: var(--ink-muted); }
+.set-invite small { font-size: var(--sm); line-height: 1.5; }
+@media (max-width: 420px) {
+  .peers-pic { gap: var(--s2); padding: var(--s3); }
+}
+/* D332: 试试看 as two tiny exchanges, one each way: who you say it to, your sentence in your own bubble
+   (a small copy button on it), a small arrow, then the partner's face and what it does. */
+.ex-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s4); }
+.ex { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.ex-to { font-size: var(--sm); font-weight: 600; color: var(--ink-soft); }
+.ex-line { align-self: stretch; display: flex; align-items: center; gap: var(--s2); }
+.ex-say { flex: 1; min-width: 0; padding: 10px 14px; border-radius: var(--bubble); background: var(--user-bubble); color: var(--on-user-bubble); font-size: var(--md); line-height: 1.5; overflow-wrap: anywhere; user-select: text; }
+.ex-copy { flex: none; display: grid; place-items: center; width: 32px; height: 32px; margin: 0; padding: 0; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--ink-muted); cursor: pointer; }
+.ex-copy:hover, .ex-copy:focus-visible { color: var(--ink); background: var(--surface-sunken); }
+.ex-copy.done { color: var(--done-ink); }
+.ex-copy svg { width: 16px; height: 16px; }
+.ex-arrow { width: 12px; height: 16px; margin-left: var(--s4); color: var(--ink-muted); }
+.ex-then { display: flex; align-items: center; gap: var(--s2); font-size: var(--sm); line-height: 1.5; color: var(--ink-soft); }
+.ex-then > :first-child { flex: none; }

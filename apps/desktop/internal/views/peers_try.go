@@ -7,14 +7,15 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// D321: 连上的 AI agent's 试试看 / Try it once the link is on: the exact words
-// for the terminal (J1, X1) and for here (S2), each copyable; whether each
-// agent can hear them (Mem's plugin in it); a live row that waits for the
-// first hand-off, then says it worked (with the way to it), then is gone.
-// And the conversation's one-time note under the first message from another
-// agent. The web's: PeersTry and FirstPeerNote (apps/web/src).
+// D321, D332: 和你的其他 agent 通信's 最近 / Recently and 试试看 / Try it once the link
+// is on: what came and went lately (both ways), the exact words for the
+// terminal (J1, X1) and for here (S2), each copyable; each agent that can't
+// hear them yet. And the conversation's one-time note under the first
+// message from another agent. The web's: PeersRecent, PeersTry and
+// FirstPeerNote (apps/web/src).
 
 // firstPeer is the first message another agent sent, nil when none came yet.
 func (a *App) firstPeer() *protocol.BridgeMsg {
@@ -26,41 +27,65 @@ func (a *App) firstPeer() *protocol.BridgeMsg {
 	return nil
 }
 
-// firstPeerAt is when that first message came ("" when none).
-func (a *App) firstPeerAt() string {
-	for _, e := range a.S.Channel {
-		if e.Peer != nil && e.Peer.Direction == "in" {
-			return e.Event.TS
-		}
+// drawCopy is two overlapping rounded sheets: copy.
+func drawCopy(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		x0, y0, x1, y1, k := cx-2.5, cy-2.5, cx+5.5, cy+5.5, float32(2)
+		var m ui.Path
+		m.MoveTo(x0+k, y0)
+		m.LineTo(x1-k, y0)
+		m.QuadTo(x1, y0, x1, y0+k)
+		m.LineTo(x1, y1-k)
+		m.QuadTo(x1, y1, x1-k, y1)
+		m.LineTo(x0+k, y1)
+		m.QuadTo(x0, y1, x0, y1-k)
+		m.LineTo(x0, y0+k)
+		m.QuadTo(x0, y0, x0+k, y0)
+		m.Close()
+		p.StrokePath(&m, 1.6, col)
+		var n ui.Path
+		n.MoveTo(cx+2.5, cy-4.5)
+		n.LineTo(cx+2.5, cy-5)
+		n.QuadTo(cx+2.5, cy-6.5, cx+1, cy-6.5)
+		n.LineTo(cx-4, cy-6.5)
+		n.QuadTo(cx-5.5, cy-6.5, cx-5.5, cy-5)
+		n.LineTo(cx-5.5, cy)
+		n.QuadTo(cx-5.5, cy+1.5, cx-4, cy+1.5)
+		n.LineTo(cx-3.5, cy+1.5)
+		p.StrokePath(&n, 1.6, col)
 	}
-	return ""
 }
 
-// saySlab is one thing to say, exactly: what it does, then the words on a
-// sunken slab (the prompt mark when they go to a terminal) and 复制.
-func (a *App) saySlab(c *ui.Context, key, what, words string, terminal bool) {
+// exchange is one example exchange (D332), a tiny conversation: who you
+// say it to, the sentence in your own bubble with a small copy button
+// (复制这句 → 已复制), a small arrow, then the partner and what it does.
+func (a *App) exchange(c *ui.Context, key, to, words, then string) {
 	t := a.T
 	ps := &a.memPage
-	copied := ps.copied == key && a.Now().Sub(ps.copiedAt) < 2*time.Second
+	copied := ps.copied == key && a.Now().Sub(ps.copiedAt) < 1600*time.Millisecond
 	if copied {
-		c.After(2*time.Second - a.Now().Sub(ps.copiedAt))
+		c.After(1600*time.Millisecond - a.Now().Sub(ps.copiedAt))
 	}
-	ui.Column(c.Key("say:" + key)).Gap(6).Children(func() {
-		ui.Text(c, what).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft)
-		ui.Row(c).Gap(t.S2).Padding(t.S2, t.S2, t.S2, t.S3).MinHeight(48).AlignItems(ui.Center).
-			Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-			if terminal {
-				a.glyph(c, 16, drawPrompt(t.Accent))
-			}
-			ui.Text(c, autospace(words)).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.Ink).Selectable().Grow(1).Basis(0).MinWidth(0)
-			label := a.L.T("peers.try.copy")
+	ui.Column(c.Key("ex:" + key)).Gap(6).Grow(1).Basis(240).MinWidth(0).Children(func() {
+		ui.Text(c, to).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft)
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Padding(t.S2+2, t.S3+2).Radius(t.RadiusLG).Background(t.UserBubble).Grow(1).Basis(0).MinWidth(0).Children(func() {
+				ui.Text(c, autospace(words)).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.OnUserBubble).Selectable().Grow(1).Basis(0).MinWidth(0)
+			})
+			label, draw, ink := a.L.T("peers.try.copy"), drawCopy, t.InkMuted
 			if copied {
-				label = a.L.T("peers.try.copied")
+				label, draw, ink = a.L.T("peers.try.copied"), drawCheck, t.Done.Ink
 			}
-			if a.quietButton(c, "say-copy:"+key, label, words, false, 0) {
+			if a.iconButton(c, label, 32, btnText, func(ui.Color) func(p *ui.Painter, r ui.Rect) { return draw(ink) }) {
 				c.WriteClipboard(words)
 				ps.copied, ps.copiedAt = key, a.Now()
 			}
+		})
+		ui.Box(c).Width(12).Height(16).Margin(0, 0, 0, t.S4).AccessHidden(true).Draw(drawDown(t.InkMuted))
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+			a.avatar(c, theme.Idle, 22)
+			ui.Text(c, then).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft).Grow(1).Basis(0).MinWidth(0)
 		})
 	})
 }
@@ -82,61 +107,70 @@ func (a *App) handoffDot(c *ui.Context) func() {
 	}
 }
 
-// peersTry is 试试看 under the link's group.
+// peersRecent is 最近 / Recently (D332): the latest exchanges both ways,
+// newest first, each opening its task or the conversation; before the
+// first one, a calm row that waits for it.
+func (a *App) peersRecent(c *ui.Context, name string) {
+	t := a.T
+	list := recentHandoffs(a.S.Channel, 5)
+	a.group(c, "peers-recent", a.L.T("peers.recent.title"), "", func() {
+		if len(list) == 0 {
+			a.tileRow(c, "peers-wait", a.handoffDot(c), a.L.T("peers.wait.title"), a.L.T("peers.wait.line"), nil)
+			return
+		}
+		for _, h := range list {
+			h := h
+			var age func()
+			if s := a.agoLong(h.At); s != "" {
+				age = func() { ui.Text(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
+			}
+			who := a.peerWho(h.Agent)
+			if a.openRow(c, "handoff:"+itoa(h.Seq), a.toolTile(c, peerName(who)), autospace(h.Words), a.L.T("peers.recent."+h.Way, who, name), t.InkMuted, false, age) {
+				if h.TaskID != "" {
+					a.OpenTask(h.TaskID)
+				} else {
+					a.Route = RouteConversation
+				}
+			}
+		}
+	})
+}
+
+// peersTry is 试试看 (D321, D332): two example exchanges, one each way, as
+// a tiny conversation; then each agent missing Mem's plugin, one row with
+// its fix (装上), in a group of its own.
 func (a *App) peersTry(c *ui.Context, name string) {
 	t := a.T
-	first := a.firstPeerAt()
-	phase := handoffPhase(first, a.Now())
-	if phase == "first" {
-		if at, err := time.Parse(time.RFC3339Nano, first); err == nil {
-			c.After(at.Add(firstFresh).Sub(a.Now()) + time.Second)
+	a.group(c, "peers-try", a.L.T("peers.try.title"), "", func() {
+		a.textBlock(c, "try-ex", func() {
+			ui.Row(c).Gap(t.S4).Wrap().AlignItems(ui.Start).Children(func() {
+				a.exchange(c, "work", a.L.T("peers.try.work.to"), a.L.T("peers.try.work", name), a.L.T("peers.try.work.then", name))
+				a.exchange(c, "here", a.L.T("peers.try.here.to", name), a.L.T("peers.try.here"), a.L.T("peers.try.here.then", name))
+			})
+		})
+	})
+	var missing []tryAgent
+	for _, x := range tryAgents(a.S.Devices) {
+		if x.Plugin == "off" && x.Device != "" {
+			missing = append(missing, x)
 		}
 	}
-	a.group(c, "peers-try", a.L.T("peers.try.title"), a.L.T("peers.try.note"), func() {
-		a.textBlock(c, "try-terminal", func() {
-			a.saySlab(c, "work", a.L.T("peers.try.work.what"), a.L.T("peers.try.work", name), true)
-			a.saySlab(c, "ask", a.L.T("peers.try.ask.what"), a.L.T("peers.try.ask", name), true)
-		})
-		for _, x := range tryAgents(a.S.Devices) {
+	if len(missing) == 0 {
+		return
+	}
+	a.group(c, "peers-plugin", "", "", func() {
+		for _, x := range missing {
 			x := x
 			tool := "Claude Code"
 			if x.Harness == "codex" {
 				tool = "Codex"
 			}
-			line := a.L.T("peers.try.plugin.unknown")
-			switch x.Plugin {
-			case "on":
-				line = a.L.T("peers.try.plugin.on")
-			case "off":
-				line = a.L.T("peers.try.plugin.off", name)
-			}
-			var control func()
-			if x.Plugin == "off" && x.Device != "" {
-				control = func() {
-					if a.buttonFor(c, a.L.T("peers.try.plugin.go"), x.DeviceName, btnSecondary, t.ControlSM, t.Surface) {
-						a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: x.Device, Harness: x.Harness})
-					}
-				}
-			}
-			a.tileRow(c, "try-agent:"+x.Harness, a.toolTile(c, tool), tool, line, control)
-		}
-		switch phase {
-		case "waiting":
-			a.tileRow(c, "try-wait", a.handoffDot(c), a.L.T("peers.wait.title"), a.L.T("peers.wait.line"), nil)
-		case "first":
-			who := a.peerWho("")
-			if m := a.firstPeer(); m != nil {
-				who = a.peerWho(firstNonEmpty(m.Agent, m.From))
-			}
-			a.tileRow(c, "try-first", a.glyphTile(c, 18, drawCheck(t.Done.Ink)), a.L.T("peers.first.title", who, name), a.L.T("peers.first.line"), func() {
-				if a.button(c, a.L.T("peers.first.open"), btnSecondary, t.ControlSM, t.Surface) {
-					a.Route = RouteConversation
+			a.tileRow(c, "try-agent:"+x.Harness, a.toolTile(c, tool), tool, a.L.T("peers.try.plugin.off", name), func() {
+				if a.buttonFor(c, a.L.T("peers.try.plugin.go"), x.DeviceName, btnSecondary, t.ControlSM, t.Surface) {
+					a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: x.Device, Harness: x.Harness})
 				}
 			})
 		}
-		a.textBlock(c, "try-here", func() {
-			a.saySlab(c, "here", a.L.T("peers.try.here.what", name), a.L.T("peers.try.here"), false)
-		})
 	})
 }
 

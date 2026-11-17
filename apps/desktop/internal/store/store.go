@@ -456,6 +456,8 @@ type Store struct {
 	Mem      *protocol.MemView
 	// Bridge is the persona's own connection row (D205), as last sent.
 	Bridge *protocol.BridgeView
+	// OwnAgents (D332): the AI agents the person runs themselves on the home.
+	OwnAgents []string
 	// BrainNow is what the partner thinks with right now (D150).
 	BrainNow *protocol.BrainNow
 	// Connections (D96), once asked for; nil means not yet. Oo is what the
@@ -660,6 +662,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 		s.BrainNow = f.BrainNow
 		s.Bridge = f.Bridge
+		s.OwnAgents = f.OwnAgents
 		if f.Forgot != nil {
 			s.Forgot = f.Forgot
 		}

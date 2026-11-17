@@ -13,11 +13,13 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D205/D225/D229, placed by D257: the persona's own connection with the
-// user's other AI agents is Settings › 连上的 AI agent; the home's own Nowledge
-// Mem steps (put in, update, move, sign in) are Settings › 记忆. Each state
-// shows on its tab; 连上, 断开 (after one confirm), 装上 and 更新 send their
-// frames; nothing else does.
+// D205/D225/D229, placed by D257, simplified by D332: the partner's link with
+// the person's own agents is Settings › 和你的其他 agent 通信; the home's own Nowledge
+// Mem steps (put in, update, move, sign in) are on Settings › 记忆 and walked
+// in place on 和你的其他 agent 通信 before it connects. Each state shows on its tab;
+// opening the pane while Mem is ready connects (no tap), the switch
+// connects or revokes, 装上 and 更新 send their frames; nothing else does.
+// Identity, place and 断开 never show.
 //
 //	DUCTER_SHOTS=1 DUCTER_SHOTS_DIR=$PWD/../../.shots/bridge-connect go test ./internal/views -run BridgeRow
 func TestBridgeRow(t *testing.T) {
@@ -36,9 +38,15 @@ func TestBridgeRow(t *testing.T) {
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("bridge.mem.update.go")} }},
 		{"old-nmem-peers", TabPeers, protocol.BridgeView{State: "update_mem", Identity: "ducter", Home: "hel"},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("peers.mem.update", "hel", "0.10.118"), L.T("peers.mem.go")}
+				return []string{L.T("peers.mem.what"), L.T("bridge.update", "hel"), L.T("peers.mem.then", "小鸭")}
 			},
-			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("peers.reach", "小鸭")} }},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("peers.switch", "小鸭")} }},
+		// D332: no Mem yet: one sentence of what it is, and its steps in place.
+		{"install-peers", TabPeers, protocol.BridgeView{State: "install_mem", Identity: "ducter", Home: "hel", CanRun: true},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("peers.pic.to", "小鸭"), L.T("peers.mem.what"), L.T("bridge.mem.install.go"), L.T("mem.step.signin")}
+			},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), "ducter"} }},
 		// D225: the home's own Mem command line, put in, updated and signed in, in Memory.
 		{"install", TabMemory, protocol.BridgeView{State: "install_mem", Identity: "ducter", Home: "hel", CanRun: true},
 			func(L *i18n.Strings) []string {
@@ -84,16 +92,19 @@ func TestBridgeRow(t *testing.T) {
 			}, nil},
 		{"ready", TabPeers, protocol.BridgeView{State: "ready", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("bridge.title", "小鸭"), L.T("bridge.connect"), L.T("peers.reach", "小鸭"), L.T("peers.head.ready")}
-			}, nil},
+				return []string{L.T("peers.pic.to", "小鸭"), L.T("peers.joining", "小鸭"), L.T("peers.switch", "小鸭")}
+			},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"connecting", TabPeers, protocol.BridgeView{State: "connecting", Identity: "ducter", Space: space},
-			func(L *i18n.Strings) []string { return []string{L.T("bridge.connecting")} },
+			func(L *i18n.Strings) []string { return []string{L.T("peers.joining", "小鸭")} },
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"connected", TabPeers, protocol.BridgeView{State: "connected", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("peers.head.on", "小鸭"), L.T("peers.as.line", "ducter"), L.T("peers.space.own"), L.T("bridge.undo")}
+				return []string{L.T("peers.recent.title"), L.T("peers.wait.title"), L.T("peers.try.title"), L.T("peers.switch", "小鸭"), L.T("peers.switch.on")}
 			},
-			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.connect"), L.T("bridge.undo"), "ducter", "Only me", L.T("mem.details")}
+			}},
 		{"no-space", TabPeers, protocol.BridgeView{State: "no_space", Identity: "ducter"},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.no_space")} },
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("bridge.retry")} }},
@@ -108,7 +119,7 @@ func TestBridgeRow(t *testing.T) {
 			}, nil},
 		{"unconfirmed", TabPeers, protocol.BridgeView{State: "unconfirmed", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("bridge.unconfirmed", "ducter"), L.T("bridge.retry"), L.T("bridge.undo")}
+				return []string{L.T("bridge.unconfirmed", "ducter"), L.T("bridge.retry")}
 			}, nil},
 		// D324: another home answers the partner's mailbox: where, and 改由这台收 (no plain Connect).
 		{"elsewhere", TabPeers, protocol.BridgeView{State: "elsewhere", Identity: "ducter", Space: space, Others: []protocol.BridgeOther{{Label: "ducter-on-hel-1a2b3c", Home: "hel"}}},
@@ -141,6 +152,7 @@ func TestBridgeRow(t *testing.T) {
 				app.Status = 2
 				f := settingsFrame()
 				f.Settings.Peers = &protocol.Peers{Reach: "own", Trusted: []string{}, Muted: []string{}}
+				f.OwnAgents = []string{"claude-code", "codex"}
 				v := s.v
 				f.Bridge = &v
 				app.Receive(f)
@@ -177,20 +189,16 @@ func TestBridgeRow(t *testing.T) {
 					if len(*sent) != n+1 || (*sent)[n].(protocol.BridgeAction).T != "bridge_mem_install" {
 						t.Fatalf("装上 sent %v", (*sent)[n:])
 					}
-				case "old-nmem-peers":
-					// 去「记忆」 goes to Memory, where the update is.
-					if err := tt.Click(L.T("peers.mem.go")); err != nil {
-						t.Fatal(err)
-					}
-					if app.settingsTab() != TabMemory {
-						t.Fatalf("去「记忆」 opened %q", app.settingsTab())
-					}
 				case "ready":
-					if err := tt.Click(L.T("bridge.connect")); err != nil {
-						t.Fatal(err)
+					// D332: opening the pane while Mem is ready connects, with no tap.
+					got := false
+					for _, m := range *sent {
+						if a, ok := m.(protocol.BridgeAction); ok && a.T == "bridge_connect" {
+							got = true
+						}
 					}
-					if len(*sent) != n+1 || (*sent)[n].(protocol.BridgeAction).T != "bridge_connect" {
-						t.Fatalf("连上 sent %v", (*sent)[n:])
+					if !got {
+						t.Fatalf("ready didn't connect by itself: %v", *sent)
 					}
 				case "elsewhere", "twice":
 					// D324: the first tap asks in place; the second sends bridge_only_here.
@@ -213,20 +221,21 @@ func TestBridgeRow(t *testing.T) {
 						t.Fatalf("%s sent %v", goLabel, (*sent)[n:])
 					}
 				case "connected":
-					// The first tap asks; the second disconnects.
-					if err := tt.Click(spoken(L, L.T("bridge.undo"), "ducter")); err != nil {
-						t.Fatal(err)
+					// D332: the one switch: off is a settings change (core revokes), no confirm.
+					sw, ok := tt.AccessByRole(ui.RoleSwitch, L.T("peers.switch", "小鸭"))
+					if !ok {
+						t.Fatalf("no switch")
 					}
+					tt.ClickAt(sw.Bounds.X+sw.Bounds.W/2, sw.Bounds.Y+sw.Bounds.H/2)
 					tt.Frame()
-					if len(*sent) != n || !tt.HasText(L.T("peers.undo.ask")) {
-						t.Fatalf("断开 ran without asking: %v", (*sent)[n:])
+					var off bool
+					for _, m := range (*sent)[n:] {
+						if p, ok := m.(protocol.SettingsSet); ok && p.Patch.Peers != nil && p.Patch.Peers.Reach == "off" {
+							off = true
+						}
 					}
-					bridgeShot(t, tt, fmt.Sprintf("mac-%s-disconnect-ask", lang))
-					if err := tt.Click(spoken(L, L.T("bridge.undo"), "ducter")); err != nil {
-						t.Fatal(err)
-					}
-					if len(*sent) != n+1 || (*sent)[n].(protocol.BridgeAction).T != "bridge_disconnect" {
-						t.Fatalf("断开 sent %v", (*sent)[n:])
+					if !off {
+						t.Fatalf("the switch sent %v", (*sent)[n:])
 					}
 				}
 			})
@@ -236,10 +245,11 @@ func TestBridgeRow(t *testing.T) {
 
 func ptr[T any](v T) *T { return &v }
 
-// With no Mem that can connect and no agent ever written, 连上的 AI agent stays
-// away (J6): not in the rail, and its tab falls back to the partner's.
+// D332: for someone Ducter hasn't seen run agents of their own (and no agent
+// ever written), 和你的其他 agent 通信 stays out of the rail whatever Mem says (J6);
+// the Partner page carries one quiet line that opens it.
 func TestBridgeRowAbsentForAFreshUser(t *testing.T) {
-	for _, b := range []*protocol.BridgeView{nil, {State: "install_mem", Identity: "ducter", Home: "hel", CanRun: true}, {State: "sign_in", Identity: "ducter", Home: "hel"}} {
+	for _, b := range []*protocol.BridgeView{nil, {State: "install_mem", Identity: "ducter", Home: "hel", CanRun: true}, {State: "sign_in", Identity: "ducter", Home: "hel"}, {State: "ready", Identity: "ducter"}} {
 		app, _ := iaApp(t, i18n.ZH)
 		f := settingsFrame()
 		f.Settings.Peers = &protocol.Peers{Reach: "own", Trusted: []string{}, Muted: []string{}}
@@ -250,7 +260,10 @@ func TestBridgeRowAbsentForAFreshUser(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		if tt.HasText(app.L.T("settings.tab.peers")) {
-			t.Fatalf("连上的 AI agent shows for a fresh user (%v): %q", b, tt.Texts())
+			t.Fatalf("和你的其他 agent 通信 shows for a fresh user (%v): %q", b, tt.Texts())
+		}
+		if b != nil && !tt.HasText(app.L.T("peers.invite", "小鸭")) {
+			t.Fatalf("no invitation on the Partner page (%v): %q", b, tt.Texts())
 		}
 	}
 }

@@ -22,7 +22,10 @@ const core = startCore({
   persona: { id: "default", name: "Ducter", identity: "", ...(memOn ? { mem: { agentId: "ducter", owned: true } } : {}) },
   hostname: process.env.DUCTER_HOST || "127.0.0.1",
   clock,
-  bridgeLink: { run: fakeNmem(mem, zh), exec: async () => ({ code: 1, out: "", err: "" }) },
+  bridgeLink: { run: fakeNmem(mem, zh), exec: async () => ({ code: 1, out: "", err: "" }), env: { PATH: "/usr/bin:/bin", NMEM_CLI_PATH: "/nonexistent/nmem" } },
+  // D332: Mem's plugin check is a pretend one too (never this machine's nmem): with DEMO_PAST the
+  // person's own Claude Code has it and Codex doesn't; without, nothing is known.
+  memPlugins: { inspectLocal: async () => (process.env.DEMO_PAST === "1" ? { "claude-code": { state: "installed" as const }, codex: { state: "absent" as const } } : undefined) },
   // D309: DEMO_PARTNERS=1 offers more than one partner (the preview), with a second one seeded below.
   ...(process.env.DEMO_PARTNERS === "1" ? { partners: true } : {}),
 });
@@ -276,6 +279,20 @@ if (process.env.DEMO_PEER === "first" && memOn) {
   const text = zh ? "把 Linux 上 CI 那个红修了：runner 的测试在 Linux 上偶发超时，只动 runner 的测试，修好回我。" : "Fix the red Linux CI: the runner tests time out now and then on Linux. Only touch the runner tests; tell me when it's fixed.";
   log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: "bm_first", from: "Claude Code", agent: "Claude Code", text } });
   log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_peer_first", question: zh ? "开个任务修 Linux 上的 runner 测试（只动 runner 的测试）？" : "Open a task to fix the runner tests on Linux (only the runner tests)?", goLabel: zh ? "开始" : "Start", defaultOption: "hold", reversible: true } });
+  skew = 0;
+}
+
+// D332: DEMO_PEER=history: a few exchanges with the terminal's agents, both ways (Settings › 和你的其他 agent 通信's 最近).
+if (process.env.DEMO_PEER === "history" && memOn) {
+  const at = (min: number) => (skew = -min * 60_000);
+  at(190);
+  log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: "bm_h1", from: "Claude Code", agent: "Claude Code", text: zh ? "把 fix-ci 分支跟上 main，冲突能解就解，解不了的告诉我。" : "Bring fix-ci up to date with main; resolve what you can and tell me what you can't." } });
+  at(185);
+  log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "bm_h2", to: "Claude Code", agent: "Claude Code", inReplyTo: "bm_h1", taskId: "t_rebase", state: "sent", text: zh ? "fix-ci 跟上 main 了：两处冲突都在 CI 配置里，已经解好。" : "fix-ci is up to date with main: both conflicts were in the CI config, and they're resolved." } });
+  at(42);
+  log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "bm_h3", to: "Codex", agent: "Codex", decisionId: "d_h3", state: "sent", text: zh ? "那个 compaction 的 PR 今晚能提吗？" : "Can the compaction PR go up tonight?" } });
+  at(31);
+  log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: "bm_h4", from: "Codex", agent: "Codex", inReplyTo: "bm_h3", text: zh ? "能。测试都过了，还差 Weizhen 看一眼。" : "Yes. The tests pass; it just needs Weizhen to take a look." } });
   skew = 0;
 }
 

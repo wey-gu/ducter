@@ -1371,7 +1371,10 @@ export type ServerFrame =
   | { t: "agent_update_result"; device: string; harness: string; ok: boolean; reason?: AgentReason; detail?: string }
   | { t: "update_all_result"; ok: boolean; reason?: "nothing" | "running" | "failed"; detail?: string; id?: string }
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
-  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView }
+  // D332: ownAgents: the AI agents the person runs themselves on the home (their own records changed in
+  // the last 14 days, by file times alone; absent while looking at records is off): 和你的其他 agent 通信 / AI in
+  // your terminal shows in Settings for them.
+  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView; ownAgents?: ("claude-code" | "codex" | "pi")[] }
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
   | { t: "rules"; rules: RuleView[] }
@@ -2114,12 +2117,14 @@ export interface Settings {
 }
 
 /**
- * D170 (design/bridge.md): Settings › 伙伴's "who can reach {name}". reach: the user's own agents
- * only (the default), teammates' agents too, or nobody. trusted: own agents whose work starts
- * without asking (X2, a learned rule). muted: agents the user stopped listening to (不再听它的).
+ * D332 (supersedes D170's three-way reach): Settings › 和你的其他 agent 通信's one switch. reach "own": on, the
+ * person's own agents reach the partner (the default; the persona has only the Only me mailbox, so
+ * there is nobody else); "off": off, the connection revoked. A stored "team" reads as "own". trusted:
+ * own agents whose work starts without asking (X2, a learned rule, never a setting). muted: agents the
+ * person stopped listening to (不再听它的; each shows one row with 恢复).
  */
 export interface PeersSettings {
-  reach: "own" | "team" | "off";
+  reach: "own" | "off";
   trusted: string[];
   muted: string[];
 }

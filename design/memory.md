@@ -162,7 +162,7 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   a stated preference (zh and en), no save of a task result or a pasted key, no recall for a
   general question, Mem down.
 
-## Settings › 记忆 / Memory and › 连上的 AI agent (D295, built 2026-11-17; was D257)
+## Settings › 记忆 / Memory and › 和你的其他 agent 通信 (D295, built 2026-11-17; was D257; the second page is D332's)
 
 ### Who, what they feel, how it starts
 
@@ -178,10 +178,9 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   by their own names and coins), then where it's kept in their words (**Nowledge Mem Cloud，换哪台电脑都是同一份**,
   or **{home} 上的 Nowledge Mem 应用里，不离开那台电脑**) and the name it signs with. How it starts: nothing
   to do; it is already connected, and it shows the count Mem holds (**一共有 1,284 条记忆**).
-- **The heavy multi-agent developer.** Before: a raw `ducter · Only me · personal-…` line and a loud
-  断开 made the link feel fragile. After: **你的 AI agent 能找到 {name}** in the done ink, its identity and
-  place as two plain rows, who may reach it as one choice, the raw ids behind a quiet **详情 / Details**
-  for support, 断开 quiet until reached for and asking in place. How it starts: **连接 / Connect** once.
+- **The heavy multi-agent developer.** D332: 和你的其他 agent 通信, shown to them by who; nothing to tap once Mem is in
+  (the home connects by itself), what came and went first, one switch; identity, place and raw ids never shown
+  (`bridge.md` "Simple, by who").
 
 North star: 好用 (one switch, one tap to forget, two setup steps); 顺滑 (asks in place, no dialogs);
 赏心悦目 (the clay grid, small marks in the tile column, no hero card); 放心 (forget asks first and says
@@ -200,13 +199,9 @@ partner at 84–96 on the paper (an empty state, never inside a group), then one
 letter, how it stands (**还没接上 / {home} 上还没装 / 装好了，还差登录**), the two steps (D283's step
 marks) with D225's words, and the app's way as the foot.
 
-**Connected AI agents:** one group: two agents' coins in the tile column; connected: **你的 AI agent
-能找到 {name}** · **已连上**, **它的身份** (**「ducter」，你的 agent 按这个名字找它**), **在哪儿** (**你自己的空间，
-只有你的 agent 在里面**; a named place: **「{label}」空间**), **谁能找到 {name}** with its choice under its
-words, the foot **断开后它不再收，也不再发。** with **详情** and a quiet **断开** that asks in place
-(**断开？你的 AI agent 就找不到它了；…**). Other states keep D205/D225's words in the first row (ready:
-**连接** at its right edge). **它记住的规矩 / What it has learned** is a section of its own, a row per
-agent with its coin.
+**和你的其他 agent 通信 / Talk with your other agents (D332):** on, 最近 (both ways), 试试看 and the switch, problems first as one row
+each; before Mem, the literal picture, one sentence of what Nowledge Mem is and the two steps in place; off, the
+picture and the switch. Only **已不再听 X · 恢复** rows as rules. `bridge.md` "Simple, by who".
 
 ### The glance at Mem (core, `mem-glance.ts`)
 

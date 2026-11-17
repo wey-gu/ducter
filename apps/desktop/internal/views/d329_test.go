@@ -223,3 +223,39 @@ func hasExact(tt *ui.Tester, w string) bool {
 	}
 	return false
 }
+
+// D329 in D332's pane: Mem closed is one problem row on 和你的其他 agent 通信,
+// with 打开 Nowledge Mem when the home can open it, else the line naming the
+// computer; nothing D332 removed comes back.
+func TestD329MemClosedPeers(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		for _, dark := range []bool{false, true} {
+			L := i18n.New(lang)
+			app, sent := memApp(t, lang, "on")
+			app.S.Bridge = &protocol.BridgeView{State: "mem_closed", Identity: "ducter", Home: "hel", Version: "0.10.118", CanOpen: true}
+			app.S.OwnAgents = []string{"claude-code", "codex"}
+			app.openTab(TabPeers)
+			tt := d329Tester(app, 1280, 1400, dark)
+			for _, w := range []string{L.T("bridge.mem.closed"), L.T("bridge.mem.closed.open", "hel"), L.T("bridge.mem.open")} {
+				if !tt.HasText(w) {
+					t.Fatalf("%s: no %q in %q", lang, w, tt.Texts())
+				}
+			}
+			if tt.HasText("ducter") {
+				t.Errorf("%s: identity shown: %q", lang, tt.Texts())
+			}
+			d329Shot(t, tt, "peers-closed", dark, lang)
+			if err := tt.Click(L.T("bridge.mem.open")); err != nil {
+				t.Fatal(err)
+			}
+			if a, ok := lastSent[protocol.BridgeAction](*sent); !ok || a.T != "bridge_mem_open" {
+				t.Fatalf("%s: sent %#v", lang, *sent)
+			}
+			app.S.Bridge = &protocol.BridgeView{State: "mem_closed", Identity: "ducter", Home: "hel"}
+			tt.Frame()
+			if !tt.HasText(L.T("bridge.mem.closed.there", "hel")) || hasExact(tt, L.T("bridge.mem.open")) {
+				t.Errorf("%s: no way to open: %q", lang, tt.Texts())
+			}
+		}
+	}
+}

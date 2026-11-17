@@ -1,26 +1,25 @@
-// D257: Settings › 记忆 / Memory and › 连上的 AI agent / Connected AI agents, each its own page;
+// D257: Settings › 记忆 / Memory and › 和你的其他 agent 通信 / Talk with your other agents (D332), each its own page;
 // D295: both on the settings grid (D289). Memory shows the value first: the partner remembers you
 // (what's new this week, the switch), what it noted this week and earlier (each forgettable, asking
 // in place), what your other AI tools saved to Mem, then Nowledge Mem in human words (where it's
 // kept, its name there, the raw ids behind 详情). Before Mem: a small empty state and the setup as
-// steps. Connected AI agents is the persona's link with the person's other agents (D205) and who
-// may reach it (D170); it shows once Mem is in (peersShown). The Mac's: memory_pane.go, peers_pane.go.
+// steps. 和你的其他 agent 通信 / Talk with your other agents (D332) is the partner's link with the person's own agents,
+// shown by who (peersShown). The Mac's: memory_pane.go, peers_pane.go.
 // D321: Memory is "what it knows about you": Mem's own kinds as living groups (how you like things,
 // what you decided, what it knows), each row fixable or forgettable in place with its source as a
 // quiet line, a search, the week's check one tap away; other tools' working notes only as a count.
-// Connected AI agents teaches its first use: 试试看 with the exact words for the terminal (copyable),
-// whether each agent has Mem's plugin, and a live row that waits for the first hand-off and says it worked.
+// D332: 和你的其他 agent 通信 shows what came and went lately (both ways), 试试看 with the exact words, and one switch.
 import type { BridgeView, MemItem } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandTile, toolBrand } from "./brand.tsx";
 import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
-import { Btn, DangerButton, LinkBtn, Seg, Switch } from "./controls.tsx";
+import { Btn, DangerButton, LinkBtn, Switch } from "./controls.tsx";
 import { ago } from "./format.ts";
-import { aboutGroups, bySource, groupNoted, handoffPhase, MEM_MIN, memPhase, memUpdate, peersShown, tryAgents, type MemPhase, type MemUpdate } from "./mem-view.ts";
-import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Tile } from "./set-grid.tsx";
-import { Avatar, Check, peerName } from "./views.tsx";
+import { aboutGroups, bySource, groupNoted, MEM_MIN, memPhase, memUpdate, ownsAgents, peersPhase, peersShown, recentHandoffs, tryAgents, type Handoff, type MemPhase, type MemUpdate } from "./mem-view.ts";
+import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
+import { Avatar, Check } from "./views.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 export const MEM_SITE = "https://mem.nowledge.co";
@@ -359,12 +358,13 @@ function MemLink({ b }: { b: BridgeView | undefined }) {
 
 const FACE = { missing: "idle", install: "idle", installing: "working", sign_in: "waiting", signing_in: "working" } as const;
 
-/** Memory before Mem is there: a small empty state, then the setup as one group of steps. */
-function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "closed">; b: BridgeView | undefined }) {
+/**
+ * Nowledge Mem's two steps on the home, each one tap in place (D225): put it in, then sign in with a
+ * one-time link. Memory's first page and 和你的其他 agent 通信's (D332) walk the same steps.
+ */
+export function MemSteps({ phase, b }: { phase: "install" | "installing" | "sign_in" | "signing_in"; b: BridgeView | undefined }) {
   const [link, setLink] = useState("");
-  const name = A.settings!.name;
   const home = homeOf(b);
-  const line = { missing: t("mem.setup.missing"), install: t("mem.setup.install", home), installing: t("mem.setup.installing"), sign_in: t("mem.setup.signin"), signing_in: t("mem.setup.signing") }[phase];
   const installed = phase === "sign_in" || phase === "signing_in";
   const busyIn = phase === "installing";
   const busySign = phase === "signing_in";
@@ -374,6 +374,49 @@ function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "close
     A.signInBridgeMem(link.trim());
     setLink("");
   };
+  return (
+    <ol class="chat-steps">
+      <li class="chat-step">
+        <span class="chat-mark" aria-hidden="true">1</span>
+        <span class="grow">
+          <p>{installed ? t("mem.step.done") : t("mem.step.install")}</p>
+          {!installed && (
+            <>
+              <small>{busyIn ? t("bridge.mem.installing", home) : b?.canRun ? t("bridge.mem.install", home) : t("bridge.mem.install.need", home)}</small>
+              {b?.detail && !busyIn && <MemFailed detail={b.detail} kept={b.kept} install />}
+              {!b?.canRun && !busyIn && <MemMore label={t("bridge.mem.how")} text={t("bridge.mem.install.need.how")} />}
+              {!busyIn && <Btn kind={b?.canRun ? "primary" : "secondary"} size="sm" label={b?.canRun ? t("bridge.mem.install.go") : t("bridge.retry")} about={home} onClick={() => A.installBridgeMem()} />}
+            </>
+          )}
+        </span>
+      </li>
+      <li class="chat-step">
+        <span class="chat-mark" aria-hidden="true">2</span>
+        <span class="grow">
+          <p>{t("mem.step.signin")}</p>
+          {installed && (
+            <>
+              {b?.done && <small class="mem-done">{t(`bridge.mem.done.${b.done}`, home)}</small>}
+              <small>{t("bridge.mem.signin", home)}</small>
+              {why && <small class="mem-why">{why}</small>}
+              <label class="acct-field">
+                <span class="small">{t("bridge.mem.signin.link")}</span>
+                <input type="url" inputMode="url" autoComplete="off" autoCapitalize="off" autoCorrect="off" spellcheck={false} enterKeyHint="go" placeholder="https://…?nmem_connect=…" value={link} disabled={busySign} onInput={(e) => setLink((e.target as HTMLInputElement).value)} onKeyDown={(e) => e.key === "Enter" && go()} />
+              </label>
+              <Btn kind="primary" size="sm" disabled={busySign || !link.trim()} label={busySign ? t("bridge.mem.signin.busy") : t("bridge.mem.signin.go")} about={home} onClick={go} />
+            </>
+          )}
+        </span>
+      </li>
+    </ol>
+  );
+}
+
+/** Memory before Mem is there: a small empty state, then the setup as one group of steps. */
+function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "closed">; b: BridgeView | undefined }) {
+  const name = A.settings!.name;
+  const home = homeOf(b);
+  const line = { missing: t("mem.setup.missing"), install: t("mem.setup.install", home), installing: t("mem.setup.installing"), sign_in: t("mem.setup.signin"), signing_in: t("mem.setup.signing") }[phase];
   return (
     <>
       <div class="mem-first">
@@ -388,40 +431,7 @@ function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "close
             <LinkBtn kind="secondary" size="sm" href={MEM_SITE} label={t("mem.app.open")} />
           </GRow>
         ) : (
-          <ol class="chat-steps">
-            <li class="chat-step">
-              <span class="chat-mark" aria-hidden="true">1</span>
-              <span class="grow">
-                <p>{installed ? t("mem.step.done") : t("mem.step.install")}</p>
-                {!installed && (
-                  <>
-                    <small>{busyIn ? t("bridge.mem.installing", home) : b?.canRun ? t("bridge.mem.install", home) : t("bridge.mem.install.need", home)}</small>
-                    {b?.detail && !busyIn && <MemFailed detail={b.detail} kept={b.kept} install />}
-                    {!b?.canRun && !busyIn && <MemMore label={t("bridge.mem.how")} text={t("bridge.mem.install.need.how")} />}
-                    {!busyIn && <Btn kind={b?.canRun ? "primary" : "secondary"} size="sm" label={b?.canRun ? t("bridge.mem.install.go") : t("bridge.retry")} about={home} onClick={() => A.installBridgeMem()} />}
-                  </>
-                )}
-              </span>
-            </li>
-            <li class="chat-step">
-              <span class="chat-mark" aria-hidden="true">2</span>
-              <span class="grow">
-                <p>{t("mem.step.signin")}</p>
-                {installed && (
-                  <>
-                    {b?.done && <small class="mem-done">{t(`bridge.mem.done.${b.done}`, home)}</small>}
-                    <small>{t("bridge.mem.signin", home)}</small>
-                    {why && <small class="mem-why">{why}</small>}
-                    <label class="acct-field">
-                      <span class="small">{t("bridge.mem.signin.link")}</span>
-                      <input type="url" inputMode="url" autoComplete="off" autoCapitalize="off" autoCorrect="off" spellcheck={false} enterKeyHint="go" placeholder="https://…?nmem_connect=…" value={link} disabled={busySign} onInput={(e) => setLink((e.target as HTMLInputElement).value)} onKeyDown={(e) => e.key === "Enter" && go()} />
-                    </label>
-                    <Btn kind="primary" size="sm" disabled={busySign || !link.trim()} label={busySign ? t("bridge.mem.signin.busy") : t("bridge.mem.signin.go")} about={home} onClick={go} />
-                  </>
-                )}
-              </span>
-            </li>
-          </ol>
+          <MemSteps phase={phase} b={b} />
         )}
         <GFoot note={t("mem.setup.local", name)} />
       </Group>
@@ -429,10 +439,6 @@ function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "close
   );
 }
 
-/**
- * D329: the Nowledge Mem app on the home is closed: one line in place of the Nowledge Mem group, and
- * the way to open it when the home can (a Mac with the app); else where to open it.
- */
 /** D329: what the closed app means, and the one way to open it, under the head (never squeezed beside it on a phone). */
 function MemClosedWords({ b }: { b: BridgeView }) {
   const home = homeOf(b);
@@ -448,8 +454,11 @@ function MemClosedWords({ b }: { b: BridgeView }) {
   );
 }
 
+/**
+ * D329: the Nowledge Mem app on the home is closed: one line in place of the Nowledge Mem group, and
+ * the way to open it when the home can (a Mac with the app); else where to open it.
+ */
 export function MemClosed({ b }: { b: BridgeView }) {
-  const home = homeOf(b);
   return (
     <Group class="mem-g" label="Nowledge Mem">
       <GHead tile={<MemTile faded />} name={t("bridge.mem.closed")} />
@@ -464,15 +473,14 @@ export function MemoryPage() {
   const b = A.bridge;
   const phase = memPhase(s.memory, A.mem, b);
   if (phase === "off") return <MemHead />;
-  if (phase === "closed" && b)
+  if (phase === "closed")
     return (
       <>
         <MemHead />
-        <MemClosed b={b} />
+        {b && <MemClosed b={b} />}
       </>
     );
-  if (phase !== "on" && phase !== "closed") return <MemFirst phase={phase} b={b} />;
-  if (phase === "closed") return null;
+  if (phase !== "on") return <MemFirst phase={phase} b={b} />;
   return (
     <>
       <MemHead />
@@ -483,7 +491,7 @@ export function MemoryPage() {
   );
 }
 
-// ---------- 连上的 AI agent / Connected AI agents (D295: on the settings grid) ----------
+// ---------- 和你的其他 agent 通信 / Talk with your other agents (D332; D295: on the settings grid) ----------
 
 /** Two of the person's agents' coins, overlapping: this page's mark. */
 const CoinsTile = ({ faded }: { faded?: boolean }) => (
@@ -495,221 +503,313 @@ const CoinsTile = ({ faded }: { faded?: boolean }) => (
   </Tile>
 );
 
-/** The place it receives in, in the person's words. */
-const spaceWords = (b: BridgeView) => (!b.space?.label || b.space.label === "Only me" ? t("peers.space.own") : t("peers.space.named", b.space.label));
-
 /** D324: the other home(s) that also answer, in the person's words: its name, or another computer. */
 export const otherWhere = (b: BridgeView) => {
   const o = b.others ?? [];
   return o.length > 1 ? t("peers.where.many", o.length) : (o[0]?.home ?? t("peers.where.other"));
 };
 
-/**
- * D324: two homes read the partner's mailbox (connected here and elsewhere): one calm row and one
- * action, 只留这台, that asks in place; a connection Mem won't end from here says where to end it.
- */
-function PeersTwice({ b, name }: { b: BridgeView; name: string }) {
-  const where = otherWhere(b);
-  const stuck = (b.others ?? []).some((o) => o.stuck);
-  if (A.bridgeHere) return <GConfirm ask={t("peers.twice.ask", where, name)} keep={t("bridge.undo.keep")} go={t("peers.twice.go")} about={b.identity} onKeep={() => ((A.bridgeHere = false), A.changed())} onGo={() => A.onlyHereBridge()} />;
-  return (
-    <GRow title={t("peers.twice.title", name, where)} line={stuck ? t("peers.twice.stuck", where) : t("peers.twice.line")}>
-      {!stuck && <Btn kind="secondary" size="sm" label={t("peers.twice.go")} about={b.identity} onClick={() => A.onlyHereBridge()} />}
-    </GRow>
-  );
-}
-
-/** The link's first row in its state (D205; Nowledge Bridge underneath, never named). */
-function PeersHead({ b, name }: { b: BridgeView; name: string }) {
-  const toMemory = <Btn kind="secondary" size="sm" label={t("peers.mem.go")} onClick={() => A.openSettings("memory")} />;
-  const home = homeOf(b);
-  const title = t("bridge.title", name);
-  if (b.state === "install_mem" || b.state === "installing" || b.state === "sign_in" || b.state === "signing_in")
-    return (
-      <GHead tile={<CoinsTile faded />} name={title} line={t("peers.mem.first", home, name)}>
-        {toMemory}
-      </GHead>
-    );
-  if (b.state === "update_mem") return <GHead tile={<CoinsTile faded />} name={title} line={t("peers.mem.update", home, MEM_MIN)}>{toMemory}</GHead>;
-  if (b.state === "updating") return <GHead tile={<CoinsTile faded />} name={title} line={t("bridge.mem.updating", home)} />;
-  if (b.state === "local_mem") return <GHead tile={<CoinsTile faded />} name={title} line={t("bridge.mem.local", home)} />;
-  // D329: the Nowledge Mem app on the home is closed: the agents can't reach it until it's open.
-  if (b.state === "mem_closed")
-    return (
-      <>
-        <GHead tile={<CoinsTile faded />} name={t("bridge.mem.closed")} />
-        <MemClosedWords b={b} />
-      </>
-    );
-  if (b.state === "connected") return <GHead tile={<CoinsTile />} name={t("peers.head.on", name)} line={b.pinned ? t("bridge.pinned") : t("mem.app.on")} tone="done" />;
-  // D324: another home answers this partner's mailbox: where, and the one way to move it here.
-  if (b.state === "elsewhere")
-    return (
-      <GHead tile={<CoinsTile faded />} name={title} line={t("peers.elsewhere", name, otherWhere(b))}>
-        {!A.bridgeHere && <Btn kind="secondary" size="sm" label={t("peers.elsewhere.go")} about={b.identity} onClick={() => A.onlyHereBridge()} />}
-      </GHead>
-    );
-  if (b.state === "ready")
-    return (
-      <GHead tile={<CoinsTile faded />} name={title} line={t("peers.head.ready")}>
-        <Btn kind="primary" size="sm" label={t("bridge.connect")} about={b.identity} onClick={() => A.connectBridge()} />
-      </GHead>
-    );
-  if (b.state === "connecting" || b.state === "disconnecting") return <GHead tile={<CoinsTile faded />} name={title} line={t(b.state === "connecting" ? "bridge.connecting" : "bridge.disconnecting")} />;
-  const note = b.state === "no_space" ? t("bridge.no_space") : b.state === "refused" ? t(`bridge.refused.${b.reason ?? "control_denied"}`, b.identity) : b.state === "unconfirmed" ? t("bridge.unconfirmed", b.identity) : t("bridge.failed", b.detail ?? "");
-  const tryNewer = b.newer !== undefined && (b.state === "refused" || b.state === "failed" || b.state === "unconfirmed");
-  return (
-    <GHead tile={<CoinsTile faded />} name={title} line={tryNewer ? `${note}\n${t("peers.mem.newer")}` : note} tone={b.state === "no_space" ? undefined : "bad"}>
-      {tryNewer && toMemory}
-      {b.state === "unconfirmed" && <DangerButton quiet label={t("bridge.undo")} about={b.identity} onClick={() => ((A.bridgeConfirm = true), A.disconnectBridge())} />}
-      {b.state !== "no_space" && <Btn kind="secondary" size="sm" label={t("bridge.retry")} about={b.identity} onClick={() => A.connectBridge()} />}
-    </GHead>
-  );
-}
-
-/** A drawn terminal prompt (never a font's glyph): the words go there. */
-const PromptMark = () => (
-  <svg class="say-mark" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="m4 4.5 4 3.5-4 3.5M9.5 12h3" />
+/** A drawn arrow for the picture (never a font's glyph): left to right, or back. */
+const Way = ({ back }: { back?: boolean }) => (
+  <svg class={`pp-arrow${back ? " back" : ""}`} viewBox="0 0 120 14" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    {back ? <path d="M118 7H4m6-5-6 5 6 5" /> : <path d="M2 7h114m-6-5 6 5-6 5" />}
   </svg>
 );
 
-/** One thing to say, exactly: what it does, the words (copyable), and where they go (the prompt mark: a terminal; none: here). */
-function Say({ what, words, terminal }: { what: string; words: string; terminal: boolean }) {
+/**
+ * D332: the page's picture, literal (D321 (6): no metaphor): the person's own agents' coins on one side,
+ * the partner on the other, and the two ways between them, each said in words: they hand it work, it
+ * asks them for you.
+ */
+function PeersPicture({ name }: { name: string }) {
+  return (
+    <figure class="peers-pic" aria-label={`${t("peers.pic.to", name)} ${t("peers.pic.back", name)}`}>
+      <span class="pp-end">
+        <span class="mem-coins">
+          <Coin harness="claude-code" size={44} />
+          <Coin harness="codex" size={44} />
+        </span>
+        <small>{t("peers.pic.them")}</small>
+      </span>
+      <span class="pp-ways">
+        <span class="pp-way">
+          <small>{t("peers.pic.to", name)}</small>
+          <Way />
+        </span>
+        <span class="pp-way">
+          <Way back />
+          <small>{t("peers.pic.back", name)}</small>
+        </span>
+      </span>
+      <span class="pp-end">
+        <Avatar size={56} />
+        <small>{name}</small>
+      </span>
+    </figure>
+  );
+}
+
+/** Two overlapping rounded sheets, drawn: copy. */
+const CopyMark = () => (
+  <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+    <rect x="5.5" y="5.5" width="8" height="8" rx="2" />
+    <path d="M10.5 3.5v-.5a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3v5A1.5 1.5 0 0 0 4 9.5h.5" />
+  </svg>
+);
+
+/**
+ * D332: one example exchange, as a tiny conversation: who you say it to, the sentence in your own
+ * bubble (a small copy button on it, 复制这句 → 已复制), a small arrow, and what the partner does.
+ */
+function Exchange({ to, words, then }: { to: string; words: string; then: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div class="say">
-      <small class="say-what">{what}</small>
-      <div class={`say-words${terminal ? " term" : ""}`}>
-        {terminal && <PromptMark />}
-        <span class="grow" dir="auto">{words}</span>
-        <Btn kind="text" size="sm" label={t(copied ? "peers.try.copied" : "peers.try.copy")} about={words} onClick={() => void copy(words).then((ok) => ok && (setCopied(true), setTimeout(() => setCopied(false), 2000)))} />
+    <div class="ex">
+      <small class="ex-to">{to}</small>
+      <div class="ex-line">
+        <span class="ex-say" dir="auto">{words}</span>
+        <button type="button" class={`ex-copy${copied ? " done" : ""}`} aria-label={copied ? t("peers.try.copied") : t("peers.try.copy")} title={copied ? t("peers.try.copied") : t("peers.try.copy")} onClick={() => void copy(words).then((ok) => ok && (setCopied(true), setTimeout(() => setCopied(false), 1600)))}>
+          {copied ? <Check /> : <CopyMark />}
+        </button>
+      </div>
+      <svg class="ex-arrow" viewBox="0 0 12 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 1v13m-4-4 4 4 4-4" />
+      </svg>
+      <div class="ex-then">
+        <Avatar size={22} />
+        <span dir="auto">{then}</span>
       </div>
     </div>
   );
 }
 
-/** When the first of the person's other agents came through (its first message in the conversation). */
-const firstHandoffAt = () => A.S.channel.find((e) => e.peer?.direction === "in")?.ev.ts;
+const peerTool = (agent: string) => (/claude/i.test(agent) ? "Claude Code" : /codex/i.test(agent) ? "Codex" : /\bpi\b/i.test(agent) ? "pi" : agent);
+const whoOf = (agent: string) => (agent && agent !== "another agent" ? agent : t("peer.someone"));
+
+/** D332: where an exchange leads: its task, else the message in the conversation. */
+function openHandoff(h: Handoff) {
+  A.sheet = null;
+  if (h.taskId) return A.go({ name: "task", id: h.taskId });
+  A.go({ name: "conv" });
+  setTimeout(() => A.jumpTo(h.seq), 350);
+}
 
 /**
- * D321: 试试看 / Try it, once the link is on: the exact words for the terminal (J1, X1) and for here (S2),
- * whether each agent can hear them (Mem's plugin in it), and a live row: waiting for the first one,
- * then that it worked (with the way to it), then nothing.
+ * D332: 最近 / Recently: the latest exchanges both ways, newest first, each opening its task or its
+ * message; before the first one, a calm row that waits for it.
  */
-function PeersTry({ name }: { name: string }) {
-  const agents = tryAgents(A.devices ?? []);
-  const first = firstHandoffAt();
-  const phase = handoffPhase(first);
-  const from = first ? peerName(A.S.channel.find((e) => e.peer?.direction === "in")!.peer!) : "";
-  // The live row checks again when the first one's moment passes.
-  const [, tick] = useState(0);
-  useEffect(() => {
-    if (phase !== "first") return;
-    const id = setTimeout(() => tick((n) => n + 1), Math.max(1000, Date.parse(first!) + 15 * 60_000 - Date.now()));
-    return () => clearTimeout(id);
-  }, [phase, first]);
+function PeersRecent({ name }: { name: string }) {
+  const list = recentHandoffs(A.S.channel);
   return (
     <section class="set mem-sec">
-      <h3>{t("peers.try.title")}</h3>
-      <p class="g-note">{t("peers.try.note")}</p>
-      <Group class="mem-g" label={t("peers.try.title")}>
-        <GBlock>
-          <Say what={t("peers.try.work.what")} words={t("peers.try.work", name)} terminal />
-          <Say what={t("peers.try.ask.what")} words={t("peers.try.ask", name)} terminal />
-        </GBlock>
-        {agents.map((x) => (
-          <GRow key={x.harness} tile={<Tile><Coin harness={x.harness} size={36} /></Tile>} title={x.harness === "codex" ? "Codex" : "Claude Code"} line={x.plugin === "on" ? t("peers.try.plugin.on") : x.plugin === "off" ? t("peers.try.plugin.off", name) : t("peers.try.plugin.unknown")}>
-            {x.plugin === "off" && x.device && <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={x.device} onClick={() => A.installMem(x.device!, x.harness)} />}
-          </GRow>
+      <h3>{t("peers.recent.title")}</h3>
+      <Group class="mem-g" label={t("peers.recent.title")}>
+        {list.length === 0 && <GRow tile={<Tile><span class="handoff-wait" /></Tile>} title={t("peers.wait.title")} line={t("peers.wait.line")} />}
+        {list.map((h) => (
+          <button type="button" key={h.seq} class="chat-row tiled mem-item" onClick={() => openHandoff(h)}>
+            <ToolTile from={peerTool(h.agent)} />
+            <span class="grow">
+              <b dir="auto">{h.words}</b>
+              <small>{t(`peers.recent.${h.way}`, whoOf(h.agent), name)}</small>
+            </span>
+            <span class="g-state">{ago(A.L, h.at)}</span>
+          </button>
         ))}
-        {phase === "waiting" && <GRow tile={<Tile><span class="handoff-wait" /></Tile>} title={t("peers.wait.title")} line={t("peers.wait.line")} />}
-        {phase === "first" && (
-          <GRow tile={<Tile><span class="mem-glyph done handoff-done"><Check /></span></Tile>} title={t("peers.first.title", from, name)} line={t("peers.first.line")}>
-            <Btn kind="secondary" size="sm" label={t("peers.first.open")} onClick={() => ((A.sheet = null), A.go({ name: "conv" }))} />
-          </GRow>
-        )}
-        <GBlock>
-          <Say what={t("peers.try.here.what", name)} words={t("peers.try.here")} terminal={false} />
-        </GBlock>
       </Group>
     </section>
   );
 }
 
-/** Whether 连上的 AI agent has anything to show yet (J6). */
-export const peersPageShown = () => peersShown(A.settings?.peers, A.bridge, A.S.channel.some((e) => e.peer));
-
-const peerTool = (agent: string) => (/claude/i.test(agent) ? "Claude Code" : /codex/i.test(agent) ? "Codex" : /\bpi\b/i.test(agent) ? "pi" : agent);
+/**
+ * D321, D332: 试试看 / Try it: two example exchanges, one each way, as a tiny conversation in the clay
+ * style; then each agent missing Mem's plugin, one row with its fix (装上).
+ */
+function PeersTry({ name }: { name: string }) {
+  const missing = tryAgents(A.devices ?? []).filter((x) => x.plugin === "off" && x.device);
+  return (
+    <section class="set mem-sec">
+      <h3>{t("peers.try.title")}</h3>
+      <Group class="mem-g" label={t("peers.try.title")}>
+        <GBlock>
+          <div class="ex-pair">
+            <Exchange to={t("peers.try.work.to")} words={t("peers.try.work", name)} then={t("peers.try.work.then", name)} />
+            <Exchange to={t("peers.try.here.to", name)} words={t("peers.try.here")} then={t("peers.try.here.then", name)} />
+          </div>
+        </GBlock>
+      </Group>
+      {missing.length > 0 && (
+        <Group class="mem-g" label={t("peers.try.plugin.title")}>
+          {missing.map((x) => (
+            <GRow key={x.harness} tile={<Tile><Coin harness={x.harness} size={36} /></Tile>} title={x.harness === "codex" ? "Codex" : "Claude Code"} line={t("peers.try.plugin.off", name)}>
+              <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={x.device} onClick={() => A.installMem(x.device!, x.harness)} />
+            </GRow>
+          ))}
+        </Group>
+      )}
+    </section>
+  );
+}
 
 /**
- * D170, D205, D295: the link as one group (its state, its identity and place in human words, who may
- * reach it, the raw ids behind 详情, a quiet 断开 that asks in place), then what it learned.
+ * D332: the one problem worth a row, each with its one fix: two homes reading (只留这台), another home
+ * answering (改由这台收), Mem's refusal or failure (its step, 再试一次), Mem on this computer offering no
+ * place, the Nowledge Mem app closed (D329: 打开 Nowledge Mem when the home can, else where to open it).
+ * Undefined when nothing is wrong.
+ */
+function PeersProblem({ b, name }: { b: BridgeView; name: string }) {
+  const toMemory = <Btn kind="secondary" size="sm" label={t("peers.mem.go")} onClick={() => A.openSettings("memory")} />;
+  if (b.state === "connected") {
+    if (b.pinned || !b.others?.length) return null;
+    const where = otherWhere(b);
+    const stuck = b.others.some((o) => o.stuck);
+    if (A.bridgeHere) return <GConfirm ask={t("peers.twice.ask", where, name)} keep={t("bridge.undo.keep")} go={t("peers.twice.go")} about={b.identity} onKeep={() => ((A.bridgeHere = false), A.changed())} onGo={() => A.onlyHereBridge()} />;
+    return (
+      <GRow title={t("peers.twice.title", name, where)} line={stuck ? t("peers.twice.stuck", where) : t("peers.twice.line")}>
+        {!stuck && <Btn kind="secondary" size="sm" label={t("peers.twice.go")} about={b.identity} onClick={() => A.onlyHereBridge()} />}
+      </GRow>
+    );
+  }
+  if (b.state === "elsewhere") {
+    if (A.bridgeHere) return <GConfirm ask={t("peers.elsewhere.ask", otherWhere(b), name)} keep={t("bridge.undo.keep")} go={t("peers.elsewhere.go")} about={b.identity} onKeep={() => ((A.bridgeHere = false), A.changed())} onGo={() => A.onlyHereBridge()} />;
+    return (
+      <GRow tile={<CoinsTile faded />} title={t("peers.elsewhere", name, otherWhere(b))}>
+        <Btn kind="secondary" size="sm" label={t("peers.elsewhere.go")} about={b.identity} onClick={() => A.onlyHereBridge()} />
+      </GRow>
+    );
+  }
+  if (b.state === "local_mem") return <GRow tile={<CoinsTile faded />} title={t("bridge.mem.local", homeOf(b))} />;
+  // D329: the Nowledge Mem app on the home is closed: the agents can't reach it until it's open.
+  if (b.state === "mem_closed")
+    return (
+      <>
+        <GRow tile={<CoinsTile faded />} title={t("bridge.mem.closed")} />
+        <MemClosedWords b={b} />
+      </>
+    );
+  if (b.state === "no_space") return <GRow tile={<CoinsTile faded />} title={t("bridge.no_space")} />;
+  const note = b.state === "refused" ? t(`bridge.refused.${b.reason ?? "control_denied"}`, b.identity) : b.state === "unconfirmed" ? t("bridge.unconfirmed", b.identity) : t("bridge.failed", b.detail ?? "");
+  const tryNewer = b.newer !== undefined;
+  return (
+    <GRow tile={<CoinsTile faded />} title={tryNewer ? `${note}\n${t("peers.mem.newer")}` : note}>
+      {tryNewer && toMemory}
+      <Btn kind="secondary" size="sm" label={t("bridge.retry")} about={b.identity} onClick={() => A.connectBridge()} />
+    </GRow>
+  );
+}
+
+/** Whether 和你的其他 agent 通信 has anything to show yet (D332: by who; J6). */
+export const peersPageShown = () => A.peersAsked || peersShown(A.settings?.peers, A.bridge, A.S.channel.some((e) => e.peer), ownsAgents(A.ownAgents, A.devices ?? []));
+
+/**
+ * D332: 和你的其他 agent 通信 / Talk with your other agents. On: any problem as one row with its fix, what came and went
+ * lately (both ways), what to say, the one switch. Before Mem is ready: the picture, one sentence of
+ * what Nowledge Mem is, its steps in place; once it is, the home connects by itself (no tap). Off: the
+ * picture and the switch. Identity, place, labels and ids are never shown. Agents the person stopped
+ * listening to are the only rules shown, each with 恢复.
  */
 export function PeersPage() {
-  const [more, setMore] = useState(false);
   const s = A.settings;
   const p = s?.peers;
-  if (!s || !p) return null;
   const b = A.bridge;
+  const on = p?.reach !== "off";
+  const phase = peersPhase(b, on);
+  // Opening the page while Mem is ready is the ask: the home connects (the same call as at start).
+  useEffect(() => {
+    if (phase === "joining" && b?.state === "ready") A.connectBridge();
+  }, [phase, b?.state]);
+  if (!s || !p) return null;
   const name = s.name;
-  const set = (patch: Partial<typeof p>) => A.setSettings({ peers: { ...p, ...patch } });
-  const setup = !b || ["install_mem", "installing", "sign_in", "signing_in", "mem_closed", "update_mem", "updating", "local_mem"].includes(b.state);
-  const reachShown = A.S.channel.some((e) => e.peer) || !!p.trusted.length || !!p.muted.length || !setup;
-  const connected = b?.state === "connected";
+  const flip = (v: boolean) => {
+    A.setSettings({ peers: { ...p, reach: v ? "own" : "off" } });
+    say("peers", t(v ? "said.peers.on" : "said.peers.off", name));
+  };
+  const mem = b ? memPhase(true, A.mem, b) : "missing";
+  const upd = memUpdate(b);
   return (
     <>
       <p class="set-lede">{t("settings.lede.peers", name)}</p>
-      <Group class="mem-g" label={t("settings.tab.peers")}>
-        {b && <PeersHead b={b} name={name} />}
-        {b?.state === "elsewhere" && A.bridgeHere && <GConfirm ask={t("peers.elsewhere.ask", otherWhere(b), name)} keep={t("bridge.undo.keep")} go={t("peers.elsewhere.go")} about={b.identity} onKeep={() => ((A.bridgeHere = false), A.changed())} onGo={() => A.onlyHereBridge()} />}
-        {connected && b && !b.pinned && !!b.others?.length && <PeersTwice b={b} name={name} />}
-        {connected && b && <GRow title={t("peers.as.title")} line={t("peers.as.line", b.identity)} />}
-        {connected && b && <GRow title={t("peers.space.title")} line={spaceWords(b)} />}
-        {reachShown && (
-          <GBlock>
-            <span class="mem-reach">
-              <b>{t("peers.reach", name)}</b>
-              <small>{p.reach === "off" ? t("peers.reach.off.note", name) : t("peers.reach.note")}</small>
-            </span>
-            <Seg label={t("peers.reach", name)} value={p.reach} options={(["own", "team", "off"] as const).map((v) => ({ v, label: t(`peers.reach.${v}`) }))} onPick={(reach) => set({ reach })} />
-          </GBlock>
-        )}
-        {connected && b && more && (
-          <GBlock>
-            <MemFacts b={b} />
-          </GBlock>
-        )}
-        {connected && b && !b.pinned && A.bridgeConfirm ? (
-          <GConfirm ask={t("peers.undo.ask")} keep={t("bridge.undo.keep")} go={t("bridge.undo")} about={b.identity} onKeep={() => ((A.bridgeConfirm = false), A.changed())} onGo={() => A.disconnectBridge()} />
-        ) : (
-          connected &&
-          b && (
-            <GFoot note={b.detail ? t("bridge.undo.failed", b.detail) : t("peers.foot")}>
-              <Btn kind="text" size="sm" label={t("mem.details")} about={b.identity} expanded={more} onClick={() => setMore(!more)} />
-              {!b.pinned && <DangerButton quiet label={t("bridge.undo")} about={b.identity} onClick={() => A.disconnectBridge()} />}
-            </GFoot>
-          )
-        )}
-      </Group>
-      {connected && <PeersTry name={name} />}
-      {(p.trusted.length > 0 || p.muted.length > 0) && (
+      {phase === "on" ? (
+        <>
+          {b && <PeersProblemGroup b={b} name={name} />}
+          <PeersRecent name={name} />
+          <PeersTry name={name} />
+        </>
+      ) : (
+        <PeersPicture name={name} />
+      )}
+      {phase === "getting" && b && (
+        <Group class="mem-g" label="Nowledge Mem">
+          <GHead tile={<MemTile faded />} name="Nowledge Mem" line={t("peers.mem.what")} />
+          {upd?.kind === "needed" || upd?.kind === "updating" ? <MemUpdateRow u={upd} b={b} /> : (mem === "install" || mem === "installing" || mem === "sign_in" || mem === "signing_in") && <MemSteps phase={mem} b={b} />}
+          <GFoot note={t("peers.mem.then", name)} />
+        </Group>
+      )}
+      {phase === "joining" && (
+        <Group class="mem-g" label={t("settings.tab.peers")}>
+          <GRow tile={<Tile><span class="handoff-wait" /></Tile>} title={t("peers.joining", name)} />
+        </Group>
+      )}
+      {phase === "problem" && b && (
+        <Group class="mem-g" label={t("settings.tab.peers")}>
+          <PeersProblem b={b} name={name} />
+        </Group>
+      )}
+      {phase === "none" && (
+        <Group class="mem-g" label={t("settings.tab.peers")}>
+          <GRow title={t("peers.none", name)}>
+            <Btn kind="secondary" size="sm" label={t("peers.mem.go")} onClick={() => A.openSettings("memory")} />
+          </GRow>
+        </Group>
+      )}
+      {phase !== "getting" && phase !== "none" && (
         <section class="set mem-sec">
-          <h3>{t("peers.rules.title")}</h3>
-          <Group class="mem-g" label={t("peers.rules.title")}>
-            {p.trusted.map((a) => (
-              <GRow key={`t-${a}`} tile={<ToolTile from={peerTool(a)} />} title={t("peers.trusted", a)} line={t("peers.trusted.why")}>
-                <Btn kind="text" size="sm" label={t("peers.trusted.stop")} about={a} onClick={() => set({ trusted: p.trusted.filter((x) => x !== a) })} />
-              </GRow>
-            ))}
+          <Group class="mem-g" label={t("peers.switch", name)}>
+            <div class="chat-row">
+              <span class="grow">
+                <b>{t("peers.switch", name)}</b>
+                <small>{on ? t("peers.switch.on") : t("peers.switch.off", name)}</small>
+              </span>
+              <Switch label={t("peers.switch", name)} on={on} onChange={flip} />
+            </div>
+          </Group>
+          <Said k="peers" />
+        </section>
+      )}
+      {p.muted.length > 0 && (
+        <section class="set mem-sec">
+          <Group class="mem-g" label={t("peers.muted.title")}>
             {p.muted.map((a) => (
               <GRow key={`m-${a}`} tile={<ToolTile from={peerTool(a)} />} title={t("peers.muted", a)}>
-                <Btn kind="text" size="sm" label={t("peers.muted.undo")} about={a} onClick={() => set({ muted: p.muted.filter((x) => x !== a) })} />
+                <Btn kind="text" size="sm" label={t("peers.muted.undo")} about={a} onClick={() => A.setSettings({ peers: { ...p, muted: p.muted.filter((x) => x !== a) } })} />
               </GRow>
             ))}
           </Group>
         </section>
       )}
     </>
+  );
+}
+
+/** The connected page's problem, if any, as its own group at the top. */
+function PeersProblemGroup({ b, name }: { b: BridgeView; name: string }) {
+  if (b.state !== "connected" || b.pinned || !b.others?.length) return null;
+  return (
+    <Group class="mem-g" label={t("settings.tab.peers")}>
+      <PeersProblem b={b} name={name} />
+    </Group>
+  );
+}
+
+/** D332: the Partner page's one quiet line for someone Ducter hasn't seen run AI agents of their own. */
+export function PeersInvite() {
+  if (peersPageShown() || !A.settings) return null;
+  const name = A.settings.name;
+  return (
+    <section class="set">
+      <div class="set-invite">
+        <small class="grow">{t("peers.invite", name)}</small>
+        <Btn kind="text" size="sm" label={t("peers.invite.go")} onClick={() => ((A.peersAsked = true), (A.sheet = { kind: "settings", page: "peers" }), A.changed())} />
+      </div>
+    </section>
   );
 }

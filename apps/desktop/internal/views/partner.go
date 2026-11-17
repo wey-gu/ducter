@@ -110,7 +110,8 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	a.talkCard(c, st)
 	a.recordsGroup(c) // D307: their records (D298, D299)
 	a.trustCard(c)
-	// D257: what it remembers and the connected AI agents are tabs of their own (memory.go).
+	a.peersInvite(c) // D332: one quiet line, for someone not seen running agents of their own
+	// D257: what it remembers and 和你的其他 agent 通信 are tabs of their own (memory.go).
 }
 
 // partnerHero is the pane's header (D322: sized like every pane's, on the

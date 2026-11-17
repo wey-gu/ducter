@@ -160,7 +160,8 @@ export function openSettings(opts: {
       ...(data.limitHandoff ? { limitHandoff: true } : {}),
       // D250: never chosen is the default (proactive with a morning note), said as such.
       ...(data.proactive ? { proactive: data.proactive, ...(data.proactiveBy ? { proactiveBy: data.proactiveBy } : {}) } : { proactive: DEFAULT_PROACTIVE, proactiveBy: "default" as const }),
-      peers: { reach: data.peers?.reach ?? "own", trusted: data.peers?.trusted ?? [], muted: data.peers?.muted ?? [] },
+      // D332: one switch; a stored "team" (D170) reads as on.
+      peers: { reach: (data.peers?.reach as string) === "off" ? "off" : "own", trusted: data.peers?.trusted ?? [], muted: data.peers?.muted ?? [] },
     };
   };
   /** D170: a change to who may reach the partner, from a client or from the partner itself. */
@@ -168,7 +169,7 @@ export function openSettings(opts: {
     if (!p || typeof p !== "object") return false;
     const cur = get().peers!;
     const next: PeersSettings = {
-      reach: p.reach === "own" || p.reach === "team" || p.reach === "off" ? p.reach : cur.reach,
+      reach: p.reach === "off" ? "off" : p.reach === "own" || (p.reach as unknown) === "team" ? "own" : cur.reach,
       trusted: agentList(p.trusted) ?? cur.trusted,
       muted: agentList(p.muted) ?? cur.muted,
     };

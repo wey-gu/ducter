@@ -36,7 +36,7 @@ import { CalFacts, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx"
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
 import { FileViewer } from "./fileview.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
-import { MemoryPage, Notebook, PeersPage, peersPageShown } from "./memory.tsx";
+import { MemoryPage, Notebook, PeersInvite, PeersPage, peersPageShown } from "./memory.tsx";
 import { memBadge, memUpdate } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
@@ -2925,7 +2925,7 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "phone", art: HANDHELD === "computer" ? "dev_laptop_awake" : "phone", title: "settings.phone" },
 ];
 
-/** A section's art: its clay picture, or for 连上的 AI agent two of the person's agents' coins (D257). */
+/** A section's art: its clay picture, or for 和你的其他 agent 通信 two of the person's agents' coins (D257). */
 function SectionArt({ art, size }: { art: string; size: number }) {
   if (art === "notebook") return <Notebook size={size} />;
   if (art === "coins")
@@ -2986,7 +2986,7 @@ function SettingsSheet() {
               <button class="set-row" key={x.page} onClick={() => go(x.page)}>
                 <SectionArt art={x.art} size={40} />
                 <span class="grow">
-                  <b>{t(x.title)}</b>
+                  <b>{t(x.page === "peers" ? "settings.short.peers" : x.title)}</b>
                   {x.page === "devices" && updatesWaiting() ? <small class="update">{updatesWaiting()}</small> : x.page === "memory" && memWaiting() ? <small class="update">{memWaiting()}</small> : <small>{t(`settings.list.${x.page}`)}</small>}
                 </span>
                 <Chev />
@@ -3024,6 +3024,8 @@ function SettingsSheet() {
               <TalkSettings />
               <RecordsSettings />
               <TrustSettings />
+              {/* D332: one quiet line for someone Ducter hasn't seen run AI agents of their own. */}
+              <PeersInvite />
             </>
           )}
           {page === "memory" && <MemoryPage />}

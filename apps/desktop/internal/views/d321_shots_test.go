@@ -16,7 +16,7 @@ import (
 )
 
 // D321: Settings › 记忆 as what it knows about you (the groups, a search
-// answered, a row being fixed, a row asking to forget) and › 连上的 AI agent's
+// answered, a row being fixed, a row asking to forget) and › 和你的其他 agent 通信's
 // 试试看 (waiting for the first hand-off, then that it worked), and the
 // conversation's one-time note, zh and en, light and dark, at 1280 and 900,
 // offline with the pretend Mem of memApp (never anyone's real memories):

@@ -7,13 +7,14 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// D295: Settings › 连上的 AI agent / Connected AI agents on the settings
-// grid (D289). One group is the link itself: its first row says whether
-// your agents can reach the partner (two of their coins in the tile
-// column); then its identity and its place in human words, who may reach
-// it, and the last line's quiet 详情 (the raw ids, for support) and quiet
-// 断开 that asks in place. What it learned about your agents is a section
-// of its own. Nowledge Bridge underneath is never named (D205).
+// D332: Settings › 和你的其他 agent 通信 / Talk with your other agents on the settings grid
+// (D289). On: any problem as one row with its fix, what came and went
+// lately (both ways), what to say (试试看), the one switch. Before Mem is
+// ready: the picture, one sentence of what Nowledge Mem is and its steps in
+// place; once it is, the home connects by itself (no tap). Off: the picture
+// and the switch. Identity, place, labels and ids are never shown; agents
+// the person stopped listening to are the only rules shown, each with 恢复.
+// The web's: PeersPage (apps/web/src/memory.tsx).
 
 // coinsTile is two of the person's agents' coins, overlapping, in the tile
 // column: the rail's own mark for this tab.
@@ -36,15 +37,67 @@ func (a *App) coinsTile(c *ui.Context, faded bool) func() {
 	}
 }
 
-// peersSpace is the place it receives in, in the person's words.
-func (a *App) peersSpace(b *protocol.BridgeView) string {
-	if b.Space == nil || b.Space.Label == "" || b.Space.Label == "Only me" {
-		return a.L.T("peers.space.own")
+// drawWay is the picture's arrow, left to right or back.
+func drawWay(col ui.Color, back bool) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		y := r.Y + r.H/2
+		l, rt := r.X+2, r.X+r.W-2
+		var m ui.Path
+		m.MoveTo(l, y)
+		m.LineTo(rt, y)
+		if back {
+			m.MoveTo(l+6, y-5)
+			m.LineTo(l, y)
+			m.LineTo(l+6, y+5)
+		} else {
+			m.MoveTo(rt-6, y-5)
+			m.LineTo(rt, y)
+			m.LineTo(rt-6, y+5)
+		}
+		p.StrokePath(&m, 2, col)
 	}
-	return a.L.T("peers.space.named", b.Space.Label)
 }
 
-// peersCard is the tab's groups (D170, D205).
+// peersPicture is the page's picture, literal (D321 (6): no metaphor): the
+// person's own agents' coins, the partner, and the two ways between them,
+// each said in words.
+func (a *App) peersPicture(c *ui.Context, name string) {
+	t := a.T
+	label := func(s string) {
+		ui.Text(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).TextAlign(ui.Center)
+	}
+	ui.Row(c.Key("peers-pic")).Gap(t.S3).AlignItems(ui.Center).Justify(ui.Center).Padding(t.S4, t.S5).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
+		ui.Column(c).Gap(t.S2).AlignItems(ui.Center).Shrink(0).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+				for i, art := range []string{"coin_claude_code", "coin_codex"} {
+					if i == 1 {
+						ui.Box(c).Width(0).Margin(0, 0, 0, -16)
+					}
+					if bmp := theme.Clay(art); bmp != nil {
+						ui.Image(c, bmp).Size(44, 44)
+					}
+				}
+			})
+			label(a.L.T("peers.pic.them"))
+		})
+		ui.Column(c).Gap(t.S3).Grow(1).Basis(0).MinWidth(120).MaxWidth(260).Children(func() {
+			ui.Column(c).Gap(2).Children(func() {
+				label(a.L.T("peers.pic.to", name))
+				ui.Box(c).Height(14).AccessHidden(true).Draw(drawWay(t.InkMuted, false))
+			})
+			ui.Column(c).Gap(2).Children(func() {
+				ui.Box(c).Height(14).AccessHidden(true).Draw(drawWay(t.InkMuted, true))
+				label(a.L.T("peers.pic.back", name))
+			})
+		})
+		ui.Column(c).Gap(t.S2).AlignItems(ui.Center).Shrink(0).Children(func() {
+			a.avatar(c, theme.Idle, 56)
+			label(name)
+		})
+	})
+}
+
+// peersCard is the tab's groups (D332).
 func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 	if st == nil || st.Peers == nil {
 		return
@@ -52,103 +105,81 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 	p := st.Peers
 	b := a.S.Bridge
 	t := a.T
-	seen := a.peersSeen()
-	if b == nil || b.State != "connected" {
-		a.bridgeConfirm = false
-	}
+	name := st.Name
+	on := p.Reach != "off"
+	phase := peersPhase(b, on)
 	if b == nil || (b.State != "elsewhere" && (b.State != "connected" || len(b.Others) == 0)) {
 		a.bridgeHere = false
 	}
-	reachShown := seen || len(p.Trusted) > 0 || len(p.Muted) > 0 || (b != nil && !memSetup(b.State))
+	// Opening the page while Mem is ready is the ask: the home connects (as at start).
+	if phase == "joining" && b.State == "ready" {
+		b.State = "connecting"
+		a.send(protocol.BridgeAction{T: "bridge_connect"})
+	}
 	set := func(next protocol.Peers) {
 		*p = next
 		a.SetSettings(protocol.SettingsPatch{Peers: &next})
 	}
-	name := st.Name
-	a.group(c, "peers", "", "", func() {
-		connected := false
-		if b != nil {
-			connected = a.peersHead(c, st, b)
+	if phase == "on" {
+		if !b.Pinned && len(b.Others) > 0 {
+			a.group(c, "peers-problem", "", "", func() { a.peersProblem(c, b, name) })
 		}
-		if connected && !b.Pinned && len(b.Others) > 0 {
-			a.peersTwice(c, b, name)
-		}
-		if connected {
-			a.tileRow(c, "peers-as", nil, a.L.T("peers.as.title"), a.L.T("peers.as.line", b.Identity), nil)
-			a.tileRow(c, "peers-space", nil, a.L.T("peers.space.title"), a.peersSpace(b), nil)
-		}
-		if reachShown {
-			reaches := []string{"own", "team", "off"}
-			labels := []string{a.L.T("peers.reach.own"), a.L.T("peers.reach.team"), a.L.T("peers.reach.off")}
-			sel := 0
-			for i, r := range reaches {
-				if r == p.Reach {
-					sel = i
-				}
+		a.peersRecent(c, name)
+		a.peersTry(c, name)
+	} else {
+		a.peersPicture(c, name)
+	}
+	switch phase {
+	case "getting":
+		a.group(c, "peers-mem", "", "", func() {
+			a.headRow(c, "peers-mem", a.memTile(c, true), "Nowledge Mem", a.L.T("peers.mem.what"), sideMuted, nil)
+			if u := memUpdate(b); u != nil && (u.Kind == "needed" || u.Kind == "updating") {
+				a.memUpdateRow(c, u, b)
+			} else if ph := memPhase(true, a.S.Mem, b); ph == "install" || ph == "installing" || ph == "sign_in" || ph == "signing_in" {
+				a.memSteps(c, ph, b)
 			}
-			reachNote := a.L.T("peers.reach.note")
-			if p.Reach == "off" {
-				reachNote = a.L.T("peers.reach.off.note", name)
-			}
-			// The choice sits under its words on the text column, so a narrow window never squeezes them.
-			a.tileRow(c, "reach", nil, a.L.T("peers.reach", name), reachNote, nil)
-			ui.Row(c.Key("reach-choice")).Padding(0, t.S5, t.S4, t.S5+40+t.S3).Children(func() {
-				if i := a.choices(c, "reach", a.L.T("peers.reach", name), labels, sel); i >= 0 {
-					next := *p
-					next.Reach = reaches[i]
-					set(next)
+			a.footRow(c, "peers-mem", a.L.T("peers.mem.then", name), nil)
+		})
+	case "joining":
+		a.group(c, "peers-joining", "", "", func() {
+			a.tileRow(c, "peers-joining", a.handoffDot(c), a.L.T("peers.joining", name), "", nil)
+		})
+	case "problem":
+		a.group(c, "peers-problem", "", "", func() { a.peersProblem(c, b, name) })
+	case "none":
+		a.group(c, "peers-none", "", "", func() {
+			a.tileRow(c, "peers-none", nil, a.L.T("peers.none", name), "", func() {
+				if a.button(c, a.L.T("peers.mem.go"), btnSecondary, t.ControlSM, t.Surface) {
+					a.openTab(TabMemory)
 				}
 			})
-		}
-		if !connected {
-			return
-		}
-		if a.peersDetails {
-			a.textBlock(c, "peers-details", func() { a.memFacts(c, b) })
-		}
-		canUndo := !b.Pinned
-		if canUndo && a.bridgeConfirm {
-			keep, goOn := a.confirmRow(c, "peers-undo", a.L.T("peers.undo.ask"), a.L.T("bridge.undo.keep"), a.L.T("bridge.undo"), b.Identity)
-			if keep {
-				a.bridgeConfirm = false
-			}
-			if goOn {
-				a.bridgeConfirm = false
-				b.State = "disconnecting"
-				a.send(protocol.BridgeAction{T: "bridge_disconnect"})
-			}
-			return
-		}
-		note := a.L.T("peers.foot")
-		if b.Detail != "" {
-			note = a.L.T("bridge.undo.failed", b.Detail)
-		}
-		a.footRow(c, "peers", note, func() {
-			if a.quietButton(c, "peers-details", a.L.T("mem.details"), b.Identity, a.peersDetails, 0) {
-				a.peersDetails = !a.peersDetails
-			}
-			if canUndo && a.quietDanger(c, "peers-undo", a.L.T("bridge.undo"), b.Identity) {
-				a.bridgeConfirm = true
-			}
 		})
-	})
-	if b != nil && b.State == "connected" {
-		a.peersTry(c, name)
 	}
-	if len(p.Trusted) == 0 && len(p.Muted) == 0 {
+	if phase != "getting" && phase != "none" {
+		a.group(c, "peers-switch", "", "", func() {
+			note := a.L.T("peers.switch.on")
+			if !on {
+				note = a.L.T("peers.switch.off", name)
+			}
+			a.textBlock(c, "peers-switch", func() {
+				if v, changed := a.switchRow(c, "peers", a.L.T("peers.switch", name), note, on); changed {
+					next := *p
+					next.Reach = "own"
+					said := a.L.T("said.peers.on")
+					if !v {
+						next.Reach, said = "off", a.L.T("said.peers.off")
+					}
+					set(next)
+					a.say("peers", said)
+				}
+			})
+		})
+		a.saidLine(c, "peers")
+	}
+	if len(p.Muted) == 0 {
 		return
 	}
-	a.group(c, "peer-rules", a.L.T("peers.rules.title"), "", func() {
-		for _, agent := range p.Trusted {
-			agent := agent
-			a.tileRow(c, "trusted:"+agent, a.toolTile(c, peerName(agent)), a.L.T("peers.trusted", agent), a.L.T("peers.trusted.why"), func() {
-				if a.quietButton(c, "trusted:"+agent, a.L.T("peers.trusted.stop"), agent, false, 0) {
-					next := *p
-					next.Trusted = without(p.Trusted, agent)
-					set(next)
-				}
-			})
-		}
+	a.group(c, "peer-muted", a.L.T("peers.muted.title"), "", func() {
 		for _, agent := range p.Muted {
 			agent := agent
 			a.tileRow(c, "muted:"+agent, a.toolTile(c, peerName(agent)), a.L.T("peers.muted", agent), "", func() {
@@ -160,7 +191,6 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 			})
 		}
 	})
-	_ = t
 }
 
 // otherWhere is the other home(s) that also answer, in the person's words
@@ -175,34 +205,84 @@ func (a *App) otherWhere(b *protocol.BridgeView) string {
 	return a.L.T("peers.where.other")
 }
 
-// peersTwice is D324's one calm row when two homes read the partner's
-// mailbox: 只留这台 asks in place; a connection Mem won't end from here says
-// where to end it instead.
-func (a *App) peersTwice(c *ui.Context, b *protocol.BridgeView, name string) {
+// peersProblem is the one problem worth a row, with its one fix (D332):
+// two homes reading (只留这台), another home answering (改由这台收), Mem's
+// refusal or failure (its step, 再试一次), Mem here offering no place, the
+// Nowledge Mem app closed (D329: 打开 Nowledge Mem when the home can).
+func (a *App) peersProblem(c *ui.Context, b *protocol.BridgeView, name string) {
 	t := a.T
 	where := a.otherWhere(b)
-	stuck := false
-	for _, o := range b.Others {
-		stuck = stuck || o.Stuck
-	}
-	if a.bridgeHere {
-		keep, goOn := a.confirmRow(c, "peers-twice", a.L.T("peers.twice.ask", where, name), a.L.T("bridge.undo.keep"), a.L.T("peers.twice.go"), b.Identity)
-		if keep {
-			a.bridgeHere = false
+	switch b.State {
+	case "connected", "elsewhere":
+		ask, goLabel, title, line := a.L.T("peers.twice.ask", where, name), a.L.T("peers.twice.go"), a.L.T("peers.twice.title", name, where), a.L.T("peers.twice.line")
+		stuck := false
+		if b.State == "elsewhere" {
+			ask, goLabel, title, line = a.L.T("peers.elsewhere.ask", where, name), a.L.T("peers.elsewhere.go"), a.L.T("peers.elsewhere", name, where), ""
+		} else {
+			for _, o := range b.Others {
+				stuck = stuck || o.Stuck
+			}
+			if stuck {
+				line = a.L.T("peers.twice.stuck", where)
+			}
 		}
-		if goOn {
-			a.bridgeHere = false
-			a.send(protocol.BridgeAction{T: "bridge_only_here"})
+		if a.bridgeHere {
+			keep, goOn := a.confirmRow(c, "peers-here", ask, a.L.T("bridge.undo.keep"), goLabel, b.Identity)
+			if keep {
+				a.bridgeHere = false
+			}
+			if goOn {
+				a.bridgeHere = false
+				b.State = "connecting"
+				a.send(protocol.BridgeAction{T: "bridge_only_here"})
+			}
+			return
 		}
+		var tile func()
+		if b.State == "elsewhere" {
+			tile = a.coinsTile(c, true)
+		}
+		a.tileRow(c, "peers-here", tile, title, line, func() {
+			if !stuck && a.buttonFor(c, goLabel, b.Identity, btnSecondary, t.ControlSM, t.Surface) {
+				a.bridgeHere = true
+			}
+		})
+		return
+	case "local_mem":
+		a.tileRow(c, "peers-problem", a.coinsTile(c, true), a.L.T("bridge.mem.local", a.memHome()), "", nil)
+		return
+	case "no_space":
+		a.tileRow(c, "peers-problem", a.coinsTile(c, true), a.L.T("bridge.no_space"), "", nil)
+		return
+	case "mem_closed":
+		// D329: the Nowledge Mem app on the home is closed: the agents can't
+		// reach the partner until it's open; Memory's own row, said here.
+		home := a.memHome()
+		line := a.L.T("bridge.mem.closed.there", home)
+		var control func()
+		if b.CanOpen {
+			line = a.L.T("bridge.mem.closed.open", home)
+			control = func() {
+				if a.buttonFor(c, a.L.T("bridge.mem.open"), home, btnSecondary, t.ControlSM, t.Surface) {
+					a.send(protocol.BridgeAction{T: "bridge_mem_open"})
+				}
+			}
+		}
+		a.tileRow(c, "peers-problem", a.coinsTile(c, true), a.L.T("bridge.mem.closed"), line, control)
 		return
 	}
-	line := a.L.T("peers.twice.line")
-	if stuck {
-		line = a.L.T("peers.twice.stuck", where)
+	line := a.bridgeNote(b)
+	tryNewer := b.Newer != nil
+	if tryNewer {
+		line += "\n" + a.L.T("peers.mem.newer")
 	}
-	a.tileRow(c, "peers-twice", nil, a.L.T("peers.twice.title", name, where), line, func() {
-		if !stuck && a.buttonFor(c, a.L.T("peers.twice.go"), b.Identity, btnSecondary, t.ControlSM, t.Surface) {
-			a.bridgeHere = true
+	a.tileRow(c, "peers-problem", a.coinsTile(c, true), line, "", func() {
+		if tryNewer && a.button(c, a.L.T("peers.mem.go"), btnSecondary, t.ControlSM, t.Surface) {
+			a.openTab(TabMemory)
+		}
+		if a.buttonFor(c, a.L.T("bridge.retry"), b.Identity, btnSecondary, t.ControlSM, t.Surface) {
+			b.State = "connecting"
+			a.send(protocol.BridgeAction{T: "bridge_connect"})
 		}
 	})
 }
@@ -220,97 +300,21 @@ func peerName(agent string) string {
 	return agent
 }
 
-// peersHead is the link's first row in its state; it reports connected.
-func (a *App) peersHead(c *ui.Context, st *protocol.Settings, b *protocol.BridgeView) bool {
-	t := a.T
-	name := st.Name
-	title := a.L.T("bridge.title", name)
-	toMemory := func() {
-		if a.button(c, a.L.T("peers.mem.go"), btnSecondary, t.ControlSM, t.Surface) {
-			a.openTab(TabMemory)
+// peersInvite is the Partner page's one quiet line for someone Ducter
+// hasn't seen run AI agents of their own (D332).
+func (a *App) peersInvite(c *ui.Context) {
+	for _, tab := range a.visibleTabs() {
+		if tab == TabPeers {
+			return
 		}
 	}
-	head := func(line string, tone sideTone, control func()) {
-		a.headRow(c, "peers", a.coinsTile(c, tone != sideDone), title, line, tone, control)
+	if a.S.Settings == nil {
+		return
 	}
-	switch b.State {
-	case "install_mem", "installing", "sign_in", "signing_in":
-		head(a.L.T("peers.mem.first", a.memHome(), name), sideMuted, toMemory)
-		return false
-	case "update_mem":
-		head(a.L.T("peers.mem.update", a.memHome(), memMin), sideMuted, toMemory)
-		return false
-	case "updating":
-		head(a.L.T("bridge.mem.updating", a.memHome()), sideMuted, nil)
-		return false
-	case "local_mem":
-		head(a.L.T("bridge.mem.local", a.memHome()), sideMuted, nil)
-		return false
-	case "mem_closed":
-		// D329: the Mem app on the home is closed; Memory holds the way to open it.
-		head(a.L.T("bridge.mem.closed"), sideMuted, toMemory)
-		return false
-	case "connected":
-		title = a.L.T("peers.head.on", name)
-		line := a.L.T("mem.app.on")
-		if b.Pinned {
-			line = a.L.T("bridge.pinned")
-		}
-		head(line, sideDone, nil)
-		return true
-	case "elsewhere":
-		// D324: another home answers this partner's mailbox: where, and the one way to move it here.
-		head(a.L.T("peers.elsewhere", name, a.otherWhere(b)), sideMuted, func() {
-			if !a.bridgeHere && a.buttonFor(c, a.L.T("peers.elsewhere.go"), b.Identity, btnSecondary, t.ControlSM, t.Surface) {
-				a.bridgeHere = true
-			}
-		})
-		if a.bridgeHere {
-			keep, goOn := a.confirmRow(c, "peers-here", a.L.T("peers.elsewhere.ask", a.otherWhere(b), name), a.L.T("bridge.undo.keep"), a.L.T("peers.elsewhere.go"), b.Identity)
-			if keep {
-				a.bridgeHere = false
-			}
-			if goOn {
-				a.bridgeHere = false
-				b.State = "connecting"
-				a.send(protocol.BridgeAction{T: "bridge_only_here"})
-			}
-		}
-		return false
-	case "ready":
-		head(a.L.T("peers.head.ready"), sideMuted, func() {
-			if a.buttonFor(c, a.L.T("bridge.connect"), b.Identity, btnPrimary, t.ControlSM, t.Surface) {
-				b.State = "connecting"
-				a.send(protocol.BridgeAction{T: "bridge_connect"})
-			}
-		})
-		return false
-	case "connecting", "disconnecting":
-		head(a.bridgeNote(b), sideMuted, nil)
-		return false
-	}
-	// no_space, refused, failed, unconfirmed: what Mem said, and what to try.
-	line := a.bridgeNote(b)
-	tryNewer := b.Newer != nil && (b.State == "refused" || b.State == "failed" || b.State == "unconfirmed")
-	if tryNewer {
-		line += "\n" + a.L.T("peers.mem.newer")
-	}
-	tone := sideFailed
-	if b.State == "no_space" {
-		tone = sideMuted
-	}
-	head(line, tone, func() {
-		if tryNewer {
-			toMemory()
-		}
-		if b.State == "unconfirmed" && a.quietDanger(c, "peers-undo", a.L.T("bridge.undo"), b.Identity) {
-			b.State = "disconnecting"
-			a.send(protocol.BridgeAction{T: "bridge_disconnect"})
-		}
-		if b.State != "no_space" && a.buttonFor(c, a.L.T("bridge.retry"), b.Identity, btnSecondary, t.ControlSM, t.Surface) {
-			b.State = "connecting"
-			a.send(protocol.BridgeAction{T: "bridge_connect"})
+	a.footRow(c, "peers-invite", a.L.T("peers.invite", a.personaName()), func() {
+		if a.quietButton(c, "peers-invite", a.L.T("peers.invite.go"), "", false, 1) {
+			a.peersAsked = true
+			a.openTab(TabPeers)
 		}
 	})
-	return false
 }

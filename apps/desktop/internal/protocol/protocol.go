@@ -1350,9 +1350,10 @@ type SettingsPatch struct {
 	LimitHandoff    *bool                  `json:"limitHandoff,omitempty"`
 }
 
-// Peers is who of the user's other agents may reach the partner (D170):
-// reach own | team | off; Trusted, own agents whose work starts without
-// asking; Muted, agents the user stopped listening to.
+// Peers is the partner's link with the person's own agents (D332, one
+// switch): reach own (on) | off; Trusted, own agents whose work starts
+// without asking (a learned rule, never shown); Muted, agents the user
+// stopped listening to.
 type Peers struct {
 	Reach   string   `json:"reach"`
 	Trusted []string `json:"trusted"`
@@ -2076,6 +2077,9 @@ type ServerFrame struct {
 	Undid *Undid `json:"undid,omitempty"`
 	// Bridge is the persona's own connection row (D205); nil: nothing to show.
 	Bridge *BridgeView `json:"bridge,omitempty"`
+	// OwnAgents (D332): the AI agents the person runs themselves on the
+	// home (their records' file times); 和你的其他 agent 通信 shows for them.
+	OwnAgents []string `json:"ownAgents,omitempty"`
 	// rules: Your rules. candidates: who could do TaskID, best first.
 	Rules      []RuleView  `json:"rules,omitempty"`
 	Candidates []Candidate `json:"candidates,omitempty"`

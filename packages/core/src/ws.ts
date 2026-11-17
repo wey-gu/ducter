@@ -165,6 +165,8 @@ export interface WsDeps {
     /** D327: drop every summary read so far (looking turned off). */
     forget?: () => void;
   };
+  /** D332: the AI agents the person runs themselves here (their records, by file times alone); [] when not looking. */
+  ownAgents?: () => import("./local-agents/index.ts").LocalAgent[];
   /** D298: pasted API keys (api-key.ts): where they are kept, and the network and agent seams for tests. */
   keys?: { dataDir: string; fetch?: typeof fetch; canRun?: (h: import("@ducter/protocol").HarnessId) => boolean };
   batchMs?: number;
@@ -274,7 +276,8 @@ export function createWsHandler(deps: WsDeps) {
     const home = devicesView() ? (await devicesView()!.frame()).devices.find((d) => d.home)?.harnesses : undefined;
     const now = brainNow(v.settings.brain, deps.settings!.brainChosen(), home);
     const bridge = await deps.bridgeLink?.view().catch(() => undefined);
-    return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}), ...(corrected ? { corrected } : {}), ...(bridge ? { bridge } : {}) };
+    const own = deps.ownAgents?.() ?? [];
+    return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}), ...(corrected ? { corrected } : {}), ...(bridge ? { bridge } : {}), ...(own.length ? { ownAgents: own } : {}) };
   };
   const offSettings = deps.settings?.onChange(() => {
     const subs = [...sockets].filter((ws) => ws.data.settings);

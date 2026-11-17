@@ -37,7 +37,7 @@ type Remover interface {
 //	                         talks, what it asks first
 //	记忆 / Memory            what it remembers about you, and Nowledge
 //	                         Mem with its version and updates (D257)
-//	连上的 AI agent / Connected AI agents: the persona's connection with
+//	和你的其他 agent 通信 / Talk with your other agents (D332): the persona's connection with
 //	                         them and who may reach it, once it means
 //	                         something (D257)
 //	通知 / Notifications     when it comes to you, quiet hours, if you
@@ -305,6 +305,9 @@ func (a *App) settingsRail(c *ui.Context, shown string) {
 func (a *App) railTab(c *ui.Context, tab string, on bool) {
 	t := a.T
 	name := a.tabName(tab)
+	if tab == TabPeers {
+		name = a.L.T("settings.short.peers") // D332: the rail's short label; the page title stays whole
+	}
 	b := ui.Row(c.Key("tab:"+tab)).Height(railTabH).Gap(t.S3).Padding(0, t.S3, 0, t.S2).Radius(t.RadiusMD).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleTab).Label(name).AccessSelected(on).Focusable().ZIndex(1) // over the knob
 	down := b.Pressed()

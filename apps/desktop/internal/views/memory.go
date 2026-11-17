@@ -1,14 +1,16 @@
 package views
 
 import (
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// Settings › 记忆 / Memory and › 连上的 AI agent / Connected AI agents (D257),
+// Settings › 记忆 / Memory and › 和你的其他 agent 通信 / Talk with your other agents (D257, D332),
 // each its own tab. Memory is what the partner remembers about the person,
 // first, in their words: the partner hugging its notebook and one sentence,
 // then what it noted grouped by when (each one forgettable), then Nowledge
@@ -95,23 +97,110 @@ func memBadge(u *memUpd) string {
 	return ""
 }
 
-// peersShown: 连上的 AI agent shows once it means something (J6): another agent
-// wrote, the person trusted or muted one, or Mem is on the home and signed in.
-func peersShown(p *protocol.Peers, b *protocol.BridgeView, seen bool) bool {
+// peersShown (D332): 和你的其他 agent 通信 shows by who: to the person who runs AI
+// agents of their own (own: their records here, or Mem's plugin in one), to
+// anyone another agent has written to or who stopped listening to one, and
+// while the partner is connected (or answers elsewhere). Everyone else
+// meets one quiet line on the Partner page instead (J6).
+func peersShown(p *protocol.Peers, b *protocol.BridgeView, seen, own bool) bool {
 	if p == nil {
 		return false
 	}
-	if seen || len(p.Trusted) > 0 || len(p.Muted) > 0 {
+	if seen || len(p.Muted) > 0 {
 		return true
 	}
+	if b != nil {
+		switch b.State {
+		case "connected", "disconnecting", "elsewhere", "unconfirmed":
+			return true
+		}
+	}
+	return own
+}
+
+// ownsAgents (D332): the person runs AI agents of their own: their records
+// here, or Mem's plugin in one of their agents.
+func ownsAgents(own []string, devices []protocol.DeviceView) bool {
+	if len(own) > 0 {
+		return true
+	}
+	for _, d := range devices {
+		for _, h := range d.Harnesses {
+			if h.Mem != nil && (h.Mem.State == "installed" || h.Mem.State == "update") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// peersPhase (D332) is what the pane is about: on, off (switched off),
+// getting (Mem isn't ready: its steps in place), joining (ready: the home
+// connects by itself), problem (one row, its fix), none (memory is off).
+func peersPhase(b *protocol.BridgeView, switchOn bool) string {
 	if b == nil {
-		return false
+		return "none"
+	}
+	if b.State == "connected" || b.State == "disconnecting" {
+		if switchOn || b.State == "connected" {
+			return "on"
+		}
+		return "off"
+	}
+	if !switchOn {
+		return "off"
 	}
 	switch b.State {
-	case "install_mem", "installing", "sign_in", "signing_in":
-		return false
+	case "install_mem", "installing", "update_mem", "updating", "sign_in", "signing_in":
+		return "getting"
+	case "ready", "connecting":
+		return "joining"
 	}
-	return true
+	return "problem"
+}
+
+// handoff is one exchange with another agent, as 最近 lists it (web: Handoff).
+type handoff struct {
+	Seq    int64
+	At     string
+	Agent  string
+	Way    string // in | sent | replied
+	Words  string
+	TaskID string
+}
+
+// recentHandoffs is the latest exchanges both ways, newest first; only
+// what really went (web: recentHandoffs).
+func recentHandoffs(ch []*store.Entry, limit int) []handoff {
+	var out []handoff
+	for i := len(ch) - 1; i >= 0 && len(out) < limit; i-- {
+		p := ch[i].Peer
+		if p == nil {
+			continue
+		}
+		if p.Direction == "in" {
+			if p.State == "early" || p.State == "set_aside" || p.State == "muted" {
+				continue
+			}
+		} else if p.State != "" && p.State != "sent" && p.State != "followed" {
+			continue
+		}
+		words := strings.Join(strings.Fields(p.Text), " ")
+		if words == "" {
+			continue
+		}
+		agent := firstNonEmpty(p.Agent, p.From)
+		way := "in"
+		if p.Direction != "in" {
+			agent = firstNonEmpty(p.Agent, p.To)
+			way = "replied"
+			if p.DecisionID != "" {
+				way = "sent"
+			}
+		}
+		out = append(out, handoff{Seq: ch[i].Event.Seq, At: ch[i].Event.TS, Agent: agent, Way: way, Words: words, TaskID: p.TaskID})
+	}
+	return out
 }
 
 // notedGroup is the noted lines of one "when": today, week (the last 7
@@ -155,13 +244,13 @@ func (a *App) peersSeen() bool {
 	return false
 }
 
-// visibleTabs is the rail: 连上的 AI agent only once it means something.
+// visibleTabs is the rail: 和你的其他 agent 通信 only for who it is for (D332).
 func (a *App) visibleTabs() []string {
 	var p *protocol.Peers
 	if a.S.Settings != nil {
 		p = a.S.Settings.Peers
 	}
-	if peersShown(p, a.S.Bridge, a.peersSeen()) {
+	if a.peersAsked || peersShown(p, a.S.Bridge, a.peersSeen(), ownsAgents(a.S.OwnAgents, a.S.Devices)) {
 		return settingsTabs
 	}
 	out := make([]string, 0, len(settingsTabs))
@@ -204,7 +293,7 @@ func (a *App) drawNotebook() func(p *ui.Painter, r ui.Rect) {
 	}
 }
 
-// ---------- 连上的 AI agent / Connected AI agents ----------
+// ---------- 和你的其他 agent 通信 / Talk with your other agents (D332) ----------
 
 // peersPanel is the persona's connection with the person's other agents
 // (D205) and who may reach it (D170). Mem's own steps live in Memory.

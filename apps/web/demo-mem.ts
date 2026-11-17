@@ -63,6 +63,7 @@ export const demoFix = async (id: string, title: string) => {
 /** The fake `nmem --json …` for core's Bridge row and Mem glance. */
 export function fakeNmem(state: DemoMem, zh: boolean) {
   const ok = (o: unknown) => ({ code: 0, out: JSON.stringify(o), err: "" });
+  let connected = false;
   return async (args: string[]) => {
     const a = args.join(" ");
     if (state === "install" || state === "none") return undefined; // no nmem here
@@ -72,7 +73,18 @@ export function fakeNmem(state: DemoMem, zh: boolean) {
       return ok({ status: "ok", cli_version: "0.10.119", mode: state === "local" ? "local" : "remote", backend: state === "local" ? "local" : "cloud", update: { current: "0.10.119", latest: "0.10.119", update_available: false } });
     }
     if (a === "bridge setup") return ok({ candidates: [{ id: SPACE.id, kind: "personal", label: SPACE.label }] });
-    if (a.startsWith("bridge connections list")) return ok({ connections: [{ connection_id: "bc_demo", state: "active" }] });
+    // D332: a pretend connect (DEMO_MEM=ready: the home connects by itself once the person has agents of their own).
+    if (a.startsWith("bridge connections connect")) {
+      connected = true;
+      const ctx = args[args.indexOf("--context") + 1];
+      return ok({ state: "connected", agent_context: ctx, selection: { scope: { space_id: SPACE.id } }, connection: { agent_id: "ducter", state: "active", connection_id: "bc_demo" } });
+    }
+    if (args.includes("--agent-context") && a.endsWith("bridge setup")) return ok({ endpoint: { address: { agent_id: "ducter" } } });
+    if (a.startsWith("bridge connections revoke")) {
+      connected = false;
+      return ok({ connection: { connection_id: "bc_demo", state: "revoked" } });
+    }
+    if (a.startsWith("bridge connections list")) return ok({ connections: state === "ready" && !connected ? [] : [{ connection_id: "bc_demo", state: connected || state !== "ready" ? "active" : "revoked" }] });
     if (a.startsWith("m list")) {
       const typed = args.includes("--unit-type");
       const kind = args[args.indexOf("--unit-type") + 1];

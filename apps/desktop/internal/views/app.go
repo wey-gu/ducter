@@ -92,14 +92,15 @@ type App struct {
 	fileToast, copyText string
 	// devicesAsked: the where line (D157) asked for devices once on its own.
 	devicesAsked bool
-	// bridgeConfirm: 断开 was tapped once and asks before it runs (D205).
-	bridgeConfirm bool
 	// bridgeHere: 改由这台收 / 只留这台 was tapped once and asks in place (D324).
 	bridgeHere bool
 	// D295: memAsk is the noted line whose 忘掉 asks in place; memDetails
-	// and peersDetails show the raw facts behind 详情.
-	memAsk                   int64
-	memDetails, peersDetails bool
+	// shows the raw facts behind 详情.
+	memAsk     int64
+	memDetails bool
+	// peersAsked (D332): 终端里的 AI was opened from the Partner page's
+	// one line, so the rail lists it for now.
+	peersAsked bool
 	// D321: Settings › 记忆's own state (memory_pane.go).
 	memPage memPageState
 	// bridgeLink: the connect link being pasted on the row (D225); never kept.

@@ -306,6 +306,10 @@ class AppState {
   bridge?: BridgeView;
   /** D205: 断开 asks once more before it runs (a disconnected connection may need Mem to make again). */
   bridgeConfirm = false;
+  /** D332: the AI agents the person runs themselves on the home (their records' file times), from the settings frame. */
+  ownAgents: ("claude-code" | "codex" | "pi")[] = [];
+  /** D332: 终端里的 AI was opened from the Partner page's one line, so Settings lists it for now. */
+  peersAsked = false;
   /** What the partner thinks with right now (D150), and the computer Ducter lives on. */
   brainNow?: BrainNow;
   homeName?: string;
@@ -847,6 +851,7 @@ class AppState {
     this.settings = f.settings;
     this.mem = f.mem;
     this.bridge = f.bridge;
+    this.ownAgents = f.ownAgents ?? [];
     if (f.bridge?.state !== "connected") this.bridgeConfirm = false;
     if (f.bridge?.state !== "elsewhere" && !(f.bridge?.state === "connected" && f.bridge.others?.length)) this.bridgeHere = false;
     this.brainNow = f.brainNow;

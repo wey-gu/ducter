@@ -2,13 +2,12 @@ package views
 
 import (
 	"sort"
-	"time"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
 // D321: the rules of Settings › 记忆 as "what it knows about you" and of
-// 连上的 AI agent's 试试看, the web's (apps/web/src/mem-view.ts).
+// 终端里的 AI's 试试看, the web's (apps/web/src/mem-view.ts).
 
 // aboutKinds are Mem's own kinds, in the Memory page's order.
 var aboutKinds = []string{"preference", "decision", "fact", "other"}
@@ -56,22 +55,6 @@ func bySource(x protocol.MemItem) (string, []any) {
 		return "mem.by." + x.By, nil
 	}
 	return "mem.by.you", nil
-}
-
-// firstFresh is how long the first hand-off stays celebrated on 连上的 AI agent.
-const firstFresh = 15 * time.Minute
-
-// handoffPhase is 试试看's live row: waiting (nothing came from another
-// agent yet), first (the first came in the last 15 minutes), none.
-func handoffPhase(firstAt string, now time.Time) string {
-	if firstAt == "" {
-		return "waiting"
-	}
-	at, err := time.Parse(time.RFC3339Nano, firstAt)
-	if err == nil && now.Sub(at) < firstFresh {
-		return "first"
-	}
-	return "none"
 }
 
 // tryAgent is one agent 试试看 names: its harness, whether Mem's plugin is in

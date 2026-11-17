@@ -598,77 +598,86 @@ func (a *App) memFirst(c *ui.Context, phase string, b *protocol.BridgeView) {
 			a.footRow(c, "mem-local", a.L.T("mem.setup.local", name), nil)
 			return
 		}
-		installed := phase == "sign_in" || phase == "signing_in"
-		a.chatBody(c, "mem-steps", func() {
-			// 1. Install.
-			if installed {
-				a.chatStep(c, 1, a.L.T("mem.step.done"), nil)
-			} else {
-				a.chatStep(c, 1, a.L.T("mem.step.install"), func() {
-					busy := phase == "installing"
-					help := a.L.T("bridge.mem.install", home)
-					switch {
-					case busy:
-						help = a.L.T("bridge.mem.installing", home)
-					case b != nil && !b.CanRun:
-						help = a.L.T("bridge.mem.install.need", home) + "\n" + a.L.T("bridge.mem.install.need.how")
-					}
-					if b != nil && b.Detail != "" && !busy {
-						help += "\n" + a.memFailed(true, home, b.Detail, b.Kept)
-					}
-					a.note(c, help)
-					if busy {
-						return
-					}
-					label, kind := a.L.T("bridge.mem.install.go"), btnPrimary
-					if b == nil || !b.CanRun {
-						label, kind = a.L.T("bridge.retry"), btnSecondary
-					}
-					ui.Row(c).Children(func() {
-						if a.buttonFor(c, label, home, kind, t.ControlSM, t.Surface) && b != nil {
-							b.State = "installing"
-							a.send(protocol.BridgeAction{T: "bridge_mem_install"})
-						}
-					})
-				})
-			}
-			// 2. Sign in.
-			a.chatStep(c, 2, a.L.T("mem.step.signin"), func() {
-				if !installed {
-					return
+		a.memSteps(c, phase, b)
+		a.footRow(c, "mem-local", a.L.T("mem.setup.local", name), nil)
+	})
+}
+
+// memSteps is Nowledge Mem's two steps on the home, each one tap in place
+// (D225): put it in, then sign in with a one-time link. Memory's first page
+// and 终端里的 AI's (D332) walk the same steps.
+func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
+	t := a.T
+	home := a.memHome()
+	installed := phase == "sign_in" || phase == "signing_in"
+	a.chatBody(c, "mem-steps", func() {
+		// 1. Install.
+		if installed {
+			a.chatStep(c, 1, a.L.T("mem.step.done"), nil)
+		} else {
+			a.chatStep(c, 1, a.L.T("mem.step.install"), func() {
+				busy := phase == "installing"
+				help := a.L.T("bridge.mem.install", home)
+				switch {
+				case busy:
+					help = a.L.T("bridge.mem.installing", home)
+				case b != nil && !b.CanRun:
+					help = a.L.T("bridge.mem.install.need", home) + "\n" + a.L.T("bridge.mem.install.need.how")
 				}
-				busy := phase == "signing_in"
-				help := a.L.T("bridge.mem.signin", home)
-				if b != nil {
-					if b.Done != "" {
-						help = a.L.T("bridge.mem.done."+b.Done, home) + "\n" + help
-					}
-					switch b.SignIn {
-					case "used":
-						help += "\n" + a.L.T("bridge.mem.signin.used")
-					case "bad":
-						help += "\n" + a.L.T("bridge.mem.signin.bad")
-					case "failed":
-						help += "\n" + a.L.T("bridge.mem.signin.failed", b.Detail)
-					}
+				if b != nil && b.Detail != "" && !busy {
+					help += "\n" + a.memFailed(true, home, b.Detail, b.Kept)
 				}
 				a.note(c, help)
-				ui.Row(c).Gap(t.S2).AlignItems(ui.End).Children(func() {
-					ui.Column(c).Grow(1).MinWidth(0).Children(func() {
-						a.field(c, "bridge-link", a.L.T("bridge.mem.signin.link"), &a.bridgeLink, "https://…?nmem_connect=…", "")
-					})
-					label := a.L.T("bridge.mem.signin.go")
-					if busy {
-						label = a.L.T("bridge.mem.signin.busy")
-					}
-					if a.buttonFor(c, label, home, btnPrimary, t.ControlMD, t.Surface) && !busy && strings.TrimSpace(a.bridgeLink) != "" && b != nil {
-						b.State = "signing_in"
-						a.send(protocol.BridgeMemSignIn{T: "bridge_mem_sign_in", Link: strings.TrimSpace(a.bridgeLink)})
-						a.bridgeLink = ""
+				if busy {
+					return
+				}
+				label, kind := a.L.T("bridge.mem.install.go"), btnPrimary
+				if b == nil || !b.CanRun {
+					label, kind = a.L.T("bridge.retry"), btnSecondary
+				}
+				ui.Row(c).Children(func() {
+					if a.buttonFor(c, label, home, kind, t.ControlSM, t.Surface) && b != nil {
+						b.State = "installing"
+						a.send(protocol.BridgeAction{T: "bridge_mem_install"})
 					}
 				})
 			})
+		}
+		// 2. Sign in.
+		a.chatStep(c, 2, a.L.T("mem.step.signin"), func() {
+			if !installed {
+				return
+			}
+			busy := phase == "signing_in"
+			help := a.L.T("bridge.mem.signin", home)
+			if b != nil {
+				if b.Done != "" {
+					help = a.L.T("bridge.mem.done."+b.Done, home) + "\n" + help
+				}
+				switch b.SignIn {
+				case "used":
+					help += "\n" + a.L.T("bridge.mem.signin.used")
+				case "bad":
+					help += "\n" + a.L.T("bridge.mem.signin.bad")
+				case "failed":
+					help += "\n" + a.L.T("bridge.mem.signin.failed", b.Detail)
+				}
+			}
+			a.note(c, help)
+			ui.Row(c).Gap(t.S2).AlignItems(ui.End).Children(func() {
+				ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+					a.field(c, "bridge-link", a.L.T("bridge.mem.signin.link"), &a.bridgeLink, "https://…?nmem_connect=…", "")
+				})
+				label := a.L.T("bridge.mem.signin.go")
+				if busy {
+					label = a.L.T("bridge.mem.signin.busy")
+				}
+				if a.buttonFor(c, label, home, btnPrimary, t.ControlMD, t.Surface) && !busy && strings.TrimSpace(a.bridgeLink) != "" && b != nil {
+					b.State = "signing_in"
+					a.send(protocol.BridgeMemSignIn{T: "bridge_mem_sign_in", Link: strings.TrimSpace(a.bridgeLink)})
+					a.bridgeLink = ""
+				}
+			})
 		})
-		a.footRow(c, "mem-local", a.L.T("mem.setup.local", name), nil)
 	})
 }

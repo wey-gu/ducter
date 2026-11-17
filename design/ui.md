@@ -609,11 +609,11 @@ One vocabulary on every tab:
   the tile column and one 15 sentence on the text column, with a mono chip, a quiet link or a field
   (label 13/700 over a white input with a hairline) under it; the last line is the privacy note
   (13 muted) and the group's one button at the right edge. `design/channels.md` §6.
-- **Connected AI agents / 连上的 AI agent** (D257, named by D273; D295 on D289's grid; two of the person's agents'
-  coins): the lede, then one group (two coins in the tile column; **你的 AI agent 能找到 {name}** · **已连上**; **它的身份**,
-  **在哪儿** in plain words; **谁能找到 {name}** with its choice under its words; the foot's quiet **详情** (the raw
-  identity and space id) and quiet **断开** asking in place), then **它记住的规矩** as a section. Shown once it means
-  something (J6).
+- **终端里的 AI / AI in your terminal** (D332; was D257's 连上的 AI agent; two of the person's agents' coins as its
+  mark): the lede; on, problems first (one row each), **最近** (each exchange a row: the agent's mark, its words,
+  which way, the age at the right), **试试看** (D321's slabs), the switch as its own group with the partner's word
+  under it; before Mem, the picture on a sunken clay slab (the coins at 44, two drawn arrows in muted ink, each
+  said in words, the partner at 56), Mem's group with its two steps; only **已不再听 X** rows. Shown by who.
 - **Look and sound** opens on a preview stage: the partner, one message of yours and its answer
   in this window's language, and Details folded or shown as set. The partner smiles (its done
   face, cross-faded) for 1.6 s after any choice there, and while **试听 / Play** plays the

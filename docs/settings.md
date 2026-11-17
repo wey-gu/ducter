@@ -23,7 +23,7 @@ On the left is a row of tabs; the one you pick shows on the right:
 |---|---|
 | **Partner** | Its name, what it thinks with, who does the tasks, a pasted API key, what happens when a limit runs out, how it talks, what your AI agents keep, and what it does on its own or asks you first |
 | **Memory** | What it remembers about you, and Nowledge Mem: its version and updates |
-| **Connected AI agents** | The AI agents you use elsewhere that can reach it (shown once Nowledge Mem is in) |
+| **AI in your terminal** | Claude Code or Codex in your terminal handing it work, and it asking them (shown if you use them yourself) |
 | **Notifications** | When it comes to you, quiet hours, and how long it waits if you don't answer |
 | **Accounts** | The mail, calendars and other accounts it can read |
 | **Look and sound** | The look, light or dark, the menu bar, the window's language, Details in the conversation, the intro's sound, voice |
@@ -144,33 +144,28 @@ Once a week, in the first morning note of the week, one line offers to show what
 in the last seven days. **Show me** opens **What it learned this week**: mark a line **Right**,
 **Fix** its words (the fix goes back to Nowledge Mem), or **Forget** it.
 
-## Connected AI agents
+## AI in your terminal
 
-Once Nowledge Mem is in, **Connected AI agents** lets the AI agents you use elsewhere, like Claude
-Code or Codex in a terminal, reach your partner. **Connect** once; then the first row says **Your
-AI agents can reach {name}**, with **Its identity** (the name your agents find it by) and
-**Where** (your own space, which only your agents are in). **Who can reach** your partner is
-**Only yours**, **Teammates' too** or **Nobody**. **Disconnect** asks first, in place. **Details**
-shows the exact identity and space id.
+If you run Claude Code or Codex in a terminal yourself, **AI in your terminal** lets them hand your
+partner work, or send it what needs your call, and lets your partner ask them things for you. It
+shows in Settings once Ducter sees you use them; otherwise the end of the **Partner** page has one
+line, **Show me**, that opens it.
 
-Your partner answers your other agents on one computer at a time. If it already does so on another
-computer, the page says where, with **Receive here instead**. If two computers are both receiving
-(say, an older setup), a row says so, with **Keep only this one**; both ask first. When the other
-computer's connection can only be ended there, the row tells you where to do it.
+They find each other through Nowledge Mem, which is free. If it isn't on your computer yet, the page
+puts it in and signs you in, right there. After that there is nothing to tap: your partner connects
+by itself and tells you so once in the conversation.
 
-**Try it** shows the exact words to say in your terminal: one to hand your partner a job, one for
-when you step out and want your agents to send it what needs your call. **Copy** puts them on your
-clipboard. It also says whether Claude Code and Codex have the Nowledge Mem plugin they need to find
-your partner, with **Install** where one is missing, and a sentence to say to your partner here when
-you want it to ask your terminal agent something. Until the first one arrives, a row says **Waiting
-for the first one…**; when it lands, the row says **It worked** and **Show me** takes you to it. The
-first time another agent reaches your partner, a short note in the conversation says what happened.
+When it's on, the page shows **Recently**: what your agents handed over and what your partner asked
+or answered, newest first; tap one to open it. **Try it** shows the exact words to say in your
+terminal, and one to say to your partner here; **Copy** puts them on your clipboard. Where Claude Code
+or Codex still needs the Nowledge Mem plugin to hear them, a row says so, with **Install**.
 
-What it learned about your agents (work from one that
-starts without asking, one you stopped listening to) has its own list, each with a way back.
-In the conversation each agent is called by what it is and where it works, for example **Claude
-Code (~/dev/ducter) asks you** or **Replied to Claude Code**; one that gives no name is **An AI
-agent**.
+One switch, **Let the AI in your terminal reach {name}**, turns it all on or off. If something is
+wrong (Nowledge Mem says no, or another computer is answering your agents), one row says what and
+offers the one fix. If you told your partner to stop listening to an agent, that agent has a row
+with **Undo**. In the conversation each agent is called by what it is and where it works, for
+example **Claude Code (~/dev/ducter) asks you**; the first time one reaches your partner, a short
+note says what happened.
 
 ## Notifications
 

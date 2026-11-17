@@ -2,8 +2,8 @@
 
 How each pane of Settings feels to the person in it, and the small pieces every pane shares. The
 grid and its rows are D273's and D289's (`ui.md`, `settings_rows.go`, `set-grid.tsx`); the
-words are the glossary's (`product-model.md`). 记忆 / Memory and 连上的 AI agent / Connected AI
-agents are D295's and are not covered here.
+words are the glossary's (`product-model.md`). 记忆 / Memory is D295's and 终端里的 AI / AI in
+your terminal is D332's (`bridge.md` "Simple, by who"); neither is covered here.
 
 ## Who is here, and what they feel
 

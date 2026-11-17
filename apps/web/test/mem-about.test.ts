@@ -1,7 +1,9 @@
-// D321: what it knows about you (groups by Mem's kind, each line's source) and 连上的 AI agent's 试试看
-// (which agents can hear the words, the live row). The Mac has the same rules (apps/desktop/internal/views/memory.go).
+// D321: what it knows about you (groups by Mem's kind, each line's source) and 终端里的 AI's 试试看
+// (which agents can hear the words); D332: what the pane is about, and what came and went lately.
+// The Mac has the same rules (apps/desktop/internal/views/memory_about_test.go TestPeersRules).
 import { describe, expect, test } from "bun:test";
-import { aboutGroups, bySource, FIRST_FRESH_MS, handoffPhase, tryAgents } from "../src/mem-view.ts";
+import type { BridgeView } from "@ducter/protocol";
+import { aboutGroups, bySource, ownsAgents, peersPhase, recentHandoffs, tryAgents } from "../src/mem-view.ts";
 
 describe("What it knows about you (D321)", () => {
   test("groups in a fixed order, empty kinds left out", () => {
@@ -21,11 +23,40 @@ describe("What it knows about you (D321)", () => {
     expect(bySource({ by: "mem" })).toEqual({ key: "mem.by.mem", args: [] });
   });
 
-  test("the live row: waiting, then it worked for a while, then nothing", () => {
-    const now = Date.parse("2026-11-17T12:00:00Z");
-    expect(handoffPhase(undefined, now)).toBe("waiting");
-    expect(handoffPhase(new Date(now - 60_000).toISOString(), now)).toBe("first");
-    expect(handoffPhase(new Date(now - FIRST_FRESH_MS - 1).toISOString(), now)).toBe("none");
+  test("D332: what the pane is about, in each state and with the switch", () => {
+    const b = (state: BridgeView["state"]): BridgeView => ({ state, identity: "ducter" });
+    expect(peersPhase(undefined, true)).toBe("none");
+    expect(peersPhase(b("connected"), true)).toBe("on");
+    expect(peersPhase(b("connected"), false)).toBe("on"); // the revoke is on its way
+    expect(peersPhase(b("disconnecting"), false)).toBe("off");
+    expect(peersPhase(b("ready"), false)).toBe("off");
+    for (const s of ["install_mem", "installing", "update_mem", "updating", "sign_in", "signing_in"] as const) expect(peersPhase(b(s), true)).toBe("getting");
+    expect(peersPhase(b("ready"), true)).toBe("joining");
+    expect(peersPhase(b("connecting"), true)).toBe("joining");
+    for (const s of ["elsewhere", "refused", "failed", "unconfirmed", "no_space", "local_mem"] as const) expect(peersPhase(b(s), true)).toBe("problem");
+  });
+
+  test("D332: whether the person runs agents of their own", () => {
+    expect(ownsAgents([], [])).toBe(false);
+    expect(ownsAgents(["codex"], [])).toBe(true);
+    expect(ownsAgents([], [{ harnesses: [{ harness: "codex", mem: { state: "installed" } }] }])).toBe(true);
+    expect(ownsAgents([], [{ harnesses: [{ harness: "codex", mem: { state: "absent" } }] }])).toBe(false);
+  });
+
+  test("D332: recently, both ways, newest first, only what really went", () => {
+    const ev = (seq: number) => ({ seq, ts: "2026-11-17T10:00:00Z" });
+    const got = recentHandoffs([
+      { ev: ev(1), peer: { direction: "in", agent: "Claude Code", text: "fix  the\nCI" } },
+      { ev: ev(2), peer: { direction: "in", agent: "Codex", text: "old", state: "early" } },
+      { ev: ev(3), peer: { direction: "out", to: "Codex", text: "draft", state: "pending", decisionId: "d1" } },
+      { ev: ev(4), peer: { direction: "out", to: "Codex", text: "can the PR go tonight?", state: "sent", decisionId: "d1" } },
+      { ev: ev(5), peer: { direction: "out", agent: "Claude Code", text: "on it", taskId: "t1" } },
+      { ev: ev(6) },
+    ]);
+    expect(got.map((h) => `${h.seq}:${h.way}:${h.agent}`)).toEqual(["5:replied:Claude Code", "4:sent:Codex", "1:in:Claude Code"]);
+    expect(got[0]!.taskId).toBe("t1");
+    expect(got[2]!.words).toBe("fix the CI");
+    expect(recentHandoffs([{ ev: ev(1), peer: { direction: "in", text: "a" } }, { ev: ev(2), peer: { direction: "in", text: "b" } }], 1).map((h) => h.seq)).toEqual([2]);
   });
 
   test("which agents can hear the words: signed in somewhere, Mem's plugin in it, else where to put it (the home first)", () => {

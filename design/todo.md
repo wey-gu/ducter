@@ -36,6 +36,23 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
   Mac's rename of another partner; the stone's comprehension test with naive raters, then a clay
   character per partner. Trigger: the author reviews the preview.
 
+## 终端里的 AI / AI in your terminal (D332, `bridge.md` "Simple, by who")
+
+- [ ] **A teammate's agent, asked per sender the first time** (replaces D170's 也包括同事的): the first message from a
+      teammate's agent becomes one card (**{teammate} 的 {agent} 想找你…** · 让它找 · 不用), remembered per sender;
+      nothing in Settings. Trigger: the partner has a team mailbox (Mem's Team Bridge, X3).
+- [ ] **Codex counts as "your own" too eagerly**: its records don't say the folder a session ran in, so a home whose
+      partner or tasks run on Codex reads as someone who runs Codex by hand (the page shows, and the home connects).
+      Trigger: a report from someone who never opened a terminal, or Codex's records carrying the folder (then skip
+      Ducter's own as for Claude Code).
+- [ ] **A human test of the name** 终端里的 AI / AI in your terminal (research/120 was haiku raters only), with the
+      Partner page's line. Trigger: the first round of human tests.
+- [ ] **最近 counts only what the conversation shows**: an agent's answer to the partner's question (relayed by the
+      partner) and a reply without a sent state aren't rows. Trigger: someone looks for an answer there.
+- [ ] **A deep link straight to the pane on load** (`#settings=peers`) can show the waiting row before the
+      conversation's events arrive (the headless shots open it after load instead). Trigger: a link to the pane from
+      a notification or the partner's line.
+
 ## Deep Nowledge Mem integration (D295, `memory.md`)
 
 - **D304 follow-ups:** the full partner eval at merge (only the memory scenarios ran, with `--only`);
@@ -525,7 +542,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **Nowledge Mem in 全部更新 / Update all** (D257 option C): the home's `nmem` as an item beside Ducter
       and the agents (D224), so one tap updates everything. Trigger: the next time 全部更新 grows an item kind.
 - [ ] **An On hand line when a Mem update blocks something in use** (D257 (5)): today the update is said on
-      Memory, on the Settings entry, and on 连上的 AI agent when a connection fails with a newer Mem out. If people
+      Memory, on the Settings entry, and on 终端里的 AI when a connection fails with a newer Mem out. If people
       miss it there (Bridge broken for days), add one quiet On hand line. Trigger: a real report of a missed
       update.
 - [ ] **The notebook mark's comprehension test** (D257, AGENTS.md's metaphor rule step 4): naive raters (LLM
@@ -1281,7 +1298,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
       identity at once, that `agents delete` retires its mailbox, and that `--cleanup` finds nothing after.
       Trigger: an nmem after 0.10.119 (the first to ask for #10278's representation).
 - [ ] D324 on the author's homes: end the Mac's leftover `ducter` connection (the 2026-11-13 trial's, made by the
-      Mac's own nmem login) so hel alone reads the mailbox: hel's Settings › 连上的 AI agent › 只留这台, or on the
+      Mac's own nmem login) so hel alone reads the mailbox: hel's Settings › 终端里的 AI › 只留这台, or on the
       Mac `nmem bridge connections revoke <the id that isn't hel's>` and `nmem agents context clear --name ducter`.
       Trigger: hel runs a Ducter with D324; the author's Go.
 - [ ] D324: show a home's display name (not its slug) for another home's connection, once the homes' names are
@@ -1338,7 +1355,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] X1 · "有事问 Ducter" (D164, D170): the asker card on both clients, the reply by code, "not yet" after 30 min,
       60 s checks while live, 3 open asks per agent, the lock-screen copy.
 - [x] X2 · "直接接" (D163, D170): the offer after two Go's, the rule in Settings › 伙伴, 5 a day.
-- [x] Settings › 连上的 AI agent (D170): who can reach the partner, the learned rules, the muted.
+- [x] Settings › 连上的 AI agent (D170): who can reach the partner, the learned rules, the muted (simplified by D332 to 终端里的 AI: one switch, only the muted).
 - [ ] X3 · a team's agents: a per-team switch once a team context exists, Space-scoped answers (Mem search in that
       Space only), and the eval scenario for a teammate's question. Trigger: a team context and Mem's Team Bridge
       accepted.

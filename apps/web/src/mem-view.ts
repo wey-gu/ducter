@@ -1,4 +1,4 @@
-// D257: what Settings › 记忆 / Memory and › 连上的 AI agent / Connected AI agents show, from the
+// D257: what Settings › 记忆 / Memory and › 终端里的 AI / AI in your terminal (D332) show, from the
 // settings frame (settings.memory, mem, bridge). Pure, so the phone, the wide page and the tests
 // read it the same way; the Mac has the same rules (apps/desktop/internal/views/memory.go).
 import type { BridgeView, MemView, PeersSettings } from "@ducter/protocol";
@@ -64,14 +64,74 @@ export function memBadge(u: MemUpdate | undefined): "" | "mem.badge.newer" | "me
 }
 
 /**
- * 连上的 AI agent shows once it means something (J6: a fresh user never meets it): another agent wrote,
- * the person trusted or muted one, or Mem is on the home and signed in (older counts: one line says
- * to update it). Before Mem is there, Memory is where it goes in.
+ * D332: 终端里的 AI / AI in your terminal shows by who: to the person who runs AI agents of their own
+ * (own: Ducter saw their records here, or Mem's plugin in one of their agents), to anyone another agent
+ * has written to or who stopped listening to one, and while the partner is connected (or answers
+ * elsewhere). Everyone else meets one quiet line on the Partner page instead (J6).
  */
-export function peersShown(peers: PeersSettings | undefined, b: BridgeView | undefined, seen: boolean): boolean {
+export function peersShown(peers: PeersSettings | undefined, b: BridgeView | undefined, seen: boolean, own: boolean): boolean {
   if (!peers) return false;
-  if (seen || peers.trusted.length > 0 || peers.muted.length > 0) return true;
-  return !!b && !["install_mem", "installing", "sign_in", "signing_in"].includes(b.state);
+  if (seen || peers.muted.length > 0) return true;
+  if (b && ["connected", "disconnecting", "elsewhere", "unconfirmed"].includes(b.state)) return true;
+  return own;
+}
+
+/** D332: whether the person runs AI agents of their own: their records here, or Mem's plugin in one. */
+export function ownsAgents(ownAgents: readonly string[], devices: { harnesses: { harness: string; mem?: { state: string } }[] }[]): boolean {
+  return ownAgents.length > 0 || devices.some((d) => d.harnesses.some((h) => h.mem?.state === "installed" || h.mem?.state === "update"));
+}
+
+/**
+ * D332: what the pane is about, in one word: on (connected: what came and went, what to say, the
+ * switch), off (the person switched it off), getting (Mem isn't ready yet: one sentence of value and
+ * the step that gets it, in place), joining (Mem is ready and the home connects by itself), problem
+ * (one row, its one fix), none (no Mem answer at all: memory is off).
+ */
+export type PeersPhase = "on" | "off" | "getting" | "joining" | "problem" | "none";
+
+export function peersPhase(b: BridgeView | undefined, switchOn: boolean): PeersPhase {
+  if (!b) return "none";
+  if (b.state === "connected" || b.state === "disconnecting") return switchOn || b.state === "connected" ? "on" : "off";
+  if (!switchOn) return "off";
+  switch (b.state) {
+    case "install_mem":
+    case "installing":
+    case "update_mem":
+    case "updating":
+    case "sign_in":
+    case "signing_in":
+      return "getting";
+    case "ready":
+    case "connecting":
+      return "joining";
+  }
+  return "problem"; // local_mem, no_space, refused, failed, unconfirmed, elsewhere
+}
+
+/** D332: one exchange with another agent, as 最近 / Recently lists it: who, which way, its words, when, where it leads. */
+export type Handoff = { seq: number; at: string; agent: string; way: "in" | "sent" | "replied"; words: string; taskId?: string };
+
+/**
+ * D332: the latest exchanges with the person's other agents, both ways, newest first: what one sent the
+ * partner, what the partner sent or answered. Only what really went: never a draft still waiting for the
+ * person's tap, one that didn't go, or one set aside or muted.
+ */
+export function recentHandoffs(
+  channel: { ev: { seq: number; ts: string }; peer?: { direction: "in" | "out"; agent?: string; from?: string; to?: string; text: string; taskId?: string; decisionId?: string; state?: string } }[],
+  limit = 5,
+): Handoff[] {
+  const out: Handoff[] = [];
+  for (let i = channel.length - 1; i >= 0 && out.length < limit; i--) {
+    const e = channel[i]!;
+    const p = e.peer;
+    if (!p) continue;
+    if (p.direction === "in" ? p.state === "early" || p.state === "set_aside" || p.state === "muted" : p.state !== undefined && p.state !== "sent" && p.state !== "followed") continue;
+    const words = p.text.replace(/\s+/g, " ").trim();
+    if (!words) continue;
+    const agent = (p.direction === "in" ? p.agent || p.from : p.agent || p.to) ?? "";
+    out.push({ seq: e.ev.seq, at: e.ev.ts, agent, way: p.direction === "in" ? "in" : p.decisionId ? "sent" : "replied", words, ...(p.taskId ? { taskId: p.taskId } : {}) });
+  }
+  return out;
 }
 
 /** The noted lines by when: today (this computer's day), this week (the last 7 days), earlier. */
@@ -118,19 +178,6 @@ export function aboutGroups<T extends { kind: AboutKind }>(items: T[]): { kind: 
 export function bySource(x: { by: "said" | "tool" | "you" | "mem"; from?: string }): { key: string; args: string[] } {
   if (x.by === "tool" && x.from) return { key: "mem.by.tool", args: [x.from] };
   return { key: `mem.by.${x.by === "tool" ? "you" : x.by}`, args: [] };
-}
-
-/** How long the first hand-off stays celebrated on 连上的 AI agent. */
-export const FIRST_FRESH_MS = 15 * 60_000;
-
-/**
- * D321: the live row on 连上的 AI agent's 试试看: waiting (nothing came from another agent yet), first
- * (the first came in the last 15 minutes: say it worked), or none (it's been used).
- */
-export function handoffPhase(firstAt: string | undefined, now: number = Date.now()): "waiting" | "first" | "none" {
-  if (!firstAt) return "waiting";
-  const at = Date.parse(firstAt);
-  return !Number.isNaN(at) && now - at < FIRST_FRESH_MS ? "first" : "none";
 }
 
 export type TryAgent = { harness: "claude-code" | "codex"; plugin?: "on" | "off"; device?: string };

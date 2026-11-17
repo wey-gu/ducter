@@ -9,12 +9,12 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D321: 连上的 AI agent's 试试看 / Try it once the link is on: the exact words
-// for the terminal (J1, X1) and for here (S2), each copyable; whether each
-// agent can hear them (Mem's plugin in it); a live row that waits for the
-// first hand-off, then says it worked (with the way to it), then is gone.
-// And the conversation's one-time note under the first message from another
-// agent. The web's: PeersTry and FirstPeerNote (apps/web/src).
+// D321, D332: 终端里的 AI's 最近 / Recently and 试试看 / Try it once the link
+// is on: what came and went lately (both ways), the exact words for the
+// terminal (J1, X1) and for here (S2), each copyable; each agent that can't
+// hear them yet. And the conversation's one-time note under the first
+// message from another agent. The web's: PeersRecent, PeersTry and
+// FirstPeerNote (apps/web/src).
 
 // firstPeer is the first message another agent sent, nil when none came yet.
 func (a *App) firstPeer() *protocol.BridgeMsg {
@@ -24,16 +24,6 @@ func (a *App) firstPeer() *protocol.BridgeMsg {
 		}
 	}
 	return nil
-}
-
-// firstPeerAt is when that first message came ("" when none).
-func (a *App) firstPeerAt() string {
-	for _, e := range a.S.Channel {
-		if e.Peer != nil && e.Peer.Direction == "in" {
-			return e.Event.TS
-		}
-	}
-	return ""
 }
 
 // saySlab is one thing to say, exactly: what it does, then the words on a
@@ -82,16 +72,40 @@ func (a *App) handoffDot(c *ui.Context) func() {
 	}
 }
 
-// peersTry is 试试看 under the link's group.
+// peersRecent is 最近 / Recently (D332): the latest exchanges both ways,
+// newest first, each opening its task or the conversation; before the
+// first one, a calm row that waits for it.
+func (a *App) peersRecent(c *ui.Context, name string) {
+	t := a.T
+	list := recentHandoffs(a.S.Channel, 5)
+	a.group(c, "peers-recent", a.L.T("peers.recent.title"), "", func() {
+		if len(list) == 0 {
+			a.tileRow(c, "peers-wait", a.handoffDot(c), a.L.T("peers.wait.title"), a.L.T("peers.wait.line"), nil)
+			return
+		}
+		for _, h := range list {
+			h := h
+			var age func()
+			if s := a.agoLong(h.At); s != "" {
+				age = func() { ui.Text(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
+			}
+			who := a.peerWho(h.Agent)
+			if a.openRow(c, "handoff:"+itoa(h.Seq), a.toolTile(c, peerName(who)), autospace(h.Words), a.L.T("peers.recent."+h.Way, who), t.InkMuted, false, age) {
+				if h.TaskID != "" {
+					a.OpenTask(h.TaskID)
+				} else {
+					a.Route = RouteConversation
+				}
+			}
+		}
+	})
+}
+
+// peersTry is 试试看 (D321, D332): the exact words for the terminal (J1,
+// X1) and for here (S2), each copyable, and each agent that can't hear them
+// yet (Mem's plugin missing: 装上).
 func (a *App) peersTry(c *ui.Context, name string) {
 	t := a.T
-	first := a.firstPeerAt()
-	phase := handoffPhase(first, a.Now())
-	if phase == "first" {
-		if at, err := time.Parse(time.RFC3339Nano, first); err == nil {
-			c.After(at.Add(firstFresh).Sub(a.Now()) + time.Second)
-		}
-	}
 	a.group(c, "peers-try", a.L.T("peers.try.title"), a.L.T("peers.try.note"), func() {
 		a.textBlock(c, "try-terminal", func() {
 			a.saySlab(c, "work", a.L.T("peers.try.work.what"), a.L.T("peers.try.work", name), true)
@@ -99,15 +113,15 @@ func (a *App) peersTry(c *ui.Context, name string) {
 		})
 		for _, x := range tryAgents(a.S.Devices) {
 			x := x
+			if x.Plugin == "on" {
+				continue
+			}
 			tool := "Claude Code"
 			if x.Harness == "codex" {
 				tool = "Codex"
 			}
 			line := a.L.T("peers.try.plugin.unknown")
-			switch x.Plugin {
-			case "on":
-				line = a.L.T("peers.try.plugin.on")
-			case "off":
+			if x.Plugin == "off" {
 				line = a.L.T("peers.try.plugin.off", name)
 			}
 			var control func()
@@ -119,20 +133,6 @@ func (a *App) peersTry(c *ui.Context, name string) {
 				}
 			}
 			a.tileRow(c, "try-agent:"+x.Harness, a.toolTile(c, tool), tool, line, control)
-		}
-		switch phase {
-		case "waiting":
-			a.tileRow(c, "try-wait", a.handoffDot(c), a.L.T("peers.wait.title"), a.L.T("peers.wait.line"), nil)
-		case "first":
-			who := a.peerWho("")
-			if m := a.firstPeer(); m != nil {
-				who = a.peerWho(firstNonEmpty(m.Agent, m.From))
-			}
-			a.tileRow(c, "try-first", a.glyphTile(c, 18, drawCheck(t.Done.Ink)), a.L.T("peers.first.title", who, name), a.L.T("peers.first.line"), func() {
-				if a.button(c, a.L.T("peers.first.open"), btnSecondary, t.ControlSM, t.Surface) {
-					a.Route = RouteConversation
-				}
-			})
 		}
 		a.textBlock(c, "try-here", func() {
 			a.saySlab(c, "here", a.L.T("peers.try.here.what", name), a.L.T("peers.try.here"), false)

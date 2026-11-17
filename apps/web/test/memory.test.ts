@@ -1,5 +1,5 @@
-// D257: Settings › 记忆 / Memory and › 连上的 AI agent: where the memory stands, the one update worth
-// saying, the Settings entry's line, when 连上的 AI agent shows, the noted lines by when, and the words
+// D257: Settings › 记忆 / Memory and › 终端里的 AI (D332): where the memory stands, the one update worth
+// saying, the Settings entry's line, when 终端里的 AI shows, the noted lines by when, and the words
 // equal to the Mac's (apps/desktop/internal/i18n/memory.go). The same cases as the Mac's
 // (apps/desktop/internal/views/memtab_test.go).
 import { describe, expect, test } from "bun:test";
@@ -42,16 +42,19 @@ describe("Memory (D257)", () => {
     expect(kind(b({ state: "ready", done: "updated" }))).toBe("done");
   });
 
-  test("连上的 AI agent shows once it means something (J6)", () => {
+  test("终端里的 AI shows by who (D332)", () => {
     const none = { reach: "own" as const, trusted: [], muted: [] };
-    expect(peersShown(undefined, b({}), true)).toBe(false);
-    expect(peersShown(none, undefined, false)).toBe(false);
-    expect(peersShown(none, b({ state: "install_mem" }), false)).toBe(false);
-    expect(peersShown(none, b({ state: "sign_in" }), false)).toBe(false);
-    expect(peersShown(none, b({ state: "ready" }), false)).toBe(true);
-    expect(peersShown(none, b({ state: "update_mem" }), false)).toBe(true);
-    expect(peersShown(none, undefined, true)).toBe(true);
-    expect(peersShown({ ...none, trusted: ["terminal-claude"] }, undefined, false)).toBe(true);
+    expect(peersShown(undefined, b({}), true, true)).toBe(false);
+    // Mem ready, never connected, no agents of their own: not in the list (the Partner page invites).
+    expect(peersShown(none, b({ state: "ready" }), false, false)).toBe(false);
+    expect(peersShown(none, undefined, false, false)).toBe(false);
+    // Agents of their own: shown before Mem is even in.
+    expect(peersShown(none, b({ state: "install_mem" }), false, true)).toBe(true);
+    expect(peersShown(none, b({ state: "connected" }), false, false)).toBe(true);
+    expect(peersShown(none, undefined, true, false)).toBe(true);
+    expect(peersShown({ ...none, muted: ["Codex"] }, undefined, false, false)).toBe(true);
+    // A learned "take it directly" is not a reason to show a settings page.
+    expect(peersShown({ ...none, trusted: ["Claude Code"] }, undefined, false, false)).toBe(false);
   });
 
   test("the noted lines by when: today, this week, earlier", () => {

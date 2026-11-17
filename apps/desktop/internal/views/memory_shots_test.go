@@ -13,7 +13,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 )
 
-// D295: Settings › 记忆 and › 连上的 AI agent at 1280 and 900, full length,
+// D295: Settings › 记忆 and › 终端里的 AI at 1280 and 900, full length,
 // against the demo core and its pretend Nowledge Mem (DEMO_MEM, apps/web/demo-mem.ts):
 //
 //	DUCTER_PORT=7895 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh DEMO_MEM=cloud bun apps/web/demo.ts

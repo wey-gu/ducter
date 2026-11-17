@@ -15,7 +15,7 @@ import (
 )
 
 // D257: where the memory stands, the one update worth saying, the rail's
-// line, when 连上的 AI agent shows, and the noted lines by when. The same cases
+// line, when 终端里的 AI shows, and the noted lines by when. The same cases
 // as the web's (apps/web/test/memory.test.ts).
 func TestMemRules(t *testing.T) {
 	conn := &protocol.MemView{State: "connected"}
@@ -60,12 +60,9 @@ func TestMemRules(t *testing.T) {
 			t.Errorf("memUpdate(%+v) = %q/%q, want %q/%q", c.b, kind, memBadge(u), c.kind, c.badge)
 		}
 	}
-	none := &protocol.Peers{Reach: "own", Trusted: []string{}, Muted: []string{}}
-	if peersShown(none, nil, false) || peersShown(none, &protocol.BridgeView{State: "install_mem"}, false) || peersShown(none, &protocol.BridgeView{State: "sign_in"}, false) {
-		t.Errorf("连上的 AI agent shows before Mem is in")
-	}
-	if !peersShown(none, &protocol.BridgeView{State: "ready"}, false) || !peersShown(none, &protocol.BridgeView{State: "update_mem"}, false) || !peersShown(none, nil, true) {
-		t.Errorf("连上的 AI agent hidden once it means something")
+	// D332: 终端里的 AI shows by who (TestPeersRules has the cases).
+	if peersShown(&protocol.Peers{Reach: "own"}, &protocol.BridgeView{State: "ready"}, false, false) {
+		t.Errorf("终端里的 AI shows to someone without agents of their own")
 	}
 	now := time.Date(2026, 11, 14, 15, 0, 0, 0, time.Local)
 	at := func(d time.Duration) string { return now.Add(-d).UTC().Format(time.RFC3339) }

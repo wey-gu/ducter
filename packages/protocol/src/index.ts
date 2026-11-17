@@ -2177,6 +2177,8 @@ export interface Settings {
   name: string; // the partner's name (default "Ducter")
   language: TalkLanguage;
   memory: boolean; // remember things in Nowledge Mem (off: no recall, no saving)
+  /** D348: memory is held off for this run by the home's start (DUCTER_MEMORY=off): the switch can't turn it on. Clients never set it. */
+  memoryPinned?: boolean;
   notify: boolean; // notifications on (phones and the Mac)
   quiet: QuietHours | null; // 免打扰 / Quiet hours; null = none
   defaultAfterMin: number; // how long a reversible decision waits before its default goes ahead

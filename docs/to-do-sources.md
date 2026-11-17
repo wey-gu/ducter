@@ -27,6 +27,17 @@ Open **Settings › To-do sources** (**设置 › 待办来源**). Under **You c
 
 Tap **Add** (for GitHub, **Connect**). Nothing starts because you added it.
 
+## Only part of it
+
+Each source can read just part of what's there. Type in the field and press Return, or just move on:
+
+- **GitHub › Only these repositories**: write `owner/repo`, several separated by commas. Leave it
+  empty for every repository.
+- **An Obsidian vault › Which folder**: a folder inside the vault, for example `Plans`. Empty means
+  the whole vault.
+- **An Obsidian vault › Only with this tag**: for example `#ducter`, so only lines with that tag count.
+  Empty means any tag.
+
 ## Ask, or pick
 
 Ask the way you'd ask a person:

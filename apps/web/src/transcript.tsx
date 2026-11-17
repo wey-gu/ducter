@@ -935,7 +935,7 @@ function VTurns({ task, slots, view }: { task: Task; slots: Slot[]; view: (tu: T
         // Far: there at once, its placeholder (or the turn) at the top; the window follows.
         st.current.anchor = undefined;
         st.current.atEnd = false;
-        sc.scrollTop = st.current.top + tp[k]! - 8;
+        sc.scrollTop = st.current.top + tp[k]! - landOffset(sc);
         st.current.flash = seq;
         look();
         return true;
@@ -1152,8 +1152,27 @@ const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k 
  * than three screens away it lands a screen short first, then glides), at once under reduced
  * motion; then the turn's soft clay tint fades (`.turn.flash`).
  */
+/**
+ * D348: how far below the scroller's top edge a jump lands a turn: under anything stuck to the top
+ * inside it, then the page's own top room (at least 16, so the turn's 10-px tint is whole), never
+ * the 8 it was, which put the turn's first line against the edge (research/124 F8).
+ */
+export function landOffset(scroller: HTMLElement): number {
+  let cover = 0;
+  const top = scroller.getBoundingClientRect().top;
+  for (const el of Array.from(scroller.children) as HTMLElement[]) {
+    const cs = getComputedStyle(el);
+    if (cs.position !== "sticky" && cs.position !== "fixed") continue;
+    const r = el.getBoundingClientRect();
+    if (r.top <= top + 1) cover = Math.max(cover, r.bottom - top);
+  }
+  return Math.max(0, cover) + Math.max(16, parseFloat(getComputedStyle(scroller).paddingTop) || 0);
+}
+
 export function glideTo(scroller: HTMLElement, target: HTMLElement) {
-  const goal = Math.max(0, Math.min(scroller.scrollHeight - scroller.clientHeight, scroller.scrollTop + target.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8));
+  const off = landOffset(scroller);
+  const aim = () => Math.max(0, Math.min(scroller.scrollHeight - scroller.clientHeight, scroller.scrollTop + target.getBoundingClientRect().top - scroller.getBoundingClientRect().top - off));
+  const goal = aim();
   const flash = () => {
     target.classList.remove("flash");
     void target.offsetWidth; // the tint starts again on a second jump
@@ -1174,7 +1193,11 @@ export function glideTo(scroller: HTMLElement, target: HTMLElement) {
     const k = Math.min(1, (now - t0) / ms);
     scroller.scrollTop = from + span * easeInOut(k);
     if (k < 1) requestAnimationFrame(step);
-    else flash();
+    else {
+      // Turns drawn on the way can change height (content-visibility): land where the turn is now.
+      scroller.scrollTop = aim();
+      flash();
+    }
   };
   requestAnimationFrame(step);
 }

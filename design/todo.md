@@ -23,8 +23,6 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## The website (D326, `design/site.md`)
 
-- [ ] **The share image** (`og.png` and its alt) still says "Say it once." Redraw it with the D326
-      tagline and the morning note. Trigger: the next deploy of the site.
 - [ ] **Pictures from the real Mac app:** the hero in the Mac window, and a real Devices picture to
       replace the drawn Isles if it reads as well. Trigger: the next Mac app walk (research/109's).
 - [ ] **A 中文 site** (home, Get started, the mainland-China note), with the designed zh tagline.
@@ -1900,9 +1898,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
       others on the switch or **Receive here instead**. Needs a Dn. Trigger: now.
 - [ ] **The partner's `wait_for` description** still gives its examples as 「中文 / English」 pairs, which
       a task copied as both (F7; the task tool is fixed). Trigger: the next partner-tool change (D175's eval).
-- [ ] **Small things from the walk** (F8): the task pane's wait line overflowed by 7 px once; held words
-      after Stop keep the head 这一轮做完再说 while nothing runs; a locator jump lands a line high; every
-      report repeats 「改动随时能撤回，留到 …」. Trigger: the next pass over the opened task.
+- [ ] **D348 walked live** (F8's small things, closed against the demo cores): a real wait with a long
+      reason in a 544-px pane, held words after a real Stop, a locator jump in a real long session, two
+      reports of one folder task saying the undo line once. Trigger: the next live walk.
 ## D341: 待办来源 / To-do sources (2026-11-17)
 - [ ] **Jira** as an adapter (`/rest/api/3/search/jql` with `assignee = currentUser() AND statusCategory != Done`, ADF comments, done as the one workflow transition into the done category, asking when several fit or fields are required; Data Center from a worker inside the company network). Trigger: the first person who asks for Jira, or a second tracker request.
 - [ ] **A company's own tracker** through an MCP or HTTP adapter (list mine, get, comment, set done, a link) on `SourceAdapter`. Trigger: a team asks with its tracker's API in hand.
@@ -1910,7 +1908,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A vault on a worker** (the Obsidian adapter runs where the vault is, like D197's folders). Trigger: someone whose vault lives on another computer than the home.
 - [ ] **Undo for a tick in Done for you** (untick; the adapter already does it). Trigger: the first person who wants a tick back.
 - [ ] **New ones in the morning note** (D165's limits) instead of their own line. Trigger: the author says the 3-hourly line is noise.
-- [ ] **Its own clay art** on the Settings list (a page with a ticked box); the page with lines stands in. Trigger: the next art pass.
+- [ ] **`set_todos` read by people** (D348: five LLM raters only). Trigger: the next comprehension test with people.
 - [ ] **Live checks:** the author's gh and a real (copied) vault on iCloud and Obsidian Sync with the note open in Obsidian. Trigger: before calling D341 done.
 - [ ] **Several GitHub accounts** (one source per home's gh today). Trigger: someone with a work and a personal account on one home.
 

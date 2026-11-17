@@ -1350,9 +1350,12 @@ type QuietHours struct {
 
 // Settings are the partner's settings, as the server keeps them.
 type Settings struct {
-	Name            string      `json:"name"`
-	Language        string      `json:"language"` // TalkLanguage: "auto" (Follow me) or any BCP 47 tag it always replies in (D292)
-	Memory          bool        `json:"memory"`
+	Name     string `json:"name"`
+	Language string `json:"language"` // TalkLanguage: "auto" (Follow me) or any BCP 47 tag it always replies in (D292)
+	Memory   bool   `json:"memory"`
+	// MemoryPinned: the home was started with DUCTER_MEMORY=off, so the switch
+	// can't turn memory on (D348).
+	MemoryPinned    bool        `json:"memoryPinned,omitempty"`
 	Notify          bool        `json:"notify"`
 	Quiet           *QuietHours `json:"quiet"`
 	DefaultAfterMin int         `json:"defaultAfterMin"`

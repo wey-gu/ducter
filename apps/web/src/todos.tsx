@@ -172,6 +172,7 @@ function SourceCard({ v }: { v: SourceView }) {
         </span>
         <Seg label={t("todos.done")} value={v.whenDone} options={done.map((x) => ({ v: x, label: t(`todos.done.${x}`) }))} onPick={(x) => set({ whenDone: x })} />
       </div>
+      <SourceFilters v={v} />
       <div class="chat-foot">
         <span class="grow">{(v.state === "signed_out" || v.state === "no_tool") && !A.ghTodo && <Btn kind="secondary" size="sm" label={t("todos.signin")} about="GitHub" onClick={() => A.ntGhStart("local", "todos")} />}</span>
         {asking ? (
@@ -185,6 +186,59 @@ function SourceCard({ v }: { v: SourceView }) {
         )}
       </div>
     </section>
+  );
+}
+
+/** D348: "acme/web, acme/api" → ["acme/web", "acme/api"]: owner/repo, split at commas or spaces (either width). */
+export function reposOf(text: string): string[] {
+  return [...new Set(text.split(/[\s,，、;；]+/).map((r) => r.trim().replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/i, "")).filter(Boolean))];
+}
+
+/** D348: which part a source reads, set here: GitHub's repositories; a vault's folder and tag. Saved on Return or leaving the field. */
+export function SourceFilters({ v }: { v: SourceView }) {
+  const save = (patch: { folder?: string; label?: string; repos?: string[] }) => A.send({ t: "source_set", id: v.id, ...patch });
+  const name = v.kind === "github" ? "GitHub" : v.name;
+  if (v.kind === "github")
+    return (
+      <div class="chat-row todo-filters">
+        <FilterField id={`${v.id}-repos`} label={t("todos.repos")} about={name} hint={t("todos.repos.hint")} placeholder={t("todos.repos.all")} value={(v.repos ?? []).join(", ")} onSave={(x) => save({ repos: reposOf(x) })} />
+      </div>
+    );
+  return (
+    <div class="chat-row todo-filters">
+      <FilterField id={`${v.id}-folder`} label={t("todos.folder")} about={name} placeholder={t("todos.folder.all")} value={v.folder ?? ""} onSave={(x) => save({ folder: x.trim().replace(/^[/\\]+|[/\\]+$/g, "") })} />
+      <FilterField id={`${v.id}-tag`} label={t("todos.tag")} about={name} placeholder={t("todos.tag.any")} value={v.label ?? ""} onSave={(x) => save({ label: x.trim() })} />
+    </div>
+  );
+}
+
+function FilterField(p: { id: string; label: string; about: string; value: string; placeholder: string; hint?: string; onSave: (v: string) => void }) {
+  const [text, setText] = useState(p.value);
+  // The home's word wins once it lands (another window, or the save itself, cleaned).
+  useEffect(() => setText(p.value), [p.value]);
+  const commit = () => text.trim() !== p.value.trim() && p.onSave(text);
+  return (
+    <label class="acct-field chat-field todo-filter" for={p.id}>
+      <span>{p.label}</span>
+      <input
+        id={p.id}
+        dir="auto"
+        autocomplete="off"
+        autoCapitalize="off"
+        spellcheck={false}
+        enterKeyHint="done"
+        aria-label={`${p.label}, ${p.about}`}
+        placeholder={p.placeholder}
+        value={text}
+        onInput={(e) => setText((e.target as HTMLInputElement).value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.isComposing) (e.preventDefault(), commit());
+          else if (e.key === "Escape") setText(p.value);
+        }}
+      />
+      {p.hint && <small>{p.hint}</small>}
+    </label>
   );
 }
 

@@ -632,6 +632,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       return out;
     },
+    // D348: what its previous report said could be undone, so the undo line is said once per task.
+    undoBefore: (id, reportSeq) => {
+      const evs = core.log.read({ stream: `task:${id}`, kinds: ["report"], beforeSeq: reportSeq, limit: 200 });
+      for (let i = evs.length - 1; i >= 0; i--) {
+        const f = (evs[i]!.body as Bodies["report"]).folder;
+        if (f) return f;
+      }
+      return undefined;
+    },
     taskAttention: (id) => core.tasks.get(id)?.attention,
     // D341: the to-do a task is bound to, and what Ducter does with it when it is done.
     taskSource: (id) => {

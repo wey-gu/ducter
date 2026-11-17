@@ -29,6 +29,9 @@ type IndexPrompt struct {
 type IndexMark struct {
 	Seq int64  `json:"seq"`
 	K   string `json:"k"` // compacted switched moved retuned interrupted report
+	// D325: when it happened; a report's first line (cut, keys hidden).
+	At string `json:"at,omitempty"`
+	W  string `json:"w,omitempty"`
 }
 
 // IndexTurn is one turn of a session: where it starts and ends in the

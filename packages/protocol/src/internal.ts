@@ -506,6 +506,9 @@ export interface Runner {
   // Logs the text as task_event {role:"user", from, clientId} before delivering it.
   // media (D206): pictures that go with the text (an agent that can't see them gets a line saying so).
   send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner" | "ducter", clientId?: string, media?: MediaRef[]): Promise<{ delivered: Delivery }>;
+  // D325: the person's held words (TaskCard.held): change one, take it back, or say it now.
+  // Throws when that id is no longer held (it already went).
+  held?(taskId: string, id: string, op: "edit" | "drop" | "now", text?: string): Promise<{ delivered?: Delivery }>;
   interrupt(taskId: string): Promise<void>;
   // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
   reopen?(taskId: string): Promise<{ delivered: Delivery }>;

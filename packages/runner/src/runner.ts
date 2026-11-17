@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
+import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief, type CarryOver } from "./brief.ts";
 import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
@@ -181,6 +181,10 @@ interface TaskRt {
   limitsSeen?: HarnessEvent["limits"];
   saveAsked: boolean;
   prefix: string[];
+  /** D325: the person's words held for after this turn, in order (logged whole as task_held). */
+  held: HeldMsg[];
+  /** D325: steers sent and not yet seen by the agent: the seq of the words logged, and the words. */
+  steers: { seq: number; text: string }[];
   context?: number; // the harness's last context reading
   /** D288: the window the harness reads against; the last reading logged for the meter; the
    *  first reading after a compaction is owed (its size after); a /compact asked mid-turn. */
@@ -417,7 +421,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   function logEvent(t: TaskRt, ev: Omit<Bodies["task_event"], "taskId">) {
-    core.log.append({ persona: t.persona, stream: stream(t.id), origin: "task", kind: "task_event", body: { taskId: t.id, ...ev } });
+    return core.log.append({ persona: t.persona, stream: stream(t.id), origin: "task", kind: "task_event", body: { taskId: t.id, ...ev } });
   }
 
   function isBusy(t: TaskRt): boolean {
@@ -633,6 +637,53 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       logEvent(t, { role: "system", from: "runner", text: `delivery failed: ${preview(String(err), 500)}` });
       throw err;
     }
+  }
+
+  // ---------- D325: the person's held words, and their steers seen ----------
+
+  /** The whole queue as it is now, logged (the card and every client read it from there). */
+  function setHeld(t: TaskRt, held: HeldMsg[]) {
+    t.held = held;
+    core.log.append({ persona: t.persona, stream: stream(t.id), origin: "task", kind: "task_held", body: { taskId: t.id, held } });
+  }
+
+  /**
+   * What is held goes first, in order, each logged as the person's own words, then `text`: one
+   * turn carrying all of them (the agent reads them in the order they were written).
+   */
+  function withHeld(t: TaskRt, text: string, media?: MediaRef[]): { text: string; media?: MediaRef[] } {
+    const held = t.held;
+    if (!held.length) return { text, ...(media?.length ? { media } : {}) };
+    setHeld(t, []);
+    for (const h of held) logInput(t, h.text, "user", "turn", h.id, h.media);
+    const all = [...held.flatMap((h) => h.media ?? []), ...(media ?? [])];
+    return { text: [...held.map((h) => h.text), text].filter((s) => s.trim()).join("\n\n"), ...(all.length ? { media: all } : {}) };
+  }
+
+  /** The turn ended: what was held is the next turn. */
+  async function drainHeld(t: TaskRt) {
+    const next = withHeld(t, "");
+    t.nudged = false;
+    t.stallNoted = false;
+    await sendTurn(t, takeEdits(t.id, next.text), "user", true, next.media);
+  }
+
+  /**
+   * The agent's own echo of words it took in (OAR's user_message: Claude Code's replay, Codex's
+   * userMessage item, pi's and DeepSeek Harness's user message): the steers it names, and every
+   * one sent before them, were read at this step. Said once, as `read` (the seqs of the words).
+   */
+  function steerSeen(t: TaskRt, input: string) {
+    if (!t.steers.length) return;
+    const flat = (s: string) => s.replace(/\s+/g, " ").trim();
+    const said = flat(input);
+    const i = t.steers.findLastIndex((s) => {
+      const w = flat(s.text).slice(0, 200);
+      return !!w && said.includes(w);
+    });
+    if (i < 0) return;
+    const seen = t.steers.splice(0, i + 1);
+    logEvent(t, { role: "system", from: "runner", raw: { read: seen.map((s) => s.seq) } });
   }
 
   /** Records the native session id once known, so a restarted runner can resume it. */
@@ -921,6 +972,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     }
     if (t.session === session) {
       const wasRunning = t.running;
+      t.steers = []; // D325: what that session never echoed it won't now
       t.session = undefined;
       t.running = false;
       if (offline && !t.dropped) deviceLost(t, wasRunning);
@@ -1018,6 +1070,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const early = (ev.raw as { kind?: string } | undefined)?.kind;
     if (early === "tool_call_started" || early === "tool_call_title" || early === "tool_call_head") return; // the ended event logs the call
     if (early === "background") return onBackground(t, ev);
+    // D325: the agent took words in (its own echo): a steer of the person's was read.
+    if (early === "user_echo") return steerSeen(t, String((ev.raw as { input?: string }).input ?? ""));
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
     // D288: the account's limits as the session said them, kept with the agent's last read.
     if (ev.limits) {
@@ -1149,7 +1203,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const compactTurn = !busy && !!t.compactTurn;
     if (!busy) t.compactTurn = false;
     // D288: a /compact asked mid-turn runs once the turn is over.
-    if (t.compactAfterTurn && !busy) {
+    const compactsNow = !!t.compactAfterTurn && !busy;
+    if (compactsNow) {
       t.compactAfterTurn = false;
       void compactNow(t);
     }
@@ -1159,6 +1214,16 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.bgOwed = false;
     clearTimeout(t.bgSettle);
     t.bgSettle = undefined;
+    // D325: the turn is over and the person held words for after it: they are the next turn
+    // (not after a Stop, a failure or a limit: held, the person says them now or changes them).
+    if (!busy && !t.dropped && t.held.length && (outcome ?? "completed") === "completed" && !compactTurn && !compactsNow) {
+      try {
+        await drainHeld(t);
+      } catch (err) {
+        logEvent(t, { role: "system", text: `held words failed: ${preview(String(err), 500)}` });
+      }
+      return;
+    }
     // D266: its background shells and subagents still run: the session is at work, not idle.
     const bg = busy ? 0 : bgLive(t);
     // Stopped by the user: it is not working any more, it waits for them (truthful card).
@@ -1424,6 +1489,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       compactions: 0,
       saveAsked: false,
       prefix: [],
+      held: card.held ? structuredClone(card.held) : [],
+      steers: [],
     };
   }
 
@@ -1938,6 +2005,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if (typeof text !== "string" || (!text.trim() && !media?.length)) throw new Error("send needs non-empty text");
       if (t.dropped) throw new Error(`task ${taskId} was dropped`);
       await t.started.catch(() => {});
+      // D325: a resend of words already held (the socket came back): held once.
+      if (from === "user" && clientId && t.held.some((h) => h.id === clientId)) return { delivered: "queued" };
       // D282: the person's own /model and /effort in the task's composer: Ducter's switch, the same
       // meaning on every agent, the card kept true. Every other slash command goes to the harness.
       const slash = from === "user" && !media?.length ? slashOf(text, t.base.harness) : undefined;
@@ -1968,6 +2037,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         // another agent) or a rejected resume, a new session from the brief + saved progress.
         // Resuming takes seconds (measured ~10 s for Claude Code): log the text now so the
         // transcript shows it at once; a resumed session is idle, so it becomes the next turn.
+        // D325: what the person held goes first.
+        const before = compacting ? { text: "" } : withHeld(t, "");
         logInput(t, text, from, "turn", clientId, media);
         const archived = t.residency === "archived";
         setState(t, currentAttention(t), "provisioning");
@@ -1991,12 +2062,23 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         }
         if (compacting) t.compactTurn = true;
         else setState(t, "working", "hot");
-        await sendTurn(t, compacting ? text : seed ? seedThen(seed, takeEdits(taskId, text)) : takeEdits(taskId, text), from, true, media);
+        const said = before.text ? `${before.text}\n\n${text}` : text;
+        const all = [...(before.media ?? []), ...(media ?? [])];
+        await sendTurn(t, compacting ? text : seed ? seedThen(seed, takeEdits(taskId, said)) : takeEdits(taskId, said), from, true, all.length ? all : undefined);
         return { delivered: "prompted" };
       }
       if (isBusy(t)) {
-        if (mode !== "queue" && t.session!.canSteer) {
-          logInput(t, text, from, "steer", clientId, media);
+        const steer = mode !== "queue" && t.session!.canSteer;
+        // D325: the person's After this, or a steer its agent can't take mid-turn: Ducter holds
+        // it (never the agent's own queue), so it can be changed, taken back or said now.
+        if (from === "user" && !steer) {
+          setHeld(t, [...t.held, { id: clientId ?? `h${randomBytes(6).toString("hex")}`, text, at: new Date().toISOString(), ...(media?.length ? { media } : {}) }]);
+          return { delivered: "queued" };
+        }
+        if (steer) {
+          const e = logInput(t, text, from, "steer", clientId, media);
+          // D325: seen once the agent's next step echoes it (steerSeen).
+          if (from === "user") t.steers.push({ seq: e.seq, text });
           await deliver(t, takeEdits(taskId, text), "steer", from, true, media);
           return { delivered: "steered" };
         }
@@ -2011,10 +2093,34 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       else if (a !== "working") setState(t, "working", "hot");
       // D214: what the user changed in its files goes to the agent, never into their own words in
       // the Log (after a /compact: with the next words, so the command stays a command).
-      const out = compacting ? text : takeEdits(taskId, text);
-      if (clientId || out !== text) logInput(t, text, from, "turn", clientId, media);
-      await sendTurn(t, out, from, !!clientId || out !== text, media);
+      // D325: what the person held goes first, in order.
+      const before = compacting ? { text: "" } : withHeld(t, "");
+      const said = before.text ? `${before.text}\n\n${text}` : text;
+      const all = [...(before.media ?? []), ...(media ?? [])];
+      const out = compacting ? text : takeEdits(taskId, said);
+      const logged = !!clientId || out !== text;
+      if (logged) logInput(t, text, from, "turn", clientId, media);
+      await sendTurn(t, out, from, logged, all.length ? all : undefined);
       return { delivered: "prompted" };
+    },
+
+    // D325: one of the person's held messages changed, taken back, or said now.
+    async held(taskId, id, op, text) {
+      const t = get(taskId);
+      const i = t.held.findIndex((h) => h.id === id);
+      if (i < 0) throw new Error("That message already went to the task.");
+      const h = t.held[i]!;
+      if (op === "edit") {
+        const words = (text ?? "").trim();
+        if (!words && !h.media?.length) throw new Error("empty message");
+        setHeld(t, t.held.map((x, j) => (j === i ? { ...x, text: words } : x)));
+        return {};
+      }
+      if (op === "now" && isBusy(t) && t.session && !t.session.canSteer) throw new Error(`${harnessName(t.spec.harness)} can't take words in the middle of its work; it reads this when it's done.`);
+      setHeld(t, t.held.filter((_, j) => j !== i));
+      if (op === "drop") return {};
+      // Said now: steered in while it works, else the next turn (with anything else still held first).
+      return runner.send(taskId, h.text, "steer", "user", h.id, h.media);
     },
 
     async reopen(taskId) {
@@ -2194,6 +2300,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.dropped = true;
       await t.started.catch(() => {});
       setState(t, "dropped", "parked");
+      if (t.held.length) setHeld(t, []); // D325: a cancelled task hears nothing more
       const s = t.session;
       t.session = undefined;
       t.running = false;

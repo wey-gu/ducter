@@ -11,12 +11,13 @@ import { HIDDEN, redact } from "@ducter/protocol/src/redact.ts";
 import { unwrapShell, type Step } from "@ducter/protocol/src/steps.ts";
 import { inTurn, lastSeq, latestVoice, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
 import { builtTurns, indexOf, lowerBound, slotsOf, type SessionIndex, type Slot, type TurnCache } from "@ducter/protocol/src/session.ts";
+import { landmarkNear, landmarksIn, landmarksOf, type Landmark } from "@ducter/protocol/src/landmarks.ts";
 import { tokensShort } from "@ducter/protocol";
 import type { MediaRef, WaiterView } from "@ducter/protocol";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { RefObject } from "preact";
 import { limitAt, WaitHow, waitLine } from "./work.tsx";
-import { clock, day, shownDeviceName, when } from "./format.ts";
+import { clock, day, shownDeviceName, span, stamp, when } from "./format.ts";
 import { Component, type JSX } from "preact";
 import { Btn, Chev, Facts } from "./controls.tsx";
 import { escArmed } from "./esc.ts";
@@ -651,16 +652,48 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
   return null;
 }
 
-/** Your words to the task, with what it waits for: 排队中 until it answers (D207, D210, D268). */
-function YouBubble({ task, b, queued }: { task: Task; b: Extract<Block, { k: "you" }>; queued: boolean }) {
-  const sd = task.sends.find((s) => s.seq === b.seq);
-  const waits = queued && sd?.delivered === "queued";
+/** D325: how the person's words went in (the runner's `delivered`), from the held events. */
+function deliveredOf(task: Task, seq: number): string | undefined {
+  const evs = task.events;
+  let lo = 0, hi = evs.length;
+  while (lo < hi) {
+    const m = (lo + hi) >> 1;
+    if (evs[m]!.seq < seq) lo = m + 1;
+    else hi = m;
+  }
+  const e = evs[lo];
+  return e?.seq === seq ? ((e.body as { raw?: { delivered?: string } }).raw?.delivered ?? undefined) : undefined;
+}
+
+/** D325: a receipt for the person's steer, only while it says something: sent while it works and not
+ *  read yet, 它做到下一步就会看到; the newest one its next step took in, 它看到了 (with a check). */
+export function steerReceipt(task: Task, seq: number): "wait" | "read" | undefined {
+  if (task.reads?.has(seq)) return seq === Math.max(...task.reads) ? "read" : undefined;
+  return deliveredOf(task, seq) === "steer" && working(task) ? "wait" : undefined;
+}
+
+/** Your words to the task, with how they went in (D207, D268, D325). */
+function YouBubble({ task, b }: { task: Task; b: Extract<Block, { k: "you" }> }) {
+  const r = steerReceipt(task, b.seq);
   return (
-    <div class={`tx you${waits ? " queued" : ""}`} dir="auto">
-      {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
-      {waits && <small class="qtag">{t("delivery.queued.tag")}</small>}
-      {b.text}
-    </div>
+    <>
+      <div class="tx you" dir="auto">
+        {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
+        {b.text}
+      </div>
+      {r && (
+        <div class={`rcpt ${r}`} role="status">
+          {r === "read" ? (
+            <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+              <path d="M3.5 8.5l3 3 6-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            </svg>
+          ) : (
+            <span class="dot" aria-hidden="true" />
+          )}
+          <span>{t(r === "read" ? "delivery.steer.read" : "delivery.steer.wait")}</span>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -726,7 +759,7 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live
     return next.version !== this.props.version || next.queued !== this.props.queued || next.live !== this.props.live;
   }
   render() {
-    const { task, turn, queued, live } = this.props;
+    const { task, turn, live } = this.props;
     const p = turn.prompt;
     return (
       <section class="turn" data-seq={this.props.seq ?? turn.seq}>
@@ -738,7 +771,7 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live
         )}
         {p?.k === "brief" && <PromptCard task={task} b={p} label={p.by === "you" ? t("task.asked.you") : t("task.asked", A.S.personaName)} />}
         {p?.k === "partner" && <PromptCard task={task} b={p} label={t("task.from.partner", A.S.personaName)} />}
-        {p?.k === "you" && <YouBubble task={task} b={p} queued={queued} />}
+        {p?.k === "you" && <YouBubble task={task} b={p} />}
         {p?.k === "go" && (
           <div class="tx go-chip" title={p.text}>
             <span>{goWords(p)}</span>
@@ -763,7 +796,7 @@ export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
   const turns = own ? taskTurns(task) : turnsOf(blocks);
   const moving = taskInTurn(task);
   const view = (tu: Turn, last: boolean, seq?: number) => (
-    <TurnView key={seq ?? tu.seq} seq={seq} task={task} turn={tu} queued={last && !tu.body.length} live={last && moving} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}`} />
+    <TurnView key={seq ?? tu.seq} seq={seq} task={task} turn={tu} queued={last && !tu.body.length} live={last && moving} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}:${task.reads?.size ?? 0}:${working(task)}`} />
   );
   const items: JSX.Element[] = own ? [] : turns.map((tu, i, shown) => view(tu, i === shown.length - 1));
   // D207: a receipt only when it says something: sending, it waits its turn, or it failed.
@@ -1037,45 +1070,77 @@ function atOf(task: Task, seq: number): string {
   return Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
 }
 
-type LocEntry = { seqs: number[]; line: string; tag?: string; at: string; quiet: boolean };
+/** D325: one row of the locator's list, said: its words, the brief's quiet label, its time apart (D291). */
+export type LocRow = { k: Landmark["k"]; line: string; tag?: string; at: string; quiet: boolean };
 
-/** A turn's entry in the locator: the first line of what was said, or a quiet item's own words; the
- *  brief carries its own quiet label, and every entry its time apart (D291). */
-function locatorEntry(task: Task, tu: Turn, quiet: boolean): LocEntry {
-  const p = tu.prompt;
-  const e: LocEntry = { seqs: [tu.seq], line: "", at: p ? atOf(task, p.seq) : "", quiet };
-  if (!p) return e;
-  if (p.k === "wake" || p.k === "told") return { ...e, line: promptLine(p) };
-  if (p.k === "go") return { ...e, line: goWords(p) };
-  const first = ("text" in p ? p.text : "").split("\n")[0]!;
-  return p.k === "brief" ? { ...e, line: first, tag: t("locator.brief") } : { ...e, line: first };
+/** D325: a landmark in words (the list draws only the rows near its view, so only those are said). */
+export function locatorRow(lm: Landmark, now = Date.now()): LocRow {
+  const at = lm.endAt ? span(A.L, lm.at, lm.endAt, now) : stamp(A.L, lm.at, now);
+  switch (lm.k) {
+    case "brief":
+      return { k: lm.k, line: lm.text ?? "", tag: t("locator.brief"), at, quiet: false };
+    case "you":
+    case "partner":
+      return { k: lm.k, line: lm.text ?? t("locator.media"), at, quiet: false };
+    case "report":
+      return { k: lm.k, line: lm.text ?? t("locator.report"), at, quiet: false };
+    case "quiet": {
+      if (lm.n) return { k: lm.k, line: t(lm.wakes ? "locator.wakes" : "locator.quiet", lm.n), at, quiet: true };
+      const p = lm.p!;
+      const line = p.k === "wake" || p.k === "told" ? promptLine(p) : p.k === "go" ? goWords(p) : "text" in p ? p.text.split("\n")[0]! : "";
+      return { k: lm.k, line, at, quiet: true };
+    }
+  }
+  return { k: lm.k, line: t(`locator.${lm.k}`), at, quiet: true };
 }
 
-/**
- * The locator's list (D284): each turn where someone said something, and between them each run of
- * quiet turns (a wake, Ducter's note, a Go relayed) said once in muted ink ("等到了 24 次" with
- * 1:51–19:06 apart, "3 条提示" with 9:02–9:40, or the one item's words), so only what people said
- * reads as said.
- */
-export function locatorEntries(task: Task, turns: Turn[]): LocEntry[] {
-  const out: LocEntry[] = [];
-  for (let i = 0; i < turns.length; i++) {
-    if (saidTurn(turns[i]!)) {
-      out.push(locatorEntry(task, turns[i]!, false));
-      continue;
-    }
-    let j = i;
-    while (j + 1 < turns.length && !saidTurn(turns[j + 1]!)) j++;
-    const run = turns.slice(i, j + 1);
-    // A history's first page may start mid-turn: a turn with nothing that opened it says nothing.
-    const items = run.filter((tu) => tu.prompt);
-    const wakes = items.every((tu) => tu.prompt!.k === "wake");
-    if (items.length === 1) out.push(locatorEntry(task, items[0]!, true));
-    else if (items.length > 1)
-      out.push({ seqs: items.map((tu) => tu.seq), line: t(wakes ? "locator.wakes" : "locator.quiet", items.length), at: `${atOf(task, items[0]!.prompt!.seq)}–${atOf(task, items.at(-1)!.prompt!.seq)}`, quiet: true });
-    i = j;
+/** D325: the session's landmarks, made once per index (a session of any length: from its index alone). */
+const lmCache = new WeakMap<Slot[], Landmark[]>();
+export const taskLandmarks = (task: Task): Landmark[] => {
+  const slots = taskSlots(task);
+  let l = lmCache.get(slots);
+  if (!l) lmCache.set(slots, (l = landmarksOf(slots.map((s) => s.it))));
+  return l;
+};
+
+/** D325: the list's rows are one height, so it draws only those near its view. */
+export const LOC_ROW = 28;
+export const LOC_MAX = 420;
+
+/** D325: the rows to draw for a list scrolled to `top` (its view `view` tall), with a few either side. */
+export function locWindow(top: number, view: number, n: number, row = LOC_ROW, over = 6): [number, number] {
+  const from = Math.max(0, Math.floor(top / row) - over);
+  return [from, Math.min(n, Math.ceil((top + view) / row) + over)];
+}
+
+/** D325: where a key moves the list's choice (undefined: not the list's key). */
+export function locKey(sel: number, n: number, key: string): number | undefined {
+  if (!n) return undefined;
+  const page = Math.floor(LOC_MAX / LOC_ROW) - 1;
+  switch (key) {
+    case "ArrowUp":
+      return Math.max(0, sel - 1);
+    case "ArrowDown":
+      return Math.min(n - 1, sel + 1);
+    case "PageUp":
+      return Math.max(0, sel - page);
+    case "PageDown":
+      return Math.min(n - 1, sel + page);
+    case "Home":
+      return 0;
+    case "End":
+      return n - 1;
   }
-  return out;
+  return undefined;
+}
+
+/** D325: the scroll that shows row `i`: centered (it was pointed at), or just into view (keys moved it). */
+export function locScrollFor(i: number, top: number, view: number, n: number, center: boolean, row = LOC_ROW): number {
+  const max = Math.max(0, n * row - view);
+  if (center) return Math.max(0, Math.min(max, i * row + row / 2 - view / 2));
+  if (i * row < top) return i * row;
+  if ((i + 1) * row > top + view) return Math.min(max, (i + 1) * row - view);
+  return top;
 }
 
 const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1115,14 +1180,24 @@ export function glideTo(scroller: HTMLElement, target: HTMLElement) {
 
 /** The locator (D271, wide only): a thin rail at the transcript's right edge, one small bar per
  *  turn (a quiet one's shorter), a soft clay thumb behind those in view that glides as the page
- *  moves; hovered, a clay card rises out of the rail listing what was said, newest at the bottom,
- *  those in view marked; a click glides there (D284). */
+ *  moves. D325: hovered or clicked, a clay card rises out of the rail listing the session's
+ *  landmarks (what was said, reports, compactions, switches, quiet runs folded), centered on the
+ *  one nearest the pointer, those in view marked; the arrow keys (and the wheel) move through it,
+ *  a click or Return goes there (D284's glide near, D320's jump far), Esc closes; leaving it
+ *  closes it after a moment unless a click pinned it. Only the rows near the list's view are drawn. */
 export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HTMLElement> }) {
   // D320: the whole session, from its index: a turn not held says what opened it from there.
   const turns = locatorTurns(task);
   const [seen, setSeen] = useState<Set<number>>(new Set());
   const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [sel, setSel] = useState(-1);
+  const [top, setTop] = useState(0);
   const frame = useRef(0);
+  const shut = useRef<ReturnType<typeof setTimeout>>();
+  const list = useRef<HTMLDivElement>(null);
+  const nav = useRef<HTMLElement>(null);
+  const want = useRef<{ i: number; center: boolean } | undefined>();
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
@@ -1141,39 +1216,153 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => (el.removeEventListener("scroll", onScroll), cancelAnimationFrame(frame.current));
   }, [scroller.current, turns.length]);
+  const close = () => (clearTimeout(shut.current), setOpen(false), setPinned(false));
+  // A pinned card closes on a press anywhere else.
+  useEffect(() => {
+    if (!pinned) return;
+    const away = (e: PointerEvent) => !nav.current?.contains(e.target as Node) && close();
+    document.addEventListener("pointerdown", away, true);
+    return () => document.removeEventListener("pointerdown", away, true);
+  }, [pinned]);
+  useEffect(() => () => clearTimeout(shut.current), []);
+  // The row chosen is shown: centered when pointed at, else just into view.
+  useLayoutEffect(() => {
+    const w = want.current, el = list.current;
+    if (!w || !el || !open) return;
+    want.current = undefined;
+    const n = taskLandmarks(task).length;
+    const y = locScrollFor(w.i, el.scrollTop, (el.clientHeight || LOC_MAX) - 12, n, w.center);
+    if (y !== el.scrollTop) (el.scrollTop = y), setTop(y);
+  });
   if (turns.length < 3) return null;
+  const lms = open ? taskLandmarks(task) : [];
+  // The turns in view, as indexes of the session's turns.
+  let first = -1, last = -1;
+  turns.forEach((tu, i) => {
+    if (seen.has(tu.seq)) (first = first < 0 ? i : first), (last = i);
+  });
+  const [hereLo, hereHi] = open && first >= 0 ? landmarksIn(lms, first, last) : [0, 0];
+  const choose = (i: number, center: boolean) => {
+    want.current = { i, center };
+    setSel(i);
+  };
+  const show = (center: boolean, at?: number) => {
+    clearTimeout(shut.current);
+    const k = at ?? (first >= 0 ? Math.round((first + last) / 2) : turns.length - 1);
+    if (!open) setOpen(true);
+    choose(landmarkNear(taskLandmarks(task), k), center);
+  };
   const go = (seq: number) => {
     const el = scroller.current;
     const target = el?.querySelector<HTMLElement>(`.turns .turn[data-seq="${seq}"]:not(.ph)`);
     // Near and drawn: the calm glide (D284); else straight there, its placeholder first (D320).
     if (el && target) glideTo(el, target);
     else goToTurn(task.id, seq);
-    setOpen(false);
+    close();
   };
   const h = Math.min(Math.max(turns.length * 8, 64), 360);
   const pos = (i: number) => (turns.length > 1 ? (i / (turns.length - 1)) * 100 : 0);
   const lit = turns.map((tu, i) => (seen.has(tu.seq) ? i : -1)).filter((i) => i >= 0);
+  // The turn under the pointer on the rail.
+  const turnAtY = (e: MouseEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    return Math.max(0, Math.min(turns.length - 1, Math.round(((e.clientY - r.top) / Math.max(1, r.height)) * (turns.length - 1))));
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (!open) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+      nav.current?.querySelector<HTMLElement>(".rail")?.focus();
+      return;
+    }
+    if (e.key === "Enter" && sel >= 0 && sel < lms.length) {
+      e.preventDefault();
+      return go(lms[sel]!.seq);
+    }
+    const k = locKey(Math.max(0, sel), lms.length, e.key);
+    if (k === undefined) return;
+    e.preventDefault();
+    setPinned(true);
+    choose(k, false);
+  };
+  const [from, to] = locWindow(top, LOC_MAX, lms.length);
+  const now = Date.now();
+  const id = (i: number) => `loc-${task.id}-${i}`;
   return (
-    <nav class={`locator${open ? " open" : ""}`} aria-label={t("locator.name")} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} onFocusCapture={() => setOpen(true)} onBlurCapture={(e) => !(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node) && setOpen(false)}>
-      <div class="rail" style={{ height: `${h}px` }} tabIndex={0} aria-hidden="true">
+    <nav
+      ref={nav}
+      class={`locator${open ? " open" : ""}`}
+      aria-label={t("locator.name")}
+      onMouseEnter={() => clearTimeout(shut.current)}
+      onMouseLeave={() => {
+        if (pinned) return;
+        clearTimeout(shut.current);
+        shut.current = setTimeout(() => setOpen(false), 260);
+      }}
+      onKeyDown={onKey}
+      onBlurCapture={(e) => !(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node) && !pinned && setOpen(false)}
+    >
+      <div
+        class="rail"
+        style={{ height: `${h}px` }}
+        tabIndex={0}
+        role="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={t("locator.name")}
+        onMouseMove={(e) => !pinned && show(true, turnAtY(e))}
+        onClick={(e) => {
+          if (pinned) return close();
+          setPinned(true);
+          show(true, turnAtY(e));
+          requestAnimationFrame(() => list.current?.focus());
+        }}
+        onFocus={() => !open && show(true)}
+      >
         {lit.length > 0 && <b class="thumb" style={{ top: `${pos(lit[0]!)}%`, height: `${pos(lit.at(-1)!) - pos(lit[0]!)}%` }} />}
         {turns.map((tu, i) => (
           <i key={tu.seq} class={`${seen.has(tu.seq) ? "here" : ""}${saidTurn(tu) ? "" : " quiet"}`} style={{ top: `${pos(i)}%` }} />
         ))}
       </div>
-      <ol class="loc-list" aria-hidden={!open} inert={!open}>
-        {
-          locatorEntries(task, turns).map((e) => (
-            <li key={e.seqs[0]}>
-              <button class={`${e.seqs.some((s) => seen.has(s)) ? "here" : ""}${e.quiet ? " quiet" : ""}`} onClick={() => go(e.seqs.at(-1)!)}>
+      <div
+        ref={list}
+        class="loc-list"
+        role="listbox"
+        tabIndex={open ? 0 : -1}
+        aria-label={t("locator.name")}
+        aria-hidden={!open}
+        aria-activedescendant={open && sel >= 0 ? id(sel) : undefined}
+        inert={!open}
+        style={{ height: `${Math.min(LOC_MAX, Math.max(1, lms.length) * LOC_ROW + 14)}px` }}
+        onScroll={(e) => setTop((e.currentTarget as HTMLElement).scrollTop)}
+      >
+        <div class="loc-rows" style={{ height: `${lms.length * LOC_ROW}px` }}>
+          {lms.slice(from, to).map((lm, k) => {
+            const i = from + k;
+            const r = locatorRow(lm, now);
+            const here = i >= hereLo && i < hereHi;
+            return (
+              <div
+                key={`${lm.seq}:${lm.k}:${i}`}
+                id={id(i)}
+                role="option"
+                aria-selected={i === sel}
+                class={`loc-row k-${r.k}${here ? " here" : ""}${r.quiet ? " quiet" : ""}${i === sel ? " sel" : ""}`}
+                style={{ top: `${i * LOC_ROW}px` }}
+                onMouseMove={() => i !== sel && setSel(i)}
+                onClick={() => go(lm.seq)}
+              >
                 <i />
-                {e.tag && <em class="tag">{e.tag}</em>}
-                <span>{e.line}</span>
-                {e.at && <small class="at">{e.at}</small>}
-              </button>
-            </li>
-          ))}
-      </ol>
+                {r.tag && <em class="tag">{r.tag}</em>}
+                <span>{r.line}</span>
+                {r.at && <small class="at">{r.at}</small>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </nav>
   );
 }

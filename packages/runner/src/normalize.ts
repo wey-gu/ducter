@@ -189,8 +189,9 @@ export class Normalizer {
     this.flushText(out);
     switch (ev.kind) {
       case "user_message":
-        // Native echo of host input. The runner logs what it sends itself, so skip echoes
-        // (not every runtime echoes, and echo timing differs for steer/queue).
+        // Native echo of host input. The runner logs what it sends itself, so the echo is never
+        // logged; D325: it says the agent took the words in, which marks a steer as seen.
+        if (typeof ev.input === "string" && ev.input.trim()) out.push({ role: "system", raw: { kind: "user_echo", input: ev.input.slice(0, 4000) } });
         break;
       case "tool_call_started": {
         // One name form on every harness: an MCP tool is mcp__<server>__<tool> (claude's own

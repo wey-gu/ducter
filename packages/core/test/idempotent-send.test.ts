@@ -101,6 +101,42 @@ test("task_send with a clientId is delivered once; a resend gets the same sent a
   c.send({ t: "task_send", taskId: "t1", text: "also the docs", clientId: "k1" });
   await Bun.sleep(40);
   const acks = c.frames.filter((f) => f.t === "sent");
-  expect(acks).toEqual([0, 1, 2].map(() => ({ t: "sent", taskId: "t1", delivered: "steered" })));
+  expect(acks).toEqual([0, 1, 2].map(() => ({ t: "sent", taskId: "t1", delivered: "steered", clientId: "k1" })));
   expect(sent).toEqual(["also the docs"]);
+});
+
+test("D325: held words are on the card (from the Log, so after a restart too); task_held changes them through the runner", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const core = boot(t.dir);
+  stops.push(() => core.stop());
+  const calls: unknown[][] = [];
+  core.setRunner({
+    send: async () => ({ delivered: "queued" }),
+    held: async (id: string, hid: string, op: string, text?: string) => {
+      calls.push([id, hid, op, text]);
+      if (hid === "gone") throw new Error("That message already went to the task.");
+      if (op === "now") return { delivered: "steered" };
+      core.log.append({ stream: `task:${id}`, origin: "task", kind: "task_held", body: { taskId: id, held: op === "drop" ? [] : [{ id: hid, text: text ?? "", at: new Date().toISOString() }] } });
+      return {};
+    },
+  } as unknown as Runner);
+  openTask(core.log, "t1");
+  core.tasks.setState("t1", "working", "hot");
+  core.log.append({ stream: "task:t1", origin: "task", kind: "task_held", body: { taskId: "t1", held: [{ id: "h1", text: "then the docs", at: "2026-11-17T10:00:00Z" }] } });
+  expect(core.tasks.get("t1")!.held).toEqual([{ id: "h1", text: "then the docs", at: "2026-11-17T10:00:00Z" }]);
+  const c = await client(core);
+  c.send({ t: "task_held", taskId: "t1", id: "h1", op: "edit", text: "then the README" });
+  await c.until((f) => f.t === "on_hand" && f.onHand.tasks.some((x) => x.held?.[0]?.text === "then the README"));
+  c.send({ t: "task_held", taskId: "t1", id: "h1", op: "now" });
+  expect(await c.until((f) => f.t === "sent")).toEqual({ t: "sent", taskId: "t1", delivered: "steered", clientId: "h1" });
+  c.send({ t: "task_held", taskId: "t1", id: "gone", op: "drop" });
+  expect(await c.until((f) => f.t === "error")).toMatchObject({ message: "task_held: That message already went to the task." });
+  c.send({ t: "task_held", taskId: "t1", id: "h1", op: "drop" });
+  await c.until((f) => f.t === "on_hand" && f.onHand.tasks.some((x) => x.taskId === "t1" && !x.held));
+  expect(calls.map((x) => x[2])).toEqual(["edit", "now", "drop", "drop"]);
+  await core.stop();
+  const again = boot(t.dir);
+  stops.push(() => again.stop());
+  expect(again.tasks.get("t1")!.held).toBeUndefined();
 });

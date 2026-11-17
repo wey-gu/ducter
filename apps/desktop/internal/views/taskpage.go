@@ -22,6 +22,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
@@ -33,8 +34,10 @@ type taskPage struct {
 	colW float32
 	// took is how long the turn being drawn worked, for its words' meta line.
 	took string
-	// locOpen: the locator's list is open (the rail or the list is hovered).
+	// locOpen: the locator's list is open (the rail or the list is hovered,
+	// or a click pinned it); loc, its card (D325).
 	locOpen bool
+	loc     locState
 	// jump is a locator click on its way; flash, the turn it last reached (D284).
 	jump  *jumpTo
 	flash flash
@@ -628,60 +631,6 @@ func (a *App) locatorLine(tu *Turn) (line, tag string) {
 	return firstLine(p.Text), ""
 }
 
-// locatorEntry is one line of the locator's list: a turn where someone
-// said something, or a run of quiet turns said once in muted ink (D284:
-// "等到了 24 次", "3 条提示", or the one item's own words), so nothing but
-// what people said reads as said. Its time or time range is drawn apart (D291).
-type locatorEntry struct {
-	from, to int
-	line     string
-	tag, at  string
-	quiet    bool
-}
-
-func (a *App) locatorEntries(task *store.Task, turns []Turn) []locatorEntry {
-	var out []locatorEntry
-	for i := 0; i < len(turns); i++ {
-		if said(&turns[i]) {
-			line, tag := a.locatorLine(&turns[i])
-			at := ""
-			if turns[i].Prompt != nil {
-				at = a.promptAt(task, turns[i].Prompt)
-			}
-			out = append(out, locatorEntry{from: i, to: i, line: line, tag: tag, at: at})
-			continue
-		}
-		j := i
-		for j+1 < len(turns) && !said(&turns[j+1]) {
-			j++
-		}
-		// The turns that open with something (a history's first page may start mid-turn).
-		var items []*Turn
-		wakes := true
-		for k := i; k <= j; k++ {
-			if turns[k].Prompt != nil {
-				items = append(items, &turns[k])
-				wakes = wakes && turns[k].Prompt.K == "wake"
-			}
-		}
-		switch {
-		case len(items) == 1:
-			line, tag := a.locatorLine(items[0])
-			out = append(out, locatorEntry{from: i, to: j, line: line, tag: tag, at: a.promptAt(task, items[0].Prompt), quiet: true})
-		case len(items) > 1:
-			first := clock(a.tsOf(task, items[0].Prompt.Seq))
-			last := clock(a.tsOf(task, items[len(items)-1].Prompt.Seq))
-			key := "locator.quiet"
-			if wakes {
-				key = "locator.wakes"
-			}
-			out = append(out, locatorEntry{from: i, to: j, line: a.L.T(key, len(items)), at: first + "–" + last, quiet: true})
-		}
-		i = j
-	}
-	return out
-}
-
 // jumpTo is a locator click on its way (D284): it eases to the turn, and
 // the turn's clay tint fades in place.
 type jumpTo struct {
@@ -883,8 +832,51 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 			p.Fill(ui.Rect{X: r.X + (r.W-w)/2, Y: y - 0.75, W: w, H: 1.5}, col, 0.75)
 		}
 	})
-	hovered := rail.Hovered() || rail.Focused()
+	// D325: pointing at the rail chooses the landmark nearest the turn
+	// under the pointer; a click pins the card open (and gives it the keys).
+	_, py, overRail := rail.PointerPosition()
+	lp := &a.tpage.loc
+	railTurn := func() int {
+		if n <= 1 {
+			return 0
+		}
+		return max(0, min(n-1, int(math.Round(float64((py-2)/(h-4))*float64(n-1)))))
+	}
+	if rail.Clicked() {
+		if lp.pinned {
+			a.closeLocator()
+			lp.hush, open = true, false
+		} else {
+			lp.pinned, lp.focus, lp.hush = true, true, false
+			open = true
+			lp.point(a.locatorLandmarks(task), railTurn(), true)
+		}
+	}
+	if overRail && !lp.pinned && !lp.hush && (py != lp.railY || !open) {
+		lp.railY = py
+		lp.point(a.locatorLandmarks(task), railTurn(), true)
+	}
+	// Closed by a key or a click, it stays closed until the pointer leaves it.
+	if lp.hush && !overRail {
+		lp.hush = false
+	}
+	// Tabbing to the rail opens the card on what is in view.
+	focusIn := rail.Focused() && !lp.railFocus
+	lp.railFocus = rail.Focused()
+	hovered := overRail && !lp.hush
+	if focusIn && !open && !lp.pinned {
+		hovered, lp.pinned, lp.focus = true, true, true
+		lp.point(a.locatorLandmarks(task), max(first-1, 0), true)
+	}
 	if open || hovered {
+		lms := a.locatorLandmarks(task)
+		hereLo, hereHi := 0, 0
+		if last >= first {
+			hereLo, hereHi = landmarksIn(lms, max(first-1, 0), max(last-1, 0))
+		}
+		if lp.sel < 0 || lp.sel >= len(lms) {
+			lp.point(lms, max(first-1, 0), true)
+		}
 		ui.Overlay(c, func() {
 			// D284: the card rises out of the rail (its bottom right), scale and fade, and goes back into it.
 			enter := &ui.Motion{Opacity: 0, Scale: 0.94, X: 6}
@@ -892,69 +884,240 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 			if c.Preferences().ReduceMotion {
 				tr = ui.ElementTransition{Duration: 120 * time.Millisecond, Enter: &ui.Motion{Opacity: 0, Scale: 1}, Exit: &ui.Motion{Opacity: 0, Scale: 1}}
 			}
-			pop := ui.Column(c.Key("locpop")).AttachTo(rail, ui.AnchorBottomLeft, ui.AnchorBottomRight).Width(300).
+			const rowH = 28
+			listH := min(float32(len(lms))*rowH, 420)
+			pop := ui.Column(c.Key("locpop")).AttachTo(rail, ui.AnchorBottomLeft, ui.AnchorBottomRight).Width(320).
 				Radius(t.RadiusMD).Background(t.Surface).Border(1, t.LineSoft).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
-				Padding(t.S2).Role(ui.RoleList).Label(name).TransformOrigin(1, 1).Transition(tr)
+				Padding(t.S2).Role(ui.RoleList).Label(name).TransformOrigin(1, 1).Transition(tr).Focusable().FocusRing(false)
+			if lp.focus {
+				lp.focus = false
+				pop.Focus()
+			}
 			hovered = hovered || pop.Hovered()
+			// The keys, while it has them: ↑↓ (and the page keys, Home, End)
+			// move the choice, Return goes there, Esc closes.
+			move := func(to int) {
+				lp.sel, lp.want, lp.center = max(0, min(len(lms)-1, to)), true, false
+				lp.pinned = true
+			}
+			page := int(listH/rowH) - 1
+			// The card has the keys, or the rail it came from (a click focuses it).
+			key := func(k ui.Key) bool { return pop.Shortcut(0, k) || rail.Shortcut(0, k) }
+			switch {
+			case key(ui.KeyUp):
+				move(lp.sel - 1)
+			case key(ui.KeyDown):
+				move(lp.sel + 1)
+			case key(ui.KeyPageUp):
+				move(lp.sel - page)
+			case key(ui.KeyPageDown):
+				move(lp.sel + page)
+			case key(ui.KeyHome):
+				move(0)
+			case key(ui.KeyEnd):
+				move(len(lms) - 1)
+			case key(ui.KeyEnter) && lp.sel >= 0 && lp.sel < len(lms):
+				a.tpage.jump = &jumpTo{task: task.ID, seq: lms[lp.sel].Seq}
+				a.closeLocator()
+				lp.hush, hovered = true, false
+			case key(ui.KeyEscape):
+				a.closeLocator()
+				lp.hush, hovered = true, false
+			}
+			if pop.PressedOutside() && lp.pinned && !overRail {
+				a.closeLocator()
+				hovered = false
+			}
+			// The pointer moving over a row chooses it (keys still move from there).
+			_, my, overPop := pop.PointerPosition()
+			pointerMoved := overPop && my != lp.popY
+			if overPop {
+				lp.popY = my
+			}
+			ls := &lp.list
+			ls.Key = func(i int) any {
+				if i < len(lms) {
+					return fmt.Sprintf("%d:%s:%d", lms[i].Seq, lms[i].K, lms[i].From)
+				}
+				return i
+			}
+			if lp.want && lp.sel >= 0 {
+				lp.want = false
+				if lp.center {
+					ls.ScrollTo(lp.sel, ui.Center)
+				} else {
+					ls.ScrollIntoView(lp.sel)
+				}
+			}
+			now := a.Now()
 			pop.Children(func() {
-				ui.Scroll(c.Key("locscroll")).MaxHeight(420).Children(func() {
-					ui.Column(c).Gap(1).Children(func() {
-						for _, e := range a.locatorEntries(task, turns) {
-							line := autospace(e.line)
-							here := false
-							for k := e.from; k <= e.to; k++ {
-								here = here || inView(k)
-							}
-							row := ui.Row(c.Key(turns[e.from].Seq)).Gap(t.S2).MinHeight(26).Padding(0, t.S2).Radius(t.RadiusXS).AlignItems(ui.Center).MinWidth(0).
-								Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(spoken(a.L, e.tag, line, e.at))
-							if e.quiet {
-								row.MinHeight(22)
-							}
-							if row.Hovered() {
-								row.Background(t.SurfaceSunken)
-							}
-							row.Children(func() {
-								mark, ink, size := t.Faint.Alpha(0.6), t.InkSoft, float32(stepSize)
-								if e.quiet {
-									mark, ink, size = t.Faint.Alpha(0.4), t.InkMuted, t.XS
-								}
-								if here {
-									mark, ink = t.Ink.Alpha(0.75), t.Ink
-								}
-								if e.quiet {
-									ui.Box(c).Size(7, 1).Background(mark).Shrink(0)
-								} else {
-									ui.Box(c).Size(3, 12).Radius(1.5).Background(mark).Shrink(0)
-								}
-								// D291: the brief's quiet label, the words, and apart its time.
-								if e.tag != "" {
-									ui.Box(c.Key("tag")).Padding(1, 6).Radius(999).Background(t.SurfaceSunken).Shrink(0).Children(func() {
-										ui.Text(c, e.tag).FontSize(t.XXS).FontWeight(600).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
-									})
-								}
-								tx := ui.Text(c, line).FontSize(size).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
-								if here && !e.quiet {
-									tx.FontWeight(600)
-								}
-								if e.at != "" {
-									ui.Box(c).Grow(1)
-									ui.Text(c, e.at).FontSize(t.XXS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0).AccessHidden(true)
-								}
+				ui.List(c, ls, len(lms), func(i int) {
+					lm := &lms[i]
+					w := a.landmarkWords(lm, now)
+					line := autospace(w.line)
+					here := i >= hereLo && i < hereHi
+					row := ui.Row(c.Key("lm")).Gap(t.S2).Height(rowH).Padding(0, t.S2).Radius(t.RadiusXS).AlignItems(ui.Center).MinWidth(0).
+						Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, w.tag, line, w.at))
+					if pointerMoved && row.Hovered() && lp.sel != i {
+						lp.sel = i
+					}
+					if i == lp.sel {
+						row.Background(t.SurfaceSunken)
+					}
+					row.Children(func() {
+						mark, ink, size := t.Faint.Alpha(0.6), t.InkSoft, float32(stepSize)
+						if w.quiet {
+							mark, ink, size = t.Faint.Alpha(0.4), t.InkMuted, t.XS
+						}
+						if here {
+							mark, ink = t.Ink.Alpha(0.75), t.Ink
+						}
+						switch {
+						case lm.K == "report":
+							// D325: a report is a small ring.
+							ui.Box(c.Key("ring")).Size(7, 7).Radius(3.5).Border(1.5, mark).Shrink(0)
+						case w.quiet:
+							ui.Box(c).Size(7, 1).Background(mark).Shrink(0)
+						default:
+							ui.Box(c).Size(3, 12).Radius(1.5).Background(mark).Shrink(0)
+						}
+						// D291: the brief's quiet label, the words, and apart its time.
+						if w.tag != "" {
+							ui.Box(c.Key("tag")).Padding(1, 6).Radius(999).Background(t.SurfaceSunken).Shrink(0).Children(func() {
+								ui.Text(c, w.tag).FontSize(t.XXS).FontWeight(600).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
 							})
-							if row.Clicked() {
-								// The last of a run: where the run ends, as it reads.
-								at := e.to
-								for at > e.from && turns[at].Prompt == nil {
-									at--
-								}
-								a.tpage.jump = &jumpTo{task: task.ID, seq: turns[at].Seq}
-								hovered = false
-							}
+						}
+						tx := ui.Text(c, line).FontSize(size).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+						if here && !w.quiet && lm.K != "report" {
+							tx.FontWeight(600)
+						}
+						if w.at != "" {
+							ui.Box(c).Grow(1)
+							ui.Text(c, w.at).FontSize(t.XXS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0).AccessHidden(true)
 						}
 					})
-				})
+					if row.Clicked() {
+						a.tpage.jump = &jumpTo{task: task.ID, seq: lm.Seq}
+						a.closeLocator()
+						lp.hush, hovered = true, false
+					}
+				}).Height(listH).Width(320 - 2*t.S2)
 			})
 		})
 	}
-	a.tpage.locOpen = hovered
+	// Leaving it closes it after a moment, unless a click pinned it.
+	switch {
+	case hovered || lp.pinned:
+		lp.left = time.Time{}
+		a.tpage.locOpen = hovered || lp.pinned
+	case a.tpage.locOpen && lp.left.IsZero():
+		lp.left = c.Now()
+		c.After(locLinger)
+	case a.tpage.locOpen && c.Now().Sub(lp.left) < locLinger:
+		c.After(locLinger - c.Now().Sub(lp.left))
+	default:
+		a.closeLocator()
+	}
+}
+
+// locLinger is how long the locator's card stays after the pointer leaves it (D325).
+const locLinger = 260 * time.Millisecond
+
+// locState is the locator's card (D325): pinned by a click, the landmark
+// chosen, where the pointer last was on the rail and the card, a scroll
+// to the choice asked for, and the card's list.
+type locState struct {
+	pinned, focus bool
+	// hush: closed by a key or a click while pointed at; open again only
+	// once the pointer has left.
+	hush         bool
+	railFocus    bool
+	sel          int
+	want, center bool
+	railY, popY  float32
+	left         time.Time
+	list         ui.ListState
+	// lms are the landmarks of the memo they were made for.
+	memo *taskMemo
+	lms  []Landmark
+}
+
+// point chooses the landmark nearest turn i, to be shown in the card's middle.
+func (l *locState) point(lms []Landmark, i int, center bool) {
+	l.sel, l.want, l.center = landmarkNear(lms, i), true, center
+}
+
+// closeLocator closes the card and lets go of what it chose.
+func (a *App) closeLocator() {
+	l := &a.tpage.loc
+	a.tpage.locOpen = false
+	l.pinned, l.focus, l.want, l.sel, l.left = false, false, false, -1, time.Time{}
+	// The focus going back to the rail as the card closes doesn't open it again.
+	l.railFocus = true
+}
+
+// locatorEsc closes the locator's card on Esc, before Esc goes up a level.
+func (a *App) locatorEsc() bool {
+	if a.Route != RouteTask || !a.tpage.locOpen {
+		return false
+	}
+	a.closeLocator()
+	a.tpage.loc.hush = true
+	return true
+}
+
+// locatorLandmarks are the task's landmarks, made once per memo (from its
+// session index alone: a session of any length).
+func (a *App) locatorLandmarks(task *store.Task) []Landmark {
+	m := a.memoOf(task)
+	l := &a.tpage.loc
+	if l.memo != m {
+		turns := make([]protocol.IndexTurn, len(m.slots))
+		for i := range m.slots {
+			turns[i] = m.slots[i].It
+		}
+		l.memo, l.lms = m, landmarksOf(turns)
+	}
+	return l.lms
+}
+
+// landmarkWords is one row of the locator's list in words: its line, the
+// brief's quiet label, its time (or range, in order, with its day when not
+// today), and whether it is quiet.
+type landmarkWords struct {
+	line, tag, at string
+	quiet         bool
+}
+
+func (a *App) landmarkWords(lm *Landmark, now time.Time) landmarkWords {
+	w := landmarkWords{at: i18n.Span(a.L.Lang, lm.At, lm.EndAt, now)}
+	switch lm.K {
+	case "brief":
+		w.line, w.tag = lm.Text, a.L.T("locator.brief")
+	case "you", "partner":
+		w.line = lm.Text
+		if w.line == "" {
+			w.line = a.L.T("locator.media")
+		}
+	case "report":
+		w.line = lm.Text
+		if w.line == "" {
+			w.line = a.L.T("locator.report")
+		}
+	case "quiet":
+		w.quiet = true
+		switch {
+		case lm.N > 0 && lm.Wakes:
+			w.line = a.L.T("locator.wakes", lm.N)
+		case lm.N > 0:
+			w.line = a.L.T("locator.quiet", lm.N)
+		default:
+			tu := Turn{Seq: lm.Seq, Prompt: promptBlock(lm.P)}
+			w.line, _ = a.locatorLine(&tu)
+		}
+	default:
+		w.quiet = true
+		w.line = a.L.T("locator." + lm.K)
+	}
+	return w
 }

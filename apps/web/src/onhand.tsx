@@ -591,6 +591,8 @@ function useKeys(room: Room) {
     if (room === "phone") return;
     const k = (e: KeyboardEvent) => {
       if (A.sheet || A.live || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      // D325: the locator's card has its own keys (the arrows move its choice).
+      if ((e.target as Element | null)?.closest?.(".locator")) return;
       if (e.key === "/" && !typing()) {
         const f = document.getElementById("onhand-find");
         if (f) return void (e.preventDefault(), f.focus());

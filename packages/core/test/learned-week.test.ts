@@ -27,7 +27,7 @@ describe("the week's offer in the morning note", () => {
     await r.advance(6 * DAY); // Monday came: its morning note offers the new week (the three lines are within 7 days)
     const offers = r.notes().map((e) => (e.body as Bodies["finds"]).learned).filter(Boolean);
     expect(offers).toEqual([{ count: 2 }, { count: 3 }]);
-  });
+  }, 60_000); // a week of the fake clock, a minute at a time: past 5 s on a busy machine
 
   test("nothing noted, or memory off: no offer", async () => {
     r = rig({ mode: "three" });

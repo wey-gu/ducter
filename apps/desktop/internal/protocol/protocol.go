@@ -823,7 +823,38 @@ type TaskCard struct {
 	Mark     *PastMark `json:"mark,omitempty"`
 	Original string    `json:"original,omitempty"`
 	From     *PastFrom `json:"from,omitempty"`
+	// Held (D325) is what the person held for after this turn, in order.
+	Held []HeldMsg `json:"held,omitempty"`
 }
+
+// HeldMsg is one message the person held for after this turn (D325): ID is
+// the client id it was sent with.
+type HeldMsg struct {
+	ID    string     `json:"id"`
+	Text  string     `json:"text"`
+	At    string     `json:"at"`
+	Media []MediaRef `json:"media,omitempty"`
+}
+
+// TaskHeld (D325) changes one held message (op "edit" with Text), takes it
+// back ("drop"), or says it now ("now": steered in while it works, else the
+// next turn). The card's next on_hand answers it.
+type TaskHeld struct {
+	T      string `json:"t"` // "task_held"
+	TaskID string `json:"taskId"`
+	ID     string `json:"id"`
+	Op     string `json:"op"`
+	Text   string `json:"text,omitempty"`
+}
+
+// NoSteer lists the agents that can't take words in the middle of a turn
+// (D325; packages/protocol/src/harnesses.ts `steer`). By OAR 0.95.1 Claude
+// Code, Codex, pi and DeepSeek Harness all can, so it is empty today.
+var NoSteer = map[string]bool{}
+
+// HarnessSteers says whether an agent takes a steer; one that can't has
+// what is sent while it works held for after its turn instead.
+func HarnessSteers(h string) bool { return !NoSteer[h] }
 
 // Integrated is what the user did with a task's branch from Ducter (D216):
 // Act "merge" (Ref: the commit) or "open_pr" (Ref: the PR's address).

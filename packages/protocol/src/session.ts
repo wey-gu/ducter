@@ -10,12 +10,17 @@
 // language-neutral; the Go port is apps/desktop/internal/views/session.go, and both pass
 // fixtures/session.json.
 import type { Bodies, LogEvent } from "./index.ts";
+import { redact } from "./redact.ts";
 import { build, noteOf, planOf, promptOf, turnsOf, type Block, type Turn } from "./transcript.ts";
 
 /** Something inside a turn the locator can point at: a compaction, a switch or move, a report. */
 export interface IndexMark {
   seq: number;
   k: "compacted" | "switched" | "moved" | "retuned" | "interrupted" | "report" | "plan";
+  /** D325: when it happened (the locator's list says it apart). */
+  at?: string;
+  /** D325: a report's first line, cut at MARK_MAX, its keys hidden (the locator's list reads it). */
+  w?: string;
 }
 
 /** One turn of a session (D320): what opened it, its span of the stream, how tall it draws. */
@@ -55,6 +60,8 @@ export interface SessionIndex {
 
 /** How much of what opened a turn the index carries. */
 export const PROMPT_MAX = 200;
+/** D325: how much of a report's first line a mark carries. */
+export const MARK_MAX = 120;
 
 /** The window's sizes (D320), in events. */
 export const WINDOW = {
@@ -77,7 +84,7 @@ export const WINDOW = {
 
 export const newIndex = (): SessionIndex => ({ turns: [], n: 0, last: 0, wakes: 0 });
 
-const cut = (s: string) => (s.length > PROMPT_MAX ? s.slice(0, PROMPT_MAX).replace(/[\ud800-\udbff]$/, "") + "…" : s);
+const cut = (s: string, max: number = PROMPT_MAX) => (s.length > max ? s.slice(0, max).replace(/[\ud800-\udbff]$/, "") + "…" : s);
 
 /** A prompt as the index carries it: its texts cut, its pictures left out (the turn's events have them). */
 function brief(p: Block): Block {
@@ -131,10 +138,11 @@ export function indexAdd(ix: SessionIndex, ev: LogEvent): boolean {
   t.end = ev.seq;
   t.n++;
   t.endAt = ev.ts;
-  const mark = (k: IndexMark["k"]) => (t.marks ??= []).push({ seq: ev.seq, k });
+  const mark = (k: IndexMark["k"], w?: string) => (t.marks ??= []).push({ seq: ev.seq, k, at: ev.ts, ...(w ? { w } : {}) });
   if (ev.kind === "report") {
     ix.lastReport = ev.seq;
-    mark("report");
+    const line = ((ev.body as Bodies["report"]).summary ?? "").split("\n").map((l) => l.trim()).find((l) => l) ?? "";
+    mark("report", line ? redact(cut(line, MARK_MAX)) : undefined);
   } else if (ev.kind === "checkpoint") {
     const n = (ev.body as Bodies["checkpoint"]).text?.trim().length ?? 0;
     if (n) t.v = n;

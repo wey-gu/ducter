@@ -790,6 +790,8 @@ class AppState {
     if (f.t === "task_history" || f.t === "task_index") this.pageHistory(f.taskId);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
     if (f.t === "action_result") this.actSent.delete(f.taskId);
+    // D325: a held message that already went (another window said it, or the turn ended first).
+    if (f.t === "error" && f.message.startsWith("task_held:")) this.toast(this.L.t("held.gone"));
     if (f.t === "welcome") {
       if (typeof f.version === "string" && f.version !== DUCTER_VERSION) this.staleFor = f.version;
       // D190: a new socket (the phone came back from the background, the link dropped): the old
@@ -2527,6 +2529,35 @@ class AppState {
     go();
     this.changed();
     return true;
+  }
+
+  /**
+   * D325: one of the person's held messages (the card's held): changed, taken back, or said now
+   * (steered in while it works, else the next turn). Shown at once; the home's next card confirms.
+   */
+  heldOp(taskId: string, id: string, op: "edit" | "drop" | "now", text?: string) {
+    const card = this.S.tasks.get(taskId)?.card;
+    const held = card?.held ?? [];
+    const i = held.findIndex((h) => h.id === id);
+    if (!card || i < 0) return;
+    const h = held[i]!;
+    if (op === "edit") {
+      text = (text ?? "").trim();
+      if (!text || text === h.text) return;
+      card.held = held.map((x, j) => (j === i ? { ...x, text: text! } : x));
+    } else {
+      card.held = held.filter((_, j) => j !== i);
+      // Said now: a bubble at once, like anything sent (it is acked by its own id).
+      if (op === "now") {
+        const sd = this.S.addSend(taskId, h.text, Date.now(), id);
+        if (h.media?.length) sd.media = h.media.map((m) => m.id);
+        sd.mode = "steer";
+      }
+    }
+    if (!card.held.length) delete card.held;
+    this.send({ t: "task_held", taskId, id, op, ...(op === "edit" ? { text } : {}) });
+    haptic("light");
+    this.changed();
   }
 
   sendHeld() {

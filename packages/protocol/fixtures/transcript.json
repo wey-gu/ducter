@@ -688,7 +688,9 @@
      "marks": [
       {
        "seq": 121,
-       "k": "report"
+       "k": "report",
+       "at": "2026-11-10T07:00:01.000Z",
+       "w": "Mem is connected for Codex on this machine: nmem 0.9.4 in your weyl space, added to Codex as an MCP server (this Codex h…"
       }
      ]
     }
@@ -1504,7 +1506,9 @@
      "marks": [
       {
        "seq": 107,
-       "k": "report"
+       "k": "report",
+       "at": "2026-11-10T06:58:30.000Z",
+       "w": "Fixed rounding in total(); tests pass. Commit?"
       }
      ]
     },
@@ -1948,15 +1952,18 @@
      "marks": [
       {
        "seq": 108,
-       "k": "switched"
+       "k": "switched",
+       "at": "2026-11-10T06:58:14.000Z"
       },
       {
        "seq": 109,
-       "k": "retuned"
+       "k": "retuned",
+       "at": "2026-11-10T06:58:14.000Z"
       },
       {
        "seq": 110,
-       "k": "moved"
+       "k": "moved",
+       "at": "2026-11-10T06:58:14.000Z"
       }
      ]
     }
@@ -2929,7 +2936,9 @@
      "marks": [
       {
        "seq": 125,
-       "k": "report"
+       "k": "report",
+       "at": "2026-11-10T07:04:04.000Z",
+       "w": "On hand 不再闪空白：打开时就是上次的样子，回答过的事在连上后马上消失。测试全过，已提交到 fix/glance-onhand。"
       }
      ]
     }
@@ -4921,11 +4930,13 @@
      "marks": [
       {
        "seq": 103,
-       "k": "plan"
+       "k": "plan",
+       "at": "2026-11-10T06:58:07.000Z"
       },
       {
        "seq": 127,
-       "k": "compacted"
+       "k": "compacted",
+       "at": "2026-11-10T07:00:08.000Z"
       }
      ],
      "v": 140

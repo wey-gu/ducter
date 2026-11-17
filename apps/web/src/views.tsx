@@ -15,7 +15,7 @@ import { last as lastMove } from "./nav.ts";
 import type { JSX } from "preact";
 import { AmbientLine } from "./ambient.tsx";
 import { A, candKey, effortWord, placeKey, type SettingsPage } from "./app.ts";
-import { TRY_LIVE } from "@ducter/protocol";
+import { HARNESSES, isHarnessId, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, whereCandReason } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, harnessName, modelName, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
@@ -1445,17 +1445,22 @@ function Composer({ taskId }: { taskId?: string }) {
     }
   };
   const label = taskId ? t("composer.task") : t("composer.label", A.S.personaName);
-  // D268: while the task works, a message steers it at its next step; ⌥↩ or After this waits until
-  // it is done; Stop (its pause) sits beside Send.
+  // D268, D325: while the task works, Return steers it (it reads it at its next step); ⌥↩ or After
+  // this holds it for after this turn; an agent that can't steer holds it either way and says so.
+  // Stop (its pause) sits beside Send. Held words are chips over the composer.
   const task = taskId ? A.S.tasks.get(taskId) : undefined;
   const busy = !!task && attention(task) === "working";
   const canSend = !!value.trim() || !!pics.length;
+  const agent = task ? harnessOf(task) : "";
+  const steers = !isHarnessId(agent) || HARNESSES[agent].steer;
+  const place = !taskId ? (A.replying ? `${t("reply.to", replyWho(A.replying.from))}…` : t("composer.placeholder", A.S.personaName)) : !busy || coarse() ? t("composer.task") : steers ? t("composer.steer.place") : t("composer.nosteer.place", harnessName(agent));
   return (
     <div class="composer-wrap" ref={wrap}>
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <DropHint on={over} />
       {/* D305: hold to talk, over the conversation's composer. */}
       {!taskId && <VoiceStrip />}
+      {task && <HeldChips task={task} busy={busy} steers={steers} agent={agent} />}
       <Tray where={where} />
       <div
         class={`composer${!taskId && A.replying ? " has-reply" : ""}`}
@@ -1467,10 +1472,10 @@ function Composer({ taskId }: { taskId?: string }) {
         {/* D236: what this replies to, pressed into the composer above the words. */}
         {!taskId && <ComposerReply />}
         <AddPictures where={where} />
-        <AutoText id={taskId ? "composer-task" : "composer"} value={value} onInput={set} onEnter={() => submit()} label={label} placeholder={taskId ? t("composer.task") : A.replying ? `${t("reply.to", replyWho(A.replying.from))}…` : t("composer.placeholder", A.S.personaName)} />
+        <AutoText id={taskId ? "composer-task" : "composer"} value={value} onInput={set} onEnter={() => submit()} label={label} placeholder={place} />
         {/* D288: the context meter, a quiet ring by the task's composer. */}
         {task && <ContextButton task={task} />}
-        {busy && canSend && (
+        {busy && canSend && steers && (
           <button type="button" class="btn text sm after" title={t("composer.queue.hint")} onClick={() => submit(true)}>
             {t("composer.after")}
           </button>
@@ -1489,9 +1494,79 @@ function Composer({ taskId }: { taskId?: string }) {
       </div>
       {busy && (
         <div class="composer-hint">
-          <span>{t("composer.steer.hint")}</span>
-          {!coarse() && <span class="k">{t("composer.queue.hint")}</span>}
+          {steers ? <span>{coarse() ? t("composer.steer.short") : t("composer.steer.hint")}</span> : <span>{t("composer.nosteer.hint", harnessName(agent))}</span>}
+          {steers && !coarse() && <span class="k">{t("composer.queue.hint")}</span>}
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * D325: what the person held for after this turn, in order, over the task's composer: each one
+ * small, its words on one line; a tap edits it in place (Return saves, Esc cancels); 现在就说
+ * steers it in now (only where its agent can steer), 不说了 takes it back. Read from the card, so
+ * every window shows the same queue.
+ */
+export function HeldChips({ task, busy, steers, agent }: { task: import("./store.ts").Task; busy: boolean; steers: boolean; agent: string }) {
+  const held = task.card?.held ?? [];
+  const [editing, setEditing] = useState<{ id: string; text: string } | undefined>();
+  if (!held.length) return null;
+  const save = (h: HeldMsg) => {
+    if (editing && editing.id === h.id) A.heldOp(task.id, h.id, "edit", editing.text);
+    setEditing(undefined);
+  };
+  return (
+    <div class="held-q" role="list" aria-label={t("held.head")}>
+      <div class="held-head">
+        <span>{steers ? t("held.head") : t("held.head.nosteer", harnessName(agent))}</span>
+        {held.length > 1 && <span class="n">{held.length}</span>}
+      </div>
+      {held.map((h) =>
+        editing?.id === h.id ? (
+          <div key={h.id} class="hq editing" role="listitem">
+            <textarea
+              class="hq-edit"
+              rows={1}
+              value={editing.text}
+              aria-label={t("held.edit")}
+              ref={(el) => {
+                if (!el || el.dataset.f) return;
+                el.dataset.f = "1";
+                el.focus();
+                el.setSelectionRange(el.value.length, el.value.length);
+              }}
+              onInput={(e) => setEditing({ id: h.id, text: (e.target as HTMLTextAreaElement).value })}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") e.preventDefault(), e.stopPropagation(), setEditing(undefined);
+                else if (e.key === "Enter" && !e.shiftKey && !e.isComposing) e.preventDefault(), save(h);
+              }}
+            />
+            <button type="button" class="btn text sm" onClick={() => setEditing(undefined)}>
+              {t("held.cancel")}
+            </button>
+            <button type="button" class="btn secondary sm" disabled={!editing.text.trim()} onClick={() => save(h)}>
+              {t("held.save")}
+            </button>
+          </div>
+        ) : (
+          <div key={h.id} class="hq" role="listitem">
+            <button type="button" class="hq-words" title={t("held.edit")} dir="auto" onClick={() => setEditing({ id: h.id, text: h.text })}>
+              {h.media?.length ? <span class="hq-pics">{h.media.length}</span> : null}
+              <span class="w">{h.text}</span>
+            </button>
+            {(steers || !busy) && (
+              <button type="button" class="btn text sm hq-now" onClick={() => A.heldOp(task.id, h.id, "now")}>
+                {t("held.now")}
+              </button>
+            )}
+            <button type="button" class="btn icon hq-drop" aria-label={t("held.drop")} title={t("held.drop")} onClick={() => A.heldOp(task.id, h.id, "drop")}>
+              <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none" />
+              </svg>
+            </button>
+          </div>
+        ),
       )}
     </div>
   );

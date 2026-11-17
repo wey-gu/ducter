@@ -331,6 +331,10 @@ func (a *App) taskHead(c *ui.Context, task *store.Task, m *taskMemo) {
 					a.decisionAnswered(c, d)
 				}
 				a.switchSheet(c, task) // 换谁来做 / Switch who does it (D89)
+				// D238: the person's own phone it is using, and 停下 / Stop: a calm row here (D339).
+				if !finished(task) {
+					a.handsetTaskLine(c, task)
+				}
 			})
 		})
 		a.watchCard(c, task, m)

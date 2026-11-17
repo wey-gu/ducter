@@ -65,7 +65,13 @@ export const RECORD_MAX_MS = 8 * 60_000;
  * the same words are what its phone tools answer afterwards.
  */
 export const HANDSET_STOPPED = (phone: string) =>
-  `Your loan of ${phone} ended: the user took it back with Stop (停下). The phone was returned to them: don't use it again in this task. Report what you finished and what is left, in one or two lines.`;
+  `Your loan of ${phone} ended: the user took it back with Stop (停下). The phone was returned to them: don't use it again in this task unless they ask you to in a message of their own. Never ask for it yourself. Report what you finished and what is left, in one or two lines.`;
+/**
+ * D339: after Stop (or the person's no on the card), the person's own message in the task is their
+ * consent to be asked again: the next phone tool raises one new card. Never the task's own words.
+ */
+export const HANDSET_ASK_AGAIN = (phone: string) =>
+  `The user wrote to you after taking ${phone} back, so you may ask for it again: Ducter put one new card in front of them asking to lend it. That card is the only ask. End your turn now; a message arrives when you may use it (or if they say no).`;
 /** D247: never the person's phone over adb, a cable or Developer options (the brief says it too). */
 const NO_ADB = "Never ask the user to turn on USB or wireless debugging, plug in a cable or open Developer options, and never use adb on their phone.";
 export const HANDSET_SETUP_ASKED = (phone: string) =>
@@ -165,6 +171,9 @@ export const HANDSET_RECORD_SAVED = (r: { path: string; ms: number; bytes: numbe
 export const HANDSET_ANSWERS = (phone: string) => `${phone} answers again and is still lent to you. phone_look first to see where things are (a step sent while it was quiet may or may not have happened), then carry on.`;
 /** D253: the one card that asks for the phone is the ask: never a second one from the task. */
 const ONE_ASK = "That card is the only ask: don't ask for the phone yourself, in your report or anywhere else.";
+
+/** The person's 不借 / Not now on the card (D339: until they write to the task again). */
+export const HANDSET_SAID_NO = "The user said no to lending you their phone for this task. Carry on without it, or report what you would need it for. Don't ask for it again unless they ask you to in a message of their own.";
 
 export const HANDSET_BLIND = "It's the user's turn on their phone: they're doing a step themselves (signing in, a code). You can't see or use it until they're done. End your turn now; a message arrives when they are.";
 
@@ -455,6 +464,13 @@ export function createHandsets(o: HandsetsOptions): Handsets {
   const starting = new Set<string>();
   /** Tasks the person stopped (or said no to): their phone tools refuse from then on. */
   const stopped = new Map<string, string>();
+  /**
+   * D339: of those, the ones the person may reopen by writing to the task (Stop, or no on the card;
+   * never Android's switch off or the chip removed, which a message can't turn back on).
+   */
+  const reopenable = new Set<string>();
+  /** D339: tasks the person wrote to after a Stop: their next phone tool asks with one new card. */
+  const reopened = new Set<string>();
   /** D253: a loan that ended without Stop (locked, lost): said once by the next tool, which then asks again. */
   const ended = new Map<string, { text: string; at: number }>();
   /**
@@ -681,6 +697,9 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     const permanent = why === "stop" ? HANDSET_STOPPED(phone) : why === "service" ? HANDSET_SWITCH_OFF(phone) : why === "removed" ? HANDSET_REMOVED(phone) : undefined;
     if (permanent) {
       stopped.set(taskId, permanent);
+      if (why === "stop") reopenable.add(taskId);
+      else reopenable.delete(taskId);
+      reopened.delete(taskId);
       ended.delete(taskId);
       if (l || turn || ask) o.tell?.(taskId, permanent + recLine);
     } else if ((l || (wasWaiting && why === "taken")) && (why === "locked" || why === "lost" || why === "taken" || why === "expired")) {
@@ -792,6 +811,8 @@ export function createHandsets(o: HandsetsOptions): Handsets {
   const ready = async (taskId: string) => {
     const why = stopped.get(taskId);
     if (why) throw new Error(why);
+    // D339: the person wrote to the task after Stop: one new card, said as such (the ask below).
+    const again = reopened.delete(taskId);
     const device = bound.get(taskId);
     if (device && !added(device) && o.deviceName(device) !== undefined) {
       const s = setups.get(taskId);
@@ -840,6 +861,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
     const w = waitOf(taskId);
     if (w) throw new Error(w.wait === "asking" ? HANDSET_WAIT_ASKING(name(device)) : w.wait === "unlock" ? HANDSET_WAIT_UNLOCK(name(device)) : w.wait === "away" ? HANDSET_WAIT_AWAY(name(device), w.away ?? "unknown") : HANDSET_WAIT_STARTING(name(device)));
     ask(taskId, device);
+    if (again) throw new Error(HANDSET_ASK_AGAIN(name(device)));
     throw new Error(`Asked the user whether you may use ${name(device)}, their own phone, now: one card. ${ONE_ASK} End your turn; a message arrives when it's on (or if they say no).`);
   };
 
@@ -885,13 +907,25 @@ export function createHandsets(o: HandsetsOptions): Handsets {
         if (id !== r.decisionId) continue;
         asking.delete(taskId);
         if (r.option === "go") granted.add(taskId), void lend(taskId);
-        else if (mine.has(taskId)) stopped.set(taskId, HANDSET_MINE_NO), o.tell?.(taskId, HANDSET_MINE_NO);
-        else stopped.set(taskId, "The user said no to lending you their phone for this task. Carry on without it, or report what you would need it for."), o.tell?.(taskId, "The user said no to lending you their phone for this. Carry on without it, or report in one line what you'd need it for.");
+        else if (mine.has(taskId)) stopped.set(taskId, HANDSET_MINE_NO), reopenable.add(taskId), o.tell?.(taskId, HANDSET_MINE_NO);
+        else stopped.set(taskId, HANDSET_SAID_NO), reopenable.add(taskId), o.tell?.(taskId, "The user said no to lending you their phone for this. Carry on without it, or report in one line what you'd need it for.");
       }
       for (const [taskId, id] of theirTurn) {
         if (id !== r.decisionId) continue;
         theirTurn.delete(taskId);
         if (loanOf(taskId)) void lend(taskId);
+      }
+      return;
+    }
+    if (e.kind === "task_event") {
+      // D339: the person's own words in a task whose phone they took back (Stop, or no on the card)
+      // are their consent to be asked again: the next phone tool raises one new card. Ducter's notes,
+      // the partner's words and the runner's never count.
+      const b = e.body as Bodies["task_event"];
+      if (b.role === "user" && b.from === "user" && reopenable.has(b.taskId) && stopped.has(b.taskId)) {
+        stopped.delete(b.taskId);
+        reopenable.delete(b.taskId);
+        reopened.add(b.taskId);
       }
       return;
     }
@@ -905,6 +939,8 @@ export function createHandsets(o: HandsetsOptions): Handsets {
         setups.delete(b.taskId);
         mine.delete(b.taskId);
         ended.delete(b.taskId);
+        reopenable.delete(b.taskId);
+        reopened.delete(b.taskId);
         lostBack.delete(b.taskId);
         // D255: a recording on its way to the home is still taken (and kept in the task's evidence).
         if (recs.get(b.taskId)?.state !== "saving") recs.delete(b.taskId);

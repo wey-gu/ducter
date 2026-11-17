@@ -688,6 +688,70 @@ describe("interrupt (live regression)", () => {
     expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "working", residency: "hot" });
     await runner.dispose();
   });
+
+  // D339: a phone's Stop interrupts the turn and tells the task at once; on 0.0.69 that note, steered
+  // into a turn that was ending, went into Codex's own queue and ran as a turn Ducter didn't know of,
+  // and the person's "你还在么？" after it got only a spinner. Words sent while a turn is being stopped
+  // now wait for its end and become the next turn, in order.
+  test("words sent while a turn is being stopped wait for its end, then are the next turn; the person's words are answered", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    s.busyFlag = true; // mid-turn
+    await runner.interrupt(card.taskId);
+    // Ducter's note about the Stop, and the person's words, while the turn is still ending.
+    expect(await runner.send(card.taskId, "Your loan of Pixel Fold ended: the user took it back with Stop (停下).", undefined, "ducter")).toEqual({ delivered: "queued" });
+    expect(await runner.send(card.taskId, "你还在么？", undefined, "user", "c1")).toEqual({ delivered: "queued" });
+    expect(s.sent.map((x) => x.mode)).toEqual(["turn"]); // nothing steered into the ending turn
+    s.busyFlag = false;
+    s.emit({ role: "system", text: "turn aborted", turnEnd: true, raw: { kind: "turn_ended", outcome: "aborted" } });
+    await waitFor(() => s.sent.length === 3, "both delivered after the stop");
+    expect(s.sent[1]).toEqual({ text: expect.stringContaining("Your loan of Pixel Fold ended"), mode: "turn" });
+    expect(s.sent[2]!.text).toBe("你还在么？");
+    const said = taskEvents(card.taskId).filter((e) => e.role === "user" && e.from === "user");
+    expect(said.map((e) => [e.text, e.clientId])).toEqual([["你还在么？", "c1"]]);
+    expect(core.tasks.get(card.taskId)!.attention).toBe("working");
+    await runner.dispose();
+  });
+
+  test("a Stop on an idle task holds nothing back", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    await runner.interrupt(card.taskId); // not busy: nothing to stop
+    expect(await runner.send(card.taskId, "你还在么？", undefined, "user")).toEqual({ delivered: "prompted" });
+    await runner.dispose();
+  });
+});
+
+describe("the same wait said again (D339)", () => {
+  test("a blocked report that repeats the last one, with no word from the person since, is not logged again", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const reports = () => core.log.read({ stream: `task:${card.taskId}`, kinds: ["report"] });
+    const first = "手机被你收回了：还没查到上海今天的天气。要继续，需要你再借给我手机。";
+    await core.call("report_to_main", { state: "blocked", summary: first }, card.taskId);
+    // Told again (a note from Ducter), it says the same thing in nearly the same words.
+    const again = await core.call("report_to_main", { state: "blocked", summary: "手机被你收回了：还没查到上海今天的天气。要继续，需要你再借给我手机" }, card.taskId);
+    expect(String(again)).toMatch(/^Already reported/);
+    await core.call("report_to_main", { state: "blocked", summary: first }, card.taskId);
+    expect(reports()).toHaveLength(1);
+    // Something new is new.
+    await core.call("report_to_main", { state: "blocked", summary: "Pixel Fold 断开了，等它连上。" }, card.taskId);
+    expect(reports()).toHaveLength(2);
+    // After the person writes, the same words are an answer to them: logged.
+    await runner.send(card.taskId, "再借手机继续?", undefined, "user");
+    await core.call("report_to_main", { state: "blocked", summary: "Pixel Fold 断开了，等它连上。" }, card.taskId);
+    expect(reports()).toHaveLength(3);
+    expect(core.tasks.get(card.taskId)!.attention).toBe("blocked");
+    await runner.dispose();
+  });
 });
 
 describe("idle parking (soak regression)", () => {

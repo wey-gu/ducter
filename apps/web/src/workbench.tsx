@@ -23,7 +23,7 @@ import { hlLines, escHtml } from "./hl.ts";
 import { LiveView, liveSize } from "./live.tsx";
 import { MediaBlock } from "./media.tsx";
 import { attention, browsing, finished, placeOf, reportOf, resultEvidence, type Task } from "./store.ts";
-import { computerName } from "./where.ts";
+import { computerName, watchesBrowser } from "./where.ts";
 import { SimScreen } from "./sim.tsx";
 import { driverFor, screenFor } from "./workbench-screens.ts";
 import { ask, wbSender } from "./workbench-ask.ts";
@@ -119,7 +119,7 @@ export function tabsOf(task: Task): BenchTab[] {
   if (hasFiles(task)) out.push("changes", "files");
   if (d.ports?.length) out.push("preview");
   const live = A.live?.watch && A.live.taskId === task.id;
-  if (live || (!finished(task) && !!A.S.onHand?.tasks.find((c) => c.taskId === task.id)?.browsing)) out.push("browser");
+  if (live || watchesBrowser(task, finished(task))) out.push("browser");
   if (screenFor("phone", task) || d.sims?.length) out.push("phone");
   const m = made(task);
   if (m.media.length || m.links.length) out.push("made");

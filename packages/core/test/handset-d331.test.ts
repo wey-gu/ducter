@@ -10,7 +10,7 @@ import { join } from "node:path";
 import type { Bodies, HandsetState, ServerFrame } from "@ducter/protocol";
 import { startCore, type Core } from "../src/core.ts";
 import { stubRunner } from "../src/main.ts";
-import { AWAY_WHY, HANDSET_EXPIRED, HANDSET_PAUSED, HANDSET_PAUSED_ASKING, HANDSET_RESUMED, HANDSET_TAKEN, HANDSET_WAIT_ASKING, HANDSET_WAIT_AWAY, HANDSET_WAIT_UNLOCK } from "../src/handset/index.ts";
+import { AWAY_WHY, HANDSET_ASK_AGAIN, HANDSET_MINE_NO, HANDSET_STOPPED, HANDSET_SWITCH_OFF, HANDSET_EXPIRED, HANDSET_PAUSED, HANDSET_PAUSED_ASKING, HANDSET_RESUMED, HANDSET_TAKEN, HANDSET_WAIT_ASKING, HANDSET_WAIT_AWAY, HANDSET_WAIT_UNLOCK } from "../src/handset/index.ts";
 import { tempDir } from "./helpers.ts";
 
 const xml = (pkg: string) =>
@@ -327,6 +327,69 @@ describe("Use this phone with Ducter closed or the phone locked (D331)", () => {
     expect(onHand("e2")).toBeUndefined();
     done("e2");
     app.unlock();
+    p.ws.close();
+  });
+});
+
+// D339: on 0.0.69 the author stopped a paused loan, then wrote "再借手机继续?" in the task; its tools
+// refused for the rest of the task ("需要由 Ducter 发起新的手机借用任务"). The person's own message after
+// Stop is their consent to be asked again: the next phone tool raises one new card. Never the task's
+// own words, Ducter's notes or the partner's.
+describe("after Stop, the person's own message lets the task ask again (D339)", () => {
+  const say = (taskId: string, from: "user" | "ducter" | "partner", text: string) =>
+    core.log.append({ stream: `task:${taskId}`, origin: from === "user" ? "user" : from === "partner" ? "partner" : "system", kind: "task_event", body: { taskId, role: "user", from, text } } as any);
+
+  test("Stop on a paused loan: refused until the person writes; then one new card, said as such, and a Go lends it again", async () => {
+    const p = await native();
+    await lent("r1");
+    app.lock();
+    p.hello();
+    expect(await until(() => onHand("r1")?.paused === "locked")).toBe(true);
+    expect(await core.handsets.stop("r1")).toBe(true);
+    expect(toldTo("r1")).toContain(HANDSET_STOPPED("Pixel Fold"));
+    expect(HANDSET_STOPPED("Pixel Fold")).toMatch(/unless they ask you to in a message of their own/);
+    expect(await until(() => app.session() === undefined)).toBe(true); // given back on the phone too
+    app.unlock();
+    p.hello();
+    // The task asking on its own, Ducter's own note and the partner's words: still refused, no card.
+    expect(await rejection(call("r1", "phone_look"))).toBe(HANDSET_STOPPED("Pixel Fold"));
+    say("r1", "ducter", HANDSET_STOPPED("Pixel Fold"));
+    say("r1", "partner", "carry on");
+    expect(await rejection(call("r1", "phone_look"))).toBe(HANDSET_STOPPED("Pixel Fold"));
+    expect(askOf("r1").length).toBe(1);
+    // The person writes in the task: the next phone tool asks with one new card.
+    say("r1", "user", "再借手机继续?");
+    expect(await rejection(call("r1", "phone_look"))).toBe(HANDSET_ASK_AGAIN("Pixel Fold"));
+    expect(askOf("r1").length).toBe(2);
+    expect(await rejection(call("r1", "phone_look"))).toBe(HANDSET_WAIT_ASKING("Pixel Fold")); // that card is the only ask
+    core.decisions.decide(askOf("r1").at(-1)!.decisionId, "go");
+    expect(await until(() => toldTo("r1").filter((s) => MAY.test(s)).length === 2)).toBe(true);
+    expect(String(await call("r1", "phone_look"))).toContain("com.android.chrome");
+    // Stop again: refused again, until the person writes again.
+    expect(await core.handsets.stop("r1")).toBe(true);
+    expect(await rejection(call("r1", "phone_look"))).toBe(HANDSET_STOPPED("Pixel Fold"));
+    expect(askOf("r1").length).toBe(2);
+    done("r1");
+    p.ws.close();
+  });
+
+  test("不借 on the card: the same; Android's switch off stays off whatever they write", async () => {
+    const p = await native();
+    openTask("r2");
+    expect(await rejection(call("r2", "phone_look"))).toMatch(/Asked the user/);
+    core.decisions.decide(askOf("r2")[0]!.decisionId, "hold");
+    expect(await until(() => toldTo("r2").includes(HANDSET_MINE_NO))).toBe(true);
+    expect(await rejection(call("r2", "phone_look"))).toBe(HANDSET_MINE_NO);
+    say("r2", "user", "用我的手机吧");
+    expect(await rejection(call("r2", "phone_look"))).toBe(HANDSET_ASK_AGAIN("Pixel Fold"));
+    expect(askOf("r2").length).toBe(2);
+    done("r2");
+    await lent("r3");
+    p.send({ t: "handset_stop", from: "phone", why: "service" });
+    expect(await until(() => toldTo("r3").includes(HANDSET_SWITCH_OFF("Pixel Fold")))).toBe(true);
+    say("r3", "user", "继续");
+    expect(await rejection(call("r3", "phone_look"))).toBe(HANDSET_SWITCH_OFF("Pixel Fold"));
+    done("r3");
     p.ws.close();
   });
 });

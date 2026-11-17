@@ -152,6 +152,9 @@ type Task struct {
 	// Browser is what a browser task last looked at (task_event
 	// {role: system, raw.browser: {host, url}}), nil until one.
 	Browser *BrowserStatus
+	// Phone is the person's own phone the task asked to borrow (D339: from
+	// the ask's report in its stream), nil when it never did.
+	Phone *protocol.HandsetAsk
 	// Acting is the task_action awaiting its action_result ("" when none).
 	Acting string
 	// Unsure is a merge or open_pr whose result was lost with the socket
@@ -194,6 +197,18 @@ func (t *Task) Browsing() string {
 	switch t.Attention() {
 	case protocol.Working, protocol.Queued, protocol.NeedsYou, protocol.Blocked:
 		return t.Browser.Host
+	}
+	return ""
+}
+
+// PhoneDevice is the person's own phone this task works on (D339): the one
+// lent or asked for now (its card), else the one its stream asked for; "".
+func (t *Task) PhoneDevice() string {
+	if t.Card != nil && t.Card.Handset != nil && t.Card.Handset.Device != "" {
+		return t.Card.Handset.Device
+	}
+	if t.Phone != nil {
+		return t.Phone.Device
 	}
 	return ""
 }
@@ -1458,6 +1473,12 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 			t.LastReport, t.lastReportSeq = b, ev.Seq
 		}
 		t.Evidence = mergeEvidence(t.Evidence, b.Evidence)
+		// D339: the ask for the person's own phone says the task works on it.
+		for _, q := range b.Questions {
+			if q.Handset != nil && q.Handset.Kind != "record" && q.Handset.Device != "" {
+				t.Phone = q.Handset
+			}
+		}
 		if t.Acted != nil && ev.Seq > t.ActedSeq {
 			t.Acted = nil
 		}

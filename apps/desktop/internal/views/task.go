@@ -126,13 +126,12 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 		return
 	}
 	// D190: the page it is working on in Ducter's own browser, live.
-	if a.S.Browsing(task.ID) != "" && a.button(c, a.L.T("live.watch.title"), btnText, t.ControlSM, t.Chrome) {
+	if a.watchesBrowser(task) && a.button(c, a.L.T("live.watch.title"), btnText, t.ControlSM, t.Chrome) {
 		a.OpenWatch(task.ID)
 	}
 	// D235: it is using the person's apps: where, and 停下 / Stop.
 	a.computerTaskLine(c, task)
-	// D238: it is using the person's own phone: which, and 停下 / Stop.
-	a.handsetTaskLine(c, task)
+	// D238: the person's own phone is said in the task's head (handsetTaskLine), never here (D339).
 	// D217: it is using Ducter's phone: watch it, in the workbench's Phone page (D220).
 	if dev := a.S.Phoning(task.ID); dev != "" && a.button(c, a.L.T("phoneuse.watch"), btnText, t.ControlSM, t.Chrome) {
 		a.bench.open, a.bench.tab = true, "phone"

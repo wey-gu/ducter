@@ -36,6 +36,8 @@ func (a *App) handsetCard(c *ui.Context, cl *protocol.ReachClient) {
 		return
 	}
 	a.infoText(c, a.L.T("handset.where", name))
+	// D339: lent while the person isn't holding it, with Android's own Smart Lock, never its PIN.
+	a.infoText(c, a.L.T("handset.smartlock"))
 	if !h.Linked {
 		a.reasonLine(c, a.L.T("handset.away"))
 	}
@@ -67,33 +69,44 @@ func (a *App) handsetCard(c *ui.Context, cl *protocol.ReachClient) {
 }
 
 // handsetTaskLine is, on the opened task, the person's phone it is using,
-// with 停下 / Stop.
+// as a calm row in the task's head: where the loan stands, the line under it
+// (why it is paused, or why the phone can't be reached), and 停下 / Stop.
+// D339: never in the window's title bar, where a paused loan's long
+// explanation ran over the breadcrumb and the 工作台 tab.
 func (a *App) handsetTaskLine(c *ui.Context, task *store.Task) {
 	t := a.T
 	h := a.S.Handset(task.ID)
 	if h == nil {
 		return
 	}
-	name := "phone"
+	line, why := a.handsetLines(h, a.handsetName(h.Device))
+	ui.Row(c.Key("handset-row")).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).MaxWidth(readMeasure).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+			ui.Text(c, line).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.5)
+			if why != "" {
+				ui.Text(c, why).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			}
+		})
+		label := a.L.T("handset.stop")
+		if h.Wait != "" {
+			label = a.L.T("handset.withdraw") // D331: 不借了 / Not now, before the loan is on
+		}
+		if a.buttonFor(c, label, line, btnSecondary, t.ControlSM, t.Bg) {
+			a.send(protocol.HandsetStopReq{T: "handset_stop", TaskID: task.ID})
+		}
+	})
+}
+
+// handsetName is the person's phone's short name ("Pixel Fold"), or "phone".
+func (a *App) handsetName(device string) string {
 	if a.S.Reach != nil {
 		for _, cl := range a.S.Reach.Clients {
-			if cl.ID == h.Device {
-				name = phoneShort(cl.Name)
+			if cl.ID == device {
+				return phoneShort(cl.Name)
 			}
 		}
 	}
-	line, why := a.handsetLines(h, name)
-	ui.Text(c, line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5)
-	if why != "" {
-		ui.Text(c, why).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
-	}
-	label := a.L.T("handset.stop")
-	if h.Wait != "" {
-		label = a.L.T("handset.withdraw") // D331: 不借了 / Not now, before the loan is on
-	}
-	if a.buttonFor(c, label, line, btnSecondary, t.ControlSM, t.Chrome) {
-		a.send(protocol.HandsetStopReq{T: "handset_stop", TaskID: task.ID})
-	}
+	return "phone"
 }
 
 // handsetLines is the opened task's line for the person's phone and the

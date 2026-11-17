@@ -89,6 +89,9 @@ type Question struct {
 	Blocking   bool   `json:"blocking"`
 	Default    string `json:"default,omitempty"`
 	Reversible bool   `json:"reversible"`
+	// Handset (D238): the ask for the person's own phone (D339: it also
+	// tells the task's head which phone the task works on).
+	Handset *HandsetAsk `json:"handset,omitempty"`
 }
 
 // Event kinds (keyof Bodies).

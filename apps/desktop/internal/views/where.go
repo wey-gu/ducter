@@ -216,6 +216,15 @@ func (a *App) whereAskLines(c *ui.Context, w *protocol.WhereAsk) {
 // phrase (D291): "在 hel 上用 Ducter 自己的浏览器", "为什么在 hel 上：…".
 // Empty with one computer.
 func (a *App) taskWhere(task *store.Task) (line, why string) {
+	// D339: a task on the person's own phone says where it works: on that
+	// phone, never the computer's browser it was placed with.
+	if dev := task.PhoneDevice(); dev != "" {
+		name := a.handsetName(dev)
+		if name == "phone" && task.Phone != nil && task.Phone.Name != "" {
+			name = phoneShort(task.Phone.Name)
+		}
+		return a.L.T("handset.where.on", name), ""
+	}
 	if !a.manyComputers() {
 		return "", ""
 	}

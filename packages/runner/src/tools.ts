@@ -165,6 +165,48 @@ async function branchOf(opts: TaskToolOptions, taskId: string): Promise<BranchCh
   return opts.branchChanges ? inTime(opts.branchChanges(taskId)) : undefined;
 }
 
+/** Words as compared for "the same report": no spacing, punctuation or case. */
+const flatWords = (s: string) => s.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "");
+
+/** Near-identical: the same words, or character pairs that overlap by 85% or more (Dice). */
+export function nearlySame(a: string, b: string): boolean {
+  const x = flatWords(a);
+  const y = flatWords(b);
+  if (x === y) return true;
+  if (x.length < 2 || y.length < 2) return false;
+  const pairs = (s: string) => {
+    const m = new Map<string, number>();
+    for (let i = 0; i < s.length - 1; i++) m.set(s.slice(i, i + 2), (m.get(s.slice(i, i + 2)) ?? 0) + 1);
+    return m;
+  };
+  const px = pairs(x);
+  const py = pairs(y);
+  let both = 0;
+  for (const [k, n] of px) both += Math.min(n, py.get(k) ?? 0);
+  return (2 * both) / (x.length - 1 + (y.length - 1)) >= 0.85;
+}
+
+/**
+ * D339: a blocked or failed report that says what the task's last report said, with nothing from
+ * the person in the task since (no message of theirs). Questions, pictures and evidence make it new.
+ */
+export function sameWaitAgain(core: CoreApi, taskId: string, body: Bodies["report"]): boolean {
+  if (body.state !== "blocked" && body.state !== "failed") return false;
+  if (body.questions?.length || body.media?.length || body.evidence?.length) return false;
+  const evs = core.log.read({ stream: `task:${taskId}`, kinds: ["report", "task_event"], limit: 400 });
+  for (let i = evs.length - 1; i >= 0; i--) {
+    const e = evs[i]!;
+    if (e.kind === "task_event") {
+      const b = e.body as Bodies["task_event"];
+      if (b.role === "user" && b.from === "user") return false;
+      continue;
+    }
+    const r = e.body as Bodies["report"];
+    return r.state === body.state && !r.questions?.length && nearlySame(r.summary ?? "", body.summary ?? "");
+  }
+  return false;
+}
+
 export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): void {
   core.mcp.register(
     "task",
@@ -202,8 +244,14 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
         const checked = await inTime(opts.checkEvidence(ctx.taskId, body.evidence));
         if (checked?.length === body.evidence.length) body.evidence = checked;
       }
-      core.log.append({ persona, stream: `task:${ctx.taskId}`, origin: "task", kind: "report", body });
       const card = core.tasks.get(ctx.taskId);
+      // D339: the same wait said again, with no word from the person since, is not a new report: on
+      // hel a phone task said 在等 three times in a row after a Stop (once per note it was told).
+      if (sameWaitAgain(core, ctx.taskId, body)) {
+        core.tasks.setState(ctx.taskId, ATTENTION[body.state], card?.residency ?? "hot");
+        return "Already reported: this says the same as your last report, and the user hasn't written since, so nothing new was sent to them. End your turn now; any answer will arrive as a new message.";
+      }
+      core.log.append({ persona, stream: `task:${ctx.taskId}`, origin: "task", kind: "report", body });
       // No reason text: task_state.reason is user-facing copy (decisions.ts sets blocked/failed ones).
       core.tasks.setState(ctx.taskId, ATTENTION[body.state], card?.residency ?? "hot");
       const notShown = refused.length ? ` Not shown: ${refused.join("; ")}.` : "";

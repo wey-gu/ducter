@@ -1,6 +1,6 @@
 # 用这台手机 / Use this phone: a task borrows the person's own phone
 
-Decided in D238 (2026-11-13), the first-time card in D247, which phone in D251, the loan's life in D253, the native link and recording in D255, the person's turn to allow a recording, the loan's end said to the task, a screen that stays on and tests that need the person in D280, the link outside a loan, a Go on a locked phone and a lock that pauses in D331; evidence in [research/74](../research/74-own-phone-use.md) and [research/119](../research/119-phone-link-background.md).
+Decided in D238 (2026-11-13), the first-time card in D247, which phone in D251, the loan's life in D253, the native link and recording in D255, the person's turn to allow a recording, the loan's end said to the task, a screen that stays on and tests that need the person in D280, the link outside a loan, a Go on a locked phone and a lock that pauses in D331; asking again after Stop once the person writes, the paused line in the task's head, where a phone task says it works and Smart Lock in D339; evidence in [research/74](../research/74-own-phone-use.md) and [research/119](../research/119-phone-link-background.md).
 Ducter's own Android phone on a Mac is a different thing: [phone-use.md](phone-use.md) (用手机 / Use
 a phone). Calls are [phone.md](phone.md). Tasks in the person's Mac apps: [computer-use.md](computer-use.md).
 
@@ -119,12 +119,12 @@ blocked. The partner sets `needs.phone` for any work on a phone, set up or not.
 | The phone isn't connected | the card says so (**现在连不上 {phone}：借给它以后，手机连上就开始。**); a Go waits, and the loan starts when the app's own link connects (D331: it is up whenever the switch is on, so with Ducter closed too); meanwhile the tools and the opened task say it as it stands (§4.5) |
 | Go, the phone locked (D331) | never through the lock: the phone shows **解锁后，「{task}」就开始** with **不借了**, and the loan starts on unlock (§4.5) |
 | Go | the home starts the loan on the phone: the pill appears, the task is told "you may use {phone} now", and works |
-| Not now | the task is told no, and its phone tools refuse for the rest of the task |
+| Not now | the task is told no, and its phone tools refuse until the person writes to the task again (D339): then its next phone tool asks with one new card |
 | A send, payment, delete… | `phone_ask_go`: the card says **在你的 {phone} 上** and what it taps; one Go, one tap |
 | The person's own step (a sign-in, a code) | `phone_ask_user`: **在你的 {phone} 上自己来，这时它什么都看不到。做完点「好了」。** The pill says **轮到你了**; every tool is blind until **好了 / Done** |
 | The task stops working | the loan ends; the pill goes; the task's page shows **它把 {phone} 还给你了 · {time}** (D280: a hairline only, never a turn that wakes a finished task) |
 | The task is done with the phone but still working | `phone_give_back` (D280): the loan ends now, and the tool answers once the phone has let go, so the task can say it is the person's again; its next phone tool asks with a new card |
-| **停下 / Stop** from any window, on the pill or in the notification | the loan ends, the task's turn is interrupted, it is told, and its phone tools refuse from then on |
+| **停下 / Stop** from any window, on the pill or in the notification | the loan ends at once, the task's turn is interrupted, it is told, and its phone tools refuse; D339: once the person writes to the task (any message of their own), its next phone tool asks with one new card. The task never asks again on its own, and Ducter's or the partner's words never count |
 | The person locks the phone | **locking pauses it** (D331, superseding D253's "locking gives it back"): nothing runs; after the unlock the phone asks **继续借给它 / 不借了**; 30 minutes paused ends it (§4.5) |
 | The screen times out (D280) | not a lock: the loan holds and the app turns the screen back on (§4.2) |
 | Android's switch goes off, or 用这台手机 is removed | as Stop, for the rest of the task |
@@ -138,7 +138,7 @@ it, ends it on both sides, is said to the task once with why, and never comes ba
 
 | The loan ends because | On the phone | On the home | The task |
 |---|---|---|---|
-| **停下 / Stop** (any window, the pill, the notification) | pill and notification go at once | ended; a moot card (the person's turn, an open ask) closes as not answered | interrupted, told; never the phone again in this task |
+| **停下 / Stop** (any window, the pill, the notification) | pill and notification go at once | ended; a moot card (the person's turn, an open ask) closes as not answered | interrupted, told; its tools refuse until the person writes to the task, then one new card (D339) |
 | **Android's switch goes off**, or **移除 / Remove** | the service ends it (**service**) | ended | told; never again in this task |
 | **The person locks it** (the screen goes off and the lock screen is up 1.5 s later, D280) | D331: the app pauses it (`paused`), the pill goes, the loan's notification says **「{task}」暂停了** with Stop | paused; no quiet or lost rule while paused | told once that it is paused; its tools say so; on unlock the phone asks, and Keep lending carries on (told **answers again and is still lent**) (§4.5). An app before bridge 4 still ends it (**locked**) |
 | **不借了 / Not now** on the phone after the unlock, or on a Go waiting for the unlock (D331) | the notification goes | ended (**taken**) | told the person chose Not now; its next tool asks with one new card |
@@ -209,7 +209,7 @@ like a timeout once and the screen comes back, and the second press ends it.
 At the end of the author's run the task wrote "借用是否结束还没确认". Now every end is said to the
 task in one line that starts **Your loan of {phone} ended:** and says the phone was returned (Stop,
 Not now on the phone or a pause past 30 minutes (D331; a lock, from an app before bridge 4), Android's switch, Remove, lost); its phone tools answer the same words afterwards (after
-Stop, Android's switch and Remove for the rest of the task; after a lock (an app before bridge 4), Not now on the phone, a 30-minute pause or a loss once, then a new
+Stop until the person writes to the task (D339), Android's switch and Remove for the rest of the task; after a lock (an app before bridge 4), Not now on the phone, a 30-minute pause or a loss once, then a new
 card). The task ending is never told (it would wake a finished task) but logged as Ducter's own line;
 `phone_give_back` ends a loan the task no longer needs and answers once the phone has let go. Each
 is a hairline in the opened task (D271's `told`): **你收回了 {phone} · {time}**, **它把 {phone}
@@ -323,7 +323,9 @@ Once the switch is on and the app is back, Android asks once whether Ducter may 
   (**在 {phone} 上打开 Ducter，在那里加上…**).
 - ⓘ when on: how it works; **移除 / Remove** (also turns Android's switch off on the phone: a service
   may turn itself off, never on); while lent **「{task}」正在用这台手机 · 停下**.
-- The opened task: **正在用你的 {phone} / On your {phone}** · **停下**; D331: paused, asking on the phone, or a Go waiting (for the unlock, out of reach and why, starting), each its own line with **不借了** before the loan is on (§4.5).
+- The opened task: **正在用你的 {phone} / On your {phone}** · **停下**; D331: paused, asking on the phone, or a Go waiting (for the unlock, out of reach and why, starting), each its own line with **不借了** before the loan is on (§4.5). D339: a calm row in the task's head (the line, the line under it, the button), never in the window's title bar.
+- D339: the task's head says where it works, **在你的 {phone} 上 / on your {phone}**, once the task asked for the person's phone (the ask in its stream, or the loan on its card), in place of the computer and its browser; 看它上网 / Watch it browse (the header and the workbench) only once it opened a page in Ducter's browser.
+- D339: ⓘ when on, one more line: how to lend it while not holding it, with Android's own **Smart Lock** (**延长解锁 / Extend Unlock** on some phones) and its **随身检测 / On-body detection** or **可信地点 / Trusted places**; **Ducter 从不要你的锁屏密码 / Ducter never asks for your screen lock PIN**.
 
 ## 8. Not here (and why)
 
@@ -335,6 +337,14 @@ Once the switch is on and the app is back, Android asks once whether Ducter may 
   lent (research/74 §5); the chip says Android's switch is off.
 - **Banking apps that refuse to run beside an accessibility service**: removing the chip turns the
   switch off (research/74 §1).
+- **The phone's PIN** (D339, rejected): Ducter never asks for, stores or types the screen lock. The PIN
+  guards everything on the phone (banking, mail, the passwords it keeps); locking is the person's own
+  Stop (D331 pauses on it), and a lock Ducter could open would take that away; and Google Play's
+  accessibility policy forbids an accessibility service that gets around Android's built-in security
+  (DOCUMENTED, research/74 §1; not re-checked for D339). To lend it while not holding it, the person
+  turns on Android's own Smart Lock (Settings › Security; Extend Unlock on newer Pixels), one line in
+  ⓘ (§7). Whether a screen that timed out under Smart Lock wakes past the lock screen for a task is
+  INFERRED from Android's trust agents; the live check is in `todo.md`.
 - **Android's own screen recorder for a task** (D255 supersedes D253's card): Ducter records the
   screen itself (§11); the brief says never to ask the person to start Android's recorder, and the
   recorder's tile, chip and Stop wait for Go (§9). On hel the recordings the person started stopped

@@ -106,6 +106,8 @@ export interface Task {
   /** Where a browser task's browser last was (task_event {role: system, raw.browser}); `own`:
    *  the user's own Chrome, through the AI agent's own tools (D126). */
   browser?: { host: string; own?: boolean; seq: number };
+  /** D339: the person's own phone the task asked to borrow (the ask's report in its stream). */
+  phone?: { device: string; name: string };
 }
 
 /** Where a running task's browser is looking, or undefined (D126). */
@@ -690,6 +692,8 @@ export class Store {
         if (ev.seq >= (t.lastReportSeq ?? 0)) (t.lastReport = b), (t.lastReportSeq = ev.seq);
         if (t.acted && ev.seq > (t.actedSeq ?? 0)) t.acted = undefined;
         for (const e of b.evidence ?? []) if (!t.evidence.some((h) => h.ref === e.ref && h.label === e.label)) t.evidence.push(e);
+        // D339: the ask for the person's own phone says the task works on it.
+        for (const q of b.questions ?? []) if (q.handset && q.handset.kind !== "record" && q.handset.device) t.phone = { device: q.handset.device, name: q.handset.name };
         break;
       }
       case "body_selected":

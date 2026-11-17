@@ -189,6 +189,8 @@ export function HandsetChip({ cl }: { cl: Client }) {
           {!on && mine && !H.state && <div>{t("handset.old")}</div>}
           {!on && mine && H.state && <div>{t("ability.handset.about")}</div>}
           {on && <div>{t("handset.where", name)}</div>}
+          {/* D339: lent while the person isn't holding it, with Android's own Smart Lock, never its PIN. */}
+          {on && <div class="small sub">{t("handset.smartlock")}</div>}
           {on && !service && <div>{t("handset.switch_off")}</div>}
           {on && !h?.linked && <div class="small sub">{t("handset.away")}</div>}
           {on && (

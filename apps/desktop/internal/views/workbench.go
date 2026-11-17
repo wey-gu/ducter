@@ -139,13 +139,23 @@ func (a *App) benchTabs(task *store.Task) []string {
 	if len(b.ports) > 0 {
 		out = append(out, "preview")
 	}
-	if !finished(task) && a.S.Browsing(task.ID) != "" {
+	if a.watchesBrowser(task) {
 		out = append(out, "browser")
 	}
 	if len(a.benchPhoneKeys(task)) > 0 {
 		out = append(out, "phone")
 	}
 	return out
+}
+
+// watchesBrowser: the task holds Ducter's own browser, so 看它上网 / Watch
+// it browse is offered (D190). D339: a task on the person's own phone only
+// once it actually used that browser (a page it opened there).
+func (a *App) watchesBrowser(task *store.Task) bool {
+	if finished(task) || a.S.Browsing(task.ID) == "" {
+		return false
+	}
+	return task.Browser != nil || task.PhoneDevice() == ""
 }
 
 func (a *App) benchShown(task *store.Task) bool {

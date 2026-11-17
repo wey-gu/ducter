@@ -103,6 +103,8 @@ export interface RunnerExt extends Runner {
 /** What starting a task needs once its place is ready (open, or a computer that came back). */
 /** D168: how long a task's first turn waits for its memories (a Cloud search takes ~4 s). */
 const RECALL_MS = 6_000;
+/** D339: how long words wait for a stopped turn's end before they go anyway. */
+const STOP_SETTLE_MS = 15_000;
 /** D282: how much of a task's own history a switch to another agent carries (the rest is in the Log). */
 const CARRY_CHECKPOINTS = 6;
 const CARRY_SAID = 5;
@@ -145,6 +147,13 @@ interface TaskRt {
   nudged: boolean;
   stallNoted: boolean;
   interruptRequested?: boolean; // the user stopped the current turn
+  /**
+   * D339: a turn being stopped (an interrupt sent while it worked, its end not yet in): words sent
+   * meanwhile wait here and become the next turn once it has ended. Steered or queued into a turn
+   * that is ending, they were lost or ran as a turn the runner didn't know of (a phone's Stop: its
+   * note to the task, and the person's next words, got no answer).
+   */
+  stopping?: { since: number; words: { text: string; from: From; clientId?: string; media?: MediaRef[] }[]; timer?: ReturnType<typeof setTimeout> };
   dropped: boolean;
   attention: Attention;
   residency: Residency;
@@ -1218,6 +1227,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     }
     const stopped = t.interruptRequested && outcome === "aborted";
     if (outcome) t.interruptRequested = false;
+    // D339: words sent while it was being stopped are the next turn, now that it has ended.
+    const after = takeStopping(t);
     // D266: a turn (its own, after a background task ended, or any other) settles what was owed.
     t.bgOwed = false;
     clearTimeout(t.bgSettle);
@@ -1230,6 +1241,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       } catch (err) {
         logEvent(t, { role: "system", text: `held words failed: ${preview(String(err), 500)}` });
       }
+      if (after.length && !t.dropped) void sayAfterStop(t, after);
       return;
     }
     // D266: its background shells and subagents still run: the session is at work, not idle.
@@ -1238,6 +1250,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (!busy && !t.dropped) setState(t, stopped && currentAttention(t) === "working" ? "blocked" : currentAttention(t), bg > 0 ? "hot" : "warm");
     if (!busy && !t.dropped) armPark(t);
     else clearTimeout(t.parkTimer);
+    if (after.length && !t.dropped) {
+      void sayAfterStop(t, after);
+      return;
+    }
     // A finished browser task quits its browser cleanly so sign-ins are saved (browser.ts).
     if (!busy && t.sidecar && ["done_claimed", "done", "failed"].includes(currentAttention(t))) void t.sidecar.close().catch(() => false);
     // D142: a finished folder task: what the folder looks like now, and its 7 days start.
@@ -1268,6 +1284,26 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return;
     }
     await missedReport(t);
+  }
+
+  /** D339: what waited for a stopping turn to end, taken (and the wait cleared). */
+  function takeStopping(t: TaskRt) {
+    const st = t.stopping;
+    if (!st) return [];
+    clearTimeout(st.timer);
+    t.stopping = undefined;
+    return st.words;
+  }
+
+  /** D339: the words that waited for the stop, in order: the first becomes the next turn, the rest join it. */
+  async function sayAfterStop(t: TaskRt, words: NonNullable<TaskRt["stopping"]>["words"]) {
+    for (const w of words) {
+      try {
+        await runner.send(t.id, w.text, undefined, w.from === "runner" ? "ducter" : w.from, w.clientId, w.media);
+      } catch (err) {
+        logEvent(t, { role: "system", from: "runner", text: `delivery failed: ${preview(String(err), 400)}` });
+      }
+    }
   }
 
   /** A turn ended with no report (the stall rule): one nudge; a second miss leaves it to the user. */
@@ -2075,6 +2111,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         await sendTurn(t, compacting ? text : seed ? seedThen(seed, takeEdits(taskId, said)) : takeEdits(taskId, said), from, true, all.length ? all : undefined);
         return { delivered: "prompted" };
       }
+      if (isBusy(t) && t.stopping) {
+        // D339: the turn is being stopped: these words wait for its end and become the next turn.
+        t.stopping.words.push({ text, from, ...(clientId ? { clientId } : {}), ...(media?.length ? { media } : {}) });
+        return { delivered: "queued" };
+      }
       if (isBusy(t)) {
         const steer = mode !== "queue" && t.session!.canSteer;
         // D325: the person's After this, or a steer its agent can't take mid-turn: Ducter holds
@@ -2301,6 +2342,18 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       await t.started;
       if (!t.session) return;
       t.interruptRequested = true;
+      // D339: words sent until this turn has ended wait for it (never steered into a turn that is
+      // ending). Its end normally comes within a second or two; if it never does, they go anyway.
+      if (isBusy(t) && !t.stopping) {
+        const st: NonNullable<TaskRt["stopping"]> = { since: Date.now(), words: [] };
+        st.timer = setTimeout(() => {
+          if (t.stopping !== st) return;
+          const words = takeStopping(t);
+          if (words.length && !t.dropped) void sayAfterStop(t, words);
+        }, STOP_SETTLE_MS);
+        (st.timer as { unref?: () => void }).unref?.();
+        t.stopping = st;
+      }
       await t.session.interrupt();
     },
 

@@ -17,7 +17,7 @@ import type { JSX } from "preact";
 import { AmbientLine } from "./ambient.tsx";
 import { A, candKey, effortWord, HANDHELD, placeKey, type SettingsPage } from "./app.ts";
 import { HARNESSES, isHarnessId, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
-import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, whereCandReason } from "./where.ts";
+import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, watchesBrowser, whereCandReason } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, harnessName, modelName, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
@@ -2241,7 +2241,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   // Only a browser's place or a wait is said here: the agent's words are the transcript's, said once (D152).
   const detail = !finished(task) ? (br && browsingLine(br)) || "" : "";
   // D190: it holds Ducter's own browser (not the user's Chrome): its tab can be watched.
-  const watchable = !finished(task) && !!A.S.onHand?.tasks.find((c) => c.taskId === id)?.browsing;
+  const watchable = watchesBrowser(task, finished(task));
   // D217: it is using Ducter's phone: watch it from here (D220: in the workbench's Phone page).
   const phoning = !finished(task) ? A.S.onHand?.tasks.find((c) => c.taskId === id)?.phoning : undefined;
   const [headline, lede] = finished(task) && r ? splitOutcome(safe(r.summary)) : ["", ""];

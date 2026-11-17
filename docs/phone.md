@@ -267,7 +267,8 @@ While it's lent:
   are never read or typed. Signing in is yours: the card asks you to do it on the phone, and the
   task sees nothing until you tap **Done**.
 - Tap **Stop** on the pill, or **Stop** on the task from any of your devices, and the phone is
-  yours again at once.
+  yours again at once. The task won't ask for it again by itself; if you write to the task later
+  ("go on with the phone"), it asks you once more with a new card.
 - **Locking the phone pauses it.** The screen stays on while a task is using it; press the power
   key and the task stops doing anything at once. When you unlock, it doesn't carry on by itself:
   the phone asks **Keep lending this phone to "Order lunch"?** with **Keep lending** and **Not
@@ -286,6 +287,16 @@ While it's lent:
   out of recent apps? The task never does that itself: a card asks you to do it by hand, with the
   exact steps, and the task reports what it saw afterwards.
 - Switches that cut your phone off, like Wi-Fi, Bluetooth or airplane mode, wait for your Go too.
+
+**Lending it while you're not holding it.** Ducter never asks for your phone's screen lock PIN:
+the lock guards everything on your phone, and locking it is how you say stop. If you'd like a task
+to carry on while the phone sits on your desk or in your pocket, turn on Android's own **Smart
+Lock** (on some phones **Extend Unlock**) in **Settings › Security**, with **On-body detection** or
+**Trusted places**. While it's on you or in that place, the phone doesn't ask for the lock again
+after the screen goes off, so the task can go on.
+
+On the task's page, a task that uses your phone says so where it says who does it: **Codex on your
+Pixel**.
 
 Between tasks it reads nothing. To turn it off, tap **Use this phone** on the phone's card and
 **Remove**: that also turns Ducter's switch off in Android, and the quiet connection with it. The

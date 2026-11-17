@@ -138,8 +138,28 @@ export function whereAsk(w: WhereAsk): { question: string; go: string; hold: str
   return { question, go, hold, lines };
 }
 
+/** D339: the person's own phone this task works on (lent or asked for now, else asked for in its stream), by name; "". */
+export function taskPhone(task: Task): string {
+  const device = A.S.onHand?.tasks.find((c) => c.taskId === task.id)?.handset?.device ?? task.phone?.device;
+  if (!device) return "";
+  return shownDeviceName(A.reach?.clients.find((c) => c.id === device)?.name ?? task.phone?.name ?? "") || "";
+}
+
+/**
+ * D190: the task holds Ducter's own browser, so 看它上网 / Watch it browse is offered. D339: a task on
+ * the person's own phone only once it actually used that browser (a page it opened there).
+ */
+export function watchesBrowser(task: Task, done: boolean): boolean {
+  if (done || !A.S.onHand?.tasks.find((c) => c.taskId === task.id)?.browsing) return false;
+  return !!task.browser || !taskPhone(task);
+}
+
 /** The where part of a task's meta line and its reason; empty with one computer. */
 export function taskWhere(task: Task): { line: string; why: string } {
+  // D339: a task on the person's own phone says where it works: on that phone, never the computer's
+  // browser it was placed with ("在 Hetzner Server 上用 Ducter 自己的浏览器" for a phone task).
+  const phone = taskPhone(task);
+  if (phone) return { line: t("handset.where.on", phone), why: "" };
   if (!manyComputers()) return { line: "", why: "" };
   const name = computerName((placeOf(task) as { device?: string }).device);
   let w = task.body?.why.where;

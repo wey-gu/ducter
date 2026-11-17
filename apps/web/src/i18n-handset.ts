@@ -82,6 +82,9 @@ export const handset: { zh: Record<string, string>; en: Record<string, string> }
     "handset.record.skipped": "这次不录",
     "handset.record.gave_up": "手机上没点，这次没录",
     "handset.go.on": "在你的 %s 上",
+    // D339: the task's head says where it works; Settings says how to lend it while not holding it.
+    "handset.where.on": "在你的 %s 上",
+    "handset.smartlock": "想在不碰手机时也能借给任务：在手机的「设置 › 安全」里打开 Smart Lock（有的手机叫「延长解锁」），选「随身检测」或「可信地点」。手机在你身上或在那个地方时，屏幕熄了也不用再输锁屏密码，任务能接着用。Ducter 从不要你的锁屏密码。",
     "handset.user.why": "在你的 %s 上自己来，这时它什么都看不到。做完点「好了」。",
     // Android's own words on the screens the guide draws (AOSP Settings, research/74 §2.2).
     "android.a11y": "无障碍",
@@ -178,6 +181,8 @@ export const handset: { zh: Record<string, string>; en: Record<string, string> }
     "handset.record.skipped": "Not recording this time",
     "handset.record.gave_up": "No answer on the phone; not recorded",
     "handset.go.on": "On your %s",
+    "handset.where.on": "on your %s",
+    "handset.smartlock": "To lend it to tasks while you're not holding it: on the phone, open Settings › Security and turn on Smart Lock (Extend Unlock on some phones), with On-body detection or Trusted places. While it's on you or in that place, it doesn't ask for the screen lock again after the screen goes off, so a task can carry on. Ducter never asks for your screen lock PIN.",
     "handset.user.why": "Do it yourself on your %s; it sees nothing meanwhile. Tap Done when you're through.",
     "android.a11y": "Accessibility",
     "android.downloaded": "Downloaded apps",

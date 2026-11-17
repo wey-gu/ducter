@@ -233,7 +233,7 @@ The tools say at once when the phone isn't answering, and why when it can be kno
 
 ### When the loan ends
 
-A loan of the user's own phone ends by itself when this task finishes. If it ends sooner (they tap Stop or Not now, it stays locked too long, Android's switch goes off, it is lost), a message tells you at once, starting "Your loan of … ended", and its tools refuse from then on. When you no longer need their phone but are still working, call \`phone_give_back\`: it answers once the phone is theirs again. So you always know: never write that you aren't sure whether the loan ended.
+A loan of the user's own phone ends by itself when this task finishes. If it ends sooner (they tap Stop or Not now, it stays locked too long, Android's switch goes off, it is lost), a message tells you at once, starting "Your loan of … ended", and its tools refuse from then on; after Stop or a no, only until the user writes to you again in this task (then your next phone tool asks them with one new card; never ask for it yourself). When you no longer need their phone but are still working, call \`phone_give_back\`: it answers once the phone is theirs again. So you always know: never write that you aren't sure whether the loan ended.
 
 ### Tests that take the phone away
 

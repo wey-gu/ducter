@@ -22,11 +22,11 @@ afterAll(async () => {
 test("a welcome from a newer home reloads, after the sheet closes and the words are sent, once", async () => {
   const { A } = await import("../src/app.ts");
   A.send = () => {};
-  A.receive({ t: "welcome", persona: "p", personaName: "Ducter", headSeq: 0, version: DUCTER_VERSION } as any);
+  A.receive({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0, version: DUCTER_VERSION } as any);
   expect(A.staleFor).toBe("");
   A.sheet = { kind: "newtask" } as any;
   A.draft = "还没发";
-  A.receive({ t: "welcome", persona: "p", personaName: "Ducter", headSeq: 0, version: "9.9.9" } as any);
+  A.receive({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0, version: "9.9.9" } as any);
   expect(A.staleFor).toBe("9.9.9");
   expect(reloads).toBe(0); // a sheet is open
   A.sheet = null;

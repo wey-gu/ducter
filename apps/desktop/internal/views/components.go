@@ -864,6 +864,9 @@ func (a *App) goLabel(d *store.DecisionState) string {
 	if d.Sender != nil {
 		return d.GoLabel // D334: 答应 / Let it, as the card's code said it
 	}
+	if d.Src != nil && d.GoLabel != "" {
+		return d.GoLabel // D341: 留言 / 留言并关掉 / 停下, as the card's code said it
+	}
 	if d.Computer != nil && d.Computer.Kind == "user" {
 		return a.L.T("computeruse.user.done") // D235: their own turn in an app: 好了 / Done
 	}

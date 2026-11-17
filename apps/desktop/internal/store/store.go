@@ -457,6 +457,12 @@ type Store struct {
 	// connect and code (the views read and drop them). Never a token.
 	Channels       *protocol.ServerFrame
 	ChannelResults []protocol.ServerFrame
+	// Sources is 设置 › 待办来源 / To-do sources (D341), nil until asked;
+	// SourceItems the latest pick list by its clientId; SourceResults the
+	// answers to add, set and remove (the views read and drop them).
+	Sources       *protocol.SourcesView
+	SourceItems   map[string]*protocol.SourcesFrame
+	SourceResults []protocol.SourcesFrame
 	// PairCode is the newest pairing code the server minted for this app.
 	PairCode *protocol.ServerFrame
 	// Renamed is the server's answer to the last 改名字 / Rename.
@@ -649,6 +655,21 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.Channels = &fc
 	case "channel_result":
 		s.ChannelResults = append(s.ChannelResults, f)
+	case "sources":
+		if f.Sources != nil && f.Sources.View != nil {
+			s.Sources = f.Sources.View
+		}
+	case "source_items_result":
+		if f.Sources != nil {
+			if s.SourceItems == nil {
+				s.SourceItems = map[string]*protocol.SourcesFrame{}
+			}
+			s.SourceItems[f.Sources.ClientID] = f.Sources
+		}
+	case "source_result":
+		if f.Sources != nil {
+			s.SourceResults = append(s.SourceResults, *f.Sources)
+		}
 	case "saved":
 		fc := f
 		s.Saved = &fc

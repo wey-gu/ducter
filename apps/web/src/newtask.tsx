@@ -16,6 +16,7 @@ import { AddPictures, DropHint, Tray, useDropPaste } from "./media.tsx";
 import { harnessName, spoken } from "./format.ts";
 import { SeedChip } from "./past.tsx";
 import { computerApart, computerOf, computers, manyComputers } from "./where.ts";
+import { TodoPick, TS } from "./todos.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -117,6 +118,10 @@ function Tune({ c }: { c: Candidate }) {
 
 export function NewTaskSheet() {
   const nt = A.nt;
+  // D341: whether there are to-dos to pick from (the home answers with its sources).
+  useEffect(() => {
+    if (!TS.frame && A.S.welcomed) A.send({ t: "sources" });
+  }, []);
   // D290: the sheet goes back down the way it came; on a phone it follows the finger down.
   const { sheet: sheetEl, body: sheetBody, scrim, close } = useSheetMotion(() => ((A.sheet = null), A.changed()));
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -199,6 +204,21 @@ export function NewTaskSheet() {
         <Tray where="new" />
         {/* D285: 带着它开新任务 / New task from this: what that task found goes with the words. */}
         {nt.from && <SeedChip />}
+        {/* D341: 从待办里选 / Pick from your to-dos: the task is bound to the to-do picked. */}
+        {(nt.item || (TS.frame?.sources.length ?? 0) > 0 || TS.frame?.found.github?.state === "ok") && (
+          <TodoPick
+            picked={nt.item}
+            onPick={(it) => {
+              if (it?.taskId) return void ((A.sheet = null), A.openTaskPage(it.taskId), A.changed());
+              const before = nt.item?.title;
+              nt.item = it ? { source: it.source, kind: it.kind, ref: it.ref, label: it.label, ...(it.where ? { where: it.where } : {}), title: it.title, ...(it.url ? { url: it.url } : {}), ...(it.pr ? { pr: true } : {}) } : undefined;
+              if (it && (!nt.words.trim() || nt.words === before)) nt.words = it.title;
+              if (!it && nt.words === before) nt.words = "";
+              nt.err = "";
+              A.changed();
+            }}
+          />
+        )}
         <div class="nt-what-foot">
           <div class="small sub">{t("newtask.verbatim")}</div>
           <AddPictures where="new" />

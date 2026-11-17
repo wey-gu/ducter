@@ -93,7 +93,7 @@ export function morph(apply: () => void) {
   });
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
-export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "chats" | "autofill" | "devices" | "phone";
+export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "chats" | "autofill" | "devices" | "phone";
 export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "recall"; seq: number } | { kind: "learned" } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
@@ -101,6 +101,8 @@ export interface NewTaskDraft {
   words: string;
   /** D285: 带着它开新任务 / New task from this: the earlier task its brief carries findings from. */
   from?: { taskId: string; title: string };
+  /** D341: picked from 待办来源 / To-do sources: the task is bound to this to-do. */
+  item?: import("@ducter/protocol").SourceItemRef;
   placeKey: string; // "" = the first offered; "none" = no particular place
   prefill?: Place;
   branch: string; // "" = the repo's default
@@ -462,6 +464,8 @@ class AppState {
   onPhoneFrame?: (f: import("@ducter/protocol").PhoneServerFrame) => void;
   /** D276: set by channels.tsx; takes the channels and channel_result frames. */
   onChannelFrame?: (f: import("@ducter/protocol").ChannelServerFrame) => void;
+  /** D341: 待办来源 / To-do sources (todos.tsx keeps its own state). */
+  onSourcesFrame?: (f: import("@ducter/protocol").SourcesServerFrame) => void;
   /** D238: this page as its phone's link (handset.tsx). */
   onHandsetFrame?: (f: import("@ducter/protocol").HandsetServerFrame) => void;
   onHandsetWelcome?: () => void;
@@ -680,6 +684,7 @@ class AppState {
     if (f.t.startsWith("phone_")) return void this.onPhoneFrame?.(f as import("@ducter/protocol").PhoneServerFrame);
     // D276: 聊天软件 / Chat apps (channels.tsx keeps its own state).
     if (f.t === "channels" || f.t === "channel_result") return void this.onChannelFrame?.(f);
+    if (f.t === "sources" || f.t === "source_items_result" || f.t === "source_result") return void this.onSourcesFrame?.(f);
     // D238: the person's own phone (handset.tsx relays the home's calls to this phone's app).
     if (f.t.startsWith("handset_")) return void this.onHandsetFrame?.(f as import("@ducter/protocol").HandsetServerFrame);
     if (f.t === "browser_sites") {
@@ -1594,7 +1599,7 @@ class AppState {
     // D206: the pictures on the What row go with the words, once they are up.
     this.afterUpload(
       this.picks.get("new") ?? [],
-      (media) => nt.sending === sending && this.send({ t: "task_new", words, ...(place ? { place } : {}), ...who, clientId: sending, ...(when ? { when } : {}), ...(media.length ? { media } : {}), ...(nt.from ? { from: nt.from.taskId } : {}) }),
+      (media) => nt.sending === sending && this.send({ t: "task_new", words, ...(place ? { place } : {}), ...who, clientId: sending, ...(when ? { when } : {}), ...(media.length ? { media } : {}), ...(nt.from ? { from: nt.from.taskId } : {}), ...(nt.item ? { item: nt.item } : {}) }),
       () => nt.sending === sending && ((nt.sending = ""), (nt.err = this.L.t("media.failed")), this.changed()),
     );
     this.changed();
@@ -2263,7 +2268,7 @@ class AppState {
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
     if (hash === "#onhand/full") return this.applyRoute({ name: "onhand", full: true });
     this.route = { name: "conv" };
-    const set = /^#settings(?:=(partner|memory|peers|notify|accounts|chats|autofill|devices|phone))?$/.exec(hash);
+    const set = /^#settings(?:=(partner|memory|peers|notify|accounts|todos|chats|autofill|devices|phone))?$/.exec(hash);
     if (set) {
       history.replaceState(null, "", location.pathname);
       return this.openSettings((set[1] ?? "") as SettingsPage);

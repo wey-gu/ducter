@@ -781,6 +781,7 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 	}
 	question := a.questionOf(d)
 	a.heading(c, autospace(question), t.XL).LineHeight(1.35)
+	a.todoAskBody(c, d) // D341: the comment as it goes out, or the to-do's chip
 	if d.RoutineID != "" && d.Resolved == nil {
 		a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 	}

@@ -1880,3 +1880,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Small things from the walk** (F8): the task pane's wait line overflowed by 7 px once; held words
       after Stop keep the head 这一轮做完再说 while nothing runs; a locator jump lands a line high; every
       report repeats 「改动随时能撤回，留到 …」. Trigger: the next pass over the opened task.
+## D341: 待办来源 / To-do sources (2026-11-17)
+- [ ] **Jira** as an adapter (`/rest/api/3/search/jql` with `assignee = currentUser() AND statusCategory != Done`, ADF comments, done as the one workflow transition into the done category, asking when several fit or fields are required; Data Center from a worker inside the company network). Trigger: the first person who asks for Jira, or a second tracker request.
+- [ ] **A company's own tracker** through an MCP or HTTP adapter (list mine, get, comment, set done, a link) on `SourceAdapter`. Trigger: a team asks with its tracker's API in hand.
+- [ ] **GitHub through a connection** (the person's OpenConnector or oo GitHub) when the home has no gh. Trigger: a home with GitHub in its accounts and no gh.
+- [ ] **A vault on a worker** (the Obsidian adapter runs where the vault is, like D197's folders). Trigger: someone whose vault lives on another computer than the home.
+- [ ] **Undo for a tick in Done for you** (untick; the adapter already does it). Trigger: the first person who wants a tick back.
+- [ ] **New ones in the morning note** (D165's limits) instead of their own line. Trigger: the author says the 3-hourly line is noise.
+- [ ] **Its own clay art** on the Settings list (a page with a ticked box); the page with lines stands in. Trigger: the next art pass.
+- [ ] **Live checks:** the author's gh and a real (copied) vault on iCloud and Obsidian Sync with the note open in Obsidian. Trigger: before calling D341 done.
+- [ ] **Several GitHub accounts** (one source per home's gh today). Trigger: someone with a work and a personal account on one home.

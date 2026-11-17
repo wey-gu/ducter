@@ -47,6 +47,7 @@ import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
 import { ChatAppsSettings } from "./channels.tsx";
+import { SourceCardBody, TodoSourcesSettings } from "./todos.tsx";
 import { HandoffSettings, PaperRow, RecordsSettings } from "./settings-more.tsx";
 import { AddSection, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
@@ -281,6 +282,7 @@ export function goLabel(d: DecisionState): string {
   if (d.closing) return closingWords(d.closing).go;
   if (d.memPlugin) return t("memp.card.go");
   if (d.cal) return d.goLabel; // D222: the action itself (添加到日历 / Add to calendar)
+  if (d.src) return d.goLabel; // D341: 留言 / Comment, 停下 / Stop, as the card's code said it
   if (d.computer?.kind === "user") return t("computeruse.user.done"); // D235: their own turn in an app
   return shortGo(d.goLabel);
 }
@@ -361,6 +363,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
       <div class="q">{wa?.question ?? (d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question)}</div>
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {d.cal && <CalFacts c={d.cal} />}
+      {d.src && <SourceCardBody src={d.src} />}
       {open && wa && wa.lines.map((l, i) => <div key={i} class={`dl${l.widen ? " widen" : ""}`}>{l.text}</div>)}
       {open && !wa && !d.cal && (d.asker ? <div class="dl">{t("peer.default")}</div> : <DefaultRow d={d} />)}
       {open ? (
@@ -957,6 +960,8 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
       <div class="bubble" dir="auto">{d.said || d.question}</div>
       {/* D222: a calendar change: what, when, where and who hears, before one Go. */}
       {d.cal && <CalFacts c={d.cal} />}
+      {/* D341: a write-back to a to-do's app: the comment whole, as it goes out. */}
+      {d.src && <SourceCardBody src={d.src} />}
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
       {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
       {open ? (
@@ -2915,6 +2920,8 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "peers", art: "coins", title: "settings.tab.peers" },
   { page: "notify", art: "wait_clock", title: "settings.tab.notify" },
   { page: "accounts", art: "wait_mail", title: "settings.tab.accounts" },
+  // D341: 待办来源 / To-do sources (todos.tsx); its own clay art is owed (todo.md): the page with lines stands in.
+  { page: "todos", art: "wait_file", title: "settings.tab.todos" },
   // D276: 聊天软件 / Chat apps (channels.tsx); D283: two clay speech bubbles.
   { page: "chats", art: "set_chats", title: "settings.tab.chats" },
   { page: "autofill", art: "set_autofill", title: "settings.tab.autofill" },
@@ -3030,6 +3037,7 @@ function SettingsSheet() {
           {page === "peers" && <PeersPage />}
           {page === "notify" && <NotifySettings />}
           {page === "accounts" && <Accounts />}
+          {page === "todos" && <TodoSourcesSettings />}
           {page === "chats" && <ChatAppsSettings />}
           {page === "autofill" && <AutofillSettings />}
           {page === "devices" && <DevicesSection open={dev} setOpen={setDev} />}

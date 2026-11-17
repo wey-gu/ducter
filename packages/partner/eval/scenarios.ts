@@ -28,7 +28,9 @@ export type Seed =
   // D236: a note Ducter said by itself (proactive finds), one find per line.
   | { finds: { opening: string; finds: { kind: import("../../protocol/src/proactive.ts").FindKind; text: string; goLabel?: string }[] } }
   // Many short exchanges (filler), so what came before them leaves the cold seed's window.
-  | { chatter: number };
+  | { chatter: number }
+  // D341 (scenario.todos): the seeded task with this key is bound to that GitHub issue.
+  | { bound: { task: string; ref: string } };
 
 /** D236: a reply names an earlier message by words it has (the latest one that has them). */
 export interface UserSay {
@@ -54,7 +56,9 @@ export type Step =
   // checks. `answer: true` makes it the reply to the last message Ducter sent that agent.
   // `unchecked` (D333): it waits in the mailbox; Ducter reads it only when something checks.
   // `space` (D334, with scenario.spaces): the Space it was sent in ("ws-everyone"); default the person's own.
-  | { peer: { from: string; text: string; answer?: boolean; unchecked?: true; space?: string } };
+  | { peer: { from: string; text: string; answer?: boolean; unchecked?: true; space?: string } }
+  // D341 (scenario.todos): a look at GitHub found these issues new (taken: under the standing go).
+  | { todosNew: { refs: string[]; taken?: boolean } };
 
 export interface Expect {
   /** task_open calls: exact count, or a range. */
@@ -133,6 +137,11 @@ export interface Expect {
   called?: { tool: string; args?: Record<string, unknown> }[];
   /** Partner tools that must not be called. */
   notCalled?: string[];
+  /** D341: a write-back card for a to-do (todos do=write) was made / none was; nothing went to GitHub without one. */
+  todoCard?: boolean;
+  noTodoCard?: boolean;
+  /** D341: some opened task is bound to this to-do (by todos do=take, or by its ref in the brief). */
+  bound?: string;
   /** D222: a day card went under a message (calendar do=agenda show) / none did. */
   dayCard?: boolean;
   noDayCard?: boolean;
@@ -204,6 +213,11 @@ export interface Scenario {
    * (in both calendars), 18:30 家里吃饭 (Family), 19:00 Gym (marked free); a declined All hands.
    */
   calendar?: true;
+  /**
+   * D341: a GitHub to-do source over a fake gh (packages/core/test/fake-gh-issues.ts), never the real
+   * GitHub: issues assigned to the user in nowledge-co/hawdb and wey-gu/ducter.
+   */
+  todos?: true;
   /** With `calendar`: the calendar tool can't read (hel, 2026-11-12); the default account still answers a generic read. */
   calendarDown?: true;
   /** D300: a day of things Ducter did for the person (packages/core/test/did-day.ts), logged now: the `did_list` tool answers from it. */
@@ -1688,6 +1702,66 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Did you pay for anything for me today?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 320, called: [{ tool: "did_list" }], require: [/312/, /Okura/i], forbid: [/I (just )?(checked|looked (it )?up) (the )?(log|record)|did_list/i] },
     rubric: "The user asks whether Ducter paid for anything today. It calls did_list and answers in short English from it only: one payment, USD 312.00 to the Okura hotel (hotelokura.co.jp), after the user agreed, for the Tokyo hotel task; the card, the stay and the time from the list may be named or not. Nothing else was paid; it doesn't list the other kinds unless briefly. It invents nothing, never says how it looked it up, and opens no task. One or two short lines; one more honest line that the booking itself is not confirmed yet is fine.",
+  },
+  // ---------- to-do sources (D341): offered, taken on the user's pick, written back behind a card ----------
+  {
+    id: "todos-offer-zh",
+    category: "todos",
+    lang: "zh",
+    todos: true,
+    floor: true,
+    steps: [{ user: "GitHub 上有什么分给我的？" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "todos", args: { do: "list" } }], notCalled: ["task_open"], noTodoCard: true },
+    rubric: "The user asks what is assigned to them on GitHub. It reads the list (todos do=list) and answers in short Chinese: names one to three of the open issues by their numbers (e.g. HawDB #1592 the flaky compaction test, Ducter #6 the task abstraction) and asks which to take. It starts nothing, opens no task, makes no card, and does not paste the issues' bodies or a long list.",
+  },
+  {
+    id: "todos-take-en",
+    category: "todos",
+    lang: "en",
+    todos: true,
+    seed: [{ user: "anything assigned to me on GitHub?" }, { ai: "Three open: nowledge-co/hawdb#1592 (the flaky compaction test), wey-gu/ducter#6 (task abstraction) and wey-gu/ducter#9 (docs typo). Want me to take one?" }],
+    steps: [{ user: "take the hawdb one" }],
+    expect: { opens: 1, ackFirst: true, bound: "nowledge-co/hawdb#1592", noTodoCard: true, briefRequire: [/1592/] },
+    rubric: "The user picks the HawDB issue. It takes it (todos do=take with ref nowledge-co/hawdb#1592, or a brief that names the issue so Ducter binds it) and opens one task for it whose brief carries the issue (its number or link, what it is about). One short English ack, no claim it's fixed, no comment on GitHub, no other issue taken.",
+  },
+  {
+    id: "todos-writeback-en",
+    category: "todos",
+    lang: "en",
+    todos: true,
+    floor: true,
+    seed: [
+      { user: "take hawdb#1592 please" },
+      { task: { key: "flaky", title: "Fix the flaky compaction test", repo: "~/dev/hawdb", ack: "On it: fixing the flaky compaction test.", state: "working" } },
+      { bound: { task: "flaky", ref: "nowledge-co/hawdb#1592" } },
+    ],
+    steps: [{ report: { task: "flaky", body: { state: "done", summary: "The compaction test waited on a fixed 50 ms sleep; it now waits for the compaction event. 200 runs green. Draft PR opened: https://github.com/nowledge-co/hawdb/pull/1601", questions: [], evidence: [{ kind: "url", ref: "https://github.com/nowledge-co/hawdb/pull/1601" }] } } }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 260, todoCard: true, called: [{ tool: "todos", args: { do: "write" } }], forbid: [/\b(I('ve| have) (commented|posted|closed)|commented on|closed the issue)\b/i] },
+    rubric: "The task bound to GitHub issue nowledge-co/hawdb#1592 reports done with a draft PR. It tells the user the result in a short English line, and proposes the write-back (todos do=write) with a short English comment for the issue that says what was fixed and links the PR #1601; close only if it judges the work fully resolves it (a draft PR not merged yet should not close it). The card shows the comment; the prose never claims it already commented or closed.",
+  },
+  {
+    id: "todos-writeback-zh",
+    category: "todos",
+    lang: "zh",
+    todos: true,
+    seed: [
+      { user: "把 ducter 那个 #9 文档错字修了" },
+      { task: { key: "typo", title: "修 docs 里的错字", repo: "~/dev/ducter", ack: "好，我去修文档里的错字。", state: "working" } },
+      { bound: { task: "typo", ref: "wey-gu/ducter#9" } },
+    ],
+    steps: [{ report: { task: "typo", body: { state: "done", summary: "docs/install.md 里 'recieve' 改成 'receive'，顺手修了两处同类拼写。已开草稿 PR：https://github.com/wey-gu/ducter/pull/12", questions: [], evidence: [{ kind: "url", ref: "https://github.com/wey-gu/ducter/pull/12" }] } } }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, todoCard: true, called: [{ tool: "todos", args: { do: "write" } }], forbid: [/已(经)?(留言|评论|关掉|关闭)/] },
+    rubric: "The bound task for wey-gu/ducter#9 (an English issue) is done. It tells the user the result in short Chinese, and proposes the GitHub comment (todos do=write) written in ENGLISH, the issue's language (what was fixed, the PR #12 link). Its Chinese prose never claims it already commented or closed.",
+  },
+  {
+    id: "todos-new-zh",
+    category: "todos",
+    lang: "zh",
+    todos: true,
+    seed: [{ user: "今天先这样，有新的事再说" }, { ai: "好，有事我再找你。" }],
+    steps: [{ todosNew: { refs: ["wey-gu/ducter#9"] } }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, notCalled: ["task_open"], noTodoCard: true },
+    rubric: "A look at GitHub found one issue newly assigned to the user (wey-gu/ducter#9, a docs typo). It offers it in one short Chinese line (naming #9 and what it is) and asks whether to take it. It starts nothing and opens no task.",
   },
   // ---------- calendars (D222): two accounts merged, changes behind a card ----------
   {

@@ -44,6 +44,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   tap if you use oo, how it tells you only what needs you, and what it never does with them.
 - **[Your calendar](calendar.md):** what's on across every Google account, a free hour, and
   adding, moving or answering events, each behind one tap.
+- **[Your to-dos in other apps](to-do-sources.md):** the GitHub issues assigned to you and the
+  to-dos in your Obsidian vault, taken on when you say, and commented on or ticked off when done.
 - **[Passwords & cards](passwords-and-cards.md):** save a sign-in, a card or your travel details once, so your
   partner can book and buy for you, filling them in without seeing them, with your Go on every
   payment.

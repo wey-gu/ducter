@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startCore } from "../../core/src/core.ts";
 import { fakeOoCalendar } from "../../core/test/fake-oo-calendar.ts";
+import { fakeGh } from "../../core/test/fake-gh-issues.ts";
 import { registerTaskTools } from "../../runner/src/tools.ts";
 import { createPartner } from "../src/partner.ts";
 import { buildSystemPrompt } from "../src/persona.ts";
@@ -30,8 +31,10 @@ export async function partnerFingerprint(): Promise<Fingerprint> {
   process.env.DUCTER_SAVED_KEY = "file";
   // D222: two calendar accounts in a fake oo, so the calendar tool (listed only then) is judged too.
   const oo = fakeOoCalendar({ day: "2026-11-18" });
-  const core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin", ooSource: oo.source });
+  // D341: a GitHub to-do source through a fake gh, so the todos tool (listed only then) is judged too.
+  const core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin", ooSource: oo.source, taskSources: { ghRun: fakeGh().run, ghEnv: {}, pollMs: 3_600_000 } });
   await core.connections.addFromOo();
+  await core.taskSources.add("github");
   // D191: saved_list is listed once something is saved: a test card, so it is judged too.
   core.autofill.store.put({ kind: "card", name: "Eval", number: "4242424242424242", expMonth: 12, expYear: 2099 });
   registerTaskTools(core as never, {});

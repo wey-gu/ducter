@@ -34,7 +34,7 @@ export interface Did {
 }
 
 const WEEK = 7 * 24 * 3600_000;
-const KINDS: EventKind[] = ["decision", "decision_resolved", "connection_call", "bridge_msg", "phone_call", "job_status", "report"];
+const KINDS: EventKind[] = ["decision", "decision_resolved", "connection_call", "bridge_msg", "phone_call", "job_status", "report", "source_write"];
 
 const clip = (s: string | undefined, n = DID_LINE): string | undefined => {
   const t = (s ?? "").replace(/\s+/g, " ").trim();
@@ -240,6 +240,30 @@ export function createDid(d: DidDeps): Did {
           case "report": {
             const b = e.body as Bodies["report"];
             if (b.folder) folders.set(b.taskId, e as LogEvent<"report">);
+            break;
+          }
+          // D341: a write to a to-do's app: a comment is sent (to the issue), a close or a tick changes it.
+          case "source_write": {
+            const b = e.body as Bodies["source_write"];
+            if (b.state !== "done" || !inRange(e.ts)) break;
+            const app = b.item.kind === "github" ? "GitHub" : b.item.kind === "obsidian" ? "Obsidian" : "Jira";
+            const go: DidGo | undefined = b.by === "go" ? goOf(b.decisionId) : b.by === "rule" ? { by: "before" } : undefined;
+            const to = b.item.kind === "github" ? `${b.item.where ?? ""}${b.item.label}` : b.item.title;
+            const line = b.op === "comment" ? clip(b.text) : clip(b.item.title);
+            items.push({
+              id: `e${e.seq}`,
+              kind: b.op === "comment" ? "sent" : "changed",
+              sub: b.op === "comment" ? "post" : "write",
+              at: e.ts,
+              to: clip(to, 80) ?? to,
+              via: app,
+              ...(line ? { line } : {}),
+              who: who(b.taskId),
+              ...(go ? { go } : {}),
+              where: b.item.kind === "obsidian" ? (deviceOf(b.taskId) ?? { kind: "computer" }) : { kind: "home", name: app },
+              ...(b.taskId ? { taskId: b.taskId } : {}),
+              ...((b.link ?? (b.item.kind === "github" ? b.item.url : undefined)) ? { link: b.link ?? b.item.url } : {}),
+            });
             break;
           }
         }

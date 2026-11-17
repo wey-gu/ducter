@@ -7,7 +7,7 @@ import { realClock, type Clock } from "./clock.ts";
 /** D120: the partner's call changed before its brief arrived, so this early open was dropped unstarted (runner.ts). */
 export const neverStarted = (c: Pick<TaskCard, "attention" | "reason">) => c.attention === "dropped" && c.reason === "not started";
 
-export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held"] as const;
+export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held", "task_bound", "source_seen", "source_write"] as const;
 
 /** D216: a step or the agent's words, the kind On hand's latest line is made from. */
 export const isStepEvent = (b: Bodies["task_event"]) => b.role === "tool" || (b.role === "assistant" && (!!b.text?.trim() || !!b.thinking?.length));
@@ -113,7 +113,39 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
           ...(b.from ? { from: { taskId: b.from, title: cards.get(b.from)?.title ?? "" } } : prev?.from ? { from: prev.from } : {}),
           // D299: carried on from a session the person ran outside Ducter.
           ...((b.outside ?? prev?.outside) ? { outside: b.outside ?? prev!.outside! } : {}),
+          // D341: a retitle keeps its to-do.
+          ...(prev?.source ? { source: prev.source } : {}),
         });
+        break;
+      }
+      // D341: the outside to-do a task is bound to, what Ducter last saw of it there, what it wrote back.
+      case "task_bound": {
+        const b = e.body as Bodies["task_bound"];
+        const c = cards.get(b.taskId);
+        if (!c) return;
+        if (b.item) c.source = { ...b.item, state: "open" };
+        else delete c.source;
+        break;
+      }
+      case "source_seen": {
+        const b = e.body as Bodies["source_seen"];
+        const c = b.taskId ? cards.get(b.taskId) : undefined;
+        if (!c?.source || !b.item || b.item.ref !== c.source.ref) return;
+        const wrote = c.source.wrote;
+        if (b.change === "closed" || b.change === "gone") c.source = { ...c.source, state: b.change };
+        else if (b.change === "reopened") c.source = { ...c.source, state: "open" };
+        else if (b.change === "edited") c.source = { ...c.source, title: b.item.title };
+        if (wrote) c.source.wrote = wrote;
+        break;
+      }
+      case "source_write": {
+        const b = e.body as Bodies["source_write"];
+        const c = b.taskId ? cards.get(b.taskId) : undefined;
+        if (!c?.source || b.state !== "done" || b.item.ref !== c.source.ref) return;
+        const wrote = new Set(c.source.wrote ?? []);
+        if (b.op === "untick") wrote.delete("tick");
+        else wrote.add(b.op);
+        c.source = { ...c.source, wrote: [...wrote], ...(b.op === "close" || b.op === "tick" ? { state: "closed" as const } : b.op === "untick" ? { state: "open" as const } : {}) };
         break;
       }
       case "task_held": {

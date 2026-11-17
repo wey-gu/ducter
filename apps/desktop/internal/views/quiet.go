@@ -378,6 +378,12 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 			a.peerAskerRow(c, d.Asker) // X1: who asks, before the question
 		}
 		a.partnerWords(c, words)
+		// D341: a write-back's comment, whole as it goes out, or the to-do's chip.
+		if d.Src != nil && openAsk(d) {
+			ui.Column(c.Key("todo")).MaxWidth(t.BubbleMeasure).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
+				a.todoAskBody(c, d)
+			})
+		}
 		// A routine's proposal card (D29, D114): what it would do, before one Go.
 		if d.RoutineID != "" && d.Resolved == nil {
 			ui.Column(c.Key("facts")).MaxWidth(t.BubbleMeasure).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {

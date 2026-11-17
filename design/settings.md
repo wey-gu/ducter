@@ -176,6 +176,14 @@ zh light, demo cores on fresh data folders):
 - Every demo core starts from `apps/web/demo-core.ts`: pretend `nmem`, Mem plugin check, speakers,
   adb, agent sessions and computer name, so no shot shows this machine.
 
+## 待办来源 / To-do sources (D341)
+
+A new pane after 账号 / Accounts, for the developer with issues and the consumer with an Obsidian vault;
+the fresh user sees what it is and nothing happens until something is added. Each source is one group
+(its own mark, whose or which folder, counts apart), two segments (新的来了, 做完以后), the standing line,
+a quiet 移除 that asks in place; then 还能加上 (the home's gh, the vaults Obsidian lists there, a folder by
+path, Jira coming soon). Flows and words: `task-sources.md` §6.
+
 ## Not done
 
 - A comprehension pass with people on the said lines and on a row with no state word.

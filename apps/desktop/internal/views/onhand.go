@@ -479,6 +479,7 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 			a.heading(c, autospace(q), t.LG).LineHeight(1.4).MaxLines(4).Tooltip(q)
 		}
 		if d != nil {
+			a.todoAskBody(c, d) // D341: the comment as it goes out, or the to-do's chip
 			a.defaultRow(c, d)
 			a.decisionButtons(c, d, decisionStyle{height: 40, quietBg: t.NeedsYou.Surface})
 		}

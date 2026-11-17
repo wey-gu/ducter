@@ -20,6 +20,7 @@ import { limitAt, WaitHow, waitLine } from "./work.tsx";
 import { clock, day, shownDeviceName, span, stamp, when } from "./format.ts";
 import { Component, type JSX } from "preact";
 import { Btn, Chev, Facts } from "./controls.tsx";
+import { SourceChip } from "./todos.tsx";
 import { escArmed } from "./esc.ts";
 import { A, effortWord } from "./app.ts";
 import { duration, harnessName, modelName } from "./format.ts";
@@ -1510,6 +1511,8 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
           )}
         </span>
       )}
+      {/* D341: the to-do it is bound to: its app's mark and number, opening it there. */}
+      {task.card?.source && <SourceChip src={task.card.source} />}
       {onSwitch && (
         <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={onSwitch}>
           {t("who.switch")}

@@ -12,6 +12,8 @@ import github from "./brand/github.svg" with { type: "text" };
 import gmail from "./brand/gmail.svg" with { type: "text" };
 import googlecalendar from "./brand/googlecalendar.svg" with { type: "text" };
 import imessage from "./brand/imessage.svg" with { type: "text" };
+import jira from "./brand/jira.svg" with { type: "text" };
+import obsidian from "./brand/obsidian.svg" with { type: "text" };
 import oomol from "./brand/oomol.svg" with { type: "text" };
 import raycast from "./brand/raycast.svg" with { type: "text" };
 import slack from "./brand/slack.svg" with { type: "text" };
@@ -22,7 +24,7 @@ import windsurf from "./brand/windsurf.svg" with { type: "text" };
 import zed from "./brand/zed.svg" with { type: "text" };
 
 // The marks; a gradient's id is made unique per drawn copy (BrandMark).
-const SVGS: Record<string, string> = { cline, cursor, discord, gemini, github, gmail, googlecalendar, imessage, oomol, raycast, slack, telegram, tuwa, wechat, windsurf, zed };
+const SVGS: Record<string, string> = { cline, cursor, discord, gemini, github, gmail, googlecalendar, imessage, jira, obsidian, oomol, raycast, slack, telegram, tuwa, wechat, windsurf, zed };
 
 let seq = 0;
 

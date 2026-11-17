@@ -211,6 +211,7 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 			if when != "" {
 				ui.Text(c, when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
 			}
+			a.todoHead(c, task) // D341: the to-do it is bound to, and its state word
 		})
 		a.taskWho(c, task)
 	})

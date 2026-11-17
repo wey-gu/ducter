@@ -69,6 +69,8 @@ export function resolvePlace(
   // resolves ~ and checks the repo (system.md "Workers").
   const device = (explicit as { device?: string } | undefined)?.device?.trim();
   if (explicit && device && device !== "local") return { ...explicit, device } as Place;
+  // A repo or folder named without its path (a model wrote {"kind":"repo"} alone): found from the words below.
+  if (explicit && ((explicit.kind === "repo" && typeof explicit.repoPath !== "string") || (explicit.kind === "folder" && typeof explicit.path !== "string"))) explicit = undefined;
   if (explicit && explicit.kind !== "none") {
     if (explicit.kind === "repo") {
       return { ...explicit, device: explicit.device || "local", repoPath: expandHome(explicit.repoPath, fs.home) };

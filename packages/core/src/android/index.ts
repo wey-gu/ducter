@@ -167,13 +167,14 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
     return where === "local" ? live : (remoteFor(where)?.live ?? live);
   };
 
-  // needs.phone from the task's opening (kept on the task_open event), read once per task.
+  // needs.phone from the task's latest opening (a task_open event: the briefed one, a move or a
+  // rename states it again), kept until the next one. Not the first: an early open's can be empty.
   // D251: which phone ("mine", "ducter", or "any" for the legacy true); "" when it needs none.
   const needs = new Map<string, "mine" | "ducter" | "any" | "">();
   const wantsPhone = (taskId: string) => {
     let v = needs.get(taskId);
     if (v === undefined) {
-      const open = o.log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as Bodies["task_open"] | undefined;
+      const open = o.log.read({ stream: `task:${taskId}`, limit: 1, kinds: ["task_open"] })[0]?.body as Bodies["task_open"] | undefined;
       v = whichPhone(open?.needs) ?? "";
       needs.set(taskId, v);
     }
@@ -226,6 +227,14 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
       if (a && !holds.has(taskId) && ducters(taskId)) holds.set(taskId, deviceFor(taskId).hold(`task ${taskId}`));
       return a;
     },
+    whyNot: (taskId) => {
+      if (!wantsPhone(taskId)) return "this task's work wasn't opened as phone work, so it has no phone (the partner opens a task with a phone when the work needs one)";
+      const c = o.tasks.get(taskId);
+      if (!c || !ACTIVE.has(c.attention)) return "this task isn't working right now, so it can't use the phone";
+      const where = computerOf(taskId);
+      const mac = where === "local" ? o.deviceName() : (workerOf(where)?.name ?? where);
+      return `no phone is ready for this task: none of the user's own phones is lent through 用这台手机 / Use this phone, and Ducter's own phone isn't set up on ${mac} (用手机 / Use a phone, in Devices)`;
+    },
     blind: (taskId) => (taskId && handsetOf(taskId) ? o.handsets!()!.blind(taskId) : taskId && !ducters(taskId) ? false : (taskId ? liveForTask(taskId) : live).blind()),
     tried: (taskId) => void (ducters(taskId) ? liveForTask(taskId).tried(taskId) : undefined),
     note: (taskId, doing) => {
@@ -255,6 +264,7 @@ export function createDucterPhone(o: DucterPhoneOptions): DucterPhone {
   // (opening the card wakes it again: a card's own turn is the person's explicit ask).
   const askTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const unsubscribe = o.log.subscribe((e) => {
+    if (e.kind === "task_open") return void needs.delete((e.body as Bodies["task_open"]).taskId);
     if (e.kind === "decision") {
       const b = e.body as Bodies["decision"];
       if (b.taskId && b.phone?.kind === "user") {

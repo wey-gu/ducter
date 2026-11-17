@@ -1488,13 +1488,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         t.opensHandled++;
         jobId = early.jobId;
         const card = await early.card;
-        if (card && samePlace(place, early.place) && (args.harness ?? "") === (early.who.harness ?? "") && (args.model ?? "") === (early.who.model ?? "")) {
+        // The needs too: they pick the computer and the agent, and say which tools the session
+        // lists from its start (a phone task opened from a head written before its needs had no
+        // phone tools for its whole life: "当前任务没有任何 phone 工具").
+        if (card && samePlace(place, early.place) && (args.harness ?? "") === (early.who.harness ?? "") && (args.model ?? "") === (early.who.model ?? "") && JSON.stringify(parseNeeds(raw.needs) ?? null) === JSON.stringify(early.who.needs ?? null)) {
           early.media(handed);
           early.brief.resolve(brief);
           await claimFor(card);
           return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note };
         }
-        early.brief.reject(new Error("the call names another place")); // dropped; opened below instead
+        early.brief.reject(new Error("the call names another place, agent or needs")); // dropped; opened below instead
       } else if (t) {
         let ack = claimAck(t);
         if (!ack) {

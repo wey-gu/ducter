@@ -142,3 +142,45 @@ test("a turn that never makes the call drops the early task; no head place waits
   expect(fr.opened.map((o) => o.title)).toEqual(["t2"]);
   expect(fc.events.filter((e) => e.kind === "ack")).toHaveLength(2);
 });
+
+// 2026-11-17 (the author's "复测真机借用…" task): the head came before the model wrote needs, the
+// call then said needs.phone, and the early task, opened without it, kept running with no phone
+// tools for its whole life. A call whose needs differ from the head's drops the early task.
+test("a call whose needs the head didn't have drops the early task and opens it with them", async () => {
+  const { fc, fr, partner, user, early } = setup(async (_i, s) => {
+    s.say("好，我来复测。");
+    s.emit({ role: "tool", tool: { name: T }, raw: { kind: "tool_call_started", callId: "c1" } });
+    s.emit({ role: "tool", tool: { name: T, input: { title: "复测真机借用", place: { kind: "repo", repoPath: "~/dev/foo" } } }, raw: { kind: "tool_call_head", callId: "c1" } });
+    await Bun.sleep(5);
+    await fc.callTool("task_open", { title: "复测真机借用", place: { kind: "repo", repoPath: "~/dev/foo" }, needs: { phone: "mine" }, brief: "在 Pixel Fold 上复测借用" });
+    s.end();
+  });
+  user("在我的 Pixel Fold 上复测借用");
+  await partner.idle();
+  await Bun.sleep(5);
+  expect(early).toHaveLength(1);
+  expect(early[0]!.input.needs).toBeUndefined();
+  expect(early[0]!.rejected).toBeDefined();
+  expect(fr.opened).toHaveLength(1);
+  expect(fr.opened[0]!.needs).toEqual({ phone: "mine" });
+  expect(fc.events.filter((e) => e.kind === "ack")).toHaveLength(1);
+});
+
+test("a call with the head's own needs keeps the early task", async () => {
+  const { fc, fr, partner, user, early } = setup(async (_i, s) => {
+    s.say("好。");
+    s.emit({ role: "tool", tool: { name: T }, raw: { kind: "tool_call_started", callId: "c1" } });
+    s.emit({ role: "tool", tool: { name: T, input: { title: "t", needs: { phone: "mine" }, place: { kind: "repo", repoPath: "~/dev/foo" } } }, raw: { kind: "tool_call_head", callId: "c1" } });
+    await Bun.sleep(5);
+    await fc.callTool("task_open", { title: "t", needs: { phone: "mine" }, place: { kind: "repo", repoPath: "~/dev/foo" }, brief: "b" });
+    s.end();
+  });
+  user("do it on my phone");
+  await partner.idle();
+  await Bun.sleep(5);
+  expect(early).toHaveLength(1);
+  expect(early[0]!.input.needs).toEqual({ phone: "mine" });
+  expect(early[0]!.rejected).toBeUndefined();
+  expect(early[0]!.brief).toContain("b");
+  expect(fr.opened).toHaveLength(0);
+});

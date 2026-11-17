@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.0.72
+
+<!-- whats-new
+zh: 待办来源：接上 GitHub 和 Obsidian 的待办
+en: To-do sources: your GitHub issues and Obsidian tasks
+zh: 你对任务说的话，伙伴都看得到
+en: The partner sees what you told a task
+-->
+
+**To-do sources**
+- Settings › To-do sources connects your GitHub issues and Obsidian Tasks. The partner offers
+  what's new and you pick; nothing starts by itself. A task shows where it came from.
+- What the item is stays with GitHub or Obsidian; how it's done stays with Ducter. Commenting
+  on an issue asks first; an Obsidian line is ticked when the task is done.
+
+**The partner**
+- It sees what you said to a task directly, and never offers to undo what you asked for.
+  A card that deletes something never defaults to deleting.
+
+**Moving around**
+- Switching from one task to the next cross-fades in place; the title no longer flies in.
+
+**Android**
+- A failed update is offered again when you reopen the app, says why, and offers the
+  browser instead. Settings can check for this phone's update.
+
+**Your other agents**
+- Only your own home connects to Nowledge Mem by itself; a test home never does.
+
 ## 0.0.71
 
 <!-- whats-new

@@ -19,6 +19,7 @@ import { finished, type Task } from "./store.ts";
 import { registerScreen } from "./workbench-screens.ts";
 
 import { words as byLang } from "@ducter/protocol/src/lang.ts";
+import { SheetFrame } from "./sheet-frame.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -662,64 +663,60 @@ export function PhoneInstallSheet() {
   const dv = (A.devices ?? []).find((d) => d.id === s.device);
   const tm = s.terms;
   return (
-    <>
-      <div class="scrim" onClick={close} />
-      <div class="sheet phone-install" role="dialog" aria-modal="true" aria-label={t("phoneuse.install.title", dv?.name ?? "")}>
-        <div class="grab" />
-        <img class="phone-install-art" src="app/art/ab_phone.webp" alt="" />
-        <h2>{t("phoneuse.install.title", dv?.name ?? "")}</h2>
-        <p class="lede">{t("phoneuse.install.lede")}</p>
-        {!tm ? (
-          <div class="small">{t("conn.connecting")}</div>
-        ) : !tm.ok ? (
-          <div class="dc-note">{tm.reason === "not_mac_arm" ? t("phoneuse.install.unsupported") : t("phoneuse.install.offline", tm.message ?? "")}</div>
-        ) : (
-          <>
-            <dl class="phone-facts">
-              <dt>{t("phoneuse.install.download")}</dt>
-              <dd>{t("phoneuse.install.gb", gb(tm.download))}</dd>
-              <dt>{t("phoneuse.install.disk")}</dt>
-              <dd>{t("phoneuse.install.gb", gb(tm.disk))}</dd>
-              <dt>{t("phoneuse.install.what")}</dt>
-              <dd>{t("phoneuse.install.what.v")}</dd>
-              <dt>{t("phoneuse.install.runs")}</dt>
-              <dd>{t("phoneuse.install.runs.when")}</dd>
-            </dl>
-            <div class="phone-lic">
-              <div class="small">{t("phoneuse.install.licenses")}</div>
-              {(tm.licenses ?? []).map((l) => (
-                <div class="phone-lic-one" key={l.id}>
-                  <button class="phone-lic-head" aria-expanded={open === l.id} onClick={() => setOpen(open === l.id ? undefined : l.id)}>
-                    <span>{byLang(l.title, A.L.lang)}</span>
-                    <small>{open === l.id ? t("phoneuse.install.fold") : t("phoneuse.install.read")}</small>
-                  </button>
-                  {open === l.id && <pre class="phone-lic-text">{l.text}</pre>}
-                </div>
-              ))}
-              <label class="phone-agree">
-                <input type="checkbox" checked={s.accepted} onChange={(e) => ((s.accepted = (e.currentTarget as HTMLInputElement).checked), changed())} />
-                <span>{t("phoneuse.install.agree")}</span>
-              </label>
-            </div>
-            {s.error && <div class="dc-note warn">{s.error}</div>}
-          </>
-        )}
-        <div class="btns">
-          <Btn kind="secondary" label={t("phoneuse.notnow")} onClick={close} />
-          <Btn
-            kind="primary"
-            label={t("phoneuse.install.go")}
-            disabled={!tm?.ok || !s.accepted || s.sending}
-            onClick={() => {
-              s.sending = true;
-              s.error = undefined;
-              send({ t: "phone_install", device: s.device, accepted: (tm?.licenses ?? []).map((l) => ({ id: l.id, sha256: l.sha256 })) });
-              changed();
-            }}
-          />
-        </div>
+    <SheetFrame label={t("phoneuse.install.title", dv?.name ?? "")} class="phone-install" onScrim={close}>
+      <img class="phone-install-art" src="app/art/ab_phone.webp" alt="" />
+      <h2>{t("phoneuse.install.title", dv?.name ?? "")}</h2>
+      <p class="lede">{t("phoneuse.install.lede")}</p>
+      {!tm ? (
+        <div class="small">{t("conn.connecting")}</div>
+      ) : !tm.ok ? (
+        <div class="dc-note">{tm.reason === "not_mac_arm" ? t("phoneuse.install.unsupported") : t("phoneuse.install.offline", tm.message ?? "")}</div>
+      ) : (
+        <>
+          <dl class="phone-facts">
+            <dt>{t("phoneuse.install.download")}</dt>
+            <dd>{t("phoneuse.install.gb", gb(tm.download))}</dd>
+            <dt>{t("phoneuse.install.disk")}</dt>
+            <dd>{t("phoneuse.install.gb", gb(tm.disk))}</dd>
+            <dt>{t("phoneuse.install.what")}</dt>
+            <dd>{t("phoneuse.install.what.v")}</dd>
+            <dt>{t("phoneuse.install.runs")}</dt>
+            <dd>{t("phoneuse.install.runs.when")}</dd>
+          </dl>
+          <div class="phone-lic">
+            <div class="small">{t("phoneuse.install.licenses")}</div>
+            {(tm.licenses ?? []).map((l) => (
+              <div class="phone-lic-one" key={l.id}>
+                <button class="phone-lic-head" aria-expanded={open === l.id} onClick={() => setOpen(open === l.id ? undefined : l.id)}>
+                  <span>{byLang(l.title, A.L.lang)}</span>
+                  <small>{open === l.id ? t("phoneuse.install.fold") : t("phoneuse.install.read")}</small>
+                </button>
+                {open === l.id && <pre class="phone-lic-text">{l.text}</pre>}
+              </div>
+            ))}
+            <label class="phone-agree">
+              <input type="checkbox" checked={s.accepted} onChange={(e) => ((s.accepted = (e.currentTarget as HTMLInputElement).checked), changed())} />
+              <span>{t("phoneuse.install.agree")}</span>
+            </label>
+          </div>
+          {s.error && <div class="dc-note warn">{s.error}</div>}
+        </>
+      )}
+      <div class="btns">
+        <Btn kind="secondary" label={t("phoneuse.notnow")} onClick={close} />
+        <Btn
+          kind="primary"
+          label={t("phoneuse.install.go")}
+          disabled={!tm?.ok || !s.accepted || s.sending}
+          onClick={() => {
+            s.sending = true;
+            s.error = undefined;
+            send({ t: "phone_install", device: s.device, accepted: (tm?.licenses ?? []).map((l) => ({ id: l.id, sha256: l.sha256 })) });
+            changed();
+          }}
+        />
       </div>
-    </>
+    </SheetFrame>
   );
 }
 

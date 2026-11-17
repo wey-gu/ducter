@@ -2,7 +2,7 @@
 // scripted stand-in answers the read-only checks. Noted lines are seeded into the Log across a few
 // days (realistic, not anyone's own memories). For pictures, web and phone.
 //   DUCTER_PORT=7864 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_MEM=newer bun apps/web/demo-memory.ts
-// D329: closed (the Nowledge Mem app on hel isn't open; the home can open it).
+// D329: closed (the Nowledge Mem app on home-server isn't open; the home can open it).
 // DEMO_MEM: newer (connected, Bridge on, Mem says 0.10.121 is out; pipx copy) · on (connected, up to
 //   date) · empty (connected, nothing noted yet) · off (switched off) · fresh (no nmem on the home) ·
 //   sign_in (nmem there, not signed in) · old (0.10.116 by pipx: too old for Bridge)
@@ -49,7 +49,7 @@ const exec = async () => new Promise<never>(() => {}); // a tap stays "updating�
 
 let shift = 0;
 const clock = { now: () => Date.now() - shift, setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
-const core = startCore({ ooSource: noOo, clock, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "hel" }, bridgeLink: { run: run as never, env: {}, sys, exec, ...(want === "closed" ? { memApp: () => "/Applications/Nowledge Mem.app" } : {}) } as never });
+const core = startCore({ ooSource: noOo, clock, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "home-server" }, bridgeLink: { run: run as never, env: {}, sys, exec, ...(want === "closed" ? { memApp: () => "/Applications/Nowledge Mem.app" } : {}) } as never });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 if (want !== "fresh" && want !== "sign_in") core.persona.mem = { agentId: "ducter", owned: true };

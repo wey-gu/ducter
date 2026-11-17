@@ -7,6 +7,7 @@
 import type { Candidate } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
 import { useSheetMotion } from "./sheetmotion.ts";
+import { SheetFrame } from "./sheet-frame.tsx";
 import { A, agentKey, effortWord, EVERY_HOURS, ntGitHubish, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { Btn, Choice, Facts, MenuRow, Pill, Seg } from "./controls.tsx";
@@ -117,7 +118,7 @@ function Tune({ c }: { c: Candidate }) {
 export function NewTaskSheet() {
   const nt = A.nt;
   // D290: the sheet goes back down the way it came; on a phone it follows the finger down.
-  const { sheet: sheetEl, scrim, close } = useSheetMotion(() => ((A.sheet = null), A.changed()));
+  const { sheet: sheetEl, body: sheetBody, scrim, close } = useSheetMotion(() => ((A.sheet = null), A.changed()));
   const ref = useRef<HTMLTextAreaElement>(null);
   const condRef = useRef<HTMLInputElement>(null);
   // D206: a picture dropped or pasted on the What row goes to the task with the words.
@@ -182,247 +183,243 @@ export function NewTaskSheet() {
     if (k === "when" || k === "until") requestAnimationFrame(() => condRef.current?.focus());
   };
   return (
-    <>
-      <div class="scrim" ref={scrim} onClick={close} />
-      <div class="sheet newtask" ref={sheetEl} role="dialog" aria-modal="true" aria-label={t("newtask.title")}>
-        <div class="grab" />
-        <h2>{t("newtask.title")}</h2>
-        <div class="nt-what" ref={what}>
-          <DropHint on={dropping} />
-          <textarea
-            ref={ref}
-            id="nt-words"
-            rows={4}
-            value={nt.words}
-            aria-label={t("newtask.what")}
-            placeholder={t("newtask.placeholder")}
-            onInput={(e) => ((nt.words = (e.target as HTMLTextAreaElement).value), (nt.err = ""), (nt.started = ""), A.changed())}
-          />
-          <Tray where="new" />
-          {/* D285: 带着它开新任务 / New task from this: what that task found goes with the words. */}
-          {nt.from && <SeedChip />}
-          <div class="nt-what-foot">
-            <div class="small sub">{t("newtask.verbatim")}</div>
-            <AddPictures where="new" />
-          </div>
-        </div>
-        <div class="nt-pills">
-          <Pill label={placeName() ?? ""} about={t("newtask.where")} open={nt.list === "place"} onClick={() => A.togglePlaces()}>
-            <Folder />
-            <b>{placeName()}</b>
-          </Pill>
-          {branch && (
-            <Pill label={branch} about={t("newtask.branch.title")} open={!!nt.branchOpen} onClick={() => ((nt.list = ""), (nt.computerOpen = false), (nt.branchOpen = !nt.branchOpen), A.changed())}>
-              <Branch />
-              <code>{branch}</code>
-            </Pill>
-          )}
-          {comp && (
-            <Pill label={comp.name} about={t("newtask.computer")} open={!!nt.computerOpen} onClick={() => ((nt.list = ""), (nt.branchOpen = false), (nt.computerOpen = !nt.computerOpen), A.changed())}>
-              <b>{comp.name}</b>
-            </Pill>
-          )}
-          {!opts ? (
-            <span class="nt-wait small sub">{t("newtask.loading")}</span>
-          ) : !who && !elsewhere.size ? (
-            <span class="nt-wait small sub">{t("newtask.nobody")}</span>
-          ) : !who ? (
-            <Pill label={t("newtask.pickwho")} about={t("newtask.who")} open={nt.list === "who"} onClick={() => toggle("who")}>
-              <b>{t("newtask.pickwho")}</b>
-            </Pill>
-          ) : (
-            <Pill label={whoLabel(who)} about={t("newtask.who")} open={nt.list === "who"} onClick={() => toggle("who")}>
-              <b>{whoParts(who)[0]}</b>
-              {whoParts(who)
-                .slice(1)
-                .map((p) => (
-                  <span key={p} class="pill-fact">
-                    {p}
-                  </span>
-                ))}
-              {!picked && !A.ntSendTune(who).model && !A.ntSendTune(who).effort && <Suggested />}
-            </Pill>
-          )}
-          <Pill label={whenLabel()} about={t("newtask.when")} open={nt.list === "when"} onClick={() => toggle("when")}>
-            <Clock />
-            <b>{whenLabel()}</b>
-          </Pill>
-        </div>
-        {nt.list === "place" && (
-          <div class="nt-list" role="radiogroup" aria-label={t("newtask.where")}>
-            <small>{only ? t("newtask.agent.needsfolder", onlyName) : t("newtask.where")}</small>
-            {folders.map((p) => (
-              <MenuRow key={placeKey(p.place)} label={placeName(p) ?? ""} on={placeKey(p.place) === placeKey(chosen.place)} onClick={() => A.pickPlace(p)}>
-                <Folder />
-                <span class="mr-t">
-                  <b>{placeName(p)}</b>
-                  {placeLine(p).path && <Facts class="mr-place" items={[<code>{placeLine(p).path}</code>, placeLine(p).computer && <small>{placeLine(p).computer}</small>]} />}
-                </span>
-              </MenuRow>
-            ))}
-            {/* D203, D204: nothing there yet (a first run): say so, and offer the ways to get one, never No folder alone. */}
-            {!folders.length && <div class="nt-empty small sub">{only ? t("newtask.find.empty", onlyName) : t("newtask.empty")}</div>}
-            {/* D272: one 加一个文件夹… per computer that can take one; its three ways open in place. */}
-            {finders.map((d) => (
-              <MenuRow key={`add:${d.id}`} label={named ? spoken(A.L, t("newtask.add"), t("newtask.find.on", d.name)) : t("newtask.add")} on={false} onClick={() => A.ntAddOpen(d.id)}>
-                <Plus />
-                <span class="mr-t">
-                  <b>{t("newtask.add")}</b>
-                  {named && <small>{t("newtask.find.on", d.name)}</small>}
-                </span>
-              </MenuRow>
-            ))}
-            {olds.map((d) => (
-              <MenuRow key={`old:${d.id}`} label={t("newtask.old.row", d.name)} on={false} off why={t("newtask.old.why")} onClick={() => {}}>
-                <Plus />
-                <span class="mr-t">
-                  <b>{t("newtask.old.row", d.name)}</b>
-                  <small>{t("newtask.old.why")}</small>
-                </span>
-              </MenuRow>
-            ))}
-            {only ? (
-              <MenuRow key="none" label={spoken(A.L, t("newtask.nowhere"), t("newtask.agent.elsewhere", onlyName))} on={false} onClick={() => A.pickPlace({ place: { kind: "none" }, name: "" })}>
-                <Folder faint />
-                <span class="mr-t">
-                  <b>{t("newtask.nowhere")}</b>
-                  <small>{t("newtask.agent.elsewhere", onlyName)}</small>
-                </span>
-              </MenuRow>
-            ) : (
-              <MenuRow key="none" label={t("newtask.nowhere")} on={chosen.place.kind === "none"} onClick={() => A.pickPlace({ place: { kind: "none" }, name: "" })}>
-                <Folder faint />
-                <span class="mr-t">
-                  <b>{t("newtask.nowhere")}</b>
-                </span>
-              </MenuRow>
-            )}
-          </div>
-        )}
-        {nt.list === "browse" && nt.browse && <FolderBrowser />}
-        {nt.list === "clone" && nt.clone && <CloneField />}
-        {nt.list === "add" && nt.add && <AddPanel />}
-        {nt.list === "newfolder" && nt.newFolder && <NewFolderField />}
-        {nt.list === "gh" && nt.ghPanel && <SignInPanel />}
-        {nt.branchOpen && chosen.branches && (
-          <div class="nt-list" role="radiogroup" aria-label={t("newtask.branch.title")}>
-            <small>{t("newtask.branch.title")}</small>
-            {chosen.branches.map((b) => (
-              <MenuRow key={b} label={b} on={b === branch} onClick={() => ((nt.branch = b === chosen.defaultBranch ? "" : b), (nt.branchOpen = false), A.changed())}>
-                <code class="grow">{b}</code>
-                {b === chosen.defaultBranch && <small>{t("newtask.branch.default")}</small>}
-              </MenuRow>
-            ))}
-          </div>
-        )}
-        {nt.computerOpen && comp && (
-          <div class="nt-list" role="radiogroup" aria-label={t("newtask.computer")}>
-            <small>{t("newtask.computer")}</small>
-            {computers().map((d) => (
-              <MenuRow key={d.id} label={d.name} on={d.id === compId} off={d.state === "unreachable"} onClick={() => ((nt.computer = d.id === suggested ? "" : d.id), (nt.computerOpen = false), (nt.pick = ""), A.changed())}>
-                <span class="mr-t">
-                  <b>
-                    {d.name} {d.id === suggested && <Suggested />}
-                  </b>
-                  <small>{computerApart(d)}</small>
-                </span>
-              </MenuRow>
-            ))}
-          </div>
-        )}
-        {nt.list === "who" && (who || elsewhere.size > 0) && (
-          <div class="nt-list" role="radiogroup" aria-label={t("newtask.who")}>
-            <small>{t("newtask.who")}</small>
-            {whoList.map((c) => {
-              const k = agentKey(c);
-              const away = elsewhere.has(k);
-              const off = !!c.blocked && !away;
-              const best = !!top && agentKey(top) === k;
-              const on = !off && !!who && k === agentKey(who);
-              // D206: with pictures on the card, an agent that can't see them says so.
-              const line = withPics && c.noImages && !off ? t("media.noImages") : away ? awayLine(c) : <Facts items={candFacts(c)} />;
-              const name = harnessName(c.harness);
-              return (
-                <div key={k} class="nt-agent">
-                  <MenuRow label={name} on={on} off={off} why={off ? candReason(c) : undefined} onClick={() => A.pickAgent(c)}>
-                    <Coin harness={c.harness} size={28} off={off} />
-                    <span class="mr-t">
-                      <b>
-                        {name} {away && <small>{t("newtask.agent.elsewhere", c.deviceName ?? "")}</small>} {best && <Suggested />}
-                      </b>
-                      {line && <small>{line}</small>}
-                    </span>
-                  </MenuRow>
-                  {on && <Tune c={c} />}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {nt.list === "when" && (
-          <div class="nt-list" role="radiogroup" aria-label={t("newtask.when")}>
-            <small>{t("newtask.when")}</small>
-            {WHEN_KINDS.map((k) => (
-              <MenuRow key={k || "now"} label={t(`newtask.when.${k || "now"}`)} on={(nt.when ?? "") === k} onClick={() => setWhen(k)}>
-                <span class="mr-t">
-                  <b>{t(`newtask.when.${k || "now"}`)}</b>
-                  <small>{t(`newtask.when.${k || "now"}.help`)}</small>
-                </span>
-              </MenuRow>
-            ))}
-          </div>
-        )}
-        {nt.when === "at" && (
-          <div class="nt-detail">
-            <Seg label={t("newtask.when.at")} value={nt.atDay ?? 1} options={[0, 1, 2].map((v) => ({ v, label: t(`newtask.day.${v}`) }))} onPick={(v) => ((nt.atDay = v), A.changed())} />
-            <TimeField />
-          </div>
-        )}
-        {nt.when === "every" && (
-          <div class="nt-detail">
-            <Seg label={t("newtask.when.every")} value={nt.every ?? 0} options={["day", "weekday", "week", "hours"].map((k, v) => ({ v, label: t(`newtask.every.${k}`) }))} onPick={(v) => ((nt.every = v), A.changed())} />
-            {nt.every === 2 && (
-              <Seg label={t("newtask.every.week")} value={nt.weekday ?? 1} options={[1, 2, 3, 4, 5, 6, 0].map((v) => ({ v, label: t(`newtask.weekday.short.${v}`) }))} onPick={(v) => ((nt.weekday = v), A.changed())} />
-            )}
-            {nt.every === 3 ? (
-              <Seg label={t("newtask.every.hours")} value={nt.hours ?? 1} options={EVERY_HOURS.map((h, v) => ({ v, label: t("newtask.hours", h) }))} onPick={(v) => ((nt.hours = v), A.changed())} />
-            ) : (
-              <TimeField />
-            )}
-          </div>
-        )}
-        {(nt.when === "when" || nt.when === "until") && (
-          <label class="nt-detail nt-cond">
-            <span>{t(`newtask.cond.label.${nt.when}`)}</span>
-            <input
-              ref={condRef}
-              class="nt-field"
-              value={nt.condition ?? ""}
-              placeholder={t(`newtask.cond.${nt.when}`)}
-              onInput={(e) => ((nt.condition = (e.target as HTMLInputElement).value), (nt.err = ""), A.changed())}
-              onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && (e.preventDefault(), A.startNewTask())}
-            />
-          </label>
-        )}
-        {A.newTaskError() ? (
-          <div class="nt-err" role="status">
-            {A.newTaskError()}
-          </div>
-        ) : nt.started ? (
-          <div class="nt-started" role="status">
-            <Check />
-            <span>{nt.started}</span>
-            {nt.startedTask && <Btn kind="text" size="sm" label={t("newtask.open")} about={nt.started} onClick={() => ((A.sheet = null), A.go({ name: "task", id: nt.startedTask! }))} />}
-          </div>
-        ) : (
-          !coarse() && <Facts class="nt-keys small sub" items={[t("newtask.keys", start), t("newtask.keys.more")]} />
-        )}
-        <div class="btns">
-          <Btn kind="text" label={t("newtask.cancel")} onClick={close} />
-          <Btn kind="primary" grow label={nt.sending ? t("newtask.starting") : start} disabled={!!nt.sending} onClick={() => A.startNewTask()} />
+    <SheetFrame label={t("newtask.title")} class="newtask" frame={sheetEl} body={sheetBody} scrim={scrim} onScrim={close}>
+      <h2>{t("newtask.title")}</h2>
+      <div class="nt-what" ref={what}>
+        <DropHint on={dropping} />
+        <textarea
+          ref={ref}
+          id="nt-words"
+          rows={4}
+          value={nt.words}
+          aria-label={t("newtask.what")}
+          placeholder={t("newtask.placeholder")}
+          onInput={(e) => ((nt.words = (e.target as HTMLTextAreaElement).value), (nt.err = ""), (nt.started = ""), A.changed())}
+        />
+        <Tray where="new" />
+        {/* D285: 带着它开新任务 / New task from this: what that task found goes with the words. */}
+        {nt.from && <SeedChip />}
+        <div class="nt-what-foot">
+          <div class="small sub">{t("newtask.verbatim")}</div>
+          <AddPictures where="new" />
         </div>
       </div>
-    </>
+      <div class="nt-pills">
+        <Pill label={placeName() ?? ""} about={t("newtask.where")} open={nt.list === "place"} onClick={() => A.togglePlaces()}>
+          <Folder />
+          <b>{placeName()}</b>
+        </Pill>
+        {branch && (
+          <Pill label={branch} about={t("newtask.branch.title")} open={!!nt.branchOpen} onClick={() => ((nt.list = ""), (nt.computerOpen = false), (nt.branchOpen = !nt.branchOpen), A.changed())}>
+            <Branch />
+            <code>{branch}</code>
+          </Pill>
+        )}
+        {comp && (
+          <Pill label={comp.name} about={t("newtask.computer")} open={!!nt.computerOpen} onClick={() => ((nt.list = ""), (nt.branchOpen = false), (nt.computerOpen = !nt.computerOpen), A.changed())}>
+            <b>{comp.name}</b>
+          </Pill>
+        )}
+        {!opts ? (
+          <span class="nt-wait small sub">{t("newtask.loading")}</span>
+        ) : !who && !elsewhere.size ? (
+          <span class="nt-wait small sub">{t("newtask.nobody")}</span>
+        ) : !who ? (
+          <Pill label={t("newtask.pickwho")} about={t("newtask.who")} open={nt.list === "who"} onClick={() => toggle("who")}>
+            <b>{t("newtask.pickwho")}</b>
+          </Pill>
+        ) : (
+          <Pill label={whoLabel(who)} about={t("newtask.who")} open={nt.list === "who"} onClick={() => toggle("who")}>
+            <b>{whoParts(who)[0]}</b>
+            {whoParts(who)
+              .slice(1)
+              .map((p) => (
+                <span key={p} class="pill-fact">
+                  {p}
+                </span>
+              ))}
+            {!picked && !A.ntSendTune(who).model && !A.ntSendTune(who).effort && <Suggested />}
+          </Pill>
+        )}
+        <Pill label={whenLabel()} about={t("newtask.when")} open={nt.list === "when"} onClick={() => toggle("when")}>
+          <Clock />
+          <b>{whenLabel()}</b>
+        </Pill>
+      </div>
+      {nt.list === "place" && (
+        <div class="nt-list" role="radiogroup" aria-label={t("newtask.where")}>
+          <small>{only ? t("newtask.agent.needsfolder", onlyName) : t("newtask.where")}</small>
+          {folders.map((p) => (
+            <MenuRow key={placeKey(p.place)} label={placeName(p) ?? ""} on={placeKey(p.place) === placeKey(chosen.place)} onClick={() => A.pickPlace(p)}>
+              <Folder />
+              <span class="mr-t">
+                <b>{placeName(p)}</b>
+                {placeLine(p).path && <Facts class="mr-place" items={[<code>{placeLine(p).path}</code>, placeLine(p).computer && <small>{placeLine(p).computer}</small>]} />}
+              </span>
+            </MenuRow>
+          ))}
+          {/* D203, D204: nothing there yet (a first run): say so, and offer the ways to get one, never No folder alone. */}
+          {!folders.length && <div class="nt-empty small sub">{only ? t("newtask.find.empty", onlyName) : t("newtask.empty")}</div>}
+          {/* D272: one 加一个文件夹… per computer that can take one; its three ways open in place. */}
+          {finders.map((d) => (
+            <MenuRow key={`add:${d.id}`} label={named ? spoken(A.L, t("newtask.add"), t("newtask.find.on", d.name)) : t("newtask.add")} on={false} onClick={() => A.ntAddOpen(d.id)}>
+              <Plus />
+              <span class="mr-t">
+                <b>{t("newtask.add")}</b>
+                {named && <small>{t("newtask.find.on", d.name)}</small>}
+              </span>
+            </MenuRow>
+          ))}
+          {olds.map((d) => (
+            <MenuRow key={`old:${d.id}`} label={t("newtask.old.row", d.name)} on={false} off why={t("newtask.old.why")} onClick={() => {}}>
+              <Plus />
+              <span class="mr-t">
+                <b>{t("newtask.old.row", d.name)}</b>
+                <small>{t("newtask.old.why")}</small>
+              </span>
+            </MenuRow>
+          ))}
+          {only ? (
+            <MenuRow key="none" label={spoken(A.L, t("newtask.nowhere"), t("newtask.agent.elsewhere", onlyName))} on={false} onClick={() => A.pickPlace({ place: { kind: "none" }, name: "" })}>
+              <Folder faint />
+              <span class="mr-t">
+                <b>{t("newtask.nowhere")}</b>
+                <small>{t("newtask.agent.elsewhere", onlyName)}</small>
+              </span>
+            </MenuRow>
+          ) : (
+            <MenuRow key="none" label={t("newtask.nowhere")} on={chosen.place.kind === "none"} onClick={() => A.pickPlace({ place: { kind: "none" }, name: "" })}>
+              <Folder faint />
+              <span class="mr-t">
+                <b>{t("newtask.nowhere")}</b>
+              </span>
+            </MenuRow>
+          )}
+        </div>
+      )}
+      {nt.list === "browse" && nt.browse && <FolderBrowser />}
+      {nt.list === "clone" && nt.clone && <CloneField />}
+      {nt.list === "add" && nt.add && <AddPanel />}
+      {nt.list === "newfolder" && nt.newFolder && <NewFolderField />}
+      {nt.list === "gh" && nt.ghPanel && <SignInPanel />}
+      {nt.branchOpen && chosen.branches && (
+        <div class="nt-list" role="radiogroup" aria-label={t("newtask.branch.title")}>
+          <small>{t("newtask.branch.title")}</small>
+          {chosen.branches.map((b) => (
+            <MenuRow key={b} label={b} on={b === branch} onClick={() => ((nt.branch = b === chosen.defaultBranch ? "" : b), (nt.branchOpen = false), A.changed())}>
+              <code class="grow">{b}</code>
+              {b === chosen.defaultBranch && <small>{t("newtask.branch.default")}</small>}
+            </MenuRow>
+          ))}
+        </div>
+      )}
+      {nt.computerOpen && comp && (
+        <div class="nt-list" role="radiogroup" aria-label={t("newtask.computer")}>
+          <small>{t("newtask.computer")}</small>
+          {computers().map((d) => (
+            <MenuRow key={d.id} label={d.name} on={d.id === compId} off={d.state === "unreachable"} onClick={() => ((nt.computer = d.id === suggested ? "" : d.id), (nt.computerOpen = false), (nt.pick = ""), A.changed())}>
+              <span class="mr-t">
+                <b>
+                  {d.name} {d.id === suggested && <Suggested />}
+                </b>
+                <small>{computerApart(d)}</small>
+              </span>
+            </MenuRow>
+          ))}
+        </div>
+      )}
+      {nt.list === "who" && (who || elsewhere.size > 0) && (
+        <div class="nt-list" role="radiogroup" aria-label={t("newtask.who")}>
+          <small>{t("newtask.who")}</small>
+          {whoList.map((c) => {
+            const k = agentKey(c);
+            const away = elsewhere.has(k);
+            const off = !!c.blocked && !away;
+            const best = !!top && agentKey(top) === k;
+            const on = !off && !!who && k === agentKey(who);
+            // D206: with pictures on the card, an agent that can't see them says so.
+            const line = withPics && c.noImages && !off ? t("media.noImages") : away ? awayLine(c) : <Facts items={candFacts(c)} />;
+            const name = harnessName(c.harness);
+            return (
+              <div key={k} class="nt-agent">
+                <MenuRow label={name} on={on} off={off} why={off ? candReason(c) : undefined} onClick={() => A.pickAgent(c)}>
+                  <Coin harness={c.harness} size={28} off={off} />
+                  <span class="mr-t">
+                    <b>
+                      {name} {away && <small>{t("newtask.agent.elsewhere", c.deviceName ?? "")}</small>} {best && <Suggested />}
+                    </b>
+                    {line && <small>{line}</small>}
+                  </span>
+                </MenuRow>
+                {on && <Tune c={c} />}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {nt.list === "when" && (
+        <div class="nt-list" role="radiogroup" aria-label={t("newtask.when")}>
+          <small>{t("newtask.when")}</small>
+          {WHEN_KINDS.map((k) => (
+            <MenuRow key={k || "now"} label={t(`newtask.when.${k || "now"}`)} on={(nt.when ?? "") === k} onClick={() => setWhen(k)}>
+              <span class="mr-t">
+                <b>{t(`newtask.when.${k || "now"}`)}</b>
+                <small>{t(`newtask.when.${k || "now"}.help`)}</small>
+              </span>
+            </MenuRow>
+          ))}
+        </div>
+      )}
+      {nt.when === "at" && (
+        <div class="nt-detail">
+          <Seg label={t("newtask.when.at")} value={nt.atDay ?? 1} options={[0, 1, 2].map((v) => ({ v, label: t(`newtask.day.${v}`) }))} onPick={(v) => ((nt.atDay = v), A.changed())} />
+          <TimeField />
+        </div>
+      )}
+      {nt.when === "every" && (
+        <div class="nt-detail">
+          <Seg label={t("newtask.when.every")} value={nt.every ?? 0} options={["day", "weekday", "week", "hours"].map((k, v) => ({ v, label: t(`newtask.every.${k}`) }))} onPick={(v) => ((nt.every = v), A.changed())} />
+          {nt.every === 2 && (
+            <Seg label={t("newtask.every.week")} value={nt.weekday ?? 1} options={[1, 2, 3, 4, 5, 6, 0].map((v) => ({ v, label: t(`newtask.weekday.short.${v}`) }))} onPick={(v) => ((nt.weekday = v), A.changed())} />
+          )}
+          {nt.every === 3 ? (
+            <Seg label={t("newtask.every.hours")} value={nt.hours ?? 1} options={EVERY_HOURS.map((h, v) => ({ v, label: t("newtask.hours", h) }))} onPick={(v) => ((nt.hours = v), A.changed())} />
+          ) : (
+            <TimeField />
+          )}
+        </div>
+      )}
+      {(nt.when === "when" || nt.when === "until") && (
+        <label class="nt-detail nt-cond">
+          <span>{t(`newtask.cond.label.${nt.when}`)}</span>
+          <input
+            ref={condRef}
+            class="nt-field"
+            value={nt.condition ?? ""}
+            placeholder={t(`newtask.cond.${nt.when}`)}
+            onInput={(e) => ((nt.condition = (e.target as HTMLInputElement).value), (nt.err = ""), A.changed())}
+            onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && (e.preventDefault(), A.startNewTask())}
+          />
+        </label>
+      )}
+      {A.newTaskError() ? (
+        <div class="nt-err" role="status">
+          {A.newTaskError()}
+        </div>
+      ) : nt.started ? (
+        <div class="nt-started" role="status">
+          <Check />
+          <span>{nt.started}</span>
+          {nt.startedTask && <Btn kind="text" size="sm" label={t("newtask.open")} about={nt.started} onClick={() => ((A.sheet = null), A.go({ name: "task", id: nt.startedTask! }))} />}
+        </div>
+      ) : (
+        !coarse() && <Facts class="nt-keys small sub" items={[t("newtask.keys", start), t("newtask.keys.more")]} />
+      )}
+      <div class="btns">
+        <Btn kind="text" label={t("newtask.cancel")} onClick={close} />
+        <Btn kind="primary" grow label={nt.sending ? t("newtask.starting") : start} disabled={!!nt.sending} onClick={() => A.startNewTask()} />
+      </div>
+    </SheetFrame>
   );
 }
 

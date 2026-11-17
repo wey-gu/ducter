@@ -1,6 +1,6 @@
 // research/110: what the iOS Simulator walk found in the stylesheet, kept from coming back.
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
@@ -144,6 +144,18 @@ describe("research/123: the 0.0.69 Settings panes on the iPhone", () => {
   test("an own-number step's body is not indented twice inside its block", () => {
     // As specific as `.set-page.pushed .own-body` (52 px), which otherwise wins.
     expect(blocks(".g-block > .own-body, .set-page.pushed .g-block > .own-body").join("")).toMatch(/padding:\s*0/);
+  });
+  test("a sheet is a rounded frame that clips, around a body that scrolls (iOS drew past the top edge)", () => {
+    const frame = blocks(".sheet-frame").join("");
+    expect(frame).toMatch(/overflow:\s*hidden/);
+    expect(frame).toMatch(/position:\s*fixed/);
+    const body = blocks(".sheet").join("");
+    expect(body).toMatch(/overflow-y:\s*auto/);
+    expect(body).not.toMatch(/position:\s*fixed/);
+    // Every sheet's markup comes from the one component.
+    const dir = join(import.meta.dir, "../src");
+    for (const f of readdirSync(dir).filter((x: string) => /\.tsx$/.test(x) && x !== "sheet-frame.tsx"))
+      expect(readFileSync(join(dir, f), "utf8"), f).not.toMatch(/class=["{`]+sheet[ "`]/);
   });
   test("怎么装 inside a setup step is the quiet 44-tall disclosure", () => {
     expect(blocks(".chat-step .mem-more summary").join("")).toMatch(/min-height:\s*44px/);

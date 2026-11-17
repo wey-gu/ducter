@@ -2707,7 +2707,11 @@ a {
   z-index: 20;
   animation: fade 200ms var(--ease);
 }
-.sheet {
+/* A sheet is a frame that keeps its rounded shape and moves (rise, drag, way out: D290), with the
+   grab on it, and a body (.sheet) inside that scrolls. On iOS a fixed, rounded scroller drew its
+   content past its top edge at the end of a scroll; the frame's overflow clips its child scroller
+   (research/123, sheet-frame.tsx). */
+.sheet-frame {
   position: fixed;
   left: 0;
   right: 0;
@@ -2718,40 +2722,53 @@ a {
   background: var(--bg);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   box-shadow: var(--floating);
-  padding: 10px 16px calc(var(--safe-bottom) + 20px);
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+  overflow: hidden;
+  animation: rise 360ms var(--spring);
+}
+.sheet {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px 16px calc(var(--safe-bottom) + 20px);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 88vh;
   overflow-y: auto;
-  animation: rise 360ms var(--spring);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 /* Close is a secondary button, not a full-width bar (tapping outside closes too). */
 .sheet > .sheet-close {
   align-self: center;
   min-width: 120px;
 }
-.sheet .grab {
+.sheet-frame > .grab {
+  flex: none;
   width: 40px;
   height: 5px;
+  margin: 10px auto 0;
   border-radius: 5px;
   background: var(--line);
-  align-self: center;
 }
 /* An iPad or a wide window (D176): a sheet stands in the middle as a card, like an iPad form
    sheet, not pinned to a far-away bottom edge; it has no grab. */
 @media (min-width: 700px) and (min-height: 640px) {
-  .sheet {
+  .sheet-frame {
     top: 50%;
     bottom: auto;
     translate: 0 -50%;
     width: calc(100% - 48px);
     border-radius: var(--r-xl);
-    padding-top: 20px;
-    padding-bottom: 24px;
     max-height: min(88vh, 900px);
   }
-  .sheet .grab {
+  .sheet {
+    padding-top: 20px;
+    padding-bottom: 24px;
+  }
+  .sheet-frame > .grab {
     display: none;
   }
 }

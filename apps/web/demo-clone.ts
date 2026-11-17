@@ -1,5 +1,5 @@
 // A demo core for D204 (从 Git 地址加… / Add from a Git address…, and New task with no dead end),
-// built on demo-find.ts: hel is the home (a server, Codex only); the Mac does tasks for it (Claude
+// built on demo-find.ts: home-server is the home (a server, Codex only); the Mac does tasks for it (Claude
 // Code), connected as a real worker whose answers are faked: the projects in its Ducter folder
 // (~/ducter-work: its ~/ducter was someone else's), its folders, and a clone that takes a few
 // seconds. Real core and real web client; nothing is cloned and no real ~/ducter is touched.
@@ -25,7 +25,7 @@ const dataDir = process.env.DUCTER_DATA_DIR;
 if (!dataDir) throw new Error("set DUCTER_DATA_DIR to a scratch folder");
 const old = process.env.DEMO_MAC_OLD === "1";
 const empty = process.env.DEMO_EMPTY === "1";
-const homeName = process.env.DEMO_HOME_NAME || "hel";
+const homeName = process.env.DEMO_HOME_NAME || "home-server";
 const approveMs = Number(process.env.DEMO_GH_APPROVE_MS || 20_000);
 
 /** A made-up gh for one computer: signed out (or in, or missing) until a sign-in is approved. */
@@ -50,15 +50,15 @@ const git = (cwd: string, ...args: string[]) => {
   const r = Bun.spawnSync(["git", ...args], { cwd, env: { ...process.env, GIT_AUTHOR_NAME: "demo", GIT_AUTHOR_EMAIL: "d@x", GIT_COMMITTER_NAME: "demo", GIT_COMMITTER_EMAIL: "d@x" } });
   if (r.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr}`);
 };
-// hel's ducter: a scratch repo whose origin is the real one's, in hel's own Ducter folder.
-const helFolder = join(dataDir, "root", "ducter");
-const hel = join(helFolder, "projects", "ducter");
-mkdirSync(hel, { recursive: true });
-git(hel, "init", "-q", "-b", "main");
-writeFileSync(join(hel, "README.md"), "# ducter\n");
-git(hel, "add", ".");
-git(hel, "commit", "-q", "-m", "init");
-git(hel, "remote", "add", "origin", "git@github.com:wey-gu/ducter.git");
+// home-server's ducter: a scratch repo whose origin is the real one's, in home-server's own Ducter folder.
+const srvFolder = join(dataDir, "root", "ducter");
+const srv = join(srvFolder, "projects", "ducter");
+mkdirSync(srv, { recursive: true });
+git(srv, "init", "-q", "-b", "main");
+writeFileSync(join(srv, "README.md"), "# ducter\n");
+git(srv, "add", ".");
+git(srv, "commit", "-q", "-m", "init");
+git(srv, "remote", "add", "origin", "git@github.com:wey-gu/ducter.git");
 
 const core = startCore({ ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
@@ -69,7 +69,7 @@ const core = startCore({ ooSource: noOo,
   newFolderHome: (name) => {
     const n = String(name).trim();
     if (!n || n.includes("/") || n.startsWith(".")) return { ok: false, reason: "invalid", message: "bad name" };
-    const path = join(helFolder, "projects", n);
+    const path = join(srvFolder, "projects", n);
     mkdirSync(path, { recursive: true });
     return { ok: true, path, name: n };
   },
@@ -102,11 +102,11 @@ core.setRunner({
   branchChanges: async () => undefined,
 } as unknown as Runner);
 if (!empty) {
-  core.log.append({ stream: "task:t_card", origin: "system", kind: "task_open", body: { taskId: "t_card", title: zh ? "开一件事的卡片" : "The New task card", project: "ducter", place: { kind: "repo", device: "local", repoPath: hel, branch: "ducter/t_card", baseBranch: "main" }, harness: "codex", brief: "x", origin: "you" } });
+  core.log.append({ stream: "task:t_card", origin: "system", kind: "task_open", body: { taskId: "t_card", title: zh ? "开一件事的卡片" : "The New task card", project: "ducter", place: { kind: "repo", device: "local", repoPath: srv, branch: "ducter/t_card", baseBranch: "main" }, harness: "codex", brief: "x", origin: "you" } });
   core.tasks.setState("t_card", "done", "warm");
 }
 
-// The Mac, as hel's worker. Its Ducter folder is ~/ducter-work: its ~/ducter is a clone of the ducter repo.
+// The Mac, as home-server's worker. Its Ducter folder is ~/ducter-work: its ~/ducter is a clone of the ducter repo.
 const U = "/Users/weyl";
 const F = `${U}/ducter-work`;
 const projects: { name: string; path: string; touchedAt: string; remote?: string; defaultBranch?: string }[] = empty ? [] : [{ name: "mem", path: `${F}/projects/mem`, touchedAt: new Date(Date.now() - 3 * 3600_000).toISOString(), remote: "github.com/nowledge-co/mem", defaultBranch: "main" }];

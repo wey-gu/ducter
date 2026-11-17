@@ -18,19 +18,19 @@ const enc = (s: string) => new TextEncoder().encode(s);
 const put = (name: string, s: string | Uint8Array) => store.put(typeof s === "string" ? enc(s) : s, { files: true, name, from: { taskId: id } });
 
 export const INVESTIGATION = zh
-  ? `# 调查：点开文件为什么会打开 hel 上的链接
+  ? `# 调查：点开文件为什么会打开 home-server 上的链接
 
-**结论：** Mac 上的文件卡片把「打开」交给了默认浏览器，地址是家里那台主机（hel）上的文件地址，带着这个文件的钥匙。浏览器里看到的是一页没排版的原文，地址还留在了浏览记录里。
+**结论：** Mac 上的文件卡片把「打开」交给了默认浏览器，地址是家里那台主机（home-server）上的文件地址，带着这个文件的钥匙。浏览器里看到的是一页没排版的原文，地址还留在了浏览记录里。
 
 ## 发生了什么
 
 1. 任务做完，把 \`investigation.md\` 交给了家里的主机。
 2. 卡片上的 **打开** 调用 \`OpenURL(home + "/media/<id>?k=<钥匙>&dl=1")\`。
-3. 浏览器打开了 hel 的地址。
+3. 浏览器打开了 home-server 的地址。
 
 | 地方 | 打开的是 | 带着什么 |
 |---|---|---|
-| Mac | 默认浏览器，hel 的地址 | 这个文件的钥匙 |
+| Mac | 默认浏览器，home-server 的地址 | 这个文件的钥匙 |
 | 手机网页 | 新标签页 | 这个文件的钥匙 |
 | 设备令牌 | 没有带 | — |
 
@@ -39,7 +39,7 @@ export const INVESTIGATION = zh
 ## 怎么改
 
 - [x] 文件在 Ducter 里打开：Markdown 排好版，代码带颜色和行号
-- [x] **存一份** 走这台设备自己，不再去 hel 的地址
+- [x] **存一份** 走这台设备自己，不再去 home-server 的地址
 - [ ] PDF 的页面在 Ducter 里画出来（以后）
 
 \`\`\`ts
@@ -53,19 +53,19 @@ a.OpenFile(ref, card)
 
 这件事不用你做什么；下次任务交来的文件，点一下就在这里读。
 `
-  : `# Investigation: why opening a file opened a link on hel
+  : `# Investigation: why opening a file opened a link on home-server
 
-**In short:** the Mac's file card handed Open to the default browser with the file's address on the home (hel), carrying that file's key. The browser showed the raw text, and the address stayed in its history.
+**In short:** the Mac's file card handed Open to the default browser with the file's address on the home (home-server), carrying that file's key. The browser showed the raw text, and the address stayed in its history.
 
 ## What happened
 
 1. The task finished and handed \`investigation.md\` to the home.
 2. **Open** on the card called \`OpenURL(home + "/media/<id>?k=<key>&dl=1")\`.
-3. The browser opened hel's address.
+3. The browser opened home-server's address.
 
 | Where | What opened | What it carried |
 |---|---|---|
-| Mac | the default browser, hel's address | the file's key |
+| Mac | the default browser, home-server's address | the file's key |
 | Phone web | a new tab | the file's key |
 | Device token | not carried | — |
 
@@ -74,7 +74,7 @@ a.OpenFile(ref, card)
 ## The fix
 
 - [x] Files open inside Ducter: Markdown laid out, code with its colours and line numbers
-- [x] **Save a copy** goes through this device, never to hel's address
+- [x] **Save a copy** goes through this device, never to home-server's address
 - [ ] PDF pages drawn inside Ducter (later)
 
 \`\`\`ts
@@ -121,13 +121,13 @@ const pdfBytes = process.env.DEMO_PDF ? new Uint8Array(readFileSync(process.env.
 const pdf = put(zh ? "Ducter 文件查看器调研.pdf" : "Ducter file viewer research.pdf", pdfBytes);
 
 const log = core.log;
-log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "为什么我点开一个文件，打开的居然是 hel 上的链接？查一下" : "Why did opening a file open a link on hel? Look into it" } } as never);
-log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title: zh ? "点开文件为什么去了 hel" : "Why a file opened on hel", project: "", place: { kind: "none" }, harness: "claude-code", brief: "" } } as never);
+log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "为什么我点开一个文件，打开的居然是 home-server 上的链接？查一下" : "Why did opening a file open a link on home-server? Look into it" } } as never);
+log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title: zh ? "点开文件为什么去了 home-server" : "Why a file opened on home-server", project: "", place: { kind: "none" }, harness: "claude-code", brief: "" } } as never);
 log.append({
   stream: "channel",
   origin: "partner",
   kind: "ai_msg",
-  body: { text: zh ? "查清楚了：卡片把文件交给了浏览器，打开的是 hel 上带钥匙的地址。经过写在调查里，另附评测和改法。" : "Found it: the card handed the file to the browser, at hel's address with its key. The investigation has the story, with the eval and the fix.", media: [md, csv, go, pdf] },
+  body: { text: zh ? "查清楚了：卡片把文件交给了浏览器，打开的是 home-server 上带钥匙的地址。经过写在调查里，另附评测和改法。" : "Found it: the card handed the file to the browser, at home-server's address with its key. The investigation has the story, with the eval and the fix.", media: [md, csv, go, pdf] },
 } as never);
 core.tasks.setState(id, "done", "warm");
 

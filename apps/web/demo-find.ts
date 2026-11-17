@@ -1,4 +1,4 @@
-// A demo core for D203 (找一个文件夹… / Find a folder…, and the repos a worker reports): hel is
+// A demo core for D203 (找一个文件夹… / Find a folder…, and the repos a worker reports): home-server is
 // the home (a server, Codex only) with one repo a task used; the Mac does tasks for it (Claude
 // Code), connected as a real worker whose answers are faked: the repos it reports, its folders one
 // level at a time, a folder read there. Real core and real web client; nothing is read from this
@@ -17,29 +17,29 @@ const dataDir = process.env.DUCTER_DATA_DIR;
 if (!dataDir) throw new Error("set DUCTER_DATA_DIR to a scratch folder");
 const macRepos = process.env.DEMO_MAC_REPOS !== "0";
 
-// hel's ducter: a scratch repo whose origin is the real one's.
+// home-server's ducter: a scratch repo whose origin is the real one's.
 const git = (cwd: string, ...args: string[]) => {
   const r = Bun.spawnSync(["git", ...args], { cwd, env: { ...process.env, GIT_AUTHOR_NAME: "demo", GIT_AUTHOR_EMAIL: "d@x", GIT_COMMITTER_NAME: "demo", GIT_COMMITTER_EMAIL: "d@x" } });
   if (r.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr}`);
 };
-const hel = join(dataDir, "root", "ducter");
-mkdirSync(hel, { recursive: true });
-git(hel, "init", "-q", "-b", "main");
-writeFileSync(join(hel, "README.md"), "# ducter\n");
-git(hel, "add", ".");
-git(hel, "commit", "-q", "-m", "init");
-git(hel, "branch", "next");
-git(hel, "remote", "add", "origin", "git@github.com:wey-gu/ducter.git");
+const srv = join(dataDir, "root", "ducter");
+mkdirSync(srv, { recursive: true });
+git(srv, "init", "-q", "-b", "main");
+writeFileSync(join(srv, "README.md"), "# ducter\n");
+git(srv, "add", ".");
+git(srv, "commit", "-q", "-m", "init");
+git(srv, "branch", "next");
+git(srv, "remote", "add", "origin", "git@github.com:wey-gu/ducter.git");
 
 const core = startCore({ ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
   hostname: process.env.DUCTER_HOST || "127.0.0.1",
   deviceProbes: { cua: async () => ({ missing: "demo" }), native: async () => undefined, harnesses: async () => [{ harness: "codex", installed: true, loggedIn: true }], kind: async () => "server" },
-  update: { homeName: "hel", autoEveryMs: 0 },
+  update: { homeName: "home-server", autoEveryMs: 0 },
   browseHome: (p) => {
     const home = "/root";
     const path = p && p !== "~" ? p : home;
-    if (path === home) return { ok: true, path, home, folders: [{ name: "ducter", path: hel, repo: true }, { name: "backups", path: "/root/backups" }] };
+    if (path === home) return { ok: true, path, home, folders: [{ name: "ducter", path: srv, repo: true }, { name: "backups", path: "/root/backups" }] };
     return { ok: true, path, home, parent: home, folders: [] };
   },
 });
@@ -58,10 +58,10 @@ core.setRunner({
   drop: async () => {},
   branchChanges: async () => undefined,
 } as unknown as Runner);
-core.log.append({ stream: "task:t_card", origin: "system", kind: "task_open", body: { taskId: "t_card", title: zh ? "开一件事的卡片" : "The New task card", project: "ducter", place: { kind: "repo", device: "local", repoPath: hel, branch: "ducter/t_card", baseBranch: "main" }, harness: "codex", brief: "x", origin: "you" } });
+core.log.append({ stream: "task:t_card", origin: "system", kind: "task_open", body: { taskId: "t_card", title: zh ? "开一件事的卡片" : "The New task card", project: "ducter", place: { kind: "repo", device: "local", repoPath: srv, branch: "ducter/t_card", baseBranch: "main" }, harness: "codex", brief: "x", origin: "you" } });
 core.tasks.setState("t_card", "done", "warm");
 
-// The Mac, as hel's worker: what it says when the home asks.
+// The Mac, as home-server's worker: what it says when the home asks.
 const U = "/Users/weyl";
 const reported = macRepos
   ? [

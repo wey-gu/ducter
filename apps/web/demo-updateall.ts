@@ -1,9 +1,9 @@
-// A demo core for 全部更新 / Update all's pictures (D224): hel is the home (a server on 0.0.30, its
+// A demo core for 全部更新 / Update all's pictures (D224): home-server is the home (a server on 0.0.30, its
 // Claude Code and Codex behind), a mini does tasks for it (0.0.30, its Codex behind), a MacBook is
 // away. Real core and real web client; the release feed, the registry, the installs and the
 // mini's answers are fakes (no network, nothing installed).
 //   DUCTER_PORT=7798 DUCTER_DATA_DIR=$(mktemp -d) bun apps/web/demo-updateall.ts
-// Then, on DEMO_CTL_PORT (7799): POST /go (the tap), /home (hel comes back on 0.0.31), /mini
+// Then, on DEMO_CTL_PORT (7799): POST /go (the tap), /home (home-server comes back on 0.0.31), /mini
 // (the mini's download moves; ?fail=1 makes it fail), /free (the task on Claude Code pauses),
 // /agents (the agents' updaters finish).
 import { startCore, stubRunner } from "./demo-core.ts";
@@ -14,7 +14,7 @@ const feed = async () => new Response(JSON.stringify({ tag_name: "v0.0.31", body
 const registry = async (u: string) =>
   u.includes("@openai/codex") ? new Response('{"version":"0.168.0"}') : u.includes("claude-code-releases") ? new Response("2.1.322") : new Response("", { status: 404 });
 let homeDone: (() => void) | undefined;
-// hel's agents: their versions move when their updater "runs" (held until /agents).
+// home-server's agents: their versions move when their updater "runs" (held until /agents).
 const ver: Record<string, string> = { "claude-code": "2.1.319", codex: "0.167.0" };
 const how: Record<string, "installer" | "npm"> = { "claude-code": "installer", codex: "npm" };
 const agentGate: (() => void)[] = [];
@@ -26,7 +26,7 @@ const agentRun = async (argv: string[]) => {
   }
   return { code: 0, out: "" };
 };
-// D329: hel's own Nowledge Mem (a pipx copy) has a newer one out: a step of the plan too. Nothing runs.
+// D329: home-server's own Nowledge Mem (a pipx copy) has a newer one out: a step of the plan too. Nothing runs.
 let memVer = "0.10.118";
 const memOk = (j: unknown) => ({ code: 0, out: JSON.stringify(j), err: "" });
 const memRun = async (args: string[]) => {
@@ -63,7 +63,7 @@ const core = startCore({
     fetch: feed,
     how: "self",
     version: "0.0.30",
-    homeName: "hel",
+    homeName: "home-server",
     autoEveryMs: 0,
     graceMs: 10,
     // The home's own update: downloading, then held until /home (then "swapped").
@@ -91,7 +91,7 @@ core.setPartner({ onTrigger() {} });
 await core.release.check(true);
 await core.bridgeLink.view(); // D329: the home's Mem looked at once, so the offer holds it
 
-// The mini, doing tasks for hel; it answers the update op and reports its steps when told.
+// The mini, doing tasks for home-server; it answers the update op and reports its steps when told.
 const w = core.devices.redeem(core.devices.createCode({ kind: "worker" }).code, { name: "mini", platform: "darwin-arm64", computer: "mini" } as any) as { token: string };
 const ws = new WebSocket(`ws://127.0.0.1:${core.port}/worker`, { headers: { "x-forwarded-for": "203.0.113.9", authorization: `Bearer ${w.token}` } } as any);
 await new Promise<void>((r) => (ws.onopen = () => r()));
@@ -122,7 +122,7 @@ core.devices.redeem(core.devices.createCode().code, { name: "iPhone", platform: 
 await Bun.sleep(100);
 await core.agents.check();
 
-// One task on hel uses Claude Code right now: its update waits for it.
+// One task on home-server uses Claude Code right now: its update waits for it.
 const title = en ? "Turn the weekly report into Keynote" : "把周报做成 Keynote";
 core.log.append({ stream: "task:t_key", origin: "partner", kind: "task_open", body: { taskId: "t_key", title, project: "", place: { kind: "none" }, harness: "claude-code", brief: title } });
 core.tasks.setState("t_key", "working", "hot");

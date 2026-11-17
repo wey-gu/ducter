@@ -93,7 +93,7 @@ async function reviewLoop() {
   waitOn("t_loop", w("nowledge-co 有新的 review 请求", "a new review request in nowledge-co"), 45, w("这一轮没有新的。45 分钟后再看。", "Nothing new this round. Looking again in 45 minutes."));
 }
 async function prWait(every = 20) {
-  await open("t_pr", w("PR #1592：修 compaction 测试", "PR #1592: fix the compaction test"), "hawdb", repo("hawdb", "compaction-fix", "hel"), "claude-code", "opus");
+  await open("t_pr", w("PR #1592：修 compaction 测试", "PR #1592: fix the compaction test"), "hawdb", repo("hawdb", "compaction-fix", "home-server"), "claude-code", "opus");
   tool("t_pr", "Bash", { command: "gh pr create --draft" }, "https://github.com/nowledge-co/hawdb/pull/1592");
   waitOn("t_pr", w("PR #1592 的 CI 跑完", "PR #1592's CI finishes"), every, w("PR 开了，等 CI 跑完。", "The PR is open; waiting for CI."));
   diffs.set("t_pr", { commits: 2, uncommitted: false, files: 2, adds: 23, dels: 8 });
@@ -128,7 +128,7 @@ if (state === "author") {
     questions: [{ id: "q1", text: w("在 Chrome 里登录一下 App Store Connect？登好了我接着填。", "Could you sign in to App Store Connect in Chrome? I'll carry on once you have."), blocking: true, default: w("等你登录后继续。", "Wait for you to sign in, then continue."), reversible: true }],
   });
   seed.tasks.setState("t_asc", "needs_you", "hot");
-  await working("t_wamp", w("compaction 的写放大分析", "Write amplification in compaction"), "hawdb", repo("hawdb", "compaction-wamp", "hel"), "claude-code", w("L0 到 L1 的合并每次都把整个 L1 读出来，这是写放大的大头。", "Every L0 to L1 merge reads the whole of L1; that's most of the write amplification."), ["Read", { file_path: "/Users/weyl/dev/hawdb/crates/storage/src/compaction.rs" }, ""]);
+  await working("t_wamp", w("compaction 的写放大分析", "Write amplification in compaction"), "hawdb", repo("hawdb", "compaction-wamp", "home-server"), "claude-code", w("L0 到 L1 的合并每次都把整个 L1 读出来，这是写放大的大头。", "Every L0 to L1 merge reads the whole of L1; that's most of the write amplification."), ["Read", { file_path: "/Users/weyl/dev/hawdb/crates/storage/src/compaction.rs" }, ""]);
   await working("t_hotel", w("订 12 月 6 号京都的酒店，两晚，岚山附近", "Book a hotel in Kyoto for Dec 6, two nights, near Arashiyama"), "", { kind: "none" }, "claude-code", w("Booking 上岚山附近两晚有 11 家，在比早餐和退订条件。", "Eleven places near Arashiyama on Booking; comparing breakfast and cancellation."));
   await movers();
 } else if (state === "busy") {
@@ -136,8 +136,8 @@ if (state === "author") {
   diffs.set("t_keys", { commits: 3, uncommitted: true, files: 6, adds: 184, dels: 41 });
   await working("t_emoji", w("修 iOS 上新建任务里冒出来的 emoji", "Fix the emoji showing in New task on iOS"), "ducter", repo("ducter", "no-emoji"), "codex", w("找到了：⌘↩ 在 iOS 上画成了 emoji，换成画出来的键。", "Found it: ⌘↩ renders as an emoji on iOS; swapping in a drawn key."));
   diffs.set("t_emoji", { commits: 1, uncommitted: false, files: 2, adds: 12, dels: 4 });
-  await working("t_wamp", w("compaction 的写放大分析", "Write amplification in compaction"), "hawdb", repo("hawdb", "compaction-wamp", "hel"), "claude-code", w("L0 到 L1 的合并每次都把整个 L1 读出来，这是写放大的大头。", "Every L0 to L1 merge reads the whole of L1; that's most of the write amplification."), ["Read", { file_path: "/Users/weyl/dev/hawdb/crates/storage/src/compaction.rs" }, ""]);
-  await working("t_tokio", w("把 tokio 升到 1.42", "Upgrade tokio to 1.42"), "hawdb", repo("hawdb", "tokio-1.42", "hel"), "claude-code", w("cargo update 完了，在跑全量测试。", "cargo update is done; running the full test suite."), ["Bash", { command: "cargo test --workspace" }, ""]);
+  await working("t_wamp", w("compaction 的写放大分析", "Write amplification in compaction"), "hawdb", repo("hawdb", "compaction-wamp", "home-server"), "claude-code", w("L0 到 L1 的合并每次都把整个 L1 读出来，这是写放大的大头。", "Every L0 to L1 merge reads the whole of L1; that's most of the write amplification."), ["Read", { file_path: "/Users/weyl/dev/hawdb/crates/storage/src/compaction.rs" }, ""]);
+  await working("t_tokio", w("把 tokio 升到 1.42", "Upgrade tokio to 1.42"), "hawdb", repo("hawdb", "tokio-1.42", "home-server"), "claude-code", w("cargo update 完了，在跑全量测试。", "cargo update is done; running the full test suite."), ["Bash", { command: "cargo test --workspace" }, ""]);
   await working("t_obsidian", w("导入 Obsidian 时保留双链", "Keep wiki links when importing from Obsidian"), "mem", repo("mem", "obsidian-links"), "codex", w("别名 [[页|别名]] 也要处理，正在补这一种。", "Aliases like [[page|alias]] need handling too; adding that case now."));
   diffs.set("t_obsidian", { commits: 2, uncommitted: true, files: 4, adds: 66, dels: 9 });
   await working("t_hotel", w("订 12 月 6 号京都的酒店，两晚，岚山附近", "Book a hotel in Kyoto for Dec 6, two nights, near Arashiyama"), "", { kind: "none" }, "claude-code", w("Booking 上岚山附近两晚有 11 家，在比早餐和退订条件。", "Eleven places near Arashiyama on Booking; comparing breakfast and cancellation."));
@@ -192,17 +192,17 @@ if (state === "author") {
   seed.tasks.setState("t_android", "failed", "parked");
 
   // ---- hawdb ----
-  await open("t_tokio", w("把 tokio 升到 1.42", "Upgrade tokio to 1.42"), "hawdb", repo("hawdb", "tokio-1.42", "hel"), "claude-code", "sonnet");
+  await open("t_tokio", w("把 tokio 升到 1.42", "Upgrade tokio to 1.42"), "hawdb", repo("hawdb", "tokio-1.42", "home-server"), "claude-code", "sonnet");
   tool("t_tokio", "Bash", { command: "cargo update -p tokio" }, "Updating tokio v1.38.0 -> v1.42.0");
   log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_rebase", taskId: "t_tokio", question: w("main 上多了 3 个提交，先 rebase 再接着跑测试？", "main moved 3 commits ahead. Rebase first, then run the tests?"), goLabel: w("rebase", "Rebase"), defaultOption: "go", defaultAt: iso(25 * 60_000), reversible: true } });
   seed.tasks.setState("t_tokio", "needs_you", "hot");
   diffs.set("t_tokio", { commits: 1, uncommitted: true, files: 3, adds: 18, dels: 17 });
 
-  await open("t_wamp", w("compaction 的写放大分析", "Write amplification in compaction"), "hawdb", repo("hawdb", "compaction-wamp", "hel"), "claude-code", "opus");
+  await open("t_wamp", w("compaction 的写放大分析", "Write amplification in compaction"), "hawdb", repo("hawdb", "compaction-wamp", "home-server"), "claude-code", "opus");
   say("t_wamp", w("L0 到 L1 的合并每次都把整个 L1 读出来，这是写放大的大头。", "Every L0 to L1 merge reads the whole of L1; that's most of the write amplification."));
   tool("t_wamp", "Read", { file_path: "/Users/weyl/dev/hawdb/crates/storage/src/compaction.rs" }, "");
 
-  await open("t_pr", w("PR #1592：修 compaction 测试", "PR #1592: fix the compaction test"), "hawdb", repo("hawdb", "compaction-fix", "hel"), "claude-code", "opus");
+  await open("t_pr", w("PR #1592：修 compaction 测试", "PR #1592: fix the compaction test"), "hawdb", repo("hawdb", "compaction-fix", "home-server"), "claude-code", "opus");
   report("t_pr", { state: "blocked", summary: w("PR 开了，等 CI 跑完。", "The PR is open; waiting for CI."), evidence: [] });
   seed.work.waiters.arm({ reason: w("PR #1592 通过", "PR #1592 passes"), taskId: "t_pr", check: { argv: ["gh", "pr", "checks", "1592", "--json", "state"], succeedWhen: { path: "[].state", equals: "SUCCESS" } }, everyMs: 5 * 60_000, until: iso(6 * 3600_000) });
   seed.tasks.setState("t_pr", "blocked", "parked");

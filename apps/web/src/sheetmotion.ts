@@ -27,10 +27,12 @@ export function sheetOut(sheet: HTMLElement | null, scrim: HTMLElement | null, d
 
 /**
  * A sheet's motion: returns close(), which plays the sheet out before onClose; on a phone the
- * sheet can be dragged down to close.
+ * sheet can be dragged down to close. `sheet` is the frame that moves, `body` the part that
+ * scrolls inside it (sheet-frame.tsx, research/123).
  */
 export function useSheetMotion(onClose: () => void) {
   const sheet = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
   const scrim = useRef<HTMLDivElement>(null);
   const closing = useRef(false);
   const close = () => {
@@ -41,13 +43,14 @@ export function useSheetMotion(onClose: () => void) {
   useEffect(() => {
     const el = sheet.current;
     if (!el || centred()) return;
+    const top = () => (body.current ?? el).scrollTop;
     let y0 = 0, t0 = 0, dy = 0, on = false, pulling = false;
     const start = (e: TouchEvent) => {
       const tch = e.touches[0];
       if (e.touches.length !== 1 || !tch) return;
       // From the grab, or anywhere while the sheet is scrolled to its top.
       const fromGrab = (e.target as HTMLElement).closest?.(".grab");
-      if (!fromGrab && el.scrollTop > 0) return;
+      if (!fromGrab && top() > 0) return;
       if ((e.target as HTMLElement).closest?.("textarea, input, select, [contenteditable]")) return;
       y0 = tch.clientY;
       t0 = performance.now();
@@ -60,7 +63,7 @@ export function useSheetMotion(onClose: () => void) {
       const d = e.touches[0]!.clientY - y0;
       if (!pulling) {
         if (d < 6) return d < -4 ? void (on = false) : undefined;
-        if (el.scrollTop > 0) return void (on = false);
+        if (top() > 0) return void (on = false);
         pulling = true;
       }
       e.preventDefault();
@@ -95,5 +98,5 @@ export function useSheetMotion(onClose: () => void) {
       el.removeEventListener("touchcancel", end);
     };
   }, []);
-  return { sheet, scrim, close };
+  return { sheet, body, scrim, close };
 }

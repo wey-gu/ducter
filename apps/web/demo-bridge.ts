@@ -3,8 +3,8 @@
 // a connect that never returns). For pictures of each state, web and phone.
 //   DUCTER_PORT=7798 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_BRIDGE=ready bun apps/web/demo-bridge.ts
 // DEMO_BRIDGE: ready · connecting · connected · update · no_space · refused:<reason> · failed · unconfirmed
-//   D225: install (no nmem; pipx here) · install_need (no pipx) · update_pip (hel: 0.10.116 by pip) · sign_in · local
-//   D229: hel_ready (hel's pip copy, working: a quiet move offered) · moving (a tap stays moving) ·
+//   D225: install (no nmem; pipx here) · install_need (no pipx) · update_pip (home-server: 0.10.116 by pip) · sign_in · local
+//   D229: hel_ready (home-server's pip copy, working: a quiet move offered) · moving (a tap stays moving) ·
 //         moved (a tap moves it: done) · move_failed (a tap fails; the old copy is put back)
 // then open http://127.0.0.1:7798/app#settings=partner
 import { startCore, stubRunner } from "./demo-core.ts";
@@ -47,7 +47,7 @@ const run = async (args: string[]) => {
   return { code: 2, out: "", err: "demo: not scripted" };
 };
 
-// D225: the home's files as the row reads them: hel's pip copy, or pipx to install with.
+// D225: the home's files as the row reads them: home-server's pip copy, or pipx to install with.
 const files: Record<string, string> = HEL.includes(want) ? { "/root/.local/bin/nmem": "ELF", "/root/.local/lib/python3.14/site-packages/nmem_cli-0.10.116.dist-info/INSTALLER": "pip\n" } : {};
 const tools: Record<string, string> = want === "install" ? { pipx: "/usr/bin/pipx" } : HEL.includes(want) ? { nmem: "/root/.local/bin/nmem", "python3.14": "/usr/bin/python3.14", "apt-get": "/usr/bin/apt-get" } : {};
 const sys = {
@@ -58,7 +58,7 @@ const sys = {
   real: (p: string) => p,
   home: "/root",
   platform: "linux" as const,
-  uid: 0, // hel runs Ducter as root
+  uid: 0, // home-server runs Ducter as root
 };
 // The installers: the python is the system's marked one (PEP 668); apt puts pipx in; a move's last
 // step hangs (moving), works (moved) or fails (move_failed); anything else stays "installing…".
@@ -76,7 +76,7 @@ const exec = async (argv: string[]) => {
   if (want === "move_failed") return { code: 0, out: "", err: "" };
   return new Promise<never>(() => {});
 };
-const core = startCore({ ooSource: noOo, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "hel" }, bridgeLink: { run: run as never, env: {}, sys, exec } });
+const core = startCore({ ooSource: noOo, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "home-server" }, bridgeLink: { run: run as never, env: {}, sys, exec } });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 core.persona.mem = { agentId: "ducter", owned: true };

@@ -13,6 +13,7 @@ import { shownDeviceName } from "./format.ts";
 import { nativeCall, nativeInfo } from "./native.ts";
 import type { Client } from "./sheet.ts";
 import { finished, title, type DecisionState, type Task } from "./store.ts";
+import { SheetFrame } from "./sheet-frame.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const ACTIVE = ["working", "queued", "needs_you", "blocked"];
@@ -316,67 +317,63 @@ export function HandsetGuideSheet() {
     void nativeCall({ t: "handset.settings", step: part === "allow" ? "restricted" : "service" });
   };
   return (
-    <>
-      <div class="scrim" onClick={close} />
-      <div class="sheet handset-guide" role="dialog" aria-modal="true" aria-label={t("handset.guide.title")}>
-        <div class="grab" />
-        {now === "done" || H.demo ? (
-          <>
-            <h2>{t("handset.done.title")}</h2>
-            <Demo />
-            <div class="btns">
-              <Btn kind="primary" label={t("handset.done.ok")} onClick={close} />
-            </div>
-          </>
-        ) : (
-          <>
-            <h2>{t("handset.guide.title")}</h2>
-            <p class="lede">{t("handset.guide.lede")}</p>
-            <ol class="hs-steps">
-              {all.map((step, i) => {
-                const done = stepOf(now) > i;
-                const here = stepOf(now) === i;
-                const part = now as Part;
-                return (
-                  <li key={step} class={done ? "done" : here ? "here" : "next"} aria-current={here ? "step" : undefined}>
-                    <div class="hs-n">{done ? "" : i + 1}</div>
-                    <div class="hs-what">
-                      <div class="small sub">{t("handset.step", i + 1)}</div>
-                      <b>{t(`handset.step.${step}.title`)}</b>
-                      {here && (
-                        <>
-                          {step === "allow" && (
-                            <ol class="hs-parts">
-                              {(["try", "allow"] as const).map((p) => (
-                                <li key={p} class={p === part ? "here" : p === "try" ? "done" : "next"}>
-                                  {t(`handset.part.${p}`)}
-                                </li>
-                              ))}
-                            </ol>
-                          )}
-                          <Mini step={part} />
-                          <p class="small">{t(`handset.step.${part}.body`)}</p>
-                          {g.visited.has(part) && <p class="small sub" role="status">{t("handset.step.back")}</p>}
-                          <Btn kind="primary" label={t(g.visited.has(part) ? "handset.step.again" : "handset.step.go")} onClick={() => go(part)} />
-                          {part === "on" && all.length > 1 && s?.restricted !== false && (
-                            // Android 16 doesn't tell the app whether Allow was chosen: the guide moved on by the
-                            // visit, so if the row is still grey, step 1 is one tap away.
-                            <Btn kind="text" size="sm" label={t("handset.step.grey")} onClick={() => (g.visited.clear(), A.changed())} />
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-            <div class="btns">
-              <Btn kind="text" label={t("handset.guide.later")} onClick={close} />
-            </div>
-          </>
-        )}
-      </div>
-    </>
+    <SheetFrame label={t("handset.guide.title")} class="handset-guide" onScrim={close}>
+      {now === "done" || H.demo ? (
+        <>
+          <h2>{t("handset.done.title")}</h2>
+          <Demo />
+          <div class="btns">
+            <Btn kind="primary" label={t("handset.done.ok")} onClick={close} />
+          </div>
+        </>
+      ) : (
+        <>
+          <h2>{t("handset.guide.title")}</h2>
+          <p class="lede">{t("handset.guide.lede")}</p>
+          <ol class="hs-steps">
+            {all.map((step, i) => {
+              const done = stepOf(now) > i;
+              const here = stepOf(now) === i;
+              const part = now as Part;
+              return (
+                <li key={step} class={done ? "done" : here ? "here" : "next"} aria-current={here ? "step" : undefined}>
+                  <div class="hs-n">{done ? "" : i + 1}</div>
+                  <div class="hs-what">
+                    <div class="small sub">{t("handset.step", i + 1)}</div>
+                    <b>{t(`handset.step.${step}.title`)}</b>
+                    {here && (
+                      <>
+                        {step === "allow" && (
+                          <ol class="hs-parts">
+                            {(["try", "allow"] as const).map((p) => (
+                              <li key={p} class={p === part ? "here" : p === "try" ? "done" : "next"}>
+                                {t(`handset.part.${p}`)}
+                              </li>
+                            ))}
+                          </ol>
+                        )}
+                        <Mini step={part} />
+                        <p class="small">{t(`handset.step.${part}.body`)}</p>
+                        {g.visited.has(part) && <p class="small sub" role="status">{t("handset.step.back")}</p>}
+                        <Btn kind="primary" label={t(g.visited.has(part) ? "handset.step.again" : "handset.step.go")} onClick={() => go(part)} />
+                        {part === "on" && all.length > 1 && s?.restricted !== false && (
+                          // Android 16 doesn't tell the app whether Allow was chosen: the guide moved on by the
+                          // visit, so if the row is still grey, step 1 is one tap away.
+                          <Btn kind="text" size="sm" label={t("handset.step.grey")} onClick={() => (g.visited.clear(), A.changed())} />
+                        )}
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+          <div class="btns">
+            <Btn kind="text" label={t("handset.guide.later")} onClick={close} />
+          </div>
+        </>
+      )}
+    </SheetFrame>
   );
 }
 

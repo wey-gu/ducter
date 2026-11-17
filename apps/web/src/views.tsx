@@ -11,6 +11,7 @@ import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
 import { autonym, LANGUAGES, words as byLang } from "@ducter/protocol/src/lang.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { useSheetMotion } from "./sheetmotion.ts";
+import { SheetFrame } from "./sheet-frame.tsx";
 import { last as lastMove } from "./nav.ts";
 import type { JSX } from "preact";
 import { AmbientLine } from "./ambient.tsx";
@@ -2352,21 +2353,17 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
 
 function Sheet({ children, label }: { children: preact.ComponentChildren; label: string }) {
   // D290: it goes back down the way it came, and on a phone follows the finger down to close.
-  const { sheet, scrim, close } = useSheetMotion(() => ((A.sheet = null), A.changed()));
+  const { sheet, body, scrim, close } = useSheetMotion(() => ((A.sheet = null), A.changed()));
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && close();
     addEventListener("keydown", k);
     return () => removeEventListener("keydown", k);
   }, []);
   return (
-    <>
-      <div class="scrim" ref={scrim} onClick={close} />
-      <div class="sheet" ref={sheet} role="dialog" aria-modal="true" aria-label={label}>
-        <div class="grab" />
-        {children}
-        <Btn kind="secondary" class="sheet-close" label={t("sheet.close")} onClick={close} />
-      </div>
-    </>
+    <SheetFrame label={label} frame={sheet} body={body} scrim={scrim} onScrim={close}>
+      {children}
+      <Btn kind="secondary" class="sheet-close" label={t("sheet.close")} onClick={close} />
+    </SheetFrame>
   );
 }
 

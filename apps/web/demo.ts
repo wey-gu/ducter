@@ -251,6 +251,12 @@ if (process.env.DEMO_PARTNERS === "1") {
     const m = log.append({ stream: s, origin: "user", kind: "user_msg", body: { text: zh ? "周六上午带小米去看牙，帮我约一下社区那家诊所" : "Book Mia a dentist appointment at the clinic down the road, Saturday morning" } });
     log.append({ stream: s, origin: "partner", kind: "ai_msg", body: { text: zh ? "诊所周六上午还有 9:30 和 10:45 两个号。9:30 那个离游泳课近一点。" : "The clinic has 9:30 and 10:45 open on Saturday morning. 9:30 sits closer to her swimming lesson.", replyTo: m.seq } });
     log.append({ stream: s, origin: "partner", kind: "decision", body: { decisionId: "d_home_dentist", question: zh ? "约周六 9:30 吗？" : "Book Saturday at 9:30?", goLabel: zh ? "约 9:30" : "Book 9:30", defaultOption: "hold", reversible: true } });
+    // D312: the work partner's own question too: On hand lists it while the home partner is shown.
+    log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_work_standup", question: zh ? "明早的站会挪到十点吗？" : "Move tomorrow's stand-up to 10?", goLabel: zh ? "挪到十点" : "Move to 10", defaultOption: "hold", reversible: true } });
+    // D312: a task the home partner opened (On hand shows its stone), at work.
+    const hv = core.partnerView(home.partner.id);
+    hv.log.append({ stream: "task:t_home1", origin: "partner", kind: "task_open", body: { taskId: "t_home1", title: zh ? "查社区游泳馆周日的课" : "Sunday swimming lessons at the pool", project: "", place: { kind: "none" }, harness: "claude-code", brief: "Find the community pool's Sunday lessons for a seven-year-old." } });
+    hv.log.append({ stream: "task:t_home1", origin: "task", kind: "report", body: { taskId: "t_home1", state: "progress", summary: zh ? "在看游泳馆的课表" : "Reading the pool's timetable", questions: [], evidence: [] } });
     await tick();
   }
 }
@@ -273,6 +279,21 @@ core.setPartner({
     }, Number(process.env.DEMO_REPLY_MS ?? 2300));
   },
 });
+
+// D312: DEMO_PARTNERS=1: the second partner answers in its own name, in its own conversation.
+if (process.env.DEMO_PARTNERS === "1")
+  core.setPartnerFactory((view) => ({
+    onTrigger(e) {
+      if (e.kind !== "user_msg") return;
+      const since = new Date().toISOString();
+      view.activity?.set({ step: "thinking", since, stepSince: since });
+      setTimeout(() => {
+        const text = zh ? `好，交给我。我是${view.persona.name}，家里的事我来记着：周六上午的号我先替你留意，定下来跟你说。` : `Leave it with me. I'm ${view.persona.name}, and I keep track of the home things: I'll watch Saturday morning's slots and tell you once it's set.`;
+        view.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text, replyTo: e.seq } });
+        view.activity?.set(null);
+      }, Number(process.env.DEMO_REPLY_MS ?? 1800));
+    },
+  }));
 
 console.log(`[demo] Ducter demo is up at http://127.0.0.1:${core.port}/app (data: ${core.dataDir})`);
 process.on("SIGINT", async () => {

@@ -25,20 +25,20 @@ export function plainDecision(d: Bodies["decision"]): boolean {
 }
 
 /** The tasks a user message started: the jobs whose ack answered it. */
-function tasksStartedBy(log: LogStore, userSeq: number): string[] {
-  const acks = log.read({ stream: "channel", fromSeq: userSeq + 1, limit: 400, kinds: ["ack"] }).filter((e) => (e.body as Bodies["ack"]).replyTo === userSeq);
+function tasksStartedBy(log: LogStore, userSeq: number, stream = "channel"): string[] {
+  const acks = log.read({ stream, fromSeq: userSeq + 1, limit: 400, kinds: ["ack"] }).filter((e) => (e.body as Bodies["ack"]).replyTo === userSeq);
   if (!acks.length) return [];
   const jobs = new Set(acks.map((e) => (e.body as Bodies["ack"]).jobId));
   const out = new Set<string>();
-  for (const e of log.read({ stream: "channel", fromSeq: acks[0]!.seq, limit: 2000, kinds: ["job_status"] })) {
+  for (const e of log.read({ stream, fromSeq: acks[0]!.seq, limit: 2000, kinds: ["job_status"] })) {
     const b = e.body as Bodies["job_status"];
     if (jobs.has(b.jobId) && b.taskId) out.add(b.taskId);
   }
   return [...out];
 }
 
-function taskOfJob(log: LogStore, jobId: string, from: number): string | undefined {
-  for (const e of log.read({ stream: "channel", fromSeq: from, limit: 2000, kinds: ["job_status"] })) {
+function taskOfJob(log: LogStore, jobId: string, from: number, stream = "channel"): string | undefined {
+  for (const e of log.read({ stream, fromSeq: from, limit: 2000, kinds: ["job_status"] })) {
     const b = e.body as Bodies["job_status"];
     if (b.jobId === jobId && b.taskId) return b.taskId;
   }
@@ -49,10 +49,10 @@ function taskOfJob(log: LogStore, jobId: string, from: number): string | undefin
  * The ReplyRef for what the client named, read from the Log. Throws when it names nothing the
  * user could have replied to (a task's own stream, a seq that isn't there).
  */
-export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get">, want: ReplyWant): ReplyRef {
+export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get">, want: ReplyWant, stream = "channel"): ReplyRef {
   const seq = Math.floor(Number(want.seq));
   const e = Number.isFinite(seq) && seq > 0 ? log.read({ fromSeq: seq, limit: 1 })[0] : undefined;
-  if (!e || e.seq !== seq || e.stream !== "channel") throw new Error("that message isn't in the conversation");
+  if (!e || e.seq !== seq || e.stream !== stream) throw new Error("that message isn't in the conversation");
   let from: ReplyRef["from"] = "partner";
   let kind: ReplyRef["kind"] = "message";
   let words = "";
@@ -73,7 +73,7 @@ export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get
       from = "you";
       words = b.text;
       media = b.media;
-      taskIds = tasksStartedBy(log, e.seq);
+      taskIds = tasksStartedBy(log, e.seq, stream);
       break;
     }
     case "ai_msg": {
@@ -81,13 +81,13 @@ export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get
       words = plainWords(b.text);
       media = b.media;
       if (b.decisionId) ofDecision(b.decisionId);
-      else if (b.replyTo) taskIds = tasksStartedBy(log, b.replyTo);
+      else if (b.replyTo) taskIds = tasksStartedBy(log, b.replyTo, stream);
       break;
     }
     case "ack": {
       const b = e.body as Bodies["ack"];
       words = b.text;
-      const t = taskOfJob(log, b.jobId, e.seq);
+      const t = taskOfJob(log, b.jobId, e.seq, stream);
       if (t) taskIds = [t];
       break;
     }
@@ -144,7 +144,7 @@ export function logUserMessage(
   let reply: ReplyRef | undefined;
   if (m.reply) {
     try {
-      reply = resolveReply(log, decisions, m.reply);
+      reply = resolveReply(log, decisions, m.reply, m.stream ?? "channel"); // D312: a reply within its own conversation
     } catch (err) {
       console.warn("[reply]", (err as Error).message);
     }

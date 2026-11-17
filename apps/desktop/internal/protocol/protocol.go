@@ -867,6 +867,17 @@ type OnHand struct {
 	Projects []ProjectView `json:"projects,omitempty"`
 	// Calls (D193): live, waiting for Go, or ended today; newest first.
 	Calls []CallBody `json:"calls,omitempty"`
+	// Asks (D312): with more than one partner, every partner's own open
+	// questions; a window lists the other partners' in On hand.
+	Asks []PartnerAsk `json:"asks,omitempty"`
+}
+
+// PartnerAsk (D312) is one partner's own open question, as On hand lists it.
+type PartnerAsk struct {
+	Persona    string `json:"persona"`
+	DecisionID string `json:"decisionId"`
+	Question   string `json:"question"`
+	At         string `json:"at"`
 }
 
 // ---------- Client <-> main process WebSocket ----------

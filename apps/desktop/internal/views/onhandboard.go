@@ -280,7 +280,7 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 func (a *App) stateCounts(b store.Board, lens string) [4]int {
 	n := [4]int{len(b.Lanes[store.LaneNeedsYou]), len(b.Lanes[store.LaneWorking]), len(b.Lanes[store.LaneWaiting]), store.DoneToday(b.Lanes[store.LaneDone], a.Now().Local())}
 	if loose(lens) {
-		n[0] += len(a.partnerDecisions())
+		n[0] += len(a.partnerDecisions()) + len(a.otherAsks()) // D312: another partner's own questions too
 		n[2] += len(a.looseWaiters())
 	}
 	return n

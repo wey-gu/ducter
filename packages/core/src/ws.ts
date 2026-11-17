@@ -28,6 +28,7 @@ import type { LiveSink } from "./browser/live.ts";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 import { DEFAULT_PARTNER, channelOf, partnerOfStream } from "@ducter/protocol/src/partners.ts";
 import type { Partners } from "./partners.ts";
+import { actAs } from "./acting.ts";
 
 export interface WsData {
   live: boolean;
@@ -420,13 +421,17 @@ export function createWsHandler(deps: WsDeps) {
 
   // What the partner is doing while the user waits (D104). Presence, not history: never logged.
   // Buffered events go first, so a reply and the activity that ends with it arrive in order.
-  let activity: PartnerActivity | null = null;
-  const setActivity = (a: PartnerActivity | null) => {
-    if (a === null && activity === null) return;
-    if (a && activity && a.step === activity.step && a.since === activity.since) return;
-    activity = a;
+  // D312: each partner's own, sent only to the sockets showing it.
+  const activities = new Map<string, PartnerActivity>();
+  const activityOf = (ws: ServerWebSocket<WsData>) => activities.get(ws.data.partner ?? DEFAULT_PARTNER) ?? null;
+  const setActivity = (a: PartnerActivity | null, persona: string = DEFAULT_PARTNER) => {
+    const was = activities.get(persona) ?? null;
+    if (a === null && was === null) return;
+    if (a && was && a.step === was.step && a.since === was.since) return;
+    if (a) activities.set(persona, a);
+    else activities.delete(persona);
     for (const ws of sockets) {
-      if (!ws.data.live) continue;
+      if (!ws.data.live || (ws.data.partner ?? DEFAULT_PARTNER) !== persona) continue;
       if (ws.data.buf.length) send(ws, { t: "events", events: ws.data.buf.splice(0) });
       send(ws, { t: "activity", activity: a });
     }
@@ -549,7 +554,8 @@ export function createWsHandler(deps: WsDeps) {
             : log.read({ stream, limit: REPLAY_FRESH });
         send(ws, { t: "events", events: dropSuperseded(events).map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })) });
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
-        if (activity) send(ws, { t: "activity", activity });
+        const doing = activityOf(ws);
+        if (doing) send(ws, { t: "activity", activity: doing });
         ws.data.live = true; // synchronous since the read: no event can be missed in between
         if (f.client === "desktop" || f.client === "web" || f.client === "cli") ws.data.client = f.client;
         // D263: a paired page says what its device is shaped like (a tablet, a foldable), for its clay.
@@ -593,9 +599,9 @@ export function createWsHandler(deps: WsDeps) {
         // D236: a reply carries its quote from the Log; one to an open question answers it.
         // D277: only the Mac app's iMessage bridge says via (a desktop socket); anything else is dropped.
         const via = f.via === "imessage" && (ws.data.client ?? "desktop") === "desktop" ? f.via : undefined;
-        // D309: words to a second partner go into its own conversation (no reply quotes across).
+        // D309: words to a second partner go into its own conversation; D312: a reply quotes within it.
         if (ws.data.partner) {
-          logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, stream: channelOf(ws.data.partner) });
+          logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), stream: channelOf(ws.data.partner) });
           return;
         }
         logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}) });
@@ -799,7 +805,7 @@ export function createWsHandler(deps: WsDeps) {
         }
       }
       case "read":
-        log.append({ stream: "channel", origin: "user", kind: "read_receipt", body: { upToSeq: f.upToSeq } });
+        log.append({ stream: channelOf(ws.data.partner), origin: "user", kind: "read_receipt", body: { upToSeq: f.upToSeq } }); // D312: the conversation it shows
         return;
       case "devices": {
         const v = devicesView();
@@ -1203,7 +1209,8 @@ export function createWsHandler(deps: WsDeps) {
         const prior = id ? newTaskSeen.get(id) : undefined;
         const pending =
           prior ??
-          deps.newTask.open({
+          // D312: a task or routine made from another partner's conversation is that partner's.
+          actAs(ws.data.partner, () => deps.newTask!.open({
             words: String(f.words ?? ""),
             ...(f.place ? { place: f.place } : {}),
             ...(typeof f.harness === "string" && f.harness ? { harness: f.harness } : {}),
@@ -1212,7 +1219,7 @@ export function createWsHandler(deps: WsDeps) {
             ...(f.when && typeof f.when === "object" && typeof f.when.kind === "string" ? { when: f.when } : {}),
             ...(f.media?.length ? { media: mediaOf(f.media) } : {}),
             ...(typeof f.from === "string" && f.from ? { from: f.from } : {}),
-          });
+          }));
         if (id && !prior) {
           newTaskSeen.set(id, pending);
           if (newTaskSeen.size > 200) newTaskSeen.delete(newTaskSeen.keys().next().value!);

@@ -18,6 +18,7 @@ import { listFolders, type BrowseResult, type RepoHint as FoundRepo } from "@duc
 import type { CloneResult } from "@ducter/protocol/src/clone.ts";
 import type { NewFolderResult } from "@ducter/protocol/src/new-folder.ts";
 import type { GitLogin, GitLoginState } from "@ducter/protocol/src/git-login.ts";
+import { actingPersona } from "./acting.ts";
 
 // D197: the git reads are shared with a worker's folderInfo op (protocol/src/folder-info.ts).
 export { realGit, repoBranches, repoTop, type GitRun };
@@ -422,7 +423,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
   let card: TaskCard;
   try {
     card = await runner.openTask({
-      persona: d.persona.id,
+      persona: actingPersona() ?? d.persona.id, // D312: opened from another partner's conversation: it is that partner's
       title,
       brief: when?.kind === "when" ? waitFirstBrief(condition, input.brief ?? words, language) : (input.brief ?? words),
       place,

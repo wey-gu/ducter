@@ -69,7 +69,8 @@ export interface TaskRegistry {
   setState(taskId: string, attention: Attention, residency: Residency, reason?: string): void; // appends task_state
 }
 
-export type ToolHandler = (args: any, ctx: { role: string; taskId?: string }) => Promise<unknown>;
+// D312: persona: the partner calling (absent: the default), or for a task-role call the partner the task is for.
+export type ToolHandler = (args: any, ctx: { role: string; taskId?: string; persona?: string }) => Promise<unknown>;
 
 export interface McpHub {
   // Registers a tool for a role ("partner" or "task"). Core serves them at /mcp.
@@ -144,6 +145,13 @@ export interface CoreApi {
   media?: MediaApi;
   /** D288: account limits a running session said, kept with the agent's last read (core/src/account-usage.ts); absent in tests and stubs. */
   limits?: { seen(harness: string, limits: NonNullable<HarnessEvent["limits"]>): void };
+  /**
+   * D312: with more than one partner, what is this partner's own: an event (its conversation, its
+   * tasks, its waits, its routines) and a task. Absent: everything (one partner, tests, stubs).
+   */
+  mine?: { event(e: LogEvent): boolean; task(c: TaskCard): boolean };
+  /** D312: the partner a task is for, by its persona id: its name (the task's brief) and Mem identity (NMEM_AGENT_ID). */
+  personaFor?(id: string | undefined): { name: string; mem?: MemIdentity };
 }
 
 /** D206: the home's media store as the runner and the partner use it. */

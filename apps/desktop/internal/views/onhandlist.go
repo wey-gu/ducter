@@ -362,15 +362,20 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	// Only in all, and Other: what belongs to no task.
 	var pds []*store.DecisionState
 	var loose, missed []*protocol.Waiter
+	var others []protocol.PartnerAsk // D312: another partner's own questions
 	if q == "" && (a.oh.lens == "" || a.oh.lens == lensOther) {
 		pds, loose, missed = a.partnerDecisions(), a.looseWaiters(), a.S.MissedToday(time.Now())
+		others = a.otherAsks()
 	}
 	// What needs you comes first and takes no room when there is none (the
 	// board's head says so in one calm sentence).
-	if len(needs)+len(pds) > 0 && show(1) {
-		a.listSection(c, "needs", a.L.T("lane.needs_you"), len(needs)+len(pds), func() {
+	if len(needs)+len(pds)+len(others) > 0 && show(1) {
+		a.listSection(c, "needs", a.L.T("lane.needs_you"), len(needs)+len(pds)+len(others), func() {
 			for _, d := range pds {
 				a.partnerDecisionCard(c.Key("pd:"+d.DecisionID), d)
+			}
+			for _, x := range others {
+				a.otherAskRow(c, x)
 			}
 			for _, task := range needs {
 				if a.S.PendingDecision(task.ID) != nil {
@@ -533,6 +538,9 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 		}
 		ui.Column(c.Key("main")).Grow(1).Shrink(1).MinWidth(0).Gap(3).Children(func() {
 			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				if task.Card != nil {
+					a.partnerMark(c, task.ID, task.Card.Persona) // D312
+				}
 				title := ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(14).FontWeight(500).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
 				// Finished rows recede, unless they are a new result.
 				if ((att == protocol.Done || att == protocol.DoneClaimed) && st != stNew) || (!rail && a.quietWait(task)) {

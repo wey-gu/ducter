@@ -121,6 +121,76 @@ func (a *App) stone(c *ui.Context, key, look string, size float32) ui.Element {
 	return box
 }
 
+// otherAsks (D312) is every other partner's own open questions, which On
+// hand lists (the shown partner's are in its conversation).
+func (a *App) otherAsks() []protocol.PartnerAsk {
+	if !a.manyPartners() || a.S.OnHand == nil {
+		return nil
+	}
+	shown := a.shownPartnerID()
+	var out []protocol.PartnerAsk
+	for _, x := range a.S.OnHand.Asks {
+		if x.Persona == shown || a.partnerByID(x.Persona) == nil {
+			continue
+		}
+		out = append(out, x)
+	}
+	return out
+}
+
+func (a *App) partnerByID(id string) *protocol.PartnerInfo {
+	for i := range a.S.Partners {
+		if a.S.Partners[i].ID == id {
+			return &a.S.Partners[i]
+		}
+	}
+	return nil
+}
+
+// partnerMark (D312) is whose a task is, on its On hand row or card, once
+// there is more than one partner: its partner's small stone.
+func (a *App) partnerMark(c *ui.Context, key, persona string) {
+	if !a.manyPartners() {
+		return
+	}
+	p := a.partnerByID(persona)
+	if p == nil {
+		p = a.partnerByID(protocol.DefaultPartner)
+	}
+	if p == nil {
+		return
+	}
+	ui.Box(c.Key("mark:" + key)).Shrink(0).Role(ui.RoleImage).Label(p.Name).Tooltip(p.Name).Children(func() {
+		a.stone(c, "mark-"+key, p.Look, 18)
+	})
+}
+
+// otherAskRow (D312) is another partner's own question in On hand: a click
+// shows that partner's conversation, where it is answered.
+func (a *App) otherAskRow(c *ui.Context, x protocol.PartnerAsk) {
+	t := a.T
+	p := a.partnerByID(x.Persona)
+	if p == nil {
+		return
+	}
+	label := a.L.T("partners.switch", p.Name)
+	row := ui.Row(c.Key("oask:"+x.DecisionID)).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Border(1, t.LookRim).
+		AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Tooltip(label).Focusable()
+	if row.Hovered() {
+		row.Background(t.Surface.Mix(t.Ink, 0.03))
+	}
+	row.Children(func() {
+		a.stone(c, "oask-"+x.DecisionID, p.Look, 32)
+		ui.Column(c.Key("w")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+			ui.Text(c, a.L.T("partners.asks.from", p.Name)).FontSize(t.XS).TextColor(t.InkSoft)
+			ui.Text(c, x.Question).FontSize(14).TextColor(t.Ink).MaxLines(2)
+		})
+	})
+	if row.Clicked() {
+		a.SwitchPartner(x.Persona)
+	}
+}
+
 // partnerSwitch is the other partners beside the name in the bar.
 func (a *App) partnerSwitch(c *ui.Context) {
 	if !a.manyPartners() {

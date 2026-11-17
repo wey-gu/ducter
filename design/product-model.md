@@ -23,7 +23,7 @@
 | Internal | Shown (中 / EN) | Meaning |
 |---|---|---|
 | persona, main AI | its **name** (default "Ducter"); as a category 伙伴 / Partner | Whoever you're talking to |
-| more than one persona (D309, preview) | Settings › 伙伴's **伙伴们 / Your partners** · **再加一个伙伴 / Add a partner** (help **比如一个管工作、一个管家里，或者家里每人一个。/ One for work and one for home, say, or one for each person in the family.**) · **叫它什么 / Its name** · **它的颜色 / Its colour** (**沙色 / Sand**, **青苔 / Sage**, **天蓝 / Sky**, **梅子 / Plum**, **杏色 / Apricot**) · **加上 / Add** · **不加了 / Cancel** · **正在聊 / Talking now** · **换到{name} / Switch to {name}** (with something waiting: **换到{name}，有 {n} 件等你 / Switch to {name}, {n} need you**) · **{name} 来了。/ {name} is here.**; a push's title **{name}：{task} / {name}: {task}** | Shown only once there is a second partner. Its look is a clay **stone** behind its face (never a word in the UI). Never "persona", "profile", "account", "agent" |
+| more than one persona (D309, D312, preview) | Settings › 伙伴's **伙伴们 / Your partners** · **再加一个伙伴 / Add a partner** (help **比如一个管工作、一个管家里，或者家里每人一个。/ One for work and one for home, say, or one for each person in the family.**) · **叫它什么 / Its name** · **它的颜色 / Its colour** (**沙色 / Sand**, **青苔 / Sage**, **天蓝 / Sky**, **梅子 / Plum**, **杏色 / Apricot**) · **加上 / Add** · **不加了 / Cancel** · **正在聊 / Talking now** · **换到{name} / Switch to {name}** (with something waiting: **换到{name}，有 {n} 件等你 / Switch to {name}, {n} need you**) · **{name} 来了。/ {name} is here.** · On hand's row for another partner's own question **{name} 问你 / {name} asks you** (D312); a push's title **{name}：{task} / {name}: {task}** | Shown only once there is a second partner. Its look is a clay **stone** behind its face (never a word in the UI). Never "persona", "profile", "account", "agent" |
 | Log, channel | (hidden) "对话 / the conversation" | |
 | job | (no card; just an ack and a status line) | Any work not answered at once. Executed in turn, in a fork, or in a window (principle 6) |
 | Focus Window, window | **事 / Task** | A job big enough to need its own session and place. **Only windows get cards** |
@@ -421,8 +421,9 @@ Two primitives plus one property cover every case.
 - Its tasks run with the user's Nowledge Mem plugin as the persona's identity (D168); where the plugin isn't on that computer, the persona's own recall and a read-only search fill in. Only the partner writes memories; a task proposes.
   The identity is bound once (the user's own if they set one, else Ducter's `ducter`) and
   survives a rename: the name is only its label (D141).
-- **Attention is the person's.** On hand aggregates every persona, and each card carries its
-  persona's face and color. Conversations stay separate.
+- **Attention is the person's.** On hand aggregates every persona: each row and card carries its
+  persona's stone, and another persona's own questions are listed there too (D312). Conversations
+  stay separate.
 - **Isolated by default.** A persona reads or asks another only after the user links them.
   Its conversation is its own Log stream (`channel` for the default, `channel:<id>` for another);
   a client shows one at a time and never receives another's words, only its count (D309).
@@ -430,8 +431,10 @@ Two primitives plus one property cover every case.
   A push and the Mac's menu bar name whose it is once there is more than one (D309).
 - **Recognizable at a glance:** its face on its own clay stone, a look token (`sand` `sage` `sky`
   `plum` `apricot`, light and dark); a clay character per persona later (D309, `personas.md`).
-- **Creating one is light:** a name and a colour, in Settings › 伙伴 (D309); at most four. Mem's
-  birth-draft flow and its own Mem identity come with its session (not built: `personas.md`).
+- **Creating one is light:** a name and a colour, in Settings › 伙伴 (D309); at most four. It
+  answers in its own session from its first message, with its own Mem identity (`ducter-<id>`)
+  once Mem answers; whatever belongs to its tasks, questions, waits and routines lands in its own
+  conversation (D312). Mem's birth-draft flow is later (`personas.md`).
 - **Quota:** subscriptions belong to the user. The main-AI reserve is kept per subscription,
   shared by all personas' main turns. A task whose agent's limit runs out waits for the reset
   and carries on in the same session, or goes to another signed-in agent (D297). *Not built

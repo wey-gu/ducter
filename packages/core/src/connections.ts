@@ -19,6 +19,8 @@ import type { SignInView } from "@ducter/protocol";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { qrRows } from "./devices.ts";
 import { discover, importedToken, pollDevice, refresh as refreshToken, revoke as revokeToken, stale, startDevice, type DeviceStart, type OAuthServer, type OAuthToken } from "./mcp-oauth.ts";
+import { actingPersona } from "./acting.ts";
+import { channelOf } from "@ducter/protocol/src/partners.ts";
 
 export const CONNECTIONS_FILE = "connections.json";
 export const CONNECTION_TOKENS_FILE = "connection-tokens.json";
@@ -1023,7 +1025,8 @@ export function openConnections(opts: {
     },
 
     async runApproved(decisionId) {
-      const evs = opts.log.read({ stream: "channel", kinds: ["connection_call", "decision_resolved"], limit: 5000 });
+      // D312: a write another partner staged is in its own conversation (its call is handled as it).
+      const evs = opts.log.read({ stream: channelOf(actingPersona()), kinds: ["connection_call", "decision_resolved"], limit: 5000 });
       const staged = evs.find((e) => e.kind === "connection_call" && (e.body as Bodies["connection_call"]).decisionId === decisionId && (e.body as Bodies["connection_call"]).state === "needs_go");
       if (!staged) return err("Nothing is waiting on that decision.");
       const s = staged.body as Bodies["connection_call"];

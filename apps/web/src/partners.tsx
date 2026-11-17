@@ -6,8 +6,9 @@
 // adds one (a name and a colour, nothing else).
 import { useState } from "preact/hooks";
 import { DEFAULT_PARTNER, PARTNER_LOOKS, PARTNER_NAME_MAX, nextLook, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+import type { PartnerAsk } from "@ducter/protocol";
 import { A } from "./app.ts";
-import { AddRow, Btn } from "./controls.tsx";
+import { AddRow, Btn, Chev } from "./controls.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
 /** A partner's stone: its idle clay face on its own colour (app.css .stone, --look-*). */
@@ -16,6 +17,34 @@ export function Stone({ look, size }: { look: PartnerLook; size: number }) {
     <span class="stone" data-look={look} style={{ width: size, height: size }} aria-hidden="true">
       <img src="app/art/idle.webp" alt="" draggable={false} />
     </span>
+  );
+}
+
+/** D312: whose a task is, on its On hand row or card, once there is more than one partner. */
+export function PartnerMark({ persona }: { persona: string | undefined }) {
+  if (!A.manyPartners()) return null;
+  const p = A.partners!.find((x) => x.id === persona) ?? A.partners!.find((x) => x.id === DEFAULT_PARTNER);
+  if (!p) return null;
+  return (
+    <span class="partner-mark" role="img" aria-label={p.name} title={p.name}>
+      <Stone look={p.look} size={18} />
+    </span>
+  );
+}
+
+/** D312: another partner's own question, listed in On hand: a tap shows that partner's conversation, where it is answered. */
+export function OtherAsk({ a }: { a: PartnerAsk }) {
+  const p = A.partners?.find((x) => x.id === a.persona);
+  if (!p) return null;
+  return (
+    <button class="other-ask" data-look={p.look} onClick={() => A.switchPartner(a.persona)} title={t("partners.switch", p.name)}>
+      <Stone look={p.look} size={32} />
+      <span class="ask-words">
+        <span class="who">{t("partners.asks.from", p.name)}</span>
+        <span class="q">{a.question}</span>
+      </span>
+      <Chev cls="go" />
+    </button>
   );
 }
 

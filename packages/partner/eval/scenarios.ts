@@ -200,6 +200,11 @@ export interface Scenario {
   calendarDown?: true;
   /** D300: a day of things Ducter did for the person (packages/core/test/did-day.ts), logged now: the `did_list` tool answers from it. */
   did?: true;
+  /**
+   * D312: the partner under test is a second partner with this name, on its own view of core (its
+   * own conversation); the seed goes into the default partner's conversation, which it never sees.
+   */
+  second?: { name: string };
 }
 
 // Under a result message the app renders, from the task's typed report: the task chip, the
@@ -987,6 +992,33 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "你叫什么名字？" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 120, require: [/Muse/], forbid: [/Ducter|您/] },
     rubric: "Introduces itself as Muse, warmly and briefly, in Chinese, using 你 (never 您). Does not call itself Ducter.",
+  },
+  // D312: a second partner (the user made 小家 for home things) answers in its own conversation.
+  {
+    id: "second-partner-name",
+    category: "persona",
+    lang: "zh",
+    second: { name: "小家" },
+    seed: [
+      { user: "把 ~/dev/hawdb 的 nightly 修一下" },
+      { ai: "好，我去看 nightly 挂在哪。" },
+    ],
+    steps: [{ user: "你好，你是谁？" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, require: [/小家/], forbid: [/Ducter|您|nightly|hawdb/i] },
+    rubric: "The partner under test is 小家, the user's second partner. It introduces itself as 小家, warmly and briefly, in Chinese, using 你; it never calls itself Ducter or speaks as the other partner, and says nothing of the other conversation (the hawdb nightly).",
+  },
+  {
+    id: "second-partner-apart",
+    category: "persona",
+    lang: "zh",
+    second: { name: "小家" },
+    seed: [
+      { user: "下周三下午三点我约了牙医，记一下" },
+      { ai: "记下了：下周三下午三点，看牙医。" },
+    ],
+    steps: [{ user: "我跟你说过牙医约在几点吗？" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/三点|3 ?点|15[:：]00|下午三|周三|星期三/] },
+    rubric: "The partner under test is 小家, a second partner; the dentist time was told to the other partner, in a conversation 小家 never sees. 小家 must not state or guess the time or the day. It says plainly, in one or two short Chinese lines with 你, that the user hasn't told it here (it may say it doesn't see the other partner's conversation), and offers to note it now if the user tells it. No task, no card.",
   },
   {
     id: "status-pending-zh",

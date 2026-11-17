@@ -69,7 +69,8 @@ export function createClosing(o: { log: LogStore; tasks: CoreRegistry; loadout: 
     if (e.kind !== "decision_resolved") return;
     const r = e.body as Bodies["decision_resolved"];
     if (r.option !== "go") return;
-    const d = o.log.read({ stream: "channel", kinds: ["decision"], limit: 200 }).find((x) => (x.body as Bodies["decision"]).decisionId === r.decisionId)?.body as Bodies["decision"] | undefined;
+    // D312: an answer lands in its question's own conversation (another partner's, or the default's).
+    const d = o.log.read({ stream: e.stream, kinds: ["decision"], limit: 200 }).find((x) => (x.body as Bodies["decision"]).decisionId === r.decisionId)?.body as Bodies["decision"] | undefined;
     if (!d?.closing) return;
     void (async () => {
       for (const m of d.closing!.moves) {

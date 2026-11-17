@@ -697,6 +697,19 @@ export interface OnHand {
   calls?: CallView[];
   /** D186: the projects the user added by hand (a folder each), shown even before a task. */
   projects?: ProjectView[];
+  /**
+   * D312: with more than one partner, every partner's own open questions (not its tasks'), so On
+   * hand lists another partner's too; a client leaves out the partner it shows (its conversation has them).
+   */
+  asks?: PartnerAsk[];
+}
+
+/** D312: one partner's own open question, as On hand lists it (a tap shows that partner). */
+export interface PartnerAsk {
+  persona: string;
+  decisionId: string;
+  question: string;
+  at: string;
 }
 
 /** D186: a project the user added: a folder (a repo or not) on the home's computer, or on a worker (place.device, D197), and its name. */
@@ -825,6 +838,8 @@ export type RoutineTrouble = "signin" | "quota";
 
 export interface RoutineBody {
   routineId: string;
+  /** D312: the partner it is for (its runs report to it); absent: the default partner. */
+  persona?: string;
   name: string; // short, in the user's language
   trigger: RoutineTrigger;
   triggerWords: string; // the trigger in words ("每周一 9:00 · 跟着你的时区")

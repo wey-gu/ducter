@@ -24,6 +24,7 @@ import { Avatar, DecisionCard, stateLabel } from "./views.tsx";
 import { Coin } from "./coin.tsx";
 import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
+import { OtherAsk, PartnerMark } from "./partners.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -348,7 +349,7 @@ function stateCounts(lens: string): number[] {
   const loose = looseIn(lens);
   const calls = loose ? (A.S.onHand?.calls ?? []) : [];
   return [
-    l[0]!.length + (loose ? A.S.partnerDecisions().length : 0),
+    l[0]!.length + (loose ? A.S.partnerDecisions().length + A.otherAsks().length : 0),
     l[1]!.length + calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state)).length,
     l[2]!.length + (loose ? A.S.armedWaiters().filter((w) => !w.taskId).length : 0),
     // D310: done today is tasks finished well today, the one count every surface says; a failed
@@ -620,6 +621,7 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
         {arrived && <span class="pop-bub" aria-hidden="true" />}
         <span class="l1">
           {w && <WaitBubble w={w} />}
+          <PartnerMark persona={task.card?.persona} />
           <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
           {!active && ch && (ch.adds > 0 || ch.dels > 0) && (
             <span class="stat">
@@ -690,6 +692,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
         <span class="c1">
           <Coin harness={harnessOf(task)} size={28} motion={working ? "working" : a === "needs_you" ? "needs_you" : "still"} />
           <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
+          <PartnerMark persona={task.card?.persona} />
           {fresh && <StatusFace s="new" failed={a === "failed"} handing={handover(task.id, st)} />}
         </span>
         <span class={`c2${s.tone ? ` ${s.tone}` : ""}${fresh && !s.tone ? " result" : ""}`}>
@@ -908,6 +911,8 @@ export function OnHandList({ room }: { room: Room }) {
   const done = keep(lanes[LANE.done]!);
   const loose = !q && looseIn(lens);
   const partnerDs = loose ? A.S.partnerDecisions() : [];
+  // D312: another partner's own questions are listed here too (answered in its conversation).
+  const otherAs = loose ? A.otherAsks() : [];
   const looseWs = loose ? A.S.armedWaiters().filter((w) => !w.taskId) : [];
   const missed = loose ? A.S.missedToday() : [];
   const calls = loose ? (A.S.onHand?.calls ?? []) : [];
@@ -942,8 +947,8 @@ export function OnHandList({ room }: { room: Room }) {
       {q && !shown && <p class="none">{t("onhand.find.none")}</p>}
       {/* D285: a Find that matches nothing here leads to every earlier task. */}
       {q && !rail && <PastLink words={t("past.find.in", q)} q={q} />}
-      {needs.length + partnerDs.length > 0 && show(1) && (
-        <Section name={t("lane.needs_you")} n={needs.length + partnerDs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
+      {needs.length + partnerDs.length + otherAs.length > 0 && show(1) && (
+        <Section name={t("lane.needs_you")} n={needs.length + partnerDs.length + otherAs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
           {/* What needs you is answered in place: its card, not a row (beside a task, a row). */}
           {rail ? (
             <Rows tasks={needs} room={room} />
@@ -951,6 +956,9 @@ export function OnHandList({ room }: { room: Room }) {
             <>
               {partnerDs.map((d) => (
                 <DecisionCard key={d.decisionId} d={d} />
+              ))}
+              {otherAs.map((x) => (
+                <OtherAsk key={x.decisionId} a={x} />
               ))}
               {needs.map((task) => {
                 const d = A.S.pendingDecision(task.id);

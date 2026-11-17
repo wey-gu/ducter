@@ -1708,3 +1708,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **The partner offers S2 itself** ("want me to ask your terminal Claude?"). Trigger: Mem's contacts say what a session is working on; then a persona change with its eval scenario.
 - [ ] **A human comprehension test of 试试看** (does a developer paste the words into the terminal, not into Ducter?). Trigger: D321 reviewed.
 - [ ] **Fix keeps the memory's content**: 改 writes the new words as title and content (D304's way). Trigger: Mem's update takes a title alone without losing what the content adds.
+
+## Flaky under load (2026-11-17)
+- [ ] **`channels-telegram.test.ts` "a picture in Telegram becomes the message's media; a blocked bot
+      reads as can't connect"** failed once in a full local run while e2e and other suites ran
+      (19 ms, not a timeout); it passed 14/14 alone three times and in three loaded reruns of
+      core + web. Capture its error the next time it fails and fix the race. Trigger: the next failure.

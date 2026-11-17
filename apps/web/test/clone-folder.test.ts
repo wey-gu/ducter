@@ -77,7 +77,9 @@ describe("Add from a Git address (D204)", () => {
     expect(ask.t).toBe("project_clone");
     expect(ask.device).toBeUndefined();
     // A new socket: the clone in flight is asked for again, by the same id.
-    A.receive({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0 } as any);
+    // The same partner as the page holds (another test file may have left another one; D309 starts
+    // over on a different partner, which is not what this test is about).
+    A.receive({ t: "welcome", persona: A.S.persona || "default", personaName: "Ducter", headSeq: 0 } as any);
     expect(sent.filter((f) => f.t === "project_clone" && f.clientId === ask.clientId)).toHaveLength(2);
     const why: Record<string, string> = {
       no_access: "hel 没有这个仓库的权限：先在 hel 上登录 git，再试一次。",

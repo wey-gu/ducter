@@ -81,7 +81,7 @@ test("their words come into the one conversation; the answer goes back with thei
   // The uint64 message id survived JSON.
   expect(u.clientId).toMatch(/^wechat:.+:7000000000000000\d{3}$/);
   expect(hub.lastRoute()).toBe("wechat");
-  expect(Date.parse(wechat().openUntil!)).toBeGreaterThan(Date.now());
+  expect(Date.parse(wechat().openUntil!)).toBeGreaterThan(rig.clock.now()); // the rig's clock, not the real one (it went past the fixture's day)
   rig.say("十点一个，和设计组。", u.seq);
   await waitFor(() => wx.texts().includes("十点一个，和设计组。"));
   const sent = wx.sent("sendmessage").at(-1)!;

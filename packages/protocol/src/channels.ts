@@ -60,7 +60,16 @@ export type ChannelClientFrame =
   // 断开 / Disconnect: the tokens are forgotten too.
   | { t: "channel_forget"; kind: ChannelKind };
 
+/** D323: a Mac carrying iMessage for the home, as the home last heard from its app. */
+export interface IMessageCarrier {
+  computer: string;
+  state: "on" | "needs_permission" | "not_signed_in" | "error";
+  here?: boolean;
+}
+
 export type ChannelServerFrame =
   // slackManifest: the app manifest the person pastes into api.slack.com (Create app › From a manifest).
-  | { t: "channels"; channels: ChannelView[]; slackManifest: string }
+  // imessage (D323): the Macs whose Ducter carries iMessage now (a bridge that isn't off), by
+  // computer name; here: the socket this frame goes to. Absent: no Mac carries it.
+  | { t: "channels"; channels: ChannelView[]; slackManifest: string; imessage?: IMessageCarrier[] }
   | { t: "channel_result"; kind: ChannelKind; op: "connect" | "code" | "unlink" | "forget"; ok: boolean; reason?: "token" | "network" | "busy" | "not_connected" | "expired" | "unavailable"; code?: string; link?: string; expiresAt?: string };

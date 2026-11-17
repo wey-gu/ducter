@@ -931,6 +931,18 @@ type ChannelStatus struct {
 	T       string `json:"t"`       // "channel_status"
 	Channel string `json:"channel"` // "imessage"
 	State   string `json:"state"`
+	// Computer is this Mac's name (D323), so the home can tell the
+	// person's other devices which Mac carries iMessage.
+	Computer string `json:"computer,omitempty"`
+}
+
+// IMessageCarrier is a Mac carrying iMessage for the home (D323), on the
+// channels frame: its computer name, how its bridge stands, and Here when
+// it is this app's own.
+type IMessageCarrier struct {
+	Computer string `json:"computer"`
+	State    string `json:"state"`
+	Here     bool   `json:"here,omitempty"`
 }
 
 type Decide struct {
@@ -2120,8 +2132,10 @@ type ServerFrame struct {
 	// Slack manifest; channel_result: ChannelKind, Op, OK, Reason, Code, Link, ExpiresAt.
 	Channels      []ChannelView `json:"channels,omitempty"`
 	SlackManifest string        `json:"slackManifest,omitempty"`
-	ChannelKind   string        `json:"kind,omitempty"`
-	Op            string        `json:"op,omitempty"`
+	// IMessageAt (D323, channels): the Macs carrying iMessage now.
+	IMessageAt  []IMessageCarrier `json:"imessage,omitempty"`
+	ChannelKind string            `json:"kind,omitempty"`
+	Op          string            `json:"op,omitempty"`
 	// D285: past_result and past_marked (past.go), decoded on their own.
 	Past *PastFrame `json:"-"`
 	// D300: did_result (did.go), decoded on its own.

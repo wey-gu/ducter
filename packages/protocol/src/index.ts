@@ -932,7 +932,9 @@ export type ClientFrame =
   // D277: the Mac app's iMessage bridge says how it stands (on: it reads and answers there).
   // While some socket says on and the person last wrote from iMessage, the home's push stays quiet
   // for what the bridge carries, so each thing reaches them once.
-  | { t: "channel_status"; channel: "imessage"; state: "on" | "needs_permission" | "not_signed_in" | "off" | "error" }
+  // computer (D323): the Mac it runs on, by its Computer Name, so the home can tell every Chat apps
+  // page which Mac carries iMessage.
+  | { t: "channel_status"; channel: "imessage"; state: "on" | "needs_permission" | "not_signed_in" | "off" | "error"; computer?: string }
   // cvc (D191): a pay card's security code when none is kept; held in memory for that one
   // payment's fill, never logged.
   // key, once (D233): a key card's Go carries the key the person pasted (kept in Autofill unless

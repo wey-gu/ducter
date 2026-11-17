@@ -23,8 +23,9 @@ type IMessageBridge interface {
 
 // imessageState is the group's own state: the mode chosen before linking.
 type imessageState struct {
-	self bool
-	busy bool
+	self     bool
+	checking bool // D323: a setup check is asking Messages
+	busy     bool
 }
 
 // imessageGroup is iMessage in Settings › 聊天软件 / Chat apps (D277, moved
@@ -45,7 +46,21 @@ func (a *App) imessageGroup(c *ui.Context) {
 	title := a.L.T("imessage.title")
 	a.chatGroup(c, "imessage", title, func() {
 		line, tone := a.imessageHead(st)
+		elsewhere := ""
+		if st.State == imessage.StateOff {
+			elsewhere = a.imessageElsewhere()
+			if elsewhere != "" {
+				line, tone = a.L.T("imessage.state.elsewhere", elsewhere), sideDone
+			}
+		}
 		a.chatHead(c, "imessage", title, line, tone)
+		if elsewhere != "" {
+			// D323: another Mac carries it for the home; one Mac is enough, and
+			// two signed in to the same Apple ID would both answer.
+			a.chatRow(c, "imessage-elsewhere", a.L.T("imessage.elsewhere", elsewhere), a.L.T("imessage.elsewhere.note", name), nil)
+			a.chatFoot(c, "imessage-elsewhere-foot", a.L.T("imessage.via.there", elsewhere), nil)
+			return
+		}
 		if st.State == imessage.StateOff {
 			a.chatBody(c, "imessage-mode", func() {
 				ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
@@ -62,14 +77,13 @@ func (a *App) imessageGroup(c *ui.Context) {
 								is.self = i == 1
 							}
 						})
-						help := a.L.T("imessage.mode.partner.note", name)
-						if is.self {
-							help = a.L.T("imessage.mode.self.note", name)
-						}
-						ui.Text(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+						a.imessageCompare(c, name)
 					})
 				})
 			})
+			if !is.self {
+				a.imessageSteps(c, st, name)
+			}
 			a.chatFoot(c, "imessage-connect", a.L.T("imessage.via"), func() {
 				label := a.L.T("imessage.connect")
 				if is.busy {
@@ -94,6 +108,9 @@ func (a *App) imessageGroup(c *ui.Context) {
 					ui.Box(c).Width(40).Shrink(0)
 					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S2).Children(func() {
 						line := a.L.T("imessage.code.partner", name)
+						if st.Account != "" {
+							line = a.L.T("imessage.code.to", st.Account)
+						}
 						if st.Mode == imessage.ModeSelf {
 							line = a.L.T("imessage.code.self")
 						}
@@ -114,6 +131,9 @@ func (a *App) imessageGroup(c *ui.Context) {
 			})
 		case imessage.StateOn:
 			who, note := a.L.T("chats.linked.who", st.Handle), a.L.T("imessage.where")
+			if st.Account != "" {
+				note = a.L.T("imessage.linked.partner", name, st.Account)
+			}
 			if st.Mode == imessage.ModeSelf {
 				who, note = a.L.T("imessage.linked.self"), a.L.T("imessage.linked.self.note", name)
 			}
@@ -122,9 +142,19 @@ func (a *App) imessageGroup(c *ui.Context) {
 		default:
 			a.chatRow(c, "imessage-state", a.imessageLine(st, name), "", func() {
 				if st.State == imessage.StateOwnID && a.buttonFor(c, a.L.T("imessage.own.switch"), title, btnSecondary, t.ControlSM, t.Surface) {
+					if st.Handle == "" {
+						// D323: the code showed it before anyone was linked: start
+						// over in Message yourself, with a fresh code.
+						is.self = true
+						a.async(func() { _ = br.Enable(context.Background(), imessage.ModeSelf) }, func() {})
+						return
+					}
 					br.SetMode(imessage.ModeSelf)
 				}
 			})
+		}
+		if st.Background {
+			a.chatRow(c, "imessage-background", a.L.T("imessage.background"), a.L.T("imessage.background.note", st.User), nil)
 		}
 		if !st.Stranger.IsZero() && a.imessageNow().Sub(st.Stranger) < 24*time.Hour {
 			a.chatRow(c, "imessage-stranger", a.L.T("imessage.stranger", name), "", nil)
@@ -216,6 +246,9 @@ func (a *App) imessageLine(st imessage.Status, name string) string {
 	case imessage.StateNoMessages:
 		return a.L.T("imessage.nomessages")
 	case imessage.StateOwnID:
+		if st.Handle == "" {
+			return a.L.T("imessage.own.code", name)
+		}
 		return a.L.T("imessage.own", name)
 	}
 	return a.L.T("imessage.error")

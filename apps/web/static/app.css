@@ -13885,6 +13885,28 @@ svg .wave.w2.on {
 .set-item.talk-row small {
   margin-top: 2px;
 }
+/* D342: the Android app's own version, its 检查更新 at the right edge, 44 px on a touch screen. */
+.set-item.app-row {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--s3);
+  padding-bottom: var(--s3);
+}
+.set-item.app-row .grow {
+  flex: 1;
+  min-width: 0;
+}
+.set-item.app-row small {
+  margin-top: 2px;
+}
+.set-item.app-row .btn {
+  flex: none;
+}
+@media (pointer: coarse) {
+  .set-item.app-row .btn {
+    height: 44px;
+  }
+}
 .set-item .pick {
   position: relative;
   flex: none;

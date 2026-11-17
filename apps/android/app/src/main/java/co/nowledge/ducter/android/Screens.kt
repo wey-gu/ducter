@@ -234,6 +234,8 @@ class UpdateCard(c: Context) : FrameLayout(c) {
     private val buttons = LinearLayout(c)
     val later = Button(c)
     val go = Button(c)
+    /** D342: a third way under the two, full width (a failed download's 在浏览器里下载). */
+    val altButton = Button(c)
 
     init {
         col.background = Pebble.card(c)
@@ -255,6 +257,9 @@ class UpdateCard(c: Context) : FrameLayout(c) {
         buttons.addView(later, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
         buttons.addView(go, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply { marginStart = dp(c, 10) })
         col.addView(buttons, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(c, 14) })
+        Pebble.quiet(altButton)
+        altButton.visibility = GONE
+        col.addView(altButton, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(c, 10) })
         addView(col, LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
     }
 
@@ -286,5 +291,12 @@ class UpdateCard(c: Context) : FrameLayout(c) {
         later.text = laterLabel ?: ""
         later.visibility = if (laterLabel == null) GONE else VISIBLE
         buttons.visibility = if (goLabel == null && laterLabel == null) GONE else VISIBLE
+        alt(null)
+    }
+
+    /** The third way, or none. Called after show(), which always clears it. */
+    fun alt(label: String?) {
+        altButton.text = label ?: ""
+        altButton.visibility = if (label == null) GONE else VISIBLE
     }
 }

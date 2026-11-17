@@ -55,14 +55,40 @@ enum class Why { NETWORK, NO_ASSET, CHECKSUM, SIGNATURE, INSTALL }
  */
 object Updater {
     /** At most every hour without asking (6 h before 2026-11-13: releases come several a day in the preview, and a phone hours behind its home missed fixes); "Check for updates" asks now. */
-    const val EVERY_MS = 60 * 60_000L
+    const val EVERY_MS = UpdatePace.EVERY_MS
     /** "Later" puts that version off for 3 days; a newer one is offered at once. */
-    const val LATER_MS = 3 * 24 * 60 * 60_000L
+    const val LATER_MS = UpdatePace.LATER_MS
 
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state
 
-    fun set(s: UpdateState) { _state.value = s }
+    /** When the state last changed (a download's every percent too): a step silent for long is stuck (D342). */
+    @Volatile var changedAt = System.currentTimeMillis()
+        private set
+
+    /** D342: GitHub has answered since the app started; until then a waiting version is asked about at once. */
+    @Volatile var heardThisRun = false
+        private set
+
+    /** Each check or download is one run; a stuck one that is started over can no longer speak (D342). */
+    @Volatile private var run = 0
+
+    fun set(s: UpdateState) {
+        changedAt = System.currentTimeMillis()
+        _state.value = s
+    }
+
+    private fun set(r: Int, s: UpdateState): Boolean {
+        if (r != run) return false
+        set(s)
+        return true
+    }
+
+    /** A stuck step is left behind: whatever it says later is ignored, and nothing shows (D342). */
+    fun startOver() {
+        run++
+        set(UpdateState.Idle)
+    }
 
     private val local get() = BuildConfig.DEBUG && !BuildConfig.RELEASE_API.startsWith("https://api.github.com/")
     private fun allowed(url: String) = Asset.trusted(url) || local
@@ -76,12 +102,16 @@ object Updater {
     /**
      * Asks GitHub. A newer release → Available; none → Current; offline → Failed(NETWORK). Quiet
      * (at launch, back in front): only a newer version not put off with "Later" is shown at all.
+     * The version offered is remembered until it is installed (D342), so a download that failed
+     * is offered again the next time the app opens.
      */
     suspend fun check(c: Context, store: Store, quiet: Boolean = false): UpdateState = withContext(Dispatchers.IO) {
+        val me = ++run
         if (!quiet) set(UpdateState.Checking)
         val s = try {
             val j = JSONObject(get(BuildConfig.RELEASE_API, "application/vnd.github+json").decodeToString())
             store.lastCheck = System.currentTimeMillis()
+            heardThisRun = true
             val version = Versions.bare(j.optString("tag_name"))
             if (j.optBoolean("draft") || j.optBoolean("prerelease") || !Versions.isVersion(version) ||
                 Versions.compare(version, current(c)) <= 0
@@ -96,8 +126,13 @@ object Updater {
         } catch (_: org.json.JSONException) {
             UpdateState.Failed(null, Why.NETWORK)
         }
+        when (s) {
+            is UpdateState.Available -> store.offered = s.r.version
+            UpdateState.Current -> store.offered = null
+            else -> {}
+        }
         val offer = s is UpdateState.Available && shouldOffer(store, s.r, System.currentTimeMillis())
-        if (!quiet || offer) set(s)
+        if (!quiet || offer) set(me, s)
         s
     }
 
@@ -127,34 +162,39 @@ object Updater {
 
     /** Downloads and checks the APK, then installs it (or asks for the one-time permission). */
     suspend fun download(c: Context, r: Release) = withContext(Dispatchers.IO) {
-        set(UpdateState.Downloading(r, 0))
+        val me = ++run
+        set(me, UpdateState.Downloading(r, 0))
         val dir = File(c.cacheDir, "updates").apply { mkdirs() }
         dir.listFiles()?.forEach { if (it.name != r.apkName) it.delete() }
         val out = File(dir, r.apkName)
         val sum = try {
             val want = r.sha256 ?: r.sumsUrl?.let { Asset.sumFromList(get(it, "text/plain").decodeToString(), r.apkName) }
             if (want == null) {
-                set(UpdateState.Failed(r, Why.CHECKSUM))
+                set(me, UpdateState.Failed(r, Why.CHECKSUM))
                 return@withContext
             }
-            val got = fetchTo(r.apkUrl, out) { pct -> set(UpdateState.Downloading(r, pct)) }
-            if (r.size > 0 && out.length() != r.size) "" to want else got to want
+            val got = fetchTo(r.apkUrl, out) { pct -> set(me, UpdateState.Downloading(r, pct)) }
+            // D342: a download that stopped short is the connection's fault, not a wrong file.
+            if (r.size > 0 && out.length() != r.size) throw IOException("stopped at ${out.length()} of ${r.size}")
+            got to want
         } catch (_: IOException) {
             out.delete()
-            set(UpdateState.Failed(r, Why.NETWORK))
+            set(me, UpdateState.Failed(r, Why.NETWORK))
             return@withContext
         }
-        set(UpdateState.Verifying(r))
+        if (!set(me, UpdateState.Verifying(r))) return@withContext
         if (sum.first != sum.second) {
             out.delete()
-            set(UpdateState.Failed(r, Why.CHECKSUM))
+            set(me, UpdateState.Failed(r, Why.CHECKSUM))
             return@withContext
         }
         if (!sameApp(c, out)) {
             out.delete()
-            set(UpdateState.Failed(r, Why.SIGNATURE))
+            set(me, UpdateState.Failed(r, Why.SIGNATURE))
             return@withContext
         }
+        // Left behind meanwhile (started over, or a newer check): it doesn't install.
+        if (me != run) return@withContext
         install(c, r, out)
     }
 

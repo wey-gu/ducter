@@ -31,6 +31,9 @@
     <string name="update_allow_go">前往设置</string>
     <string name="update_failed">没能更新</string>
     <string name="update_why_network">连不上 GitHub，等有网了再试。</string>
+    <string name="update_failed_v">没能更新到 %1$s</string>
+    <string name="update_why_download">从 GitHub 下载断了：网络断了，或者这个网络连不上 GitHub。什么都没动。再试一次，或者在浏览器里下载。</string>
+    <string name="update_in_browser">在浏览器里下载</string>
     <string name="update_why_checksum">下载的文件和校验值对不上，什么都没动。</string>
     <string name="update_why_no_asset">这个版本里没有给安卓的文件。</string>
     <string name="update_why_signature">这份 Ducter 是从别处装的，安卓不让用发布版更新它。卸载它，从发布页装一次 APK 就好。</string>

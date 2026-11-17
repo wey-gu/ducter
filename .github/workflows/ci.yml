@@ -60,6 +60,14 @@ jobs:
             exit 1
           fi
 
+      # The site's tests read its built pages and import its Markdown pipeline (apps/site has its
+      # own lockfile, not part of the root install), so the site is installed and built first.
+      - name: Site install and build (for the site's tests)
+        working-directory: apps/site
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
       - name: bun test
         run: bun test
 

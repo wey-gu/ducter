@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.0.66
+
+<!-- whats-new
+zh: 手头的事更清爽；记忆页说的是它记得你什么
+en: A calmer On hand; Memory says what it knows about you
+zh: 上万条的长任务也顺滑；下载页一站全有
+en: Huge sessions stay smooth; every download on one page
+-->
+
+**On hand and the task page**
+- One short line from your partner, only the states there are, one card for every task; a quiet
+  task offers Check now, Continue or Put down. The locator's mark is a soft pill.
+- A task of tens of thousands of events opens fast and scrolls lightly: the locator maps the whole
+  session, and only what's near the screen is kept.
+
+**Memory and your other AI agents**
+- Memory shows what it knows about you in your words, with where each thing came from; fix or
+  forget it in place, and search it.
+- Connected AI agents shows exactly what to say in your terminal, and tells you when the first
+  hand-off arrives.
+
+**Settings**
+- Partner reads as one story: what it thinks with, who does the tasks, add another AI agent.
+- Apps and services show their own marks; Done for you draws each kind of action.
+- iMessage's Allow opens System Settings even when the home is on another computer.
+
+**Reach and devices**
+- A server on Tailscale alone onboards from the site and the deploy skill, with clear words for
+  every Tailscale state.
+- Foldables are known by their hardware; the iPhone Duo reads as a foldable.
+- A task that needs your phone always gets its phone tools.
+
+**Download**
+- ducter.ai/download lists every way to get Ducter, your device first, with sizes and checksums.
+
 ## 0.0.65
 
 <!-- whats-new

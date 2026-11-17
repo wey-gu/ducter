@@ -1,4 +1,4 @@
-// 自动填充 / Autofill (D191, design/autofill.md): sign-ins, cards and the owner's details, kept
+// 密码和银行卡 / Passwords & cards (Autofill in code) (D191, design/autofill.md): sign-ins, cards and the owner's details, kept
 // on the home and filled into Ducter's browser by reference. What crosses this file is never a
 // secret after it was saved: clients and models see names, handles, the last four digits and the
 // details the owner lets Ducter read. A secret goes one way, in one frame (saved_put), and comes

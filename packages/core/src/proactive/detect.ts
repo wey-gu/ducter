@@ -223,7 +223,7 @@ function deadlines(facts: Fact[], c: DetectCtx): Candidate[] {
     const paid = payments.some((p) => Date.parse(p.at) >= Date.parse(r.at) && (sameName(p.name, r.name) || senderOf(p) === senderOf(r)));
     if (paid) continue;
     const amt = r.amount ? `（${r.amount}）` : "";
-    const extraZh = r.cardExpired ? "自动续费那张卡已经过期了。" : r.autopay ? "" : "之后没有付款收据。";
+    const extraZh = r.cardExpired ? "自动续费那张银行卡已经过期了。" : r.autopay ? "" : "之后没有付款收据。";
     const extraEn = r.cardExpired ? " The card on file has expired." : r.autopay ? "" : " No receipt since.";
     out.push({
       key: `deadline:${r.id}`,

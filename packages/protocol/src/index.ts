@@ -1219,7 +1219,7 @@ export type ClientFrame =
   | { t: "browser_sites_clear" }
   // D154, `ducter browser check`: start Ducter's browser, load a page, quit. Answered with browser_check.
   | { t: "browser_check"; url?: string }
-  // D191, 自动填充 / Autofill: "saved" answers with a saved frame (names, last four, where used;
+  // D191, 密码和银行卡 / Passwords & cards (Autofill in code): "saved" answers with a saved frame (names, last four, where used;
   // never a secret). saved_put adds or edits one (the one frame that carries a secret, once);
   // saved_remove deletes one (an id, or a detail key); saved_forget_site takes back a site's OK.
   | { t: "saved" }

@@ -29,7 +29,7 @@ test("a busy week: the trip that doesn't join up, the renewal on an expired card
   expect(by.mismatch!.step).toMatchObject({ kind: "lookup", needs: { browse: true }, goLabel: { zh: "看看能不能提前" } });
   expect(by.mismatch!.urgent).toBe(false); // 11 days out
 
-  expect(by.deadline!.words.zh).toBe("ducter.dev 11/16 到期（$10.44）。自动续费那张卡已经过期了。");
+  expect(by.deadline!.words.zh).toBe("ducter.dev 11/16 到期（$10.44）。自动续费那张银行卡已经过期了。");
   expect(by.deadline!.step!.brief).toContain("Never pay");
 
   // Lina asked by mail on Friday and again this morning, and on GitHub: one find, the PR read first.

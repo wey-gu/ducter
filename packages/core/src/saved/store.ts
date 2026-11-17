@@ -1,4 +1,4 @@
-// 自动填充 / Autofill's store (D191, design/autofill.md): the owner's saved sign-ins, cards and
+// 密码和银行卡 / Passwords & cards (Autofill in code)'s store (D191, design/autofill.md): the owner's saved sign-ins, cards and
 // details, on the home only, one encrypted file per persona (<dataDir>/saved/<persona>.enc,
 // AES-256-GCM, the key apart from it: key.ts). Nothing here is ever logged, sent to a client in
 // clear or put in a model's context: views carry names, handles, the last four digits and the

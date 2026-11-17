@@ -16,7 +16,7 @@ personal-AI user, **F** a fresh user who has never heard of a subagent.
 | 通知 / Notifications | C and F: "will it bother me at night?" | Unsure when it will interrupt | Quiet hours and the default wait are set, and the partner says in one line what that means | Notifications on, quiet hours 23:00–08:00 offered with one switch |
 | 账号 / Accounts | C most (what it may read; whether it may call); F next | A wall of rows each saying the same green word | Calm: the place says how it reads, a row speaks only when it differs; flipping a switch gets one word back from the partner | The one tap (oo) or the add row; nothing read until they say yes |
 | 聊天软件 / Chat apps | C (Telegram, Slack), H (Slack) | Connected, but to what? | "在 @bot 等你": it is waiting there, by name | One group per app with its steps as rows; nothing connected until they paste a key |
-| 自动填充 / Autofill | C booking travel | Unsure what it can see | Each saved thing is a row with its mark; what it can and cannot read said once | Three add rows, one per kind; the uses section says none yet |
+| 密码和银行卡 / Passwords & cards (D336) | C booking travel | Unsure what it can see, and what "autofill" even keeps | Each saved thing is a row with its mark; what it can and cannot read said once | Its list line says what it is for and where it is kept (登录、付款、填地址时用，锁着存在你的电脑上); three add rows, one per kind; the uses section says none yet |
 | 外观和声音 / Look and sound | Everyone, briefly | — | The preview smiles back at a choice (D150) | The preview stage and three groups |
 | 在哪儿运行 / Where it runs | H (a server home), F once ("does closing the window stop it?") | Afraid closing the window loses work | This Mac (or hel) as the group's first row, small clay in the tile column, and one sentence that it keeps working | The row and its sentence; Rest, data and Remove further down, quiet |
 | 更新和关于 / Updates and about | H checks versions; C reads Help | "Up to date · checked…" read as two facts | One phrase per computer (刚看过，已经是最新的) under a name that says what it is to the partner (Ducter 住在这儿) | The About card; the versions card; help links |
@@ -26,7 +26,7 @@ personal-AI user, **F** a fresh user who has never heard of a subagent.
 Each pane was walked at Mac 1280 and 900 and web 1400 and 390, zh and en, against the demo core
 with the author's accounts laid over it (`.shots/d296/before`, `.shots/d296/after`):
 
-- **First run / empty:** Autofill's three add rows and its empty uses header; Chat apps with
+- **First run / empty:** Passwords & cards' three add rows and its empty uses header; Chat apps with
   nothing connected (each app's steps); Accounts with only the offer.
 - **Connected:** Accounts with OOMOL (eight services, two calendars), Tuwa connected and own
   number on a server home; Telegram linked.
@@ -157,8 +157,8 @@ Every pane walked in the real Mac app (cua-driver, scratch bundle id and HOME) a
 - The web's version line is one phrase as on the Mac (**刚看过，已经是最新的**); the night-update note
   says **一台一台地更新 / one computer at a time** on both (the web said "in the same order", a phrase from
   the update-all card); the Mac's versions note sits under its title like every group's.
-- 要不要先问's note and Autofill's 你的资料 note sit under their headings on the web, as on the Mac.
-- The records switch speaks of the partner as 它 / it, like every Settings line; Autofill's kept line
+- 要不要先问's note and Passwords & cards' 你的资料 note sit under their headings on the web, as on the Mac.
+- The records switch speaks of the partner as 它 / it, like every Settings line; Passwords & cards' kept line
   says 解锁用的密钥在 Mac 的钥匙串里 (密钥 alone read as the API keys right above it).
 
 ## Not done

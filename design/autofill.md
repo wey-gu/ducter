@@ -1,5 +1,9 @@
 # Autofill: sign-ins, cards and your details for errands (D191)
 
+The person sees it as **密码和银行卡 / Passwords & cards** (D336): the Settings section, the docs page
+and every word the partner says. "Autofill" is the builder's name for the mechanism (this note, the
+code); it never reaches a screen. In zh a payment card is **银行卡**, never a bare 卡.
+
 Status: decided as D191 (draft for the author's review), built on the home, the web client and the
 Mac app; verified with unit tests, an integration test through the real core, and a fake checkout
 in a local Chrome for Testing. Evidence: `research/54-credentials-for-errands.md` (and
@@ -18,7 +22,7 @@ logged-in profiles" (D48).
   the last four; they type the 3-digit code and tap Pay. Feels: in control without doing the work.
 - **A fresh user.** Never sets anything up. The first errand that needs a sign-in shows the D151
   sign-in card (they sign in themselves); the first that needs paying stops at the checkout. The
-  partner says once that Settings › Autofill lets Ducter fill it next time. Nothing to learn first.
+  partner says once that Settings › Passwords & cards lets Ducter fill it next time. Nothing to learn first.
 
 North star: easy (save once, tap once per payment), smooth (no copy-paste between apps),
 delightful (a receipt-like card, not a form), trustworthy (the model never sees a secret, every
@@ -90,10 +94,12 @@ on a question. The partner does not ask first itself (one card, not two); it ope
 - **Passkeys:** an agent can't use the owner's passkey. The owner signs in once in the live view;
   the session stays.
 
-## 6. Settings › Autofill (both clients)
+## 6. Settings › Passwords & cards (both clients)
 
-**设置 › 自动填充 / Settings › Autofill**, after Accounts. One lede, then four groups:
-**登录 / Sign-ins** (site, user name, last used, a dot row), **卡 / Cards** (a small clay card
+**设置 › 密码和银行卡 / Settings › Passwords & cards** (D336), after Chat apps. Its line in the
+Settings list says what it is for and where it is kept: **登录、付款、填地址时用，锁着存在你的电脑上 /
+For signing in, paying and filling in addresses; locked on your computer**. One lede, then the
+groups: **登录 / Sign-ins** (site, user name, last used, a dot row), **银行卡 / Cards** (a small clay card
 with the last four, name, expiry), **你的资料 / Your details** (readable values; private ones by
 name only), **使用记录 / Where it was used** (filled · said Go to {amount} · said OK · said no,
 with the site, the task and when; the newest 30 shown, 300 kept). Add and edit in place; **删掉 /
@@ -161,7 +167,7 @@ transcript, On hand, a push and the partner's reads show `••••••` ev
 What is not: the task's agent sees what its own commands print, and its harness keeps that in its
 own transcript. The card and the docs say so plainly.
 
-**Settings › Autofill › 密钥 / Keys.** **让任务向我要密钥 / Let tasks ask me for keys** (on by
+**Settings › Passwords & cards › 密钥 / Keys.** **让任务向我要密钥 / Let tasks ask me for keys** (on by
 default) with **任务要用 API 密钥或部署密钥时，会在对话里问你要。关掉后，它只在报告里说需要哪一个。**;
 the kept keys (name; variable · last used; a head then `••••••`, or **已存 / kept**); **添加密钥 /
 Add a key** (它是什么 / What it is, 变量名 / Variable name, 密钥 / Key); Remove as for the others.

@@ -26,6 +26,7 @@ On the left is a row of tabs; the one you pick shows on the right:
 | **Connected AI agents** | The AI agents you use elsewhere that can reach it (shown once Nowledge Mem is in) |
 | **Notifications** | When it comes to you, quiet hours, and how long it waits if you don't answer |
 | **Accounts** | The mail, calendars and other accounts it can read |
+| **Passwords & cards** | Sign-ins, cards, your details and keys, for signing in, paying and filling in addresses; locked on your computer |
 | **Look and sound** | The look, light or dark, the menu bar, the window's language, Details in the conversation, the intro's sound, voice |
 | **Where it runs** | Which computer Ducter lives on, stopping it, data and logs, and Remove Ducter |
 | **Updates and about** | The version, updates, help links and credits |
@@ -218,6 +219,13 @@ row for each app it can read and its switch; tap a row for what it reads, or to 
 Reading just happens; sending or changing anything waits for your Go. All of it is in
 [Accounts your partner can read](accounts.md). The AI accounts
 (Claude Code, Codex, pi, DeepSeek Harness) live on **Devices**; the last row, **AI accounts**, goes there.
+
+## Passwords & cards
+
+What Ducter uses to sign in, pay and fill in addresses for you: your sign-ins, your cards, your
+details and the keys tasks ask for, kept locked on the computer Ducter lives on. In Chinese it is
+**密码和银行卡**. Ducter fills them in without the AI seeing them, and every payment waits for your
+Go. All of it is in [Passwords & cards](passwords-and-cards.md).
 
 ## Look and sound
 

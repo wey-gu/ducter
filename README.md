@@ -132,7 +132,7 @@ Building from source, the walkthroughs and every command: [Install](docs/install
   phone. Anything that sends, pays or deletes waits for your Go
   ([Your devices](docs/devices.md#tasks-in-your-macs-apps)).
 - **Errands.** Book and buy with your saved sign-ins and cards, filled in without being seen, and
-  every payment waits for your OK ([Autofill](docs/autofill.md)). A task that needs a key (a
+  every payment waits for your OK ([Passwords & cards](docs/passwords-and-cards.md)). A task that needs a key (a
   deploy key, an API key) asks you with a card, never in the chat, and the key stays on your own
   computer. Calls through Tuwa, after you tap Call ([Phone calls](docs/calls.md); needs a Tuwa
   account).

@@ -1,4 +1,4 @@
-// 自动填充 / Autofill (D191): the store, the fill tools for tasks in Ducter's browser, the one
+// 密码和银行卡 / Passwords & cards (Autofill in code) (D191): the store, the fill tools for tasks in Ducter's browser, the one
 // listing tool (saved_list, for the partner and for those tasks), and the clients' frame.
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import type { SavedFrame } from "@ducter/protocol/src/saved.ts";
@@ -54,7 +54,7 @@ export function createAutofill(o: AutofillOptions): Autofill & { attachBrowser(h
   o.mcp.registerWhen(
     "partner",
     "saved_list",
-    "Autofill (sign-ins, cards, the user's details): names and handles, never values. Before a task that books, buys or signs in; put the handle in its brief (\"pay with card:visa-4242 after the user's Go\").",
+    "Passwords & cards (sign-ins, cards, the user's details): names and handles, never values. Before a task that books, buys or signs in; put the handle in its brief (\"pay with card:visa-4242 after the user's Go\").",
     { type: "object", properties: {} },
     async () => savedListText(store, "partner"),
     any,

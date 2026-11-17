@@ -1,9 +1,9 @@
-// D191: 自动填充 / Autofill, the 付款 / Pay card and the first-use OK, in both languages
+// D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code), the 付款 / Pay card and the first-use OK, in both languages
 // (design/product-model.md, the Autofill rows). The Mac app carries the same keys.
 export const autofill: Record<"zh" | "en", Record<string, string>> = {
   zh: {
-    "settings.tab.autofill": "自动填充",
-    "settings.list.autofill": "存着的登录、卡和你的资料，它替你填",
+    "settings.tab.autofill": "密码和银行卡",
+    "settings.list.autofill": "登录、付款、填地址时用，锁着存在你的电脑上",
     "af.lede": "Ducter 把这些填进它自己的浏览器，自己看不见。每次付款都先问你，第一次在一个网站用登录或证件也先问你。",
     "af.signins": "登录",
     "af.signin.add": "添加登录信息",
@@ -11,8 +11,8 @@ export const autofill: Record<"zh" | "en", Record<string, string>> = {
     "af.signin.site": "网站",
     "af.signin.user": "用户名或邮箱",
     "af.signin.password": "密码",
-    "af.cards": "卡",
-    "af.card.add": "添加卡片",
+    "af.cards": "银行卡",
+    "af.card.add": "添加银行卡",
     "af.card.why": "订酒店、买东西时用。每次付款前都给你看商家、金额和卡尾号。",
     "af.card.number": "卡号",
     "af.card.exp": "有效期（月/年）",
@@ -52,7 +52,7 @@ export const autofill: Record<"zh" | "en", Record<string, string>> = {
     "af.d.meal.eg": "素食",
     "af.keep": "不改就留空",
     "af.keep.with": "%s，不改就留空",
-    "af.card.line": "%s 的卡，%s 到期",
+    "af.card.line": "%s 的银行卡，%s 到期",
     "af.save": "保存",
     "af.cancel": "取消",
     "af.remove": "删除",
@@ -76,8 +76,8 @@ export const autofill: Record<"zh" | "en", Record<string, string>> = {
     "pay.what": "商品",
     "pay.where": "商家",
     "pay.first": "第一次在这里付款",
-    "pay.card": "付款卡",
-    "pay.cvc": "卡尾号 %s 的安全码",
+    "pay.card": "银行卡",
+    "pay.cvc": "尾号 %s 的银行卡安全码",
     "pay.why": "安全码只用这一次，不存。它看不见卡号。",
     "pay.go": "支付 %s",
     "pay.hold": "暂不付款",
@@ -122,8 +122,8 @@ export const autofill: Record<"zh" | "en", Record<string, string>> = {
     "key.task": "这个任务",
   },
   en: {
-    "settings.tab.autofill": "Autofill",
-    "settings.list.autofill": "Saved sign-ins, cards and your details, filled in for you",
+    "settings.tab.autofill": "Passwords & cards",
+    "settings.list.autofill": "For signing in, paying and filling in addresses; locked on your computer",
     "af.lede": "Ducter fills these into its own browser without seeing them. Every payment asks you first, and so does the first sign-in or ID on a site.",
     "af.signins": "Sign-ins",
     "af.signin.add": "Add a sign-in",

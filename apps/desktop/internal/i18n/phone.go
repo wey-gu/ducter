@@ -123,7 +123,7 @@ var zhPhone = Table{
 	"call.row.cancelled":     "打给 %s 的电话挂断了",
 	"call.cancel":            "取消通话",
 	"call.hangup":            "挂断",
-	"call.why.payment":       "Tuwa 要先存一张卡",
+	"call.why.payment":       "Tuwa 要先存一张银行卡",
 	"call.why.balance":       "Tuwa 里没有分钟了",
 	"call.why.cap":           "今天的上限到了",
 	"call.why.signed_out":    "Tuwa 要重新登录",

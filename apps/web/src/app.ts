@@ -318,7 +318,7 @@ class AppState {
   devices?: DeviceView[];
   /** D151: the signed-in sites of Ducter's browser on the home, once asked for. */
   sites?: Extract<ServerFrame, { t: "browser_sites" }>;
-  /** D191: 自动填充 / Autofill (names, last four, where used; never a secret). */
+  /** D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code) (names, last four, where used; never a secret). */
   saved?: Extract<ServerFrame, { t: "saved" }>;
   /** The last save or remove from this window failed (its form shows why). */
   savedFailed = false;

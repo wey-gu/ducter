@@ -265,7 +265,7 @@ export interface Core extends CoreApi {
   handsets: import("./handset/index.ts").Handsets;
   /** D235: 用电脑 / Use the computer. */
   computer?: ComputerUse;
-  /** D191: 自动填充 / Autofill. */
+  /** D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code). */
   autofill: Autofill;
   port: number;
   url: string; // ws URL for clients
@@ -669,7 +669,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     else if (early.length < 100) early.push(e);
   });
 
-  // D191: 自动填充 / Autofill: saved sign-ins, cards and details, filled by reference in Ducter's browser.
+  // D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code): saved sign-ins, cards and details, filled by reference in Ducter's browser.
   const autofill = createAutofill({ dataDir, persona: persona.id, mcp, log, tasks: tasks as never, ...(opts.platform ? { platform: opts.platform } : {}) });
   autofillRef = autofill;
   // D233: 密钥 / Keys a task asks the person for. No key value ever enters the Log: every event's

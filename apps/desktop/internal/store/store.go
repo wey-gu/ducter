@@ -436,7 +436,7 @@ type Store struct {
 	BrowserSites *protocol.ServerFrame
 	// Phone is Ducter's phone (D217): its live view, install sheet and results.
 	Phone PhoneState
-	// Saved is 设置 › 自动填充 / Autofill (D191): names, last four, where used; never a secret.
+	// Saved is 设置 › 密码和银行卡 / Passwords & cards (D191): names, last four, where used; never a secret.
 	Saved *protocol.ServerFrame
 	// Channels is 设置 › 聊天软件 / Chat apps (D276); ChannelResults, the answers to
 	// connect and code (the views read and drop them). Never a token.

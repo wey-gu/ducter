@@ -138,7 +138,7 @@ export interface WsDeps {
   computer?: import("./computer/index.ts").ComputerUse;
   /** D238: 用这台手机 / Use this phone. */
   handsets?: import("./handset/index.ts").Handsets;
-  /** D191: 自动填充 / Autofill; absent in tests that don't need it. */
+  /** D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code); absent in tests that don't need it. */
   autofill?: import("./saved/index.ts").Autofill;
   /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
@@ -784,7 +784,7 @@ export function createWsHandler(deps: WsDeps) {
       case "saved_ask_keys": {
         // D191: the Autofill list. A put is the one frame that carries a secret; the answer never does.
         const af = deps.autofill;
-        if (!af) throw new Error("Autofill isn't available here");
+        if (!af) throw new Error("Passwords & cards aren't available here");
         try {
           if (f.t === "saved_put") af.store.put(f.item);
           else if (f.t === "saved_ask_keys") af.store.setAskKeys(f.on !== false);

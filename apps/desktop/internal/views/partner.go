@@ -187,8 +187,14 @@ func (a *App) partnerName(c *ui.Context) {
 // sheetCard is a group whose card holds free content (the loadout's two
 // groups): the title on the paper, the card padded, its parts spaced.
 func (a *App) sheetCard(c *ui.Context, key, title string, body func()) {
+	a.sheetCardNoted(c, key, title, "", body)
+}
+
+// sheetCardNoted is a sheetCard whose one note sits under its title on the
+// paper, as every group's does (D289), not as the card's first line.
+func (a *App) sheetCardNoted(c *ui.Context, key, title, note string, body func()) {
 	t := a.T
-	a.group(c, key, title, "", func() {
+	a.group(c, key, title, note, func() {
 		ui.Column(c).Gap(t.S4).Padding(t.S5).Children(body)
 	})
 }
@@ -511,11 +517,9 @@ func (a *App) accountsPanel(c *ui.Context) {
 	} else {
 		a.group(c, "accounts", title, lede, func() {
 			oo := a.S.Oo
-			if a.S.ConnAsked && len(list) == 0 && (oo == nil || !oo.Account) {
-				a.rowBlock(c, "none", func() {
-					ui.Text(c, a.L.T("acct.none")).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
-				})
-			}
+			// research/118: nothing yet is said on the add row itself (as on the web), not
+			// as a row of its own over a row holding only a button.
+			none := a.S.ConnAsked && len(list) == 0 && (oo == nil || !oo.Account)
 			usedOo := false
 			for _, cv := range list {
 				usedOo = usedOo || cv.Via == "oo"
@@ -540,9 +544,11 @@ func (a *App) accountsPanel(c *ui.Context) {
 						open = a.button(c, a.L.T("acct.manual"), btnText, t.ControlMD, t.Surface)
 					}, nil)
 				} else {
-					a.actions(c, "acct", nil, func() {
-						open = a.button(c, a.L.T("acct.add"), btnPrimary, t.ControlMD, t.Surface)
-					})
+					line := ""
+					if none {
+						line = a.L.T("acct.none")
+					}
+					open = a.addRow(c, "acct", a.L.T("acct.add"), line)
 				}
 				if open {
 					ps.acctAdding, ps.acctWhere, ps.acctURL, ps.acctToken = true, 0, hostedConnector, ""

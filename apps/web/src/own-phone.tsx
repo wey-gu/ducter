@@ -110,7 +110,7 @@ function Look({ v }: { v: OwnPhoneView }) {
   return (
     <div class="own-look" aria-live="polite">
       <Btn kind="text" size="sm" label={t(v.looking ? "own.looking" : "own.scan")} disabled={!!v.looking} onClick={() => A.ownPhoneAct({ action: "scan" })} />
-      {!v.looking && line && <Facts class="small sub own-looked" items={[line.saw, <time class="own-looked-at">{line.at}</time>]} />}
+      {!v.looking && line && <Facts class="small sub own-looked" items={[line.saw, <time class="own-looked-at">{t("own.looked.at", line.at)}</time>]} />}
     </div>
   );
 }
@@ -356,7 +356,7 @@ export function OwnPhoneCard() {
       })}
       {v.ready && <Toggle label={t("own.prefer")} help={`${t("own.prefer.help")} ${t("own.today", v.today, v.perDay)}`} checked={v.prefer} onChange={(on) => A.ownPhoneAct({ action: "prefer", on })} />}
       {!forgetting ? (
-        <GFoot note={`${t("own.where", v.where)} ${t("own.rails")}`}>{(v.phone || v.voice.key) && <DangerButton quiet label={t("own.forget")} onClick={() => setForgetting(true)} />}</GFoot>
+        <GFoot note={t("own.foot", v.where)}>{(v.phone || v.voice.key) && <DangerButton quiet label={t("own.forget")} onClick={() => setForgetting(true)} />}</GFoot>
       ) : (
         <GConfirm ask={t("own.forget.ask")} keep={t("card.stop.keep")} go={t("own.forget.go")} onKeep={() => setForgetting(false)} onGo={() => (setForgetting(false), A.ownPhoneAct({ action: "forget" }))} />
       )}

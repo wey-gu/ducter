@@ -763,6 +763,7 @@ const zh: Record<string, string> = {
   "loadout.rule.add.line": "比如「后端的事用 Codex」。在对话里说也一样。",
   "loadout.tasks.override": "打开任何一件事，都能换别的 AI agent 接着做。",
   "loadout.add.title": "再添一个 AI agent",
+  "loadout.add.title.first": "添一个 AI agent",
   "loadout.add.none": "登录一个 AI agent，或者贴一个 API 密钥，%s 就能开始想事情、做事。",
   "loadout.add.one": "有了第二个，%s 就能按事情挑；一个的额度用完了，另一个接着做。",
   "loadout.add.more": "多一个，%s 挑的时候就多一个选择。",
@@ -874,7 +875,7 @@ const en: Record<string, string> = {
   "settings.list.accounts": "The mail, calendars and other accounts it can read",
   "settings.tab.devices": "Your devices",
   "settings.list.devices": "Ducter on each computer, its version and updates",
-  "settings.list.phone": "Light and dark, language, Details in the conversation, voice",
+  "settings.list.phone": "Light and dark, language, details in the conversation, voice",
   "settings.back": "Settings",
   "partner.header": "Lives on %s and thinks with %s",
   "loadout.brain.auto": "Picked for you: only %s is signed in",
@@ -1587,6 +1588,7 @@ const en: Record<string, string> = {
   "loadout.rule.add.line": "Like “backend work on Codex”. Saying it in the conversation works too.",
   "loadout.tasks.override": "Open any task to hand it to another AI agent mid-way.",
   "loadout.add.title": "Add another AI agent",
+  "loadout.add.title.first": "Add an AI agent",
   "loadout.add.none": "Sign in to an AI agent or paste an API key, and %s can start thinking and doing tasks.",
   "loadout.add.one": "With a second one, %s picks per task, and when one runs out of limit the other carries on.",
   "loadout.add.more": "One more gives %s one more to pick from.",
@@ -1912,7 +1914,9 @@ const devup: Record<Lang, Record<string, string>> = {
     "agentv.why.unchanged": "更新程序跑完了，版本没变。",
     "agentv.why.failed": "出了点问题，再试一次。",
     "settings.versions.night": "自动更新",
-    "settings.versions.night.note": "在免打扰时段里（没设就是夜里 3 点到 5 点）、没有事在做的时候，按同样的顺序更新；AI 只更新到 Ducter 验证过的版本。",
+    "settings.versions.night.note": "在免打扰时段里（没设就是夜里 3 点到 5 点）、没有事在做的时候，一台一台地更新；AI agent 只更新到 Ducter 验证过的版本。",
+    "settings.versions.current": "%s看过，已经是最新的",
+    "settings.versions.current.now": "刚看过，已经是最新的",
   },
   en: {
     "devices.title": "Your devices",
@@ -2055,7 +2059,9 @@ const devup: Record<Lang, Record<string, string>> = {
     "agentv.why.unchanged": "Its updater ran, but the version didn't change.",
     "agentv.why.failed": "Something went wrong. Try again.",
     "settings.versions.night": "Update automatically",
-    "settings.versions.night.note": "In quiet hours (3–5 am if none are set), when nothing is running, in the same order; AI agents only to versions Ducter has checked.",
+    "settings.versions.night.note": "In quiet hours (3–5 am if none are set), when nothing is running, one computer at a time; AI agents only to versions Ducter has checked.",
+    "settings.versions.current": "Up to date, checked %s",
+    "settings.versions.current.now": "Up to date, checked just now",
   },
 };
 
@@ -3037,9 +3043,11 @@ export function usedArgs(fmt: string, n: number): boolean[] {
   return used;
 }
 
-/** D176: on an iPad the copy's "this phone" (这台手机 / This phone) names the iPad instead. */
-export type Handheld = "phone" | "ipad";
+/** D176: on an iPad the copy's "this phone" (这台手机 / This phone) names the iPad instead; D330: in a
+ *  browser on a computer, the computer (这台电脑 / This computer), a desktop browser being no phone. */
+export type Handheld = "phone" | "ipad" | "computer";
 const onIpad = (s: string) => s.replace(/这台手机/g, "这台 iPad").replace(/\b([Tt])his phone\b/g, "$1his iPad");
+const onComputer = (s: string) => s.replace(/这台手机/g, "这台电脑").replace(/\b([Tt])his phone\b/g, "$1his computer");
 
 /** D78: what a table does to a filled-in line (the Chinese table's spacing around Latin names). */
 const TIDY: Partial<Record<TableLang, (s: string) => string>> = { zh: (s) => joinHan(spaceHan(s)) };
@@ -3058,6 +3066,7 @@ export function strings(locale: Lang, handheld: Handheld = "phone"): Strings {
   const t = (key: string, ...args: unknown[]): string => {
     let v = table[key] ?? en[key] ?? key; // a missing key shows itself, so it gets fixed
     if (handheld === "ipad") v = onIpad(v);
+    else if (handheld === "computer") v = onComputer(v);
     if (!args.length) return v;
     if (onEmptyArg) {
       const used = usedArgs(v, args.length);

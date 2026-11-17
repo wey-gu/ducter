@@ -484,8 +484,7 @@ func (a *App) updateSection(c *ui.Context) {
 	if len(shown) == 0 {
 		return
 	}
-	a.sheetCard(c, "versions", a.L.T("settings.versions.title"), func() {
-		a.note(c, a.L.T("settings.versions.note", a.S.PersonaName))
+	a.sheetCardNoted(c, "versions", a.L.T("settings.versions.title"), a.L.T("settings.versions.note", a.S.PersonaName), func() {
 		home := homeDevice(shown)
 		for _, dv := range shown {
 			a.versionRow(c, dv, dv == home)

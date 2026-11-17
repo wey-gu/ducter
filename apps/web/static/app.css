@@ -13851,3 +13851,61 @@ svg .wave.w2.on {
   .handoff-wait,
   .handoff-done { animation: none; }
 }
+
+/* research/118: 回你用的语言 / Replies in, one pop-up at the row's right edge as on the Mac (its
+   pill on the sunken surface, the chevron turned down), not every language as a row. Narrow, the
+   pop-up drops under the words, as every Settings control does (D273). */
+.set-item.talk-row {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--s3);
+  padding-bottom: var(--s3);
+}
+.set-item.talk-row .grow {
+  flex: 1;
+  min-width: 0;
+}
+.set-item.talk-row small {
+  margin-top: 2px;
+}
+.set-item .pick {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+}
+.set-item .pick select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 36px;
+  max-width: 220px;
+  padding: 0 32px 0 14px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.set-item .pick select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.set-item .pick .chev-g {
+  position: absolute;
+  inset-inline-end: 12px;
+  pointer-events: none;
+  color: var(--ink-muted);
+}
+@media (max-width: 520px) {
+  .set-item.talk-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .set-item .pick select {
+    width: 100%;
+    max-width: none;
+  }
+}

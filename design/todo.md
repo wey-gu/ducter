@@ -463,8 +463,21 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **D307: the web's forced paper in the iPhone and Android shells** (the page turns; check the
       shells' own status bar and background under a light page on a dark system and back). Trigger:
       the next iOS/Android build.
-- [ ] **D307: the web's 这台手机 / This phone on a desktop browser** (a wide browser is not a phone;
-      a name for it through the glossary). Trigger: the author's review of D307.
+- [x] **D307: the web's 这台手机 / This phone on a desktop browser.** Done by D330 (1): 这台电脑 / This
+      computer, with the clay laptop.
+- [ ] **research/118: the demo cores read the machine's own Nowledge Mem and audio devices.** Every
+      demo but `demo.ts` and the bridge demos starts the core without a pretend `nmem`, so Memory shows
+      the real Mem's memories and "update available"; Accounts' own-number step 3 names the real
+      speakers. Give `startCore` one demo switch (or each demo `fakeNmem("none")` and a fake audio
+      probe). Trigger: the next shots taken from a demo other than `demo.ts`.
+- [ ] **research/118: Updates and about on a Mac home says two checks.** 这次没能检查 (the app's own
+      feed) above 7 分钟前看过，已经是最新的 (the home's) and two 检查更新; on a Mac home they are one
+      Ducter. Seen with the app's feed pointed at a dead address, so not yet with a real failure. Trigger:
+      the first real feed failure, or the author's review of research/118.
+- [ ] **research/118: Accounts' own-number setup is open for everyone.** A consumer or fresh user who
+      came to add a mail account meets five numbered USB and SIM steps, step 1 open. Recommendation:
+      the group shows its head row and 设置 / Set up until the person opens it (a new resting state,
+      so a decision). Trigger: the author's review of research/118.
 - [ ] Watch D302's light-to-dark cross-fade on a real Mac at macOS's Auto switch, and the dark
       Devices sea and coins at full size. Trigger: the author's next evening session.
 

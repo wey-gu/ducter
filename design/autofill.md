@@ -41,8 +41,8 @@ OK).
 **At rest:** `<dataDir>/saved/<persona>.enc`, AES-256-GCM, 0600. The key is apart from it: on a
 Mac in the login keychain (generic password, service `Ducter Autofill`, an account per data folder,
 via `/usr/bin/security`); elsewhere `<dataDir>/saved/key`, 0600. The screen says which, plainly:
-**锁着存在 {home} 上，密钥在这台 Mac 的钥匙串里 / Locked on {home}, its key in this Mac's
-keychain** or **…密钥在一个只有 Ducter 能读的文件里 / …its key in a file only Ducter can read**.
+**锁着存在 {home} 上，解锁用的密钥在 Mac 的钥匙串里 / Locked on {home}, its key in the Mac's
+keychain** or **…解锁用的密钥在一个只有 Ducter 能读的文件里 / …its key in a file only Ducter can read**.
 Never synced to a client; a client sends a secret once (`saved_put`) and never gets it back.
 Tests and the eval always use the key file (`DUCTER_SAVED_KEY=file`, and `bun test`).
 

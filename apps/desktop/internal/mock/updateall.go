@@ -34,6 +34,9 @@ func updateAllOffer() []protocol.UpdateAllItem {
 		if kind == "agent" {
 			key = "agent:" + dev + ":" + h
 		}
+		if kind == "mem" {
+			key = "mem:" + dev
+		}
 		return protocol.UpdateAllItem{Key: key, Kind: kind, Device: dev, DeviceName: name, Harness: h, From: from, To: to, State: "queued", At: at}
 	}
 	return []protocol.UpdateAllItem{
@@ -43,6 +46,8 @@ func updateAllOffer() []protocol.UpdateAllItem {
 		it("agent", "local", "hel", "claude-code", "2.1.319", "2.1.322"),
 		it("agent", "local", "hel", "codex", "0.160.0", "0.167.0"),
 		it("agent", "box1", "build-box", "codex", "0.160.0", "0.167.0"),
+		// D329: the home's own Nowledge Mem, last.
+		it("mem", "local", "hel", "", "0.10.118", "0.10.121"),
 	}
 }
 
@@ -127,9 +132,11 @@ func (h *hub) handleUpdateAll(c *conn, f protocol.ClientFrame) {
 		step(func(it []protocol.UpdateAllItem) {
 			it[3].State, it[3].Busy, it[3].Phase = "running", 0, "updating"
 			it[5].State, it[5].Phase = "done", ""
+			it[6].State, it[6].Phase = "running", "updating"
 		})
 		step(func(it []protocol.UpdateAllItem) {
 			it[3].State, it[3].Phase = "done", ""
+			it[6].State, it[6].Phase = "done", ""
 			plan.FinishedAt = time.Now().UTC().Format(time.RFC3339)
 		})
 	}()

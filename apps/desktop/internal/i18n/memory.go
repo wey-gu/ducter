@@ -157,6 +157,10 @@ var zhMemory = Table{
 	"learned.fixed.mem":         "改好了，Nowledge Mem 里那条也改了。",
 	"learned.fixed.here":        "这里改好了；Nowledge Mem 里那条没改成。",
 	"learned.none":              "这周没有新记下的。",
+	"bridge.mem.closed":         "Nowledge Mem 没开着",
+	"bridge.mem.closed.open":    "%s 上的 Nowledge Mem 应用关着，记忆先放着，打开就接上。",
+	"bridge.mem.closed.there":   "在 %s 上打开 Nowledge Mem 应用就好。",
+	"bridge.mem.open":           "打开 Nowledge Mem",
 }
 
 var enMemory = Table{
@@ -311,6 +315,10 @@ var enMemory = Table{
 	"learned.fixed.mem":         "Fixed, in Nowledge Mem too.",
 	"learned.fixed.here":        "Fixed here; the one in Nowledge Mem didn't change.",
 	"learned.none":              "Nothing new noted this week.",
+	"bridge.mem.closed":         "Nowledge Mem isn't open",
+	"bridge.mem.closed.open":    "The Nowledge Mem app on %s is closed. Memories wait; open it and they're back.",
+	"bridge.mem.closed.there":   "Open the Nowledge Mem app on %s.",
+	"bridge.mem.open":           "Open Nowledge Mem",
 }
 
 func init() {

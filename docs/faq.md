@@ -196,7 +196,9 @@ anything says so.
 
 It remembers your conversation. With [Nowledge Mem](https://mem.nowledge.co) it also starts out
 knowing who you are and what you're working on, from the memory it shares with the AI tools you use elsewhere,
-and its reply's **Details** shows **Noted** when it saves something.
+and its reply's **Details** shows **Noted** when it saves something, with **Undo** right after.
+Its first hello says when your Nowledge Mem is there; ask it *What do you remember about me?* and it
+looks then, not before.
 See [Privacy and safety](privacy-and-safety.md#memory-with-nowledge-mem).
 
 ### Can it use the web?

@@ -40,6 +40,9 @@ func (a *App) memoryPanel(c *ui.Context) {
 		a.memLink(c, b)
 	case "off":
 		a.memHead(c, st)
+	case "closed":
+		a.memHead(c, st)
+		a.memClosed(c, b)
 	default:
 		a.memFirst(c, phase, b)
 	}
@@ -559,6 +562,26 @@ func (a *App) memUpdateRow(c *ui.Context, u *memUpd, b *protocol.BridgeView) {
 		tile = a.glyphTile(c, 18, drawCheck(t.Done.Ink))
 	}
 	a.tileRow(c, "mem-update", tile, title, line, control)
+}
+
+// memClosed is D329's one line when the Nowledge Mem app on the home is
+// closed: what it means, and the way to open it when the home can.
+func (a *App) memClosed(c *ui.Context, b *protocol.BridgeView) {
+	t := a.T
+	home := a.memHome()
+	a.group(c, "mem-closed", "", "", func() {
+		line := a.L.T("bridge.mem.closed.there", home)
+		var control func()
+		if b != nil && b.CanOpen {
+			line = a.L.T("bridge.mem.closed.open", home)
+			control = func() {
+				if a.buttonFor(c, a.L.T("bridge.mem.open"), home, btnSecondary, t.ControlSM, t.Surface) {
+					a.send(protocol.BridgeAction{T: "bridge_mem_open"})
+				}
+			}
+		}
+		a.headRow(c, "mem-closed", a.memTile(c, true), a.L.T("bridge.mem.closed"), line, sideMuted, control)
+	})
 }
 
 // memFirst is Memory before Mem is there: a small empty state on the paper

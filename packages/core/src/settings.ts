@@ -37,6 +37,8 @@ interface SettingsFile {
   confirmed?: number[];
   /** D304: 记下了 lines the person corrected, by seq: their words now. */
   corrected?: Record<string, string>;
+  /** D329: 记下了 lines taken back with 撤销 / Undo, by seq. */
+  undone?: number[];
   /** D148: update at night (off by default). */
   autoUpdate?: boolean;
   /** D165: when it notices something (D250: absent = never chosen = DEFAULT_PROACTIVE). */
@@ -83,6 +85,10 @@ export interface SettingsStore extends SettingsApi {
   findMem(q: string): Promise<MemItem[] | undefined>;
   /** Forgets one noted line (D304: or one 想起了 line's memory): in Mem when possible, else hidden here. */
   forget(seq: number): Promise<"mem" | "hidden" | undefined>;
+  /** D329: 撤销 / Undo on a Noted line: true when the save was taken back (archived, or out of the outbox). */
+  undo(seq: number): Promise<boolean>;
+  setMemHooks(h: Parameters<NonNullable<import("@ducter/protocol/src/internal.ts").SettingsApi["setMemHooks"]>>[0]): void;
+  memChanged(): void;
   /** D304: how many lines it noted in the 7 days before `at` that are still there (0 with memory off). */
   learnedThisWeek(at: number): number;
   /** D304: the person said a noted line is right. */
@@ -130,6 +136,7 @@ export function openSettings(opts: {
   const listeners = new Set<() => void>();
   const changed = () => listeners.forEach((fn) => fn());
   let forgetter: ((id: string) => Promise<boolean>) | undefined;
+  let memHooks: Parameters<NonNullable<import("@ducter/protocol/src/internal.ts").SettingsApi["setMemHooks"]>>[0] | undefined;
   let glance: (() => MemView["glance"]) | undefined;
   let glanceOps: GlanceOps | undefined;
   let memSeen: "connected" | "missing" | undefined;
@@ -220,6 +227,23 @@ export function openSettings(opts: {
     setCorrector(fn) {
       corrector = fn;
     },
+    setMemHooks(h) {
+      memHooks = h;
+    },
+    memChanged: changed,
+    async undo(seq) {
+      // D329: 撤销 / Undo on a Noted line, no question asked (it is the undo): archived in Mem, or
+      // taken out of the outbox while it waits; a memory it replaced comes back.
+      const e = opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 1000 }).find((x) => x.seq === seq);
+      if (!e || !memHooks) return false;
+      if ((data.undone ?? []).includes(seq)) return true;
+      const ok = await memHooks.undo(e.body as Bodies["memory_noted"]).catch((err) => (console.warn("[settings] undoing in Mem failed:", (err as Error).message), false));
+      if (!ok) return false;
+      data.undone = [...(data.undone ?? []), seq].slice(-HIDDEN_MAX);
+      save();
+      changed();
+      return true;
+    },
     setGlance(fn, ops) {
       glance = fn;
       glanceOps = ops;
@@ -275,7 +299,10 @@ export function openSettings(opts: {
       const keptUnder = state === "connected" && m ? (m.owned ? opts.persona.name : m.label || m.agentId) : undefined;
       const g = state !== "off" ? glance?.() : undefined;
       const forgotten = forgottenRecalls();
-      return { settings: s, mem: { state, noted: noted(), ...(forgotten.length ? { forgotten } : {}), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}) } };
+      const undone = data.undone ?? [];
+      const keys = memHooks?.waiting() ?? new Set<string>();
+      const waiting = keys.size ? opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 500 }).filter((x) => keys.has(String((x.body as Bodies["memory_noted"]).waiting ?? "")) && !undone.includes(x.seq)).map((x) => x.seq) : [];
+      return { settings: s, mem: { state, noted: noted(), ...(forgotten.length ? { forgotten } : {}), ...(undone.length ? { undone } : {}), ...(waiting.length ? { waiting } : {}), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}) } };
     },
     set(patch) {
       const did: string[] = [];

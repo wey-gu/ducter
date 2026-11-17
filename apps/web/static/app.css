@@ -13909,3 +13909,11 @@ svg .wave.w2.on {
     max-width: none;
   }
 }
+/* D329: a Noted line's facts, each its own element (D291): what it replaced, that it waits for Mem, a refused undo. */
+.noted-line .nq { color: var(--ink-muted); }
+.noted-line .nq.failed { color: var(--failed-ink); }
+.noted-line.undone .mk { color: var(--ink-muted); }
+
+/* D329: the Nowledge Mem app closed: its sentence, then the one way to open it, under the head. */
+.mem-closed-line { color: var(--ink-muted); line-height: 1.5; }
+.mem-closed-act { display: flex; }

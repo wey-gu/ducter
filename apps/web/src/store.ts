@@ -225,7 +225,7 @@ export class Store {
   arrived = new Map<string, number>();
   errors: string[] = [];
   /** 记下了 / Noted lines in the channel, shown inside the Details of the reply they belong to (D104). */
-  noted: { seq: number; title: string; memoryId?: string; replyTo?: number }[] = [];
+  noted: { seq: number; title: string; memoryId?: string; replyTo?: number; replaced?: string; waiting?: true }[] = [];
   /** D304: the 想起了 / Remembered line under a message, by the seq of the message it stands under. */
   recalled = new Map<number, Bodies["memory_recalled"] & { seq: number }>();
   /** D165: each find's latest change, and the user's latest message. */
@@ -571,7 +571,8 @@ export class Store {
         return void this.bySeq.set(ev.seq, null);
       case "memory_noted": {
         const b = ev.body as Bodies["memory_noted"];
-        this.noted.push({ seq: ev.seq, title: b.title, ...(b.memoryId ? { memoryId: b.memoryId } : {}), ...(b.replyTo != null ? { replyTo: b.replyTo } : {}) });
+        // D329: the memory it took the place of, and whether it waited for Mem when it was said.
+        this.noted.push({ seq: ev.seq, title: b.title, ...(b.memoryId ? { memoryId: b.memoryId } : {}), ...(b.replyTo != null ? { replyTo: b.replyTo } : {}), ...(b.replaced?.title ? { replaced: b.replaced.title } : {}), ...(b.waiting ? { waiting: true as const } : {}) });
         return void this.bySeq.set(ev.seq, null);
       }
       case "memory_recalled": {

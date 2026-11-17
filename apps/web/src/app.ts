@@ -851,6 +851,8 @@ class AppState {
     if (f.bridge?.state !== "elsewhere" && !(f.bridge?.state === "connected" && f.bridge.others?.length)) this.bridgeHere = false;
     this.brainNow = f.brainNow;
     if (f.settings.name && this.showsDefault()) this.S.personaName = f.settings.name; // D309: the default's name
+    // D329: an Undo Mem didn't take: said quietly on that line until the next settings frame.
+    this.undoFailed = f.undid && !f.undid.ok ? f.undid.seq : undefined;
     if (f.forgot) {
       const title = this.forgetting.get(f.forgot.seq) ?? "";
       this.forgetting.delete(f.forgot.seq);
@@ -2057,6 +2059,28 @@ class AppState {
     else this.send({ t: "mem_find", q: words });
     this.changed();
   }
+  /** D329: the Noted line's state: taken back (undone), waiting for Mem, and whether Undo is still offered. */
+  undoFailed: number | undefined;
+  private memAsked = false;
+  notedState(seq: number): { undone: boolean; waiting: boolean; fresh: boolean; failed: boolean } {
+    const m = this.mem;
+    // The lines' state is the settings frame's: asked once, the first time a Noted line shows.
+    if (!m && !this.memAsked && this.S.welcomed) {
+      this.memAsked = true;
+      queueMicrotask(() => this.send({ t: "settings" }));
+    }
+    return { undone: !!m?.undone?.includes(seq), waiting: !!m?.waiting?.includes(seq), fresh: this.S.lastUserSeq < seq, failed: this.undoFailed === seq };
+  }
+  /** D329: 撤销 / Undo on a fresh Noted line: no question asked (it is the undo). */
+  undoNoted(seq: number) {
+    this.undoFailed = undefined;
+    this.send({ t: "memory_undo", seq });
+    this.changed();
+  }
+  /** D329: the home opens the Nowledge Mem app (mem_closed with canOpen). */
+  openBridgeMem() {
+    this.send({ t: "bridge_mem_open" });
+  }
   forget(seq: number) {
     const n = this.mem?.noted.find((x) => x.seq === seq);
     const rc = [...this.S.recalled.values()].find((x) => x.seq === seq);
@@ -2071,7 +2095,7 @@ class AppState {
 
   /** The 记下了 / Noted lines a message's Details carry: those answering the same user message,
    *  under the last partner message that answers it (D104). */
-  notedFor(e: Entry): { seq: number; title: string }[] {
+  notedFor(e: Entry): { seq: number; title: string; replaced?: string; waiting?: true }[] {
     const replyTo = e.ai?.replyTo ?? e.job?.ack?.replyTo;
     if (replyTo == null) return [];
     const last = [...this.S.channel].reverse().find((x) => (x.ai?.replyTo ?? x.job?.ack?.replyTo) === replyTo);

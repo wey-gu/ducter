@@ -55,13 +55,27 @@ export interface MemoryAdd {
   content: string;
   importance?: number; // 0..1
   provenance: Provenance;
+  /** D329: an upsert key (`nmem m add --id`): the outbox's replay names it, so a save Mem took twice is one memory. */
+  id?: string;
+  /** D329: write it as a new memory as is (a restore, an outbox replay): no search, no supersede. */
+  plain?: boolean;
+}
+
+/** D329: the partner's own earlier memory a save took the place of (Mem's supersede). */
+export interface Replaced {
+  id: string;
+  title: string;
 }
 
 export type MemoryResult<T> = ({ ok: true } & T) | { ok: false; reason: "not_configured" | "unavailable" | "rejected"; message: string };
 
 export interface MemoryClient {
   search(query: string, limit: number): Promise<MemoryResult<{ hits: MemoryHit[] }>>;
-  add(m: MemoryAdd): Promise<MemoryResult<{ id?: string }>>;
+  /**
+   * D329: replaced: the partner's own earlier memory this one supersedes (searched before writing);
+   * waiting: Mem was down and the save waits in the outbox under this key (the outbox wrapper's).
+   */
+  add(m: MemoryAdd): Promise<MemoryResult<{ id?: string; replaced?: Replaced; waiting?: string }>>;
   /**
    * Forgets one memory the user asked to forget (the Partner page, D71): `nmem m forget`, which
    * hides it from recall and from reads by id. Not a hard delete. True when Mem did it.
@@ -72,6 +86,52 @@ export interface MemoryClient {
    * `nmem m update` sets its title and text to them. True when Mem took it.
    */
   correct?(id: string, title: string): Promise<boolean>;
+  /** D329: 撤销 / Undo on a Noted line: `nmem m archive` (hidden from recall, kept audit-readable; never deleted). */
+  archive?(id: string): Promise<boolean>;
+  /** D329: an undone save's replaced memory comes back: its words read (`nmem m show`) and written again. */
+  restore?(id: string, provenance: Provenance): Promise<boolean>;
+}
+
+const norm = (s: string) => s.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "");
+const bigrams = (s: string) => {
+  const cs = [...s];
+  const out = new Map<string, number>();
+  for (let i = 0; i + 1 < cs.length; i++) out.set(cs[i]! + cs[i + 1]!, (out.get(cs[i]! + cs[i + 1]!) ?? 0) + 1);
+  if (cs.length === 1) out.set(cs[0]!, 1);
+  return out;
+};
+/** Dice's coefficient over character pairs (script-agnostic: Chinese titles have no spaces). */
+export function likeness(a: string, b: string): number {
+  const x = norm(a);
+  const y = norm(b);
+  if (!x || !y) return 0;
+  if (x === y) return 1;
+  const A = bigrams(x);
+  const B = bigrams(y);
+  let common = 0;
+  for (const [k, n] of A) common += Math.min(n, B.get(k) ?? 0);
+  const total = [...A.values()].reduce((s, n) => s + n, 0) + [...B.values()].reduce((s, n) => s + n, 0);
+  return total ? (2 * common) / total : 0;
+}
+
+/** D329: titles this alike name the same thing (a restatement, or the same topic said anew). */
+export const SAME_THING = 0.6;
+
+/**
+ * D329: the partner's own earlier memory a new save restates or updates, from a search by its title:
+ * saved through Ducter (source "ducter"), its words whole (never clipped: an undo writes them back),
+ * and its title alike enough, or one title holding the other. Undefined: it is new.
+ */
+export function sameAs(title: string, hits: MemoryHit[]): MemoryHit | undefined {
+  const t = norm(title);
+  let best: { h: MemoryHit; s: number } | undefined;
+  for (const h of hits) {
+    if (!h.id || h.source !== "ducter" || h.content.endsWith("…")) continue;
+    const o = norm(h.title);
+    const s = o && t && (o.includes(t) || t.includes(o)) && Math.min([...o].length, [...t].length) >= 4 ? 1 : likeness(title, h.title);
+    if (s >= SAME_THING && (!best || s > best.s)) best = { h, s };
+  }
+  return best?.h;
 }
 
 /** The Log pointer Ducter stores in Mem's source metadata (never in the memory text). */
@@ -102,6 +162,8 @@ export interface NmemOptions {
   /** The persona's Mem AI Identity (D141), read on every call: named explicitly, never taken from the env. */
   identity?: () => { agentId: string; space?: string; lane?: string } | undefined;
 }
+
+const SAFE_ID = /^[A-Za-z0-9_-]{1,80}$/;
 
 /** MemoryClient over the nmem CLI (the user's own binary and its own connection config). */
 export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
@@ -135,7 +197,7 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
       return { ok: false as const, reason: "not_configured" as const, message: "Nowledge Mem isn't connected." };
     return { ok: false as const, reason: "unavailable" as const, message: `Nowledge Mem didn't answer (${clip(r.err || r.out || `exit ${r.code}`, 120)}).` };
   };
-  return {
+  const client: MemoryClient = {
     async search(query, limit) {
       const who = opts.identity?.();
       // The user's Space alone; else where saves land and, when it has one, the identity's lane (D229).
@@ -166,12 +228,17 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
     },
     async add(m) {
       const imp = Math.min(1, Math.max(0, m.importance ?? 0.6));
+      // D329: search before writing: the partner's own earlier memory of the same thing is superseded
+      // by this one, never duplicated. A search that fails is no reason not to save.
+      // Asked beside the write, so a save takes no longer than it did.
+      const before = m.plain ? undefined : client.search(m.title, 5);
       // Content goes through stdin: a positional argument starting with "-" would parse as a flag.
       const args = ["m", "add", "--stdin", `--title=${m.title}`, "-i", imp.toFixed(2), "--source", "ducter", "--source-app", "ducter", "--source-msg", provenanceRef(m.provenance)];
+      if (m.id && SAFE_ID.test(m.id)) args.push(`--id=${m.id}`);
       // Who: the persona's identity, always named (D141); with none bound yet, nmem's own fallback.
       const who = opts.identity?.();
       if (who) args.push("--agent-id", who.agentId, ...(who.space ? ["--space", who.space] : []));
-      const r = await run(args, m.content);
+      const [r, seen] = await Promise.all([run(args, m.content), before]);
       if ("missing" in r || r.code !== 0) return failure(r);
       let id: string | undefined;
       try {
@@ -180,7 +247,35 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
       } catch {
         /* written; no id to show */
       }
-      return { ok: true, ...(id ? { id: String(id) } : {}) };
+      const old = seen?.ok ? sameAs(m.title, seen.hits.filter((h) => h.id !== id)) : undefined;
+      let replaced: Replaced | undefined;
+      if (old?.id && id && old.id !== String(id)) {
+        const s = await run(["m", "supersede", "--reason", "Said again in Ducter", ...(who?.space ? ["--space", who.space] : []), "--", old.id, String(id)]);
+        if (!("missing" in s) && s.code === 0) replaced = { id: old.id, title: old.title };
+      }
+      return { ok: true, ...(id ? { id: String(id) } : {}), ...(replaced ? { replaced } : {}) };
+    },
+    async archive(id) {
+      if (!SAFE_ID.test(id)) return false;
+      const r = await run(["m", "archive", "--reason", "Undone in Ducter", "--", id]);
+      return !("missing" in r) && r.code === 0;
+    },
+    async restore(id, provenance) {
+      if (!SAFE_ID.test(id)) return false;
+      const r = await run(["m", "show", "--", id]);
+      if ("missing" in r || r.code !== 0) return false;
+      let j: any;
+      try {
+        j = JSON.parse(r.out);
+      } catch {
+        return false;
+      }
+      const mem = j?.memory ?? j;
+      const title = typeof mem?.title === "string" ? mem.title : "";
+      const content = typeof mem?.content === "string" ? mem.content : "";
+      if (!title || !content) return false;
+      const back = await client.add({ title, content, provenance, plain: true, ...(typeof mem?.importance === "number" ? { importance: mem.importance } : {}) });
+      return back.ok;
     },
     async forget(id) {
       if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return false;
@@ -195,6 +290,7 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
       return !("missing" in r) && r.code === 0;
     },
   };
+  return client;
 }
 
 /** Mem switched off (DUCTER_MEMORY=off) or absent: every call says so, the partner carries on. */

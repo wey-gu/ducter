@@ -9,6 +9,8 @@
 //   3. then each computer's AI agents, one at a time per computer, computers side by side, each
 //      once that computer's Ducter step is over and nothing on it uses that agent (it waits;
 //      it never stops a task);
+//   3b. D329: the home's own Nowledge Mem command line (`nmem`), from its own source (D229), once
+//      the home's Ducter step is over (its restart would cut the update off); nothing else waits on it;
 //   4. the apps last, each by itself (a Mac app restarts when the rest is over or only waiting;
 //      the phone page reloads; the Android app checks), from the plan the home shows them.
 //
@@ -72,6 +74,12 @@ export interface UpdateAllDeps {
   nightEveryMs?: number;
   /** The home's time zone for the default night window (tests). */
   tz?: string;
+  /** D329: the home's Nowledge Mem (bridge-link's memUpdate); absent: never part of the plan. */
+  mem?: {
+    behind(): Promise<{ from: string; to: string } | undefined>;
+    cached(): { from: string; to: string } | undefined;
+    run(): Promise<{ ok: true } | { ok: false; detail?: string }>;
+  };
 }
 
 export interface UpdateAll {
@@ -95,6 +103,7 @@ export interface UpdateAll {
 // ---------- what Update all would do now (pure) ----------
 
 const ducterKey = (device: string) => `ducter:${device}`;
+export const MEM_KEY = "mem:local";
 const agentKey = (device: string, h: string) => `agent:${device}:${h}`;
 
 /** A computer's Ducter is behind and can take 更新 from here. */
@@ -129,7 +138,7 @@ function agentsBehind(dv: DeviceView, night: boolean): { h: DeviceHarness; to: s
  * The plan's steps in order (the home, the other computers, then the agents computer by computer)
  * and what is behind but can't be part of it. Pure: the frame and start() both use it.
  */
-export function offerFrom(devices: DeviceView[], o: { night?: boolean; at?: string; skip?: (key: string, to: string) => boolean } = {}): { offer: UpdateAllItem[]; notNow: UpdateAllNotNow[] } {
+export function offerFrom(devices: DeviceView[], o: { night?: boolean; at?: string; skip?: (key: string, to: string) => boolean; mem?: { from: string; to: string } } = {}): { offer: UpdateAllItem[]; notNow: UpdateAllNotNow[] } {
   const at = o.at ?? new Date().toISOString();
   const night = Boolean(o.night);
   const skip = o.skip ?? (() => false);
@@ -164,7 +173,10 @@ export function offerFrom(devices: DeviceView[], o: { night?: boolean; at?: stri
       agents.push({ key: agentKey(dv.id, h.harness), kind: "agent", device: dv.id, deviceName: dv.name, harness: h.harness, from: h.version!, to, state: "queued", at });
     }
   }
-  return { offer: [...ducter, ...agents], notNow };
+  // D329: the home's Nowledge Mem, after the agents (by day only: the night takes what Ducter checked).
+  const homeDv = home[0];
+  const mem: UpdateAllItem[] = o.mem && homeDv && !night && !skip(MEM_KEY, o.mem.to) ? [{ key: MEM_KEY, kind: "mem", device: homeDv.id, deviceName: homeDv.name, from: o.mem.from, to: o.mem.to, state: "queued", at }] : [];
+  return { offer: [...ducter, ...agents, ...mem], notNow };
 }
 
 // ---------- the plan on disk ----------
@@ -250,7 +262,8 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
       const failed = plan.items.some((i) => i.state === "failed");
       return age < (failed ? PLAN_FAILED_SHOWN_MS : PLAN_DONE_SHOWN_MS) ? plan : undefined;
     })();
-    const { offer, notNow } = offerFrom(devices, { at: iso() });
+    const memBehind = d.mem?.cached();
+    const { offer, notNow } = offerFrom(devices, { at: iso(), ...(memBehind ? { mem: memBehind } : {}) });
     return { offer: running() ? [] : offer, notNow, ...(shown ? { plan: structuredClone(shown) } : {}) };
   }
 
@@ -264,7 +277,9 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
     }
     const night = by === "night";
     const now = d.now();
+    const memBehind = night ? undefined : await d.mem?.behind().catch(() => undefined);
     const { offer } = offerFrom(devices, {
+      ...(memBehind ? { mem: memBehind } : {}),
       night,
       at: iso(now),
       ...(night ? { skip: (key: string, to: string) => now - (nightFailed.get(`${key}@${to}`) ?? -Infinity) < NIGHT_RETRY_MS } : {}),
@@ -470,6 +485,37 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
         else if (r.reason === "no_update") mark(i, { state: "done" });
         else mark(i, { state: "failed", reason: r.reason, ...(r.detail ? { detail: r.detail } : {}) });
       }
+    }
+
+    // 3b (D329): the home's Nowledge Mem, once the home's own step is over; never awaited here (an
+    // update takes minutes), its outcome marks the step when it comes.
+    for (const i of p.items.filter((x) => x.kind === "mem" && !isFinal(x))) {
+      if (i.state === "running") {
+        if (dispatched.has(i.key)) continue;
+        // A restarted home: the update it ran is gone; judged by what Mem says now.
+        const still = await d.mem?.behind().catch(() => undefined);
+        mark(i, still ? { state: "failed", reason: "interrupted" } : { state: "done" });
+        continue;
+      }
+      if (homeItem && !isFinal(homeItem)) continue;
+      if (!d.mem) {
+        mark(i, { state: "skipped", reason: "offline" });
+        continue;
+      }
+      mark(i, { state: "running", phase: "updating" as AgentPhase });
+      startedAt.set(i.key, now);
+      dispatched.add(i.key);
+      const item = i;
+      void d.mem
+        .run()
+        .catch((err) => ({ ok: false as const, detail: (err as Error).message }))
+        .then((r) => {
+          dispatched.delete(item.key);
+          if (plan !== p) return;
+          set(item, r.ok ? { state: "done" } : { state: "failed", reason: "failed", ...(r.detail ? { detail: r.detail } : {}) });
+          save();
+          void step();
+        });
     }
 
     if (p.items.every(isFinal)) {

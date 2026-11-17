@@ -45,13 +45,13 @@ func (a *App) updateAllSection(c *ui.Context) {
 			title = a.L.T("upall.title.one")
 		}
 		a.sheetCard(c, "updateall", title, func() {
-			for i := range ua.Offer {
-				if i == updAllShown {
-					a.note(c, a.L.T("upall.more", len(ua.Offer)-updAllShown))
-					break
-				}
+			shown := updAllOfferShown(ua.Offer, updAllShown)
+			for _, i := range shown {
 				it := &ua.Offer[i]
-				a.valueRow(c, "ua:"+it.Key, a.updAllName(it), "", nil, a.L.T("upall.versions", it.From, it.To), nil, nil)
+				a.valueRow(c, "ua:"+it.Key, a.updAllName(it), "", nil, a.updAllVersions(it), nil, nil)
+			}
+			if len(ua.Offer) > len(shown) {
+				a.note(c, a.L.T("upall.more", len(ua.Offer)-len(shown)))
 			}
 			if own.show {
 				a.ownAppRow(c, own)
@@ -162,7 +162,7 @@ func (a *App) updAllRow(c *ui.Context, it *protocol.UpdateAllItem) {
 		case "running":
 			a.sideStatus(c, a.updAllPhase(it), sideInk)
 		case "done":
-			a.sideStatus(c, a.L.T("upall.state.done", it.To), sideDone)
+			a.sideStatus(c, a.updAllDone(it), sideDone)
 		case "failed":
 			line := a.L.T("upall.state.failed")
 			if it.RolledBack {
@@ -195,15 +195,35 @@ func (a *App) updAllRow(c *ui.Context, it *protocol.UpdateAllItem) {
 			}
 		}
 	}
-	a.valueRow(c, key, a.updAllName(it), "", nil, a.L.T("upall.versions", it.From, it.To), status, below)
+	a.valueRow(c, key, a.updAllName(it), "", nil, a.updAllVersions(it), status, below)
 }
 
 // updAllName: Ducter on hel · Claude Code on MacBook.
 func (a *App) updAllName(it *protocol.UpdateAllItem) string {
+	if it.Kind == "mem" {
+		return a.L.T("upall.item.mem", it.DeviceName)
+	}
 	if it.Kind == "agent" {
 		return a.L.T("upall.item.agent", harnessName(it.Harness), it.DeviceName)
 	}
 	return a.L.T("upall.item.ducter", it.DeviceName)
+}
+
+// updAllVersions is From → To; D329: Mem may not name its newer version,
+// then only the version it is on.
+func (a *App) updAllVersions(it *protocol.UpdateAllItem) string {
+	if it.To == "" {
+		return it.From
+	}
+	return a.L.T("upall.versions", it.From, it.To)
+}
+
+// updAllDone is a done step's word; D329: Mem's unnamed newer version, bare.
+func (a *App) updAllDone(it *protocol.UpdateAllItem) string {
+	if it.To == "" {
+		return a.L.T("upall.state.done.bare")
+	}
+	return a.L.T("upall.state.done", it.To)
 }
 
 // updAllPhase is a running step in the single update's own words (D227:
@@ -215,10 +235,13 @@ func (a *App) updAllPhase(it *protocol.UpdateAllItem) string {
 	if it.Kind == "agent" && it.Retried && (it.Phase == "" || it.Phase == "updating") {
 		return a.L.T("upall.state.retry", it.To)
 	}
-	if it.Kind == "agent" {
+	if it.Kind == "agent" || it.Kind == "mem" {
 		ph := it.Phase
 		if ph == "" {
 			ph = "updating"
+		}
+		if it.To == "" && ph == "updating" {
+			return a.L.T("upall.state.updating.bare")
 		}
 		return a.L.T("agentv.phase."+ph, it.To)
 	}
@@ -237,7 +260,7 @@ func (a *App) updAllWhy(it *protocol.UpdateAllItem) string {
 	if it.Reason == "interrupted" {
 		return a.L.T("upall.why.interrupted", it.DeviceName)
 	}
-	if it.Kind == "agent" {
+	if it.Kind == "agent" || it.Kind == "mem" {
 		return a.agentWhy(it.Reason)
 	}
 	return a.updateReason(it.Reason)
@@ -268,10 +291,48 @@ func (a *App) updAllOrder() string {
 			home = d.Name
 		}
 	}
-	if computers <= 1 || home == "" {
-		return a.L.T("upall.order.solo")
+	// D329: the note names Nowledge Mem when it is a step.
+	mem := ""
+	if ua := a.S.UpdateAll; ua != nil {
+		for i := range ua.Offer {
+			if ua.Offer[i].Kind == "mem" {
+				mem = ".mem"
+			}
+		}
 	}
-	return a.L.T("upall.order", home)
+	if computers <= 1 || home == "" {
+		return a.L.T("upall.order.solo" + mem)
+	}
+	return a.L.T("upall.order"+mem, home)
+}
+
+// updAllOfferShown is the offer's rows before 还有 n 项: the first few, and
+// D329: the home's Nowledge Mem always (it is last in the plan; a step under
+// "n more" is one the person didn't see).
+func updAllOfferShown(offer []protocol.UpdateAllItem, max int) []int {
+	if len(offer) <= max {
+		out := make([]int, len(offer))
+		for i := range offer {
+			out[i] = i
+		}
+		return out
+	}
+	var mem, rest []int
+	for i := range offer {
+		if offer[i].Kind == "mem" {
+			mem = append(mem, i)
+		} else {
+			rest = append(rest, i)
+		}
+	}
+	keep := max - len(mem)
+	if keep < 0 {
+		keep = 0
+	}
+	if keep > len(rest) {
+		keep = len(rest)
+	}
+	return append(rest[:keep:keep], mem...)
 }
 
 // ---------- this app's own step (D224 (4)) ----------

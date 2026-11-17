@@ -206,6 +206,18 @@ export interface MemConnection {
   active: boolean;
 }
 
+/** D329: the Nowledge Mem app's bundle, as macOS keeps it in Applications. */
+export const MEM_APP = "Nowledge Mem.app";
+
+/**
+ * D329: a failed `nmem status` that says Mem on this very computer didn't answer (the Mem app, or a
+ * Vault, closed): a refused or failed connection to a loopback address. Anything else (no sign-in, a
+ * remote server down) is not "closed".
+ */
+export function memClosedIn(text: string): boolean {
+  return /(connection refused|tcp connect error|error sending request|couldn'?t connect|failed to connect)/i.test(text) && /(127\.0\.0\.1|localhost|\[::1\])/i.test(text);
+}
+
 export const whereOf = (backend: string): "cloud" | "local" | "server" => (backend === "cloud" ? "cloud" : backend === "local" ? "local" : "server");
 
 export interface BridgeLink extends BridgeLinkApi {
@@ -221,6 +233,20 @@ export interface BridgeLink extends BridgeLinkApi {
   installMem(): Promise<void>;
   /** D225: signs the home's `nmem` in with a one-time connect link (never logged or kept). */
   signInMem(link: string): Promise<void>;
+  /** D329: mem_closed: opens the Nowledge Mem app on the home (a Mac with the app), then looks again. */
+  openMem(): Promise<void>;
+  /** D329: Mem answered here at the last look, signed in (the first words' line); false before any look. */
+  memSignedIn(): boolean;
+  /**
+   * D329: Update all's Mem step. behind: the home's nmem has a newer version Mem names and Ducter can
+   * update this copy (from: now, to: Mem's newer, "" when unnamed); cached: the same from the last
+   * look, without asking; update: the update (installMem's), then how it went.
+   */
+  memUpdate: {
+    behind(): Promise<{ from: string; to: string } | undefined>;
+    cached(): { from: string; to: string } | undefined;
+    run(): Promise<{ ok: true } | { ok: false; detail?: string }>;
+  };
   /** Mem became usable here after an install or a sign-in: core binds the persona's identity. */
   onMemReady(fn: () => void): () => void;
 }
@@ -270,6 +296,11 @@ export function createBridgeLink(opts: {
   sys?: MemSys;
   env?: Record<string, string | undefined>;
   now?: () => number;
+  /** D329: where the Nowledge Mem app is on this computer (a Mac); undefined: none to open. Tests inject it. */
+  memApp?: () => string | undefined;
+  /** D329: how long openMem waits for the app to answer, looking every `openEveryMs`. */
+  openWaitMs?: number;
+  openEveryMs?: number;
 }): BridgeLink {
   const env = opts.env ?? process.env;
   const run = opts.run ?? nmemCall({ env });
@@ -337,7 +368,7 @@ export function createBridgeLink(opts: {
   const pinned = () => env.DUCTER_BRIDGE === "1" && !!env.DUCTER_BRIDGE_CONTEXT?.trim();
   const agentNow = () => opts.identity() ?? opts.fallbackIdentity?.() ?? "ducter";
 
-  type Probe = { at: number; version?: string; supported: boolean; signedIn: boolean; backend?: string; space?: { id: string; label: string }; updateAvailable?: boolean; latest?: string; conns?: MemConnection[] };
+  type Probe = { at: number; version?: string; supported: boolean; signedIn: boolean; closed?: boolean; backend?: string; space?: { id: string; label: string }; updateAvailable?: boolean; latest?: string; conns?: MemConnection[] };
   let probe: Probe | undefined;
   let probeAt = 0; // when "no nmem here" was last seen (probe stays undefined)
   let probing: Promise<Probe | undefined> | undefined;
@@ -363,6 +394,9 @@ export function createBridgeLink(opts: {
       const st = await run(["status"]);
       const sj = st && st.code === 0 ? jsonIn(st.out)[0] : undefined;
       const signedIn = !!sj && (sj.status === "healthy" || sj.status === "ok");
+      // D329: the Mem it talks to is this computer's own (the app) and nothing answers there: the app is closed.
+      const closed = !sj && !!st && st.code !== 0 && memClosedIn(`${st.err}\n${st.out}`);
+      if (closed) return (probe = { at: now(), version: shortVersion, supported, signedIn: false, closed });
       const backend = typeof sj?.backend === "string" ? sj.backend : undefined;
       // Mem's own word that a newer nmem is out (`status`.update; its command is only a hint).
       const updateAvailable = sj?.update?.update_available === true;
@@ -474,6 +508,10 @@ export function createBridgeLink(opts: {
   const DONE_SHOWN_MS = 10 * 60_000;
 
   const memReady = () => readyFns.forEach((fn) => fn());
+  /** D329: Update all's view of the home's Mem: behind, from the last look (refreshed by every view and behind()). */
+  let behindNow: { from: string; to: string } | undefined;
+  const memAppHere = opts.memApp ?? (() => (sys.platform !== "darwin" ? undefined : [join("/Applications", MEM_APP), join(sys.home, "Applications", MEM_APP)].find(sys.exists)));
+  let opening = false;
 
   const shown = (o: { label: string; home?: string; stuck?: true }) => ({ label: o.label, ...(o.home ? { home: o.home } : {}), ...(o.stuck ? { stuck: true as const } : {}) });
   /** D324: end other homes' connections for the identity (on the person's tap); one Mem won't end from here stays, marked stuck. */
@@ -510,6 +548,7 @@ export function createBridgeLink(opts: {
       if (memDone && now() - memDone.at < DONE_SHOWN_MS) return { ...said(p), done: memDone.kind };
       if (!p.supported) return said(p);
       const u = await upkeepFor(p);
+      behindNow = u?.kind === "update" && p.version ? { from: p.version, to: p.latest ?? "" } : undefined;
       return u ? { ...said(p), upkeep: { kind: u.kind, ...(memFailed ? { detail: memFailed, ...(memKept ? { kept: true as const } : {}) } : {}) } } : said(p);
     };
     if (r && p?.supported && !verify(r, p.conns)) return view(); // revoked elsewhere: the row as it is now
@@ -527,6 +566,10 @@ export function createBridgeLink(opts: {
       const plan = copy && (await copyPlan(copy));
       return { state: "update_mem", identity: agent, home, version: p.version, canRun: !!plan, ...(plan?.how === "move" ? { upkeep: { kind: "move" as const } } : {}), ...(plan ? {} : { need: copy?.channel === "app" ? ("app" as const) : ("other" as const) }), ...failed };
     }
+    if (p.closed) {
+      const app = memAppHere();
+      return { state: "mem_closed", identity: agent, home, ...(p.version ? { version: p.version } : {}), ...(app ? { canOpen: true } : {}) };
+    }
     if (!p.signedIn) return { state: "sign_in", identity: agent, home, version: p.version, ...(memDone && now() - memDone.at < DONE_SHOWN_MS ? { done: memDone.kind } : {}), ...(signIn ? { signIn } : {}), ...(signInDetail ? { detail: signInDetail } : {}) };
     // D269: only when Mem on this computer offers no place to connect in does the row say so.
     if (p.backend === "local" && !p.space) return { state: "local_mem", identity: agent, home, ...(await extras()) };
@@ -538,7 +581,7 @@ export function createBridgeLink(opts: {
     return { state: "ready", ...(await extras()), ...base };
   };
 
-  return {
+  const api: BridgeLink = {
     context() {
       const r = read();
       return r?.confirmed ? r.context : undefined;
@@ -658,6 +701,50 @@ export function createBridgeLink(opts: {
         changed();
       }
     },
+    async openMem() {
+      const app = memAppHere();
+      if (!app || opening || (opts.memoryOn && !opts.memoryOn())) return;
+      opening = true;
+      changed();
+      try {
+        // The person's tap is the Go; `open` hands it to macOS, which starts the app as the person would.
+        await exec(["/usr/bin/open", "-a", app], 15_000);
+        const until = now() + (opts.openWaitMs ?? 20_000);
+        const every = opts.openEveryMs ?? 2000;
+        for (;;) {
+          const q = await look(true);
+          if (q && !q.closed) {
+            if (q.signedIn) memReady();
+            break;
+          }
+          if (now() >= until) break;
+          await new Promise((r) => setTimeout(r, every));
+        }
+      } finally {
+        opening = false;
+        changed();
+      }
+    },
+    memSignedIn: () => !!probe?.supported && probe.signedIn,
+    memUpdate: {
+      async behind() {
+        if (env.DUCTER_BRIDGE === "0" || (opts.memoryOn && !opts.memoryOn())) return (behindNow = undefined);
+        const p = await look();
+        if (!p?.supported || !p.signedIn || busy) return (behindNow = undefined);
+        const u = await upkeepFor(p);
+        return (behindNow = u?.kind === "update" && p.version ? { from: p.version, to: p.latest ?? "" } : undefined);
+      },
+      cached: () => (opts.memoryOn && !opts.memoryOn() ? undefined : behindNow),
+      async run() {
+        if (busy) return { ok: false, detail: "busy" };
+        await api.installMem();
+        if (memDone?.kind === "updated" || memDone?.kind === "moved") {
+          behindNow = undefined;
+          return { ok: true };
+        }
+        return { ok: false, ...(memFailed ? { detail: memFailed } : {}) };
+      },
+    },
     async installMem() {
       if (busy || (opts.memoryOn && !opts.memoryOn())) return;
       const p = await look(true);
@@ -741,4 +828,5 @@ export function createBridgeLink(opts: {
       }
     },
   };
+  return api;
 }

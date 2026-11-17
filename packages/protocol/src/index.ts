@@ -457,7 +457,12 @@ export interface Bodies {
   // The partner saved something durable to the user's long-term memory (Nowledge Mem). Clients
   // show one quiet line under the reply: "记下了 · <title>" / "Noted · <title>". Never a card,
   // never a notification. Provenance lives in Mem, not here.
-  memory_noted: { title: string; memoryId?: string; replyTo?: number };
+  /**
+   * D329: replaced: the title of the partner's own earlier memory this one took the place of (Mem's
+   * supersede, never a duplicate); waiting: the outbox key when Mem was down and the save waits to go
+   * in (MemView.waiting says while it still does).
+   */
+  memory_noted: { title: string; memoryId?: string; replyTo?: number; replaced?: { id?: string; title: string }; waiting?: string };
   // D304: a memory the partner's answer actually leaned on, said once under that answer: "想起了你
   // 11月10日 说的" / "Remembered from what you said on Nov 10". Only when recall changed the answer,
   // at most one per reply, and only a memory memory_search returned that turn (the partner names
@@ -1043,6 +1048,8 @@ export type ClientFrame =
   // connect link the user made in Nowledge Mem (never logged or kept).
   | { t: "bridge_mem_install" }
   | { t: "bridge_mem_sign_in"; link: string }
+  // D329: mem_closed: the home opens the Nowledge Mem app (macOS, when the app is there).
+  | { t: "bridge_mem_open" }
   // The partner's and the app's settings (D71): "settings" answers with a settings frame and
   // keeps the socket subscribed (every change goes to every subscriber). "settings_set" changes
   // some of them. "memory_forget" forgets one 记下了 / Noted line: in Nowledge Mem when it has the
@@ -1057,6 +1064,9 @@ export type ClientFrame =
   | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; clientId?: string }
   | { t: "settings_set"; patch: SettingsPatch }
   | { t: "memory_forget"; seq: number }
+  // D329: 撤销 / Undo on a fresh 记下了 / Noted line: the save is taken back at once (archived in Mem,
+  // never deleted; a memory it replaced comes back), no question asked. Answered with a settings frame.
+  | { t: "memory_undo"; seq: number }
   // D304: 这周记下的 / What it learned this week, line by line: confirm one as right, or correct its
   // words (written back to Nowledge Mem through nmem when the line has the memory's id).
   | { t: "memory_confirm"; seq: number }
@@ -1361,7 +1371,7 @@ export type ServerFrame =
   | { t: "agent_update_result"; device: string; harness: string; ok: boolean; reason?: AgentReason; detail?: string }
   | { t: "update_all_result"; ok: boolean; reason?: "nothing" | "running" | "failed"; detail?: string; id?: string }
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
-  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; bridge?: BridgeView }
+  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView }
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
   | { t: "rules"; rules: RuleView[] }
@@ -1807,7 +1817,8 @@ export interface DeviceUpdate {
 // ---------- Update all (D224, design/system.md "Update all") ----------
 
 /** What one step of Update all updates: a computer's Ducter, or one AI agent on a computer. */
-export type UpdateAllKind = "ducter" | "agent";
+/** D329: mem is the home's own Nowledge Mem command line (`nmem`), updated from its own source (D229). */
+export type UpdateAllKind = "ducter" | "agent" | "mem";
 /**
  * queued: not started (it waits for what comes before it); waiting: at its safe point, until the
  * tasks using it there pause (busy says how many), never cutting them off; running: updating
@@ -1818,7 +1829,7 @@ export type UpdateAllState = "queued" | "waiting" | "running" | "done" | "failed
 export type UpdateAllBy = "user" | "cli" | "night";
 
 export interface UpdateAllItem {
-  key: string; // "ducter:<device>" | "agent:<device>:<harness>"
+  key: string; // "ducter:<device>" | "agent:<device>:<harness>" | "mem:local"
   kind: UpdateAllKind;
   device: string; // "local" for the home, else the paired device id
   deviceName: string;
@@ -2150,6 +2161,10 @@ export interface MemView {
   noted: { seq: number; title: string; at: string; memoryId?: string; confirmed?: boolean; corrected?: boolean }[];
   /** D304: the 想起了 / Remembered lines the person had it forget (their seqs): the conversation stops showing them. */
   forgotten?: number[];
+  /** D329: the Noted lines taken back with 撤销 / Undo (their seqs): each reads 不记了 / Not kept. */
+  undone?: number[];
+  /** D329: the Noted lines still waiting in the outbox for Nowledge Mem to answer again (their seqs). */
+  waiting?: number[];
   /** The name its memories are kept under in Mem (D141): the persona's AI Identity, once bound. */
   keptUnder?: string;
   /**
@@ -2219,7 +2234,8 @@ export type BridgeRefusal = "authority_missing" | "custody_birth_missing" | "lif
  * what the installer or Mem said, clipped, never a secret.
  */
 export interface BridgeView {
-  state: "install_mem" | "installing" | "update_mem" | "updating" | "sign_in" | "signing_in" | "local_mem" | "ready" | "elsewhere" | "no_space" | "connecting" | "connected" | "disconnecting" | "refused" | "failed" | "unconfirmed";
+  /** D329: mem_closed: the home's Nowledge Mem is the app on that computer, and the app isn't open (canOpen: the home can open it). */
+  state: "install_mem" | "installing" | "update_mem" | "updating" | "sign_in" | "signing_in" | "mem_closed" | "local_mem" | "ready" | "elsewhere" | "no_space" | "connecting" | "connected" | "disconnecting" | "refused" | "failed" | "unconfirmed";
   /**
    * D324: other homes' active connections for the same identity (on elsewhere: the home that answers
    * now; on connected: a second reader of the same mailbox). home: the computer its label names (a
@@ -2227,6 +2243,8 @@ export interface BridgeView {
    */
   others?: { label: string; home?: string; stuck?: true }[];
   canRun?: boolean;
+  /** D329: mem_closed: the home can open the Nowledge Mem app itself (a Mac with the app). */
+  canOpen?: boolean;
   need?: "pipx" | "app" | "other";
   signIn?: "used" | "bad" | "failed";
   /** The home's nmem version, when it answered (D257: on every state where it did). */

@@ -9,9 +9,10 @@ export const MEM_MIN = "0.10.118";
 /**
  * Where the partner's memory stands, from the person's side: off (switched off), missing (no Mem
  * here, and no way Ducter can say more), install / installing (Ducter can put Mem's command line
- * on the home), sign_in / signing_in (it's there, not signed in), on (Mem answers).
+ * on the home), sign_in / signing_in (it's there, not signed in), closed (D329: the Nowledge Mem app on
+ * the home isn't open; what it remembers waits), on (Mem answers).
  */
-export type MemPhase = "off" | "missing" | "install" | "installing" | "sign_in" | "signing_in" | "on";
+export type MemPhase = "off" | "missing" | "install" | "installing" | "sign_in" | "signing_in" | "closed" | "on";
 
 export function memPhase(memoryOn: boolean, mem: MemView | undefined, b: BridgeView | undefined): MemPhase {
   if (!memoryOn) return "off";
@@ -24,6 +25,8 @@ export function memPhase(memoryOn: boolean, mem: MemView | undefined, b: BridgeV
       return "sign_in";
     case "signing_in":
       return "signing_in";
+    case "mem_closed":
+      return "closed";
     case undefined:
       return mem?.state === "connected" ? "on" : "missing";
   }

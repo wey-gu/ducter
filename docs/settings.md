@@ -131,6 +131,9 @@ What your partner remembers about you has its own section, **Memory**.
   in two steps: **Install Nowledge Mem** (one tap puts it on the computer Ducter lives on) and
   **Sign in to your Nowledge Mem** with a one-time connect link. Already use the Nowledge Mem app?
   Open it on that computer and your partner finds it.
+- When the Nowledge Mem app on that computer is closed, the section says **Nowledge Mem isn't open**.
+  On a Mac, **Open Nowledge Mem** opens it for you; anything your partner noted meanwhile waits and
+  goes in once it's back.
 
 ### What it remembered, in the conversation
 
@@ -139,6 +142,15 @@ When something your partner remembered changed its answer, one quiet line sits u
 It never lists what it looked through, only the one thing that mattered, and only then. Tap the line
 to see that memory, who it is from and when, with **Forget** (it asks first; forgetting reaches
 Nowledge Mem, so your other tools won't recall it either) and **Open in Nowledge Mem**.
+
+### What it noted, in the conversation
+
+When your partner notes something about you, its reply's **Details** shows **Noted** with what it
+noted. If you'd said the same thing before, the line says **In place of** the old one: it replaces
+what it remembered instead of keeping both. Right after, **Undo** takes it back at once (the memory
+is set aside in Nowledge Mem, never deleted, and anything it replaced comes back); later, **Forget**
+asks first. If Nowledge Mem is away just then, the line says **Goes into Nowledge Mem once it's
+back**, and it does, by itself.
 
 Once a week, in the first morning note of the week, one line offers to show what it noted about you
 in the last seven days. **Show me** opens **What it learned this week**: mark a line **Right**,

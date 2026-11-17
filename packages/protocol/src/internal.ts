@@ -284,6 +284,13 @@ export interface SettingsApi {
   setForgetter(fn: (memoryId: string) => Promise<boolean>): void;
   /** D304: how to correct a memory's words in Mem (这周记下的); true when Mem took it. */
   setCorrector?(fn: (memoryId: string, title: string) => Promise<boolean>): void;
+  /**
+   * D329: how to take a Noted line's save back (撤销 / Undo): archived in Mem (or dropped from the
+   * outbox while it waits), and a memory it replaced written back; true when it was. waiting: the
+   * outbox keys still waiting for Mem; changed: the outbox moved (a fresh settings frame follows).
+   */
+  setMemHooks?(h: { undo(noted: { memoryId?: string; waiting?: string; replaced?: { id?: string; title: string } }): Promise<boolean>; waiting(): Set<string> }): void;
+  memChanged?(): void;
   /** The partner says whether Mem answers (connected) or not (missing), as it finds out. */
   setMemState(state: "connected" | "missing"): void;
   /** D170: the partner keeps the learned rules (trusted) and the muted senders here. */

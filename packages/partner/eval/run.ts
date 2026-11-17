@@ -210,6 +210,7 @@ const BRIDGE_IDENTITIES = {
   "ducter-main": { agent: "Ducter", member: "Weyl", member_id: "m-weyl", description: "Weyl's personal AI partner (always on)" },
   "terminal-claude": { agent: "terminal-claude", member: "Weyl", member_id: "m-weyl", description: "Weyl's Claude Code in a terminal, ~/dev/ducter" },
   "alex-reviewer": { agent: "reviewer", member: "Alex", member_id: "m-alex", description: "Alex's long-running code reviewer" },
+  "codex-mem": { agent: "codex-mem", member: "Weyl", member_id: "m-weyl", description: "Weyl's Codex in another app on the Mac" },
 };
 function fakeBridge(dir: string) {
   const bin = join(dir, "nmem");
@@ -400,13 +401,15 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   let error: string | undefined;
   const lines: string[] = [];
   try {
+    // D333: the check Bridge makes when it comes on, over before any step (an `unchecked` message stays unread).
+    if (fb) await partner.checkBridge();
     for (const [i, st] of sc.steps.entries()) {
       cur.step = i;
       stepStarts.push(core.log.head());
       if ("peer" in st) {
         if (!fb) throw new Error("a peer step needs scenario.bridge");
         fb.deliver(st.peer.from, st.peer.text, st.peer.answer);
-        await partner.checkBridge();
+        if (!st.peer.unchecked) await partner.checkBridge();
       } else applyStep(st, core, idOf, waiters, fr.opened, conv);
       await settle(partner);
     }

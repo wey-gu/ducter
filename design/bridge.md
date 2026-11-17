@@ -2,7 +2,7 @@
 
 > Design note · 2026-11-09, updated 2026-11-16 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity); still open: J-Q1–3, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
 > run, Mem on a home without it), private `31` and `10`.
 >
@@ -103,6 +103,31 @@ a computer nobody looks at, and Mem's list can't say which is which (both were l
 - **Not chosen:** a Mem identity per home (`ducter-hel`). It needs no coordination but splits who the partner is
   (memory, provenance) and gives a terminal agent two Ducters to choose between. Two homes that each want their
   own address are two partners (D312).
+
+### The partner's side: its own tools, 查看来信, and the card (D333)
+
+On hel (2026-11-17) the author said "用 Bridge 查看来信，回复 Mem 协作 Codex 的联络测试。" and the partner
+answered that permissions blocked it: its Codex session still had the Mem plugin's own Bridge tools,
+tried them, and the read-only sandbox declined each call; the Codex's message meanwhile had gone to a
+`ducter` mailbox nobody reads (research/121).
+
+- **Only Ducter's four tools.** `bridge_check`, `bridge_contacts`, `bridge_send`, `bridge_reply` are the
+  partner's whole way to other agents; the persona says so. No partner session loads the person's MCP
+  servers: Claude Code by `--strict-mcp-config`, pi by `--no-extensions`, DeepSeek Harness by a home of
+  Ducter's, Codex by its clean args plus Codex's own `mcp list --json` under them (once per setup; any
+  server still on, other than Ducter's, is turned off by name). Tasks keep the person's plugin (D168):
+  there its Bridge tools speak as that session, not as the partner's mailbox.
+- **查看来信 / check messages.** Messages still arrive by themselves. Asked to look, the partner calls
+  `bridge_check`: the home reads its mailbox now and the partner answers what came in that same turn
+  (every rule of the way in still applies; work a message asks for still waits for the person's go).
+  Nothing new: one line; if the person says their agent sent one, it went to another {name} nobody reads,
+  so have it send again to the one whose card says it reads here. Never "blocked", never "permission".
+- **The card says where.** After a confirmed connect and once per start, an identity Ducter enrolled
+  gets its Mem profile description kept as "Ducter, a personal AI partner. … It reads messages only in
+  the Space "{label}" ({id}), on its home computer {home}: send to it there. A message sent to it in any
+  other Space is never read." Only over Ducter's own words (or none); never on an identity the person
+  brought. Mem has no switch to hide a stray mailbox in another Space: the person ends it in Mem
+  (`design/todo.md`).
 
 ## Chosen scenarios (dogfood, 2026-11-09)
 
@@ -498,6 +523,7 @@ and a gated dependency.
 | `bridge_msg` event | Log, channel | `{direction: in\|out, messageId, from?, to?, text, inReplyTo?, sentAt?}`. Origin `peer` for in, `partner` for out |
 | Origin `peer` | protocol | Another agent through Bridge. Never `user` |
 | `bridge_reply` tool | partner MCP | Registered only when Bridge is on |
+| `bridge_check` tool | partner MCP | D333: the home reads its mailbox now, on the user's ask; registered only when Bridge is on |
 
 User-facing copy: the decided lines (the send card, 你的 <agent>, the claim, the teammate's fixed outcome,
 follow-through, a lost or refused send) are in the glossary (D105–D110). Still pending the user's OK (J-Q5):
@@ -511,7 +537,7 @@ words Bridge, mailbox, contact, Space, Identity and Agent Context never appear i
 
 ```
 other agent ──bridge send──▶ Mem (persona's Agent mailbox)
-                                  │  Ducter checks: at start, then every 5 min (DUCTER_BRIDGE=1)
+                                  │  Ducter checks: at start, then every 5 min, and when asked (bridge_check, D333)
                                   ▼
    nmem --json --agent-context C bridge inbox     → message handles
    nmem --json --agent-context C bridge open <id> → body (0.10.118: no sender; in Only me it is the user's own, D249;
@@ -570,8 +596,9 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
 ## Safety
 
 - **Ducter never sets anything up.**
-  - It never calls `bridge setup --enable`, `bridge session prepare`, `agents enroll` or `keys create`. The one
-    write it makes is D205's `bridge connections connect` (and `revoke`), on the user's own tap in Settings.
+  - It never calls `bridge setup --enable`, `bridge session prepare`, `agents enroll` or `keys create`. The
+    writes it makes are D205's `bridge connections connect` (and `revoke`), on the user's own tap in Settings,
+    and D333's card: `agents set <id> --description` on an identity Ducter enrolled, over its own words only.
   - `contacts` (read-only) is called only when the user names an agent. `send` is called only by Ducter's
     code, after the user tapped 发送 on a card that names the recipient (D105).
   - Passive `bridge setup` (never `--enable`) is called once, to learn the user's own member (D108), unless

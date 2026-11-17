@@ -208,6 +208,53 @@ export function codexCleanArgs(config: CodexConfig | undefined, keep: string[] =
 }
 
 /**
+ * D333: what Codex itself still loads under the clean setup. codexCleanArgs turns off the servers
+ * the person's config.toml names; one from anywhere else (a profile, a managed layer, a plugin a
+ * build loads past features.plugins, a config.toml Bun can't parse) would still be there: on hel
+ * (2026-11-17, Codex) the partner listed the Mem plugin's own Bridge tools and tried them. So
+ * `codex <the args> mcp list --json` (read-only, ~1.6 s) runs once per command, args and config
+ * file, and every server it still calls enabled, other than Ducter's own, is turned off by name
+ * too. No answer: the args as they were (the read-only sandbox still declines their calls).
+ */
+export type CodexMcpList = (command: string, args: string[], env: Record<string, string>) => { name: string; enabled: boolean }[] | undefined;
+const leftovers = new Map<string, string[]>();
+export function codexLeftoverServers(command: string, args: string[], overlay: Record<string, string | null>, keep: string[], list: CodexMcpList = codexMcpList): string[] {
+  if (list === codexMcpList && !existsSync(command)) return [];
+  const env: Record<string, string> = {};
+  for (const [k, v] of Object.entries({ ...process.env, ...overlay })) if (typeof v === "string") env[k] = v;
+  const configFile = join(env.CODEX_HOME || join(homedir(), ".codex"), "config.toml");
+  let stamp = "";
+  try {
+    stamp = String(statSync(configFile).mtimeMs);
+  } catch {
+    /* no config file */
+  }
+  const key = [command, stamp, ...args].join("\0");
+  const known = leftovers.get(key);
+  if (known) return known;
+  const listed = list(command, args, env);
+  if (!listed) return [];
+  const off = listed.filter((s) => s.enabled && !keep.includes(s.name)).map((s) => s.name);
+  leftovers.set(key, off);
+  return off;
+}
+/** `-c` overrides that turn these servers off (a name Codex can't take bare is quoted, as codexCleanArgs does). */
+export function codexServersOff(names: string[]): string[] {
+  return names.flatMap((n) => ["-c", `mcp_servers.${/^[A-Za-z0-9_-]+$/.test(n) ? n : JSON.stringify(n)}.enabled=false`]);
+}
+function codexMcpList(command: string, args: string[], env: Record<string, string>): { name: string; enabled: boolean }[] | undefined {
+  try {
+    const r = Bun.spawnSync([command, ...args, "mcp", "list", "--json"], { env, stdin: "ignore", stdout: "pipe", stderr: "ignore", timeout: 15_000 });
+    if (r.exitCode !== 0) return undefined;
+    const j = JSON.parse(r.stdout.toString()) as unknown;
+    if (!Array.isArray(j)) return undefined;
+    return j.flatMap((s) => (s && typeof s.name === "string" ? [{ name: s.name as string, enabled: s.enabled !== false }] : []));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * D135: every session runs on a small window, with the values protocol/harness-facts.ts holds
  * for the installed build (research/11 §7.3.7):
  *   - Claude Code 2.1.319: CLAUDE_CODE_DISABLE_1M_CONTEXT=1 (otherwise every model name gets 1M
@@ -379,6 +426,8 @@ export interface OarPortOptions {
   retainedBytes?: number;
   /** Ducter's data folder: its key file (keys.env), the DeepSeek Harness home, MCP bridge targets (default DUCTER_DATA_DIR or ~/.ducter). */
   dataDir?: string;
+  /** Test seam (D333): Codex's own list of the MCP servers a set of launch args leaves on. */
+  codexMcpList?: CodexMcpList;
 }
 
 /** What one spec becomes for one harness: OAR options, plus what OAR cannot carry. */
@@ -629,7 +678,14 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
       const inst = await rt.installation?.({ env: harnessEnv(spec.harness, { env: opts.env, dataDir }) });
       if (!inst || inst.kind !== "available") throw new Error(`harness ${spec.harness} is not installed`);
       const a = adaptSpec(spec, { env: opts.env, dataDir, refused: (rt as { refusedSessionOptions?: Record<string, string> }).refusedSessionOptions });
-      const session = await rt.session(inst, { ...a.options, retainedBytes: opts.retainedBytes ?? 8 * 1024 * 1024 });
+      // D333: a clean Codex session has no server of the person's that Codex itself still lists.
+      let launchArgs = a.options.launchArgs;
+      if (spec.harness === "codex" && a.clean && launchArgs) {
+        const command = (inst as { command?: unknown }).command;
+        const off = typeof command === "string" ? codexLeftoverServers(command, [...launchArgs], a.options.env ?? {}, spec.mcp.map((m) => m.name), opts.codexMcpList) : [];
+        if (off.length) launchArgs = [...launchArgs, ...codexServersOff(off)];
+      }
+      const session = await rt.session(inst, { ...a.options, ...(launchArgs ? { launchArgs } : {}), retainedBytes: opts.retainedBytes ?? 8 * 1024 * 1024 });
       return wrapSession(session, spec.resumeSessionId ? undefined : a.preamble, spec.harness);
     },
 

@@ -184,6 +184,8 @@ export async function main(mods: BootModules = {}) {
   setInterval(() => void core.bridgeLink.recheck().catch(() => {}), 30 * 60_000).unref?.();
   // D329: one look at the home's Mem at start (read-only), so the first words know whether it is there.
   void core.bridgeLink.view().catch(() => {});
+  // D333: and a minute after start, so a connection made before D333 gets its card (where it reads) without waiting.
+  setTimeout(() => void core.bridgeLink.recheck().catch(() => {}), 60_000).unref?.();
   const identityOrTimeout = Promise.race([identity, Bun.sleep(IDENTITY_WAIT_MS).then(() => "timeout")]);
   await Promise.race([identity, Bun.sleep(BANNER_WAIT_MS)]); // usually lost: the banner says "loading"
 

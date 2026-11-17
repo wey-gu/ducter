@@ -60,6 +60,17 @@ export interface BridgeConnectionRecord {
   at: string;
 }
 
+/** How the description Ducter enrolls an identity with begins (mem-identity.ts): a card Ducter may keep current. */
+export const CARD_MARK = "Ducter, a personal AI partner.";
+/**
+ * D333: the identity's card in Mem (its public profile description, shown on `bridge contacts`
+ * cards in every Space) says where the one home that answers reads its messages, so another agent
+ * looking for "ducter" sends to that mailbox and not to a copy in another Space nobody reads.
+ */
+export function whereCard(spaceLabel: string, spaceId: string, home: string): string {
+  return `${CARD_MARK} Its conversation and its tasks write to Mem as this identity. It reads messages only in the Space "${spaceLabel}" (${spaceId}), on its home computer ${home}: send to it there. A message sent to it in any other Space is never read.`;
+}
+
 /** Mem's registered refusal codes (nmem-wire cloud_bridge_setup) and what Ducter calls each. */
 export const REFUSALS: Record<string, BridgeRefusal> = {
   cloud_bridge_setup_role_authority_missing: "authority_missing",
@@ -443,6 +454,27 @@ export function createBridgeLink(opts: {
     return false;
   }
 
+  // D333: the card says where this home reads. Only an identity Ducter enrolled (source app
+  // `ducter`) and only over a description Ducter wrote (or none): the person's own words stay.
+  // Once per place and home a run; a failure is tried again at the next recheck.
+  let carded: string | undefined;
+  async function publishWhere(r: BridgeConnectionRecord) {
+    if (!r.confirmed || env.DUCTER_BRIDGE_CONTEXT?.trim()) return;
+    const want = whereCard(r.spaceLabel, r.spaceId, opts.home());
+    const key = `${r.agentId}\0${want}`;
+    if (carded === key) return;
+    const shown = await run(["agents", "show", r.agentId]);
+    const j = shown && shown.code === 0 ? jsonIn(shown.out)[0] : undefined;
+    const a = j?.agent ?? j?.profile ?? j;
+    if (!a || typeof a !== "object") return;
+    const app = a.source_app ?? a.sourceApp;
+    const desc = typeof a.description === "string" ? a.description.trim() : "";
+    if (app !== "ducter" || (desc && !desc.startsWith(CARD_MARK))) return void (carded = key);
+    if (desc === want) return void (carded = key);
+    const set = await run(["agents", "set", r.agentId, "--description", want]);
+    if (set?.code === 0) carded = key;
+  }
+
   type Busy = "connecting" | "disconnecting" | "installing" | "updating" | "signing_in";
   let busy: Busy | undefined;
   let busyMove = false; // the running update moves the copy (D229)
@@ -650,6 +682,7 @@ export function createBridgeLink(opts: {
         write({ context: ctx, agentId: agent, spaceId: space.id, spaceLabel: space.label, connectionId: conn.connection_id, ...(typeof conn.identity_birth === "string" ? { identityBirth: conn.identity_birth } : {}), confirmed, at: new Date(now()).toISOString() });
         if (!confirmed) undoFailed = s ? detailIn(s.out, s.err) : "nmem didn't start";
         else if (how?.here) await revokeOthers(read()!);
+        if (confirmed) await publishWhere(read()!).catch(() => {});
         await look(true);
       } finally {
         busy = undefined;
@@ -661,7 +694,7 @@ export function createBridgeLink(opts: {
       const r = read();
       if (!r || busy || pinned()) return;
       const conns = await listConns(r.spaceId, r.agentId);
-      verify(r, conns);
+      if (verify(r, conns)) await publishWhere(r).catch(() => {});
     },
     async onlyHere() {
       // D324: 改由这台收 / 只留这台: connected here first (never a moment with nobody answering), then the others end.

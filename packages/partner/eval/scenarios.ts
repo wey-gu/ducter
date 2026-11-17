@@ -51,7 +51,8 @@ export type Step =
   | { callEnded: { name: string; to: string; state: "done" | "automated" | "no_answer" | "failed"; outcome?: string; hint?: "screening"; reason?: "provider" | "call_failed"; error?: string; durationSec?: number; costUsd?: number } }
   // Bridge (scenario.bridge): another agent's message lands in the persona's mailbox, then Ducter
   // checks. `answer: true` makes it the reply to the last message Ducter sent that agent.
-  | { peer: { from: string; text: string; answer?: boolean } };
+  // `unchecked` (D333): it waits in the mailbox; Ducter reads it only when something checks.
+  | { peer: { from: string; text: string; answer?: boolean; unchecked?: true } };
 
 export interface Expect {
   /** task_open calls: exact count, or a range. */
@@ -1347,6 +1348,47 @@ export const scenarios: Scenario[] = [
     },
     rubric:
       "English version of asking the user's own terminal Claude. Pass if: one send card at once naming the recipient by what it is (terminal-claude; D273); the message carries what the user asked plus background, with no numbered list of extra sub-questions; after the answer the partner tells the user in one or two short English lines, addressing the user as 'you' (never 'Weyl').",
+  },
+
+  // D333: 查看来信, the author's own words on hel (2026-11-17): the partner reads the home's mailbox
+  // with its own tool and answers the test, and never says something blocks it (it had tried the Mem
+  // plugin's own Bridge tools, which no partner session has now).
+  {
+    id: "bridge-check-zh",
+    category: "bridge",
+    lang: "zh",
+    bridge: true,
+    steps: [
+      { peer: { from: "codex-mem", unchecked: true, text: "Mem 协作 Codex 联络测试：收到请回一句「收到」，说明这条路通了。" } },
+      { user: "用 Bridge 查看来信，回复 Mem 协作 Codex 的联络测试。" },
+    ],
+    expect: {
+      called: [{ tool: "bridge_check" }],
+      opens: 0,
+      maxChars: 160,
+      forbid: [/msg-\d{3}/],
+      proseForbid: [/权限|拦住|拦截|开放|授权|permission|approval/i],
+      bridgeSent: { to: "codex-mem", count: [1, 1] },
+    },
+    rubric:
+      "The user asks the partner to check for messages from their other AI agents and to answer the liaison test their Codex sent. Pass if: the partner checks (the message then comes in), answers the Codex once with a short reply in its language (收到 / it got through), and tells the user at most one or two short Chinese lines that the test came in and was answered. Fail if it says anything blocks it, that a permission or setting must be opened first, or asks the user to do anything; or if it answers twice.",
+  },
+  {
+    id: "bridge-check-nothing-en",
+    category: "bridge",
+    lang: "en",
+    bridge: true,
+    steps: [{ user: "Did my Codex send you anything? It says it delivered a message to Ducter a few minutes ago." }],
+    expect: {
+      called: [{ tool: "bridge_check" }],
+      opens: 0,
+      noAsk: true,
+      msgs: [1, 1],
+      maxChars: 300,
+      proseForbid: [/permission|approval|blocked|mailbox|inbox|\bSpace\b/i],
+    },
+    rubric:
+      "Nothing has arrived. Pass if: the partner checks, then says in one or two short plain English lines that nothing from their Codex has come in here, and that it probably went to another Ducter it doesn't read, so have the Codex send it again to the Ducter whose card says it reads here (any plain wording of that). Fail if it claims a message arrived, blames a permission or a block, or explains internals (mailboxes, spaces, tools).",
   },
 
   // ---------- consumer voice (D129): the App Store Connect run the author tested ----------

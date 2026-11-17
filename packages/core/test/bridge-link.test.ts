@@ -7,7 +7,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { ServerFrame } from "@ducter/protocol";
-import { BRIDGE_CONNECTION_FILE, createBridgeLink, errorCodeIn, nmemCall, parseNmemVersion, personalSpace, REFUSALS, versionConnects, type MemExec, type NmemCall } from "../src/bridge-link.ts";
+import { BRIDGE_CONNECTION_FILE, createBridgeLink, whereCard, errorCodeIn, nmemCall, parseNmemVersion, personalSpace, REFUSALS, versionConnects, type MemExec, type NmemCall } from "../src/bridge-link.ts";
 import { connectLinkOk, installPlan, type MemSys } from "../src/mem-cli.ts";
 import { startCore } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
@@ -100,6 +100,33 @@ describe("the link over a fake nmem", () => {
     expect(r.link.context()).toBeUndefined();
     expect(existsSync(join(r.data, BRIDGE_CONNECTION_FILE))).toBe(false);
     expect((await r.link.view())?.state).toBe("ready");
+  });
+
+  test("D333: the identity's card says where this home reads; never over the person's own words, never on a profile Ducter didn't enroll", async () => {
+    const card = (r: ReturnType<typeof rig>) => JSON.parse(readFileSync(r.state, "utf8")).agents.ducter.description as string | undefined;
+    const seed = (r: ReturnType<typeof rig>, a: Record<string, string>) => {
+      const s = JSON.parse(readFileSync(r.state, "utf8"));
+      writeFileSync(r.state, JSON.stringify({ ...s, agents: { ducter: { name: "Ducter", ...a } } }));
+    };
+    // Enrolled by Ducter with its own words: kept current on connect, then left alone (once per place).
+    const r = rig();
+    seed(r, { source_app: "ducter", description: "Ducter, a personal AI partner. Its conversation and its tasks write to Mem as this identity." });
+    await r.link.connect();
+    expect(card(r)).toBe(whereCard("Only me", "fake-space", "hel"));
+    expect(card(r)).toContain('only in the Space "Only me" (fake-space), on its home computer hel');
+    await r.link.recheck();
+    expect(r.calls().filter((c) => c.includes("agents") && c.includes("set")).length).toBe(1);
+    // The person wrote their own description: untouched.
+    const own = rig();
+    seed(own, { source_app: "ducter", description: "My partner on hel." });
+    await own.link.connect();
+    expect(card(own)).toBe("My partner on hel.");
+    // An identity the person brought (another app's): untouched.
+    const theirs = rig();
+    seed(theirs, { source_app: "claude-code" });
+    await theirs.link.connect();
+    expect(card(theirs)).toBeUndefined();
+    expect(theirs.calls().some((c) => c.includes("agents") && c.includes("set"))).toBe(false);
   });
 
   test("nmem 0.10.118: setup can't find a connected context; the saved context and the inbox confirm it instead", async () => {

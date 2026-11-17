@@ -7,6 +7,8 @@ package i18n
 // D291: a hairline's time, and when a wait comes back, are their own muted
 // element beside the words, never joined to them.
 var zhLoop = Table{
+	// D320: a text cut at its most, opened whole in the viewer (the same words as apps/web/src/i18n-transcript.ts).
+	"text.all":           "显示全部（%s 字）",
 	"end.wait":           "%s 回来",
 	"end.wait.bare":      "在等：%s",
 	"wake.over":          "等到了",
@@ -31,6 +33,7 @@ var zhLoop = Table{
 }
 
 var enLoop = Table{
+	"text.all":           "Show all (%s characters)",
 	"end.wait":           "Back at %s",
 	"end.wait.bare":      "Waiting: %s",
 	"wake.over":          "Wait over",

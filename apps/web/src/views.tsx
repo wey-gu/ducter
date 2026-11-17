@@ -2113,13 +2113,16 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
     const el = scroller.current;
     if (!el) return;
     const from = task?.histFrom ?? 0;
-    if (held.current.from && from && from < held.current.from) {
+    // D320: with a session index the virtual list keeps the place itself.
+    if (!task?.index && held.current.from && from && from < held.current.from) {
       if (atEnd.current) el.scrollTop = el.scrollHeight;
       else el.scrollTop += el.scrollHeight - held.current.height;
     }
     held.current = { from, height: el.scrollHeight };
   });
   useEffect(() => A.history(id), [id, A.S.welcomed]);
+  // D320: an open task's window is kept by what is on screen; one nobody has open keeps its newest.
+  useEffect(() => (A.S.open.add(id), () => void A.S.open.delete(id)), [id]);
   // D142: a folder task's list, again whenever its count or an undo / keep moved on.
   const isFolder = !!task && placeOf(task).kind === "folder";
   useEffect(() => void (isFolder && A.folderChanges(id)), [id, A.S.welcomed, isFolder, task?.card?.folder?.at, task?.acted]);

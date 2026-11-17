@@ -6,11 +6,15 @@ import { cases as source } from "../fixtures/transcript-cases.ts";
 import type { LogEvent } from "../src/index.ts";
 import { blocksOf, failLine, failOf, inTurn, lastSeq, latestVoice, linesOf, serviceName, trivialOutput, turnsOf, wakeOf, type Block } from "../src/transcript.ts";
 import { editDiff, linesDiff } from "../src/editdiff.ts";
+import { builtTurns, indexOf, slotsOf } from "../src/session.ts";
 
 for (const c of cases)
   test(`transcript: ${c.name}`, () => {
     expect(turnsOf(blocksOf(c.harness, c.events as LogEvent[], c.working))).toEqual(c.want as never);
     expect(inTurn(c.events as LogEvent[])).toBe(c.inTurn);
+    // D320: its index, and built turn by turn from it, the same turns.
+    expect(JSON.parse(JSON.stringify(indexOf(c.events as LogEvent[])))).toEqual(c.index as never);
+    expect(builtTurns(slotsOf(c.harness, indexOf(c.events as LogEvent[]), c.events as LogEvent[], c.working, new Map()))).toEqual(c.want as never);
   });
 
 // D271: a wake is a turn's opening of its own, never the partner's card; a rest is no turn.

@@ -28,6 +28,8 @@ export interface StepRow {
   command?: string;
   /** What it printed, keys hidden, at most 40 lines. */
   output?: string;
+  /** D320: what it printed was cut at OUTPUT_MAX characters: its whole length (Show all opens it). */
+  outputFull?: number;
   /** A real failure in words (D268): the service's own message, unwrapped from its JSON, else the
    *  telling line, keys hidden; `code` the HTTP status it named. The raw output stays in `output`. */
   hint?: string;
@@ -71,18 +73,19 @@ export interface Turn {
 
 export type Block =
   // media (D206): the pictures that came with it (a brief, your words, the partner's) or that a report showed.
-  | { k: "brief"; seq: number; text: string; by: "you" | "partner"; media?: MediaRef[] }
+  // full (D320): the whole text's length when it was cut at TEXT_MAX (brief, voice, you, partner, report).
+  | { k: "brief"; seq: number; text: string; full?: number; by: "you" | "partner"; media?: MediaRef[] }
   /** The agent's own words: a message, or progress it saved (`saved`), said once. */
-  | { k: "voice"; seq: number; text: string; saved?: boolean }
+  | { k: "voice"; seq: number; text: string; full?: number; saved?: boolean }
   /** A stretch of steps between two things said; `live` = the one under way. */
   | { k: "steps"; seq: number; lines: Line[]; live?: boolean }
   /** The person's own words to the task. */
-  | { k: "you"; seq: number; text: string; media?: MediaRef[] }
+  | { k: "you"; seq: number; text: string; full?: number; media?: MediaRef[] }
   /** D284: the person's Go on a card, relayed to the task: `label` the Go's ("" its plain Go), `text` what was sent (on hover). A quiet chip, never their bubble; it opens a turn. */
   | { k: "go"; seq: number; label: string; text: string }
-  | { k: "partner"; seq: number; text: string; media?: MediaRef[] }
+  | { k: "partner"; seq: number; text: string; full?: number; media?: MediaRef[] }
   /** An earlier report to the partner (the latest is the outcome, said above the transcript). */
-  | { k: "report"; seq: number; state: Bodies["report"]["state"]; text: string; media?: MediaRef[] }
+  | { k: "report"; seq: number; state: Bodies["report"]["state"]; text: string; full?: number; media?: MediaRef[] }
   /**
    * A runner's or harness's note that says something to a person (D207): `say` is what the clients
    * word in their i18n (`note.<say>`, `name` filled in), never the English it was logged in; `text`
@@ -419,12 +422,80 @@ export function turnsOf(blocks: Block[]): Turn[] {
 
 const isRetry = (b: Block | undefined) => b?.k === "note" && b.say === "retry";
 
+/**
+ * D320: the most of one text a block carries (the agent's words, the person's, a brief, a report),
+ * and of a step's output: a megabyte pasted or printed is never laid out whole. `full` on the block
+ * (`outputFull` on a row) is the whole length; the clients offer 显示全部 / Show all, which opens the
+ * whole text, read from its event, in the viewer.
+ */
+export const TEXT_MAX = 20_000;
+export const OUTPUT_MAX = 8_000;
+const clip = (s: string, max: number): [string, number | undefined] => (s.length > max ? [s.slice(0, max).replace(/[\ud800-\udbff]$/, "") + "…", s.length] : [s, undefined]);
+/** A text clipped to TEXT_MAX and keys hidden, with `full` when it was cut. */
+const words = (s: string): { text: string; full?: number } => {
+  const [c, full] = clip(s, TEXT_MAX);
+  return { text: redact(c), ...(full ? { full } : {}) };
+};
+
+/**
+ * What opens a turn (D210), from one event: the brief (the first task_open with one, unless
+ * `briefed`), the person's words, the partner's, a wake, Ducter's own note or a Go relayed (D271,
+ * D284); undefined for everything else. Shared by blocksOf and the session index (D320), so both
+ * cut turns in the same places.
+ */
+export function promptOf(ev: LogEvent, briefed: boolean): Block | undefined {
+  if (ev.kind === "task_open") {
+    const b = ev.body as Bodies["task_open"];
+    // A task opened before its brief was written (D120) logs an empty one first; a retitle is a later one.
+    if (briefed || !b.brief?.trim()) return undefined;
+    return { k: "brief", seq: ev.seq, ...words(b.brief.trim()), by: b.origin === "you" ? "you" : "partner", ...(b.media?.length ? { media: b.media } : {}) };
+  }
+  if (ev.kind !== "task_event") return undefined;
+  const b = ev.body as Bodies["task_event"];
+  if (b.role !== "user" || b.thinking?.length || b.tool) return undefined;
+  const text = (b.text ?? "").trim();
+  if (!text && !b.media?.length) return undefined;
+  const media = b.media?.length ? { media: b.media } : {};
+  // The runner's kickoff (the brief again in tags) is not what anyone said.
+  if (b.from === "runner" || (!b.from && KICKOFF.test(text))) return undefined;
+  const fromPartner = b.from === "partner" || ev.origin === "partner";
+  const wake = fromPartner ? wakeOf(text) : undefined;
+  // D284: the person's Go on a card, as Ducter relays it, is a quiet chip, never their bubble.
+  const go = fromPartner ? undefined : goRelay(text);
+  const told = fromPartner || go !== undefined ? undefined : toldOf(text, b.from);
+  if (wake) return { k: "wake", seq: ev.seq, text: redact(wake.reason), ...(wake.timer ? { timer: true } : {}), ...(wake.limit ? { limit: true } : {}) };
+  if (go !== undefined) return { k: "go", seq: ev.seq, label: redact(go), text: redact(text) };
+  if (told) return { k: "told", seq: ev.seq, say: told.say, ...(told.name ? { name: redact(told.name) } : {}), text: redact(text) };
+  if (fromPartner) return { k: "partner", seq: ev.seq, ...words(text), ...media };
+  return { k: "you", seq: ev.seq, ...words(text), ...media };
+}
+
+/**
+ * D320: what a part of a task's events (one turn of its session index) needs from the events
+ * before it, so building it alone gives what building them all would: whether the brief was said
+ * already, the latest report's seq (said above the transcript, never in it), the time of the event
+ * before (how long its first step took), that more follows (a retry at its end is no longer the
+ * latest), and the app a run of browser steps was in.
+ */
+export interface BuildCtx {
+  briefed?: boolean;
+  lastReport?: number;
+  prevTs?: string;
+  more?: boolean;
+  app?: string;
+}
+
 /** A task's events (its stream, in order) as blocks. `working`: the task is at it now, so its last stretch is live. */
-export function blocksOf(harness: string, events: LogEvent[], working: boolean): Block[] {
+export function blocksOf(harness: string, events: LogEvent[], working: boolean, ctx: BuildCtx = {}): Block[] {
+  return build(harness, events, working, ctx).blocks;
+}
+
+/** blocksOf, and the app its last browser step was in (for the part after it, D320). */
+export function build(harness: string, events: LogEvent[], working: boolean, ctx: BuildCtx = {}): { blocks: Block[]; app: string } {
   const out: Block[] = [];
-  const lastReport = events.filter((e) => e.kind === "report").at(-1)?.seq;
-  let app = "";
-  let briefed = false;
+  const lastReport = "lastReport" in ctx ? ctx.lastReport : events.filter((e) => e.kind === "report").at(-1)?.seq;
+  let app = ctx.app ?? "";
+  let briefed = !!ctx.briefed;
   // The rows of each stretch, made into lines at the end.
   const rowsOf = new Map<Block, StepRow[]>();
   const stretch = (): StepRow[] | undefined => {
@@ -442,7 +513,7 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
   };
   let plan: Extract<Block, { k: "plan" }> | undefined;
   // How long since the event before (thinking ends when what follows begins; a subagent's call is logged when it ends).
-  let prevTs = NaN;
+  let prevTs = ctx.prevTs ? Date.parse(ctx.prevTs) : NaN;
   const since = (ts: string) => {
     const ms = Date.parse(ts) - prevTs;
     return Number.isFinite(ms) && ms >= 0 ? { ms } : {};
@@ -455,32 +526,30 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
     if (isRetry(out.at(-1)) && !(sys?.role === "system" && !noteOf((sys.text ?? "").trim(), sys.raw))) out.pop();
     switch (ev.kind) {
       case "task_open": {
-        const b = ev.body as Bodies["task_open"];
-        // A task opened before its brief was written (D120) logs an empty one first; a retitle is a later one.
-        if (briefed || !b.brief.trim()) break;
-        briefed = true;
-        out.push({ k: "brief", seq: ev.seq, text: redact(b.brief.trim()), by: b.origin === "you" ? "you" : "partner", ...(b.media?.length ? { media: b.media } : {}) });
+        const p = promptOf(ev, briefed);
+        if (p) (briefed = true), out.push(p);
         break;
       }
       case "checkpoint": {
-        const text = redact((ev.body as Bodies["checkpoint"]).text.trim());
-        if (!text) break;
+        const raw = (ev.body as Bodies["checkpoint"]).text.trim();
+        if (!raw) break;
+        const w = words(raw);
         // Saved what it just said: the same words once, marked saved.
         const said = [...out].reverse().find((b) => b.k !== "steps");
-        if (said?.k === "voice" && norm(said.text) === norm(text)) said.saved = true;
-        else out.push({ k: "voice", seq: ev.seq, text, saved: true });
+        if (said?.k === "voice" && norm(said.text) === norm(w.text)) said.saved = true;
+        else out.push({ k: "voice", seq: ev.seq, ...w, saved: true });
         break;
       }
       case "report": {
         if (ev.seq === lastReport) break;
         const r = ev.body as Bodies["report"];
-        out.push({ k: "report", seq: ev.seq, state: r.state, text: redact(r.summary), ...(r.media?.length ? { media: r.media } : {}) });
+        out.push({ k: "report", seq: ev.seq, state: r.state, ...words(r.summary), ...(r.media?.length ? { media: r.media } : {}) });
         break;
       }
       case "task_event": {
         const b = ev.body as Bodies["task_event"];
         if (b.thinking?.length) {
-          addRow(ev.seq, { seq: ev.seq, thought: redact(b.thinking.join("\n")), n: 1, outcome: "ok", ...took });
+          addRow(ev.seq, { seq: ev.seq, thought: redact(clip(b.thinking.join("\n"), TEXT_MAX)[0]), n: 1, outcome: "ok", ...took });
           break;
         }
         if (b.tool) {
@@ -506,14 +575,14 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
             prev.n++;
             break;
           }
-          const command = st.kind === "ran" || st.kind === "searched" || st.kind === "read" || st.kind === "browsed" ? redact(shellCommand(b.tool.input)) : "";
-          const full = (b.tool.output ?? "").trimEnd();
+          const command = st.kind === "ran" || st.kind === "searched" || st.kind === "read" || st.kind === "browsed" ? redact(clip(shellCommand(b.tool.input), OUTPUT_MAX)[0]) : "";
+          const [full, outputFull] = clip((b.tool.output ?? "").trimEnd(), OUTPUT_MAX);
           const output = trivialOutput(full) ? "" : redact(clipLines(full, 40));
           const fail = outcome === "error" ? failOf(full) : undefined;
           const hint = fail ? { ...(fail.hint ? { hint: redact(fail.hint) } : {}), ...(fail.code ? { code: fail.code } : {}) } : {};
           const d = st.kind === "edited" && st.act !== "mkdir" ? editDiff(b.tool.input) : undefined;
           const diff = d ? { diff: d.lines.map((l) => redact(l)), ...(d.more ? { diffMore: d.more } : {}), ...(d.added ? { added: d.added } : {}), ...(d.removed ? { removed: d.removed } : {}) } : {};
-          addRow(ev.seq, { seq: ev.seq, step: st, n: 1, outcome, ...(command ? { command } : {}), ...(output ? { output } : {}), ...hint, ...diff, ...(st.kind === "delegated" ? took : {}) });
+          addRow(ev.seq, { seq: ev.seq, step: st, n: 1, outcome, ...(command ? { command } : {}), ...(output ? { output } : {}), ...(output && outputFull ? { outputFull } : {}), ...hint, ...diff, ...(st.kind === "delegated" ? took : {}) });
           break;
         }
         const text = (b.text ?? "").trim();
@@ -539,36 +608,27 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
             break;
           }
           const n = noteOf(text, b.raw);
-          if (n) out.push({ k: "note", seq: ev.seq, ...n, text: redact(text) });
+          if (n) out.push({ k: "note", seq: ev.seq, ...n, text: redact(clip(text, OUTPUT_MAX)[0]) });
           break;
         }
         if (!text && !b.media?.length) break;
         if (b.role === "user") {
-          const media = b.media?.length ? { media: b.media } : {};
-          // The runner's kickoff (the brief again in tags) is not what anyone said.
-          if (b.from === "runner" || (!b.from && KICKOFF.test(text))) break;
-          const fromPartner = b.from === "partner" || ev.origin === "partner";
-          const wake = fromPartner ? wakeOf(text) : undefined;
-          // D284: the person's Go on a card, as Ducter relays it, is a quiet chip, never their bubble.
-          const go = fromPartner ? undefined : goRelay(text);
-          const told = fromPartner || go !== undefined ? undefined : toldOf(text, b.from);
-          if (wake) out.push({ k: "wake", seq: ev.seq, text: redact(wake.reason), ...(wake.timer ? { timer: true } : {}), ...(wake.limit ? { limit: true } : {}) });
-          else if (go !== undefined) out.push({ k: "go", seq: ev.seq, label: redact(go), text: redact(text) });
-          else if (told) out.push({ k: "told", seq: ev.seq, say: told.say, ...(told.name ? { name: redact(told.name) } : {}), text: redact(text) });
-          else if (fromPartner) out.push({ k: "partner", seq: ev.seq, text: redact(text), ...media });
-          else out.push({ k: "you", seq: ev.seq, text: redact(text), ...media });
+          const p = promptOf(ev, briefed);
+          if (p) out.push(p);
           break;
         }
-        if (b.role === "assistant") out.push({ k: "voice", seq: ev.seq, text: redact(text) });
+        if (b.role === "assistant") out.push({ k: "voice", seq: ev.seq, ...words(text) });
         break;
       }
     }
   }
   for (const b of out) if (b.k === "steps") b.lines = linesOf(rowsOf.get(b)!);
+  // D320: a part with more after it: its retry is no longer the latest thing.
+  if (ctx.more && isRetry(out.at(-1))) out.pop();
   // A retry says itself only as the latest thing; the stretch before it is still the live one.
   const last = isRetry(out.at(-1)) ? out.at(-2) : out.at(-1);
   if (working && last?.k === "steps") last.live = true;
-  return out;
+  return { blocks: out, app };
 }
 
 /** The agent's latest words (a message or saved progress), first line, or "": where it stands now. */

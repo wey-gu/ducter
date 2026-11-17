@@ -31,6 +31,8 @@ type StepRow struct {
 	Outcome string `json:"outcome"` // ok | error | missing (a probe that found nothing)
 	Command string `json:"command,omitempty"`
 	Output  string `json:"output,omitempty"`
+	// OutputFull (D320): what it printed was cut at outputMax; its whole length.
+	OutputFull int `json:"outputFull,omitempty"`
 	// Hint is a real failure in words (D268): the service's message
 	// unwrapped from its JSON, else the telling line; Code the HTTP status.
 	Hint string `json:"hint,omitempty"`
@@ -80,9 +82,11 @@ type Turn struct {
 // Block is one thing in the transcript. K is brief, voice, steps, you,
 // partner, report or note.
 type Block struct {
-	K     string    `json:"k"`
-	Seq   int64     `json:"seq"`
-	Text  string    `json:"text,omitempty"`
+	K    string `json:"k"`
+	Seq  int64  `json:"seq"`
+	Text string `json:"text,omitempty"`
+	// Full (D320): the whole text's length when it was cut at textMax.
+	Full  int       `json:"full,omitempty"`
 	By    string    `json:"by,omitempty"`    // brief: you | partner
 	Saved bool      `json:"saved,omitempty"` // voice: progress it saved
 	Rows  []StepRow `json:"-"`
@@ -519,7 +523,7 @@ func serviceName(server string) string {
 
 var tallyOrder = []string{"edited", "ran", "used", "read", "searched", "web", "browsed", "computer", "waited", "other"}
 
-func indexOf(list []string, s string) int {
+func posOf(list []string, s string) int {
 	for i, x := range list {
 		if x == s {
 			return i
@@ -574,7 +578,7 @@ func tallyOf(rows []StepRow) []Tally {
 		if rank(a) == 2 && a.N != b.N {
 			return a.N > b.N
 		}
-		return indexOf(tallyOrder, a.Kind) < indexOf(tallyOrder, b.Kind)
+		return posOf(tallyOrder, a.Kind) < posOf(tallyOrder, b.Kind)
 	})
 	return out
 }
@@ -706,16 +710,135 @@ func turnsOf(blocks []Block) []Turn {
 	return out
 }
 
+// D320: the most of one text a block carries (the agent's words, the
+// person's, a brief, a report), and of a step's output: a megabyte pasted
+// or printed is never laid out whole. Full (OutputFull on a row) is the
+// whole length, in UTF-16 units as the TS reference counts; Show all opens
+// the whole text, read from its event, in the viewer.
+const (
+	textMax   = 20000
+	outputMax = 8000
+)
+
+// clipText cuts s to at most max UTF-16 units (at a whole character) and
+// marks the cut with "…"; full is s's length when it was cut, else 0.
+func clipText(s string, max int) (string, int) {
+	n := 0
+	cut := -1
+	for i, r := range s {
+		w := 1
+		if r >= 0x10000 {
+			w = 2
+		}
+		if cut < 0 && n+w > max {
+			cut = i
+		}
+		n += w
+	}
+	if n <= max {
+		return s, 0
+	}
+	return s[:cut] + "…", n
+}
+
+// clipWords is a text cut at textMax with its keys hidden, and its whole
+// length when it was cut.
+func clipWords(s string) (string, int) {
+	c, full := clipText(s, textMax)
+	return redact.Text(c), full
+}
+
+// promptOf is what opens a turn (D210), from one event: the brief (the
+// first task_open with one, unless briefed), the person's words, the
+// partner's, a wake, Ducter's own note or a Go relayed (D271, D284);
+// ok=false for everything else. Shared by blocksOf and the session index
+// (D320), so both cut turns in the same places.
+func promptOf(ev *protocol.LogEvent, briefed bool) (Block, bool) {
+	body, _ := ev.Typed()
+	switch b := body.(type) {
+	case *protocol.TaskOpen:
+		if briefed || strings.TrimSpace(b.Brief) == "" {
+			return Block{}, false
+		}
+		by := "partner"
+		if b.Origin == "you" {
+			by = "you"
+		}
+		text, full := clipWords(strings.TrimSpace(b.Brief))
+		return Block{K: "brief", Seq: ev.Seq, Text: text, Full: full, By: by, Media: b.Media}, true
+	case *protocol.TaskEvent:
+		if b.Role != "user" || len(b.Thinking) > 0 || b.Tool != nil {
+			return Block{}, false
+		}
+		text := strings.TrimSpace(b.Text)
+		if text == "" && len(b.Media) == 0 {
+			return Block{}, false
+		}
+		if b.From == "runner" || b.From == "" && (strings.HasPrefix(text, `Start the task "`) || strings.HasPrefix(text, "<brief>")) {
+			return Block{}, false // the runner's kickoff, not something anyone said
+		}
+		if b.From == "partner" || ev.Origin == protocol.OriginPartner {
+			// D271: a wake of its own wait reads as a hairline, never the partner's card.
+			if reason, timer, limit, ok := wakeOfLimit(text); ok {
+				return Block{K: "wake", Seq: ev.Seq, Text: redact.Text(reason), Timer: timer, Limit: limit}, true
+			}
+			t, full := clipWords(text)
+			return Block{K: "partner", Seq: ev.Seq, Text: t, Full: full, Media: b.Media}, true
+		}
+		// D284: the person's Go on a card, as Ducter relays it, is a quiet chip.
+		if label, ok := goRelay(text); ok {
+			label = redact.Text(label)
+			return Block{K: "go", Seq: ev.Seq, Label: &label, Text: redact.Text(text)}, true
+		}
+		// D271: what Ducter itself told it is never the person's bubble.
+		if say, name, ok := toldOf(text, b.From); ok {
+			return Block{K: "told", Seq: ev.Seq, Say: say, Name: redact.Text(name), Text: redact.Text(text)}, true
+		}
+		t, full := clipWords(text)
+		return Block{K: "you", Seq: ev.Seq, Text: t, Full: full, Media: b.Media}, true
+	}
+	return Block{}, false
+}
+
+// buildCtx is what a part of a task's events (one turn of its session
+// index, D320) needs from the events before it, so building it alone gives
+// what building them all would: whether the brief was said already, the
+// latest report's seq (said above the transcript; HasReport: it is given,
+// even as none), the time of the event before, that more follows (a retry
+// at its end is no longer the latest), and the app a run of browser steps
+// was in.
+type buildCtx struct {
+	Briefed    bool
+	HasReport  bool
+	LastReport int64
+	PrevTS     string
+	More       bool
+	App        string
+}
+
 // blocksOf is a task's events as blocks; working: its last stretch is live.
 func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block {
+	blocks, _ := build(harness, events, working, buildCtx{})
+	return blocks
+}
+
+// build is blocksOf with what the events before them left (D320), and the
+// app its last browser step was in, for the part after it.
+func build(harness string, events []protocol.LogEvent, working bool, ctx buildCtx) ([]Block, string) {
 	var out []Block
 	last := int64(-1)
-	for _, ev := range events {
-		if ev.Kind == protocol.KindReport {
-			last = ev.Seq
+	if ctx.HasReport {
+		if ctx.LastReport > 0 {
+			last = ctx.LastReport
+		}
+	} else {
+		for _, ev := range events {
+			if ev.Kind == protocol.KindReport {
+				last = ev.Seq
+			}
 		}
 	}
-	app, briefed := "", false
+	app, briefed := ctx.App, ctx.Briefed
 	stretch := func() *Block {
 		if n := len(out); n > 0 && out[n-1].K == "steps" {
 			return &out[n-1]
@@ -734,7 +857,11 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 	// How long since the event before (thinking ends when what follows
 	// begins; a subagent's call is logged when it ends).
 	var prevAt time.Time
-	for _, ev := range events {
+	if ctx.PrevTS != "" {
+		prevAt, _ = time.Parse(time.RFC3339Nano, ctx.PrevTS)
+	}
+	for i := range events {
+		ev := &events[i]
 		at, perr := time.Parse(time.RFC3339Nano, ev.TS)
 		var took *int64
 		if perr == nil && !prevAt.IsZero() && !at.Before(prevAt) {
@@ -763,20 +890,16 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 		}
 		switch b := body.(type) {
 		case *protocol.TaskOpen:
-			if briefed || strings.TrimSpace(b.Brief) == "" {
-				continue
+			if p, ok := promptOf(ev, briefed); ok {
+				briefed = true
+				out = append(out, p)
 			}
-			briefed = true
-			by := "partner"
-			if b.Origin == "you" {
-				by = "you"
-			}
-			out = append(out, Block{K: "brief", Seq: ev.Seq, Text: redact.Text(strings.TrimSpace(b.Brief)), By: by, Media: b.Media})
 		case *protocol.Checkpoint:
-			text := redact.Text(strings.TrimSpace(b.Text))
-			if text == "" {
+			raw := strings.TrimSpace(b.Text)
+			if raw == "" {
 				continue
 			}
+			text, full := clipWords(raw)
 			// Saved what it just said: the same words once, marked saved.
 			said := -1
 			for i := len(out) - 1; i >= 0; i-- {
@@ -788,16 +911,18 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 			if said >= 0 && out[said].K == "voice" && normSpace(out[said].Text) == normSpace(text) {
 				out[said].Saved = true
 			} else {
-				out = append(out, Block{K: "voice", Seq: ev.Seq, Text: text, Saved: true})
+				out = append(out, Block{K: "voice", Seq: ev.Seq, Text: text, Full: full, Saved: true})
 			}
 		case *protocol.Report:
 			if ev.Seq == last {
 				continue
 			}
-			out = append(out, Block{K: "report", Seq: ev.Seq, State: b.State, Text: redact.Text(b.Summary), Media: b.Media})
+			text, full := clipWords(b.Summary)
+			out = append(out, Block{K: "report", Seq: ev.Seq, State: b.State, Text: text, Full: full, Media: b.Media})
 		case *protocol.TaskEvent:
 			if len(b.Thinking) > 0 {
-				addRow(ev.Seq, StepRow{Seq: ev.Seq, Thought: redact.Text(strings.Join(b.Thinking, "\n")), N: 1, Outcome: "ok", Ms: took})
+				th, _ := clipText(strings.Join(b.Thinking, "\n"), textMax)
+				addRow(ev.Seq, StepRow{Seq: ev.Seq, Thought: redact.Text(th), N: 1, Outcome: "ok", Ms: took})
 				continue
 			}
 			if b.Tool != nil {
@@ -836,10 +961,13 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 						continue
 					}
 				}
-				full := strings.TrimRight(b.Tool.Output, " \t\r\n")
+				full, outFull := clipText(strings.TrimRight(b.Tool.Output, " \t\r\n"), outputMax)
 				row := StepRow{Seq: ev.Seq, Step: &st, N: 1, Outcome: outcome}
 				if !trivialOutput(full) {
 					row.Output = redact.Text(clipLines(full, 40))
+					if row.Output != "" {
+						row.OutputFull = outFull
+					}
 				}
 				if outcome == "error" {
 					h, code := failOf(full)
@@ -858,7 +986,8 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 				}
 				switch st.Kind {
 				case "ran", "searched", "read", "browsed":
-					row.Command = redact.Text(shellCommand(b.Tool.Input))
+					cmd, _ := clipText(shellCommand(b.Tool.Input), outputMax)
+					row.Command = redact.Text(cmd)
 				}
 				addRow(ev.Seq, row)
 				continue
@@ -896,37 +1025,18 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 					continue
 				}
 				if n, ok := noteOf(text, b.Raw); ok {
-					n.K, n.Seq, n.Text = "note", ev.Seq, redact.Text(text)
+					c, _ := clipText(text, outputMax)
+					n.K, n.Seq, n.Text = "note", ev.Seq, redact.Text(c)
 					out = append(out, n)
 				}
 			case text == "" && len(b.Media) == 0:
 			case b.Role == "user":
-				if b.From == "runner" || b.From == "" && (strings.HasPrefix(text, `Start the task "`) || strings.HasPrefix(text, "<brief>")) {
-					continue // the runner's kickoff, not something anyone said
+				if p, ok := promptOf(ev, briefed); ok {
+					out = append(out, p)
 				}
-				if b.From == "partner" || ev.Origin == protocol.OriginPartner {
-					// D271: a wake of its own wait reads as a hairline, never the partner's card.
-					if reason, timer, limit, ok := wakeOfLimit(text); ok {
-						out = append(out, Block{K: "wake", Seq: ev.Seq, Text: redact.Text(reason), Timer: timer, Limit: limit})
-						continue
-					}
-					out = append(out, Block{K: "partner", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media})
-					continue
-				}
-				// D284: the person's Go on a card, as Ducter relays it, is a quiet chip.
-				if label, ok := goRelay(text); ok {
-					label = redact.Text(label)
-					out = append(out, Block{K: "go", Seq: ev.Seq, Label: &label, Text: redact.Text(text)})
-					continue
-				}
-				// D271: what Ducter itself told it is never the person's bubble.
-				if say, name, ok := toldOf(text, b.From); ok {
-					out = append(out, Block{K: "told", Seq: ev.Seq, Say: say, Name: redact.Text(name), Text: redact.Text(text)})
-					continue
-				}
-				out = append(out, Block{K: "you", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media})
 			case b.Role == "assistant":
-				out = append(out, Block{K: "voice", Seq: ev.Seq, Text: redact.Text(text)})
+				t, full := clipWords(text)
+				out = append(out, Block{K: "voice", Seq: ev.Seq, Text: t, Full: full})
 			}
 		}
 	}
@@ -934,6 +1044,10 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 		if out[i].K == "steps" {
 			out[i].Lines = linesOf(out[i].Rows)
 		}
+	}
+	// D320: a part with more after it: its retry is no longer the latest thing.
+	if n := len(out); ctx.More && n > 0 && isRetry(&out[n-1]) {
+		out = out[:n-1]
 	}
 	// A retry says itself only as the latest thing; the stretch before it is still the live one.
 	tail := len(out) - 1
@@ -943,7 +1057,7 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 	if working && tail >= 0 && out[tail].K == "steps" {
 		out[tail].Live = true
 	}
-	return out
+	return out, app
 }
 
 // latestVoice is the agent's latest words, first line, since its last report.

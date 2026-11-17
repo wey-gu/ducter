@@ -38,24 +38,50 @@ type taskPage struct {
 	// jump is a locator click on its way; flash, the turn it last reached (D284).
 	jump  *jumpTo
 	flash flash
+	// D320: landing is a far jump waiting for its turn to be built; views,
+	// each opened task's rows on screen as index turns, for its window.
+	landing *landing
+	views   map[string]sessionView
 }
 
-// taskMemo is a task's transcript as of its events: rebuilt when they or
-// whether it works change.
+// landing is a far locator jump waiting for its turn's page (D320).
+type landing struct {
+	task string
+	seq  int64
+}
+
+// taskMemo is a task's transcript as of its events and its session index
+// (D320): every turn of the index as a slot, each built from its own held
+// events (cache keeps them until those change); rebuilt when the events,
+// the index or whether it works change, and then only the turns whose
+// events changed are built again.
 type taskMemo struct {
 	n           int
 	first, last int64
+	version     int
+	ixN         int
+	ixLast      int64
+	ixTurns     int
 	working     bool
 	harness     string
-	blocks      []Block
-	turns       []Turn
-	inTurn      bool
+	// ix is the index the page reads: the home's, grown by any held event
+	// newer than it, else one made from what is held (until it arrives).
+	ix     *protocol.SessionIndex
+	slots  []slot
+	cache  turnCache
+	blocks []Block
+	// turns are the built turns in order; rowTurns one per slot (a turn
+	// not held is its index prompt), for the rows and the locator.
+	turns    []Turn
+	rowTurns []Turn
+	inTurn   bool
 }
 
 // locatorMin is how wide the task's column must be for the locator.
 const locatorMin = 760
 
-// memoOf is the task's transcript, made again only when its events changed.
+// memoOf is the task's transcript, made again only when its events or its
+// index changed.
 func (a *App) memoOf(task *store.Task) *taskMemo {
 	if a.tpage.memos == nil {
 		a.tpage.memos = map[string]*taskMemo{}
@@ -66,29 +92,96 @@ func (a *App) memoOf(task *store.Task) *taskMemo {
 	if n > 0 {
 		first, last = task.Events[0].Seq, task.Events[n-1].Seq
 	}
+	var ixN, ixTurns int
+	var ixLast int64
+	if task.Index != nil {
+		ixN, ixLast, ixTurns = task.Index.N, task.Index.Last, len(task.Index.Turns)
+	}
 	working, harness := isWorking(task), task.Harness()
-	if m != nil && m.n == n && m.first == first && m.last == last && m.working == working && m.harness == harness {
+	if m != nil && m.n == n && m.first == first && m.last == last && m.version == task.Version && m.ixN == ixN && m.ixLast == ixLast && m.ixTurns == ixTurns && m.working == working && m.harness == harness {
 		return m
 	}
-	m = &taskMemo{n: n, first: first, last: last, working: working, harness: harness}
+	cache := turnCache{}
+	if m != nil {
+		cache = m.cache
+	}
+	m = &taskMemo{n: n, first: first, last: last, version: task.Version, ixN: ixN, ixLast: ixLast, ixTurns: ixTurns, working: working, harness: harness, cache: cache}
 	// D271: its last stretch is live only while a turn is under way.
 	m.inTurn = inTurn(task.Events)
-	m.blocks = blocksOf(harness, task.Events, working && m.inTurn)
-	m.turns = turnsOf(m.blocks)
+	m.ix = pageIndex(task)
+	m.slots = slotsOf(harness, m.ix, task.Events, working && m.inTurn, cache)
+	// The rows and the locator read the index (what opened each turn), so
+	// they never build a turn; a turn is built when its row is drawn.
+	m.rowTurns = make([]Turn, len(m.slots))
+	for i := range m.slots {
+		m.rowTurns[i] = Turn{Seq: m.slots[i].It.Seq, Prompt: promptBlock(m.slots[i].It.P)}
+	}
+	// What the rest of the page reads (its foot, the end line, the working
+	// line): the last few held turns; every held one until the home's index
+	// came (a home before D320, whose page is at most what it holds).
+	from := 0
+	if task.Index != nil {
+		for k, i := 0, len(m.slots)-1; i >= 0 && k < lastTurnsRead; i-- {
+			if m.slots[i].Held > 0 {
+				from, k = i, k+1
+			}
+		}
+	}
+	for i := from; i < len(m.slots); i++ {
+		tu := m.slots[i].Turn()
+		if tu == nil {
+			continue
+		}
+		m.turns = append(m.turns, *tu)
+		if tu.Prompt != nil {
+			m.blocks = append(m.blocks, *tu.Prompt)
+		}
+		m.blocks = append(m.blocks, tu.Body...)
+	}
 	a.tpage.memos[task.ID] = m
 	return m
 }
 
-// tsOf is when the event with seq happened (the Log's events are in seq order).
+// lastTurnsRead is how many of the newest held turns the page's foot, end
+// line and working line read (D320).
+const lastTurnsRead = 4
+
+// pageIndex is the index the page lays out (D320): the home's, with any
+// held event newer than it added (a reconnect before it was asked again),
+// or, until it arrives, one made from what is held.
+func pageIndex(task *store.Task) *protocol.SessionIndex {
+	ix := task.Index
+	if ix == nil {
+		return indexOf(task.Events)
+	}
+	n := len(task.Events)
+	if n == 0 || task.Events[n-1].Seq <= ix.Last {
+		return ix
+	}
+	c := *ix
+	c.Turns = append([]protocol.IndexTurn(nil), ix.Turns...)
+	for i := lowerBound(task.Events, ix.Last+1); i < n; i++ {
+		indexAdd(&c, &task.Events[i])
+	}
+	return &c
+}
+
+// tsOf is when the event with seq happened (the Log's events are in seq
+// order); for one not held, the time its turn began when it opened it.
 func (a *App) tsOf(task *store.Task, seq int64) string {
 	evs := task.Events
 	i := sort.Search(len(evs), func(i int) bool { return evs[i].Seq >= seq })
 	if i < len(evs) && evs[i].Seq == seq {
 		return evs[i].TS
 	}
-	for _, ev := range evs {
-		if ev.Seq == seq {
-			return ev.TS
+	if ix := task.Index; ix != nil {
+		if k := turnAt(ix, seq); k >= 0 {
+			switch seq {
+			case ix.Turns[k].Seq:
+				return ix.Turns[k].At
+			case ix.Turns[k].End:
+				return ix.Turns[k].EndAt
+			}
 		}
 	}
 	return ""
@@ -123,7 +216,9 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 	} else {
 		ls.FollowAnimation = &ui.Smooth
 	}
-	turns := m.turns
+	// D320: a row per turn of the session index; a turn not held is a calm
+	// blank of its index height until its page lands.
+	turns := m.rowTurns
 	n := len(turns) + 2
 	ls.Key = func(i int) any {
 		switch {
@@ -136,9 +231,19 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 	}
 	// D271: the last turn is live only while a turn is under way; resting on a wait, it folds.
 	working := isWorking(task) && m.inTurn
-	land := a.jumpRow(c, task, turns, ls)
+	land := a.jumpRow(c, task, m, ls)
 	ui.Column(c.Key("taskpane")).Grow(1).MinHeight(0).Children(func() {
 		ui.List(c, ls, n, func(i int) {
+			if i >= 1 && i <= len(turns) {
+				switch s := &m.slots[i-1]; {
+				case s.Turn() == nil && s.Held > 0:
+					ui.Box(c).Height(0) // held, and says nothing (a task's first events before its brief)
+					return
+				case s.Turn() == nil:
+					ui.Box(c.Key(fmt.Sprintf("ph:%d", s.It.Seq))).Height(float32(s.It.H * 16)).AccessHidden(true)
+					return
+				}
+			}
 			top, bottom := float32(0), float32(0)
 			switch {
 			case i == 0:
@@ -158,16 +263,16 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 					case i == 0:
 						a.taskHead(c, task, m)
 					case i <= len(turns):
-						tu := &turns[i-1]
+						tu := m.slots[i-1].Turn()
 						last := i == len(turns)
 						// Your words wait their turn while nothing came after them.
 						queued := last && len(tu.Body) == 0
-						col := ui.Column(c.Key(fmt.Sprintf("turn:%d", tu.Seq))).Gap(t.S3).MinWidth(0)
+						col := ui.Column(c.Key(fmt.Sprintf("turn:%d", m.slots[i-1].It.Seq))).Gap(t.S3).MinWidth(0)
 						if i == land {
-							a.jumpLands(c, col, task, tu.Seq)
+							a.jumpLands(c, col, task, m.slots[i-1].It.Seq)
 						}
 						col.Children(func() {
-							a.turnTint(c, task, tu.Seq)
+							a.turnTint(c, task, m.slots[i-1].It.Seq)
 							a.turn(c, task, tu, queued, working && last)
 						})
 					default:
@@ -176,9 +281,10 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 				})
 			})
 		}).Grow(1)
-		// D284: past what the background pages, older history comes as the reader reaches the head.
+		// D320: the window follows the rows on screen: pages ahead of the
+		// scroll, far ones let go (D284's paging at the head without an index).
 		if first, last := ls.Visible(); last >= first {
-			a.moreAtHead(task.ID, first)
+			a.windowAt(task, m, first, last)
 		}
 		a.locator(c, task, turns, ls)
 		if opensAtEnd(att) && n > 2 && !ls.AtEnd() {
@@ -443,6 +549,9 @@ func (a *App) voice(c *ui.Context, task *store.Task, b *Block) {
 	took := a.tpage.took
 	col.Children(func() {
 		markdown.View(c, autospace(b.Text), a.mdFor(b.Text))
+		if b.Full > 0 {
+			a.showAll(c, task, b.Seq, b.Full, false) // D320: cut at its most
+		}
 		if !b.Saved && !hover {
 			return
 		}
@@ -591,7 +700,27 @@ const flashFor = 1600 * time.Millisecond
 // turn is reached row by row on an ease-in-out curve over 260–520 ms (as a
 // fast, settling scroll), and the near one glides; under reduced motion
 // the page is there at once. The turn's tint starts as it arrives.
-func (a *App) jumpRow(c *ui.Context, task *store.Task, turns []Turn, ls *ui.ListState) int {
+func (a *App) jumpRow(c *ui.Context, task *store.Task, m *taskMemo, ls *ui.ListState) int {
+	turns := m.rowTurns
+	// D320: a far jump waits for its turn to be built, then flashes there.
+	if w := a.tpage.landing; w != nil && w.task == task.ID {
+		row := -1
+		for i := range turns {
+			if turns[i].Seq == w.seq {
+				row = i + 1
+			}
+		}
+		switch {
+		case row < 0:
+			a.tpage.landing = nil
+		case m.slots[row-1].Held > 0:
+			a.tpage.landing = nil
+			ls.ScrollTo(row, ui.Start)
+			a.tpage.flash = flash{task: task.ID, seq: w.seq, at: c.Now()}
+		default:
+			ls.ScrollTo(row, ui.Start)
+		}
+	}
 	j := a.tpage.jump
 	if j == nil || j.task != task.ID {
 		return -1
@@ -611,6 +740,16 @@ func (a *App) jumpRow(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 		a.tpage.flash = flash{task: task.ID, seq: j.seq, at: c.Now()}
 	}
 	first, last := ls.Visible()
+	// D320: a turn not held: there at once, on a calm blank of its height,
+	// the window asked around it; it flashes when it is built. A held one
+	// glides (D284).
+	if m.slots[row-1].Held == 0 {
+		a.tpage.jump = nil
+		ls.ScrollTo(row, ui.Start)
+		a.tpage.landing = &landing{task: task.ID, seq: j.seq}
+		a.setView(task.ID, sessionView{First: row - 1, Last: row - 1})
+		return -1
+	}
 	if c.Preferences().ReduceMotion {
 		ls.ScrollTo(row, ui.Start)
 		arrive()

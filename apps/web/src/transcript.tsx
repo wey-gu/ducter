@@ -9,7 +9,8 @@
 import type { Place } from "@ducter/protocol";
 import { HIDDEN, redact } from "@ducter/protocol/src/redact.ts";
 import { unwrapShell, type Step } from "@ducter/protocol/src/steps.ts";
-import { blocksOf, inTurn, lastSeq, latestVoice, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
+import { inTurn, lastSeq, latestVoice, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
+import { builtTurns, indexOf, lowerBound, slotsOf, type SessionIndex, type Slot, type TurnCache } from "@ducter/protocol/src/session.ts";
 import { tokensShort } from "@ducter/protocol";
 import type { MediaRef, WaiterView } from "@ducter/protocol";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
@@ -25,6 +26,7 @@ import { markdown } from "./markdown.ts";
 import { MediaBlock } from "./media.tsx";
 import { attention, effortOf, finished, harnessOf, modelOf, placeOf, title, type Task } from "./store.ts";
 import { manyComputers, taskWhere } from "./where.ts";
+import { rangeOf, topsOf } from "./vlist.ts";
 
 export { goRelay } from "@ducter/protocol/src/transcript.ts";
 
@@ -157,24 +159,47 @@ export function TimerPie({ frac }: { frac: number }) {
 // ---------- the blocks ----------
 
 const working = (task: Task) => ["working", "queued"].includes(attention(task));
-// Blocks are made once per change of the task's events (D210): a frame that changes nothing in
-// the task (the clock's tick, another task's event) reuses them, and so do the turns' memo.
-const blockCache = new WeakMap<Task, { n: number; last: number; live: boolean; blocks: Block[]; turns: Turn[]; inTurn: boolean }>();
-const memo = (task: Task) => {
+// D320: the page is every turn of the task's session index, each built from its own held events
+// and kept while they are the same (TurnCache), so a page landing or a live event builds only its
+// own turns; a turn with nothing held is a placeholder of the index's height. A frame that
+// changes nothing in the task (the clock's tick, another task's event) reuses all of it. Until
+// the home's index comes (or from a home before D320), an index of what is held stands in.
+type Memo = { v: number; n: number; ix?: SessionIndex; ixn: number; live: boolean; slots: Slot[]; blocks: Block[]; turns: Turn[]; inTurn: boolean };
+const blockCache = new WeakMap<Task, Memo>();
+const TAIL_TURNS = 6;
+const turnCache = new WeakMap<Task, TurnCache>();
+const memo = (task: Task): Memo => {
   const live = working(task);
-  const last = task.events.at(-1)?.seq ?? 0;
   const c = blockCache.get(task);
-  if (c && c.n === task.events.length && c.last === last && c.live === live) return c;
+  const ixn = task.index ? task.index.n : -1;
+  if (c && c.v === task.version && c.n === task.events.length && c.ix === task.index && c.ixn === ixn && c.live === live) return c;
   // D271: its last stretch is live only while a turn is under way.
   const now = inTurn(task.events);
-  const blocks = blocksOf(harnessOf(task), task.events, live && now);
-  const m = { n: task.events.length, last, live, blocks, turns: turnsOf(blocks), inTurn: now };
+  let cache = turnCache.get(task);
+  if (!cache) turnCache.set(task, (cache = new Map()));
+  const slots = slotsOf(harnessOf(task), task.index ?? indexOf(task.events), task.events, live && now, cache);
+  // What the rest of the page reads (the end line, the foot, On hand's row): the newest turns held.
+  const turns = builtTurns(slots.slice(-TAIL_TURNS));
+  const blocks = turns.flatMap((t) => (t.prompt ? [t.prompt, ...t.body] : t.body));
+  const m: Memo = { v: task.version, n: task.events.length, ...(task.index ? { ix: task.index } : {}), ixn, live, slots, blocks, turns, inTurn: now };
   blockCache.set(task, m);
   return m;
 };
 export const taskBlocks = (task: Task): Block[] => memo(task).blocks;
-/** The task's turns, made with its blocks (D271). */
+/** The task's turns built from what is held (D271, D320). */
 export const taskTurns = (task: Task): Turn[] => memo(task).turns;
+/** How many of the task's turns are built and kept (tests: a page builds only what it draws). */
+export const builtCount = (task: Task): number => turnCache.get(task)?.size ?? 0;
+/** D320: every turn of the task's session, built or a placeholder. */
+export const taskSlots = (task: Task): Slot[] => memo(task).slots;
+/** D320: the locator's turns: every turn of the session, what opened it from the index when it isn't held. */
+const locCache = new WeakMap<Slot[], Turn[]>();
+export const locatorTurns = (task: Task): Turn[] => {
+  const slots = taskSlots(task);
+  let l = locCache.get(slots);
+  if (!l) locCache.set(slots, (l = slots.map((s) => ({ seq: s.it.seq, ...(s.it.p ? { prompt: s.it.p } : {}), body: [] }))));
+  return l;
+};
 /** Whether a turn is under way now: something since its last turn ended (D271). */
 export const taskInTurn = (task: Task): boolean => working(task) && memo(task).inTurn;
 
@@ -213,6 +238,33 @@ function PromptCard({ task, b, label }: { task: Task; b: Block & { text: string;
 const OUTPUT_LINES = 12;
 
 /** What a step ran and printed: its first lines, the rest on a tap. */
+/**
+ * D320: the whole of a text the transcript cut (a megabyte of output, a pasted log): read from its
+ * held event and opened as plain text in the browser's own viewer, never laid out in the page.
+ */
+function fullText(seq: number): string {
+  const task = A.route.name === "task" ? A.S.tasks.get(A.route.id) : undefined;
+  const ev = task?.events[lowerBound(task.events, seq)];
+  if (!ev || ev.seq !== seq) return "";
+  const b = ev.body as { text?: string; summary?: string; brief?: string; tool?: { output?: string } };
+  return redact(b.tool?.output ?? b.text ?? b.summary ?? b.brief ?? "");
+}
+
+function ShowAll({ seq, n }: { seq: number; n: number }) {
+  const open = () => {
+    const text = fullText(seq);
+    if (!text) return;
+    const href = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+    window.open(href, "_blank", "noopener");
+    setTimeout(() => URL.revokeObjectURL(href), 60_000);
+  };
+  return (
+    <button type="button" class="qlink more" onClick={open}>
+      {t("text.all", n.toLocaleString())}
+    </button>
+  );
+}
+
 function Output({ text }: { text: string }) {
   const [all, setAll] = useState(false);
   const lines = text.split("\n");
@@ -363,6 +415,7 @@ function Row({ r, live }: { r: StepRow; live?: boolean }) {
       )}
       {hint && <div class={`failline${hanClass(hint)}`}>{hint}</div>}
       {open && (r.diff ? <Diff r={r} /> : <Output text={detail} />)}
+      {open && r.outputFull ? <ShowAll seq={r.seq} n={r.outputFull} /> : null}
     </div>
   );
 }
@@ -509,6 +562,7 @@ function Voice({ task, b, took }: { task: Task; b: Extract<Block, { k: "voice" }
   return (
     <div class="voice">
       <div class={`tx assistant md${hanClass(b.text)}`} dir="auto" dangerouslySetInnerHTML={{ __html: markdown(b.text, t("reply.copy")) }} />
+      {b.full ? <ShowAll seq={b.seq} n={b.full} /> : null}
       <small class={`vmeta${b.saved ? " kept" : ""}`}>
         {b.saved && <span class="saved">{t("task.saved")}</span>}
         <span class="hov">
@@ -614,13 +668,21 @@ function YouBubble({ task, b, queued }: { task: Task; b: Extract<Block, { k: "yo
 const tsCache = new WeakMap<Task, { n: number; map: Map<number, string> }>();
 function tsOf(task: Task, seq: number): number {
   let c = tsCache.get(task);
-  if (!c || c.n !== task.events.length) tsCache.set(task, (c = { n: task.events.length, map: new Map(task.events.map((e) => [e.seq, e.ts])) }));
-  return Date.parse(c.map.get(seq) ?? "");
+  if (!c || c.n !== task.version) tsCache.set(task, (c = { n: task.version, map: new Map(task.events.map((e) => [e.seq, e.ts])) }));
+  const ts = c.map.get(seq);
+  if (ts) return Date.parse(ts);
+  // D320: a turn not held: its time from the session index (when it began, or its last event).
+  const ix = task.index;
+  if (!ix) return NaN;
+  const it = ix.turns[lowerBound(ix.turns, seq + 1) - 1];
+  return Date.parse(it?.seq === seq ? it.at : it?.end === seq ? it.endAt : "");
 }
 
 /** D279: how many times a task's own wait came true (each wake in its transcript), and when the
- *  latest did: the rounds of a loop, for the watch card's tally. */
+ *  latest did: the rounds of a loop, for the watch card's tally. D320: the whole session's, from
+ *  its index when it has one. */
 export function wakesOf(task: Task): { n: number; lastAt: number } {
+  if (task.index) return { n: task.index.wakes, lastAt: Date.parse(task.index.lastWakeAt ?? "") };
   let n = 0, last = NaN;
   for (const b of taskBlocks(task)) if (b.k === "wake") (n++, (last = tsOf(task, b.seq)));
   return { n, lastAt: last };
@@ -659,7 +721,7 @@ function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean 
 
 /** A turn: what someone said to the agent, then its answer in order. Drawn again only when its
  *  own blocks changed (its key carries its last seq), or the language did. */
-class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live: boolean; version: string }> {
+class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live: boolean; version: string; seq?: number }> {
   shouldComponentUpdate(next: { version: string; queued: boolean; live: boolean }) {
     return next.version !== this.props.version || next.queued !== this.props.queued || next.live !== this.props.live;
   }
@@ -667,7 +729,7 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live
     const { task, turn, queued, live } = this.props;
     const p = turn.prompt;
     return (
-      <section class="turn" data-seq={turn.seq}>
+      <section class="turn" data-seq={this.props.seq ?? turn.seq}>
         {(p?.k === "wake" || p?.k === "told") && (
           <div class="tx-divider wake" role="separator" title={p.text}>
             <span>{promptLine(p)}</span>
@@ -696,15 +758,14 @@ const lastLive = (tu: Turn) => tu.body.at(-1)?.k === "steps" && !!(tu.body.at(-1
  *  Log has yet to carry, then while it works the working line (D268). */
 export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
   if (!task.historyLoaded && !task.events.length) return <div class="small">{t("task.loading")}</div>;
-  // D271: every turn is drawn (a settled one off screen costs nothing: content-visibility); the
-  // last is live only while a turn is under way.
-  const turns = blocks === taskBlocks(task) ? taskTurns(task) : turnsOf(blocks);
+  // D271: the last turn is live only while a turn is under way.
+  const own = blocks === taskBlocks(task);
+  const turns = own ? taskTurns(task) : turnsOf(blocks);
   const moving = taskInTurn(task);
-  const items = turns.map((tu, i, shown) => {
-    const last = i === shown.length - 1;
-    const live = last && moving;
-    return <TurnView key={tu.seq} task={task} turn={tu} queued={last && !tu.body.length} live={live} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}`} />;
-  });
+  const view = (tu: Turn, last: boolean, seq?: number) => (
+    <TurnView key={seq ?? tu.seq} seq={seq} task={task} turn={tu} queued={last && !tu.body.length} live={last && moving} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}`} />
+  );
+  const items: JSX.Element[] = own ? [] : turns.map((tu, i, shown) => view(tu, i === shown.length - 1));
   // D207: a receipt only when it says something: sending, it waits its turn, or it failed.
   for (const sd of task.sends.filter((s) => !s.seq)) {
     const queued = sd.delivered === "queued";
@@ -727,13 +788,154 @@ export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
       </div>,
     );
   }
+  if (!own)
+    return (
+      <div class="turns">
+        {items}
+        <EndLine task={task} blocks={blocks} turns={turns} />
+      </div>
+    );
   return (
-    <div class="turns">
+    <div class="turns virtual">
+      <VTurns task={task} slots={taskSlots(task)} view={view} />
       {items}
       <EndLine task={task} blocks={blocks} turns={turns} />
     </div>
   );
 }
+
+// ---------- D320: the turns as a virtual list ----------
+
+/** Each task's turns' drawn heights (px), by the turn's first seq: measured once drawn. */
+const heightCache = new WeakMap<Task, Map<number, number>>();
+const heightsOf = (task: Task) => {
+  let m = heightCache.get(task);
+  if (!m) heightCache.set(task, (m = new Map()));
+  return m;
+};
+
+/** The rows the page lays out, one per turn of the session (a turn is built only when drawn). */
+const rowsOf = (slots: Slot[]) => slots.map((s, i) => ({ s, i }));
+
+/** The open virtual lists, by task: a locator click far away goes through them (D320). */
+const vlists = new Map<string, { goTo(seq: number): boolean }>();
+
+/**
+ * D320: the turns on screen and about a screen either side are in the page; the rest are two
+ * spacers of their heights (measured once drawn, else the index's guess). The reader's place is
+ * kept by the first turn on screen: when turns above it are measured or a page lands, the page
+ * moves by what they changed, so nothing under the reader jumps. It tells the app which turns
+ * are on screen and which way the reader moves, and the window follows (A.view).
+ */
+function VTurns({ task, slots, view }: { task: Task; slots: Slot[]; view: (tu: Turn, last: boolean, seq?: number) => JSX.Element }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [, tick] = useState(0);
+  const st = useRef({ atEnd: false, y: NaN, h: 900, top: 0, dir: 0 as -1 | 0 | 1, gap: 28, anchor: undefined as { seq: number; top: number } | undefined, key: "", flash: 0 });
+  const rows = rowsOf(slots);
+  const hs = heightsOf(task);
+  const tops = topsOf(rows.map(({ s }) => hs.get(s.it.seq) ?? s.it.h * 16), st.current.gap);
+  const y = Number.isNaN(st.current.y) ? tops[rows.length]! : st.current.y;
+  const r = rangeOf(tops, y, st.current.h, st.current.h);
+  const scroller = () => box.current?.closest(".scroll") as HTMLElement | null;
+  const look = () => {
+    const el = box.current, sc = scroller();
+    if (!el || !sc) return;
+    const top = el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
+    const ny = sc.scrollTop - top;
+    const s = st.current;
+    if (!Number.isNaN(s.y) && ny !== s.y) s.dir = ny < s.y ? -1 : 1;
+    (s.y = ny), (s.h = sc.clientHeight), (s.top = top), (s.atEnd = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 48);
+    // The first turn on screen, and where it is: the place to keep.
+    // Where it sits in the content (not on screen), so a scroll is never undone as a shift.
+    s.anchor = undefined;
+    const vr = sc.getBoundingClientRect();
+    for (const n of el.querySelectorAll<HTMLElement>(":scope > .turn[data-seq]")) {
+      const b = n.getBoundingClientRect();
+      if (b.bottom > vr.top && b.top < vr.bottom) {
+        s.anchor = { seq: Number(n.dataset.seq), top: b.top - vr.top + sc.scrollTop };
+        break;
+      }
+    }
+    const rows = rowsOf(taskSlots(task));
+    const tp = topsOf(rows.map(({ s }) => hs.get(s.it.seq) ?? s.it.h * 16), s.gap);
+    const nr = rangeOf(tp, ny, s.h, s.h);
+    const key = `${nr.from}:${nr.to}`;
+    if (rows.length) A.view(task.id, { first: rows[Math.min(nr.first, rows.length - 1)]!.i, last: rows[Math.max(0, Math.min(nr.last, rows.length - 1))]!.i, dir: s.dir });
+    if (key !== s.key) (s.key = key), tick((x) => x + 1);
+  };
+  useLayoutEffect(() => {
+    const el = box.current, sc = scroller();
+    if (!el || !sc) return;
+    const s = st.current;
+    s.gap = parseFloat(getComputedStyle(el).rowGap) || 28;
+    // Measure the turns drawn; keep the reader's place unless they are at the end (it follows).
+    let changed = false;
+    for (const n of el.querySelectorAll<HTMLElement>(":scope > .turn[data-seq]:not(.ph)")) {
+      const seq = Number(n.dataset.seq), h = n.offsetHeight;
+      if (hs.get(seq) !== h) hs.set(seq, h), (changed = true);
+    }
+    // A reader at the end (as it last looked) stays at the end as rows above change.
+    const a = s.anchor;
+    if (s.atEnd) sc.scrollTop = sc.scrollHeight;
+    else if (a) {
+      const n = el.querySelector<HTMLElement>(`:scope > .turn[data-seq="${a.seq}"]`);
+      const d = n ? n.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - a.top : 0;
+      if (Math.abs(d) > 0.5) (sc.scrollTop += d), (a.top += d);
+    }
+    if (changed) tick((x) => x + 1);
+    else look();
+  });
+  useEffect(() => {
+    const sc = scroller();
+    if (!sc) return;
+    let frame = 0;
+    const on = () => void (frame ||= requestAnimationFrame(() => ((frame = 0), look())));
+    sc.addEventListener("scroll", on, { passive: true });
+    addEventListener("resize", on);
+    vlists.set(task.id, {
+      goTo(seq) {
+        const rows = rowsOf(taskSlots(task));
+        const k = rows.findIndex(({ s }) => s.it.seq === seq);
+        if (k < 0) return false;
+        const tp = topsOf(rows.map(({ s }) => hs.get(s.it.seq) ?? s.it.h * 16), st.current.gap);
+        // Far: there at once, its placeholder (or the turn) at the top; the window follows.
+        st.current.anchor = undefined;
+        st.current.atEnd = false;
+        sc.scrollTop = st.current.top + tp[k]! - 8;
+        st.current.flash = seq;
+        look();
+        return true;
+      },
+    });
+    return () => (sc.removeEventListener("scroll", on), removeEventListener("resize", on), cancelAnimationFrame(frame), vlists.delete(task.id));
+  }, [task.id]);
+  // A turn the locator jumped to wears its tint once it is drawn (D284).
+  useEffect(() => {
+    const seq = st.current.flash;
+    if (!seq) return;
+    const n = box.current?.querySelector<HTMLElement>(`:scope > .turn[data-seq="${seq}"]:not(.ph)`);
+    if (!n) return;
+    st.current.flash = 0;
+    n.classList.remove("flash");
+    void n.offsetWidth;
+    n.classList.add("flash");
+    setTimeout(() => n.classList.remove("flash"), 1700);
+  });
+  const g = st.current.gap;
+  const lastBuilt = rows.length - 1;
+  return (
+    <div class="vturns" ref={box}>
+      {r.from > 0 && <div class="vt-pad" style={{ height: `${Math.max(0, tops[r.from]! - g)}px` }} aria-hidden="true" />}
+      {rows.slice(r.from, r.to).map(({ s }, k) =>
+        s.turn ? view(s.turn, r.from + k === lastBuilt, s.it.seq) : <section key={s.it.seq} class="turn ph" data-seq={s.it.seq} style={{ height: `${s.held ? 0 : s.it.h * 16}px` }} aria-hidden="true" />,
+      )}
+      {r.to < rows.length && <div class="vt-pad" style={{ height: `${Math.max(0, tops[rows.length]! - tops[r.to]! - g)}px` }} aria-hidden="true" />}
+    </div>
+  );
+}
+
+/** D320: a locator click: the virtual list goes to the turn (false: no such list or turn). */
+export const goToTurn = (taskId: string, seq: number) => vlists.get(taskId)?.goTo(seq) ?? false;
 
 /** The transcript's last line (D271), from state, never a guess: a turn under way says what it
  *  does; a task resting on its wait says what it waits for and when it looks again, how it checks
@@ -916,7 +1118,8 @@ export function glideTo(scroller: HTMLElement, target: HTMLElement) {
  *  moves; hovered, a clay card rises out of the rail listing what was said, newest at the bottom,
  *  those in view marked; a click glides there (D284). */
 export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HTMLElement> }) {
-  const turns = taskTurns(task);
+  // D320: the whole session, from its index: a turn not held says what opened it from there.
+  const turns = locatorTurns(task);
   const [seen, setSeen] = useState<Set<number>>(new Set());
   const [open, setOpen] = useState(false);
   const frame = useRef(0);
@@ -927,7 +1130,7 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
       frame.current = 0;
       const top = el.getBoundingClientRect().top, bottom = top + el.clientHeight;
       const s = new Set<number>();
-      for (const n of el.querySelectorAll<HTMLElement>(".turns > .turn[data-seq]")) {
+      for (const n of el.querySelectorAll<HTMLElement>(".turns .turn[data-seq]")) {
         const r = n.getBoundingClientRect();
         if (r.bottom > top && r.top < bottom) s.add(Number(n.dataset.seq));
       }
@@ -941,8 +1144,10 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
   if (turns.length < 3) return null;
   const go = (seq: number) => {
     const el = scroller.current;
-    const target = el?.querySelector<HTMLElement>(`.turns > .turn[data-seq="${seq}"]`);
+    const target = el?.querySelector<HTMLElement>(`.turns .turn[data-seq="${seq}"]:not(.ph)`);
+    // Near and drawn: the calm glide (D284); else straight there, its placeholder first (D320).
     if (el && target) glideTo(el, target);
+    else goToTurn(task.id, seq);
     setOpen(false);
   };
   const h = Math.min(Math.max(turns.length * 8, 64), 360);

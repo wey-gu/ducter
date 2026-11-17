@@ -2257,7 +2257,7 @@ a {
   font-weight: 400;
 }
 /* D284: the turn the locator went to wears a soft clay tint that fades. */
-.turns > .turn.flash {
+.turns .turn.flash {
   animation: turn-flash 1.6s var(--ease);
 }
 @keyframes turn-flash {
@@ -2274,7 +2274,7 @@ a {
     background: transparent;
   }
 }
-.turns > .turn {
+.turns .turn {
   border-radius: var(--r-md);
 }
 /* D284: the person's Go on a card, relayed to the task: a quiet chip on their side, never a bubble. */
@@ -2431,6 +2431,18 @@ a {
 .turn:not(:last-child) {
   content-visibility: auto;
   contain-intrinsic-size: auto 480px;
+}
+/* D320: the turns as a virtual list: only those near the screen are in the page, each laid out
+   whole so its height is measured; the rest are spacers; one with nothing held yet is blank. */
+.turns .vturns {
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+  min-width: 0;
+}
+.turns .vturns > .turn {
+  content-visibility: visible;
+  contain-intrinsic-size: none;
 }
 .turns .earlier {
   align-self: flex-start;

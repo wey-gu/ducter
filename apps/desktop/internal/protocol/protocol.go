@@ -971,7 +971,17 @@ type TaskHistoryReq struct {
 	T         string `json:"t"` // "task_history"
 	TaskID    string `json:"taskId"`
 	BeforeSeq int64  `json:"beforeSeq,omitempty"`
-	Limit     int    `json:"limit,omitempty"`
+	// AfterSeq (D320): the page after a far stretch the client holds.
+	AfterSeq *int64 `json:"afterSeq,omitempty"`
+	Limit    int    `json:"limit,omitempty"`
+}
+
+// TaskIndexReq asks for a task's session index (D320): all of it, or its
+// turns from FromSeq on (the first seq of the last turn the client holds).
+type TaskIndexReq struct {
+	T       string `json:"t"` // "task_index"
+	TaskID  string `json:"taskId"`
+	FromSeq int64  `json:"fromSeq,omitempty"`
 }
 
 // DevicesReq asks for Your devices and abilities, and keeps this socket
@@ -1918,9 +1928,15 @@ type ServerFrame struct {
 	TaskID  string     `json:"taskId,omitempty"`
 	// task_history (D284): the beforeSeq the page was asked with (0 the
 	// newest window); More (below) says older events remain.
-	BeforeSeq int64    `json:"beforeSeq,omitempty"`
-	Delivered Delivery `json:"delivered,omitempty"` // sent: how a task_send was delivered
-	Message   string   `json:"message,omitempty"`
+	BeforeSeq int64 `json:"beforeSeq,omitempty"`
+	// task_history (D320): the afterSeq a far page was asked with; More
+	// then says newer events remain. task_index: the index, and the
+	// FromSeq it was asked from (its turns from there replace the client's).
+	AfterSeq  *int64        `json:"afterSeq,omitempty"`
+	Index     *SessionIndex `json:"index,omitempty"`
+	FromSeq   int64         `json:"fromSeq,omitempty"`
+	Delivered Delivery      `json:"delivered,omitempty"` // sent: how a task_send was delivered
+	Message   string        `json:"message,omitempty"`
 	// action_result: the outcome of a task_action (merge, open_pr, ...).
 	Action string `json:"action,omitempty"`
 	OK     bool   `json:"ok,omitempty"`
@@ -2314,7 +2330,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "channels", "channel_result",
-		"handset_dial_result", "ways", "pong", "key_add_result", "partners":
+		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index":
 	case "past_result", "past_marked", "outside_adopted", "outside_hidden":
 		return decodePast(data, f)
 	case "ongoing_result":

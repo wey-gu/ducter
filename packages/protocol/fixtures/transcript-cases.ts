@@ -4,6 +4,7 @@
 import { writeFileSync } from "node:fs";
 import type { LogEvent, MediaRef } from "../src/index.ts";
 import { blocksOf, inTurn, turnsOf } from "../src/transcript.ts";
+import { indexOf } from "../src/session.ts";
 
 const KEY = "nmem_ct_8fK2pQx7Lm4vRz9TbW3y";
 const T0 = Date.parse("2026-11-10T06:58:00Z");
@@ -348,7 +349,8 @@ export const cases = [
 
 if (import.meta.main) {
   // D271: `inTurn`, whether a turn is under way, both ports alike.
-  const out = cases.map((c) => ({ ...c, inTurn: inTurn(c.events), want: turnsOf(blocksOf(c.harness, c.events, c.working)) }));
+  // D320: its session index, which both ports make the same, and build turn by turn into `want`.
+  const out = cases.map((c) => ({ ...c, inTurn: inTurn(c.events), want: turnsOf(blocksOf(c.harness, c.events, c.working)), index: indexOf(c.events) }));
   writeFileSync(new URL("./transcript.json", import.meta.url), JSON.stringify(out, null, 1) + "\n");
   console.log(`wrote ${out.length} cases`);
 }

@@ -746,6 +746,8 @@ func (a *App) OpenTask(id string) {
 	a.markRead()
 	// D284: what the store holds shows at once; the newest window is asked
 	// only when it was never loaded or a reconnect may have left a gap.
+	// D320: and its session index, which lays out the whole session.
+	a.askIndex(id)
 	if t := a.S.Task(id); t == nil || !t.HistoryLoaded || t.HistStale {
 		a.askHistory(id, 0)
 	}
@@ -899,6 +901,7 @@ func (a *App) Welcomed() {
 	a.resendUnechoed()
 	a.flushOutbox()
 	if a.Route == RouteTask && a.TaskID != "" {
+		a.askIndex(a.TaskID)
 		a.askHistory(a.TaskID, 0)
 	}
 	// Devices are pushed only to sockets that asked: ask again on a new one.
@@ -946,7 +949,8 @@ func (a *App) Receive(f protocol.ServerFrame) {
 	}
 	a.noteResults(f)
 	a.S.Apply(f)
-	if f.T == "task_history" {
+	a.liveIndex(f)
+	if f.T == "task_history" || f.T == "task_index" {
 		a.pageHistory(f.TaskID)
 	}
 	a.followUserLanguage()

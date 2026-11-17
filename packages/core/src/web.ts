@@ -91,6 +91,7 @@ import artAbPhoneLater from "../../../apps/web/static/art/ab_phone_later.webp" w
 import artAbPhone from "../../../apps/web/static/art/ab_phone.webp" with { type: "file" }; // D217
 import artSetAutofill from "../../../apps/web/static/art/set_autofill.webp" with { type: "file" };
 import artSetChats from "../../../apps/web/static/art/set_chats.webp" with { type: "file" }; // D283
+import artSetTodos from "../../../apps/web/static/art/set_todos.webp" with { type: "file" }; // D348
 import artNowledgeMem from "../../../apps/web/static/art/nowledge_mem.webp" with { type: "file" }; // D314: Nowledge Mem's app icon
 
 const INDEX = indexHtml as unknown as string; // Bun types an .html import as an HTMLBundle; with type "file" it is a path
@@ -155,6 +156,7 @@ const ASSETS: Record<string, [string, string]> = {
   "art/ab_phone.webp": [artAbPhone, "image/webp"],
   "art/set_autofill.webp": [artSetAutofill, "image/webp"],
   "art/set_chats.webp": [artSetChats, "image/webp"],
+  "art/set_todos.webp": [artSetTodos, "image/webp"],
   "art/nowledge_mem.webp": [artNowledgeMem, "image/webp"],
 };
 

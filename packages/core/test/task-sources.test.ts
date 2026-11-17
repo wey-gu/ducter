@@ -289,3 +289,36 @@ test("Obsidian set to Ask me: a done task's line waits for a Go card, then ticks
   await Bun.sleep(30);
   expect(readFileSync(join(v, "Inbox.md"), "utf8")).toBe("- [x] Send the thank-you card ✅ 2026-11-19\n");
 });
+
+// D348: Settings' own controls: a GitHub source's repositories, a vault's folder and tag, each
+// narrowing what the source lists from the next look; cleared, everything again.
+test("Settings' filters: repositories narrow GitHub; a folder and a tag narrow a vault", async () => {
+  const { core } = boot([
+    { repo: "acme/web", number: 12, title: "Fix the login redirect" },
+    { repo: "acme/api", number: 7, title: "Review the rate limiter" },
+  ]);
+  const ts = core.taskSources;
+  const gh = (await ts.add("github")).id!;
+  const { v } = vault();
+  mkdirSync(join(v, "Home"), { recursive: true });
+  writeFileSync(join(v, "Home", "Chores.md"), "- [ ] Fix the gate #ducter\n- [ ] Call the plumber\n");
+  const old = new Date(Date.now() - 60_000);
+  utimesSync(join(v, "Home", "Chores.md"), old, old);
+  const ob = (await ts.add("obsidian", v)).id!;
+  const titles = async (id: string) => (await ts.items({ source: id })).items.map((i) => i.title).sort();
+  expect(await titles(gh)).toEqual(["Fix the login redirect", "Review the rate limiter"]);
+  expect(ts.set(gh, { repos: ["acme/api", "not a repo"] })).toBe(true);
+  expect(ts.view().sources.find((s) => s.id === gh)!.repos).toEqual(["acme/api"]);
+  expect(await titles(gh)).toEqual(["Review the rate limiter"]);
+  expect(ts.set(gh, { repos: [] })).toBe(true);
+  expect(await titles(gh)).toEqual(["Fix the login redirect", "Review the rate limiter"]);
+  expect((await titles(ob)).length).toBeGreaterThan(2);
+  ts.set(ob, { folder: "Home" });
+  expect(await titles(ob)).toEqual(["Call the plumber", "Fix the gate #ducter"]);
+  ts.set(ob, { label: "ducter" });
+  expect(await titles(ob)).toEqual(["Fix the gate #ducter"]);
+  expect(ts.view().sources.find((s) => s.id === ob)).toMatchObject({ folder: "Home", label: "ducter" });
+  ts.set(ob, { folder: "", label: "" });
+  expect(ts.view().sources.find((s) => s.id === ob)!.label).toBeUndefined();
+  expect((await titles(ob)).length).toBeGreaterThan(2);
+});

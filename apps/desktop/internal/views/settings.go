@@ -386,7 +386,7 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 	case TabAccounts:
 		bmp = theme.Clay("wait_mail")
 	case TabTodos:
-		bmp = theme.Clay(todosArt) // D341: the clay file, a stand-in (its own art is owed)
+		bmp = theme.Clay(todosArt) // D348: a note page with a ticked box
 	case TabAutofill:
 		bmp = theme.Clay("set_autofill")
 	case TabRun:

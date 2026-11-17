@@ -157,13 +157,14 @@ type SourceAddReq struct {
 
 // SourceSetReq changes one source's choices.
 type SourceSetReq struct {
-	T        string   `json:"t"` // "source_set"
-	ID       string   `json:"id"`
-	WhenNew  string   `json:"whenNew,omitempty"`
-	WhenDone string   `json:"whenDone,omitempty"`
-	Folder   *string  `json:"folder,omitempty"`
-	Label    *string  `json:"label,omitempty"`
-	Repos    []string `json:"repos,omitempty"`
+	T        string  `json:"t"` // "source_set"
+	ID       string  `json:"id"`
+	WhenNew  string  `json:"whenNew,omitempty"`
+	WhenDone string  `json:"whenDone,omitempty"`
+	Folder   *string `json:"folder,omitempty"`
+	Label    *string `json:"label,omitempty"`
+	// Repos: nil leaves them as they are; empty (not nil) clears them (D348).
+	Repos []string `json:"repos"`
 }
 
 // SourceRemoveReq is 移除 / Remove.

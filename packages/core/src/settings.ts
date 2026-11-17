@@ -150,6 +150,7 @@ export function openSettings(opts: {
       name: opts.persona.name,
       language: data.language ?? "auto",
       memory: !opts.memoryPinnedOff && data.memory !== false,
+      ...(opts.memoryPinnedOff ? { memoryPinned: true } : {}),
       notify: !p.off,
       quiet: p.quiet,
       defaultAfterMin: data.defaultAfterMin ?? 30,

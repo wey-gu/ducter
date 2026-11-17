@@ -79,13 +79,18 @@ func (a *App) memHead(c *ui.Context, st *protocol.Settings) {
 		}
 		a.headRow(c, "mem", a.notebookTile(c), title, line, tone, func() {
 			v := st.Memory
-			if a.switchControl(c, "memory", a.L.T("partner.memory.switch"), &v) {
+			// D348: held off by how the home was started: shown, still, and the note says why.
+			if st.MemoryPinned && !st.Memory {
+				ui.Switch(c.Key("sw:memory"), &v).Label(a.L.T("partner.memory.switch")).Disabled(true)
+			} else if a.switchControl(c, "memory", a.L.T("partner.memory.switch"), &v) {
 				st.Memory = v
 				a.SetSettings(protocol.SettingsPatch{Memory: &v})
 			}
 		})
 		note := a.L.T("mem.switch.note")
-		if !st.Memory {
+		if st.MemoryPinned && !st.Memory {
+			note = a.L.T("mem.pinned")
+		} else if !st.Memory {
 			note = a.L.T("partner.memory.off")
 		}
 		// D321: the week's check (D304) one tap away, opening under the group.

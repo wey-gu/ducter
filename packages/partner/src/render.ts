@@ -89,7 +89,11 @@ function toldLines(told: string[] | undefined, n: number): string[] {
   return [`the user told it directly${more}: ${shown.join("; ")}`];
 }
 
-function renderReport(r: Bodies["report"], title?: string, told?: string[]): string {
+/** D348: the same folder changes, still open until the same day: the user was told already. */
+const sameUndo = (a: NonNullable<Bodies["report"]["folder"]>, b: Bodies["report"]["folder"]): boolean =>
+  !!b && b.undo === "open" && (["added", "changed", "removed", "moved", "renamed", "folders", "undoUntil"] as const).every((k) => a[k] === b[k]);
+
+function renderReport(r: Bodies["report"], title?: string, told?: string[], undoBefore?: Bodies["report"]["folder"]): string {
   const head = `[task ${r.taskId}${title ? ` "${clip(title, 120)}"` : ""} report: ${r.state}] ${clip(r.summary, 600)}`;
   const lines = [head];
   // D340: what the user said in the task itself since its last report: their own ask, not the task's idea.
@@ -110,7 +114,10 @@ function renderReport(r: Bodies["report"], title?: string, told?: string[]): str
     const n = (k: number, what: string) => (k ? [`${k} ${what}`] : []);
     const parts = [...n(f.moved, "moved"), ...n(f.renamed, "renamed"), ...n(f.folders, "new folders"), ...n(f.added, "new files"), ...n(f.changed, "changed"), ...n(f.removed, "deleted")];
     const until = f.undoUntil ? ` until ${f.undoUntil.slice(0, 10)}` : "";
-    lines.push(`  folder changes: ${parts.join(", ")}. The user can undo all of it with one tap${until} (Changes in the task). Say so in one short plain line, e.g. "随时能改回去，留到 11 月 16 日" / "You can undo this until Nov 16".`);
+    // D348: said once per task, and again only when what can be undone changed (research/124 F8:
+    // every report of one task ended with the same undo line, five times in ten minutes).
+    if (sameUndo(f, undoBefore)) lines.push(`  folder changes: ${parts.join(", ")}, the same as its last report; you already told the user they can undo them. Don't say it again.`);
+    else lines.push(`  folder changes: ${parts.join(", ")}. The user can undo all of it with one tap${until} (Changes in the task). Say so in one short plain line, e.g. "随时能改回去，留到 11 月 16 日" / "You can undo this until Nov 16".`);
   }
   // D168: a task never writes to memory; it proposes, and the partner keeps what is durable.
   if (r.remember?.length) {
@@ -132,6 +139,8 @@ export interface RenderCtx {
   taskTitle(taskId: string): string | undefined;
   /** D340: the user's own words sent straight to this task between its previous report and this one (seq), oldest first. */
   told?(taskId: string, reportSeq: number): string[];
+  /** D348: the folder changes this task's previous report said could be undone, if any. */
+  undoBefore?(taskId: string, reportSeq: number): Bodies["report"]["folder"];
   decision(decisionId: string): Bodies["decision"] | undefined;
   /** A repo task's base branch, so "merged into its base branch" names it (eval: "can't tell if that's main"). */
   taskBase?(taskId: string): string | undefined;
@@ -231,7 +240,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     case "report": {
       const r = e.body as Bodies["report"];
       const src = r.state === "done" ? ctx.taskSource?.(r.taskId) : undefined;
-      return renderReport(r, ctx.taskTitle(r.taskId), ctx.told?.(r.taskId, e.seq)) + (src ? `\n${sourceLine(r.taskId, src)}` : "");
+      return renderReport(r, ctx.taskTitle(r.taskId), ctx.told?.(r.taskId, e.seq), r.folder?.undo === "open" ? ctx.undoBefore?.(r.taskId, e.seq) : undefined) + (src ? `\n${sourceLine(r.taskId, src)}` : "");
     }
     case "source_seen": {
       // D341: new to-dos in a source the user wants told, or taken under their standing go.

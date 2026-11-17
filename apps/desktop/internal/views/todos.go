@@ -30,9 +30,9 @@ import (
 // TabTodos is 待办来源 / To-do sources.
 const TabTodos = "todos"
 
-// The rail's art for To-do sources: the clay file (a stand-in until its
-// own art is drawn; owed, design/task-sources.md).
-const todosArt = "wait_file"
+// The rail's art for To-do sources (D348): its own clay, a note page with one
+// box ticked in mint and one still open (design/art/assets/prompts/set_todos.md).
+const todosArt = "set_todos"
 
 type todosState struct {
 	removing string          // the source whose Remove asks in place
@@ -49,6 +49,9 @@ type todosState struct {
 	pickSeq   int
 	// D345: 连上 GitHub in flight (the shared sign-in panel, in place under
 	// GitHub's row), and the account it just connected as (said once).
+	// D348: a source filter being typed ("id:field" to its words), saved
+	// on Return or when the field is left.
+	drafts    map[string]string
 	login     *ntLogin
 	connected string
 }
@@ -165,6 +168,7 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 			})
 		}
 		a.textBlock(c, "src-when:"+s.ID, func() { a.todoChoices(c, s) })
+		a.textBlock(c, "src-filter:"+s.ID, func() { a.todoFilters(c, s) })
 		if a.todos.removing == s.ID {
 			keep, rm := a.confirmRow(c, "src-remove:"+s.ID, a.L.T("todos.remove.ask", name), a.L.T("todos.remove.no"), a.L.T("todos.remove.yes"), name)
 			if keep {
@@ -253,6 +257,86 @@ func (a *App) todoChoices(c *ui.Context, s protocol.SourceView) {
 	block("done", a.L.T("todos.done"), dones, s.WhenDone, "todos.done.", write, func(v string) {
 		a.setSource(s.ID, func(x *protocol.SourceView) { x.WhenDone = v })
 		a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, WhenDone: v})
+	})
+}
+
+// reposOf reads "acme/web, acme/api" as owner/repo names, split at commas
+// or spaces of either width; never nil, so an empty field clears them (D348).
+func reposOf(text string) []string {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, r := range strings.FieldsFunc(text, func(r rune) bool { return strings.ContainsRune(" \t\n,，、;；", r) }) {
+		r = strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(r, "https://github.com/"), "http://github.com/"), ".git")
+		if r != "" && !seen[r] {
+			seen[r] = true
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// todoFilters is which part a source reads, set here (D348): GitHub's
+// repositories; a vault's folder and tag. Each is a labelled field, saved on
+// Return or when it is left.
+func (a *App) todoFilters(c *ui.Context, s protocol.SourceView) {
+	t := a.T
+	name := s.Name
+	if s.Kind == "github" {
+		name = "GitHub"
+	}
+	if a.todos.drafts == nil {
+		a.todos.drafts = map[string]string{}
+	}
+	field := func(key, label, placeholder, hint, cur string, save func(v string)) {
+		k := s.ID + ":" + key
+		v, editing := a.todos.drafts[k]
+		if !editing {
+			v = cur
+		}
+		ui.Column(c.Key("filter:" + k)).Gap(6).Grow(1).MinWidth(0).Children(func() {
+			ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).AccessHidden(true)
+			in := ui.TextInput(c.Key("in:"+k), &v).Placeholder(placeholder).Label(label+"，"+name).
+				FontSize(t.MD).Height(44).Padding(0, t.S3).Radius(t.RadiusSM).Background(t.Surface).MinWidth(0)
+			focused := in.Focused()
+			edge := t.Line2
+			if focused {
+				edge = t.InkSoft
+			}
+			in.Border(1, edge)
+			if hint != "" {
+				ui.Text(c, hint).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+			}
+			if focused && !in.Submitted() {
+				a.todos.drafts[k] = v
+				return
+			}
+			if editing || in.Submitted() {
+				delete(a.todos.drafts, k)
+				if strings.TrimSpace(v) != strings.TrimSpace(cur) {
+					save(v)
+				}
+			}
+		})
+	}
+	ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
+		if s.Kind == "github" {
+			field("repos", a.L.T("todos.repos"), a.L.T("todos.repos.all"), a.L.T("todos.repos.hint"), strings.Join(s.Repos, ", "), func(v string) {
+				repos := reposOf(v)
+				a.setSource(s.ID, func(x *protocol.SourceView) { x.Repos = repos })
+				a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, Repos: repos})
+			})
+			return
+		}
+		field("folder", a.L.T("todos.folder"), a.L.T("todos.folder.all"), "", s.Folder, func(v string) {
+			v = strings.Trim(strings.TrimSpace(v), "/\\")
+			a.setSource(s.ID, func(x *protocol.SourceView) { x.Folder = v })
+			a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, Folder: &v})
+		})
+		field("tag", a.L.T("todos.tag"), a.L.T("todos.tag.any"), "", s.Label, func(v string) {
+			v = strings.TrimSpace(v)
+			a.setSource(s.ID, func(x *protocol.SourceView) { x.Label = v })
+			a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, Label: &v})
+		})
 	})
 }
 

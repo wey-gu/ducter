@@ -465,10 +465,10 @@ export function OpenRow(p: { tile: ComponentChildren; title: string; line?: stri
 }
 
 /** The one switch alone at a row's right edge, its words being the row's own (D289, D295). */
-export function Switch(p: { label: string; on: boolean; onChange: (v: boolean) => void }) {
+export function Switch(p: { label: string; on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <label class="switch bare">
-      <input type="checkbox" role="switch" aria-label={p.label} checked={p.on} onChange={(e) => p.onChange((e.target as HTMLInputElement).checked)} />
+      <input type="checkbox" role="switch" aria-label={p.label} checked={p.on} disabled={p.disabled} onChange={(e) => p.onChange((e.target as HTMLInputElement).checked)} />
     </label>
   );
 }

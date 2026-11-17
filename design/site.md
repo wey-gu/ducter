@@ -79,8 +79,10 @@ motion for an anchored shot: the page scrolls smoothly, and a headless Chrome ne
 
 `public/shots/<name>-{light,dark}.webp`, shown by `components/Shot.astro` (the dark one follows the
 system). They are real screens of the web client: headless Chrome against a demo core on port 7960,
-`localStorage["ducter.notify.asked"]="1"` before load so the notification ask stays out of frame.
-`hero` (720 wide at 2×) and `onhand-phone` (390 at 3×, `#onhand`) come from
+`localStorage["ducter.notify.asked"]="1"` before load so the notification ask stays out of frame,
+and loaded once more so the conversation is read (no New messages line) and starts at the top; the
+clock is set with a time zone override so the note says a morning time.
+`hero` (720 × 900 at 1.5×) and `onhand-phone` (390 × 844 at 2×, `#onhand`) come from
 `DEMO_LANG=en bun apps/web/demo-site.ts`; `memory` (`#settings=memory`, the sheet clipped) and
 `done-for-you` (Done for you opened from On hand, clipped) from `DEMO_LANG=en DEMO_MEM=ready
 DEMO_DID=1 bun apps/web/demo.ts`. Resized to WebP (quality 82); each is under 70 KB. Retake them
@@ -127,7 +129,8 @@ started? get started 足够优雅顺滑无障碍么？"
   and by five naive LLM raters; it is the only one none rated below 3. The subhead says where you
   talk to it and that anything spending money or reaching people waits for your OK; "your own Mac
   or server", "open source" and the agents' names are the small print.
-- **The hero picture** is the real morning note above a finished job (raters 21/25), with a caption.
+- **The hero picture** is the real morning note above a finished errand (raters 21/25 for the note above a
+  finished job; the job became a dinner booked in 2026-11-18, see the share image), with a caption.
 - **Get started** replaces Download as the main action (above).
 - **Bilingual:** not now. The site stays English; the zh tagline is designed with the en one and is
   the line for the app, a zh README or film. A 中文 site is a todo with its trigger (a mainland
@@ -182,11 +185,11 @@ page had their elements), which still held joined strings.
 
 ## The share image (D346)
 
-`public/og.png` (1200 × 630, also twitter:image, linked as `og.png?v=2` so X and Slack fetch it
+`public/og.png` (1200 × 630, also twitter:image, linked as `og.png?v=3` so X and Slack fetch it
 again) is what WeChat, X, Slack and iMessage show when someone shares ducter.ai: for many people the
 first thing they ever see of Ducter. `apps/site/scripts/og.mjs` (`bun run og` in `apps/site`) draws
 it from an HTML template in headless Chrome, with the site's Bricolage, palette and clay art and the
-real hero shot (`public/shots/hero-light.webp`), and squeezes it to a palette PNG under 400 KB (72 KB
+real hero shot (`public/shots/hero-light.webp`), and squeezes it to a palette PNG under 400 KB (70 KB
 now). It reads the tagline from the home page's `<h1>`; `test/copy.test.ts` fails if the alt in
 `Head.astro` doesn't carry that line, so a new line means running it again. Retaken shots mean the
 same. `--layout b|c --out <file>` draws the two that lost.
@@ -209,10 +212,24 @@ read at thumbnail size. One run each; LLM proxies, not people.
   is pushed", Merge into main); the teacher because the chat reads as something she can message.
 - **Every rater read the headline at 300 px and nothing else.** The line carries the card; the
   screen says "a real app", not its words.
-- **What lost A points:** the finished job is a developer's (HawDB, a branch, Merge into main), which
-  told both consumers "not for me"; they chose C, which shows only the morning note (a domain, a
-  hotel). That is the hero shot's trade-off as much as the card's. **Owed:** a hero shot whose
-  finished job is an errand, not code, would serve both; then redraw.
+- **What lost A points:** the finished job was a developer's (HawDB, a branch, Merge into main),
+  which told both consumers "not for me"; they chose C, which shows only the morning note.
+- **Redrawn with an errand (2026-11-18).** The hero shot's finished job is now a dinner booked (a
+  table for four on Saturday, no stairs for Mom; "Booked … free to cancel until Friday noon";
+  `apps/web/demo-site.ts`), the same shot as the home page's hero and `onhand-phone`'s Done today, so
+  all three were retaken. The same five raters, old (the code job) against new, under neutral
+  letters in alternating order, one run each (`.shots/polish-0075/og-raters.json`):
+
+  | og.png | Dev en | Consumer en | Fresh en | Consumer zh | Dev zh | Σ tap /25 | Picked |
+  |---|---|---|---|---|---|---|---|
+  | Old: a flaky test fixed | 4 | 2 | 2 | 2 | 4 | 14 | 2 (both developers) |
+  | **New: a table booked** | 2 | 4 | 4 | 4 | 3 | **17** | 3 (both consumers, the teacher) |
+
+  The trade flipped as expected: the developers now read "everyday errands" and tapped less, and
+  everyone else read it as theirs ("made for someone like me" 1 → 4–5). The new one stays: the
+  developer's case is said on the page itself ("Fix the flaky test, then tell me.", the coding
+  agents) once they tap, and the card is the first thing most people see. Every rater still read
+  only the headline at thumbnail size.
 - Three raters found the clay character childlike for a tool and two liked it; it stays (it is the
   partner), at the size of one supporting element.
 

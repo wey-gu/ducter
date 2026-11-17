@@ -70,12 +70,16 @@ func (a *App) heldChips(c *ui.Context, task *store.Task, working, steers bool) {
 	}
 	t := a.T
 	held := task.Card.Held
-	ui.Column(c.Key("held-q")).Gap(t.S1).Padding(0, 0, t.S2, 0).Label(a.L.T("held.head")).Children(func() {
+	// D348: nothing running (stopped, or the turn ended without taking them):
+	// "this turn" is gone; they go first with the person's next message.
+	head := a.L.T("held.head")
+	if !working {
+		head = a.L.T("held.head.idle")
+	} else if !steers {
+		head = a.L.T("held.head.nosteer", harnessName(task.Harness()))
+	}
+	ui.Column(c.Key("held-q")).Gap(t.S1).Padding(0, 0, t.S2, 0).Label(head).Children(func() {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Baseline).Padding(0, t.S3).Children(func() {
-			head := a.L.T("held.head")
-			if !steers {
-				head = a.L.T("held.head.nosteer", harnessName(task.Harness()))
-			}
 			ui.Text(c, head).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
 			if len(held) > 1 {
 				ui.Text(c, itoa(int64(len(held)))).FontSize(t.XS).TextColor(t.Faint).FontFeatures("tnum").Shrink(0)

@@ -133,6 +133,11 @@ for the next partner change.
 - The task's mid-turn voice was English in a Chinese task ("I'll write the test first…"); its
   reports were Chinese.
 
+**Later (D348, 2026-11-18):** the first five are fixed against the demo cores, not yet re-walked live.
+The overflow's cause was found: `.step .sum:first-of-type` shrinks at 0.35, and a lone shrinking item
+with a factor below 1 absorbs only that share of the overflow (**VERIFIED** in Chrome: a long reason ran
+163 px past the pane before, 0 after).
+
 ## What held
 
 | Check | Result |

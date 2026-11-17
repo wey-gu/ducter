@@ -77,10 +77,12 @@ place (the same inode: Obsidian and the syncs keep following the file):
 
 - **Settings › 待办来源 / To-do sources** (after 账号 / Accounts): the lede; one card per source (its mark,
   its name, whose or which folder, counts **{n} 件没做完** **{n} 件在做** as separate facts, **新的来了** and
-  **做完以后** as segments, the standing line, a problem row, a quiet **移除** that asks in place:
+  **做完以后** as segments, which part it reads as labelled 44-tall fields saved on Return or leaving them (D348:
+  GitHub **只看这些仓库** as owner/repo by commas, blank = every repository; a vault **看哪个文件夹** and **只看带这个标签的**,
+  blank = the whole vault, any tag; `source_set`, read by the adapters from the next look), the standing line, a problem row, a quiet **移除** that asks in place:
   **移除 {name}？已经接下的事还在。**); **还能加上**: GitHub always while it isn't added (D345: **连上** signs the home in, in place, putting gh there first when it isn't; signed in, it is a source with its defaults), each vault Obsidian
   lists on the home, **加上一个 Obsidian 库…** by folder, and **Jira** with **即将推出 / Coming soon**. Its clay
-  art is owed (the page with lines stands in, `todo.md`).
+  art (D348): `set_todos`, a cream note page with one box ticked in mint and one still open.
 - **The chip** (opened task's meta line, On hand cards, New task's pick, the write card): the app's own
   mark (D314) and `repo#12` or the note's name; it opens the to-do in its app (`obsidian://open…` for a
   vault line); beside it, apart (D291): **已留言 / Commented**, **已关掉 / Closed**, **已勾掉 / Ticked off**,

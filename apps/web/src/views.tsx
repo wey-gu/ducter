@@ -1537,6 +1537,8 @@ function Composer({ taskId }: { taskId?: string }) {
  * steers it in now (only where its agent can steer), 不说了 takes it back. Read from the card, so
  * every window shows the same queue.
  */
+export const heldHead = (busy: boolean, steers: boolean, agent: string): string => (!busy ? t("held.head.idle") : steers ? t("held.head") : t("held.head.nosteer", harnessName(agent)));
+
 export function HeldChips({ task, busy, steers, agent }: { task: import("./store.ts").Task; busy: boolean; steers: boolean; agent: string }) {
   const held = task.card?.held ?? [];
   const [editing, setEditing] = useState<{ id: string; text: string } | undefined>();
@@ -1545,10 +1547,13 @@ export function HeldChips({ task, busy, steers, agent }: { task: import("./store
     if (editing && editing.id === h.id) A.heldOp(task.id, h.id, "edit", editing.text);
     setEditing(undefined);
   };
+  // D348: nothing running (stopped, or the turn ended without taking them): "this turn" is gone;
+  // they go first with the person's next message, so the head says that.
+  const head = heldHead(busy, steers, agent);
   return (
-    <div class="held-q" role="list" aria-label={t("held.head")}>
+    <div class="held-q" role="list" aria-label={head}>
       <div class="held-head">
-        <span>{steers ? t("held.head") : t("held.head.nosteer", harnessName(agent))}</span>
+        <span>{head}</span>
         {held.length > 1 && <span class="n">{held.length}</span>}
       </div>
       {held.map((h) =>
@@ -2923,8 +2928,8 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "peers", art: "coins", title: "settings.tab.peers" },
   { page: "notify", art: "wait_clock", title: "settings.tab.notify" },
   { page: "accounts", art: "wait_mail", title: "settings.tab.accounts" },
-  // D341: 待办来源 / To-do sources (todos.tsx); its own clay art is owed (todo.md): the page with lines stands in.
-  { page: "todos", art: "wait_file", title: "settings.tab.todos" },
+  // D341: 待办来源 / To-do sources (todos.tsx); D348: its own clay, a note page with a ticked box.
+  { page: "todos", art: "set_todos", title: "settings.tab.todos" },
   // D276: 聊天软件 / Chat apps (channels.tsx); D283: two clay speech bubbles.
   { page: "chats", art: "set_chats", title: "settings.tab.chats" },
   { page: "autofill", art: "set_autofill", title: "settings.tab.autofill" },

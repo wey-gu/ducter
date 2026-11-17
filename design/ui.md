@@ -599,6 +599,11 @@ One vocabulary on every tab:
   the right; read-only); **Nowledge Mem** as one group (its app icon as the tile, D314, **已连上**, **记在哪儿**,
   **它的名字**, an update as a row, the raw facts behind **详情**, the version as the foot). Before Mem: the partner
   small on the paper (an empty state), then one group with the two setup steps. `design/memory.md`.
+- **To-do sources / 待办来源** (D341; D348): its rail mark `set_todos`, a cream clay note page with one box
+  ticked in mint and one still open (made like `set_chats`: `design/art/assets/batch_todos.json`,
+  `prompts/set_todos.md`; Mac `art/clay/set_todos@256.png`, web `art/set_todos.webp`). Each source's
+  filters are labelled fields like Chat apps' (label 13/700 over a 44-tall white input with a hairline).
+  `design/task-sources.md`.
 - **Chat apps / 聊天软件** (D276; D283): its rail mark is clay art like its neighbours, two puffy
   clay speech bubbles, a cream one behind and a sky one in front with three ink dots
   (`set_chats`, made like `set_autofill`: `design/art/assets/batch_chats.json`, cut with

@@ -2156,6 +2156,11 @@ a {
   margin-inline-start: -4px;
   opacity: 0.8;
 }
+/* D348: its one line of words gives way in full: a shrink below 1 (`.step .sum:first-of-type`) took
+   only part of the overflow when it is the only one that shrinks, and the line ran 7px past the pane. */
+.wait-end .step .sum:first-of-type {
+  flex-shrink: 1;
+}
 .wait-end .step .when {
   flex: none;
   font-size: var(--xs);
@@ -14115,6 +14120,16 @@ svg .wave.w2.on {
   display: inline;
 }
 .todo-path .field {
+  min-width: 0;
+}
+/* D348: which part a source reads: labelled fields side by side, one under the other on a phone. */
+.todo-filters {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  min-height: 0;
+}
+.todo-filters .todo-filter {
+  flex: 1 1 14rem;
   min-width: 0;
 }
 .todo-pick-btn {

@@ -166,4 +166,12 @@ describe("the share image", () => {
     expect(alt).toContain(line);
     expect(Bun.file(join(SITE, "public/og.png")).size).toBeLessThanOrEqual(400 * 1024);
   });
+  test("the hero's finished job is an errand, not code, and the alts say so (design/site.md)", () => {
+    const head = readFileSync(join(SITE, "src/components/Head.astro"), "utf8").match(/og:image:alt" content="([^"]*)"/)![1];
+    const index = readFileSync(join(SITE, "src/pages/index.astro"), "utf8");
+    const hero = index.match(/<Shot name="hero"[\s\S]*?alt="([^"]*)"/)![1];
+    const demo = readFileSync(join(SITE, "../web/demo-site.ts"), "utf8");
+    for (const s of [head, hero]) expect(s).toMatch(/table for four/);
+    for (const s of [head, hero, demo]) expect(s).not.toMatch(/flaky|HawDB|Merge into main|compaction/);
+  });
 });

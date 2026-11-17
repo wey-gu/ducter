@@ -1,6 +1,6 @@
 // Draws the share image (public/og.png, 1200 x 630): what WeChat, X, Slack and iMessage show when
 // someone shares ducter.ai. An HTML page in the site's own type, palette and clay art, with a real
-// screen of the app (public/shots/hero-light.webp: the morning note above a finished job), rendered
+// screen of the app (public/shots/hero-light.webp: the morning note above a finished errand, a dinner table booked), rendered
 // by headless Chrome and squeezed to a palette PNG. The tagline is read from the home page's <h1>,
 // so changing the line (or retaking the shot) and running this again redraws it.
 //
@@ -49,9 +49,9 @@ function crop([x1, y1, x2, y2], w, cls = "") {
 // Regions of hero-light.webp (1080 x 1350).
 const R = {
   whole: [40, 0, 1040, 1350],
-  note: [64, 130, 906, 660], // "Morning. Two things need you:" and both items
-  noteOne: [64, 130, 906, 400], // its first item, with Open the renewal page
-  done: [64, 950, 906, 1215], // "Fixed. …" and Merge into main
+  note: [64, 167, 906, 697], // "Morning. Two things need you:" and both items
+  noteOne: [64, 167, 906, 437], // its first item, with Open the renewal page
+  done: [64, 990, 906, 1215], // "Booked: a table for four …" and Details
 };
 
 const art = (name, w) => `<img class="art" src="${url(`art/${name}-480.webp`)}" style="width:${w}px" alt="">`;

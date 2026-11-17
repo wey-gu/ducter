@@ -776,7 +776,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     on: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && process.env.DUCTER_BRIDGE !== "0" && !settings.memMissing() && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),
     changed: () => settings.bridgeChanged(),
   });
-  settings.setGlance(() => memGlance.get());
+  settings.setGlance(() => memGlance.get(), memGlance);
   // D206: pictures and files, content-addressed on the home (media.ts).
   const media = createMediaStore(dataDir);
   // D293: the home's own key, and its ways to be reached (the address book, reach-book.ts).

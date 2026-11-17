@@ -191,13 +191,8 @@ whether Mem forgets or the line only leaves the list; nothing another tool saved
 
 **Memory, on:** (1) one group: the notebook in the tile column, **{name} 记得你**, **这周新记了 N 条** in
 the done ink (or **这周还没有新记的**), the switch at the right edge; its foot says what the switch does.
-(2) **这周记下的** and **更早记下的** as sections, one group each: an accent pebble in the tile column,
-the title, its age; **忘掉** quiet at the right edge; tapped, the row asks in place (**忘掉「…」？它以后
-不会再想起。** or, without a Mem id, **从这里拿掉「…」？Nowledge Mem 里那条还在。**) with **留着** and **忘掉**.
-The last group's foot: Mem's count and **去 Nowledge Mem 看**. (3) **你别的 AI 记下的**, with its note
-(**…{name} 也想得起来。**): one row per memory another AI tool saved, its coin (Claude and ChatGPT carry Anthropic's and OpenAI's), its own mark (D314), or its letter, the
-title, **{tool} 记的**, its age at the right; read-only (another tool's memory is forgotten in Mem).
-(4) **Nowledge Mem** as one group: Mem's own app icon as the tile (D314), **已连上**; **记在哪儿**,
+(2)–(3) are D321's now ("What it knows about you" below): the groups by kind, the search, the other tools as a
+count, each tool's own mark (D314). (4) **Nowledge Mem** as one group: Mem's own app icon as the tile (D314), **已连上**; **记在哪儿**,
 **它的名字**, the one update worth a tap as a row (D229's words), the raw facts behind **详情**, the
 version as the foot's note. **Off:** only the first group, its foot what stays. **Before Mem:** the
 partner at 84–96 on the paper (an empty state, never inside a group), then one group: Mem's faded
@@ -214,12 +209,10 @@ agent with its coin.
 
 ### The glance at Mem (core, `mem-glance.ts`)
 
-`MemView.glance` carries `{ total, others[] }` from one read-only `nmem --json m list -n 40`, at most every
-2 minutes, in the background (a fresh settings frame follows), only while memory is on and Mem answers,
-never on a test without a fake nmem. `others` holds at most 6 memories whose `source` is a known AI tool
-(`AI_TOOLS`: claude-code → Claude Code, codex → Codex, cursor, gemini-cli, openclaw, …); Ducter's own
-(`ducter`) and the person's own (`cli`, the app, a clip) are left out. Titles, sources and dates only;
-contents never leave Mem. `BridgeView.where` (cloud / local / server) comes from `nmem status`.backend.
+`MemView.glance` is D321's `{ total, about, tools }` (below): read-only `nmem --json m list` calls, at most
+every 2 minutes, in the background (a fresh settings frame follows), only while memory is on and Mem answers,
+never on a test without a fake nmem. Titles, kinds, sources and dates only; contents never leave Mem.
+`BridgeView.where` (cloud / local / server) comes from `nmem status`.backend.
 
 ### Deep integration: the plan (D295)
 
@@ -260,6 +253,75 @@ read is never shown; only the one memory that changed an answer is.
   stay in Mem. Without the plugin, `<what_i_know>` says "saved by {tool}" per line.
 - **Measured** (partner eval, haiku, `--only`): `mem-source-used-zh`, `mem-source-tool-en`,
   `mem-source-none-en` pass; the full eval is to be rerun at merge.
+
+## What it knows about you (D321, 2026-11-17)
+
+The author on v0.0.65's Memory page: "这里的 memory 到底怎么用？符合我们的情绪价值极度顺滑优雅的标准么？" The
+honest answer was no. The page was an inventory: a count, one week's line, other tools' raw working-note titles
+("nowledge-co/mem#10358: AI Now subject continuity…", "Codex 记的"), and a storage card. Nothing on it said what
+the memory is *for*, nothing could be fixed except by forgetting, and a person reading it learned that Ducter keeps
+a log, not that it knows them. Evidence: `research/112` (how assistants show and correct memory; awareness, not
+settings, is what builds trust).
+
+### What memory is for, per person (moments, not features)
+
+- **The heavy multi-agent developer.** *Moment:* Monday, five sessions open; Codex keeps writing working notes into
+  Mem all week. They ask Ducter to draft the weekly report and it already goes out Friday, to the whole team, short,
+  conclusion first. *Before:* they suspect "memory" is a pile of agent notes they will never read, and that some of
+  it is wrong. *After:* one page says, in their words, how they like things, what they decided, who reviews what; a
+  wrong line is fixed in two taps and the fix reaches every tool that reads Mem. The tools' notes are acknowledged
+  as a count ("Codex 这周记了 53 条工作笔记"), not paraded. *Feel:* 放心 (it knows the right things, and I can
+  correct it), 惊喜 (it knew what Codex learned about me).
+- **The consumer personal-AI user.** *Moment:* "book it like last time" works, and they wonder what else it knows.
+  *Before:* the faint creepiness of an assistant that remembers without saying what (research/112 §3). *After:*
+  "它知道的关于你" in plain groups, each line saying where it came from (你跟它说的 · Codex 记的 · Nowledge Mem 从你的
+  对话里整理的), and a search when they want to check one thing. *Feel:* 好用, 放心.
+- **The fresh user.** *Moment:* the first time something it remembered changes an answer (D304's 想起了 line).
+  *How it starts:* nothing to set up; before Mem, D295's two steps stay. With Mem and nothing known yet, the page
+  says 它还不太了解你 and one example sentence to say. No concept: no "unit type", "source", "Space".
+
+**North star:** 好用 (search, fix in place) · 顺滑 (a row opens in place; no dialog) · 赏心悦目 (the clay grid, the
+tool's own mark on its rows, no raw ids or repo numbers) · 放心 (every line's source; forgetting says it reaches
+the other tools too) · 惊喜 (what another tool learned about you, by its name).
+
+### Critique of D295's page, against that
+
+1. **Leads with bookkeeping** (这周新记了 1 条, a week list, Mem's total) instead of knowledge. Kept the count as
+   the head's line, moved the total to the Nowledge Mem group; the week list became the week's check (D304),
+   one tap from the head (**看看这周的**).
+2. **Other tools' raw titles are noise and leak work into "you".** Their working notes (Mem kinds `context`,
+   `plan`, `event`) are not about the person; on the author's Mem, of the latest 200 memories 177 were `context`
+   (counted with `nmem --json m list`, shapes only). Now: never their titles, only a count per tool this week.
+3. **Nothing leads to using memory** and nothing can be corrected (only forgotten, only Ducter's own). Now each
+   row opens in place: **改** (words written back to Mem) and **忘掉** (asks; says the other tools forget too).
+4. **No way to check one thing.** Now a search over Mem (≤ 8 hits, titles only).
+
+### The page (both clients, wide and phone)
+
+Order: the head group (unchanged, plus **看看这周的** at its foot when anything is new); **它知道的关于你** with its
+note and the search; the groups by Mem's own kind, each with its caption in small ink (**你喜欢的做法** preference,
+**你定下的** decision, **它知道的事** fact, **别的** other), a row each: the source's mark (another tool's coin or
+its letter; else the accent pebble), the title, the source as the line (**你跟它说的 / {tool} 记的 / 你自己记的 /
+Nowledge Mem 从你的对话里整理的**), the age at the right. Tapped, the row opens in place: **不对？改一下，或者让
+它忘掉。** with **改** and **忘掉**. **你别的 AI 也在用这份记忆**: a row per tool, its mark, **这周记了 N 条工作笔记**
+(**N 条以上** when the whole read was this week), and the foot that says why they aren't listed. Then the
+Nowledge Mem group (where it's kept, its name, **Nowledge Mem 里一共有 N 条记忆。** with **去 Nowledge Mem 看**,
+an update, 详情). Searching replaces the groups with **找到的** until cleared.
+
+**Which memories are "about you"** (`core/src/mem-glance.ts`, the source rules in `protocol/src/mem-source.ts`
+`aboutSource`): every `preference` whose source Mem names (Ducter, an AI tool, Mem's own distillers, the person's
+command line or app); `decision` and `fact` only when the person saved them or told the partner (`ducter`, `cli`,
+the app): another tool's decisions are its project's. A source Mem doesn't name (a team chat's message id, a pull
+request, a library document) is not shown as being about the person (search still shows it, as Mem's). At most 8
+per kind; four read-only `nmem --json m list` calls (recent 100, preference 16, decision 40, fact 40) every 2
+minutes while the page's frame is live; forget and fix change the glance at once.
+
+**People and projects are not groups yet.** Mem's list carries no labels (all 200 recent had none) and its people
+graph (`m identity`) is a Labs feature per Space; a "people" group would be invented. Trigger in `todo.md`.
+
+**Built (D321):** protocol `MemItem`, `MemGlance {total, about, tools}`, `mem_forget`/`mem_fix`/`mem_find` and
+`mem_found`; core glance, settings `forgetMem`/`fixMem`/`findMem` through the partner's Mem client; web and Mac
+panes; the demo's pretend Mem has kinds, search, forget and fix (`apps/web/demo-mem.ts`).
 
 ## Mem and tasks (D168, D169; built 2026-11-10)
 

@@ -61,7 +61,7 @@ func TestPartnerPage(t *testing.T) {
 	}
 	tt.Click("记忆")
 	tt.Frame()
-	for _, want := range []string{"小鸭记得你", "记住事情", "更早记下的", "测试统一用假时钟", "Nowledge Mem"} {
+	for _, want := range []string{"小鸭记得你", "记住事情", "它知道的关于你", "测试统一用假时钟", "Nowledge Mem"} {
 		if !tt.HasText(want) {
 			t.Errorf("Memory: no %q in %q", want, tt.Texts())
 		}

@@ -112,14 +112,17 @@ What your partner remembers about you has its own section, **Memory**.
 - At the top, **{name} remembers you**, how much it noted this week, and the **Remember things**
   switch. Its tasks use memory too, through your Nowledge Mem plugin. Off, it neither recalls nor
   notes anything, in the conversation or in its tasks; what it noted stays.
-- **Noted this week** and **Noted earlier** list what it wrote down in your conversations.
-  **Forget** asks first, in place: **Forget** again and Nowledge Mem forgets it (when it can't,
-  the line is only taken off this list, and the question says so). The last line says how many
-  memories Nowledge Mem holds in all, with **Open Nowledge Mem** for the rest.
-- **Saved by your other AI tools** shows the latest things tools like Claude Code, Codex or Cursor
-  saved to the same Nowledge Mem. Your partner can recall them too.
+- **What it knows about you** groups what Nowledge Mem holds about you: **How you like things**,
+  **What you decided** and **What it knows**. Each line says where it came from (**You told it**,
+  **Saved by Codex**, **You saved it**, or **Nowledge Mem drew it from your conversations**). Tap a
+  line to **Fix** its words or **Forget** it; forgetting asks first and reaches Nowledge Mem, so your
+  other AI tools won't recall it either. **Search what it remembers** finds one thing.
+- **Check this week's**, under the switch, opens what it noted about you in the last seven days.
+- **Your other AI tools share this memory** says which tools, like Claude Code, Codex or Cursor,
+  wrote to the same Nowledge Mem this week and how many working notes. Those notes are about their
+  work, not about you, so they aren't listed; your partner can still recall them.
 - **Nowledge Mem** says it is connected, **Where it's kept** (Nowledge Mem Cloud, the Nowledge Mem
-  app on one computer, or your own Mem server) and **Its name** there. When a newer Nowledge Mem is
+  app on one computer, or your own Mem server) and **Its name** there, with how many memories Nowledge Mem holds in all and **Open Nowledge Mem**. When a newer Nowledge Mem is
   out, a row says so with **Update** (your sign-in and your memories stay as they are), and the
   Settings entry for Memory says it too. **Details** shows the exact computer, version, identity
   and space, for when you need help.
@@ -148,7 +151,17 @@ Code or Codex in a terminal, reach your partner. **Connect** once; then the firs
 AI agents can reach {name}**, with **Its identity** (the name your agents find it by) and
 **Where** (your own space, which only your agents are in). **Who can reach** your partner is
 **Only yours**, **Teammates' too** or **Nobody**. **Disconnect** asks first, in place. **Details**
-shows the exact identity and space id. What it learned about your agents (work from one that
+shows the exact identity and space id.
+
+**Try it** shows the exact words to say in your terminal: one to hand your partner a job, one for
+when you step out and want your agents to send it what needs your call. **Copy** puts them on your
+clipboard. It also says whether Claude Code and Codex have the Nowledge Mem plugin they need to find
+your partner, with **Install** where one is missing, and a sentence to say to your partner here when
+you want it to ask your terminal agent something. Until the first one arrives, a row says **Waiting
+for the first one…**; when it lands, the row says **It worked** and **Show me** takes you to it. The
+first time another agent reaches your partner, a short note in the conversation says what happened.
+
+What it learned about your agents (work from one that
 starts without asking, one you stopped listening to) has its own list, each with a way back.
 In the conversation each agent is called by what it is and where it works, for example **Claude
 Code (~/dev/ducter) asks you** or **Replied to Claude Code**; one that gives no name is **An AI

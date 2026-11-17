@@ -3,6 +3,7 @@
 // cloud (default: signed in to Nowledge Mem Cloud, the persona connected with your AI agents),
 // local (the Mem app on this computer), ready (signed in, not yet connected), signin (nmem here,
 // not signed in), install (no nmem here), none (memory on, no Mem answer at all).
+// D321: the pretend Mem has Mem's own kinds, answers search, and forgets and fixes in place.
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -15,21 +16,49 @@ export const demoMem = (): DemoMem => {
 
 const SPACE = { id: "personal-4e742092-837d-4438-a2b3-55ada58d8e65", label: "Only me" };
 
-/** What the person's other AI tools saved to Mem lately (titles only reach the page). */
+/**
+ * D321: a pretend Mem with its own kinds (preference, decision, fact, context), like the real one: the
+ * person's ways told to Ducter, kept by Codex or distilled by Mem; decisions they made; facts about
+ * their people; and the other tools' working notes (context, plan), which the page only counts.
+ */
 function memories(zh: boolean) {
   const day = 86_400_000;
   const at = (d: number) => new Date(Date.now() - d * day).toISOString();
-  const m = (id: string, source: string, title: string, d: number) => ({ id, title, content: "", importance: 0.6, source, unit_type: "fact", created_at: at(d), space_id: SPACE.id });
+  const m = (id: string, source: string, unit_type: string, title: string, d: number) => ({ id, title, content: "", importance: 0.7, source, unit_type, created_at: at(d), space_id: SPACE.id });
   return [
-    m("m_cc1", "claude-code", zh ? "Ducter 的 Go 代码提交前先跑 gofmt -l" : "Run gofmt -l before committing Ducter's Go code", 0.2),
-    m("m_cli", "cli", zh ? "（命令行记的）" : "(saved from the command line)", 0.4),
-    m("m_cx1", "codex", zh ? "HawDB 的 compaction 测试只在 Linux CI 上偶发失败" : "HawDB's compaction test only flakes on Linux CI", 1.2),
-    m("m_cu1", "cursor", zh ? "web 客户端的颜色只用 token，不写死" : "The web client uses colour tokens, never fixed values", 2.5),
-    m("m_cc2", "claude-code", zh ? "发版前先在 Bun 1.4.4 上跑一遍测试" : "Run the tests on Bun 1.4.4 before a release", 4),
-    m("m_dx", "ducter", zh ? "测试统一用假时钟，不写死等待" : "Tests use a fake clock, never fixed sleeps", 5),
-    m("m_cx2", "codex", zh ? "OAR 0.96 的 steer 接口换了参数顺序" : "OAR 0.96 swapped the steer API's arguments", 9),
+    m("m_cc1", "claude-code", "context", zh ? "Ducter 的 Go 代码提交前先跑 gofmt -l" : "Run gofmt -l before committing Ducter's Go code", 0.2),
+    m("m_cx1", "codex", "context", "nowledge-co/mem#10358: AI Now subject continuity after assistant alternatives", 0.3),
+    m("m_cx3", "codex", "plan", zh ? "HawDB compaction：先修 Linux CI 的偶发失败" : "HawDB compaction: fix the Linux CI flake first", 0.6),
+    m("m_p1", "ducter", "preference", zh ? "喜欢先看结论，细节放后面" : "Likes the conclusion first, details after", 1),
+    m("m_cx4", "codex", "context", "Nowledge Labs company SVG A — repository rollout", 1.1),
+    m("m_p2", "codex", "preference", zh ? "聊天用中文，仓库里的文档和代码用英文" : "Chat in Chinese; docs and code in the repo in English", 1.5),
+    m("m_d1", "ducter", "decision", zh ? "周报每周五下午发，发给 Nowledge 全组" : "The weekly report goes out Friday afternoon, to the whole Nowledge team", 2),
+    m("m_cc2", "claude-code", "context", zh ? "发版前先在 Bun 1.4.4 上跑一遍测试" : "Run the tests on Bun 1.4.4 before a release", 2.2),
+    m("m_p3", "thread_distillation", "preference", zh ? "英文邮件回得短、口语，不用敬语" : "English mail: short and plain, no formalities", 3),
+    m("m_f1", "ducter", "fact", zh ? "Weizhen 负责 HawDB 的代码评审" : "Weizhen reviews HawDB's code", 3.5),
+    m("m_p4", "ducter", "preference", zh ? "开会前一天提醒，不要当天早上" : "Meeting reminders the day before, not that morning", 4),
+    m("m_d2", "cli", "decision", zh ? "Ducter 先只做 macOS 和网页，Windows 往后放" : "Ducter ships macOS and the web first; Windows later", 6),
+    m("m_cu1", "cursor", "context", zh ? "web 客户端的颜色只用 token，不写死" : "The web client uses colour tokens, never fixed values", 6.5),
+    m("m_d3", "codex", "decision", "mem#2332: keep the old API name", 9),
+    m("m_f2", "ducter", "fact", zh ? "报销单每月 25 号前交给 Siwei" : "Expense reports go to Siwei before the 25th each month", 12),
   ];
 }
+
+type Mem = ReturnType<typeof memories>[number];
+let kept: Mem[] | undefined;
+const store = (zh: boolean) => (kept ??= memories(zh));
+
+/** D321: the pretend Mem forgets and fixes like the real one (the partner's Mem client in the demo). */
+export const demoForget = async (id: string) => {
+  const before = kept?.length ?? 0;
+  kept = kept?.filter((x) => x.id !== id);
+  return (kept?.length ?? 0) < before;
+};
+export const demoFix = async (id: string, title: string) => {
+  const it = kept?.find((x) => x.id === id);
+  if (it) it.title = title;
+  return !!it;
+};
 
 /** The fake `nmem --json …` for core's Bridge row and Mem glance. */
 export function fakeNmem(state: DemoMem, zh: boolean) {
@@ -44,7 +73,17 @@ export function fakeNmem(state: DemoMem, zh: boolean) {
     }
     if (a === "bridge setup") return ok({ candidates: [{ id: SPACE.id, kind: "personal", label: SPACE.label }] });
     if (a.startsWith("bridge connections list")) return ok({ connections: [{ connection_id: "bc_demo", state: "active" }] });
-    if (a.startsWith("m list")) return ok({ memories: memories(zh), total: 1284, returned: 7 });
+    if (a.startsWith("m list")) {
+      const typed = args.includes("--unit-type");
+      const kind = args[args.indexOf("--unit-type") + 1];
+      const all = store(zh).filter((x) => !typed || x.unit_type === kind);
+      return ok({ memories: all, total: typed ? all.length : 10980 - (memories(zh).length - store(zh).length), returned: all.length });
+    }
+    if (args[0] === "m" && args[1] === "search") {
+      const words = args.slice(args.indexOf("--") + 1).join(" ").toLowerCase().split(/\s+/).filter(Boolean);
+      const hits = store(zh).filter((x) => words.some((w) => x.title.toLowerCase().includes(w)));
+      return ok({ query: words.join(" "), total: hits.length, memories: hits });
+    }
     return { code: 1, out: "", err: "not in the demo" };
   };
 }

@@ -126,6 +126,9 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 			}
 		})
 	})
+	if b != nil && b.State == "connected" {
+		a.peersTry(c, name)
+	}
 	if len(p.Trusted) == 0 && len(p.Muted) == 0 {
 		return
 	}

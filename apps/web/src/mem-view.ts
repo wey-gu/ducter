@@ -106,3 +106,51 @@ export function recallLine(r: { by: "said" | "tool" | "you"; from?: string }, da
 export function weekNoted<T extends { at: string }>(noted: T[], now: Date = new Date()): T[] {
   return groupNoted(noted, now).filter((g) => g.when !== "earlier").flatMap((g) => g.items);
 }
+
+/** D321: what it knows about the person, as the Memory page's groups, in a fixed order; empty kinds left out. */
+export const ABOUT_KINDS = ["preference", "decision", "fact", "other"] as const;
+export type AboutKind = (typeof ABOUT_KINDS)[number];
+export function aboutGroups<T extends { kind: AboutKind }>(items: T[]): { kind: AboutKind; items: T[] }[] {
+  return ABOUT_KINDS.map((kind) => ({ kind, items: items.filter((x) => x.kind === kind) })).filter((g) => g.items.length > 0);
+}
+
+/** D321: who a memory is from, as the page's key and argument. */
+export function bySource(x: { by: "said" | "tool" | "you" | "mem"; from?: string }): { key: string; args: string[] } {
+  if (x.by === "tool" && x.from) return { key: "mem.by.tool", args: [x.from] };
+  return { key: `mem.by.${x.by === "tool" ? "you" : x.by}`, args: [] };
+}
+
+/** How long the first hand-off stays celebrated on 连上的 AI agent. */
+export const FIRST_FRESH_MS = 15 * 60_000;
+
+/**
+ * D321: the live row on 连上的 AI agent's 试试看: waiting (nothing came from another agent yet), first
+ * (the first came in the last 15 minutes: say it worked), or none (it's been used).
+ */
+export function handoffPhase(firstAt: string | undefined, now: number = Date.now()): "waiting" | "first" | "none" {
+  if (!firstAt) return "waiting";
+  const at = Date.parse(firstAt);
+  return !Number.isNaN(at) && now - at < FIRST_FRESH_MS ? "first" : "none";
+}
+
+export type TryAgent = { harness: "claude-code" | "codex"; plugin?: "on" | "off"; device?: string };
+
+/**
+ * D321: the agents 试试看 names, from the person's computers: Claude Code and Codex where they're signed
+ * in, each with whether Mem's plugin is in it somewhere (on), missing where it's signed in (off, with
+ * the computer to put it on, the home first), or unknown (Mem's check can't tell).
+ */
+export function tryAgents(devices: { id: string; name: string; home?: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean; mem?: { state: string } }[] }[]): TryAgent[] {
+  const out: TryAgent[] = [];
+  const ds = [...devices].sort((a, b) => Number(!!b.home) - Number(!!a.home));
+  for (const h of ["claude-code", "codex"] as const) {
+    const here = ds.flatMap((d) => d.harnesses.filter((x) => x.harness === h && x.installed && x.loggedIn).map((x) => ({ d, x })));
+    if (!here.length) continue;
+    if (here.some((v) => v.x.mem?.state === "installed" || v.x.mem?.state === "update")) out.push({ harness: h, plugin: "on" });
+    else {
+      const off = here.find((v) => v.x.mem?.state === "absent");
+      out.push(off ? { harness: h, plugin: "off", device: off.d.id } : { harness: h });
+    }
+  }
+  return out;
+}

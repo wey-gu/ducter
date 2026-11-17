@@ -35,3 +35,23 @@ export function memSource(source: string | undefined): { by: RecallBy; from?: st
   const tool = AI_TOOLS[s];
   return tool ? { by: "tool", from: tool } : { by: "you" };
 }
+
+/** Mem's own distillers: what Nowledge Mem itself drew out of the person's conversations and notes. */
+const MEM_SELF = new Set(["thread_distillation", "knowledge_agent", "feed_agent", "agent"]);
+/** The person's own ways of saving into Mem: its command line, its app, a web clip. */
+const PERSON = new Set(["cli", "app", "desktop", "web", "clip", "browser_exchange", "manual", "user", ""]);
+
+/**
+ * D321: who a memory is from on Settings › 记忆, or undefined when Mem's `source` is none of the known
+ * ones (a team chat's message id, a pull request, a library document): such a memory is not shown as
+ * something about the person.
+ */
+export function aboutSource(source: string | undefined): { by: "said" | "tool" | "you" | "mem"; from?: string } | undefined {
+  const s = String(source ?? "").trim().toLowerCase();
+  if (s === "ducter") return { by: "said" };
+  const tool = AI_TOOLS[s];
+  if (tool) return { by: "tool", from: tool };
+  if (MEM_SELF.has(s)) return { by: "mem" };
+  if (PERSON.has(s)) return { by: "you" };
+  return undefined;
+}

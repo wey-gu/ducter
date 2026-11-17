@@ -91,7 +91,8 @@ func TestMemoryTab(t *testing.T) {
 		tt.Frame()
 		L := app.L
 		for _, w := range []string{L.T("mem.hero.on", app.personaName()), L.T("mem.update.newer", "0.10.121"), L.T("mem.update.newer.body", "hel", "0.10.118"), L.T("mem.badge.newer"),
-			L.T("mem.sec.week"), L.T("mem.sec.earlier"), L.T("mem.all.open"), L.T("mem.app.on"), L.T("mem.app.where", "hel"), L.T("mem.week.count", "5")} {
+			L.T("mem.about.title"), L.T("mem.kind.preference"), L.T("mem.kind.decision"), L.T("mem.by.tool", "Codex"), L.T("mem.tools.title"), L.T("mem.tools.count", "53"),
+			L.T("mem.all.count", "10,980"), L.T("mem.all.open"), L.T("mem.app.on"), L.T("mem.app.where", "hel"), L.T("mem.week.count", "5"), L.T("mem.head.check")} {
 			if !tt.HasText(w) {
 				t.Fatalf("%s: no %q in %q", lang, w, tt.Texts())
 			}
@@ -108,20 +109,79 @@ func TestMemoryTab(t *testing.T) {
 			t.Fatalf("no updating line after the tap: %q", tt.Texts())
 		}
 		n = len(*sent)
-		// D295: 忘掉 is quiet and asks in place; only the answer forgets.
-		if err := tt.Click(spoken(L, L.T("partner.memory.forget"), memNotes(lang)[0])); err != nil {
+		// D321: a row opens in place; 忘掉 is quiet and asks; only the answer forgets, by Mem's id.
+		first := memAbout(lang)[0]
+		if err := tt.Click(first.Title + ", " + L.T("mem.by.said")); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()
-		if len(*sent) != n || !tt.HasText(L.T("mem.forget.ask", memNotes(lang)[0])) {
-			t.Fatalf("忘掉 didn't ask first: %v %q", (*sent)[n:], tt.Texts())
+		if !tt.HasText(L.T("mem.item.wrong")) {
+			t.Fatalf("the row didn't open: %q", tt.Texts())
 		}
-		if err := tt.Click(spoken(L, L.T("partner.memory.forget"), memNotes(lang)[0])); err != nil {
+		if err := tt.Click(spoken(L, L.T("partner.memory.forget"), first.Title)); err != nil {
 			t.Fatal(err)
 		}
-		if len(*sent) != n+1 || (*sent)[n].(protocol.MemoryForget).T != "memory_forget" {
+		tt.Frame()
+		if len(*sent) != n || !tt.HasText(L.T("mem.item.forget.ask", first.Title)) {
+			t.Fatalf("忘掉 didn't ask first: %v %q", (*sent)[n:], tt.Texts())
+		}
+		if err := tt.Click(spoken(L, L.T("partner.memory.forget"), first.Title)); err != nil {
+			t.Fatal(err)
+		}
+		if len(*sent) != n+1 || (*sent)[n].(protocol.MemForget).ID != first.ID {
 			t.Fatalf("忘掉 sent %v", (*sent)[n:])
 		}
+		tt.Frame()
+		if tt.HasText(first.Title) {
+			t.Fatalf("a forgotten memory is still shown")
+		}
+		// 改 writes the words back by id.
+		second := memAbout(lang)[1]
+		if err := tt.Click(second.Title + ", " + L.T("mem.by.tool", "Codex")); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		if err := tt.Click(spoken(L, L.T("learned.fix"), second.Title)); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		app.memPage.fixText = "Chat in Chinese"
+		if err := tt.Click(spoken(L, L.T("learned.save"), second.Title)); err != nil {
+			t.Fatal(err)
+		}
+		if fx, ok := (*sent)[len(*sent)-1].(protocol.MemFix); !ok || fx.ID != second.ID || fx.Title != "Chat in Chinese" {
+			t.Fatalf("改 sent %v", (*sent)[n:])
+		}
+		// Search: the words go to Mem; only the answer to them is shown.
+		app.memFind("Weizhen")
+		if fd, ok := (*sent)[len(*sent)-1].(protocol.MemFind); !ok || fd.Q != "Weizhen" {
+			t.Fatalf("search sent %v", (*sent)[len(*sent)-1])
+		}
+		app.Receive(protocol.ServerFrame{T: "mem_found", MemFound: &protocol.MemFound{Q: "old", OK: true}})
+		if app.S.MemFound != nil {
+			t.Fatalf("an answer to an older search was taken")
+		}
+	}
+}
+
+// memAbout is what the pretend Mem knows about the person (D321): never anyone's real memories.
+func memAbout(lang i18n.Lang) []protocol.MemItem {
+	zh := lang == i18n.ZH
+	pick := func(z, e string) string {
+		if zh {
+			return z
+		}
+		return e
+	}
+	now := time.Now()
+	at := func(d time.Duration) string { return now.Add(-d).UTC().Format(time.RFC3339) }
+	return []protocol.MemItem{
+		{ID: "m_p1", Title: pick("喜欢先看结论，细节放后面", "Likes the conclusion first, details after"), Kind: "preference", By: "said", At: at(26 * time.Hour)},
+		{ID: "m_p2", Title: pick("聊天用中文，仓库里的文档和代码用英文", "Chat in Chinese; docs and code in the repo in English"), Kind: "preference", By: "tool", From: "Codex", At: at(36 * time.Hour)},
+		{ID: "m_p3", Title: pick("英文邮件回得短、口语，不用敬语", "English mail: short and plain, no formalities"), Kind: "preference", By: "mem", At: at(72 * time.Hour)},
+		{ID: "m_d1", Title: pick("周报每周五下午发，发给 Nowledge 全组", "The weekly report goes out Friday afternoon, to the whole Nowledge team"), Kind: "decision", By: "said", At: at(48 * time.Hour)},
+		{ID: "m_d2", Title: pick("Ducter 先只做 macOS 和网页，Windows 往后放", "Ducter ships macOS and the web first; Windows later"), Kind: "decision", By: "you", At: at(6 * 24 * time.Hour)},
+		{ID: "m_f1", Title: pick("Weizhen 负责 HawDB 的代码评审", "Weizhen reviews HawDB's code"), Kind: "fact", By: "said", At: at(84 * time.Hour)},
 	}
 }
 
@@ -155,6 +215,8 @@ func memApp(t *testing.T, lang i18n.Lang, state string) (*App, *[]any) {
 	if lang == i18n.EN {
 		f.Mem.KeptUnder = "Duckie"
 	}
+	// D321: what Mem knows about the person, and the other tools as counts.
+	f.Mem.Glance = &protocol.MemGlance{Total: 10980, About: memAbout(lang), Tools: []protocol.MemTool{{From: "Codex", Count: 53}, {From: "Claude Code", Count: 12}}}
 	space := &protocol.BridgeSpace{ID: "6f1c0d2e-8b4a-4d1e-9c3f-2a7b5e0d9c11", Label: "Only me"}
 	switch state {
 	case "newer":
@@ -162,7 +224,7 @@ func memApp(t *testing.T, lang i18n.Lang, state string) (*App, *[]any) {
 	case "on":
 		f.Bridge = &protocol.BridgeView{State: "connected", Identity: "ducter", Space: space, Home: "hel", Version: "0.10.121"}
 	case "empty":
-		f.Mem.Noted = nil
+		f.Mem.Noted, f.Mem.Glance = nil, &protocol.MemGlance{Total: 3}
 		f.Bridge = &protocol.BridgeView{State: "connected", Identity: "ducter", Space: space, Home: "hel", Version: "0.10.121"}
 	case "off":
 		f.Settings.Memory = false

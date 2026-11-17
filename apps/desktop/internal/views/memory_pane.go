@@ -14,9 +14,12 @@ import (
 
 // D295: Settings › 记忆 / Memory on the settings grid (D289). It shows the
 // value first: the partner remembers you (how much is new this week, the
-// switch), what it noted this week and earlier (each forgettable, asking in
-// place), what your other AI tools saved to Mem, then Nowledge Mem itself
-// in human words (where it's kept, its name there; raw ids behind 详情).
+// switch, the week's check one tap away). D321: then what it knows about
+// you, by Mem's own kinds (how you like things, what you decided, what it
+// knows), each row fixable or forgettable in place, its source as a quiet
+// line, a search above; the other AI tools on the same Mem as counts, never
+// their working notes; then Nowledge Mem itself in human words (where it's
+// kept, its name there, how much it holds; raw ids behind 详情).
 // Before Mem is there: a small empty state and the setup as steps. The
 // web's is apps/web/src/memory.tsx; the rules are mem-view.ts / memory.go.
 
@@ -32,8 +35,8 @@ func (a *App) memoryPanel(c *ui.Context) {
 	switch phase {
 	case "on":
 		a.memHead(c, st)
-		a.memNoted(c)
-		a.memOthers(c)
+		a.memAbout(c)
+		a.memTools(c)
 		a.memLink(c, b)
 	case "off":
 		a.memHead(c, st)
@@ -82,7 +85,269 @@ func (a *App) memHead(c *ui.Context, st *protocol.Settings) {
 		if !st.Memory {
 			note = a.L.T("partner.memory.off")
 		}
-		a.footRow(c, "mem-head", note, nil)
+		// D321: the week's check (D304) one tap away, opening under the group.
+		var check func()
+		if st.Memory && a.S.Mem != nil && memWeek(a.S.Mem.Noted, a.Now()) > 0 {
+			check = func() {
+				if a.quietButton(c, "mem-check", a.L.T("mem.head.check"), "", false, 1) {
+					if a.recall.learned == memLearnedKey {
+						a.recall.learned = ""
+					} else {
+						a.openLearned(memLearnedKey)
+					}
+				}
+			}
+		}
+		a.footRow(c, "mem-head", note, check)
+	})
+	if a.recall.learned == memLearnedKey {
+		a.learnedCard(c, memLearnedKey)
+	}
+}
+
+// memLearnedKey is where 这周记下的 opens when asked from Settings › 记忆.
+const memLearnedKey = "settings-memory"
+
+// memPageState is Settings › 记忆's own state (D321): the row opened in
+// place and how (fix, ask), the words being fixed, the search, the copied slab.
+type memPageState struct {
+	open, mode, fixText string
+	query, last, sent   string
+	typedAt             time.Time
+	copied              string
+	copiedAt            time.Time
+}
+
+// memFind sends the search's words to Mem now ("" clears it).
+func (a *App) memFind(q string) {
+	q = strings.Join(strings.Fields(q), " ")
+	ps := &a.memPage
+	ps.sent = q
+	a.S.MemQuery = q
+	if q == "" {
+		a.S.MemFound = nil
+		return
+	}
+	a.send(protocol.MemFind{T: "mem_find", Q: q})
+}
+
+// memForget forgets one memory by Mem's id: it leaves the page at once.
+func (a *App) memForget(id string) {
+	drop := func(xs []protocol.MemItem) []protocol.MemItem {
+		var out []protocol.MemItem
+		for _, x := range xs {
+			if x.ID != id {
+				out = append(out, x)
+			}
+		}
+		return out
+	}
+	if m := a.S.Mem; m != nil && m.Glance != nil {
+		m.Glance.About = drop(m.Glance.About)
+	}
+	if f := a.S.MemFound; f != nil {
+		f.Items = drop(f.Items)
+	}
+	a.send(protocol.MemForget{T: "mem_forget", ID: id})
+}
+
+// memFix fixes one memory's words by Mem's id: the page shows them at once.
+func (a *App) memFix(id, title string) {
+	words := strings.Join(strings.Fields(title), " ")
+	if words == "" {
+		return
+	}
+	fix := func(xs []protocol.MemItem) {
+		for i := range xs {
+			if xs[i].ID == id {
+				xs[i].Title = words
+			}
+		}
+	}
+	if m := a.S.Mem; m != nil && m.Glance != nil {
+		fix(m.Glance.About)
+	}
+	if f := a.S.MemFound; f != nil {
+		fix(f.Items)
+	}
+	a.send(protocol.MemFix{T: "mem_fix", ID: id, Title: words})
+}
+
+// memRow is one memory, tapped open in place: where it came from as its
+// line, the age at the right; open, 改 (its words, written to Mem) and 忘掉
+// (asks first).
+func (a *App) memRow(c *ui.Context, m protocol.MemItem) {
+	t := a.T
+	ps := &a.memPage
+	open := ps.open == m.ID
+	if open && ps.mode == "ask" {
+		keep, goOn := a.confirmRow(c, "memi:"+m.ID, a.L.T("mem.item.forget.ask", m.Title), a.L.T("mem.forget.keep"), a.L.T("partner.memory.forget"), m.Title)
+		if keep {
+			ps.mode = ""
+		}
+		if goOn {
+			ps.open, ps.mode = "", ""
+			a.memForget(m.ID)
+		}
+		return
+	}
+	if open && ps.mode == "fix" {
+		save := func() {
+			ps.open, ps.mode = "", ""
+			a.memFix(m.ID, ps.fixText)
+		}
+		a.textBlock(c, "memfix:"+m.ID, func() {
+			ui.TextInput(c.Key("memfix-in:"+m.ID), &ps.fixText).Label(a.L.T("learned.fix")).
+				FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).
+				Background(t.Bg).Border(1, t.LineSoft).OnSubmit(save)
+			ui.Row(c).Gap(t.S2).Justify(ui.End).AlignItems(ui.Center).Children(func() {
+				if a.quietButton(c, "memfix-cancel:"+m.ID, a.L.T("learned.cancel"), m.Title, false, 0) {
+					ps.mode = ""
+				}
+				if a.buttonFor(c, a.L.T("learned.save"), m.Title, btnSecondary, t.ControlSM, t.Surface) && strings.TrimSpace(ps.fixText) != "" {
+					save()
+				}
+			})
+		})
+		return
+	}
+	tile := a.pebbleTile(c)
+	if m.By == "tool" && m.From != "" {
+		tile = a.toolTile(c, m.From)
+	}
+	key, args := bySource(m)
+	var age func()
+	if s := a.agoLong(m.At); s != "" {
+		age = func() { ui.Text(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
+	}
+	if a.openRow(c, "memi:"+m.ID, tile, autospace(m.Title), a.L.T(key, args...), t.InkMuted, open, age) {
+		if open {
+			ps.open = ""
+		} else {
+			ps.open, ps.mode = m.ID, ""
+		}
+	}
+	if open {
+		a.footRow(c, "memi-acts:"+m.ID, a.L.T("mem.item.wrong"), func() {
+			if a.quietButton(c, "memi-fix:"+m.ID, a.L.T("learned.fix"), m.Title, false, 0) {
+				ps.mode, ps.fixText = "fix", m.Title
+			}
+			if a.quietDanger(c, "memi-forget:"+m.ID, a.L.T("partner.memory.forget"), m.Title) {
+				ps.mode = "ask"
+			}
+		})
+	}
+}
+
+// memSearch is the search on the paper above the groups: the words go to
+// Mem a moment after the last key, or at once on Return.
+func (a *App) memSearch(c *ui.Context) {
+	t := a.T
+	ps := &a.memPage
+	now := a.Now()
+	if ps.query != ps.last {
+		ps.last, ps.typedAt = ps.query, now
+	}
+	if q := strings.Join(strings.Fields(ps.query), " "); q != ps.sent {
+		if left := 350*time.Millisecond - now.Sub(ps.typedAt); left > 0 {
+			c.After(left)
+		} else {
+			a.memFind(q)
+		}
+	}
+	ui.Row(c.Key("mem-find")).Gap(t.S2).Padding(0, t.S2, 0, t.S3).MinHeight(44).AlignItems(ui.Center).
+		Radius(t.RadiusMD).Background(t.Surface).Border(1, t.LineSoft).Shadow(0, 2, 0, 0, t.Line).Children(func() {
+		a.glyph(c, 16, drawMagnifier(t.InkMuted))
+		ui.TextInput(c.Key("mem-find-in"), &ps.query).Placeholder(a.L.T("mem.find.placeholder")).Label(a.L.T("mem.find.label")).
+			Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S2, 0).FontSize(t.MD).Grow(1).MinWidth(0).OnSubmit(func() { a.memFind(ps.query) })
+		if ps.query != "" && a.quietButton(c, "mem-find-clear", a.L.T("mem.find.clear"), "", false, 0) {
+			ps.query, ps.last = "", ""
+			a.memFind("")
+		}
+	})
+}
+
+// drawMagnifier is a drawn magnifier (never a font's glyph).
+func drawMagnifier(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		s := r.W / 16
+		cx, cy := r.X+7*s, r.Y+7*s
+		p.Stroke(ui.Rect{X: cx - 4.6*s, Y: cy - 4.6*s, W: 9.2 * s, H: 9.2 * s}, col, 4.6*s, 1.8*s)
+		p.Line(r.X+10.6*s, r.Y+10.6*s, r.X+13.8*s, r.Y+13.8*s, 1.8*s, col)
+	}
+}
+
+// memAbout is what it knows about the person (D321), by Mem's own kinds,
+// each row correctable in place, a search above them. Before Mem's glance
+// arrives, the lines it noted in the conversation stand in.
+func (a *App) memAbout(c *ui.Context) {
+	t := a.T
+	m := a.S.Mem
+	var items []protocol.MemItem
+	if m != nil && m.Glance != nil {
+		items = m.Glance.About
+	} else if m != nil {
+		for _, n := range m.Noted {
+			if n.MemoryID != "" {
+				items = append(items, protocol.MemItem{ID: n.MemoryID, Title: n.Title, Kind: "other", By: "said", At: n.At})
+			}
+		}
+	}
+	ui.Column(c.Key("mem-about")).Gap(t.S2).Children(func() {
+		a.sectionHead(c, a.L.T("mem.about.title"), a.L.T("mem.about.note", a.personaName()))
+		ui.Column(c).Padding(0, 0).Children(func() { a.memSearch(c) })
+	})
+	if q := a.S.MemQuery; q != "" {
+		a.group(c, "mem-found", "", "", func() {
+			f := a.S.MemFound
+			switch {
+			case f == nil:
+				a.tileRow(c, "mem-finding", nil, a.L.T("mem.find.title"), "…", nil)
+			case !f.OK:
+				a.tileRow(c, "mem-find-failed", a.pebbleTile(c), a.L.T("mem.find.failed"), "", nil)
+			case len(f.Items) == 0:
+				a.tileRow(c, "mem-find-none", a.pebbleTile(c), a.L.T("mem.find.none", q), "", nil)
+			default:
+				for _, x := range f.Items {
+					a.memRow(c, x)
+				}
+			}
+		})
+		return
+	}
+	groups := aboutGroups(items)
+	if len(groups) == 0 {
+		a.group(c, "mem-none", "", "", func() {
+			a.tileRow(c, "mem-none", a.pebbleTile(c), a.L.T("mem.about.empty"), a.L.T("mem.hero.empty.body"), nil)
+		})
+		return
+	}
+	for _, g := range groups {
+		g := g
+		a.group(c, "mem-kind:"+g.Kind, a.L.T("mem.kind."+g.Kind), "", func() {
+			for _, x := range g.Items {
+				a.memRow(c, x)
+			}
+		})
+	}
+}
+
+// memTools is the person's other AI tools on the same Mem (D321): who, and
+// how many working notes this week; never their titles.
+func (a *App) memTools(c *ui.Context) {
+	m := a.S.Mem
+	if m == nil || m.Glance == nil || len(m.Glance.Tools) == 0 {
+		return
+	}
+	a.group(c, "mem-tools", a.L.T("mem.tools.title"), "", func() {
+		for _, x := range m.Glance.Tools {
+			key := "mem.tools.count"
+			if x.More {
+				key = "mem.tools.more"
+			}
+			a.tileRow(c, "tool:"+x.From, a.toolTile(c, x.From), x.From, a.L.T(key, strconv.Itoa(x.Count)), nil)
+		}
+		a.footRow(c, "mem-tools", a.L.T("mem.tools.note", a.personaName()), nil)
 	})
 }
 
@@ -95,82 +360,6 @@ func (a *App) pebbleTile(c *ui.Context) func() {
 			p.Fill(ui.Rect{X: r.X, Y: r.Y, W: 10, H: 10}, t.Accent, 5)
 		})
 	}
-}
-
-// memNoted is what it noted, this week and earlier, one group each; each
-// line forgets after asking in place. The last group's foot is the door to
-// everything in Mem.
-func (a *App) memNoted(c *ui.Context) {
-	t := a.T
-	m := a.S.Mem
-	var week, earlier []protocol.Noted
-	if m != nil {
-		for _, g := range groupNoted(m.Noted, a.Now()) {
-			if g.When == "earlier" {
-				earlier = append(earlier, g.Items...)
-			} else {
-				week = append(week, g.Items...)
-			}
-		}
-	}
-	foot := func() {
-		note := a.L.T("mem.all.note")
-		if m != nil && m.Glance != nil && m.Glance.Total > 0 {
-			note = a.L.T("mem.all.count", groupThousands(m.Glance.Total))
-		}
-		a.footRow(c, "mem-all", note, func() {
-			if a.quietLink(c, "mem-all", a.L.T("mem.all.open"), a.L.T("mem.all.open")) {
-				a.openLink(memSite)
-			}
-		})
-	}
-	if len(week) == 0 && len(earlier) == 0 {
-		a.group(c, "mem-none", a.L.T("mem.sec.week"), "", func() {
-			a.tileRow(c, "mem-none", a.pebbleTile(c), a.L.T("mem.empty.title"), a.L.T("mem.hero.empty.body"), nil)
-			foot()
-		})
-		return
-	}
-	list := func(key, title string, items []protocol.Noted, last bool) {
-		if len(items) == 0 {
-			return
-		}
-		a.group(c, key, title, "", func() {
-			for _, n := range items {
-				n := n
-				if a.memAsk == n.Seq {
-					ask := a.L.T("mem.forget.ask", n.Title)
-					if n.MemoryID == "" {
-						ask = a.L.T("mem.forget.ask.hide", n.Title)
-					}
-					keep, goOn := a.confirmRow(c, "noted:"+itoa(n.Seq), ask, a.L.T("mem.forget.keep"), a.L.T("partner.memory.forget"), n.Title)
-					if keep {
-						a.memAsk = 0
-					}
-					if goOn {
-						a.memAsk = 0
-						if a.partner.forgetting == nil {
-							a.partner.forgetting = map[int64]string{}
-						}
-						a.partner.forgetting[n.Seq] = n.Title
-						a.send(protocol.MemoryForget{T: "memory_forget", Seq: n.Seq})
-					}
-					continue
-				}
-				a.tileRow(c, "noted:"+itoa(n.Seq), a.pebbleTile(c), n.Title, a.agoLong(n.At), func() {
-					if a.quietDanger(c, "forget:"+itoa(n.Seq), a.L.T("partner.memory.forget"), n.Title) {
-						a.memAsk = n.Seq
-					}
-				})
-			}
-			if last {
-				foot()
-			}
-		})
-		_ = t
-	}
-	list("mem-week", a.L.T("mem.sec.week"), week, len(earlier) == 0)
-	list("mem-earlier", a.L.T("mem.sec.earlier"), earlier, true)
 }
 
 // groupThousands is 1284 → "1,284".
@@ -202,26 +391,6 @@ func (a *App) toolTile(c *ui.Context, from string) func() {
 			ui.Text(c, strings.ToUpper(string(r))).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.InkSoft).LineHeight(1)
 		})
 	}
-}
-
-// memOthers is what the person's other AI tools saved to Mem lately: the
-// memory is shared, and the partner can recall it too. Read-only here.
-func (a *App) memOthers(c *ui.Context) {
-	m := a.S.Mem
-	if m == nil || m.Glance == nil || len(m.Glance.Others) == 0 {
-		return
-	}
-	t := a.T
-	a.group(c, "mem-others", a.L.T("mem.others.title"), a.L.T("mem.others.note", a.personaName()), func() {
-		for _, o := range m.Glance.Others {
-			o := o
-			a.tileRow(c, "other:"+o.ID, a.toolTile(c, o.From), o.Title, a.L.T("mem.others.by", o.From), func() {
-				if ago := a.agoLong(o.At); ago != "" {
-					ui.Text(c, ago).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
-				}
-			})
-		}
-	})
 }
 
 // memTile is Nowledge Mem's own mark, its app icon (D314; it replaced
@@ -262,6 +431,16 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 		if m != nil && m.KeptUnder != "" {
 			a.tileRow(c, "mem-name", nil, a.L.T("mem.app.name.title"), a.L.T("mem.app.name.line", m.KeptUnder), nil)
 		}
+		// D321: how much Mem holds, and the door to all of it.
+		all := a.L.T("mem.all.note")
+		if m != nil && m.Glance != nil && m.Glance.Total > 0 {
+			all = a.L.T("mem.all.count", groupThousands(m.Glance.Total))
+		}
+		a.tileRow(c, "mem-all", nil, all, "", func() {
+			if a.quietLink(c, "mem-all", a.L.T("mem.all.open"), a.L.T("mem.all.open")) {
+				a.openLink(memSite)
+			}
+		})
 		if u := memUpdate(b); u != nil {
 			a.memUpdateRow(c, u, b)
 		}

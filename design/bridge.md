@@ -699,6 +699,66 @@ What to record from the trial (the 2026-11-13 runs recorded the first two: see t
 - whether the terminal's Stop-hook notice fires;
 - whether the sender name reads well in the quiet line.
 
+## The first hand-off: discoverable, and a moment (D321, 2026-11-17)
+
+The author on v0.0.65: "我们到底怎么利用 nowledge bridge 的？" After 连接, the page said 已连上 and who may reach it,
+and nothing else. J1, X1 and S2 were built and proven live (research/66), yet nobody could find them: "how it
+starts" in each scenario was a sentence said in a terminal, and Ducter never told anyone what that sentence is.
+The first use had no moment either: a quiet line arrived in the conversation with no word about what had just
+happened. Evidence for the fix: `research/112` §4–5 (an exact copyable phrase, a live listening state that flips
+to success in place, an acknowledgement within a second, the result where the person already looks).
+
+### Who, and what they feel
+
+- **The heavy multi-agent developer** is the only one who meets this page (J6 holds: it shows once Mem is in).
+  *Before:* "connected to what? what do I say, and where?" *After:* 试试看 hands them two sentences for the
+  terminal (J1: **让{name}去把 Linux 上红了的 CI 修好，修好告诉我**; X1: **我先走开一会儿，要我定的事发给{name}**),
+  each with **复制**; which of their agents can hear them (the Mem plugin in it, D169, with **装上** where it
+  isn't); one sentence for here (S2: **问问我终端里的 Claude Code，那个 PR 今晚能提吗**); and a live row,
+  **等它第一次找来…**, that becomes **成了：Claude Code 找到了 {name}** with **去看看** when the first one lands.
+  *Feel:* 好用 (copy, paste, done), 惊喜 (the row flips while they watch), 放心 (they see it arrived and where).
+- **The consumer and the fresh user** never see this (J6; X5 is parked). Their first meeting, if ever, is the
+  conversation note below.
+
+**The conversation, once.** Under the very first message from another agent (or before its card, when it is a
+question), a quiet note with that agent's coin: **第一次：Claude Code 通过 Nowledge Mem 找到了 {name}。以后它交来
+的活、要你定的事，都会这样出现在这里；你的回复会送回它那边。** It shows only under the first one, by place in the
+conversation; nothing to dismiss, no state kept.
+
+**S2 offered by the partner: not now.** The partner offering "want me to ask your terminal Claude?" at the right
+moment needs a persona change and a reliable signal that a running session holds the answer; Ducter has neither
+(contacts don't say what a session is working on). 试试看's third sentence teaches S2 instead, with no persona
+change and no eval. Trigger in `todo.md`: Mem's contacts carry what a session is on.
+
+**X1 asks:** already distinct (D170: the asker's coin and where it works above the bubble, **它建议**, **没回就让它
+先等着**, no default); unchanged.
+
+### The metaphor: none (literal coins), tested
+
+How "your other agents" and the hand-off are drawn. Six candidates, each described to naive LLM raters (haiku,
+3 personas: the developer, the consumer, the fresh user) as an unlabelled picture, then the best two again with
+their labels (2 runs × 3 personas each). Scratch scripts only; rater sessions deleted afterwards.
+
+| Candidate | False implications (raters' own words) | Clarity / trust / delight (1–5, unlabelled) | Read as a place or device |
+|---|---|---|---|
+| A · no metaphor: the agents' own coins, the words on a slab, a breathing dot that becomes a check | "the coins may be people or accounts"; "copy may send it automatically" | 2.67 / 2.67 / 3.67 | 0 / 3 |
+| B · a mailbox, an envelope drops in | "a real inbox where a human's email arrives"; "Duck is a separate service" | 2.67 / 3.00 / 4.00 | 2 / 3 |
+| C · two islands and a bridge | "two separate places or devices linked by a connection"; "an always-on link" | 3.00 / 3.00 / 4.00 | 3 / 3 |
+| D · a door that gets a knock | "a room or place where Duck lives"; "a live channel you can enter" | 2.67 / 2.67 / 4.00 | 3 / 3 |
+| E · two walkie-talkies | "a paired device"; "a live always-on teammate" | 3.00 / 2.33 / 4.00 | 3 / 3 |
+| F · a relay baton | "the baton moving means it's done" | 3.00 / 3.00 / 4.00 | 2 / 3 |
+
+With labels (**在终端里，跟你的 Claude Code 或 Codex 说一句：**): A and C both 6/6 "say it to Claude Code in the
+terminal", no place misreading; A 2.67 / 3.17 / 3.83, C 3.00 / 3.00 / 4.00. Every metaphor taught a false thing
+(a place, a device, an inbox) for at most a little delight, and the label did all the teaching. **Decided: no
+metaphor.** The agents are their own coins (D146, D314's marks), the words sit on a sunken clay slab with a drawn
+terminal prompt where they go to a terminal, and the only motion is the waiting dot's breath and the check's one
+pop. The raters' common confusion, "paste it into Duck?", is answered by the label above the slab and the prompt
+mark; it stays a watch item for the human test (`todo.md`).
+
+**Built (D321):** web `memory.tsx` (`PeersTry`, `Say`), `views.tsx` (`FirstPeerNote`), `mem-view.ts`
+(`tryAgents`, `handoffPhase`); the Mac's panes the same; demo `DEMO_PEER=first`.
+
 ## Open questions
 
 These are in `flows/OPEN-QUESTIONS.md` §J, each with a default.

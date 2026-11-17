@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.73 - 2026-11-18
+
+<!-- whats-new
+zh: 连 GitHub 一步步来，不用碰终端
+en: Connect GitHub step by step, no terminal
+zh: 更新以后能看到改了什么
+en: See what changed after every update
+-->
+
+**To-do sources**
+- GitHub is always there to connect. Connect adds GitHub's own tool if the home needs it,
+  shows a one-time code with Copy and Open, and turns the source on once you approve. Every
+  failure says what happened and offers one next step.
+
+**What's new**
+- ducter.ai/changelog shows the latest three releases and every one before them.
+- Every update card has See what changed, and after an update the partner tells you once
+  what it brought.
+
+**The site**
+- Plainer words throughout, a new share picture, and one way of naming Apple silicon Macs.
+
 ## 0.0.72 - 2026-11-17
 
 <!-- whats-new

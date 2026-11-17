@@ -11,7 +11,8 @@ import { logUserMessage } from "./reply.ts";
 import { talkLang } from "./lang.ts";
 import type { DevicesView } from "./devices.ts";
 import { redactDeep } from "@ducter/protocol/src/redact.ts";
-import { PROJECTED_KINDS, taskStream } from "./registry.ts";
+import { PROJECTED_KINDS, isActive, taskStream } from "./registry.ts";
+import { briefOf } from "./task-sources/index.ts";
 import { sessionIndexes } from "./session-index.ts";
 import { indexFrom } from "@ducter/protocol/src/session.ts";
 import { machineId } from "./machine.ts";
@@ -48,6 +49,8 @@ export interface WsData {
   connections?: boolean;
   /** D276: asked for the chat apps: gets a fresh channels frame whenever they change. */
   channels?: boolean;
+  /** D340: subscribed to 待办来源 / To-do sources. */
+  sources?: boolean;
   /** The paired device behind a remote socket (core.ts). */
   device?: { id: string };
   /** Settles when this socket's hello is handled: frames sent right behind it wait for it. */
@@ -144,6 +147,8 @@ export interface WsDeps {
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
   /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
+  /** D340: 待办来源 / To-do sources (task-sources/). */
+  taskSources?: () => import("./task-sources/index.ts").TaskSources | undefined;
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
   /** D309: 伙伴们 / Partners (partners.ts); absent in tests that don't need them. */
   partners?: Partners;
@@ -352,6 +357,14 @@ export function createWsHandler(deps: WsDeps) {
   };
   // D276: 聊天软件 / Chat apps: every subscriber gets a fresh frame on every change.
   const offChannels = deps.channels?.onChange(channelsChanged);
+  // D340: 待办来源 / To-do sources: made after this handler; subscribed on the first sources frame.
+  let offSources: (() => void) | undefined;
+  const sourcesChanged = () => {
+    const ts = deps.taskSources?.();
+    if (!ts) return;
+    const v = ts.view();
+    for (const ws of sockets) if (ws.data.sources) send(ws, { t: "sources", ...v });
+  };
   // D218: the own-number card follows the phone (plugged in, allowed, the test call, a live call).
   let ownTimer: ReturnType<typeof setTimeout> | undefined;
   const offOwn = deps.ownNumber?.onChange(() => {
@@ -1357,6 +1370,13 @@ export function createWsHandler(deps: WsDeps) {
       case "task_new": {
         if (!deps.newTask) throw new Error("new tasks are not available");
         const id = typeof f.clientId === "string" && f.clientId ? f.clientId : undefined;
+        // D340: picked from 待办来源 / To-do sources: a to-do with a live task opens that task, never a second one.
+        const ts = deps.taskSources?.();
+        const pick = f.item && typeof f.item === "object" && typeof f.item.ref === "string" && typeof f.item.source === "string" ? f.item : undefined;
+        const already = pick && ts ? ts.taskOf(pick.ref) : undefined;
+        if (already && isActive(already.attention)) return send(ws, { t: "task_new_result", ok: true, ...(id ? { clientId: id } : {}), taskId: already.taskId, card: already });
+        const full = pick && ts ? await ts.item(pick.ref, pick.source).catch(() => undefined) : undefined;
+        const srcBrief = pick ? briefOf(full ?? pick) : undefined;
         // A resend (the client never saw its result): the same answer, nothing opened twice.
         const prior = id ? newTaskSeen.get(id) : undefined;
         const pending =
@@ -1371,6 +1391,7 @@ export function createWsHandler(deps: WsDeps) {
             ...(f.when && typeof f.when === "object" && typeof f.when.kind === "string" ? { when: f.when } : {}),
             ...(f.media?.length ? { media: mediaOf(f.media) } : {}),
             ...(typeof f.from === "string" && f.from ? { from: f.from } : {}),
+            ...(srcBrief ? { brief: `${String(f.words ?? "")}\n\n${srcBrief}` } : {}),
           }));
         if (id && !prior) {
           newTaskSeen.set(id, pending);
@@ -1383,7 +1404,10 @@ export function createWsHandler(deps: WsDeps) {
           send(ws, { t: "task_new_result", ok: true, ...cid, routineId: r.routine.routineId, routine: r.routine });
           // A routine lives outside the channel: push On hand so its shelf shows it now.
           send(ws, { t: "on_hand", onHand: tasks.onHand() });
-        } else send(ws, { t: "task_new_result", ok: true, ...cid, taskId: r.card.taskId, card: r.card });
+        } else {
+          if (pick && ts && !prior) ts.bind(r.card.taskId, full ?? pick, "you");
+          send(ws, { t: "task_new_result", ok: true, ...cid, taskId: r.card.taskId, card: tasks.get(r.card.taskId) ?? r.card });
+        }
         return;
       }
       case "project_add": {
@@ -1442,6 +1466,42 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       // D300: 替你做过的 / Done for you.
+      // D340: 待办来源 / To-do sources (task-sources/).
+      case "sources":
+      case "source_add":
+      case "source_set":
+      case "source_remove":
+      case "source_items": {
+        const ts = deps.taskSources?.();
+        if (!ts) throw new Error("to-do sources aren't available here");
+        offSources ??= ts.onChange(sourcesChanged);
+        if (f.t === "sources") {
+          ws.data.sources = true;
+          send(ws, { t: "sources", ...ts.view() });
+          void ts.look().catch(() => {});
+          return;
+        }
+        if (f.t === "source_items") {
+          const r = await ts.items({ ...(typeof f.id === "string" && f.id ? { source: f.id } : {}), ...(typeof f.query === "string" ? { query: f.query.slice(0, 200) } : {}) });
+          return send(ws, { t: "source_items_result", ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), items: r.items, ...(r.errors.length ? { errors: r.errors } : {}) });
+        }
+        if (f.t === "source_add") {
+          const kind = f.kind === "github" || f.kind === "obsidian" ? f.kind : undefined;
+          if (!kind) return send(ws, { t: "source_result", op: "add", ok: false, reason: "unknown" });
+          const r = await ts.add(kind, typeof f.path === "string" ? f.path : undefined);
+          return send(ws, { t: "source_result", op: "add", ok: r.ok, ...(r.id ? { id: r.id } : {}), ...(r.reason ? { reason: r.reason } : {}) });
+        }
+        const sid = String(f.id ?? "");
+        if (f.t === "source_remove") return send(ws, { t: "source_result", op: "remove", ok: ts.remove(sid), id: sid });
+        const ok = ts.set(sid, {
+          ...(typeof f.whenNew === "string" ? { whenNew: f.whenNew } : {}),
+          ...(typeof f.whenDone === "string" ? { whenDone: f.whenDone } : {}),
+          ...(typeof f.folder === "string" ? { folder: f.folder } : {}),
+          ...(typeof f.label === "string" ? { label: f.label } : {}),
+          ...(Array.isArray(f.repos) ? { repos: f.repos.map(String) } : {}),
+        });
+        return send(ws, { t: "source_result", op: "set", ok, id: sid });
+      }
       case "did": {
         if (!deps.did) throw new Error("the record is not available");
         const q = f.query && typeof f.query === "object" ? f.query : {};
@@ -1940,6 +2000,7 @@ export function createWsHandler(deps: WsDeps) {
       offConnections?.();
       offCalendar?.();
       offChannels?.();
+      offSources?.();
       offOwn?.();
       if (ownScan) clearInterval(ownScan);
       if (ownTimer) clearTimeout(ownTimer);

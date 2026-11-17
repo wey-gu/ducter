@@ -60,6 +60,7 @@ import { openOwnPhone } from "./phone-own/index.ts";
 import { providerOf } from "./phone-provider.ts";
 import { registerConnectionTools } from "./connection-tools.ts";
 import { createCalendar, type Calendar } from "./calendar.ts";
+import { createTaskSources, type TaskSources, type TaskSourcesDeps } from "./task-sources/index.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { createModelCatalog, type ModelCatalog } from "./models.ts";
 import { browseFolders, cloneProject, createFoundRepos, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
@@ -177,6 +178,8 @@ export interface CoreOptions {
   newFolderHome?: (name: string) => NewFolderResult;
   /** D272 test seam: the home's own GitHub sign-in (default: this computer's gh). */
   gitLoginHome?: GitLogin;
+  /** D340: 待办来源 / To-do sources: the seams (a fake gh, a scratch home for Obsidian's vault list, the look's pace). Tests default to no gh and no vaults. */
+  taskSources?: Partial<Pick<TaskSourcesDeps, "ghRun" | "ghEnv" | "home" | "pollMs" | "boundMs" | "quietMs" | "today" | "now">>;
   /** D202 test seam: each agent's models on each computer (else read from the agents themselves). */
   models?: ModelCatalog;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
@@ -247,6 +250,8 @@ export interface Core extends CoreApi {
   proactive: Proactive;
   /** D222: the person's calendars as one day, and changes behind a Go. */
   calendar: Calendar;
+  /** D340: 待办来源 / To-do sources: the person's to-dos in other apps and the tasks bound to them. */
+  taskSources: TaskSources;
   /** What each repo task changed so far (D128). */
   changes: Changes;
   /** D148: updating devices in place, and the newest release. */
@@ -307,6 +312,14 @@ export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "connection_call") {
     const c = e.body as Bodies["connection_call"];
     return c.op === "write" && c.state === "failed" && !!c.decisionId && /calendar/.test(c.action);
+  }
+  // D340: new to-dos in a source the person wants told (or taken under the standing go); a write
+  // they said Go to that didn't go through. A closed or edited to-do is told to its task and asked
+  // on its own card, so it doesn't wake the partner.
+  if (e.kind === "source_seen") return (e.body as Bodies["source_seen"]).change === "new";
+  if (e.kind === "source_write") {
+    const w = e.body as Bodies["source_write"];
+    return w.state === "failed" && w.by === "go";
   }
   if (e.kind === "waiter") {
     const w = e.body as Bodies["waiter"];
@@ -597,6 +610,7 @@ export function startCore(opts: CoreOptions = {}): Core {
 
   let proactiveRef: Proactive | undefined;
   let calendarRef: Calendar | undefined;
+  let taskSourcesRef: TaskSources | undefined;
   // D276: 聊天软件 / Chat apps: the person's own Telegram bot and Slack app, more windows on this
   // one conversation (channels/hub.ts). Their quiet hours and "notifications off" are push's.
   const channels = createChannels({
@@ -661,7 +675,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     }
   };
   const unsubscribePartner = log.subscribe((e) => {
-    if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e))) return;
+    if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e))) return;
     // D312: another partner's conversation, task, wait or routine wakes that partner, never the default.
     const who = partners.on() ? whose.ofEvent(e) : DEFAULT_PARTNER;
     if (who !== DEFAULT_PARTNER) return triggerOther(who, e);
@@ -972,7 +986,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1303,6 +1317,24 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D222: every calendar account's calendars, merged (Accounts, the partner's calendar tool, the watcher).
   const calendar = createCalendar({ dataDir, connections, zone, log });
   calendarRef = calendar;
+  // D340: 待办来源 / To-do sources. Tests never reach the real gh or the person's vaults.
+  const srcTesting = process.env.NODE_ENV === "test";
+  const taskSources = createTaskSources({
+    dataDir,
+    log,
+    tasks,
+    platform: opts.platform ?? process.platform,
+    computer: () => savedHomeName(dataDir) ?? thisComputer(opts.update?.homeName),
+    tell: (taskId, text) => void runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} its to-do changed:`, (e as Error).message)),
+    stop: async (taskId) => {
+      await runner?.drop(taskId).catch(() => {});
+      const c = tasks.get(taskId);
+      if (c && c.attention !== "dropped") tasks.setState(taskId, "dropped", c.residency, "its to-do was closed");
+    },
+    ...(srcTesting ? { ghRun: async () => ({ code: 127, out: "", err: "", missing: true as const }), home: join(dataDir, "no-home") } : {}),
+    ...(opts.taskSources ?? {}),
+  });
+  taskSourcesRef = taskSources;
   const proactive = createProactive({
     calendarIds: (a) => calendar.seenIds(a),
     dataDir,
@@ -1428,6 +1460,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     proactive,
     brainInUse,
     calendar,
+    taskSources,
     changes,
     updates,
     release,
@@ -1504,6 +1537,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       limitWaits.stop();
       proactive.stop();
       calendar.stop();
+      taskSources.stop();
       changes.stop();
       pusher.stop();
       channels.stop();

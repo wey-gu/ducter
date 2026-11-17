@@ -31,11 +31,13 @@ export * from "./done-today.ts";
 export * from "./rich.ts";
 export * from "./reach.ts";
 export * from "./mem-source.ts";
+export * from "./task-sources.ts";
 import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
 import type { RichUi } from "./rich.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
+import type { SourceAsk, SourceItemRef, SourceOp, SourcesClientFrame, SourcesServerFrame } from "./task-sources.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
@@ -321,6 +323,9 @@ export interface Bodies {
     // D222: a calendar change (add, move, cancel, answer an invitation). Go runs it once, by core;
     // its outcome is the connection_call with this decisionId (state done + link, or failed).
     cal?: CalChange;
+    // D340: a card about a to-do bound to a task (待办来源 / To-do sources): a write-back to its app,
+    // the to-do closed there while the task works, or a standing go offered once.
+    src?: SourceAsk;
   };
   // now (D208): a call's Go given as 现在就打 / Call now, over the callee's courtesy hours.
   // delivered (D233): the task already has the answer (it came back in the tool call it was waiting
@@ -396,6 +401,36 @@ export interface Bodies {
     media?: MediaRef[];
   };
   checkpoint: { taskId: string; text: string; gitRef?: string };
+  // D340: a task bound to one outside to-do (item null: unbound). by: who bound it (the person in
+  // New task, the partner when it took one, or a standing go).
+  task_bound: { taskId: string; item: SourceItemRef | null; by: "you" | "partner" | "rule" };
+  // D340: what a look at a source saw change on a to-do: closed or reopened in its app, its words
+  // edited, the line gone, or new to-dos in scope (refs, at most 20, untrusted titles).
+  source_seen: {
+    source: string;
+    change: "closed" | "reopened" | "edited" | "gone" | "new";
+    item?: SourceItemRef;
+    taskId?: string;
+    /** edited: the title it had before. */
+    was?: string;
+    items?: SourceItemRef[];
+  };
+  // D340: one write to the to-do's app on the person's behalf (comment, close, tick, untick), with
+  // the Go or standing go that allowed it. Done for you reads it (sent: comment; changed: the rest).
+  source_write: {
+    source: string;
+    item: SourceItemRef;
+    op: SourceOp;
+    state: "done" | "failed";
+    by: "go" | "rule" | "undo";
+    decisionId?: string;
+    taskId?: string;
+    /** comment: the words that went out (cut to 600). */
+    text?: string;
+    /** What the app gave back (the comment's address). */
+    link?: string;
+    error?: string;
+  };
   // A waiter is a cheap wait that wakes the partner (wait_until). Shown on On hand as a compact row.
   // decisionId: a wait tied to a question (an ask); it is cancelled when the question is answered.
   // D112: a waiter waits for a condition, not only a time. kind "check" runs a small read-only
@@ -712,6 +747,8 @@ export interface TaskCard {
   outside?: { agent: string; sessionId: string; startedAt: string };
   /** D325: what the person held for after this turn, in order (absent: nothing held). */
   held?: HeldMsg[];
+  /** D340: the outside to-do it is bound to (待办来源), with what Ducter last saw of it there and what it wrote back. */
+  source?: SourceItemRef & { state?: "open" | "closed" | "gone"; wrote?: SourceOp[] };
 }
 
 export interface OnHand {
@@ -1163,7 +1200,7 @@ export type ClientFrame =
   // D202: model and effort only when the user picked other than the defaults (an effort the model
   // doesn't list is dropped, with a line in the task, never sent).
   // D285: from, 带着它开新任务 / New task from this: the brief carries what that task found.
-  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen; media?: string[]; from?: string }
+  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen; media?: string[]; from?: string; item?: SourceItemRef }
   // D186: add a folder on the home's computer as a project (a repo or not). Answered with
   // project_add_result; On hand's projects and the card's places then include it. device (D197):
   // the folder is on that worker (the Mac app's own, when the home is elsewhere), read there.
@@ -1223,6 +1260,8 @@ export type ClientFrame =
   | PastClientFrame
   // D300: 替你做过的 / Done for you (did.ts).
   | DidClientFrame
+  // D340: 待办来源 / To-do sources (task-sources.ts).
+  | SourcesClientFrame
   | HandsetClientFrame
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" }
@@ -1452,6 +1491,7 @@ export type ServerFrame =
   | ChannelServerFrame
   | PastServerFrame
   | DidServerFrame
+  | SourcesServerFrame
   | { t: "error"; message: string };
 
 /** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */

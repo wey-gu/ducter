@@ -827,12 +827,48 @@ describe("D325: the person's held words and their steers seen", () => {
     expect(reads()).toEqual([seqOf("s1"), seqOf("s2")]);
     await runner.dispose();
   });
+
+  test("a steer's echo that names its input id marks it read by the id, whatever its words (and every steer before it)", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    s.busyFlag = true;
+    await runner.send(card.taskId, "use the staging db", undefined, "user", "s1");
+    await runner.send(card.taskId, "and skip the e2e", undefined, "user", "s2");
+    await runner.send(card.taskId, "then tell me", undefined, "user", "s3");
+    const ids = s.sent.flatMap((x, i) => (x.mode === "steer" ? [s.inputIds[i]] : []));
+    // Each steer carries its own UUID to OAR.
+    expect(ids).toHaveLength(3);
+    for (const id of ids) expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    expect(new Set(ids).size).toBe(3);
+    const seqOf = (cid: string) => core.log.read({ stream: `task:${card.taskId}`, kinds: ["task_event"] }).find((e) => (e.body as Bodies["task_event"]).clientId === cid)!.seq;
+    const reads = () =>
+      core.log
+        .read({ stream: `task:${card.taskId}`, kinds: ["task_event"] })
+        .map((e) => (e.body as Bodies["task_event"]).raw as { read?: number[] } | undefined)
+        .filter((r) => r?.read)
+        .map((r) => r!.read!);
+    // An id it never sent, with words that match none: nothing read.
+    s.emit({ role: "system", raw: { kind: "user_echo", input: "the brief again", inputId: "00000000-0000-4000-8000-000000000000" } });
+    // The second steer's id, its words rewritten by the agent's side (an image note, a prefix): read by the id.
+    s.emit({ role: "system", raw: { kind: "user_echo", input: "<system>edits</system> AND SKIP THE E2E!", inputId: ids[1] } });
+    await waitFor(() => reads().length === 1, "read by id");
+    expect(reads()).toEqual([[seqOf("s1"), seqOf("s2")]]);
+    // An id that matches nothing falls back to the words.
+    s.emit({ role: "system", raw: { kind: "user_echo", input: "then tell me", inputId: "11111111-1111-4111-8111-111111111111" } });
+    await waitFor(() => reads().length === 2, "read by words");
+    expect(reads()[1]).toEqual([seqOf("s3")]);
+    await runner.dispose();
+  });
 });
 
 // ---------- a hand-written fake HarnessPort ----------
 
 class FakeSession implements HarnessSession {
   sent: { text: string; mode: string }[] = [];
+  inputIds: (string | undefined)[] = []; // D325: the input id each send carried
   busyFlag = false;
   canSteer = true;
   interrupted = 0;
@@ -844,9 +880,10 @@ class FakeSession implements HarnessSession {
   busy() {
     return this.busyFlag;
   }
-  async send(text: string, mode: "turn" | "steer" | "queue" = "turn") {
+  async send(text: string, mode: "turn" | "steer" | "queue" = "turn", _images?: unknown, _files?: unknown, inputId?: string) {
     if (this.closed) throw new Error("forbidden: send after close");
     this.sent.push({ text, mode });
+    this.inputIds.push(inputId);
   }
   async interrupt() {
     this.interrupted++;

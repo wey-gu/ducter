@@ -80,4 +80,8 @@ test("D325: the agent's echo of words it took in is a user_echo (a steer seen), 
   expect(n.push({ kind: "user_message", input: "use the staging db", evidence: "acknowledged" })).toEqual([{ role: "system", raw: { kind: "user_echo", input: "use the staging db" } }]);
   expect(n.push({ kind: "user_message", input: "inner", agentPath: ["sub"] })).toEqual([]);
   expect(n.push({ kind: "user_message", input: "  " })).toEqual([]);
+  // The agent's own id for the input (Claude Code's uuid, Codex's clientId, DeepSeek Harness's id) rides along.
+  expect(n.push({ kind: "user_message", input: "use prod", inputId: "6f1c2b9e-0d7a-4c1e-9b3f-2a8d5e4c7b10", evidence: "turn_item" })).toEqual([
+    { role: "system", raw: { kind: "user_echo", input: "use prod", inputId: "6f1c2b9e-0d7a-4c1e-9b3f-2a8d5e4c7b10" } },
+  ]);
 });

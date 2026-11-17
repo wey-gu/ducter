@@ -453,8 +453,9 @@ export interface HarnessSession {
   busy(): boolean; // a turn is in progress
   // D206: images ride with the text as the runtime's own image input (OAR InputOptions.images):
   // files on the home; a worker's session gets their bytes and writes them on its side. D259:
-  // files are named in the text; `files` only lets a worker's session bring them across.
-  send(text: string, mode?: "turn" | "steer" | "queue", images?: SendImage[], files?: SendFile[]): Promise<void>;
+  // files are named in the text; `files` only lets a worker's session bring them across. D325:
+  // `inputId` (a UUID) is OAR's input id; the agent's echo of the words names it where it keeps one.
+  send(text: string, mode?: "turn" | "steer" | "queue", images?: SendImage[], files?: SendFile[], inputId?: string): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
   events(): AsyncIterable<HarnessEvent>;

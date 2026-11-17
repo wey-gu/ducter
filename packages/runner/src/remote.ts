@@ -116,13 +116,13 @@ function remoteSession(link: WorkerLink, key: string, init: { sessionId?: string
     onLink(fn) {
       linkFns.add(fn);
     },
-    async send(text, mode, images, files) {
+    async send(text, mode, images, files, inputId) {
       busy = busy || mode === "turn" || mode === undefined;
       // D206: the pictures are files on the home; their bytes go down with the words.
       const pics = images?.length ? await Promise.all(images.map(async (i) => ({ mediaType: i.mediaType, name: basename(i.path), data: Buffer.from(await Bun.file(i.path).arrayBuffer()).toString("base64") }))) : undefined;
       // D259: so do the files the user sent; the worker keeps them and names its own path in the text.
       const docs = files?.length ? await Promise.all(files.map(async (f) => ({ name: f.name, home: f.path, data: Buffer.from(await Bun.file(f.path).arrayBuffer()).toString("base64") }))) : undefined;
-      await call("send", { text, mode, ...(pics ? { images: pics } : {}), ...(docs ? { files: docs } : {}) });
+      await call("send", { text, mode, ...(pics ? { images: pics } : {}), ...(docs ? { files: docs } : {}), ...(inputId ? { inputId } : {}) });
     },
     interrupt: () => call("interrupt", {}),
     async close() {

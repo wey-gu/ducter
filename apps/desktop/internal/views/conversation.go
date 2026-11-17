@@ -619,10 +619,15 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			a.ask(c, d, "")
 		}
 	case e.Peer != nil:
-		if e.Peer.Direction == "in" && a.peerAsked(e.Peer.MessageID) {
-			return // its question shows once, as its card (which says who asks)
+		// D321: the very first message from another agent explains itself once.
+		first := e.Peer.Direction == "in" && a.firstPeer() == e.Peer
+		if !(e.Peer.Direction == "in" && a.peerAsked(e.Peer.MessageID)) {
+			// A question it asked shows once, as its card (which says who asks).
+			a.peerLine(c, e.Peer, a.S.SetAside[e.Peer.From+"|"+dayOf(e.Event.TS)])
 		}
-		a.peerLine(c, e.Peer, a.S.SetAside[e.Peer.From+"|"+dayOf(e.Event.TS)])
+		if first {
+			a.firstPeerNote(c, e.Peer)
+		}
 	}
 }
 

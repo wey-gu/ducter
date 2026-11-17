@@ -13573,3 +13573,39 @@ svg .wave.w2.on {
   text-wrap: pretty;
   line-height: 1.35;
 }
+/* D321: Settings › 记忆 as what it knows about you, and › 连上的 AI agent's 试试看. A memory row is a
+   button that opens in place (its fix and forget under it); the kind names each group in small caps
+   ink; the search sits on the paper above the groups; the words to say sit on a sunken clay slab,
+   the terminal's with a drawn prompt; the live row breathes while it waits and pops once when the
+   first one comes. Tokens only. */
+.mem-item { width: 100%; border: 0; margin: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mem-item:hover { background: var(--surface-sunken); }
+.mem-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.mem-item.open { background: var(--surface-sunken); }
+.mem-item b { overflow-wrap: anywhere; }
+.mem-item-acts { min-height: 52px; background: var(--surface-sunken); }
+.g-block .mem-fix { width: 100%; box-sizing: border-box; height: 40px; padding: 0 12px; border: 0; border-radius: var(--r-md); background: var(--bg); color: var(--ink); font: inherit; box-shadow: inset 0 0 0 1px var(--line); }
+.g-block .mem-fix:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.g-block .g-acts { display: flex; justify-content: flex-end; gap: var(--s2); }
+.g-cap { padding: var(--s3) var(--set-in, var(--s4)) 0; font-size: var(--xs); font-weight: 700; letter-spacing: 0.04em; color: var(--ink-muted); }
+.mem-find { display: flex; align-items: center; gap: var(--s2); margin: 0; min-height: 44px; padding: 0 var(--s2) 0 var(--s3); border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); }
+.mem-find:focus-within { box-shadow: inset 0 0 0 2px var(--accent), 0 2px 0 var(--line); }
+.mem-find input { flex: 1; min-width: 0; height: 44px; border: 0; background: none; color: var(--ink); font: inherit; font-size: var(--md); }
+.mem-find input:focus { outline: none; }
+.mem-find input::-webkit-search-cancel-button { display: none; }
+.mem-find-mark { flex: none; width: 16px; height: 16px; color: var(--ink-muted); }
+.mem-sec .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.say { display: flex; flex-direction: column; gap: 6px; }
+.say-what { font-size: var(--sm); font-weight: 600; color: var(--ink-soft); }
+.say-words { display: flex; align-items: center; gap: var(--s2); min-height: 48px; padding: var(--s2) var(--s2) var(--s2) var(--s3); border-radius: var(--r-md); background: var(--surface-sunken); box-shadow: inset 0 2px 0 var(--line); font-size: var(--md); line-height: 1.5; color: var(--ink); user-select: text; }
+.say-words .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.say-mark { flex: none; width: 16px; height: 16px; color: var(--accent); }
+.handoff-wait { width: 10px; height: 10px; border-radius: 50%; background: var(--working-dot); animation: live-pulse 2.4s var(--ease) infinite; }
+.handoff-done { animation: dc-pop 520ms var(--ease-push) 1 both; }
+.peer-first { display: flex; align-items: flex-start; gap: var(--s3); max-width: 36em; margin: var(--s2) auto var(--s3); padding: var(--s3) var(--s4); border-radius: var(--r-lg); background: var(--surface-sunken); color: var(--ink-soft); }
+.peer-first > :first-child { flex: none; margin-top: 2px; }
+.peer-first p { margin: 0; font-size: var(--sm); line-height: 1.6; }
+@media (prefers-reduced-motion: reduce) {
+  .handoff-wait,
+  .handoff-done { animation: none; }
+}

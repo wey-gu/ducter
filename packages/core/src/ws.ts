@@ -982,6 +982,23 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, await settingsFrame(undefined, how ? { seq: f.seq, how } : undefined));
         return;
       }
+      case "mem_forget":
+      case "mem_fix": {
+        // D321: the Memory page's own rows. A change pushes a fresh frame to every subscriber (the
+        // glance changed); Mem didn't do it: answer this one, so the row comes back as it was.
+        if (!deps.settings) throw new Error("settings are not available");
+        ws.data.settings = true;
+        const ok = f.t === "mem_forget" ? await deps.settings.forgetMem(String(f.id ?? "")) : await deps.settings.fixMem(String(f.id ?? ""), String(f.title ?? ""));
+        if (!ok) send(ws, await settingsFrame());
+        return;
+      }
+      case "mem_find": {
+        if (!deps.settings) throw new Error("settings are not available");
+        const q = String(f.q ?? "").slice(0, 120);
+        const items = await deps.settings.findMem(q);
+        send(ws, { t: "mem_found", q, ok: items !== undefined, items: items ?? [] });
+        return;
+      }
       case "rules": {
         if (!deps.rules) throw new Error("rules are not available");
         ws.data.rules = true;

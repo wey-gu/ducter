@@ -29,6 +29,12 @@ const core = startCore({
 core.setRunner(stubRunner(core));
 seedConnection(core.dataDir, mem);
 if (memOn) core.settings.setMemState("connected");
+// D321: forgetting and fixing on the Memory page reach the pretend Mem.
+if (memOn) {
+  const { demoForget, demoFix } = await import("./demo-mem.ts");
+  core.settings.setForgetter(demoForget);
+  core.settings.setCorrector(demoFix);
+}
 // A quiet partner: the seed below writes its words, so a live reply would only be noise.
 core.setPartner({ onTrigger() {} });
 const log = core.log;
@@ -241,6 +247,16 @@ if (process.env.DEMO_RICH === "1") {
 }
 // D304: DEMO_RECALL=1 adds the week's what-it-learned note and two replies with their 想起了 line.
 if (process.env.DEMO_RECALL === "1" && memOn) (await import("./demo-mem.ts")).seedRecall(core as never, zh, (ms) => (skew = ms));
+
+// D321: DEMO_PEER=first: the first hand-off from the terminal's Claude Code arrived a minute ago (the
+// conversation explains itself once; Settings › 连上的 AI agent says it worked). Unset: nothing came yet.
+if (process.env.DEMO_PEER === "first" && memOn) {
+  skew = -60_000;
+  const text = zh ? "把 Linux 上 CI 那个红修了：runner 的测试在 Linux 上偶发超时，只动 runner 的测试，修好回我。" : "Fix the red Linux CI: the runner tests time out now and then on Linux. Only touch the runner tests; tell me when it's fixed.";
+  log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: "bm_first", from: "Claude Code", agent: "Claude Code", text } });
+  log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_peer_first", question: zh ? "开个任务修 Linux 上的 runner 测试（只动 runner 的测试）？" : "Open a task to fix the runner tests on Linux (only the runner tests)?", goLabel: zh ? "开始" : "Start", defaultOption: "hold", reversible: true } });
+  skew = 0;
+}
 
 // D309: DEMO_PARTNERS=1: a second partner for home, with its own conversation and one question
 // waiting there (the bar's count is one across partners; its stone carries a dot).

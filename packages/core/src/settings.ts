@@ -4,7 +4,7 @@
 // and quiet hours in push.json (push.ts), the rest in settings.json.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, MemView, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
+import type { Bodies, MemItem, MemView, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
 import { DEFAULT_AFTER_CHOICES, DEFAULT_PROACTIVE, HARNESSES, PROACTIVE_MODES, isHarnessId, normalizeTag, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
 import type { LogStore, MemIdentity, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
@@ -14,6 +14,13 @@ export const SETTINGS_FILE = "settings.json";
 export const PERSONA_FILE = "persona.json";
 const NOTED_SHOWN = 12;
 const HIDDEN_MAX = 500;
+
+/** D321: what the Mem glance does for the page's own rows (mem-glance.ts). */
+export interface GlanceOps {
+  forgot(id: string): void;
+  fixed(id: string, title: string): void;
+  find(q: string): Promise<MemItem[] | undefined>;
+}
 
 interface SettingsFile {
   language?: TalkLanguage;
@@ -68,7 +75,12 @@ export interface SettingsStore extends SettingsApi {
   /** D250: the mode set by Ducter for a reason the person gave (不再需要 to the morning note). */
   setProactive(mode: ProactiveMode, by: "chosen" | "keep_note"): void;
   /** D295: the glance at Mem itself (mem-glance.ts), read on each view. */
-  setGlance(fn: () => MemView["glance"]): void;
+  setGlance(fn: () => MemView["glance"], ops?: GlanceOps): void;
+  /** D321: Settings › 记忆's own rows, by Mem's id: forget one in Mem; fix its words in Mem. True when Mem did. */
+  forgetMem(id: string): Promise<boolean>;
+  fixMem(id: string, title: string): Promise<boolean>;
+  /** D321: search Mem for the page (titles only); undefined when Mem didn't answer. */
+  findMem(q: string): Promise<MemItem[] | undefined>;
   /** Forgets one noted line (D304: or one 想起了 line's memory): in Mem when possible, else hidden here. */
   forget(seq: number): Promise<"mem" | "hidden" | undefined>;
   /** D304: how many lines it noted in the 7 days before `at` that are still there (0 with memory off). */
@@ -119,6 +131,7 @@ export function openSettings(opts: {
   const changed = () => listeners.forEach((fn) => fn());
   let forgetter: ((id: string) => Promise<boolean>) | undefined;
   let glance: (() => MemView["glance"]) | undefined;
+  let glanceOps: GlanceOps | undefined;
   let memSeen: "connected" | "missing" | undefined;
   // D135: checked once at start (env + file); a value out of range is said once, then its default runs.
   const windowsNow = () => resolveWindows(data.windows, opts.env ?? process.env);
@@ -207,8 +220,25 @@ export function openSettings(opts: {
     setCorrector(fn) {
       corrector = fn;
     },
-    setGlance(fn) {
+    setGlance(fn, ops) {
       glance = fn;
+      glanceOps = ops;
+    },
+    async forgetMem(id) {
+      if (!forgetter || !/^[A-Za-z0-9_-]{1,80}$/.test(id)) return false;
+      const ok = await forgetter(id).catch((err) => (console.warn("[settings] forgetting in Mem failed:", (err as Error).message), false));
+      if (ok) glanceOps?.forgot(id);
+      return ok;
+    },
+    async fixMem(id, title) {
+      const words = title.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+      if (!corrector || !words || !/^[A-Za-z0-9_-]{1,80}$/.test(id)) return false;
+      const ok = await corrector(id, words).catch((err) => (console.warn("[settings] fixing in Mem failed:", (err as Error).message), false));
+      if (ok) glanceOps?.fixed(id, words);
+      return ok;
+    },
+    async findMem(q) {
+      return glanceOps ? glanceOps.find(q) : undefined;
     },
     setMemState(s) {
       if (s === memSeen) return;

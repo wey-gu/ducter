@@ -1337,19 +1337,69 @@ type MemView struct {
 	Glance *MemGlance `json:"glance,omitempty"`
 }
 
-// MemGlance is Mem's count and what the person's other AI tools saved
-// lately (titles only; From is the tool's own name, "Claude Code").
+// MemGlance is Mem's count, what it knows about the person by Mem's own kinds
+// (D321), and the other AI tools that wrote to the same Mem this week, as a
+// count only (More: at least that many), never their working notes' titles.
 type MemGlance struct {
-	Total  int        `json:"total"`
-	Others []MemOther `json:"others"`
+	Total int       `json:"total"`
+	About []MemItem `json:"about"`
+	Tools []MemTool `json:"tools"`
 }
 
-// MemOther is one memory another AI tool saved.
-type MemOther struct {
+// MemItem is one memory as Settings › 记忆 shows it (D321): its title, Kind
+// (preference, decision, fact, other), By (said, tool, you, mem), From (the
+// tool's own name, for By tool) and when.
+type MemItem struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
-	From  string `json:"from"`
+	Kind  string `json:"kind"`
+	By    string `json:"by"`
+	From  string `json:"from,omitempty"`
 	At    string `json:"at,omitempty"`
+}
+
+// MemTool is another AI tool on the same Mem, and how many working notes it
+// saved in the last 7 days (D321).
+type MemTool struct {
+	From  string `json:"from"`
+	Count int    `json:"count"`
+	More  bool   `json:"more,omitempty"`
+}
+
+// MemForget forgets one memory on Settings › 记忆 by Mem's id (D321).
+type MemForget struct {
+	T  string `json:"t"` // "mem_forget"
+	ID string `json:"id"`
+}
+
+// MemFix fixes one memory's words on Settings › 记忆 by Mem's id (D321).
+type MemFix struct {
+	T     string `json:"t"` // "mem_fix"
+	ID    string `json:"id"`
+	Title string `json:"title"`
+}
+
+// MemFind searches Mem for Settings › 记忆 (D321); answered by mem_found.
+type MemFind struct {
+	T string `json:"t"` // "mem_find"
+	Q string `json:"q"`
+}
+
+// MemFound is what Mem found for a search (OK false: Mem didn't answer).
+type MemFound struct {
+	Q     string    `json:"q"`
+	OK    bool      `json:"ok"`
+	Items []MemItem `json:"items"`
+}
+
+func decodeMemFound(data []byte, f ServerFrame) (ServerFrame, error) {
+	var m MemFound
+	if err := json.Unmarshal(data, &m); err != nil {
+		return f, err
+	}
+	f.SavedItems = nil
+	f.MemFound = &m
+	return f, nil
 }
 
 // BridgeView is Settings › 伙伴's row for the persona's own connection with
@@ -2060,6 +2110,8 @@ type ServerFrame struct {
 	Past *PastFrame `json:"-"`
 	// D300: did_result (did.go), decoded on its own.
 	DidFor *DidFrame `json:"-"`
+	// MemFound is mem_found (D321), decoded on its own (its items aren't SavedItems).
+	MemFound *MemFound `json:"-"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -2269,6 +2321,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodeOngoing(data, f)
 	case "did_result":
 		return decodeDid(data, f)
+	case "mem_found":
+		return decodeMemFound(data, f)
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

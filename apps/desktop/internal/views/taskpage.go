@@ -716,20 +716,32 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 	for i := range turns {
 		quiet[i] = !said(&turns[i])
 	}
+	// D315: where you are reads as one light, calm thing: a soft clay
+	// lens over the ticks in view (a hairline of accent at its edge), the
+	// ticks in it only warmed, never darkened or widened, so a dense run of
+	// turns never stacks into dark bars.
+	thumb, edge, warm := t.Accent.Alpha(0.10), t.Accent.Alpha(0.28), t.Accent.Mix(t.Faint, 0.35)
 	rail.Draw(func(p *ui.Painter, r ui.Rect) {
 		if last >= first {
-			p.Fill(ui.Rect{X: r.X + r.W - 12, Y: r.Y + top - 4, W: 12, H: bot - top + 8}, t.Accent.Alpha(0.12), 6)
+			hgt := max(bot-top+10, 12)
+			mid := (top + bot) / 2
+			box := ui.Rect{X: r.X, Y: r.Y + mid - hgt/2, W: r.W, H: hgt}
+			p.Fill(box, thumb, r.W/2)
+			p.Stroke(box, edge, r.W/2, 1)
 		}
 		for i := 0; i < n; i++ {
 			y := r.Y + yOf(i)
-			col, w := t.Faint.Alpha(0.7), float32(8)
+			col, w := t.Faint.Alpha(0.6), float32(8)
 			if quiet[i] {
-				col, w = t.Faint.Alpha(0.45), 4
+				col, w = t.Faint.Alpha(0.4), 4
 			}
 			if inView(i) {
-				col, w = t.Ink.Alpha(0.75), w+2
+				col = warm
+				if quiet[i] {
+					col = warm.Alpha(0.6)
+				}
 			}
-			p.Fill(ui.Rect{X: r.X + r.W - w, Y: y - 1, W: w, H: 2.5}, col, 1.25)
+			p.Fill(ui.Rect{X: r.X + (r.W-w)/2, Y: y - 0.75, W: w, H: 1.5}, col, 0.75)
 		}
 	})
 	hovered := rail.Hovered() || rail.Focused()

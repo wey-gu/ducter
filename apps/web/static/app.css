@@ -2190,37 +2190,40 @@ a {
 }
 .locator .rail i {
   position: absolute;
-  right: 0;
+  right: 3px;
   width: 8px;
-  height: 2.5px;
-  margin-top: -1px;
-  border-radius: 2px;
+  height: 1.5px;
+  margin-top: -0.75px;
+  border-radius: 1px;
   background: var(--faint);
-  opacity: 0.7;
+  opacity: 0.6;
 }
+/* D315: where you are reads as one light, calm thing: a soft clay lens over the ticks in view, a
+   hairline of accent at its edge, the ticks in it only warmed, never darkened or widened, so a
+   dense run of turns never stacks into dark bars. */
 .locator .rail i.here {
-  width: 10px;
-  background: var(--ink);
-  opacity: 0.75;
+  background: color-mix(in srgb, var(--accent) 65%, var(--faint));
+  opacity: 1;
 }
-/* D284: a quiet turn (a wake, Ducter's note, a Go relayed) is a short tick; the turns in view sit on
-   a soft clay thumb that glides as the page moves. */
+/* D284: a quiet turn (a wake, Ducter's note, a Go relayed) is a short tick. */
 .locator .rail i.quiet {
+  right: 5px;
   width: 4px;
-  opacity: 0.45;
+  opacity: 0.4;
 }
 .locator .rail i.quiet.here {
-  width: 6px;
-  opacity: 0.75;
+  opacity: 0.6;
 }
 .locator .rail .thumb {
   position: absolute;
-  right: -1px;
-  width: 12px;
-  margin-top: -5px;
-  padding-bottom: 10px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  right: 0;
+  width: 14px;
+  min-height: 2px;
+  margin-top: -6px;
+  padding-bottom: 12px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
   transition: top 260ms var(--ease), height 260ms var(--ease);
 }
 .locator .loc-list {
@@ -11277,6 +11280,191 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .room-side .oh-say {
   font-size: var(--md);
 }
+/* ---------- D315: On hand with its character back ---------- */
+/* The partner's line is short now: a heading in the display face; under it the strip of the
+   states there are, one block, the counts never said twice. */
+.oh-says {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.oh-head .oh-say {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.room-phone .oh-head .oh-say,
+.room-side .oh-head .oh-say {
+  font-size: var(--lg);
+}
+/* On the board a section's name is a heading in the display face, its count beside it muted. */
+.onhand-list:not(.room-rail) .tsec h3 {
+  align-items: baseline;
+  padding-top: 6px;
+  font-family: var(--head);
+  font-size: var(--lg);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.onhand-list:not(.room-rail) .tsec h3 .n {
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+/* A long title takes a second line rather than losing its end; a row's cards stand as tall. */
+.tcards .tcard .c1 .t {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.tcards .tcard .cmain .c3 {
+  margin-top: auto;
+}
+/* The quiet waits and the results you have seen: the cards' language, one line lower, never grey. */
+.tcompacts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0 6px;
+}
+.tcompact {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-right: 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--line), 0 6px 14px -10px rgb(43 33 24 / 0.22);
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.tcompact .kmain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 10px 2px 10px 14px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tcompact .ktx {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tcompact .k1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.tcompact .k1 .t {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tcompact .k2 {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.tcompact .k2 .w {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink-soft);
+}
+.tcompact .k2.failed .w {
+  color: var(--failed-ink);
+}
+.tcompact .k2 .since,
+.tcompact .k2 .meta {
+  flex: none;
+}
+.tcompact .time {
+  flex: none;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tcompact .tacts {
+  display: none;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+.tcompact .tacts.on {
+  display: flex;
+}
+@media (hover: hover) {
+  .tcompact:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 0 var(--line), 0 10px 20px -12px rgb(43 33 24 / 0.28);
+  }
+  .tcompact:hover .tacts,
+  .tcompact:focus-within .tacts {
+    display: flex;
+  }
+  .tcompact:hover .kmain .time {
+    display: none;
+  }
+}
+.tcompact.kfocus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 75%, transparent);
+  outline-offset: 2px;
+}
+.tcompact.sel {
+  outline: 2px solid var(--working-dot);
+  outline-offset: 2px;
+}
+.room-phone .tcompact {
+  flex-wrap: wrap;
+  padding: 0 12px 10px 0;
+}
+.room-phone .tcompact .kmain {
+  flex-basis: 100%;
+  padding-bottom: 4px;
+}
+.room-phone .tcompact .tacts.on {
+  padding-left: 48px;
+}
+.room-phone .tcompact .k2 .since {
+  display: none;
+}
+/* One card to a row on a phone: a short line needs no second line's room. */
+.room-phone .tcards .tcard .c2 {
+  min-height: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tcompact,
+  .tcompact:hover {
+    transition: none;
+    transform: none;
+  }
+}
 /* The cards: two to a row where there is room, one on a phone. */
 .tcards {
   display: grid;
@@ -11466,11 +11654,13 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .tcard.cheer {
   animation: oh-cheer var(--t-pop) var(--spring) both, oh-glow 1.4s var(--ease) both;
 }
+/* D313/D315: the cheer swells from the card's size at rest to about 1.02 and settles back, as the
+   Mac's does: a card already on screen never shrinks before it cheers. */
 @keyframes oh-cheer {
   0% {
-    transform: scale(0.96);
+    transform: scale(1);
   }
-  60% {
+  35% {
     transform: scale(1.02);
   }
   100% {

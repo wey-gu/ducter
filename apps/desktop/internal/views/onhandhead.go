@@ -148,13 +148,46 @@ var sayMarks = map[string]struct{ colon, comma, semi, stop, gap string }{
 	"en": {": ", ", ", "; ", ".", " "},
 }
 
-// boardHead is the partner and its sentence.
-func (a *App) boardHead(c *ui.Context, b store.Board, lens string, n [4]int) {
+// headLine is On hand's own line under the partner (D315): one short
+// sentence in its voice that says what the strip can't, whether anything
+// needs you and, when nothing does, what comes next. The counts are the
+// strip's; the full sentence (headSay) stays the menu bar's. While
+// anything works the partner says it is on it; when all waits, when the
+// first comes back.
+func (a *App) headLine(b store.Board, lens string, n [4]int) string {
+	switch {
+	case n[0] == 1:
+		return a.L.T("onhand.say.needs.one")
+	case n[0] > 1:
+		return a.L.T("onhand.say.needs", n[0])
+	case n[1] > 0:
+		return a.L.T("onhand.line.working")
+	case n[2] > 0:
+		at, quiet := a.waitsAhead(b, lens)
+		switch {
+		case !at.IsZero() && n[2]-quiet <= 1:
+			return a.tp("onhand.line.one", a.soon(at))
+		case !at.IsZero():
+			return a.tp("onhand.line.first", a.soon(at))
+		}
+		return a.L.T("onhand.line.quiet")
+	case n[3] > 0:
+		return a.L.T("onhand.line.done")
+	}
+	return a.L.T("onhand.line.idle")
+}
+
+// boardHead is the partner, its line, and under the line the strip of
+// what is there (D315: one block, the counts never said twice).
+func (a *App) boardHead(c *ui.Context, b store.Board, lens string, n [4]int, strip func()) {
 	t := a.T
 	ui.Row(c.Key("oh-head")).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 		a.avatar(c, moodOf(n), 76)
-		ui.Text(c.Key("say"), keepWords(autospace(a.headSay(b, lens, n)))).Font(t.Display).FontSize(t.LG).FontWeight(600).LineHeight(1.5).TextColor(t.Ink).
-			Grow(1).Shrink(1).MinWidth(0).MaxWidth(620)
+		ui.Column(c.Key("say-col")).Gap(t.S2 + 2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+			ui.Text(c.Key("say"), keepWords(autospace(a.headLine(b, lens, n)))).Font(t.Display).FontSize(t.XL + 2).FontWeight(700).LineHeight(1.3).TextColor(t.Ink).
+				MaxWidth(560)
+			strip()
+		})
 	})
 }
 
@@ -174,7 +207,7 @@ func (a *App) taskCards(c *ui.Context, tasks []*store.Task) {
 	if w >= 2*cardMin+cardGap {
 		cw = (w - cardGap) / 2
 	}
-	ui.Row(c.Key("cards:"+tasks[0].ID)).Wrap().Gap(cardGap).Padding(2, 0, 6, 0).Children(func() {
+	ui.Row(c.Key("cards:"+tasks[0].ID)).Wrap().Gap(cardGap).AlignItems(ui.Stretch).Padding(2, 0, 6, 0).Children(func() { // D315: a row's cards stand as tall as each other
 		for _, task := range tasks {
 			a.taskCard(c.Key(task.ID), task, cw)
 		}
@@ -233,7 +266,8 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	card.Children(func() {
 		ui.Row(c.Key("c1")).Gap(10).AlignItems(ui.Center).Children(func() {
 			a.coinBox(c, task.ID, task.Harness(), 28, false, coinMotionOf(att))
-			ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
+			// D315: a long title takes a second line rather than losing its end.
+			ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(600).LineHeight(1.35).TextColor(t.Ink).MaxLines(2).Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
 			if fresh {
 				a.statusFace(c, task, st)
 			}
@@ -255,6 +289,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			words += "  " + s.code
 		}
 		ui.Text(c.Key("c2"), words).FontSize(t.SM).LineHeight(1.5).TextColor(ink).MaxLines(2).MinHeight(t.SM * 1.5 * 2).Tooltip(s.words)
+		ui.Box(c.Key("c-room")).Grow(1)
 		ui.Row(c.Key("c3")).Gap(10).AlignItems(ui.Center).MinHeight(20).Children(func() {
 			a.heartbeat(c, task, att)
 			ui.Spacer(c)
@@ -276,15 +311,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				}
 				ui.Text(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
 			}
-			p := task.Place()
-			meta := []string{}
-			if a.oh.showProj {
-				meta = append(meta, a.lensName(lensOf(task)))
-			}
-			if a.manyComputers() && p.Kind != "none" && p.Device != "" {
-				meta = append(meta, a.computerName(p.Device))
-			}
-			if len(meta) > 0 {
+			if meta := a.whereMeta(task); len(meta) > 0 {
 				ui.Row(c.Key("meta")).Gap(t.S3).AlignItems(ui.Center).Shrink(1).MinWidth(0).MaxWidth(w / 2).Children(func() { // D291: each its own element
 					for _, m := range meta {
 						ui.Text(c, m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
@@ -297,6 +324,131 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		}
 	})
 	if card.Clicked() {
+		a.oh.focus = task.ID
+		a.OpenTask(task.ID)
+	}
+}
+
+// whereMeta is where a card says its task is, each its own element
+// (D291): its project when the board shows them all, never 其他 / Other,
+// which says nothing; its computer only when it isn't the one most of the
+// board runs on (D315: the usual needs no saying on every card).
+func (a *App) whereMeta(task *store.Task) []string {
+	var meta []string
+	if a.oh.showProj && lensOf(task) != lensOther {
+		meta = append(meta, lensOf(task))
+	}
+	p := task.Place()
+	if a.manyComputers() && p.Kind != "none" && p.Device != "" && p.Device != a.oh.usual {
+		meta = append(meta, a.computerName(p.Device))
+	}
+	return meta
+}
+
+// usualComputer is the computer most of the board's placed tasks run on.
+func usualComputer(b store.Board) string {
+	n := map[string]int{}
+	best, most := "", 0
+	for _, l := range b.Lanes {
+		for _, x := range l {
+			if p := x.Place(); p.Kind != "none" && p.Device != "" {
+				n[p.Device]++
+				if n[p.Device] > most {
+					best, most = p.Device, n[p.Device]
+				}
+			}
+		}
+	}
+	return best
+}
+
+// compactCards are the quiet waits and the results you have seen (D315):
+// the cards' own language, one line lower, never greyed (a grey card read
+// as failed, research/95). A quiet wait offers its calm next step at once.
+func (a *App) compactCards(c *ui.Context, tasks []*store.Task, quiet bool) {
+	if len(tasks) == 0 {
+		return
+	}
+	ui.Column(c.Key("compact:"+tasks[0].ID)).Gap(8).Padding(2, 0, 6, 0).Children(func() {
+		for _, task := range tasks {
+			a.compactCard(c.Key(task.ID), task, quiet)
+		}
+	})
+}
+
+// compactCard is one task as a low card: who does it, the title, what it
+// waits for or what came of it, and on the right its next step or time.
+func (a *App) compactCard(c *ui.Context, task *store.Task, quiet bool) {
+	t := a.T
+	att := task.Attention()
+	s := a.storyOf(task)
+	focus := a.oh.focus == task.ID
+	card := ui.Row(c).Gap(12).Padding(10, 14, 10, 14).MinHeight(rowH).Radius(16).AlignItems(ui.Center).Background(t.Surface).
+		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
+	hover := card.Hovered()
+	still := c.Preferences().ReduceMotion
+	lift := card.AnimateTo("lift", map[bool]float32{true: 1, false: 0}[hover], ui.Animation{Duration: 120 * time.Millisecond, NonMotion: still})
+	card.Shadow(0, 2+lift, 0, 0, t.Line).Shadow(0, 6+4*lift, 14+6*lift, -10, t.Ink.Alpha(0.16+0.06*lift))
+	if !still && lift > 0 {
+		card.Translate(0, -lift)
+	}
+	if focus {
+		card.Border(2, t.Accent.Alpha(0.75))
+		card.AccessSelected(true)
+	}
+	acted := false
+	card.Children(func() {
+		a.coinBox(c, task.ID, task.Harness(), 22, false, coinMotionOf(att))
+		ui.Column(c.Key("tx")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				if task.Card != nil {
+					a.partnerMark(c, task.ID, task.Card.Persona) // D312
+				}
+				ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(14).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
+			})
+			ui.Row(c.Key("l2")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+				ink := t.InkSoft
+				if s.tone == "failed" {
+					ink = t.Failed.Ink
+				}
+				ui.Text(c.Key("w"), keepWords(autospace(s.words))).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(s.words)
+				if quiet && task.Card != nil {
+					ui.Text(c.Key("since"), a.tp("onhand.wait.since", a.agoLong(task.Card.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+				}
+				for _, m := range a.whereMeta(task) {
+					ui.Text(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(160)
+				}
+			})
+		})
+		if quiet {
+			ui.Row(c.Key("acts")).Gap(t.S1).Shrink(0).Children(func() {
+				w := a.S.WaiterFor(task.ID)
+				if w != nil && (w.Check != nil || w.Event != nil) {
+					if a.button(c, a.L.T("onhand.quiet.look"), btnSecondary, t.ControlSM, t.Surface) {
+						acted = true
+						a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "look"})
+					}
+				} else if a.button(c, a.L.T("onhand.quiet.go"), btnSecondary, t.ControlSM, t.Surface) {
+					acted = true
+					a.send(protocol.PastContinue{T: "past_continue", TaskID: task.ID, Words: a.L.T("onhand.quiet.go")})
+				}
+				if a.button(c, a.L.T("onhand.quiet.drop"), btnText, t.ControlSM, t.Surface) {
+					acted = true
+					a.TaskAction(task.ID, "drop")
+				}
+			})
+			return
+		}
+		if hover && a.rowActs(c, task, true) {
+			return
+		}
+		ui.Text(c.Key("time"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).SingleLine()
+	})
+	clicked := card.Clicked() && !acted
+	a.heroRow(card, task.ID, clicked || focus)
+	a.stagger(c, card, a.nav.rows)
+	a.nav.rows++
+	if clicked {
 		a.oh.focus = task.ID
 		a.OpenTask(task.ID)
 	}

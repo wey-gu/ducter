@@ -261,8 +261,9 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
   if (d.defaultOption !== "go" || Number.isNaN(at)) return { line: t("decision.default.hold") };
   const left = at - now;
   if (left <= 0) return { line: t("decision.default.due"), frac: 0 };
-  if (!d.goLabel) return { line: t("decision.default.goon", duration(A.L, left)) };
-  let label = d.goLabel;
+  // D315: the label sits mid-sentence, so its own full stop goes ("等你登录后继续。，之后还能改回来。").
+  let label = (d.goLabel ?? "").trim().replace(/[。．.！!；;，,]+$/u, "");
+  if (!label) return { line: t("decision.default.goon", duration(A.L, left)) };
   if (!A.L.style.spaced && label.charCodeAt(0) < 0x80) label = " " + label;
   const asked = d.askedAt ? Date.parse(d.askedAt) : NaN;
   const frac = Number.isNaN(asked) || at <= asked ? undefined : Math.max(0, Math.min(1, left / (at - asked)));

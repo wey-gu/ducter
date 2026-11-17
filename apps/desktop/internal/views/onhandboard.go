@@ -297,20 +297,40 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 	}
 	var find ui.Element
 	ui.Column(c.Key("top")).Gap(t.S4).Children(func() {
-		// D287: the partner at the head, its pose and its one sentence.
-		a.boardHead(c, b, lens, n)
-		ui.Row(c.Key("strip-row")).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
+		// D287: the partner at the head, its pose and its line; D315: under
+		// the line, only the states there are, each a filter.
+		live := 0
+		for _, k := range n {
+			if k > 0 {
+				live++
+			}
+		}
+		a.boardHead(c, b, lens, n, func() {
+			if live < 2 && a.oh.filter == 0 {
+				return
+			}
 			// D270: the counts in a small sunk track, the filter chosen a
 			// raised knob in it, as the places are in the bar.
-			ui.Row(c.Key("strip")).Gap(2).Padding(3).Radius(t.RadiusSM).AlignItems(ui.Center).Background(t.SurfaceSunken).
-				InsetShadow(0, 1.5, 2, 0, t.Line).Label(a.L.T("onhand.strip")).Children(func() {
-				names := [4]string{"lane.needs_you", "lane.working", "lane.waiting", "lane.done"}
-				for i := range 4 {
-					a.stripCell(c, i+1, a.L.T(names[i]), n[i])
-				}
+			ui.Row(c.Key("strip-row")).AlignItems(ui.Center).Children(func() {
+				ui.Row(c.Key("strip")).Gap(2).Padding(3).Radius(t.RadiusSM).AlignItems(ui.Center).Background(t.SurfaceSunken).
+					InsetShadow(0, 1.5, 2, 0, t.Line).Label(a.L.T("onhand.strip")).Children(func() {
+					names := [4]string{"lane.needs_you", "lane.working", "lane.waiting", "lane.done"}
+					for i := range 4 {
+						if n[i] > 0 {
+							a.stripCell(c, i+1, a.L.T(names[i]), n[i])
+						}
+					}
+				})
 			})
-			ui.Spacer(c)
-			if g := groupOf(groups, lens); g != nil && g.key != lensOther {
+		})
+		g := groupOf(groups, lens)
+		here := g != nil && g.key != lensOther
+		total := n[0] + n[1] + n[2] + n[3]
+		if !here && total < findFrom {
+			return
+		}
+		ui.Row(c.Key("tools-row")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+			if here {
 				p := protocol.Place{Kind: "none"}
 				if g.place != nil {
 					p = *g.place
@@ -319,7 +339,7 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 					a.OpenNewTask(&p)
 				}
 			}
-			total := n[0] + n[1] + n[2] + n[3]
+			ui.Spacer(c)
 			if total >= findFrom {
 				ui.Row(c.Key("findbox")).Width(260).Shrink(1).MinWidth(180).Children(func() { find = a.findField(c) })
 			}

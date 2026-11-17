@@ -36,13 +36,25 @@ func TestOnHandShots(t *testing.T) {
 	h.tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
 	h.until("the board", func() bool { return len(h.app.S.Tasks) > 0 })
 	h.app.Route = RouteOnHand
+	// D315: DUCTER_ONHAND_ROUTE=conv pictures the conversation, task:<id> an opened task.
+	switch r := os.Getenv("DUCTER_ONHAND_ROUTE"); {
+	case r == "conv":
+		h.app.Route = RouteConversation
+	case len(r) > 5 && r[:5] == "task:":
+		h.app.OpenTask(r[5:])
+	}
+	paper := ""
+	if os.Getenv("DUCTER_SHOTS_DARK") != "" {
+		h.tt.SetDark(true)
+		paper = "-dark"
+	}
 	for _, w := range []int{900, 1280, 1600} {
 		h.tt.SetSize(w, 980)
 		for i := 0; i < 10; i++ {
 			h.until("frames", func() bool { return true })
 			h.tt.Advance(200 * time.Millisecond)
 		}
-		f, err := os.Create(filepath.Join(dir, fmt.Sprintf("mac-%s-%d-%s.png", name, w, lang)))
+		f, err := os.Create(filepath.Join(dir, fmt.Sprintf("mac-%s-%d-%s%s.png", name, w, lang, paper)))
 		if err != nil {
 			t.Fatal(err)
 		}

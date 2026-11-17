@@ -911,6 +911,9 @@ func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 			label = strings.ToLower(label[:1]) + label[1:]
 		}
 	}
+	// D315: the label sits mid-sentence: its own full stop would read
+	// "等你登录后继续。，之后还能改回来。".
+	label = strings.TrimRight(strings.TrimSpace(label), "。．.！!；;，,")
 	if label == "" {
 		return a.L.T("decision.default.goon", a.duration(left+time.Second*59/60))
 	}

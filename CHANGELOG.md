@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.74 - 2026-11-18
+
+<!-- whats-new
+zh: 把家里的服务器借来干活，一行就好
+en: Lend a home server to Ducter in one line
+-->
+
+**Lend a computer**
+- Your devices › Lend a computer gives one line to paste on another Mac or Linux server: it
+  installs Ducter, joins your home and keeps running. The app shows it arriving, with its
+  name and the AI tools signed in there.
+- It only needs to reach your home, so a server on your home network works without a public
+  address or any VPN.
+- Say "add my NAS" and the partner opens the same card. Get started and the docs have it too.
+
 ## 0.0.73 - 2026-11-18
 
 <!-- whats-new

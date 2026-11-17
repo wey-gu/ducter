@@ -953,10 +953,11 @@ anything unknown), `tablet` (an iPad, an Android tablet: the phone's bezel and f
 taller on the island) and `foldable` (a book-style fold such as a Pixel Fold: drawn half open
 like a book, one screen across the crease, Ducter on its right half). The same art is the list's
 icon and the card's hero, on the Mac and the web. The shape comes from `clientShape`
-(`packages/protocol`): the model its Android app reports, else what its page said in its hello
-(`shapeFromBrowser`: an iPad, an Android model in the user agent, an Android screen 600 px wide
-or more), else an "iPad …" name, else a phone. Flips (Galaxy Z Flip, Razr) open into a phone and
-stay one. Masters `design/art/assets/alpha/tablet.png`, `foldable.png` (prompts
+(`packages/protocol`): its Android app's hinge (D317), else the model it reports, else what its
+page said in its hello (`shapeFromBrowser`: the app's own `DucterShape/…` in the user agent, then
+more than one viewport segment or a "folded" device posture, then the model in the user agent, an
+iPad, an Android screen 600 px wide or more), else an "iPad …" name, else a phone. Flips (Galaxy Z
+Flip, Razr, Magic V Flip, Find N Flip, MIX Flip) open into a phone and stay one. Masters `design/art/assets/alpha/tablet.png`, `foldable.png` (prompts
 `prompts/tablet.md`, `foldable.md`, batch `batch_forms.json`, the phone as the first reference);
 `python3 tools/art/devices.py` writes the Mac's @640 and the web's `dev_*.webp`.
 

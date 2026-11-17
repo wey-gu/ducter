@@ -189,7 +189,7 @@ class MainActivity : ComponentActivity() {
         settings.allowFileAccess = false
         settings.allowContentAccess = false
         // The pairing names this phone "Android phone", platform "android-app" (apps/web/src/conn.ts deviceName; D291).
-        settings.userAgentString = "${settings.userAgentString} DucterApp/${BuildConfig.VERSION_NAME}"
+        settings.userAgentString = "${settings.userAgentString} DucterApp/${BuildConfig.VERSION_NAME}${Foldable.agent(Handset.foldable(this@MainActivity))}"
         overScrollMode = View.OVER_SCROLL_NEVER
         webViewClient = Client()
         webChromeClient = pictures.chrome
@@ -631,6 +631,8 @@ window.ducterNative=Object.freeze($info);})();"""
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 WindowInfoTracker.getOrCreate(this@MainActivity).windowLayoutInfo(this@MainActivity).collect { info ->
                     feature = info.displayFeatures.filterIsInstance<FoldingFeature>().firstOrNull()
+                    // D317: a fold seen once makes this a foldable from now on (the page's next hello says so).
+                    if (feature != null && !store.sawFold) store.sawFold = true
                     readFold(always = true)
                 }
             }
@@ -653,7 +655,7 @@ window.ducterNative=Object.freeze($info);})();"""
                 bounds = intArrayOf(b.left, b.top, b.right, b.bottom),
                 vertical = vertical,
                 halfOpened = ff.state == FoldingFeature.State.HALF_OPENED,
-                separating = ff.isSeparating,
+                separating = Foldable.separating(ff.isSeparating, ff.occlusionType == FoldingFeature.OcclusionType.FULL),
                 occluding = ff.occlusionType == FoldingFeature.OcclusionType.FULL,
                 web = intArrayOf(loc[0], loc[1], web.width, web.height),
                 density = d,

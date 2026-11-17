@@ -98,6 +98,12 @@ object Handset {
     fun component(c: Context) = ComponentName(c, HandsetService::class.java)
 
     /** The switch in Android's settings is on (whether or not the service has connected yet). */
+    /** D317: the hardware says it folds (a hinge sensor, or a fold Android reported once). */
+    fun foldable(c: Context): Boolean = Foldable.of(
+        hingeSensor = Build.VERSION.SDK_INT >= 30 && c.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_SENSOR_HINGE_ANGLE),
+        sawFold = Store(c).sawFold,
+    )
+
     fun enabled(c: Context): Boolean {
         val am = c.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
         val me = component(c).flattenToString()
@@ -160,6 +166,7 @@ object Handset {
         .apply { ended?.let { (s, why) -> put("ended", JSONObject().put("session", s).put("why", why)) } }
         .put("sdk", Build.VERSION.SDK_INT)
         .put("model", Build.MODEL ?: "")
+        .apply { if (foldable(c)) put("foldable", true) }
         .put("service", (service != null && enabled(c)).also { if (it) Store(c).handsetWasOn = true })
         .apply {
             when (restriction(c)) {

@@ -2,7 +2,7 @@
 // client WebSocket with reconnect-by-cursor and an outbox that holds what the user chose until the
 // server has said welcome. Messages (send, task_send) don't wait here: the app keeps them until
 // echoed and sends them again after every welcome (core dedupes by clientId).
-import type { ClientFrame, ClientShape, ServerFrame } from "@ducter/protocol";
+import type { BrowserScreenHints, ClientFrame, ClientShape, ServerFrame } from "@ducter/protocol";
 import { shapeFromBrowser } from "@ducter/protocol";
 
 export interface DeviceRecord {
@@ -68,10 +68,25 @@ export function deviceName(ua = navigator.userAgent, touch = navigator.maxTouchP
 }
 
 /** D263: a phone, tablet or foldable, said in the hello of a page on an iPhone, iPad or Android (never a computer's). */
-export function myShape(ua = globalThis.navigator?.userAgent ?? "", touch = globalThis.navigator?.maxTouchPoints ?? 0, sc?: { width: number; height: number }): ClientShape | undefined {
+export function myShape(ua = globalThis.navigator?.userAgent ?? "", touch = globalThis.navigator?.maxTouchPoints ?? 0, sc?: { width: number; height: number }, hints: BrowserScreenHints = screenHints()): ClientShape | undefined {
   const p = deviceName(ua, touch).platform;
   if (!p.startsWith("ios") && !p.startsWith("android")) return undefined;
-  return shapeFromBrowser(ua, touch, sc ?? globalThis.screen ?? { width: 0, height: 0 });
+  return shapeFromBrowser(ua, touch, sc ?? globalThis.screen ?? { width: 0, height: 0 }, hints);
+}
+
+/** D317: the screen's own word on folding, where the browser has it (Viewport Segments, Device Posture). */
+export function screenHints(g: any = globalThis): BrowserScreenHints {
+  const h: BrowserScreenHints = {};
+  try {
+    const segs = g.viewport?.segments ?? g.visualViewport?.segments;
+    let n = Array.isArray(segs) ? segs.length : 0;
+    const mq = g.matchMedia as ((q: string) => { matches: boolean }) | undefined;
+    if (!n && mq) n = mq("(horizontal-viewport-segments: 2)").matches || mq("(vertical-viewport-segments: 2)").matches ? 2 : 0;
+    if (n) h.segments = n;
+    const posture = g.navigator?.devicePosture?.type;
+    if (typeof posture === "string") h.posture = posture;
+  } catch {}
+  return h;
 }
 
 export type PairError ="invalid" | "expired" | "locked" | "unreachable";

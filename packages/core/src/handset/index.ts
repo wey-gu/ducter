@@ -1049,7 +1049,7 @@ export function createHandsets(o: HandsetsOptions): Handsets {
       return {
         added: !!saved[deviceId]?.added,
         able: !!l && l.state.bridge >= HANDSET_BRIDGE,
-        ...(l ? { state: { sdk: l.state.sdk, model: l.state.model, service: l.state.service, ...(l.state.restricted !== undefined ? { restricted: l.state.restricted } : {}), pictures: l.state.pictures } } : {}),
+        ...(l ? { state: { sdk: l.state.sdk, model: l.state.model, ...(l.state.foldable ? { foldable: true } : {}), service: l.state.service, ...(l.state.restricted !== undefined ? { restricted: l.state.restricted } : {}), pictures: l.state.pictures } } : {}),
         linked: !!l,
         ...(pages.get(deviceId)?.state.dial ? { dial: true } : {}),
         ...(loan ? { using: { taskId: loan.taskId, title: taskTitle(loan.taskId), ...(loan.app ? { app: loan.app } : {}), ...(quiet.has(deviceId) || !l ? { quiet: true } : {}) } } : {}),

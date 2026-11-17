@@ -117,6 +117,11 @@ class Store(context: Context) {
         set(v) = p.edit().putBoolean("dial.asked", v).apply()
 
     /** D246: Ducter's accessibility switch has been on on this install, so restricted settings are allowed. */
+    /** D317: Android reported a fold on this phone once (a FoldingFeature), so it is a foldable. */
+    var sawFold: Boolean
+        get() = p.getBoolean("fold.seen", false)
+        set(v) { if (v != sawFold) p.edit().putBoolean("fold.seen", v).apply() }
+
     var handsetWasOn: Boolean
         get() = p.getBoolean("handset.wasOn", false)
         set(v) { if (v != handsetWasOn) p.edit().putBoolean("handset.wasOn", v).apply() }

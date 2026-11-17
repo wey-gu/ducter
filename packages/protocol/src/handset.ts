@@ -12,6 +12,8 @@ export interface HandsetState {
   sdk: number;
   /** The phone's model as Android names it ("Pixel Fold"). */
   model: string;
+  /** D317: the phone itself says it folds (a hinge sensor, or Android reported a fold or dual-screen hinge). */
+  foldable?: boolean;
   /** Ducter's accessibility service is on in Android's settings (and connected). */
   service: boolean;
   /**
@@ -111,7 +113,7 @@ export interface HandsetView {
   /** The app on that phone can do it at all (an Android app new enough). */
   able: boolean;
   /** What the app last said (absent until its page has said hello since the home started). */
-  state?: Pick<HandsetState, "sdk" | "model" | "service" | "restricted" | "pictures">;
+  state?: Pick<HandsetState, "sdk" | "model" | "foldable" | "service" | "restricted" | "pictures">;
   /** Its app is connected now, so a task can be started on it. */
   linked: boolean;
   /** D278: its app is connected now and can dial a call sheet's number (在 Pixel Fold 上拨打). */

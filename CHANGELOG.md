@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.0.71
+
+<!-- whats-new
+zh: 停下以后你一开口，它就能再借手机
+en: After Stop, ask and it can borrow your phone again
+zh: 用手机的任务说清在你的手机上
+en: A phone task says it works on your phone
+-->
+
+**Your phone**
+- A task using your phone says so in its header; a paused loan is explained in the page, not
+  squeezed into the title bar.
+- After you Stop a loan, your own message in that task lets it ask for the phone once more.
+- A task no longer repeats the same "waiting" report, and words sent while it stops reach the
+  next turn.
+- Settings › Use this phone explains how to keep your phone usable while you're away, without
+  Ducter ever knowing your PIN.
+
+**Your other agents**
+- The partner knows which Space a message came in, so it can say so.
+
+**On the phone**
+- Try-it examples in Agent messaging use the whole row on small phones.
+
 ## 0.0.70
 
 <!-- whats-new

@@ -1931,3 +1931,4 @@ Superseded:
 - **D324's UI: the connected head (你的 AI agent 能找到 {name}) and the footer 断开后它不再收，也不再发。 · 详情 · 断开.** Superseded by D332 (5): only problem rows; the D324 rule itself (one home answers) stands.
 - **D321 (4)'s live row in 试试看 (等它第一次找来… then 成了：{agent} 找到了 {name} · 去看看 for 15 minutes) and the plugin row for agents that have it.** Superseded by D332 (6): 最近 lists every exchange; only agents missing the plugin get a row.
 - **D257's and D321's "shows once Mem is in" (peersShown on Mem's state).** Superseded by D332 (2): shown by who.
+- **D332 (1)'s short label in the Settings list and the Mac rail, 其他 agent / Other agents.** Superseded the same day by the author's call: **Agent 通信 / Agent messaging**; the page title stays 和你的其他 agent 通信 / Talk with your other agents.

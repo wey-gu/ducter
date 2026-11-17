@@ -23,7 +23,7 @@ On the left is a row of tabs; the one you pick shows on the right:
 |---|---|
 | **Partner** | Its name, what it thinks with, who does the tasks, a pasted API key, what happens when a limit runs out, how it talks, what your AI agents keep, and what it does on its own or asks you first |
 | **Memory** | What it remembers about you, and Nowledge Mem: its version and updates |
-| **Talk with your other agents** | Your Claude Code or Codex handing it work, and it asking them (shown if you use them yourself) |
+| **Agent messaging** | Your Claude Code or Codex handing it work, and it asking them (shown if you use them yourself) |
 | **Notifications** | When it comes to you, quiet hours, and how long it waits if you don't answer |
 | **Accounts** | The mail, calendars and other accounts it can read |
 | **Look and sound** | The look, light or dark, the menu bar, the window's language, Details in the conversation, the intro's sound, voice |
@@ -160,8 +160,8 @@ in the last seven days. **Show me** opens **What it learned this week**: mark a 
 
 If you use Claude Code or Codex yourself (in a terminal, their desktop apps or your editor), **Talk
 with your other agents** lets them hand your partner work, or send it what needs your call, and
-lets your partner ask them things for you. It shows in Settings once Ducter sees you use them;
-otherwise the end of the **Partner** page has one line, **Show me**, that opens it.
+lets your partner ask them things for you. It shows in Settings, as **Agent messaging**, once Ducter
+sees you use them; otherwise the end of the **Partner** page has one line, **Show me**, that opens it.
 
 They find each other through Nowledge Mem, which is free. If it isn't on your computer yet, the page
 puts it in and signs you in, right there. After that there is nothing to tap: your partner connects

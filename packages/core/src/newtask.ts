@@ -5,7 +5,7 @@
 // hidden note ("the user opened this themselves") and reports the result like any task (D124).
 import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import type { AgentModels, Candidate, CloneReason, DucterFolderView, LangTag, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
+import type { AgentModels, Bodies, Candidate, CloneReason, DucterFolderView, LangTag, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
 import { detect, fill, words as wordsIn } from "@ducter/protocol";
 import { expandHome, type FolderInfo, type GitRun, realGit, repoBranches, repoRemote, repoTop } from "@ducter/protocol/src/folder-info.ts";
 import type { LogStore, Runner, SettingsApi, TaskRegistry } from "@ducter/protocol/src/internal.ts";
@@ -18,6 +18,7 @@ import { listFolders, type BrowseResult, type RepoHint as FoundRepo } from "@duc
 import type { CloneResult } from "@ducter/protocol/src/clone.ts";
 import type { NewFolderResult } from "@ducter/protocol/src/new-folder.ts";
 import type { GitLogin, GitLoginState } from "@ducter/protocol/src/git-login.ts";
+import type { GhInstaller } from "./gh-install.ts";
 import { actingPersona } from "./acting.ts";
 
 // D197: the git reads are shared with a worker's folderInfo op (protocol/src/folder-info.ts).
@@ -178,6 +179,8 @@ export interface NewTaskDeps {
   newFolderHome?: (name: string) => NewFolderResult;
   /** D272: the home's own GitHub sign-in. */
   gitLoginHome?: GitLogin;
+  /** D345: puts gh on the home when it isn't there (the person's 装上 gh). */
+  ghInstaller?: GhInstaller;
 }
 
 /** D204: how long a clone may take on a worker before the home stops waiting (its own limit is 10 minutes). */
@@ -254,12 +257,15 @@ export async function newFolderProject(
 export const GIT_LOGIN_WAIT_MS: Record<GitLoginAction, number> = { status: 30_000, start: 60_000, wait: 17 * 60_000, token: 60_000, cancel: 30_000 };
 
 /** D272: a GitHub sign-in step on that computer (the home's own, or a worker's, there). */
-export async function gitLoginOn(d: Pick<NewTaskDeps, "computers" | "gitLoginHome">, device: string | undefined, action: GitLoginAction, token?: string): Promise<GitLoginState> {
+export async function gitLoginOn(d: Pick<NewTaskDeps, "computers" | "gitLoginHome" | "ghInstaller">, device: string | undefined, action: GitLoginAction, token?: string): Promise<GitLoginState> {
   try {
     if (isLocal(device)) {
       const g = d.gitLoginHome;
       if (!g) return { state: "failed", reason: "failed", message: "GitHub sign-in isn't available here." };
-      return await (action === "token" ? g.token(token ?? "") : g[action]());
+      const s = await (action === "token" ? g.token(token ?? "") : g[action]());
+      // D345: no gh on the home: say how it would be put there, so the person can tap for it.
+      const plan = s.state === "no_gh" ? d.ghInstaller?.plan() : undefined;
+      return plan ? { ...s, install: plan } : s;
     }
     const c = d.computers;
     if (!c?.gitLogin || !c.nameOf(device!)) return { state: "failed", reason: "failed", message: "That computer isn't one of this home's." };
@@ -267,6 +273,35 @@ export async function gitLoginOn(d: Pick<NewTaskDeps, "computers" | "gitLoginHom
   } catch (err) {
     return { state: "failed", reason: "failed", message: (err as Error).message };
   }
+}
+
+/**
+ * D345: 装上 gh / Install gh on the home: the person tapped for it, so it is their Go (principle
+ * 18); it is said before (the plan on no_gh), shown while it runs (onState installing, with
+ * progress), and logged (tool_install, which Done for you lists). Ends signed_out when gh is
+ * there (the sign-in starts next), else failed with why.
+ */
+export async function ghInstallHome(d: Pick<NewTaskDeps, "ghInstaller" | "gitLoginHome" | "log">, onState: (s: GitLoginState) => void): Promise<GitLoginState> {
+  const inst = d.ghInstaller;
+  const g = d.gitLoginHome;
+  if (!inst || !g) return { state: "failed", reason: "unsupported", message: "Ducter can't put gh on this computer." };
+  const before = await g.status();
+  if (before.state !== "no_gh") return before;
+  const plan = inst.plan();
+  if (!plan) return { state: "failed", reason: "unsupported", message: "There's no gh build Ducter can put on this computer." };
+  const log = (phase: Bodies["tool_install"]["phase"], extra: Partial<Bodies["tool_install"]> = {}) =>
+    d.log.append({ stream: "devices", origin: "system", kind: "tool_install", body: { device: "local", tool: "gh", how: plan.how, where: plan.where, phase, by: "user", ...extra } });
+  log("started");
+  onState({ state: "installing", install: plan });
+  const r = await inst.install((p) => onState({ state: "installing", install: { how: p.how, where: p.where }, ...(p.progress !== undefined ? { progress: p.progress } : {}) }));
+  if (!r.ok) {
+    log("failed", { how: r.how, where: r.where, detail: r.message });
+    return { state: "failed", reason: r.reason, message: r.message, install: { how: r.how, where: r.where } };
+  }
+  log("done", { how: r.how, where: r.where, ...(r.version ? { version: r.version } : {}) });
+  const after = await g.status();
+  if (after.state === "no_gh") return { state: "failed", reason: "install", message: "gh was put there, but Ducter still can't run it.", install: { how: r.how, where: r.where } };
+  return after;
 }
 
 /** D197: how long the card waits for a worker's branches before it shows the list without them. */

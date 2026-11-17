@@ -2153,12 +2153,17 @@ type ServerFrame struct {
 	// D272: git_login_state: Host (github.com), State (signed_in |
 	// signed_out | no_gh | code | failed | cancelled | offline | old),
 	// Account, Code and URL (the one-time code and where to enter it),
-	// Reason (expired | denied | bad_token | failed), Message. Never a token.
-	Account  string    `json:"account,omitempty"`
-	GitHost  string    `json:"host,omitempty"`
-	ClientID string    `json:"clientId,omitempty"`
-	Card     *TaskCard `json:"card,omitempty"`
-	Apps     int       `json:"apps,omitempty"`
+	// Reason (expired | denied | bad_token | network | install |
+	// unsupported | failed), Message. Never a token. D345: State installing
+	// (gh being put on the home); GhInstall: on no_gh, how the home would
+	// put it there (nil: it can't); GhProgress: the download, 0-100.
+	GhInstall  *GhInstallPlan `json:"install,omitempty"`
+	GhProgress *float64       `json:"progress,omitempty"`
+	Account    string         `json:"account,omitempty"`
+	GitHost    string         `json:"host,omitempty"`
+	ClientID   string         `json:"clientId,omitempty"`
+	Card       *TaskCard      `json:"card,omitempty"`
+	Apps       int            `json:"apps,omitempty"`
 	// D185: task_new_result for a start later or on a schedule: the
 	// routine it made (no TaskID). D186: project_add_result: the Place
 	// the card then offers.
@@ -2603,7 +2608,8 @@ type ProjectNew struct {
 }
 
 // GitLogin is one step of a GitHub sign-in on that computer (D272):
-// Action status | start | token | cancel; Token only with token (it goes
+// Action status | start | token | cancel | install (D345, the home only:
+// put gh there, then start); Token only with token (it goes
 // to that computer's gh, never kept). Answered with git_login_state.
 type GitLogin struct {
 	T        string `json:"t"` // "git_login"
@@ -2611,7 +2617,22 @@ type GitLogin struct {
 	Device   string `json:"device,omitempty"`
 	Token    string `json:"token,omitempty"`
 	ClientID string `json:"clientId,omitempty"`
+	// For "todos" (D345): 待办来源's 连上 / Connect; once signed in the home
+	// adds GitHub as a source by itself.
+	For string `json:"for,omitempty"`
 }
+
+// GhInstallPlan is how the home would put gh there (D345): How brew (the
+// Mac's Homebrew) or release (GitHub's own build into Ducter's folder,
+// Where).
+type GhInstallPlan struct {
+	How   string `json:"how"`
+	Where string `json:"where"`
+}
+
+// TokenNewURL makes a fine-grained token for Ducter on GitHub's own page,
+// its permissions filled in (D345; the same as the protocol's TOKEN_NEW_URL).
+const TokenNewURL = "https://github.com/settings/personal-access-tokens/new?name=Ducter&description=Ducter%3A+issues+assigned+to+you%2C+pull+requests+and+clones&expires_in=90&contents=write&issues=write&pull_requests=write&metadata=read"
 
 // ProjectClone clones a Git address on that computer into its Ducter
 // folder and adds it as a project (D204, 从 Git 地址加…): Device "" is

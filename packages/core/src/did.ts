@@ -34,7 +34,7 @@ export interface Did {
 }
 
 const WEEK = 7 * 24 * 3600_000;
-const KINDS: EventKind[] = ["decision", "decision_resolved", "connection_call", "bridge_msg", "phone_call", "job_status", "report", "source_write"];
+const KINDS: EventKind[] = ["decision", "decision_resolved", "connection_call", "bridge_msg", "phone_call", "job_status", "report", "source_write", "tool_install"];
 
 const clip = (s: string | undefined, n = DID_LINE): string | undefined => {
   const t = (s ?? "").replace(/\s+/g, " ").trim();
@@ -240,6 +240,25 @@ export function createDid(d: DidDeps): Did {
           case "report": {
             const b = e.body as Bodies["report"];
             if (b.folder) folders.set(b.taskId, e as LogEvent<"report">);
+            break;
+          }
+          // D345: a tool put on the home because the person tapped for it (gh for GitHub's sign-in).
+          case "tool_install": {
+            const b = e.body as Bodies["tool_install"];
+            if (b.phase !== "done" || !inRange(e.ts)) break;
+            const name = d.deviceName?.(b.device || "local");
+            items.push({
+              id: `e${e.seq}`,
+              kind: "changed",
+              sub: "install",
+              at: e.ts,
+              to: b.tool,
+              via: b.how === "brew" ? "Homebrew" : "GitHub",
+              ...(clip(b.where) ? { line: clip(b.where) } : {}),
+              who: { by: "you" },
+              go: { by: "you", at: e.ts },
+              where: { kind: "computer", ...(name ? { name } : {}) },
+            });
             break;
           }
           // D341: a write to a to-do's app: a comment is sent (to the issue), a close or a tick changes it.

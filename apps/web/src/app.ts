@@ -2,7 +2,7 @@
 import { onWbFrame } from "./workbench-ask.ts";
 import { onPastFrame, openPast } from "./past.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
-import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GitLoginState, MemItem, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemItem, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/protocol";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
@@ -152,7 +152,35 @@ export interface NewTaskDraft {
   // D272: where each computer stands with GitHub (key: the frame's device, "" for the home), and the
   // sign-in panel (list "gh"): its clientId, the code and link once gh gives them, the token mode.
   gh?: Record<string, GitLoginState>;
-  ghPanel?: { device: string; cid: string; code?: string; url?: string; err?: string; nogh?: boolean; token?: boolean; tokenText?: string; copied?: boolean };
+  ghPanel?: GhPanel;
+}
+
+/** D272/D345: which sign-in panel: New task's, or Settings › 待办来源's 连上 GitHub. */
+export type GhWhich = "nt" | "todos";
+
+/**
+ * D272: a GitHub sign-in panel in flight: its clientId, the code and link once gh gives them, the
+ * token mode. D345: for "todos" (连上 from 待办来源: signed in, the home adds GitHub); install: no gh
+ * on the home and how Ducter would put it there; installing: it is being put there; reason: why the
+ * last try failed (each with its own next step); sending: a pasted token is with gh.
+ */
+export interface GhPanel {
+  device: string;
+  cid: string;
+  for?: "todos";
+  code?: string;
+  url?: string;
+  err?: string;
+  nogh?: boolean;
+  install?: GhInstallPlan;
+  installing?: { how: GhInstallPlan["how"]; where: string; progress?: number };
+  reason?: GitLoginState["reason"];
+  /** What this panel last asked of the home (再试一次 asks it again). */
+  via?: "install" | "start";
+  token?: boolean;
+  tokenText?: string;
+  sending?: boolean;
+  copied?: boolean;
 }
 
 /** D185: the "every few hours" the sheet offers. */
@@ -466,6 +494,9 @@ class AppState {
   onChannelFrame?: (f: import("@ducter/protocol").ChannelServerFrame) => void;
   /** D341: 待办来源 / To-do sources (todos.tsx keeps its own state). */
   onSourcesFrame?: (f: import("@ducter/protocol").SourcesServerFrame) => void;
+  /** D345: Settings › 待办来源's 连上 GitHub in flight, and the account it just connected as (said once on GitHub's card). */
+  ghTodo?: GhPanel;
+  ghConnected?: string;
   /** D238: this page as its phone's link (handset.tsx). */
   onHandsetFrame?: (f: import("@ducter/protocol").HandsetServerFrame) => void;
   onHandsetWelcome?: () => void;
@@ -830,6 +861,9 @@ class AppState {
         const dev = this.ntDeviceArg(g.device);
         this.send({ t: "git_login", action: g.code ? "start" : "status", clientId: g.cid, ...(dev ? { device: dev } : {}) });
       } else if (k && this.nt.list === "clone") this.ntGhStatus(k.device);
+      // D345: 连上 GitHub in flight: the install or the code in flight comes back on the new socket.
+      const gt = this.ghTodo;
+      if (gt && (gt.installing || gt.code)) this.ghSend(gt, gt.installing ? "install" : "start");
       if (this.route.name === "task") this.history(this.route.id, true);
       // Settings are pushed only to sockets that asked: ask again on a new one.
       if (this.settings || this.sheet?.kind === "settings") this.askLoadout();
@@ -1277,24 +1311,51 @@ class AppState {
     this.send({ t: "git_login", action: "status", clientId: `g${Date.now()}-${this.nextClient}`, ...(dev ? { device: dev } : {}) });
   }
 
-  /** D272: 在 {computer} 上登录 GitHub: the sign-in panel, and that computer's gh starts GitHub's device flow. */
-  ntGhStart(device: string) {
+  /**
+   * D272: the sign-in panel in flight: New task's (which "nt", on any computer) or, D345, Settings ›
+   * 待办来源's 连上 GitHub (which "todos", the home's own): one panel, one set of words, two places.
+   */
+  ghp(which: GhWhich = "nt"): GhPanel | undefined {
+    return which === "todos" ? this.ghTodo : this.nt.ghPanel;
+  }
+
+  private ghSend(g: GhPanel, action: "start" | "token" | "cancel" | "install" | "status", token?: string) {
+    const dev = g.for === "todos" ? undefined : this.ntDeviceArg(g.device);
+    this.send({ t: "git_login", action, clientId: g.cid, ...(dev ? { device: dev } : {}), ...(token ? { token } : {}), ...(g.for ? { for: g.for } : {}) });
+  }
+
+  /** D272: 在 {computer} 上登录 GitHub: the sign-in panel, and that computer's gh starts GitHub's device flow. D345: which "todos" is 连上 GitHub on the home. */
+  ntGhStart(device: string, which: GhWhich = "nt") {
     const nt = this.nt;
     if (this.status !== "connected" || !this.S.welcomed) {
-      if (nt.clone) nt.clone.err = this.L.t("newtask.err.conn");
+      if (which === "nt" && nt.clone) nt.clone.err = this.L.t("newtask.err.conn");
       return this.changed();
     }
     this.nextClient++;
-    nt.ghPanel = { device, cid: `g${Date.now()}-${this.nextClient}` };
-    nt.list = "gh";
-    const dev = this.ntDeviceArg(device);
-    this.send({ t: "git_login", action: "start", clientId: nt.ghPanel.cid, ...(dev ? { device: dev } : {}) });
+    const g: GhPanel = { device, cid: `g${Date.now()}-${this.nextClient}`, ...(which === "todos" ? { for: "todos" as const } : {}) };
+    if (which === "todos") this.ghTodo = g;
+    else (nt.ghPanel = g), (nt.list = "gh");
+    this.ghSend(g, "start");
+    this.changed();
+  }
+
+  /** D345: 装上 gh / Install gh on the home: it is put there, then the sign-in goes on by itself. */
+  ntGhInstall(which: GhWhich = "nt") {
+    const g = this.ghp(which);
+    if (!g || g.installing) return;
+    this.nextClient++;
+    g.cid = `g${Date.now()}-${this.nextClient}`;
+    g.err = "";
+    g.nogh = false;
+    g.installing = { how: g.install?.how ?? "release", where: g.install?.where ?? "" };
+    g.via = "install";
+    this.ghSend(g, "install");
     this.changed();
   }
 
   /** D272: the token fallback, shown or hidden; the token typed is never kept past sending it. */
-  ntGhTokenMode(on: boolean) {
-    const g = this.nt.ghPanel;
+  ntGhTokenMode(on: boolean, which: GhWhich = "nt") {
+    const g = this.ghp(which);
     if (!g) return;
     g.token = on;
     g.tokenText = "";
@@ -1302,8 +1363,8 @@ class AppState {
     this.changed();
   }
 
-  ntGhTokenInput(v: string) {
-    const g = this.nt.ghPanel;
+  ntGhTokenInput(v: string, which: GhWhich = "nt") {
+    const g = this.ghp(which);
     if (!g) return;
     g.tokenText = v;
     g.err = "";
@@ -1311,8 +1372,8 @@ class AppState {
   }
 
   /** D272: the pasted token goes to gh on that computer, once; the field is cleared at once. */
-  ntGhTokenGo() {
-    const g = this.nt.ghPanel;
+  ntGhTokenGo(which: GhWhich = "nt") {
+    const g = this.ghp(which);
     const tok = (g?.tokenText ?? "").trim();
     if (!g || !tok) return;
     this.nextClient++;
@@ -1320,33 +1381,33 @@ class AppState {
     g.tokenText = "";
     g.err = "";
     g.code = undefined;
-    const dev = this.ntDeviceArg(g.device);
-    this.send({ t: "git_login", action: "token", token: tok, clientId: g.cid, ...(dev ? { device: dev } : {}) });
+    g.sending = true;
+    this.ghSend(g, "token", tok);
     this.changed();
   }
 
-  /** D272: stop the sign-in (its gh is stopped there) and go back to the clone field. */
-  ntGhCancel() {
+  /** D272: stop the sign-in (its gh is stopped there) and go back to the clone field (or close 连上). */
+  ntGhCancel(which: GhWhich = "nt") {
     const nt = this.nt;
-    const g = nt.ghPanel;
-    if (g) {
-      const dev = this.ntDeviceArg(g.device);
-      if (g.code) this.send({ t: "git_login", action: "cancel", clientId: g.cid, ...(dev ? { device: dev } : {}) });
+    const g = this.ghp(which);
+    if (g?.code) this.ghSend(g, "cancel");
+    if (which === "todos") this.ghTodo = undefined;
+    else {
+      nt.ghPanel = undefined;
+      nt.list = nt.clone ? "clone" : "place";
     }
-    nt.ghPanel = undefined;
-    nt.list = nt.clone ? "clone" : "place";
     this.changed();
   }
 
-  /** D272: GitHub's device page, in a new tab (the code can be entered on any device). */
-  ntGhOpen() {
-    const g = this.nt.ghPanel;
+  /** D272: GitHub's device page, in a new tab on this device (the code can be entered on any device). */
+  ntGhOpen(which: GhWhich = "nt") {
+    const g = this.ghp(which);
     window.open(g?.url || "https://github.com/login/device", "_blank", "noopener");
   }
 
   /** D272: copy the one-time code (with the old way where the Clipboard API isn't there, research/83). */
-  async ntGhCopy() {
-    const g = this.nt.ghPanel;
+  async ntGhCopy(which: GhWhich = "nt") {
+    const g = this.ghp(which);
     if (!g?.code) return;
     if (await copy(g.code)) {
       g.copied = true;
@@ -1359,11 +1420,18 @@ class AppState {
   ghState(f: Extract<ServerFrame, { t: "git_login_state" }>) {
     const nt = this.nt;
     const key = f.device ?? "";
-    if (f.state === "signed_in" || f.state === "signed_out" || f.state === "no_gh") nt.gh = { ...(nt.gh ?? {}), [key]: { state: f.state, ...(f.account ? { account: f.account } : {}) } };
-    const g = nt.ghPanel;
-    if (!g || f.clientId !== g.cid) return this.changed();
-    const name = this.ntComputerName(g.device);
+    if (f.state === "signed_in" || f.state === "signed_out" || f.state === "no_gh") nt.gh = { ...(nt.gh ?? {}), [key]: { state: f.state, ...(f.account ? { account: f.account } : {}), ...(f.install ? { install: f.install } : {}) } };
+    const which: GhWhich | undefined = this.ghTodo && f.clientId === this.ghTodo.cid ? "todos" : nt.ghPanel && f.clientId === nt.ghPanel.cid ? "nt" : undefined;
+    const g = which && this.ghp(which);
+    if (!g || !which) return this.changed();
+    const name = which === "todos" ? (this.homeName ?? "") : this.ntComputerName(g.device);
+    g.sending = false;
+    if (f.state !== "installing") g.installing = undefined;
     switch (f.state) {
+      case "installing":
+        g.installing = { how: f.install?.how ?? g.installing?.how ?? "release", where: f.install?.where ?? g.installing?.where ?? "", ...(f.progress !== undefined ? { progress: f.progress } : {}) };
+        g.err = "";
+        break;
       case "code":
         g.code = f.code;
         g.url = f.url || "https://github.com/login/device";
@@ -1371,6 +1439,13 @@ class AppState {
         g.nogh = false;
         break;
       case "signed_in": {
+        if (which === "todos") {
+          // D345: GitHub is a source now (the home added it); its card says so with the count.
+          this.ghTodo = undefined;
+          this.ghConnected = f.account ?? "";
+          setTimeout(() => ((this.ghConnected = undefined), this.changed()), 15_000);
+          break;
+        }
         nt.ghPanel = undefined;
         const k = nt.clone;
         nt.list = k ? "clone" : "place";
@@ -1383,26 +1458,35 @@ class AppState {
         break;
       }
       case "cancelled":
-        nt.ghPanel = undefined;
-        nt.list = nt.clone ? "clone" : "place";
+        if (which === "todos") this.ghTodo = undefined;
+        else (nt.ghPanel = undefined), (nt.list = nt.clone ? "clone" : "place");
         break;
       case "signed_out":
         break; // a socket that came back before the code: the panel waits
       default:
         g.code = undefined;
-        g.nogh = f.state === "no_gh";
+        g.nogh = f.state === "no_gh" || f.reason === "unsupported";
+        // D345: no gh on the home, and Ducter can put it there: the offer, not an error.
+        g.install = f.state === "no_gh" ? f.install : f.reason === "install" || f.reason === "network" ? (f.install ?? g.install) : g.install;
+        g.reason = f.state === "failed" ? f.reason : undefined;
         g.err =
           f.state === "no_gh"
-            ? this.L.t("newtask.gh.nogh", name)
+            ? f.install
+              ? ""
+              : this.L.t("newtask.gh.nogh", name)
             : f.state === "offline"
               ? this.L.t("newtask.find.offline", name)
               : f.state === "old"
                 ? this.L.t("newtask.old", name)
                 : f.reason === "expired" || f.reason === "denied"
                   ? this.L.t(`newtask.gh.err.${f.reason}`)
-                  : f.reason === "bad_token"
-                    ? this.L.t("newtask.gh.err.bad_key", (f.message || "").replace(/[.。]\s*$/, ""))
-                    : this.L.t("newtask.gh.err.failed", (f.message || "").replace(/[.。]\s*$/, ""));
+                  : f.reason === "network" || f.reason === "unsupported"
+                    ? this.L.t(`newtask.gh.err.${f.reason}`, name)
+                    : f.reason === "install"
+                      ? this.L.t("newtask.gh.err.install", (f.message || "").replace(/[.。]\s*$/, ""))
+                      : f.reason === "bad_token"
+                        ? this.L.t("newtask.gh.err.bad_key", (f.message || "").replace(/[.。]\s*$/, ""))
+                        : this.L.t("newtask.gh.err.failed", (f.message || "").replace(/[.。]\s*$/, ""));
     }
     this.changed();
   }

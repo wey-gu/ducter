@@ -228,7 +228,7 @@ func TestTodosProblemsAndEmpty(t *testing.T) {
 	}}}})
 	app.openTab(TabTodos)
 	todoFrames(tt, 4)
-	for _, want := range []string{"Lin's MacBook Pro isn't signed in to GitHub yet.", "Sign in to GitHub in Devices", "This vault's folder isn't on Lin's MacBook Pro.", "Open to-dos in Tasks"} {
+	for _, want := range []string{"Lin's MacBook Pro isn't signed in to GitHub yet.", "Reconnect", "This vault's folder isn't on Lin's MacBook Pro.", "Open to-dos in Tasks"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

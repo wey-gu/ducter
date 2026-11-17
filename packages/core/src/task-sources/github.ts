@@ -68,12 +68,13 @@ export function splitResponse(out: string): { status: number; etag?: string; bod
 
 export function createGitHub(o: GitHubOpts): SourceAdapter & { login(): string | undefined } {
   const run = o.run ?? realGhRun;
-  const env = ghRunEnv(o.env ?? process.env);
+  // Read each time: gh Ducter put in its own folder joins PATH while this runs (D345).
+  const env = () => ghRunEnv(o.env ?? process.env);
   const timeoutMs = o.timeoutMs ?? 30_000;
   let login: string | undefined;
   let cache: { etag?: string; items: SourceItem[] } | undefined;
 
-  const gh = (args: string[], stdin?: string) => run(args, { env, timeoutMs, ...(stdin !== undefined ? { stdin } : {}) });
+  const gh = (args: string[], stdin?: string) => run(args, { env: env(), timeoutMs, ...(stdin !== undefined ? { stdin } : {}) });
 
   const inScope = (it: SourceItem) => {
     const repos = o.repos?.()?.map((r) => r.toLowerCase());

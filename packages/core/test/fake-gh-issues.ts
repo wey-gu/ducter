@@ -26,11 +26,24 @@ export interface FakeGh {
   signedIn: boolean;
   missing: boolean;
   touch(i: FakeIssue): void;
+  /**
+   * D345: how GitHub's device flow ends (`gh auth login --web`): approve (at once), hold (until
+   * approve() or deny() is called), expired, denied, network (GitHub out of reach before a code).
+   */
+  deviceFlow: "approve" | "hold" | "expired" | "denied" | "network";
+  /** The one-time code it prints. */
+  code: string;
+  /** A held device flow: the person entered the code on GitHub (or refused it). */
+  approve(): void;
+  deny(): void;
+  /** Tokens pasted that it takes (any other is refused for its scopes). */
+  goodTokens: string[];
 }
 
 export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): FakeGh {
   const login = o.login ?? "lin-dev";
   let version = 1;
+  let held: ((how: "ok" | "denied") => void) | undefined;
   const f: FakeGh = {
     issues: seed.map((i) => ({ state: "open", assigned: true, updated: "2026-11-17T08:00:00Z", ...i })),
     comments: [],
@@ -39,6 +52,11 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
     etags: true,
     signedIn: true,
     missing: false,
+    deviceFlow: "approve",
+    code: "AB12-CD34",
+    goodTokens: [],
+    approve: () => held?.("ok"),
+    deny: () => held?.("denied"),
     touch(i) {
       i.updated = new Date().toISOString();
       version++;
@@ -46,6 +64,34 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
     run: async (args, opts) => {
       f.calls.push(args);
       if (f.missing) return { code: 127, out: "", err: "", missing: true };
+      // D272/D345: the sign-in, as gh says it without a terminal (research/87).
+      if (args[0] === "auth") {
+        if (args[1] === "status") return f.signedIn ? { code: 0, out: JSON.stringify({ hosts: { "github.com": [{ state: "success", active: true, host: "github.com", login }] } }), err: "" } : { code: 1, out: '{"hosts":{}}', err: "" };
+        if (args[1] === "setup-git") return { code: 0, out: "", err: "" };
+        if (args[1] === "login" && args.includes("--with-token")) {
+          const tok = (opts.stdin ?? "").trim();
+          if (!f.goodTokens.includes(tok)) return { code: 1, out: "", err: "error validating token: missing required scope 'read:org'" };
+          f.signedIn = true;
+          return { code: 0, out: "", err: "" };
+        }
+        if (args[1] === "login") {
+          if (f.deviceFlow === "network") return { code: 1, out: "", err: 'failed to authenticate via web browser: Post "https://github.com/login/device/code": dial tcp: lookup github.com: no such host' };
+          const said = `\n! First copy your one-time code: ${f.code}\nOpen this URL to continue in your web browser: https://github.com/login/device\n`;
+          opts.onErr?.(said);
+          let how: "ok" | "denied" | "expired" | "aborted" = f.deviceFlow === "denied" ? "denied" : f.deviceFlow === "expired" ? "expired" : "ok";
+          if (f.deviceFlow === "hold") {
+            how = await new Promise((r) => {
+              held = (h) => ((held = undefined), r(h));
+              opts.signal?.addEventListener("abort", () => ((held = undefined), r("aborted")), { once: true });
+            });
+          } else await Bun.sleep(5);
+          if (how === "aborted") return { code: 1, out: "", err: said };
+          if (how === "denied") return { code: 1, out: "", err: said + "failed to authenticate via web browser: access_denied" };
+          if (how === "expired") return { code: 1, out: "", err: said + "failed to authenticate via web browser: the device code has expired" };
+          f.signedIn = true;
+          return { code: 0, out: "", err: said + "Authentication complete.\n" };
+        }
+      }
       if (!f.signedIn) return { code: 4, out: "", err: "To get started with GitHub CLI, please run:  gh auth login" };
       const raw = (i: FakeIssue) => ({
         number: i.number,

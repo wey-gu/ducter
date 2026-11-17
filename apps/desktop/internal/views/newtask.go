@@ -701,7 +701,7 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 		if nt.newf != nil && nt.newf.cid == "" {
 			nt.newf = nil
 		}
-		if g := nt.login; g != nil && g.phase != "code" && g.phase != "starting" && g.cid == "" {
+		if g := nt.login; g != nil && g.phase != "code" && g.phase != "starting" && g.phase != "installing" && g.cid == "" {
 			nt.login = nil
 		}
 	}
@@ -750,7 +750,7 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 	a.listPanel(c, e, &nt.placeOpen, title, 360, func() {
 		switch {
 		case nt.login != nil:
-			a.loginPanel(c)
+			a.loginPanel(c, nt.login, "nt-gh")
 			return
 		case nt.newf != nil:
 			a.newFolderField(c)

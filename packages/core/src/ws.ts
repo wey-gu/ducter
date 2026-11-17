@@ -191,6 +191,8 @@ export interface NewTaskFrames {
   newFolder?(device: string | undefined, name: string): Promise<Omit<Extract<ServerFrame, { t: "project_new_result" }>, "t" | "clientId" | "device">>;
   /** D272: a GitHub sign-in step on that computer (git-login.ts); wait: the end of the one in flight. */
   gitLogin?(device: string | undefined, action: "status" | "start" | "wait" | "token" | "cancel", token?: string): Promise<import("@ducter/protocol").GitLoginState>;
+  /** D345: put gh on the home (each step through onState); ends signed_out when it is there, else why not. */
+  ghInstall?(onState: (s: import("@ducter/protocol").GitLoginState) => void): Promise<import("@ducter/protocol").GitLoginState>;
 }
 
 /** What the client frames for work over time do (core.ts wires them to waiters, untils, routines). */
@@ -1469,11 +1471,24 @@ export function createWsHandler(deps: WsDeps) {
         const head = { t: "git_login_state" as const, host: "github.com" as const, ...cid, ...(device ? { device } : {}) };
         const g = deps.newTask?.gitLogin;
         if (!g) return send(ws, { ...head, state: "failed", reason: "failed", message: "GitHub sign-in isn't available here." });
-        const action = f.action === "start" || f.action === "token" || f.action === "cancel" ? f.action : "status";
+        // D345: 待办来源's 连上 / Connect: signed in on the home, GitHub becomes a source (the same tap asked for it).
+        const forTodos = f.for === "todos" && !device;
+        const said = async (s: import("@ducter/protocol").GitLoginState) => {
+          if (forTodos && s.state === "signed_in") await deps.taskSources?.()?.add("github").catch(() => undefined);
+          send(ws, { ...head, ...s });
+        };
+        if (f.action === "install") {
+          // D345: gh isn't on the home: put it there (each step said), then sign in as start does.
+          const inst = deps.newTask?.ghInstall;
+          if (device || !inst) return send(ws, { ...head, state: "failed", reason: "unsupported", message: "Only the home can put gh on itself." });
+          const got = await inst((s) => send(ws, { ...head, ...s }));
+          if (got.state !== "signed_out") return said(got);
+        }
+        const action = f.action === "start" || f.action === "token" || f.action === "cancel" || f.action === "install" ? (f.action === "install" ? "start" : f.action) : "status";
         const first = await g(device, action, action === "token" && typeof f.token === "string" ? f.token : undefined);
-        send(ws, { ...head, ...first });
+        await (action === "status" || action === "cancel" ? send(ws, { ...head, ...first }) : said(first));
         // A sign-in waiting for its code to be entered: its end goes to the same socket.
-        if (action === "start" && first.state === "code") send(ws, { ...head, ...(await g(device, "wait")) });
+        if (action === "start" && first.state === "code") await said(await g(device, "wait"));
         return;
       }
       case "folder_browse": {

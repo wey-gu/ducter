@@ -47,6 +47,10 @@ type todosState struct {
 	pickSent  string
 	pickID    string
 	pickSeq   int
+	// D345: 连上 GitHub in flight (the shared sign-in panel, in place under
+	// GitHub's row), and the account it just connected as (said once).
+	login     *ntLogin
+	connected string
 }
 
 // todosInit takes the answers to add, set and remove, once.
@@ -133,6 +137,9 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 		case s.Name != "":
 			sub = a.L.T("todos.github.sub", s.Name)
 		}
+		if s.Kind == "github" && a.todos.connected != "" {
+			sub = a.L.T("todos.connected", a.todos.connected)
+		}
 		a.headRow(c, "src:"+s.ID, a.brandTile(c, s.Kind, s.State != "ok"), name, sub, sideMuted, func() {
 			if s.State != "ok" {
 				return
@@ -149,6 +156,13 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 		})
 		if s.State != "ok" {
 			a.todoProblem(c, s)
+			if s.Kind == "github" && a.todos.login != nil {
+				a.todoLoginBlock(c, "src-login:"+s.ID)
+			}
+		} else if s.Kind == "github" && s.CheckedAt == "" && s.Open == 0 {
+			a.textBlock(c, "src-reading:"+s.ID, func() {
+				ui.Text(c, a.L.T("todos.pick.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+			})
 		}
 		a.textBlock(c, "src-when:"+s.ID, func() { a.todoChoices(c, s) })
 		if a.todos.removing == s.ID {
@@ -185,10 +199,10 @@ func (a *App) todoProblem(c *ui.Context, s protocol.SourceView) {
 		if s.Error != "" {
 			tx.Tooltip(s.Error)
 		}
-		if s.State == "no_tool" || s.State == "signed_out" {
+		if (s.State == "no_tool" || s.State == "signed_out") && a.todos.login == nil {
 			ui.Row(c).Children(func() {
-				if a.quietButton(c, "src-signin:"+s.ID, a.L.T("todos.signin"), "", true, 1) {
-					a.OpenDevices()
+				if a.buttonFor(c, a.L.T("todos.signin"), "GitHub", btnSecondary, t.ControlSM, t.Surface) {
+					a.startTodoLogin()
 				}
 			})
 		}
@@ -281,10 +295,35 @@ func (a *App) todoAddGroup(c *ui.Context, v *protocol.SourcesView) {
 		}
 	}
 	a.group(c, "todos-add", a.L.T("todos.add.title"), "", func() {
-		if gh := v.Found.GitHub; gh != nil && gh.State == "ok" && !hasGitHub {
-			computer := firstNonEmpty(gh.Computer, a.todoHome())
-			a.tileRow(c, "add-github", a.brandTile(c, "github", false), "GitHub", a.L.T("todos.add.github", computer, gh.Login),
-				addButton("github", "GitHub", func() { a.send(protocol.SourceAddReq{T: "source_add", Kind: "github"}) }))
+		// D345: GitHub is always offered while it isn't added; 连上 signs the
+		// home in (putting gh there first when it isn't) in place, under it.
+		if !hasGitHub {
+			gh := v.Found.GitHub
+			signedIn := gh != nil && gh.State == "ok"
+			sub := a.L.T("todos.github.row")
+			if signedIn {
+				sub = a.L.T("todos.add.github", firstNonEmpty(gh.Computer, a.todoHome()), gh.Login)
+			}
+			var control func()
+			if s.login == nil {
+				control = func() {
+					if s.adding["github"] {
+						ui.Spinner(c).Size(14, 14)
+					}
+					if a.buttonFor(c, a.L.T("todos.connect"), "GitHub", btnSecondary, t.ControlSM, t.Surface) && !s.adding["github"] {
+						if signedIn {
+							s.adding["github"], s.addErr = true, ""
+							a.send(protocol.SourceAddReq{T: "source_add", Kind: "github"})
+						} else {
+							a.startTodoLogin()
+						}
+					}
+				}
+			}
+			a.tileRow(c, "add-github", a.brandTile(c, "github", false), "GitHub", sub, control)
+			if s.login != nil {
+				a.todoLoginBlock(c, "add-github-login")
+			}
 		}
 		for _, vault := range v.Found.Vaults {
 			if paths[strings.TrimRight(vault.Path, "/")] {
@@ -323,6 +362,18 @@ func (a *App) todoAddGroup(c *ui.Context, v *protocol.SourcesView) {
 			})
 		}
 		a.tileRow(c, "add-jira", a.brandTile(c, "jira", true), "Jira", a.L.T("todos.jira.sub"), func() { a.quietTag(c, a.L.T("todos.soon")) })
+	})
+}
+
+// todoLoginBlock is 连上 GitHub's sign-in, in place: the same panel as New
+// task's, on a sunken card under the row it belongs to (D345).
+func (a *App) todoLoginBlock(c *ui.Context, key string) {
+	t := a.T
+	g := a.todos.login
+	a.textBlock(c, key, func() {
+		ui.Column(c.Key(key+"-card")).Radius(t.RadiusMD).Background(t.Bg).Border(1, t.LineSoft).Padding(t.S1, 0).Children(func() {
+			a.loginPanel(c, g, "todo-gh")
+		})
 	})
 }
 

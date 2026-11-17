@@ -8,7 +8,7 @@ close) and Obsidian on the home (read, bind, tick); Jira and a company's own tra
 
 | Who | Before | After | How it starts |
 |---|---|---|---|
-| The heavy developer | Issues assigned across repos, each copied by hand into an agent session, the PR link pasted back into the issue by hand | "接 #12" in the conversation; the task carries the issue; when it is done the comment with the PR link is one Go away, then goes by itself | Their gh is already signed in on the home (D272): Settings › 待办来源 offers GitHub with one 加上; or they just ask "GitHub 上有什么分给我的？" and the partner reads it (asking is the consent to read) |
+| The heavy developer | Issues assigned across repos, each copied by hand into an agent session, the PR link pasted back into the issue by hand | "接 #12" in the conversation; the task carries the issue; when it is done the comment with the PR link is one Go away, then goes by itself | Settings › 待办来源 always offers GitHub with one **连上** (D345): the home's gh signs in in place (put there first in one tap when it isn't, D272's same panel), and GitHub is a source; or they just ask "GitHub 上有什么分给我的？" and the partner reads it (asking is the consent to read) |
 | The consumer | A vault of to-dos in Obsidian that never shrinks | Picks "订高铁票" in New task; it is done; the line is ticked in Obsidian by itself, with the date the Tasks plugin would have written | Settings › 待办来源 lists the vaults Obsidian itself knows on this computer, each with 加上 |
 | The fresh user | Has never heard of an issue | Meets nothing new: the pane says plainly what it is ("你在 GitHub、Obsidian 里的待办…"), and nothing happens until something is added | The partner offers nothing until a source is added or they ask |
 
@@ -78,7 +78,7 @@ place (the same inode: Obsidian and the syncs keep following the file):
 - **Settings › 待办来源 / To-do sources** (after 账号 / Accounts): the lede; one card per source (its mark,
   its name, whose or which folder, counts **{n} 件没做完** **{n} 件在做** as separate facts, **新的来了** and
   **做完以后** as segments, the standing line, a problem row, a quiet **移除** that asks in place:
-  **移除 {name}？已经接下的事还在。**); **还能加上**: GitHub when the home's gh is signed in, each vault Obsidian
+  **移除 {name}？已经接下的事还在。**); **还能加上**: GitHub always while it isn't added (D345: **连上** signs the home in, in place, putting gh there first when it isn't; signed in, it is a source with its defaults), each vault Obsidian
   lists on the home, **加上一个 Obsidian 库…** by folder, and **Jira** with **即将推出 / Coming soon**. Its clay
   art is owed (the page with lines stands in, `todo.md`).
 - **The chip** (opened task's meta line, On hand cards, New task's pick, the write card): the app's own

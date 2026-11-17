@@ -845,6 +845,7 @@ class AppState {
     this.mem = f.mem;
     this.bridge = f.bridge;
     if (f.bridge?.state !== "connected") this.bridgeConfirm = false;
+    if (f.bridge?.state !== "elsewhere" && !(f.bridge?.state === "connected" && f.bridge.others?.length)) this.bridgeHere = false;
     this.brainNow = f.brainNow;
     if (f.settings.name && this.showsDefault()) this.S.personaName = f.settings.name; // D309: the default's name
     if (f.forgot) {
@@ -1867,6 +1868,18 @@ class AppState {
   connectBridge() {
     if (this.bridge) this.bridge = { ...this.bridge, state: "connecting" };
     this.send({ t: "bridge_connect" });
+    this.changed();
+  }
+  /** D324: 改由这台收 / 只留这台 asks in place first (bridgeHere), then this home alone receives. */
+  bridgeHere = false;
+  onlyHereBridge() {
+    if (!this.bridgeHere) {
+      this.bridgeHere = true;
+      return this.changed();
+    }
+    this.bridgeHere = false;
+    if (this.bridge) this.bridge = { ...this.bridge, state: "connecting" };
+    this.send({ t: "bridge_only_here" });
     this.changed();
   }
   /** D225: 装上 / 更新: the home puts in (or updates) its own Nowledge Mem command line. */

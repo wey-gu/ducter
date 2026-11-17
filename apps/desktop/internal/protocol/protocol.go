@@ -1445,6 +1445,19 @@ type BridgeView struct {
 	Upkeep *BridgeUpkeep `json:"upkeep,omitempty"`
 	Done   string        `json:"done,omitempty"`
 	Kept   bool          `json:"kept,omitempty"`
+	// D324: Others are other homes' active connections for the same
+	// identity: on "elsewhere" the home that answers now, on "connected" a
+	// second reader of the same mailbox.
+	Others []BridgeOther `json:"others,omitempty"`
+}
+
+// BridgeOther is another home's connection (D324): Label as Mem lists it,
+// Home the computer it names ("" for a label from before D324), Stuck when
+// Mem wouldn't end it from here (it is ended on that computer).
+type BridgeOther struct {
+	Label string `json:"label"`
+	Home  string `json:"home,omitempty"`
+	Stuck bool   `json:"stuck,omitempty"`
 }
 
 // BridgeUpkeep is D229's quiet upkeep of the home's Mem: Kind "move" or
@@ -1463,6 +1476,8 @@ type BridgeSpace struct {
 
 // BridgeAction is 连上 / Connect or 断开 / Disconnect (D205): T is
 // "bridge_connect" or "bridge_disconnect"; fresh settings frames answer.
+// D324: "bridge_only_here" is 改由这台收 / 只留这台 (connect here if needed,
+// then end the other homes' connections).
 type BridgeAction struct {
 	T string `json:"t"`
 }

@@ -180,6 +180,8 @@ export async function main(mods: BootModules = {}) {
     core.settings.setMemState("connected");
     keepMemIdentity(core, true);
   });
+  // D324: every 30 minutes, whether another home ended this home's Bridge connection (read-only).
+  setInterval(() => void core.bridgeLink.recheck().catch(() => {}), 30 * 60_000).unref?.();
   const identityOrTimeout = Promise.race([identity, Bun.sleep(IDENTITY_WAIT_MS).then(() => "timeout")]);
   await Promise.race([identity, Bun.sleep(BANNER_WAIT_MS)]); // usually lost: the banner says "loading"
 

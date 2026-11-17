@@ -86,14 +86,14 @@ describe("the link over a fake nmem", () => {
     const r = rig();
     await r.link.view();
     await r.link.connect();
-    expect(writes(r.calls())).toEqual([["--json", "bridge", "connections", "connect", "--space-id", "fake-space", "--agent-id", "ducter", "--context", "ducter"]]);
+    expect(writes(r.calls())).toEqual([["--json", "bridge", "connections", "connect", "--space-id", "fake-space", "--agent-id", "ducter", "--context", "ducter-on-hel"]]);
     const after = r.calls().slice(r.calls().findIndex((c) => c.includes("connect")) + 1);
-    expect(after[0]).toEqual(["--json", "--agent-context", "ducter", "bridge", "setup"]);
-    expect(r.link.context()).toBe("ducter");
+    expect(after[0]).toEqual(["--json", "--agent-context", "ducter-on-hel", "bridge", "setup"]);
+    expect(r.link.context()).toBe("ducter-on-hel");
     expect(await r.link.view()).toEqual({ state: "connected", identity: "ducter", space: { id: "fake-space", label: "Only me" }, home: "hel", version: "0.10.118", where: "cloud" });
     expect(r.changes()).toBeGreaterThanOrEqual(2); // connecting…, then connected
     const kept = JSON.parse(readFileSync(join(r.data, BRIDGE_CONNECTION_FILE), "utf8"));
-    expect(kept).toMatchObject({ context: "ducter", agentId: "ducter", spaceId: "fake-space", confirmed: true });
+    expect(kept).toMatchObject({ context: "ducter-on-hel", agentId: "ducter", spaceId: "fake-space", confirmed: true });
 
     await r.link.disconnect();
     expect(writes(r.calls()).at(-1)).toEqual(["--json", "bridge", "connections", "revoke", kept.connectionId]);
@@ -131,7 +131,7 @@ describe("the link over a fake nmem", () => {
       await link.connect();
       return JSON.parse(readFileSync(join(data, BRIDGE_CONNECTION_FILE), "utf8"));
     };
-    expect(await connected("a")).toMatchObject({ context: "ducter", confirmed: true });
+    expect(await connected("a")).toMatchObject({ context: "ducter-on-hel", confirmed: true });
     expect(seen.some((a) => a[0] === "agents" && a.includes("show"))).toBe(true);
     // A context whose inbox doesn't answer stays unconfirmed.
     inboxWorks = false;
@@ -154,7 +154,7 @@ describe("the link over a fake nmem", () => {
       await r.link.connect();
       expect(await r.link.view()).toEqual({ state: "refused", reason, identity: "ducter", space: { id: "fake-space", label: "Only me" } });
       // One connect, with the persona's identity and the personal place: no other identity, place or key.
-      expect(writes(r.calls())).toEqual([["--json", "bridge", "connections", "connect", "--space-id", "fake-space", "--agent-id", "ducter", "--context", "ducter"]]);
+      expect(writes(r.calls())).toEqual([["--json", "bridge", "connections", "connect", "--space-id", "fake-space", "--agent-id", "ducter", "--context", "ducter-on-hel"]]);
       expect(r.calls().some((c) => c.includes("--enable") || c.includes("select-cloud") || c.includes("keys") || c.includes("enroll"))).toBe(false);
       expect(r.link.context()).toBeUndefined();
     });
@@ -507,5 +507,6 @@ test("over the socket: 接上 pushes connecting…, then connected, in the setti
   ws.send(JSON.stringify({ t: "bridge_connect" }));
   await until((f) => f.t === "settings" && f.bridge?.state === "connecting");
   await until((f) => f.t === "settings" && f.bridge?.state === "connected");
-  expect(core.bridgeLink.context()).toBe("ducter");
+  // D324: named for this home and its key (D293).
+  expect(core.bridgeLink.context()).toMatch(/^ducter-on-[a-z0-9-]+-[0-9a-f]{6}$/);
 });

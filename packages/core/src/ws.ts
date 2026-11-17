@@ -921,12 +921,14 @@ export function createWsHandler(deps: WsDeps) {
         return send(ws, { t: "anywhere_setup_result", ok: false, reason: "failed", detail: "op" });
       }
       case "bridge_connect":
+      case "bridge_only_here":
       case "bridge_disconnect": {
         // D205: the user's tap on 接上 / 断开 in Settings › 伙伴 is their Go for this one call.
+        // D324: 改由这台收 / 只留这台 is the Go for connecting here and ending the other homes' connections.
         if (!deps.settings || !deps.bridgeLink) throw new Error("settings are not available");
         ws.data.settings = true;
         // Each step pushes a fresh settings frame (connecting…, then connected or Mem's refusal).
-        await (f.t === "bridge_connect" ? deps.bridgeLink.connect() : deps.bridgeLink.disconnect());
+        await (f.t === "bridge_connect" ? deps.bridgeLink.connect() : f.t === "bridge_only_here" ? deps.bridgeLink.onlyHere() : deps.bridgeLink.disconnect());
         return;
       }
       case "bridge_mem_install":

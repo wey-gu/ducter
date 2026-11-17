@@ -461,6 +461,27 @@ const CoinsTile = ({ faded }: { faded?: boolean }) => (
 /** The place it receives in, in the person's words. */
 const spaceWords = (b: BridgeView) => (!b.space?.label || b.space.label === "Only me" ? t("peers.space.own") : t("peers.space.named", b.space.label));
 
+/** D324: the other home(s) that also answer, in the person's words: its name, or another computer. */
+export const otherWhere = (b: BridgeView) => {
+  const o = b.others ?? [];
+  return o.length > 1 ? t("peers.where.many", o.length) : (o[0]?.home ?? t("peers.where.other"));
+};
+
+/**
+ * D324: two homes read the partner's mailbox (connected here and elsewhere): one calm row and one
+ * action, 只留这台, that asks in place; a connection Mem won't end from here says where to end it.
+ */
+function PeersTwice({ b, name }: { b: BridgeView; name: string }) {
+  const where = otherWhere(b);
+  const stuck = (b.others ?? []).some((o) => o.stuck);
+  if (A.bridgeHere) return <GConfirm ask={t("peers.twice.ask", where, name)} keep={t("bridge.undo.keep")} go={t("peers.twice.go")} about={b.identity} onKeep={() => ((A.bridgeHere = false), A.changed())} onGo={() => A.onlyHereBridge()} />;
+  return (
+    <GRow title={t("peers.twice.title", name, where)} line={stuck ? t("peers.twice.stuck", where) : t("peers.twice.line")}>
+      {!stuck && <Btn kind="secondary" size="sm" label={t("peers.twice.go")} about={b.identity} onClick={() => A.onlyHereBridge()} />}
+    </GRow>
+  );
+}
+
 /** The link's first row in its state (D205; Nowledge Bridge underneath, never named). */
 function PeersHead({ b, name }: { b: BridgeView; name: string }) {
   const toMemory = <Btn kind="secondary" size="sm" label={t("peers.mem.go")} onClick={() => A.openSettings("memory")} />;
@@ -476,6 +497,13 @@ function PeersHead({ b, name }: { b: BridgeView; name: string }) {
   if (b.state === "updating") return <GHead tile={<CoinsTile faded />} name={title} line={t("bridge.mem.updating", home)} />;
   if (b.state === "local_mem") return <GHead tile={<CoinsTile faded />} name={title} line={t("bridge.mem.local", home)} />;
   if (b.state === "connected") return <GHead tile={<CoinsTile />} name={t("peers.head.on", name)} line={b.pinned ? t("bridge.pinned") : t("mem.app.on")} tone="done" />;
+  // D324: another home answers this partner's mailbox: where, and the one way to move it here.
+  if (b.state === "elsewhere")
+    return (
+      <GHead tile={<CoinsTile faded />} name={title} line={t("peers.elsewhere", name, otherWhere(b))}>
+        {!A.bridgeHere && <Btn kind="secondary" size="sm" label={t("peers.elsewhere.go")} about={b.identity} onClick={() => A.onlyHereBridge()} />}
+      </GHead>
+    );
   if (b.state === "ready")
     return (
       <GHead tile={<CoinsTile faded />} name={title} line={t("peers.head.ready")}>
@@ -589,6 +617,8 @@ export function PeersPage() {
       <p class="set-lede">{t("settings.lede.peers", name)}</p>
       <Group class="mem-g" label={t("settings.tab.peers")}>
         {b && <PeersHead b={b} name={name} />}
+        {b?.state === "elsewhere" && A.bridgeHere && <GConfirm ask={t("peers.elsewhere.ask", otherWhere(b), name)} keep={t("bridge.undo.keep")} go={t("peers.elsewhere.go")} about={b.identity} onKeep={() => ((A.bridgeHere = false), A.changed())} onGo={() => A.onlyHereBridge()} />}
+        {connected && b && !b.pinned && !!b.others?.length && <PeersTwice b={b} name={name} />}
         {connected && b && <GRow title={t("peers.as.title")} line={t("peers.as.line", b.identity)} />}
         {connected && b && <GRow title={t("peers.space.title")} line={spaceWords(b)} />}
         {reachShown && (

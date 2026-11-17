@@ -24,8 +24,18 @@
 // user pastes (`nmem connect --skip-tools <link>`, never logged or kept). Then the same row goes on
 // to 连上. Mem's agent-facing detail ("stop, don't mint another key") is never shown to the user:
 // every registered code is a plain line; anything else is clipped as "what Mem said".
+//
+// D324: one partner, one mailbox, one home answering it. The identity stays the partner's (D141,
+// D312's `ducter-<id>`); the connection is the home's own, named for it (`<identity>-on-<home>-<key
+// tag>`, the tag from the home's D293 key), so Mem's own list says which computer holds each one. A
+// home that finds another home's active connection for the same identity never connects beside it on
+// its own: the row says where the partner answers now (elsewhere) and offers one action, 改由这台收 /
+// Receive here instead, which connects here and then revokes the other (the tap is the Go for both).
+// A home connected beside another (two from before D324) says so (others) with 只留这台 / Keep only
+// this one. A revoke Mem won't do from here (another login's connection) is said, with where to do it.
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { createHash } from "node:crypto";
 import type { BridgeRefusal, BridgeView } from "@ducter/protocol";
 import type { BridgeLinkApi } from "@ducter/protocol/src/internal.ts";
 import { connectLinkOk, copyOf, copyPython, externallyManaged, extraBins, findNmem, installPlan, joinPath, MEM_INSTALL_MS, PY_PROBE, realSys, toolOf, updatePlan, type MemCopy, type MemFacts, type MemPlan, type MemStep, type MemSys } from "./mem-cli.ts";
@@ -155,12 +165,57 @@ export function personalSpace(setup: any, local = false): { id: string; label: s
 
 
 /** D295: `nmem status`.backend in the person's words: the cloud, this computer, or their own server. */
+/** D324: a computer's name as a connection label part: lowercase letters, digits and hyphens, at most 24. */
+export function homeSlug(home: string): string {
+  const s = home.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24).replace(/-+$/, "");
+  return s || "home";
+}
+
+/** D324: six hex characters of the home's key fingerprint (D293). */
+export function keyTag(fp: string | undefined): string | undefined {
+  if (!fp) return undefined;
+  const raw = Buffer.from(fp, "base64url");
+  return (raw.length >= 3 ? raw.subarray(0, 3) : createHash("sha256").update(fp).digest().subarray(0, 3)).toString("hex");
+}
+
+/**
+ * D324: the home's own name for its connection (Mem's `--context`, which Mem shows as the
+ * connection's label): `<identity>-on-<home>-<key tag>`, then `-2`... after a revoked one (Mem never
+ * reopens a revoked connection under its old name).
+ */
+export function homeLabel(agent: string, home: string, fp?: string, gen = 1): string {
+  const tag = keyTag(fp);
+  return [agent.slice(0, 80), "on", homeSlug(home), ...(tag ? [tag] : []), ...(gen > 1 ? [String(gen)] : [])].join("-");
+}
+
+/** D324: which home a connection's label names (its slug and key tag); undefined: a label from before D324 (or not Ducter's). */
+export function labelHome(label: string, agent: string): { home: string; tag?: string; gen: number } | undefined {
+  const head = `${agent}-on-`;
+  if (!label.startsWith(head)) return undefined;
+  const parts = label.slice(head.length).split("-").filter(Boolean);
+  let gen = 1;
+  if (parts.length > 1 && /^[2-9]$/.test(parts.at(-1)!)) gen = Number(parts.pop());
+  const tag = parts.length > 1 && /^[0-9a-f]{6}$/.test(parts.at(-1)!) ? parts.pop() : undefined;
+  return parts.length ? { home: parts.join("-"), ...(tag ? { tag } : {}), gen } : undefined;
+}
+
+/** One connection in Mem's list for the identity, as Ducter reads it (D324). */
+export interface MemConnection {
+  connectionId: string;
+  label: string;
+  active: boolean;
+}
+
 export const whereOf = (backend: string): "cloud" | "local" | "server" => (backend === "cloud" ? "cloud" : backend === "local" ? "local" : "server");
 
 export interface BridgeLink extends BridgeLinkApi {
   /** The row for Settings › 伙伴; undefined when memory is off (nothing shows). */
   view(): Promise<BridgeView | undefined>;
-  connect(): Promise<void>;
+  connect(how?: { here?: boolean }): Promise<void>;
+  /** D324: this home alone answers the partner's mailbox: connect here if needed, then end the other homes' connections. */
+  onlyHere(): Promise<void>;
+  /** D324: reads Mem's list again (read-only) and drops this home's connection if another home ended it. */
+  recheck(): Promise<void>;
   disconnect(): Promise<void>;
   /** D225: puts in (or updates) the home's `nmem` with Mem's official route, on the user's tap. */
   installMem(): Promise<void>;
@@ -208,6 +263,8 @@ export function createBridgeLink(opts: {
   memoryOn?: () => boolean;
   /** The computer the row is about: the home. */
   home: () => string;
+  /** D324: the home's key fingerprint (D293), carried in its connection's label. */
+  homeFp?: () => string | undefined;
   run?: NmemCall;
   exec?: MemExec;
   sys?: MemSys;
@@ -250,11 +307,37 @@ export function createBridgeLink(opts: {
   const drop = () => rmSync(path, { force: true });
 
   /** DUCTER_BRIDGE_CONTEXT names it; else the identity, as Mem's own default. */
-  const contextFor = (agent: string) => env.DUCTER_BRIDGE_CONTEXT?.trim() || agent;
+  // D324: else the home's own label for the identity (a later generation past a revoked one).
+  const contextFor = (agent: string, conns?: MemConnection[]) => {
+    const forced = env.DUCTER_BRIDGE_CONTEXT?.trim();
+    if (forced) return forced;
+    const fp = opts.homeFp?.();
+    for (let gen = 1; gen < 9; gen++) {
+      const l = homeLabel(agent, opts.home(), fp, gen);
+      if (!conns?.some((c) => c.label === l && !c.active)) return l;
+    }
+    return homeLabel(agent, opts.home(), fp, 9);
+  };
+  const stuck = new Set<string>(); // D324: other homes' connections Mem wouldn't revoke from here
+  /** D324: a connection this home made (its record's, or its own label with its own key tag). */
+  const ownConn = (c: MemConnection, r: BridgeConnectionRecord | undefined, agent: string) => {
+    if (r && c.connectionId === r.connectionId) return true;
+    const h = labelHome(c.label, agent);
+    const tag = keyTag(opts.homeFp?.());
+    return !!h && !!tag && h.tag === tag && h.home === homeSlug(opts.home());
+  };
+  /** D324: other homes' active connections for the identity (one a revoke from here didn't end is stuck). */
+  const othersIn = (conns: MemConnection[] | undefined, r: BridgeConnectionRecord | undefined, agent: string) =>
+    (conns ?? [])
+      .filter((c) => c.active && !ownConn(c, r, agent))
+      .map((c) => {
+        const h = labelHome(c.label, agent);
+        return { label: c.label, connectionId: c.connectionId, ...(h ? { home: h.home } : {}), ...(stuck.has(c.connectionId) ? { stuck: true as const } : {}) };
+      });
   const pinned = () => env.DUCTER_BRIDGE === "1" && !!env.DUCTER_BRIDGE_CONTEXT?.trim();
   const agentNow = () => opts.identity() ?? opts.fallbackIdentity?.() ?? "ducter";
 
-  type Probe = { at: number; version?: string; supported: boolean; signedIn: boolean; backend?: string; space?: { id: string; label: string }; updateAvailable?: boolean; latest?: string };
+  type Probe = { at: number; version?: string; supported: boolean; signedIn: boolean; backend?: string; space?: { id: string; label: string }; updateAvailable?: boolean; latest?: string; conns?: MemConnection[] };
   let probe: Probe | undefined;
   let probeAt = 0; // when "no nmem here" was last seen (probe stays undefined)
   let probing: Promise<Probe | undefined> | undefined;
@@ -293,25 +376,37 @@ export function createBridgeLink(opts: {
         const s = await run(["bridge", "setup"]);
         if (s && s.code === 0) space = personalSpace(jsonIn(s.out)[0], backend === "local");
       }
-      return (probe = { at: now(), version: shortVersion, supported, signedIn, ...(backend ? { backend } : {}), ...(space ? { space } : {}), ...(updateAvailable ? { updateAvailable } : {}), ...(latest ? { latest } : {}) });
+      // D324: every connection Mem holds for the identity in that place (read-only): which homes answer it.
+      const r = read();
+      const where = r ? { space: r.spaceId, agent: r.agentId } : space ? { space: space.id, agent: agentNow() } : undefined;
+      const conns = signedIn && where ? await listConns(where.space, where.agent) : undefined;
+      return (probe = { at: now(), version: shortVersion, supported, signedIn, ...(backend ? { backend } : {}), ...(space ? { space } : {}), ...(updateAvailable ? { updateAvailable } : {}), ...(latest ? { latest } : {}), ...(conns ? { conns } : {}) });
     })().finally(() => (probing = undefined));
     return probing;
   }
 
-  // A connection revoked somewhere else (Mem's own list) is dropped here, once per start.
-  let verified = false;
-  async function verify(r: BridgeConnectionRecord) {
-    if (verified) return;
-    verified = true;
-    const l = await run(["bridge", "connections", "list", "--space-id", r.spaceId, "--agent-id", r.agentId]);
-    if (!l || l.code !== 0) return; // can't tell: keep it
+  /** Mem's whole list for the identity in one place; undefined when it can't be told (a failure, a partial page). */
+  async function listConns(spaceId: string, agentId: string): Promise<MemConnection[] | undefined> {
+    const l = await run(["bridge", "connections", "list", "--space-id", spaceId, "--agent-id", agentId]);
+    if (!l || l.code !== 0) return undefined;
     const j = jsonIn(l.out)[0];
-    if (!Array.isArray(j?.connections) || j.next_connection_id) return; // a partial page proves nothing
-    const mine = j.connections.find((c: any) => c?.connection_id === r.connectionId);
-    if (!mine || mine.state === "revoked") {
-      drop();
-      changed();
-    }
+    if (!Array.isArray(j?.connections) || j.next_connection_id) return undefined; // a partial page proves nothing
+    return j.connections
+      .filter((c: any) => typeof c?.connection_id === "string" && (c.agent_id === undefined || c.agent_id === agentId))
+      .map((c: any) => ({ connectionId: c.connection_id, label: typeof c.client_label === "string" ? c.client_label : "", active: c.state === "active" }));
+  }
+
+  // A connection revoked somewhere else (Mem's own list) is dropped here. D324: the list is read with
+  // every probe, so a home whose connection another home ended notices at its next look.
+  function verify(r: BridgeConnectionRecord, conns: MemConnection[] | undefined): boolean {
+    if (!conns) return true; // can't tell: keep it
+    const mine = conns.find((c) => c.connectionId === r.connectionId);
+    if (mine?.active) return true;
+    drop();
+    probe = undefined; // the next look reads Mem's list again: which home answers now
+    probeAt = 0;
+    changed();
+    return false;
   }
 
   type Busy = "connecting" | "disconnecting" | "installing" | "updating" | "signing_in";
@@ -380,6 +475,19 @@ export function createBridgeLink(opts: {
 
   const memReady = () => readyFns.forEach((fn) => fn());
 
+  const shown = (o: { label: string; home?: string; stuck?: true }) => ({ label: o.label, ...(o.home ? { home: o.home } : {}), ...(o.stuck ? { stuck: true as const } : {}) });
+  /** D324: end other homes' connections for the identity (on the person's tap); one Mem won't end from here stays, marked stuck. */
+  async function revokeOthers(r: BridgeConnectionRecord) {
+    const conns = await listConns(r.spaceId, r.agentId);
+    for (const o of othersIn(conns, r, r.agentId)) {
+      const v = await run(["bridge", "connections", "revoke", o.connectionId]);
+      const j = v && v.code === 0 ? jsonIn(v.out)[0] : undefined;
+      const gone = (j?.connection?.connection_id === o.connectionId && j?.connection?.state === "revoked") || (!!v && errorCodeIn(v.out, v.err) === "cloud_bridge_setup_connection_revoked");
+      if (gone) stuck.delete(o.connectionId);
+      else stuck.add(o.connectionId);
+    }
+  }
+
   const view = async (): Promise<BridgeView | undefined> => {
     if (env.DUCTER_BRIDGE === "0") return undefined;
     if (opts.memoryOn && !opts.memoryOn()) return undefined;
@@ -404,10 +512,11 @@ export function createBridgeLink(opts: {
       const u = await upkeepFor(p);
       return u ? { ...said(p), upkeep: { kind: u.kind, ...(memFailed ? { detail: memFailed, ...(memKept ? { kept: true as const } : {}) } : {}) } } : said(p);
     };
+    if (r && p?.supported && !verify(r, p.conns)) return view(); // revoked elsewhere: the row as it is now
     if (r && p?.supported) {
-      void verify(r).catch(() => {});
       if (!r.confirmed) return { state: "unconfirmed", ...base, ...(undoFailed ? { detail: undoFailed } : {}) };
-      return { state: "connected", ...(await extras()), ...base, ...(undoFailed ? { detail: undoFailed } : {}) };
+      const others = othersIn(p.conns, r, r.agentId);
+      return { state: "connected", ...(await extras()), ...base, ...(others.length ? { others: others.map(shown) } : {}), ...(undoFailed ? { detail: undoFailed } : {}) };
     }
     if (!p) {
       const plan = await freshPlan();
@@ -423,6 +532,9 @@ export function createBridgeLink(opts: {
     if (p.backend === "local" && !p.space) return { state: "local_mem", identity: agent, home, ...(await extras()) };
     if (outcome) return { ...outcome, ...base };
     if (!p.space) return { state: "no_space", identity: agent, ...(await extras()) };
+    // D324: another home answers this partner's mailbox now: say where, never connect beside it.
+    const others = othersIn(p.conns, undefined, agent);
+    if (others.length) return { state: "elsewhere", ...(await extras()), ...base, others: others.map(shown) };
     return { state: "ready", ...(await extras()), ...base };
   };
 
@@ -440,7 +552,7 @@ export function createBridgeLink(opts: {
       return () => readyFns.delete(fn);
     },
     view,
-    async connect() {
+    async connect(how) {
       const agent = agentNow();
       if (busy || pinned() || !ID.test(agent) || (opts.memoryOn && !opts.memoryOn())) return;
       busy = "connecting";
@@ -450,7 +562,9 @@ export function createBridgeLink(opts: {
       try {
         const p = await look(true);
         if (!p?.supported || !p.signedIn || !p.space) return; // the row says why (install, update, sign in, no_space)
-        const ctx = contextFor(agent);
+        // D324: another home answers it: only 改由这台收 (here) connects beside it, and then ends that one.
+        if (!how?.here && othersIn(p.conns, undefined, agent).length) return;
+        const ctx = contextFor(agent, p.conns);
         const space = p.space;
         // The one write, on the user's tap: this identity, this exact place, this context.
         const c = await run(["bridge", "connections", "connect", "--space-id", space.id, "--agent-id", agent, "--context", ctx]);
@@ -492,7 +606,30 @@ export function createBridgeLink(opts: {
         }
         write({ context: ctx, agentId: agent, spaceId: space.id, spaceLabel: space.label, connectionId: conn.connection_id, ...(typeof conn.identity_birth === "string" ? { identityBirth: conn.identity_birth } : {}), confirmed, at: new Date(now()).toISOString() });
         if (!confirmed) undoFailed = s ? detailIn(s.out, s.err) : "nmem didn't start";
-        verified = true;
+        else if (how?.here) await revokeOthers(read()!);
+        await look(true);
+      } finally {
+        busy = undefined;
+        changed();
+      }
+    },
+    async recheck() {
+      // D324: a connection another home ended (改由这台收 there) stops this home's checks at the next recheck.
+      const r = read();
+      if (!r || busy || pinned()) return;
+      const conns = await listConns(r.spaceId, r.agentId);
+      verify(r, conns);
+    },
+    async onlyHere() {
+      // D324: 改由这台收 / 只留这台: connected here first (never a moment with nobody answering), then the others end.
+      const r = read();
+      if (!r?.confirmed) return this.connect({ here: true });
+      if (busy || pinned()) return;
+      busy = "connecting";
+      changed();
+      try {
+        await revokeOthers(r);
+        await look(true);
       } finally {
         busy = undefined;
         changed();
@@ -511,6 +648,7 @@ export function createBridgeLink(opts: {
         if (gone) {
           drop();
           outcome = undefined;
+          await look(true); // D324: Mem's list as it is now, so this home's own ended one isn't read as another's
         } else {
           const code = v ? errorCodeIn(v.out, v.err) : undefined;
           undoFailed = code && REFUSALS[code] === "unavailable" ? "Nowledge Mem can't take it right now" : v ? detailIn(v.out, v.err) : "nmem didn't start";

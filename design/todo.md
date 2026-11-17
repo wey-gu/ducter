@@ -1238,9 +1238,20 @@ Codex first, once OAR is near 1.0. See `research/17`.
       a first send; native-session Agents all "Bridge agent". Trigger: the author's go.
 - [x] Read Mem #10278's `sender`, `in_reply_to` and `mailbox_available`, and retry Mem's "can't right now"
       briefly (D294; over the fake's `presentation` shape).
-- [ ] Rerun `bridge:live -- --connected --real` and make the live S2 check pass (5/5); then drop D249 (5)'s
-      maybe-answered rule. Trigger: an nmem after 0.10.119 (the first to ask for #10278's representation), with
-      hel's Ducter stopped or 断开 for the trial (D258).
+- [ ] Rerun `bridge:live -- --real` (D324: as the trial's own identity) and make the live S2 check pass (5/5);
+      then drop D249 (5)'s maybe-answered rule. Check on that first run that Mem connects a freshly enrolled
+      identity at once, that `agents delete` retires its mailbox, and that `--cleanup` finds nothing after.
+      Trigger: an nmem after 0.10.119 (the first to ask for #10278's representation).
+- [ ] D324 on the author's homes: end the Mac's leftover `ducter` connection (the 2026-11-13 trial's, made by the
+      Mac's own nmem login) so hel alone reads the mailbox: hel's Settings › 连上的 AI agent › 只留这台, or on the
+      Mac `nmem bridge connections revoke <the id that isn't hel's>` and `nmem agents context clear --name ducter`.
+      Trigger: hel runs a Ducter with D324; the author's Go.
+- [ ] D324: show a home's display name (not its slug) for another home's connection, once the homes' names are
+      known across homes or Mem carries a device label (research/66 §9.3). Trigger: Mem's connection label field.
+- [ ] D324: two homes that each want their own address (a work server and a family Mac) are two partners (D312);
+      offer that from the elsewhere row once Bridge per partner exists. Trigger: D312's "Bridge per partner".
+- [ ] Post the drafts in research/66 §9.3 (a device label on connections, cross-login revoke, `outcome_unknown` as a
+      contract, `agents delete` and the mailbox). Trigger: the author's go.
 - [ ] Post the five drafts in research/66 §8.4 (B17 release, local Bridge version, telling connections apart,
       transient codes, native senders' names). Trigger: the author's go.
 - [ ] Local Bridge (Mem app or Vault): the live check on a Mem in local mode. Trigger: Mem names the version with
@@ -1714,3 +1725,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
       reads as can't connect"** failed once in a full local run while e2e and other suites ran
       (19 ms, not a timeout); it passed 14/14 alone three times and in three loaded reruns of
       core + web. Capture its error the next time it fails and fix the race. Trigger: the next failure.
+- [ ] **`channels-wechat.test.ts` "their words come into the one conversation…"** fails alone, not only under
+      load, on 2026-11-17 at 03:50 UTC: `wechat().openUntil` reads 03:00:00.000Z, already past `Date.now()`
+      (a whole hour, so the window may be computed from a rounded or fixed time). Seen while checking D324,
+      unrelated to it. Trigger: now (it fails every run at this hour).

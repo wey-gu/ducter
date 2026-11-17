@@ -758,6 +758,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
   const closing = createClosing({ log, tasks, loadout, runner: () => runner });
   registerClosingTool(mcp, closing, langNow);
+  // D293: the home's own key pair (made before the Bridge link: D324 names its connection with it).
+  const identity = homeIdentity(dataDir);
   // D205: Settings › 伙伴's one-tap Bridge connection for the persona, run by the home's nmem.
   const bridgeLink = createBridgeLink({
     dataDir,
@@ -767,6 +769,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     // Tests never reach the machine's real nmem (or Mem): without a fake one injected, the row is off.
     memoryOn: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),
     home: () => computers.homeName(),
+    // D324: the home's key (D293) names its connection, so Mem's list says which computer holds each one.
+    homeFp: () => identity.fp,
     ...(opts.bridgeLink ?? {}),
   });
   bridgeLink.onChange(() => settings.bridgeChanged());
@@ -779,8 +783,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   settings.setGlance(() => memGlance.get(), memGlance);
   // D206: pictures and files, content-addressed on the home (media.ts).
   const media = createMediaStore(dataDir);
-  // D293: the home's own key, and its ways to be reached (the address book, reach-book.ts).
-  const identity = homeIdentity(dataDir);
+  // D293: its ways to be reached (the address book, reach-book.ts); the home's own key is made above.
   let reachRef: ReachWatch | undefined;
   const waysFrame = () => ({ t: "ways" as const, ways: reachRef?.ways() ?? [], key: identity.key, fp: identity.fp });
   // D288: each agent's account usage limits on the home, read by the agent itself and kept current by its sessions.

@@ -56,6 +56,9 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 	if b == nil || b.State != "connected" {
 		a.bridgeConfirm = false
 	}
+	if b == nil || (b.State != "elsewhere" && (b.State != "connected" || len(b.Others) == 0)) {
+		a.bridgeHere = false
+	}
 	reachShown := seen || len(p.Trusted) > 0 || len(p.Muted) > 0 || (b != nil && !memSetup(b.State))
 	set := func(next protocol.Peers) {
 		*p = next
@@ -66,6 +69,9 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		connected := false
 		if b != nil {
 			connected = a.peersHead(c, st, b)
+		}
+		if connected && !b.Pinned && len(b.Others) > 0 {
+			a.peersTwice(c, b, name)
 		}
 		if connected {
 			a.tileRow(c, "peers-as", nil, a.L.T("peers.as.title"), a.L.T("peers.as.line", b.Identity), nil)
@@ -157,6 +163,50 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 	_ = t
 }
 
+// otherWhere is the other home(s) that also answer, in the person's words
+// (D324): its name, or another computer.
+func (a *App) otherWhere(b *protocol.BridgeView) string {
+	if len(b.Others) > 1 {
+		return a.L.T("peers.where.many", len(b.Others))
+	}
+	if len(b.Others) == 1 && b.Others[0].Home != "" {
+		return b.Others[0].Home
+	}
+	return a.L.T("peers.where.other")
+}
+
+// peersTwice is D324's one calm row when two homes read the partner's
+// mailbox: 只留这台 asks in place; a connection Mem won't end from here says
+// where to end it instead.
+func (a *App) peersTwice(c *ui.Context, b *protocol.BridgeView, name string) {
+	t := a.T
+	where := a.otherWhere(b)
+	stuck := false
+	for _, o := range b.Others {
+		stuck = stuck || o.Stuck
+	}
+	if a.bridgeHere {
+		keep, goOn := a.confirmRow(c, "peers-twice", a.L.T("peers.twice.ask", where, name), a.L.T("bridge.undo.keep"), a.L.T("peers.twice.go"), b.Identity)
+		if keep {
+			a.bridgeHere = false
+		}
+		if goOn {
+			a.bridgeHere = false
+			a.send(protocol.BridgeAction{T: "bridge_only_here"})
+		}
+		return
+	}
+	line := a.L.T("peers.twice.line")
+	if stuck {
+		line = a.L.T("peers.twice.stuck", where)
+	}
+	a.tileRow(c, "peers-twice", nil, a.L.T("peers.twice.title", name, where), line, func() {
+		if !stuck && a.buttonFor(c, a.L.T("peers.twice.go"), b.Identity, btnSecondary, t.ControlSM, t.Surface) {
+			a.bridgeHere = true
+		}
+	})
+}
+
 // peerName is an agent's tool by name, for its coin ("terminal-claude" → Claude Code).
 func peerName(agent string) string {
 	switch peerHarness(agent) {
@@ -204,6 +254,25 @@ func (a *App) peersHead(c *ui.Context, st *protocol.Settings, b *protocol.Bridge
 		}
 		head(line, sideDone, nil)
 		return true
+	case "elsewhere":
+		// D324: another home answers this partner's mailbox: where, and the one way to move it here.
+		head(a.L.T("peers.elsewhere", name, a.otherWhere(b)), sideMuted, func() {
+			if !a.bridgeHere && a.buttonFor(c, a.L.T("peers.elsewhere.go"), b.Identity, btnSecondary, t.ControlSM, t.Surface) {
+				a.bridgeHere = true
+			}
+		})
+		if a.bridgeHere {
+			keep, goOn := a.confirmRow(c, "peers-here", a.L.T("peers.elsewhere.ask", a.otherWhere(b), name), a.L.T("bridge.undo.keep"), a.L.T("peers.elsewhere.go"), b.Identity)
+			if keep {
+				a.bridgeHere = false
+			}
+			if goOn {
+				a.bridgeHere = false
+				b.State = "connecting"
+				a.send(protocol.BridgeAction{T: "bridge_only_here"})
+			}
+		}
+		return false
 	case "ready":
 		head(a.L.T("peers.head.ready"), sideMuted, func() {
 			if a.buttonFor(c, a.L.T("bridge.connect"), b.Identity, btnPrimary, t.ControlSM, t.Surface) {

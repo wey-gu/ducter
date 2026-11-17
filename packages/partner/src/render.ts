@@ -384,10 +384,13 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
     case "bridge_msg": {
       const b = e.body as Bodies["bridge_msg"];
       if (b.direction === "in" && b.state) return null; // set aside, or from before Bridge was on
-      if (b.direction === "in")
+      if (b.direction === "in") {
+        // D334: the Space it came in (and the reply goes back to), so the partner can say where.
+        const where = b.spaceLabel ? ` in the Space "${b.spaceLabel}"` : b.space ? ` in Space ${b.space}` : "";
         return b.inReplyTo && ctx.bridgeOut?.(b.inReplyTo)
-          ? `[${t} reply from ${whoForModel(b)} via Bridge to your message ${b.inReplyTo}, message ${b.messageId}] ${clip(b.text, 600)}`
-          : `[${t} message from ${whoForModel(b)} via Bridge, message ${b.messageId}] ${clip(b.text, 600)}`;
+          ? `[${t} reply from ${whoForModel(b)} via Bridge${where} to your message ${b.inReplyTo}, message ${b.messageId}] ${clip(b.text, 600)}`
+          : `[${t} message from ${whoForModel(b)} via Bridge${where}, message ${b.messageId}] ${clip(b.text, 600)}`;
+      }
       // One line per outgoing operation, at its final state (D106): pending, held and sending are
       // steps, and the follow-through marker is shown as the partner's own message.
       if (!shownOut(b)) return null;

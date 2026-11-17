@@ -62,7 +62,17 @@ func TestD337OneCheck(t *testing.T) {
 	if f, ok := (*sent)[len(*sent)-1].(protocol.DeviceUpdateReq); !ok || !f.Check || f.Device != "local" {
 		t.Fatalf("the one button reads the home too: %#v", (*sent)[len(*sent)-1])
 	}
-	_ = app
+	// research/124: the home's answer ends 在检查… on this page (it stayed for good: only
+	// the Devices card read the answer).
+	app.Updates.(*fakeUpdates).st.State = update.UpToDate
+	tt.Advance(time.Second)
+	tt.Frame()
+	app.Receive(protocol.ServerFrame{T: "update_result", Device: "local", OK: true})
+	tt.Advance(time.Second)
+	tt.Frame()
+	if tt.HasText("在检查…") || d337Count(tt.Texts(), "检查更新") != 2 {
+		t.Fatalf("still checking after the home answered: %q", tt.Texts())
+	}
 }
 
 // DUCTER_SHOTS=1 DUCTER_SHOTS_DIR=$PWD/../../../../.shots/settings-0068 go test ./internal/views -run D337Shots

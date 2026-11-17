@@ -1863,3 +1863,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
       it is installed on a test Mac. (2) A worker on a Ducter before D325 sends no echo: its steers
       stay "at its next step" until the turn ends; one before this change matches by words.
       Trigger: the author's live review.
+
+## The 0.0.70 live walk (research/124, 2026-11-17)
+
+- [ ] **The partner doesn't see what the person says straight to a task** (F1). Live, it called the
+      person's own README, NOTES and `sleep` requests unrequested, steered the task to stop, and offered
+      to delete the files. Proposed: a report carries the person's own words to that task since the
+      last report, marked as theirs. Needs a Dn and the partner eval (D175). Trigger: now.
+- [ ] **D332 (3)'s unasked connect from a second home** (F2): a home with its own data folder on a Mac
+      whose Mem has no Ducter connection connects itself. Proposed: unasked only for the default home;
+      others on the switch or **Receive here instead**. Needs a Dn. Trigger: now.
+- [ ] **The partner's `wait_for` description** still gives its examples as 「中文 / English」 pairs, which
+      a task copied as both (F7; the task tool is fixed). Trigger: the next partner-tool change (D175's eval).
+- [ ] **Small things from the walk** (F8): the task pane's wait line overflowed by 7 px once; held words
+      after Stop keep the head 这一轮做完再说 while nothing runs; a locator jump lands a line high; every
+      report repeats 「改动随时能撤回，留到 …」. Trigger: the next pass over the opened task.

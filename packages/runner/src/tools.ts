@@ -100,7 +100,32 @@ export const checkpointSchema = {
 export const REPORT_BOUNDS = { questions: 5, questionText: 500, questionDefault: 200, id: 40, evidence: 12, label: 120, ref: 300 } as const;
 const cut = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
 
-export function normalizeReport(taskId: string, args: any): Bodies["report"] {
+/**
+ * research/124: a small model sometimes writes the rest of its tool call into the summary string:
+ * `…done.</summary>\n<parameter name="evidence">[…]`. The summary ends at the leak, and a leaked
+ * argument the call didn't also pass properly (evidence, questions, remember) is taken from it when
+ * it is valid JSON; anything else in the leak is dropped.
+ */
+export function unleakReport(args: any): any {
+  const raw = typeof args?.summary === "string" ? args.summary : undefined;
+  const at = raw ? raw.search(/<\/summary>|<parameter name="/) : -1;
+  if (!raw || at < 0) return args;
+  const out = { ...args, summary: raw.slice(0, at) };
+  for (const m of raw.slice(at).matchAll(/<parameter name="(\w+)">([\s\S]*?)(?=<\/parameter>|<parameter name="|$)/g)) {
+    const [, name, value] = m;
+    if (!["evidence", "questions", "remember"].includes(name!) || (Array.isArray(out[name!]) && out[name!].length)) continue;
+    try {
+      const v = JSON.parse(value!.trim());
+      if (Array.isArray(v)) out[name!] = v;
+    } catch {
+      /* not JSON: dropped */
+    }
+  }
+  return out;
+}
+
+export function normalizeReport(taskId: string, raw: any): Bodies["report"] {
+  const args = unleakReport(raw);
   const state = STATES.includes(args?.state) ? (args.state as Bodies["report"]["state"]) : "progress";
   let summary = String(args?.summary ?? "").trim();
   if (summary.length > SUMMARY_MAX) summary = summary.slice(0, SUMMARY_MAX - 1) + "…";

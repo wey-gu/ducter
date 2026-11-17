@@ -350,6 +350,8 @@ export function createWork(o: WorkOptions): Work {
       type: "object",
       properties: {
         ...waitForProps,
+        // research/124: the pair "中文 / English" in the shared description was copied as both, one after the other.
+        reason: { type: "string", description: "What is awaited, in ONE language: the one the user writes in. Named as awaited, never as done: \"PR #1592's CI passes\" (a Chinese speaker reads \"PR #1592 的 CI 通过\"). Shown to them after \"Waiting until\"" },
         afterMinutes: { type: "number", description: "A time instead of a condition: wake me this many minutes from now (1 to 10080)" },
         atISO: { type: "string", description: "A time instead of a condition: wake me at this time (ISO)" },
       },

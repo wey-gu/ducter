@@ -7,7 +7,7 @@
 //   date) · empty (connected, nothing noted yet) · off (switched off) · fresh (no nmem on the home) ·
 //   sign_in (nmem there, not signed in) · old (0.10.116 by pipx: too old for Bridge)
 // then open http://127.0.0.1:7864/app#settings=memory (or #settings=peers)
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";

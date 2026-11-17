@@ -3,7 +3,7 @@
 // after the answer, and X2's offer. No Bridge is touched: the events are seeded into the Log.
 //   DUCTER_PORT=7797 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_STAGE=0 bun apps/web/demo-peers.ts
 // DEMO_STAGE: 0 = the question is open; 1 = answered, then X2's offer.
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";

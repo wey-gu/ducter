@@ -3,7 +3,7 @@
 // site, stub partner and runner. Shots and manual checks only; no real site is signed into.
 //   DUCTER_CHROME=<Chrome for Testing> DUCTER_PORT=7796 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-signin.ts
 // The test site answers as console.example.com (Chrome maps the name to it; nothing leaves this machine).
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";

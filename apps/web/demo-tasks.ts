@@ -4,7 +4,7 @@
 // desktop's apps/desktop/internal/views/task_transcript_test.go.
 //   DUCTER_PORT=7991 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_PHASE=ask|go bun apps/web/demo-tasks.ts
 // DEMO_PHASE=go answers the ask with Go and lets the task carry on.
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 import type { Bodies } from "@ducter/protocol";
 

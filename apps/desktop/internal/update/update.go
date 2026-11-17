@@ -81,6 +81,10 @@ type Status struct {
 	// Progress of a download, 0..1 (0 when unknown).
 	Progress  float64
 	CheckedAt time.Time
+	// TriedAt is when the last read of the feed ended, answered or not
+	// (CheckedAt stays at the last answer, D187): Settings tells a failed
+	// read from a later answer the home got on the same Mac (D337).
+	TriedAt time.Time
 	// InstallOnQuit: a ready update installs when the app quits (default on).
 	InstallOnQuit bool
 	// CanRollBack: the version before this one is kept.
@@ -373,7 +377,7 @@ func (u *Updater) check(ctx context.Context) Status {
 			u.set(func(s *Status) { s.State, s.CheckedAt = NoFeed, now })
 		} else {
 			u.cfg.Logf("ducter: update: %s: %v", ReasonFeed, err)
-			u.set(func(s *Status) { s.State, s.Reason, s.Detail = Failed, ReasonFeed, err.Error() })
+			u.set(func(s *Status) { s.State, s.Reason, s.Detail, s.TriedAt = Failed, ReasonFeed, err.Error(), now })
 		}
 		if prevState.State == Ready { // a staged version stays ready
 			u.set(func(s *Status) { s.State, s.Reason, s.Detail = Ready, ReasonNone, "" })

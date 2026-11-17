@@ -179,7 +179,7 @@ included, and the callee sees the owner's own number.
 | **Who** | Abroad, needs a Shanghai restaurant; or a supplier who only answers known numbers | In mainland China, where no AI calling service is open to individuals | Has an old Android in a drawer |
 | **Before** | "Tuwa can't call there" | Nothing exists for them | Doubt it's for them |
 | **After** | The call goes out as them, said as their AI assistant | Same, on their own SIM | Five ticks on one card, then the first call |
-| **How it starts** | Settings › Accounts › **用你自己的号码打 / Call from your own number**, the steps tick themselves off; or "用我自己的号码打给…" before setup: the partner says where | The same | The same, with the parts list and drawing |
+| **How it starts** | Settings › Accounts › **用你自己的号码打 / Call from your own number**: one row and **设置 / Set up** until opened or started (D337), then the steps tick themselves off; or "用我自己的号码打给…" before setup: the partner says where | The same | The same, with the parts list and drawing |
 
 **Pieces** (`packages/core/src/phone-own/`): `adb.ts` (the phone: six things only; argv templates,
 never a shell line), `audio.ts` (the computer end of the cable through ffmpeg; a loopback for

@@ -5,7 +5,7 @@
 //   DUCTER_PORT=7993 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-onhand.ts
 // DEMO_MANY=n adds n more repo tasks (for the long-list checks); DEMO_FEW=1 seeds only one errand,
 // a fresh user's first day.
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import type { BranchChanges, Bodies, CallBody, Place } from "@ducter/protocol";
 import { fakeTuwa } from "../../packages/core/test/fake-tuwa.ts";
 

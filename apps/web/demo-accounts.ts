@@ -6,7 +6,7 @@
 // morning (the note, chips at 每天最多 3 件) | quiet (a quiet morning: only the header line).
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { ooSource } from "../../packages/core/src/connections.ts";
 import { ooCli, ooEnv, ooExec } from "../../packages/core/src/oo-link.ts";
 import { recordedTriage } from "../../packages/core/src/proactive/triage.ts";

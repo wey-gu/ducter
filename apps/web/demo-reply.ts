@@ -3,7 +3,7 @@
 // its own message, the second answer carrying the imprint of the reply it answers.
 //   DUCTER_PORT=7798 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-reply.ts
 // DEMO_STAGE: 0 = before any reply (to swipe on); 1 = the two replies and their answers.
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { logUserMessage } from "../../packages/core/src/reply.ts";
 import { noOo } from "./demo-oo.ts";
 

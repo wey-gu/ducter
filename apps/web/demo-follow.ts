@@ -3,7 +3,7 @@
 // then, with DEMO_DRIP=1, three more of the partner's messages a few seconds apart, to see the
 // way back count them while you are scrolled up.
 //   DUCTER_PORT=7799 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_DRIP=1 bun apps/web/demo-follow.ts
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";

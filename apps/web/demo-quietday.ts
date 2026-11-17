@@ -5,7 +5,7 @@
 // Then POST http://127.0.0.1:$DEMO_CTL_PORT/state?s=<closed|counts|held|problem|pushoff|catching|off>
 // and reload the page (the client asks for the day when the section mounts).
 import type { ProactiveDay } from "@ducter/protocol";
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
 const base: ProactiveDay = { day: "2026-11-12", looked: { mail: 152, events: 3, mentions: 0 }, skipped: { notices: 41, promo: 18, muted: 0 }, read: 0, noted: 0, said: 0, held: [] };

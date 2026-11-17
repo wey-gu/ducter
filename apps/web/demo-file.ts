@@ -4,7 +4,7 @@
 //   DUCTER_PORT=7797 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh bun apps/web/demo-file.ts
 // then open http://127.0.0.1:7797/app
 import { readFileSync } from "node:fs";
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import type { MediaRef } from "@ducter/protocol";
 import { noOo } from "./demo-oo.ts";
 

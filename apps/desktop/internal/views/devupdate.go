@@ -532,6 +532,9 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 		case behind(dv):
 			a.sideStatus(c, a.L.T("devup.available", u.Latest), sideInk)
 		case u.Latest != "" && u.Phase == "":
+			if home && a.homeHere() == dv {
+				return // D337: this Mac's app says the one check and has the one button
+			}
 			d := a.devState()
 			if home && d.card.checking {
 				a.sideStatus(c, a.L.T("devup.checking"), sideMuted)

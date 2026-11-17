@@ -19,7 +19,7 @@ personal-AI user, **F** a fresh user who has never heard of a subagent.
 | 密码和银行卡 / Passwords & cards (D336) | C booking travel | Unsure what it can see, and what "autofill" even keeps | Each saved thing is a row with its mark; what it can and cannot read said once | Its list line says what it is for and where it is kept (登录、付款、填地址时用，锁着存在你的电脑上); three add rows, one per kind; the uses section says none yet |
 | 外观和声音 / Look and sound | Everyone, briefly | — | The preview smiles back at a choice (D150) | The preview stage and three groups |
 | 在哪儿运行 / Where it runs | H (a server home), F once ("does closing the window stop it?") | Afraid closing the window loses work | This Mac (or hel) as the group's first row, small clay in the tile column, and one sentence that it keeps working | The row and its sentence; Rest, data and Remove further down, quiet |
-| 更新和关于 / Updates and about | H checks versions; C reads Help | "Up to date · checked…" read as two facts | One phrase per computer (刚看过，已经是最新的) under a name that says what it is to the partner (Ducter 住在这儿) | The About card; the versions card; help links |
+| 更新和关于 / Updates and about | H checks versions; C reads Help | "Up to date · checked…" read as two facts | One phrase per computer (刚看过，已经是最新的) under a name that says what it is to the partner (Ducter 住在这儿); on a Mac home one check and one button for the app and the home (D337) | The About card; the versions card; help links |
 
 ## The flows walked
 
@@ -160,6 +160,21 @@ Every pane walked in the real Mac app (cua-driver, scratch bundle id and HOME) a
 - 要不要先问's note and Passwords & cards' 你的资料 note sit under their headings on the web, as on the Mac.
 - The records switch speaks of the partner as 它 / it, like every Settings line; Passwords & cards' kept line
   says 解锁用的密钥在 Mac 的钥匙串里 (密钥 alone read as the API keys right above it).
+
+## Follow-up on 0.0.68 (D337)
+
+research/118's three open items, closed (`.shots/settings-0068`: Mac test renderer at 1280, web at 390,
+zh light, demo cores on fresh data folders):
+
+- Accounts: **用你自己的号码打 / Call from your own number** rests as one row (its tile, one line of why,
+  **设置 / Set up**) until the person presses Set up or has started it (a phone plugged in, the
+  live-voice key, a test call); what the home finds by itself is not a start. Both clients share the
+  rule (`ownStarted`).
+- Updates and about on a Mac home says one check, the latest of the app's feed and the home's, with
+  one **检查更新** that reads both; this Mac's versions row keeps only an update's news. The web
+  already had one.
+- Every demo core starts from `apps/web/demo-core.ts`: pretend `nmem`, Mem plugin check, speakers,
+  adb, agent sessions and computer name, so no shot shows this machine.
 
 ## Not done
 

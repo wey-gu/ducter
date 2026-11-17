@@ -4,7 +4,7 @@
 // order in the user's Chrome on the MacBook, Keynote waiting for the MacBook, and the sleeping-Mac
 // ask. Real core and real web client; the runner is the stub, the worker a socket that says hello.
 //   DUCTER_PORT=7811 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh DEMO_MAC=asleep bun apps/web/demo-where.ts
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 import type { Bodies, Place } from "@ducter/protocol";
 

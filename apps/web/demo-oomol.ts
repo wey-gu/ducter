@@ -6,7 +6,7 @@
 // many (already added: two Gmail, two Slack workspaces, Discord and a WeCom bot, each account
 // named the way OOMOL names them, for the accounts card's crowded case, D192)
 // The key that works: api_demo_key. Any other key is refused; an empty one is never sent.
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { httpLinker } from "../../packages/core/src/connections.ts";
 import { fakeOpenConnector } from "../../packages/core/test/fake-mcp.ts";
 

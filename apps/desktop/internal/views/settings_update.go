@@ -6,9 +6,40 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
+
+// homeHere is the home's device when the home runs on this Mac and the app
+// updates itself: one Ducter, so Updates and about says one check (D337).
+func (a *App) homeHere() *protocol.DeviceView {
+	if a.Updates == nil || !a.onThisMac() {
+		return nil
+	}
+	for i := range a.S.Devices {
+		if a.S.Devices[i].Home {
+			return &a.S.Devices[i]
+		}
+	}
+	return nil
+}
+
+// homeAnswerNewer (D337): a failed read of the app's own feed gives way to
+// the home's answer on the same Mac when that answer came after it; the
+// latest check is the one Settings says.
+func homeAnswerNewer(st update.Status, hu *protocol.DeviceUpdate) bool {
+	if hu == nil || hu.Latest == "" || hu.Phase != "" || hu.Available || st.State != update.Failed || st.Reason != update.ReasonFeed && st.Reason != update.ReasonNetwork {
+		return false
+	}
+	tried := st.TriedAt
+	if tried.IsZero() {
+		tried = st.CheckedAt
+	}
+	at := store.ParseTime(hu.CheckedAt)
+	return !at.IsZero() && at.After(tried)
+}
 
 // appUpdateSection is the update block of Settings › Updates and about (D72):
 // this version and where the next one stands, Check now, Restart to update
@@ -47,7 +78,12 @@ func (a *App) appUpdateSection(c *ui.Context) {
 	case update.NoFeed:
 		line, why = a.L.T("update.nofeed"), a.L.T("update.nofeed.body")
 	}
-	busy := ss.updating || st.State == update.Checking || st.State == update.Downloading
+	home := a.homeHere()
+	var hu *protocol.DeviceUpdate
+	if home != nil {
+		hu = home.Update
+	}
+	busy := ss.updating || st.State == update.Checking || st.State == update.Downloading || home != nil && a.devState().card.checking
 	if busy {
 		c.After(500 * time.Millisecond)
 	}
@@ -57,9 +93,19 @@ func (a *App) appUpdateSection(c *ui.Context) {
 	if !(why != "" && st.Reason != update.ReasonNone || st.State == update.Ready || st.State == update.NoFeed) {
 		why = ""
 	}
+	merged := homeAnswerNewer(st, hu)
+	if merged {
+		line, why = a.upToDate(hu)
+	}
 	help := why
-	if !st.CheckedAt.IsZero() {
-		checked := a.L.T("update.checked", a.agoLong(st.CheckedAt.UTC().Format(time.RFC3339)))
+	answered := st.CheckedAt
+	if hu != nil { // D337: the last answer either of them got
+		if at := store.ParseTime(hu.CheckedAt); at.After(answered) {
+			answered = at
+		}
+	}
+	if !answered.IsZero() && !merged {
+		checked := a.L.T("update.checked", a.agoLong(answered.UTC().Format(time.RFC3339)))
 		if help == "" {
 			help = checked
 		} else {
@@ -75,6 +121,10 @@ func (a *App) appUpdateSection(c *ui.Context) {
 			if a.button(c, a.L.T("update.checknow"), btnSecondary, t.ControlMD, t.Surface) {
 				ss.updating = true
 				a.async(func() { u.CheckNow(context.Background()) }, func() { ss.updating = false })
+				if home != nil { // the one button reads both: the app's feed and the home's (D337)
+					a.devState().card.checking = true
+					a.send(protocol.DeviceUpdateReq{T: "device_update", Device: home.ID, Check: true})
+				}
 			}
 		})
 		if v, ch := a.toggleRow(c, "oninquit", a.L.T("update.oninquit"), a.L.T("settings.update.auto.help"), st.InstallOnQuit); ch {

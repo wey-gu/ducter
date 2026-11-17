@@ -3,7 +3,7 @@
 // on, a nightly watch Ducter paused, and a fresh routine proposal in the conversation.
 //   DUCTER_PORT=7980 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-work.ts
 // DEMO_FIRE_MS: after this long the PR's checks turn green and the wait comes true (default off).
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 import type { Bodies, Place } from "@ducter/protocol";
 

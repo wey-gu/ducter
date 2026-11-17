@@ -79,6 +79,14 @@ func TestOwnPhoneFlow(t *testing.T) {
 	app.openTab(TabAccounts)
 	tt := ui.NewTesterWith(app.View, 1280, 1800, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
+	// D337: nothing started: one row, its why and 设置 / Set up; no steps yet.
+	if !tt.HasText("用你的安卓手机和 SIM 卡打，对方看到的是你的号码。") || tt.HasText("再找一次") || tt.HasText("实时语音") {
+		t.Fatalf("at rest: %q", tt.Texts())
+	}
+	if err := tt.Click("设置，用你自己的号码打"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
 	for _, w := range []string{"用你自己的号码打", "用 USB 线把安卓手机插到 Studio 上，再在手机的开发者选项里打开 USB 调试。", "只拨号、挂断、按键、看通话状态；不碰短信、通讯录和别的 App，不录音。"} {
 		if !tt.HasText(w) {
 			t.Errorf("the first step lacks %q: %q", w, tt.Texts())

@@ -78,6 +78,7 @@ func TestOwnPhoneInstallAndLook(t *testing.T) {
 	}
 	app.Receive(protocol.ServerFrame{T: "connections", Connections: []protocol.ConnectionView{}, Oo: &protocol.OoDetect{}, OwnPhone: v})
 	app.openTab(TabAccounts)
+	app.own.opened = true // D337: 设置 / Set up pressed
 	tt := ui.NewTesterWith(app.View, 1280, 1800, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	if !tt.HasText("MacBook 上还没看到手机") || !tt.HasText("20:14") {

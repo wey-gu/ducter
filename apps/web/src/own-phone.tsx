@@ -7,6 +7,8 @@
 // what works today (你来打 / You call: the sheet and one tap to dial) and plainly why a live call on
 // the person's own number needs a computer beside the phone. Install lines are only ever the home's
 // own system's, and 再找一次 always answers: a short busy state, then 看过了 · 20:14 with what it saw.
+// D337: until the person opens it (设置 / Set up) or has started it, the card rests as one row: a
+// person who came to add mail never meets five numbered USB and SIM steps.
 import type { OwnPhoneView } from "@ducter/protocol";
 import { prettyNumber } from "@ducter/protocol";
 import { useState } from "preact/hooks";
@@ -33,6 +35,15 @@ export function ownSteps(v: OwnPhoneView): { done: Record<Step, boolean>; next?:
   };
   const next = (["phone", "sim", "cable", "voice", "test"] as Step[]).find((s) => !done[s]);
   return { done, ...(next ? { next } : {}) };
+}
+
+/**
+ * D337: the person has started the setup: a phone plugged in (even one still waiting for Allow), the
+ * live-voice key, a test call, or it is ready or on a call. What the home finds by itself (adb, the
+ * sound devices, the number from Your details) is not a start.
+ */
+export function ownStarted(v: OwnPhoneView): boolean {
+  return v.ready || !!v.phone || v.voice.key || v.test.state !== "never" || !!v.live || !!v.busy;
 }
 
 /** The cable, drawn: phone → splitter → (attenuator) → USB sound card → computer. Clay-flat, tokens only. */
@@ -320,12 +331,28 @@ function AwayCard({ v }: { v: OwnPhoneView }) {
   );
 }
 
+/** D337: until it is opened or started, the setup rests as one row: what it is, why, and 设置 / Set up. */
+function FoldedCard({ onOpen }: { onOpen: () => void }) {
+  return (
+    <Group id="acct-own-phone" label={t("own.title")}>
+      <GHead tile={<Tile faded><CallArt off size={40} /></Tile>} name={t("own.title")} line={t("own.fold")}>
+        <Btn kind="secondary" size="sm" label={t("own.setup")} about={t("own.title")} onClick={onOpen} />
+      </GHead>
+    </Group>
+  );
+}
+
+/** D337: opened once in this window, the steps stay open (the setup isn't folded again under the person). */
+let ownOpened = false;
+
 export function OwnPhoneCard() {
   const v = A.ownPhone;
   const [forgetting, setForgetting] = useState(false);
   const [open, setOpen] = useState<Step | undefined>(undefined);
+  const [, setUnfolded] = useState(ownOpened);
   if (!v) return null;
   if (v.station === false) return <AwayCard v={v} />;
+  if (!ownOpened && !ownStarted(v)) return <FoldedCard onOpen={() => ((ownOpened = true), setUnfolded(true))} />;
   const { done, next } = ownSteps(v);
   const steps: Step[] = ["phone", "sim", "cable", "voice", "test"];
   const shown = open ?? next;

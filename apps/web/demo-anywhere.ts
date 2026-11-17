@@ -8,7 +8,7 @@
 // /run (on); or /fail?step=dns (a name already taken) and /off.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import type { TunnelSys } from "@ducter/core/src/anywhere.ts";
 import { noOo } from "./demo-oo.ts";
 

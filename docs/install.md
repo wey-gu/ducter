@@ -6,6 +6,9 @@ order: 2
 
 # Install
 
+Every download, with its size, checksum and what it needs, is also on one page:
+[ducter.ai/download](https://ducter.ai/download).
+
 There are four ways to have Ducter, and you can mix them:
 
 | | Best for | Status |

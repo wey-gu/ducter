@@ -87,6 +87,7 @@ Design notes:
 - `channels.md`: 聊天软件 / Chat apps, the partner in the person's own Telegram bot, Slack app and WeChat ClawBot as more windows on the one conversation (D276, D301).
 - `personas.md`: 伙伴们 / Your partners, a second partner: what is shared and what is its own, one needs-you count, the switch, its stone (D309, preview).
 - `did.md`: 替你做过的 / Done for you, every outward action on the person's behalf, day by day (D300).
+- `site.md`: the website (ducter.ai): the landing page, `/download`, the docs' rendering, and what's owed (D319).
 - `product-model.md`: see above.
 
 ## The change loop (run it for every new question or discovered problem)

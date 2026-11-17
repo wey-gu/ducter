@@ -8,6 +8,6 @@ export async function getStaticPaths() {
   return docs.filter((d) => d.id !== "readme").map((doc) => ({ params: { slug: doc.id }, props: { doc, docs } }));
 }
 const { doc, docs } = Astro.props;
-const { Content } = await render(doc);
+const { Content, headings } = await render(doc);
 ---
-<DocsLayout doc={doc} docs={docs}><Content /></DocsLayout>
+<DocsLayout doc={doc} docs={docs} headings={headings}><Content /></DocsLayout>

@@ -1677,3 +1677,6 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## D313: On hand's cheer (2026-11-17)
 - [ ] **The web's cheer matches the Mac's** (`oh-cheer`: wait for the view transition to finish, swell from rest to ~1.02 and back). Trigger: the next On hand pass.
+
+## D319: the website and the download page (2026-11-17)
+- [ ] **What's owed on the site** is listed in `design/site.md` "Owed": the README's hero, On hand, task and Partner shots; the landing page's On hand board redrawn as D287; Chinese for the site; a mirror for mainland China (with `install.sh`); docs search; an axe pass. Trigger: the author's review of `/download`.

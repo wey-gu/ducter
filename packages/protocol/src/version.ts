@@ -41,3 +41,7 @@ export function compareVersions(a: string, b: string): number {
 
 /** A version without its leading v. */
 export const bareVersion = (v: string) => v.trim().replace(/^v/, "");
+
+/** D344: a release's full notes on the website, one anchor per version (apps/site /changelog). */
+export const CHANGELOG_URL = "https://ducter.ai/changelog";
+export const changelogUrl = (v: string): string => `${CHANGELOG_URL}#${bareVersion(v)}`;

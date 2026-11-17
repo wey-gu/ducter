@@ -23,6 +23,16 @@ type devices struct {
 	conns []protocol.ConnectionView
 	// ua is 全部更新 / Update all as the home would say it (D224), nil: none.
 	ua *protocol.UpdateAllView
+	// notesSeen: the versions whose notes a card opened (D344).
+	notesSeen []string
+}
+
+// NotesSeen is every version whose full notes a card opened (D344).
+func (h *hub) NotesSeen() []string {
+	d := h.devs()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return append([]string(nil), d.notesSeen...)
 }
 
 func defaultDevices() []protocol.DeviceView {
@@ -273,6 +283,10 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 			time.Sleep(50 * time.Millisecond)
 			h.pushDevices()
 		}()
+	case "notes_seen":
+		d.mu.Lock()
+		d.notesSeen = append(d.notesSeen, f.Version)
+		d.mu.Unlock()
 	case "device_update":
 		// D148: the steps, a beat each (UpdateStep sets one directly for pictures).
 		c.send(map[string]any{"t": "update_result", "device": f.Device, "ok": true})

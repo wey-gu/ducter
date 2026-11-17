@@ -636,6 +636,21 @@ export function createWsHandler(deps: WsDeps) {
             console.warn("[ws] first words:", (err as Error).message);
           }
         }
+        // D344: an app that updated says so in its hello; the person is back: the partner's one
+        // line about the update, once per version, in the default conversation (before the read
+        // below, so this hello carries it).
+        const told = deps.updates?.()?.told;
+        if (told && f.client !== "cli") {
+          try {
+            if (ws.data.device && typeof f.version === "string") told.sawApp(ws.data.device.id, f.version);
+            if (!ws.data.partner && (f.client === "desktop" || f.client === "web")) {
+              const line = told.due({ lang: ws.data.locale ?? "en", ...(ws.data.tz ? { tz: ws.data.tz } : {}) });
+              if (line) log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: line } });
+            }
+          } catch (err) {
+            console.warn("[ws] updated line:", (err as Error).message);
+          }
+        }
         const shownId = ws.data.partner ?? core.persona.id;
         const shownName = ws.data.partner ? (deps.partners?.nameOf(ws.data.partner) ?? core.persona.name) : core.persona.name;
         ws.data.buf.length = 0; // a hello again (a switch, D309): what was queued was for the other conversation
@@ -770,6 +785,11 @@ export function createWsHandler(deps: WsDeps) {
             .catch(() => undefined)
             .finally(refreshFirstScreens);
         }
+        return;
+      }
+      case "notes_seen": {
+        // D344: read from a card: the partner's line for that version stays unsaid today.
+        if (typeof f.version === "string") deps.updates?.()?.told.sawNotes(f.version, typeof f.tz === "string" && f.tz ? f.tz : ws.data.tz);
         return;
       }
       case "local_agents": {

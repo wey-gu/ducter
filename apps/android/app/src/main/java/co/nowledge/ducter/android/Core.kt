@@ -124,6 +124,14 @@ object WhatsNew {
     }
 }
 
+/** D344: a release's full notes on the website, one anchor per version (packages/protocol changelogUrl). */
+object Changelog {
+    fun url(version: String) = "https://ducter.ai/changelog#" + version.trim().removePrefix("v")
+
+    /** Tells the page the notes were read (its home then doesn't say the update again today). */
+    fun seenJs(version: String) = "window.ducterNotesSeen && window.ducterNotesSeen(" + org.json.JSONObject.quote(version.trim().removePrefix("v")) + ")"
+}
+
 /** The release's file for Android: `Ducter-<version>-android.apk` (release.yml's android job). */
 object Asset {
     fun name(version: String) = "Ducter-$version-android.apk"

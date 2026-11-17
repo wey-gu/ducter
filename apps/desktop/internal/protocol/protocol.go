@@ -1132,6 +1132,21 @@ type DeviceUpdateReq struct {
 	Check  bool   `json:"check,omitempty"`
 }
 
+// NotesSeenReq says the person opened a version's full notes from an
+// update card (D344): the partner's line about that update stays unsaid
+// that day. No answer.
+type NotesSeenReq struct {
+	T       string `json:"t"` // "notes_seen"
+	Version string `json:"version"`
+	TZ      string `json:"tz,omitempty"`
+}
+
+// ChangelogURL is a release's full notes on the website, one anchor per
+// version (D344; packages/protocol/src/version.ts changelogUrl).
+func ChangelogURL(v string) string {
+	return "https://ducter.ai/changelog#" + strings.TrimPrefix(strings.TrimSpace(v), "v")
+}
+
 // UpdateAllReq is 全部更新 / Update all (D224): the home makes one plan
 // (its own Ducter first, then the other computers, then each computer's AI
 // agents at a safe point) and runs it. Stop: 停止剩下的; Dismiss: put a
@@ -2016,6 +2031,7 @@ type ClientFrame struct {
 	Patch      *SettingsPatch `json:"patch,omitempty"`
 	Stop       bool           `json:"stop,omitempty"`    // update_all
 	Dismiss    bool           `json:"dismiss,omitempty"` // update_all
+	Version    string         `json:"version,omitempty"` // notes_seen
 }
 
 // ---------- Server -> client frames ----------

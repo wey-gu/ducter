@@ -1902,3 +1902,12 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Its own clay art** on the Settings list (a page with a ticked box); the page with lines stands in. Trigger: the next art pass.
 - [ ] **Live checks:** the author's gh and a real (copied) vault on iCloud and Obsidian Sync with the note open in Obsidian. Trigger: before calling D341 done.
 - [ ] **Several GitHub accounts** (one source per home's gh today). Trigger: someone with a work and a personal account on one home.
+
+## What changed after an update (D344)
+
+- [ ] **Walk it live:** update a real home and the Mac app from 0.0.72 to the first release with D344; the partner's line once, in the right language, and not after reading the card's notes that day. Trigger: the first release carrying D344.
+- [ ] **The Android card's See what changed** on a phone (it opens the browser; the page hears it was read). Trigger: the next Android update walk.
+- [ ] **In-app notes** (a sheet with the whole section instead of the website). Trigger: someone without a browser at hand, or the site unreachable from mainland China.
+- [ ] **A zh What's new page** with the zh lines (the data is parsed already). Trigger: the site goes bilingual (design/site.md).
+- [ ] **Month folds** get long while every release is in one month (69 in November 2026); fold by week if a month passes ~40. Trigger: the author finds the list long.
+

@@ -230,6 +230,8 @@ class UpdateCard(c: Context) : FrameLayout(c) {
     private val col = Column(c, 520)
     private val title = TextView(c)
     private val notes = TextView(c)
+    /** D344: 看看都改了什么 / See what changed: that version's full notes (set with [whatChanged]). */
+    val notesLink = TextView(c)
     private val status = TextView(c)
     private val buttons = LinearLayout(c)
     val later = Button(c)
@@ -248,6 +250,15 @@ class UpdateCard(c: Context) : FrameLayout(c) {
         Pebble.text(status, 13f, 700, R.color.ink_muted)
         col.addView(title)
         col.addView(notes, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(c, 8) })
+        Pebble.text(notesLink, 15f, 700, R.color.ink_soft)
+        notesLink.paintFlags = notesLink.paintFlags or android.graphics.Paint.UNDERLINE_TEXT_FLAG
+        notesLink.minHeight = dp(c, 44)
+        notesLink.gravity = Gravity.CENTER_VERTICAL
+        notesLink.isClickable = true
+        notesLink.isFocusable = true
+        notesLink.setText(R.string.update_notes)
+        notesLink.visibility = GONE
+        col.addView(notesLink, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
         col.addView(status, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(c, 8) })
         buttons.orientation = LinearLayout.HORIZONTAL
         buttons.gravity = Gravity.END
@@ -292,6 +303,14 @@ class UpdateCard(c: Context) : FrameLayout(c) {
         later.visibility = if (laterLabel == null) GONE else VISIBLE
         buttons.visibility = if (goLabel == null && laterLabel == null) GONE else VISIBLE
         alt(null)
+        whatChanged(null, null)
+    }
+
+    /** D344: the link to a version's full notes, or none. Called after show(), which always clears it. */
+    fun whatChanged(label: String?, onOpen: (() -> Unit)?) {
+        notesLink.text = label ?: ""
+        notesLink.visibility = if (label == null) GONE else VISIBLE
+        notesLink.setOnClickListener(onOpen?.let { f -> View.OnClickListener { f() } })
     }
 
     /** The third way, or none. Called after show(), which always clears it. */

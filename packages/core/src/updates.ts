@@ -10,6 +10,7 @@ import { FRESH_MS, hasNotes, type Release, type ReleaseWatch } from "./release.t
 import { judgeResult, readResult, resultFile, runUpdate, writeResult, type Fail, type RunInput, type UpdateResult, type UpdateSys } from "./update.ts";
 import { inQuiet } from "./push.ts";
 import { askApp } from "./app-update.ts";
+import { createUpdatedLine, type UpdatedLine } from "./updated-line.ts";
 
 /** How long 回来了 / Back stays on a card, and how long a failure does. */
 export const DONE_SHOWN_MS = 30 * 60_000;
@@ -97,6 +98,8 @@ export interface Updates {
   onChange(fn: () => void): () => void;
   /** The night-time look, once (the timer runs it too). */
   nightly(): Promise<void>;
+  /** D344: the partner's one line after an update, once per version. */
+  told: UpdatedLine;
   stop(): void;
 }
 
@@ -107,6 +110,19 @@ export function createUpdates(d: UpdatesDeps): Updates {
   const changed = () => fns.forEach((fn) => queueMicrotask(fn));
   const offRelease = d.release.onChange(changed);
   const now = () => d.sys.now();
+  const told = createUpdatedLine({
+    dataDir: d.dataDir,
+    version,
+    now: () => new Date(now()),
+    existing: () => {
+      try {
+        return d.log.read({ stream: "channel", kinds: ["user_msg"], limit: 1 }).length > 0;
+      } catch {
+        return false;
+      }
+    },
+    released: (v) => (d.release.latest()?.version === v ? d.release.latest()!.notes : undefined),
+  });
 
   const log = (device: string, name: string, p: Progress) => {
     const body: Bodies["device_update"] = {
@@ -388,6 +404,7 @@ export function createUpdates(d: UpdatesDeps): Updates {
       return () => fns.delete(fn);
     },
     nightly,
+    told,
     stop() {
       clearInterval(timer);
       clearInterval(watch);

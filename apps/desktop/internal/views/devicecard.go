@@ -1535,6 +1535,9 @@ func (a *App) ducterLine(c *ui.Context, dv *protocol.DeviceView) {
 		for _, n := range a.notesIf(behind(dv) && u.How == "self", u) {
 			ui.Text(c, n).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted)
 		}
+		if behind(dv) {
+			a.notesLink(c, dv.ID, u.Latest)
+		}
 		if offer && !canTap {
 			a.updateAction(c, dv) // where the update happens instead, in one line
 		}

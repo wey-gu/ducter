@@ -696,7 +696,7 @@ pre-releases never count; tests never touch the network (`NODE_ENV=test` without
 off). Every `DeviceView` carries `update {current, latest, available, notesBy, security, how,
 phase…, checkedAt}`. **What's new (D172)** is `notesBy {zh?, en?}`, read only from the release
 body's `<!-- whats-new … -->` block (the CHANGELOG section's; `release.ts whatsNew`): at most two
-lines per language, each whole and short (≤ 40 zh, ≤ 80 en; longer is dropped, never cut). A card
+lines per language, each whole and short (≤ 40 zh, ≤ 80 en; longer is dropped, never cut). **See what changed (D344):** every card that offers an update (web, Mac, the Android app's own) links `ducter.ai/changelog#<version>` and sends `notes_seen`; after an update the partner says one line, once per version (`updated-line.ts`, `<dataDir>/updates/told.json`; the home's own version rising, or an app's hello `version` rising; the notes from the CHANGELOG built in), at the first app hello in the default conversation, and not at all if that version's notes were opened from a card the same day. A card
 shows its own language's lines and none when there are none; the English body is never shown as
 notes (found on 0.0.7: "Your tasks know which computer to run on / With more than one computer
 (say a server and a MacBook that does tasks f…" on a zh card). Tests and the E2E rig only:

@@ -15,7 +15,8 @@ const { facts, dl, gh } = await siteLinks();
 const a = facts.assets;
 const version = facts.version?.replace(/^v/, "") ?? null;
 const date = formatDate(facts.publishedAt);
-const notes = facts.releaseUrl ?? RELEASES_URL;
+// D344: the release's notes are /changelog's, at its own anchor (the site is built with each release).
+const notes = version ? `/changelog#${version}` : (facts.releaseUrl ?? RELEASES_URL);
 const TESTFLIGHT = "https://testflight.apple.com/join/Z4GvWt7t";
 const oneLine = "curl -fsSL https://ducter.ai/install.sh | sh";
 const serverLine = "curl -fsSL https://ducter.ai/install.sh | sh -s -- --service";
@@ -44,7 +45,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
         <>
           <span>Ducter <b data-rel="version">{version}</b></span>
           {date && <span>· released <time data-rel="date" datetime={facts.publishedAt}>{date}</time></span>}
-          <a href={notes} data-rel="notes" rel="noopener">What's new<Fragment set:html={out} /></a>
+          <a href={notes} data-rel="notes">What's new</a>
         </>
       ) : (
         <span>No release yet. You can <a href="/docs/install#build-it-from-the-source-instead">build it from the source</a> today.</span>
@@ -245,7 +246,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
       <span>The files in Ducter {version ?? "(no release yet)"}:</span>
       {files.map(({ k, f }) => <a href={f.url} data-asset={k} data-name={k}>{f.name} <small data-meta={k}>{formatSize(f.size)}</small></a>)}
       {a.sums && <a href={a.sums.url} data-asset="sums">SHA256SUMS.txt</a>}
-      <a href={notes} data-rel="notes" rel="noopener">Release notes</a>
+      <a href={notes} data-rel="notes">Release notes</a>
       <a href={`${REPO_URL}/releases`} rel="noopener">Every release</a>
     </p>
   </div>

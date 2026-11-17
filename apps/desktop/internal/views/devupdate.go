@@ -592,6 +592,20 @@ func homeDevice(ds []*protocol.DeviceView) *protocol.DeviceView {
 	return nil
 }
 
+// notesLink is 看看都改了什么 / See what changed under an offered update
+// (D344): that version's full notes on the website. Opening them counts as
+// read, so the partner doesn't say the update again that day.
+func (a *App) notesLink(c *ui.Context, key, version string) {
+	if version == "" {
+		return
+	}
+	label := a.L.T("devup.notes")
+	if a.quietLink(c, "notes:"+key, label, label+" "+version) {
+		a.openLink(protocol.ChangelogURL(version))
+		a.send(protocol.NotesSeenReq{T: "notes_seen", Version: version, TZ: localZone()})
+	}
+}
+
 // notesIf: what is new in this window's language, only while it is still
 // news (not again after a failure). Never the other language's (D172).
 func (a *App) notesIf(ok bool, u *protocol.DeviceUpdate) []string {

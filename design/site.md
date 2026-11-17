@@ -35,6 +35,16 @@ user docs rendered from `docs/` at `/docs`. What it says was audited in
   JavaScript it reads Mac first. It opens with "New to Ducter? Get started"; the files close it as one
   quiet line (each file and its size, SHA256SUMS.txt, the release notes): D326 took out the
   checksum table and its command, since the installer checks every file itself.
+- **`/changelog`** (D344), **What's new**: the repo's `CHANGELOG.md` read at build time
+  (`src/lib/changelog.ts`; no copy, no GitHub call). Each `## X.Y.Z - YYYY-MM-DD` heading gives the
+  version and its date. The latest three releases are open cards: the version (a self-link), the
+  date, the whats-new block's English lines as the headline (the same lines the update cards show),
+  then the sections as written. Older ones fold by month in native `<details>` (readable without
+  JavaScript; the browser's find opens a fold). Every release has the anchor `#<version>`, which the
+  apps' **See what changed** opens; `changelog.ts` opens and lands on a fold a link points at. Linked
+  from the footer (**What's new**, in place of GitHub's Releases), `/download`'s release line and
+  release notes, and the docs index. `test/changelog.test.ts` fails on decision numbers, source
+  paths or unrendered code in what a visitor reads, so a CHANGELOG section stays in user words.
 - **`/docs`** renders `docs/*.md` with an `order`. The sidebar's groups are `docs/README.md`'s own
   `##` sections, in its order (`groupDocs` in `src/lib/docs.ts`); Previous and Next follow it. A
   page with three or more `##` sections gets **On this page**: a rail at 1240 px and wider, a fold
@@ -61,8 +71,9 @@ are off, so `Ducter-<version>-arm64.dmg` reads as typed. The site is English onl
 ## Checking it
 
 `bun test apps/site`, `bun run build` in `apps/site`, `bun scripts/check-links.ts`, and headless
-Chrome at 1440 and 390 (iPhone user agent), light and dark, of `/`, `/start`, `/download`, `/docs`
-and a docs page (`.shots/d319/`, `.shots/d326/`).
+Chrome at 1440 and 390 (iPhone user agent), light and dark, of `/`, `/start`, `/download`, `/docs`,
+`/changelog` and a docs page (`.shots/d319/`, `.shots/d326/`, `.shots/changelog/`). Emulate reduced
+motion for an anchored shot: the page scrolls smoothly, and a headless Chrome never finishes it.
 
 ## Pictures
 

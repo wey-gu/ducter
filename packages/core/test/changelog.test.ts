@@ -12,7 +12,7 @@ test("each release after 0.0.7 has short zh and en what's-new lines", () => {
   const sections = changelog.split(/^## /m).slice(1);
   expect(sections.length).toBeGreaterThan(0);
   for (const s of sections) {
-    const version = s.split("\n")[0]!.trim().replace(/^\[|\]$/g, "").replace(/^v/, "");
+    const version = s.split("\n")[0]!.trim().split(/\s+/)[0]!.replace(/^\[|\]$/g, "").replace(/^v/, "");
     if (!/^\d+\.\d+\.\d+/.test(version) || (compareVersions(version, "0.0.7") ?? 0) <= 0) continue;
     const n = whatsNew(s);
     expect({ version, zh: n.zh?.length ?? 0, en: n.en?.length ?? 0 }).toMatchObject({ version, zh: expect.any(Number), en: expect.any(Number) });
@@ -25,4 +25,10 @@ test("each release after 0.0.7 has short zh and en what's-new lines", () => {
       if (m) expect([...m[2]!].length, `${version} ${m[1]}: "${m[2]}" is longer than a card shows`).toBeLessThanOrEqual(NOTE_MAX[m[1] as "zh" | "en"]);
     }
   }
+});
+
+// D344: each heading carries its release date ("## 0.0.72 - 2026-11-17"), which the site's
+// /changelog shows; the date is written with the section, never fetched at build time.
+test("each release heading has its date", () => {
+  for (const h of changelog.match(/^## .*$/gm) ?? []) expect(h, h).toMatch(/^## v?\[?\d+\.\d+\.\d+[^\s\]]*\]? - \d{4}-\d{2}-\d{2}$/);
 });

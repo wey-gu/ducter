@@ -26,12 +26,13 @@ Mem 0.10.118 (PR nowledge-co/mem#9996) lets the user's ordinary Mem login repres
 holds, so the persona's context no longer needs a key or hand-made commands (D171's refusal).
 
 - **Who and when.** The heavy multi-agent developer, in Settings › 和你的其他 agent 通信 (D332: shown to whoever runs agents of
-  their own). D332: no tap; the home connects by itself once Mem is ready ("Simple, by who" below).
+  their own). D332: no tap; the person's own home connects by itself once Mem is ready; any other home waits for
+  the switch (D340, "Simple, by who" below).
 - **What Ducter finds by itself** (read-only): that the home's nmem has `bridge connections` (`--version`
   ≥ 0.10.118, else the subcommand's `--help`, cached per version); the one place with `kind: "personal"`
   ("Only me") among passive `bridge setup`'s candidates (no context, no Space, never `--enable`), by its exact
   id; the persona's identity (D141). None or two personal places: nothing is offered.
-- **What connecting runs** (D332: by itself; D205's tap retired): `nmem --json bridge connections connect --space-id <that id> --agent-id ducter --context
+- **What connecting runs** (D332: by itself on the person's own home, D340; D205's tap retired): `nmem --json bridge connections connect --space-id <that id> --agent-id ducter --context
   id, where the connection is made; the persona's identity (D141). None or two personal places: nothing is
   offered. The home then reads every other Space the identity is in too (D334, below).
 - **What one tap runs:** `nmem --json bridge connections connect --space-id <that id> --agent-id ducter --context
@@ -198,9 +199,16 @@ Bridge assumption and setting; make it smooth and reasonable; no needless option
   end of the Partner page that opens it. The name is the author's (research/120): "终端里的 AI", the rater test's
   winner, was wrong, since these agents also live in desktop apps and editors; "你的" answers the raters' main
   misreading (other people's AI), and "连上的 AI agent" read as the partner's own brains next to Partner's line.
-- **Connect without a tap** (`packages/core/src/bridge-auto.ts`). Mem signed in with exactly one personal place
-  (bridge-link's `ready`), the switch on, agents of their own: the home connects at start, or as soon as Mem gets
-  there; opening the page while ready is the same ask. Then the partner says once in the conversation that the
+- **Connect without a tap, on the person's own home only** (`packages/core/src/bridge-auto.ts`, D340). Mem signed
+  in with exactly one personal place (bridge-link's `ready`), the switch on, agents of their own: the home connects
+  at start, or as soon as Mem gets there; opening the page while ready is the same ask. **The person's own home**
+  (`connectsByItself`) is the one that keeps its data in the default folder `~/.ducter` (`ducter up` with no
+  `--data-dir`, the Mac app's own home), or the one `ducter service install` runs (its unit names the folder in
+  `DUCTER_SERVICE_DATA_DIR`). **Any other home** (`--data-dir`, `DUCTER_DATA_DIR` pointing elsewhere, a demo, a test,
+  an e2e run, a second instance on the same computer) never connects by itself, not at start and not when the
+  page opens: while Mem is ready there its view says `asks`, the switch shows off, and flipping it on (or
+  **改由这台收 / Receive here instead** when another home holds it) is the ask. research/124 F2: a scratch home took
+  the person's connection 15 s after start when Mem listed none. Then the partner says once in the conversation that the
   person's own agents can reach it now, and where to turn it off (`<dataDir>/bridge-said`). A connection from
   before D332 says nothing. Failures stay quiet; the pane shows one row with the step.
 - **One switch**, on by default: off revokes and nothing connects again by itself; on connects. A stored `team`

@@ -1511,6 +1511,9 @@ type BridgeView struct {
 	Detail   string       `json:"detail,omitempty"`
 	Pinned   bool         `json:"pinned,omitempty"`
 	CanRun   bool         `json:"canRun,omitempty"`
+	// D340: Asks: on ready, this home connects only when asked (not the
+	// person's own home), so the switch shows off until it is flipped.
+	Asks bool `json:"asks,omitempty"`
 	// D329: CanOpen: on mem_closed, the home can open the Nowledge Mem app.
 	CanOpen bool   `json:"canOpen,omitempty"`
 	Need    string `json:"need,omitempty"`

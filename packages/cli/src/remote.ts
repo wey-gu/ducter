@@ -354,6 +354,8 @@ export function systemdUnit(u: UnitSpec): string {
     "RestartSec=3",
     "WorkingDirectory=%h",
     `Environment=${sdQuote(`DUCTER_DATA_DIR=${u.dataDir}`)}`,
+    // D340: the home the service runs is the person's own: it connects to their Mem by itself.
+    ...(u.worker ? [] : [`Environment=${sdQuote(`DUCTER_SERVICE_DATA_DIR=${u.dataDir}`)}`]),
     `Environment=${sdQuote(`PATH=${u.path}`)}`,
     "Environment=NO_COLOR=1",
     "# Settings only. Keys go in keys.env next to it, never here (Ducter moves any it finds).",

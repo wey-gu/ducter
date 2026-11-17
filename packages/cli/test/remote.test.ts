@@ -26,6 +26,9 @@ describe("systemd unit", () => {
     expect(u).not.toMatch(/^EnvironmentFile=.*keys/m);
     expect(u).toContain("WantedBy=default.target");
     expect(u).not.toContain("--host");
+    // D340: the service's home is the person's own: it connects to their Mem by itself. A worker's isn't a home.
+    expect(u).toContain("Environment=DUCTER_SERVICE_DATA_DIR=/home/me/.ducter\n");
+    expect(systemdUnit({ execStart: ["/b"], dataDir: "/d", path: "/p", port: 1, worker: true })).not.toContain("DUCTER_SERVICE_DATA_DIR");
   });
 
   test("a public bind is carried only when asked; paths with spaces are quoted", () => {

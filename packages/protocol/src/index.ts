@@ -2262,6 +2262,8 @@ export interface BridgeView {
    * label from before D324 names none); stuck: Mem wouldn't end it from here, so it is ended there.
    */
   others?: { label: string; home?: string; stuck?: true }[];
+  /** D340: on ready, this home connects only when asked (not the person's own home): the switch shows off until flipped. */
+  asks?: true;
   canRun?: boolean;
   /** D329: mem_closed: the home can open the Nowledge Mem app itself (a Mac with the app). */
   canOpen?: boolean;

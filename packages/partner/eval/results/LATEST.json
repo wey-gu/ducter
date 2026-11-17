@@ -3,7 +3,7 @@
   "date": "2026-11-17",
   "harness": "claude-code",
   "model": "haiku",
-  "pass": "97/132",
-  "persona": "e65f4c2580801c5b",
+  "pass": "97/133",
+  "persona": "d0abd2021845c762",
   "tools": "45d91f0c88e21dce"
 }

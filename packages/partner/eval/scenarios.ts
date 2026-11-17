@@ -42,7 +42,8 @@ export type Step =
   | { user: string; images?: string[]; replyTo?: string }
   // D236: several messages sent at once (e.g. two replies to two things), before the partner answers.
   | { users: UserSay[] }
-  | { report: { task: string; body: Omit<Bodies["report"], "taskId"> } }
+  // told (D340): what the user typed straight into that task's own box before this report, oldest first.
+  | { report: { task: string; body: Omit<Bodies["report"], "taskId">; told?: string[] } }
   // Several reports landing within the same second (two tasks finishing together).
   | { reports: { task: string; body: Omit<Bodies["report"], "taskId"> }[] }
   | { resolve: { option: "go" | "hold" | "reply"; text?: string } } // the latest open decision
@@ -2089,5 +2090,20 @@ export const scenarios: Scenario[] = [
     ],
     expect: { noSend: true, opens: 0, msgs: [0, 1], maxChars: 80 },
     rubric: "Step 1: the task asks; the partner says the question in one short Chinese line. Step 2: the user replies to that question (swipe), which Ducter passes to the task as the answer by itself. The partner sends nothing to the task (no task_send), opens nothing, and says at most one short line or nothing at all (silence is fine); it never asks the same question again.",
+  },
+  {
+    id: "told-task-directly-zh",
+    category: "direct",
+    lang: "zh",
+    seed: [
+      { user: "在 ~/dev/fib 里写个 fib 模块，带测试" },
+      { task: { key: "fib", title: "fib 模块", repo: "~/dev/fib", ack: "我去写 fib 模块和测试。", state: "working" } },
+    ],
+    steps: [
+      { report: { task: "fib", told: ["再加一个 README，写清楚怎么用"], body: { state: "done", summary: "Added README.md with usage for fib(n).", questions: [], evidence: [{ kind: "diff", label: "README.md", ref: "README.md" }] } } },
+      { report: { task: "fib", told: ["跑一下 sleep 90; echo ok", "再写一个 NOTES.md，记下今天做了什么"], body: { state: "done", summary: "Ran `sleep 90; echo ok` (printed ok). Wrote NOTES.md with today's notes.", questions: [], evidence: [{ kind: "diff", label: "NOTES.md", ref: "NOTES.md" }] } } },
+    ],
+    expect: { noAsk: true, opens: 0, noSend: true, msgs: [0, 2], maxChars: 120, forbid: [/不是你要的|没让|你没(有)?(让|要|说)|自己(加|决定|做)|删(掉|除)|不该|多余|unrequested|didn't ask/] },
+    rubric: "The user typed each of these requests (README, the sleep command, NOTES.md) straight into the task's own box; each report shows them as 'the user told it directly'. The partner treats them as the user's own asks: at most a short Chinese line per report saying what was done (or silence), never that the task added things on its own or that they weren't asked for, never steering the task to stop, and never a card offering to delete README.md or NOTES.md.",
   },
 ];

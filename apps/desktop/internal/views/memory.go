@@ -137,6 +137,13 @@ func ownsAgents(own []string, devices []protocol.DeviceView) bool {
 // peersPhase (D332) is what the pane is about: on, off (switched off),
 // getting (Mem isn't ready: its steps in place), joining (ready: the home
 // connects by itself), problem (one row, its fix), none (memory is off).
+// peersSwitchOn is whether the switch shows on (D340). A home that isn't the
+// person's own never connects by itself: while Mem is ready there the switch
+// shows off, and flipping it on is the ask.
+func peersSwitchOn(reach string, b *protocol.BridgeView) bool {
+	return reach != "off" && !(b != nil && b.State == "ready" && b.Asks)
+}
+
 func peersPhase(b *protocol.BridgeView, switchOn bool) string {
 	if b == nil {
 		return "none"

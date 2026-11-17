@@ -17,7 +17,7 @@ import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, Switch } from "./controls.tsx";
 import { ago } from "./format.ts";
-import { aboutGroups, bySource, groupNoted, MEM_MIN, memPhase, memUpdate, ownsAgents, peersPhase, peersShown, recentHandoffs, tryAgents, type Handoff, type MemPhase, type MemUpdate } from "./mem-view.ts";
+import { aboutGroups, bySource, groupNoted, MEM_MIN, memPhase, memUpdate, ownsAgents, peersPhase, peersShown, peersSwitchOn, recentHandoffs, tryAgents, type Handoff, type MemPhase, type MemUpdate } from "./mem-view.ts";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { Avatar, Check } from "./views.tsx";
 
@@ -711,7 +711,7 @@ export function PeersPage() {
   const s = A.settings;
   const p = s?.peers;
   const b = A.bridge;
-  const on = p?.reach !== "off";
+  const on = peersSwitchOn(p?.reach, b);
   const phase = peersPhase(b, on);
   // Opening the page while Mem is ready is the ask: the home connects (the same call as at start).
   useEffect(() => {
@@ -720,7 +720,9 @@ export function PeersPage() {
   if (!s || !p) return null;
   const name = s.name;
   const flip = (v: boolean) => {
-    A.setSettings({ peers: { ...p, reach: v ? "own" : "off" } });
+    // D340: on a home that waits to be asked the switch already reads on in settings: flipping it is the ask.
+    if (v && p.reach !== "off") A.connectBridge();
+    else A.setSettings({ peers: { ...p, reach: v ? "own" : "off" } });
     say("peers", t(v ? "said.peers.on" : "said.peers.off", name));
   };
   const mem = b ? memPhase(true, A.mem, b) : "missing";

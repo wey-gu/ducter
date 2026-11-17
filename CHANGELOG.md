@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.70
+
+<!-- whats-new
+zh: 手机上的设置更稳：弹层不再溢出圆角，按钮都好点
+en: Settings on the phone: sheets stay inside their corners, every button easy to tap
+-->
+
+**On the phone**
+- Every sheet scrolls inside its rounded frame; nothing draws above its top edge any more.
+- Copy, Undo and Forget have full-size tap targets; the Partner page's invitation link reads
+  in full on a small phone; the own-number step sits in its column.
+- The Nowledge Mem install step has a proper How, and says Ducter can't add it there by
+  itself instead of "this computer".
+
 ## 0.0.69
 
 <!-- whats-new

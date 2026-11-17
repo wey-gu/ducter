@@ -2952,7 +2952,7 @@ export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, 
 // D276: 聊天软件 / Chat apps (i18n-channels.ts).
 Object.assign(TABLES.zh, channelWords.zh);
 Object.assign(TABLES.en, channelWords.en);
-// D340: 待办来源 / To-do sources (i18n-todos.ts).
+// D341: 待办来源 / To-do sources (i18n-todos.ts).
 Object.assign(TABLES.zh, todoWords.zh);
 Object.assign(TABLES.en, todoWords.en);
 

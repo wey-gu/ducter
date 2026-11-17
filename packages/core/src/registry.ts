@@ -113,12 +113,12 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
           ...(b.from ? { from: { taskId: b.from, title: cards.get(b.from)?.title ?? "" } } : prev?.from ? { from: prev.from } : {}),
           // D299: carried on from a session the person ran outside Ducter.
           ...((b.outside ?? prev?.outside) ? { outside: b.outside ?? prev!.outside! } : {}),
-          // D340: a retitle keeps its to-do.
+          // D341: a retitle keeps its to-do.
           ...(prev?.source ? { source: prev.source } : {}),
         });
         break;
       }
-      // D340: the outside to-do a task is bound to, what Ducter last saw of it there, what it wrote back.
+      // D341: the outside to-do a task is bound to, what Ducter last saw of it there, what it wrote back.
       case "task_bound": {
         const b = e.body as Bodies["task_bound"];
         const c = cards.get(b.taskId);

@@ -1,4 +1,4 @@
-// D340: a fake `gh` for 待办来源 / To-do sources: a small GitHub in memory (issues assigned to the
+// D341: a fake `gh` for 待办来源 / To-do sources: a small GitHub in memory (issues assigned to the
 // person, comments, closes) answering the same argv the GitHub adapter runs. No network, never the
 // real GitHub; the tests and the demo core use it.
 import type { GhRun } from "@ducter/protocol/src/git-login.ts";

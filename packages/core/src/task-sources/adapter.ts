@@ -1,4 +1,4 @@
-// D340: 待办来源 / To-do sources. One adapter per outside app: GitHub and Obsidian now, Jira and a
+// D341: 待办来源 / To-do sources. One adapter per outside app: GitHub and Obsidian now, Jira and a
 // company's own tracker later (design/task-sources.md §8). An adapter only reads its app and does
 // the one write it is asked for; the gate (who allowed it), the Log and the bindings are the
 // service's (index.ts), so a new app never decides consent by itself.

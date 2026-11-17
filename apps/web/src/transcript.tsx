@@ -1511,7 +1511,7 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
           )}
         </span>
       )}
-      {/* D340: the to-do it is bound to: its app's mark and number, opening it there. */}
+      {/* D341: the to-do it is bound to: its app's mark and number, opening it there. */}
       {task.card?.source && <SourceChip src={task.card.source} />}
       {onSwitch && (
         <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={onSwitch}>

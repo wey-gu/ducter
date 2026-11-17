@@ -1,6 +1,6 @@
 # To-do sources (待办来源): the person's to-dos in other apps, and the tasks bound to them
 
-Decided in D340 (may need renumbering at merge). Evidence: `research/126-task-sources.md`. Words are the
+Decided in D341 (may need renumbering at merge). Evidence: `research/126-task-sources.md`. Words are the
 glossary's (`product-model.md`); the look is Pebble's (`ui.md`). Built: GitHub (read, bind, comment,
 close) and Obsidian on the home (read, bind, tick); Jira and a company's own tracker are adapters later.
 

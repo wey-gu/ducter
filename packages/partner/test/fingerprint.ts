@@ -31,7 +31,7 @@ export async function partnerFingerprint(): Promise<Fingerprint> {
   process.env.DUCTER_SAVED_KEY = "file";
   // D222: two calendar accounts in a fake oo, so the calendar tool (listed only then) is judged too.
   const oo = fakeOoCalendar({ day: "2026-11-18" });
-  // D340: a GitHub to-do source through a fake gh, so the todos tool (listed only then) is judged too.
+  // D341: a GitHub to-do source through a fake gh, so the todos tool (listed only then) is judged too.
   const core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin", ooSource: oo.source, taskSources: { ghRun: fakeGh().run, ghEnv: {}, pollMs: 3_600_000 } });
   await core.connections.addFromOo();
   await core.taskSources.add("github");

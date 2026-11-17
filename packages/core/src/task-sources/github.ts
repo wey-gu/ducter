@@ -1,4 +1,4 @@
-// D340: GitHub issues and pull requests assigned to the person, through the home's own GitHub
+// D341: GitHub issues and pull requests assigned to the person, through the home's own GitHub
 // command line (gh, signed in by D272). No public address is needed: the home asks, with the last
 // answer's ETag, so a look that finds nothing new costs nothing against the hourly limit
 // (research/126 §1). Writes are one comment or one close, each with the gate's say (index.ts).

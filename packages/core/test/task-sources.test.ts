@@ -1,4 +1,4 @@
-// D340: 待办来源 / To-do sources. The Obsidian Tasks parser and its one-line write (in place, compare
+// D341: 待办来源 / To-do sources. The Obsidian Tasks parser and its one-line write (in place, compare
 // and swap, never another line), the GitHub adapter over a fake gh (ETag'd looks, a comment with its
 // signature, a close), and the service's rails: a write only behind a Go or a standing go, the task
 // told when its to-do changes there, "closed there; stop?" asked, the tick on done, Done for you.

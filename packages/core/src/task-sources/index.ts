@@ -1,4 +1,4 @@
-// D340: 待办来源 / To-do sources (design/task-sources.md). The person's to-dos in other apps, and the
+// D341: 待办来源 / To-do sources (design/task-sources.md). The person's to-dos in other apps, and the
 // tasks bound to them. Who owns what:
 //   the app owns WHAT the to-do is and whether it is open (its words, assignee, labels, open/closed);
 //   Ducter owns HOW it gets done (the task, its session, reports and branch).
@@ -603,7 +603,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
           errors.push({ source: s.id, error: (err as Error).message.slice(0, 200) });
         }
       }
-      // D340: asked about GitHub before it was added: the home's own gh reads it (asking is the consent to read).
+      // D341: asked about GitHub before it was added: the home's own gh reads it (asking is the consent to read).
       if (o.found && !st.sources.some((s) => s.kind === "github") && (!o.source || o.source === "github")) {
         await probeGh();
         if (foundGh?.state === "ok") {

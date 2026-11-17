@@ -176,7 +176,7 @@ zh light, demo cores on fresh data folders):
 - Every demo core starts from `apps/web/demo-core.ts`: pretend `nmem`, Mem plugin check, speakers,
   adb, agent sessions and computer name, so no shot shows this machine.
 
-## 待办来源 / To-do sources (D340)
+## 待办来源 / To-do sources (D341)
 
 A new pane after 账号 / Accounts, for the developer with issues and the consumer with an Obsidian vault;
 the fresh user sees what it is and nothing happens until something is added. Each source is one group

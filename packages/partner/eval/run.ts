@@ -29,7 +29,7 @@ import { fakeTuwa } from "../../core/test/fake-tuwa.ts";
 import { fakeOoCalendar } from "../../core/test/fake-oo-calendar.ts";
 import { fakeGh } from "../../core/test/fake-gh-issues.ts";
 
-/** D340: the issues assigned to the user in the eval's fake GitHub. */
+/** D341: the issues assigned to the user in the eval's fake GitHub. */
 const TODO_ISSUES = [
   { repo: "nowledge-co/hawdb", number: 1592, title: "Compaction test is flaky on CI", body: "TestCompactionMerge fails about 1 in 20 runs on Linux CI.", labels: ["bug"], updated: "2026-11-17T09:00:00Z" },
   { repo: "wey-gu/ducter", number: 6, title: "feat: task abstraction", body: "- built-in task abstraction\n- syncing with task services (GitHub issue per task binding?)", updated: "2026-11-17T08:00:00Z" },
@@ -207,7 +207,7 @@ interface RunResult {
   /** D222: day cards under messages, and the kinds of calendar change cards made. */
   dayCards?: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[];
   calKinds?: string[];
-  /** D340: to-do write-back cards made, and the to-do each task is bound to. */
+  /** D341: to-do write-back cards made, and the to-do each task is bound to. */
   todoCards?: number;
   boundRefs?: Map<string, string>;
   /** D303: the blocks drawn in messages (ducter-ui), and how many written ones weren't valid. */
@@ -313,7 +313,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   // D312: the partner under test is a second partner (its own conversation, channel:p2); the seed is the default's.
   const conv = sc.second ? "channel:p2" : "channel";
   const todoGh = sc.todos ? fakeGh(TODO_ISSUES, { login: "wey-gu" }) : undefined;
-  const core = startCore({ dataDir, port: 0, persona, // D340: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+  const core = startCore({ dataDir, port: 0, persona, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
     taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000 }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   if (calOo && !(await core.connections.addFromOo()).ok) throw new Error("fake oo calendar: not added");
   if (todoGh && !(await core.taskSources.add("github")).ok) throw new Error("fake GitHub: not added");
@@ -612,7 +612,7 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
     const { name: _n, to: _t, ...ended } = x;
     core.log.append({ stream: "channel", origin: "system", kind: "phone_call", body: { callId: "call_end", connectionId: core.connections.view()[0]?.id ?? "conn", plan, placedAt: new Date(Date.now() - 60_000).toISOString(), endedAt: new Date().toISOString(), ...ended } });
   } else if ("todosNew" in st) {
-    // D340: the look's news, as core logs it.
+    // D341: the look's news, as core logs it.
     const items = st.todosNew.refs.map((ref) => {
       const m = /^(.+)#(\d+)$/.exec(ref)!;
       const i = TODO_ISSUES.find((x) => x.repo === m[1] && x.number === Number(m[2]))!;
@@ -711,7 +711,7 @@ function check(r: RunResult): string[] {
   if (e.relayed && !r.visible.some((v) => v.kind === "ai_msg" && v.relays)) fails.push("the task's question was not said in the partner's words");
   if (e.ask &&!r.visible.some((v) => v.kind === "decision")) fails.push("no ask (decision)");
   if (e.noAsk && r.visible.some((v) => v.kind === "decision")) fails.push("a decision card nobody should get");
-  // D340: a to-do write-back card, and never a write without one.
+  // D341: a to-do write-back card, and never a write without one.
   const todoCards = r.todoCards ?? 0;
   if (e.todoCard && !todoCards) fails.push("no to-do write-back card (todos do=write)");
   if (e.noTodoCard && todoCards) fails.push("a to-do write-back card nobody asked for");

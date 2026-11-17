@@ -178,7 +178,7 @@ export interface CoreOptions {
   newFolderHome?: (name: string) => NewFolderResult;
   /** D272 test seam: the home's own GitHub sign-in (default: this computer's gh). */
   gitLoginHome?: GitLogin;
-  /** D340: 待办来源 / To-do sources: the seams (a fake gh, a scratch home for Obsidian's vault list, the look's pace). Tests default to no gh and no vaults. */
+  /** D341: 待办来源 / To-do sources: the seams (a fake gh, a scratch home for Obsidian's vault list, the look's pace). Tests default to no gh and no vaults. */
   taskSources?: Partial<Pick<TaskSourcesDeps, "ghRun" | "ghEnv" | "home" | "pollMs" | "boundMs" | "quietMs" | "today" | "now">>;
   /** D202 test seam: each agent's models on each computer (else read from the agents themselves). */
   models?: ModelCatalog;
@@ -250,7 +250,7 @@ export interface Core extends CoreApi {
   proactive: Proactive;
   /** D222: the person's calendars as one day, and changes behind a Go. */
   calendar: Calendar;
-  /** D340: 待办来源 / To-do sources: the person's to-dos in other apps and the tasks bound to them. */
+  /** D341: 待办来源 / To-do sources: the person's to-dos in other apps and the tasks bound to them. */
   taskSources: TaskSources;
   /** What each repo task changed so far (D128). */
   changes: Changes;
@@ -313,7 +313,7 @@ export function triggersPartner(e: LogEvent): boolean {
     const c = e.body as Bodies["connection_call"];
     return c.op === "write" && c.state === "failed" && !!c.decisionId && /calendar/.test(c.action);
   }
-  // D340: new to-dos in a source the person wants told (or taken under the standing go); a write
+  // D341: new to-dos in a source the person wants told (or taken under the standing go); a write
   // they said Go to that didn't go through. A closed or edited to-do is told to its task and asked
   // on its own card, so it doesn't wake the partner.
   if (e.kind === "source_seen") return (e.body as Bodies["source_seen"]).change === "new";
@@ -1317,7 +1317,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D222: every calendar account's calendars, merged (Accounts, the partner's calendar tool, the watcher).
   const calendar = createCalendar({ dataDir, connections, zone, log });
   calendarRef = calendar;
-  // D340: 待办来源 / To-do sources. Tests never reach the real gh or the person's vaults.
+  // D341: 待办来源 / To-do sources. Tests never reach the real gh or the person's vaults.
   const srcTesting = process.env.NODE_ENV === "test";
   const taskSources = createTaskSources({
     dataDir,

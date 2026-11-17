@@ -118,7 +118,7 @@ function Tune({ c }: { c: Candidate }) {
 
 export function NewTaskSheet() {
   const nt = A.nt;
-  // D340: whether there are to-dos to pick from (the home answers with its sources).
+  // D341: whether there are to-dos to pick from (the home answers with its sources).
   useEffect(() => {
     if (!TS.frame && A.S.welcomed) A.send({ t: "sources" });
   }, []);
@@ -204,7 +204,7 @@ export function NewTaskSheet() {
         <Tray where="new" />
         {/* D285: 带着它开新任务 / New task from this: what that task found goes with the words. */}
         {nt.from && <SeedChip />}
-        {/* D340: 从待办里选 / Pick from your to-dos: the task is bound to the to-do picked. */}
+        {/* D341: 从待办里选 / Pick from your to-dos: the task is bound to the to-do picked. */}
         {(nt.item || (TS.frame?.sources.length ?? 0) > 0 || TS.frame?.found.github?.state === "ok") && (
           <TodoPick
             picked={nt.item}

@@ -13988,7 +13988,7 @@ svg .wave.w2.on {
   .g-block:has(> .ex-pair) { padding-left: var(--set-in, var(--s4)); }
 }
 
-/* D340: 待办来源 / To-do sources. A bound task's chip (its app's own mark, the number or the note's
+/* D341: 待办来源 / To-do sources. A bound task's chip (its app's own mark, the number or the note's
    name, its state apart), New task's pick, the write-back card's comment, On hand's lens heading. */
 .src-chip {
   display: inline-flex;

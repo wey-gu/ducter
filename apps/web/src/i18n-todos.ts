@@ -1,4 +1,4 @@
-// D340, 待办来源 / To-do sources (glossary in design/product-model.md; design/task-sources.md): the
+// D341, 待办来源 / To-do sources (glossary in design/product-model.md; design/task-sources.md): the
 // person's to-dos in other apps (GitHub issues and PRs assigned to them, Obsidian Tasks lines) that
 // a task can be bound to. The same keys and words as the Mac (apps/desktop/internal/i18n/todos.go).
 export const todoWords: { zh: Record<string, string>; en: Record<string, string> } = {

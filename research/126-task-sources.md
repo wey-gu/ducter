@@ -1,6 +1,6 @@
 # 126 · Task sources: GitHub Issues, Obsidian Tasks, Jira
 
-> 2026-11-17. Public. Feeds D340: a Ducter task bound to one outside item (a GitHub issue or PR, an
+> 2026-11-17. Public. Feeds D341: a Ducter task bound to one outside item (a GitHub issue or PR, an
 > Obsidian Tasks line in a vault file; later Jira and company trackers). The outside system owns *what*
 > the item is and its state; Ducter owns *how* it gets done. Outside items never start work by
 > themselves, and every write back (a comment, a close, a tick) is outward and goes through consent.

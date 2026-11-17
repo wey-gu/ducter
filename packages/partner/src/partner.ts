@@ -618,7 +618,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     trusted: (agent) => !!core.settings?.get().peers?.trusted.includes(agent),
     taskTitle: (id) => core.tasks.get(id)?.title ?? jobs.get(id)?.title,
     taskAttention: (id) => core.tasks.get(id)?.attention,
-    // D340: the to-do a task is bound to, and what Ducter does with it when it is done.
+    // D341: the to-do a task is bound to, and what Ducter does with it when it is done.
     taskSource: (id) => {
       const src = core.tasks.get(id)?.source;
       if (!src) return undefined;
@@ -2181,7 +2181,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     );
   }
 
-  // ---------- To-do sources (D340, design/task-sources.md) ----------
+  // ---------- To-do sources (D341, design/task-sources.md) ----------
   // The user's to-dos in other apps. Listed while a source is on, or GitHub could be read through
   // the home's gh. Nothing outside starts work by itself; a write-back is a Go card unless the user
   // chose otherwise, made and run by core.

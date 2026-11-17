@@ -323,7 +323,7 @@ export interface Bodies {
     // D222: a calendar change (add, move, cancel, answer an invitation). Go runs it once, by core;
     // its outcome is the connection_call with this decisionId (state done + link, or failed).
     cal?: CalChange;
-    // D340: a card about a to-do bound to a task (待办来源 / To-do sources): a write-back to its app,
+    // D341: a card about a to-do bound to a task (待办来源 / To-do sources): a write-back to its app,
     // the to-do closed there while the task works, or a standing go offered once.
     src?: SourceAsk;
   };
@@ -401,10 +401,10 @@ export interface Bodies {
     media?: MediaRef[];
   };
   checkpoint: { taskId: string; text: string; gitRef?: string };
-  // D340: a task bound to one outside to-do (item null: unbound). by: who bound it (the person in
+  // D341: a task bound to one outside to-do (item null: unbound). by: who bound it (the person in
   // New task, the partner when it took one, or a standing go).
   task_bound: { taskId: string; item: SourceItemRef | null; by: "you" | "partner" | "rule" };
-  // D340: what a look at a source saw change on a to-do: closed or reopened in its app, its words
+  // D341: what a look at a source saw change on a to-do: closed or reopened in its app, its words
   // edited, the line gone, or new to-dos in scope (refs, at most 20, untrusted titles).
   source_seen: {
     source: string;
@@ -417,7 +417,7 @@ export interface Bodies {
     /** new: under the standing go (they start without asking). */
     taken?: boolean;
   };
-  // D340: one write to the to-do's app on the person's behalf (comment, close, tick, untick), with
+  // D341: one write to the to-do's app on the person's behalf (comment, close, tick, untick), with
   // the Go or standing go that allowed it. Done for you reads it (sent: comment; changed: the rest).
   source_write: {
     source: string;
@@ -749,7 +749,7 @@ export interface TaskCard {
   outside?: { agent: string; sessionId: string; startedAt: string };
   /** D325: what the person held for after this turn, in order (absent: nothing held). */
   held?: HeldMsg[];
-  /** D340: the outside to-do it is bound to (待办来源), with what Ducter last saw of it there and what it wrote back. */
+  /** D341: the outside to-do it is bound to (待办来源), with what Ducter last saw of it there and what it wrote back. */
   source?: SourceItemRef & { state?: "open" | "closed" | "gone"; wrote?: SourceOp[] };
 }
 
@@ -1262,7 +1262,7 @@ export type ClientFrame =
   | PastClientFrame
   // D300: 替你做过的 / Done for you (did.ts).
   | DidClientFrame
-  // D340: 待办来源 / To-do sources (task-sources.ts).
+  // D341: 待办来源 / To-do sources (task-sources.ts).
   | SourcesClientFrame
   | HandsetClientFrame
   | { t: "browser_site_signout"; site: string }

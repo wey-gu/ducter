@@ -49,7 +49,7 @@ export interface WsData {
   connections?: boolean;
   /** D276: asked for the chat apps: gets a fresh channels frame whenever they change. */
   channels?: boolean;
-  /** D340: subscribed to 待办来源 / To-do sources. */
+  /** D341: subscribed to 待办来源 / To-do sources. */
   sources?: boolean;
   /** The paired device behind a remote socket (core.ts). */
   device?: { id: string };
@@ -147,7 +147,7 @@ export interface WsDeps {
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
   /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
-  /** D340: 待办来源 / To-do sources (task-sources/). */
+  /** D341: 待办来源 / To-do sources (task-sources/). */
   taskSources?: () => import("./task-sources/index.ts").TaskSources | undefined;
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
   /** D309: 伙伴们 / Partners (partners.ts); absent in tests that don't need them. */
@@ -357,7 +357,7 @@ export function createWsHandler(deps: WsDeps) {
   };
   // D276: 聊天软件 / Chat apps: every subscriber gets a fresh frame on every change.
   const offChannels = deps.channels?.onChange(channelsChanged);
-  // D340: 待办来源 / To-do sources: made after this handler; subscribed on the first sources frame.
+  // D341: 待办来源 / To-do sources: made after this handler; subscribed on the first sources frame.
   let offSources: (() => void) | undefined;
   const sourcesChanged = () => {
     const ts = deps.taskSources?.();
@@ -1370,7 +1370,7 @@ export function createWsHandler(deps: WsDeps) {
       case "task_new": {
         if (!deps.newTask) throw new Error("new tasks are not available");
         const id = typeof f.clientId === "string" && f.clientId ? f.clientId : undefined;
-        // D340: picked from 待办来源 / To-do sources: a to-do with a live task opens that task, never a second one.
+        // D341: picked from 待办来源 / To-do sources: a to-do with a live task opens that task, never a second one.
         const ts = deps.taskSources?.();
         const pick = f.item && typeof f.item === "object" && typeof f.item.ref === "string" && typeof f.item.source === "string" ? f.item : undefined;
         const already = pick && ts ? ts.taskOf(pick.ref) : undefined;
@@ -1466,7 +1466,7 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       // D300: 替你做过的 / Done for you.
-      // D340: 待办来源 / To-do sources (task-sources/).
+      // D341: 待办来源 / To-do sources (task-sources/).
       case "sources":
       case "source_add":
       case "source_set":

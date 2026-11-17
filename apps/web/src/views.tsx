@@ -282,7 +282,7 @@ export function goLabel(d: DecisionState): string {
   if (d.closing) return closingWords(d.closing).go;
   if (d.memPlugin) return t("memp.card.go");
   if (d.cal) return d.goLabel; // D222: the action itself (添加到日历 / Add to calendar)
-  if (d.src) return d.goLabel; // D340: 留言 / Comment, 停下 / Stop, as the card's code said it
+  if (d.src) return d.goLabel; // D341: 留言 / Comment, 停下 / Stop, as the card's code said it
   if (d.computer?.kind === "user") return t("computeruse.user.done"); // D235: their own turn in an app
   return shortGo(d.goLabel);
 }
@@ -960,7 +960,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
       <div class="bubble" dir="auto">{d.said || d.question}</div>
       {/* D222: a calendar change: what, when, where and who hears, before one Go. */}
       {d.cal && <CalFacts c={d.cal} />}
-      {/* D340: a write-back to a to-do's app: the comment whole, as it goes out. */}
+      {/* D341: a write-back to a to-do's app: the comment whole, as it goes out. */}
       {d.src && <SourceCardBody src={d.src} />}
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
       {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
@@ -2920,7 +2920,7 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "peers", art: "coins", title: "settings.tab.peers" },
   { page: "notify", art: "wait_clock", title: "settings.tab.notify" },
   { page: "accounts", art: "wait_mail", title: "settings.tab.accounts" },
-  // D340: 待办来源 / To-do sources (todos.tsx); its own clay art is owed (todo.md): the page with lines stands in.
+  // D341: 待办来源 / To-do sources (todos.tsx); its own clay art is owed (todo.md): the page with lines stands in.
   { page: "todos", art: "wait_file", title: "settings.tab.todos" },
   // D276: 聊天软件 / Chat apps (channels.tsx); D283: two clay speech bubbles.
   { page: "chats", art: "set_chats", title: "settings.tab.chats" },

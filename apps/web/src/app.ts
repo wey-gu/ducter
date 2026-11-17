@@ -101,7 +101,7 @@ export interface NewTaskDraft {
   words: string;
   /** D285: 带着它开新任务 / New task from this: the earlier task its brief carries findings from. */
   from?: { taskId: string; title: string };
-  /** D340: picked from 待办来源 / To-do sources: the task is bound to this to-do. */
+  /** D341: picked from 待办来源 / To-do sources: the task is bound to this to-do. */
   item?: import("@ducter/protocol").SourceItemRef;
   placeKey: string; // "" = the first offered; "none" = no particular place
   prefill?: Place;
@@ -464,7 +464,7 @@ class AppState {
   onPhoneFrame?: (f: import("@ducter/protocol").PhoneServerFrame) => void;
   /** D276: set by channels.tsx; takes the channels and channel_result frames. */
   onChannelFrame?: (f: import("@ducter/protocol").ChannelServerFrame) => void;
-  /** D340: 待办来源 / To-do sources (todos.tsx keeps its own state). */
+  /** D341: 待办来源 / To-do sources (todos.tsx keeps its own state). */
   onSourcesFrame?: (f: import("@ducter/protocol").SourcesServerFrame) => void;
   /** D238: this page as its phone's link (handset.tsx). */
   onHandsetFrame?: (f: import("@ducter/protocol").HandsetServerFrame) => void;

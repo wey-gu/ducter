@@ -1,4 +1,4 @@
-// D340: a task the partner opened for a to-do is bound to it, by its take or, when the take was
+// D341: a task the partner opened for a to-do is bound to it, by its take or, when the take was
 // skipped, by the one open issue its brief names (owner/repo#n, the address, or repo#n).
 import { afterEach, expect, test } from "bun:test";
 import { join } from "node:path";

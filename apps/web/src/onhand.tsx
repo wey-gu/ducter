@@ -269,7 +269,7 @@ export function lensGroups(): LensGroup[] {
   if (other) out.push(other);
   return out;
 }
-/** D340: the board read by where its tasks' to-dos come from: one group per to-do source with a bound task. */
+/** D341: the board read by where its tasks' to-dos come from: one group per to-do source with a bound task. */
 export type SourceGroup = { key: string; name: string; kind: string; tasks: Task[] };
 export function sourceGroups(): SourceGroup[] {
   const out = new Map<string, SourceGroup>();
@@ -294,7 +294,7 @@ export function currentLens(groups: LensGroup[]): string {
   const k = readLens();
   return k && lensOn(groups) && (groups.some((g) => g.key === k) || sourceGroups().some((g) => g.key === k)) ? k : "";
 }
-/** The lanes narrowed to a lens (a project, or D340 a to-do source). */
+/** The lanes narrowed to a lens (a project, or D341 a to-do source). */
 export const lensLanes = (lens: string): Task[][] => A.S.board().lanes.slice(0, 4).map((l) => (!lens ? l : lens.startsWith("src:") ? l.filter((x) => `src:${x.card?.source?.source ?? ""}` === lens) : l.filter((x) => lensOf(x) === lens)));
 /** Only all, and Other, hold what belongs to no task: the partner's own asks, task-less waits, calls. */
 export const looseIn = (lens: string) => !lens || lens === OTHER;
@@ -345,7 +345,7 @@ export function LensColumn() {
       {groups.map((g) => (
         <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} />
       ))}
-      {/* D340: where the to-dos came from, after the projects. */}
+      {/* D341: where the to-dos came from, after the projects. */}
       {sourceGroups().length > 0 && (
         <>
           <span class="gap" />

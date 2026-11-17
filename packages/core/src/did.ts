@@ -242,7 +242,7 @@ export function createDid(d: DidDeps): Did {
             if (b.folder) folders.set(b.taskId, e as LogEvent<"report">);
             break;
           }
-          // D340: a write to a to-do's app: a comment is sent (to the issue), a close or a tick changes it.
+          // D341: a write to a to-do's app: a comment is sent (to the issue), a close or a tick changes it.
           case "source_write": {
             const b = e.body as Bodies["source_write"];
             if (b.state !== "done" || !inRange(e.ts)) break;

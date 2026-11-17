@@ -1,4 +1,4 @@
-// D340: Obsidian Tasks lines in a vault on the home: `- [ ] words \u{1F4C5} 2026-11-20 \u{1F53C}`. Read only from
+// D341: Obsidian Tasks lines in a vault on the home: `- [ ] words \u{1F4C5} 2026-11-20 \u{1F53C}`. Read only from
 // the folder the person chose; written one line at a time, in place, and only after the file was
 // read again and found unchanged (research/126 §2: the person may have the note open, and a sync
 // may be bringing a copy). Never another line, never the file's endings, BOM or last newline.

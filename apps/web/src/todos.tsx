@@ -1,4 +1,4 @@
-// 设置 › 待办来源 / Settings › To-do sources (D340, design/task-sources.md): the person's to-dos in
+// 设置 › 待办来源 / Settings › To-do sources (D341, design/task-sources.md): the person's to-dos in
 // other apps, GitHub issues and PRs assigned to them and Obsidian Tasks lines in a vault on the home,
 // which a task can be bound to. The app owns what the to-do is and whether it is open; Ducter owns
 // how it gets done. Here: what is added, what happens when a new one comes and when a task is done,

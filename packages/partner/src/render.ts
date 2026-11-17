@@ -128,7 +128,7 @@ export interface RenderCtx {
   trusted?(agent: string): boolean;
   /** D236: where a task stands now, so a reply about it can say whether more work goes to it. */
   taskAttention?(taskId: string): Attention | undefined;
-  /** D340: the outside to-do a task is bound to, and what Ducter does with it when it is done. */
+  /** D341: the outside to-do a task is bound to, and what Ducter does with it when it is done. */
   taskSource?(taskId: string): { kind: string; where?: string; label: string; title: string; whenDone?: string; wrote?: string[] } | undefined;
 }
 
@@ -177,7 +177,7 @@ function userAction(b: Bodies["job_status"], ctx: RenderCtx, n = 400): string {
   return `${clip(b.text, n)}${base ? ` (base branch: ${base})` : ""}`;
 }
 
-/** D340: what a bound task's done report asks of the partner. */
+/** D341: what a bound task's done report asks of the partner. */
 function sourceLine(taskId: string, s: NonNullable<ReturnType<NonNullable<RenderCtx["taskSource"]>>>): string {
   const what = s.kind === "github" ? `GitHub ${s.where}${s.label}` : `the Obsidian to-do "${clip(s.title, 80)}"`;
   if (s.kind === "obsidian") return `  (bound to ${what}: ${s.whenDone === "tick" ? "Ducter ticks it by itself; say nothing about it" : s.whenDone === "leave" ? "the user keeps it as it is" : `the user wants to be asked: propose the tick with todos do=write taskId ${taskId} (a card asks), after your result line`})`;
@@ -219,7 +219,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       return renderReport(r, ctx.taskTitle(r.taskId)) + (src ? `\n${sourceLine(r.taskId, src)}` : "");
     }
     case "source_seen": {
-      // D340: new to-dos in a source the user wants told, or taken under their standing go.
+      // D341: new to-dos in a source the user wants told, or taken under their standing go.
       const b = e.body as Bodies["source_seen"];
       const items = (b.items ?? []).slice(0, 8).map((i) => `${i.kind === "github" ? `${i.where}${i.label}` : `${i.ref}`} "${clip(i.title, 100)}"`).join("; ");
       const app = b.items?.[0]?.kind === "obsidian" ? "Obsidian" : "GitHub";

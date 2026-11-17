@@ -1,4 +1,4 @@
-// A demo core for D340's 待办来源 / To-do sources: GitHub (a fake gh with issues assigned to "lin-dev",
+// A demo core for D341's 待办来源 / To-do sources: GitHub (a fake gh with issues assigned to "lin-dev",
 // never the real GitHub) and an Obsidian vault in a scratch folder (never the person's own), a task
 // bound to an issue that commented, one bound to a vault line that was ticked, one working, a
 // write-back card, and a vault Obsidian lists that isn't added yet.

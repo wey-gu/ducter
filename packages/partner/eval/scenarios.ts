@@ -29,7 +29,7 @@ export type Seed =
   | { finds: { opening: string; finds: { kind: import("../../protocol/src/proactive.ts").FindKind; text: string; goLabel?: string }[] } }
   // Many short exchanges (filler), so what came before them leaves the cold seed's window.
   | { chatter: number }
-  // D340 (scenario.todos): the seeded task with this key is bound to that GitHub issue.
+  // D341 (scenario.todos): the seeded task with this key is bound to that GitHub issue.
   | { bound: { task: string; ref: string } };
 
 /** D236: a reply names an earlier message by words it has (the latest one that has them). */
@@ -56,7 +56,7 @@ export type Step =
   // `unchecked` (D333): it waits in the mailbox; Ducter reads it only when something checks.
   // `space` (D334, with scenario.spaces): the Space it was sent in ("ws-everyone"); default the person's own.
   | { peer: { from: string; text: string; answer?: boolean; unchecked?: true; space?: string } }
-  // D340 (scenario.todos): a look at GitHub found these issues new (taken: under the standing go).
+  // D341 (scenario.todos): a look at GitHub found these issues new (taken: under the standing go).
   | { todosNew: { refs: string[]; taken?: boolean } };
 
 export interface Expect {
@@ -136,10 +136,10 @@ export interface Expect {
   called?: { tool: string; args?: Record<string, unknown> }[];
   /** Partner tools that must not be called. */
   notCalled?: string[];
-  /** D340: a write-back card for a to-do (todos do=write) was made / none was; nothing went to GitHub without one. */
+  /** D341: a write-back card for a to-do (todos do=write) was made / none was; nothing went to GitHub without one. */
   todoCard?: boolean;
   noTodoCard?: boolean;
-  /** D340: some opened task is bound to this to-do (by todos do=take, or by its ref in the brief). */
+  /** D341: some opened task is bound to this to-do (by todos do=take, or by its ref in the brief). */
   bound?: string;
   /** D222: a day card went under a message (calendar do=agenda show) / none did. */
   dayCard?: boolean;
@@ -213,7 +213,7 @@ export interface Scenario {
    */
   calendar?: true;
   /**
-   * D340: a GitHub to-do source over a fake gh (packages/core/test/fake-gh-issues.ts), never the real
+   * D341: a GitHub to-do source over a fake gh (packages/core/test/fake-gh-issues.ts), never the real
    * GitHub: issues assigned to the user in nowledge-co/hawdb and wey-gu/ducter.
    */
   todos?: true;
@@ -1702,7 +1702,7 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, msgs: [1, 1], maxChars: 320, called: [{ tool: "did_list" }], require: [/312/, /Okura/i], forbid: [/I (just )?(checked|looked (it )?up) (the )?(log|record)|did_list/i] },
     rubric: "The user asks whether Ducter paid for anything today. It calls did_list and answers in short English from it only: one payment, USD 312.00 to the Okura hotel (hotelokura.co.jp), after the user agreed, for the Tokyo hotel task; the card, the stay and the time from the list may be named or not. Nothing else was paid; it doesn't list the other kinds unless briefly. It invents nothing, never says how it looked it up, and opens no task. One or two short lines; one more honest line that the booking itself is not confirmed yet is fine.",
   },
-  // ---------- to-do sources (D340): offered, taken on the user's pick, written back behind a card ----------
+  // ---------- to-do sources (D341): offered, taken on the user's pick, written back behind a card ----------
   {
     id: "todos-offer-zh",
     category: "todos",

@@ -1,4 +1,4 @@
-// D340 (design/task-sources.md): 待办来源 / To-do sources. The person's to-dos kept in other apps
+// D341 (design/task-sources.md): 待办来源 / To-do sources. The person's to-dos kept in other apps
 // (GitHub issues and pull requests assigned to them; Obsidian Tasks lines in a vault on the home),
 // which a Ducter task can be bound to. The outside app owns WHAT the to-do is and whether it is
 // open; Ducter owns HOW it gets done. Shared by core and every client.

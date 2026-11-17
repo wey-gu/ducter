@@ -9,7 +9,9 @@ const url = new URL(path, "https://ducter.ai").toString();
   <title>{title}</title>
   <meta name="description" content={description} />
   <link rel="canonical" href={url} />
-  <meta name="theme-color" content="#FFF6EA" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#FFF6EA" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#17120E" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/icon.png" type="image/png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

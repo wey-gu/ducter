@@ -14,6 +14,7 @@
 
 <p align="center">
   <a href="https://ducter.ai">ducter.ai</a> ·
+  <a href="https://ducter.ai/download">Download</a> ·
   <a href="docs/getting-started.md">Getting started</a> ·
   <a href="docs/README.md">Docs</a>
 </p>

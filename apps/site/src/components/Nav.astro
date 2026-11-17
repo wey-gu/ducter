@@ -1,9 +1,10 @@
 ---
 import Art from "./Art.astro";
 import GitHubMark from "./GitHubMark.astro";
-interface Props { dl: { href: string; label: string }; gh: { href: string; label: string }; home?: boolean }
-const { dl, gh, home = true } = Astro.props;
+interface Props { dl: { href: string; label: string }; gh: { href: string; label: string }; home?: boolean; current?: "docs" | "download" }
+const { dl, gh, home = true, current } = Astro.props;
 const at = (hash: string) => (home ? hash : "/" + hash);
+const dlHref = dl.href.startsWith("#") ? at(dl.href) : dl.href;
 ---
 <a class="skip" href="#main">Skip to content</a>
 <header class="nav" id="nav">
@@ -16,9 +17,9 @@ const at = (hash: string) => (home ? hash : "/" + hash);
       <a href={at("#how")}>How it works</a>
       <a href={at("#devices")}>Your computers</a>
       <a href={at("#trust")}>Trust</a>
-      <a href="/docs">Docs</a>
+      <a href="/docs" aria-current={current === "docs" ? "page" : undefined}>Docs</a>
     </nav>
     <a class="nav-gh" href={gh.href} rel="noopener" aria-label="Ducter on GitHub"><GitHubMark /><span>{gh.label}</span></a>
-    <a class="btn md" href={dl.href.startsWith("#") ? at(dl.href) : dl.href}>{dl.label}</a>
+    <a class="btn md nav-dl" href={dlHref} aria-current={current === "download" ? "page" : undefined}>{dl.label}</a>
   </div>
 </header>

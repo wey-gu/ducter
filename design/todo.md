@@ -1683,3 +1683,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **今天做完's section and the strip count the same** (a done only claimed is listed but not counted, D310). Trigger: the author sees 「今天做完 1」 over a strip without it.
 - [ ] **A demo with two computers** in `demo-onhand.ts`, so the shots show where on the one card that runs elsewhere. Trigger: the next On hand shots.
 - [ ] **On hand in front of people**: the author, then a consumer who has never heard "agent" (research/95). Trigger: D315 reviewed.
+- [ ] **The web's cheer matches the Mac's** (`oh-cheer`: wait for the view transition to finish, swell from rest to ~1.02 and back). Trigger: the next On hand pass.
+
+## D319: the website and the download page (2026-11-17)
+- [ ] **What's owed on the site** is listed in `design/site.md` "Owed": the README's hero, On hand, task and Partner shots; the landing page's On hand board redrawn as D287; Chinese for the site; a mirror for mainland China (with `install.sh`); docs search; an axe pass. Trigger: the author's review of `/download`.

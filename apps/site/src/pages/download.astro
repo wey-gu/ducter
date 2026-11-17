@@ -1,0 +1,297 @@
+---
+// Every way to get Ducter, on one page (D319). Ducter lives on one computer (a Mac or a Linux
+// server); phones, tablets and browsers reach it. The visitor's own option leads (download.ts
+// moves it first and fills the top card); without JavaScript the page reads Mac first, all shown.
+import "../styles/site.css";
+import Art from "../components/Art.astro";
+import Head from "../components/Head.astro";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
+import { siteLinks } from "../lib/links";
+import { formatDate, formatSize, RELEASES_URL, REPO_URL } from "../lib/github";
+import { agentsToday } from "../lib/agents";
+
+const { facts, dl, gh } = await siteLinks();
+const a = facts.assets;
+const version = facts.version?.replace(/^v/, "") ?? null;
+const date = formatDate(facts.publishedAt);
+const notes = facts.releaseUrl ?? RELEASES_URL;
+const TESTFLIGHT = "https://testflight.apple.com/join/Z4GvWt7t";
+const oneLine = "curl -fsSL https://ducter.ai/install.sh | sh";
+const serverLine = "curl -fsSL https://ducter.ai/install.sh | sh -s -- --service";
+const agentAsk = "Install the ducter-deploy skill from github.com/wey-gu/ducter/tree/main/skills and deploy Ducter on my server.";
+const size = (x: typeof a.dmg) => (x ? formatSize(x.size) : "");
+const files = [a.dmg, a.linuxX64, a.linuxArm64, a.apk].filter((x): x is NonNullable<typeof x> => !!x);
+const title = "Download Ducter";
+const description = "Get Ducter for your Mac or a Linux server, and connect your iPhone, iPad or Android phone. Every download, with its size, checksum and what it needs.";
+const arrow = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v9M4.5 8L8 11.5 11.5 8M3 13.5h10"/></svg>`;
+const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l8-8M6 4h6v6"/></svg>`;
+---
+<!doctype html>
+<html lang="en">
+<Head title={title} description={description} path="/download" />
+<body class="dl-page">
+<Nav dl={dl} gh={gh} home={false} current="download" />
+<main id="main">
+
+<section class="dl-hero">
+  <div class="wrap">
+    <h1>Get Ducter.</h1>
+    <p class="lede">Ducter lives on one computer: <b>your Mac</b> or <b>a Linux server</b>. Your iPhone, iPad, Android phone and any browser then open the same conversation, wherever you are.</p>
+    <p class="dl-rel" id="dl-rel">
+      {version ? (
+        <>
+          <span>Ducter <b data-rel="version">{version}</b></span>
+          {date && <span>· released <time data-rel="date" datetime={facts.publishedAt}>{date}</time></span>}
+          <a href={notes} data-rel="notes" rel="noopener">What's new<Fragment set:html={out} /></a>
+        </>
+      ) : (
+        <span>No release yet. You can <a href="/docs/install#build-it-from-the-source-instead">build it from the source</a> today.</span>
+      )}
+    </p>
+
+    <!-- The visitor's own option: the Mac's without JavaScript; download.ts shows the one for this device. -->
+    <div class="dl-pick" id="dl-pick" data-os="mac">
+      <div class="dl-pick-art" aria-hidden="true">
+        <Art name="laptop_awake" alt="" sizes="200px" eager data-for="mac" />
+        <Art name="server_awake" alt="" sizes="200px" data-for="linux other" />
+        <Art name="phone" alt="" sizes="110px" data-for="ios" />
+        <Art name="android" alt="" sizes="110px" data-for="android" />
+      </div>
+      <div class="dl-pick-body" data-for="mac">
+        <p class="dl-for">For your Mac</p>
+        <h2>Ducter for Mac</h2>
+        <p class="body">The app, signed and notarized by Apple. It keeps working when you close the window, and updates itself.</p>
+        <div class="dl-pick-acts">
+          {a.dmg ? (
+            <a class="btn lg" href={a.dmg.url} data-asset="dmg"><Fragment set:html={arrow} />Download for Mac</a>
+          ) : (
+            <a class="btn lg" href={RELEASES_URL}>See the releases</a>
+          )}
+          <span class="dl-meta">{a.dmg && <><span data-meta="dmg">{size(a.dmg)}</span> · </>}Apple silicon · macOS 12 or later</span>
+        </div>
+        <p class="dl-or">Or paste this into Terminal. It downloads the same app, checks it, puts it in Applications and opens it:</p>
+        <div class="term short"><button class="btn sm copy" type="button" data-copy={oneLine}>Copy</button><pre><span class="p">$ </span>{oneLine}</pre></div>
+      </div>
+      <div class="dl-pick-body" data-for="linux" hidden>
+        <p class="dl-for">For this Linux computer</p>
+        <h2>Ducter on a Linux server</h2>
+        <p class="body">Your partner keeps working through the night, and your Mac and phone connect to it. Run this on the server (x64 or arm64); it checks the download and runs Ducter as a service:</p>
+        <div class="term short"><button class="btn sm copy" type="button" data-copy={serverLine}>Copy</button><pre><span class="p">$ </span>{serverLine}</pre></div>
+        <p class="dl-or">Then <code>ducter tailscale</code> or <code>ducter domain</code> gives your devices a way in. <a href="#server">More below</a></p>
+      </div>
+      <div class="dl-pick-body" data-for="ios" hidden>
+        <p class="dl-for" data-ipad="For this iPad">For this iPhone</p>
+        <h2>Ducter for iPhone and iPad</h2>
+        <p class="body">One app for both, in public beta. It connects to your Ducter on a Mac or a Linux server, so set that up first if you haven't: <a href="#mac">Mac</a> or <a href="#server">server</a>.</p>
+        <div class="dl-pick-acts">
+          <a class="btn lg" href={TESTFLIGHT} rel="noopener">Join on TestFlight<Fragment set:html={out} /></a>
+          <span class="dl-meta">iOS and iPadOS 17 or later</span>
+        </div>
+      </div>
+      <div class="dl-pick-body" data-for="android" hidden>
+        <p class="dl-for">For this Android phone</p>
+        <h2>Ducter for Android</h2>
+        <p class="body">The app comes signed with each release and updates itself. It connects to your Ducter on a Mac or a Linux server, so set that up first if you haven't: <a href="#mac">Mac</a> or <a href="#server">server</a>.</p>
+        <div class="dl-pick-acts">
+          {a.apk ? (
+            <a class="btn lg" href={a.apk.url} data-asset="apk"><Fragment set:html={arrow} />Download for Android</a>
+          ) : (
+            <a class="btn lg" href="/docs/phone">Use your phone's browser</a>
+          )}
+          <span class="dl-meta">{a.apk && <><span data-meta="apk">{size(a.apk)}</span> · </>}Android 8 or later</span>
+        </div>
+      </div>
+      <div class="dl-pick-body" data-for="other" hidden>
+        <p class="dl-for">For this computer</p>
+        <h2>Ducter lives on a Mac or a Linux server</h2>
+        <p class="body">There's no app for this computer yet. Put Ducter on a Linux server, at home or in the cloud, and open it here in the browser. Run this on the server:</p>
+        <div class="term short"><button class="btn sm copy" type="button" data-copy={serverLine}>Copy</button><pre><span class="p">$ </span>{serverLine}</pre></div>
+        <p class="dl-or"><a href="#server">The whole setup</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="dl-sec">
+  <div class="wrap">
+    <div class="dl-step">
+      <span class="dl-n" aria-hidden="true">1</span>
+      <div>
+        <h2>Where Ducter lives</h2>
+        <p class="body">Pick one. A Mac is the quickest start; a server keeps your partner working while your Mac sleeps. You can add the other later.</p>
+      </div>
+    </div>
+    <ul class="dl-grid two" id="dl-homes">
+      <li class="dl-card" id="mac" data-os="mac">
+        <div class="dl-card-head">
+          <Art name="laptop_awake" alt="" sizes="96px" />
+          <div><h3>Mac</h3><p class="dl-state">Ready</p></div>
+        </div>
+        <p>The desktop app. Ducter lives here and runs tasks here, with its own Chrome window for the web.</p>
+        <div class="dl-acts">
+          {a.dmg ? <a class="btn md" href={a.dmg.url} data-asset="dmg"><Fragment set:html={arrow} />Download .dmg</a> : <a class="btn md" href={RELEASES_URL}>Releases</a>}
+          <span class="dl-meta" data-meta="dmg">{size(a.dmg)}</span>
+        </div>
+        <div class="term short"><button class="btn sm copy" type="button" data-copy={oneLine}>Copy</button><pre><span class="p">$ </span>{oneLine}</pre></div>
+        <dl class="dl-req">
+          <dt>Needs</dt><dd>A Mac with Apple silicon (M1 or later), macOS 12 or later. Intel Macs aren't supported yet.</dd>
+          <dt>Then</dt><dd>Open the .dmg, drag Ducter to Applications and open it. It checks your Mac and opens the conversation. <a href="/docs/getting-started">Getting started</a></dd>
+        </dl>
+      </li>
+      <li class="dl-card" id="server" data-os="linux">
+        <div class="dl-card-head">
+          <Art name="server_awake" alt="" sizes="96px" />
+          <div><h3>Linux server</h3><p class="dl-state">Ready</p></div>
+        </div>
+        <p>On a server you own, at home or in the cloud. Run this on the server; Ducter starts with it and restarts if it ever stops:</p>
+        <div class="term short"><button class="btn sm copy" type="button" data-copy={serverLine}>Copy</button><pre><span class="p">$ </span>{serverLine}</pre></div>
+        <p>Then choose how your devices reach it: <code>ducter tailscale</code> (private to your devices, no open ports) or <code>ducter domain ducter.example.com</code> (your own domain, with HTTPS). Either one ends with a code for your Mac and phone. <a href="/docs/install#a-linux-server-that-stays-on">The whole setup</a></p>
+        <div class="dl-files">
+          {a.linuxX64 && <a href={a.linuxX64.url} data-asset="linuxX64"><Fragment set:html={arrow} /><span>x64 bundle</span><small data-meta="linuxX64">{size(a.linuxX64)}</small></a>}
+          {a.linuxArm64 && <a href={a.linuxArm64.url} data-asset="linuxArm64"><Fragment set:html={arrow} /><span>arm64 bundle</span><small data-meta="linuxArm64">{size(a.linuxArm64)}</small></a>}
+        </div>
+        <dl class="dl-req">
+          <dt>Needs</dt><dd>64-bit Linux on x64 or arm64, with systemd to run it as a service. Your own domain needs ports 80 and 443 open; HTTPS is set up for you on Debian and Ubuntu.</dd>
+          <dt>By hand</dt><dd>Unpack the bundle for your server's CPU and run its <code>install.sh --service</code>.</dd>
+        </dl>
+      </li>
+    </ul>
+
+    <p class="dl-need">Whichever you pick, the computer that does the work needs an AI agent, {agentsToday}, installed and signed in. Ducter uses the plan you already have, and tells you the one thing to fix if something's missing.</p>
+
+    <div class="dl-step">
+      <span class="dl-n" aria-hidden="true">2</span>
+      <div>
+        <h2>Where you reach it</h2>
+        <p class="body">Your phone and iPad connect to the Ducter on your Mac or server, with a one-time code from <code>ducter pair</code> or the Mac app's <b>Devices</b>. <a href="/docs/phone">Your phone</a></p>
+      </div>
+    </div>
+    <ul class="dl-grid three" id="dl-reach">
+      <li class="dl-card" id="iphone" data-os="ios">
+        <div class="dl-card-head">
+          <Art name="phone" alt="" sizes="56px" />
+          <div><h3>iPhone and iPad</h3><p class="dl-state beta">Public beta</p></div>
+        </div>
+        <p>One app for both, through Apple's TestFlight. On an iPad held across, On hand stands beside the conversation.</p>
+        <div class="dl-acts"><a class="btn md" href={TESTFLIGHT} rel="noopener">Join on TestFlight<Fragment set:html={out} /></a></div>
+        <dl class="dl-req">
+          <dt>Needs</dt><dd>iOS or iPadOS 17 or later. Beta builds expire after 90 days; TestFlight offers the next one.</dd>
+        </dl>
+      </li>
+      <li class="dl-card" id="android" data-os="android">
+        <div class="dl-card-head">
+          <Art name="android" alt="" sizes="56px" />
+          <div><h3>Android</h3><p class="dl-state">{a.apk ? "Ready" : "Coming soon"}</p></div>
+        </div>
+        <p>The Ducter app, straight from each release, signed. It updates itself from then on. On a foldable, the conversation and On hand meet at the fold.</p>
+        <div class="dl-acts">
+          {a.apk ? <a class="btn md" href={a.apk.url} data-asset="apk"><Fragment set:html={arrow} />Download .apk</a> : <a class="btn md" href="/docs/phone">Use the browser</a>}
+          <span class="dl-meta" data-meta="apk">{size(a.apk)}</span>
+        </div>
+        <dl class="dl-req">
+          <dt>Needs</dt><dd>Android 8 or later. Android asks once whether your browser may install apps; allow it.</dd>
+        </dl>
+      </li>
+      <li class="dl-card" id="browser" data-os="web">
+        <div class="dl-card-head">
+          <Art name="ab_web" alt="" sizes="64px" />
+          <div><h3>Any phone's browser</h3><p class="dl-state">Nothing to install</p></div>
+        </div>
+        <p>Open your Ducter's address in Safari or Chrome. Add it to your home screen, and answer <b>Go</b> or <b>Hold</b> from the notification.</p>
+        <div class="dl-acts"><a class="btn secondary md" href="/docs/phone#connect-your-phone">Connect your phone</a></div>
+        <dl class="dl-req">
+          <dt>Needs</dt><dd>An address your phone can reach: Tailscale, your own domain, or From outside on a Mac.</dd>
+        </dl>
+      </li>
+    </ul>
+
+    <div class="dl-step">
+      <span class="dl-n" aria-hidden="true">+</span>
+      <div>
+        <h2>Other ways</h2>
+      </div>
+    </div>
+    <ul class="dl-grid two" id="dl-more">
+      <li class="dl-card" id="cli" data-os="cli">
+        <div class="dl-card-head">
+          <span class="dl-glyph" aria-hidden="true">$_</span>
+          <div><h3>The command line</h3><p class="dl-state">Ready</p></div>
+        </div>
+        <p>The same one line puts <code>ducter</code> in <code>~/.local/bin</code>: with the app on a Mac, as the bundle on Linux. Then:</p>
+        <div class="term short"><button class="btn sm copy" type="button" data-copy="ducter doctor&#10;ducter up">Copy</button><pre><span class="c"># checks this computer; anything missing comes with its fix</span>
+<span class="p">$ </span>ducter doctor
+<span class="c"># starts your partner</span>
+<span class="p">$ </span>ducter up</pre></div>
+        <p class="dl-small"><a href="/docs/install#the-ducter-command">Every command</a> · <a href="/docs/install#build-it-from-the-source-instead">Build it from the source</a></p>
+      </li>
+      <li class="dl-card" id="agent" data-os="agent">
+        <div class="dl-card-head">
+          <span class="dl-coins"><Art name="coin_claude_code" alt="" sizes="44px" /><Art name="coin_codex" alt="" sizes="44px" /></span>
+          <div><h3>With your AI agent</h3><p class="dl-state">Ready</p></div>
+        </div>
+        <p>Let Claude Code, Codex or another agent set Ducter up for you, with the deploy skill. Ask it:</p>
+        <div class="term short"><button class="btn sm copy" type="button" data-copy={agentAsk}>Copy</button><pre>{agentAsk}</pre></div>
+        <p class="dl-small">It asks before it changes anything that isn't clear. <a href="/docs/for-agents">For AI agents</a></p>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section class="dl-sec deep" id="files">
+  <div class="wrap dl-files-wrap">
+    <div>
+      <h2>Check what you downloaded</h2>
+      <p class="body">Every file comes from Ducter's release on GitHub, with its SHA-256 in <code>SHA256SUMS.txt</code>. The one-line installer checks it for you, and Apple's notarization too on a Mac. To check a file yourself, put it next to <code>SHA256SUMS.txt</code> and run:</p>
+      <div class="term short"><button class="btn sm copy" type="button" data-copy="shasum -a 256 -c SHA256SUMS.txt --ignore-missing">Copy</button><pre><span class="p">$ </span>shasum -a 256 -c SHA256SUMS.txt --ignore-missing</pre></div>
+    </div>
+    <div class="dl-table-wrap">
+      {files.length > 0 ? (
+        <table class="dl-table" id="dl-table">
+          <caption class="sr-only">The files in Ducter {version}</caption>
+          <thead><tr><th scope="col">File</th><th scope="col">Size</th><th scope="col">SHA-256</th></tr></thead>
+          <tbody>
+            {files.map((f) => (
+              <tr>
+                <td><a href={f.url}>{f.name}</a></td>
+                <td>{formatSize(f.size)}</td>
+                <td><code class="sha" title={f.sha256 ?? ""}>{f.sha256 ?? "in SHA256SUMS.txt"}</code></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p class="body">No release files yet.</p>
+      )}
+      <p class="dl-small">
+        {a.sums && <a href={a.sums.url} data-asset="sums">SHA256SUMS.txt</a>}
+        {a.sums && " · "}<a href={notes} data-rel="notes" rel="noopener">Release notes</a> · <a href={`${REPO_URL}/releases`} rel="noopener">Every release</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="dl-sec">
+  <div class="wrap dl-notes">
+    <div class="dl-note" id="china">
+      <h3>Downloading from mainland China</h3>
+      <p>Every file comes from GitHub, which can be slow or stop part-way from mainland China, and Ducter has no mirror there yet. The one-line installer tries again by itself and checks each file against its checksum, so a broken download never installs; running it again is safe. You can also download the files on another connection and check them as above.</p>
+    </div>
+    <div class="dl-note">
+      <h3>Updates</h3>
+      <p>The Mac app and the Android app update themselves. A server updates from <b>Your devices</b> in the app, or with <code>ducter update</code>. Every update is checked against the release's checksums first. <a href="/docs/install#updates">How updates work</a></p>
+    </div>
+    <div class="dl-note">
+      <h3>Windows</h3>
+      <p>There's no Windows app. Put Ducter on a Linux server and open it in this computer's browser, or use it on a Mac.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+<Footer gh={gh} home={false} />
+<script>
+  import "../scripts/download.ts";
+</script>
+</body>
+</html>

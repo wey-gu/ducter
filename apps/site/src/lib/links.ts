@@ -1,14 +1,18 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import film from "./film.json";
-import { repoFacts, RELEASES_URL, REPO_URL } from "./github";
+import { formatDate, repoFacts, RELEASES_URL, REPO_URL } from "./github";
 
-/** The download and source links every page shows, decided once at build time. */
+/**
+ * The download and source links every page shows, decided once at build time. Every "Download"
+ * goes to /download (D319), which lists each way to get Ducter and puts the visitor's own first.
+ */
 export async function siteLinks() {
   const facts = await repoFacts();
-  const dl = facts.dmgUrl
-    ? { href: facts.dmgUrl, label: "Download for Mac", note: facts.version ? `${facts.version} · macOS` : "macOS" }
-    : { href: "#install", label: "Get Ducter", note: "The Mac download is coming soon. You can build it from source today." };
+  const date = formatDate(facts.publishedAt);
+  const dl = facts.version
+    ? { href: "/download", label: "Download", note: date ? `${facts.version} · ${date}` : facts.version }
+    : { href: "/download", label: "Get Ducter", note: "No release yet. You can build it from source today." };
   // Shown always: the repo opens with the first release, before a deploy with this link.
   const gh = { href: REPO_URL, label: "GitHub" };
   return { facts, dl, gh, releases: RELEASES_URL };

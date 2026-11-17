@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.0.75 - 2026-11-18
+
+<!-- whats-new
+zh: 待办来源能挑仓库和文件夹
+en: Pick which repos and folders To-do sources read
+zh: 一堆小地方更顺了
+en: Many small things now read right
+-->
+
+**To-do sources**
+- Choose which GitHub repositories, and which Obsidian folder or tag, it looks at. The pane
+  has its own picture.
+
+**Smaller things**
+- Words held for later say they go with your next message.
+- The "changes can be undone until…" line is said once per task, not on every report.
+- With memory held off by the person running Ducter, Memory says so instead of a switch that
+  does nothing.
+- A long waiting line fits its row; jumping to a point in a task lands below the header.
+- The share picture shows an errand done.
+
 ## 0.0.74 - 2026-11-18
 
 <!-- whats-new

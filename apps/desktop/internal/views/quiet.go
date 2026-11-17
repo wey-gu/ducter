@@ -408,6 +408,12 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 			}
 		}
 	}
+	// Nothing to show (only hidden progress or blocked lines, or lines already
+	// said in a newer message): no message at all, never a bare "你不在的时候"
+	// divider (seen twice in a row by the author). The web does the same.
+	if len(answered)+len(waiting)+len(news)+len(lines) == 0 {
+		return
+	}
 	sort.SliceStable(waiting, func(i, j int) bool { return dueAt(waiting[i].d).Before(dueAt(waiting[j].d)) })
 	head := waiting
 	if !shown && !a.open["asks:"+itoa(e.FirstSeq)] && len(waiting) > 1 {

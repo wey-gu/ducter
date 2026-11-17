@@ -106,3 +106,34 @@ func TestLivingQuiet(t *testing.T) {
 		t.Errorf("Details shown doesn't list work under way: %q", tt.Texts())
 	}
 }
+
+// A living message with nothing to show (only work under way, hidden by
+// default) draws nothing: never a bare "While you were away" divider, which
+// the author saw twice in a row with nothing under it. One with a failure
+// still says it, with the divider when it came while the person was away.
+func TestLivingWithNothingToShowDrawsNothing(t *testing.T) {
+	noRelayWait(t)
+	app, _ := iaApp(t, i18n.EN)
+	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
+		chEv(1, protocol.OriginPartner, protocol.KindLivingMsg, protocol.LivingMsg{Items: []protocol.LivingItem{
+			{TaskID: "t4", Kind: "progress", Title: "Review this week's PRs", Text: "Read 2"},
+			{TaskID: "t5", Kind: "blocked", Title: "Deploy the docs", Text: "Waiting on the CI"},
+		}}),
+	}})
+	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	tt.Frame()
+	if tt.HasText(app.L.T("living.away")) {
+		t.Fatalf("a bare divider with nothing under it: %q", tt.Texts())
+	}
+	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
+		chEv(2, protocol.OriginPartner, protocol.KindLivingMsg, protocol.LivingMsg{Items: []protocol.LivingItem{
+			{TaskID: "t3", Kind: "failed", Title: "Bump tokio to 1.41", Text: "4 places don't build."},
+		}}),
+	}})
+	tt.Frame()
+	tt.Frame()
+	if !tt.HasText("Bump tokio to 1.41 didn't work: 4 places don't build.") {
+		t.Fatalf("a failure isn't said: %q", tt.Texts())
+	}
+}

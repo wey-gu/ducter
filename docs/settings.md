@@ -79,11 +79,11 @@ At the top is your partner, its name and one line: where it lives and what it th
   Español and more under **Other language…**) and it always answers in that one. Ducter's own
   screens are in Chinese or English for now; a task's results are shown in the language you
   talk in.
-- **What your AI agents keep.** **Offer to pick up from their records**: when your partner first
-  says hello, it looks at what Claude Code and Codex did lately on this computer and offers to carry
-  it on. It reads them only there and shows them only to you; turn it off and it won't look again.
-  If you chose **Don't show {agent} here** in Past tasks, that agent is listed here with
-  **Show again**.
+- **What your AI agents keep.** **Read what they keep**: lists the conversations you had in Claude
+  Code, Codex and pi on your home computer in Past tasks, and lets your partner find what to pick up
+  when you ask it to look. Only names, folders, times and your first and last words are read, with
+  keys hidden. Turn it off and nothing is read, and what was read is forgotten. If you chose
+  **Don't show {agent} here** or **Leave this folder out**, each is listed here with **Show again**.
 - **On its own, or asks you first.** The rules Ducter keeps, in two lists. On its own: changing
   files in its own copy (your originals stay as they are), reading your projects and files,
   looking things up and reading web pages (in your own Chrome when it can), and going with the

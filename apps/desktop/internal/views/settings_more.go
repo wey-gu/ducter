@@ -102,11 +102,12 @@ func (a *App) recordsGroup(c *ui.Context) {
 		return
 	}
 	note := ""
-	if len(f.OutsideHidden) == 0 {
+	looks := f.Looking()
+	if looks && len(f.OutsideHidden) == 0 && len(f.OutsideFolders) == 0 {
 		note = a.L.T("records.past.note")
 	}
 	a.group(c, "records", a.L.T("records.title"), "", func() {
-		if v, ch := a.toggleRow(c, "records", a.L.T("records.look"), a.L.T("records.look.help"), f.Looking()); ch {
+		if v, ch := a.toggleRow(c, "records", a.L.T("records.look"), a.L.T("records.look.help", a.homeComputer()), looks); ch {
 			f.SetLooking(v)
 			a.send(protocol.LocalAgents{T: "local_agents", On: v})
 			if v {
@@ -115,6 +116,9 @@ func (a *App) recordsGroup(c *ui.Context) {
 				a.say("records", a.L.T("said.records.off"))
 			}
 		}
+		if !looks {
+			return // off is off everywhere: nothing below it applies
+		}
 		for _, agent := range f.OutsideHidden {
 			name := agentName(agent)
 			a.row(c, "hidden:"+agent, a.L.T("records.hidden", name), "", func() {
@@ -122,6 +126,17 @@ func (a *App) recordsGroup(c *ui.Context) {
 					a.send(protocol.OutsideHide{T: "outside_hide", Agent: agent, Hidden: false})
 					a.say("records", a.L.T("said.records.shown", name))
 					f.OutsideHidden = without(f.OutsideHidden, agent)
+				}
+			})
+		}
+		// D327: each folder left out, with its way back.
+		for _, p := range f.OutsideFolders {
+			p := p
+			a.row(c, "folder:"+p, a.L.T("records.folder"), p, func() {
+				if a.buttonFor(c, a.L.T("records.show"), p, btnSecondary, t.ControlSM, t.Surface) {
+					a.send(protocol.OutsideFolder{T: "outside_folder", Path: p, Hidden: false})
+					a.say("records", a.L.T("said.records.folder", p))
+					f.OutsideFolders = without(f.OutsideFolders, p)
 				}
 			})
 		}

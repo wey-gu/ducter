@@ -580,7 +580,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 				a.rp.tab = ans // pressed into the top of the bubble below
 			}
 			// D298: the clay partner over its first words, while nothing else was said.
-			if e.AI.First != nil && a.firstWordsOpening() {
+			if e.AI.First != nil && !e.AI.First.Look && a.firstWordsOpening() {
 				a.firstWordsHead(c)
 			}
 			if len(e.AI.UI) > 0 {

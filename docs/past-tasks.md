@@ -76,9 +76,13 @@ agent, or the day.
   same folder, starting from what was said.
 - **不再显示 … 的 / Don't show … here** (in ⋯): stops listing that AI agent's conversations. The last
   line of the section brings them back with **再显示 / Show again**.
+- **这个文件夹别看了 / Leave this folder out** (in ⋯): that folder, and the folders inside it, are
+  never read again. Settings › Partner lists it with **Show again**.
 
-Ducter reads these only on your home computer and only when you open Past tasks; they are never
-sent anywhere else. It never changes them; when you continue one, the AI agent adds to it as it
+Ducter reads these only on your home computer and only when you open Past tasks: each
+conversation's name, folder and time and your first and last words, with any key you pasted hidden.
+They are never sent anywhere else. Turning off **Read what they keep** in Settings › Partner hides
+the section and nothing is read. It never changes them; when you continue one, the AI agent adds to it as it
 would if you had continued it yourself. A conversation whose folder is gone is shown, but can't be
 continued. Conversations on your other computers are not listed yet.
 

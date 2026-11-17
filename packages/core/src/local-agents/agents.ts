@@ -2,6 +2,7 @@
 // Code 2.1.325, codex-cli 0.169.0 and pi 1.5.2). Read only.
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { redact } from "@ducter/protocol/src/redact.ts";
 import { eachHead, lineOf, machineWords, tailRecords, textOf } from "./read.ts";
 
 export type LocalAgent = "claude-code" | "codex" | "pi";
@@ -168,6 +169,9 @@ export function summarize(agent: LocalAgent, f: { path: string; id: string }, si
     }
   }
   if (!sum.cwd || !sum.firstPrompt) return undefined;
+  // D327: a key pasted into a prompt never reaches a title, a card or the first words: what is
+  // read here is hidden as every screen hides it (D152), before anything else sees it.
+  for (const k of ["title", "firstPrompt", "lastPrompt"] as const) if (sum[k]) sum[k] = redact(sum[k]!);
   return { ...sum, cwd: sum.cwd, startedAt: sum.startedAt ?? updatedAt, updatedAt } as SessionSummary;
 }
 

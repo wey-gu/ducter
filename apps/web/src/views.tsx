@@ -1175,7 +1175,7 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chi
     return (
       <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}${e.ai.ui?.length ? " has-rich" : ""}${e.ai.first ? " first" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
         {/* D298: the clay partner over its first words, while nothing else was said. */}
-        {e.ai.first && firstOpening() && (
+        {e.ai.first && !e.ai.first.look && firstOpening() && (
           <span class="first-face">
             <Avatar size={128} state="idle" />
           </span>

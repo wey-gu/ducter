@@ -48,12 +48,6 @@ func TestSettingsPartnerMoreRows(t *testing.T) {
 		if !tt.HasText(L.T("said.handoff.on")) {
 			t.Errorf("%s: no word after the hand-off", lang)
 		}
-		// Stop looking, from Settings.
-		flip(L.T("records.look"), L.T("records.look.help"))
-		tt.Frame()
-		if v, ok := lastSent[protocol.LocalAgents](*sent); !ok || v.On {
-			t.Errorf("%s: looking sent %+v", lang, v)
-		}
 		// Codex's conversations back in Past tasks.
 		if err := tt.Click(spoken(L, L.T("records.show"), "Codex")); err != nil {
 			t.Fatalf("%s: %v in %q", lang, err, tt.Texts())
@@ -64,6 +58,12 @@ func TestSettingsPartnerMoreRows(t *testing.T) {
 		}
 		if tt.HasText(L.T("records.hidden", "Codex")) {
 			t.Errorf("%s: Codex still listed as hidden", lang)
+		}
+		// Stop looking, from Settings (D327: off everywhere, so the finer rows go with it).
+		flip(L.T("records.look"), L.T("records.look.help", L.T("first.here")))
+		tt.Frame()
+		if v, ok := lastSent[protocol.LocalAgents](*sent); !ok || v.On {
+			t.Errorf("%s: looking sent %+v", lang, v)
 		}
 		// A key pasted here is answered here, never again over the composer.
 		if err := tt.Click(L.T("key.paste.check.open")); err != nil {

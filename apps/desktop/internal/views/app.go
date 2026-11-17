@@ -233,6 +233,8 @@ type App struct {
 	focusComposer bool
 	// D298: the pasted-key card (firstwords.go).
 	kp keyPaste
+	// firstHow (D327): the offers whose how-I-know is open, by message and start.
+	firstHow map[string]bool
 	// rp is replying to one message (D236, reply.go).
 	rp replyState
 	// doneAt is when a task last came back done (the done glow).

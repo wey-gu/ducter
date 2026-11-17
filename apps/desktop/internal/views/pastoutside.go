@@ -43,7 +43,7 @@ func (a *App) pastOutside(c *ui.Context, res *protocol.PastFrame, terms []string
 			}
 		})
 		if len(res.Outside) > 0 {
-			ui.Text(c.Key("sub"), a.L.T("past.out.sub")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.55).MaxWidth(560).Padding(0, t.S2, t.S2, t.S2)
+			ui.Text(c.Key("sub"), a.L.T("past.out.sub", a.homeComputer())).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.55).MaxWidth(560).Padding(0, t.S2, t.S2, t.S2)
 		}
 		if a.past.outMsg != "" {
 			ui.Text(c.Key("msg"), a.past.outMsg).FontSize(t.SM).TextColor(t.Failed.Ink).Padding(0, t.S2, t.S2, t.S2)
@@ -170,6 +170,15 @@ func (a *App) outsideMore(c *ui.Context, it *protocol.OutsideItem) {
 		}
 		if m.Item(a.L.T("past.out.hide", harnessName(it.Agent))).Chosen() {
 			a.send(protocol.OutsideHide{T: "outside_hide", Agent: it.Agent, Hidden: true})
+		}
+		// D327: 这个文件夹别看了: its sessions go from here and from the offers, for good.
+		if m.Item(a.L.T("past.out.leave")).Chosen() {
+			a.send(protocol.OutsideFolder{T: "outside_folder", Path: it.Cwd, Hidden: true})
+			if a.S.First != nil {
+				a.S.First.OutsideFolders = append(a.S.First.OutsideFolders, it.Cwd)
+			}
+			a.past.outMsg = ""
+			a.askPast()
 		}
 	})
 }

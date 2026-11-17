@@ -26,6 +26,8 @@ export interface OutsideDeps {
   now?: () => number;
   /** The language the person reads in (the task's reports, what a refusal says). */
   language?: () => LangTag;
+  /** D327: whether the person lets Ducter read their agents' records at all (Settings, 别再看了). */
+  looks?: () => boolean;
 }
 
 export interface Outside {
@@ -33,6 +35,14 @@ export interface Outside {
   list(q: PastQuery, limit?: number): { items: OutsideItem[]; sources: OutsideSource[] };
   hide(agent: OutsideAgent, hidden: boolean): void;
   hidden(): OutsideAgent[];
+  /** D327: 这个文件夹别看了 / Leave this folder out, for Past tasks and the first words alike (`~/…` or absolute). */
+  hideFolder(path: string, hidden: boolean): void;
+  /** The folders left out, absolute. */
+  hiddenFolders(): string[];
+  /** Whether a session's folder is one left out (it or a folder inside it). */
+  leftOut(cwd: string): boolean;
+  /** `~/…` for a folder under the home folder. */
+  tilde(path: string): string;
   /** Carries one on as a Ducter task; the task's id. A session carried on before opens its task again. */
   adopt(runner: Runner | undefined, persona: string, agent: OutsideAgent, id: string, harness?: string, model?: string): Promise<{ ok: boolean; taskId?: string; message?: string }>;
 }
@@ -51,18 +61,26 @@ export function createOutside(d: OutsideDeps): Outside {
   const home = d.home ?? homedir();
   const file = join(d.dataDir, "outside.json");
   let hidden = new Set<OutsideAgent>();
+  let folders = new Set<string>();
   try {
     if (existsSync(file)) {
-      const j = JSON.parse(readFileSync(file, "utf8")) as { hidden?: unknown };
+      const j = JSON.parse(readFileSync(file, "utf8")) as { hidden?: unknown; folders?: unknown };
       if (Array.isArray(j.hidden)) hidden = new Set(j.hidden.filter((a): a is OutsideAgent => (OUTSIDE_AGENTS as readonly string[]).includes(a)));
+      if (Array.isArray(j.folders)) folders = new Set(j.folders.filter((f): f is string => typeof f === "string" && f.startsWith("/")));
     }
   } catch {
     /* a broken file shows everything */
   }
   const save = () => {
     mkdirSync(d.dataDir, { recursive: true });
-    writeFileSync(`${file}.tmp`, JSON.stringify({ version: 1, hidden: [...hidden] }, null, 2));
+    writeFileSync(`${file}.tmp`, JSON.stringify({ version: 1, hidden: [...hidden], ...(folders.size ? { folders: [...folders] } : {}) }, null, 2));
     renameSync(`${file}.tmp`, file);
+  };
+  const absolute = (p: string) => resolve(p === "~" ? home : p.startsWith("~/") ? join(home, p.slice(2)) : p);
+  const leftOut = (cwd: string) => {
+    const c = resolve(cwd);
+    for (const f of folders) if (c === f || c.startsWith(f.endsWith(sep) ? f : f + sep)) return true;
+    return false;
   };
 
   // Ducter's own sessions: every native id a task ever ran under, kept live.
@@ -135,7 +153,9 @@ export function createOutside(d: OutsideDeps): Outside {
       watch();
       // A session carried on already is a task now: it is listed as one.
       const adopted = new Set(d.tasks.list().flatMap((c) => (c.outside ? [c.outside.sessionId] : [])));
-      const all = d.reader.sessions().filter((s) => !ours(s) && !adopted.has(s.id));
+      // D327: 别再看了 means everywhere: with looking off, nothing of the records is read or listed.
+      if (d.looks && !d.looks()) return { items: [], sources: [] };
+      const all = d.reader.sessions().filter((s) => !ours(s) && !adopted.has(s.id) && !leftOut(s.cwd));
       const sources: OutsideSource[] = OUTSIDE_AGENTS.map((agent) => ({ agent, n: all.filter((s) => s.agent === agent).length, hidden: hidden.has(agent) })).filter((x) => x.n > 0 || x.hidden);
       // Starred and tags are the person's marks on Ducter's tasks: an outside session has none.
       if (q.starred || q.tag) return { items: [], sources };
@@ -198,6 +218,18 @@ export function createOutside(d: OutsideDeps): Outside {
       save();
     },
     hidden: () => [...hidden],
+    hideFolder(path, on) {
+      const p = String(path ?? "").trim();
+      if (!p || !(p.startsWith("/") || p.startsWith("~"))) return;
+      const abs = absolute(p);
+      if (abs === "/" || abs === resolve(home)) return; // never the whole computer or home folder: that is 别再看了
+      if (on) folders.add(abs);
+      else folders.delete(abs);
+      save();
+    },
+    hiddenFolders: () => [...folders],
+    leftOut,
+    tilde,
     async adopt(runner, persona, agent, id, harness, model) {
       const lang = d.language?.() ?? "en";
       const say = words(SAY, lang);

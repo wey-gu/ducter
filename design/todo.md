@@ -492,7 +492,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [x] **research/123: a sheet's content shows above its top edge on iOS.** Done: every sheet is a
       frame that keeps its rounded shape (`overflow: hidden`, the grab on it) with a body inside
       that scrolls (`sheet-frame.tsx`); re-walked on both phones, nothing above the edge.
-- [ ] **research/123: 试试看 on a 375-pt phone.** The two exchanges sit on the text column (52 pt
+- [x] **research/123: 试试看 on a 375-pt phone.** The two exchanges sit on the text column (52 pt
       in), so each bubble is about 195 pt wide and wraps to three lines in en. Dropping the empty
       tile column for this block when narrow would break D283's grid; a design call. Trigger: the
       author's review of the page on a small phone.

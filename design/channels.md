@@ -113,10 +113,9 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   管理员可能看得到你在这儿说的话。**), and one line under the groups of what goes there.
 - **The page (D283).** D273's grid on the Mac and the web: the page's heading and a one-line lede;
   then one raised group per chat app, **Telegram**, **Slack**, **iMessage** (D277, the third; on
-  the web it says it is set up on a Mac). A group's first row is the app: its mark (the app's first
-  letter on a clay pebble in a palette tint, Telegram sky, Slack butter, iMessage mint, never the
-  service's logo; iMessage's is **M** for the Messages app it lives in, since an **i** reads as
-  "info"), its name, one line of how it stands; never a title on the paper above it. A setup is a
+  the web it says it is set up on a Mac). A group's first row is the app: its mark (D314: the app's own
+  mark, drawn faithfully at 24 on the small white clay tile: Telegram's plane, Slack's four
+  colours, Messages' bubble, WeChat's two bubbles; it replaced D283's letter pebbles), its name, one line of how it stands; never a title on the paper above it. A setup is a
   short guided path: a numbered step mark (a 26 sunken pebble) centred in the tile column, one
   sentence a step on the text column, what the step needs under the sentence (a command as a mono
   chip, **打开 BotFather / Open BotFather** and **打开 Slack / Open Slack** as quiet links, a field

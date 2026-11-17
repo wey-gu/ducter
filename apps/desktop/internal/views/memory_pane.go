@@ -182,12 +182,17 @@ func groupThousands(n int) string {
 	return s
 }
 
-// toolTile is another AI tool's mark: its clay coin when Ducter has one,
-// else its first letter on a sunken pebble.
+// toolTile is another AI tool's mark: its clay coin when Ducter has one
+// (Claude the app is Anthropic's starburst, ChatGPT OpenAI's knot), else
+// its own mark on the white clay tile (D314), else its first letter on a
+// sunken pebble.
 func (a *App) toolTile(c *ui.Context, from string) func() {
-	art := map[string]string{"Claude Code": "coin_claude_code", "Codex": "coin_codex", "pi": "coin_pi"}[from]
+	art := map[string]string{"Claude Code": "coin_claude_code", "Claude": "coin_claude_code", "Codex": "coin_codex", "ChatGPT": "coin_codex", "pi": "coin_pi"}[from]
 	if art != "" && theme.Clay(art) != nil {
 		return a.clayTile(c, art, false)
+	}
+	if b := toolBrand(from); b != "" {
+		return a.brandTile(c, b, false)
 	}
 	t := a.T
 	return func() {
@@ -219,20 +224,10 @@ func (a *App) memOthers(c *ui.Context) {
 	})
 }
 
-// memTile is Nowledge Mem's mark: its letter on a clay pebble in the
-// notebook's blue (literal, never its logo).
+// memTile is Nowledge Mem's own mark, its app icon (D314; it replaced
+// the letter N); faded while Mem isn't set up.
 func (a *App) memTile(c *ui.Context, faded bool) func() {
-	t := a.T
-	return func() {
-		fill, ledge, ink := t.Notebook.Cover, t.Notebook.Ledge, t.Surface
-		if faded {
-			fill, ledge, ink = t.Sunken, t.Line2, t.InkSoft
-		}
-		ui.Row(c.Key("mem-tile")).Size(40, 40).Shrink(0).Radius(t.RadiusSM).Background(fill).Shadow(0, 3, 0, 0, ledge).
-			Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
-			ui.Text(c, "N").Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(ink).LineHeight(1)
-		})
-	}
+	return a.brandTile(c, "nowledge_mem", faded)
 }
 
 // memWhere is where the memories are kept, in the person's words.

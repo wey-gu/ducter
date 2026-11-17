@@ -671,6 +671,22 @@ func (a *App) actions(c *ui.Context, key string, quiet, buttons func()) {
 	})
 }
 
+// cardEnd is actions' line inside a card that pads its own content (a
+// sheet card): no hairline, no padding of its own; the quiet text button
+// at the left on the text edge, the clay ones at the right edge (D314).
+func (a *App) cardEnd(c *ui.Context, h float32, quiet, buttons func()) {
+	t := a.T
+	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+		if quiet != nil {
+			a.textRow(c, h).Gap(t.S1).Children(quiet)
+		}
+		ui.Box(c).Grow(1)
+		if buttons != nil {
+			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(buttons)
+		}
+	})
+}
+
 // versionText is "0.3.0 (abc1234)", or what is known of it.
 func (a *App) versionText() string {
 	v := a.Version

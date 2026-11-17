@@ -195,9 +195,9 @@ the done ink (or **这周还没有新记的**), the switch at the right edge; it
 the title, its age; **忘掉** quiet at the right edge; tapped, the row asks in place (**忘掉「…」？它以后
 不会再想起。** or, without a Mem id, **从这里拿掉「…」？Nowledge Mem 里那条还在。**) with **留着** and **忘掉**.
 The last group's foot: Mem's count and **去 Nowledge Mem 看**. (3) **你别的 AI 记下的**, with its note
-(**…{name} 也想得起来。**): one row per memory another AI tool saved, its coin (or its letter), the
+(**…{name} 也想得起来。**): one row per memory another AI tool saved, its coin (Claude and ChatGPT carry Anthropic's and OpenAI's), its own mark (D314), or its letter, the
 title, **{tool} 记的**, its age at the right; read-only (another tool's memory is forgotten in Mem).
-(4) **Nowledge Mem** as one group: Mem's letter on a notebook-blue pebble, **已连上**; **记在哪儿**,
+(4) **Nowledge Mem** as one group: Mem's own app icon as the tile (D314), **已连上**; **记在哪儿**,
 **它的名字**, the one update worth a tap as a row (D229's words), the raw facts behind **详情**, the
 version as the foot's note. **Off:** only the first group, its foot what stays. **Before Mem:** the
 partner at 84–96 on the paper (an empty state, never inside a group), then one group: Mem's faded

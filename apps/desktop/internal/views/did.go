@@ -461,24 +461,9 @@ func (a *App) didEmptyDay(c *ui.Context, items []*protocol.DidItem) {
 }
 
 // didTint is the clay a kind's pebble sits on; a read sits pressed into
-// the sunken ground, the quietest.
-func didTint(kind string) string {
-	switch kind {
-	case "sent":
-		return "sage"
-	case "paid":
-		return "sand"
-	case "called":
-		return "mist"
-	case "filled":
-		return "lilac"
-	case "changed":
-		return "clay"
-	case "deleted":
-		return "stone"
-	}
-	return ""
-}
+// the sunken ground, the quietest. One table with the web (D314: the two
+// clients had disagreed on four of the six).
+func didTint(kind string) string { return didTints[kind] }
 
 // didLine is what it did, in plain words from the table by kind and sub.
 func (a *App) didLine(it *protocol.DidItem) string {
@@ -585,7 +570,7 @@ func (a *App) didCard(c *ui.Context, it *protocol.DidItem) {
 		Background(t.Surface).Role(ui.RoleGroup).Label(line)
 	card.Shadow(0, 2, 6, -2, t.Ink.Alpha(0.04)).Shadow(0, 2, 0, 0, t.Line)
 	card.Children(func() {
-		a.pastPebbleDraw(c, "art", didTint(it.Kind), pastPebble, drawDidGlyph(it.Kind))
+		a.pastPebbleDraw(c, "art", didTint(it.Kind), pastPebble, drawDidGlyph(it.Kind, it.Sub))
 		ui.Column(c.Key("main")).Grow(1).Shrink(1).MinWidth(0).Gap(t.S1 + 1).Children(func() {
 			// The line, the amount beside it, the time at the end.
 			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).MinHeight(22).Children(func() {

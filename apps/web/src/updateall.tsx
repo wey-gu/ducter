@@ -189,8 +189,9 @@ export function UpdateAllCard() {
       {!over && foot && <div class="ua-note quiet">{foot}</div>}
       <div class="ua-act">
         {!over && p.items.some((i) => i.state === "queued" || i.state === "waiting") && <Btn kind="text" size="sm" label={t("upall.stop")} onClick={() => A.stopUpdateAll()} />}
+        {/* D314: the card's one decision is a small secondary clay button; with something to retry, that is 再试一次 and 完成 steps back to quiet text before it. */}
+        {over && <Btn kind={failed ? "text" : "secondary"} size="sm" label={t("upall.dismiss")} onClick={() => A.dismissUpdateAll()} />}
         {over && failed && <Btn kind="secondary" size="sm" label={t("upall.retry")} onClick={() => A.startUpdateAll()} />}
-        {over && <Btn kind="text" size="sm" label={t("upall.dismiss")} onClick={() => A.dismissUpdateAll()} />}
       </div>
       {over && A.settings && !A.settings.autoUpdate && <Toggle label={t("upall.auto")} help={t("upall.auto.note")} checked={false} onChange={(on) => A.setSettings({ autoUpdate: on })} />}
     </section>

@@ -1755,9 +1755,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
       (a whole hour, so the window may be computed from a rounded or fixed time). Seen while checking D324,
       unrelated to it. Trigger: now (it fails every run at this hour).
 
-- [ ] **D325 follow-ups (steer and held words).** (1) The read receipt is the agent's own echo of
-      the words (OAR `user_message`: Claude Code's replay "acknowledged", Codex's userMessage item,
-      pi's and DeepSeek Harness's conversation message), matched by text; check live on each agent
-      that the echo comes at the step that reads it, and pass Ducter's own `inputId` through
-      `steerOrQueue` to match by id where the agent keeps it. (2) A worker on a Ducter before
-      D325 sends no echo: its steers stay "at its next step" until the turn ends.  Trigger: the author's live review.
+- [ ] **D325 follow-ups (steer and held words).** (1) Done 2026-11-17 (research/116): live on
+      Claude Code, Codex and pi the echo comes at the step the model reads the words, and the
+      runner passes a UUID per steer as OAR's `inputId` and matches the echo by it (Claude Code,
+      Codex; DeepSeek Harness by source), else by words (pi). Left: **DeepSeek Harness live**, once
+      it is installed on a test Mac. (2) A worker on a Ducter before D325 sends no echo: its steers
+      stay "at its next step" until the turn ends; one before this change matches by words.
+      Trigger: the author's live review.

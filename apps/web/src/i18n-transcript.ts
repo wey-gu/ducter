@@ -98,7 +98,7 @@ export const transcriptWords: { zh: Record<string, string>; en: Record<string, s
     "told.taken_back": "你收回了 %s",
     "told.given_back": "它把 %s 还给你了",
     "told.loan_lost": "%s 断开了，借用结束了",
-    "locator.name": "这件事里说过的话",
+    "locator.name": "这件事的经过",
     "locator.brief": "交给它的事",
     "locator.quiet": "%s 条提示",
     // D325: the locator's list: a report, the marks of a session, what someone sent without words.
@@ -204,7 +204,7 @@ export const transcriptWords: { zh: Record<string, string>; en: Record<string, s
     "told.taken_back": "You took back your %s",
     "told.given_back": "It gave your %s back",
     "told.loan_lost": "Lost your %s; the loan ended",
-    "locator.name": "What was said in this task",
+    "locator.name": "What happened in this task",
     "locator.brief": "The task it was given",
     "locator.quiet": "%s notes",
     "locator.report": "Reported back",

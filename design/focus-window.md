@@ -234,8 +234,9 @@ What the window writes is what the user reads when they open the task, in one co
   `mode: "steer"`; the placeholder **插一句，它做到下一步就会看到… / Add something; it sees it at
   its next step…**, the hint **回车：它做到下一步就会看到 · ⌥ 回车：这一轮做完再说**): the runner
   writes it into the running turn and keeps it as unread until the agent's own echo of it comes
-  (OAR's `user_message`, mapped to `user_echo` by the normalizer; matched by its words, and every
-  steer before it counts as read too), then logs `{role: system, from: runner, raw: {read: [seq…]}}`.
+  (OAR's `user_message`, mapped to `user_echo` by the normalizer; matched by the UUID the runner
+  passed as OAR's `inputId` where the agent echoes it, else by its words, and every steer before
+  it counts as read too; live per agent in the table below), then logs `{role: system, from: runner, raw: {read: [seq…]}}`.
   Under the bubble: **它做到下一步就会看到 / It'll see this at its next step** (a small working dot)
   while it works and unread, **✓ 它看到了 / Seen** on the newest one read; nothing otherwise.
   **⌥ Return or 做完再说 / After this** holds the words **at the home, never in the agent's own
@@ -252,7 +253,20 @@ What the window writes is what the user reads when they open the task, in one co
   `turn/steer` with its userMessage item, pi's SDK `steer`, DeepSeek Harness's bridge `steer`)
   has Return hold as well, and says so: **{agent} 做事时不能插话，发出的话会等这一轮做完**, the chips'
   head **{agent} 这一轮做完就会看到**, no 做完再说 and no 现在就说 while it works. The partner's and
-  Ducter's own queued words still go through the agent's queue;
+  Ducter's own queued words still go through the agent's queue.
+
+  The echo per agent (research/116, live 2026-11-17 unless said):
+
+  | Agent | When the echo comes | Its id | Matched by |
+  |---|---|---|---|
+  | Claude Code | when the tool call already chosen before the steer ends; the next model call acts on it (VERIFIED) | the stream-json `uuid` = Ducter's `inputId` (VERIFIED) | id |
+  | Codex | as Codex records the words into the turn, at the next sampling, even while a shell runs under its exec cell (VERIFIED) | the userMessage `clientId` = Ducter's `inputId` (VERIFIED) | id |
+  | pi | when the tool call already chosen ends (VERIFIED) | none | words |
+  | DeepSeek Harness | not run (not installed) | the bridge's message id = Ducter's `inputId` (OAR source) | id |
+
+  **它看到了 / Seen** means the agent read the words, not that it did what they say (one Codex run
+  read the steer and kept to the brief). A worker on a Ducter before the id was passed matches by
+  words;
 - **what Ducter itself says to the window** (D271) is never the user's words: a wake of its own
   wait opens a turn as a `wake` block (`wakeOf`, the text core's `work.ts` sends), drawn as a
   hairline with its time and the reason on hover; everything else Ducter tells it (the user's

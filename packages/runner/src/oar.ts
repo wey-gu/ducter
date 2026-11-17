@@ -837,12 +837,12 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId): Harnes
       return st.kind === "running" || st.pendingPrompt != null;
     },
     backgroundLive: () => (ended ? 0 : normalizer.backgroundLive()),
-    async send(text, mode = "turn", pics) {
+    async send(text, mode = "turn", pics, _files, inputId) {
       const input = framed(text);
       // D206: the runtime's own image input; a runtime that takes none gets the words only (the
       // runner already told an agent that can't see them, so this is the last guard).
       const images = pics?.length && s.capabilities?.images !== false ? pics.map((p) => ({ path: p.path, mediaType: p.mediaType })) : undefined;
-      const o = { origin: { kind: "user" as const, source: "ducter" }, ...(images ? { images } : {}) };
+      const o = { origin: { kind: "user" as const, source: "ducter" }, ...(images ? { images } : {}), ...(inputId ? { inputId } : {}) };
       if (mode === "turn") {
         reject("prompt", await s.prompt(input, o));
       } else if (mode === "steer") {

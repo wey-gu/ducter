@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief, type CarryOver } from "./brief.ts";
@@ -183,8 +183,9 @@ interface TaskRt {
   prefix: string[];
   /** D325: the person's words held for after this turn, in order (logged whole as task_held). */
   held: HeldMsg[];
-  /** D325: steers sent and not yet seen by the agent: the seq of the words logged, and the words. */
-  steers: { seq: number; text: string }[];
+  /** D325: steers sent and not yet seen by the agent: the seq of the words logged, the words, and
+   *  the input id OAR carried (the agent's echo names it where it keeps one). */
+  steers: { seq: number; text: string; id: string }[];
   context?: number; // the harness's last context reading
   /** D288: the window the harness reads against; the last reading logged for the meter; the
    *  first reading after a compaction is owed (its size after); a /compact asked mid-turn. */
@@ -615,7 +616,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   /** Logs the text first (the Log is the record even if delivery fails), then delivers it. */
-  async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue", from: From, logged = false, media?: MediaRef[]) {
+  async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue", from: From, logged = false, media?: MediaRef[], inputId?: string) {
     // D135: what waits for the next turn (the save ask; the brief and progress after a
     // compaction) goes first, logged as the runner's own words. Never before a /compact (D288): it
     // has to stay the message's first word to be a command; it waits for the words after.
@@ -631,7 +632,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const docs = filesFor(media);
     if (docs.note) sent = `${sent}\n\n${docs.note}`;
     try {
-      await t.session!.send(sent, mode, pics.images.length ? pics.images : undefined, docs.files.length ? docs.files : undefined);
+      await t.session!.send(sent, mode, pics.images.length ? pics.images : undefined, docs.files.length ? docs.files : undefined, inputId);
     } catch (err) {
       if (mode === "turn") t.running = false;
       logEvent(t, { role: "system", from: "runner", text: `delivery failed: ${preview(String(err), 500)}` });
@@ -672,15 +673,19 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
    * The agent's own echo of words it took in (OAR's user_message: Claude Code's replay, Codex's
    * userMessage item, pi's and DeepSeek Harness's user message): the steers it names, and every
    * one sent before them, were read at this step. Said once, as `read` (the seqs of the words).
+   * Matched by the input id where the agent keeps it (Claude Code's uuid, Codex's clientId,
+   * DeepSeek Harness's id), else by the words (pi; a worker before the id was passed).
    */
-  function steerSeen(t: TaskRt, input: string) {
+  function steerSeen(t: TaskRt, input: string, inputId?: string) {
     if (!t.steers.length) return;
     const flat = (s: string) => s.replace(/\s+/g, " ").trim();
     const said = flat(input);
-    const i = t.steers.findLastIndex((s) => {
-      const w = flat(s.text).slice(0, 200);
-      return !!w && said.includes(w);
-    });
+    let i = inputId ? t.steers.findIndex((s) => s.id === inputId) : -1;
+    if (i < 0)
+      i = t.steers.findLastIndex((s) => {
+        const w = flat(s.text).slice(0, 200);
+        return !!w && said.includes(w);
+      });
     if (i < 0) return;
     const seen = t.steers.splice(0, i + 1);
     logEvent(t, { role: "system", from: "runner", raw: { read: seen.map((s) => s.seq) } });
@@ -1071,7 +1076,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (early === "tool_call_started" || early === "tool_call_title" || early === "tool_call_head") return; // the ended event logs the call
     if (early === "background") return onBackground(t, ev);
     // D325: the agent took words in (its own echo): a steer of the person's was read.
-    if (early === "user_echo") return steerSeen(t, String((ev.raw as { input?: string }).input ?? ""));
+    if (early === "user_echo") {
+      const echo = ev.raw as { input?: string; inputId?: string };
+      return steerSeen(t, String(echo.input ?? ""), typeof echo.inputId === "string" ? echo.inputId : undefined);
+    }
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
     // D288: the account's limits as the session said them, kept with the agent's last read.
     if (ev.limits) {
@@ -2078,8 +2086,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         if (steer) {
           const e = logInput(t, text, from, "steer", clientId, media);
           // D325: seen once the agent's next step echoes it (steerSeen).
-          if (from === "user") t.steers.push({ seq: e.seq, text });
-          await deliver(t, takeEdits(taskId, text), "steer", from, true, media);
+          const id = randomUUID(); // OAR's input id (a UUID): the agent's echo names it
+          if (from === "user") t.steers.push({ seq: e.seq, text, id });
+          await deliver(t, takeEdits(taskId, text), "steer", from, true, media, id);
           return { delivered: "steered" };
         }
         logInput(t, text, from, "queue", clientId, media);

@@ -183,7 +183,8 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
       const s = need(a.key);
       // D206: pictures from the home, written here once (by their content-addressed name).
       const images = Array.isArray(a.images) ? a.images.map((i: { name?: unknown; mediaType?: unknown; data?: unknown }) => keepPicture(i)) : undefined;
-      await s.send(keepFiles(a.text, a.files), a.mode, images?.length ? images : undefined);
+      // D325: the steer's input id, so its echo matches by id there too (a main before it sends none).
+      await s.send(keepFiles(a.text, a.files), a.mode, images?.length ? images : undefined, undefined, typeof a.inputId === "string" ? a.inputId : undefined);
       return { busy: busyOf(s) };
     },
     // D206: a file a task here shows the user (only from its own folders, shown.ts).

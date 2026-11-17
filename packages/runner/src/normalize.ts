@@ -191,7 +191,10 @@ export class Normalizer {
       case "user_message":
         // Native echo of host input. The runner logs what it sends itself, so the echo is never
         // logged; D325: it says the agent took the words in, which marks a steer as seen.
-        if (typeof ev.input === "string" && ev.input.trim()) out.push({ role: "system", raw: { kind: "user_echo", input: ev.input.slice(0, 4000) } });
+        // The input id where the agent keeps one (Claude Code's uuid, Codex's clientId, DeepSeek
+        // Harness's id) matches the steer exactly; pi's echo has words only. Live (research/116):
+        // each agent echoes at the step its model reads the words, so the echo goes out at once.
+        if (typeof ev.input === "string" && ev.input.trim()) out.push({ role: "system", raw: { kind: "user_echo", input: ev.input.slice(0, 4000), ...(typeof ev.inputId === "string" && ev.inputId ? { inputId: ev.inputId } : {}) } });
         break;
       case "tool_call_started": {
         // One name form on every harness: an MCP tool is mcp__<server>__<tool> (claude's own

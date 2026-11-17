@@ -27,7 +27,9 @@ back to the middle one, because everything connects through the computer Ducter 
   2 h ago"*. Nothing needs fixing on your side; it shows up again when it's back.
 
 The list on the left has one line per device: its name and one word of how it is (*home*,
-*2 tasks*, *asleep*, *connected*). Choose a line or an island to see that device's card. It reads
+*2 tasks*, *asleep*, *connected*). Under it, **Lend a computer** adds another computer that does
+tasks: a server at home, a NAS, another Mac ([Add a computer](add-a-computer.md)). Choose a line
+or an island to see that device's card. It reads
 top to bottom like a character in a game:
 
 - **Who:** the device itself, big, with its name under it. Click the name to **rename** it (the
@@ -425,8 +427,8 @@ there and the device lands on it. The sign shows both ways to use the code:
 - **A phone or the Ducter app:** scan the QR code or open the **Address**, then type the code
   (in the app, choose **Connect to your Ducter** first).
 - **Another computer that should do tasks for Ducter:** run the one command shown there, for
-  example `ducter worker https://ducter.example.com --code K7QM-4XPA`. See
-  [Lend another computer](install.md#lend-another-computer) to keep it running.
+  example `ducter worker https://ducter.example.com --code K7QM-4XPA`. To lend a computer
+  for good, choose **Lend a computer** instead: [Add a computer](add-a-computer.md).
 
 A computer connected this way can only do tasks for Ducter: it can't read your conversation or
 decide anything for you.

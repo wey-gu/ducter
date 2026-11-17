@@ -68,6 +68,21 @@ asks you when it isn't clear:
 | Your Mac, reached from your phone through Tailscale | your Mac | the one-line install, then `ducter tailscale` on your Mac |
 | A server that also does the tasks | the server | the same; nothing extra |
 | Your Mac's repos used by a Ducter on a server | the server | the above, then `ducter worker` on your Mac |
+| Another computer that does tasks (a server at home, a NAS) | where it already lives | on that computer: the line from **Lend a computer** |
+
+## Lend a computer
+
+In **Your devices › Lend a computer**, Ducter shows one line for the other computer and one
+sentence for your agent there:
+
+> Lend this computer to my Ducter: follow the "Lend a computer" section of
+> https://ducter.ai/skills/ducter-deploy/SKILL.md and run `curl -fsSL https://ducter.ai/install.sh | sh -s -- worker <address> --code <code>`
+
+Paste the sentence into Claude Code or Codex on that computer. The agent checks that the
+computer reaches your Ducter, runs the line (it installs Ducter, joins with the code and keeps
+it running), and tells you in one sentence if something is in the way: an expired code, a
+network that can't reach your Ducter, no `curl`, or a computer Ducter doesn't run on. The app
+shows the computer the moment it arrives. More: [Add a computer](add-a-computer.md).
 
 ## What it won't do
 

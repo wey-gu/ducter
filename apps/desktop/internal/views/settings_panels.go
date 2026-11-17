@@ -275,6 +275,10 @@ func (a *App) runPanel(c *ui.Context) {
 		if a.tileLinkRow(c, "devices", a.clayTile(c, "laptop_awake", false), a.L.T("settings.devices.link"), a.L.T("settings.devices.link.help"), false) {
 			a.OpenDevices()
 		}
+		// D347: the same way in as on Your devices.
+		if a.linkRow(c, "lend", a.L.T("lend.entry"), a.L.T("lend.entry.why"), false) {
+			a.openLend()
+		}
 	})
 	a.removeEntry(c)
 }

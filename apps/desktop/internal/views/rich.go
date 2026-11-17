@@ -115,6 +115,8 @@ func (a *App) richBlock(c *ui.Context, b *protocol.RichUI, at richAt) {
 		a.richChecklist(c, m, at)
 	case "choices":
 		a.richChoices(c, m, at)
+	case "lend":
+		a.lendCard(c, at) // D347
 	}
 }
 

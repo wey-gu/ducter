@@ -15,7 +15,9 @@ export type RichBlock =
   | { type: "table"; title?: string; columns: string[]; rows: string[][] }
   | { type: "chart"; kind: "bar" | "line"; title?: string; unit?: string; summary: string; points: { label: string; value: number }[] }
   | { type: "checklist"; title?: string; items: string[]; tell?: boolean }
-  | { type: "choices"; options: string[] };
+  | { type: "choices"; options: string[] }
+  // D347: the 借一台电脑来干活 / Lend a computer card: one button that opens the guided sheet.
+  | { type: "lend" };
 
 /** A block as stored on an ai_msg: the block and the plain text that stands in for it in `text`. */
 export type RichUi = RichBlock & { plain: string };
@@ -114,8 +116,10 @@ export function validateRich(raw: unknown): RichBlock {
       if (new Set(options).size !== options.length) throw new Error("two choices are the same");
       return { type: "choices", options };
     }
+    case "lend":
+      return { type: "lend" };
   }
-  throw new Error('type is "table", "chart", "checklist" or "choices"');
+  throw new Error('type is "table", "chart", "checklist", "choices" or "lend"');
 }
 
 /** The block as plain text: what a chat app, a push, a copy and an older client show. */
@@ -136,8 +140,16 @@ export function plainOf(b: RichBlock, lang: LangTag | undefined): string {
       return [...head, ...b.items.map((x) => `- ${x}`)].join("\n");
     case "choices":
       return b.options.map((x) => `- ${x}`).join("\n");
+    case "lend":
+      return words(LEND_PLAIN, lang);
   }
 }
+
+/** D347: where the lend card's button leads, for a chat app, a push and an older client. */
+const LEND_PLAIN: { en: string } & Record<string, string> = {
+  en: "To lend a computer: Your devices › Lend a computer.",
+  zh: "借一台电脑：你的设备 › 借一台电脑来干活。",
+};
 
 const FENCE = /^[ \t]*```[ \t]*ducter-ui[ \t]*\r?\n([\s\S]*?)(?:\r?\n[ \t]*```[ \t]*(?=\r?\n|$)|$)/gm;
 
@@ -263,7 +275,8 @@ export type RichModel =
   | { type: "table"; title: string; columns: string[]; rows: string[][]; numeric: boolean[] }
   | ({ type: "chart"; kind: "bar" | "line"; title: string; unit: string; summary: string } & ChartModel)
   | { type: "checklist"; title: string; items: string[]; tell: boolean }
-  | { type: "choices"; options: string[] };
+  | { type: "choices"; options: string[] }
+  | { type: "lend" };
 
 const round9 = (x: number) => Math.round(x * 1e9) / 1e9;
 
@@ -325,12 +338,14 @@ export function richModel(b: RichBlock): RichModel {
       return { type: "checklist", title: b.title ?? "", items: b.items, tell: b.tell === true };
     case "choices":
       return { type: "choices", options: b.options };
+    case "lend":
+      return { type: "lend" };
   }
 }
 
 /** What the partner reads of a message it sent with blocks (render.ts): which were shown. */
 export function richShownWords(ui: readonly RichUi[] | undefined, dropped?: number): string {
-  const kinds = (ui ?? []).map((b) => (b.type === "chart" ? `a ${b.kind} chart` : b.type === "choices" ? "choices the user can tap" : `a ${b.type}`));
+  const kinds = (ui ?? []).map((b) => (b.type === "chart" ? `a ${b.kind} chart` : b.type === "choices" ? "choices the user can tap" : b.type === "lend" ? "the Lend a computer card" : `a ${b.type}`));
   const shown = kinds.length ? ` [shown in the app as ${kinds.join(" and ")}, in place of its plain text above]` : "";
   const lost = dropped ? ` [${dropped === 1 ? "a ducter-ui block you wrote was" : `${dropped} ducter-ui blocks you wrote were`} not valid and not shown]` : "";
   return shown + lost;

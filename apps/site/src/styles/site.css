@@ -1296,3 +1296,10 @@ h1 .line.quiet { margin-top: 0.22em; font-size: 0.56em; line-height: 1.08; lette
 .dl-new a { color: var(--ink); font-weight: 700; text-underline-offset: 3px; }
 .dl-fileline { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; margin: 0; }
 .dl-fileline small { color: var(--muted); }
+
+/* D347: Get started's quiet way in for someone who already has Ducter, and its section. */
+.already { margin-top: 18px; }
+.already a { color: var(--ink); font-weight: 600; text-underline-offset: 3px; }
+.add-computer h2 { margin: 0 0 8px; }
+.add-computer .ways { margin-top: 20px; }
+.add-computer .dl-small { margin-top: 16px; }

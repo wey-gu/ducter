@@ -95,6 +95,8 @@ export interface WsDeps {
   runner: () => Runner | undefined;
   /** Your devices and abilities (devices.ts); absent in tests that don't need it. */
   devices?: () => DevicesView | undefined;
+  /** D347: 借一台电脑来干活 / Lend a computer (lend.ts); absent in tests that don't need it. */
+  lend?: () => import("./lend.ts").Lend | undefined;
   /** D205: the persona's Bridge connection (bridge-link.ts); absent in tests that don't need it. */
   bridgeLink?: import("./bridge-link.ts").BridgeLink;
   /** The partner's settings (settings.ts); absent in tests that don't need it. */
@@ -945,6 +947,14 @@ export function createWsHandler(deps: WsDeps) {
         const v = devicesView();
         if (!v) throw new Error("devices are not available");
         send(ws, await v.pairCode());
+        return;
+      }
+      case "lend_code": {
+        const l = deps.lend?.();
+        if (!l) throw new Error("lending is not available");
+        watchDevices(); // the computer that arrives shows in the devices frames this socket gets
+        ws.data.devices = true;
+        send(ws, l.mint());
         return;
       }
       case "rename_device": {

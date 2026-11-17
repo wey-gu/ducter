@@ -242,6 +242,8 @@ export function buildSystemPrompt(persona: CoreApi["persona"]): string {
     "  \"tell\":true only if they want to hear back}; choices: {\"type\":\"choices\",\"options\":[…]}.",
     "- At most 6 columns, 12 rows, 14 points, 12 items, 5 choices of 40 characters. Your own",
     "  words are one or two short lines and never restate what it shows. Chat apps get plain lines.",
+    "- They want another computer or server (a NAS, a home Linux box) to do tasks: one short line",
+    "  and {\"type\":\"lend\"}, the card that walks them through it. No commands, no task.",
     "",
     "## Pictures",
     "- Pictures the user sends come with their message ([with … picture <id>]) and you see them.",

@@ -459,6 +459,9 @@ type Store struct {
 	ChannelResults []protocol.ServerFrame
 	// PairCode is the newest pairing code the server minted for this app.
 	PairCode *protocol.ServerFrame
+	// Lend is 借一台电脑来干活 / Lend a computer's code as last said (D347):
+	// the waiting frame with its line, then joined and here for that code.
+	Lend *protocol.ServerFrame
 	// Renamed is the server's answer to the last 改名字 / Rename.
 	Renamed *protocol.ServerFrame
 	// DeviceResult is the server's answer to the last 断开 / Disconnect or
@@ -658,6 +661,25 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "pair_code":
 		fc := f
 		s.PairCode = &fc
+	case "lend":
+		// D347: the asking window's frame carries the line; the later ones
+		// for the same code keep it (they don't repeat it). Another
+		// window's lend, never asked here, is left alone.
+		fc := f
+		if s.Lend != nil && s.Lend.Code == f.Code {
+			if fc.LendLine == "" {
+				fc.LendLine = s.Lend.LendLine
+			}
+			if fc.Address == "" {
+				fc.Address, fc.SameNetwork = s.Lend.Address, s.Lend.SameNetwork
+			}
+			if fc.Check == "" {
+				fc.Check = s.Lend.Check
+			}
+			s.Lend = &fc
+		} else if f.State == "waiting" {
+			s.Lend = &fc
+		}
 	case "rename_result":
 		fc := f
 		s.Renamed = &fc

@@ -1,6 +1,17 @@
 # Ducter TODO
 
-Deferred work, grouped by area, each with its trigger where it has one. Calls that are the
+Deferred work, grouped by area, each with its trigger where it has one.
+
+## Lend a computer (D347, `where.md` §17)
+
+- **Live check: a LAN Linux box joins hel.** On a Linux machine on the author's home network (no
+  public address, no Tailscale), paste the line from Lend a computer on hel's own address: the
+  reach check, install, join, the user service (and a root run: the system service), the app's
+  waiting → joined → here with its agents, a second paste keeps it. Then one failure each: an
+  expired code, a blocked network (the check line), no curl. *Trigger:* next release.
+- **A Mac home opened to its network on demand**, so a LAN computer can join a Mac home without
+  From outside. Device tokens would cross the network over plain http; needs its own decision.
+  *Trigger:* someone asks to lend a computer to a Mac home and won't turn on From outside. Calls that are the
 user's go to `design/flows/OPEN-QUESTIONS.md`; the morning of 2026-11-09 answered all of them
 (D54, D56–D66), and items below cite the decision they carry out.
 

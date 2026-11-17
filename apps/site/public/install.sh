@@ -4,6 +4,10 @@
 #   curl -fsSL https://ducter.ai/install.sh | sh
 #   curl -fsSL https://ducter.ai/install.sh | sh -s -- --service   # Linux: also run it as a service
 #   curl -fsSL https://ducter.ai/install.sh | sh -s -- --no-cli     # Mac: the app only, no `ducter` link
+#   curl -fsSL https://ducter.ai/install.sh | sh -s -- worker <address> --code <code>
+#       # lend this computer to your Ducter at <address> (D347): install, join with the code, and
+#       # keep it doing tasks as a service. Safe to run again: an install already at this version
+#       # and a join that still works are kept. The line comes from 借一台电脑来干活 / Lend a computer.
 #
 # Mac (Apple silicon): downloads the signed app from the latest GitHub release, checks its
 # SHA-256 and its notarization, and puts Ducter.app in /Applications. Then it links
@@ -210,12 +214,68 @@ install_linux() {
   sh "$TMP/$name/install.sh" "$@" </dev/null
 }
 
+# worker_args worker <address> --code <code> [--name <name>]: sets W_URL, W_CODE, W_NAME.
+worker_args() {
+  shift
+  W_URL="" W_CODE="" W_NAME=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --code) [ $# -ge 2 ] || fail "--code needs the code."; W_CODE="$2"; shift 2 ;;
+      --code=*) W_CODE="${1#*=}"; shift ;;
+      --name) [ $# -ge 2 ] || fail "--name needs a name."; W_NAME="$2"; shift 2 ;;
+      --name=*) W_NAME="${1#*=}"; shift ;;
+      -*) fail "worker doesn't take $1. Use: worker <address> --code <code>" ;;
+      *) [ -z "$W_URL" ] || fail "worker takes one address; got $W_URL and $1."; W_URL="$1"; shift ;;
+    esac
+  done
+  [ -n "$W_URL" ] && [ -n "$W_CODE" ] || fail "use: sh -s -- worker <address> --code <code> (the line from Lend a computer)."
+  case "$W_URL" in http://* | https://*) ;; *) W_URL="https://$W_URL" ;; esac
+  W_URL="${W_URL%/}"
+}
+
+# reach_home URL: this computer only dials out to the home; if it can't, nothing else will work.
+reach_home() {
+  curl -fsS -m 10 -o /dev/null "$1/health" 2>/dev/null ||
+    fail "this computer can't reach $1. It only needs to reach that address (outbound; nothing comes in). Check: curl -sS -m 10 $1/health"
+  say "  Reaches $1"
+}
+
+# installed CLI: the version it says, or nothing.
+installed() { [ -x "$1" ] && "$1" version 2>/dev/null | sed -n 's/^ducter \([^ ]*\).*/\1/p' | head -1; }
+
+# worker_main: install (unless this version is here), then join and keep the worker running.
+worker_main() {
+  reach_home "$W_URL"
+  if [ "$os" = Darwin ]; then
+    cli="${DUCTER_APP_DIR:-/Applications}/Ducter.app/Contents/Helpers/ducter"
+  else
+    cli="${DUCTER_PREFIX:-$HOME/.local}/bin/ducter"
+  fi
+  if [ "$(installed "$cli")" = "$VERSION" ]; then
+    say "Ducter $VERSION is already installed."
+  elif [ "$os" = Darwin ]; then
+    DUCTER_NO_OPEN=1 install_mac
+  else
+    install_linux
+  fi
+  [ -x "$cli" ] || fail "ducter isn't at $cli after installing."
+  say ""
+  say "Joining $W_URL…"
+  if [ -n "$W_NAME" ]; then
+    "$cli" worker "$W_URL" --code "$W_CODE" --name "$W_NAME" --service </dev/null
+  else
+    "$cli" worker "$W_URL" --code "$W_CODE" --service </dev/null
+  fi
+}
+
 main() {
-  need curl "Install curl with your package manager, then run this again."
+  need curl "Install curl with your package manager (e.g. sudo apt install curl), then run this again."
   command -v shasum >/dev/null 2>&1 || command -v sha256sum >/dev/null 2>&1 ||
     fail "shasum or sha256sum is needed to check the download. Install coreutils (or perl's shasum)."
 
   os="$(uname -s)"
+  WORKER=0
+  if [ "${1:-}" = worker ]; then worker_args "$@"; WORKER=1; fi
   case "$os" in
     Darwin)
       if [ "$(uname -m)" != arm64 ] && [ "$(sysctl -n hw.optional.arm64 2>/dev/null || echo 0)" != 1 ]; then
@@ -241,6 +301,10 @@ main() {
   trap 'exit 130' INT TERM
 
   NO_CLI=0
+  if [ "$WORKER" = 1 ]; then
+    worker_main
+    return
+  fi
   if [ "$os" = Darwin ]; then
     for a in "$@"; do
       case "$a" in

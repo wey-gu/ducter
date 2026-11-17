@@ -126,6 +126,9 @@ func (b *RichUI) Known() bool {
 			seen[x] = true
 		}
 		return true
+	case "lend":
+		// D347: the Lend a computer card: one button that opens the guided sheet.
+		return true
 	}
 	return false
 }

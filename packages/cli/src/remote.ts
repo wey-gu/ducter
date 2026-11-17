@@ -326,6 +326,8 @@ export interface UnitSpec {
   host?: string;
   /** A worker unit runs `ducter worker` (dials out to its main) instead of the main process. */
   worker?: boolean;
+  /** D347: a system service (root's worker): started at boot by the system, not a user's login. */
+  system?: boolean;
 }
 
 const sdQuote = (s: string) => (/[\s"\\]/.test(s) ? `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"` : s);
@@ -362,7 +364,7 @@ export function systemdUnit(u: UnitSpec): string {
     `EnvironmentFile=-${join(u.dataDir, "env")}`,
     "",
     "[Install]",
-    "WantedBy=default.target",
+    `WantedBy=${u.system ? "multi-user.target" : "default.target"}`,
     "",
   ].join("\n");
 }
@@ -483,6 +485,8 @@ export async function cmdService(o: {
   platform?: string;
   home?: string;
   uid?: number;
+  /** Tests: where a system unit goes (default /etc/systemd/system). */
+  systemDir?: string;
 }): Promise<number> {
   const { t, style, host } = o;
   const verb = o.rest[0] ?? "status";
@@ -490,6 +494,8 @@ export async function cmdService(o: {
   if (!["install", "uninstall", "status"].includes(verb)) return console.log(t("service.usage")), 2;
   if (platform === "darwin" && o.worker) return cmdLaunchdWorker({ t, style, host, dataDir: o.dataDir, verb, home: o.home, uid: o.uid });
   if (platform !== "linux") return console.log(t("service.linuxOnly")), 1;
+  // D347: root's worker is a system service (root often has no user manager: sudo, a container).
+  if (o.worker && (o.uid ?? process.getuid?.()) === 0) return cmdSystemWorker({ t, style, host, dataDir: o.dataDir, verb, dir: o.systemDir ?? "/etc/systemd/system" });
   const probe = await sh(host, ["systemctl", "--user", "show-environment"]);
   if (probe.code !== 0) return console.log(t("service.noSystemd", { reason: probe.stdout.trim().split("\n")[0] || `exit ${probe.code}` })), 1;
   const user = process.env.USER || userInfo().username;
@@ -545,4 +551,43 @@ export async function cmdService(o: {
   console.log("  " + style.dim(t("service.logs")));
   await o.onInstalled?.();
   return 0;
+}
+
+/**
+ * D347: `ducter service install --worker` as root: /etc/systemd/system/ducter.service, enabled at
+ * boot (multi-user.target), run by the system manager; no linger to ask for. Status and
+ * uninstall act on the same unit.
+ */
+export async function cmdSystemWorker(o: { t: T; style: Style; host: Host; dataDir: string; verb: string; dir: string }): Promise<number> {
+  const { t, style, host } = o;
+  const file = join(o.dir, UNIT_NAME);
+  const probe = await sh(host, ["systemctl", "show-environment"]);
+  if (probe.code !== 0) return console.log(t("service.noSystemdSystem", { reason: probe.stdout.trim().split("\n")[0] || `exit ${probe.code}` })), 1;
+  if (o.verb === "status") {
+    const r = await sh(host, ["systemctl", "--no-pager", "status", UNIT_NAME]);
+    console.log(r.stdout.trim());
+    console.log("\n" + style.dim(t("service.logsSystem")));
+    return r.code === 0 ? 0 : 1;
+  }
+  if (o.verb === "uninstall") {
+    await sh(host, ["systemctl", "disable", "--now", UNIT_NAME]);
+    rmSync(file, { force: true });
+    await sh(host, ["systemctl", "daemon-reload"]);
+    console.log(t("service.removed", { dir: o.dataDir }));
+    return 0;
+  }
+  if (!existsSync(join(o.dataDir, "worker.json"))) return console.log(t("service.mac.joinFirst")), 1;
+  migrateKeys(o.dataDir);
+  const home = homedir();
+  writeFileSync(file, systemdUnit({ execStart: selfCommand(host.compiled), dataDir: o.dataDir, path: servicePath(process.env, home), port: 0, worker: true, system: true }));
+  console.log(style.dim(t("service.installed", { unit: file })));
+  for (const cmd of [["daemon-reload"], ["enable", UNIT_NAME], ["restart", UNIT_NAME]]) {
+    const r = await sh(host, ["systemctl", ...cmd]);
+    if (r.code !== 0) return console.log(`systemctl ${cmd.join(" ")}: ${r.stdout.trim()}`), 1;
+  }
+  await Bun.sleep(host.compiled ? 2000 : 0);
+  const r = await sh(host, ["systemctl", "is-active", UNIT_NAME]);
+  console.log(`\n  ${style.ok("●")} ${r.stdout.trim()}`);
+  console.log("  " + style.dim(t("service.logsSystem")));
+  return r.stdout.trim() === "active" ? 0 : 1;
 }

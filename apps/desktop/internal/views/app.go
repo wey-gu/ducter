@@ -277,6 +277,7 @@ type App struct {
 	live       liveState
 	liveNote   string
 	pu         phoneUseState    // D217: Ducter's phone
+	lend       lendState        // D347: 借一台电脑来干活 / Lend a computer
 	cu         computerUseState // D235: 用电脑
 	sites      sitesState
 	af         autofillState // D191: 设置 › 密码和银行卡
@@ -534,6 +535,7 @@ func (a *App) View(c *ui.Context) {
 		a.switcher(c) // D216: ⌘O, 打开一件事
 		a.liveView(c)
 		a.phoneInstallSheet(c) // D217
+		a.lendSheet(c)         // D347
 		a.phoneView(c)
 	}
 	a.viewer(c)     // D206: a picture, over everything

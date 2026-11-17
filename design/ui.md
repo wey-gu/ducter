@@ -609,9 +609,11 @@ One vocabulary on every tab:
   the tile column and one 15 sentence on the text column, with a mono chip, a quiet link or a field
   (label 13/700 over a white input with a hairline) under it; the last line is the privacy note
   (13 muted) and the group's one button at the right edge. `design/channels.md` §6.
-- **终端里的 AI / AI in your terminal** (D332; was D257's 连上的 AI agent; two of the person's agents' coins as its
+- **和你的其他 agent 通信 / Talk with your other agents** (D332; was D257's 连上的 AI agent; two of the person's agents' coins as its
   mark): the lede; on, problems first (one row each), **最近** (each exchange a row: the agent's mark, its words,
-  which way, the age at the right), **试试看** (D321's slabs), the switch as its own group with the partner's word
+  which way, the age at the right), **试试看** (two example exchanges, one each way: who you say it to, the sentence in your own bubble (the user-bubble
+  tokens) with a small drawn copy button, 复制这句 → a check, a small drawn down arrow, then the partner's 22 face and what
+  it does; never a prompt glyph; an agent missing Mem's plugin as one row with 装上 in its own group), the switch as its own group with the partner's word
   under it; before Mem, the picture on a sunken clay slab (the coins at 44, two drawn arrows in muted ink, each
   said in words, the partner at 56), Mem's group with its two steps; only **已不再听 X** rows. Shown by who.
 - **Look and sound** opens on a preview stage: the partner, one message of yours and its answer

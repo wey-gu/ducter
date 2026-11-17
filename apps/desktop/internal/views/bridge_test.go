@@ -14,9 +14,9 @@ import (
 )
 
 // D205/D225/D229, placed by D257, simplified by D332: the partner's link with
-// the person's own agents is Settings › 终端里的 AI; the home's own Nowledge
+// the person's own agents is Settings › 和你的其他 agent 通信; the home's own Nowledge
 // Mem steps (put in, update, move, sign in) are on Settings › 记忆 and walked
-// in place on 终端里的 AI before it connects. Each state shows on its tab;
+// in place on 和你的其他 agent 通信 before it connects. Each state shows on its tab;
 // opening the pane while Mem is ready connects (no tap), the switch
 // connects or revokes, 装上 and 更新 send their frames; nothing else does.
 // Identity, place and 断开 never show.
@@ -246,7 +246,7 @@ func TestBridgeRow(t *testing.T) {
 func ptr[T any](v T) *T { return &v }
 
 // D332: for someone Ducter hasn't seen run agents of their own (and no agent
-// ever written), 终端里的 AI stays out of the rail whatever Mem says (J6);
+// ever written), 和你的其他 agent 通信 stays out of the rail whatever Mem says (J6);
 // the Partner page carries one quiet line that opens it.
 func TestBridgeRowAbsentForAFreshUser(t *testing.T) {
 	for _, b := range []*protocol.BridgeView{nil, {State: "install_mem", Identity: "ducter", Home: "hel", CanRun: true}, {State: "sign_in", Identity: "ducter", Home: "hel"}, {State: "ready", Identity: "ducter"}} {
@@ -260,7 +260,7 @@ func TestBridgeRowAbsentForAFreshUser(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		if tt.HasText(app.L.T("settings.tab.peers")) {
-			t.Fatalf("终端里的 AI shows for a fresh user (%v): %q", b, tt.Texts())
+			t.Fatalf("和你的其他 agent 通信 shows for a fresh user (%v): %q", b, tt.Texts())
 		}
 		if b != nil && !tt.HasText(app.L.T("peers.invite", "小鸭")) {
 			t.Fatalf("no invitation on the Partner page (%v): %q", b, tt.Texts())

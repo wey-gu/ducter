@@ -1,4 +1,4 @@
-# 120 · Naming the page where the person's own AI agents reach the partner
+# 120 · Naming the page where the person's own agents reach the partner
 
 > 2026-11-17. Public. Evidence for D332: the Settings page once called 连上的 AI agent / Connected AI agents
 > (Nowledge Bridge underneath). The author on 0.0.67: someone who doesn't know Nowledge Mem or Bridge can't
@@ -67,16 +67,29 @@ false readings and the "would you open it" answer say more than the accuracy.
 - With the page shown only to people Ducter sees running agents of their own (D332 (2)), the name's job is to be
   unmistakable to them and self-excluding for everyone else; C does both.
 
+## 4. The author's verdict (2026-11-17, after the shots)
+
+The rater winner, 终端里的 AI / AI in your terminal, was rejected: "still odd, and wrong". Claude Code and Codex are
+not only terminal tools: both have desktop apps and editor extensions, so a name about the terminal tells a
+person who uses the Codex app that the page isn't for them, the opposite of what the page is for. The haiku
+personas were described as terminal users, so the test could not catch it (a limit of the stimulus, INFERRED).
+**Decided: 和你的其他 agent 通信 / Talk with your other agents.** It keeps what the data showed: **你的 / your**
+removes the main misreading of every "other AI" name (other people's or strangers' AI, rows B, D, G), and the
+list line under it (kept) names Claude Code and Codex. "agent" is lowercase, the glossary's word. This name was
+not rated; a human test is in `todo.md`.
+
 ## Implications for Ducter
 
-1. Name the page **终端里的 AI / AI in your terminal**, its list line **Claude Code、Codex 能把事交给它，它也能去问它们
-   / Claude Code and Codex can hand it work, and it can ask them**, and the lede says both ways.
-2. Never "other / 别的" for this page's agents in a title: it reads as other people's.
-3. Show it by who (records or Mem's plugin), and give everyone else one quiet line on the Partner page.
-4. A human test of the name and the Partner line stays in `todo.md`.
+1. Name the page **和你的其他 agent 通信 / Talk with your other agents**, its list line **Claude Code、Codex 能把事交给它，
+   它也能去问它们 / Claude Code and Codex can hand it work, and it can ask them**; the lede says both ways.
+2. Never "other / 别的" without **你的 / your**: alone it reads as other people's.
+3. No "terminal" framing for these agents: they live in apps and editors too.
+4. Show it by who (records or Mem's plugin), and give everyone else one quiet line on the Partner page.
+5. A human test of the name and the Partner line stays in `todo.md`.
 
 ## Summary
 
 Eight names, 192 haiku runs as three users. "连上的 AI agent" read as the partner's own AI next to the Partner
-row; every "other AI" name read as other people's. 终端里的 AI / AI in your terminal was read right by all, and
-was the only one no consumer or fresh user wanted to open. Chosen for D332.
+row; every "other AI" name read as other people's. The raters' winner, 终端里的 AI, was rejected by the author as
+wrong (the agents are apps and editor extensions too). Chosen for D332: 和你的其他 agent 通信 / Talk with your other
+agents, with "你的" against the other-people misreading.

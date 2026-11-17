@@ -7,7 +7,7 @@ import (
 )
 
 // D321: the rules of Settings › 记忆 as "what it knows about you" and of
-// 终端里的 AI's 试试看, the web's (apps/web/src/mem-view.ts).
+// 和你的其他 agent 通信's 试试看, the web's (apps/web/src/mem-view.ts).
 
 // aboutKinds are Mem's own kinds, in the Memory page's order.
 var aboutKinds = []string{"preference", "decision", "fact", "other"}

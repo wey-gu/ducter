@@ -282,13 +282,13 @@ if (process.env.DEMO_PEER === "first" && memOn) {
   skew = 0;
 }
 
-// D332: DEMO_PEER=history: a few exchanges with the terminal's agents, both ways (Settings › 终端里的 AI's 最近).
+// D332: DEMO_PEER=history: a few exchanges with the terminal's agents, both ways (Settings › 和你的其他 agent 通信's 最近).
 if (process.env.DEMO_PEER === "history" && memOn) {
   const at = (min: number) => (skew = -min * 60_000);
   at(190);
   log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: "bm_h1", from: "Claude Code", agent: "Claude Code", text: zh ? "把 fix-ci 分支跟上 main，冲突能解就解，解不了的告诉我。" : "Bring fix-ci up to date with main; resolve what you can and tell me what you can't." } });
   at(185);
-  log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "bm_h2", to: "Claude Code", agent: "Claude Code", inReplyTo: "bm_h1", taskId: "t_rebase", state: "sent", text: zh ? "接了：「把 fix-ci 分支跟上 main」。做完把结果回你。" : "On it: \u201cBring fix-ci up to date with main\u201d. I'll send you the result." } });
+  log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "bm_h2", to: "Claude Code", agent: "Claude Code", inReplyTo: "bm_h1", taskId: "t_rebase", state: "sent", text: zh ? "fix-ci 跟上 main 了：两处冲突都在 CI 配置里，已经解好。" : "fix-ci is up to date with main: both conflicts were in the CI config, and they're resolved." } });
   at(42);
   log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "bm_h3", to: "Codex", agent: "Codex", decisionId: "d_h3", state: "sent", text: zh ? "那个 compaction 的 PR 今晚能提吗？" : "Can the compaction PR go up tonight?" } });
   at(31);

@@ -98,7 +98,7 @@ type App struct {
 	// shows the raw facts behind 详情.
 	memAsk     int64
 	memDetails bool
-	// peersAsked (D332): 终端里的 AI was opened from the Partner page's
+	// peersAsked (D332): 和你的其他 agent 通信 was opened from the Partner page's
 	// one line, so the rail lists it for now.
 	peersAsked bool
 	// D321: Settings › 记忆's own state (memory_pane.go).

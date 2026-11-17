@@ -1,5 +1,5 @@
 // D225: the home's own Nowledge Mem command line (`nmem`), put in or updated by Ducter on the user's
-// tap in Settings › 终端里的 AI, so a home without it (a headless Linux server) can connect
+// tap in Settings › 和你的其他 agent 通信, so a home without it (a headless Linux server) can connect
 // the persona with the user's other AI agents (D205) without the user typing a command there.
 //
 // Mem's official route (research/66 §4, research/69; https://mem.nowledge.co/SKILL.md, the CLI

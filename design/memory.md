@@ -161,7 +161,7 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   a stated preference (zh and en), no save of a task result or a pasted key, no recall for a
   general question, Mem down.
 
-## Settings › 记忆 / Memory and › 终端里的 AI (D295, built 2026-11-17; was D257; the second page is D332's)
+## Settings › 记忆 / Memory and › 和你的其他 agent 通信 (D295, built 2026-11-17; was D257; the second page is D332's)
 
 ### Who, what they feel, how it starts
 
@@ -177,7 +177,7 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   by their own names and coins), then where it's kept in their words (**Nowledge Mem Cloud，换哪台电脑都是同一份**,
   or **{home} 上的 Nowledge Mem 应用里，不离开那台电脑**) and the name it signs with. How it starts: nothing
   to do; it is already connected, and it shows the count Mem holds (**一共有 1,284 条记忆**).
-- **The heavy multi-agent developer.** D332: 终端里的 AI, shown to them by who; nothing to tap once Mem is in
+- **The heavy multi-agent developer.** D332: 和你的其他 agent 通信, shown to them by who; nothing to tap once Mem is in
   (the home connects by itself), what came and went first, one switch; identity, place and raw ids never shown
   (`bridge.md` "Simple, by who").
 
@@ -198,7 +198,7 @@ partner at 84–96 on the paper (an empty state, never inside a group), then one
 letter, how it stands (**还没接上 / {home} 上还没装 / 装好了，还差登录**), the two steps (D283's step
 marks) with D225's words, and the app's way as the foot.
 
-**终端里的 AI / AI in your terminal (D332):** on, 最近 (both ways), 试试看 and the switch, problems first as one row
+**和你的其他 agent 通信 / Talk with your other agents (D332):** on, 最近 (both ways), 试试看 and the switch, problems first as one row
 each; before Mem, the literal picture, one sentence of what Nowledge Mem is and the two steps in place; off, the
 picture and the switch. Only **已不再听 X · 恢复** rows as rules. `bridge.md` "Simple, by who".
 

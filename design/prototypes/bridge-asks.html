@@ -228,8 +228,8 @@ function standing() {
 }
 
 function rules() {
-  // D332: Settings › 终端里的 AI shows only an agent the person stopped listening to; X2's rule and who may reach it are not settings.
-  return `<div class="rules"><h3>${L("终端里的 AI", "AI in your terminal")}</h3><p class="lede">${L("不再听的", "Stopped listening")}</p>
+  // D332: Settings › 和你的其他 agent 通信 shows only an agent the person stopped listening to; X2's rule and who may reach it are not settings.
+  return `<div class="rules"><h3>${L("和你的其他 agent 通信", "Talk with your other agents")}</h3><p class="lede">${L("不再听的", "Stopped listening")}</p>
     <div class="rcard">
       <div class="rrow"><img src="${ART.plain}" alt="" style="opacity:.6"><div class="tx"><b>${L("已不再听 reviewer", "Not listening to reviewer")}</b><small>${L("它发来的不会再打开", "Its messages aren't opened any more")}</small></div><span class="lnk">${L("恢复", "Undo")}</span></div>
     </div></div>`;

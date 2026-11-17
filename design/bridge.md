@@ -25,7 +25,7 @@
 Mem 0.10.118 (PR nowledge-co/mem#9996) lets the user's ordinary Mem login represent an existing identity it
 holds, so the persona's context no longer needs a key or hand-made commands (D171's refusal).
 
-- **Who and when.** The heavy multi-agent developer, in Settings › 终端里的 AI (D332: shown to whoever runs agents of
+- **Who and when.** The heavy multi-agent developer, in Settings › 和你的其他 agent 通信 (D332: shown to whoever runs agents of
   their own). D332: no tap; the home connects by itself once Mem is ready ("Simple, by who" below).
 - **What Ducter finds by itself** (read-only): that the home's nmem has `bridge connections` (`--version`
   ≥ 0.10.118, else the subcommand's `--help`, cached per version); the one place with `kind: "personal"`
@@ -48,7 +48,7 @@ holds, so the persona's context no longer needs a key or hand-made commands (D17
 ### The home's own Mem first (D225)
 
 D257 moved these steps to Settings › 记忆 / Memory's **Nowledge Mem** card (and Mem's newer version to its own
-highlighted card there); D332: 终端里的 AI walks the same install and sign-in steps in place, then connects by itself. The steps themselves, one tap each:
+highlighted card there); D332: 和你的其他 agent 通信 walks the same install and sign-in steps in place, then connects by itself. The steps themselves, one tap each:
 
 | The home | The row | The tap runs |
 |---|---|---|
@@ -88,11 +88,11 @@ a computer nobody looks at, and Mem's list can't say which is which (both were l
   One made before D324 keeps its name and keeps working.
 - **A second home** reads Mem's list at every look (read-only) and never connects beside another home on its own:
 
-| The home | The row (Settings › 终端里的 AI) | The tap runs |
+| The home | The row (Settings › 和你的其他 agent 通信) | The tap runs |
 |---|---|---|
 | another home holds it | **{name} 现在在 {home} 上收你别的 AI 发来的消息，这台不用再收。** · **改由这台收**, asking in place: **改由这台收？{home} 上就不再收了，{name} 只在这台上收你别的 AI 发来的消息。** | connect here, then `bridge connections revoke` the other's |
 | connected here and elsewhere (from before D324) | under the head: **{name} 也在 {home} 上收** (an old label: **另一台电脑**) · **两台都在收，你别的 AI 发来的消息会被先查收的那台拿走，可能落到你不看的那边。只留一台就好。** · **只留这台**, asking in place | revoke the other's |
-| Mem won't end that one from here (another login's) | the same row: **{home} 上的连接只能在那台上断开：在那台的 Ducter 里打开 设置 › 终端里的 AI，把开关关掉。**, no button | nothing |
+| Mem won't end that one from here (another login's) | the same row: **{home} 上的连接只能在那台上断开：在那台的 Ducter 里打开 设置 › 和你的其他 agent 通信，把开关关掉。**, no button | nothing |
 
 - **The other home notices** at its next look or its 30-minute recheck (`connections list`, read-only), drops its
   record, and stops checking.
@@ -107,15 +107,17 @@ a computer nobody looks at, and Mem's list can't say which is which (both were l
 The author on 0.0.67: the page "连上的 AI agent" baffled anyone who doesn't know Nowledge Mem, and then: review every
 Bridge assumption and setting; make it smooth and reasonable; no needless options or behaviour.
 
-- **Who.** Only the person who runs AI agents of their own in a terminal. Core reads their records' file times
+- **Who.** Only the person who runs AI agents of their own (Claude Code, Codex, pi: in a terminal, a desktop app or an
+  editor). Core reads their records' file times
   (D327's rule: nothing inside, the last 14 days; `ownAgents` on the settings frame), or Mem's plugin in one of
-  their agents. They see **终端里的 AI / AI in your terminal** in Settings; everyone else sees one quiet line at the
-  end of the Partner page that opens it. The name won a naive-rater test of eight (research/120): it sorts people
-  by itself, where "连上的 AI agent" read as the partner's own brains next to Partner's line.
+  their agents. They see **和你的其他 agent 通信 / Talk with your other agents** in Settings; everyone else sees one quiet line at the
+  end of the Partner page that opens it. The name is the author's (research/120): "终端里的 AI", the rater test's
+  winner, was wrong, since these agents also live in desktop apps and editors; "你的" answers the raters' main
+  misreading (other people's AI), and "连上的 AI agent" read as the partner's own brains next to Partner's line.
 - **Connect without a tap** (`packages/core/src/bridge-auto.ts`). Mem signed in with exactly one personal place
   (bridge-link's `ready`), the switch on, agents of their own: the home connects at start, or as soon as Mem gets
   there; opening the page while ready is the same ask. Then the partner says once in the conversation that the
-  person's terminal agents can reach it now, and where to turn it off (`<dataDir>/bridge-said`). A connection from
+  person's own agents can reach it now, and where to turn it off (`<dataDir>/bridge-said`). A connection from
   before D332 says nothing. Failures stay quiet; the pane shows one row with the step.
 - **One switch**, on by default: off revokes and nothing connects again by itself; on connects. A stored `team`
   reach reads as on. A teammate's agent is asked about per sender the first time, once a team mailbox exists
@@ -123,7 +125,8 @@ Bridge assumption and setting; make it smooth and reasonable; no needless option
 - **Never shown:** identity, place, the connection's label, raw ids, 断开 as its own action. **Only problems show**,
   each one row with its one fix (two readers → 只留这台; another home → 改由这台收; Mem's refusal → its step).
 - **The pane.** On: 最近 / Recently (both ways, five, each opening its task or message; before the first, a calm
-  waiting row), 试试看, the switch. Before Mem: the literal picture (the person's agents' coins, the partner, two
+  waiting row), 试试看 (two example exchanges as a tiny conversation, one each way, a copy button on each sentence;
+  an agent missing Mem's plugin as one row with 装上), the switch. Before Mem: the literal picture (the person's agents' coins, the partner, two
   arrows said in words; no metaphor, D321 (6)), one sentence of what Nowledge Mem is, its two steps in place. Off:
   the picture and the switch. X2's 直接接 and the daily quota are not settings; only **已不再听 X · 恢复** rows.
 - **Not changed:** the partner's tools (D333's own branch), the conversation's lines and cards, D324's one-home rule.
@@ -365,7 +368,7 @@ decision cards; their rules live with the learned rules.
 | On hand · 等你 | the same card beside Ducter's own tasks' asks, the coin and who where a task's title would be |
 | Phone and lock screen | the same card; the notification is **小鸭 · 你的 terminal-claude 问你**, the question and the waiting line, no Go/Hold actions (its options are its own) |
 | X2's offer | after two Go's: **以后你的 terminal-claude 发来的活，直接接？** · **直接接** · **还是先问我**; then its work shows up in 在做 / Working with no card, the brief starting **你的 terminal-claude 让我做的** |
-| Settings › 终端里的 AI (D332) | what came and went lately, 试试看, one switch; only an agent the person stopped listening to shows (**已不再听 X** · **恢复**). X2's rule is learned and changed by saying it, never a setting |
+| Settings › 和你的其他 agent 通信 (D332) | what came and went lately, 试试看, one switch; only an agent the person stopped listening to shows (**已不再听 X** · **恢复**). X2's rule is learned and changed by saying it, never a setting |
 | Saying it | "不再听 X 的", "X 的活还是先问我" to the partner does the same (`peer_rule`) |
 | Device islands | nothing: other agents aren't places, and a visitor on an island would be a new metaphor that tells nothing a coin doesn't |
 
@@ -685,7 +688,7 @@ nmem --version                                   # 0.10.118 or later
 nmem bridge connections connect --space-id <Only me id> --agent-id ducter --context ducter
 bun run bridge:live -- --connected               # dry: read-only preflight, prints what --real would run
 bun run bridge:live -- --connected --real        # S1, S2, S3, X1; the peer is a native Claude Code session
-# Undo: Settings › 终端里的 AI › the switch off, or nmem bridge connections revoke <connection id>
+# Undo: Settings › 和你的其他 agent 通信 › the switch off, or nmem bridge connections revoke <connection id>
 ```
 
 The status notes below are history (D171's path, superseded by D205).

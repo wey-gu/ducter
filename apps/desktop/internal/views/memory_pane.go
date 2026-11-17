@@ -605,7 +605,7 @@ func (a *App) memFirst(c *ui.Context, phase string, b *protocol.BridgeView) {
 
 // memSteps is Nowledge Mem's two steps on the home, each one tap in place
 // (D225): put it in, then sign in with a one-time link. Memory's first page
-// and 终端里的 AI's (D332) walk the same steps.
+// and 和你的其他 agent 通信's (D332) walk the same steps.
 func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
 	t := a.T
 	home := a.memHome()

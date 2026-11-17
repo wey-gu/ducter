@@ -13,7 +13,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 )
 
-// D332: Settings › 终端里的 AI (and the Partner page's one line) against a
+// D332: Settings › 和你的其他 agent 通信 (and the Partner page's one line) against a
 // demo core with its pretend Nowledge Mem, light and dark:
 //
 //	DUCTER_PORT=7995 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh DEMO_MEM=cloud DEMO_PAST=1 DEMO_PEER=history bun apps/web/demo.ts

@@ -7,7 +7,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// D332: Settings › 终端里的 AI / AI in your terminal on the settings grid
+// D332: Settings › 和你的其他 agent 通信 / Talk with your other agents on the settings grid
 // (D289). On: any problem as one row with its fix, what came and went
 // lately (both ways), what to say (试试看), the one switch. Before Mem is
 // ready: the picture, one sentence of what Nowledge Mem is and its steps in

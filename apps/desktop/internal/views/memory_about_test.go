@@ -57,7 +57,7 @@ func TestAboutRules(t *testing.T) {
 	}
 }
 
-// D332: 终端里的 AI's rules, the web's (apps/web/test/peers.test.ts): what the
+// D332: 和你的其他 agent 通信's rules, the web's (apps/web/test/peers.test.ts): what the
 // pane is about, who sees it, and what came and went lately.
 func TestPeersRules(t *testing.T) {
 	bv := func(st string) *protocol.BridgeView { return &protocol.BridgeView{State: st, Identity: "ducter"} }

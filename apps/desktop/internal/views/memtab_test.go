@@ -15,7 +15,7 @@ import (
 )
 
 // D257: where the memory stands, the one update worth saying, the rail's
-// line, when 终端里的 AI shows, and the noted lines by when. The same cases
+// line, when 和你的其他 agent 通信 shows, and the noted lines by when. The same cases
 // as the web's (apps/web/test/memory.test.ts).
 func TestMemRules(t *testing.T) {
 	conn := &protocol.MemView{State: "connected"}
@@ -60,9 +60,9 @@ func TestMemRules(t *testing.T) {
 			t.Errorf("memUpdate(%+v) = %q/%q, want %q/%q", c.b, kind, memBadge(u), c.kind, c.badge)
 		}
 	}
-	// D332: 终端里的 AI shows by who (TestPeersRules has the cases).
+	// D332: 和你的其他 agent 通信 shows by who (TestPeersRules has the cases).
 	if peersShown(&protocol.Peers{Reach: "own"}, &protocol.BridgeView{State: "ready"}, false, false) {
-		t.Errorf("终端里的 AI shows to someone without agents of their own")
+		t.Errorf("和你的其他 agent 通信 shows to someone without agents of their own")
 	}
 	now := time.Date(2026, 11, 14, 15, 0, 0, 0, time.Local)
 	at := func(d time.Duration) string { return now.Add(-d).UTC().Format(time.RFC3339) }

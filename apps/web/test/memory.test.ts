@@ -1,5 +1,5 @@
-// D257: Settings › 记忆 / Memory and › 终端里的 AI (D332): where the memory stands, the one update worth
-// saying, the Settings entry's line, when 终端里的 AI shows, the noted lines by when, and the words
+// D257: Settings › 记忆 / Memory and › 和你的其他 agent 通信 (D332): where the memory stands, the one update worth
+// saying, the Settings entry's line, when 和你的其他 agent 通信 shows, the noted lines by when, and the words
 // equal to the Mac's (apps/desktop/internal/i18n/memory.go). The same cases as the Mac's
 // (apps/desktop/internal/views/memtab_test.go).
 import { describe, expect, test } from "bun:test";
@@ -42,7 +42,7 @@ describe("Memory (D257)", () => {
     expect(kind(b({ state: "ready", done: "updated" }))).toBe("done");
   });
 
-  test("终端里的 AI shows by who (D332)", () => {
+  test("和你的其他 agent 通信 shows by who (D332)", () => {
     const none = { reach: "own" as const, trusted: [], muted: [] };
     expect(peersShown(undefined, b({}), true, true)).toBe(false);
     // Mem ready, never connected, no agents of their own: not in the list (the Partner page invites).

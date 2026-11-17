@@ -1,4 +1,4 @@
-// D321: what it knows about you (groups by Mem's kind, each line's source) and 终端里的 AI's 试试看
+// D321: what it knows about you (groups by Mem's kind, each line's source) and 和你的其他 agent 通信's 试试看
 // (which agents can hear the words); D332: what the pane is about, and what came and went lately.
 // The Mac has the same rules (apps/desktop/internal/views/memory_about_test.go TestPeersRules).
 import { describe, expect, test } from "bun:test";

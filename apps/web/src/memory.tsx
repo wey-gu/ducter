@@ -1,14 +1,14 @@
-// D257: Settings › 记忆 / Memory and › 终端里的 AI / AI in your terminal (D332), each its own page;
+// D257: Settings › 记忆 / Memory and › 和你的其他 agent 通信 / Talk with your other agents (D332), each its own page;
 // D295: both on the settings grid (D289). Memory shows the value first: the partner remembers you
 // (what's new this week, the switch), what it noted this week and earlier (each forgettable, asking
 // in place), what your other AI tools saved to Mem, then Nowledge Mem in human words (where it's
 // kept, its name there, the raw ids behind 详情). Before Mem: a small empty state and the setup as
-// steps. 终端里的 AI / AI in your terminal (D332) is the partner's link with the person's own agents,
+// steps. 和你的其他 agent 通信 / Talk with your other agents (D332) is the partner's link with the person's own agents,
 // shown by who (peersShown). The Mac's: memory_pane.go, peers_pane.go.
 // D321: Memory is "what it knows about you": Mem's own kinds as living groups (how you like things,
 // what you decided, what it knows), each row fixable or forgettable in place with its source as a
 // quiet line, a search, the week's check one tap away; other tools' working notes only as a count.
-// D332: 终端里的 AI shows what came and went lately (both ways), 试试看 with the exact words, and one switch.
+// D332: 和你的其他 agent 通信 shows what came and went lately (both ways), 试试看 with the exact words, and one switch.
 import type { BridgeView, MemItem } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -360,7 +360,7 @@ const FACE = { missing: "idle", install: "idle", installing: "working", sign_in:
 
 /**
  * Nowledge Mem's two steps on the home, each one tap in place (D225): put it in, then sign in with a
- * one-time link. Memory's first page and 终端里的 AI's (D332) walk the same steps.
+ * one-time link. Memory's first page and 和你的其他 agent 通信's (D332) walk the same steps.
  */
 export function MemSteps({ phase, b }: { phase: "install" | "installing" | "sign_in" | "signing_in"; b: BridgeView | undefined }) {
   const [link, setLink] = useState("");
@@ -456,7 +456,7 @@ export function MemoryPage() {
   );
 }
 
-// ---------- 终端里的 AI / AI in your terminal (D332; D295: on the settings grid) ----------
+// ---------- 和你的其他 agent 通信 / Talk with your other agents (D332; D295: on the settings grid) ----------
 
 /** Two of the person's agents' coins, overlapping: this page's mark. */
 const CoinsTile = ({ faded }: { faded?: boolean }) => (
@@ -514,23 +514,35 @@ function PeersPicture({ name }: { name: string }) {
   );
 }
 
-/** A drawn terminal prompt (never a font's glyph): the words go there. */
-const PromptMark = () => (
-  <svg class="say-mark" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="m4 4.5 4 3.5-4 3.5M9.5 12h3" />
+/** Two overlapping rounded sheets, drawn: copy. */
+const CopyMark = () => (
+  <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+    <rect x="5.5" y="5.5" width="8" height="8" rx="2" />
+    <path d="M10.5 3.5v-.5a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3v5A1.5 1.5 0 0 0 4 9.5h.5" />
   </svg>
 );
 
-/** One thing to say, exactly: what it does, the words (copyable), and where they go (the prompt mark: a terminal; none: here). */
-function Say({ what, words, terminal }: { what: string; words: string; terminal: boolean }) {
+/**
+ * D332: one example exchange, as a tiny conversation: who you say it to, the sentence in your own
+ * bubble (a small copy button on it, 复制这句 → 已复制), a small arrow, and what the partner does.
+ */
+function Exchange({ to, words, then }: { to: string; words: string; then: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div class="say">
-      <small class="say-what">{what}</small>
-      <div class={`say-words${terminal ? " term" : ""}`}>
-        {terminal && <PromptMark />}
-        <span class="grow" dir="auto">{words}</span>
-        <Btn kind="text" size="sm" label={t(copied ? "peers.try.copied" : "peers.try.copy")} about={words} onClick={() => void copy(words).then((ok) => ok && (setCopied(true), setTimeout(() => setCopied(false), 2000)))} />
+    <div class="ex">
+      <small class="ex-to">{to}</small>
+      <div class="ex-line">
+        <span class="ex-say" dir="auto">{words}</span>
+        <button type="button" class={`ex-copy${copied ? " done" : ""}`} aria-label={copied ? t("peers.try.copied") : t("peers.try.copy")} title={copied ? t("peers.try.copied") : t("peers.try.copy")} onClick={() => void copy(words).then((ok) => ok && (setCopied(true), setTimeout(() => setCopied(false), 1600)))}>
+          {copied ? <Check /> : <CopyMark />}
+        </button>
+      </div>
+      <svg class="ex-arrow" viewBox="0 0 12 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 1v13m-4-4 4 4 4-4" />
+      </svg>
+      <div class="ex-then">
+        <Avatar size={22} />
+        <span dir="auto">{then}</span>
       </div>
     </div>
   );
@@ -563,7 +575,7 @@ function PeersRecent({ name }: { name: string }) {
             <ToolTile from={peerTool(h.agent)} />
             <span class="grow">
               <b dir="auto">{h.words}</b>
-              <small>{t(`peers.recent.${h.way}`, whoOf(h.agent))}</small>
+              <small>{t(`peers.recent.${h.way}`, whoOf(h.agent), name)}</small>
             </span>
             <span class="g-state">{ago(A.L, h.at)}</span>
           </button>
@@ -574,31 +586,31 @@ function PeersRecent({ name }: { name: string }) {
 }
 
 /**
- * D321, D332: 试试看 / Try it: the exact words for the terminal (J1, X1) and for here (S2), each
- * copyable, and whether each agent can hear them (Mem's plugin in it, 装上 where it isn't).
+ * D321, D332: 试试看 / Try it: two example exchanges, one each way, as a tiny conversation in the clay
+ * style; then each agent missing Mem's plugin, one row with its fix (装上).
  */
 function PeersTry({ name }: { name: string }) {
-  const agents = tryAgents(A.devices ?? []);
+  const missing = tryAgents(A.devices ?? []).filter((x) => x.plugin === "off" && x.device);
   return (
     <section class="set mem-sec">
       <h3>{t("peers.try.title")}</h3>
-      <p class="g-note">{t("peers.try.note")}</p>
       <Group class="mem-g" label={t("peers.try.title")}>
         <GBlock>
-          <Say what={t("peers.try.work.what")} words={t("peers.try.work", name)} terminal />
-          <Say what={t("peers.try.ask.what")} words={t("peers.try.ask", name)} terminal />
-        </GBlock>
-        {agents
-          .filter((x) => x.plugin !== "on")
-          .map((x) => (
-            <GRow key={x.harness} tile={<Tile><Coin harness={x.harness} size={36} /></Tile>} title={x.harness === "codex" ? "Codex" : "Claude Code"} line={x.plugin === "off" ? t("peers.try.plugin.off", name) : t("peers.try.plugin.unknown")}>
-              {x.plugin === "off" && x.device && <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={x.device} onClick={() => A.installMem(x.device!, x.harness)} />}
-            </GRow>
-          ))}
-        <GBlock>
-          <Say what={t("peers.try.here.what", name)} words={t("peers.try.here")} terminal={false} />
+          <div class="ex-pair">
+            <Exchange to={t("peers.try.work.to")} words={t("peers.try.work", name)} then={t("peers.try.work.then", name)} />
+            <Exchange to={t("peers.try.here.to", name)} words={t("peers.try.here")} then={t("peers.try.here.then", name)} />
+          </div>
         </GBlock>
       </Group>
+      {missing.length > 0 && (
+        <Group class="mem-g" label={t("peers.try.plugin.title")}>
+          {missing.map((x) => (
+            <GRow key={x.harness} tile={<Tile><Coin harness={x.harness} size={36} /></Tile>} title={x.harness === "codex" ? "Codex" : "Claude Code"} line={t("peers.try.plugin.off", name)}>
+              <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={x.device} onClick={() => A.installMem(x.device!, x.harness)} />
+            </GRow>
+          ))}
+        </Group>
+      )}
     </section>
   );
 }
@@ -641,11 +653,11 @@ function PeersProblem({ b, name }: { b: BridgeView; name: string }) {
   );
 }
 
-/** Whether 终端里的 AI has anything to show yet (D332: by who; J6). */
+/** Whether 和你的其他 agent 通信 has anything to show yet (D332: by who; J6). */
 export const peersPageShown = () => A.peersAsked || peersShown(A.settings?.peers, A.bridge, A.S.channel.some((e) => e.peer), ownsAgents(A.ownAgents, A.devices ?? []));
 
 /**
- * D332: 终端里的 AI / AI in your terminal. On: any problem as one row with its fix, what came and went
+ * D332: 和你的其他 agent 通信 / Talk with your other agents. On: any problem as one row with its fix, what came and went
  * lately (both ways), what to say, the one switch. Before Mem is ready: the picture, one sentence of
  * what Nowledge Mem is, its steps in place; once it is, the home connects by itself (no tap). Off: the
  * picture and the switch. Identity, place, labels and ids are never shown. Agents the person stopped

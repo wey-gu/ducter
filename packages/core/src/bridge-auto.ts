@@ -13,7 +13,7 @@ export const BRIDGE_SAID_FILE = "bridge-said";
 
 export interface BridgeAutoDeps {
   link: { view(): Promise<BridgeView | undefined>; connect(): Promise<void>; disconnect(): Promise<void> };
-  /** The switch: Settings › 终端里的 AI one on/off (peers.reach !== "off"). */
+  /** The switch: Settings › 和你的其他 agent 通信: one on/off (peers.reach !== "off"). */
   on: () => boolean;
   /** The AI agents the person runs themselves here (Claude Code, Codex, pi): the reason to connect unasked. */
   own: () => string[];
@@ -76,8 +76,8 @@ export function createBridgeAuto(d: BridgeAutoDeps): BridgeAuto {
 
 /** The partner's one line when it first can be reached, from a table per language (D292). */
 const SAID = {
-  en: { line: "{names} in your terminal can reach me now: work they hand me, and anything that needs your call, will show up here. To stop it, turn it off in Settings › AI in your terminal.", any: "AI agents", list: (a: string[]) => (a.length === 1 ? a[0]! : `${a.slice(0, -1).join(", ")} and ${a.at(-1)}`) },
-  zh: { line: "你在终端里用的 {names} 现在能找到我了：它们交给我的事、要你定的事，都会来这里。不想要的话，在 设置 › 终端里的 AI 里关掉。", any: "AI agent", list: (a: string[]) => a.join("、") },
+  en: { line: "Your {names} can reach me now: work they hand me, and anything that needs your call, will show up here. To stop it, turn it off in Settings › Talk with your other agents.", any: "other agents", list: (a: string[]) => (a.length === 1 ? a[0]! : `${a.slice(0, -1).join(", ")} and ${a.at(-1)}`) },
+  zh: { line: "你的 {names} 现在能找到我了：它们交给我的事、要你定的事，都会来这里。不想要的话，在 设置 › 和你的其他 agent 通信 里关掉。", any: "其他 agent", list: (a: string[]) => a.join("、") },
 };
 
 export function bridgeOnWords(lang: LangTag, agents: string[]): string {

@@ -1362,7 +1362,7 @@ export type ServerFrame =
   | { t: "update_all_result"; ok: boolean; reason?: "nothing" | "running" | "failed"; detail?: string; id?: string }
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
   // D332: ownAgents: the AI agents the person runs themselves on the home (their own records changed in
-  // the last 14 days, by file times alone; absent while looking at records is off): 终端里的 AI / AI in
+  // the last 14 days, by file times alone; absent while looking at records is off): 和你的其他 agent 通信 / AI in
   // your terminal shows in Settings for them.
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; bridge?: BridgeView; ownAgents?: ("claude-code" | "codex" | "pi")[] }
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
@@ -2106,7 +2106,7 @@ export interface Settings {
 }
 
 /**
- * D332 (supersedes D170's three-way reach): Settings › 终端里的 AI's one switch. reach "own": on, the
+ * D332 (supersedes D170's three-way reach): Settings › 和你的其他 agent 通信's one switch. reach "own": on, the
  * person's own agents reach the partner (the default; the persona has only the Only me mailbox, so
  * there is nobody else); "off": off, the connection revoked. A stored "team" reads as "own". trusted:
  * own agents whose work starts without asking (X2, a learned rule, never a setting). muted: agents the

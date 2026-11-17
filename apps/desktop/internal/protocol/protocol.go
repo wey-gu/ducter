@@ -2047,7 +2047,7 @@ type ServerFrame struct {
 	// Bridge is the persona's own connection row (D205); nil: nothing to show.
 	Bridge *BridgeView `json:"bridge,omitempty"`
 	// OwnAgents (D332): the AI agents the person runs themselves on the
-	// home (their records' file times); 终端里的 AI shows for them.
+	// home (their records' file times); 和你的其他 agent 通信 shows for them.
 	OwnAgents []string `json:"ownAgents,omitempty"`
 	// rules: Your rules. candidates: who could do TaskID, best first.
 	Rules      []RuleView  `json:"rules,omitempty"`

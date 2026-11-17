@@ -1,4 +1,4 @@
-// D257: what Settings › 记忆 / Memory and › 终端里的 AI / AI in your terminal (D332) show, from the
+// D257: what Settings › 记忆 / Memory and › 和你的其他 agent 通信 / Talk with your other agents (D332) show, from the
 // settings frame (settings.memory, mem, bridge). Pure, so the phone, the wide page and the tests
 // read it the same way; the Mac has the same rules (apps/desktop/internal/views/memory.go).
 import type { BridgeView, MemView, PeersSettings } from "@ducter/protocol";
@@ -64,7 +64,7 @@ export function memBadge(u: MemUpdate | undefined): "" | "mem.badge.newer" | "me
 }
 
 /**
- * D332: 终端里的 AI / AI in your terminal shows by who: to the person who runs AI agents of their own
+ * D332: 和你的其他 agent 通信 / Talk with your other agents shows by who: to the person who runs AI agents of their own
  * (own: Ducter saw their records here, or Mem's plugin in one of their agents), to anyone another agent
  * has written to or who stopped listening to one, and while the partner is connected (or answers
  * elsewhere). Everyone else meets one quiet line on the Partner page instead (J6).

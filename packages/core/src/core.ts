@@ -882,7 +882,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D332: whether the person runs their own AI agents here (Claude Code, Codex, pi): the agents with a
   // record changed in the last 14 days, by file times alone (D327's rule), Ducter's own and temporary
   // folders left out (unless the records read are themselves in one: a test's, the demo's). Settings
-  // shows 终端里的 AI / AI in your terminal to them; read only while looking at records is on; a minute's cache.
+  // shows 和你的其他 agent 通信 / Talk with your other agents to them; read only while looking at records is on; a minute's cache.
   let ownCache: { at: number; agents: import("./local-agents/index.ts").LocalAgent[] } | undefined;
   const ownAgents = () => {
     if (!settings.localAgents()) return [];

@@ -23,7 +23,7 @@ On the left is a row of tabs; the one you pick shows on the right:
 |---|---|
 | **Partner** | Its name, what it thinks with, who does the tasks, a pasted API key, what happens when a limit runs out, how it talks, what your AI agents keep, and what it does on its own or asks you first |
 | **Memory** | What it remembers about you, and Nowledge Mem: its version and updates |
-| **AI in your terminal** | Claude Code or Codex in your terminal handing it work, and it asking them (shown if you use them yourself) |
+| **Talk with your other agents** | Your Claude Code or Codex handing it work, and it asking them (shown if you use them yourself) |
 | **Notifications** | When it comes to you, quiet hours, and how long it waits if you don't answer |
 | **Accounts** | The mail, calendars and other accounts it can read |
 | **Look and sound** | The look, light or dark, the menu bar, the window's language, Details in the conversation, the intro's sound, voice |
@@ -144,28 +144,29 @@ Once a week, in the first morning note of the week, one line offers to show what
 in the last seven days. **Show me** opens **What it learned this week**: mark a line **Right**,
 **Fix** its words (the fix goes back to Nowledge Mem), or **Forget** it.
 
-## AI in your terminal
+## Talk with your other agents
 
-If you run Claude Code or Codex in a terminal yourself, **AI in your terminal** lets them hand your
-partner work, or send it what needs your call, and lets your partner ask them things for you. It
-shows in Settings once Ducter sees you use them; otherwise the end of the **Partner** page has one
-line, **Show me**, that opens it.
+If you use Claude Code or Codex yourself (in a terminal, their desktop apps or your editor), **Talk
+with your other agents** lets them hand your partner work, or send it what needs your call, and
+lets your partner ask them things for you. It shows in Settings once Ducter sees you use them;
+otherwise the end of the **Partner** page has one line, **Show me**, that opens it.
 
 They find each other through Nowledge Mem, which is free. If it isn't on your computer yet, the page
 puts it in and signs you in, right there. After that there is nothing to tap: your partner connects
 by itself and tells you so once in the conversation.
 
 When it's on, the page shows **Recently**: what your agents handed over and what your partner asked
-or answered, newest first; tap one to open it. **Try it** shows the exact words to say in your
-terminal, and one to say to your partner here; **Copy** puts them on your clipboard. Where Claude Code
-or Codex still needs the Nowledge Mem plugin to hear them, a row says so, with **Install**.
+or answered, newest first; tap one to open it. **Try it** shows two short examples, one each way:
+what you'd say to Codex and what your partner then does, and what you'd say to your partner and what
+it brings back. The small copy button on each sentence copies it. Where Claude Code or Codex still
+needs the Nowledge Mem plugin to hear them, a row says so, with **Install**.
 
-One switch, **Let the AI in your terminal reach {name}**, turns it all on or off. If something is
-wrong (Nowledge Mem says no, or another computer is answering your agents), one row says what and
-offers the one fix. If you told your partner to stop listening to an agent, that agent has a row
-with **Undo**. In the conversation each agent is called by what it is and where it works, for
-example **Claude Code (~/dev/ducter) asks you**; the first time one reaches your partner, a short
-note says what happened.
+One switch, **Let your other agents reach {name}**, turns it all on or off. If something is wrong
+(Nowledge Mem says no, or another computer is answering your agents), one row says what and offers
+the one fix. If you told your partner to stop listening to an agent, that agent has a row with
+**Undo**. In the conversation each agent is called by what it is and where it works, for example
+**Claude Code (~/dev/ducter) asks you**; the first time one reaches your partner, a short note says
+what happened.
 
 ## Notifications
 

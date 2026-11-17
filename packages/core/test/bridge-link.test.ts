@@ -7,7 +7,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { ServerFrame } from "@ducter/protocol";
-import { BRIDGE_CONNECTION_FILE, createBridgeLink, whereCard, errorCodeIn, nmemCall, parseNmemVersion, personalSpace, REFUSALS, versionConnects, type MemExec, type NmemCall } from "../src/bridge-link.ts";
+import { BRIDGE_CONNECTION_FILE, createBridgeLink, whereCard, errorCodeIn, httpStatusIn, nmemCall, parseNmemVersion, personalSpace, REFUSALS, versionConnects, type MemExec, type NmemCall } from "../src/bridge-link.ts";
 import { connectLinkOk, installPlan, type MemSys } from "../src/mem-cli.ts";
 import { startCore } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
@@ -21,7 +21,7 @@ afterEach(async () => {
   stops = [];
 });
 
-function rig(env: Record<string, string> = {}) {
+function rig(env: Record<string, string> = {}, now?: () => number) {
   const t = tempDir();
   stops.push(t.cleanup);
   const bin = join(t.dir, "nmem");
@@ -35,7 +35,7 @@ function rig(env: Record<string, string> = {}) {
   const data = join(t.dir, "data");
   mkdirSync(data);
   let changes = 0;
-  const link = createBridgeLink({ dataDir: data, identity: () => "ducter", home: () => "hel", run: nmemCall({ bin, env: fullEnv }), env: fullEnv });
+  const link = createBridgeLink({ dataDir: data, identity: () => "ducter", home: () => "hel", run: nmemCall({ bin, env: fullEnv }), env: fullEnv, ...(now ? { now } : {}) });
   link.onChange(() => changes++);
   return { link, calls, data, bin, fullEnv, changes: () => changes, state };
 }
@@ -112,9 +112,10 @@ describe("the link over a fake nmem", () => {
     const r = rig();
     seed(r, { source_app: "ducter", description: "Ducter, a personal AI partner. Its conversation and its tasks write to Mem as this identity." });
     await r.link.connect();
-    expect(card(r)).toBe(whereCard("hel"));
-    // D334: it reads in every Space it is in, and answers in the message's.
-    expect(card(r)).toContain("in every Space it is in, on its home computer hel, and replies in the Space the message came from");
+    // D338: it names the Spaces it reads, and says any other isn't read yet.
+    expect(card(r)).toBe(whereCard("hel", r.link.places!()!.places.map((p) => p.spaceLabel)));
+    expect(card(r)).toContain('only in the Spaces "Only me", ');
+    expect(card(r)).toContain("on its home computer hel, and replies in the Space the message came from. A message sent to it in any other Space is not read yet");
     await r.link.recheck();
     expect(r.calls().filter((c) => c.includes("agents") && c.includes("set")).length).toBe(1);
     // The person wrote their own description: untouched.
@@ -156,7 +157,7 @@ describe("the link over a fake nmem", () => {
     expect(writes(r.calls()).length).toBe(1); // the one connect
     expect(r.calls().some((c) => c.includes("--enable"))).toBe(false);
     // The Space Mem refused: one quiet problem row, by its name.
-    expect((await r.link.view())?.unread).toEqual([{ label: "Board", code: "cloud_bridge_setup_role_attachment_mismatch" }]);
+    expect((await r.link.view())?.unread).toEqual([{ label: "Board", code: "cloud_bridge_setup_role_attachment_mismatch", status: 403 }]);
     // The recheck: a new Space is read too, a gone one dropped; known ones aren't selected again.
     const s1 = JSON.parse(readFileSync(r.state, "utf8"));
     writeFileSync(r.state, JSON.stringify({ ...s1, spaces: [...SPACES.filter((x) => x.id !== "ws-dev"), { id: "ws-new", label: "Launch", kind: "team" }] }));
@@ -166,6 +167,68 @@ describe("the link over a fake nmem", () => {
     expect(r.link.places!()!.places.map((p) => p.spaceId)).toEqual(["personal-weyl", "ws-everyone", "ws-new"]);
     expect(r.calls().filter((c) => c.includes("select")).slice(n).map((c) => c.at(-1))).toEqual(["ws-locked", "ws-new"]);
     expect(r.changes()).toBeGreaterThan(changes); // the partner makes a new client
+  });
+
+  test("D338: a Space Mem answers 404 for is unread with its status, tried once a day or with another nmem; the card names only the Spaces read", async () => {
+    // hel, nmem 0.10.120 (VERIFIED 2026-11-17): `agents context select` in every non-personal Space says HTTP 404.
+    const SPACES = [
+      { id: "personal-weyl", label: "Only me", kind: "personal" },
+      { id: "ws-all", label: "all", kind: "team" },
+      { id: "ws-everyone", label: "Everyone", kind: "team" },
+      { id: "ws-dev", label: "dev team", kind: "team" },
+    ];
+    let t = Date.parse("2026-11-17T10:00:00Z");
+    const r = rig({ NMEM_FAKE_SELECT_404: "ws-all,ws-everyone" }, () => t);
+    const s0 = JSON.parse(readFileSync(r.state, "utf8"));
+    writeFileSync(r.state, JSON.stringify({ ...s0, spaces: SPACES, everywhere: ["ducter"], agents: { ducter: { name: "Ducter", source_app: "ducter", description: "Ducter, a personal AI partner." } } }));
+    await r.link.connect();
+    const rec = () => JSON.parse(readFileSync(join(r.data, BRIDGE_CONNECTION_FILE), "utf8"));
+    expect(rec().unread).toEqual([
+      { spaceId: "ws-all", spaceLabel: "all", status: 404, at: new Date(t).toISOString(), nmem: "0.10.118" },
+      { spaceId: "ws-everyone", spaceLabel: "Everyone", status: 404, at: new Date(t).toISOString(), nmem: "0.10.118" },
+    ]);
+    expect((await r.link.view())?.unread).toEqual([
+      { label: "all", status: 404 },
+      { label: "Everyone", status: 404 },
+    ]);
+    // The card names the Spaces read, and says plainly any other isn't read yet.
+    const card = () => JSON.parse(readFileSync(r.state, "utf8")).agents.ducter.description as string;
+    expect(card()).toBe(whereCard("hel", ["Only me", "dev team"]));
+    expect(card()).toContain('only in the Spaces "Only me" and "dev team"');
+    expect(card()).toContain("A message sent to it in any other Space is not read yet");
+    expect(card()).not.toContain("every Space");
+    // Never a connection per Space: the one connect, in the person's own place.
+    expect(writes(r.calls())).toEqual([["--json", "bridge", "connections", "connect", "--space-id", "personal-weyl", "--agent-id", "ducter", "--context", "ducter-on-hel"]]);
+    const selectsIn = (from: number) => r.calls().slice(from).filter((c) => c.includes("select")).map((c) => c.at(-1));
+    // The recheck half an hour later: the 404 Spaces are not asked again.
+    let n = r.calls().length;
+    t += 30 * 60_000;
+    await r.link.recheck();
+    expect(selectsIn(n)).toEqual([]);
+    // A day on: asked once more each (still 404).
+    n = r.calls().length;
+    t += 24 * 3_600_000;
+    await r.link.recheck();
+    expect(selectsIn(n)).toEqual(["ws-all", "ws-everyone"]);
+    // Another nmem (and Mem now lets `all` be read): asked at once; the card names it too.
+    n = r.calls().length;
+    t += 6 * 60_000; // past the 5-minute version cache
+    r.fullEnv.NMEM_FAKE_VERSION = "0.10.121";
+    r.fullEnv.NMEM_FAKE_SELECT_404 = "ws-everyone";
+    await r.link.recheck();
+    expect(selectsIn(n)).toEqual(["ws-all", "ws-everyone"]);
+    expect(rec().unread).toEqual([{ spaceId: "ws-everyone", spaceLabel: "Everyone", status: 404, at: new Date(t).toISOString(), nmem: "0.10.121" }]);
+    expect(card()).toBe(whereCard("hel", ["Only me", "all", "dev team"]));
+  });
+
+  test("D338: the card's words, and an HTTP status wherever nmem printed it", () => {
+    expect(whereCard("hel")).toContain("in every Space it is in");
+    expect(whereCard("hel", ["Only me"])).toContain('only in the Space "Only me", on its home computer hel');
+    expect(whereCard("hel", ["Only me"])).toContain("send to it in that one.");
+    expect(whereCard("hel", ["Only me", "a", "b"])).toContain('only in the Spaces "Only me", "a" and "b"');
+    expect(httpStatusIn("", "error: Bridge request failed: HTTP 404 Not Found (response body could not be verified)")).toBe(404);
+    expect(httpStatusIn('{"error_code":"x","http_status":403}', "")).toBe(403);
+    expect(httpStatusIn("", "error: refused")).toBeUndefined();
   });
 
   test("D334: once Mem reads every Space with one inbox (#10402), the connection's context alone", async () => {

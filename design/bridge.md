@@ -2,7 +2,7 @@
 
 > Design note · 2026-11-09, updated 2026-11-16 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card); still open: J-Q1–3, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
 > run, Mem on a home without it), private `31` and `10`.
 >
@@ -122,13 +122,16 @@ tried them, and the read-only sandbox declined each call; the Codex's message me
   `bridge_check`: the home reads its mailbox now and the partner answers what came in that same turn
   (every rule of the way in still applies; work a message asks for still waits for the person's go).
   Nothing new: one line; if the person says their agent sent one, it didn't reach this {name}: have it
-  look {name} up again and send again (D334: every Space is read, so never "another Space"; D333 said
-  "another {name} nobody reads"). Never "blocked", never "permission".
-- **The card says where.** After a confirmed connect and once per start, an identity Ducter enrolled
-  gets its Mem profile description kept as "Ducter, a personal AI partner. … It reads messages sent to
-  it in every Space it is in, on its home computer {home}, and replies in the Space the message came
-  from." (D334's words; D333's said "only in the Space …"). Only over Ducter's own words (or none);
-  never on an identity the person brought.
+  look {name} up again and send again in a Space the card names (D338; D334 said every Space is read,
+  D333 "another {name} nobody reads"). Never "blocked", never "permission".
+- **The card says where, and only what is true (D338).** After a confirmed connect and at the recheck
+  whenever the Spaces read change, an identity Ducter enrolled gets its Mem profile description kept as
+  "Ducter, a personal AI partner. … It reads messages sent to it only in the Spaces "Only me" and
+  "dev team", on its home computer {home}, and replies in the Space the message came from. A message
+  sent to it in any other Space is not read yet: send to it in one of those." (the labels of the Spaces
+  the home reads now). Only once Mem reads every Space with one inbox (`wide`, #10402) does it say "in
+  every Space it is in" (D334's words, which on hel's nmem 0.10.120 sent a Codex to a Space nobody
+  reads). Only over Ducter's own words (or none); never on an identity the person brought.
 
 ### Every Space the identity is in (D334)
 
@@ -150,9 +153,13 @@ until it ships, Ducter handles it.
   `bridge setup` lists. Found at connect and at the 30-minute recheck: a new Space added, a gone one
   dropped, a known one never selected again. Each check reads every context's inbox; one Space not
   answering doesn't hide the others.
-- **A Space Mem refuses** (`select` says no): kept as `unread` (its label and Mem's code) on Settings'
-  view, one quiet problem row (D332's pane; words owed in `todo.md`). Nothing else is tried: no connect,
-  enrol or `--enable`. Settings otherwise never shows Spaces.
+- **A Space Mem refuses** (`select` says no): kept as `unread` (its label, Mem's code when it gives one,
+  and the HTTP status: D338) on Settings' view, one quiet problem row (D332's pane; words owed in
+  `todo.md`). Nothing else is tried: no connect, enrol or `--enable`, and no `bridge connections connect
+  --space-id` per Space (D338: not until Mem answers #10402). Settings otherwise never shows Spaces.
+  **A 404** (nmem 0.10.120 on hel, VERIFIED 2026-11-17: every non-personal Space, an unverifiable body,
+  no code; the identity is a contact there but can't be selected) is asked again once a day, and at once
+  when nmem's version changes; the entry keeps when and with which nmem.
 - **One switch to Mem's fix.** When `bridge inbox --help` offers `--all-spaces` (#10402), the connection's
   context alone reads every Space (`inbox --all-spaces`, the Space from each message) and the per-Space
   contexts go unused. The client is one code path: its places and `wide`.
@@ -160,7 +167,10 @@ until it ships, Ducter handles it.
   open, an inspect or a resume runs with that Space's context, so the answer goes back where it was
   asked. The partner's own send: contacts are looked up in every Space and folded into one card per
   agent, sent in the Space it last wrote from; else its only card, or the one in the person's own place;
-  else the Space with the most Bridge traffic in the Log. The person is never asked which Space.
+  else the Space with the most Bridge traffic in the Log, always among its cards in Spaces the home reads
+  when it has one there (D338). A card only in a Space the home can't read is marked `answerMayNotReach`,
+  and the partner says in one short line that its answer may not reach it. The person is never asked
+  which Space.
 - **A teammate's agent, the first time.** A sender that isn't one of the person's own (a shared Space;
   an unnamed sender there counts as one until Mem names senders) is held, and its first message is one
   card with no partner turn:
@@ -204,8 +214,7 @@ Bridge assumption and setting; make it smooth and reasonable; no needless option
   arrows said in words; no metaphor, D321 (6)), one sentence of what Nowledge Mem is, its two steps in place. Off:
   the picture and the switch. X2's 直接接 and the daily quota are not settings; only **已不再听 X · 恢复** rows.
 - **Not changed:** the partner's tools (D333's own branch), the conversation's lines and cards, D324's one-home rule. The
-  card's Space line (D333) is for other agents to read, never on the pane; D334 (in flight) changes its "reads only in
-  Only me".
+  card's Space line (D333) is for other agents to read, never on the pane; D338 keeps it naming only the Spaces read.
 
 ## Chosen scenarios (dogfood, 2026-11-09)
 

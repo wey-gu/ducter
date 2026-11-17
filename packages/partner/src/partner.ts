@@ -2520,6 +2520,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
    * D334: one card per agent, in the Space a message to it goes out in: where it last wrote from;
    * else its only card, or the one in the person's own place; else the Space with the most Bridge
    * traffic in the Log. Never a question to the person: the Space is Ducter's to pick.
+   * D338: only among its cards in Spaces the home reads, when it has one there: an answer sent in a
+   * Space the home can't read (nowledge-co/mem#10402) would never reach the partner.
    */
   function oneSpaceEach(list: BridgeContact[]): BridgeContact[] {
     const groups = new Map<string, BridgeContact[]>();
@@ -2531,7 +2533,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const traffic = new Map<string, number>();
     for (const e of evs) if (e.body.space) traffic.set(e.body.space, (traffic.get(e.body.space) ?? 0) + 1);
     const out: BridgeContact[] = [];
-    for (const g of groups.values()) {
+    for (const all of groups.values()) {
+      const g = all.some((c) => !c.unheard) ? all.filter((c) => !c.unheard) : all;
       if (g.length === 1) {
         out.push(g[0]!);
         continue;
@@ -3001,8 +3004,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...recent,
           note:
             "Nothing new came in. Say so in one short line (earlier: the last 3 days, newest first; mention one only if the user asked about it, and to answer one the user asked you to, bridge_reply to its messageId now). " +
-            // D334: the home reads every Space the identity is in, so what's missing went to another address.
-            `If the user says one of their agents already sent you something that isn't here, it didn't reach this ${name}: tell them to have that agent look you up again by the name ${name} in Nowledge Mem and send it again. Never say it is blocked or needs a permission.`,
+            // D334, D338: what is missing went to another address, or to a Space the home can't read yet (the card names where it reads).
+            `If the user says one of their agents already sent you something that isn't here, it didn't reach this ${name}: tell them to have that agent look you up again by the name ${name} in Nowledge Mem and send it again in a Space its card says you read. Never say it is blocked or needs a permission.`,
         };
       },
     );
@@ -3030,8 +3033,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           return {
             ok: true,
             ...(wrote.length ? { wroteLately: wrote } : {}),
-            contacts: cards.map((c) => ({ contact: c.contact, who: whoForModel(c), ...(c.description ? { about: c.description } : {}) })),
+            contacts: cards.map((c) => ({ contact: c.contact, who: whoForModel(c), ...(c.description ? { about: c.description } : {}), ...(c.unheard ? { answerMayNotReach: true } : {}) })),
             note:
+              // D338: a Space the home can't read yet: the message can go, its answer may not come back.
+              (cards.some((c) => c.unheard) ? "answerMayNotReach: you can't read messages where that one is yet; if you send to it, add in one short line that its answer may not reach you. " : "") +
               (wrote.length
                 ? "wroteLately: agents that wrote to you, newest first; Mem doesn't name them. When the user means an agent they work with that has written to you (\"my terminal Claude\", \"that one\", what it was doing), bridge_send to the newest wroteLately contact now: the card shows what it wrote, so the user's tap confirms the recipient. Don't ask about it in prose. contacts: Mem's list by name, other mailboxes; use one only when the user called it by that very name (a shared word like \"Claude\" is not enough). "
                 : "") +
@@ -3092,7 +3097,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           logOut({ opId: newId("bo"), contact: contact.contact, to: contact.label, ...(contact.agent ? { agent: contact.agent } : {}), ...(contact.mine ? { mine: true } : {}), ...(space ? { space } : {}), ...(spaceLabel ? { spaceLabel } : {}), text, decisionId: body.decisionId }, "pending");
           core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
           (t.asked = true), (t.askedId = body.decisionId);
-          return { ok: true, decisionId: body.decisionId, note: "The user sees the card. If they tap go, Ducter sends it; you don't send it again. End your turn now; don't repeat the message." };
+          // D338: sent in a Space the home can't read yet: say so, briefly, in the partner's words.
+          const unheard = !via && contact.unheard ? " Its answer may not reach you (you can't read messages where it is yet): say that in one short line." : "";
+          return { ok: true, decisionId: body.decisionId, note: `The user sees the card. If they tap go, Ducter sends it; you don't send it again.${unheard} End your turn now; don't repeat the message.` };
         },
       );
     }

@@ -74,3 +74,10 @@ test("thinking is kept as its headings only, before the words that follow it (D1
   n.push({ kind: "reasoning", content: { kind: "text", text: "just musing about it" } });
   expect(n.flush()).toEqual([]);
 });
+
+test("D325: the agent's echo of words it took in is a user_echo (a steer seen), a subagent's is not", () => {
+  const n = new Normalizer(() => undefined);
+  expect(n.push({ kind: "user_message", input: "use the staging db", evidence: "acknowledged" })).toEqual([{ role: "system", raw: { kind: "user_echo", input: "use the staging db" } }]);
+  expect(n.push({ kind: "user_message", input: "inner", agentPath: ["sub"] })).toEqual([]);
+  expect(n.push({ kind: "user_message", input: "  " })).toEqual([]);
+});

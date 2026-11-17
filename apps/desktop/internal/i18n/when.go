@@ -88,6 +88,53 @@ func Day(l Lang, at, now time.Time) string {
 	return fmt.Sprintf(w.date, w.month[at.Month()-1], at.Day())
 }
 
+// Stamp is a moment in a list of today's things (D325): today its time
+// alone ("9:47"), else with its day ("昨天 9:47"). ts is RFC 3339.
+func Stamp(l Lang, ts string, now time.Time) string {
+	at, err := time.Parse(time.RFC3339Nano, ts)
+	if err != nil {
+		return ""
+	}
+	if dayDiff(at.Local(), now.Local()) == 0 {
+		return Clock(at)
+	}
+	return When(l, at, now)
+}
+
+// Span is from one moment to another, always in order (D325): within a
+// day "10:32–10:46" (its day before it when not today), across days each
+// with its own ("昨天 22:10–今天 1:05"). Never "10:46–10:32". An empty end
+// is the one moment (Stamp).
+func Span(l Lang, a, b string, now time.Time) string {
+	if a == "" || b == "" {
+		return Stamp(l, a+b, now)
+	}
+	x, err1 := time.Parse(time.RFC3339Nano, a)
+	y, err2 := time.Parse(time.RFC3339Nano, b)
+	if err1 != nil || err2 != nil {
+		return ""
+	}
+	if y.Before(x) {
+		x, y = y, x
+	}
+	if dayDiff(x.Local(), y.Local()) != 0 {
+		return When(l, x, now) + "–" + When(l, y, now)
+	}
+	if Clock(x) == Clock(y) {
+		return Stamp(l, a, now) // within the same minute it is one moment
+	}
+	r := Clock(x) + "–" + Clock(y)
+	k := dayDiff(x.Local(), now.Local())
+	if k == 0 {
+		return r
+	}
+	sep := " "
+	if k > 6 || k < -1 {
+		sep = lang.Words(dayTables, string(l)).farSep
+	}
+	return Day(l, x, now) + sep + r
+}
+
 // When is a moment: "今天 18:00", "明天 9:00", "周五 9:00", "12 月 1 日 9:00" /
 // "today 18:00", "Dec 1, 9:00".
 func When(l Lang, at, now time.Time) string {

@@ -159,9 +159,12 @@ type App struct {
 	nextClient int
 	list       ui.ListState
 	taskDrafts map[string]string
-	replyOpen  map[string]bool
-	replyDraft map[string]string
-	diffs      map[string]*diffPane
+	// D325: the held message being changed in place over a task's composer.
+	heldEditing *heldEdit
+	heldFocus   bool
+	replyOpen   map[string]bool
+	replyDraft  map[string]string
+	diffs       map[string]*diffPane
 	// D214: the opened task's workbench (workbench.go).
 	bench benchState
 	// D142: a folder task's list was asked for (throttle), and an undo
@@ -592,6 +595,9 @@ func (a *App) shortcuts(c *ui.Context) {
 		}
 		if a.Route == RouteConversation && a.recallEsc() {
 			break // D304: the 想起了 card or 这周记下的 closes, one step at a time
+		}
+		if a.locatorEsc() {
+			break // D325: the locator's card closes first
 		}
 		if !a.taskEsc(c) && !a.escDevice() {
 			a.Up()

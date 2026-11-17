@@ -18,6 +18,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/redact"
 )
 
 // The window's sizes (D320), in events (WINDOW in session.ts).
@@ -33,6 +34,8 @@ const (
 	winCap    = 2000 // events of a task not open, before its oldest go
 	// promptMax is how much of what opened a turn the index carries.
 	promptMax = 200
+	// markMax is how much of a report's first line its mark carries (D325).
+	markMax = 120
 	// buildMax is the most events one turn is built from (its newest).
 	buildMax = 1000
 )
@@ -112,12 +115,20 @@ func indexAdd(ix *protocol.SessionIndex, ev *protocol.LogEvent) bool {
 	t := &ix.Turns[len(ix.Turns)-1]
 	t.End, t.EndAt = ev.Seq, ev.TS
 	t.N++
-	mark := func(k string) { t.Marks = append(t.Marks, protocol.IndexMark{Seq: ev.Seq, K: k}) }
+	mark := func(k string) { t.Marks = append(t.Marks, protocol.IndexMark{Seq: ev.Seq, K: k, At: ev.TS}) }
 	body, _ := ev.Typed()
 	switch b := body.(type) {
 	case *protocol.Report:
 		ix.LastReport = ev.Seq
 		mark("report")
+		// D325: its first line, for the locator's list.
+		for _, l := range strings.Split(b.Summary, "\n") {
+			if l = strings.TrimSpace(l); l != "" {
+				w, _ := clipText(l, markMax)
+				t.Marks[len(t.Marks)-1].W = redact.Text(w)
+				break
+			}
+		}
 	case *protocol.Checkpoint:
 		if n := u16len(strings.TrimSpace(b.Text)); n > 0 {
 			t.V = n

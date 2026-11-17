@@ -352,6 +352,10 @@ export interface Bodies {
     needs?: TaskNeeds;
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
+  // D325: the person's words held for after this turn (做完再说, or a steer its agent can't take
+  // mid-turn): the whole queue as it is now, in order. Ducter holds them, not the agent, so each
+  // can be changed, taken back or said now; at the turn's end they go as the next turn. [] = none.
+  task_held: { taskId: string; held: HeldMsg[] };
   // Who does the task and why (D89, focus-window.md "Choosing a body"): appended when it opens
   // and on every switch. The card shows the latest one.
   body_selected: { taskId: string; harness: string; model?: string; effort?: string; why: BodyWhy };
@@ -638,6 +642,14 @@ export interface LivingItem {
 
 // ---------- On hand snapshot ----------
 
+/** D325: one message the person held for after this turn: `id` is the client's id it was sent with. */
+export interface HeldMsg {
+  id: string;
+  text: string;
+  at: string;
+  media?: MediaRef[];
+}
+
 export interface TaskCard {
   taskId: string;
   persona: string;
@@ -684,6 +696,8 @@ export interface TaskCard {
   from?: { taskId: string; title: string };
   /** D299: carried on from a session the person ran in their own agent outside Ducter. */
   outside?: { agent: string; sessionId: string; startedAt: string };
+  /** D325: what the person held for after this turn, in order (absent: nothing held). */
+  held?: HeldMsg[];
 }
 
 export interface OnHand {
@@ -947,6 +961,10 @@ export type ClientFrame =
   | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string; key?: string; once?: boolean }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
   | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[]; /** D268: steer (default while it works) or queue for after this turn. */ mode?: "steer" | "queue" }
+  // D325: one held message (TaskCard.held) changed (edit, with text), taken back (drop), or said
+  // now (now: steered in while it works, else the next turn). The card's next on_hand answers it;
+  // an id no longer held (it already went) gets an error frame "task_held: …".
+  | { t: "task_held"; taskId: string; id: string; op: "edit" | "drop" | "now"; text?: string }
   // merge: integrate the task branch into its base branch (local, reversible by revert);
   // open_pr: push the branch and open a draft PR (an intent: external effect, see G-safety).
   // The server acks every task_action with {t:"action_result"}.
@@ -1324,7 +1342,7 @@ export type ServerFrame =
   | { t: "task_history"; taskId: string; events: LogEvent[]; more?: boolean; beforeSeq?: number; afterSeq?: number }
   // D320: the task's session index; fromSeq echoed: its turns from there on replace the client's.
   | { t: "task_index"; taskId: string; index: import("./session.ts").SessionIndex; fromSeq?: number }
-  | { t: "sent"; taskId: string; delivered: Delivery } // ack for task_send
+  | { t: "sent"; taskId: string; delivered: Delivery; clientId?: string } // ack for task_send (D325: its clientId; "queued" = held, TaskCard.held)
   // ref: merge commit or PR URL. confirm (D142 undo): the folder changed after the task finished;
   // these would be lost (count, the first few paths).
   | { t: "action_result"; taskId: string; action: string; ok: boolean; message?: string; ref?: string; confirm?: UndoConfirm }

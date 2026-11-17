@@ -88,6 +88,8 @@ export interface Task {
   openedAt?: string;
   openSeq?: number; // seq of the task_open in `open` (a retitle is a later one)
   sends: Send[];
+  /** D325: the seqs of the person's steers the agent's next step took in (the runner's `read`). */
+  reads?: Set<number>;
   acting?: string;
   /** A merge / open_pr whose result was lost with the socket and that the Log doesn't show done:
    *  it may or may not have happened. Shown as "not sure, check" with Try again, never a failure. */
@@ -288,8 +290,12 @@ export class Store {
         this.keyResults.set(f.clientId, f.result);
         return;
       case "sent": {
-        const sd = this.tasks.get(f.taskId)?.sends.find((s) => !s.delivered && !s.failed);
-        if (sd) sd.delivered = f.delivered;
+        const t = this.tasks.get(f.taskId);
+        const sd = t?.sends.find((s) => (f.clientId ? s.clientId === f.clientId : !s.delivered && !s.failed));
+        if (!t || !sd) return;
+        sd.delivered = f.delivered;
+        // D325: held at the home (a home that names the clientId): it is a chip over the composer now (the card's held), not a bubble.
+        if (f.delivered === "queued" && f.clientId && !sd.seq) t.sends.splice(t.sends.indexOf(sd), 1);
         return;
       }
       case "action_result": {
@@ -670,6 +676,9 @@ export class Store {
           const sd = t.sends.find((s) => !s.seq && (b.clientId ? s.clientId === b.clientId : s.text === b.text));
           if (sd) sd.seq = ev.seq;
         }
+        // D325: the agent took these steers in.
+        const read = b.role === "system" ? (b.raw as { read?: unknown } | undefined)?.read : undefined;
+        if (Array.isArray(read)) for (const n of read) if (typeof n === "number") (t.reads ??= new Set()).add(n);
         const br = b.role === "system" ? (b.raw as { browser?: { host?: string; own?: boolean } } | undefined)?.browser : undefined;
         if (br?.host && (!t.browser || t.browser.seq < ev.seq)) t.browser = { host: br.host, ...(br.own ? { own: true } : {}), seq: ev.seq };
         break;

@@ -811,12 +811,12 @@ export function createWsHandler(deps: WsDeps) {
           const prior = loggedTaskSend(f.taskId, f.clientId!);
           if (prior) {
             const mode = ((prior.body as Bodies["task_event"]).raw as { delivered?: string } | undefined)?.delivered;
-            send(ws, { t: "sent", taskId: f.taskId, delivered: DELIVERED[mode ?? ""] ?? "prompted" });
+            send(ws, { t: "sent", taskId: f.taskId, delivered: DELIVERED[mode ?? ""] ?? "prompted", clientId: f.clientId });
             return;
           }
           // The first copy is still on its way (the runner logs it once the session is up).
           const inFlight = taskSending.get(key);
-          if (inFlight) return void send(ws, { t: "sent", taskId: f.taskId, delivered: await inFlight });
+          if (inFlight) return void send(ws, { t: "sent", taskId: f.taskId, delivered: await inFlight, ...(f.clientId ? { clientId: f.clientId } : {}) });
         }
         // Answering the task directly answers its open question too (no later Go re-wakes it).
         decisions.answeredByMessage(f.taskId, f.text ?? "", "user");
@@ -825,11 +825,22 @@ export function createWsHandler(deps: WsDeps) {
         const delivering = r.send(f.taskId, f.text ?? "", mode, "user", f.clientId, media.length ? media : undefined).then((x) => x.delivered);
         if (key) taskSending.set(key, delivering);
         try {
-          send(ws, { t: "sent", taskId: f.taskId, delivered: await delivering });
+          send(ws, { t: "sent", taskId: f.taskId, delivered: await delivering, ...(f.clientId ? { clientId: f.clientId } : {}) });
           return;
         } finally {
           if (key) taskSending.delete(key);
         }
+      }
+      case "task_held": {
+        // D325: one of the person's held messages: changed, taken back, or said now. The card's
+        // next on_hand shows it; said now, the words are acked like a task_send.
+        const r = deps.runner();
+        if (!r?.held) throw new Error("runner is not available");
+        if (f.op !== "edit" && f.op !== "drop" && f.op !== "now") throw new Error("unknown op");
+        if (!tasks.get(f.taskId)) throw new Error(`unknown task ${f.taskId}`);
+        const out = await r.held(f.taskId, f.id, f.op, typeof f.text === "string" ? f.text.slice(0, 16 * 1024) : undefined);
+        if (out.delivered) send(ws, { t: "sent", taskId: f.taskId, delivered: out.delivered, clientId: f.id });
+        return;
       }
       case "task_action": {
         // What the user did by button is part of the conversation: the partner must know it

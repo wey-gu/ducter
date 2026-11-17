@@ -37,6 +37,15 @@ export interface HarnessInfo {
   task: boolean;
   /** D206: it sees pictures handed to it (OAR's capabilities.images for its runtime, 0.95.1). */
   images: boolean;
+  /**
+   * D325: it takes words in the middle of a turn (a steer), read at its next step, with an echo
+   * that says it took them in. OAR 0.95.1, by its source: Claude Code writes a user message into
+   * the running stream-json turn and replays it (--replay-user-messages); Codex `turn/steer` on
+   * its app-server, a userMessage item; pi its SDK `steer`, the message in its conversation;
+   * DeepSeek Harness its bridge `steer`, a user turn item. false: words sent while it works wait
+   * for the turn to end (Ducter holds them), and the composer says so.
+   */
+  steer: boolean;
   /** D206: it makes pictures itself (Codex's image_generation, kept on for tasks). */
   draws?: boolean;
   isolation: IsolationMethod;
@@ -65,6 +74,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     partner: true,
     task: true,
     images: true,
+    steer: true,
     isolation: "native",
     systemPrompt: "replace",
     taskInstructions: "append",
@@ -84,6 +94,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     partner: true,
     task: true,
     images: true,
+    steer: true,
     draws: true,
     isolation: "overrides",
     systemPrompt: "replace",
@@ -103,6 +114,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     partner: true, // D177: passed the partner eval (research/50 §5), read-only enforced live (§2)
     task: true,
     images: true,
+    steer: true,
     isolation: "flags",
     systemPrompt: "replace",
     taskInstructions: "append",
@@ -120,6 +132,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     partner: true, // D177: passed the partner eval (research/50 §5), read-only enforced live (§2)
     task: true,
     images: false,
+    steer: true,
     isolation: "home",
     systemPrompt: "home-file",
     taskInstructions: "first-turn",

@@ -94,8 +94,10 @@ printed and an edit the lines it changed. A step that went wrong says so in word
 3m 12s**, keeping what it said last. While it works, the last line says what it's doing now,
 with the time it has been at it; the square **Pause** button by **Send** stops it there (on a
 keyboard, press Esc twice). Write in the box to tell it something while it works: it reads your
-words at its next step. To have it read them only once it's done, choose **After this** (or press
-Option-Return); they wait as **Queued**. **Cancel task** is in the **⋯** at the top. Scrolled up while it
+words at its next step, and under them you see **It'll see this at its next step**, then **Seen**
+once it has. To have it read them only once this turn is done, choose **After this** (or press
+Option-Return): they wait in order above the box, where you can click one to change it, take it
+back with **×**, or **Say it now**. **Cancel task** is in the **⋯** at the top. Scrolled up while it
 works? **Jump to latest** brings you back.
 
 A task that checks on something over time (a review queue every 45 minutes, a build until it's

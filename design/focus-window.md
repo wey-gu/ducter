@@ -228,11 +228,31 @@ What the window writes is what the user reads when they open the task, in one co
   effort left out, the browser guard and fallback, and four kinds of failure under **出错 /
   Error** with the line as logged on hover; every other line the runner logs (session started,
   memory recalled, a retry, archiving, a restart) says nothing;
-- a **message the user sends** carries a receipt only when it says something: **在发… /
-  Sending…**, queued **它忙完手上的事就会看到 / It'll read this once it's done with what it's doing**,
-  or **没送到 / Didn't get through**; sent while it works it steers (`task_send` `mode:
-  "steer"`, read at its next step, D268) and the working line shows it at work; sent with
-  **做完再说 / After this** (`mode: "queue"`) it reads **排队中 / Queued** until the window answers;
+- a **message the user sends** (D325) carries a receipt only when it says something: **在发… /
+  Sending…** or **没送到 / Didn't get through**, and for a steer what the agent did with it.
+  **Idle**, Return sends it as the next turn. **While it works**, Return steers (`task_send`
+  `mode: "steer"`; the placeholder **插一句，它做到下一步就会看到… / Add something; it sees it at
+  its next step…**, the hint **回车：它做到下一步就会看到 · ⌥ 回车：这一轮做完再说**): the runner
+  writes it into the running turn and keeps it as unread until the agent's own echo of it comes
+  (OAR's `user_message`, mapped to `user_echo` by the normalizer; matched by its words, and every
+  steer before it counts as read too), then logs `{role: system, from: runner, raw: {read: [seq…]}}`.
+  Under the bubble: **它做到下一步就会看到 / It'll see this at its next step** (a small working dot)
+  while it works and unread, **✓ 它看到了 / Seen** on the newest one read; nothing otherwise.
+  **⌥ Return or 做完再说 / After this** holds the words **at the home, never in the agent's own
+  queue**: the runner keeps `held` (logged whole as `task_held` on each change; the card's
+  `held`, so every window shows the same queue and a restart keeps it), and the composer shows them
+  as chips above it under **这一轮做完再说 / After this turn**, in order: a click edits one in place
+  (Return saves, Esc cancels), **现在就说 / Say it now** turns it into a steer (or the next turn
+  once idle), **×** (**不说了 / Take back**) drops it (`task_held` frame, ops edit / drop / now; an
+  id already gone is an error the client says as **这句已经发给它了**). When a turn ends completed,
+  everything held goes as the next turn, each logged as the person's own words in order (after a
+  Stop, a failure, a limit or a compaction it stays held); a send while idle carries what is held
+  first. **An agent that can't steer** (`HarnessInfo.steer` false; by OAR 0.95.1 all four can:
+  Claude Code's stream-json user message replayed with `--replay-user-messages`, Codex's
+  `turn/steer` with its userMessage item, pi's SDK `steer`, DeepSeek Harness's bridge `steer`)
+  has Return hold as well, and says so: **{agent} 做事时不能插话，发出的话会等这一轮做完**, the chips'
+  head **{agent} 这一轮做完就会看到**, no 做完再说 and no 现在就说 while it works. The partner's and
+  Ducter's own queued words still go through the agent's queue;
 - **what Ducter itself says to the window** (D271) is never the user's words: a wake of its own
   wait opens a turn as a `wake` block (`wakeOf`, the text core's `work.ts` sends), drawn as a
   hairline with its time and the reason on hover; everything else Ducter tells it (the user's

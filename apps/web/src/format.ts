@@ -84,6 +84,30 @@ export function when(L: Strings, iso: string | undefined, now = Date.now()): str
   return `${dd}${sep}${clock(iso)}`;
 }
 
+/** D325: a moment in a list of today's things: today its time alone ("9:47"), else with its day ("昨天 9:47"). */
+export function stamp(L: Strings, iso: string | undefined, now = Date.now()): string {
+  if (!iso) return "";
+  return dayDiff(new Date(iso), new Date(now)) === 0 ? clock(iso) : when(L, iso, now);
+}
+
+/**
+ * D325: from one moment to another, always in order (the earlier first, whichever came in first):
+ * within a day "10:32–10:46" (its day before it when not today, "昨天 10:32–10:46"); across days,
+ * each with its own ("昨天 22:10–今天 1:05" / "yesterday 22:10–today 1:05"). Never "10:46–10:32".
+ */
+export function span(L: Strings, a: string | undefined, b: string | undefined, now = Date.now()): string {
+  if (!a || !b) return stamp(L, a || b, now);
+  if (Date.parse(b) < Date.parse(a)) [a, b] = [b, a];
+  const da = new Date(a), db = new Date(b);
+  if (midnight(da) !== midnight(db)) return `${when(L, a, now)}–${when(L, b, now)}`;
+  // Within the same minute it is one moment.
+  if (clock(a) === clock(b)) return stamp(L, a, now);
+  const range = `${clock(a)}–${clock(b)}`;
+  if (dayDiff(da, new Date(now)) === 0) return range;
+  const named = dayDiff(da, new Date(now));
+  return `${day(L, a, now)}${named > 6 || named < -1 ? words(DAY, L.lang).farSep : " "}${range}`;
+}
+
 /** A date on a strip of beads: "11/16". */
 export function md(iso: string | undefined): string {
   if (!iso) return "";

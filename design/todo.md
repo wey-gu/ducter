@@ -319,9 +319,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 - [ ] **The opened task, after D268:** (1) a subagent has no running state: the runner logs a
       subagent's call only when it ends (and drops its chatter by `agentPath`); a running row
-      needs the tool's start logged. (2) A queued message can't be edited or taken back: the
-      runner hands it to the harness at once; editing needs the runner to hold queued input
-      itself. (3) Thinking opens to its headings only (D127 keeps no body). (4) A plan longer than
+      needs the tool's start logged. (2) ~~A queued message can't be edited or taken back~~:
+      done by D325 (Ducter holds it). (3) Thinking opens to its headings only (D127 keeps no body). (4) A plan longer than
       the 2 KB input preview is cut and not shown; raise the preview for plan tools if real plans
       hit it. (5) Code blocks in the agent's words are mono 13, not 12 (MyGo's Markdown sizes
       spans and blocks from one CodeSize). (6) Closed by D270: the header's subtitle is gone,
@@ -1755,3 +1754,12 @@ Codex first, once OAR is near 1.0. See `research/17`.
       load, on 2026-11-17 at 03:50 UTC: `wechat().openUntil` reads 03:00:00.000Z, already past `Date.now()`
       (a whole hour, so the window may be computed from a rounded or fixed time). Seen while checking D324,
       unrelated to it. Trigger: now (it fails every run at this hour).
+
+- [ ] **D325 follow-ups (steer and held words).** (1) The read receipt is the agent's own echo of
+      the words (OAR `user_message`: Claude Code's replay "acknowledged", Codex's userMessage item,
+      pi's and DeepSeek Harness's conversation message), matched by text; check live on each agent
+      that the echo comes at the step that reads it, and pass Ducter's own `inputId` through
+      `steerOrQueue` to match by id where the agent keeps it. (2) A worker on a Ducter before
+      D325 sends no echo: its steers stay "at its next step" until the turn ends. (3) Held words
+      after a Stop wait until the person says them or sends again; whether a resumed turn should
+      take them is the author's call. Trigger: the author's live review.

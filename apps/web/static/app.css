@@ -2242,18 +2242,18 @@ a {
   pointer-events: auto;
   transition: opacity 160ms var(--ease), transform 200ms var(--ease), visibility 0s;
 }
-.locator .loc-list button.quiet {
+.locator .loc-row.quiet {
   min-height: 22px;
   font-size: 12px;
   color: var(--ink-muted);
 }
-.locator .loc-list button.quiet i {
+.locator .loc-row.quiet i {
   width: 7px;
   height: 1px;
   border-radius: 0;
   opacity: 0.6;
 }
-.locator .loc-list button.quiet.here {
+.locator .loc-row.quiet.here {
   font-weight: 400;
 }
 /* D284: the turn the locator went to wears a soft clay tint that fades. */
@@ -2303,10 +2303,15 @@ a {
   }
 }
 .locator .loc-list {
+  /* D325: out of the rail's flow, so the rail never moves under the pointer as the card opens. */
+  position: absolute;
+  right: 20px;
+  bottom: 0;
   list-style: none;
-  margin: 0 6px 0 0;
+  margin: 0;
   padding: 6px;
-  width: 300px;
+  width: 320px;
+  box-sizing: border-box;
   max-height: 420px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -2315,33 +2320,62 @@ a {
   border: 1px solid var(--line);
   box-shadow: var(--floating);
 }
-.locator .loc-list button {
+/* D325: the list draws only the rows near its view: each one 28 high, placed by its index. */
+.locator .loc-rows {
+  position: relative;
+}
+.locator .loc-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 28px;
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
-  min-height: 26px;
   padding: 0 8px;
   border-radius: 6px;
   font-size: 13px;
   color: var(--ink-soft);
   text-align: left;
+  cursor: pointer;
 }
-.locator .loc-list button:hover {
+.locator .loc-row.sel {
   background: var(--sunken);
 }
-.locator .loc-list button i {
+.locator .loc-list:focus-visible .loc-row.sel {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.locator .loc-list:focus {
+  outline: none;
+}
+/* D325: a report is a small ring; a mark of the session (a compaction, a switch) a hairline like a quiet run. */
+.locator .loc-row.k-report i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--faint);
+  margin: 0 -2px;
+}
+.locator .loc-row.k-report.here i {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+.locator .loc-row.k-report:not(.here) {
+  font-weight: 400;
+}
+.locator .loc-row i {
   flex: none;
   width: 3px;
   height: 12px;
   border-radius: 2px;
   background: var(--faint);
 }
-.locator .loc-list button.here {
+.locator .loc-row.here {
   color: var(--ink);
   font-weight: 600;
 }
-.locator .loc-list button.here i {
+.locator .loc-row.here i {
   background: var(--ink);
   opacity: 0.75;
 }
@@ -10491,6 +10525,146 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .composer-hint .k {
   color: var(--faint);
+}
+/* D325: what the person held for after this turn, over the composer: small dashed chips in order,
+   each its words on one line (tap to edit), 现在就说 and a quiet ×. */
+.held-q {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 4px 8px;
+}
+.held-head {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.held-head .n {
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.hq {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 2px 4px 2px 2px;
+  border-radius: 12px;
+  outline: 1.5px dashed var(--faint);
+  outline-offset: -1.5px;
+  background: transparent;
+  animation: settle var(--t-across) var(--ease-push) both;
+}
+.hq-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+  border-radius: 10px;
+}
+.hq-words:hover {
+  color: var(--ink);
+}
+.hq-words:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.hq-pics {
+  flex: none;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.hq-now {
+  flex: none;
+  white-space: nowrap;
+}
+.hq .hq-drop {
+  flex: none;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 14px;
+  background: none;
+  box-shadow: none;
+  color: var(--ink-muted);
+}
+.hq .hq-drop:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.hq-words .w {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hq.editing {
+  outline-style: solid;
+  outline-color: var(--accent);
+  background: var(--surface);
+  padding: 4px 4px 4px 10px;
+}
+.hq-edit {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  padding: 6px 0;
+}
+/* D325: how a steer went in, under its bubble, only while it says something. */
+.rcpt {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: -2px 6px 2px;
+  font-size: 11px;
+  color: var(--ink-muted);
+  animation: fade var(--t-across) var(--ease) both;
+}
+.rcpt.wait .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--working-dot);
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hq,
+  .rcpt {
+    animation: none;
+  }
+  .rcpt.wait .dot {
+    animation: none;
+  }
 }
 .more-menu {
   position: relative;

@@ -217,12 +217,22 @@ await tick();
 if (process.env.DEMO_LONG) {
   const { longTask } = await import("@ducter/protocol/fixtures/longtask.ts");
   const evs = longTask(Number(process.env.DEMO_LONG), { taskId: "t_long" });
+  let round = 0;
   for (const e of evs) {
     log.append({ stream: e.stream, origin: e.origin, kind: e.kind, body: e.body } as never);
     if (e.kind === "task_open") core.tasks.setState("t_long", "working", "hot");
+    // D325: every fifth round reports what it found, as a real review loop does (the locator lists it).
+    const b = e.body as { role?: string; text?: string };
+    if (b.role === "assistant" && b.text?.startsWith("Round ") && ++round % 5 === 0) {
+      const summary = zh ? `第 ${round} 轮：#${200 + round} 可以合了，#${201 + round} 要先 rebase` : `Round ${round}: #${200 + round} is ready to merge, #${201 + round} needs a rebase first`;
+      log.append({ stream: e.stream, origin: "task", kind: "report", body: { taskId: "t_long", state: "progress", summary, questions: [], evidence: [] } } as never);
+    }
   }
   await tick();
 }
+
+// D325: DEMO_STEER=1 adds a task at work with steers (one read, one not yet) and two held messages.
+if (process.env.DEMO_STEER === "1") await (await import("./demo-steer.ts")).seedSteer(core as never, zh, tick);
 
 // D297: DEMO_LIMIT=1 adds tasks resting on their agent's usage limit (three share one reset).
 if (process.env.DEMO_LIMIT === "1") await (await import("./demo-limits.ts")).seedLimits(core, zh);

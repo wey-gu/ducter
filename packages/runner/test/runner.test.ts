@@ -727,6 +727,108 @@ describe("idle parking (soak regression)", () => {
   });
 });
 
+describe("D325: the person's held words and their steers seen", () => {
+  const heldOf = (taskId: string) => core.log.read({ stream: `task:${taskId}`, kinds: ["task_held"] }).at(-1)?.body as Bodies["task_held"] | undefined;
+  const userWords = (taskId: string) =>
+    core.log
+      .read({ stream: `task:${taskId}`, kinds: ["task_event"] })
+      .map((e) => e.body as Bodies["task_event"])
+      .filter((b) => b.role === "user" && b.from === "user");
+
+  test("After this is held by Ducter (not the agent), changed, taken back, and goes as the next turn in order", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    s.busyFlag = true;
+    expect(await runner.send(card.taskId, "then the docs", "queue", "user", "c1")).toEqual({ delivered: "queued" });
+    expect(await runner.send(card.taskId, "and a test", "queue", "user", "c2")).toEqual({ delivered: "queued" });
+    expect(await runner.send(card.taskId, "and the changelog", "queue", "user", "c3")).toEqual({ delivered: "queued" });
+    // A resend (the socket came back) holds it once.
+    expect(await runner.send(card.taskId, "and a test", "queue", "user", "c2")).toEqual({ delivered: "queued" });
+    expect(heldOf(card.taskId)!.held.map((h) => [h.id, h.text])).toEqual([["c1", "then the docs"], ["c2", "and a test"], ["c3", "and the changelog"]]);
+    // Nothing went to the agent, nothing is in the transcript yet.
+    expect(s.sent.slice(1)).toEqual([]);
+    expect(userWords(card.taskId)).toEqual([]);
+    await runner.held!(card.taskId, "c2", "edit", "and a unit test");
+    await runner.held!(card.taskId, "c3", "drop");
+    expect(heldOf(card.taskId)!.held.map((h) => h.text)).toEqual(["then the docs", "and a unit test"]);
+    await expect(runner.held!(card.taskId, "c3", "drop")).rejects.toThrow(/already went/);
+    // The turn ends: what is held is the next turn, each logged as the person's words, in order.
+    s.busyFlag = false;
+    s.emit({ role: "system", text: "turn completed", turnEnd: true, raw: { kind: "turn_ended", outcome: "completed" } });
+    await waitFor(() => s.sent.length === 2, "the held words as the next turn");
+    expect(s.sent[1]).toEqual({ text: "then the docs\n\nand a unit test", mode: "turn" });
+    expect(userWords(card.taskId).map((b) => [b.text, b.clientId, (b.raw as { delivered?: string }).delivered])).toEqual([
+      ["then the docs", "c1", "turn"],
+      ["and a unit test", "c2", "turn"],
+    ]);
+    expect(heldOf(card.taskId)!.held).toEqual([]);
+    await runner.dispose();
+  });
+
+  test("a stopped turn keeps them held; Say it now steers one in while it works, or starts the turn when idle", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    s.busyFlag = true;
+    await runner.send(card.taskId, "one", "queue", "user", "a1");
+    await runner.send(card.taskId, "two", "queue", "user", "a2");
+    expect(await runner.held!(card.taskId, "a2", "now")).toEqual({ delivered: "steered" });
+    expect(s.sent.at(-1)).toEqual({ text: "two", mode: "steer" });
+    // Stopped: nothing drains.
+    s.busyFlag = false;
+    s.emit({ role: "system", text: "turn aborted", turnEnd: true, raw: { kind: "turn_ended", outcome: "aborted" } });
+    await Bun.sleep(30);
+    expect(heldOf(card.taskId)!.held.map((h) => h.id)).toEqual(["a1"]);
+    expect(await runner.held!(card.taskId, "a1", "now")).toEqual({ delivered: "prompted" });
+    expect(s.sent.at(-1)).toEqual({ text: "one", mode: "turn" });
+    await runner.dispose();
+  });
+
+  test("an agent that can't steer: Return holds the words and Say it now refuses; a plain idle send carries what is held first", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    s.busyFlag = true;
+    s.canSteer = false;
+    expect(await runner.send(card.taskId, "look at the logs", undefined, "user", "n1")).toEqual({ delivered: "queued" });
+    await expect(runner.held!(card.taskId, "n1", "now")).rejects.toThrow(/can't take words/);
+    s.busyFlag = false; // e.g. stopped: still held
+    expect(await runner.send(card.taskId, "and the config", undefined, "user", "n2")).toEqual({ delivered: "prompted" });
+    expect(s.sent.at(-1)).toEqual({ text: "look at the logs\n\nand the config", mode: "turn" });
+    expect(userWords(card.taskId).map((b) => b.text)).toEqual(["look at the logs", "and the config"]);
+    await runner.dispose();
+  });
+
+  test("a steer is marked read when the agent's own echo of it comes (and every steer before it)", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    s.busyFlag = true;
+    await runner.send(card.taskId, "use the staging db", undefined, "user", "s1");
+    await runner.send(card.taskId, "and skip   the e2e", undefined, "user", "s2");
+    const seqOf = (cid: string) => core.log.read({ stream: `task:${card.taskId}`, kinds: ["task_event"] }).find((e) => (e.body as Bodies["task_event"]).clientId === cid)!.seq;
+    const reads = () =>
+      core.log
+        .read({ stream: `task:${card.taskId}`, kinds: ["task_event"] })
+        .map((e) => (e.body as Bodies["task_event"]).raw as { read?: number[] } | undefined)
+        .flatMap((r) => r?.read ?? []);
+    s.emit({ role: "system", raw: { kind: "user_echo", input: "something else entirely" } });
+    s.emit({ role: "system", raw: { kind: "user_echo", input: "and skip the e2e" } });
+    await waitFor(() => reads().length === 2, "both read");
+    expect(reads()).toEqual([seqOf("s1"), seqOf("s2")]);
+    await runner.dispose();
+  });
+});
+
 // ---------- a hand-written fake HarnessPort ----------
 
 class FakeSession implements HarnessSession {

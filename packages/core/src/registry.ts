@@ -7,7 +7,7 @@ import { realClock, type Clock } from "./clock.ts";
 /** D120: the partner's call changed before its brief arrived, so this early open was dropped unstarted (runner.ts). */
 export const neverStarted = (c: Pick<TaskCard, "attention" | "reason">) => c.attention === "dropped" && c.reason === "not started";
 
-export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status"] as const;
+export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held"] as const;
 
 /** D216: a step or the agent's words, the kind On hand's latest line is made from. */
 export const isStepEvent = (b: Bodies["task_event"]) => b.role === "tool" || (b.role === "assistant" && (!!b.text?.trim() || !!b.thinking?.length));
@@ -114,6 +114,15 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
           // D299: carried on from a session the person ran outside Ducter.
           ...((b.outside ?? prev?.outside) ? { outside: b.outside ?? prev!.outside! } : {}),
         });
+        break;
+      }
+      case "task_held": {
+        // D325: what the person held for after this turn, the latest whole queue.
+        const b = e.body as Bodies["task_held"];
+        const c = cards.get(b.taskId);
+        if (!c) return;
+        if (b.held?.length) c.held = b.held;
+        else delete c.held;
         break;
       }
       case "until": {

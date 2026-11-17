@@ -1,6 +1,10 @@
 package views
 
-import "github.com/egoist/mygo/ui"
+import (
+	"github.com/egoist/mygo/ui"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
+)
 
 // scrollTaskTo puts the opened task's page at a row: frac of the way from
 // its head (0) to its end (1).
@@ -29,4 +33,14 @@ func hoverLocator(a *App, tt *ui.Tester) bool {
 	tt.Frame()
 	tt.Frame()
 	return true
+}
+
+// locatorWords are the locator's rows in words, every one (D325).
+func locatorWords(a *App, task *store.Task) []landmarkWords {
+	lms := a.locatorLandmarks(task)
+	out := make([]landmarkWords, len(lms))
+	for i := range lms {
+		out[i] = a.landmarkWords(&lms[i], a.Now())
+	}
+	return out
 }

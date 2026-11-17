@@ -39,7 +39,7 @@ func TestOldRelaysReadAsChips(t *testing.T) {
 		}
 	}
 	// The locator: the brief, the person's words, and the five quiet items between them as one muted line.
-	entries := app.locatorEntries(app.S.Task(id), app.memoOf(app.S.Task(id)).turns)
+	entries := locatorWords(app, app.S.Task(id))
 	var lines []string
 	for _, e := range entries {
 		lines = append(lines, e.line)
@@ -78,7 +78,7 @@ func TestLocatorGlides(t *testing.T) {
 		app, tt := openLong(t, reduce)
 		task := app.S.Task("long1")
 		turns := app.memoOf(task).turns
-		entries := app.locatorEntries(task, turns)
+		entries := locatorWords(app, task)
 		if !hoverLocator(app, tt) {
 			t.Fatal("no locator")
 		}
@@ -158,7 +158,7 @@ func TestD284Shots(t *testing.T) {
 	}
 	shot(tt, "long-locator-zh")
 	task := app.S.Task("long1")
-	entries := app.locatorEntries(task, app.memoOf(task).turns)
+	entries := locatorWords(app, task)
 	_ = tt.Click(autospace(entries[len(entries)/3].line))
 	for i := 0; i < 8; i++ {
 		tt.Advance(16 * time.Millisecond)

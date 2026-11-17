@@ -141,6 +141,10 @@ type Task struct {
 	Version int
 	// Sends are the user's direct messages to the task, oldest first.
 	Sends []*Send
+	// Reads (D325) are the seqs of the person's steers the agent's next
+	// step took in (the runner's raw.read); ReadLast, the newest of them.
+	Reads    map[int64]bool
+	ReadLast int64
 	// Usage sums the token use of the turns seen.
 	Usage protocol.Usage
 	// Compactions is how many times the harness compacted the task's context (D135).
@@ -704,11 +708,17 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.VoiceResult = &fc
 	case "sent":
 		if t := s.Tasks[f.TaskID]; t != nil {
-			for _, sd := range t.Sends {
-				if sd.Delivered == "" && sd.Failed == "" {
-					sd.Delivered = f.Delivered
-					break
+			for i, sd := range t.Sends {
+				if f.ClientID != "" && sd.ClientID != f.ClientID || f.ClientID == "" && (sd.Delivered != "" || sd.Failed != "") {
+					continue
 				}
+				sd.Delivered = f.Delivered
+				// D325: held at the home: a chip over the composer now
+				// (the card's Held), not a bubble.
+				if f.Delivered == protocol.DeliveryQueued && f.ClientID != "" && sd.Seq == 0 {
+					t.Sends = append(t.Sends[:i:i], t.Sends[i+1:]...)
+				}
+				break
 			}
 		}
 	case "folder_changes":
@@ -1398,11 +1408,20 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 				Kind        string         `json:"kind"`
 				Outcome     string         `json:"outcome"`
 				Compactions int            `json:"compactions"`
+				Read        []int64        `json:"read"`
 			}
 			if json.Unmarshal(b.Raw, &raw) == nil && raw.Browser != nil && raw.Browser.Host != "" &&
 				(t.Browser == nil || t.Browser.Seq < ev.Seq) {
 				raw.Browser.Seq = ev.Seq
 				t.Browser = raw.Browser
+			}
+			// D325: the agent took these steers in.
+			for _, n := range raw.Read {
+				if t.Reads == nil {
+					t.Reads = map[int64]bool{}
+				}
+				t.Reads[n] = true
+				t.ReadLast = max(t.ReadLast, n)
 			}
 			// D135: the runner numbers each compaction of the task's context.
 			if raw.Kind == "compaction_ended" && (raw.Outcome == "" || raw.Outcome == "completed") {

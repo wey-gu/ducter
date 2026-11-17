@@ -463,9 +463,20 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	}
 	draft := a.taskDrafts[task.ID]
 	tray := "task:" + task.ID
-	// D268: while it works, what is sent steers it (read at its next step);
-	// ⌥↩ or 做完再说 / After this waits for its turn to end. Stop sits by Send.
+	// D268, D325: while it works, Return steers it (read at its next step);
+	// ⌥↩ or 做完再说 / After this holds it for after this turn; an agent that
+	// can't steer holds it either way and says so. Stop sits by Send. Held
+	// words are chips over the composer.
 	working := task.Attention() == protocol.Working
+	agent := task.Harness()
+	steers := protocol.HarnessSteers(agent)
+	place := a.L.T("composer.task")
+	switch {
+	case working && steers:
+		place = a.L.T("composer.steer.place")
+	case working:
+		place = a.L.T("composer.nosteer.place", harnessName(agent))
+	}
 	mode := func(queue bool) string {
 		switch {
 		case !working:
@@ -477,6 +488,7 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	}
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S4, t.S5).Children(func() {
 		ui.Column(c).Grow(1).MaxWidth(readMeasure).MinWidth(0).Gap(t.S1).Children(func() {
+			a.heldChips(c, task, working, steers)
 			box := ui.Column(c.Key("taskcomposer-box")).Padding(t.S2, t.S2, t.S2, t.S3).
 				Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 			over := a.takeDrops(box, tray) // D206
@@ -487,7 +499,7 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 				a.picTray(c, tray)
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 					a.addPicturesButton(c, tray)
-					ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task")).
+					ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(place).
 						Label(a.L.T("composer.task")).
 						Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
 						OnTextKey(func(k ui.TextKey) bool {
@@ -511,7 +523,7 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 						a.focusComposer = false
 					}
 					a.contextRing(c, task) // D288: the context meter, a quiet ring by the composer
-					if working && strings.TrimSpace(draft) != "" {
+					if working && steers && strings.TrimSpace(draft) != "" {
 						if a.button(c, a.L.T("composer.after"), btnText, t.ControlSM, t.Surface) && a.SendToTaskMode(task.ID, draft, "queue") {
 							draft = ""
 						}
@@ -528,6 +540,10 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 			})
 			if working {
 				ui.Row(c).Gap(t.S2).Padding(0, t.S4).Children(func() {
+					if !steers {
+						ui.Text(c, a.L.T("composer.nosteer.hint", harnessName(agent))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
+						return
+					}
 					ui.Text(c, a.L.T("composer.steer.hint")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
 					ui.Spacer(c)
 					ui.Text(c, a.L.T("composer.queue.hint")).FontSize(t.XS).TextColor(t.Faint).SingleLine().Shrink(0)

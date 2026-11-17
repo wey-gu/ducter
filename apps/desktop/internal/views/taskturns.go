@@ -104,6 +104,7 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 			a.promptCard(c, task, p, a.L.T("task.from.partner", a.S.PersonaName))
 		case "you":
 			a.sentBubble(c, p.Text, task.SendFor(p.Seq), queued, p.Media...)
+			a.steerReceipt(c, task, p.Seq) // D325
 			if p.Full > 0 {
 				ui.Row(c).Justify(ui.End).Children(func() { a.showAll(c, task, p.Seq, p.Full, false) })
 			}

@@ -1207,3 +1207,92 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   .btn:not(.secondary):not(.accent):hover { filter: brightness(0.94); }
   .dl-pick-art picture img, .dl-card-head picture img { filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.35)); }
 }
+
+/* ---------- D326: the landing page from the visitor's side, with real screens ---------- */
+/* the tagline's second half: the same voice, a step quieter */
+h1 .line.quiet { margin-top: 0.22em; font-size: 0.56em; line-height: 1.08; letter-spacing: -0.025em; color: var(--ink-2); }
+.hero .lede { max-width: 32em; }
+/* a real screenshot of the app, in the clay window it lives in */
+.appshot { display: block; }
+.appshot img { display: block; width: 100%; height: auto; border-radius: var(--r-xl); box-shadow: inset 0 0 0 1px var(--line), var(--base-window); background: var(--bg); }
+.hero-shot { margin: 0; display: grid; gap: 12px; justify-items: center; }
+.hero-shot .appshot { width: 100%; max-width: 520px; }
+.hero-shot figcaption { font-size: var(--t13); color: var(--muted); text-align: center; max-width: 34em; text-wrap: pretty; }
+@media (max-width: 1039px) { .hero-shot .appshot img { max-height: 640px; object-fit: cover; object-position: top; } }
+/* what it does: three plain cards, each with one thing you'd say */
+.does { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+@media (min-width: 900px) { .does { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.does .card p { margin: 0; color: var(--ink-2); font-size: var(--t16); line-height: 1.6; text-wrap: pretty; }
+.does .card .eg { margin-top: 6px; font-family: var(--display); font-weight: 700; color: var(--ink); }
+.does .card-art { height: 112px; }
+/* a phone-sized screen, in a soft clay bezel */
+.phone-shot { justify-self: center; width: min(320px, 72vw); padding: 10px; border-radius: 46px; background: var(--ink); box-shadow: var(--base-window); }
+.phone-shot .appshot img { border-radius: 36px; box-shadow: none; }
+.sheet-shot { justify-self: center; width: 100%; max-width: 480px; }
+.sheet-shot .appshot img { max-height: 560px; object-fit: cover; object-position: top; }
+/* trust: the record beside the few things it never does */
+.trust-grid { display: grid; gap: clamp(32px, 4vw, 56px); align-items: start; }
+@media (min-width: 1040px) { .trust-grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); } .trust-grid .nevers { margin-top: 0; } }
+.ink-band .appshot img { box-shadow: 0 18px 40px -18px rgb(0 0 0 / 0.6); }
+.ink-band .more { margin-top: 36px; }
+.ink-band .lede b { color: var(--band-ink); }
+.get { margin-top: clamp(40px, 5vw, 64px); display: grid; gap: 20px; align-items: center; padding: 28px; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--base-card); }
+.get h3 { font-size: var(--t28, 28px); }
+.get .body { margin: 8px 0 0; color: var(--ink-2); max-width: 40em; }
+@media (min-width: 900px) { .get { grid-template-columns: minmax(0, 1fr) auto; } }
+.ink-band .more a { color: var(--band-ink); }
+/* reach it anywhere: the chat apps, by name */
+.chats { margin-top: 18px; padding: 22px 24px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--base-card); display: grid; gap: 10px; }
+.chats p { margin: 0; color: var(--ink-2); font-size: var(--t16); line-height: 1.6; text-wrap: pretty; }
+.chats b { color: var(--ink); }
+.chats .links { display: flex; flex-wrap: wrap; gap: 6px 20px; font-family: var(--display); font-weight: 700; font-size: var(--t15); }
+
+/* ---------- D326: Get started, one question then one path ---------- */
+.where-q { margin-top: clamp(28px, 4vw, 44px); }
+.where-q fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.where-q legend { padding: 0; }
+.where-q legend h2 { font-size: clamp(28px, 3.4vw, 40px); }
+.where-q .body { margin: 8px 0 0; color: var(--ink-2); max-width: 40em; }
+.choices { display: grid; gap: 12px; margin-top: 22px; }
+@media (min-width: 720px) { .choices { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.choice { position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; align-items: center; padding: 16px 18px; border-radius: var(--r-lg); background: var(--surface); box-shadow: inset 0 0 0 2px var(--line), var(--base-card); cursor: pointer; transition: box-shadow 0.15s; }
+.choice input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.choice picture { width: 64px; height: 64px; display: grid; place-items: center; }
+.choice picture img { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+.choice b { display: block; font-family: var(--display); font-weight: 800; font-size: var(--t18); color: var(--ink); }
+.choice small { display: block; margin-top: 2px; font-size: var(--t13); color: var(--muted); line-height: 1.4; }
+.choice:hover { box-shadow: inset 0 0 0 2px var(--line-2), var(--base-card); }
+.choice:has(input:checked) { box-shadow: inset 0 0 0 3px var(--accent), 0 4px 0 var(--accent-ledge); }
+.choice:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 3px; }
+.on-phone { margin: 18px 0 0; padding: 12px 16px; border-radius: var(--r-md, 14px); background: var(--decide-surface); color: var(--decide-ink); font-size: var(--t15); }
+.on-phone a { color: inherit; font-weight: 700; }
+/* only the chosen path; with no :has, every path shows in turn */
+.start-page:has(#live-mac:checked) .path:not(#path-mac),
+.start-page:has(#live-server:checked) .path:not(#path-server),
+.start-page:has(#live-unsure:checked) .path:not(#path-unsure) { display: none; }
+.paths .wrap { display: grid; gap: 64px; }
+.path { display: grid; gap: 14px; scroll-margin-top: 96px; }
+.path > h2 { font-size: clamp(28px, 3.4vw, 40px); }
+.path > .body { margin: 0; color: var(--ink-2); max-width: 44em; }
+.ways { display: grid; gap: 14px; margin-top: 8px; }
+@media (min-width: 900px) { .ways { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.way { display: grid; gap: 10px; align-content: start; padding: 22px 22px 24px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--base-card); }
+.way.agent { background: var(--surface-2); box-shadow: inset 0 0 0 2px var(--decide-ledge), var(--base-card); }
+.way p { margin: 0; color: var(--ink-2); font-size: var(--t15); line-height: 1.55; }
+.way h3 { font-size: var(--t20); }
+.way .way-tag { font-family: var(--display); font-weight: 700; font-size: var(--t13); color: var(--muted); text-transform: none; }
+.way.agent .way-tag { color: var(--decide-ink); }
+.way .way-note { font-size: var(--t13); color: var(--muted); }
+.way a:not(.btn), .path a:not(.btn) { color: var(--ink); text-decoration-color: var(--line-2); text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+.next-h { margin-top: 18px; font-size: var(--t20); }
+.next { margin: 0; padding-left: 1.4em; display: grid; gap: 10px; color: var(--ink-2); font-size: var(--t15); line-height: 1.6; max-width: 48em; }
+.next b { color: var(--ink); }
+.pick-help { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; max-width: 46em; }
+.pick-help li { color: var(--ink-2); padding-left: 16px; border-left: 3px solid var(--line-2); font-size: var(--t16); line-height: 1.6; }
+.pick-help b { color: var(--ink); }
+.pick-help .send { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+/* /download: the way back to the guided path, and the files as one quiet line */
+.dl-new { margin: 14px 0 0; font-size: var(--t15); color: var(--ink-2); }
+.dl-new a { color: var(--ink); font-weight: 700; text-underline-offset: 3px; }
+.dl-fileline { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; margin: 0; }
+.dl-fileline small { color: var(--muted); }

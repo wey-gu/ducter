@@ -1,10 +1,10 @@
 <h1 align="center">Ducter</h1>
 
 <p align="center">
-  <b>Say it once. Hear back when it's done.</b><br>
-  An open-source personal AI on your own Mac or server. You talk to one partner; it runs the
-  work on Claude Code, Codex, pi or DeepSeek Harness with the plans you already pay for, and
-  speaks up only when something is done or needs you.
+  <b>Your own personal AI. It does the work, and asks only when it matters.</b><br>
+  Talk to it from your phone, your computer or the chat apps you already use. It runs on your own
+  Mac or server, with the AI you already pay for (Claude Code, Codex, pi or DeepSeek Harness), and
+  anything that spends your money or reaches other people waits for your OK. Free and open source.
 </p>
 
 <p align="center">
@@ -14,6 +14,7 @@
 
 <p align="center">
   <a href="https://ducter.ai">ducter.ai</a> ·
+  <a href="https://ducter.ai/start">Get started</a> ·
   <a href="https://ducter.ai/download">Download</a> ·
   <a href="docs/getting-started.md">Getting started</a> ·
   <a href="docs/README.md">Docs</a>
@@ -86,8 +87,9 @@ the steps.
 **On iPhone or iPad**, [join the TestFlight beta](https://testflight.apple.com/join/Z4GvWt7t) and
 connect with the address and code from `ducter pair`.
 
-**With your AI agent:** ask it to *"Install the ducter-deploy skill from
-github.com/wey-gu/ducter/tree/main/skills and deploy Ducter on my server."*
+**With your AI agent:** paste *"Set up Ducter on this Mac for me. Follow the guide at
+https://ducter.ai/skills/ducter-deploy/SKILL.md"* into Claude Code or Codex (or "on my server",
+for a server). [Get started](https://ducter.ai/start) walks you through either path
 ([For AI agents](docs/for-agents.md))
 
 Building from source, the walkthroughs and every command: [Install](docs/install.md) and
@@ -138,7 +140,7 @@ Building from source, the walkthroughs and every command: [Install](docs/install
   over the last two weeks, then a morning message with at most three things, and right away only
   when waiting would cost you ([Accounts it can read](docs/accounts.md)).
 - **Where you already chat.** Talk to the same partner from Telegram or Slack through a bot of
-  your own, or from Messages on your iPhone through your Mac
+  your own, from WeChat through its own ClawBot, or from Messages on your iPhone through your Mac
   ([Chat apps](docs/chat-apps.md), [iMessage](docs/imessage.md)).
 - **What you did before.** Find any earlier task by what it did or what you said, star it, and
   carry on with it; pause and resume what runs on its own ([Past tasks](docs/past-tasks.md)).
@@ -161,7 +163,10 @@ For people who already run several agents at once, what makes them hold up as on
   [readable twin](design/harnesses.md)): windows, compaction points and verified versions, which
   `ducter doctor` checks against what you have installed.
 - **Budgets are tests.** Prompt and tool-list sizes fail the build when they grow, and a partner
-  change carries a fresh eval result.
+  change carries a fresh eval result. Updates are rehearsed end to end on a Linux VM before a
+  release.
+- **Each agent's own browser first.** Ducter's own Chrome is the fallback, on your Mac or your
+  server. In a Mac's apps, Ducter's own app tools check every click before it happens.
 
 ```mermaid
 flowchart LR

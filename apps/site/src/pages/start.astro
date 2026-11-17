@@ -1,0 +1,160 @@
+---
+// Get started (D326): one guided path from "I want this" to "my partner said hello". It asks the one
+// question that matters (where Ducter should live), then shows only that path, with "Let your AI
+// agent do it" beside "Do it yourself". Showing one path is CSS (:has on the radios), so the page
+// works without JavaScript; start.ts only picks the default for this device and remembers nothing.
+// Without :has, every path shows, one after another. /download stays the full list of files.
+import "../styles/site.css";
+import Art from "../components/Art.astro";
+import Head from "../components/Head.astro";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
+import { siteLinks } from "../lib/links";
+import { RELEASES_URL } from "../lib/github";
+
+const { facts, dl, gh } = await siteLinks();
+const a = facts.assets;
+const TESTFLIGHT = "https://testflight.apple.com/join/Z4GvWt7t";
+const SKILL = "https://ducter.ai/skills/ducter-deploy/SKILL.md";
+const oneLine = "curl -fsSL https://ducter.ai/install.sh | sh";
+const serverLine = "curl -fsSL https://ducter.ai/install.sh | sh -s -- --service";
+// The sentence to paste into Claude Code, Codex or another agent. It points at the skill on this
+// site, which works whether or not the repository is public, and needs nothing installed first.
+const askMac = `Set up Ducter on this Mac for me. Follow the guide at ${SKILL}`;
+const askServer = `Set up Ducter on my server for me, so my phone and Mac can reach it. Follow the guide at ${SKILL}`;
+const title = "Get started with Ducter";
+const description = "Where should Ducter live? Pick your Mac or a server, then let your AI agent set it up or do it yourself. A few minutes to your partner's first hello.";
+const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l8-8M6 4h6v6"/></svg>`;
+---
+<!doctype html>
+<html lang="en">
+<Head title={title} description={description} path="/start" />
+<body class="dl-page start-page">
+<Nav dl={dl} gh={gh} home={false} current="start" />
+<main id="main">
+
+<section class="dl-hero start">
+  <div class="wrap">
+    <h1>Get started.</h1>
+    <p class="lede">A few minutes from here to your partner's first hello. First, one question.</p>
+
+    <form class="where-q" id="where-q" aria-describedby="where-help" onsubmit="return false">
+      <fieldset>
+        <legend><h2>Where should Ducter live?</h2></legend>
+        <p class="body" id="where-help">Ducter lives on one computer and works there. Your phone, iPad and chat apps then reach it from anywhere.</p>
+        <div class="choices">
+          <label class="choice" for="live-mac">
+            <input type="radio" name="live" id="live-mac" value="mac" checked aria-controls="path-mac" />
+            <Art name="laptop_awake" alt="" sizes="96px" eager />
+            <span><b>This Mac</b><small>The quickest start. Apple silicon.</small></span>
+          </label>
+          <label class="choice" for="live-server">
+            <input type="radio" name="live" id="live-server" value="server" aria-controls="path-server" />
+            <Art name="server_awake" alt="" sizes="96px" eager />
+            <span><b>A server I have</b><small>Keeps working while your laptop sleeps.</small></span>
+          </label>
+          <label class="choice" for="live-unsure">
+            <input type="radio" name="live" id="live-unsure" value="unsure" aria-controls="path-unsure" />
+            <Art name="ducter_idle" alt="" sizes="96px" eager />
+            <span><b>Not sure</b><small>We'll help you pick.</small></span>
+          </label>
+        </div>
+      </fieldset>
+    </form>
+    <p class="on-phone" id="on-phone" hidden>You're on a phone. Ducter lives on a computer, so you'll set it up there; <a href="#path-unsure">here's how to carry this over</a>.</p>
+  </div>
+</section>
+
+<section class="dl-sec paths" aria-live="polite">
+  <div class="wrap">
+
+    <!-- ============ THIS MAC ============ -->
+    <article class="path" id="path-mac" aria-labelledby="h-mac">
+      <h2 id="h-mac">Ducter on this Mac</h2>
+      <p class="body">You need a Mac with Apple silicon (M1 or later), and an AI to do the work: a Claude or ChatGPT plan, or a key from DeepSeek, Kimi, Zhipu GLM, OpenAI, Anthropic or OpenRouter. Ducter itself is free, and the app sets the rest up with you.</p>
+      <div class="ways">
+        <div class="way mine">
+          <p class="way-tag">Most people start here</p>
+          <h3>Download the app</h3>
+          <p>Download the app, open it, and drag it to Applications.</p>
+          <p class="way-acts">
+            {a.dmg ? <a class="btn md" href={a.dmg.url}>Download for Mac</a> : <a class="btn md" href={RELEASES_URL}>See the releases</a>}
+          </p>
+          <p>Signed and notarized by Apple. Or paste one line into Terminal; it downloads the same app, checks it against the release's checksum and opens it:</p>
+          <div class="term short"><button class="btn sm copy" type="button" data-copy={oneLine}>Copy</button><pre><span class="p">$ </span>{oneLine}</pre></div>
+        </div>
+        <div class="way agent">
+          <p class="way-tag">Or, if you already use Claude Code or Codex</p>
+          <h3>Let your AI agent do it</h3>
+          <p>Paste this into Claude Code, Codex or another agent on this Mac:</p>
+          <div class="term short"><button class="btn sm copy" type="button" data-copy={askMac}>Copy</button><pre>{askMac}</pre></div>
+          <p class="way-note">It follows <a href={SKILL}>Ducter's setup guide</a>, which anyone can read: it installs the signed app, checks your Mac, and asks you before anything that isn't clear. It needs none of your passwords.</p>
+        </div>
+      </div>
+      <h3 class="next-h">What happens next</h3>
+      <ol class="next">
+        <li><b>Ducter opens and checks your Mac.</b> If no AI agent is signed in, it offers to install one and walks you through signing in, or you paste a key.</li>
+        <li><b>You name your partner,</b> or keep Ducter.</li>
+        <li><b>Your partner says hello,</b> with a few things to start from. Say anything; it takes it from there.</li>
+        <li><b>Bring your phone in:</b> on your phone, <a href={TESTFLIGHT} rel="noopener">get the iPhone app</a> or <a href="/download#android">the Android app</a>, then in Ducter on the Mac choose <b>Devices › Connect a phone or computer</b> and scan the code. Away from home, your phone reaches the Mac through Tailscale or your own domain. <a href="/docs/phone">Your phone</a></li>
+      </ol>
+      <p class="dl-small"><a href="/docs/getting-started">The full walk-through</a> · <a href="/download">Every download</a></p>
+    </article>
+
+    <!-- ============ A SERVER ============ -->
+    <article class="path" id="path-server" aria-labelledby="h-server">
+      <h2 id="h-server">Ducter on your server</h2>
+      <p class="body">Any 64-bit Linux server, x64 or arm64, at home or in the cloud. Your phone and Mac reach it privately through Tailscale (no domain, no open ports), or at a domain of your own.</p>
+      <div class="ways">
+        <div class="way agent">
+          <p class="way-tag">The easy way</p>
+          <h3>Let your AI agent do it</h3>
+          <p>Paste this into Claude Code, Codex or another agent, on the server or on a computer that can reach it over SSH:</p>
+          <div class="term short"><button class="btn sm copy" type="button" data-copy={askServer}>Copy</button><pre>{askServer}</pre></div>
+          <p class="way-note">It follows <a href={SKILL}>Ducter's setup guide</a>, which anyone can read. It asks you one question first, Tailscale or your own domain, checks each step, and ends with the code for your phone and Mac. It never prints your keys.</p>
+        </div>
+        <div class="way">
+          <p class="way-tag">Or</p>
+          <h3>Do it yourself</h3>
+          <p>On the server, install Ducter as a service:</p>
+          <div class="term short"><button class="btn sm copy" type="button" data-copy={serverLine}>Copy</button><pre><span class="p">$ </span>{serverLine}</pre></div>
+          <p>Then give your devices a way in. Either one sets up HTTPS:</p>
+          <div class="term short"><button class="btn sm copy" type="button" data-copy="ducter tailscale">Copy</button><pre><span class="c"># private: only your own devices</span>
+<span class="p">$ </span>ducter tailscale</pre></div>
+          <p class="dl-small">Or <code>ducter domain ducter.example.com</code> for your own domain. <a href="/docs/install#a-linux-server-that-stays-on">The whole setup</a></p>
+        </div>
+      </div>
+      <h3 class="next-h">What happens next</h3>
+      <ol class="next">
+        <li><b>Sign in an AI agent on the server:</b> <code>claude auth login</code> or <code>codex login --device-auth</code> prints a link you open on any device.</li>
+        <li><b>Get a code:</b> <code>ducter pair</code> shows an address and a one-time code.</li>
+        <li><b>Connect your Mac:</b> <a href="/download#mac">the Mac app</a>, then <b>My Ducter is on another computer</b>, and the code. Your partner says hello.</li>
+        <li><b>Bring your phone in:</b> <a href={TESTFLIGHT} rel="noopener">the iPhone app</a>, <a href="/download#android">the Android app</a> or the phone's browser, with the same address and code. <a href="/docs/phone">Your phone</a></li>
+      </ol>
+      <p class="dl-small"><a href="/docs/install#a-linux-server-that-stays-on">The full walk-through</a> · <a href="/download">Every download</a></p>
+    </article>
+
+    <!-- ============ NOT SURE ============ -->
+    <article class="path" id="path-unsure" aria-labelledby="h-unsure">
+      <h2 id="h-unsure">Which one is for me?</h2>
+      <ul class="pick-help">
+        <li><b>You have a Mac with Apple silicon:</b> start on <a href="#path-mac" data-pick="mac">this Mac</a>. It's the quickest, and you can move to a server later.</li>
+        <li><b>You want it working through the night,</b> or you don't have a Mac: <a href="#path-server" data-pick="server">a server</a>. A small cloud server is enough; your AI agent can set it up.</li>
+        <li><b>You're on Windows:</b> there's no Windows app yet. Ducter can live on a Linux server, which you then open in this computer's browser; if you don't have a server, a Mac is the way in for now.</li>
+        <li><b>You're on your phone right now:</b> Ducter lives on a computer. Send yourself this page, and open it there.
+          <span class="send"><a class="btn secondary md" href="mailto:?subject=Get%20started%20with%20Ducter&body=https%3A%2F%2Fducter.ai%2Fstart">Email me the link</a><button class="btn secondary md" type="button" data-copy="https://ducter.ai/start">Copy the link</button></span>
+        </li>
+      </ul>
+      <p class="dl-small">Either way you need an AI to do the work: a Claude or ChatGPT plan, or an API key. Ducter itself is free. <a href="/docs/faq">Questions people ask</a></p>
+    </article>
+
+  </div>
+</section>
+
+</main>
+<Footer gh={gh} home={false} />
+<script>
+  import "../scripts/start.ts";
+</script>
+</body>
+</html>

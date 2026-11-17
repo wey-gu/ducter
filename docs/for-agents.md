@@ -18,10 +18,18 @@ agent such as Claude Code or Codex follows:
 
 ## Give them to your agent
 
-Ask it, in your own words:
+Paste one sentence into it. For your Mac:
 
-> Install the ducter-deploy skill from github.com/wey-gu/ducter/tree/main/skills and deploy
-> Ducter on my server.
+> Set up Ducter on this Mac for me. Follow the guide at
+> https://ducter.ai/skills/ducter-deploy/SKILL.md
+
+For a server, so your phone and Mac can reach it:
+
+> Set up Ducter on my server for me, so my phone and Mac can reach it. Follow the guide at
+> https://ducter.ai/skills/ducter-deploy/SKILL.md
+
+Your agent reads the guide (you can read it too), asks you what it can't tell on its own, and
+checks each step. [Get started](https://ducter.ai/start) shows the same sentences.
 
 Or put them where your agent looks for skills, for Claude Code `~/.claude/skills/`:
 

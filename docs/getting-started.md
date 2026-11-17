@@ -10,6 +10,16 @@ This page walks you from opening Ducter on your Mac to your first finished task.
 five minutes, and there is nothing to learn first: you write to your partner the way you would
 write to a colleague.
 
+Ducter lives on one computer: **this Mac**, or **a server** that stays on. This page follows the
+Mac; for a server, see [Install](install.md#a-linux-server-that-stays-on).
+[Get started](https://ducter.ai/start) on the website asks the same question and shows one path.
+
+**Let your AI agent do it.** If you use Claude Code or Codex, paste this into it and it does the
+steps below for you, asking when something isn't clear ([For AI agents](for-agents.md)):
+
+> Set up Ducter on this Mac for me. Follow the guide at
+> https://ducter.ai/skills/ducter-deploy/SKILL.md
+
 ## What you need
 
 - **A Mac with Apple silicon** (M1 or later).

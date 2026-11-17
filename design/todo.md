@@ -10,6 +10,22 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 (eval only) · the partner eval (`bun run eval:partner`) · art cutouts with true alpha
 (`design/art/assets/alpha/`, 22 assets, `design/art/assets/tools/cut.swift`).
 
+## The website (D326, `design/site.md`)
+
+- [ ] **The share image** (`og.png` and its alt) still says "Say it once." Redraw it with the D326
+      tagline and the morning note. Trigger: the next deploy of the site.
+- [ ] **Pictures from the real Mac app:** the hero in the Mac window, and a real Devices picture to
+      replace the drawn Isles if it reads as well. Trigger: the next Mac app walk (research/109's).
+- [ ] **A 中文 site** (home, Get started, the mainland-China note), with the designed zh tagline.
+      Trigger: a mainland China mirror, or the first zh launch.
+- [ ] **Dead CSS and scenes** from the old landing page (the drawn hero chat, board, phone, ledger,
+      opened task) in `site.css` and `main.ts`. Trigger: the next change to `site.css`.
+- [ ] **Get started with people**, not only LLM raters (research/113): a fresh visitor with a Mac,
+      one on a phone, one in China without a paid plan. Trigger: before the first public launch.
+- [ ] **The agent sentence, end to end:** paste it into Claude Code and Codex on a scratch Mac user
+      and a scratch VPS and watch it reach the partner's first words. Trigger: the author's next
+      session with a spare machine.
+
 ## A second partner (D309, D312, `personas.md`)
 
 - **D312 follow-ups:** the full partner eval at merge (only `second-partner-name` and

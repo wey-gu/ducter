@@ -19,9 +19,9 @@ const notes = facts.releaseUrl ?? RELEASES_URL;
 const TESTFLIGHT = "https://testflight.apple.com/join/Z4GvWt7t";
 const oneLine = "curl -fsSL https://ducter.ai/install.sh | sh";
 const serverLine = "curl -fsSL https://ducter.ai/install.sh | sh -s -- --service";
-const agentAsk = "Install the ducter-deploy skill from github.com/wey-gu/ducter/tree/main/skills and deploy Ducter on my server.";
+const agentAsk = "Set up Ducter on my server for me, so my phone and Mac can reach it. Follow the guide at https://ducter.ai/skills/ducter-deploy/SKILL.md";
 const size = (x: typeof a.dmg) => (x ? formatSize(x.size) : "");
-const files = [a.dmg, a.linuxX64, a.linuxArm64, a.apk].filter((x): x is NonNullable<typeof x> => !!x);
+const files = (["dmg", "linuxX64", "linuxArm64", "apk"] as const).flatMap((k) => (a[k] ? [{ k, f: a[k]! }] : []));
 const title = "Download Ducter";
 const description = "Get Ducter for your Mac or a Linux server, and connect your iPhone, iPad or Android phone. Every download, with its size, checksum and what it needs.";
 const arrow = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v9M4.5 8L8 11.5 11.5 8M3 13.5h10"/></svg>`;
@@ -38,6 +38,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
   <div class="wrap">
     <h1>Get Ducter.</h1>
     <p class="lede">Ducter lives on one computer: <b>your Mac</b> or <b>a Linux server</b>. Your iPhone, iPad, Android phone and any browser then open the same conversation, wherever you are.</p>
+    <p class="dl-new">New to Ducter? <a href="/start">Get started</a> asks one question and shows you one path, with your AI agent doing the setup if you like.</p>
     <p class="dl-rel" id="dl-rel">
       {version ? (
         <>
@@ -239,35 +240,14 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
 </section>
 
 <section class="dl-sec deep" id="files">
-  <div class="wrap dl-files-wrap">
-    <div>
-      <h2>Check what you downloaded</h2>
-      <p class="body">Every file comes from Ducter's release on GitHub, with its SHA-256 in <code>SHA256SUMS.txt</code>. The one-line installer checks it for you, and Apple's notarization too on a Mac. To check a file yourself, put it next to <code>SHA256SUMS.txt</code> and run:</p>
-      <div class="term short"><button class="btn sm copy" type="button" data-copy="shasum -a 256 -c SHA256SUMS.txt --ignore-missing">Copy</button><pre><span class="p">$ </span>shasum -a 256 -c SHA256SUMS.txt --ignore-missing</pre></div>
-    </div>
-    <div class="dl-table-wrap">
-      {files.length > 0 ? (
-        <table class="dl-table" id="dl-table">
-          <caption class="sr-only">The files in Ducter {version}</caption>
-          <thead><tr><th scope="col">File</th><th scope="col">Size</th><th scope="col">SHA-256</th></tr></thead>
-          <tbody>
-            {files.map((f) => (
-              <tr>
-                <td><a href={f.url}>{f.name}</a></td>
-                <td>{formatSize(f.size)}</td>
-                <td><code class="sha" title={f.sha256 ?? ""}>{f.sha256 ?? "in SHA256SUMS.txt"}</code></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <p class="body">No release files yet.</p>
-      )}
-      <p class="dl-small">
-        {a.sums && <a href={a.sums.url} data-asset="sums">SHA256SUMS.txt</a>}
-        {a.sums && " · "}<a href={notes} data-rel="notes" rel="noopener">Release notes</a> · <a href={`${REPO_URL}/releases`} rel="noopener">Every release</a>
-      </p>
-    </div>
+  <div class="wrap">
+    <p class="dl-small dl-fileline">
+      <span>The files in Ducter {version ?? "(no release yet)"}:</span>
+      {files.map(({ k, f }) => <a href={f.url} data-asset={k} data-name={k}>{f.name} <small data-meta={k}>{formatSize(f.size)}</small></a>)}
+      {a.sums && <a href={a.sums.url} data-asset="sums">SHA256SUMS.txt</a>}
+      <a href={notes} data-rel="notes" rel="noopener">Release notes</a>
+      <a href={`${REPO_URL}/releases`} rel="noopener">Every release</a>
+    </p>
   </div>
 </section>
 
@@ -275,7 +255,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
   <div class="wrap dl-notes">
     <div class="dl-note" id="china">
       <h3>Downloading from mainland China</h3>
-      <p>Every file comes from GitHub, which can be slow or stop part-way from mainland China, and Ducter has no mirror there yet. The one-line installer tries again by itself and checks each file against its checksum, so a broken download never installs; running it again is safe. You can also download the files on another connection and check them as above.</p>
+      <p>Every file comes from GitHub, which can be slow or stop part-way from mainland China, and Ducter has no mirror there yet. The one-line installer tries again by itself and checks each file against its checksum, so a broken download never installs; running it again is safe. You can also download the files on another connection and check them against SHA256SUMS.txt.</p>
     </div>
     <div class="dl-note">
       <h3>Updates</h3>

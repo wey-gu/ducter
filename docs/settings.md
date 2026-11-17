@@ -42,35 +42,37 @@ At the top is your partner, its name and one line: where it lives and what it th
 
 - **Its name.** Click **Rename**, type a new name, and press Return. The new name shows at once
   in every window and on your phone.
-- **AI agents on …** shows the AI agents on the computer Ducter lives on (this Mac, or a server
-  like "hel"), each with how much of its limit is left.
-- **What it thinks with.** The AI agent your partner itself runs on, in a round clay socket:
-  Claude Code, Codex, DeepSeek Harness or pi, whichever are signed in there. When you haven't
-  picked one and Claude Code isn't signed in, your partner uses Codex if it is (**Picked for you:
-  only Codex is signed in**), else DeepSeek Harness, else pi (**Picked for you: Claude Code isn't
-  signed in**). With Claude Code, pick **Opus** or **Sonnet**; the line under the choice says what
-  the one you picked is like (Opus thinks the deepest, Sonnet answers faster); with
-  DeepSeek Harness, or pi signed in to DeepSeek, pick DeepSeek's **V4 Pro** (smartest) or
-  **Flash** (faster replies). **Switch** lets you drop another AI agent that is signed in there
-  into the socket. Switching keeps its name, what it remembers and your conversation; the new
-  choice takes over from your next message. On every one of them your partner only reads and
-  decides: it can't change your files or run commands itself; that is what its tasks do.
-  DeepSeek Harness and pi are paid per use with your own key.
-- **Who does the tasks.** For each task your partner picks the best fit. Click an AI agent on
-  the tray to see where it's signed in, how many devices share it, and **Use it for tasks** (on
-  unless you turn it off). An AI agent you pay per use says **Pay per use**.
+- **What it thinks with.** The AI agent your partner itself runs on (Claude Code, Codex,
+  DeepSeek Harness or pi, whichever are signed in there), with how much of its limit is left. When
+  you haven't picked one, your partner uses Claude Code if it is signed in, else Codex, else
+  DeepSeek Harness, else pi. With Claude Code, pick **Opus** or **Sonnet**; the line under the
+  choice says what the one you picked is like (Opus thinks the deepest, Sonnet answers faster);
+  with DeepSeek Harness, or pi signed in to DeepSeek, pick DeepSeek's **V4 Pro** (smartest) or
+  **Flash** (faster replies). When another AI agent is signed in there, **Switch** lists it with
+  **Use this**. Switching keeps its name, what it remembers and your conversation; the new choice
+  takes over from your next message. On every one of them your partner only reads and decides: it
+  can't change your files or run commands itself; that is what its tasks do.
+- **Who does the tasks.** One line says how your partner picks: the best fit with the most limit
+  left, or the one your rule names. Each signed-in AI agent is a row with its limit; with two or
+  more, each has **Use it for tasks** (on unless you turn it off). One paid per use says so. With
+  only one, the line says every task goes to it.
 - **Your rules.** Say a rule in the conversation, like "backend work on Codex", and your
-  partner repeats it back and keeps it. Your rules are listed here; **Remove** drops one. If you
-  move the same kind of task to another AI agent twice, your partner asks once whether to make
-  it a rule.
-- **Paste an API key.** No subscription needed: a key you pay for by use (DeepSeek, Kimi, Zhipu GLM,
-  OpenAI, Anthropic, OpenRouter) works too. **Paste a key**, then **Check**: your partner says in one
-  line whether it works, without spending anything. The key stays in Ducter on the computer it lives
-  on and is never shown again. The same row is on that computer's card in **Devices**.
+  partner repeats it back and keeps it. Your rules are listed under Who does the tasks;
+  **Remove** drops one. If you move the same kind of task to another AI agent twice, your partner
+  asks once whether to make it a rule. Any task can still be handed to another AI agent from the
+  task itself.
+- **Add another AI agent.** One place for adding one, with a line on what it gives you (with a
+  second one, your partner picks per task, and when one runs out of limit the other carries on).
+  Claude Code or Codex not signed in yet has **Install** or **Sign in**, which take you to
+  **Devices**. **Paste an API key** needs no subscription: a key you pay for by use (DeepSeek,
+  Kimi, Zhipu GLM, OpenAI, Anthropic, OpenRouter) works too. **Paste a key**, then **Check**: your
+  partner says in one line whether it works, without spending anything. The key stays in Ducter on
+  the computer it lives on and is never shown again. The same row is on that computer's card in
+  **Devices**, where the AI agents there are shown with their limits.
 - **When a limit runs out.** A task whose AI agent used up its limit waits and carries on by itself
   when the limit comes back. Turn on **Hand it to another AI agent right away** and another
   signed-in AI agent on the same computer carries on at once instead. The same switch is under a
-  task's limit card.
+  task's limit card. It shows once an AI agent does tasks; with only one, it says the task waits.
 - **How it talks.** **Follow me** answers in whatever language you write in: Korean gets
   Korean, Spanish gets Spanish. A message with no language of its own, like "OK" or a thumbs-up,
   keeps the one you were using. Pick a language (简体中文, 繁體中文, English, 日本語, 한국어,

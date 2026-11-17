@@ -261,10 +261,6 @@ func (a *App) settingsView(c *ui.Context) {
 			})
 		})
 	})
-	if tab == TabPartner {
-		a.loadoutToast(c, w)
-		a.brainFlyer(c)
-	}
 }
 
 // tabName is a tab's name in the rail and at the top of its section.

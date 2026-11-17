@@ -101,34 +101,36 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	st := a.S.Settings
 	a.partnerToast(c)
 	a.partnersGroup(c) // D309: 伙伴们 / Your partners
-	// What it thinks with and who does the tasks (D89): the tray of the
-	// home's AI agents, then the two groups.
-	a.tray(c)
-	a.brainCard(c)
-	a.tasksCard(c)
-	a.keyGroup(c)         // D307: a key instead of a subscription (D298)
-	a.handoffGroup(c, st) // D307: when a limit runs out (D297)
+	// D322: one story. What it thinks with, who does the tasks, one place
+	// to add another AI, then when a limit runs out (D297, D307).
+	a.thinksGroup(c)
+	a.tasksGroup(c)
+	a.addGroup(c)
+	a.handoffGroup(c, st)
 	a.talkCard(c, st)
 	a.recordsGroup(c) // D307: their records (D298, D299)
 	a.trustCard(c)
 	// D257: what it remembers and the connected AI agents are tabs of their own (memory.go).
 }
 
-// partnerHero is the calm header: the clay partner, its name (a click on
-// Rename turns it into a field), and one line of where it lives and what
-// it thinks with.
+// partnerHero is the pane's header (D322: sized like every pane's, on the
+// paper): the clay partner, its name (a click on Rename turns it into a
+// field), and one line of where it lives and what it thinks with.
 func (a *App) partnerHero(c *ui.Context) {
 	t := a.T
 	shown := a.presence(c)
 	if a.Resting() {
 		shown = theme.Napping
 	}
-	ui.Row(c.Key("partner-hero")).Gap(t.S5).AlignItems(ui.Center).Padding(t.S4, t.S6).Radius(t.RadiusXL).Background(t.Clay).
-		Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color).Children(func() {
-		a.avatar(c, shown, 112)
-		ui.Column(c).Grow(1).MinWidth(0).Gap(t.S2).Children(func() {
+	line := a.L.T("partner.header", a.homeName(), harnessName(a.brain().Harness))
+	if a.noBrain() {
+		line = a.L.T("partner.header.none", a.homeName())
+	}
+	ui.Row(c.Key("partner-hero")).Gap(t.S4).AlignItems(ui.Center).Children(func() {
+		a.avatar(c, shown, 64)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
 			a.partnerName(c)
-			ui.Text(c, a.L.T("partner.header", a.homeName(), harnessName(a.brain().Harness))).FontSize(t.LG).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
+			ui.Text(c, line).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		})
 	})
 }
@@ -146,8 +148,8 @@ func (a *App) partnerName(c *ui.Context) {
 	ps := &a.partner
 	if !ps.editing {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-			a.heading(c, a.defaultName(), t.Title).SingleLine().Shrink(1).MinWidth(0)
-			if a.S.Settings != nil && a.button(c, a.L.T("partner.rename"), btnText, t.ControlSM, t.Clay) {
+			a.heading(c, a.defaultName(), t.XXL).SingleLine().Shrink(1).MinWidth(0)
+			if a.S.Settings != nil && a.button(c, a.L.T("partner.rename"), btnText, t.ControlSM, t.Bg) {
 				ps.editing, ps.nameDraft, ps.focused = true, "", false
 			}
 		})
@@ -171,10 +173,10 @@ func (a *App) partnerName(c *ui.Context) {
 			in.Focus()
 			ps.focused = true
 		}
-		if a.button(c, a.L.T("partner.rename.cancel"), btnText, t.ControlMD, t.Clay) {
+		if a.button(c, a.L.T("partner.rename.cancel"), btnText, t.ControlMD, t.Bg) {
 			ps.editing = false
 		}
-		if a.button(c, a.L.T("setup.name.ok"), btnPrimary, t.ControlMD, t.Clay) {
+		if a.button(c, a.L.T("setup.name.ok"), btnPrimary, t.ControlMD, t.Bg) {
 			save()
 		}
 	})

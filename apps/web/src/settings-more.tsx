@@ -43,9 +43,14 @@ export function KeyRow({ open: start = false, instead = false }: { open?: boolea
 export function HandoffSettings() {
   const s = A.settings;
   if (!s) return null;
+  // D322: nothing does tasks yet, no limit to run out; one agent, it says what happens then.
+  const agents = A.agents ?? [];
+  const ready = agents.filter((h) => h.installed && h.loggedIn).length;
+  if (agents.length && !ready) return null;
   return (
     <section class="set">
       <h3>{t("handoff.title")}</h3>
+      {agents.length > 0 && ready === 1 && <p class="g-note">{t("handoff.one")}</p>}
       <div class="set-card">
         <Toggle
           label={t("handoff.row")}

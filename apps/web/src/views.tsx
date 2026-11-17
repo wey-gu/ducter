@@ -46,7 +46,8 @@ import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
 import { ChatAppsSettings } from "./channels.tsx";
-import { HandoffSettings, KeyRow, PaperRow, RecordsSettings } from "./settings-more.tsx";
+import { HandoffSettings, PaperRow, RecordsSettings } from "./settings-more.tsx";
+import { AddSection, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
@@ -2302,9 +2303,12 @@ function NameRow() {
     if (n && n !== A.defaultName()) A.setSettings({ name: n });
     setEditing(false);
   };
+  // D322: where it lives and what it thinks with, one line under the name (the Mac's header).
+  const brain = A.brainNow ?? A.settings?.brain;
+  const lede = !A.homeName ? "" : noBrain() ? t("partner.header.none", A.homeName) : brain ? t("partner.header", A.homeName, harnessName(brain.harness)) : "";
   return (
     <div class="partner-head">
-      <Avatar size={64} />
+      <Avatar size={56} />
       {editing ? (
         <>
           <input
@@ -2324,7 +2328,10 @@ function NameRow() {
         </>
       ) : (
         <>
-          <h2 class="grow">{A.defaultName()}</h2>
+          <span class="grow">
+            <h2>{A.defaultName()}</h2>
+            {lede && <small>{lede}</small>}
+          </span>
           {A.settings && <Btn kind="text" label={t("partner.rename")} onClick={() => (setDraft(A.defaultName()), setEditing(true))} />}
         </>
       )}
@@ -2443,120 +2450,6 @@ function NotifySettings() {
         <Said k="default" />
       </section>
       {s.notify && <PhonePush />}
-    </>
-  );
-}
-
-/** An AI agent's lines (D296: each fact its own line, each line a phrase, never joined with " · "). */
-function agentLines(h: DeviceHarness, brain: boolean): string[] {
-  if (!h.installed) return [t("loadout.missing")];
-  if (h.harness === "pi" && !h.loggedIn) return [t("loadout.pi")];
-  if (!h.loggedIn) return [t("loadout.signed_out")];
-  const al = h.allowance;
-  if (!al) return [t("loadout.signed_in")];
-  const left = brain && al.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(al.left), A.S.personaName) : al.resetsAt ? t("loadout.left.back", pct(al.left), when(A.L, al.resetsAt)) : t("loadout.left", pct(al.left));
-  return [left, al.sharedBy && al.sharedBy > 1 ? t("loadout.acct.shared", al.sharedBy) : t("loadout.acct.only", A.homeName ?? "")];
-}
-
-
-/** What it thinks with, and who does the tasks (D89), as lists: no stage on the phone. */
-function Loadout() {
-  const s = A.settings;
-  const agents = A.agents ?? [];
-  if (!s) return null;
-  const brain = A.brainNow ?? s.brain ?? { harness: "claude-code", model: "opus" };
-  const b = agents.find((h) => h.harness === brain.harness);
-  // D150: the models come from the home (settings.brainNow), never a list of the phone's own.
-  const models = A.brainNow?.harness === brain.harness ? A.brainNow.models : [];
-  const brains = agents.filter((h) => h.canBePartner && h.installed && h.loggedIn);
-  const ready = agents.filter((h) => h.installed && h.loggedIn);
-  const name = A.S.personaName;
-  const setBrain = (harness: string, model?: string) => {
-    const h = agents.find((x) => x.harness === harness);
-    const m = model ?? h?.models?.[0]?.id;
-    A.setSettings({ brain: { harness: harness as never, ...(m ? { model: m } : {}) } });
-    const label = models.find((x) => x.id === m)?.label;
-    A.toast(t("loadout.toast.brain", name, label && harness === brain.harness ? t("loadout.brain.with", harnessName(harness), label) : harnessName(harness)));
-  };
-  const reserve = b?.allowance ? (b.allowance.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(b.allowance.left), name) : t("loadout.left.kept", pct(b.allowance.left), name)) : t("loadout.signed_in"); // no limit reported: no reserve to claim (D133)
-  const model = models.find((m) => m.id === brain.model);
-  return (
-    <>
-      <section class="set">
-        <h3>{t("loadout.brain.title")}</h3>
-        <div class="set-card">
-        <div class="agent">
-          <Coin harness={brain.harness} size={40} />
-          <span class="grow">
-            <b>{harnessName(brain.harness)}</b>
-            {A.brainNow?.why && <small class="auto">{A.brainNow.why === "only_codex" ? t("loadout.brain.auto", harnessName(brain.harness)) : t("loadout.brain.auto_other")}</small>}
-            <small>{reserve}</small>
-          </span>
-        </div>
-        {brains.length > 1 && (
-          <Seg label={t("loadout.socket")} value={brain.harness} options={brains.map((h) => ({ v: h.harness, label: harnessName(h.harness) }))} onPick={(v) => setBrain(v)} />
-        )}
-        {models.length > 0 && (
-          <Seg
-            label={t("loadout.brain.model")}
-            value={brain.model}
-            options={models.map((m) => ({ v: m.id, label: m.label || m.id }))}
-            onPick={(m) => setBrain(brain.harness, m)}
-          />
-        )}
-        {/* D296: the choice says the model; what it is like is one phrase under it. */}
-        {model && <div class="small sub agent-model">{t(model.kind === "fast" ? "loadout.model.line.fast" : "loadout.model.line.smart", model.label || model.id)}</div>}
-        </div>
-        <div class="small sub">{t("loadout.brain.keep")}</div>
-      </section>
-      <section class="set">
-        <h3>{t("loadout.tasks.title")}</h3>
-        {ready.length <= 1 && !(A.rules ?? []).length ? (
-          <div class="small sub">{t("loadout.tasks.one", harnessName(ready[0]?.harness ?? brain.harness), name)}</div>
-        ) : (
-          <>
-            <div class="small sub">{t("loadout.tasks.default", name)}</div>
-            <div class="set-card">
-            {agents.map((h) => {
-              const on = (s.taskAccounts as Record<string, { enabled: boolean }> | undefined)?.[h.harness]?.enabled !== false;
-              const isBrain = h.harness === brain.harness;
-              return (
-                <div class="agent" key={h.harness}>
-                  <Coin harness={h.harness} size={40} off={!(h.installed && h.loggedIn)} />
-                  <span class="grow">
-                    <b>{harnessName(h.harness)}</b>
-                    {agentLines(h, isBrain).map((l) => (
-                      <small key={l}>{l}</small>
-                    ))}
-                    {h.loggedIn && h.billing === "usage" && <small class="paid">{t("loadout.acct.paid")}</small>}
-                  </span>
-                  {h.installed && h.loggedIn && (
-                    <input
-                      type="checkbox"
-                      role="switch"
-                      aria-label={`${t("loadout.acct.tasks")}, ${harnessName(h.harness)}`}
-                      checked={on}
-                      onChange={(e) => A.setSettings({ taskAccounts: { ...s.taskAccounts, [h.harness]: { enabled: (e.target as HTMLInputElement).checked } } })}
-                    />
-                  )}
-                </div>
-              );
-            })}
-            </div>
-            {b && <div class="small sub">{t("loadout.acct.same", name)}</div>}
-            <h3>{t("loadout.rules")}</h3>
-            <div class="set-card">
-              {(A.rules ?? []).map((r) => (
-                <div class="noted-row" key={r.id}>
-                  <span>{r.text}</span>
-                  <Btn kind="text" label={t("loadout.rule.remove")} about={r.text} onClick={() => (A.send({ t: "rule_remove", id: r.id }), A.toast(t("loadout.rule.removed", r.text)))} />
-                </div>
-              ))}
-              <AddRow label={t("loadout.rule.add", name)} help={(A.rules ?? []).length ? undefined : t("loadout.rules.none")} onClick={() => A.tellRule()} />
-            </div>
-          </>
-        )}
-      </section>
     </>
   );
 }
@@ -3000,13 +2893,10 @@ function SettingsSheet() {
               <NameRow />
               {/* D309: 伙伴们 / Your partners, on a home that offers more than one. */}
               <PartnersSection />
-              <Loadout />
-              {/* D307: a key instead of a subscription (D298), the hand-off (D297), their records (D298, D299). */}
-              {A.settings && (
-                <section class="set">
-                  <KeyRow />
-                </section>
-              )}
+              {/* D322: one story: what it thinks with, who does the tasks, adding another AI (a key too), then the hand-off (D297). */}
+              <ThinksSection />
+              <TasksSection />
+              <AddSection />
               <HandoffSettings />
               <TalkSettings />
               <RecordsSettings />

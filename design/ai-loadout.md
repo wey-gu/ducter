@@ -10,6 +10,12 @@
 > `~/dev/ducter-evidence/ai-loadout/` (`exp/` prompts, scripts, raw answers in `out/`, grades in
 > `judge/`; `proto/` the page).
 
+> **2026-11-17, D322:** on Settings › Partner the socket, the tray and the token's flight are gone:
+> the pane is one story on the settings grid (`design/settings.md` "伙伴 / Partner, as one story"):
+> 想事情用 (one row, Switch only with a choice), 做事的 (one row per signed-in agent), and one
+> 再添一个 AI agent group (sign in an agent or paste a key). The tray with its limit rings stays on
+> Devices, the home's card. §4 and §8 below describe the page as D89 built it.
+
 The author asked: "我们没有 main ai 和 focus window ai 的配置的地方？应该也是游戏界面风格的才对".
 Today there is no place. The partner's harness is hard-coded and its model comes from an
 environment variable; who does a task is chosen by the partner in the moment, steered only by

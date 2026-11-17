@@ -4,6 +4,9 @@
 //   DUCTER_PORT=7960 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_ACCOUNTS=multi DEMO_ALLOWANCE=plenty bun apps/web/demo-loadout.ts
 // DEMO_ACCOUNTS: one (a fresh user: Claude Code only) | multi (Claude Code, Codex, pi, DeepSeek Harness not installed)
 // DEMO_ALLOWANCE: plenty (Claude Code 64% left) | low (5%: only the part kept for Ducter)
+// DEMO_CASE (D322, Settings › Partner): author (a server, Codex only, Claude Code not installed) |
+// two (Claude Code and Codex) | none (Claude Code signed out) | server (hel, both) | key (a DeepSeek key only)
+import { mkdirSync, writeFileSync } from "node:fs";
 import { startCore, stubRunner } from "@ducter/core";
 import { noOo } from "./demo-oo.ts";
 import type { Bodies, DeviceHarness, Place } from "@ducter/protocol";
@@ -35,10 +38,26 @@ const harnesses: DeviceHarness[] = [
     : []),
 ];
 
+const kase = process.env.DEMO_CASE;
+const off = (harness: string): DeviceHarness => ({ harness, installed: false, loggedIn: false, canBePartner: false });
+const cc: DeviceHarness = harnesses[0]!;
+const cx: DeviceHarness = { harness: "codex", installed: true, loggedIn: true, canBePartner: true, billing: "plan" };
+const cases: Record<string, { hs: DeviceHarness[]; kind: "laptop" | "server"; name?: string }> = {
+  author: { hs: [off("claude-code"), cx, off("pi"), off("deepseek-harness")], kind: "server", name: "Hetzner Server" },
+  two: { hs: [cc, { ...cx, allowance: { left: 0.48, resetsAt: new Date(Date.now() + 3 * 86400_000).toISOString() } }, off("pi"), off("deepseek-harness")], kind: "laptop" },
+  none: { hs: [{ harness: "claude-code", installed: true, loggedIn: false, canBePartner: true }, off("codex"), off("pi"), off("deepseek-harness")], kind: "laptop" },
+  server: { hs: [cc, cx, off("pi"), off("deepseek-harness")], kind: "server", name: "hel" },
+  key: { hs: [off("claude-code"), off("codex"), off("pi"), { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: true, billing: "usage" }], kind: "laptop" },
+};
+const pick = kase ? cases[kase] : undefined;
+if (pick?.name && process.env.DUCTER_DATA_DIR) {
+  mkdirSync(process.env.DUCTER_DATA_DIR, { recursive: true });
+  writeFileSync(`${process.env.DUCTER_DATA_DIR}/device-name`, pick.name + "\n");
+}
 const core = startCore({ ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
   hostname: process.env.DUCTER_HOST || "127.0.0.1",
-  deviceProbes: { cua: async () => ({ missing: "demo" }), harnesses: async () => harnesses, kind: async () => "laptop" },
+  deviceProbes: { cua: async () => ({ missing: "demo" }), harnesses: async () => pick?.hs ?? harnesses, kind: async () => pick?.kind ?? "laptop" },
 });
 core.setRunner(stubRunner(core));
 const log = core.log;

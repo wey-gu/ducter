@@ -13,31 +13,18 @@ import (
 )
 
 // What the partner thinks with, and who does the tasks (D89,
-// design/ai-loadout.md). On the Partner page: a clay socket beside the
-// partner holding the AI agent it thinks with, a tray of this Mac's AI
-// agents with a ring of the limit each has left, and two cards in plain
-// words. On a task: who is doing it and why, and 换谁来做 / Switch who does
-// it. The socket and the tray are the only game moment: dropping a token
-// into the socket (the equip's lift, arc and tock).
+// design/ai-loadout.md). On the Partner page (D322): one story on the
+// settings grid, what it thinks with, who does the tasks, and adding
+// another AI; the tray of the home's AI agents lives on Devices. On a
+// task: who is doing it and why, and 换谁来做 / Switch who does it.
 
 type loadoutState struct {
-	// choosing: 换一个 was pressed; the tokens that can go in lift.
+	// choosing: 换一个 was pressed; the agents it could think with are listed.
 	choosing bool
-	// acct is the tray token whose line is open in Who does the tasks.
-	acct string
-	// Where the socket's well and each token's coin were last frame
-	// (window DIPs), for the flight.
-	socket ui.Rect
-	coins  map[string]ui.Rect
-	// fx is a token flying into the socket; fxTo the brain it carries.
-	fx   *equipFx
-	fxTo protocol.Brain
 	// pending is a brain sent and not yet confirmed; pendingFrom the
 	// settings frame it was sent against (a newer one is the server's word).
 	pending     *protocol.Brain
 	pendingFrom *protocol.Settings
-	toast       string
-	toastAt     time.Time
 	// switchFor is the task whose 换谁来做 is open; pick the chosen row;
 	// switching the "harness/model" sent; switchMsg its outcome.
 	switchFor string
@@ -231,43 +218,6 @@ func (a *App) tokenStatus(h protocol.DeviceHarness) string {
 	return a.L.T("loadout.signed_in")
 }
 
-// ---------- the ring ----------
-
-// limitRing draws a token's limit as a ring round its coin: the stretch
-// left, starting at the top and running clockwise; on the partner's own
-// account the last 10% (what is kept for it) is the darker accent. No
-// report: a quiet full track. Not installed: a dashed one.
-func (a *App) limitRing(h protocol.DeviceHarness, brain bool) func(p *ui.Painter, r ui.Rect) {
-	t := a.T
-	col := t.Ink
-	if h.Harness == "claude-code" {
-		col = t.Accent
-	}
-	if !h.LoggedIn {
-		col = t.InkMuted
-	}
-	return func(p *ui.Painter, r ui.Rect) {
-		cx, cy := r.X+r.W/2, r.Y+r.H/2
-		rad := min(r.W, r.H)/2 - 4
-		var track ui.Path
-		track.Circle(cx, cy, rad)
-		if !h.Installed {
-			track.Dash(0, 5, 5)
-			p.StrokePath(&track, 3, t.Line2)
-			return
-		}
-		p.StrokePath(&track, 5, t.SurfaceSunken)
-		if h.Allowance == nil || !h.LoggedIn {
-			return
-		}
-		left := float32(min(max(h.Allowance.Left, 0), 1))
-		arc(p, cx, cy, rad, 0, left, 5, col)
-		if brain {
-			arc(p, cx, cy, rad, 0, min(left, float32(protocol.PartnerReserve)), 5, t.PressAccent.Color)
-		}
-	}
-}
-
 // arc strokes a ring from fraction f0 to f1 of a turn, clockwise from the
 // top, with round ends.
 func arc(p *ui.Painter, cx, cy, r, f0, f1, w float32, col ui.Color) {
@@ -289,192 +239,165 @@ func arc(p *ui.Painter, cx, cy, r, f0, f1, w float32, col ui.Color) {
 	p.StrokePath(&m, w, col)
 }
 
-// ---------- the socket, beside the partner ----------
+// ---------- Settings › Partner, one story (D322) ----------
+//
+// The partner (the header), then what it thinks with (one row), who does
+// the tasks (one row per signed-in AI agent, how Ducter chooses, the
+// override in a task), one place to add another AI (sign in an agent or
+// paste a key, with what it gains), then when a limit runs out. Coins at the
+// tile size, on D289's grid; the tray stays on Devices.
 
-// socket is the clay well beside the partner, holding the token of the AI
-// agent it thinks with, labelled 想事情用 / Thinks with and, under it, the
-// account and model in words. While choosing, a dashed accent ring says
-// "this goes here".
-func (a *App) socket(c *ui.Context) {
-	t := a.T
-	lo := &a.lo
-	b := a.brain()
-	flying := lo.fx != nil && !lo.fx.back
-	label := a.L.T("loadout.socket") + ", " + a.brainLine(b)
-	ui.Column(c.Key("socket")).Width(150).Shrink(0).AlignItems(ui.Center).Gap(t.S1).Role(ui.RoleGroup).Label(label).Children(func() {
-		ui.Text(c, a.L.T("loadout.socket")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).AccessHidden(true)
-		well := ui.Box(c.Key("well")).Size(112, 112).Radius(56).
-			LinearGradient(ui.LinearGradient{From: t.SurfaceSunken, To: t.Line2, Angle: 180}).
-			InsetShadow(0, 6, 10, 0, t.Ink.Alpha(0.22)).Shadow(0, 3, 0, 0, t.Surface.Alpha(0.8)).AccessHidden(true)
-		well.Children(func() {
-			// The token sits in the well, unless it is the one in flight.
-			if !flying {
-				if bmp := theme.Clay(coinArt(b.Harness, false)); bmp != nil {
-					ui.Image(c, bmp).Size(84, 84).Absolute().Left(14).Top(14)
-				}
-			}
-			if lo.choosing || flying {
-				ring := ui.Box(c.Key("target")).Absolute().Left(-7).Top(-7).Size(126, 126)
-				ring.Draw(func(p *ui.Painter, r ui.Rect) {
-					p.StrokeDashed(r, t.Accent, r.W/2, 3)
-				})
-			}
-		})
-		lo.socket = well.Bounds()
-		ui.Text(c, a.brainLine(b)).Font(t.Display).FontSize(t.MD).FontWeight(800).TextAlign(ui.Center).MaxLines(2).AccessHidden(true)
-	})
+// readyAgents are the home's AI agents that can do tasks now: installed and
+// signed in.
+func (a *App) readyAgents() []protocol.DeviceHarness {
+	var out []protocol.DeviceHarness
+	for _, h := range a.trayHarnesses() {
+		if h.Installed && h.LoggedIn {
+			out = append(out, h)
+		}
+	}
+	return out
 }
 
-// socketWell is the clay well on What it thinks with, holding the token
-// of the AI agent it thinks with: where a token flies on Switch.
-func (a *App) socketWell(c *ui.Context, b protocol.Brain) {
-	t := a.T
-	lo := &a.lo
-	flying := lo.fx != nil && !lo.fx.back
-	well := ui.Box(c.Key("well")).Size(80, 80).Radius(40).Shrink(0).
-		LinearGradient(ui.LinearGradient{From: t.SurfaceSunken, To: t.Line2, Angle: 180}).
-		InsetShadow(0, 5, 8, 0, t.Ink.Alpha(0.2)).Shadow(0, 3, 0, 0, t.Surface.Alpha(0.8)).
-		Role(ui.RoleImage).Label(a.L.T("loadout.socket") + ", " + a.brainLine(b))
-	well.Children(func() {
-		if !flying {
-			if bmp := theme.Clay(coinArt(b.Harness, false)); bmp != nil {
-				ui.Image(c, bmp).Size(60, 60).Absolute().Left(10).Top(10)
-			}
-		}
-		if lo.choosing || flying {
-			ui.Box(c.Key("target")).Absolute().Left(-6).Top(-6).Size(92, 92).Draw(func(p *ui.Painter, r ui.Rect) {
-				p.StrokeDashed(r, t.Accent, r.W/2, 3)
-			})
-		}
-	})
-	lo.socket = well.Bounds()
-}
-
-// ---------- the tray ----------
-
-// tray is this Mac's AI agents on a clay tray: a coin each with its limit
-// ring, its name and one line. A tap opens its line in Who does the tasks;
-// while choosing, the ones that can be what it thinks with lift and the
-// rest step back, saying why.
-func (a *App) tray(c *ui.Context) {
-	t := a.T
-	lo := &a.lo
+// noBrain: the home said what it has, and nothing on it can think.
+func (a *App) noBrain() bool {
 	hs := a.trayHarnesses()
 	if len(hs) == 0 {
-		return
+		return false
 	}
-	if lo.coins == nil {
-		lo.coins = map[string]ui.Rect{}
+	for _, h := range hs {
+		if h.Installed && h.LoggedIn && h.CanBePartner {
+			return false
+		}
 	}
-	b := a.brain()
-	ui.Column(c.Key("tray")).Gap(t.S2).Children(func() {
-		a.sectionHead(c, a.L.T("loadout.tray", a.homeName()), "") // D289: a section header like the others
-		ui.Row(c.Key("tray-bed")).Gap(t.S2).Wrap().Justify(ui.SpaceAround).Padding(t.S4, t.S4).Radius(t.RadiusXL).
-			LinearGradient(ui.LinearGradient{From: t.Sunken, To: t.SurfaceSunken, Angle: 180}).
-			InsetShadow(0, 3, 0, 0, t.Surface.Alpha(0.75)).Shadow(0, 6, 0, 0, t.Line2).Role(ui.RoleGroup).Label(a.L.T("loadout.tray", a.homeName())).
-			Children(func() {
-				for _, h := range hs {
-					a.trayToken(c, h, b)
-				}
-			})
-	})
+	return true
 }
 
-func (a *App) trayToken(c *ui.Context, h protocol.DeviceHarness, b protocol.Brain) {
+// brainOthers are the signed-in agents it could think with instead.
+func (a *App) brainOthers(b protocol.Brain) []protocol.DeviceHarness {
+	var out []protocol.DeviceHarness
+	for _, h := range a.readyAgents() {
+		if h.CanBePartner && h.Harness != b.Harness {
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
+// agentTile is an AI agent's coin at the tile size; off: not there yet.
+func (a *App) agentTile(c *ui.Context, harness string, off bool) func() {
+	return a.clayTile(c, coinArt(harness, off), off && !coinKnown(harness))
+}
+
+// limitWords is an agent's limit as one phrase, or "" when it says none.
+func (a *App) limitWords(h *protocol.DeviceHarness, brain bool) string {
+	if h == nil || h.Allowance == nil {
+		return ""
+	}
+	al := h.Allowance
+	if brain && al.Left <= protocol.PartnerReserve {
+		return a.L.T("loadout.left.reserve", pct(al.Left), a.S.PersonaName)
+	}
+	if at := store.ParseTime(al.ResetsAt); !at.IsZero() {
+		return a.L.T("loadout.left.back", pct(al.Left), a.when(at))
+	}
+	return a.L.T("loadout.left", pct(al.Left))
+}
+
+// thinksGroup is 想事情用 / What it thinks with: one row, the agent and how
+// it thinks; 换一个 / Switch when another signed-in agent could, the model
+// when it has more than one, and the reassurance only where a switch is
+// possible.
+func (a *App) thinksGroup(c *ui.Context) {
 	t := a.T
 	lo := &a.lo
-	isBrain := h.Harness == b.Harness
-	canGo := h.CanBePartner && !isBrain && h.Installed && h.LoggedIn
-	status := a.tokenStatus(h)
-	if isBrain {
-		status = a.L.T("loadout.socket")
+	title := a.L.T("loadout.brain.title")
+	if a.noBrain() {
+		a.group(c, "brain", title, "", func() {
+			a.headRow(c, "brain", nil, a.L.T("loadout.brain.none"), a.L.T("loadout.brain.none.line"), sideMuted, nil)
+		})
+		return
 	}
-	name := harnessName(h.Harness)
-	tok := ui.Column(c.Key("tok:"+h.Harness)).Width(130).AlignItems(ui.Center).Gap(2).Padding(t.S1, 0).Radius(t.RadiusLG).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name + ", " + a.tokenStatus(h)).Focusable().AccessSelected(lo.acct == h.Harness)
-	why := ""
-	if lo.choosing {
-		switch {
-		case canGo:
-			tok.AnimatePose(ui.Pose{Y: -8}, t.Snappy)
-		case isBrain:
-		default:
-			tok.Opacity(0.4)
-			switch {
-			case !h.Installed:
-				why = a.L.T("loadout.cant.install")
-			case h.Harness == "pi" && !h.LoggedIn:
-				why = a.L.T("loadout.cant.pi")
-			case !h.LoggedIn:
-				why = a.L.T("loadout.cant.signin")
-			default:
-				why = a.L.T("loadout.cant.later")
-			}
+	b := a.brain()
+	h := a.trayHarness(b.Harness)
+	others := a.brainOthers(b)
+	models := a.brainModels(b, h)
+	var lines []string
+	if len(models) == 0 {
+		lines = append(lines, a.L.T("loadout.model.default.line"))
+	}
+	if st, bn := a.S.Settings, a.S.BrainNow; st != nil && st.Brain != nil && st.Brain.Harness != "" && st.Brain.Harness != b.Harness && lo.pending == nil && bn != nil && !bn.Auto {
+		// D150/D177: the person chose another, and it can't think now
+		// (Auto: they never chose; the setting is only Ducter's default).
+		lines = append(lines, a.L.T("loadout.brain.fallback", harnessName(st.Brain.Harness)))
+	}
+	if h != nil && h.Billing == "usage" {
+		lines = append(lines, a.L.T("loadout.brain.key"))
+	} else if l := a.limitWords(h, true); l != "" {
+		if h.Allowance.Left > protocol.PartnerReserve {
+			l = a.L.T("loadout.left.kept", pct(h.Allowance.Left), a.S.PersonaName)
 		}
-	} else {
-		a.lift(c, tok, 3)
+		lines = append(lines, l)
 	}
-	flying := lo.fx != nil && lo.fxTo.Harness == h.Harness
-	tok.Children(func() {
-		coin := ui.Box(c.Key("coin")).Size(84, 84).Draw(a.limitRing(h, isBrain)).AccessHidden(true)
-		coin.Children(func() {
-			off := !h.Installed || !h.LoggedIn
-			if bmp := theme.Clay(coinArt(h.Harness, off)); bmp != nil && !flying {
-				img := ui.Image(c, bmp).Size(62, 62).Absolute().Left(11).Top(11)
-				// An agent's own coin has its unavailable look drawn in; the generic
-				// token is dimmed here.
-				if !coinKnown(h.Harness) {
-					if !h.Installed {
-						img.Opacity(0.35)
-					} else if !h.LoggedIn {
-						img.Grayscale().Opacity(0.8)
-					}
+	a.group(c, "brain", title, "", func() {
+		a.headRow(c, "brain", a.agentTile(c, b.Harness, false), harnessName(b.Harness), strings.Join(lines, "\n"), sideMuted, func() {
+			switch {
+			case lo.choosing:
+				if a.button(c, a.L.T("loadout.cancel"), btnSecondary, t.ControlSM, t.Surface) {
+					lo.choosing = false
+				}
+			case len(others) > 0:
+				if a.buttonFor(c, a.L.T("loadout.switch"), title, btnSecondary, t.ControlSM, t.Surface) {
+					lo.choosing = true
 				}
 			}
-			if lo.choosing && canGo || lo.acct == h.Harness && !lo.choosing {
-				ui.Box(c.Key("sel")).Absolute().Left(-3).Top(-3).Size(90, 90).Draw(func(p *ui.Painter, r ui.Rect) {
-					var m ui.Path
-					m.Circle(r.X+r.W/2, r.Y+r.H/2, r.W/2-1)
-					p.StrokePath(&m, 2, t.Ink)
+		})
+		if lo.choosing {
+			for _, o := range others {
+				o := o
+				name := harnessName(o.Harness)
+				line := a.limitWords(&o, false)
+				if o.Billing == "usage" {
+					line = a.L.T("loadout.acct.paid.short")
+				}
+				a.tileRow(c, "brain-to:"+o.Harness, a.agentTile(c, o.Harness, false), name, line, func() {
+					if a.buttonFor(c, a.L.T("loadout.use"), name, btnSecondary, t.ControlSM, t.Surface) {
+						nb := protocol.Brain{Harness: o.Harness}
+						if ms := modelChoices(&o); len(ms) > 0 {
+							nb.Model = ms[0].id
+						}
+						lo.choosing = false
+						a.setBrain(nb)
+						a.say("brain", a.L.T("said.brain", name))
+					}
 				})
 			}
-		})
-		lo.coins[h.Harness] = coin.Bounds()
-		ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextAlign(ui.Center).SingleLine().AccessHidden(true)
-		line := status
-		if why != "" {
-			line = why
 		}
-		ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).TextAlign(ui.Center).MaxLines(2).AccessHidden(true)
-	})
-	if tok.Clicked() {
-		switch {
-		case lo.choosing && canGo:
-			a.putInSocket(h)
-		case lo.choosing:
-		default:
-			if lo.acct == h.Harness {
-				lo.acct = ""
-			} else {
-				lo.acct = h.Harness
+		if len(models) > 1 && !lo.choosing {
+			sel := 0
+			labels := make([]string, len(models))
+			for i, m := range models {
+				labels[i] = m.label
+				if m.id == b.Model {
+					sel = i
+				}
 			}
+			k := "loadout.model.line.smart"
+			if models[sel].fast {
+				k = "loadout.model.line.fast"
+			}
+			a.tileRow(c, "brain-model", nil, a.L.T("loadout.brain.model"), a.L.T(k, models[sel].label), func() {
+				if i := a.choices(c, "brain-model", a.L.T("loadout.brain.model"), labels, sel); i >= 0 && i != sel {
+					a.setBrain(protocol.Brain{Harness: b.Harness, Model: models[i].id})
+					a.say("brain", a.L.T("said.brain", a.L.T("loadout.brain.with", harnessName(b.Harness), models[i].label)))
+				}
+			})
 		}
-	}
-}
-
-// putInSocket flies the token into the socket and makes it what the
-// partner thinks with, on its strongest model.
-func (a *App) putInSocket(h protocol.DeviceHarness) {
-	lo := &a.lo
-	b := protocol.Brain{Harness: h.Harness}
-	if ms := modelChoices(&h); len(ms) > 0 {
-		b.Model = ms[0].id
-	}
-	lo.choosing = false
-	from := lo.coins[h.Harness]
-	lo.fx = &equipFx{ability: "brain", device: h.Harness, start: a.Now(), from: from, to: lo.socket}
-	lo.fxTo = b
-	a.setBrain(b)
+		if len(others) > 0 || len(models) > 1 {
+			a.footRow(c, "brain", a.L.T("loadout.brain.keep"), nil)
+		}
+	})
+	a.saidLine(c, "brain")
 }
 
 func (a *App) setBrain(b protocol.Brain) {
@@ -483,307 +406,162 @@ func (a *App) setBrain(b protocol.Brain) {
 	a.SetSettings(protocol.SettingsPatch{Brain: &b})
 }
 
-// brainFlyer draws the token in flight, over the page, with the equip's
-// lift, arc and tock; it lands in the socket and says the one line.
-func (a *App) brainFlyer(c *ui.Context) {
-	t := a.T
-	lo := &a.lo
-	fx := lo.fx
-	if fx == nil {
-		return
-	}
-	still := c.Preferences().ReduceMotion
-	dur := t.Equip.Flight
-	if still {
-		dur = t.Equip.Fade
-	}
-	q := float32(a.Now().Sub(fx.start)) / float32(dur)
-	if q >= 1 || fx.from.W == 0 || fx.to.W == 0 {
-		lo.fx = nil
-		lo.toast, lo.toastAt = a.L.T("loadout.toast.brain", a.S.PersonaName, harnessName(lo.fxTo.Harness)), a.Now()
-		c.Invalidate() // the socket and the tray drew this frame with the token still in flight
-		return
-	}
-	c.After(16 * time.Millisecond)
-	// The coin's art is 62 of 84; the socket's 84 of 112: the same share.
-	from := shrink(fx.from, 62.0/84)
-	to := shrink(fx.to, 84.0/112)
-	pose := equipFx{start: fx.start, from: from, to: to}
-	x, y, s, rot, sy := a.flightPose(&pose, min(max(q, 0), 1), still)
-	bmp := theme.Clay(coinArt(lo.fxTo.Harness, false))
-	if bmp == nil {
-		return
-	}
-	size := from.W
-	ui.Box(c.Key("brain-flyer")).Absolute().Left(x-size/2).Top(y-size/2).Size(size, size).ZIndex(1000).PassThrough().
-		Scale(s, s*sy).Rotate(rot).AccessHidden(true).Children(func() {
-		ui.Image(c, bmp).Grow(1)
-	})
-}
-
-func shrink(r ui.Rect, k float32) ui.Rect {
-	w, h := r.W*k, r.H*k
-	return ui.Rect{X: r.X + (r.W-w)/2, Y: r.Y + (r.H-h)/2, W: w, H: h}
-}
-
-// ---------- the two cards ----------
-
-// brainCard is 用什么想 / What it thinks with: the account in the
-// socket with its limit and the part kept for the partner, the model in
-// two plain words, Switch, and the line that it stays itself.
-func (a *App) brainCard(c *ui.Context) {
-	t := a.T
-	lo := &a.lo
-	b := a.brain()
-	h := a.trayHarness(b.Harness)
-	others := 0
-	for _, x := range a.trayHarnesses() {
-		if x.CanBePartner && x.Harness != b.Harness && x.Installed && x.LoggedIn {
-			others++
-		}
-	}
-	a.sheetCard(c, "brain", a.L.T("loadout.brain.title"), func() {
-		ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
-			a.socketWell(c, b)
-			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				// D296: the head is the AI agent; the model is the choice under
-				// it, or, with none to pick, its own phrase on the line below.
-				ui.Text(c, harnessName(b.Harness)).Font(t.Display).FontSize(t.LG).FontWeight(800).SingleLine()
-				if b.Model == "" && len(a.brainModels(b, h)) == 0 {
-					ui.Text(c, a.L.T("loadout.model.default.line")).FontSize(t.SM).TextColor(t.InkSoft).SingleLine()
-				}
-				if bn := a.S.BrainNow; bn != nil && bn.Why != "" && a.lo.pending == nil {
-					// D150/D177: core picked it, the user didn't: say so, and only what is true.
-					auto := a.L.T("loadout.brain.auto", harnessName(b.Harness))
-					if bn.Why != "only_codex" {
-						auto = a.L.T("loadout.brain.auto_other")
-					}
-					ui.Text(c, auto).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).MaxLines(2)
-				}
-				line := ""
-				if h != nil && h.Allowance != nil {
-					line = a.L.T("loadout.left.kept", pct(h.Allowance.Left), a.S.PersonaName)
-					if h.Allowance.Left <= protocol.PartnerReserve {
-						line = a.L.T("loadout.left.reserve", pct(h.Allowance.Left), a.S.PersonaName)
-					}
-				} else {
-					line = a.L.T("loadout.signed_in") // no limit reported: no reserve to claim (D133)
-				}
-				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(2)
-			})
-			switch {
-			case lo.choosing:
-				if a.button(c, a.L.T("loadout.cancel"), btnText, t.ControlSM, t.Surface) {
-					lo.choosing = false
-				}
-			case others > 0:
-				if a.buttonFor(c, a.L.T("loadout.switch"), a.L.T("loadout.brain.title"), btnSecondary, t.ControlSM, t.Surface) {
-					lo.choosing, lo.acct = true, ""
-				}
-			}
-		})
-		if lo.choosing {
-			ui.Text(c, a.L.T("loadout.choose")).FontSize(t.MD).FontWeight(800)
-			a.note(c, a.L.T("loadout.brain.onlymac", a.homeName()))
-		}
-		if ms := a.brainModels(b, h); len(ms) > 0 {
-			// D296: the choice says the model; what it is like is one phrase
-			// under it, for the one chosen (never "Opus · 最聪明").
-			sel := 0
-			labels := make([]string, len(ms))
-			for i, m := range ms {
-				labels[i] = m.label
-				if m.id == b.Model {
-					sel = i
-				}
-			}
-			if i := a.choices(c, "brain-model", a.L.T("loadout.brain.model"), labels, sel); i >= 0 {
-				a.setBrain(protocol.Brain{Harness: b.Harness, Model: ms[i].id})
-				lo.toast, lo.toastAt = a.L.T("loadout.toast.brain", a.S.PersonaName, a.L.T("loadout.brain.with", harnessName(b.Harness), ms[i].label)), a.Now()
-				sel = i
-			}
-			k := "loadout.model.line.smart"
-			if ms[sel].fast {
-				k = "loadout.model.line.fast"
-			}
-			a.note(c, a.L.T(k, ms[sel].label))
-		}
-		ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
-			ui.Box(c).Size(18, 18).Draw(drawCheck(t.Done.Ink)).Shrink(0).Margin(2, 0, 0, 0)
-			ui.Text(c, a.L.T("loadout.brain.keep")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Grow(1).MinWidth(0)
-		})
-		if lo.toast != "" && a.Now().Sub(lo.toastAt) < 8*time.Second {
-			a.note(c, a.L.T("loadout.brain.next"))
-		}
-	})
-}
-
-// tasksCard is 谁来做事 / Who does the tasks: Ducter picks by default, an
-// AI agent's own line when one is tapped, and Your rules. With one
-// account it is one line and the way to sign in another.
-func (a *App) tasksCard(c *ui.Context) {
-	t := a.T
-	lo := &a.lo
+// tasksGroup is 做事的 / Who does the tasks: one row per signed-in AI agent
+// with how it stands, how Ducter chooses in one sentence, the person's
+// rules, and that a task can switch on its own.
+func (a *App) tasksGroup(c *ui.Context) {
 	name := a.S.PersonaName
-	ready := []protocol.DeviceHarness{}
-	for _, h := range a.trayHarnesses() {
-		if h.Installed && h.LoggedIn {
-			ready = append(ready, h)
-		}
+	ready := a.readyAgents()
+	title := a.L.T("loadout.tasks.title")
+	if len(ready) == 0 {
+		return // 想事情用 already says nothing can; adding one is the next group
 	}
-	a.sheetCard(c, "tasks", a.L.T("loadout.tasks.title"), func() {
-		if len(ready) <= 1 && len(a.S.Rules) == 0 {
-			one := harnessName(a.brain().Harness)
-			if len(ready) == 1 {
-				one = harnessName(ready[0].Harness)
+	note := a.L.T("loadout.tasks.how", name)
+	if len(ready) == 1 {
+		note = a.L.T("loadout.tasks.only", harnessName(ready[0].Harness))
+	}
+	b := a.brain()
+	if len(ready) == 1 && ready[0].Harness == b.Harness && len(a.S.Rules) == 0 {
+		// The one agent is the one it thinks with, already shown above: one line, no repeat.
+		a.sectionHead(c, title, note)
+		return
+	}
+	a.group(c, "tasks", title, note, func() {
+		for _, h := range ready {
+			h := h
+			agent := harnessName(h.Harness)
+			var lines []string
+			if h.Billing == "usage" {
+				lines = append(lines, a.L.T("loadout.acct.paid.short"))
+			} else if l := a.limitWords(&h, h.Harness == b.Harness); l != "" {
+				lines = append(lines, l)
+				if h.Allowance.SharedBy > 1 {
+					lines = append(lines, a.L.T("loadout.acct.shared", h.Allowance.SharedBy))
+				}
 			}
-			ui.Text(c, a.L.T("loadout.tasks.one", one, name)).FontSize(t.MD).LineHeight(1.5)
-			if lo.acct != "" {
-				a.acctLine(c)
+			if h.Harness == b.Harness && h.CanBePartner {
+				lines = append(lines, a.L.T("loadout.acct.thinks", name))
 			}
-			ui.Row(c).Justify(ui.End).Children(func() {
-				if a.button(c, a.L.T("loadout.tasks.devices"), btnSecondary, t.ControlMD, t.Surface) {
+			var control func()
+			if len(ready) > 1 {
+				on := a.taskReady(h)
+				control = func() {
+					v := on
+					if a.switchControl(c, "tasks:"+h.Harness, a.L.T("loadout.acct.tasks")+", "+agent, &v) {
+						if a.S.Settings != nil {
+							if a.S.Settings.TaskAccounts == nil {
+								a.S.Settings.TaskAccounts = map[string]protocol.TaskAccount{}
+							}
+							a.S.Settings.TaskAccounts[h.Harness] = protocol.TaskAccount{Enabled: v}
+						}
+						a.SetSettings(protocol.SettingsPatch{TaskAccounts: map[string]protocol.TaskAccount{h.Harness: {Enabled: v}}})
+						if v {
+							a.say("tasks", a.L.T("said.tasks.on", agent))
+						} else {
+							a.say("tasks", a.L.T("said.tasks.off", agent))
+						}
+					}
+				}
+			}
+			a.tileRow(c, "agent:"+h.Harness, a.agentTile(c, h.Harness, false), agent, strings.Join(lines, "\n"), control)
+		}
+		if len(ready) < 2 && len(a.S.Rules) == 0 {
+			return
+		}
+		for _, r := range a.S.Rules {
+			r := r
+			a.tileRow(c, "rule:"+r.ID, nil, r.Text, a.L.T("loadout.rule.line"), func() {
+				if a.quietDanger(c, "rule:"+r.ID, a.L.T("loadout.rule.remove"), r.Text) {
+					a.send(protocol.RuleRemove{T: "rule_remove", ID: r.ID})
+					a.say("tasks", a.L.T("loadout.rule.removed", r.Text))
+				}
+			})
+		}
+		if a.addRow(c, "rule", a.L.T("loadout.rule.add", name), a.L.T("loadout.rule.add.line")) {
+			a.Route = RouteConversation
+			a.draft = a.L.T("loadout.rule.prefill")
+			a.focusComposer = true
+		}
+		a.footRow(c, "tasks", a.L.T("loadout.tasks.override"), nil)
+	})
+	a.saidLine(c, "tasks")
+}
+
+// addGroup is 再添一个 AI agent / Add another AI agent, said once: the
+// subscription agents not signed in yet (each with its way to Devices) and a
+// pasted key, under one line of what another one would give.
+func (a *App) addGroup(c *ui.Context) {
+	t := a.T
+	k := &a.kp
+	name := a.S.PersonaName
+	hs := a.trayHarnesses()
+	if len(hs) == 0 && a.S.Settings == nil {
+		return
+	}
+	note := a.L.T("loadout.add.more", name)
+	switch len(a.readyAgents()) {
+	case 0:
+		note = a.L.T("loadout.add.none", name)
+	case 1:
+		note = a.L.T("loadout.add.one", name)
+	}
+	a.group(c, "add", a.L.T("loadout.add.title"), note, func() {
+		for _, h := range hs {
+			h := h
+			if h.LoggedIn || (h.Harness != "claude-code" && h.Harness != "codex") {
+				continue
+			}
+			agent := harnessName(h.Harness)
+			line, label := a.L.T("loadout.add.install"), a.L.T("loadout.add.install.go")
+			if h.Installed {
+				line, label = a.L.T("loadout.add.signin", a.homeName()), a.L.T("loadout.add.signin.go")
+			}
+			a.tileRow(c, "add:"+h.Harness, a.agentTile(c, h.Harness, true), agent, line, func() {
+				if a.buttonFor(c, label, agent, btnSecondary, t.ControlSM, t.Surface) {
 					a.OpenDevices()
+					if accountCheck(h.Harness) != "" {
+						a.devState().account = h.Harness
+					}
+				}
+			})
+		}
+		key := a.markTile(c, "key", drawKeyMark(t.InkSoft))
+		if !k.setOpen["settings"] {
+			a.tileRow(c, "apikey", key, a.L.T("key.settings.row"), a.L.T("key.paste.instead.note"), func() {
+				if a.button(c, a.L.T("key.paste.check.open"), btnSecondary, t.ControlSM, t.Surface) {
+					a.openKeyRow("settings")
 				}
 			})
 			return
 		}
-		ui.Text(c, a.L.T("loadout.tasks.default", name)).FontSize(t.MD).LineHeight(1.5)
-		if lo.acct != "" {
-			a.acctLine(c)
-		} else {
-			a.note(c, a.L.T("loadout.tasks.tap"))
-		}
-		ui.Box(c).Height(1).Background(t.LineSoft)
-		ui.Text(c, a.L.T("loadout.rules")).FontSize(t.XS).FontWeight(800).LetterSpacing(0.6).TextColor(t.InkMuted)
-		if len(a.S.Rules) == 0 {
-			a.note(c, a.L.T("loadout.rules.none"))
-		}
-		// An empty list is no box at all: it would add a gap above 跟小鸭说一条规则 (D192).
-		ui.Column(c).Gap(t.S1).Hidden(len(a.S.Rules) == 0).Children(func() {
-			for _, r := range a.S.Rules {
-				ui.Row(c.Key("rule:" + r.ID)).Gap(t.S3).AlignItems(ui.Center).MinHeight(t.ControlSM).Children(func() {
-					ui.Text(c, r.Text).FontSize(t.MD).Grow(1).MinWidth(0).MaxLines(2)
-					if a.buttonFor(c, a.L.T("loadout.rule.remove"), r.Text, btnText, t.ControlSM, t.Surface) {
-						a.send(protocol.RuleRemove{T: "rule_remove", ID: r.ID})
-						lo.toast, lo.toastAt = a.L.T("loadout.rule.removed", r.Text), a.Now()
-					}
-				})
+		a.tileRow(c, "apikey", key, a.L.T("key.settings.row"), "", func() {
+			if a.button(c, a.L.T("key.paste.back"), btnSecondary, t.ControlSM, t.Surface) {
+				k.setOpen["settings"] = false
 			}
 		})
-		a.textRow(c, t.ControlSM).Children(func() {
-			if a.button(c, a.L.T("loadout.rule.add", name), btnText, t.ControlSM, t.Surface) {
-				a.Route = RouteConversation
-				a.draft = a.L.T("loadout.rule.prefill")
-				a.focusComposer = true
-			}
+		a.textBlock(c, "apikey-card", func() {
+			a.keyCardIn(c, func(key string) {
+				a.sendKey(key)
+				k.from = "settings"
+			}, "settings")
 		})
 	})
 }
 
-// acctLine is one AI agent's own line: its limit, where it is signed in,
-// the part kept for the partner, pay per use, and Use it for tasks.
-func (a *App) acctLine(c *ui.Context) {
-	t := a.T
-	lo := &a.lo
-	h := a.trayHarness(lo.acct)
-	if h == nil {
-		lo.acct = ""
-		return
+// drawKeyMark is a key drawn to fill a 40 tile: a ring and a bit.
+func drawKeyMark(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.Circle(cx-5, cy, 5)
+		m.MoveTo(cx, cy)
+		m.LineTo(cx+11, cy)
+		m.MoveTo(cx+7, cy)
+		m.LineTo(cx+7, cy+4.5)
+		m.MoveTo(cx+10.5, cy)
+		m.LineTo(cx+10.5, cy+3.5)
+		p.StrokePath(&m, 2.2, col)
 	}
-	name := harnessName(h.Harness)
-	brain := h.Harness == a.brain().Harness
-	ui.Column(c.Key("acct:"+h.Harness)).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).
-		Role(ui.RoleGroup).Label(name).Children(func() {
-		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			if bmp := theme.Clay(coinArt(h.Harness, false)); bmp != nil {
-				ui.Image(c, bmp).Size(28, 28).Shrink(0).AccessHidden(true)
-			}
-			ui.Text(c, name).FontSize(t.MD).FontWeight(800).Grow(1).MinWidth(0)
-		})
-		say := func(s string) { ui.Text(c, s).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft) }
-		switch {
-		case !h.Installed:
-			say(a.L.T("loadout.acct.missing", a.homeName(), name))
-		case h.Harness == "pi" && !h.LoggedIn:
-			say(a.L.T("loadout.acct.pi"))
-		case !h.LoggedIn:
-			say(a.L.T("loadout.acct.signin", name))
-		default:
-			// D296: each fact its own line, each line a phrase.
-			if al := h.Allowance; al != nil {
-				at := store.ParseTime(al.ResetsAt)
-				switch {
-				case brain && al.Left <= protocol.PartnerReserve:
-					say(a.L.T("loadout.left.reserve", pct(al.Left), a.S.PersonaName))
-				case !at.IsZero():
-					say(a.L.T("loadout.left.back", pct(al.Left), a.when(at)))
-				default:
-					say(a.L.T("loadout.left", pct(al.Left)))
-				}
-				if al.SharedBy > 1 {
-					say(a.L.T("loadout.acct.shared", al.SharedBy))
-				} else {
-					say(a.L.T("loadout.acct.only", a.homeName()))
-				}
-			} else {
-				say(a.L.T("loadout.signed_in"))
-			}
-			if brain {
-				say(a.L.T("loadout.acct.same", a.S.PersonaName))
-			}
-			if h.Billing == "usage" {
-				ui.Text(c, a.L.T("loadout.acct.paid")).FontSize(t.SM).FontWeight(600).LineHeight(1.5).TextColor(t.InkSoft)
-			}
-			on := a.taskReady(*h)
-			note := a.L.T("loadout.acct.tasks.on", a.S.PersonaName)
-			if !on {
-				note = a.L.T("loadout.acct.tasks.off", a.S.PersonaName)
-			}
-			if v, ch := a.switchRow(c, "tasks:"+h.Harness, a.L.T("loadout.acct.tasks"), note, on); ch {
-				if a.S.Settings != nil {
-					if a.S.Settings.TaskAccounts == nil {
-						a.S.Settings.TaskAccounts = map[string]protocol.TaskAccount{}
-					}
-					a.S.Settings.TaskAccounts[h.Harness] = protocol.TaskAccount{Enabled: v}
-				}
-				a.SetSettings(protocol.SettingsPatch{TaskAccounts: map[string]protocol.TaskAccount{h.Harness: {Enabled: v}}})
-			}
-		}
-		a.textRow(c, t.ControlSM).Children(func() {
-			if a.button(c, a.L.T("loadout.acct.devices"), btnText, t.ControlSM, t.SurfaceSunken) {
-				a.OpenDevices()
-				if accountCheck(h.Harness) != "" {
-					a.devState().account = h.Harness
-				}
-			}
-		})
-	})
-}
-
-// loadoutToast is the page's one line after a change (a switch, a rule
-// removed), for 6 s. It floats over the page, centered under the window's
-// bar, so nothing below it moves.
-func (a *App) loadoutToast(c *ui.Context, w float32) {
-	t := a.T
-	lo := &a.lo
-	if lo.toast == "" || a.Now().Sub(lo.toastAt) >= 6*time.Second || lo.fx != nil {
-		return
-	}
-	c.After(6*time.Second - a.Now().Sub(lo.toastAt))
-	if w <= 0 {
-		w = 1040
-	}
-	width := min(w-2*t.S5, 520)
-	ui.Row(c.Key("loadout-toast")).Absolute().Top(76).Left((w - width) / 2).Width(width).Justify(ui.Center).ZIndex(900).PassThrough().Children(func() {
-		pill := ui.Row(c.Key("pill")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).
-			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).AlignItems(ui.Center).Role(ui.RoleStatus).Label(lo.toast).MaxWidthPercent(100)
-		a.enter(c, pill)
-		pill.Children(func() {
-			a.glyph(c, 20, drawCheck(t.Done.Ink))
-			ui.Text(c, lo.toast).FontSize(t.MD).FontWeight(800).MaxLines(2)
-		})
-	})
 }
 
 // ---------- on a task: who is doing it, why, and switching ----------

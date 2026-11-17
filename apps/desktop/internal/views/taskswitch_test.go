@@ -14,7 +14,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 )
 
-// D341: one task to the next at the same level (a rail row, j/k) is not a
+// D343: one task to the next at the same level (a rail row, j/k) is not a
 // move in depth: the task's head never travels, whether the next task is
 // clicked in the rail (whose row must not fly into the head) or walked to
 // from the keyboard. Its words change in place over a quick cross-fade.

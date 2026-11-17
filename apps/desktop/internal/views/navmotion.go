@@ -15,7 +15,7 @@ import (
 // places control) slides a little toward where its mark sits while the
 // knob slides to it; one task to the next (the rail, ⌘⇧], j/k) is no move
 // in depth: nothing travels, the task's column alone cross-fades in place
-// (D341), the rail, the bar and the head's place staying put. The bar never travels with
+// (D343), the rail, the bar and the head's place staying put. The bar never travels with
 // its page: it holds still while the words in it cross-fade, as a native
 // toolbar does. Under reduced motion every page fades in place (MyGo's
 // transitions do that themselves) and nothing else moves.
@@ -218,7 +218,7 @@ func (a *App) heroTransition(id string) ui.ElementTransition {
 // left, as On hand comes back). Never while that task is open beside it:
 // one element holds a Match at a time.
 func (a *App) heroRow(row ui.Element, id string, focused bool) {
-	// D341: the rail's rows never fly: from the rail, the task opened is
+	// D343: the rail's rows never fly: from the rail, the task opened is
 	// a sibling of the one shown, and its head stays where heads are.
 	if a.Route == RouteTask {
 		return
@@ -277,7 +277,7 @@ func (a *App) lookAround(c *ui.Context, face ui.Element) {
 // place left to the place shown.
 type placeKnob struct{}
 
-// taskSwitch is the task's column's own (D341): one task to the next at
+// taskSwitch is the task's column's own (D343): one task to the next at
 // the same level is not a move in depth, so nothing travels. The new
 // column fades in over the one left as that fades out, both on a quick
 // ease-out (Switch), in place: the head's words change where they stand.

@@ -1,4 +1,4 @@
-// D341: one task to the next at the same level is not a move in depth. No card flies into the
+// D343: one task to the next at the same level is not a move in depth. No card flies into the
 // task's head (no "hero" name), and the task cross-fades in place, quickly, with no travel; the
 // level moves (deeper, back) keep D290's hero.
 import { afterEach, describe, expect, test } from "bun:test";
@@ -28,7 +28,7 @@ function fakeDoc() {
   return names;
 }
 
-describe("one task to the next (D341)", () => {
+describe("one task to the next (D343)", () => {
   test("no card flies into the head; a level move keeps its hero", async () => {
     let names = fakeDoc();
     let applied = 0;

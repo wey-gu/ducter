@@ -54,7 +54,7 @@ func (a *App) task(c *ui.Context) {
 			rw = railWidth(w)
 		}
 		a.slide(c, "rail", rw, func(cw float32) { a.onHandRail(c, cw) })
-		// D290, D341: keyed by the task, so one task to the next changes
+		// D290, D343: keyed by the task, so one task to the next changes
 		// this column alone (the bar, the rail and the head's place stay):
 		// a quick cross-fade in place, no travel; instant under reduced
 		// motion.

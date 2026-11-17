@@ -203,7 +203,7 @@ type NavMotion struct {
 	Across ui.Animation
 	// Switch is one task to the next at the same level: not a move in
 	// depth, so nothing travels; the task's column cross-fades in place on
-	// a quick ease-out (D341).
+	// a quick ease-out (D343).
 	Switch time.Duration
 	// Hero is the opened card growing into the task's head.
 	Hero ui.Animation

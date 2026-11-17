@@ -309,7 +309,7 @@ func (a *App) taskHead(c *ui.Context, task *store.Task, m *taskMemo) {
 	ui.Column(c.Key("headcol")).Gap(t.S6).MinWidth(0).Children(func() {
 		// D290: the head is where the card you opened grows to (Hero).
 		head := ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Transition(a.heroTransition(task.ID))
-		a.tpage.headAt = head.Bounds() // where it was drawn, for the switch's check (D341)
+		a.tpage.headAt = head.Bounds() // where it was drawn, for the switch's check (D343)
 		head.Children(func() {
 			ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
 				a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)

@@ -173,6 +173,8 @@
   --t-across: 300ms;
   --t-hero: 440ms;
   --t-leave: 260ms;
+  /* D341: one task to the next at the same level, a cross-fade in place. */
+  --t-switch: 140ms;
   --t-stagger: 22ms;
   --t-look: 620ms;
   --ease-push: cubic-bezier(0.22, 1, 0.36, 1);
@@ -12597,13 +12599,20 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 :root[data-navw="page"][data-nav="back"]::view-transition-new(root) {
   animation: nav-recede-in var(--t-push) var(--ease-push) both;
 }
+/* D341: one task to the next is not a level: nothing travels, the task cross-fades in place,
+   quickly, on an ease-out; the bar's words with it. */
+:root[data-nav="task"]::view-transition-group(root),
+:root[data-nav="task"]::view-transition-group(level),
+:root[data-nav="task"]::view-transition-group(bar) {
+  animation-duration: var(--t-switch);
+}
 :root[data-nav="task"]::view-transition-old(root),
 :root[data-nav="task"]::view-transition-old(level) {
-  animation: fade-out calc(var(--t-leave) * 0.6) var(--ease) both;
+  animation: fade-out var(--t-switch) ease-out both;
 }
 :root[data-nav="task"]::view-transition-new(root),
 :root[data-nav="task"]::view-transition-new(level) {
-  animation: nav-rise-in var(--t-across) var(--ease-push) both;
+  animation: fade-in var(--t-switch) ease-out both;
 }
 :root[data-navw="pane"][data-nav="deeper"]::view-transition-old(level) {
   animation: nav-out var(--t-leave) var(--ease) both;
@@ -12669,12 +12678,6 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 @keyframes nav-out {
   to {
     transform: translateX(var(--nav-out));
-    opacity: 0;
-  }
-}
-@keyframes nav-rise-in {
-  from {
-    transform: translateY(calc(var(--nav-rise) * 1.5));
     opacity: 0;
   }
 }

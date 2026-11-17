@@ -4,7 +4,9 @@
 //           from the trailing edge over the one left, which recedes a third and dims (a native
 //           push); beside the conversation the pane's page comes in from 28px, as on the Mac.
 //   back:   its reverse; the page left slides off the trailing edge on top.
-//   task:   one task to the next: the task alone rises a little into place.
+//   task:   one task to the next at the same level (D341): no move in depth, so nothing travels
+//           and no card flies; the task alone cross-fades in place (--t-switch, ease-out), its
+//           head's words changing where they stand.
 // The bar holds still (named "bar" while exactly one is on screen) and its words cross-fade; the
 // card you opened grows into the task's head and goes back into its place ("hero", data-row on
 // the card, data-hero on the head). Without the API, or under reduced motion, at once: never a
@@ -60,6 +62,8 @@ export function navMove(kind: NavKind, apply: () => void, hero?: string) {
   if (!d?.startViewTransition || still() || d.visibilityState !== "visible" || busy) return apply();
   const root = d.documentElement;
   let tagged: HTMLElement[] = [];
+  // D341: one task to the next is a sibling, not a level: its row never flies into the head.
+  if (kind === "task") hero = undefined;
   const tag = () => {
     if (hero) name(`[data-hero="${esc(hero)}"], [data-row="${esc(hero)}"] > .tmain`, "hero", tagged);
     name(".top", "bar", tagged);

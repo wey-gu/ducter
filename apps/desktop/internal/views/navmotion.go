@@ -13,8 +13,9 @@ import (
 // card you opened grows into the task's head; coming back is the reverse,
 // the head going back into its card's place; one place to another (the
 // places control) slides a little toward where its mark sits while the
-// knob slides to it; one task to the next (the rail, ⌘⇧]) cross-fades the
-// task alone, the rail and the bar staying put. The bar never travels with
+// knob slides to it; one task to the next (the rail, ⌘⇧], j/k) is no move
+// in depth: nothing travels, the task's column alone cross-fades in place
+// (D341), the rail, the bar and the head's place staying put. The bar never travels with
 // its page: it holds still while the words in it cross-fade, as a native
 // toolbar does. Under reduced motion every page fades in place (MyGo's
 // transitions do that themselves) and nothing else moves.
@@ -150,6 +151,9 @@ func (a *App) navLanding(c *ui.Context) time.Duration {
 		return 0
 	}
 	land := a.navAnim(a.nav.dir).Spring.Duration
+	if a.nav.dir == navTask {
+		land = a.T.Nav.Switch
+	}
 	return max(0, land-c.Now().Sub(a.nav.at))
 }
 
@@ -214,7 +218,9 @@ func (a *App) heroTransition(id string) ui.ElementTransition {
 // left, as On hand comes back). Never while that task is open beside it:
 // one element holds a Match at a time.
 func (a *App) heroRow(row ui.Element, id string, focused bool) {
-	if a.Route == RouteTask && a.TaskID == id {
+	// D341: the rail's rows never fly: from the rail, the task opened is
+	// a sibling of the one shown, and its head stays where heads are.
+	if a.Route == RouteTask {
 		return
 	}
 	if focused || row.Hovered() || (a.Route == RouteOnHand && a.nav.dir == navBack && a.nav.left == id) {
@@ -271,17 +277,18 @@ func (a *App) lookAround(c *ui.Context, face ui.Element) {
 // place left to the place shown.
 type placeKnob struct{}
 
-// taskSwitch is the task's column's own: one task to the next rises a
-// little into place (Rise, on Across's spring) as the one left fades
-// quickly; nothing else animates.
+// taskSwitch is the task's column's own (D341): one task to the next at
+// the same level is not a move in depth, so nothing travels. The new
+// column fades in over the one left as that fades out, both on a quick
+// ease-out (Switch), in place: the head's words change where they stand.
+// Under reduced motion the switch is instant (switchStill).
 func (a *App) taskSwitch() ui.ElementTransition {
-	an := a.T.Nav.Across
 	return ui.ElementTransition{
-		Animation:    &an,
-		ExitDuration: a.T.Nav.Leave,
+		Duration:     a.T.Nav.Switch,
+		Ease:         ui.EaseOut,
+		ExitDuration: a.T.Nav.Switch,
 		ExitEase:     ui.EaseOut,
-		Colors:       true,
-		Enter:        &ui.Motion{Y: a.T.Nav.Rise * 1.5},
+		Enter:        &ui.Motion{},
 		Exit:         &ui.Motion{},
 	}
 }

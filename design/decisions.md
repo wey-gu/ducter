@@ -2007,3 +2007,13 @@ Superseded:
 
 - **D332 (3)'s "the home connects at start, or as soon as Mem gets there; opening the page while ready is the same ask" for every home.** Superseded by D340 (3): only the person's own home (the default data folder, or the one the installed service runs); any other home connects only on the switch or 改由这台收.
 - **D67 (2)'s "reversible means Go unless the model chose hold" for a card whose Go deletes something.** Superseded by D340 (2): such a card waits on Hold with no time.
+
+## 2026-11-17: one task to the next is not a move in depth (D341)
+
+| # | Decision | Source | Reflected in |
+|---|---|---|---|
+| D341 | **Built 2026-11-17 on the Mac and the web; checked by a Go view test that samples the head's drawn place every frame of a switch (from the rail and from j/k, with and without Reduce Motion), a web test, and Mac tester frames mid-switch (`.shots/task-switch/`); not yet reviewed by the author, not in Safari or on a phone.** *Who:* the heavy multi-agent developer most, who walks the rail's 在等 and 今天做完 rows one after another. *Before (0.0.71):* switching tasks in the opened task played D290's "one task to the next": the task's column rose 9 into place, and a row clicked in the rail held the hero's identity, so its card flew across the window into the new task's head; the head (coin, status line, headline) travelled on every switch, which reads as going somewhere when nothing changed level. *After:* **a sibling switch at the same level is not a navigation in depth.** The frame, the breadcrumb and the head's place stay put; the head's words change where they stand; the task's column cross-fades in place on a quick ease-out (Mac `Nav.Switch`, web `--t-switch`, 140 ms), the one left fading out on the same; no vertical travel, no card flies (the rail's rows never take the hero's identity; the web never names `hero` on a `task` move). Under Reduce Motion the switch is instant (no fade). Depth moves (the conversation → On hand → a task, and back) keep D290's push and hero. *Alternative not taken:* keep a smaller rise (3–4 pt): still says "arrived from below" for a move that has no direction. | the author, on 0.0.71 | `navmotion.go`, `task.go`, `taskpage.go`, `taskswitch_test.go`, `theme.go`, `nav.ts`, app.css, `apps/web/test/task-switch.test.ts`, design/ui.md (Motion: navigation) |
+
+### Superseded
+
+- **D290 (1)'s "one task to the next (the rail, ⌘⇧], j/k): the task alone rises 9 into place", and the rail's row growing into the task's head.** Superseded by D341: a cross-fade in place, 140 ms ease-out, nothing travels; instant under Reduce Motion.

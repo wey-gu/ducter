@@ -199,8 +199,12 @@ type NavMotion struct {
 	// Push is a level deeper or back: a spring that lands with a hint of
 	// clay (Pebble's bounce, kept small so text never wobbles).
 	Push ui.Animation
-	// Across is one place to another, and one task to the next.
+	// Across is one place to another.
 	Across ui.Animation
+	// Switch is one task to the next at the same level: not a move in
+	// depth, so nothing travels; the task's column cross-fades in place on
+	// a quick ease-out (D341).
+	Switch time.Duration
 	// Hero is the opened card growing into the task's head.
 	Hero ui.Animation
 	// Leave is how long the page left behind recedes, opaque under the
@@ -227,6 +231,7 @@ func navMotion() NavMotion {
 		Across: ui.Animation{Spring: ui.SpringOptions{Duration: 300 * time.Millisecond}},
 		Hero:   ui.Animation{Spring: ui.SpringOptions{Duration: 440 * time.Millisecond, Bounce: 0.06}},
 		Leave:  260 * time.Millisecond,
+		Switch: 140 * time.Millisecond,
 		Depth:  28, Recede: 10, Shift: 14,
 		Stagger: 22 * time.Millisecond, StaggerRows: 8, Rise: 6,
 		LookTilt: 7,

@@ -10,4 +10,6 @@
 /apps/site/public/film
 !/docs
 !/skills
+# /changelog renders the repo's CHANGELOG.md at build time (D344)
+!/CHANGELOG.md
 !/.vercelignore

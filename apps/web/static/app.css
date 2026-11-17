@@ -12700,6 +12700,48 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 @media (max-width: 600px) {
   .first-starts { grid-template-columns: minmax(0, 1fr); }
 }
+/* D327: an offer from the records, with how I know under it (a quiet link; open, its facts). */
+.first-start {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.first-start > .suggest { flex: 1 1 auto; }
+.first-start.open { grid-column: 1 / -1; }
+.first-how-btn {
+  align-self: flex-start;
+  margin-left: 18px;
+  font-size: var(--xs);
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.first-how {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+.first-how .facts { flex: 1 1 260px; min-width: 0; }
+.first-how .chip.quiet {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+}
+.first-how code {
+  font-family: var(--mono);
+  font-size: var(--xs);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
 .first-from {
   display: flex;
   flex-wrap: wrap;

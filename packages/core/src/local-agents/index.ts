@@ -8,6 +8,7 @@
 // session is carried on, the agent itself appends to it, as it does by hand.
 import { statSync } from "node:fs";
 import { homedir } from "node:os";
+import { basename, dirname } from "node:path";
 import { filesOf, LOCAL_AGENTS, type LocalAgent, rootsOf, type SessionSummary, type SessionTurn, summarize, turnsOf } from "./agents.ts";
 
 export { LOCAL_AGENTS, type LocalAgent, type SessionSummary, type SessionTurn } from "./agents.ts";
@@ -31,14 +32,26 @@ export interface LocalAgents {
   summary(agent: LocalAgent, id: string): SessionSummary | undefined;
   /** The conversation at the end of one session (the person's words and the agent's). */
   history(agent: LocalAgent, id: string, o?: { turns?: number }): SessionTurn[];
+  /** D327: drops every summary read so far (looking was turned off: what was read is forgotten). */
+  forget(): void;
+  /**
+   * D327: the agents with a session file changed since `since` (ms), by file times and names
+   * alone: nothing inside a file is read. Claude Code's and pi's folder names say where a session
+   * ran, so those under `skip` (Ducter's own, temporary folders) don't count; Codex's don't say.
+   */
+  active(o: { since: number; skip?: string[] }): LocalAgent[];
 }
 
-export function createLocalAgents(opts: { home?: string; env?: Record<string, string | undefined> } = {}): LocalAgents {
+export function createLocalAgents(opts: { home?: string; env?: Record<string, string | undefined>; uid?: number | null } = {}): LocalAgents {
   const roots = rootsOf(opts.home ?? homedir(), opts.env ?? process.env);
   const cache = new Map<string, { size: number; mtime: number; sum: SessionSummary | undefined }>();
+  // D327: only the files of the account this Ducter runs as (null: any, for a test's fixtures).
+  const uid = opts.uid === null ? undefined : (opts.uid ?? process.getuid?.());
   const statOf = (path: string) => {
     try {
       const st = statSync(path);
+      // Another account's records on a shared computer are theirs, even where the system lets them be read.
+      if (uid !== undefined && st.uid !== uid) return undefined;
       return st.isFile() ? { size: st.size, mtime: st.mtimeMs } : undefined;
     } catch {
       return undefined;
@@ -85,6 +98,18 @@ export function createLocalAgents(opts: { home?: string; env?: Record<string, st
       const f = find(agent, id);
       const st = f && statOf(f.path);
       return f && st ? read(agent, f, st) : undefined;
+    },
+    forget: () => cache.clear(),
+    active({ since, skip = [] }) {
+      // Claude Code: projects/<cwd with every non-alphanumeric as "-">; pi: sessions/--<cwd with "/" as "-">--.
+      const slugs = skip.filter(Boolean).map((p) => p.replace(/[^A-Za-z0-9]/g, "-"));
+      const skipped = (agent: LocalAgent, path: string) => {
+        if (agent === "codex") return false;
+        const dir = basename(dirname(path)).replace(/^--|--$/g, "").replace(/[^A-Za-z0-9]/g, "-");
+        const d = agent === "pi" ? `-${dir}` : dir;
+        return slugs.some((s) => d === s || d.startsWith(`${s}-`));
+      };
+      return LOCAL_AGENTS.filter((agent) => filesOf(agent, roots[agent]).some((f) => !skipped(agent, f.path) && (statOf(f.path)?.mtime ?? 0) >= since));
     },
     history(agent, id, o = {}) {
       const f = find(agent, id);

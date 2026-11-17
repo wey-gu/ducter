@@ -67,7 +67,7 @@ func TestOutsideSection(t *testing.T) {
 		app.Receive(outsideResult(pastItems(pastSeeds())[:3], out, q.ID))
 		tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
-		for _, s := range []string{L.T("past.out.title"), L.T("past.out.sub"), out[0].Title, out[0].Ask, "fix/raft-snapshot", "Codex", L.T("past.out.gone")} {
+		for _, s := range []string{L.T("past.out.title"), L.T("past.out.sub", L.T("first.here")), out[0].Title, out[0].Ask, "fix/raft-snapshot", "Codex", L.T("past.out.gone")} {
 			if !tt.HasText(s) {
 				t.Fatalf("%s: no %q: %q", lang, s, tt.Texts())
 			}

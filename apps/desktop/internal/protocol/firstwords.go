@@ -10,15 +10,47 @@ type FirstWords struct {
 	// Looked: the agents whose records were read ("claude-code", "codex");
 	// the client says so under the starts, with 别再看了 / Stop looking.
 	Looked []string `json:"looked,omitempty"`
+	// Computer (D327): the home's name, where the records were read.
+	Computer string `json:"computer,omitempty"`
+	// Forgot (D327): the person said to stop looking; what came from the
+	// records is gone from the message.
+	Forgot bool `json:"forgot,omitempty"`
+	// Look (D327): the home's answer to the person's look tap, not the
+	// first words themselves (no clay face over it).
+	Look bool `json:"look,omitempty"`
 }
 
 // FirstStart is one offer: its words, what a tap puts in the composer, and
-// whose records it came from ("claude-code" | "codex" | "everyday").
+// whose records it came from ("claude-code" | "codex" | "pi" | "everyday"),
+// or "look" (D327): the one start whose tap is the person's yes to looking
+// at their records (local_agents_look), not words for the composer.
 type FirstStart struct {
 	ID    string `json:"id"`
 	Words string `json:"words"`
 	Draft string `json:"draft"`
 	From  string `json:"from"`
+	// Path and At (D327): how I know: the folder (~/…) and when that
+	// session last changed.
+	Path string `json:"path,omitempty"`
+	At   string `json:"at,omitempty"`
+}
+
+// FromRecords reports whether the start came from the person's records.
+func (s FirstStart) FromRecords() bool { return s.From != "everyday" && s.From != "look" }
+
+// LocalAgentsLook (D327) is the person's tap on the look start: the home
+// reads their agents' records now and answers with the offers.
+type LocalAgentsLook struct {
+	T  string `json:"t"` // local_agents_look
+	TZ string `json:"tz,omitempty"`
+}
+
+// OutsideFolder (D327) is 这个文件夹别看了 / Leave this folder out (Hidden
+// false brings it back), for Past tasks and the first words alike.
+type OutsideFolder struct {
+	T      string `json:"t"` // outside_folder
+	Path   string `json:"path"`
+	Hidden bool   `json:"hidden"`
 }
 
 // KeyAdd sends a pasted key once (never logged, never sent back).

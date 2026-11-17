@@ -71,7 +71,18 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 ## Earlier sessions from the person's own agents (D299, `past.md`, research/103)
 
 - A worker's own sessions: a `localSessions` op over the worker link answering the shared reader's
-  `sessions()` there, and Continue on that worker. Trigger: the first person with a worker who asks.
+  `sessions()` there, and Continue on that worker. D327: only after a yes asked on that computer
+  (the Mac app's own question when it joins as a worker, its name in it), because reading them
+  moves what is derived off the computer it was written on; the same scope line and 别再看了 per
+  computer. Trigger: the first person with a worker (or a server home and a Mac) who asks.
+- D327 left: the look's answer and its forgetting are rewritten in the Log, but a window open at the
+  time keeps the old words of the forgotten message until it reloads (no event replaces one in
+  place yet); a digest already made from the first words keeps what it said. Trigger: the first
+  "I said stop but it still shows" report.
+- D327: the feelings test was LLM proxies (research/115 §3); a test with people of the three kinds,
+  on a real first open, before the first tagged release.
+- D327: the web Settings shot of **读它们留下的记录** turned on with a folder left out (the Mac's is
+  covered by `settings_more_test.go`).
 - A session still running in a terminal: say **还开着 / Still open** (its file written in the last
   few minutes, or the agent's own lock) and hold Continue until it ends. Trigger: before release.
 - Codex's own thread names (`/rename`) from its `state_5.sqlite` `threads.name`, read only, when the

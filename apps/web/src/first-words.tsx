@@ -1,10 +1,14 @@
 // D298: the partner's first words (what they offer, where they were read, 别再看了 / Stop
 // looking) and the pasted-key card, the same as the Mac's (views/firstwords.go). A start fills
 // the composer; it never sends. The key goes once in key_add and is never shown again.
+// D327: nothing in the records is read before the person taps the look start; each offer from
+// them says how I know (which agent, which folder, when, on which computer) and can leave its
+// folder out; 别再看了 forgets what was read.
 import { words, type FirstWords, type KeyResult } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn } from "./controls.tsx";
+import { ago } from "./format.ts";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
 const AGENTS: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", pi: "pi" };
@@ -12,38 +16,91 @@ const AGENTS: Record<string, string> = { "claude-code": "Claude Code", codex: "C
 /** Still at the very start: the first words, nothing said back yet. */
 export const firstOpening = () => A.S.first?.visit === "first";
 
+/** D327: a folder the person left out (这个文件夹别看了), or one inside it. */
+export function leftOut(path: string | undefined, folders: readonly string[] | undefined): boolean {
+  if (!path || !folders?.length) return false;
+  return folders.some((f) => path === f || path.startsWith(f.endsWith("/") ? f : `${f}/`));
+}
+
+/** D327: which starts show: everyday ones always; the look start until it was answered; the
+ *  records' own only while looking is on and their folder isn't left out. */
+export function shownStarts(fw: FirstWords, first: { looks?: boolean; lookDone?: boolean; outsideFolders?: string[] } | undefined): FirstWords["starts"] {
+  const looks = first ? first.looks !== false : true;
+  return fw.starts.filter((s) => (s.from === "everyday" ? true : s.from === "look" ? looks && !first?.lookDone : looks && !fw.forgot && !leftOut(s.path, first?.outsideFolders)));
+}
+
+const howOpen = new Set<string>();
+
 export function FirstAfter({ fw }: { fw: FirstWords }) {
-  const looks = A.S.first ? A.S.first.looks !== false : true;
-  const starts = fw.starts.filter((s) => s.from === "everyday" || looks);
+  const first = A.S.first;
+  const looks = first ? first.looks !== false : true;
+  const starts = shownStarts(fw, first);
+  const computer = fw.computer ?? first?.computer ?? t("first.here");
+  const fromRecords = starts.some((s) => s.from !== "everyday" && s.from !== "look");
   const set = (on: boolean) => {
     A.send({ t: "local_agents", on });
-    if (A.S.first) A.S.first.looks = on;
+    if (first) first.looks = on;
+    A.changed();
+  };
+  const leave = (path: string) => {
+    A.send({ t: "outside_folder", path, hidden: true });
+    if (first) first.outsideFolders = [...(first.outsideFolders ?? []), path];
+    A.toast(t("first.how.left", path));
     A.changed();
   };
   return (
     <div class="first-after">
       {starts.length > 0 && (
         <div class="first-starts">
-          {starts.map((s) => (
-            <button
-              key={s.id}
-              class="btn secondary suggest"
-              onClick={() => {
-                A.draft = s.draft; // fills the composer; never sends
-                A.changed();
-                document.getElementById("composer")?.focus();
-              }}
-            >
-              {s.words}
-            </button>
-          ))}
+          {starts.map((s) => {
+            const mine = s.from !== "everyday" && s.from !== "look";
+            const key = `${fw.starts.indexOf(s)}:${s.id}`;
+            const open = mine && howOpen.has(key);
+            return (
+              <div key={s.id} class={`first-start${open ? " open" : ""}`}>
+                <button
+                  class="btn secondary suggest"
+                  onClick={() => {
+                    if (s.from === "look") {
+                      // D327: the person's yes: the home looks now and answers with what it found.
+                      A.send({ t: "local_agents_look", tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
+                      if (first) first.lookDone = true;
+                      A.changed();
+                      return;
+                    }
+                    A.draft = s.draft; // fills the composer; never sends
+                    A.changed();
+                    document.getElementById("composer")?.focus();
+                  }}
+                >
+                  {s.words}
+                </button>
+                {mine && (
+                  <button class="first-how-btn linkish" aria-expanded={open} onClick={() => (open ? howOpen.delete(key) : howOpen.add(key), A.changed())}>
+                    {t(open ? "first.how.close" : "first.how")}
+                  </button>
+                )}
+                {open && (
+                  <div class="first-how" role="group" aria-label={t("first.how")}>
+                    <span class="facts">
+                      <span class="chip quiet">{t("first.how.from", AGENTS[s.from] ?? s.from)}</span>
+                      {s.path && <code>{s.path}</code>}
+                      {s.at && <span>{ago(A.L, s.at)}</span>}
+                      <span>{t("first.how.on", computer)}</span>
+                    </span>
+                    {s.path && <Btn kind="text" size="sm" label={t("first.how.leave")} onClick={() => leave(s.path!)} />}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
-      {fw.looked?.length ? (
+      {fw.looked?.length && (fromRecords || !looks) ? (
         <div class="first-from">
           {looks ? (
             <>
-              <span>{t("first.from", fw.looked.map((a) => AGENTS[a] ?? a).join(t("first.from.and")))}</span>
+              <span>{t("first.from", computer)}</span>
               <Btn kind="text" size="sm" label={t("first.stop")} onClick={() => set(false)} />
             </>
           ) : (

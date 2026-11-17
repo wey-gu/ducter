@@ -64,12 +64,15 @@ export function HandoffSettings() {
   );
 }
 
-/** 你的 AI agent 留下的记录 / What your AI agents keep: the first words' looking (D298) and the agents Past tasks hides (D299). */
+/** 你的 AI agent 留下的记录 / What your AI agents keep: one switch for reading them at all (D327: Past
+ *  tasks, and a look the person asked for), the agents Past tasks hides (D299), the folders left out (D327). */
 export function RecordsSettings() {
   const f = A.S.first;
   if (!f) return null;
   const looks = f.looks !== false;
   const hidden = (f.outsideHidden ?? []) as OutsideAgent[];
+  const folders = f.outsideFolders ?? [];
+  const computer = f.computer ?? t("first.here");
   const setLooks = (on: boolean) => {
     A.send({ t: "local_agents", on });
     f.looks = on;
@@ -82,22 +85,41 @@ export function RecordsSettings() {
     say("records", t("said.records.shown", agentName(agent)));
     A.changed();
   };
+  const showFolder = (path: string) => {
+    A.send({ t: "outside_folder", path, hidden: false });
+    f.outsideFolders = folders.filter((x) => x !== path);
+    say("records", t("said.records.folder", path));
+    A.changed();
+  };
   return (
     <section class="set">
       <h3>{t("records.title")}</h3>
       <div class="set-card">
-        <Toggle label={t("records.look")} help={t("records.look.help")} checked={looks} onChange={setLooks} />
-        {hidden.map((a) => (
-          <div class="set-row" key={a}>
-            <span class="grow">
-              <b>{t("records.hidden", agentName(a))}</b>
-            </span>
-            <Btn kind="secondary" size="sm" label={t("records.show")} about={agentName(a)} onClick={() => show(a)} />
-          </div>
-        ))}
+        <Toggle label={t("records.look")} help={t("records.look.help", computer)} checked={looks} onChange={setLooks} />
+        {looks &&
+          hidden.map((a) => (
+            <div class="set-row" key={a}>
+              <span class="grow">
+                <b>{t("records.hidden", agentName(a))}</b>
+              </span>
+              <Btn kind="secondary" size="sm" label={t("records.show")} about={agentName(a)} onClick={() => show(a)} />
+            </div>
+          ))}
+        {looks &&
+          folders.map((p) => (
+            <div class="set-row" key={p}>
+              <span class="grow">
+                <b>{t("records.folder")}</b>
+                <small>
+                  <code>{p}</code>
+                </small>
+              </span>
+              <Btn kind="secondary" size="sm" label={t("records.show")} about={p} onClick={() => showFolder(p)} />
+            </div>
+          ))}
       </div>
       <Said k="records" />
-      {!hidden.length && <div class="small sub">{t("records.past.note")}</div>}
+      {looks && !hidden.length && !folders.length && <div class="small sub">{t("records.past.note")}</div>}
     </section>
   );
 }

@@ -239,6 +239,22 @@ export function openLog(opts: { path: string; persona: string; clock?: Clock }):
 
     head: () => headSeq,
 
+    forgetIn(seq, body) {
+      // D327: the one exception to append-only. The person told Ducter to forget what it read from
+      // outside the conversation (their agents' records) and showed them; their words and the
+      // partner's are never rewritten. The search indexes forget it too.
+      db.transaction(() => {
+        db.prepare("UPDATE events SET body = ? WHERE seq = ?").run(JSON.stringify(body), seq);
+        db.prepare("DELETE FROM events_fts WHERE rowid = ?").run(seq);
+        db.prepare("DELETE FROM events_bg WHERE rowid = ?").run(seq);
+        const text = textOf(body);
+        if (text) {
+          insertFts.run(seq, text);
+          insertBg.run(seq, indexText(text));
+        }
+      })();
+    },
+
     spine,
 
     subscribe(fn) {

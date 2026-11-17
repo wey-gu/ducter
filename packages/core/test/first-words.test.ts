@@ -98,18 +98,40 @@ test("the home says them once, in the Log, to an app's first hello; 别再看了
     const said = first.filter((f) => f.t === "events").flatMap((f) => (f as { events: LogEvent[] }).events);
     expect(said.length).toBe(1);
     expect(said[0]).toMatchObject({ kind: "ai_msg", origin: "partner" });
-    const body = said[0]!.body as { text: string; first: { starts: { from: string }[]; looked: string[] } };
-    expect(body.text).toMatch(/我是 Ducter。我看了看这台电脑上你的 Claude Code 和 Codex/);
-    expect(body.first.starts.filter((s) => s.from !== "everyday").length).toBe(3);
+    const body = said[0]!.body as { text: string; first: { starts: { from: string; words: string }[]; looked?: string[] } };
+    // D327: nothing in the records is read before the person asks: the first start asks to look.
+    expect(body.text).not.toContain("我看了看");
+    expect(body.first.looked).toBeUndefined();
+    expect(body.first.starts[0]).toMatchObject({ from: "look", words: "接着我最近在 Claude Code 和 Codex 里做的事" });
+    expect(JSON.stringify(body)).not.toContain("hawdb");
     expect((first.find((f) => f.t === "first_screen") as Extract<ServerFrame, { t: "first_screen" }>).first.looks).toBe(true);
     // Said once: a second app sees the same message, not a second one.
     const again = (await open("web")).filter((f) => f.t === "events").flatMap((f) => (f as { events: LogEvent[] }).events);
     expect(again.length).toBe(1);
-    // 别再看了: kept, and every app's first screen says so.
+    // The tap is the yes: the home answers at once with what they were doing, each with how it knows.
+    await open("desktop", (ws) => ws.send(JSON.stringify({ t: "local_agents_look" })));
+    const answer = core.log.read({ stream: "channel", kinds: ["ai_msg"] }).at(-1)!.body as { text: string; first: { starts: { from: string; path?: string; at?: string }[]; looked: string[]; look?: boolean; computer?: string } };
+    expect(answer.first.look).toBe(true);
+    expect(answer.text).toMatch(/^我看了看 .+ 上你的 Claude Code 和 Codex 最近在做的事/);
+    expect(answer.first.computer).toBeTruthy();
+    expect(answer.first.starts.map((s) => s.path)).toEqual(["~/dev/website", "~/dev/hawdb", "~/notes"].map((p) => p.replace("~", "/Users/ada")));
+    expect(answer.first.starts.every((s) => s.at)).toBe(true);
+    expect(core.log.search("hawdb").length).toBeGreaterThan(0);
+    // 别再看了: kept, every app's first screen says so, and what was read is forgotten (in the Log and its search).
     const off = await open("desktop", (ws) => ws.send(JSON.stringify({ t: "local_agents", on: false })));
     const screens = off.filter((f) => f.t === "first_screen") as Extract<ServerFrame, { t: "first_screen" }>[];
     expect(screens.at(-1)!.first.looks).toBe(false);
+    expect(screens.at(-1)!.first.lookDone).toBe(true);
     expect(JSON.parse(readFileSync(join(data, "settings.json"), "utf8")).localAgents).toBe(false);
+    const forgotten = core.log.read({ stream: "channel", kinds: ["ai_msg"] }).at(-1)!.body as { text: string; first: { starts: unknown[]; forgot?: boolean } };
+    expect(forgotten.first).toMatchObject({ starts: [], forgot: true });
+    expect(forgotten.text).toBe("从 Claude Code 和 Codex 的记录里看到的几件事，按你说的忘掉了。");
+    expect(core.log.search("hawdb")).toEqual([]);
+    expect(core.log.search("compaction")).toEqual([]);
+    // Off is off: a look now reads nothing and says nothing.
+    const n = core.log.head();
+    await open("desktop", (ws) => ws.send(JSON.stringify({ t: "local_agents_look" })));
+    expect(core.log.head()).toBe(n);
   } finally {
     core.stop();
     t.cleanup();

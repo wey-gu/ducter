@@ -45,13 +45,16 @@ a server, `ducter key add < key.txt` does the same from the terminal (see [Insta
 
 ### How does my partner know what I was working on?
 
-The first time you open Ducter, your partner looks at what Claude Code and Codex keep on that
-computer about your recent work: which folder each one ran in, its title, and your first words
-there. It reads only that, only on that computer, and shows it only to you, as two or three things
-you might want to pick up ("Yesterday you were on 'Fix the flaky test' in hawdb. Want me to pick it
-up?"). It never opens your folders to find them. Tapping one puts it in the box; nothing is sent
-until you send it, and then it goes to the AI you chose, like anything else you write. Don't want
-that? Choose **Stop looking** right under them, and it won't look again.
+Only when you ask. The first time you open Ducter, if Claude Code or Codex were used on your home
+computer lately, one of the things your partner offers is **Pick up what I was doing in Claude Code
+lately**. Tap it, and your partner looks at what those agents keep about your recent work: each
+conversation's name, the folder it ran in, when, and your first and last words there. It never
+opens your folders or your code, and any key you pasted into a prompt stays hidden. It names two or
+three things you might want to pick up ("Yesterday you were on 'Fix the flaky test' in hawdb. Want
+me to pick it up?"); **How I know** under each says which agent, which folder, when and on which
+computer. Those few lines are seen by you and by the AI you chose, since your partner thinks with
+it; nobody else. **Leave this folder out** keeps one folder out for good. **Stop looking** turns it
+off everywhere and your partner forgets what it saw; Settings › Partner has the same switch.
 
 ### What does it run on?
 

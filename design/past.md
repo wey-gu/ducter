@@ -132,9 +132,17 @@ pebble settled 2 pt; it lifts back on resume.
 ## 也在这台电脑上 / Also on this computer (D299)
 
 The sessions the person ran by hand in their own AI agents on the home (Claude Code, Codex, pi),
-under Ducter's own cards as one quiet section with one line: **你自己在这台电脑上用 AI 做过的。接着做，
-就在 Ducter 里接着同一段对话。/ What you did yourself with your AI agents here. Continue carries on
-the same conversation in Ducter.** Where they live and what their records say: `research/103`.
+under Ducter's own cards as one quiet section with one line (D327: it names the home and the
+scope): **你自己在 {computer} 上用 AI 做过的：只读名字、文件夹、时间和你说的第一句与最后一句，密钥一律遮住。
+接着做，就在 Ducter 里接着同一段对话。/ What you did yourself with your AI agents on {computer}. Only
+names, folders, times and your first and last words are read, keys hidden. Continue carries on the
+same conversation in Ducter.** Where they live and what their records say: `research/103`.
+
+- **D327:** on by default (the person came here to look; research/115), and governed by the one
+  switch **读它们留下的记录 / Read what they keep**: off, nothing from the records is listed or
+  read. Keys are hidden at the reader, before a title exists. The ⋯ menu adds **这个文件夹别看了 /
+  Leave this folder out** (that folder and those inside it, here and in the first words' offers;
+  Settings lists each with 再显示). Files of another account on the computer are never read.
 
 - **Read** only when Past tasks asks, on the home, each file's head and tail only (the shared
   reader `packages/core/src/local-agents/`, also D298's), kept until the file changes. Ducter's own

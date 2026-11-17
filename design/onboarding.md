@@ -110,7 +110,7 @@ from the test harness signalling its own wrapper shell, not from Ducter.
 - ~~The greeting is the client's empty state~~ and ~~the partner doesn't know the user's repos at
   first run~~: see "First words" below (D298).
 
-## First words (D298)
+## First words (D298, D327)
 
 *Who:* all three. The heavy developer's first minute should already know what they were doing in
 their own agents; the consumer's and the fresh user's should be a warm hello with everyday things
@@ -122,25 +122,34 @@ not interviewed. *How it starts:* by itself, within a second of the first window
    before the hello's events go out: so it is there with the window, it is in the Log (the partner
    knows it said it; its context lists what was offered), and it is said once. No model runs. The
    language is the hello's; the greeting is by the person's hour.
-2. **From the person's own agents' records.** D299's reader (`core/src/local-agents/`, shared
-   with Past tasks) reads Claude Code's, Codex's and pi's own session records on this computer (the newest 40 files of the last 14 days per
-   agent: the folder, the title, the person's first words, the time; never inside the folders,
-   never Ducter's own sessions), groups them by folder and offers up to three, newest first:
+2. **Asked, not assumed (D327).** The first words read nothing in the person's agents' records.
+   When those records changed in the last 14 days (file times alone; Ducter's own sessions don't
+   count), the first start is **接着我最近在 {agents} 里做的事 / Pick up what I was doing in
+   {agents} lately**; its tap is the yes (`local_agents_look`), never words in the composer. The
+   home then reads with D299's reader (`core/src/local-agents/`, shared with Past tasks: the
+   newest 40 files of the last 14 days per agent; the folder, the title, the person's first and
+   last words, the time; never inside the folders, never Ducter's own sessions, never a folder
+   left out, never another account's files; keys hidden before anything sees a title) and
+   answers at once, no model, with up to three offers, newest first, one per folder:
    **昨天你在 hawdb 里做「Fix the flaky compaction test」，要我接着看看吗？** A tap fills the
-   composer with a sentence that names the folder's path; it never sends. One everyday example
-   follows (three when there are no records). `recentFolders` in `first-words.ts` picks the
-   folders from that reader; nothing reads those records a second way.
-3. **Consent in place.** Right under the offers: where they came from, **只在这里读，只给你看**, and
-   **别再看了 / Stop looking**: the offers from the records go at once, and the first words never
-   read them again (`settings.json` `localAgents: false`); **还是看吧 / Look again** undoes it.
-   Why this is not D204's scan: research/102 §4 and D298 (2).
+   composer with a sentence that names the folder's path; it never sends. A title that had a key
+   in it is offered by its folder alone. Nothing found: it says so. Why: research/115 (unprompted
+   reading was the creepiest variant for all three users).
+3. **How I know, and consent in place.** Under each offer, **怎么知道的 / How I know**: which
+   agent's records, the folder, when, on which computer (named, never "this computer"), and
+   **这个文件夹别看了 / Leave this folder out**. Under the offers, the scope in one line (names,
+   folders, times, first and last words; no code or files; keys hidden; read only on {computer};
+   no one but you and the AI you use sees it) and **别再看了 / Stop looking**: off everywhere
+   (Past tasks too), and what was read is forgotten, in the Log as well (`settings.json`
+   `localAgents: false`); **还是看吧 / Look again** turns reading back on. Why this is not D204's
+   scan: research/102 §4 and D298 (2).
 4. **The clay partner** waves once over the first words while nothing else has been said (still
    under reduced motion); the empty screen (D149) shows only until they arrive, or for an older home.
 5. **Nothing to think with yet:** the first words say so in one sentence, and the key card sits
    under them (A key instead, below).
 6. **Later:** Nowledge Mem's line about the person (`FirstWordsInput.memLine`, D295's to wire).
 
-Shots: `.shots/d298/mac/first-words-*.png`, `.shots/d298/web/first-words-{wide,phone}-{zh,en}.png`.
+Shots: `.shots/d298/mac/first-words-*.png`, `.shots/d298/web/first-words-{wide,phone}-{zh,en}.png`; D327: `.shots/d327/mac/mac-first-*.png`, `.shots/d327/web/{wide-en,phone-zh,wide-zh}-*.png`.
 
 ## A key instead (D298)
 

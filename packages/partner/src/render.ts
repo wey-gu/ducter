@@ -316,7 +316,13 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       // D222: the day card it put under these words.
       const card = b.cal ? ` [the day card for ${b.cal.from === b.cal.to ? b.cal.from : `${b.cal.from} to ${b.cal.to}`} was shown under it]` : "";
       // D298: your first words, said by the home, with what they offered (a tap fills the user's box).
-      const offered = b.first?.starts.length ? ` [your first words to the user; offered: ${b.first.starts.map((s) => `“${clip(s.draft, 160)}”`).join("; ")}]` : "";
+      // D327: or your answer when the user asked you to look at their own agents' records here.
+      const shown = b.first?.starts.filter((s) => s.from !== "look") ?? [];
+      const offered = b.first?.look
+        ? ` [the user asked you to look at their own agents' records on this computer; you answered${shown.length ? `, offering: ${shown.map((s) => `“${clip(s.draft, 160)}”`).join("; ")}` : ""}]`
+        : shown.length
+          ? ` [your first words to the user; offered: ${shown.map((s) => `“${clip(s.draft, 160)}”`).join("; ")}]`
+          : "";
       // D303: the blocks it drew (their plain text is in the words).
       return `[${t} you] ${clip(b.text, 800)}${card}${offered}${richShownWords(b.ui, b.uiDropped)}`.replace("] [", "] ");
     }

@@ -61,12 +61,13 @@ Ducter then looks around your Mac for a few seconds:
 
 ## 2. Say one thing
 
-Your partner says hello first, in its own words. If you use Claude Code or Codex on this Mac, it
-names two or three things you were doing in them lately, for example *"Yesterday you were on 'Fix
-the flaky compaction test' in hawdb. Want me to pick it up?"*. It found them in what those agents
-keep about your recent work, read only on this Mac and shown only to you; it didn't open your
-folders. **Stop looking**, right under them, turns that off. Otherwise it offers a few everyday
-things to try.
+Your partner says hello first, in its own words, with a few everyday things to try. If you use
+Claude Code or Codex on this Mac, one of them is **Pick up what I was doing in Claude Code lately**.
+Nothing has been read until you tap it. Then your partner looks at what those agents keep about
+your recent work and names two or three things, for example *"Yesterday you were on 'Fix the flaky
+compaction test' in hawdb. Want me to pick it up?"*. **How I know** under each one shows where it
+came from, and **Leave this folder out** keeps a folder out for good. **Stop looking** turns it all
+off and makes your partner forget what it saw.
 
 Tap one to put it in the box (it never sends by itself), change it if you like, and
 press Return. Or write anything of your own:

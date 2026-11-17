@@ -15,7 +15,27 @@ import { builtCount, taskSlots, taskTurns } from "../src/transcript.tsx";
 import { rangeOf, topsOf } from "../src/vlist.ts";
 
 const CI = !!process.env.CI;
-const slow = CI ? 2 : 1;
+/**
+ * How slow this machine is right now, against a quiet Mac: a fixed piece of work timed before
+ * the budgets are checked. A loaded machine (other suites, an e2e VM) stretches every budget the
+ * same way, so a real regression still shows while load alone doesn't fail the build. Never
+ * under the CI floor, never over 4x.
+ */
+function machineSlowness(): number {
+  const QUIET_MS = 35; // this loop on a quiet Apple-silicon Mac (estimated under load: 74 ms median at load ~117; recalibrate when quiet)
+  const runs: number[] = [];
+  for (let r = 0; r < 5; r++) {
+    const t0 = performance.now();
+    const a: number[] = [];
+    for (let i = 0; i < 200_000; i++) a.push((i * 2654435761) % 1000003);
+    a.sort((x, y) => x - y);
+    JSON.parse(JSON.stringify(a.slice(0, 20_000)));
+    runs.push(performance.now() - t0);
+  }
+  runs.sort((x, y) => x - y);
+  return Math.min(4, Math.max(CI ? 2 : 1, runs[2]! / QUIET_MS));
+}
+const slow = machineSlowness();
 type Hist = Extract<ClientFrame, { t: "task_history" }>;
 
 /** The home: the index, made once and kept; pages before or after a seq, as ws.ts answers them. */

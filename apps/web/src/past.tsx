@@ -613,6 +613,17 @@ function hideAgent(agent: OutsideAgent, hidden: boolean) {
   A.changed();
 }
 
+/** D327: 这个文件夹别看了: its sessions go from here and from the first words' offers, for good. */
+function leaveFolder(path: string) {
+  A.send({ t: "outside_folder", path, hidden: true });
+  const inside = (p: string) => p === path || p.startsWith(`${path}/`);
+  if (P.res) P.res.outside = (P.res.outside ?? []).filter((x) => !inside(x.cwd));
+  if (A.S.first) A.S.first.outsideFolders = [...(A.S.first.outsideFolders ?? []), path];
+  P.moreFor = "";
+  A.toast(t("past.out.left", path));
+  A.changed();
+}
+
 /** One session from outside Ducter: the same card as a task's, its picture guessed from its words. */
 function OutsideCard({ it }: { it: OutsideItem }) {
   const key = outKey(it);
@@ -667,6 +678,9 @@ function OutsideCard({ it }: { it: OutsideItem }) {
           <button role="menuitem" onClick={() => hideAgent(it.agent, true)}>
             {t("past.out.hide", harnessName(it.agent))}
           </button>
+          <button role="menuitem" onClick={() => leaveFolder(it.cwd)}>
+            {t("past.out.leave")}
+          </button>
         </div>
       )}
     </div>
@@ -684,7 +698,7 @@ function OutsideSection() {
         <span>{t("past.out.title")}</span>
         {items.length > 0 && <span class="psec-n">{items.length}</span>}
       </h3>
-      {items.length > 0 && <p class="past-out-sub">{t("past.out.sub")}</p>}
+      {items.length > 0 && <p class="past-out-sub">{t("past.out.sub", A.S.first?.computer ?? t("first.here"))}</p>}
       {items.map((it) => (
         <OutsideCard key={outKey(it)} it={it} />
       ))}

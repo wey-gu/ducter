@@ -14,6 +14,7 @@
 // language without a table gets English.
 import { homedir, tmpdir } from "node:os";
 import { basename, resolve, sep } from "node:path";
+import { HIDDEN } from "@ducter/protocol/src/redact.ts";
 import { fill, words, type FirstStart, type FirstWords, type LangTag, type Words } from "@ducter/protocol";
 import type { LocalAgent, LocalAgents, SessionSummary } from "./local-agents/index.ts";
 import { space } from "./first-screen.ts";
@@ -36,7 +37,7 @@ const under = (p: string, root: string) => {
  * sessions of the last `days` (default 14), at most `files` per agent (default 40), grouped by
  * folder; never the home itself, a temporary folder, or Ducter's own (its data and Ducter folders).
  */
-export function recentFolders(reader: Pick<LocalAgents, "sessions">, o: { now?: Date; days?: number; files?: number; exclude?: string[]; home?: string } = {}): FirstFolder[] {
+export function recentFolders(reader: Pick<LocalAgents, "sessions">, o: { now?: Date; days?: number; files?: number; exclude?: string[]; home?: string; leftOut?: (cwd: string) => boolean } = {}): FirstFolder[] {
   const now = (o.now ?? new Date()).getTime();
   const since = now - (o.days ?? 14) * DAY;
   const home = o.home ?? homedir();
@@ -46,6 +47,7 @@ export function recentFolders(reader: Pick<LocalAgents, "sessions">, o: { now?: 
     const at = Date.parse(s.updatedAt);
     if (!(at >= since) || !s.cwd.startsWith("/") || resolve(s.cwd) === resolve(home) || resolve(s.cwd) === "/") continue;
     if (skip.some((r) => r && under(s.cwd, r))) continue;
+    if (o.leftOut?.(s.cwd)) continue; // D327: a folder the person left out
     const key = resolve(s.cwd);
     const f = by.get(key) ?? { cwd: key, name: basename(key), sessions: [] };
     f.sessions.push(s);
@@ -66,6 +68,13 @@ export interface FirstWordsInput {
   everyday: Words[];
   /** Nothing on the home can think yet. */
   noBrain?: boolean;
+  /** D327: the home's own name ("Wey’s MacBook Pro"), said where the records were read; absent: "this computer". */
+  computer?: string;
+  /**
+   * D327: the agents that kept records here lately (by file times alone): the first words offer
+   * to look at them, a start whose tap is the person's yes. Nothing is read before that tap.
+   */
+  canLook?: LocalAgent[];
   /** D295's hook: one line from Nowledge Mem about the person, when Mem is connected (not wired yet). */
   memLine?: Words;
   home?: string;
@@ -87,7 +96,15 @@ interface Table {
   and: string;
   looked: string;
   lookedOne: string;
+  /** Where the records were read: this computer, or the home by its name (D327). */
+  here: string;
+  on: string;
   plain: string;
+  /** D327: the start that asks to look, and the answer when nothing was found. */
+  look: string;
+  none: string;
+  /** What an answer to a look says once what it found was forgotten. */
+  forgotten: string;
   noBrain: string;
   offer: string;
   offerDraft: string;
@@ -103,9 +120,14 @@ const T: { en: Table } & Partial<Record<LangTag, Table>> = {
     hello: ["早上好，我是{name}。", "中午好，我是{name}。", "下午好，我是{name}。", "晚上好，我是{name}。", "这么晚还没睡？我是{name}。"],
     when: ["今天", "昨天", "{n} 天前", "上周"],
     and: " 和 ",
-    looked: "我看了看这台电脑上你的 {who} 最近在做的事，这几件要不要接着来？",
-    lookedOne: "我看了看这台电脑上你的 {who} 最近在做的事，这件要不要接着来？",
+    looked: "我看了看{where}你的 {who} 最近在做的事，这几件要不要接着来？",
+    lookedOne: "我看了看{where}你的 {who} 最近在做的事，这件要不要接着来？",
+    here: "这台电脑上",
+    on: "{computer} 上",
     plain: "有什么想做的，跟我说一句就行：查点东西、理理文件、写封邮件都可以。大一点的活我交给一个任务去做，做好了再来告诉你。",
+    look: "接着我最近在 {who} 里做的事",
+    none: "我看了看{where}你的 {who} 最近两周的记录，没找到能接着做的事。想做什么，直接跟我说就行。",
+    forgotten: "从 {who} 的记录里看到的几件事，按你说的忘掉了。",
     noBrain: "不过我现在还没有能用来思考的 AI：登录 Claude Code 或 Codex，或者在下面贴一个 API 密钥，我就能开始。",
     offer: "{when}你在 {folder} 里做「{topic}」，要我接着看看吗？",
     offerDraft: "接着 {folder} 里「{topic}」这件事：先看看它停在哪儿，再跟我说下一步。（文件夹：{path}）",
@@ -118,9 +140,14 @@ const T: { en: Table } & Partial<Record<LangTag, Table>> = {
     hello: ["Good morning, I'm {name}.", "Hi there, I'm {name}.", "Good afternoon, I'm {name}.", "Good evening, I'm {name}.", "Up late? I'm {name}."],
     when: ["Today", "Yesterday", "{n} days ago", "Last week"],
     and: " and ",
-    looked: "I had a look at what your {who} worked on lately on this computer. Want to pick one of these up?",
-    lookedOne: "I had a look at what your {who} worked on lately on this computer. Want to pick this up?",
+    looked: "I had a look at what your {who} worked on lately {where}. Want to pick one of these up?",
+    lookedOne: "I had a look at what your {who} worked on lately {where}. Want to pick this up?",
+    here: "on this computer",
+    on: "on {computer}",
     plain: "Tell me anything you'd like done: look something up, tidy some files, write an email. Bigger work goes to a task, and I come back when it's done.",
+    look: "Pick up what I was doing in {who} lately",
+    none: "I looked at your {who} records from the last two weeks {where} and found nothing to pick up. Tell me what you'd like to do.",
+    forgotten: "What I found in your {who} records is forgotten, as you asked.",
     noBrain: "One thing first: I have nothing to think with yet. Sign in to Claude Code or Codex, or paste an API key below, and I'm ready.",
     offer: "{when} you were on “{topic}” in {folder}. Want me to pick it up?",
     offerDraft: "Pick up “{topic}” in {folder}: see where it stopped, then tell me the next step. (Folder: {path})",
@@ -186,13 +213,17 @@ const AGENT: Record<LocalAgent, string> = { "claude-code": "Claude Code", codex:
 function offer(p: FirstFolder, i: FirstWordsInput, home: string): FirstStart {
   const t = words(T, i.lang);
   const s = p.sessions.find((x) => x.title || x.firstPrompt) ?? p.sessions[0]!;
-  const topic = s.title ?? s.firstPrompt;
+  // D327: a title that had a key in it is never offered: the folder alone is (the bare offer).
+  const said = s.title ?? s.firstPrompt;
+  const topic = said && !said.includes(HIDDEN) ? said : undefined;
   const vars = { when: whenSaid(i.lang, s.updatedAt, i.now, i.tz), folder: p.name, path: tilde(p.cwd, home), agent: AGENT[s.agent], topic: topic ? cut(topic, t.width) : "" };
   return {
     id: `local:${s.agent}:${s.id}`,
     from: s.agent,
     words: space(fill(topic ? t.offer : t.bare, vars)),
     draft: space(fill(topic ? t.offerDraft : t.bareDraft, vars)),
+    path: vars.path,
+    at: s.updatedAt,
   };
 }
 
@@ -208,10 +239,16 @@ export function firstWords(i: FirstWordsInput): FirstWordsOut {
   const looked = [...new Set(i.projects.slice(0, FIRST_OFFERS).flatMap((p) => p.sessions.map((s) => s.agent)))].sort() as LocalAgent[];
   const parts = [greet(i.lang, i.name, i.now, i.tz)];
   if (i.memLine) parts.push(space(pairIn(i.memLine, i.lang)));
-  if (offers.length) parts.push(space(fill(offers.length > 1 ? t.looked : t.lookedOne, { who: looked.map((a) => AGENT[a]).join(t.and) })));
+  const where = i.computer ? fill(t.on, { computer: i.computer }) : t.here;
+  if (offers.length) parts.push(space(fill(offers.length > 1 ? t.looked : t.lookedOne, { who: looked.map((a) => AGENT[a]).join(t.and), where })));
   else parts.push(t.plain);
   if (i.noBrain) parts.push(t.noBrain);
   const starts: FirstStart[] = [...offers];
+  // D327: nothing read yet, but their agents kept records here: the first start asks to look.
+  if (!offers.length && i.canLook?.length) {
+    const look = space(fill(t.look, { who: i.canLook.map((a) => AGENT[a]).join(t.and) }));
+    starts.push({ id: "look", from: "look", words: look, draft: look });
+  }
   // One everyday example after the person's own things (life is more than code), three without them.
   const want = offers.length ? Math.min(FIRST_STARTS, offers.length + 1) : 3;
   for (const w of i.everyday) {
@@ -219,5 +256,52 @@ export function firstWords(i: FirstWordsInput): FirstWordsOut {
     const text = space(pairIn(w, i.lang));
     if (!starts.some((s) => s.draft === text)) starts.push({ id: `everyday:${starts.length}`, from: "everyday", words: text, draft: text });
   }
-  return { text: parts.join(t.join), first: { starts, ...(looked.length ? { looked } : {}) } };
+  return { text: parts.join(t.join), first: { starts, ...(looked.length ? { looked, ...(i.computer ? { computer: i.computer } : {}) } : {}) } };
+}
+
+/**
+ * D327: the first words with what came from the records forgotten: every start read from them (or,
+ * with `folder`, only those for that folder and the folders inside it) goes, and when none is left
+ * the sentence that said where they were read gives way to the everyday line. The greeting and the
+ * everyday examples stay. Undefined when nothing changes.
+ */
+export function forgetFirstWords(body: { text: string; first?: FirstWords }, o: { folder?: string; home?: string } = {}): { text: string; first: FirstWords } | undefined {
+  const fw = body.first;
+  if (!fw) return undefined;
+  const home = o.home ?? homedir();
+  const abs = (p: string) => resolve(p === "~" ? home : p.startsWith("~/") ? home + p.slice(1) : p);
+  const goes = (s: FirstStart) => s.from !== "everyday" && (!o.folder || (s.path !== undefined && under(abs(s.path), abs(o.folder))));
+  const starts = fw.starts.filter((s) => !goes(s));
+  if (starts.length === fw.starts.length && (o.folder || fw.forgot)) return undefined;
+  let text = body.text;
+  if (!starts.some((s) => s.from !== "everyday") && fw.looked?.length) {
+    // The sentence is the home's own template: found in either table, it gives way to the everyday line.
+    // An answer to the person's look says that it forgot; the first words say the everyday line.
+    for (const t of Object.values(T) as Table[]) {
+      const where = fw.computer ? fill(t.on, { computer: fw.computer }) : t.here;
+      const who = fw.looked.map((a) => AGENT[a]).join(t.and);
+      for (const pat of [t.looked, t.lookedOne, t.none]) {
+        const said = space(fill(pat, { who, where }));
+        if (text.includes(said)) text = fw.look ? space(fill(t.forgotten, { who })) : text.replace(said, t.plain);
+      }
+    }
+  }
+  return { text, first: { ...fw, starts, ...(o.folder ? {} : { forgot: true as const }) } };
+}
+
+/**
+ * D327: the answer to the person's look tap: what their agents did lately (D298's offers, each with
+ * where it was read and when), or, when nothing is there, that nothing was found. No everyday
+ * examples (the first words already have them) and no greeting (it is an answer).
+ */
+export function lookWords(i: Omit<FirstWordsInput, "name" | "everyday" | "noBrain" | "canLook" | "memLine"> & { agents: LocalAgent[] }): FirstWordsOut {
+  const t = words(T, i.lang);
+  const home = i.home ?? homedir();
+  const offers = i.projects.slice(0, FIRST_OFFERS).map((p) => offer(p, { ...i, name: "", everyday: [] }, home));
+  const found = [...new Set(i.projects.slice(0, FIRST_OFFERS).flatMap((p) => p.sessions.map((s) => s.agent)))].sort() as LocalAgent[];
+  const looked = found.length ? found : [...i.agents].sort();
+  const where = i.computer ? fill(t.on, { computer: i.computer }) : t.here;
+  const who = looked.map((a) => AGENT[a]).join(t.and);
+  const text = space(fill(offers.length ? (offers.length > 1 ? t.looked : t.lookedOne) : t.none, { who, where }));
+  return { text, first: { starts: offers, ...(looked.length ? { looked } : {}), ...(i.computer ? { computer: i.computer } : {}), look: true } };
 }

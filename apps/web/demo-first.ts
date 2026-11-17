@@ -1,7 +1,7 @@
 // A demo core for the partner's first words and a pasted key (D298), on a fresh data folder and a
 // scratch home holding fake Claude Code and Codex records (never the person's own).
 //   DUCTER_PORT=7898 DUCTER_DATA_DIR=$(mktemp -d) DEMO_STAGE=first bun apps/web/demo-first.ts
-// DEMO_STAGE: first = Claude Code signed in, the records read; nobrain = nothing signed in, no
+// DEMO_STAGE: first = Claude Code signed in, records to look at (D327: read when the person taps the look start); nobrain = nothing signed in, no
 // records (the key card). A key ending in 0000 answers "no balance"; any other DeepSeek-shaped key works.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -35,6 +35,8 @@ const core = startCore({
   persona: { id: "default", name: process.env.DEMO_NAME ?? "Ducter", identity: "" },
   hostname: "127.0.0.1",
   firstWords: { home, env: {} },
+  // D327: the records are named by the home's name; a fixture's, never this computer's own.
+  update: { homeName: process.env.DEMO_HOME_NAME ?? "Ada’s MacBook Air" },
   keyFetch,
   keyCanRun: (h) => h === "pi",
   deviceProbes: { cua: async () => null, kind: async () => "laptop", harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: signedIn }] },

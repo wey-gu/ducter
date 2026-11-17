@@ -4,7 +4,7 @@ import { createWbFrames } from "./workbench.ts";
 import { effectiveBrain } from "./brain.ts";
 import { createMediaStore } from "./media.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -863,7 +863,21 @@ export function startCore(opts: CoreOptions = {}): Core {
   const outsideReader = opts.localAgents ?? (process.env.NODE_ENV === "test" || process.env.DUCTER_OUTSIDE === "0" ? createLocalAgents({ home: join(dataDir, "no-outside"), env: {} }) : createLocalAgents(process.env.DUCTER_OUTSIDE_HOME ? { home: process.env.DUCTER_OUTSIDE_HOME, env: {} } : {}));
   // D298: the first words read the same records (D299's reader), or a scratch home's in tests.
   const firstReader = opts.firstWords?.home ? createLocalAgents({ home: opts.firstWords.home, env: opts.firstWords.env ?? {} }) : outsideReader;
-  const outside = createOutside({ reader: outsideReader, dataDir, log, tasks, ducterFolder: homeFolder, language: () => languageOf("", settings) });
+  const outside = createOutside({ reader: outsideReader, dataDir, log, tasks, ducterFolder: homeFolder, language: () => languageOf("", settings), looks: () => settings.localAgents() });
+  // D327: what the first words may say about the records: whether there are any (file times alone),
+  // what they offer once the person asks, the home's name, and forgetting what was read.
+  const firstWordsDeps = opts.firstWords
+    ? {
+        projects: () => recentFolders(firstReader, { exclude: [dataDir, homeFolder()], leftOut: outside.leftOut, ...(opts.firstWords?.home ? { home: opts.firstWords.home } : {}) }),
+        has: () => firstReader.active({ since: Date.now() - 14 * 86_400_000, skip: [dataDir, homeFolder(), tmpdir(), "/tmp", "/private/tmp", "/var/folders", "/private/var/folders"] }),
+        computer: () => computers.homeName(),
+        forget: () => {
+          firstReader.forget();
+          outsideReader.forget();
+        },
+        ...(opts.firstWords.home ? { home: opts.firstWords.home } : {}),
+      }
+    : undefined;
   // D300: 替你做过的 / Done for you: every outward action, read from the Log and Autofill's uses.
   const did = createDid({ log, tasks, uses: () => autofill.store.view().uses, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), folder: (id) => changes.folder(id), now: () => clock.now() });
   registerDidTool(mcp, did, () => clock.now());
@@ -913,7 +927,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(opts.firstWords ? { firstWords: { projects: () => recentFolders(firstReader, { exclude: [dataDir, homeFolder()], ...(opts.firstWords?.home ? { home: opts.firstWords.home } : {}) }), ...(opts.firstWords.home ? { home: opts.firstWords.home } : {}) } } : {}) , did });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.

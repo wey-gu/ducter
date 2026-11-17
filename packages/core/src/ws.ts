@@ -20,7 +20,7 @@ import type { RulesStore } from "./rules.ts";
 import type { Loadout } from "./loadout.ts";
 import type { ConnectionsStore } from "./connections.ts";
 import { firstScreen, starters, type FirstScreenInput } from "./first-screen.ts";
-import { firstWords } from "./first-words.ts";
+import { firstWords, forgetFirstWords, lookWords } from "./first-words.ts";
 import { addKey } from "./api-key.ts";
 import { keyWords, normalizeTag } from "@ducter/protocol";
 import type { FirstFolder } from "./first-words.ts";
@@ -155,7 +155,16 @@ export interface WsDeps {
    * projects: the person's recent folders from their own agents' records (local-agents/), read
    * only while settings.localAgents() is on. Absent: no first words (tests that don't need them).
    */
-  firstWords?: { projects: () => FirstFolder[]; home?: string };
+  firstWords?: {
+    projects: () => FirstFolder[];
+    home?: string;
+    /** D327: the agents that wrote records here in the last 14 days, by their files' times alone (nothing in them read). */
+    has?: () => import("./local-agents/index.ts").LocalAgent[];
+    /** D327: the home's own name, said where the records were read. */
+    computer?: () => string | undefined;
+    /** D327: drop every summary read so far (looking turned off). */
+    forget?: () => void;
+  };
   /** D298: pasted API keys (api-key.ts): where they are kept, and the network and agent seams for tests. */
   keys?: { dataDir: string; fetch?: typeof fetch; canRun?: (h: import("@ducter/protocol").HarnessId) => boolean };
   batchMs?: number;
@@ -497,7 +506,11 @@ export function createWsHandler(deps: WsDeps) {
     });
     const nb = noBrain();
     const hidden = deps.past?.outside?.hidden() ?? [];
-    return { ...fs, ...(deps.firstWords && deps.settings ? { looks: deps.settings.localAgents() } : {}), ...(nb ? { noBrain: true } : {}), ...(hidden.length ? { outsideHidden: hidden } : {}) };
+    const o = deps.past?.outside;
+    const folders = o ? o.hiddenFolders().map((p) => o.tilde(p)) : [];
+    const computer = deps.firstWords?.computer?.();
+    const lookDone = log.read({ stream: "channel", kinds: ["ai_msg"], limit: 200 }).some((e) => (e.body as Bodies["ai_msg"]).first?.look);
+    return { ...fs, ...(deps.firstWords && deps.settings ? { looks: deps.settings.localAgents() } : {}), ...(nb ? { noBrain: true } : {}), ...(hidden.length ? { outsideHidden: hidden } : {}), ...(folders.length ? { outsideFolders: folders } : {}), ...(computer ? { computer } : {}), ...(lookDone ? { lookDone: true as const } : {}) };
   };
 
   /** D298: nothing on the home can think: its agents were probed and none is signed in. */
@@ -514,17 +527,51 @@ export function createWsHandler(deps: WsDeps) {
     const fw = deps.firstWords;
     if (!fw) return;
     if (log.read({ stream: "channel", kinds: ["user_msg", "ai_msg"], limit: 1 }).length) return;
-    let projects: FirstFolder[] = [];
+    // D327 (amends D298): nothing inside the records is read before the person asks. Their file
+    // times say whether there is anything; if so, the first start asks to look (its tap is the yes).
+    let canLook: import("./local-agents/index.ts").LocalAgent[] = [];
     if (!deps.settings || deps.settings.localAgents()) {
       try {
-        projects = fw.projects();
+        canLook = fw.has?.() ?? [];
       } catch (err) {
         console.warn("[ws] first words: the agents' records:", (err as Error).message);
       }
     }
     const now = new Date();
     const everyday = starters({ tasks: [], onHand: { missed: [] }, noted: [], apps: [], computers: [{ name: "", home: true }], talked: false, now, ...(tz ? { tz } : {}) }).map((s) => s.words);
-    const out = firstWords({ name: core.persona.name, lang, now, ...(tz ? { tz } : {}), projects, everyday, noBrain: noBrain(), ...(fw.home ? { home: fw.home } : {}) });
+    const out = firstWords({ name: core.persona.name, lang, now, ...(tz ? { tz } : {}), projects: [], everyday, noBrain: noBrain(), canLook, ...(fw.home ? { home: fw.home } : {}) });
+    log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: out.text, first: out.first } });
+  };
+
+  /** The channel's messages that hold what the records said (the first words of D298, the answers to a look). */
+  const fromRecords = () => log.read({ stream: "channel", kinds: ["ai_msg"], fromSeq: 0, limit: Number.MAX_SAFE_INTEGER }).filter((e) => (e.body as Bodies["ai_msg"]).first?.starts.some((s) => s.from !== "everyday" && s.from !== "look") || (e.body as Bodies["ai_msg"]).first?.look);
+
+  /**
+   * D327: forget what the records said: every message holding it is rewritten without it (the Log's
+   * one exception to append-only), and every summary read is dropped. `folder`: only that folder's.
+   */
+  const forgetRecords = (folder?: string) => {
+    for (const e of fromRecords()) {
+      const b = e.body as Bodies["ai_msg"];
+      const next = forgetFirstWords({ text: b.text, ...(b.first ? { first: b.first } : {}) }, { ...(folder ? { folder } : {}), ...(deps.firstWords?.home ? { home: deps.firstWords.home } : {}) });
+      if (next) log.forgetIn?.(e.seq, { ...b, ...next });
+    }
+    if (!folder) deps.firstWords?.forget?.();
+  };
+
+  /** D327: the person tapped "look": read their agents' records now and answer with what they offer. */
+  const lookNow = (lang: import("@ducter/protocol").LangTag, tz: string | undefined) => {
+    const fw = deps.firstWords;
+    if (!fw || (deps.settings && !deps.settings.localAgents())) return;
+    let projects: FirstFolder[] = [];
+    try {
+      projects = fw.projects();
+    } catch (err) {
+      console.warn("[ws] look: the agents' records:", (err as Error).message);
+    }
+    const agents = fw.has?.() ?? [];
+    const computer = fw.computer?.();
+    const out = lookWords({ lang, now: new Date(), ...(tz ? { tz } : {}), projects, agents, ...(computer ? { computer } : {}), ...(fw.home ? { home: fw.home } : {}) });
     log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: out.text, first: out.first } });
   };
 
@@ -709,6 +756,22 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "local_agents": {
         deps.settings?.setLocalAgents(f.on === true);
+        // D327: off is off everywhere, and what was read is forgotten, not only hidden.
+        if (f.on !== true) forgetRecords();
+        refreshFirstScreens();
+        return;
+      }
+      case "local_agents_look": {
+        lookNow(ws.data.locale ?? "en", typeof f.tz === "string" ? f.tz : ws.data.tz);
+        refreshFirstScreens();
+        return;
+      }
+      case "outside_folder": {
+        const o = deps.past?.outside;
+        if (!o) throw new Error("past tasks are not available");
+        const path = String(f.path ?? "").slice(0, 1024);
+        o.hideFolder(path, !!f.hidden);
+        if (f.hidden) forgetRecords(path);
         refreshFirstScreens();
         return;
       }

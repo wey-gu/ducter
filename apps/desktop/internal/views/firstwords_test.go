@@ -73,8 +73,8 @@ func TestFirstWordsInTheConversation(t *testing.T) {
 		tt.Advance(3 * time.Second) // the wave is over
 		tt.Frame()
 		w := map[i18n.Lang][]string{
-			i18n.ZH: {"我看了看这台电脑上你的", "hawdb", "周五下午提醒我交水电费", "别再看了", "只在这里读，只给你看"},
-			i18n.EN: {"Want to pick one of these up?", "hawdb", "Remind me on Friday", "Stop looking", "shown only to you"},
+			i18n.ZH: {"我看了看这台电脑上你的", "hawdb", "周五下午提醒我交水电费", "别再看了", "只在这台电脑上读"},
+			i18n.EN: {"Want to pick one of these up?", "hawdb", "Remind me on Friday", "Stop looking", "no one but you and the AI you use"},
 		}[lang]
 		all := strings.Join(tt.Texts(), "\n")
 		for _, s := range w {

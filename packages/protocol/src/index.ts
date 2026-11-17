@@ -924,6 +924,11 @@ export type ClientFrame =
   | { t: "key_add"; key: string; clientId: string }
   // D298: 别再看了 / Stop looking: the first words never read the person's agents' records again (on: back on).
   | { t: "local_agents"; on: boolean }
+  // D327: 这个文件夹别看了 / Leave this folder out (hidden: false brings it back). path is `~/…` or absolute.
+  | { t: "outside_folder"; path: string; hidden: boolean }
+  // D327: the person tapped the first words' look start: the home reads their agents' records and
+  // answers with the partner's offers (an ai_msg with first.look). Nothing happens with looking off.
+  | { t: "local_agents_look"; tz?: string }
   | { t: "hello"; persona?: string; cursor?: number; locale?: LangTag; tz?: string; client?: ClientKind; version?: string; shape?: ClientShape; gzip?: boolean }
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
@@ -1492,6 +1497,12 @@ export interface FirstScreen {
   noBrain?: boolean;
   /** D307: the agents whose own conversations Past tasks doesn't show (D299's 不再显示), for Settings' way back. */
   outsideHidden?: import("./past.ts").OutsideAgent[];
+  /** D327: folders the person left out (这个文件夹别看了), `~/…`: neither the first words nor Past tasks read them. */
+  outsideFolders?: string[];
+  /** D327: the computer whose agents' records these are (the home's name). */
+  computer?: string;
+  /** D327: the person already said "look" and was answered: the first words' look start goes. */
+  lookDone?: true;
 }
 
 /**
@@ -1502,12 +1513,23 @@ export interface FirstStart {
   id: string;
   words: string;
   draft: string;
-  from: "claude-code" | "codex" | "pi" | "everyday";
+  // D327: "look" is the one start that doesn't fill the composer: its tap is the person's yes to
+  // looking at their own agents' records (local_agents_look), answered by the home at once.
+  from: "claude-code" | "codex" | "pi" | "everyday" | "look";
+  /** D327: how I know, for a start from the records: the folder it was read for (`~/…`) and when that session last changed. */
+  path?: string;
+  at?: string;
 }
 export interface FirstWords {
   starts: FirstStart[];
   /** The agents whose records were read for these words (the clients say so, with 别再看了). */
   looked?: ("claude-code" | "codex" | "pi")[];
+  /** D327: the computer whose records they were (the home's name), so no screen says "this computer" for another one. */
+  computer?: string;
+  /** D327: the person said to stop looking: what came from the records was forgotten (the starts are gone from the Log). */
+  forgot?: true;
+  /** D327: the home's answer to the person's "look" tap (not the first words themselves: no clay face over it). */
+  look?: true;
 }
 
 /**

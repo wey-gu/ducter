@@ -61,38 +61,74 @@ func (a *App) firstWordsAfter(c *ui.Context, e *store.Entry) {
 	t := a.T
 	fw := e.AI.First
 	looks := a.S.First.Looking()
-	var starts []protocol.FirstStart
-	for _, s := range fw.Starts {
-		if s.From != "everyday" && !looks {
-			continue // 别再看了: what came from their records goes away
-		}
-		starts = append(starts, s)
+	starts := shownFirstStarts(fw, a.S.First)
+	computer := fw.Computer
+	if computer == "" && a.S.First != nil {
+		computer = a.S.First.Computer
+	}
+	if computer == "" {
+		computer = a.L.T("first.here")
+	}
+	fromRecords := false
+	for _, s := range starts {
+		fromRecords = fromRecords || s.FromRecords()
 	}
 	if len(starts) > 0 {
 		ui.Row(c.Key("first-starts")).Wrap().Gap(t.S2).Margin(t.S2, 0, 0, 0).AlignItems(ui.Stretch).Children(func() {
 			for n, s := range starts {
 				text := autospace(s.Words)
-				chip := ui.Row(c.Key(n+1)).Basis(260).Grow(1).MinHeight(56).Padding(t.S3, t.S4).Radius(t.RadiusMD).AlignItems(ui.Center).
-					Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text).Focusable()
-				a.buttonLook(c, chip, btnSecondary, t.ControlLG, t.Bg)
-				chip.Children(func() {
-					ui.Text(c, text).FontSize(t.MD).LineHeight(leadingFor(text, 1.45)).Grow(1).MinWidth(0)
-				})
-				if chip.Clicked() {
-					a.draft = unautospace(s.Draft)
-					a.focusComposer = true
+				key := fmt.Sprint(e.FirstSeq, ":", s.ID)
+				open := s.FromRecords() && a.firstHow[key]
+				cell := ui.Column(c.Key(n + 1)).Gap(t.S1).Basis(260).Grow(1).MinWidth(0)
+				if open {
+					cell.Basis(10000) // the open one takes the whole row
 				}
+				cell.Children(func() {
+					chip := ui.Row(c.Key("chip")).MinHeight(56).Grow(1).Padding(t.S3, t.S4).Radius(t.RadiusMD).AlignItems(ui.Center).
+						Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text).Focusable()
+					a.buttonLook(c, chip, btnSecondary, t.ControlLG, t.Bg)
+					chip.Children(func() {
+						ui.Text(c, text).FontSize(t.MD).LineHeight(leadingFor(text, 1.45)).Grow(1).MinWidth(0)
+					})
+					if chip.Clicked() {
+						if s.From == "look" {
+							// D327: the person's yes: the home looks now and answers.
+							a.send(protocol.LocalAgentsLook{T: "local_agents_look", TZ: localZone()})
+							if a.S.First != nil {
+								a.S.First.LookDone = true
+							}
+						} else {
+							a.draft = unautospace(s.Draft)
+							a.focusComposer = true
+						}
+					}
+					if !s.FromRecords() {
+						return
+					}
+					how := a.L.T("first.how")
+					if open {
+						how = a.L.T("first.how.close")
+					}
+					ui.Row(c.Key("how")).Padding(0, 0, 0, t.S4).Children(func() {
+						if a.button(c, how, btnText, t.ControlSM, t.Bg) {
+							if a.firstHow == nil {
+								a.firstHow = map[string]bool{}
+							}
+							a.firstHow[key] = !open
+						}
+					})
+					if open {
+						a.firstHowPanel(c, s, computer)
+					}
+				})
 			}
 		})
 	}
-	if len(fw.Looked) > 0 {
+	a.saidLine(c, "first-how")
+	if len(fw.Looked) > 0 && (fromRecords || !looks) {
 		ui.Row(c.Key("first-from")).Gap(t.S2).AlignItems(ui.Center).Wrap().Margin(t.S1, 0, 0, 2).Children(func() {
 			if looks {
-				names := make([]string, 0, len(fw.Looked))
-				for _, l := range fw.Looked {
-					names = append(names, agentName(l))
-				}
-				line := a.L.T("first.from", strings.Join(names, a.L.T("first.from.and")))
+				line := a.L.T("first.from", computer)
 				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45).Grow(1).Basis(240).MinWidth(0)
 				if a.button(c, a.L.T("first.stop"), btnText, t.ControlSM, t.Bg) {
 					a.send(protocol.LocalAgents{T: "local_agents", On: false})
@@ -114,6 +150,78 @@ func (a *App) firstWordsAfter(c *ui.Context, e *store.Entry) {
 	if a.S.First != nil && a.S.First.NoBrain || a.keyJustAdded() {
 		ui.Column(c).Margin(t.S3, 0, 0, 0).Children(func() { a.keyCard(c, a.sendKey) })
 	}
+}
+
+// shownFirstStarts is which starts show (D327, the web's shownStarts):
+// everyday ones always; the look start until it was answered; the records'
+// own only while looking is on, not forgotten, and not in a folder left out.
+func shownFirstStarts(fw *protocol.FirstWords, f *protocol.FirstScreen) []protocol.FirstStart {
+	looks := f.Looking()
+	var out []protocol.FirstStart
+	for _, s := range fw.Starts {
+		switch {
+		case s.From == "everyday":
+		case s.From == "look":
+			if !looks || f != nil && f.LookDone {
+				continue
+			}
+		default:
+			if !looks || fw.Forgot || f != nil && leftOutFolder(s.Path, f.OutsideFolders) {
+				continue
+			}
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// homeComputer is the home's name, whose agents' records these are (D327),
+// else "this computer".
+func (a *App) homeComputer() string {
+	if a.S.First != nil && a.S.First.Computer != "" {
+		return a.S.First.Computer
+	}
+	return a.L.T("first.here")
+}
+
+// leftOutFolder reports whether path is a folder left out, or inside one.
+func leftOutFolder(path string, folders []string) bool {
+	if path == "" {
+		return false
+	}
+	for _, f := range folders {
+		if path == f || strings.HasPrefix(path, strings.TrimSuffix(f, "/")+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// firstHowPanel is how I know (D327): which agent's records, the folder,
+// when, on which computer, each its own fact (D291), and 这个文件夹别看了.
+func (a *App) firstHowPanel(c *ui.Context, s protocol.FirstStart, computer string) {
+	t := a.T
+	ui.Row(c.Key("how-panel")).Wrap().Gap(t.S2).AlignItems(ui.Center).Padding(t.S2, t.S3).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
+		ui.Row(c.Key("facts")).Wrap().Gap(t.S3).AlignItems(ui.Center).Grow(1).Basis(260).MinWidth(0).Children(func() {
+			ui.Row(c.Key("agent")).Padding(1, t.S2).Radius(999).Background(t.Surface).Children(func() {
+				ui.Text(c, a.L.T("first.how.from", agentName(s.From))).FontSize(t.XS).FontWeight(600).TextColor(t.Ink)
+			})
+			if s.Path != "" {
+				ui.Text(c.Key("path"), s.Path).Font(t.Mono).FontSize(t.XS).TextColor(t.Ink).Selectable().MinWidth(0)
+			}
+			if s.At != "" {
+				ui.Text(c.Key("at"), a.ago(s.At)).FontSize(t.XS).TextColor(t.InkMuted)
+			}
+			ui.Text(c.Key("on"), a.L.T("first.how.on", computer)).FontSize(t.XS).TextColor(t.InkMuted).MinWidth(0)
+		})
+		if s.Path != "" && a.button(c, a.L.T("first.how.leave"), btnText, t.ControlSM, t.SurfaceSunken) {
+			a.send(protocol.OutsideFolder{T: "outside_folder", Path: s.Path, Hidden: true})
+			if a.S.First != nil {
+				a.S.First.OutsideFolders = append(a.S.First.OutsideFolders, s.Path)
+			}
+			a.say("first-how", a.L.T("first.how.left", s.Path))
+		}
+	})
 }
 
 // agentName is an agent's own name for the provenance line.

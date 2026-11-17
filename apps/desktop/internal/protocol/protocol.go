@@ -2182,6 +2182,12 @@ type FirstScreen struct {
 	// OutsideHidden (D307): the agents whose own conversations Past tasks
 	// doesn't show (D299), for Settings' way back.
 	OutsideHidden []string `json:"outsideHidden,omitempty"`
+	// OutsideFolders (D327): the folders left out (~/…), for Settings.
+	OutsideFolders []string `json:"outsideFolders,omitempty"`
+	// Computer (D327): the home's name, whose agents' records these are.
+	Computer string `json:"computer,omitempty"`
+	// LookDone (D327): the person already asked to look and was answered.
+	LookDone bool `json:"lookDone,omitempty"`
 }
 
 // Looking is whether the home may read the agents' records (D298): on

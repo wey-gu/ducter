@@ -5,6 +5,7 @@ import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 import type { CoreRegistry } from "./registry.ts";
 import { keyReadyText, keyRefusedText } from "./saved/key-words.ts";
+import { destructiveChoice } from "@ducter/protocol/src/destructive.ts";
 
 export type DecisionHook = (taskId: string, text: string, resolved: Bodies["decision_resolved"]) => void | Promise<void>;
 
@@ -124,6 +125,8 @@ export function createDecisions(opts: {
 
   const schedule = (d: Bodies["decision"]) => {
     if (!d.reversible || !d.defaultAt) return;
+    // D340: a card whose Go deletes something never goes by itself, whoever made it.
+    if (d.defaultOption === "go" && destructiveChoice(d.question, d.goLabel)) return;
     const ms = Date.parse(d.defaultAt) - clock.now();
     const fire = () => {
       timers.delete(d.decisionId);
@@ -146,12 +149,14 @@ export function createDecisions(opts: {
     if (r.state === "needs_input" || blocking.length) {
       const qs: Question[] = blocking.length ? blocking : [{ id: "q", text: r.summary, blocking: true, reversible: false }];
       for (const q of qs) {
-        const hasDefault = !!q.default?.trim();
+        // D340: a task's question whose Go would delete or wipe something has no default: it waits.
+        const named = !!q.default?.trim();
+        const hasDefault = named && !destructiveChoice(q.text, q.default);
         const body: Bodies["decision"] = {
           decisionId: newId(),
           taskId: r.taskId,
           question: q.text,
-          goLabel: hasDefault ? q.default!.trim() : "Continue",
+          goLabel: named ? q.default!.trim() : "Continue",
           defaultOption: hasDefault ? "go" : "hold",
           reversible: q.reversible,
           ...(q.signIn ? { signIn: q.signIn } : {}),

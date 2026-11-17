@@ -106,7 +106,7 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 	b := a.S.Bridge
 	t := a.T
 	name := st.Name
-	on := p.Reach != "off"
+	on := peersSwitchOn(p.Reach, b)
 	phase := peersPhase(b, on)
 	if b == nil || (b.State != "elsewhere" && (b.State != "connected" || len(b.Others) == 0)) {
 		a.bridgeHere = false
@@ -162,7 +162,11 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 				note = a.L.T("peers.switch.off", name)
 			}
 			a.textBlock(c, "peers-switch", func() {
-				if v, changed := a.switchRow(c, "peers", a.L.T("peers.switch", name), note, on); changed {
+				if v, changed := a.switchRow(c, "peers", a.L.T("peers.switch", name), note, on); changed && v && p.Reach != "off" {
+					b.State = "connecting"
+					a.send(protocol.BridgeAction{T: "bridge_connect"})
+					a.say("peers", a.L.T("said.peers.on"))
+				} else if changed {
 					next := *p
 					next.Reach = "own"
 					said := a.L.T("said.peers.on")

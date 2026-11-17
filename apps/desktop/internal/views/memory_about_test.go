@@ -84,6 +84,11 @@ func TestPeersRules(t *testing.T) {
 			t.Errorf("peersPhase(%v, %v) = %q, want %q", c.b, c.on, got, c.want)
 		}
 	}
+	// D340: a home that waits to be asked shows the switch off while Mem is ready.
+	asks := &protocol.BridgeView{State: "ready", Identity: "ducter", Asks: true}
+	if peersSwitchOn("own", asks) || peersPhase(asks, peersSwitchOn("own", asks)) != "off" || !peersSwitchOn("own", bv("ready")) || !peersSwitchOn("own", bv("connected")) || peersSwitchOn("off", bv("connected")) {
+		t.Errorf("peersSwitchOn")
+	}
 	none := &protocol.Peers{Reach: "own"}
 	if peersShown(nil, bv("connected"), true, true) || peersShown(none, bv("ready"), false, false) || peersShown(none, nil, false, false) {
 		t.Errorf("peersShown: shown to someone without agents of their own")

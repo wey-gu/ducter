@@ -92,6 +92,14 @@ export function ownsAgents(ownAgents: readonly string[], devices: { harnesses: {
  */
 export type PeersPhase = "on" | "off" | "getting" | "joining" | "problem" | "none";
 
+/**
+ * D340: whether the switch shows on. A home that isn't the person's own (a scratch or second home)
+ * never connects by itself: while Mem is ready there it shows off, and flipping it on is the ask.
+ */
+export function peersSwitchOn(reach: string | undefined, b: BridgeView | undefined): boolean {
+  return reach !== "off" && !(b?.state === "ready" && b.asks);
+}
+
 export function peersPhase(b: BridgeView | undefined, switchOn: boolean): PeersPhase {
   if (!b) return "none";
   if (b.state === "connected" || b.state === "disconnecting") return switchOn || b.state === "connected" ? "on" : "off";

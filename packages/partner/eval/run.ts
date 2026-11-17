@@ -547,7 +547,7 @@ function describeStep(st: Step): string {
   if ("users" in st) return st.users.map((u) => `user says${u.replyTo ? ` (replying, by swipe, to the earlier message with "${u.replyTo}")` : ""}: ${u.text}`).join(" || then at once ") + " (sent together, before any answer)";
   if ("user" in st && st.replyTo) return `user replies (by swipe, quoting it) to the earlier message with "${st.replyTo}": ${st.user}`;
   if ("user" in st) return `user says: ${st.user}${st.images?.length ? ` (with ${st.images.length === 1 ? "a picture" : `${st.images.length} pictures`}: ${st.images.map((p) => p.split("/").pop()).join(", ")})` : ""}`;
-  if ("report" in st) return `task "${st.report.task}" reports ${st.report.body.state}: ${st.report.body.summary}${st.report.body.questions.length ? ` | its question (already shown to the user with Go / Hold / Reply buttons): ${st.report.body.questions.map((q) => q.text).join(" / ")}` : ""}${st.report.body.evidence.length ? "" : " | (no evidence attached)"}`;
+  if ("report" in st) return `${st.report.told?.length ? `the user typed straight into task "${st.report.task}"'s own box: ${st.report.told.map((t) => `"${t}"`).join(", ")}; then ` : ""}task "${st.report.task}" reports ${st.report.body.state}: ${st.report.body.summary}${st.report.body.questions.length ? ` | its question (already shown to the user with Go / Hold / Reply buttons): ${st.report.body.questions.map((q) => q.text).join(" / ")}` : ""}${st.report.body.evidence.length ? "" : " | (no evidence attached)"}`;
   if ("reports" in st) return st.reports.map((r) => `task "${r.task}" reports ${r.body.state}: ${r.body.summary}`).join(" || ") + " (both within the same second)";
   if ("peer" in st) return `${st.peer.from} (${st.peer.from === "alex-reviewer" ? "a teammate's agent" : "the user's own Claude Code in a terminal"}) sends a Bridge message${st.peer.answer ? " answering the one Ducter sent it" : ""}: ${st.peer.text}`;
   if ("resolve" in st) return `user answers the open decision: ${st.resolve.option}${st.resolve.text ? ` "${st.resolve.text}"` : ""}`;
@@ -573,8 +573,10 @@ function replyWant(core: Core, words: string): ReplyWant {
 function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<string, string>, waiters: Map<string, Bodies["waiter"]>, opened: Opened[], conv = "channel") {
   const to = conv === "channel" ? {} : { stream: conv }; // D312: words to a second partner
   const tid = (key: string) => (key.startsWith("$opened") ? opened[Number(key.slice(7))]?.taskId : idOf.get(key)) ?? key;
-  const report = (r: { task: string; body: Omit<Bodies["report"], "taskId"> }) => {
+  const report = (r: { task: string; body: Omit<Bodies["report"], "taskId">; told?: string[] }) => {
     const taskId = tid(r.task);
+    // D340: the user's own words typed into the task, as the runner logs them.
+    for (const text of r.told ?? []) core.log.append({ stream: `task:${taskId}`, origin: "user", kind: "task_event", body: { taskId, role: "user", from: "user", text } });
     core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, ...r.body } });
   };
   if ("user" in st) {

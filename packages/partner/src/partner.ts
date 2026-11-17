@@ -64,6 +64,7 @@ import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
 import { FILE_INLINE_CHARS, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
 import { inTongue } from "../../protocol/src/say.ts";
+import { destructiveChoice } from "../../protocol/src/destructive.ts";
 import { parseRich } from "../../protocol/src/rich.ts";
 import { detect, inLanguage, langName, languageOfTexts, normalizeTag, words, type LangTag } from "../../protocol/src/lang.ts";
 import { NO_WORDS_YET, said } from "./words.ts";
@@ -617,6 +618,20 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     trusted: (agent) => !!core.settings?.get().peers?.trusted.includes(agent),
     taskTitle: (id) => core.tasks.get(id)?.title ?? jobs.get(id)?.title,
+    // D340: what the user typed into the task itself since its previous report (research/124 F1: without
+    // it, the person's own asks read as the task's ideas, and the partner offered to delete them).
+    told: (id, reportSeq) => {
+      const evs = core.log.read({ stream: `task:${id}`, kinds: ["task_event", "report"], beforeSeq: reportSeq, limit: 2000 });
+      const out: string[] = [];
+      for (let i = evs.length - 1; i >= 0; i--) {
+        const e = evs[i]!;
+        if (e.kind === "report") break;
+        const b = e.body as Bodies["task_event"];
+        if (b.role !== "user" || b.from !== "user" || !b.text?.trim() || (b.raw as { outside?: unknown } | undefined)?.outside) continue;
+        out.unshift(b.text.replace(/\s+/g, " ").trim());
+      }
+      return out;
+    },
     taskAttention: (id) => core.tasks.get(id)?.attention,
     merged: (id) =>
       core.log
@@ -1754,7 +1769,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const where = typeof args.where === "string" && args.where.trim() ? args.where.trim().slice(0, 80) : undefined;
         asker = { messageId: forMessage, agent, mine: true, ...(where ? { where } : {}), ...(args.suggests === true ? { suggests: true } : {}), ...(other ? { other } : {}) };
       }
-      const reversible = asker ? false : Boolean(args.reversible);
+      // D340: a card whose Go deletes or wipes something is never reversible and never goes by itself
+      // (research/124: 「要把它自己加的 README.md 和 NOTES.md 删掉吗？」 defaulted to 「好，删掉」).
+      const reversible = asker || destructiveChoice(args.question, args.goLabel) ? false : Boolean(args.reversible);
       const body: Bodies["decision"] = {
         decisionId: newId("d"),
         // The question states the choice; a default written into it contradicts the card's

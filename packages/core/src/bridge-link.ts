@@ -393,6 +393,8 @@ export function createBridgeLink(opts: {
   sys?: MemSys;
   env?: Record<string, string | undefined>;
   now?: () => number;
+  /** D340: false: this home connects only when asked, and its ready view says so (asks). */
+  byItself?: () => boolean;
   /** D329: where the Nowledge Mem app is on this computer (a Mac); undefined: none to open. Tests inject it. */
   memApp?: () => string | undefined;
   /** D329: how long openMem waits for the app to answer, looking every `openEveryMs`. */
@@ -795,7 +797,7 @@ export function createBridgeLink(opts: {
     // D324: another home answers this partner's mailbox now: say where, never connect beside it.
     const others = othersIn(p.conns, undefined, agent);
     if (others.length) return { state: "elsewhere", ...(await extras()), ...base, others: others.map(shown) };
-    return { state: "ready", ...(await extras()), ...base };
+    return { state: "ready", ...(await extras()), ...base, ...(opts.byItself?.() === false ? { asks: true as const } : {}) };
   };
 
   const api: BridgeLink = {

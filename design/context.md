@@ -16,6 +16,12 @@
     conclusions are kept forever. The harness's own log on its machine is the last-resort
     source.
   - Each window has a storage budget; going over raises a warning.
+- **The user's own words to a task** (D340): a thread's `task_event` with role user and from user
+  is the person typing into the task's own box (D325). The partner reads threads only through
+  reports, so each report it sees (a trigger, or a line in the conversation so far) carries
+  those words since that task's previous report, the latest four, clipped, as `the user told it
+  directly: "…"`. They are the person's own ask: the partner never calls them unrequested,
+  undoes them, steers against them or offers to delete them (research/124 F1).
 - **Main AI's own reads**: logged and marked foldable, so they never reach digests.
 - **Write coalescing**: events are batched before they are written. The Cloudflare free tier
   allows ~100k rows/day.

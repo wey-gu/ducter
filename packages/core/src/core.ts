@@ -22,7 +22,7 @@ import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
 import { createOutside } from "./outside.ts";
 import { createLocalAgents, type LocalAgents } from "./local-agents/index.ts";
-import { bridgeOnWords, createBridgeAuto } from "./bridge-auto.ts";
+import { bridgeOnWords, connectsByItself, createBridgeAuto } from "./bridge-auto.ts";
 import { createDid } from "./did.ts";
 import { registerDidTool } from "./did-tool.ts";
 import { recentFolders } from "./first-words.ts";
@@ -181,6 +181,8 @@ export interface CoreOptions {
   models?: ModelCatalog;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
   /** D205: the persona's Bridge connection (bridge-link.ts): tests pass a fake nmem. */
+  /** D340: whether this home connects to the person's Mem by itself (default: connectsByItself(dataDir)). */
+  bridgeByItself?: boolean;
   bridgeLink?: { run?: NmemCall; env?: Record<string, string | undefined>; exec?: import("./bridge-link.ts").MemExec; sys?: import("./mem-cli.ts").MemSys };
   /** D218: seams for the own-number phone (tests and demos: a fake phone, a loopback cable, a fake voice engine). */
   ownNumber?: Partial<import("./phone-own/index.ts").OwnPhoneDeps>;
@@ -762,8 +764,11 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D293: the home's own key pair (made before the Bridge link: D324 names its connection with it).
   const identity = homeIdentity(dataDir);
   // D205: Settings › 伙伴's one-tap Bridge connection for the persona, run by the home's nmem.
+  // D340: only the person's own home connects to their Mem by itself; a scratch, demo or test home waits to be asked.
+  const byItself = opts.bridgeByItself ?? connectsByItself(dataDir);
   const bridgeLink = createBridgeLink({
     dataDir,
+    byItself: () => byItself,
     identity: () => (settings.memMissing() ? undefined : persona.mem?.agentId),
     // D225: before Mem is in, the row still offers to put it in; connect names the persona's own id.
     fallbackIdentity: () => identityIdFor(persona.id),
@@ -906,6 +911,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     on: () => settings.get().peers?.reach !== "off",
     own: () => ownAgents().map((a) => harnessName(a)),
     dataDir,
+    byItself: () => byItself,
     say: (agents) => log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: bridgeOnWords(langNow(), agents) } }),
   });
   let reachWas = settings.get().peers?.reach;

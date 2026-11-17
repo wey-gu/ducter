@@ -78,9 +78,22 @@ export function filesLine(media: MediaRef[], ctx: RenderCtx): string {
   return ` [with ${one ? "a file" : `${docs.length} files`}: ${parts.join("; ")}.${read} A task that needs ${it} gets ${it} by id in task_open's or task_send's media. Never say a path to the user]`;
 }
 
-function renderReport(r: Bodies["report"], title?: string): string {
+/** D340: at most this many of the user's own words to a task ride with one report (the latest). */
+const TOLD_SHOWN = 4;
+
+/** D340: the user's own words sent straight to a task, as they ride with its report. */
+function toldLines(told: string[] | undefined, n: number): string[] {
+  if (!told?.length) return [];
+  const shown = told.slice(-TOLD_SHOWN).map((t) => `"${clip(t, n)}"`);
+  const more = told.length > TOLD_SHOWN ? ` (and ${told.length - TOLD_SHOWN} earlier)` : "";
+  return [`the user told it directly${more}: ${shown.join("; ")}`];
+}
+
+function renderReport(r: Bodies["report"], title?: string, told?: string[]): string {
   const head = `[task ${r.taskId}${title ? ` "${clip(title, 120)}"` : ""} report: ${r.state}] ${clip(r.summary, 600)}`;
   const lines = [head];
+  // D340: what the user said in the task itself since its last report: their own ask, not the task's idea.
+  for (const l of toldLines(told, 300)) lines.push(`  ${l} (in the task's own box, since its last report: this is what they asked; never call it unrequested, undo it or steer against it)`);
   for (const ev of r.evidence ?? []) lines.push(`  evidence (${ev.kind}): ${ev.label} -> ${ev.ref}${ev.check === "verified" ? " [Ducter checked: there]" : ev.check === "missing" ? " [Ducter checked: NOT there; not done until it is]" : ""}`);
   for (const q of r.questions ?? []) {
     lines.push(
@@ -117,6 +130,8 @@ export interface RenderCtx {
   /** D259: the whole text of a short text file the user sent (≤ FILE_INLINE_CHARS), else undefined. */
   fileText?(m: MediaRef): string | undefined;
   taskTitle(taskId: string): string | undefined;
+  /** D340: the user's own words sent straight to this task between its previous report and this one (seq), oldest first. */
+  told?(taskId: string, reportSeq: number): string[];
   decision(decisionId: string): Bodies["decision"] | undefined;
   /** A repo task's base branch, so "merged into its base branch" names it (eval: "can't tell if that's main"). */
   taskBase?(taskId: string): string | undefined;
@@ -204,7 +219,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     }
     case "report": {
       const r = e.body as Bodies["report"];
-      return renderReport(r, ctx.taskTitle(r.taskId));
+      return renderReport(r, ctx.taskTitle(r.taskId), ctx.told?.(r.taskId, e.seq));
     }
     case "decision_resolved": {
       const b = e.body as Bodies["decision_resolved"];
@@ -345,7 +360,8 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
     case "report": {
       const r = e.body as Bodies["report"];
       const ev = (r.evidence ?? []).map((x) => `${x.kind}:${x.label}`).join(", ");
-      return `[${t} task ${r.taskId} report: ${r.state}] ${clip(r.summary, 300)}${ev ? ` (evidence: ${ev})` : ""}${r.media?.length ? ` (showed the user ${mediaWords(r.media)})` : ""}`;
+      const told = toldLines(ctx.told?.(r.taskId, e.seq), 160).map((l) => ` (${l})`).join("");
+      return `[${t} task ${r.taskId} report: ${r.state}] ${clip(r.summary, 300)}${ev ? ` (evidence: ${ev})` : ""}${r.media?.length ? ` (showed the user ${mediaWords(r.media)})` : ""}${told}`;
     }
     case "finds": {
       // D165: what Ducter noticed and said by itself, so the partner can answer about it.

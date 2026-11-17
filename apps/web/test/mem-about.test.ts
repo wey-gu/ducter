@@ -3,7 +3,7 @@
 // The Mac has the same rules (apps/desktop/internal/views/memory_about_test.go TestPeersRules).
 import { describe, expect, test } from "bun:test";
 import type { BridgeView } from "@ducter/protocol";
-import { aboutGroups, bySource, ownsAgents, peersPhase, recentHandoffs, tryAgents } from "../src/mem-view.ts";
+import { aboutGroups, bySource, ownsAgents, peersPhase, peersSwitchOn, recentHandoffs, tryAgents } from "../src/mem-view.ts";
 
 describe("What it knows about you (D321)", () => {
   test("groups in a fixed order, empty kinds left out", () => {
@@ -34,6 +34,15 @@ describe("What it knows about you (D321)", () => {
     expect(peersPhase(b("ready"), true)).toBe("joining");
     expect(peersPhase(b("connecting"), true)).toBe("joining");
     for (const s of ["elsewhere", "refused", "failed", "unconfirmed", "no_space", "local_mem"] as const) expect(peersPhase(b(s), true)).toBe("problem");
+  });
+
+  test("D340: a home that waits to be asked shows the switch off while Mem is ready, so opening the page connects nothing", () => {
+    const asks: BridgeView = { state: "ready", identity: "ducter", asks: true };
+    expect(peersSwitchOn("own", asks)).toBe(false);
+    expect(peersPhase(asks, peersSwitchOn("own", asks))).toBe("off");
+    expect(peersSwitchOn("own", { state: "ready", identity: "ducter" })).toBe(true);
+    expect(peersSwitchOn("own", { state: "connected", identity: "ducter" })).toBe(true);
+    expect(peersSwitchOn("off", { state: "connected", identity: "ducter" })).toBe(false);
   });
 
   test("D332: whether the person runs agents of their own", () => {

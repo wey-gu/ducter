@@ -59,7 +59,9 @@ named action), 在看它想问你什么…, 它的原话：{x}.
 
 **Asks (D67).** An ask about how to do the work (reversible) always carries a default and a
 time, 10 min unless the work suggests otherwise; only effect-ladder asks (`flows/G-safety.md`
-§0) may wait without one.
+§0) may wait without one. **A card whose Go deletes, wipes or throws something away never has Go
+as its default (D340):** whoever made it (the partner's ask or a task's question), its words
+decide (`packages/protocol/src/destructive.ts`), it waits on Hold, with no time.
 
 **In a chat app (D276, `channels.md`).** Telegram and Slack are more windows on this one
 conversation: a turn started there gets its ack, result and asks there, the job as one status

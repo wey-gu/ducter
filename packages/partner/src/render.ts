@@ -180,7 +180,7 @@ function userAction(b: Bodies["job_status"], ctx: RenderCtx, n = 400): string {
 /** D340: what a bound task's done report asks of the partner. */
 function sourceLine(taskId: string, s: NonNullable<ReturnType<NonNullable<RenderCtx["taskSource"]>>>): string {
   const what = s.kind === "github" ? `GitHub ${s.where}${s.label}` : `the Obsidian to-do "${clip(s.title, 80)}"`;
-  if (s.kind === "obsidian") return `  (bound to ${what}: ${s.whenDone === "tick" ? "Ducter ticks it by itself; say nothing about it" : s.whenDone === "leave" ? "the user keeps it as it is" : `to tick it, todos do=write taskId ${taskId} once the user agrees`})`;
+  if (s.kind === "obsidian") return `  (bound to ${what}: ${s.whenDone === "tick" ? "Ducter ticks it by itself; say nothing about it" : s.whenDone === "leave" ? "the user keeps it as it is" : `the user wants to be asked: propose the tick with todos do=write taskId ${taskId} (a card asks), after your result line`})`;
   if (s.wrote?.includes("comment")) return `  (bound to ${what}: already commented)`;
   const lang = /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(s.title) ? "the issue's own language" : "English, the issue's language";
   return `  (bound to ${what}: write your one result message first, as for any result; then propose the write-back: todos do=write taskId ${taskId}, text = a short comment in ${lang} (what was done, the PR link), close=true only if this fully resolves it. Nothing after the card: it asks by itself)`;

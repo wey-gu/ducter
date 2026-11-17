@@ -59,6 +59,8 @@ dark, as the owners' own light and dark marks (GitHub, OOMOL, Tuwa's t, Cursor, 
 | Gmail | Google's 2020 Gmail icon (five paths) | its five colours |
 | Google Calendar | Simple Icons, on a white page | Google blue `#4285F4` |
 | GitHub | Simple Icons | ink |
+| Obsidian (D340, To-do sources) | Simple Icons 13.21.0 (CC0) | Obsidian purple `#7C3AED` (obsidian.md) |
+| Jira (D340, coming soon on To-do sources) | Simple Icons 13.21.0 (CC0) | Atlassian blue `#0052CC` (atlassian.design/foundations/logos) |
 | Discord | Simple Icons | Blurple `#5865F2` |
 | OOMOL | oomol.com/img/brand/oomol-mark.svg | ink |
 | Tuwa | tuwa.ai/favicon.svg (the t and its green dot; the clip at x = 84 cut into the path) | `#30D158`, the t in ink |

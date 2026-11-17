@@ -47,6 +47,8 @@ export function demoOptions(opts: CoreOptions = {}): CoreOptions {
     ownNumber: { ...own, listAudio: own.listAudio ?? demoAudio, exec: own.exec ?? noPhone },
     // The home's name is the pretend computer's, never this Mac's own name.
     update: { ...(opts.update ?? {}), homeName: opts.update?.homeName ?? DEMO_HOME },
+    // D340: no real gh (the person's issues) and no real Obsidian vault list, unless the demo brings a fake.
+    taskSources: { ...(opts.taskSources ?? {}), ghRun: opts.taskSources?.ghRun ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), home: opts.taskSources?.home ?? "/nonexistent/demo-home" },
   };
 }
 

@@ -265,3 +265,27 @@ test("Obsidian on the home: a done task ticks its line by itself; offered vaults
   expect(w).toMatchObject([{ op: "tick", state: "done", by: "rule" }]);
   expect(createDid({ log: core.log, tasks: core.tasks }).query({}).items.find((i) => i.via === "Obsidian")).toMatchObject({ kind: "changed", go: { by: "before" } });
 });
+
+test("Obsidian set to Ask me: a done task's line waits for a Go card, then ticks once", async () => {
+  const { core, open, dir, cards } = boot();
+  const v = join(dir, "Vault2");
+  mkdirSync(v);
+  writeFileSync(join(v, "Inbox.md"), "- [ ] Send the thank-you card\n");
+  const old = new Date(Date.now() - 60_000);
+  utimesSync(join(v, "Inbox.md"), old, old);
+  const ts = core.taskSources;
+  const add = await ts.add("obsidian", v);
+  ts.set(add.id!, { whenDone: "ask" });
+  const [note] = (await ts.items()).items;
+  open("t1");
+  ts.bind("t1", note!, "you");
+  core.tasks.setState("t1", "done", "cold");
+  await Bun.sleep(30);
+  expect(readFileSync(join(v, "Inbox.md"), "utf8")).toBe("- [ ] Send the thank-you card\n");
+  const r = await ts.propose({ taskId: "t1", lang: "en" });
+  const card = cards().find((c) => c.decisionId === r.decisionId)!;
+  expect(card.question).toBe("Tick off “Send the thank-you card” in Obsidian?");
+  core.decisions.decide(card.decisionId, "go");
+  await Bun.sleep(30);
+  expect(readFileSync(join(v, "Inbox.md"), "utf8")).toBe("- [x] Send the thank-you card ✅ 2026-11-19\n");
+});

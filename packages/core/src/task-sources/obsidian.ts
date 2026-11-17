@@ -1,4 +1,4 @@
-// D340: Obsidian Tasks lines in a vault on the home: `- [ ] words 📅 2026-11-20 🔼`. Read only from
+// D340: Obsidian Tasks lines in a vault on the home: `- [ ] words \u{1F4C5} 2026-11-20 \u{1F53C}`. Read only from
 // the folder the person chose; written one line at a time, in place, and only after the file was
 // read again and found unchanged (research/126 §2: the person may have the note open, and a sync
 // may be bringing a copy). Never another line, never the file's endings, BOM or last newline.
@@ -16,7 +16,7 @@ export interface ObsidianOpts {
   folder?: () => string | undefined;
   /** Only lines with this tag ("#ducter"). */
   tag?: () => string | undefined;
-  /** Today, YYYY-MM-DD in the person's zone (the ✅ date). */
+  /** Today, YYYY-MM-DD in the person's zone (the \u2705 date). */
   today?: () => string;
   now?: () => number;
   /** A file changed this recently is being edited: not written now (ms). */
@@ -27,7 +27,7 @@ const MAX_FILES = 4000;
 const MAX_BYTES = 2_000_000;
 const TASK = /^(\s*(?:[-*+]|\d+[.)])\s+\[)(.)(\]\s+)(.*)$/;
 const DATE = "(\\d{4}-\\d{2}-\\d{2})";
-const SIGNIFIERS = /\s*(?:[📅⏳🛫➕✅❌]️?\s*\d{4}-\d{2}-\d{2}|🔁️?[^📅⏳🛫➕✅❌⏫🔼🔽⏬🔺🆔⛔^]*|[⏫🔼🔽⏬🔺]️?|🆔\s*[\w-]+|⛔\s*[\w,-]+|\[[a-z]+::[^\]]*\])/gu;
+const SIGNIFIERS = /\s*(?:[\u{1F4C5}\u23F3\u{1F6EB}\u2795\u2705\u274C]\uFE0F?\s*\d{4}-\d{2}-\d{2}|\u{1F501}\uFE0F?[^\u{1F4C5}\u23F3\u{1F6EB}\u2795\u2705\u274C\u23EB\u{1F53C}\u{1F53D}\u23EC\u{1F53A}\u{1F194}\u26D4^]*|[\u23EB\u{1F53C}\u{1F53D}\u23EC\u{1F53A}]\uFE0F?|\u{1F194}\s*[\w-]+|\u26D4\s*[\w,-]+|\[[a-z]+::[^\]]*\])/gu;
 const BLOCK = /\s\^([\w-]+)\s*$/;
 
 export interface TaskLine {
@@ -53,10 +53,10 @@ export function parseLine(line: string, index: number): TaskLine | undefined {
   const rest = m[4]!;
   const words = wordsOf(rest);
   if (!words) return undefined;
-  const id = /🆔\s*([\w-]+)/u.exec(rest)?.[1];
+  const id = /\u{1F194}\s*([\w-]+)/u.exec(rest)?.[1];
   const block = BLOCK.exec(rest)?.[1];
-  const due = new RegExp(`📅\\uFE0F?\\s*${DATE}`, "u").exec(rest)?.[1] ?? new RegExp(`\\[due::\\s*${DATE}\\]`).exec(rest)?.[1];
-  const pr = /[⏫🔺]/u.test(rest) ? "highest" : /🔼/u.test(rest) ? "high" : /⏬/u.test(rest) ? "lowest" : /🔽/u.test(rest) ? "low" : undefined;
+  const due = new RegExp(`\u{1F4C5}\\uFE0F?\\s*${DATE}`, "u").exec(rest)?.[1] ?? new RegExp(`\\[due::\\s*${DATE}\\]`).exec(rest)?.[1];
+  const pr = /[\u23EB\u{1F53A}]/u.test(rest) ? "highest" : /\u{1F53C}/u.test(rest) ? "high" : /\u23EC/u.test(rest) ? "lowest" : /\u{1F53D}/u.test(rest) ? "low" : undefined;
   return {
     index,
     status: m[2]!,
@@ -64,7 +64,7 @@ export function parseLine(line: string, index: number): TaskLine | undefined {
     key: id ? `id:${id}` : block ? `^${block}` : sha(words),
     ...(due ? { due } : {}),
     ...(pr ? { priority: pr as SourceItem["priority"] } : {}),
-    ...(/🔁/u.test(rest) ? { repeats: true } : {}),
+    ...(/\u{1F501}/u.test(rest) ? { repeats: true } : {}),
   };
 }
 
@@ -235,13 +235,13 @@ export function createObsidian(o: ObsidianOpts): SourceAdapter & { vaultName(): 
         if (!isOpen(t.status)) return { ok: false, refused: "changed", error: "the line is already ticked or cancelled" };
         if (t.repeats) return { ok: false, refused: "repeats", error: "a repeating to-do" };
         let rest = m[4]!.replace(/\s+$/, "");
-        const done = ` ✅ ${today()}`;
+        const done = ` \u2705 ${today()}`;
         const b = BLOCK.exec(rest);
         rest = b ? `${rest.slice(0, b.index)}${done}${rest.slice(b.index)}` : `${rest}${done}`;
         next = `${m[1]}x${m[3]}${rest}`;
       } else {
         if (t.status !== "x" && t.status !== "X") return { ok: false, refused: "changed", error: "the line isn't ticked" };
-        next = `${m[1]} ${m[3]}${m[4]!.replace(/\s✅️?\s*\d{4}-\d{2}-\d{2}/u, "")}`;
+        next = `${m[1]} ${m[3]}${m[4]!.replace(/\s\u2705\uFE0F?\s*\d{4}-\d{2}-\d{2}/u, "")}`;
       }
       // Compare and swap: the file is read again just before the write and must be what was read.
       const again = statSync(s.abs);

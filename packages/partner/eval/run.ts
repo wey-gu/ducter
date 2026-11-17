@@ -313,7 +313,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   // D312: the partner under test is a second partner (its own conversation, channel:p2); the seed is the default's.
   const conv = sc.second ? "channel:p2" : "channel";
   const todoGh = sc.todos ? fakeGh(TODO_ISSUES, { login: "wey-gu" }) : undefined;
-  const core = startCore({ dataDir, port: 0, persona, ...(todoGh ? { taskSources: { ghRun: todoGh.run, ghEnv: {}, pollMs: 3_600_000 } } : {}), ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
+  const core = startCore({ dataDir, port: 0, persona, // D340: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+    taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000 }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   if (calOo && !(await core.connections.addFromOo()).ok) throw new Error("fake oo calendar: not added");
   if (todoGh && !(await core.taskSources.add("github")).ok) throw new Error("fake GitHub: not added");
   if (sc.second && !core.partners.add({ name: sc.second.name }).ok) throw new Error("second partner: not added");

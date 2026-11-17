@@ -22,6 +22,8 @@ import { liveRow, liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "
 import { computerName, deviceWait, manyComputers } from "./where.ts";
 import { Avatar, DecisionCard, stateLabel } from "./views.tsx";
 import { Coin } from "./coin.tsx";
+import { BrandMark } from "./brand.tsx";
+import { SourceChip, TS } from "./todos.tsx";
 import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
 import { OtherAsk, PartnerMark } from "./partners.tsx";
@@ -267,15 +269,33 @@ export function lensGroups(): LensGroup[] {
   if (other) out.push(other);
   return out;
 }
-/** Offered from two groups (one project with errands beside it is already two kinds of work). */
-export const lensOn = (groups: LensGroup[]) => groups.length >= 2;
-/** The lens kept on this device, if that project is still there; else all. */
+/** D340: the board read by where its tasks' to-dos come from: one group per to-do source with a bound task. */
+export type SourceGroup = { key: string; name: string; kind: string; tasks: Task[] };
+export function sourceGroups(): SourceGroup[] {
+  const out = new Map<string, SourceGroup>();
+  for (const lane of A.S.board().lanes.slice(0, 4))
+    for (const task of lane) {
+      const s = task.card?.source;
+      if (!s) continue;
+      const key = `src:${s.source}`;
+      let g = out.get(key);
+      if (!g) {
+        const v = TS.frame?.sources.find((x) => x.id === s.source);
+        out.set(key, (g = { key, name: s.kind === "github" ? "GitHub" : (v?.name ?? "Obsidian"), kind: s.kind, tasks: [] }));
+      }
+      g.tasks.push(task);
+    }
+  return [...out.values()];
+}
+/** Offered from two groups (one project with errands beside it is already two kinds of work), or once a to-do source has a task. */
+export const lensOn = (groups: LensGroup[]) => groups.length >= 2 || (groups.length >= 1 && sourceGroups().length > 0);
+/** The lens kept on this device, if that project (or to-do source) is still there; else all. */
 export function currentLens(groups: LensGroup[]): string {
   const k = readLens();
-  return k && lensOn(groups) && groups.some((g) => g.key === k) ? k : "";
+  return k && lensOn(groups) && (groups.some((g) => g.key === k) || sourceGroups().some((g) => g.key === k)) ? k : "";
 }
-/** The lanes narrowed to a lens. */
-export const lensLanes = (lens: string): Task[][] => A.S.board().lanes.slice(0, 4).map((l) => (lens ? l.filter((x) => lensOf(x) === lens) : l));
+/** The lanes narrowed to a lens (a project, or D340 a to-do source). */
+export const lensLanes = (lens: string): Task[][] => A.S.board().lanes.slice(0, 4).map((l) => (!lens ? l : lens.startsWith("src:") ? l.filter((x) => `src:${x.card?.source?.source ?? ""}` === lens) : l.filter((x) => lensOf(x) === lens)));
 /** Only all, and Other, hold what belongs to no task: the partner's own asks, task-less waits, calls. */
 export const looseIn = (lens: string) => !lens || lens === OTHER;
 
@@ -290,7 +310,7 @@ function groupStat(tasks: Task[]): { adds: number; dels: number } {
   return { adds, dels };
 }
 
-function LensEntry({ k, name, tasks, on, tab }: { k: string; name: string; tasks: Task[]; on: boolean; tab?: boolean }) {
+function LensEntry({ k, name, tasks, on, tab, brand }: { k: string; name: string; tasks: Task[]; on: boolean; tab?: boolean; brand?: string }) {
   const statuses = tasks.map((x) => statusOf(x.id, attention(x), x.card?.updatedAt));
   const mark = urgentOf(statuses);
   const counts = foldCounts(statuses);
@@ -298,6 +318,7 @@ function LensEntry({ k, name, tasks, on, tab }: { k: string; name: string; tasks
   return (
     <button class={`lens-row${on ? " on" : ""}${k === OTHER ? " other" : ""}`} aria-pressed={on} aria-label={spoken(A.L, name, counts)} title={counts || undefined} onClick={() => setLens(k)}>
       <span class="nm">
+        {brand && <BrandMark name={brand} size={14} />}
         <b>{name}</b>
         {st.adds + st.dels > 0 && (
           <span class="stat">
@@ -324,6 +345,16 @@ export function LensColumn() {
       {groups.map((g) => (
         <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} />
       ))}
+      {/* D340: where the to-dos came from, after the projects. */}
+      {sourceGroups().length > 0 && (
+        <>
+          <span class="gap" />
+          <small class="lens-h">{t("todos.lens")}</small>
+          {sourceGroups().map((g) => (
+            <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} brand={g.kind} />
+          ))}
+        </>
+      )}
     </nav>
   );
 }
@@ -338,6 +369,9 @@ export function LensTabs({ inBoard }: { inBoard?: boolean }) {
       <LensEntry k="" name={t("onhand.lens.all")} tasks={groups.flatMap((g) => g.tasks)} on={!lens} tab />
       {groups.map((g) => (
         <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} tab />
+      ))}
+      {sourceGroups().map((g) => (
+        <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} tab brand={g.kind} />
       ))}
     </nav>
   );
@@ -721,6 +755,7 @@ const CompactCard = memo(function CompactCard({ task, room, focus, sel, quiet }:
           <span class={`k2${s.tone ? ` ${s.tone}` : ""}`}>
             <span class="w">{s.words}</span>
             {quiet && <span class="since">{t("onhand.wait.since", ago(A.L, task.card?.updatedAt))}</span>}
+            {task.card?.source && <SourceChip src={task.card.source} small plain />}
             <Facts class="meta" items={meta} />
           </span>
         </span>
@@ -813,6 +848,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
             </span>
           )}
           {pr && <span class="pr">{pr}</span>}
+          {task.card?.source && <SourceChip src={task.card.source} small plain />}
           <Facts class="meta" items={meta} />
         </span>
         {u && !finished(task) && <Goal u={u} />}

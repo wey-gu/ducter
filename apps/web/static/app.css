@@ -13987,3 +13987,160 @@ svg .wave.w2.on {
 @media (max-width: 430px) {
   .g-block:has(> .ex-pair) { padding-left: var(--set-in, var(--s4)); }
 }
+
+/* D340: 待办来源 / To-do sources. A bound task's chip (its app's own mark, the number or the note's
+   name, its state apart), New task's pick, the write-back card's comment, On hand's lens heading. */
+.src-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-width: 0;
+  font-size: var(--sm);
+  color: var(--ink-soft);
+}
+.src-chip .src-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px var(--s2);
+  border-radius: var(--pill);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.src-chip a.src-link:hover,
+.src-chip a.src-link:focus-visible {
+  background: var(--sunken);
+}
+.src-chip .src-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 16em;
+}
+.src-chip.small {
+  font-size: var(--xs);
+}
+.src-chip.small .src-link {
+  padding: 1px 6px;
+}
+.src-chip .src-state {
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+.todo-counts {
+  padding: 0 var(--set-in, var(--s4)) var(--s2) calc(var(--set-in, var(--s4)) + var(--chat-col));
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+.ask-in-place {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.ask-in-place small {
+  display: inline;
+}
+.todo-path .field {
+  min-width: 0;
+}
+.todo-pick-btn {
+  align-self: flex-start;
+}
+.todo-pick,
+.todo-picked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin-top: var(--s2);
+  padding: var(--s2);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+}
+.todo-picked {
+  flex-direction: row;
+  align-items: center;
+}
+.todo-picked .grow,
+.todo-row .grow {
+  flex: 1;
+  min-width: 0;
+}
+.todo-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.todo-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--s1) var(--s2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.todo-row:hover,
+.todo-row:focus-visible {
+  background: var(--surface);
+}
+.todo-row small {
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.todo-row small.todo-doing {
+  color: var(--working-ink);
+  font-weight: 600;
+}
+.src-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s1);
+  margin: var(--s2) 0;
+}
+.src-quote {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  border-inline-start: 3px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: var(--sm);
+  line-height: var(--lh-read);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.lens-h {
+  display: block;
+  padding: 0 var(--s3);
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.lens-row .nm .brand-mark {
+  flex: none;
+  margin-inline-end: 4px;
+  vertical-align: -2px;
+}

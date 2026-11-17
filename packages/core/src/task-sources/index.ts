@@ -133,6 +133,7 @@ const SAID = {
     commentGo: "留言",
     closeGo: "留言并关掉",
     closedQ: "{label} 在 {app} 上关掉了。这件事停下吗？",
+    closedQObs: "Obsidian 里的「{title}」勾掉了。这件事停下吗？",
     closedGo: "停下",
     trustTakeQ: "以后 {app} 上标给你的，直接接下？",
     trustTakeQObs: "以后 {app} 里的待办，直接接下？",
@@ -142,6 +143,9 @@ const SAID = {
     keepAsking: "仍然先问我",
     notNow: "暂不留言",
     closeOnlyQ: "关掉 {where}{label}？",
+    tickQ: "勾掉 Obsidian 里的「{title}」？",
+    tickGo: "勾掉",
+    tickHold: "暂不勾掉",
     closeOnlyGo: "关掉",
     leaveOpen: "暂不关掉",
     keepGoing: "接着做",
@@ -152,6 +156,7 @@ const SAID = {
     commentGo: "Comment",
     closeGo: "Comment and close",
     closedQ: "{label} was closed on {app}. Stop this task?",
+    closedQObs: "“{title}” was ticked off in Obsidian. Stop this task?",
     closedGo: "Stop",
     trustTakeQ: "Take what's assigned to you on {app} without asking from now on?",
     trustTakeQObs: "Take to-dos from {app} without asking from now on?",
@@ -161,6 +166,9 @@ const SAID = {
     keepAsking: "Keep asking me",
     notNow: "Not now",
     closeOnlyQ: "Close {where}{label}?",
+    tickQ: "Tick off “{title}” in Obsidian?",
+    tickGo: "Tick it off",
+    tickHold: "Not now",
     closeOnlyGo: "Close it",
     leaveOpen: "Leave it open",
     keepGoing: "Keep going",
@@ -411,7 +419,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
           const w = SAID[lang];
           decision({
             decisionId: `d_${randomBytes(6).toString("hex")}`,
-            question: fill(w.closedQ, { label: item.kind === "github" ? `${item.where}${item.label}` : `「${item.title}」`, app: appName(item.kind) }),
+            question: fill(item.kind === "obsidian" ? w.closedQObs : w.closedQ, { label: `${item.where ?? ""}${item.label}`, title: item.title, app: appName(item.kind) }),
             goLabel: w.closedGo,
             holdLabel: w.keepGoing,
             defaultOption: "go",
@@ -484,6 +492,11 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     const s = byId(src.item.source);
     if (src.kind === "write") {
       if (r.option !== "go") return;
+      // An Obsidian line: the tick, once.
+      if (src.item.kind === "obsidian") {
+        await write(src.item, "tick", { by: "go", decisionId: card.decisionId, ...(src.taskId ? { taskId: src.taskId } : {}) });
+        return;
+      }
       // A close-only card (the comment already went under the standing go) writes no comment.
       const c = src.text ? await write(src.item, "comment", { by: "go", decisionId: card.decisionId, ...(src.taskId ? { taskId: src.taskId } : {}), text: src.text }) : { ok: true };
       if (c.ok && src.close) await write(src.item, "close", { by: "go", decisionId: card.decisionId, ...(src.taskId ? { taskId: src.taskId } : {}) });
@@ -663,7 +676,14 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       if (!s) return { ok: false, error: "that to-do's source was removed; nothing goes back" };
       if (item.kind === "obsidian") {
         if (s.whenDone === "leave") return { ok: false, error: "the user said to leave Obsidian lines alone (Settings › To-do sources)" };
-        const r = await write(item, "tick", { by: s.whenDone === "tick" ? "rule" : "go", taskId: c!.taskId });
+        if (s.whenDone === "ask") {
+          const lang = p.lang ?? langOf(c);
+          const w = SAID[lang];
+          const body: Bodies["decision"] = { decisionId: `d_${randomBytes(6).toString("hex")}`, question: fill(w.tickQ, { title: item.title }), goLabel: w.tickGo, holdLabel: w.tickHold, defaultOption: "hold", reversible: false, src: { kind: "write", item, taskId: c!.taskId } };
+          decision(body);
+          return { ok: true, decisionId: body.decisionId };
+        }
+        const r = await write(item, "tick", { by: "rule", taskId: c!.taskId });
         return r.ok ? { ok: true, wrote: [{ op: "tick" }] } : { ok: false, error: r.refused === "repeats" ? "It repeats: the Tasks plugin makes the next one when the user ticks it in Obsidian. Say so in one line." : r.refused === "busy" ? "The note is being edited or synced right now: Ducter tries again on the next look." : (r.error ?? "couldn't tick it") };
       }
       const text = (p.text ?? "").trim();

@@ -82,6 +82,7 @@ Design notes:
 - `on-hand.md`: 手头的事 / On hand, the conductor surface: projects as a lens, the strip, the folds (D261).
 - `past.md`: 做过的事 / Past tasks and 一直在跑的 / Ongoing: finding, marking, continuing, pausing (D285).
 - `imessage.md`: the partner in iMessage through the Mac app: chat.db, AppleScript, identity, pairing (D277).
+- `task-sources.md`: 待办来源 / To-do sources, the person's GitHub issues and Obsidian Tasks bound to tasks: who owns which field, offered never started, writing back behind a Go (D340).
 - `settings.md`: Settings pane by pane: who is in each, the flows walked, the shared pieces and the partner's word after a change (D296).
 - `voice.md`: hold to talk and read aloud, each platform's own speech, the app bridge (D305).
 - `channels.md`: 聊天软件 / Chat apps, the partner in the person's own Telegram bot, Slack app and WeChat ClawBot as more windows on the one conversation (D276, D301).

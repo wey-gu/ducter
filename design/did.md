@@ -37,11 +37,11 @@ tool call) is not the record.
 
 | Kind | What | Read from |
 |---|---|---|
-| 发出的 / Sent | mail and messages sent through an account (connection writes that send), a message or post tapped in an app on a phone or a computer after its Go, a message to another agent (Nowledge Bridge) | `connection_call` (write, done), `decision.phone` / `decision.computer` (effect send, post) + its Go, `bridge_msg` out |
+| 发出的 / Sent | D340: a comment on a GitHub issue for a bound task (`source_write` comment, with its Go or "allowed before" under the standing go); mail and messages sent through an account (connection writes that send), a message or post tapped in an app on a phone or a computer after its Go, a message to another agent (Nowledge Bridge) | `connection_call` (write, done), `decision.phone` / `decision.computer` (effect send, post) + its Go, `bridge_msg` out |
 | 付款 / Paid | a saved card after Pay; a tap that pays or buys in an app after its Go | `decision.pay` + Go, the Autofill use `approved`; `decision.phone` / `decision.computer` (effect pay, buy) |
 | 电话 / Calls | every call Ducter placed, from a line (Tuwa) or the person's own number, with how it ended | `phone_call` (the latest snapshot of each call that was placed) |
 | 登录和填写 / Sign-ins and fills | a saved sign-in or private detail filled on a site, a key given to a task, a sign-in tap in an app | the Autofill uses (`filled`, `ok`, `given`); `decision.phone` / `decision.computer` (effect account) |
-| 改动 / Changed | a calendar change (add, move, answer), a merge, a draft PR, a folder task's files, a setting or an install in an app, any other write to an account | `connection_call` (write, done) with `decision.cal`; `job_status` (act merge / open_pr, done); `report.folder`; effects setting, install, confirm |
+| 改动 / Changed | D340: a GitHub issue closed or an Obsidian line ticked for a bound task (`source_write` close, tick); a calendar change (add, move, answer), a merge, a draft PR, a folder task's files, a setting or an install in an app, any other write to an account | `connection_call` (write, done) with `decision.cal`; `job_status` (act merge / open_pr, done); `report.folder`; effects setting, install, confirm |
 | 删除 / Deleted | a calendar event cancelled, anything deleted through an account or tapped in an app | `decision.cal` cancel; connection writes whose action deletes; effect delete |
 | 看过的 / Looked at | each account it read from, counted per day and per task. **Never what it read** | `connection_call` (read, done) |
 

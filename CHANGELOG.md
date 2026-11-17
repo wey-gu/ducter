@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.0.68
+
+<!-- whats-new
+zh: 借手机不用打开 App；锁屏会暂停，不再收回
+en: Lend your phone without opening the app; a lock pauses instead of ending
+zh: 和你的其他 agent 通信：一个开关，自己连上，每个 Space 都收
+en: Talk with your other agents: one switch, connects by itself, every Space
+-->
+
+**Your phone**
+- A Go starts the loan with Ducter closed or in the background. A locked phone starts when
+  you unlock it, and the lock screen never shows the task. Locking during a loan pauses it;
+  unlocking asks once before it goes on. Every screen says exactly what it waits for.
+
+**Your other agents**
+- Settings › Agent messaging: what passed between Ducter and your other agents, two example
+  exchanges, and one switch. It connects by itself once Nowledge Mem is ready.
+- Ducter reads its mailbox in every Space and answers where it was asked; a teammate's agent
+  asks you once. Checks every minute, and within seconds after it writes.
+- The partner reaches other agents only through Ducter's own tools; "check messages" works.
+
+**Nowledge Mem**
+- Its line in the first words; Update all updates it too; a save replaces its earlier self;
+  Undo on what it noted; a closed Mem app is said, with a way to open it; saves wait while
+  Mem is away.
+
+**Settings**
+- Passwords & cards (was Autofill); a payment card is 银行卡 in Chinese.
+- Eighteen fixes from walking every pane as three different people; a browser on a laptop
+  is This computer.
+
+**Tasks**
+- A steer's "seen" is matched by id, checked live on Claude Code, Codex and pi; the
+  locator's list is called What happened in this task.
+
 ## 0.0.67
 
 <!-- whats-new

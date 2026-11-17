@@ -2303,8 +2303,9 @@ export interface BridgeView {
    * D334: on connected, the Spaces where Mem refused the home a reader for the partner's mailbox
    * (`agents context select` said no): messages sent to the partner there aren't read. One quiet
    * problem row names them; Spaces are never listed otherwise. code: Mem's registered code, as said.
+   * D338: status, the HTTP status Mem answered with (404 on nmem 0.10.120: nowledge-co/mem#10402).
    */
-  unread?: { label: string; code?: string }[];
+  unread?: { label: string; code?: string; status?: number }[];
 }
 
 /** The choices offered for defaultAfterMin, in minutes. */

@@ -38,6 +38,9 @@
 // D335: NMEM_FAKE_INBOX_WAIT=1 lists `--wait <SECONDS>` in `bridge inbox --help` and holds `inbox --wait`
 // until an unread message is there for that context (its Space; every Space with --all-spaces);
 // =error answers every wait with a 503-like failure, =error:<ctx>[,<ctx>] only those contexts'.
+// D338 (nmem 0.10.120 on the author's home, VERIFIED 2026-11-17): NMEM_FAKE_SELECT_404=<space>[,<space>]
+// answers `agents context select` in those Spaces with HTTP 404 and an unverifiable body (no JSON,
+// no error_code), exit 1, nothing saved: the identity is a contact there but can't be selected.
 //
 // Lost responses (J-Q6 tests): NMEM_FAKE_BRIDGE_LOSE="send" (or "reply", or "send,reply") makes the
 // next such call keep its operation but answer like a dropped connection (exit 1, no JSON).
@@ -146,6 +149,10 @@ if (argv[0] === "agents" && argv[1] === "context" && argv[2] === "select") {
   const space = val("--space-id") ?? "";
   if (!name || !agent || !space) fail("bad_arguments", "select needs --name, --agent-id and --space-id", 2);
   if (st.identities[name] && !argv.includes("--expected-revision")) fail("revision_required", "A context by that name exists: pass --expected-revision.");
+  if ((process.env.NMEM_FAKE_SELECT_404 ?? "").split(",").includes(space)) {
+    console.error("error: Bridge request failed: HTTP 404 Not Found (response body could not be verified)");
+    process.exit(1);
+  }
   if ((process.env.NMEM_FAKE_SELECT_REFUSE ?? "").split(",").includes(space)) {
     console.log(JSON.stringify({ error_code: "cloud_bridge_setup_role_attachment_mismatch", detail: "This identity can't be selected in that Space.", outcome_unknown: false, http_status: 403 }));
     process.exit(1);

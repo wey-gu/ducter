@@ -1319,14 +1319,19 @@ Codex first, once OAR is near 1.0. See `research/17`.
       sends its test again: the partner answers it within 5 minutes (or at once on "查看来信") and the reply shows
       in that Codex's inbox in `Everyone`. No connection is revoked in any Space (connections belong to the
       identity: one revoke would end hel's own); only the Mac's 2026-11-13 leftover goes (the item above).
-      `agents show ducter` shows D334's "every Space" description. Open: whether
-      `agents context select` in a team Space needs anything beyond the identity's one connection (if Mem
-      refuses, the Space is listed under `unread`; record Mem's code here). Trigger: hel on a build with D334.
+      `agents show ducter` shows D338's description naming only the Spaces hel reads ("Only me" alone on nmem
+      0.10.120: `select` in every team Space answered 404, VERIFIED 2026-11-17 on 0.0.68), and
+      `bridge-connection.json`'s `unread` entries carry `status: 404`. Trigger: hel on a build with D338.
 - [ ] D334: the Settings problem row for `bridge.unread` (a Space Mem won't let the home read) in D332's pane:
       one quiet row, e.g. **{name} 收不到「{label}」里发给它的消息：Nowledge Mem 没让这台电脑读那里。 / {name}
       can't get messages sent to it in "{label}": Nowledge Mem didn't let this computer read there.** with the
       step Mem's code names (D205's refusal lines) and **再试一次 / Try again** (a recheck). Words go in the D292
       tables of D332's pane (`memory.tsx`, `peers_pane.go`), not this branch. Trigger: D332 merged.
+- [ ] D338: once nowledge-co/mem#10402 lands (the identity can receive in every Space it is a contact in, or
+      Mem stops advertising it where it can't), drop D338's workarounds: the 404 back-off in `discover`
+      (`UNREAD_RETRY_MS`), the card's Space list (back to D334's "every Space" through `wide`), and
+      `answerMayNotReach` / the `unheard` mark in `bridge_contacts` and `oneSpaceEach`. Until then, no
+      `bridge connections connect --space-id` per Space. Trigger: an nmem release carrying #10402.
 - [ ] D334: switch to Mem's one inbox per identity when nowledge-co/mem#10402 ships: the home sees `--all-spaces`
       in `bridge inbox --help` and reads with the connection's context alone (built; the shapes are GUESSES:
       check the real `inbox --all-spaces` answer names each message's Space, that `open`/`reply` take a message

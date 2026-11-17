@@ -70,8 +70,12 @@ export interface BridgeConnectionRecord {
   at: string;
   /** D334: the other Spaces the home reads the identity's mailbox in, each through its own local context. */
   places?: { context: string; spaceId: string; spaceLabel: string; kind?: string }[];
-  /** D334: Spaces where Mem refused a reader (`agents context select`): the problem row's. */
-  unread?: { spaceId: string; spaceLabel: string; code?: string }[];
+  /**
+   * D334: Spaces where Mem refused a reader (`agents context select`): the problem row's. D338: why
+   * (Mem's code, the HTTP status) and, for a 404, when it was tried and with which nmem: it is tried
+   * again once a day, or as soon as nmem's version changes.
+   */
+  unread?: { spaceId: string; spaceLabel: string; code?: string; status?: number; at?: string; nmem?: string }[];
   /** D334: Mem reads every Space with one inbox (#10402): the connection's context alone. */
   wide?: boolean;
 }
@@ -79,13 +83,38 @@ export interface BridgeConnectionRecord {
 /** How the description Ducter enrolls an identity with begins (mem-identity.ts): a card Ducter may keep current. */
 export const CARD_MARK = "Ducter, a personal AI partner.";
 /**
- * D333, D334: the identity's card in Mem (its public profile description, shown on `bridge contacts`
- * cards in every Space) says it reads its messages in every Space it is in, on its one home, and
- * answers in the Space a message came from.
+ * D333, D334, D338: the identity's card in Mem (its public profile description, shown on `bridge
+ * contacts` cards in every Space) says where it reads its messages, on its one home, and that it
+ * answers in the Space a message came from. `reads`: the labels of the Spaces the home reads now;
+ * absent (Mem reads every Space with one inbox, #10402) it says every Space. Otherwise it names only
+ * those, and says plainly that a message sent to it in any other Space is not read yet: a card that
+ * claimed every Space sent the author's Codex to a mailbox nobody reads (nmem 0.10.120's 404).
  */
-export function whereCard(home: string): string {
-  return `${CARD_MARK} Its conversation and its tasks write to Mem as this identity. It reads messages sent to it in every Space it is in, on its home computer ${home}, and replies in the Space the message came from.`;
+export function whereCard(home: string, reads?: readonly string[]): string {
+  const head = `${CARD_MARK} Its conversation and its tasks write to Mem as this identity.`;
+  if (!reads) return `${head} It reads messages sent to it in every Space it is in, on its home computer ${home}, and replies in the Space the message came from.`;
+  const names = [...new Set(reads)].map((l) => `"${l}"`);
+  const list = names.length <= 1 ? (names[0] ?? '""') : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+  return `${head} It reads messages sent to it only in ${names.length === 1 ? "the Space" : "the Spaces"} ${list}, on its home computer ${home}, and replies in the Space the message came from. A message sent to it in any other Space is not read yet: send to it in ${names.length === 1 ? "that one" : "one of those"}.`;
 }
+
+/** D338: the labels of the Spaces a connection reads now, or undefined when Mem reads every Space (wide). */
+export function readsOf(r: BridgeConnectionRecord): string[] | undefined {
+  return r.wide ? undefined : [r.spaceLabel, ...(r.places ?? []).map((p) => p.spaceLabel)];
+}
+
+/** D338: the HTTP status in a failed nmem answer (`http_status`, or "HTTP 404" / "status 404" in its text). */
+export function httpStatusIn(out: string, err: string): number | undefined {
+  for (const j of jsonIn(out, err)) {
+    const s = j?.http_status ?? j?.upstream?.http_status ?? j?.error?.http_status ?? j?.status_code;
+    if (typeof s === "number" && s >= 100 && s < 600) return s;
+  }
+  const m = /\b(?:HTTP|status)[\s:/]*(\d{3})\b/i.exec(`${out}\n${err}`);
+  return m ? Number(m[1]) : undefined;
+}
+
+/** D338: a Space Mem answered 404 for is tried again once a day, or when nmem's version changes. */
+export const UNREAD_RETRY_MS = 24 * 3_600_000;
 
 /** D334: a Space's name as a context name part: lowercase letters, digits and hyphens, at most 16 (else from its id). */
 export function spaceSlug(label: string, id: string): string {
@@ -514,7 +543,7 @@ export function createBridgeLink(opts: {
   let carded: string | undefined;
   async function publishWhere(r: BridgeConnectionRecord) {
     if (!r.confirmed || env.DUCTER_BRIDGE_CONTEXT?.trim()) return;
-    const want = whereCard(opts.home());
+    const want = whereCard(opts.home(), readsOf(r));
     const key = `${r.agentId}\0${want}`;
     if (carded === key) return;
     const shown = await run(["agents", "show", r.agentId]);
@@ -573,10 +602,21 @@ export function createBridgeLink(opts: {
       const taken = new Set<string>([r0.context, ...(r0.places ?? []).map((p) => p.context)]);
       const places: NonNullable<BridgeConnectionRecord["places"]> = [];
       const unread: NonNullable<BridgeConnectionRecord["unread"]> = [];
+      const refused = new Map((r0.unread ?? []).map((u) => [u.spaceId, u]));
+      // The nmem in use now, looked up (cached 5 min) only when a 404 Space is to be decided.
+      let nmemNow: string | undefined;
+      const nmemVersion = async () => (nmemNow ??= (await look().catch(() => probe))?.version ?? "");
       for (const sp of want) {
         const had = before.get(sp.id);
         if (had) {
           places.push({ ...had, spaceLabel: sp.label, ...(sp.kind ? { kind: sp.kind } : {}) });
+          continue;
+        }
+        // D338: a Space Mem answered 404 for (nmem 0.10.120: the identity is a contact there but can't
+        // be selected, nowledge-co/mem#10402) is asked again once a day, or with another nmem.
+        const was = refused.get(sp.id);
+        if (was?.status === 404 && was.at && now() - Date.parse(was.at) < UNREAD_RETRY_MS && (was.nmem ?? "") === (await nmemVersion())) {
+          unread.push({ ...was, spaceLabel: sp.label });
           continue;
         }
         // A context by that name already (an earlier run's) is used when it is this identity in this
@@ -606,7 +646,9 @@ export function createBridgeLink(opts: {
         if (ok) places.push({ context: name, spaceId: sp.id, spaceLabel: sp.label, ...(sp.kind ? { kind: sp.kind } : {}) });
         else if (sel) {
           const code = errorCodeIn(sel.out, sel.err);
-          unread.push({ spaceId: sp.id, spaceLabel: sp.label, ...(code ? { code } : {}) });
+          const status = httpStatusIn(sel.out, sel.err);
+          const v = status === 404 ? await nmemVersion() : "";
+          unread.push({ spaceId: sp.id, spaceLabel: sp.label, ...(code ? { code } : {}), ...(status ? { status } : {}), ...(status === 404 ? { at: new Date(now()).toISOString(), ...(v ? { nmem: v } : {}) } : {}) });
         }
       }
       save({ ...r0, places, unread, wide: false });
@@ -726,7 +768,7 @@ export function createBridgeLink(opts: {
       if (!r.confirmed) return { state: "unconfirmed", ...base, ...(undoFailed ? { detail: undoFailed } : {}) };
       const others = othersIn(p.conns, r, r.agentId);
       // D334: a Space Mem refused a reader in: one quiet problem row (never a list of Spaces otherwise).
-      const unread = r.unread?.length ? { unread: r.unread.map((u) => ({ label: u.spaceLabel, ...(u.code ? { code: u.code } : {}) })) } : {};
+      const unread = r.unread?.length ? { unread: r.unread.map((u) => ({ label: u.spaceLabel, ...(u.code ? { code: u.code } : {}), ...(u.status ? { status: u.status } : {}) })) } : {};
       return { state: "connected", ...(await extras()), ...base, ...(others.length ? { others: others.map(shown) } : {}), ...unread, ...(undoFailed ? { detail: undoFailed } : {}) };
     }
     if (!p) {

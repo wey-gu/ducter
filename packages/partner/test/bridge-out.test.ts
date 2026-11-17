@@ -1068,3 +1068,57 @@ describe("D334: the address is the identity, not the Space (the fake nmem with S
     expect(f.read().messages.at(-1)).toMatchObject({ from: "ducter-in-everyone", to: "codex-mem-in-everyone", body: "bridge 那块写到哪了？" });
   }, 30_000);
 });
+
+describe("D338: a Space the home can't read (nmem 0.10.120's 404) is never where it expects an answer", () => {
+  function rig() {
+    const dir = tmp();
+    const bin = join(dir, "nmem");
+    writeFileSync(bin, `#!/bin/sh\nexec bun ${resolve(import.meta.dir, "../eval/fake-bridge-nmem.ts")} "$@"\n`);
+    chmodSync(bin, 0o755);
+    const state = join(dir, "state.json");
+    const ident = (agent: string, space?: string) => ({ agent, member: "Weyl", member_id: "m-weyl", description: agent, ...(space ? { space } : {}) });
+    writeFileSync(
+      state,
+      JSON.stringify({
+        seq: 0,
+        messages: [],
+        spaces: [
+          { id: "fake-space", label: "Only me", kind: "personal" },
+          { id: "ws-all", label: "all", kind: "team" },
+        ],
+        // codex-mem has a card in both Spaces; reviewer only in `all`, which the home can't read.
+        identities: { ducter: ident("ducter"), "codex-mem": ident("codex-mem"), "codex-mem-in-all": ident("codex-mem", "ws-all"), "reviewer-in-all": ident("reviewer", "ws-all") },
+      }),
+    );
+    const read = () => JSON.parse(readFileSync(state, "utf8"));
+    // The home reads only its own place (select in `all` said 404).
+    const client = createNmemBridge({ context: "ducter", places: [{ context: "ducter", spaceId: "fake-space", spaceLabel: "Only me", kind: "personal" }], bin, env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", NMEM_FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl", NMEM_FAKE_SHAPE: "named" }, retryDelaysMs: [] });
+    return { client, read };
+  }
+
+  test("an agent with a card where the home reads goes there; one only elsewhere is marked, and the partner is told to say so", async () => {
+    const f = rig();
+    const r: any[] = [];
+    const t = setup(async (_i, s, n) => {
+      if (n === 0) r.push(await t.fc.callTool("bridge_contacts", { query: "codex" }));
+      if (n === 1) {
+        const c = (await t.fc.callTool("bridge_contacts", { query: "reviewer" })) as { contacts: { contact: string }[] };
+        r.push(c);
+        r.push(await t.fc.callTool("bridge_send", { contact: c.contacts[0]!.contact, text: "Is the change ready tonight?" }));
+      }
+      s.end();
+    }, { ...world([]), bridge: f.client });
+    t.user("问问我的 codex-mem");
+    await t.partner.idle();
+    // One card for codex-mem, in the Space the home reads; nothing to warn about.
+    expect(r[0].contacts.length).toBe(1);
+    expect(r[0].contacts[0].answerMayNotReach).toBeUndefined();
+    expect(r[0].note).not.toContain("answerMayNotReach");
+    t.user("ask my reviewer if the change is ready tonight");
+    await t.partner.idle();
+    expect(r[1].contacts).toEqual([expect.objectContaining({ answerMayNotReach: true })]);
+    expect(r[1].note).toContain("its answer may not reach you");
+    expect(r[2]).toMatchObject({ ok: true });
+    expect(r[2].note).toContain("Its answer may not reach you");
+  }, 30_000);
+});

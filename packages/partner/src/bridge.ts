@@ -64,6 +64,8 @@ export interface BridgeContact {
   spaceLabel?: string; // D334
   spaceKind?: string; // D334: "personal" for the person's own place
   key?: string; // D334: one agent across Spaces (its id or name, and its member)
+  /** D338: a card in a Space the home doesn't read (nmem 0.10.120's 404, nowledge-co/mem#10402): its answer may not reach the partner. */
+  unheard?: true;
 }
 
 /** One outgoing operation as `bridge outbox` / `inspect` report it (tolerant; research/37 B8). */
@@ -610,6 +612,9 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       const more = (Array.isArray(j?.next_args) && j.next_args.length > 0) || !!str(j?.spaces_cursor) || !!str(j?.next_spaces_cursor);
       // A card without a Space came from the home's own.
       const cards = contactsOf(j, await self()).map((c) => (c.space ? c : { ...c, ...(home.spaceId ? { space: home.spaceId } : {}), ...(home.spaceLabel ? { spaceLabel: home.spaceLabel } : {}) }));
+      // D338: a card in a Space the home doesn't read (known only when every place names its Space).
+      const known = !wide && places.every((p) => !!p.spaceId);
+      for (const c of cards) if (known && c.space && !places.some((p) => p.spaceId === c.space)) c.unheard = true;
       return { ok: true, contacts: cards, more };
     },
     async send(contact, text, space) {

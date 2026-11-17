@@ -1011,6 +1011,9 @@ export type ClientFrame =
   // connection, run by the home's nmem on the user's tap. Answered by fresh settings frames (bridge).
   | { t: "bridge_connect" }
   | { t: "bridge_disconnect" }
+  // D324: 改由这台收 / Receive here instead (elsewhere) and 只留这台 / Keep only this one (others on
+  // connected): this home connects if it isn't yet, then ends the other homes' connections. The tap is the Go.
+  | { t: "bridge_only_here" }
   // D225: put in (or update) the home's Nowledge Mem command line; sign it in with a one-time
   // connect link the user made in Nowledge Mem (never logged or kept).
   | { t: "bridge_mem_install" }
@@ -2174,7 +2177,13 @@ export type BridgeRefusal = "authority_missing" | "custody_birth_missing" | "lif
  * what the installer or Mem said, clipped, never a secret.
  */
 export interface BridgeView {
-  state: "install_mem" | "installing" | "update_mem" | "updating" | "sign_in" | "signing_in" | "local_mem" | "ready" | "no_space" | "connecting" | "connected" | "disconnecting" | "refused" | "failed" | "unconfirmed";
+  state: "install_mem" | "installing" | "update_mem" | "updating" | "sign_in" | "signing_in" | "local_mem" | "ready" | "elsewhere" | "no_space" | "connecting" | "connected" | "disconnecting" | "refused" | "failed" | "unconfirmed";
+  /**
+   * D324: other homes' active connections for the same identity (on elsewhere: the home that answers
+   * now; on connected: a second reader of the same mailbox). home: the computer its label names (a
+   * label from before D324 names none); stuck: Mem wouldn't end it from here, so it is ended there.
+   */
+  others?: { label: string; home?: string; stuck?: true }[];
   canRun?: boolean;
   need?: "pipx" | "app" | "other";
   signIn?: "used" | "bad" | "failed";

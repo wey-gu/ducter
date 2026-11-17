@@ -2,7 +2,7 @@
 
 > Design note · 2026-11-09, updated 2026-11-16 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row); still open: J-Q1–3, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
 > run, Mem on a home without it), private `31` and `10`.
 >
@@ -16,8 +16,7 @@
 > (research/66 §7); the S2 miss is Mem's: `open` returns neither the sender nor `in_reply_to`, so an answer can't be
 > tied to its question (asked of Nowledge as B17; D249 reads an unnamed sender as one of the person's own agents
 > meanwhile). nmem 0.10.119 (2026-11-16) reports the custodian under `endpoint.address` (D258 reads it) and still
-> lacks both fields; the trial reruns when a release carries them, with the other connection of the same identity
-> stopped or `--share-mailbox` (D258). 2026-11-17 (D294, research/66 §8): Mem Cloud now runs the fix (#10278), but
+> lacks both fields; the trial reruns when a release carries them, as its own throwaway identity (D324). 2026-11-17 (D294, research/66 §8): Mem Cloud now runs the fix (#10278), but
 > it is a representation the CLI asks for, and 0.10.119 predates it; Ducter already reads `sender`, `in_reply_to`
 > and `mailbox_available`, and retries Mem's "can't right now" briefly, never as a second copy.
 
@@ -33,7 +32,8 @@ holds, so the persona's context no longer needs a key or hand-made commands (D17
   ("Only me") among passive `bridge setup`'s candidates (no context, no Space, never `--enable`), by its exact
   id; the persona's identity (D141). None or two personal places: nothing is offered.
 - **What one tap runs:** `nmem --json bridge connections connect --space-id <that id> --agent-id ducter --context
-  ducter`, then passive `nmem --json --agent-context ducter bridge setup`; Bridge is on only when that says the
+  ducter-on-<home>-<key tag>` (D324: the home's own label), then passive `nmem --json --agent-context <that label>
+  bridge setup`; Bridge is on only when that says the
   same identity. The connection is kept in `<dataDir>/bridge-connection.json`; once per start, `bridge
   connections list` drops one revoked elsewhere. 断开 / Disconnect asks once, then `bridge connections revoke <id>`.
 - **Mem says no:** each registered code is one plain line with the step the user takes in Mem
@@ -73,6 +73,36 @@ first, the move, password-free system pipx, and a short warm line in the done co
 move (**{home} 上换好了。登录还在，什么都没丢。**); a failure keeps the installer's words behind **细节 / Details**.
 
 On hel (nmem 0.10.116 by pip, signed in): Settings › 记忆 › **更新**, then Settings › 连上的 AI agent › **连接**.
+
+### One home answers (D324)
+
+A partner's mailbox has exactly one reader, so a partner has exactly one home answering it. The address is
+**who** (the partner's Mem identity, D141: `ducter`, or D312's `ducter-<id>`); the connection is **where** (the
+home it lives on). Two readers split the mail: whichever checks first takes a message, so a request can land on
+a computer nobody looks at, and Mem's list can't say which is which (both were labelled `ducter`, research/66 §9).
+
+- **Who meets it.** The heavy developer with a server home (hel) and a Mac, or someone who reinstalled on a new
+  computer. *Before:* a request from their terminal agent sometimes never shows up, with nothing to say why.
+  *After:* one calm line that says where the partner answers, and one tap to change it. 放心: they see which
+  computer has it. The consumer and the fresh user have one home and never see it.
+- **The label.** A home connects with the context `<identity>-on-<home>-<key tag>` (the home's name as a slug, six
+  hex of its D293 key), so Mem's own list says which computer holds each connection; `-2`… after a revoked one.
+  One made before D324 keeps its name and keeps working.
+- **A second home** reads Mem's list at every look (read-only) and never connects beside another home on its own:
+
+| The home | The row (Settings › 连上的 AI agent) | The tap runs |
+|---|---|---|
+| another home holds it | **{name} 现在在 {home} 上收你别的 AI 发来的消息，这台不用再收。** · **改由这台收**, asking in place: **改由这台收？{home} 上就不再收了，{name} 只在这台上收你别的 AI 发来的消息。** | connect here, then `bridge connections revoke` the other's |
+| connected here and elsewhere (from before D324) | under the head: **{name} 也在 {home} 上收** (an old label: **另一台电脑**) · **两台都在收，你别的 AI 发来的消息会被先查收的那台拿走，可能落到你不看的那边。只留一台就好。** · **只留这台**, asking in place | revoke the other's |
+| Mem won't end that one from here (another login's) | the same row: **{home} 上的连接只能在那台上断开：在那台的 Ducter 里打开 设置 › 连上的 AI agent，点「断开」。**, no button | nothing |
+
+- **The other home notices** at its next look or its 30-minute recheck (`connections list`, read-only), drops its
+  record, and stops checking.
+- **A client never connects.** The Mac app or the phone showing a server home shows that home's row; Bridge belongs
+  to the home's core.
+- **Not chosen:** a Mem identity per home (`ducter-hel`). It needs no coordination but splits who the partner is
+  (memory, provenance) and gives a terminal agent two Ducters to choose between. Two homes that each want their
+  own address are two partners (D312).
 
 ## Chosen scenarios (dogfood, 2026-11-09)
 
@@ -549,6 +579,8 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
   - The partner never passes `--space` or an agent id. Off unless the user connected the persona (D205) or both
     `DUCTER_BRIDGE=1` and `DUCTER_BRIDGE_CONTEXT` are set.
   - Refusals and missing setup are typed results; Ducter never falls back to another identity or Space.
+  - D324: a home never connects beside another home's connection for the same identity unless the person taps
+    改由这台收; 只留这台 and 改由这台收 are the only revokes of a connection that isn't the home's own.
 - **A message is a request, never permission.** No task opens from it until the user says go: this is enforced
   in code, not only in the prompt. The frame can't be closed early by the sender. Secret-shaped text is
   redacted before it reaches the Log.
@@ -578,13 +610,22 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
 
 ## Try it live (the author runs this)
 
+**D324 (2026-11-17): the trial is its own identity.** `bun run bridge:live -- --connected` is a read-only dry run
+(the version, the one personal place) that prints what `--real` does. `--real` makes the run's own
+`ducter-trial-<stamp>-<hex>` (a ledger under the evidence folder first, `agents enroll`, `connections connect`, a
+check that it is the only reader), tells the peer that exact contact, runs S1, S2, S3, X1, and removes what it
+made (revoke, `agents context clear`, `agents delete`); `--cleanup` removes what a crashed run left. The person's
+own partner and mailbox are never used, so it runs any time; D258's guard and `--share-mailbox` are gone. Built
+and tested with the fake nmem only; whether Mem connects a freshly enrolled identity at once is INFERRED until
+the first real run (research/66 §9).
+
 **Status 2026-11-17 (D294, research/66 §8).** Not rerun live: the dry preflight passes the version, the one
 personal place and the persona's connection, then stops at a second active `ducter` connection (hel's home reads
 the same mailbox, D258); `--share-mailbox` was not passed. Re-opening the 2026-11-16 S2 answer with nmem 0.10.119
 still shows no `sender` and no `in_reply_to`, although Mem Cloud runs #10278: the CLI must ask for the new read
 representation, and no release does yet. Over the fake Bridge, `bun run bridge:live` passes S1 6/6, S3 3/3, X1 3/3,
-J-Q6 2/2 and, with the S2 card check updated to D273's naming, S2 5/5. To rerun live: a CLI after 0.10.119, and
-hel's Ducter stopped (or 断开) for the trial.
+J-Q6 2/2 and, with the S2 card check updated to D273's naming, S2 5/5. To rerun live: a CLI after 0.10.119 (D324: as
+the trial's own identity, nothing to stop).
 
 **Status 2026-11-13 (D249, research/66 §7).** Mem Cloud accepts the connection; `ducter` is connected in Only me
 and the peer is a native Claude Code session (`bridge session … prepare`, then the logical `contacts/send/inbox/
@@ -635,8 +676,8 @@ the Bridge skill nothing else was tried: no other identity or key, no test ident
 **What was set up: nothing, so nothing to undo.** Next, on Mem's side: authority for this connection to act as
 `ducter` (B15). Then the same command, `nmem --agent-context ducter bridge setup` and `--enable`, and
 `bun run bridge:live -- --real --context ducter --peer-context <the other side>`. Undo, once made:
-`nmem agents context clear --name ducter` (the mailbox itself is Mem's to retire). The trial may use the real
-persona's mailbox: Ducter's start mark (B14) keeps a later real Ducter from taking its messages as requests.
+`nmem agents context clear --name ducter` (the mailbox itself is Mem's to retire). (Superseded by D324: the trial
+never uses the real persona's mailbox; it runs as its own throwaway identity.)
 
 **Status 2026-11-10 (research/37 §6, VERIFIED, read-only).**
 - The backend answers: discovery searches all 8 Spaces and returns real cards.

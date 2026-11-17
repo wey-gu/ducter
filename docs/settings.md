@@ -153,6 +153,11 @@ AI agents can reach {name}**, with **Its identity** (the name your agents find i
 **Only yours**, **Teammates' too** or **Nobody**. **Disconnect** asks first, in place. **Details**
 shows the exact identity and space id.
 
+Your partner answers your other agents on one computer at a time. If it already does so on another
+computer, the page says where, with **Receive here instead**. If two computers are both receiving
+(say, an older setup), a row says so, with **Keep only this one**; both ask first. When the other
+computer's connection can only be ended there, the row tells you where to do it.
+
 **Try it** shows the exact words to say in your terminal: one to hand your partner a job, one for
 when you step out and want your agents to send it what needs your call. **Copy** puts them on your
 clipboard. It also says whether Claude Code and Codex have the Nowledge Mem plugin they need to find

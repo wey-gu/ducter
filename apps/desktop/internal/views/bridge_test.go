@@ -110,6 +110,22 @@ func TestBridgeRow(t *testing.T) {
 			func(L *i18n.Strings) []string {
 				return []string{L.T("bridge.unconfirmed", "ducter"), L.T("bridge.retry"), L.T("bridge.undo")}
 			}, nil},
+		// D324: another home answers the partner's mailbox: where, and 改由这台收 (no plain Connect).
+		{"elsewhere", TabPeers, protocol.BridgeView{State: "elsewhere", Identity: "ducter", Space: space, Others: []protocol.BridgeOther{{Label: "ducter-on-hel-1a2b3c", Home: "hel"}}},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("peers.elsewhere", "小鸭", "hel"), L.T("peers.elsewhere.go")}
+			},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
+		// D324: two homes read it (from before D324: the other's label names no computer).
+		{"twice", TabPeers, protocol.BridgeView{State: "connected", Identity: "ducter", Space: space, Others: []protocol.BridgeOther{{Label: "ducter"}}},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("peers.twice.title", "小鸭", L.T("peers.where.other")), L.T("peers.twice.line"), L.T("peers.twice.go")}
+			}, nil},
+		{"twice-stuck", TabPeers, protocol.BridgeView{State: "connected", Identity: "ducter", Space: space, Others: []protocol.BridgeOther{{Label: "ducter-on-hel-1a2b3c", Home: "hel", Stuck: true}}},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("peers.twice.title", "小鸭", "hel"), L.T("peers.twice.stuck", "hel")}
+			},
+			func(L *i18n.Strings) []string { return []string{L.T("peers.twice.go")} }},
 	}
 	for _, r := range []string{"authority_missing", "custody_birth_missing", "lifetime_inactive", "attachment_mismatch", "control_denied", "revoked", "conflict", "unavailable", "unknown"} {
 		r := r
@@ -175,6 +191,26 @@ func TestBridgeRow(t *testing.T) {
 					}
 					if len(*sent) != n+1 || (*sent)[n].(protocol.BridgeAction).T != "bridge_connect" {
 						t.Fatalf("连上 sent %v", (*sent)[n:])
+					}
+				case "elsewhere", "twice":
+					// D324: the first tap asks in place; the second sends bridge_only_here.
+					goLabel, ask := L.T("peers.elsewhere.go"), L.T("peers.elsewhere.ask", "hel", "小鸭")
+					if s.name == "twice" {
+						goLabel, ask = L.T("peers.twice.go"), L.T("peers.twice.ask", L.T("peers.where.other"), "小鸭")
+					}
+					if err := tt.Click(spoken(L, goLabel, "ducter")); err != nil {
+						t.Fatal(err)
+					}
+					tt.Frame()
+					if len(*sent) != n || !tt.HasText(ask) {
+						t.Fatalf("%s ran without asking: %v %q", goLabel, (*sent)[n:], tt.Texts())
+					}
+					bridgeShot(t, tt, fmt.Sprintf("mac-%s-%s-ask", lang, s.name))
+					if err := tt.Click(spoken(L, goLabel, "ducter")); err != nil {
+						t.Fatal(err)
+					}
+					if len(*sent) != n+1 || (*sent)[n].(protocol.BridgeAction).T != "bridge_only_here" {
+						t.Fatalf("%s sent %v", goLabel, (*sent)[n:])
 					}
 				case "connected":
 					// The first tap asks; the second disconnects.

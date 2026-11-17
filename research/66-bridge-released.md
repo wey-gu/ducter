@@ -267,3 +267,65 @@ to the agent's own name ("发给 terminal-claude？"); the check now follows D27
 > With #10278, what does `sender.agent` say for a message from the owner's own native Claude Code session:
 > still "Bridge agent", or the host/session display label the PR mentions? A label that says which terminal or
 > folder wrote it is what a user needs to tell two of their sessions apart.
+
+## 9. Addendum 2026-11-17, later: two connections for one identity, and a trial of its own (feeds D324)
+
+What could be read without writing anything (the author's Mac, nmem 0.10.119; hel not looked at):
+
+| Fact | Tag |
+|---|---|
+| `bridge connections connect --help`: `--context <CONTEXT>` is a "Convenience name, defaulting to the requested role; never an identity". The two active connections §8 found both carry `client_label: "ducter"`, so the label is that context name. | VERIFIED (help), INFERRED (label = context) |
+| `bridge connections revoke --help`: "Revoke one own connection without changing the Mem login". Whether a login may revoke a connection of the same member made by another login (hel's key from the Mac) is not said. | VERIFIED (help), unknown |
+| `agents context show --name ducter` on the Mac answers a saved, unverified context for `ducter` in Only me with a `revision`; `agents context clear` needs `--name` and `--expected-revision`. `agents enroll <ID> [--name] [--source-app]` is create-only; `agents delete <ID> [--yes]` exists. | VERIFIED (help, a read-only `show`) |
+| The Mac's `~/.ducter` has no `bridge-connection.json`: no Ducter on the Mac connected from Settings, so no Ducter there reads the mailbox. The Mac's `ducter` connection is the one made by hand for the 2026-11-13 trial (§7), held by the Mac's own nmem login. hel's Ducter is the one that reads it all day (D258). | VERIFIED (the file's absence), INFERRED (which connection is which) |
+| `bun run bridge:live -- --connected` (dry, D324's script) passes the version and the one personal place and prints what `--real` would make and remove; nothing was written. | VERIFIED |
+
+### 9.1 What it means
+
+The second reader is not a second Ducter fighting the first; it is a trial's leftover. But nothing kept it from
+being one: any second home, or a reinstall that keeps the old connection, connected the same way (`--context
+ducter`) and read the same mailbox, and Mem's list could not tell them apart. A mailbox has one reader by nature
+(a message is taken by whoever opens it first), so "one partner, one home answering it" is the rule, and the home
+must name its own connection.
+
+### 9.2 What Ducter changes (D324)
+
+1. A home connects with `--context <identity>-on-<home>-<key tag>`; `-2`… after a revoked one.
+2. Every look reads `connections list` for the identity; another home's active one makes the row **elsewhere**,
+   and only 改由这台收 connects beside it (then revokes it). Two readers already: 只留这台. A refused revoke is said.
+3. The live trial makes, uses and removes its own identity (`ducter-trial-<stamp>-<hex>`), never the person's.
+
+### 9.3 Drafts for Mem (not posted; the author decides)
+
+**#8376, connections: which computer.** (replaces §8.4's third draft)
+> `bridge connections list` gives `connection_id`, `agent_id`, `client_label` (the `--context` name), `state`.
+> When one person's identity is connected from two computers, a client can't tell which entry is which, or offer
+> to end the stale one. Could each entry carry a device or host label set at `connect` (e.g. `--client-label`,
+> separate from the local context name), plus `created_at` and `last_seen_at`? Ducter now names its context
+> `<identity>-on-<home>-<key tag>` as a stopgap; a real field would let it show the person's own computer name.
+
+**#8376, revoke across logins.**
+> `connections revoke` says "one own connection". For two logins of the same member (a server's key and a
+> laptop's), may one revoke the other's connection for the same identity? If not, which registered code says so
+> (and is it `outcome_unknown: false`)? Ducter offers "keep only this one" and needs to say honestly when the other
+> must be ended on its own computer.
+
+**#8376, `outcome_unknown` as a contract.** (replaces §8.4's fourth draft)
+> Could the docs state that `outcome_unknown: false` means the operation was definitely not admitted, on every
+> Bridge verb (`connect`, `revoke`, `send`, `reply`), and that `true` is the only case a client must recover
+> (outbox → inspect → resume for messages; `connections list` for connect and revoke)? Ducter treats it that way
+> today: it never retries a write on `true` and never calls `true` a refusal.
+
+**#8376, a throwaway identity for tests.**
+> For an end-to-end test that must not touch the person's real agent: is `agents enroll ducter-trial-… --source-app
+> ducter-trial` → `connections connect` → … → `connections revoke` → `agents context clear` → `agents delete`
+> the intended lifecycle, and does `agents delete` retire the identity's mailbox and its messages? A word on
+> whether a freshly enrolled identity can be connected at once (no custody-birth wait) would save a failed run.
+
+### 9.4 Implications for Ducter and summary
+
+**Implications.** Name the connection for the home; read the list at every look; never connect beside another
+home without the person's tap; make the trial its own identity. **Summary.** Two `ducter` connections were hel's
+Ducter and the Mac's hand-made trial connection; Mem's list can't tell them apart. D324 labels a home's own
+connection, shows a second reader calmly with one action, and gives the trial an identity it makes and removes, so
+the live rerun no longer depends on what the person has connected.

@@ -94,6 +94,8 @@ type App struct {
 	devicesAsked bool
 	// bridgeConfirm: 断开 was tapped once and asks before it runs (D205).
 	bridgeConfirm bool
+	// bridgeHere: 改由这台收 / 只留这台 was tapped once and asks in place (D324).
+	bridgeHere bool
 	// D295: memAsk is the noted line whose 忘掉 asks in place; memDetails
 	// and peersDetails show the raw facts behind 详情.
 	memAsk                   int64

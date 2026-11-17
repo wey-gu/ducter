@@ -17,6 +17,8 @@
 //   NMEM_FAKE_SIGNED_OUT=1 · NMEM_FAKE_BACKEND=local   (D225: `status`, `connect <link>`)
 //   NMEM_FAKE_SPACES=none|two     no personal place, or two of them
 //   NMEM_FAKE_ARGV_LOG=/path      every call's argv, one JSON line each (tests check the exact argv)
+//   NMEM_FAKE_FOREIGN=<label,...> D324: connections another login made; revoking one from here is refused
+//   (state.connections may hold several, one per home, each with its own client_label = its --context)
 //
 //   NMEM_FAKE_BRIDGE_STATE=/path/state.json nmem [--json] --agent-context NAME bridge <verb> ...
 //
@@ -43,7 +45,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 interface Msg { id: string; op: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; read_at?: string; pending?: boolean }
 interface Ident { agent: string; member: string; member_id?: string; description: string }
 interface Conn { connection_id: string; agent_id: string; identity_birth: string; client_label: string; state: "active" | "revoked"; space_id: string }
-interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; connections?: Conn[]; retained?: Record<string, { to: string; body: string }>; busy?: Record<string, number> }
+interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; connections?: Conn[]; retained?: Record<string, { to: string; body: string }>; busy?: Record<string, number>; agents?: Record<string, { name: string; source_app: string }> }
 
 if (process.env.NMEM_FAKE_ARGV_LOG) appendFileSync(process.env.NMEM_FAKE_ARGV_LOG, JSON.stringify(process.argv.slice(2)) + "\n");
 const VERSION = process.env.NMEM_FAKE_VERSION ?? "0.10.118";
@@ -115,7 +117,38 @@ if (argv[0] === "agents" && argv[1] === "context" && argv[2] === "show") {
   }
   const member = id.member_id ?? id.member;
   const space = st!.connections?.find((c) => c.client_label === name)?.space_id ?? `personal-${member}`;
-  out({ state: "unverified", configured: true, validation: "unverified", reason: "live_validation_required", name, selection: { scope: { space_id: space }, address: { custodian_id: member, agent_id: id.agent } } });
+  out({ state: "unverified", configured: true, validation: "unverified", reason: "live_validation_required", name, revision: "rev-1", selection: { scope: { space_id: space }, address: { custodian_id: member, agent_id: id.agent } } });
+  process.exit(0);
+}
+// D324: the trial's own throwaway identity (bridge-trial.ts): enroll, clear its local context, delete it.
+// Interfaces as nmem 0.10.119's help prints them (`agents enroll <ID> --name --source-app`,
+// `agents context clear --name --expected-revision`, `agents delete <ID> --yes`); the answers are GUESSES.
+if (argv[0] === "agents" && (argv[1] === "enroll" || argv[1] === "delete" || (argv[1] === "context" && argv[2] === "clear"))) {
+  const st: State = existsSync(statePath) ? load() : { identities: {}, messages: [], seq: 0 };
+  st.agents ??= {};
+  if (argv[1] === "enroll") {
+    const id = argv[2] ?? "";
+    if (!id || id.startsWith("-")) fail("bad_arguments", "enroll needs an ID", 2);
+    if (st.agents[id]) fail("agent_exists", `Agent ${id} already exists`);
+    const i = argv.indexOf("--name");
+    st.agents[id] = { name: i >= 0 ? argv[i + 1]! : id, source_app: argv[argv.indexOf("--source-app") + 1] ?? "" };
+    save(st);
+    out({ agent: { id, display_name: st.agents[id]!.name }, created: true });
+  } else if (argv[1] === "delete") {
+    const id = argv[2] ?? "";
+    if (!st.agents[id]) fail("not_found", `Agent ${id} not found`);
+    if (!argv.includes("--yes") && !argv.includes("-y")) fail("confirmation_required", "pass --yes", 2);
+    delete st.agents[id];
+    save(st);
+    out({ deleted: true, id });
+  } else {
+    const name = argv[argv.indexOf("--name") + 1] ?? "";
+    if (argv[argv.indexOf("--expected-revision") + 1] !== "rev-1") fail("revision_mismatch", "Read the context again.");
+    if (!st.identities[name]) fail("not_found", `context ${name} not found`);
+    delete st.identities[name];
+    save(st);
+    out({ cleared: true, name });
+  }
   process.exit(0);
 }
 if (argv[0] !== "bridge") fail("bad_arguments", "fake nmem: only `bridge` is implemented", 2);
@@ -188,6 +221,11 @@ if (verb === "connections") {
   if (sub === "revoke") {
     const c = s.connections.find((x) => x.connection_id === argv[3]);
     if (!c) fail("bad_arguments", "Use the actual connection ID");
+    // D324: "Revoke one own connection": one another login made (NMEM_FAKE_FOREIGN lists its labels) is refused.
+    if ((process.env.NMEM_FAKE_FOREIGN ?? "").split(",").includes(c!.client_label)) {
+      console.log(JSON.stringify({ error_code: "cloud_bridge_setup_role_control_denied", detail: "Only the login that made a connection can revoke it.", outcome_unknown: false, http_status: 403 }));
+      process.exit(1);
+    }
     c!.state = "revoked";
     save(s);
     const { space_id: _sp, ...summary } = c!;

@@ -27,6 +27,14 @@ import { scenarios, type Expect, type Scenario, type Step } from "./scenarios.ts
 import { fakeMemory } from "../test/fakes.ts";
 import { fakeTuwa } from "../../core/test/fake-tuwa.ts";
 import { fakeOoCalendar } from "../../core/test/fake-oo-calendar.ts";
+import { fakeGh } from "../../core/test/fake-gh-issues.ts";
+
+/** D340: the issues assigned to the user in the eval's fake GitHub. */
+const TODO_ISSUES = [
+  { repo: "nowledge-co/hawdb", number: 1592, title: "Compaction test is flaky on CI", body: "TestCompactionMerge fails about 1 in 20 runs on Linux CI.", labels: ["bug"], updated: "2026-11-17T09:00:00Z" },
+  { repo: "wey-gu/ducter", number: 6, title: "feat: task abstraction", body: "- built-in task abstraction\n- syncing with task services (GitHub issue per task binding?)", updated: "2026-11-17T08:00:00Z" },
+  { repo: "wey-gu/ducter", number: 9, title: "Typo in docs/install.md", body: "'recieve' should be 'receive'.", labels: ["docs"], updated: "2026-11-16T08:00:00Z" },
+];
 import { seedDidDay } from "../../core/test/did-day.ts";
 import { partnerFingerprint } from "../test/fingerprint.ts";
 import type { MemoryAdd } from "../src/memory.ts";
@@ -199,6 +207,9 @@ interface RunResult {
   /** D222: day cards under messages, and the kinds of calendar change cards made. */
   dayCards?: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[];
   calKinds?: string[];
+  /** D340: to-do write-back cards made, and the to-do each task is bound to. */
+  todoCards?: number;
+  boundRefs?: Map<string, string>;
   /** D303: the blocks drawn in messages (ducter-ui), and how many written ones weren't valid. */
   blocks?: { step: number; seq: number; ui: RichUi }[];
   dropped?: number;
@@ -301,8 +312,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const calOo = sc.calendar ? fakeOoCalendar({ day: new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()), ...(sc.calendarDown ? { listFails: true } : {}) }) : undefined;
   // D312: the partner under test is a second partner (its own conversation, channel:p2); the seed is the default's.
   const conv = sc.second ? "channel:p2" : "channel";
-  const core = startCore({ dataDir, port: 0, persona, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
+  const todoGh = sc.todos ? fakeGh(TODO_ISSUES, { login: "wey-gu" }) : undefined;
+  const core = startCore({ dataDir, port: 0, persona, ...(todoGh ? { taskSources: { ghRun: todoGh.run, ghEnv: {}, pollMs: 3_600_000 } } : {}), ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   if (calOo && !(await core.connections.addFromOo()).ok) throw new Error("fake oo calendar: not added");
+  if (todoGh && !(await core.taskSources.add("github")).ok) throw new Error("fake GitHub: not added");
   if (sc.second && !core.partners.add({ name: sc.second.name }).ok) throw new Error("second partner: not added");
   if (tuwa) {
     const added = await core.connections.add({ url: tuwa.url, token: JSON.stringify({ accessToken: tuwa.access(), refreshToken: tuwa.refresh(), expires_in: 3600 }) });
@@ -371,6 +384,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: said[i % said.length]!, replyTo: u.seq } });
       }
       lastUser = core.log.head() - 1;
+    } else if ("bound" in s) {
+      const it = await core.taskSources.item(s.bound.ref);
+      if (!it) throw new Error(`fake GitHub: no ${s.bound.ref}`);
+      core.taskSources.bind(idOf.get(s.bound.task)!, it, "partner");
     } else if ("waiterArmed" in s) {
       const w: Bodies["waiter"] = { waiterId: "w_" + crypto.randomUUID().slice(0, 10), at: new Date(Date.now() + 3600_000).toISOString(), reason: s.waiterArmed.reason, state: "armed" };
       waiters.set(w.reason, w);
@@ -462,6 +479,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   // Decisions made by the partner keep their full shape for the judge.
   const decisions = core.log.read({ stream: conv, fromSeq: startSeq + 1, kinds: ["decision"], limit: 100 }).filter((e) => e.origin === "partner");
   const calKinds = decisions.map((e) => (e.body as Bodies["decision"]).cal?.kind).filter((k): k is NonNullable<typeof k> => !!k);
+  const todoCards = decisions.filter((e) => (e.body as Bodies["decision"]).src?.kind === "write").length;
   const asks = decisions.map((e) => e.body as Bodies["decision"]).map((d) => ({ reversible: d.reversible, go: d.defaultOption === "go", timed: Boolean(d.defaultAt) }));
   const retitles = core.log
     .read({ fromSeq: startSeq + 1, kinds: ["task_open"], limit: 1000 })
@@ -490,6 +508,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("callQuestion" in s) lines.push(`(earlier) a call to ${s.callQuestion.name} is live; the other side asked "${s.callQuestion.question}" and that question's card (Yes / No / reply) is on screen`);
     else if ("finds" in s) lines.push(`(earlier) Ducter's own note from the user's accounts: ${s.finds.opening} ${s.finds.finds.map((f) => `[${f.kind}] ${f.text}${f.goLabel ? ` (next step offered: ${f.goLabel})` : ""}`).join(" | ")}`);
     else if ("chatter" in s) lines.push(`(earlier) ${s.chatter} short exchanges about moving the stand-up (filler)`);
+    else if ("bound" in s) lines.push(`(earlier) Ducter bound task "${s.bound.task}" to the GitHub issue ${s.bound.ref} (the user took it from their to-dos)`);
     else lines.push(`(earlier) reminder set: ${s.waiterArmed.reason}`);
   }
   if (sc.second)
@@ -507,6 +526,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         if (d.call?.plan && sh) lines.push(`    [the call sheet shows, for the user to call themselves] number ${d.call.plan.to} · what for: ${d.call.plan.goal} · open with: ${sh.open} · ask: ${sh.ask.join(" / ") || "-"} · may say: ${d.call.plan.say.join(", ") || "-"} · don't share: ${sh.dont.join(", ") || "-"} · note down: ${sh.note.join(" / ") || "-"} · buttons: 自己打 / Call it yourself (dials on their phone), 打完了 / Done calling, 先不打 / Not now · Ducter dials nothing`);
         else if (d.call?.plan) lines.push(`    [the call card shows] number ${d.call.plan.to} · what for: ${d.call.plan.goal} · may say: ${d.call.plan.say.join(", ") || "-"} · won't say: ${d.call.plan.keep ?? "-"} · voice: ${d.call.plan.voice} · about ${d.call.plan.minutes} min, $${d.call.plan.costUsd} · when: ${d.call.plan.at ? `not now; it dials at ${d.call.plan.at} (an allowed hour)` : "right after Go"} · nothing is dialed before Go`);
         // D222: a calendar change's card.
+        if (d.src) lines.push(`    [this decision card IS the to-do write-back card (made by the todos tool), and shows] ${d.src.kind} · ${d.src.item.where ?? ""}${d.src.item.label} "${d.src.item.title}"${d.src.text ? ` · the comment, whole: ${d.src.text}` : ""}${d.src.close ? " · and closes it" : ""} · goes out only on the user's tap`);
         if (d.cal) lines.push(`    [this decision card IS the calendar change card (one card, made by the calendar tool), and shows] ${d.cal.kind}${d.cal.response ? ` (${d.cal.response})` : ""} · ${d.cal.title} · ${d.cal.allDay ? d.cal.start : `${d.cal.start.slice(0, 16)}–${d.cal.end.slice(11, 16)}`}${d.cal.was ? ` (was ${d.cal.was.start.slice(0, 16)})` : ""} · in ${[d.cal.calendar || "main calendar", d.cal.account].filter(Boolean).join(" · ")} · notifies: ${d.cal.notify.join(", ") || "nobody"}${d.cal.clash ? ` · overlaps "${d.cal.clash}"` : ""}${d.cal.theirZone ? ` · their zone ${d.cal.theirZone}` : ""} · runs only on the user's tap, then the card shows it done`);
       } else if (v.kind === "waiter") lines.push(`  [reminder set] ${v.text}`);
       else lines.push(`  [partner ${v.kind === "ack" ? "ack line" : "message"}] ${v.text}`);
@@ -538,7 +558,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
   tuwa?.stop();
-  return { sc, visible, dayCards, calKinds, blocks, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks } };
+  const boundRefs = new Map(core.tasks.list().filter((c) => c.source).map((c) => [c.taskId, c.source!.ref] as [string, string]));
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks } };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -551,6 +572,7 @@ function describeStep(st: Step): string {
   if ("reports" in st) return st.reports.map((r) => `task "${r.task}" reports ${r.body.state}: ${r.body.summary}`).join(" || ") + " (both within the same second)";
   if ("peer" in st) return `${st.peer.from} (${st.peer.from === "alex-reviewer" ? "a teammate's agent" : "the user's own Claude Code in a terminal"}) sends a Bridge message${st.peer.answer ? " answering the one Ducter sent it" : ""}: ${st.peer.text}`;
   if ("resolve" in st) return `user answers the open decision: ${st.resolve.option}${st.resolve.text ? ` "${st.resolve.text}"` : ""}`;
+  if ("todosNew" in st) return `a look at GitHub found newly assigned issues: ${st.todosNew.refs.join(", ")}${st.todosNew.taken ? " (under the user's standing go: they start without asking)" : ""}`;
   if ("callEnded" in st) return `the call to ${st.callEnded.name} (${st.callEnded.to}) ended; the provider reported: ${st.callEnded.state}${st.callEnded.outcome ? `, "${st.callEnded.outcome}"` : ""}${st.callEnded.hint === "screening" ? " (Google Voice call screening answered)" : ""}`;
   return `a reminder the partner set earlier is due: ${st.timerFired.reason}`;
 }
@@ -588,6 +610,14 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
     const plan = { to: x.to, name: x.name, goal: "", say: [], mustNot: [], voice: "ducter" as const, from: "provider" as const, provider: "Tuwa", minutes: 2, costUsd: 0.6, perMinUsd: 0.3, calleeZone: "America/New_York" };
     const { name: _n, to: _t, ...ended } = x;
     core.log.append({ stream: "channel", origin: "system", kind: "phone_call", body: { callId: "call_end", connectionId: core.connections.view()[0]?.id ?? "conn", plan, placedAt: new Date(Date.now() - 60_000).toISOString(), endedAt: new Date().toISOString(), ...ended } });
+  } else if ("todosNew" in st) {
+    // D340: the look's news, as core logs it.
+    const items = st.todosNew.refs.map((ref) => {
+      const m = /^(.+)#(\d+)$/.exec(ref)!;
+      const i = TODO_ISSUES.find((x) => x.repo === m[1] && x.number === Number(m[2]))!;
+      return { source: core.taskSources.view().sources[0]!.id, kind: "github" as const, ref, label: `#${i.number}`, where: i.repo, title: i.title, url: `https://github.com/${i.repo}/issues/${i.number}` };
+    });
+    core.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: items[0]!.source, change: "new", items, ...(st.todosNew.taken ? { taken: true } : {}) } });
   } else if ("report" in st) report(st.report);
   else if ("reports" in st) st.reports.forEach(report);
   else if ("resolve" in st) {
@@ -680,6 +710,11 @@ function check(r: RunResult): string[] {
   if (e.relayed && !r.visible.some((v) => v.kind === "ai_msg" && v.relays)) fails.push("the task's question was not said in the partner's words");
   if (e.ask &&!r.visible.some((v) => v.kind === "decision")) fails.push("no ask (decision)");
   if (e.noAsk && r.visible.some((v) => v.kind === "decision")) fails.push("a decision card nobody should get");
+  // D340: a to-do write-back card, and never a write without one.
+  const todoCards = r.todoCards ?? 0;
+  if (e.todoCard && !todoCards) fails.push("no to-do write-back card (todos do=write)");
+  if (e.noTodoCard && todoCards) fails.push("a to-do write-back card nobody asked for");
+  if (e.bound && !r.opened.some((o) => r.boundRefs?.get(o.taskId) === e.bound)) fails.push(`no task bound to ${e.bound}`);
   if (e.dayCard && !r.dayCards?.length) fails.push("no day card (calendar do=agenda show)");
   if (e.noDayCard && r.dayCards?.length) fails.push("a day card nobody asked for");
   // D303: a rich block only where it helps, and every one valid.

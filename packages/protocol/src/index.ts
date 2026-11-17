@@ -414,6 +414,8 @@ export interface Bodies {
     /** edited: the title it had before. */
     was?: string;
     items?: SourceItemRef[];
+    /** new: under the standing go (they start without asking). */
+    taken?: boolean;
   };
   // D340: one write to the to-do's app on the person's behalf (comment, close, tick, untick), with
   // the Go or standing go that allowed it. Done for you reads it (sent: comment; changed: the rest).

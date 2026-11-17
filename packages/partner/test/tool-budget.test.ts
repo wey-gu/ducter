@@ -12,6 +12,7 @@ import { registerTaskTools } from "../../runner/src/tools.ts";
 import { createPartner, type PartnerHandle } from "../src/partner.ts";
 import { fakeRunner } from "./fakes.ts";
 import { fakeOoCalendar } from "../../core/test/fake-oo-calendar.ts";
+import { fakeGh } from "../../core/test/fake-gh-issues.ts";
 import { partnerFingerprint } from "./fingerprint.ts";
 
 const PARTNER_TOOLS = [
@@ -25,7 +26,8 @@ const TASK_TOOLS = ["ask_for_key", "checkpoint", "log_read", "log_search", "memo
 /** JSON characters of the whole tools/list result (≈ chars / 3.6 tokens). */
 const CEILING = {
   partner: 31_000, // 30.9K today (D300: + did_list, 0.6K, the partner's answer to "what did you send for me today?" from the Done for you record; D245: routine_propose watch, routine_list run state; D247: needs.phone covers the person's own phone; D243: + noticed, 0.5K, the partner's answer to "anything for me?" from the same detectors as the note); (D215's call sheet fields on phone_call, D217's needs.phone on task_open): 26 tools (phone_call, D193, 2.2K after trimming; D206 media on task_open and task_send); wait_for (3.9K) and task_open (4.8K) are the largest
-  partnerWithCalendar: 33_000, // D300: + did_list; D245, D247; D243: + noticed; D222: + calendar (≈1.9K), listed only while a calendar account is connected
+  partnerWithCalendar: 33_000,
+  partnerWithTodos: 32_600, // D340: + todos (≈1.4K), listed only while a to-do source is on or the home's gh is signed in // D300: + did_list; D245, D247; D243: + noticed; D222: + calendar (≈1.9K), listed only while a calendar account is connected
   task: 9_200, // 8.7K: 7 tools (ask_for_key, D233, 0.7K); wait_for alone is 3.6K; memory_search (1.2K) is the D168 fallback where the Mem plugin is absent
 };
 
@@ -86,6 +88,29 @@ test("with a calendar connected: calendar is listed, still under a ceiling", asy
     expect(JSON.stringify(tools).length).toBeLessThan(CEILING.partnerWithCalendar);
     // No oo write ran to list it.
     expect(oo.runs.filter((r) => !/^(list|get)_/.test(r.action))).toEqual([]);
+  } finally {
+    await p.close();
+    await c.stop();
+    rmSync(d, { recursive: true, force: true });
+  }
+});
+
+// D340: the todos tool is listed only while a to-do source is on (or GitHub could be read through the home's gh).
+test("with a to-do source: todos is listed, still under a ceiling", async () => {
+  const d = mkdtempSync(join(tmpdir(), "ducter-tools-todos-"));
+  const gh = fakeGh([{ repo: "acme/web", number: 12, title: "Fix the login redirect" }]);
+  const c = startCore({ dataDir: d, port: 0, push: false, platform: "darwin", taskSources: { ghRun: gh.run, ghEnv: {}, pollMs: 3_600_000 } });
+  c.autofill.store.put({ kind: "card", name: "Budget", number: "4242424242424242", expMonth: 12, expYear: 2099 });
+  expect((await c.taskSources.add("github")).ok).toBe(true);
+  const p = createPartner(c as never, fakeRunner(() => {}).runner, { prewarm: false, spine: false, persistState: false, onError: () => {} });
+  try {
+    const cfg = c.mcp.configFor("partner");
+    const req = new Request("http://127.0.0.1/mcp", { method: "POST", headers: { ...cfg.headers, "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }) });
+    const tools = ((await (await c.mcp.handle(req)).json()) as { result: { tools: { name: string }[] } }).result.tools;
+    expect(tools.map((t) => t.name).sort()).toEqual([...PARTNER_TOOLS, "todos"].sort());
+    expect(JSON.stringify(tools).length).toBeLessThan(CEILING.partnerWithTodos);
+    // Listing it wrote nothing to GitHub.
+    expect(gh.comments).toEqual([]);
   } finally {
     await p.close();
     await c.stop();

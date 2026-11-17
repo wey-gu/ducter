@@ -104,9 +104,12 @@ export interface TaskSources {
   /** Bind a task to a to-do (the New task pick, the partner's take, a standing go). */
   bind(taskId: string, item: SourceItemRef, by: Bodies["task_bound"]["by"]): void;
   /** The partner took this to-do in its turn: the next task it opens is bound to it. */
-  stage(item: SourceItem): void;
-  /** The task the partner just opened: bound to the to-do staged this turn, if any. */
-  bindStaged(taskId: string): SourceItemRef | undefined;
+  stage(item: SourceItem, rule?: boolean): void;
+  /**
+   * The task the partner just opened: bound to the to-do it took this turn; else to an open to-do
+   * its brief names by ref or address (a take the partner skipped), if exactly one does.
+   */
+  bindStaged(taskId: string, texts?: string[]): SourceItemRef | undefined;
   /** The task a to-do is bound to (a live one first). */
   taskOf(ref: string): TaskCard | undefined;
   /** A write-back for a bound task: runs under the standing go, else one Go card (the partner drafts the words). */
@@ -221,6 +224,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
 
   // ---------- bindings (from the task registry, which projects task_bound) ----------
   const bound = () => d.tasks.list().filter((c) => c.source);
+  const taskOfId = (taskId: string) => d.tasks.get(taskId)?.source;
   const taskOf = (ref: string) => {
     const all = bound().filter((c) => c.source!.ref === ref);
     return all.find((c) => isActiveAttention(c.attention)) ?? all.at(-1);
@@ -267,7 +271,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       }
     d.log.append({
       stream: "channel",
-      origin: "partner",
+      origin: "system",
       kind: "source_write",
       body: {
         source: item.source,
@@ -371,7 +375,8 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
         const told = st.told[s.id] ? Date.parse(st.told[s.id]!) : 0;
         if (s.whenNew === "take" || now() - told >= TELL_GAP_MS) {
           st.told[s.id] = new Date(now()).toISOString();
-          d.log.append({ stream: "channel", origin: "partner", kind: "source_seen", body: { source: s.id, change: "new", items: fresh.slice(0, 20).map(refOf) } });
+          const take = s.whenNew === "take" && countTaken(s.id) < TAKE_DAILY;
+          d.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: s.id, change: "new", items: fresh.slice(0, take ? Math.max(0, TAKE_DAILY - countTaken(s.id)) : 20).map(refOf), ...(take ? { taken: true } : {}) } });
         }
       }
       save();
@@ -399,7 +404,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       const item = it ? refOf(it) : src;
       if (stateNow !== prev.state) {
         const change = stateNow === "closed" ? "closed" : stateNow === "gone" ? "gone" : "reopened";
-        d.log.append({ stream: "channel", origin: "partner", kind: "source_seen", body: { source: s.id, change, item, taskId: c.taskId } });
+        d.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: s.id, change, item, taskId: c.taskId } });
         d.tell?.(c.taskId, changeNote(change, item));
         if (change === "closed") {
           const lang = langOf(c);
@@ -416,7 +421,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
           });
         }
       } else if (it) {
-        d.log.append({ stream: "channel", origin: "partner", kind: "source_seen", body: { source: s.id, change: "edited", item, taskId: c.taskId, was: prev.title } });
+        d.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: s.id, change: "edited", item, taskId: c.taskId, was: prev.title } });
         d.tell?.(c.taskId, changeNote("edited", item, prev.title));
       }
     }
@@ -428,8 +433,13 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     return typeof l === "string" && l.startsWith("zh") ? "zh" : "en";
   };
 
-  async function look() {
-    if (looking) return looking;
+  /** One look at a time; asked again while one runs (a source just added), another follows it. */
+  let again: Promise<void> | undefined;
+  async function look(): Promise<void> {
+    if (looking) return (again ??= looking.then(() => {
+      again = undefined;
+      return look();
+    }));
     looking = (async () => {
       await probeGh();
       await lookSources();
@@ -495,7 +505,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
   }
 
   // ---------- staging the partner's take ----------
-  let staged: { item: SourceItem; at: number } | undefined;
+  let staged: { item: SourceItem; at: number; rule?: boolean } | undefined;
 
   const timer = setInterval(() => void look().catch(() => {}), d.pollMs ?? POLL_MS);
   (timer as { unref?: () => void }).unref?.();
@@ -614,15 +624,34 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       lastBound.set(taskId, { at: now(), title: item.title, state: "open" });
       changed();
     },
-    stage(item) {
-      staged = { item, at: now() };
+    stage(item, rule) {
+      staged = { item, at: now(), ...(rule ? { rule: true } : {}) };
     },
-    bindStaged(taskId) {
-      if (!staged || now() - staged.at > 10 * 60_000) return undefined;
+    bindStaged(taskId, texts = []) {
+      if (!staged || now() - staged.at > 10 * 60_000) {
+        staged = undefined;
+        if (taskOfId(taskId)) return undefined;
+        const hay = texts.join("\n");
+        const hits = new Set<string>();
+        for (const s of st.sources)
+          for (const ref of st.seen[s.id] ?? []) {
+            const m = /^([\w.-]+\/[\w.-]+)#(\d+)$/.exec(ref);
+            if (!m) continue;
+            const esc = m[1]!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const repo = m[1]!.split("/")[1]!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            // owner/repo#12, its address, or the repo's own name with the number (hawdb#12, hawdb issue #12).
+            if (new RegExp(`(^|[^\\w/.-])(${esc}(#|/issues/|/pull/)|${repo}( issue)?\\s?#)${m[2]}(?!\\d)`, "i").test(hay)) hits.add(`${s.id}\u0000${ref}`);
+          }
+        if (hits.size !== 1) return undefined;
+        const [sid, ref] = [...hits][0]!.split("\u0000") as [string, string];
+        void this.item(ref, sid).then((it) => it && !taskOf(ref) && this.bind(taskId, it, "partner"));
+        return undefined;
+      }
       const item = refOf(staged.item);
+      const rule = staged.rule === true;
       staged = undefined;
       const s = byId(item.source);
-      this.bind(taskId, item, s?.whenNew === "take" && countTaken(s.id) <= TAKE_DAILY ? "rule" : "partner");
+      this.bind(taskId, item, rule && s?.whenNew === "take" ? "rule" : "partner");
       return item;
     },
     taskOf,

@@ -43,6 +43,8 @@ type Remover interface {
 //	通知 / Notifications     when it comes to you, quiet hours, if you
 //	                         don't answer
 //	账号 / Accounts          the accounts it can read (D96)
+//	待办来源 / To-do sources  the to-dos in GitHub and Obsidian it can
+//	                         take on (D341, todos.go)
 //	外观和声音 / Look & sound the look, the window's language, Details,
 //	                         the intro's sound
 //	在哪儿运行 / Where it runs this Mac or another computer, Stop,
@@ -75,7 +77,7 @@ const (
 	TabAbout    = "about"
 )
 
-var settingsTabs = []string{TabPartner, TabMemory, TabPeers, TabNotify, TabAccounts, TabChats, TabAutofill, TabLook, TabRun, TabAbout}
+var settingsTabs = []string{TabPartner, TabMemory, TabPeers, TabNotify, TabAccounts, TabTodos, TabChats, TabAutofill, TabLook, TabRun, TabAbout}
 
 type settingsState struct {
 	// tab is the section shown ("" is the first).
@@ -172,6 +174,11 @@ func (a *App) openTab(tab string) {
 	if tab == TabChats {
 		a.send(protocol.ChannelsReq{T: "channels"})
 	}
+	// D341: 待办来源 / To-do sources (subscribed after; the home looks again).
+	if tab == TabTodos {
+		a.todos.removing, a.todos.addErr = "", ""
+		a.send(protocol.SourcesReq{T: "sources"})
+	}
 }
 
 // settingsTab is the tab shown.
@@ -246,6 +253,8 @@ func (a *App) settingsView(c *ui.Context) {
 						a.notifyPanel(c)
 					case TabChats:
 						a.chatsPanel(c)
+					case TabTodos:
+						a.todosPanel(c)
 					case TabAutofill:
 						a.autofillPanel(c)
 					case TabAccounts:
@@ -376,6 +385,8 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 		bmp = theme.Clay("wait_clock")
 	case TabAccounts:
 		bmp = theme.Clay("wait_mail")
+	case TabTodos:
+		bmp = theme.Clay(todosArt) // D341: the clay file, a stand-in (its own art is owed)
 	case TabAutofill:
 		bmp = theme.Clay("set_autofill")
 	case TabRun:

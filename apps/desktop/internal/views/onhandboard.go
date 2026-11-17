@@ -19,6 +19,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 const (
@@ -38,7 +39,8 @@ type lensGroup struct {
 	place     *protocol.Place
 	tasks     []*store.Task
 	routines  []protocol.Routine
-	added     bool // a project added by hand (D186)
+	added     bool   // a project added by hand (D186)
+	kind      string // D341: a to-do source's app (key src:<id>); "" for a project
 }
 
 // lensGroups are the board's projects in projectGroups' order (what needs
@@ -60,7 +62,8 @@ func (a *App) lensGroups(b store.Board) []lensGroup {
 		}
 		out = append(out, lensGroup{key: key, name: name, place: g.place, tasks: g.tasks, routines: g.routines, added: addedNames[g.name]})
 	}
-	return out
+	// D341: then the to-do sources that have tasks, each a lens of its own.
+	return append(out, a.sourceLensGroups(b)...)
 }
 
 // lensOn says whether the lens is offered: two groups or more (one
@@ -100,6 +103,12 @@ func lensBoard(b store.Board, lens string) store.Board {
 	var out store.Board
 	for i, l := range b.Lanes {
 		for _, x := range l {
+			if isSourceLens(lens) {
+				if s := taskTodo(x); s != nil && srcLensPrefix+s.Source == lens {
+					out.Lanes[i] = append(out.Lanes[i], x)
+				}
+				continue
+			}
 			if lensOf(x) == lens {
 				out.Lanes[i] = append(out.Lanes[i], x)
 			}
@@ -156,10 +165,25 @@ func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, le
 				for _, l := range b.Lanes {
 					all = append(all, l...)
 				}
-				a.lensRow(c, "", a.L.T("onhand.lens.all"), all, lens == "", false)
+				a.lensRow(c, "", a.L.T("onhand.lens.all"), all, lens == "", false, "")
 				ui.Box(c.Key("gap")).Height(t.S3)
+				srcs := 0
 				for _, g := range groups {
-					a.lensRow(c, g.key, g.name, g.tasks, lens == g.key, g.key == lensOther)
+					if g.kind != "" {
+						srcs++
+						continue
+					}
+					a.lensRow(c, g.key, g.name, g.tasks, lens == g.key, g.key == lensOther, "")
+				}
+				// D341: 来自 / From: the to-do sources with tasks, after the projects.
+				if srcs > 0 {
+					ui.Text(c.Key("src-head"), a.L.T("todos.lens")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).
+						Padding(t.S4, t.S3, t.S1, t.S3).Role(ui.RoleHeading)
+					for _, g := range groups {
+						if g.kind != "" {
+							a.lensRow(c, g.key, g.name, g.tasks, lens == g.key, false, g.kind)
+						}
+					}
 				}
 				if a.canAddFolder() {
 					ui.Row(c.Key("add")).Padding(t.S4, t.S3, 0, t.S3).Children(func() {
@@ -175,7 +199,8 @@ func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, le
 
 // lensRow is one project in the column: its name and what its branches
 // changed; at its end the face of its most urgent task and how many it has.
-func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, other bool) {
+// A to-do source's row (D341) has its app's mark before its name.
+func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, other bool, brand string) {
 	t := a.T
 	st, of, words := a.foldMark(tasks)
 	label := name
@@ -191,6 +216,11 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 		r.Background(t.Ink.Alpha(0.04))
 	}
 	r.Children(func() {
+		if brand != "" {
+			if src := theme.Brand(brand); src != nil {
+				ui.Image(c.Key("brand"), src).Size(16, 16).Shrink(0).AccessHidden(true)
+			}
+		}
 		ui.Column(c.Key("nm")).Grow(1).Shrink(1).MinWidth(0).Gap(1).Children(func() {
 			ink := t.InkSoft
 			if on {
@@ -261,7 +291,9 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 		}
 		var all []*store.Task
 		for _, g := range groups {
-			all = append(all, g.tasks...)
+			if g.kind == "" { // a source's tasks are in their projects too
+				all = append(all, g.tasks...)
+			}
 		}
 		tab("", a.L.T("onhand.lens.all"), all)
 		for _, g := range groups {
@@ -324,7 +356,7 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 			})
 		})
 		g := groupOf(groups, lens)
-		here := g != nil && g.key != lensOther
+		here := g != nil && g.key != lensOther && g.kind == ""
 		total := n[0] + n[1] + n[2] + n[3]
 		if !here && total < findFrom {
 			return
@@ -352,6 +384,11 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 func (a *App) lensName(key string) string {
 	if key == lensOther {
 		return a.L.T("onhand.other")
+	}
+	if isSourceLens(key) { // D341
+		if g := groupOf(a.sourceLensGroups(a.S.Board()), key); g != nil {
+			return g.name
+		}
 	}
 	return key
 }

@@ -24,8 +24,8 @@ var (
 )
 
 // Brand is a product's mark by name (telegram, slack, imessage, wechat,
-// gmail, googlecalendar, github, discord, oomol, tuwa, nowledge_mem); nil if
-// there is none.
+// gmail, googlecalendar, github, obsidian, jira, discord, oomol, tuwa,
+// nowledge_mem); nil if there is none.
 func Brand(name string) ui.ImageSource {
 	brandMu.Lock()
 	defer brandMu.Unlock()

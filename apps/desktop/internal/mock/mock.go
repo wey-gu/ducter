@@ -681,7 +681,7 @@ func (h *hub) handle(c *conn, f protocol.ClientFrame) {
 		}
 		c.send(map[string]any{"t": "task_history", "taskId": f.TaskID, "events": events})
 	default:
-		if !h.handleDevices(c, f) {
+		if !h.handleDevices(c, f) && !h.handleSources(c, f) {
 			c.send(map[string]any{"t": "error", "message": "unknown frame: " + f.T})
 		}
 	}

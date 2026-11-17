@@ -292,6 +292,9 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		ui.Box(c.Key("c-room")).Grow(1)
 		ui.Row(c.Key("c3")).Gap(10).AlignItems(ui.Center).MinHeight(20).Children(func() {
 			a.heartbeat(c, task, att)
+			if s := taskTodo(task); s != nil {
+				a.todoChip(c, "card:"+task.ID, s.SourceItemRef) // D341
+			}
 			ui.Spacer(c)
 			if hover && a.rowActs(c, task, true) {
 				return
@@ -405,6 +408,9 @@ func (a *App) compactCard(c *ui.Context, task *store.Task, quiet bool) {
 					a.partnerMark(c, task.ID, task.Card.Persona) // D312
 				}
 				ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(14).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
+				if s := taskTodo(task); s != nil {
+					a.todoChip(c, "compact:"+task.ID, s.SourceItemRef) // D341
+				}
 			})
 			ui.Row(c.Key("l2")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				ink := t.InkSoft

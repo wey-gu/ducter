@@ -95,6 +95,9 @@ type newTaskState struct {
 	// Start when it didn't open.
 	sending string
 	err     string
+	// item is the to-do picked from 待办来源 (D341): its chip on the card,
+	// and the task_new carries its reference.
+	item *protocol.SourceItem
 	// errEmpty: err is the empty-words line (it goes once there are words).
 	errEmpty bool
 	focus    bool
@@ -163,6 +166,11 @@ func (a *App) OpenNewTask(at *protocol.Place) {
 		}
 	}
 	a.send(protocol.TaskNewOptions{T: "task_new_options", Place: ask})
+	// D341: 从待办里选 shows once there are sources (the socket stays subscribed).
+	a.todos.pickOpen = false
+	if a.S.Sources == nil {
+		a.send(protocol.SourcesReq{T: "sources"})
+	}
 }
 
 // NewTaskShortcut is ⌘N: inside an opened task, the card starts at that
@@ -393,6 +401,10 @@ func (a *App) StartNewTask(again ...bool) bool {
 	nt.sending = fmt.Sprintf("n%d-%d", a.Now().UnixMilli(), a.nextClient)
 	f.ClientID = nt.sending
 	f.From = a.pastFromID() // D285
+	if it := nt.item; it != nil {
+		ref := it.SourceItemRef // D341: the reference only, never its text
+		f.Item = &ref
+	}
 	nt.again = len(again) > 0 && again[0]
 	nt.err, nt.errEmpty, nt.started, nt.startedTask = "", false, "", ""
 	nt.placeOpen, nt.branchOpen, nt.whoOpen, nt.whenOpen, nt.computerOpen = false, false, false, false, false
@@ -475,7 +487,7 @@ func (a *App) drainNewTask() {
 				title = r.Routine.Name
 			}
 			if nt.again {
-				nt.words, nt.condition, nt.err = "", "", ""
+				nt.words, nt.condition, nt.err, nt.item = "", "", "", nil
 				nt.seq++
 				nt.focus = true
 				if r.Routine != nil {
@@ -485,7 +497,7 @@ func (a *App) drainNewTask() {
 				}
 				continue
 			}
-			nt.open, nt.words, nt.err = false, "", ""
+			nt.open, nt.words, nt.err, nt.item = false, "", "", nil
 			nt.seq++
 			if r.TaskID != "" {
 				a.openFromElsewhere(r.TaskID)
@@ -620,6 +632,7 @@ func (a *App) newTaskCard(c *ui.Context) {
 		a.heading(c, a.L.T("newtask.title"), t.XL)
 		a.wordsField(c)
 		a.pastFromChip(c) // D285: 带着「…」的发现
+		a.todoPick(c)     // D341: 从待办里选 / Pick from your to-dos
 		a.newTaskPills(c)
 		if nt.when != "" {
 			a.whenDetail(c)

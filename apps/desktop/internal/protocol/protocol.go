@@ -226,6 +226,9 @@ type Decision struct {
 	// Cal (D222): a calendar change (add, move, cancel, answer); its
 	// outcome is the connection_call with this decision id.
 	Cal *CalChange `json:"cal,omitempty"`
+	// Src (D341): a card about a to-do bound to a task: a write-back to
+	// its app, that it was closed there, or the standing go offered.
+	Src *SourceAsk `json:"src,omitempty"`
 }
 
 // TrustAsk names the agent a standing-go offer is about.
@@ -854,6 +857,9 @@ type TaskCard struct {
 	From     *PastFrom `json:"from,omitempty"`
 	// Held (D325) is what the person held for after this turn, in order.
 	Held []HeldMsg `json:"held,omitempty"`
+	// Source (D341): the outside to-do it is bound to, how it stands there
+	// and what Ducter wrote there.
+	Source *TaskSource `json:"source,omitempty"`
 }
 
 // HeldMsg is one message the person held for after this turn (D325): ID is
@@ -2236,6 +2242,8 @@ type ServerFrame struct {
 	DidFor *DidFrame `json:"-"`
 	// MemFound is mem_found (D321), decoded on its own (its items aren't SavedItems).
 	MemFound *MemFound `json:"-"`
+	// Sources (D341): sources, source_items_result and source_result, decoded on their own.
+	Sources *SourcesFrame `json:"-"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -2453,6 +2461,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodeDid(data, f)
 	case "mem_found":
 		return decodeMemFound(data, f)
+	case "sources", "source_items_result", "source_result":
+		return decodeSources(data, f)
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}
@@ -2631,6 +2641,8 @@ type TaskNew struct {
 	When     *NewTaskWhen `json:"when,omitempty"`
 	Media    []string     `json:"media,omitempty"` // D206: pictures dropped on the What row
 	From     string       `json:"from,omitempty"`  // D285: New task from this: that task's id
+	// Item (D341): the to-do picked from 待办来源, bound to the task.
+	Item *SourceItemRef `json:"item,omitempty"`
 }
 
 // OpenTask asks the apps to show a task (`ducter open <task>`).

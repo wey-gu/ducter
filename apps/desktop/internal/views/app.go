@@ -281,6 +281,7 @@ type App struct {
 	sites      sitesState
 	af         autofillState // D191: 设置 › 密码和银行卡
 	chats      chatsState    // D276: 设置 › 聊天软件
+	todos      todosState    // D341: 设置 › 待办来源, and New task's pick
 	winW, winH float32
 	slid       map[string]float32 // D244: a sliding pane's width when open (onhandrail.go)
 	// partner and settings are the Partner page's and Settings' own state.

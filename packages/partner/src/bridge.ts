@@ -29,6 +29,14 @@
 // `inbox` messages and `open` add `sender: {actor_id, member?, agent?, agent_id?}` and `in_reply_to`
 // (the actual parent; `reply_to` stays the message itself); contact cards add `agent_id` and
 // `mailbox_available` (false = no registered mailbox now: no send arguments). Read below (D294).
+//
+// D334: the address is the identity, not the Space. A context reads one Space's inbox, so the client
+// holds one context per Space the home reads (core's bridge-link.ts finds them) and reads each; every
+// message keeps the Space it came in, and a reply, an open, an inspect or a resume runs with that
+// Space's context. Contacts are looked up in every Space (`--all-spaces`); a send runs with the
+// context of the Space its card came from. With Mem's one inbox for every Space (#10402, `wide`), the
+// first context reads them all with `inbox --all-spaces` and the Space comes from each message.
+import type { BridgePlace, BridgeWhere } from "../../protocol/src/internal.ts";
 import { nmemEnv } from "./memory.ts";
 
 export interface BridgeMessage {
@@ -39,6 +47,10 @@ export interface BridgeMessage {
   text: string; // clipped
   sentAt?: string;
   inReplyTo?: string; // set when this answers a message we sent (the CLI's in_reply_to)
+  space?: string; // D334: the exact Space it came in (its reply goes back there)
+  spaceLabel?: string;
+  shared?: boolean; // D334: it came in a Space the person shares with others (not their own place)
+  member?: string; // D334: the sender's member by name, when Mem names one (never an id)
 }
 
 /** One recipient card from `bridge contacts`: an opaque handle plus who and where, as returned. */
@@ -49,6 +61,9 @@ export interface BridgeContact {
   mine?: boolean; // the user's own agent
   description?: string;
   space?: string; // the exact Space the card came from, when the CLI says
+  spaceLabel?: string; // D334
+  spaceKind?: string; // D334: "personal" for the person's own place
+  key?: string; // D334: one agent across Spaces (its id or name, and its member)
 }
 
 /** One outgoing operation as `bridge outbox` / `inspect` report it (tolerant; research/37 B8). */
@@ -58,6 +73,7 @@ export interface BridgeOp {
   messageId?: string;
   inReplyTo?: string;
   body?: string;
+  space?: string; // D334: the Space whose context's outbox listed it
 }
 
 /**
@@ -83,20 +99,26 @@ export interface BridgeClient {
    * Reply to a received message; the CLI derives the recipient from that original.
    * A failure with reason "unavailable" means the outcome is UNKNOWN (D106): recover it, never resend.
    */
-  reply(messageId: string, text: string): Promise<BridgeResult<{ messageId?: string; operation?: string }>>;
-  /** Read-only recipient discovery in the context's own Space (one bounded page). */
+  reply(messageId: string, text: string, space?: string): Promise<BridgeResult<{ messageId?: string; operation?: string }>>;
+  /** Read-only recipient discovery in every Space the home reads (D334; one bounded page each). */
   contacts?(query: string): Promise<BridgeResult<{ contacts: BridgeContact[]; more: boolean }>>;
-  /** A new message to a contact handle the user confirmed on a card. Failures as for `reply`. */
-  send?(contact: string, text: string): Promise<BridgeResult<{ messageId?: string; operation?: string }>>;
+  /** A new message to a contact handle the user confirmed on a card, sent in the card's Space. Failures as for `reply`. */
+  send?(contact: string, text: string, space?: string): Promise<BridgeResult<{ messageId?: string; operation?: string }>>;
   /** Recovery after an unknown outcome (D106): recent outgoing operations, then the one original. */
   outbox?(): Promise<BridgeResult<{ ops: BridgeOp[] }>>;
-  inspect?(operation: string): Promise<BridgeResult<{ op: BridgeOp }>>;
+  inspect?(operation: string, space?: string): Promise<BridgeResult<{ op: BridgeOp }>>;
   /** Recover the exact operation; the CLI never sends a replacement. */
-  resume?(operation: string): Promise<BridgeResult<{ messageId?: string }>>;
+  resume?(operation: string, space?: string): Promise<BridgeResult<{ messageId?: string }>>;
 }
 
 export interface NmemBridgeOptions {
   context: string; // the approved named Agent Context (nmem --agent-context)
+  /**
+   * D334: every Space the home reads, each with its own context (the first is `context`'s own).
+   * Default: `context` alone. wide: Mem reads every Space with one inbox (#10402).
+   */
+  places?: BridgePlace[];
+  wide?: boolean;
   bin?: string; // default NMEM_CLI_PATH or "nmem"
   timeoutMs?: number; // per call, default 20 s
   maxOpen?: number; // bodies opened per check, default 5
@@ -255,6 +277,9 @@ export function contactsOf(j: any, me?: string): BridgeContact[] {
     // Mem #10278: a card whose agent has no registered mailbox now can't be sent to (the 409 of
     // 2026-11-13: a stale card picked by name, every send unknown). Left out, never offered.
     if (c?.mailbox_available === false) continue;
+    const spaceLabel = str(c?.space?.label);
+    const spaceKind = str(c?.space?.kind);
+    const who = memberOf(c);
     out.push({
       contact,
       label: teamLabel(c, senderOf(c), isMine(c, me)),
@@ -262,6 +287,9 @@ export function contactsOf(j: any, me?: string): BridgeContact[] {
       ...(isMine(c, me) ? { mine: true } : {}),
       ...(description ? { description: clip(description, 200) } : {}),
       ...(space ? { space } : {}),
+      ...(spaceLabel ? { spaceLabel } : {}),
+      ...(spaceKind ? { spaceKind } : {}),
+      key: `${str(c?.agent_id) ?? agent ?? contact}|${who.id ?? who.name ?? ""}`,
     });
   }
   return out;
@@ -297,19 +325,29 @@ function operationIn(text: string): string | undefined {
   }
   return undefined;
 }
-
-/** BridgeClient over the user's nmem CLI and their approved Agent Context. */
+/** BridgeClient over the user's nmem CLI and their approved Agent Context (D334: one per Space it reads). */
 export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   const env = opts.env ?? process.env;
   const bin = opts.bin ?? env.NMEM_CLI_PATH ?? "nmem";
   const timeoutMs = opts.timeoutMs ?? 20_000;
   const maxOpen = opts.maxOpen ?? 5;
+  // D334: the home's own context first; every other Space it reads after it, each once.
+  const places: BridgePlace[] = [];
+  for (const p of [{ context: opts.context }, ...(opts.places ?? [])]) {
+    const same = places.find((x) => x.context === p.context);
+    if (same) Object.assign(same, { ...p, ...same, ...(p.spaceId ? { spaceId: p.spaceId } : {}), ...(p.spaceLabel ? { spaceLabel: p.spaceLabel } : {}), ...(p.kind ? { kind: p.kind } : {}) });
+    else places.push({ ...p });
+  }
+  const wide = !!opts.wide;
+  const home = places[0]!;
+  /** The context that reads (and answers in) a Space; the home's own when it isn't one the home reads. */
+  const ctxFor = (space?: string): string => (wide || !space ? home.context : (places.find((p) => p.spaceId === space)?.context ?? home.context));
   // `whole`: the arguments are a whole nmem command (not a `bridge` one under the context).
-  const run = async (args: string[], input?: string, whole = false): Promise<{ code: number; out: string; err: string } | { missing: true }> => {
+  const run = async (args: string[], input?: string, whole = false, ctx = home.context): Promise<{ code: number; out: string; err: string } | { missing: true }> => {
     let proc: ReturnType<typeof Bun.spawn>;
     try {
       // Argument vector, never a shell string: message text can't become a flag or a command.
-      proc = Bun.spawn(whole ? [bin, "--json", ...args] : [bin, "--json", "--agent-context", opts.context, "bridge", ...args], {
+      proc = Bun.spawn(whole ? [bin, "--json", ...args] : [bin, "--json", "--agent-context", ctx, "bridge", ...args], {
         stdout: "pipe",
         stderr: "pipe",
         stdin: input !== undefined ? new Blob([input]) : "ignore",
@@ -344,8 +382,8 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     }
     return r;
   };
-  const read = (args: string[]) => retried(() => run(args), false);
-  const write = (args: string[], input: string) => retried(() => run(args, input), true);
+  const read = (args: string[], ctx = home.context) => retried(() => run(args, undefined, false, ctx), false);
+  const write = (args: string[], input: string, ctx = home.context) => retried(() => run(args, input, false, ctx), true);
   const failure = (r: Ran): BridgeFailure => {
     if ("missing" in r) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
     const text = `${r.err}\n${r.out}`;
@@ -369,18 +407,32 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       return undefined;
     }
   };
-  // The saved context, read locally (nothing sent): the user's own member is its custodian, and its
+  // A saved context, read locally (nothing sent): the user's own member is its custodian, and its
   // exact Space. "personal-<custodian>" is the user's "Only me" place (VERIFIED 2026-11-13: every card
   // there is that member's), where every sender can only be one of the user's own agents.
-  let where: Promise<{ custodian?: string; personal: boolean }> | undefined;
-  const place = () =>
-    (where ??= (async () => {
-      const c = await run(["agents", "context", "show", "--name", opts.context], undefined, true);
-      if ("missing" in c || c.code !== 0) return { personal: false };
-      const sel = parse(c.out)?.selection;
-      const custodian = str(sel?.address?.custodian_id);
-      return { ...(custodian ? { custodian } : {}), personal: !!custodian && str(sel?.scope?.space_id) === `personal-${custodian}` };
-    })());
+  const where = new Map<string, Promise<{ custodian?: string; space?: string; personal: boolean }>>();
+  const placeOf = (ctx: string) => {
+    let p = where.get(ctx);
+    if (!p) {
+      p = (async () => {
+        const c = await run(["agents", "context", "show", "--name", ctx], undefined, true);
+        if ("missing" in c || c.code !== 0) return { personal: false };
+        const sel = parse(c.out)?.selection;
+        const custodian = str(sel?.address?.custodian_id);
+        const space = str(sel?.scope?.space_id);
+        return { ...(custodian ? { custodian } : {}), ...(space ? { space } : {}), personal: !!custodian && space === `personal-${custodian}` };
+      })();
+      where.set(ctx, p);
+    }
+    return p;
+  };
+  /** D334: whether a Space is the person's own place (Mem's kind, else the saved context's id). */
+  const personalSpace = async (pl: BridgePlace | undefined, space?: string): Promise<boolean> => {
+    if (pl?.kind) return pl.kind === "personal";
+    if (pl) return (await placeOf(pl.context)).personal;
+    const own = await placeOf(home.context);
+    return !!space && !!own.custodian && space === `personal-${own.custodian}`;
+  };
   // The user's own member: given, or what passive setup reports for this context (asked once).
   let me: Promise<string | undefined> | undefined;
   const self = () =>
@@ -394,7 +446,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       }
       // nmem 0.10.118: a context saved by `bridge connections connect` is found by inbox, contacts
       // and `agents context show`, but `bridge setup` says it was "not found".
-      return (await place()).custodian;
+      return (await placeOf(home.context)).custodian;
     })());
   const sent = (r: { code: number; out: string; err: string } | { missing: true }): BridgeResult<{ messageId?: string; operation?: string }> => {
     if ("missing" in r || r.code !== 0) return failure(r);
@@ -404,87 +456,148 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     const operation = str(j?.operation) ?? str(j?.operation_id);
     return { ok: true, ...(id ? { messageId: id } : {}), ...(operation ? { operation } : {}) };
   };
+  /** The inboxes to read: each place's own, or (wide) the home's one inbox for every Space. */
+  const inboxes = (): { pl: BridgePlace; args: string[] }[] => (wide ? [{ pl: home, args: ["inbox", "--all-spaces"] }] : places.map((pl) => ({ pl, args: ["inbox"] })));
+  /** D334: the Space an inbox entry or an opened message names (wide), else its place's. */
+  const spaceIn = (o: any, pl: BridgePlace): { id?: string; label?: string; kind?: string } => {
+    const id = str(o?.space_id) ?? str(o?.resolved_space_id) ?? str(o?.space?.id) ?? (typeof o?.space === "string" ? o.space : undefined);
+    if (wide && id) {
+      const known = places.find((p) => p.spaceId === id);
+      const label = str(o?.space?.label) ?? known?.spaceLabel;
+      const kind = str(o?.space?.kind) ?? known?.kind;
+      return { id, ...(label ? { label } : {}), ...(kind ? { kind } : {}) };
+    }
+    return { ...(pl.spaceId ? { id: pl.spaceId } : {}), ...(pl.spaceLabel ? { label: pl.spaceLabel } : {}), ...(pl.kind ? { kind: pl.kind } : {}) };
+  };
   return {
     async check(known) {
-      const r = await read(["inbox"]);
-      if ("missing" in r || r.code !== 0) return failure(r);
-      const j = parse(r.out);
-      if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
-      const fresh = inboxIds(j).filter((id) => !known.has(id)).slice(0, maxOpen);
       const messages: BridgeMessage[] = [];
-      const mine = fresh.length ? await self() : undefined;
-      for (const id of fresh) {
-        // `open` records this recipient's first read: Ducter has the body in its Log from here on.
-        const o = await read(["open", id]);
-        if ("missing" in o || o.code !== 0) continue; // left unread; the next check tries again
-        const b = parse(o.out);
-        const body = str(b?.body) ?? str(b?.message?.body) ?? str(b?.text);
-        if (!body) continue;
-        const sentAt = str(b?.sent_at) ?? str(b?.created_at) ?? str(b?.message?.created_at);
-        // nmem 0.10.118's `open` (VERIFIED): `{message, body, reply_to, outgoing}`, where `reply_to` is
-        // the handle `reply` takes, the message's own id. Only a different one names a parent.
-        const handle = str(b?.reply_to);
-        const inReplyTo = str(b?.in_reply_to) ?? str(b?.message?.in_reply_to) ?? (handle && handle !== id ? handle : undefined);
-        const who = b?.message && typeof b.message === "object" ? { ...b, ...b.message } : b;
-        const agent = agentOf(who);
-        // No sender at all (the released CLI): in the user's "Only me" place it is one of theirs (D249).
-        // In the user's "Only me" place every sender is one of their own agents, named or not
-        // (D249; D294: Mem #10278's `sender.member` may be a display name, not the custodian id).
-        // Elsewhere, only a sender whose member is the user's own.
-        const said = memberOf(who);
-        const own = (!!(said.id || said.name) && isMine(who, mine)) || (await place()).personal;
-        messages.push({
-          messageId: id,
-          from: senderOf(who),
-          ...(agent ? { agent } : {}),
-          ...(own ? { mine: true } : {}),
-          text: clip(body, MAX_TEXT),
-          ...(sentAt ? { sentAt } : {}),
-          ...(inReplyTo ? { inReplyTo } : {}),
-        });
+      let reads: Record<string, boolean> | undefined;
+      let answered = false;
+      let lastFail: BridgeFailure | undefined;
+      for (const { pl, args } of inboxes()) {
+        const r = await read(args, pl.context);
+        if ("missing" in r || r.code !== 0) {
+          lastFail = failure(r);
+          continue; // one Space not answering doesn't hide the others'
+        }
+        const j = parse(r.out);
+        if (j === undefined) {
+          lastFail = { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
+          continue;
+        }
+        answered = true;
+        const list = Array.isArray(j?.messages) ? j.messages : Array.isArray(j?.incoming) ? j.incoming : [];
+        const entry = (id: string) => list.find((m: any) => (typeof m === "string" ? m : str(m?.message) ?? str(m?.message_id) ?? str(m?.id)) === id);
+        const fresh = inboxIds(j).filter((id) => !known.has(id) && !messages.some((m) => m.messageId === id)).slice(0, Math.max(0, maxOpen - messages.length));
+        const mine = fresh.length ? await self() : undefined;
+        for (const id of fresh) {
+          // `open` records this recipient's first read: Ducter has the body in its Log from here on.
+          const o = await read(["open", id], pl.context);
+          if ("missing" in o || o.code !== 0) continue; // left unread; the next check tries again
+          const b = parse(o.out);
+          const body = str(b?.body) ?? str(b?.message?.body) ?? str(b?.text);
+          if (!body) continue;
+          const sentAt = str(b?.sent_at) ?? str(b?.created_at) ?? str(b?.message?.created_at);
+          // nmem 0.10.118's `open` (VERIFIED): `{message, body, reply_to, outgoing}`, where `reply_to` is
+          // the handle `reply` takes, the message's own id. Only a different one names a parent.
+          const handle = str(b?.reply_to);
+          const inReplyTo = str(b?.in_reply_to) ?? str(b?.message?.in_reply_to) ?? (handle && handle !== id ? handle : undefined);
+          const who = b?.message && typeof b.message === "object" ? { ...b, ...b.message } : b;
+          const agent = agentOf(who);
+          const sp = spaceIn(typeof entry(id) === "object" ? { ...entry(id), ...who } : who, pl);
+          // In the user's "Only me" place every sender is one of their own agents, named or not
+          // (D249; D294: Mem #10278's `sender.member` may be a display name, not the custodian id).
+          // Elsewhere, only a sender whose member is the user's own.
+          const said = memberOf(who);
+          const byMember = !!(said.id || said.name) && isMine(who, mine);
+          // The saved context is read only when it decides something (an own sender in an unnamed Space doesn't).
+          const personal = sp.kind ? sp.kind === "personal" : byMember && !sp.id ? false : await personalSpace(wide ? places.find((p) => p.spaceId === sp.id) : pl, sp.id);
+          const own = byMember || personal;
+          // D334: a teammate's agent is told by its Space ("reviewer (dev team)", "AI agent (Everyone)").
+          const shared = !personal && !!sp.id;
+          const from = senderOf(who);
+          const named = !own && sp.label ? `${agent ?? (from === "another agent" ? "AI agent" : from)} (${sp.label})` : from;
+          messages.push({
+            messageId: id,
+            from: named,
+            ...(!own && said.name && !memberIdLabel(said.name) && said.name !== agent ? { member: said.name } : {}),
+            ...(agent ? { agent } : {}),
+            ...(own ? { mine: true } : {}),
+            text: clip(body, MAX_TEXT),
+            ...(sentAt ? { sentAt } : {}),
+            ...(inReplyTo ? { inReplyTo } : {}),
+            ...(sp.id ? { space: sp.id } : {}),
+            ...(sp.label ? { spaceLabel: sp.label } : {}),
+            ...(shared ? { shared: true } : {}),
+          });
+        }
+        const rd = outgoingReads(j);
+        if (rd) reads = { ...(reads ?? {}), ...rd };
       }
-      const reads = outgoingReads(j);
+      if (!answered && lastFail) return lastFail;
       return { ok: true, messages, ...(reads ? { reads } : {}) };
     },
     async inboxIds() {
-      const r = await read(["inbox"]);
-      if ("missing" in r || r.code !== 0) return failure(r);
-      const j = parse(r.out);
-      if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
-      return { ok: true, ids: inboxIds(j) };
+      const ids: string[] = [];
+      for (const { pl, args } of inboxes()) {
+        const r = await read(args, pl.context);
+        if ("missing" in r || r.code !== 0) return failure(r);
+        const j = parse(r.out);
+        if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
+        for (const id of inboxIds(j)) if (!ids.includes(id)) ids.push(id);
+      }
+      return { ok: true, ids };
     },
-    async reply(messageId, text) {
+    async reply(messageId, text, space) {
       // Body through stdin (--body-file -): text starting with "-" can't parse as a flag.
-      return sent(await write(["reply", "--body-file", "-", messageId], text));
+      // D334: in the Space the message came in, with that Space's context.
+      return sent(await write(["reply", "--body-file", "-", messageId], text, ctxFor(space)));
     },
-    // Read-only discovery, then a send the user confirmed (design/bridge.md, S2).
+    // Read-only discovery, then a send the user confirmed (design/bridge.md, S2). D334: in every
+    // Space the person reads (`--all-spaces`); an nmem without it, the home's own Space.
     async contacts(query) {
-      const r = await read(["contacts", "--query", query]);
+      let r = await read(["contacts", "--all-spaces", "--query", query]);
+      if (!("missing" in r) && r.code !== 0 && /all-spaces|unexpected argument|unrecognized/i.test(`${r.err}\n${r.out}`)) r = await read(["contacts", "--query", query]);
       if ("missing" in r || r.code !== 0) return failure(r);
       const j = parse(r.out);
       if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
-      return { ok: true, contacts: contactsOf(j, await self()), more: Array.isArray(j?.next_args) && j.next_args.length > 0 };
+      const more = (Array.isArray(j?.next_args) && j.next_args.length > 0) || !!str(j?.spaces_cursor) || !!str(j?.next_spaces_cursor);
+      // A card without a Space came from the home's own.
+      const cards = contactsOf(j, await self()).map((c) => (c.space ? c : { ...c, ...(home.spaceId ? { space: home.spaceId } : {}), ...(home.spaceLabel ? { spaceLabel: home.spaceLabel } : {}) }));
+      return { ok: true, contacts: cards, more };
     },
-    async send(contact, text) {
-      return sent(await write(["send", "--to", contact, "--body-file", "-"], text));
+    async send(contact, text, space) {
+      return sent(await write(["send", "--to", contact, "--body-file", "-"], text, ctxFor(space)));
     },
     // Recovery of an unknown outcome (D106): read-only, then resume the same original.
     async outbox() {
-      const r = await read(["outbox"]);
-      if ("missing" in r || r.code !== 0) return failure(r);
-      const j = parse(r.out);
-      if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
-      const list = Array.isArray(j?.operations) ? j.operations : Array.isArray(j?.outgoing) ? j.outgoing : Array.isArray(j?.items) ? j.items : Array.isArray(j) ? j : [];
-      return { ok: true, ops: list.map(opOf).filter((o: BridgeOp | undefined): o is BridgeOp => !!o) };
+      const ops: BridgeOp[] = [];
+      let answered = false;
+      let lastFail: BridgeFailure | undefined;
+      for (const pl of wide ? [home] : places) {
+        const r = await read(["outbox"], pl.context);
+        if ("missing" in r || r.code !== 0) {
+          lastFail = failure(r);
+          continue;
+        }
+        const j = parse(r.out);
+        if (j === undefined) continue;
+        answered = true;
+        const list = Array.isArray(j?.operations) ? j.operations : Array.isArray(j?.outgoing) ? j.outgoing : Array.isArray(j?.items) ? j.items : Array.isArray(j) ? j : [];
+        for (const o of list.map(opOf).filter((o: BridgeOp | undefined): o is BridgeOp => !!o)) ops.push({ ...o, ...(pl.spaceId && !wide ? { space: pl.spaceId } : {}) });
+      }
+      if (!answered) return lastFail ?? { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
+      return { ok: true, ops };
     },
-    async inspect(operation) {
-      const r = await read(["inspect", operation]);
+    async inspect(operation, space) {
+      const r = await read(["inspect", operation], ctxFor(space));
       if ("missing" in r || r.code !== 0) return failure(r);
       const op = opOf({ operation, ...(parse(r.out) ?? {}) });
-      return op ? { ok: true, op } : { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
+      return op ? { ok: true, op: { ...op, ...(space ? { space } : {}) } } : { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
     },
-    async resume(operation) {
-      const r = await run(["resume", operation]);
+    async resume(operation, space) {
+      const r = await run(["resume", operation], undefined, false, ctxFor(space));
       return sent(r);
     },
   };
@@ -504,10 +617,22 @@ export function bridgeContextFor(env: Record<string, string | undefined>, connec
   return connected?.trim() ? (named ?? connected.trim()) : undefined;
 }
 
-/** The Bridge client for the environment and the user's connection, or null when Bridge is off. */
-export function bridgeFor(env: Record<string, string | undefined>, connected?: string): BridgeClient | null {
+/**
+ * The Bridge client for the environment and the user's connection, or null when Bridge is off.
+ * D334: `where`, the Spaces the connection reads (core's bridge link); a context named by hand
+ * (DUCTER_BRIDGE_CONTEXT) reads its own Space alone.
+ */
+export function bridgeFor(env: Record<string, string | undefined>, connected?: string, where?: BridgeWhere): BridgeClient | null {
   const context = bridgeContextFor(env, connected);
-  return context ? createNmemBridge({ context, env }) : null;
+  if (!context) return null;
+  const own = !env.DUCTER_BRIDGE_CONTEXT?.trim() && where?.places[0]?.context === context;
+  return createNmemBridge({ context, env, ...(own ? { places: where!.places, wide: where!.wide } : {}) });
+}
+
+/** D334: what decides the partner's client: its context and every Space it reads (a change makes a new one). */
+export function bridgeKeyFor(env: Record<string, string | undefined>, connected?: string, where?: BridgeWhere): string | undefined {
+  const context = bridgeContextFor(env, connected);
+  return context ? JSON.stringify([context, where?.wide ?? false, (where?.places ?? []).map((p) => [p.context, p.spaceId ?? ""])]) : undefined;
 }
 
 /** The Bridge client from the environment alone (DUCTER_BRIDGE=1 + DUCTER_BRIDGE_CONTEXT), or null. */

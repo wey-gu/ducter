@@ -33,6 +33,16 @@
 // Receive here instead, which connects here and then revokes the other (the tap is the Go for both).
 // A home connected beside another (two from before D324) says so (others) with 只留这台 / Keep only
 // this one. A revoke Mem won't do from here (another login's connection) is said, with where to do it.
+//
+// D334: the address is the identity, not the Space. A Mem context is (identity, one exact Space) and
+// `bridge inbox` reads only its context's Space, while the identity is a contact in every Space the
+// person is in: a message sent to the partner from a team Space was delivered and never read. So the
+// home reads in every Space the identity is reachable in: beside the connection's own context, one
+// local context per other Space (`agents context select`, a local write), named `<its label>-in-<space
+// slug>`, found at connect and again at the 30-minute recheck (a new Space is added, a gone one
+// dropped). A Space Mem won't give a reader for is kept as `unread`: one quiet problem row. Once Mem
+// reads every Space with one inbox (nowledge-co/mem#10402; seen as `--all-spaces` in `bridge inbox
+// --help`), the per-Space contexts are no longer used: the connection's context alone reads them all.
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
@@ -58,17 +68,61 @@ export interface BridgeConnectionRecord {
   /** The passive setup afterwards said it acts as agentId; only then is Bridge on. */
   confirmed: boolean;
   at: string;
+  /** D334: the other Spaces the home reads the identity's mailbox in, each through its own local context. */
+  places?: { context: string; spaceId: string; spaceLabel: string; kind?: string }[];
+  /** D334: Spaces where Mem refused a reader (`agents context select`): the problem row's. */
+  unread?: { spaceId: string; spaceLabel: string; code?: string }[];
+  /** D334: Mem reads every Space with one inbox (#10402): the connection's context alone. */
+  wide?: boolean;
 }
 
 /** How the description Ducter enrolls an identity with begins (mem-identity.ts): a card Ducter may keep current. */
 export const CARD_MARK = "Ducter, a personal AI partner.";
 /**
- * D333: the identity's card in Mem (its public profile description, shown on `bridge contacts`
- * cards in every Space) says where the one home that answers reads its messages, so another agent
- * looking for "ducter" sends to that mailbox and not to a copy in another Space nobody reads.
+ * D333, D334: the identity's card in Mem (its public profile description, shown on `bridge contacts`
+ * cards in every Space) says it reads its messages in every Space it is in, on its one home, and
+ * answers in the Space a message came from.
  */
-export function whereCard(spaceLabel: string, spaceId: string, home: string): string {
-  return `${CARD_MARK} Its conversation and its tasks write to Mem as this identity. It reads messages only in the Space "${spaceLabel}" (${spaceId}), on its home computer ${home}: send to it there. A message sent to it in any other Space is never read.`;
+export function whereCard(home: string): string {
+  return `${CARD_MARK} Its conversation and its tasks write to Mem as this identity. It reads messages sent to it in every Space it is in, on its home computer ${home}, and replies in the Space the message came from.`;
+}
+
+/** D334: a Space's name as a context name part: lowercase letters, digits and hyphens, at most 16 (else from its id). */
+export function spaceSlug(label: string, id: string): string {
+  const of = (t: string) => t.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 16).replace(/-+$/, "");
+  return of(label) || of(id) || "space";
+}
+
+/** D334: the home's local context for one more Space: its connection's label, then `-in-<space slug>`. */
+export function placeContext(base: string, label: string, id: string, taken: ReadonlySet<string>): string {
+  const head = `${base}-in-${spaceSlug(label, id)}`;
+  if (!taken.has(head)) return head;
+  for (let n = 2; ; n++) if (!taken.has(`${head}-${n}`)) return `${head}-${n}`;
+}
+
+/** D334: every place passive `bridge setup` lists (the person's Spaces), by exact id. */
+export function candidatesIn(setup: any): { id: string; label: string; kind?: string }[] | undefined {
+  if (!Array.isArray(setup?.candidates)) return undefined;
+  return setup.candidates
+    .filter((c: any) => c && typeof c.id === "string" && c.id)
+    .map((c: any) => ({ id: c.id, label: typeof c.label === "string" && c.label.trim() ? c.label.trim() : c.id, ...(typeof c.kind === "string" ? { kind: c.kind } : {}) }));
+}
+
+/** D334: the Spaces whose cards (`bridge contacts --all-spaces`) name this identity. */
+export function identitySpaces(j: any, agent: string): Set<string> {
+  const list = Array.isArray(j?.contacts) ? j.contacts : Array.isArray(j?.cards) ? j.cards : [];
+  const out = new Set<string>();
+  for (const c of list) {
+    const who = c?.agent_id ?? c?.agent?.agent_id ?? c?.agent?.id ?? (typeof c?.agent === "string" ? c.agent : undefined);
+    const space = c?.resolved_space_id ?? c?.space_id ?? c?.space?.id;
+    if (who === agent && typeof space === "string" && space) out.add(space);
+  }
+  return out;
+}
+
+/** D334: whether this nmem reads every Space with one inbox (Mem #10402): `bridge inbox --help` offers `--all-spaces`. */
+export function wideInboxIn(help: string): boolean {
+  return /--all-spaces\b/.test(help);
 }
 
 /** Mem's registered refusal codes (nmem-wire cloud_bridge_setup) and what Ducter calls each. */
@@ -460,7 +514,7 @@ export function createBridgeLink(opts: {
   let carded: string | undefined;
   async function publishWhere(r: BridgeConnectionRecord) {
     if (!r.confirmed || env.DUCTER_BRIDGE_CONTEXT?.trim()) return;
-    const want = whereCard(r.spaceLabel, r.spaceId, opts.home());
+    const want = whereCard(opts.home());
     const key = `${r.agentId}\0${want}`;
     if (carded === key) return;
     const shown = await run(["agents", "show", r.agentId]);
@@ -473,6 +527,90 @@ export function createBridgeLink(opts: {
     if (desc === want) return void (carded = key);
     const set = await run(["agents", "set", r.agentId, "--description", want]);
     if (set?.code === 0) carded = key;
+  }
+
+  // D334: the home reads the identity's mailbox in every Space it is reachable in. Read-only looks
+  // (`bridge inbox --help`, passive `bridge setup`, `bridge contacts --all-spaces`, `agents context
+  // show`), and for a Space not read yet, `agents context select` (a local context; Mem checks it on
+  // use). Never a connect, an enrol or `--enable`: a Space Mem refuses stays unread, said once.
+  const wideBy = new Map<string, boolean>(); // per nmem version: one inbox for every Space (#10402)
+  async function wideInbox(): Promise<boolean> {
+    const v = probe?.version ?? "";
+    const known = wideBy.get(v);
+    if (known !== undefined) return known;
+    const h = await run(["bridge", "inbox", "--help"]);
+    const wide = !!h && h.code === 0 && wideInboxIn(`${h.out}\n${h.err}`);
+    if (h) wideBy.set(v, wide);
+    return wide;
+  }
+  let discovering: Promise<void> | undefined;
+  function discover(r0: BridgeConnectionRecord): Promise<void> {
+    return (discovering ??= (async () => {
+      if (!r0.confirmed || env.DUCTER_BRIDGE_CONTEXT?.trim()) return;
+      const save = (next: BridgeConnectionRecord) => {
+        const cur = read();
+        if (!cur || cur.connectionId !== r0.connectionId) return; // ended meanwhile
+        const keep = { ...cur, places: next.places, unread: next.unread, wide: next.wide };
+        if (!keep.places?.length) delete keep.places;
+        if (!keep.unread?.length) delete keep.unread;
+        if (!keep.wide) delete keep.wide;
+        if (JSON.stringify(keep) === JSON.stringify(cur)) return;
+        write(keep);
+        changed();
+      };
+      if (await wideInbox()) return save({ ...r0, places: [], unread: [], wide: true });
+      // Every Space the person reads (passive: no context, nothing chosen).
+      const s = await run(["bridge", "setup"]);
+      const spaces = s && s.code === 0 ? candidatesIn(jsonIn(s.out)[0]) : undefined;
+      if (!spaces) return; // can't tell: keep what the home reads now
+      // The Spaces whose cards name the identity; none told (Mem hides the caller's own card, or the
+      // look failed): every Space the person reads.
+      const c = await run(["--agent-context", r0.context, "bridge", "contacts", "--all-spaces", "--query", r0.agentId]);
+      const named = c && c.code === 0 ? identitySpaces(jsonIn(c.out)[0], r0.agentId) : new Set<string>();
+      named.delete(r0.spaceId);
+      const want = spaces.filter((x) => x.id !== r0.spaceId && (named.size ? named.has(x.id) : true));
+      const before = new Map((r0.places ?? []).map((p) => [p.spaceId, p]));
+      const taken = new Set<string>([r0.context, ...(r0.places ?? []).map((p) => p.context)]);
+      const places: NonNullable<BridgeConnectionRecord["places"]> = [];
+      const unread: NonNullable<BridgeConnectionRecord["unread"]> = [];
+      for (const sp of want) {
+        const had = before.get(sp.id);
+        if (had) {
+          places.push({ ...had, spaceLabel: sp.label, ...(sp.kind ? { kind: sp.kind } : {}) });
+          continue;
+        }
+        // A context by that name already (an earlier run's) is used when it is this identity in this
+        // Space; one that is something else keeps its name, and this one takes the next.
+        let name = placeContext(r0.context, sp.label, sp.id, taken);
+        let reuse = false;
+        for (let tries = 0; tries < 3; tries++) {
+          const shown = await run(["agents", "context", "show", "--name", name]);
+          const sj = shown && shown.code === 0 ? jsonIn(shown.out)[0] : undefined;
+          if (!sj?.configured) break;
+          if (sj.selection?.address?.agent_id === r0.agentId && sj.selection?.scope?.space_id === sp.id) {
+            reuse = true;
+            break;
+          }
+          taken.add(name);
+          name = placeContext(r0.context, sp.label, sp.id, taken);
+        }
+        taken.add(name);
+        if (reuse) {
+          places.push({ context: name, spaceId: sp.id, spaceLabel: sp.label, ...(sp.kind ? { kind: sp.kind } : {}) });
+          continue;
+        }
+        const sel = await run(["agents", "context", "select", "--name", name, "--agent-id", r0.agentId, "--space-id", sp.id]);
+        const j = sel && sel.code === 0 ? jsonIn(sel.out)[0] : undefined;
+        const said = j?.selection ?? j?.context?.selection;
+        const ok = !!sel && sel.code === 0 && (!said || ((said.address?.agent_id ?? r0.agentId) === r0.agentId && (said.scope?.space_id ?? sp.id) === sp.id));
+        if (ok) places.push({ context: name, spaceId: sp.id, spaceLabel: sp.label, ...(sp.kind ? { kind: sp.kind } : {}) });
+        else if (sel) {
+          const code = errorCodeIn(sel.out, sel.err);
+          unread.push({ spaceId: sp.id, spaceLabel: sp.label, ...(code ? { code } : {}) });
+        }
+      }
+      save({ ...r0, places, unread, wide: false });
+    })().finally(() => (discovering = undefined)));
   }
 
   type Busy = "connecting" | "disconnecting" | "installing" | "updating" | "signing_in";
@@ -587,7 +725,9 @@ export function createBridgeLink(opts: {
     if (r && p?.supported) {
       if (!r.confirmed) return { state: "unconfirmed", ...base, ...(undoFailed ? { detail: undoFailed } : {}) };
       const others = othersIn(p.conns, r, r.agentId);
-      return { state: "connected", ...(await extras()), ...base, ...(others.length ? { others: others.map(shown) } : {}), ...(undoFailed ? { detail: undoFailed } : {}) };
+      // D334: a Space Mem refused a reader in: one quiet problem row (never a list of Spaces otherwise).
+      const unread = r.unread?.length ? { unread: r.unread.map((u) => ({ label: u.spaceLabel, ...(u.code ? { code: u.code } : {}) })) } : {};
+      return { state: "connected", ...(await extras()), ...base, ...(others.length ? { others: others.map(shown) } : {}), ...unread, ...(undoFailed ? { detail: undoFailed } : {}) };
     }
     if (!p) {
       const plan = await freshPlan();
@@ -617,6 +757,14 @@ export function createBridgeLink(opts: {
     context() {
       const r = read();
       return r?.confirmed ? r.context : undefined;
+    },
+    places() {
+      const r = read();
+      if (!r?.confirmed) return undefined;
+      return {
+        wide: !!r.wide,
+        places: [{ context: r.context, spaceId: r.spaceId, spaceLabel: r.spaceLabel }, ...(r.wide ? [] : (r.places ?? []).map((p) => ({ context: p.context, spaceId: p.spaceId, spaceLabel: p.spaceLabel, ...(p.kind ? { kind: p.kind } : {}) })))],
+      };
     },
     onChange(fn) {
       listeners.add(fn);
@@ -682,6 +830,7 @@ export function createBridgeLink(opts: {
         write({ context: ctx, agentId: agent, spaceId: space.id, spaceLabel: space.label, connectionId: conn.connection_id, ...(typeof conn.identity_birth === "string" ? { identityBirth: conn.identity_birth } : {}), confirmed, at: new Date(now()).toISOString() });
         if (!confirmed) undoFailed = s ? detailIn(s.out, s.err) : "nmem didn't start";
         else if (how?.here) await revokeOthers(read()!);
+        if (confirmed) await discover(read()!).catch(() => {});
         if (confirmed) await publishWhere(read()!).catch(() => {});
         await look(true);
       } finally {
@@ -694,7 +843,10 @@ export function createBridgeLink(opts: {
       const r = read();
       if (!r || busy || pinned()) return;
       const conns = await listConns(r.spaceId, r.agentId);
-      if (verify(r, conns)) await publishWhere(r).catch(() => {});
+      if (!verify(r, conns)) return;
+      // D334: Spaces the identity was added to or left since the last look.
+      await discover(r).catch(() => {});
+      await publishWhere(read() ?? r).catch(() => {});
     },
     async onlyHere() {
       // D324: 改由这台收 / 只留这台: connected here first (never a moment with nobody answering), then the others end.

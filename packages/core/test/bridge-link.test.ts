@@ -112,8 +112,9 @@ describe("the link over a fake nmem", () => {
     const r = rig();
     seed(r, { source_app: "ducter", description: "Ducter, a personal AI partner. Its conversation and its tasks write to Mem as this identity." });
     await r.link.connect();
-    expect(card(r)).toBe(whereCard("Only me", "fake-space", "hel"));
-    expect(card(r)).toContain('only in the Space "Only me" (fake-space), on its home computer hel');
+    expect(card(r)).toBe(whereCard("hel"));
+    // D334: it reads in every Space it is in, and answers in the message's.
+    expect(card(r)).toContain("in every Space it is in, on its home computer hel, and replies in the Space the message came from");
     await r.link.recheck();
     expect(r.calls().filter((c) => c.includes("agents") && c.includes("set")).length).toBe(1);
     // The person wrote their own description: untouched.
@@ -127,6 +128,51 @@ describe("the link over a fake nmem", () => {
     await theirs.link.connect();
     expect(card(theirs)).toBeUndefined();
     expect(theirs.calls().some((c) => c.includes("agents") && c.includes("set"))).toBe(false);
+  });
+
+  test("D334: the home reads in every Space the identity is in: one local context each, found at connect and again at the recheck", async () => {
+    const SPACES = [
+      { id: "personal-weyl", label: "Only me", kind: "personal" },
+      { id: "ws-everyone", label: "Everyone", kind: "team" },
+      { id: "ws-dev", label: "dev team", kind: "team" },
+      { id: "ws-locked", label: "Board", kind: "team" },
+    ];
+    const r = rig({ NMEM_FAKE_SELECT_REFUSE: "ws-locked" });
+    const s0 = JSON.parse(readFileSync(r.state, "utf8"));
+    writeFileSync(r.state, JSON.stringify({ ...s0, spaces: SPACES, everywhere: ["ducter"] }));
+    // The connection is made in the person's own place, as before; the identity is a contact in every Space.
+    await r.link.connect();
+    expect(r.link.context()).toBe("ducter-on-hel");
+    const where = r.link.places!()!;
+    expect(where.wide).toBe(false);
+    expect(where.places.map((p) => [p.context, p.spaceId])).toEqual([
+      ["ducter-on-hel", "personal-weyl"],
+      ["ducter-on-hel-in-everyone", "ws-everyone"],
+      ["ducter-on-hel-in-dev-team", "ws-dev"],
+    ]);
+    // Each by `agents context select` for this identity in that exact Space; never a connect or --enable.
+    const selects = r.calls().filter((c) => c.includes("select"));
+    expect(selects[0]).toEqual(["--json", "agents", "context", "select", "--name", "ducter-on-hel-in-everyone", "--agent-id", "ducter", "--space-id", "ws-everyone"]);
+    expect(writes(r.calls()).length).toBe(1); // the one connect
+    expect(r.calls().some((c) => c.includes("--enable"))).toBe(false);
+    // The Space Mem refused: one quiet problem row, by its name.
+    expect((await r.link.view())?.unread).toEqual([{ label: "Board", code: "cloud_bridge_setup_role_attachment_mismatch" }]);
+    // The recheck: a new Space is read too, a gone one dropped; known ones aren't selected again.
+    const s1 = JSON.parse(readFileSync(r.state, "utf8"));
+    writeFileSync(r.state, JSON.stringify({ ...s1, spaces: [...SPACES.filter((x) => x.id !== "ws-dev"), { id: "ws-new", label: "Launch", kind: "team" }] }));
+    const n = r.calls().filter((c) => c.includes("select")).length;
+    const changes = r.changes();
+    await r.link.recheck();
+    expect(r.link.places!()!.places.map((p) => p.spaceId)).toEqual(["personal-weyl", "ws-everyone", "ws-new"]);
+    expect(r.calls().filter((c) => c.includes("select")).slice(n).map((c) => c.at(-1))).toEqual(["ws-locked", "ws-new"]);
+    expect(r.changes()).toBeGreaterThan(changes); // the partner makes a new client
+  });
+
+  test("D334: once Mem reads every Space with one inbox (#10402), the connection's context alone", async () => {
+    const r = rig({ NMEM_FAKE_WIDE: "1" });
+    await r.link.connect();
+    expect(r.link.places!()).toEqual({ wide: true, places: [{ context: "ducter-on-hel", spaceId: "fake-space", spaceLabel: "Only me" }] });
+    expect(r.calls().some((c) => c.includes("select"))).toBe(false);
   });
 
   test("nmem 0.10.118: setup can't find a connected context; the saved context and the inbox confirm it instead", async () => {

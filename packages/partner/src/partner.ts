@@ -54,7 +54,7 @@ import { join } from "node:path";
 import { callWakes, fileView, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
-import { bridgeContextFor, bridgeFor, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
+import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
 import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, UNNAMED_OWN, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, type MemoryClient, type MemoryHit, type Replaced } from "./memory.ts";
 import { withOutbox } from "./outbox.ts";
@@ -477,7 +477,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // D205: with no client given, Bridge is on when the user connected the persona in Settings ›
   // 伙伴 (core.bridgeLink) or DUCTER_BRIDGE=1 forces it; it turns on and off without a restart.
   const bridgeAuto = opts.bridge === undefined;
-  let bridge: BridgeClient | null = bridgeAuto ? bridgeFor(process.env, core.bridgeLink?.context()) : (opts.bridge ?? null);
+  // D334: and reads every Space the identity is reachable in (core.bridgeLink.places).
+  let bridge: BridgeClient | null = bridgeAuto ? bridgeFor(process.env, core.bridgeLink?.context(), core.bridgeLink?.places?.()) : (opts.bridge ?? null);
 
   const cwd = opts.dir ?? join(core.dataDir, "partner");
   // D312: with more than one partner, only its own tasks and events (a view's are already its own).
@@ -2307,10 +2308,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return loggedBridge().find((e) => e.body.direction === "out" && e.body.inReplyTo === messageId && e.body.taskId)?.body.taskId;
   }
   function bridgeIn(messageId: string): Bodies["bridge_msg"] | undefined {
-    return loggedBridge().find((e) => e.body.direction === "in" && e.body.messageId === messageId)?.body;
+    // D334: a teammate's held message let through is logged again without a state: that one.
+    const all = loggedBridge().filter((e) => e.body.direction === "in" && e.body.messageId === messageId);
+    return (all.find((e) => !e.body.state) ?? all[0])?.body;
   }
-  /** Who an outgoing message to the sender of `m` goes to, as logged on each of its events. */
-  const peerOf = (m: Bodies["bridge_msg"]) => ({ to: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.mine ? { mine: true } : {}) });
+  /** Who an outgoing message to the sender of `m` goes to, as logged on each of its events (D334: in its Space). */
+  const peerOf = (m: Bodies["bridge_msg"]) => ({ to: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.mine ? { mine: true } : {}), ...(m.space ? { space: m.space } : {}), ...(m.spaceLabel ? { spaceLabel: m.spaceLabel } : {}) });
   /** The request a task was opened for, while its outcome hasn't been sent back (J-Q7). */
   function bridgeOwed(taskId: string): Bodies["bridge_msg"] | undefined {
     const ops = [...foldOut(loggedBridge()).values()];
@@ -2359,7 +2362,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // D249: a new message to an agent that wrote to us goes by `reply` on its latest message: Mem
       // routes it to that sender, the only address Ducter has for an agent Mem doesn't name.
       const via = kind === "send" ? replyHandle(op.contact) : undefined;
-      const r = via ? await bridge.reply(via, op.text) : kind === "send" ? await bridge.send!(op.contact!, op.text) : await bridge.reply(op.inReplyTo!, op.text);
+      // D334: in the Space it goes out in: the message's own for a reply, the card's for a send.
+      const r = via ? await bridge.reply(via, op.text, bridgeIn(via)?.space ?? op.space) : kind === "send" ? await bridge.send!(op.contact!, op.text, op.space) : await bridge.reply(op.inReplyTo!, op.text, op.space ?? bridgeIn(op.inReplyTo!)?.space);
       if (r.ok) {
         logOut(op, "sent", { messageId: r.messageId ?? "", ...(r.operation ? { operation: r.operation } : {}) });
         return "sent";
@@ -2413,7 +2417,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           if (byBody.length === 1) found = byBody[0];
           else if (!byBody.length && bridge.inspect)
             for (const x of same.filter((y) => y.body === undefined).slice(0, 5)) {
-              const i = await bridge.inspect(x.operation);
+              const i = await bridge.inspect(x.operation, x.space);
               if (i.ok && i.op.body?.trim() === text) {
                 found = i.op;
                 break;
@@ -2421,7 +2425,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             }
           sel = found?.operation;
         } else if (sel && bridge.inspect) {
-          const i = await bridge.inspect(sel);
+          const i = await bridge.inspect(sel, o.last.space);
           if (i.ok) found = i.op;
         }
         let state: OutState | undefined;
@@ -2429,7 +2433,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           logOut(base, "sent", { messageId: found.messageId ?? "", operation: found.operation });
           state = "sent";
         } else if (found && sel && bridge.resume && (found.state === "pending" || found.state === "unknown")) {
-          const r = await bridge.resume(sel);
+          const r = await bridge.resume(sel, found.space ?? o.last.space);
           if (r.ok) {
             logOut(base, "sent", { messageId: r.messageId ?? found.messageId ?? "", operation: sel });
             state = "sent";
@@ -2501,6 +2505,36 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (b.direction !== "in" || b.state || !b.text) continue;
       if (b.agent && out.some((x) => x.agent === b.agent)) continue; // a named agent once, by its latest
       out.push({ contact: `${REPLY}${b.messageId}`, label: !b.from || b.from === "another agent" ? "" : b.from, ...(b.agent ? { agent: b.agent } : {}), ...(b.mine ? { mine: true } : {}), wrote: b.text, ago: age });
+    }
+    return out;
+  }
+  /**
+   * D334: one card per agent, in the Space a message to it goes out in: where it last wrote from;
+   * else its only card, or the one in the person's own place; else the Space with the most Bridge
+   * traffic in the Log. Never a question to the person: the Space is Ducter's to pick.
+   */
+  function oneSpaceEach(list: BridgeContact[]): BridgeContact[] {
+    const groups = new Map<string, BridgeContact[]>();
+    for (const c of list) {
+      const k = c.key ?? c.contact;
+      groups.set(k, [...(groups.get(k) ?? []), c]);
+    }
+    const evs = loggedBridge();
+    const traffic = new Map<string, number>();
+    for (const e of evs) if (e.body.space) traffic.set(e.body.space, (traffic.get(e.body.space) ?? 0) + 1);
+    const out: BridgeContact[] = [];
+    for (const g of groups.values()) {
+      if (g.length === 1) {
+        out.push(g[0]!);
+        continue;
+      }
+      const agent = g[0]!.agent;
+      const wrote = agent ? [...evs].reverse().find((e) => e.body.direction === "in" && e.body.agent === agent && !!e.body.space && g.some((c) => c.space === e.body.space)) : undefined;
+      const pick =
+        (wrote && g.find((c) => c.space === wrote.body.space)) ??
+        g.find((c) => c.spaceKind === "personal") ??
+        [...g].sort((a, b) => (traffic.get(b.space ?? "") ?? 0) - (traffic.get(a.space ?? "") ?? 0))[0]!;
+      out.push(pick);
     }
     return out;
   }
@@ -2593,6 +2627,55 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const d = ctx.decision(decisionId);
     return d?.trust ? d : undefined;
   };
+
+  // ---------- D334: a teammate's agent, the first time: one card, remembered per sender ----------
+  const senderCardOf = (decisionId: string) => {
+    const d = ctx.decision(decisionId);
+    return d?.sender ? d : undefined;
+  };
+  /** The card for a teammate's agent's first message (never a second one for the same sender). */
+  function askSender(m: import("./bridge.ts").BridgeMessage) {
+    if (!core.settings?.setPeers) return;
+    if (core.log.read({ stream: "channel", kinds: ["decision"], limit: 2000 }).some((e) => (e.body as Bodies["decision"]).sender?.from === m.from)) return;
+    const lang = userLang() ?? NO_WORDS_YET;
+    const first = m.text.split("\n").find((l) => l.trim())?.trim() ?? m.text;
+    const gist = redactSecrets([...first].length > 80 ? [...first].slice(0, 79).join("") + "…" : first);
+    const who = m.member && m.agent ? said(lang, "senderMemberAgent", { member: m.member, agent: m.agent }) : m.agent ? m.agent : said(lang, "senderSomeone");
+    const body: Bodies["decision"] = {
+      decisionId: newId("d"),
+      question: said(lang, m.spaceLabel ? "senderAsk" : "senderAskNoTeam", { team: m.spaceLabel ?? "", who, name: core.persona.name || "Ducter", gist }),
+      goLabel: said(lang, "senderGo"),
+      holdLabel: said(lang, "senderHold"),
+      defaultOption: "hold",
+      reversible: false,
+      sender: { from: m.from, ...(m.space ? { space: m.space } : {}), messageId: m.messageId },
+    };
+    core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
+  }
+  /**
+   * 答应 / Let it: the sender's messages come through as questions from now on (D170's teammate
+   * rules), and what it sent meanwhile is read now. 不理 / Ignore: it is muted, its messages logged
+   * and never read (恢复 in Settings, or "听 X 的", undoes it).
+   */
+  function letSender(from: string, go: boolean) {
+    const cur = core.settings?.get().peers;
+    if (!cur || !core.settings?.setPeers) return;
+    if (!go) {
+      if (!cur.muted.includes(from)) core.settings.setPeers({ muted: [...cur.muted, from] });
+      return;
+    }
+    if (!(cur.allowed ?? []).includes(from)) core.settings.setPeers({ allowed: [...(cur.allowed ?? []), from] });
+    const evs = loggedBridge();
+    const read = new Set(evs.filter((e) => e.body.direction === "in" && !e.body.state).map((e) => e.body.messageId));
+    for (const e of evs) {
+      const b = e.body;
+      if (b.direction !== "in" || b.state !== "held" || b.from !== from || read.has(b.messageId)) continue;
+      read.add(b.messageId);
+      const { state: _held, ...rest } = b;
+      const again = core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: rest });
+      api.onTrigger(again);
+    }
+  }
 
   // ---------- B14 (D170): what was in the mailbox before Bridge was on isn't a request ----------
   const markFile = join(cwd, "bridge.json");
@@ -2705,12 +2788,21 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         // reach the partner, is logged and never wakes it. An answer to what the user sent always
         // comes through.
         const answersOurs = !!m.inReplyTo && loggedBridge().some((e) => e.body.direction === "out" && e.body.messageId === m.inReplyTo);
-        if (peers && !answersOurs && (peers.reach === "off" || peers.muted.includes(m.agent ?? m.from) || (peers.reach === "own" && !m.mine))) {
-          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.mine ? { mine: true } : {}), text: "", state: "muted" } });
+        const where = { ...(m.space ? { space: m.space } : {}), ...(m.spaceLabel ? { spaceLabel: m.spaceLabel } : {}) };
+        // D334: the one switch off, or a sender the person stopped listening to (不再听, or 不理 on its card).
+        if (peers && !answersOurs && (peers.reach === "off" || peers.muted.includes(m.agent ?? m.from) || peers.muted.includes(m.from))) {
+          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.mine ? { mine: true } : {}), ...where, text: "", state: "muted" } });
           continue;
         }
         if (overQuota(m.from, now())) {
-          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.mine ? { mine: true } : {}), text: "", state: "set_aside" } });
+          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.mine ? { mine: true } : {}), ...where, text: "", state: "set_aside" } });
+          continue;
+        }
+        // D334: a teammate's agent (not one of the person's own) the person hasn't let through yet:
+        // what it sends is kept, held, and its first message is one card (答应 / 不理, default 不理).
+        if (peers && !answersOurs && !m.mine && !(peers.allowed ?? []).includes(m.from)) {
+          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...where, text: redactSecrets(m.text), ...(m.sentAt ? { sentAt: m.sentAt } : {}), state: "held" } });
+          askSender(m);
           continue;
         }
         const body: Bodies["bridge_msg"] = {
@@ -2722,6 +2814,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           text: redactSecrets(m.text),
           ...(m.sentAt ? { sentAt: m.sentAt } : {}),
           ...(m.inReplyTo ? { inReplyTo: m.inReplyTo } : {}),
+          ...where,
         };
         const e = core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body });
         n++;
@@ -2798,7 +2891,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const cur = core.settings?.get().peers;
         if (!cur || !core.settings?.setPeers) return { ok: false, error: "Not available here." };
         if (args.action === "mute") core.settings.setPeers({ muted: [...cur.muted, agent], trusted: cur.trusted.filter((x) => x !== agent) });
-        else if (args.action === "unmute") core.settings.setPeers({ muted: cur.muted.filter((x) => x !== agent) });
+        else if (args.action === "unmute") {
+          // D334: a teammate's agent muted by 不理 is kept by its full name ("reviewer (dev team)"); listening again lets it through.
+          const named = (x: string) => x === agent || x.startsWith(`${agent} (`);
+          const teammates = [...new Set(loggedBridge().filter((e) => e.body.direction === "in" && !e.body.mine && named(e.body.from ?? "")).map((e) => e.body.from!))];
+          core.settings.setPeers({ muted: cur.muted.filter((x) => !named(x)) });
+          for (const t of teammates) letSender(t, true);
+        }
         else if (args.action === "stop_trust") core.settings.setPeers({ trusted: cur.trusted.filter((x) => x !== agent) });
         else return { ok: false, error: "action is mute, unmute or stop_trust." };
         return { ok: true, note: "Done. Say so in one short line, in the user's words." };
@@ -2855,7 +2954,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...recent,
           note:
             "Nothing new came in. Say so in one short line (earlier: the last 3 days, newest first; mention one only if the user asked about it, and to answer one the user asked you to, bridge_reply to its messageId now). " +
-            `If the user says one of their agents already sent you something that isn't here, it went to another ${name} you don't read: tell them to have that agent send it again to the ${name} whose card in Nowledge Mem says it reads here. Never say it is blocked or needs a permission.`,
+            // D334: the home reads every Space the identity is in, so what's missing went to another address.
+            `If the user says one of their agents already sent you something that isn't here, it didn't reach this ${name}: tell them to have that agent look you up again by the name ${name} in Nowledge Mem and send it again. Never say it is blocked or needs a permission.`,
         };
       },
     );
@@ -2877,16 +2977,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             if (wrote.length) return { ok: true, wroteLately: wrote, note: "Mem's list didn't answer; these wrote to you lately. Pick one only if it is clearly the one the user meant, else tell the user in one short line you can't reach it now." };
             return { ok: false, note: "Can't reach other agents right now. Tell the user in one short line if they asked you to message one." };
           }
-          for (const c of r.contacts) seenContacts.set(c.contact, c);
+          // D334: an agent with a card in several Spaces is offered once, in the Space it goes to.
+          const cards = oneSpaceEach(r.contacts);
+          for (const c of cards) seenContacts.set(c.contact, c);
           return {
             ok: true,
             ...(wrote.length ? { wroteLately: wrote } : {}),
-            contacts: r.contacts.map((c) => ({ contact: c.contact, who: whoForModel(c), ...(c.description ? { about: c.description } : {}) })),
+            contacts: cards.map((c) => ({ contact: c.contact, who: whoForModel(c), ...(c.description ? { about: c.description } : {}) })),
             note:
               (wrote.length
                 ? "wroteLately: agents that wrote to you, newest first; Mem doesn't name them. When the user means an agent they work with that has written to you (\"my terminal Claude\", \"that one\", what it was doing), bridge_send to the newest wroteLately contact now: the card shows what it wrote, so the user's tap confirms the recipient. Don't ask about it in prose. contacts: Mem's list by name, other mailboxes; use one only when the user called it by that very name (a shared word like \"Claude\" is not enough). "
                 : "") +
-              (r.contacts.length || wrote.length
+              (cards.length || wrote.length
                 ? `Pick the one the user meant${wrote.length ? "" : ". If two could fit, ask the user in one short line which"}. Then bridge_send.`
                 : r.more ? "No match on this page; there may be more. Ask the user for a clearer name." : "No such agent here. Tell the user plainly in one short line."),
           };
@@ -2937,7 +3039,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             reversible: false,
           };
           // Pending first, then the card: a tap always finds what it confirms, even after a restart.
-          logOut({ opId: newId("bo"), contact: contact.contact, to: contact.label, ...(contact.agent ? { agent: contact.agent } : {}), ...(contact.mine ? { mine: true } : {}), text, decisionId: body.decisionId }, "pending");
+          // D334: it goes out in the Space its card came from (a reply-handle: its message's).
+          const space = via?.space ?? contact.space;
+          const spaceLabel = via?.spaceLabel ?? contact.spaceLabel;
+          logOut({ opId: newId("bo"), contact: contact.contact, to: contact.label, ...(contact.agent ? { agent: contact.agent } : {}), ...(contact.mine ? { mine: true } : {}), ...(space ? { space } : {}), ...(spaceLabel ? { spaceLabel } : {}), text, decisionId: body.decisionId }, "pending");
           core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
           (t.asked = true), (t.askedId = body.decisionId);
           return { ok: true, decisionId: body.decisionId, note: "The user sees the card. If they tap go, Ducter sends it; you don't send it again. End your turn now; don't repeat the message." };
@@ -2959,13 +3064,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
   if (bridge) startBridge(bridge);
   // The connection the user made (or undid) in Settings › 伙伴 takes effect now, not at a restart.
-  let bridgeKey = bridgeAuto ? bridgeContextFor(process.env, core.bridgeLink?.context()) : undefined;
+  // D334: a Space added or dropped at the recheck makes a new client too.
+  let bridgeKey = bridgeAuto ? bridgeKeyFor(process.env, core.bridgeLink?.context(), core.bridgeLink?.places?.()) : undefined;
   const offBridgeLink = bridgeAuto
     ? core.bridgeLink?.onChange(() => {
-        const key = bridgeContextFor(process.env, core.bridgeLink?.context());
+        const key = bridgeKeyFor(process.env, core.bridgeLink?.context(), core.bridgeLink?.places?.());
         if (key === bridgeKey || closed) return;
         bridgeKey = key;
-        bridge = bridgeFor(process.env, core.bridgeLink?.context());
+        bridge = bridgeFor(process.env, core.bridgeLink?.context(), core.bridgeLink?.places?.());
         if (bridge) startBridge(bridge);
       })
     : undefined;
@@ -3004,6 +3110,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       // X2: Go keeps the rule (listed in Settings › 伙伴, one tap to stop); anything else, never
       // offered again. Ducter's own bookkeeping: no partner turn.
+      // D334: a teammate's agent's first-message card: Ducter's own bookkeeping, no partner turn
+      // (答应 lets its held messages wake one).
+      if (e.kind === "decision_resolved" && senderCardOf((e.body as Bodies["decision_resolved"]).decisionId)) {
+        const b = e.body as Bodies["decision_resolved"];
+        const from = senderCardOf(b.decisionId)!.sender!.from;
+        if (b.by === "user") letSender(from, b.option === "go");
+        return;
+      }
       if (e.kind === "decision_resolved" && trustOf((e.body as Bodies["decision_resolved"]).decisionId)) {
         const b = e.body as Bodies["decision_resolved"];
         const agent = trustOf(b.decisionId)!.trust!.agent;

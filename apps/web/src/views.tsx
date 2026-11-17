@@ -276,6 +276,7 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
 export function goLabel(d: DecisionState): string {
   if (d.where) return whereAsk(d.where).go;
   if (d.asker) return d.goLabel; // X1: the asking agent's own option, as it named it
+  if (d.sender) return d.goLabel; // D334: 答应 / Let it, as the card's code said it
   if (d.closing) return closingWords(d.closing).go;
   if (d.memPlugin) return t("memp.card.go");
   if (d.cal) return d.goLabel; // D222: the action itself (添加到日历 / Add to calendar)
@@ -379,7 +380,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
               // X1: its second option, answered in its own words (a reply), never Hold.
               <Btn kind="secondary" label={d.asker.other} about={about} onClick={() => A.decide(d.decisionId, "reply", d.asker!.other)} />
             ) : (
-              <Btn kind="secondary" label={wa?.hold ?? (d.cal ? calHold(d.cal) : d.closing ? closingWords(d.closing).hold : d.memPlugin ? t("memp.card.hold") : d.trust ? t("peers.trust.hold") : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+              <Btn kind="secondary" label={wa?.hold ?? d.holdLabel ?? (d.cal ? calHold(d.cal) : d.closing ? closingWords(d.closing).hold : d.memPlugin ? t("memp.card.hold") : d.trust ? t("peers.trust.hold") : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
             )}
             <Btn kind="primary" label={d.asker ? d.goLabel : goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
           </span>
@@ -967,7 +968,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
                 // X1: its second option, answered in its own words (a reply), never Hold.
                 <Btn kind="secondary" size="sm" label={d.asker.other} about={about} onClick={() => A.decide(d.decisionId, "reply", d.asker!.other)} />
               ) : (
-                <Btn kind="text" size="sm" label={d.cal ? calHold(d.cal) : d.trust ? t("peers.trust.hold") : t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+                <Btn kind="text" size="sm" label={d.holdLabel ?? (d.cal ? calHold(d.cal) : d.trust ? t("peers.trust.hold") : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
               )}
               <span class="grow" />
               <Btn kind="primary" size="sm" label={goLabel(d)} about={about} onClick={() => A.decide(d.decisionId, "go")} />

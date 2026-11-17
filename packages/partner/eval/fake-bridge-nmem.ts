@@ -40,12 +40,26 @@
 // next such call keep its operation but answer like a dropped connection (exit 1, no JSON).
 // NMEM_FAKE_BRIDGE_LOSE_MODE="pending" keeps it undelivered until `resume`; the default "delivered"
 // delivers it and only the answer is lost. Each lose applies once (state.lost counts them).
+//
+// D334 (Spaces; interfaces from nmem 0.10.119's help, the answers' shapes are GUESSES): a context is
+// (identity, one exact Space). `state.spaces` lists the person's Spaces (passive `setup` offers them
+// as candidates); an identity's `space` is its context's Space (default the personal one); a message's
+// `space` is where it was sent (default its recipient context's). `inbox` reads only its context's
+// Space, `open` and `reply` only a message there; `send --to` takes a card's handle from the sender's
+// own Space (`ct-<ctx>` or, for an agent in `state.everywhere`, `ct-<ctx>@<space id>`), else
+// `space_mismatch`. `contacts --all-spaces` returns cards from every Space, each naming its Space
+// (`space {id,label,kind}`, `resolved_space_id`); an agent in `state.everywhere` has a card in every
+// Space. `agents context select --name N --agent-id A --space-id S` makes a local context when some
+// context already speaks as A (NMEM_FAKE_SELECT_REFUSE=<space id,...> answers Mem's refusal there).
+//   NMEM_FAKE_WIDE=1   Mem #10402: `bridge inbox --help` offers `--all-spaces`, and `inbox --all-spaces`
+//                      reads the identity's messages in every Space (each with `space_id`).
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 
-interface Msg { id: string; op: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; read_at?: string; pending?: boolean }
-interface Ident { agent: string; member: string; member_id?: string; description: string }
+interface Msg { id: string; op: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; read_at?: string; pending?: boolean; space?: string }
+interface Ident { agent: string; member: string; member_id?: string; description: string; space?: string }
+interface Space { id: string; label: string; kind: string }
 interface Conn { connection_id: string; agent_id: string; identity_birth: string; client_label: string; state: "active" | "revoked"; space_id: string }
-interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; connections?: Conn[]; retained?: Record<string, { to: string; body: string }>; busy?: Record<string, number>; agents?: Record<string, { name: string; source_app: string; description?: string }> }
+interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; connections?: Conn[]; retained?: Record<string, { to: string; body: string }>; busy?: Record<string, number>; agents?: Record<string, { name: string; source_app: string; description?: string }>; spaces?: Space[]; everywhere?: string[] }
 
 if (process.env.NMEM_FAKE_ARGV_LOG) appendFileSync(process.env.NMEM_FAKE_ARGV_LOG, JSON.stringify(process.argv.slice(2)) + "\n");
 const VERSION = process.env.NMEM_FAKE_VERSION ?? "0.10.118";
@@ -116,8 +130,28 @@ if (argv[0] === "agents" && argv[1] === "context" && argv[2] === "show") {
     process.exit(0);
   }
   const member = id.member_id ?? id.member;
-  const space = st!.connections?.find((c) => c.client_label === name)?.space_id ?? `personal-${member}`;
+  const space = id.space ?? st!.connections?.find((c) => c.client_label === name)?.space_id ?? `personal-${member}`;
   out({ state: "unverified", configured: true, validation: "unverified", reason: "live_validation_required", name, revision: "rev-1", selection: { scope: { space_id: space }, address: { custodian_id: member, agent_id: id.agent } } });
+  process.exit(0);
+}
+// D334: `agents context select`: a local context for an existing identity in one exact Space.
+if (argv[0] === "agents" && argv[1] === "context" && argv[2] === "select") {
+  const st: State = existsSync(statePath) ? load() : { identities: {}, messages: [], seq: 0 };
+  const val = (f: string) => (argv.indexOf(f) >= 0 ? argv[argv.indexOf(f) + 1] : undefined);
+  const name = val("--name") ?? "";
+  const agent = val("--agent-id") ?? "";
+  const space = val("--space-id") ?? "";
+  if (!name || !agent || !space) fail("bad_arguments", "select needs --name, --agent-id and --space-id", 2);
+  if (st.identities[name] && !argv.includes("--expected-revision")) fail("revision_required", "A context by that name exists: pass --expected-revision.");
+  if ((process.env.NMEM_FAKE_SELECT_REFUSE ?? "").split(",").includes(space)) {
+    console.log(JSON.stringify({ error_code: "cloud_bridge_setup_role_attachment_mismatch", detail: "This identity can't be selected in that Space.", outcome_unknown: false, http_status: 403 }));
+    process.exit(1);
+  }
+  const like = Object.values(st.identities).find((i) => i.agent === agent);
+  if (!like) fail("not_found", `No connection represents ${agent} here.`);
+  st.identities[name] = { ...like!, space };
+  save(st);
+  out({ state: "selected", name, revision: "rev-1", selection: { scope: { space_id: space }, address: { custodian_id: like!.member_id ?? like!.member, agent_id: agent } } });
   process.exit(0);
 }
 // D324: the trial's own throwaway identity (bridge-trial.ts): enroll, clear its local context, delete it.
@@ -172,6 +206,10 @@ if (!verb || verb === "--help" || verb === "help") {
   console.log("fake nmem bridge: setup | contacts [--query Q] | send --to CONTACT (--body TEXT | --body-file -) | inbox | open MESSAGE | reply (--body TEXT | --body-file -) MESSAGE | outbox | inspect OP | resume OP");
   process.exit(0);
 }
+if (verb === "inbox" && (argv.includes("--help") || argv.includes("-h"))) {
+  console.log(`List incoming messages and automatically refresh outgoing read status\n\nUsage: nmem bridge inbox [OPTIONS]\n\nOptions:\n      --cursor <CURSOR>\n${process.env.NMEM_FAKE_WIDE === "1" ? "      --all-spaces            Read this identity's messages in every Space\n" : ""}  -j, --json\n      --agent-context <NAME>`);
+  process.exit(0);
+}
 if (!existsSync(statePath)) fail("not_configured", "no fake Bridge state");
 const s = load();
 const SPACE = { id: "fake-space", label: "Only me", kind: "personal" };
@@ -216,7 +254,7 @@ if (verb === "connections") {
       c = { connection_id: uuid(s.connections.length + 1), agent_id: agent!, identity_birth: uuid(900 + s.connections.length), client_label: name!, state: "active", space_id: space! };
       s.connections.push(c);
     }
-    s.identities[name!] ??= { agent: agent!, member: "Weyl", member_id: "member-weyl", description: `${agent} (connected)` };
+    s.identities[name!] ??= { agent: agent!, member: "Weyl", member_id: "member-weyl", description: `${agent} (connected)`, ...(space !== SPACE.id ? { space: space! } : {}) };
     save(s);
     const { space_id: _sp, ...summary } = c;
     out({
@@ -270,6 +308,11 @@ if (verb === "setup" && !ctx) {
     process.exit(0);
   }
   const personal = (id: string) => ({ id, label: "Only me", kind: "personal", readers: 1, write_default: true });
+  // D334: the person's Spaces as the state lists them.
+  if (s.spaces?.length && !which) {
+    out({ state: "selection_needed", detail: "Choose the exact Space for Bridge. No identity, credential or mailbox was created.", candidates: s.spaces.map((x) => ({ ...x, readers: x.kind === "personal" ? 1 : 5, write_default: x.kind === "personal" })) });
+    process.exit(0);
+  }
   const candidates = [
     { id: "fake-default", label: "Before the team", kind: "default", readers: 6, write_default: false },
     { id: "fake-team", label: "dev team", kind: "team", readers: 7, write_default: false },
@@ -282,8 +325,15 @@ if (verb === "setup" && !ctx) {
 if (!ctx || !s.identities[ctx]) fail("agent_context_required", "Use an approved --agent-context.");
 const me = ctx!;
 const memberId = (name: string) => s.identities[name]!.member_id ?? s.identities[name]!.member;
+// D334: a context's Space, a message's Space, and who a message is for (an agent in a Space).
+const spaceOf = (name: string) => s.identities[name]?.space ?? SPACE.id;
+const spaceInfo = (id: string): Space => s.spaces?.find((x) => x.id === id) ?? (id === SPACE.id ? SPACE : { id, label: id, kind: "team" });
+const msgSpace = (m: Msg) => m.space ?? spaceOf(m.to);
+const agentOfCtx = (name: string) => s.identities[name]?.agent ?? name;
+const WIDE = process.env.NMEM_FAKE_WIDE === "1" && (verb !== "inbox" || argv.includes("--all-spaces"));
+const forMe = (m: Msg) => agentOfCtx(m.to) === agentOfCtx(me) && (WIDE || msgSpace(m) === spaceOf(me));
 // As the real CLI shows a member: an id-only label, never a person's name.
-const card = (name: string) => ({ space: SPACE, member: `Member ${memberId(name)}`, agent: s.identities[name]!.agent, description: s.identities[name]!.description });
+const card = (name: string, space = spaceOf(name)) => ({ space: spaceInfo(space), member: `Member ${memberId(name)}`, agent: s.identities[name]!.agent, description: s.identities[name]!.description });
 const body = async (): Promise<string> => {
   const inline = take("--body");
   if (inline !== undefined) return inline;
@@ -328,8 +378,31 @@ switch (verb) {
   case "contacts": {
     const q = (take("--query") ?? "").toLowerCase();
     const words = q.split(/\s+/).filter(Boolean);
+    if (argv.includes("--all-spaces")) {
+      // D334: every Space the person reads; each card names its Space. An agent in `everywhere` has one in each.
+      const spaces = s.spaces?.length ? s.spaces : [SPACE];
+      const cards: unknown[] = [];
+      for (const sp of spaces) {
+        const here = new Map<string, string>(); // agent -> the context that shows it here
+        for (const n of Object.keys(s.identities)) if (spaceOf(n) === sp.id && !here.has(s.identities[n]!.agent)) here.set(s.identities[n]!.agent, n);
+        for (const a of s.everywhere ?? []) {
+          const rep = Object.keys(s.identities).find((n) => s.identities[n]!.agent === a);
+          if (rep && !here.has(a)) here.set(a, `${rep}@${sp.id}`);
+        }
+        for (const [a, n0] of here) {
+          const n = n0.split("@")[0]!;
+          if (n0 === me || (a === agentOfCtx(me) && sp.id === spaceOf(me))) continue;
+          if (words.length && !words.some((w) => `${n} ${a} ${s.identities[n]!.member} ${s.identities[n]!.description}`.toLowerCase().includes(w))) continue;
+          const available = process.env.NMEM_FAKE_UNREGISTERED !== n;
+          const prefix = ["nmem", "bridge", `--resolved-space-id=${sp.id}`, "send", `--to=ct-${n0}`];
+          cards.push({ ...card(n, sp.id), agent_id: a, contact: `ct-${n0}`, resolved_space_id: sp.id, ...(PRESENT ? { mailbox_available: available } : {}), send_args_prefix: PRESENT && !available ? null : prefix });
+        }
+      }
+      out({ contacts: cards, spaces: spaces.map((x) => ({ space: x, status: "searched", next_cursor: null })), coverage_scope: "all_spaces_batch", next_spaces_cursor: null });
+      break;
+    }
     const contacts = Object.keys(s.identities)
-      .filter((n) => n !== me)
+      .filter((n) => n !== me && spaceOf(n) === spaceOf(me))
       .filter((n) => !words.length || words.some((w) => `${n} ${s.identities[n]!.agent} ${s.identities[n]!.member} ${s.identities[n]!.description}`.toLowerCase().includes(w)))
       .map((n) => {
         const available = process.env.NMEM_FAKE_UNREGISTERED !== n;
@@ -345,15 +418,20 @@ switch (verb) {
   case "reply": {
     let to: string;
     let inReplyTo: string | undefined;
+    let space = spaceOf(me);
     if (verb === "send") {
-      to = take("--to")?.replace(/^ct-/, "") ?? "";
+      const [handle, at] = (take("--to")?.replace(/^ct-/, "") ?? "").split("@");
+      to = handle ?? "";
       if (!to || !s.identities[to]) fail("unknown_contact", "Use a contact handle from `bridge contacts`.");
+      // D334: a card from another Space than this context's can't be sent to from here.
+      if ((at ?? spaceOf(to)) !== spaceOf(me)) fail("space_mismatch", "That contact card is from another Space than this context's.");
     } else {
       const text0 = argv[argv.length - 1];
-      const orig = s.messages.find((x) => x.id === text0 && x.to === me);
+      const orig = s.messages.find((x) => x.id === text0 && forMe(x));
       if (!orig) fail("not_found", "Reply only to a message in this mailbox.");
       to = orig!.from;
       inReplyTo = orig!.id;
+      space = msgSpace(orig!);
     }
     const text = await body();
     if (process.env.NMEM_FAKE_UNREGISTERED && process.env.NMEM_FAKE_UNREGISTERED === to) {
@@ -365,7 +443,7 @@ switch (verb) {
       out({ stage: "upstream", upstream: { error_code: "cloud_agent_original_selection_unavailable", detail: "A selected recipient has no current registered mailbox. A previous unknown send remains unresolved; do not replace its identity.", retryable: false, outcome_unknown: true, request_id: `req-${s.seq}`, original_operation: "prepare", request_may_have_changed_state: true, http_status: 409 }, operation: op, detail: "Retain this operation. Resume it or inspect outbox; do not send a replacement." });
       process.exit(1);
     }
-    const m: Msg = { id: newId(), op: `op-${s.seq}`, from: me, to, body: text, ...(inReplyTo ? { in_reply_to: inReplyTo } : {}), created_at: new Date().toISOString() };
+    const m: Msg = { id: newId(), op: `op-${s.seq}`, from: me, to, body: text, ...(inReplyTo ? { in_reply_to: inReplyTo } : {}), created_at: new Date().toISOString(), ...(space !== spaceOf(to) ? { space } : {}) };
     s.messages.push(m);
     const lost = lose(verb, m);
     save(s);
@@ -378,7 +456,7 @@ switch (verb) {
     break;
   }
   case "inbox": {
-    const mine = s.messages.filter((m) => m.to === me && !m.pending);
+    const mine = s.messages.filter((m) => forMe(m) && !m.pending);
     if (NAMED) {
       const messages = mine.map((m) => ({ message: m.id, ...card(m.from), created_at: m.created_at, read: !!m.read_at, ...(m.in_reply_to ? { in_reply_to: m.in_reply_to } : {}) }));
       const outgoing = s.messages.filter((m) => m.from === me && !m.pending).map((m) => ({ message: m.id, read: !!m.read_at }));
@@ -387,11 +465,11 @@ switch (verb) {
     }
     // 0.10.118: handles only; our own sent messages' read status beside them.
     const outgoing = s.messages.filter((m) => m.from === me && !m.pending).map((m) => ({ message: m.id, status: m.read_at ? "read" : "delivered", read_recipients: m.read_at ? 1 : 0, recipients: 1 }));
-    out({ messages: mine.map((m) => (PRESENT ? { message: m.id, sender: sender(m.from), in_reply_to: m.in_reply_to ?? null } : { message: m.id })), next: "", outgoing, status_observed_at_us: Date.now() * 1000 });
+    out({ messages: mine.map((m) => ({ ...(PRESENT ? { message: m.id, sender: sender(m.from), in_reply_to: m.in_reply_to ?? null } : { message: m.id }), ...(WIDE ? { space_id: msgSpace(m) } : {}) })), next: "", outgoing, status_observed_at_us: Date.now() * 1000 });
     break;
   }
   case "open": {
-    const m = s.messages.find((x) => x.id === argv[2] && x.to === me && !x.pending);
+    const m = s.messages.find((x) => x.id === argv[2] && agentOfCtx(x.to) === agentOfCtx(me) && (process.env.NMEM_FAKE_WIDE === "1" || msgSpace(x) === spaceOf(me)) && !x.pending);
     if (!m) fail("not_found", "No such message in this mailbox.");
     m!.read_at ??= new Date().toISOString();
     save(s);

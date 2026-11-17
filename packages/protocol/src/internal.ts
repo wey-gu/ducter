@@ -185,6 +185,25 @@ export interface MediaApi {
 export interface BridgeLinkApi {
   context(): string | undefined;
   onChange(fn: () => void): () => void;
+  /**
+   * D334: where the home reads the identity's mailbox: the connection's own context first, then one
+   * local context per other Space the identity is reachable in. wide: Mem reads every Space with one
+   * inbox (nowledge-co/mem#10402), so the first context alone reads them all. Undefined while not connected.
+   */
+  places?(): BridgeWhere | undefined;
+}
+
+/** D334: one Space the home reads the partner's mailbox in, through its own local Agent Context. */
+export interface BridgePlace {
+  context: string;
+  spaceId?: string;
+  spaceLabel?: string;
+  /** Mem's kind for the Space ("personal" = Only me, "team", ...), when known. */
+  kind?: string;
+}
+export interface BridgeWhere {
+  places: BridgePlace[];
+  wide: boolean;
 }
 
 /** One memory as a task sees it: its id (to look closer), title, a clipped content, when. */

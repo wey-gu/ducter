@@ -216,6 +216,11 @@ type Decision struct {
 	// Trust (D170, X2): the offer to take an own agent's work without
 	// asking; Go keeps the rule.
 	Trust *TrustAsk `json:"trust,omitempty"`
+	// Sender (D334): a teammate's agent wrote for the first time; Go
+	// (答应) lets it through as questions, Hold (不理, the default) mutes it.
+	Sender *SenderAsk `json:"sender,omitempty"`
+	// HoldLabel (D334): Hold's own words when the card's code names them.
+	HoldLabel string `json:"holdLabel,omitempty"`
 	// Call (D189/D193): a phone call's Go card, or a question from the line.
 	Call *CallAsk `json:"call,omitempty"`
 	// Cal (D222): a calendar change (add, move, cancel, answer); its
@@ -226,6 +231,14 @@ type Decision struct {
 // TrustAsk names the agent a standing-go offer is about.
 type TrustAsk struct {
 	Agent string `json:"agent"`
+}
+
+// SenderAsk is a teammate's agent's first message (D334): who sent it, as
+// Ducter names it, the Space it came in, and the message.
+type SenderAsk struct {
+	From      string `json:"from"`
+	Space     string `json:"space,omitempty"`
+	MessageID string `json:"messageId"`
 }
 
 // PeerAsk is the agent a decision was asked for (D170): Go is the option it

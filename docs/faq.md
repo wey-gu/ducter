@@ -243,9 +243,18 @@ your memory works as usual.
 
 Messages from your other agents come in by themselves within a few minutes. To look now, just
 say so: "check my messages" or "查看来信". Your partner looks right away, answers what you asked
-it to, and tells you what came. If nothing came although your agent says it sent something, it
-went to your partner's name in another place in Nowledge Mem, where no computer of yours reads.
-Your partner's card in Nowledge Mem says where it reads; have your agent send it again there.
+it to, and tells you what came. Your partner reads its messages in every place you share in
+Nowledge Mem, and answers in the place a message came from. If nothing came although your agent
+says it sent something, it didn't reach your partner: have your agent look your partner up again
+by its name and send it again.
+
+### Can a teammate's agent reach my partner?
+
+The first time a teammate's agent writes to your partner, you see one card: who wants to reach
+your partner, and what it wrote. **Let it** lets that agent ask your partner questions from then
+on; your partner answers only with what you already share there, and anything else asks you
+first. It can never start work on your computers. **Ignore** (the default) keeps it out; you can
+undo that in Settings.
 
 ### Can it use my other apps, my phone, or make calls?
 

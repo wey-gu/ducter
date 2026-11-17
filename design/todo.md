@@ -1312,14 +1312,30 @@ Codex first, once OAR is near 1.0. See `research/17`.
       Mac's own nmem login) so hel alone reads the mailbox: hel's Settings › 和你的其他 agent 通信 › 只留这台, or on the
       Mac `nmem bridge connections revoke <the id that isn't hel's>` and `nmem agents context clear --name ducter`.
       Trigger: hel runs a Ducter with D324; the author's Go.
-- [ ] D333 on the author's real Mem (the author runs these; Ducter never does): find every `ducter` card your other
-      agents can see, read-only: `nmem --json bridge contacts --query ducter --all-spaces`. For each Space that
-      isn't hel's "Only me": `nmem --json bridge connections list --space-id <that id> --agent-id ducter`, then
-      `nmem bridge connections revoke <its connection id>` for each active one (that mailbox then has no reader
-      and likely shows `mailbox_available: false` once nmem carries #10278, INFERRED). On the
-      Mac, the 2026-11-13 trial's leftover the same way (the item above). Then, after hel runs D333 for a minute,
-      `nmem --json agents show ducter` should show the description naming "Only me" and hel; ask the Codex in the
-      other app to look up Ducter again and send its test. Trigger: hel on a build with D333; the author's go.
+- [ ] D334 live, after the release (the author runs it; Ducter never writes to the real Mem from a test): on hel,
+      after a minute with the build, read-only `cat ~/.ducter/bridge-connection.json` shows `places` (one context
+      per Space `ducter` is in, named `ducter-on-hel-…-in-<space>`) and maybe `unread`; `nmem --json agents
+      context show --name <one of them>` names `ducter` and that Space. Then the Codex that sent from `Everyone`
+      sends its test again: the partner answers it within 5 minutes (or at once on "查看来信") and the reply shows
+      in that Codex's inbox in `Everyone`. No connection is revoked in any Space (connections belong to the
+      identity: one revoke would end hel's own); only the Mac's 2026-11-13 leftover goes (the item above).
+      `agents show ducter` shows D334's "every Space" description. Open: whether
+      `agents context select` in a team Space needs anything beyond the identity's one connection (if Mem
+      refuses, the Space is listed under `unread`; record Mem's code here). Trigger: hel on a build with D334.
+- [ ] D334: the Settings problem row for `bridge.unread` (a Space Mem won't let the home read) in D332's pane:
+      one quiet row, e.g. **{name} 收不到「{label}」里发给它的消息：Nowledge Mem 没让这台电脑读那里。 / {name}
+      can't get messages sent to it in "{label}": Nowledge Mem didn't let this computer read there.** with the
+      step Mem's code names (D205's refusal lines) and **再试一次 / Try again** (a recheck). Words go in the D292
+      tables of D332's pane (`memory.tsx`, `peers_pane.go`), not this branch. Trigger: D332 merged.
+- [ ] D334: switch to Mem's one inbox per identity when nowledge-co/mem#10402 ships: the home sees `--all-spaces`
+      in `bridge inbox --help` and reads with the connection's context alone (built; the shapes are GUESSES:
+      check the real `inbox --all-spaces` answer names each message's Space, that `open`/`reply` take a message
+      from any Space under one context, and that a reply goes out in the message's Space), then drop the
+      per-Space contexts (`agents context clear`). Also when #10402 gives one contact per identity, fold
+      `oneSpaceEach` away. Trigger: an nmem release carrying #10402.
+- [ ] D334: an unnamed sender in a shared Space (nmem 0.10.119 names none) is treated as a teammate's, so the
+      person's own agent writing from a team Space meets the 答应 card once. Once the CLI carries #10278's
+      `sender.member`, it is known as the person's own and goes straight through. Trigger: an nmem after 0.10.119.
 - [ ] D333: on hel, see which Mem server the partner's clean Codex session had (`codex <the partner's args> mcp list
       --json` under hel's CODEX_HOME, read-only) and whether D333's check turns it off (the partner's tool list
       without `mcp__nowledge_mem__*`). Trigger: hel on a build with D333.

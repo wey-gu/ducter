@@ -205,29 +205,41 @@ interface RunResult {
 }
 
 // ---------- fake Bridge (scenario.bridge): the fake nmem CLI over one JSON mailbox file ----------
-interface FakeMsg { id: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; pending?: boolean }
+interface FakeMsg { id: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; pending?: boolean; space?: string }
+// D334 (scenario.spaces): the person's own place and one team Space; the home reads both.
+const SPACES = [
+  { id: "fake-space", label: "Only me", kind: "personal" },
+  { id: "ws-everyone", label: "Everyone", kind: "team" },
+];
+const HOME_CONTEXTS = ["ducter-main", "ducter-main-in-everyone"];
 const BRIDGE_IDENTITIES = {
   "ducter-main": { agent: "Ducter", member: "Weyl", member_id: "m-weyl", description: "Weyl's personal AI partner (always on)" },
   "terminal-claude": { agent: "terminal-claude", member: "Weyl", member_id: "m-weyl", description: "Weyl's Claude Code in a terminal, ~/dev/ducter" },
   "alex-reviewer": { agent: "reviewer", member: "Alex", member_id: "m-alex", description: "Alex's long-running code reviewer" },
   "codex-mem": { agent: "codex-mem", member: "Weyl", member_id: "m-weyl", description: "Weyl's Codex in another app on the Mac" },
 };
-function fakeBridge(dir: string) {
+function fakeBridge(dir: string, spaces = false) {
   const bin = join(dir, "nmem");
   writeFileSync(bin, `#!/bin/sh\nexec bun ${resolve(import.meta.dir, "fake-bridge-nmem.ts")} "$@"\n`);
   chmodSync(bin, 0o755);
   const state = join(dir, "bridge-state.json");
-  writeFileSync(state, JSON.stringify({ seq: 0, messages: [], identities: BRIDGE_IDENTITIES }));
+  const identities = spaces ? { ...BRIDGE_IDENTITIES, "ducter-main-in-everyone": { ...BRIDGE_IDENTITIES["ducter-main"], space: "ws-everyone" }, "alex-reviewer": { ...BRIDGE_IDENTITIES["alex-reviewer"], space: "ws-everyone" } } : BRIDGE_IDENTITIES;
+  writeFileSync(state, JSON.stringify({ seq: 0, messages: [], identities, ...(spaces ? { spaces: SPACES, everywhere: ["Ducter"] } : {}) }));
   // "named": senders carry agent and member (teammates, D162), which nmem 0.10.118 doesn't show yet (D249).
   const env = { ...process.env, NMEM_FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl", NMEM_FAKE_SHAPE: "named" } as Record<string, string>;
-  const read = () => JSON.parse(readFileSync(state, "utf8")) as { seq: number; messages: FakeMsg[] };
+  const read = () => JSON.parse(readFileSync(state, "utf8")) as { seq: number; messages: FakeMsg[]; identities: Record<string, { space?: string }> };
+  const places = SPACES.map((sp, i) => ({ context: HOME_CONTEXTS[i]!, spaceId: sp.id, spaceLabel: sp.label, kind: sp.kind }));
   return {
-    client: createNmemBridge({ context: "ducter-main", bin, env }),
-    sent: () => read().messages.filter((m) => m.from === "ducter-main"),
-    deliver(from: string, text: string, answer?: boolean) {
+    client: createNmemBridge({ context: "ducter-main", bin, env, ...(spaces ? { places } : {}) }),
+    // What Ducter sent, with the Space it went out in (D334).
+    sent: () => {
+      const s = read();
+      return s.messages.filter((m) => HOME_CONTEXTS.includes(m.from)).map((m) => ({ ...m, space: m.space ?? s.identities[m.to]?.space ?? "fake-space" }));
+    },
+    deliver(from: string, text: string, answer?: boolean, space?: string) {
       const s = read() as any;
-      const last = [...s.messages].reverse().find((m: FakeMsg) => m.from === "ducter-main" && m.to === from);
-      s.messages.push({ id: `msg-${String(++s.seq).padStart(3, "0")}`, op: `op-${s.seq}`, from, to: "ducter-main", body: text, ...(answer && last ? { in_reply_to: last.id } : {}), created_at: new Date().toISOString() });
+      const last = [...s.messages].reverse().find((m: FakeMsg) => HOME_CONTEXTS.includes(m.from) && m.to === from);
+      s.messages.push({ id: `msg-${String(++s.seq).padStart(3, "0")}`, op: `op-${s.seq}`, from, to: "ducter-main", body: text, ...(answer && last ? { in_reply_to: last.id } : {}), created_at: new Date().toISOString(), ...(space ? { space } : {}) });
       writeFileSync(state, JSON.stringify(s));
     },
   };
@@ -326,7 +338,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   };
   core.setRunner(fr.runner);
   core.setPartner({ onTrigger() {} }); // history is background, not new work
-  const fb = sc.bridge ? fakeBridge(dataDir) : undefined;
+  const fb = sc.bridge ? fakeBridge(dataDir, !!sc.spaces) : undefined;
 
   const idOf = new Map<string, string>(); // key -> taskId
   const keyOf = new Map<string, string>();
@@ -408,7 +420,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       stepStarts.push(core.log.head());
       if ("peer" in st) {
         if (!fb) throw new Error("a peer step needs scenario.bridge");
-        fb.deliver(st.peer.from, st.peer.text, st.peer.answer);
+        fb.deliver(st.peer.from, st.peer.text, st.peer.answer, st.peer.space);
         if (!st.peer.unchecked) await partner.checkBridge();
       } else applyStep(st, core, idOf, waiters, fr.opened, conv);
       await settle(partner);
@@ -742,6 +754,8 @@ function check(r: RunResult): string[] {
     const msgs = r.bridgeSent.filter((m) => !b.to || m.to === b.to);
     if (b.count && (msgs.length < b.count[0] || msgs.length > b.count[1])) fails.push(`bridge sends to ${b.to ?? "anyone"} ×${msgs.length} (want ${b.count[0] === b.count[1] ? b.count[0] : `${b.count[0]}-${b.count[1]}`})`);
     const text = msgs.map((m) => m.body).join("\n\n");
+    // D334: a reply goes back in the Space its message came in.
+    if (b.space) for (const m of msgs) if (m.space !== b.space) fails.push(`bridge send to ${m.to} went out in ${m.space ?? "?"} (want ${b.space})`);
     for (const re of b.require ?? []) if (!re.test(text)) fails.push(`bridge send lacks ${re}`);
     for (const m of msgs) for (const re of b.forbid ?? []) if (re.test(m.body)) fails.push(`bridge send contains ${re}: "${clip(m.body)}"`);
   }

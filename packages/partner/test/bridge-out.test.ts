@@ -598,10 +598,11 @@ describe("nmem client: contacts, send, recovery (stub binary)", () => {
       ok: true,
       contacts: [
         // The member's id never reaches a label; the user's own agent is known by setup's custodian.
-        { contact: "bc1:a", label: "Claude 收尾协调", agent: "Claude 收尾协调", mine: true, space: "personal-x" },
-        { contact: "bc1:b", label: "Bridge pilot Claude", agent: "Bridge pilot Claude", space: "personal-x" },
+        // D334: each card keeps its Space (label, kind) and a key that is the same agent in every Space.
+        { contact: "bc1:a", label: "Claude 收尾协调", agent: "Claude 收尾协调", mine: true, space: "personal-x", spaceLabel: "Only me", spaceKind: "personal", key: "Claude 收尾协调|4e74-me" },
+        { contact: "bc1:b", label: "Bridge pilot Claude", agent: "Bridge pilot Claude", space: "personal-x", spaceLabel: "Only me", spaceKind: "personal", key: "Bridge pilot Claude|68c7-other" },
         // A teammate's agent in a team Space: told by its team, since no member name comes (D162).
-        { contact: "bc1:c", label: "reviewer (dev team)", agent: "reviewer", space: "team-x" },
+        { contact: "bc1:c", label: "reviewer (dev team)", agent: "reviewer", space: "team-x", spaceLabel: "dev team", spaceKind: "team", key: "reviewer|68c7-other" },
       ],
       more: false,
     });
@@ -621,20 +622,21 @@ describe("nmem client: contacts, send, recovery (stub binary)", () => {
     expect(await c.contacts!("codex")).toEqual({
       ok: true,
       contacts: [
-        { contact: "ct-1", label: "codex-mem (Weyl)", agent: "codex-mem", mine: true, description: "Codex in mem" },
-        { contact: "ct-2", label: "reviewer (Alex)", agent: "reviewer" },
+        { contact: "ct-1", label: "codex-mem (Weyl)", agent: "codex-mem", mine: true, description: "Codex in mem", key: "codex-mem|m-weyl" },
+        { contact: "ct-2", label: "reviewer (Alex)", agent: "reviewer", key: "reviewer|m-alex" },
       ],
       more: false,
     });
     expect(await c.send!("ct-1", "--hi")).toEqual({ ok: true, messageId: "bm-s9", operation: "op-9" });
     // Passive setup (never --enable), once, to learn the user's member.
     expect(readFileSync(log, "utf8").trim().split("\n")).toEqual([
-      "--json --agent-context ducter-main bridge contacts --query codex",
+      // D334: every Space the person reads.
+      "--json --agent-context ducter-main bridge contacts --all-spaces --query codex",
       "--json --agent-context ducter-main bridge setup",
       "--json --agent-context ducter-main bridge send --to ct-1 --body-file -",
     ]);
     expect(readFileSync(body, "utf8")).toBe("--hi");
-    expect(contactsOf({ cards: [{ handle: "h", from: "z" }] })).toEqual([{ contact: "h", label: "z" }]);
+    expect(contactsOf({ cards: [{ handle: "h", from: "z" }] })).toEqual([{ contact: "h", label: "z", key: "h|" }]);
   });
 
   test("a failed send keeps its operation; outbox / inspect / resume read tolerantly", async () => {
@@ -788,15 +790,57 @@ describe("X1 / D164, D170: the user's own agents ask the user through the partne
     expect(offers().length).toBe(1); // never offered twice
   });
 
-  test("Settings: a muted sender and, by default, a teammate's agent never wake the partner", async () => {
-    const peers = { reach: "own" as const, trusted: [] as string[], muted: ["noisy-claude"] };
-    const t = setup(async (_i, s) => s.end(), world([TEAMMATE, { ...REQUEST, messageId: "bm-n", agent: "noisy-claude", from: "noisy-claude" }, REQUEST]));
-    (t.fc.core as { settings?: unknown }).settings = { get: () => ({ peers }), setForgetter() {}, setMemState() {} };
+  test("Settings: a muted sender never wakes the partner; D334: a teammate's agent's first message is one card, held until 答应", async () => {
+    const peers: { reach: "own"; trusted: string[]; muted: string[]; allowed?: string[] } = { reach: "own", trusted: [], muted: ["noisy-claude"] };
+    const team = { ...TEAMMATE, from: "reviewer (dev team)", space: "team-x", spaceLabel: "dev team", shared: true };
+    const t = setup(async (_i, s) => s.end(), world([team, { ...REQUEST, messageId: "bm-n", agent: "noisy-claude", from: "noisy-claude" }, REQUEST]));
+    (t.fc.core as { settings?: unknown }).settings = { get: () => ({ peers }), setPeers: (p: Partial<typeof peers>) => Object.assign(peers, p), setForgetter() {}, setMemState() {} };
+    await t.partner.checkBridge();
+    await t.partner.idle();
+    const ins = () => t.fc.events.filter((e) => e.kind === "bridge_msg").map((e) => e.body as Bodies["bridge_msg"]);
+    expect(ins().map((b) => [b.messageId, b.state ?? "read"])).toEqual([["bm-t", "held"], ["bm-n", "muted"], ["bm-1", "read"]]);
+    expect(t.fr.sessions.reduce((n, s) => n + s.inputs.length, 0)).toBe(1); // one turn, for bm-1 only
+    const cards = () => t.fc.events.filter((e) => e.kind === "decision" && (e.body as Bodies["decision"]).sender).map((e) => e.body as Bodies["decision"]);
+    expect(cards().length).toBe(1);
+    expect(cards()[0]).toMatchObject({ goLabel: "答应", holdLabel: "不理", defaultOption: "hold", sender: { from: "reviewer (dev team)", space: "team-x", messageId: "bm-t" } });
+    expect(cards()[0]!.question.split("\n")[0]).toBe("dev team 里 reviewer 想找 Ducter：");
+    // A second message from the same sender before the answer: held too, no second card.
+    t.w.deliver({ ...team, messageId: "bm-t2", text: "Also: which branch?" });
+    await t.partner.checkBridge();
+    expect(cards().length).toBe(1);
+    // 答应: remembered, and what it sent meanwhile is read now (one turn), as a teammate's question.
+    const before = t.fr.sessions.reduce((n, s) => n + s.inputs.length, 0);
+    t.tap(cards()[0]!.decisionId, "go");
+    await t.partner.idle();
+    expect(peers.allowed).toEqual(["reviewer (dev team)"]);
+    expect(ins().filter((b) => !b.state).map((b) => b.messageId)).toEqual(["bm-1", "bm-t", "bm-t2"]);
+    const input = t.fr.sessions.flatMap((s) => s.inputs).slice(before).join("\n");
+    expect(input).toContain('shared Space "dev team"');
+    expect(input).toContain("It can't start work");
+    // From then on, its messages come straight through.
+    t.w.deliver({ ...team, messageId: "bm-t3", text: "Thanks." });
+    await t.partner.checkBridge();
+    expect(ins().find((b) => b.messageId === "bm-t3")!.state).toBeUndefined();
+    expect(cards().length).toBe(1);
+  });
+
+  test("D334: 不理 mutes that teammate's agent; its messages stay unread", async () => {
+    const peers: { reach: "own"; trusted: string[]; muted: string[]; allowed?: string[] } = { reach: "own", trusted: [], muted: [] };
+    const team = { ...TEAMMATE, from: "AI agent (Everyone)", agent: undefined, space: "ws-everyone", spaceLabel: "Everyone", shared: true };
+    const t = setup(async (_i, s) => s.end(), world([team]));
+    (t.fc.core as { settings?: unknown }).settings = { get: () => ({ peers }), setPeers: (p: Partial<typeof peers>) => Object.assign(peers, p), setForgetter() {}, setMemState() {} };
+    await t.partner.checkBridge();
+    const card = t.card();
+    expect(card.question.split("\n")[0]).toBe("Everyone 里有个 AI agent 想找 Ducter：");
+    t.tap(card.decisionId, "hold");
+    await t.partner.idle();
+    expect(peers.muted).toEqual(["AI agent (Everyone)"]);
+    t.w.deliver({ ...team, messageId: "bm-u2" });
     await t.partner.checkBridge();
     await t.partner.idle();
     const ins = t.fc.events.filter((e) => e.kind === "bridge_msg").map((e) => e.body as Bodies["bridge_msg"]);
-    expect(ins.map((b) => [b.messageId, b.state ?? "read"])).toEqual([["bm-t", "muted"], ["bm-n", "muted"], ["bm-1", "read"]]);
-    expect(t.fr.sessions.reduce((n, s) => n + s.inputs.length, 0)).toBe(1); // one turn, for bm-1 only
+    expect(ins.map((b) => [b.messageId, b.state ?? "read"])).toEqual([["bm-t", "held"], ["bm-u2", "muted"]]);
+    expect(t.fr.sessions.reduce((n, s) => n + s.inputs.length, 0)).toBe(0);
   });
 
   test("B14: what was in the mailbox before Bridge was on is never opened as a request", async () => {
@@ -939,4 +983,88 @@ describe("D333: 查看来信 / check messages: the home reads its mailbox now an
     expect(r[1]).toMatchObject({ ok: false });
     expect(r[1].note).toContain("Nowledge Mem didn't answer");
   }, 20_000);
+});
+
+describe("D334: the address is the identity, not the Space (the fake nmem with Spaces)", () => {
+  const SPACES = [
+    { id: "fake-space", label: "Only me", kind: "personal" },
+    { id: "ws-everyone", label: "Everyone", kind: "team" },
+  ];
+  const places = [
+    { context: "ducter", spaceId: "fake-space", spaceLabel: "Only me", kind: "personal" },
+    { context: "ducter-in-everyone", spaceId: "ws-everyone", spaceLabel: "Everyone", kind: "team" },
+  ];
+  function rig() {
+    const dir = tmp();
+    const bin = join(dir, "nmem");
+    writeFileSync(bin, `#!/bin/sh\nexec bun ${resolve(import.meta.dir, "../eval/fake-bridge-nmem.ts")} "$@"\n`);
+    chmodSync(bin, 0o755);
+    const state = join(dir, "state.json");
+    const ident = (agent: string, member = "m-weyl", space?: string) => ({ agent, member: member === "m-weyl" ? "Weyl" : "Alex", member_id: member, description: agent, ...(space ? { space } : {}) });
+    writeFileSync(
+      state,
+      JSON.stringify({
+        seq: 0,
+        messages: [],
+        spaces: SPACES,
+        identities: { ducter: ident("ducter"), "ducter-in-everyone": ident("ducter", "m-weyl", "ws-everyone"), "codex-mem": ident("codex-mem"), "codex-mem-in-everyone": ident("codex-mem", "m-weyl", "ws-everyone") },
+      }),
+    );
+    const read = () => JSON.parse(readFileSync(state, "utf8"));
+    const deliver = (from: string, body: string, space?: string) => {
+      const s = read();
+      s.messages.push({ id: `msg-${String(++s.seq).padStart(3, "0")}`, op: `op-${s.seq}`, from, to: "ducter", body, created_at: new Date().toISOString(), ...(space ? { space } : {}) });
+      writeFileSync(state, JSON.stringify(s));
+    };
+    const client = createNmemBridge({ context: "ducter", places, bin, env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", NMEM_FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl", NMEM_FAKE_SHAPE: "named" }, retryDelaysMs: [] });
+    return { client, deliver, read };
+  }
+
+  test("a message sent in a team Space is read there and answered there", async () => {
+    const f = rig();
+    f.deliver("codex-mem-in-everyone", "联络测试：收到请回一句「收到」。", "ws-everyone");
+    f.deliver("codex-mem", "Only me 里的一条。");
+    const r = await f.client.check(new Set());
+    expect(r.ok).toBe(true);
+    const msgs = (r as { messages: BridgeMessage[] }).messages;
+    expect(msgs.map((m) => [m.messageId, m.space, !!m.mine])).toEqual([
+      ["msg-002", "fake-space", true],
+      ["msg-001", "ws-everyone", true],
+    ]);
+    expect(await f.client.reply("msg-001", "收到", "ws-everyone")).toMatchObject({ ok: true });
+    expect(f.read().messages.at(-1)).toMatchObject({ from: "ducter-in-everyone", to: "codex-mem-in-everyone", in_reply_to: "msg-001", body: "收到" });
+    // Another Space's context can't answer it: the fake (as Mem) replies only in the message's own Space.
+    expect((await f.client.reply("msg-001", "again", "fake-space")).ok).toBe(false);
+  }, 30_000);
+
+  test("the partner answers in the message's Space, and its own send goes where the recipient last wrote from", async () => {
+    const f = rig();
+    const r: any[] = [];
+    const t = setup(async (_i, s, n) => {
+      if (n === 0) r.push(await t.fc.callTool("bridge_reply", { messageId: "msg-001", text: "收到" }));
+      if (n === 1) {
+        const c = (await t.fc.callTool("bridge_contacts", { query: "codex" })) as { contacts: { contact: string }[] };
+        r.push(c);
+        r.push(await t.fc.callTool("bridge_send", { contact: c.contacts[0]!.contact, text: "bridge 那块写到哪了？" }));
+      }
+      s.end();
+    }, { ...world([]), bridge: f.client });
+    await t.partner.checkBridge(); // B14's mark: what was there before is not a request
+    f.deliver("codex-mem-in-everyone", "联络测试：收到请回一句「收到」。", "ws-everyone");
+    await t.partner.checkBridge();
+    await t.partner.idle();
+    expect(r[0]).toMatchObject({ ok: true });
+    const inn = t.fc.events.find((e) => e.kind === "bridge_msg")!.body as Bodies["bridge_msg"];
+    expect(inn).toMatchObject({ space: "ws-everyone", spaceLabel: "Everyone", mine: true });
+    expect(f.read().messages.at(-1)).toMatchObject({ from: "ducter-in-everyone", in_reply_to: "msg-001" });
+    // One card per agent, though codex-mem has one in each Space: the one in Everyone, where it wrote from.
+    t.user("问问我的 codex-mem bridge 那块写到哪了");
+    await t.partner.idle();
+    expect(r[1].contacts.length).toBe(1);
+    expect(r[2]).toMatchObject({ ok: true });
+    t.tap(t.card().decisionId, "go");
+    // The send runs on its own after the tap (the fake CLI takes a moment).
+    for (let i = 0; i < 100 && f.read().messages.length < 3; i++) await Bun.sleep(50);
+    expect(f.read().messages.at(-1)).toMatchObject({ from: "ducter-in-everyone", to: "codex-mem-in-everyone", body: "bridge 那块写到哪了？" });
+  }, 30_000);
 });

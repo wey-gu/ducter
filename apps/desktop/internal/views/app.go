@@ -98,6 +98,8 @@ type App struct {
 	// and peersDetails show the raw facts behind 详情.
 	memAsk                   int64
 	memDetails, peersDetails bool
+	// D321: Settings › 记忆's own state (memory_pane.go).
+	memPage memPageState
 	// bridgeLink: the connect link being pasted on the row (D225); never kept.
 	bridgeLink string
 	StatusErr  string

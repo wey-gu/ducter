@@ -468,6 +468,10 @@ type Store struct {
 	Forgot *protocol.Forgot
 	// Corrected is how the last memory_correct went (D304), until shown.
 	Corrected *protocol.Forgot
+	// MemQuery is what Settings › 记忆's search asks now; MemFound is Mem's
+	// answer to it (D321), nil until one comes.
+	MemQuery string
+	MemFound *protocol.MemFound
 	// Recalled is the one 想起了 / Remembered line under a message, by the
 	// seq of the message it stands under (D304).
 	Recalled map[int64]*Recalled
@@ -781,6 +785,11 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.applyPast(f) // D285 (past.go)
 	case "did_result":
 		s.applyDid(f) // D300 (did.go)
+	case "mem_found":
+		// D321: only the answer to what is asked now (a later word replaced an earlier one).
+		if f.MemFound != nil && f.MemFound.Q == s.MemQuery {
+			s.MemFound = f.MemFound
+		}
 	case "error":
 		s.Errors = append(s.Errors, f.Message)
 		// A refused task_send fails the oldest unacked send.

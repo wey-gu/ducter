@@ -1687,3 +1687,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## D319: the website and the download page (2026-11-17)
 - [ ] **What's owed on the site** is listed in `design/site.md` "Owed": the README's hero, On hand, task and Partner shots; the landing page's On hand board redrawn as D287; Chinese for the site; a mirror for mainland China (with `install.sh`); docs search; an axe pass. Trigger: the author's review of `/download`.
+
+## D321: what it knows about you, and the first hand-off (2026-11-17)
+- [ ] **People and projects as Memory groups.** Trigger: Mem's list returns labels, or its people graph (`m identity`) leaves Labs.
+- [ ] **The partner offers S2 itself** ("want me to ask your terminal Claude?"). Trigger: Mem's contacts say what a session is working on; then a persona change with its eval scenario.
+- [ ] **A human comprehension test of 试试看** (does a developer paste the words into the terminal, not into Ducter?). Trigger: D321 reviewed.
+- [ ] **Fix keeps the memory's content**: 改 writes the new words as title and content (D304's way). Trigger: Mem's update takes a title alone without losing what the content adds.

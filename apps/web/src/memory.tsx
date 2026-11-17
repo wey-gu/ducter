@@ -5,15 +5,21 @@
 // kept, its name there, the raw ids behind 详情). Before Mem: a small empty state and the setup as
 // steps. Connected AI agents is the persona's link with the person's other agents (D205) and who
 // may reach it (D170); it shows once Mem is in (peersShown). The Mac's: memory_pane.go, peers_pane.go.
-import type { BridgeView } from "@ducter/protocol";
-import { useState } from "preact/hooks";
+// D321: Memory is "what it knows about you": Mem's own kinds as living groups (how you like things,
+// what you decided, what it knows), each row fixable or forgettable in place with its source as a
+// quiet line, a search, the week's check one tap away; other tools' working notes only as a count.
+// Connected AI agents teaches its first use: 试试看 with the exact words for the terminal (copyable),
+// whether each agent has Mem's plugin, and a live row that waits for the first hand-off and says it worked.
+import type { BridgeView, MemItem } from "@ducter/protocol";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { Btn, DangerButton, Facts, LinkBtn, Seg, Switch } from "./controls.tsx";
+import { copy } from "./conv-copy.ts";
+import { Btn, DangerButton, LinkBtn, Seg, Switch } from "./controls.tsx";
 import { ago } from "./format.ts";
-import { groupNoted, MEM_MIN, memPhase, memUpdate, peersShown, type MemPhase, type MemUpdate } from "./mem-view.ts";
+import { aboutGroups, bySource, groupNoted, handoffPhase, MEM_MIN, memPhase, memUpdate, peersShown, tryAgents, type MemPhase, type MemUpdate } from "./mem-view.ts";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Tile } from "./set-grid.tsx";
-import { Avatar, Check } from "./views.tsx";
+import { Avatar, Check, peerName } from "./views.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 export const MEM_SITE = "https://mem.nowledge.co";
@@ -98,7 +104,7 @@ const ToolTile = ({ from }: { from: string }) => {
   return <Tile>{h ? <Coin harness={h} size={36} /> : <span class="mem-tool-letter">{[...from][0]?.toUpperCase()}</span>}</Tile>;
 };
 
-/** The first group: the partner remembers you, what's new this week, the switch. */
+/** The first group: the partner remembers you, what's new this week, the switch; the week's check (D304) one tap away. */
 function MemHead() {
   const s = A.settings!;
   const n = weekCount(A.mem?.noted ?? []);
@@ -108,82 +114,142 @@ function MemHead() {
       <GHead tile={<NotebookTile />} name={on ? t("mem.hero.on", s.name) : t("mem.hero.off", s.name)} line={!on ? t("mem.off.line") : n ? t("mem.week.count", String(n)) : t("mem.week.none")} tone={on && n ? "done" : undefined}>
         <Switch label={t("partner.memory.switch")} on={on} onChange={(memory) => A.setSettings({ memory })} />
       </GHead>
-      <GFoot note={on ? t("mem.switch.note") : t("partner.memory.off")} />
+      <GFoot note={on ? t("mem.switch.note") : t("partner.memory.off")}>{on && n > 0 && <Btn kind="text" size="sm" chev label={t("mem.head.check")} onClick={() => A.openLearned()} />}</GFoot>
     </Group>
   );
 }
 
 type Noted = NonNullable<typeof A.mem>["noted"][number];
 
-/** What it noted, this week and earlier; 忘掉 asks in place; the last group's foot is the door to Mem. */
-function MemNoted() {
-  const [ask, setAsk] = useState(0);
-  const noted = A.mem?.noted ?? [];
-  const groups = groupNoted(noted);
-  const week = groups.filter((g) => g.when !== "earlier").flatMap((g) => g.items);
-  const earlier = groups.filter((g) => g.when === "earlier").flatMap((g) => g.items);
-  const total = A.mem?.glance?.total;
-  const foot = (
-    <GFoot note={total ? t("mem.all.count", thousands(total)) : t("mem.all.note")}>
-      <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
-    </GFoot>
-  );
-  const row = (n: Noted) =>
-    ask === n.seq ? (
-      <GConfirm key={n.seq} ask={n.memoryId ? t("mem.forget.ask", n.title) : t("mem.forget.ask.hide", n.title)} keep={t("mem.forget.keep")} go={t("partner.memory.forget")} about={n.title} onKeep={() => setAsk(0)} onGo={() => (setAsk(0), A.forget(n.seq))} />
-    ) : (
-      <GRow key={n.seq} tile={<PebbleTile />} title={n.title} line={ago(A.L, n.at)}>
-        <DangerButton quiet label={t("partner.memory.forget")} about={n.title} onClick={() => setAsk(n.seq)} />
-      </GRow>
-    );
-  if (!noted.length)
+/** A memory's row, tapped open in place: where it came from and when, 改 (its words, written to Mem), 忘掉 (asks). */
+function MemRow({ m, open, onOpen }: { m: MemItem; open: boolean; onOpen: (id: string) => void }) {
+  const [mode, setMode] = useState<"" | "fix" | "ask">("");
+  const [words, setWords] = useState(m.title);
+  const src = bySource(m);
+  const tile = m.by === "tool" && m.from ? <ToolTile from={m.from} /> : <PebbleTile />;
+  if (open && mode === "ask")
+    return <GConfirm ask={t("mem.item.forget.ask", m.title)} keep={t("mem.forget.keep")} go={t("partner.memory.forget")} about={m.title} onKeep={() => setMode("")} onGo={() => (setMode(""), onOpen(""), A.memForget(m.id))} />;
+  if (open && mode === "fix") {
+    const save = () => words.trim() && (A.memFix(m.id, words), setMode(""), onOpen(""));
     return (
-      <section class="set mem-sec">
-        <h3>{t("mem.sec.week")}</h3>
-        <Group class="mem-g" label={t("mem.sec.week")}>
-          <GRow tile={<PebbleTile />} title={t("mem.empty.title")} line={t("mem.hero.empty.body")} />
-          {foot}
-        </Group>
-      </section>
+      <GBlock>
+        <input class="mem-fix" dir="auto" value={words} aria-label={t("learned.fix")} onInput={(e) => setWords((e.target as HTMLInputElement).value)} onKeyDown={(e) => (e.key === "Enter" ? save() : e.key === "Escape" && (setWords(m.title), setMode("")))} ref={(el) => el?.focus()} />
+        <span class="g-acts">
+          <Btn kind="text" size="sm" label={t("learned.cancel")} onClick={() => (setWords(m.title), setMode(""))} />
+          <Btn kind="secondary" size="sm" label={t("learned.save")} disabled={!words.trim()} onClick={save} />
+        </span>
+      </GBlock>
     );
+  }
   return (
     <>
-      {week.length > 0 && (
-        <section class="set mem-sec">
-          <h3>{t("mem.sec.week")}</h3>
-          <Group class="mem-g" label={t("mem.sec.week")}>
-            {week.map(row)}
-            {!earlier.length && foot}
-          </Group>
-        </section>
-      )}
-      {earlier.length > 0 && (
-        <section class="set mem-sec">
-          <h3>{t("mem.sec.earlier")}</h3>
-          <Group class="mem-g" label={t("mem.sec.earlier")}>
-            {earlier.map(row)}
-            {foot}
-          </Group>
-        </section>
+      <button type="button" class={`chat-row tiled mem-item${open ? " open" : ""}`} aria-expanded={open} onClick={() => onOpen(open ? "" : m.id)}>
+        {tile}
+        <span class="grow">
+          <b dir="auto">{m.title}</b>
+          <small>{t(src.key, ...src.args)}</small>
+        </span>
+        {m.at && <span class="g-state">{ago(A.L, m.at)}</span>}
+      </button>
+      {open && (
+        <div class="chat-foot mem-item-acts">
+          <small class="grow">{t("mem.item.wrong")}</small>
+          <span class="g-acts">
+            <Btn kind="text" size="sm" label={t("learned.fix")} about={m.title} onClick={() => setMode("fix")} />
+            <DangerButton quiet label={t("partner.memory.forget")} about={m.title} onClick={() => setMode("ask")} />
+          </span>
+        </div>
       )}
     </>
   );
 }
 
-/** What the person's other AI tools saved to Mem lately: the memory is shared. Read-only here. */
-function MemOthers() {
-  const others = A.mem?.glance?.others ?? [];
-  if (!others.length) return null;
+/** Search what it remembers: the words go to Mem a moment after the last key. */
+function MemFind() {
+  const [q, setQ] = useState(A.memQuery);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const ask = (v: string) => {
+    setQ(v);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => A.memFind(v), 350);
+  };
+  return (
+    <label class="mem-find">
+      <span class="sr-only">{t("mem.find.label")}</span>
+      <SearchMark />
+      <input type="search" dir="auto" enterKeyHint="search" autoComplete="off" spellcheck={false} placeholder={t("mem.find.placeholder")} aria-label={t("mem.find.label")} value={q} onInput={(e) => ask((e.target as HTMLInputElement).value)} onKeyDown={(e) => e.key === "Enter" && (clearTimeout(timer.current), A.memFind(q))} />
+      {q && <Btn kind="text" size="sm" label={t("mem.find.clear")} onClick={() => (setQ(""), clearTimeout(timer.current), A.memFind(""))} />}
+    </label>
+  );
+}
+
+/** A drawn magnifier (never a font's glyph). */
+const SearchMark = () => (
+  <svg class="mem-find-mark" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <circle cx="7" cy="7" r="4.6" />
+    <path d="m10.6 10.6 3.2 3.2" />
+  </svg>
+);
+
+/**
+ * D321: what it knows about the person, by Mem's own kinds, each row correctable in place; a search
+ * above them. Before Mem's glance arrives, the lines it noted in the conversation stand in.
+ */
+function MemAbout() {
+  const [open, setOpen] = useState("");
+  const name = A.settings!.name;
+  const g = A.mem?.glance;
+  const found = A.memQuery ? A.memFound : undefined;
+  const noted = A.mem?.noted ?? [];
+  const asItems = (ns: Noted[]): MemItem[] => ns.filter((n) => n.memoryId).map((n) => ({ id: n.memoryId!, title: n.title, kind: "other", by: "said", at: n.at }));
+  const items = g ? g.about : asItems(noted);
+  const groups = aboutGroups(items);
   return (
     <section class="set mem-sec">
-      <h3>{t("mem.others.title")}</h3>
-      <p class="g-note">{t("mem.others.note", A.settings!.name)}</p>
-      <Group class="mem-g" label={t("mem.others.title")}>
-        {others.map((o) => (
-          <GRow key={o.id} tile={<ToolTile from={o.from} />} title={o.title} line={t("mem.others.by", o.from)}>
-            {o.at && <span class="g-state">{ago(A.L, o.at)}</span>}
-          </GRow>
+      <h3>{t("mem.about.title")}</h3>
+      <p class="g-note">{t("mem.about.note", name)}</p>
+      <MemFind />
+      {A.memQuery ? (
+        <Group class="mem-g" label={t("mem.find.title")}>
+          {!found ? (
+            <GRow title={t("mem.find.title")} line="…" />
+          ) : !found.ok ? (
+            <GRow tile={<PebbleTile />} title={t("mem.find.failed")} />
+          ) : !found.items.length ? (
+            <GRow tile={<PebbleTile />} title={t("mem.find.none", A.memQuery)} />
+          ) : (
+            found.items.map((m) => <MemRow key={m.id} m={m} open={open === m.id} onOpen={setOpen} />)
+          )}
+        </Group>
+      ) : !groups.length ? (
+        <Group class="mem-g" label={t("mem.about.title")}>
+          <GRow tile={<PebbleTile />} title={t("mem.about.empty")} line={t("mem.hero.empty.body")} />
+        </Group>
+      ) : (
+        groups.map((gr) => (
+          <Group key={gr.kind} class="mem-g" label={t(`mem.kind.${gr.kind}`)}>
+            <div class="g-cap">{t(`mem.kind.${gr.kind}`)}</div>
+            {gr.items.map((m) => <MemRow key={m.id} m={m} open={open === m.id} onOpen={setOpen} />)}
+          </Group>
+        ))
+      )}
+    </section>
+  );
+}
+
+/** D321: the person's other AI tools on the same Mem: who, and how many working notes this week; never their titles. */
+function MemTools() {
+  const tools = A.mem?.glance?.tools ?? [];
+  if (!tools.length) return null;
+  return (
+    <section class="set mem-sec">
+      <h3>{t("mem.tools.title")}</h3>
+      <Group class="mem-g" label={t("mem.tools.title")}>
+        {tools.map((x) => (
+          <GRow key={x.from} tile={<ToolTile from={x.from} />} title={x.from} line={t(x.more ? "mem.tools.more" : "mem.tools.count", String(x.count))} />
         ))}
+        <GFoot note={t("mem.tools.note", A.settings!.name)} />
       </Group>
     </section>
   );
@@ -275,6 +341,9 @@ function MemLink({ b }: { b: BridgeView | undefined }) {
       <GHead tile={<MemTile />} name="Nowledge Mem" line={t("mem.app.on")} tone="done" />
       {where && <GRow title={t("mem.app.kept.title")} line={where} />}
       {mem?.keptUnder && <GRow title={t("mem.app.name.title")} line={t("mem.app.name.line", mem.keptUnder)} />}
+      <GRow title={mem?.glance?.total ? t("mem.all.count", thousands(mem.glance.total)) : t("mem.all.note")}>
+        <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
+      </GRow>
       {u && b && <MemUpdateRow u={u} b={b} />}
       {more && b && (
         <GBlock>
@@ -370,8 +439,8 @@ export function MemoryPage() {
   return (
     <>
       <MemHead />
-      <MemNoted />
-      <MemOthers />
+      <MemAbout />
+      <MemTools />
       <MemLink b={b} />
     </>
   );
@@ -422,6 +491,76 @@ function PeersHead({ b, name }: { b: BridgeView; name: string }) {
       {b.state === "unconfirmed" && <DangerButton quiet label={t("bridge.undo")} about={b.identity} onClick={() => ((A.bridgeConfirm = true), A.disconnectBridge())} />}
       {b.state !== "no_space" && <Btn kind="secondary" size="sm" label={t("bridge.retry")} about={b.identity} onClick={() => A.connectBridge()} />}
     </GHead>
+  );
+}
+
+/** A drawn terminal prompt (never a font's glyph): the words go there. */
+const PromptMark = () => (
+  <svg class="say-mark" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m4 4.5 4 3.5-4 3.5M9.5 12h3" />
+  </svg>
+);
+
+/** One thing to say, exactly: what it does, the words (copyable), and where they go (the prompt mark: a terminal; none: here). */
+function Say({ what, words, terminal }: { what: string; words: string; terminal: boolean }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div class="say">
+      <small class="say-what">{what}</small>
+      <div class={`say-words${terminal ? " term" : ""}`}>
+        {terminal && <PromptMark />}
+        <span class="grow" dir="auto">{words}</span>
+        <Btn kind="text" size="sm" label={t(copied ? "peers.try.copied" : "peers.try.copy")} about={words} onClick={() => void copy(words).then((ok) => ok && (setCopied(true), setTimeout(() => setCopied(false), 2000)))} />
+      </div>
+    </div>
+  );
+}
+
+/** When the first of the person's other agents came through (its first message in the conversation). */
+const firstHandoffAt = () => A.S.channel.find((e) => e.peer?.direction === "in")?.ev.ts;
+
+/**
+ * D321: 试试看 / Try it, once the link is on: the exact words for the terminal (J1, X1) and for here (S2),
+ * whether each agent can hear them (Mem's plugin in it), and a live row: waiting for the first one,
+ * then that it worked (with the way to it), then nothing.
+ */
+function PeersTry({ name }: { name: string }) {
+  const agents = tryAgents(A.devices ?? []);
+  const first = firstHandoffAt();
+  const phase = handoffPhase(first);
+  const from = first ? peerName(A.S.channel.find((e) => e.peer?.direction === "in")!.peer!) : "";
+  // The live row checks again when the first one's moment passes.
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (phase !== "first") return;
+    const id = setTimeout(() => tick((n) => n + 1), Math.max(1000, Date.parse(first!) + 15 * 60_000 - Date.now()));
+    return () => clearTimeout(id);
+  }, [phase, first]);
+  return (
+    <section class="set mem-sec">
+      <h3>{t("peers.try.title")}</h3>
+      <p class="g-note">{t("peers.try.note")}</p>
+      <Group class="mem-g" label={t("peers.try.title")}>
+        <GBlock>
+          <Say what={t("peers.try.work.what")} words={t("peers.try.work", name)} terminal />
+          <Say what={t("peers.try.ask.what")} words={t("peers.try.ask", name)} terminal />
+        </GBlock>
+        {agents.map((x) => (
+          <GRow key={x.harness} tile={<Tile><Coin harness={x.harness} size={36} /></Tile>} title={x.harness === "codex" ? "Codex" : "Claude Code"} line={x.plugin === "on" ? t("peers.try.plugin.on") : x.plugin === "off" ? t("peers.try.plugin.off", name) : t("peers.try.plugin.unknown")}>
+            {x.plugin === "off" && x.device && <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={x.device} onClick={() => A.installMem(x.device!, x.harness)} />}
+          </GRow>
+        ))}
+        {phase === "waiting" && <GRow tile={<Tile><span class="handoff-wait" /></Tile>} title={t("peers.wait.title")} line={t("peers.wait.line")} />}
+        {phase === "first" && (
+          <GRow tile={<Tile><span class="mem-glyph done handoff-done"><Check /></span></Tile>} title={t("peers.first.title", from, name)} line={t("peers.first.line")}>
+            <Btn kind="secondary" size="sm" label={t("peers.first.open")} onClick={() => ((A.sheet = null), A.go({ name: "conv" }))} />
+          </GRow>
+        )}
+        <GBlock>
+          <Say what={t("peers.try.here.what", name)} words={t("peers.try.here")} terminal={false} />
+        </GBlock>
+      </Group>
+    </section>
   );
 }
 
@@ -478,6 +617,7 @@ export function PeersPage() {
           )
         )}
       </Group>
+      {connected && <PeersTry name={name} />}
       {(p.trusted.length > 0 || p.muted.length > 0) && (
         <section class="set mem-sec">
           <h3>{t("peers.rules.title")}</h3>

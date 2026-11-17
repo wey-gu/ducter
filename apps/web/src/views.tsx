@@ -1217,9 +1217,27 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chi
   if (e.peer) {
     // A question it asked shows once, as its card (which already says who asks).
     const asked = e.peer.direction === "in" && [...A.S.decisions.values()].some((d) => d.asker?.messageId === e.peer!.messageId);
-    return asked ? null : <PeerLine b={e.peer} ts={e.ev.ts} />;
+    // D321: the very first message from another agent explains itself once, under its line (or before its card).
+    const first = e.peer.direction === "in" && A.S.channel.find((x) => x.peer?.direction === "in") === e;
+    return (
+      <>
+        {!asked && <PeerLine b={e.peer} ts={e.ev.ts} />}
+        {first && <FirstPeerNote b={e.peer} />}
+      </>
+    );
   }
   return null;
+}
+
+/** D321: the first time another agent reaches the partner: who, how, and where the answers go. Shown once, by place. */
+function FirstPeerNote({ b }: { b: Bodies["bridge_msg"] }) {
+  const who = peerName(b);
+  return (
+    <div class="peer-first" role="note">
+      <Coin harness={peerHarness(who)} size={28} />
+      <p>{t("peer.first.note", who, A.settings?.name ?? "Ducter")}</p>
+    </div>
+  );
 }
 
 /** One quiet line about the user's other agents (D170, J-Q5): who, and what, never Bridge words. */

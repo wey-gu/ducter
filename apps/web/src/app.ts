@@ -2,7 +2,7 @@
 import { onWbFrame } from "./workbench-ask.ts";
 import { onPastFrame, openPast } from "./past.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
-import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GitLoginState, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GitLoginState, MemItem, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/protocol";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
@@ -297,6 +297,9 @@ class AppState {
   /** The partner's settings (D71), once the server sent them; mem is what it remembers. */
   settings?: Settings;
   mem?: MemView;
+  /** D321: Settings › 记忆's search: what was asked, and what Mem found for it. */
+  memQuery = "";
+  memFound?: { q: string; ok: boolean; items: MemItem[] };
   /** D205: the persona's own Bridge connection, when the home's nmem can make one (or needs updating). */
   bridge?: BridgeView;
   /** D205: 断开 asks once more before it runs (a disconnected connection may need Mem to make again). */
@@ -684,6 +687,8 @@ class AppState {
       return void this.changed();
     }
     if (f.t === "settings") return this.applySettings(f);
+    // D321: only the answer to what is asked now (a later word replaced an earlier one).
+    if (f.t === "mem_found") return void (f.q === this.memQuery && ((this.memFound = { q: f.q, ok: f.ok, items: f.items }), this.changed()));
     if (f.t === "partners") return this.applyPartners(f);
     if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
     if (f.t === "ways") {
@@ -2007,6 +2012,32 @@ class AppState {
     if (!words) return;
     if (this.mem) this.mem = { ...this.mem, noted: this.mem.noted.map((n) => (n.seq === seq ? { ...n, title: words, corrected: true, confirmed: true } : n)) };
     this.send({ t: "memory_correct", seq, title: words });
+    this.changed();
+  }
+  /** D321: Settings › 记忆's own rows, by Mem's id: gone or fixed at once; the home's frame settles it. */
+  memForget(id: string) {
+    const g = this.mem?.glance;
+    if (this.mem && g) this.mem = { ...this.mem, glance: { ...g, about: g.about.filter((x) => x.id !== id) } };
+    if (this.memFound) this.memFound = { ...this.memFound, items: this.memFound.items.filter((x) => x.id !== id) };
+    this.send({ t: "mem_forget", id });
+    this.changed();
+  }
+  memFix(id: string, title: string) {
+    const words = title.replace(/\s+/g, " ").trim();
+    if (!words) return;
+    const fix = (xs: MemItem[]) => xs.map((x) => (x.id === id ? { ...x, title: words } : x));
+    const g = this.mem?.glance;
+    if (this.mem && g) this.mem = { ...this.mem, glance: { ...g, about: fix(g.about) } };
+    if (this.memFound) this.memFound = { ...this.memFound, items: fix(this.memFound.items) };
+    this.send({ t: "mem_fix", id, title: words });
+    this.changed();
+  }
+  /** D321: search Mem from Settings › 记忆; "" clears it. The answer comes as mem_found. */
+  memFind(q: string) {
+    const words = q.replace(/\s+/g, " ").trim();
+    this.memQuery = words;
+    if (!words) this.memFound = undefined;
+    else this.send({ t: "mem_find", q: words });
     this.changed();
   }
   forget(seq: number) {

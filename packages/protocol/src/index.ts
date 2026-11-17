@@ -1028,6 +1028,12 @@ export type ClientFrame =
   // words (written back to Nowledge Mem through nmem when the line has the memory's id).
   | { t: "memory_confirm"; seq: number }
   | { t: "memory_correct"; seq: number; title: string }
+  // D321: Settings › 记忆's own rows, by Mem's id: forget one, or fix its words (both through the
+  // partner's Mem client, as its identity); find searches Mem (≤ 8 hits, titles only), answered by a
+  // mem_found frame to this socket.
+  | { t: "mem_forget"; id: string }
+  | { t: "mem_fix"; id: string; title: string }
+  | { t: "mem_find"; q: string }
   // Who does the tasks (D89): "rules" answers with a rules frame and keeps the socket subscribed;
   // rule_remove (不要这条 / Remove) drops one, then every subscriber gets a fresh rules frame.
   // Rules are added only by saying them in the conversation (the partner's rule_save tool).
@@ -1320,6 +1326,8 @@ export type ServerFrame =
   | { t: "update_all_result"; ok: boolean; reason?: "nothing" | "running" | "failed"; detail?: string; id?: string }
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; bridge?: BridgeView }
+  // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
+  | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
   | { t: "rules"; rules: RuleView[] }
   // D309: every partner on the home, the default first; shown: the one this socket's conversation is.
   // error (to the asking socket only): why a partner_add or partner_set didn't happen.
@@ -2095,7 +2103,35 @@ export interface MemView {
    * D295: a glance at Mem itself, when it answers: how many memories it holds, and the latest ones the
    * person's other AI tools saved there (titles only; from: the tool's own name, "Claude Code").
    */
-  glance?: { total: number; others: { id: string; title: string; from: string; at?: string }[] };
+  glance?: MemGlance;
+}
+
+/**
+ * D321: one memory as Settings › 记忆 / Memory shows it: its title (never its content), its kind
+ * (Mem's unit type: how you like things, what you decided, what it knows), who it's from (said: you
+ * told the partner; tool: another AI tool saved it, from names it; you: you saved it yourself; mem:
+ * Nowledge Mem distilled it from your conversations), and when.
+ */
+export interface MemItem {
+  id: string;
+  title: string;
+  kind: "preference" | "decision" | "fact" | "other";
+  by: "said" | "tool" | "you" | "mem";
+  from?: string;
+  at?: string;
+}
+
+/**
+ * D295, D321: a glance at Mem itself, when it answers. total: how many memories it holds. about: what
+ * it knows about the person, by kind, newest first (preferences from anyone; decisions and facts only
+ * the person's own or said to the partner: another tool's working notes are not about the person).
+ * tools: the person's other AI tools that wrote to the same Mem in the last 7 days, as a count only
+ * (more: at least that many), never their titles.
+ */
+export interface MemGlance {
+  total: number;
+  about: MemItem[];
+  tools: { from: string; count: number; more?: true }[];
 }
 
 /**

@@ -271,7 +271,7 @@ const ld = {
         </li>
       )}
     </ul>
-    <p class="body where-note">A phone or iPad needs an address it can reach from outside: Ducter on a server with your own domain, or a Mac at home set up From outside with your domain on Cloudflare. <a href="/docs/phone">Connect your phone</a></p>
+    <p class="body where-note">A phone or iPad needs an address it can reach: Ducter on a server in your Tailscale network (private to your devices, with the Tailscale app on the phone), on a server with your own domain, or on a Mac at home set up From outside with your domain on Cloudflare. <a href="/docs/phone">Connect your phone</a></p>
   </div>
 </section>
 
@@ -486,11 +486,14 @@ const ld = {
           <p><code>ducter status</code> shows your tasks and the decisions waiting for you. Or <a href="/docs/install#the-ducter-command">build it from the source</a>.</p>
         </div>
         <div class="panel" id="p-srv" role="tabpanel" aria-labelledby="tab-srv" style="margin-top:14px" hidden>
-          <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh -s -- --service&#10;ducter domain ducter.example.com">Copy</button><pre><span class="c"># on the server (x64 or arm64 Linux): runs as a service</span>
-<span class="p">$ </span>curl -fsSL https://ducter.ai/install.sh | sh -s -- --service
-<span class="c"># point an A record at the server, then: HTTPS, and a code for your Mac and phone</span>
+          <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh -s -- --service">Copy</button><pre><span class="c"># on the server (x64 or arm64 Linux): runs as a service</span>
+<span class="p">$ </span>curl -fsSL https://ducter.ai/install.sh | sh -s -- --service</pre></div>
+          <p>Then choose how your Mac and phone reach it. Either one sets up HTTPS and gives you a code.</p>
+          <div class="term"><button class="btn sm copy" type="button" data-copy="ducter tailscale">Copy</button><pre><span class="c"># private: only your devices in your Tailscale network, no domain, no open ports</span>
+<span class="p">$ </span>ducter tailscale</pre></div>
+          <div class="term" style="margin-top:10px"><button class="btn sm copy" type="button" data-copy="ducter domain ducter.example.com">Copy</button><pre><span class="c"># or your own domain: point an A record at the server, then</span>
 <span class="p">$ </span>ducter domain ducter.example.com</pre></div>
-          <p>Your partner keeps working while your Mac sleeps. It only listens on the server itself (127.0.0.1); <code>ducter domain</code> checks your DNS, sets up HTTPS with Caddy and gives you a code. No domain? An SSH tunnel works for your Mac.</p>
+          <p>Your partner keeps working while your Mac sleeps. It only listens on the server itself (127.0.0.1). With Tailscale, turn on MagicDNS and HTTPS Certificates in Tailscale's admin console once, and keep the Tailscale app on your phone and Mac; <code>ducter tailscale</code> says which switch is missing. <code>ducter domain</code> checks your DNS and sets up HTTPS with Caddy. <a href="/docs/install#a-linux-server-that-stays-on">A server that stays on</a> has the steps.</p>
         </div>
         <div class="panel" id="p-ios" role="tabpanel" aria-labelledby="tab-ios" style="margin-top:14px" hidden>
           <p>One app for iPhone and iPad, in public beta through Apple's TestFlight. It connects to Ducter on your server with the address and code from <code>ducter pair</code>.</p>

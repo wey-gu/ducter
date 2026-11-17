@@ -90,11 +90,20 @@ the Tailscale app on, in the same Tailscale network.
 
 ### `ducter tailscale` stops
 
-It says why and what to run next. Usually one of these: Tailscale isn't signed in on the server
-(`sudo tailscale up`); HTTPS certificates are off for your Tailscale network (turn on **MagicDNS**
-and **HTTPS Certificates** on the [DNS page](https://login.tailscale.com/admin/dns) of the admin
-console); or Tailscale won't let your user change what it serves (`sudo tailscale set
---operator=$USER` once). Then run `ducter tailscale` again.
+It says why and what to run next. Usually one of these:
+
+- Tailscale isn't installed, isn't signed in, or is turned off on the server: install it with
+  `curl -fsSL https://tailscale.com/install.sh | sh`, then `sudo tailscale up` (it prints a link
+  to sign in from any device). On a Mac, open the Tailscale app and sign in there.
+- Your Tailscale network hasn't approved this computer yet: approve it on the
+  [Machines page](https://login.tailscale.com/admin/machines) of the admin console.
+- HTTPS certificates are off for your Tailscale network: turn on **MagicDNS** and **HTTPS
+  Certificates** on the [DNS page](https://login.tailscale.com/admin/dns) of the admin console.
+- Tailscale asks you to turn on HTTPS (Serve) and shows a link: open it, turn it on.
+- Tailscale won't let your user change what it serves: `sudo tailscale set --operator=$USER`
+  once.
+
+Then run `ducter tailscale` again.
 
 ### From outside didn't finish setting up
 

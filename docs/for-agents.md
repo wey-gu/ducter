@@ -12,7 +12,7 @@ agent such as Claude Code or Codex follows:
 
 | Skill | What your agent can do with it |
 |---|---|
-| **ducter-deploy** | Install Ducter on your Mac or a Linux server, set up your domain with HTTPS, connect your Mac and phone, add a computer that does tasks, update, or start over cleanly |
+| **ducter-deploy** | Install Ducter on your Mac or a Linux server, give it an HTTPS address in your Tailscale network or at your own domain, connect your Mac and phone, add a computer that does tasks, update, or start over cleanly |
 | **ducter-operate** | Look at your tasks, talk to your partner, start or follow a task, and bring decisions to you |
 | **ducter-troubleshoot** | Run the check-up, read the logs and fix what usually goes wrong |
 
@@ -42,18 +42,22 @@ asks you when it isn't clear:
 - **Your Ducter lives on one computer**, your Mac or a server. Your conversation, tasks and
   settings are there. You never have two.
 - **Your Mac app, your phone and the `ducter` command** connect to it. On a server they reach it
-  at your own domain, over HTTPS.
+  over HTTPS, in one of two ways, and your agent asks you which first: **privately through
+  Tailscale** (only your own devices, no domain, no open ports; your phone and Mac need the
+  Tailscale app on), or **at your own domain** (from anywhere, with ports 80 and 443 open).
 - **Other computers can do tasks** for it. They keep nothing of their own but the work in
   progress.
 - **An AI agent** (Claude Code, Codex, pi or DeepSeek Harness) has to be installed and signed
   in on each computer that does the work.
-- Ducter only listens on the computer it runs on. On a server, [Caddy](https://caddyserver.com)
-  answers at your domain and passes requests to it.
+- Ducter only listens on the computer it runs on. On a server, Tailscale answers at the
+  server's Tailscale name, or [Caddy](https://caddyserver.com) at your domain, and passes
+  requests to it.
 
 | You want | Ducter lives on | Your agent runs |
 |---|---|---|
 | Just your Mac | your Mac | the one-line install |
-| A server that stays on, with your Mac and phone | the server | the install with `--service`, then `ducter domain` |
+| A server that stays on, with your Mac and phone | the server | the install with `--service`, then `ducter tailscale` or `ducter domain` |
+| Your Mac, reached from your phone through Tailscale | your Mac | the one-line install, then `ducter tailscale` on your Mac |
 | A server that also does the tasks | the server | the same; nothing extra |
 | Your Mac's repos used by a Ducter on a server | the server | the above, then `ducter worker` on your Mac |
 

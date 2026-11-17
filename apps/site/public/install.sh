@@ -205,7 +205,8 @@ install_linux() {
   for a; do shift; [ "$a" = --no-cli ] || set -- "$@" "$a"; done
 
   # With --service, the bundle's install.sh ends by running the service, whose last lines say
-  # what's next (ducter domain, or an SSH tunnel); without it, it says how to start.
+  # what's next (ducter tailscale first on a server in a tailnet, else ducter anywhere, a domain,
+  # Tailscale, an SSH tunnel); without it, it says how to start.
   sh "$TMP/$name/install.sh" "$@" </dev/null
 }
 

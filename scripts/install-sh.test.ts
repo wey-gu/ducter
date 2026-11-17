@@ -135,3 +135,26 @@ describe("add_path_rc", () => {
     expect(installer).not.toContain("caddy-setup");
   });
 });
+
+// D318: the bundle's install without --service names the tailnet when this server is in one.
+describe("the next step on a server in a tailnet", () => {
+  const block = bundler.slice(bundler.indexOf('  TS_NAME=""'), bundler.indexOf('  if [ -n "$TS_NAME" ]'));
+  const name = (status: string | null) => {
+    const d = mkdtempSync(join(tmpdir(), "ducter-ts-sh-"));
+    try {
+      if (status !== null) writeFileSync(join(d, "tailscale"), `#!/bin/sh\ncat <<'J'\n${status}\nJ\n`, { mode: 0o755 });
+      const r = spawnSync("sh", ["-c", `${block}\nprintf '%s' "$TS_NAME"`], { env: { PATH: `${d}:/usr/bin:/bin` }, encoding: "utf8" });
+      expect(r.status).toBe(0);
+      return r.stdout;
+    } finally {
+      rmSync(d, { recursive: true, force: true });
+    }
+  };
+  const status = (state: string) =>
+    JSON.stringify({ BackendState: state, Self: { DNSName: "hel.tail1234.ts.net.", HostName: "hel" }, Peer: { k: { DNSName: "mac.tail1234.ts.net." } } }, null, 2);
+  test("running: this server's own name, without its dot", () => expect(name(status("Running"))).toBe("hel.tail1234.ts.net"));
+  test("signed out, or no Tailscale: nothing", () => {
+    expect(name(status("NeedsLogin"))).toBe("");
+    expect(name(null)).toBe("");
+  });
+});

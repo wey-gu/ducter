@@ -69,13 +69,18 @@ curl -fsSL https://ducter.ai/install.sh | sh
 
 Or download the `.dmg` from the [latest release](https://github.com/wey-gu/ducter/releases/latest).
 
-**On a server**, run it as a service, then give it your domain (HTTPS, and a code for your Mac
-and phone):
+**On a server**, run it as a service, then choose how your Mac and phone reach it. Either one
+sets up HTTPS and gives you a code:
 
 ```sh
 curl -fsSL https://ducter.ai/install.sh | sh -s -- --service
-ducter domain ducter.example.com
+ducter tailscale                   # private: only your devices in your Tailscale network, no open ports
+ducter domain ducter.example.com   # or your own domain, with an A record to the server
 ```
+
+With Tailscale, turn on MagicDNS and HTTPS Certificates in its admin console once, and keep the
+Tailscale app on your phone and Mac. [Install](docs/install.md#a-linux-server-that-stays-on) has
+the steps.
 
 **On iPhone or iPad**, [join the TestFlight beta](https://testflight.apple.com/join/Z4GvWt7t) and
 connect with the address and code from `ducter pair`.

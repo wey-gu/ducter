@@ -20,6 +20,14 @@ import { newPairing, type Pairing } from "./remote.ts";
 /** Where the Mac App Store and standalone Tailscale apps keep their CLI (not on PATH by default). */
 export const MAC_APP_CLI = "/Applications/Tailscale.app/Contents/MacOS/Tailscale";
 export const ADMIN_DNS = "https://login.tailscale.com/admin/dns";
+export const ADMIN_MACHINES = "https://login.tailscale.com/admin/machines";
+/** How long `tailscale serve --bg` may take; past it, it is waiting on an interactive "enable" flow. */
+export const SERVE_TIMEOUT_S = 25;
+
+/** The link Tailscale prints when a feature must be turned on for the tailnet first (".../f/serve?node=…", ".../f/https?…"). */
+export function enableLink(out: string): string | undefined {
+  return out.match(/https:\/\/login\.tailscale\.com\/f\/[^\s'"]+/)?.[0];
+}
 
 /** What `ducter tailscale` needs from the machine; tests pass a fake that records every command. */
 export type TailscaleSys = Pick<DomainSys, "platform" | "which" | "run" | "read" | "status" | "sleep" | "unitPath"> & {
@@ -206,8 +214,23 @@ export async function cmdTailscale(o: Opts): Promise<number> {
     return fail(t("ts.daemonDown.why"), sys.platform === "linux" ? "sudo systemctl enable --now tailscaled" : "open -a Tailscale");
   }
   if (status.state !== "Running" || !status.dnsName) {
+    // Each state says what it is in plain words; on a Mac the app is where you sign in or turn it on.
+    const mac = sys.platform === "darwin";
+    const up = mac ? "open -a Tailscale" : "sudo tailscale up";
+    if (status.state === "NeedsLogin") {
+      step("tailscale", false, t("ts.needsLogin"));
+      return fail(t(mac ? "ts.needsLogin.mac" : "ts.needsLogin.why"), up);
+    }
+    if (status.state === "NeedsMachineAuth") {
+      step("tailscale", false, t("ts.needsApproval"));
+      return fail(t("ts.needsApproval.why"), ADMIN_MACHINES);
+    }
+    if (status.state === "Stopped") {
+      step("tailscale", false, t("ts.stopped"));
+      return fail(t("ts.stopped.why"), up);
+    }
     step("tailscale", false, t("ts.notRunning", { state: status.state }));
-    return fail(t("ts.notRunning.why"), sys.platform === "linux" ? "sudo tailscale up" : "tailscale up");
+    return fail(t("ts.notRunning.why"), up);
   }
   res.dnsName = status.dnsName;
   res.address = `https://${status.dnsName}`;
@@ -228,14 +251,25 @@ export async function cmdTailscale(o: Opts): Promise<number> {
     return fail(t("ts.busy.why", { name: status.dnsName }), "tailscale serve status");
   }
   if (now === undefined) {
-    const r = await ts(["serve", "--bg", "--https=443", `http://127.0.0.1:${o.port}`], 60_000);
+    const serveCmd = `tailscale serve --bg --https=443 http://127.0.0.1:${o.port}`;
+    const r = await ts(["serve", "--bg", "--https=443", `http://127.0.0.1:${o.port}`], SERVE_TIMEOUT_S * 1000);
     if (r.code !== 0) {
       if (accessDenied(r.out)) {
         step("serve", false, t("ts.denied"));
         return fail(t("ts.operator"), "sudo tailscale set --operator=$USER");
       }
+      // Serve stopped to ask for a feature to be turned on (its "enable" flow): give the link, never hang.
+      const link = enableLink(r.out);
+      if (link) {
+        step("serve", false, t("ts.enable"));
+        return fail(t("ts.enable.why"), link);
+      }
+      if (r.code === -1) {
+        step("serve", false, t("ts.serveHung", { s: SERVE_TIMEOUT_S }));
+        return fail(t("ts.serveHung.why"), serveCmd);
+      }
       step("serve", false, t("ts.serveFailed", { reason: firstLine(r.out) }));
-      return fail(t("ts.serveFailed", { reason: firstLine(r.out) }), `tailscale serve --bg --https=443 http://127.0.0.1:${o.port}`);
+      return fail(t("ts.serveFailed", { reason: firstLine(r.out) }), serveCmd);
     }
     step("serve", true, t("ts.served", { name: status.dnsName, port: o.port }));
   } else step("serve", true, t("ts.servedAlready", { name: status.dnsName, port: o.port }));

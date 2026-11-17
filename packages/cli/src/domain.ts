@@ -388,7 +388,9 @@ export function realDomainSys(): DomainSys {
       const [out, err] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text()]);
       const code = await p.exited;
       clearTimeout(timer);
-      return { code: p.signalCode ? -1 : code, out: code === 0 ? out : err || out };
+      // A failure leads with stderr; stdout follows, since some tools (tailscale serve's "enable"
+      // flow) print the link to act on there.
+      return { code: p.signalCode ? -1 : code, out: code === 0 ? out : [err.trim(), out.trim()].filter(Boolean).join("\n") };
     } catch (e) {
       return { code: -1, out: e instanceof Error ? e.message : String(e) };
     }

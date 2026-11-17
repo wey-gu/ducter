@@ -1760,6 +1760,4 @@ Codex first, once OAR is near 1.0. See `research/17`.
       pi's and DeepSeek Harness's conversation message), matched by text; check live on each agent
       that the echo comes at the step that reads it, and pass Ducter's own `inputId` through
       `steerOrQueue` to match by id where the agent keeps it. (2) A worker on a Ducter before
-      D325 sends no echo: its steers stay "at its next step" until the turn ends. (3) Held words
-      after a Stop wait until the person says them or sends again; whether a resumed turn should
-      take them is the author's call. Trigger: the author's live review.
+      D325 sends no echo: its steers stay "at its next step" until the turn ends.  Trigger: the author's live review.

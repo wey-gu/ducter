@@ -173,6 +173,34 @@ func (a *App) markTile(c *ui.Context, key string, draw func(p *ui.Painter, r ui.
 	}
 }
 
+// brandTile is a third-party product's own mark (D314), drawn faithfully at
+// 24 on the small white clay tile; an app whose mark is its app icon
+// (Nowledge Mem) shows that icon as the tile itself, at 40. Faded: the
+// product not set up yet.
+func (a *App) brandTile(c *ui.Context, name string, faded bool) func() {
+	t := a.T
+	return func() {
+		src := theme.Brand(name)
+		if src == nil {
+			return
+		}
+		if _, ok := src.(*ui.Bitmap); ok {
+			img := ui.Image(c.Key("brand:"+name), src).Size(40, 40).Radius(t.RadiusSM).AccessHidden(true)
+			if faded {
+				img.Opacity(0.5)
+			}
+			return
+		}
+		ui.Row(c.Key("btile:"+name)).Size(40, 40).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.LineSoft).
+			Shadow(0, 2, 0, 0, t.Line).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+			img := ui.Image(c, src).Size(24, 24)
+			if faded {
+				img.Opacity(0.5)
+			}
+		})
+	}
+}
+
 // glyphTile is a drawn glyph alone in the tile column (a check, a ＋).
 func (a *App) glyphTile(c *ui.Context, size float32, draw func(p *ui.Painter, r ui.Rect)) func() {
 	return func() { a.glyph(c, size, draw) }

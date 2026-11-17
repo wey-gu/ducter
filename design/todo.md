@@ -110,8 +110,14 @@ Built against a fake iLink and CDN only.
 - **iMessage's state on the web's Chat apps page** (trigger: a person sets it up from a phone):
   the home already hears `channel_status`; show it in the web's iMessage group instead of only
   "set up on a Mac" (D283).
-- **The chat apps' letter pebbles and the Chat apps clay with human raters** (trigger: the next
-  rater round; LLM raters only so far, D283).
+- **The Chat apps clay with human raters** (trigger: the next rater round; LLM raters only so far,
+  D283; the letter pebbles are gone, D314).
+- **D314's marks still owed** (trigger: the first person who uses one): GitHub Copilot, OpenClaw,
+  OpenCode, Outlook, Feishu / Lark and WeCom keep a letter or a drawn stand-in; a website in
+  Autofill keeps its letter (its own favicon would mean fetching it, a privacy question first). The
+  phone's Settings list and the rail keep Ducter's own clay (the sections are Ducter's).
+- **D314: a comprehension pass on the per-kind Done for you glyphs** (merge, PR, setting, install)
+  with human raters, and on the iOS Simulator (headless Chrome only so far).
 - **The 来自 iMessage / via iMessage mark** under the person's message on the Mac and the web
   (D276's mark, the same `via`).
 - **Where to reach me** pinned to iMessage (research/88 §7.1), if the "last spoke" default proves

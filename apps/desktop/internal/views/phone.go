@@ -263,7 +263,11 @@ func (a *App) phoneCard(c *ui.Context, cv protocol.ConnectionView) {
 		case down:
 			line, tone = a.L.T("phone.card.down", name), sideFailed
 		}
-		a.headRow(c, "phone:"+cv.ID, a.clayTile(c, art, down), name, line, tone, control) // the section says 打电话; the group says who
+		tile := a.clayTile(c, art, down)
+		if strings.EqualFold(name, "Tuwa") {
+			tile = a.brandTile(c, "tuwa", down) // D314: the provider by its own mark
+		}
+		a.headRow(c, "phone:"+cv.ID, tile, name, line, tone, control) // the section says 打电话; the group says who
 		a.tileRow(c, "phone-cap", nil, a.L.T("phone.card.cap"), a.L.T("phone.card.cap.help"), func() {
 			labels := make([]string, len(phoneCaps))
 			sel := -1

@@ -58,7 +58,7 @@ are `todo.md`.
 
 ## One item
 
-Every item is a card: a drawn glyph for its kind on a clay pebble, the line, and its facts, each
+Every item is a card: a drawn glyph on a clay pebble whose tint says the kind and whose shape says what exactly it was (D314: a mail, a message, a post; a calendar event, a merge, a draft PR, a folder's files, a setting, an install; a detail; an event cancelled), one table for both clients (`packages/protocol/src/did-glyphs.ts`), the line, and its facts, each
 its own element (D291: never joined with " · "):
 
 1. **What**, in plain words from a table by kind and sub-kind (below), with the thing's own words

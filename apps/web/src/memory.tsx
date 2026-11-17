@@ -13,6 +13,7 @@
 import type { BridgeView, MemItem } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { BrandTile, toolBrand } from "./brand.tsx";
 import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, Seg, Switch } from "./controls.tsx";
@@ -89,18 +90,17 @@ const PebbleTile = () => (
   </Tile>
 );
 
-/** Nowledge Mem's mark: its letter on a clay pebble in the notebook's blue (literal, never its logo). */
-const MemTile = ({ faded }: { faded?: boolean }) => (
-  <Tile>
-    <span class={`mem-letter${faded ? " faded" : ""}`}>N</span>
-  </Tile>
-);
+/** Nowledge Mem's own mark, its app icon (D314; it replaced the letter N); faded while it isn't set up. */
+const MemTile = ({ faded }: { faded?: boolean }) => <BrandTile name="nowledge_mem" faded={faded} />;
 
-const TOOL_COINS: Record<string, string> = { "Claude Code": "claude-code", Codex: "codex", pi: "pi" };
+// D314: Claude (the app) is Anthropic's starburst and ChatGPT OpenAI's knot, the same marks as the coins.
+const TOOL_COINS: Record<string, string> = { "Claude Code": "claude-code", Claude: "claude-code", Codex: "codex", ChatGPT: "codex", pi: "pi" };
 
-/** Another AI tool's mark: its clay coin when Ducter has one, else its first letter on a sunken pebble. */
+/** Another AI tool's mark: its clay coin when Ducter has one, else its own mark on a white clay tile (D314), else its first letter on a sunken pebble. */
 const ToolTile = ({ from }: { from: string }) => {
   const h = TOOL_COINS[from];
+  const b = toolBrand(from);
+  if (!h && b) return <BrandTile name={b} />;
   return <Tile>{h ? <Coin harness={h} size={36} /> : <span class="mem-tool-letter">{[...from][0]?.toUpperCase()}</span>}</Tile>;
 };
 

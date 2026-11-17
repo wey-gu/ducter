@@ -8408,6 +8408,8 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .ua-note.quiet { font-size: var(--xs); color: var(--ink-muted); }
 .ua-act { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
 .ua-act:empty { display: none; }
+/* D314: the finished card's one decision (完成, or 再试一次 with 完成 quiet before it) stands at the right edge. */
+.ua-act > .btn.secondary:last-child { margin-left: auto; }
 .set-row small.update { color: var(--highlight-ink); font-weight: 700; }
 @media (prefers-reduced-motion: reduce) {
   .ua-mark .spin, .ua-mark.done { animation: none; }
@@ -10856,33 +10858,6 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   font-weight: 600;
   color: var(--failed-ink);
 }
-.chat-tile {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--r-sm);
-  font-family: var(--head);
-  font-size: var(--lg);
-  font-weight: 800;
-  line-height: 1;
-}
-.chat-tile.telegram {
-  background: var(--working-surface);
-  color: var(--working-ink);
-  box-shadow: 0 3px 0 color-mix(in srgb, var(--working-ink) 18%, var(--working-surface));
-}
-.chat-tile.slack {
-  background: var(--waiting-surface);
-  color: var(--waiting-ink);
-  box-shadow: 0 3px 0 color-mix(in srgb, var(--waiting-ink) 18%, var(--waiting-surface));
-}
-.chat-tile.imessage {
-  background: var(--done-surface);
-  color: var(--done-ink);
-  box-shadow: 0 3px 0 color-mix(in srgb, var(--done-ink) 18%, var(--done-surface));
-}
 .chat-row,
 .chat-foot {
   display: flex;
@@ -12575,6 +12550,11 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .g-tile.mark { border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line-soft); box-shadow: 0 2px 0 var(--line); }
 .g-tile img { width: 40px; height: 40px; object-fit: contain; }
 .g-tile.faded img { opacity: 0.5; }
+/* D314: a product's own mark at 24 on the white clay tile; an app icon (Nowledge Mem) is the tile itself. */
+.g-tile .brand-mark { display: block; color: var(--ink); }
+.g-tile .brand-mark svg { display: block; width: 100%; height: 100%; }
+.g-tile.brand.faded .brand-mark { opacity: 0.5; }
+.g-tile.brand-app img { width: 40px; height: 40px; border-radius: var(--r-sm); }
 /* A tile of agent coins: each coin keeps its own size (the tile's 40-pt art rule is for one image). */
 .g-tile .coin-art img { width: 100%; height: 100%; }
 .g-open-row { display: flex; align-items: center; gap: var(--s3); min-height: 64px; padding: var(--s2) var(--set-in, var(--s4)) var(--s2) calc(var(--set-in, var(--s4)) - var(--s2)); }
@@ -12610,13 +12590,10 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   display: block;
 }
 /* D295: Settings › 记忆 and › 连上的 AI agent on the settings grid. Marks in the tile column: the
-   notebook, an accent pebble, Mem's letter on a notebook-blue pebble, another tool's coin or letter,
+   notebook, an accent pebble, Mem's app icon (D314), another tool's coin or letter,
    two agents' coins; the empty state on the paper; the raw facts behind 详情. Tokens only. */
 .g-tile .mem-dot { margin: 0; width: 10px; height: 10px; box-shadow: 0 2px 0 var(--press-accent); }
-.mem-letter,
 .mem-tool-letter { display: grid; place-items: center; font-family: var(--head); font-weight: 800; line-height: 1; }
-.mem-letter { width: 40px; height: 40px; border-radius: var(--r-sm); background: var(--notebook-cover); color: var(--surface); font-size: var(--lg); box-shadow: 0 3px 0 var(--notebook-ledge); }
-.mem-letter.faded { background: var(--surface-sunken); color: var(--ink-soft); box-shadow: 0 3px 0 var(--line); }
 .mem-tool-letter { width: 36px; height: 36px; border-radius: 50%; background: var(--surface-sunken); color: var(--ink-soft); font-size: var(--md); box-shadow: 0 2px 0 var(--line); }
 .mem-coins { display: flex; align-items: center; }
 .mem-coins > * + * { margin-left: -8px; }
@@ -12805,11 +12782,6 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 @media (prefers-reduced-motion: reduce) { .did-empty img { animation: none; } }
 /* ---------- D301: WeChat in Settings › Chat apps (channels.tsx WechatCard) ---------- */
-.chat-tile.wechat {
-  background: var(--tint-sage);
-  color: var(--tint-ink);
-  box-shadow: 0 3px 0 color-mix(in srgb, var(--tint-ink) 16%, var(--tint-sage));
-}
 .chat-scan { align-items: flex-start; }
 .chat-scan .grow p { margin: 0 0 var(--s1); }
 .chat-qr { flex: none; transition: opacity 0.2s ease; }

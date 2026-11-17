@@ -4,7 +4,7 @@
 // task, and offers Undo only where one truly exists. A sheet like Past tasks: a centred panel
 // when wide, the whole screen on a phone. Facts are separate elements (D291), never joined.
 import type { DidItem, DidKind, ServerFrame } from "@ducter/protocol";
-import { DID_KINDS, DID_OUTWARD } from "@ducter/protocol";
+import { DID_GLYPH_STROKE, DID_KINDS, DID_OUTWARD, DID_TINTS, didGlyph } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, Facts } from "./controls.tsx";
@@ -67,23 +67,14 @@ function close() {
   A.changed();
 }
 
-// ---------- the pictures: one drawn glyph per kind (D211: never emoji) ----------
+// ---------- the pictures: one drawn glyph per kind, sharper per sub-kind (D211: never emoji; D314: one table with the Mac) ----------
 
-const G: Record<DidKind, string> = {
-  sent: "M3.6 9.6 16.2 4l-4.6 12.4-2.9-5.1zM8.7 11.3 16.2 4",
-  paid: "M3.5 6h13v8.6h-13zM3.5 8.9h13M6 12.1h3.2",
-  called: "M6.2 3.8h2.1l1.1 3.3-1.7 1.2a8 8 0 0 0 4 4l1.2-1.7 3.3 1.1v2.1a1.7 1.7 0 0 1-1.9 1.7A12.3 12.3 0 0 1 4.5 5.7a1.7 1.7 0 0 1 1.7-1.9z",
-  filled: "M12.6 11.2a3.6 3.6 0 1 0-3.4-2.4L4 14v2.2h2.4v-1.6H8v-1.6h1.6l1.3-1.3a3.6 3.6 0 0 0 1.7-.5zM13 6.6h.01",
-  changed: "M4.5 15.5l1-3.5 7.6-7.6a1.6 1.6 0 0 1 2.3 2.3L7.8 14.3zM11.8 5.7l2.4 2.4",
-  deleted: "M4.8 6.2h10.4M8 6.2V4.6h4v1.6M6.3 6.2l.8 9.8h5.8l.8-9.8M8.9 8.8v4.6M11.1 8.8v4.6",
-  read: "M2.8 10S5.5 5.2 10 5.2s7.2 4.8 7.2 4.8-2.7 4.8-7.2 4.8S2.8 10 2.8 10zM10 12.1a2.1 2.1 0 1 0 0-4.2 2.1 2.1 0 0 0 0 4.2z",
-};
-const TINT: Record<DidKind, string> = { sent: "clay", paid: "sand", called: "sage", filled: "mist", changed: "lilac", deleted: "stone", read: "" };
+const TINT = DID_TINTS;
 
-export function DidGlyph({ k, size = 20 }: { k: DidKind; size?: number }) {
+export function DidGlyph({ k, sub, size = 20 }: { k: DidKind; sub?: string; size?: number }) {
   return (
     <svg class="pg" width={size} height={size} viewBox="0 0 20 20" aria-hidden="true">
-      <path d={G[k]} fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+      <path d={didGlyph(k, sub)} fill="none" stroke="currentColor" stroke-width={DID_GLYPH_STROKE} stroke-linecap="round" stroke-linejoin="round" />
     </svg>
   );
 }
@@ -168,7 +159,7 @@ function Card({ it }: { it: DidItem }) {
       <div class="pmain did-main">
         <span class="did-time">{clock(it.at)}</span>
         <span class={`pebble${tint ? ` own tint-${tint}` : " guess"}`} style={{ width: 36, height: 36 }} aria-hidden="true">
-          <DidGlyph k={it.kind} />
+          <DidGlyph k={it.kind} sub={it.sub} />
         </span>
         <span class="pbody">
           <span class="pl1">

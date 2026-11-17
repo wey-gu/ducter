@@ -118,11 +118,23 @@ func (a *App) updateAllSection(c *ui.Context) {
 					a.send(protocol.SettingsSet{T: "settings_set", Patch: protocol.SettingsPatch{AutoUpdate: &v}})
 				}
 			}
-			a.textRow(c, t.ControlMD).Gap(t.S2).Children(func() {
-				if failed > 0 && a.button(c, a.L.T("upall.retry"), btnSecondary, t.ControlMD, t.Surface) {
-					a.startUpdateAll()
+			// D314: the card's one decision is a small secondary clay button at
+			// the right edge, as 检查更新 is; with something to retry, 再试一次 is
+			// that button and 完成 steps back to a quiet text button before it.
+			var quiet func()
+			if failed > 0 {
+				quiet = func() {
+					if a.button(c, a.L.T("upall.dismiss"), btnText, t.ControlSM, t.Surface) {
+						a.send(protocol.UpdateAllReq{T: "update_all", Dismiss: true})
+					}
 				}
-				if a.button(c, a.L.T("upall.dismiss"), btnText, t.ControlMD, t.Surface) {
+			}
+			a.cardEnd(c, t.ControlSM, quiet, func() {
+				if failed > 0 {
+					if a.button(c, a.L.T("upall.retry"), btnSecondary, t.ControlSM, t.Surface) {
+						a.startUpdateAll()
+					}
+				} else if a.button(c, a.L.T("upall.dismiss"), btnSecondary, t.ControlSM, t.Surface) {
 					a.send(protocol.UpdateAllReq{T: "update_all", Dismiss: true})
 				}
 			})

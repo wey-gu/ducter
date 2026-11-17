@@ -123,3 +123,27 @@ func TestIMessageOnChatApps(t *testing.T) {
 		t.Errorf("iMessage still on Notifications: %q", tt.Texts())
 	}
 }
+
+// A window connected to a home elsewhere has no Backend; iMessage is still
+// this Mac's, so 允许 opens System Settings here (it used to do nothing).
+func TestIMessageAllowOpensSettingsWhenTheHomeIsElsewhere(t *testing.T) {
+	br := (&fakeIMessage{}).set(imessage.Status{State: imessage.StateNeedsDisk, Mode: imessage.ModeSelf, Automation: true})
+	app, _ := iaApp(t, i18n.ZH)
+	app.Status = client.Connected
+	app.Receive(settingsFrame())
+	app.Backend = nil
+	var opened []string
+	app.OpenExternal = func(u string) error { opened = append(opened, u); return nil }
+	app.IMessage = br
+	app.openTab(TabChats)
+	tt := ui.NewTesterWith(app.View, 1280, 2400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	tt.Frame()
+	if err := tt.Click("允许"); err != nil {
+		t.Fatalf("no 允许 in %q: %v", tt.Texts(), err)
+	}
+	tt.Frame()
+	if len(opened) != 1 || opened[0] != imessage.PaneFullDisk {
+		t.Fatalf("opened %q, want the Full Disk Access pane", opened)
+	}
+}

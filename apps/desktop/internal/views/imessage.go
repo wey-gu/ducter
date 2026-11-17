@@ -183,15 +183,16 @@ func (a *App) imessagePermissions(c *ui.Context, st imessage.Status, name string
 			if a.buttonFor(c, a.L.T("imessage.perm.ask"), label, btnSecondary, t.ControlSM, t.Surface) {
 				if ask {
 					a.async(func() { _ = br.Probe(context.Background()) }, func() {
-						if !br.Status().Automation && a.Backend != nil {
-							_ = a.Backend.OpenURL(pane)
+						if !br.Status().Automation {
+							a.openLink(pane)
 						}
 					})
 					return
 				}
-				if a.Backend != nil {
-					_ = a.Backend.OpenURL(pane)
-				}
+				// iMessage is this Mac's whichever home the window shows: the pane
+				// opens here too when the window is connected to a home elsewhere
+				// (no Backend), which used to do nothing.
+				a.openLink(pane)
 				br.Kick()
 			}
 		})

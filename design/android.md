@@ -56,6 +56,29 @@ card. **检查更新** in the icon's long-press menu asks now. Words are the dev
 {v} · 更新 · 在下载 {v}… n% · 在核对 {v}… · 在安装 {v}… · 回来了，现在是 {v} · 没更新成 with the reason
 (连不上 GitHub / 校验值对不上 / 这个版本里没有给安卓的文件 / 这份 Ducter 是从别处装的).
 
+## Is it a foldable (D317)
+
+Said by the hardware, not the name. The app reports `foldable` in its handset hello, and
+`DucterShape/foldable` in its web view's user agent, when the phone has a hinge angle sensor
+(`FEATURE_SENSOR_HINGE_ANGLE`) or Jetpack WindowManager has ever reported a `FoldingFeature` on it
+(remembered, so a fold shut stays a foldable). A dual screen (Surface Duo) counts: its hinge hides
+the screen under it (occlusion full), so its fold always separates. Only then the model name
+(`shapeOfModel`: Pixel Fold, Galaxy Z Fold, Find N, Magic V, Mate X, OnePlus Open, vivo X Fold,
+MIX Fold, Phantom V Fold, Surface Duo; flips stay phones).
+
+A browser page asks the screen first: more than one viewport segment (`viewport.segments` or the
+CSS `horizontal-/vertical-viewport-segments` queries) or `navigator.devicePosture` "folded" is a
+foldable, then the model in the user agent, then a screen 600 px or more on both sides (a tablet).
+Left open: a Galaxy Z Fold in Chrome with the reduced user agent ("K"), open flat, has one segment
+and a "continuous" posture, so it still reads as a tablet (folded, a phone) until it is bent.
+
+The iPhone app says its shape from its screen's size classes (`DucterShape/…`): an iPad is a
+tablet; an iPhone regular both ways (iPad-sized) can only be one opened, so a foldable; else a
+phone. That is the iPhone Duo's inner screen (research/111); read at launch, a Duo opened folded
+says phone until the app is opened again on the inner screen. In Safari an iPhone 600 px or more on
+its short side is a foldable. Its fold position waits for iOS 27.1's hinge API (not in the SDK we
+build with) and for Safari to turn on viewport segments, which the page already uses (D182).
+
 ## The fold (D182)
 
 | Posture | Fold | Layout |

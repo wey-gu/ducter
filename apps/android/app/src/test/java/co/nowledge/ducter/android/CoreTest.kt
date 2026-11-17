@@ -184,3 +184,22 @@ class HomeVersionTest {
         assertTrue("another home", HomeVersion.shouldShow("0.0.15", "0.0.9", "https://other.example/", k))
     }
 }
+
+class FoldableTest {
+    @Test fun hardwareNotName() {
+        assertTrue(Foldable.of(hingeSensor = true, sawFold = false))
+        assertTrue(Foldable.of(hingeSensor = false, sawFold = true)) // a Surface Duo: no hinge sensor, a hinge feature
+        assertFalse(Foldable.of(hingeSensor = false, sawFold = false))
+    }
+
+    @Test fun dualScreenAlwaysSeparates() {
+        assertTrue(Foldable.separating(reported = false, occluding = true))
+        assertTrue(Foldable.separating(reported = true, occluding = false))
+        assertFalse(Foldable.separating(reported = false, occluding = false))
+    }
+
+    @Test fun agent() {
+        assertEquals(" DucterShape/foldable", Foldable.agent(true))
+        assertEquals("", Foldable.agent(false))
+    }
+}

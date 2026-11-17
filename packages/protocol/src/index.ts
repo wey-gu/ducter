@@ -1889,19 +1889,40 @@ export const CLIENT_SHAPES: readonly ClientShape[] = ["phone", "tablet", "foldab
 export function shapeOfModel(model: string | undefined): ClientShape | undefined {
   const m = (model ?? "").trim();
   if (!m) return undefined;
+  // Flips fold top to bottom into a phone (Galaxy Z Flip SM-F7xx, razr, Magic V Flip, Find N Flip, vivo X Flip, MIX Flip).
   if (/\bflip\d*\b|razr|SM-F7\d\d/i.test(m)) return "phone";
-  if (/\bfold\b|Fold\d|SM-F9\d\d|\bFind N\d?\b|Magic ?V\d?\b|Mate ?X|OnePlus Open|X ?Fold/i.test(m)) return "foldable";
+  // Book-style folds and dual screens: Pixel Fold, Galaxy Z Fold (SM-F9xx), Find N, Magic V, Mate X,
+  // OnePlus Open, vivo X Fold, Xiaomi MIX Fold, Tecno Phantom V Fold, Surface Duo, a future iPhone Fold.
+  if (/\bfold\b|Fold\d|SM-F9\d\d|\bFind N\d?\b|Magic ?V\d?\b|Mate ?X|OnePlus Open|X ?Fold|MIX ?Fold|Phantom ?V|Surface Duo|iPhone ?Duo/i.test(m)) return "foldable";
   if (/\biPad\b|\btablet\b|\bTab\b|\bPad\b|MatePad|SM-[TXP]\d|Nexus (7|9|10)\b/i.test(m)) return "tablet";
   return undefined;
 }
 
 /**
- * The shape a browser page knows of its own device: the Android model in its user agent, an iPad
- * (also Safari's "Macintosh" with a touch screen, D176), an Android screen 600 px or more on both
- * sides (a tablet; a foldable is told by its model first). Else a phone.
+ * What a browser can tell of its screen beyond the user agent (D317): the Viewport Segments API
+ * (`viewport.segments`, or the CSS `horizontal-/vertical-viewport-segments` queries) counts more
+ * than one segment on a dual screen or a fold spanned across; the Device Posture API
+ * (`navigator.devicePosture.type`) says "folded" only on a foldable bent open.
  */
-export function shapeFromBrowser(ua: string, touch: number, screen: { width: number; height: number }): ClientShape {
+export interface BrowserScreenHints {
+  segments?: number;
+  posture?: string;
+}
+
+/**
+ * The shape a browser page knows of its own device (D317). First what Ducter's own app says it is
+ * (`DucterShape/...` in its user agent: Android from its hinge, iOS from its size class); then the
+ * screen itself (more than one viewport segment, or a "folded" posture: a foldable, whatever its
+ * name); then the Android model in the user agent; an iPad (also Safari's "Macintosh" with a touch
+ * screen, D176); an Android screen 600 px or more on both sides (a tablet). Else a phone.
+ */
+export function shapeFromBrowser(ua: string, touch: number, screen: { width: number; height: number }, hints: BrowserScreenHints = {}): ClientShape {
+  const said = /DucterShape\/(phone|tablet|foldable)\b/.exec(ua)?.[1] as ClientShape | undefined;
+  if (said) return said;
+  if ((hints.segments ?? 1) > 1 || hints.posture === "folded") return "foldable";
   if (/iPad/.test(ua) || (/Macintosh/.test(ua) && touch > 1)) return "tablet";
+  // An iPhone 600 px or more on its short side is an iPhone Duo's inner screen (research/111).
+  if (/iPhone/.test(ua) && Math.min(screen.width, screen.height) >= 600) return "foldable";
   if (/Android/.test(ua)) {
     const model = /Android[^;)]*;\s*([^;)]+?)(?:\s+Build\/[^;)]*)?[;)]/.exec(ua)?.[1];
     const byModel = model && model !== "K" ? shapeOfModel(model) : undefined;
@@ -1912,11 +1933,11 @@ export function shapeFromBrowser(ua: string, touch: number, screen: { width: num
 }
 
 /**
- * A client's shape as the apps draw it: the model its Android app reported (the most exact), else
+ * A client's shape as the apps draw it: its Android app's hinge (D317), then the model it reported, else
  * what it said of itself, else an "iPad …" name (D176), else a phone.
  */
-export function clientShape(c: { name: string; shape?: ClientShape; handset?: { state?: { model?: string } } }): ClientShape {
-  return shapeOfModel(c.handset?.state?.model) ?? (c.shape && CLIENT_SHAPES.includes(c.shape) ? c.shape : undefined) ?? (/^iPad\b/.test(c.name) ? "tablet" : "phone");
+export function clientShape(c: { name: string; shape?: ClientShape; handset?: { state?: { model?: string; foldable?: boolean } } }): ClientShape {
+  return (c.handset?.state?.foldable ? "foldable" : undefined) ?? shapeOfModel(c.handset?.state?.model) ?? (c.shape && CLIENT_SHAPES.includes(c.shape) ? c.shape : undefined) ?? (/^iPad\b/.test(c.name) ? "tablet" : "phone");
 }
 
 // ---------- Connections (D96, design/connectors.md) ----------

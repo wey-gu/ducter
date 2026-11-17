@@ -1566,7 +1566,7 @@ export function createWsHandler(deps: WsDeps) {
         if (!h || !me || !f.state || typeof f.state !== "object") return;
         const s = f.state;
         // D263: the model Android names (a Pixel Fold) says the phone's shape more exactly than its page can.
-        const byModel = shapeOfModel(String(s.model ?? "").slice(0, 60));
+        const byModel = s.foldable === true ? "foldable" : shapeOfModel(String(s.model ?? "").slice(0, 60)); // D317: its hinge first
         if (byModel) devicesView()?.shaped(me, byModel);
         // D255: the app's own link (hello.client "handset") is preferred over its page's while it is up.
         ws.data.handset ??= { send: (fr) => sockets.has(ws) && send(ws, fr), ...(ws.data.client === "handset" ? { native: true } : {}) };
@@ -1575,6 +1575,7 @@ export function createWsHandler(deps: WsDeps) {
           bridge: Number(s.bridge) || 0,
           sdk: Number(s.sdk) || 0,
           model: String(s.model ?? "").slice(0, 60),
+          ...(s.foldable === true ? { foldable: true } : {}),
           service: s.service === true,
           ...(typeof s.restricted === "boolean" ? { restricted: s.restricted } : {}),
           pictures: s.pictures === true,

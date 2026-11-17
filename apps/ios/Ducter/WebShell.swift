@@ -21,10 +21,18 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         return v
     }()
 
+    /// D317: phone, tablet or foldable, from the idiom and the screen's size classes.
+    static func shape(idiom: UIUserInterfaceIdiom = UIDevice.current.userInterfaceIdiom, traits: UITraitCollection = UIScreen.main.traitCollection) -> String {
+        if idiom == .pad { return "tablet" }
+        return traits.horizontalSizeClass == .regular && traits.verticalSizeClass == .regular ? "foldable" : "phone"
+    }
+
     override init() {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
-        config.applicationNameForUserAgent = "Mobile/15E148 DucterApp/\(Native.version)"
+        // D317: the shape from the screen's own size class, not the model name: an iPhone Duo's inner screen
+        // is regular both ways (research/111); an iPhone-idiom screen like that can only be a fold opened.
+        config.applicationNameForUserAgent = "Mobile/15E148 DucterApp/\(Native.version) DucterShape/\(Shell.shape())"
         config.allowsInlineMediaPlayback = true
         config.dataDetectorTypes = []
         // D176: on an iPad too, the page as it is, laid out from the width it has (WebKit would

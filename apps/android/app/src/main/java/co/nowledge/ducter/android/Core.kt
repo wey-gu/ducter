@@ -196,6 +196,22 @@ data class Fold(
 }
 
 /**
+ * D317: is this phone a foldable, said by the hardware rather than its name. A hinge angle sensor
+ * (PackageManager.FEATURE_SENSOR_HINGE_ANGLE), or Android having reported a fold or a dual screen's
+ * hinge (a FoldingFeature) at any time: once seen, it stays a foldable, folded shut or not. A Surface
+ * Duo's hinge hides the screen under it (occlusion FULL), so its fold always separates.
+ */
+object Foldable {
+    fun of(hingeSensor: Boolean, sawFold: Boolean): Boolean = hingeSensor || sawFold
+
+    /** The fold separates the page when Android says so, or when it hides the screen (a dual screen's hinge). */
+    fun separating(reported: Boolean, occluding: Boolean): Boolean = reported || occluding
+
+    /** Said to the page in the user agent (packages/protocol shapeFromBrowser): only when it folds. */
+    fun agent(foldable: Boolean): String = if (foldable) " DucterShape/foldable" else ""
+}
+
+/**
  * D200: is the home this app is paired with running an older Ducter than the app? The page is the
  * home's own, so an older home means an older page, and nothing in it can say so. Same rule and
  * cases as the iPhone app's HomeVersion (apps/ios/Ducter/HomeVersion.swift).

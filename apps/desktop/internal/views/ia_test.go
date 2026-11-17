@@ -88,9 +88,15 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"住在 hel 上，用 Codex 想事情", "自动选的：只有 Codex 登录了", "hel 上的 AI agent"} {
+	for _, want := range []string{"住在 hel 上，用 Codex 想事情", "现在每件事都由 Codex 来做。"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
+		}
+	}
+	// D322: no tray on the pane, and no 自动选的 when there was nothing else to pick.
+	for _, not := range []string{"自动选的：只有 Codex 登录了", "hel 上的 AI agent"} {
+		if tt.HasText(not) {
+			t.Errorf("%q still on the pane", not)
 		}
 	}
 	if tt.HasText("Claude Code · Opus") {
@@ -111,7 +117,7 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 }
 
 // D177: a home with only a DeepSeek key thinks with DeepSeek Harness, and the
-// auto line says only what is true (pi may be signed in too).
+// pane says only what is true (pi may be signed in too).
 func TestPartnerTabDeepSeekFallback(t *testing.T) {
 	app, _ := iaApp(t, i18n.ZH)
 	app.URL = "wss://hel.example.com/ws"
@@ -124,7 +130,8 @@ func TestPartnerTabDeepSeekFallback(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"住在 hel 上，用 DeepSeek Harness 想事情", "自动选的：Claude Code 没登录"} {
+	// D322: with pi signed in too, the switch is there; the 自动选的 lines are retired.
+	for _, want := range []string{"住在 hel 上，用 DeepSeek Harness 想事情", "换一个"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

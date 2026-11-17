@@ -13,24 +13,6 @@ import (
 // person's own AI agents keep: the first words' looking (D298) and the
 // agents Past tasks doesn't show (D299), each with its way back.
 
-// keyGroup is Settings › Partner's 贴一个 API 密钥 / Paste an API key: one
-// row whose button opens the key card in place.
-func (a *App) keyGroup(c *ui.Context) {
-	t := a.T
-	k := &a.kp
-	a.group(c, "apikey", "", "", func() {
-		if !k.setOpen["settings"] {
-			a.row(c, "apikey", a.L.T("key.settings.row"), a.L.T("key.paste.instead.note"), func() {
-				if a.button(c, a.L.T("key.paste.check.open"), btnSecondary, t.ControlSM, t.Surface) {
-					a.openKeyRow("settings")
-				}
-			})
-			return
-		}
-		a.rowBlock(c, "apikey", func() { a.keyRowOpen(c, "settings", t.Surface) })
-	})
-}
-
 // deviceKeyRow is the same row on the home's card in Devices, under its AI
 // agents: closed, one quiet line and its button; open, the card.
 func (a *App) deviceKeyRow(c *ui.Context) {
@@ -84,9 +66,19 @@ func (a *App) keyRowOpen(c *ui.Context, where string, on ui.Color) {
 }
 
 // handoffGroup is 额度用完的时候 / When a limit runs out: D297's choice, the
-// same setting as the switch under a task's limit card.
+// same setting as the switch under a task's limit card. With one agent
+// that does tasks, its note says what happens then (D322).
 func (a *App) handoffGroup(c *ui.Context, st *protocol.Settings) {
-	a.group(c, "handoff", a.L.T("handoff.title"), "", func() {
+	note := ""
+	if len(a.trayHarnesses()) > 0 {
+		switch len(a.readyAgents()) {
+		case 0:
+			return // nothing does tasks yet: no limit to run out
+		case 1:
+			note = a.L.T("handoff.one")
+		}
+	}
+	a.group(c, "handoff", a.L.T("handoff.title"), note, func() {
 		if v, ch := a.toggleRow(c, "handoff", a.L.T("handoff.row"), a.L.T("handoff.help"), st.LimitHandoff); ch {
 			st.LimitHandoff = v
 			a.SetSettings(protocol.SettingsPatch{LimitHandoff: &v})

@@ -80,7 +80,7 @@ also lives in Settings, so it can be seen and undone in one place:
 
 | Where | Row | Same setting as |
 |---|---|---|
-| 伙伴 / Partner, under who does the tasks | **贴一个 API 密钥 / Paste an API key**, its button opening D298's card in place (no title, no card in the card) | the first run's and the conversation's key card |
+| 伙伴 / Partner, in **再添一个 AI agent / Add another AI agent** (D322) | **贴一个 API 密钥 / Paste an API key**, its button opening D298's card in place (no title, no card in the card) | the first run's and the conversation's key card |
 | 伙伴 / Partner | **额度用完的时候 / When a limit runs out**: **直接换别的 AI agent 接着做** and its one line | the switch under a task's limit card (D297) |
 | 伙伴 / Partner | **你的 AI agent 留下的记录 / What your AI agents keep**: **从记录里找接着做的事** and each hidden agent with **再显示** | 别再看了 / 还是看吧 (D298), Past tasks' 不再显示 (D299) |
 | Devices, the home's card | **或者，贴一个 API 密钥 / Or paste an API key**, a flat row under the AI agents' tray | the same card |
@@ -88,6 +88,55 @@ also lives in Settings, so it can be seen and undone in one place:
 
 Each change gets the partner's one word (D296) where it has a consequence the switch doesn't show:
 the hand-off, the looking, an agent shown again. A key pasted in Settings is answered there only.
+
+## 伙伴 / Partner, as one story (D322, 2026-11-17)
+
+The author on v0.0.65's pane: "你仔细审视过整个 UX flow 视觉细节各方面么？" It was assembled from five
+decisions (D89's socket and tray, D150's header, D296's lines, D307's key and hand-off rows), and
+it read that way: the same "another AI would help" said three times in three shapes (the tray's dashed
+未安装 coin, 谁来做事's one sentence with a button floating over empty space, the key card); a
+sunken tray and a 128-pt coin breaking D289's grid; three stacked lines under the coin (用它默认的模型 /
+**自动选的：只有 Codex 登录了** / 已登录), two of them saying nothing; the reassurance
+**换了以后……都还在** shown when there was nothing to switch to; and no order a person could follow.
+
+### Who comes, with which question
+
+| Who | What they came to find out | What they feel before → after |
+|---|---|---|
+| **H** heavy developer | Which agent and model it thinks with; which agents get tasks and how it picks; whether a second agent or a key would keep overnight work going when a limit runs out | Hunting through art for facts → each answer is one row, in the order they'd ask |
+| **C** consumer | "Is it on something good? Do I need to pay for more?" | A shop of coins they don't own → one row of what it uses, one place that says what another would give |
+| **F** fresh user | "What is all this?" Usually arrives from 改名字 | Vocabulary (AI agent, 额度, 密钥) all at once → name, one line where it lives and what it thinks with; the rest only says what is true for them |
+
+### The cases, and what the pane says in each
+
+| Case | 想事情用 / What it thinks with | 做事的 / Who does the tasks | 再添一个 AI agent / Add another AI agent | 额度用完的时候 |
+|---|---|---|---|---|
+| **First run, none signed in** | One row: **还没有能想事情的 AI agent**, **在下面登录一个，或者贴一个 API 密钥。** | Not shown (nothing to say that the row above didn't) | Its note says what it unlocks (**…就能开始想事情、做事**); a row per agent to install or sign in, then the key | Not shown: no limit can run out |
+| **One agent** (the author: Codex on a server) | The agent, its model (or **用它自己默认的模型**), its limit when it reports one; no Switch, no reassurance | One line on the paper: **现在每件事都由 Codex 来做。** (its row would repeat the one above) | **有了第二个，Ducter 就能按事情挑；一个的额度用完了，另一个接着做。**; Claude Code **去装上** / **去登录**; the key | The switch, and **现在只有一个 AI agent 能做事：额度用完时，等它恢复再接着做。** |
+| **Several agents** | The agent with **换一个** (the others listed in place, each **用它**), the model's choice with its one phrase, the reassurance as the group's last line | A row per signed-in agent (limit, **Ducter 想事情也用它** on the one it thinks with) with its **用它做事** switch; how it picks as the section's note; the rules; **打开任何一件事，都能换别的 AI agent 接着做。** | **多一个，Ducter 挑的时候就多一个选择。** and the key | The switch |
+| **On a server** | Same rows; the header says **住在 hel 上**, sign-in rows say **在 hel 上登录** | Same | The buttons go to Devices, where the server's card signs it in | Same |
+| **A pay-per-use key only** | The agent the key runs (DeepSeek Harness) with **用你贴的 API 密钥，按用量付费** | One line, as with one agent | The subscription agents, and the key row again (a second key) | As with one agent |
+
+### The order, and why
+
+1. **The partner** (the pane's header, on the paper like every pane's: the clay partner at 64, the
+   name, **住在 {home} 上，用 {agent} 想事情**). Its art lives here only.
+2. **想事情用** — what it is (the question every user has first).
+3. **做事的** — who does the work, and how it chooses, in one sentence; per-task override last.
+4. **再添一个 AI agent** — the one place that answers "should I add another, and what do I get":
+   signing in an agent and pasting a key are the same move, so they are one group, said once.
+5. **额度用完的时候** — only meaningful once something does tasks.
+6. Then how it talks, what your agents keep, and the trust lists (unchanged).
+
+Rules: coins at the 40 tile size (D289), no sunken panels or art inside groups; a line that says
+nothing (已登录 on a signed-in agent, 自动选的 when there was no choice) is not shown; the
+reassurance and any control appear only where a change is possible; a change is answered once in
+the partner's voice under its group (D296: **好，从你的下一句话开始，我用 Codex 想事情。**, **好，挑谁
+做事的时候我会算上 Codex。** / **好，Codex 先不接新的事了。**), never a floating toast. The tray, the socket
+and the token's flight stay where they belong, on Devices (D89's game moment moves there whole).
+
+Shots: `.shots/d322/before`, `.shots/d322/after` (Mac 1280 and 900, web 1400 and 390, zh and en, light
+and dark, each of the five cases).
 
 ## Not done
 

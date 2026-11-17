@@ -397,14 +397,16 @@ func (a *App) backgroundLine(c *ui.Context) bool {
 						ui.Text(c, a.L.T("bg.off.body")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
 					}
 				})
-				label := a.L.T("ask.later")
+				// D314: 以后再说 is quiet beside the primary; alone, 好 is the
+				// card's one decision, a secondary clay button (as the other asks').
+				label, kind := a.L.T("ask.later"), btnText
 				if b.allowed {
-					label = a.L.T("cli.ok")
+					label, kind = a.L.T("cli.ok"), btnSecondary
 				}
-				if a.button(c, label, btnText, 40, t.Surface) {
+				if a.button(c, label, kind, t.ControlMD, t.Surface) {
 					b.closed = true
 				}
-				if !b.allowed && a.button(c, a.L.T("bg.open"), btnPrimary, 40, t.Surface) {
+				if !b.allowed && a.button(c, a.L.T("bg.open"), btnPrimary, t.ControlMD, t.Surface) {
 					_ = a.Backend.OpenSettings(local.SettingsLoginItems)
 				}
 			})

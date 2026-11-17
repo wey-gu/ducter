@@ -255,6 +255,51 @@ func sourceTone(cv protocol.ConnectionView, ink ui.Color, t *theme.Tokens) sideT
 	return sideMuted
 }
 
+// sourceTile is a source's mark in the tile column: OOMOL's own mark for
+// OOMOL and its oo (D314, a product the person signed in to), the clay
+// mailbox for a source of the person's own (an address and key, an MCP).
+func (a *App) sourceTile(c *ui.Context, cv protocol.ConnectionView) func() {
+	if cv.Source == "oomol" || cv.Source == "oo" {
+		return a.brandTile(c, "oomol", sourceDown(cv))
+	}
+	return a.mailboxTile(c, cv)
+}
+
+// brandOf is the product mark a service is shown by (D314), "" for one
+// Ducter has no faithful mark of (it keeps its drawn stand-in).
+func brandOf(service string) string {
+	switch {
+	case service == "gmail":
+		return "gmail"
+	case service == "googlecalendar" || service == "google_calendar":
+		return "googlecalendar"
+	case service == "github":
+		return "github"
+	case strings.HasPrefix(service, "slack"):
+		return "slack"
+	case strings.HasPrefix(service, "discord"):
+		return "discord"
+	case service == "telegram":
+		return "telegram"
+	}
+	return ""
+}
+
+// toolBrand is another AI tool's own mark by the name Mem gives it
+// (mem-source.ts), "" for one with no mark here (D314).
+func toolBrand(from string) string {
+	return map[string]string{"Cursor": "cursor", "Cline": "cline", "Windsurf": "windsurf", "Gemini": "gemini", "Gemini CLI": "gemini", "Zed": "zed", "Raycast": "raycast"}[from]
+}
+
+// serviceTile is an app's row tile: its own mark when Ducter has it, else
+// the drawn stand-in, both on the small white clay tile.
+func (a *App) serviceTile(c *ui.Context, key, service string) func() {
+	if b := brandOf(service); b != "" {
+		return a.brandTile(c, b, false)
+	}
+	return a.markTile(c, key, a.drawAppMark(service))
+}
+
 // mailboxTile is a source's clay mailbox, small, in the tile column.
 func (a *App) mailboxTile(c *ui.Context, cv protocol.ConnectionView) func() {
 	box := a.drawMailbox(cv.Source)
@@ -287,7 +332,7 @@ func (a *App) sourceCard(c *ui.Context, cv protocol.ConnectionView) {
 				}
 			}
 		}
-		a.headRow(c, "src:"+cv.ID, a.mailboxTile(c, cv), name, line, sourceTone(cv, ink, a.T), control)
+		a.headRow(c, "src:"+cv.ID, a.sourceTile(c, cv), name, line, sourceTone(cv, ink, a.T), control)
 		a.serviceRows(c, cv)
 		// D222: a calendar new to this client, or Gmail without one.
 		a.calFirstLine(c, cv)
@@ -493,7 +538,7 @@ func (a *App) serviceRows(c *ui.Context, cv protocol.ConnectionView) {
 				}
 			}
 		}
-		if a.openRow(c, "svc:"+cv.ID+"|"+k, a.markTile(c, "app:"+cv.ID+"|"+k, a.drawAppMark(w.Service)), title, w.Account, t.InkMuted, open == k, control) {
+		if a.openRow(c, "svc:"+cv.ID+"|"+k, a.serviceTile(c, "app:"+cv.ID+"|"+k, w.Service), title, w.Account, t.InkMuted, open == k, control) {
 			if open == k {
 				cs.tile[cv.ID] = ""
 			} else {

@@ -1,0 +1,43 @@
+// D314: Done for you's pictures, one drawn glyph per kind and a sharper one per sub-kind where the
+// sub-kind is a different thing to look at (a mail and a chat message are both "sent"; a calendar
+// event and a merge are both "changed"). One family: SVG path data on a 20-point grid, stroked 1.6
+// with round ends and joins in the pebble's ink, never filled, never emoji (D211). The pebble's tint
+// says the kind (the filters' order); the shape says what exactly it was.
+//
+// Shared with the Mac (apps/desktop/internal/views/didglyphs.go) through fixtures/did-glyphs.json.
+
+import type { DidKind, DidSub } from "./did.ts";
+
+/** The 20-grid stroke width every glyph is drawn with. */
+export const DID_GLYPH_STROKE = 1.6;
+
+/** The kind's own picture, and per "kind.sub" the sharper one. */
+export const DID_GLYPHS: Record<string, string> = {
+  sent: "M3.6 9.6 16.2 4l-4.6 12.4-2.9-5.1zM8.7 11.3 16.2 4",
+  "sent.mail": "M3.5 5.5h13v9h-13zM3.8 6.1 10 10.8l6.2-4.7",
+  "sent.message": "M4.2 4.8h11.6a1.7 1.7 0 0 1 1.7 1.7v6a1.7 1.7 0 0 1-1.7 1.7H9.3l-3.6 2.7v-2.7H4.2a1.7 1.7 0 0 1-1.7-1.7v-6a1.7 1.7 0 0 1 1.7-1.7z",
+  "sent.post": "M3.5 8.2v3.6h2.6l6.6 3.6V4.6L6.1 8.2zM6.6 11.8l1.1 4.2M15.3 7.6a3.3 3.3 0 0 1 0 4.8",
+  paid: "M3.5 6h13v8.6h-13zM3.5 8.9h13M6 12.1h3.2",
+  "paid.buy": "M4.8 7h10.4l-.9 9.4H5.7zM7.5 7V5.9a2.5 2.5 0 0 1 5 0V7",
+  called: "M6.2 3.8h2.1l1.1 3.3-1.7 1.2a8 8 0 0 0 4 4l1.2-1.7 3.3 1.1v2.1a1.7 1.7 0 0 1-1.9 1.7A12.3 12.3 0 0 1 4.5 5.7a1.7 1.7 0 0 1 1.7-1.9z",
+  filled: "M12.6 11.2a3.6 3.6 0 1 0-3.4-2.4L4 14v2.2h2.4v-1.6H8v-1.6h1.6l1.3-1.3a3.6 3.6 0 0 0 1.7-.5zM13 6.6h.01",
+  "filled.detail": "M10 9.8a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2zM4.4 16.4a5.6 5.6 0 0 1 11.2 0",
+  changed: "M4.5 15.5l1-3.5 7.6-7.6a1.6 1.6 0 0 1 2.3 2.3L7.8 14.3zM11.8 5.7l2.4 2.4",
+  "changed.calendar": "M4 5.4h12v11.1H4zM4 8.9h12M7.3 3.6v3.2M12.7 3.6v3.2M8 12.8l1.5 1.5 2.9-2.9",
+  "changed.merge": "M5.5 3.5v3.6a4 4 0 0 0 1.4 3L10 12.8l3.1-2.7a4 4 0 0 0 1.4-3V3.5M10 12.8v3.7",
+  "changed.pr": "M6 6.6v6.8M6 3.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM6 13.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM14 13.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM14 13.4V8.1a2.6 2.6 0 0 0-2.6-2.6H8.8M10.7 3.6 8.8 5.5l1.9 1.9",
+  "changed.files": "M5 3.5h6.4L15 7.1v9.4H5zM11.4 3.5v3.6H15M7.6 10.6h4.8M7.6 13.4h3.2",
+  "changed.setting": "M3.8 6.6h12.4M3.8 13.4h12.4M7.6 4.4v4.4M12.4 11.2v4.4",
+  "changed.install": "M10 3.5v8.8M6.6 9 10 12.4 13.4 9M4.5 16h11",
+  deleted: "M4.8 6.2h10.4M8 6.2V4.6h4v1.6M6.3 6.2l.8 9.8h5.8l.8-9.8M8.9 8.8v4.6M11.1 8.8v4.6",
+  "deleted.calendar": "M4 5.4h12v11.1H4zM4 8.9h12M7.3 3.6v3.2M12.7 3.6v3.2M8.3 11.3l3.4 3.4M11.7 11.3l-3.4 3.4",
+  read: "M2.8 10S5.5 5.2 10 5.2s7.2 4.8 7.2 4.8-2.7 4.8-7.2 4.8S2.8 10 2.8 10zM10 12.1a2.1 2.1 0 1 0 0-4.2 2.1 2.1 0 0 0 0 4.2z",
+};
+
+/** The picture for an item: its sub-kind's where it has one, else its kind's. */
+export function didGlyph(kind: DidKind, sub?: DidSub | string): string {
+  return (sub && DID_GLYPHS[`${kind}.${sub}`]) || DID_GLYPHS[kind] || "";
+}
+
+/** Each kind's pebble tint (one table for the Mac and the web; D314 settled the two that disagreed). */
+export const DID_TINTS: Record<DidKind, string> = { sent: "clay", paid: "sand", called: "sage", filled: "mist", changed: "lilac", deleted: "stone", read: "" };

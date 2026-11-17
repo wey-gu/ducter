@@ -10,6 +10,7 @@ import { PROACTIVE_MODES } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { BrandTile, brandOf } from "./brand.tsx";
 import { AddRow, Btn, DangerButton, OpenRow, Seg, Toggle } from "./controls.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { ago } from "./format.ts";
@@ -408,7 +409,7 @@ export function SourceCard({ c }: { c: ConnectionView }) {
   return (
     <>
     <Group label={name}>
-      <GHead tile={<Tile mark><Mailbox source={c.source} off={down(c)} /></Tile>} name={name} line={s.line} tone={s.warn ? "bad" : watching ? "done" : undefined}>
+      <GHead tile={c.source === "oomol" || c.source === "oo" ? <BrandTile name="oomol" faded={down(c)} /> : <Tile mark><Mailbox source={c.source} off={down(c)} /></Tile>} name={name} line={s.line} tone={s.warn ? "bad" : watching ? "done" : undefined}>
         {c.source === "oomol" && c.apps && !c.apps.length && !down(c) && <Btn kind="text" size="sm" chev label={t("acct.connect.oomol")} onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />}
       </GHead>
       {tiles.map((w) => {
@@ -423,7 +424,7 @@ export function SourceCard({ c }: { c: ConnectionView }) {
         return (
           <Fragment key={key(w)}>
             <OpenRow
-              tile={<Tile mark><AppMark service={w.service} /></Tile>}
+              tile={brandOf(w.service) ? <BrandTile name={brandOf(w.service)} /> : <Tile mark><AppMark service={w.service} /></Tile>}
               title={title}
               line={w.account}
               state={state ? { text: state, tone: bad ? "bad" : watching ? "done" : undefined } : undefined}

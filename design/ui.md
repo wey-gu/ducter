@@ -405,6 +405,8 @@ task's Details (D74).
 | Accent | orange clay | send, and the equip; nothing else |
 | Quiet text | flat ink, a tint under it on hover | crumbs, Reply…, Details, Cancel, 都按默认; every other action in a bar (branch, 工作台, ⋯, watch, full screen), pressed in while open; the conversation's counts link; never the way to a place |
 
+A card's last line follows the set (D314): its one decision is a clay button at the right edge (a lone acknowledgement such as **完成 / Done** or **好 / OK** is a small secondary, never quiet text standing alone, which reads as a grey button under the pointer); a quiet text button stands only beside a clay one, at the left. Heights are the three constants (36, 44, 52), never a raw number.
+
 **Mac and phone (D262).** The same places and the same bar on both, with these deliberate
 differences: Settings is a place with a rail on the Mac and a pushed sheet on the phone (D150);
 设备 is a place on the Mac and Settings' 你的设备 page on the phone, so a phone's bar has no 设备
@@ -594,7 +596,7 @@ One vocabulary on every tab:
   the right edge, its foot what the switch does); **这周记下的** and **更早记下的** as sections (an accent pebble
   in the tile column, the title, its age, a quiet **忘掉** that asks in place; the last foot Mem's count and
   **去 Nowledge Mem 看**); **你别的 AI 记下的** (the tool's coin or letter, the title, **{tool} 记的**, its age at
-  the right; read-only); **Nowledge Mem** as one group (its letter on a notebook-blue pebble, **已连上**, **记在哪儿**,
+  the right; read-only); **Nowledge Mem** as one group (its app icon as the tile, D314, **已连上**, **记在哪儿**,
   **它的名字**, an update as a row, the raw facts behind **详情**, the version as the foot). Before Mem: the partner
   small on the paper (an empty state), then one group with the two setup steps. `design/memory.md`.
 - **Chat apps / 聊天软件** (D276; D283): its rail mark is clay art like its neighbours, two puffy
@@ -602,7 +604,7 @@ One vocabulary on every tab:
   (`set_chats`, made like `set_autofill`: `design/art/assets/batch_chats.json`, cut with
   `tools/cut.swift`; Mac `art/clay/set_chats@256.png`, web `art/set_chats.webp`). The page is D273's
   grid: the lede, then one raised group per chat app (Telegram, Slack, iMessage), whose first row is
-  the app (a letter pebble in a palette tint, the name 18/800 heading, its state 13 in the state's
+  the app (its own mark on the small white clay tile, D314, the name 18/800 heading, its state 13 in the state's
   ink), never a title on the paper above it; a setup's steps carry a 26 sunken step mark centred in
   the tile column and one 15 sentence on the text column, with a mono chip, a quiet link or a field
   (label 13/700 over a white input with a hairline) under it; the last line is the privacy note
@@ -624,7 +626,7 @@ One vocabulary on every tab:
 - **A pushed page on the phone keeps the list's discipline (D273).** Two edges only: the page edge
   (‹ 设置, the title, every group) and the text edge one row inset (16) in: section headers (13/700
   `ink-soft`, not the 20 heading), notes and ledes (13 muted), and every row's 40 icon tile and
-  words. One row anatomy everywhere: an optional 40 tile (clay art, a coin, a letter pebble, or an
+  words. One row anatomy everywhere: an optional 40 tile (clay art, a coin, a product's own mark on a white clay tile, a letter pebble for a thing with no mark, or an
   add row's drawn ＋ with no tile under it), the title 15/700, one muted line, the control or › at
   the right edge. The rows of one section sit in one raised group (radius 24, the clay base) with
   `line-soft` hairlines; a switch alone is its own one-row group; never a card inside a card, never
@@ -981,6 +983,19 @@ Flip, Razr, Magic V Flip, Find N Flip, MIX Flip) open into a phone and stay one.
   (`*_dark`, D213): the same object re-cast in a pale clay, its form and top light kept (Codex's
   charcoal knot becomes bone clay, the way the mark itself turns light on a dark page). Shown at
   28 pt and up only (D213). Pipeline and sources: `design/art/LOGOS.md`, `tools/art/coins.py`.
+- **Marks (D314): three families, one rule each.** A third-party product (Telegram, Slack,
+  Messages, WeChat, Gmail, Google Calendar, GitHub, Discord, OOMOL, Tuwa, Nowledge Mem, and the
+  AI tools in Memory: Cursor, Cline, Windsurf, Gemini, Zed, Raycast) is shown by its own mark,
+  drawn faithfully from the owner's paths, never redrawn or recoloured, at 24 on the small white
+  clay tile (`brandTile` / `BrandTile`); its ink parts are `currentColor`, so on the dark paper
+  they turn light as the owners' own dark marks do; an app whose mark is its app icon (Nowledge
+  Mem) shows that icon as the tile. The AI agents keep their clay coins (D183). Ducter's own
+  concepts are clay art (a mailbox for a source of the person's own, the handset for 打电话 and
+  用你自己的号码打). Kinds of action are drawn glyphs in one family: SVG path data on a 20-point
+  grid, stroked 1.6 with round ends (Done for you's `did-glyphs.ts`, shared with the Mac through
+  `fixtures/did-glyphs.json`; Past tasks' glyphs). A thing with no faithful mark (a website in
+  Autofill, an unknown tool) keeps its first letter on a sunken pebble. Sources and usage notes:
+  `design/art/LOGOS.md`.
 - **Equip motion:** sticker peel-and-stick (`research/26`, `research/28` timings).
 - **Asset pipeline:** generate with the reference images for consistency, select, clean up,
   and export at 1×/2×/3× with transparent backgrounds. Only final exports go into git, plain

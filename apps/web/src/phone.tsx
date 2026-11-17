@@ -6,6 +6,7 @@ import type { CallPlan, CallView, ConnectionView, OwnPhoneView, SignInView } fro
 import { callEnded, prettyNumber, TUWA_MCP } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { BrandTile } from "./brand.tsx";
 import { Btn, Chev, DangerButton, Facts, Seg, Switch } from "./controls.tsx";
 import { shownDeviceName, spoken } from "./format.ts";
 import type { DecisionState } from "./store.ts";
@@ -525,7 +526,7 @@ export function PhoneCard({ c }: { c: ConnectionView }) {
   const off = [p.rails?.sampling && t("call.card.sampling", p.provider), p.rails?.shared && t("call.card.shared", p.provider), p.doNotCall > 0 && t("call.card.dnc", p.doNotCall)].filter(Boolean) as string[];
   return (
     <Group id="acct-phone" label={spoken(A.L, t("call.card.title"), p.provider)}>
-      <GHead tile={<Tile><CallArt off={out} size={40} /></Tile>} name={p.provider} line={out ? t("call.card.out", p.provider) : t("call.card.ok")} tone={out ? "bad" : "done"}>
+      <GHead tile={/^tuwa$/i.test(p.provider) ? <BrandTile name="tuwa" faded={out} /> : <Tile><CallArt off={out} size={40} /></Tile>} name={p.provider} line={out ? t("call.card.out", p.provider) : t("call.card.ok")} tone={out ? "bad" : "done"}>
         {!out && <span class="g-state">{today}</span>}
         {out && <Btn kind="secondary" size="sm" label={t("call.card.signin")} onClick={() => A.reauth(c.id)} />}
       </GHead>

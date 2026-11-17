@@ -131,7 +131,7 @@ func (a *App) webSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) {
 	sheet.Children(func() {
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, a.L.T("web.title")).FontSize(t.LG).FontWeight(800).Grow(1).MinWidth(0)
-			if a.button(c, a.L.T("ask.later"), btnText, 36, t.Surface) {
+			if a.button(c, a.L.T("ask.later"), btnText, t.ControlSM, t.Surface) {
 				a.web.open = false
 			}
 		})

@@ -40,3 +40,38 @@ token (`token_ink`) with the name beside it, a one-line change in each client's 
    squared; `#tone` moves a render that came out off the mark's colour back to it), then
    `python3 tools/art/coins.py` writes every size the apps load, and
    `node apps/site/scripts/art.mjs` (in `apps/site`) the site's.
+
+## Products' own marks in the tile column (D314)
+
+Where a row is about another company's product, it shows that product's own mark, the way the
+coins show the agents': to say which product it is, next to its name, never to imply the owner
+endorses Ducter. The marks are the owners' own paths, unaltered (no redrawing, recolouring,
+stretching or effects), at 24 on the small white clay tile, so each keeps the clear space its
+guidelines ask for. Ink parts are `currentColor`: the theme's ink, near-black on light and bone on
+dark, as the owners' own light and dark marks (GitHub, OOMOL, Tuwa's t, Cursor, Cline, Windsurf).
+
+| Mark | Source of the paths | Colours |
+|---|---|---|
+| Telegram | Simple Icons 13.21.0 (CC0), split into the circle and the plane | Telegram's blue gradient `#2AABEE` → `#229ED9`, the plane white |
+| Slack | Simple Icons, its eight pieces | the four Slack colours (slack.com media kit) |
+| Messages (iMessage) | Simple Icons, split into the square and the bubble | Apple's system green `#34C759`, the bubble white |
+| WeChat | Simple Icons | WeChat green `#07C160` |
+| Gmail | Google's 2020 Gmail icon (five paths) | its five colours |
+| Google Calendar | Simple Icons, on a white page | Google blue `#4285F4` |
+| GitHub | Simple Icons | ink |
+| Discord | Simple Icons | Blurple `#5865F2` |
+| OOMOL | oomol.com/img/brand/oomol-mark.svg | ink |
+| Tuwa | tuwa.ai/favicon.svg (the t and its green dot; the clip at x = 84 cut into the path) | `#30D158`, the t in ink |
+| Cursor, Cline, Windsurf | LobeHub icons 1.75.0 | ink |
+| Gemini | LobeHub icons 1.75.0 (`gemini-color`) | its own gradients |
+| Zed, Raycast | Simple Icons | `#084CCF`, `#FF6363` |
+| Nowledge Mem | its macOS app icon (`/Applications/Nowledge Mem.app`), cropped to the icon, 128 px for the Mac, 120 px WebP for the web | as shipped |
+
+The SVGs live in `apps/web/src/brand/` (the one source; each file names where its paths came
+from) and are copied byte for byte to `apps/desktop/internal/theme/art/brand/`
+(`brand_test.go` fails when they differ). Guidelines read: Slack's media kit asks for the mark
+unaltered in its colours; Telegram, WeChat, Discord and GitHub publish marks for linking to their
+products; Apple restricts its app icons to approved uses, so Messages is shown by the Simple Icons
+rendering of the bubble, not Apple's icon file. The same rule as the coins applies: if an owner
+objects, its tile goes back to the drawn stand-in (Accounts) or the letter, a one-line change in
+`brandOf` / `toolBrand` on each client.

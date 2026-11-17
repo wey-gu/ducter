@@ -127,26 +127,26 @@ func (a *App) notifyAsk(c *ui.Context) {
 	switch s.result {
 	case "ok":
 		a.askRow(c, theme.Done, a.L.T("notify.ok"), "", func() {
-			if a.button(c, a.L.T("cli.ok"), btnSecondary, 40, t.Surface) {
+			if a.button(c, a.L.T("cli.ok"), btnSecondary, t.ControlMD, t.Surface) {
 				a.answer(askNotify, "yes")
 			}
 		})
 	case "denied":
 		a.askRow(c, theme.Idle, a.L.T("notify.denied"), a.L.T("notify.denied.body"), func() {
-			if a.button(c, a.L.T("ask.later"), btnText, 40, t.Surface) {
+			if a.button(c, a.L.T("ask.later"), btnText, t.ControlMD, t.Surface) {
 				a.answer(askNotify, "later")
 			}
-			if a.button(c, a.L.T("notify.open"), btnPrimary, 40, t.Surface) {
+			if a.button(c, a.L.T("notify.open"), btnPrimary, t.ControlMD, t.Surface) {
 				_ = a.Backend.OpenSettings(local.NotificationsFor(a.Backend.BundleID()))
 				a.answer(askNotify, "yes") // they know where it is now; don't ask again
 			}
 		})
 	default:
 		a.askRow(c, theme.NeedsYou, a.L.T("notify.ask"), a.L.T("notify.ask.body"), func() {
-			if a.button(c, a.L.T("ask.later"), btnText, 40, t.Surface) {
+			if a.button(c, a.L.T("ask.later"), btnText, t.ControlMD, t.Surface) {
 				a.answer(askNotify, "later")
 			}
-			if a.button(c, a.L.T("notify.yes"), btnPrimary, 40, t.Surface) && !s.busy {
+			if a.button(c, a.L.T("notify.yes"), btnPrimary, t.ControlMD, t.Surface) && !s.busy {
 				s.busy = true
 				var err error
 				a.async(func() { err = a.Desktop.Notify(a.L.T("notify.test.title", name), a.L.T("notify.test.body")) }, func() {
@@ -172,10 +172,10 @@ func (a *App) phoneAsk(c *ui.Context) {
 	s := &a.asks
 	if !s.pairAsked {
 		a.askRow(c, theme.Idle, a.L.T("phone.ask"), a.L.T("phone.ask.body"), func() {
-			if a.button(c, a.L.T("ask.later"), btnText, 40, t.Surface) {
+			if a.button(c, a.L.T("ask.later"), btnText, t.ControlMD, t.Surface) {
 				a.answer(askPhone, "later")
 			}
-			if a.button(c, a.L.T("phone.show"), btnPrimary, 40, t.Surface) {
+			if a.button(c, a.L.T("phone.show"), btnPrimary, t.ControlMD, t.Surface) {
 				s.pairAsked = true
 				if a.S.Reach != nil {
 					s.clients = len(a.S.Reach.Clients)
@@ -192,7 +192,7 @@ func (a *App) phoneAsk(c *ui.Context) {
 		return
 	}
 	done := func() {
-		if a.button(c, a.L.T("cli.ok"), btnSecondary, 40, t.Surface) {
+		if a.button(c, a.L.T("cli.ok"), btnSecondary, t.ControlMD, t.Surface) {
 			a.answer(askPhone, "yes")
 		}
 	}
@@ -292,7 +292,7 @@ func (a *App) phoneNoAddress(c *ui.Context, done func()) {
 	case any != nil && (any.State == "failed" || anywhereSetupFailed(any)):
 		a.askRow(c, theme.Idle, a.L.T("phone.noaddress"), a.L.T("phone.anywhere.failed"), func() {
 			done()
-			if a.button(c, a.L.T("anywhere.retry"), btnPrimary, 40, t.Surface) {
+			if a.button(c, a.L.T("anywhere.retry"), btnPrimary, t.ControlMD, t.Surface) {
 				if any.State == "failed" && home != nil {
 					a.send(protocol.AbilityReq{T: "ability", Device: home.ID, Ability: protocol.AbilityRemote, On: true})
 				} else {
@@ -302,19 +302,19 @@ func (a *App) phoneNoAddress(c *ui.Context, done func()) {
 		})
 	case any != nil && any.State == "off":
 		a.askRow(c, theme.Idle, a.L.T("phone.noaddress"), a.L.T("anywhere.kept", any.Hostname), func() {
-			if a.button(c, a.L.T("ask.later"), btnText, 40, t.Surface) {
+			if a.button(c, a.L.T("ask.later"), btnText, t.ControlMD, t.Surface) {
 				a.answer(askPhone, "later")
 			}
-			if home != nil && home.State == protocol.DeviceAwake && a.button(c, a.L.T("anywhere.turnOn"), btnPrimary, 40, t.Surface) {
+			if home != nil && home.State == protocol.DeviceAwake && a.button(c, a.L.T("anywhere.turnOn"), btnPrimary, t.ControlMD, t.Surface) {
 				a.send(protocol.AbilityReq{T: "ability", Device: home.ID, Ability: protocol.AbilityRemote, On: true})
 			}
 		})
 	default:
 		a.askRow(c, theme.Idle, a.L.T("phone.noaddress"), a.L.T("phone.noaddress.body"), func() {
-			if a.button(c, a.L.T("ask.later"), btnText, 40, t.Surface) {
+			if a.button(c, a.L.T("ask.later"), btnText, t.ControlMD, t.Surface) {
 				a.answer(askPhone, "later")
 			}
-			if home != nil && home.State == protocol.DeviceAwake && a.button(c, a.L.T("anywhere.setup"), btnPrimary, 40, t.Surface) {
+			if home != nil && home.State == protocol.DeviceAwake && a.button(c, a.L.T("anywhere.setup"), btnPrimary, t.ControlMD, t.Surface) {
 				a.beginAnywhere()
 			}
 		})

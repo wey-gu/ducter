@@ -131,8 +131,8 @@ func (a *App) chatGroup(c *ui.Context, key, name string, body func()) {
 	})
 }
 
-// chatHead is a chat app's first row: its letter pebble in the tile
-// column, its name, and one line of how it stands.
+// chatHead is a chat app's first row: the app's own mark in the tile
+// column (D314), its name, and one line of how it stands.
 func (a *App) chatHead(c *ui.Context, kind, name, line string, tone sideTone) {
 	t := a.T
 	a.sep(c)
@@ -149,27 +149,11 @@ func (a *App) chatHead(c *ui.Context, kind, name, line string, tone sideTone) {
 	})
 }
 
-// chatTile is a chat app's mark: its first letter on a clay pebble in a
-// tint of the palette (never the service's own logo).
+// chatTile is a chat app's own mark on the small white clay tile (D314;
+// it replaced D283's letter pebbles): Telegram's plane, Slack's four
+// colours, Messages' bubble, WeChat's two bubbles.
 func (a *App) chatTile(c *ui.Context, kind string) {
-	t := a.T
-	letter, fill, ledge, ink := "T", t.Working.Surface, t.Working.Ledge, t.Working.Ink
-	switch kind {
-	case "slack":
-		letter, fill, ledge, ink = "S", t.Waiting.Surface, t.Waiting.Ledge, t.Waiting.Ink
-	case "imessage":
-		letter, fill, ledge, ink = "M", t.Done.Surface, t.Done.Ledge, t.Done.Ink
-	case "wechat":
-		// D301: 微 in Chinese, W in English, on the sage tint.
-		letter = a.L.T("chats.wx.mark")
-		if g, ok := t.Tint("sage"); ok {
-			fill, ledge, ink = g.Ground, g.Ledge, g.Ink
-		}
-	}
-	ui.Row(c.Key("chat-tile:"+kind)).Size(40, 40).Shrink(0).Radius(t.RadiusSM).Background(fill).
-		Shadow(0, 3, 0, 0, ledge).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
-		ui.Text(c, letter).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(ink).LineHeight(1)
-	})
+	ui.Box(c.Key("chat-tile:" + kind)).Shrink(0).Children(a.brandTile(c, kind, false))
 }
 
 // chatBody is a block of a group's rows set on the text column (past the

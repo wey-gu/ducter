@@ -15,6 +15,7 @@ import type { ChannelKind, ChannelServerFrame, ChannelView } from "@ducter/proto
 import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { BrandTile } from "./brand.tsx";
 import { Btn, DangerButton, LinkBtn } from "./controls.tsx";
 import { Qr } from "./phone.tsx";
 
@@ -83,16 +84,11 @@ function botLine(v: ChannelView): string {
   return v.bot.handle ? `@${v.bot.handle}` : v.bot.team || v.bot.name;
 }
 
-const LETTER: Record<string, string> = { telegram: "T", slack: "S", imessage: "M" };
-const letterOf = (kind: string) => (kind === "wechat" ? t("chats.wx.mark") : LETTER[kind]);
-
-/** A chat app's first row: its letter pebble (never the service's logo), its name, how it stands. */
+/** A chat app's first row: the app's own mark on the small white clay tile (D314), its name, how it stands. */
 function Head(p: { kind: string; name: string; line: string; tone?: string }) {
   return (
     <div class="chat-head">
-      <span class={`chat-tile ${p.kind}`} aria-hidden="true">
-        {letterOf(p.kind)}
-      </span>
+      <BrandTile name={p.kind} />
       <span class="grow">
         <b>{p.name}</b>
         <small class={p.tone ? `tone-${p.tone}` : undefined}>{p.line}</small>

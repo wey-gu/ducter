@@ -131,3 +131,21 @@ describe("D311: the rest of research/110's list", () => {
     expect(src("devcard.tsx")).toMatch(/<BackRow label=\{t\("devices.title"\)\}/);
   });
 });
+
+describe("research/123: the 0.0.69 Settings panes on the iPhone", () => {
+  test("the Partner page's invitation keeps its link's words (it shrank to 看. / Sh…)", () => {
+    expect(blocks(".set-invite > .btn").join("")).toMatch(/flex:\s*none/);
+  });
+  test("试试看's copy button (32) and a Noted line's 撤销 (20) reach 44", () => {
+    expect(blocks(".ex-copy::before").join("")).toMatch(/inset:\s*-6px/);
+    expect(blocks(".noted-line .qlink::before").join("")).toMatch(/inset:\s*-12px -8px/);
+    expect(blocks(".ex-copy, .noted-line .qlink").join("")).toMatch(/position:\s*relative/);
+  });
+  test("an own-number step's body is not indented twice inside its block", () => {
+    // As specific as `.set-page.pushed .own-body` (52 px), which otherwise wins.
+    expect(blocks(".g-block > .own-body, .set-page.pushed .g-block > .own-body").join("")).toMatch(/padding:\s*0/);
+  });
+  test("怎么装 inside a setup step is the quiet 44-tall disclosure", () => {
+    expect(blocks(".chat-step .mem-more summary").join("")).toMatch(/min-height:\s*44px/);
+  });
+});

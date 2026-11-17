@@ -13947,3 +13947,20 @@ svg .wave.w2.on {
 .ex-arrow { width: 12px; height: 16px; margin-left: var(--s4); color: var(--ink-muted); }
 .ex-then { display: flex; align-items: center; gap: var(--s2); font-size: var(--sm); line-height: 1.5; color: var(--ink-soft); }
 .ex-then > :first-child { flex: none; }
+/* research/123 (the 0.0.69 iPhone walk): fits found in the iOS Simulator at 402 and 375 pt. */
+/* The Partner page's invitation: its one link keeps its words (it shrank to "看." and "Sh…"). */
+.set-invite > .btn { flex: none; }
+/* 试试看's copy button and a Noted line's 撤销 / Undo reach a finger's 44 (D311), with no visible change. */
+.ex-copy,
+.noted-line .qlink { position: relative; }
+.ex-copy::before,
+.noted-line .qlink::before { content: ""; position: absolute; }
+.ex-copy::before { inset: -6px; }
+.noted-line .qlink::before { inset: -12px -8px; }
+/* The own-number step's body already sits on the text column inside its block (D289): no second indent. */
+.g-block > .own-body,
+.set-page.pushed .g-block > .own-body { padding: 0; }
+/* 怎么装 / How inside a setup step: the same quiet disclosure as on a Settings row, 44 tall. */
+.chat-step .mem-more { font-size: var(--sm); color: var(--ink-muted); }
+.chat-step .mem-more summary { cursor: pointer; width: fit-content; min-height: 44px; display: flex; align-items: center; font-weight: 600; text-decoration: underline dotted; text-underline-offset: 3px; }
+.chat-step .mem-more small { display: block; margin-bottom: var(--s2); overflow-wrap: anywhere; }

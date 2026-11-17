@@ -46,7 +46,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
           <label class="choice" for="live-mac">
             <input type="radio" name="live" id="live-mac" value="mac" checked aria-controls="path-mac" />
             <Art name="laptop_awake" alt="" sizes="96px" eager />
-            <span><b>This Mac</b><small>The quickest start. Apple silicon.</small></span>
+            <span><b>This Mac</b><small>The quickest start, on a Mac with an Apple chip.</small></span>
           </label>
           <label class="choice" for="live-server">
             <input type="radio" name="live" id="live-server" value="server" aria-controls="path-server" />
@@ -71,7 +71,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
     <!-- ============ THIS MAC ============ -->
     <article class="path" id="path-mac" aria-labelledby="h-mac">
       <h2 id="h-mac">Ducter on this Mac</h2>
-      <p class="body">You need a Mac with Apple silicon (M1 or later), and an AI to do the work: a Claude or ChatGPT plan, or a key from DeepSeek, Kimi, Zhipu GLM, OpenAI, Anthropic or OpenRouter. Ducter itself is free, and the app sets the rest up with you.</p>
+      <p class="body">You need a Mac with an Apple chip (M1 or later), and an AI to do the work: a Claude or ChatGPT plan, or an API key from DeepSeek, Kimi, Zhipu GLM, OpenAI, Anthropic or OpenRouter. Ducter itself is free, and the app sets the rest up with you.</p>
       <div class="ways">
         <div class="way mine">
           <p class="way-tag">Most people start here</p>
@@ -80,7 +80,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
           <p class="way-acts">
             {a.dmg ? <a class="btn md" href={a.dmg.url}>Download for Mac</a> : <a class="btn md" href={RELEASES_URL}>See the releases</a>}
           </p>
-          <p>Signed and notarized by Apple. Or paste one line into Terminal; it downloads the same app, checks it against the release's checksum and opens it:</p>
+          <p>Apple has checked it, so it opens like any other app. Prefer Terminal? Paste this line; it downloads the same app, makes sure nothing was damaged on the way, and opens it:</p>
           <div class="term short"><button class="btn sm copy" type="button" data-copy={oneLine}>Copy</button><pre><span class="p">$ </span>{oneLine}</pre></div>
         </div>
         <div class="way agent">
@@ -98,13 +98,13 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
         <li><b>Your partner says hello,</b> with a few things to start from. Say anything; it takes it from there.</li>
         <li><b>Bring your phone in:</b> on your phone, <a href={TESTFLIGHT} rel="noopener">get the iPhone app</a> or <a href="/download#android">the Android app</a>, then in Ducter on the Mac choose <b>Devices › Connect a phone or computer</b> and scan the code. Away from home, your phone reaches the Mac through Tailscale or your own domain. <a href="/docs/phone">Your phone</a></li>
       </ol>
-      <p class="dl-small"><a href="/docs/getting-started">The full walk-through</a> · <a href="/download">Every download</a></p>
+      <p class="dl-small">Want more detail? Read <a href="/docs/getting-started">the full walk-through</a>, or see <a href="/download">every download</a>.</p>
     </article>
 
     <!-- ============ A SERVER ============ -->
     <article class="path" id="path-server" aria-labelledby="h-server">
       <h2 id="h-server">Ducter on your server</h2>
-      <p class="body">Any 64-bit Linux server, x64 or arm64, at home or in the cloud. Your phone and Mac reach it privately through Tailscale (no domain, no open ports), or at a domain of your own.</p>
+      <p class="body">Any 64-bit Linux server, at home or in the cloud, with an Intel, AMD or ARM processor. Your phone and Mac reach it privately through Tailscale (no domain, no open ports), or at a domain of your own.</p>
       <div class="ways">
         <div class="way agent">
           <p class="way-tag">The easy way</p>
@@ -116,12 +116,12 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
         <div class="way">
           <p class="way-tag">Or</p>
           <h3>Do it yourself</h3>
-          <p>On the server, install Ducter as a service:</p>
+          <p>On the server, install Ducter so it starts by itself and keeps running:</p>
           <div class="term short"><button class="btn sm copy" type="button" data-copy={serverLine}>Copy</button><pre><span class="p">$ </span>{serverLine}</pre></div>
-          <p>Then give your devices a way in. Either one sets up HTTPS:</p>
+          <p>Then give your phone and Mac a way in:</p>
           <div class="term short"><button class="btn sm copy" type="button" data-copy="ducter tailscale">Copy</button><pre><span class="c"># private: only your own devices</span>
 <span class="p">$ </span>ducter tailscale</pre></div>
-          <p class="dl-small">Or <code>ducter domain ducter.example.com</code> for your own domain. <a href="/docs/install#a-linux-server-that-stays-on">The whole setup</a></p>
+          <p class="dl-small">Or use your own domain: <code>ducter domain ducter.example.com</code>. <a href="/docs/install#a-linux-server-that-stays-on">The whole setup</a></p>
         </div>
       </div>
       <h3 class="next-h">What happens next</h3>
@@ -131,14 +131,14 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
         <li><b>Connect your Mac:</b> <a href="/download#mac">the Mac app</a>, then <b>My Ducter is on another computer</b>, and the code. Your partner says hello.</li>
         <li><b>Bring your phone in:</b> <a href={TESTFLIGHT} rel="noopener">the iPhone app</a>, <a href="/download#android">the Android app</a> or the phone's browser, with the same address and code. <a href="/docs/phone">Your phone</a></li>
       </ol>
-      <p class="dl-small"><a href="/docs/install#a-linux-server-that-stays-on">The full walk-through</a> · <a href="/download">Every download</a></p>
+      <p class="dl-small">Want more detail? Read <a href="/docs/install#a-linux-server-that-stays-on">the full walk-through</a>, or see <a href="/download">every download</a>.</p>
     </article>
 
     <!-- ============ NOT SURE ============ -->
     <article class="path" id="path-unsure" aria-labelledby="h-unsure">
       <h2 id="h-unsure">Which one is for me?</h2>
       <ul class="pick-help">
-        <li><b>You have a Mac with Apple silicon:</b> start on <a href="#path-mac" data-pick="mac">this Mac</a>. It's the quickest, and you can move to a server later.</li>
+        <li><b>You have a Mac with an Apple chip:</b> start on <a href="#path-mac" data-pick="mac">this Mac</a>. It's the quickest, and you can move to a server later.</li>
         <li><b>You want it working through the night,</b> or you don't have a Mac: <a href="#path-server" data-pick="server">a server</a>. A small cloud server is enough; your AI agent can set it up.</li>
         <li><b>You're on Windows:</b> there's no Windows app yet. Ducter can live on a Linux server, which you then open in this computer's browser; if you don't have a server, a Mac is the way in for now.</li>
         <li><b>You're on your phone right now:</b> Ducter lives on a computer. Send yourself this page, and open it there.

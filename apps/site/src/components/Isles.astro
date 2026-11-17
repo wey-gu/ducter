@@ -182,7 +182,7 @@ const seas = { wide: sea(wide, "w"), narrow: sea(narrow, "n") };
       const nbox = { x: q.x, y: q.y, w: q.size, h: q.size };
       return (
         <div class={`p dock${a.on ? " on" : ""}`} id={a.on ? undefined : "slot"} data-isle="home" style={pos(box, nbox)}
-          role={a.on ? undefined : "button"} tabindex={a.on ? undefined : 0} aria-label={a.on ? undefined : `${a.name} · can add`}>
+          role={a.on ? undefined : "button"} tabindex={a.on ? undefined : 0} aria-label={a.on ? undefined : `${a.name}: add it to this Mac`}>
           <div class="well">
             {a.on ? (
               <Art class="obj" name="ab_remote" alt="Reach from outside, added to this Mac" sizes="(min-width: 560px) 150px, 32vw" />

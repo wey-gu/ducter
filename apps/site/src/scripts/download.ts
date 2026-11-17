@@ -69,9 +69,5 @@ const card: Record<OS, string> = { mac: "mac", linux: "server", ios: "iphone", a
     date.textContent = new Date(r.published_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
   }
   document.querySelectorAll<HTMLAnchorElement>('[data-rel="notes"]').forEach((el) => r.html_url && (el.href = r.html_url));
-  // The files line: the new names (links and sizes moved above); checksums are in SHA256SUMS.txt.
-  for (const [k, a] of Object.entries(found)) {
-    const name = a && document.querySelector<HTMLAnchorElement>(`[data-name="${k}"]`);
-    if (name && name.firstChild) name.firstChild.textContent = `${a.name} `;
-  }
+  // The files line names each file by who it's for, so only its link and size move (above).
 })();

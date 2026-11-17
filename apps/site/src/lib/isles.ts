@@ -31,7 +31,7 @@ export interface Device {
 export const devices: Device[] = [
   { key: "home", name: "This Mac", art: "laptop_awake", home: true, idle: "float", tokens: ["claude-code", "codex"] },
   { key: "cloud", name: "cloud-1", line: "Working on 1 task", art: "server_awake", idle: "drift", tokens: ["claude-code"], working: true },
-  { key: "mini", name: "Mac mini", line: "Asleep · carries on when it wakes", art: "mini_asleep", idle: "blanket", tokens: ["codex"], asleep: true },
+  { key: "mini", name: "Mac mini", line: "Asleep, picks up when it wakes", art: "mini_asleep", idle: "blanket", tokens: ["codex"], asleep: true },
   { key: "phone", name: "iPhone", art: "phone", phone: true, idle: "float", tokens: [] },
 ];
 

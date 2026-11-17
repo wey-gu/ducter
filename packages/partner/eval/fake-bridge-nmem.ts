@@ -35,6 +35,8 @@
 // `send_args_prefix: null`). NMEM_FAKE_SENDER_MEMBER=<label> replaces `sender.member` (a display name).
 //   NMEM_FAKE_BUSY=<verb>[:n][:unknown]  the first n (default 1) calls of that verb answer Mem's 503
 //   (`retryable: true`, `outcome_unknown: false`, or true with ":unknown"), exit 1, nothing done.
+// D335: NMEM_FAKE_INBOX_WAIT=1 lists `--wait <SECONDS>` in `bridge inbox --help` and holds `inbox --wait`
+// until an unread message is there; =error answers every wait with a 503-like failure.
 //
 // Lost responses (J-Q6 tests): NMEM_FAKE_BRIDGE_LOSE="send" (or "reply", or "send,reply") makes the
 // next such call keep its operation but answer like a dropped connection (exit 1, no JSON).
@@ -170,6 +172,12 @@ if (argv[0] !== "bridge") fail("bad_arguments", "fake nmem: only `bridge` is imp
 const verb = argv[1];
 if (!verb || verb === "--help" || verb === "help") {
   console.log("fake nmem bridge: setup | contacts [--query Q] | send --to CONTACT (--body TEXT | --body-file -) | inbox | open MESSAGE | reply (--body TEXT | --body-file -) MESSAGE | outbox | inspect OP | resume OP");
+  process.exit(0);
+}
+// D335: an nmem whose `inbox` takes `--wait` (NMEM_FAKE_INBOX_WAIT=1; =error: every wait fails).
+const WAITS = process.env.NMEM_FAKE_INBOX_WAIT;
+if (verb === "inbox" && argv.includes("--help")) {
+  console.log(`Usage: nmem bridge inbox [OPTIONS]\n\nOptions:\n  --limit <N>\n${WAITS ? "  --wait <SECONDS>  Hold until a message arrives, at most this long\n" : ""}`);
   process.exit(0);
 }
 if (!existsSync(statePath)) fail("not_configured", "no fake Bridge state");
@@ -378,6 +386,17 @@ switch (verb) {
     break;
   }
   case "inbox": {
+    // D335: `inbox --wait <s>` (asked of Mem in nowledge-co/mem#10402): holds until an unread
+    // message is there or the wait ends, then answers as `inbox` does.
+    const wait = take("--wait");
+    if (wait !== undefined) {
+      if (!WAITS) fail("bad_arguments", "error: unexpected argument '--wait' found", 2);
+      if (WAITS === "error") fail("cloud_agent_im_backend_unavailable", "fake nmem: the wait failed", 1);
+      const until = Date.now() + Number(wait) * 1000;
+      const unread = () => load().messages.some((m) => m.to === me && !m.pending && !m.read_at);
+      while (!unread() && Date.now() < until) await Bun.sleep(50);
+      Object.assign(s, load());
+    }
     const mine = s.messages.filter((m) => m.to === me && !m.pending);
     if (NAMED) {
       const messages = mine.map((m) => ({ message: m.id, ...card(m.from), created_at: m.created_at, read: !!m.read_at, ...(m.in_reply_to ? { in_reply_to: m.in_reply_to } : {}) }));

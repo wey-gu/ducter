@@ -80,6 +80,16 @@ export interface BridgeClient {
    */
   inboxIds?(): Promise<BridgeResult<{ ids: string[] }>>;
   /**
+   * D335: whether this CLI's `bridge inbox` takes `--wait` (a long-poll; asked of Mem in
+   * nowledge-co/mem#10402). Read from `inbox --help` once per nmem version, like D205's checks.
+   */
+  canWait?(): Promise<boolean>;
+  /**
+   * D335: one long-poll, `inbox --wait <seconds>`: the inbox's handles once something is there or
+   * the wait ends. Opens nothing; the caller checks when a handle is new to it.
+   */
+  waitInbox?(seconds: number): Promise<BridgeResult<{ ids: string[] }>>;
+  /**
    * Reply to a received message; the CLI derives the recipient from that original.
    * A failure with reason "unavailable" means the outcome is UNKNOWN (D106): recover it, never resend.
    */
@@ -305,7 +315,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   const timeoutMs = opts.timeoutMs ?? 20_000;
   const maxOpen = opts.maxOpen ?? 5;
   // `whole`: the arguments are a whole nmem command (not a `bridge` one under the context).
-  const run = async (args: string[], input?: string, whole = false): Promise<{ code: number; out: string; err: string } | { missing: true }> => {
+  const run = async (args: string[], input?: string, whole = false, limitMs = timeoutMs): Promise<{ code: number; out: string; err: string } | { missing: true }> => {
     let proc: ReturnType<typeof Bun.spawn>;
     try {
       // Argument vector, never a shell string: message text can't become a flag or a command.
@@ -318,7 +328,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     } catch {
       return { missing: true };
     }
-    const timer = setTimeout(() => proc.kill(), timeoutMs);
+    const timer = setTimeout(() => proc.kill(), limitMs);
     try {
       const [out, err, code] = await Promise.all([new Response(proc.stdout as ReadableStream).text(), new Response(proc.stderr as ReadableStream).text(), proc.exited]);
       return { code, out, err };
@@ -396,6 +406,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       // and `agents context show`, but `bridge setup` says it was "not found".
       return (await place()).custodian;
     })());
+  const waitBy = new Map<string, boolean>(); // D335: per nmem version, whether `inbox --wait` exists
   const sent = (r: { code: number; out: string; err: string } | { missing: true }): BridgeResult<{ messageId?: string; operation?: string }> => {
     if ("missing" in r || r.code !== 0) return failure(r);
     const j = parse(r.out);
@@ -451,6 +462,26 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       if ("missing" in r || r.code !== 0) return failure(r);
       const j = parse(r.out);
       if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
+      return { ok: true, ids: inboxIds(j) };
+    },
+    // D335: a long-poll when the CLI offers one, asked once per nmem version.
+    async canWait() {
+      const v = await run(["--version"], undefined, true);
+      if ("missing" in v || v.code !== 0) return false;
+      const version = (v.out || v.err).trim();
+      let can = waitBy.get(version);
+      if (can === undefined) {
+        const h = await run(["inbox", "--help"]);
+        can = !("missing" in h) && h.code === 0 && /--wait\b/.test(`${h.out}\n${h.err}`);
+        waitBy.set(version, can);
+      }
+      return can;
+    },
+    async waitInbox(seconds) {
+      const r = await run(["inbox", "--wait", String(seconds)], undefined, false, seconds * 1000 + timeoutMs);
+      if ("missing" in r || r.code !== 0) return failure(r);
+      const j = parse(r.out);
+      if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
       return { ok: true, ids: inboxIds(j) };
     },
     async reply(messageId, text) {

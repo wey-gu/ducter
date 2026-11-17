@@ -315,9 +315,9 @@ Why the others wait:
 - The asker sees it at its next turn boundary. A session that stopped to wait isn't woken by Bridge; the skill
   lets it wait on a finite budget when the user asked it to, and "要我定的事发给 Ducter" is that ask (INFERRED;
   the live trial must show it).
-- **Faster checks while a conversation is live** (amends J-Q3): every 60 s instead of 5 min for 30 minutes after
-  any message from or to one of the user's own agents, then back to 5 min. One `inbox` call each; there is no
-  push yet (B10).
+- **Faster checks while a conversation is live** (amends J-Q3; D335): every 15 s instead of every minute for 30
+  minutes after any message from or to one of the user's own agents, then back to every minute. One `inbox` call
+  each; there is no push yet (B10). The cadence as a whole is in Flow, below.
 
 **Safety.**
 - *Who may ask:* in v1, only the user's own agents (same member, D108). A teammate's question goes through X3.
@@ -564,7 +564,8 @@ words Bridge, mailbox, contact, Space, Identity and Agent Context never appear i
 
 ```
 other agent ──bridge send──▶ Mem (persona's Agent mailbox)
-                                  │  Ducter checks: at start, then every 5 min, and when asked (bridge_check, D333)
+                                  │  Ducter checks: at start, then every minute, and when asked (bridge_check, D333);
+                                  │  see "When the home reads its mailbox" below (D335)
                                   ▼
    nmem --json --agent-context C bridge inbox     → message handles
    nmem --json --agent-context C bridge open <id> → body (0.10.118: no sender; in Only me it is the user's own, D249;
@@ -607,6 +608,27 @@ Every outgoing op (D106), logged before the CLI call:
           reads retry the same way; a card whose agent has no mailbox is never offered)
     unknown / sending left by a crash ─next check (and 30 s after)→ bridge outbox → inspect → resume (same op)
          → sent | failed | still unknown ×3 → unconfirmed (say once; never resent)
+```
+
+**When the home reads its mailbox (D335).** Mem's `bridge inbox` is pull-only; a long-poll (`inbox --wait`) is
+asked for upstream (nowledge-co/mem#10402). One read is a short local CLI call, one at a time; nothing wakes the
+partner unless a new message is there.
+
+```
+at start                       one check (then B14's start mark)
+period                         every 1 min
+live with an own agent         every 15 s, for 30 min after a message from or to one (D164 (6))
+after a send or reply          +10 s, +30 s, +1 min, +2 min after it; the rest cancelled once its answer
+  (bridge_reply, a carded        (in_reply_to = ours) arrives
+   send, the claim/result)
+asked                          bridge_check reads now (D333)
+long-poll, when the CLI has it `nmem bridge inbox --help` lists --wait (read once per nmem version, like D205)
+                                 → one `inbox --wait 25` at a time, back to back, per context;
+                                   a handle new to the Log runs the usual check;
+                                   a wait back at once with nothing new pauses 15 s (never spins);
+                                   the timer drops to every 5 min (recovery, follow-through), no reads after a send
+                               a wait errors → the timer above again; the long-poll is tried again after 10 min
+bridgeIntervalMs: 0            at start and when asked only (tests)
 ```
 
 Plug points:
@@ -784,7 +806,7 @@ Goal: make `bun test` pass on Linux in ~/dev/ducter. Context: packages/runner/te
 assumes macOS `open`. Scope: runner tests only. Done when CI on ubuntu is green.
 Reply with a claim or a blocker.
 EOF
-# 6. Within 5 minutes Ducter shows the request and asks Go/Hold. After Go and the task, back in the terminal:
+# 6. Within a minute Ducter shows the request and asks Go/Hold. After Go and the task, back in the terminal:
 nmem --agent-context terminal-claude bridge inbox
 ```
 

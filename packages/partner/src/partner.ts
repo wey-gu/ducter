@@ -54,8 +54,8 @@ import { join } from "node:path";
 import { callWakes, fileView, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
-import { bridgeContextFor, bridgeFor, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
-import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, UNNAMED_OWN, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
+import { bridgeContextFor, bridgeFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
+import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, UNNAMED_OWN, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WAIT_S, WAITING_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, type MemoryClient, type MemoryHit, type Replaced } from "./memory.ts";
 import { withOutbox } from "./outbox.ts";
 import { memSource } from "../../protocol/src/mem-source.ts";
@@ -98,7 +98,14 @@ export interface PartnerOptions {
   // Nowledge Bridge requests from other agents (design/bridge.md). Default: DUCTER_BRIDGE=1 + DUCTER_BRIDGE_CONTEXT,
   // otherwise off (null). Tests inject a fake.
   bridge?: BridgeClient | null;
-  bridgeIntervalMs?: number; // inbox check period while running, default 5 min; 0 = only at start
+  /**
+   * D335: the inbox check period while running, default 1 min (15 s while live with an own agent;
+   * +10 s, 30 s, 1 min, 2 min after a send or reply; a long-poll instead when the CLI has `inbox
+   * --wait`). 0 = only at start and when asked: no timer, no checks after a send, no long-poll.
+   */
+  bridgeIntervalMs?: number;
+  /** The timers Bridge's checks run on (default the real ones); tests pass a fake clock. */
+  timers?: { setTimeout(fn: () => void, ms: number): unknown; clearTimeout(handle: unknown): void };
   bridgeStartMark?: boolean; // B14: skip what was in the mailbox before the first check (default true)
   bridgeRecoverMs?: number; // after an unknown send outcome, recover this soon (default 30 s; 0 = at the next check)
   /**
@@ -2362,6 +2369,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const r = via ? await bridge.reply(via, op.text) : kind === "send" ? await bridge.send!(op.contact!, op.text) : await bridge.reply(op.inReplyTo!, op.text);
       if (r.ok) {
         logOut(op, "sent", { messageId: r.messageId ?? "", ...(r.operation ? { operation: r.operation } : {}) });
+        watchFor(r.messageId ?? ""); // D335: its answer is looked for soon, not at the next period
         return "sent";
       }
       if (r.reason === "refused" || r.reason === "not_configured" || r.reason === "busy") {
@@ -2629,7 +2637,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const day = loggedBridge().filter((e) => e.body.direction === "in" && e.body.from === from && e.body.state !== "early" && t - Date.parse(e.ts) < DAY_MS);
     return day.length >= SENDER_DAILY;
   }
-  /** Checks come every minute for 30 min after anything with one of the user's own agents (D164 (6)). */
+  /** Checks come every 15 s for 30 min after anything with one of the user's own agents (D164 (6), D335). */
   function liveWithOwn(t: number): boolean {
     const evs = loggedBridge();
     for (let i = evs.length - 1; i >= 0 && i >= evs.length - 50; i--) {
@@ -2670,7 +2678,36 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   /** D333: while bridge_check reads, what arrives is collected for that turn instead of waking one. */
   let absorbing: LogEvent[] | null = null;
   let bridgeChecking: Promise<number> | null = null;
-  let bridgeTimer: ReturnType<typeof setInterval> | null = null;
+  let bridgeTimer: unknown = null;
+  const timers = opts.timers ?? { setTimeout: (fn: () => void, ms: number): unknown => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
+  const every = opts.bridgeIntervalMs ?? CHECK_EVERY_MS;
+  /** D335: the client a long-poll is running on (arrivals come by it, not by the timer). */
+  let waitingOn: BridgeClient | null = null;
+  let waitFailedAt = 0;
+  let waitPause: unknown = null;
+  /**
+   * D335: after a send or reply, checks at +10 s, 30 s, 1 min and 2 min, keyed by our message's id;
+   * the rest are cancelled once its answer arrives. Not while a long-poll brings answers anyway.
+   */
+  const afterSend = new Map<string, unknown[]>();
+  function watchFor(messageId: string) {
+    if (every <= 0 || closed || waitingOn) return;
+    const key = messageId || newId("w");
+    answered(key);
+    const hs = AFTER_SEND_MS.map((ms, i) =>
+      timers.setTimeout(() => {
+        if (i === AFTER_SEND_MS.length - 1) afterSend.delete(key);
+        if (!closed) void checkBridge().catch(onError);
+      }, ms),
+    );
+    afterSend.set(key, hs);
+  }
+  function answered(messageId: string) {
+    const hs = afterSend.get(messageId);
+    if (!hs) return;
+    for (const h of hs) timers.clearTimeout(h);
+    afterSend.delete(messageId);
+  }
   /** A message the user sent on a card (not a reply) in the last 7 days that got no answer yet. */
   function awaitingAnswer(t: number): boolean {
     const evs = loggedBridge();
@@ -2705,6 +2742,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         // reach the partner, is logged and never wakes it. An answer to what the user sent always
         // comes through.
         const answersOurs = !!m.inReplyTo && loggedBridge().some((e) => e.body.direction === "out" && e.body.messageId === m.inReplyTo);
+        if (m.inReplyTo) answered(m.inReplyTo); // D335: its answer is here; the checks after it stop
         if (peers && !answersOurs && (peers.reach === "off" || peers.muted.includes(m.agent ?? m.from) || (peers.reach === "own" && !m.mine))) {
           core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.mine ? { mine: true } : {}), text: "", state: "muted" } });
           continue;
@@ -2947,15 +2985,54 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // Bounded checks: once at start, then on a slow period while Ducter runs. Ducter's control
     // plane is the host here; a check never wakes anyone else.
     queueMicrotask(() => void checkBridge().catch(onError));
-    const every = opts.bridgeIntervalMs ?? 5 * 60_000;
-    // A tick every minute (or the period, if shorter): a check is due after the period, or after
-    // a minute while a conversation with one of the user's own agents is live (D164 (6)).
-    if (every > 0)
-      bridgeTimer = setInterval(() => {
+    // D335: a tick every 15 s (or the period, if shorter): a check is due after the period (1 min),
+    // after 15 s while a conversation with one of the user's own agents is live (D164 (6)), or, while
+    // a long-poll brings arrivals, after 5 min (recovery and follow-through still need their check).
+    if (every > 0) {
+      const tick = () => {
+        bridgeTimer = null;
+        if (closed) return;
         const t = now();
-        const gap = liveWithOwn(t) ? Math.min(every, LIVE_CHECK_MS) : every;
+        const gap = waitingOn ? Math.max(every, WAITING_EVERY_MS) : liveWithOwn(t) ? Math.min(every, LIVE_CHECK_MS) : every;
         if (t - lastCheck >= gap - 50) void checkBridge().catch(onError);
-      }, Math.min(every, LIVE_CHECK_MS));
+        if (!waitingOn && waitFailedAt && t - waitFailedAt >= WAIT_RETRY_MS && bridge) {
+          waitFailedAt = 0;
+          void longPoll(bridge);
+        }
+        bridgeTimer = timers.setTimeout(tick, Math.min(every, LIVE_CHECK_MS));
+      };
+      bridgeTimer = timers.setTimeout(tick, Math.min(every, LIVE_CHECK_MS));
+      void longPoll(b0);
+    }
+  }
+  /**
+   * D335: when the CLI's `inbox` takes `--wait`, one long-poll at a time, back to back, per
+   * context: a handle new to the Log runs the usual check. An error hands arrivals back to the
+   * timer, which tries the long-poll again after 10 min. Nothing new in a wait that came back at
+   * once (an inbox that doesn't hold the wait) pauses 15 s, so it never spins.
+   */
+  async function longPoll(b: BridgeClient): Promise<void> {
+    if (every <= 0 || closed || waitingOn === b || !b.canWait || !b.waitInbox) return;
+    if (!(await b.canWait().catch(() => false)) || closed || bridge !== b || waitingOn === b) return;
+    waitingOn = b;
+    try {
+      while (!closed && bridge === b) {
+        const t0 = performance.now();
+        const r = await b.waitInbox(WAIT_S).catch((err): BridgeResult<{ ids: string[] }> => ({ ok: false, reason: "unavailable", message: String(err) }));
+        if (closed || bridge !== b) return;
+        if (!r.ok) {
+          waitFailedAt = now();
+          return;
+        }
+        const start = await startMark();
+        const known = new Set([...loggedBridge().filter((e) => e.body.direction === "in").map((e) => e.body.messageId), ...(start?.skip ?? [])]);
+        const fresh = r.ids.some((id) => !known.has(id));
+        const n = fresh ? await checkBridge().catch((err) => (onError(err), 0)) : 0;
+        if (!n && performance.now() - t0 < 2_000) await new Promise<void>((res) => (waitPause = timers.setTimeout(res, LIVE_CHECK_MS)));
+      }
+    } finally {
+      if (waitingOn === b) waitingOn = null;
+    }
   }
   if (bridge) startBridge(bridge);
   // The connection the user made (or undid) in Settings › 伙伴 takes effect now, not at a restart.
@@ -2966,7 +3043,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (key === bridgeKey || closed) return;
         bridgeKey = key;
         bridge = bridgeFor(process.env, core.bridgeLink?.context());
-        if (bridge) startBridge(bridge);
+        if (bridge) bridgeStarted ? void longPoll(bridge) : startBridge(bridge);
       })
     : undefined;
 
@@ -3026,7 +3103,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       outbox?.stop();
       closed = true;
       offBridgeLink?.();
-      if (bridgeTimer) clearInterval(bridgeTimer);
+      if (bridgeTimer) timers.clearTimeout(bridgeTimer);
+      if (waitPause) timers.clearTimeout(waitPause);
+      for (const id of [...afterSend.keys()]) answered(id);
       if (recoverTimer) clearTimeout(recoverTimer);
       if (spineTimer) clearInterval(spineTimer);
       spine?.close(); // a digest being written is dropped; it is written again after a restart

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.0.69
+
+<!-- whats-new
+zh: 和你的其他 agent 通信：只说真正能收到信的地方
+en: Agent messaging says only where it can really receive
+zh: 设置更安静：自己的号码收成一行，更新只说最新的
+en: Calmer Settings: your own number rests as one row, updates say only the latest
+-->
+
+**Your other agents**
+- Ducter's card in Nowledge Mem names only the Spaces it can read; a Space Mem won't let it
+  read is noted with Mem's reason and tried again later, never worked around.
+- The partner sends where an answer can come back, and says so when it can't.
+
+**Settings**
+- Calls from your own number rest as one row with Set up until you start.
+- Updates and about says only the latest check, with one Check for updates.
+
 ## 0.0.68
 
 <!-- whats-new

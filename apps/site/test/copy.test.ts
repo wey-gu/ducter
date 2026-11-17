@@ -5,7 +5,9 @@
 // comments, and the words a visitor reads in the templates and the scripts' strings. The rendered
 // scan runs when apps/site/dist exists (after `bun run build`) and reads the built pages' visible
 // text, alt text, labels and meta descriptions, so a string composed at build time is caught too.
-// Page titles (<title>, og:title) are out of scope, as in scripts/check-joins.ts.
+// Page titles are held too (D346): "page – site" with an en dash, never a dot ("Install – Ducter
+// docs"). Every built page is scanned for a joined title; the docs pages' own words are checked in
+// their Markdown by scripts/check-joins.ts.
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -31,7 +33,8 @@ export const INTERNAL: { re: RegExp; why: string }[] = [
   { re: /\bevals?\b/i, why: "how we test the partner, not something a visitor uses" },
   { re: /\bworkers?\b/i, why: "the internal name for a computer that does tasks; say computer" },
   { re: /\b(tarball|binar(y|ies))\b/i, why: "build jargon; say the app or the file" },
-  { re: /\b(arm64|x64|x86_64|aarch64|amd64)\b/i, why: "say Intel or AMD, ARM, or Apple chip" },
+  { re: /\b(arm64|x64|x86_64|aarch64|amd64)\b/i, why: "say Intel or AMD, ARM, or Apple silicon" },
+  { re: /\bApple chips?\b/i, why: "say a Mac with Apple silicon (M1 or later), Apple's own term (D346)" },
   { re: /\bSHA-?256(SUMS)?\b/i, why: "say checksums" },
   { re: /\bD\d{2,3}\b/, why: "a decision number" },
   { re: /(^|\s)\.(dmg|apk|tar\.gz)\b/i, why: "a file format; say what it's for" },
@@ -73,7 +76,7 @@ describe("site copy: sources", () => {
     const bad: string[] = [];
     for (const f of sources) {
       codeLines(readFileSync(join(SITE, f), "utf8")).forEach((c, i) => {
-        if (JOINER.test(c) && !/<Head title=/.test(c)) bad.push(`${f}:${i + 1}: ${c.trim()}`);
+        if (JOINER.test(c)) bad.push(`${f}:${i + 1}: ${c.trim()}`);
       });
     }
     expect(bad).toEqual([]);
@@ -97,9 +100,17 @@ describe("site copy: sources", () => {
 const DIST = join(SITE, "dist");
 const PAGES = ["index.html", "start.html", "download.html", "404.html", "docs.html"];
 
+/** A page's titles: the tab's, and what a shared link shows (og:title, twitter:title). */
+function titles(html: string): string[] {
+  const out = [html.match(/<title>([^<]*)<\/title>/)?.[1] ?? ""];
+  for (const m of html.matchAll(/<meta (?:property="og:title"|name="twitter:title") content="([^"]*)"/g)) out.push(m[1]);
+  return out.filter(Boolean);
+}
+
 /** What a visitor sees or hears on a built page: text, alt, labels, the meta description. */
 function rendered(html: string): string[] {
   const out: string[] = [];
+  out.push(...titles(html));
   for (const m of html.matchAll(/<meta (?:name="description"|property="og:description"|property="og:image:alt") content="([^"]*)"/g)) out.push(m[1]);
   const body = (html.match(/<body[\s\S]*<\/body>/)?.[0] ?? "")
     .replace(/<script[\s\S]*?<\/script>/g, "")
@@ -126,4 +137,33 @@ describe.skipIf(!existsSync(join(DIST, "index.html")))("site copy: the built pag
       expect(bad, relative(SITE, file)).toEqual([]);
     });
   }
+});
+
+describe.skipIf(!existsSync(join(DIST, "index.html")))("site copy: every built page's title", () => {
+  const all = [...new Glob("**/*.html").scanSync(DIST)].sort();
+  test("titles say the page, then the site, with an en dash (D346)", () => {
+    expect(all.length).toBeGreaterThan(PAGES.length);
+    const bad: string[] = [];
+    for (const f of all) {
+      for (const t of titles(readFileSync(join(DIST, f), "utf8"))) {
+        if (JOINER.test(t) || / [-|] Ducter/.test(t)) bad.push(`${f}: ${t}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+  test("a docs page is titled page – Ducter docs", () => {
+    const f = all.find((f) => /^docs\/install(\.html|\/index\.html)$/.test(f));
+    expect(f).toBeDefined();
+    expect(titles(readFileSync(join(DIST, f!), "utf8"))[0]).toMatch(/^[^–]+ – Ducter docs$/);
+  });
+});
+
+describe("the share image", () => {
+  test("og.png's alt carries the home page's line, so a new line means a redrawn og.png (D346)", () => {
+    const h1 = readFileSync(join(SITE, "src/pages/index.astro"), "utf8").match(/<h1>([\s\S]*?)<\/h1>/)![1];
+    const line = h1.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+    const alt = readFileSync(join(SITE, "src/components/Head.astro"), "utf8").match(/og:image:alt" content="([^"]*)"/)![1];
+    expect(alt).toContain(line);
+    expect(Bun.file(join(SITE, "public/og.png")).size).toBeLessThanOrEqual(400 * 1024);
+  });
 });

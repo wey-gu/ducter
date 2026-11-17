@@ -26,7 +26,7 @@ const showToc = toc.length >= 3;
 ---
 <!doctype html>
 <html lang="en">
-<Head title={doc && doc.id !== "readme" ? `${title} · Ducter docs` : title} description={description} path={path} />
+<Head title={doc && doc.id !== "readme" ? `${title} – Ducter docs` : title} description={description} path={path} />
 <body class="docs-page">
 <Nav dl={dl} gh={gh} home={false} current="docs" />
 <main id="main" class:list={["wrap docs", { "has-toc": showToc }]}>

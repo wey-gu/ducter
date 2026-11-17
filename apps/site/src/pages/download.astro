@@ -21,7 +21,7 @@ const TESTFLIGHT = "https://testflight.apple.com/join/Z4GvWt7t";
 const oneLine = "curl -fsSL https://ducter.ai/install.sh | sh";
 const serverLine = "curl -fsSL https://ducter.ai/install.sh | sh -s -- --service";
 const agentAsk = "Set up Ducter on my server for me, so my phone and Mac can reach it. Follow the guide at https://ducter.ai/skills/ducter-deploy/SKILL.md";
-const fileLabel = { dmg: "Mac with Apple chip", linuxX64: "Linux server (Intel or AMD)", linuxArm64: "Linux server (ARM)", apk: "Android" } as const;
+const fileLabel = { dmg: "Mac with Apple silicon", linuxX64: "Linux server (Intel or AMD)", linuxArm64: "Linux server (ARM)", apk: "Android" } as const;
 const files = (["dmg", "linuxX64", "linuxArm64", "apk"] as const).flatMap((k) => (a[k] ? [{ k, f: a[k]! }] : []));
 const title = "Download Ducter";
 const description = "Get Ducter for your Mac or a Linux server, and connect your iPhone, iPad or Android phone. Every download, and what each one needs.";
@@ -69,7 +69,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
           ) : (
             <a class="btn lg" href={RELEASES_URL}>See the releases</a>
           )}
-          <span class="dl-meta">For a Mac with an Apple chip, on macOS 12 or later.</span>
+          <span class="dl-meta">For a Mac with Apple silicon (M1 or later), on macOS 12 or later.</span>
         </div>
         <p class="dl-or">Or paste this into Terminal. It downloads the same app, puts it in Applications and opens it:</p>
         <div class="term short"><button class="btn sm copy" type="button" data-copy={oneLine}>Copy</button><pre><span class="p">$ </span>{oneLine}</pre></div>
@@ -135,7 +135,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
         </div>
         <div class="term short"><button class="btn sm copy" type="button" data-copy={oneLine}>Copy</button><pre><span class="p">$ </span>{oneLine}</pre></div>
         <dl class="dl-req">
-          <dt>Needs</dt><dd>A Mac with an Apple chip (M1 or later) and macOS 12 or later. Macs with an Intel chip aren't supported yet.</dd>
+          <dt>Needs</dt><dd>A Mac with Apple silicon (M1 or later) and macOS 12 or later. Macs with an Intel chip aren't supported yet.</dd>
           <dt>Then</dt><dd>Open the download, drag Ducter to Applications and open it. It checks your Mac and opens the conversation. <a href="/docs/getting-started">Getting started</a></dd>
         </dl>
       </li>

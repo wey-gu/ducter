@@ -84,7 +84,7 @@ system). They are real screens of the web client: headless Chrome against a demo
 `DEMO_LANG=en bun apps/web/demo-site.ts`; `memory` (`#settings=memory`, the sheet clipped) and
 `done-for-you` (Done for you opened from On hand, clipped) from `DEMO_LANG=en DEMO_MEM=ready
 DEMO_DID=1 bun apps/web/demo.ts`. Resized to WebP (quality 82); each is under 70 KB. Retake them
-when the screens they show change.
+when the screens they show change, then redraw the share image (below).
 
 ## Owed
 
@@ -103,8 +103,6 @@ when the screens they show change.
 - **Docs search.** Twenty-odd pages, no search; Pagefind at build time is the cheap option.
 - **From the real Mac app** (D326): the hero in the Mac window, and a Devices picture to replace the
   drawn Isles if the real view reads as well. The web client's Devices sheet is a list.
-- **The share image.** `og.png` and its alt still carry the old line; redraw it with the D326
-  tagline and the morning note.
 - **Dead CSS.** The drawn hero chat, board, phone, ledger and task window are gone from `/`, and their
   rules in `site.css` can go (`main.ts`'s scenes went in the 2026-11-18 copy pass).
 - **An accessibility pass with a checker** (axe) on all three page kinds; done by hand so far
@@ -142,7 +140,8 @@ The author: "网站视频下边的文字很奇怪，我觉得需要删掉 … �
 a fresh visitor would. `test/copy.test.ts` now fails on a joined fact strip (D291) or a builder's
 word (OAR, harness, eval, worker, tarball, binary, arm64/x64, SHA256, a decision number, a bare
 `.dmg`/`.apk`) in what a visitor reads, in the sources always and in the built pages after a build.
-Page titles keep their separator (out of D291's scope, as in `check-joins`). Shots: `.shots/site-copy/`.
+Page titles say the page, then the site, with an en dash (D346: **Install – Ducter docs**), and the
+test reads them too. Shots: `.shots/site-copy/`.
 
 | Where | Before | After | Why |
 |---|---|---|---|
@@ -151,7 +150,7 @@ Page titles keep their separator (out of D291's scope, as in `check-joins`). Sho
 | `/` hero small print | "… Latest: v0.0.72 · November 17, 2026." | dropped | a version number is no reason to start; `/download` says it |
 | `/` stickers | "Tasks in a Mac's apps" / "Its own Android phone, on a Mac" / "Through Tuwa or your own number" | "Works in your Mac's apps" / "A phone of its own, on your Mac" / "It phones for you once you say Call" | plainer; Tuwa means nothing before you need it (the docs name it) |
 | `/` Isles | "Asleep · carries on when it wakes"; toast "Codex · Signed in · shared by 2 devices"; labels "Browse the web · added" | "Asleep, picks up when it wakes"; "Codex is signed in on Mac mini"; "Browse the web, added to this Mac" | D291 |
-| `/` Mac card | "for Apple silicon" | "for a Mac with an Apple chip" | people's words |
+| `/` Mac card | "for Apple silicon" | "for a Mac with Apple silicon (M1 or later)" | Apple's own term, as About This Mac shows it (D346) |
 | `/` Android card | "straight from GitHub; it updates itself" | "Download the app here; it keeps itself up to date" | where it comes from is our business |
 | `/` chat apps | "… or Slack, It's the same conversation" | "… or Slack. It's …" | typo |
 | `/` errands | "fills in forms …, books, and even makes a phone call" | "makes bookings, and can even phone a restaurant" | "books," dangled |
@@ -162,12 +161,12 @@ Page titles keep their separator (out of D291's scope, as in `check-joins`). Sho
 | 404 | "Back to the start" | "Go to the home page" | "start" now means Get started |
 | docs index fallback | "install steps are on the home page" (`/#install`) | "Get started walks you through setting Ducter up" (`/start`) | the home page has no install steps since D326 |
 | docs README glossary | "Go · Hold · Reply…", "Partner · Settings", "Stop Ducter · Wake" | "Go, Hold and Reply…", "Partner and Settings", "Stop Ducter and Wake" | D291, shown on the docs index |
-| `/start` Mac | "Apple silicon"; "a key from"; "Signed and notarized by Apple … checks it against the release's checksum" | "an Apple chip"; "an API key from"; "Apple has checked it, so it opens like any other app … makes sure nothing was damaged on the way" | people's words |
+| `/start` Mac | "Apple silicon"; "a key from"; "Signed and notarized by Apple … checks it against the release's checksum" | "a Mac with Apple silicon (M1 or later)" (D346); "an API key from"; "Apple has checked it, so it opens like any other app … makes sure nothing was damaged on the way" | people's words |
 | `/start` server | "x64 or arm64"; "install Ducter as a service"; "Either one sets up HTTPS" | "an Intel, AMD or ARM processor"; "so it starts by itself and keeps running"; "Then give your phone and Mac a way in" | jargon to plain |
 | `/start` ends | "The full walk-through · Every download" | "Want more detail? Read the full walk-through, or see every download." | D291 |
 | `/download` meta | "… with its size, checksum and what it needs" | "… and what each one needs" | |
 | `/download` release line | "Ducter 0.0.72 · released November 17, 2026" | "The latest is version 0.0.72, from November 17, 2026." | D291 |
-| `/download` top card | "69 MB · Apple silicon · macOS 12 or later"; "Android 8 or later"; "signed and notarized" | "For a Mac with an Apple chip, on macOS 12 or later."; "For Android 8 or later."; "checked and signed by Apple" | D291; size isn't needed to decide |
+| `/download` top card | "69 MB · Apple silicon · macOS 12 or later"; "Android 8 or later"; "signed and notarized" | "For a Mac with Apple silicon (M1 or later), on macOS 12 or later." (D346); "For Android 8 or later."; "checked and signed by Apple" | D291; size isn't needed to decide |
 | `/download` buttons | "Download .dmg 69 MB", "Download .apk 3 MB" | "Download for Mac", "Download for Android" | say what it's for, not its format |
 | `/download` Linux | "x64 bundle", "arm64 bundle"; "64-bit Linux on x64 or arm64 … HTTPS is set up"; "Unpack the bundle for your server's CPU" | "For Intel or AMD", "For ARM"; "64-bit Linux with systemd (Ubuntu, Debian and most others), on an Intel, AMD or ARM processor … the secure address is set up"; "Download the file for your server's processor above" | the picker says it in people's words |
 | `/download` AI agent line | "needs an AI agent, Claude Code, …, installed and signed in" | "Ducter does the work through an AI agent on that computer (…), signed in with the plan you already have" | reads as a sentence |
@@ -175,8 +174,50 @@ Page titles keep their separator (out of D291's scope, as in `check-joins`). Sho
 | `/download` browser | "From outside on a Mac" | "Reach from outside on your Mac" | the glossary's ability name |
 | `/download` command line | "puts `ducter` in `~/.local/bin`: with the app on a Mac, as the bundle on Linux"; "Every command · Build it from the source" | "also gives you the `ducter` command, on a Mac or on Linux"; "See every command, or build it from the source." | jargon; D291 |
 | `/download` agent card | "with the deploy skill. Ask it:" | "following Ducter's setup guide. Paste this:" | "skill" is the agent's word |
-| `/download` files | "The files in Ducter 0.0.72: Ducter-0.0.72-arm64.dmg … SHA256SUMS.txt" | "Every file in version 0.0.72: Mac with Apple chip, Linux server (Intel or AMD), Linux server (ARM), Android, Checksums" | the one place a person picks a file, in people's words |
+| `/download` files | "The files in Ducter 0.0.72: Ducter-0.0.72-arm64.dmg … SHA256SUMS.txt" | "Every file in version 0.0.72: Mac with Apple silicon (D346), Linux server (Intel or AMD), Linux server (ARM), Android, Checksums" | the one place a person picks a file, in people's words |
 | `/download` notes | "checks each file against its checksum … check them against SHA256SUMS.txt"; "checked against the release's checksums first" | "never installs a broken download … compare with the checksums above"; "checked before it installs" | the visitor needs the promise, not the mechanism |
 
 Also gone: `main.ts`'s four dead scenes (the drawn hero, board, phone and ledger; nothing on the
 page had their elements), which still held joined strings.
+
+## The share image (D346)
+
+`public/og.png` (1200 × 630, also twitter:image, linked as `og.png?v=2` so X and Slack fetch it
+again) is what WeChat, X, Slack and iMessage show when someone shares ducter.ai: for many people the
+first thing they ever see of Ducter. `apps/site/scripts/og.mjs` (`bun run og` in `apps/site`) draws
+it from an HTML template in headless Chrome, with the site's Bricolage, palette and clay art and the
+real hero shot (`public/shots/hero-light.webp`), and squeezes it to a palette PNG under 400 KB (72 KB
+now). It reads the tagline from the home page's `<h1>`; `test/copy.test.ts` fails if the alt in
+`Head.astro` doesn't carry that line, so a new line means running it again. Retaken shots mean the
+same. `--layout b|c --out <file>` draws the two that lost.
+
+**Three layouts, rated** (`.shots/og/cand-{a,b,c}.png`, the 300-px thumbnails beside them; the winner
+`.shots/og/winner-a.png`). Five naive LLM raters (Haiku), the same five as research/113: a developer
+from a forum (en), a consumer who uses a chat assistant for life admin (en), a teacher sent the link
+on her phone (en), an office worker in Shanghai sent it on WeChat (zh), an indie developer from
+GitHub (zh). Each saw the three as thumbnails first and then full size, under neutral letters in a
+different order, and said what it thinks the product is, would it tap (1–5), and whether the words
+read at thumbnail size. One run each; LLM proxies, not people.
+
+| Layout | What it is | Dev en | Consumer en | Fresh en | Consumer zh | Dev zh | Σ /25 | Would tap |
+|---|---|---|---|---|---|---|---|---|
+| **A** | the line left; the whole screen right, running off the bottom; the character beside it | 4 | 3 | 4 | 3 | 4 | **18** | 3 of 5 |
+| B | two real cards (the note's first item, the finished job) large; the line across the bottom | 3 | 3 | 3 | 2 | 3 | 14 | 0 |
+| C | the character big, holding up the morning note; the line right | 3 | 3 | 4 | 3 | 3 | 16 | 2 (both consumers) |
+
+- **A won** on proof: the developers tapped it because the screen shows a real job finished ("nothing
+  is pushed", Merge into main); the teacher because the chat reads as something she can message.
+- **Every rater read the headline at 300 px and nothing else.** The line carries the card; the
+  screen says "a real app", not its words.
+- **What lost A points:** the finished job is a developer's (HawDB, a branch, Merge into main), which
+  told both consumers "not for me"; they chose C, which shows only the morning note (a domain, a
+  hotel). That is the hero shot's trade-off as much as the card's. **Owed:** a hero shot whose
+  finished job is an errand, not code, would serve both; then redraw.
+- Three raters found the clay character childlike for a tool and two liked it; it stays (it is the
+  partner), at the size of one supporting element.
+
+**No square variant.** X, Slack, iMessage and LinkedIn take the 1.91:1 og:image. WeChat, shared
+from its browser without the official-account JS-SDK, picks its own thumbnail and crops it square;
+which image it picks is not documented (community reports only), so a square og.png would change
+nothing there. Revisit if Ducter gets an official account with the JS-SDK.
+

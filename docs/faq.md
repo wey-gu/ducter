@@ -58,7 +58,7 @@ off everywhere and your partner forgets what it saw; Settings › Partner has th
 
 ### What does it run on?
 
-The app runs on Macs with Apple silicon. Ducter also runs on a Linux server, which you reach
+The app runs on a Mac with Apple silicon (M1 or later). Ducter also runs on a Linux server, which you reach
 from your Mac or your phone. Windows isn't supported. On iPhone and iPad there's one app, in
 public beta through [TestFlight](https://testflight.apple.com/join/Z4GvWt7t). On Android there's the
 Ducter app, from each release on GitHub, and it updates itself; any phone's browser works too.
@@ -263,7 +263,7 @@ Yes, on a Mac: it can use your Mac's apps, apps on a phone of its own, and make 
 - **Your Mac's apps:** **Use the computer** on a Mac's card lets a task use its apps in the
   background, once you turn on two macOS switches. Anything that sends, pays or deletes waits for
   your Go, and **Stop** ends it at once. See [Tasks in your Mac's apps](devices.md#tasks-in-your-macs-apps).
-- **Apps on a phone:** on a Mac with Apple silicon (the one Ducter lives on, or one that does tasks
+- **Apps on a phone:** on an Apple silicon Mac (the one Ducter lives on, or one that does tasks
   for it), **Use a phone** gives Ducter an Android phone of its own, running on that Mac. You install the apps and sign in yourself; anything that sends,
   pays or deletes waits for your Go. See [Ducter's phone](devices.md#ducters-phone).
 - **Calls:** through Tuwa, or from your own Android phone and SIM (with a small cable kit and a

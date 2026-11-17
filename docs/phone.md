@@ -286,7 +286,7 @@ While it's lent:
   screen ever turns off by itself, that isn't a lock: the phone stays lent and the screen comes back
   on.
 - However it ends (you tap **Stop** or **Not now**, the task finishes or gives it back), the task
-  knows at once, and the task's page says so in a thin line: **You took back your Pixel · 20:14**.
+  knows at once, and the task's page says so in a thin line: **You took back your Pixel**, with the time.
 - If the phone stops answering while lent (it lost its network, or Android closed Ducter), the task
   says so at once instead of waiting, and gives it back after a few seconds. On the task you see
   **Pixel isn't answering right now**.

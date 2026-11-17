@@ -11,6 +11,7 @@ import { A } from "./app.ts";
 import { BrandMark, BrandTile } from "./brand.tsx";
 import { Btn, DangerButton, Facts, Seg } from "./controls.tsx";
 import { SecHead, Tag } from "./set-grid.tsx";
+import { GhSignIn } from "./gh-signin.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -50,7 +51,10 @@ export function TodoSourcesSettings() {
   const f = TS.frame;
   if (!f) return <div class="small">{t("conn.connecting")}</div>;
   const gh = f.found.github;
-  const canGh = gh?.state === "ok" && !f.sources.some((s) => s.kind === "github");
+  // D345: GitHub is always offered while it isn't added: 连上 signs in (and puts gh there) in place.
+  const canGh = !f.sources.some((s) => s.kind === "github");
+  const signedIn = gh?.state === "ok";
+  const panel = !!A.ghTodo && canGh;
   return (
     <>
       <p class="af-lede">{t("todos.lede", A.S.personaName)}</p>
@@ -65,11 +69,21 @@ export function TodoSourcesSettings() {
             <BrandTile name="github" />
             <span class="grow">
               <b>GitHub</b>
-              <small>{t("todos.add.github", gh!.computer ?? A.homeName ?? "", gh!.login ?? "")}</small>
+              <small>{signedIn ? t("todos.add.github", gh!.computer ?? A.homeName ?? "", gh!.login ?? "") : t("todos.github.row")}</small>
             </span>
-            <Btn kind="secondary" size="sm" label={t("todos.add")} about="GitHub" disabled={TS.busy.github} onClick={() => ((TS.busy.github = true), A.send({ t: "source_add", kind: "github" }), A.changed())} />
+            {!panel && (
+              <Btn
+                kind="secondary"
+                size="sm"
+                label={t("todos.connect")}
+                about="GitHub"
+                disabled={TS.busy.github}
+                onClick={() => (signedIn ? ((TS.busy.github = true), A.send({ t: "source_add", kind: "github" }), A.changed()) : A.ntGhStart("local", "todos"))}
+              />
+            )}
           </div>
         )}
+        {panel && <GhSignIn which="todos" inline />}
         {f.found.vaults.map((x) => (
           <div class="chat-head" key={x.path}>
             <BrandTile name="obsidian" />
@@ -136,9 +150,11 @@ function SourceCard({ v }: { v: SourceView }) {
         <BrandTile name={v.kind} />
         <span class="grow">
           <b>{name}</b>
-          <small class={bad ? "tone-bad" : undefined}>{bad ?? subOf(v)}</small>
+          <small class={bad ? "tone-bad" : v.kind === "github" && A.ghConnected ? "tone-done" : undefined}>{bad ?? (v.kind === "github" && A.ghConnected ? t("todos.connected", A.ghConnected) : subOf(v))}</small>
         </span>
       </div>
+      {!bad && v.open === undefined && v.kind === "github" && <small class="muted todo-counts">{t("todos.pick.loading")}</small>}
+      {v.kind === "github" && bad && A.ghTodo && <GhSignIn which="todos" inline />}
       {!bad && (v.open !== undefined || (v.taken ?? 0) > 0) && (
         <Facts class="todo-counts" items={[v.open !== undefined && (v.open === 1 ? t("todos.open.one") : t("todos.open", v.open)), (v.taken ?? 0) > 0 && t("todos.taken", v.taken)]} />
       )}
@@ -157,7 +173,7 @@ function SourceCard({ v }: { v: SourceView }) {
         <Seg label={t("todos.done")} value={v.whenDone} options={done.map((x) => ({ v: x, label: t(`todos.done.${x}`) }))} onPick={(x) => set({ whenDone: x })} />
       </div>
       <div class="chat-foot">
-        <small class="grow">{v.state === "signed_out" || v.state === "no_tool" ? t("todos.signin") : ""}</small>
+        <span class="grow">{(v.state === "signed_out" || v.state === "no_tool") && !A.ghTodo && <Btn kind="secondary" size="sm" label={t("todos.signin")} about="GitHub" onClick={() => A.ntGhStart("local", "todos")} />}</span>
         {asking ? (
           <span class="ask-in-place">
             <small>{t("todos.remove.ask", name)}</small>

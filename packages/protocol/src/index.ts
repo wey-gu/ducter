@@ -404,6 +404,9 @@ export interface Bodies {
   // D341: a task bound to one outside to-do (item null: unbound). by: who bound it (the person in
   // New task, the partner when it took one, or a standing go).
   task_bound: { taskId: string; item: SourceItemRef | null; by: "you" | "partner" | "rule" };
+  // D345: a tool Ducter put on the home because the person tapped for it (gh, for GitHub's sign-in):
+  // how, where, the version, and how it went. Done for you lists a done one (changed, install).
+  tool_install: { device: string; tool: "gh"; how: "brew" | "release"; where: string; version?: string; phase: "started" | "done" | "failed"; detail?: string; by: "user" };
   // D341: what a look at a source saw change on a to-do: closed or reopened in its app, its words
   // edited, the line gone, or new to-dos in scope (refs, at most 20, untrusted titles).
   source_seen: {
@@ -1224,7 +1227,10 @@ export type ClientFrame =
   // link, then, when it ends, signed in with the account, or why not); token: the fallback, a token
   // the person pasted (passed to gh on that computer only, never kept or logged); cancel. Every
   // answer is a git_login_state.
-  | { t: "git_login"; action: "status" | "start" | "token" | "cancel"; device?: string; token?: string; clientId?: string }
+  // D345: install (the home only): gh isn't there; put it there (git_login_state installing, with
+  // progress), then sign in as start does. for "todos": the sign-in is 待办来源's 连上 / Connect, so
+  // once it is signed in the home adds GitHub as a source by itself (the same tap asked for it).
+  | { t: "git_login"; action: "status" | "start" | "token" | "cancel" | "install"; device?: string; token?: string; clientId?: string; for?: "todos" }
   // open_task: show this task in the apps (`ducter open <task>`): pushed to every connected app
   // as an open_task frame; the sender gets open_result with how many apps were told.
   | { t: "open_task"; taskId: string }
@@ -1341,12 +1347,32 @@ export type GitLoginWhere =
   | "signed_out" // gh is there, no login for github.com
   | "no_gh" // the GitHub CLI isn't on that computer
   | "code" // a sign-in is waiting for the person to enter `code` at `url`
+  | "installing" // D345: gh is being put on the home (install: how and where; progress 0–100 when known)
   | "failed" // the sign-in didn't happen (reason)
   | "cancelled"
   | "offline" // the computer can't be reached (home side only)
   | "old"; // its Ducter is too old to sign in (home side only)
 
-export type GitLoginWhy = "expired" | "denied" | "bad_token" | "failed";
+// D345: network: that computer couldn't reach GitHub; install: putting gh there failed;
+// unsupported: there is no gh build Ducter can put on that system.
+export type GitLoginWhy = "expired" | "denied" | "bad_token" | "network" | "install" | "unsupported" | "failed";
+
+/**
+ * D345: how the home would put gh there, said before the person taps 装上 gh / Install gh. brew:
+ * with the Mac's own Homebrew; release: GitHub's own gh build, its checksum checked, into Ducter's
+ * own folder (`where`): no administrator needed, nothing outside that folder changed.
+ */
+export interface GhInstallPlan {
+  how: "brew" | "release";
+  where: string;
+}
+
+/**
+ * D345: a fine-grained token made for Ducter, its permissions filled in on GitHub's own page (the
+ * token fallback's link): read and write issues, pull requests and code; metadata to read; 90 days.
+ */
+export const TOKEN_NEW_URL =
+  "https://github.com/settings/personal-access-tokens/new?name=Ducter&description=Ducter%3A+issues+assigned+to+you%2C+pull+requests+and+clones&expires_in=90&contents=write&issues=write&pull_requests=write&metadata=read";
 
 /** D272: one answer about a computer's GitHub sign-in. Never a token. */
 export interface GitLoginState {
@@ -1356,6 +1382,10 @@ export interface GitLoginState {
   url?: string;
   reason?: GitLoginWhy;
   message?: string;
+  /** D345: no_gh on the home: how it would be put there (absent: it can't be here). installing: how. */
+  install?: GhInstallPlan;
+  /** D345: installing: how far the download is, 0–100 (absent: not known, as with Homebrew). */
+  progress?: number;
 }
 
 /** D204: why a clone didn't happen, in a word the clients put in their own language. */

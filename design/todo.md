@@ -1902,3 +1902,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Its own clay art** on the Settings list (a page with a ticked box); the page with lines stands in. Trigger: the next art pass.
 - [ ] **Live checks:** the author's gh and a real (copied) vault on iCloud and Obsidian Sync with the note open in Obsidian. Trigger: before calling D341 done.
 - [ ] **Several GitHub accounts** (one source per home's gh today). Trigger: someone with a work and a personal account on one home.
+
+## D345: 连上 GitHub, guided (2026-11-18)
+
+- [ ] **Live check:** a fresh Linux home without gh, as root and as a plain user, and a Mac with and without Homebrew: 连上 → 装上 gh → the code → connected. Trigger: before calling D345 done.
+- [ ] **Install on a worker:** New task's clone on a worker without gh still says how to install it by hand. Trigger: a worker without gh reported.
+- [ ] **Keep the pinned gh current:** a Ducter release moves `GH_RELEASE` (`packages/core/src/gh-install.ts`), and the home replaces its own copy. Trigger: the next gh security release.

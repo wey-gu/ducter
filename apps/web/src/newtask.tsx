@@ -17,6 +17,7 @@ import { harnessName, spoken } from "./format.ts";
 import { SeedChip } from "./past.tsx";
 import { computerApart, computerOf, computers, manyComputers } from "./where.ts";
 import { TodoPick, TS } from "./todos.tsx";
+import { GhSignIn } from "./gh-signin.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -321,7 +322,7 @@ export function NewTaskSheet() {
       {nt.list === "clone" && nt.clone && <CloneField />}
       {nt.list === "add" && nt.add && <AddPanel />}
       {nt.list === "newfolder" && nt.newFolder && <NewFolderField />}
-      {nt.list === "gh" && nt.ghPanel && <SignInPanel />}
+      {nt.list === "gh" && nt.ghPanel && <GhSignIn which="nt" />}
       {nt.branchOpen && chosen.branches && (
         <div class="nt-list" role="radiogroup" aria-label={t("newtask.branch.title")}>
           <small>{t("newtask.branch.title")}</small>
@@ -548,7 +549,8 @@ function CloneField() {
                 {signIn}
               </>
             )}
-            {gh.state === "no_gh" && (
+            {gh.state === "no_gh" && gh.install && signIn}
+            {gh.state === "no_gh" && !gh.install && (
               <>
                 <div class="nt-empty small sub">{t("newtask.gh.nogh", name)}</div>
                 <div class="nt-gh-act">
@@ -662,93 +664,6 @@ function NewFolderField() {
       <div class="nt-browse-foot">
         <Btn kind="text" size="sm" label={t("newtask.find.back")} disabled={busy} onClick={() => A.ntAddBack()} />
         <Btn kind="primary" size="sm" label={busy ? t("newtask.new.going") : t("newtask.new.go")} disabled={busy || !n.name.trim()} onClick={() => A.ntNewGo()} />
-      </div>
-    </div>
-  );
-}
-
-/**
- * D272: 在 {computer} 上登录 GitHub: that computer's gh runs GitHub's device flow; the link opens on
- * any device and the code is copied; it waits until the person authorizes it on GitHub. The
- * fallback is a token pasted here, sent once to that computer's gh and never kept.
- */
-function SignInPanel() {
-  const g = A.nt.ghPanel!;
-  const name = A.ntComputerName(g.device);
-  const url = g.url ?? "https://github.com/login/device";
-  return (
-    <div class="nt-list nt-browse nt-gh" role="group" aria-label={t("newtask.gh.title", name)}>
-      <div class="nt-browse-head">
-        <small>{t("newtask.gh.title", name)}</small>
-      </div>
-      {g.token ? (
-        <>
-          <input
-            class="nt-field nt-token"
-            type="password"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck={false}
-            aria-label={t("newtask.gh.key")}
-            placeholder="ghp_… / github_pat_…"
-            value={g.tokenText ?? ""}
-            ref={(el) => void (el && !g.tokenText && !coarse() && el.focus())}
-            onInput={(e) => A.ntGhTokenInput((e.target as HTMLInputElement).value)}
-            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), A.ntGhTokenGo())}
-          />
-          <div class="nt-empty small sub">{t("newtask.gh.key.line", name)}</div>
-        </>
-      ) : g.code ? (
-        <>
-          <div class="nt-gh-step">
-            <span class="nt-gh-n">1</span>
-            <span class="nt-gh-what">
-              <small>{t("newtask.gh.step1")}</small>
-              <code class="nt-gh-url">{url.replace(/^https:\/\//, "")}</code>
-            </span>
-            <Btn kind="secondary" size="sm" label={t("newtask.gh.open")} onClick={() => A.ntGhOpen()} />
-          </div>
-          <div class="nt-gh-step">
-            <span class="nt-gh-n">2</span>
-            <span class="nt-gh-what">
-              <small>{t("newtask.gh.step2")}</small>
-              <code class="nt-gh-code">{g.code}</code>
-            </span>
-            <Btn kind="secondary" size="sm" label={g.copied ? t("newtask.gh.copied") : t("newtask.gh.copy")} onClick={() => void A.ntGhCopy()} />
-          </div>
-          <div class="nt-empty small sub nt-cloning" role="status">
-            <span class="spin" aria-hidden="true" />
-            {t("newtask.gh.waiting")}
-          </div>
-        </>
-      ) : (
-        !g.err && (
-          <div class="nt-empty small sub nt-cloning" role="status">
-            <span class="spin" aria-hidden="true" />
-            {t("newtask.gh.starting")}
-          </div>
-        )
-      )}
-      {g.err && (
-        <div class={`nt-empty small ${g.nogh ? "sub" : "nt-err-line"}`} role="status">
-          {g.err}
-        </div>
-      )}
-      <div class="nt-browse-foot">
-        {g.token ? (
-          <>
-            <Btn kind="text" size="sm" label={t("newtask.find.back")} onClick={() => A.ntGhTokenMode(false)} />
-            <span class="nt-grow" />
-            <Btn kind="primary" size="sm" label={t("newtask.gh.key.go")} disabled={!(g.tokenText ?? "").trim()} onClick={() => A.ntGhTokenGo()} />
-          </>
-        ) : (
-          <>
-            <Btn kind="text" size="sm" label={t("newtask.gh.key")} onClick={() => A.ntGhTokenMode(true)} />
-            <span class="nt-grow" />
-            <Btn kind="text" size="sm" label={t("newtask.gh.cancel")} onClick={() => A.ntGhCancel()} />
-            {g.err && <Btn kind="primary" size="sm" label={g.nogh ? t("newtask.gh.recheck") : t("newtask.gh.again")} onClick={() => A.ntGhStart(g.device)} />}
-          </>
-        )}
       </div>
     </div>
   );

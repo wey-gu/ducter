@@ -22,7 +22,9 @@ export const GIT_LOGIN_TIMEOUT_MS = 16 * 60_000;
 export const GIT_LOGIN_CODE_MS = 45_000;
 
 import type { GitLoginState, GitLoginWhy } from "./index.ts";
-export type { GitLoginState, GitLoginWhere, GitLoginWhy } from "./index.ts";
+export type { GhInstallPlan, GitLoginState, GitLoginWhere, GitLoginWhy } from "./index.ts";
+export { TOKEN_NEW_URL } from "./index.ts";
+
 
 /** Runs `gh <args>`; resolves with its exit code and output. Injected in tests (never a real gh there). */
 export type GhRun = (
@@ -106,6 +108,8 @@ export function parseStatus(out: string, err: string): string | undefined {
 /** Why a sign-in failed, from gh's words. */
 export function loginWhy(err: string): GitLoginWhy {
   const e = err.toLowerCase();
+  // D345: GitHub out of reach (no network, DNS, a proxy, TLS) before "timeout" reads as expired.
+  if (/dial tcp|no such host|lookup [^ ]+ on|connection refused|network is unreachable|tls handshake|i\/o timeout|proxyconnect|could not resolve|connection reset by peer/.test(e)) return "network";
   if (/expired|expire|timed out|timeout/.test(e)) return "expired";
   if (/access_denied|denied|cancel/.test(e)) return "denied";
   if (/token|scope|401|bad credentials/.test(e)) return "bad_token";
@@ -221,7 +225,7 @@ export function createGitLogin(o: GitLoginOpts = {}): GitLogin {
       if (!/^[A-Za-z0-9_]{20,255}$/.test(t)) return { state: "failed", reason: "bad_token", message: "That doesn't look like a GitHub token." };
       const r = await run(["auth", "login", "--hostname", GITHUB_HOST, "--git-protocol", "https", "--with-token"], { env: loginEnv(), stdin: t + "\n", timeoutMs: 60_000 });
       if (r.missing) return { state: "no_gh" };
-      if (r.code !== 0) return { state: "failed", reason: "bad_token", message: lastLine(r.err) || "GitHub didn't take that token." };
+      if (r.code !== 0) return { state: "failed", reason: loginWhy(r.err) === "network" ? "network" : "bad_token", message: lastLine(r.err) || "GitHub didn't take that token." };
       return settle();
     },
     async cancel() {

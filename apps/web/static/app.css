@@ -4898,6 +4898,49 @@ ol.tries b {
   width: 13px;
   height: 13px;
 }
+/* D345: gh being put on the home (a thin bar under its line), and the token fallback's link. */
+.nt-gh-installing {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 6px;
+}
+.nt-gh-bar {
+  height: 4px;
+  margin: 0 10px;
+  border-radius: 2px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+.nt-gh-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--working-ink);
+  transition: width var(--t-fast) var(--ease);
+}
+.nt-gh-make {
+  align-self: flex-start;
+  padding: 6px 10px 0;
+  font-size: var(--sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+/* D345: the same sign-in in place under 待办来源's GitHub row: no popover chrome, the code large. */
+.nt-list.gh-in {
+  max-height: none;
+  overflow: visible;
+  margin: 0 var(--s3) var(--s3);
+  background: var(--bg);
+  box-shadow: 0 0 0 1px var(--line-soft);
+}
+.nt-list.gh-in .nt-browse-foot {
+  position: static;
+  background: var(--bg);
+}
+.nt-list.gh-in .nt-gh-code {
+  font-size: var(--t28);
+}
 /* D202: under the chosen agent, its Model and Effort rows: short rows of chips that wrap. */
 .nt-agent {
   display: flex;

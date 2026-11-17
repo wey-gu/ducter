@@ -36,11 +36,23 @@ type ntNew struct {
 // no code yet), code (waiting for it to be entered), token (the pasted
 // token fallback), failed (err says why); cid the ask in flight.
 type ntLogin struct {
-	device, cid, phase string
+	device, cid, phase string // phase: starting | offer | installing | code | token | failed
 	code, url, err     string
 	token              string
 	copied             bool
 	focus              bool
+	// D345: todos: 待办来源's 连上 GitHub (the home; signed in, GitHub becomes
+	// a source). install: how the home would put gh there; installing and
+	// progress (0-100, -1 unknown) while it does; reason: why the last try
+	// failed; via: what it last asked (再试一次 asks it again); nogh: gh
+	// can't be put there (再看看).
+	todos      bool
+	install    *protocol.GhInstallPlan
+	installing bool
+	progress   float64
+	reason     string
+	via        string
+	nogh       bool
 }
 
 // devKey is a computer's key in the GitHub states ("local" for the home).
@@ -276,7 +288,7 @@ func (a *App) ghState(device string) *protocol.ServerFrame {
 }
 
 // gitLoginState takes a git_login_state: kept per computer; the sign-in
-// in flight moves on with it.
+// in flight (New task's, or D345's 连上 GitHub in 待办来源) moves on with it.
 func (a *App) gitLoginState(r protocol.ServerFrame) {
 	nt := &a.nt
 	if nt.gh == nil {
@@ -287,15 +299,36 @@ func (a *App) gitLoginState(r protocol.ServerFrame) {
 	case "signed_in", "signed_out", "no_gh":
 		nt.gh[key] = r
 	}
-	g := nt.login
-	if g == nil || g.cid == "" || r.ClientID != g.cid {
+	g := a.loginOf(r.ClientID)
+	if g == nil {
 		return
 	}
 	name := a.computerName(g.device)
+	if g.todos {
+		name = a.todoHome()
+	}
+	if r.State != "installing" {
+		g.installing = false
+	}
 	switch r.State {
+	case "installing":
+		g.phase, g.installing, g.err = "installing", true, ""
+		if r.GhInstall != nil {
+			g.install = r.GhInstall
+		}
+		g.progress = -1
+		if r.GhProgress != nil {
+			g.progress = *r.GhProgress
+		}
 	case "code":
 		g.phase, g.code, g.url, g.err = "code", r.Code, firstNonEmpty(r.URL, "https://github.com/login/device"), ""
 	case "signed_in":
+		if g.todos {
+			// D345: GitHub is a source now (the home added it); its group says so with the count.
+			a.todos.login = nil
+			a.todos.connected = r.Account
+			return
+		}
 		nt.login = nil
 		nt.ghDone = a.L.T("newtask.gh.done", name, r.Account)
 		// A clone that failed for access goes again, now that it can.
@@ -304,11 +337,19 @@ func (a *App) gitLoginState(r protocol.ServerFrame) {
 			a.startClone()
 		}
 	case "cancelled":
-		nt.login = nil
+		a.dropLogin(g)
 	case "no_gh":
-		nt.login = nil
+		// D345: no gh on the home, and Ducter can put it there: the offer, in the panel.
+		switch {
+		case r.GhInstall != nil:
+			g.phase, g.install, g.err, g.cid = "offer", r.GhInstall, "", ""
+		case g.todos:
+			g.phase, g.err, g.cid, g.nogh = "failed", a.L.T("newtask.gh.nogh", name), "", true
+		default:
+			nt.login = nil
+		}
 	case "signed_out":
-		if g.phase != "token" {
+		if g.phase != "token" && !g.todos {
 			nt.login = nil
 		}
 	default:
@@ -316,7 +357,8 @@ func (a *App) gitLoginState(r protocol.ServerFrame) {
 		if g.phase != "token" {
 			g.phase = "failed"
 		}
-		g.cid, g.token = "", ""
+		g.cid, g.token, g.reason = "", "", r.Reason
+		g.nogh = r.Reason == "unsupported"
 		switch {
 		case r.State == "offline":
 			g.err = a.L.T("newtask.find.offline", name)
@@ -324,6 +366,10 @@ func (a *App) gitLoginState(r protocol.ServerFrame) {
 			g.err = a.L.T("newtask.old", name)
 		case r.Reason == "expired" || r.Reason == "denied":
 			g.err = a.L.T("newtask.gh.err." + r.Reason)
+		case r.Reason == "network" || r.Reason == "unsupported":
+			g.err = a.L.T("newtask.gh.err."+r.Reason, name)
+		case r.Reason == "install":
+			g.err = a.L.T("newtask.gh.err.install", strings.TrimRight(r.Message, ". 。"))
 		case r.Reason == "bad_token":
 			g.err = a.L.T("newtask.gh.err.bad_key", strings.TrimRight(r.Message, ". 。"))
 		default:
@@ -332,18 +378,80 @@ func (a *App) gitLoginState(r protocol.ServerFrame) {
 	}
 }
 
+// loginOf is the sign-in in flight that a clientId answers (nil: none).
+func (a *App) loginOf(cid string) *ntLogin {
+	if cid == "" {
+		return nil
+	}
+	if g := a.todos.login; g != nil && g.cid == cid {
+		return g
+	}
+	if g := a.nt.login; g != nil && g.cid == cid {
+		return g
+	}
+	return nil
+}
+
+// dropLogin closes that sign-in panel.
+func (a *App) dropLogin(g *ntLogin) {
+	if g.todos {
+		a.todos.login = nil
+	} else {
+		a.nt.login = nil
+	}
+}
+
+// sendLogin asks the computer one step of that sign-in.
+func (a *App) sendLogin(g *ntLogin, action, token string) {
+	f := protocol.GitLogin{T: "git_login", Action: action, Device: a.deviceArg(g.device), Token: token, ClientID: g.cid}
+	if g.todos {
+		f.Device, f.For = "", "todos"
+	}
+	a.send(f)
+}
+
 // startGitLogin asks that computer to sign in to GitHub (device flow).
 func (a *App) startGitLogin(device string) {
 	a.nextClient++
 	cid := fmt.Sprintf("g%d-%d", a.Now().UnixMilli(), a.nextClient)
 	a.nt.login = &ntLogin{device: device, cid: cid, phase: "starting"}
 	a.nt.ghDone = ""
-	a.send(protocol.GitLogin{T: "git_login", Action: "start", Device: a.deviceArg(device), ClientID: cid})
+	a.sendLogin(a.nt.login, "start", "")
+}
+
+// startTodoLogin is 待办来源's 连上 GitHub (D345): the home signs in (and
+// puts gh there first when it isn't); signed in, GitHub becomes a source.
+func (a *App) startTodoLogin() {
+	a.nextClient++
+	a.todos.login = &ntLogin{device: "local", cid: fmt.Sprintf("g%d-%d", a.Now().UnixMilli(), a.nextClient), phase: "starting", todos: true}
+	a.todos.connected = ""
+	a.sendLogin(a.todos.login, "start", "")
+}
+
+// installGh is 装上 gh (D345): the home puts gh there, then the sign-in
+// goes on by itself.
+func (a *App) installGh(g *ntLogin) {
+	a.nextClient++
+	g.cid = fmt.Sprintf("g%d-%d", a.Now().UnixMilli(), a.nextClient)
+	g.phase, g.installing, g.progress, g.err, g.via = "installing", true, 0, "", "install"
+	a.sendLogin(g, "install", "")
+}
+
+// retryLogin is 再试一次: what failed, again (the install while gh isn't
+// there, else the sign-in).
+func (a *App) retryLogin(g *ntLogin) {
+	if g.via == "install" && g.reason != "expired" && g.reason != "denied" && g.reason != "bad_token" {
+		a.installGh(g)
+		return
+	}
+	a.nextClient++
+	g.cid = fmt.Sprintf("g%d-%d", a.Now().UnixMilli(), a.nextClient)
+	g.phase, g.err, g.via = "starting", "", "start"
+	a.sendLogin(g, "start", "")
 }
 
 // sendGitToken signs in with the pasted token; the field is emptied at once.
-func (a *App) sendGitToken() {
-	g := a.nt.login
+func (a *App) sendGitToken(g *ntLogin) {
 	if g == nil || strings.TrimSpace(g.token) == "" {
 		return
 	}
@@ -351,26 +459,34 @@ func (a *App) sendGitToken() {
 	g.cid = fmt.Sprintf("g%d-%d", a.Now().UnixMilli(), a.nextClient)
 	tok := strings.TrimSpace(g.token)
 	g.token, g.err = "", ""
-	a.send(protocol.GitLogin{T: "git_login", Action: "token", Token: tok, Device: a.deviceArg(g.device), ClientID: g.cid})
+	a.sendLogin(g, "token", tok)
 }
 
-// cancelGitLogin stops the sign-in in flight and goes back to the clone field.
-func (a *App) cancelGitLogin() {
-	g := a.nt.login
+// cancelGitLogin stops the sign-in in flight and closes its panel.
+func (a *App) cancelGitLogin(g *ntLogin) {
 	if g == nil {
 		return
 	}
 	if g.phase == "code" || g.phase == "starting" {
-		a.send(protocol.GitLogin{T: "git_login", Action: "cancel", Device: a.deviceArg(g.device)})
+		a.sendLogin(g, "cancel", "")
 	}
-	a.nt.login = nil
+	a.dropLogin(g)
 }
 
 // resendGitLogin: a socket that came back asks again (start answers the
-// sign-in already in flight with the same code).
+// sign-in already in flight with the same code; install joins the one
+// running).
 func (a *App) resendGitLogin() {
-	if g := a.nt.login; g != nil && g.cid != "" && (g.phase == "code" || g.phase == "starting") {
-		a.send(protocol.GitLogin{T: "git_login", Action: "start", Device: a.deviceArg(g.device), ClientID: g.cid})
+	for _, g := range []*ntLogin{a.nt.login, a.todos.login} {
+		if g == nil || g.cid == "" {
+			continue
+		}
+		switch g.phase {
+		case "code", "starting":
+			a.sendLogin(g, "start", "")
+		case "installing":
+			a.sendLogin(g, "install", "")
+		}
 	}
 	if k := a.nt.clone; k != nil {
 		a.askGitHub(k.device)
@@ -403,6 +519,12 @@ func (a *App) githubLine(c *ui.Context, k *ntClone) {
 		ui.Text(c.Key("nt-gh-out"), a.L.T("newtask.gh.out", name)).FontSize(t.XS).TextColor(t.InkSoft).Padding(t.S1, t.S3)
 		a.signInButton(c, k.device)
 	case "no_gh":
+		if s.GhInstall != nil {
+			// D345: the home can put gh there itself: the sign-in offers it.
+			ui.Text(c.Key("nt-gh-out"), a.L.T("newtask.gh.out", name)).FontSize(t.XS).TextColor(t.InkSoft).Padding(t.S1, t.S3)
+			a.signInButton(c, k.device)
+			return
+		}
 		ui.Text(c.Key("nt-gh-nogh"), a.L.T("newtask.gh.nogh", name)).FontSize(t.XS).TextColor(t.InkSoft).Padding(t.S1, t.S3)
 		ui.Row(c.Key("nt-gh-recheck")).Padding(0, t.S2).Children(func() {
 			if a.button(c, a.L.T("newtask.gh.recheck"), btnSecondary, t.ControlSM, t.Surface) {
@@ -422,30 +544,62 @@ func (a *App) signInButton(c *ui.Context, device string) {
 	})
 }
 
-// loginPanel is the place list while a computer signs in to GitHub.
-func (a *App) loginPanel(c *ui.Context) {
+// loginPanel is a computer signing in to GitHub: in New task's place list,
+// or (D345) in place under 待办来源's GitHub row. One panel, one set of
+// words: no gh on the home (how it would be put there, 装上 gh), gh being
+// put there (its progress), the link and the code (large, Copy), the wait,
+// the token fallback (a link makes one with its permissions filled in), and
+// every failure in one sentence with one next step.
+func (a *App) loginPanel(c *ui.Context, g *ntLogin, key string) {
 	t := a.T
-	g := a.nt.login
-	line := func(key, s string, col ui.Color) {
-		ui.Text(c.Key(key), s).FontSize(t.XS).TextColor(col).Padding(t.S1, t.S3)
+	name := a.computerName(g.device)
+	if g.todos {
+		name = a.todoHome()
+	}
+	line := func(k, s string, col ui.Color) {
+		ui.Text(c.Key(key+k), s).FontSize(t.XS).TextColor(col).LineHeight(a.leading(1.5)).Padding(t.S1, t.S3)
+	}
+	codeSize := t.XL
+	if g.todos {
+		codeSize = t.XXL
 	}
 	switch g.phase {
 	case "starting":
-		ui.Row(c.Key("nt-gh-starting")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S2, t.S3).Children(func() {
+		ui.Row(c.Key(key+"-starting")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S2, t.S3).Children(func() {
 			ui.Spinner(c).Size(12, 12)
 			ui.Text(c, a.L.T("newtask.gh.starting")).FontSize(t.XS).TextColor(t.InkMuted)
 		})
+	case "offer":
+		if g.install != nil && g.install.How == "brew" {
+			line("-offer", a.L.T("newtask.gh.install.brew", name), t.InkSoft)
+		} else if g.install != nil {
+			line("-offer", a.L.T("newtask.gh.install.release", name, tildePath(g.install.Where)), t.InkSoft)
+		}
+	case "installing":
+		ui.Column(c.Key(key+"-installing")).Gap(t.S2).Padding(t.S2, t.S3).Children(func() {
+			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				ui.Spinner(c).Size(12, 12)
+				s := a.L.T("newtask.gh.installing.brew")
+				if g.install == nil || g.install.How != "brew" {
+					s = a.L.T("newtask.gh.installing", int(max(0, g.progress)))
+				}
+				ui.Text(c, s).FontSize(t.XS).TextColor(t.InkMuted).Role(ui.RoleStatus)
+			})
+			if g.install == nil || g.install.How != "brew" {
+				a.progressBar(c, max(0.04, g.progress/100))
+			}
+		})
 	case "code":
-		ui.Text(c.Key("nt-gh-s1"), "1  "+a.L.T("newtask.gh.step1")).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Padding(t.S2, t.S3, 0, t.S3)
-		ui.Row(c.Key("nt-gh-url")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, t.S2, t.S1, t.S3).Children(func() {
+		ui.Text(c.Key(key+"-s1"), "1  "+a.L.T("newtask.gh.step1")).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Padding(t.S2, t.S3, 0, t.S3)
+		ui.Row(c.Key(key+"-url")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, t.S2, t.S1, t.S3).Children(func() {
 			ui.Text(c, strings.TrimPrefix(g.url, "https://")).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
 			if a.buttonFor(c, a.L.T("newtask.gh.open"), g.url, btnSecondary, t.ControlSM, t.Surface) {
 				c.OpenURL(g.url)
 			}
 		})
-		ui.Text(c.Key("nt-gh-s2"), "2  "+a.L.T("newtask.gh.step2")).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Padding(t.S2, t.S3, 0, t.S3)
-		ui.Row(c.Key("nt-gh-code")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, t.S2, t.S1, t.S3).Children(func() {
-			ui.Text(c, g.code).Font(t.Mono).FontSize(t.XL).FontWeight(700).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0).Label(g.code)
+		ui.Text(c.Key(key+"-s2"), "2  "+a.L.T("newtask.gh.step2")).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Padding(t.S2, t.S3, 0, t.S3)
+		ui.Row(c.Key(key+"-code")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, t.S2, t.S1, t.S3).Children(func() {
+			ui.Text(c, g.code).Font(t.Mono).FontSize(codeSize).FontWeight(700).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0).Label(g.code)
 			label := a.L.T("newtask.gh.copy")
 			if g.copied {
 				label = a.L.T("newtask.gh.copied")
@@ -455,53 +609,80 @@ func (a *App) loginPanel(c *ui.Context) {
 				g.copied = true
 			}
 		})
-		ui.Row(c.Key("nt-gh-wait")).Gap(t.S2).AlignItems(ui.Start).Padding(t.S2, t.S3, t.S1, t.S3).Children(func() {
+		ui.Row(c.Key(key+"-wait")).Gap(t.S2).AlignItems(ui.Start).Padding(t.S2, t.S3, t.S1, t.S3).Children(func() {
 			ui.Spinner(c).Size(12, 12)
 			ui.Text(c, a.L.T("newtask.gh.waiting")).FontSize(t.XS).TextColor(t.InkMuted).Grow(1).MinWidth(0)
 		})
 	case "token":
-		in := ui.TextInput(c.Key("nt-gh-token"), &g.token).Placeholder("ghp_… / github_pat_…").Label(a.L.T("newtask.gh.key")).
+		ui.Row(c.Key(key+"-make")).Padding(t.S1, t.S2, 0, t.S2).Children(func() {
+			if a.buttonFor(c, a.L.T("newtask.gh.key.make"), protocol.TokenNewURL, btnText, t.ControlSM, t.Surface) {
+				c.OpenURL(protocol.TokenNewURL)
+			}
+		})
+		in := ui.TextInput(c.Key(key+"-token"), &g.token).Placeholder("github_pat_… / ghp_…").Label(a.L.T("newtask.gh.key")).
 			Height(t.ControlMD).Padding(0, t.S3).Radius(t.RadiusMD).Background(t.Bg).Border(1, t.LineSoft).
-			Font(t.Mono).FontSize(t.MonoSM).ReadOnly(g.cid != "").Margin(t.S1, t.S2, 0, t.S2).OnSubmit(func() { a.sendGitToken() })
+			Font(t.Mono).FontSize(t.MonoSM).ReadOnly(g.cid != "").Margin(t.S1, t.S2, 0, t.S2).OnSubmit(func() { a.sendGitToken(g) })
 		in.Password()
 		if g.focus {
 			in.Focus()
 			g.focus = false
 		}
-		line("nt-gh-token-line", a.L.T("newtask.gh.key.line", a.computerName(g.device)), t.InkMuted)
+		line("-token-line", a.L.T("newtask.gh.key.line", name), t.InkMuted)
 		if g.err != "" {
-			line("nt-gh-err", g.err, t.Failed.Ink)
+			line("-err", g.err, t.Failed.Ink)
 		}
 	case "failed":
-		line("nt-gh-err", g.err, t.Failed.Ink)
+		col := t.Failed.Ink
+		if g.nogh {
+			col = t.InkSoft
+		}
+		line("-err", g.err, col)
 	}
-	a.panelFoot(c, "nt-gh-foot", func() {
+	if g.phase == "installing" {
+		return // nothing to stop or choose while gh is being put there
+	}
+	a.panelFoot(c, key+"-foot", func() {
 		switch g.phase {
 		case "code", "starting":
 			if a.button(c, a.L.T("newtask.gh.key"), btnText, t.ControlSM, t.Surface) {
-				a.send(protocol.GitLogin{T: "git_login", Action: "cancel", Device: a.deviceArg(g.device)})
+				a.sendLogin(g, "cancel", "")
+				g.phase, g.cid, g.focus, g.err = "token", "", true, ""
+			}
+		case "offer", "failed":
+			if a.button(c, a.L.T("newtask.gh.key"), btnText, t.ControlSM, t.Surface) {
 				g.phase, g.cid, g.focus, g.err = "token", "", true, ""
 			}
 		default:
 			if g.cid == "" && a.button(c, a.L.T("newtask.find.back"), btnText, t.ControlSM, t.Surface) {
-				a.nt.login = nil
+				a.dropLogin(g)
 			}
 		}
 	}, func() {
 		switch g.phase {
-		case "code", "starting":
-			if a.button(c, a.L.T("newtask.gh.cancel"), btnSecondary, t.ControlSM, t.Surface) {
-				a.cancelGitLogin()
+		case "code", "starting", "offer", "failed":
+			if a.button(c, a.L.T("newtask.gh.cancel"), btnText, t.ControlSM, t.Surface) {
+				a.cancelGitLogin(g)
+				return
+			}
+		}
+		switch g.phase {
+		case "offer":
+			if a.buttonFor(c, a.L.T("newtask.gh.install.go"), "GitHub", btnPrimary, t.ControlSM, t.Surface) {
+				a.installGh(g)
 			}
 		case "token":
 			if g.cid != "" {
 				ui.Spinner(c).Size(12, 12)
 			} else if a.button(c, a.L.T("newtask.gh.key.go"), btnPrimary, t.ControlSM, t.Surface) {
-				a.sendGitToken()
+				a.sendGitToken(g)
 			}
 		case "failed":
-			if a.button(c, a.L.T("newtask.gh.again"), btnPrimary, t.ControlSM, t.Surface) {
-				a.startGitLogin(g.device)
+			label := a.L.T("newtask.gh.again")
+			if g.nogh {
+				label = a.L.T("newtask.gh.recheck")
+			}
+			if a.button(c, label, btnPrimary, t.ControlSM, t.Surface) {
+				a.retryLogin(g)
 			}
 		}
 	})

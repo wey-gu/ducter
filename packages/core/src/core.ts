@@ -63,11 +63,12 @@ import { createCalendar, type Calendar } from "./calendar.ts";
 import { createTaskSources, type TaskSources, type TaskSourcesDeps } from "./task-sources/index.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { createModelCatalog, type ModelCatalog } from "./models.ts";
-import { browseFolders, cloneProject, createFoundRepos, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
+import { browseFolders, cloneProject, createFoundRepos, ghInstallHome, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
 import { projectRepos, realFs, type BrowseResult } from "@ducter/protocol/src/repos.ts";
 import { cloneRepo, type CloneResult } from "@ducter/protocol/src/clone.ts";
 import { newProjectFolder, type NewFolderResult } from "@ducter/protocol/src/new-folder.ts";
 import { createGitLogin, type GitLogin, type GitLoginState } from "@ducter/protocol/src/git-login.ts";
+import { createGhInstaller, useOwnTools, type GhInstaller } from "./gh-install.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { createProjects } from "./projects.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
@@ -178,6 +179,8 @@ export interface CoreOptions {
   newFolderHome?: (name: string) => NewFolderResult;
   /** D272 test seam: the home's own GitHub sign-in (default: this computer's gh). */
   gitLoginHome?: GitLogin;
+  /** D345 test seam: puts gh on the home (default: Homebrew or GitHub's own build; tests: none). */
+  ghInstaller?: GhInstaller;
   /** D341: 待办来源 / To-do sources: the seams (a fake gh, a scratch home for Obsidian's vault list, the look's pace). Tests default to no gh and no vaults. */
   taskSources?: Partial<Pick<TaskSourcesDeps, "ghRun" | "ghEnv" | "home" | "pollMs" | "boundMs" | "quietMs" | "today" | "now">>;
   /** D202 test seam: each agent's models on each computer (else read from the agents themselves). */
@@ -874,7 +877,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D272: a new folder in the home's own Ducter folder, and the home's own GitHub sign-in.
   const newFolderHome = opts.newFolderHome ?? ((name: string) => newProjectFolder(name, { dataDir }));
   const gitLoginHome = opts.gitLoginHome ?? createGitLogin();
-  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, cloneHome, newFolderHome, gitLoginHome, ...(opts.browseHome ? { browseHome: opts.browseHome } : {}), ...(opts.git ? { git: opts.git } : {}) };
+  // D345: gh Ducter put in its own folder is first on its PATH (its gh calls and every task's).
+  useOwnTools(dataDir);
+  const ghInstaller = opts.ghInstaller ?? (process.env.NODE_ENV === "test" ? { plan: () => undefined, install: async () => ({ ok: false as const, how: "release" as const, where: "", reason: "unsupported" as const, message: "not in tests" }) } : createGhInstaller({ dataDir }));
+  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, cloneHome, newFolderHome, gitLoginHome, ghInstaller, ...(opts.browseHome ? { browseHome: opts.browseHome } : {}), ...(opts.git ? { git: opts.git } : {}) };
   // D285: 做过的事 / Past tasks: the person's marks, and every task findable again.
   const marks = createMarks({ dataDir });
   tasks.setMarks((p, id) => marks.get(p, id));
@@ -969,6 +975,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     newFolder: (device: string | undefined, name: string) => newFolderProject(newTaskDeps, device, name, (path, dev) => newTask.addProject(path, dev)),
     // D272: 在 {computer} 上登录 GitHub / Sign in to GitHub on {computer}.
     gitLogin: (device: string | undefined, action: GitLoginAction, token?: string) => gitLoginOn(newTaskDeps, device, action, token),
+    ghInstall: (onState: (s: GitLoginState) => void) => ghInstallHome(newTaskDeps, onState),
   };
   // D214: the workbench, and the previews of the pages tasks serve (each on a port of its own,
   // on the interface the home listens on).

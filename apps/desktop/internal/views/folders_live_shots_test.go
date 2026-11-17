@@ -47,7 +47,7 @@ func TestFoldersLiveShots(t *testing.T) {
 		h.click(L.T("newtask.gh.signin", "Hetzner Server"))
 		h.until("code", func() bool { return h.app.nt.login != nil && h.app.nt.login.phase == "code" })
 		h.shot("live-code" + sz)
-		h.app.cancelGitLogin()
+		h.app.cancelGitLogin(h.app.nt.login)
 		h.until("back", func() bool { return h.app.nt.login == nil })
 		h.app.nt.open = false
 		h.tt.Frame()

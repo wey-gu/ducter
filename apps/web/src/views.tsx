@@ -2903,7 +2903,7 @@ function PhoneSettings() {
           <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => A.setDetails(v)} />
         </div>
         <VoiceSettings />
-        {/* D341: inside the Android app, its own version and 检查更新. */}
+        {/* D342: inside the Android app, its own version and 检查更新. */}
         <AppUpdateRow />
       </div>
       <div class="small sub">{t("settings.phone.note")}</div>

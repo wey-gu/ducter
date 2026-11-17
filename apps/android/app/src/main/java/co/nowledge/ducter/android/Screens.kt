@@ -234,7 +234,7 @@ class UpdateCard(c: Context) : FrameLayout(c) {
     private val buttons = LinearLayout(c)
     val later = Button(c)
     val go = Button(c)
-    /** D341: a third way under the two, full width (a failed download's 在浏览器里下载). */
+    /** D342: a third way under the two, full width (a failed download's 在浏览器里下载). */
     val altButton = Button(c)
 
     init {

@@ -62,15 +62,15 @@ object Updater {
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state
 
-    /** When the state last changed (a download's every percent too): a step silent for long is stuck (D341). */
+    /** When the state last changed (a download's every percent too): a step silent for long is stuck (D342). */
     @Volatile var changedAt = System.currentTimeMillis()
         private set
 
-    /** D341: GitHub has answered since the app started; until then a waiting version is asked about at once. */
+    /** D342: GitHub has answered since the app started; until then a waiting version is asked about at once. */
     @Volatile var heardThisRun = false
         private set
 
-    /** Each check or download is one run; a stuck one that is started over can no longer speak (D341). */
+    /** Each check or download is one run; a stuck one that is started over can no longer speak (D342). */
     @Volatile private var run = 0
 
     fun set(s: UpdateState) {
@@ -84,7 +84,7 @@ object Updater {
         return true
     }
 
-    /** A stuck step is left behind: whatever it says later is ignored, and nothing shows (D341). */
+    /** A stuck step is left behind: whatever it says later is ignored, and nothing shows (D342). */
     fun startOver() {
         run++
         set(UpdateState.Idle)
@@ -102,7 +102,7 @@ object Updater {
     /**
      * Asks GitHub. A newer release → Available; none → Current; offline → Failed(NETWORK). Quiet
      * (at launch, back in front): only a newer version not put off with "Later" is shown at all.
-     * The version offered is remembered until it is installed (D341), so a download that failed
+     * The version offered is remembered until it is installed (D342), so a download that failed
      * is offered again the next time the app opens.
      */
     suspend fun check(c: Context, store: Store, quiet: Boolean = false): UpdateState = withContext(Dispatchers.IO) {
@@ -174,7 +174,7 @@ object Updater {
                 return@withContext
             }
             val got = fetchTo(r.apkUrl, out) { pct -> set(me, UpdateState.Downloading(r, pct)) }
-            // D341: a download that stopped short is the connection's fault, not a wrong file.
+            // D342: a download that stopped short is the connection's fault, not a wrong file.
             if (r.size > 0 && out.length() != r.size) throw IOException("stopped at ${out.length()} of ${r.size}")
             got to want
         } catch (_: IOException) {

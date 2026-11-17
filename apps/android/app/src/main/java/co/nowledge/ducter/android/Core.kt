@@ -243,7 +243,7 @@ object HomeVersion {
 }
 
 /**
- * D341: when a quiet check (the app opened, back in front) asks GitHub again, and which update
+ * D342: when a quiet check (the app opened, back in front) asks GitHub again, and which update
  * states it may replace. A version GitHub offered that this app hasn't installed or put off with
  * "Later" stays offered: opening the app again asks at once, and back in front after 10 minutes,
  * instead of waiting out the hour since the check that found it. A download, check or install

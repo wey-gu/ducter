@@ -1,4 +1,4 @@
-// D341: the Android app's own version, and its own 检查更新 / Check for updates, on the phone's
+// D342: the Android app's own version, and its own 检查更新 / Check for updates, on the phone's
 // Settings › 这台手机 and on this phone's card in 你的设备. The app answers with its own card at
 // the bottom (在检查… / 已经是最新的 / 有新版本 {v}), so the row only asks. Two facts, two
 // elements (D291); the button is the shared one, 44 px tall on a touch screen.

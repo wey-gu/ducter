@@ -13885,7 +13885,7 @@ svg .wave.w2.on {
 .set-item.talk-row small {
   margin-top: 2px;
 }
-/* D341: the Android app's own version, its 检查更新 at the right edge, 44 px on a touch screen. */
+/* D342: the Android app's own version, its 检查更新 at the right edge, 44 px on a touch screen. */
 .set-item.app-row {
   flex-direction: row;
   align-items: center;

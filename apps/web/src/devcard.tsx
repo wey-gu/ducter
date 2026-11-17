@@ -246,7 +246,7 @@ function ClientSheet({ cl, folded }: { cl: Client; folded: Client[] }) {
       </div>
       <div class="dc-status">{line}</div>
       {mine && <NotifyChip />}
-      {/* D341: this phone, in the Android app: the app's own version and 检查更新. */}
+      {/* D342: this phone, in the Android app: the app's own version and 检查更新. */}
       {mine && androidAppVersion() && (
         <div class="set-card">
           <AppUpdateRow />

@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-// D341: the author's phone was offered 0.0.71, the download from GitHub failed, and reopening the
+// D342: the author's phone was offered 0.0.71, the download from GitHub failed, and reopening the
 // app never offered it again (the hour since the check that found it had not passed, and a stuck
 // step blocked every quiet check). These are the cases.
 class UpdatePaceTest {

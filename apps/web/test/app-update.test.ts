@@ -1,4 +1,4 @@
-// D341: inside the Android app, Settings › 这台手机 and this phone's card in 你的设备 show the app's
+// D342: inside the Android app, Settings › 这台手机 and this phone's card in 你的设备 show the app's
 // own version with 检查更新 / Check for updates, which asks the app; nowhere else. Words in both
 // languages, two facts as two elements (D291), the shared button (44 px on a touch screen).
 import { afterAll, expect, test } from "bun:test";

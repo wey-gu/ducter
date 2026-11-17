@@ -56,7 +56,7 @@ card. **检查更新** in the icon's long-press menu asks now. Words are the dev
 {v} · 更新 · 在下载 {v}… n% · 在核对 {v}… · 在安装 {v}… · 回来了，现在是 {v} · 没更新成 with the reason
 (连不上 GitHub / 校验值对不上 / 这个版本里没有给安卓的文件 / 这份 Ducter 是从别处装的).
 
-**A failed download, and asking again (D341).** The author's phone was offered a version, the
+**A failed download, and asking again (D342).** The author's phone was offered a version, the
 download from GitHub broke off, and opening the app again never offered it: the hour was counted
 from the check that found it, a step stuck mid-way (a hung connection, Android's dialog left
 behind) blocked every quiet check, and the only manual check hid in the icon's long-press menu.

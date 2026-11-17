@@ -71,6 +71,22 @@
     <string name="handset_record_asking">Android is asking to record the screen</string>
     <string name="handset_record_sending">Sending the recording to Ducter</string>
     <string name="handset_link_fgs">Keeps the link to your Ducter while a task borrows this phone</string>
+    <!-- D331: the link while Android's switch is on and the phone isn't lent; a Go on a locked phone; a lock that pauses a loan. -->
+    <string name="notify_ready_channel">Use this phone is on</string>
+    <string name="notify_ready_channel_about">Keeps the link to your Ducter, so a task you lend this phone to can start with Ducter closed. You can hide it.</string>
+    <string name="handset_ready_line">A task asks you first before it borrows this phone</string>
+    <string name="notify_ask_channel">Lending this phone</string>
+    <string name="notify_ask_channel_about">When you lent this phone while it was locked, and after you unlock a loan that paused.</string>
+    <string name="handset_wait_title">“%1$s” starts when you unlock</string>
+    <string name="handset_wait_line">You said Lend it. Unlock this phone and it starts, shown at the top the whole time.</string>
+    <string name="handset_wait_public">Ducter starts using this phone when you unlock it</string>
+    <string name="handset_not_now">Not now</string>
+    <string name="handset_paused_title">“%1$s” is paused</string>
+    <string name="handset_paused_line">You locked this phone, so it does nothing. After you unlock, you choose whether it carries on.</string>
+    <string name="handset_resume_title">Keep lending this phone to “%1$s”?</string>
+    <string name="handset_resume_line">It paused when you locked the phone. Keep lending, and it carries on where it was; Not now, and the phone is yours again.</string>
+    <string name="handset_resume_go">Keep lending</string>
+
     <!-- D306: the glance (packages/protocol/src/ambient.ts AMBIENT_WORDS). -->
     <string name="glance_channel">Tasks and calls you follow</string>
     <string name="glance_channel_about">A task you chose to keep in sight, and a call in progress: only where it\'s at.</string>

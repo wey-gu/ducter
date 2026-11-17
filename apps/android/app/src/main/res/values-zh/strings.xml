@@ -66,6 +66,22 @@
     <string name="handset_record_asking">安卓在问能不能录屏</string>
     <string name="handset_record_sending">在把录屏发回 Ducter</string>
     <string name="handset_link_fgs">任务借用这台手机时，保持和你的 Ducter 的连接</string>
+    <!-- D331 -->
+    <string name="notify_ready_channel">用这台手机开着</string>
+    <string name="notify_ready_channel_about">保持和你的 Ducter 的连接，所以 Ducter 没开着，借出去的任务也能开始。可以把它隐藏。</string>
+    <string name="handset_ready_line">任务要借这台手机时，会先问你</string>
+    <string name="notify_ask_channel">借用这台手机</string>
+    <string name="notify_ask_channel_about">手机锁着时你借给了任务，或者锁屏暂停的借用在你解锁以后。</string>
+    <string name="handset_wait_title">解锁后，「%1$s」就开始</string>
+    <string name="handset_wait_line">你点了「借给它」。解锁这台手机就开始，用的时候顶上一直显示。</string>
+    <string name="handset_wait_public">解锁后，Ducter 就开始用这台手机</string>
+    <string name="handset_not_now">不借了</string>
+    <string name="handset_paused_title">「%1$s」暂停了</string>
+    <string name="handset_paused_line">你锁屏了，它什么都不做。解锁以后，由你决定要不要它接着用。</string>
+    <string name="handset_resume_title">还借给「%1$s」吗？</string>
+    <string name="handset_resume_line">你锁屏时它停下了。继续借给它，就从停下的地方接着做；不借了，手机就回到你手里。</string>
+    <string name="handset_resume_go">继续借给它</string>
+
     <!-- D306: the glance (packages/protocol/src/ambient.ts AMBIENT_WORDS). -->
     <string name="glance_channel">跟着看的任务和通话</string>
     <string name="glance_channel_about">你选了要跟着看的任务，和正在打的电话：只显示到了哪一步。</string>

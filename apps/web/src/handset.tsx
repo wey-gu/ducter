@@ -203,7 +203,10 @@ export function HandsetChip({ cl }: { cl: Client }) {
           <div class="dev-site">
             <div class="dev-site-what">
               <div class="small">{t("handset.using", h.using.title)}</div>
-              {h.using.quiet && <div class="small sub" role="status">{t("handset.quiet", name)}</div>}
+              {h.using.paused === "locked" && <div class="small sub" role="status">{t("handset.paused", name)}</div>}
+              {h.using.paused === "asking" && <div class="small sub" role="status">{t("handset.paused.asking", name)}</div>}
+              {h.using.quiet && !h.using.paused && <div class="small sub" role="status">{t("handset.quiet", name)}</div>}
+
             </div>
             <Btn kind="secondary" size="sm" label={t("handset.stop")} about={h.using.title} onClick={() => A.send({ t: "handset_stop", taskId: h.using!.taskId })} />
           </div>
@@ -404,7 +407,7 @@ export function HandsetAskBody({ d, compact }: { d: DecisionState; compact?: boo
         </div>
       ) : (
         <div class={compact ? "said" : "resolved"} role="status">
-          {d.resolved?.option === "go" ? t(`${k}.done`, name) : t(`${k}.held`)}
+          {d.resolved?.option === "go" ? (k === "handset.ask" && d.taskId && A.S.onHand?.tasks.find((x) => x.taskId === d.taskId)?.handset?.wait ? t("handset.ask.waiting") : t(`${k}.done`, name)) : t(`${k}.held`)}
         </div>
       )}
     </>
@@ -477,14 +480,40 @@ export function HandsetLine({ task }: { task: Task }) {
   const c: TaskCard | undefined = A.S.onHand?.tasks.find((x) => x.taskId === task.id);
   const hs = c?.handset;
   if (!hs || !ACTIVE.includes(c!.attention)) return null;
-  const line = t("handset.task", phoneName(hs.device, "phone"));
+  const phone = phoneName(hs.device, "phone");
+  const line = handsetTaskLine(hs, phone);
+  const why = handsetTaskWhy(hs, phone);
   return (
     <div class="outcome watch-row">
-      <div class="said">
+      <div class="said" role={hs.wait || hs.paused ? "status" : undefined}>
         {line}
-        {hs.quiet && <div class="small sub" role="status">{t("handset.quiet", phoneName(hs.device, "phone"))}</div>}
+        {why && <div class="small sub">{why}</div>}
       </div>
-      <Btn kind="secondary" size="sm" label={t("handset.stop")} about={line} onClick={() => A.send({ t: "handset_stop", taskId: task.id })} />
+      <Btn kind="secondary" size="sm" label={t(hs.wait ? "handset.withdraw" : "handset.stop")} about={line} onClick={() => A.send({ t: "handset_stop", taskId: task.id })} />
     </div>
   );
+}
+
+type HandsetCard = NonNullable<TaskCard["handset"]>;
+
+/**
+ * D331: the opened task's line for the person's phone, as the loan stands: lent, paused by their lock
+ * (or asking on the phone after the unlock), or a Go given and the loan not on yet (waiting for the
+ * unlock, the phone out of reach, starting).
+ */
+export function handsetTaskLine(hs: HandsetCard, phone: string): string {
+  if (hs.wait === "unlock") return t("handset.wait.unlock", phone);
+  if (hs.wait === "away") return t("handset.wait.away", phone);
+  if (hs.wait === "starting") return t("handset.wait.starting", phone);
+  if (hs.paused === "asking") return t("handset.paused.asking", phone);
+  if (hs.paused) return t("handset.paused", phone);
+  return t("handset.task", phone);
+}
+
+/** D331: the line under it: why the phone can't be reached, what a pause means, or that it isn't answering. */
+export function handsetTaskWhy(hs: HandsetCard, phone: string): string {
+  if (hs.wait === "away") return t(`handset.away.${hs.away ?? "unknown"}`);
+  if (hs.paused === "locked") return t("handset.paused.why");
+  if (hs.quiet && !hs.wait && !hs.paused) return t("handset.quiet", phone);
+  return "";
 }

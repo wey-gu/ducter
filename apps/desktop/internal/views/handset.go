@@ -42,7 +42,18 @@ func (a *App) handsetCard(c *ui.Context, cl *protocol.ReachClient) {
 	if u := h.Using; u != nil {
 		id, title := u.TaskID, u.Title
 		ui.Row(c.Key("handset-using:" + cl.ID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("handset.using", title)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
+			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+				ui.Text(c, a.L.T("handset.using", title)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5)
+				// D331: paused by the person's lock, or asking on the phone after the unlock.
+				switch {
+				case u.Paused == "asking":
+					ui.Text(c, a.L.T("handset.paused.asking", name)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+				case u.Paused != "":
+					ui.Text(c, a.L.T("handset.paused", name)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+				case u.Quiet:
+					ui.Text(c, a.L.T("handset.quiet", name)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+				}
+			})
 			if a.buttonFor(c, a.L.T("handset.stop"), title, btnSecondary, t.ControlSM, t.Bg) {
 				a.send(protocol.HandsetStopReq{T: "handset_stop", TaskID: id})
 			}
@@ -71,11 +82,46 @@ func (a *App) handsetTaskLine(c *ui.Context, task *store.Task) {
 			}
 		}
 	}
-	line := a.L.T("handset.task", name)
+	line, why := a.handsetLines(h, name)
 	ui.Text(c, line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5)
-	if a.buttonFor(c, a.L.T("handset.stop"), line, btnSecondary, t.ControlSM, t.Chrome) {
+	if why != "" {
+		ui.Text(c, why).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+	}
+	label := a.L.T("handset.stop")
+	if h.Wait != "" {
+		label = a.L.T("handset.withdraw") // D331: 不借了 / Not now, before the loan is on
+	}
+	if a.buttonFor(c, label, line, btnSecondary, t.ControlSM, t.Chrome) {
 		a.send(protocol.HandsetStopReq{T: "handset_stop", TaskID: task.ID})
 	}
+}
+
+// handsetLines is the opened task's line for the person's phone and the
+// one under it (D331), as the loan stands: lent (quiet when it isn't
+// answering), paused by their lock or asking on the phone after the unlock,
+// or a Go given and the loan not on yet (the phone locked, out of reach
+// and why, starting). The port of handsetTaskLine / handsetTaskWhy in
+// apps/web/src/handset.tsx.
+func (a *App) handsetLines(h *protocol.HandsetCard, name string) (line, why string) {
+	switch {
+	case h.Wait == "unlock":
+		return a.L.T("handset.wait.unlock", name), ""
+	case h.Wait == "away":
+		away := h.Away
+		if away == "" {
+			away = "unknown"
+		}
+		return a.L.T("handset.wait.away", name), a.L.T("handset.away." + away)
+	case h.Wait == "starting":
+		return a.L.T("handset.wait.starting", name), ""
+	case h.Paused == "asking":
+		return a.L.T("handset.paused.asking", name), ""
+	case h.Paused != "":
+		return a.L.T("handset.paused", name), a.L.T("handset.paused.why")
+	case h.Quiet:
+		return a.L.T("handset.task", name), a.L.T("handset.quiet", name)
+	}
+	return a.L.T("handset.task", name), ""
 }
 
 // handsetRecordLeft is how long Android's recording prompt on the phone

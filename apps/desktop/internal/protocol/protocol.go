@@ -813,11 +813,11 @@ type TaskCard struct {
 	Browsing        *Browsing        `json:"browsing,omitempty"`    // D190: holds Ducter's browser there
 	// D216: its latest step or words (a task_event, long fields cut), and a
 	// merge or a draft PR the user made from Ducter.
-	Latest     *LogEvent   `json:"latest,omitempty"`
-	Integrated *Integrated `json:"integrated,omitempty"`
-	Phoning    *Browsing   `json:"phoning,omitempty"`   // D217: is using Ducter's phone there
-	Computing  *Computing  `json:"computing,omitempty"` // D235: is using the person's apps there
-	Handset    *Computing  `json:"handset,omitempty"`   // D238: is using the person's own phone (device id, app id)
+	Latest     *LogEvent    `json:"latest,omitempty"`
+	Integrated *Integrated  `json:"integrated,omitempty"`
+	Phoning    *Browsing    `json:"phoning,omitempty"`   // D217: is using Ducter's phone there
+	Computing  *Computing   `json:"computing,omitempty"` // D235: is using the person's apps there
+	Handset    *HandsetCard `json:"handset,omitempty"`   // D238: is using the person's own phone (device id, app id); D331: paused, or a Go waiting
 	// D285: the person's marks (their name is already Title; Original keeps
 	// the task's own), and the task it was seeded from.
 	Mark     *PastMark `json:"mark,omitempty"`

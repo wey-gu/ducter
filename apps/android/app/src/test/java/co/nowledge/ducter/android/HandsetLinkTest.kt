@@ -113,4 +113,27 @@ class HandsetLinkTest {
         assertEquals(1280 to 1066, RecordLife.size(2208, 1840)) // a Pixel Fold open
         assertEquals(720 to 1280, RecordLife.size(720, 1280)) // already small: as it is
     }
+
+    // D331: the link stays up outside a loan: slower retries there, a kick on unlock, never after a refusal.
+    @Test fun notLentItBacksOffToAMinuteAndAKickTriesAtOnce() {
+        val m = machine()
+        m.start()
+        m.opened()
+        val waits = (0 until 10).map { m.closed(lent = false).also { m.retry() } }
+        assertEquals(listOf(500L, 1_000L, 2_000L, 4_000L, 8_000L, 15_000L, 30_000L, 60_000L, 60_000L, 60_000L), waits)
+        m.closed(lent = false)
+        assertTrue(m.kick()) // the screen came on: now, from the start
+        assertEquals("connecting", m.state)
+        assertFalse(m.kick()) // only from a wait
+        assertEquals(500L, m.closed(lent = false))
+        // Lent, never past 8 s.
+        assertEquals(8_000L, LinkMachine.backoff(20, lent = true))
+    }
+
+    @Test fun aRefusedDeviceIsNeverRetried() {
+        assertTrue(LinkMachine.refused(401))
+        assertTrue(LinkMachine.refused(403))
+        assertFalse(LinkMachine.refused(null))
+        assertFalse(LinkMachine.refused(502))
+    }
 }

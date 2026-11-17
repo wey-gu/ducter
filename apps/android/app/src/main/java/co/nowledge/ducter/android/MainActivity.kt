@@ -448,6 +448,8 @@ window.ducterNative=Object.freeze($info);})();"""
                 m.optString("name").takeIf { it.isNotEmpty() }?.let { store.deviceName = it }
                 // D255: the lent phone's own link and its recording uploads speak as this device (memory only).
                 token?.let { Handset.token = it }
+                // D331: the phone's own link to the home, while Android's switch for Ducter is on (lent or not).
+                HandsetLinkService.standby(this)
                 helloed = true
                 pushInsets()
                 pushFold()

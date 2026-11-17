@@ -234,7 +234,7 @@ describe("the loan's life (D253)", () => {
     // The next tool asks again: one new card.
     expect(await rejection(call("l1", "phone_look"))).toMatch(/Asked the user whether you may use Pixel Fold/);
     expect(askOf("l1").length).toBe(2);
-    expect(await rejection(call("l1", "phone_look"))).toMatch(/a card is asking them. That card is the only ask/);
+    expect(await rejection(call("l1", "phone_look"))).toMatch(/Waiting for the user to answer the card asking to lend you Pixel Fold. That card is the only ask/);
     expect(askOf("l1").length).toBe(2);
     core.tasks.setState("l1", "done", "parked");
     p.ws.close();

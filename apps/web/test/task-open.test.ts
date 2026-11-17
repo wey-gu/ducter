@@ -1,12 +1,14 @@
 // D284: opening a long task feels instant. A fake home holds a 5,000-event task behind a
 // simulated link (80 ms round trip, 4 Mbit/s); the page asks for the newest window first, and what
 // it draws from (the store, the transcript's blocks and turns, the locator) is ready within the
-// budget after the frame arrives. Older pages follow one at a time up to HISTORY_LIMIT, then only
-// at the head; a cached task opens from the store, and a reconnect asks for the newest window again.
+// budget after the frame arrives. D320: older pages follow only for what is on screen and ahead of
+// it (long-session.test.ts walks a 50,000-event session); a cached task opens from the store, and a
+// reconnect asks for the newest window again.
 import { describe, expect, test } from "bun:test";
 import type { ClientFrame, LogEvent, ServerFrame } from "@ducter/protocol";
 import { longTask } from "@ducter/protocol/fixtures/longtask.ts";
-import { olderPage, Store } from "../src/store.ts";
+import { olderPage, Store, windowAsk } from "../src/store.ts";
+import { indexOf, WINDOW } from "@ducter/protocol/src/session.ts";
 import { taskBlocks, taskTurns } from "../src/transcript.tsx";
 import { HISTORY_FIRST, HISTORY_LIMIT, HISTORY_PAGE } from "../src/app.ts";
 
@@ -37,7 +39,7 @@ function paint(S: Store, json: string, id: string): number {
 const welcome = (S: Store) => S.apply({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0 } as ServerFrame);
 
 describe("opening a long task (D284)", () => {
-  test("the newest window paints within the budget; older pages follow, then stop at the limit", () => {
+  test("the newest window paints within the budget; older pages follow only ahead of what is on screen (D320)", () => {
     const evs = longTask(5000);
     const ask = home(evs);
     const S = new Store();
@@ -49,17 +51,18 @@ describe("opening a long task (D284)", () => {
     expect(ms).toBeLessThan(300);
     const task = S.tasks.get("long1")!;
     expect(taskTurns(task).slice(-2).some((tu) => tu.body.some((b) => b.k === "voice" && b.text.startsWith("Round")))).toBe(true);
+    // D320: with its session index, pages come only for what is on screen and ahead of it: at the
+    // end, enough to scroll up a little (WINDOW.ahead), then none until the reader moves.
+    S.apply({ t: "task_index", taskId: "long1", index: indexOf(evs) } as ServerFrame);
     let pages = 0;
-    for (let before = olderPage(task, HISTORY_LIMIT); before; before = olderPage(task, HISTORY_LIMIT)) {
-      S.historyAsked("long1", HISTORY_PAGE);
-      expect(paint(S, ask({ t: "task_history", taskId: "long1", beforeSeq: before, limit: HISTORY_PAGE }).json, "long1")).toBeLessThan(300);
+    for (let a = windowAsk(S, "long1", undefined); a; a = windowAsk(S, "long1", undefined)) {
+      S.historyAsked("long1", a.limit);
+      expect("beforeSeq" in a).toBe(true);
+      expect(paint(S, ask({ t: "task_history", taskId: "long1", ...(a as { beforeSeq: number; limit: number }) }).json, "long1")).toBeLessThan(300);
       pages++;
     }
-    expect(task.events.length).toBeGreaterThanOrEqual(HISTORY_LIMIT);
-    expect(task.events.length).toBeLessThan(HISTORY_LIMIT + HISTORY_PAGE);
-    expect(pages).toBe(Math.ceil((HISTORY_LIMIT - HISTORY_FIRST) / HISTORY_PAGE));
-    // At the head the reader gets more: no limit there.
-    expect(olderPage(task)).toBe(task.histFrom);
+    expect(pages).toBe(Math.ceil(WINDOW.ahead / HISTORY_PAGE));
+    expect(task.events.length).toBeLessThan(HISTORY_LIMIT);
     expect(task.events.map((e) => e.seq)).toEqual(evs.slice(-task.events.length).map((e) => e.seq));
 
     const before = home(evs)({ t: "task_history", taskId: "long1", limit: 2000 });

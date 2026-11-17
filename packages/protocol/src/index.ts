@@ -955,7 +955,11 @@ export type ClientFrame =
   | { t: "read"; upToSeq: number }
   // D284: an opened task asks for its newest window first (limit ~200), then older pages with
   // beforeSeq = the oldest seq it holds; limit is at most 2,000.
-  | { t: "task_history"; taskId: string; beforeSeq?: number; limit?: number }
+  // D320: afterSeq = the newest seq it holds of a far stretch: the page after it, oldest first.
+  | { t: "task_history"; taskId: string; beforeSeq?: number; afterSeq?: number; limit?: number }
+  // D320: the task's session index (one small row per turn): all of it, or its turns from fromSeq on
+  // (the first seq of the last turn the client holds). Answered with a task_index frame.
+  | { t: "task_index"; taskId: string; fromSeq?: number }
   // Devices and abilities (D43, D51): "devices" answers with a devices frame and keeps the
   // socket subscribed (a fresh frame whenever a device or an ability changes). "ability" adds
   // (on: true, 装上) or removes (on: false, 取下) an ability on a device; it is answered with
@@ -1299,7 +1303,10 @@ export type ServerFrame =
   | { t: "on_hand"; onHand: OnHand }
   // D284: a page of a task's stream, oldest first: the newest `limit` events, or those before
   // beforeSeq (echoed). more: older events remain (absent from a home before D284).
-  | { t: "task_history"; taskId: string; events: LogEvent[]; more?: boolean; beforeSeq?: number }
+  // D320: with afterSeq (echoed), the page after it, and more: newer events remain.
+  | { t: "task_history"; taskId: string; events: LogEvent[]; more?: boolean; beforeSeq?: number; afterSeq?: number }
+  // D320: the task's session index; fromSeq echoed: its turns from there on replace the client's.
+  | { t: "task_index"; taskId: string; index: import("./session.ts").SessionIndex; fromSeq?: number }
   | { t: "sent"; taskId: string; delivered: Delivery } // ack for task_send
   // ref: merge commit or PR URL. confirm (D142 undo): the folder changed after the task finished;
   // these would be lost (count, the first few paths).

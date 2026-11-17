@@ -245,6 +245,25 @@ What the window writes is what the user reads when they open the task, in one co
   clock); no turn and an armed wait of its own is **等 {what} · {time} 回来** (D279), how it checks
   opened under it; otherwise nothing. Since D279 a progress report after `wait_for` leaves the
   card on Waiting (core's `rests`); the wake puts it back on Working;
+- **a long session** (D320; 10,000–100,000 events) is read through its **session index** and a
+  **window**. The home keeps one small row per turn (`packages/protocol/src/session.ts`: where it
+  starts and ends, when, what opened it cut to 200 characters, about how tall it draws in 16 px
+  steps, its compactions, switches, moves, reports and first plan), made once from the stream and
+  then grown by every append (`core/src/session-index.ts`, the 64 tasks asked about last), sent
+  with `task_index` when a task opens (from its last turn after a new socket) and grown live by
+  each client with the same `indexAdd`. The page lays out every turn of the index; a client holds
+  only `WINDOW.keep` (1,500) events around what is on screen and always the newest
+  `WINDOW.tail` (200): `nextAsk` asks the next page of 300 (`task_history` `beforeSeq`, or
+  `afterSeq` for a far stretch growing down), 600 events ahead of the scroll and 300 behind,
+  one at a time; `keepFor` lets far ones go (two thirds of what is kept ahead of the scroll); a
+  turn is built from its own events only when it is drawn and kept until they change
+  (`slotsOf`), so a page or a live event builds only its own turns; a turn with nothing held is
+  a blank of the index's height; a turn of more than 1,000 events is built from its newest.
+  The locator draws the whole session from the index; a click on a turn far away goes there at
+  once, its blank first, and it is tinted when it lands (a near one keeps D284's glide). A task
+  nobody has open keeps its newest 2,000. A text over 20,000 characters (an output over 8,000)
+  is cut, with **显示全部（{n} 字）/ Show all ({n} characters)** opening the whole, read from its
+  event, as plain text;
 - **checkpoints** are the window's words said once, marked saved (D152);
 - **keys** in the brief, a command or its output never leave the home: the projection hides
   them in every frame and push it sends; the Log keeps them for the task (D152);

@@ -207,6 +207,17 @@ await tick();
   await tick();
 }
 
+// D320: DEMO_LONG=50000 adds a review loop of that many events (the long-session fixture), to scroll and jump through.
+if (process.env.DEMO_LONG) {
+  const { longTask } = await import("@ducter/protocol/fixtures/longtask.ts");
+  const evs = longTask(Number(process.env.DEMO_LONG), { taskId: "t_long" });
+  for (const e of evs) {
+    log.append({ stream: e.stream, origin: e.origin, kind: e.kind, body: e.body } as never);
+    if (e.kind === "task_open") core.tasks.setState("t_long", "working", "hot");
+  }
+  await tick();
+}
+
 // D297: DEMO_LIMIT=1 adds tasks resting on their agent's usage limit (three share one reset).
 if (process.env.DEMO_LIMIT === "1") await (await import("./demo-limits.ts")).seedLimits(core, zh);
 

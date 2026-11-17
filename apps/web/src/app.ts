@@ -7,13 +7,14 @@ import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/proto
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
+import type { View } from "@ducter/protocol/src/session.ts";
 import { Api, Connection, deviceName, myShape, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, TABLE_LANGS, type Handheld, type Lang, type Strings, type TableLang } from "./i18n.ts";
 import { languageOfTexts, normalizeTag } from "@ducter/protocol/src/lang.ts";
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach, tellWays } from "./native.ts";
 import { copy } from "./conv-copy.ts";
-import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
+import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, windowAsk, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, shownDeviceName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { kindOf, navMove } from "./nav.ts";
@@ -781,7 +782,7 @@ class AppState {
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
     this.S.apply(f);
     this.onAmbient?.();
-    if (f.t === "task_history") this.pageHistory(f.taskId);
+    if (f.t === "task_history" || f.t === "task_index") this.pageHistory(f.taskId);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
     if (f.t === "action_result") this.actSent.delete(f.taskId);
     if (f.t === "welcome") {
@@ -2201,14 +2202,20 @@ class AppState {
 
   /**
    * D284: a task's history, newest first. What the store holds shows at once; the newest window
-   * (HISTORY_FIRST events) is asked when it was never loaded or a new socket may have left a gap;
-   * older pages follow in the background up to HISTORY_LIMIT (D271: a long loop's day), then as
-   * the reader scrolls up to the head (moreAtHead).
+   * (HISTORY_FIRST events) is asked when it was never loaded or a new socket may have left a gap,
+   * with its session index (D320); after that, pages come for what is on screen (windowStep).
    */
   history(id: string, force = false) {
     const t = this.S.tasks.get(id);
-    if (!this.S.welcomed || t?.histPending) return;
-    if (!force && (this.historyAsked.has(id) || t?.historyLoaded) && !t?.histStale) return;
+    if (!this.S.welcomed) return;
+    // D320: its session index first (all of it, or from its last turn after a new socket).
+    if (!t?.indexPending && (!t?.index || t.indexStale)) {
+      const from = t?.index && t.indexStale ? t.index.turns.at(-1)?.seq : undefined;
+      this.S.task(id).indexPending = true;
+      this.send({ t: "task_index", taskId: id, ...(from ? { fromSeq: from } : {}) });
+    }
+    if (t?.histPending) return;
+    if (!force && (this.historyAsked.has(id) || t?.historyLoaded) && !t?.histStale) return this.windowStep(id);
     this.historyAsked.add(id);
     this.askHistory(id, 0);
   }
@@ -2219,15 +2226,42 @@ class AppState {
     this.send({ t: "task_history", taskId: id, limit, ...(beforeSeq ? { beforeSeq } : {}) });
   }
 
-  /** D284: the next older page of the opened task, while it holds fewer than HISTORY_LIMIT events. */
-  private pageHistory(id: string) {
-    const before = olderPage(this.S.tasks.get(id), HISTORY_LIMIT);
-    if (this.route.name === "task" && this.route.id === id && before) this.askHistory(id, before);
+  /** D320: what is on screen of each open task (index turns), from its page. */
+  private views = new Map<string, View>();
+
+  /**
+   * D320: the page says which turns are on screen and which way the reader moves; the window
+   * follows: far events are let go, and the next page ahead of the scroll is asked.
+   */
+  view(id: string, v: View) {
+    const o = this.views.get(id);
+    if (o && o.first === v.first && o.last === v.last && o.dir === v.dir) return;
+    this.views.set(id, v);
+    this.windowStep(id);
   }
 
-  /** D284: the reader reached the head of a task the background stopped paging: an older page. */
+  /**
+   * D320: one step of an open task's window: let go of what is far from the screen, then ask the
+   * next page it needs (one at a time). Without a session index yet (or from a home before D320),
+   * nothing: what is held shows, and the head asks for more (moreAtHead).
+   */
+  private windowStep(id: string) {
+    if (!this.S.welcomed) return;
+    const a = windowAsk(this.S, id, this.views.get(id));
+    if (!a) return;
+    this.S.historyAsked(id, a.limit);
+    this.send({ t: "task_history", taskId: id, ...a });
+  }
+
+  private pageHistory(id: string) {
+    if (this.route.name === "task" && this.route.id === id) this.windowStep(id);
+  }
+
+  /** D284: the reader reached the head of a task with no session index (a home before D320): an older page. */
   moreAtHead(id: string) {
-    const before = olderPage(this.S.tasks.get(id));
+    const t = this.S.tasks.get(id);
+    if (t?.index) return;
+    const before = olderPage(t);
     if (before) this.askHistory(id, before);
   }
 

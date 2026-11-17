@@ -449,6 +449,10 @@ func (a *App) leftWords(d time.Duration) string {
 // wakesOf is how many times a task's own wait came true (each wake in its
 // transcript) and when the latest did: a loop's rounds, for the tally.
 func (a *App) wakesOf(task *store.Task, blocks []Block) (int, time.Time) {
+	// D320: the whole session's, from its index, not only what is held.
+	if ix := task.Index; ix != nil {
+		return ix.Wakes, store.ParseTime(ix.LastWakeAt)
+	}
 	n, last := 0, time.Time{}
 	for i := range blocks {
 		if blocks[i].K == "wake" {

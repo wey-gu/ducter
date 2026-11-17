@@ -118,6 +118,25 @@ test("ws: hello -> welcome, channel replay since cursor, on_hand, live push of e
   const older = await c.until<Extract<ServerFrame, { t: "task_history" }>>((f) => f.t === "task_history");
   expect(older.events.map((e) => e.kind)).toEqual(["task_open"]);
   expect(older).toMatchObject({ more: false, beforeSeq: w.events[0]!.seq });
+  // D320: a page after a far stretch, oldest first, saying whether newer remain.
+  c.frames = [];
+  c.send({ t: "task_history", taskId: "t1", limit: 1, afterSeq: h.events[0]!.seq });
+  const after = await c.until<Extract<ServerFrame, { t: "task_history" }>>((f) => f.t === "task_history");
+  expect(after).toMatchObject({ more: true, afterSeq: h.events[0]!.seq });
+  expect(after.events.map((e) => e.seq)).toEqual([h.events[1]!.seq]);
+  // D320: the session index, kept as the Log grows: a new event is in the next answer, and
+  // asked from a turn on, only the turns from there.
+  c.frames = [];
+  c.send({ t: "task_index", taskId: "t1" });
+  const ix = await c.until<Extract<ServerFrame, { t: "task_index" }>>((f) => f.t === "task_index");
+  expect(ix.index.n).toBe(3);
+  core.log.append({ stream: "task:t1", origin: "user", kind: "task_event", body: { taskId: "t1", role: "user", from: "user", text: "and the docs" } });
+  c.frames = [];
+  c.send({ t: "task_index", taskId: "t1", fromSeq: ix.index.turns.at(-1)!.seq });
+  const ix2 = await c.until<Extract<ServerFrame, { t: "task_index" }>>((f) => f.t === "task_index");
+  expect(ix2.index.n).toBe(4);
+  expect(ix2.fromSeq).toBe(ix.index.turns.at(-1)!.seq);
+  expect(ix2.index.turns.map((t) => t.p?.k)).toEqual(["brief", "you"]);
 
   c.send({ t: "task_send", taskId: "t1", text: "also check CI" });
   const ack = await c.until<Extract<ServerFrame, { t: "sent" }>>((f) => f.t === "sent");

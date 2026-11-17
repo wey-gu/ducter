@@ -6,6 +6,7 @@ import { countDoneToday, endedUnmet } from "@ducter/protocol";
 import type { KeyResult } from "@ducter/protocol";
 import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
+import { addSpan, cutSpans, covers, indexAdd, indexJoin, keepFor, lowerBound, nextAsk, spanOfPage, type Ask, type SessionIndex, type Span, type View } from "@ducter/protocol/src/session.ts";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
 
@@ -74,6 +75,16 @@ export interface Task {
   /** D284: a task_history request is on its way, for histAsk events. */
   histPending?: boolean;
   histAsk?: number;
+  /** D320: the task's session index (one row per turn, from the home, kept live), whether a new
+   *  socket may have left it behind, and whether one is on its way. */
+  index?: SessionIndex;
+  indexStale?: boolean;
+  indexPending?: boolean;
+  /** D320: the stretches of its stream held whole (`to` Infinity: through the newest, kept live). */
+  spans: Span[];
+  /** D320: bumped whenever its held events change (a page, a live event, letting far ones go). */
+  version: number;
+  lastReportSeq?: number;
   openedAt?: string;
   openSeq?: number; // seq of the task_open in `open` (a retitle is a later one)
   sends: Send[];
@@ -172,6 +183,21 @@ export function olderPage(t: Task | undefined, limit = Infinity): number | undef
   return t.histFrom;
 }
 
+/**
+ * D320: one step of an open task's window, for what is on screen (`view`, index turns): lets go of
+ * what is far from it, then says the next page to ask for, or undefined (nothing needed, one is on
+ * its way, or no session index yet: a home before D320 pages only at the head).
+ */
+export function windowAsk(S: Store, id: string, view: View | undefined): Ask | undefined {
+  const t = S.tasks.get(id);
+  if (!t?.index || !t.historyLoaded || t.histPending) return undefined;
+  const n = t.index.turns.length;
+  const v = view ?? { first: Math.max(0, n - 3), last: n - 1, dir: 0 };
+  const keep = keepFor(t.index, t.events, v);
+  if (keep) S.evict(id, keep);
+  return nextAsk(t.index, t.spans, t.events, v);
+}
+
 export class Store {
   persona = "";
   personaName = "Ducter";
@@ -230,7 +256,7 @@ export class Store {
   task(id: string): Task {
     let t = this.tasks.get(id);
     if (!t) {
-      t = { id, checkpoints: [], evidence: [], events: [], seqs: new Set(), historyLoaded: false, sends: [] };
+      t = { id, checkpoints: [], evidence: [], events: [], seqs: new Set(), historyLoaded: false, sends: [], spans: [], version: 0 };
       this.tasks.set(id, t);
     }
     return t;
@@ -248,6 +274,11 @@ export class Store {
           t.histStale = t.histStale || t.historyLoaded;
           t.histPending = false;
           t.histAsk = 0;
+          // D320: live events reached only the old socket: what is held runs to its last event, no further.
+          const last = t.events.at(-1)?.seq ?? 0;
+          t.spans = t.spans.map((s) => (s.to === Infinity ? { from: s.from, to: last } : s)).filter((s) => s.from <= s.to);
+          if (t.index) t.indexStale = true;
+          t.indexPending = false;
         }
         return;
       case "first_screen":
@@ -295,6 +326,16 @@ export class Store {
         const newest = t.events.at(-1)?.seq ?? 0;
         const had = { from: t.histFrom ?? 0, more: !!t.histMore };
         for (const ev of f.events) this.applyEvent(ev);
+        // D320: the stretch it answers for is held whole.
+        const span = spanOfPage({ ...f, more: f.more ?? (!!t.histAsk && f.events.length >= t.histAsk) });
+        if (span) t.spans = addSpan(t.spans, span);
+        t.version++;
+        if (f.afterSeq != null) {
+          // A far stretch growing down: the tail's bookkeeping (D284) is untouched.
+          t.histPending = false;
+          t.histAsk = 0;
+          return;
+        }
         // A home before D284 says nothing of more: a full page may have more (at worst one comes back empty).
         const more = f.more ?? (!!t.histAsk && f.events.length >= t.histAsk);
         const first = f.events[0]?.seq;
@@ -308,6 +349,16 @@ export class Store {
           else (t.histFrom = first), (t.histMore = more);
         } else if (first != null && (!t.histFrom || first < t.histFrom)) (t.histFrom = first), (t.histMore = more);
         else t.histMore = false;
+        this.tailFromSpans(t);
+        return;
+      }
+      case "task_index": {
+        // D320: the home's index, or its turns from fromSeq on, which replace the client's from there.
+        const t = this.task(f.taskId);
+        t.index = indexJoin(t.index, f.index, f.fromSeq);
+        t.indexStale = false;
+        t.indexPending = false;
+        t.version++;
         return;
       }
       case "activity":
@@ -359,6 +410,32 @@ export class Store {
     }
   }
 
+  /** D320: the tail's bookkeeping (D284) from the span through the newest, when there is one. */
+  private tailFromSpans(t: Task) {
+    const tail = t.spans.find((s) => s.to === Infinity);
+    if (!tail || !t.events.length) return;
+    const i = lowerBound(t.events, tail.from);
+    if (i >= t.events.length) return;
+    t.histFrom = t.events[i]!.seq;
+    t.histMore = tail.from > 0 && (!t.index || (t.index.turns[0]?.seq ?? 0) < t.histFrom || !!t.histMore);
+  }
+
+  /**
+   * D320: lets go of every held event of the task outside `keep` (far from what is on screen),
+   * and cuts its spans to it. What was derived from them (its title, its state, its checkpoints)
+   * stays; a page bringing them back only puts them back in place.
+   */
+  evict(id: string, keep: Span[]) {
+    const t = this.tasks.get(id);
+    if (!t) return;
+    const before = t.events.length;
+    t.events = t.events.filter((e) => covers(keep, e.seq, e.seq));
+    if (t.events.length === before) return;
+    t.spans = cutSpans(t.spans, keep);
+    t.version++;
+    this.tailFromSpans(t);
+  }
+
   applyEvent(ev: LogEvent) {
     const taskId = taskOf(ev);
     if (taskId) {
@@ -366,7 +443,9 @@ export class Store {
       if (!t.seqs.has(ev.seq)) {
         t.seqs.add(ev.seq);
         this.applyTask(t, ev);
-      }
+        // D320: its index grows with every event of its own stream.
+        if (t.index && ev.stream === `task:${taskId}`) indexAdd(t.index, ev);
+      } else if (t.events[lowerBound(t.events, ev.seq)]?.seq !== ev.seq) this.insert(t, ev); // let go of before, back again
     }
     if (ev.kind === "waiter") {
       const w = ev.body as Bodies["waiter"];
@@ -558,10 +637,24 @@ export class Store {
     d.pending = "";
   }
 
+  /** An event into the task's held events, in seq order (D320: by bisection, a page lands far up too). */
+  private insert(t: Task, ev: LogEvent) {
+    const last = t.events.at(-1);
+    if (!last || last.seq < ev.seq) t.events.push(ev);
+    else t.events.splice(lowerBound(t.events, ev.seq), 0, ev);
+    t.version++;
+    // D320: a task nobody has open keeps its newest WINDOW.cap events.
+    if (!this.open.has(t.id) && t.events.length > 2600) {
+      const keep = t.index ? keepFor(t.index, t.events, undefined) : [{ from: t.events[t.events.length - 2000]!.seq, to: Infinity }];
+      if (keep) this.evict(t.id, keep);
+    }
+  }
+
+  /** D320: the tasks open on a screen of this client (their window is kept by what is on screen). */
+  open = new Set<string>();
+
   private applyTask(t: Task, ev: LogEvent) {
-    let i = t.events.length;
-    while (i > 0 && t.events[i - 1]!.seq > ev.seq) i--;
-    t.events.splice(i, 0, ev);
+    this.insert(t, ev);
     switch (ev.kind) {
       case "task_open":
         // A retitle is a later task_open for the same task: the latest names it, the first dates it.
@@ -583,7 +676,8 @@ export class Store {
       }
       case "report": {
         const b = ev.body as Bodies["report"];
-        t.lastReport = b;
+        // An older page landing after the newest: the latest report stays the latest.
+        if (ev.seq >= (t.lastReportSeq ?? 0)) (t.lastReport = b), (t.lastReportSeq = ev.seq);
         if (t.acted && ev.seq > (t.actedSeq ?? 0)) t.acted = undefined;
         for (const e of b.evidence ?? []) if (!t.evidence.some((h) => h.ref === e.ref && h.label === e.label)) t.evidence.push(e);
         break;

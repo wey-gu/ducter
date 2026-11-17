@@ -116,6 +116,17 @@ type Task struct {
 	// HistPending: a task_history request is on its way (histAsk events).
 	HistPending bool
 	histAsk     int
+	// D320: the task's session index (one small row per turn, from the
+	// home, kept live by the views with indexAdd); IndexStale: the socket
+	// was replaced since, so it is asked again from its last turn;
+	// IndexPending: a task_index request is on its way. Spans are the
+	// stretches of its stream held whole (To SpanEnd: through the newest,
+	// kept live); Events holds them (and live events of a task never opened).
+	Index         *protocol.SessionIndex
+	IndexStale    bool
+	IndexPending  bool
+	Spans         []protocol.Span
+	lastReportSeq int64
 	// Body is who does it now and why (the latest body_selected, D89).
 	Body    *protocol.TaskBody
 	bodySeq int64
@@ -551,6 +562,12 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		for _, t := range s.Tasks {
 			t.HistStale = t.HistStale || t.HistoryLoaded
 			t.HistPending, t.histAsk = false, 0
+			// D320: live events may be missed until the next window: the
+			// stretch through the newest ends at what is held, and the
+			// index is asked again from its last turn.
+			t.endLive()
+			t.IndexStale = t.IndexStale || t.Index != nil
+			t.IndexPending = false
 		}
 		if f.PersonaName != "" {
 			s.PersonaName = f.PersonaName
@@ -740,35 +757,35 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 	case "task_history":
 		t := s.task(f.TaskID)
-		var newest int64
-		if n := len(t.Events); n > 0 {
-			newest = t.Events[n-1].Seq
-		}
-		hadFrom, hadMore := t.HistFrom, t.HistMore
 		for _, ev := range f.Events {
 			s.ApplyEvent(ev)
 		}
 		// A home before D284 says nothing of more: a full page may have more
 		// (at worst one more page comes back empty).
-		more := f.More || (t.histAsk > 0 && len(f.Events) >= t.histAsk)
-		t.HistPending, t.histAsk = false, 0
-		switch {
-		case f.BeforeSeq == 0:
-			t.HistoryLoaded, t.HistStale = true, false
-			switch {
-			case len(f.Events) == 0:
-				t.HistFrom, t.HistMore = 0, false
-			case hadFrom > 0 && hadFrom <= f.Events[0].Seq && f.Events[0].Seq <= newest:
-				// The window meets what was held: the cache is whole again.
-				t.HistFrom, t.HistMore = hadFrom, hadMore
-			default:
-				t.HistFrom, t.HistMore = f.Events[0].Seq, more
-			}
-		case len(f.Events) > 0 && (t.HistFrom == 0 || f.Events[0].Seq < t.HistFrom):
-			t.HistFrom, t.HistMore = f.Events[0].Seq, more
-		default:
-			t.HistMore = false
+		page := f
+		if f.AfterSeq == nil {
+			page.More = f.More || (t.histAsk > 0 && len(f.Events) >= t.histAsk)
 		}
+		t.HistPending, t.histAsk = false, 0
+		if f.AfterSeq == nil && f.BeforeSeq == 0 {
+			t.HistoryLoaded, t.HistStale = true, false
+		}
+		// D320: what the page holds whole joins the spans; a window that
+		// meets what was held keeps the cache whole (D284).
+		if sp, ok := protocol.SpanOfPage(page); ok {
+			t.Spans = protocol.AddSpan(t.Spans, sp)
+		}
+		t.histFromTail()
+	case "task_index":
+		// D320: the task's session index; with FromSeq, its turns from
+		// there replace the ones held.
+		if f.Index == nil {
+			return
+		}
+		t := s.task(f.TaskID)
+		t.Index = protocol.JoinIndex(t.Index, f.Index, f.FromSeq)
+		t.IndexStale, t.IndexPending = false, false
+		t.Version++
 	case "activity":
 		switch {
 		case f.Activity == nil:
@@ -812,6 +829,80 @@ func (s *Store) task(id string) *Task {
 		s.Tasks[id] = t
 	}
 	return t
+}
+
+// histFromTail says the stretch through the newest as D284's HistFrom and
+// HistMore, for the rest of the app: from where every event to the newest
+// is held, and whether the home has older ones.
+func (t *Task) histFromTail() {
+	for _, sp := range t.Spans {
+		if sp.To != protocol.SpanEnd {
+			continue
+		}
+		switch {
+		case sp.From > 0:
+			t.HistFrom, t.HistMore = sp.From, true
+		case len(t.Events) > 0:
+			t.HistFrom, t.HistMore = t.Events[0].Seq, false
+		default:
+			t.HistFrom, t.HistMore = 0, false
+		}
+	}
+}
+
+// endLive ends the stretch through the newest at the newest held (D320):
+// a new socket may miss live events until the next window.
+func (t *Task) endLive() {
+	var last int64
+	if n := len(t.Events); n > 0 {
+		last = t.Events[n-1].Seq
+	}
+	var out []protocol.Span
+	for _, sp := range t.Spans {
+		if sp.To == protocol.SpanEnd {
+			if last < sp.From {
+				continue
+			}
+			sp.To = last
+		}
+		out = append(out, sp)
+	}
+	t.Spans = out
+}
+
+// IndexAsked notes a task_index request on its way (D320).
+func (s *Store) IndexAsked(id string) { s.task(id).IndexPending = true }
+
+// Evict lets go of every held event of the task outside keep and cuts its
+// spans to it (D320: a window around what is on screen, and the newest).
+// What an event added to the task (its report, its checkpoints) stays; one
+// let go and loaded again is held again without being added twice.
+func (s *Store) Evict(id string, keep []protocol.Span) {
+	t := s.Tasks[id]
+	if t == nil || len(keep) == 0 {
+		return
+	}
+	out := t.Events[:0]
+	for _, ev := range t.Events {
+		if protocol.Covers(keep, ev.Seq, ev.Seq) {
+			out = append(out, ev)
+		}
+	}
+	if len(out) == len(t.Events) {
+		return
+	}
+	clear(t.Events[len(out):])
+	// A fresh array, so the far events' bodies are let go with the old one.
+	t.Events = append([]protocol.LogEvent(nil), out...)
+	t.Spans = protocol.CutSpans(t.Spans, keep)
+	t.Version++
+	t.histFromTail()
+}
+
+// Holds reports whether the task holds the event with seq.
+func (t *Task) Holds(seq int64) bool {
+	i := sort.Search(len(t.Events), func(i int) bool { return t.Events[i].Seq >= seq })
+	return i < len(t.Events) && t.Events[i].Seq == seq
 }
 
 // HistoryAsked notes a task_history request on its way for limit events (D284).
@@ -888,6 +979,9 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		if !t.seqs[ev.Seq] {
 			t.seqs[ev.Seq] = true
 			s.applyTask(t, ev, body)
+		} else if !t.Holds(ev.Seq) {
+			// D320: let go and loaded again: held again, added once.
+			t.insert(ev, body)
 		}
 	}
 	if w, ok := body.(*protocol.Waiter); ok {
@@ -1253,13 +1347,23 @@ func taskOf(ev protocol.LogEvent, body any) string {
 	return ""
 }
 
-func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
+// insert holds ev in the task's events, in seq order.
+func (t *Task) insert(ev protocol.LogEvent, body any) {
 	i := sort.Search(len(t.Events), func(i int) bool { return t.Events[i].Seq > ev.Seq })
-	t.Events = append(t.Events, protocol.LogEvent{})
-	copy(t.Events[i+1:], t.Events[i:])
-	ev.KeepTyped(body)
-	t.Events[i] = ev
+	if i == len(t.Events) {
+		ev.KeepTyped(body)
+		t.Events = append(t.Events, ev)
+	} else {
+		t.Events = append(t.Events, protocol.LogEvent{})
+		copy(t.Events[i+1:], t.Events[i:])
+		ev.KeepTyped(body)
+		t.Events[i] = ev
+	}
 	t.Version++
+}
+
+func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
+	t.insert(ev, body)
 	switch b := body.(type) {
 	case *protocol.TaskOpen:
 		// The partner retitles a task by appending another task_open: the latest one names
@@ -1313,7 +1417,10 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 			}
 		}
 	case *protocol.Report:
-		t.LastReport = b
+		// D320: a page of older history never takes the latest report's place.
+		if ev.Seq >= t.lastReportSeq {
+			t.LastReport, t.lastReportSeq = b, ev.Seq
+		}
 		t.Evidence = mergeEvidence(t.Evidence, b.Evidence)
 		if t.Acted != nil && ev.Seq > t.ActedSeq {
 			t.Acted = nil

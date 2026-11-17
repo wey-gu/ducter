@@ -104,6 +104,9 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 			a.promptCard(c, task, p, a.L.T("task.from.partner", a.S.PersonaName))
 		case "you":
 			a.sentBubble(c, p.Text, task.SendFor(p.Seq), queued, p.Media...)
+			if p.Full > 0 {
+				ui.Row(c).Justify(ui.End).Children(func() { a.showAll(c, task, p.Seq, p.Full, false) })
+			}
 		case "go":
 			// D284: their Go on a card, relayed: a quiet chip on their side, what was sent on hover.
 			a.goChip(c, task, p)
@@ -172,6 +175,9 @@ func (a *App) promptCard(c *ui.Context, task *store.Task, b *Block, label string
 			tx.MaxLines(3)
 		}
 		a.messageMedia(c, fmt.Sprint("p", b.Seq), b.Media, nil, false, "task:"+task.ID)
+		if b.Full > 0 {
+			a.showAll(c, task, b.Seq, b.Full, false)
+		}
 		if redact.Has(b.Text) || long {
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				if redact.Has(b.Text) {
@@ -223,6 +229,9 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 		ui.Text(c, a.reportLabel(&protocol.Report{State: b.State})).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 		ui.Text(c, autospace(b.Text)).FontSize(taskProse).LineHeight(leadingFor(b.Text, 1.6)).TextColor(t.InkSoft).Selectable()
 		a.messageMedia(c, fmt.Sprint("r", b.Seq), b.Media, nil, false, "task:"+task.ID)
+		if b.Full > 0 {
+			a.showAll(c, task, b.Seq, b.Full, false)
+		}
 	case "note":
 		switch b.Say {
 		case "compacted", "interrupted":
@@ -485,6 +494,9 @@ func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, live bool) {
 			a.diffPanel(c, r)
 		case open && detail != "":
 			a.outputPanel(c, key, detail)
+			if r.OutputFull > 0 {
+				a.showAll(c, task, r.Seq, r.OutputFull, true) // D320: what it printed, cut at its most
+			}
 		}
 	})
 }

@@ -12,6 +12,8 @@ import { talkLang } from "./lang.ts";
 import type { DevicesView } from "./devices.ts";
 import { redactDeep } from "@ducter/protocol/src/redact.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
+import { sessionIndexes } from "./session-index.ts";
+import { indexFrom } from "@ducter/protocol/src/session.ts";
 import { machineId } from "./machine.ts";
 import type { SettingsStore } from "./settings.ts";
 import type { RulesStore } from "./rules.ts";
@@ -72,7 +74,7 @@ export interface WsData {
 const ON_HAND_KINDS = new Set<string>([...PROJECTED_KINDS, "phone_call"]);
 /** D284: frames longer than this go gzipped to a client that asked (hello.gzip). */
 const GZIP_MIN = 16 * 1024;
-const REDACTED = new Set<string>(["events", "task_history", "on_hand", "task_new_result", "action_result"]);
+const REDACTED = new Set<string>(["events", "task_history", "task_index", "on_hand", "task_new_result", "action_result"]);
 const REPLAY_FRESH = 200; // channel events replayed when hello has no cursor
 const REPLAY_MAX = 5000; // cap for a cursor replay
 const SEEN_WINDOW = 2000; // user messages (by clientId) remembered for idempotent send
@@ -198,6 +200,8 @@ export function createWsHandler(deps: WsDeps) {
   };
   const { log, tasks } = core;
   const sockets = new Set<ServerWebSocket<WsData>>();
+  // D320: each opened task's session index, kept as the Log grows.
+  const indexes = sessionIndexes(log);
   const batchMs = deps.batchMs ?? 50;
   let flushTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -1412,10 +1416,26 @@ export function createWsHandler(deps: WsDeps) {
         // window when the task opens, then older pages before beforeSeq. `more`: older ones remain.
         const stream = taskStream(f.taskId);
         const limit = Math.max(1, Math.min(f.limit ?? 200, 2000));
+        // D320: afterSeq: the page after a far stretch the client holds, oldest first; more: newer remain.
+        if (typeof f.afterSeq === "number") {
+          const page = log.read({ stream, fromSeq: f.afterSeq + 1, limit: limit + 1 });
+          const more = page.length > limit;
+          send(ws, { t: "task_history", taskId: f.taskId, events: more ? page.slice(0, limit) : page, more, afterSeq: f.afterSeq });
+          return;
+        }
         const page = log.read({ stream, beforeSeq: f.beforeSeq, limit: limit + 1 });
         const more = page.length > limit;
         const events = more ? page.slice(1) : page;
         send(ws, { t: "task_history", taskId: f.taskId, events, more, ...(f.beforeSeq != null ? { beforeSeq: f.beforeSeq } : {}) });
+        return;
+      }
+      case "task_index": {
+        // D320: the task's session index, made once and kept as the Log grows; from fromSeq on
+        // when the client holds the turns before it.
+        if (typeof f.taskId !== "string" || !f.taskId) return;
+        const ix = indexes.get(f.taskId);
+        const from = typeof f.fromSeq === "number" && f.fromSeq > 0 ? f.fromSeq : undefined;
+        send(ws, { t: "task_index", taskId: f.taskId, index: from ? indexFrom(ix, from) : ix, ...(from ? { fromSeq: from } : {}) });
         return;
       }
       case "wb": {
@@ -1774,6 +1794,7 @@ export function createWsHandler(deps: WsDeps) {
       offLook?.();
       if (lookTimer) clearTimeout(lookTimer);
       offNoted();
+      indexes.close();
       unsubscribe();
       offPartners?.();
       if (partnersTimer) clearTimeout(partnersTimer);

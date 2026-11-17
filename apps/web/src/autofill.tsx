@@ -157,7 +157,6 @@ function DetailsForm({ details, done }: { details: DetailView[]; done: () => voi
           </div>
         );
       })}
-      <div class="small sub">{t("af.d.note")}</div>
       <AfError />
       <div class="row">
         <span class="grow" />
@@ -294,6 +293,8 @@ export function AutofillSettings() {
 
       <section class="set">
         <h3>{t("af.details")}</h3>
+        {/* As on the Mac: what it sees and what it only fills, said once under the heading. */}
+        <p class="g-note">{t("af.d.note")}</p>
         <div class="set-card">
           {editing?.kind === "details" ? (
             <div class="set-item">

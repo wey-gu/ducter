@@ -32,7 +32,7 @@ On the left is a row of tabs; the one you pick shows on the right:
 
 On a phone, tap the gear at the top right (or your partner's face or name at the top of the conversation):
 Settings opens as a list of the same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **Your devices**, **This phone**), and tapping one opens
-it. **This phone** holds what is this phone's own: **Light and dark** (**Follow the system**, **Light** or **Dark**),
+it. **This phone** (**This computer** in a browser on a computer) holds what is this device's own: **Light and dark** (**Follow the system**, **Light** or **Dark**),
 the language of its screens, Details in the conversation, and reading replies aloud when you talk by voice.
 
 ## Partner

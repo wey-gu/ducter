@@ -138,9 +138,30 @@ and the token's flight stay where they belong, on Devices (D89's game moment mov
 Shots: `.shots/d322/before`, `.shots/d322/after` (Mac 1280 and 900, web 1400 and 390, zh and en, light
 and dark, each of the five cases).
 
-## Not done
+## The walk of 0.0.67 (research/118, D330)
 
-- The web's This phone is still called that on a desktop browser.
+Every pane walked in the real Mac app (cua-driver, scratch bundle id and HOME) and the web at 1400 and
+390, zh and en, light and dark, as each of the three users (`.shots/settings-0067`). What changed:
+
+- The web's **这台手机 / This phone** in a browser on a computer is **这台电脑 / This computer**, with
+  the clay laptop (D330 (1)); the phone and iPad keep theirs.
+- **回你用的语言 / Replies in** on the web is one pop-up at the row's right edge, as on the Mac, not
+  fourteen rows.
+- The Settings list's hero says what the partner thinks with only when it can (it said Claude Code with
+  none signed in); the partner's face is no longer repeated in the Partner page's title on the web.
+- With none ready, the group is **添一个 AI agent / Add an AI agent** (D330 (2)).
+- Accounts: the Tuwa row is **用 Tuwa 打 / Call through Tuwa** under 打电话 / Phone calls (the section's
+  name was said twice), with its foot line on the Mac too; nothing yet is said on the add row on the
+  Mac, as on the web; the own-number foot is one sentence pair with no stray space; the looked time says
+  what it is (**14:07 找的 / at 14:07**).
+- The web's version line is one phrase as on the Mac (**刚看过，已经是最新的**); the night-update note
+  says **一台一台地更新 / one computer at a time** on both (the web said "in the same order", a phrase from
+  the update-all card); the Mac's versions note sits under its title like every group's.
+- 要不要先问's note and Autofill's 你的资料 note sit under their headings on the web, as on the Mac.
+- The records switch speaks of the partner as 它 / it, like every Settings line; Autofill's kept line
+  says 解锁用的密钥在 Mac 的钥匙串里 (密钥 alone read as the API keys right above it).
+
+## Not done
 
 - A comprehension pass with people on the said lines and on a row with no state word.
 - The web has no AI accounts row on Accounts (the phone has no Devices page of its own there);

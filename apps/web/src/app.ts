@@ -61,7 +61,8 @@ export const HISTORY_PAGE = 300;
 export const HISTORY_LIMIT = 2000;
 
 /** An iPad says "this iPad" where a phone says "this phone" (D176). */
-const HANDHELD: Handheld = typeof navigator !== "undefined" && deviceName().name.startsWith("iPad") ? "ipad" : "phone";
+/** D176, D330: what this browser is in the copy's own words: an iPad, a phone, or a computer. */
+export const HANDHELD: Handheld = typeof navigator === "undefined" ? "phone" : deviceName().name.startsWith("iPad") ? "ipad" : /^(ios|android)/.test(deviceName().platform) ? "phone" : "computer";
 
 /** full (D184): wide, the level takes the whole screen as the Mac shows it, instead of standing
  *  beside the conversation. A phone ignores it. */

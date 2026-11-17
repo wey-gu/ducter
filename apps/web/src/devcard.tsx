@@ -169,11 +169,11 @@ export function DevicesSection({ open, setOpen }: { open: string | null; setOpen
   );
 }
 
-/** Never "latest" without when it was read: 已经是最新的, and beside it 3 小时前检查过 (D291: two facts, two elements). */
-function upToDate(u: DeviceUpdate): string[] {
-  if (!u.checkedAt) return [t("devup.current")];
+/** Never "latest" without when it was read, said as one phrase as on the Mac (D296): 3 分钟前看过，已经是最新的. */
+function upToDate(u: DeviceUpdate): string {
+  if (!u.checkedAt) return t("devup.current");
   const age = Date.now() - Date.parse(u.checkedAt);
-  return [t("devup.current"), age < 2 * 60_000 ? t("devup.checked.now") : t("devup.checked", ago(A.L, u.checkedAt))];
+  return age < 2 * 60_000 ? t("settings.versions.current.now") : t("settings.versions.current", ago(A.L, u.checkedAt));
 }
 
 /**
@@ -186,7 +186,7 @@ function Versions() {
   if (!home || !u || !u.latest || u.available || u.phase) return null;
   return (
     <div class="dc-versions">
-      <Facts class="small sub" items={upToDate(u)} />
+      <span class="small sub">{upToDate(u)}</span>
       {A.checkingUpdates ? <span class="small sub">{t("devup.checking")}</span> : <Btn kind="text" size="sm" label={t("devup.checknow")} onClick={() => A.checkUpdates(home.id)} />}
     </div>
   );

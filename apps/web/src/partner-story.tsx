@@ -185,14 +185,15 @@ export function TasksSection() {
   );
 }
 
-/** 再添一个 AI agent / Add another AI agent: the subscription agents not signed in yet and a pasted key, said once. */
+/** 再添一个 AI agent / Add another AI agent (添一个 / Add an AI agent while none is ready): the subscription agents not signed in yet and a pasted key, said once. */
 export function AddSection() {
   const [open, setOpen] = useState(false);
   if (!A.settings) return null;
   const name = A.S.personaName;
   const n = readyAgents().length;
   const note = n === 0 ? t("loadout.add.none", name) : n === 1 ? t("loadout.add.one", name) : t("loadout.add.more", name);
-  const title = t("loadout.add.title");
+  // Nothing to add "another" to yet: the first one is just "an AI agent".
+  const title = t(n === 0 ? "loadout.add.title.first" : "loadout.add.title");
   const missing = (A.agents ?? []).filter((h) => !h.loggedIn && (h.harness === "claude-code" || h.harness === "codex"));
   return (
     <section class="set">

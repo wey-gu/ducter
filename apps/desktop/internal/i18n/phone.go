@@ -6,10 +6,11 @@ package i18n
 // (apps/web/src/i18n.ts) uses the same keys for the same words.
 
 var zhPhone = Table{
-	"phone.offer.title":       "打电话",
+	"phone.offer.title":       "用 Tuwa 打",
 	"phone.offer.lede":        "让 Ducter 替你打电话：订位、问诊所、催货。用 Tuwa，每分钟约 $0.30 起。",
 	"phone.offer.go":          "连接 Tuwa",
 	"phone.offer.going":       "正在连接…",
+	"phone.offer.how":         "在手机上登录一下 Tuwa 就好。每通电话都先问你。",
 	"acct.err.signing_in":     "在等你在手机上登录。",
 	"acct.err.sign_in_failed": "没能开始登录，过一会儿再试。",
 	"acct.err.blocked":        "对方的防火墙拦下了 Ducter，不是密钥的问题。过一会儿再试。",
@@ -142,10 +143,11 @@ var zhPhone = Table{
 }
 
 var enPhone = Table{
-	"phone.offer.title":       "Make calls",
+	"phone.offer.title":       "Call through Tuwa",
 	"phone.offer.lede":        "Let Ducter make calls for you: bookings, clinics, deliveries. Through Tuwa, from about $0.30 a minute.",
 	"phone.offer.go":          "Connect Tuwa",
 	"phone.offer.going":       "Connecting…",
+	"phone.offer.how":         "One sign-in to Tuwa on your phone. Every call asks you first.",
 	"acct.err.signing_in":     "Waiting for you to sign in on your phone.",
 	"acct.err.sign_in_failed": "Couldn't start the sign-in. Try again in a moment.",
 	"acct.err.blocked":        "Their firewall turned Ducter away; it isn't the key. Try again in a moment.",

@@ -106,7 +106,7 @@ func (a *App) phoneOfferRow(c *ui.Context) {
 	}
 }
 
-// phoneOffer is 打电话 / Make calls before any calling connection (D289:
+// phoneOffer is 用 Tuwa 打 / Call through Tuwa (under 打电话 / Phone calls) before any calling connection (D289:
 // one group like the others): the handset not yet lit in the tile column,
 // what it does and the price, and Connect Tuwa at the right edge.
 func (a *App) phoneOffer(c *ui.Context) {
@@ -123,6 +123,8 @@ func (a *App) phoneOffer(c *ui.Context) {
 				a.send(protocol.ConnectionAdd{T: "connection_add", URL: protocol.TuwaMCP})
 			}
 		})
+		// As on the web: how it starts and that every call asks first, the group's last line.
+		a.footRow(c, "phone-offer", a.L.T("phone.offer.how"), nil)
 	})
 }
 

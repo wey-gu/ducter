@@ -206,7 +206,7 @@ func (a *App) ownPhoneCard(c *ui.Context) {
 				}
 			})
 		}
-		note := a.L.T("own.where", v.Where) + " " + a.L.T("own.rails")
+		note := a.L.T("own.foot", v.Where)
 		if o.forgetting {
 			keep, forget := a.confirmRow(c, "own-forget", a.L.T("own.forget.ask"), a.L.T("phone.voice.keep"), a.L.T("own.forget.go"), title)
 			if keep {
@@ -285,7 +285,8 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 			}
 			if saw, at := a.ownLooked(v); saw != "" {
 				ui.Text(c, saw).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
-				ui.Text(c, at).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
+				// research/118: the time says what it is (13:47 找的 / at 13:47), never a bare clock.
+				ui.Text(c, a.L.T("own.looked.at", at)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
 			}
 		})
 	}

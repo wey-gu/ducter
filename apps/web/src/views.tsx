@@ -14,7 +14,7 @@ import { useSheetMotion } from "./sheetmotion.ts";
 import { last as lastMove } from "./nav.ts";
 import type { JSX } from "preact";
 import { AmbientLine } from "./ambient.tsx";
-import { A, candKey, effortWord, placeKey, type SettingsPage } from "./app.ts";
+import { A, candKey, effortWord, HANDHELD, placeKey, type SettingsPage } from "./app.ts";
 import { HARNESSES, isHarnessId, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, whereCandReason } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, harnessName, modelName, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
@@ -2373,6 +2373,13 @@ function DecisionSheet({ id }: { id: string }) {
 
 const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
+/** D322: where it lives and what it thinks with, one line under the name (the Mac's header). The
+ *  Settings list's hero says the same, never an agent when none can be used. */
+function partnerLede(): string {
+  const brain = A.brainNow ?? A.settings?.brain;
+  return !A.homeName ? "" : noBrain() ? t("partner.header.none", A.homeName) : brain ? t("partner.header", A.homeName, harnessName(brain.harness)) : "";
+}
+
 function NameRow() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -2381,9 +2388,7 @@ function NameRow() {
     if (n && n !== A.defaultName()) A.setSettings({ name: n });
     setEditing(false);
   };
-  // D322: where it lives and what it thinks with, one line under the name (the Mac's header).
-  const brain = A.brainNow ?? A.settings?.brain;
-  const lede = !A.homeName ? "" : noBrain() ? t("partner.header.none", A.homeName) : brain ? t("partner.header", A.homeName, harnessName(brain.harness)) : "";
+  const lede = partnerLede();
   return (
     <div class="partner-head">
       <Avatar size={56} />
@@ -2436,11 +2441,28 @@ function TalkSettings() {
     <section class="set">
       <h3>{t("partner.talk.title")}</h3>
       <div class="set-card">
-        <div class="set-item">
-          <b>{t("settings.talk.row")}</b>
-          <small>{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", autonym(s.language))}</small>
-          <Seg label={t("partner.talk.title")} value={other ? TALK_OTHER : s.language} options={talkOptions(s.language)} onPick={(v) => (v === TALK_OTHER ? setOther(true) : pick(v))} />
-          {other && (
+        {/* research/118: one choice at the row's right edge, as the Mac's pop-up, not fourteen rows. */}
+        <div class="set-item talk-row">
+          <span class="grow">
+            <b>{t("settings.talk.row")}</b>
+            <small>{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", autonym(s.language))}</small>
+          </span>
+          <span class="pick">
+            <select aria-label={t("settings.talk.row")} value={other ? TALK_OTHER : s.language} onChange={(e) => {
+              const v = (e.target as HTMLSelectElement).value;
+              v === TALK_OTHER ? setOther(true) : pick(v);
+            }}>
+              {talkOptions(s.language).map((o) => (
+                <option key={o.v} value={o.v}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <Chev open />
+          </span>
+        </div>
+        {other && (
+          <div class="set-item talk-other">
             <label class="acct-field own-pick">
               <span class="small">{t("partner.talk.other.label")}</span>
               <select value="" onChange={(e) => (e.target as HTMLSelectElement).value && pick((e.target as HTMLSelectElement).value)}>
@@ -2452,8 +2474,8 @@ function TalkSettings() {
                 ))}
               </select>
             </label>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -2474,11 +2496,12 @@ function TrustSettings() {
   return (
     <section class="set">
       <h3>{t("partner.trust.title")}</h3>
+      {/* As on the Mac: what the lists are is said under the heading, before them. */}
+      <p class="g-note">{t("partner.trust.note")}</p>
       <div class="set-card trust-card">
         {list("partner.trust.own", "partner.trust.own", "own")}
         {list("partner.trust.asks", "partner.trust.asks", "asks")}
       </div>
-      <div class="small sub">{t("partner.trust.note")}</div>
     </section>
   );
 }
@@ -2877,7 +2900,8 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "chats", art: "set_chats", title: "settings.tab.chats" },
   { page: "autofill", art: "set_autofill", title: "settings.tab.autofill" },
   { page: "devices", art: "mini_awake", title: "settings.tab.devices" },
-  { page: "phone", art: "phone", title: "settings.phone" },
+  // D330: in a browser on a computer it is 这台电脑 / This computer, with the clay laptop.
+  { page: "phone", art: HANDHELD === "computer" ? "dev_laptop_awake" : "phone", title: "settings.phone" },
 ];
 
 /** A section's art: its clay picture, or for 连上的 AI agent two of the person's agents' coins (D257). */
@@ -2923,7 +2947,6 @@ function SettingsSheet() {
   const [dev, setDev] = useState<string | null>(null);
   useEffect(() => setDev(null), [page]);
   const devPushed = page === "devices" && deviceCardShown(dev);
-  const brain = A.brainNow ?? A.settings?.brain;
   return (
     <Sheet label={t("settings.title")}>
       {!sec ? (
@@ -2933,7 +2956,7 @@ function SettingsSheet() {
             <Avatar size={64} />
             <span class="grow">
               <b>{A.S.personaName}</b>
-              {brain && A.homeName && <small>{t("partner.header", A.homeName, harnessName(brain.harness))}</small>}
+              {partnerLede() && <small>{partnerLede()}</small>}
             </span>
             <Chev />
           </button>
@@ -2961,7 +2984,8 @@ function SettingsSheet() {
                 {t("settings.back")}
               </button>
               <h2 class="set-title">
-                <SectionArt art={sec.art} size={32} />
+                {/* D322: the partner's face lives in its header only; the title doesn't repeat it. */}
+                {page !== "partner" && <SectionArt art={sec.art} size={32} />}
                 {t(sec.title)}
               </h2>
             </>

@@ -67,8 +67,8 @@ language, Ducter says so.
 
 ### Read replies aloud while you talk
 
-Turn on **Read replies aloud when I talk by voice** (Settings › This phone on a phone or in a
-browser; Settings › Look and sound › Voice on the Mac). Then, after you send a message by voice,
+Turn on **Read replies aloud when I talk by voice** (Settings › This phone on a phone, This computer in a
+browser on a computer; Settings › Look and sound › Voice on the Mac). Then, after you send a message by voice,
 your partner's reply to it is read to you on that device. It's off until you turn it on, and it
 never reads anything you didn't just ask by voice.
 

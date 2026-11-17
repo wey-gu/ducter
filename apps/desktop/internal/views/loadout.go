@@ -498,14 +498,15 @@ func (a *App) addGroup(c *ui.Context) {
 	if len(hs) == 0 && a.S.Settings == nil {
 		return
 	}
-	note := a.L.T("loadout.add.more", name)
+	note, title := a.L.T("loadout.add.more", name), a.L.T("loadout.add.title")
 	switch len(a.readyAgents()) {
 	case 0:
-		note = a.L.T("loadout.add.none", name)
+		// Nothing to add "another" to yet: the first one is just "an AI agent".
+		note, title = a.L.T("loadout.add.none", name), a.L.T("loadout.add.title.first")
 	case 1:
 		note = a.L.T("loadout.add.one", name)
 	}
-	a.group(c, "add", a.L.T("loadout.add.title"), note, func() {
+	a.group(c, "add", title, note, func() {
 		for _, h := range hs {
 			h := h
 			if h.LoggedIn || (h.Harness != "claude-code" && h.Harness != "codex") {

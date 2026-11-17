@@ -445,7 +445,7 @@ export function CallRow({ c }: { c: CallView }) {
 
 // ---------- Settings › Accounts ----------
 
-/** 打电话 / Make calls: the offer, when no calling connection is there yet. */
+/** 用 Tuwa 打 / Call through Tuwa (under 打电话 / Phone calls): the offer, when no calling connection is there yet. */
 export function PhoneOffer() {
   const s = A.signIn;
   if (s && (s.state === "waiting" || s.url === TUWA_MCP)) return <SignInPanel s={s} />;

@@ -6,6 +6,7 @@
 import { useState } from "preact/hooks";
 import { richModel, type RichModel, type RichUi } from "@ducter/protocol/src/rich.ts";
 import { A } from "./app.ts";
+import { LendCard } from "./lend.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -30,6 +31,8 @@ export function RichBlock({ b, at }: { b: RichUi; at: RichAt }) {
       return <RichChecklist m={m} at={at} />;
     case "choices":
       return <RichChoices m={m} at={at} />;
+    case "lend":
+      return <LendCard />;
   }
 }
 

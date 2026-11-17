@@ -254,16 +254,35 @@ For a user whose Mac is the home and who wants the phone to reach it privately:
 Tell the user plainly: the phone reaches Ducter only while the Mac is awake and online. For a
 partner that works while the Mac sleeps, put the home on a server instead.
 
-## Add a worker
+## Add a worker (Lend a computer)
 
-On the home: `ducter pair --json` → `command` (`ducter worker <address> --code <code>`). Run that
-on the worker (install the CLI there first with the one-liner, without `--service`); on the
-worker then `ducter service install --worker` to keep it running (a systemd unit on Linux, a
-LaunchAgent on a Mac; a Mac with the Ducter app connected to the home can instead turn on "Let this
-Mac do tasks" on its card). With a `.ts.net` address the worker must be in the same tailnet
-(check from it: `curl -fsS https://<name>.ts.net/health`). The worker needs its own
-signed-in Claude Code/Codex. Verify on the home: `ducter devices --json` → the worker with
-`"awake": true`. A server that is the home does tasks itself: no worker needed there.
+The user usually hands you a line from the app's **Your devices › Lend a computer** ("Lend this
+computer to my Ducter: … run `curl -fsSL https://ducter.ai/install.sh | sh -s -- worker <address>
+--code <code>`"). On the computer you run on (the one being lent):
+
+1. Check it reaches the home: `curl -sS -m 10 <address>/health` → `{"ok":true}`. A worker only
+   dials OUT to the home: no public address, open port or Tailscale is needed on this machine,
+   only outbound access to `<address>`. If it fails, say so in one sentence ("this computer
+   can't reach <address>; its network or firewall blocks it") and stop. With a `.ts.net`
+   address this machine must be in the same tailnet; with an `http://192.168…` address it must
+   be on the home's own network.
+2. Run the line exactly as given. It installs Ducter (kept if this version is already here),
+   joins with the one-time code, and installs the worker service: a systemd user unit (system
+   unit as root), a LaunchAgent on a Mac. It is safe to run again: a join that still works is
+   kept and no code is spent.
+3. Failures, each one sentence and one next step for the user: `That code has expired` → ask
+   for a new code in **Lend a computer** (codes last 10 minutes, once); `curl: not found` →
+   install curl (`sudo apt install curl`) and rerun; `runs on x64 and arm64 Linux` or `needs
+   Apple silicon` → this computer can't be lent.
+4. The worker needs its own signed-in Claude Code or Codex for tasks to run there; if none is
+   signed in (`ducter doctor`), offer to sign one in. The app shows the computer arriving by
+   itself; you don't need to report it.
+
+Without the app's line: on the home, `ducter pair --json` → `code`, then on the worker
+`ducter worker <address> --code <code> --service` (the same three steps). A Mac with the Ducter
+app connected to the home can instead turn on "Let this Mac do tasks" on its card. Verify on the
+home: `ducter devices --json` → the worker with `"awake": true`. A server that is the home does
+tasks itself: no worker needed there.
 
 ## Upgrade
 

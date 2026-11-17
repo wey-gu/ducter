@@ -1106,6 +1106,13 @@ type PairCodeReq struct {
 	T string `json:"t"` // "pair_code"
 }
 
+// LendCodeReq asks for 借一台电脑来干活 / Lend a computer's code and line
+// (D347); the server answers a lend frame (waiting), then lend frames to
+// every client as the computer joins and arrives.
+type LendCodeReq struct {
+	T string `json:"t"` // "lend_code"
+}
+
 // RenameDeviceReq is 改名字 / Rename for a paired device (another
 // computer; D84). The server answers rename_result, then a fresh devices
 // frame. The machine Ducter lives on keeps its own name.
@@ -2101,6 +2108,13 @@ type ServerFrame struct {
 	Address   string   `json:"address,omitempty"`
 	Link      string   `json:"link,omitempty"`
 	QR        []string `json:"qr,omitempty"`
+	// lend (D347, 借一台电脑来干活 / Lend a computer): Code, ExpiresAt,
+	// State (waiting | joined | here), Address, SameNetwork, LendLine (the
+	// one line to paste, only to the window that asked), Check (the
+	// reachability one-liner), Device and Name once a computer joined.
+	SameNetwork bool   `json:"sameNetwork,omitempty"`
+	LendLine    string `json:"line,omitempty"`
+	Check       string `json:"check,omitempty"`
 	// partners (D309): every partner on the home, the default first, and
 	// the one this socket shows; a refused add or set says why in WbError.
 	Partners []PartnerInfo `json:"partners,omitempty"`

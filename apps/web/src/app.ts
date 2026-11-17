@@ -14,6 +14,7 @@ import { languageOfTexts, normalizeTag } from "@ducter/protocol/src/lang.ts";
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach, tellWays } from "./native.ts";
 import { copy } from "./conv-copy.ts";
+import { applyLend, type LendKind, type LendState } from "./lend-view.ts";
 import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, windowAsk, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, shownDeviceName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
@@ -371,6 +372,8 @@ class AppState {
   memAnswer?: { device: string; harness: string; reason: MemPluginReason };
   /** D228: why 让 Ducter 帮我设好 didn't start (no agent signed in here, …). */
   anywhereAnswer?: string;
+  /** D347: 借一台电脑来干活 / Lend a computer, open in 你的设备 while defined. */
+  lend?: LendState;
   candidates = new Map<string, Candidate[]>();
   /** D288: each agent's account usage limits, as the home last answered (asked: when we asked). */
   accountUsage = new Map<string, { usage?: AccountUsage; why?: string; asked: number }>();
@@ -747,6 +750,7 @@ class AppState {
       this.afterUpdateAll(f.updateAll);
       return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach && { ...f.reach, clients: f.reach.clients.map((c) => ({ ...c, name: shownDeviceName(c.name) })) }), this.changed());
     }
+    if (f.t === "lend") return void ((this.lend = applyLend(this.lend, f)), this.changed());
     if (f.t === "update_all_result") return void ((this.updateAllAnswer = f.ok || f.reason === "nothing" ? undefined : (f.reason ?? "failed")), this.changed());
     // D228: on with no tunnel made yet starts the guided setup; a setup that couldn't start says why.
     if (f.t === "ability_result" && f.ability === "remote" && f.on && !f.ok && f.reason === "no_address") return void this.beginAnywhere();
@@ -909,6 +913,7 @@ class AppState {
 
   /** Opens this phone's Settings sheet, asking for the partner's settings. */
   openSettings(page: SettingsPage = "") {
+    this.lend = undefined;
     this.sheet = { kind: "settings", page };
     if (this.S.welcomed) this.askLoadout();
     this.changed();
@@ -2008,6 +2013,22 @@ class AppState {
     this.bridgeConfirm = false;
     if (this.bridge) this.bridge = { ...this.bridge, state: "disconnecting" };
     this.send({ t: "bridge_disconnect" });
+    this.changed();
+  }
+  /** D347: 借一台电脑来干活 / Lend a computer: the sheet in 你的设备 (its entry, or the partner's card). */
+  openLend() {
+    this.openSettings("devices");
+    this.lend = {};
+    this.changed();
+  }
+  /** D347: the kind chosen (or 换一个新码 / New code): a fresh code and its line. */
+  lendAsk(kind: LendKind) {
+    this.lend = { kind, awaiting: true };
+    this.send({ t: "lend_code" });
+    this.changed();
+  }
+  closeLend() {
+    this.lend = undefined;
     this.changed();
   }
   /** D228: 让 Ducter 帮我设好 / Set it up for me: one task on the home sets up the person's own Cloudflare tunnel. */

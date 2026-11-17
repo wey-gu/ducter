@@ -37,6 +37,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 - **[Your devices](devices.md):** which computers Ducter works on, what each one can do, how it
   keeps working when you close the window, watching Ducter's browser or using it yourself, and
   Ducter's own phone for apps.
+- **[Add a computer](add-a-computer.md):** lend a server at home, a NAS, a cloud machine or
+  another Mac to your Ducter with one line, so tasks can run there.
 - **[Your partner and settings](settings.md):** rename your partner, choose what it thinks with
   and who does the tasks, how it talks, when it may come to you and what it remembers, and the
   app's own settings and menus.

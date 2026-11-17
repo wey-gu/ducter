@@ -47,6 +47,7 @@ import { createActivitySender, createAmbient, openAmbientStore } from "./ambient
 import { createRelayClient, relayUrl, type RelayFetch } from "./push-relay.ts";
 import { webApi, webStatic } from "./web.ts";
 import { CHECK_PATH, createAnywhere, type AnywhereCtl, type TunnelSys } from "./anywhere.ts";
+import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
@@ -999,7 +1000,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1022,7 +1023,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       return r;
     },
   };
-  const gate = createGate({ auth: gateAuth, personaName: () => persona.name, pairExtra: () => ({ fp: identity.fp, key: identity.key, ways: reachRef?.ways() ?? [] }) });
+  const gate = createGate({ auth: gateAuth, personaName: () => persona.name, pairExtra: () => ({ fp: identity.fp, key: identity.key, ways: reachRef?.ways() ?? [] }), onRedeemed: (code, d) => lendRef?.redeemed(code, d) });
+  let lendRef: import("./lend.ts").Lend | undefined;
   let updatesRef: Updates | undefined;
   let agentsRef: AgentUpdates | undefined;
   let updateAllRef: UpdateAll | undefined;
@@ -1034,7 +1036,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     onUpdate: (id, name, f) => updatesRef?.fromWorker(id, name, f),
     onAgentUpdate: (id, name, f) => agentsRef?.fromWorker(id, name, f),
     // D227: a worker back after its Ducter restarted: an agent update it no longer runs died with it.
-    onHello: (id, name, hello, o) => agentsRef?.reconnected(id, name, { restarted: o.restarted, running: Array.isArray(hello.agentUpdates) ? hello.agentUpdates : [], harnesses: (hello.harnesses ?? []).map((h) => ({ id: h.id, ...(h.version ? { version: h.version } : {}) })) }),
+    onHello: (id, name, hello, o) => (lendRef?.hello(id), agentsRef?.reconnected(id, name, { restarted: o.restarted, running: Array.isArray(hello.agentUpdates) ? hello.agentUpdates : [], harnesses: (hello.harnesses ?? []).map((h) => ({ id: h.id, ...(h.version ? { version: h.version } : {}) })) })),
     // A disconnected (revoked) worker still resolves, as a link that is never online: its tasks
     // show 连不上 / Can't reach and new ones are refused, instead of silently running here.
     find: (d) => {
@@ -1232,6 +1234,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     devicesView?.changed();
   });
   workers.onChange(() => reachRef?.refresh());
+  // D347: 借一台电脑来干活 / Lend a computer: a code, the line to paste, and when it arrives.
+  lendRef = createLend({ auth: devices, dataDir, bind: hostname, port: () => listening, broadcast: (f) => ws.broadcast(f) });
   devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });

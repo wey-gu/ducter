@@ -205,4 +205,5 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
   in Terminal too?"* Say yes, and `ducter status` works in any new Terminal window.
 
 Next: put Ducter on [your phone](phone.md), or on [a server that stays on](install.md#a-linux-server-that-stays-on)
-so it keeps working while your Mac sleeps.
+so it keeps working while your Mac sleeps. Already have a server at home or another Mac?
+[Add it](add-a-computer.md) with one line, and tasks can run there too.

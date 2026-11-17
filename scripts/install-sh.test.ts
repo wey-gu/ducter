@@ -158,3 +158,58 @@ describe("the next step on a server in a tailnet", () => {
     expect(name(null)).toBe("");
   });
 });
+
+// D347: `sh -s -- worker <address> --code <code>`, the line Lend a computer shows: it checks the
+// home is reachable, keeps an install already at this version, then runs `ducter worker … --service`.
+describe("worker mode", () => {
+  const run = (args: string[], o: { reach?: boolean; version?: string } = {}) => {
+    const d = mkdtempSync(join(tmpdir(), "ducter-lend-sh-"));
+    try {
+      const bin = join(d, "fakebin");
+      mkdirSync(bin, { recursive: true });
+      // curl: /health answers (or not); nothing else is fetched when the version is already here.
+      writeFileSync(join(bin, "curl"), `#!/bin/sh\ncase "$*" in *"/health"*) exit ${o.reach === false ? 7 : 0} ;; esac\necho "unexpected curl $*" >&2; exit 9\n`, { mode: 0o755 });
+      const ducter = `#!/bin/sh\nif [ "$1" = version ]; then echo "ducter ${o.version ?? "9.9.9"} (x, bun 1, linux-x64)"; exit 0; fi\nprintf '%s|' "$@" >"${d}/args"\n`;
+      for (const p of [join(d, "prefix/bin/ducter"), join(d, "apps/Ducter.app/Contents/Helpers/ducter")]) {
+        mkdirSync(dirname(p), { recursive: true });
+        writeFileSync(p, ducter, { mode: 0o755 });
+      }
+      const r = spawnSync("sh", ["-s", "--", ...args], {
+        input: installer,
+        env: { HOME: d, PATH: `${bin}:/usr/bin:/bin:/usr/sbin`, DUCTER_VERSION: "9.9.9", DUCTER_PREFIX: join(d, "prefix"), DUCTER_APP_DIR: join(d, "apps"), DUCTER_NO_OPEN: "1" },
+        encoding: "utf8",
+      });
+      let called = "";
+      try {
+        called = readFileSync(join(d, "args"), "utf8");
+      } catch {}
+      return { status: r.status, out: r.stdout + r.stderr, called };
+    } finally {
+      rmSync(d, { recursive: true, force: true });
+    }
+  };
+
+  test("this version already here: no download; joins with the code and installs the service", () => {
+    const r = run(["worker", "hel.example.com/", "--code", "K7QM-4XPA"]);
+    expect(r.out).toContain("Ducter 9.9.9 is already installed.");
+    expect(r.called).toBe("worker|https://hel.example.com|--code|K7QM-4XPA|--service|");
+    expect(r.status).toBe(0);
+  });
+
+  test("--name rides along", () => {
+    expect(run(["worker", "http://192.168.1.20:7777", "--code=K7QM-4XPA", "--name", "nas"]).called).toBe("worker|http://192.168.1.20:7777|--code|K7QM-4XPA|--name|nas|--service|");
+  });
+
+  test("can't reach the home: one sentence, the outbound need, the check; nothing installed or joined", () => {
+    const r = run(["worker", "https://hel.example.com", "--code", "K7QM-4XPA"], { reach: false });
+    expect(r.status).not.toBe(0);
+    expect(r.out).toContain("can't reach https://hel.example.com. It only needs to reach that address (outbound; nothing comes in). Check: curl -sS -m 10 https://hel.example.com/health");
+    expect(r.called).toBe("");
+  });
+
+  test("no code: says how", () => {
+    const r = run(["worker", "https://hel.example.com"]);
+    expect(r.status).not.toBe(0);
+    expect(r.out).toContain("worker <address> --code <code>");
+  });
+});

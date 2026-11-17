@@ -72,6 +72,9 @@ const EDGES: { name: string; lang: string; src: string }[] = [
   { name: "sentence-cells-zh", lang: "zh", src: fence({ type: "table", columns: ["", "装起来", "并发"], rows: [["SQLite：", "不用装，就是一个文件。", "同一时间只能一个人写！"], ["Postgres", "要跑一个服务器", "可以很多人一起写。"]] }) },
   { name: "sentence-cells-ja", lang: "ja", src: fence({ type: "table", columns: ["", "準備", "同時書き込み"], rows: [["SQLite", "ファイルひとつ。", "一度にひとつだけ。"], ["Postgres", "サーバーが要る", "たくさん書ける。"]] }) },
   { name: "big", lang: "en", src: fence({ type: "chart", kind: "bar", unit: "USD", summary: "Spend rose each month.", points: [{ label: "Sep", value: 1240 }, { label: "Oct", value: 2310.5 }, { label: "Nov", value: 3875 }] }) },
+  // D347: the Lend a computer card; its plain form says where the button leads.
+  { name: "lend-zh", lang: "zh", src: `可以，把它借过来就行，跟着这张卡片走：\n\n${fence({ type: "lend" })}` },
+  { name: "lend-en", lang: "en", src: `Sure. This walks you through it:\n\n${fence({ type: "lend" })}` },
 ];
 
 const SPLITS: { name: string; text: string; ui: RichUi[] }[] = [

@@ -431,3 +431,39 @@ D161 (2026-11-10) restyles two of these surfaces in its coin language: 换谁来
 computers says **换谁，也可以换一台电脑 / Someone else, or another computer** under its title, and
 each group head is the device's mini card (its clay, name and state; asleep in dusk ink), on the
 Mac and the phone (`design/ui-devices-card.md` §6, §12).
+
+## 17. Lending a computer (D347)
+
+Where a task can run is only as wide as the computers Ducter has. Adding one is its own moment:
+**借一台电脑来干活 / Lend a computer**.
+
+**Who.** The author: the home is hel, a public server; a Linux box on the home network has no
+public address and no Tailscale. The consumer: a NAS, an old Mac. The fresh user never reads
+"worker". **Felt before:** possible (a worker dials out, so it only needs outbound access to the
+home's address) but four manual steps and no sign it arrived. **After:** one line, the app
+waiting for it, the computer arriving with its name, system and signed-in agents.
+
+**The address.** The home offers the address the other computer can dial: its public one
+(domain, tunnel, tailnet) when it has one, which also serves a computer on the same home network;
+else its own network address when it listens on the network (`sameNetwork`: both on one
+network); else none, and the sheet asks for 从外面连 first. A Mac home listens only to itself by
+default, so a Mac home without From outside has nothing to offer (todo: opening it to its network
+on demand).
+
+**The flow** (web and Mac, the same): entry → **是哪种电脑？/ What kind of computer?** (A Mac:
+the app's own switch on that Mac first, else the line; A Linux server: the line) → the line with
+Copy, what it does, the code's minutes left, the same-network note, **让你的 AI agent 来装 / Let
+your AI agent do it** → **在等它连上… / Waiting for it to connect…** (`lend` `waiting`) →
+**连上了，正在开好… / Joined. Starting up…** (`joined`: the code was traded) → **{name} 来了 /
+{name} is here** (`here`: its worker said hello) with 改名字 / Rename. **没连上？/ Didn't connect?**
+folds the four failures. A code that lapses while waiting shows **这个码过期了。/ This code
+expired.** with **换一个新码 / New code**.
+
+**Where it starts.** 你的设备 beside 连上手机或电脑 (visible, never in a menu), Settings › 在哪儿运行,
+the devices list's empty state, and the partner's lend card (a ```ducter-ui `{"type":"lend"}`
+block) when the person asks to add a computer. The partner says nothing as it arrives.
+
+**The line** (`apps/site/public/install.sh` `worker` mode → `ducter worker … --service`): reach
+check, install unless this version is there, join (kept if the saved one still works), the
+service (a system unit as root). Safe to paste twice.
+

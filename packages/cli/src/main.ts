@@ -86,6 +86,7 @@ export function helpText(t: T): string {
     opt("--headless", t("help.headless")),
     opt("--host <addr>", t("help.host")),
     opt("--worker", t("help.pairWorker")),
+    opt("--service", t("help.workerService")),
     opt("--repo <dir>", t("help.repo")),
     opt("--agent <name>", t("help.agent")),
     opt("--effort <level>", t("help.effort")),
@@ -706,7 +707,8 @@ export async function run(argv: string[]): Promise<number | "running"> {
         },
       });
     case "worker":
-      return cmdWorker({ t, style, args, dataDir });
+      // D347: --service: joined, then `ducter service install --worker` (a system service as root).
+      return cmdWorker({ t, style, args, dataDir, installService: () => cmdService({ t, style, host, dataDir, port, worker: true, rest: ["install"] }) });
     case "update":
       return cmdUpdate({ t, style, args, port, dataDir, target: ctx.target });
   }

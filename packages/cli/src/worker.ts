@@ -109,12 +109,38 @@ function workerAgentUpdater(t: T, dataDir: string, held: () => boolean) {
   });
 }
 
-export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: string }): Promise<number> {
+/**
+ * D347: is this computer already a worker of the home at base, with a token that still works?
+ * (A rerun of the lend line must not spend a fresh code, nor fail on the used one.)
+ */
+export async function stillJoined(saved: WorkerSaved | undefined, base: string): Promise<boolean> {
+  if (!saved?.token) return false;
+  const same = (a: string) => normalizeBase(a) === normalizeBase(base);
+  if (!same(saved.url) && !(saved.ways ?? []).some((w) => same(w.url))) return false;
+  try {
+    const r = await fetch(`${saved.url}/worker`, { headers: { authorization: `Bearer ${saved.token}` }, signal: AbortSignal.timeout(10_000) });
+    return r.status !== 401 && r.status !== 403;
+  } catch {
+    return false;
+  }
+}
+
+export async function cmdWorker(o: {
+  t: T;
+  style: Style;
+  args: Args;
+  dataDir: string;
+  /** D347: `--service`: install the worker service once joined (main.ts runs `ducter service install --worker`). */
+  installService?: () => Promise<number>;
+}): Promise<number> {
   const { t, style, args } = o;
   const file = join(o.dataDir, "worker.json");
   let saved = existsSync(file) ? load(file) : undefined;
 
-  if (args.join) {
+  // D347: the lend line run again (or on a computer already joined there): keep what works.
+  const already = args.join ? await stillJoined(saved, parseJoin(args.join).base) : false;
+  if (already) console.log(`  ${style.ok("✓")} ${t("worker.already", { name: saved!.name, url: saved!.url })}`);
+  if (args.join && !already) {
     const { base, code: linkCode } = parseJoin(args.join);
     const code = args.code ?? linkCode;
     if (!code) return console.log(t("worker.usage")), 2;
@@ -133,7 +159,10 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
       return console.log(t("worker.err.unreachable", { url: base })), 1;
     }
     if (res.status === 429) return console.log(t("worker.err.locked")), 1;
-    if (res.status !== 200) return console.log(t("worker.err.code")), 1;
+    if (res.status !== 200) {
+      const why = await res.json().then((j: any) => j?.error).catch(() => undefined);
+      return console.log(t(why === "expired" ? "worker.err.expired" : "worker.err.code")), 1;
+    }
     const j: any = await res.json();
     // D293: the link named the home's key; a home that answers with another isn't that home.
     const linkFp = fpFromLink(args.join);
@@ -144,6 +173,8 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     console.log(`  ${style.ok("✓")} ${t("worker.joined", { name, persona: saved.persona, url: base })}`);
   }
   if (!saved) return console.log(t("worker.usage")), 2;
+  // D347: joined; the service keeps it running from here (this process doesn't stay connected).
+  if (args.service && o.installService) return o.installService();
   // D102: a worker's keys live in its own <dataDir>/keys.env, as on the main.
   try {
     migrateKeys(o.dataDir);

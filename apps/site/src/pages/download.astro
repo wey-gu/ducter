@@ -147,6 +147,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
         <p>On a server you own, at home or in the cloud. Run this on the server; Ducter starts with it and restarts if it ever stops:</p>
         <div class="term short"><button class="btn sm copy" type="button" data-copy={serverLine}>Copy</button><pre><span class="p">$ </span>{serverLine}</pre></div>
         <p>Then choose how your devices reach it: <code>ducter tailscale</code> (private to your devices, no open ports) or <code>ducter domain ducter.example.com</code> (your own domain, with HTTPS). Either one ends with a code for your Mac and phone. <a href="/docs/install#a-linux-server-that-stays-on">The whole setup</a></p>
+        <p>Already have Ducter on another computer? Lend this server to it instead: <a href="/docs/add-a-computer">Add a computer</a></p>
         <div class="dl-files">
           {a.linuxX64 && <a href={a.linuxX64.url} data-asset="linuxX64"><Fragment set:html={arrow} /><span>For Intel or AMD</span><small data-meta="linuxX64">{formatSize(a.linuxX64.size)}</small></a>}
           {a.linuxArm64 && <a href={a.linuxArm64.url} data-asset="linuxArm64"><Fragment set:html={arrow} /><span>For ARM</span><small data-meta="linuxArm64">{formatSize(a.linuxArm64.size)}</small></a>}

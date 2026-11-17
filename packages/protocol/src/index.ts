@@ -1063,6 +1063,9 @@ export type ClientFrame =
   // cancel: stop setting up (the task stays as it is). Progress arrives in devices frames.
   | { t: "anywhere_setup"; op: "begin" | "step" | "cancel"; step?: AnywhereStepCmd; hostname?: string }
   | { t: "pair_code" }
+  // D347: 借一台电脑来干活 / Lend a computer: a fresh code and the one line the other computer
+  // pastes; answered with a lend frame (state waiting), then lend frames as it joins and arrives.
+  | { t: "lend_code" }
   // rename_device: 改名字 / Rename any device (another computer, a phone, a window; D84), and since
   // D155 the home too ("local": a display name; it still answers to its host name and to "local").
   // Answered with rename_result, then a fresh devices frame.
@@ -1448,6 +1451,7 @@ export type ServerFrame =
   | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
   | { t: "anywhere_setup_result"; ok: boolean; taskId?: string; step?: AnywhereStepResult; reason?: AnywhereReason | "own_address" | "no_agent" | "running" | "not_home"; detail?: string }
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
+  | LendFrame
   | { t: "rename_result"; device: string; ok: boolean; name?: string; reason?: "unknown_device" | "empty" | "name_taken" | "home" }
   | { t: "disconnect_result"; device: string; ok: boolean; reason?: "unknown_device" | "home" }
   | { t: "update_result"; device: string; ok: boolean; reason?: UpdateReason; detail?: string; update?: DeviceUpdate }
@@ -2415,3 +2419,25 @@ export interface ToolArgs {
 }
 
 export const PROTOCOL_VERSION = 2;
+
+/**
+ * D347: 借一台电脑来干活 / Lend a computer. waiting: the code is out (the asking window gets the
+ * line); joined: a computer traded the code (device, name), its worker is starting; here: it said
+ * hello and is in Devices. No address: nothing outside the home reaches it yet (the clients offer
+ * 从外面连). sameNetwork: the address is the home's own network one, so both must be on it.
+ * Expiry is the client's to read from expiresAt (the home sends nothing when a code lapses).
+ */
+export interface LendFrame {
+  t: "lend";
+  code: string;
+  expiresAt: string;
+  state: "waiting" | "joined" | "here";
+  address?: string;
+  sameNetwork?: boolean;
+  /** curl … | sh -s -- worker <address> --code <code> (only to the window that asked). */
+  line?: string;
+  /** curl -sS -m 10 <address>/health: does that computer reach the home at all? */
+  check?: string;
+  device?: string;
+  name?: string;
+}

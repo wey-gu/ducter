@@ -1339,3 +1339,10 @@ h1 .line.quiet { margin-top: 0.22em; font-size: 0.56em; line-height: 1.08; lette
   .cl-fold .cl-body { margin: 0 16px; }
   .cl-anchor { margin-inline: 16px; }
 }
+
+/* D347: Get started's quiet way in for someone who already has Ducter, and its section. */
+.already { margin-top: 18px; }
+.already a { color: var(--ink); font-weight: 600; text-underline-offset: 3px; }
+.add-computer h2 { margin: 0 0 8px; }
+.add-computer .ways { margin-top: 20px; }
+.add-computer .dl-small { margin-top: 16px; }

@@ -34,4 +34,15 @@ describe("Get started", () => {
     const css = readFileSync(join(import.meta.dir, "..", "src", "styles", "site.css"), "utf8");
     expect(css).toContain(".start-page:has(#live-mac:checked) .path:not(#path-mac)");
   });
+  // D347: someone who already has Ducter finds how to add a computer, and the skill section the
+  // sentence names exists. The section is never a .path, so choosing a path never hides it.
+  test("Already have Ducter? leads to Add another computer, whatever path is chosen", () => {
+    expect(start).toContain('<a href="#add-computer">Add another computer →</a>');
+    expect(start).toMatch(/<section class="dl-sec add-computer" id="add-computer"/);
+    expect(start).not.toMatch(/class="path[^"]*" id="add-computer"/);
+    expect(start).toContain('href="/docs/add-a-computer"');
+    expect(skill).toContain("## Add a worker (Lend a computer)");
+    expect(skill).toContain("sh -s -- worker <address>");
+    expect(readFileSync(join(import.meta.dir, "..", "src", "pages", "download.astro"), "utf8")).toContain('href="/docs/add-a-computer"');
+  });
 });

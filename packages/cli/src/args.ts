@@ -14,6 +14,7 @@ export interface Args {
   name?: string; // this device's name when joining as a worker
   join?: string; // worker: the main process's address (`ducter worker <address>`; --join is a hidden alias)
   code?: string; // worker: a pairing code
+  service?: boolean; // worker --service (D347): also install the worker service
   rest?: string[]; // words after devices / service (e.g. "revoke <id>")
   all?: boolean; // uninstall --all: everything, not only the background item
   dryRun?: boolean; // uninstall --dry-run: only the plan
@@ -94,6 +95,9 @@ export function parseArgs(argv: string[]): ParseResult {
         continue;
       case "--worker":
         args.worker = true;
+        continue;
+      case "--service":
+        args.service = true; // worker <address> --code <code> --service (D347): join, then keep it running
         continue;
       case "--headless":
         args.headless = true;

@@ -222,7 +222,8 @@ func (a *App) devicesView(c *ui.Context) {
 			case len(a.S.Devices) == 0:
 				a.devicesWaiting(c)
 			case narrow:
-				ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() { a.deviceCards(c, 230); a.connectEntry(c) })
+				ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() { a.deviceCards(c, 230); a.connectEntry(c); a.lendEntry(c, false) })
+				a.lendEmpty(c)
 				if w < 1040 {
 					// Too narrow for both: the stage, then the card under it.
 					ui.Column(c).Height(560).Children(func() { a.stage(c, dev) })
@@ -241,7 +242,10 @@ func (a *App) devicesView(c *ui.Context) {
 					ui.Column(c).Width(listW).Shrink(0).Gap(t.S1 + 2).Children(func() {
 						ui.Text(c, a.L.T("devices.list")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted).Margin(t.S1, t.S2, t.S1, t.S2)
 						a.deviceCards(c, 0)
+						a.lendEmpty(c)
 						ui.Row(c).Margin(t.S2, 0, 0, 0).Children(func() { a.connectEntry(c) })
+						// D347: lending a computer sits right beside connecting one, with its why.
+						a.lendEntry(c, true)
 					})
 					// The stage stays in view while the card scrolls past (it never clips: it is shorter than the window).
 					ui.Column(c).Grow(1).MinWidth(0).Height(stageH).Sticky().Top(t.S4).Children(func() { a.stage(c, dev) })

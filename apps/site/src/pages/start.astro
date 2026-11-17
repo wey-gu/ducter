@@ -22,6 +22,10 @@ const serverLine = "curl -fsSL https://ducter.ai/install.sh | sh -s -- --service
 // site, which works whether or not the repository is public, and needs nothing installed first.
 const askMac = `Set up Ducter on this Mac for me. Follow the guide at ${SKILL}`;
 const askServer = `Set up Ducter on my server for me, so my phone and Mac can reach it. Follow the guide at ${SKILL}`;
+// D347: someone who already has a home adds a computer that does tasks. The real line, with their
+// address and a fresh code, comes from Your devices › Lend a computer; this shows its shape.
+const lendLine = "curl -fsSL https://ducter.ai/install.sh | sh -s -- worker <address> --code <code>";
+const askLend = `Lend this computer to my Ducter: follow the "Lend a computer" section of ${SKILL} and run the line from Lend a computer`;
 const title = "Get started with Ducter";
 const description = "Where should Ducter live? Pick your Mac or a server, then let your AI agent set it up or do it yourself. A few minutes to your partner's first hello.";
 const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l8-8M6 4h6v6"/></svg>`;
@@ -61,6 +65,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
         </div>
       </fieldset>
     </form>
+    <p class="dl-small already">Already have Ducter? <a href="#add-computer">Add another computer →</a></p>
     <p class="on-phone" id="on-phone" hidden>You're on a phone. Ducter lives on a computer, so you'll set it up there; <a href="#path-unsure">here's how to carry this over</a>.</p>
   </div>
 </section>
@@ -148,6 +153,29 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
       <p class="dl-small">Either way you need an AI to do the work: a Claude or ChatGPT plan, or an API key. Ducter itself is free. <a href="/docs/faq">Questions people ask</a></p>
     </article>
 
+  </div>
+</section>
+
+<!-- ============ ALREADY HAVE DUCTER (D347) ============ -->
+<section class="dl-sec add-computer" id="add-computer" aria-labelledby="h-add">
+  <div class="wrap">
+    <h2 id="h-add">Add another computer</h2>
+    <p class="body">Already have Ducter? Lend it a server at home, a NAS or another Mac, and tasks can run there too. That computer only connects out to your Ducter: no open ports, no Tailscale of its own.</p>
+    <div class="ways">
+      <div class="way">
+        <p class="way-tag">In Ducter</p>
+        <h3>Your devices › Lend a computer</h3>
+        <p>It shows one line with your Ducter's address and a fresh code. Paste it in a terminal on the other computer; it installs Ducter, joins, and keeps running. The app shows the computer the moment it arrives.</p>
+        <div class="term short"><pre><span class="p">$ </span>{lendLine}</pre></div>
+      </div>
+      <div class="way agent">
+        <p class="way-tag">Or</p>
+        <h3>Let your AI agent do it</h3>
+        <p>On the other computer, give Claude Code or Codex the sentence Lend a computer shows. It reads like this:</p>
+        <div class="term short"><pre>{askLend}</pre></div>
+      </div>
+    </div>
+    <p class="dl-small"><a href="/docs/add-a-computer">Add a computer, step by step</a></p>
   </div>
 </section>
 

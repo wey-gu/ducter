@@ -4,7 +4,7 @@
 //   DUCTER_PORT=7972 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh DEMO_OWN=voice bun apps/web/demo-own-phone.ts
 // DEMO_OWN: none (nothing plugged in) | allow (tap Allow on the phone) | voice (the key is the next
 // step) | asking (the test call asks if they heard it) | ready | call (a Go card from your number).
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import type { Bodies } from "@ducter/protocol";
 import { loopbackBridge } from "../../packages/core/src/phone-own/audio.ts";
 import { fakePhone, fakeVoice } from "../../packages/core/test/fake-own-phone.ts";

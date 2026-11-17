@@ -4,7 +4,7 @@
 // DEMO_PHONE: offer (no calling connection yet) | signin (the device sign-in, waiting) |
 // calls (connected: a Go card, a live call with a question, a call waiting for the morning, two ended) |
 // sheet (D215: a call sheet for a number no line calls, and one the owner already called).
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import type { Bodies, CallBody } from "@ducter/protocol";
 import { fakeTuwa } from "../../packages/core/test/fake-tuwa.ts";
 

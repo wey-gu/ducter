@@ -3,7 +3,7 @@
 // each with its next step, then a coding task handed over and finished with its proof.
 //   DUCTER_PORT=7960 DUCTER_DATA_DIR=<scratch> DEMO_LANG=en bun apps/web/demo-site.ts
 // Then headless Chrome at http://127.0.0.1:7960/app (see design/site.md "Pictures").
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
 const zh = (process.env.DEMO_LANG ?? "en") === "zh";

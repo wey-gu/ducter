@@ -44,17 +44,17 @@ the users' `web-{H,C,F}-…`) and `.shots/settings-0067/after`; each web run's w
 | 10 | Accounts › 它能看的账号, empty (Mac ≠ web) | C, F | The Mac said **还没有。…** as a row of its own, then a row holding only a dark 添加 at its right edge (an empty row); the web had one add row with the line under it | medium | Fixed: the Mac's add row says it, as the web's |
 | 11 | Accounts › 用你自己的号码打 (both) | H | A bare **13:47** after **Siwei's MacBook Pro 上还没看到手机**: a clock with no word | low | Fixed: **13:47 找的 / at 13:47** |
 | 12 | Accounts › 用你自己的号码打 (both) | H | The foot joined two sentences with a space (**…这台电脑上打。 只拨号…**, a D291-style join) and said **手机插在 X 上** and **这台电脑** when no phone is plugged in and the reader may be on a phone | low | Fixed: one sentence pair, **手机要插在 X 上，电话就在那台电脑上打。只拨号…** |
-| 13 | Accounts (both) | C, F | The own-number setup (five numbered USB and SIM steps, step 1 open, the computer's real speakers named) shows to everyone who came to add mail | medium (strands C and F) | Open: a folded resting state is a new state (todo) |
+| 13 | Accounts (both) | C, F | The own-number setup (five numbered USB and SIM steps, step 1 open, the computer's real speakers named) shows to everyone who came to add mail | medium (strands C and F) | D337 (1): one row with 设置 / Set up until opened or started |
 | 14 | Your devices (web) | H | The version line said **已经是最新的** and **3 分钟前检查过** as two facts; D296 made it one phrase on the Mac | medium | Fixed: **3 分钟前看过，已经是最新的** |
 | 15 | Your devices, Updates and about (both) | H | The night-update note said **按同样的顺序更新 / in the same order** (a phrase from the update-all card, where an order is shown) on the web; the Mac said 一台一台地 without the 3–5 am default | low | Fixed: one note on both, with the default |
 | 16 | Updates and about (Mac) | H | The versions group's note was the card's first line, unlike every group's (D289) | low | Fixed: under the title |
-| 17 | Updates and about (Mac) | H | **这次没能检查** at the top and **7 分钟前看过，已经是最新的** below, and two 检查更新, for what is one Ducter on a Mac home | medium | Open (todo): seen only with the app's feed pointed at a dead address |
+| 17 | Updates and about (Mac) | H | **这次没能检查** at the top and **7 分钟前看过，已经是最新的** below, and two 检查更新, for what is one Ducter on a Mac home | medium | D337 (2): one check (the latest of the two), one button |
 | 18 | Autofill (web ≠ Mac) | C | What it sees and what it only fills (**名字、邮箱…它看得到…护照…它看不到**) was under 你的资料 on the Mac, and on the web only inside the form | medium (trust) | Fixed: under the heading on the web too |
 | 19 | Autofill (both) | C | **锁着存在 X 上，密钥在这台 Mac 的钥匙串里** sat under the 密钥 group (API and deploy keys): 密钥 read as those keys; and "这台 Mac" on a phone | low | Fixed: **解锁用的密钥在 Mac 的钥匙串里** (D212's word kept) |
 | 20 | This phone (web, en) | C | The list line **Light and dark, language, Details in the conversation, voice** capitalised mid-list | low | Fixed |
 | 21 | Notifications, Accounts (web) | C | **When it notices something** shows on both pages | low | Left: both are D289's (the control belongs to what is read and to when it speaks) |
 | 22 | Chat apps (Mac) | all | iMessage's group (D323's steps) not shown: the app ran with `DUCTER_IMESSAGE=off` so as never to touch the person's Messages | — | Not checked live; D323's test-renderer shots stand |
-| 23 | Memory (demo) | — | `demo-first.ts` and `demo-accounts.ts` read the machine's own Nowledge Mem (its memories, "update available") and the own-number step reads the machine's audio devices | high for shots (privacy) | Open (todo): the demos need a pretend `nmem` by default; those shots were deleted |
+| 23 | Memory (demo) | — | `demo-first.ts` and `demo-accounts.ts` read the machine's own Nowledge Mem (its memories, "update available") and the own-number step reads the machine's audio devices | high for shots (privacy) | D337 (3): every demo starts from `demo-core.ts` (pretend nmem, plugin check, sound, adb, sessions, computer name) |
 
 Looked at and fine: the Look and sound pane (preview, Pebble, light and dark, voice keys), Where it
 runs, Notifications on the Mac, Chat apps on the web (marks from D314, steps as rows), Connected AI
@@ -93,3 +93,8 @@ Code" with nothing signed in, a laptop's browser calling itself a phone (D330), 
 rows, "another" with none, 打电话 twice, Mac and web mismatches in Accounts, Autofill, Updates and the
 trust lists, small copy and joins); open: the own-number steps open for everyone, two update checks
 on a Mac home, and the demos reading the real Mem.
+
+**Follow-up (2026-11-17, D337):** the three open items are closed: the own-number setup rests as one row
+until opened or started, a Mac home's Updates and about says one check with one button, and every demo
+core starts from `apps/web/demo-core.ts` (which also stopped the demos naming the machine itself, found
+while re-shooting). Shots: `.shots/settings-0068`.

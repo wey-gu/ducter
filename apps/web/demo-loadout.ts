@@ -7,7 +7,7 @@
 // DEMO_CASE (D322, Settings › Partner): author (a server, Codex only, Claude Code not installed) |
 // two (Claude Code and Codex) | none (Claude Code signed out) | server (hel, both) | key (a DeepSeek key only)
 import { mkdirSync, writeFileSync } from "node:fs";
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 import type { Bodies, DeviceHarness, Place } from "@ducter/protocol";
 

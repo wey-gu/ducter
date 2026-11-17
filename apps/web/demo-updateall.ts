@@ -6,7 +6,7 @@
 // Then, on DEMO_CTL_PORT (7799): POST /go (the tap), /home (hel comes back on 0.0.31), /mini
 // (the mini's download moves; ?fail=1 makes it fail), /free (the task on Claude Code pauses),
 // /agents (the agents' updaters finish).
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
 const en = process.env.DEMO_LANG === "en";

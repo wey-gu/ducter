@@ -101,6 +101,16 @@ type ownState struct {
 	engine     string
 	test       string
 	forgetting bool
+	opened     bool // D337: 设置 / Set up was pressed: the steps stay open
+}
+
+// ownStarted (D337): the person has started the setup: a phone plugged in
+// (even one waiting for Allow), the live-voice key, a test call, or it is
+// ready or on a call. What the home finds by itself (adb, the sound
+// devices, the number from Your details) is not a start. The web's
+// ownStarted (apps/web/src/own-phone.tsx) is the same rule.
+func ownStarted(v *protocol.OwnPhoneView) bool {
+	return v.Ready || v.Phone != nil || v.Voice.Key || v.Test.State != "never" && v.Test.State != "" || v.Live != nil || v.Busy
 }
 
 var ownSteps = []string{"phone", "sim", "cable", "voice", "test"}
@@ -141,6 +151,19 @@ func (a *App) ownPhoneCard(c *ui.Context) {
 	t := a.T
 	o := &a.own
 	title := a.L.T("own.title")
+	// D337: until it is opened or started, the setup rests as one row: what
+	// it is, why, and 设置 / Set up; a person who came to add mail never
+	// meets five numbered USB and SIM steps.
+	if !o.opened && !ownStarted(v) {
+		a.group(c, "own-phone", "", "", func() {
+			a.headRow(c, "own-phone", a.clayTile(c, "ab_call_later", true), title, a.L.T("own.fold"), sideMuted, func() {
+				if a.buttonFor(c, a.L.T("own.setup"), title, btnSecondary, t.ControlSM, t.Surface) {
+					o.opened = true
+				}
+			})
+		})
+		return
+	}
 	done, next := ownDone(v)
 	shown := next
 	if o.open != "" {

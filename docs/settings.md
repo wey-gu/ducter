@@ -260,7 +260,8 @@ something.
 ## Updates and about
 
 The version, then **Updates**: whether this version is the newest, **Check now**, and **Update
-automatically when quitting**. When a new version is ready, **Restart Now** installs it: the window says it's putting the new
+automatically when quitting**. When Ducter lives on this Mac, that one line and button cover both the
+app and Ducter itself. When a new version is ready, **Restart Now** installs it: the window says it's putting the new
 version in, and Ducter opens again on it. Under
 **Help** are the docs, **Report a problem…** and the licenses; **Credits** opens the recordings
 behind the intro's sound.

@@ -5,7 +5,7 @@
 // records (the key card). A key ending in 0000 answers "no balance"; any other DeepSeek-shaped key works.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { fakeAgents } from "../../packages/core/test/fake-agents.ts";
 import { noOo } from "./demo-oo.ts";
 

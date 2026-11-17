@@ -6,7 +6,7 @@
 //   DUCTER_PORT=7798 DUCTER_DATA_DIR=$(mktemp -d) bun apps/web/demo-devices.ts
 // Then POST /step?phase=downloading (or verifying, waiting, restarting, done, failed) on DEMO_CTL_PORT,
 // or /agent?phase=waiting (updating, checking, done, failed) for Codex's own update on hel.
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
 const feed = async () => new Response(JSON.stringify({ tag_name: "v0.0.8", body: "- Every device card is a character sheet\n- Coins pop when an update lands" }));

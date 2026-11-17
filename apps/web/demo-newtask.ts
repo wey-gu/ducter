@@ -5,7 +5,7 @@
 // DEMO_FAIL=offline|failed: every task_new is refused that way (the card's error line).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { startCore } from "@ducter/core";
+import { startCore } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 import type { Bodies, BranchChanges, DeviceHarness, Place, TaskCard } from "@ducter/protocol";
 import type { ListedModel, Runner } from "@ducter/protocol/src/internal.ts";

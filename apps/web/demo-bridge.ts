@@ -7,7 +7,7 @@
 //   D229: hel_ready (hel's pip copy, working: a quiet move offered) · moving (a tap stays moving) ·
 //         moved (a tap moves it: done) · move_failed (a tap fails; the old copy is put back)
 // then open http://127.0.0.1:7798/app#settings=partner
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 import { REFUSALS } from "@ducter/core/src/bridge-link.ts";
 

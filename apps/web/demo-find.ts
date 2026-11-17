@@ -7,7 +7,7 @@
 // DEMO_MAC_REPOS=0: the Mac reports no repos (the empty list).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { startCore } from "@ducter/core";
+import { startCore } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 import type { TaskCard } from "@ducter/protocol";
 import type { Runner } from "@ducter/protocol/src/internal.ts";

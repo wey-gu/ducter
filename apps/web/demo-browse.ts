@@ -5,7 +5,7 @@
 //   DUCTER_CHROME=<Chrome for Testing> DUCTER_PORT=7795 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh bun apps/web/demo-browse.ts
 // The shop answers as shop.example.com (Chrome maps the name to it). Each 5 s the open views'
 // stream numbers are printed ([demo-browse] stats …).
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";

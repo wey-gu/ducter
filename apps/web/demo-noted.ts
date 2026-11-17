@@ -4,7 +4,7 @@
 // answer nothing), so nothing here reads the machine's real Mem; the Mem steps are stubs.
 //   DUCTER_PORT=7980 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-noted.ts
 // then open http://127.0.0.1:7980/app (Details shown: localStorage ducter.details = "shown").
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";

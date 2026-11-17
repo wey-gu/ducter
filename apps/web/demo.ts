@@ -1,7 +1,7 @@
 // A demo core for the phone client's screenshots and manual checks: real core (Log, decisions,
 // living message, auth, web), stub partner and runner, seeded with work like the author's.
 //   DUCTER_PORT=7797 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo.ts
-import { startCore, stubRunner, realClock } from "@ducter/core";
+import { startCore, stubRunner, realClock } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 import { demoMem, fakeNmem, notedSeed, seedConnection } from "./demo-mem.ts";
 import type { Bodies, Place } from "@ducter/protocol";

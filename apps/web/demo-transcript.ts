@@ -4,7 +4,7 @@
 // (apps/desktop/internal/views/task_mem_test.go).
 //   DUCTER_PORT=7993 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh DEMO_PHASE=running|done|failed|yourturn bun apps/web/demo-transcript.ts
 // then open http://127.0.0.1:7993/app#task=mem1 (cc1 for "failed").
-import { startCore, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 import type { Attention, LogEvent, MediaRef } from "@ducter/protocol";
 import { readFileSync } from "node:fs";

@@ -41,6 +41,8 @@ type taskPage struct {
 	// jump is a locator click on its way; flash, the turn it last reached (D284).
 	jump  *jumpTo
 	flash flash
+	// headAt is where the head was drawn last frame, transforms and all.
+	headAt ui.Rect
 	// D320: landing is a far jump waiting for its turn to be built; views,
 	// each opened task's rows on screen as index turns, for its window.
 	landing *landing
@@ -306,7 +308,9 @@ func (a *App) taskHead(c *ui.Context, task *store.Task, m *taskMemo) {
 	t := a.T
 	ui.Column(c.Key("headcol")).Gap(t.S6).MinWidth(0).Children(func() {
 		// D290: the head is where the card you opened grows to (Hero).
-		ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Transition(a.heroTransition(task.ID)).Children(func() {
+		head := ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Transition(a.heroTransition(task.ID))
+		a.tpage.headAt = head.Bounds() // where it was drawn, for the switch's check (D343)
+		head.Children(func() {
 			ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
 				a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
 				// What it waits for, in a bubble by its head (D112).

@@ -95,7 +95,9 @@ test("the home says them once, in the Log, to an app's first hello; 别再看了
     };
     expect((await open("cli")).filter((f) => f.t === "events").flatMap((f) => (f as { events: LogEvent[] }).events)).toEqual([]);
     const first = await open("desktop");
-    const said = first.filter((f) => f.t === "events").flatMap((f) => (f as { events: LogEvent[] }).events);
+    // Only the partner's messages: the morning note (a `finds` event) may also land, depending on the hour.
+    const msgs = (fs: ServerFrame[]) => fs.filter((f) => f.t === "events").flatMap((f) => (f as { events: LogEvent[] }).events).filter((e) => e.kind === "ai_msg");
+    const said = msgs(first);
     expect(said.length).toBe(1);
     expect(said[0]).toMatchObject({ kind: "ai_msg", origin: "partner" });
     const body = said[0]!.body as { text: string; first: { starts: { from: string; words: string }[]; looked?: string[] } };
@@ -106,7 +108,7 @@ test("the home says them once, in the Log, to an app's first hello; 别再看了
     expect(JSON.stringify(body)).not.toContain("hawdb");
     expect((first.find((f) => f.t === "first_screen") as Extract<ServerFrame, { t: "first_screen" }>).first.looks).toBe(true);
     // Said once: a second app sees the same message, not a second one.
-    const again = (await open("web")).filter((f) => f.t === "events").flatMap((f) => (f as { events: LogEvent[] }).events);
+    const again = msgs(await open("web"));
     expect(again.length).toBe(1);
     // The tap is the yes: the home answers at once with what they were doing, each with how it knows.
     await open("desktop", (ws) => ws.send(JSON.stringify({ t: "local_agents_look" })));

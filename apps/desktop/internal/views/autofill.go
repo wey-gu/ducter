@@ -11,7 +11,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// 设置 › 自动填充 / Settings › Autofill (D191, design/autofill.md §6): the
+// 设置 › 密码和银行卡 / Settings › Passwords & cards (Autofill in code) (D191, design/autofill.md §6): the
 // owner's saved sign-ins, cards and details, and where each was used. A
 // secret goes to the home once (saved_put) and never comes back: a sign-in
 // shows its site and user name, a card its last four, a private detail

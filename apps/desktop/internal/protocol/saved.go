@@ -1,6 +1,6 @@
 package protocol
 
-// 自动填充 / Autofill (D191): the mirror of packages/protocol/src/saved.ts.
+// 密码和银行卡 / Passwords & cards (Autofill in code) (D191): the mirror of packages/protocol/src/saved.ts.
 // A secret goes to the home once, in SavedPut; what comes back never holds
 // one: a sign-in's site and user name, a card's last four, a private
 // detail only as kept.

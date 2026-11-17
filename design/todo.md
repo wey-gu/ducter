@@ -895,7 +895,7 @@ note and a `Dn`) before it is built.
       same turn; its done was held until that was answered too). Trigger: it happens again in the eval.
 - [ ] **A card's postcode isn't scrubbed** from reads (only values of 6+ characters are, and postcodes
       aren't listed). Trigger: the review of D191.
-- [ ] **Clay art for Autofill** through the metaphor process (it borrows the 上网 clay today).
+- [ ] **Clay art for Passwords & cards** (Autofill) through the metaphor process (it borrows the 上网 clay today).
       Trigger: the review of the Settings shots.
 - [ ] **Face ID / Touch ID on the Pay card** (the iPhone shell's existing unlock; LocalAuthentication
       in the Mac app). Trigger: the first real payment.
@@ -908,7 +908,7 @@ note and a `Dn`) before it is built.
 - [ ] **Codes from a connected mailbox** with per-account consent and a Muse-like filter. Trigger: 3-D
       Secure by SMS/email shows up as the common blocker.
 - [ ] **Filling on a worker's browser** sends the value over the worker socket (the owner's own
-      computer); say it on the Autofill page, or fill on the home only. Trigger: the review.
+      computer); say it on the Passwords & cards page, or fill on the home only. Trigger: the review.
 - [ ] **The author's review of D233** (keys a task asks for): the card's words, Remember as the
       default, the per-task key file, what is and isn't guaranteed. Trigger: the author's next session.
 - [ ] **A key for a task on a worker** (D233 (7)): write the task's key file on the worker over its

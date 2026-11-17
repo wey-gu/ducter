@@ -43,7 +43,7 @@ export const phone: { zh: Record<string, string>; en: Record<string, string> } =
     "call.waiting.line": "电话那头在等；90 秒没回，就说回头再打。",
     "call.q.fallback": "没等到你，跟对方说了回头再打。",
     "call.q.passed": "转告了：%s",
-    "call.fail.payment": "%s 要先存一张卡",
+    "call.fail.payment": "%s 要先存一张银行卡",
     "call.fail.balance": "Tuwa 里没有分钟了",
     "call.fail.cap": "今天的上限到了",
     "call.fail.provider": "Tuwa 拒绝了，没说原因",

@@ -5918,7 +5918,7 @@ button.bcard:active {
   max-width: calc(var(--fold-a) - var(--safe-left) - 32px);
 }
 
-/* D191: 自动填充 / Autofill. A sign-in is its site's letter on a clay pebble, a card a small
+/* D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code). A sign-in is its site's letter on a clay pebble, a card a small
    clay card with its last four; secrets only ever as a dot row. */
 .af-lede {
   margin: 0 0 var(--s3);

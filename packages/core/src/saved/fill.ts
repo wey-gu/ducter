@@ -324,8 +324,8 @@ export function savedListText(saved: SavedStore, role: "task" | "partner"): stri
   const lines: string[] = [];
   const sign = v.items.filter((x) => x.kind === "signin");
   const cards = v.items.filter((x) => x.kind === "card");
-  if (!sign.length && !cards.length && !v.details.some((x) => x.kept)) return "Nothing is saved in Autofill yet. The user adds sign-ins, cards and their details in Settings › Autofill.";
-  lines.push(role === "task" ? "Saved by the user (fill with browser_fill by handle; you never see the values):" : "Saved in Autofill (tasks fill these by handle in Ducter's browser; nobody sees the values):");
+  if (!sign.length && !cards.length && !v.details.some((x) => x.kept)) return "Nothing is saved in Passwords & cards yet. The user adds sign-ins, cards and their details in Settings › Passwords & cards (zh: 设置 › 密码和银行卡).";
+  lines.push(role === "task" ? "Saved by the user (fill with browser_fill by handle; you never see the values):" : "Saved in Passwords & cards (tasks fill these by handle in Ducter's browser; nobody sees the values):");
   for (const s of sign) lines.push(`- ${s.handle}: sign-in for ${s.site}, user ${s.username}${s.okSites?.length ? "" : " (call browser_fill: its first use there asks the user's OK by itself)"}`);
   for (const c of cards) lines.push(`- ${c.handle}: ${c.label}, expires ${c.exp}, name ${c.name} (every payment: browser_ask_to_pay first)`);
   const kept = v.details.filter((x) => x.kept);

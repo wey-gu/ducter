@@ -1,16 +1,18 @@
 ---
-title: Autofill
+title: Passwords & cards
 description: Save a sign-in, a card or your travel details once, and let your partner book and buy for you, with your Go on every payment.
 order: 5.5
 ---
 
-# Autofill
+# Passwords & cards
 
 Ask your partner to book a hotel, a flight or buy something, and it can fill in the forms for
 you: your sign-in, your card, your name and passport number. It fills them into its own browser
 without the AI ever seeing them, and it asks you before every payment.
 
-Open **Settings › Autofill** on your Mac, phone, iPad or Android phone.
+Open **Settings › Passwords & cards** (in Chinese, **设置 › 密码和银行卡**) on your Mac, phone, iPad
+or Android phone. It holds what Ducter uses to sign in, pay and fill in addresses for you, kept
+locked on your computer.
 
 ## What you can save
 
@@ -45,7 +47,7 @@ If nothing is saved, the task stops at the checkout or sign-in page and you fini
   conversation, not in Settings, and not to you. Settings shows the site and user name, or the
   card's last four. To change one, type the new one; to look one up, use your own password manager.
 - If you paste a card number or password into the conversation, it's hidden on screen and never
-  passed to a task. It has still reached the AI, so it's best to add it in Autofill instead.
+  passed to a task. It has still reached the AI, so it's best to add it in Passwords & cards instead.
 - One-time codes, bank checks (3-D Secure) and passkeys are yours: a task opens that page and you
   finish it yourself, in a live view of Ducter's browser, while the AI can't see.
 
@@ -70,7 +72,7 @@ the AI that you talk to never sees it. The task uses it only inside the command 
 What a task could still do: if it printed the key on purpose, it would see it itself. Every time
 a key is given or refused is listed under **Where it was used**.
 
-In **Settings › Autofill › Keys** you can add a key yourself, see which are kept (by name, never
+In **Settings › Passwords & cards › Keys** you can add a key yourself, see which are kept (by name, never
 the key), remove one, or turn off **Let tasks ask me for keys**. When it's off, a task only says
 in its report which key it needs.
 
@@ -81,7 +83,7 @@ says in its report which key it needs (coming soon).
 
 Everything is kept on the computer Ducter lives on, locked. On a Mac the key is in that Mac's
 keychain; on a Linux server it's in a file only Ducter can read. It's never copied to your phone
-or other computers. The bottom of the Autofill page says which.
+or other computers. The bottom of the Passwords & cards page says which.
 
 ## Where it was used
 

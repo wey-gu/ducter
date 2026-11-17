@@ -37,7 +37,7 @@ exactly what it will and won't do. This page lists it.
   covered by the copy.
 - **It never sees your passwords or card numbers.** When a website needs a login, you type it
   yourself, in your Chrome or in Ducter's browser window; the AI never sees it. If you saved a
-  sign-in or a card in [Autofill](autofill.md), Ducter fills it into its own browser without the
+  sign-in or a card in [Passwords & cards](passwords-and-cards.md), Ducter fills it into its own browser without the
   AI seeing it, only on that sign-in's own site, and every payment waits for you to tap **Pay** on
   a card that names the shop, the amount and your card's last four. Submitting forms and posting
   are left to you.

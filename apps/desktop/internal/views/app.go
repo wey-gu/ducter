@@ -279,7 +279,7 @@ type App struct {
 	pu         phoneUseState    // D217: Ducter's phone
 	cu         computerUseState // D235: 用电脑
 	sites      sitesState
-	af         autofillState // D191: 设置 › 自动填充
+	af         autofillState // D191: 设置 › 密码和银行卡
 	chats      chatsState    // D276: 设置 › 聊天软件
 	winW, winH float32
 	slid       map[string]float32 // D244: a sliding pane's width when open (onhandrail.go)

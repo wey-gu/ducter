@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.0.67
+
+<!-- whats-new
+zh: 任务做事时也能插话，留着的话随时改
+en: Talk to a task while it works; held words you can still change
+zh: 读你别的 AI 的记录，先问你一句
+en: Your other AIs' records are read only when you say so
+-->
+
+**Talking to a task**
+- While a task works, Return steers: it sees your words at its next step, and the bubble says
+  when it has. Option-Return holds them for after this round, as chips you can edit, send now
+  or take back; they stay held across a restart and in every window.
+- The locator lists the session's landmarks: what you said, each report, compactions and quiet
+  stretches. Arrow through them and jump; time ranges read earlier first, with the day.
+
+**Your other AI agents' records**
+- The first words no longer read them unasked: one start, "Pick up what I've been doing", reads
+  them when you tap it. Each suggestion shows how it knows, and a folder can be left out.
+- Past tasks names the computer it reads and what it reads. One switch turns it all off and
+  forgets what was read. Keys pasted into prompts never become titles.
+
+**iMessage**
+- Give your partner its own Apple ID, step by step, with a Check that says what Messages is
+  signed in as. Settings says which Mac carries iMessage, so two Macs never both answer.
+
+**Nowledge Bridge**
+- One home answers your partner's messages from your other AIs; a second home says so and
+  offers to take over instead of quietly reading the same mailbox.
+
+**Site**
+- ducter.ai says what Ducter does for you, with real screens; Get started asks where Ducter
+  should live and offers a sentence your AI agent can follow to set it up.
+
 ## 0.0.66
 
 <!-- whats-new

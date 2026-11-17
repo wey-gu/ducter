@@ -242,8 +242,8 @@ address, or that you'd rather keep off the internet:
    ducter tailscale
    ```
 
-It checks Tailscale is connected and can give this server a certificate (if not, it says which
-switch to turn on and stops), serves Ducter over HTTPS at the server's Tailscale name (like
+It checks Tailscale is connected and can give this server a certificate (if not, it says what to
+turn on, and where, and stops), serves Ducter over HTTPS at the server's Tailscale name (like
 `https://hel.tail1234.ts.net`), and ends with a code, a link and a QR code. Only devices in
 your Tailscale network can open that address, and each still needs a code. Not running as root?
 If Tailscale says you aren't allowed, run `sudo tailscale set --operator=$USER` once, then

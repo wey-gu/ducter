@@ -92,7 +92,10 @@ that is the Mac app's own client and frame decoder (`apps/desktop/cmd/e2eclient`
    so the client taps 刷新 for the next);
 4. updates pi (a fake package on a local npm registry, `DUCTER_NPM_REGISTRY`, loopback only)
    1.5.0 → 1.5.1, then asks a worker whose pi was updated behind the home's back to update
-   again: "nothing newer" must not show as a failure.
+   again: "nothing newer" must not show as a failure;
+5. then Update all (D224), From outside with a fake cloudflared (D228), and a tailnet-only
+   server with a fake `tailscale` CLI (D265, D318: each failure's words, `ducter pair` leading
+   with it, serve and pair, `--remove`). The script's header lists every check.
 
 It deletes the VM and the builds at the end (`--keep` leaves them; the log stays in the scratch
 folder). On an IPv6-only network with 464XLAT (macOS shows CLAT46) the VM's own IPv4 is dead and

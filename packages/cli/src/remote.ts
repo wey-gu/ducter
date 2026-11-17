@@ -207,7 +207,8 @@ export async function cmdPair(o: {
         `    ${style.bold(`${o.self ?? "ducter"} domain ducter.example.com`)}`,
         `  ${style.dim(t("pair.domain.what"))}`,
         "",
-        ...(inTailnet ? [] : [`  ${t("pair.ts.other")}`, tsCmd, ""]),
+        // Installed but signed out or off: say so, rather than "install Tailscale".
+        ...(inTailnet ? [] : [`  ${t(tn ? "pair.ts.signIn" : "pair.ts.other")}`, tsCmd, ""]),
         `  ${t("pair.tunnel")}`,
         `    ${tunnel}`,
         `  ${t("pair.tunnel.then")}`,

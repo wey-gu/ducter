@@ -133,6 +133,30 @@ describe("ducter tailscale", () => {
     expect(out.join("\n")).toContain("sudo tailscale up");
     expect(calls.some((c) => c.includes("serve --bg"))).toBe(false);
   });
+  test("each state that isn't Running says what it is, in plain words (D318)", async () => {
+    const said = async (state: string, platform = "linux") => {
+      out = [];
+      expect(await run(fakeSys({ platform, status: statusJson({ state }) }).sys)).toBe(1);
+      return out.join("\n");
+    };
+    expect(await said("NeedsLogin")).toContain("installed here but not signed in");
+    expect(await said("NeedsLogin")).toContain("sudo tailscale up");
+    expect(await said("NeedsLogin", "darwin")).toContain("open -a Tailscale");
+    expect(await said("NeedsMachineAuth")).toContain("https://login.tailscale.com/admin/machines");
+    expect(await said("Stopped")).toContain("turned off on this computer");
+  });
+  test("serve stopping to ask for a feature: its link, not a hang (D318)", async () => {
+    const ask = "Serve is not enabled on your tailnet.\nTo enable, visit:\n\n         https://login.tailscale.com/f/serve?node=nAbc123\n";
+    const { sys } = fakeSys({ serveCode: -1, serveOut: ask });
+    expect(await run(sys)).toBe(1);
+    const o = out.join("\n");
+    expect(o).toContain("turn on HTTPS (Serve)");
+    expect(o).toContain("https://login.tailscale.com/f/serve?node=nAbc123");
+    expect(saved()).toBeUndefined();
+    out = [];
+    expect(await run(fakeSys({ serveCode: -1, serveOut: "" }).sys)).toBe(1);
+    expect(out.join("\n")).toContain("didn't finish within 25 seconds");
+  });
   test("HTTPS certificates off: points at the admin console's DNS page before serve would stop to ask", async () => {
     const { sys, calls } = fakeSys({ status: statusJson({ certs: [] }) });
     expect(await run(sys)).toBe(1);

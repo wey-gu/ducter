@@ -226,8 +226,21 @@ if [ "$(uname)" = "Darwin" ]; then
   printf '  %s up\n' "$DUCTER"
 else
   printf '  %s service install\n' "$DUCTER"
-  m "  （让它一直运行，开机自动启动；之后用 ducter tailscale 或 ducter domain <你的域名> 从手机和 Mac 连上它）" \
-    "  (keeps it running and starts it at boot; then ducter tailscale or ducter domain <your domain> to reach it from your phone and Mac)"
+  # D265/D318: a server already in a tailnet is told so by name; nothing assumes a public IP.
+  TS_NAME=""
+  if command -v tailscale >/dev/null 2>&1; then
+    TS_JSON="$(tailscale status --json 2>/dev/null || true)"
+    if printf '%s' "$TS_JSON" | grep -q '"BackendState": *"Running"'; then
+      TS_NAME="$(printf '%s' "$TS_JSON" | grep -o '"DNSName": *"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/; s/\.$//')"
+    fi
+  fi
+  if [ -n "$TS_NAME" ]; then
+    m "  （让它一直运行，开机自动启动。这台服务器已在你的 Tailscale 网络里（$TS_NAME）：之后运行 ducter tailscale，手机和 Mac 就能私下连上它，不开公网端口）" \
+      "  (keeps it running and starts it at boot. This server is in your tailnet ($TS_NAME): then run ducter tailscale to reach it from your phone and Mac, privately, with no public ports)"
+  else
+    m "  （让它一直运行，开机自动启动；之后用 ducter tailscale 或 ducter domain <你的域名> 从手机和 Mac 连上它）" \
+      "  (keeps it running and starts it at boot; then ducter tailscale or ducter domain <your domain> to reach it from your phone and Mac)"
+  fi
 fi
 printf '\n'
 if [ "$(uname)" = "Darwin" ]; then

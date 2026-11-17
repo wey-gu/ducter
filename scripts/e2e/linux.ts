@@ -31,6 +31,12 @@
 //              token with a fake cloudflared: run in its own systemd user unit, the token in a
 //              0600 file and never on a command line, the outside check failing honestly, the
 //              unit kept across a restart of ducter.service, and off stopping it.
+//   9. tailnet a server only in a Tailscale network (D265, D318), with a fake tailscale CLI: not
+//              installed, signed out, HTTPS certificates off and not its operator each say the
+//              right words and change nothing; `ducter pair` leads with Tailscale by name; signed
+//              in with HTTPS on, `ducter tailscale` serves 443 → Ducter, saves the address, and its
+//              code connects a device, which a served request without one still can't skip;
+//              --remove undoes it.
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -489,6 +495,129 @@ systemctl --user restart ducter.service`);
   await until("the home back", async () => ((await fetch(`${HTTP}/health`).catch(() => undefined))?.ok ? true : undefined), 120_000);
 }
 
+// ---------- 9. a tailnet-only server (D265, D318) ----------
+
+// A fake `tailscale` CLI in the VM, never a real tailnet: `status --json` and `serve` answer from
+// a state file (signed in or not, HTTPS certificates on or not, this user its operator or not) and
+// keep the serve config in a file, as tailscaled would. The name is pinned to 127.0.0.1 in
+// /etc/hosts, where nothing listens on 443: like a server whose DNS skips MagicDNS, it can't open
+// its own name, which `ducter tailscale` only warns about.
+async function tailnet() {
+  const NAME = "e2e-home.tail0e2e.ts.net";
+  await vm(`mkdir -p ~/e2e/ts/bin && cat > ~/e2e/ts/bin/tailscale <<'FAKE'
+#!/bin/bash
+d=~/e2e/ts; . "$d/state"; name="${NAME}"
+echo "$*" >> "$d/calls"
+case "$*" in
+  "status --json")
+    certs='[]'; [ "$CERTS" = 1 ] && certs="[\\"$name\\"]"
+    cat <<J
+{
+  "Version": "1.90.0-e2e",
+  "BackendState": "$STATE",
+  "Self": { "DNSName": "$name.", "HostName": "e2e-home", "Online": true },
+  "MagicDNSSuffix": "tail0e2e.ts.net",
+  "CurrentTailnet": { "Name": "e2e@example.invalid", "MagicDNSSuffix": "tail0e2e.ts.net", "MagicDNSEnabled": true },
+  "CertDomains": $certs,
+  "Peer": { "k": { "DNSName": "e2e-phone.tail0e2e.ts.net." } }
+}
+J
+    ;;
+  "serve status --json") cat "$d/serve.json" 2>/dev/null || echo '{}' ;;
+  "serve --bg --https=443 "*)
+    if [ "$OPERATOR" != 1 ]; then
+      printf "Access denied: serve config denied\\n\\nUse 'sudo tailscale serve --bg --https=443 %s'.\\nTo not require root, use 'sudo tailscale set --operator=\\$USER' once.\\n" "$4" >&2
+      exit 1
+    fi
+    printf '{"TCP":{"443":{"HTTPS":true}},"Web":{"%s:443":{"Handlers":{"/":{"Proxy":"%s"}}}}}\\n' "$name" "$4" > "$d/serve.json"
+    echo "Available within your tailnet:"; echo; echo "https://$name/"; echo "|-- proxy $4"
+    ;;
+  "serve --https=443 off") echo '{}' > "$d/serve.json" ;;
+  *) ;;
+esac
+FAKE
+chmod +x ~/e2e/ts/bin/tailscale
+: > ~/e2e/ts/calls
+grep -q "${NAME}" /etc/hosts || echo "127.0.0.1 ${NAME}" | sudo tee -a /etc/hosts >/dev/null`);
+  // Each run: a state, then the command with the fake on PATH (or not), without the e2e proxy, so
+  // the check of https://<name>/health is this machine's own, as on a server.
+  const ts = async (state: { STATE?: string; CERTS?: number; OPERATOR?: number }, cmd: string, onPath = true) => {
+    const s = { STATE: "Running", CERTS: 1, OPERATOR: 1, ...state };
+    const r = await vm(
+      `printf 'STATE=%s\\nCERTS=%s\\nOPERATOR=%s\\n' ${s.STATE} ${s.CERTS} ${s.OPERATOR} > ~/e2e/ts/state
+unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+${onPath ? 'export PATH="$HOME/e2e/ts/bin:$PATH"' : ""}
+${cmd} 2>/dev/null || true`,
+      { ok: false, timeoutMs: 180_000 },
+    );
+    return r.out;
+  };
+  // The JSON object in what came back (anything colima says on stderr comes after it).
+  const obj = (s: string) => JSON.parse(s.slice(s.indexOf("{"), s.lastIndexOf("}") + 1));
+  const tsJson = async (state: Parameters<typeof ts>[0], args = "", onPath = true) => obj(await ts(state, `ducter tailscale --json ${args}`, onPath));
+  const failedStep = (j: any) => j.steps?.find((s: any) => !s.ok);
+  const served = async () => (await vm(`cat ~/e2e/ts/serve.json 2>/dev/null || echo '{}'; echo; cat ~/.ducter/public-url 2>/dev/null || echo no-url; cat ~/.ducter/reach.json 2>/dev/null || echo '{}'`, { ok: false })).out;
+
+  // Not installed: says how to install it, changes nothing.
+  const none = await tsJson({}, "", false);
+  check(
+    "tailnet: no Tailscale",
+    none.ok === false && failedStep(none)?.id === "tailscale" && /Install Tailscale/.test(none.error) && none.next === "curl -fsSL https://tailscale.com/install.sh | sh",
+    `${failedStep(none)?.detail}; next: ${none.next}`,
+  );
+  // Signed out: in plain words, and the one command that signs it in.
+  const out = await tsJson({ STATE: "NeedsLogin" });
+  check("tailnet: signed out", out.ok === false && /not signed in/.test(failedStep(out)?.detail) && out.next === "sudo tailscale up", `${failedStep(out)?.detail}; next: ${out.next}`);
+  // HTTPS certificates off: the admin console's DNS page, before serve could stop to ask.
+  const noCerts = await tsJson({ CERTS: 0 });
+  const calls1 = (await vm(`cat ~/e2e/ts/calls`)).out;
+  check(
+    "tailnet: HTTPS off",
+    noCerts.ok === false && failedStep(noCerts)?.id === "https" && noCerts.error.includes("https://login.tailscale.com/admin/dns") && !calls1.includes("serve --bg"),
+    `${failedStep(noCerts)?.detail}; names MagicDNS and HTTPS Certificates on the admin console's DNS page; serve never run`,
+  );
+  // Not root and not Tailscale's operator: the one line that fixes it.
+  const denied = await tsJson({ OPERATOR: 0 });
+  check("tailnet: not its operator", denied.ok === false && failedStep(denied)?.id === "serve" && denied.next === "sudo tailscale set --operator=$USER", `${failedStep(denied)?.detail}; next: ${denied.next}`);
+  // Before an address: `ducter pair` (also the end of the install) leads with Tailscale by name.
+  const pj = obj(await ts({}, "ducter pair --json"));
+  const pt = await ts({}, "ducter pair");
+  check(
+    "tailnet: pair leads with it",
+    pj.reachable === false && pj.tailnet === NAME && pj.steps?.[0]?.id === "tailscale" && pt.includes(`This server is in your tailnet (${NAME})`),
+    `reachable ${pj.reachable}, tailnet ${pj.tailnet}, first step ${pj.steps?.[0]?.id} (${pj.steps?.[0]?.command}); the text says "This server is in your tailnet (${NAME})"`,
+  );
+
+  // Signed in, HTTPS on: serves 443 → Ducter, saves the address, pairs.
+  const ok = await tsJson({});
+  const after = await served();
+  check(
+    "tailnet: serves",
+    ok.ok === true && ok.address === `https://${NAME}` && after.includes(`"Proxy":"http://127.0.0.1:${PORT}"`) && after.includes(`https://${NAME}`) && /"kind":\s*"tailnet"/.test(after),
+    `ok at ${ok.address}; tailscale serve forwards 443 to http://127.0.0.1:${PORT}; the address is saved and in the address book; ${ok.warning ? `warned: ${ok.warning}` : `reached (${ok.httpStatus})`}`,
+  );
+  check("tailnet: pair link", typeof ok.pair?.code === "string" && ok.pair.link.startsWith(`https://${NAME}/pair#c=${ok.pair.code}&k=`), `the code's link is at the tailnet address (${ok.pair.link.replace(/c=[^&]+/, "c=…").replace(/k=.*/, "k=…")})`);
+  const paired = await fetch(`${HTTP}/pair`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: ok.pair.code, name: "e2e-phone", platform: "ios", form: "phone", computer: "e2e-phone" }) });
+  const redeemed = paired.ok ? ((await paired.json()) as { token?: string }) : {};
+  check("tailnet: the code works", Boolean(redeemed.token), `the code from ducter tailscale connected a device (${paired.status})`);
+  // What tailscale serve passes on (the ts.net Host, X-Forwarded-For, Tailscale-User-Login) is remote: a paired device is still needed.
+  const gate = (
+    await vm(`curl -s -o /dev/null -w '%{http_code} ' http://127.0.0.1:${PORT}/api/me
+curl -s -o /dev/null -w '%{http_code}' -H 'Host: ${NAME}' -H 'X-Forwarded-For: 100.64.0.7' -H 'X-Forwarded-Proto: https' -H 'Tailscale-User-Login: e2e@example.invalid' http://127.0.0.1:${PORT}/api/me`, { ok: false })
+  ).out.trim().split(" ");
+  check("tailnet: still needs a code", gate[0] === "200" && gate[1] !== "200", `on the server itself ${gate[0]}; as served from the tailnet without a device ${gate[1]}`);
+
+  // --remove: Ducter's serve off, the tailnet address out of the book; Tailscale stays.
+  const rm = await tsJson({}, "--remove");
+  const gone = await served();
+  check(
+    "tailnet: --remove",
+    rm.ok === true && !gone.includes("Proxy") && !gone.includes(`https://${NAME}`) && !/"kind":\s*"tailnet"/.test(gone),
+    `serve is off, the address and its way are gone (${rm.steps?.map((s: any) => s.detail).join("; ")})`,
+  );
+  await vm(`sudo sed -i '/${NAME}/d' /etc/hosts; rm -rf ~/e2e/ts`, { ok: false });
+}
+
 // ---------- the run ----------
 
 async function cleanup() {
@@ -514,6 +643,7 @@ try {
   await agent();
   await updateAll();
   await anywhere();
+  await tailnet();
 } catch (e) {
   code = 1;
   say(`\nFAILED: ${(e as Error).message}\n(log: ${logFile})`);

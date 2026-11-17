@@ -26,8 +26,10 @@ Where you can use it:
 Your phone needs an address it can reach. If Ducter runs on a server with your own domain or
 on your Tailscale network (see [Install](install.md#a-linux-server-that-stays-on)), it has one
 already; with Tailscale, the phone needs the Tailscale app on, in the same Tailscale network. If not (a Mac
-at home, say), set up **From outside** with your own domain on Cloudflare: see
-[From outside](#from-outside) below.
+at home, say), you have two ways. With the Tailscale app on your Mac and your phone, run
+`ducter tailscale` on the Mac: it gives the Mac an HTTPS address only your devices can open
+(your phone reaches it while the Mac is awake). Or set up **From outside** with your own domain
+on Cloudflare: see [From outside](#from-outside) below.
 
 1. On the computer Ducter lives on, run `ducter pair`, or choose **Devices › Connect a phone or
    computer** in the Mac app.

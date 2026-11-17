@@ -29,7 +29,7 @@ Before a picture leaves your phone, it is made smaller (2048 pixels on its long 
 everything stored inside it is removed, including where it was taken.
 
 If a picture doesn't go up (the connection dropped), your words and the picture stay where they
-are, with **Didn't send · Retry**. Nothing you typed is lost.
+are, with **Didn't send** and **Retry**. Nothing you typed is lost.
 
 ## Send a file
 

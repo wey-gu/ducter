@@ -7,9 +7,11 @@
 // icon for a kind, a quiet chip for a source); plain-text surfaces (a push, a copied line) say one
 // natural sentence. So a separator glyph in a client's words or view code is a mistake by default.
 //
-// Scanned: the web client, the Mac app, the iOS and Android shells, and the protocol and core words
-// that reach a screen or a push. Comments are skipped; tests, fixtures and evals aren't scanned. Out
-// of scope: the CLI's terminal output (packages/cli), logs, and the site's page titles.
+// Scanned: the web client, the Mac app, the iOS and Android shells, the protocol and core words
+// that reach a screen or a push, and the user docs (docs/*.md, rendered at ducter.ai/docs; code
+// blocks, inline code, URLs and masked digits like ••4242 aside). Comments are skipped; tests,
+// fixtures and evals aren't scanned. Out of scope: the CLI's terminal output (packages/cli) and logs.
+// The site's own pages, titles included, are held by apps/site/test/copy.test.ts (D346).
 // Run: bun scripts/check-joins.ts (bun test runs it too: scripts/joins.test.ts).
 import { Glob } from "bun";
 import { readFileSync } from "node:fs";
@@ -80,8 +82,33 @@ export function joins(text: string, ext: string): { line: number; text: string }
   return out;
 }
 
+/**
+ * The user docs' joined lines. Markdown a reader sees, with what isn't prose taken out first:
+ * fenced code blocks, inline code, link targets and bare URLs, HTML comments, and a mask of two or
+ * more bullets (a card's ••4242 hides digits; it joins nothing).
+ */
+export function docJoins(text: string): { line: number; text: string }[] {
+  const out: { line: number; text: string }[] = [];
+  let fence = "";
+  text.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, "")).split("\n").forEach((raw, i) => {
+    const f = raw.match(/^\s*(```|~~~)/);
+    if (f) { fence = fence ? (fence === f[1] ? "" : fence) : f[1]; return; }
+    if (fence) return;
+    const prose = raw
+      .replace(/(`+)[^`]*?\1/g, "")
+      .replace(/\]\([^)]*\)/g, "]")
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/•{2,}/g, "");
+    if (JOINER.test(prose)) out.push({ line: i + 1, text: raw.trim() });
+  });
+  return out;
+}
+
 export function scan(allow = ALLOW): string[] {
   const bad: string[] = [];
+  for (const f of new Glob("*.md").scanSync({ cwd: join(ROOT, "docs") })) {
+    for (const j of docJoins(readFileSync(join(ROOT, "docs", f), "utf8"))) bad.push(`docs/${f}:${j.line}: ${j.text.slice(0, 160)}`);
+  }
   for (const { dir, glob } of TREES) {
     for (const f of new Glob(glob).scanSync({ cwd: join(ROOT, dir) })) {
       const rel = `${dir}/${f}`;

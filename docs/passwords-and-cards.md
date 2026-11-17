@@ -32,8 +32,11 @@ locked on your computer.
 When a task gets to a checkout, you get a card:
 
 > **Pay on ryokan-kurashiki.jp?**
-> Amount JPY 38,400 · For 1 night, Nov 20 · Merchant ryokan-kurashiki.jp (first payment here) ·
-> Card Visa ••4242
+>
+> - **Amount:** JPY 38,400
+> - **For:** 1 night, Nov 20
+> - **Merchant:** ryokan-kurashiki.jp (first payment here)
+> - **Card:** Visa ••4242
 
 Type your card's security code and tap **Pay**, or tap **Not now** and nothing is paid. The
 shop's name comes from the page itself, not from the AI. After you tap Pay, the card is filled
@@ -57,7 +60,10 @@ Some work needs a key: a deploy key, an API key, an access key for your code hos
 you get a card in the conversation:
 
 > **Deploy the blog needs a key**
-> What DigitalOcean deploy key · Variable DO_TOKEN · Why to push the new build
+>
+> - **What:** DigitalOcean deploy key
+> - **Variable:** DO_TOKEN
+> - **Why:** to push the new build
 
 Paste the key and tap **Save and continue**. Choose **Remember it** (the default) and the next
 task that needs the same key gets it without asking; choose **Just this once** and it's given to

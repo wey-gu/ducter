@@ -22,7 +22,7 @@ steps below for you, asking when something isn't clear ([For AI agents](for-agen
 
 ## What you need
 
-- **A Mac with Apple silicon** (M1 or later).
+- **A Mac with Apple silicon (M1 or later).**
 - **An AI agent:** Claude Code or Codex signed in with your own account, or an API key from
   DeepSeek, Kimi, Zhipu GLM, OpenAI, Anthropic or OpenRouter
   ([which agents](faq.md#which-ai-agents-does-it-work-with)). Ducter does its work through
@@ -122,7 +122,7 @@ room; it saves its progress first and carries on). Click it to see the numbers: 
 window is used, what the last turn and the whole task took, how many times it compacted, and how
 much of your Claude Code or Codex plan's limits is left and when they reset. **Compact now** there
 does the same as typing `/compact`; while the agent is mid-step it waits for the step to end. Each
-compaction shows in the task as a thin line, **Context compacted · 152k → 31k**.
+compaction shows in the task as a thin line, **Context compacted from 152k to 31k**.
 
 To work on it by hand, open the task on the Mac and choose **Open** at its top right: **Show in
 Finder**, **Open in** Cursor, Visual Studio Code or Zed, or **Open in** Terminal, iTerm2, Ghostty

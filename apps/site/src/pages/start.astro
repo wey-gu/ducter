@@ -46,7 +46,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
           <label class="choice" for="live-mac">
             <input type="radio" name="live" id="live-mac" value="mac" checked aria-controls="path-mac" />
             <Art name="laptop_awake" alt="" sizes="96px" eager />
-            <span><b>This Mac</b><small>The quickest start, on a Mac with an Apple chip.</small></span>
+            <span><b>This Mac</b><small>The quickest start, on a Mac with Apple silicon (M1 or later).</small></span>
           </label>
           <label class="choice" for="live-server">
             <input type="radio" name="live" id="live-server" value="server" aria-controls="path-server" />
@@ -71,7 +71,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
     <!-- ============ THIS MAC ============ -->
     <article class="path" id="path-mac" aria-labelledby="h-mac">
       <h2 id="h-mac">Ducter on this Mac</h2>
-      <p class="body">You need a Mac with an Apple chip (M1 or later), and an AI to do the work: a Claude or ChatGPT plan, or an API key from DeepSeek, Kimi, Zhipu GLM, OpenAI, Anthropic or OpenRouter. Ducter itself is free, and the app sets the rest up with you.</p>
+      <p class="body">You need a Mac with Apple silicon (M1 or later), and an AI to do the work: a Claude or ChatGPT plan, or an API key from DeepSeek, Kimi, Zhipu GLM, OpenAI, Anthropic or OpenRouter. Ducter itself is free, and the app sets the rest up with you.</p>
       <div class="ways">
         <div class="way mine">
           <p class="way-tag">Most people start here</p>
@@ -138,7 +138,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
     <article class="path" id="path-unsure" aria-labelledby="h-unsure">
       <h2 id="h-unsure">Which one is for me?</h2>
       <ul class="pick-help">
-        <li><b>You have a Mac with an Apple chip:</b> start on <a href="#path-mac" data-pick="mac">this Mac</a>. It's the quickest, and you can move to a server later.</li>
+        <li><b>You have an Apple silicon Mac:</b> start on <a href="#path-mac" data-pick="mac">this Mac</a>. It's the quickest, and you can move to a server later.</li>
         <li><b>You want it working through the night,</b> or you don't have a Mac: <a href="#path-server" data-pick="server">a server</a>. A small cloud server is enough; your AI agent can set it up.</li>
         <li><b>You're on Windows:</b> there's no Windows app yet. Ducter can live on a Linux server, which you then open in this computer's browser; if you don't have a server, a Mac is the way in for now.</li>
         <li><b>You're on your phone right now:</b> Ducter lives on a computer. Send yourself this page, and open it there.

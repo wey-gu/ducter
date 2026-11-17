@@ -25,7 +25,7 @@ pi and DeepSeek Harness use your DeepSeek account.
 
 ## The Mac app
 
-It runs on Macs with Apple silicon. Paste this into Terminal:
+It runs on a Mac with Apple silicon (M1 or later). Paste this into Terminal:
 
 ```sh
 curl -fsSL https://ducter.ai/install.sh | sh
@@ -382,7 +382,7 @@ Everything about the phone and the iPad, including notifications and quiet hours
 The Mac app looks for a new version when it opens and once a day, and gets it ready in the
 background. If it couldn't look (no network, or GitHub didn't answer), it says **Couldn't check
 this time** and looks again within the hour. When your server already knows of a newer version,
-the app hears it from there and gets it right away. When one is ready, the Ducter menu says **Update 0.2.0 ready · restart to finish**.
+the app hears it from there and gets it right away. When one is ready, the Ducter menu says **Update 0.2.0 Is Ready…**.
 It installs the next time you quit Ducter, or right away with **Restart Now**: the window says
 **Putting the new version in, back in a moment**, closes, and Ducter opens again on the new
 version with a quiet **Updated to 0.2.0**. Your tasks carry on.
@@ -403,8 +403,8 @@ says **Update available** by its name and the card says **Update to 0.0.4**, wit
 new in your language and one **Update** button. Nothing pops up and nothing nags. On the phone it's the same,
 under **Settings › Your devices**.
 
-When you tap **Update**, the card says what it's doing: **Downloading… · Checking… · Waiting for
-work to settle… · Restarting…** and then **Back, now on 0.0.4**. Ducter only takes files from its
+When you tap **Update**, the card says what it's doing, one step at a time: **Downloading…**,
+**Checking…**, **Waiting for work to settle…**, **Restarting…**, and then **Back, now on 0.0.4**. Ducter only takes files from its
 official GitHub release, checks each one against the release's checksums, and tries the new
 version before it switches. It waits until no merge or undo is running; tasks that are working
 pause for the restart and carry on. If the new version doesn't come up within three minutes,

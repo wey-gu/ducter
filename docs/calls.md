@@ -155,7 +155,7 @@ setup steps, and offers **You call** instead. Live calls through a computer next
 
 If Ducter lives on a Mac beside your phone, the group starts as one line with **Set up**; press it
 (or plug the phone in) and it shows five steps, ticking each one off by itself. **Look again** always answers: it shows **Looking…**, then when it looked and what it saw
-("Looked at 20:14 · no phone on MacBook yet").
+(say, at 20:14, that there's no phone on MacBook yet).
 
 1. **Phone.** Plug the Android phone into that Mac with a USB cable, and turn on **USB debugging**
    in its Developer options. Tap **Allow** when the phone asks. If the Mac doesn't have adb yet, the

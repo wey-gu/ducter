@@ -104,7 +104,7 @@ the ones that can't say why. **Continue on …** moves the task to another agent
 and the same copy of your project: the new one starts from the brief, the saved progress, the
 last report and what you said since; it doesn't start over. Switch back later and the first
 agent picks up its own conversation again, told what happened meanwhile. The task's page marks
-each switch with one thin line and its time, such as **Continued on Codex · 21:40**.
+each switch with one thin line and its time, such as **Continued on Codex** at 21:40.
 
 ## Memory
 

@@ -3,8 +3,8 @@
 ## 0.0.70
 
 <!-- whats-new
-zh: 手机上的设置更稳：弹层不再溢出圆角，按钮都好点
-en: Settings on the phone: sheets stay inside their corners, every button easy to tap
+zh: 手机上的弹层不再溢出圆角，按钮更好点
+en: Phone sheets stay inside their corners; easier taps
 -->
 
 **On the phone**

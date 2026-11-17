@@ -489,6 +489,22 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       latest, one button. Still to see with a real feed failure on a real Mac home.
 - [x] **research/118: Accounts' own-number setup is open for everyone.** Done by D337 (1): one row with
       设置 / Set up until opened or started. Trigger for review: the author's next Settings pass.
+- [ ] **research/123: a sheet's content shows above its top edge on iOS.** Scrolled to its end, a
+      line of the page (a row's small line, the page title, a coin) is drawn up to ~10 pt above the
+      sheet's rounded top, over the bar; anywhere else in the scroll, content is clipped square at
+      the top, not to the rounded corners. `clip-path`, `-webkit-mask-image`, `contain: paint`,
+      `overscroll-behavior: contain` and no `rise` animation on `.sheet` all left it; next try is
+      an inner scroller (the sheet keeps its radius and `overflow: hidden`, a child scrolls), which
+      touches every sheet's markup (`views.tsx` and the four sheets of their own). Trigger: the
+      next change to the sheet, or a phone release that someone screenshots.
+- [ ] **research/123: 试试看 on a 375-pt phone.** The two exchanges sit on the text column (52 pt
+      in), so each bubble is about 195 pt wide and wraps to three lines in en. Dropping the empty
+      tile column for this block when narrow would break D283's grid; a design call. Trigger: the
+      author's review of the page on a small phone.
+- [ ] **research/123: eight demos still name the home `hel`** (the author's own server: `demo-memory`,
+      `-noted`, `-bridge`, `-anywhere`, `-devices`, `-find`, `-updateall`, `-where`), so the
+      Mem-closed shots say "hel 上的 Nowledge Mem"; D337's pretend home is Ada's MacBook Air. Trigger:
+      the next shot from any of them.
 - [ ] Watch D302's light-to-dark cross-fade on a real Mac at macOS's Auto switch, and the dark
       Devices sea and coins at full size. Trigger: the author's next evening session.
 

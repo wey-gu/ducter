@@ -724,19 +724,40 @@ function ResultDetails({ task, detail }: { task: Task; detail?: string }) {
   );
 }
 
-function NotedLine({ n }: { n: { seq: number; title: string } }) {
+/**
+ * D329: one Noted line. Taken back: "Not kept" alone. Otherwise what it noted, then (each its own
+ * element, D291) the memory it took the place of, and that it waits for Nowledge Mem; Undo while the
+ * person hasn't said anything since, then Forget (which asks).
+ */
+export function NotedLine({ n }: { n: { seq: number; title: string; replaced?: string; waiting?: true } }) {
+  const st = A.notedState(n.seq);
+  if (st.undone)
+    return (
+      <div class="proof noted-line undone">
+        <span class="mk">{t("memory.undone", n.title)}</span>
+      </div>
+    );
   return (
-    <div class="proof">
+    <div class="proof noted-line">
       <span class="mk">{t("memory.noted", n.title)}</span>
-      <button class="qlink" onClick={() => A.forget(n.seq)}>
-        {t("partner.memory.forget")}
-      </button>
+      {n.replaced && <span class="nq">{t("memory.replaced", n.replaced)}</span>}
+      {st.waiting && <span class="nq">{t("memory.waiting")}</span>}
+      {st.failed && <span class="nq failed">{t("memory.undo.failed")}</span>}
+      {st.fresh ? (
+        <button class="qlink" aria-label={spoken(A.L, t("memory.undo"), n.title)} onClick={() => A.undoNoted(n.seq)}>
+          {t("memory.undo")}
+        </button>
+      ) : (
+        <button class="qlink" onClick={() => A.forget(n.seq)}>
+          {t("partner.memory.forget")}
+        </button>
+      )}
     </div>
   );
 }
 
 /** Under a partner message: one quiet row (Merge into main, Details), then Details when open. */
-function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; detail?: string; noted?: { seq: number; title: string }[] }) {
+function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; detail?: string; noted?: { seq: number; title: string; replaced?: string; waiting?: true }[] }) {
   if (!tasks.length && !noted.length) return null;
   const open = A.detailsOpen(k);
   return (
@@ -765,7 +786,7 @@ function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; det
   );
 }
 
-function JobRow({ e, chipOwner, noted, join, rk, ans }: { e: Entry; chipOwner: Map<string, number>; noted: { seq: number; title: string }[]; join?: boolean; rk?: string; ans?: { seq: number; quote: string } }) {
+function JobRow({ e, chipOwner, noted, join, rk, ans }: { e: Entry; chipOwner: Map<string, number>; noted: { seq: number; title: string; replaced?: string; waiting?: true }[]; join?: boolean; rk?: string; ans?: { seq: number; quote: string } }) {
   const j = e.job!;
   const st = j.status;
   const task = st?.taskId ? A.S.tasks.get(st.taskId) : undefined;

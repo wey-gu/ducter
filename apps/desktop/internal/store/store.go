@@ -483,6 +483,8 @@ type Store struct {
 	Forgot *protocol.Forgot
 	// Corrected is how the last memory_correct went (D304), until shown.
 	Corrected *protocol.Forgot
+	// D329: UndoFailed is the Noted line whose 撤销 Mem didn't take (0: none).
+	UndoFailed int64
 	// MemQuery is what Settings › 记忆's search asks now; MemFound is Mem's
 	// answer to it (D321), nil until one comes.
 	MemQuery string
@@ -663,6 +665,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 		if f.Corrected != nil {
 			s.Corrected = f.Corrected
+		}
+		if f.Undid != nil && !f.Undid.OK {
+			s.UndoFailed = f.Undid.Seq
 		}
 	case "proactive_day":
 		s.Day = f.Day

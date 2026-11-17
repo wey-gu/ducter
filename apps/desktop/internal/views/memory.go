@@ -21,7 +21,8 @@ const memMin = "0.10.118"
 const memSite = "https://mem.nowledge.co"
 
 // memPhase is where the partner's memory stands: off, missing, install,
-// installing, sign_in, signing_in, or on (Mem answers).
+// installing, sign_in, signing_in, closed (D329: the Mem app on the home is
+// closed), or on (Mem answers).
 func memPhase(memoryOn bool, mem *protocol.MemView, b *protocol.BridgeView) string {
 	if !memoryOn {
 		return "off"
@@ -37,6 +38,8 @@ func memPhase(memoryOn bool, mem *protocol.MemView, b *protocol.BridgeView) stri
 		return "install"
 	case "installing", "sign_in", "signing_in":
 		return b.State
+	case "mem_closed":
+		return "closed"
 	}
 	// Every other state has a signed-in nmem on the home (an older one still remembers).
 	return "on"

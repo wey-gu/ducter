@@ -13,7 +13,8 @@ import { nativeInfo } from "./native.ts";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const SHOWN = 4;
 
-export const itemName = (i: Pick<UpdateAllItem, "kind" | "deviceName" | "harness">) => (i.kind === "ducter" ? t("upall.item.ducter", i.deviceName) : t("upall.item.agent", harnessName(i.harness ?? ""), i.deviceName));
+// D329: the home's Nowledge Mem is a step too; its states read as an agent's.
+export const itemName = (i: Pick<UpdateAllItem, "kind" | "deviceName" | "harness">) => (i.kind === "ducter" ? t("upall.item.ducter", i.deviceName) : i.kind === "mem" ? t("upall.item.mem", i.deviceName) : t("upall.item.agent", harnessName(i.harness ?? ""), i.deviceName));
 
 /** A running step in the single update's own words (devup.phase.*, agentv.phase.*); D227: or what it waits on. */
 function runningWords(i: UpdateAllItem): string {
@@ -32,6 +33,8 @@ function runningWords(i: UpdateAllItem): string {
     }
     return t("devup.phase.downloading", i.to);
   }
+  // D329: Mem may not name its newer version: the bare word.
+  if (i.kind === "mem" && !i.to && (!i.phase || i.phase === "updating")) return t("upall.state.updating.bare");
   switch (i.phase) {
     case "waiting":
       return t("agentv.phase.waiting");
@@ -52,7 +55,7 @@ export function stateWords(i: UpdateAllItem): string {
     case "running":
       return runningWords(i);
     case "done":
-      return t("upall.state.done", i.to);
+      return i.to ? t("upall.state.done", i.to) : t("upall.state.done.bare");
     case "failed":
       return i.rolledBack ? t("upall.state.rolledback", i.from) : t("upall.state.failed");
     case "skipped":
@@ -68,6 +71,27 @@ export function whyWords(i: UpdateAllItem): string {
   const key = i.kind === "ducter" ? `devup.why.${i.reason ?? "failed"}` : `agentv.why.${i.reason ?? "failed"}`;
   const s = t(key);
   return s === key ? t("devup.why.failed") : s;
+}
+
+/** From → to; D329: Mem may not name its newer version, then only the version it is on. */
+export const versions = (i: Pick<UpdateAllItem, "from" | "to">) => (i.to ? t("upall.versions", i.from, i.to) : i.from);
+
+/**
+ * The offer's rows on the card: the first few, and D329: the home's Nowledge Mem always (it comes last
+ * in the plan, and a row hidden under "N more" is a step the person didn't see).
+ */
+export function shownOffer(items: UpdateAllItem[], max = SHOWN): UpdateAllItem[] {
+  if (items.length <= max) return items;
+  const mem = items.filter((i) => i.kind === "mem");
+  if (!mem.length) return items.slice(0, max);
+  return [...items.filter((i) => i.kind !== "mem").slice(0, Math.max(0, max - mem.length)), ...mem];
+}
+
+/** The order note: D329 names Nowledge Mem when it is a step. */
+export function orderWords(items: UpdateAllItem[], home: string, computers: number): string {
+  const mem = items.some((i) => i.kind === "mem");
+  if (computers > 1 && home) return t(mem ? "upall.order.mem" : "upall.order", home);
+  return t(mem ? "upall.order.solo.mem" : "upall.order.solo");
 }
 
 /** The card's title for a plan. */
@@ -120,11 +144,11 @@ export function Mark({ state }: { state: UpdateAllItem["state"] }) {
 function Row({ i, words }: { i: UpdateAllItem; words?: boolean }) {
   const why = words ? whyWords(i) : "";
   return (
-    <div class={`ua-row ${i.state}`} role="listitem" aria-label={`${itemName(i)}, ${t("upall.versions", i.from, i.to)}${words ? `, ${stateWords(i)}` : ""}`}>
+    <div class={`ua-row ${i.state}`} role="listitem" aria-label={`${itemName(i)}, ${versions(i)}${words ? `, ${stateWords(i)}` : ""}`}>
       <Mark state={i.state} />
       <span class="ua-what">
         <span class="ua-name">{itemName(i)}</span>
-        <span class="ua-ver">{t("upall.versions", i.from, i.to)}</span>
+        <span class="ua-ver">{versions(i)}</span>
       </span>
       {words && <span class={`ua-state ${i.state}`}>{stateWords(i)}</span>}
       {why && <span class="ua-why">{why}</span>}
@@ -156,12 +180,12 @@ export function UpdateAllCard() {
           <b>{t(n === 1 ? "upall.title.one" : "upall.title", n)}</b>
         </div>
         <div class="ua-list" role="list">
-          {items.slice(0, SHOWN).map((i) => (
+          {shownOffer(items).map((i) => (
             <Row key={i.key} i={i} />
           ))}
-          {n > SHOWN && <div class="ua-more">{t("upall.more", n - SHOWN)}</div>}
+          {n > shownOffer(items).length && <div class="ua-more">{t("upall.more", n - shownOffer(items).length)}</div>}
         </div>
-        <div class="ua-note">{computers > 1 && home ? t("upall.order", home) : t("upall.order.solo")}</div>
+        <div class="ua-note">{orderWords(items, home, computers)}</div>
         {v.notNow.map((x) => (
           <div class="ua-note quiet" key={x.device}>
             {t(x.why === "offline" ? "upall.notnow.offline" : x.why === "app_old" ? "upall.notnow.app_old" : "upall.notnow.other", x.deviceName)}

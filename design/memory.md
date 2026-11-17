@@ -135,8 +135,9 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   Provenance as in `system.md`. Each save appends `memory_noted {title, memoryId?, replyTo?}`
   on the channel after the turn's text. Clients show it as one quiet line, 记下了 · <title>
   / Noted · <title>, and the partner's words never announce it.
-- **Mem missing or down**: both tools answer "not available"; the partner asks like a
-  colleague who forgot and never mentions memory. A cold session sees its own saves as
+- **Mem missing or down**: recall answers "not available"; the partner asks like a
+  colleague who forgot and never mentions memory. A save while Mem is installed but away waits
+  in the outbox and goes in when Mem answers (D329, below); with no Mem, nothing is saved. A cold session sees its own saves as
   `[you remembered] <title>` in the projection.
 - **Who writes (D141):** the persona's own Mem AI Identity, bound once and named on every call
   (`system.md`, "Identity and Mem boundary"); its tasks run as the same identity, and inside
@@ -322,6 +323,41 @@ graph (`m identity`) is a Labs feature per Space; a "people" group would be inve
 **Built (D321):** protocol `MemItem`, `MemGlance {total, about, tools}`, `mem_forget`/`mem_fix`/`mem_find` and
 `mem_found`; core glance, settings `forgetMem`/`fixMem`/`findMem` through the partner's Mem client; web and Mac
 panes; the demo's pretend Mem has kinds, search, forget and fix (`apps/web/demo-mem.ts`).
+
+## Nowledge Mem, deeper (D329, built 2026-11-17)
+
+*Who and how it feels:* the Mem user whose other tools already write to the same Mem, the developer who says the
+same preference twice, the fresh user who only ever sees one quiet line. Before, Ducter wrote into Mem like a
+store: the same thing twice was two memories, a wrong save could only be forgotten, a save while Mem was away was
+dropped without a word, a closed Mem app read as "not signed in", and Mem's update was an errand of its own. After,
+each of those is one quiet line in words, and nothing to learn.
+
+- **The first words** (`first-words.ts`, D298's hook): with memory on and the home's Mem answering signed in
+  at the start's look (`nmem status`, read-only; `bridgeLink.memSignedIn()`), one line after the greeting,
+  **你的 Nowledge Mem 我也接上了：你跟别的 AI 交代过的习惯，用得着的时候我会想起来。**, and one start,
+  **你都记得我些什么？**, that fills the composer. Nothing in Mem is read for them (D327's rule for every
+  source); sent, the start is an ask, and the partner recalls then.
+- **Search before writing** (`memory.ts` `sameAs`): beside each write, a search by its title; the partner's own
+  earlier memory (`source` `ducter`, words whole) with an alike title (character-pair Dice ≥ 0.6, or one title
+  holding the other at ≥ 4 characters) is linked to the new one with `nmem m supersede <old> <new>`. Never
+  another tool's or the person's own. `memory_noted.replaced {id, title}`; the line says **换掉了之前那条「…」**.
+- **撤销 / Undo** (`memory_undo`, `settings.undo`): on a Noted line while the person hasn't said anything
+  since; no question. `nmem m archive` (never delete); a replaced memory comes back (`m show`, then a plain
+  save); a save still in the outbox is dropped. `MemView.undone`; the line reads **不记了「…」**. Mem silent:
+  `undid {seq, ok: false}`, **Nowledge Mem 没回应，还记着**. Afterwards, 忘掉 as in D304.
+- **The outbox** (`outbox.ts`): a save Mem didn't answer (`unavailable`; `not_configured` never waits) is kept in
+  `<partner dir>/mem-outbox.json` (0600) under a UUID-shaped key from persona, Log seq, task and words, and
+  counted as remembered. Replayed on the next Mem call that works and every 5 minutes with the key as Mem's
+  upsert id (`m add --id`); a key Mem refuses, once more without; 30 days, then let go. `memory_noted.waiting`
+  and `MemView.waiting`: **等 Nowledge Mem 回来就存进去**.
+- **Mem's app closed** (`bridge-link.ts` `memClosedIn`): a failed `nmem status` that is a refused connection
+  to loopback is `mem_closed`; with the app on a Mac home, **打开 Nowledge Mem** (`bridge_mem_open`, `open -a`,
+  then a look every 2 s for 20 s); elsewhere the line names the computer.
+- **Update all** (`update-all.ts`, D224): the home's `nmem` is an item (`kind: "mem"`) when Mem names a newer one
+  and Ducter can update this copy (D229), after the agents and the home's own step, by day only; never awaited
+  by the plan's look; judged afresh by a restarted home.
+- **Measured:** unit tests with a stub nmem and fakes (`packages/partner/test/memory-d329.test.ts`,
+  `packages/core/test/mem-d329.test.ts`); not against a live Mem (todo).
 
 ## Mem and tasks (D168, D169; built 2026-11-10)
 

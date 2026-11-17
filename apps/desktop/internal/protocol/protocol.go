@@ -595,6 +595,22 @@ type MemoryNoted struct {
 	Title    string `json:"title"`
 	MemoryID string `json:"memoryId,omitempty"`
 	ReplyTo  int64  `json:"replyTo,omitempty"`
+	// D329: Replaced is the partner's own earlier memory this one took the
+	// place of; Waiting the outbox key while Mem was down.
+	Replaced *NotedReplaced `json:"replaced,omitempty"`
+	Waiting  string         `json:"waiting,omitempty"`
+}
+
+// NotedReplaced is the memory a save superseded (D329).
+type NotedReplaced struct {
+	ID    string `json:"id,omitempty"`
+	Title string `json:"title"`
+}
+
+// MemoryUndo is 撤销 / Undo on a fresh Noted line (D329), by its seq.
+type MemoryUndo struct {
+	T   string `json:"t"` // "memory_undo"
+	Seq int64  `json:"seq"`
 }
 
 // MemoryRecalled is the one memory a reply leaned on (D304): a quiet source
@@ -1383,6 +1399,10 @@ type MemView struct {
 	Noted []Noted `json:"noted"`
 	// D304: the 想起了 lines the person had it forget (their seqs).
 	Forgotten []int64 `json:"forgotten,omitempty"`
+	// D329: Undone are the Noted lines taken back with 撤销; Waiting the
+	// ones still waiting for Mem in the outbox (their seqs).
+	Undone  []int64 `json:"undone,omitempty"`
+	Waiting []int64 `json:"waiting,omitempty"`
 	// KeptUnder is the name its memories are kept under in Mem (D141).
 	KeptUnder string `json:"keptUnder,omitempty"`
 	// D295: Glance is a look at Mem itself when it answers: how many
@@ -1463,7 +1483,8 @@ func decodeMemFound(data []byte, f ServerFrame) (ServerFrame, error) {
 // D225, the home's own Mem command line first: install_mem / installing,
 // update_mem / updating (CanRun: one tap does it; else Need: "pipx", "app",
 // "other"), sign_in / signing_in (a one-time connect link; SignIn: "used",
-// "bad", "failed"), local_mem (Mem here isn't a cloud workspace).
+// "bad", "failed"), mem_closed (D329: the Mem app on the home is closed;
+// BridgeAction{T: "bridge_mem_open"} opens it), local_mem (Mem here isn't a cloud workspace).
 type BridgeView struct {
 	State    string       `json:"state"`
 	Identity string       `json:"identity"`
@@ -1473,9 +1494,11 @@ type BridgeView struct {
 	Detail   string       `json:"detail,omitempty"`
 	Pinned   bool         `json:"pinned,omitempty"`
 	CanRun   bool         `json:"canRun,omitempty"`
-	Need     string       `json:"need,omitempty"`
-	SignIn   string       `json:"signIn,omitempty"`
-	Version  string       `json:"version,omitempty"`
+	// D329: CanOpen: on mem_closed, the home can open the Nowledge Mem app.
+	CanOpen bool   `json:"canOpen,omitempty"`
+	Need    string `json:"need,omitempty"`
+	SignIn  string `json:"signIn,omitempty"`
+	Version string `json:"version,omitempty"`
 	// D295: Where Mem keeps the memories: cloud, local (the Mem app or a
 	// Vault on the home), or server (the person's own Mem server).
 	Where string `json:"where,omitempty"`
@@ -1557,6 +1580,12 @@ type BrainModel struct {
 type Forgot struct {
 	Seq int64  `json:"seq"`
 	How string `json:"how"`
+}
+
+// Undid is how a memory_undo went when it didn't (D329): Mem didn't answer.
+type Undid struct {
+	Seq int64 `json:"seq"`
+	OK  bool  `json:"ok"`
 }
 
 // DefaultAfterChoices are the choices for Settings.DefaultAfterMin.
@@ -2043,6 +2072,8 @@ type ServerFrame struct {
 	Forgot   *Forgot   `json:"forgot,omitempty"`
 	// D304: how a memory_correct went: "mem" (Mem took it) or "here" (only here).
 	Corrected *Forgot `json:"corrected,omitempty"`
+	// D329: Undid says a 撤销 / Undo didn't go through (OK false).
+	Undid *Undid `json:"undid,omitempty"`
 	// Bridge is the persona's own connection row (D205); nil: nothing to show.
 	Bridge *BridgeView `json:"bridge,omitempty"`
 	// rules: Your rules. candidates: who could do TaskID, best first.

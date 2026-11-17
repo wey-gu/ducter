@@ -266,7 +266,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       the author's next fresh Mac or the first friend install.
 - [x] **D298: paste a key in Settings › Partner and Devices** (D307: a row on Partner and on the
       home's card in Devices, Mac and web).
-- [ ] **D298: Mem's line in the first words** (`FirstWordsInput.memLine`). Trigger: D295 lands.
+- [x] **D298: Mem's line in the first words** (D329 (1)): one line that Mem is there and one start asking
+      what it remembers; nothing in Mem read for them.
 - [ ] **D298: pi without node in the app.** A key for pi on a Mac without node opens pi's
       installer in Terminal (it asks before installing Node). Install it in the app (a Job that
       answers the installer, or Ducter's own Node) when the first consumer hits it. Trigger: a
@@ -503,14 +504,15 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Long-term memory (`design/memory.md`)
 
-- [ ] **Memory shows Mem's own memories, by kind** (D257, research/84 §4): 它记下的 lists only the partner's
-      own conversation saves (the Log's `memory_noted`). Read the identity's memories from Mem (its lane and
-      where saves land, as recall reads, D229) and group them by Mem's `unit_type` (preference, decision, fact),
-      with their source (this conversation, a task, another tool) and Forget in Mem. A new read path and a
-      privacy surface: decide what shows on the phone. Trigger: the author reviews D257's Memory tab, or Mem
-      ships a list-by-identity call.
-- [ ] **Nowledge Mem in 全部更新 / Update all** (D257 option C): the home's `nmem` as an item beside Ducter
-      and the agents (D224), so one tap updates everything. Trigger: the next time 全部更新 grows an item kind.
+- [x] **Memory shows Mem's own memories, by kind** (D257, research/84 §4): built by D321 (groups by Mem's kind,
+      each line's source, Fix and Forget in Mem); closed in D329 (7).
+- [ ] **The glance reads the identity's lane too** (D329 (7), D229): Memory's groups read where saves land
+      (`m list` with no Space); recall also reads the identity's lane (`--space-id`). Read both and merge by id,
+      as recall does. Trigger: a real account whose lane holds memories about the person that the page misses.
+- [x] **Nowledge Mem in 全部更新 / Update all** (D257 option C): built by D329 (6), the home's `nmem` after the
+      agents, by day only.
+- [ ] **Mem in Update all on a worker** (D329 (6)): only the home's `nmem` is an item; a worker's own `nmem`
+      (its tasks' Mem plugin) is not. Trigger: a worker whose tasks need a newer Mem.
 - [ ] **An On hand line when a Mem update blocks something in use** (D257 (5)): today the update is said on
       Memory, on the Settings entry, and on 连上的 AI agent when a connection fails with a newer Mem out. If people
       miss it there (Bridge broken for days), add one quiet On hand line. Trigger: a real report of a missed
@@ -548,10 +550,17 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       or a local Mem.
 - [x] The Bridge's named Agent Context names the persona's identity (D141 (7)): D205's connect names it
       (`--agent-id`) and the passive setup afterwards must say the same identity, or Bridge stays off.
-- [ ] Outbox with idempotency keys when Mem is down (research/private/10 §"Mem down ≠ Ducter
-      down"). Today a save while Mem is down is dropped and nothing is shown.
-- [ ] Search before writing, to supersede instead of duplicating (`nmem m supersede`).
-- [ ] Undo on the Noted line (archive the memory, never delete).
+- [x] Outbox with idempotency keys when Mem is down (D329 (4)): `<partner dir>/mem-outbox.json`, replayed
+      with Mem's upsert id, said on the Noted line.
+- [x] Search before writing, to supersede instead of duplicating (D329 (2), `nmem m supersede`).
+- [x] Undo on the Noted line (D329 (3): archive, never delete; a replaced memory comes back).
+- [ ] **D329 against a live Mem:** the outbox's UUID-shaped key as `m add --id` (accepted? upserts?), `m
+      supersede`, `m archive` (out of recall, still readable) and `m show`'s JSON shape, on a scratch identity;
+      then name the key on a save's first try too (a timeout that wrote still makes one memory). Trigger: the
+      `mem-live.ts --real` re-run above (an owner key or a local Mem).
+- [ ] **A semantic judge for "the same thing"** (D329 (2)): supersede catches alike titles only; a changed
+      preference titled differently stays a second memory. Let the model say it replaces a recalled one
+      (a `memory_add` argument, with a D175 eval). Trigger: a real report of two memories for one preference.
 - [x] Tasks (windows) as the same identity: `NMEM_AGENT_ID` in the task's session spec (D141).
 - [x] Nowledge Mem in tasks (D168, built with fakes): the plugin stays on as the persona, Ducter
       fills in where it isn't, `remember` proposals, the plugin off in the task with memory off.
@@ -1174,8 +1183,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
       exactly. Trigger: the first signed build installed on a Mac in Chinese.
 - [ ] Walk a real Claude Code sign-in and a Codex sign-in from the app to the end. Trigger: a
       throwaway account, or a fresh Mac user.
-- [ ] Nowledge Mem installed but not running: say so in one line with a way to open it.
-      Trigger: Mem exposes how to start it from outside.
+- [x] Nowledge Mem installed but not running: one line with 打开 Nowledge Mem on a Mac home with the app
+      (D329 (5), `open -a`).
+- [ ] **A closed Mem elsewhere** (D329 (5)): a Linux home's Vault or a Mac home without the app in
+      Applications gets the line only. Trigger: Mem exposes a start command (`nmem serve` or the like).
 - [ ] Moving the app out of the disk image (offer "Move to Applications" when run from
       `/Volumes` or a translocated copy). Trigger: the first friend who opens it from the DMG.
 - [ ] Remove Ducter from a copy run off the disk image: the plan's last step moves Ducter.app

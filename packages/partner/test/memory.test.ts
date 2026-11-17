@@ -197,9 +197,12 @@ describe("nmem client (stub binary)", () => {
   function stub(script: string) {
     const dir = tmp();
     const bin = join(dir, "nmem");
-    writeFileSync(bin, `#!/bin/sh\nprintf '%s\\n' "$@" > "${dir}/args"\ncat > "${dir}/stdin" 2>/dev/null\n${script}\n`);
+    // Each call keeps its own argv (D329: a save searches beside its write, so two calls can overlap);
+    // a write's stdin and argv are kept apart from the search's.
+    writeFileSync(bin, `#!/bin/sh\nprintf '%s\\n' "$@" > "${dir}/call.$$"\necho $$ >> "${dir}/order"\nif [ "$3" != search ]; then cp "${dir}/call.$$" "${dir}/args.w"; cat > "${dir}/stdin" 2>/dev/null; fi\n${script}\n`);
     chmodSync(bin, 0o755);
-    return { bin, dir, args: () => readFileSync(join(dir, "args"), "utf8").trim().split("\n"), stdin: () => readFileSync(join(dir, "stdin"), "utf8") };
+    const lines = (f: string) => readFileSync(join(dir, f), "utf8").trim().split("\n");
+    return { bin, dir, args: () => lines(`call.${lines("order").at(-1)}`), writeArgs: () => lines("args.w"), stdin: () => readFileSync(join(dir, "stdin"), "utf8") };
   }
 
   test("search: argv, compact parse", async () => {
@@ -223,7 +226,7 @@ describe("nmem client (stub binary)", () => {
       provenance: { persona: "default", logSeq: 7 },
     });
     expect(r).toEqual({ ok: true, id: "m9" });
-    const a = s.args();
+    const a = s.writeArgs();
     expect(a.slice(0, 4)).toEqual(["--json", "m", "add", "--stdin"]);
     expect(a).toContain("--title=-Fake clock");
     expect(a.join(" ")).toContain("--source ducter --source-app ducter --source-msg ducter;persona=default;log=7");
@@ -248,13 +251,13 @@ describe("nmem client (stub binary)", () => {
     let who: { agentId: string; space?: string } | undefined = { agentId: "ducter" };
     const c = createNmemClient({ bin: s.bin, env: { PATH: process.env.PATH, NMEM_AGENT_ID: "someone-else" }, identity: () => who });
     await c.add({ title: "t", content: "c", provenance: { persona: "default", logSeq: 3 } });
-    let a = s.args();
+    let a = s.writeArgs();
     expect(a.join(" ")).toContain("--source-app ducter --source-msg ducter;persona=default;log=3 --agent-id ducter");
     expect(a).not.toContain("--space");
     expect(a).not.toContain("someone-else");
     who = { agentId: "ducter-scratch", space: "ducter-scratch" }; // read per call: a bind mid-run applies at once
     await c.add({ title: "t", content: "c", provenance: { persona: "default" } });
-    a = s.args();
+    a = s.writeArgs();
     expect(a.slice(-4)).toEqual(["--agent-id", "ducter-scratch", "--space", "ducter-scratch"]);
     await c.search("q", 2);
     expect(s.args()).toEqual(["--json", "m", "search", "-n", "2", "--space", "ducter-scratch", "--", "q"]);

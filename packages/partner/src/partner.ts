@@ -56,7 +56,8 @@ import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage 
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeContextFor, bridgeFor, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
 import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, UNNAMED_OWN, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
-import { createNmemClient, noMemory, type MemoryClient, type MemoryHit } from "./memory.ts";
+import { createNmemClient, noMemory, type MemoryClient, type MemoryHit, type Replaced } from "./memory.ts";
+import { withOutbox } from "./outbox.ts";
 import { memSource } from "../../protocol/src/mem-source.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
@@ -92,6 +93,8 @@ export interface PartnerOptions {
   dir?: string;
   ready?: Promise<unknown>; // sessions start after this settles (e.g. L1 identity from Mem)
   memory?: MemoryClient; // default: the nmem CLI (DUCTER_MEMORY=off: none); tests inject a fake
+  /** D329: how often the outbox tries Mem again (default 5 min; 0: only on a call that works). */
+  outboxEveryMs?: number;
   // Nowledge Bridge requests from other agents (design/bridge.md). Default: DUCTER_BRIDGE=1 + DUCTER_BRIDGE_CONTEXT,
   // otherwise off (null). Tests inject a fake.
   bridge?: BridgeClient | null;
@@ -159,7 +162,7 @@ interface TurnState {
   sourced?: boolean;
   /** D304: the seq of the last words it said this turn (an ai_msg or ack). */
   lastSaid?: number;
-  noted: { title: string; memoryId?: string }[]; // memory_add successes, shown after the turn's text
+  noted: { title: string; memoryId?: string; replaced?: Replaced; waiting?: string }[]; // memory_add successes, shown after the turn's text
   shows?: MediaRef[]; // D206: what the triggering reports showed, put under this turn's first message
   cal?: CalGlance; // D222: the day card calendar do=agenda show put under this turn's next message
   carried?: Carried; // this turn redoes one a restart cut off
@@ -439,7 +442,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const ackWaitMs = opts.ackWaitMs ?? 250;
   const settleMs = opts.settleMs ?? 1500;
   const onError = opts.onError ?? ((err) => console.error("[partner]", err));
-  const memoryOn = opts.memory ?? (process.env.DUCTER_MEMORY === "off" ? noMemory : createNmemClient({ identity: () => core.persona.mem }));
+  const memoryBase = opts.memory ?? (process.env.DUCTER_MEMORY === "off" ? noMemory : createNmemClient({ identity: () => core.persona.mem }));
+  // D329: a save while Mem is down waits in an outbox and goes in when Mem answers again.
+  const outbox = memoryBase === noMemory ? undefined : withOutbox(memoryBase, { file: join(opts.dir ?? join(core.dataDir, "partner"), "mem-outbox.json"), onChange: () => core.settings?.memChanged?.(), ...(opts.outboxEveryMs !== undefined ? { everyMs: opts.outboxEveryMs } : {}) });
+  const memoryOn: MemoryClient = outbox ?? memoryBase;
   // The Partner page can switch memory off (D71): then nothing is recalled or saved.
   const memory: MemoryClient = {
     search: (q, n) => (core.settings && !core.settings.get().memory ? noMemory.search(q, n) : memoryOn.search(q, n)),
@@ -447,6 +453,19 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   };
   if (memoryOn.forget) core.settings?.setForgetter((id) => memoryOn.forget!(id));
   if (memoryOn.correct) core.settings?.setCorrector?.((id, title) => memoryOn.correct!(id, title));
+  // D329: 撤销 / Undo on a Noted line: a save still waiting is dropped; one in Mem is archived (never
+  // deleted), and the memory it replaced, if any, is written back as it was.
+  core.settings?.setMemHooks?.({
+    async undo(b) {
+      if (b.waiting && outbox?.drop(b.waiting)) return true;
+      const id = b.memoryId ?? (b.waiting ? outbox?.idOf(b.waiting) : undefined);
+      if (!id || !memoryOn.archive) return false;
+      if (!(await memoryOn.archive(id).catch(() => false))) return false;
+      if (b.replaced?.id && memoryOn.restore) await memoryOn.restore(b.replaced.id, { persona: core.persona.id }).catch(() => false);
+      return true;
+    },
+    waiting: () => outbox?.waiting() ?? new Set(),
+  });
   // What the Partner page says about memory follows what Mem actually answered.
   const noteMemState = (r: { ok: boolean; reason?: string }) => {
     if (!core.settings || !core.settings.get().memory) return;
@@ -1356,6 +1375,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     for (const n of t.noted.splice(0)) {
       const body: Bodies["memory_noted"] = { title: n.title };
       if (n.memoryId) body.memoryId = n.memoryId;
+      if (n.replaced) body.replaced = n.replaced;
+      if (n.waiting) body.waiting = n.waiting;
       if (t.replyTo !== undefined) body.replyTo = t.replyTo;
       core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body });
     }
@@ -1847,10 +1868,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       });
       noteMemState(r);
       if (!r.ok) return { ok: false, saved: false, note: `${UNAVAILABLE} Nothing was saved.` };
-      const noted = { title, ...(r.id ? { memoryId: r.id } : {}) };
+      const noted = { title, ...(r.id ? { memoryId: r.id } : {}), ...(r.replaced ? { replaced: r.replaced } : {}), ...(r.waiting ? { waiting: r.waiting } : {}) };
       if (t) t.noted.push(noted);
       else core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: noted });
-      return { ok: true, note: "Remembered. The user sees a small Noted line; don't mention it in your reply." };
+      // D329: it replaced what it remembered before, or waits for Mem; either way the line says so, not the reply.
+      return { ok: true, note: `Remembered${r.replaced ? `, in place of what you remembered before (“${r.replaced.title}”)` : ""}. The user sees a small Noted line; don't mention it in your reply.` };
     },
   );
 
@@ -2935,6 +2957,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       while (running) await running;
     },
     async close() {
+      outbox?.stop();
       closed = true;
       offBridgeLink?.();
       if (bridgeTimer) clearInterval(bridgeTimer);

@@ -12,7 +12,7 @@ import (
 )
 
 // The partner remembering something is one quiet line inside its reply's
-// Details, in the user's language, with Forget (D43, D104): folded by
+// Details, in the user's language, with Undo then Forget (D43, D104, D329): folded by
 // default, so the conversation stays the partner's words.
 func TestMemoryNotedLine(t *testing.T) {
 	for _, tc := range []struct {
@@ -45,8 +45,15 @@ func TestMemoryNotedLine(t *testing.T) {
 			t.Fatalf("%s: %v in %q", tc.lang, err, tt.Texts())
 		}
 		tt.Frame()
-		if !tt.HasText(tc.want) || !tt.HasText(app.L.T("partner.memory.forget")) {
-			t.Errorf("%s: no %q with Forget in %q", tc.lang, tc.want, tt.Texts())
+		// D329: fresh (nothing said since), the line offers 撤销 / Undo.
+		if !tt.HasText(tc.want) || !tt.HasText(app.L.T("memory.undo")) {
+			t.Errorf("%s: no %q with Undo in %q", tc.lang, tc.want, tt.Texts())
+		}
+		// Once the person spoke again, Forget.
+		app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{ev(4, protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: "ok"})}})
+		tt.Frame()
+		if !tt.HasText(app.L.T("partner.memory.forget")) {
+			t.Errorf("%s: no Forget after the person spoke in %q", tc.lang, tt.Texts())
 		}
 	}
 }

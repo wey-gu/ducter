@@ -147,7 +147,8 @@ not interviewed. *How it starts:* by itself, within a second of the first window
    under reduced motion); the empty screen (D149) shows only until they arrive, or for an older home.
 5. **Nothing to think with yet:** the first words say so in one sentence, and the key card sits
    under them (A key instead, below).
-6. **Later:** Nowledge Mem's line about the person (`FirstWordsInput.memLine`, D295's to wire).
+6. **Nowledge Mem** (D329): with the person's Mem answering on the home, one line says it is there and one
+   start asks what it remembers; nothing in Mem is read for them (`FirstWordsInput.mem`).
 
 Shots: `.shots/d298/mac/first-words-*.png`, `.shots/d298/web/first-words-{wide,phone}-{zh,en}.png`; D327: `.shots/d327/mac/mac-first-*.png`, `.shots/d327/web/{wide-en,phone-zh,wide-zh}-*.png`.
 

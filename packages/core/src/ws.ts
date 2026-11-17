@@ -539,7 +539,9 @@ export function createWsHandler(deps: WsDeps) {
     }
     const now = new Date();
     const everyday = starters({ tasks: [], onHand: { missed: [] }, noted: [], apps: [], computers: [{ name: "", home: true }], talked: false, now, ...(tz ? { tz } : {}) }).map((s) => s.words);
-    const out = firstWords({ name: core.persona.name, lang, now, ...(tz ? { tz } : {}), projects: [], everyday, noBrain: noBrain(), canLook, ...(fw.home ? { home: fw.home } : {}) });
+    // D329: the person's Nowledge Mem answers here (the last look said so): one line, one start; nothing in it read.
+    const mem = !!deps.settings?.get().memory && !!deps.bridgeLink?.memSignedIn();
+    const out = firstWords({ name: core.persona.name, lang, now, ...(tz ? { tz } : {}), projects: [], everyday, noBrain: noBrain(), canLook, ...(mem ? { mem } : {}), ...(fw.home ? { home: fw.home } : {}) });
     log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: out.text, first: out.first } });
   };
 
@@ -1039,6 +1041,13 @@ export function createWsHandler(deps: WsDeps) {
         await (f.t === "bridge_connect" ? deps.bridgeLink.connect() : f.t === "bridge_only_here" ? deps.bridgeLink.onlyHere() : deps.bridgeLink.disconnect());
         return;
       }
+      case "bridge_mem_open": {
+        // D329: the Nowledge Mem app on the home isn't open: the tap opens it there.
+        if (!deps.settings || !deps.bridgeLink) throw new Error("settings are not available");
+        ws.data.settings = true;
+        await deps.bridgeLink.openMem();
+        return;
+      }
       case "bridge_mem_install":
       case "bridge_mem_sign_in": {
         // D225: the tap on 装上 / 更新 / 登录 is the user's Go for this one step on the home. The
@@ -1080,6 +1089,15 @@ export function createWsHandler(deps: WsDeps) {
         ws.data.settings = true;
         const how = await deps.settings.forget(f.seq);
         send(ws, await settingsFrame(how ? { seq: f.seq, how } : undefined));
+        return;
+      }
+      case "memory_undo": {
+        // D329: 撤销 / Undo on a fresh Noted line. Taken back: every subscriber gets the frame (undone);
+        // not: this socket hears so (undid.ok false), and the line stays as it was.
+        if (!deps.settings) throw new Error("settings are not available");
+        ws.data.settings = true;
+        const ok = await deps.settings.undo(Number(f.seq));
+        if (!ok) send(ws, { ...(await settingsFrame()), undid: { seq: Number(f.seq), ok: false } } as ServerFrame);
         return;
       }
       case "memory_confirm": {

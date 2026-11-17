@@ -246,6 +246,10 @@ func (a *App) peersHead(c *ui.Context, st *protocol.Settings, b *protocol.Bridge
 	case "local_mem":
 		head(a.L.T("bridge.mem.local", a.memHome()), sideMuted, nil)
 		return false
+	case "mem_closed":
+		// D329: the Mem app on the home is closed; Memory holds the way to open it.
+		head(a.L.T("bridge.mem.closed"), sideMuted, toMemory)
+		return false
 	case "connected":
 		title = a.L.T("peers.head.on", name)
 		line := a.L.T("mem.app.on")

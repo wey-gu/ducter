@@ -75,8 +75,12 @@ export interface FirstWordsInput {
    * to look at them, a start whose tap is the person's yes. Nothing is read before that tap.
    */
   canLook?: LocalAgent[];
-  /** D295's hook: one line from Nowledge Mem about the person, when Mem is connected (not wired yet). */
-  memLine?: Words;
+  /**
+   * D329: the person's own Nowledge Mem answers on the home, signed in, and memory is on. The first
+   * words say so in one line (nothing in Mem is read for it: D327's rule holds for every source), and
+   * one start asks what it remembers, whose tap fills the composer; sent, the partner looks then.
+   */
+  mem?: boolean;
   home?: string;
 }
 
@@ -105,6 +109,9 @@ interface Table {
   none: string;
   /** What an answer to a look says once what it found was forgotten. */
   forgotten: string;
+  /** D329: Mem is there (status only), and the start that asks what it remembers. */
+  mem: string;
+  memAsk: string;
   noBrain: string;
   offer: string;
   offerDraft: string;
@@ -128,6 +135,8 @@ const T: { en: Table } & Partial<Record<LangTag, Table>> = {
     look: "接着我最近在 {who} 里做的事",
     none: "我看了看{where}你的 {who} 最近两周的记录，没找到能接着做的事。想做什么，直接跟我说就行。",
     forgotten: "从 {who} 的记录里看到的几件事，按你说的忘掉了。",
+    mem: "你的 Nowledge Mem 我也接上了：你跟别的 AI 交代过的习惯，用得着的时候我会想起来。",
+    memAsk: "你都记得我些什么？",
     noBrain: "不过我现在还没有能用来思考的 AI：登录 Claude Code 或 Codex，或者在下面贴一个 API 密钥，我就能开始。",
     offer: "{when}你在 {folder} 里做「{topic}」，要我接着看看吗？",
     offerDraft: "接着 {folder} 里「{topic}」这件事：先看看它停在哪儿，再跟我说下一步。（文件夹：{path}）",
@@ -148,6 +157,8 @@ const T: { en: Table } & Partial<Record<LangTag, Table>> = {
     look: "Pick up what I was doing in {who} lately",
     none: "I looked at your {who} records from the last two weeks {where} and found nothing to pick up. Tell me what you'd like to do.",
     forgotten: "What I found in your {who} records is forgotten, as you asked.",
+    mem: "I'm on your Nowledge Mem too: whatever you told your other AI tools about how you like things, I'll recall when it matters.",
+    memAsk: "What do you remember about me?",
     noBrain: "One thing first: I have nothing to think with yet. Sign in to Claude Code or Codex, or paste an API key below, and I'm ready.",
     offer: "{when} you were on “{topic}” in {folder}. Want me to pick it up?",
     offerDraft: "Pick up “{topic}” in {folder}: see where it stopped, then tell me the next step. (Folder: {path})",
@@ -238,7 +249,7 @@ export function firstWords(i: FirstWordsInput): FirstWordsOut {
   const offers = i.projects.slice(0, FIRST_OFFERS).map((p) => offer(p, i, home));
   const looked = [...new Set(i.projects.slice(0, FIRST_OFFERS).flatMap((p) => p.sessions.map((s) => s.agent)))].sort() as LocalAgent[];
   const parts = [greet(i.lang, i.name, i.now, i.tz)];
-  if (i.memLine) parts.push(space(pairIn(i.memLine, i.lang)));
+  if (i.mem) parts.push(space(t.mem));
   const where = i.computer ? fill(t.on, { computer: i.computer }) : t.here;
   if (offers.length) parts.push(space(fill(offers.length > 1 ? t.looked : t.lookedOne, { who: looked.map((a) => AGENT[a]).join(t.and), where })));
   else parts.push(t.plain);
@@ -249,6 +260,8 @@ export function firstWords(i: FirstWordsInput): FirstWordsOut {
     const look = space(fill(t.look, { who: i.canLook.map((a) => AGENT[a]).join(t.and) }));
     starts.push({ id: "look", from: "look", words: look, draft: look });
   }
+  // D329: with Mem there, one start asks what it remembers (an everyday start: no record was read).
+  if (i.mem) starts.push({ id: "mem", from: "everyday", words: space(t.memAsk), draft: space(t.memAsk) });
   // One everyday example after the person's own things (life is more than code), three without them.
   const want = offers.length ? Math.min(FIRST_STARTS, offers.length + 1) : 3;
   for (const w of i.everyday) {
@@ -294,7 +307,7 @@ export function forgetFirstWords(body: { text: string; first?: FirstWords }, o: 
  * where it was read and when), or, when nothing is there, that nothing was found. No everyday
  * examples (the first words already have them) and no greeting (it is an answer).
  */
-export function lookWords(i: Omit<FirstWordsInput, "name" | "everyday" | "noBrain" | "canLook" | "memLine"> & { agents: LocalAgent[] }): FirstWordsOut {
+export function lookWords(i: Omit<FirstWordsInput, "name" | "everyday" | "noBrain" | "canLook" | "mem"> & { agents: LocalAgent[] }): FirstWordsOut {
   const t = words(T, i.lang);
   const home = i.home ?? homedir();
   const offers = i.projects.slice(0, FIRST_OFFERS).map((p) => offer(p, { ...i, name: "", everyday: [] }, home));

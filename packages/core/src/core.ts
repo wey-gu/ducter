@@ -1071,6 +1071,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     busy: (device, h) => agentBusy(device, h),
     working: () => tasks.list().filter((c) => c.attention === "working").length + (runner?.critical?.() ?? []).length,
     settings: () => settings.get(),
+    // D329: the home's Nowledge Mem is part of the plan when it is behind and Ducter can update it.
+    mem: bridgeLink.memUpdate,
     ...(ua.tickMs !== undefined ? { tickMs: ua.tickMs } : {}),
     ...(ua.nightEveryMs !== undefined ? { nightEveryMs: ua.nightEveryMs } : testing ? { nightEveryMs: 0 } : {}),
     ...(ua.tz ? { tz: ua.tz } : {}),

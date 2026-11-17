@@ -428,7 +428,8 @@ When more than one thing has an update, **Settings › Your devices** says how m
 that page (on the Mac, the top of **Settings › Updates and about**) lists them, for example
 *Ducter on hel 0.0.30 → 0.0.31* and *Claude Code on MacBook 2.1.319 → 2.1.322*, with one button,
 **Update all**. Ducter takes care of the order: the computer Ducter lives on first, then your other
-computers, then the AI agents on each. Nothing running is cut off: an AI agent that a task is using
+computers, then the AI agents on each, then Nowledge Mem on the computer Ducter lives on when a newer
+one is out and Ducter can update it. Nothing running is cut off: an AI agent that a task is using
 waits until that task pauses, and the list says so. The list ticks itself off as each one is done;
 if one doesn't update, it says why, the others still go ahead, and **Try again** is there at the
 end. **Stop the rest** leaves what hasn't started as it is. The phone's page reloads itself at the

@@ -360,7 +360,7 @@ function MemLink({ b }: { b: BridgeView | undefined }) {
 const FACE = { missing: "idle", install: "idle", installing: "working", sign_in: "waiting", signing_in: "working" } as const;
 
 /** Memory before Mem is there: a small empty state, then the setup as one group of steps. */
-function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off">; b: BridgeView | undefined }) {
+function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "closed">; b: BridgeView | undefined }) {
   const [link, setLink] = useState("");
   const name = A.settings!.name;
   const home = homeOf(b);
@@ -429,13 +429,50 @@ function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off">; b: Bri
   );
 }
 
+/**
+ * D329: the Nowledge Mem app on the home is closed: one line in place of the Nowledge Mem group, and
+ * the way to open it when the home can (a Mac with the app); else where to open it.
+ */
+/** D329: what the closed app means, and the one way to open it, under the head (never squeezed beside it on a phone). */
+function MemClosedWords({ b }: { b: BridgeView }) {
+  const home = homeOf(b);
+  return (
+    <GBlock>
+      <small class="mem-closed-line">{b.canOpen ? t("bridge.mem.closed.open", home) : t("bridge.mem.closed.there", home)}</small>
+      {b.canOpen && (
+        <span class="mem-closed-act">
+          <Btn kind="primary" size="sm" label={t("bridge.mem.open")} about={home} onClick={() => A.openBridgeMem()} />
+        </span>
+      )}
+    </GBlock>
+  );
+}
+
+export function MemClosed({ b }: { b: BridgeView }) {
+  const home = homeOf(b);
+  return (
+    <Group class="mem-g" label="Nowledge Mem">
+      <GHead tile={<MemTile faded />} name={t("bridge.mem.closed")} />
+      <MemClosedWords b={b} />
+    </Group>
+  );
+}
+
 export function MemoryPage() {
   const s = A.settings;
   if (!s) return null;
   const b = A.bridge;
   const phase = memPhase(s.memory, A.mem, b);
   if (phase === "off") return <MemHead />;
-  if (phase !== "on") return <MemFirst phase={phase} b={b} />;
+  if (phase === "closed" && b)
+    return (
+      <>
+        <MemHead />
+        <MemClosed b={b} />
+      </>
+    );
+  if (phase !== "on" && phase !== "closed") return <MemFirst phase={phase} b={b} />;
+  if (phase === "closed") return null;
   return (
     <>
       <MemHead />
@@ -496,6 +533,14 @@ function PeersHead({ b, name }: { b: BridgeView; name: string }) {
   if (b.state === "update_mem") return <GHead tile={<CoinsTile faded />} name={title} line={t("peers.mem.update", home, MEM_MIN)}>{toMemory}</GHead>;
   if (b.state === "updating") return <GHead tile={<CoinsTile faded />} name={title} line={t("bridge.mem.updating", home)} />;
   if (b.state === "local_mem") return <GHead tile={<CoinsTile faded />} name={title} line={t("bridge.mem.local", home)} />;
+  // D329: the Nowledge Mem app on the home is closed: the agents can't reach it until it's open.
+  if (b.state === "mem_closed")
+    return (
+      <>
+        <GHead tile={<CoinsTile faded />} name={t("bridge.mem.closed")} />
+        <MemClosedWords b={b} />
+      </>
+    );
   if (b.state === "connected") return <GHead tile={<CoinsTile />} name={t("peers.head.on", name)} line={b.pinned ? t("bridge.pinned") : t("mem.app.on")} tone="done" />;
   // D324: another home answers this partner's mailbox: where, and the one way to move it here.
   if (b.state === "elsewhere")
@@ -609,7 +654,7 @@ export function PeersPage() {
   const b = A.bridge;
   const name = s.name;
   const set = (patch: Partial<typeof p>) => A.setSettings({ peers: { ...p, ...patch } });
-  const setup = !b || ["install_mem", "installing", "sign_in", "signing_in", "update_mem", "updating", "local_mem"].includes(b.state);
+  const setup = !b || ["install_mem", "installing", "sign_in", "signing_in", "mem_closed", "update_mem", "updating", "local_mem"].includes(b.state);
   const reachShown = A.S.channel.some((e) => e.peer) || !!p.trusted.length || !!p.muted.length || !setup;
   const connected = b?.state === "connected";
   return (

@@ -17,6 +17,10 @@ export const memoryWords: { zh: Record<string, string>; en: Record<string, strin
 
 
     "mem.app.on": "已连上",
+    "bridge.mem.closed": "Nowledge Mem 没开着",
+    "bridge.mem.closed.open": "%s 上的 Nowledge Mem 应用关着，记忆先放着，打开就接上。",
+    "bridge.mem.closed.there": "在 %s 上打开 Nowledge Mem 应用就好。",
+    "bridge.mem.open": "打开 Nowledge Mem",
     "mem.app.where": "在 %s 上",
     "mem.app.what": "Nowledge Mem 是一个免费的记忆工具，跑在你自己的电脑上；你在别处用的 AI 工具也能读写同一份记忆。",
     "mem.app.learn": "了解 Nowledge Mem",
@@ -177,6 +181,10 @@ export const memoryWords: { zh: Record<string, string>; en: Record<string, strin
 
 
     "mem.app.on": "Connected",
+    "bridge.mem.closed": "Nowledge Mem isn't open",
+    "bridge.mem.closed.open": "The Nowledge Mem app on %s is closed. Memories wait; open it and they're back.",
+    "bridge.mem.closed.there": "Open the Nowledge Mem app on %s.",
+    "bridge.mem.open": "Open Nowledge Mem",
     "mem.app.where": "On %s",
     "mem.app.what": "Nowledge Mem is a free memory app that runs on your own computer; the AI tools you use elsewhere can read and write the same memory.",
     "mem.app.learn": "About Nowledge Mem",

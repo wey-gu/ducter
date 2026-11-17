@@ -135,7 +135,7 @@ func (a *App) memFailed(install bool, home, detail string, kept bool) string {
 // memSetup: the row's states before the home's Mem can connect anyone (D225).
 func memSetup(state string) bool {
 	switch state {
-	case "install_mem", "installing", "update_mem", "updating", "sign_in", "signing_in", "local_mem":
+	case "install_mem", "installing", "update_mem", "updating", "sign_in", "signing_in", "mem_closed", "local_mem":
 		return true
 	}
 	return false

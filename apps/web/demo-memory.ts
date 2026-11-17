@@ -2,6 +2,7 @@
 // scripted stand-in answers the read-only checks. Noted lines are seeded into the Log across a few
 // days (realistic, not anyone's own memories). For pictures, web and phone.
 //   DUCTER_PORT=7864 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_MEM=newer bun apps/web/demo-memory.ts
+// D329: closed (the Nowledge Mem app on hel isn't open; the home can open it).
 // DEMO_MEM: newer (connected, Bridge on, Mem says 0.10.121 is out; pipx copy) · on (connected, up to
 //   date) · empty (connected, nothing noted yet) · off (switched off) · fresh (no nmem on the home) ·
 //   sign_in (nmem there, not signed in) · old (0.10.116 by pipx: too old for Bridge)
@@ -20,6 +21,7 @@ const run = async (args: string[]) => {
   if (want === "fresh") return undefined;
   if (args[0] === "--version") return ok(`nmem ${version}`);
   if (a.includes("bridge connections --help")) return { code: want === "old" ? 2 : 0, out: "", err: "" };
+  if (a === "status" && want === "closed") return { code: 1, out: "", err: "error: connecting to http://127.0.0.1:14242 for /health/details: error sending request: tcp connect error: Connection refused (os error 61)" };
   if (a === "status")
     return want === "sign_in"
       ? { code: 1, out: "", err: "not signed in" }
@@ -47,7 +49,7 @@ const exec = async () => new Promise<never>(() => {}); // a tap stays "updating�
 
 let shift = 0;
 const clock = { now: () => Date.now() - shift, setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
-const core = startCore({ ooSource: noOo, clock, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "hel" }, bridgeLink: { run: run as never, env: {}, sys, exec } });
+const core = startCore({ ooSource: noOo, clock, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "hel" }, bridgeLink: { run: run as never, env: {}, sys, exec, ...(want === "closed" ? { memApp: () => "/Applications/Nowledge Mem.app" } : {}) } as never });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 if (want !== "fresh" && want !== "sign_in") core.persona.mem = { agentId: "ducter", owned: true };

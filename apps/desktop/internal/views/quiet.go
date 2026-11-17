@@ -2,6 +2,7 @@ package views
 
 import (
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -87,6 +88,9 @@ func (a *App) detailsToggle(c *ui.Context, key, about string) {
 type noted struct {
 	seq   int64
 	title string
+	// D329: replaced is the title of the earlier memory this one took the
+	// place of ("" when none).
+	replaced string
 }
 
 // notedFor are the Noted lines answering the same user message as e, under
@@ -108,7 +112,11 @@ func (a *App) notedFor(e *store.Entry) []noted {
 	var out []noted
 	for _, x := range a.S.Channel {
 		if x.Noted != nil && x.Noted.ReplyTo == reply && !a.forgotten[x.FirstSeq] {
-			out = append(out, noted{x.FirstSeq, x.Noted.Title})
+			n := noted{seq: x.FirstSeq, title: x.Noted.Title}
+			if x.Noted.Replaced != nil {
+				n.replaced = x.Noted.Replaced.Title
+			}
+			out = append(out, n)
 		}
 	}
 	return out
@@ -154,12 +162,7 @@ func (a *App) messageRow(c *ui.Context, key string, tasks []*store.Task, detail 
 			a.resultDetails(c, task, detail)
 		}
 		for _, n := range notes {
-			ui.Row(c.Key(n.seq)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("memory.noted", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
-				if a.quietButton(c, "forget", a.L.T("partner.memory.forget"), n.title, false, 0) {
-					a.forgetNoted(n.seq, n.title)
-				}
-			})
+			a.notedLine(c, n)
 		}
 	})
 }
@@ -229,6 +232,53 @@ func (a *App) resultDetails(c *ui.Context, task *store.Task, detail string) {
 		}
 	}
 	a.prFailureLine(c, task)
+}
+
+// notedLine is one 记下了 / Noted line (D329): taken back, only 不记了;
+// otherwise what it noted, what it replaced and whether it still waits for
+// Mem, each its own element (D291), then 撤销 while the person hasn't
+// spoken since, Forget after.
+func (a *App) notedLine(c *ui.Context, n noted) {
+	t := a.T
+	ui.Row(c.Key(n.seq)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
+		if a.notedUndone(n.seq) {
+			ui.Text(c, a.L.T("memory.undone", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+			return
+		}
+		ui.Text(c, a.L.T("memory.noted", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+		if n.replaced != "" {
+			ui.Text(c.Key("replaced"), a.L.T("memory.replaced", n.replaced)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+		}
+		if a.notedWaiting(n.seq) {
+			ui.Text(c.Key("waiting"), a.L.T("memory.waiting")).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+		}
+		if a.S.UndoFailed == n.seq {
+			ui.Text(c.Key("undo-failed"), a.L.T("memory.undo.failed")).FontSize(t.SM).TextColor(t.Failed.Ink).MinWidth(0)
+		}
+		if a.S.LastUserSeq < n.seq {
+			if a.quietButton(c, "undo", a.L.T("memory.undo"), n.title, false, 0) {
+				a.undoNoted(n.seq)
+			}
+		} else if a.quietButton(c, "forget", a.L.T("partner.memory.forget"), n.title, false, 0) {
+			a.forgetNoted(n.seq, n.title)
+		}
+	})
+}
+
+func (a *App) notedUndone(seq int64) bool {
+	return a.S.Mem != nil && slices.Contains(a.S.Mem.Undone, seq)
+}
+
+func (a *App) notedWaiting(seq int64) bool {
+	return a.S.Mem != nil && slices.Contains(a.S.Mem.Waiting, seq)
+}
+
+// undoNoted takes a fresh Noted line's save back (D329): no question asked.
+func (a *App) undoNoted(seq int64) {
+	if a.S.UndoFailed == seq {
+		a.S.UndoFailed = 0
+	}
+	a.send(protocol.MemoryUndo{T: "memory_undo", Seq: seq})
 }
 
 // forgetNoted forgets a Noted line (D71's Forget) and hides it here.

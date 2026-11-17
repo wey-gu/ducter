@@ -79,6 +79,18 @@ class WhatsNewTest {
     }
 }
 
+/** D344: the update card's 看看都改了什么 opens that version's notes and tells the page they were read. */
+class ChangelogTest {
+    @Test fun anchorPerVersion() {
+        assertEquals("https://ducter.ai/changelog#0.0.72", Changelog.url("0.0.72"))
+        assertEquals("https://ducter.ai/changelog#0.0.72", Changelog.url("v0.0.72"))
+    }
+
+    @Test fun tellsThePage() {
+        assertEquals("window.ducterNotesSeen && window.ducterNotesSeen(\"0.0.72\")", Changelog.seenJs("v0.0.72"))
+    }
+}
+
 class AssetTest {
     @Test fun sums() {
         val h = "a".repeat(64)

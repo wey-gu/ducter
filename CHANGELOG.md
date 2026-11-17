@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.72
+## 0.0.72 - 2026-11-17
 
 <!-- whats-new
 zh: 待办来源：接上 GitHub 和 Obsidian 的待办
@@ -29,7 +29,7 @@ en: The partner sees what you told a task
 **Your other agents**
 - Only your own home connects to Nowledge Mem by itself; a test home never does.
 
-## 0.0.71
+## 0.0.71 - 2026-11-17
 
 <!-- whats-new
 zh: 停下以后你一开口，它就能再借手机
@@ -53,7 +53,7 @@ en: A phone task says it works on your phone
 **On the phone**
 - Try-it examples in Agent messaging use the whole row on small phones.
 
-## 0.0.70
+## 0.0.70 - 2026-11-17
 
 <!-- whats-new
 zh: 手机上的弹层不再溢出圆角，按钮更好点
@@ -67,7 +67,7 @@ en: Phone sheets stay inside their corners; easier taps
 - The Nowledge Mem install step has a proper How, and says Ducter can't add it there by
   itself instead of "this computer".
 
-## 0.0.69
+## 0.0.69 - 2026-11-17
 
 <!-- whats-new
 zh: 和你的其他 agent 通信：只说真正能收到信的地方
@@ -85,7 +85,7 @@ en: Calmer Settings: your own number rests as one row, updates say only the late
 - Calls from your own number rest as one row with Set up until you start.
 - Updates and about says only the latest check, with one Check for updates.
 
-## 0.0.68
+## 0.0.68 - 2026-11-17
 
 <!-- whats-new
 zh: 借手机不用打开 App；锁屏会暂停，不再收回
@@ -120,7 +120,7 @@ en: Talk with your other agents: one switch, connects by itself, every Space
 - A steer's "seen" is matched by id, checked live on Claude Code, Codex and pi; the
   locator's list is called What happened in this task.
 
-## 0.0.67
+## 0.0.67 - 2026-11-17
 
 <!-- whats-new
 zh: 任务做事时也能插话，留着的话随时改
@@ -154,7 +154,7 @@ en: Your other AIs' records are read only when you say so
 - ducter.ai says what Ducter does for you, with real screens; Get started asks where Ducter
   should live and offers a sentence your AI agent can follow to set it up.
 
-## 0.0.66
+## 0.0.66 - 2026-11-17
 
 <!-- whats-new
 zh: 手头的事更清爽；记忆页说的是它记得你什么
@@ -189,7 +189,7 @@ en: Huge sessions stay smooth; every download on one page
 **Download**
 - ducter.ai/download lists every way to get Ducter, your device first, with sizes and checksums.
 
-## 0.0.65
+## 0.0.65 - 2026-11-17
 
 <!-- whats-new
 zh: 手机上每个按钮都好点了；电脑名不带网络后缀
@@ -214,7 +214,7 @@ en: One count of what's done today, everywhere
 - On hand's done cards cheer after the page lands, so moving into On hand stays smooth.
 - Permission prompts read in Chinese too.
 
-## 0.0.64
+## 0.0.64 - 2026-11-17
 
 <!-- whats-new
 zh: 设置里能贴密钥、管理记录，网页也能选深色
@@ -236,7 +236,7 @@ en: Fixes from a live run: Compact now and routine budgets
 - A routine run counts its tokens, so its per-run and monthly budgets now hold.
 - A table's plain text no longer doubles a cell's own full stop.
 
-## 0.0.63
+## 0.0.63 - 2026-11-17
 
 <!-- whats-new
 zh: 按住说话，松开就是文字；也能读给你听
@@ -256,7 +256,7 @@ en: The menu bar shows at a glance if anything needs you
   something needs you; its menu answers a decision right there.
 - On Android, a task you follow or a live call can stay in your notifications while the app is open.
 
-## 0.0.62
+## 0.0.62 - 2026-11-17
 
 <!-- whats-new
 zh: 需要时回答里有表格、图表和可点的选项
@@ -276,7 +276,7 @@ en: When it remembers, it says where from
 - Monday's note can offer this week's memories to check, fix or forget.
 - A task is told which of your other tools' memories may matter, and reads them itself.
 
-## 0.0.61
+## 0.0.61 - 2026-11-17
 
 <!-- whats-new
 zh: 用你写的语言回你；任务秒开，切换有方向
@@ -320,7 +320,7 @@ en: Find earlier sessions and everything done for you
 - Pictures and files: a grid for many pictures, file cards with a look inside, a viewer that grows
   from the picture.
 
-## 0.0.60
+## 0.0.60 - 2026-11-16
 
 <!-- whats-new
 zh: 等待会说几点回来，一圈圈记着看了几次
@@ -345,7 +345,7 @@ en: Calls: you dial, it writes what to say first
 - The task hears when the phone is back with you; the screen stays on while it's lent, and a screen
   timeout no longer ends the loan.
 
-## 0.0.59
+## 0.0.59 - 2026-11-16
 
 <!-- whats-new
 zh: 更安静：顶栏一个字号，任务只说真实状态
@@ -380,7 +380,7 @@ en: Reach your partner from Slack, Telegram and iMessage
 - Your partner answers you before it offers anything of its own.
 - On your phone, the pill says it's waiting when the agent sits still.
 
-## 0.0.58
+## 0.0.58 - 2026-11-16
 
 <!-- whats-new
 zh: 打开的任务更安静：一串步骤合成一行，出错说人话
@@ -407,7 +407,7 @@ en: A server can live in Tailscale alone, no domain needed
 **Everywhere**
 - 设备 · 手头的事 · 设置 are one control in the header; where you are is the raised one.
 
-## 0.0.57
+## 0.0.57 - 2026-11-16
 
 <!-- whats-new
 zh: 手头的事像指挥台：按项目看，一眼知道谁在等你、谁卡住了
@@ -433,7 +433,7 @@ en: One header everywhere, Settings in reach; iPad and foldables drawn
 - An iPad shows as a tablet and a Pixel Fold (and other foldables) as a foldable, in the list, on
   the islands and on their cards.
 
-## 0.0.56
+## 0.0.56 - 2026-11-16
 
 <!-- whats-new
 zh: 继续之前的手机任务时，它又能用你的手机了
@@ -450,7 +450,7 @@ en: After you tap a card, Ducter answers in your language
 - Tapping a button on a card about another agent's request no longer gets an answer in that
   agent's language.
 
-## 0.0.55
+## 0.0.55 - 2026-11-16
 
 <!-- whats-new
 zh: 现在可以把任何文件发给 Ducter，不只是图片
@@ -470,7 +470,7 @@ en: On hand: the row under the pointer is a rounded tile
 - The row under the pointer, or the one you moved to with the keys, is a rounded tile inside its
   card, with a rounded marker.
 
-## 0.0.54
+## 0.0.54 - 2026-11-16
 
 <!-- whats-new
 zh: 回过的提醒不再让 Ducter 变安静
@@ -490,7 +490,7 @@ en: The morning note got better; if you chose "only urgent", it asks once more
 - A request from one of your agents that Nowledge Mem doesn't name reads 你的另一个 AI / your other
   AI agent.
 
-## 0.0.53
+## 0.0.53 - 2026-11-14
 
 <!-- whats-new
 zh: 借手机时 Ducter 在后台也不断，还能自己录屏
@@ -516,7 +516,7 @@ en: Memory gets its own page; the reply button is redrawn
 - The reply button is a small clay pebble with Ducter's own drawn mark, beside the message and never
   on it; it says 回复 when you point at it. On a phone, swipe a message to reply.
 
-## 0.0.52
+## 0.0.52 - 2026-11-14
 
 <!-- whats-new
 zh: 往上翻时有新消息会提示，一点回到最新；长按就能拷贝
@@ -540,7 +540,7 @@ en: Lending your phone: locking takes it back, silence is explained
 - One ask per loan; your "Done" is checked; Wi-Fi, Bluetooth and similar switches wait for your Go;
   a task keeps the phone it started on. Update the Android app for this.
 
-## 0.0.51
+## 0.0.51 - 2026-11-13
 
 <!-- whats-new
 zh: Fold 展开又是左右两栏：对话一边，手头的事一边
@@ -556,7 +556,7 @@ en: The Android app checks for its own update every hour
 - On hand at the whole screen on a book stays beside the conversation instead of across the fold.
 - The app checks for its own update at most every hour (it was every 6 hours).
 
-## 0.0.50
+## 0.0.50 - 2026-11-13
 
 <!-- whats-new
 zh: 说"我的手机"就用你的手机，不会换成模拟器
@@ -571,7 +571,7 @@ en: A task's first look says which phone it holds
   there; it never moves to Ducter's emulator by itself.
 - A task's first look at a phone starts by saying which phone it is.
 
-## 0.0.49
+## 0.0.49 - 2026-11-13
 
 <!-- whats-new
 zh: 安卓开关开着的手机，连上就能被任务借用
@@ -586,7 +586,7 @@ en: Work on your own phone no longer lands on Ducter's emulator
   a phone set up in an earlier version stayed unadded and phone work went to Ducter's own phone.
 - Taking it off on its card is remembered; a switch still on doesn't add it back.
 
-## 0.0.48
+## 0.0.48 - 2026-11-13
 
 <!-- whats-new
 zh: 默认就会主动：每天早上把值得说的放一条里
@@ -607,7 +607,7 @@ en: Talking with your other AI agents now works against real Mem
   agent that wrote to you lately, follow-through stays quiet once they've answered, and a send whose
   outcome is unknown is never sent again as a new message.
 
-## 0.0.47
+## 0.0.47 - 2026-11-13
 
 <!-- whats-new
 zh: 主动告诉你航班、维护、扣费，旧消息有变会更正
@@ -638,7 +638,7 @@ en: On hand sits beside a task; PDFs and find open in Ducter
   and can watch for a change without spending anything until something changes.
 - Tasks keep their harness's own tools; a few that compete with Ducter are left out.
 
-## 0.0.46
+## 0.0.46 - 2026-11-13
 
 <!-- whats-new
 zh: 用浏览器的任务也有完整的工具了：改文件、搜网页都行
@@ -654,7 +654,7 @@ en: Tasks always run on their harness's own prompt, plus a brief
 - Your own Claude setup still stays out of a browser task, so it has no way to your own Chrome.
 - Every task runs on its harness's own prompt; Ducter only adds a short brief on top.
 
-## 0.0.45
+## 0.0.45 - 2026-11-13
 
 <!-- whats-new
 zh: 任务做出的文件，点开就在 Ducter 里看
@@ -673,7 +673,7 @@ en: Reports laid out, tables and code clear; Save a copy keeps one
 - Kinds Ducter can't show yet (PDF, Office, zip) say so, with Save a copy; on the Mac also Open on
   this Mac. Tasks can now show code and text files (.ts, .go, .sh, .log, …), never .env.
 
-## 0.0.44
+## 0.0.44 - 2026-11-13
 
 <!-- whats-new
 zh: 用这台手机：任务能借你的安卓手机用一会儿，先问你
@@ -692,7 +692,7 @@ en: While lent, a pill shows it; sends and payments wait for your Go
   are out of reach, and password fields are never read. iPhones can't do this: iOS doesn't let one
   app use others, so the iPhone card says so plainly.
 
-## 0.0.43
+## 0.0.43 - 2026-11-13
 
 <!-- whats-new
 zh: 家里那台卡片会指向能用手机、用电脑的那台 Mac
@@ -706,7 +706,7 @@ en: A server with no screen no longer promises Use the computer later
   用电脑 as "on {Mac}" instead of "coming later"; tap one to open that Mac's card.
 - A Linux server with no screen no longer shows 用电脑 / Use the computer as coming later.
 
-## 0.0.42
+## 0.0.42 - 2026-11-13
 
 <!-- whats-new
 zh: 可以回复某一条消息了：右滑或长按，引用会压进你的话里
@@ -723,7 +723,7 @@ en: Reply to a task's result to carry it on; reply to several at once
   that one. Replies to several messages at once each stay with their own.
 - On a wide screen, select part of the partner's words and reply to just that part.
 
-## 0.0.41
+## 0.0.41 - 2026-11-12
 
 <!-- whats-new
 zh: 替家里做事的 Mac 也能装上 Ducter 自己的手机
@@ -742,7 +742,7 @@ en: Use the computer: tasks work in your Mac's apps, asking first when it counts
 - Anything that sends, pays or deletes waits for your Go; password managers, banks, System
   Settings and Ducter itself are out of reach; while a task uses an app you see it, with Stop.
 
-## 0.0.40
+## 0.0.40 - 2026-11-12
 
 <!-- whats-new
 zh: 任务缺密钥时会给你一张卡，填一次就接着做
@@ -763,7 +763,7 @@ en: Keys stay on your home computer, never in the chat or the record
 **Fixes**
 - `ducter doctor` no longer says Nowledge Mem is unreachable when a local nmem answers "ok" (#2).
 
-## 0.0.39
+## 0.0.39 - 2026-11-12
 
 <!-- whats-new
 zh: 第一次看一眼，会挑出最近两周真正要你管的事
@@ -786,7 +786,7 @@ en: Only urgent now tells you when someone asked again or waited days
 - Shorter Chinese names: 从外面连 (was 在哪儿都能用), 连上手机或电脑, 发现了就说, 要不要先问,
   用什么想, and 和 instead of 与 in section names.
 
-## 0.0.38
+## 0.0.38 - 2026-11-12
 
 <!-- whats-new
 zh: 主动留意终于看得到 Slack 里找你的消息了
@@ -805,7 +805,7 @@ en: The mail look back waits for your accounts after a start
   calendar's events once a day.
 - Quiet hours turned off no longer hold finds for the morning.
 
-## 0.0.37
+## 0.0.37 - 2026-11-12
 
 <!-- whats-new
 zh: 家里的 Mac 也能在外面用，挂在你自己的域名上
@@ -823,7 +823,7 @@ en: A task sets up Cloudflare for you, asking before each step
 - Already made a tunnel in Cloudflare's dashboard? `ducter anywhere on --token … --hostname …`.
   Only devices you've connected can come in; nothing goes through Ducter's own servers.
 
-## 0.0.36
+## 0.0.36 - 2026-11-12
 
 <!-- whats-new
 zh: 回忆会连它自己那块记忆一起找，不再漏掉
@@ -843,7 +843,7 @@ en: Nowledge Mem installs and updates the official way, with a one-tap move
   old copy is put back.
 - Tasks find the same Nowledge Mem Ducter uses, and Mem's own "update available" now shows.
 
-## 0.0.35
+## 0.0.35 - 2026-11-12
 
 <!-- whats-new
 zh: 读信能看到日期和标题了，主动提醒真正开始工作
@@ -860,7 +860,7 @@ en: Mail it couldn't read is retried, never counted as seen
 - The 60-day look back searches in several short queries, and each look back logs one line of
   what it read, kept and noted.
 
-## 0.0.34
+## 0.0.34 - 2026-11-12
 
 <!-- whats-new
 zh: 今天看了什么，分组更清楚，问题一眼看到
@@ -875,7 +875,7 @@ en: On the Mac, a reading problem shows as soon as Notifications opens
 - A problem reading your mail shows without opening the list, on the Mac too, and the counts
   refresh when the home comes back after a restart.
 
-## 0.0.33
+## 0.0.33 - 2026-11-12
 
 <!-- whats-new
 zh: 主动提醒修好了，还能看今天看了什么、为什么没说
@@ -900,7 +900,7 @@ en: Update all no longer stalls when a computer restarts mid-way
   interrupted by a restart is judged again by what runs now, retried once, and the row says what
   it waits for.
 
-## 0.0.32
+## 0.0.32 - 2026-11-12
 
 <!-- whats-new
 zh: 在 Ducter 里就能装上、更新 Nowledge Mem
@@ -916,7 +916,7 @@ en: Connecting your other AI agents explains every error plainly
 - Every answer Mem's Bridge can give now reads as one plain line. When Mem's side isn't open yet,
   it says so, and that it isn't anything on your side.
 
-## 0.0.31
+## 0.0.31 - 2026-11-12
 
 <!-- whats-new
 zh: 一键全部更新：Ducter 和各台电脑上的 AI 按顺序更新
@@ -935,7 +935,7 @@ en: Work in progress is never cut off; a failed step rolls itself back
 - **自动更新 / Update automatically** runs the same plan at night when nothing is working (off by
   default). On the command line: `ducter update --all`.
 
-## 0.0.30
+## 0.0.30 - 2026-11-12
 
 <!-- whats-new
 zh: 通过 OOMOL 连的日历也能读了，日程卡正常显示
@@ -953,7 +953,7 @@ en: When a calendar can't be read, it says so instead of guessing
 **Heads-ups**
 - Watching chat no longer retries an action OOMOL doesn't have every ten minutes.
 
-## 0.0.29
+## 0.0.29 - 2026-11-12
 
 <!-- whats-new
 zh: 能看你的日历了，两个账号合成一天
@@ -976,7 +976,7 @@ en: Add, move or answer events; nothing changes until you tap Go
 **Releases**
 - A release no longer creates or revokes an Apple certificate, so no more emails about one.
 
-## 0.0.28
+## 0.0.28 - 2026-11-12
 
 <!-- whats-new
 zh: 打开任务就能看手机和 iOS 模拟器的实时画面
@@ -999,7 +999,7 @@ en: The task's top shows its branch, changes and PR at a glance
 - The launch film plays on every browser again, in a new cut with the workbench, pictures, Ducter's
   phone and calls.
 
-## 0.0.27
+## 0.0.27 - 2026-11-12
 
 <!-- whats-new
 zh: 可以用你自己的手机和号码打电话了，全球都能打
@@ -1021,7 +1021,7 @@ en: Plainer Chinese in the workbench, On hand and Ducter's phone
 - The workbench, On hand and Ducter's phone read like the rest of Ducter: **保存 / 取消 / 还原**,
   **点击 / 暂不点击**, **打开手机**, **安装**, and more.
 
-## 0.0.26
+## 0.0.26 - 2026-11-12
 
 <!-- whats-new
 zh: Ducter 有了自己的安卓手机：装 app、登录，让它替你在手机上办事
@@ -1045,7 +1045,7 @@ en: On hand is one list, and every row says what each task is doing right now
   hover, several at once on a wide screen, and beside a task opened full screen the list stays as a
   rail.
 
-## 0.0.25
+## 0.0.25 - 2026-11-12
 
 <!-- whats-new
 zh: 任务右侧多了工作台：改动、文件、预览、浏览器，按需打开
@@ -1074,7 +1074,7 @@ en: Clearer Chinese throughout, and no emoji-like marks anywhere
   what to ask and not to share, what to note down, with **Call it yourself**; afterwards your partner
   asks how it went.
 
-## 0.0.24
+## 0.0.24 - 2026-11-12
 
 <!-- whats-new
 zh: 在文件夹里做事的 Codex 任务又能交回结果了
@@ -1089,7 +1089,7 @@ en: A task that stops without reporting waits for you, not "Working" for hours
 - A task that stops without reporting, even after a nudge, now waits for you instead of reading
   **Working** for hours.
 
-## 0.0.23
+## 0.0.23 - 2026-11-11
 
 <!-- whats-new
 zh: 任务页像编程助手一样一步一行：命令、改动、出错都看得见
@@ -1108,7 +1108,7 @@ en: Esc twice pauses; queued messages show as queued; long tasks stay smooth
 - What you send while it's busy shows as queued until it reads it. Scroll up and **Jump to latest**
   takes you back; very long tasks show older steps on request.
 
-## 0.0.22
+## 0.0.22 - 2026-11-11
 
 <!-- whats-new
 zh: 手机和 iPad 一打开就是上次的对话，不再闪空白
@@ -1125,7 +1125,7 @@ en: Full screen on the iPad's second column happens at once
 - The apps keep the page's code until your Ducter has a newer one, so opening doesn't wait on the
   network.
 
-## 0.0.21
+## 0.0.21 - 2026-11-11
 
 <!-- whats-new
 zh: 你说「现在打」就现在打，电话结果按实际情况说
@@ -1150,7 +1150,7 @@ en: Plainer words in a task, and tasks never touch Ducter's own data
   messages, the composer empties when you send, runner notes in plain words, and commands are no
   longer called browsing.
 
-## 0.0.20
+## 0.0.20 - 2026-11-11
 
 <!-- whats-new
 zh: 能给伙伴发图片了，事情做出来的图也直接出现在对话里
@@ -1184,7 +1184,7 @@ lives on)**
 - A task that only reads (on Codex) can report back again: its report, checkpoints and history
   search were all refused before, so it stopped without a word.
 
-## 0.0.19
+## 0.0.19 - 2026-11-11
 
 <!-- whats-new
 zh: Ducter 更新后，手机上开着的页面会自己换成新版
@@ -1198,7 +1198,7 @@ en: New task no longer lists old folders on a computer Ducter can't find
   nothing is open and nothing is unsent), instead of drawing the old one until you close the app.
 - **New task** leaves out a folder whose computer Ducter no longer knows; it couldn't start there.
 
-## 0.0.18
+## 0.0.18 - 2026-11-11
 
 <!-- whats-new
 zh: 新建时贴一个 Git 地址，就能在任意一台电脑上克隆
@@ -1234,7 +1234,7 @@ en: What Ducter makes on a computer now lives in one folder you can see, ~/ducte
   the page swapped under it, payment buttons drawn by the page are found, and dropdowns can be
   chosen.
 
-## 0.0.17
+## 0.0.17 - 2026-11-11
 
 <!-- whats-new
 zh: 从手机更新 Mac 不再卡住
@@ -1250,7 +1250,7 @@ en: Autofill and the coming-later abilities show their pictures on the phone
 - The phone shows the Autofill tab's keyring and the **Use a computer** and **Use a phone** chips
   again, when your Ducter runs from the installed binary (a server).
 
-## 0.0.16
+## 0.0.16 - 2026-11-11
 
 <!-- whats-new
 zh: 新建时能选别的电脑上的 AI agent
@@ -1275,7 +1275,7 @@ en: Pick the model and how hard it thinks in New task; it remembers
 - **Open** lists every terminal you have that can open a folder: Terminal, iTerm2, Ghostty, Warp,
   and con (from its 0.1.0-beta.177).
 
-## 0.0.15
+## 0.0.15 - 2026-11-11
 
 <!-- whats-new
 zh: 在 Mac 上加文件夹，家在服务器上也行
@@ -1305,7 +1305,7 @@ en: Open a task's working copy in Finder, Terminal or your editor
   Now** asks again if the app hasn't quit.
 - Autofill has its own clay keyring.
 
-## 0.0.14
+## 0.0.14 - 2026-11-11
 
 <!-- whats-new
 zh: 伙伴能替你打电话、付款前给你看清楚再付
@@ -1354,7 +1354,7 @@ en: Watch its browser work, take a turn yourself, then hand it back
 - The Accounts card names every account plainly (Gmail · weyl.gu, Slack · your workspace) and
   says why one isn't read; Settings' switches, headings and buttons line up on every screen.
 
-## 0.0.13
+## 0.0.13 - 2026-11-11
 
 <!-- whats-new
 zh: 让伙伴看邮件，它会用你真正连着的账号
@@ -1372,7 +1372,7 @@ en: The Android app shows as the app on its device card
 - The Android app's device card says it's connected through the Ducter app, not the browser,
   even after you rename the phone.
 
-## 0.0.12
+## 0.0.12 - 2026-11-10
 
 <!-- whats-new
 zh: 安卓 App 来了：从 GitHub 发布页下载，之后自己更新
@@ -1398,7 +1398,7 @@ en: On a foldable, the conversation and On hand meet at the fold
   knot for Codex, DeepSeek's whale, pi's blocks. Signed out, the same shape in grey clay; at work,
   it rocks gently on its spot.
 
-## 0.0.10
+## 0.0.10 - 2026-11-10
 
 <!-- whats-new
 zh: 又能读 OOMOL 里的邮件和账号了
@@ -1417,7 +1417,7 @@ en: A small pencil by each device's name: click to rename it
 - A quiet pencil sits by every name you can change, on the Mac and on the phone; this Mac can be
   renamed too (it changes the name your other devices see). Long names wrap on the phone's card.
 
-## 0.0.9
+## 0.0.9 - 2026-11-10
 
 <!-- whats-new
 zh: App 支持 iPad 和 iPhone Duo；宽屏时对话和手头的事并排
@@ -1448,7 +1448,7 @@ en: Your partner can now think with DeepSeek Harness or pi
 **Under the hood**
 - DeepSeek Harness 0.2.2-rc.1 verified; a look-up on the web is never answered from memory.
 
-## 0.0.8
+## 0.0.8 - 2026-11-10
 
 <!-- whats-new
 zh: 设备卡片重做；主动提醒只在需要时开口
@@ -1482,7 +1482,7 @@ en: Redesigned device cards; heads-ups only when something needs you
 - On Ubuntu 24.04 as a normal user, Ducter's browser gives the one line that lets its Chrome keep
   its sandbox.
 
-## 0.0.7
+## 0.0.7 - 2026-11-10
 
 **Your tasks know which computer to run on**
 - With more than one computer (say a server and a MacBook that does tasks for it), your partner
@@ -1502,7 +1502,7 @@ en: Redesigned device cards; heads-ups only when something needs you
 - "Up to date" always says when it was checked; Ducter checks every hour, and again as soon as a
   newer app connects.
 
-## 0.0.6
+## 0.0.6 - 2026-11-10
 
 **Notifications on the iPhone app, from any Ducter**
 - The iPhone app now gets notifications from your own Ducter on any computer, with no Apple key
@@ -1513,7 +1513,7 @@ en: Redesigned device cards; heads-ups only when something needs you
 - A Ducter with its own Apple key can keep sending directly. Disconnecting a phone stops its
   notifications at once.
 
-## 0.0.5
+## 0.0.5 - 2026-11-10
 
 **Accounts through OOMOL's hosted service work**
 - Hosted by OOMOL now connects at the right address with a key from console.oomol.com/api-key:
@@ -1550,7 +1550,7 @@ en: Redesigned device cards; heads-ups only when something needs you
 - ducter.ai fits every phone width; docs tables read as lists on narrow screens.
 - Settings choices on the phone stack instead of spilling out of their pill.
 
-## 0.0.4
+## 0.0.4 - 2026-11-10
 
 **Update in place, from the app**
 - Each computer's card in Devices shows its Ducter version and, when a newer one is out, an
@@ -1598,7 +1598,7 @@ en: Redesigned device cards; heads-ups only when something needs you
 - In-place updates and server browsing were tested with fakes and a local Chrome, not yet on a
   real server: please report anything odd.
 
-## 0.0.3
+## 0.0.3 - 2026-11-10
 
 **Servers that just work**
 - `ducter domain your.domain`: checks your DNS, sets up HTTPS with Caddy, and prints a code for
@@ -1620,7 +1620,7 @@ en: Redesigned device cards; heads-ups only when something needs you
 - Settings › Connect to a Ducter on another computer, and back again.
 - Folder tasks show only what changed and the Undo; no stray file count.
 
-## 0.0.2
+## 0.0.2 - 2026-11-10
 
 **Talk to it like a messaging app**
 - The conversation reads like iMessage: your words and your partner's in bubbles, a question as
@@ -1648,12 +1648,12 @@ en: Redesigned device cards; heads-ups only when something needs you
 - Quiet hours are on by default (23:00–08:00).
 - Memory in Nowledge Mem is kept under your partner's own identity.
 
-## 0.0.1-rc.1
+## 0.0.1-rc.1 - 2026-11-09
 
 A release candidate for 0.0.1: the same build, cut first to check the release pipeline end to
 end (signing, notarization, the Linux bundles). The notes are those of 0.0.1 below.
 
-## 0.0.1
+## 0.0.1 - 2026-11-09
 
 The first early preview. Ducter is a personal AI you run yourself: you talk to one partner, and it
 hands the work to AI agents on your own machines and comes back when it's done, with proof.

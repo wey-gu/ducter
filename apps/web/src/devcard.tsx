@@ -11,6 +11,7 @@ import type { DeviceHarness, DeviceUpdate, DeviceVia, DeviceView, ReachWay } fro
 import { inApp } from "./native.ts";
 import { AppUpdateRow, androidAppVersion } from "./app-update.tsx";
 import { clientShape, computerKey, computerName, TRY_LIVE } from "@ducter/protocol";
+import { changelogUrl } from "@ducter/protocol/src/version.ts";
 import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -841,12 +842,21 @@ function DucterLine({ dv }: { dv: DeviceView }) {
         </div>
       )}
       {behind(u) && u.how === "self" && u.notesBy?.[A.L.lang]?.map((n) => <div class="small sub">{n}</div>)}
+      {behind(u) && u.latest && <NotesLink version={u.latest} />}
       {offer && !failed && here && u.how === "app" && dv.state === "awake" && <div class="small sub">{t("devup.how.app.here", dv.name)}</div>}
       {offer && !here && <div class="small sub">{u.how === "app" ? t("devup.how.app", dv.name) : u.how === "manual" ? t("devup.how.manual", dv.name) : t("devup.how.source")}</div>}
       {offer && here && dv.state !== "awake" && <div class="small sub">{t("devup.how.away", dv.name)}</div>}
       {answer && <div class="small warn">{t(answer === "name_taken" ? "device.rename.name_taken" : `devup.why.${answer}`)}</div>}
     </div>
   );
+}
+
+/**
+ * D344: 看看都改了什么 / See what changed: the whole of that version's notes on the website (one
+ * anchor per release); opening them counts as read, so the partner doesn't say them again today.
+ */
+export function NotesLink({ version }: { version: string }) {
+  return <LinkBtn kind="text" size="sm" class="dc-notes" href={changelogUrl(version)} label={t("devup.notes")} onOpen={() => A.notesSeen(version)} />;
 }
 
 /** A hairline, then one 断开这台 {device}, confirmed in place. */

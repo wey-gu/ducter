@@ -24,6 +24,7 @@
     <string name="update_available">Update to %1$s</string>
     <string name="update_button">Update</string>
     <string name="update_later">Later</string>
+    <string name="update_notes">See what changed</string>
     <string name="update_downloading">Downloading %1$s… %2$d%%</string>
     <string name="update_verifying">Checking %1$s…</string>
     <string name="update_installing">Installing %1$s… Ducter closes once it\'s in; open it again for the new one</string>

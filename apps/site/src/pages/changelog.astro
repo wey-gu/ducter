@@ -1,0 +1,76 @@
+---
+// What's new (D344): the repo's CHANGELOG.md at build time. The latest three releases open, each
+// with the two lines the apps' update cards show as its headline, then the sections as written;
+// older ones fold by month (native <details>: no JavaScript needed, and the browser's find opens
+// a fold by itself). Every release has an anchor, #<version>, which the apps' "See what changed"
+// links to; changelog.ts opens a fold the link points at.
+import "../styles/site.css";
+import Head from "../components/Head.astro";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
+import { siteLinks } from "../lib/links";
+import { longDate, readChangelog, renderReleases, shortDate, split } from "../lib/changelog";
+
+const { dl, gh } = await siteLinks();
+const { latest, months } = split(await renderReleases(readChangelog()));
+const title = "What's new in Ducter";
+const description = "Every Ducter release, newest first: what changed for you, in plain words.";
+const link = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1-1a2.8 2.8 0 014 4l-1 1M9 11.5l-1 1a2.8 2.8 0 01-4-4l1-1"/></svg>`;
+---
+<!doctype html>
+<html lang="en">
+<Head title={title} description={description} path="/changelog" />
+<body class="cl-page">
+<Nav dl={dl} gh={gh} home={false} />
+<main id="main">
+  <div class="wrap cl">
+    <header class="cl-hero">
+      <h1>What's new</h1>
+      <p class="lede">Every release, newest first. The Mac app, the Android app and your server update themselves; each update says in a line or two what changed, and links here for the rest.</p>
+    </header>
+
+    {latest.map((r, i) => (
+      <article class="cl-rel" id={r.version} aria-labelledby={`h-${r.version}`}>
+        <header class="cl-head">
+          <h2 id={`h-${r.version}`}><a class="cl-self" href={`#${r.version}`}><span>{r.version}</span><Fragment set:html={link} /><span class="sr-only">Link to this release</span></a></h2>
+          {i === 0 && <span class="cl-tag">Latest</span>}
+          {r.date && <time datetime={r.date}>{longDate(r.date)}</time>}
+        </header>
+        {r.whatsNew.en.length > 0 && (
+          <ul class="cl-new">
+            {r.whatsNew.en.map((l) => <li>{l}</li>)}
+          </ul>
+        )}
+        <div class="prose cl-body" set:html={r.html} />
+      </article>
+    ))}
+
+    {months.length > 0 && (
+      <section class="cl-earlier" aria-labelledby="earlier">
+        <h2 id="earlier">Earlier releases</h2>
+        {months.map((m) => (
+          <section class="cl-month" aria-label={m.month}>
+            <h3>{m.month}</h3>
+            {m.releases.map((r) => (
+              <details class="cl-fold" id={r.version}>
+                <summary>
+                  <span class="cl-v">{r.version}</span>
+                  {r.date && <time datetime={r.date}>{shortDate(r.date)}</time>}
+                  {r.whatsNew.en.length > 0 && <span class="cl-sum">{r.whatsNew.en.map((l) => <span>{l}</span>)}</span>}
+                </summary>
+                <div class="prose cl-body" set:html={r.html} />
+                <a class="cl-anchor" href={`#${r.version}`}>Link to {r.version}</a>
+              </details>
+            ))}
+          </section>
+        ))}
+      </section>
+    )}
+  </div>
+</main>
+<Footer gh={gh} home={false} />
+<script>
+  import "../scripts/changelog.ts";
+</script>
+</body>
+</html>

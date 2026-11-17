@@ -79,6 +79,15 @@ func TestDeviceCards(t *testing.T) {
 			}
 			shot("home-behind")
 
+			// D344: 看看都改了什么 opens 0.0.4's full notes on the website and tells the home they were read.
+			var opened []string
+			h.app.OpenExternal = func(u string) error { opened = append(opened, u); return nil }
+			h.click(L.T("devup.notes") + " 0.0.4")
+			h.until("notes seen", func() bool { s := h.hub.NotesSeen(); return len(s) > 0 && s[len(s)-1] == "0.0.4" })
+			if len(opened) != 1 || opened[0] != "https://ducter.ai/changelog#0.0.4" {
+				t.Fatalf("notes link opened %q", opened)
+			}
+
 			// Each step in words.
 			for _, step := range []struct{ phase, want string }{
 				{"downloading", L.T("devup.phase.downloading.pct", "0.0.4", 40)},

@@ -1071,6 +1071,9 @@ export type ClientFrame =
   // arrives as fresh devices frames and device_update events.
   | { t: "disconnect_device"; device: string }
   | { t: "device_update"; device: string; to?: string; check?: boolean }
+  // D344: the person opened a version's full notes from an update card (看看都改了什么 / See what
+  // changed); the partner's "updated" line for that version is then not said that day. No answer.
+  | { t: "notes_seen"; version: string; tz?: string }
   // D156: agent_update: update one AI agent on a device with its own updater, at a safe point
   // (check: read the latest versions again and only report). Answered with agent_update_result;
   // progress arrives as fresh devices frames and agent_update events.

@@ -821,6 +821,11 @@ window.ducterNative=Object.freeze($info);})();"""
             is UpdateState.Available -> {
                 c.show(str(R.string.update_available, s.r.version), lines(s.r), null, str(R.string.update_button), str(R.string.update_later))
                 c.go.setOnClickListener { lifecycleScope.launch { Updater.download(this@MainActivity, s.r) } }
+                // D344: the whole of that version's notes on the website; read here, the partner won't say them today.
+                c.whatChanged(str(R.string.update_notes)) {
+                    openOutside(Uri.parse(Changelog.url(s.r.version)))
+                    js(Changelog.seenJs(s.r.version))
+                }
             }
             is UpdateState.Downloading -> c.show(str(R.string.update_available, s.r.version), lines(s.r), str(R.string.update_downloading, s.r.version, s.pct), null, null)
             is UpdateState.Verifying -> c.show(str(R.string.update_available, s.r.version), lines(s.r), str(R.string.update_verifying, s.r.version), null, null)

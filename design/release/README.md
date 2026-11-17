@@ -58,7 +58,7 @@ never cut mid-sentence). Each `## X.Y.Z` section of `CHANGELOG.md` carries them 
 which GitHub's release page doesn't render:
 
 ```md
-## 0.0.8
+## 0.0.8 - 2026-11-10
 
 <!-- whats-new
 zh: 每件事都说清楚在哪台电脑上做
@@ -67,6 +67,11 @@ en: Each task says which computer it runs on
 
 **…the full notes, in English, as before…**
 ```
+
+The heading carries the release date (`## X.Y.Z - YYYY-MM-DD`, D344): the website's
+[/changelog](../site.md) shows it, and `packages/core/test/changelog.test.ts` fails on a heading
+without one. Write the full notes in user words (no decision numbers, no source paths): the site's
+test fails on them too.
 
 At most two lines per language, each at most 40 characters in zh and 80 in en (a longer line is
 dropped, not cut). `packages/core/test/changelog.test.ts` fails a section after 0.0.7 without both

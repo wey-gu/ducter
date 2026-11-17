@@ -266,6 +266,8 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   A.fromHash();
   // The app's menus and hardware-keyboard shortcuts (⌘N, ⌘1…⌘4, ⌘, and ⌘K, as on the Mac; D176).
   (globalThis as { ducterCommand?: (c: string) => void }).ducterCommand = (c) => A.command(c);
+  // D344: the Android app's own update card opened a version's notes (its 看看都改了什么).
+  (globalThis as { ducterNotesSeen?: (v: string) => void }).ducterNotesSeen = (v) => A.notesSeen(String(v));
   addEventListener("keydown", (e) => void benchKey(e));
   addEventListener("keydown", escUp);
   addEventListener("keydown", openKey);

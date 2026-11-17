@@ -105,6 +105,10 @@ func TestClientFramesEncodeAsTheContract(t *testing.T) {
 		`{"t":"read","upToSeq":4}`:                                     Read{T: "read", UpToSeq: 4},
 		`{"t":"task_history","taskId":"t1","limit":50}`:                TaskHistoryReq{T: "task_history", TaskID: "t1", Limit: 50},
 		`{"t":"task_action","taskId":"t1","action":"drop"}`:            TaskAction{T: "task_action", TaskID: "t1", Action: "drop"},
+		`{"t":"notes_seen","version":"0.0.72","tz":"Asia/Shanghai"}`:   NotesSeenReq{T: "notes_seen", Version: "0.0.72", TZ: "Asia/Shanghai"},
+	}
+	if got := ChangelogURL("v0.0.72"); got != "https://ducter.ai/changelog#0.0.72" {
+		t.Errorf("changelog url %s", got)
 	}
 	for want, v := range cases {
 		got, _ := json.Marshal(v)

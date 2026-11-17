@@ -5448,6 +5448,8 @@ button.dev-name {
 .dc-ver .tx { flex: 1; min-width: 0; font-weight: 700; }
 .dc-ver .tx.done { color: var(--done-ink); }
 .dc-ver .tx.failed { color: var(--failed-ink); }
+/* D344: 看看都改了什么 / See what changed: a quiet link to that version's notes, a full tap tall. */
+.dc-ver .dc-notes { align-self: flex-start; padding-left: 0; }
 .dc-versions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 8px 4px 0; }
 .dc-ver .row1 .btn.tx { flex: 1; justify-content: flex-start; padding-left: 0; color: var(--failed-ink); }
 .dc-foot { display: flex; flex-direction: column; margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line-soft); align-items: flex-start; }

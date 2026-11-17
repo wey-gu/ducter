@@ -527,7 +527,7 @@ class AppState {
     this.conn = new Connection(
       wsUrl(base),
       token,
-      () => ({ t: "hello", ...(this.partnerShown !== DEFAULT_PARTNER ? { persona: this.partnerShown } : {}), ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.locale, ...(zone() ? { tz: zone() } : {}), client: "web", ...((s) => (s ? { shape: s } : {}))(myShape()) }),
+      () => ({ t: "hello", ...(this.partnerShown !== DEFAULT_PARTNER ? { persona: this.partnerShown } : {}), ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.locale, ...(zone() ? { tz: zone() } : {}), client: "web", ...((s) => (s ? { shape: s } : {}))(myShape()), ...((n) => (n?.version ? { version: n.version } : {}))(nativeInfo()) }),
       (f) => this.receive(f),
       (s) => {
         this.status = s;
@@ -1815,6 +1815,10 @@ class AppState {
   }
   disconnectDevice(device: string) {
     this.send({ t: "disconnect_device", device });
+  }
+  /** D344: 看看都改了什么 / See what changed was opened for v: the partner's line for it stays unsaid today. */
+  notesSeen(version: string) {
+    this.send({ t: "notes_seen", version, ...(zone() ? { tz: zone() } : {}) });
   }
   updateDevice(device: string) {
     this.deviceAnswer = undefined;

@@ -40,3 +40,8 @@ declare module "*/static/pdf.worker.js" {
   const path: string;
   export default path;
 }
+// D344: the CHANGELOG, imported `with { type: "text" }` in updated-line.ts: its text.
+declare module "*.md" {
+  const text: string;
+  export default text;
+}

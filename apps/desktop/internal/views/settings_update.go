@@ -139,12 +139,14 @@ func (a *App) appUpdateSection(c *ui.Context) {
 				if a.button(c, a.L.T("update.restart"), btnPrimary, t.ControlMD, t.Surface) {
 					a.RestartToUpdate()
 				}
+				a.notesLink(c, "app", st.Version) // D344: the version's full notes
 			})
 		case st.State == update.Available && st.Page != "":
 			a.actions(c, "update", nil, func() {
 				if a.button(c, a.L.T("update.download"), btnPrimary, t.ControlMD, t.Surface) {
 					a.openLink(st.Page)
 				}
+				a.notesLink(c, "app", st.Version) // D344: the version's full notes
 			})
 		}
 	})
